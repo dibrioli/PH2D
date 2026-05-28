@@ -56,10 +56,11 @@ pub enum AssetClass {
 /// Lookup canônico: dado (Tier, AssetClass), retorna o `TargetFormat` que o
 /// cooker deve passar pro `ctt::convert`.
 ///
-/// Retorna `None` se a combinação for NOT_SUPPORTED nesta wave (ex: HDR formats
-/// deferidos para W4+).
+/// Audit W1.T3 γ-H1 fix: retorna `TargetFormat` direto (não `Option`). Match é
+/// exaustivo sobre Tier × AssetClass — todas as combinações têm format definido
+/// (HDR W4+ vai adicionar variants OU outra função `target_for_hdr`).
 #[must_use]
-pub fn target_for(tier: Tier, asset_class: AssetClass) -> Option<TargetFormat> {
+pub fn target_for(tier: Tier, asset_class: AssetClass) -> TargetFormat {
     use AssetClass::*;
     use Tier::*;
     // NB: encoders (bc7enc/astcenc/etcpak/intel) só aceitam variantes UNORM dos
@@ -100,7 +101,19 @@ pub fn target_for(tier: Tier, asset_class: AssetClass) -> Option<TargetFormat> {
         (Constrained, _) => (Format::R8G8B8A8_UNORM, Encoder::Auto),
     };
 
-    Some(TargetFormat::Compressed { format, encoder })
+    TargetFormat::Compressed { format, encoder }
+}
+
+/// Default `ColorSpace` semanticamente correto para um asset class.
+/// Audit W1.T3 γ-H2 fix: `SpriteColor`/`CriticalUi` são color data (sRGB);
+/// `SingleChannel`/`NormalMap` são linear data (mask/grain/normal). Default
+/// universal sRGB causava shader-visible gamma bug em normal maps cookados.
+#[must_use]
+pub fn default_color_space_for(asset_class: AssetClass) -> ctt::ColorSpace {
+    match asset_class {
+        AssetClass::SpriteColor | AssetClass::CriticalUi => ctt::ColorSpace::Srgb,
+        AssetClass::SingleChannel | AssetClass::NormalMap => ctt::ColorSpace::Linear,
+    }
 }
 
 // Encoder constructors with Settings::default() per W1.T2.1 D1 — features
@@ -151,37 +164,47 @@ mod tests {
 
     #[test]
     fn desktop_sprite_color_uses_bc7_bc7enc() {
-        let (format, kind) = extract(target_for(Tier::Desktop, AssetClass::SpriteColor).unwrap());
+        let (format, kind) = extract(target_for(Tier::Desktop, AssetClass::SpriteColor));
         assert_eq!(format, Format::BC7_UNORM_BLOCK);
         assert_eq!(kind, "Bc7enc");
     }
 
     #[test]
     fn mobile_single_channel_uses_astc_6x6() {
-        let (format, kind) = extract(target_for(Tier::Mobile, AssetClass::SingleChannel).unwrap());
+        let (format, kind) = extract(target_for(Tier::Mobile, AssetClass::SingleChannel));
         assert_eq!(format, Format::ASTC_6x6_UNORM_BLOCK);
         assert_eq!(kind, "Astcenc");
     }
 
     #[test]
     fn desktop_single_channel_uses_bc4_intel() {
-        let (format, kind) = extract(target_for(Tier::Desktop, AssetClass::SingleChannel).unwrap());
+        let (format, kind) = extract(target_for(Tier::Desktop, AssetClass::SingleChannel));
         assert_eq!(format, Format::BC4_UNORM_BLOCK);
         assert_eq!(kind, "Intel");
     }
 
     #[test]
     fn constrained_falls_back_uncompressed() {
-        let (format, kind) = extract(target_for(Tier::Constrained, AssetClass::SpriteColor).unwrap());
+        let (format, kind) = extract(target_for(Tier::Constrained, AssetClass::SpriteColor));
         assert_eq!(format, Format::R8G8B8A8_UNORM);
         assert_eq!(kind, "Auto");
     }
 
     #[test]
     fn lowend_uses_etc2_etcpak() {
-        let (format, kind) = extract(target_for(Tier::LowEnd, AssetClass::SpriteColor).unwrap());
+        let (format, kind) = extract(target_for(Tier::LowEnd, AssetClass::SpriteColor));
         assert_eq!(format, Format::ETC2_R8G8B8A8_UNORM_BLOCK);
         assert_eq!(kind, "Etcpak");
+    }
+
+    /// W1.T3 γ-H2 fix: color/UI classes → sRGB; data classes → Linear. Gamma
+    /// bug em normal map cooked como sRGB ASTC era shader-visible em runtime.
+    #[test]
+    fn default_color_space_distinguishes_color_vs_data_classes() {
+        assert_eq!(default_color_space_for(AssetClass::SpriteColor), ctt::ColorSpace::Srgb);
+        assert_eq!(default_color_space_for(AssetClass::CriticalUi), ctt::ColorSpace::Srgb);
+        assert_eq!(default_color_space_for(AssetClass::SingleChannel), ctt::ColorSpace::Linear);
+        assert_eq!(default_color_space_for(AssetClass::NormalMap), ctt::ColorSpace::Linear);
     }
 
     /// D3 guard: nenhum entry da matrix DEVE retornar Encoder::Auto para BC7 (que
@@ -196,7 +219,7 @@ mod tests {
                 AssetClass::SingleChannel,
                 AssetClass::NormalMap,
             ] {
-                let (format, kind) = extract(target_for(tier, class).unwrap());
+                let (format, kind) = extract(target_for(tier, class));
                 if matches!(format, Format::BC7_UNORM_BLOCK) {
                     assert_eq!(
                         kind, "Bc7enc",

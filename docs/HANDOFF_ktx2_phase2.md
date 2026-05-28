@@ -317,9 +317,18 @@ Coord-A futura: **ATIVAR** seção Coord-A no [`docs/SESSION_ACTIVE.md`](SESSION
 - **SKILL §11.10 / §12.1 / HR-1 §2.7.1** — atualizadas em Round 1-3.
 - **SESSION_ACTIVE.md** — Coord-A ATIVO (esta sessão); pastas tocadas documentadas (5 docs); NÃO-TOCAR list dos agentes paralelos respeitada (commit escopado).
 - **Memória refinada** — `[[feedback-perfection-no-deferrals]]` ganhou escopo decisão-atual vs decisões-adjacentes (anti-inversão da própria regra). `[[feedback-audit-internal-state-grep]]` criada em Round 3.
-- **W1.T0 ✅ + W1.T1 ✅ + W1.T2 ✅ fechadas mesma sessão.** Commits locais: `971e237` (v4 + plano + HANDOFF), `db6971c` (T0 cargo add + sweep-grep), próximo commit (T1 cargo check passed + T2 audit consolidado).
-- **W1.T2 audit deliverable**: [`docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md`](audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md). Veredito **APPROVE_WITH_CAVEATS** (8/8 sub-crates PASS HR-1 §2.7.1; 0 CRITICAL; 4 HIGH mitigáveis PH2D-side). 5 disciplinas operacionais → 5 sub-tasks novas no plano vivo (T2.1..T2.5).
-- **Próxima sessão Coord-A**: ler ADR-0055-v4 + audit consolidado + plano vivo T2.1..T2.5. Implementar D1 (features pinadas), D3 (wrapper guard AMD+BC7+UltraFast), D4 (snapshot test 64 bytes) e D5 (deny.toml ban) **ANTES** de W1.T3 (`tools/asset-cooker/src/texture/mod.rs` sub-command). Estimate ~1 sessão para T2.1+T2.2+T2.3+T2.4; T2.5 (PR upstream) ⏳ defer.
+- **W1.T0 ✅ + W1.T1 ✅ + W1.T2 ✅ + W1.T2.1 ✅ + W1.T2.4 ✅ + W1.T3 ✅ fechadas mesma sessão.** Commits locais:
+  - `971e237` (v4 ADR + plano + HANDOFF)
+  - `db6971c` (T0 cargo add + sweep-grep)
+  - `1e516a7` (SESSION_ACTIVE inativo — depois sobrescrito por Painter T1.8)
+  - `a1bb1d2` (T2 audit ctt 2 lentes APPROVE_WITH_CAVEATS)
+  - `e254271` (T2.1 features pinadas + T2.4 deny.toml D1+D5)
+  - `a4a85bf` (meta-audit α+β + fixes H1/H2/H3)
+  - `960a56c` (T3 — texture cook sub-command + lib API)
+  - `<next>` (audit γ+δ + fixes γ-H1/H2/H3 + δ-M1/M2)
+- **W1.T2 audit deliverable**: [`docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md`](audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md). Veredito **APPROVE_WITH_CAVEATS**.
+- **W1.T3 audit deliverable**: [γ Implementation](audits/w1-t3-lens-gamma-implementation.md) (APPROVE 9.2/10) + [δ Arch-as-Code](audits/w1-t3-lens-delta-arch-as-code.md) (APPROVE 8.5/10). γ-H2 era REAL gamma bug shader-visible (NormalMap default sRGB) — fechado inline via `CookOptions::for_asset_class` constructor + `default_color_space_for` helper.
+- **Próxima sessão Coord-A**: W1.T4 (Asset::TextureKtx2 + TierIndex newtype em crates/ph2d-asset/) é próximo natural; W1.T6 (multi-tier batch — itera target_matrix) depois; W1.T10 + W1.T11.5 (canonical runner CI + Git LFS) desbloqueia D2+D4 (snapshot test). T2.2 (D3 wrapper guard) e T2.5 (PR upstream criterion→dev-deps) ⏳ defer indefinido.
 
 ---
 

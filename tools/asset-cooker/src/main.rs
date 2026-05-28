@@ -163,11 +163,10 @@ fn run_texture_cook(
     asset_class: AssetClass,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let png_bytes = std::fs::read(input)?;
-    let options = CookOptions {
-        tier,
-        asset_class,
-        ..Default::default()
-    };
+    // W1.T3 γ-H2 fix: `for_asset_class` deriva `color_space` semanticamente
+    // correto (Linear para NormalMap/SingleChannel, sRGB para SpriteColor/UI).
+    // `..Default::default()` aplicaria sRGB universalmente → gamma bug em normal maps.
+    let options = CookOptions::for_asset_class(tier, asset_class);
     let ktx2_bytes = texture::cook(&png_bytes, options)
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
     if let Some(parent) = output.parent() {

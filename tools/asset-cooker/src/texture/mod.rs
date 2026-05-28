@@ -28,4 +28,4 @@ pub mod cook;
 pub mod target_matrix;
 
 pub use cook::{CookOptions, TextureCookError, cook};
-pub use target_matrix::{AssetClass, Tier, target_for};
+pub use target_matrix::{AssetClass, Tier, default_color_space_for, target_for};

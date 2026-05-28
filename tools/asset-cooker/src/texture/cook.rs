@@ -20,7 +20,7 @@ use ctt::{
 };
 use image::ImageReader;
 
-use super::target_matrix::{AssetClass, Tier, target_for};
+use super::target_matrix::{AssetClass, Tier, default_color_space_for, target_for};
 
 #[derive(Debug)]
 pub enum TextureCookError {
@@ -30,9 +30,6 @@ pub enum TextureCookError {
     Io(std::io::Error),
     /// `ctt::convert` failed (invalid format/encoder combo, OOM, etc.).
     Ctt(ctt::Error),
-    /// (Tier, AssetClass) combination has no defined target format (e.g., HDR
-    /// formats deferred to W4+).
-    NoTargetFormat { tier: Tier, asset_class: AssetClass },
 }
 
 impl std::fmt::Display for TextureCookError {
@@ -41,11 +38,6 @@ impl std::fmt::Display for TextureCookError {
             Self::Decode(e) => write!(f, "texture cook: PNG decode failed: {e}"),
             Self::Io(e) => write!(f, "texture cook: I/O error: {e}"),
             Self::Ctt(e) => write!(f, "texture cook: ctt::convert failed: {e:?}"),
-            Self::NoTargetFormat { tier, asset_class } => write!(
-                f,
-                "texture cook: no target format defined for ({tier:?}, {asset_class:?}) — \
-                 likely deferred to W4+ HDR wave"
-            ),
         }
     }
 }
@@ -72,6 +64,12 @@ impl From<ctt::Error> for TextureCookError {
 
 /// Options para um cook individual. Multi-tier emit (W1.T6) chama `cook` N
 /// vezes com tiers diferentes.
+///
+/// **Construir via [`CookOptions::for_asset_class`] em vez de `Default::default()`**
+/// quando asset class for conhecida — escolhe `color_space` semanticamente
+/// correto (sRGB para Color/UI, Linear para SingleChannel/NormalMap). `Default`
+/// retorna `SpriteColor` + `Srgb` para compat-API, mas aplicar isso a normal
+/// maps causa shader-visible gamma bug (auditoria W1.T3 γ-H2).
 #[derive(Copy, Clone, Debug)]
 pub struct CookOptions {
     pub tier: Tier,
@@ -79,12 +77,30 @@ pub struct CookOptions {
     /// Source alpha intent. Default `Straight`; bg-removal pipeline emite
     /// `Premultiplied` (ver W2.T-pre + KTX2 keyValueData `PH2D_PREMUL`).
     pub alpha: AlphaMode,
-    /// Source color space. Default `Srgb` para asset color; `Linear` para
-    /// normal maps + single-channel data.
+    /// Source color space. Para asset color (sprite/UI) usar `Srgb`; para
+    /// normal maps e single-channel data, usar `Linear`. `for_asset_class`
+    /// deriva automaticamente.
     pub color_space: ColorSpace,
 }
 
+impl CookOptions {
+    /// Constructor semanticamente correto: deriva `color_space` apropriado
+    /// para o asset class. Use sempre que possível em vez de `Default::default()`.
+    #[must_use]
+    pub fn for_asset_class(tier: Tier, asset_class: AssetClass) -> Self {
+        Self {
+            tier,
+            asset_class,
+            alpha: AlphaMode::Straight,
+            color_space: default_color_space_for(asset_class),
+        }
+    }
+}
+
 impl Default for CookOptions {
+    /// **NB:** retorna defaults para `SpriteColor` (sRGB color data). Aplicar
+    /// a `SingleChannel`/`NormalMap` causa gamma bug. Use [`CookOptions::for_asset_class`]
+    /// quando asset class for conhecida.
     fn default() -> Self {
         Self {
             tier: Tier::Desktop,
@@ -127,13 +143,8 @@ pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, Textur
         kind: TextureKind::Texture2D,
     };
 
-    // Step 3: lookup target format.
-    let target = target_for(options.tier, options.asset_class).ok_or_else(|| {
-        TextureCookError::NoTargetFormat {
-            tier: options.tier,
-            asset_class: options.asset_class,
-        }
-    })?;
+    // Step 3: lookup target format (W1.T3 γ-H1 fix: agora retorna TargetFormat direto).
+    let target = target_for(options.tier, options.asset_class);
 
     // Step 4: convert via ctt (encoder vendored ISPC offline; produces KTX2 bytes).
     let settings = ConvertSettings {
@@ -181,11 +192,7 @@ mod tests {
         let png = fixture_png_64x64();
         let bytes = cook(
             &png,
-            CookOptions {
-                tier: Tier::Desktop,
-                asset_class: AssetClass::SpriteColor,
-                ..Default::default()
-            },
+            CookOptions::for_asset_class(Tier::Desktop, AssetClass::SpriteColor),
         )
         .expect("cook desktop sprite color");
         assert!(
@@ -201,33 +208,52 @@ mod tests {
         );
     }
 
+    /// W1.T3 γ-H3: nome + mensagem soften para deixar claro que isto valida
+    /// SÓ intra-machine byte-identity (mesmo binário rodando 2× no mesmo CPU).
+    /// HR-6 cross-machine determinism requer canonical runner (D2/W1.T10) +
+    /// snapshot lock (D4/W1.T2.3) — gates separados, audit-tracked.
     #[test]
-    fn cook_is_deterministic_for_same_input_same_cpu() {
-        // NB: this test passes on a single machine. Cross-machine determinism
-        // requires canonical runner (D2/W1.T10 ⏳).
+    fn cook_intra_machine_byte_identity_when_repeated() {
         let png = fixture_png_64x64();
         let a = cook(&png, CookOptions::default()).expect("cook a");
         let b = cook(&png, CookOptions::default()).expect("cook b");
         assert_eq!(
             a, b,
-            "same input + same options + same CPU must produce byte-identical KTX2"
+            "intra-machine byte-identity check (same binary, same CPU, repeated call). \
+             NB: HR-6 cross-machine determinism is a separate gate (D2/W1.T10 canonical \
+             runner + D4/W1.T2.3 snapshot lock); this test does NOT validate that."
         );
     }
 
     #[test]
-    fn cook_64x64_mobile_critical_ui_uses_astc_4x4() {
+    fn cook_64x64_mobile_critical_ui_emits_valid_ktx2_header() {
+        // Audit W1.T3 γ-LOW-1: test name antes era `..._uses_astc_4x4` mas só
+        // checava KTX2 magic; renamed para refletir o que o test realmente assert.
+        // Validação que format interno do KTX2 é ASTC 4×4 será coberto pelo
+        // snapshot test W1.T2.3/D4 quando canonical runner (D2) materializar.
         let png = fixture_png_64x64();
         let bytes = cook(
             &png,
-            CookOptions {
-                tier: Tier::Mobile,
-                asset_class: AssetClass::CriticalUi,
-                ..Default::default()
-            },
+            CookOptions::for_asset_class(Tier::Mobile, AssetClass::CriticalUi),
         )
         .expect("cook mobile critical UI");
         assert!(bytes.len() > 100);
-        // Same KTX2 magic header.
         assert_eq!(&bytes[0..12], &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A]);
+    }
+
+    /// W1.T3 γ-H2 fix: verifica integração end-to-end do gamma fix —
+    /// NormalMap → ColorSpace::Linear (não sRGB). Asserção via cook() não-erro;
+    /// validação do flag KTX2 sRGB no header de output será W1.T2.3 snapshot.
+    #[test]
+    fn cook_normal_map_uses_linear_color_space_via_for_asset_class() {
+        let options = CookOptions::for_asset_class(Tier::Desktop, AssetClass::NormalMap);
+        assert!(
+            matches!(options.color_space, ctt::ColorSpace::Linear),
+            "for_asset_class(NormalMap) MUST yield Linear color space, got Srgb"
+        );
+        // Smoke: cook actually succeeds with this configuration.
+        let png = fixture_png_64x64();
+        let bytes = cook(&png, options).expect("cook normal map");
+        assert!(bytes.len() > 100);
     }
 }

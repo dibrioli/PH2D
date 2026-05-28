@@ -404,6 +404,16 @@ pub(crate) struct App {
     /// commits (Apply) which bakes the canvas into the sprite texture.
     /// Cleared on Apply + deactivate.
     pub(crate) painter_preview: Option<PainterPreview>,
+    /// W1.T1.7 R8: accumulator of committed Vector Pen `.ph2d-vector`
+    /// assets. Each close-path emits one; the bridge stashes them
+    /// here and renders ALL committed paths per frame so finished
+    /// triangles persist on canvas while a new in-progress path is
+    /// authored. Cleared only when the Pen tool is deactivated (next
+    /// activation starts the scene fresh) or on explicit "new
+    /// document" (W2+). W2+ migrates to a real scene-graph asset
+    /// store so committed paths persist across tool switches.
+    pub(crate) committed_vector_pen_paths:
+        Vec<ph2d_vector::Ph2dVectorAsset>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

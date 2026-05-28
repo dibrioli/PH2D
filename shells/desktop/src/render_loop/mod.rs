@@ -858,6 +858,7 @@ impl crate::App {
                 camera,
                 window_size,
                 self.last_pointer,
+                &mut self.committed_vector_pen_paths,
                 vector_scene,
                 toasts,
             );

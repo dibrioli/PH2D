@@ -156,6 +156,7 @@ impl App {
             bgremoval_preview_gpu: None,
             last_painter_pushed_entity: None,
             painter_preview: None,
+            committed_vector_pen_paths: Vec::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

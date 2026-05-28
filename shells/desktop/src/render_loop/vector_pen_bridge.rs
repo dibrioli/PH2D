@@ -46,11 +46,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// Early-returns if the active tool isn't `vector_pen`. No mutation
 /// on early-return; safe to call every frame unconditionally.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
     tools: &mut ToolRegistry,
     camera: &Camera2d,
     window_size: WindowSize,
     last_pointer: (f32, f32),
+    committed_paths: &mut Vec<ph2d_vector::Ph2dVectorAsset>,
     vector_scene: &mut VectorScene,
     toasts: &mut ToastQueue,
 ) {
@@ -71,41 +73,54 @@ pub(super) fn dispatch(
         return;
     };
 
-    // Step 1 — drain pending commit + save to disk. We do this FIRST
-    // (before the preview render) so the asset save happens on the
-    // tick that the user closed the path; the preview then re-renders
-    // the *next* in-progress path (empty post-reset) on the same
-    // tick, so no stale triangle stays on screen.
+    // Step 1 — drain pending commit + save to disk + STASH for
+    // multi-path rendering. R8: each close-path emits one asset; the
+    // bridge accumulates them in `committed_paths` so the user sees
+    // every finished triangle persist on canvas while a new
+    // in-progress path coexists.
     if let Some(asset) = pen.take_committed_asset() {
         let _ = match save_asset_to_disk(&asset) {
             Ok(path) => toasts.push(Toast::info(format!("Vector saved: {path}"))),
             Err(e) => toasts.push(Toast::error(format!("Vector save failed: {e}"))),
         };
+        committed_paths.push(asset);
     }
 
-    // Step 2 — render. Two layers:
+    // Step 2 — render. Three layers:
     //
-    // (a) Closed regions via `draw_vector_network` — covers the
-    //     post-close-path filled triangle (rare during build; common
-    //     after first commit when an unclosed second path overlays a
-    //     prior closed region if that ever happens).
+    // (a) **Committed paths**: every finished triangle from prior
+    //     close-paths. Persists on canvas; the user can stack
+    //     drawings.
     //
-    // (b) **In-progress preview overlay** — vertex DOTS + segment
-    //     LINES drawn directly. R5 fix: `draw_vector_network` only
-    //     renders REGIONS with fill; vertices+segments alone (the
-    //     standard state during clicks 1..3 of a triangle) produce
-    //     nothing visible. Standard Pen-tool UX (Illustrator/Figma)
-    //     shows vertex dots + segment guidelines DURING the build so
-    //     the user gets feedback per-click.
+    // (b) **In-progress preview overlay**: vertex DOTS + segment
+    //     LINES + rubber-band line. Drawn on top of committed
+    //     paths so the new authoring is clearly visible.
+    //
+    // Both layers share the same world→screen affine.
+    let world_to_screen = world_to_screen_affine(camera, window_size);
+    let scene = vector_scene.inner_mut();
+
+    // Layer (a): all committed triangle fills.
+    for asset in committed_paths.iter() {
+        ph2d_vector::draw_vector_network(
+            scene,
+            &asset.network,
+            &asset.styles,
+            world_to_screen,
+        );
+    }
+
+    // No in-progress path → nothing more to draw.
     let network = pen.current_network();
     if network.vertices.is_empty() {
         return;
     }
     let styles = pen.current_styles();
-    let world_to_screen = world_to_screen_affine(camera, window_size);
-    let scene = vector_scene.inner_mut();
 
-    // Layer (a): fills.
+    // Also render the in-progress network's regions (rare — only if
+    // a region was explicitly added without close-path completing,
+    // which the Pen tool never does in W1; defensive for future
+    // tools sharing this bridge).
     ph2d_vector::draw_vector_network(scene, network, styles, world_to_screen);
 
     // Layer (b): in-progress vertex dots + segment guidelines.
@@ -164,7 +179,18 @@ pub(super) fn dispatch(
     // Inkscape): user sees the candidate next segment before
     // committing the click. Without this the user has no spatial
     // feedback for "where would my next click land".
-    if let Some(last_v) = network.vertices.last() {
+    //
+    // **R8 gate**: only draw rubber-band when the in-progress path
+    // is OPEN (no closed region yet). Without this gate, a stale
+    // rubber-band would render from `vertices.last()` after a
+    // close-path — user reported "última aresta continua aparecendo
+    // como se não tivesse fechado". (Tool resets immediately on
+    // close-path in R8, so this branch only fires mid-build, but
+    // the explicit gate is defensive against future Pen variants
+    // that might keep state through commit.)
+    if network.regions.is_empty()
+        && let Some(last_v) = network.vertices.last()
+    {
         let cursor_world = camera.screen_to_world(last_pointer, window_size);
         // Skip drawing the rubber-band if the cursor coincides with
         // the last vertex (zero-length line emits nothing meaningful

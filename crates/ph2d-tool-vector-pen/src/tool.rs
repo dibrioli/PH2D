@@ -208,18 +208,6 @@ impl VectorPenTool {
             return PenClickOutcome::Rejected;
         }
 
-        // R7 fix: if the previous click closed a path (network now
-        // has ≥ 1 closed region), this click starts a NEW path —
-        // reset state BEFORE processing so the new vertex begins a
-        // fresh authoring session. Previously `close_current_path`
-        // reset immediately, which made the closed triangle vanish
-        // from the canvas the instant the user finished it (the
-        // bridge renders `current_network`; post-reset = empty =
-        // nothing visible).
-        if !self.network.regions.is_empty() {
-            self.reset_path();
-        }
-
         // Defensive safety cap — refuses to grow indefinitely if the
         // user clicks without ever closing the path.
         if self.network.vertices.len() >= MAX_IN_PROGRESS_VERTICES {
@@ -355,12 +343,15 @@ impl VectorPenTool {
         asset.edit_log = self.edit_log.clone();
         self.pending_committed = Some(asset);
 
-        // R7 fix: do NOT reset here. The closed region must stay in
-        // `network` so the bridge renders the finished triangle on
-        // the canvas (previously the reset wiped it instantly — user
-        // reported "tudo desaparece" on close-path). `reset_path()`
-        // is now deferred to `on_canvas_click` at the top of the
-        // NEXT click that starts a new path.
+        // R8: reset immediately. The bridge stashes the committed
+        // asset in its own per-frame cache (`committed_vector_pen_paths:
+        // Vec<Ph2dVectorAsset>`) and renders ALL committed paths each
+        // frame, so the user sees every finished triangle persist on
+        // canvas while a new in-progress path coexists. Resetting
+        // here keeps the Pen tool's job tight (single in-progress
+        // session at a time) — multi-path accumulation is shell-side
+        // concern (separation of edit state vs scene state).
+        self.reset_path();
     }
 }
 

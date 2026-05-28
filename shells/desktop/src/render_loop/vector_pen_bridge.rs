@@ -56,6 +56,39 @@ pub(super) fn dispatch(
     vector_scene: &mut VectorScene,
     toasts: &mut ToastQueue,
 ) {
+    // R9 fix: SCENE state (committed_paths) must render every frame
+    // regardless of which tool is currently active. The earlier R8
+    // early-return on `!is_pen_active` caused all finished triangles
+    // to vanish the instant the user toggled Pen off, which read as
+    // "Pen didn't fully deactivate" — actually the tool DID
+    // deactivate, but the canvas wiped at the same instant so the
+    // user couldn't tell. Committed vector paths are scene state, not
+    // Pen-tool state.
+    //
+    // Three layers, gated independently:
+    //
+    // (a) **Committed paths** (ALWAYS rendered): every finished
+    //     triangle from prior close-paths. Stays on canvas across
+    //     tool switches.
+    //
+    // (b) **Pen commit-drain + in-progress overlay** (only when Pen
+    //     is the active tool): take_committed_asset → save to disk +
+    //     push to committed_paths; then paint vertex DOTS + segment
+    //     LINES + rubber-band line for the path the user is currently
+    //     authoring.
+    let world_to_screen = world_to_screen_affine(camera, window_size);
+    let scene = vector_scene.inner_mut();
+
+    // Layer (a) — scene: always on.
+    for asset in committed_paths.iter() {
+        ph2d_vector::draw_vector_network(
+            scene,
+            &asset.network,
+            &asset.styles,
+            world_to_screen,
+        );
+    }
+
     let is_pen_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("vector_pen"))
@@ -73,7 +106,7 @@ pub(super) fn dispatch(
         return;
     };
 
-    // Step 1 — drain pending commit + save to disk + STASH for
+    // Pen-only step — drain pending commit + save to disk + STASH for
     // multi-path rendering. R8: each close-path emits one asset; the
     // bridge accumulates them in `committed_paths` so the user sees
     // every finished triangle persist on canvas while a new
@@ -86,31 +119,7 @@ pub(super) fn dispatch(
         committed_paths.push(asset);
     }
 
-    // Step 2 — render. Three layers:
-    //
-    // (a) **Committed paths**: every finished triangle from prior
-    //     close-paths. Persists on canvas; the user can stack
-    //     drawings.
-    //
-    // (b) **In-progress preview overlay**: vertex DOTS + segment
-    //     LINES + rubber-band line. Drawn on top of committed
-    //     paths so the new authoring is clearly visible.
-    //
-    // Both layers share the same world→screen affine.
-    let world_to_screen = world_to_screen_affine(camera, window_size);
-    let scene = vector_scene.inner_mut();
-
-    // Layer (a): all committed triangle fills.
-    for asset in committed_paths.iter() {
-        ph2d_vector::draw_vector_network(
-            scene,
-            &asset.network,
-            &asset.styles,
-            world_to_screen,
-        );
-    }
-
-    // No in-progress path → nothing more to draw.
+    // No in-progress path → no overlay to draw.
     let network = pen.current_network();
     if network.vertices.is_empty() {
         return;

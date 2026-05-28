@@ -49,6 +49,13 @@ jobs:
       - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
+      # ph2d-imageio-avif (W3.T4) builds dav1d + rav1e from vendored
+      # source: meson+ninja build dav1d, nasm assembles the x86 SIMD.
+      # ADR-0054 §5.18 (Path C). Lint compiles --all-targets so it hits
+      # the avif crate too.
+      - name: Install AVIF build tools (meson + ninja + nasm)
+        run: sudo apt-get install -y meson ninja-build nasm
+
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
@@ -127,6 +134,9 @@ jobs:
           shared-key: msrv
       - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      # ph2d-imageio-avif vendored dav1d+rav1e build deps (ADR-0054 §5.18).
+      - name: Install AVIF build tools (meson + ninja + nasm)
+        run: sudo apt-get install -y meson ninja-build nasm
       - name: cargo check --workspace --locked (MSRV)
         run: cargo check --workspace --locked
 
@@ -227,6 +237,29 @@ jobs:
       - name: Install libudev-dev (gilrs → libudev-sys, Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
+      # ph2d-imageio-avif (W3.T4, ADR-0054 §5.18) builds dav1d + rav1e
+      # from vendored source: meson+ninja compile dav1d, nasm assembles
+      # the x86 SIMD. The matrix job does `cargo check --workspace` +
+      # nextest, both of which compile the avif crate on all 3 OSes.
+      - name: Install AVIF build tools (meson + ninja + nasm)
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Linux)
+              sudo apt-get install -y meson ninja-build nasm
+              ;;
+            macOS)
+              brew install meson ninja nasm
+              ;;
+            Windows)
+              choco install -y nasm ninja
+              python -m pip install --upgrade meson
+              # choco installs nasm to "C:\Program Files\NASM"; put it
+              # on PATH for the dav1d meson build.
+              echo "C:\\Program Files\\NASM" >> "$GITHUB_PATH"
+              ;;
+          esac
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2

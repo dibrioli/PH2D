@@ -9,14 +9,53 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-avif` — AVIF magic recognition + (deferred) decode/
-# encode (W3.T4). Magic-only stub per ADR-0054 §3.8 fan-out drop-
-# crate. Pure-Rust candidate deps `avif-decode = "1"` (decode) +
-# `ravif = "0.11"` (encode, rav1e backend) added together with the
-# wire-up when first real client appears. Audit-13 Lens FF F2
-# (2026-05-27): earlier comment claimed `avif-native` feature +
-# `avif-serialize` + `dav1d`-equivalent paths existed in deps —
-# false; corrected per `feedback-audit-internal-state-grep`.
+# `ph2d-imageio-avif` — AVIF (AV1 Image File) real decode + encode +
+# HDR/wide-gamut (W3.T4 re-ship, Path C). Implementation of reference
+# via `libavif-sys` (the AOM `libavif` C library) with vendored codecs:
+# `codec-dav1d` (decode) + `codec-rav1e` (pure-Rust AV1 encode).
+#
+# ### Why Path C / libavif-sys (re-ship 2026-05-28, ADR-0054 §5.18)
+#
+# W3.T4's first real wire-up (`272d99d`, `avif-decode = "1"`) was
+# DESHIPPED in `f034e9a` — audit-15 found 1 unfixable RUSTSEC
+# (`owning_ref` UAF) + an upstream `unprem()` math bug. The Path A
+# alternative (`image` `avif-native`, decode-only, reject-HDR) was
+# rejected by the project mandate ("o melhor possível, sem custo"):
+# AVIF must ship real decode AND encode AND HDR/wide-gamut.
+#
+# `libavif` is the AOM reference implementation — it covers the whole
+# AV1 Image spec (grid, alpha, animation, ICC + nclx, lossless, every
+# transfer function). The Path A `image::avif-native` decoder cannot.
+# Verified clean 2026-05-28 (scratch `/tmp/avif-c-verify`): the
+# `dav1d` + `rav1e` dep tree carries **zero `owning_ref`** and
+# **0 RUSTSEC** (only `paste` unmaintained, already in `deny.toml`).
+#
+# ### Build-tool requirement (NOT "no CI install")
+#
+# `libdav1d-sys` builds dav1d from vendored source via **meson +
+# ninja**; rav1e's optional asm path uses **nasm** on x86. These are
+# host build tools the 3 CI OSes install (see `spike.yml`
+# `install-avif-build-tools`). The earlier handoff claim "vendored →
+# sem CI install" was false (the `*-sys` crates vendor *source*, not
+# prebuilt binaries) — corrected per
+# `feedback-no-industrial-claims-without-verification`.
+#
+# ### Codec choice: rav1e (encode) over aom
+#
+# `codec-rav1e` is a **pure-Rust** AV1 encoder — no C `libaom`, no
+# extra unsafe surface, smaller build, HR-1-friendlier than
+# `codec-aom`. Decode stays on `dav1d` (fastest spec-complete C
+# decoder; consistent with the rest of the module). aom would add a
+# 26 MB C build for marginal encode-quality gain we don't need for an
+# editor/cooking exporter.
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+# libavif-sys 0.17.0 wraps libavif 1.0.4. `codec-dav1d` = vendored
+# dav1d decoder; `codec-rav1e` = vendored pure-Rust rav1e encoder.
+# default-features off so we do NOT pull `codec-aom` (libaom C build).
+libavif-sys = { version = "0.17.0", default-features = false, features = [
+    "codec-dav1d",
+    "codec-rav1e",
+] }

@@ -74,6 +74,16 @@ push, não no CI vermelho 30min depois.
   `ph2d-painter-contracts/` homestead arch-gate). Mandato §0 padrão-ouro absoluto;
   regra [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md)
   ativa. Handoff: [`docs/HANDOFF_painter.md`](docs/HANDOFF_painter.md).
+- [`docs/Vector Module/17_plano_de_implementacao.md`](docs/Vector%20Module/17_plano_de_implementacao.md) —
+  **Vector Module (sucessor do Illustrator)** — W0 ratificada 2026-05-29 com **13 ADRs Accepted**
+  ([ADR-0056..0068](docs/architecture/decisions/)) + amendments policy ativa; W1 aberta
+  com 2 tracks paralelos: **T0.14 shell iPad scaffold** (CRITICAL pre-W1; 5-7d destranca
+  cross-platform) + **T1.1 `ph2d-vector-traits` crate** (AnimValue typed enum + t:f64 +
+  mocks foundation). PADRÃO-OURO ✓ ~9.7/10 pós-3 audits Antigravity (lentes rotacionadas;
+  ENDORSEMENT 9.8/10). 8 inovações extraordinárias incluem Vector-SDF Hybrid GPU,
+  Dormant Fracture Edges, LLM-as-graph-node, Painter↔Vector bridge bidirecional,
+  Variable Fonts axes como graph inputs. ~9.590 linhas em 19 arquivos. Smoke W1 Day ~7-10
+  = clica Pen tool → 3 pontos → triângulo Vello GPU prefix-sum.
 
 **Fan-out drop-crate (node OU tool):** receita única em
 [DIRETRIZ §3.8](docs/IntegracaoMultiAgente/DIRETRIZ.md) — briefing parametrizado
@@ -93,6 +103,14 @@ push, não no CI vermelho 30min depois.
   `Stamp = 96B align(16) ABI` / `RenderingMode = 6 FROZEN` / `AdjustmentKind ≤ 32 (24 ship v1)` /
   `ColorProfile = 8 FROZEN` / `DeviceTier = 5 FROZEN`. Homestead gates:
   `crates/ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs` (W1 T0.8 cria).
+- Vector Module ([ADR-0056..0068](docs/architecture/decisions/)) — cascata W0 ratificada
+  2026-05-29 com 13 ADRs Accepted + amendments policy. Caps principais: `VectorOp ≤ 16 variants` /
+  `Vertex` SmallVec inline 32 / `Segment` SmallVec inline 64 / `Region.segments` SmallVec inline 16 /
+  `AnimValue` typed enum {Float/Vec2/Vec3/Color/Bool/Enum} / `AttributeEvaluator::sample(t: f64)` /
+  18 nodes geométricos canônicos / 32 crates totais com consolidação seletiva / 8 inovações
+  extraordinárias / `MAX_SPIRAL_TURNS=64` / `MAX_POLYGON_SIDES=128` / `MAX_VERTICES_PER_LLM_GEN=1000`
+  (security sanitizers). Homestead gates: `crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs`
+  (W1 T1.2 cria) + `vello_kurbo_only_in_ph2d_vector` arch-gate (long-tail maintenance L6F1).
 
 Planos históricos vivem em [`docs/archive/plans-completed/`](docs/archive/plans-completed/).
 

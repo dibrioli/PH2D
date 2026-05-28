@@ -193,6 +193,14 @@ pub struct WidgetStore {
     /// commit silently writes display-space text into the slider as
     /// if it were storage — the 2026-05-27 "type 0.2 see -0.6" bug.
     pub(super) number_to_slider_mapping: BTreeMap<NodeId, (f32, f32)>,
+    /// Chip ids that should `.round()` their typed display value before
+    /// inverse-projecting into the slider's `0..1` storage. Used for
+    /// integer-domain chips (Min Px / Tile Grid / Posterize Dither
+    /// Grain) so the chip's persisted value matches the painter's
+    /// rounded `display_override` — without this, typing "50.5" left
+    /// the chip stuck at 50.5 while the painter showed "50" (audit
+    /// finding #3, 2026-05-28).
+    pub(super) number_to_slider_snap_integer: std::collections::BTreeSet<NodeId>,
     /// NumberInput ids that are painted as bare `paint_number_chip`
     /// pills (no up/down arrows). The dispatch's
     /// `apply_number_stepper_if_hit` carves a stepper column out of
@@ -460,6 +468,7 @@ impl WidgetStore {
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
             number_to_slider_mapping: BTreeMap::new(),
+            number_to_slider_snap_integer: std::collections::BTreeSet::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
@@ -556,6 +565,41 @@ impl WidgetStore {
         scale: f32,
         offset: f32,
     ) {
+        self.link_slider_number_mapped_inner(slider, number, scale, offset, false);
+    }
+
+    /// Like [`link_slider_number_mapped`] but the chip's typed display
+    /// value is **rounded to the nearest integer** before being written
+    /// to the chip and inverse-projected to the slider. Use for chips
+    /// whose painted unit is an integer count (BgRemoval Min Px,
+    /// Color-Eq Tile Grid / Posterize Dither Grain, etc.) — without
+    /// this, a user typing "50.5" left the chip stuck at fractional 50.5
+    /// while the painter's `display_override` showed the rounded "50",
+    /// and Tab-away / re-focus revealed the inconsistency (audit
+    /// finding #3, 2026-05-28).
+    ///
+    /// The mapping itself is still the same affine `display = storage *
+    /// scale + offset`; the snap is applied on TOP at the chip-write
+    /// boundary so the slider's `0..1` storage can stay continuous (the
+    /// painter rounds on its own from that continuous track when needed).
+    pub fn link_slider_number_mapped_integer(
+        &mut self,
+        slider: NodeId,
+        number: NodeId,
+        scale: f32,
+        offset: f32,
+    ) {
+        self.link_slider_number_mapped_inner(slider, number, scale, offset, true);
+    }
+
+    fn link_slider_number_mapped_inner(
+        &mut self,
+        slider: NodeId,
+        number: NodeId,
+        scale: f32,
+        offset: f32,
+        snap_integer: bool,
+    ) {
         debug_assert!(
             scale.abs() > f32::EPSILON,
             "link_slider_number_mapped: scale must be non-zero"
@@ -569,6 +613,11 @@ impl WidgetStore {
             // Identity — keep the map clean so default-lookup is fast.
             self.number_to_slider_mapping.remove(&number);
         }
+        if snap_integer {
+            self.number_to_slider_snap_integer.insert(number);
+        } else {
+            self.number_to_slider_snap_integer.remove(&number);
+        }
     }
 
     pub fn linked_number(&self, slider: NodeId) -> Option<NodeId> {
@@ -577,6 +626,14 @@ impl WidgetStore {
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
+    }
+
+    /// `true` iff the chip is registered with
+    /// [`link_slider_number_mapped_integer`] — the dispatch's
+    /// [`apply_chip_value_with_mirror`] will `.round()` the typed
+    /// display value before writing chip+slider.
+    pub fn linked_slider_snap_integer(&self, number: NodeId) -> bool {
+        self.number_to_slider_snap_integer.contains(&number)
     }
 
     /// Projection `(scale, offset)` for the chip→slider mirror.

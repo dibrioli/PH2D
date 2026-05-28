@@ -103,7 +103,12 @@ pub fn populate(store: &mut WidgetStore) {
             d.min_island_pixels01,
             min_display as f64,
         );
-        store.link_slider_number_mapped(
+        // Integer-domain snap (audit finding #3, 2026-05-28):
+        // chip stores `1..FULL_SCALE` (whole pixels). Without the
+        // _integer variant, typing "50.5" left the chip at 50.5 while
+        // the painter rounded to "50" — split-brain. The variant
+        // rounds the typed display before persisting.
+        store.link_slider_number_mapped_integer(
             ids::BGR_MIN_ISLAND_PX,
             ids::BGR_MIN_ISLAND_PX_NUM,
             min_scale,

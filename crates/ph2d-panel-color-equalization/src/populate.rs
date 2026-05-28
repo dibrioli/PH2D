@@ -34,6 +34,7 @@ use ph2d_tool_color_equalization::params::{
     SHARPEN_AMOUNT_MIN, SHARPEN_RADIUS_DEFAULT, SHARPEN_RADIUS_MAX, SHARPEN_RADIUS_MIN,
     TEMPERATURE_DEFAULT, TEMPERATURE_MAX, TEMPERATURE_MIN, TILE_GRID_DEFAULT, TILE_GRID_MAX,
     TILE_GRID_MIN, TINT_DEFAULT, TINT_MAX, TINT_MIN, VIBRANCE_DEFAULT, VIBRANCE_MAX, VIBRANCE_MIN,
+    project01,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -98,19 +99,21 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    // Per-row: (slider_id, chip_id, natural_default, natural_min, natural_max).
-    // Slider's 0..1 storage is computed from the natural default via the
-    // tool's `*_to_slider` projection (canonical source). Mapping for
-    // `link_slider_number_mapped` is the affine inverse:
-    //   display = storage * (max - min) + min
-    // (see `slider_to_<param>` in `ph2d-tool-color-equalization::params`).
-    let rows: [(NodeId, NodeId, f32, f32, f32); 15] = [
+    // Per-row: (slider_id, chip_id, natural_default, min, max, integer).
+    // `integer = true` rounds typed display before persisting (audit
+    // finding #3, 2026-05-28) — for chips whose painter renders an
+    // integer (`{} px`, level count, dither grain). Continuous chips
+    // pass false. Slider storage stays `0..1` regardless; the affine
+    // inverse `(scale=max-min, offset=min)` matches the tool's
+    // `slider_to_<param>` projection in `params.rs`.
+    let rows: [(NodeId, NodeId, f32, f32, f32, bool); 15] = [
         (
             ids::CEQ_CLIP_LIMIT,
             ids::CEQ_CLIP_LIMIT_NUM,
             CLIP_LIMIT_DEFAULT,
             CLIP_LIMIT_MIN,
             CLIP_LIMIT_MAX,
+            false,
         ),
         (
             ids::CEQ_TILE_GRID,
@@ -118,6 +121,7 @@ pub fn populate(store: &mut WidgetStore) {
             TILE_GRID_DEFAULT as f32,
             TILE_GRID_MIN as f32,
             TILE_GRID_MAX as f32,
+            true,
         ),
         (
             ids::CEQ_EXPOSURE,
@@ -125,6 +129,7 @@ pub fn populate(store: &mut WidgetStore) {
             EXPOSURE_DEFAULT,
             EXPOSURE_MIN,
             EXPOSURE_MAX,
+            false,
         ),
         (
             ids::CEQ_TEMPERATURE,
@@ -132,6 +137,7 @@ pub fn populate(store: &mut WidgetStore) {
             TEMPERATURE_DEFAULT,
             TEMPERATURE_MIN,
             TEMPERATURE_MAX,
+            false,
         ),
         (
             ids::CEQ_TINT,
@@ -139,6 +145,7 @@ pub fn populate(store: &mut WidgetStore) {
             TINT_DEFAULT,
             TINT_MIN,
             TINT_MAX,
+            false,
         ),
         (
             ids::CEQ_BRIGHTNESS,
@@ -146,6 +153,7 @@ pub fn populate(store: &mut WidgetStore) {
             BRIGHTNESS_DEFAULT,
             BRIGHTNESS_MIN,
             BRIGHTNESS_MAX,
+            false,
         ),
         (
             ids::CEQ_CONTRAST,
@@ -153,6 +161,7 @@ pub fn populate(store: &mut WidgetStore) {
             CONTRAST_DEFAULT,
             CONTRAST_MIN,
             CONTRAST_MAX,
+            false,
         ),
         (
             ids::CEQ_VIBRANCE,
@@ -160,6 +169,7 @@ pub fn populate(store: &mut WidgetStore) {
             VIBRANCE_DEFAULT,
             VIBRANCE_MIN,
             VIBRANCE_MAX,
+            false,
         ),
         (
             ids::CEQ_SATURATION,
@@ -167,6 +177,7 @@ pub fn populate(store: &mut WidgetStore) {
             SATURATION_DEFAULT,
             SATURATION_MIN,
             SATURATION_MAX,
+            false,
         ),
         (
             ids::CEQ_SHARPEN_AMOUNT,
@@ -174,6 +185,7 @@ pub fn populate(store: &mut WidgetStore) {
             SHARPEN_AMOUNT_DEFAULT,
             SHARPEN_AMOUNT_MIN,
             SHARPEN_AMOUNT_MAX,
+            false,
         ),
         (
             ids::CEQ_SHARPEN_RADIUS,
@@ -181,6 +193,7 @@ pub fn populate(store: &mut WidgetStore) {
             SHARPEN_RADIUS_DEFAULT,
             SHARPEN_RADIUS_MIN,
             SHARPEN_RADIUS_MAX,
+            false,
         ),
         (
             ids::CEQ_LUT_INTENSITY,
@@ -188,6 +201,7 @@ pub fn populate(store: &mut WidgetStore) {
             LUT_INTENSITY_DEFAULT,
             LUT_INTENSITY_MIN,
             LUT_INTENSITY_MAX,
+            false,
         ),
         (
             ids::CEQ_LUT_MIX,
@@ -195,6 +209,7 @@ pub fn populate(store: &mut WidgetStore) {
             LUT_MIX_DEFAULT,
             LUT_MIX_MIN,
             LUT_MIX_MAX,
+            false,
         ),
         (
             ids::CEQ_POSTERIZE_DITHER_STRENGTH,
@@ -202,6 +217,7 @@ pub fn populate(store: &mut WidgetStore) {
             POSTERIZE_DITHER_STRENGTH_DEFAULT,
             POSTERIZE_DITHER_STRENGTH_MIN,
             POSTERIZE_DITHER_STRENGTH_MAX,
+            false,
         ),
         (
             ids::CEQ_POSTERIZE_DITHER_GRAIN,
@@ -209,10 +225,11 @@ pub fn populate(store: &mut WidgetStore) {
             POSTERIZE_DITHER_GRAIN_DEFAULT as f32,
             POSTERIZE_DITHER_GRAIN_MIN as f32,
             POSTERIZE_DITHER_GRAIN_MAX as f32,
+            true,
         ),
     ];
-    for (slider_id, chip_id, natural_default, min, max) in rows {
-        register_mapped_pair(store, slider_id, chip_id, natural_default, min, max);
+    for (slider_id, chip_id, natural_default, min, max, integer) in rows {
+        register_mapped_pair(store, slider_id, chip_id, natural_default, min, max, integer);
     }
 }
 
@@ -223,6 +240,7 @@ fn register_mapped_pair(
     natural_default: f32,
     min: f32,
     max: f32,
+    integer: bool,
 ) {
     let track = project01(natural_default, min, max);
     let display = natural_default as f64;
@@ -245,17 +263,10 @@ fn register_mapped_pair(
             selection_anchor: None,
         },
     );
-    store.link_slider_number_mapped(slider_id, chip_id, max - min, min);
-}
-
-/// Identical to `ph2d_tool_color_equalization::params::project01` but
-/// inlined here so populate doesn't pull in the whole `params` math
-/// surface for one helper. Kept private to this module.
-fn project01(v: f32, min: f32, max: f32) -> f32 {
-    if (max - min).abs() < f32::EPSILON {
-        0.0
+    if integer {
+        store.link_slider_number_mapped_integer(slider_id, chip_id, max - min, min);
     } else {
-        ((v - min) / (max - min)).clamp(0.0, 1.0) // CLAMP-OK: literal bounds 0,1
+        store.link_slider_number_mapped(slider_id, chip_id, max - min, min);
     }
 }
 

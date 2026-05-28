@@ -17,7 +17,6 @@ use super::{
     reset_focused_visual_state, select_all_in_text_widget,
 };
 use crate::interaction::types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest};
-use crate::interaction::util::format_number;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
 use crate::zones::Rect;
 use bumpalo::Bump;
@@ -250,31 +249,18 @@ pub fn dispatch_pointer_with_text<'frame>(
                     // reversal still produces a non-zero step_dx on
                     // the very next Move.
                     store.advance_number_input_drag_anchor(event.x, event.y);
-                    // Audit fix #2 (CRITICAL): mutate `value` and
-                    // `buffer` for live display, but DO NOT touch
-                    // `last_committed` — that anchor must keep
-                    // pointing at the pre-drag value so Esc can
-                    // revert. The Up handler commits
-                    // `last_committed = new_value` on a successful
-                    // drag release.
-                    if let Some(InteractiveState::NumberInput { value, buffer, .. }) =
-                        store.get_mut(d.id)
-                    {
-                        *value = new_value;
-                        *buffer = format_number(new_value);
-                    }
-                    // Mirror to a linked slider if any (same pattern
-                    // as `apply_number_stepper_if_hit`). Inverse-project
-                    // display→storage; identity = pass-through.
-                    if let Some(slider_id) = store.linked_slider(d.id) {
-                        let (scale, offset) = store.linked_slider_mapping(d.id);
-                        let storage = ((new_value as f32) - offset) / scale;
-                        if let Some(InteractiveState::Slider { value, .. }) =
-                            store.get_mut(slider_id)
-                        {
-                            *value = storage.clamp(0.0, 1.0);
-                        }
-                    }
+                    // Audit follow-up #7 (MED, 2026-05-28): converge
+                    // on the shared `apply_chip_value_with_mirror`
+                    // helper — single source of truth for chip+slider
+                    // writes across commit / stepper / tick / drag-
+                    // scrub. The helper no longer writes
+                    // `last_committed` (split out 2026-05-28), so the
+                    // audit fix #2 CRITICAL invariant (drag preserves
+                    // pre-drag rollback anchor) survives. Bonus: drag-
+                    // scrub now also inherits integer snap via
+                    // `link_slider_number_mapped_integer`.
+                    let (_final_val, _was_clamped) =
+                        super::apply_chip_value_with_mirror(store, d.id, new_value);
                     // BlenderColorPicker channel chip drag: push the
                     // scrubbed value back into the parent picker's
                     // RGBA / HSVA dimension so the swatch + wheel +

@@ -67,6 +67,17 @@ pub(super) fn apply_chip_value_with_mirror(
     if !new_display.is_finite() {
         return (new_display, false);
     }
+    // Integer-domain snap (audit finding #3, 2026-05-28): chips
+    // registered via `link_slider_number_mapped_integer` (BgRemoval
+    // Min Px, Color-Eq Tile Grid / Posterize Dither Grain) round the
+    // typed display before writing so the chip's persisted value
+    // matches the painter's `display_override`. No-op for continuous-
+    // domain chips (membership defaults to false).
+    let new_display = if store.linked_slider_snap_integer(chip_id) {
+        new_display.round()
+    } else {
+        new_display
+    };
     if let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get_mut(chip_id) {
         *value = new_display;
         *buffer = super::format_number(new_display);
@@ -100,19 +111,17 @@ pub(super) fn apply_chip_value_with_mirror(
     }
     if was_clamped {
         // Re-project the clamped storage into display and rewrite the
-        // chip — keeps buffer/value/last_committed in lockstep with the
-        // slider thumb.
+        // chip — keeps `value` + `buffer` in lockstep with the slider
+        // thumb. `last_committed` is NOT touched here: drag-scrub uses
+        // this same helper but must preserve the pre-drag anchor for
+        // Esc rollback (audit fix #2 CRITICAL); the other 3 callers
+        // (commit_number_buffer, apply_number_stepper_if_hit,
+        // dispatch_tick) set `last_committed = final_v` themselves
+        // after the helper returns.
         let resync_display = (storage_clamped * scale + offset) as f64;
-        if let Some(InteractiveState::NumberInput {
-            value,
-            buffer,
-            last_committed,
-            ..
-        }) = store.get_mut(chip_id)
-        {
+        if let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get_mut(chip_id) {
             *value = resync_display;
             *buffer = super::format_number(resync_display);
-            *last_committed = resync_display;
         }
         return (resync_display, true);
     }

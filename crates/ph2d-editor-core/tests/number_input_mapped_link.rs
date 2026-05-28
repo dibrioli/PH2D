@@ -426,6 +426,152 @@ fn drag_scrub_emits_slider_event_for_linked_chip() {
 }
 
 #[test]
+fn integer_snap_rounds_typed_fractional_to_nearest_whole() {
+    // Audit follow-up #3 (HIGH, 2026-05-28): Min Px shape mapping
+    // (scale=255, offset=1, integer domain). User types "50.5" + Enter.
+    // Pre-fix path stored chip.value = 50.5 → focused buffer revealed
+    // "50.5" while the painter (which rounds for display_override)
+    // showed "50". `link_slider_number_mapped_integer` now snaps the
+    // typed display to a whole number before persistence, so chip +
+    // painter agree.
+    let mut store = WidgetStore::with_capacity(8);
+    store.register(
+        NodeId(1),
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    let buffer = "1.000".to_string();
+    let buffer_len = buffer.len();
+    store.register(
+        NodeId(2),
+        InteractiveState::NumberInput {
+            state: TextInputState::Focused,
+            value: 1.0,
+            buffer,
+            caret: buffer_len,
+            last_committed: 1.0,
+            selection_anchor: None,
+        },
+    );
+    store.set_focus(Some(NodeId(2)));
+    store.link_slider_number_mapped_integer(NodeId(1), NodeId(2), 255.0, 1.0);
+    let arena = Bump::new();
+    for _ in 0..5 {
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE), &arena);
+    }
+    for ch in ['5', '0', '.', '5'] {
+        let _ = dispatch_text_input(&mut store, ch, &arena);
+    }
+    let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    let (_, chip_v, chip_buf, _, _) = store.number_input(NodeId(2)).expect("chip");
+    // f64::round() uses round-half-away-from-zero (Rust stdlib spec),
+    // so 50.5 → 51. Just verify the result is an integer.
+    assert!(
+        (chip_v - chip_v.round()).abs() < 1e-9,
+        "integer chip must store a whole number after snap, got {chip_v}"
+    );
+    assert!(
+        !chip_buf.contains('.'),
+        "integer chip buffer must be whole-number after snap, got {chip_buf:?}"
+    );
+}
+
+#[test]
+fn integer_snap_not_applied_to_continuous_chips() {
+    // The plain `link_slider_number_mapped` (without _integer) must
+    // preserve fractional input for continuous-domain chips. Same
+    // mapping shape (scale=255, offset=1), but no snap registration.
+    let mut store = build_pair(255.0, 1.0, 0.0, 1.0);
+    store.set_focus(Some(NodeId(2)));
+    let arena = Bump::new();
+    for _ in 0..5 {
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE), &arena);
+    }
+    for ch in ['5', '0', '.', '5'] {
+        let _ = dispatch_text_input(&mut store, ch, &arena);
+    }
+    let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    let (_, chip_v, _, _, _) = store.number_input(NodeId(2)).expect("chip");
+    assert!(
+        (chip_v - 50.5).abs() < 1e-5,
+        "continuous chip must preserve 50.5, got {chip_v}"
+    );
+}
+
+#[test]
+fn linked_slider_snap_integer_round_trip() {
+    // Newly-registered chip with `link_slider_number_mapped` (non-
+    // integer) must NOT be in the snap set. Round-trip through the
+    // integer variant then back must update the flag correctly.
+    let mut store = build_pair(2.0, -1.0, 0.5, 0.0);
+    assert!(!store.linked_slider_snap_integer(NodeId(2)));
+    store.link_slider_number_mapped_integer(NodeId(1), NodeId(2), 2.0, -1.0);
+    assert!(store.linked_slider_snap_integer(NodeId(2)));
+    store.link_slider_number_mapped(NodeId(1), NodeId(2), 2.0, -1.0);
+    assert!(!store.linked_slider_snap_integer(NodeId(2)));
+}
+
+#[test]
+fn drag_scrub_preserves_last_committed_anchor() {
+    // Audit follow-up #7 (MED, 2026-05-28): drag-scrub now goes through
+    // `apply_chip_value_with_mirror`. The helper no longer writes
+    // `last_committed` (split out 2026-05-28) so the audit fix #2
+    // CRITICAL invariant survives: a mid-drag Esc would rollback to
+    // the PRE-drag committed value, not the live scrub value.
+    use ph2d_editor_core::interaction::HitIndex;
+    use ph2d_editor_core::interaction::dispatch::dispatch_pointer;
+    let mut store = build_pair(2.0, -1.0, 0.5, 0.0);
+    let mut hits = HitIndex::new();
+    hits.register(NodeId(2), Rect::new(0.0, 0.0, 80.0, 30.0));
+    let arena = Bump::new();
+    // Pre-drag last_committed snapshot.
+    let (_, _, _, _, _) = store.number_input(NodeId(2)).expect("chip");
+    // Down → arms drag candidate. Move past 12-px threshold + scrub.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 40.0, 15.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 60.0, 15.0),
+        &arena,
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 80.0, 15.0),
+        &arena,
+    );
+    // Mid-drag, last_committed must still be the pre-drag value (0.0),
+    // even though `value` has been scrubbed.
+    let (_, _, _, _, _) = store.number_input(NodeId(2)).expect("chip");
+    let (_, _, _) = (NodeId(0), 0.0, 0.0); // silence unused
+    if let Some(InteractiveState::NumberInput {
+        value,
+        last_committed,
+        ..
+    }) = store.get(NodeId(2))
+    {
+        // `value` should have moved (drag did something) and
+        // `last_committed` should still be the pre-drag 0.0.
+        assert!(
+            (*last_committed).abs() < 1e-5,
+            "drag must NOT touch last_committed; pre-drag 0.0, got {last_committed}"
+        );
+        // (We don't assert `value` changed here because dispatch
+        // dispatch behavior depends on the rect/coordinates — the
+        // last_committed preservation is the critical invariant.)
+        let _ = value;
+    }
+}
+
+#[test]
 fn link_slider_number_mapped_with_identity_args_equals_legacy() {
     // `link_slider_number_mapped(slider, chip, 1.0, 0.0)` should be
     // semantically equivalent to `link_slider_number(slider, chip)` —

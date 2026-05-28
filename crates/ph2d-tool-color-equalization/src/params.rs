@@ -122,7 +122,7 @@ pub const POSTERIZE_DITHER_GRAIN_DEFAULT: u32 = 1;
 // unit. Single mapping site keeps `ui_snapshot` (forward) and
 // `apply_ui_edit` (inverse) in lock-step.
 
-fn project01(v: f32, min: f32, max: f32) -> f32 {
+pub fn project01(v: f32, min: f32, max: f32) -> f32 {
     ((v - min) / (max - min)).clamp(0.0, 1.0)
 }
 

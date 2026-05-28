@@ -161,11 +161,30 @@ pub(super) fn run(
                         };
                     let z_order = z_counter;
                     z_counter += 1;
+                    // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
+                    // anatomia §4.2/§4.3). `collapsed_tint` = self_tint × tint
+                    // (per-component); the per-sprite collapse logic + its
+                    // unit test live in ph2d-render. The ancestor modulate
+                    // product Π(ancestors.tint) is NOT folded — that needs a
+                    // GlobalTint propagation pass (does not exist yet) and is
+                    // W2 work (the 3-level smoke_w2_color_tint.scene validates
+                    // it). For W1, self_tint defaults WHITE → identity → render
+                    // unchanged. per_corner_tint + opacity passthrough.
+                    let cascade_tint = spr.collapsed_tint();
+                    // Packed flip/fill flags (ADR-0070-amendment-3): bit0=flip_x,
+                    // bit1=flip_y, bit2=tint_fill. Encoded via the canonical
+                    // helper so the bit layout stays single-sourced with the
+                    // WGSL decode. All default false → 0 → no-op.
+                    let flip_uv = ph2d_render::RenderInstance::pack_flip_flags(
+                        spr.flip_x,
+                        spr.flip_y,
+                        spr.tint_fill,
+                    );
                     builder.insert(RenderInstance {
                         world_pos: [p.x, p.y],
                         size: [spr.size[0] * scale_x, spr.size[1] * scale_y],
                         atlas_uv,
-                        tint: spr.tint,
+                        tint: cascade_tint,
                         rotation,
                         texture_id,
                         // Flag the BG-Removal-baked premultiplied texture
@@ -177,19 +196,9 @@ pub(super) fn run(
                         // so the shader's `anchor + quad*size` stays in
                         // one consistent (world-scaled) local frame.
                         anchor: [spr.anchor[0] * scale_x, spr.anchor[1] * scale_y],
-                        // Sprite-Inspector-v2 v4 ABI (W1.T1.7a). per_corner_tint
-                        // + opacity are direct passthroughs of the canonical
-                        // Sprite fields (default identity → render unchanged
-                        // until the shader reads them in W1.T1.11). flip_uv
-                        // bit-encoding (from spr.flip_x/flip_y, and the wider
-                        // tint_fill packing reconciliation) lands in W1.T1.10;
-                        // 0 = no flip = logical no-op until then. The tint
-                        // CASCADE collapse (self_tint × tint × Π ancestors,
-                        // anatomia §4.3) also lands in W1.T1.8 — `tint` here is
-                        // still the raw sprite tint, matching pre-v4 behavior.
                         per_corner_tint: spr.per_corner_tint,
                         opacity: spr.opacity,
-                        flip_uv: 0,
+                        flip_uv,
                         z_order,
                     });
                 }

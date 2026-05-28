@@ -128,3 +128,45 @@ impl SpritePipeline {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::OnceLock;
+
+    /// Shared headless GPU (mirrors `game_rt`/`atlas` test helpers). Each
+    /// adapter+device pair costs ~30-50 s cold on Apple Silicon, so cache
+    /// it per test binary. Returns `None` on adapter-less environments so
+    /// the test skips (passes) where wgpu can't spin up a device.
+    fn try_headless_gpu() -> Option<GpuContext> {
+        static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
+        SHARED
+            .get_or_init(|| {
+                let instance = GpuContext::default_instance();
+                GpuContext::new(instance, None).ok()
+            })
+            .clone()
+    }
+
+    #[test]
+    fn sprite_pipeline_v4_shader_compiles_and_binds_eleven_attrs() {
+        // The ONLY automated coverage of `SpritePipeline::new` (W1.T1.11
+        // closes the T1.7a "pipeline unverified by CI" gap). Building the
+        // pipeline runs naga's WGSL front-end + validator on
+        // `shaders/sprite.wgsl` AND binds `RenderInstance::buffer_layout()`'s
+        // 11 vertex attributes (@location 2..14) against the v4
+        // `InstanceInput`. A WGSL syntax/type error (e.g. the new
+        // per-corner `mix`, the `& Nu` flag decode, `select`, the `flat`
+        // interpolation) or a location/format mismatch raises an
+        // uncaptured validation error → wgpu panics → this test fails.
+        //
+        // Skips gracefully (passes) on adapter-less CI; runs on dev Macs +
+        // Mac CI, which is where the Enio smoke also runs.
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let _pipeline = SpritePipeline::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb);
+        // Reaching here means naga validated the v4 shader and the vertex
+        // layout bound without an uncaptured device error.
+    }
+}

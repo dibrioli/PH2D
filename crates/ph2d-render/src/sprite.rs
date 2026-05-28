@@ -363,6 +363,28 @@ impl Sprite {
             region_filter_clip,
         }
     }
+
+    /// CPU-side tint cascade collapse for `RenderInstance.tint`
+    /// (anatomia §4.2/§4.3). Multiplies this sprite's own two tint
+    /// channels — `self_tint × tint`, per RGBA component. Both default
+    /// WHITE, so the collapse is identity for a freshly-migrated v3
+    /// sprite (zero render change).
+    ///
+    /// The ancestor modulate product `Π(ancestors.tint)` from §4.3 is
+    /// **NOT** folded here: it needs a `GlobalTint` hierarchy-propagation
+    /// pass (analogous to `propagate_transforms`) that does not exist
+    /// yet and is W2 work — the 3-level `smoke_w2_color_tint.scene`
+    /// validates it. The extract phase calls this so the per-sprite
+    /// collapse logic lives (and is unit-tested) in this crate rather
+    /// than only in the `shells/desktop` extract closure.
+    pub fn collapsed_tint(&self) -> [f32; 4] {
+        [
+            self.tint[0] * self.self_tint[0],
+            self.tint[1] * self.self_tint[1],
+            self.tint[2] * self.self_tint[2],
+            self.tint[3] * self.self_tint[3],
+        ]
+    }
 }
 
 impl SimComponent for Sprite {}
@@ -501,6 +523,31 @@ impl RenderInstance {
     /// Sentinel for `texture_id` meaning "sample from the shared
     /// atlas at material bind group 1".
     pub const ATLAS_TEXTURE_ID: u32 = 0;
+
+    // ─── `flip_uv` packed-flags bit layout (ADR-0070-amendment-3) ─────
+    //
+    // `flip_uv` is a general per-instance flags word, not flip-only. The
+    // fragment shader (`shaders/sprite.wgsl`) decodes the SAME masks —
+    // keep these constants and the WGSL `& Nu` literals in lockstep.
+    // Bits 3..31 are reserved (must be 0) for future per-instance bools.
+    /// `flip_uv` bit 0 — mirror the sampled texture U (logical flip_x).
+    pub const FLIP_X_BIT: u32 = 1 << 0;
+    /// `flip_uv` bit 1 — mirror the sampled texture V (logical flip_y).
+    pub const FLIP_Y_BIT: u32 = 1 << 1;
+    /// `flip_uv` bit 2 — tint-fill / silhouette mode: the shader ignores
+    /// the texel RGB and uses the combined tint RGB (anatomia §4.5).
+    pub const TINT_FILL_BIT: u32 = 1 << 2;
+
+    /// Pack the per-instance flip/fill booleans into the `flip_uv` flags
+    /// word. Single source of truth for the bit layout shared by the
+    /// extract phase (`shells/desktop`) and the WGSL decode, so the two
+    /// can't drift. Mirrors [`Sprite::flip_x`]/[`Sprite::flip_y`]/
+    /// [`Sprite::tint_fill`].
+    pub const fn pack_flip_flags(flip_x: bool, flip_y: bool, tint_fill: bool) -> u32 {
+        (if flip_x { Self::FLIP_X_BIT } else { 0 })
+            | (if flip_y { Self::FLIP_Y_BIT } else { 0 })
+            | (if tint_fill { Self::TINT_FILL_BIT } else { 0 })
+    }
 }
 
 /// Vertex of the unit quad used as the geometry for every sprite
@@ -653,6 +700,54 @@ mod tests {
                 attr.offset
             );
         }
+    }
+
+    #[test]
+    fn collapsed_tint_folds_self_tint_into_tint() {
+        // Identity case: default self_tint = WHITE → tint unchanged
+        // (zero-regression for v3-migrated sprites).
+        let s = Sprite::atlas(0, [1.0, 1.0], [0.4, 0.5, 0.6, 0.7]);
+        assert_eq!(s.collapsed_tint(), [0.4, 0.5, 0.6, 0.7]);
+
+        // Non-identity: per-component multiply of tint × self_tint.
+        let mut s = Sprite::atlas(0, [1.0, 1.0], [0.5, 1.0, 0.2, 1.0]);
+        s.self_tint = [0.5, 0.5, 1.0, 0.8];
+        assert_eq!(s.collapsed_tint(), [0.25, 0.5, 0.2, 0.8]);
+
+        // Each channel is independent (no cross-channel bleed).
+        let mut s = Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
+        s.tint = [2.0, 0.0, 0.0, 0.0];
+        s.self_tint = [0.5, 7.0, 9.0, 9.0];
+        assert_eq!(s.collapsed_tint(), [1.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn flip_uv_flag_bits_roundtrip() {
+        // Pin the ADR-0070-amendment-3 bit layout (the Rust ENCODE side):
+        // a future edit can't silently re-map flip_x/flip_y/tint_fill in
+        // `pack_flip_flags`. NOTE: this does NOT mechanically guard the
+        // WGSL decode literals (`& 1u`/`& 2u`/`& 4u` in shaders/sprite.wgsl)
+        // — those are hand-kept in lockstep and verified by the headless
+        // pipeline validation (`pipeline::tests`) + the Enio GPU smoke.
+        assert_eq!(RenderInstance::FLIP_X_BIT, 1);
+        assert_eq!(RenderInstance::FLIP_Y_BIT, 2);
+        assert_eq!(RenderInstance::TINT_FILL_BIT, 4);
+
+        assert_eq!(RenderInstance::pack_flip_flags(false, false, false), 0);
+        assert_eq!(RenderInstance::pack_flip_flags(true, false, false), 0b001);
+        assert_eq!(RenderInstance::pack_flip_flags(false, true, false), 0b010);
+        assert_eq!(RenderInstance::pack_flip_flags(false, false, true), 0b100);
+        assert_eq!(RenderInstance::pack_flip_flags(true, true, true), 0b111);
+        // Each flag is independent — no bit bleeds into another.
+        let f = RenderInstance::pack_flip_flags(true, false, true);
+        assert_ne!(f & RenderInstance::FLIP_X_BIT, 0);
+        assert_eq!(f & RenderInstance::FLIP_Y_BIT, 0);
+        assert_ne!(f & RenderInstance::TINT_FILL_BIT, 0);
+        // Reserved bits 3..31 stay zero for any input.
+        assert_eq!(
+            RenderInstance::pack_flip_flags(true, true, true) & !0b111u32,
+            0
+        );
     }
 
     #[test]

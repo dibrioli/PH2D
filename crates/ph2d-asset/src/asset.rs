@@ -35,7 +35,7 @@ pub enum Asset {
     /// `blob` carrega os bytes KTX2 raw — design pragmático W1.T4 (2026-05-27
     /// noite): evita adicionar dep `ph2d-asset-ktx2` em `ph2d-asset/Cargo.toml`
     /// que tinha WIP alheio do imageio fan-out paralelo. Renderer W2 decodifica
-    /// via `ph2d_asset_ktx2::parse(&blob)` no upload path (não hot path; HR-3 ok).
+    /// via `ph2d_asset_ktx2::decode_ktx2_bytes(&blob)` no upload path (não hot path; HR-3 ok).
     /// ADR-0055-v4 strategic-only é silent quanto à shape; migration para
     /// `Arc<Ktx2Image>` decode-once é refactor local (~50 LOC + 1 dep + 1 gate),
     /// não débito arquitetural — quando útil pra performance W2.

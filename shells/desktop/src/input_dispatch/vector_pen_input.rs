@@ -31,17 +31,27 @@ impl App {
     /// through to the standard gizmo / rubber-band / canvas-pick
     /// cascade.
     pub(crate) fn try_vector_pen_click(&mut self, px: f32, py: f32) -> bool {
-        // R5 fix (audit Lens-T HIGH-T-2): if cursor is over any docked
-        // panel (Inspector / Hierarchy / Widget Gallery / Painter
-        // sidebar / etc.), DON'T consume the click as a Pen vertex —
-        // let `forward_to_hero` deliver it to the panel widget. Without
-        // this gate, dragging an Inspector slider while Pen is active
-        // would silently add a vertex behind the panel + the slider
-        // would never respond. Mirror precedent: painter's
-        // `try_painter_paint_down` gates via sprite footprint hit-test
-        // (which has the same effect — panels are outside the sprite
-        // footprint).
+        // R5 fix: don't consume the click when cursor is over a
+        // docked panel — let `forward_to_hero` deliver it to the
+        // panel widget. Without this gate, dragging an Inspector
+        // slider while Pen is active would silently add a vertex
+        // behind the panel.
         if cursor_over_hero_panel(self.gfx.as_ref(), px, py) {
+            return false;
+        }
+        // R9 fix: also don't consume when cursor is over ANY
+        // chrome widget (topbar pill, LeftRail button, etc.). Without
+        // this, clicking PEN pill again while Pen is active would
+        // add a stray vertex at the pill's world position AND fail
+        // to toggle the tool off (the chrome handler IS reached via
+        // `forward_to_hero` which runs first, but the canvas Pen
+        // handler ALSO runs because Pen is active everywhere). The
+        // hit_index is populated each frame by chrome paint; any
+        // hit there means "widget owns this pixel, not the canvas".
+        if let Some(gfx) = self.gfx.as_ref()
+            && let Some(hero) = gfx.hero_screen.as_ref()
+            && hero.hit_index.hit(px, py).is_some()
+        {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {

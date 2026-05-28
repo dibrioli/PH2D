@@ -1,7 +1,7 @@
 # Plano de waves — Image I/O (neck → freeze → fan-out)
 
 **Data:** 2026-05-26
-**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA + W3.T1.0 wire-up + W3.T1..T5 FAN-OUT SHIPPED** 2026-05-27 — ADR-0054 `Accepted`; **14 format crates** wired (apng/avif/exr/gif/hdr-radiance/jpeg/jxl/ora/ph2d-native/png/psd/svg/tiff/webp — 5 W3 são magic-only-stubs exceto SVG que faz real parse); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **176 tests verdes Mac aarch64** (141 W2 + 35 W3); 34+ commits locais; ship.sh real-time GREEN isoladamente para os 16 crates.
+**Status:** **W0 + W1 + W2 FECHADAS + W3 pre-gates + W3.T0..W3.T0.6 audit-remediations CONVERGÊNCIA RATIFICADA + W3.T1.0 wire-up + W3.T1..T5 fan-out + W3 wave-2 REAL DECODE** 2026-05-27 — ADR-0054 `Accepted`; **14 format crates** wired (3 W3 com decode real: HDR/EXR/JXL via `image`/`exr`/`jxl-oxide` puro-Rust; AVIF + SVG mantêm stubs documentados); 16 imageio crates registrados no `spike.yml` nextest CI matrix; **186+ tests verdes Mac aarch64** (181 + 21 wave-2 − 16 stubs removidos); 36+ commits locais.
 **Arquitetura:** ADR-0054 (Proposed; ratifica em T7).
 **Substrato multi-agente:** mesmo de [`docs/plans/2026-05-node-waves.md`](2026-05-node-waves.md) — drop-crate + codegen + arch-gate.
 
@@ -111,9 +111,9 @@ Batch B (1 slot dedicado, sequencial após A — PSD é gargalo):
 ### W3.1 — Fan-out (5 crates, 2 batches paralelos)
 
 Batch A (3 slots paralelos, puro Rust pequenos):
-- **W3.T1** — `crates/ph2d-imageio-jxl/`: ✅ commit `cc97cd4` — magic-only stub (ISOBMFF + codestream); decode `jxl-oxide` 0.10 deferred quando primeiro real client; encode permanent-deferred (no pure-Rust JXL encoder).
-- **W3.T2** — `crates/ph2d-imageio-exr/`: ✅ commit `cc97cd4` — magic-only stub; decode/encode `exr` 1.x deferred (closure API + RefCell out-params).
-- **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: ✅ commit `cc97cd4` — magic-only stub (`#?RADIANCE\n` + `#?RGBE\n`); decode/encode `image` 0.25 `hdr` feature deferred.
+- **W3.T1** — `crates/ph2d-imageio-jxl/`: ✅ commit `dc4ec6a` wave-2 — **real decode** via `jxl-oxide = "0.10"`. First-frame, channels 1/2/3/4, Flat (LDR) path. Encode permanent-deferred (jxl-oxide decode-only). 8 tests.
+- **W3.T2** — `crates/ph2d-imageio-exr/`: ✅ commit `dc4ec6a` wave-2 — **real decode** via `exr = "1"` builder API. First-RGBA-layer → FlatHdr float32 lossless. Encode deferred (SpecificChannels construction). 7 tests + 2×2 round-trip 0.001 epsilon.
+- **W3.T3** — `crates/ph2d-imageio-hdr-radiance/`: ✅ commit `dc4ec6a` wave-2 — **real decode + encode** via `image` 0.25 `hdr` feature. RGBE ↔ LinearRgba round-trip 5% tolerance (shared-exp quantization). 6 tests.
 
 Batch B (2 slots paralelos):
 - **W3.T4** — `crates/ph2d-imageio-avif/`: ✅ commit `cc97cd4` — magic-only stub (ISOBMFF ftyp `avif`/`avis`); decode `avif-decode` + encode `ravif` 0.11 deferred.

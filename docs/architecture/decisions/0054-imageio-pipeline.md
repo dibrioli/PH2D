@@ -326,7 +326,47 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
 | **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
+| **W3 wave-2** real decode/encode em HDR/EXR/JXL | ✅ | `dc4ec6a` | Substitui magic-only-stubs de cc97cd4 por impl real. HDR-Radiance: image 0.25 hdr feature, encode+decode RGBE → LinearRgba; EXR: `exr = "1"` builder API, decode via closure-state struct; JXL: `jxl-oxide = "0.10"` decode-only first-frame para Flat path. AVIF + SVG mantêm stubs. 21 tests verdes (6 HDR + 7 EXR + 8 JXL). Vide §5.15. |
 | **W3.T1.5** nova auditoria pós-W3.T1..T5 | ✅ | `54a8a12` | 1 CRITICAL doc-honesty (EXR claim falso `exr=1` in Cargo.toml) + 3 HIGH (AVIF Cargo.toml vapor comment, SVG Cargo.toml promete rasterize-on-import inexistente, **HH-FIN-1 SVG security: `default_string_resolver` faz `std::fs::read(href)` em `<image href="/etc/passwd"/>`**) + 3 MEDIUM (JXL codestream test ausente + AVIF avis sequence test ausente + SVG hostile-input tests ausentes) + 1 P1 ship-blocker fmt — vide §5.14 |
+
+### 5.15 W3 wave-2 — real decode/encode em HDR/EXR/JXL (2026-05-27)
+
+Substitui os magic-only-stubs de `cc97cd4` (W3.T1..T5 fan-out) por implementações reais em 3 dos 5 crates. AVIF e SVG mantêm stubs documentados (AVIF: deps de codec complexos `avif-decode` + `ravif` → defer pra primeiro real client; SVG: aguarda canonical types `kurbo::BezPath` paint stack via [ADR-0056 vector-network](0056-vector-network-data-model.md) que outra sessão está propondo).
+
+**HDR-Radiance W3.T3** — pure-Rust via `image = "0.25"` `hdr` feature:
+- Decode: `HdrDecoder::new` + `read_image` retorna `ColorType::Rgb32F` (3 floats per pixel native endian) → reinterpret via `f32::from_ne_bytes` → `ImageBuffer<LinearRgba>`. Alpha sintetizado=1.0 (RGBE spec sem alpha).
+- Encode: `HdrEncoder::encode` aceita `Vec<image::Rgb<f32>>` → RGBE bytes. Drops alpha.
+- `ColorProfile::LinearRec709` (HDR scene-linear).
+- 6 tests; round-trip 2×2 com 5% tolerance (RGBE shared-exp quantization ~1%).
+
+**EXR W3.T2** — pure-Rust via `exr = "1"` builder:
+- Decode: `read().no_deep_data().largest_resolution_level().rgba_channels(create, set_pixel).first_valid_layer().all_attributes().from_buffered(reader)`. `Pixels` capturado como `struct ExrPixels { width, pixels }` para o `set_pixel` closure ter row-stride disponível.
+- `use ph2d_imageio::Error as IoError` no escopo onde `exr::prelude::*` está, pra evitar `Error` shadow.
+- Encode: deferred — `SpecificChannels::Image` construction wants typed callback wires (defer pra first real export client).
+- 7 tests; round-trip 2×2 com 0.001 epsilon (EXR é float32 lossless).
+
+**JXL W3.T1** — pure-Rust via `jxl-oxide = "0.10"`:
+- Decode: `JxlImage::builder().read(reader).render_frame(0).stream().write_to_buffer(planar_f32)`. Quantiza f32 [0..1] → u8 pro Flat (LDR) path; HDR JXL clamp[0,1] → defer FlatHdr bridge W3+.
+- Channels 1/2/3/4 cobertos com expansion correta; 5+ rejeitado `Unsupported`.
+- Encode: permanent-deferred — jxl-oxide é decode-only as of 0.10; native JXL encode aguarda `zune-jxl` ou similar.
+- 8 tests; real-fixture decode é W3.T1.6 follow-up (precisa cjxl CLI externo).
+
+**Stubs permanecem** (AVIF + SVG):
+- AVIF: magic-only — codec deps `avif-decode = "1"` (decode) + `ravif = "0.11"` (encode, rav1e backend) deferred. ~20+ transitive deps cada; defer per ADR §3.8 ("zero dep-bloat para crates que user não invoca yet").
+- SVG: parse-only via `usvg = "0.43"` retornando `VectorDoc::default()` (body vazio). Real wire-up via ph2d-vector → `kurbo::BezPath` aguarda ADR-0056 ratificar.
+
+**Total Onda 2+3 pós-wave-2**: 181 → 181+ tests verdes (HDR/EXR/JXL ganharam tests, mas removeram os `_returns_unsupported_deferred` antigos — saldo neutro a +5). 16 imageio crates wired no spike.yml CI matrix. 3 imageio crates agora com decode real em prod.
+
+**Deps adicionadas** (Cargo.lock cresceu ~221 lines):
+- `exr` 1.74 + transitive (`half`, `flume`, `lebe`, etc.)
+- `jxl-oxide` 0.10 + transitive (`moxcms` já presente, `cargo` `byteorder`, etc.)
+- `image` 0.25 `hdr` feature (sem novo crate, só feature flag)
+
+**Próximos waves**:
+- W3.T1.6 JXL real-fixture test (via cjxl ou checked-in fixture binary).
+- W3.T2.1 EXR encode wire-up (Painter HDR save demo trigger).
+- W3.T4 AVIF real wire-up (Painter HDR import demo trigger).
+- W3.T5+ SVG vector body via ph2d-vector pós-ADR-0056.
 
 ### 5.14 Remediação pós-auditoria W3.T1.5 (2026-05-27)
 

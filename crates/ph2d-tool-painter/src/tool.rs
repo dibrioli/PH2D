@@ -917,8 +917,7 @@ impl PainterTool {
     #[must_use]
     pub fn ui_snapshot(&self) -> crate::params::PainterUiSnapshot {
         crate::params::PainterUiSnapshot {
-            size01: ((self.params.size_px - 1.0) / (MAX_STAMP_SIZE_PX as f32 - 1.0))
-                .clamp(0.0, 1.0),
+            size01: crate::params::px_to_size01(self.params.size_px),
             opacity01: self.params.opacity.clamp(0.0, 1.0),
             active_color: self.params.active_color,
             secondary_color: self.params.secondary_color,
@@ -948,12 +947,20 @@ impl PainterTool {
     pub fn apply_ui_edit(&mut self, edit: crate::params::PainterUiEdit) {
         match edit {
             crate::params::PainterUiEdit::Size(v01) => {
-                // Sidebar normalizado 0..1 → size_px 1.0..=MAX_STAMP_SIZE_PX (2048).
-                let v = v01.clamp(0.0, 1.0);
-                self.params.size_px = 1.0 + v * (MAX_STAMP_SIZE_PX as f32 - 1.0);
+                // Sidebar normalizado 0..1 → size_px (SSOT map, audit Y-6).
+                self.params.size_px = crate::params::size01_to_px(v01);
             }
             crate::params::PainterUiEdit::Opacity(v01) => {
                 self.params.opacity = v01.clamp(0.0, 1.0);
+                // Audit X-7: opacity is baked into `stroke_color_oklab[3]`
+                // at begin_stroke; refresh it mid-stroke so a live slider
+                // edit takes effect on the in-flight stroke instead of
+                // silently deferring to the next stroke (T2.1 made this
+                // edit live-draggable).
+                if self.stroke_active {
+                    self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+                    self.stroke_color_oklab[3] *= self.params.opacity;
+                }
             }
             crate::params::PainterUiEdit::SetColor(c) => {
                 // Audit S-8: NaN guard happens em `begin_stroke`; aqui
@@ -1408,9 +1415,18 @@ impl Tool for PainterTool {
 
     fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
         // **W2.T2.1:** ADR-0040 TG-B canal genérico — sidebar emite
-        // PanelEvent::SetValue(NodeId, f64) e PanelEvent::Activated(NodeId).
-        // Routing pra PainterUiEdit semantic + apply_ui_edit single source
-        // of truth (ADR-0043 §2.3).
+        // PanelEvent::SetValue(NodeId, f64). Routing pra PainterUiEdit
+        // semantic + apply_ui_edit single source of truth (ADR-0043 §2.3).
+        //
+        // **Audit Y-7/Y-9/Z-2 (2026-05-28):** apenas os SLIDERS são
+        // roteados. O slider armazena o `0..1` canônico; o chip espelha
+        // via `link_slider_number_mapped` (display px/%) e o commit do
+        // chip propaga de volta pro slider, cuja `ValueChanged` chega aqui
+        // já normalizada — rotear o chip diretamente injetaria valor
+        // display-space (px/%) no `Size`/`Opacity` que esperam `0..1`
+        // (trap de unidade). Undo/Redo (T2.2 replay engine) e modifier
+        // square (T2.4 eyedropper-while-held) não têm paint nesta wave;
+        // o roteamento delas volta junto do paint correspondente.
         use crate::params::PainterUiEdit;
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
@@ -1418,23 +1434,8 @@ impl Tool for PainterTool {
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_SIZE_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Size(v as f32));
             }
-            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_SIZE_CHIP => {
-                self.apply_ui_edit(PainterUiEdit::Size(v as f32));
-            }
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
-            }
-            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_CHIP => {
-                self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
-            }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_UNDO_BUTTON => {
-                self.apply_ui_edit(PainterUiEdit::Undo);
-            }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_REDO_BUTTON => {
-                self.apply_ui_edit(PainterUiEdit::Redo);
-            }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE => {
-                self.apply_ui_edit(PainterUiEdit::ToggleEyedropper);
             }
             _ => {}
         }

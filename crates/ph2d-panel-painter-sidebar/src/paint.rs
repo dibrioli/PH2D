@@ -7,8 +7,9 @@
 //! - Canon chrome: dark-glass surface + corner dot + title "Painter"
 //!   + close (X) button (PANEL_HEADER_CLOSE_RESERVE)
 //! - Drag handle + 2 resize handles (Inspector slot shared canon)
-//! - 2 sliders via `paint_slider_with_chip_layout`:
-//!   * Size (0..1 → 1..2048 px display via `display_override`)
+//! - 2 sliders via `paint_slider_with_chip_layout_adaptive` (label demota
+//!   pra linha própria em dock estreito — iPad portrait):
+//!   * Size (0..1 → px display via `ph2d_tool_painter::size01_to_px`)
 //!   * Opacity (0..1 → 0..100% display)
 //! - Body inside scroll clip; `content_h` / `visible_h` publish
 //!
@@ -20,7 +21,7 @@ use crate::state::{self, PainterSidebarPanelState, set_last_content_h, set_last_
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::widget::paint_slider_with_chip_layout;
+use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
@@ -30,7 +31,6 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-const SIZE_MAX_PX: f32 = 2048.0;
 const SLIDER_LABEL_W: f32 = 70.0;
 const SLIDER_CHIP_W: f32 = 64.0;
 
@@ -101,8 +101,11 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
 
     let mut y = body_top;
 
-    // Size slider (size_px display via display_override).
-    let size_px = (snapshot.size01.clamp(0.0, 1.0) * (SIZE_MAX_PX - 1.0)) + 1.0;
+    // Size slider — size_px display via display_override + SSOT map.
+    // Adaptive layout (audit W-4): demotes the label to its own row when
+    // the dock is too narrow (iPad portrait) instead of collapsing the
+    // track to a ~1 px sliver.
+    let size_px = ph2d_tool_painter::size01_to_px(snapshot.size01);
     let size_display = format!("{size_px:.0} px");
     let size_rect = Rect::new(
         rect.x + PANEL_HEAD_PAD,
@@ -111,7 +114,7 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         ROW_H_PX,
     );
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_slider_with_chip_layout(
+    let size_h = paint_slider_with_chip_layout_adaptive(
         size_rect,
         "Size",
         snapshot.size01,
@@ -127,10 +130,10 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    y += ROW_H_PX + row_pad;
+    y += size_h + row_pad;
 
-    // Opacity slider (display 0..100%).
-    let opacity_pct = snapshot.opacity01.clamp(0.0, 1.0) * 100.0;
+    // Opacity slider (display 0..100%, SSOT map).
+    let opacity_pct = ph2d_tool_painter::opacity01_to_pct(snapshot.opacity01);
     let opacity_display = format!("{opacity_pct:.0}%");
     let opacity_rect = Rect::new(
         rect.x + PANEL_HEAD_PAD,
@@ -139,7 +142,7 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         ROW_H_PX,
     );
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_slider_with_chip_layout(
+    let opacity_h = paint_slider_with_chip_layout_adaptive(
         opacity_rect,
         "Opacity",
         snapshot.opacity01,
@@ -155,7 +158,7 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         ctx.text_system,
         theme,
     );
-    y += ROW_H_PX + row_pad;
+    y += opacity_h + row_pad;
 
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);

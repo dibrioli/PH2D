@@ -533,6 +533,56 @@ em ph2d-painter-brush + emit migration warning.
 
 ---
 
+### Painter T2.1 audit carry-overs (4 lentes W/X/Y/Z 2026-05-28)
+
+**Source:** auditoria do sidebar wire (commits `1529794`..`73e1413`). CRITICAL
++ HIGH + MEDIUM remediados in-code na sessão (mapped chip links, snapshot
+`Default` espelhando params, SSOT affine helpers, layout adaptive, remoção de
+roteamento morto undo/redo/modifier, refresh mid-stroke de opacity). Restam
+os LOW + itens cuja casa correta é uma task futura:
+
+**T2.1-1. `ToggleSymmetry` binário None↔Vertical + perda silenciosa (Y-2)**
+`apply_ui_edit::ToggleSymmetry` cicla só `None ↔ Vertical`; `Some(_) => None`
+descarta um axis `Horizontal`/`Radial` desserializado. Hoje **unreachable**
+(sem widget). **Plan:** W9 Drawing Assist adiciona `SetSymmetryAxis(SymmetryAxis)`
++ ciclo completo `Vertical → Horizontal → Radial → None` (preserva axis no
+toggle). **Trigger:** W9.
+
+**T2.1-2. Undo/Redo replay engine + redo side-car (Y-3)**
+`apply_ui_edit::Undo` faz `let _ = stroke_history.undo()` (pop sem re-render +
+record dropado). Hoje unreachable (button sem paint, roteamento removido).
+**Plan:** T2.2 implementa undo snapshot-based OU replay determinístico +
+parque do record num redo-stack side-car (dropar = data-loss). Re-adiciona
+paint + populate + event + handle_panel_event arms dos buttons. **Trigger:** T2.2.
+
+**T2.1-3. Modifier square paint + eyedropper-while-held (Y-4)**
+`eyedropper_armed` projetado no snapshot mas sem affordance visual; modifier
+square sem paint. **Plan:** T2.4 pinta o modifier square central (visual
+armed/disarmed de `snapshot.eyedropper_armed`) + gesture eyedropper-while-held;
+re-adiciona populate/event/handle_panel_event. **Trigger:** T2.4.
+
+**T2.1-4. SetColor mid-stroke staleness (X-7, gêmeo do Opacity)**
+`apply_ui_edit::Opacity` já refaz `stroke_color_oklab` mid-stroke (fix in-code);
+`SetColor` mantém o contrato R5-LI-N documentado (só vale no próximo stroke).
+**Plan:** T2.3 color picker decide a semântica (refresh imediato como Opacity
+OU defer documentado) ao wirar o BlenderColorPicker live. **Trigger:** T2.3.
+
+**T2.1-5. Cross-tool `inspector`-key last-writer ordering (X-4)**
+Os 5 image-tool bridges escrevem a mesma key `"inspector"` via edge-detectors
+independentes; resolução depende da ordem de dispatch em `render_loop/mod.rs`
+(painter por último vence). Pré-existente, compartilhado — **não-fix do Painter**
+(audit-scope-discipline). **Plan:** centralizar `inspector_visible =
+!any_image_tool_active` num cômputo único pós-bridges. **Trigger:** Coord-A
+refactor dos bridges OU 6º tool no inspector slot.
+
+**T2.1-6. `format!` per-frame no panel paint (Z LOW)**
+`size_display`/`opacity_display` alocam por frame. NÃO viola HR-3
+(`painter_no_alloc_hot_path` é scoped a `StampScheduler::advance`); consistente
+com padding. **Plan:** opcional thread-local `String` + `write!` se aparecer
+em frame-budget bench. **Trigger:** profiling.
+
+---
+
 ## 5. Open ADR drafts
 
 When the relevant Wave 11 work starts, open these ADRs:

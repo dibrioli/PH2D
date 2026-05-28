@@ -42,13 +42,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 )));
             true
         }
-        // Button clicks — Undo/Redo/Modifier. PanelEvent::Click(NodeId)
-        // (ADR-0040 TG-E FROZEN cap — Click é o canal pra button-style).
-        WidgetEvent::Click(id) if is_painter_sidebar_button(id) => {
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
-            true
-        }
+        // Undo/Redo/Modifier buttons: sem paint nesta wave (T2.2 replay
+        // engine / T2.4 eyedropper-while-held). Forwarding volta junto do
+        // paint correspondente — registrar sem paint = roteamento morto
+        // (audit Y-7, 2026-05-28).
         _ => false,
     }
 }
@@ -56,9 +53,4 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 #[inline]
 fn is_painter_sidebar_slider(id: NodeId) -> bool {
     id == ids::SIZE_SLIDER || id == ids::OPACITY_SLIDER
-}
-
-#[inline]
-fn is_painter_sidebar_button(id: NodeId) -> bool {
-    id == ids::UNDO_BUTTON || id == ids::REDO_BUTTON || id == ids::MODIFIER_SQUARE
 }

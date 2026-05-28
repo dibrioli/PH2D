@@ -6,8 +6,8 @@
 //! active-tool id). Controles:
 //! - Size slider (top, normalizado 0..1 → `size_px` 1..2048 via chip)
 //! - Opacity slider (bottom, normalizado 0..1 → `%`)
-//! - Modifier square (centro, default eyedropper-while-held)
-//! - Undo/Redo buttons (também disparáveis via 2/3-finger tap)
+//! - Modifier square (centro, eyedropper-while-held) — **T2.4**, ainda sem paint
+//! - Undo/Redo buttons (2/3-finger tap) — **T2.2** (replay engine), ainda sem paint
 //!
 //! **Live preview renderiza no canvas** (shell swap canvas overlay
 //! via `painter_bridge::take_preview_arc`), não dentro deste panel.

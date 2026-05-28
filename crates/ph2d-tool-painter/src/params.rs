@@ -30,7 +30,59 @@
 //! `SymmetryAxis` (W9) e `ThumbHandle` (W2 atlas) materializam em waves futuras —
 //! mesmo forward-compat policy aplica.
 
+use ph2d_painter_brush::MAX_STAMP_SIZE_PX;
 use serde::{Deserialize, Serialize};
+
+// ----------------------------------------------------------------------------
+// Size / opacity affine maps — SINGLE SOURCE OF TRUTH (audit Y-6, 2026-05-28)
+// ----------------------------------------------------------------------------
+//
+// The sidebar slider stores a normalized `0..1` value; the chip + tool
+// store display units (px / %). The forward/inverse maps below are the
+// ONLY place the `size01 ↔ size_px` (and `opacity01 ↔ %`) conversion is
+// defined. `tool.rs` (apply_ui_edit / ui_snapshot), `paint.rs` (display),
+// and `populate.rs` (seed + `link_slider_number_mapped`) ALL call these —
+// no crate re-derives the `MAX_STAMP_SIZE_PX` literal locally.
+
+/// Forward map: normalized `0..1` slider storage → brush size in pixels
+/// (`1.0..=MAX_STAMP_SIZE_PX`).
+#[inline]
+#[must_use]
+pub fn size01_to_px(size01: f32) -> f32 {
+    1.0 + size01.clamp(0.0, 1.0) * (MAX_STAMP_SIZE_PX as f32 - 1.0)
+}
+
+/// Inverse map: brush size in pixels → normalized `0..1` slider storage.
+#[inline]
+#[must_use]
+pub fn px_to_size01(size_px: f32) -> f32 {
+    ((size_px - 1.0) / (MAX_STAMP_SIZE_PX as f32 - 1.0)).clamp(0.0, 1.0)
+}
+
+/// Affine `(scale, offset)` for `link_slider_number_mapped` so the Size
+/// chip displays pixels while the slider stores `0..1` (`px = s*scale + offset`).
+/// Derived from [`size01_to_px`] so it can never drift from the forward map.
+#[inline]
+#[must_use]
+pub fn size_chip_mapping() -> (f32, f32) {
+    let offset = size01_to_px(0.0); // = 1.0
+    let scale = size01_to_px(1.0) - offset; // = MAX_STAMP_SIZE_PX - 1
+    (scale, offset)
+}
+
+/// Forward map: normalized `0..1` opacity → display percent (`0..=100`).
+#[inline]
+#[must_use]
+pub fn opacity01_to_pct(opacity01: f32) -> f32 {
+    opacity01.clamp(0.0, 1.0) * 100.0
+}
+
+/// Affine `(scale, offset)` for the Opacity chip (`% = o*100 + 0`).
+#[inline]
+#[must_use]
+pub fn opacity_chip_mapping() -> (f32, f32) {
+    (100.0, 0.0)
+}
 
 // ----------------------------------------------------------------------------
 // Stub types — substituídos quando crates filhos nascem (W1 T1.3+)
@@ -134,7 +186,15 @@ pub enum PainterUiEdit {
 
 /// Projeção read-only do `PainterTool` que o `ph2d-panel-painter` (sidebar)
 /// pinta a cada frame.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+///
+/// `Default` (audit W-3, 2026-05-28) **espelha [`PainterParams::default`]**
+/// — NÃO é all-zero derivado. O sidebar usa este default em dois lugares:
+/// (1) `state::current_snapshot()` fallback antes do host pushar o primeiro
+/// snapshot, e (2) seed do `populate`. Um default all-zero pintava um brush
+/// size-0 / opacity-0 invisível no primeiro frame e dessincronizava o seed
+/// do `populate` do fallback do `paint` (split-brain). Espelhar params
+/// garante que ambos refletem o brush real (32 px / 100% / laranja default).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PainterUiSnapshot {
     // Sliders (normalized 0..=1)
     pub size01: f32,
@@ -158,6 +218,30 @@ pub struct PainterUiSnapshot {
     pub active_layer_name: String,
     pub active_layer_locked: bool,
     // 15 fields v1 — 3 slots de headroom
+}
+
+impl Default for PainterUiSnapshot {
+    fn default() -> Self {
+        // Mirror PainterParams::default() — see struct doc (audit W-3).
+        let p = PainterParams::default();
+        Self {
+            size01: px_to_size01(p.size_px),
+            opacity01: p.opacity.clamp(0.0, 1.0),
+            active_color: p.active_color,
+            secondary_color: p.secondary_color,
+            active_brush_thumb: ThumbHandle::default(),
+            active_brush_name: String::new(),
+            mode: p.mode,
+            eyedropper_armed: p.eyedropper_armed,
+            symmetry_enabled: p.symmetry.is_some(),
+            undo_enabled: false,
+            redo_enabled: false,
+            stroke_in_flight: false,
+            takeover_active: p.takeover_active,
+            active_layer_name: String::new(),
+            active_layer_locked: false,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -251,9 +335,41 @@ mod tests {
     }
 
     #[test]
-    fn painter_ui_snapshot_default_is_sensible() {
+    fn painter_ui_snapshot_default_mirrors_params() {
+        // Audit W-3 (2026-05-28): snapshot Default MUST reflect
+        // PainterParams::default(), not all-zero. A size-0 / opacity-0
+        // fallback painted an invisible brush on the first frame and
+        // desynced the populate seed from the paint fallback.
         let s = PainterUiSnapshot::default();
-        assert_eq!(s.size01, 0.0);
+        let p = PainterParams::default();
+        assert_eq!(s.size01, px_to_size01(p.size_px));
+        assert!(s.size01 > 0.0, "default size01 must be non-zero (32 px brush)");
+        assert_eq!(s.opacity01, p.opacity);
+        assert_eq!(s.active_color, p.active_color);
+        assert_eq!(s.mode, p.mode);
         assert!(!s.takeover_active);
+        assert!(!s.undo_enabled);
+        assert!(!s.redo_enabled);
+    }
+
+    #[test]
+    fn size_affine_map_round_trips() {
+        // SSOT forward/inverse maps (audit Y-6). Exact at the endpoints.
+        assert_eq!(size01_to_px(0.0), 1.0);
+        assert_eq!(size01_to_px(1.0), MAX_STAMP_SIZE_PX as f32);
+        // 32 px default → size01 → px round-trips within fp tolerance.
+        let px = 32.0;
+        assert!((size01_to_px(px_to_size01(px)) - px).abs() < 1e-3);
+        // Chip mapping derived from the forward map can't drift.
+        let (scale, offset) = size_chip_mapping();
+        assert_eq!(offset, 1.0);
+        assert_eq!(scale, MAX_STAMP_SIZE_PX as f32 - 1.0);
+    }
+
+    #[test]
+    fn opacity_affine_map_matches_chip_mapping() {
+        assert_eq!(opacity01_to_pct(0.0), 0.0);
+        assert_eq!(opacity01_to_pct(1.0), 100.0);
+        assert_eq!(opacity_chip_mapping(), (100.0, 0.0));
     }
 }

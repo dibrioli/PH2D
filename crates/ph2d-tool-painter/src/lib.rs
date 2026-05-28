@@ -25,7 +25,10 @@ pub mod icon;
 pub mod params;
 pub mod tool;
 
-pub use params::{PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot};
+pub use params::{
+    PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity01_to_pct,
+    opacity_chip_mapping, px_to_size01, size01_to_px, size_chip_mapping,
+};
 pub use tool::PainterTool;
 
 use ph2d_a11y::Role;

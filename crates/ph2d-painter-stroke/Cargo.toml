@@ -1,0 +1,53 @@
+[package]
+name = "ph2d-painter-stroke"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Stroke Vector History — ADR-0046 (Accepted 2026-05-26).
+#
+# Mantém o vetor oculto do canvas: cada pincelada vira `StrokeRecord` com
+# path bruto em fixed-point Q16.16, brush handle + params hash, RNG seed e
+# tool mode. History é a fonte de verdade pra undo profundo (Procreate
+# ring 250 → Full), replay determinístico cross-OS (HR-5 opt-in via
+# feature `det-painter`), Reproject to Resolution (W12), Stroke Inspector
+# retroativo (W14) e MCP Stroke Engine (W13).
+#
+# T1.8 entrega skeleton + 13 caps congelados em
+# `ph2d-painter-contracts/tests/architecture_painter_contract_surface.rs`
+# §stroke_history. Behavior gates (persistence roundtrip, q1616 roundtrip,
+# det replay, snapshot LRU, undo p99) implementados aqui. Implementações
+# completas (snapshot offload-disk, Reproject GPU, det-mode replay full)
+# ficam pra T1.9+ e W12.
+
+[features]
+# **det-painter** — strict-determinism mode (HR-5 cross-OS bit-identical).
+# Espelha a flag declarada em `ph2d-painter-brush` (audit T1.6 U-2).
+# Hoje só gateia `replay_stroke_det` (CPU-only path); arms reais ativam
+# progressivamente conforme as dependências amadurecem.
+det-painter = []
+
+[dependencies]
+# Schema serialization — postcard binário pro `.ph2d-painter` v1 (HR-14).
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["use-std"] }
+# blake3 — checksum + content-addressed snapshot dedup + source_blake3
+# do sidecar cache.
+blake3 = "1"
+# uuid — identidade global do stroke (StrokeId).
+uuid = { version = "1", features = ["v4", "serde"] }
+# OklchColor — color primary/secondary do stroke. Dep de consumo apenas
+# (ADR-0046 §2.2); modificações no ph2d-color são Coord-A only.
+ph2d-color = { path = "../ph2d-color" }
+# BrushHandle + BrushParamsHash — tipos opacos referenciados por
+# StrokeRecord (ADR-0046 §2.1 — direção autoritativa: stroke depende
+# de brush, brush não depende de stroke).
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+
+# Audit T1.8 L3-G8: seção [dev-dependencies] removida — zero dep real,
+# `assert_eq!` puro está suficiente.

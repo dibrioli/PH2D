@@ -107,7 +107,13 @@ pub struct RawPointerSample {
 }
 ```
 
-**Tamanho fixo:** 24 bytes / sample. 256 samples por stroke típico → 6 KB / stroke + ~200 B metadata = ~6.2 KB / stroke.
+**Tamanho fixo:** **28 bytes / sample** (24 baseline + 4 para `device_source` u8 + 3 padding, alinhamento i32). 256 samples por stroke típico → 7.2 KB / stroke + ~200 B metadata = ~7.4 KB / stroke.
+
+> **Amendment T1.8 (2026-05-27):** baseline original era 24 bytes; ADR-0050 §2.7
+> adicionou `device_source: PointerSource` (`#[repr(u8)]` enum stub localizado
+> em `ph2d-painter-stroke::device` até T-input nascer). Alinhamento elevou pra
+> 28 bytes. Pin via test `raw_pointer_sample_size_is_pinned_28_bytes`. §2.10
+> budget recalculado pra refletir.
 
 **Razão fixed-point (não f32):**
 - **Determinismo cross-platform** (HR-5 opt-in). f32 não é IEEE-bit-identical entre ARM/x86 (FMA, denormals, sin/cos).
@@ -306,13 +312,19 @@ Cap: `PainterMemoryBudget ≤ 8 fields` (v1: 4). Plataformas runtime instanciam 
 
 | Bucket | Budget default | Notas |
 |---|---|---|
-| Stroke history (`Vec<StrokeRecord>`) | 150 MB | ~20k strokes default; eviction NÃO automática (é history, não cache) |
+| Stroke history (`Vec<StrokeRecord>`) | 150 MB | **~17k strokes** default (amendment T1.8 — pré-T1.8 baseline 20k assumia sample 24B; pós-`device_source` 28B reduz pra ~17k mantendo budget). Eviction NÃO automática (é history, não cache). |
 | Snapshots (`LayerSnapshot`) | 200 MB (cap LRU) | offload disk sob pressure; metadata permanece RAM |
 | Brush snapshots (dedup table) | 10 MB | ~1k brush variants no extremo; typically <100 KB |
 | Atlas Shape (R8) | 4 MB | static após boot |
 | Atlas Grain (R8) | 32 MB | static após boot (Procedural Grain reduziu de 64 MB; ADR-0044) |
 
 Total Painter overhead estável: ~400 MB no extremo. Cabe em macOS desktop (16 GB) com folga; iPad Pro 8 GB OK; iPad 2018 (3 GB) → fallback `Ring { cap: 1000 }` + snapshot cap mais agressivo.
+
+> **Amendment T1.8 (2026-05-27):** estimate de "20k strokes em 150 MB" assumia
+> sample 24B (§2.3 baseline original). Pós-ADR-0050 §2.7 sample = 28B (+16%) →
+> mesmo budget cabe ~17k strokes. Trade-off aceito (determinismo pencil-device
+> > +3k strokes de capacidade). Se 20k é hard requirement, bump budget
+> stroke_history pra 175 MB.
 
 ### 2.11 Arch-gate `painter_contract_surface::stroke_history`
 

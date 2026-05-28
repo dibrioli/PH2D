@@ -28,12 +28,17 @@ use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
 pub fn register_all_importers(reg: &mut ImporterRegistry) {
     // <ph2d-imageio-sync:importers:begin>
     ph2d_imageio_apng::register_importer(reg);
+    ph2d_imageio_avif::register_importer(reg);
+    ph2d_imageio_exr::register_importer(reg);
     ph2d_imageio_gif::register_importer(reg);
+    ph2d_imageio_hdr_radiance::register_importer(reg);
     ph2d_imageio_jpeg::register_importer(reg);
+    ph2d_imageio_jxl::register_importer(reg);
     ph2d_imageio_ora::register_importer(reg);
     ph2d_imageio_ph2d_native::register_importer(reg);
     ph2d_imageio_png::register_importer(reg);
     ph2d_imageio_psd::register_importer(reg);
+    ph2d_imageio_svg::register_importer(reg);
     ph2d_imageio_tiff::register_importer(reg);
     ph2d_imageio_webp::register_importer(reg);
     // <ph2d-imageio-sync:importers:end>
@@ -46,12 +51,17 @@ pub fn register_all_importers(reg: &mut ImporterRegistry) {
 pub fn register_all_exporters(reg: &mut ExporterRegistry) {
     // <ph2d-imageio-sync:exporters:begin>
     ph2d_imageio_apng::register_exporter(reg);
+    ph2d_imageio_avif::register_exporter(reg);
+    ph2d_imageio_exr::register_exporter(reg);
     ph2d_imageio_gif::register_exporter(reg);
+    ph2d_imageio_hdr_radiance::register_exporter(reg);
     ph2d_imageio_jpeg::register_exporter(reg);
+    ph2d_imageio_jxl::register_exporter(reg);
     ph2d_imageio_ora::register_exporter(reg);
     ph2d_imageio_ph2d_native::register_exporter(reg);
     ph2d_imageio_png::register_exporter(reg);
     ph2d_imageio_psd::register_exporter(reg);
+    ph2d_imageio_svg::register_exporter(reg);
     ph2d_imageio_tiff::register_exporter(reg);
     ph2d_imageio_webp::register_exporter(reg);
     // <ph2d-imageio-sync:exporters:end>

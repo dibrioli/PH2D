@@ -282,6 +282,11 @@ jobs:
             -p ph2d-imageio-ora \
             -p ph2d-imageio-apng \
             -p ph2d-imageio-psd \
+            -p ph2d-imageio-avif \
+            -p ph2d-imageio-exr \
+            -p ph2d-imageio-hdr-radiance \
+            -p ph2d-imageio-jxl \
+            -p ph2d-imageio-svg \
             -p ph2d-imageio-registry-init \
             --cargo-profile ci-test --locked
 

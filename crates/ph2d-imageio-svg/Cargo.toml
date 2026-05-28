@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-imageio-svg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-svg` — SVG decode + (deferred) encode (W3.T5).
+# Pure-Rust via `usvg` 0.43 (parse + simplify) and `resvg` (raster
+# rasterizer, opt-in). W3.T5 ships parse + rasterize-on-import
+# (returns `DecodedImage::Vector(VectorDoc)`). Export of native
+# Painter vector layers → SVG string lands when ph2d-vector
+# canonical types are ready.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }
+# usvg 0.43 is the canonical pure-Rust SVG simplifier (resolves
+# all <use>, <style>, gradients into a flat tree); we ship parse-
+# only for W3.T5 placeholder until ph2d-vector canonicalises.
+usvg = { version = "0.43", default-features = false }

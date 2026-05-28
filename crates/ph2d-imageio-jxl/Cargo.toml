@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-imageio-jxl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-jxl` — JPEG XL magic recognition + (deferred) decode/
+# encode (W3.T1). Pure-Rust decode via `jxl-oxide` 0.10 lands when
+# first real client appears; encode deferred until a pure-Rust JXL
+# encoder materialises. Magic-only stub now per ADR-0054 §3.8
+# fan-out drop-crate.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }

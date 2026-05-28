@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-imageio-avif"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# `ph2d-imageio-avif` — AVIF decode + (deferred) encode (W3.T4).
+# Decode via `image` 0.25 `avif-native` feature (uses
+# `avif-serialize` + `dav1d`-compatible rust path? — opt-in feature
+# requires aliro deps). W3.T4 ships supports() + Unsupported
+# import/export stubs documenting that the next real client
+# (Painter HDR import demo) triggers the full wire-up with `ravif`
+# (encode) + `avif-decode` (decode), both pure-Rust.
+
+[dependencies]
+ph2d-imageio = { path = "../ph2d-imageio" }

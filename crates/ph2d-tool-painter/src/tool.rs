@@ -204,8 +204,8 @@ use ph2d_painter_brush::{
 use ph2d_painter_stroke::{
     CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
     SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
-    SAMPLE_FLAG_STROKE_SPLIT_BOUNDARY, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory,
-    StrokeJournal, StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
+    SAMPLE_FLAG_TILT_UNAVAILABLE, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory, StrokeJournal,
+    StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
 };
 
 use crate::params::{BrushHandle, OklchColor, PainterMode, PainterParams};
@@ -876,16 +876,18 @@ impl PainterTool {
     /// `journal::StrokeJournal::heartbeat` faz rate-limit interno (1Hz);
     /// caller pode chamar mais frequentemente sem custo extra.
     ///
-    /// Returns `None` se journal não anexado ou sucesso; `Some(err)` se
-    /// WAL escrita falhou (tipicamente Io). Caller can surface via toast.
-    pub fn heartbeat_journal(&mut self, now_ms: u64) -> Option<JournalError> {
+    /// Returns `true` se WAL heartbeat write failed (caller can poll
+    /// [`Self::last_wal_error`] pro tipo de erro). Returns `false` quando
+    /// journal não anexado OU sucesso. `JournalError` não impl `Clone`
+    /// (postcard::Error ABI), por isso bool-return + borrow accessor.
+    pub fn heartbeat_journal(&mut self, now_ms: u64) -> bool {
         if let Some(journal) = self.stroke_journal.as_mut() {
             if let Err(e) = journal.heartbeat(now_ms) {
                 self.last_wal_error = Some(e);
-                return self.last_wal_error.as_ref().cloned();
+                return true;
             }
         }
-        None
+        false
     }
 
     /// **S-5 (audit T1.9):** check se WAL atingiu cap rotation (100 commits

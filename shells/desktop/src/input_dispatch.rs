@@ -492,7 +492,8 @@ impl App {
                             // Invariant quad center = pivot + R·(anchor ⊙ scale).
                             let ax = anchor[0] * snap_t.scale[0];
                             let ay = anchor[1] * snap_t.scale[1];
-                            let (sin_r, cos_r) = snap_t.rotation.sin_cos();
+                            // T1.3.5 cross-OS bit-identical.
+                            let (sin_r, cos_r) = libm::sincosf(snap_t.rotation);
                             let quad_center = [
                                 snap_t.translation[0] + ax * cos_r - ay * sin_r,
                                 snap_t.translation[1] + ax * sin_r + ay * cos_r,

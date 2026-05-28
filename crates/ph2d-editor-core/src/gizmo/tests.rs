@@ -901,7 +901,7 @@ fn move_pivot_inverse_rotates_world_delta() {
         scale: [1.0, 1.0],
     };
     let (t, a) = move_pivot_transform(s, [0.0, 0.0], [0.0, 2.0], TransformSnapshot::IDENTITY);
-    let (sin_r, cos_r) = s.rotation.sin_cos();
+    let (sin_r, cos_r) = libm::sincosf(s.rotation);
     let world = [
         t[0] + a[0] * cos_r - a[1] * sin_r,
         t[1] + a[0] * sin_r + a[1] * cos_r,

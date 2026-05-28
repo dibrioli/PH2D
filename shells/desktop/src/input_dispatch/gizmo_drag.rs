@@ -289,7 +289,8 @@ impl App {
                     let rel_y = st.translation[1] - pivot[1];
                     let scaled_x = rel_x * factor_x;
                     let scaled_y = rel_y * factor_y;
-                    let (sin_d, cos_d) = delta_rot_outer.sin_cos();
+                    // T1.3.5 cross-OS bit-identical.
+                    let (sin_d, cos_d) = libm::sincosf(delta_rot_outer);
                     let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
                     let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
                     [pivot[0] + rotated_x, pivot[1] + rotated_y]
@@ -342,7 +343,8 @@ impl App {
                     let is_translate = matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate);
                     let is_global = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
                     let pivot = drag.pivot_world;
-                    let (sin_d, cos_d) = delta_rot.sin_cos();
+                    // T1.3.5 cross-OS bit-identical.
+                    let (sin_d, cos_d) = libm::sincosf(delta_rot);
                     for snap in self.group_drag_starts.iter().copied() {
                         let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
                         let st = snap.start_transform;
@@ -464,7 +466,8 @@ impl App {
         let scale = drag.start_transform.scale;
         let local_x = u * size[0] * scale[0];
         let local_y = -v * size[1] * scale[1];
-        let (sin_r, cos_r) = drag.start_transform.rotation.sin_cos();
+        // T1.3.5 cross-OS bit-identical.
+        let (sin_r, cos_r) = libm::sincosf(drag.start_transform.rotation);
         let qc = drag.pivot_world;
         Some([
             qc[0] + local_x * cos_r - local_y * sin_r,

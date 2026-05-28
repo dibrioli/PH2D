@@ -100,13 +100,34 @@ impl Transform {
     /// kept because the propagation walk needs a `const fn`-amenable
     /// `(Self, Self) -> Self` signature without trait dispatch.
     ///
-    /// Determinism (HR-5): no FMA, no SIMD reordering; the explicit
-    /// expressions below are stable across `target_arch` because
-    /// `f32::sin`/`cos`/`mul`/`add` are bit-deterministic given the
-    /// same inputs.
+    /// Determinism (HR-5): no FMA, no SIMD reordering; `mul` / `add`
+    /// on `f32` are IEEE 754 bit-deterministic. `sin`/`cos` are NOT —
+    /// Rust std `f32::sin_cos` is implementation-defined and routes
+    /// to platform-specific math libraries (target-triple dependent
+    /// on every supported OS), all of which differ from each other
+    /// in the last 1-2 ulps for non-trivial inputs. We therefore
+    /// route through `libm::sincosf` (pure-Rust, `default-features
+    /// = false` so the `arch` feature is OFF) for ONE implementation
+    /// across all targets — required by the `transform_determinism`
+    /// gate's pinned blake3 EXPECTED_HASH (T1.3.5 spec carry-over;
+    /// precedes ADR-0025-amendment-1 skew wire in W2.T2.2).
+    ///
+    /// `debug_assert!(rotation.is_finite())` rejects NaN/Inf inputs
+    /// in debug builds — a single corrupted rotation poisons the
+    /// entire subtree's `GlobalTransform` via propagation, and
+    /// signaling-vs-quiet NaN bit patterns can drift cross-host
+    /// (R1 Lens C C-H2). Release builds let the NaN propagate
+    /// (graceful degradation; the caller is the bug).
     #[inline]
     pub fn compose(parent: Self, child: Self) -> Self {
-        let (sin, cos) = parent.rotation.sin_cos();
+        debug_assert!(
+            parent.rotation.is_finite(),
+            "Transform::compose: parent.rotation is non-finite ({}); poisons the subtree's \
+             GlobalTransform and breaks cross-host bit-identical (signaling-vs-quiet NaN drift). \
+             The caller fed a corrupted rotation — fix at source, not here.",
+            parent.rotation
+        );
+        let (sin, cos) = libm::sincosf(parent.rotation);
         let sx = child.translation.x * parent.scale.x;
         let sy = child.translation.y * parent.scale.y;
         let rx = sx * cos - sy * sin;
@@ -222,9 +243,16 @@ pub struct GlobalTransform {
 
 impl GlobalTransform {
     /// Build a world-space affine from a fully-composed (post-walk)
-    /// local-space [`Transform`].
+    /// local-space [`Transform`]. `sin`/`cos` route through
+    /// `libm::sincosf` for cross-OS bit-identical output (see
+    /// `Transform::compose` rationale + T1.3.5 carry-over).
     pub fn from_transform(t: Transform) -> Self {
-        let (sin, cos) = t.rotation.sin_cos();
+        debug_assert!(
+            t.rotation.is_finite(),
+            "GlobalTransform::from_transform: t.rotation is non-finite ({}); see Transform::compose docstring for HR-5 rationale.",
+            t.rotation
+        );
+        let (sin, cos) = libm::sincosf(t.rotation);
         let matrix = Mat3::from_cols(
             Vec3::new(cos * t.scale.x, sin * t.scale.x, 0.0),
             Vec3::new(-sin * t.scale.y, cos * t.scale.y, 0.0),

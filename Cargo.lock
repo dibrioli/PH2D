@@ -4309,6 +4309,7 @@ dependencies = [
  "clap",
  "ctt",
  "image",
+ "libm",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
@@ -4376,6 +4377,7 @@ dependencies = [
  "bevy_ecs",
  "blake3",
  "dhat",
+ "libm",
  "ph2d-asset",
  "ph2d-asset-cooker",
  "ph2d-core",
@@ -4399,6 +4401,7 @@ dependencies = [
  "bumpalo",
  "bytemuck",
  "dhat",
+ "libm",
  "ph2d-a11y",
  "ph2d-chrome-sync",
  "ph2d-color",
@@ -4466,6 +4469,7 @@ dependencies = [
  "core-graphics",
  "gilrs",
  "image",
+ "libm",
  "ph2d-asset",
  "ph2d-color",
  "ph2d-core",
@@ -4490,6 +4494,7 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-painter-sidebar",
  "ph2d-panel-registry-init",
  "ph2d-panel-upscale",
  "ph2d-render",
@@ -4914,6 +4919,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-painter-sidebar"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-painter",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
@@ -4925,6 +4943,7 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-painter-sidebar",
  "ph2d-panel-sync",
  "ph2d-panel-upscale",
  "ph2d-panel-widget-gallery",
@@ -5155,6 +5174,7 @@ dependencies = [
 name = "ph2d-tool-rasterize"
 version = "0.0.0"
 dependencies = [
+ "libm",
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-tool-registry",

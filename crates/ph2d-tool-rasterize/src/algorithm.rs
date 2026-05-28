@@ -390,7 +390,11 @@ fn flip_vertical_premult(buf: &mut [f32], w: u32, h: u32) {
 // ---------------------------------------------------------------------
 
 fn rotate_mitchell_premult(src: &[f32], w: u32, h: u32, theta: f32) -> (Vec<f32>, u32, u32) {
-    let (sin_t, cos_t) = theta.sin_cos();
+    // T1.3.5 cross-OS bit-identical — rasterize bakes geometry into
+    // pixels; the choice of sin/cos impl determines downstream pixel
+    // values. Routing through libm keeps the bake reproducible across
+    // hosts (matters for golden-pixel goldens + cooked-hash gates).
+    let (sin_t, cos_t) = libm::sincosf(theta);
     let abs_cos = cos_t.abs();
     let abs_sin = sin_t.abs();
     // Cardinal-angle robustness: at θ ∈ {π/2, π, 3π/2} the f32 trig

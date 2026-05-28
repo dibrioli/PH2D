@@ -12,6 +12,11 @@ name = "ph2d-host-desktop"
 path = "src/main.rs"
 
 [dependencies]
+# libm — HR-5 cross-OS bit-identical sincosf used in input_dispatch.rs
+# + render_loop/snapshots.rs + input_dispatch/gizmo_drag.rs (T1.3.5
+# workspace-wide sweep; the shell's gizmo math mirrors ph2d-ecs's
+# Transform::compose and must use the same impl).
+libm = { version = "=0.2.16", default-features = false }
 ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
@@ -130,6 +135,10 @@ ph2d-panel-color-equalization = { path = "../../crates/ph2d-panel-color-equaliza
 ph2d-panel-equalize-sizes = { path = "../../crates/ph2d-panel-equalize-sizes", optional = true }
 ph2d-panel-upscale = { path = "../../crates/ph2d-panel-upscale", optional = true }
 ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true }
+# W2.T2.1: Painter sidebar — typed panel para size + opacity sliders +
+# modifier square + undo/redo buttons. Right-docked (Inspector slot
+# takeover) quando Painter ativo. Gated por feature `panel-painter-sidebar`.
+ph2d-panel-painter-sidebar = { path = "../../crates/ph2d-panel-painter-sidebar", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -203,6 +212,7 @@ default = [
     "panel-color-equalization",
     "panel-equalize-sizes",
     "panel-upscale",
+    "panel-painter-sidebar",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -217,4 +227,5 @@ panel-padding        = ["ph2d-panel-registry-init/panel-padding", "dep:ph2d-pane
 panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization", "dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
+panel-painter-sidebar = ["ph2d-panel-registry-init/panel-painter-sidebar", "dep:ph2d-panel-painter-sidebar"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

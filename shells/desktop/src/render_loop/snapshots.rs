@@ -210,7 +210,8 @@ pub(super) fn publish(
             let half_h = sprite.size[1] * scale_y * 0.5;
             let ax = sprite.anchor[0] * scale_x;
             let ay = sprite.anchor[1] * scale_y;
-            let (sin_r, cos_r) = rotation.sin_cos();
+            // T1.3.5 cross-OS bit-identical.
+            let (sin_r, cos_r) = libm::sincosf(rotation);
             let cx = p.x + ax * cos_r - ay * sin_r;
             let cy = p.y + ax * sin_r + ay * cos_r;
             Some(ph2d_editor::GizmoView {

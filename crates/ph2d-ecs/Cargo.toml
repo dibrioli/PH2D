@@ -30,6 +30,32 @@ postcard = { version = "1", features = ["alloc"] }
 # Stable across rustc versions (unlike `std::any::TypeId`), so cooked
 # prefabs survive a compiler upgrade.
 blake3 = "1"
+# libm — pure-Rust IEEE 754 sincosf/tanf for cross-OS bit-identical
+# transcendentals (Lens C C1 + W0 carry-over T1.3.5 + spec
+# `docs/Sprite_projeto/10_schema_versionamento.md` §10 / §15 +
+# `docs/architecture/decisions/0025-amendment-1.md` skew chain).
+#
+# EXACT version pin (HR-5 — same discipline as `postcard = "=1.1.3"`
+# in ph2d-render): the `transform_determinism` gate pins a blake3
+# golden hash that depends on libm's exact ulp output. A 0.2.16 →
+# 0.2.17 patch could shift the output; the equal-pin makes the
+# contract explicit at the dependency layer. Any bump = re-capture
+# the EXPECTED_HASH in tests/transform_determinism.rs + cross-OS
+# re-verify + ADR amendment.
+#
+# `default-features = false` disables the `arch` feature which
+# would otherwise pull platform-specific intrinsics — exactly the
+# divergence source we are trying to eliminate (R1 Lens B M1).
+#
+# Lineage: published under `rust-lang/compiler-builtins` (not
+# archived; consolidated into compiler-builtins repo). Originally a
+# pure-Rust port of MUSL libm. MIT-licensed; passes deny.toml
+# allowlist (MIT permissive). Also a transitive workspace dep via
+# glam — explicit pin here surfaces the contract surface.
+#
+# Next libm site: `libm::tanf` for `Transform::skew` per
+# ADR-0025-amendment-1 (W2.T2.2).
+libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 # dhat-rs for HR-3 zero-alloc verification in propagate_no_alloc.rs.

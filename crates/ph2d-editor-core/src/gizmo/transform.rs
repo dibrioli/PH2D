@@ -34,7 +34,9 @@ use super::drag::{GizmoDragKind, GizmoDragState, TransformSnapshot};
 /// sees in world coordinates. `IDENTITY` parent → pass-through.
 #[inline]
 pub fn world_delta_to_local(parent: TransformSnapshot, dx: f32, dy: f32) -> [f32; 2] {
-    let (sin_i, cos_i) = (-parent.rotation).sin_cos();
+    // T1.3.5 cross-OS bit-identical (see ph2d_ecs::Transform::compose
+    // rationale; this fn mirrors that math at the gizmo layer).
+    let (sin_i, cos_i) = libm::sincosf(-parent.rotation);
     let sx = if parent.scale[0].abs() > 1e-6 {
         parent.scale[0]
     } else {
@@ -70,7 +72,11 @@ pub fn world_translation_to_local(parent: TransformSnapshot, world: [f32; 2]) ->
 /// snapshot).
 #[inline]
 pub fn compose_snapshot(parent: TransformSnapshot, child: TransformSnapshot) -> TransformSnapshot {
-    let (sin, cos) = parent.rotation.sin_cos();
+    // T1.3.5 cross-OS bit-identical (this fn explicitly mirrors
+    // `ph2d_ecs::Transform::compose`; both must route through libm
+    // for any host-uploaded gizmo write to round-trip identical
+    // bytes vs the post-load Transform).
+    let (sin, cos) = libm::sincosf(parent.rotation);
     let sx = child.translation[0] * parent.scale[0];
     let sy = child.translation[1] * parent.scale[1];
     let rx = sx * cos - sy * sin;

@@ -19,6 +19,10 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
+# libm — HR-5 cross-OS bit-identical sincosf used in `gizmo/transform.rs`
+# (`compose_snapshot` mirrors `ph2d_ecs::Transform::compose`). Same
+# exact-version contract as ph2d-ecs (T1.3.5 spec carry-over).
+libm                  = { version = "=0.2.16", default-features = false }
 ph2d-tokens           = { path = "../ph2d-tokens" }
 ph2d-a11y             = { path = "../ph2d-a11y" }
 ph2d-vector           = { path = "../ph2d-vector" }

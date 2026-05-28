@@ -3,9 +3,23 @@
 //! Builds a deterministic mixed hierarchy (100 entities with seeded
 //! roots and child relationships), runs propagation, hashes the
 //! `GlobalTransform` matrix bytes, and asserts the hash is stable
-//! across two independent runs in the same process. The CI cross-
-//! platform matrix (Linux + Mac) extends this test by uploading
-//! hashes and diffing — same logic, distinct hosts.
+//! across two independent runs in the same process.
+//!
+//! ## Cross-OS scope (T1.3.5)
+//!
+//! Pre-T1.3.5 this gate was effectively SAME-PROCESS-ONLY: Rust std
+//! `f32::sin_cos` routes to platform-native libm (libsystem on macOS,
+//! glibc/musl on linux, MSVC CRT on windows) and those impls diverge
+//! in the last 1-2 ulps for some inputs. The "CI cross-platform matrix
+//! verifies the hash" claim was aspirational, not load-bearing —
+//! a linux-CI hash and a macOS-author hash would differ for any
+//! non-trivial rotation.
+//!
+//! Post-T1.3.5, `Transform::compose` + `GlobalTransform::from_transform`
+//! both route through `libm::sincosf` (pure-Rust port of MUSL libm —
+//! platform-independent IEEE 754). The CI matrix (linux + macOS +
+//! windows) now actually verifies bit-identical hashes across hosts;
+//! this gate is the canonical cross-OS bit-identical reference.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
@@ -122,6 +136,62 @@ fn repeated_propagation_same_world_stable() {
     let h1 = hash_globals(&mut sim);
     let h2 = hash_globals(&mut sim);
     assert_eq!(h1, h2, "running propagation twice on the same sim diverged");
+}
+
+/// Cross-OS bit-identical golden hash (T1.3.5; R1 Lens C C-C1+C-C2).
+///
+/// Captured 2026-05-28 on macOS aarch64 after the workspace-wide
+/// libm sweep (`libm = "=0.2.16", default-features = false`). The
+/// CI matrix (linux + macOS + windows) runs THIS exact test and
+/// MUST produce the same hash on every host; any drift = a
+/// determinism regression to investigate (libm bump? glam bump?
+/// accidental re-introduction of `f32::sin_cos` in the propagation
+/// path? new FMA-enabled feature?). DO NOT update this constant
+/// without first re-running cross-OS and documenting the cause in
+/// an ADR amendment (HR-5 contract).
+///
+/// Reproducible — same `build_world()` LCG seed (0xC0FFEE) +
+/// deterministic spawn order = same hash forever.
+///
+/// To re-capture after a deliberate libm/glam bump:
+///   1. Set this to `[0u8; 32]` temporarily.
+///   2. `cargo test -p ph2d-ecs --test transform_determinism cross_os_golden_hash_pinned`.
+///   3. Read the actual hash bytes from the panic message.
+///   4. Replace the constant + commit + cross-OS CI run verifies.
+const EXPECTED_GLOBALS_HASH: [u8; 32] = [
+    // blake3("d2a3ca34e7e1127c63345bcc62bad262967d5c902d4b290e2a1a7451bb0cf07f")
+    // captured 2026-05-28 (macOS aarch64, libm =0.2.16 default-features=false,
+    // glam 0.30.10). MUST match on linux + windows CI hosts.
+    0xd2, 0xa3, 0xca, 0x34, 0xe7, 0xe1, 0x12, 0x7c, 0x63, 0x34, 0x5b, 0xcc, 0x62, 0xba, 0xd2, 0x62,
+    0x96, 0x7d, 0x5c, 0x90, 0x2d, 0x4b, 0x29, 0x0e, 0x2a, 0x1a, 0x74, 0x51, 0xbb, 0x0c, 0xf0, 0x7f,
+];
+
+fn hash_hex(h: &[u8; 32]) -> String {
+    let mut s = String::with_capacity(64);
+    for b in h {
+        s.push_str(&format!("{:02x}", b));
+    }
+    s
+}
+
+#[test]
+fn cross_os_golden_hash_pinned() {
+    let mut sim = build_world();
+    let h = hash_globals(&mut sim);
+    if h != EXPECTED_GLOBALS_HASH {
+        panic!(
+            "cross-OS golden hash drifted.\n\
+             actual = {}\n\
+             expected = {}\n\
+             If you just ran this for the first time after a deliberate libm/glam bump, \
+             replace EXPECTED_GLOBALS_HASH with the actual bytes:\n  {:?}\n\
+             If you DIDN'T expect a drift, investigate: libm bump? glam bump? accidental \
+             re-introduction of f32::sin_cos in any transform path? new FMA-enabled feature?",
+            hash_hex(&h),
+            hash_hex(&EXPECTED_GLOBALS_HASH),
+            h
+        );
+    }
 }
 
 // blake3 is already a transitive dep via the workspace (ph2d-asset

@@ -30,6 +30,22 @@ vello = "0.8"
 # `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
 # until `#[derive(Saveable)]` lands.
 serde = { version = "1", features = ["derive"] }
+# `SpriteVersioned` wrapper enum (ADR-0070 §2.3): postcard dispatches
+# V3 legacy fixtures vs V4 (W1+) at load time. Belongs in src/ (not
+# dev-dep) because the W1 `load_sprite` / `save_sprite` paths are
+# runtime APIs, not test-only. Pinned to `alloc` feature matching
+# ph2d-asset / ph2d-ecs sibling crates so the wire format stays
+# bit-identical across the workspace.
+#
+# EXACT version pin (HR-5): committed `tests/fixtures/sprite_v3_*.postcard`
+# blobs are produced by postcard 1.1.3 (LEB128 varint + LE float
+# bytes + positional). Postcard 1.x has no contractual "wire format
+# frozen" guarantee — a 1.1.4 or 1.2 release could silently shift
+# encoding. The `fixtures_match_canonical_serialization` test would
+# catch byte drift, but the EXACT pin makes the contract explicit at
+# the dependency layer. Any postcard bump = regenerate fixtures +
+# re-cross-OS-verify + ADR amendment.
+postcard = { version = "=1.1.3", features = ["alloc"] }
 # Skyline rectangle-packing for the dynamic atlas (M14.4d retrofit).
 # Lightweight (no image-data wrapping like `texture_packer`'s Texture
 # trait): we keep RGBA bytes in our own buffers and use rect_packer

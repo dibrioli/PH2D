@@ -1,0 +1,6 @@
+# Atomic-write temp files from `generate_v3_fixtures::write_v3_fixtures_atomically`.
+# The PID-keyed suffix means each generator run writes to a unique
+# tmp path; if the rename ever fails (cross-device, permission flip,
+# AV scanner lock on Windows), the tmp file lingers. Ignored here so
+# nobody accidentally `git add tests/fixtures/*.tmp.*`.
+*.tmp.*

@@ -30,6 +30,7 @@ pub mod premul;
 pub mod registry;
 pub mod renderer;
 pub mod sprite;
+pub mod sprite_versioned;
 pub mod tonemap;
 pub mod vello_pass;
 
@@ -54,5 +55,9 @@ pub use premul::{
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite, SpriteSource};
+// Only the wrapper enum is re-exported at crate root — `SpriteV3` is
+// internal migrator machinery (`#[doc(hidden)]` on the struct).
+// Tests reach it via `ph2d_render::sprite_versioned::SpriteV3`.
+pub use sprite_versioned::SpriteVersioned;
 pub use tonemap::Tonemap;
 pub use vello_pass::VelloPass;

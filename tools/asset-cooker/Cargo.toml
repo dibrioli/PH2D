@@ -29,11 +29,29 @@ serde = { version = "1", features = ["derive"] }
 postcard = { version = "1", features = ["alloc"] }
 clap = { version = "4", features = ["derive"] }
 # Texture compression cooker — ADR-0055-v4 (Accepted 2026-05-27).
-# Multi-encoder unificado (bc7e ISPC, astcenc, etcpak, Compressonator, Intel ISPC)
-# via Connor Fitzgerald (wgpu core contributor). Lib API consumida em W1.T1.
-# Encoders C/C++ vendored aceitáveis sob critério HR-1 §2.7.1 (offline-only,
-# never embarcado em release-game bundle). Audit do source em W1.T2.
-ctt = "0.4.0"
+# Connor Fitzgerald (wgpu core contributor). Lib API offline-only sob critério
+# HR-1 §2.7.1 (nunca embarcado em release-game bundle).
+#
+# W1.T2.1 (D1) features pinadas — default-features = false + explicit allowlist.
+# Razões:
+#   - encoder-bc7enc      → BC7 desktop (bc7enc-rdo, Brian Walls reference impl)
+#   - encoder-astcenc     → ASTC LDR mobile + critical UI (ARM reference impl)
+#   - encoder-etcpak      → ETC2 Android fallback
+#   - encoder-intel       → BC1/BC3/BC4/BC5 single-channel atlases (Intel ISPC)
+#   - ispc-prebuilt       → evitar build C++ na CI per-commit
+#   - encoder-amd OMITIDO → W1.T2 audit Lente A HIGH#2 = Compressonator
+#     BC7+UltraFast retorna R=0 silent em Linux/macOS (upstream bug
+#     acknowledged em compressonator.rs:296-300). BC7 já coberto por
+#     bc7enc-rdo; demais formatos pelo Intel ISPC. Omitir feature elimina
+#     ~1944 LOC sub-crate ctt-compressonator + zero exposure ao bug.
+# Audit deliverable: docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md
+ctt = { version = "0.4.0", default-features = false, features = [
+    "encoder-bc7enc",
+    "encoder-astcenc",
+    "encoder-etcpak",
+    "encoder-intel",
+    "ispc-prebuilt",
+] }
 
 # Audit T1.6 CI: machete pega `ctt` como unused porque W1.T0 ainda
 # não wired (lib API consumida só em W1.T1+). Dep deliberada per

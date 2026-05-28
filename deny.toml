@@ -106,7 +106,22 @@ highlight = "all"
 # Force `tokio` ban (HR: async proibido no core, exceto asset loader e net).
 # We allow tokio in transitive deps if pulled by quinn/wasmtime/etc., but
 # deny direct first-party deps.
-deny = []
+#
+# W1.T2.4 (D5) defensive bans — texture compression audit fallout.
+# Audit `docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md` Lente B
+# triage de 13 upstream issues do ctt identificou 2 direções futuras que
+# PH2D NÃO consome (ADR-0055-v4 §3 alternativas rejeitadas):
+#   - basis-universal-sys: upstream issue #68 propõe integration; PH2D
+#     rejeitou Basis runtime por dupla compressão lossy + transcoder.wasm
+#     500KB + iOS PrivacyManifest FFI.
+#   - nvtt: upstream issue #23 propõe NVTT (NVIDIA Texture Tools)
+#     proprietary integration; viola HR-1 §2.7.1 critério #4 (license).
+# Banir agora previne pull transitivo silencioso em upgrade futuro do ctt.
+deny = [
+    { name = "basis-universal-sys" },
+    { name = "nvtt" },
+    { name = "nvtt-sys" },
+]
 
 # Skip duplicate-version checks for crates that legitimately have multiple
 # versions in the dep tree (e.g., wasmtime brings older variants).

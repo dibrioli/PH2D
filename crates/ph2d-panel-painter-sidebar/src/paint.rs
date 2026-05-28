@@ -23,8 +23,9 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::paint_slider_with_chip_layout;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_surface, paint_panel_title, panel_close_button_rect,
-    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_close_button_rect, panel_drag_handle_rect, panel_resize_handle_rect,
+    panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -161,6 +162,10 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     set_last_visible_h(body_h);
 
     ctx.scene.pop_layer();
+
+    // Bottom-LEFT resize corner dot (mirror canon BR). Painted AFTER body
+    // widgets pra ficar visualmente em cima de qualquer drift no canto.
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Re-register close button no fim do frame pra scrolled body widgets
     // não shadowarem o close (canon panel_chrome doc).

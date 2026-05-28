@@ -92,24 +92,14 @@ pub fn import_image_at_camera(
         .and_then(|s| s.to_str())
         .map(|s| s.to_owned())
         .unwrap_or_else(|| format!("imported_{cell_idx}"));
-    // M14.7 polish: enforce unique entity names. Without this, the
-    // same image imported N times produced N rows all sharing the
-    // same `Name`, and the M14.6 D selection-by-label sync would
-    // highlight every row when one of the duplicates was canvas-
-    // picked. We scan the SimWorld for an existing match and append
-    // `_{cell_idx}` (monotonic, never repeats) on collision.
-    let label = {
-        let world = sim.world_mut();
-        let mut q = world.query::<&Name>();
-        let collides = q
-            .iter(world)
-            .any(|n: &Name| n.as_str() == base_label.as_str());
-        if collides {
-            format!("{base_label}_{cell_idx}")
-        } else {
-            base_label
-        }
-    };
+    // Enforce unique entity names — without this, importing the same
+    // file N times produced N rows sharing one `Name` (the M14.6 D
+    // selection-by-label sync would then highlight every row when one
+    // was canvas-picked, exact same shape as the duplicate bug fixed
+    // 2026-05-27). The shared `name_unique` helper bumps " (1)" /
+    // " (2)" / ... — same convention as `HierDuplicate` / `AddChild` /
+    // rename, so users see one scheme everywhere.
+    let label = crate::name_unique::unique_name(sim, &base_label);
     let spawn_pos = Vec2::new(camera.center[0], camera.center[1]);
     // Sprite world size = source pixels / pixels_per_meter. With the
     // Skyline atlas the source bytes are stored at full resolution,

@@ -424,19 +424,27 @@ pub(crate) fn drain_merge_sprites(
         Sprite::individual(texture_id, [union_w_m, union_h_m], [1.0, 1.0, 1.0, 1.0]);
     merged_sprite.premultiplied = true;
 
+    // Uniqueness: a 2nd merge would otherwise produce another "Merged"
+    // — collision risk per the 2026-05-27 same-name bug. Bump with the
+    // shared scheme (` (1)`, ` (2)`, ...).
+    let merged_name = crate::name_unique::unique_name(sim, "Merged");
     let new_entity = match parent_opt {
         Some(parent) => sim
             .world_mut()
             .spawn((
                 transform,
                 merged_sprite,
-                ph2d_ecs::Name::new("Merged"),
+                ph2d_ecs::Name::new(merged_name),
                 ph2d_ecs::ChildOf(parent),
             ))
             .id(),
         None => sim
             .world_mut()
-            .spawn((transform, merged_sprite, ph2d_ecs::Name::new("Merged")))
+            .spawn((
+                transform,
+                merged_sprite,
+                ph2d_ecs::Name::new(merged_name),
+            ))
             .id(),
     };
 

@@ -165,14 +165,24 @@ pub(super) fn dispatch(
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
         let src = ph2d_ecs::Entity::from_bits(entity_bits);
+        let transform = sim.world().get::<Transform>(src).copied();
+        let sprite = sim.world().get::<ph2d_render::Sprite>(src).copied();
+        let name = sim
+            .world()
+            .get::<Name>(src)
+            .map(|n| n.as_str().to_owned())
+            .unwrap_or_else(|| "Entity".to_string());
+        let parent = sim
+            .world()
+            .get::<ph2d_ecs::ChildOf>(src)
+            .map(|c| c.parent());
+        // Names MUST be unique scene-wide — the hierarchy panel's old
+        // label-match selection fallback (now removed) flagged every
+        // homonym as selected, and any future code that keys off the
+        // friendly label deserves the same defense. Strip + bump
+        // suffix so `Sprite (1)` duplicated → `Sprite (2)`.
+        let copy_name = crate::name_unique::unique_name(sim, &name);
         let sim_w = sim.world_mut();
-        let transform = sim_w.get::<Transform>(src).copied();
-        let sprite = sim_w.get::<ph2d_render::Sprite>(src).copied();
-        let name = sim_w.get::<Name>(src).map(|n| n.as_str().to_owned());
-        let parent = sim_w.get::<ph2d_ecs::ChildOf>(src).map(|c| c.parent());
-        let copy_name = name
-            .map(|n| format!("{n}_copy"))
-            .unwrap_or_else(|| "copy".to_string());
         let mut builder = sim_w.spawn_empty();
         if let Some(t) = transform {
             builder.insert(t);
@@ -192,9 +202,10 @@ pub(super) fn dispatch(
         && let Some(parent_bits) = live.bridge.entity_for(row)
     {
         let parent = ph2d_ecs::Entity::from_bits(parent_bits);
+        let child_name = crate::name_unique::unique_name(sim, "Child");
         sim.world_mut().spawn((
             Transform::IDENTITY,
-            Name::new("Child"),
+            Name::new(child_name),
             ph2d_ecs::ChildOf(parent),
         ));
         toasts.push(Toast::success("Added child entity"));
@@ -387,10 +398,21 @@ pub(super) fn dispatch(
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        // Reject user-typed collisions with other entities. `_excluding`
+        // ignores `entity`'s own current name so committing the same
+        // name (no-op rename) doesn't auto-suffix into "(1)".
+        let final_name = crate::name_unique::unique_name_excluding(sim, &new_name, entity);
+        let was_adjusted = final_name != new_name;
         let sim_w = sim.world_mut();
         if let Ok(mut entry) = sim_w.get_entity_mut(entity) {
-            entry.insert(Name::new(new_name.clone()));
-            toasts.push(Toast::success(format!("Renamed to {new_name}")));
+            entry.insert(Name::new(final_name.clone()));
+            if was_adjusted {
+                toasts.push(Toast::warning(format!(
+                    "Name in use — renamed to {final_name}"
+                )));
+            } else {
+                toasts.push(Toast::success(format!("Renamed to {final_name}")));
+            }
             title_dirty = true;
         }
         // Clear the rename TextInput buffer for next session.

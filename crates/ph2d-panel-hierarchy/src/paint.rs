@@ -40,7 +40,6 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         return;
     }
     let theme = ctx.host.theme();
-    let selection_label = ctx.host.selection().map(|s| s.label.clone());
     let rename_target = state.rename_target_row;
     let row_set = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -51,7 +50,6 @@ pub(crate) fn paint(state: &mut state::HierarchyState, ctx: &mut PaintCtx) {
             theme,
             hit_index,
             store,
-            selection_label.as_deref(),
             rename_target,
         )
     };
@@ -75,7 +73,6 @@ fn paint_hierarchy_body(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
-    selection_label: Option<&str>,
     rename_target: Option<ph2d_a11y::NodeId>,
 ) -> std::collections::BTreeSet<ph2d_a11y::NodeId> {
     let rect = layout.hierarchy;
@@ -256,16 +253,13 @@ fn paint_hierarchy_body(
             (row_w - indent).max(80.0), // LITERAL-PX-OK: minimum row width when deeply indented (chrome-specific min)
             HIER_ROW_H,
         );
-        // Fase 0 hotfix: respect any `selected` flag set by the shell
-        // when building hierarchy entries (multi-row highlight comes
-        // pre-marked). Fall back to label match only for entries that
-        // weren't marked — covers the fixture/demo path where there
-        // is no live bridge.
-        if !entity.selected
-            && let Some(sel_label) = selection_label
-        {
-            entity.selected = entity.name == sel_label;
-        }
+        // Selection-display is **identity-driven** (entity_bits via
+        // NodeId), pre-marked by the shell in
+        // `render_loop::snapshots::publish` against the gizmo selection
+        // set. The old fallback `entity.selected = entity.name ==
+        // selection_label` was removed 2026-05-27 because two sprites
+        // sharing a name (e.g. duplicates pre-uniqueness fix) both lit
+        // up on a single-entity selection.
         entity.muted = entity.muted || dragging.map(|d| d.dragged == *id).unwrap_or(false);
         hit_index.register(*id, row_rect);
         let is_renaming = rename_target == Some(*id);

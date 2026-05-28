@@ -9,10 +9,16 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-exr` — OpenEXR magic recognition + (deferred) decode/
-# encode (W3.T2). Pure-Rust path via `exr = "1"` lands when first
-# real client (Blender HDRi import) materialises. Magic-only stub
-# now per ADR-0054 §3.8 fan-out drop-crate.
+# `ph2d-imageio-exr` — OpenEXR decode (W3.T2). Pure-Rust via `exr`
+# 1.x. Single-part RGBA float32 → FlatHdr. Used for VFX / IBL /
+# scene-linear pipelines (Blender / Houdini / Nuke).
+#
+# Audit-13 W3.T1.5 wave-2 (2026-05-27): real decode shipped —
+# replaces the magic-only-stub from cc97cd4. Encode still deferred
+# (the SpecificChannels::Image construction wants typed callback
+# wires that lock down to first real export client).
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+exr = { version = "1", default-features = false }

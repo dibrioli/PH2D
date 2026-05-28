@@ -9,11 +9,17 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-jxl` — JPEG XL magic recognition + (deferred) decode/
-# encode (W3.T1). Pure-Rust decode via `jxl-oxide` 0.10 lands when
-# first real client appears; encode deferred until a pure-Rust JXL
-# encoder materialises. Magic-only stub now per ADR-0054 §3.8
-# fan-out drop-crate.
+# `ph2d-imageio-jxl` — JPEG XL decode (W3.T1). Pure-Rust via
+# `jxl-oxide` 0.10. JXL is the next-gen lossless + lossy format
+# (HDR + alpha + animation in spec; W3.T1 ships decode-only first-
+# frame for LDR Flat path). Encode permanent-deferred — jxl-oxide
+# is decode-only; native JXL encode lands when a pure-Rust encoder
+# materialises (`zune-jxl`?).
+#
+# Audit-13 W3.T1.5 wave-2 (2026-05-27): real decode shipped —
+# replaces the magic-only-stub from cc97cd4.
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+jxl-oxide = { version = "0.10", default-features = false }

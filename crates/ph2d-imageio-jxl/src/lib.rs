@@ -1,19 +1,30 @@
 #![forbid(unsafe_code)]
-//! `ph2d-imageio-jxl` — JPEG XL magic recognition + (deferred)
-//! decode/encode (W3.T1).
+//! `ph2d-imageio-jxl` — JPEG XL decode (W3.T1).
 //!
-//! W3.T1 placeholder: recognizes JXL magic (ISOBMFF container OR
-//! raw codestream) so the registry dispatches here for `.jxl` files;
-//! both import and export return `Error::Unsupported` with
-//! actionable messages. Real decode lands when first real client
-//! appears via `jxl-oxide = "0.10"` (pure-Rust); real encode lands
-//! when a pure-Rust JXL encoder materialises (`zune-jxl`?).
+//! Pure-Rust via `jxl-oxide` 0.10. JXL is the next-gen lossless +
+//! lossy format (HDR + alpha + animation in spec); W3.T1 ships
+//! decode-only first-frame for LDR Flat path. Encode is permanent-
+//! deferred — jxl-oxide is decode-only as of 0.10; native JXL
+//! encode lands when a pure-Rust encoder materialises.
 //!
-//! Audit-13 (2026-05-27): fan-out drop-crate per ADR-0054 §3.8.
+//! ### What W3.T1 covers
+//!
+//! - Magic: ISOBMFF container `\0\0\0\x0cJXL \r\n\x87\n` OR
+//!   codestream `\xff\x0a` raw.
+//! - Decode: first frame → `ImageBuffer<SrgbRgba>` (LDR Flat path).
+//!   Multi-frame defers to Animated bridge (W3+); HDR JXL defers
+//!   to FlatHdr bridge (W3+).
+//! - Encode: Error::Unsupported (jxl-oxide is decode-only).
+//! - HR-1: pure-Rust, no C bindings.
+//!
+//! Audit-13 W3.T1.5 wave-2 (2026-05-27): real decode replaces the
+//! magic-only-stub from cc97cd4.
 
+use ph2d_color::SrgbRgba;
 use ph2d_imageio::{
-    DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageExporter, ImageImporter,
-    ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
+    MagicMatch,
 };
 
 /// JXL ISOBMFF container magic (12 bytes).
@@ -51,16 +62,89 @@ impl ImageImporter for JxlImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        Err(Error::Unsupported(
-            "JXL decode deferred to W3+ — pure-Rust `jxl-oxide = \"0.10\"` \
-             wire-up lands with first real client (Painter HDR import \
-             demo). Convert to PNG/WebP via external tool (cjxl, ffmpeg) \
-             for now."
-                .into(),
-        ))
+        let img = jxl_oxide::JxlImage::builder()
+            .read(std::io::Cursor::new(src))
+            .map_err(|e| Error::from_decoder_message(format!("JXL decode init: {e}")))?;
+        let width = img.width();
+        let height = img.height();
+        if width == 0 || height == 0 {
+            return Err(Error::Decode(format!(
+                "JXL has zero-sized dimension: {width}×{height}"
+            )));
+        }
+        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
+            return Err(Error::DimensionExceedsLimit);
+        }
+        // Render first frame (W3.T1 ships single-frame; multi-frame
+        // defers to Animated bridge).
+        let render = img
+            .render_frame(0)
+            .map_err(|e| Error::from_decoder_message(format!("JXL render frame 0: {e}")))?;
+        let mut stream = render.stream();
+        let channels = stream.channels() as usize;
+        let pixel_count = (width as usize) * (height as usize);
+        let mut planar = vec![0.0_f32; pixel_count * channels];
+        let written = stream.write_to_buffer(&mut planar);
+        if written == 0 {
+            return Err(Error::Decode("JXL render stream returned 0 samples".into()));
+        }
+        // Quantize f32 [0..1] → u8 for the LDR Flat path. HDR JXL
+        // (out-of-range floats) clamp to [0,1] — FlatHdr bridge in
+        // W3+ when ImportOpts.color_profile_target gains LinearHdr.
+        let pixels: Vec<SrgbRgba> = match channels {
+            1 => planar
+                .iter()
+                .map(|&v| {
+                    let c = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    SrgbRgba([c, c, c, 255])
+                })
+                .collect(),
+            2 => planar
+                .chunks_exact(2)
+                .map(|c| {
+                    let v = (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    let a = (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    SrgbRgba([v, v, v, a])
+                })
+                .collect(),
+            3 => planar
+                .chunks_exact(3)
+                .map(|c| {
+                    SrgbRgba([
+                        (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        255,
+                    ])
+                })
+                .collect(),
+            4 => planar
+                .chunks_exact(4)
+                .map(|c| {
+                    SrgbRgba([
+                        (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                        (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+                    ])
+                })
+                .collect(),
+            n => {
+                return Err(Error::Unsupported(format!(
+                    "JXL {n}-channel image; W3.T1 ships 1/2/3/4 channel only"
+                )));
+            }
+        };
+        Ok(DecodedImage::Flat(ImageBuffer {
+            width,
+            height,
+            pixels,
+            color_profile: ColorProfile::Srgb,
+        }))
     }
 }
 
+/// JXL export driver. Permanent-deferred — jxl-oxide is decode-only.
 pub struct JxlExporter;
 
 impl ImageExporter for JxlExporter {
@@ -115,23 +199,30 @@ mod tests {
         assert!(matches!(err, Error::Truncated));
     }
 
+    /// Audit-13 wave-2: real decode test would require a JXL fixture
+    /// (jxl-oxide is decode-only — we can't synthesize one in-process
+    /// without an encoder). Magic-byte-then-truncated path is the
+    /// best in-tree coverage; full real-fixture decode is a
+    /// W3.T1.6 follow-up when a canonical 1×1 JXL fixture is
+    /// generated externally (e.g. via `cjxl` CLI tool) and copied
+    /// to `tests/fixtures/`.
     #[test]
-    fn import_returns_unsupported_deferred() {
+    fn import_truncated_jxl_returns_decode_error() {
         let err = JxlImporter
             .import(&JXL_ISOBMFF, &ImportOpts::default())
-            .expect_err("decode deferred");
-        assert!(matches!(err, Error::Unsupported(_)));
+            .expect_err("truncated container");
+        // Either Decode (parse failed mid-header) or Truncated (EOF
+        // signature matched the helper). Both are non-panic outcomes.
+        assert!(matches!(err, Error::Decode(_) | Error::Truncated));
     }
 
-    /// Audit-13 Lens FF F4 (2026-05-27): cover codestream path too —
-    /// previous test only exercised ISOBMFF.
     #[test]
-    fn import_codestream_returns_unsupported_deferred() {
+    fn import_truncated_codestream_returns_decode_error() {
         let bytes = [0xFF, 0x0A, 0x00, 0x01, 0x02, 0x03];
         let err = JxlImporter
             .import(&bytes, &ImportOpts::default())
-            .expect_err("codestream decode deferred");
-        assert!(matches!(err, Error::Unsupported(_)));
+            .expect_err("truncated codestream");
+        assert!(matches!(err, Error::Decode(_) | Error::Truncated));
     }
 
     #[test]

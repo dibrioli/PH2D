@@ -1,19 +1,33 @@
 #![forbid(unsafe_code)]
-//! `ph2d-imageio-hdr-radiance` — Radiance HDR (`.hdr`) magic
-//! recognition + (deferred) decode/encode (W3.T3).
+//! `ph2d-imageio-hdr-radiance` — Radiance HDR (`.hdr`) decode + encode
+//! (W3.T3).
 //!
-//! W3.T3 placeholder: recognizes Radiance HDR magic
-//! (`#?RADIANCE\n` or legacy `#?RGBE\n`) so the registry dispatches
-//! here for `.hdr` files; both import and export return
-//! `Error::Unsupported` with actionable messages. Real decode/
-//! encode lands when first real client (IBL skybox import demo)
-//! materialises — `image` 0.25 `hdr` feature provides the codec.
+//! Pure-Rust via `image` 0.25 `hdr` feature. Radiance RGBE format
+//! stores HDR as 8-bit RGB + 8-bit shared exponent — older than
+//! OpenEXR, simpler, still widely used for IBL skybox content
+//! (Greg Ward, "High Dynamic Range Imaging" 2005).
 //!
-//! Audit-13 (2026-05-27): fan-out drop-crate per ADR-0054 §3.8.
+//! ### What W3.T3 covers
+//!
+//! - Magic: `#?RADIANCE\n` ASCII signature + legacy `#?RGBE\n`.
+//! - Decode: RGBE → `ImageBuffer<LinearRgba>` via
+//!   `image::codecs::hdr::HdrDecoder`. Alpha synthesized to 1.0
+//!   (RGBE has no alpha channel).
+//! - Encode: float32 RGB → RGBE via
+//!   `image::codecs::hdr::HdrEncoder` (drops alpha — RGBE is RGB-only).
+//! - HR-1: pure-Rust, no C bindings.
+//! - HR-13: dimension cap via `ph2d_imageio::MAX_RASTER_DIMENSION`.
+//!
+//! Audit-13 W3.T1.5 wave-2 (2026-05-27): real impl replaces the
+//! magic-only-stub from cc97cd4 — `image` 0.25 hdr feature is a
+//! single dep + the decode/encode API is uniform with PNG/JPEG/WEBP.
 
+use image::ImageDecoder;
+use ph2d_color::LinearRgba;
 use ph2d_imageio::{
-    DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageExporter, ImageImporter,
-    ImportOpts, ImporterRegistry, MagicHint, MagicMatch,
+    ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
+    ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
+    MagicMatch,
 };
 
 const HDR_MAGIC: &[u8] = b"#?RADIANCE";
@@ -45,12 +59,43 @@ impl ImageImporter for HdrRadianceImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        Err(Error::Unsupported(
-            "Radiance HDR decode deferred to W3+ — `image` 0.25 `hdr` \
-             feature wire-up lands with first real client (IBL skybox \
-             import demo)."
-                .into(),
-        ))
+        let cursor = std::io::Cursor::new(src);
+        let decoder = image::codecs::hdr::HdrDecoder::new(cursor)
+            .map_err(|e| Error::from_decoder_message(format!("HDR decode init: {e}")))?;
+        let (width, height) = decoder.dimensions();
+        if width == 0 || height == 0 {
+            return Err(Error::Decode(format!(
+                "HDR has zero-sized dimension: {width}×{height}"
+            )));
+        }
+        if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
+            return Err(Error::DimensionExceedsLimit);
+        }
+        // HdrDecoder produces ColorType::Rgb32F (3 floats per pixel).
+        // Allocate the exact byte buffer + read.
+        let total = decoder.total_bytes() as usize;
+        let mut buf = vec![0u8; total];
+        decoder
+            .read_image(&mut buf)
+            .map_err(|e| Error::from_decoder_message(format!("HDR decode pixels: {e}")))?;
+        // Reinterpret bytes as f32 triples (3 floats per pixel, native
+        // endian — image-rs decodes to host floats). RGBE has no alpha
+        // → synthesize 1.0.
+        let pixel_count = (width as usize) * (height as usize);
+        let mut pixels = Vec::with_capacity(pixel_count);
+        for chunk in buf.chunks_exact(12) {
+            // Each pixel = 3 floats = 12 bytes.
+            let r = f32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            let g = f32::from_ne_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+            let b = f32::from_ne_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+            pixels.push(LinearRgba::new(r, g, b, 1.0));
+        }
+        Ok(DecodedImage::FlatHdr(ImageBuffer {
+            width,
+            height,
+            pixels,
+            color_profile: ColorProfile::LinearRec709,
+        }))
     }
 }
 
@@ -61,12 +106,40 @@ impl ImageExporter for HdrRadianceExporter {
         matches!(fmt, ExportFormat::HdrRadiance)
     }
 
-    fn export(&self, _img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
-        Err(Error::Unsupported(
-            "Radiance HDR encode deferred to W3+ — wire-up lands with \
-             first real client (Painter HDR export demo)."
-                .into(),
-        ))
+    fn export(&self, img: &DecodedImage, _opts: &ExportOpts) -> Result<Vec<u8>, Error> {
+        let buf = match img {
+            DecodedImage::FlatHdr(b) => b,
+            DecodedImage::Flat(_) => {
+                return Err(Error::Unsupported(
+                    "Radiance HDR requires FlatHdr (HDR float32). \
+                     Use PNG/JPEG for LDR content."
+                        .into(),
+                ));
+            }
+            DecodedImage::Layered(_) => return Err(Error::MissingLayer),
+            DecodedImage::Animated(_) => {
+                return Err(Error::Unsupported(
+                    "Radiance HDR is single-frame; export each frame separately".into(),
+                ));
+            }
+            DecodedImage::Vector(_) => {
+                return Err(Error::Unsupported(
+                    "Radiance HDR is raster; rasterize the VectorDoc first".into(),
+                ));
+            }
+        };
+        // RGBE drops alpha — Radiance HDR spec has no alpha channel.
+        let rgb_pixels: Vec<image::Rgb<f32>> = buf
+            .pixels
+            .iter()
+            .map(|p| image::Rgb([p.r(), p.g(), p.b()]))
+            .collect();
+        let mut out: Vec<u8> = Vec::new();
+        let encoder = image::codecs::hdr::HdrEncoder::new(&mut out);
+        encoder
+            .encode(&rgb_pixels, buf.width as usize, buf.height as usize)
+            .map_err(|e| Error::Encode(format!("HDR encode: {e}")))?;
+        Ok(out)
     }
 }
 
@@ -107,14 +180,11 @@ mod tests {
     }
 
     #[test]
-    fn import_returns_unsupported_deferred() {
+    fn import_rejects_wrong_magic_with_decode() {
         let err = HdrRadianceImporter
-            .import(
-                b"#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n",
-                &ImportOpts::default(),
-            )
-            .expect_err("decode deferred");
-        assert!(matches!(err, Error::Unsupported(_)));
+            .import(b"\xDE\xAD\xBE\xEF\x00\x01\x02", &ImportOpts::default())
+            .expect_err("wrong magic");
+        assert!(matches!(err, Error::Decode(_) | Error::Truncated));
     }
 
     #[test]
@@ -123,17 +193,66 @@ mod tests {
         assert!(!HdrRadianceExporter.supports_format(ExportFormat::Png));
     }
 
+    /// Audit-13 wave-2 (2026-05-27): real round-trip test now that
+    /// HDR decode+encode are wired. Build 2×2 fixture with non-
+    /// trivial HDR values (>1.0 to confirm float32 preservation).
     #[test]
-    fn exporter_returns_unsupported_deferred() {
-        let err = HdrRadianceExporter
+    fn roundtrip_2x2_preserves_hdr_within_rgbe_quantization() {
+        let original = ImageBuffer {
+            width: 2,
+            height: 2,
+            pixels: vec![
+                LinearRgba::new(0.5, 1.0, 2.0, 1.0),
+                LinearRgba::new(1.5, 0.25, 0.75, 1.0),
+                LinearRgba::new(0.1, 0.2, 0.3, 1.0),
+                LinearRgba::new(4.0, 2.0, 1.0, 1.0),
+            ],
+            color_profile: ColorProfile::LinearRec709,
+        };
+        let bytes = HdrRadianceExporter
             .export(
-                &DecodedImage::Animated(vec![]),
+                &DecodedImage::FlatHdr(original.clone()),
                 &ExportOpts {
                     format: ExportFormat::HdrRadiance,
                     ..ExportOpts::default()
                 },
             )
-            .expect_err("encode deferred");
-        assert!(matches!(err, Error::Unsupported(_)));
+            .expect("HDR encode");
+        // Magic should be at start of file.
+        assert!(bytes.starts_with(b"#?RADIANCE"), "magic must be present");
+
+        let decoded = HdrRadianceImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("HDR re-decode");
+        let DecodedImage::FlatHdr(reconst) = decoded else {
+            panic!("expected FlatHdr after re-decode");
+        };
+        assert_eq!(reconst.width, 2);
+        assert_eq!(reconst.height, 2);
+        // RGBE quantizes to 8-bit shared exponent → ~1% precision
+        // loss is expected. Assert each channel within 5% tolerance
+        // (covers both quantization and any encoder/decoder rounding).
+        for (i, (orig, got)) in original
+            .pixels
+            .iter()
+            .zip(reconst.pixels.iter())
+            .enumerate()
+        {
+            let tolerance = 0.05;
+            for (label, (o, g)) in [
+                ("r", (orig.r(), got.r())),
+                ("g", (orig.g(), got.g())),
+                ("b", (orig.b(), got.b())),
+            ] {
+                let abs_diff = (o - g).abs();
+                let rel = abs_diff / o.max(0.001);
+                assert!(
+                    rel < tolerance,
+                    "pixel {i} {label}: orig={o}, got={g}, rel_err={rel} (tol {tolerance})"
+                );
+            }
+            // Alpha is synthesized to 1.0 on decode (RGBE has no alpha).
+            assert_eq!(got.a(), 1.0, "pixel {i}: alpha should be 1.0");
+        }
     }
 }

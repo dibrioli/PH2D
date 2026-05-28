@@ -9,10 +9,18 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-hdr-radiance` — Radiance HDR magic recognition +
-# (deferred) decode/encode (W3.T3). Pure-Rust via `image` 0.25 hdr
-# feature when first real client appears. Magic-only stub now per
-# ADR-0054 §3.8 fan-out drop-crate.
+# `ph2d-imageio-hdr-radiance` — Radiance HDR (`.hdr`) decode + encode
+# (W3.T3). Pure-Rust via `image` 0.25 `hdr` feature. RGBE encoding
+# (8-bit shared exponent) → FlatHdr via f32 expansion. Used for IBL
+# / skybox content (Greg Ward, "High Dynamic Range Imaging" 2005).
+#
+# Audit-13 W3.T1.5 wave-2 (2026-05-27): real impl shipped — replaces
+# the magic-only-stub from cc97cd4 (the stub had been honestly
+# deferred until first real client; now wired since the `image`
+# 0.25 hdr feature is a single dep + the decode/encode API is
+# uniform with PNG/JPEG/WEBP — no closure RefCell games).
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-color   = { path = "../ph2d-color" }
+image = { version = "0.25", default-features = false, features = ["hdr"] }

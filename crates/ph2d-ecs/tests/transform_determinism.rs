@@ -174,6 +174,69 @@ fn hash_hex(h: &[u8; 32]) -> String {
     s
 }
 
+/// Arch-gate: every Cargo.toml that ships libm must carry the EXACT
+/// pin `=0.2.16` + `default-features = false`. Symmetric to
+/// `postcard_exact_version_pin_enforced_in_cargo_toml` in
+/// ph2d-render — catches an agent stripping the `=` prefix or
+/// re-enabling default-features (which would pull the `arch`
+/// platform-intrinsics feature and defeat the determinism contract).
+/// R2 Lens E-C3 + meta-C2.
+#[test]
+fn libm_exact_version_pin_enforced_in_workspace() {
+    // Each entry: (relative path from CARGO_MANIFEST_DIR, label for
+    // diagnostics). All 4 crates with `f32 → libm::sincosf` swaps
+    // must pin EXACTLY the same version + features.
+    //
+    // CARGO_MANIFEST_DIR for this test crate (ph2d-ecs) is
+    // `crates/ph2d-ecs`; we step out to the workspace root.
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("ph2d-ecs is two levels below workspace root");
+    let crates = [
+        ("crates/ph2d-ecs/Cargo.toml", "ph2d-ecs"),
+        ("crates/ph2d-editor-core/Cargo.toml", "ph2d-editor-core"),
+        (
+            "crates/ph2d-tool-rasterize/Cargo.toml",
+            "ph2d-tool-rasterize",
+        ),
+        ("shells/desktop/Cargo.toml", "ph2d-host-desktop"),
+        ("tools/asset-cooker/Cargo.toml", "ph2d-asset-cooker"),
+    ];
+    for (rel, label) in crates {
+        let path = workspace.join(rel);
+        let toml = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));
+        // Find the libm dep line (allowing column-padding alignment
+        // like `libm                  = { ... }`). Match any line
+        // starting with `libm` (after trim) and a `=` followed by
+        // a TOML inline table with the exact-pin + default-features.
+        let libm_line = toml
+            .lines()
+            .find(|l| {
+                let t = l.trim_start();
+                t.starts_with("libm") && t.contains('=') && t.contains("0.2.16")
+            })
+            .unwrap_or_else(|| {
+                panic!("{label} ({rel}): no libm dep line found");
+            });
+        assert!(
+            libm_line.contains(r#"version = "=0.2.16""#),
+            "{label} ({rel}) libm line `{}` lost the `=0.2.16` exact-pin syntax — \
+             HR-5 cross-OS golden hash depends on this. Any bump = regenerate \
+             EXPECTED_GLOBALS_HASH + cross-OS re-verify + ADR amendment.",
+            libm_line.trim()
+        );
+        assert!(
+            libm_line.contains("default-features = false"),
+            "{label} ({rel}) libm dep line `{}` must carry `default-features = false` — \
+             the `arch` feature enables platform-specific intrinsics that defeat \
+             cross-OS bit-identical.",
+            libm_line.trim()
+        );
+    }
+}
+
 #[test]
 fn cross_os_golden_hash_pinned() {
     let mut sim = build_world();

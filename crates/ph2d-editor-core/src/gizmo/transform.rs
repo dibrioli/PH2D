@@ -142,8 +142,8 @@ pub fn compute_gizmo_transform(
             // local-only, então child de pai rotacionado escalava
             // ao longo do eixo torto.
             let rot = drag.parent_world.rotation + drag.start_transform.rotation;
-            let cos_r = rot.cos();
-            let sin_r = rot.sin();
+            // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+            let (sin_r, cos_r) = libm::sincosf(rot);
             let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
             let start_dy = drag.start_cursor_world[1] - drag.pivot_world[1];
             let now_dx = now_world[0] - drag.pivot_world[0];
@@ -215,8 +215,8 @@ pub fn compute_gizmo_transform(
             // pra child de pai rotacionado escalar no eixo visual.
             let axis = axis.min(1) as usize;
             let rot = drag.parent_world.rotation + drag.start_transform.rotation;
-            let cos_r = rot.cos();
-            let sin_r = rot.sin();
+            // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+            let (sin_r, cos_r) = libm::sincosf(rot);
             let start_dx = drag.start_cursor_world[0] - drag.pivot_world[0];
             let start_dy = drag.start_cursor_world[1] - drag.pivot_world[1];
             let now_dx = now_world[0] - drag.pivot_world[0];
@@ -331,8 +331,8 @@ pub fn move_pivot_transform(
     let dy = quad_center_world[1] - target_world[1];
     // World delta → entity-local intrinsic frame (inverse world
     // rotation), then ÷ world scale to get the intrinsic anchor.
-    let cos_r = world_rot.cos();
-    let sin_r = world_rot.sin();
+    // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+    let (sin_r, cos_r) = libm::sincosf(world_rot);
     let local_x = dx * cos_r + dy * sin_r;
     let local_y = -dx * sin_r + dy * cos_r;
     let sx = if world_scale_x.abs() < 1e-6 {
@@ -365,8 +365,8 @@ pub fn pivot_snap_candidates(
     rotation: f32,
     half_world: [f32; 2],
 ) -> [[f32; 2]; 9] {
-    let cos_r = rotation.cos();
-    let sin_r = rotation.sin();
+    // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+    let (sin_r, cos_r) = libm::sincosf(rotation);
     let [cx, cy] = quad_center_world;
     let [hx, hy] = half_world;
     // Rotate a local offset into world and translate to the center.
@@ -434,8 +434,8 @@ pub fn anchor_pivot_world(
     // Local → scaled local → rotated → world.
     let scaled_x = local[0] * snap.scale[0];
     let scaled_y = local[1] * snap.scale[1];
-    let cos_r = snap.rotation.cos();
-    let sin_r = snap.rotation.sin();
+    // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+    let (sin_r, cos_r) = libm::sincosf(snap.rotation);
     let rotated_x = scaled_x * cos_r - scaled_y * sin_r;
     let rotated_y = scaled_x * sin_r + scaled_y * cos_r;
     [
@@ -466,8 +466,8 @@ pub(super) fn opposite_anchor_translation(
 ) -> [f32; 2] {
     let local_x = opposite_local_sign[0] * sprite_half_intrinsic[0] * new_scale[0];
     let local_y = opposite_local_sign[1] * sprite_half_intrinsic[1] * new_scale[1];
-    let cos_r = rotation.cos();
-    let sin_r = rotation.sin();
+    // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
+    let (sin_r, cos_r) = libm::sincosf(rotation);
     let rotated_x = local_x * cos_r - local_y * sin_r;
     let rotated_y = local_x * sin_r + local_y * cos_r;
     [pivot_world[0] - rotated_x, pivot_world[1] - rotated_y]

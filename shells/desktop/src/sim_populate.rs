@@ -23,7 +23,10 @@ pub(crate) fn populate_sim(sim: &mut SimWorld) {
         let f = i as f32;
         let angle = f * 2.399_963_2; // golden angle (rad)
         let r = (f / SPRITE_COUNT as f32).sqrt() * (WORLD_HALF - 0.5);
-        let pos = Vec2::new(r * angle.cos(), r * angle.sin());
+        // T1.3.5 cross-OS bit-identical: any sprite Transform.translation
+        // feeds the propagation hash gate. Demo populator uses libm too.
+        let (sin_a, cos_a) = libm::sincosf(angle);
+        let pos = Vec2::new(r * cos_a, r * sin_a);
         // Velocity in m/s; both axes seeded by independent index hashes
         // so motion isn't correlated with the spiral pattern.
         let vx = ((f * 12.9898).sin() * 43758.547).fract() * 3.0 - 1.5;

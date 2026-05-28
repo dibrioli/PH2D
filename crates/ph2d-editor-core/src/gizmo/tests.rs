@@ -407,10 +407,10 @@ fn rotate_with_shift_snaps_to_step() {
     // Target angle ~32° (between 30° and 45°). Snap to 15° →
     // 30° = π/6 ≈ 0.5236.
     let target_angle_deg = 32.0_f32;
-    let target_world = [
-        (target_angle_deg.to_radians()).cos(),
-        (target_angle_deg.to_radians()).sin(),
-    ];
+    // T1.3.5 cross-OS bit-identical — test reference vector via libm
+    // for parity with the prod gizmo math.
+    let (sin_t, cos_t) = libm::sincosf(target_angle_deg.to_radians());
+    let target_world = [cos_t, sin_t];
     let aspect = c.window_w / c.window_h;
     let half_w = c.height_world * 0.5 * aspect;
     let half_h = c.height_world * 0.5;

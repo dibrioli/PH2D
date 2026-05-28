@@ -10,20 +10,40 @@
 
 ## Coord-A (foundational)
 
-**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W0 carry-over T0.12 + T0.13 (entregues padrão-ouro pós R1 audits B+C + R2 audits E+A + R3 audits D+meta; +ADR-0070-amendment-2). Sessão única absorve Coord-A + Implementador (Enio 2026-05-28). Slot: `impl-sprite`. **T1.3.5 + T1.x = próxima continuação; ainda NÃO iniciado.** Nota: W1.T1.6 migrator é **MANDATÓRIO** (não fallback) — ADR-0070-amendment-2 §3 reduziu o hybrid `#[serde(default)]` a single tier (wrapper enum único caminho).
+**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W0 carry-over T0.12 + T0.13 + T1.3.5 (entregues padrão-ouro pós R1+R2+R3 audits para T0.12+T0.13; R1+R2 para T1.3.5; ADR-0070-amendment-2). Sessão única absorve Coord-A + Implementador (Enio 2026-05-28). Slot: `impl-sprite`. **T1.1..T1.14 (Sprite v3→v4 strategic schema bump) = próxima continuação; ainda NÃO iniciado.**
 
-**Pastas tocadas nesta sessão (já staged):**
-- `crates/ph2d-render/` (T0.12 + T0.13 entregues: `SpriteVersioned` wrapper + `SpriteV3` frozen mirror + 5 fixtures v3 + 25+ tests verde + postcard `=1.1.3` pin + smoke_fixture_renderable stub + migrate_sprite_v3_to_v4 stub per spec §10.6)
-- `docs/architecture/decisions/0070-amendment-2.md` (NEW; ADR amendment ratificando achado empírico T0.13)
-- `assets/smoke_fixtures/sprite_inspector_v2/README.md` (NEW; spec §15.8.2 directory contract)
-- `docs/Sprite_projeto/smoke_goldens/README.md` (NEW; spec §15.8.2 directory contract)
-- `docs/SESSION_ACTIVE.md` (esta entrada)
+**Notas para próximo agente:**
+- W1.T1.6 migrator é **MANDATÓRIO** (não fallback) — ADR-0070-amendment-2 §3 reduziu o hybrid `#[serde(default)]` a single tier (wrapper enum único caminho).
+- T1.3.5 expandiu workspace-wide (de 1 site em ph2d-ecs para 23 sites em 5 crates) per R1 Lens B finding — todos os transcendentals que tocam Transform direta ou indiretamente. Arch-gate `libm_exact_version_pin_enforced_in_workspace` mantém pin discipline (5 crates). Cross-OS golden hash `d2a3ca34…cf07f` pinada em `transform_determinism.rs`.
 
-**Pastas reservadas para próxima continuação (W1 strategic-only schema bump):**
-- `crates/ph2d-render/` (continua: bump `Sprite` v3→v4 com 14 novos campos + ABI `RenderInstance` 144B + 11 vertex attrs + gates `architecture_sprite_inspector_surface` + `vertex_attr_offsets_match_struct` expandido + `sprite_tint_finite_rejects_nan_and_inf` + `sprite_scene_load_size_cap_enforced`)
-- `crates/ph2d-ecs/Cargo.toml` + `crates/ph2d-ecs/src/transform.rs` (T1.3.5: `libm = "0.2"` dep + sweep `f32::sin_cos` → `libm::sincosf` em `Transform::compose`; precede W2.T2.2 skew amendment-1)
-- `crates/ph2d-host/src/` SOMENTE para declarar `MemoryBudget { sprite_inspector_v2: SpriteInspectorMemoryBudget }` ao final de W1 — Coord-A only
-- Read-only: `docs/Sprite_projeto/` (spec normativa ratificada), `docs/architecture/decisions/0069..0074-*.md` + `0070-amendment-2.md`, `0025-amendment-1.md`
+**Pre-existing failures cross-session (NÃO fixadas — `feedback-audit-scope-discipline`; reportar ao owner):**
+1. `cargo test -p ph2d-editor-core --test architecture_panel_loc_cap` → `panel-hierarchy/src/paint.rs::paint_hierarchy_body 388 LOC > 200 cap`. Inflou via commits `3fab958` + `4fb822b` da hierarchy session.
+2. `cargo check -p ph2d-host-desktop` → `ph2d-tool-painter`: `PanelEvent::Activated` variant missing. WIP Painter session pós-`231d6cc`/`1485471`.
+
+Working tree contamination (não staged por mim; aparecerão se próximo agente fizer `git add -A`):
+- `shells/desktop/src/hero_intents/sprite_merge.rs` (M)
+- `shells/desktop/src/name_unique.rs` (M)
+- `crates/ph2d-brush-traits/tests/_audit_*.rs` (??) + `crates/ph2d-vector-traits/tests/_audit_send_sync.rs` (??)
+- Recomendação: próximo commit/push escope paths via `git add -- <path>` específico, não `-A`.
+
+**Pastas tocadas (commits cef1959 + e3ad19f + 5974a84 + fix-up pendente):**
+- `crates/ph2d-render/` — T0.12 + T0.13: `SpriteVersioned` wrapper + `SpriteV3` mirror + 5 fixtures v3 + 22 tests + postcard `=1.1.3` pin + smoke_fixture_renderable stub + migrate_sprite_v3_to_v4 stub per spec §10.6.
+- `crates/ph2d-ecs/` — T1.3.5: `libm = "=0.2.16", default-features = false` + sweep `Transform::compose` + `GlobalTransform::from_transform` + `cross_os_golden_hash_pinned` (blake3 `d2a3ca34…cf07f`) + `libm_exact_version_pin_enforced_in_workspace`.
+- `crates/ph2d-editor-core/` — T1.3.5: libm dep + 6 sweep sites em `gizmo/transform.rs` (`world_delta_to_local`, `compose_snapshot`, `resize_corner`, `resize_edge`, `move_pivot_transform`, `pivot_snap_candidates`, `opposite_anchor_translation`) + test parity em `gizmo/tests.rs`.
+- `crates/ph2d-tool-rasterize/` — T1.3.5: libm dep + sweep em `rotate_mitchell_premult`.
+- `shells/desktop/` — T1.3.5: libm dep + sweep em `input_dispatch.rs` (move-pivot), `input_dispatch/gizmo_drag.rs` (3 sites: scale/rotate/translate), `render_loop/snapshots.rs` (extract), `sim_populate.rs` (Vogel spiral demo).
+- `tools/asset-cooker/Cargo.toml` — T1.3.5 R2: libm pin tightened `"0.2"` → `"=0.2.16", default-features = false` para alinhar com workspace pin discipline.
+- `docs/architecture/decisions/0070-amendment-2.md` (NEW) — ratifica T0.13 empirical finding.
+- `assets/smoke_fixtures/sprite_inspector_v2/README.md` (NEW) — spec §15.8.2 directory contract.
+- `docs/Sprite_projeto/smoke_goldens/README.md` (NEW) — idem.
+- `docs/Sprite_projeto/10_schema_versionamento.md` (MODIFIED) — §10.1 + §10.4 SUPERSEDED markers.
+- `docs/HANDOFF_sprite_inspector_v2.md` (MODIFIED — untracked carrying R3 edits) — §5 + §2 atualizados com o achado empírico T0.13 + workspace-wide sweep scope.
+- `docs/SESSION_ACTIVE.md` (esta entrada).
+
+**Pastas reservadas para próxima continuação (T1.1..T1.14 schema bump):**
+- `crates/ph2d-render/` (continua: bump `Sprite` v3→v4 com 14 novos campos + ABI `RenderInstance` 144B + 11 vertex attrs + gates `architecture_sprite_inspector_surface` + `vertex_attr_offsets_match_struct` expandido + `sprite_tint_finite_rejects_nan_and_inf` + `sprite_scene_load_size_cap_enforced`).
+- `crates/ph2d-host/src/` SOMENTE para declarar `MemoryBudget { sprite_inspector_v2: SpriteInspectorMemoryBudget }` ao final de W1 — Coord-A only.
+- Read-only: `docs/Sprite_projeto/` (spec normativa ratificada), `docs/architecture/decisions/0069..0074-*.md` + `0070-amendment-2.md`, `0025-amendment-1.md`.
 
 **Pastas reservadas (genéricas, quando voltar a contexto foundational):**
 - `scripts/` · `.github/workflows/` · contratos congelados (`crates/ph2d-nodegraph/`, `crates/ph2d-editor-core/src/tool.rs`)

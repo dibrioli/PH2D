@@ -58,8 +58,13 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # Audit W1.T11+T14 ι-CRITICAL-1 fix (2026-05-28): Rust std `f32::sin/cos` documenta
 # precisão non-deterministic cross-platform. Fixtures que usam transcendentals
 # (brush_atlas_256_r8 + normal_map_512) precisam de libm para HR-6 cross-machine
-# determinism. `libm` é pure-Rust IEEE 754 strict — deterministic per spec.
-libm = "0.2"
+# determinism.
+#
+# T1.3.5 R2 (2026-05-28): exact-pin `=0.2.16` + `default-features = false`
+# alinhado com ph2d-ecs / ph2d-editor-core / ph2d-tool-rasterize / shells/desktop.
+# Workspace mantém UMA versão de libm; arch-gate
+# `libm_exact_version_pin_enforced_in_workspace` em ph2d-ecs gates esse invariant.
+libm = { version = "=0.2.16", default-features = false }
 
 [dev-dependencies]
 # Parser TOML para arch-gate `architecture_ctt_features_pinned` — substitui

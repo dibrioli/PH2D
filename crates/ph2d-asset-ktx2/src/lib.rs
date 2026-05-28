@@ -74,6 +74,16 @@ pub const MAX_KVD_ENTRIES: usize = 64;
 /// values used by some tooling while bounding memory in pathological files.
 pub const MAX_KVD_VALUE_BYTES: usize = 4 * 1024;
 
+/// W1.T9 audit Lente ξ-F3 — cap on individual kvd *key* length in bytes.
+/// Symmetric DOS defence to [`MAX_KVD_VALUE_BYTES`]: without it a hostile
+/// file could ship a multi-MiB key (the value cap alone leaves the key
+/// unbounded) and force a large `key.to_string()` allocation. Real KTX2
+/// keys are short identifiers ("KTXorientation", "PH2D_PREMUL"); 256 B is
+/// generous headroom. Aggregate worst case is therefore bounded:
+/// `MAX_KVD_ENTRIES × (MAX_KVD_KEY_BYTES + MAX_KVD_VALUE_BYTES)`
+/// ≈ 64 × (256 B + 4 KiB) ≈ 272 KiB.
+pub const MAX_KVD_KEY_BYTES: usize = 256;
+
 /// W1.T9 — canonical KTX2 keyValueData key used by PH2D to tag the alpha
 /// intent of a cooked texture (`PremulIntent`). 1-byte value:
 /// `[0] = Straight`, `[1] = Premultiplied`. Key ausente = `Unspecified`.
@@ -89,13 +99,19 @@ const _: () = assert!(MAX_TOTAL_BYTES > 0);
 const _: () = assert!(MAX_LEVELS > 0 && MAX_LEVELS < 32);
 const _: () = assert!(MAX_KVD_ENTRIES > 0 && MAX_KVD_ENTRIES <= 256);
 const _: () = assert!(MAX_KVD_VALUE_BYTES > 0 && MAX_KVD_VALUE_BYTES <= 64 * 1024);
+const _: () = assert!(MAX_KVD_KEY_BYTES > 0 && MAX_KVD_KEY_BYTES <= 4 * 1024);
 
 // ── error type ──────────────────────────────────────────────────────
 
 /// Failures during KTX2 decode. Each variant carries enough context
 /// for the caller to either surface a precise error toast or decide on
 /// a fallback path.
+///
+/// `#[non_exhaustive]` (W1.T9 audit Lente ν-7): future variants must
+/// not be a breaking change for downstream consumers. External callers
+/// match with a wildcard arm; within this crate the attribute is inert.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum Ktx2Error {
     /// The bytes are not a valid KTX2 container (bad magic, truncated
     /// header, malformed level index, …). The wrapped string is the
@@ -160,6 +176,12 @@ pub enum Ktx2Error {
         size: usize,
         max: usize,
     },
+
+    /// W1.T9 audit Lente ξ-F3 — kvd entry key excede [`MAX_KVD_KEY_BYTES`].
+    /// The offending key is intentionally NOT carried in the error — doing
+    /// so would perform the very multi-MiB allocation this bound prevents.
+    #[error("kvd entry key has {size} bytes, exceeds max {max}")]
+    KvdKeyTooLong { size: usize, max: usize },
 }
 
 // ── format enum ─────────────────────────────────────────────────────
@@ -397,7 +419,13 @@ pub struct MipLevel {
 /// flattened — Fase 1 rejects multi-layer / multi-face inputs to keep
 /// the surface tight; the limits are deliberately conservative and
 /// will be relaxed in Fase 2 if the asset pipeline needs them.
+/// `#[non_exhaustive]` (W1.T9 audit Lente ν-7): adding a field in Fase 2
+/// must stay additive for any future external consumer (today there are
+/// none — decode goes through [`decode_ktx2_bytes`], not struct literals
+/// outside this crate). Within this crate, struct-literal construction
+/// remains allowed.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Ktx2Image {
     pub format: Ktx2Format,
     pub width: u32,
@@ -643,11 +671,25 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
     // kvd; W1.T9 audit Lente A HIGH#3 identificou. PH2D usa kvd para tag
     // alpha intent (PH2D_PREMUL key, W1.T8 cooker emit deferred).
     let mut kvd: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    // W1.T9 audit Lente ξ-F2 — count ITERATIONS, not `kvd.len()`. A
+    // hostile file can repeat one key thousands of times; that keeps
+    // `kvd.len()` at 1 while forcing a `to_vec()` per entry. Bounding the
+    // raw iteration count caps total work regardless of duplicate keys.
+    // Order is COUNT → KEY-SIZE → VALUE-SIZE → ALLOC: every bound gates
+    // its allocation, none allocate-before-check.
+    let mut seen: usize = 0;
     for (key, value) in reader.key_value_data() {
-        if kvd.len() >= MAX_KVD_ENTRIES {
+        seen += 1;
+        if seen > MAX_KVD_ENTRIES {
             return Err(Ktx2Error::TooManyKvdEntries {
-                count: kvd.len() + 1,
+                count: seen,
                 max: MAX_KVD_ENTRIES,
+            });
+        }
+        if key.len() > MAX_KVD_KEY_BYTES {
+            return Err(Ktx2Error::KvdKeyTooLong {
+                size: key.len(),
+                max: MAX_KVD_KEY_BYTES,
             });
         }
         if value.len() > MAX_KVD_VALUE_BYTES {
@@ -970,6 +1012,12 @@ mod tests {
         /// scheme). `None` keeps zero (uncompressed). `Some(2)`
         /// drives the `UnsupportedSupercompression` path (zstd).
         raw_supercompression_override: Option<u32>,
+        /// W1.T9 audit Lente ξ-F1 — `keyValueData` entries to emit as a
+        /// real KVD section between the DFD and the level data. Empty =
+        /// `kvd_byte_length = 0` (the pre-audit behaviour). Drives the
+        /// real parse path for `MAX_KVD_ENTRIES` / `MAX_KVD_VALUE_BYTES`
+        /// rejection and `PH2D_PREMUL` round-trips.
+        kvd_entries: Vec<(String, Vec<u8>)>,
     }
 
     impl FixtureSpec {
@@ -984,8 +1032,30 @@ mod tests {
                 levels: vec![(vec![0xFF, 0x00, 0x80, 0xFF], None)],
                 raw_format_override: None,
                 raw_supercompression_override: None,
+                kvd_entries: Vec::new(),
             }
         }
+    }
+
+    /// W1.T9 audit Lente ξ-F1 — serialize KVD entries into the on-disk
+    /// KTX2 `keyValueData` layout the `ktx2` reader expects: per entry a
+    /// `u32` LE `keyAndValueByteLength` (= key + NUL + value), then the
+    /// NUL-terminated UTF-8 key, then the value bytes, then zero-padding
+    /// to the next 4-byte boundary. Mirrors `KeyValueDataIterator::next`.
+    fn build_kvd_section(entries: &[(String, Vec<u8>)]) -> Vec<u8> {
+        let mut out: Vec<u8> = Vec::new();
+        for (key, value) in entries {
+            let key_bytes = key.as_bytes();
+            let kv_len = key_bytes.len() + 1 + value.len();
+            out.extend_from_slice(&(kv_len as u32).to_le_bytes());
+            out.extend_from_slice(key_bytes);
+            out.push(0u8);
+            out.extend_from_slice(value);
+            while out.len() % 4 != 0 {
+                out.push(0u8);
+            }
+        }
+        out
     }
 
     /// Construct a KTX2 byte buffer following `spec`. Tests must not
@@ -1008,14 +1078,35 @@ mod tests {
         let level_index_len: u32 = level_count * 24;
         let dfd_byte_offset: u32 = level_index_offset + level_index_len;
         let dfd_byte_length: u32 = u32::try_from(dfd_section.len()).expect("DFD len fits in u32");
+        // W1.T9 audit Lente ξ-F1 — optional KVD section sits between the
+        // DFD and the level data (KTX2 layout order). 4-byte aligned
+        // start; `kvd_byte_offset = kvd_byte_length = 0` when there are
+        // no entries (pre-audit behaviour for every existing fixture).
+        let kvd_section = build_kvd_section(&spec.kvd_entries);
+        let (kvd_byte_offset, kvd_byte_length): (u32, u32) = if kvd_section.is_empty() {
+            (0, 0)
+        } else {
+            let off = (dfd_byte_offset + dfd_byte_length + 3) & !3;
+            (
+                off,
+                u32::try_from(kvd_section.len()).expect("KVD len fits in u32"),
+            )
+        };
+
         // Level data is aligned to lcm(4, texel_block_size); for the
         // RGBA8 / BC* / ASTC sizes we test, 4 is always a safe LCM
-        // multiple. `Reader::new` also enforces `dfd_end < input.len()`
-        // strictly — so we always leave at least 1 byte of slack
-        // between the DFD and the first level (rounding `dfd_end + 4`
-        // down to the next multiple of 4 satisfies both invariants
-        // even when every payload is empty).
-        let mut level_data_offset = (dfd_byte_offset + dfd_byte_length + 4) & !3;
+        // multiple. `Reader::new` also enforces `kvd_end < input.len()`
+        // (and `dfd_end < input.len()` when there is no KVD) strictly —
+        // so we always leave at least 1 byte of slack between the last
+        // metadata section and the first level (rounding `+ 4` down to
+        // the next multiple of 4 satisfies both invariants even when
+        // every payload is empty).
+        let metadata_end = if kvd_section.is_empty() {
+            dfd_byte_offset + dfd_byte_length
+        } else {
+            kvd_byte_offset + kvd_byte_length
+        };
+        let mut level_data_offset = (metadata_end + 4) & !3;
 
         // Pre-compute each level's stored byte offset + payload size,
         // tracking running offset for the level index.
@@ -1043,8 +1134,8 @@ mod tests {
             index: Index {
                 dfd_byte_offset,
                 dfd_byte_length,
-                kvd_byte_offset: 0,
-                kvd_byte_length: 0,
+                kvd_byte_offset,
+                kvd_byte_length,
                 sgd_byte_offset: 0,
                 sgd_byte_length: 0,
             },
@@ -1067,6 +1158,12 @@ mod tests {
         // DFD section.
         buf[dfd_byte_offset as usize..(dfd_byte_offset + dfd_byte_length) as usize]
             .copy_from_slice(&dfd_section);
+
+        // KVD section (W1.T9 audit Lente ξ-F1), when present.
+        if !kvd_section.is_empty() {
+            let start = kvd_byte_offset as usize;
+            buf[start..start + kvd_section.len()].copy_from_slice(&kvd_section);
+        }
 
         // Each level's payload at its declared offset.
         for ((payload, _), &(byte_offset, _, _)) in spec.levels.iter().zip(&level_offsets) {
@@ -1309,13 +1406,154 @@ mod tests {
     // ~512 MiB allocation in test, which violates the slow-test
     // policy. The guard is one `saturating_add` plus a compare; it
     // is verified by inspection.
+
+    // ── W1.T9 audit Lente ξ-F1 — kvd parse-path coverage ──────────
     //
-    // W1.T9 — `Ktx2Error::TooManyKvdEntries` + `Ktx2Error::KvdValueTooLarge`
-    // require building synthetic KTX2 byte buffers com kvd section
-    // populated (FixtureSpec atual emite kvd_byte_length=0). Test coverage
-    // adicionado em W1.T2.3 quando snapshot integration tests materializarem;
-    // bounds são `if-compare-return` pequenos, verified por inspection +
-    // arch-gate `premul_kv_round_trips` planejado W2.T-pre.
+    // These exercise the REAL decode path (synthetic KTX2 bytes with a
+    // populated KVD section), not struct literals. The whole bounds
+    // verdict rests on the count→size→alloc ordering in the parse loop;
+    // a future refactor that inverts it is now caught by CI.
+
+    #[test]
+    fn decode_fixture_with_kvd_round_trips() {
+        let spec = FixtureSpec {
+            kvd_entries: vec![
+                ("KTXorientation".to_string(), b"rd".to_vec()),
+                ("KTXswizzle".to_string(), b"rgba".to_vec()),
+            ],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let image = decode_ktx2_bytes(&bytes).expect("valid kvd fixture decodes");
+        assert_eq!(image.kvd.len(), 2);
+        assert_eq!(
+            image.kvd.get("KTXorientation").map(Vec::as_slice),
+            Some(&b"rd"[..])
+        );
+        assert_eq!(
+            image.kvd.get("KTXswizzle").map(Vec::as_slice),
+            Some(&b"rgba"[..])
+        );
+    }
+
+    #[test]
+    fn decode_kvd_premul_round_trips_end_to_end() {
+        // PH2D_PREMUL=1 through the real parser must surface as
+        // Premultiplied (not just the struct-literal helper test).
+        let spec = FixtureSpec {
+            kvd_entries: vec![(PH2D_PREMUL_KEY.to_string(), vec![1u8])],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let image = decode_ktx2_bytes(&bytes).expect("premul kvd fixture decodes");
+        assert_eq!(image.premul_intent(), PremulIntent::Premultiplied);
+    }
+
+    #[test]
+    fn decode_rejects_too_many_kvd_entries() {
+        // MAX_KVD_ENTRIES = 64; the 65th entry must be rejected BEFORE
+        // it is inserted (count check precedes the map insert).
+        let entries: Vec<(String, Vec<u8>)> = (0..(MAX_KVD_ENTRIES + 1))
+            .map(|i| (format!("PH2D_K{i:03}"), vec![0u8]))
+            .collect();
+        let spec = FixtureSpec {
+            kvd_entries: entries,
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("over-count kvd must reject");
+        assert!(
+            matches!(
+                err,
+                Ktx2Error::TooManyKvdEntries { count, max }
+                    if count == MAX_KVD_ENTRIES + 1 && max == MAX_KVD_ENTRIES
+            ),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_rejects_oversized_kvd_value() {
+        // A value 1 byte over MAX_KVD_VALUE_BYTES is rejected BEFORE the
+        // `value.to_vec()` allocation (size check precedes the copy).
+        let big = vec![0xABu8; MAX_KVD_VALUE_BYTES + 1];
+        let spec = FixtureSpec {
+            kvd_entries: vec![("PH2D_BLOB".to_string(), big)],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("oversized kvd value must reject");
+        assert!(
+            matches!(
+                err,
+                Ktx2Error::KvdValueTooLarge { ref key, size, max }
+                    if key == "PH2D_BLOB" && size == MAX_KVD_VALUE_BYTES + 1 && max == MAX_KVD_VALUE_BYTES
+            ),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_accepts_kvd_value_at_exact_cap() {
+        // Boundary: a value of exactly MAX_KVD_VALUE_BYTES is allowed
+        // (the check is `>`, not `>=`).
+        let at_cap = vec![0x5Au8; MAX_KVD_VALUE_BYTES];
+        let spec = FixtureSpec {
+            kvd_entries: vec![("PH2D_EDGE".to_string(), at_cap.clone())],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let image = decode_ktx2_bytes(&bytes).expect("at-cap kvd value decodes");
+        assert_eq!(
+            image.kvd.get("PH2D_EDGE").map(Vec::len),
+            Some(MAX_KVD_VALUE_BYTES)
+        );
+    }
+
+    #[test]
+    fn decode_rejects_too_many_duplicate_kvd_keys() {
+        // ξ-F2 regression: MAX_KVD_ENTRIES+1 entries that all share ONE
+        // key. The dedup'd `kvd.len()` would stay at 1 forever — only the
+        // iteration counter catches the metadata-bloat / churn attack.
+        let entries: Vec<(String, Vec<u8>)> = (0..(MAX_KVD_ENTRIES + 1))
+            .map(|_| ("PH2D_DUP".to_string(), vec![0u8]))
+            .collect();
+        let spec = FixtureSpec {
+            kvd_entries: entries,
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("duplicate-key flood must reject");
+        assert!(
+            matches!(
+                err,
+                Ktx2Error::TooManyKvdEntries { count, max }
+                    if count == MAX_KVD_ENTRIES + 1 && max == MAX_KVD_ENTRIES
+            ),
+            "got {err:?}",
+        );
+    }
+
+    #[test]
+    fn decode_rejects_oversized_kvd_key() {
+        // ξ-F3: a key 1 byte over MAX_KVD_KEY_BYTES is rejected before the
+        // `key.to_string()` allocation; the error carries size, not key.
+        let long_key = "K".repeat(MAX_KVD_KEY_BYTES + 1);
+        let spec = FixtureSpec {
+            kvd_entries: vec![(long_key, b"v".to_vec())],
+            ..FixtureSpec::valid_rgba8_srgb_1x1()
+        };
+        let bytes = build_fixture(&spec);
+        let err = decode_ktx2_bytes(&bytes).expect_err("oversized kvd key must reject");
+        assert!(
+            matches!(
+                err,
+                Ktx2Error::KvdKeyTooLong { size, max }
+                    if size == MAX_KVD_KEY_BYTES + 1 && max == MAX_KVD_KEY_BYTES
+            ),
+            "got {err:?}",
+        );
+    }
 
     // ── W1.T9 — kvd preservation + helper API (struct-literal tests) ──
 
@@ -1415,9 +1653,9 @@ mod tests {
         assert_eq!(img.byte_size_estimate(), 4); // 1×1×4 RGBA8
     }
 
-    /// Parser smoke: fixture canônica não tem kvd entries → image.kvd empty.
-    /// (Build_fixture sets kvd_byte_length=0; full kvd parser coverage
-    /// adicionada em W1.T2.3 snapshot tests futuro.)
+    /// Parser smoke: the canonical fixture has no kvd entries →
+    /// `image.kvd` is empty (`kvd_byte_length = 0` path). Populated-kvd
+    /// parse coverage now lives in the `ξ-F1` tests above.
     #[test]
     fn decode_fixture_has_empty_kvd() {
         let bytes = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());

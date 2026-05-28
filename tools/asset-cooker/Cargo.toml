@@ -55,6 +55,11 @@ ctt = { version = "0.4.0", default-features = false, features = [
 # Image decoder for source files (PNG mainly; jpeg/webp puxados se necessário em W4+).
 # Versão alinhada workspace standard (ph2d-asset / ph2d-imageio-*).
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Audit W1.T11+T14 ι-CRITICAL-1 fix (2026-05-28): Rust std `f32::sin/cos` documenta
+# precisão non-deterministic cross-platform. Fixtures que usam transcendentals
+# (brush_atlas_256_r8 + normal_map_512) precisam de libm para HR-6 cross-machine
+# determinism. `libm` é pure-Rust IEEE 754 strict — deterministic per spec.
+libm = "0.2"
 
 [dev-dependencies]
 # Parser TOML para arch-gate `architecture_ctt_features_pinned` — substitui

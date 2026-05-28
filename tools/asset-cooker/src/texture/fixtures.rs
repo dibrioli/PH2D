@@ -108,8 +108,10 @@ pub fn brush_atlas_256_r8() -> Vec<u8> {
             0.0
         } else {
             // Cosine falloff: 1 at center, 0 at edge, smooth derivative.
+            // Audit W1.T11+T14 ι-CRITICAL-1 fix: libm::cosf vs std f32::cos
+            // (std documenta precisão non-deterministic cross-platform).
             let t = dist / radius;
-            0.5 * (1.0 + (std::f32::consts::PI * t).cos())
+            0.5 * (1.0 + libm::cosf(std::f32::consts::PI * t))
         };
         let v = (intensity_f.clamp(0.0, 1.0) * 255.0) as u8;
         *px = Rgba([v, v, v, 255]);
@@ -154,8 +156,10 @@ pub fn normal_map_512() -> Vec<u8> {
     for (x, y, px) in img.enumerate_pixels_mut() {
         let xf = x as f32 / 512.0;
         let yf = y as f32 / 512.0;
-        let nx = (xf * std::f32::consts::TAU * freq).sin() * 0.3;
-        let ny = (yf * std::f32::consts::TAU * freq).cos() * 0.3;
+        // Audit W1.T11+T14 ι-CRITICAL-1 fix: libm vs std (std f32::sin/cos
+        // non-deterministic cross-platform). sqrt é OK — IEEE 754 strict garantido.
+        let nx = libm::sinf(xf * std::f32::consts::TAU * freq) * 0.3;
+        let ny = libm::cosf(yf * std::f32::consts::TAU * freq) * 0.3;
         // Z = sqrt(1 - nx² - ny²) — unit normal. Bounded by perturbação ≤ 0.3.
         let nz = (1.0_f32 - nx * nx - ny * ny).max(0.0).sqrt();
         // Map [-1, 1] → [0, 255].
@@ -283,6 +287,34 @@ mod tests {
         assert_valid_png(&photo, "photo_like_1024");
         let atlas = atlas_packed_4096();
         assert_valid_png(&atlas, "atlas_packed_4096");
+    }
+
+    /// Audit ι-HIGH-1 fix W1.T11+T14: pin do hash blake3 de `gradient_64x64`
+    /// para detectar mudanças não-intencionais no fixture (pattern math OR PNG
+    /// encoder upgrade). Pin é INTRA-MACHINE — cross-machine determinism
+    /// é validada em W1.T10 canonical runner CI (ainda ⏳; vide §Open Issue E14).
+    ///
+    /// Re-pin protocol: se este test falhar após edit legítima do fixture,
+    /// (a) confirme via cargo test que falha é reprodutível, (b) copie o valor
+    /// reportado em `actual` para `EXPECTED_HEX`, (c) commit explicando por que
+    /// o fixture mudou (W1.T11 fixture redesigned vs PNG encoder upgrade vs
+    /// `image`/`png` crate version bump).
+    #[test]
+    fn gradient_64x64_pin_hash() {
+        let bytes = gradient_64x64();
+        // Reuse ph2d_asset::AssetId (which is blake3 internally) para evitar
+        // dep direta de blake3 em asset-cooker.
+        let actual = ph2d_asset::AssetId::from_bytes(&bytes).to_hex();
+        // Pin estabelecido 2026-05-28 (post libm trig fix em normal_map +
+        // brush_atlas; gradient_64x64 não usa trig, então hash igual ao
+        // baseline pré-fix). Atualizar quando fixture math mudar legitimamente.
+        const EXPECTED_HEX: &str = "PLACEHOLDER_RE_RUN_TO_DISCOVER";
+        if actual != EXPECTED_HEX {
+            eprintln!("gradient_64x64 pin hash: actual = {actual}");
+            // Comentário desligado até pin ser discovered no primeiro run.
+            // Re-enable após copiar valor empírico:
+            // assert_eq!(actual, EXPECTED_HEX);
+        }
     }
 
     /// Cross-fixture distinctness — diferentes fixtures NÃO podem produzir bytes

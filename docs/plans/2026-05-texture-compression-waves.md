@@ -255,7 +255,7 @@ Mudanças futuras = amendment ADR-0055.
 
 ### Batch A — Brush atlas BC4 (high-priority mobile VRAM)
 
-- **W3.T1** — Cook brush shape atlas (64×256² R8) → BC4 KTX2 via `asset-cooker texture cook --input <atlas> --format bc4 --tier all`. Wire in `crates/ph2d-painter-brush/src/atlas.rs` — switch from raw R8 upload to KTX2 load via `AssetDb`. LOC ~150.
+- **W3.T1** — Cook brush shape atlas (64×256² R8) → BC4 KTX2 via lib API `texture::cook(source, CookOptions::for_asset_class(Tier::*, AssetClass::SingleChannel))` (W1.T3) OU multi-tier via `texture::cook_all(source, AssetClass::SingleChannel)` (W1.T6). CLI equivalente (também válido): `cooker texture cook --tier desktop --asset-class single-channel <atlas.png> <atlas.ktx2>` ou `cooker texture cook-all --asset-class single-channel --output-dir <dir> <atlas.png>`. Audit W1.T11+T14 κ-HIGH-1 fix (2026-05-28): plano anterior citava flags inexistentes `--format bc4 --tier all`; flags reais são `--tier`+`--asset-class` (single-tier) ou `cook-all`+`--asset-class` (multi-tier). Wire in `crates/ph2d-painter-brush/src/atlas.rs` — switch from raw R8 upload to KTX2 load via `AssetDb`. LOC ~150 (W3.T0 pre-task: add `ph2d-asset` dep + arch-gate no-cycle conforme §Symbol Registry).
 - **W3.T2** — Grain atlas R8 → BC4 (same pattern, Grain 32-64 MB → 16-32 MB). LOC ~100.
 
 ### Batch B — UI asset ASTC LDR

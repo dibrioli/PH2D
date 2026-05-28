@@ -75,9 +75,15 @@ fn sample_cook_brush_atlas_intra_machine_determinism() {
 #[test]
 fn sample_cook_brush_atlas_bc4_smaller_than_uncompressed_baseline() {
     // ADR-0055-v4 §Memory Budget Math: BC4 4 bpp ÷ R8 8 bpp = 0.5 → -50% saving.
-    // 256×256 R8 raw = 64 KB. 256×256 BC4 raw = 32 KB. KTX2 container overhead
-    // (header + format descriptor + key/value data + level index + padding)
-    // tipicamente 200-600 bytes. Cooked total expected ~32 KB + overhead < 64 KB.
+    // 256×256 R8 raw = 64 KB. 256×256 BC4 raw payload = 32 KB. KTX2 container
+    // overhead (header + DFD + KVD + level index + padding) tipicamente 200-600
+    // bytes. Cooked total expected ~33 KB.
+    //
+    // Audit W1.T11+T14 ι-HIGH-2 fix: upper-bound tightened de 70.4 KB (frouxo
+    // 2.17× sobre target) para 36 KB (target + ~10% slack sobre BC4 payload).
+    // Empiricamente (κ audit reportou): Desktop BC4 actual = 32960 B = 32.2 KB
+    // = 50.3% de R8 raw. Bound 36 KB pega regressões > ~3 KB (e.g., kvd bloat
+    // W1.T8, encoder padding changes ctt upgrade).
     let png = fixtures::brush_atlas_256_r8();
     let ktx2 = texture::cook(
         &png,
@@ -85,23 +91,24 @@ fn sample_cook_brush_atlas_bc4_smaller_than_uncompressed_baseline() {
     )
     .expect("cook");
 
-    let raw_r8_bytes = 256 * 256; // 64 KB equiv
-    let raw_rgba_bytes = 256 * 256 * 4; // 256 KB equiv (source PNG decodes to RGBA8)
+    let raw_r8_bytes = 256 * 256; // 65536 = 64 KB equiv
+    let bc4_payload = raw_r8_bytes / 2; // 32 KB (BC4 = 4 bpp)
+    let upper_bound = bc4_payload + 4096; // payload + 4 KB header/overhead margin
+
     assert!(
-        ktx2.len() < raw_rgba_bytes,
-        "BC4 cooked KTX2 ({} bytes) MUST be smaller than RGBA8 raw source ({} bytes)",
+        ktx2.len() < raw_r8_bytes,
+        "BC4 cooked KTX2 ({} bytes) MUST be smaller than R8 source ({} bytes) — \
+         ADR-0055-v4 §Memory Budget Math (-50% saving) violada",
         ktx2.len(),
-        raw_rgba_bytes,
+        raw_r8_bytes,
     );
-    // -50% saving sobre R8 não é guaranteed strictly (KTX2 overhead pode empurrar
-    // pequenas textures acima do R8 raw para fixtures muito pequenas, mas
-    // 256² é grande o suficiente). Allow 10% slack for header.
-    let upper_bound = raw_r8_bytes + (raw_r8_bytes / 10);
     assert!(
         ktx2.len() < upper_bound,
-        "BC4 256² cooked ({} bytes) deveria ser ≤ R8 raw + 10% header ({} bytes)",
+        "BC4 256² cooked ({} bytes) excede payload-target+margin ({} bytes) — \
+         regressão? (BC4 payload teórico = {} bytes; KTX2 overhead típico < 1 KB)",
         ktx2.len(),
         upper_bound,
+        bc4_payload,
     );
 }
 

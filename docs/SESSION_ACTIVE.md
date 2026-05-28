@@ -1,81 +1,68 @@
-# SESSION_ACTIVE — coordenação leve entre Coord-A e Coord-B (DIRETRIZ §1.1.1)
+# SESSION_ACTIVE — coordenação leve (DIRETRIZ §1.1)
 
-**Propósito:** post-it compartilhado para os 2 Coordenadores saberem o que o outro está fazendo agora — evitar pisar um no outro em arquivos foundational/contrato.
+**Propósito:** post-it compartilhado do estado vivo da orquestração. **Modelo atual
+(2026-05-28): 1 Coordenador único + 5 Implementadores** (Enio reestruturou após
+colisões git entre implementadores paralelos). O Coordenador mantém esta seção; os
+5 implementadores **leem antes de cada burst** e não escrevem aqui.
 
-**Não é log histórico.** Limpe sua entrada ao terminar a sessão ou em pausa longa. Entradas antigas vão para `git log`, não pra cá.
+**Não é log histórico.** Entradas concluídas vão para `git log`. Limpe ao encerrar.
 
-**Edição:** apenas Coord-A e Coord-B editam. Implementadores leem (informativo) mas não escrevem.
-
----
-
-## Coord-A (foundational)
-
-**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W1. Continuação-audit dos 4 commits anteriores fechou **GO**. **T1.1 (Sprite v3→v4, 20 fields) FECHADO padrão-ouro — commit `4591f7e`** pós 2-lens audit (B ABI/serde + A/E scope/coverage): struct 20 campos + VERSION 4 + construtores + `SpriteVersioned::V4`(disc 0x01) + drift-gate `spritev3_struct_wire_matches_live_sprite_v3` aposentado + 2 testes V4 novos (disc-pin + round-trip) + reconciliação nome helper `default_region_filter_clip` em anatomia/schema/ADR-0070. 85 lib + 23 postcard verdes. **Próxima: T1.2.** Sessão única Coord-A + Implementador. Slot: `impl-sprite`. **RESERVO `crates/ph2d-render/`.**
-
-**⚠️ NOVO pre-existing failure (cross-session, NÃO fixado per audit-scope-discipline):** `cargo clippy -p <qualquer> --all-targets` falha em `crates/ph2d-imageio-svg/src/lib.rs:84` (`field_reassign_with_default`, rust-1.95.0). Surge porque clippy-driver linta workspace path-deps. **BLOQUEIA `ship.sh`/CI clippy.** Owner: imageio-svg / foundational. Fix trivial 1-linha (`usvg::Options { ..Default::default() }`). Reportado ao Enio.
-
-**Notas para próximo agente:**
-- W1.T1.6 migrator é **MANDATÓRIO** (não fallback) — ADR-0070-amendment-2 §3 reduziu o hybrid `#[serde(default)]` a single tier (wrapper enum único caminho).
-- T1.3.5 expandiu workspace-wide (de 1 site em ph2d-ecs para 23 sites em 5 crates) per R1 Lens B finding — todos os transcendentals que tocam Transform direta ou indiretamente. Arch-gate `libm_exact_version_pin_enforced_in_workspace` mantém pin discipline (5 crates). Cross-OS golden hash `d2a3ca34…cf07f` pinada em `transform_determinism.rs`.
-
-**Pre-existing failures cross-session (NÃO fixadas — `feedback-audit-scope-discipline`; reportar ao owner):**
-1. `cargo test -p ph2d-editor-core --test architecture_panel_loc_cap` → `panel-hierarchy/src/paint.rs::paint_hierarchy_body 388 LOC > 200 cap`. Inflou via commits `3fab958` + `4fb822b` da hierarchy session.
-2. `cargo check -p ph2d-host-desktop` → `ph2d-tool-painter`: `PanelEvent::Activated` variant missing. WIP Painter session pós-`231d6cc`/`1485471`.
-
-Working tree contamination (não staged por mim; aparecerão se próximo agente fizer `git add -A`):
-- `shells/desktop/src/hero_intents/sprite_merge.rs` (M)
-- `shells/desktop/src/name_unique.rs` (M)
-- `crates/ph2d-brush-traits/tests/_audit_*.rs` (??) + `crates/ph2d-vector-traits/tests/_audit_send_sync.rs` (??)
-- Recomendação: próximo commit/push escope paths via `git add -- <path>` específico, não `-A`.
-
-**Pastas tocadas (commits cef1959 + e3ad19f + 5974a84 + fix-up pendente):**
-- `crates/ph2d-render/` — T0.12 + T0.13: `SpriteVersioned` wrapper + `SpriteV3` mirror + 5 fixtures v3 + 22 tests + postcard `=1.1.3` pin + smoke_fixture_renderable stub + migrate_sprite_v3_to_v4 stub per spec §10.6.
-- `crates/ph2d-ecs/` — T1.3.5: `libm = "=0.2.16", default-features = false` + sweep `Transform::compose` + `GlobalTransform::from_transform` + `cross_os_golden_hash_pinned` (blake3 `d2a3ca34…cf07f`) + `libm_exact_version_pin_enforced_in_workspace`.
-- `crates/ph2d-editor-core/` — T1.3.5: libm dep + 6 sweep sites em `gizmo/transform.rs` (`world_delta_to_local`, `compose_snapshot`, `resize_corner`, `resize_edge`, `move_pivot_transform`, `pivot_snap_candidates`, `opposite_anchor_translation`) + test parity em `gizmo/tests.rs`.
-- `crates/ph2d-tool-rasterize/` — T1.3.5: libm dep + sweep em `rotate_mitchell_premult`.
-- `shells/desktop/` — T1.3.5: libm dep + sweep em `input_dispatch.rs` (move-pivot), `input_dispatch/gizmo_drag.rs` (3 sites: scale/rotate/translate), `render_loop/snapshots.rs` (extract), `sim_populate.rs` (Vogel spiral demo).
-- `tools/asset-cooker/Cargo.toml` — T1.3.5 R2: libm pin tightened `"0.2"` → `"=0.2.16", default-features = false` para alinhar com workspace pin discipline.
-- `docs/architecture/decisions/0070-amendment-2.md` (NEW) — ratifica T0.13 empirical finding.
-- `assets/smoke_fixtures/sprite_inspector_v2/README.md` (NEW) — spec §15.8.2 directory contract.
-- `docs/Sprite_projeto/smoke_goldens/README.md` (NEW) — idem.
-- `docs/Sprite_projeto/10_schema_versionamento.md` (MODIFIED) — §10.1 + §10.4 SUPERSEDED markers.
-- `docs/HANDOFF_sprite_inspector_v2.md` (MODIFIED — untracked carrying R3 edits) — §5 + §2 atualizados com o achado empírico T0.13 + workspace-wide sweep scope.
-- `docs/SESSION_ACTIVE.md` (esta entrada).
-
-**Pastas reservadas para próxima continuação (T1.1..T1.14 schema bump):**
-- `crates/ph2d-render/` (continua: bump `Sprite` v3→v4 com 14 novos campos + ABI `RenderInstance` 144B + 11 vertex attrs + gates `architecture_sprite_inspector_surface` + `vertex_attr_offsets_match_struct` expandido + `sprite_tint_finite_rejects_nan_and_inf` + `sprite_scene_load_size_cap_enforced`).
-- `crates/ph2d-host/src/` SOMENTE para declarar `MemoryBudget { sprite_inspector_v2: SpriteInspectorMemoryBudget }` ao final de W1 — Coord-A only.
-- Read-only: `docs/Sprite_projeto/` (spec normativa ratificada), `docs/architecture/decisions/0069..0074-*.md` + `0070-amendment-2.md`, `0025-amendment-1.md`.
-
-**Pastas reservadas (genéricas, quando voltar a contexto foundational):**
-- `scripts/` · `.github/workflows/` · contratos congelados (`crates/ph2d-nodegraph/`, `crates/ph2d-editor-core/src/tool.rs`)
-- `docs/IntegracaoMultiAgente/DIRETRIZ.md` · arch-gates em geral
-- `tools/asset-cooker/` · `crates/ph2d-asset/`
-
-**Pastas NÃO tocar nesta sessão (Coord-A reserva passada — Painter T1.8+ pausado):**
-- `crates/ph2d-painter-stroke/` · `crates/ph2d-painter-contracts/` · `crates/ph2d-tool-painter/` · `shells/desktop/src/render_loop/painter_bridge.rs`
-
-> **Nota anti-confusão:** `git status` pode mostrar arquivos `M` em `crates/ph2d-painter-stroke/` / `crates/ph2d-tool-painter/` / outros painter-paths — esses são **resíduo da sessão Painter T1.9 anterior** (commit `231d6cc` — Painter T1.9 wire, 2026-05-28), NÃO desta sessão Coord-A. Verifique `git log --oneline -5` ou `git diff <path>` antes de assumir conflito.
-
-**Contexto pausado (retomar pós-Sprite):**
-- Painter W1 T1.8 fechado (commit `231d6cc` — Painter T1.9 wire + 14 audit remediations, 2026-05-28).
-- KTX2 Fase 2 W0 fechada e W1.T0 destrancada (ADR-0055-v4 Accepted, audit 9.3/10). 2 commits locais: `971e237` + `db6971c`. Próxima retomada lê [HANDOFF §12](HANDOFF_ktx2_phase2.md) antes de W1.T1.
+**Baseline git:** HEAD = `e5fb811` · **83 commits ahead de origin/main** (todas as
+sessões somadas, zero push nesta jornada). Push é decisão do Enio, via Coordenador,
+1× por jornada após `./scripts/ship.sh` verde.
 
 ---
 
-## Coord-B (baldes)
+## COORDENADOR (único) — ATIVO 2026-05-28
 
-**Status:** INATIVO
+Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings escritos:
+`docs/HANDOFF_{sprite_w1,imageio_avif,ktx2_w1,painter_w2,vector_w1}_impl.md`.
 
-**Pastas reservadas (quando ativar):**
-- `tools/ph2d-{panel,chrome,widget,node,tool}-sync/` (codegens)
-- `crates/ph2d-panel-*` · `crates/ph2d-editor-core/src/screens/hero/chrome/*` · `crates/ph2d-editor-core/src/widget/*`
+### Mapa de posse (anti-colisão — zero overlap de escrita)
+
+| Impl | Slot | Módulo | Pasta(s) exclusiva(s) | Caminho |
+|---|---|---|---|---|
+| 1 | `impl-sprite` | Sprite Inspector v2 | `crates/ph2d-render/` (+leitura `ph2d-ecs/`) | (C) foundational, **RESERVA ph2d-render** |
+| 2 | `impl-avif` | Image I/O AVIF | `crates/ph2d-imageio-avif/` | (A)/(D) |
+| 3 | `impl-ktx2` | KTX2 Fase 2 | `crates/ph2d-asset-ktx2/` · `tools/asset-cooker/` · `crates/ph2d-asset/` | (A)/(D) |
+| 4 | `impl-painter` | Painter W2 | `crates/ph2d-tool-painter/` · `crates/ph2d-panel-painter-sidebar/` (+`painter-stroke`/`-brush`) | (A)/(D) |
+| 5 | `impl-vector` | Vector W1 | `crates/ph2d-vector-doc/` · `-traits/` · `crates/ph2d-brush-traits/` · `crates/ph2d-tool-vector-pen/` · shells bridges abaixo | (A)/(D) |
+
+**Pontos compartilhados resolvidos:**
+- `crates/ph2d-asset/` → escrita só do **Impl-3 (KTX2)**; Impl-2 (AVIF) só **lê** o bridge `loader.rs::decode_via_imageio_registry`.
+- `crates/ph2d-render/` → exclusivo do **Impl-1 (Sprite)**. Vector H5/M3 (mover `world_to_screen_affine` p/ `Camera2d`) está **BLOQUEADO** até o Coord liberar pós-fechamento Sprite W1.
+- `shells/desktop/` bridges → cada tool dona do seu: `vector_pen_bridge.rs` + `vector_pen_input.rs` = **Impl-5** (exceção tool-bridge §3.A.4). Plumbing compartilhado (`render_loop/mod.rs`, keybinds, `painter_bridge.rs`) = **Coordenador**.
+
+### Itens que o Coordenador segura (não delegados)
+
+1. **Ship-blocker clippy** `crates/ph2d-imageio-svg/src/lib.rs:84` — `field_reassign_with_default` (rust-1.95.0). Bloqueia `ship.sh`/CI clippy. Fix 1-linha (`usvg::Options { ..Default::default() }`). **Aplicar no ship.**
+2. **fmt drift workspace** (limpar com `cargo fmt --all` no ship): `crates/ph2d-editor-core/src/interaction/dispatch/{number_input,tick}.rs` (puro fmt, zero lógica), `crates/ph2d-editor-core/tests/number_input_mapped_link.rs`, `tools/asset-cooker/tests/sample_cook_brush_atlas.rs`, `shells/desktop/src/render_loop/mod.rs:626`.
+3. **Painter T2.5 keybind/shell wire** (`painter_bridge.rs` + Cmd+Enter) — caminho (C); Impl-4 expõe o método público, Coord faz o wire.
+4. **Sequenciamento Vector H5/M3** — liberar `ph2d-render` ao Impl-5 só quando Sprite W1 fechar.
+5. **Push** dos 83 commits — `ship.sh` verde primeiro; decisão final do Enio.
+
+### Pre-existing failures cross-session (NÃO fixar nos módulos — `feedback-audit-scope-discipline`)
+
+1. `cargo test -p ph2d-editor-core --test architecture_panel_loc_cap` → `panel-hierarchy/src/paint.rs::paint_hierarchy_body` 388 LOC > 200 cap (hierarchy session, commits `3fab958`+`4fb822b`).
+2. `cargo check -p ph2d-host-desktop` → `ph2d-tool-painter` `PanelEvent::Activated` variant missing (Painter session pós-`231d6cc`/`1485471`).
+3. **Painter `history_integration_t19.rs` 4 testes vermelhos** — regressão REAL commitada nas crates do Painter (NÃO é WIP de dispatch alheio, como handoff antigo dizia; o teste nem toca dispatch). **Owner = Impl-4 (Task 0 do briefing).**
+
+### Restrição de recursos
+**RAM 8 GiB ⇒ máx 2-3 `cargo` simultâneos.** NÃO rodar os 5 implementadores compilando ao mesmo tempo (swap thrashing). Escalonar; cada um com `source scripts/slot-env.sh <slot>` ou `CARGO_TARGET_DIR` próprio.
+
+### Disciplina git imposta a todos os 5
+`git add -- <paths>` (nunca `-A`/`-a`/`.`) · `git commit --no-verify -m "msg" -- <paths>` · race-guard `git diff --cached --name-only` + `git diff --name-only --diff-filter=U` antes do commit · **`git stash` PROIBIDO** (injetou conflito em arquivo alheio) · sem push (Coord faz ship 1×/jornada).
+
+---
+
+## Coord-B (baldes — legado do modelo 2-Coord)
+
+**Status:** INATIVO (absorvido pelo Coordenador único no modelo atual)
 
 ---
 
 ## Convenções
 
-- Atualize sua seção ao **iniciar** sessão e ao **terminar** ou pausar longo.
-- Se vai tocar pasta da seção do outro Coord, **PARE e renegocie** — adicione comentário `**!!! CONFLITO: ...**` na entrada dele e espere ack.
-- Implementadores: sua pasta exclusiva é declarada no briefing do Coord — não precisa aparecer aqui.
-- Quando ambos Coords inativos (como agora), deixe ambas as seções com `**Status:** INATIVO` mas mantenha as Pastas reservadas como referência.
+- Coordenador atualiza esta seção ao iniciar/terminar/pausar.
+- Implementador que precise tocar pasta fora da sua: **PARA e reporta ao Coordenador** — não edita, não renegocia sozinho.
+- Quando o Coordenador encerrar a jornada, limpe os itens concluídos; mantenha o mapa de posse como referência viva enquanto os módulos estiverem abertos.

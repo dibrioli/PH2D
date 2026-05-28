@@ -50,3 +50,9 @@ docs/design/uploads/
 
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/
+
+# Vector Pen smoke scratch — the Pen tool auto-saves one .ph2d-vector per
+# close-path to cwd (W1 MVP debt; auto-save removed when W2 AssetDb lands).
+# See docs/AUDIT_vector_module_W1_results.md C1-C3.
+vector_pen_*.ph2d-vector
+target/vector-scratch/

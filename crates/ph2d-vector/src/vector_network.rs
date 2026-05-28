@@ -35,10 +35,36 @@
 //!   enforced gate.
 
 use ph2d_color::OklchColor;
-use ph2d_vector_doc::{Region, VectorNetwork};
+use ph2d_vector_doc::{Region, Segment, SegmentId, VectorNetwork, Vertex, VertexId};
+use std::collections::BTreeMap;
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Point};
 use vello::peniko::{Brush, Color, Fill};
+
+/// Scratch lookup tables built once per `draw_vector_network` call so
+/// `build_region_path_indexed` resolves segment / vertex refs in
+/// O(log N) instead of O(N) linear scan per ref (R4 audit Lens-K
+/// HIGH-K1).
+///
+/// `BTreeMap` (not `HashMap`) honors HR-5 + ADR-0022 — same lookup
+/// complexity class (logarithmic vs constant amortized) but with
+/// deterministic iteration. For worst-case 200k segments,
+/// log₂(200k) ≈ 18 ops per lookup vs 200k linear; for typical 500
+/// segments, log₂(500) ≈ 9 ops vs 500. Either way the linear-scan
+/// hot-path is gone.
+struct NetworkLookup<'a> {
+    segments: BTreeMap<SegmentId, &'a Segment>,
+    vertices: BTreeMap<VertexId, &'a Vertex>,
+}
+
+impl<'a> NetworkLookup<'a> {
+    fn build(network: &'a VectorNetwork) -> Self {
+        Self {
+            segments: network.segments.iter().map(|s| (s.id, s)).collect(),
+            vertices: network.vertices.iter().map(|v| (v.id, v)).collect(),
+        }
+    }
+}
 
 /// Render every region of `network` into `scene`, fill-only, under the
 /// given `transform`.
@@ -63,6 +89,12 @@ pub fn draw_vector_network(
     styles: &ph2d_vector_doc::StyleTable,
     transform: Affine,
 ) -> usize {
+    // R4 audit Lens-K HIGH-K1: build segment+vertex indexes ONCE per
+    // frame instead of triple linear scan per region.segment ref.
+    // Per typical-asset profile (100 regions, 32 segs/region, 500 segs,
+    // 300 vertices) this drops the lookup cost from ~3.5M ops/frame to
+    // ~4k ops/frame (~1000× speedup) without changing the output.
+    let lookup = NetworkLookup::build(network);
     let mut drawn = 0;
     for region in &network.regions {
         let Some(fill_ref) = region.fill else {
@@ -71,7 +103,7 @@ pub fn draw_vector_network(
         let Some(fill_solid) = styles.fills.get(&fill_ref) else {
             continue;
         };
-        let path = build_region_path(network, region);
+        let path = build_region_path_indexed(&lookup, region);
         if path.is_empty() {
             continue;
         }
@@ -91,19 +123,35 @@ pub fn draw_vector_network(
 /// Pure function; testable without Vello.
 ///
 /// **Strict mode**: if any segment in the region references a vertex
-/// or segment that isn't in the network, returns an empty path. A
-/// half-built polyline that silently "stitches across" the gap
-/// produces a self-intersecting fill that looks like a render bug —
-/// strict failure surfaces the data problem instead of masking it.
-/// Callers can `validate()` the network upstream to detect the
-/// condition before drawing.
+/// or segment that isn't in the network, returns an empty path
+/// (strict failure surfaces data problems instead of masking them).
+///
+/// **Single-region callers**: this convenience builds a local
+/// segment/vertex index each call (O(S + V) per region). When drawing
+/// **many regions** of the same network, use [`draw_vector_network`]
+/// which hoists the index build once per frame (O(S + V + R × S_per_R)
+/// total, ~1000× faster on typical-asset profiles per R4 audit
+/// Lens-K HIGH-K1).
 ///
 /// One `Vec<PathEl>` allocation is performed up-front via
-/// `BezPath::with_capacity` sized for exactly `2 + N` elements
-/// (1 MoveTo + N CurveTo + 1 ClosePath). `path.curve_to()` pushes
-/// exactly one `PathEl::CurveTo` — no reallocation during the loop.
+/// `BezPath::with_capacity` sized for exactly `2 + N` elements.
 #[must_use]
 pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
+    if region.segments.is_empty() {
+        return BezPath::new();
+    }
+    let lookup = NetworkLookup::build(network);
+    build_region_path_indexed(&lookup, region)
+}
+
+/// Indexed variant of [`build_region_path`] — accepts a pre-built
+/// [`NetworkLookup`] so multi-region rendering amortizes the index
+/// construction.
+///
+/// Same strict semantics as [`build_region_path`]: dangling refs
+/// return an empty path. Same alloc behavior: exactly one
+/// `BezPath::with_capacity(2 + N)` per call.
+fn build_region_path_indexed(lookup: &NetworkLookup<'_>, region: &Region) -> BezPath {
     if region.segments.is_empty() {
         return BezPath::new();
     }
@@ -112,14 +160,14 @@ pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
     let mut first = true;
 
     for &(seg_id, forward) in &region.segments {
-        let Some(segment) = network.segments.iter().find(|s| s.id == seg_id) else {
+        let Some(segment) = lookup.segments.get(&seg_id) else {
             return BezPath::new();
         };
         let (start_v, end_v, c1, c2) = if forward {
-            let Some(s) = network.vertices.iter().find(|v| v.id == segment.start) else {
+            let Some(s) = lookup.vertices.get(&segment.start) else {
                 return BezPath::new();
             };
-            let Some(e) = network.vertices.iter().find(|v| v.id == segment.end) else {
+            let Some(e) = lookup.vertices.get(&segment.end) else {
                 return BezPath::new();
             };
             (
@@ -129,10 +177,10 @@ pub fn build_region_path(network: &VectorNetwork, region: &Region) -> BezPath {
                 e.pos + segment.in_at_end,
             )
         } else {
-            let Some(s) = network.vertices.iter().find(|v| v.id == segment.end) else {
+            let Some(s) = lookup.vertices.get(&segment.end) else {
                 return BezPath::new();
             };
-            let Some(e) = network.vertices.iter().find(|v| v.id == segment.start) else {
+            let Some(e) = lookup.vertices.get(&segment.start) else {
                 return BezPath::new();
             };
             (

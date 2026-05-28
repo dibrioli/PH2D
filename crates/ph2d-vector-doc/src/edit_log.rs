@@ -157,6 +157,144 @@ pub enum VectorOp {
     },
 }
 
+/// Failure modes for [`VectorOp::apply_to_network`] / [`EditLog::push_and_apply`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VectorOpApplyError {
+    /// Referenced [`VertexId`] not present in the network.
+    UnknownVertex(VertexId),
+    /// Referenced [`SegmentId`] not present in the network.
+    UnknownSegment(SegmentId),
+    /// Referenced [`RegionId`] not present in the network.
+    UnknownRegion(RegionId),
+    /// Operation requires the full [`crate::Ph2dVectorAsset`] context
+    /// (`ApplyBoolean` needs the boolean engine W3+; `SetStrokeStyle`
+    /// needs the `StyleTable`; `CrdtMerge` updates `Ph2dVectorAsset.crdt_state`).
+    /// Use the asset-level apply variant on a higher-level wrapper.
+    NeedsAssetContext,
+}
+
+impl std::fmt::Display for VectorOpApplyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnknownVertex(id) => write!(f, "unknown vertex id {id}"),
+            Self::UnknownSegment(id) => write!(f, "unknown segment id {id}"),
+            Self::UnknownRegion(id) => write!(f, "unknown region id {id}"),
+            Self::NeedsAssetContext => write!(
+                f,
+                "VectorOp variant requires Ph2dVectorAsset context (StyleTable / boolean engine / crdt_state)"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for VectorOpApplyError {}
+
+impl VectorOp {
+    /// Apply this op to a [`VectorNetwork`] (network-only mutation).
+    ///
+    /// **W1 ergonomic helper (R4 audit Lens-G HIGH-G3)**: tools that
+    /// mutate a network during interactive authoring can call this
+    /// instead of duplicating the match-on-variant arms. The op is
+    /// applied **but not pushed to any edit log** — use
+    /// [`EditLog::push_and_apply`] to do both atomically.
+    ///
+    /// Variants that need external context return
+    /// [`VectorOpApplyError::NeedsAssetContext`] without mutating:
+    /// - [`Self::ApplyBoolean`] — boolean engine ships W3.
+    /// - [`Self::SetStrokeStyle`] — needs [`crate::StyleTable`].
+    /// - [`Self::CrdtMerge`] — updates [`crate::Ph2dVectorAsset::crdt_state`].
+    ///
+    /// Other variants either mutate the network directly or are no-ops
+    /// at the network level ([`Self::Checkpoint`] is a sync marker).
+    pub fn apply_to_network(&self, net: &mut VectorNetwork) -> Result<(), VectorOpApplyError> {
+        match self {
+            VectorOp::AddVertex { id, pos, kind } => {
+                net.vertices
+                    .push(crate::cubic::Vertex::new(*id, *pos, *kind));
+                Ok(())
+            }
+            VectorOp::MoveVertex { id, new_pos } => {
+                let Some(v) = net.vertices.iter_mut().find(|v| v.id == *id) else {
+                    return Err(VectorOpApplyError::UnknownVertex(*id));
+                };
+                v.pos = *new_pos;
+                Ok(())
+            }
+            VectorOp::RemoveVertex { id } => {
+                let before = net.vertices.len();
+                net.vertices.retain(|v| v.id != *id);
+                if net.vertices.len() == before {
+                    return Err(VectorOpApplyError::UnknownVertex(*id));
+                }
+                Ok(())
+            }
+            VectorOp::AddSegment {
+                id,
+                start,
+                end,
+                tangents,
+            } => {
+                net.segments.push(crate::style::Segment {
+                    id: *id,
+                    start: *start,
+                    end: *end,
+                    out_at_start: tangents.out_at_start,
+                    in_at_end: tangents.in_at_end,
+                    style_ref: None,
+                });
+                Ok(())
+            }
+            VectorOp::MoveTangent {
+                seg,
+                which,
+                new_pos,
+            } => {
+                let Some(s) = net.segments.iter_mut().find(|s| s.id == *seg) else {
+                    return Err(VectorOpApplyError::UnknownSegment(*seg));
+                };
+                match which {
+                    TangentSide::OutAtStart => s.out_at_start = *new_pos,
+                    TangentSide::InAtEnd => s.in_at_end = *new_pos,
+                }
+                Ok(())
+            }
+            VectorOp::RemoveSegment { id } => {
+                let before = net.segments.len();
+                net.segments.retain(|s| s.id != *id);
+                if net.segments.len() == before {
+                    return Err(VectorOpApplyError::UnknownSegment(*id));
+                }
+                Ok(())
+            }
+            VectorOp::AddRegion {
+                id,
+                segments,
+                winding,
+            } => {
+                let mut r = crate::region::Region::new(*id, *winding);
+                r.segments = segments.clone();
+                net.regions.push(r);
+                Ok(())
+            }
+            VectorOp::SetRegionFill { id, fill } => {
+                let Some(r) = net.regions.iter_mut().find(|r| r.id == *id) else {
+                    return Err(VectorOpApplyError::UnknownRegion(*id));
+                };
+                r.fill = *fill;
+                Ok(())
+            }
+            VectorOp::SetAuthoringHint { mode } => {
+                net.authoring_hint = *mode;
+                Ok(())
+            }
+            VectorOp::Checkpoint { .. } => Ok(()), // sync marker; no-op on the network
+            VectorOp::ApplyBoolean { .. }
+            | VectorOp::SetStrokeStyle { .. }
+            | VectorOp::CrdtMerge { .. } => Err(VectorOpApplyError::NeedsAssetContext),
+        }
+    }
+}
+
 /// Boolean operation variants.
 ///
 /// **Cap (ADR-0058):** 9 variants — covers full SVG / Illustrator /
@@ -216,6 +354,32 @@ impl EditLog {
     /// (this log is a passive container; see struct-level docs).
     pub fn push(&mut self, op: VectorOp) {
         self.ops.push(op);
+    }
+
+    /// Remove + return the most-recently-pushed op.
+    ///
+    /// **W1 pre-CRDT undo primitive (R4 audit Lens-G MED-G4)**. The
+    /// caller is responsible for *reverting* the op's effect on its
+    /// [`VectorNetwork`] (this is just the log mutation half). T1.6
+    /// CRDT lands a proper undo stack with op-level inverse semantics;
+    /// until then, single-user tools may call `pop()` + recompute
+    /// network from genesis (or from nearest snapshot).
+    pub fn pop(&mut self) -> Option<VectorOp> {
+        self.ops.pop()
+    }
+
+    /// Apply `op` to `net` and, on success, push it to the log
+    /// (transactional: if `apply_to_network` errors, the log is **not**
+    /// mutated — preventing the log/network drift documented in
+    /// Lens-G HIGH-G3).
+    pub fn push_and_apply(
+        &mut self,
+        op: VectorOp,
+        net: &mut VectorNetwork,
+    ) -> Result<(), VectorOpApplyError> {
+        op.apply_to_network(net)?;
+        self.push(op);
+        Ok(())
     }
 }
 

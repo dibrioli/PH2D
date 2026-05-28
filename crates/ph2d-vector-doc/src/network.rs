@@ -82,6 +82,44 @@ impl VectorNetwork {
         Self::default()
     }
 
+    /// Return the next unused [`crate::VertexId`] (max + 1, or 0 if empty).
+    ///
+    /// **W1 ergonomic helper (R4 audit Lens-G HIGH-G1)** for tools
+    /// that need to allocate a fresh vertex id during interactive
+    /// authoring. **Not CRDT-safe** — concurrent edits from peers can
+    /// race to the same id. T1.6 reintroduces a site-id-spaced
+    /// allocator via `CrdtReplay::alloc_vertex_id(&self, site)` for
+    /// multi-agent sessions; until then, single-user W1 callers may
+    /// rely on this.
+    ///
+    /// O(N_vertices) linear scan; cache the result if calling per-click.
+    #[must_use]
+    pub fn next_vertex_id(&self) -> crate::cubic::VertexId {
+        self.vertices
+            .iter()
+            .map(|v| v.id)
+            .max()
+            .map_or(0, |m| m + 1)
+    }
+
+    /// Return the next unused [`crate::SegmentId`]. Same CRDT caveat as
+    /// [`Self::next_vertex_id`].
+    #[must_use]
+    pub fn next_segment_id(&self) -> crate::style::SegmentId {
+        self.segments
+            .iter()
+            .map(|s| s.id)
+            .max()
+            .map_or(0, |m| m + 1)
+    }
+
+    /// Return the next unused [`crate::RegionId`]. Same CRDT caveat as
+    /// [`Self::next_vertex_id`].
+    #[must_use]
+    pub fn next_region_id(&self) -> crate::region::RegionId {
+        self.regions.iter().map(|r| r.id).max().map_or(0, |m| m + 1)
+    }
+
     /// Validate the network's structural invariants.
     ///
     /// Checks performed:

@@ -88,6 +88,24 @@ impl Default for Ph2dVectorAsset {
     }
 }
 
+impl Ph2dVectorAsset {
+    /// Convenience constructor: wrap `network` + `styles` into an asset
+    /// at the current schema version, with empty edit_log/metadata/
+    /// embedded_assets and no CRDT/dormant_fractures.
+    ///
+    /// **W1 helper (R4 audit Lens-G MED-G10)** to avoid every
+    /// fan-out tool (T1.7 shell bridge / T2 Pencil / T2 Shape / T-color
+    /// picker / etc.) repeating the `..Default::default()` spread.
+    #[must_use]
+    pub fn from_network(network: VectorNetwork, styles: StyleTable) -> Self {
+        Self {
+            network,
+            styles,
+            ..Self::default()
+        }
+    }
+}
+
 /// Authoring metadata — author, timestamps, app version.
 ///
 /// String length limits are enforced by [`bounded_decode`] via the
@@ -195,7 +213,11 @@ impl Default for AssetBounds {
 }
 
 /// Failure modes for [`bounded_decode`] / [`load_vector_asset`].
-#[derive(Debug)]
+///
+/// `Clone + PartialEq + Eq` so panel state (R4 audit Lens-G MED-G9)
+/// holding a `last_load_error: Option<BoundedDecodeError>` snapshot
+/// can diff/round-trip cleanly.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoundedDecodeError {
     /// Asset payload exceeds [`MAX_ASSET_SIZE`].
     AssetTooLarge {
@@ -375,6 +397,63 @@ fn check_bound(field: &'static str, actual: usize, cap: usize) -> Result<(), Bou
 /// Convenience wrapper: [`bounded_decode`] with default [`AssetBounds`].
 pub fn load_vector_asset(bytes: &[u8]) -> Result<Ph2dVectorAsset, BoundedDecodeError> {
     bounded_decode(bytes, AssetBounds::default())
+}
+
+/// Composite error type for [`load_and_validate_vector_asset`].
+///
+/// Wraps either a [`BoundedDecodeError`] (size/cap/schema failure during
+/// postcard decode) or a [`crate::VectorNetworkInvariant`] (structural
+/// invariant failure during `VectorNetwork::validate`). R4 audit
+/// Lens-G MED-G6 — avoids every consumer hand-rolling a two-error enum.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoadAndValidateError {
+    /// `bounded_decode` rejected the payload.
+    Decode(BoundedDecodeError),
+    /// `VectorNetwork::validate` rejected the decoded network.
+    Invariant(crate::network::VectorNetworkInvariant),
+}
+
+impl std::fmt::Display for LoadAndValidateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Decode(e) => write!(f, "decode: {e}"),
+            Self::Invariant(e) => write!(f, "invariant: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for LoadAndValidateError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Decode(e) => Some(e),
+            Self::Invariant(e) => Some(e),
+        }
+    }
+}
+
+impl From<BoundedDecodeError> for LoadAndValidateError {
+    fn from(e: BoundedDecodeError) -> Self {
+        Self::Decode(e)
+    }
+}
+
+impl From<crate::network::VectorNetworkInvariant> for LoadAndValidateError {
+    fn from(e: crate::network::VectorNetworkInvariant) -> Self {
+        Self::Invariant(e)
+    }
+}
+
+/// [`load_vector_asset`] + `network.validate()` in one call.
+///
+/// **W1 convenience for T1.7 shell bridge + asset cooker** (R4 audit
+/// Lens-G MED-G6): bridge callers should prefer this over chaining the
+/// two error types by hand.
+pub fn load_and_validate_vector_asset(
+    bytes: &[u8],
+) -> Result<Ph2dVectorAsset, LoadAndValidateError> {
+    let asset = load_vector_asset(bytes)?;
+    asset.network.validate()?;
+    Ok(asset)
 }
 
 /// Serialize an asset to postcard bytes. Mirror of [`load_vector_asset`]

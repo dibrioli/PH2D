@@ -133,6 +133,29 @@ pub struct StyleTable {
     pub fills: BTreeMap<FillRef, FillSolid>,
 }
 
+impl StyleTable {
+    /// Insert `stroke` and return the auto-allocated [`StyleRef`].
+    ///
+    /// **W1 ergonomic helper** (R4 audit Lens-G HIGH-G2) — assigns the
+    /// next free id (existing max + 1, or 0 if empty). O(log N) via
+    /// `BTreeMap::keys().next_back()`.
+    pub fn insert_stroke(&mut self, stroke: StrokeStyle) -> StyleRef {
+        let id = self.strokes.keys().next_back().map_or(0, |m| m + 1);
+        self.strokes.insert(id, stroke);
+        id
+    }
+
+    /// Insert `fill` and return the auto-allocated [`FillRef`].
+    ///
+    /// **W1 ergonomic helper** (R4 audit Lens-G HIGH-G2) — same
+    /// allocation semantics as [`Self::insert_stroke`].
+    pub fn insert_fill(&mut self, fill: FillSolid) -> FillRef {
+        let id = self.fills.keys().next_back().map_or(0, |m| m + 1);
+        self.fills.insert(id, fill);
+        id
+    }
+}
+
 /// Solid color fill — W1 minimal. Gradient / pattern / procedural arrive
 /// later (W2+ / W6+).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

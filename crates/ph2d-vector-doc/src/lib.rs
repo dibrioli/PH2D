@@ -47,19 +47,24 @@ pub mod cubic_fit;
 pub mod deterministic;
 pub mod dormant;
 pub mod edit_log;
+pub mod hit_test;
 pub mod network;
 pub mod postcard_schema;
 pub mod region;
 pub mod spiro;
 pub mod style;
 
+pub use crdt::CrdtReplay;
 pub use cubic::{TangentSide, TangentsCubic, Vertex, VertexId, VertexKind};
 pub use dormant::DormantFractureSet;
-pub use edit_log::{BooleanOp, EditLog, NetworkSnapshot, VectorOp};
-pub use network::{RepresentationMode, VectorNetwork, VectorNetworkInvariant};
+pub use edit_log::{BooleanOp, EditLog, NetworkSnapshot, VectorOp, VectorOpApplyError};
+pub use network::{
+    RepresentationMode, VECTOR_NETWORK_SCHEMA_VERSION, VectorNetwork, VectorNetworkInvariant,
+};
 pub use postcard_schema::{
-    AssetBounds, AuthoringMetadata, BoundedDecodeError, EmbeddedAsset, Ph2dVectorAsset,
-    bounded_decode, load_vector_asset, save_vector_asset,
+    AssetBounds, AuthoringMetadata, BoundedDecodeError, EmbeddedAsset, EmbeddedKind,
+    LoadAndValidateError, MAX_ASSET_SIZE, PH2D_VECTOR_ASSET_SCHEMA_VERSION, Ph2dVectorAsset,
+    bounded_decode, load_and_validate_vector_asset, load_vector_asset, save_vector_asset,
 };
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use style::{

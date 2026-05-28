@@ -36,11 +36,14 @@ pub use vector_network::{build_region_path, draw_vector_network, oklch_to_color}
 // ph2d-imageio-svg, tool/panel crates, etc.); the W2+ gate landing
 // will need a whitelist or migration sweep.
 pub use ph2d_vector_doc::{
-    AssetBounds, AuthoringMetadata, BooleanOp, BoundedDecodeError, EditLog, EmbeddedAsset, FillRef,
-    NetworkSnapshot, Ph2dVectorAsset, Region, RegionId, RepresentationMode, Segment, SegmentId,
-    SegmentRef, StrokeStyle, StyleRef, StyleRefMap, StyleTable, TangentSide, TangentsCubic,
-    VectorNetwork, VectorNetworkInvariant, VectorOp, Vertex, VertexId, VertexKind, WindingRule,
-    bounded_decode, load_vector_asset, save_vector_asset,
+    AssetBounds, AuthoringMetadata, BooleanOp, BoundedDecodeError, CrdtReplay, DormantFractureSet,
+    EditLog, EmbeddedAsset, EmbeddedKind, FillRef, FillSolid, LoadAndValidateError, MAX_ASSET_SIZE,
+    NetworkSnapshot, PH2D_VECTOR_ASSET_SCHEMA_VERSION, Ph2dVectorAsset, Region, RegionId,
+    RepresentationMode, Segment, SegmentId, SegmentRef, StrokeCap, StrokeJoin, StrokeStyle,
+    StyleRef, StyleRefMap, StyleTable, TangentSide, TangentsCubic, VECTOR_NETWORK_SCHEMA_VERSION,
+    VectorNetwork, VectorNetworkInvariant, VectorOp, VectorOpApplyError, Vertex, VertexId,
+    VertexKind, WindingRule, bounded_decode, load_and_validate_vector_asset, load_vector_asset,
+    save_vector_asset,
 };
 
 // Re-export the few kurbo/peniko primitives that callers need to

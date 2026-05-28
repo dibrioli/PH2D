@@ -164,6 +164,19 @@ mod tests {
         assert!(msg.contains("avif-decode"), "actionable: {msg}");
     }
 
+    /// Audit-13 Lens FF F4 (2026-05-27): cover `avis` sequence brand
+    /// import path too — previous test only exercised still `avif`.
+    #[test]
+    fn import_avis_sequence_returns_unsupported_deferred() {
+        let bytes = [
+            0x00, 0x00, 0x00, 0x18, b'f', b't', b'y', b'p', b'a', b'v', b'i', b's',
+        ];
+        let err = AvifImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("avis sequence decode deferred");
+        assert!(matches!(err, Error::Unsupported(_)));
+    }
+
     #[test]
     fn exporter_returns_unsupported() {
         // `AvifExporter::export` returns Unsupported BEFORE looking

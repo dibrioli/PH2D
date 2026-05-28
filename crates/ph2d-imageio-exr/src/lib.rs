@@ -10,7 +10,11 @@
 //! that needs non-trivial RefCell out-parameters; defer until the
 //! shape of `FlatHdr` consumers stabilises.
 //!
-//! Pure-Rust dep: `exr = "1"` (already in Cargo.toml).
+//! Pure-Rust candidate dep: `exr = "1"` — **NOT yet** in Cargo.toml
+//! (added together with the wire-up to avoid dep-bloat). Audit-13
+//! Lens FF F1 (2026-05-27): previous docstring claimed it was
+//! already in Cargo.toml — false; corrected per
+//! [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md).
 //!
 //! Audit-13 (2026-05-27): fan-out drop-crate per ADR-0054 §3.8.
 //! Magic-only stub matches the PSD pattern (W2.T4 shipped recognition
@@ -52,11 +56,11 @@ impl ImageImporter for ExrImporter {
             return Err(Error::Truncated);
         }
         Err(Error::Unsupported(
-            "EXR decode deferred to W3+ — `exr = \"1\"` is in Cargo.toml \
-             but the closure-based pixel walker API needs RefCell out-\
-             parameters that don't justify the LOC in the magic-recognition \
-             pass. Wire-up lands with first real client (Blender HDRi \
-             import demo)."
+            "EXR decode deferred to W3+ — add `exr = \"1\"` to Cargo.toml \
+             when wiring up; the closure-based pixel walker API needs \
+             RefCell out-parameters that don't justify the LOC in the \
+             magic-recognition pass. Wire-up lands with first real client \
+             (Blender HDRi import demo)."
                 .into(),
         ))
     }

@@ -9,16 +9,21 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-svg` — SVG decode + (deferred) encode (W3.T5).
-# Pure-Rust via `usvg` 0.43 (parse + simplify) and `resvg` (raster
-# rasterizer, opt-in). W3.T5 ships parse + rasterize-on-import
-# (returns `DecodedImage::Vector(VectorDoc)`). Export of native
-# Painter vector layers → SVG string lands when ph2d-vector
-# canonical types are ready.
+# `ph2d-imageio-svg` — SVG **parse-only** validator + (deferred)
+# vector decode + export (W3.T5). W3.T5 ships `usvg = "0.43"` parse
+# (resolves <use>, <style>, gradients into a flat tree) — the tree
+# is dropped and the importer returns
+# `DecodedImage::Vector(VectorDoc::default())`. The vector body
+# (kurbo::BezPath paint stack) is reserved for W3+ ph2d-vector
+# amendment. Rasterize-on-import (`resvg`) and SVG export are both
+# **deferred** to W3+. Audit-13 Lens FF F3 (2026-05-27): earlier
+# comment promised "parse + rasterize-on-import"; corrected to
+# "parse-only validator" — rasterize wire-up lands with first real
+# client. Audit-13 Lens HH FIN-1 (2026-05-27): `image_href_resolver`
+# overridden to neutralise `<image href=…>` filesystem reads.
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
-# usvg 0.43 is the canonical pure-Rust SVG simplifier (resolves
-# all <use>, <style>, gradients into a flat tree); we ship parse-
-# only for W3.T5 placeholder until ph2d-vector canonicalises.
+# usvg 0.43 is the canonical pure-Rust SVG simplifier; parse-only
+# validation in W3.T5 (the tree is dropped — see crate doc).
 usvg = { version = "0.43", default-features = false }

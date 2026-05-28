@@ -36,7 +36,9 @@ pub struct JxlImporter;
 impl ImageImporter for JxlImporter {
     fn supports(&self, hint: MagicHint<'_>) -> MagicMatch {
         match hint {
-            MagicHint::Bytes(b) if b.starts_with(&JXL_ISOBMFF) || b.starts_with(&JXL_CODESTREAM) => {
+            MagicHint::Bytes(b)
+                if b.starts_with(&JXL_ISOBMFF) || b.starts_with(&JXL_CODESTREAM) =>
+            {
                 MagicMatch::Strong
             }
             MagicHint::Bytes(_) => MagicMatch::None,
@@ -118,6 +120,17 @@ mod tests {
         let err = JxlImporter
             .import(&JXL_ISOBMFF, &ImportOpts::default())
             .expect_err("decode deferred");
+        assert!(matches!(err, Error::Unsupported(_)));
+    }
+
+    /// Audit-13 Lens FF F4 (2026-05-27): cover codestream path too —
+    /// previous test only exercised ISOBMFF.
+    #[test]
+    fn import_codestream_returns_unsupported_deferred() {
+        let bytes = [0xFF, 0x0A, 0x00, 0x01, 0x02, 0x03];
+        let err = JxlImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect_err("codestream decode deferred");
         assert!(matches!(err, Error::Unsupported(_)));
     }
 

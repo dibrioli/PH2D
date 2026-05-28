@@ -74,11 +74,22 @@ impl ImageImporter for SvgImporter {
                 src.len()
             )));
         }
-        // Parse via usvg. Default options resolve <use>, <style>,
-        // gradients into a flat tree; the result is dropped here
-        // because VectorDoc body is reserved for W3+ ph2d-vector
-        // amendment.
-        let _tree = usvg::Tree::from_data(src, &usvg::Options::default())
+        // Parse via usvg. Audit-13 Lens HH FIN-1 (2026-05-27): the
+        // default `image_href_resolver` calls `std::fs::read(href)`
+        // for `<image href="…">` references — a hostile SVG with
+        // `<image href="/etc/passwd"/>` would touch the filesystem
+        // (no leak to caller, but page-cache footprint + timing
+        // side-channel). Override with neutral resolvers: data: URIs
+        // pass through; string hrefs are NOT resolved (return None).
+        let mut opts = usvg::Options::default();
+        opts.image_href_resolver = usvg::ImageHrefResolver {
+            resolve_data: usvg::ImageHrefResolver::default_data_resolver(),
+            resolve_string: Box::new(|_href, _opts| None),
+        };
+        // Default options resolve <use>, <style>, gradients into a
+        // flat tree; the result is dropped here because VectorDoc
+        // body is reserved for W3+ ph2d-vector amendment.
+        let _tree = usvg::Tree::from_data(src, &opts)
             .map_err(|e| Error::from_decoder_message(format!("SVG parse: {e}")))?;
         // W3.T5 ships parse-only validation. The actual vector
         // tree → BezPath conversion lands in W3+ when ph2d-vector
@@ -112,7 +123,9 @@ mod tests {
     #[test]
     fn supports_recognizes_svg_open_tag_strong() {
         assert_eq!(
-            SvgImporter.supports(MagicHint::Bytes(b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>")),
+            SvgImporter.supports(MagicHint::Bytes(
+                b"<svg xmlns=\"http://www.w3.org/2000/svg\"/>"
+            )),
             MagicMatch::Strong
         );
     }
@@ -169,13 +182,80 @@ mod tests {
         assert!(matches!(err, Error::Decode(_) | Error::Truncated));
     }
 
+    /// Audit-13 Lens HH FIN-1 (2026-05-27): hostile SVG with
+    /// `<image href="/etc/passwd"/>` must NOT touch the filesystem.
+    /// With the neutral `resolve_string` resolver installed, the
+    /// href is dropped (resolver returns None) and the parse still
+    /// succeeds — VectorDoc body is empty either way in W3.T5.
+    #[test]
+    fn import_with_filesystem_href_does_not_read_file() {
+        // We can't directly assert "no syscall" from unit test, but
+        // we can confirm the parse succeeds without error AND
+        // returns Vector (proving the resolver short-circuited
+        // rather than failing on missing file).
+        let svg = br#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
+            <image href="/etc/passwd" x="0" y="0" width="1" height="1"/>
+        </svg>"#;
+        let decoded = SvgImporter
+            .import(svg, &ImportOpts::default())
+            .expect("hostile-href SVG must parse without FS read");
+        assert!(matches!(decoded, DecodedImage::Vector(_)));
+    }
+
+    /// Audit-13 Lens HH FIN-3 (2026-05-27): hostile SVG with
+    /// billion-laughs-style entity expansion (DOCTYPE + recursive
+    /// entities). roxmltree 0.20 caps depth ≤ 10 and references ≤
+    /// 255, so the parse either rejects or returns small tree. We
+    /// assert it does NOT panic / OOM / hang.
+    #[test]
+    fn import_billion_laughs_does_not_explode() {
+        let svg = br#"<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
+    <desc>&lol3;</desc>
+</svg>"#;
+        // Either Decode error (roxmltree rejects entity bomb) or Ok
+        // (small expansion within caps) — both are non-failure
+        // outcomes. The point is: no panic, no OOM, no hang.
+        let _ = SvgImporter.import(svg, &ImportOpts::default());
+    }
+
+    /// Audit-13 Lens Z #1 / HH defence-in-depth: oversized SVG (>16
+    /// MiB) must be rejected at the read boundary, before usvg parses.
+    #[test]
+    fn import_oversized_svg_rejected_pre_parse() {
+        let mut svg = Vec::with_capacity(20 * 1024 * 1024);
+        svg.extend_from_slice(br#"<svg xmlns="http://www.w3.org/2000/svg">"#);
+        // Pad with whitespace to push past MAX_ARCHIVE_TEXT_BYTES.
+        svg.resize(17 * 1024 * 1024, b' ');
+        svg.extend_from_slice(b"</svg>");
+        let err = SvgImporter
+            .import(&svg, &ImportOpts::default())
+            .expect_err("oversized must be rejected");
+        match err {
+            Error::Decode(msg) => assert!(
+                msg.contains("MAX_ARCHIVE_TEXT_BYTES"),
+                "expected MAX_ARCHIVE_TEXT_BYTES message: {msg}"
+            ),
+            other => panic!("expected Decode with cap message, got: {other:?}"),
+        }
+    }
+
     #[test]
     fn exporter_returns_unsupported() {
         let err = SvgExporter
-            .export(&DecodedImage::Vector(VectorDoc::default()), &ExportOpts {
-                format: ExportFormat::Svg,
-                ..ExportOpts::default()
-            })
+            .export(
+                &DecodedImage::Vector(VectorDoc::default()),
+                &ExportOpts {
+                    format: ExportFormat::Svg,
+                    ..ExportOpts::default()
+                },
+            )
             .expect_err("export deferred");
         assert!(matches!(err, Error::Unsupported(_)));
     }

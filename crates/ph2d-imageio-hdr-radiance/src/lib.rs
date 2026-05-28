@@ -109,7 +109,10 @@ mod tests {
     #[test]
     fn import_returns_unsupported_deferred() {
         let err = HdrRadianceImporter
-            .import(b"#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n", &ImportOpts::default())
+            .import(
+                b"#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n",
+                &ImportOpts::default(),
+            )
             .expect_err("decode deferred");
         assert!(matches!(err, Error::Unsupported(_)));
     }

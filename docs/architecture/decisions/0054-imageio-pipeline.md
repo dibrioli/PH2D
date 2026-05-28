@@ -326,6 +326,34 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
 | **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
+| **W3.T1.5** nova auditoria pós-W3.T1..T5 | ✅ | `[remediation-pending]` | 1 CRITICAL doc-honesty (EXR claim falso `exr=1` in Cargo.toml) + 3 HIGH (AVIF Cargo.toml vapor comment, SVG Cargo.toml promete rasterize-on-import inexistente, **HH-FIN-1 SVG security: `default_string_resolver` faz `std::fs::read(href)` em `<image href="/etc/passwd"/>`**) + 3 MEDIUM (JXL codestream test ausente + AVIF avis sequence test ausente + SVG hostile-input tests ausentes) + 1 P1 ship-blocker fmt — vide §5.14 |
+
+### 5.14 Remediação pós-auditoria W3.T1.5 (2026-05-27)
+
+Auditoria adversarial 5-lente sobre commits `cc97cd4` + `084b914` (W3 fan-out shipping). Lentes especializadas em ângulos novos: FF stub honesty / vapor detection · GG registry dispatch correctness (14 importers) · HH SVG real-parse security · II codegen sanity post-fan-out · JJ ship.sh + docs coherence. **Total: 1 CRITICAL + 3 HIGH + 3 MEDIUM + 1 P1 ship-blocker + 0 LOW**. Lens GG retornou **GREEN** (dispatch é confidence-aware, zero collision entre 14 importers). Lens II retornou **GREEN** (codegen glob-based + alphabetical gates). Fechados nesta sessão:
+
+**CRITICAL (Lens FF F1) — doc honesty vapor**:
+- `crates/ph2d-imageio-exr/src/lib.rs:13` afirmava `exr = "1"` está em Cargo.toml — falso (Cargo.toml só lista `ph2d-imageio`). Violação verificável-em-segundos per [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md). Fix: docstring corrigida — `"NOT yet in Cargo.toml — added together with wire-up to avoid dep-bloat"`. Error message do `Unsupported` também corrigida (`"add exr=\"1\" to Cargo.toml when wiring up"`).
+
+**HIGH (3)**:
+- **FF F2** AVIF Cargo.toml comment prometia `avif-native` feature + `avif-serialize` + `dav1d`-equivalent paths em deps — todos falsos (deps real = só `ph2d-imageio`). Fix: comment alinhado ao padrão dos outros stubs ("Magic-only stub per ADR-0054 §3.8 ... pure-Rust candidate deps added with wire-up").
+- **FF F3** SVG Cargo.toml dizia "ships parse + rasterize-on-import" mas `lib.rs:81` descarta `_tree` e retorna `VectorDoc::default()` (sem rasterize). Fix: Cargo.toml comment alinhado ao docstring honesto do lib.rs ("parse-only validator; rasterize wire-up deferred").
+- **HH FIN-1 security** SVG: `usvg::Options::default()` ativa `default_string_resolver` que faz `std::fs::read(href)` quando `<image href="…">` aponta para path existente. Hostile SVG com `<image href="/etc/passwd"/>` toca filesystem (no leak retornado mas page-cache footprint + timing side-channel). Fix: `Options::image_href_resolver` overridden com `resolve_string: Box::new(|_, _| None)` (data: URIs passam via `default_data_resolver`). Test `import_with_filesystem_href_does_not_read_file` cobre.
+
+**MEDIUM (3)**:
+- **FF F4** test coverage: JXL `import_returns_unsupported_deferred` só cobria ISOBMFF path; AVIF só `avif` brand (não `avis` sequence). Fix: tests `import_codestream_returns_unsupported_deferred` (JXL) + `import_avis_sequence_returns_unsupported_deferred` (AVIF).
+- **HH FIN-3** SVG hostile-input coverage: zero tests com DOCTYPE+entity-bomba, oversized payload, ou `<image href="/etc/passwd"/>`. Fix: 3 tests novos — `import_with_filesystem_href_does_not_read_file`, `import_billion_laughs_does_not_explode`, `import_oversized_svg_rejected_pre_parse`.
+- **HH FIN-2** `allow_dtd: true` hardcoded em usvg + `nodes_limit: u32::MAX` default: defesa-em-profundidade nice-to-have. Defer — roxmltree 0.20 já cap depth ≤ 10 + references ≤ 255 hardcoded; oversize cap (16 MiB) limita amplification. Entry-point: `usvg::Tree::from_xmltree` com `roxmltree::ParsingOptions { allow_dtd: false, nodes_limit: 1_000_000 }` quando primeiro real hostile SVG report aparecer.
+
+**P1 ship-blocker (Lens JJ)**: `cargo fmt --check` reprovava em 4 hunks (hdr-radiance/jxl/svg) pós-cc97cd4 (`--no-verify` skipou hook). Fix: `cargo fmt -p` nos 5 crates W3 — todos alinhados.
+
+**Total Onda 2+3 pós-W3.T1.5**: 141 + 35 + 5 = **181 tests verdes Mac aarch64** (+5 audit-13 vs 176 prev). 16 imageio crates wired CI matrix.
+
+**Defers**:
+- HH FIN-2 roxmltree ParsingOptions com nodes_limit explícito: entry-point documentado acima.
+- W3 wave-2: per-crate real impl quando first-real-client materializar.
+
+
 
 ### 5.13 W3 fan-out — 5 format crates landed (2026-05-27)
 

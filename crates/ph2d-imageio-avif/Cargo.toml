@@ -9,13 +9,14 @@ authors.workspace = true
 
 [lib]
 
-# `ph2d-imageio-avif` — AVIF decode + (deferred) encode (W3.T4).
-# Decode via `image` 0.25 `avif-native` feature (uses
-# `avif-serialize` + `dav1d`-compatible rust path? — opt-in feature
-# requires aliro deps). W3.T4 ships supports() + Unsupported
-# import/export stubs documenting that the next real client
-# (Painter HDR import demo) triggers the full wire-up with `ravif`
-# (encode) + `avif-decode` (decode), both pure-Rust.
+# `ph2d-imageio-avif` — AVIF magic recognition + (deferred) decode/
+# encode (W3.T4). Magic-only stub per ADR-0054 §3.8 fan-out drop-
+# crate. Pure-Rust candidate deps `avif-decode = "1"` (decode) +
+# `ravif = "0.11"` (encode, rav1e backend) added together with the
+# wire-up when first real client appears. Audit-13 Lens FF F2
+# (2026-05-27): earlier comment claimed `avif-native` feature +
+# `avif-serialize` + `dav1d`-equivalent paths existed in deps —
+# false; corrected per `feedback-audit-internal-state-grep`.
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }

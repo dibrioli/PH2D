@@ -50,6 +50,7 @@ mod eyedropper;
 mod gizmo_drag;
 mod keyboard;
 mod painter_input;
+mod vector_pen_input;
 pub(crate) mod protect_brush;
 
 impl App {
@@ -331,6 +332,25 @@ impl App {
             // never opens selection while a brush tool is active). Consume
             // the event silently — equivalent to "click landed off-canvas",
             // no paint, no selection change.
+            // W1.T1.7: Vector Pen — Primary Down on canvas inside
+            // sprite footprint adds a vertex / extends / close-paths
+            // the in-progress network via `VectorPenTool::on_canvas_click`.
+            // Must be tried BEFORE the painter rule below so Pen
+            // sessions don't fall through to selection / gizmo logic.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_vector_pen_click(evt.x, evt.y) =>
+            {
+                return;
+            }
+            // Pen active but click landed OFF-canvas → silent consume
+            // (same UX rule as painter: a canvas-authoring tool owns
+            // the canvas region; misses don't open rubber-band or
+            // change selection).
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.vector_pen_active_consume_canvas_click() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if self.painter_active_consume_canvas_click() =>
             {

@@ -29,6 +29,7 @@ mod present;
 mod sim_extract;
 mod snapshots;
 mod upscale_bridge;
+mod vector_pen_bridge;
 
 use crate::*;
 
@@ -818,6 +819,20 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
+            );
+            // Vector Pen tool ⟷ shell bridge (W1 T1.7). Per-frame
+            // overlay paint of the in-progress triangle + drain of any
+            // committed `.ph2d-vector` asset to disk. No side state
+            // tracked (Pen tool owns the network/edit_log/styles); the
+            // bridge is purely render+commit on top of `tools.active`.
+            vector_pen_bridge::dispatch(
+                hero,
+                tools,
+                sim,
+                camera,
+                window_size,
+                vector_scene,
+                toasts,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to

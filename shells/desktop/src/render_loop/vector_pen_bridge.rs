@@ -39,7 +39,7 @@ use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_pen::VectorPenTool;
-use ph2d_vector::{Affine, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Per-frame Vector Pen bridge dispatch.
@@ -50,6 +50,7 @@ pub(super) fn dispatch(
     tools: &mut ToolRegistry,
     camera: &Camera2d,
     window_size: WindowSize,
+    last_pointer: (f32, f32),
     vector_scene: &mut VectorScene,
     toasts: &mut ToastQueue,
 ) {
@@ -82,15 +83,109 @@ pub(super) fn dispatch(
         };
     }
 
-    // Step 2 — render in-progress preview. Skip when network is empty
-    // (avoids issuing a zero-region Vello draw call).
+    // Step 2 — render. Two layers:
+    //
+    // (a) Closed regions via `draw_vector_network` — covers the
+    //     post-close-path filled triangle (rare during build; common
+    //     after first commit when an unclosed second path overlays a
+    //     prior closed region if that ever happens).
+    //
+    // (b) **In-progress preview overlay** — vertex DOTS + segment
+    //     LINES drawn directly. R5 fix: `draw_vector_network` only
+    //     renders REGIONS with fill; vertices+segments alone (the
+    //     standard state during clicks 1..3 of a triangle) produce
+    //     nothing visible. Standard Pen-tool UX (Illustrator/Figma)
+    //     shows vertex dots + segment guidelines DURING the build so
+    //     the user gets feedback per-click.
     let network = pen.current_network();
     if network.vertices.is_empty() {
         return;
     }
     let styles = pen.current_styles();
     let world_to_screen = world_to_screen_affine(camera, window_size);
-    ph2d_vector::draw_vector_network(vector_scene.inner_mut(), network, styles, world_to_screen);
+    let scene = vector_scene.inner_mut();
+
+    // Layer (a): fills.
+    ph2d_vector::draw_vector_network(scene, network, styles, world_to_screen);
+
+    // Layer (b): in-progress vertex dots + segment guidelines.
+    // The affine scales world→screen by `k = window.height /
+    // camera.height_world`. To get a ~5 px dot regardless of zoom,
+    // size in world units = `5 / k` (the affine then scales back to
+    // 5 px on screen).
+    let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
+    let dot_radius_world = 5.0 / k;
+    let line_width_world = 2.0 / k;
+    let vertex_color = Color::from_rgba8(80, 130, 255, 230);
+    let segment_color = Color::from_rgba8(80, 130, 255, 200);
+
+    // Segments first (so dots paint on top of segment endpoints).
+    for seg in &network.segments {
+        let Some(start) = network.vertices.iter().find(|v| v.id == seg.start) else {
+            continue;
+        };
+        let Some(end) = network.vertices.iter().find(|v| v.id == seg.end) else {
+            continue;
+        };
+        let mut path = BezPath::new();
+        path.move_to(Point::new(start.pos.x as f64, start.pos.y as f64));
+        path.line_to(Point::new(end.pos.x as f64, end.pos.y as f64));
+        scene.stroke(
+            &Stroke::new(line_width_world),
+            world_to_screen,
+            &Brush::Solid(segment_color),
+            None,
+            &path,
+        );
+    }
+
+    // Vertex dots — vertex 0 painted LAST + larger so it stands out
+    // as the "close-path target" the user can click to finish the
+    // path. (Mirror Illustrator/Figma convention: first vertex
+    // visually distinct.)
+    for v in &network.vertices {
+        let radius = if Some(v.id) == network.vertices.first().map(|f| f.id) {
+            dot_radius_world * 1.6
+        } else {
+            dot_radius_world
+        };
+        let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), radius);
+        scene.fill(
+            Fill::NonZero,
+            world_to_screen,
+            &Brush::Solid(vertex_color),
+            None,
+            &c,
+        );
+    }
+
+    // Rubber-band preview line from last vertex → current cursor in
+    // world coords. Standard Pen-tool UX (Illustrator / Figma /
+    // Inkscape): user sees the candidate next segment before
+    // committing the click. Without this the user has no spatial
+    // feedback for "where would my next click land".
+    if let Some(last_v) = network.vertices.last() {
+        let cursor_world = camera.screen_to_world(last_pointer, window_size);
+        // Skip drawing the rubber-band if the cursor coincides with
+        // the last vertex (zero-length line emits nothing meaningful
+        // and could surface as a degenerate stroke in some Vello
+        // versions).
+        if (cursor_world[0] - last_v.pos.x).abs() > 0.001
+            || (cursor_world[1] - last_v.pos.y).abs() > 0.001
+        {
+            let rubber_color = Color::from_rgba8(80, 130, 255, 120);
+            let mut rubber = BezPath::new();
+            rubber.move_to(Point::new(last_v.pos.x as f64, last_v.pos.y as f64));
+            rubber.line_to(Point::new(cursor_world[0] as f64, cursor_world[1] as f64));
+            scene.stroke(
+                &Stroke::new(line_width_world),
+                world_to_screen,
+                &Brush::Solid(rubber_color),
+                None,
+                &rubber,
+            );
+        }
+    }
 }
 
 /// World-meters → screen-pixel affine derived from the camera.

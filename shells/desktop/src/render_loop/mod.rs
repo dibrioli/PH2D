@@ -857,6 +857,7 @@ impl crate::App {
                 tools,
                 camera,
                 window_size,
+                self.last_pointer,
                 vector_scene,
                 toasts,
             );

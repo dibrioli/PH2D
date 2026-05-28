@@ -17,6 +17,7 @@
 //! the Pen's "canvas" while active).
 
 use crate::App;
+use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
 use ph2d_tool_vector_pen::VectorPenTool;
 
@@ -30,6 +31,19 @@ impl App {
     /// through to the standard gizmo / rubber-band / canvas-pick
     /// cascade.
     pub(crate) fn try_vector_pen_click(&mut self, px: f32, py: f32) -> bool {
+        // R5 fix (audit Lens-T HIGH-T-2): if cursor is over any docked
+        // panel (Inspector / Hierarchy / Widget Gallery / Painter
+        // sidebar / etc.), DON'T consume the click as a Pen vertex —
+        // let `forward_to_hero` deliver it to the panel widget. Without
+        // this gate, dragging an Inspector slider while Pen is active
+        // would silently add a vertex behind the panel + the slider
+        // would never respond. Mirror precedent: painter's
+        // `try_painter_paint_down` gates via sprite footprint hit-test
+        // (which has the same effect — panels are outside the sprite
+        // footprint).
+        if cursor_over_hero_panel(self.gfx.as_ref(), px, py) {
+            return false;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -42,7 +56,8 @@ impl App {
             return false;
         }
         // Screen px → world coords via camera. No sprite footprint
-        // gate; the entire viewport is the Pen's drawing surface.
+        // gate; the entire canvas region (minus panels) is the Pen's
+        // drawing surface.
         let window_size = gfx.surface.size();
         let world = gfx.camera.screen_to_world((px, py), window_size);
         let Some(tool) = gfx.tools.active_mut() else {

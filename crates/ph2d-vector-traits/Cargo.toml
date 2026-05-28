@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-vector-traits"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Foundational trait crate for the Vector Module animation / attribute /
+# procedural-fill / animation-curve contracts. Per ADR-0056 §2.5 and
+# ADR-0067 parallel decoupling pattern.
+#
+# Minimal deps; ZERO ph2d-painter-* OR ph2d-vector-doc references — this
+# crate sits at the bottom of the Vector dep graph so 31 downstream crates
+# can import it without cycle risk (mirrors ph2d-brush-traits position
+# per ADR-0067 §2.4).
+
+[lib]
+
+[dependencies]
+# glam 0.30 — matches ph2d-core's canonical Vec2/Vec3/Mat3/Mat4 pin. The
+# AnimValue::Vec2 / AnimValue::Vec3 variants embed glam types directly.
+glam = "0.30"
+
+# OklchColor for AnimValue::Color — hue-stable color animation per
+# ADR-0056 §2.5. Path dep matches workspace convention (e.g. ph2d-painter-stroke).
+ph2d-color = { path = "../ph2d-color" }

@@ -2060,6 +2060,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-err"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73fde052dbfc920003cfd2c8e2c6e6d4cc7c1091538c3a24226cec0665ab08c0"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
+name = "fs4"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8640e34b88f7652208ce9e88b1a37a2ae95227d84abec377ccd3c5cfeb141ed4"
+dependencies = [
+ "fs-err",
+ "rustix 1.1.4",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "fsevent-sys"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4275,6 +4295,7 @@ dependencies = [
  "notify",
  "ph2d-color",
  "ph2d-imageio",
+ "ph2d-imageio-hdr-radiance",
  "ph2d-imageio-registry-init",
  "postcard",
  "serde",
@@ -4319,6 +4340,15 @@ version = "0.0.0"
 dependencies = [
  "ph2d-mcp",
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-brush-traits"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-color",
+ "serde",
 ]
 
 [[package]]
@@ -4784,10 +4814,13 @@ name = "ph2d-painter-stroke"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "crc32fast",
+ "fs4",
  "ph2d-color",
  "ph2d-painter-brush",
  "postcard",
  "serde",
+ "subtle",
  "uuid",
 ]
 
@@ -5211,6 +5244,14 @@ name = "ph2d-vector"
 version = "0.0.0"
 dependencies = [
  "vello",
+]
+
+[[package]]
+name = "ph2d-vector-traits"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-color",
 ]
 
 [[package]]
@@ -6211,6 +6252,12 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "subtle"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "svg_fmt"

@@ -67,7 +67,15 @@ pub struct VectorPenTool {
 impl Default for VectorPenTool {
     fn default() -> Self {
         let mut styles = StyleTable::default();
-        let default_fill_ref = styles.insert_fill(FillSolid::default());
+        // Default fill = saturated bluish OKLCH visible against both
+        // dark + light canvas themes. The mid-gray `FillSolid::default()`
+        // was invisible against the standard chrome (R1 Lens-R MED-G3
+        // surfaced this; the bridge can still override per-session via
+        // `set_default_fill(color)`).
+        let visible_fill = FillSolid {
+            color: ph2d_color::OklchColor::opaque(0.6, 0.18, 250.0),
+        };
+        let default_fill_ref = styles.insert_fill(visible_fill);
         Self {
             network: VectorNetwork::empty(),
             edit_log: EditLog::new(),
@@ -157,7 +165,10 @@ impl VectorPenTool {
         self.network = VectorNetwork::empty();
         self.edit_log = EditLog::new();
         self.styles = StyleTable::default();
-        self.default_fill_ref = self.styles.insert_fill(FillSolid::default());
+        let visible_fill = FillSolid {
+            color: ph2d_color::OklchColor::opaque(0.6, 0.18, 250.0),
+        };
+        self.default_fill_ref = self.styles.insert_fill(visible_fill);
         self.authoring_hint = RepresentationMode::Cubic;
     }
 

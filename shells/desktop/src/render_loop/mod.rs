@@ -657,18 +657,8 @@ impl crate::App {
                     if let Some(active) = tools.active() {
                         toasts.push(Toast::info(format!("Tool · {}", active.label())));
                     }
-                    // W1.T1.7 R3 UX hint: Vector Pen requires a sprite
-                    // selection to anchor network-local coordinates.
-                    // Without one, canvas clicks go through but
-                    // `vector_pen_bridge::dispatch` early-returns
-                    // silently — user sees no preview. Surface a
-                    // one-shot Toast so the smoke flow is
-                    // discoverable without reading source.
-                    if tool_id == "vector_pen" && hero.gizmo.selection.is_none() {
-                        toasts.push(Toast::info(
-                            "Pen tool active — select a sprite to draw on".to_string(),
-                        ));
-                    }
+                    // (R4: Pen activation no longer needs a sprite —
+                    // network IS the asset, world-coords throughout.)
                 }
             }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
@@ -857,15 +847,14 @@ impl crate::App {
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
             );
-            // Vector Pen tool ⟷ shell bridge (W1 T1.7). Per-frame
-            // overlay paint of the in-progress triangle + drain of any
-            // committed `.ph2d-vector` asset to disk. No side state
-            // tracked (Pen tool owns the network/edit_log/styles); the
-            // bridge is purely render+commit on top of `tools.active`.
+            // Vector Pen tool ⟷ shell bridge (W1 T1.7 R4). Per-frame
+            // world-space overlay paint of the in-progress triangle +
+            // drain of any committed `.ph2d-vector` asset to disk. No
+            // sprite/hero dependency — the network IS the asset
+            // (ADR-0056 §1.1); world-coords come from `camera.screen_to_world`
+            // in `vector_pen_input.rs`.
             vector_pen_bridge::dispatch(
-                hero,
                 tools,
-                sim,
                 camera,
                 window_size,
                 vector_scene,

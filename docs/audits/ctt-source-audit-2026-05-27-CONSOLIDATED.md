@@ -40,12 +40,14 @@ Razão: Lente A HIGH#3 — auto-dispatch order do `ctt` é feature-gated; ativar
 - Cargo.lock commitado.
 - Arch-gate `architecture_ctt_features_pinned` (`crates/ph2d-asset-cooker/tests/`): grep Cargo.toml + assert features exatas.
 
-### D2 — Canonical runner CPU class pinada (ADR-0055-v4 já decide)
+### D2 — Canonical runner CPU class pinada (decidido ADR, **implementação defer W1.T10**)
 Razão: Lente A HIGH#1 — ISA dispatch runtime (astcenc + sRGB SIMD em ctt) usa CPU features detectadas em runtime; cross-CPU class (AVX2 vs AVX512 vs NEON) diverge output bytes. PH2D HR-6 (`AssetId = blake3(bytes)`) quebra fora do runner canonical.
 
-- ADR-0055-v4 §2.3 já decidiu: cook em GitHub Actions `ubuntu-latest` Linux x86_64 único.
-- W1.T10 do plano vivo: `runs-on: ubuntu-latest` + `if: matrix.os == 'ubuntu-latest'` no step de cook.
-- W1.T5 cooked-hashes.lock detecta drift no canonical runner via 5 cooks consecutivos + assert blake3 igual.
+- ADR-0055-v4 §2 **decidiu** estrategicamente: cook em runner canônico único Linux x86_64.
+- **Audit meta-session β HIGH-3 (2026-05-27 noite)** detectou: `.github/workflows/` ainda NÃO tem job `cook`; `assets/cooked/` não existe; `.gitattributes` (Git LFS) não existe. Implementação de D2 é **vapor textual** até W1.T10 + W1.T11.5 materializarem.
+- **Status real:** decisão estratégica firme; implementação física PENDENTE em W1.T10 (workflow job) + W1.T11.5 (Git LFS setup).
+- **Consequência cross-task:** D4 (snapshot test) NÃO pode ser implementado de forma confiável até D2 existir — sem canonical runner, snapshot capturado localmente diverge no CI. D4 bloqueia em **D2 + T3**, não apenas em T3.
+- W1.T5 cooked-hashes.lock detecta drift no canonical runner via 5 cooks consecutivos + assert blake3 igual (também depende de D2 implementado).
 
 ### D3 — Banir `(encoder-amd + UltraFast + BC7)` combo no wrapper PH2D
 Razão: Lente A HIGH#2 — Compressonator BC7+UltraFast retorna `R=0` silencioso em Linux/macOS (acknowledged em comentário do próprio teste do ctt em `compressonator.rs:296-300`). Bug encoder upstream conhecido.

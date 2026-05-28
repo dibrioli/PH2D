@@ -10,7 +10,12 @@
 //! Linux/macOS (Lente A HIGH#2). Feature deve ESTAR AUSENTE da lista.
 //!
 //! Vide docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md.
+//!
+//! Implementação usa crate `toml` (não parser manual `str::find`) — audit
+//! meta-session β HIGH-2 mostrou que parser manual falha em formatos TOML
+//! válidos (campos em ordem diferente, arrays multi-linha).
 
+use std::collections::BTreeSet;
 use std::fs;
 
 const REQUIRED_FEATURES: &[&str] = &[
@@ -25,38 +30,65 @@ const FORBIDDEN_FEATURES: &[&str] = &["encoder-amd"];
 
 #[test]
 fn ctt_features_pinned_and_amd_excluded() {
-    let cargo_toml = fs::read_to_string(env!("CARGO_MANIFEST_DIR").to_string() + "/Cargo.toml")
-        .expect("read tools/asset-cooker/Cargo.toml");
+    let manifest_path = format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"));
+    let raw = fs::read_to_string(&manifest_path).expect("read tools/asset-cooker/Cargo.toml");
 
-    let ctt_line_start = cargo_toml
-        .find("\nctt = {")
-        .expect("ctt dep must use object form `ctt = { ... }` (not `ctt = \"x.y.z\"`)");
-    let ctt_block_end = cargo_toml[ctt_line_start..]
-        .find("] }")
-        .expect("ctt dep block must close with `] }`");
-    let ctt_block = &cargo_toml[ctt_line_start..ctt_line_start + ctt_block_end + 3];
+    let parsed: toml::Value = toml::from_str(&raw).expect("parse tools/asset-cooker/Cargo.toml");
 
-    assert!(
-        ctt_block.contains("default-features = false"),
-        "W1.T2.1 D1 — ctt dep MUST declare `default-features = false` to prevent silent \
-         encoder-dispatch drift. Audit Lente A HIGH#3.\nFound block:\n{ctt_block}"
+    let ctt = parsed
+        .get("dependencies")
+        .and_then(|d| d.get("ctt"))
+        .expect("W1.T2.1 D1 — ctt dep MUST be declared in [dependencies]");
+
+    let ctt_table = ctt.as_table().expect(
+        "W1.T2.1 D1 — ctt dep MUST use object form `ctt = { version = ..., features = [...] }` \
+         (string-only form `ctt = \"0.4.0\"` cannot pin features)",
     );
 
-    for feature in REQUIRED_FEATURES {
-        assert!(
-            ctt_block.contains(&format!("\"{feature}\"")),
-            "W1.T2.1 D1 — required ctt feature `{feature}` missing from pinned allowlist.\n\
-             Block:\n{ctt_block}"
-        );
-    }
+    let default_features = ctt_table
+        .get("default-features")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    assert!(
+        !default_features,
+        "W1.T2.1 D1 — ctt dep MUST declare `default-features = false` to prevent silent \
+         encoder-dispatch drift. Audit Lente A HIGH#3."
+    );
 
-    for feature in FORBIDDEN_FEATURES {
+    let features: BTreeSet<&str> = ctt_table
+        .get("features")
+        .and_then(|v| v.as_array())
+        .expect("W1.T2.1 D1 — ctt dep MUST declare explicit `features = [...]` allowlist")
+        .iter()
+        .map(|v| {
+            v.as_str()
+                .expect("ctt feature entries must be strings")
+        })
+        .collect();
+
+    let required: BTreeSet<&str> = REQUIRED_FEATURES.iter().copied().collect();
+    let missing: Vec<&&str> = required.difference(&features).collect();
+    assert!(
+        missing.is_empty(),
+        "W1.T2.1 D1 — required ctt features missing: {missing:?}\n\
+         Got: {features:?}\nRequired (exact set): {required:?}"
+    );
+
+    let extras: Vec<&&str> = features.difference(&required).collect();
+    assert!(
+        extras.is_empty(),
+        "W1.T2.1 D1 — unexpected ctt features beyond audited allowlist: {extras:?}\n\
+         Got: {features:?}\nAllowed: {required:?}\n\
+         Any addition requires audit update + W1.T2.1 amendment."
+    );
+
+    for forbidden in FORBIDDEN_FEATURES {
         assert!(
-            !ctt_block.contains(&format!("\"{feature}\"")),
-            "W1.T2.1 D3 — forbidden ctt feature `{feature}` MUST NOT be enabled. \
+            !features.contains(forbidden),
+            "W1.T2.1 D3 — forbidden ctt feature `{forbidden}` MUST NOT be enabled. \
              Compressonator backend has known BC7+UltraFast R=0 silent bug on Linux/macOS \
              (Lente A HIGH#2; ctt-compressonator.rs:296-300 acknowledges). BC7 is covered \
-             by encoder-bc7enc; BC1-5 by encoder-intel.\nBlock:\n{ctt_block}"
+             by encoder-bc7enc; BC1-5 by encoder-intel."
         );
     }
 }

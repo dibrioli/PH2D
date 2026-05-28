@@ -118,9 +118,16 @@ highlight = "all"
 #     proprietary integration; viola HR-1 §2.7.1 critério #4 (license).
 # Banir agora previne pull transitivo silencioso em upgrade futuro do ctt.
 deny = [
-    { name = "basis-universal-sys" },
-    { name = "nvtt" },
-    { name = "nvtt-sys" },
+    # Basis Universal family — todas as variantes publicadas em crates.io
+    # (verificado via `cargo search basis-universal` 2026-05-27 noite).
+    { name = "basis-universal" },     # high-level wrapper (Aclysma 0.3.1 dormente)
+    { name = "basis-universal-sys" }, # unsafe bindings (mesmo maintainer)
+    { name = "basisu_c_sys" },        # pure C API binding (underscore name real)
+    # NVTT (NVIDIA Texture Tools) family — proprietary SDK violates HR-1 §2.7.1 #4.
+    # Nomes REAIS publicados (verificado via `cargo search nvtt`): ambos usam
+    # underscore. Hífen-version não existe e banir hífen é silent miss.
+    { name = "nvtt_rs" },             # high-level wrapper (nota: underscore!)
+    { name = "nvtt_sys" },            # unsafe bindings (nota: underscore!)
 ]
 
 # Skip duplicate-version checks for crates that legitimately have multiple

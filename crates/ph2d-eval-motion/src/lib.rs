@@ -53,6 +53,13 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
             rotation: scalar_at(rot, i, 0.0),
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
+            // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
+            // no per-corner/opacity/flip authoring surface, so they take
+            // their identity values (white gradient, full opacity, no
+            // flip) — byte-identical render to the pre-v4 path.
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
             texture_id: 0,
             // Node-graph emit doesn't have a hierarchy slot — every
             // motion node's instances share `z_order = 0`. Renderer's

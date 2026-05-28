@@ -177,6 +177,19 @@ pub(super) fn run(
                         // so the shader's `anchor + quad*size` stays in
                         // one consistent (world-scaled) local frame.
                         anchor: [spr.anchor[0] * scale_x, spr.anchor[1] * scale_y],
+                        // Sprite-Inspector-v2 v4 ABI (W1.T1.7a). per_corner_tint
+                        // + opacity are direct passthroughs of the canonical
+                        // Sprite fields (default identity → render unchanged
+                        // until the shader reads them in W1.T1.11). flip_uv
+                        // bit-encoding (from spr.flip_x/flip_y, and the wider
+                        // tint_fill packing reconciliation) lands in W1.T1.10;
+                        // 0 = no flip = logical no-op until then. The tint
+                        // CASCADE collapse (self_tint × tint × Π ancestors,
+                        // anatomia §4.3) also lands in W1.T1.8 — `tint` here is
+                        // still the raw sprite tint, matching pre-v4 behavior.
+                        per_corner_tint: spr.per_corner_tint,
+                        opacity: spr.opacity,
+                        flip_uv: 0,
                         z_order,
                     });
                 }

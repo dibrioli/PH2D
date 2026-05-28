@@ -412,6 +412,40 @@ pub struct RenderInstance {
     /// orbits `world_pos` (the pivot) rather than its own center.
     /// `[0.0, 0.0]` reproduces the historical strictly-centered sprite.
     pub anchor: [f32; 2],
+
+    // ─── NEW in v4 (Sprite Inspector v2; ADR-0069..0071) ──────────────
+    //
+    // These three GPU-read fields sit BETWEEN `anchor` and the CPU-only
+    // `texture_id`/`z_order` so every vertex attribute stays contiguous
+    // in `@location` order before any non-attribute field — the exact
+    // invariant `vertex_attr_offsets_match_struct` pins. The §1.7 ABI
+    // listing groups them after `z_order` for readability, but the live
+    // layout MUST keep GPU fields contiguous (anatomia §1.7 cross-refs
+    // the offset gate, which is authoritative). Stride grows 72 → 144 B.
+    //
+    /// Per-corner tint — a 4-stop bilinear gradient interpolated across
+    /// the quad in the vertex stage (`@location(9..12)`, 64 bytes). Order
+    /// `[TopLeft, TopRight, BottomLeft, BottomRight]`, each RGBA. Mirrors
+    /// [`Sprite::per_corner_tint`]; all-WHITE = identity (zero visual
+    /// effect). PresentWorld-only (HR-5 exempt): the bilinear blend is
+    /// rasterizer/driver-controlled and may ULP-diverge cross-backend
+    /// (anatomia §4.6 Lens-C-M4), so it never lives in SimWorld.
+    pub per_corner_tint: [[f32; 4]; 4],
+    /// Final opacity multiplier (`@location(13)`), orthogonal to
+    /// `tint[3]`: `tint.a` is the color's blend alpha, `opacity` is a
+    /// separate visibility multiplier applied last. Mirrors
+    /// [`Sprite::opacity`]; `1.0` = identity. Clamped `[0.0, 1.0]` at the
+    /// Sprite setter (anatomia §1.6 / §4.10), not here.
+    pub opacity: f32,
+    /// Packed flip flags (`@location(14)`, u32 bitfield): bit0 = flip_x,
+    /// bit1 = flip_y (anatomia §1.7). The shader (W1.T1.11) flips the
+    /// sampled UV per bit. `0` = no flip (identity). The extract-phase
+    /// bit-encoding from [`Sprite::flip_x`]/[`Sprite::flip_y`] lands in
+    /// W1.T1.10; until then this stays `0` (logical no-op, render
+    /// identical). A wider flags reconciliation (e.g. packing
+    /// `tint_fill`) is a W1.T1.11 contract decision, deferred here.
+    pub flip_uv: u32,
+
     /// CPU-side metadata used by the renderer to group same-texture
     /// instances into one draw call; NOT a vertex attribute. Kept after
     /// every GPU-read field so `vertex_attr_array!`'s sequential offsets
@@ -444,6 +478,16 @@ impl RenderInstance {
         6 => Float32,    // rotation (M14.7)
         7 => Float32,    // premultiplied flag (BG-Removal Apply)
         8 => Float32x2,  // anchor (pivot offset; TOOL_PIVOT + Padding-Keep)
+        // v4 (Sprite Inspector v2): per_corner_tint occupies 4 attrs
+        // (one Float32x4 per corner) since WGSL has no array-of-vec4
+        // vertex attribute — the shader reassembles them into a mat-like
+        // 4-corner set. opacity + flip_uv follow.
+        9  => Float32x4, // per_corner_tint[0] = TopLeft
+        10 => Float32x4, // per_corner_tint[1] = TopRight
+        11 => Float32x4, // per_corner_tint[2] = BottomLeft
+        12 => Float32x4, // per_corner_tint[3] = BottomRight
+        13 => Float32,   // opacity
+        14 => Uint32,    // flip_uv bitfield (bit0=flip_x, bit1=flip_y)
     ];
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -524,31 +568,36 @@ mod tests {
             atlas_uv: [0.0, 0.0, 0.25, 0.25],
             tint: [1.0, 1.0, 1.0, 1.0],
             rotation: 0.0,
-            texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
+            texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             z_order: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
-        // 12 floats (world_pos+size+atlas_uv+tint) = 48 bytes
-        // + rotation f32 (4) + premultiplied f32 (4) + anchor [f32;2] (8)
-        // + texture_id u32 (4) + 1 pad u32 (4) = 72 bytes. (Was 64 before
-        // anchor; the pivot offset added one [f32;2] attribute.)
-        assert_eq!(bytes.len(), 72);
+        // v3 GPU fields = 64 bytes (world_pos 8 + size 8 + atlas_uv 16 +
+        // tint 16 + rotation 4 + premultiplied 4 + anchor 8).
+        // v4 adds per_corner_tint [[f32;4];4] (64) + opacity f32 (4) +
+        // flip_uv u32 (4) = +72 → 136 GPU bytes.
+        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 144 bytes,
+        // 4-byte aligned (no tail padding). (Was 72 in v3.)
+        assert_eq!(bytes.len(), 144);
     }
 
     #[test]
     fn vertex_attributes_cover_full_stride() {
-        // The anchor offset is the last (7th) vertex attribute, at
-        // location 8. Confirm the attribute array's last offset+size
+        // The flip_uv flags are the last (11th) vertex attribute, at
+        // location 14. Confirm the attribute array's last offset+size
         // lands inside the Pod stride so the vertex layout doesn't read
         // past the instance buffer.
         let attrs = RenderInstance::VERTEX_ATTRIBUTES;
         let last = attrs.last().expect("at least one attribute");
-        assert_eq!(last.shader_location, 8, "anchor is @location(8)");
-        // Float32x2 == 8 bytes.
-        let end = last.offset + 8;
+        assert_eq!(last.shader_location, 14, "flip_uv is @location(14)");
+        // Uint32 == 4 bytes.
+        let end = last.offset + 4;
         assert!(
             end <= std::mem::size_of::<RenderInstance>() as u64,
             "attr end {end} must fit in stride {}",
@@ -567,6 +616,10 @@ mod tests {
         // `premultiplied` placement did — it sat after `texture_id`, so
         // `@location(7)` silently read `texture_id`'s bytes), this test
         // fails instead of shipping a sampler that reads the wrong word.
+        //
+        // v4 (Sprite Inspector v2) appended per_corner_tint (4 attrs,
+        // @location 9..12), opacity (@13), flip_uv (@14) — still all
+        // before the CPU-only tail. 11 attrs total.
         use std::mem::offset_of;
         let expect = [
             (2u32, offset_of!(RenderInstance, world_pos) as u64),
@@ -576,6 +629,18 @@ mod tests {
             (6, offset_of!(RenderInstance, rotation) as u64),
             (7, offset_of!(RenderInstance, premultiplied) as u64),
             (8, offset_of!(RenderInstance, anchor) as u64),
+            // per_corner_tint is one [[f32;4];4] field but FOUR vertex
+            // attrs; the macro lays them at +0/+16/+32/+48 from the field
+            // base, so locations 9..12 map to the field offset plus the
+            // per-corner stride. offset_of! gives the field base for @9;
+            // @10..12 follow contiguously (checked by the macro's own sum
+            // matching, asserted below via the running offsets).
+            (9, offset_of!(RenderInstance, per_corner_tint) as u64),
+            (10, offset_of!(RenderInstance, per_corner_tint) as u64 + 16),
+            (11, offset_of!(RenderInstance, per_corner_tint) as u64 + 32),
+            (12, offset_of!(RenderInstance, per_corner_tint) as u64 + 48),
+            (13, offset_of!(RenderInstance, opacity) as u64),
+            (14, offset_of!(RenderInstance, flip_uv) as u64),
         ];
         let attrs = RenderInstance::VERTEX_ATTRIBUTES;
         assert_eq!(attrs.len(), expect.len(), "attribute count drifted");

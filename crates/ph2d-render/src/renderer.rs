@@ -470,6 +470,9 @@ mod tests {
             texture_id,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
             z_order: 0,
         }
     }

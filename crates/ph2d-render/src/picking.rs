@@ -238,6 +238,9 @@ mod tests {
             texture_id: 0,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
             z_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
@@ -266,6 +269,9 @@ mod tests {
             texture_id: 0,
             premultiplied: 0.0,
             anchor,
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
             z_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));

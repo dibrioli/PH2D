@@ -220,10 +220,26 @@ pub fn dispatch_pointer_with_text<'frame>(
                         _ => d.start_value,
                     };
                     let raw_value = current_value + delta;
-                    let is_bounded = store.linked_slider(d.id).is_some()
-                        || store.blender_channel_chip(d.id).is_some();
-                    let new_value = if is_bounded {
-                        raw_value.clamp(0.0, 1.0)
+                    // When the chip is bounded by a slider, the valid
+                    // DISPLAY range is the affine projection of the
+                    // slider's `0..1` storage — for a mapped link with
+                    // `display = storage*scale + offset` that's the
+                    // interval `[offset, scale+offset]` (or its reverse
+                    // when `scale` is negative). Without this, dragging
+                    // Grow (display ±1) silently clamped at 0..1 and
+                    // never reached the negative half.
+                    let bounds = if store.linked_slider(d.id).is_some() {
+                        let (scale, offset) = store.linked_slider_mapping(d.id);
+                        let a = offset as f64;
+                        let b = (scale + offset) as f64;
+                        Some((a.min(b), a.max(b)))
+                    } else if store.blender_channel_chip(d.id).is_some() {
+                        Some((0.0_f64, 1.0_f64))
+                    } else {
+                        None
+                    };
+                    let new_value = if let Some((lo, hi)) = bounds {
+                        raw_value.clamp(lo, hi) // CLAMP-OK: (lo,hi) pre-swapped via a.min/a.max above; (scale,offset) registered via link_slider_number_mapped (debug_assert scale!=0).
                     } else {
                         raw_value
                     };
@@ -248,12 +264,16 @@ pub fn dispatch_pointer_with_text<'frame>(
                         *buffer = format_number(new_value);
                     }
                     // Mirror to a linked slider if any (same pattern
-                    // as `apply_number_stepper_if_hit`).
-                    if let Some(slider_id) = store.linked_slider(d.id)
-                        && let Some(InteractiveState::Slider { value, .. }) =
+                    // as `apply_number_stepper_if_hit`). Inverse-project
+                    // display→storage; identity = pass-through.
+                    if let Some(slider_id) = store.linked_slider(d.id) {
+                        let (scale, offset) = store.linked_slider_mapping(d.id);
+                        let storage = ((new_value as f32) - offset) / scale;
+                        if let Some(InteractiveState::Slider { value, .. }) =
                             store.get_mut(slider_id)
-                    {
-                        *value = (new_value as f32).clamp(0.0, 1.0);
+                        {
+                            *value = storage.clamp(0.0, 1.0);
+                        }
                     }
                     // BlenderColorPicker channel chip drag: push the
                     // scrubbed value back into the parent picker's

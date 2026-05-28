@@ -9,7 +9,7 @@
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
-use ph2d_tool_bgremoval::params::BgRemovalUiSnapshot;
+use ph2d_tool_bgremoval::params::{BgRemovalUiSnapshot, MIN_ISLAND_PIXELS_FULL_SCALE};
 
 pub fn populate(store: &mut WidgetStore) {
     for id in [
@@ -57,56 +57,87 @@ pub fn populate(store: &mut WidgetStore) {
     // Seed slider positions from the canonical default snapshot so the
     // boot UI can never drift from `BgRemovalParams::default()` (single
     // source of truth — the tuned defaults live there, not here).
+    //
+    // The chip seed is the **display-space** value (what the user sees
+    // and types), even when that differs from the slider's `0..1`
+    // storage. The dispatch projects between the two via the mapping
+    // registered with `link_slider_number_mapped`. This is the
+    // 2026-05-27 fix for the "type 0.2 see -0.6" bug — the chip's
+    // stored value now matches its painter (`display_override`) so
+    // round-trip is invariant.
     let d = BgRemovalUiSnapshot::default();
+    // Identity-mapped chips (display = storage). Refine / Feather /
+    // Tolerance / Brush Size all paint the raw 0..1 slider value.
     for (slider_id, chip_id, value) in [
         (ids::BGR_TOLERANCE, ids::BGR_TOLERANCE_NUM, d.tolerance01),
         (ids::BGR_FEATHER, ids::BGR_FEATHER_NUM, d.feather01),
         (ids::BGR_REFINE, ids::BGR_REFINE_NUM, d.refine01),
-        // Grow/Shrink is bipolar (0.5 = neutral); default is a slight erode.
-        (ids::BGR_GROW, ids::BGR_GROW_NUM, d.grow01),
-        // Protection-brush size (source-px radius, normalized).
         (ids::BGR_BRUSH_SIZE, ids::BGR_BRUSH_SIZE_NUM, d.brush_size01),
-        // Min island pixels (CCL noise filter). Storage is normalized
-        // 0..1; the paint pass remaps to an integer pixel count via
-        // `display_override` so the chip reads "1", "4", "32", ...
-        (
+    ] {
+        register_slider_chip_pair(store, slider_id, chip_id, value, value as f64);
+        store.link_slider_number(slider_id, chip_id);
+    }
+    // Grow/Shrink — bipolar `±1` display: `signed = (storage-0.5)*2`,
+    // i.e. `display = storage*2 + (-1)`. Mapping `(scale=2, offset=-1)`.
+    {
+        let grow_display = (d.grow01 - 0.5) * 2.0;
+        register_slider_chip_pair(
+            store,
+            ids::BGR_GROW,
+            ids::BGR_GROW_NUM,
+            d.grow01,
+            grow_display as f64,
+        );
+        store.link_slider_number_mapped(ids::BGR_GROW, ids::BGR_GROW_NUM, 2.0, -1.0);
+    }
+    // Min island pixels — integer count `[1..FULL_SCALE]`:
+    // `count = storage*(FULL_SCALE-1) + 1`, i.e. mapping
+    // `(scale=FULL_SCALE-1, offset=1)`.
+    {
+        let min_scale = MIN_ISLAND_PIXELS_FULL_SCALE - 1.0;
+        let min_display = (d.min_island_pixels01 * min_scale) + 1.0;
+        register_slider_chip_pair(
+            store,
             ids::BGR_MIN_ISLAND_PX,
             ids::BGR_MIN_ISLAND_PX_NUM,
             d.min_island_pixels01,
-        ),
-    ] {
-        store.register(
-            slider_id,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
-                value,
-                orientation: SliderOrientation::Horizontal,
-            },
+            min_display as f64,
         );
-        // Editable numeric chip paired with the slider — keyboard +
-        // drag-scrub via the canonical NumberInput dispatch (same
-        // behaviour as the Inspector / color-picker chips).
-        let v = value as f64;
-        store.register(
-            chip_id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: v,
-                buffer: format!("{v:.3}"),
-                caret: 0,
-                last_committed: v,
-                selection_anchor: None,
-            },
+        store.link_slider_number_mapped(
+            ids::BGR_MIN_ISLAND_PX,
+            ids::BGR_MIN_ISLAND_PX_NUM,
+            min_scale,
+            1.0,
         );
-        // Bidirectional slider↔chip link — the SINGLE source of truth
-        // for this behaviour. With it, the canonical dispatch (a) clamps
-        // chip keyboard/drag-scrub edits to the slider's 0..1 range and
-        // (b) mirrors the value back onto the slider track live. Exactly
-        // how the Widget Gallery wires `INSP_SAMPLE_SLIDER` to its chip
-        // (see `screens/hero/pre_populate.rs`). Without it the chip is
-        // orphaned: edits don't move the slider and aren't range-bounded.
-        store.link_slider_number(slider_id, chip_id);
     }
+}
+
+fn register_slider_chip_pair(
+    store: &mut WidgetStore,
+    slider_id: ph2d_a11y::NodeId,
+    chip_id: ph2d_a11y::NodeId,
+    slider_value: f32,
+    chip_display_value: f64,
+) {
+    store.register(
+        slider_id,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: slider_value,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        chip_id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: chip_display_value,
+            buffer: format!("{chip_display_value:.3}"),
+            caret: 0,
+            last_committed: chip_display_value,
+            selection_anchor: None,
+        },
+    );
 }
 
 #[cfg(test)]

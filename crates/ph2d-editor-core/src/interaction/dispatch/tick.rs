@@ -64,10 +64,15 @@ pub fn dispatch_tick<'frame>(
         *buffer = format_number(new_value);
         *last_committed = new_value;
     }
-    if let Some(slider_id) = store.linked_slider(hold.id)
-        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
-    {
-        *value = (new_value as f32).clamp(0.0, 1.0);
+    if let Some(slider_id) = store.linked_slider(hold.id) {
+        // Inverse-project display-space step into storage. Identity
+        // mapping = pass-through. See `commit_number_buffer` /
+        // `apply_number_stepper_if_hit` for the symmetric inverse.
+        let (scale, offset) = store.linked_slider_mapping(hold.id);
+        let storage = ((new_value as f32) - offset) / scale;
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
+            *value = storage.clamp(0.0, 1.0);
+        }
     }
     store.record_number_stepper_tick(now_ns);
     events.push(WidgetEvent::ValueChanged(hold.id));

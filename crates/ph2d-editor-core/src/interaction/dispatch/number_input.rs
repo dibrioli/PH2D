@@ -66,7 +66,15 @@ pub(super) fn update_drag_value(
         (changed, new_value as f64)
     };
     if changed && let Some(number_id) = store.linked_number(id) {
-        store.set_number_value(number_id, propagated);
+        // Forward-project storage → display so the chip's stored value
+        // (and therefore the buffer shown on focus) matches what the
+        // painter renders via `display_override`. Identity mapping
+        // (the default) is `display = storage * 1 + 0`, equivalent to
+        // the pre-mapping path. Non-identity mapping covers chips like
+        // Grow ("±1" signed) and Min Px (integer count).
+        let (scale, offset) = store.linked_slider_mapping(number_id);
+        let display = (propagated as f32) * scale + offset;
+        store.set_number_value(number_id, display as f64);
     }
     changed
 }
@@ -133,13 +141,16 @@ pub(super) fn apply_number_stepper_if_hit(
         *buffer = super::super::format_number(new_val);
         *last_committed = new_val;
     }
-    // Mirror to a linked slider if there is one. The store doesn't
-    // currently expose a typed `set_slider_value`, so we mutate the
-    // variant directly.
-    if let Some(slider_id) = store.linked_slider(id)
-        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
-    {
-        *value = (new_val as f32).clamp(0.0, 1.0);
+    // Mirror to a linked slider if there is one. The chip's value
+    // lives in display-space (Grow's "±1", Min Px integer, ...) when
+    // a mapping is registered, so inverse-project before writing the
+    // slider's 0..1 storage. Identity mapping = pass-through.
+    if let Some(slider_id) = store.linked_slider(id) {
+        let (scale, offset) = store.linked_slider_mapping(id);
+        let storage = ((new_val as f32) - offset) / scale;
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
+            *value = storage.clamp(0.0, 1.0);
+        }
     }
     // M14.A: arm continuous-hold so dispatch_tick can repeat while
     // the user keeps the arrow pressed. The Down itself counts as the

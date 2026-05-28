@@ -194,10 +194,20 @@ pub(super) fn commit_number_buffer<'a>(
     }
     if let Some(v) = new_value
         && let Some(slider_id) = store.linked_slider(id)
-        && let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id)
     {
-        *value = (v as f32).clamp(0.0, 1.0);
-        events.push(WidgetEvent::ValueChanged(slider_id));
+        // Inverse-project the chip's display-space value into the
+        // slider's 0..1 storage. Identity mapping (the default) leaves
+        // `v` unchanged — equivalent to the pre-2026-05-27 behavior.
+        // Non-identity mapping (`link_slider_number_mapped`) translates
+        // e.g. Grow display "+0.20" (signed) into slider 0.6, so the
+        // next paint's `display_override` recomputes to the same
+        // "+0.20" the user typed.
+        let (scale, offset) = store.linked_slider_mapping(id);
+        let storage = ((v as f32) - offset) / scale;
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
+            *value = storage.clamp(0.0, 1.0);
+            events.push(WidgetEvent::ValueChanged(slider_id));
+        }
     }
     // BlenderColorPicker channel chip: write the parsed value back
     // into the parent picker's RGBA / HSVA dimension at `idx`.

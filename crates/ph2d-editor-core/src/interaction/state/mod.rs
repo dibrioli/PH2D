@@ -182,6 +182,17 @@ pub struct WidgetStore {
     /// hosting screen at construction time.
     pub(super) slider_to_number: BTreeMap<NodeId, NodeId>,
     pub(super) number_to_slider: BTreeMap<NodeId, NodeId>,
+    /// Affine projection `(scale, offset)` such that
+    /// `chip_display_value = slider_storage * scale + offset`,
+    /// keyed by chip id. Default (when missing) = `(1.0, 0.0)` —
+    /// identity, matching the legacy `link_slider_number` contract.
+    /// Mapped links (`link_slider_number_mapped`) are the canonical
+    /// way to wire a slider+chip pair when the chip's painted unit
+    /// differs from the slider's 0..1 storage (Grow `±1`, Min Px
+    /// integer count, ...). Without this map the chip's keyboard
+    /// commit silently writes display-space text into the slider as
+    /// if it were storage — the 2026-05-27 "type 0.2 see -0.6" bug.
+    pub(super) number_to_slider_mapping: BTreeMap<NodeId, (f32, f32)>,
     /// NumberInput ids that are painted as bare `paint_number_chip`
     /// pills (no up/down arrows). The dispatch's
     /// `apply_number_stepper_if_hit` carves a stepper column out of
@@ -448,6 +459,7 @@ impl WidgetStore {
             active_rect: None,
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
+            number_to_slider_mapping: BTreeMap::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
@@ -517,12 +529,65 @@ impl WidgetStore {
         self.number_to_slider.insert(number, slider);
     }
 
+    /// Like [`link_slider_number`](Self::link_slider_number) but
+    /// registers an affine projection between the slider's `0..1`
+    /// storage and the chip's user-visible value:
+    ///
+    /// ```text
+    /// chip_display = slider_storage * scale + offset
+    /// slider_storage = (chip_display - offset) / scale
+    /// ```
+    ///
+    /// Use whenever the chip paints a non-identity transform via
+    /// `display_override` (Grow's signed `±1`, Min Px integer count,
+    /// Upscale "2.00×", padding pixels, etc.). The dispatch then
+    /// inverse-projects on every chip mutation (Enter commit, stepper
+    /// arrow click, drag scrub, continuous hold) and forward-projects
+    /// on every slider mutation (drag, programmatic set), so the
+    /// chip's stored value lives in display-space throughout — exactly
+    /// what the buffer shows on focus, exactly what the user types.
+    ///
+    /// `scale` must be non-zero (asserted in debug). Identity is
+    /// `scale=1.0, offset=0.0`, equivalent to `link_slider_number`.
+    pub fn link_slider_number_mapped(
+        &mut self,
+        slider: NodeId,
+        number: NodeId,
+        scale: f32,
+        offset: f32,
+    ) {
+        debug_assert!(
+            scale.abs() > f32::EPSILON,
+            "link_slider_number_mapped: scale must be non-zero"
+        );
+        self.slider_to_number.insert(slider, number);
+        self.number_to_slider.insert(number, slider);
+        if (scale - 1.0).abs() > f32::EPSILON || offset.abs() > f32::EPSILON {
+            self.number_to_slider_mapping
+                .insert(number, (scale, offset));
+        } else {
+            // Identity — keep the map clean so default-lookup is fast.
+            self.number_to_slider_mapping.remove(&number);
+        }
+    }
+
     pub fn linked_number(&self, slider: NodeId) -> Option<NodeId> {
         self.slider_to_number.get(&slider).copied()
     }
 
     pub fn linked_slider(&self, number: NodeId) -> Option<NodeId> {
         self.number_to_slider.get(&number).copied()
+    }
+
+    /// Projection `(scale, offset)` for the chip→slider mirror.
+    /// Returns identity `(1.0, 0.0)` when no mapping is registered —
+    /// callers can always safely forward/inverse-apply without
+    /// branching on the link kind.
+    pub fn linked_slider_mapping(&self, number: NodeId) -> (f32, f32) {
+        self.number_to_slider_mapping
+            .get(&number)
+            .copied()
+            .unwrap_or((1.0, 0.0))
     }
 
     /// **Deprecated (2026-05-24).** Marking a NumberInput as

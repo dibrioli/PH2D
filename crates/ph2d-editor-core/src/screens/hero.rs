@@ -649,6 +649,11 @@ pub fn paint_hero_screen(
     // also resizes the Inspector when the user switches back).
     layout.bgremoval = insp_rect;
     layout.padding = insp_rect;
+    // W2.T2.1 Day-7 follow-up: Painter sidebar shares Inspector slot too
+    // (single dock-slot persistence). Sem este propagação, drag/resize não
+    // afetavam o painter_sidebar visualmente + rect publicado divergia do
+    // que dispatch hit-test usava → click vazava pra canvas atrás.
+    layout.painter_sidebar = insp_rect;
     if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
         || (insp_clamped_off.1 - insp_off.1).abs() > f32::EPSILON
     {

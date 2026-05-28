@@ -1,0 +1,43 @@
+[package]
+name = "ph2d-tool-vector-pen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Vector Module Pen tool — Bézier cúbico default visible (decisão D
+# Antigravity per ADR-0056 §2.4). Drop-crate per DIRETRIZ §3.A:
+# isolated, zero edit central. The shell discovers + activates via
+# `cluster: "vector_tools"` rendering wired in T1.7 (vector_pen_bridge.rs).
+
+[lib]
+
+[dependencies]
+# Tool contract + ToolManifest + chrome Registry.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+# A11y role + memory budget canonicals.
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-core = { path = "../ph2d-core" }
+
+# Vello / kurbo via ph2d-vector for icon BezPath construction. Same
+# crate hosts the `draw_vector_network` bridge that T1.7 wires for
+# preview rendering.
+ph2d-vector = { path = "../ph2d-vector" }
+
+# Vector Module data model — VectorNetwork / EditLog / StyleTable /
+# VectorOp / Vertex / Segment / Region / Ph2dVectorAsset. Re-exported
+# through ph2d-vector but kept as direct dep here for explicit lineage
+# (this crate is a primary consumer of the data model surface).
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+
+# Math primitives — glam::Vec2 for canvas coordinates.
+glam = "0.30"
+
+# SmallVec — required to construct `Region.segments: SmallVec<[SegmentRef; 16]>`
+# when emitting `VectorOp::AddRegion` on close-path. Same version pin as
+# ph2d-vector-doc + ph2d-editor-core.
+smallvec = "1"

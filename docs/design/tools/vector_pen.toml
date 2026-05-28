@@ -1,0 +1,29 @@
+# Vector Pen — Stateful tool, first interactive tool of the Vector
+# Module. Bézier cúbico default visible (decisão D Antigravity per
+# ADR-0056 §2.4 + ADR-0067 brush-traits decoupling neighborhood).
+#
+# Cluster `vector_tools`: new cluster of the Vector Module; shell
+# rendering is wired in W1.T1.7 (vector_pen_bridge.rs). Until T1.7
+# lands the cluster renderer, the manifest is registered but the
+# pill is not painted in the chrome.
+#
+# Canonical source for `crates/ph2d-tool-vector-pen/src/lib.rs`.
+
+[tool]
+id          = "vector_pen"
+cluster     = "vector_tools"
+zone        = "top_right"
+order       = 10
+a11y_role   = "Button"
+icon_slug   = "vector-pen"
+touches_sim = false
+
+[label]
+pt_br_inline = "Caneta"
+en_us_inline = "Pen"
+fluent_key   = "tool.vector_pen.label"
+
+[memory_budget]
+vram_mb        = 0
+ram_mb         = 1
+heap_script_mb = 0

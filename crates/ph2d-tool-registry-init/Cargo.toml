@@ -58,6 +58,7 @@ ph2d-tool-rasterize = { path = "../ph2d-tool-rasterize" }
 ph2d-tool-real-size = { path = "../ph2d-tool-real-size" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 ph2d-tool-upscale = { path = "../ph2d-tool-upscale" }
+ph2d-tool-vector-pen = { path = "../ph2d-tool-vector-pen" }
 # <ph2d-tool-sync:end>
 
 [dev-dependencies]

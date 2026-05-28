@@ -115,14 +115,15 @@ fn load_rejects_corrupted_checksum() {
     p.modified_at = 12345; // mutate WITHOUT recompute
     let bytes = postcard::to_allocvec(&p).expect("serialize");
     let err = load(&bytes).expect_err("should fail");
-    assert_eq!(err, LoadError::ChecksumMismatch);
+    assert_eq!(err, LoadError::IntegrityMismatch);
 }
 
 #[test]
 fn load_rejects_garbage_bytes() {
-    // Audit T1.8 L3-G2: LoadError::Postcard reachable mas sem test.
+    // Audit T1.8 L3-G2 + L4-H5: LoadError::Deserialization preserva
+    // causa interna do postcard (era LoadError::Postcard antes).
     let err = load(&[0u8; 4]).expect_err("garbage bytes should fail");
-    assert_eq!(err, LoadError::Postcard);
+    assert!(matches!(err, LoadError::Deserialization(_)));
 }
 
 #[test]

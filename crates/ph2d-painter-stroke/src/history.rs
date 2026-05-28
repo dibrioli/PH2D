@@ -23,6 +23,15 @@ use serde::{Deserialize, Serialize};
 use crate::record::StrokeRecord;
 
 /// History de strokes de um canvas. Source of truth da pintura vetorial.
+///
+/// **Audit T1.8 L4-H4 — `#[non_exhaustive]`:** permite adicionar variants
+/// `Branched`/`External` futuros sem semver break em downstream `match`.
+/// Construtor manual `StrokeHistory::Ring { records, cap }` continua público
+/// (variants têm pub fields pra postcard) MAS `StrokeHistory::ring(cap)` é
+/// o caminho oficial (clampa cap em `RING_MIN_CAP`); construtor manual com
+/// `cap=0` é detectado em [`Self::push`] via `debug_assert!` + release-mode
+/// fallback `effective_cap = max(cap, RING_MIN_CAP)`.
+#[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum StrokeHistory {
     /// Desktop / high-end mobile. Sem cap — cresce com a sessão.
@@ -160,10 +169,47 @@ impl StrokeHistory {
     }
 
     /// Iterator em ordem cronológica (mais antigo → mais novo).
-    pub fn iter(&self) -> Box<dyn Iterator<Item = &StrokeRecord> + '_> {
+    ///
+    /// **Audit T1.8 L4-H1 — enum dispatch (sem `Box<dyn>` alloc):** retorna
+    /// tipo nominal [`StrokeHistoryIter`] em vez de `Box<dyn Iterator>`,
+    /// eliminando 1 alloc por chamada + vtable indirect. Hot path
+    /// (Reproject W12, snapshot rebuild) chama por frame sobre 20k strokes.
+    pub fn iter(&self) -> StrokeHistoryIter<'_> {
         match self {
-            Self::Full(v) => Box::new(v.iter()),
-            Self::Ring { records, .. } => Box::new(records.iter()),
+            Self::Full(v) => StrokeHistoryIter::Full(v.iter()),
+            Self::Ring { records, .. } => StrokeHistoryIter::Ring(records.iter()),
+        }
+    }
+}
+
+/// Iterator nominal sobre [`StrokeHistory`]. Audit T1.8 L4-H1: enum dispatch
+/// elimina `Box<dyn>` por chamada de `iter()`.
+pub enum StrokeHistoryIter<'a> {
+    Full(std::slice::Iter<'a, StrokeRecord>),
+    Ring(std::collections::vec_deque::Iter<'a, StrokeRecord>),
+}
+
+impl<'a> Iterator for StrokeHistoryIter<'a> {
+    type Item = &'a StrokeRecord;
+    fn next(&mut self) -> Option<&'a StrokeRecord> {
+        match self {
+            Self::Full(it) => it.next(),
+            Self::Ring(it) => it.next(),
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::Full(it) => it.size_hint(),
+            Self::Ring(it) => it.size_hint(),
+        }
+    }
+}
+
+impl ExactSizeIterator for StrokeHistoryIter<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Full(it) => it.len(),
+            Self::Ring(it) => it.len(),
         }
     }
 }

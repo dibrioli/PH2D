@@ -185,6 +185,62 @@ Then enable the previously-deferred gate `tests/docs_bugs_have_gates.rs` that wa
 
 ---
 
+### Painter T1.8 carry-overs (audit T1.8 closure 2026-05-27)
+
+**Source:** ADR-0046 + audit T1.8 L4-H13/L4-H19/L4-H7/L4-H12/L2-G12/L4-H16 + audit T1.8 L1-F1/L2-F5/L3-G4.
+
+**1. Streaming `blake3::Hasher` para `PaintProject::recompute_checksum` + `verify_checksum`** (L1-F1/L2-F5/L3-G4/L4-H13/L5-I4)
+
+Implementação atual usa clone-based (`self.clone()` + `postcard::to_allocvec`) pra preservar invariante anti-panic. Peak memory 2× serialized size; em sessão pesada (10k strokes ≈ 6 MB → 12 MB temporário). Em iPad 2018 (3 GB total) abrir canon 200 MB causa 400 MB peak.
+
+**Plan:** custom `serde::Serializer` adapter que feed bytes pro `blake3::Hasher::update` direto, sem `Vec<u8>` intermediário. Skip `checksum` field via field-level filter. Zero peak memory overhead, mantém atomicidade anti-panic.
+
+**Trigger to resume:** quando primeiro report de UX "abrir canvas grande engasga" no Painter ship. OU quando W16 cloud-sync precisar processar uploads server-side em hot path.
+
+**2. `count_struct_fields` heurística multi-line** (L1-F12)
+
+Arch-gate helper em `architecture_painter_contract_surface.rs` conta `pub <name>: <type>` por linha. Refactor rustfmt com width estreito que quebrar field longo em multi-linha (e.g., `pub points:\n  Vec<RawPointerSample>`) → undercount silencioso, caps passam spuriously.
+
+**Plan:** trocar heurística por `syn` AST parser ou regex multi-line.
+
+**Trigger to resume:** primeiro caso real onde gate falha em detectar cap violation.
+
+**3. `BrushParamsHash` newtype cross-crate** (L4-H12)
+
+Atual `pub type BrushParamsHash = [u8; 32]` em `ph2d-painter-brush` é alias = zero protection. Caller pode passar `texture_blake3` ou `source_blake3` em vez de `brush.params_blake3()` — compila silenciosamente, quebra content-addressing.
+
+**Plan:** newtype `pub struct BrushParamsHash(pub [u8; 32])` em `ph2d-painter-brush` com `#[serde(transparent)]` (zero ABI cost postcard). Cross-crate refactor: `ph2d-painter-stroke::StrokeRecord.brush_params_hash` + `PaintProject::brush_snapshots`.
+
+**Trigger to resume:** primeira sessão coordenada de polish cross-crate da família painter.
+
+**4. Doctests em surface pública** (L4-H7)
+
+Zero `# Examples` em fns públicas de `ph2d-painter-stroke`. CI roda `cargo test --doc` mas surface MCP/W11 vai precisar de exemplos pra onboarding LLM via `cargo doc --json`.
+
+**Plan:** adicionar 4-6 doctests críticos em `PaintProject::new`/`recompute_checksum`, `StrokeRecord::try_push_sample`, `f32_to_q1616_saturating` vs `_checked`, `load` migration-aware flow, `StrokeHistory::for_budget`.
+
+**5. `CanonVersion`/`SidecarVersion` newtypes** (L4-H19)
+
+4 versions `u32` espalhados (`StrokeRecord`, `PaintProject`, `LayerSnapshot`, `PaintProjectCache`) sem distinção type-level entre HR-14 forward-compat vs sidecar regenerável. Caller pode silenciosamente atribuir um pro outro.
+
+**Plan:** `pub struct CanonVersion(pub u32);` + `pub struct SidecarVersion(pub u32);` com `#[serde(transparent)]`. Substituir field types. Custo ~1h refactor + tests.
+
+**6. `BrushSnapshotTable` newtype** (L2-F7/L5-I7)
+
+`pub brush_snapshots: Vec<(BrushParamsHash, Brush)>` exige caller manter uniqueness. `load()` enforça via runtime check, mas idiom Rust seria `BTreeMap<BrushParamsHash, Brush>` newtype-wrapped pra impossibility-to-violate.
+
+**Plan:** `pub struct BrushSnapshotTable(BTreeMap<BrushParamsHash, Brush>);` com `#[serde(serialize_with=…)]` emitting sorted `Vec<(K,V)>` (postcard determinism preservado).
+
+**7. `OsPathBytes` wrapper pra `SnapshotStorage::OnDisk`** (L2-F6/L5-I6)
+
+`PathBuf` em Windows pode conter UTF-16 non-roundtrippable em UTF-8 → save falha. Além: path attacker-controlled em sidecar exige `validate_path_for_load` (já implementado em T1.8). Long-term: wrapper `OsPathBytes(Vec<u8>)` armazena raw bytes + helper de conversão lossy.
+
+**Trigger:** primeiro report Windows com path non-UTF-8 OU W16 cloud-sync precisar harden traversal defense além do que `validate_path_for_load` cobre.
+
+**Sequencing pintura T1.8 carry-overs:** itens 1-4 são `W11 painter polish` (semana dedicada). Itens 5-7 podem aguardar W12 Reproject + W13 MCP (donde semantics ficam mais claras).
+
+---
+
 ## 5. Open ADR drafts
 
 When the relevant Wave 11 work starts, open these ADRs:

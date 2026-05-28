@@ -69,6 +69,11 @@
 
 pub mod budget;
 pub mod determinism;
+// Audit T1.8 L4-H2 — `device` é módulo de stubs temporários (PointerSource +
+// LayerId + LayerStack) que migrarão para `ph2d-painter-input` (T-input) e
+// `ph2d-painter-layers` (W3). `#[doc(hidden)]` esconde de rustdoc public
+// pra que consumers prefiram o caminho top-level re-exportado (estável).
+#[doc(hidden)]
 pub mod device;
 pub mod history;
 pub mod persistence;
@@ -79,20 +84,29 @@ pub mod snapshot;
 pub use budget::PainterMemoryBudget;
 #[cfg(feature = "det-painter")]
 pub use determinism::{DetReplayError, replay_stroke_det};
-pub use determinism::{f32_to_q88, f32_to_q1616, f32_to_q1616_checked, q88_to_f32, q1616_to_f32};
+#[allow(deprecated)] // f32_to_q1616 alias preservado pra migração T1.9+
+pub use determinism::{
+    f32_to_q88, f32_to_q1616, f32_to_q1616_checked, f32_to_q1616_saturating, q88_to_f32,
+    q1616_to_f32,
+};
 pub use device::{LayerId, LayerStack, LayerStackEntry, PointerSource};
 pub use history::{
     FULL_HISTORY_MIN_BUDGET_MB, RING_CAP_LOW_TIER, RING_CAP_MID_TIER, RING_MIN_CAP, StrokeHistory,
+    StrokeHistoryIter,
 };
 pub use persistence::{
-    CanvasInfo, ColorProfile, LoadError, PAINT_PROJECT_CACHE_MAGIC, PAINT_PROJECT_MAGIC,
-    PaintProject, PaintProjectCache, SerializedRTree, load, migrate_v1_to_v2,
+    CanvasInfo, ColorProfile, LoadError, MAX_BRUSH_SNAPSHOTS, MAX_CANON_BYTES, MAX_LAYERS,
+    MAX_RESERVED_PAYLOAD, MAX_SNAPSHOTS_PER_CACHE, MAX_STROKES_PER_CANON,
+    PAINT_PROJECT_CACHE_MAGIC, PAINT_PROJECT_MAGIC, PaintProject, PaintProjectCache, SaveError,
+    SerializedRTree, apply_migrations, load, save, validate_caps_post_deserialize,
 };
 pub use record::{
     CapExceeded, MAX_SAMPLES_PER_STROKE, RawPointerSample, StrokeId, StrokeRecord, ToolMode,
 };
 pub use reproject::{ProgressEvent, ReprojectError, ReprojectMode, reproject_canvas};
-pub use snapshot::{LayerSnapshot, SNAPSHOT_STROKE_INTERVAL, SNAPSHOT_VERSION, SnapshotStorage};
+pub use snapshot::{
+    LayerSnapshot, SNAPSHOT_STROKE_INTERVAL, SNAPSHOT_VERSION, SnapshotPathError, SnapshotStorage,
+};
 
 /// HR-14 schema version do canon savefile (`.ph2d-painter`). v1 = 1.
 /// Bump quando schema do `PaintProject` mudar — migration helper em

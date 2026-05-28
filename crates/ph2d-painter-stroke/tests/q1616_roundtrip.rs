@@ -6,7 +6,7 @@
 //! representáveis exatos (multiples de 1/65536). Sem isso, replay
 //! determinístico diverge entre ARM/x86.
 
-use ph2d_painter_stroke::{f32_to_q88, f32_to_q1616, q88_to_f32, q1616_to_f32};
+use ph2d_painter_stroke::{f32_to_q88, f32_to_q1616_saturating, q88_to_f32, q1616_to_f32};
 
 #[test]
 fn q1616_roundtrip_full_canvas_range() {
@@ -15,7 +15,7 @@ fn q1616_roundtrip_full_canvas_range() {
     // exatos em Q16.16: 32768 e 1, respectivamente).
     let mut x = -16384.0f32;
     while x <= 16384.0 {
-        let q = f32_to_q1616(x);
+        let q = f32_to_q1616_saturating(x);
         let back = q1616_to_f32(q);
         assert_eq!(
             back, x,
@@ -31,7 +31,7 @@ fn q1616_subpixel_eighths_roundtrip() {
     // 1/8 px = 8192 em Q16.16 (exato).
     for n in -1024..=1024i32 {
         let v = n as f32 / 8.0;
-        let q = f32_to_q1616(v);
+        let q = f32_to_q1616_saturating(v);
         let back = q1616_to_f32(q);
         assert_eq!(back, v, "1/8-px roundtrip drift at v={}", v);
     }
@@ -70,10 +70,10 @@ fn q88_tilt_range_roundtrip() {
 
 #[test]
 fn q1616_zero_negative_inf_clamps_to_zero() {
-    assert_eq!(f32_to_q1616(0.0), 0);
-    assert_eq!(f32_to_q1616(f32::NAN), 0);
-    assert_eq!(f32_to_q1616(f32::INFINITY), 0);
-    assert_eq!(f32_to_q1616(f32::NEG_INFINITY), 0);
+    assert_eq!(f32_to_q1616_saturating(0.0), 0);
+    assert_eq!(f32_to_q1616_saturating(f32::NAN), 0);
+    assert_eq!(f32_to_q1616_saturating(f32::INFINITY), 0);
+    assert_eq!(f32_to_q1616_saturating(f32::NEG_INFINITY), 0);
 }
 
 #[test]

@@ -55,6 +55,13 @@ pub struct LayerSnapshot {
 /// dos casos); W14+ candidate: wrapper `OsPathBytes(Vec<u8>)` que armazena
 /// raw bytes + helper de conversão lossy. Integration test
 /// `snapshot_ondisk_postcard_roundtrip` cobre o caminho UTF-8 happy path.
+///
+/// **Audit T1.8 L5-I6 — path traversal mitigation OBRIGATÓRIA:** PathBuf
+/// é DESERIALIZED de bytes attacker-controlled (W11+ sidecar load). Caller
+/// que abre arquivo via `OnDisk` DEVE chamar
+/// [`LayerSnapshot::validate_path_for_load`] antes de `File::open` —
+/// senão attacker pode exfiltrate `/etc/shadow` ou similar via canon
+/// malicioso. NÃO `file::open(snap.path)` direto.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum SnapshotStorage {
     /// Bytes em RAM. RGBA8 ou RGBA16F per canvas color profile.
@@ -63,7 +70,8 @@ pub enum SnapshotStorage {
     /// Requer UTF-8-roundtrippable (vide nota do enum).
     OnDisk(PathBuf),
     // === 2 slots de headroom ===
-    // - CompressedInMemory(Vec<u8>, CompressionAlgo)
+    // - InMemoryCompressed(Vec<u8>, CompressionAlgo) — naming alinhado
+    //   convenção atual (locus prefix). H-11 audit T1.8 L4.
     // - OnObjectStore(BlobRef) — cloud assets W17
 }
 
@@ -92,7 +100,82 @@ impl LayerSnapshot {
     pub fn is_in_memory(&self) -> bool {
         matches!(self.texture_data, SnapshotStorage::InMemory(_))
     }
+
+    /// Valida que `OnDisk(path)` é seguro pra abrir, restrito a `allowed_root`.
+    /// Caller W11+ DEVE chamar isso antes de `File::open(path)`.
+    ///
+    /// **Audit T1.8 L5-I6 — path traversal mitigation:** sidecar carrega
+    /// `PathBuf` direto de bytes attacker-controlled. Sem este guard,
+    /// `OnDisk("/etc/shadow")` ou `OnDisk("../../home/user/.ssh/id_rsa")`
+    /// abriria caminho fora do cache dir esperado.
+    ///
+    /// Política:
+    /// - Path absoluto fora de `allowed_root` → rejeita.
+    /// - Path relativo com `..` → rejeita (anti-traversal).
+    /// - Canonicalize falha (path não existe ainda, OK pra write) → fallback
+    ///   ao prefixo check sem resolve symlinks.
+    /// - Symlink em macOS/Linux: caller é responsável por extra check via
+    ///   `metadata.is_symlink()` se relevante (não bloqueamos aqui porque
+    ///   alguns flows válidos usam symlinks dentro do cache).
+    ///
+    /// Retorna `&Path` (o mesmo do storage) em caso de sucesso pra encadear
+    /// `File::open(snap.validate_path_for_load(root)?)`.
+    pub fn validate_path_for_load<'a>(
+        &'a self,
+        allowed_root: &std::path::Path,
+    ) -> Result<&'a std::path::Path, SnapshotPathError> {
+        let path = match &self.texture_data {
+            SnapshotStorage::InMemory(_) => {
+                return Err(SnapshotPathError::NotOnDisk);
+            }
+            SnapshotStorage::OnDisk(p) => p.as_path(),
+        };
+        // Reject componentes `..` (anti-traversal) ANTES de canonicalize.
+        for component in path.components() {
+            if matches!(component, std::path::Component::ParentDir) {
+                return Err(SnapshotPathError::ParentTraversal);
+            }
+        }
+        // Path absoluto: deve estar SOB `allowed_root`.
+        if path.is_absolute() && !path.starts_with(allowed_root) {
+            return Err(SnapshotPathError::OutsideAllowedRoot);
+        }
+        // Reject paths com null byte (Windows + Linux exploitable).
+        if let Some(s) = path.to_str()
+            && s.contains('\0')
+        {
+            return Err(SnapshotPathError::InvalidChars);
+        }
+        Ok(path)
+    }
 }
+
+/// Erros de [`LayerSnapshot::validate_path_for_load`]. Audit T1.8 L5-I6.
+#[non_exhaustive]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SnapshotPathError {
+    /// Snapshot não é `OnDisk` — caller pediu validate em snapshot InMemory.
+    NotOnDisk,
+    /// Path contém componente `..` (anti-traversal).
+    ParentTraversal,
+    /// Path absoluto está fora do `allowed_root` (jail escape).
+    OutsideAllowedRoot,
+    /// Path contém caractere inválido (e.g., null byte).
+    InvalidChars,
+}
+
+impl std::fmt::Display for SnapshotPathError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotOnDisk => write!(f, "snapshot is not OnDisk variant"),
+            Self::ParentTraversal => write!(f, "path contains .. component (anti-traversal)"),
+            Self::OutsideAllowedRoot => write!(f, "absolute path outside allowed cache root"),
+            Self::InvalidChars => write!(f, "path contains invalid chars (e.g., null byte)"),
+        }
+    }
+}
+
+impl std::error::Error for SnapshotPathError {}
 
 #[cfg(test)]
 mod tests {

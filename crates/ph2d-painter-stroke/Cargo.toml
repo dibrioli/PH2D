@@ -39,7 +39,19 @@ postcard = { version = "1", features = ["use-std"] }
 # blake3 — checksum + content-addressed snapshot dedup + source_blake3
 # do sidecar cache.
 blake3 = "1"
+# Audit T1.8 L5-I3 — constant-time comparison para checksum verify
+# (previne timing oracle quando W16 cloud-sync reusa fn server-side).
+subtle = "2"
 # uuid — identidade global do stroke (StrokeId).
+#
+# Audit T1.8 L5-I8 — **wasm32 consumers DEVEM ativar feature `js`** no
+# binário top-level via `cargo build --features uuid/js` (ou em
+# `Cargo.toml` de shell wasm32). Sem isso, `getrandom` falha ou cai pra
+# source não-CSPRNG, tornando `Uuid::new_v4()` previsível → MCP
+# StrokeId queries (ADR-0047) hijack via birthday paradox cedo. Desktop
+# (Linux/macOS/Windows) usa getrandom CSPRNG por padrão. Arch-gate
+# futuro: build.rs detecta `target_arch = "wasm32" && !feature("js")` →
+# compile error.
 uuid = { version = "1", features = ["v4", "serde"] }
 # OklchColor — color primary/secondary do stroke. Dep de consumo apenas
 # (ADR-0046 §2.2); modificações no ph2d-color são Coord-A only.

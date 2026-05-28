@@ -23,23 +23,27 @@ pub const fn q1616_to_f32(v: i32) -> f32 {
     v as f32 / 65536.0
 }
 
-/// Converte f32 para Q16.16 (i32). Clamps `f32::NAN`/`±INF` para 0 (caller
-/// é responsável por validar input upstream; helper escolhe failure
-/// seguro em vez de panic mid-stroke).
+/// Converte f32 para Q16.16 (i32) **com saturação silenciosa** fora da
+/// janela útil. Clamps `f32::NAN`/`±INF` para 0; valores fora de
+/// **(-32768.0, +32768.0)** vão pra `i32::{MIN,MAX}` SEM aviso (release).
 ///
-/// **Audit T1.8 L2-F1 — silent clamp warning:** valores fora da janela útil
-/// **(-32768.0, +32768.0)** são silenciosamente clampados via `as i32`
-/// saturating (Rust ≥ 1.45). Coords aceitas pelo type `i32` (±2.14e9 px)
-/// vão *muito* além do canvas máximo (16384×8192 ADR-0046 §2.7), MAS f32
-/// perde precisão acima de 2²⁴ = 16M, então roundtrip ULP-zero só vale
-/// dentro da janela documentada. Para detectar input fora-de-range em
-/// tempo de teste/debug, use [`f32_to_q1616_checked`] em vez deste.
+/// **Audit T1.8 L4-H3 — naming `_saturating`:** Rust idiom estabelecido
+/// (std + numerics ecosystem) é `op`/`op_checked`/`op_saturating`/
+/// `op_wrapping`. O nome sem sufixo era ambíguo (caller PCA escolhe nome
+/// curto e fica com gesto fora-de-canvas virando ponto no canto extremo
+/// sem warning). Naming honest: `_saturating` documenta que clampa,
+/// [`f32_to_q1616_checked`] é o caminho recomendado pra input não-validado
+/// upstream. `debug_assert!` no path saturating ajuda detectar em testes.
+///
+/// Caller que NÃO valida upstream DEVE usar [`f32_to_q1616_checked`].
+/// Hot path com input já validado pode usar este (pre-checked Streamline/
+/// Stabilization runtime).
 #[inline]
 #[must_use]
-pub fn f32_to_q1616(v: f32) -> i32 {
+pub fn f32_to_q1616_saturating(v: f32) -> i32 {
     debug_assert!(
         !v.is_finite() || v.abs() < 32_768.0,
-        "f32_to_q1616 input fora da janela ULP-zero (-32768, +32768): {} \
+        "f32_to_q1616_saturating input fora da janela ULP-zero (-32768, +32768): {} \
          — use f32_to_q1616_checked para validar upstream",
         v
     );
@@ -49,6 +53,15 @@ pub fn f32_to_q1616(v: f32) -> i32 {
     // Clamp to representable range pra evitar overflow no `as i32`.
     let scaled = (v * 65536.0).clamp(i32::MIN as f32, i32::MAX as f32);
     scaled as i32
+}
+
+/// **Deprecated alias** para [`f32_to_q1616_saturating`]. Mantido pra
+/// migração suave de consumers durante T1.9+. Remover em W11 polish.
+#[inline]
+#[must_use]
+#[deprecated(note = "use f32_to_q1616_saturating (explicit naming, audit T1.8 L4-H3)")]
+pub fn f32_to_q1616(v: f32) -> i32 {
+    f32_to_q1616_saturating(v)
 }
 
 /// Variante checked de [`f32_to_q1616`] — retorna `None` se o input está
@@ -159,19 +172,19 @@ mod tests {
     #[test]
     fn q1616_zero_roundtrip() {
         assert_eq!(q1616_to_f32(0), 0.0);
-        assert_eq!(f32_to_q1616(0.0), 0);
+        assert_eq!(f32_to_q1616_saturating(0.0), 0);
     }
 
     #[test]
     fn q1616_unit_roundtrip() {
         // 1.0 = 65536 em Q16.16.
-        assert_eq!(f32_to_q1616(1.0), 65536);
+        assert_eq!(f32_to_q1616_saturating(1.0), 65536);
         assert_eq!(q1616_to_f32(65536), 1.0);
     }
 
     #[test]
     fn q1616_negative_roundtrip() {
-        assert_eq!(f32_to_q1616(-100.5), -100i32 * 65536 - 32768);
+        assert_eq!(f32_to_q1616_saturating(-100.5), -100i32 * 65536 - 32768);
         assert_eq!(q1616_to_f32(-100i32 * 65536 - 32768), -100.5);
     }
 
@@ -184,7 +197,7 @@ mod tests {
             // Audit T1.8 L2-F8: cobrir EXTREMOS da janela útil.
             32767.0, 32767.5, -32767.0, -32767.5,
         ] {
-            let q = f32_to_q1616(v);
+            let q = f32_to_q1616_saturating(v);
             let back = q1616_to_f32(q);
             assert_eq!(back, v, "Q16.16 roundtrip failed for {}", v);
         }
@@ -217,9 +230,9 @@ mod tests {
 
     #[test]
     fn q1616_clamps_nan_and_infinity() {
-        assert_eq!(f32_to_q1616(f32::NAN), 0);
-        assert_eq!(f32_to_q1616(f32::INFINITY), 0);
-        assert_eq!(f32_to_q1616(f32::NEG_INFINITY), 0);
+        assert_eq!(f32_to_q1616_saturating(f32::NAN), 0);
+        assert_eq!(f32_to_q1616_saturating(f32::INFINITY), 0);
+        assert_eq!(f32_to_q1616_saturating(f32::NEG_INFINITY), 0);
     }
 
     #[test]

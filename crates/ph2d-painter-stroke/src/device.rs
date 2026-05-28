@@ -74,6 +74,10 @@ pub struct LayerStack {
 ///
 /// Trocar `Reserved` por outro nome no futuro QUEBRA forward-compat. Add
 /// novos variants APÓS Reserved (i.e., `Raster = 1`, `Group = 2`, ...).
+///
+/// **Audit T1.8 L4-H8 reverted:** Rust derive Default + #[default] em enum
+/// só funciona em variants UNIT (sem fields). `Reserved(Vec<u8>)` é tuple
+/// variant — exige impl manual (mantido abaixo).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[repr(u8)]
 pub enum LayerStackEntry {

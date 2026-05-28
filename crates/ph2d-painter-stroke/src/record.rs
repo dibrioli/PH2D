@@ -36,6 +36,15 @@ pub struct StrokeRecord {
     /// Brush opaco (built-in slot ou imported atlas layer) — ADR-0044 §2.8.
     pub brush_handle: BrushHandle,
     /// blake3 do `Brush` snapshot — dedup em `PaintProject::brush_snapshots`.
+    ///
+    /// **Audit T1.8 L4-H12 — type-alias warning:** `BrushParamsHash` é
+    /// `pub type ... = [u8; 32]` em `ph2d-painter-brush` — zero type-level
+    /// protection contra confusion com outros hashes `[u8; 32]`
+    /// (`texture_blake3` em LayerSnapshot, `source_blake3` em cache).
+    /// Caller DEVE passar `brush.params_blake3()` resultado — passar
+    /// qualquer outro `[u8; 32]` compila silenciosamente mas quebra
+    /// content-addressing. W11 polish: trocar alias por newtype
+    /// `struct BrushParamsHash(pub [u8; 32])` cross-crate.
     pub brush_params_hash: BrushParamsHash,
     /// Qual raster layer recebe os stamps.
     pub layer_target: LayerId,
@@ -103,7 +112,7 @@ impl StrokeRecord {
     /// [`Self::points_at_cap`].
     pub fn try_push_sample(&mut self, sample: RawPointerSample) -> Result<(), CapExceeded> {
         if self.points_at_cap() {
-            return Err(CapExceeded {
+            return Err(CapExceeded::Samples {
                 cap: MAX_SAMPLES_PER_STROKE,
             });
         }
@@ -112,21 +121,37 @@ impl StrokeRecord {
     }
 }
 
-/// Erro de cap excedido em `StrokeRecord::try_push_sample`. ADR-0046 §2.2:
-/// strokes > `MAX_SAMPLES_PER_STROKE = 65535` exigem split implícito no
-/// commit (caller responsabilidade — comm caller-side em T1.9+).
+/// Erro de cap excedido em `StrokeRecord::try_push_sample` e operações
+/// futuras que podem ultrapassar invariantes de tamanho.
+///
+/// **Audit T1.8 L4-H10:** virou `#[non_exhaustive] enum` (era struct) pra
+/// permitir variants futuros (`BudgetMb`, `StrokeLengthSeconds`, etc.) sem
+/// semver break em downstream.
+#[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct CapExceeded {
-    pub cap: usize,
+pub enum CapExceeded {
+    /// Excedeu [`MAX_SAMPLES_PER_STROKE`] em
+    /// [`StrokeRecord::try_push_sample`].
+    Samples { cap: usize },
+}
+
+impl CapExceeded {
+    /// Helper retro-compat — `cap` antigo equivalia ao Samples::cap.
+    pub const fn cap(&self) -> usize {
+        match self {
+            Self::Samples { cap } => *cap,
+        }
+    }
 }
 
 impl std::fmt::Display for CapExceeded {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "StrokeRecord.points cap exceeded ({} samples max — split stroke or commit)",
-            self.cap
-        )
+        match self {
+            Self::Samples { cap } => write!(
+                f,
+                "StrokeRecord.points cap exceeded ({cap} samples max — split stroke or commit)"
+            ),
+        }
     }
 }
 
@@ -140,7 +165,11 @@ impl std::error::Error for CapExceeded {}
 /// **Fixed-point Q16.16/Q8.8**: HR-5 cross-OS bit-identical exige
 /// representação que não dependa de IEEE754 fast-math drift. Conversão
 /// roundtrip via [`crate::determinism`].
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+///
+/// **Audit T1.8 L4-H17 — `Hash` derived:** habilita dedup de samples
+/// consecutivos idênticos (Procreate-like sub-pixel delta filter) via
+/// `HashSet` em W13 MCP path. Custo zero — POD 28 bytes.
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct RawPointerSample {
     /// x em Q16.16 (coord canvas, ±32768 px).
     pub x_q1616: i32,
@@ -240,7 +269,8 @@ mod tests {
         let err = rec
             .try_push_sample(RawPointerSample::default())
             .unwrap_err();
-        assert_eq!(err.cap, MAX_SAMPLES_PER_STROKE);
+        assert_eq!(err.cap(), MAX_SAMPLES_PER_STROKE);
+        assert!(matches!(err, CapExceeded::Samples { .. }));
         assert_eq!(
             rec.points.len(),
             MAX_SAMPLES_PER_STROKE,

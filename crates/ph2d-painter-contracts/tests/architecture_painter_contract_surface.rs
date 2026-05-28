@@ -619,10 +619,25 @@ mod stroke_history {
 
     #[test]
     fn painter_memory_budget_field_count_is_capped() {
+        // **Amendment T1.8 audit L4/L5 closure (2026-05-27):** ADR-0046 §2.10
+        // original prescrevia `ph2d-host::MemoryBudget { painter:
+        // PainterMemoryBudget }` (amend de struct foundational), MAS:
+        //
+        // 1. `MemoryBudget` JÁ existe em `ph2d-core::budget` como struct
+        //    per-subsystem flat (vram_mb, ram_mb, heap_script_mb) — modelo
+        //    incompatível com agregado nested proposto pela ADR.
+        // 2. `ph2d-host` é trait-only crate (PlatformHost + HostHandler) —
+        //    sem struct MemoryBudget; adicionar lá criaria coupling artificial.
+        // 3. Painter pode reportar seus 4 buckets via `Plugin::init` agregando
+        //    `MemoryBudget::new(0, painter_ram_total, 0)` em runtime.
+        //
+        // Localização canônica fica em `ph2d-painter-stroke::budget`. ADR-0046
+        // §2.10 amend (2026-05-27) reflete isso. Gate aponta pra lá agora —
+        // sai de vacuous-pass (era `ph2d-host`).
         assert_capped(
-            count_struct_fields("ph2d-host", "PainterMemoryBudget"),
+            count_struct_fields("ph2d-painter-stroke", "PainterMemoryBudget"),
             8,
-            "PainterMemoryBudget (ADR-0046 §2.10)",
+            "PainterMemoryBudget (ADR-0046 §2.10 + amendment T1.8)",
         );
     }
 

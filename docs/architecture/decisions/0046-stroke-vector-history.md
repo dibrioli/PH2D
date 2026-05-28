@@ -290,22 +290,44 @@ pub enum ReprojectMode {
 - `ReprojectMode` ≤ 4 variants
 - `ReprojectError` ≤ 8 variants
 
-### 2.10 Memory budget + extension em `ph2d-host::MemoryBudget` (autorizado por ADR-0043 §2.5)
+### 2.10 Memory budget — `PainterMemoryBudget` em `ph2d-painter-stroke::budget`
 
-Esta ADR amenda `ph2d-host::MemoryBudget` com um campo agregado de buckets Painter:
+> **Amendment T1.8 (2026-05-27):** localização original prescrita era
+> `ph2d-host::MemoryBudget { painter: PainterMemoryBudget }` (amend de
+> struct foundational). Audit L5 + impl T1.8 revelaram:
+>
+> 1. `MemoryBudget` já existe em `ph2d-core::budget` como struct
+>    per-subsystem flat (`vram_mb, ram_mb, heap_script_mb`), modelo
+>    incompatível com agregado nested.
+> 2. `ph2d-host` é trait-only crate (`PlatformHost` + `HostHandler`) —
+>    sem struct `MemoryBudget`. Adicionar lá criaria coupling artificial
+>    e conflito com `ph2d-core::MemoryBudget`.
+> 3. Painter relata seus buckets via `Plugin::init` agregando
+>    `ph2d_core::MemoryBudget::new(0, painter_ram_total, 0)` em runtime
+>    — modelo per-subsystem preservado.
+>
+> Localização canônica corrigida: `ph2d-painter-stroke::budget`. Arch-gate
+> `painter_memory_budget_field_count_is_capped` em
+> `architecture_painter_contract_surface.rs` agora aponta lá (era
+> vacuous-pass apontando `ph2d-host`).
+
+Esta ADR define a struct `PainterMemoryBudget` (cap ≤ 8 fields) que vive em
+`ph2d-painter-stroke::budget` e é agregada via `Plugin::init`:
 
 ```rust
-pub struct MemoryBudget {
-    // ... campos existentes ...
-    pub painter: PainterMemoryBudget,
-}
-
+// crates/ph2d-painter-stroke/src/budget.rs (T1.8 ship)
 pub struct PainterMemoryBudget {
     pub stroke_history_mb: u32,              // §2.5 tier selection input
     pub snapshot_cap_mb: u32,                // §2.6 LRU cap
     pub atlas_shape_mb: u32,                 // ADR-0044 §1.8.1
     pub atlas_grain_mb: u32,                 // idem
+    // === 4 slots de headroom ===
 }
+
+// Integration via Plugin::init (W11+ wire):
+// let painter_total_mb = budget.stroke_history_mb + budget.snapshot_cap_mb
+//                      + budget.atlas_shape_mb + budget.atlas_grain_mb;
+// ph2d_core::MemoryBudget::new(0, painter_total_mb, 0)
 ```
 
 Cap: `PainterMemoryBudget ≤ 8 fields` (v1: 4). Plataformas runtime instanciam via host-side detection (memory probing + tier classification).

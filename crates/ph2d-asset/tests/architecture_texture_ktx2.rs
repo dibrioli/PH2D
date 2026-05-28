@@ -57,16 +57,26 @@ fn asset_enum_is_non_exhaustive_after_w1_t4() {
 }
 
 #[test]
-fn asset_texture_ktx2_byte_size_matches_blob_len() {
+fn asset_texture_ktx2_byte_size_includes_blob_plus_overhead() {
+    // Audit ε-H2 / ζ-F3 fix: byte_size deve ser consistente com Prefab/Scene
+    // arms (que somam std::mem::size_of_val overhead). Para HR-13 budget
+    // accounting "rough", overhead constante (~25 bytes per asset) é noise
+    // vs payload (KTX2 blob tipicamente ≥1 KB), mas consistency matters.
     let blob_size = 1024;
     let asset = Asset::TextureKtx2 {
         tier: TierIndex::MOBILE,
         blob: Arc::new(vec![0u8; blob_size]),
     };
-    assert_eq!(
-        asset.byte_size(),
-        blob_size,
-        "HR-13 budget accounting must read blob.len() directly (no overhead per W1.T4 design)"
+    let reported = asset.byte_size();
+    assert!(
+        reported >= blob_size,
+        "HR-13 budget accounting must include blob payload ({blob_size} bytes); got {reported}"
+    );
+    // Overhead bounded: tier (1B) + Vec inner descriptor (~24B on 64-bit).
+    assert!(
+        reported < blob_size + 256,
+        "byte_size overhead should be constant-bounded; got {} bytes overhead",
+        reported - blob_size
     );
 }
 

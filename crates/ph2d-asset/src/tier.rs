@@ -30,6 +30,16 @@ use serde::{Deserialize, Serialize};
 /// Valores 5+ são INVÁLIDOS — `TierIndex::new` retorna `None` para qualquer
 /// `u8 > 4`. Arch-gate em `crates/ph2d-asset/tests/architecture_texture_ktx2.rs`
 /// trava essa invariante via test exhaustive.
+///
+/// **Migration warning ⚠️ (audit ε-H1 W1.T4):** quando `ph2d_host::DeviceTier`
+/// materializar via slot futuro de ADR, o type alias `pub type TierIndex =
+/// ph2d_host::DeviceTier` SÓ funciona se a ordem do enum `DeviceTier` bater
+/// EXATAMENTE com os u8 hardcoded acima (Desktop→0, Mobile→1, Web→2, LowEnd→3,
+/// Constrained→4). Implementador da migration DEVE adicionar arch-gate
+/// `cross_crate_tier_alignment` em `ph2d-host/tests/` que valida
+/// `assert_eq!(DeviceTier::Desktop as u8, 0)` etc., antes de tornar TierIndex
+/// um alias. Caso contrário, postcard wire format de cooked-asset metadata
+/// degrada silenciosamente cross-version (HR-6 invariant violation).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct TierIndex(u8);
 

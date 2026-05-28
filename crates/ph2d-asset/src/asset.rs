@@ -32,12 +32,13 @@ pub enum Asset {
     /// `tier` indica qual platform tier este artefato é destinado (Desktop=BC7,
     /// Mobile=ASTC, etc., per [`crate::TierIndex`] + cooker target matrix).
     ///
-    /// `blob` carrega os bytes KTX2 raw — design pragmático W1.T4 noite
-    /// 2026-05-27: evita adicionar dep `ph2d-asset-ktx2` em `ph2d-asset/Cargo.toml`
-    /// (que tinha WIP alheio do imageio fan-out paralelo). Renderer W2 decodifica
-    /// via `ph2d_asset_ktx2::parse(&blob)` no upload path. Migration path para
-    /// `Arc<Ktx2Image>` decode-once via amendment ADR-0055.1 quando Cargo.toml
-    /// estiver disputável sem race.
+    /// `blob` carrega os bytes KTX2 raw — design pragmático W1.T4 (2026-05-27
+    /// noite): evita adicionar dep `ph2d-asset-ktx2` em `ph2d-asset/Cargo.toml`
+    /// que tinha WIP alheio do imageio fan-out paralelo. Renderer W2 decodifica
+    /// via `ph2d_asset_ktx2::parse(&blob)` no upload path (não hot path; HR-3 ok).
+    /// ADR-0055-v4 strategic-only é silent quanto à shape; migration para
+    /// `Arc<Ktx2Image>` decode-once é refactor local (~50 LOC + 1 dep + 1 gate),
+    /// não débito arquitetural — quando útil pra performance W2.
     TextureKtx2 {
         tier: crate::TierIndex,
         blob: Arc<Vec<u8>>,
@@ -72,9 +73,13 @@ impl Asset {
                     + s.relations.len() * std::mem::size_of::<crate::scene::ChildOfPair>()
                     + std::mem::size_of_val(&**s)
             }
-            // W1.T4: cooked KTX2 blob — raw byte count (decoded Ktx2Image lives
-            // só no renderer cache W2; aqui Asset carries só os bytes serializados).
-            Self::TextureKtx2 { blob, .. } => blob.len(),
+            // W1.T4: cooked KTX2 blob — raw byte count + Arc/TierIndex overhead
+            // por consistência com Prefab/Scene arms acima (audit ε-H2 / ζ-F3 fix).
+            // Decoded Ktx2Image lives só no renderer cache W2; aqui Asset carries
+            // só os bytes serializados.
+            Self::TextureKtx2 { blob, tier } => {
+                blob.len() + std::mem::size_of_val(tier) + std::mem::size_of_val(&**blob)
+            }
         }
     }
 }

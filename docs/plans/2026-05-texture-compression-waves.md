@@ -173,9 +173,15 @@ Mudanças futuras = amendment ADR-0055.
 
 ### Batch A — `ctt` integration foundation
 
-- **W1.T1** — `tools/asset-cooker/Cargo.toml` adiciona `ctt = "0.4.0"` (lib API) ou shells out para `ctt-cli` v0.4.0 via `std::process::Command`. **Decisão pré-W1**: lib API preferred (mais determinístico, evita process spawn overhead, integra com cancellation). LOC ~80 (Cargo deps + workspace bump if needed).
-- **W1.T1.5** — Opcional: verify GitHub Artifact Attestation no install step. LOC ~50 + script.
-- **W1.T2** — **`ctt` source audit** — ler 100% do código wrapper Rust (sub-crates ctt-astcenc/ctt-bc7enc-rdo/ctt-compressonator/ctt-etcpak/ctt-intel-texture-compressor); triage de 13 open issues com checklist (data-loss/security/non-determinism CRITICAL?). Deliverable: `docs/audits/ctt-source-audit-2026-05-XX.md`. Esforço ~3h leitura.
+- **W1.T0** — ✅ 2026-05-27 noite. `cargo add ctt = "0.4.0"` em `tools/asset-cooker/Cargo.toml` + sweep-grep §Symbol Registry vapor deps (E3/E4/E5/E8 verified status). Commit `db6971c`.
+- **W1.T1** — ✅ 2026-05-27 noite. `cargo check -p ph2d-asset-cooker` passou em 4m 18s; `ctt v0.4.0` resolveu e typecheck OK. ISPC build real (cargo build/test) deferido para W1.T3 quando código de uso for adicionado.
+- **W1.T1.5** — Opcional: verify GitHub Artifact Attestation no install step. LOC ~50 + script. ⏳ deferred.
+- **W1.T2** — ✅ 2026-05-27 noite. **`ctt` source audit** via 2 lentes paralelas (~50min cumulative). Deliverable consolidado: [`docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md`](../audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md) + 2 lentes individuais. **Veredito: APPROVE_WITH_CAVEATS** (Lente A 7.5/10 data-integrity, Lente B 9.0/10 HR-compliance; 8/8 sub-crates PASS HR-1 §2.7.1; 0 CRITICAL; 4 HIGH todos mitigáveis PH2D-side; fallback B NÃO necessário). Adoção requer 5 disciplinas operacionais → tasks T2.1..T2.5 abaixo.
+- **W1.T2.1** (NOVO pós-audit) — D1: trocar `ctt = "0.4.0"` por `ctt = { version = "0.4.0", default-features = false, features = ["encoder-bc7enc", "encoder-astcenc", "encoder-etcpak", "format-ktx2"] }` (lista exata em inventory pré-T3); Cargo.lock commitado; arch-gate `architecture_ctt_features_pinned` em `tools/asset-cooker/tests/`. LOC ~50.
+- **W1.T2.2** (NOVO pós-audit) — D3: wrapper guard `panic!` se config = (Compressonator backend + UltraFast quality + BC7 format) — Lente A HIGH#2 = encoder bug upstream conhecido (R=0 silent Linux/macOS). Arch-gate `architecture_no_compressonator_bc7_ultrafast`. LOC ~30.
+- **W1.T2.3** (NOVO pós-audit) — D4: snapshot integration test em `tools/asset-cooker/tests/snapshot_output_first_64_bytes.rs` — fixture 64×64 deterministic gradient → cook per (format × encoder × quality) → assert primeiros 64 bytes match snapshot. Snapshot files em `tools/asset-cooker/tests/snapshots/` (NÃO via Git LFS, são pequenos). LOC ~150.
+- **W1.T2.4** (NOVO pós-audit) — D5: `deny.toml` ban `basis-universal-sys` + `nvtt` (Lente B triage upstream issues #68 + #23 representam direções futuras do ctt que PH2D não consome). LOC ~10.
+- **W1.T2.5** (NOVO pós-audit, opcional) — D6: PR upstream `criterion` → `[dev-dependencies]` no `ctt` main (não bloqueia W1.T3; PH2D já mitiga via confinamento em `tools/asset-cooker`). ⏳ defer.
 
 ### Batch B — Cooker module
 

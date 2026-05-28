@@ -317,7 +317,9 @@ Coord-A futura: **ATIVAR** seção Coord-A no [`docs/SESSION_ACTIVE.md`](SESSION
 - **SKILL §11.10 / §12.1 / HR-1 §2.7.1** — atualizadas em Round 1-3.
 - **SESSION_ACTIVE.md** — Coord-A ATIVO (esta sessão); pastas tocadas documentadas (5 docs); NÃO-TOCAR list dos agentes paralelos respeitada (commit escopado).
 - **Memória refinada** — `[[feedback-perfection-no-deferrals]]` ganhou escopo decisão-atual vs decisões-adjacentes (anti-inversão da própria regra). `[[feedback-audit-internal-state-grep]]` criada em Round 3.
-- **Próxima sessão Coord-A**: ler ADR-0055-v4 (curta) + §Symbol Registry + §Open Issues do plano vivo + memória `perfection-no-deferrals` refinada. **W1.T0 destrancada**: `cargo add ctt = "0.4.0"` em `tools/asset-cooker/Cargo.toml` + sweep-grep dos símbolos do registry (alguns podem ter materializado entre sessões, especialmente E3 Plugin trait e E5 ph2d-i18n) + audit do source do `ctt` (W1.T2, ~3h leitura).
+- **W1.T0 ✅ + W1.T1 ✅ + W1.T2 ✅ fechadas mesma sessão.** Commits locais: `971e237` (v4 + plano + HANDOFF), `db6971c` (T0 cargo add + sweep-grep), próximo commit (T1 cargo check passed + T2 audit consolidado).
+- **W1.T2 audit deliverable**: [`docs/audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md`](audits/ctt-source-audit-2026-05-27-CONSOLIDATED.md). Veredito **APPROVE_WITH_CAVEATS** (8/8 sub-crates PASS HR-1 §2.7.1; 0 CRITICAL; 4 HIGH mitigáveis PH2D-side). 5 disciplinas operacionais → 5 sub-tasks novas no plano vivo (T2.1..T2.5).
+- **Próxima sessão Coord-A**: ler ADR-0055-v4 + audit consolidado + plano vivo T2.1..T2.5. Implementar D1 (features pinadas), D3 (wrapper guard AMD+BC7+UltraFast), D4 (snapshot test 64 bytes) e D5 (deny.toml ban) **ANTES** de W1.T3 (`tools/asset-cooker/src/texture/mod.rs` sub-command). Estimate ~1 sessão para T2.1+T2.2+T2.3+T2.4; T2.5 (PR upstream) ⏳ defer.
 
 ---
 

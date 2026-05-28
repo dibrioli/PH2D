@@ -326,10 +326,56 @@ W0 abriu 2026-05-26. Espelha o nível de rigor do ADR-0040 §7.
 | **W3.T0.6** convergence final pós-W3.T0.5 | ✅ | `84fd496` | 0 CRITICAL + 0 HIGH meu + 1 MEDIUM doc (plan placeholder não-substituído) + 4 LOW (2 forensic CC + 1 orphan T0.2 docs + 1 tracing infrastructure absent); Lens BB threading GREEN + Lens EE ship.sh real-time GREEN — **PADRÃO-OURO RATIFICADO** — vide §5.11 |
 | **W3.T1.0** wire-up `AssetDb → imageio registry` (fecha X-HIGH-1) | ✅ | `e54d41a` (multi-agent collision) | Bridge: `ph2d-asset/loader.rs::decode_via_imageio_registry` fallback acionado quando `image::guess_format` retorna Other. Estende `is_supported_image_extension` para gif/tiff/tif/ora/apng/psd/ph2d. Multi-layer/multi-frame/HDR/Vector retornam Error::Decode actionable. Tests: 46 ph2d-asset verdes; workspace check 1m 02s. **Colisão**: meus arquivos staged foram absorvidos pelo commit `e54d41a` (sessão KTX2 paralela) — conteúdo correto, atribuição confusa. Vide §5.12. |
 | **W3.T1..T5** fan-out 5 format crates (AVIF/EXR/HDR/JXL/SVG) | ✅ | `cc97cd4` | 5 new crates per ADR §3.8 fan-out drop-crate: AVIF (W3.T4 magic-only stub), EXR (W3.T2 magic-only stub), HDR-Radiance (W3.T3 magic-only stub), JXL (W3.T1 magic-only stub), SVG (W3.T5 **real parse** via usvg 0.43 → VectorDoc). registry-init regenerated 9→14 via codegen. spike.yml +5 crates (16 imageio total). 35 new tests verdes (8+6+6+7+8). Vide §5.13. |
-| **W3.T4** AVIF real decode | ✅ | `272d99d` | `avif-decode = "1"` (puro Rust libaom). Cobre 6 paths (Rgb8/Rgb16/Rgba8/Rgba16/Gray8/Gray16) → Flat(ImageBuffer<SrgbRgba>). Still + sequence (first-frame). 16-bit top-byte drop (PNG policy). HEIF brand rejeição double-check no import boundary. Encode permanent-defer (ravif = 0.13 pulls ~50 transitives). 9 tests verdes. |
+| **W3.T4** AVIF real decode (DESHIPADO) | ❌ | `272d99d` → reverted `f034e9a` | Audit-15 6-lente revelou 1 CRITICAL (RUSTSEC-2022-0040 owning_ref UAF via avif-decode) + 6 HIGH + 8 MEDIUM (incl. upstream `unprem()` math bug, HDR PQ silent, libaom-sys 26MB C+cmake). Per `feedback-no-industrial-claims-without-verification` + `feedback-perfection-no-deferrals` UNSHIPPABLE. Revert restaura magic-only stub W3.T4. 3 candidate re-evaluation paths documentados em §5.17. |
 | **W3 wave-2.1** audit-14 remediation pós-wave-2 | ✅ | `5f9582b` | 3 CRITICAL (HDR Inf panic + JXL ColorProfile mislabel + JXL CMYK collision via auto-srgb-request) + 4 HIGH (HDR wide-DR docs + JXL HDR/multi-frame guards + alpha-drop warning) + 2 MEDIUM (written guard + doc honesty) — Lens NN/PP GREEN, OO inconclusivo (sessão paralela cobrindo end-to-end test) — vide §5.16 |
 | **W3 wave-2** real decode/encode em HDR/EXR/JXL | ✅ | `dc4ec6a` | Substitui magic-only-stubs de cc97cd4 por impl real. HDR-Radiance: image 0.25 hdr feature, encode+decode RGBE → LinearRgba; EXR: `exr = "1"` builder API, decode via closure-state struct; JXL: `jxl-oxide = "0.10"` decode-only first-frame para Flat path. AVIF + SVG mantêm stubs. 21 tests verdes (6 HDR + 7 EXR + 8 JXL). Vide §5.15. |
 | **W3.T1.5** nova auditoria pós-W3.T1..T5 | ✅ | `54a8a12` | 1 CRITICAL doc-honesty (EXR claim falso `exr=1` in Cargo.toml) + 3 HIGH (AVIF Cargo.toml vapor comment, SVG Cargo.toml promete rasterize-on-import inexistente, **HH-FIN-1 SVG security: `default_string_resolver` faz `std::fs::read(href)` em `<image href="/etc/passwd"/>`**) + 3 MEDIUM (JXL codestream test ausente + AVIF avis sequence test ausente + SVG hostile-input tests ausentes) + 1 P1 ship-blocker fmt — vide §5.14 |
+
+### 5.17 W3.T4 AVIF deship — audit-15 reverteu `avif-decode 1.0` wire-up (2026-05-28)
+
+Auditoria adversarial 6-lente sobre commits `272d99d` + `82d503e` (AVIF real decode wave-2.1). Lentes especializadas: **QQ** safety/unsafe boundary · **RR** HDR/wide-gamut silent quantization · **SS** fuzz/malformed-input · **UU** dep tree audit · **VV** cross-impact · **WW** ship.sh real-time.
+
+**Resultado**: 1 CRITICAL + 6 HIGH + 8 MEDIUM + 5 LOW — **decisão: REVERT 272d99d → restaurar magic-only stub**.
+
+**CRITICAL (1)** — UU + QQ convergem:
+- **RUSTSEC-2022-0040** `owning_ref 0.4.1` use-after-free, no fix upstream, transitive via `avif-decode 1.0.2 → aom-decode 0.2.13 → owning_ref`. CI hard-fail `cargo audit` (existente em advisory-DB). Cadeia atribuída a Kornel sem migração para `safer_owning_ref`.
+
+**HIGH (6)**:
+- **UU** `libaom-sys 0.17.2+libaom.3.11.0` vendora 26 MB C source via cmake build-script (+30-60s clean build × 3 platforms; WASM/no-std impossível).
+- **UU** `avif-parse` duplicado (1.4.0 via aom-decode + 2.1.0 via avif-decode); 2 parsers ISOBMFF + ~200 KB binary duplicado.
+- **RR + QQ** AVIF HDR PQ/HLG silent quantization 16→8 via top-byte drop (não-linearisado) + `ColorProfile::Srgb` hardcoded mislabela BT.2020/Display-P3. **Asymmetry com fix JXL audit-14** que adota `request_color_encoding(srgb)` + `hdr_type()` reject.
+- **SS** `assert!(offset <= size)` panic determinístico em `avif-parse-1.4.0/src/lib.rs:668` UUID-box parser — bytes hostis derrubam thread.
+- **SS** `Vec::with_capacity(width * height)` no aom-decode pre-decode (8 sites) aceita AV1 sequence-header dims sem cap. Hostile 65535×65535 claim → ~16 GiB OOM antes do `MAX_RASTER_DIMENSION` post-decode check.
+- **WW** clippy `-D warnings` falha em 4 sites (`p.0` deprecated em `rgb::Gray_v08`) — ship-blocker imediato.
+
+**MEDIUM (8)**:
+- **QQ** Upstream `unprem()` matematicamente errado: `((u16::from(val) * 256) / (u16::from(alpha) * 256) / 256) = val/alpha/256 = 0` para `alpha < 255`. Premultiplied AVIF vira **preto**. Bug NA dep, não-patchable aqui.
+- **UU** ~160 unsafe blocks transitivos (lodepng=97, owning_ref=42, libaom-sys=9, aom-decode=11). Aceitável pra codec mas longe da assinatura "Rust safe-by-default" do resto do workspace.
+- **UU** Maintainer bus-factor=1 (Kornel single-author chain).
+- **UU** MSRV bump latente (`avif-decode 1.0.2` rust-version="1.91"; workspace 1.95 OK mas frágil).
+- **SS** `unreachable!()` em `ChromaSampling::Monochrome` 16-bit alcançável via crafted AVIF 10/12-bit monochrome.
+- **SS** + **QQ** Sem `catch_unwind` boundary (vs PSD pattern audit-7).
+- **SS** Granularidade erro perdida (UnexpectedEof → Decode em vez Truncated).
+- **QQ** Pré-decode dimension cap ausente.
+
+**LOW (5)**:
+- **SS** tests não cobrem box-size hostile fixtures.
+- **VV** `is_supported_image_extension` em `ph2d-asset/loader.rs` faltando `"avif"` (não-blocked pelo decode end-to-end via `image::guess_format` mas UX filter rejeita).
+- **VV** Gap test end-to-end AVIF asset bridge.
+- **QQ** transmute lifetime extension em avif-decode é unsafe upstream OK (não nosso código).
+- **WW** Tests + arch gates verdes pós-revert.
+
+**DECISÃO: REVERT** per [`feedback-no-industrial-claims-without-verification`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_no_industrial_claims_without_verification.md) + [`feedback-perfection-no-deferrals`](file:///Users/dibrioli/.claude/projects/-Volumes-MAC-EXTERNO-PROJETOS--PH2D-definitiva/memory/feedback_perfection_no_deferrals.md). 1 unfixable RUSTSEC + 1 unfixable upstream math bug + asymmetry HDR-vs-JXL é UNSHIPPABLE. `git revert 272d99d` (não-destrutivo) executado em `f034e9a`. Magic-only stub restaurado com nota crate-level listando 15 findings + 3 candidate re-evaluation paths:
+
+1. **`image = { features = ["avif-native"] }`** — different dep tree (uses `mp4parse` + Rust dav1d?); needs verification que `owning_ref` NÃO está no path.
+2. **Wait `avif-decode 2.x`** — quando upstream migrar para `safer_owning_ref` + fix `unprem()`.
+3. **Direct `libavif-sys`** — C FFI (fastest mas unsafe ABI surface).
+
+**Estado pós-revert (2026-05-28)**:
+- 14 format crates wired; **4** com decode real (HDR/EXR/JXL + 9 do W1/W2); **2 stubs** honest (AVIF + SVG aguardando ADR-0056).
+- 9 AVIF stub tests verdes (mesmo conjunto pre-272d99d).
+- 16 imageio crates no CI matrix; RUSTSEC removida.
+- Cargo.lock -153 lines (avif-decode/aom-decode/avif-parse/owning_ref/yuv/imgref/rgb/lodepng/libaom-sys/etc.).
 
 ### 5.16 W3 wave-2 audit-14 — 3 CRITICAL + 4 HIGH fechados (2026-05-27)
 

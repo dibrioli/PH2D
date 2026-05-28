@@ -1,28 +1,39 @@
 //! Color Equalization panel `populate` — pre-registers the panel's widget
 //! slots in the `WidgetStore` at host boot (once, via `Panel::populate`).
 //!
-//! Mirrors the canonical "slider Speed" setup from the widget gallery
-//! (`pre_populate.rs`): chip + slider share the same `0..1` value space,
-//! `link_slider_number` registers the bidirectional mirror, and the
-//! dispatch handles drag / clamp / sync automatically. Natural-unit
-//! formatting ("2.00" clip limit, "+0.30" brightness etc.) is paint-only
-//! via `display_override` and lives outside the storage.
+//! Each row uses `link_slider_number_mapped(scale, offset)` (the chip's
+//! **display-space** = natural unit, the slider's **storage** = `0..1`),
+//! so:
+//!
+//! - the **buffer the user sees on focus** is already in natural units
+//!   (e.g. `+0.30` for brightness, `2.00` for clip-limit) — matching
+//!   the unfocused `display_override`,
+//! - a typed value commits **without** silently being interpreted as
+//!   `0..1` (the 2026-05-27 BGRemoval Grow bug class),
+//! - drag-scrub clamps at the chip's natural bounds (`[min, max]`) and
+//!   the slider drag forward-projects storage → natural so the chip
+//!   stored value stays in lockstep.
+//!
+//! Tool still receives slider `0..1` via `SetValue(slider_id, track)`
+//! from `event.rs` (single projection site in `apply_ui_edit`).
 
 use crate::ids;
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 use ph2d_tool_color_equalization::params::{
-    BRIGHTNESS_DEFAULT, CLIP_LIMIT_DEFAULT, CONTRAST_DEFAULT, EXPOSURE_DEFAULT,
-    LUT_INTENSITY_DEFAULT, LUT_MIX_DEFAULT, POSTERIZE_DITHER_GRAIN_DEFAULT,
-    POSTERIZE_DITHER_STRENGTH_DEFAULT, SATURATION_DEFAULT, SHARPEN_AMOUNT_DEFAULT,
-    SHARPEN_RADIUS_DEFAULT, TEMPERATURE_DEFAULT, TILE_GRID_DEFAULT, TINT_DEFAULT, VIBRANCE_DEFAULT,
-    brightness_to_slider, clip_limit_to_slider, contrast_to_slider, exposure_to_slider,
-    lut_intensity_to_slider, lut_mix_to_slider, posterize_dither_grain_to_slider,
-    posterize_dither_strength_to_slider, saturation_to_slider, sharpen_amount_to_slider,
-    sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider, tint_to_slider,
-    vibrance_to_slider,
+    BRIGHTNESS_DEFAULT, BRIGHTNESS_MAX, BRIGHTNESS_MIN, CLIP_LIMIT_DEFAULT, CLIP_LIMIT_MAX,
+    CLIP_LIMIT_MIN, CONTRAST_DEFAULT, CONTRAST_MAX, CONTRAST_MIN, EXPOSURE_DEFAULT, EXPOSURE_MAX,
+    EXPOSURE_MIN, LUT_INTENSITY_DEFAULT, LUT_INTENSITY_MAX, LUT_INTENSITY_MIN, LUT_MIX_DEFAULT,
+    LUT_MIX_MAX, LUT_MIX_MIN, POSTERIZE_DITHER_GRAIN_DEFAULT, POSTERIZE_DITHER_GRAIN_MAX,
+    POSTERIZE_DITHER_GRAIN_MIN, POSTERIZE_DITHER_STRENGTH_DEFAULT,
+    POSTERIZE_DITHER_STRENGTH_MAX, POSTERIZE_DITHER_STRENGTH_MIN, SATURATION_DEFAULT,
+    SATURATION_MAX, SATURATION_MIN, SHARPEN_AMOUNT_DEFAULT, SHARPEN_AMOUNT_MAX,
+    SHARPEN_AMOUNT_MIN, SHARPEN_RADIUS_DEFAULT, SHARPEN_RADIUS_MAX, SHARPEN_RADIUS_MIN,
+    TEMPERATURE_DEFAULT, TEMPERATURE_MAX, TEMPERATURE_MIN, TILE_GRID_DEFAULT, TILE_GRID_MAX,
+    TILE_GRID_MIN, TINT_DEFAULT, TINT_MAX, TINT_MIN, VIBRANCE_DEFAULT, VIBRANCE_MAX, VIBRANCE_MIN,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -87,107 +98,164 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    let rows: [(_, _, f32); 15] = [
+    // Per-row: (slider_id, chip_id, natural_default, natural_min, natural_max).
+    // Slider's 0..1 storage is computed from the natural default via the
+    // tool's `*_to_slider` projection (canonical source). Mapping for
+    // `link_slider_number_mapped` is the affine inverse:
+    //   display = storage * (max - min) + min
+    // (see `slider_to_<param>` in `ph2d-tool-color-equalization::params`).
+    let rows: [(NodeId, NodeId, f32, f32, f32); 15] = [
         (
             ids::CEQ_CLIP_LIMIT,
             ids::CEQ_CLIP_LIMIT_NUM,
-            clip_limit_to_slider(CLIP_LIMIT_DEFAULT),
+            CLIP_LIMIT_DEFAULT,
+            CLIP_LIMIT_MIN,
+            CLIP_LIMIT_MAX,
         ),
         (
             ids::CEQ_TILE_GRID,
             ids::CEQ_TILE_GRID_NUM,
-            tile_grid_to_slider(TILE_GRID_DEFAULT),
+            TILE_GRID_DEFAULT as f32,
+            TILE_GRID_MIN as f32,
+            TILE_GRID_MAX as f32,
         ),
         (
             ids::CEQ_EXPOSURE,
             ids::CEQ_EXPOSURE_NUM,
-            exposure_to_slider(EXPOSURE_DEFAULT),
+            EXPOSURE_DEFAULT,
+            EXPOSURE_MIN,
+            EXPOSURE_MAX,
         ),
         (
             ids::CEQ_TEMPERATURE,
             ids::CEQ_TEMPERATURE_NUM,
-            temperature_to_slider(TEMPERATURE_DEFAULT),
+            TEMPERATURE_DEFAULT,
+            TEMPERATURE_MIN,
+            TEMPERATURE_MAX,
         ),
         (
             ids::CEQ_TINT,
             ids::CEQ_TINT_NUM,
-            tint_to_slider(TINT_DEFAULT),
+            TINT_DEFAULT,
+            TINT_MIN,
+            TINT_MAX,
         ),
         (
             ids::CEQ_BRIGHTNESS,
             ids::CEQ_BRIGHTNESS_NUM,
-            brightness_to_slider(BRIGHTNESS_DEFAULT),
+            BRIGHTNESS_DEFAULT,
+            BRIGHTNESS_MIN,
+            BRIGHTNESS_MAX,
         ),
         (
             ids::CEQ_CONTRAST,
             ids::CEQ_CONTRAST_NUM,
-            contrast_to_slider(CONTRAST_DEFAULT),
+            CONTRAST_DEFAULT,
+            CONTRAST_MIN,
+            CONTRAST_MAX,
         ),
         (
             ids::CEQ_VIBRANCE,
             ids::CEQ_VIBRANCE_NUM,
-            vibrance_to_slider(VIBRANCE_DEFAULT),
+            VIBRANCE_DEFAULT,
+            VIBRANCE_MIN,
+            VIBRANCE_MAX,
         ),
         (
             ids::CEQ_SATURATION,
             ids::CEQ_SATURATION_NUM,
-            saturation_to_slider(SATURATION_DEFAULT),
+            SATURATION_DEFAULT,
+            SATURATION_MIN,
+            SATURATION_MAX,
         ),
         (
             ids::CEQ_SHARPEN_AMOUNT,
             ids::CEQ_SHARPEN_AMOUNT_NUM,
-            sharpen_amount_to_slider(SHARPEN_AMOUNT_DEFAULT),
+            SHARPEN_AMOUNT_DEFAULT,
+            SHARPEN_AMOUNT_MIN,
+            SHARPEN_AMOUNT_MAX,
         ),
         (
             ids::CEQ_SHARPEN_RADIUS,
             ids::CEQ_SHARPEN_RADIUS_NUM,
-            sharpen_radius_to_slider(SHARPEN_RADIUS_DEFAULT),
+            SHARPEN_RADIUS_DEFAULT,
+            SHARPEN_RADIUS_MIN,
+            SHARPEN_RADIUS_MAX,
         ),
         (
             ids::CEQ_LUT_INTENSITY,
             ids::CEQ_LUT_INTENSITY_NUM,
-            lut_intensity_to_slider(LUT_INTENSITY_DEFAULT),
+            LUT_INTENSITY_DEFAULT,
+            LUT_INTENSITY_MIN,
+            LUT_INTENSITY_MAX,
         ),
         (
             ids::CEQ_LUT_MIX,
             ids::CEQ_LUT_MIX_NUM,
-            lut_mix_to_slider(LUT_MIX_DEFAULT),
+            LUT_MIX_DEFAULT,
+            LUT_MIX_MIN,
+            LUT_MIX_MAX,
         ),
         (
             ids::CEQ_POSTERIZE_DITHER_STRENGTH,
             ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
-            posterize_dither_strength_to_slider(POSTERIZE_DITHER_STRENGTH_DEFAULT),
+            POSTERIZE_DITHER_STRENGTH_DEFAULT,
+            POSTERIZE_DITHER_STRENGTH_MIN,
+            POSTERIZE_DITHER_STRENGTH_MAX,
         ),
         (
             ids::CEQ_POSTERIZE_DITHER_GRAIN,
             ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
-            posterize_dither_grain_to_slider(POSTERIZE_DITHER_GRAIN_DEFAULT),
+            POSTERIZE_DITHER_GRAIN_DEFAULT as f32,
+            POSTERIZE_DITHER_GRAIN_MIN as f32,
+            POSTERIZE_DITHER_GRAIN_MAX as f32,
         ),
     ];
-    for (slider_id, chip_id, track) in rows {
-        store.register(
-            slider_id,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
-                value: track,
-                orientation: SliderOrientation::Horizontal,
-            },
-        );
-        store.register(
-            chip_id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: track as f64,
-                buffer: format_number(track as f64),
-                caret: 0,
-                last_committed: track as f64,
-                selection_anchor: None,
-            },
-        );
-        // `link_slider_number` auto-marks `chip_id` as no-stepper too
-        // (see its doc) so the chip's right edge doesn't arm a phantom
-        // continuous-hold from the dispatch's default stepper carve.
-        store.link_slider_number(slider_id, chip_id);
+    for (slider_id, chip_id, natural_default, min, max) in rows {
+        register_mapped_pair(store, slider_id, chip_id, natural_default, min, max);
+    }
+}
+
+fn register_mapped_pair(
+    store: &mut WidgetStore,
+    slider_id: NodeId,
+    chip_id: NodeId,
+    natural_default: f32,
+    min: f32,
+    max: f32,
+) {
+    let track = project01(natural_default, min, max);
+    let display = natural_default as f64;
+    store.register(
+        slider_id,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: track,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        chip_id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: display,
+            buffer: format_number(display),
+            caret: 0,
+            last_committed: display,
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped(slider_id, chip_id, max - min, min);
+}
+
+/// Identical to `ph2d_tool_color_equalization::params::project01` but
+/// inlined here so populate doesn't pull in the whole `params` math
+/// surface for one helper. Kept private to this module.
+fn project01(v: f32, min: f32, max: f32) -> f32 {
+    if (max - min).abs() < f32::EPSILON {
+        0.0
+    } else {
+        ((v - min) / (max - min)).clamp(0.0, 1.0) // CLAMP-OK: literal bounds 0,1
     }
 }
 

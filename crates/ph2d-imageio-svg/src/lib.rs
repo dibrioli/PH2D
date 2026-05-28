@@ -81,10 +81,12 @@ impl ImageImporter for SvgImporter {
         // (no leak to caller, but page-cache footprint + timing
         // side-channel). Override with neutral resolvers: data: URIs
         // pass through; string hrefs are NOT resolved (return None).
-        let mut opts = usvg::Options::default();
-        opts.image_href_resolver = usvg::ImageHrefResolver {
-            resolve_data: usvg::ImageHrefResolver::default_data_resolver(),
-            resolve_string: Box::new(|_href, _opts| None),
+        let opts = usvg::Options {
+            image_href_resolver: usvg::ImageHrefResolver {
+                resolve_data: usvg::ImageHrefResolver::default_data_resolver(),
+                resolve_string: Box::new(|_href, _opts| None),
+            },
+            ..Default::default()
         };
         // Default options resolve <use>, <style>, gradients into a
         // flat tree; the result is dropped here because VectorDoc

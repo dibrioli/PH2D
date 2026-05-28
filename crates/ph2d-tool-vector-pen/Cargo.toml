@@ -34,6 +34,10 @@ ph2d-vector = { path = "../ph2d-vector" }
 # (this crate is a primary consumer of the data model surface).
 ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 
+# OklchColor for `set_default_fill` (T1.7 bridge wants to inject a
+# visible color before the smoke triangle renders against the canvas).
+ph2d-color = { path = "../ph2d-color" }
+
 # Math primitives — glam::Vec2 for canvas coordinates.
 glam = "0.30"
 

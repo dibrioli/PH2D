@@ -544,8 +544,8 @@ Smokes do Enio por wave. Cada smoke é o **único critério que vale** para a wa
 
 **Conteúdo:**
 - `crates/ph2d-tool-vector-pen/Cargo.toml`.
-- `src/lib.rs` PRIMEIRO com `pub const MANIFEST: ToolManifest { id: "vector-pen", cluster: "vector_tools" }` + `pub fn register(reg: &mut Registry)` + `pub fn make() -> Box<dyn Tool>`.
-- `src/tool.rs` impl Tool: `id() -> "vector-pen"`, `label_key() -> "tool.vector.pen.label"`, `as_any_mut() -> Some(self)`.
+- `src/lib.rs` PRIMEIRO com `pub const MANIFEST: ToolManifest { id: "vector_pen", cluster: "vector_tools", label_key: "tool.vector_pen.label" }` + `pub fn register(reg: &mut Registry)` + `pub fn make() -> Box<dyn Tool>`. **Naming**: id usa snake_case (`vector_pen`) para HR-15 i18n gate (`tool.<id>.label` literal) + convenção projeto (`color_equalization`, `equalize_sizes`). Icon slug usa hyphen (`vector-pen`) por SVG/Lucide convention — mesmo split de `bgremoval` (id) / `bg-removal` (slug). Atualizado pós-T1.5 audit R1.
+- `src/tool.rs` impl Tool: `id() -> ToolId::new("vector_pen")`, `icon_slug() -> "vector-pen"`, `label() -> "Vector Pen"`, `as_any_mut() -> Some(self)`. label_key fica no manifest, não na trait.
 - Click adiciona vertex; click+drag estica tangentes cúbicas; close-path detection (proximidade de start vertex).
 - **Bézier cúbico = default visível** (decisão D); Spiro/Hyperbezier Assist toggle (HUD `S` / `H`) — UI stub em W1, lógica em W2.
 - `src/icon.rs`: BezPath placeholder (pen-icon Lucide 24×24).

@@ -45,7 +45,9 @@
 pub mod icon;
 pub mod tool;
 
-pub use tool::VectorPenTool;
+pub use tool::{
+    DEFAULT_CLOSE_PATH_TOLERANCE_PX, MAX_IN_PROGRESS_VERTICES, PenClickOutcome, VectorPenTool,
+};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

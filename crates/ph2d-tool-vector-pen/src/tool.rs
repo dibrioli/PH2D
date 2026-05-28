@@ -108,6 +108,38 @@ impl VectorPenTool {
         self.pending_committed.take()
     }
 
+    /// Replace the default region fill with `color`. The shell bridge
+    /// calls this on tool activation (or after a Color Picker change)
+    /// so newly-closed paths get a visible, user-chosen color instead
+    /// of the [`FillSolid::default`] mid-gray placeholder (R1 Lens-R
+    /// MED-G3 — placeholder was invisible against typical dark/light
+    /// canvas backgrounds).
+    ///
+    /// Mutates the seeded fill entry in-place (preserves
+    /// `default_fill_ref` so any already-issued region keeps pointing
+    /// at the right slot).
+    pub fn set_default_fill(&mut self, color: ph2d_color::OklchColor) {
+        if let Some(slot) = self.styles.fills.get_mut(&self.default_fill_ref) {
+            slot.color = color;
+        }
+    }
+
+    /// `true` if a path is currently being authored (≥ 1 vertex added,
+    /// no close-path yet). T1.7 bridge uses this to decide whether to
+    /// emit a destructive-deactivate Toast warning (mirror Painter's
+    /// `has_painted_since_source`).
+    #[must_use]
+    pub fn has_in_progress_path(&self) -> bool {
+        !self.network.vertices.is_empty()
+    }
+
+    /// Number of vertices in the in-progress path. Useful for UI
+    /// counters ("Click N more or click the first vertex to close").
+    #[must_use]
+    pub fn vertex_count(&self) -> usize {
+        self.network.vertices.len()
+    }
+
     /// Toggle the authoring representation hint. W2 wires HUD `S` / `H`
     /// keys to flip between Cubic / SpiroAssist / HyperbezierAssist.
     pub fn set_authoring_hint(&mut self, mode: RepresentationMode) {
@@ -139,26 +171,67 @@ impl VectorPenTool {
     /// W2 adds click-and-drag tangent extrusion when pointer drag
     /// events arrive — the `TangentsCubic` data path is already
     /// present.
+    ///
+    /// ## Coordinate space contract (T1.7 bridge responsibility)
+    ///
+    /// `pos` is expected in **network-local pixel coordinates** — the
+    /// same coordinate space the vertices are stored in (per
+    /// `ph2d_vector_doc::Vertex` doc-comment). The shell bridge must
+    /// convert screen → network-local via the active sprite's affine
+    /// before calling this method. Mirror the Painter precedent in
+    /// `shells/desktop/src/input_dispatch/painter_input.rs::painter_pointer_uv`.
+    ///
+    /// ## Defense against malformed input
+    ///
+    /// `pos` containing `NaN` or `Infinity` is rejected outright —
+    /// returning `Rejected` instead of silently corrupting the network
+    /// (e.g. a NaN slipping into `nearest_vertex` propagates through
+    /// IEEE 754 comparisons and would spuriously trigger close-path —
+    /// R1 Lens-M CRIT-L-M-1).
     pub fn on_canvas_click(&mut self, pos: Vec2) -> PenClickOutcome {
+        // R1 Lens-M CRIT-L-M-1: NaN/Inf sanitize. Any pointer source
+        // (driver bug, divide-by-zero in zoom→world transform,
+        // `device_pixel_ratio = 0` on a docked panel) that produces a
+        // non-finite coord must NOT touch the network.
+        if !pos.x.is_finite() || !pos.y.is_finite() {
+            return PenClickOutcome::Rejected;
+        }
+
         // Defensive safety cap — refuses to grow indefinitely if the
         // user clicks without ever closing the path.
         if self.network.vertices.len() >= MAX_IN_PROGRESS_VERTICES {
             return PenClickOutcome::Rejected;
         }
 
-        // Close-path detection: is the click within tolerance of the
-        // FIRST vertex of the current path? Needs ≥ 3 vertices + at
-        // least one segment to make a meaningful triangle.
-        if self.network.vertices.len() >= 3 && !self.network.segments.is_empty() {
-            let first_id = self.network.vertices[0].id;
-            if let Some(near) = self
+        // Close-path detection + non-first-vertex hover.
+        // - Click within tolerance of vertex 0 (the start) AND ≥ 3
+        //   vertices + ≥ 1 segment → close the path.
+        // - Click within tolerance of vertex N≠0 → NO-OP (UX:
+        //   "click missed an existing vertex; nothing happens" — vs
+        //   the original behavior of silently adding a duplicate
+        //   vertex on top per R1 Lens-M HIGH-L-M-3).
+        if !self.network.vertices.is_empty()
+            && let Some(near) = self
                 .network
                 .nearest_vertex(pos, self.close_path_tolerance_px)
-                && near == first_id
+        {
+            let first_id = self.network.vertices[0].id;
+            if near == first_id
+                && self.network.vertices.len() >= 3
+                && !self.network.segments.is_empty()
             {
                 self.close_current_path();
                 return PenClickOutcome::ClosedPath;
             }
+            // Close-but-not-first-vertex: no-op. Bridge may emit a
+            // subtle UI cue ("snap-back disabled" toast) — that's UX
+            // for T1.7, not data state.
+            if near != first_id {
+                return PenClickOutcome::NoOpNearExistingVertex;
+            }
+            // Else: near first vertex but path too short to close —
+            // fall through and let the click add the next vertex
+            // (the user is still building up the path).
         }
 
         // Otherwise: add a vertex (+ a segment from the previous one,
@@ -277,9 +350,14 @@ pub enum PenClickOutcome {
     /// Click triggered close-path → asset committed; drain via
     /// [`VectorPenTool::take_committed_asset`].
     ClosedPath,
-    /// Click was rejected (e.g. hit the safety cap, or apply failed
-    /// silently). UI may emit a toast.
+    /// Click was rejected (cap exceeded, `NaN`/`Infinity` coords,
+    /// or apply failed silently). UI may emit a toast.
     Rejected,
+    /// Click landed within `close_path_tolerance_px` of an existing
+    /// vertex that is NOT the path's start vertex. No mutation
+    /// performed (avoids duplicate-vertex pollution per R1 Lens-M
+    /// HIGH-L-M-3). UI may show a "snap target" hover indicator.
+    NoOpNearExistingVertex,
 }
 
 impl Tool for VectorPenTool {
@@ -312,11 +390,15 @@ impl Tool for VectorPenTool {
     }
 
     fn on_deactivate(&mut self) {
-        // Drop any in-progress path silently. T1.7 may want to emit a
-        // Toast warning if the user had > 1 vertex but didn't close —
-        // that's bridge UX, not tool responsibility.
+        // Drop the in-progress path (volatile authoring state). But
+        // **preserve `pending_committed`** — that asset was already
+        // commit-emitted by the user's close-path click and is owed
+        // to the bridge; clearing it would silently delete user data
+        // if the bridge hasn't drained yet (R1 Lens-M HIGH-L-M-2).
+        // T1.7 bridge MUST call `take_committed_asset()` post-
+        // deactivate to drain any leftover commit before the next
+        // tool activates.
         self.reset_path();
-        self.pending_committed = None;
     }
 
     fn handle_panel_event(&mut self, _event: PanelEvent) {
@@ -400,8 +482,11 @@ mod tests {
         let mut t = VectorPenTool::new();
         t.on_canvas_click(Vec2::new(0.0, 0.0));
         t.on_canvas_click(Vec2::new(10.0, 0.0));
-        // 3rd click at origin would normally close, but with only 2
-        // vertices the tool extends instead.
+        // 3rd click AT origin would normally close, but with only 2
+        // vertices the close-path guard (≥ 3) fails. Post R1 audit:
+        // the click is near vertex 0 (the start), so it falls through
+        // to the "near start but path too short to close" path and
+        // adds the 3rd vertex (ExtendedPath).
         let out = t.on_canvas_click(Vec2::new(0.0, 0.0));
         assert_eq!(out, PenClickOutcome::ExtendedPath);
         assert!(t.take_committed_asset().is_none());
@@ -429,7 +514,10 @@ mod tests {
     }
 
     #[test]
-    fn on_deactivate_drops_in_progress_and_pending() {
+    fn on_deactivate_clears_in_progress_but_preserves_pending_committed() {
+        // R1 Lens-M HIGH-L-M-2 fix: pending_committed is user data
+        // the bridge owes to drain — must survive on_deactivate so
+        // the bridge can pick it up on the next tick.
         let mut t = VectorPenTool::new();
         t.on_canvas_click(Vec2::new(0.0, 0.0));
         t.on_canvas_click(Vec2::new(100.0, 0.0));
@@ -437,8 +525,147 @@ mod tests {
         t.on_canvas_click(Vec2::new(1.0, 1.0));
         // pending_committed populated.
         <VectorPenTool as Tool>::on_deactivate(&mut t);
+        // In-progress reset:
+        assert_eq!(t.current_network().vertices.len(), 0);
+        // Pending preserved:
+        assert!(
+            t.take_committed_asset().is_some(),
+            "pending_committed must survive on_deactivate for bridge to drain"
+        );
+    }
+
+    #[test]
+    fn on_deactivate_with_no_pending_does_not_panic() {
+        let mut t = VectorPenTool::new();
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(10.0, 0.0)); // in-progress, no close
+        <VectorPenTool as Tool>::on_deactivate(&mut t);
         assert!(t.take_committed_asset().is_none());
         assert_eq!(t.current_network().vertices.len(), 0);
+    }
+
+    #[test]
+    fn nan_pos_is_rejected_without_corrupting_state() {
+        // R1 Lens-M CRITICAL-L-M-1 fix: NaN/Inf coords would otherwise
+        // propagate through IEEE 754 comparisons in `nearest_vertex`
+        // and spuriously trigger close-path / silent asset corruption.
+        let mut t = VectorPenTool::new();
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        t.on_canvas_click(Vec2::new(50.0, 86.6));
+        let initial_vertex_count = t.vertex_count();
+        let nan_out = t.on_canvas_click(Vec2::new(f32::NAN, 0.0));
+        assert_eq!(nan_out, PenClickOutcome::Rejected);
+        let inf_out = t.on_canvas_click(Vec2::new(0.0, f32::INFINITY));
+        assert_eq!(inf_out, PenClickOutcome::Rejected);
+        let neg_inf_out = t.on_canvas_click(Vec2::new(f32::NEG_INFINITY, 0.0));
+        assert_eq!(neg_inf_out, PenClickOutcome::Rejected);
+        // Network unchanged + no spurious commit.
+        assert_eq!(t.vertex_count(), initial_vertex_count);
+        assert!(t.take_committed_asset().is_none());
+    }
+
+    #[test]
+    fn click_near_non_first_vertex_is_noop_not_duplicate() {
+        // R1 Lens-M HIGH-L-M-3 fix: prior behavior added a duplicate
+        // vertex colocated with the existing one. Now it's a no-op.
+        let mut t = VectorPenTool::new();
+        t.on_canvas_click(Vec2::new(0.0, 0.0)); // vertex 0
+        t.on_canvas_click(Vec2::new(100.0, 0.0)); // vertex 1
+        t.on_canvas_click(Vec2::new(50.0, 86.6)); // vertex 2
+        let before = t.vertex_count();
+        // Click near vertex 1 (≠ first). Distance < 12px tolerance.
+        let out = t.on_canvas_click(Vec2::new(101.0, 1.0));
+        assert_eq!(out, PenClickOutcome::NoOpNearExistingVertex);
+        assert_eq!(t.vertex_count(), before, "no vertex added");
+        assert!(t.take_committed_asset().is_none(), "no spurious commit");
+    }
+
+    #[test]
+    fn committed_asset_preserves_authoring_hint_set_pre_close() {
+        let mut t = VectorPenTool::new();
+        t.set_authoring_hint(RepresentationMode::SpiroAssist);
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        t.on_canvas_click(Vec2::new(50.0, 86.6));
+        t.on_canvas_click(Vec2::new(1.0, 1.0));
+        let asset = t.take_committed_asset().expect("committed");
+        assert_eq!(
+            asset.network.authoring_hint,
+            RepresentationMode::SpiroAssist,
+            "authoring_hint set pre-close must survive into committed asset"
+        );
+    }
+
+    #[test]
+    fn committed_asset_edit_log_has_exact_op_sequence() {
+        // 3 AddVertex + 2 AddSegment (during extend) + 1 AddSegment
+        // (closing) + 1 AddRegion + 1 SetRegionFill = 8 ops total.
+        let mut t = VectorPenTool::new();
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        t.on_canvas_click(Vec2::new(50.0, 86.6));
+        t.on_canvas_click(Vec2::new(1.0, 1.0));
+        let asset = t.take_committed_asset().expect("committed");
+        assert_eq!(
+            asset.edit_log.ops.len(),
+            8,
+            "expected 3 AddVertex + 3 AddSegment + 1 AddRegion + 1 SetRegionFill = 8 ops"
+        );
+        assert!(matches!(asset.edit_log.ops[0], VectorOp::AddVertex { .. }));
+        assert!(matches!(
+            asset.edit_log.ops[7],
+            VectorOp::SetRegionFill { .. }
+        ));
+    }
+
+    #[test]
+    fn second_path_after_close_starts_fresh() {
+        let mut t = VectorPenTool::new();
+        // First path: close.
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        t.on_canvas_click(Vec2::new(50.0, 86.6));
+        t.on_canvas_click(Vec2::new(1.0, 1.0));
+        assert!(t.take_committed_asset().is_some());
+        // Second path: starts at vertex 0 again (post-reset).
+        let out = t.on_canvas_click(Vec2::new(200.0, 200.0));
+        assert_eq!(out, PenClickOutcome::AddedFirstVertex);
+        assert_eq!(t.vertex_count(), 1);
+    }
+
+    #[test]
+    fn set_default_fill_replaces_seeded_color() {
+        // R1 Lens-R MED-G3 fix: bridge can inject visible color
+        // before close-path so triangle is rendered with user color.
+        use ph2d_color::OklchColor;
+        let mut t = VectorPenTool::new();
+        let custom = OklchColor::opaque(0.7, 0.18, 250.0); // bluish
+        t.set_default_fill(custom);
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        t.on_canvas_click(Vec2::new(50.0, 86.6));
+        t.on_canvas_click(Vec2::new(1.0, 1.0));
+        let asset = t.take_committed_asset().expect("committed");
+        let fill = asset
+            .styles
+            .fills
+            .values()
+            .next()
+            .expect("at least one fill");
+        assert_eq!(fill.color, custom);
+    }
+
+    #[test]
+    fn has_in_progress_path_and_vertex_count_helpers() {
+        let mut t = VectorPenTool::new();
+        assert!(!t.has_in_progress_path());
+        assert_eq!(t.vertex_count(), 0);
+        t.on_canvas_click(Vec2::new(0.0, 0.0));
+        assert!(t.has_in_progress_path());
+        assert_eq!(t.vertex_count(), 1);
+        t.on_canvas_click(Vec2::new(100.0, 0.0));
+        assert_eq!(t.vertex_count(), 2);
     }
 
     #[test]

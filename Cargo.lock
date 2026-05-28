@@ -5247,6 +5247,7 @@ version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
  "ph2d-a11y",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-tool-registry",

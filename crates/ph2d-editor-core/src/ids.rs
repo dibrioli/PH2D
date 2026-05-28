@@ -74,7 +74,14 @@ pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
 /// `tools.set_active(&ToolId::new("vector_pen"))`. MVP placement
 /// alongside the other right-side single pills; W2+ may move into a
 /// dedicated "vector_tools" mode toggle (parallel to Image Tools).
-pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("topbar_vector_pen");
+///
+/// **Hash key = `hash_node_id("vector_pen")`** (NOT
+/// `"topbar_vector_pen"`) to match the **image-action pill
+/// convention** (`IMAGE_ACTION_BGREMOVAL = hash_node_id("bgremoval")`,
+/// etc.). This lets the Pressed-highlight reconcile loop in
+/// `shells/desktop/src/render_loop/mod.rs` discover the pill via
+/// `hash_node_id(manifest.id)` lookup — same code path bgremoval uses.
+pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("vector_pen");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /
@@ -251,6 +258,11 @@ pub const RAIL_SHOW_HIERARCHY: NodeId = hash_node_id("rail_show_hierarchy");
 /// chips so chip clicks win; clicks on the rail's empty space
 /// (between chips, around dividers) land here.
 pub const RAIL_BACKDROP: NodeId = hash_node_id("rail_backdrop");
+
+/// Painter sidebar panel container — the typed `ph2d-panel-painter-sidebar`
+/// outer rect. Right-docked (same geometry slot as the Inspector) and
+/// only visible while the `painter` tool is active. W2.T2.1 plan §5.
+pub const PAINTER_SIDEBAR_PANEL: NodeId = hash_node_id("painter_sidebar_panel");
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

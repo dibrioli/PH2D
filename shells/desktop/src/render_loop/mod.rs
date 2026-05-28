@@ -657,6 +657,18 @@ impl crate::App {
                     if let Some(active) = tools.active() {
                         toasts.push(Toast::info(format!("Tool · {}", active.label())));
                     }
+                    // W1.T1.7 R3 UX hint: Vector Pen requires a sprite
+                    // selection to anchor network-local coordinates.
+                    // Without one, canvas clicks go through but
+                    // `vector_pen_bridge::dispatch` early-returns
+                    // silently — user sees no preview. Surface a
+                    // one-shot Toast so the smoke flow is
+                    // discoverable without reading source.
+                    if tool_id == "vector_pen" && hero.gizmo.selection.is_none() {
+                        toasts.push(Toast::info(
+                            "Pen tool active — select a sprite to draw on".to_string(),
+                        ));
+                    }
                 }
             }
             // Image Tools OFF is AUTHORITATIVE over the active tool. The
@@ -732,17 +744,28 @@ impl crate::App {
             {
                 let active_id_string: Option<String> = tools.active().map(|t| t.id().0.clone());
                 if let Some(reg) = ph2d_editor::installed_registry() {
-                    for manifest in reg.cluster("image_tools") {
-                        let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
-                        let should_press = active_id_string.as_deref() == Some(manifest.id);
-                        if let Some(ph2d_editor::InteractiveState::Button { state }) =
-                            hero.store.get_mut(pill_id)
-                        {
-                            use ph2d_editor::widget::ButtonState;
-                            match (*state, should_press) {
-                                (ButtonState::Normal, true) => *state = ButtonState::Pressed,
-                                (ButtonState::Pressed, false) => *state = ButtonState::Normal,
-                                _ => {} // preserve Hovered + already-consistent
+                    // W1.T1.7 R3: iterate both image_tools (existing)
+                    // AND vector_tools (Pen pill ship) so the Pressed-
+                    // highlight reconcile picks up the Pen pill when
+                    // the Vector Pen tool activates. Each pill's
+                    // NodeId is computed via `hash_node_id(manifest.id)`
+                    // — for Pen this matches `TOPBAR_VECTOR_PEN` only
+                    // because `TOPBAR_VECTOR_PEN = hash_node_id("vector_pen")`
+                    // (image-action pill convention; see ids.rs).
+                    for cluster_name in ["image_tools", "vector_tools"] {
+                        for manifest in reg.cluster(cluster_name) {
+                            let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
+                            let should_press =
+                                active_id_string.as_deref() == Some(manifest.id);
+                            if let Some(ph2d_editor::InteractiveState::Button { state }) =
+                                hero.store.get_mut(pill_id)
+                            {
+                                use ph2d_editor::widget::ButtonState;
+                                match (*state, should_press) {
+                                    (ButtonState::Normal, true) => *state = ButtonState::Pressed,
+                                    (ButtonState::Pressed, false) => *state = ButtonState::Normal,
+                                    _ => {} // preserve Hovered + already-consistent
+                                }
                             }
                         }
                     }

@@ -38,6 +38,7 @@
 //! acceptable here; the engine's hot-path code consumes the decoded
 //! mip slices read-only.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use thiserror::Error;
@@ -61,12 +62,33 @@ pub const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
 /// for the (rare) NPOT case while still rejecting absurd headers.
 pub const MAX_LEVELS: u32 = 16;
 
+/// W1.T9 — cap on KTX2 keyValueData entries preserved by the parser. KTX2
+/// containers MAY ship arbitrary metadata (timestamps, swizzle, custom
+/// keys); a malformed/hostile file could declare thousands. 64 covers all
+/// realistic use cases (KTX-Software conventions, PH2D's own `PH2D_PREMUL`
+/// W1.T8, glTF KHR_*, swizzle keys) with plenty of headroom.
+pub const MAX_KVD_ENTRIES: usize = 64;
+
+/// W1.T9 — cap on individual kvd value size in bytes. Most KTX2 metadata
+/// values are < 64 B (strings, single bytes); 4 KiB allows complex JSON-like
+/// values used by some tooling while bounding memory in pathological files.
+pub const MAX_KVD_VALUE_BYTES: usize = 4 * 1024;
+
+/// W1.T9 — canonical KTX2 keyValueData key used by PH2D to tag the alpha
+/// intent of a cooked texture (`PremulIntent`). 1-byte value:
+/// `[0] = Straight`, `[1] = Premultiplied`. Key ausente = `Unspecified`.
+/// Emit deferred a W1.T8 (ctt 0.4.0 não suporta kvd write; precisa de
+/// patcher post-hoc OR upstream PR).
+pub const PH2D_PREMUL_KEY: &str = "PH2D_PREMUL";
+
 // Compile-time sanity: catches anyone zeroing a limit by accident
 // (clippy bans these as runtime `assert!`-on-constants — const-context
 // asserts are the canonical form).
 const _: () = assert!(MAX_DIMENSION > 0 && MAX_DIMENSION <= 16384);
 const _: () = assert!(MAX_TOTAL_BYTES > 0);
 const _: () = assert!(MAX_LEVELS > 0 && MAX_LEVELS < 32);
+const _: () = assert!(MAX_KVD_ENTRIES > 0 && MAX_KVD_ENTRIES <= 256);
+const _: () = assert!(MAX_KVD_VALUE_BYTES > 0 && MAX_KVD_VALUE_BYTES <= 64 * 1024);
 
 // ── error type ──────────────────────────────────────────────────────
 
@@ -124,6 +146,20 @@ pub enum Ktx2Error {
     /// `Ktx2Image` would need to carry layer/face arrays.
     #[error("non-2D KTX2 layout not supported in Fase 1: {reason}")]
     UnsupportedDimensionality { reason: &'static str },
+
+    /// W1.T9 — kvd section declares mais entries que [`MAX_KVD_ENTRIES`].
+    /// Hostile file ou tooling explorou kvd para metadata bloat.
+    #[error("kvd has {count} entries, exceeds max {max}")]
+    TooManyKvdEntries { count: usize, max: usize },
+
+    /// W1.T9 — kvd entry value excede [`MAX_KVD_VALUE_BYTES`]. Hostile file
+    /// pode embedar arbitrary blobs em metadata.
+    #[error("kvd entry '{key}' has {size} bytes, exceeds max {max}")]
+    KvdValueTooLarge {
+        key: String,
+        size: usize,
+        max: usize,
+    },
 }
 
 // ── format enum ─────────────────────────────────────────────────────
@@ -369,6 +405,12 @@ pub struct Ktx2Image {
     /// Mip pyramid from level 0 (largest) to level N-1. Always at
     /// least one entry.
     pub mip_levels: Vec<MipLevel>,
+    /// W1.T9 — KTX2 `keyValueData` preserved per spec §3.10.8. Empty se
+    /// container não tem kvd OR caller construiu via struct literal sem
+    /// passar kvd. Bounded por [`MAX_KVD_ENTRIES`] + [`MAX_KVD_VALUE_BYTES`]
+    /// no parser. BTreeMap (não HashMap) garante iteration ordering
+    /// determinístico (HR-6).
+    pub kvd: BTreeMap<String, Vec<u8>>,
 }
 
 impl Ktx2Image {
@@ -380,6 +422,46 @@ impl Ktx2Image {
     pub fn base_level(&self) -> &MipLevel {
         &self.mip_levels[0]
     }
+
+    /// W1.T9 — sum of mip level payload bytes. HR-13 budget accounting
+    /// helper: used by `ph2d-asset::Asset::TextureKtx2.byte_size()` so the
+    /// memory budget aggregator can size cooked textures sem extra parse.
+    /// Não conta kvd ou Arc/Vec overhead — pure payload.
+    #[must_use]
+    pub fn byte_size_estimate(&self) -> usize {
+        self.mip_levels.iter().map(|m| m.data.len()).sum()
+    }
+
+    /// W1.T9 — read [`PremulIntent`] from `kvd[PH2D_PREMUL_KEY]`. Tri-state:
+    /// `[0] = Straight`, `[1] = Premultiplied`, key ausente OR malformed →
+    /// `Unspecified`. Renderer pode usar `Unspecified` para defer decision
+    /// pra source asset metadata OR conservative default.
+    ///
+    /// NB W1.T8 deferral: ctt 0.4.0 cooker NÃO emite kvd. Cooked KTX2 hoje
+    /// always retorna `Unspecified` aqui. API serve future cooker integration
+    /// (W1.T8.1 OR upstream ctt PR).
+    #[must_use]
+    pub fn premul_intent(&self) -> PremulIntent {
+        match self.kvd.get(PH2D_PREMUL_KEY).map(|v| v.as_slice()) {
+            Some([0]) => PremulIntent::Straight,
+            Some([1]) => PremulIntent::Premultiplied,
+            _ => PremulIntent::Unspecified,
+        }
+    }
+}
+
+/// W1.T9 — tri-state alpha intent flag carried via KTX2 `PH2D_PREMUL` kvd key.
+///
+/// - `Straight` — RGB components encode non-premultiplied color. Renderer
+///   deve premultiplicar antes de compositing.
+/// - `Premultiplied` — RGB já contém color * alpha. Renderer composita direto.
+/// - `Unspecified` — key ausente; caller decide default (conservative:
+///   tratar como Straight; aggressive: assume Premultiplied per ctt convention).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PremulIntent {
+    Straight,
+    Premultiplied,
+    Unspecified,
 }
 
 // ── decode entry point ──────────────────────────────────────────────
@@ -556,11 +638,34 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
         ));
     }
 
+    // W1.T9 — preserve KTX2 keyValueData per spec §3.10.8 with bounded
+    // collection (DOS defence). Anterior Fase 1 parser silently descartava
+    // kvd; W1.T9 audit Lente A HIGH#3 identificou. PH2D usa kvd para tag
+    // alpha intent (PH2D_PREMUL key, W1.T8 cooker emit deferred).
+    let mut kvd: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    for (key, value) in reader.key_value_data() {
+        if kvd.len() >= MAX_KVD_ENTRIES {
+            return Err(Ktx2Error::TooManyKvdEntries {
+                count: kvd.len() + 1,
+                max: MAX_KVD_ENTRIES,
+            });
+        }
+        if value.len() > MAX_KVD_VALUE_BYTES {
+            return Err(Ktx2Error::KvdValueTooLarge {
+                key: key.to_string(),
+                size: value.len(),
+                max: MAX_KVD_VALUE_BYTES,
+            });
+        }
+        kvd.insert(key.to_string(), value.to_vec());
+    }
+
     Ok(Ktx2Image {
         format,
         width: header.pixel_width,
         height: header.pixel_height,
         mip_levels,
+        kvd,
     })
 }
 
@@ -1204,4 +1309,119 @@ mod tests {
     // ~512 MiB allocation in test, which violates the slow-test
     // policy. The guard is one `saturating_add` plus a compare; it
     // is verified by inspection.
+    //
+    // W1.T9 — `Ktx2Error::TooManyKvdEntries` + `Ktx2Error::KvdValueTooLarge`
+    // require building synthetic KTX2 byte buffers com kvd section
+    // populated (FixtureSpec atual emite kvd_byte_length=0). Test coverage
+    // adicionado em W1.T2.3 quando snapshot integration tests materializarem;
+    // bounds são `if-compare-return` pequenos, verified por inspection +
+    // arch-gate `premul_kv_round_trips` planejado W2.T-pre.
+
+    // ── W1.T9 — kvd preservation + helper API (struct-literal tests) ──
+
+    fn ktx_image_with_kvd(kvd: BTreeMap<String, Vec<u8>>) -> Ktx2Image {
+        Ktx2Image {
+            format: Ktx2Format::Rgba8UnormSrgb,
+            width: 1,
+            height: 1,
+            mip_levels: vec![MipLevel {
+                width: 1,
+                height: 1,
+                data: Arc::<[u8]>::from(&[0u8; 4][..]),
+            }],
+            kvd,
+        }
+    }
+
+    #[test]
+    fn premul_intent_unspecified_when_kvd_empty() {
+        let img = ktx_image_with_kvd(BTreeMap::new());
+        assert_eq!(img.premul_intent(), PremulIntent::Unspecified);
+    }
+
+    #[test]
+    fn premul_intent_straight_for_value_zero() {
+        let mut kvd = BTreeMap::new();
+        kvd.insert(PH2D_PREMUL_KEY.to_string(), vec![0u8]);
+        let img = ktx_image_with_kvd(kvd);
+        assert_eq!(img.premul_intent(), PremulIntent::Straight);
+    }
+
+    #[test]
+    fn premul_intent_premultiplied_for_value_one() {
+        let mut kvd = BTreeMap::new();
+        kvd.insert(PH2D_PREMUL_KEY.to_string(), vec![1u8]);
+        let img = ktx_image_with_kvd(kvd);
+        assert_eq!(img.premul_intent(), PremulIntent::Premultiplied);
+    }
+
+    #[test]
+    fn premul_intent_unspecified_for_invalid_value() {
+        // Wildcard match arm: any value não-[0]/[1] (multi-byte, [2], [255])
+        // degrade graciosamente para Unspecified (não panic, não erro).
+        for value in [vec![2u8], vec![255u8], vec![0u8, 1u8], vec![]] {
+            let mut kvd = BTreeMap::new();
+            kvd.insert(PH2D_PREMUL_KEY.to_string(), value.clone());
+            let img = ktx_image_with_kvd(kvd);
+            assert_eq!(
+                img.premul_intent(),
+                PremulIntent::Unspecified,
+                "value {value:?} should yield Unspecified"
+            );
+        }
+    }
+
+    #[test]
+    fn premul_intent_unspecified_when_other_keys_present() {
+        // Other kvd keys não devem afetar premul_intent — só PH2D_PREMUL.
+        let mut kvd = BTreeMap::new();
+        kvd.insert("KTXswizzle".to_string(), b"rgba".to_vec());
+        kvd.insert("KTXorientation".to_string(), b"rd".to_vec());
+        let img = ktx_image_with_kvd(kvd);
+        assert_eq!(img.premul_intent(), PremulIntent::Unspecified);
+    }
+
+    #[test]
+    fn byte_size_estimate_sums_mip_payloads() {
+        let img = Ktx2Image {
+            format: Ktx2Format::Rgba8UnormSrgb,
+            width: 4,
+            height: 4,
+            mip_levels: vec![
+                MipLevel {
+                    width: 4,
+                    height: 4,
+                    data: Arc::<[u8]>::from(&[0u8; 64][..]), // 4×4×4 = 64
+                },
+                MipLevel {
+                    width: 2,
+                    height: 2,
+                    data: Arc::<[u8]>::from(&[0u8; 16][..]), // 2×2×4 = 16
+                },
+                MipLevel {
+                    width: 1,
+                    height: 1,
+                    data: Arc::<[u8]>::from(&[0u8; 4][..]), // 1×1×4 = 4
+                },
+            ],
+            kvd: BTreeMap::new(),
+        };
+        assert_eq!(img.byte_size_estimate(), 64 + 16 + 4);
+    }
+
+    #[test]
+    fn byte_size_estimate_single_level() {
+        let img = ktx_image_with_kvd(BTreeMap::new());
+        assert_eq!(img.byte_size_estimate(), 4); // 1×1×4 RGBA8
+    }
+
+    /// Parser smoke: fixture canônica não tem kvd entries → image.kvd empty.
+    /// (Build_fixture sets kvd_byte_length=0; full kvd parser coverage
+    /// adicionada em W1.T2.3 snapshot tests futuro.)
+    #[test]
+    fn decode_fixture_has_empty_kvd() {
+        let bytes = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
+        let image = decode_ktx2_bytes(&bytes).expect("valid file decodes");
+        assert!(image.kvd.is_empty());
+    }
 }

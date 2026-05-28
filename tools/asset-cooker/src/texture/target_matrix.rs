@@ -22,7 +22,11 @@ use ctt::{Format, TargetFormat};
 ///
 /// Quando `ph2d_asset::TierIndex` materializar em W1.T4, este enum vira um
 /// type alias OR a função `target_for` aceita `TierIndex` direto.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+///
+/// `Ord`+`PartialOrd` adicionados W1.T6 — `cook_all` retorna `BTreeMap<Tier, Vec<u8>>`
+/// para iterar tiers em ordem determinística (HR-6). Declaration order canônica:
+/// Desktop < Mobile < Web < LowEnd < Constrained (alinha `TierIndex::*::as_u8()`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Tier {
     /// `0 — Desktop` (Windows/Linux/macOS Intel + Apple Silicon). BC7 default.
     Desktop,
@@ -68,6 +72,16 @@ pub fn target_for(tier: Tier, asset_class: AssetClass) -> TargetFormat {
     // `Surface.color_space = ColorSpace::Srgb` — ctt grava no KTX2 container o
     // flag color-space apropriado. Passar `*_SRGB_BLOCK` aqui falharia o
     // `UnsupportedFormat` check do ctt (bc7enc.rs: `&[BC7_UNORM_BLOCK]`).
+    //
+    // Tier::Constrained early-return via `TargetFormat::Uncompressed(...)` —
+    // W1.T6 fix: Encoder::Auto NÃO é passthrough; ctt::convert com
+    // (Compressed{R8G8B8A8_UNORM, Auto}) retorna `UnsupportedFormat("no
+    // compiled-in encoder supports R8G8B8A8_UNORM")`. Uncompressed variant
+    // pula encoder dispatch direto.
+    if matches!(tier, Tier::Constrained) {
+        return TargetFormat::Uncompressed(Format::R8G8B8A8_UNORM);
+    }
+
     let (format, encoder) = match (tier, asset_class) {
         // Desktop: BC family
         (Desktop, SpriteColor) => (Format::BC7_UNORM_BLOCK, bc7enc_encoder()),
@@ -97,8 +111,9 @@ pub fn target_for(tier: Tier, asset_class: AssetClass) -> TargetFormat {
         (LowEnd, SingleChannel) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
         (LowEnd, NormalMap) => (Format::ETC2_R8G8B8A8_UNORM_BLOCK, etcpak_encoder()),
 
-        // Constrained: uncompressed (no encoder dispatch — Auto vai pro pass-through path).
-        (Constrained, _) => (Format::R8G8B8A8_UNORM, Encoder::Auto),
+        // Tier::Constrained tratado via early-return acima (TargetFormat::Uncompressed).
+        // Match exhaustivo: 4 tiers × 4 asset classes = 16 combos restantes acima.
+        (Constrained, _) => unreachable!("Constrained handled by early-return above"),
     };
 
     TargetFormat::Compressed { format, encoder }
@@ -144,7 +159,8 @@ fn etcpak_encoder() -> Encoder {
 mod tests {
     use super::*;
 
-    /// Helper: extract `(format, encoder_kind_str)` from a TargetFormat::Compressed.
+    /// Helper: extract `(format, encoder_kind_str)` from a TargetFormat. Para
+    /// `Uncompressed` retorna `kind = "Uncompressed"` (sem encoder dispatch).
     /// TargetFormat não tem Debug; helper isola match + retorna shapes assertable.
     fn extract(target: TargetFormat) -> (Format, &'static str) {
         match target {
@@ -158,7 +174,7 @@ mod tests {
                 };
                 (format, kind)
             }
-            _ => panic!("expected TargetFormat::Compressed variant"),
+            TargetFormat::Uncompressed(format) => (format, "Uncompressed"),
         }
     }
 
@@ -187,7 +203,9 @@ mod tests {
     fn constrained_falls_back_uncompressed() {
         let (format, kind) = extract(target_for(Tier::Constrained, AssetClass::SpriteColor));
         assert_eq!(format, Format::R8G8B8A8_UNORM);
-        assert_eq!(kind, "Auto");
+        // W1.T6 fix: Tier::Constrained agora retorna TargetFormat::Uncompressed
+        // (não Compressed+Encoder::Auto que falhava com UnsupportedFormat).
+        assert_eq!(kind, "Uncompressed");
     }
 
     #[test]

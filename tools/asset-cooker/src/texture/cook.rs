@@ -165,6 +165,39 @@ pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, Textur
     }
 }
 
+/// W1.T6 — multi-tier batch emit. Para um único source PNG, gera N artefatos
+/// KTX2 (um per [`Tier`]) usando a [`target_matrix`](super::target_matrix)
+/// canônica para a `AssetClass` dada. Retorna `BTreeMap<Tier, Vec<u8>>` —
+/// caller pode então hashar cada artefato para `AssetId` (HR-6 content-addressed)
+/// e registrar no [`ph2d_asset::LogicalTextureMap`] externo (W1.T4).
+///
+/// Determinismo: dentro de mesma máquina (mesmo binário, mesmo CPU), saída
+/// é byte-idêntica per tier. Cross-machine determinism requer canonical runner
+/// (D2/W1.T10 ⏳). Tier `Constrained` emite RGBA8 raw via `Encoder::Auto`
+/// passthrough — mesmo path mas sem compressão.
+///
+/// Erros: para-no-primeiro — se cook do tier N falhar, retorna `TextureCookError`
+/// sem tentar tiers subsequentes. Caller pode re-tentar com lista parcial.
+pub fn cook_all(
+    source_bytes: &[u8],
+    asset_class: AssetClass,
+) -> Result<std::collections::BTreeMap<Tier, Vec<u8>>, TextureCookError> {
+    use std::collections::BTreeMap;
+    let mut out = BTreeMap::new();
+    for &tier in &[
+        Tier::Desktop,
+        Tier::Mobile,
+        Tier::Web,
+        Tier::LowEnd,
+        Tier::Constrained,
+    ] {
+        let options = CookOptions::for_asset_class(tier, asset_class);
+        let bytes = cook(source_bytes, options)?;
+        out.insert(tier, bytes);
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,5 +288,81 @@ mod tests {
         let png = fixture_png_64x64();
         let bytes = cook(&png, options).expect("cook normal map");
         assert!(bytes.len() > 100);
+    }
+
+    /// W1.T6 — cook_all retorna 1 artefato per tier (5 total) com bytes válidos.
+    #[test]
+    fn cook_all_emits_5_artifacts_for_sprite_color() {
+        let png = fixture_png_64x64();
+        let map = cook_all(&png, AssetClass::SpriteColor).expect("cook_all");
+        assert_eq!(map.len(), 5, "expected 1 artifact per tier (5 tiers)");
+        for tier in [
+            Tier::Desktop,
+            Tier::Mobile,
+            Tier::Web,
+            Tier::LowEnd,
+            Tier::Constrained,
+        ] {
+            let bytes = map.get(&tier).unwrap_or_else(|| panic!("tier {tier:?} missing"));
+            assert!(bytes.len() > 100, "tier {tier:?}: KTX2 too small ({} bytes)", bytes.len());
+            // KTX2 magic header check.
+            assert_eq!(
+                &bytes[0..12],
+                &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A],
+                "tier {tier:?}: invalid KTX2 magic"
+            );
+        }
+    }
+
+    /// W1.T6 — HR-6: artefatos de tiers com targets DISTINTOS têm AssetIds
+    /// distintos. NB: Mobile e Web compartilham `ASTC_6x6_UNORM`+`Astcenc` para
+    /// SpriteColor (design intencional — Web roda mesmo ladder que Mobile),
+    /// então os 5 tiers produzem **4** AssetIds únicos: {BC7-desktop,
+    /// ASTC-mobile/web, ETC2-lowend, RGBA8-constrained}. Foundational pra
+    /// LogicalTextureMap (1 source PNG → N AssetIds em `ph2d_asset::LogicalTextureMap`).
+    #[test]
+    fn cook_all_artifacts_distinct_per_distinct_target() {
+        use std::collections::HashSet;
+        let png = fixture_png_64x64();
+        let map = cook_all(&png, AssetClass::SpriteColor).expect("cook_all");
+        assert_eq!(map.len(), 5, "5 tiers emitted");
+        let ids: HashSet<ph2d_asset::AssetId> = map
+            .values()
+            .map(|bytes| ph2d_asset::AssetId::from_bytes(bytes))
+            .collect();
+        // 4 distinct AssetIds: Mobile+Web colapsam (ASTC 6×6 Astcenc igual).
+        // Se ≥5 → target_matrix mudou (ex: Web ganhou format diferente). Atualizar matrix doc.
+        // Se ≤3 → mais colisões inesperadas, target_matrix dispatchando mesmo encoder pra mais tiers.
+        assert_eq!(
+            ids.len(),
+            4,
+            "expected 4 distinct AssetIds (5 tiers - 1 collision Mobile+Web sharing ASTC); \
+             got {} — target_matrix changed shape? Update test or matrix.",
+            ids.len()
+        );
+        // Confirm specifically: Mobile == Web bytes (same target).
+        assert_eq!(
+            map[&Tier::Mobile],
+            map[&Tier::Web],
+            "Mobile and Web target the same ASTC_6x6/Astcenc for SpriteColor → must produce \
+             byte-identical KTX2 output"
+        );
+    }
+
+    /// W1.T6 — cook_all é determinístico intra-machine: 2 runs do mesmo source
+    /// produzem byte-identical artifacts per tier.
+    #[test]
+    fn cook_all_intra_machine_byte_identity() {
+        let png = fixture_png_64x64();
+        let a = cook_all(&png, AssetClass::SpriteColor).expect("cook_all a");
+        let b = cook_all(&png, AssetClass::SpriteColor).expect("cook_all b");
+        assert_eq!(a.len(), b.len());
+        for tier in a.keys() {
+            assert_eq!(
+                a.get(tier),
+                b.get(tier),
+                "tier {tier:?}: cook_all must produce byte-identical output across runs (intra-machine)"
+            );
+        }
     }
 }

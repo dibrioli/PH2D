@@ -64,6 +64,17 @@ enum TextureCmd {
         #[arg(long, value_enum, default_value_t = AssetClassArg::SpriteColor)]
         asset_class: AssetClassArg,
     },
+    /// W1.T6 — cook one input PNG into N KTX2 outputs (one per tier) using the
+    /// canonical target matrix. Output files named `<stem>-<tier>.ktx2` no
+    /// `--output-dir`. Stdout linha per artifact emitido.
+    CookAll {
+        #[arg(value_name = "INPUT.png")]
+        input: PathBuf,
+        #[arg(long, value_name = "OUTPUT_DIR")]
+        output_dir: PathBuf,
+        #[arg(long, value_enum, default_value_t = AssetClassArg::SpriteColor)]
+        asset_class: AssetClassArg,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -119,6 +130,13 @@ fn main() -> std::process::ExitCode {
                 asset_class,
             },
         } => run_texture_cook(&input, &output, tier.into(), asset_class.into()),
+        Cmd::Texture {
+            sub: TextureCmd::CookAll {
+                input,
+                output_dir,
+                asset_class,
+            },
+        } => run_texture_cook_all(&input, &output_dir, asset_class.into()),
     };
     match result {
         Ok(()) => std::process::ExitCode::SUCCESS,
@@ -154,6 +172,45 @@ where
         id
     );
     Ok(())
+}
+
+fn run_texture_cook_all(
+    input: &std::path::Path,
+    output_dir: &std::path::Path,
+    asset_class: AssetClass,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let png_bytes = std::fs::read(input)?;
+    let artifacts = texture::cook_all(&png_bytes, asset_class)
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+    std::fs::create_dir_all(output_dir)?;
+    let stem = input
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("cooked");
+    for (tier, ktx2_bytes) in &artifacts {
+        let filename = format!("{stem}-{}.ktx2", tier_filename(*tier));
+        let out_path = output_dir.join(&filename);
+        std::fs::write(&out_path, ktx2_bytes)?;
+        let id = ph2d_asset::AssetId::from_bytes(ktx2_bytes);
+        println!(
+            "✓ {} (tier={tier:?}, class={asset_class:?}) → {} ({} bytes, id {id})",
+            input.display(),
+            out_path.display(),
+            ktx2_bytes.len(),
+        );
+    }
+    println!("✓ cook-all emitted {} artifacts", artifacts.len());
+    Ok(())
+}
+
+fn tier_filename(tier: Tier) -> &'static str {
+    match tier {
+        Tier::Desktop => "desktop",
+        Tier::Mobile => "mobile",
+        Tier::Web => "web",
+        Tier::LowEnd => "lowend",
+        Tier::Constrained => "constrained",
+    }
 }
 
 fn run_texture_cook(

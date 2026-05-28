@@ -4,13 +4,23 @@
 //! Per [ADR-0056 §2.6](../../../../docs/architecture/decisions/0056-vector-network-data-model.md)
 //! (L4F2 Antigravity 3rd iteration — security catch).
 //!
-//! ## Bounded deserialization
+//! ## Bounded deserialization (two stages)
 //!
 //! Naive `postcard::from_bytes` allows a malicious `.ph2d-vector` file to
-//! declare a `SmallVec` length of billions → heap exhaustion → DoS or
-//! pre-RCE conditions. [`bounded_decode`] enforces per-collection caps
-//! **before** decoding the payload by inspecting the network's vertex /
-//! segment / region counts post-decode and rejecting oversized assets.
+//! declare large collections → heap exhaustion → DoS. [`bounded_decode`]
+//! defends in two stages:
+//!
+//! 1. **Pre-decode:** reject any input larger than [`MAX_ASSET_SIZE`]
+//!    before calling `postcard::from_bytes`. This is the only bound that
+//!    runs *before* allocation, so it is the true ceiling on decode-time
+//!    heap (postcard reads length-delimited sequences element-by-element,
+//!    so the practical worst case is bounded by `MAX_ASSET_SIZE` of
+//!    densely-packed entries — keep `MAX_ASSET_SIZE` conservative).
+//! 2. **Post-decode:** after `from_bytes` materializes the asset, every
+//!    collection (vertices / segments / regions / edit-log ops / embedded
+//!    assets / peer clocks / style refs / per-region segments / snapshots)
+//!    is checked against [`AssetBounds`] and the asset rejected if any cap
+//!    is exceeded.
 //!
 //! Adversarial fixtures live in
 //! `tests/security/adversarial_postcard.rs` (T1.2 wires the harness;
@@ -33,8 +43,30 @@ pub const PH2D_VECTOR_ASSET_SCHEMA_VERSION: u32 = 1;
 
 /// **Maximum on-disk asset size** accepted by [`load_vector_asset`].
 ///
-/// 100 MB per ADR-0056 §2.6. Larger assets are rejected before decoding.
+/// 100 MB per ADR-0056 §2.6. This is the only bound enforced *before*
+/// `postcard::from_bytes` allocates — the true pre-decode heap ceiling.
 pub const MAX_ASSET_SIZE: usize = 100 * 1024 * 1024;
+
+// ---------------------------------------------------------------------------
+// W0-ratified generation-time security sanitizers (ADR-0056..0068 cascade).
+//
+// These bound *procedural / LLM-driven generation inputs* — a tighter gate
+// than the per-asset [`AssetBounds`] caps, applied at the point a polygon /
+// spiral / LLM-gen node produces geometry (W2+ fan-out). Defined here now so
+// the contract surface is enforceable (arch-gate asserts presence + value)
+// rather than a verbal claim in CLAUDE.md (audit H4).
+// ---------------------------------------------------------------------------
+
+/// Max vertices a single LLM-driven generation call may emit. Tighter than
+/// [`AssetBounds::max_vertices`] — caps untrusted/prompt-injected geometry
+/// at the generation site before it reaches the asset.
+pub const MAX_VERTICES_PER_LLM_GEN: usize = 1_000;
+
+/// Max sides a procedural polygon generator may produce.
+pub const MAX_POLYGON_SIDES: u32 = 128;
+
+/// Max turns a procedural spiral generator may produce.
+pub const MAX_SPIRAL_TURNS: u32 = 64;
 
 /// On-disk asset header — the root postcard-serialized type written to
 /// `.ph2d-vector` files.

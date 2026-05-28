@@ -109,8 +109,10 @@ push, não no CI vermelho 30min depois.
   `AnimValue` typed enum {Float/Vec2/Vec3/Color/Bool/Enum} / `AttributeEvaluator::sample(t: f64)` /
   18 nodes geométricos canônicos / 32 crates totais com consolidação seletiva / 8 inovações
   extraordinárias / `MAX_SPIRAL_TURNS=64` / `MAX_POLYGON_SIDES=128` / `MAX_VERTICES_PER_LLM_GEN=1000`
-  (security sanitizers). Homestead gates: `crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs`
-  (W1 T1.2 cria) + `vello_kurbo_only_in_ph2d_vector` arch-gate (long-tail maintenance L6F1).
+  (security sanitizers). Homestead gate **ativo**: `crates/ph2d-vector-doc/tests/architecture_vector_contract_surface.rs`
+  (caps de struct/enum + inline SmallVec budgets + os 3 security sanitizers acima). O gate
+  `vello_kurbo_only_in_ph2d_vector` (ADR-0059 §2.8 + L6F1) é **W2-deferred — NÃO existe ainda**
+  (~20 crates já importam vello/kurbo direto; o gate só faz sentido após a consolidação L6F1).
 
 Planos históricos vivem em [`docs/archive/plans-completed/`](docs/archive/plans-completed/).
 

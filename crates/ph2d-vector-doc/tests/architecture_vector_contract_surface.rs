@@ -120,7 +120,10 @@ fn count_struct_fields(crate_name: &str, struct_name: &str) -> Option<usize> {
 /// Vacuous-pass `assert ≤ max`: `None` (symbol absent) is allowed.
 ///
 /// Use for **downstream / cross-crate** symbols that legitimately may
-/// not exist yet (W2+ fan-out crates).
+/// not exist yet (W2+ fan-out crates). Currently unused (all in-tree
+/// symbols moved to the strict variant per audit M9); kept for the next
+/// downstream gate landing, mirroring `assert_exact`.
+#[allow(dead_code)]
 #[track_caller]
 fn assert_capped(actual: Option<usize>, max: usize, ctx: &str) {
     if let Some(n) = actual {
@@ -265,7 +268,9 @@ fn brush_engine_method_count_is_capped_at_3() {
 
 #[test]
 fn stamp_spec_field_count_is_capped_at_7() {
-    assert_capped(
+    // Strict: StampSpec is a W1 foundation symbol that exists today — a
+    // rename must FAIL the gate, not pass vacuously (audit M9).
+    assert_capped_strict(
         count_struct_fields(BRUSH_TRAITS_CRATE, "StampSpec"),
         7,
         "StampSpec (ADR-0067 §2.6)",
@@ -280,9 +285,53 @@ const VECTOR_TRAITS_CRATE: &str = "ph2d-vector-traits";
 
 #[test]
 fn anim_value_variant_count_is_capped_at_6() {
-    assert_capped(
+    // Strict: AnimValue is a W1 foundation symbol that exists today
+    // (audit M9).
+    assert_capped_strict(
         count_enum_variants(VECTOR_TRAITS_CRATE, "AnimValue"),
         6,
         "AnimValue (ADR-0056 §2.5)",
     );
+}
+
+// ----------------------------------------------------------------------------
+// ADR-0056 §2.2 — SmallVec inline budgets (ABI-relevant: postcard layout +
+// per-frame alloc behavior). The field/variant-count gates above do NOT catch
+// a change to the inline size, so assert the exact declarations textually
+// (audit M1).
+// ----------------------------------------------------------------------------
+
+/// `true` if any `src/**/*.rs` of `crate_name` contains `needle`.
+fn crate_source_contains(crate_name: &str, needle: &str) -> bool {
+    crate_source(crate_name).contains(needle)
+}
+
+#[track_caller]
+fn assert_inline_decl(needle: &str) {
+    assert!(
+        crate_source_contains(CRATE, needle),
+        "[ADR-0056 §2.2 inline budget] declaration `{needle}` not found in {CRATE} \
+         — a refactor changed an inline SmallVec size (ABI/alloc drift)"
+    );
+}
+
+#[test]
+fn smallvec_inline_budgets_match_adr_0056() {
+    assert_inline_decl("SmallVec<[Vertex; 32]>");
+    assert_inline_decl("SmallVec<[Segment; 64]>");
+    assert_inline_decl("SmallVec<[Region; 8]>");
+    assert_inline_decl("SmallVec<[SegmentRef; 16]>");
+}
+
+// ----------------------------------------------------------------------------
+// W0-ratified generation-time security sanitizers (audit H4). These caps
+// were declared in CLAUDE.md but absent from code; assert presence + value so
+// the contract is enforced, not verbal.
+// ----------------------------------------------------------------------------
+
+#[test]
+fn w0_generation_security_caps_present_with_ratified_values() {
+    assert_inline_decl("pub const MAX_VERTICES_PER_LLM_GEN: usize = 1_000;");
+    assert_inline_decl("pub const MAX_POLYGON_SIDES: u32 = 128;");
+    assert_inline_decl("pub const MAX_SPIRAL_TURNS: u32 = 64;");
 }

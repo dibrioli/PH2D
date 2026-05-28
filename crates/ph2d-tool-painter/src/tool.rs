@@ -560,6 +560,12 @@ impl PainterTool {
         // `params.active_color` between strokes — recomputing the two
         // transcendentals per pointer event is pure waste otherwise.
         self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+        // **W2.T2.1 Day-7 — stroke-level opacity wire:** Stamp.opacity é
+        // hardcoded 1.0 no scheduler (T1.7 TODO "taper + stroke-level
+        // opacity"). Aplicamos `params.opacity` como pre-multiply no
+        // alpha do color (STRAIGHT alpha → shader premultiplies). Per-
+        // stamp opacity dynamics (taper) vem em W5+ Brush Studio.
+        self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //

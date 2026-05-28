@@ -277,6 +277,9 @@ pub const PAINTER_SIDEBAR_UNDO_BUTTON: NodeId = hash_node_id("painter_sidebar.un
 pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.redo_button");
 /// Modifier square (centro da sidebar) — W2 default eyedropper-while-held.
 pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
+/// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
+/// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
+pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

@@ -1,14 +1,16 @@
-//! Painter sidebar paint — T2.1 Day-7 functional.
+//! Painter sidebar paint — T2.1 Day-7 functional + chrome canon.
 //!
 //! Render canon (mirror BgRemoval/Padding sidebar pattern):
 //! - Visibility gate via `PanelHostInternal::panel_visible`
 //! - Right-dock rect de `ctx.layout.painter_sidebar`
 //! - Chrome publish (`set_panel_rect`) pra dispatch hit-test
 //! - Canon chrome: dark-glass surface + corner dot + title "Painter"
+//!   + close (X) button (PANEL_HEADER_CLOSE_RESERVE)
+//! - Drag handle + 2 resize handles (Inspector slot shared canon)
 //! - 2 sliders via `paint_slider_with_chip_layout`:
 //!   * Size (0..1 → 1..2048 px display via `display_override`)
 //!   * Opacity (0..1 → 0..100% display)
-//! - `content_h` / `visible_h` publish pra scroll bounds
+//! - Body inside scroll clip; `content_h` / `visible_h` publish
 //!
 //! W2.T2.2 (undo/redo buttons) e T2.4 (modifier square) virão em commits
 //! seguintes.
@@ -16,11 +18,13 @@
 use crate::PainterSidebarPanel;
 use crate::state::{self, PainterSidebarPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_editor_core::ids as core_ids;
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::paint_slider_with_chip_layout;
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_H_DEFAULT, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_surface, paint_panel_title, panel_close_button_rect,
+    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -47,14 +51,54 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(core_ids::PAINTER_SIDEBAR_PANEL, rect);
 
-    // Chrome: dark-glass surface + corner accent + title.
+    // Chrome: dark-glass surface + corner accent.
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_title(rect, "Painter", 0.0, ctx.scene, ctx.text_system, theme);
 
-    // Body layout — y-cursor convention.
-    let mut y = rect.y + PANEL_HEADER_H_DEFAULT;
+    // Dock-slot drag + resize handles (shared canon — Inspector right-dock
+    // slot persistence). BgRemoval/Padding pattern.
+    {
+        let drag_rect = panel_drag_handle_rect(
+            rect,
+            ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
+            PANEL_HEADER_CLOSE_RESERVE,
+        );
+        let resize_rect = panel_resize_handle_rect(rect);
+        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
+        let hit_index = ctx.host.hit_index_mut();
+        hit_index.register(ph2d_editor_core::ids::INSP_DRAG_HANDLE, drag_rect);
+        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE, resize_rect);
+        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
+    }
+
+    // Title — reserve room pra close button.
+    let title_size = paint_panel_title(
+        rect,
+        "Painter",
+        PANEL_HEADER_CLOSE_RESERVE,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+
+    // Close (X) button — routes pra CancelActiveTool (canon BgRemoval).
+    paint_panel_close_button(
+        rect,
+        core_ids::PAINTER_SIDEBAR_CLOSE,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
+
+    // Body region (clipped) — sliders dentro.
+    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
     let row_pad = Spacing::Md.px();
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+
+    let mut y = body_top;
 
     // Size slider (size_px display via display_override).
     let size_px = (snapshot.size01.clamp(0.0, 1.0) * (SIZE_MAX_PX - 1.0)) + 1.0;
@@ -112,7 +156,16 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     );
     y += ROW_H_PX + row_pad;
 
-    // Content + visible heights pra scroll bounds.
-    set_last_content_h(y - rect.y);
-    set_last_visible_h(rect.h);
+    let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+
+    ctx.scene.pop_layer();
+
+    // Re-register close button no fim do frame pra scrolled body widgets
+    // não shadowarem o close (canon panel_chrome doc).
+    ctx.host.hit_index_mut().register(
+        core_ids::PAINTER_SIDEBAR_CLOSE,
+        panel_close_button_rect(rect),
+    );
 }

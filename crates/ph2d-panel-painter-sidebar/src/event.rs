@@ -25,6 +25,11 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
+        // Close (X) button → CancelActiveTool (canon BgRemoval/Padding).
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_CLOSE => {
+            host.bus_mut().push(EditorAction::CancelActiveTool);
+            true
+        }
         // Slider drag — read freshly-dispatched value, forward normalizado.
         // PainterTool::handle_panel_event mapeia 0..1 back to size_px /
         // opacity full scale conforme `PainterUiEdit` semântica.

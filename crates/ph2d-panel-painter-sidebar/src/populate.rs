@@ -10,8 +10,13 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub fn populate(store: &mut WidgetStore) {
-    // Buttons: undo/redo + modifier square (tappable).
-    for id in [ids::UNDO_BUTTON, ids::REDO_BUTTON, ids::MODIFIER_SQUARE] {
+    // Buttons: close + undo/redo + modifier square (tappable).
+    for id in [
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_CLOSE,
+        ids::UNDO_BUTTON,
+        ids::REDO_BUTTON,
+        ids::MODIFIER_SQUARE,
+    ] {
         store.register(
             id,
             InteractiveState::Button {

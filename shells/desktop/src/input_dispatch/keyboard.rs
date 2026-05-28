@@ -37,6 +37,18 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // Vector Pen: Escape cancels the in-progress path, or clears the
+        // committed scene when none is in progress. Consumed only when
+        // the Pen tool is active with something to cancel/clear —
+        // otherwise it falls through to the hero pipeline (widget blur).
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.try_vector_pen_escape()
+        {
+            return;
+        }
+
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused
         // widget.

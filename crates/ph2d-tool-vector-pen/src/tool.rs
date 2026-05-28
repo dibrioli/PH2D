@@ -24,6 +24,13 @@ pub const DEFAULT_CLOSE_PATH_TOLERANCE_PX: f32 = 12.0;
 /// the user clicks erratically).
 pub const MAX_IN_PROGRESS_VERTICES: usize = 2_048;
 
+/// Maximum absolute world-coordinate magnitude a click may carry. A
+/// pointer far off-screen under extreme zoom produces a finite-but-huge
+/// coordinate that passes the NaN/Inf guard yet yields degenerate Vello
+/// geometry and precision loss once serialized. Finiteness ≠ sanity
+/// (`docs/AUDIT_vector_module_W1_results.md` M2).
+pub const MAX_COORD_MAGNITUDE: f32 = 1.0e7;
+
 /// Stateful Vector Pen tool.
 ///
 /// Holds an in-progress [`VectorNetwork`] + [`EditLog`] + [`StyleTable`]
@@ -183,28 +190,33 @@ impl VectorPenTool {
     /// events arrive — the `TangentsCubic` data path is already
     /// present.
     ///
-    /// ## Coordinate space contract (T1.7 bridge responsibility)
+    /// ## Coordinate space contract
     ///
-    /// `pos` is expected in **network-local pixel coordinates** — the
-    /// same coordinate space the vertices are stored in (per
-    /// `ph2d_vector_doc::Vertex` doc-comment). The shell bridge must
-    /// convert screen → network-local via the active sprite's affine
-    /// before calling this method. Mirror the Painter precedent in
-    /// `shells/desktop/src/input_dispatch/painter_input.rs::painter_pointer_uv`.
+    /// `pos` is a **world-space coordinate** (the vector network IS the
+    /// spatial asset — no parent sprite; ADR-0056 §1.1). The shell bridge
+    /// converts `screen px → camera.screen_to_world → world` before
+    /// calling. The world coord is stored verbatim in the vertex.
     ///
     /// ## Defense against malformed input
     ///
-    /// `pos` containing `NaN` or `Infinity` is rejected outright —
-    /// returning `Rejected` instead of silently corrupting the network
-    /// (e.g. a NaN slipping into `nearest_vertex` propagates through
-    /// IEEE 754 comparisons and would spuriously trigger close-path —
-    /// R1 Lens-M CRIT-L-M-1).
+    /// `pos` that is non-finite (`NaN`/`Infinity`) or beyond
+    /// [`MAX_COORD_MAGNITUDE`] is rejected outright (returns `Rejected`)
+    /// instead of corrupting the network — a NaN slipping into
+    /// `nearest_vertex` would propagate through IEEE-754 comparisons and
+    /// spuriously trigger close-path; a huge-but-finite coord yields
+    /// degenerate geometry once serialized.
     pub fn on_canvas_click(&mut self, pos: Vec2) -> PenClickOutcome {
-        // R1 Lens-M CRIT-L-M-1: NaN/Inf sanitize. Any pointer source
-        // (driver bug, divide-by-zero in zoom→world transform,
-        // `device_pixel_ratio = 0` on a docked panel) that produces a
+        // NaN/Inf sanitize. Any pointer source (driver bug,
+        // divide-by-zero in a zoom→world transform) that produces a
         // non-finite coord must NOT touch the network.
         if !pos.x.is_finite() || !pos.y.is_finite() {
+            return PenClickOutcome::Rejected;
+        }
+
+        // Magnitude clamp — finiteness alone is not sanity; reject a
+        // pointer projected absurdly far off-canvas before it becomes a
+        // degenerate vertex.
+        if pos.x.abs() > MAX_COORD_MAGNITUDE || pos.y.abs() > MAX_COORD_MAGNITUDE {
             return PenClickOutcome::Rejected;
         }
 
@@ -580,6 +592,20 @@ mod tests {
         // Network unchanged + no spurious commit.
         assert_eq!(t.vertex_count(), initial_vertex_count);
         assert!(t.take_committed_asset().is_none());
+    }
+
+    #[test]
+    fn huge_finite_coord_is_rejected() {
+        // M2: finiteness ≠ sanity. A pointer projected absurdly far
+        // off-canvas (extreme zoom) is finite but must not become a
+        // degenerate vertex.
+        let mut t = VectorPenTool::new();
+        let out = t.on_canvas_click(Vec2::new(MAX_COORD_MAGNITUDE * 2.0, 0.0));
+        assert_eq!(out, PenClickOutcome::Rejected);
+        assert_eq!(t.vertex_count(), 0, "no vertex added");
+        // A coordinate at the boundary is still accepted.
+        let ok = t.on_canvas_click(Vec2::new(MAX_COORD_MAGNITUDE, 0.0));
+        assert_eq!(ok, PenClickOutcome::AddedFirstVertex);
     }
 
     #[test]

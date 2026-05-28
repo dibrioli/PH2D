@@ -847,12 +847,10 @@ impl crate::App {
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
             );
-            // Vector Pen tool ⟷ shell bridge (W1 T1.7 R4). Per-frame
-            // world-space overlay paint of the in-progress triangle +
-            // drain of any committed `.ph2d-vector` asset to disk. No
-            // sprite/hero dependency — the network IS the asset
-            // (ADR-0056 §1.1); world-coords come from `camera.screen_to_world`
-            // in `vector_pen_input.rs`.
+            // Vector Pen tool ⟷ shell bridge. Per-frame world-space
+            // render of committed scene paths + in-progress overlay. The
+            // network IS the asset (ADR-0056 §1.1); world coords come from
+            // `camera.screen_to_world` in `vector_pen_input.rs`.
             vector_pen_bridge::dispatch(
                 tools,
                 camera,
@@ -860,7 +858,6 @@ impl crate::App {
                 self.last_pointer,
                 &mut self.committed_vector_pen_paths,
                 vector_scene,
-                toasts,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs (which paints the primary gizmo and only writes to

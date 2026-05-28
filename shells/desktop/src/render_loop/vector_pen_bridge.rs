@@ -1,52 +1,58 @@
-//! Vector Pen tool ⟷ shell bridge — per-frame preview + commit save.
+//! Vector Pen tool ⟷ shell bridge — per-frame scene + in-progress overlay.
 //!
-//! Mirror of `bgremoval_preview.rs` shape (HR-1 + DIRETRIZ §3.A.4):
-//! a free function called once per frame BEFORE `paint_hero_screen`
-//! when the Vector Pen tool is the active tool.
+//! Free function called once per frame BEFORE `paint_hero_screen`
+//! (mirror of `bgremoval_preview.rs` shape; HR-1 + DIRETRIZ §3.A.4).
 //!
-//! ## Why no sprite selection requirement (R4 redesign)
+//! ## Coordinate model
 //!
-//! Initial T1.7 R1-R3 implementation copied the bgremoval pattern of
-//! "convert screen → sprite-local pixel coords + render overlay over
-//! sprite footprint". Enio caught the conceptual error: bgremoval EDITS
-//! an existing raster sprite, but the Pen tool **creates new vector
-//! content** — the vector network IS the asset, no parent sprite is
-//! involved. Per ADR-0056 §1.1: Vector Module is "single in two
-//! dimensions fundamentally" vs RasterEditTool family.
+//! The vector network IS the asset — there is no parent sprite (ADR-0056
+//! §1.1, unlike the RasterEditTool family). A canvas click is converted
+//! `screen px → camera.screen_to_world → world coords` and stored
+//! directly in `VectorNetwork.vertices[i].pos`. Rendering builds a
+//! world→screen `Affine` from the camera + window only.
 //!
-//! Post-R4 contract:
+//! ## Three render layers
 //!
-//! - Click screen px → `camera.screen_to_world(...)` → **world-space
-//!   coords** stored directly in `VectorNetwork.vertices[i].pos`.
-//! - Render: build world-→-screen `Affine` from camera + window only
-//!   (no per-sprite transform chain).
-//! - Save: `.ph2d-vector` carries world-coordinate paths; reload draws
-//!   identically. The vector IS the spatial asset.
+//! - **(a) Committed paths** — scene state, rendered every frame
+//!   regardless of the active tool. Closed triangles persist across tool
+//!   switches; they are NOT Pen-tool state. Cleared via Esc when no path
+//!   is in progress (`vector_pen_input::try_vector_pen_escape`).
+//! - **(b) In-progress overlay** — only while Pen is the active tool:
+//!   vertex dots + segment guidelines + rubber-band to the cursor.
 //!
-//! ## What this does
+//! ## Persistence
 //!
-//! 1. Drain `VectorPenTool::take_committed_asset()` from the previous
-//!    tick's close-path → save to disk via `save_vector_asset`. Toast
-//!    success/error feedback.
-//! 2. Build the world→screen `Affine` directly from the camera (no
-//!    sprite footprint involved).
-//! 3. Call `ph2d_vector::draw_vector_network(scene, &network, &styles,
-//!    affine)` so the live triangle (or in-progress path) paints over
-//!    the canvas wherever the user clicked.
+//! W1 holds committed paths in memory only — no disk write. Real
+//! persistence (AssetDb + save-as) lands in W2; see
+//! `docs/AUDIT_vector_module_W1_results.md` §6.
+
+use std::collections::BTreeMap;
 
 use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_pen::VectorPenTool;
 use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
-use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Pen-blue overlay tint (R, G, B). Distinct per-layer alpha below.
+const PEN_RGB: (u8, u8, u8) = (80, 130, 255);
+const VERTEX_ALPHA: u8 = 230;
+const SEGMENT_ALPHA: u8 = 200;
+const RUBBER_ALPHA: u8 = 120;
+/// Screen-space sizes (world units derived by dividing by the camera
+/// scale `k`, so they stay constant on screen at any zoom).
+const DOT_RADIUS_PX: f64 = 5.0;
+const LINE_WIDTH_PX: f64 = 2.0;
+/// Vertex 0 is drawn larger as the visible "close-path target".
+const FIRST_VERTEX_SCALE: f64 = 1.6;
+/// Below this world distance the rubber-band is a degenerate zero-length
+/// line (emits nothing meaningful, skipped).
+const RUBBER_BAND_MIN_WORLD: f32 = 0.001;
 
 /// Per-frame Vector Pen bridge dispatch.
 ///
-/// Early-returns if the active tool isn't `vector_pen`. No mutation
-/// on early-return; safe to call every frame unconditionally.
-#[allow(clippy::too_many_arguments)]
+/// Early-returns if the active tool isn't `vector_pen`. No mutation on
+/// early-return; safe to call every frame unconditionally.
 pub(super) fn dispatch(
     tools: &mut ToolRegistry,
     camera: &Camera2d,
@@ -54,39 +60,13 @@ pub(super) fn dispatch(
     last_pointer: (f32, f32),
     committed_paths: &mut Vec<ph2d_vector::Ph2dVectorAsset>,
     vector_scene: &mut VectorScene,
-    toasts: &mut ToastQueue,
 ) {
-    // R9 fix: SCENE state (committed_paths) must render every frame
-    // regardless of which tool is currently active. The earlier R8
-    // early-return on `!is_pen_active` caused all finished triangles
-    // to vanish the instant the user toggled Pen off, which read as
-    // "Pen didn't fully deactivate" — actually the tool DID
-    // deactivate, but the canvas wiped at the same instant so the
-    // user couldn't tell. Committed vector paths are scene state, not
-    // Pen-tool state.
-    //
-    // Three layers, gated independently:
-    //
-    // (a) **Committed paths** (ALWAYS rendered): every finished
-    //     triangle from prior close-paths. Stays on canvas across
-    //     tool switches.
-    //
-    // (b) **Pen commit-drain + in-progress overlay** (only when Pen
-    //     is the active tool): take_committed_asset → save to disk +
-    //     push to committed_paths; then paint vertex DOTS + segment
-    //     LINES + rubber-band line for the path the user is currently
-    //     authoring.
     let world_to_screen = world_to_screen_affine(camera, window_size);
     let scene = vector_scene.inner_mut();
 
-    // Layer (a) — scene: always on.
+    // Layer (a) — committed scene paths: always rendered.
     for asset in committed_paths.iter() {
-        ph2d_vector::draw_vector_network(
-            scene,
-            &asset.network,
-            &asset.styles,
-            world_to_screen,
-        );
+        ph2d_vector::draw_vector_network(scene, &asset.network, &asset.styles, world_to_screen);
     }
 
     let is_pen_active = tools
@@ -106,16 +86,9 @@ pub(super) fn dispatch(
         return;
     };
 
-    // Pen-only step — drain pending commit + save to disk + STASH for
-    // multi-path rendering. R8: each close-path emits one asset; the
-    // bridge accumulates them in `committed_paths` so the user sees
-    // every finished triangle persist on canvas while a new
-    // in-progress path coexists.
+    // Drain the asset emitted by the previous tick's close-path into the
+    // scene. Held in memory only (W1 — no disk persistence).
     if let Some(asset) = pen.take_committed_asset() {
-        let _ = match save_asset_to_disk(&asset) {
-            Ok(path) => toasts.push(Toast::info(format!("Vector saved: {path}"))),
-            Err(e) => toasts.push(Toast::error(format!("Vector save failed: {e}"))),
-        };
         committed_paths.push(asset);
     }
 
@@ -126,50 +99,54 @@ pub(super) fn dispatch(
     }
     let styles = pen.current_styles();
 
-    // Also render the in-progress network's regions (rare — only if
-    // a region was explicitly added without close-path completing,
-    // which the Pen tool never does in W1; defensive for future
-    // tools sharing this bridge).
+    // Render the in-progress network's regions/fills (defensive — the W1
+    // Pen never leaves a region open mid-build, but future tools sharing
+    // this bridge might).
     ph2d_vector::draw_vector_network(scene, network, styles, world_to_screen);
 
-    // Layer (b): in-progress vertex dots + segment guidelines.
-    // The affine scales world→screen by `k = window.height /
-    // camera.height_world`. To get a ~5 px dot regardless of zoom,
-    // size in world units = `5 / k` (the affine then scales back to
-    // 5 px on screen).
+    // Layer (b): in-progress overlay. `k = window.height /
+    // camera.height_world`; sizing in world units = `px / k` yields a
+    // constant screen size at any zoom.
     let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
-    let dot_radius_world = 5.0 / k;
-    let line_width_world = 2.0 / k;
-    let vertex_color = Color::from_rgba8(80, 130, 255, 230);
-    let segment_color = Color::from_rgba8(80, 130, 255, 200);
+    let dot_radius_world = DOT_RADIUS_PX / k;
+    let line_width_world = LINE_WIDTH_PX / k;
+    let vertex_color = Color::from_rgba8(PEN_RGB.0, PEN_RGB.1, PEN_RGB.2, VERTEX_ALPHA);
+    let segment_color = Color::from_rgba8(PEN_RGB.0, PEN_RGB.1, PEN_RGB.2, SEGMENT_ALPHA);
+
+    // One vertex-position lookup for the whole overlay (avoids the O(N²)
+    // linear scan per segment). One reusable BezPath, truncated + refilled
+    // per segment (one buffer instead of one alloc per segment).
+    let vpos: BTreeMap<u32, Point> = network
+        .vertices
+        .iter()
+        .map(|v| (v.id, Point::new(v.pos.x as f64, v.pos.y as f64)))
+        .collect();
+    let mut seg_path = BezPath::new();
 
     // Segments first (so dots paint on top of segment endpoints).
     for seg in &network.segments {
-        let Some(start) = network.vertices.iter().find(|v| v.id == seg.start) else {
+        let (Some(&start), Some(&end)) = (vpos.get(&seg.start), vpos.get(&seg.end)) else {
             continue;
         };
-        let Some(end) = network.vertices.iter().find(|v| v.id == seg.end) else {
-            continue;
-        };
-        let mut path = BezPath::new();
-        path.move_to(Point::new(start.pos.x as f64, start.pos.y as f64));
-        path.line_to(Point::new(end.pos.x as f64, end.pos.y as f64));
+        seg_path.truncate(0);
+        seg_path.move_to(start);
+        seg_path.line_to(end);
         scene.stroke(
             &Stroke::new(line_width_world),
             world_to_screen,
             &Brush::Solid(segment_color),
             None,
-            &path,
+            &seg_path,
         );
     }
 
-    // Vertex dots — vertex 0 painted LAST + larger so it stands out
-    // as the "close-path target" the user can click to finish the
-    // path. (Mirror Illustrator/Figma convention: first vertex
-    // visually distinct.)
+    // Vertex dots — vertex 0 painted larger so it stands out as the
+    // close-path target (Illustrator/Figma convention: first vertex
+    // visually distinct).
+    let first_id = network.vertices.first().map(|f| f.id);
     for v in &network.vertices {
-        let radius = if Some(v.id) == network.vertices.first().map(|f| f.id) {
-            dot_radius_world * 1.6
+        let radius = if Some(v.id) == first_id {
+            dot_radius_world * FIRST_VERTEX_SCALE
         } else {
             dot_radius_world
         };
@@ -183,41 +160,26 @@ pub(super) fn dispatch(
         );
     }
 
-    // Rubber-band preview line from last vertex → current cursor in
-    // world coords. Standard Pen-tool UX (Illustrator / Figma /
-    // Inkscape): user sees the candidate next segment before
-    // committing the click. Without this the user has no spatial
-    // feedback for "where would my next click land".
-    //
-    // **R8 gate**: only draw rubber-band when the in-progress path
-    // is OPEN (no closed region yet). Without this gate, a stale
-    // rubber-band would render from `vertices.last()` after a
-    // close-path — user reported "última aresta continua aparecendo
-    // como se não tivesse fechado". (Tool resets immediately on
-    // close-path in R8, so this branch only fires mid-build, but
-    // the explicit gate is defensive against future Pen variants
-    // that might keep state through commit.)
+    // Rubber-band preview from the last vertex → current cursor, only
+    // while the path is still OPEN (no region yet). Gives spatial
+    // feedback for where the next click would land.
     if network.regions.is_empty()
         && let Some(last_v) = network.vertices.last()
     {
         let cursor_world = camera.screen_to_world(last_pointer, window_size);
-        // Skip drawing the rubber-band if the cursor coincides with
-        // the last vertex (zero-length line emits nothing meaningful
-        // and could surface as a degenerate stroke in some Vello
-        // versions).
-        if (cursor_world[0] - last_v.pos.x).abs() > 0.001
-            || (cursor_world[1] - last_v.pos.y).abs() > 0.001
+        if (cursor_world[0] - last_v.pos.x).abs() > RUBBER_BAND_MIN_WORLD
+            || (cursor_world[1] - last_v.pos.y).abs() > RUBBER_BAND_MIN_WORLD
         {
-            let rubber_color = Color::from_rgba8(80, 130, 255, 120);
-            let mut rubber = BezPath::new();
-            rubber.move_to(Point::new(last_v.pos.x as f64, last_v.pos.y as f64));
-            rubber.line_to(Point::new(cursor_world[0] as f64, cursor_world[1] as f64));
+            let rubber_color = Color::from_rgba8(PEN_RGB.0, PEN_RGB.1, PEN_RGB.2, RUBBER_ALPHA);
+            seg_path.truncate(0);
+            seg_path.move_to(Point::new(last_v.pos.x as f64, last_v.pos.y as f64));
+            seg_path.line_to(Point::new(cursor_world[0] as f64, cursor_world[1] as f64));
             scene.stroke(
                 &Stroke::new(line_width_world),
                 world_to_screen,
                 &Brush::Solid(rubber_color),
                 None,
-                &rubber,
+                &seg_path,
             );
         }
     }
@@ -225,34 +187,15 @@ pub(super) fn dispatch(
 
 /// World-meters → screen-pixel affine derived from the camera.
 ///
-/// Matches the same projection as
-/// `Camera2d::world_to_screen([x, y], window)` — uniform scale
-/// `k = window.height / camera.height_world` (square pixels), Y
-/// inverted (world Y-up → screen Y-down), translated by window center
-/// and camera center.
+/// MUST stay the exact inverse of [`Camera2d::screen_to_world`]: uniform
+/// scale `k = window.height / camera.height_world` (relies on square
+/// pixels), Y inverted (world Y-up → screen Y-down), translated by window
+/// center and camera center. If `Camera2d` ever becomes anisotropic, this
+/// and `screen_to_world` would silently diverge — derive from the camera
+/// instead (see `docs/AUDIT_vector_module_W1_results.md` H5/M3).
 fn world_to_screen_affine(camera: &Camera2d, window: WindowSize) -> Affine {
     let k = (window.height as f64) / (camera.height_world as f64).max(1e-6);
-    Affine::translate((
-        window.width as f64 * 0.5,
-        window.height as f64 * 0.5,
-    )) * Affine::scale_non_uniform(k, -k)
+    Affine::translate((window.width as f64 * 0.5, window.height as f64 * 0.5))
+        * Affine::scale_non_uniform(k, -k)
         * Affine::translate((-camera.center[0] as f64, -camera.center[1] as f64))
-}
-
-/// Save the committed Pen asset to disk under a timestamped filename.
-///
-/// **W1.T1.7 MVP convention**: dumps into
-/// `vector_pen_<unix_secs>.ph2d-vector` in the process's current
-/// directory. W2 will plumb the asset path through `AssetDb` + a real
-/// "save as" dialog; for the smoke Day-7 the user verifies file
-/// presence + can re-load via `load_and_validate_vector_asset`.
-fn save_asset_to_disk(asset: &ph2d_vector::Ph2dVectorAsset) -> Result<String, String> {
-    let bytes = ph2d_vector::save_vector_asset(asset).map_err(|e| e.to_string())?;
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let path = format!("vector_pen_{ts}.ph2d-vector");
-    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
-    Ok(path)
 }

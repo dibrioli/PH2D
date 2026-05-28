@@ -1,6 +1,6 @@
 # Diretriz de Implementação — PH2D
 
-**Versão:** 7.0 — 2026-05-24 (reescrita pós-auditoria multi-agente readiness).
+**Versão:** 7.1 — 2026-05-28 (modelo de papéis consolidado: **1 Coordenador único + N Implementadores** — absorve os antigos Coord-A/Coord-B, após colisões git entre coordenadores/implementadores paralelos).
 **Audiência:** **toda LLM que entra no projeto.** Leia inteiro antes de tocar em código.
 
 > **Seu primeiro output sempre = TRIAGEM (§2).** Classifique a tarefa do Enio
@@ -10,10 +10,10 @@
 
 ## TL;DR
 
-- **Dois papéis:** Coordenador (A foundational ou B baldes) + Implementador.
+- **Dois papéis:** **um Coordenador único** (absorve foundational + scaffolds + ship + arbitragem de posse) + **N Implementadores** (sempre vários, cada um numa pasta/módulo físicamente disjunto).
 - **Três caminhos** (descobertos via Triagem §2):
   - **(A) Drop-crate (fan-out, §3.A)** — node ou tool nova. Implementador sozinho. Zero edit central. Paraleliza com outros (A).
-  - **(B) Scaffold central (§3.B)** — painel/widget/chrome. Coord-B faz scaffold + delega.
+  - **(B) Scaffold central (§3.B)** — painel/widget/chrome. O Coordenador faz scaffold + delega.
   - **(C) Coord-only (§3.C)** — foundational ou contrato congelado. Não paraleliza. ADR se for contrato.
 - **Dois contratos congelados (§4)** com arch-gate ativo: nodes (ADR-0039) e tools (ADR-0040+0041). Mexer = (C).
 - **Enio é relay mecânico**, não decisor.
@@ -42,29 +42,34 @@ Algo divergente (HEAD inesperado, working dirty, build quebrado) → **pare e re
 
 ## 1. Papéis + infra multi-agente
 
-**Coordenador-A (foundational).** Autoridade sobre **contratos congelados, arch-gates, foundational crates, codegen tools, shells/desktop/, ADRs**. Único que toca os 2 contratos congelados (§4) — sempre via amendment ADR, nunca cap-bust ad-hoc. Responsável pelo **ship-de-jornada** (ship.sh + commit + push + babysit CI — §8).
+**Coordenador (único).** Um só por jornada. Absorve o que antes eram Coord-A (foundational) e Coord-B (baldes). Autoridade **exclusiva** sobre: contratos congelados, arch-gates, foundational crates (`ph2d-render`, `ph2d-editor-core`, `ph2d-host`, `ph2d-tokens`, …), codegen tools, `shells/*` plumbing compartilhado, scaffolds de painel/widget/chrome, ADRs, `CLAUDE.md`/DIRETRIZ, `.github/workflows/`. É o **único** que toca arquivo foundational/compartilhado — isso serializa a superfície de colisão (causa-raiz dos incidentes que motivaram o modelo). Mexe nos 2 contratos congelados (§4) só via amendment ADR, nunca cap-bust ad-hoc. Responsabilidades do modelo multi-implementador:
+- (a) escrever um **sub-handoff focado por implementador** (estado + pasta exclusiva + task + anti-colisão);
+- (b) manter o **mapa de posse** em SESSION_ACTIVE (§1.1) — quem é dono de quê;
+- (c) **arbitrar colisões** e **sequenciar dependências** entre implementadores (ex.: liberar `ph2d-render` ao módulo B só quando o módulo A soltar);
+- (d) **ship-de-jornada** (ship.sh + commit + push + babysit CI — §8), incluindo limpar fmt-drift e ship-blockers cross-session no fim.
 
-**Coordenador-B (baldes).** Autoridade sobre **scaffolds de painel/widget/chrome novos**, sweeps de gates UI em `crates/ph2d-panel-*`, organização de smokes. **NÃO** toca contratos congelados nem ship — escala Coord-A. Pode rodar em paralelo com Coord-A via protocolo SESSION_ACTIVE.
+Não implementa feature de módulo — **coordena**.
 
-**Implementador.** Sessão isolada, uma por feature. No caminho **(A)**: cria pasta + roda sync + testa, sem Coordenador. No caminho **(B)**: recebe pasta já plugada na árvore pelo Coord-B, edita **somente** dentro dela. Paraleliza com outros Implementadores sem coordenação direta — a arquitetura física garante não-colisão (glob `workspace.members` + codegen splice em marcadores).
+**Implementador (sempre vários).** Sessão isolada, **uma por módulo físicamente disjunto** (uma crate-pasta ou um cluster de crates do mesmo módulo). Caminho **(A)**: cria pasta + roda sync + testa, sem Coordenador. Caminho **(D)**: edita dentro de pasta de módulo existente. Caminho **(B)**: recebe pasta já scaffoldada pelo Coordenador, edita **só** dentro dela. A não-colisão é garantida pela arquitetura física (glob `workspace.members` + codegen splice em marcadores) **somada** à regra de posse exclusiva arbitrada pelo Coordenador. **Precisou de QUALQUER coisa fora da sua pasta** (foundational, shell plumbing, contrato congelado, outro módulo)? **PARA e reporta ao Coordenador** — não edita, e **nunca renegocia direto com outro implementador**.
 
 **Enio.** Humano que orquestra: abre sessões Claude Code, cola mensagens entre elas, roda smoke visual quando Coord pede. **Não decide nada operacional.**
 
-### 1.1 Protocolo SESSION_ACTIVE (sincronização entre os 2 Coords)
+### 1.1 Protocolo SESSION_ACTIVE (mapa de posse mantido pelo Coordenador)
 
-[`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md) é o canal entre Coord-A e Coord-B. Ao iniciar sessão, cada Coord:
+[`docs/SESSION_ACTIVE.md`](../SESSION_ACTIVE.md) é o post-it vivo da orquestração. **Só o Coordenador escreve;** os implementadores **leem antes de cada burst** e não editam. O Coordenador mantém ali:
 
-1. Lê o arquivo pra ver o que o outro está fazendo
-2. Edita a própria entrada: papel, pastas, ETA
-3. Se vai pisar em pasta do outro: **pausa e renegocia** via comentário no arquivo
+1. O **mapa de posse**: qual implementador é dono de qual pasta/módulo (escrita exclusiva) + seu slot.
+2. Os **pontos compartilhados** e como estão resolvidos (ex.: crate X é escrita do Impl-N, leitura dos demais).
+3. Os **itens que o Coordenador segura** (ship-blockers, foundational, sequenciamento de dependências).
+4. **Pre-existing failures cross-session** a NÃO fixar (com owner identificado).
 
-Ao terminar/pausar longo: limpa a própria entrada.
+Implementador que precise tocar pasta fora da sua: **PARA e reporta ao Coordenador** — nunca renegocia direto com outro implementador. O Coordenador limpa os itens concluídos ao encerrar a jornada.
 
 ### 1.2 Isolamento físico — `scripts/slot-env.sh`
 
-Cada sessão roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes paralelos serializam no lock de `target/`. Slot IDs: `coord-a`, `coord-b`, `impl-1..4`.
+Cada sessão roda `source scripts/slot-env.sh <slot-id>` no início para isolar `CARGO_TARGET_DIR` por slot. Sem isso, dois agentes paralelos serializam no lock de `target/`. Slot IDs: `coord` + um por implementador nomeado pelo módulo (`impl-sprite`, `impl-painter`, `impl-vector`, …).
 
-**RAM 8 GiB → máximo realista = 2-3 slots cargo-ativos simultâneos.** 4º causa swap thrashing.
+**RAM 8 GiB → máximo realista = 2-3 slots cargo-ativos simultâneos.** Com N implementadores, isso NÃO autoriza N cargos simultâneos: o Coordenador **escalona quem compila quando** (lê SESSION_ACTIVE). 4º cargo ativo causa swap thrashing.
 
 ### 1.3 Anti-colisão git — `scripts/git-stage-guard.sh`
 
@@ -269,9 +274,9 @@ Dois agentes adicionando duas features (mesma família ou não) **não tocam nen
 - [ ] Ícone: SVG em `docs/design/icons/` + IconId alfabético em `icons.rs`.
 - [ ] **Painel docado segue Widget Gallery (§5.2)**: `link_slider_number`, `mark_chip_no_stepper`, storage `0..1`, bridge `<slug>_bridge.rs` se altera pixels.
 
-### 3.B Scaffold central (caminho (B)) — Coord-B faz primeiro
+### 3.B Scaffold central (caminho (B)) — Coordenador faz primeiro
 
-Painel/widget/chrome ainda exigem edit central (não codegenado). Coord-B cria pasta + plugues centrais + stubs verdes, entrega briefing pra Implementador preencher.
+Painel/widget/chrome ainda exigem edit central (não codegenado). O Coordenador cria pasta + plugues centrais + stubs verdes, entrega briefing pra Implementador preencher.
 
 #### 3.B.1 Painel novo (`ph2d-panel-<slug>`)
 
@@ -307,11 +312,11 @@ Coord:
 
 Implementador: preenche corpo do handler.
 
-### 3.C Foundational + contratos congelados (caminho (C)) — Coord-A só
+### 3.C Foundational + contratos congelados (caminho (C)) — Coordenador só
 
 Foundational = `ph2d-core`, `ph2d-tokens`, `ph2d-editor-core` (exceto widget/chrome scaffold de B), `ph2d-a11y`, `ph2d-host`, `ph2d-vector`, `ph2d-text`, `ph2d-tool-registry`, `ph2d-{tool,node,panel}-registry-init`, `tools/ph2d-{node,tool}-sync`, `shells/*`, arch tests, **+ os 2 contratos congelados** (§4).
 
-**Não paralelizável. Coord-A faz sozinho.** Não delega.
+**Não paralelizável. O Coordenador faz sozinho.** Não delega.
 
 Exemplo (adicionar `ColorToken::AccentTeal`):
 1. Edita `docs/design/tokens.json` em todos 4 temas.
@@ -349,7 +354,7 @@ Pasta canônica por feature:
 
 ### 3.E Cross-cutting (perf audit, refactor cross-crate, sweep de lint)
 
-Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por natureza. **Coord-A autoriza explicitamente a exceção ao ISOLAMENTO** no briefing:
+Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por natureza. **O Coordenador autoriza explicitamente a exceção ao ISOLAMENTO** no briefing:
 
 > "Você toca tests em vários crates conforme os achados. Exceção autorizada à regra de uma pasta isolada (DIRETRIZ §1.4). Cada commit ainda fica T1 single-crate sempre que possível."
 
@@ -362,7 +367,7 @@ Algumas tarefas não cabem em §3.A-D porque tocam múltiplos crates por naturez
 
 ## 4. Contratos congelados — caps + arch-gates
 
-**Dois contratos paralelos, mesma disciplina.** Mexer é Coord-A only + ADR.
+**Dois contratos paralelos, mesma disciplina.** Mexer é Coordenador only + ADR.
 
 | Contrato | Arquivos | Arch-gate (cap) | ADR | Mudar exige |
 |---|---|---|---|---|
@@ -570,7 +575,7 @@ Stage→commit é **operação contínua**. Não pause entre os dois passos.
 
 ---
 
-## 8. Ship + Push + CI (Coord-A absorve PRCI)
+## 8. Ship + Push + CI (Coordenador absorve PRCI)
 
 ### 8.1 Fast mode (dia) vs Ship (fim do dia)
 
@@ -582,7 +587,7 @@ Stage→commit é **operação contínua**. Não pause entre os dois passos.
 - **ZERO push, ZERO CI durante o dia.**
 
 **Fim do dia — ship (Enio dispara: "commit"/"push"/"ship"/"fim do dia"):**
-Coord-A entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar verde:
+O Coordenador entra em **modo observa-e-corrige** e tem a OBRIGAÇÃO de entregar verde:
 
 1. **`./scripts/ship.sh`** — job de lint+test do CI inteira, local, de uma vez (fmt, clippy `--all-targets --features ph2d-spike/bevy_ecs`, `cargo machete`, `cargo deny`, `cargo audit`, `nextest --workspace`, `typos`). Paridade EXATA com `spike.yml`.
 2. Pra CADA `✗`: diagnostica + corrige + re-roda. **NÃO pusha enquanto não estiver 100% verde.**
@@ -605,7 +610,7 @@ Smoke é do **Enio**, sob comando do Coord. Coord escreve checklist concreta:
 > 4. Tools/Actions pré-existentes continuam funcionando.
 > 5. Sem regressão visual em Hierarchy / Inspector / Widget Gallery."
 
-### 8.3 Push (Coord-A faz)
+### 8.3 Push (Coordenador faz)
 
 Batching: **push UMA vez por jornada**. CI matrix (linux + macOS + windows + replay hash + bench) demora ~30min.
 
@@ -721,10 +726,10 @@ cargo test  -p ph2d-<family>-<slug> -- some_pattern
 cargo run  -p ph2d-<family>-sync          # regenera wiring
 cargo test -p ph2d-<family>-registry-init # staleness fecha
 
-# Coord-A — antes do push (paridade-CI completa, obrigatório)
+# Coordenador — antes do push (paridade-CI completa, obrigatório)
 ./scripts/ship.sh
 
-# Coord-A — push + babysit
+# Coordenador — push + babysit
 git push origin main
 gh run list --workflow=spike.yml --limit=1
 gh run watch <id> --exit-status

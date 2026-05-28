@@ -35,7 +35,7 @@ Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings esc
 
 ### Itens que o Coordenador segura (não delegados)
 
-1. **Ship-blocker clippy** `crates/ph2d-imageio-svg/src/lib.rs:84` — `field_reassign_with_default` (rust-1.95.0). Bloqueia `ship.sh`/CI clippy. Fix 1-linha (`usvg::Options { ..Default::default() }`). **Aplicar no ship.**
+1. ~~**Ship-blocker clippy** `crates/ph2d-imageio-svg/src/lib.rs:84`~~ → **FIXADO** (struct-update syntax; `cargo clippy -p ph2d-imageio-svg --all-targets -- -D warnings` exit 0).
 2. **fmt drift workspace** (limpar com `cargo fmt --all` no ship): `crates/ph2d-editor-core/src/interaction/dispatch/{number_input,tick}.rs` (puro fmt, zero lógica), `crates/ph2d-editor-core/tests/number_input_mapped_link.rs`, `tools/asset-cooker/tests/sample_cook_brush_atlas.rs`, `shells/desktop/src/render_loop/mod.rs:626`.
 3. **Painter T2.5 keybind/shell wire** (`painter_bridge.rs` + Cmd+Enter) — caminho (C); Impl-4 expõe o método público, Coord faz o wire.
 4. **Sequenciamento Vector H5/M3** — liberar `ph2d-render` ao Impl-5 só quando Sprite W1 fechar.

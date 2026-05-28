@@ -78,7 +78,20 @@ impl StrokeHistory {
     /// | < 50 MB       | `Ring`        | 1000 (~6 MB)        |
     pub fn for_budget(stroke_history_mb: u32) -> Self {
         if stroke_history_mb >= FULL_HISTORY_MIN_BUDGET_MB {
-            Self::Full(Vec::new())
+            // Audit T-durability final N-4: pré-alocar Vec capacity proporcional
+            // ao budget evita 15 reallocs cumulativos (1→2→4→…→32k) cada um
+            // copiando ~600B × N samples. Realloc final 16k→32k = ~10MB
+            // memcpy spike que estoura frame budget 3.5ms em iPad.
+            //
+            // Heuristic: 50% do budget upfront. `StrokeRecord` ≈ 600B base
+            // + samples inline. Budget 150 MB / 600B = 262k strokes; 50% =
+            // 131k preallocated. Memory cost no startup: ~80 MB de ponteiros
+            // Vec backing (sem dados reais até push).
+            const RECORD_SIZE_ESTIMATE: usize = 600;
+            let cap = (stroke_history_mb as usize)
+                .saturating_mul(1024 * 1024)
+                .saturating_div(RECORD_SIZE_ESTIMATE * 2);
+            Self::Full(Vec::with_capacity(cap.max(1024)))
         } else if stroke_history_mb >= 50 {
             Self::ring(RING_CAP_MID_TIER)
         } else {
@@ -166,6 +179,16 @@ impl StrokeHistory {
     /// `true` se vazio.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Maior `seq` presente, ou `None` se vazio. Anchor pra
+    /// `CrashRecovery::scan_with_baseline` evitar replay attack (audit
+    /// T-durability K-4) + evitar duplicate-replay após save (audit M-1).
+    ///
+    /// O(N) — `seq` é monotônico per-canvas mas iteramos pra robustez
+    /// (WAL adversarial pode ter strokes fora-de-ordem).
+    pub fn max_seq(&self) -> Option<u64> {
+        self.iter().map(|r| r.seq).max()
     }
 
     /// Iterator em ordem cronológica (mais antigo → mais novo).

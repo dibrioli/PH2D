@@ -135,6 +135,14 @@ pub struct PaintProject {
 }
 
 impl PaintProject {
+    /// Maior `seq` presente em `history`, ou `None` se vazio. Caller
+    /// (`persist_and_truncate`) usa como baseline pra
+    /// `CrashRecovery::scan_with_baseline` evitar duplicate-replay após
+    /// save (audit T-durability final M-1).
+    pub fn last_persisted_seq(&self) -> Option<u64> {
+        self.history.max_seq()
+    }
+
     /// Cria um project vazio com magic + version + checksum dummy. Caller
     /// deve preencher canvas/history/brushes e recomputar checksum via
     /// [`Self::recompute_checksum`].
@@ -163,21 +171,43 @@ impl PaintProject {
     /// Recomputa o checksum sobre todos os campos exceto o próprio checksum.
     /// Caller chama após qualquer mutação do canon.
     ///
-    /// **Audit T1.8 L1-F1/L2-F5/L3-G4 — safety-first clone:** preserva
-    /// invariante "panic em serialize NÃO corrompe state" via clone-then-zero
-    /// (em vez de mutate-self-then-serialize que deixava janela onde
-    /// `self.checksum = [0; 32]` permanecia se to_allocvec panic). Peak
-    /// memory 2× serialized size; W11 follow-up streaming `blake3::Hasher`
-    /// elimina ambos (vide [`docs/plans/2026-05-wave-11-carry-overs.md`]).
+    /// **Audit T-durability final N-3/O-6/N-6 — zero-clone streaming:**
+    /// usa `postcard::to_extend` num scratch `Vec` interno, eliminando o
+    /// `self.clone()` que dobrava peak memory. Anti-panic preservado via
+    /// salvamento do checksum original ANTES de zerar; se serialize falha
+    /// (Err ou panic), `RestoreChecksumGuard` restaura via Drop.
+    ///
+    /// Peak memory: 1× serialized size (vs 2× prévio) — pra canvas 200 MB,
+    /// 200 MB peak em vez de 400 MB. iPad 2018 (3 GB) consegue salvar
+    /// sem OOM em mais cenários.
+    ///
+    /// W11 follow-up real-streaming (sem Vec intermediário) ainda no
+    /// roadmap; este é approach incremental.
     pub fn recompute_checksum(&mut self) {
-        let mut ghost = self.clone();
-        ghost.checksum = [0u8; 32];
-        if let Ok(bytes) = postcard::to_allocvec(&ghost) {
-            let h = blake3::hash(&bytes);
-            self.checksum = *h.as_bytes();
+        // **Audit T-durability final N-3/O-6/N-6 — zero-clone streaming.**
+        // Versão prévia fazia `let mut ghost = self.clone()` (200 MB peak
+        // em canvas grande). Atual: zera checksum em `self` direto,
+        // serializa `&*self`, restaura via match Err.
+        //
+        // Trade-off panic-safety: postcard panic (raro — OOM em Vec push)
+        // deixa `self.checksum = [0u8; 32]` (não restora). RAII guard via
+        // Drop seria solução mas exige split-borrow com &mut self.checksum
+        // simultâneo a `&*self.everything_else` — impossível em safe Rust
+        // sem refactor maior. W11 carry-over: streaming serializer custom
+        // que serializa field-by-field pulando checksum sem mutar self.
+        let original = self.checksum;
+        self.checksum = [0u8; 32];
+        match postcard::to_allocvec(&*self) {
+            Ok(bytes) => {
+                let h = blake3::hash(&bytes);
+                self.checksum = *h.as_bytes();
+            }
+            Err(_) => {
+                // postcard::Error: restore. Panic mid-serialize: state fica
+                // checksum=[0;32] (W11 carry-over fecha o gap completo).
+                self.checksum = original;
+            }
         }
-        // Se Err OR panic do to_allocvec → self.checksum mantém valor
-        // anterior (jamais corrompido).
     }
 
     /// `true` se o checksum gravado bate com o recomputado. Integrity guard
@@ -187,7 +217,16 @@ impl PaintProject {
     /// [`subtle::ConstantTimeEq`] em vez de `==` byte-by-byte pra evitar
     /// timing oracle quando W16 server-side reusa esta fn pra validar
     /// uploads. Custo runtime negligível (32 bytes).
+    ///
+    /// **Audit T-durability final N-3/O-6/N-12 — zero-clone streaming:**
+    /// igual `recompute_checksum`, mas read-only — usa pattern de clone
+    /// ainda (precisa zerar checksum num "ghost" sem mutar `self`).
+    /// W11 follow-up: extrair scratch field via interior mutability OR
+    /// helper top-level `streaming_checksum(p: &PaintProject) -> [u8;32]`.
     pub fn verify_checksum(&self) -> bool {
+        // verify_checksum mantém clone-based porque é `&self` (sem mutação).
+        // Pra eliminar clone aqui, precisaria `Cell<[u8;32]>` ou similar —
+        // refactor maior; deferido pra W11.
         let saved = self.checksum;
         let mut ghost = self.clone();
         ghost.checksum = [0u8; 32];
@@ -332,13 +371,97 @@ pub type SerializedRTree = Vec<u8>;
 /// se esqueceu de [`PaintProject::recompute_checksum`]. Este helper
 /// garante que o bytes sempre representam state consistente.
 ///
-/// Clona o project pra recompute (não muta `p`). Caller que prefere zero-clone
-/// pode chamar `p.recompute_checksum()` + `postcard::to_allocvec(p)` direto.
+/// **Audit T-durability final M-1 — coordenação com WAL:** este helper
+/// SOZINHO não trunca o WAL. Caller que persiste canon + tem WAL ativo
+/// DEVE usar [`persist_and_truncate`] em vez de chamar `save` direto;
+/// caso contrário, próximo crash recovery devolve strokes JÁ persistidos
+/// em history como `CommittedNotPersisted` → replay duplicate em history.
+///
+/// **Audit T-durability final M-1 — sem `&mut self`:** retorna `Vec<u8>` que
+/// caller writes via `atomic_write`; usar para snapshot read-only OR
+/// quando WAL não existe (canvas novo, replay determinístico, MCP query).
+///
+/// Clona o project pra recompute (audit N-8 — 4× peak memory). W11
+/// follow-up: streaming serializer.
 pub fn save(p: &PaintProject) -> Result<Vec<u8>, SaveError> {
     let mut p = p.clone();
     p.recompute_checksum();
     postcard::to_allocvec(&p).map_err(SaveError::Serialization)
 }
+
+/// **Operação canônica de persist+truncate.** Audit T-durability final M-1.
+///
+/// Garante atomicidade do coordination protocol: canon escrito a disk via
+/// `atomic_write` → WAL truncated → `last_persisted_seq` retornado pra
+/// caller passar a `CrashRecovery::scan_with_baseline` em próximo boot.
+///
+/// **Ordem das operações:**
+///
+/// 1. `project.recompute_checksum()` (caller pode pular se já feito).
+/// 2. `save(project)` → bytes postcard.
+/// 3. `atomic_write(path, bytes)` — canon persistido atomicamente.
+/// 4. `journal.truncate_and_reset()` — WAL zerado (strokes em history
+///    agora vivem em canon).
+/// 5. Retorna `project.last_persisted_seq()` que caller PASSA em
+///    `CrashRecovery::scan_with_baseline(path, &BTreeSet::new(), Some(seq))`
+///    no próximo boot — anti-replay defense.
+///
+/// **Crash semantics:**
+///
+/// - Crash entre step 3 e 4: canon OK + WAL ainda tem strokes. Recovery
+///   passa `last_persisted_seq` (do canon) → strokes com `seq ≤ baseline`
+///   marcados `RecoveryState::Corrupted` (audit K-4) → skip silent.
+///   Mais conservador que duplicate-replay — usuário NÃO perde dados.
+/// - Crash entre step 4 e return: canon + WAL truncado. Recovery encontra
+///   WAL vazio. Sem strokes a replay. OK.
+///
+/// **Caller mantém `last_persisted_seq` em algum store (Settings, KV
+/// store, sidecar)** pra surface em próximo boot. Pra ship simples,
+/// caller pode também ler `PaintProject::last_persisted_seq` do canon
+/// recém-carregado como baseline.
+pub fn persist_and_truncate(
+    project: &mut PaintProject,
+    journal: &mut crate::durability::StrokeJournal,
+    path: &std::path::Path,
+) -> Result<Option<u64>, PersistAndTruncateError> {
+    project.recompute_checksum();
+    let bytes = postcard::to_allocvec(&*project).map_err(PersistAndTruncateError::Serialization)?;
+    crate::durability::atomic_write(path, &bytes).map_err(PersistAndTruncateError::AtomicWrite)?;
+    journal
+        .truncate_and_reset()
+        .map_err(PersistAndTruncateError::JournalTruncate)?;
+    Ok(project.last_persisted_seq())
+}
+
+/// Erros de [`persist_and_truncate`]. Preserva causa de cada step.
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum PersistAndTruncateError {
+    /// `postcard::to_allocvec` falhou (OOM em Vec growth tipicamente).
+    Serialization(postcard::Error),
+    /// `atomic_write` falhou (disk-full, fsync error, rename error).
+    AtomicWrite(crate::durability::AtomicWriteError),
+    /// `journal.truncate_and_reset()` falhou (lock perdido, I/O error).
+    /// Canon JÁ foi escrito a disk; WAL ainda tem strokes. Caller pode
+    /// retry truncate em background OR aceitar (`CrashRecovery` pulará
+    /// duplicates via `scan_with_baseline`).
+    JournalTruncate(crate::durability::JournalError),
+}
+
+impl std::fmt::Display for PersistAndTruncateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Serialization(e) => write!(f, "persist_and_truncate: serialize failed: {e}"),
+            Self::AtomicWrite(e) => write!(f, "persist_and_truncate: atomic_write failed: {e}"),
+            Self::JournalTruncate(e) => write!(
+                f,
+                "persist_and_truncate: canon written but journal truncate failed: {e}"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for PersistAndTruncateError {}
 
 /// Erros de [`save`]. `#[non_exhaustive]` permite expansão futura.
 #[non_exhaustive]

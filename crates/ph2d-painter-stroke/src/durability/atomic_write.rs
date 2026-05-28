@@ -18,7 +18,7 @@
 //! - **J-10**: `has_enough_storage` usa `fs4::available_space` real (era stub).
 //! - **K-5**: TODAS as failure paths fazem `cleanup_tmp` (era só `RenameFailed`).
 
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -59,9 +59,23 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<(), AtomicWriteError>
     let tmp = tmp_path(path);
 
     // 3. Write + fsync. Audit K-5: cleanup em qualquer Err.
+    //    Audit T-durability final O-4: `create_new` falha se tmp já existe
+    //    (outro writer concurrent OR órfão sujo). Previne race onde 2
+    //    threads acertam `File::create` simultâneo (last-writer-wins
+    //    silencioso). Caller que vê AlreadyExists deve dropar OR limpar
+    //    o tmp órfão antes de retry.
     let write_result = {
-        let mut f = match File::create(&tmp) {
+        let mut f = match OpenOptions::new().write(true).create_new(true).open(&tmp) {
             Ok(f) => f,
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                // Tmp órfão (de crash anterior) OR concurrent writer.
+                // Best-effort cleanup + retry once.
+                cleanup_tmp(&tmp);
+                match OpenOptions::new().write(true).create_new(true).open(&tmp) {
+                    Ok(f) => f,
+                    Err(e) => return Err(AtomicWriteError::CreateFailed(e.kind())),
+                }
+            }
             Err(e) => return Err(AtomicWriteError::CreateFailed(e.kind())),
         };
         if let Err(e) = f.write_all(content) {

@@ -42,9 +42,11 @@
 //! - **J-18**: writer cap == reader cap (`MAX_WAL_PAYLOAD`).
 //! - **K-1**: `MAX_WAL_FILE_BYTES` precheck antes de parse (anti-DoS).
 
+use std::collections::BTreeSet;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use fs4::fs_std::FileExt;
 use ph2d_color::OklchColor;
@@ -59,6 +61,21 @@ use super::atomic_write::atomic_write;
 
 /// Magic bytes do WAL. 12 bytes ASCII.
 pub const JOURNAL_MAGIC: [u8; 12] = *b"PH2D-JOURNAL";
+
+/// **Audit T-durability final M-7 / P-12 — WAL version SEPARADA do canon.**
+///
+/// WAL é regenerable (sidecar-like semantics ADR-0046 §2.7.2 PRINCIPLE) —
+/// pode ser descartado em version mismatch sem afetar canon. Acoplar com
+/// `SCHEMA_VERSION` (canon HR-14 migration obrigatória) forçaria descarte
+/// de WAL legítimo quando canon bumpasse v1→v2. Constante separada
+/// desacopla concerns:
+///
+/// - **Canon `SCHEMA_VERSION`** bump = migration obrigatória (caller usa
+///   helpers `migrate_vN_to_vN+1`).
+/// - **WAL `JOURNAL_SCHEMA_VERSION`** bump = WAL antigo descartado pelo
+///   recovery com warning (não-fatal — strokes pendentes perdidos mas
+///   canon intacto). Hot path do session.
+pub const JOURNAL_SCHEMA_VERSION: u32 = 1;
 
 /// Cap de entry payload (writer + reader symmetric). Audit J-18.
 pub const MAX_WAL_PAYLOAD: usize = 16 * 1024 * 1024;
@@ -75,6 +92,21 @@ pub const JOURNAL_ROTATE_BYTES: u64 = 50 * 1024 * 1024;
 
 /// Threshold default pra rotação por commits (ADR-0052 §2.2).
 pub const JOURNAL_ROTATE_COMMITS: u32 = 100;
+
+/// **Audit T-durability final O-2 — in-process advisory lock registry.**
+///
+/// `flock(2)` em Linux/macOS NÃO oferece exclusão entre threads do MESMO
+/// processo — segundo `try_lock_exclusive` num FD do mesmo PID NÃO bloqueia
+/// (Linux flock per-process; mesmo PID re-acquire é permitido). Pra ter
+/// single-writer invariant REAL intra-processo, complementamos com este
+/// registry: paths canonicalizados que já têm StrokeJournal vivo.
+///
+/// **Combinado com flock cross-process** (Windows LockFileEx detecta intra-
+/// process colision; Linux/macOS depende deste registry), single-writer
+/// é enforced em todas as plataformas.
+///
+/// `RAII`: registry insert em `StrokeJournal::open`; remove em `Drop`.
+static JOURNAL_PATH_REGISTRY: Mutex<BTreeSet<PathBuf>> = Mutex::new(BTreeSet::new());
 
 /// Snapshot de um stroke em progresso (entre `BeginStroke` e
 /// `CommitStroke`/`CancelStroke`). ADR-0052 §2.2.
@@ -184,6 +216,25 @@ pub struct SampleBatchPayload {
 }
 
 /// State machine do WAL writer.
+///
+/// **Audit T-durability final O-1/O-10/O-12 — threading contract:**
+///
+/// `Send + Sync` é auto-derivado (todos os fields são Send+Sync), MAS
+/// todas as ops de write são `&mut self`. Sharing entre threads exige
+/// `Mutex<StrokeJournal>` OR canal SPSC (UI thread → worker thread).
+/// `commit_stroke` faz fsync sync (~10ms eMMC) — **NUNCA chame direto
+/// na UI thread em mobile** (vide N-7 doc em `commit_stroke`).
+///
+/// **In-process registry** (audit O-2) garante single-writer per
+/// canonical-path mesmo intra-processo (flock Linux/macOS não bloqueia
+/// FDs do mesmo PID). 2º `StrokeJournal::open(same_path)` falha com
+/// `JournalError::AlreadyLocked` mesmo em threads diferentes do mesmo
+/// processo.
+///
+/// **Concurrent reader** (`read_journal` from W14 Inspector): NÃO
+/// suportado enquanto `StrokeJournal` está vivo. Reader vê tearing
+/// entre write_all e sync_all do writer ⇒ false-positive corrupted
+/// entries. Use snapshot copy (`fs::copy` then read) pra live queries.
 pub struct StrokeJournal {
     pub journal_path: PathBuf,
     pub current_stroke: Option<PartialStroke>,
@@ -195,6 +246,8 @@ pub struct StrokeJournal {
     /// File handle persistente — segura advisory lock during life da struct.
     /// `Drop` libera lock automaticamente (RAII).
     file: File,
+    /// Path canonicalizado pra remove do registry em Drop (audit O-2).
+    canonical_path: PathBuf,
 }
 
 impl StrokeJournal {
@@ -224,7 +277,7 @@ impl StrokeJournal {
                 // File novo — escreve header atômico.
                 let mut header = Vec::with_capacity(16);
                 header.extend_from_slice(&JOURNAL_MAGIC);
-                header.extend_from_slice(&SCHEMA_VERSION.to_le_bytes());
+                header.extend_from_slice(&JOURNAL_SCHEMA_VERSION.to_le_bytes());
                 f.write_all(&header)
                     .map_err(|e| JournalError::Io(e.kind()))?;
                 f.sync_all().map_err(|e| JournalError::Io(e.kind()))?;
@@ -249,9 +302,25 @@ impl StrokeJournal {
             Err(e) => return Err(JournalError::Io(e.kind())),
         };
 
-        // Advisory exclusive lock — outro processo abrindo mesmo path falha.
+        // Advisory exclusive lock cross-process.
         file.try_lock_exclusive()
             .map_err(|_| JournalError::AlreadyLocked)?;
+
+        // Audit O-2: in-process registry pra single-writer intra-process
+        // (flock Linux/macOS NÃO bloqueia mesmo PID). Canonicalize path
+        // pra symlink/relativo não burlarem registry.
+        let canonical_path = journal_path.canonicalize().unwrap_or(journal_path.clone());
+        {
+            let mut registry = JOURNAL_PATH_REGISTRY
+                .lock()
+                .map_err(|_| JournalError::Io(std::io::ErrorKind::Other))?;
+            if !registry.insert(canonical_path.clone()) {
+                // Já registrado in-process — outra thread/instância segura.
+                // Libera o flock antes de retornar erro.
+                let _ = FileExt::unlock(&file);
+                return Err(JournalError::AlreadyLocked);
+            }
+        }
 
         Ok(Self {
             journal_path,
@@ -261,6 +330,7 @@ impl StrokeJournal {
             flush_policy,
             commits_since_rotate: 0,
             file,
+            canonical_path,
         })
     }
 
@@ -304,6 +374,10 @@ impl StrokeJournal {
     }
 
     /// Flush imediato do sample_buffer atual (sem checar policy).
+    ///
+    /// **Audit T-durability final N-1 — preserva capacity:** usa
+    /// `std::mem::replace` com `Vec::with_capacity(64)` pra que o próximo
+    /// batch NÃO pague 3 reallocs (1→2→4→8) — `take()` deixava cap=0.
     pub fn flush_sample_batch(&mut self, now_ms: u64) -> Result<(), JournalError> {
         if self.sample_buffer.is_empty() {
             return Ok(());
@@ -313,7 +387,8 @@ impl StrokeJournal {
             .as_ref()
             .map(|s| s.uuid)
             .ok_or(JournalError::NoActiveStroke)?;
-        let batch: Vec<RawPointerSample> = std::mem::take(&mut self.sample_buffer);
+        let batch: Vec<RawPointerSample> =
+            std::mem::replace(&mut self.sample_buffer, Vec::with_capacity(64));
         let batch_len = batch.len() as u32;
         let payload = SampleBatchPayload {
             stroke_id,
@@ -328,6 +403,30 @@ impl StrokeJournal {
     }
 
     /// Marca o stroke como commitado.
+    ///
+    /// **Audit T-durability final N-7 — fsync síncrono no caller path:**
+    /// emite WAL Commit entry + `sync_all` blocking (~5-10ms em eMMC
+    /// mobile). UI thread bloqueia este tempo se shell wire síncrono.
+    /// ProMotion 120Hz (8.3ms/frame) = 1-2 frames perdidos por commit.
+    ///
+    /// **Caller-side mitigation OBRIGATÓRIA para mobile:** wire
+    /// `commit_stroke` em **worker thread** via canal SPSC:
+    ///
+    /// ```ignore
+    /// // shell W11+ pattern (NÃO implementado neste crate — passive design):
+    /// let (tx, rx) = std::sync::mpsc::channel::<WalCommand>();
+    /// std::thread::spawn(move || {
+    ///     for cmd in rx {
+    ///         match cmd { WalCommand::Commit { now_ms } => {
+    ///             let _ = journal.commit_stroke(now_ms);  // off-thread fsync
+    ///         }}
+    ///     }
+    /// });
+    /// // UI thread: tx.send(WalCommand::Commit { now_ms: now() }).unwrap();
+    /// ```
+    ///
+    /// `commit_stroke` é PURPOSE-MADE pra worker thread; chamada direta na
+    /// UI thread quebra promessa ADR-0052 "UI nunca bloqueada".
     pub fn commit_stroke(&mut self, now_ms: u64) -> Result<PartialStroke, JournalError> {
         if !self.sample_buffer.is_empty() {
             self.flush_sample_batch(now_ms)?;
@@ -360,7 +459,16 @@ impl StrokeJournal {
     /// amplification destruindo SSD/eMMC. Rate-limit interno opcional
     /// pode ser wired em W11 se MCP path acidentalmente flood.
     pub fn heartbeat(&mut self, now_ms: u64) -> Result<(), JournalError> {
-        self.append_entry(WalEntryType::Heartbeat, &now_ms)
+        // Audit T-durability final N-11: rate-limit defensivo 1Hz hard-min.
+        // Doc-as-contract de "MAX 1Hz" não previne caller naive (W14 MCP
+        // event-loop por frame, timer mal configurado) que floods o disk.
+        // 1s mínimo entre heartbeats; chamada early-return Ok silenciosa.
+        if now_ms.saturating_sub(self.last_flush_ms) < 1000 && self.last_flush_ms != 0 {
+            return Ok(());
+        }
+        self.append_entry(WalEntryType::Heartbeat, &now_ms)?;
+        self.last_flush_ms = now_ms;
+        Ok(())
     }
 
     /// `true` se journal merece rotação (size OR commits).
@@ -377,16 +485,42 @@ impl StrokeJournal {
     /// Trunca o WAL E re-escreve magic+version atomicamente via
     /// [`atomic_write`] (audit J-12 — previne WAL 0-byte se crash entre
     /// truncate + write magic).
+    ///
+    /// **Audit T-durability final M-4 (Windows fix) + M-5 (error preservation)
+    /// + O-13 (state machine atomicity):** primeiro libera `self.file` (drop
+    ///   fecha handle + libera lock) ANTES de `atomic_write`. Windows não
+    ///   permite rename sobre file aberto. Reabre + re-acquire lock após
+    ///   `atomic_write` sucesso. Erros de `atomic_write` preservam causa em
+    ///   `JournalError::AtomicWriteFailed`. Se falha durante re-acquire,
+    ///   retorna erro mas `self.file` é placeholder com path inválido —
+    ///   caller DEVE drop StrokeJournal e abrir nova instância.
     pub fn truncate_and_reset(&mut self) -> Result<(), JournalError> {
-        // Libera lock + file handle pra atomic_write poder rename.
-        // SAFETY: nada lê/escreve aqui até reabrir.
         let path = self.journal_path.clone();
+
+        // Audit M-4: drop file handle + lock ANTES do atomic_write
+        // (Windows rename fail sobre file aberto). Substitui por placeholder
+        // sentinel — qualquer op subsequente em self.file falha; caller
+        // que receber Err(AlreadyLocked) ou Io(_) DEVE drop StrokeJournal.
+        let _ = FileExt::unlock(&self.file);
+        let placeholder = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(true)
+            .open(std::env::temp_dir().join(format!(
+                ".ph2d-painter-stroke-journal-poisoned-{}",
+                std::process::id()
+            )))
+            .map_err(|e| JournalError::Io(e.kind()))?;
+        // Drop antigo libera lock + fecha handle no journal_path real.
+        let _ = std::mem::replace(&mut self.file, placeholder);
 
         let mut header = Vec::with_capacity(16);
         header.extend_from_slice(&JOURNAL_MAGIC);
-        header.extend_from_slice(&SCHEMA_VERSION.to_le_bytes());
+        header.extend_from_slice(&JOURNAL_SCHEMA_VERSION.to_le_bytes());
 
-        atomic_write(&path, &header).map_err(|_| JournalError::Io(std::io::ErrorKind::Other))?;
+        // Audit M-5: preserve cause via AtomicWriteFailed variant.
+        atomic_write(&path, &header).map_err(JournalError::AtomicWriteFailed)?;
 
         // Reabre + re-adquire lock.
         let file = OpenOptions::new()
@@ -446,6 +580,10 @@ impl Drop for StrokeJournal {
         // Best-effort unlock — `File::drop` libera automaticamente o lock
         // (POSIX flock + Win32 LockFileEx fechado em close).
         let _ = FileExt::unlock(&self.file);
+        // Audit O-2: remove do in-process registry.
+        if let Ok(mut registry) = JOURNAL_PATH_REGISTRY.lock() {
+            registry.remove(&self.canonical_path);
+        }
     }
 }
 
@@ -455,11 +593,21 @@ impl Drop for StrokeJournal {
 
 /// Entry raw lida do WAL. Caller (CrashRecovery) é responsável por
 /// deserializar `payload_bytes` conforme `entry_type`.
+///
+/// **Audit T-durability final M-12 — IMPORTANTE:** entries com
+/// `crc_valid = false` ainda são retornadas por `read_journal` (shape
+/// foi lida OK, só CRC mismatch). Caller MUST check `crc_valid` e
+/// SKIP entries inválidas — consumir bytes corrupted como válidos
+/// causa arbitrary panic/misparse downstream. `CrashRecovery::reconstruct`
+/// já faz `if !entry.crc_valid { crc_failures += 1; continue; }`;
+/// novos consumers (W11 MCP audit, debug inspector, telemetry) DEVEM
+/// seguir mesmo pattern.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WalEntryRaw {
     pub entry_type: WalEntryType,
     pub payload_bytes: Vec<u8>,
     /// `true` se CRC32 bateu (sobre entry_type || size || payload).
+    /// **Caller MUST check antes de deserializar `payload_bytes`.**
     pub crc_valid: bool,
 }
 
@@ -491,10 +639,10 @@ pub fn read_journal(path: &PathBuf) -> Result<(Vec<WalEntryRaw>, u32), JournalEr
     f.read_exact(&mut version_bytes)
         .map_err(|e| JournalError::Io(e.kind()))?;
     let version = u32::from_le_bytes(version_bytes);
-    if version > SCHEMA_VERSION {
+    if version > JOURNAL_SCHEMA_VERSION {
         return Err(JournalError::FutureVersion {
             file: version,
-            supported: SCHEMA_VERSION,
+            supported: JOURNAL_SCHEMA_VERSION,
         });
     }
 
@@ -645,8 +793,13 @@ pub enum JournalError {
     PayloadTooLarge(usize),
     /// WAL file size > MAX_WAL_FILE_BYTES (500 MiB). Audit K-1.
     FileTooLarge { size: u64, max: u64 },
-    /// Outro processo segura advisory lock no `journal_path`. Audit J-6.
+    /// Advisory lock no `journal_path` indisponível (outro processo
+    /// segura OR in-process registry já tem path canonical).
+    /// Audit J-6/O-2.
     AlreadyLocked,
+    /// `atomic_write` falhou durante `truncate_and_reset` — preserva causa.
+    /// Audit M-5.
+    AtomicWriteFailed(super::atomic_write::AtomicWriteError),
 }
 
 impl std::fmt::Display for JournalError {
@@ -673,8 +826,9 @@ impl std::fmt::Display for JournalError {
             }
             Self::AlreadyLocked => write!(
                 f,
-                "journal already locked by another process (single-writer invariant)"
+                "journal lock unavailable (cross-process flock OR in-process registry conflict — single-writer invariant)"
             ),
+            Self::AtomicWriteFailed(e) => write!(f, "journal truncate_and_reset atomic_write: {e}"),
         }
     }
 }
@@ -704,6 +858,7 @@ impl PartialEq for JournalError {
                 a == b && am == bm
             }
             (Self::AlreadyLocked, Self::AlreadyLocked) => true,
+            (Self::AtomicWriteFailed(a), Self::AtomicWriteFailed(b)) => a == b,
             _ => false,
         }
     }

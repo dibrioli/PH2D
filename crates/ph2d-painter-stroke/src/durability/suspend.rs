@@ -102,15 +102,20 @@ impl SuspendHandler {
     /// progresso de drain. Re-trigger só efetiva mudança após `on_resume`
     /// OR se o deadline anterior já expirou.
     pub fn on_imminent(&mut self, now_ms: u64, os_deadline_ms: u32) {
+        // Audit T-durability final O-7: clock-regression-safe — mesmo
+        // pattern de K-7. NTP regressão mid-app sem clamp deixava
+        // drain_deadline no passado → tick subsequente "muito tempo
+        // passou" → remaining=0 imediato → drain abortado.
+        let safe_now = now_ms.max(self.last_tick_ms);
         if matches!(self.state, SuspendState::SuspendImminent { .. })
-            && now_ms < self.drain_deadline_ms
+            && safe_now < self.drain_deadline_ms
         {
             // Já em drain ativo; preserva.
             return;
         }
         self.os_deadline_ms = os_deadline_ms;
-        self.drain_deadline_ms = now_ms.saturating_add(u64::from(os_deadline_ms));
-        self.last_tick_ms = now_ms;
+        self.drain_deadline_ms = safe_now.saturating_add(u64::from(os_deadline_ms));
+        self.last_tick_ms = safe_now;
         self.state = SuspendState::SuspendImminent {
             remaining_ms: os_deadline_ms,
         };
@@ -135,6 +140,19 @@ impl SuspendHandler {
 
     /// Caller invoca quando OS sinaliza resume. Reseta state.
     pub fn on_resume(&mut self) {
+        // Audit T-durability final O-5: on_resume só faz sentido em
+        // SuspendImminent (OS sinalizou suspend antes de resume). Active
+        // → Resuming criava state fantasma; caller dispara cache-rebuild
+        // desnecessário. debug_assert em dev pra pegar bug; no-op em
+        // release.
+        debug_assert!(
+            matches!(self.state, SuspendState::SuspendImminent { .. }),
+            "on_resume requer state == SuspendImminent (atual: {:?})",
+            self.state
+        );
+        if !matches!(self.state, SuspendState::SuspendImminent { .. }) {
+            return;
+        }
         self.state = SuspendState::Resuming;
         self.drain_deadline_ms = 0;
         self.last_tick_ms = 0;

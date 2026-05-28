@@ -84,7 +84,7 @@ pub struct StrokeRecord {
 }
 ```
 
-**`BrushParamsHash`:** type alias `pub type BrushParamsHash = [u8; 32];` definido em `ph2d-painter-brush` (computed via `Brush::params_blake3()` impl method). Se a `Brush` em si fosse copiada por stroke, o `.ph2d-painter` explodiria (12k strokes × ~5KB Brush ≈ 60 MB só de duplicação). Hash refere-se a tabela deduplicada `brush_snapshots: BTreeMap<BrushParamsHash, Brush>` na persistence (§2.7).
+**`BrushParamsHash`:** type alias `pub type BrushParamsHash = [u8; 32];` definido em `ph2d-painter-brush` (computed via `Brush::params_blake3()` impl method). Se a `Brush` em si fosse copiada por stroke, o `.ph2d-painter` explodiria (12k strokes × ~5KB Brush ≈ 60 MB só de duplicação). Hash refere-se a tabela deduplicada `brush_snapshots: Vec<(BrushParamsHash, Brush)>` na persistence (§2.7) — **amend audit T-durability final P-14**: era `BTreeMap` no draft original mas escolha real é `Vec` por (a) postcard roundtrip determinístico mais simples, (b) <100 brushes típico ⇒ linear scan OK, (c) BTreeMap iter order via comparator de hash bytes é determinístico mas adiciona dep no `Ord` impl. W11 polish: newtype `BrushSnapshotTable` enforce uniqueness no type-level.
 
 **Cap reserva `points: Vec<RawPointerSample>` — `len() ≤ 65535` (u16)** (audit B-3). Strokes muito longos (>22 minutos sem release) ficam impossíveis pelo type system. Caso edge gritante (fluid sim watercolor pintando 30min): split implícito no commit do stroke (não nessa ADR; W1 implementation detail).
 

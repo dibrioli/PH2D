@@ -65,13 +65,18 @@ pub enum AutoSaveState {
 /// Coordinator do auto-save. NÃO contém worker thread aqui — é state
 /// machine pura; caller (shell W11+) wire o worker.
 ///
-/// **Audit T-durability K-6 — thread-safety:** NÃO thread-safe. Caller
-/// DEVE garantir single-writer per canvas (e.g., `Mutex<AutoSave>` por
-/// `CanvasId`, OR canal SPSC entre MCP thread e UI thread). W14 MCP
-/// + GUI concurrent é spec target — race em `on_stroke_committed` lê-
-///   modifica-escreve `strokes_since_last` sem lock pode atrasar trigger
-///   → mais strokes em risco mid-crash.
-#[derive(Clone, Debug)]
+/// **Audit T-durability K-6 + O-3 + N-6 — thread-safety + Clone removido:**
+/// NÃO thread-safe + NÃO `Clone`. Caller DEVE garantir single-writer per
+/// canvas (e.g., `Mutex<AutoSave>` por `CanvasId`, OR canal SPSC entre
+/// MCP thread e UI thread). Clone foi removido pra evitar split-brain
+/// onde 2 threads escrevem mesmo `tmp_path` determinístico em
+/// `atomic_write` → canon corruption (O-3).
+///
+/// **Spec correction (audit N-6 / M-15):** ADR-0052 §2.4 prometia
+/// "AutoSave em worker thread; UI nunca bloqueada" — implementação é
+/// state machine pura; caller (W11 shell) é responsável por dispatch
+/// em worker thread. ADR amendment pendente.
+#[derive(Debug)]
 pub struct AutoSave {
     pub canvas_id: CanvasId,
     pub path: PathBuf,
@@ -85,11 +90,25 @@ pub struct AutoSave {
 
 impl AutoSave {
     pub fn new(canvas_id: CanvasId, path: PathBuf, policy: AutoSavePolicy) -> Self {
+        Self::with_clock_start(canvas_id, path, policy, 0)
+    }
+
+    /// Construtor que aceita `start_ms` inicial (audit T-durability final M-10).
+    /// `EveryMinutes(m)` calcula `now - last_save_ms`; com `last_save_ms = 0`
+    /// caller que passa wall-clock real no primeiro commit dispara save
+    /// IMEDIATAMENTE (foot-gun timing). Use este construtor passando o
+    /// wall-clock no boot pra evitar.
+    pub fn with_clock_start(
+        canvas_id: CanvasId,
+        path: PathBuf,
+        policy: AutoSavePolicy,
+        start_ms: u64,
+    ) -> Self {
         Self {
             canvas_id,
             path,
             policy,
-            last_save_ms: 0,
+            last_save_ms: start_ms,
             strokes_since_last: 0,
             state: AutoSaveState::Idle,
         }
@@ -103,7 +122,13 @@ impl AutoSave {
     #[must_use]
     pub fn on_stroke_committed(&mut self, now_ms: u64) -> bool {
         self.strokes_since_last = self.strokes_since_last.saturating_add(1);
-        self.state = AutoSaveState::Pending;
+        // Audit T-durability final M-9: Manual policy NÃO deve marcar
+        // Pending — caller observando state pra wire worker save dispara
+        // acidentalmente em Manual. Mantém Idle em Manual; mudança só
+        // via `request_manual_save()`.
+        if !matches!(self.policy, AutoSavePolicy::Manual) {
+            self.state = AutoSaveState::Pending;
+        }
         self.should_save(now_ms)
     }
 

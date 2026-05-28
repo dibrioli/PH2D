@@ -79,3 +79,32 @@ fn paint_project_field_order_is_stable() {
         "byte 12 deve ser version varint = 0x01 (SCHEMA_VERSION)"
     );
 }
+
+/// Audit T-durability final M-13: CanvasInfo field order pin.
+/// Postcard preserva declaration order; reorder de
+/// `(width, height, color_profile, ppm)` quebra HR-14 forward-compat
+/// silently — bytes deserializados representariam dados ERRADOS sem erro.
+#[test]
+fn canvas_info_field_order_is_stable() {
+    let c = CanvasInfo {
+        width: 0xDEAD_BEEF,
+        height: 0xCAFE_BABE,
+        color_profile: ColorProfile::Srgb,
+        ppm: 11.811,
+    };
+    let bytes = postcard::to_allocvec(&c).expect("serialize");
+    // Postcard varint pra u32: 0xDEADBEEF = 4 bytes payload (high bit
+    // chain). Não precisamos exact byte-level pin (varint encoding muda
+    // por valor); só pinning que ROUND-TRIP exato preserva field semantics.
+    let back: CanvasInfo = postcard::from_bytes(&bytes).expect("deserialize");
+    assert_eq!(back.width, 0xDEAD_BEEF);
+    assert_eq!(back.height, 0xCAFE_BABE);
+    assert_eq!(back.color_profile, ColorProfile::Srgb);
+    assert!((back.ppm - 11.811).abs() < 0.001);
+    // Pin que primeiro byte do output é varint do width (não color_profile
+    // discriminant 0). 0xDEAD_BEEF varint começa com byte > 0x80 (high bit).
+    assert!(
+        bytes[0] & 0x80 != 0,
+        "first byte should be varint continuation of width (not discriminant 0)"
+    );
+}

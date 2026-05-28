@@ -68,6 +68,38 @@ pub struct RecoveredStroke {
     pub state: RecoveryState,
 }
 
+impl RecoveredStroke {
+    /// Converte para `StrokeRecord` ready-to-push em `StrokeHistory`.
+    /// Mapping canônico (audit T-durability final M-2 — caller PCA pulava
+    /// fields silenciosamente):
+    ///
+    /// - `partial.started_at_ms` → `record.timestamp_ms` (rename).
+    /// - `partial.canvas_id` é **descartado** (StrokeRecord vive dentro de
+    ///   um `PaintProject` específico — caller DEVE filtrar via
+    ///   [`CrashRecovery::committed_for_canvas`] antes de chamar este
+    ///   helper, OR aceitar o stroke em qualquer canvas).
+    /// - `samples` → `record.points` (rename).
+    /// - `partial.samples_count_in_journal` é **descartado** (write-only
+    ///   no WAL — vide K-3 carry-over W11 pra cross-validate via
+    ///   BeginUpdate entry).
+    pub fn into_stroke_record(self) -> crate::record::StrokeRecord {
+        crate::record::StrokeRecord {
+            uuid: self.partial.uuid,
+            seq: self.partial.seq,
+            timestamp_ms: self.partial.started_at_ms,
+            brush_handle: self.partial.brush_handle,
+            brush_params_hash: self.partial.brush_params_hash,
+            layer_target: self.partial.layer_target,
+            primary_color: self.partial.primary_color,
+            secondary_color: self.partial.secondary_color,
+            points: self.samples,
+            rng_seed: self.partial.rng_seed,
+            tool_mode: self.partial.tool_mode,
+            version: self.partial.version,
+        }
+    }
+}
+
 /// Resultado de [`CrashRecovery::scan`].
 ///
 /// Audit J-7: counts split pra diagnóstico fino. `corrupted_entries`
@@ -325,6 +357,27 @@ impl CrashRecovery {
         self.recovered_strokes
             .iter()
             .filter(|s| s.state == RecoveryState::InProgressAtCrash)
+    }
+
+    /// Filtra strokes pertencentes ao `canvas_id` dado. Audit T-durability
+    /// final M-3 — WAL é per-`storage_root` não per-canvas; sem filter,
+    /// strokes de canvas A vazam pra canvas B em multi-canvas workspace.
+    pub fn committed_for_canvas(
+        &self,
+        canvas_id: crate::device::CanvasId,
+    ) -> impl Iterator<Item = &RecoveredStroke> {
+        self.committed_not_persisted()
+            .filter(move |s| s.partial.canvas_id == canvas_id)
+    }
+
+    /// Variante sorted-by-seq de `committed_not_persisted` (audit M-2 b):
+    /// recovered_strokes é ordenado por insertion-order no WAL — WAL
+    /// adversarial pode ter strokes fora-de-ordem-de-seq; replay direto
+    /// viola invariante "seq monotônico per-canvas" (ADR-0046 §2.2).
+    pub fn committed_not_persisted_sorted_by_seq(&self) -> Vec<&RecoveredStroke> {
+        let mut v: Vec<&RecoveredStroke> = self.committed_not_persisted().collect();
+        v.sort_by_key(|s| s.partial.seq);
+        v
     }
 }
 

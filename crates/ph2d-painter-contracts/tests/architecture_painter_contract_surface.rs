@@ -617,6 +617,28 @@ mod stroke_history {
         );
     }
 
+    /// Audit T-durability final P-13: cap spec'd em ADR-0046 §2.9 mas
+    /// gate estava ausente.
+    #[test]
+    fn reproject_error_variant_count_is_capped() {
+        assert_capped(
+            count_enum_variants(CRATE, "ReprojectError"),
+            8,
+            "ReprojectError (ADR-0046 §2.9)",
+        );
+    }
+
+    /// Audit T-durability final M-8 / ADR-0046 §2.11: cap textual de
+    /// `MAX_SAMPLES_PER_STROKE = u16::MAX` ancora invariante runtime.
+    #[test]
+    fn stroke_record_points_max_samples_pinned_u16() {
+        assert_contains(
+            CRATE,
+            "MAX_SAMPLES_PER_STROKE: usize = u16::MAX as usize",
+            "MAX_SAMPLES_PER_STROKE const pinned (ADR-0046 §2.2 audit B-3)",
+        );
+    }
+
     #[test]
     fn painter_memory_budget_field_count_is_capped() {
         // **Amendment T1.8 audit L4/L5 closure (2026-05-27):** ADR-0046 §2.10
@@ -1069,6 +1091,28 @@ mod durability {
             src.contains("crc32fast::Hasher::new") && src.contains("hasher.update"),
             "[wal_entries_are_crc32_verified] WAL deve computar CRC32 sobre \
              entry_type || payload_size || payload (audit T-durability J-3)"
+        );
+    }
+
+    /// Audit T-durability final P-2: cap spec'd em ADR-0052 §2.8 mas gate
+    /// estava ausente.
+    #[test]
+    fn auto_save_state_variant_count_is_capped() {
+        assert_capped(
+            count_enum_variants(CRATE, "AutoSaveState"),
+            6,
+            "AutoSaveState (ADR-0052 §2.8)",
+        );
+    }
+
+    /// Audit T-durability final P-3: cap spec'd em ADR-0052 §2.8 mas gate
+    /// estava ausente.
+    #[test]
+    fn auto_save_error_variant_count_is_capped() {
+        assert_capped(
+            count_enum_variants(CRATE, "AutoSaveError"),
+            8,
+            "AutoSaveError (ADR-0052 §2.8)",
         );
     }
 }

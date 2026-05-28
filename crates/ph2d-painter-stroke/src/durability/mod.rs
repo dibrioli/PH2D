@@ -17,6 +17,16 @@
 //! - [`suspend`] — `SuspendHandler` + `SuspendState`: drena WAL + canon
 //!   antes do force-kill OS (iOS ~5s budget).
 //!
+//! ## Drain orchestration (W11 helper pendente — audit M-15)
+//!
+//! ADR-0052 §2.5 especifica drain protocol em phases (WAL → canon → cache)
+//! com budgets proporcionais ao `os_deadline_ms`. Helpers `within_wal_phase`
+//! / `within_canon_phase` em [`SuspendHandler`] expõem o budget; **helper
+//! `drain_for_suspend(handler, journal, autosave, canon_path, now_ms_fn)`
+//! que coordena os 3 NÃO existe** — caller (W11 shell) implementa drain
+//! manualmente. Risk: shell reinventa, esquece phase 1 (WAL flush) → stroke
+//! perdido no force-kill. Helper canônico é W11 carry-over.
+//!
 //! ## Lifecycle stroke-in-progress (ADR-0052 §2.7)
 //!
 //! ```text

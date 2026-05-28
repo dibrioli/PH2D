@@ -241,6 +241,70 @@ Zero `# Examples` em fns públicas de `ph2d-painter-stroke`. CI roda `cargo test
 
 ---
 
+### T-durability carry-overs (auditoria completa 2026-05-27, ~13 LOW + 4 estruturais deferidos)
+
+**Source:** ADR-0052 + auditoria completa 4-lente final (M holistic + N performance + O concurrency + P spec compliance). Onda completa fechou 1 CRITICAL + 14 HIGH + ~15 MEDIUM in-code; restante deferido aqui.
+
+**1. Worker thread real em `AutoSave` + `commit_stroke` async** (N-6 / N-7 / O-3)
+
+Implementation atual é state machine pura; caller (shell W11+) wire worker thread. Spec ADR-0052 §2.4 prometia "AutoSave em worker thread" — promessa quebrada pelo passive-crate design. Ship mobile real requer worker thread interno OR helper `commit_stroke_async` que enfileira em canal SPSC.
+
+**Plan:** opt-in feature flag `autosave-worker` que ativa `std::thread::spawn` interno + canal SPSC. `commit_stroke_into(tx)` API pra enfileirar. Trade-off: threading em wasm32 requer fallback (canal síncrono).
+
+**Trigger:** primeiro UX report de "Painter engasga ao terminar stroke" em iPad/Android. OU W11 shell ship.
+
+**2. Real-streaming `blake3::Hasher` sem Vec intermediário** (N-3 / O-6 / N-8 / N-12)
+
+`recompute_checksum` atual usa `postcard::to_allocvec(&*self)` (sem clone, mas ainda Vec full size — 200MB pra canon grande). `verify_checksum` ainda clona. Solução real: serializer custom field-by-field que feeda blake3::Hasher::update direto, pulando `checksum` field.
+
+**Plan:** implementar `struct ChecksumSerializer<'a, H: blake3::Hasher>` impl `serde::Serializer` que delega tudo pro hasher + skip field "checksum" via `SerializeStruct::skip_field`. Eliminates Vec inteiro. Verify usa mesma adapter sobre `&self` (sem mutação).
+
+**Trigger:** W11 painter polish OR primeiro OOM report em iPad com canvas grande.
+
+**3. WAL scratch buffers reusáveis em `StrokeJournal`** (N-2 + N-9)
+
+`append_entry` aloca 2 Vec<u8> por chamada (payload + buffer concat). `read_journal` aloca `vec![0u8; payload_size]` per entry no boot scan (~200k allocs em 50MB WAL). Scratch buffer permanente em struct elimina ambos.
+
+**Plan:** adicionar `payload_scratch: Vec<u8>` + `frame_scratch: Vec<u8>` em `StrokeJournal`. Usar `.clear()` antes de cada uso. Reader: `payload_scratch_reusable: Vec<u8>` em loop de `read_journal`.
+
+**Trigger:** profiling mostrar allocator pressure em hot path.
+
+**4. `BeginUpdate` WAL entry pra cross-validate `samples_count_in_journal`** (K-3 + recovery K-3 fix)
+
+Atual: `samples_count_in_journal` é write-only no Begin entry (gravado em t=0 quando samples ainda não chegaram). Cross-validation em recovery (K-3 spec'd) é impossível sem entry adicional. Solução: emit `BeginUpdate` entry em `commit_stroke` com count final + replay validation aceita stroke como valid SE count match.
+
+**Plan:** adicionar `WalEntryType::BeginUpdate = 5` carregando `(StrokeId, final_samples_count: u32)`. Caller emit em commit. Recovery valida match — mismatch = `RecoveryState::Corrupted`.
+
+**Trigger:** W11 polish OR primeiro report MCP-injected stroke count mismatch.
+
+**5. ADR-0052 §2.4 spec correction — remover claim "AutoSave em worker thread"** (N-6 / M-15)
+
+ADR original promete "AutoSave em worker thread; UI nunca bloqueada" mas implementation é state machine pura. Substituir por: "Caller (shell) é responsável por dispatch em worker thread. Crate fornece state machine + helpers (`AutoSave`, `WalCommand` enum); threading vive no shell W11+."
+
+**Plan:** amend ADR §2.4 prose. Adicionar §2.4.1 "Worker thread pattern (caller-side)" com code example canônico.
+
+**Trigger:** próxima sessão de ADR amendments OR pre-ship mobile real.
+
+**6. `drain_for_suspend` helper canônico** (M-15)
+
+ADR-0052 §2.5 specifica drain protocol em 5 steps mas crate só expõe state machine. Caller (W11 shell) reimplementa drain manualmente — risk: shell esquece phase 1 WAL flush.
+
+**Plan:** `pub fn drain_for_suspend(handler: &mut SuspendHandler, journal: &mut StrokeJournal, autosave: &AutoSave, canon_path: &Path, now_ms_fn: impl Fn() -> u64) -> DrainOutcome` que executa os 5 steps conforme phases proporcionais.
+
+**Trigger:** W11 shell wire mobile.
+
+**7. `color_profile` snapshot em `PartialStroke`** (M-6)
+
+`OklchColor` é working-space agnostic mas canvas `color_profile` pode mudar mid-session (W7 Color Mgmt). Recovery re-add stroke em runtime canvas com profile diferente do source-time → cor errada silenciosa.
+
+**Plan:** adicionar `color_profile: ColorProfile` em `PartialStroke` (14/16 fields, cabe). Recovery rejeita strokes com profile mismatch OR re-converte explicitamente.
+
+**Trigger:** W7 Color Management ship.
+
+**8. Restantes LOW (J-15 tempfile, P-5 cache, P-10/P-11 derive prescriptions, P-16/P-18, M-11/M-14/M-16/M-17, N-2/N-9/N-10 scratch buffers, O-1/O-10/O-12/O-13 docs)** — agregar conforme W11 polish dedicado.
+
+---
+
 ## 5. Open ADR drafts
 
 When the relevant Wave 11 work starts, open these ADRs:

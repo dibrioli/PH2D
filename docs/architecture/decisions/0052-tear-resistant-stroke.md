@@ -116,7 +116,11 @@ u32 = payload_size
 u32 = crc32 of payload
 ```
 
-**Append-only**, never rewrite. Rotação: após commit-success em main history, **WAL entry rewritten as `Commit` marker**; periodic `truncate` reclama disk space (a cada 100 commits OR > 50MB WAL).
+**Append-only**, never rewrite. **Amend audit T-durability final P-8**: após commit-success, entry `Commit` nova é **apendada** referenciando `StrokeId` (não rewrite de Begin) — preserva atomicidade WAL. Rotação: caller chama `StrokeJournal::truncate_and_reset` via [`atomic_write`] após 100 commits OR > 50MB WAL.
+
+**Versão WAL ≠ versão canon** (amend P-12): `JOURNAL_SCHEMA_VERSION` é constante separada do canon `SCHEMA_VERSION`. Bump canon (HR-14 migration obrigatória) NÃO força descarte de WAL legítimo; bump WAL = sessão atual descartada (regenerable).
+
+**Endianness explícita** (amend P-18): todos `u32`/`u64` no header e payload são **Little-Endian** (`u32 LE`, `u64 LE`) — HR-5 cross-OS bit-identical exige.
 
 ### 2.3 `CrashRecovery` — boot scan + replay
 
@@ -238,12 +242,16 @@ pub enum SuspendState {
 
 **Drain protocol (chamado pela shell via `PlatformHost::on_suspend_imminent()` — extension):**
 
-1. **t=0:** suspend imminent event recebido. `SuspendState::SuspendImminent { remaining_ms: 5000 }`.
-2. **t<2000ms:** flush WAL (fsync) — stroke-in-progress preservado.
-3. **t<3500ms:** atomic write `.ph2d-painter` se dirty.
-4. **t<4500ms:** flush `.ph2d-painter-cache` se dirty (best-effort; sidecar regenerável).
-5. **t<4900ms:** mark `SuspendState::SuspendImminent { remaining_ms: 100 }`; final fsync.
-6. **t=5000ms:** force-kill pelo OS (esperado).
+**Amend audit T-durability final P-9 + J-1 CRITICAL:** phases são **proporcionais ao budget OS** (não ms hardcoded). Default 5000ms (iOS); Android Lite 3000ms; Android Go 1500ms; iOS Low Power Mode reduções.
+
+1. **t=0:** suspend imminent event recebido. `SuspendState::SuspendImminent { remaining_ms: os_budget_ms }`.
+2. **Phase 1 (0–40% do budget):** flush WAL (fsync) — stroke-in-progress preservado.
+3. **Phase 2 (40–70% do budget):** atomic write `.ph2d-painter` se dirty.
+4. **Phase 3 (70–95% do budget):** flush `.ph2d-painter-cache` se dirty (best-effort; sidecar regenerável).
+5. **t≥95% do budget:** final fsync; `remaining_ms` próximo de 0.
+6. **t=budget:** force-kill pelo OS (esperado).
+
+Helpers `SuspendHandler::within_wal_phase(now_ms)` / `within_canon_phase(now_ms)` consultam `self.os_deadline_ms` real, NÃO hardcoded — caller que passa `os_deadline_ms=3000` (Android Lite) tem phases proporcionalmente reduzidas.
 
 **Gate `suspend_drain_completes_under_5s`:** simulated suspend → WAL + canvas state persisted em ≤ 5s p99.
 
@@ -300,7 +308,7 @@ pub trait PlatformHost {
 
 | Tipo | Cap |
 |---|---|
-| `PartialStroke` | ≤ 16 fields (v1 = 12) |
+| `PartialStroke` | ≤ 16 fields (v1 = 13, +3 headroom) — amend audit T-durability final P-1 (era v1=12 incorretamente) |
 | `FlushPolicy` | ≤ 6 variants (v1 = 3) |
 | `AutoSavePolicy` | ≤ 8 variants (v1 = 4) |
 | `AutoSaveState` | ≤ 6 variants (v1 = 5) |
@@ -308,7 +316,7 @@ pub trait PlatformHost {
 | `SuspendState` | ≤ 4 variants (v1 = 3) |
 | `AutoSaveError` | ≤ 8 variants (v1 = 4: IoError, InsufficientStorage, AtomicWriteFailed, FsyncFailed) |
 | WAL flush interval | 100ms OR 8 samples (Hybrid default) |
-| Drain deadline | 5000ms (iOS) / configurable per platform |
+| Drain deadline | 5000ms (iOS) / configurable per platform; **phases proporcionais** ao budget — vide §2.5 amendment |
 
 ### 2.9 Arch-gate `painter_contract_surface::durability`
 

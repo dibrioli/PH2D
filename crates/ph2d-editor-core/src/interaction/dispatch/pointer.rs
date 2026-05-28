@@ -783,6 +783,14 @@ pub fn dispatch_pointer_with_text<'frame>(
                     events.push(WidgetEvent::TextChanged(id));
                 } else if stepper_hit {
                     events.push(WidgetEvent::ValueChanged(id));
+                    // `apply_number_stepper_if_hit` also writes the
+                    // linked slider via `apply_chip_value_with_mirror`;
+                    // emit its ValueChanged so panel handlers keyed off
+                    // the slider id (canonical pattern post-mapped-link)
+                    // see the change in lockstep with the chip event.
+                    if let Some(slider_id) = store.linked_slider(id) {
+                        events.push(WidgetEvent::ValueChanged(slider_id));
+                    }
                 } else if is_double_click {
                     let is_text_widget = matches!(
                         store.get(id),

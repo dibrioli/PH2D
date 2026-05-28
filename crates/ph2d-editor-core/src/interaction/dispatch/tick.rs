@@ -9,7 +9,7 @@
 //! fast path.
 
 use super::super::drag::{STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS};
-use super::super::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+use super::super::{InteractiveState, WidgetEvent, WidgetStore};
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 
@@ -53,28 +53,22 @@ pub fn dispatch_tick<'frame>(
             return events.into_bump_slice();
         }
     };
+    // Shared mirror — symmetric with stepper-Down + commit-Enter so
+    // the continuous-hold path can't drift from the single-tick path.
+    let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, hold.id, new_value);
     if let Some(InteractiveState::NumberInput {
-        value,
-        buffer,
-        last_committed,
-        ..
+        last_committed, ..
     }) = store.get_mut(hold.id)
     {
-        *value = new_value;
-        *buffer = format_number(new_value);
-        *last_committed = new_value;
-    }
-    if let Some(slider_id) = store.linked_slider(hold.id) {
-        // Inverse-project display-space step into storage. Identity
-        // mapping = pass-through. See `commit_number_buffer` /
-        // `apply_number_stepper_if_hit` for the symmetric inverse.
-        let (scale, offset) = store.linked_slider_mapping(hold.id);
-        let storage = ((new_value as f32) - offset) / scale;
-        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
-            *value = storage.clamp(0.0, 1.0);
-        }
+        *last_committed = final_val;
     }
     store.record_number_stepper_tick(now_ns);
     events.push(WidgetEvent::ValueChanged(hold.id));
+    // `apply_chip_value_with_mirror` also writes a linked slider —
+    // emit its ValueChanged so panel handlers keyed off the slider id
+    // (canonical pattern post-mapped-link) see the change.
+    if let Some(slider_id) = store.linked_slider(hold.id) {
+        events.push(WidgetEvent::ValueChanged(slider_id));
+    }
     events.into_bump_slice()
 }

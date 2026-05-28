@@ -130,27 +130,17 @@ pub(super) fn apply_number_stepper_if_hit(
         return false;
     };
     let new_val = current_value + direction * step;
+    // Shared mirror — writes chip, inverse-projects to slider with
+    // clamp, re-syncs chip if clamped (so a step past the upper bound
+    // of a mapped chip lands the visible buffer on the bound, not on
+    // the unreachable raw value). Identity-linked / unlinked chips
+    // pass through unchanged.
+    let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, id, new_val);
     if let Some(InteractiveState::NumberInput {
-        value,
-        buffer,
-        last_committed,
-        ..
+        last_committed, ..
     }) = store.get_mut(id)
     {
-        *value = new_val;
-        *buffer = super::super::format_number(new_val);
-        *last_committed = new_val;
-    }
-    // Mirror to a linked slider if there is one. The chip's value
-    // lives in display-space (Grow's "±1", Min Px integer, ...) when
-    // a mapping is registered, so inverse-project before writing the
-    // slider's 0..1 storage. Identity mapping = pass-through.
-    if let Some(slider_id) = store.linked_slider(id) {
-        let (scale, offset) = store.linked_slider_mapping(id);
-        let storage = ((new_val as f32) - offset) / scale;
-        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
-            *value = storage.clamp(0.0, 1.0);
-        }
+        *last_committed = final_val;
     }
     // M14.A: arm continuous-hold so dispatch_tick can repeat while
     // the user keeps the arrow pressed. The Down itself counts as the

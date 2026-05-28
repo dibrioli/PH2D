@@ -3,16 +3,27 @@
 //!
 //! Each edge is a bipolar **slider** (`PAD_*`, normalized `0..1` with
 //! `0.5` = neutral) plus a px-valued **NumberInput chip** (`PAD_*_NUM`).
-//! They are NOT wired with `link_slider_number` — that helper couples
-//! both widgets in the same `0..1` space, but the chip must show / accept
-//! PIXELS. Instead [`crate::event`] keeps them in sync manually (slider
-//! drag → chip px; chip type → slider track), so the chip stays a true
-//! px field while the slider stays a smooth `0..1` track. The host
-//! overwrites both every frame from the live `PaddingUiSnapshot`.
+//! Wired via [`WidgetStore::link_slider_number_mapped`] with the affine
+//! projection `px = track * (2 * FULL_SCALE) + (-FULL_SCALE)`, so:
+//!
+//! - the chip's stored value is **always pixels** (matches the visible
+//!   display + what the user types — no surprise transform on Enter),
+//! - the slider's stored value stays in `0..1` for compatibility with
+//!   the canonical slider widget,
+//! - the dispatch handles drag-scrub clamp, slider-drag mirror, and
+//!   keyboard commit round-trip automatically (the 2026-05-27 fix
+//!   class — `commit_number_buffer` inverse-projects through the
+//!   registered mapping).
+//!
+//! Pre-2026-05-27 the mirror was manual in `event.rs`; with the mapped
+//! link, `event.rs` only has to forward `PanelEvent::SetValue` on
+//! `ValueChanged(slider)` (the dispatch mirror keeps chip+slider in
+//! lockstep on its own).
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_tool_padding::params::PAD_SLIDER_FULL_SCALE;
 
 pub fn populate(store: &mut WidgetStore) {
     // Cancel / Apply + the pivot-mode toggle (a Button painted as an
@@ -30,8 +41,17 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Four bipolar sliders (seeded neutral = 0.5 = 0 px) + their px chips
-    // (seeded 0). NO `link_slider_number` — see module docs.
+    // Four bipolar sliders (seeded neutral = 0.5 = 0 px) + their px
+    // chips (seeded 0 px). Mapping: `px = track*1024 - 512`, i.e.
+    // `(scale = 2*FULL_SCALE, offset = -FULL_SCALE)` — full slider
+    // sweep maps to ±FULL_SCALE px symmetrically around the neutral
+    // centre. See [`ph2d_tool_padding::params::px_to_slider`] /
+    // `slider_to_px` for the canonical projection (rounding is the
+    // tool's job; this affine map keeps the round-trip exact for
+    // integer-valued px).
+    let full_scale = PAD_SLIDER_FULL_SCALE as f32;
+    let scale = 2.0 * full_scale;
+    let offset = -full_scale;
     for (slider_id, chip_id) in [
         (ids::PAD_TOP, ids::PAD_TOP_NUM),
         (ids::PAD_RIGHT, ids::PAD_RIGHT_NUM),
@@ -57,10 +77,7 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
-        // Post-2026-05-24: chips paint arrows; the dispatch's stepper
-        // hit-test is the canon affordance for every chip. No-stepper
-        // opt-out removed (vide `link_slider_number` rustdoc).
-        let _ = chip_id;
+        store.link_slider_number_mapped(slider_id, chip_id, scale, offset);
     }
 }
 

@@ -77,10 +77,24 @@ pub fn populate(store: &mut WidgetStore) {
 
     // Grid-mode Offset slider + chip — slider stores TRACK `0..1`, chip
     // stores PIXELS (natural unit, since the user expects to type "4 px"
-    // not "0.25"). Storage is intentionally NOT shared because the chip
-    // and slider domains differ, so we cannot use `link_slider_number`:
+    // not "0.25").
+    //
+    // Intentionally NOT migrated to `link_slider_number_mapped` (the
+    // 2026-05-27 canonical pattern used by bgremoval / color-eq /
+    // padding / upscale) because the projection scale is **dynamic**:
+    // `max_offset = snapshot.grid_unit / 2` changes per frame as the
+    // user edits Grid Unit on the side. The affine `(scale, offset)`
+    // registered at populate time cannot model a per-frame variable
+    // bound — migrating would either freeze `max_offset` to a
+    // constant (UX regression: slider sweep covers an invalid range)
+    // or require a closure-based mapping API (premature abstraction
+    // for a single call site, vide CLAUDE.md "Don't design for
+    // hypothetical future requirements").
+    //
     // [`crate::event`] mirrors the two manually each frame the user
-    // edits one.
+    // edits one. The shared `apply_chip_value_with_mirror` re-sync
+    // invariant is NOT in effect here — clamping is handled in the
+    // event handler against the live `snapshot.grid_unit / 2`.
     let default_offset = defaults.grid_offset as f64;
     store.register(
         ids::EQS_GRID_OFFSET,

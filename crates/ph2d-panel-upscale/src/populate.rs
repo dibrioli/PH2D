@@ -4,20 +4,22 @@
 //! Layout:
 //! - 3 segmented buttons for the algorithm selector
 //!   (Lanczos3 / Nearest / xBR).
-//! - 1 slider + 1 NumberInput chip for the scale factor. Slider stores
-//!   the normalized track in `0..1`; chip stores the **natural scale
-//!   factor** in `[1.0, SCALE_FULL_SCALE]`. The pair is NOT wired via
-//!   `link_slider_number` — that helper couples both widgets in the
-//!   same `0..1` space, but the user must be able to type "2" and get
-//!   2× (not track=2.0 → clamp 1.0 → 16×). Mirror is manual in
-//!   [`crate::event`] (slider drag → chip factor; chip commit → slider
-//!   track). Mirrors the Padding panel's chip-in-natural-unit pattern.
+//! - 1 slider + 1 NumberInput chip for the scale factor, wired via
+//!   [`WidgetStore::link_slider_number_mapped`] with the affine
+//!   projection `factor = track*(MAX-MIN) + MIN`. Chip stores the
+//!   **natural factor** in `[MIN_SCALE_FACTOR, SCALE_FULL_SCALE]`,
+//!   slider keeps `0..1` for canonical widget compatibility. Dispatch
+//!   handles clamp (out-of-range typed factors snap back via
+//!   `apply_chip_value_with_mirror`'s re-sync), drag-scrub bounds, and
+//!   commit round-trip — no manual mirror in `event.rs` anymore.
 //! - Cancel + Apply buttons.
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
-use ph2d_tool_upscale::params::{DEFAULT_SCALE_FACTOR, scale_to_slider};
+use ph2d_tool_upscale::params::{
+    DEFAULT_SCALE_FACTOR, MIN_SCALE_FACTOR, SCALE_FULL_SCALE, scale_to_slider,
+};
 
 pub fn populate(store: &mut WidgetStore) {
     // Algorithm segmented buttons + Cancel + Apply: five Buttons.
@@ -37,10 +39,12 @@ pub fn populate(store: &mut WidgetStore) {
         );
     }
 
-    // Scale slider in track space (0..1) + scale chip in natural unit
-    // (factor in [1.0, SCALE_FULL_SCALE]). The pair is NOT linked via
-    // `link_slider_number`; `crate::event` mirrors them manually so the
-    // user can type "2" → 2× (not "0.067" for track).
+    // Scale slider in track space (0..1) + scale chip in natural
+    // factor (in [MIN_SCALE_FACTOR, SCALE_FULL_SCALE]). Mapping:
+    // `factor = track * (MAX-MIN) + MIN`, so the dispatch projects
+    // typed factors back into `0..1` storage and snaps out-of-range
+    // inputs (e.g. "999") to the bound via the canonical re-sync in
+    // `apply_chip_value_with_mirror`.
     let track = scale_to_slider(DEFAULT_SCALE_FACTOR);
     store.register(
         ids::UPS_SCALE,
@@ -61,6 +65,12 @@ pub fn populate(store: &mut WidgetStore) {
             last_committed: factor,
             selection_anchor: None,
         },
+    );
+    store.link_slider_number_mapped(
+        ids::UPS_SCALE,
+        ids::UPS_SCALE_NUM,
+        SCALE_FULL_SCALE - MIN_SCALE_FACTOR,
+        MIN_SCALE_FACTOR,
     );
 
     // Hover tooltips for the 3 algorithm chips so the user knows which
@@ -119,13 +129,24 @@ mod tests {
     }
 
     #[test]
-    fn scale_pair_is_not_linked() {
-        // Manual mirror in `crate::event` — see populate module doc.
-        // Linking would force chip and slider into the same 0..1 space
-        // and break "type 2 → 2×".
+    fn scale_pair_is_mapped_linked() {
+        // 2026-05-27: chip↔slider mirror is now in dispatch via
+        // `link_slider_number_mapped(slider, chip, MAX-MIN, MIN)`.
+        // Asserts BOTH the bidirectional link AND the affine mapping.
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
-        assert_eq!(store.linked_number(ids::UPS_SCALE), None);
-        assert_eq!(store.linked_slider(ids::UPS_SCALE_NUM), None);
+        assert_eq!(store.linked_number(ids::UPS_SCALE), Some(ids::UPS_SCALE_NUM));
+        assert_eq!(store.linked_slider(ids::UPS_SCALE_NUM), Some(ids::UPS_SCALE));
+        let (scale, offset) = store.linked_slider_mapping(ids::UPS_SCALE_NUM);
+        let expected_scale = SCALE_FULL_SCALE - MIN_SCALE_FACTOR;
+        let expected_offset = MIN_SCALE_FACTOR;
+        assert!(
+            (scale - expected_scale).abs() < f32::EPSILON,
+            "scale {scale} != {expected_scale}"
+        );
+        assert!(
+            (offset - expected_offset).abs() < f32::EPSILON,
+            "offset {offset} != {expected_offset}"
+        );
     }
 }

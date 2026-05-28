@@ -41,6 +41,63 @@ use super::{InteractiveState, WidgetEvent, WidgetStore};
 use crate::zones::Rect;
 use bumpalo::collections::Vec as BumpVec;
 
+/// Apply a new chip display-value (e.g. from Enter commit, stepper
+/// click, continuous hold). Writes the chip's `value`+`buffer`, then
+/// inverse-projects through the registered mapping to write the linked
+/// slider's clamped `0..1` storage, then RE-SYNCS the chip's
+/// `value`+`buffer` from the clamped slider so that out-of-range typed
+/// input (e.g. `"999"` in an upscale chip bounded to ×16) snaps the
+/// visible buffer back to the clamped display.
+///
+/// Single source of truth for the chip↔slider mirror; the 4 dispatch
+/// sites (commit / stepper / tick / drag-scrub) all call this so the
+/// re-sync invariant can't drift between paths.
+///
+/// Returns `(final_chip_value, slider_was_clamped)`. Callers use the
+/// returned value to drive downstream events (`WidgetEvent::ValueChanged`,
+/// `last_committed` updates, etc.) without re-reading the store.
+pub(super) fn apply_chip_value_with_mirror(
+    store: &mut WidgetStore,
+    chip_id: ph2d_a11y::NodeId,
+    new_display: f64,
+) -> (f64, bool) {
+    if let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get_mut(chip_id) {
+        *value = new_display;
+        *buffer = super::format_number(new_display);
+    } else {
+        return (new_display, false);
+    }
+    let Some(slider_id) = store.linked_slider(chip_id) else {
+        return (new_display, false);
+    };
+    let (scale, offset) = store.linked_slider_mapping(chip_id);
+    let storage_raw = ((new_display as f32) - offset) / scale;
+    let storage_clamped = storage_raw.clamp(0.0, 1.0); // CLAMP-OK: literal bounds 0,1
+    let was_clamped = (storage_clamped - storage_raw).abs() > f32::EPSILON;
+    if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
+        *value = storage_clamped;
+    }
+    if was_clamped {
+        // Re-project the clamped storage into display and rewrite the
+        // chip — keeps buffer/value/last_committed in lockstep with the
+        // slider thumb.
+        let resync_display = (storage_clamped * scale + offset) as f64;
+        if let Some(InteractiveState::NumberInput {
+            value,
+            buffer,
+            last_committed,
+            ..
+        }) = store.get_mut(chip_id)
+        {
+            *value = resync_display;
+            *buffer = super::format_number(resync_display);
+            *last_committed = resync_display;
+        }
+        return (resync_display, true);
+    }
+    (new_display, false)
+}
+
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     // BlenderColorPicker channel chip: seed `value` from the parent
     // picker's current channel value (the chip's stored `value` is
@@ -158,8 +215,11 @@ pub(super) fn commit_number_buffer<'a>(
     id: ph2d_a11y::NodeId,
     events: &mut BumpVec<'a, WidgetEvent>,
 ) {
-    let mut new_value: Option<f64> = None;
-    {
+    // Phase 1 — parse the buffer. On parse failure, revert to
+    // last_committed; on success, capture the parsed display value
+    // (without writing yet; the mirror helper does the write so the
+    // re-sync invariant lives in one place).
+    let (parsed_value, prev_value) = {
         let Some(InteractiveState::NumberInput {
             value,
             buffer,
@@ -170,43 +230,61 @@ pub(super) fn commit_number_buffer<'a>(
         else {
             return;
         };
+        let prev = *value;
         match buffer.trim().parse::<f64>() {
-            Ok(parsed) if parsed.is_finite() => {
-                if (parsed - *value).abs() > f64::EPSILON {
-                    *value = parsed;
-                    *last_committed = parsed;
-                    events.push(WidgetEvent::ValueChanged(id));
-                    new_value = Some(parsed);
-                }
-                buffer.clear();
-                use std::fmt::Write;
-                let _ = write!(buffer, "{}", super::format_number(*value));
-                *caret = buffer.len();
-            }
+            Ok(parsed) if parsed.is_finite() => (Some(parsed), prev),
             _ => {
                 buffer.clear();
                 use std::fmt::Write;
                 let _ = write!(buffer, "{}", super::format_number(*last_committed));
                 *value = *last_committed;
                 *caret = buffer.len();
+                (None, prev)
             }
         }
-    }
-    if let Some(v) = new_value
-        && let Some(slider_id) = store.linked_slider(id)
+    };
+    let mut new_value: Option<f64> = None;
+    if let Some(parsed) = parsed_value
+        && (parsed - prev_value).abs() > f64::EPSILON
     {
-        // Inverse-project the chip's display-space value into the
-        // slider's 0..1 storage. Identity mapping (the default) leaves
-        // `v` unchanged — equivalent to the pre-2026-05-27 behavior.
-        // Non-identity mapping (`link_slider_number_mapped`) translates
-        // e.g. Grow display "+0.20" (signed) into slider 0.6, so the
-        // next paint's `display_override` recomputes to the same
-        // "+0.20" the user typed.
-        let (scale, offset) = store.linked_slider_mapping(id);
-        let storage = ((v as f32) - offset) / scale;
-        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
-            *value = storage.clamp(0.0, 1.0);
+        // Mirror helper writes chip, slider (inverse-projected, clamped),
+        // and re-syncs the chip if the slider clamped. Returns the
+        // final chip value so we can park it in `last_committed` +
+        // caret without re-reading the store.
+        let (final_v, _was_clamped) = apply_chip_value_with_mirror(store, id, parsed);
+        new_value = Some(final_v);
+        if let Some(InteractiveState::NumberInput {
+            caret,
+            last_committed,
+            buffer,
+            ..
+        }) = store.get_mut(id)
+        {
+            *last_committed = final_v;
+            *caret = buffer.len();
+        }
+        events.push(WidgetEvent::ValueChanged(id));
+        if store.linked_slider(id).is_some() {
+            // The slider's stored value changed (or clamped) — emit so
+            // downstream consumers re-render. Same shape as the
+            // pre-2026-05-27 commit_number_buffer.
+            let slider_id = store.linked_slider(id).unwrap();
             events.push(WidgetEvent::ValueChanged(slider_id));
+        }
+    } else if parsed_value.is_some() {
+        // No-change commit (typed same value). Still normalize the
+        // buffer so trailing whitespace etc. doesn't survive.
+        if let Some(InteractiveState::NumberInput {
+            value,
+            buffer,
+            caret,
+            ..
+        }) = store.get_mut(id)
+        {
+            buffer.clear();
+            use std::fmt::Write;
+            let _ = write!(buffer, "{}", super::format_number(*value));
+            *caret = buffer.len();
         }
     }
     // BlenderColorPicker channel chip: write the parsed value back

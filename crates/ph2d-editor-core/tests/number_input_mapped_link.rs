@@ -233,6 +233,61 @@ fn slider_drag_forward_projects_to_chip_display() {
 }
 
 #[test]
+fn out_of_range_typed_input_resyncs_chip_to_clamped_display() {
+    // Upscale-shape mapping: factor = track*15 + 1 → display range
+    // [1.0, 16.0]. User types "999" (way out of range) and presses
+    // Enter — expectation: slider clamps storage to 1.0, chip RE-SYNCS
+    // from clamped storage to display 16.0 (the bound). Pre-2026-05-27
+    // the chip kept the raw 999 and the painter showed inconsistent
+    // values (focused buffer "999", unfocused display_override "16.00").
+    let mut store = build_pair(15.0, 1.0, 1.0 / 15.0, 2.0);
+    store.set_focus(Some(NodeId(2)));
+    let arena = Bump::new();
+    for _ in 0..5 {
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE), &arena);
+    }
+    for ch in ['9', '9', '9'] {
+        let _ = dispatch_text_input(&mut store, ch, &arena);
+    }
+    let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    let (_, chip_v, chip_buf, _, _) = store.number_input(NodeId(2)).expect("chip");
+    let (_, slider_v) = store.slider(NodeId(1)).expect("slider");
+    assert!(
+        (slider_v - 1.0).abs() < 1e-5,
+        "slider must clamp to 1.0 storage, got {slider_v}"
+    );
+    assert!(
+        (chip_v - 16.0).abs() < 1e-5,
+        "chip must re-sync to clamped display 16.0, got {chip_v}"
+    );
+    assert!(
+        chip_buf.starts_with("16"),
+        "chip buffer must re-render the clamped value, got {chip_buf:?}"
+    );
+}
+
+#[test]
+fn in_range_typed_input_does_not_resync() {
+    // Mapping identity-equivalent: scale=1, offset=0 (i.e., the chip
+    // just stores 0..1 directly). User types "0.4" — well within range.
+    // No re-sync; chip stays at 0.4.
+    let mut store = build_pair(1.0, 0.0, 0.5, 0.5);
+    store.set_focus(Some(NodeId(2)));
+    let arena = Bump::new();
+    for _ in 0..5 {
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE), &arena);
+    }
+    for ch in ['0', '.', '4'] {
+        let _ = dispatch_text_input(&mut store, ch, &arena);
+    }
+    let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    let (_, chip_v, _, _, _) = store.number_input(NodeId(2)).expect("chip");
+    let (_, slider_v) = store.slider(NodeId(1)).expect("slider");
+    assert!((chip_v - 0.4).abs() < 1e-5, "in-range value preserved: {chip_v}");
+    assert!((slider_v - 0.4).abs() < 1e-5, "slider mirrors: {slider_v}");
+}
+
+#[test]
 fn link_slider_number_mapped_with_identity_args_equals_legacy() {
     // `link_slider_number_mapped(slider, chip, 1.0, 0.0)` should be
     // semantically equivalent to `link_slider_number(slider, chip)` —

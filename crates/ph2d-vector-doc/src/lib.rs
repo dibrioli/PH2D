@@ -25,7 +25,7 @@
 //! | [`region`]         | [`Region`] / [`WindingRule`] / [`SegmentRef`]. |
 //! | [`edit_log`]       | [`VectorOp`] enum + [`EditLog`] event sourcing. |
 //! | [`style`]          | [`StyleRef`] / [`FillRef`] / [`StyleTable`] / [`StrokeStyle`] / supporting types. |
-//! | [`cubic_fit`]      | Levien Béz fitting (stub — W1.T1.4 populates). |
+//! | [`cubic_fit`]      | Levien single-cubic Bézier fitting ([`fit_cubic_levien`](cubic_fit::fit_cubic_levien)). |
 //! | [`spiro`]          | Spiro / Hyperbezier Assist Modes (stub — W2+ populates). |
 //! | [`postcard_schema`]| [`Ph2dVectorAsset`] + [`bounded_decode`](postcard_schema::bounded_decode). |
 //! | [`deterministic`]  | Q16.16 fixed-point opt-in (per ADR-0056 §2.7). |

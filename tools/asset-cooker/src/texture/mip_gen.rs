@@ -17,10 +17,25 @@
 //! Integration com cook: este módulo é STANDALONE. Caller pode iterar chain e
 //! cookar cada level separadamente OR (W1.T7.1, future) `cook_with_mips` helper
 //! passará chain inteiro pra `ctt::Image { surfaces: vec![chain] }` em single
-//! `ctt::convert` call. ctt 0.4.0 já suporta multi-mip Image input.
+//! `ctt::convert` call. ctt 0.4.0 já suporta multi-mip Image input via
+//! `Image { surfaces: Vec<Vec<Surface>> }` (validado audit μ W1.T7).
+//!
+//! # ⚠️ Alpha-premultiplied assumption (audit μ-H1 W1.T7)
+//!
+//! `image::imageops::resize` (todos os filtros) **assume input alpha-premultiplied**
+//! para producing visually correct downsampled output em assets com transparência
+//! não-uniforme (border pixels). Mip generation sobre source `AlphaMode::Straight`
+//! (cook default) produz **dark fringe artifacts** em borders semi-transparentes
+//! — RGB de pixels alpha=0 contamina vizinhos alpha>0 no average.
+//!
+//! Mitigation: caller que pretende cookar com mip pyramid + `AlphaMode::Straight`
+//! deve **premultiplicar antes** de chamar `generate_mip_chain` (e des-premultiplicar
+//! depois OR cookar tudo como Premultiplied). W1.T7.1 `cook_with_mips` helper futuro
+//! deve gerenciar essa conversão automaticamente OU rejeitar Straight+mips combo
+//! com erro explícito. Test fringe-detection inclui-se em W1.T7.1.
 
 use image::imageops::FilterType;
-use image::{ImageBuffer, RgbaImage};
+use image::RgbaImage;
 
 /// Filtro de downsample para mip generation. Mapeia pra `image::imageops::FilterType`
 /// internamente mas expõe API mais semantic e PH2D-specific.
@@ -92,6 +107,13 @@ pub fn generate_mip_chain(
     }
     let total = mip_levels_for_dimensions(w, h);
     let capped = max_levels.map(|n| n.min(total)).unwrap_or(total);
+    // Audit λ-H1 W1.T7 fix: `max_levels = Some(0)` significa "zero levels" —
+    // caller quer empty chain. Sem este guard, code abaixo push source antes
+    // de checar `chain.len() < capped`, retornando 1 level (silent off-by-one
+    // contra docstring promise "N levels = level 0 + N-1 downsampled").
+    if capped == 0 {
+        return Vec::new();
+    }
     let image_filter = filter.to_image_filter();
 
     let mut chain: Vec<RgbaImage> = Vec::with_capacity(capped);
@@ -106,14 +128,11 @@ pub fn generate_mip_chain(
         if nw == pw && nh == ph {
             break;
         }
-        // `resize` produz `ImageBuffer<Rgba<u8>, Vec<u8>>` que é `RgbaImage`.
-        let resized: RgbaImage = ImageBuffer::from_raw(
-            nw,
-            nh,
-            image::imageops::resize(prev, nw, nh, image_filter).into_raw(),
-        )
-        .expect("resize output dims match nw×nh×4 bytes");
-        chain.push(resized);
+        // Audit λ-L1/μ-M1 W1.T7 cleanup: `image::imageops::resize` retorna
+        // `ImageBuffer<Rgba<u8>, Vec<u8>>` que já É `RgbaImage` (alias).
+        // Anterior `from_raw(nw, nh, resize(...).into_raw())` era round-trip
+        // identidade desnecessário.
+        chain.push(image::imageops::resize(prev, nw, nh, image_filter));
     }
 
     chain
@@ -213,6 +232,54 @@ mod tests {
             box_level1.as_raw(),
             lanczos_level1.as_raw(),
             "Box vs Lanczos3 deveriam produzir pixels distintos em content radial"
+        );
+    }
+
+    /// Audit λ-M1 W1.T7 fix: confirma Point (Nearest) dispatch distinto de Box
+    /// (Triangle/bilinear) — pixel art use case essential.
+    #[test]
+    fn generate_chain_point_distinct_from_box() {
+        let png = brush_atlas_256_r8();
+        let src = fixture_to_rgba(&png);
+        let point_chain = generate_mip_chain(&src, MipFilter::Point, Some(2));
+        let box_chain = generate_mip_chain(&src, MipFilter::Box, Some(2));
+        assert_eq!(
+            point_chain[1].dimensions(),
+            box_chain[1].dimensions()
+        );
+        assert_ne!(
+            point_chain[1].as_raw(),
+            box_chain[1].as_raw(),
+            "Point (Nearest) deveria produzir pixels distintos de Box (bilinear) em radial soft content"
+        );
+    }
+
+    /// Audit λ-H1 W1.T7 fix: `max_levels = Some(0)` retorna empty chain (não 1).
+    /// Sem este guard, code anterior pushava source antes do len<capped check,
+    /// resultando em silent off-by-one contra docstring promise.
+    #[test]
+    fn generate_chain_max_levels_zero_returns_empty() {
+        let src = RgbaImage::new(64, 64);
+        let chain = generate_mip_chain(&src, MipFilter::Box, Some(0));
+        assert_eq!(
+            chain.len(),
+            0,
+            "max_levels=Some(0) MUST yield zero levels (empty chain), got {} levels",
+            chain.len()
+        );
+    }
+
+    /// Audit λ-M2 W1.T7 fix: cobertura 16×16 (fixtures::critical_ui_16 size).
+    #[test]
+    fn generate_chain_16_square_has_5_levels() {
+        // 16, 8, 4, 2, 1 = 5 levels.
+        let src = RgbaImage::new(16, 16);
+        let chain = generate_mip_chain(&src, MipFilter::Box, None);
+        let dims: Vec<_> = chain.iter().map(|l| l.dimensions()).collect();
+        assert_eq!(
+            dims,
+            vec![(16, 16), (8, 8), (4, 4), (2, 2), (1, 1)],
+            "16² source MUST yield exactly 5 levels"
         );
     }
 

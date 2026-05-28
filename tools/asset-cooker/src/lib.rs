@@ -27,6 +27,11 @@ use serde::{Deserialize, Serialize};
 // references in scene files.
 pub use ph2d_asset::AssetId;
 
+/// W1.T3 (ADR-0055-v4) — texture cooking pipeline via `ctt` v0.4.0 offline.
+/// Sub-modules carry the cook function, target matrix, and disciplines D1/D3
+/// codified em `Cargo.toml` features + arch-gate.
+pub mod texture;
+
 #[derive(Debug)]
 pub enum CookError {
     Json(String),

@@ -52,6 +52,9 @@ ctt = { version = "0.4.0", default-features = false, features = [
     "encoder-intel",
     "ispc-prebuilt",
 ] }
+# Image decoder for source files (PNG mainly; jpeg/webp puxados se necessário em W4+).
+# Versão alinhada workspace standard (ph2d-asset / ph2d-imageio-*).
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [dev-dependencies]
 # Parser TOML para arch-gate `architecture_ctt_features_pinned` — substitui

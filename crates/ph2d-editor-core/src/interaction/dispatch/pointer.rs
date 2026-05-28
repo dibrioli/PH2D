@@ -285,6 +285,19 @@ pub fn dispatch_pointer_with_text<'frame>(
                         events.push(WidgetEvent::ValueChanged(parent));
                     }
                     events.push(WidgetEvent::ValueChanged(d.id));
+                    // Drag-scrub also wrote the linked slider above
+                    // (the inverse-projected, clamped storage). Emit
+                    // its ValueChanged so panel handlers keyed off the
+                    // slider id (post-2026-05-27 canonical pattern in
+                    // padding/upscale/color-eq) see the live drag —
+                    // without this, swallow-the-chip-event handlers
+                    // dropped per-frame drag-scrub mutations on the
+                    // floor (audit finding #1, lens B).
+                    if let Some(slider_id) = store.linked_slider(d.id)
+                        && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+                    {
+                        events.push(WidgetEvent::ValueChanged(slider_id));
+                    }
                     number_input_drag_consumed = Some(d.id);
                 }
             }
@@ -788,7 +801,9 @@ pub fn dispatch_pointer_with_text<'frame>(
                     // emit its ValueChanged so panel handlers keyed off
                     // the slider id (canonical pattern post-mapped-link)
                     // see the change in lockstep with the chip event.
-                    if let Some(slider_id) = store.linked_slider(id) {
+                    if let Some(slider_id) = store.linked_slider(id)
+                        && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+                    {
                         events.push(WidgetEvent::ValueChanged(slider_id));
                     }
                 } else if is_double_click {
@@ -916,6 +931,16 @@ pub fn dispatch_pointer_with_text<'frame>(
                     events.push(WidgetEvent::Blur(drag.id));
                 }
                 events.push(WidgetEvent::ValueChanged(drag.id));
+                // Drag commit also wrote the linked slider during the
+                // Move path — emit its ValueChanged so panel handlers
+                // (padding/upscale swallow the chip event) still see
+                // the final scrubbed value. Symmetric with the Move
+                // emission above + stepper/tick/commit_number_buffer.
+                if let Some(slider_id) = store.linked_slider(drag.id)
+                    && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+                {
+                    events.push(WidgetEvent::ValueChanged(slider_id));
+                }
             }
             store.end_number_stepper_hold();
             // Hierarchy drag ends on Up. If the drag was active

@@ -96,22 +96,29 @@ pub(crate) fn apply_event(
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
-        // Slider drag OR chip scrub/commit — both land with the
-        // slider's `value` (0..1) holding the canonical track via
-        // `link_slider_number`. Forward as the canonical
-        // `slider_id`-keyed `SetValue` so the tool's
-        // `apply_ui_edit` does the 0..1 → natural unit projection in
-        // ONE place.
-        WidgetEvent::ValueChanged(id) if slider_for_widget(id).is_some() => {
-            let slider_id = slider_for_widget(id).unwrap();
-            let track = host.store().store_or_default_slider_value(slider_id);
+        // Slider value changed (drag, OR mirror from chip commit /
+        // stepper / continuous-hold tick / drag-scrub via
+        // `link_slider_number_mapped`). Forward as the canonical
+        // `slider_id`-keyed `SetValue` so the tool's `apply_ui_edit`
+        // does the 0..1 → natural unit projection in ONE place.
+        WidgetEvent::ValueChanged(id) if slider_for_widget(id) == Some(id) => {
+            let track = host.store().store_or_default_slider_value(id);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    slider_id,
+                    id,
                     track as f64,
                 )));
             true
         }
+        // Chip ValueChanged — every mapped-link dispatch site
+        // (`commit_number_buffer`, `apply_number_stepper_if_hit`,
+        // `dispatch_tick`, drag-scrub) ALSO emits the slider's
+        // ValueChanged after writing the mirrored slider value (see
+        // dispatch/pointer.rs:295+918, mod.rs:265+, tick.rs:79+).
+        // Swallow the chip event here so the tool isn't double-
+        // notified for the same edit (audit finding #1, lens A —
+        // pre-fix CEQ tool received SetValue twice per chip edit).
+        WidgetEvent::ValueChanged(id) if slider_for_widget(id).is_some() => true,
         // Dropdown OPTION click. The chip itself toggles
         // `InteractiveState::Dropdown.open` via the shared dispatch
         // handler in `focus::apply_click` (no event emitted) — we

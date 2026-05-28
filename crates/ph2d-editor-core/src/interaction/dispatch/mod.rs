@@ -61,6 +61,12 @@ pub(super) fn apply_chip_value_with_mirror(
     chip_id: ph2d_a11y::NodeId,
     new_display: f64,
 ) -> (f64, bool) {
+    // NaN / inf guard — degenerate input from upstream arithmetic
+    // (e.g. tick step over a corrupted value, or a non-finite mapping)
+    // shouldn't persist NaN into chip/slider state.
+    if !new_display.is_finite() {
+        return (new_display, false);
+    }
     if let Some(InteractiveState::NumberInput { value, buffer, .. }) = store.get_mut(chip_id) {
         *value = new_display;
         *buffer = super::format_number(new_display);
@@ -71,9 +77,24 @@ pub(super) fn apply_chip_value_with_mirror(
         return (new_display, false);
     };
     let (scale, offset) = store.linked_slider_mapping(chip_id);
+    // Runtime guard for degenerate mapping (release-build counterpart
+    // of the `debug_assert!` in `link_slider_number_mapped`). A buggy
+    // caller registering scale ≈ 0 would otherwise produce ±inf / NaN
+    // storage. Skip the mirror; chip's raw value already written above.
+    if scale.abs() <= f32::EPSILON {
+        return (new_display, false);
+    }
     let storage_raw = ((new_display as f32) - offset) / scale;
     let storage_clamped = storage_raw.clamp(0.0, 1.0); // CLAMP-OK: literal bounds 0,1
-    let was_clamped = (storage_clamped - storage_raw).abs() > f32::EPSILON;
+    // Compare clamped detection in DISPLAY-space — storage-space
+    // EPSILON (~1.19e-7) is too tight near the bounds when scale is
+    // large (a 1-ULP-out-of-range display value for padding scale=1024
+    // produces a ~1e-10 storage diff that misses EPSILON, leaving the
+    // chip out of sync). Display-space tolerance scales with the
+    // mapping range.
+    let display_eps = f32::EPSILON * scale.abs().max(1.0);
+    let display_drift = ((storage_clamped - storage_raw) * scale).abs();
+    let was_clamped = display_drift > display_eps;
     if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider_id) {
         *value = storage_clamped;
     }
@@ -264,11 +285,14 @@ pub(super) fn commit_number_buffer<'a>(
             *caret = buffer.len();
         }
         events.push(WidgetEvent::ValueChanged(id));
-        if store.linked_slider(id).is_some() {
-            // The slider's stored value changed (or clamped) — emit so
-            // downstream consumers re-render. Same shape as the
-            // pre-2026-05-27 commit_number_buffer.
-            let slider_id = store.linked_slider(id).unwrap();
+        // The slider's stored value changed (or clamped) — emit so
+        // downstream consumers re-render. Guard against a stale link
+        // (slider id registered but the InteractiveState was replaced):
+        // only emit when the slider variant is actually present, which
+        // matches the helper's actual-write condition above.
+        if let Some(slider_id) = store.linked_slider(id)
+            && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+        {
             events.push(WidgetEvent::ValueChanged(slider_id));
         }
     } else if parsed_value.is_some() {

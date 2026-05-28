@@ -67,7 +67,9 @@ pub fn dispatch_tick<'frame>(
     // `apply_chip_value_with_mirror` also writes a linked slider —
     // emit its ValueChanged so panel handlers keyed off the slider id
     // (canonical pattern post-mapped-link) see the change.
-    if let Some(slider_id) = store.linked_slider(hold.id) {
+    if let Some(slider_id) = store.linked_slider(hold.id)
+        && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+    {
         events.push(WidgetEvent::ValueChanged(slider_id));
     }
     events.into_bump_slice()

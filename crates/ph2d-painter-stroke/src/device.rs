@@ -48,6 +48,14 @@ pub enum PointerSource {
 )]
 pub struct LayerId(pub u32);
 
+/// Identidade de um canvas (PaintProject runtime instance). ADR-0052 §2.2.
+/// Stub W11+: hoje newtype `u64`; futuro pode ganhar workspace prefix
+/// quando multi-document workspace W17 nascer.
+#[derive(
+    Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
+pub struct CanvasId(pub u64);
+
 /// Stack de layers de um `PaintProject`.
 ///
 /// Stub W3: contém apenas a sequência de entries opacas. ADR-0046 §2.7.1

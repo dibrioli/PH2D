@@ -39,6 +39,13 @@ postcard = { version = "1", features = ["use-std"] }
 # blake3 — checksum + content-addressed snapshot dedup + source_blake3
 # do sidecar cache.
 blake3 = "1"
+# crc32fast — WAL entry CRC32 (ADR-0052 §2.2). Detecta payload corrupto em
+# crash recovery sem custo de full hash. Pure-Rust, zero unsafe, ~200 LOC.
+crc32fast = "1"
+# fs4 — cross-platform storage available_space() + advisory file lock
+# (fechá audit T-durability J-6/J-10/J-11). POSIX flock + Win32 LockFileEx
+# wrapped uniformemente. Pure-Rust, zero unsafe-libc dispatch.
+fs4 = { version = "0.13", features = ["fs-err3"] }
 # Audit T1.8 L5-I3 — constant-time comparison para checksum verify
 # (previne timing oracle quando W16 cloud-sync reusa fn server-side).
 subtle = "2"

@@ -410,8 +410,7 @@ pub fn load(bytes: &[u8]) -> Result<PaintProject, LoadError> {
     }
 
     // (2) Deserialize.
-    let mut p: PaintProject =
-        postcard::from_bytes(bytes).map_err(LoadError::Deserialization)?;
+    let mut p: PaintProject = postcard::from_bytes(bytes).map_err(LoadError::Deserialization)?;
 
     // (3) Magic.
     if !p.verify_magic() {
@@ -598,22 +597,35 @@ pub enum LoadError {
 impl PartialEq for LoadError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (
-                Self::TooLarge { size: a, max: am },
-                Self::TooLarge { size: b, max: bm },
-            ) => a == b && am == bm,
+            (Self::TooLarge { size: a, max: am }, Self::TooLarge { size: b, max: bm }) => {
+                a == b && am == bm
+            }
             (Self::Deserialization(_), Self::Deserialization(_)) => true, // opaque equality
             (Self::WrongMagic, Self::WrongMagic) => true,
             (Self::UnsupportedVersion(a), Self::UnsupportedVersion(b)) => a == b,
             (
-                Self::FutureVersion { file: a, supported: as_ },
-                Self::FutureVersion { file: b, supported: bs },
+                Self::FutureVersion {
+                    file: a,
+                    supported: as_,
+                },
+                Self::FutureVersion {
+                    file: b,
+                    supported: bs,
+                },
             ) => a == b && as_ == bs,
             (Self::UnknownVersion(a), Self::UnknownVersion(b)) => a == b,
             (Self::IntegrityMismatch, Self::IntegrityMismatch) => true,
             (
-                Self::CapExceeded { kind: a, got: ag, max: am },
-                Self::CapExceeded { kind: b, got: bg, max: bm },
+                Self::CapExceeded {
+                    kind: a,
+                    got: ag,
+                    max: am,
+                },
+                Self::CapExceeded {
+                    kind: b,
+                    got: bg,
+                    max: bm,
+                },
             ) => a == b && ag == bg && am == bm,
             (Self::DuplicateBrushHash(a), Self::DuplicateBrushHash(b)) => a == b,
             _ => false,
@@ -640,12 +652,14 @@ impl std::fmt::Display for LoadError {
                 f,
                 "integrity hash mismatch — file corrupted (use signed canon for tamper-detection)"
             ),
-            Self::CapExceeded { kind, got, max } => write!(
-                f,
-                "cap exceeded on {kind}: got {got}, max {max}"
-            ),
+            Self::CapExceeded { kind, got, max } => {
+                write!(f, "cap exceeded on {kind}: got {got}, max {max}")
+            }
             Self::DuplicateBrushHash(_) => {
-                write!(f, "duplicate brush_snapshots hash (confusion attack defense)")
+                write!(
+                    f,
+                    "duplicate brush_snapshots hash (confusion attack defense)"
+                )
             }
         }
     }
@@ -728,7 +742,10 @@ mod tests {
         assert!(!p.verify_checksum(), "stale before save()");
         let bytes = save(&p).expect("save");
         let p2 = load(&bytes).expect("load");
-        assert!(p2.verify_checksum(), "after save+load, fresh checksum verifies");
+        assert!(
+            p2.verify_checksum(),
+            "after save+load, fresh checksum verifies"
+        );
         assert_eq!(p2.modified_at, 12345);
     }
 

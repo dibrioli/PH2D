@@ -44,6 +44,34 @@ pub trait PlatformHost {
     /// surface here. The core multiplies logical lengths by this to
     /// get pixels.
     fn scale_factor(&self) -> f32;
+
+    /// Called by the platform when app is about to suspend / be killed
+    /// (iOS background task limit, Android onStop with low-memory, etc.).
+    ///
+    /// `deadline_ms` is the OS-imposed remaining time to gracefully
+    /// shutdown (iOS default ~5000, Android Lite ~3000, Android Go ~1500,
+    /// iOS Low Power Mode reductions).
+    ///
+    /// ADR-0052 §2.6: Painter (and any other subsystem needing tear-
+    /// resistant commit) wires `SuspendHandler::on_imminent` here to
+    /// drain WAL + canon + cache within the budget. Phases are
+    /// proportional to `deadline_ms` (40% WAL, 70% canon, 100% final
+    /// fsync) — NEVER assume 5000ms hardcoded.
+    ///
+    /// Default impl: log warning + no-op (desktop fallback without
+    /// suspend semantics).
+    fn on_suspend_imminent(&mut self, _deadline_ms: u32) {
+        // Default — desktop platforms sem suspend semantics.
+    }
+
+    /// Called when app resumes from suspend. Subsystems may need to
+    /// refresh device state (Apple Pencil reconnect, Wacom driver
+    /// re-init, audio session re-acquire, etc.).
+    ///
+    /// ADR-0052 §2.6.
+    fn on_resume(&mut self) {
+        // Default — no-op.
+    }
 }
 
 /// Core-side handler for events emitted by the shell.
@@ -114,6 +142,7 @@ mod tests {
         fn scale_factor(&self) -> f32 {
             self.scale
         }
+        // on_suspend_imminent + on_resume usam default impl (no-op).
     }
 
     /// Reference handler that records the events it receives.
@@ -154,6 +183,19 @@ mod tests {
         assert_eq!(host.window_size(), WindowSize::new(1920, 1080));
         assert!((host.scale_factor() - 2.0).abs() < f32::EPSILON);
         host.request_redraw();
+    }
+
+    /// ADR-0052 §2.6 — default impls de on_suspend_imminent + on_resume
+    /// devem ser no-op pra hosts que não tomam suspend (desktop).
+    #[test]
+    fn default_suspend_impls_are_noop() {
+        let mut host = NullHost {
+            size: WindowSize::new(800, 600),
+            scale: 1.0,
+        };
+        host.on_suspend_imminent(5000);
+        host.on_resume();
+        // No panic = pass.
     }
 
     #[test]

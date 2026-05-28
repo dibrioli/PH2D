@@ -1041,6 +1041,36 @@ mod durability {
             "SuspendState (ADR-0052 §2.5)",
         );
     }
+
+    /// ADR-0052 §2.9 gate — spec normativo previously missing (audit T-durability).
+    /// Verifica que atomic_write usa o trio canônico write-temp + fsync + rename.
+    #[test]
+    fn atomic_write_uses_fsync_rename_pattern() {
+        let src = crate_source(CRATE);
+        if src.is_empty() {
+            return; // vacuous
+        }
+        assert!(
+            src.contains("fs::rename") && src.contains("sync_all"),
+            "[atomic_write_uses_fsync_rename_pattern] atomic_write deve usar \
+             fs::rename + sync_all (write-temp + fsync + atomic rename)"
+        );
+    }
+
+    /// ADR-0052 §2.9 gate — spec normativo previously missing.
+    /// Verifica que WAL entries são CRC32-verified (não só payload bytes).
+    #[test]
+    fn wal_entries_are_crc32_verified() {
+        let src = crate_source(CRATE);
+        if src.is_empty() {
+            return; // vacuous
+        }
+        assert!(
+            src.contains("crc32fast::Hasher::new") && src.contains("hasher.update"),
+            "[wal_entries_are_crc32_verified] WAL deve computar CRC32 sobre \
+             entry_type || payload_size || payload (audit T-durability J-3)"
+        );
+    }
 }
 
 // ----------------------------------------------------------------------------

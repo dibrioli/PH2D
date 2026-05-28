@@ -70,11 +70,13 @@
 pub mod budget;
 pub mod determinism;
 // Audit T1.8 L4-H2 — `device` é módulo de stubs temporários (PointerSource +
-// LayerId + LayerStack) que migrarão para `ph2d-painter-input` (T-input) e
-// `ph2d-painter-layers` (W3). `#[doc(hidden)]` esconde de rustdoc public
-// pra que consumers prefiram o caminho top-level re-exportado (estável).
+// LayerId + LayerStack + CanvasId) que migrarão para `ph2d-painter-input`
+// (T-input) e `ph2d-painter-layers` (W3). `#[doc(hidden)]` esconde de
+// rustdoc public pra que consumers prefiram o caminho top-level re-exportado.
 #[doc(hidden)]
 pub mod device;
+/// **T-durability (ADR-0052):** WAL + crash recovery + auto-save + suspend.
+pub mod durability;
 pub mod history;
 pub mod persistence;
 pub mod record;
@@ -89,7 +91,14 @@ pub use determinism::{
     f32_to_q88, f32_to_q1616, f32_to_q1616_checked, f32_to_q1616_saturating, q88_to_f32,
     q1616_to_f32,
 };
-pub use device::{LayerId, LayerStack, LayerStackEntry, PointerSource};
+pub use device::{CanvasId, LayerId, LayerStack, LayerStackEntry, PointerSource};
+pub use durability::{
+    AtomicWriteError, AutoSave, AutoSaveError, AutoSavePolicy, AutoSaveState, CrashRecovery,
+    DRAIN_DEADLINE_DEFAULT_MS, DRAIN_FLUSH_WAL_PHASE_MS, DRAIN_WRITE_CANON_PHASE_MS, FlushPolicy,
+    JOURNAL_MAGIC, JOURNAL_ROTATE_BYTES, JOURNAL_ROTATE_COMMITS, JournalError, PartialStroke,
+    RecoveredStroke, RecoveryError, RecoveryState, STORAGE_SAFETY_MULTIPLIER, StrokeJournal,
+    SuspendHandler, SuspendState, WalEntryRaw, WalEntryType, atomic_write, read_journal,
+};
 pub use history::{
     FULL_HISTORY_MIN_BUDGET_MB, RING_CAP_LOW_TIER, RING_CAP_MID_TIER, RING_MIN_CAP, StrokeHistory,
     StrokeHistoryIter,

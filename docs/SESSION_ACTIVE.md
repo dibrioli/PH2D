@@ -10,7 +10,9 @@
 
 ## Coord-A (foundational)
 
-**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W1. Continuação-audit dos 4 commits anteriores (cef1959/e3ad19f/5974a84/f9850bf) fechou **GO** (Lens B grep + Lens C gates 4/4 + 22/22 verdes; zero ≥HIGH; 1 LOW informacional sim_populate velocity-sin = demo-only, unreachable by c9_replay, não-fixado). **T1.1 (Sprite v3→v4, 20 fields) EM ANDAMENTO.** Sessão única absorve Coord-A + Implementador (Enio 2026-05-28). Slot: `impl-sprite`. **RESERVO `crates/ph2d-render/` (sprite.rs + sprite_versioned.rs + tests/sprite_versioned_postcard.rs).** T1.2..T1.14 a seguir.
+**Status:** ATIVO 2026-05-28 — Sprite Inspector v2 W1. Continuação-audit dos 4 commits anteriores fechou **GO**. **T1.1 (Sprite v3→v4, 20 fields) FECHADO padrão-ouro — commit `4591f7e`** pós 2-lens audit (B ABI/serde + A/E scope/coverage): struct 20 campos + VERSION 4 + construtores + `SpriteVersioned::V4`(disc 0x01) + drift-gate `spritev3_struct_wire_matches_live_sprite_v3` aposentado + 2 testes V4 novos (disc-pin + round-trip) + reconciliação nome helper `default_region_filter_clip` em anatomia/schema/ADR-0070. 85 lib + 23 postcard verdes. **Próxima: T1.2.** Sessão única Coord-A + Implementador. Slot: `impl-sprite`. **RESERVO `crates/ph2d-render/`.**
+
+**⚠️ NOVO pre-existing failure (cross-session, NÃO fixado per audit-scope-discipline):** `cargo clippy -p <qualquer> --all-targets` falha em `crates/ph2d-imageio-svg/src/lib.rs:84` (`field_reassign_with_default`, rust-1.95.0). Surge porque clippy-driver linta workspace path-deps. **BLOQUEIA `ship.sh`/CI clippy.** Owner: imageio-svg / foundational. Fix trivial 1-linha (`usvg::Options { ..Default::default() }`). Reportado ao Enio.
 
 **Notas para próximo agente:**
 - W1.T1.6 migrator é **MANDATÓRIO** (não fallback) — ADR-0070-amendment-2 §3 reduziu o hybrid `#[serde(default)]` a single tier (wrapper enum único caminho).

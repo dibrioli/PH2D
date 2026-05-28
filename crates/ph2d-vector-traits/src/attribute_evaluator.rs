@@ -24,6 +24,21 @@ use crate::AnimValue;
 ///
 /// Implementations called on the render hot path MUST NOT allocate.
 /// Mock impls in [`crate::mocks`] satisfy this.
+///
+/// ## Thread-safety policy
+///
+/// `AttributeEvaluator` deliberately does **not** require `Send + Sync`
+/// as a supertrait. Single-thread tools (Pen / Pencil / Direct Select)
+/// can hold non-thread-safe state (e.g. RefCell caches) in their impls.
+/// Callers that need to cross thread boundaries pin the marker bounds
+/// at use site:
+///
+/// ```ignore
+/// let eval: Box<dyn AttributeEvaluator + Send + Sync> = ...;
+/// ```
+///
+/// All mock impls in [`crate::mocks`] satisfy `Send + Sync` (verified
+/// in `ph2d-vector-doc/tests/_audit_send_sync.rs` — R4 audit Lens-L).
 pub trait AttributeEvaluator {
     /// Sample the attribute at time `t`.
     fn sample(&self, t: f64) -> AnimValue;

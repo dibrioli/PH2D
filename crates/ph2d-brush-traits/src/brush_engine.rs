@@ -19,6 +19,21 @@ use std::borrow::Cow;
 /// free of GPU deps (the ADR-0067 mandate).
 ///
 /// Trait objects pin the target: `Box<dyn BrushEngine<Target = T>>`.
+///
+/// ## Thread-safety policy
+///
+/// Does **not** require `Send + Sync` as a supertrait. Painter brush
+/// libraries that need to be shared across threads (W2+ stroke
+/// pipeline running off the UI thread) pin the marker at the
+/// trait-object boundary:
+///
+/// ```ignore
+/// type SharedBrush<T> = Arc<dyn BrushEngine<Target = T> + Send + Sync>;
+/// ```
+///
+/// Single-thread Vector preview nodes can hold non-thread-safe state
+/// (e.g. small caches) in their impls without forcing all callers to
+/// pay for it. R4 audit Lens-L policy.
 pub trait BrushEngine {
     /// Concrete texture / raster target this engine stamps onto.
     type Target;

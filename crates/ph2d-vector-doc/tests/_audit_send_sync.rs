@@ -29,4 +29,9 @@ fn vector_doc_data_types_are_send_sync() {
     _assert_send_sync::<StrokeCap>();
     _assert_send_sync::<StrokeJoin>();
     _assert_send_sync::<DormantFractureSet>();
+    // R4 audit Lens-L addition — error types introduced by R4 helpers.
+    _assert_send_sync::<VectorOpApplyError>();
+    _assert_send_sync::<LoadAndValidateError>();
+    _assert_send_sync::<CrdtReplay>();
+    _assert_send_sync::<EmbeddedKind>();
 }

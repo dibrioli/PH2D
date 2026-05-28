@@ -36,6 +36,13 @@ impl WgslSource {
 /// `compile` is NOT called on the render hot path — it runs once when the
 /// shader DAG topology changes (per [ADR-0060 §2 topology vs UBO split](../../../../docs/architecture/decisions/0060-vector-procedural-fill.md)),
 /// so allocation here is permitted.
+///
+/// ## Thread-safety policy
+///
+/// Does **not** require `Send + Sync`. W6+ shader-graph editors may
+/// hold non-thread-safe DAG state. Callers crossing thread boundaries
+/// (e.g. off-thread shader compile) pin via
+/// `Box<dyn ProceduralFillShader + Send + Sync>`. R4 audit Lens-L.
 pub trait ProceduralFillShader {
     /// Compile the DAG into a WGSL source string.
     fn compile(&self) -> WgslSource;

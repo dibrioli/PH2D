@@ -39,7 +39,7 @@ fn fixtures_dir() -> PathBuf {
 }
 
 #[test]
-#[ignore = "manual fixture bootstrap; run with `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored`. DO NOT pass --include-ignored in CI"]
+#[ignore = "manual fixture bootstrap; run with `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored --nocapture`. DO NOT pass --include-ignored in CI"]
 fn write_v3_fixtures() {
     write_v3_fixtures_atomically();
 }
@@ -80,7 +80,7 @@ fn v3_fixtures_present() {
         let path = dir.join(name);
         assert!(
             path.exists(),
-            "missing fixture {path:?} — run `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored` to bootstrap"
+            "missing fixture {path:?} — run `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored --nocapture` to bootstrap"
         );
     }
 }

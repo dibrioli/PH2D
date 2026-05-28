@@ -37,7 +37,7 @@
 //! → v4 migrator (W1.T1.6) is therefore mandatory.
 //! See `tests/sprite_versioned_postcard.rs::postcard_rejects_trailing_serde_default_on_short_payload`
 //! for the empirical pin and
-//! `docs/architecture/decisions/0070-amendment-1.md` for the ratified
+//! `docs/architecture/decisions/0070-amendment-2.md` for the ratified
 //! spec correction.
 //!
 //! ## Why `SpriteV3` is a frozen snapshot, not an alias for `Sprite`
@@ -71,7 +71,7 @@ use crate::sprite::SpriteSource;
 ///
 /// `anchor` keeps `#[serde(default)]` as a faithful documentary
 /// mirror of the live `Sprite::anchor` attribute set, per
-/// ADR-0070-amendment-1 §3. Under postcard the attribute is
+/// ADR-0070-amendment-2 §3. Under postcard the attribute is
 /// empirically dead (T0.13 pin); under a hypothetical future
 /// self-describing format swap (JSON debug bridge) it would
 /// activate. Removing it here would create an asymmetric mirror
@@ -183,6 +183,22 @@ pub fn canonical_v3_fixtures() -> [(&'static str, SpriteV3); 5] {
 /// discriminant (postcard varint, sequential by declaration order)
 /// IS the schema version on the wire — no separate `version: u32`
 /// field is needed, and none exists.
+///
+/// ## When to use
+///
+/// - **Postcard save (cooker / scene writer):** wrap a `Sprite` v3 in
+///   `SpriteVersioned::V3(...)` before calling
+///   `postcard::to_allocvec` so the discriminant byte is on the wire
+///   from day one. In W1+ the same pattern wraps a v4 `Sprite` in
+///   `V4(...)`.
+/// - **Postcard load (cooker / scene loader / migrator):** deserialize
+///   to `SpriteVersioned`, then match on the variant. The W1.T1.6
+///   `crate::sprite_versioned::load_sprite` helper (ADR-0070-amendment-2
+///   §4) is the canonical entry point and dispatches V3 →
+///   `migrate_v3_to_v4` → v4 `Sprite` internally.
+/// - **Runtime / ECS / shaders:** use `Sprite` directly.
+///   `SpriteVersioned` is purely a load/save boundary wrapper; it
+///   should never appear in component storage or extract output.
 ///
 /// **Single variant in W0** — V4 lands in W1 once `Sprite` becomes
 /// the 20-field v4 schema. The current single-variant shape is the

@@ -59,23 +59,47 @@ fn smoke_goldens_dir_canonical_path_exists() {
 #[test]
 #[ignore = "W2.T2.X smoke fixture: smoke_w2_color_tint.scene + 5 PNG goldens. Un-ignore + replace body when the W2 wave lands its scene + per_corner_tint + self_tint + tint_fill + opacity features."]
 fn w2_smoke_scene_loads_without_panic_and_matches_goldens() {
-    unimplemented!("W2.T2.X populates this gate");
+    unimplemented!(
+        "W2.T2.X smoke fixture not yet wired. Replace this body with: \
+         (1) load assets/smoke_fixtures/sprite_inspector_v2/smoke_w2_color_tint.scene; \
+         (2) headless-render via ph2d-host; \
+         (3) bit-compare against docs/Sprite_projeto/smoke_goldens/w2_*.png (5 goldens). \
+         Depends on W2 schema features: per_corner_tint + self_tint + tint_fill + opacity."
+    );
 }
 
 #[test]
 #[ignore = "W3.T3.X smoke fixture: smoke_w3_sorting.scene + 5 PNG goldens. Depends on SortingLayer / ZIndexOverride / YSort / SortingGroup / ShowBehindParent landing in W3."]
 fn w3_smoke_scene_loads_without_panic_and_matches_goldens() {
-    unimplemented!("W3.T3.X populates this gate");
+    unimplemented!(
+        "W3.T3.X smoke fixture not yet wired. Replace this body with: \
+         (1) load assets/smoke_fixtures/sprite_inspector_v2/smoke_w3_sorting.scene; \
+         (2) headless-render via ph2d-host; \
+         (3) bit-compare against docs/Sprite_projeto/smoke_goldens/w3_*.png (5 goldens). \
+         Depends on W3 features: SortingLayer + ZIndexOverride + YSort + SortingGroup + ShowBehindParent."
+    );
 }
 
 #[test]
 #[ignore = "W4.T4.X smoke fixture: smoke_w4_material_animation.scene + 3 PNG goldens. Depends on Material + UseParentMaterial + InstanceShaderParams + SpriteAnimator."]
 fn w4_smoke_scene_loads_without_panic_and_matches_goldens() {
-    unimplemented!("W4.T4.X populates this gate");
+    unimplemented!(
+        "W4.T4.X smoke fixture not yet wired. Replace this body with: \
+         (1) load assets/smoke_fixtures/sprite_inspector_v2/smoke_w4_material_animation.scene; \
+         (2) headless-render via ph2d-host; \
+         (3) bit-compare against docs/Sprite_projeto/smoke_goldens/w4_*.png (3 goldens). \
+         Depends on W4 features: Material + UseParentMaterial + InstanceShaderParams + SpriteAnimator."
+    );
 }
 
 #[test]
 #[ignore = "W5.T5.X smoke fixture: smoke_w5_named_anchors.scene + 4 PNG goldens. Depends on NamedAnchorList (socket / slice / 9slice) + per-frame override."]
 fn w5_smoke_scene_loads_without_panic_and_matches_goldens() {
-    unimplemented!("W5.T5.X populates this gate");
+    unimplemented!(
+        "W5.T5.X smoke fixture not yet wired. Replace this body with: \
+         (1) load assets/smoke_fixtures/sprite_inspector_v2/smoke_w5_named_anchors.scene; \
+         (2) headless-render via ph2d-host; \
+         (3) bit-compare against docs/Sprite_projeto/smoke_goldens/w5_*.png (4 goldens). \
+         Depends on W5 features: NamedAnchorList (socket / slice / 9slice) + per-frame anchor override."
+    );
 }

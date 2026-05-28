@@ -1,5 +1,5 @@
 //! T0.13 — empirical postcard validation (Sprite_projeto §10.3 +
-//! §10.4 + ADR-0070-amendment-1 + HANDOFF_sprite_inspector_v2 §5).
+//! §10.4 + ADR-0070-amendment-2 + HANDOFF_sprite_inspector_v2 §5).
 //!
 //! Five independent contracts the W1 schema bump will rely on:
 //!
@@ -9,7 +9,7 @@
 //!    correctly via `postcard::from_bytes::<SpriteVersioned>`.
 //!
 //! 2. **EMPIRICAL FALSIFICATION — `#[serde(default)]` is dead under
-//!    postcard.** ADR-0070-amendment-1 §2 ratified the finding;
+//!    postcard.** ADR-0070-amendment-2 §2 ratified the finding;
 //!    postcard returns `Error::DeserializeUnexpectedEnd` on
 //!    trailing-missing fields. The wrapper enum is therefore the
 //!    SOLE back-compat path; the W1 migrator (T1.6) is mandatory.
@@ -44,7 +44,7 @@ fn read_fixture(name: &str) -> Vec<u8> {
     let path = fixtures_dir().join(name);
     std::fs::read(&path).unwrap_or_else(|e| {
         panic!(
-            "fixture {path:?} missing ({e}) — run `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored` to bootstrap"
+            "fixture {path:?} missing ({e}) — run `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored --nocapture` to bootstrap"
         )
     })
 }
@@ -157,7 +157,7 @@ fn versioned_v3_max_size_carries_extremal_values() {
 ///
 /// Postcard rejects trailing-missing fields with
 /// `Error::DeserializeUnexpectedEnd`. Spec §10.4 hybrid claim is
-/// SUPERSEDED by ADR-0070-amendment-1 §3; wrapper enum is the SOLE
+/// SUPERSEDED by ADR-0070-amendment-2 §3; wrapper enum is the SOLE
 /// back-compat path.
 #[derive(serde::Serialize)]
 struct ProbeV1 {
@@ -186,7 +186,7 @@ fn postcard_rejects_trailing_serde_default_on_short_payload() {
     let result: Result<ProbeV2, _> = postcard::from_bytes(&bytes);
     let err = result.expect_err(
         "postcard's behavior on trailing-missing fields is the W1 contract's pivot — \
-         if this now SUCCEEDS, re-evaluate ADR-0070-amendment-1 §3",
+         if this now SUCCEEDS, re-evaluate ADR-0070-amendment-2 §3",
     );
     // Explicit match (not `matches!()`) is the contract: a postcard
     // rename or new variant MUST land in the `other =>` arm so a
@@ -232,8 +232,12 @@ fn fixtures_match_canonical_serialization() {
             generated, committed,
             "fixture {name} drift — committed bytes do not match the canonical \
              SpriteV3 input. Either: (a) SpriteV3 field shape changed without \
-             regenerating fixtures, (b) postcard wire encoding drifted, or (c) \
-             the fixture was hand-edited. Resolve before W1 schema bump."
+             regenerating fixtures, (b) postcard wire encoding drifted (check \
+             the `=1.1.3` exact-pin in crates/ph2d-render/Cargo.toml), (c) the \
+             fixture was hand-edited, or (d) committed bytes were regenerated \
+             on an OS / arch with non-bit-identical f32 / varint encoding — \
+             should be impossible per HR-5; if it occurred, file an \
+             ADR amendment first. Resolve before W1 schema bump."
         );
     }
 }
@@ -264,7 +268,7 @@ fn spritev3_struct_wire_matches_live_sprite_v3() {
 }
 
 #[test]
-fn spritev3_mirror_attribute_set_matches_live_sprite() {
+fn spritev3_mirror_anchor_missing_blob_rejects_symmetric_with_live() {
     // Lens E (R2) asymmetry pin: both `Sprite::anchor` and
     // `SpriteV3::anchor` carry `#[serde(default)]`; both
     // `Sprite::premultiplied` and `SpriteV3::premultiplied` carry
@@ -272,7 +276,7 @@ fn spritev3_mirror_attribute_set_matches_live_sprite() {
     // we CAN assert that a hypothetical anchor-missing blob behaves
     // identically against both structs (both reject, because
     // postcard ignores `#[serde(default)]`). Empirically validates
-    // the mirror invariant ADR-0070-amendment-1 §3 calls out.
+    // the mirror invariant ADR-0070-amendment-2 §3 calls out.
     let bytes_without_anchor: Vec<u8> = {
         // Hand-craft a v2-ish blob: source(Atlas, key=0) + size +
         // tint, but NO anchor. Postcard layout is positional; this
@@ -293,7 +297,7 @@ fn spritev3_mirror_attribute_set_matches_live_sprite() {
     let frozen_result: Result<SpriteV3, _> = postcard::from_bytes(&bytes_without_anchor);
     // Both must agree: either both succeed (postcard supports
     // serde(default)) or both fail (postcard rejects trailing-
-    // missing). Today: BOTH fail. ADR-0070-amendment-1 §2 confirms.
+    // missing). Today: BOTH fail. ADR-0070-amendment-2 §2 confirms.
     assert_eq!(
         live_result.is_err(),
         frozen_result.is_err(),
@@ -371,8 +375,10 @@ fn versioned_wrapper_round_trip_preserves_v3() {
         anchor: [1.5, -2.5],
         premultiplied: false,
     });
-    let bytes = postcard::to_allocvec(&original).expect("ser");
-    let restored: SpriteVersioned = postcard::from_bytes(&bytes).expect("de");
+    let bytes = postcard::to_allocvec(&original)
+        .expect("round-trip ser of canonical V3 envelope must always succeed");
+    let restored: SpriteVersioned = postcard::from_bytes(&bytes)
+        .expect("round-trip de of self-serialized bytes must always succeed");
     assert_eq!(restored, original);
 }
 
@@ -461,6 +467,26 @@ fn versioned_load_accepts_max_varint_atlas_key() {
     );
     let restored: SpriteVersioned = postcard::from_bytes(&bytes).unwrap();
     assert_eq!(restored, probe);
+}
+
+#[test]
+fn postcard_exact_version_pin_enforced_in_cargo_toml() {
+    // HR-5 cross-OS bit-identical contract for v3 postcard fixtures
+    // depends on postcard's wire format being frozen. Cargo's caret
+    // semver default (`postcard = "1.1.3"`) would let `cargo update`
+    // drift to 1.1.4 / 1.2 silently — and `fixtures_match_canonical_serialization`
+    // would only catch the drift if the WIRE format actually changed
+    // (not if the `=` prefix were removed pre-emptively). This gate
+    // pins the EXACT-pin syntax itself, so any agent removing the
+    // `=` lands here before they can land it elsewhere.
+    let cargo_toml = include_str!("../Cargo.toml");
+    assert!(
+        cargo_toml.contains(r#"postcard = { version = "=1.1.3""#),
+        "postcard exact-pin (`=1.1.3`) lost from crates/ph2d-render/Cargo.toml — \
+         HR-5 wire format contract (ADR-0070-amendment-2 §1) requires the exact-pin \
+         syntax with the leading `=`. Any bump = regenerate fixtures + cross-OS re-verify \
+         + ADR amendment."
+    );
 }
 
 #[test]

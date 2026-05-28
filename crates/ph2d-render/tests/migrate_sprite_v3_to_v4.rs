@@ -41,10 +41,12 @@ fn w0_stub_v3_fixtures_dispatch_through_wrapper_for_w1_migrator() {
     for (name, _canonical_sprite) in canonical_v3_fixtures() {
         let path = fixtures_dir().join(name);
         let bytes = std::fs::read(&path).unwrap_or_else(|e| {
-            panic!("fixture {path:?} missing ({e}) — bootstrap via generate_v3_fixtures --ignored")
+            panic!(
+                "fixture {path:?} missing ({e}) — run `cargo test -p ph2d-render --test generate_v3_fixtures -- --ignored --nocapture` to bootstrap"
+            )
         });
-        let versioned: SpriteVersioned =
-            postcard::from_bytes(&bytes).unwrap_or_else(|e| panic!("dispatch {name}: {e}"));
+        let versioned: SpriteVersioned = postcard::from_bytes(&bytes)
+            .unwrap_or_else(|e| panic!("postcard wrapper-enum dispatch on {name} failed: {e}"));
         match versioned {
             SpriteVersioned::V3(_) => {} // expected
         }
@@ -52,15 +54,24 @@ fn w0_stub_v3_fixtures_dispatch_through_wrapper_for_w1_migrator() {
 }
 
 #[test]
-#[ignore = "W1.T1.6 will implement migrate_v3_to_v4 and convert this test from #[ignore] \
-            to the per-fixture assertion suite spec §10.6 describes (region_filter_clip \
-            branch on Atlas vs Individual, opacity = 1.0 default, self_tint = white, etc.)"]
+#[ignore = "W1.T1.6 acceptance: implement (a) `pub fn crate::sprite_versioned::load_sprite(bytes: &[u8]) -> Result<Sprite, LoadError>` per ADR-0070-amendment-2 §4, and (b) `impl Sprite { pub fn migrate_v3_to_v4(v3: SpriteV3) -> Sprite }` per spec §10.2 — then un-ignore + replace this body with the per-fixture assertion suite spec §10.6 describes."]
 fn migrator_unimplemented_until_w1() {
-    // The function `migrate_v3_to_v4` does not exist in W0. This
-    // `#[ignore]`d stub keeps the spec §10.6 file name reserved
-    // ("crates/ph2d-render/tests/migrate_sprite_v3_to_v4.rs (a
-    // criar em W0.T0.12, NÃO W1)") so W1.T1.6 lands at the
-    // canonical path. Removing this attribute and implementing the
-    // body is the explicit W1.T1.6 acceptance criterion.
-    unimplemented!("migrate_v3_to_v4 lands in W1.T1.6");
+    // The functions `load_sprite` and `migrate_v3_to_v4` do not
+    // exist in W0. This `#[ignore]`d stub keeps the spec §10.6 file
+    // name reserved ("crates/ph2d-render/tests/migrate_sprite_v3_to_v4.rs
+    // (a criar em W0.T0.12, NÃO W1)") so W1.T1.6 lands at the
+    // canonical path.
+    //
+    // W1.T1.6 contract:
+    //   - `crate::sprite_versioned::load_sprite(&[u8]) -> Result<Sprite, LoadError>`
+    //     (ADR-0070-amendment-2 §4) — wrapper dispatch entry point.
+    //   - `Sprite::migrate_v3_to_v4(SpriteV3) -> Sprite` (spec §10.2)
+    //     — pure transform with `region_filter_clip` Atlas branch.
+    //   - Per-fixture assertions (spec §10.6) for the 5 canonical
+    //     v3 fixtures + a v4 round-trip.
+    unimplemented!(
+        "load_sprite + migrate_v3_to_v4 land in W1.T1.6. Implementation contract: \
+         ADR-0070-amendment-2 §4 + spec Sprite_projeto/10_schema_versionamento.md §10.2 + §10.6. \
+         Use ph2d_render::sprite_versioned::canonical_v3_fixtures() for inputs."
+    );
 }

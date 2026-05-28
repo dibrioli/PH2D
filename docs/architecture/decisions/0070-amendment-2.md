@@ -1,7 +1,8 @@
-# ADR-0070-amendment-1 — Wrapper enum is the SOLE back-compat path (empirical T0.13 finding)
+# ADR-0070-amendment-2 — Wrapper enum is the SOLE back-compat path (empirical T0.13 finding)
 
 **Status:** Accepted (W0 carry-over, 2026-05-28)
 **Amends:** [ADR-0070 — Sprite schema v4 (`SpriteVersioned` + `RenderInstance` ABI)](0070-sprite-schema-v4.md)
+**Slot rationale:** Numbered `-2` because `-1` is pre-reserved by spec/HANDOFF for the dual-buffer perf mitigation that fires from W1.T1.7b criterion bench (ADR-0070 §2.5 / `Sprite_projeto/15_plano_de_implementacao.md:63` / `HANDOFF_sprite_inspector_v2.md:158`). This amendment lands first because the empirical T0.13 finding is W0 work; dual-buffer is conditional W1 work.
 **Spec sections superseded:** `docs/Sprite_projeto/10_schema_versionamento.md` §10.4 (DECISÃO HÍBRIDA PÓS-AUDIT).
 **Reference:** [`crates/ph2d-render/tests/sprite_versioned_postcard.rs`](../../../crates/ph2d-render/tests/sprite_versioned_postcard.rs) — empirical pin via `postcard_rejects_trailing_serde_default_on_short_payload`.
 

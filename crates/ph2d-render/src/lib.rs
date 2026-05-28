@@ -30,6 +30,12 @@ pub mod premul;
 pub mod registry;
 pub mod renderer;
 pub mod sprite;
+/// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
+/// schema bump v3→v4 + ABI changes live behind this module. See
+/// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)
+/// for the read order, [`docs/Sprite_projeto/`](../../../docs/Sprite_projeto/)
+/// for the ratified spec, and ADR-0070 + ADR-0070-amendment-2 for
+/// the wrapper-enum back-compat contract.
 pub mod sprite_versioned;
 pub mod tonemap;
 pub mod vello_pass;

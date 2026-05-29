@@ -1,7 +1,10 @@
 # Diretriz de Implementação — PH2D
 
 **Versão:** 7.1 — 2026-05-28 (modelo de papéis consolidado: **1 Coordenador único + N Implementadores** — absorve os antigos Coord-A/Coord-B, após colisões git entre coordenadores/implementadores paralelos).
-**Audiência:** **toda LLM que entra no projeto.** Leia inteiro antes de tocar em código.
+**Audiência:** **toda LLM que entra no projeto.** Este doc é **referência** — **NÃO
+leia inteiro**; use o roteador leia-por-tarefa em [`CLAUDE.md §1`](../../CLAUDE.md) e
+leia só a(s) seção(ões) que sua tarefa exige. Obrigatório p/ todos: §0 (sanity), §1
+(papéis), §2 (triagem), §6 (velocidade), §7 (git). O resto é por-tarefa.
 
 > **Seu primeiro output sempre = TRIAGEM (§2).** Classifique a tarefa do Enio
 > e diga **como proceder** antes de codar.
@@ -525,38 +528,71 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 
 ---
 
-### 6.6 Velocidade multi-agente — alta cadência (2026-05-28)
+### 6.6 Stack de velocidade multi-agente — "agents flying" (2026-05-29)
 
-Com N implementadores numa máquina de 8 GiB, o build/teste **redundante** é o
-gargalo. Regras para implementação de altíssima velocidade + validação pesada
-**1× no fim**:
+Teto de 8 GiB RAM **aceito**; concorrência **≤3 agentes**. O gargalo NÃO é
+paralelismo — é (a) build/teste **redundante** e (b) tokens queimados em saída
+crua do compilador + adivinhação de tipos. Otimiza-se a **velocidade de iteração
+por-agente**. Norte: [ADR-0075](../architecture/decisions/0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md)
+(monorepo Rust + ECS-decoupling + build-speed; não plugins runtime).
 
-1. **Inner loop = SÓ `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh <crate>`
-   para cortar payload de erro). **ZERO** `cargo test`, **ZERO** `clippy --all-targets`,
-   **ZERO** auditor adversarial **por task** durante o burst de edição.
-2. **A validação pesada é BATCHED no fim do módulo/wave**, não por task: a
-   auditoria adversarial (≥2 lentes rotacionadas), `nextest`, `clippy --all-targets`
-   e o smoke acontecem **uma vez** sobre o diff acumulado do módulo — não N× por
-   micro-task. (O padrão-ouro é preservado **no gate**, não repetido a cada commit.)
-3. **Build dedup via CoW**: a base warm fica em `target-slots/base`. Cada agente
-   roda UMA vez `bash scripts/slot-seed.sh <slot>` (clone APFS `cp -c`, ~1s, 0 bytes)
-   e depois **prefixa cada cargo** com o `CARGO_TARGET_DIR` impresso — o Bash-tool
-   **não persiste env** entre chamadas, então `source slot-env.sh` não basta para
-   agentes. Ex.: `CARGO_TARGET_DIR=<path> cargo check -p <crate>`. **Não use o
-   `target/` default** (foi recuperado). Rebuild da base (Coordenador, SOZINHO,
-   RAM-heavy) só quando `Cargo.lock`/toolchain muda.
-4. **Teste de módulo rápido:** `scripts/nextest-impacted.sh` (roda só `rdeps()` do
-   que mudou + força o golden de determinismo). O gate final continua sendo
-   `./scripts/ship.sh` (`nextest run --workspace --cargo-profile ci-test` — paridade
-   exata com o CI, deps em opt-level=3).
-5. **Concorrência:** máx **2-3 `cargo` simultâneos** (RAM 8 GiB). O Coordenador
-   escalona quem compila quando via SESSION_ACTIVE (§1.1); a CoW barateia criar
-   slots mas **não** levanta esse teto.
+#### A. O loop (núcleo — sempre vale)
 
-**Anti-padrão que matou a velocidade (2026-05-28):** mandar cada implementador
-rodar `cargo test` + `clippy --all-targets` + **spawnar 2 auditores adversariais
-POR TASK**. Com 5 agentes isso é uma tempestade de builds redundantes. Auditoria
-é **por módulo fechado**, não por micro-task.
+1. **Inner loop = SÓ `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh`
+   p/ cortar payload de erro). ZERO test/clippy/auditor **por task**.
+2. **Validação pesada BATCHED 1× no fechamento do módulo** (não por task): auditoria
+   ≥2 lentes rotacionadas + `nextest` + `clippy --all-targets` + smoke, sobre o diff
+   ACUMULADO. Padrão-ouro é preservado **no gate**, não repetido a cada commit.
+3. **Slot warm por CoW:** `bash scripts/slot-seed.sh <slot>` (clone APFS, ~1s, 0 bytes)
+   → **prefixe cada cargo** com o `CARGO_TARGET_DIR` impresso (Bash-tool não persiste
+   env). **Não use o `target/` default.** Coordenador rebuilda `target-slots/base`
+   (SOZINHO, RAM-heavy) só quando `Cargo.lock`/toolchain muda.
+4. **Teste de módulo:** `scripts/nextest-impacted.sh` (só `rdeps()` do que mudou +
+   força o golden de determinismo). Gate final = `./scripts/ship.sh`.
+5. **Concorrência:** **≤3 `cargo` simultâneos** — Coordenador escalona via
+   SESSION_ACTIVE (§1.1). CoW barateia criar slots, NÃO levanta esse teto.
+
+#### B. Alavancas (deep-research 2026-05-29, verificada 3-votos; run `wf_8d23212a-39e`)
+
+Separadas por confiança. Linux-benchmarks **não transferem direto** pro Apple Silicon
+8 GiB → as marcadas "pilotar" exigem medição local antes de virar mandato.
+
+**🥇 Tier 1 — maior alavanca, agent-specific (PILOTAR + medir RAM):**
+- **Diagnóstico via LSP, não saída crua.** Hoje o agente lê output bruto do cargo e
+  **adivinha tipos** — desperdício de token e erro. Ligue-o ao **LSP nativo do Claude
+  Code (v2.0.74+, Dez/2025)** ou ao **`bacon-ls`** (wrapper LSP, roda `cargo check`/clippy
+  → JSON, mais maduro que os MCP hobby). ⚠️ **Aberto/medir:** footprint do rust-analyzer
+  p/ ≤3 agentes num workspace de ~30 crates wgpu/vello pode estourar 8 GiB — pilotar **1**
+  agente, medir RSS, decidir. Baseline barato sem isso = `cargo-check-narrow.sh`.
+  *(MCP servers de terceiros tipo rust-mcp/cursor-rust-tools = EXPERIMENTAL hobby.)*
+
+**🥈 Tier 2 — build/test loop, proven, baixo risco:**
+- **Linker:** confirme **lld** ou **ld-prime** (Apple). `mold` é **incompatível com macOS**
+  (erro fatal — é ELF-only). Já usamos `ld64.lld` via `~/.cargo/config.toml`.
+- **Redução de debug-info** no profile de dev/teste (`strip = "debuginfo"` ou `debug = 0`)
+  — ~80% do tempo de build pós-linker em Linux; no mac o `strip` é comando externo, então
+  **medir**. Trade: backtrace perde números de linha de frames (origem do panic mantida).
+- **Dynamic-linking de dev** (padrão `bevy_dylib`): ~5× incremental. Dev-only, proibido
+  em release. Aplica a **build/test**, não ao `cargo check` (check já pula codegen/link).
+
+**🥉 Tier 3 — pilotar + medir (ganho real M-series incerto):**
+- **`cargo-hakari`** (workspace-hack): mata a **cascata de recompile por feature-unification**
+  ("check ganha mais que build"; até 100× em comando isolado, ~1.7× cumulativo em Linux).
+  Custo: crate central novo (acoplamento leve) + entrada em `cargo-machete` ignore. Medir
+  ganho no nosso slot CoW antes de adotar.
+
+**🚫 NÃO fazer (achados contrários verificados):**
+- **Cranelift:** irrelevante ao inner loop (check já não faz codegen); no macOS unwinding
+  de panic **não-suportado** (força `-Cpanic=abort`) + `std::arch` SIMD parcial = ruim p/
+  wgpu/vello/rapier. Experimental.
+- **`mold`:** incompatível com macOS.
+- **`-Zthreads`** (frontend paralelo): não-provado em RAM-bound; aumenta pico de memória.
+
+#### C. Anti-padrão que matou a velocidade (não repita)
+
+Mandar cada implementador rodar `cargo test` + `clippy --all-targets` + **spawnar 2
+auditores POR TASK** = tempestade de builds redundantes. Auditoria é **por módulo
+fechado**, não por micro-task (vide §6.6.A.2).
 
 ---
 

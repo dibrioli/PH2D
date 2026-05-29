@@ -105,11 +105,15 @@ DISCIPLINA GIT (colisões ativas — 5 implementadores no índice compartilhado)
   - Commits LOCAIS, sem push (eu faço ship+push 1× por jornada).
 
 ───────────────────────────────────────────────────────────────────
-FECHAMENTO (mandato padrão-ouro) / REPORT
+FECHAMENTO (mandato padrão-ouro + alta cadência DIRETRIZ §6.6) / REPORT
 ───────────────────────────────────────────────────────────────────
-  Cada task fecha com ≥2 auditorias adversariais (lentes ROTACIONADAS, não reuse
+  INNER LOOP por task = SÓ `cargo check -p ph2d-vector-doc` (ou cargo-check-narrow.sh).
+  NADA de test / clippy --all-targets / auditor POR TASK.
+  NO FECHAMENTO do módulo (1×, NÃO por task) — sobre o diff ACUMULADO:
+  cargo nextest (scripts/nextest-impacted.sh — impacto + golden determinismo) +
+  clippy --all-targets + ≥2 auditorias adversariais (lentes ROTACIONADAS, não reuse
   as 6 do relatório) → remediar CRITICAL/HIGH/MEDIUM → re-audit erro-zero.
-  T1.8 audit formal: a auditoria existente cobre a maior parte; faça 1 mini-round
+  T1.8 audit formal: a auditoria existente cobre a maior parte; 1 mini-round
   pós-T1.4 confirmando (lentes que pegaram alvo grande), não round do zero.
   SMOKE (Enio, fim de W1): vide handoff §3.5 (triângulo persiste, Esc cancela/
   limpa, sem .ph2d-vector no root, click rejeitado → toast).

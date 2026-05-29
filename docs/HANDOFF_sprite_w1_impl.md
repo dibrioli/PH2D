@@ -74,21 +74,26 @@ PRÓXIMA TASK = T1.4 (migrator)
   bench T1.7b <8ms; e SMOKE do Enio: cena atual renderiza IDÊNTICA (zero regressão).
 
 ───────────────────────────────────────────────────────────────────
-O LOOP (por task, sem parar até precisar de smoke)
+O LOOP (alta cadência — DIRETRIZ §6.6)
 ───────────────────────────────────────────────────────────────────
-  1. Build isolado (slot impl-1 — sem contender no lock do target/).
+  POR TASK (inner loop, rápido):
+  1. Build isolado (slot impl-sprite, semeado por CoW — slot-env.sh).
   2. Implemente padrão-ouro: zero corner-cut, zero "TODO depois", contratos
-     minúsculos+gateados, toda superfície pública documentada, testes
-     feliz+edge+classe-de-bug.
-  3. Auto-verifique: cargo test/clippy --all-targets/fmt -p ph2d-render.
-  4. AUDITE: ≥2 auditores adversariais paralelos, LENTES ROTACIONADAS (A escopo ·
-     B ABI/grep · C determinism/HR-5 · D UX/i18n · E security/perf/coverage).
-     Duros, sem validar por cortesia (feedback-audit-lens-diversity).
-  5. CORRIJA TODOS os achados (Crítico→Baixo). RE-AUDITE até erro-zero
-     (feedback-perfection-no-deferrals — gaps in-scope fecham agora).
-  6. Commit ESCOPADO em background:
+     minúsculos+gateados, superfície pública documentada, testes feliz+edge+classe-de-bug.
+  3. Valide SÓ com `cargo check -p ph2d-render` (ou scripts/cargo-check-narrow.sh
+     ph2d-render). NADA de cargo test / clippy --all-targets / auditor POR TASK.
+  4. Commit ESCOPADO em background:
        git add -- <só meus paths em ph2d-render>
        git commit --no-verify -m "msg" -- <mesmos paths>
+
+  NO FECHAMENTO DO MÓDULO (W1 inteiro, 1× — NÃO por task):
+  5. cargo nextest run + clippy --all-targets + fmt -p ph2d-render
+     (scripts/nextest-impacted.sh roda só o impacto + golden de determinismo).
+  6. AUDITE: ≥2 auditores adversariais paralelos, LENTES ROTACIONADAS (A escopo ·
+     B ABI/grep · C determinism/HR-5 · D UX/i18n · E security/perf/coverage),
+     sobre o diff ACUMULADO do módulo. Duros (feedback-audit-lens-diversity).
+  7. CORRIJA TODOS os achados (Crítico→Baixo). RE-AUDITE até erro-zero
+     (feedback-perfection-no-deferrals). Depois: smoke do Enio (cena idêntica).
 
 ───────────────────────────────────────────────────────────────────
 ANTI-COLISÃO (a máquina tem outros 4 agentes ativos)

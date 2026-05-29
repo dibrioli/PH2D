@@ -116,9 +116,11 @@ ARMADILHAS (decoradas — já queimaram no módulo)
   5. #![forbid(unsafe_code)] no nosso crate fica — unsafe só nas deps transitive.
 
 ───────────────────────────────────────────────────────────────────
-VALIDAÇÃO + 5-LENS AUDIT (rotacione lentes — anti-Goodhart)
+VALIDAÇÃO + 5-LENS AUDIT — 1× NO FECHAMENTO do módulo (DIRETRIZ §6.6)
 ───────────────────────────────────────────────────────────────────
-  cargo check/test/clippy -p ph2d-imageio-avif --all-targets -- -D warnings
+  INNER LOOP por task = SÓ `cargo check -p ph2d-imageio-avif` (ou cargo-check-narrow.sh).
+  O bloco abaixo roda UMA vez, ao declarar o AVIF pronto — NÃO por commit:
+  cargo nextest + clippy -p ph2d-imageio-avif --all-targets -- -D warnings
   cargo test -p ph2d-imageio              # contract gates
   cargo test -p ph2d-imageio-registry-init # staleness + ABC order
   cargo deny check licenses               # vendored aom/dav1d ok (workspace-wide)

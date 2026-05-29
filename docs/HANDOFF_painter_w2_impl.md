@@ -104,14 +104,17 @@ DISCIPLINA GIT (índice compartilhado entre 5 implementadores)
   - Stage CEDO (fence contra reset alheio). Commits LOCAIS, sem push (eu faço ship).
 
 ───────────────────────────────────────────────────────────────────
-VALIDAÇÃO + FECHAMENTO (mandato §0)
+VALIDAÇÃO + FECHAMENTO (mandato §0 + alta cadência DIRETRIZ §6.6)
 ───────────────────────────────────────────────────────────────────
-  cargo check/test/clippy -p ph2d-tool-painter -p ph2d-panel-painter-sidebar --all-targets -- -D warnings
-  (+ -p ph2d-painter-stroke -p ph2d-painter-brush se a TASK 0 tocá-las)
-  Gates: architecture_panel_chip_pill_no_stepper, hr12_widgets_a11y (T2.6),
-         no_literal_color / no_magic_numeric, architecture_painter_contract_surface.
-  Cada task fecha com ≥2 auditorias adversariais (lentes ROTACIONADAS — NÃO reuse
-  W/X/Y/Z de T2.1) → remediar CRITICAL/HIGH/MEDIUM in-code → re-audit erro-zero.
-  Reporte por task: "T2.X pronto, commit local <sha>, <N lib + M> verdes
+  INNER LOOP por task = SÓ `cargo check -p ph2d-tool-painter -p ph2d-panel-painter-sidebar`
+  (ou cargo-check-narrow.sh). NADA de test / clippy --all-targets / auditor POR TASK.
+  NO FECHAMENTO do módulo W2 (1×, NÃO por task) — sobre o diff ACUMULADO:
+    cargo nextest run + clippy --all-targets -p <suas crates>
+      (+ -p ph2d-painter-stroke -p ph2d-painter-brush se a TASK 0 tocá-las).
+    Gates: architecture_panel_chip_pill_no_stepper, hr12_widgets_a11y (T2.6),
+           no_literal_color / no_magic_numeric, architecture_painter_contract_surface.
+    ≥2 auditorias adversariais (lentes ROTACIONADAS — NÃO reuse W/X/Y/Z de T2.1) →
+    remediar CRITICAL/HIGH/MEDIUM in-code → re-audit erro-zero.
+  Reporte ao fechar o módulo: "Painter W2 pronto, commits <sha…>, verdes
   (incl. os 4 t19 da TASK 0), audit <K lentes> erro-zero."
 ═══════════════════════════════════════════════════════════════════

@@ -575,14 +575,19 @@ Separadas por confiança. Linux-benchmarks **não transferem direto** pro Apple 
   ser PIOR que o check on-demand. Só vale se medido folgado.
   *(MCP de terceiros rust-mcp/cursor-rust-tools = EXPERIMENTAL hobby E type-query = RAM-blocked.)*
 
-**🥈 Tier 2 — build/test loop, proven, baixo risco:**
-- **Linker:** confirme **lld** ou **ld-prime** (Apple). `mold` é **incompatível com macOS**
-  (erro fatal — é ELF-only). Já usamos `ld64.lld` via `~/.cargo/config.toml`.
-- **Redução de debug-info** no profile de dev/teste (`strip = "debuginfo"` ou `debug = 0`)
-  — ~80% do tempo de build pós-linker em Linux; no mac o `strip` é comando externo, então
-  **medir**. Trade: backtrace perde números de linha de frames (origem do panic mantida).
-- **Dynamic-linking de dev** (padrão `bevy_dylib`): ~5× incremental. Dev-only, proibido
-  em release. Aplica a **build/test**, não ao `cargo check` (check já pula codegen/link).
+**🥈 Tier 2 — build/test loop (PILOTADO 2026-05-29: já capturado, ver status):**
+- **Linker rápido = ✅ JÁ ATIVO.** `~/.cargo/config.toml` global usa
+  `-fuse-ld=/opt/homebrew/bin/ld64.lld` (lld para Mach-O) — corta ~30-50% do link
+  incremental. `mold` é **incompatível com macOS** (ELF-only, erro fatal) — não usar.
+- **Redução de debug-info = ✅ JÁ NO GATE.** `[profile.ci-test] debug = false`, e o gate
+  (`nextest-impacted.sh` + `ship.sh`) roda `--cargo-profile ci-test` → debug-info já
+  cortado onde importa. O `[profile.dev] debug = true` só afeta `cargo check` (irrelevante —
+  não linka) e builds ad-hoc (que evitamos).
+- **`prefer-dynamic` (dynamic-linking) = ❌ NÃO adotar.** Só ajuda LINK (gate infrequente),
+  não o inner loop (check). Com lld + debug=false já ativos, o link deixou de ser dominante
+  → ganho marginal. Custo: mudar RUSTFLAGS invalida a **base CoW warm** (rebuild completo) +
+  quirks de prefer-dynamic no macOS. Net-negativo nesta máquina. (O ~5× do `bevy_dylib` é da
+  feature whole-Bevy, que não usamos — só `bevy_ecs` standalone.)
 
 **🥉 Tier 3 — pilotar + medir (ganho real M-series incerto):**
 - **`cargo-hakari`** (workspace-hack): mata a **cascata de recompile por feature-unification**

@@ -390,10 +390,44 @@ do parser. HDR real venceu o stub LDR-only.
   bit-idêntico cross-OS). Round-trip tests asseguram consistência forward/inverse,
   não bit-equality cross-OS.
 
-**Testes**: 21 verdes Mac aarch64 (12 unit color/magic + 9 integração:
-magic_recognition, truncated, hostile_garbage, lossless+lossy roundtrip,
-**hdr_wide_gamut_roundtrip** 10-bit PQ Rec.2020, grid, reject-non-raster).
+**Testes**: 25 verdes Mac aarch64 (14 unit color/magic + 11 integração:
+magic_recognition (+ compatible-brands), truncated, hostile_garbage,
+lossless+lossy roundtrip, **hdr_wide_gamut_roundtrip** 10-bit PQ Rec.2020,
+**hdr_rec709_roundtrip**, **displayp3_sdr_roundtrip**, grid, reject-non-raster).
 Fixtures gerados in-process (encode→decode) — sem `.avif` externo.
+
+**Cobertura honesta (audit-16 Lens E)**: o encoder só emite PQ/sRGB, então
+**não há fixture in-process** para: HLG real-codec, transfer Linear, ICC
+embarcado (`ColorProfile::Custom`), premultiplied-alpha, monochrome, 12-bit —
+esses branches existem e estão code-review'd mas **sem teste de round-trip**
+(precisariam de `.avif` externos gerados por `avifenc`/`cavif`). EOTF HLG/PQ/
+sRGB têm unit tests de consistência forward/inverse. `too_large_dimensions`:
+o cap pré-parse (`imageDimensionLimit`/`imageSizeLimit`) dispara dentro do
+parser C antes de produzir imagem, então o branch redundante pós-parse é
+defensivo-não-alcançável em teste (documentado).
+
+**Auditoria-16 (5 lentes adversariais paralelas, 2026-05-28)**: A safety/FFI ·
+B color-science/HDR · C spec/cross-impact · D fuzz/OOM · E HR/determinism/
+claims-vs-reality. Lens A verdict **SOUND** (zero UAF/leak/double-free; a classe
+RUSTSEC do audit-15 genuinamente eliminada). Findings fechados inline:
+- **HIGH (D)** bomba de pixel-total: `imageDimensionLimit` (32768 por-eixo) não
+  bastava — dois eixos sub-cap multiplicam (32768×8192 ≈ 268 Mpx → ~4 GiB no
+  path HDR 16 B/px). Fix: `imageSizeLimit` no decoder C + guard `w*h >
+  MAX_TOTAL_PIXELS` (16384²) antes do `Vec::with_capacity`.
+- **HIGH (C)** `is_avif_magic` só checava major brand → AVIFs spec-válidos com
+  `major_brand=mif1` e `avif` só em compatible_brands (encoders reais emitem)
+  eram silenciosamente rejeitados. Fix: parse do ftyp box + scan major +
+  compatible brands (espelha `avifFileTypeHasBrand`).
+- **HIGH (E)** claim falso "imageCount > 1 is logged" no doc do crate — não há
+  logging; animação é silenciosamente 1º-frame. Fix: doc corrigido (claim-honesty).
+- **MED (B)** HLG decodado com OETF⁻¹-only numa escala linear diferente do PQ
+  (~10× mismatch). Fix: ×12 diffuse-white scale unifica HLG e PQ em "white=1.0".
+- **MED (D)** encode sem cap de dimensão (overflow 32-bit potencial). Fix:
+  `check_encode_dims` espelha o cap do decode.
+- **LOW**: guard de geometria/rowBytes no decode (espelha encode) · `read_unaligned`
+  pro u16 (sem assumir alinhamento) · `bytemuck_cast_u16` (nome enganoso, sem dep
+  bytemuck) removido escrevendo bytes via `to_ne_bytes` · comentário BT.1886-approx ·
+  precisão do comentário catch_unwind-vs-abort.
 
 ### 5.17 W3.T4 AVIF deship — audit-15 reverteu `avif-decode 1.0` wire-up (2026-05-28)
 

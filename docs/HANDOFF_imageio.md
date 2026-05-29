@@ -180,7 +180,7 @@ Per-crate (Mac aarch64; `#[cfg]`-gated golden tests included locally):
 | `ph2d-imageio-hdr-radiance` | 7 |
 | `ph2d-imageio-exr` | 7 |
 | `ph2d-imageio-jxl` | 8 |
-| `ph2d-imageio-avif` | 9 (stub) |
+| `ph2d-imageio-avif` | 25 (real Path C: 14 unit color/magic + 11 integration) |
 | `ph2d-imageio-svg` | 11 |
 | `ph2d-imageio-registry-init` | 8 (2 lib + 3 alphabetical + 3 staleness) |
 | **Total** | **~190 verdes Mac aarch64** |
@@ -205,7 +205,7 @@ crates/
 ├── ph2d-imageio-hdr-radiance/
 ├── ph2d-imageio-exr/
 ├── ph2d-imageio-jxl/
-├── ph2d-imageio-avif/                  # STUB (deshipped audit-15)
+├── ph2d-imageio-avif/                  # REAL Path C (libavif-sys dav1d+rav1e, §5.18)
 ├── ph2d-imageio-svg/
 └── ph2d-imageio-registry-init/         # codegen output (do not hand-edit)
 

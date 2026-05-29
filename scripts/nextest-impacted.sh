@@ -18,7 +18,10 @@ CHANGED=$(git diff --name-only "${BASE}"... 2>/dev/null \
 
 if [ -z "$CHANGED" ]; then
     echo "[nextest-impacted] no crate changes vs ${BASE}; running determinism golden only."
-    exec cargo nextest run -E 'test(/transform_determinism/)' --cargo-profile ci-test
+    # `binary(...)` matches the TEST BINARY name (tests/transform_determinism.rs);
+    # `test(...)` matches individual fn NAMES (cross_os_golden_hash_pinned, …) which
+    # do NOT contain "transform_determinism" → it silently matched 0 (false-green).
+    exec cargo nextest run -E 'binary(transform_determinism)' --cargo-profile ci-test
 fi
 
 # rdeps(set) = the crate AND everything that depends on it (the real "impacted"
@@ -29,8 +32,10 @@ for c in $CHANGED; do
 done
 
 # MANDATORY determinism net: force the HR-5 golden so a transitive math/dep edit
-# can never silently skip it locally.
-EXPR="$EXPR + test(/transform_determinism/)"
+# can never silently skip it locally. `binary(...)` (NOT `test(...)`) — the golden
+# lives in the `transform_determinism` test binary; its fn names don't contain that
+# string, so `test(/transform_determinism/)` matched 0 and gave a false-green gate.
+EXPR="$EXPR + binary(transform_determinism)"
 
 echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"

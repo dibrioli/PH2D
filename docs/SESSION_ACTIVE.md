@@ -46,6 +46,11 @@ Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings esc
 1. `cargo test -p ph2d-editor-core --test architecture_panel_loc_cap` → `panel-hierarchy/src/paint.rs::paint_hierarchy_body` 388 LOC > 200 cap (hierarchy session, commits `3fab958`+`4fb822b`).
 2. `cargo check -p ph2d-host-desktop` → `ph2d-tool-painter` `PanelEvent::Activated` variant missing (Painter session pós-`231d6cc`/`1485471`).
 3. **Painter `history_integration_t19.rs` 4 testes vermelhos** — regressão REAL commitada nas crates do Painter (NÃO é WIP de dispatch alheio, como handoff antigo dizia; o teste nem toca dispatch). **Owner = Impl-4 (Task 0 do briefing).**
+4. **asset-cooker `prefab_cook_hash_is_locked` (cooker_determinism.rs:72) vermelho** — Sprite v3→v4 (`4591f7e`) mudou o postcard de `simple_sprite.json5` → golden desatualizada. **Re-pin AUTORIZADO ao Impl-3 (KTX2)** como manutenção coordenada (golden vive na crate dele; input v4 congelado). Bloqueia ship.sh/CI até re-pinado.
+5. **⚠️ ISPC SIGBUS flaky ~50%** (asset-cooker, não-determinístico, não-código) — afeta ship.sh + CI cook job. Fix planejado = override nextest scoped a `package(ph2d-asset-cooker)` retries, no bundle de CI do Coord. No ship: retry manual no cook.
+
+### Progresso dos módulos
+- **KTX2 (Impl-3): W1.T15 APPROVE** (16 lentes, gate batched). Commits `dffd62c`+`acc6157`. Próximo = W1.T8.1 (aguarda OK Enio). CI (T10/T12/T13 + retry-SIGBUS) = **bundle do Coord**, não do impl.
 
 ### Restrição de recursos
 **RAM 8 GiB ⇒ máx 2-3 `cargo` simultâneos.** NÃO rodar os 5 implementadores compilando ao mesmo tempo (swap thrashing). Escalonar; cada um com `source scripts/slot-env.sh <slot>` ou `CARGO_TARGET_DIR` próprio.

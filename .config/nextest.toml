@@ -1,0 +1,21 @@
+# cargo-nextest config — https://nexte.st/book/configuration.html
+#
+# Surgical handling of the vendored ISPC encoders in ph2d-asset-cooker, which:
+#   (a) are globally thread-UNSAFE → must run serially (the old
+#       `RUST_TEST_THREADS=1` rule; nextest expresses it as a max-threads=1 group);
+#   (b) SIGBUS ~50% NON-deterministically even single-threaded + isolated
+#       (characterized W1.T15: same binary, run 1 crash / run 2 ok — infra flake,
+#       not a code bug) → bounded retries.
+#
+# Scoped to ph2d-asset-cooker ONLY. We do NOT retry globally — that would mask
+# real flaky tests elsewhere. ship.sh and CI both read this file, so the cook
+# job stops flaking in both.
+
+[test-groups.asset-cooker-ispc]
+# Serialize all ph2d-asset-cooker tests (ISPC global state is not thread-safe).
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = 'package(ph2d-asset-cooker)'
+test-group = 'asset-cooker-ispc'
+retries = 3

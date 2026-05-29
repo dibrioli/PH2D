@@ -142,7 +142,10 @@ fn mapped_link_keyboard_commit_inverse_projects_to_slider() {
     // user typed. The next paint's `display_override` would recompute
     // (storage 0.6 → display 0.2) and match.
     let (_, chip_v, _, _, _) = store.number_input(NodeId(2)).expect("chip");
-    assert!((chip_v - 0.2).abs() < 1e-5, "chip kept display value: {chip_v}");
+    assert!(
+        (chip_v - 0.2).abs() < 1e-5,
+        "chip kept display value: {chip_v}"
+    );
 }
 
 #[test]
@@ -283,7 +286,10 @@ fn in_range_typed_input_does_not_resync() {
     let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
     let (_, chip_v, _, _, _) = store.number_input(NodeId(2)).expect("chip");
     let (_, slider_v) = store.slider(NodeId(1)).expect("slider");
-    assert!((chip_v - 0.4).abs() < 1e-5, "in-range value preserved: {chip_v}");
+    assert!(
+        (chip_v - 0.4).abs() < 1e-5,
+        "in-range value preserved: {chip_v}"
+    );
     assert!((slider_v - 0.4).abs() < 1e-5, "slider mirrors: {slider_v}");
 }
 
@@ -341,7 +347,10 @@ fn degenerate_scale_zero_does_not_corrupt_slider() {
         slider_v.is_finite(),
         "boundary commit must not produce non-finite slider value: {slider_v}"
     );
-    assert!((slider_v - 1.0).abs() < 1e-5, "boundary slider == 1.0, got {slider_v}");
+    assert!(
+        (slider_v - 1.0).abs() < 1e-5,
+        "boundary slider == 1.0, got {slider_v}"
+    );
 }
 
 #[test]
@@ -385,8 +394,8 @@ fn drag_scrub_emits_slider_event_for_linked_chip() {
     // after each Move + on Up commit. This test exercises the Move
     // emission via the public dispatch_pointer entry point.
     use ph2d_editor_core::interaction::HitIndex;
-    use ph2d_editor_core::interaction::dispatch::dispatch_pointer;
     use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::interaction::dispatch::dispatch_pointer;
     let mut store = build_pair(2.0, -1.0, 0.5, 0.0);
     let mut hits = HitIndex::new();
     // Register the chip's hit rect so dispatch can route Down to it.

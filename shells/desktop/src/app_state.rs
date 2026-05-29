@@ -412,8 +412,7 @@ pub(crate) struct App {
     /// activation starts the scene fresh) or on explicit "new
     /// document" (W2+). W2+ migrates to a real scene-graph asset
     /// store so committed paths persist across tool switches.
-    pub(crate) committed_vector_pen_paths:
-        Vec<ph2d_vector::Ph2dVectorAsset>,
+    pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

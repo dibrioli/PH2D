@@ -136,10 +136,7 @@ pub(super) fn apply_number_stepper_if_hit(
     // the unreachable raw value). Identity-linked / unlinked chips
     // pass through unchanged.
     let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, id, new_val);
-    if let Some(InteractiveState::NumberInput {
-        last_committed, ..
-    }) = store.get_mut(id)
-    {
+    if let Some(InteractiveState::NumberInput { last_committed, .. }) = store.get_mut(id) {
         *last_committed = final_val;
     }
     // M14.A: arm continuous-hold so dispatch_tick can repeat while

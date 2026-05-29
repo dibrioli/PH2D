@@ -44,11 +44,7 @@ pub fn unique_name(world: &mut SimWorld, base: &str) -> String {
 /// **rename** flows where the entity already owns the candidate label
 /// (would otherwise self-collide and bump). Returns `base` unchanged
 /// when the only collision is the entity itself.
-pub fn unique_name_excluding(
-    world: &mut SimWorld,
-    base: &str,
-    exclude: Entity,
-) -> String {
+pub fn unique_name_excluding(world: &mut SimWorld, base: &str, exclude: Entity) -> String {
     if !name_in_use_excluding(world, base, exclude) {
         return base.to_owned();
     }
@@ -69,11 +65,7 @@ fn name_in_use(world: &mut SimWorld, candidate: &str) -> bool {
     q.iter(w).any(|n: &Name| n.as_str() == candidate)
 }
 
-fn name_in_use_excluding(
-    world: &mut SimWorld,
-    candidate: &str,
-    exclude: Entity,
-) -> bool {
+fn name_in_use_excluding(world: &mut SimWorld, candidate: &str, exclude: Entity) -> bool {
     let w = world.world_mut();
     let mut q = w.query::<(Entity, &Name)>();
     q.iter(w)
@@ -147,10 +139,7 @@ mod tests {
     fn preserves_non_numeric_paren_groups() {
         // "Player (DPS)" is its own base, not a numbered slot.
         let mut sim = world_with(&["Player (DPS)"]);
-        assert_eq!(
-            unique_name(&mut sim, "Player (DPS)"),
-            "Player (DPS) (1)"
-        );
+        assert_eq!(unique_name(&mut sim, "Player (DPS)"), "Player (DPS) (1)");
     }
 
     #[test]

@@ -56,10 +56,7 @@ pub fn dispatch_tick<'frame>(
     // Shared mirror — symmetric with stepper-Down + commit-Enter so
     // the continuous-hold path can't drift from the single-tick path.
     let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, hold.id, new_value);
-    if let Some(InteractiveState::NumberInput {
-        last_committed, ..
-    }) = store.get_mut(hold.id)
-    {
+    if let Some(InteractiveState::NumberInput { last_committed, .. }) = store.get_mut(hold.id) {
         *last_committed = final_val;
     }
     store.record_number_stepper_tick(now_ns);

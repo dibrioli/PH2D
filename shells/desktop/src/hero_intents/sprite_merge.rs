@@ -440,11 +440,7 @@ pub(crate) fn drain_merge_sprites(
             .id(),
         None => sim
             .world_mut()
-            .spawn((
-                transform,
-                merged_sprite,
-                ph2d_ecs::Name::new(merged_name),
-            ))
+            .spawn((transform, merged_sprite, ph2d_ecs::Name::new(merged_name)))
             .id(),
     };
 
@@ -703,7 +699,7 @@ mod tests {
         let (img_x, _) = world_to_image(25.0, 0.0, &src);
         assert!(
             (img_x - 24.5).abs() < 1e-3,
-            "mirrored sprite: world x=25 → img_x=24.5, got {img_x}"
+            "mirrored sprite: world x=25 -> img_x=24.5, got {img_x}"
         );
     }
 

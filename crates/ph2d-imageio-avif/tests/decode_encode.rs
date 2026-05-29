@@ -217,6 +217,67 @@ fn grid_image_handling_documented() {
     assert!(matches!(decode(&bytes), DecodedImage::Flat(_)));
 }
 
+#[test]
+fn displayp3_sdr_roundtrip_preserves_profile() {
+    // Wide-gamut SDR path: encode Flat tagged Display-P3 losslessly,
+    // decode, and confirm the SMPTE432 primaries round-trip back to
+    // ColorProfile::DisplayP3 (not silently downgraded to Srgb).
+    let original = ldr_fixture(8, 8, ColorProfile::DisplayP3);
+    let bytes = encode(&DecodedImage::Flat(original.clone()), 100);
+    let DecodedImage::Flat(decoded) = decode(&bytes) else {
+        panic!("expected Flat");
+    };
+    assert_eq!(
+        decoded.color_profile,
+        ColorProfile::DisplayP3,
+        "Display-P3 primaries must round-trip"
+    );
+    assert_eq!(decoded.pixels, original.pixels, "lossless P3 exact");
+}
+
+#[test]
+fn hdr_rec709_roundtrip_non_wide_gamut() {
+    // HDR path with Rec.709 (non-wide) primaries: exercises the
+    // LinearRec709 branch + 10-bit PQ BT.709 nclx, distinct from the
+    // Rec.2020 test above.
+    let original = ImageBuffer {
+        width: 2,
+        height: 2,
+        pixels: vec![
+            LinearRgba::new(0.5, 1.0, 2.0, 1.0),
+            LinearRgba::new(3.0, 0.1, 0.2, 1.0),
+            LinearRgba::new(0.0, 0.0, 0.0, 1.0),
+            LinearRgba::new(8.0, 8.0, 8.0, 1.0),
+        ],
+        color_profile: ColorProfile::LinearRec709,
+    };
+    let bytes = encode(&DecodedImage::FlatHdr(original.clone()), 100);
+    let DecodedImage::FlatHdr(decoded) = decode(&bytes) else {
+        panic!("expected FlatHdr");
+    };
+    assert_eq!(
+        decoded.color_profile,
+        ColorProfile::LinearRec709,
+        "Rec.709 HDR must decode back as LinearRec709 (not Rec2020)"
+    );
+    for (i, (o, g)) in original
+        .pixels
+        .iter()
+        .zip(decoded.pixels.iter())
+        .enumerate()
+    {
+        for (label, (ov, gv)) in [
+            ("r", (o.r(), g.r())),
+            ("g", (o.g(), g.g())),
+            ("b", (o.b(), g.b())),
+        ] {
+            let abs = (ov - gv).abs();
+            let rel = abs / ov.max(0.05);
+            assert!(rel < 0.10 || abs < 0.02, "px {i} {label}: {ov} vs {gv}");
+        }
+    }
+}
+
 // ── exporter rejects non-raster / multi-image ───────────────────────
 
 #[test]

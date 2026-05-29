@@ -16,9 +16,29 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::slice;
 
 use libavif_sys as sys;
-use ph2d_imageio::{DecodedImage, Error, ExportFormat, ExportOpts, ImageExporter};
+use ph2d_imageio::{
+    DecodedImage, Error, ExportFormat, ExportOpts, ImageExporter, MAX_RASTER_DIMENSION,
+};
 
 use crate::color::{self, TransferFn};
+use crate::decode::MAX_TOTAL_PIXELS;
+
+/// Reject oversized source images before any allocation (mirrors the
+/// decode-side caps): a `DecodedImage` produced by some other importer
+/// could be larger than AVIF/our budget. Also the gate that makes the
+/// `width*4*bps`/`*height` size arithmetic below provably non-overflowing.
+fn check_encode_dims(width: u32, height: u32) -> Result<(), Error> {
+    if width == 0 || height == 0 {
+        return Err(Error::Encode("cannot encode a zero-sized image".into()));
+    }
+    if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
+        return Err(Error::DimensionExceedsLimit);
+    }
+    if u64::from(width) * u64::from(height) > u64::from(MAX_TOTAL_PIXELS) {
+        return Err(Error::DimensionExceedsLimit);
+    }
+    Ok(())
+}
 
 /// AVIF export driver. `Flat` (SDR) / `FlatHdr` (HDR) → AVIF.
 pub struct AvifExporter;
@@ -75,9 +95,7 @@ fn encode_inner(img: &DecodedImage, opts: &ExportOpts) -> Result<Vec<u8>, Error>
             if !buf.is_well_formed() {
                 return Err(Error::Encode("source buffer is malformed".into()));
             }
-            if buf.width == 0 || buf.height == 0 {
-                return Err(Error::Encode("cannot encode a zero-sized image".into()));
-            }
+            check_encode_dims(buf.width, buf.height)?;
             let (primaries, transfer_cicp, mut matrix) =
                 color::nclx_for_encode(&buf.color_profile, TransferFn::Gamma);
             if lossless {
@@ -109,9 +127,7 @@ fn encode_inner(img: &DecodedImage, opts: &ExportOpts) -> Result<Vec<u8>, Error>
             if !buf.is_well_formed() {
                 return Err(Error::Encode("source buffer is malformed".into()));
             }
-            if buf.width == 0 || buf.height == 0 {
-                return Err(Error::Encode("cannot encode a zero-sized image".into()));
-            }
+            check_encode_dims(buf.width, buf.height)?;
             // HDR is encoded as 10-bit PQ (HDR10) — the AVIF-canonical
             // HDR profile. Primaries follow the buffer's profile
             // (Rec.2020 ⇒ wide gamut, else Rec.709).
@@ -130,18 +146,22 @@ fn encode_inner(img: &DecodedImage, opts: &ExportOpts) -> Result<Vec<u8>, Error>
             let w = buf.width;
             let h = buf.height;
             let fill: FillFn = Box::new(move |dst: &mut [u8]| {
-                // dst is a byte view over u16 samples (host endian).
-                let samples: &mut [u16] = bytemuck_cast_u16(dst);
+                // Write host-endian u16 samples directly as bytes — no
+                // `&mut [u16]` cast, so no alignment assumption on the
+                // libavif-owned buffer (matches the decode-side
+                // `read_unaligned`). 8 bytes/pixel (4 × u16).
                 for (i, px) in pixels.iter().enumerate() {
                     let enc = |lin: f32| -> u16 {
                         let s = color::oetf(lin, TransferFn::Pq);
                         (s * 65535.0 + 0.5) as u16
                     };
-                    samples[i * 4] = enc(px.r());
-                    samples[i * 4 + 1] = enc(px.g());
-                    samples[i * 4 + 2] = enc(px.b());
+                    let off = i * 8;
+                    dst[off..off + 2].copy_from_slice(&enc(px.r()).to_ne_bytes());
+                    dst[off + 2..off + 4].copy_from_slice(&enc(px.g()).to_ne_bytes());
+                    dst[off + 4..off + 6].copy_from_slice(&enc(px.b()).to_ne_bytes());
                     // Alpha is linear coverage, not transfer-encoded.
-                    samples[i * 4 + 3] = (px.a().clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+                    let a = (px.a().clamp(0.0, 1.0) * 65535.0 + 0.5) as u16;
+                    dst[off + 6..off + 8].copy_from_slice(&a.to_ne_bytes());
                 }
             });
             EncodeJob {
@@ -173,17 +193,6 @@ fn encode_inner(img: &DecodedImage, opts: &ExportOpts) -> Result<Vec<u8>, Error>
     encode_rgba(
         job.width, job.height, &job.plan, quality, lossless, &*job.fill,
     )
-}
-
-/// Reinterpret a `&mut [u8]` that is `avifRGBImageAllocatePixels`-owned
-/// 16-bit storage as `&mut [u16]`. The buffer is 2-byte aligned and a
-/// multiple of 2 in length (4 u16 samples per pixel).
-fn bytemuck_cast_u16(bytes: &mut [u8]) -> &mut [u16] {
-    let len = bytes.len() / 2;
-    // SAFETY: libavif allocates the RGB buffer with natural alignment
-    // for its sample size; for `depth > 8` samples are `u16`, so the
-    // pointer is `u16`-aligned and `len*2 == bytes.len()`.
-    unsafe { slice::from_raw_parts_mut(bytes.as_mut_ptr().cast::<u16>(), len) }
 }
 
 /// Owns an `avifEncoder`.

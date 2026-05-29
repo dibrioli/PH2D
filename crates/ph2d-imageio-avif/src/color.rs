@@ -58,10 +58,19 @@ pub mod transfer {
 /// Which inverse transfer function linearises the decoded signal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransferFn {
-    /// SMPTE ST 2084 (PQ). Scene-linear normalised so 100 cd/m²
-    /// (SDR reference white) = `1.0`; PQ peak (10000 cd/m²) = `100.0`.
+    /// SMPTE ST 2084 (PQ). Linear normalised so **diffuse white**
+    /// (100 cd/m²) = `1.0`; PQ peak (10000 cd/m²) = `100.0`.
     Pq,
-    /// ARIB STD-B67 (HLG), scene-referred inverse-OETF.
+    /// ARIB STD-B67 (HLG), inverse-OETF normalised to the **same
+    /// diffuse-white = `1.0`** scale as [`Self::Pq`] (×12 from the raw
+    /// HLG OETP⁻¹, whose diffuse-white sits at signal 0.5 → `1/12`).
+    /// This keeps HLG and PQ buffers on one linear scale inside
+    /// `FlatHdr` — without it an HLG peak would read ~1.0 while a PQ
+    /// peak reads 100.0, a ~10× exposure mismatch (audit-16 Lens B).
+    /// NOTE: the full BT.2100 display EOTF additionally applies the
+    /// OOTF (system gamma, display-peak-dependent); we deliberately
+    /// decode HLG scene-referred (OETF⁻¹ only) since `FlatHdr` is a
+    /// scene-linear working space, not a display-referred one.
     Hlg,
     /// Scene-linear already — passthrough.
     Linear,
@@ -110,8 +119,13 @@ pub fn classify(depth: u32, color_primaries: u16, transfer_characteristics: u16)
             t::SMPTE2084_PQ => TransferFn::Pq,
             t::HLG => TransferFn::Hlg,
             t::LINEAR => TransferFn::Linear,
-            // BT2020_10/12-bit + BT709 + sRGB + unspecified are all
-            // gamma-shaped; linearise with the sRGB/BT.709 inverse.
+            // BT2020_10/12-bit (CICP 14/15, which are SDR deep-bit, NOT
+            // HDR) + BT709 + sRGB + unspecified are all gamma-shaped. We
+            // linearise them with the sRGB inverse as a deliberate
+            // stand-in for the true BT.1886/BT.709 OETF (γ≈2.4) — the
+            // curves differ only slightly (~2.2 vs 2.4 effective); a
+            // dedicated BT.1886 variant can be added if that fidelity is
+            // ever needed.
             _ => TransferFn::Gamma,
         };
         DecodePlan::HdrLinear { profile, transfer }
@@ -170,6 +184,9 @@ const PQ_PEAK_NITS: f32 = 10000.0;
 const HLG_A: f32 = 0.178_832_77;
 const HLG_B: f32 = 0.284_668_92; // 1 - 4a
 const HLG_C: f32 = 0.559_910_7; // 0.5 - a·ln(4a)
+/// Factor putting HLG scene-linear on the same diffuse-white = 1.0
+/// scale as the PQ path (HLG OETF⁻¹ diffuse white = 1/12).
+const HLG_DIFFUSE_WHITE_SCALE: f32 = 12.0;
 
 /// Linearise one encoded signal sample in `[0, 1]` → scene-linear.
 #[must_use]
@@ -190,11 +207,15 @@ pub fn eotf(signal: f32, kind: TransferFn) -> f32 {
             y * (PQ_PEAK_NITS / PQ_REF_WHITE_NITS)
         }
         TransferFn::Hlg => {
-            if s <= 0.5 {
+            // Raw HLG inverse-OETF maps signal [0,1] → scene [0,1] with
+            // diffuse white at signal 0.5 → 1/12. Scale ×12 so diffuse
+            // white = 1.0, matching the PQ scale (see `TransferFn::Hlg`).
+            let raw = if s <= 0.5 {
                 (s * s) / 3.0
             } else {
                 (((s - HLG_C) / HLG_A).exp() + HLG_B) / 12.0
-            }
+            };
+            raw * HLG_DIFFUSE_WHITE_SCALE
         }
     }
 }
@@ -212,10 +233,12 @@ pub fn oetf(linear: f32, kind: TransferFn) -> f32 {
             ((PQ_C1 + PQ_C2 * ym) / (1.0 + PQ_C3 * ym)).powf(PQ_M2)
         }
         TransferFn::Hlg => {
-            if l <= 1.0 / 12.0 {
-                (3.0 * l).sqrt()
+            // Undo the ×12 diffuse-white scale, then forward HLG OETF.
+            let e = (l / HLG_DIFFUSE_WHITE_SCALE).clamp(0.0, 1.0);
+            if e <= 1.0 / 12.0 {
+                (3.0 * e).sqrt()
             } else {
-                HLG_A * (12.0 * l - HLG_B).ln() + HLG_C
+                HLG_A * (12.0 * e - HLG_B).ln() + HLG_C
             }
         }
     };
@@ -323,9 +346,10 @@ mod tests {
 
     #[test]
     fn hlg_eotf_oetf_roundtrip() {
-        // HLG scene-linear normalises to [0, 1] (signal 1.0 → linear
-        // 1.0); values above 1.0 are not representable and clamp.
-        for &l in &[0.0_f32, 0.05, 0.5, 0.9, 1.0] {
+        // After the diffuse-white ×12 scale, HLG scene-linear spans
+        // [0, 12] (signal 1.0 → linear 12.0, the HLG peak; diffuse
+        // white at 1.0). Round-trip must hold across that range.
+        for &l in &[0.0_f32, 0.5, 1.0, 6.0, 12.0] {
             let signal = oetf(l, TransferFn::Hlg);
             let back = eotf(signal, TransferFn::Hlg);
             assert!(
@@ -333,6 +357,16 @@ mod tests {
                 "HLG roundtrip l={l} -> signal={signal} -> {back}"
             );
         }
+    }
+
+    #[test]
+    fn hlg_diffuse_white_maps_to_one_like_pq() {
+        // The whole point of the ×12 scale: HLG diffuse white (signal
+        // 0.5) and PQ diffuse white (100 cd/m²) both land at ~1.0 so
+        // the two HDR paths share one linear scale in `FlatHdr`.
+        assert!((eotf(0.5, TransferFn::Hlg) - 1.0).abs() < 1e-3);
+        let pq_white = oetf(1.0, TransferFn::Pq);
+        assert!((eotf(pq_white, TransferFn::Pq) - 1.0).abs() < 1e-3);
     }
 
     #[test]

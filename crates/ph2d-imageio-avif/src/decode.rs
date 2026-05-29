@@ -20,6 +20,15 @@ use ph2d_imageio::{
 use crate::color::{self, DecodePlan, TransferFn};
 use crate::is_avif_magic;
 
+/// Maximum total pixels (`width × height`) a decode will accept —
+/// decompression-bomb defence complementing the per-axis
+/// `MAX_RASTER_DIMENSION`. `16384² = 268_435_456` matches libavif's own
+/// default `imageSizeLimit` and the `MAX_RASTER_DIMENSION` doc envelope
+/// (a 32768² image — which passes the single-axis cap — is ~16 GiB and
+/// is refused here). Kept local to the AVIF crate; hoist to
+/// `ph2d_imageio::limits` if another format needs the same cap.
+pub(crate) const MAX_TOTAL_PIXELS: u32 = 16_384 * 16_384;
+
 /// AVIF import driver. Real decode (still + first animation frame +
 /// composited grid) → `Flat` (SDR 8-bit) or `FlatHdr` (scene-linear).
 pub struct AvifImporter;
@@ -38,10 +47,14 @@ impl ImageImporter for AvifImporter {
         if src.is_empty() {
             return Err(Error::Truncated);
         }
-        // audit-15 D11: libavif's BMFF parser has `assert!`-style
-        // aborts on some malformed boxes. Our source is arbitrary
-        // user input (drag-and-drop) — isolate the whole FFI decode so
-        // a panic becomes an error, not a process crash.
+        // audit-15 D11: our source is arbitrary user input
+        // (drag-and-drop). Isolate the whole FFI decode so a *Rust-level
+        // panic* raised across the boundary becomes an error instead of
+        // crashing the process. Caveat: `catch_unwind` cannot stop a
+        // hard C `abort()`/trap inside dav1d/libavif — that would still
+        // terminate; it is an accepted residual risk (libavif 1.0.4
+        // returns error codes for the malformed-box paths rather than
+        // aborting).
         match catch_unwind(AssertUnwindSafe(|| decode_inner(src))) {
             Ok(r) => r,
             Err(_) => Err(Error::Decode(
@@ -89,6 +102,13 @@ fn decode_inner(src: &[u8]) -> Result<DecodedImage, Error> {
     // SAFETY: `decoder.0` is non-null; these are plain scalar fields.
     unsafe {
         (*decoder.0).imageDimensionLimit = MAX_RASTER_DIMENSION;
+        // Single-axis cap is necessary but NOT sufficient: two sub-cap
+        // axes still multiply into a bomb (e.g. 32768×8192 ≈ 268 Mpx →
+        // ~4 GiB on the 16 B/px HDR path) from a tiny solid-colour file.
+        // Also bound TOTAL pixels (libavif's default `imageSizeLimit`
+        // is 16384² = 268 Mpx; we keep that ceiling so a 32768×32768
+        // claim, which passes the single-axis cap, is refused at parse).
+        (*decoder.0).imageSizeLimit = MAX_TOTAL_PIXELS;
         // Single-threaded: avoids spinning up a codec thread pool for
         // editor/cooking decode and keeps behaviour predictable.
         (*decoder.0).maxThreads = 1;
@@ -131,6 +151,14 @@ fn decode_inner(src: &[u8]) -> Result<DecodedImage, Error> {
     // Redundant with `imageDimensionLimit` above, but defends against a
     // future libavif that honours the limit differently.
     if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
+        return Err(Error::DimensionExceedsLimit);
+    }
+    // Total-pixel guard (decompression-bomb defence) BEFORE any
+    // `Vec::with_capacity(w*h)`: refuse images whose product exceeds the
+    // budget even when both axes are individually under the cap. Mirrors
+    // the `imageSizeLimit` set on the C decoder above so we're protected
+    // even if a future libavif ignores it.
+    if u64::from(width) * u64::from(height) > u64::from(MAX_TOTAL_PIXELS) {
         return Err(Error::DimensionExceedsLimit);
     }
     // Animation (`avis`, imageCount > 1): we decode the **first** frame
@@ -229,6 +257,33 @@ fn convert_to_rgb(
     Ok(scratch)
 }
 
+/// Verify the converted `avifRGBImage`'s geometry matches what the
+/// extraction loop assumes: same dimensions, and rows at least
+/// `width * bytes_per_pixel` wide (no negative padding). Returns an
+/// error rather than risking out-of-bounds reads if a future libavif
+/// reports a surprising `rowBytes`/`width`/`height`.
+fn check_rgb_geometry(
+    rgb: &sys::avifRGBImage,
+    w: usize,
+    h: usize,
+    bytes_per_pixel: usize,
+) -> Result<(), Error> {
+    if rgb.width as usize != w || rgb.height as usize != h {
+        return Err(Error::Decode(format!(
+            "AVIF RGB geometry mismatch: image {w}×{h} vs rgb {}×{}",
+            rgb.width, rgb.height
+        )));
+    }
+    if (rgb.rowBytes as usize) < w * bytes_per_pixel {
+        return Err(Error::Decode(format!(
+            "AVIF RGB rowBytes {} < {} (width {w} × {bytes_per_pixel})",
+            rgb.rowBytes,
+            w * bytes_per_pixel
+        )));
+    }
+    Ok(())
+}
+
 /// Extract an 8-bit RGBA buffer (SDR path) as `SrgbRgba` (bytes are
 /// already sRGB-encoded — no transfer math needed).
 fn extract_rgba8(
@@ -241,6 +296,11 @@ fn extract_rgba8(
     let row_bytes = rgb.rowBytes as usize;
     let w = width as usize;
     let h = height as usize;
+    // Verify libavif's reported geometry matches what we allocate the
+    // loop against (the encode path has the same guard). Defends the
+    // pointer arithmetic below against a libavif that pads rows or
+    // disagrees on dimensions — an explicit error beats reading OOB.
+    check_rgb_geometry(rgb, w, h, 4)?;
     let mut pixels = Vec::with_capacity(w * h);
     // SAFETY: `rgb.pixels` is an allocated `h * row_bytes` buffer of
     // u8; we read 4 bytes per pixel within each row's valid span.
@@ -277,6 +337,7 @@ fn extract_rgba_hdr(
     let row_bytes = rgb.rowBytes as usize;
     let w = width as usize;
     let h = height as usize;
+    check_rgb_geometry(rgb, w, h, 8)?;
     let mut pixels = Vec::with_capacity(w * h);
     let base = rgb.pixels;
     if base.is_null() {
@@ -286,13 +347,15 @@ fn extract_rgba_hdr(
     for y in 0..h {
         for x in 0..w {
             let off = y * row_bytes + x * 8; // 4 channels × u16
-            // SAFETY: `off + 7 < h*row_bytes`; row_bytes ≥ w*8. Each
-            // sample is host-endian u16 as libavif writes it.
-            let p = unsafe { base.add(off).cast::<u16>() };
-            let r = unsafe { *p } as f32 / MAX16;
-            let g = unsafe { *p.add(1) } as f32 / MAX16;
-            let b = unsafe { *p.add(2) } as f32 / MAX16;
-            let a = unsafe { *p.add(3) } as f32 / MAX16;
+            // SAFETY: `off + 7 < h*row_bytes` (geometry checked above).
+            // `read_unaligned` so we don't rely on `base` being u16-
+            // aligned (it is in practice — `avifAlloc` is malloc-class —
+            // but the cast shouldn't assume it). Samples are host-endian.
+            let p = unsafe { base.add(off) };
+            let r = f32::from(unsafe { p.cast::<u16>().read_unaligned() }) / MAX16;
+            let g = f32::from(unsafe { p.add(2).cast::<u16>().read_unaligned() }) / MAX16;
+            let b = f32::from(unsafe { p.add(4).cast::<u16>().read_unaligned() }) / MAX16;
+            let a = f32::from(unsafe { p.add(6).cast::<u16>().read_unaligned() }) / MAX16;
             pixels.push(LinearRgba::new(
                 color::eotf(r, transfer),
                 color::eotf(g, transfer),

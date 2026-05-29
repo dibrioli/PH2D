@@ -557,14 +557,23 @@ por-agente**. Norte: [ADR-0075](../architecture/decisions/0075-multiagent-parall
 Separadas por confiança. Linux-benchmarks **não transferem direto** pro Apple Silicon
 8 GiB → as marcadas "pilotar" exigem medição local antes de virar mandato.
 
-**🥇 Tier 1 — maior alavanca, agent-specific (PILOTAR + medir RAM):**
-- **Diagnóstico via LSP, não saída crua.** Hoje o agente lê output bruto do cargo e
-  **adivinha tipos** — desperdício de token e erro. Ligue-o ao **LSP nativo do Claude
-  Code (v2.0.74+, Dez/2025)** ou ao **`bacon-ls`** (wrapper LSP, roda `cargo check`/clippy
-  → JSON, mais maduro que os MCP hobby). ⚠️ **Aberto/medir:** footprint do rust-analyzer
-  p/ ≤3 agentes num workspace de ~30 crates wgpu/vello pode estourar 8 GiB — pilotar **1**
-  agente, medir RSS, decidir. Baseline barato sem isso = `cargo-check-narrow.sh`.
-  *(MCP servers de terceiros tipo rust-mcp/cursor-rust-tools = EXPERIMENTAL hobby.)*
+**🥇 Tier 1 — diagnóstico via LSP (MEDIDO 2026-05-29 — leia o veredito):**
+- **Diagnóstico via LSP, não saída crua.** O agente NÃO deve ler output bruto do cargo
+  e adivinhar tipos (desperdício de token + erro).
+- **⛔ FULL rust-analyzer / MCP type-query = BLOQUEADO por RAM nesta máquina.** Spike de
+  medição: 8 GiB físicos, **swap 5187/6144 MiB usados, ~89 MiB livres** com editores +
+  1 agente e os rust-analyzers dos editores **dormentes (3 MiB)**. Um RA *indexando* o
+  workspace (~30 crates wgpu/vello/bevy) custa ~1.5–4 GB → **não cabe nem ×1, quanto mais
+  ×3**. Só viável num Mac de 32 GB (dispensado). NÃO adotar rust-analyzer-as-oracle / MCP
+  de tipo aqui.
+- **✅ Caminho viável nesta máquina = `scripts/cargo-check-narrow.sh` ON-DEMAND.** O
+  agente checa quando quer, recebe só os erros (corta tokens), **zero processo residente**.
+  É o Tier-1 prático no teto de 8 GiB.
+- **⚠️ `bacon-ls` (backend cargo) — pesar, não adotar cego:** dá diagnósticos via LSP sem
+  o índice do RA, MAS roda `cargo check`/clippy **continuamente** em background; com ≤3
+  agentes = 3 loops de check contínuos = pressão constante numa máquina já em swap. Pode
+  ser PIOR que o check on-demand. Só vale se medido folgado.
+  *(MCP de terceiros rust-mcp/cursor-rust-tools = EXPERIMENTAL hobby E type-query = RAM-blocked.)*
 
 **🥈 Tier 2 — build/test loop, proven, baixo risco:**
 - **Linker:** confirme **lld** ou **ld-prime** (Apple). `mold` é **incompatível com macOS**

@@ -32,7 +32,7 @@
 //! ## Domain
 //!
 //! A *single* cubic matches a smooth arc with at most one inflection. A
-//! 90° circular arc fits to `< 0.16 px`; a half-circle (180°) cannot and
+//! 90° circular arc fits to `~0.135 px`; a half-circle (180°) cannot and
 //! is out of domain — callers split such inputs into sub-segments
 //! upstream (curve subdivision lands in W2). The fixtures in
 //! `tests/cubic_fit_levien.rs` are chosen within this domain.
@@ -43,7 +43,22 @@
 //! correctly-rounded and bit-identical across targets. Endpoint tangent
 //! angles enter as `sinθ`/`cosθ` computed directly from unit-vector
 //! components (dot / cross), so **no transcendental functions are called**
-//! and no `libm` dependency is needed.
+//! and no `libm` dependency is needed. The HR-5 guarantee covers the
+//! *computation*; see the caller contract below for the *output boundary*.
+//!
+//! ## Caller contract
+//!
+//! - **Determinism at the boundary:** the returned control points are raw
+//!   `f64 → f32` casts, **not** snapped to the Q16.16 grid. When the result
+//!   is written into a [`crate::VectorNetwork`] with `deterministic == true`
+//!   (whose stored coordinates must be cross-target bit-identical), the
+//!   caller MUST route the four points through [`crate::deterministic::snap`]
+//!   first — this primitive is network-agnostic and cannot see that flag.
+//! - **Allocation (HR-3):** each call allocates two short-lived `Vec`s
+//!   (`candidates`, and one of `samples.len()` points). That is fine on the
+//!   editor write path / export / canonicalization — where this belongs —
+//!   but it is **not** a per-frame-safe routine; do not call it inside the
+//!   render tick without hoisting those buffers to caller-owned scratch.
 
 use glam::Vec2;
 

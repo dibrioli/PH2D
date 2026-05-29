@@ -626,20 +626,19 @@ impl crate::App {
                 // accepts "vector_tools" (Pen tool ship). When a third
                 // cluster appears, add it here OR extract a generic
                 // `find_activatable_stateful_tool` helper.
-                let activating_cluster: Option<&'static str> =
-                    ph2d_editor::installed_registry().and_then(|reg| {
-                        for cluster_name in ["image_tools", "vector_tools"] {
-                            if reg.cluster(cluster_name).iter().any(|m| {
-                                m.id == tool_id
-                                    && matches!(
-                                        m.handler,
-                                        ph2d_tool_registry::ToolHandler::Stateful { .. }
-                                    )
-                            }) {
-                                return Some(cluster_name);
-                            }
-                        }
-                        None
+                let activating_cluster: Option<&'static str> = ph2d_editor::installed_registry()
+                    .and_then(|reg| {
+                        ["image_tools", "vector_tools"]
+                            .into_iter()
+                            .find(|&cluster_name| {
+                                reg.cluster(cluster_name).iter().any(|m| {
+                                    m.id == tool_id
+                                        && matches!(
+                                            m.handler,
+                                            ph2d_tool_registry::ToolHandler::Stateful { .. }
+                                        )
+                                })
+                            })
                     });
                 // Per-cluster activation gate. "image_tools" requires
                 // the IMG mode toggle; "vector_tools" has no toggle in
@@ -741,8 +740,7 @@ impl crate::App {
                     for cluster_name in ["image_tools", "vector_tools"] {
                         for manifest in reg.cluster(cluster_name) {
                             let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
-                            let should_press =
-                                active_id_string.as_deref() == Some(manifest.id);
+                            let should_press = active_id_string.as_deref() == Some(manifest.id);
                             if let Some(ph2d_editor::InteractiveState::Button { state }) =
                                 hero.store.get_mut(pill_id)
                             {

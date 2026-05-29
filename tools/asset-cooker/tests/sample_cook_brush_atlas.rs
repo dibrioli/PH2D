@@ -14,7 +14,7 @@
 //! Não testa: cross-machine determinism (D2/W1.T10 canonical runner ⏳); decode
 //! correctness via wgpu (W2 renderer); painter consumer (W3).
 
-use ph2d_asset_cooker::texture::{self, fixtures, AssetClass, CookOptions, Tier};
+use ph2d_asset_cooker::texture::{self, AssetClass, CookOptions, Tier, fixtures};
 
 const KTX2_MAGIC: &[u8] = &[
     0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -119,7 +119,11 @@ fn sample_cook_brush_atlas_cook_all_emits_single_channel_per_tier() {
     // SingleChannel asset class (não só SpriteColor que outros tests cobrem).
     let png = fixtures::brush_atlas_256_r8();
     let map = texture::cook_all(&png, AssetClass::SingleChannel).expect("cook_all");
-    assert_eq!(map.len(), 5, "cook_all should emit 1 artifact per tier (5 tiers)");
+    assert_eq!(
+        map.len(),
+        5,
+        "cook_all should emit 1 artifact per tier (5 tiers)"
+    );
 
     for tier in [
         Tier::Desktop,

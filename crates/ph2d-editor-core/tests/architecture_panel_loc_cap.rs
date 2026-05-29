@@ -38,6 +38,16 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
 /// Per-function overage allowance. Each entry:
 /// (relative file path, function name, allowed LOC, why).
 const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
+    // ph2d-panel-color-equalization populate: 200→203 after `cargo fmt --all`
+    // re-flowed long lines (solo Coord 2026-05-29). A data-spec populate (per
+    // the grid-snap precedent below); split into a number_specs helper is the
+    // same deferred follow-up. Frozen at the fmt-canonical 203.
+    (
+        "ph2d-panel-color-equalization/src/populate.rs",
+        "populate",
+        203,
+        "fmt --all re-flow pushed it 200→203; data-spec populate, split deferred (grid-snap precedent)",
+    ),
     // Wave 10 / Etapa 5.2: long paint orchestrators that grew with the
     // panel's feature set. Splitting into per-section helpers is a
     // follow-up Etapa (one panel at a time, with smoke validation).

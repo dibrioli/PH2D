@@ -1068,7 +1068,7 @@ mod tests {
             out.extend_from_slice(key_bytes);
             out.push(0u8);
             out.extend_from_slice(value);
-            while out.len() % 4 != 0 {
+            while !out.len().is_multiple_of(4) {
                 out.push(0u8);
             }
         }

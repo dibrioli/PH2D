@@ -1,0 +1,18 @@
+# cargo-audit config — kept in parity with deny.toml's [advisories].ignore
+# so `cargo audit` (ship.sh + CI) and `cargo deny check advisories` agree.
+#
+# Each ignore here mirrors a deny.toml entry with the same justification:
+#   RUSTSEC-2024-0436  paste — unmaintained, transitive (rapier→nalgebra→simba),
+#                      proc-macro only, no runtime risk.
+#   RUSTSEC-2023-0089  atomic-polyfill — unmaintained, transitive embedded shim,
+#                      unused on PH2D's 64-bit targets.
+#   RUSTSEC-2026-0151  jxl-grid OOB write — 32-bit-ONLY; PH2D ships exclusively
+#                      64-bit (Mac ARM64, desktop x64, iPad ARM64), so the
+#                      overflow path is unreachable. Revisit if a 32-bit target
+#                      is ever added or jxl-oxide ships a patched jxl-grid.
+[advisories]
+ignore = [
+    "RUSTSEC-2024-0436",
+    "RUSTSEC-2023-0089",
+    "RUSTSEC-2026-0151",
+]

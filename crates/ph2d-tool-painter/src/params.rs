@@ -343,7 +343,10 @@ mod tests {
         let s = PainterUiSnapshot::default();
         let p = PainterParams::default();
         assert_eq!(s.size01, px_to_size01(p.size_px));
-        assert!(s.size01 > 0.0, "default size01 must be non-zero (32 px brush)");
+        assert!(
+            s.size01 > 0.0,
+            "default size01 must be non-zero (32 px brush)"
+        );
         assert_eq!(s.opacity01, p.opacity);
         assert_eq!(s.active_color, p.active_color);
         assert_eq!(s.mode, p.mode);

@@ -237,10 +237,22 @@ mod tests {
     /// bug em normal map cooked como sRGB ASTC era shader-visible em runtime.
     #[test]
     fn default_color_space_distinguishes_color_vs_data_classes() {
-        assert_eq!(default_color_space_for(AssetClass::SpriteColor), ctt::ColorSpace::Srgb);
-        assert_eq!(default_color_space_for(AssetClass::CriticalUi), ctt::ColorSpace::Srgb);
-        assert_eq!(default_color_space_for(AssetClass::SingleChannel), ctt::ColorSpace::Linear);
-        assert_eq!(default_color_space_for(AssetClass::NormalMap), ctt::ColorSpace::Linear);
+        assert_eq!(
+            default_color_space_for(AssetClass::SpriteColor),
+            ctt::ColorSpace::Srgb
+        );
+        assert_eq!(
+            default_color_space_for(AssetClass::CriticalUi),
+            ctt::ColorSpace::Srgb
+        );
+        assert_eq!(
+            default_color_space_for(AssetClass::SingleChannel),
+            ctt::ColorSpace::Linear
+        );
+        assert_eq!(
+            default_color_space_for(AssetClass::NormalMap),
+            ctt::ColorSpace::Linear
+        );
     }
 
     /// Audit W1.T6 η-L2: arch-gate cross-crate ordering — `Tier::Desktop as u8 == 0`,
@@ -259,7 +271,8 @@ mod tests {
         for (tier, expected_ti) in pairs {
             let converted: ph2d_asset::TierIndex = tier.into();
             assert_eq!(
-                converted, expected_ti,
+                converted,
+                expected_ti,
                 "Tier::{tier:?} MUST map to ph2d_asset::TierIndex::{} (u8={})",
                 expected_ti.name(),
                 expected_ti.as_u8()

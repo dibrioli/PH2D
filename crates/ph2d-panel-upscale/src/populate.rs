@@ -135,8 +135,14 @@ mod tests {
         // Asserts BOTH the bidirectional link AND the affine mapping.
         let mut store = WidgetStore::with_capacity(8);
         populate(&mut store);
-        assert_eq!(store.linked_number(ids::UPS_SCALE), Some(ids::UPS_SCALE_NUM));
-        assert_eq!(store.linked_slider(ids::UPS_SCALE_NUM), Some(ids::UPS_SCALE));
+        assert_eq!(
+            store.linked_number(ids::UPS_SCALE),
+            Some(ids::UPS_SCALE_NUM)
+        );
+        assert_eq!(
+            store.linked_slider(ids::UPS_SCALE_NUM),
+            Some(ids::UPS_SCALE)
+        );
         let (scale, offset) = store.linked_slider_mapping(ids::UPS_SCALE_NUM);
         let expected_scale = SCALE_FULL_SCALE - MIN_SCALE_FACTOR;
         let expected_offset = MIN_SCALE_FACTOR;

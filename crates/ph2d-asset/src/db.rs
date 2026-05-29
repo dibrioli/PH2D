@@ -262,15 +262,13 @@ mod tests {
                 assert_eq!((*width, *height), (1, 1));
                 assert_eq!(&pixels[..], &[10, 20, 30, 255]);
             }
-            // Other variants are out of scope for this PNG-decode
-            // test — they have dedicated insert_postcard_* / cooked-texture
-            // helpers and roundtrip tests in `prefab.rs` / `scene.rs` /
-            // W1.T4 architecture_texture_ktx2.rs.
-            Asset::Prefab(_) | Asset::Scene(_) | Asset::TextureKtx2 { .. } => {
-                unreachable!("insert_png_bytes can only produce Asset::ImageRgba8")
-            }
-            // `#[non_exhaustive]` Asset enum — future variants land via
-            // amendment (e.g., ADR-0055.1 evoluindo TextureKtx2 → Ktx2Image).
+            // Other variants are out of scope for this PNG-decode test —
+            // they have dedicated insert_postcard_* / cooked-texture helpers
+            // and roundtrip tests in `prefab.rs` / `scene.rs` /
+            // architecture_texture_ktx2.rs. The `_` also absorbs future
+            // `#[non_exhaustive]` Asset variants (e.g. ADR-0055.1 evoluindo
+            // TextureKtx2 → Ktx2Image) — naming Prefab/Scene/TextureKtx2
+            // explicitly here made `_` unreachable (clippy).
             _ => unreachable!("insert_png_bytes can only produce Asset::ImageRgba8"),
         }
     }

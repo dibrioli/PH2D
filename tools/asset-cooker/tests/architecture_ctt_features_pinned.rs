@@ -60,10 +60,7 @@ fn ctt_features_pinned_and_amd_excluded() {
         .and_then(|v| v.as_array())
         .expect("W1.T2.1 D1 — ctt dep MUST declare explicit `features = [...]` allowlist")
         .iter()
-        .map(|v| {
-            v.as_str()
-                .expect("ctt feature entries must be strings")
-        })
+        .map(|v| v.as_str().expect("ctt feature entries must be strings"))
         .collect();
 
     let required: BTreeSet<&str> = REQUIRED_FEATURES.iter().copied().collect();

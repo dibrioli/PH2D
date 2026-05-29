@@ -92,6 +92,17 @@ ignore = [
     # only at proc-macro expansion (no runtime risk). Accepted
     # until the rapier upstream chain migrates.
     "RUSTSEC-2024-0436",
+    # `atomic-polyfill` unmaintained (RUSTSEC-2023-0089) — transitive
+    # embedded-target shim, unused on PH2D's 64-bit targets.
+    "RUSTSEC-2023-0089",
+    # `jxl-grid` OOB write via integer overflow (RUSTSEC-2026-0151) is
+    # 32-bit-ONLY. PH2D ships exclusively 64-bit (Mac ARM64, desktop x64,
+    # iPad ARM64) — the overflow path is unreachable on every target.
+    # Pulled transitively by jxl-oxide (JPEG-XL decode in ph2d-imageio-jxl).
+    # Ignored until jxl-oxide ships a patched jxl-grid; revisit if PH2D ever
+    # adds a 32-bit target. (Solo Coord 2026-05-29 — flagged to Enio;
+    # bump-vs-ignore is his to override.)
+    "RUSTSEC-2026-0151",
 ]
 
 # ----------------------------------------------------------------------------

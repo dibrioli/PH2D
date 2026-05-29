@@ -14,7 +14,7 @@ use ph2d_editor_core::panel::Panel;
 use ph2d_panel_painter_sidebar::PainterSidebarPanel;
 use ph2d_panel_painter_sidebar::ids;
 use ph2d_tool_painter::{
-    PainterUiSnapshot, opacity01_to_pct, opacity_chip_mapping, size01_to_px, size_chip_mapping,
+    PainterUiSnapshot, opacity_chip_mapping, opacity01_to_pct, size_chip_mapping, size01_to_px,
 };
 
 fn populated_store() -> WidgetStore {
@@ -56,12 +56,24 @@ fn size_chip_uses_px_affine_mapping_not_identity() {
 #[test]
 fn opacity_chip_uses_percent_affine_mapping_not_identity() {
     let s = populated_store();
-    assert_eq!(s.linked_number(ids::OPACITY_SLIDER), Some(ids::OPACITY_CHIP));
-    assert_eq!(s.linked_slider(ids::OPACITY_CHIP), Some(ids::OPACITY_SLIDER));
+    assert_eq!(
+        s.linked_number(ids::OPACITY_SLIDER),
+        Some(ids::OPACITY_CHIP)
+    );
+    assert_eq!(
+        s.linked_slider(ids::OPACITY_CHIP),
+        Some(ids::OPACITY_SLIDER)
+    );
     let (scale, offset) = s.linked_slider_mapping(ids::OPACITY_CHIP);
     let (exp_scale, exp_offset) = opacity_chip_mapping();
-    assert!((scale - exp_scale).abs() < f32::EPSILON, "opacity scale {scale} != {exp_scale}");
-    assert!((offset - exp_offset).abs() < f32::EPSILON, "opacity offset {offset} != {exp_offset}");
+    assert!(
+        (scale - exp_scale).abs() < f32::EPSILON,
+        "opacity scale {scale} != {exp_scale}"
+    );
+    assert!(
+        (offset - exp_offset).abs() < f32::EPSILON,
+        "opacity offset {offset} != {exp_offset}"
+    );
     assert!(
         (scale - 1.0).abs() > f32::EPSILON,
         "opacity chip must NOT be identity-linked (chip displays %, slider stores 0..1)"
@@ -76,16 +88,26 @@ fn seed_matches_snapshot_default() {
     let def = PainterUiSnapshot::default();
 
     let (_, size_slider) = s.slider(ids::SIZE_SLIDER).expect("size slider seeded");
-    assert!((size_slider - def.size01).abs() < f32::EPSILON, "size slider seed != snapshot default");
+    assert!(
+        (size_slider - def.size01).abs() < f32::EPSILON,
+        "size slider seed != snapshot default"
+    );
     let size_chip = s.number_value(ids::SIZE_CHIP).expect("size chip seeded");
     assert!(
         (size_chip as f32 - size01_to_px(def.size01)).abs() < 1e-3,
         "size chip seed must equal px(default), got {size_chip}"
     );
 
-    let (_, op_slider) = s.slider(ids::OPACITY_SLIDER).expect("opacity slider seeded");
-    assert!((op_slider - def.opacity01).abs() < f32::EPSILON, "opacity slider seed != snapshot default");
-    let op_chip = s.number_value(ids::OPACITY_CHIP).expect("opacity chip seeded");
+    let (_, op_slider) = s
+        .slider(ids::OPACITY_SLIDER)
+        .expect("opacity slider seeded");
+    assert!(
+        (op_slider - def.opacity01).abs() < f32::EPSILON,
+        "opacity slider seed != snapshot default"
+    );
+    let op_chip = s
+        .number_value(ids::OPACITY_CHIP)
+        .expect("opacity chip seeded");
     assert!(
         (op_chip as f32 - opacity01_to_pct(def.opacity01)).abs() < 1e-3,
         "opacity chip seed must equal pct(default), got {op_chip}"

@@ -25,8 +25,8 @@
 //! `RUST_TEST_THREADS=1 cargo test -p ph2d-asset-cooker` (vide armadilha #1 do
 //! módulo). Os encoders aqui crasham determinísticamente se rodados em paralelo.
 
-use ph2d_asset_cooker::texture::{cook, cook_all, fixtures, AssetClass, CookOptions, Tier};
-use ph2d_asset_ktx2::{decode_ktx2_bytes, Ktx2Format};
+use ph2d_asset_cooker::texture::{AssetClass, CookOptions, Tier, cook, cook_all, fixtures};
+use ph2d_asset_ktx2::{Ktx2Format, decode_ktx2_bytes};
 
 /// O fixture canônico (W1.T11) é 64×64 — as dimensões devem sobreviver o
 /// round-trip cook → decode intactas (o encoder não reescala mip 0).

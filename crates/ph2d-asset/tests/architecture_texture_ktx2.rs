@@ -114,7 +114,10 @@ fn logical_texture_map_resolves_per_tier() {
 
     // BTreeMap iteration order is deterministic (HR-6 serialization).
     let tiers = map.available_tiers(logical);
-    assert_eq!(tiers, vec![TierIndex::DESKTOP, TierIndex::MOBILE, TierIndex::WEB]);
+    assert_eq!(
+        tiers,
+        vec![TierIndex::DESKTOP, TierIndex::MOBILE, TierIndex::WEB]
+    );
 }
 
 #[test]

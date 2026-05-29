@@ -33,9 +33,7 @@ use std::collections::BTreeMap;
 /// Estável across tiers (mesmo source → mesmo `LogicalTextureId` em Desktop /
 /// Mobile / Web / etc.). Distinto de [`AssetId`] que indexa o cooked KTX2
 /// byte-content (varia per tier).
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LogicalTextureId([u8; 32]);
 
 impl LogicalTextureId {
@@ -106,7 +104,10 @@ impl LogicalTextureMap {
         tier: TierIndex,
         asset_id: AssetId,
     ) -> Option<AssetId> {
-        self.entries.entry(logical).or_default().insert(tier, asset_id)
+        self.entries
+            .entry(logical)
+            .or_default()
+            .insert(tier, asset_id)
     }
 
     /// Resolve `(logical, tier) → AssetId` lookup.
@@ -173,7 +174,10 @@ mod tests {
         assert_eq!(map.insert(logical, TierIndex::DESKTOP, asset_desktop), None);
         assert_eq!(map.insert(logical, TierIndex::MOBILE, asset_mobile), None);
 
-        assert_eq!(map.resolve(logical, TierIndex::DESKTOP), Some(asset_desktop));
+        assert_eq!(
+            map.resolve(logical, TierIndex::DESKTOP),
+            Some(asset_desktop)
+        );
         assert_eq!(map.resolve(logical, TierIndex::MOBILE), Some(asset_mobile));
         assert_eq!(map.resolve(logical, TierIndex::WEB), None);
     }
@@ -204,7 +208,10 @@ mod tests {
 
         // BTreeMap ordering → 0 < 1 < 2 → Desktop, Mobile, Web.
         let tiers = map.available_tiers(logical);
-        assert_eq!(tiers, vec![TierIndex::DESKTOP, TierIndex::MOBILE, TierIndex::WEB]);
+        assert_eq!(
+            tiers,
+            vec![TierIndex::DESKTOP, TierIndex::MOBILE, TierIndex::WEB]
+        );
     }
 
     #[test]

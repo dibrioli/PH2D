@@ -34,8 +34,8 @@
 //! deve gerenciar essa conversão automaticamente OU rejeitar Straight+mips combo
 //! com erro explícito. Test fringe-detection inclui-se em W1.T7.1.
 
-use image::imageops::FilterType;
 use image::RgbaImage;
+use image::imageops::FilterType;
 
 /// Filtro de downsample para mip generation. Mapeia pra `image::imageops::FilterType`
 /// internamente mas expõe API mais semantic e PH2D-specific.
@@ -243,10 +243,7 @@ mod tests {
         let src = fixture_to_rgba(&png);
         let point_chain = generate_mip_chain(&src, MipFilter::Point, Some(2));
         let box_chain = generate_mip_chain(&src, MipFilter::Box, Some(2));
-        assert_eq!(
-            point_chain[1].dimensions(),
-            box_chain[1].dimensions()
-        );
+        assert_eq!(point_chain[1].dimensions(), box_chain[1].dimensions());
         assert_ne!(
             point_chain[1].as_raw(),
             box_chain[1].as_raw(),
@@ -307,7 +304,15 @@ mod tests {
         let dims: Vec<_> = chain.iter().map(|l| l.dimensions()).collect();
         assert_eq!(
             dims,
-            vec![(100, 80), (50, 40), (25, 20), (12, 10), (6, 5), (3, 2), (1, 1)]
+            vec![
+                (100, 80),
+                (50, 40),
+                (25, 20),
+                (12, 10),
+                (6, 5),
+                (3, 2),
+                (1, 1)
+            ]
         );
     }
 

@@ -15,8 +15,8 @@
 //! até T3 + D2 ambos materializados.
 
 use ctt::{
-    AlphaMode, ColorSpace, Container, ConvertSettings, Image, PipelineOutput, Surface,
-    TextureKind, convert,
+    AlphaMode, ColorSpace, Container, ConvertSettings, Image, PipelineOutput, Surface, TextureKind,
+    convert,
 };
 use image::ImageReader;
 
@@ -257,7 +257,9 @@ mod tests {
         // KTX2 magic bytes: «KTX 20»\r\n\x1A\n (12 bytes).
         assert_eq!(
             &bytes[0..12],
-            &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A],
+            &[
+                0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A
+            ],
             "output must start with KTX2 magic identifier"
         );
     }
@@ -292,7 +294,12 @@ mod tests {
         )
         .expect("cook mobile critical UI");
         assert!(bytes.len() > 100);
-        assert_eq!(&bytes[0..12], &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A]);
+        assert_eq!(
+            &bytes[0..12],
+            &[
+                0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A
+            ]
+        );
     }
 
     /// W1.T3 γ-H2 fix: verifica integração end-to-end do gamma fix —
@@ -324,12 +331,20 @@ mod tests {
             Tier::LowEnd,
             Tier::Constrained,
         ] {
-            let bytes = map.get(&tier).unwrap_or_else(|| panic!("tier {tier:?} missing"));
-            assert!(bytes.len() > 100, "tier {tier:?}: KTX2 too small ({} bytes)", bytes.len());
+            let bytes = map
+                .get(&tier)
+                .unwrap_or_else(|| panic!("tier {tier:?} missing"));
+            assert!(
+                bytes.len() > 100,
+                "tier {tier:?}: KTX2 too small ({} bytes)",
+                bytes.len()
+            );
             // KTX2 magic header check.
             assert_eq!(
                 &bytes[0..12],
-                &[0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A],
+                &[
+                    0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A
+                ],
                 "tier {tier:?}: invalid KTX2 magic"
             );
         }
@@ -343,11 +358,12 @@ mod tests {
     /// LogicalTextureMap (1 source PNG → N AssetIds em `ph2d_asset::LogicalTextureMap`).
     #[test]
     fn cook_all_artifacts_distinct_per_distinct_target() {
-        use std::collections::HashSet;
+        use std::collections::BTreeSet;
         let png = fixture_png_64x64();
         let map = cook_all(&png, AssetClass::SpriteColor).expect("cook_all");
         assert_eq!(map.len(), 5, "5 tiers emitted");
-        let ids: HashSet<ph2d_asset::AssetId> = map
+        // BTreeSet, not HashSet — HR-5 disallows std HashSet (AssetId is Ord).
+        let ids: BTreeSet<ph2d_asset::AssetId> = map
             .values()
             .map(|bytes| ph2d_asset::AssetId::from_bytes(bytes))
             .collect();

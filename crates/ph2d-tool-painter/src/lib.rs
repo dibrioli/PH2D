@@ -26,8 +26,8 @@ pub mod params;
 pub mod tool;
 
 pub use params::{
-    PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity01_to_pct,
-    opacity_chip_mapping, px_to_size01, size01_to_px, size_chip_mapping,
+    PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,
+    opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
 pub use tool::PainterTool;
 

@@ -123,19 +123,21 @@ fn main() -> std::process::ExitCode {
         Cmd::Prefab { input, output } => run(&input, &output, cook_prefab_json5, "prefab"),
         Cmd::Scene { input, output } => run(&input, &output, cook_scene_json5, "scene"),
         Cmd::Texture {
-            sub: TextureCmd::Cook {
-                input,
-                output,
-                tier,
-                asset_class,
-            },
+            sub:
+                TextureCmd::Cook {
+                    input,
+                    output,
+                    tier,
+                    asset_class,
+                },
         } => run_texture_cook(&input, &output, tier.into(), asset_class.into()),
         Cmd::Texture {
-            sub: TextureCmd::CookAll {
-                input,
-                output_dir,
-                asset_class,
-            },
+            sub:
+                TextureCmd::CookAll {
+                    input,
+                    output_dir,
+                    asset_class,
+                },
         } => run_texture_cook_all(&input, &output_dir, asset_class.into()),
     };
     match result {

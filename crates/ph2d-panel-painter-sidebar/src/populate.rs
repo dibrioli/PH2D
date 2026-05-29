@@ -19,7 +19,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_painter::{
-    PainterUiSnapshot, opacity01_to_pct, opacity_chip_mapping, size01_to_px, size_chip_mapping,
+    PainterUiSnapshot, opacity_chip_mapping, opacity01_to_pct, size_chip_mapping, size01_to_px,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -52,7 +52,12 @@ pub fn populate(store: &mut WidgetStore) {
     // Link slider ↔ chip com a affine mapping correta (DIRETRIZ §5.2 regra
     // 1 + canon BgRemoval/Padding). `_integer` porque px e % são inteiros.
     let (size_scale, size_offset) = size_chip_mapping();
-    store.link_slider_number_mapped_integer(ids::SIZE_SLIDER, ids::SIZE_CHIP, size_scale, size_offset);
+    store.link_slider_number_mapped_integer(
+        ids::SIZE_SLIDER,
+        ids::SIZE_CHIP,
+        size_scale,
+        size_offset,
+    );
     let (op_scale, op_offset) = opacity_chip_mapping();
     store.link_slider_number_mapped_integer(
         ids::OPACITY_SLIDER,

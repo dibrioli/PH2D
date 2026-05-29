@@ -57,10 +57,7 @@ fn in_memory_only_lifecycle_pushes_to_history() {
     let recorded = t.stroke_history().iter().next().unwrap();
     assert_eq!(recorded.seq, 0, "primeiro stroke tem seq=0");
     assert_eq!(recorded.rng_seed, 42);
-    assert!(
-        !recorded.points.is_empty(),
-        "samples preservados em points"
-    );
+    assert!(!recorded.points.is_empty(), "samples preservados em points");
 }
 
 #[test]

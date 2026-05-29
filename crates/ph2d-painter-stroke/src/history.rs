@@ -130,6 +130,14 @@ impl StrokeHistory {
             record.seq,
             self.max_seq().unwrap_or(0)
         );
+        self.insert_record(record)
+    }
+
+    /// Shared insertion: `Full` appends, `Ring` evicts FIFO when at cap.
+    /// Carries NO seq-monotonicity gate — `push` adds that gate (NEW
+    /// strokes), while `redo` intentionally bypasses it (re-inserting a
+    /// previously-canonical stroke is legitimately ≤ max).
+    fn insert_record(&mut self, record: StrokeRecord) -> Option<StrokeRecord> {
         match self {
             Self::Full(v) => {
                 v.push(record);
@@ -178,7 +186,16 @@ impl StrokeHistory {
     /// undo-stack do history Ring — `StrokeHistory` é o canon do canvas,
     /// undo-stack é estado UI volátil.
     pub fn redo(&mut self, record: StrokeRecord) -> Option<StrokeRecord> {
-        self.push(record)
+        // redo re-inserts a PREVIOUSLY-canonical stroke that `undo` just
+        // popped; its `seq` is legitimately ≤ `max_seq` when strokes were
+        // pushed between the undo and the redo. The ADR-0046 §2.2
+        // monotonicity gate in `push` targets NEW strokes pushed with a
+        // drifted `set_next_seq` baseline (audit T1.9 S-10), NOT redo
+        // re-insertion — so redo uses `insert_record` directly and skips
+        // the gate. (The non-monotonic Ring this can leave is the
+        // documented anti-UX this fn's doc and `redo_in_ring_can_evict_unrelated_stroke`
+        // ratify; the canonical fix is the T1.9+ undo-stack/Ring split.)
+        self.insert_record(record)
     }
 
     /// Quantidade de strokes presentes.

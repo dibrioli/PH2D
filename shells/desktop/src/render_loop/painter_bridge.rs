@@ -53,6 +53,26 @@ use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 
+/// Whether the active Painter tool has unflushed strokes since its last
+/// source push — painting that would be LOST on a mode toggle.
+///
+/// `PainterTool` is a stroke/vector tool with no `RasterEditTool` impl,
+/// so this query needs the concrete-type downcast. It lives in this
+/// (allowlisted) bridge file rather than inline in `render_loop/mod.rs`
+/// — the central dispatch must stay free of tool-concrete downcasts per
+/// the `architecture_no_downcast_to_concrete_tool_in_shell` gate.
+#[must_use]
+pub(crate) fn painter_has_unflushed_strokes(tools: &mut ToolRegistry) -> bool {
+    tools
+        .active_mut()
+        .and_then(|t| {
+            t.as_any_mut()
+                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                .map(|p| p.has_painted_since_source())
+        })
+        .unwrap_or(false)
+}
+
 /// Returns `true` iff an Apply committed this frame (caller tears the
 /// tool down — deactivate + restore Inspector — so the on-canvas overlay
 /// stops re-rendering on top of the freshly baked sprite).

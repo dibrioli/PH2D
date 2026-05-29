@@ -144,18 +144,27 @@ fn redo_in_ring_can_evict_unrelated_stroke() {
     // comportamento atual; UI layer T1.9+ deve separar undo-stack.
     use ph2d_painter_stroke::StrokeHistory;
     let mut h = StrokeHistory::ring(3);
-    // Estado inicial: 3 strokes [A, B, C].
-    let a = make_project(1).history.iter().next().unwrap().clone();
-    let b = make_project(2).history.iter().next().unwrap().clone();
-    let c = make_project(3).history.iter().next().unwrap().clone();
+    // Estado inicial: 3 strokes [A, B, C]. `make_project`'s first stroke
+    // is always seq=0, so assign MONOTONIC seqs for the gated `push`
+    // calls (ADR-0046 §2.2, audit T1.9 S-10). UUIDs stay distinct, so the
+    // eviction-identity assertions below are unaffected.
+    let mut a = make_project(1).history.iter().next().unwrap().clone();
+    let mut b = make_project(2).history.iter().next().unwrap().clone();
+    let mut c = make_project(3).history.iter().next().unwrap().clone();
+    a.seq = 0;
+    b.seq = 1;
+    c.seq = 2;
     h.push(a.clone());
     h.push(b.clone());
     h.push(c.clone());
     // undo C → [A, B]
     let popped = h.undo().unwrap();
     assert_eq!(popped.uuid, c.uuid);
-    // Push D (caller faz algo entre undo e redo).
-    let d = make_project(4).history.iter().next().unwrap().clone();
+    // Push D (caller faz algo entre undo e redo). seq=3 keeps push monotonic;
+    // the subsequent redo(C) re-inserts seq=2 < 3 — legitimately
+    // non-monotonic, which `redo` allows (it bypasses the push gate).
+    let mut d = make_project(4).history.iter().next().unwrap().clone();
+    d.seq = 3;
     let evicted_by_d = h.push(d.clone());
     assert!(evicted_by_d.is_none(), "ring tinha espaço — D só preenche");
     // Estado agora: [A, B, D]. redo(C) → evicta A.

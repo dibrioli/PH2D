@@ -56,6 +56,13 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // EqualizeSizes bridge: tool is multi-sprite-required (DIRETRIZ
     // §3.8.3.1 exception), no RasterEditTool impl, must downcast.
     "src/render_loop/equalize_sizes_bridge.rs",
+    // Painter bridge: PainterTool is a stroke/vector tool with NO
+    // RasterEditTool impl (it doesn't bake an Individual texture via the
+    // raster lifecycle), so stroke-state queries (is_stroke_active,
+    // has_painted_since_source) + the Apply-path preview-cache management
+    // require the concrete downcast. Same exception class as
+    // padding_bridge / equalize_sizes_bridge. (Coord decision, 2026-05-29.)
+    "src/render_loop/painter_bridge.rs",
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",

@@ -695,14 +695,10 @@ impl crate::App {
                         .map(|t| t.id().0.as_str() == "painter")
                         .unwrap_or(false)
                 {
-                    let lost_painting = tools
-                        .active_mut()
-                        .and_then(|t| {
-                            t.as_any_mut()
-                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                                .map(|p| p.has_painted_since_source())
-                        })
-                        .unwrap_or(false);
+                    // Tool-concrete downcast lives in the allowlisted
+                    // painter_bridge (this central dispatch stays downcast-free
+                    // per the arch-gate).
+                    let lost_painting = painter_bridge::painter_has_unflushed_strokes(tools);
                     if lost_painting {
                         toasts.push(Toast::warning(
                             "Painter: unflushed strokes were discarded when \

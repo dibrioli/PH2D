@@ -31,8 +31,8 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-const SLIDER_LABEL_W: f32 = 70.0;
-const SLIDER_CHIP_W: f32 = 64.0;
+const SLIDER_LABEL_W: f32 = 70.0; // LITERAL-PX-OK: sidebar slider label column width (component-specific layout, not a global Spacing-scale step)
+const SLIDER_CHIP_W: f32 = 64.0; // LITERAL-PX-OK: sidebar slider value-chip column width (component-specific layout, not a global Spacing-scale step)
 
 pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterSidebarPanel::ID) {

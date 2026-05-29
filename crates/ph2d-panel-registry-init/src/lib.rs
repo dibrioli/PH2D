@@ -94,6 +94,15 @@ mod tests {
         {
             n += 1;
         }
+        // Hand-maintained mirror of build_typed_registry's sync-generated
+        // push block — ph2d-panel-sync does NOT regenerate this const, so a
+        // new panel feature must be counted here too (else workspace feature
+        // unification enables the panel and this count drifts; cf. memory
+        // feedback-fanout-registry-init-friction).
+        #[cfg(feature = "panel-painter-sidebar")]
+        {
+            n += 1;
+        }
         #[cfg(feature = "panel-upscale")]
         {
             n += 1;

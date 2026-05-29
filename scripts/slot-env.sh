@@ -73,7 +73,32 @@ esac
 
 mkdir -p "$SLOT_BASE"
 PH2D_SLOT_TARGET="$SLOT_BASE/slot-${PH2D_SLOT_ID}"
-mkdir -p "$PH2D_SLOT_TARGET"
+
+# ── APFS CoW seeding (kills the ~5x per-slot dependency recompile) ──────────
+# A warm base target lives at target-slots/base on MAC_EXTERNO (APFS). New
+# slots on the SAME APFS volume are cloned from it via `cp -c` (clonefile:
+# near-instant, 0 physical bytes — shares blocks copy-on-write). The slot then
+# already has all deps compiled; only the agent's own crate recompiles.
+#
+# PRECONDITIONS (baked into cargo fingerprints — silent full-rebuild if violated):
+#   - identical RUSTFLAGS across base + slots → rely on global ~/.cargo/config.toml,
+#     NEVER set per-slot RUSTFLAGS.
+#   - identical rustc/toolchain + profile + target-triple.
+# Rebuild the base whenever Cargo.lock or the toolchain changes:
+#   CARGO_TARGET_DIR="$PH2D_ROOT_DIR/target-slots/base" cargo check --workspace
+# (run it ALONE — RAM-heavy on 8 GiB.)
+# NOTE: coord-* lives on the local SSD (different volume) where clonefile falls
+# back to a full byte copy, so CoW only helps the MAC_EXTERNO slots.
+PH2D_BASE_TARGET="$PH2D_ROOT_DIR/target-slots/base"
+if [ ! -d "$PH2D_SLOT_TARGET" ]; then
+    if [ -d "$PH2D_BASE_TARGET" ] && [ "$SLOT_BASE" = "$PH2D_ROOT_DIR/target-slots" ] \
+       && [ "$PH2D_SLOT_TARGET" != "$PH2D_BASE_TARGET" ]; then
+        echo "[slot-env] seeding slot from warm base via APFS clone (cp -c)…"
+        cp -c -R "$PH2D_BASE_TARGET" "$PH2D_SLOT_TARGET"
+    else
+        mkdir -p "$PH2D_SLOT_TARGET"
+    fi
+fi
 
 # Disk space sanity (df reports in GiB on macOS via -g).
 disk_free_gi=$(df -g "$SLOT_BASE" | awk 'NR==2 {print $4}')

@@ -61,9 +61,9 @@ run_optional "typos (project-wide typo scan)" typos typos
 
 # ── CI `test` job parity (nextest covers arch gates + cook-hash) ─────────
 if command -v cargo-nextest >/dev/null 2>&1; then
-    run "nextest run --workspace" cargo nextest run --workspace
+    run "nextest run --workspace (ci-test)" cargo nextest run --workspace --cargo-profile ci-test
 else
-    run "cargo test --workspace" cargo test --workspace
+    run "cargo test --workspace (ci-test)" cargo test --workspace --profile ci-test
 fi
 
 # ── summary ─────────────────────────────────────────────────────────────

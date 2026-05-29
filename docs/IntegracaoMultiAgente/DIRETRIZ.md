@@ -525,6 +525,37 @@ Acidentalmente trigou T2 workspace numa pasta isolada? Provavelmente staged junt
 
 ---
 
+### 6.6 Velocidade multi-agente — alta cadência (2026-05-28)
+
+Com N implementadores numa máquina de 8 GiB, o build/teste **redundante** é o
+gargalo. Regras para implementação de altíssima velocidade + validação pesada
+**1× no fim**:
+
+1. **Inner loop = SÓ `cargo check -p <crate>`** (ou `scripts/cargo-check-narrow.sh <crate>`
+   para cortar payload de erro). **ZERO** `cargo test`, **ZERO** `clippy --all-targets`,
+   **ZERO** auditor adversarial **por task** durante o burst de edição.
+2. **A validação pesada é BATCHED no fim do módulo/wave**, não por task: a
+   auditoria adversarial (≥2 lentes rotacionadas), `nextest`, `clippy --all-targets`
+   e o smoke acontecem **uma vez** sobre o diff acumulado do módulo — não N× por
+   micro-task. (O padrão-ouro é preservado **no gate**, não repetido a cada commit.)
+3. **Build dedup via CoW** (`scripts/slot-env.sh`): cada slot é semeado por
+   clone APFS (`cp -c`) de um `target-slots/base` warm → zero recompile 5× de deps.
+   Rebuild da base só quando `Cargo.lock`/toolchain muda (rode-a SOZINHO, é RAM-heavy).
+4. **Teste de módulo rápido:** `scripts/nextest-impacted.sh` (roda só `rdeps()` do
+   que mudou + força o golden de determinismo). O gate final continua sendo
+   `./scripts/ship.sh` (`nextest run --workspace --cargo-profile ci-test` — paridade
+   exata com o CI, deps em opt-level=3).
+5. **Concorrência:** máx **2-3 `cargo` simultâneos** (RAM 8 GiB). O Coordenador
+   escalona quem compila quando via SESSION_ACTIVE (§1.1); a CoW barateia criar
+   slots mas **não** levanta esse teto.
+
+**Anti-padrão que matou a velocidade (2026-05-28):** mandar cada implementador
+rodar `cargo test` + `clippy --all-targets` + **spawnar 2 auditores adversariais
+POR TASK**. Com 5 agentes isso é uma tempestade de builds redundantes. Auditoria
+é **por módulo fechado**, não por micro-task.
+
+---
+
 ## 7. Anti-colisão git
 
 `git commit` é serializado pelo índice global do git. Duas sessões com arquivos staged ao mesmo tempo: uma roda commit e agarra os arquivos da outra junto.

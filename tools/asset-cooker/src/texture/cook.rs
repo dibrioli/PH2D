@@ -22,7 +22,35 @@ use image::ImageReader;
 
 use super::target_matrix::{AssetClass, Tier, default_color_space_for, target_for};
 
+/// W1.T15 audit Lente ο-O1 — teto explícito de dimensão do source. Espelha
+/// `ph2d_asset_ktx2::MAX_DIMENSION` (8192) **sem** criar dep de produção em
+/// asset-ktx2 (a única dep é dev-only, vide Cargo.toml): garante que (a) um PNG
+/// decompression-bomb é rejeitado antes de alocar W*H*4, decoder-agnóstico (não
+/// dependendo do default `max_alloc` do crate `image`, que docs do upstream
+/// avisam que pode mudar em major bump); e (b) todo artefato cookado é sempre
+/// decodificável pelo parser runtime (dims ≤ MAX_DIMENSION). Coupling documentado
+/// — se o parser relaxar MAX_DIMENSION, atualizar aqui também.
+const MAX_SOURCE_DIMENSION: u32 = 8192;
+
+/// Limite de alocação por decode (espelha `ph2d-asset::loader::MAX_ALLOC_BYTES`).
+/// 8k×8k×4 = 256 MiB; 512 MiB dá folga pro pior caso de scratch interno.
+const MAX_SOURCE_ALLOC_BYTES: u64 = 512 * 1024 * 1024;
+
+/// Limites explícitos aplicados ao decode do source (ο-O1). Padrão da casa:
+/// vide `ph2d-asset/src/loader.rs::limits`.
+fn source_decode_limits() -> image::Limits {
+    let mut l = image::Limits::default();
+    l.max_image_width = Some(MAX_SOURCE_DIMENSION);
+    l.max_image_height = Some(MAX_SOURCE_DIMENSION);
+    l.max_alloc = Some(MAX_SOURCE_ALLOC_BYTES);
+    l
+}
+
 #[derive(Debug)]
+// W1.T15 audit Lente π-4: error público que ganhará variantes (WebP/JPEG decode
+// em W4+, vide comment no decode de `cook`). Simétrico ao `#[non_exhaustive]` de
+// `Ktx2Error`; adicionar variante depois não quebra match exaustivo de consumidor.
+#[non_exhaustive]
 pub enum TextureCookError {
     /// Image decode failed (corrupted PNG, unsupported format, etc.).
     Decode(image::ImageError),
@@ -118,9 +146,10 @@ impl Default for CookOptions {
 /// HR-6: bytes retornados são deterministic-given (input, ctt-cli SHA, CPU
 /// features ISA dispatch); chamador computa `blake3(bytes)` para AssetId.
 pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, TextureCookError> {
-    // Step 1: decode source PNG → RGBA8 raw.
-    let reader = ImageReader::new(std::io::Cursor::new(source_bytes))
-        .with_guessed_format()?;
+    // Step 1: decode source PNG → RGBA8 raw. ο-O1: limites explícitos antes do
+    // decode rejeitam decompression-bomb (dims/alloc) de forma decoder-agnóstica.
+    let mut reader = ImageReader::new(std::io::Cursor::new(source_bytes)).with_guessed_format()?;
+    reader.limits(source_decode_limits());
     let dynamic = reader.decode()?;
     let rgba = dynamic.to_rgba8();
     let (width, height) = rgba.dimensions();

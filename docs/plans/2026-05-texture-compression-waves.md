@@ -45,11 +45,11 @@ Tabela canon de 22 símbolos/APIs verificados em código real no repo via `grep`
 
 | Símbolo / API | Comando verificação | Estado real | Wave responsável |
 |---|---|---|---|
-| `ph2d_asset_ktx2::Ktx2Image` | `grep -n "pub struct Ktx2" crates/ph2d-asset-ktx2/src/lib.rs` | linha 365: `pub struct Ktx2Image { format, width, height, mip_levels }` | Fase 1 ✓ |
-| `Ktx2Image::premul_intent()` API | `grep "premul_intent" crates/ph2d-asset-ktx2/src/lib.rs` | NÃO existe | **W2.T-pre cria** |
-| `Ktx2Image::byte_size_estimate()` API | `grep "fn byte_size" crates/ph2d-asset-ktx2/src/lib.rs` | NÃO existe | **W1.T9 cria** |
-| `Ktx2Image::kvd: BTreeMap<String, Vec<u8>>` field | parser atual ignora `keyValueData` | NÃO existe (kvd descartado) | **W2.T-pre adiciona** |
-| `PremulIntent { Straight, Premultiplied, Unspecified }` enum | grep | NÃO existe | **W2.T-pre cria** |
+| `ph2d_asset_ktx2::Ktx2Image` | `grep -n "pub struct Ktx2Image" crates/ph2d-asset-ktx2/src/lib.rs` | **(atualizado W1.T15)** `#[non_exhaustive] pub struct Ktx2Image { format, width, height, mip_levels, kvd }` — campo `kvd: BTreeMap<String, Vec<u8>>` adicionado em W1.T9; `#[non_exhaustive]` em ν-7. | Fase 1 ✓ + W1.T9 |
+| `Ktx2Image::premul_intent()` API | `grep "premul_intent" crates/ph2d-asset-ktx2/src/lib.rs` | **EXISTE** (W1.T9): `-> PremulIntent` lendo `PH2D_PREMUL` kvd key | **W1.T9 ✅ criou** |
+| `Ktx2Image::byte_size_estimate()` API | `grep "fn byte_size" crates/ph2d-asset-ktx2/src/lib.rs` | **EXISTE** (W1.T9): soma payloads dos mips (HR-13 helper) | **W1.T9 ✅ criou** |
+| `Ktx2Image::kvd: BTreeMap<String, Vec<u8>>` field | `grep "pub kvd" crates/ph2d-asset-ktx2/src/lib.rs` | **EXISTE** (W1.T9): kvd preservado com bounds DOS (MAX_KVD_ENTRIES/VALUE/KEY) | **W1.T9 ✅ adicionou** |
+| `PremulIntent { Straight, Premultiplied, Unspecified }` enum | `grep "pub enum PremulIntent" crates/ph2d-asset-ktx2/src/lib.rs` | **EXISTE** (W1.T9): `#[non_exhaustive]` (π-2 W1.T15) | **W1.T9 ✅ criou** |
 | `ph2d_core::MemoryBudget` | `cat crates/ph2d-core/src/budget.rs` | STRUCT `{ vram_mb: u32, ram_mb: u32, heap_script_mb: u32 }` + `MemoryBudget::new(...)`. **NÃO é enum**. | existe ✓ |
 | `trait Plugin` | `grep -rn "trait Plugin\b" crates/ --include="*.rs"` | ZERO matches — **VAPOR** (SKILL §HR-13 pattern aspirational) | **E3 §Open Issues** |
 | `ph2d_host::DeviceTier` enum | `grep -rn "pub enum DeviceTier" crates/` | ZERO matches — **VAPOR** (ADR-0053 cita mas não materializado; gate silently-passing) | **slot futuro** |

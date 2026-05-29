@@ -197,6 +197,12 @@ pub enum Ktx2Error {
 /// `Bc7RgbaUnormSrgb`, …) on purpose — Fase 2's wire-up just needs a
 /// straight `match`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// W1.T15 audit Lente π-1: o módulo doc + ADR-0055 prometem mais VkFormats em
+// Fase 2 e o design espera que downstreams façam `match` neste enum (vide
+// doctest + renderer W2). Adicionar variante seria breaking-change sem isto.
+// `Unsupported(u32)` NÃO basta — `match Foo | Unsupported(_)` ainda quebra ao
+// surgir `Bar`. Simétrico ao `#[non_exhaustive]` que ν-7 pôs em Ktx2Error/Image.
+#[non_exhaustive]
 pub enum Ktx2Format {
     // Uncompressed
     Rgba8Unorm,
@@ -486,6 +492,10 @@ impl Ktx2Image {
 /// - `Unspecified` — key ausente; caller decide default (conservative:
 ///   tratar como Straight; aggressive: assume Premultiplied per ctt convention).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// W1.T15 audit Lente π-2: enum de metadata forward-compat (alpha-intent tagging);
+// uma intent futura (ex. AssociatedAlpha/Coverage) é plausível. Fence agora —
+// zero consumidor externo, custo ergonômico zero.
+#[non_exhaustive]
 pub enum PremulIntent {
     Straight,
     Premultiplied,
@@ -642,6 +652,13 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
         // Mip dimensions follow the standard `max(1, base >> i)`
         // halving; KTX2 does not store per-level dimensions because
         // they are derivable.
+        //
+        // Shift safety (W1.T15 audit Lente ο-O2): `i` is bounded by the
+        // `level_count > MAX_LEVELS` reject above (line ~602) and upstream
+        // `levels()` yields exactly `level_count.max(1)` items — so `i <= 15`.
+        // The compile-time `const _: assert!(MAX_LEVELS < 32)` (top of file)
+        // guarantees `i < 32`, so `>> i` can never hit the shift-overflow
+        // panic even if MAX_LEVELS is later raised.
         let mip_w = (header.pixel_width >> i).max(1);
         let mip_h = (header.pixel_height >> i).max(1);
 

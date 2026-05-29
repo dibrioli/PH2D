@@ -13,11 +13,11 @@
     version: 1,
     instances: [
         {
-            prefab: "905a9b77b48c6bb85a6e213e09e5060ab50692baadb874cbda481ae514d46b26",
+            prefab: "6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab",
             overrides: [],
         },
         {
-            prefab: "905a9b77b48c6bb85a6e213e09e5060ab50692baadb874cbda481ae514d46b26",
+            prefab: "6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab",
             overrides: [
                 { type: "ph2d::ecs::Name", data: "Hero2" },
             ],

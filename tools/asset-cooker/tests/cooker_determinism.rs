@@ -70,7 +70,14 @@ fn prefab_cook_hash_is_locked() {
     // as a referenced prefab id. Keep them in sync.
     assert_eq!(hex.len(), 64);
     assert_eq!(
-        hex, "905a9b77b48c6bb85a6e213e09e5060ab50692baadb874cbda481ae514d46b26",
+        hex, "6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab",
         "simple_sprite.json5 cook hash changed — update scene fixtures + this assertion"
     );
+    // Re-locked for the Sprite Inspector v2 v3→v4 schema bump (ADR-0070,
+    // spec §10.9 "cooker salva sempre v4"): the cooked Sprite component
+    // grew 5→20 serde fields (serde-json fills the new `#[serde(default)]`
+    // fields from the v3-style fixture), so the postcard bytes — and thus
+    // the blake3 content id — legitimately changed. Deterministic +
+    // cross-platform stable (all new fields are POD f32/u32/bool, no
+    // transcendentals). Prior v3 hash: 905a9b77…46b26.
 }

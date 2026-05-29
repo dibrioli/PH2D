@@ -68,8 +68,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/paint.rs",
         "paint_hierarchy_body",
-        320,
-        "Wave 11 UI canon panel-chrome additions + Enio 2026-05-26 tree-line gap elimination (vertical reaches parent chevron + extends through inter-row gap) — split deferred to follow-up Wave",
+        388,
+        "Wave 11 UI canon panel-chrome + tree-line gap elimination, then +68 LOC from 2026-05 hierarchy companion-bit features (same-name dedup, icon hit-area, double-click focus, tree-line alignment). Per-section split (helpers threading `y`) stays a dedicated smoke-validated follow-up Wave (DIRETRIZ §3.B.1) — paint code with no unit coverage; a blind split risks visual regression the gate can't catch. Allowance reconciled to landed LOC by solo Coord 2026-05-29; split tracked outstanding.",
     ),
     // Wave 11 UI canon: paint_transform_section gained adaptive
     // layout (label-above when narrow + per-row returned height).

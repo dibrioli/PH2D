@@ -35,7 +35,9 @@ SANITY CHECK (rode primeiro — baseline já validado por mim)
     # HEAD = e5fb811. A história contém 4591f7e (T1.1) + 3fd0b80 (docs).
   git status -sb -- crates/ph2d-render/ crates/ph2d-ecs/
     # esperado: NADA pendente nesses 2 crates (working tree do Sprite limpo).
-  source scripts/slot-env.sh impl-1   # isola target/ (ou CARGO_TARGET_DIR próprio)
+  bash scripts/slot-seed.sh impl-sprite   # CoW warm clone → imprime CARGO_TARGET_DIR=<path>
+  # depois PREFIXE cada cargo (env não persiste no Bash-tool):
+  #   CARGO_TARGET_DIR=<path> cargo check -p ph2d-render
   cargo test -p ph2d-render           # baseline: 85 lib + 23 postcard verdes
 
   ⚠️ O working tree TEM WIP de outras 4 sessões (editor-core dispatch, shells,

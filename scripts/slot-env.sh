@@ -34,9 +34,19 @@
 #
 # Wave 10 / Etapa 0.1 / decision #3 Enio (accept 2-3 slot ceiling).
 
-# Allow sourcing into "set -u" shells gracefully.
-if [ "${BASH_SOURCE[0]:-}" = "" ] || [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    echo "[slot-env] ERROR: must be SOURCED, not executed."
+# Detect sourcing in BOTH zsh (BASH_SOURCE unset) and bash. The old guard
+# aborted under zsh — the project shell. NOTE: Claude Code Bash-tool agents
+# can't rely on this anyway (env does not persist between tool calls); they use
+# `bash scripts/slot-seed.sh <id>` + prefix cargo with the printed
+# CARGO_TARGET_DIR. slot-env is for interactive operator shells.
+_ph2d_sourced=0
+if [ -n "${ZSH_VERSION:-}" ]; then
+    case "${ZSH_EVAL_CONTEXT:-}" in *:file*) _ph2d_sourced=1 ;; esac
+elif [ -n "${BASH_VERSION:-}" ]; then
+    [ "${BASH_SOURCE[0]:-}" != "$0" ] && _ph2d_sourced=1
+fi
+if [ "$_ph2d_sourced" = "0" ]; then
+    echo "[slot-env] ERROR: must be SOURCED, not executed (or use scripts/slot-seed.sh)."
     echo "[slot-env] Usage: source scripts/slot-env.sh <slot-id>"
     exit 1
 fi

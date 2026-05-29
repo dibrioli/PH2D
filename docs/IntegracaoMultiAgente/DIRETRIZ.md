@@ -538,9 +538,13 @@ gargalo. Regras para implementação de altíssima velocidade + validação pesa
    auditoria adversarial (≥2 lentes rotacionadas), `nextest`, `clippy --all-targets`
    e o smoke acontecem **uma vez** sobre o diff acumulado do módulo — não N× por
    micro-task. (O padrão-ouro é preservado **no gate**, não repetido a cada commit.)
-3. **Build dedup via CoW** (`scripts/slot-env.sh`): cada slot é semeado por
-   clone APFS (`cp -c`) de um `target-slots/base` warm → zero recompile 5× de deps.
-   Rebuild da base só quando `Cargo.lock`/toolchain muda (rode-a SOZINHO, é RAM-heavy).
+3. **Build dedup via CoW**: a base warm fica em `target-slots/base`. Cada agente
+   roda UMA vez `bash scripts/slot-seed.sh <slot>` (clone APFS `cp -c`, ~1s, 0 bytes)
+   e depois **prefixa cada cargo** com o `CARGO_TARGET_DIR` impresso — o Bash-tool
+   **não persiste env** entre chamadas, então `source slot-env.sh` não basta para
+   agentes. Ex.: `CARGO_TARGET_DIR=<path> cargo check -p <crate>`. **Não use o
+   `target/` default** (foi recuperado). Rebuild da base (Coordenador, SOZINHO,
+   RAM-heavy) só quando `Cargo.lock`/toolchain muda.
 4. **Teste de módulo rápido:** `scripts/nextest-impacted.sh` (roda só `rdeps()` do
    que mudou + força o golden de determinismo). O gate final continua sendo
    `./scripts/ship.sh` (`nextest run --workspace --cargo-profile ci-test` — paridade

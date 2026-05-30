@@ -25,6 +25,38 @@ pub fn populate(store: &mut WidgetStore) {
     populate_sprite_sheet(store);
     populate_name_editor(store);
     populate_ordering(store);
+    populate_sampling(store);
+}
+
+/// Register the W3 segmented-tab + dropdown-option ids as `Button`s so
+/// the pointer dispatcher routes their clicks (an unregistered hit id is
+/// rejected by `is_focusable` and never emits `Click`). The selected
+/// visual is snapshot-driven via `Tabs::selected`; these states exist
+/// purely so the click reaches the event handler. §7 Sort Point tabs,
+/// §7 Sorting Layer dropdown options, and the §9 Sampling tabs.
+fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
+    for &id in ids {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+}
+
+fn populate_sampling(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_SAMPLE_FILTER);
+    register_button_ids(store, &ids::INSP_SAMPLE_REPEAT);
+    register_button_ids(
+        store,
+        &[
+            ids::INSP_ORDER_SP_CENTER,
+            ids::INSP_ORDER_SP_PIVOT,
+            ids::INSP_ORDER_SP_CUSTOM,
+        ],
+    );
+    register_button_ids(store, &ids::INSP_ORDER_LAYER_OPT);
 }
 
 /// W3 Sprite Inspector v2 §7 Ordering / Sorting: 7 toggles + 2 integer

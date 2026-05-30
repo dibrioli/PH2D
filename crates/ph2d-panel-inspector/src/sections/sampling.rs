@@ -43,6 +43,10 @@ pub(crate) fn paint_sampling_section(
     let row_gap = Spacing::Sm.px();
     let label_font = TypeToken::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
+    // The label sits on its OWN short row ABOVE the segmented (label-
+    // above layout) — using a fraction of the control row overlapped
+    // the text onto the buttons (smoke 2026-05-30).
+    let label_h = label_font + Spacing::Xs.px();
 
     // Texture Filter — Inherit / Nearest / Linear (tags 0/1/2).
     paint_text(
@@ -50,12 +54,12 @@ pub(crate) fn paint_sampling_section(
         scene,
         "Texture Filter",
         x,
-        yy + (h - label_font) * 0.5,
+        yy + (label_h - label_font) * 0.5,
         label_font,
         w,
         label_color,
     );
-    yy += h * 0.5; // LITERAL-PX-OK: label-above half-row
+    yy += label_h;
     let filter_rect = Rect::new(x, yy, w, h);
     let filter_tabs = Tabs::new(
         NodeId(0),
@@ -80,12 +84,12 @@ pub(crate) fn paint_sampling_section(
         scene,
         "Texture Repeat",
         x,
-        yy + (h - label_font) * 0.5,
+        yy + (label_h - label_font) * 0.5,
         label_font,
         w,
         label_color,
     );
-    yy += h * 0.5; // LITERAL-PX-OK: label-above half-row
+    yy += label_h;
     let repeat_rect = Rect::new(x, yy, w, h);
     let repeat_tabs = Tabs::new(
         NodeId(0),

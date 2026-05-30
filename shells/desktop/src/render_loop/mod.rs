@@ -263,6 +263,7 @@ impl crate::App {
                 sort_inputs,
                 bgremoval_preview_override,
                 ppm,
+                camera.cull_mask,
             );
         }
 

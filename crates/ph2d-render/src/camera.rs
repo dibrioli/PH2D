@@ -23,6 +23,13 @@ pub struct Camera2d {
     /// from window aspect. Use small values (e.g., 10.0) for "zoomed
     /// in" feel; larger for overview.
     pub height_world: f32,
+    /// Visibility-layer cull mask (Sprite Inspector v2 W3.T3.12). A
+    /// sprite renders for this camera only when its
+    /// `ph2d_ecs::VisibilityLayer` mask intersects `cull_mask`; absence
+    /// of the component = visible. CPU-only (drives the extract cull),
+    /// never uploaded to `CameraUniform`. Default `u32::MAX` = every
+    /// layer visible (no culling).
+    pub cull_mask: u32,
 }
 
 impl Camera2d {
@@ -40,6 +47,7 @@ impl Camera2d {
         Self {
             center,
             height_world,
+            cull_mask: u32::MAX,
         }
     }
 
@@ -206,6 +214,7 @@ impl Default for Camera2d {
         Self {
             center: [0.0, 0.0],
             height_world: 10.0,
+            cull_mask: u32::MAX,
         }
     }
 }
@@ -213,6 +222,15 @@ impl Default for Camera2d {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cull_mask_defaults_to_all_layers_visible() {
+        // W3.T3.12: a fresh camera culls nothing (every VisibilityLayer
+        // intersects u32::MAX), so the extract's cull is a no-op until a
+        // non-default mask is set.
+        assert_eq!(Camera2d::default().cull_mask, u32::MAX);
+        assert_eq!(Camera2d::new([1.0, 2.0], 5.0).cull_mask, u32::MAX);
+    }
 
     #[test]
     fn view_proj_centered_origin_maps_to_clip_origin() {

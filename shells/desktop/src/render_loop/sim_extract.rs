@@ -13,7 +13,7 @@ use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
     ChildOf, Entity, PresentWorld, SimRef, SimWorld, Transform, TransformPropagationState,
-    WorklistBuf, World, propagate_transforms,
+    VisibilityLayer, WorklistBuf, World, propagate_transforms,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -158,6 +158,10 @@ pub(super) fn run(
     // Project pixels-per-meter — converts a sprite's intrinsic-px
     // `offset` into the LOCAL meters `resolve_anchor` works in.
     pixels_per_meter: f32,
+    // Active camera's visibility-layer cull mask (W3.T3.12): a sprite
+    // with a `VisibilityLayer` that doesn't intersect this mask is
+    // skipped. `u32::MAX` (default) = no culling.
+    cull_mask: u32,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -214,9 +218,16 @@ pub(super) fn run(
                 let hidden = sim
                     .get::<ph2d_ecs::Visibility>(sim_entity)
                     .is_some_and(|v| v.hidden);
+                // W3.T3.12 visibility-layer cull: a sprite whose
+                // `VisibilityLayer` mask is disjoint from the active
+                // camera's `cull_mask` is skipped (absence = visible).
+                let culled = sim
+                    .get::<VisibilityLayer>(sim_entity)
+                    .is_some_and(|vl| !vl.visible_to(cull_mask));
                 let override_for_entity =
                     preview_override.filter(|o| o.entity_bits == sim_entity.to_bits());
                 if !hidden
+                    && !culled
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();

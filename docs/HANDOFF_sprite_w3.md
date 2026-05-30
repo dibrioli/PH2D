@@ -41,13 +41,37 @@ ENTREGUE:
   ShowBehindParent/Z) — ordem `[0,7,3,2,4,5,1,6,8,9]`. Quantização YSort via
   `libm::roundf` (cross-OS).
 
+KEYSTONE PRONTO (commit 5, `796613e`): **`EditorCommand::RemoveComponent
+{entity,type_id}`** + `ComponentTypeEntry.remove` (RemoveFn type-erased) — o
+pré-requisito não-óbvio p/ editar components OPCIONAIS (toggle de marker OFF /
+unset de Z = DETACH, que `SetComponent` não faz). Idempotente, unit-tested.
+Análogo ao keystone `InspectorSpriteEdit` da W2. Destranca §7/§8/§9.
+
 PRÓXIMO (ordem render-first; cada fase = 1 sessão focada):
-1. **§7 Ordering Inspector** — render JÁ pronto (o pipeline aplica tudo).
-   Construir infra `InspectorOrderingEdit` análoga a `InspectorSpriteEdit`, MAS
-   estes são **components ECS opcionais** (não campos do Sprite): commit =
-   read-component-or-default → apply → `SetComponent` (path genérico já existe,
-   `EditorCommand::SetComponent{entity,type_id,data}`); editar quando ausente
-   = INSERIR o component. Mapa do pipeline Inspector (file:line) abaixo em §3.5.
+1. **§7 Ordering Inspector UI** — render JÁ pronto + keystone RemoveComponent
+   pronto. Falta a SUPERFÍCIE UI (grande, multi-arquivo). Controles render-ready
+   (omitir Translucency Priority/Offset = precisam BlendMode/W4; omitir Order
+   Debug Overlay = fase 7): Z Index (NumberInput tri-state ±i32::MAX/2, ausente
+   "—" + botão "+ Set") · Z as Relative (toggle, só se Z presente) · Show Behind
+   Parent (toggle) · Sorting Layer (**Dropdown** — usar `Dropdown<T>` +
+   `take_pending_dropdown_chip`/`paint_dropdown_popover`; precedente vivo em
+   `ph2d-panel-inspector/src/paint.rs:400` p/ o sample-dd) · Order in Layer
+   (NumberInput int) · Y Sort Enabled (toggle) · Y Sort Sort Point (**Segmented**
+   Center/Pivot/Custom — `widget/tabs.rs` ou radio_group) · Y Sort Custom Axis
+   (2 NumberInputs, só se Custom) · Sorting Group (toggle) · Sort At Root (toggle,
+   só se Group) · Top Level (toggle).
+   **Commit pattern (optional components):** `InspectorOrderingEdit` enum +
+   `EditorAction::InspectorOrderingEdit{entity_bits,edit}` (EditorAction é
+   `#[non_exhaustive]`, add livre — spec §3.16 Lens-E-E25); no commit handler:
+   read-component-or-default → apply edit → `SetComponent` (insert/update); para
+   detach (Z unset / marker off / Group off) → `RemoveComponent`. Markers
+   (ShowBehindParent/TopLevel) = toggle insere/remove o marker zero-size.
+   Snapshot `InspectorOrderingInfo` lê os 8 components OU mostra ausente/default;
+   BulkSelect `InspectorOrderingMixed` + compute. Bump `notes_per_section
+   [_;6]→[_;7]` (paint.rs:202) + `LIVE_SECTION_IDS [_;6]→[_;7]` (ids.rs:1162) +
+   `INSP_LIVE_ORDERING_SECTION`/`_COLOR` ids. **NÃO existe gate
+   `inspector_section_count_canonical==12`** no código (só o array [_;6]); o "12
+   canônicas" é spec-level — bump o array é a mudança real.
    **ANTES de pintar:** verificar widgets — Z Index/OrderInLayer/YSort-axis =
    NumberInput (axis = 2 NumberInputs como OffsetX/Y, sem Vec2Editor); checkboxes
    p/ ZAsRelative/ShowBehindParent/TopLevel/YSort.enabled/SortingGroup.sort_at_root;

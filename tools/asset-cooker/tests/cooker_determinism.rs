@@ -70,14 +70,15 @@ fn prefab_cook_hash_is_locked() {
     // as a referenced prefab id. Keep them in sync.
     assert_eq!(hex.len(), 64);
     assert_eq!(
-        hex, "6feb338498d6d0b6dbe4a018187c4dfb3725db624bea71301231d380dcc8afab",
+        hex, "c4bc4c27f4d9ad36080860de1e3ce02dbf0c43eb3a15bfa5aa34fd45c5d9b044",
         "simple_sprite.json5 cook hash changed — update scene fixtures + this assertion"
     );
-    // Re-locked for the Sprite Inspector v2 v3→v4 schema bump (ADR-0070,
-    // spec §10.9 "cooker salva sempre v4"): the cooked Sprite component
-    // grew 5→20 serde fields (serde-json fills the new `#[serde(default)]`
-    // fields from the v3-style fixture), so the postcard bytes — and thus
-    // the blake3 content id — legitimately changed. Deterministic +
-    // cross-platform stable (all new fields are POD f32/u32/bool, no
-    // transcendentals). Prior v3 hash: 905a9b77…46b26.
+    // Re-locked for the Transform 2D skew bump (W2.T2.2, ADR-0025-amendment-1):
+    // the cooked `Transform` component is serialized BARE (the cooker isn't
+    // versioned — accepted greenfield design), so its v1→v2 growth by two
+    // `skew_x`/`skew_y` f32 (both `0.0` here) added 8 positional postcard
+    // bytes and shifted the blake3 content id. Deterministic + cross-platform
+    // stable (skew = 0.0 → identical `[0u8; 4]` bytes on every target; the
+    // CI matrix enforces Linux==Mac). Prior hashes: v3 905a9b77…46b26,
+    // v4-Sprite 6feb3384…8afab.
 }

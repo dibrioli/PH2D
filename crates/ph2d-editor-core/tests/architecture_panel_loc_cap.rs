@@ -92,6 +92,12 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         212,
         "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred. Moved to sections/transform.rs in the §T2.1 file split (sections.rs → per-section modules); allowance reconciled from 260 to the landed 212 LOC.",
     ),
+    (
+        "ph2d-panel-inspector/src/sections/color_tint.rs",
+        "paint_color_tint_section",
+        289,
+        "W2 sub-tab orchestrator (header + [Tint][Self][Corners][Effects] strip + 4 arm bodies). The §T2.1 file split EXPOSED the true size — the pre-split sections.rs monolith's naive brace-counter under-counted it (braces in earlier string/char literals shifted the depth). Per-tab helper split (each arm → a fn threading `cur_y`) is the same smoke-validated follow-up as paint_transform_section / paint_hierarchy_body — paint code with no unit coverage; a blind split risks visual regression the gate can't catch. Frozen at the landed 289.",
+    ),
     // Enio 2026-05-26: paint_hierarchy_row cresceu com os 2 novos
     // ícones (lock + group) + companion hit registers + ícone-foco
     // double-click hit zone. Split por section é follow-up.

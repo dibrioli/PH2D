@@ -164,11 +164,18 @@ pub(crate) fn sync_inspector_from_snapshots(
                 };
             }
         }
-        // Opacity NumberInput — don't clobber the buffer while the user
-        // is actively editing this field.
-        if host.store().focus_id() != Some(ids::INSP_SPRITE_OPACITY) {
-            host.store_mut()
-                .set_number_value(ids::INSP_SPRITE_OPACITY, sp.opacity as f64);
+        // Numeric fields — don't clobber the buffer of the field the
+        // user is actively editing.
+        let focus = host.store().focus_id();
+        for (id, value) in [
+            (ids::INSP_SPRITE_OPACITY, sp.opacity as f64),
+            (ids::INSP_SPRITE_HFRAMES, sp.hframes as f64),
+            (ids::INSP_SPRITE_VFRAMES, sp.vframes as f64),
+            (ids::INSP_SPRITE_FRAME, sp.frame as f64),
+        ] {
+            if focus != Some(id) {
+                host.store_mut().set_number_value(id, value);
+            }
         }
     }
 }

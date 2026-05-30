@@ -481,6 +481,8 @@ pub const INSP_LIVE_TRANSFORM_SECTION: NodeId = hash_node_id("insp_live_transfor
 pub const INSP_LIVE_RENDER_SECTION: NodeId = hash_node_id("insp_live_render_section");
 /// W2 Sprite Inspector v2 — Color & Tint live section header.
 pub const INSP_LIVE_COLOR_SECTION: NodeId = hash_node_id("insp_live_color_section");
+/// W2 Sprite Inspector v2 — Sprite Sheet live section header.
+pub const INSP_LIVE_SHEET_SECTION: NodeId = hash_node_id("insp_live_sheet_section");
 /// Color-circle hit NodeIds — one per Inspector live section, parallel
 /// to [`LIVE_SECTION_IDS`]. Clicking the circle opens the canonical
 /// BlenderPicker pointing at this id; the picker writes the chosen
@@ -492,6 +494,8 @@ pub const INSP_LIVE_TRANSFORM_COLOR: NodeId = hash_node_id("insp_live_transform_
 pub const INSP_LIVE_RENDER_COLOR: NodeId = hash_node_id("insp_live_render_color");
 /// Color-circle hit id for the Color & Tint section header.
 pub const INSP_LIVE_COLOR_COLOR: NodeId = hash_node_id("insp_live_color_color");
+/// Color-circle hit id for the Sprite Sheet section header.
+pub const INSP_LIVE_SHEET_COLOR: NodeId = hash_node_id("insp_live_sheet_color");
 
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
 /// Final opacity NumberInput (`[0, 1]`; renders today via
@@ -499,6 +503,14 @@ pub const INSP_LIVE_COLOR_COLOR: NodeId = hash_node_id("insp_live_color_color");
 pub const INSP_SPRITE_OPACITY: NodeId = hash_node_id("insp_sprite_opacity");
 /// Tint Fill (silhouette) checkbox; renders today via `flip_uv` bit 2.
 pub const INSP_SPRITE_TINT_FILL: NodeId = hash_node_id("insp_sprite_tint_fill");
+
+/// W2 Sprite Inspector v2 — Sprite Sheet grid controls (render today via
+/// the extract atlas-rect sub-division). HFrames / VFrames / Frame.
+pub const INSP_SPRITE_HFRAMES: NodeId = hash_node_id("insp_sprite_hframes");
+/// Sprite-sheet rows NumberInput.
+pub const INSP_SPRITE_VFRAMES: NodeId = hash_node_id("insp_sprite_vframes");
+/// Active sheet frame index NumberInput.
+pub const INSP_SPRITE_FRAME: NodeId = hash_node_id("insp_sprite_frame");
 
 /// Title-bar color dot for the Grid Snap panel. Kept (Grid Snap is a
 /// settings panel, not an image tool). The original broadcast added
@@ -1084,12 +1096,13 @@ pub const SECTION_IDS: [NodeId; 10] = [
 
 /// Live Inspector section headers (Name / Visibility / Transform /
 /// Render / Color & Tint). Right-click opens the SectionOutline menu.
-pub const LIVE_SECTION_IDS: [NodeId; 5] = [
+pub const LIVE_SECTION_IDS: [NodeId; 6] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,
     INSP_LIVE_TRANSFORM_SECTION,
     INSP_LIVE_RENDER_SECTION,
     INSP_LIVE_COLOR_SECTION,
+    INSP_LIVE_SHEET_SECTION,
 ];
 
 /// Grid-snap floating panel root id.

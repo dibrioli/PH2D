@@ -424,6 +424,9 @@ pub(super) fn publish(
             flip_y: sprite.flip_y,
             opacity: sprite.opacity,
             tint_fill: sprite.tint_fill,
+            hframes: sprite.hframes,
+            vframes: sprite.vframes,
+            frame: sprite.frame,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

@@ -233,6 +233,13 @@ pub struct InspectorSpriteInfo {
     /// Silhouette mode — texel RGB ignored, tint RGB fills. Renders today
     /// via `flip_uv` bit 2.
     pub tint_fill: bool,
+    /// Sprite-sheet columns (`>= 1`). Renders today: the extract slices
+    /// the atlas rect into an hframes×vframes grid.
+    pub hframes: u32,
+    /// Sprite-sheet rows (`>= 1`).
+    pub vframes: u32,
+    /// Active sheet frame index (`< hframes*vframes`).
+    pub frame: u32,
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

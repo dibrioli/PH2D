@@ -230,6 +230,31 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
+    // W2 Sprite Sheet — HFrames / VFrames / Frame committed. Integer
+    // fields; rounded from the NumberInput's f64. Clamps (>=1, in-grid)
+    // land at the commit boundary (apply_sprite_field).
+    if let WidgetEvent::ValueChanged(id) = ev
+        && matches!(
+            id,
+            ids::INSP_SPRITE_HFRAMES | ids::INSP_SPRITE_VFRAMES | ids::INSP_SPRITE_FRAME
+        )
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let raw = host.store().number_value(id).unwrap_or(0.0);
+        let n = raw.round().max(0.0) as u32;
+        let edit = if id == ids::INSP_SPRITE_HFRAMES {
+            SpriteFieldEdit::Hframes(n)
+        } else if id == ids::INSP_SPRITE_VFRAMES {
+            SpriteFieldEdit::Vframes(n)
+        } else {
+            SpriteFieldEdit::Frame(n)
+        };
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit,
+        });
+        return true;
+    }
     // M14.C — Render Source Strategy switcher.
     if let WidgetEvent::Click(id) = ev
         && let Some(requested) = match id {

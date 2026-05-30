@@ -18,7 +18,30 @@ pub fn populate(store: &mut WidgetStore) {
     populate_render_strategy(store);
     populate_sprite_flip(store);
     populate_color_tint(store);
+    populate_sprite_sheet(store);
     populate_name_editor(store);
+}
+
+/// W2 Sprite Inspector v2 Sprite Sheet grid: HFrames / VFrames (default
+/// 1) + Frame (default 0). Live values sync from the snapshot.
+fn populate_sprite_sheet(store: &mut WidgetStore) {
+    for (id, value) in [
+        (ids::INSP_SPRITE_HFRAMES, 1.0_f64),
+        (ids::INSP_SPRITE_VFRAMES, 1.0_f64),
+        (ids::INSP_SPRITE_FRAME, 0.0_f64),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format!("{value:.0}"),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// W2 Sprite Inspector v2 Color & Tint controls: Opacity NumberInput

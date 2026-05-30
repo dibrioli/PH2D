@@ -11,8 +11,28 @@ autônoma). ESTE doc é o ESTADO + RECEITA + PRÓXIMOS PASSOS específicos da W2
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (tudo LOCAL, NADA PUSHADO; árvore limpa)
 ───────────────────────────────────────────────────────────────────
-W1 fechado + CI verde em `d15fbaa`. Esta sessão adicionou **16 commits locais**
-em cima, todos com testes verdes:
+W1 fechado + CI verde em `d15fbaa`. **18 commits locais** em cima (todos
+com testes verdes); os **2 mais recentes fecham a seção Color & Tint inteira**:
+
+- `b590cdb` **Tint + Self Tint swatches** — par de swatches reusando o
+  BlenderColorPicker (OKLCH); helpers `tint_f32_to_u8`/`tint_u8_to_f32`
+  (round-trip exato 256 níveis → dispatch converge); dispatch via
+  `widget_color`→`sync.rs`. Audit 2-lentes → CRITICAL (swatch não estava
+  registrado no store = clique morto, fix `InteractiveState::Plain`) +
+  HIGH (guard de troca-de-entidade fora do bloco `Some(sp)`) fechados.
+- `ea8e531` **sub-tabs + per-corner gradient grid** — restruturação §3.0
+  D11: `[Tint][Self][Corners][Effects]` (~120px vs ~342px flat). Per-corner
+  = grade 2×2 + **preview de gradiente bilinear ao vivo** (`corner_bilerp`,
+  8×8 células — verificado bit-a-bit contra o `sprite.wgsl` @location(9..12),
+  sem swap TL/BL) + **Equalize Corners**. `PerCornerTint` despacha o array
+  inteiro com 1 canto trocado. Audit 2-lentes → zero CRITICAL/HIGH.
+
+**Seção Color & Tint (§3.6, a crítica ⭐⭐⭐) está COMPLETA**: Tint · Self Tint ·
+Per-corner (4 cantos + gradiente + equalize) · Tint Fill · Opacity — todos
+render-ready e auditados. MED aceito: 2 labels de tab apertam ~1px só na
+largura mínima 220px (ok no default 304px).
+
+Histórico anterior desta sessão (16 commits) abaixo:
 
 **Skew (foundation + UI + RENDER):**
 - `ea5f70c` Transform skew foundational (ADR-0025-amendment-1): `Transform` v2
@@ -95,11 +115,10 @@ adicione `live_section!(SECTION_ID, idx, ...)` + separator, e registre a seção
 ───────────────────────────────────────────────────────────────────
 §4 — PRÓXIMOS PASSOS (ordem de menor risco; tudo padrão-ouro + auditar)
 ───────────────────────────────────────────────────────────────────
-1. **Tint / Self Tint colors (T2.7/T2.8)** — render-ready. Reusar o BlenderPicker:
-   pintar um color-swatch (id), abrir o picker no clique (mecanismo dos color-dots de
-   header em event.rs), detectar a cor escolhida (`widget_color`) e despachar
-   `SpriteFieldEdit::Tint/SelfTint`. per_corner_tint = 4 swatches. **NÃO reinvente**
-   color picker (Lens D D9 — BlenderColorPicker já tem OKLCH/Perceptual).
+1. ~~**Tint / Self Tint + Per-corner colors (T2.7/T2.8)**~~ ✅ **FEITO** (`b590cdb`+
+   `ea8e531`). Seção Color & Tint inteira em sub-tabs, auditada a erro-zero. O
+   **padrão swatch→picker→sync-dispatch** está provado — reuse-o para qualquer campo
+   de cor futuro (`crate::state::tint_f32_to_u8`/`tint_u8_to_f32` + loop em `sync.rs`).
 2. **Region (T2.4)** — primeiro o render: sub-UV de `region_rect` (PIXELS→UV, precisa
    das dims da fonte) no extract; depois toggle + Rect2Editor + filter_clip UI.
 3. **offset / centered** — aplicar offset no extract; depois UI.

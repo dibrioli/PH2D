@@ -8,6 +8,9 @@
 //! defined here.
 
 use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::hierarchy::ChildOf;
+use bevy_ecs::world::World;
 use serde::{Deserialize, Serialize};
 
 /// Per-node texture filter (Godot per-node filter, spec §9.1).
@@ -76,6 +79,45 @@ impl RepeatMode {
     }
 }
 
+/// Resolve the effective [`FilterMode`] for `entity` by walking the
+/// `ChildOf` chain (Godot per-node hierarchy, spec §9.1): the nearest
+/// ancestor-or-self with a concrete (non-`Inherit`) [`TextureFilter`]
+/// wins; if every node up the chain is `Inherit` / absent, fall back to
+/// `project_default`. Allocation-free; the chain is shallow.
+pub fn resolve_texture_filter(
+    world: &World,
+    entity: Entity,
+    project_default: FilterMode,
+) -> FilterMode {
+    let mut node = Some(entity);
+    while let Some(n) = node {
+        let here = world.get::<TextureFilter>(n).map_or(FilterMode::Inherit, |f| f.0);
+        if here != FilterMode::Inherit {
+            return here;
+        }
+        node = world.get::<ChildOf>(n).map(|c| c.parent());
+    }
+    project_default
+}
+
+/// Resolve the effective [`RepeatMode`] for `entity` (mirror of
+/// [`resolve_texture_filter`], spec §9.2).
+pub fn resolve_texture_repeat(
+    world: &World,
+    entity: Entity,
+    project_default: RepeatMode,
+) -> RepeatMode {
+    let mut node = Some(entity);
+    while let Some(n) = node {
+        let here = world.get::<TextureRepeat>(n).map_or(RepeatMode::Inherit, |r| r.0);
+        if here != RepeatMode::Inherit {
+            return here;
+        }
+        node = world.get::<ChildOf>(n).map(|c| c.parent());
+    }
+    project_default
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,6 +145,41 @@ mod tests {
         assert_eq!(
             RepeatMode::Disabled.resolve(RepeatMode::Enabled),
             RepeatMode::Disabled
+        );
+    }
+
+    #[test]
+    fn resolve_walks_childof_to_nearest_concrete() {
+        use bevy_ecs::hierarchy::ChildOf;
+        let mut w = World::new();
+        // root(Linear) → mid(Inherit) → leaf(absent): leaf resolves to
+        // the root's Linear.
+        let root = w.spawn(TextureFilter(FilterMode::Linear)).id();
+        let mid = w.spawn((ChildOf(root), TextureFilter(FilterMode::Inherit))).id();
+        let leaf = w.spawn(ChildOf(mid)).id();
+        assert_eq!(
+            resolve_texture_filter(&w, leaf, FilterMode::Nearest),
+            FilterMode::Linear
+        );
+        // A concrete override closer to the leaf wins.
+        let leaf2 = w.spawn((ChildOf(mid), TextureFilter(FilterMode::Nearest))).id();
+        assert_eq!(
+            resolve_texture_filter(&w, leaf2, FilterMode::Linear),
+            FilterMode::Nearest
+        );
+    }
+
+    #[test]
+    fn resolve_falls_back_to_project_default() {
+        let mut w = World::new();
+        let e = w.spawn_empty().id();
+        assert_eq!(
+            resolve_texture_filter(&w, e, FilterMode::Linear),
+            FilterMode::Linear
+        );
+        assert_eq!(
+            resolve_texture_repeat(&w, e, RepeatMode::Enabled),
+            RepeatMode::Enabled
         );
     }
 

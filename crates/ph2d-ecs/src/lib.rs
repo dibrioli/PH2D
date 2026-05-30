@@ -58,7 +58,10 @@ pub use masking::{ClipChildren, ClipMode, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;
-pub use sampling::{FilterMode, RepeatMode, TextureFilter, TextureRepeat};
+pub use sampling::{
+    FilterMode, RepeatMode, TextureFilter, TextureRepeat, resolve_texture_filter,
+    resolve_texture_repeat,
+};
 pub use sim::{SimComponent, SimWorld};
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks};
 pub use sorting::{

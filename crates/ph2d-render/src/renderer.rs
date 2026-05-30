@@ -28,6 +28,10 @@ use ph2d_host::WindowSize;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct DrawRun {
     texture_id: u32,
+    /// Packed per-node sampling key (`RenderInstance::sampling`). For
+    /// atlas runs the renderer binds the matching cached sampler
+    /// (W3.T3.11); individual textures keep the global store sampler.
+    sampling: u32,
     start: u32,
     end: u32,
 }
@@ -45,6 +49,11 @@ pub struct SpriteRenderer {
     camera_buffer: wgpu::Buffer,
     frame_bind_group: wgpu::BindGroup,
     material_bind_group: wgpu::BindGroup,
+    /// W3.T3.11 per-node sampling: atlas bind groups keyed by the packed
+    /// `sampling` value, built lazily (atlas texture + the sampler for
+    /// that filter/repeat). `BTreeMap` (ADR-0022; the key is `u32`, not
+    /// `Entity`). Cleared when `set_filter_mode` rebuilds the atlas view.
+    atlas_sampler_bgs: std::collections::BTreeMap<u32, wgpu::BindGroup>,
     /// Reused scratch to avoid per-frame allocation when sprite count
     /// is stable (typical case).
     scratch: Vec<RenderInstance>,
@@ -124,6 +133,7 @@ impl SpriteRenderer {
             camera_buffer,
             frame_bind_group,
             material_bind_group,
+            atlas_sampler_bgs: std::collections::BTreeMap::new(),
             scratch: Vec::with_capacity(initial_instance_capacity as usize),
             // Real workloads keep distinct textures small (typically
             // 1 atlas + a few individuals); 16 is a reasonable seed.
@@ -312,6 +322,10 @@ impl SpriteRenderer {
                     },
                 ],
             });
+        // The per-sampling atlas bind groups reference the (now stale)
+        // old atlas view — drop them so they rebuild against the new
+        // view on the next render (W3.T3.11).
+        self.atlas_sampler_bgs.clear();
     }
 
     /// Switch the global sprite-sampling mode at runtime. Recreates the
@@ -342,6 +356,33 @@ impl SpriteRenderer {
     /// (`color_format` passed to `SpritePipeline::new`) MUST match
     /// whatever this view points at — mismatch is a wgpu validation
     /// error caught at first draw.
+    /// Lazily build + cache the atlas bind group for a packed `sampling`
+    /// key (W3.T3.11): the atlas texture + a sampler with the resolved
+    /// filter/repeat. The bind group keeps the sampler alive internally,
+    /// so the local handle can drop.
+    fn ensure_atlas_sampler_bg(&mut self, sampling: u32) {
+        if self.atlas_sampler_bgs.contains_key(&sampling) {
+            return;
+        }
+        let (filter_tag, repeat_tag) = RenderInstance::unpack_sampling(sampling);
+        let sampler = crate::image_filter::sampler_from_tags(&self.gpu.device, filter_tag, repeat_tag);
+        let bg = self.gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render atlas per-sampling bg"),
+            layout: &self.pipeline.material_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.atlas.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+        self.atlas_sampler_bgs.insert(sampling, bg);
+    }
+
     pub fn render(
         &mut self,
         target: &wgpu::TextureView,
@@ -365,8 +406,21 @@ impl SpriteRenderer {
         // texture instances into contiguous runs within an unchanged
         // z slice (e.g. two sprites authored back-to-back in the
         // hierarchy that share the atlas keep one bind group switch).
-        self.scratch.sort_by_key(|i| (i.z_order, i.texture_id));
+        // Secondary keys `texture_id` then `sampling` group instances
+        // sharing a bind group + sampler into contiguous runs within an
+        // unchanged z slice (W3.T3.11). z_order stays primary so render
+        // order matches the Hierarchy panel.
+        self.scratch
+            .sort_by_key(|i| (i.z_order, i.texture_id, i.sampling));
         compute_runs(&self.scratch, &mut self.runs);
+        // Ensure an atlas bind group exists for every distinct sampling
+        // used by an atlas run (built lazily; one per filter/repeat pair).
+        for run in 0..self.runs.len() {
+            let r = self.runs[run];
+            if r.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+                self.ensure_atlas_sampler_bg(r.sampling);
+            }
+        }
         let count = self
             .instance_buffer
             .upload(&self.gpu, self.scratch.as_slice());
@@ -405,14 +459,18 @@ impl SpriteRenderer {
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
                 for run in &self.runs {
-                    // Pick the right material bind group per run.
-                    // Atlas (texture_id == 0) uses the shared one;
-                    // individual textures look up the pre-built bind
-                    // group in the store. Missing individuals (id
-                    // released before render saw it) silently skip
-                    // — the renderer is allowed to drop those.
+                    // Pick the right material bind group per run. Atlas
+                    // (texture_id == 0) uses the per-sampling cached bind
+                    // group (W3.T3.11; falls back to the project-default
+                    // material bg if not yet built); individual textures
+                    // look up the pre-built bind group in the store
+                    // (global sampler — per-node sampling on individual
+                    // textures is a follow-up). Missing individuals (id
+                    // released before render saw it) silently skip.
                     let bg = if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
-                        Some(&self.material_bind_group)
+                        self.atlas_sampler_bgs
+                            .get(&run.sampling)
+                            .or(Some(&self.material_bind_group))
                     } else {
                         self.individual.bind_group(run.texture_id)
                     };
@@ -426,31 +484,34 @@ impl SpriteRenderer {
     }
 }
 
-/// Walk the sorted instance slice and emit one [`DrawRun`] per
-/// maximal contiguous run of the same `texture_id`. Reuses `runs`'s
-/// capacity. `scratch` MUST already be sorted by `texture_id` —
-/// callers do this via `scratch.sort_by_key(|i| i.texture_id)`
-/// immediately before invoking.
+/// Walk the sorted instance slice and emit one [`DrawRun`] per maximal
+/// contiguous run of the same `(texture_id, sampling)` pair. Reuses
+/// `runs`'s capacity. `scratch` MUST already be sorted so those pairs
+/// are contiguous (the caller sorts by `(z_order, texture_id,
+/// sampling)`).
 fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
     runs.clear();
     if scratch.is_empty() {
         return;
     }
+    let key = |i: &RenderInstance| (i.texture_id, i.sampling);
     let mut start = 0u32;
-    let mut current = scratch[0].texture_id;
+    let mut current = key(&scratch[0]);
     for (i, inst) in scratch.iter().enumerate().skip(1) {
-        if inst.texture_id != current {
+        if key(inst) != current {
             runs.push(DrawRun {
-                texture_id: current,
+                texture_id: current.0,
+                sampling: current.1,
                 start,
                 end: i as u32,
             });
-            current = inst.texture_id;
+            current = key(inst);
             start = i as u32;
         }
     }
     runs.push(DrawRun {
-        texture_id: current,
+        texture_id: current.0,
+        sampling: current.1,
         start,
         end: scratch.len() as u32,
     });
@@ -474,6 +535,7 @@ mod tests {
             opacity: 1.0,
             flip_uv: 0,
             z_order: 0,
+            sampling: 0,
         }
     }
 
@@ -495,16 +557,19 @@ mod tests {
             vec![
                 DrawRun {
                     texture_id: 0,
+                    sampling: 0,
                     start: 0,
                     end: 3
                 },
                 DrawRun {
                     texture_id: 7,
+                    sampling: 0,
                     start: 3,
                     end: 5
                 },
                 DrawRun {
                     texture_id: 12,
+                    sampling: 0,
                     start: 5,
                     end: 6
                 },

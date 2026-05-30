@@ -92,6 +92,7 @@ fn build_v4(n: usize) -> Vec<RenderInstance> {
                 flip_uv: 0,
                 texture_id: (i % 8) as u32,
                 z_order: i as u32,
+                sampling: 0,
             }
         })
         .collect()

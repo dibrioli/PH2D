@@ -535,6 +535,15 @@ pub struct RenderInstance {
     /// mirrors the hierarchy DFS — that's the same order the
     /// Hierarchy panel paints.
     pub z_order: u32,
+    /// Packed per-node sampling key (CPU-side; NOT a vertex attribute).
+    /// `filter (low byte) | repeat << 8` from the hierarchically-resolved
+    /// `TextureFilter`/`TextureRepeat` (W3.T3.11). The renderer groups
+    /// runs by `(z_order, sampling, texture_id)` and binds the matching
+    /// sampler so per-node filter/wrap works without a shader change.
+    /// `0` = `Inherit/Inherit` → the renderer's default sampler (the
+    /// project `ImageFilterMode`). ADR-0070-amendment-5: this grows the
+    /// CPU-only tail (GPU vertex layout unchanged).
+    pub sampling: u32,
 }
 
 impl PresentComponent for RenderInstance {}
@@ -601,6 +610,22 @@ impl RenderInstance {
         (if flip_x { Self::FLIP_X_BIT } else { 0 })
             | (if flip_y { Self::FLIP_Y_BIT } else { 0 })
             | (if tint_fill { Self::TINT_FILL_BIT } else { 0 })
+    }
+
+    /// Default [`Self::sampling`] key — `Inherit/Inherit`, i.e. the
+    /// renderer's project-default sampler. Used by every non-extract
+    /// construction site (tests, picking, benches).
+    pub const SAMPLING_DEFAULT: u32 = 0;
+
+    /// Pack a resolved `(filter, repeat)` mode pair (each a small enum
+    /// tag) into the [`Self::sampling`] key: `filter | repeat << 8`.
+    pub const fn pack_sampling(filter: u8, repeat: u8) -> u32 {
+        (filter as u32) | ((repeat as u32) << 8)
+    }
+
+    /// Unpack [`Self::sampling`] into `(filter_tag, repeat_tag)`.
+    pub const fn unpack_sampling(sampling: u32) -> (u8, u8) {
+        ((sampling & 0xFF) as u8, ((sampling >> 8) & 0xFF) as u8)
     }
 }
 
@@ -676,6 +701,7 @@ mod tests {
             flip_uv: 0,
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             z_order: 0,
+            sampling: RenderInstance::SAMPLING_DEFAULT,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
@@ -683,10 +709,10 @@ mod tests {
         // tint 16 + basis 16 + premultiplied 4 + anchor 8).
         // + per_corner_tint [[f32;4];4] (64) + opacity f32 (4) +
         // flip_uv u32 (4) = +72 → 148 GPU bytes.
-        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 156 bytes,
-        // 4-byte aligned (no tail padding). ADR-0070-amendment-4 grew
-        // `rotation: f32` → `basis: [f32;4]` (+12 B over the 144 freeze).
-        assert_eq!(bytes.len(), 156);
+        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 156 bytes.
+        // ADR-0070-amendment-5 adds the CPU-only `sampling: u32` (+4 →
+        // 160 B); the GPU vertex layout (148 B / 11 attrs) is unchanged.
+        assert_eq!(bytes.len(), 160);
     }
 
     #[test]

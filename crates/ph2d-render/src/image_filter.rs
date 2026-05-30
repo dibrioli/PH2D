@@ -40,6 +40,37 @@ pub fn create_sprite_sampler(
     })
 }
 
+/// Build a sprite sampler from a packed `RenderInstance::sampling` key
+/// (Sprite Inspector v2 W3.T3.11): `filter_tag (low byte) | repeat_tag
+/// << 8`, where the tags are the `ph2d_ecs::FilterMode`/`RepeatMode`
+/// enum discriminants. Mipmap/aniso filter variants map to their base
+/// mag/min filter (the sprite atlas has no mip chain yet — a follow-up).
+pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) -> wgpu::Sampler {
+    // FilterMode: 1 Nearest · 2 Linear · 3 NearestMipmap · 4 LinearMipmap
+    // · 5 NearestAniso · 6 LinearAniso (0 Inherit → Linear fallback).
+    let filter = match filter_tag {
+        1 | 3 | 5 => wgpu::FilterMode::Nearest,
+        _ => wgpu::FilterMode::Linear,
+    };
+    // RepeatMode: 1 Disabled (clamp) · 2 Enabled (repeat) · 3 Mirror
+    // (0 Inherit → clamp fallback).
+    let address = match repeat_tag {
+        2 => wgpu::AddressMode::Repeat,
+        3 => wgpu::AddressMode::MirrorRepeat,
+        _ => wgpu::AddressMode::ClampToEdge,
+    };
+    device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("ph2d-render per-node sprite sampler"),
+        address_mode_u: address,
+        address_mode_v: address,
+        address_mode_w: address,
+        mag_filter: filter,
+        min_filter: filter,
+        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+        ..Default::default()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

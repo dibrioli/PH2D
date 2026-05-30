@@ -252,6 +252,17 @@ impl crate::App {
                 .as_ref()
                 .map(|h| h.project.pixels_per_meter)
                 .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
+            // W3.T3.11: project-default sampling for all-Inherit sprites,
+            // from the project image filter (PixelArt → Nearest, Smooth →
+            // Linear); repeat defaults to clamp (Disabled).
+            let default_filter = match hero_screen
+                .as_ref()
+                .map(|h| h.project.image_filter)
+                .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
+            {
+                ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
+                ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
+            };
             sim_extract::run(
                 dt,
                 sim,
@@ -264,6 +275,8 @@ impl crate::App {
                 bgremoval_preview_override,
                 ppm,
                 camera.cull_mask,
+                default_filter,
+                ph2d_ecs::RepeatMode::Disabled,
             );
         }
 

@@ -278,6 +278,7 @@ mod tests {
             opacity: 1.0,
             flip_uv: 0,
             z_order: 0,
+            sampling: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()
@@ -309,6 +310,7 @@ mod tests {
             opacity: 1.0,
             flip_uv: 0,
             z_order: 0,
+            sampling: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()

@@ -72,6 +72,7 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
                 // motion node's instances share `z_order = 0`. Renderer's
                 // tiebreaker (`texture_id`) groups them into one run.
                 z_order: 0,
+                sampling: 0,
             }
         })
         .collect()

@@ -12,8 +12,9 @@
 use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
-    ChildOf, Entity, PresentWorld, SimRef, SimWorld, Transform, TransformPropagationState,
-    VisibilityLayer, WorklistBuf, World, propagate_transforms,
+    ChildOf, Entity, FilterMode, PresentWorld, RepeatMode, SimRef, SimWorld, Transform,
+    TransformPropagationState, VisibilityLayer, WorklistBuf, World, propagate_transforms,
+    resolve_texture_filter, resolve_texture_repeat,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -162,6 +163,10 @@ pub(super) fn run(
     // with a `VisibilityLayer` that doesn't intersect this mask is
     // skipped. `u32::MAX` (default) = no culling.
     cull_mask: u32,
+    // Project-default sampling (W3.T3.11): the filter/repeat an
+    // all-`Inherit` sprite resolves to (from the project image filter).
+    default_filter: FilterMode,
+    default_repeat: RepeatMode,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -279,6 +284,14 @@ pub(super) fn run(
                         world_pos: p,
                     });
                     let z_order = 0u32;
+                    // W3.T3.11: resolve the per-node TextureFilter/Repeat
+                    // hierarchically (nearest concrete ancestor, else the
+                    // project default) and pack into the CPU-only
+                    // `sampling` key the renderer groups draws by.
+                    let sampling = ph2d_render::RenderInstance::pack_sampling(
+                        resolve_texture_filter(sim, sim_entity, default_filter) as u8,
+                        resolve_texture_repeat(sim, sim_entity, default_repeat) as u8,
+                    );
                     // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
                     // anatomia §4.2/§4.3): `self_tint × tint × Π(ancestor.tint)`.
                     // The per-sprite `collapsed_tint` (self_tint × tint) lives +
@@ -382,6 +395,7 @@ pub(super) fn run(
                         opacity: spr.opacity,
                         flip_uv,
                         z_order,
+                        sampling,
                     });
                 }
             },

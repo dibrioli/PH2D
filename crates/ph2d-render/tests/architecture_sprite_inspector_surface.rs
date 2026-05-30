@@ -38,9 +38,10 @@ fn sprite_struct_field_count() -> usize {
     20
 }
 
-/// Exactly the 12 v4 `RenderInstance` fields (10 GPU vertex attrs —
-/// counting per_corner_tint as one field that spans 4 attrs — + 2
-/// CPU-only). Destructure enforces it; `12` is for the message.
+/// Exactly the 13 v4 `RenderInstance` fields (10 GPU vertex attrs —
+/// counting per_corner_tint as one field that spans 4 attrs — + 3
+/// CPU-only: texture_id / z_order / sampling). Destructure enforces it;
+/// `13` is for the message.
 fn render_instance_field_count() -> usize {
     use bytemuck::Zeroable;
     let RenderInstance {
@@ -56,8 +57,9 @@ fn render_instance_field_count() -> usize {
         flip_uv: _,
         texture_id: _,
         z_order: _,
+        sampling: _,
     } = RenderInstance::zeroed();
-    12
+    13
 }
 
 #[test]
@@ -75,10 +77,11 @@ fn sprite_struct_field_count_capped() {
 fn render_instance_field_count_capped() {
     assert_eq!(
         render_instance_field_count(),
-        12,
-        "RenderInstance v4 field count must be exactly 12 (FROZEN by ADR-0070 §1.7). \
+        13,
+        "RenderInstance v4 field count must be exactly 13 (ADR-0070-amendment-5 added \
+         the CPU-only `sampling: u32` for per-node TextureFilter/Repeat draw grouping). \
          flip_uv is a packed flags word (ADR-0070-amendment-3) — pack new per-instance \
-         bools into its reserved bits instead of adding a 13th field."
+         GPU bools into its reserved bits instead of adding a vertex attribute."
     );
 }
 
@@ -86,8 +89,9 @@ fn render_instance_field_count_capped() {
 fn render_instance_pod_size_capped() {
     assert_eq!(
         std::mem::size_of::<RenderInstance>(),
-        156,
-        "RenderInstance ABI is 156 bytes (ADR-0070-amendment-4: `rotation: f32` → \
+        160,
+        "RenderInstance ABI is 160 bytes (ADR-0070-amendment-5: +CPU-only `sampling: u32`; \
+         GPU vertex layout unchanged at 148 B). amendment-4: `rotation: f32` → \
          `basis: [f32; 4]` so the shader renders skew as a true parallelogram instead \
          of decomposing to a lossy rotation scalar). Was 144 at v4 freeze."
     );

@@ -335,6 +335,7 @@ fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
         translation: [1.5, 0.0],
         rotation_rad: 0.0,
         scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
     });
     // Paint once so sync_inspector_from_snapshots seeds the store
     // with the *converted* value (150 px, not 1.5 m).
@@ -386,6 +387,7 @@ fn inspector_position_meters_mode_displays_raw_meters() {
         translation: [1.5, 0.0],
         rotation_rad: 0.0,
         scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
     });
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
@@ -793,6 +795,7 @@ fn transform_field_commit_raises_pending_with_selection() {
         translation: [0.0, 0.0],
         rotation_rad: 0.0,
         scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
     });
     hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 1.5);
     hero.store
@@ -835,6 +838,7 @@ fn transform_reset_button_publishes_identity() {
         translation: [10.0, 20.0],
         rotation_rad: 1.0,
         scale: [3.0, 3.0],
+        skew_rad: [0.0, 0.0],
     });
     // Even if the store has garbage in it, Reset always publishes
     // pure identity — independent of buffer state.
@@ -1076,6 +1080,7 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
         translation: [0.0, 0.0],
         rotation_rad: 0.0,
         scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
     });
     paint_hero_screen(&mut hero, layout.viewport, &mut scene, &mut text);
     if let Some(InteractiveState::TextInput { state, .. }) =
@@ -1095,6 +1100,7 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
         translation: [0.0, 0.0],
         rotation_rad: 0.0,
         scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
     });
     paint_hero_screen(&mut hero, layout.viewport, &mut scene, &mut text);
     match hero.store.get(ids::INSP_ENTITY_NAME) {

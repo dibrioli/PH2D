@@ -364,7 +364,23 @@ pub(crate) fn paint_transform_section(
         0.1, // LITERAL-PX-OK: scale NumberInput step
         Some((ids::INSP_TRANSFORM_SCALE_Y, "Y", ColorToken::Success, 0.1)), // LITERAL-PX-OK: scale NumberInput step
     );
-    cur_y += h_scale + SECTION_BOTTOM_PAD_PX;
+    cur_y += h_scale + row_gap;
+    // Skew X/Y in degrees (ADR-0025-amendment-1). Authoring range is
+    // clamped to ±~89.4° at the ECS-commit boundary; the slider itself
+    // is unbounded so over-typing snaps back on re-sync.
+    let h_skew = paint_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "Skew (\u{00b0})",
+        ids::INSP_TRANSFORM_SKEW_X,
+        "X",
+        ColorToken::Danger,
+        1.0, // LITERAL-PX-OK: skew degrees NumberInput step
+        Some((ids::INSP_TRANSFORM_SKEW_Y, "Y", ColorToken::Success, 1.0)), // LITERAL-PX-OK: skew degrees NumberInput step
+    );
+    cur_y += h_skew + SECTION_BOTTOM_PAD_PX;
 
     cur_y
 }

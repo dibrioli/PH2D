@@ -435,6 +435,7 @@ pub(super) fn publish(
             translation: [t.translation.x, t.translation.y],
             rotation_rad: t.rotation,
             scale: [t.scale.x, t.scale.y],
+            skew_rad: [t.skew_x, t.skew_y],
         })
     });
     // M14.D: live Visibility snapshot. Absence-equals-visible

@@ -53,6 +53,14 @@ pub(crate) fn sync_inspector_from_snapshots(
                 .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
             host.store_mut()
                 .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
+            host.store_mut().set_number_value(
+                ids::INSP_TRANSFORM_SKEW_X,
+                info.skew_rad[0].to_degrees() as f64,
+            );
+            host.store_mut().set_number_value(
+                ids::INSP_TRANSFORM_SKEW_Y,
+                info.skew_rad[1].to_degrees() as f64,
+            );
         }
         if let Some(InteractiveState::TextInput {
             state,
@@ -88,6 +96,14 @@ pub(crate) fn sync_inspector_from_snapshots(
                 .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
             host.store_mut()
                 .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
+            host.store_mut().set_number_value(
+                ids::INSP_TRANSFORM_SKEW_X,
+                info.skew_rad[0].to_degrees() as f64,
+            );
+            host.store_mut().set_number_value(
+                ids::INSP_TRANSFORM_SKEW_Y,
+                info.skew_rad[1].to_degrees() as f64,
+            );
         }
         let focused = host.store().focus_id() == Some(ids::INSP_ENTITY_NAME);
         let pending_name_edit = host

@@ -433,6 +433,10 @@ pub const INSP_TRANSFORM_ROT: NodeId = hash_node_id("insp_transform_rot");
 pub const INSP_TRANSFORM_SCALE_X: NodeId = hash_node_id("insp_transform_scale_x");
 /// Scale Y NumberInput (unitless, G-tinted label).
 pub const INSP_TRANSFORM_SCALE_Y: NodeId = hash_node_id("insp_transform_scale_y");
+/// Skew X NumberInput (degrees in UI, R-tinted label; ADR-0025-amendment-1).
+pub const INSP_TRANSFORM_SKEW_X: NodeId = hash_node_id("insp_transform_skew_x");
+/// Skew Y NumberInput (degrees in UI, G-tinted label).
+pub const INSP_TRANSFORM_SKEW_Y: NodeId = hash_node_id("insp_transform_skew_y");
 /// Reset-to-Identity button in the Transform section header.
 pub const INSP_TRANSFORM_RESET: NodeId = hash_node_id("insp_transform_reset");
 

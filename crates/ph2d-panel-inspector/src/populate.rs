@@ -81,6 +81,8 @@ fn populate_transform_editor(store: &mut WidgetStore) {
         (ids::INSP_TRANSFORM_ROT, 0.0_f64),
         (ids::INSP_TRANSFORM_SCALE_X, 1.0_f64),
         (ids::INSP_TRANSFORM_SCALE_Y, 1.0_f64),
+        (ids::INSP_TRANSFORM_SKEW_X, 0.0_f64),
+        (ids::INSP_TRANSFORM_SKEW_Y, 0.0_f64),
     ];
     for (id, value) in identity_pairs {
         let buffer = format!("{value}");

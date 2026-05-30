@@ -96,7 +96,9 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 | ids::INSP_TRANSFORM_POS_Y
                 | ids::INSP_TRANSFORM_ROT
                 | ids::INSP_TRANSFORM_SCALE_X
-                | ids::INSP_TRANSFORM_SCALE_Y,
+                | ids::INSP_TRANSFORM_SCALE_Y
+                | ids::INSP_TRANSFORM_SKEW_X
+                | ids::INSP_TRANSFORM_SKEW_Y,
         )
         && let Some(info) = state::current_inspector_transform()
     {
@@ -124,12 +126,24 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             .store()
             .number_value(ids::INSP_TRANSFORM_SCALE_Y)
             .unwrap_or(info.scale[1] as f64) as f32;
+        // Skew authored in degrees for UX parity with Rotation; the
+        // ECS-commit boundary converts to radians and clamps to
+        // Transform::SKEW_LIMIT (ADR-0025-amendment-1 §2.5).
+        let skew_x_deg = host
+            .store()
+            .number_value(ids::INSP_TRANSFORM_SKEW_X)
+            .unwrap_or((info.skew_rad[0] as f64).to_degrees()) as f32;
+        let skew_y_deg = host
+            .store()
+            .number_value(ids::INSP_TRANSFORM_SKEW_Y)
+            .unwrap_or((info.skew_rad[1] as f64).to_degrees()) as f32;
         host.bus_mut().push(EditorAction::InspectorTransformEdit(
             InspectorTransformInfo {
                 entity_bits: info.entity_bits,
                 translation: [x, y],
                 rotation_rad: rot_deg.to_radians(),
                 scale: [sx, sy],
+                skew_rad: [skew_x_deg.to_radians(), skew_y_deg.to_radians()],
             },
         ));
         return true;
@@ -144,6 +158,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 translation: [0.0, 0.0],
                 rotation_rad: 0.0,
                 scale: [1.0, 1.0],
+                skew_rad: [0.0, 0.0],
             },
         ));
         return true;

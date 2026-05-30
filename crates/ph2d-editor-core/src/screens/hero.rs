@@ -257,6 +257,12 @@ pub struct InspectorTransformInfo {
     pub rotation_rad: f32,
     /// Local-space scale (unitless). Identity = `[1.0, 1.0]`.
     pub scale: [f32; 2],
+    /// Local-space skew `[skew_x, skew_y]` in radians (ADR-0025
+    /// amendment-1). The inspector renders these as degrees like
+    /// `rotation_rad`; conversion happens at the paint/commit boundary.
+    /// Identity = `[0.0, 0.0]`. Authoring values are clamped to
+    /// `Transform::SKEW_LIMIT` at the ECS-commit boundary.
+    pub skew_rad: [f32; 2],
 }
 
 /// M14.D: snapshot of the selected entity's `Visibility` state.

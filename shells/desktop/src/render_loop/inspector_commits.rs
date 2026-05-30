@@ -96,9 +96,11 @@ pub(super) fn dispatch(
             translation: ph2d_core::Vec2::new(info.translation[0], info.translation[1]),
             rotation: info.rotation_rad,
             scale: ph2d_core::Vec2::new(info.scale[0], info.scale[1]),
-            // skew_x/skew_y are wired through InspectorTransformInfo in
-            // W2.T2.3 (Skew X/Y sliders); default to identity shear here.
-            ..Transform::IDENTITY
+            // Skew authored via the Inspector Skew X/Y sliders (W2.T2.3).
+            // Clamp at this ECS-write boundary (the authoring setter per
+            // ADR-0025-amendment-1 §2.5) so tan() stays in its sane range.
+            skew_x: Transform::clamp_skew(info.skew_rad[0]),
+            skew_y: Transform::clamp_skew(info.skew_rad[1]),
         };
         match postcard::to_allocvec(&t) {
             Ok(data) => {

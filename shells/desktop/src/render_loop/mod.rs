@@ -318,6 +318,7 @@ impl crate::App {
                 camera,
                 asset_db,
                 atlas_asset_map,
+                renderer,
                 window_size,
                 self.last_pointer,
                 self.frame_ms_ewma,

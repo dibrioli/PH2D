@@ -362,6 +362,67 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
+    // W2 Region (spec §3.3) — enable / filter-clip toggles.
+    if let WidgetEvent::Toggled(id) = ev
+        && matches!(id, ids::INSP_REGION_ENABLED | ids::INSP_REGION_FILTER_CLIP)
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let checked = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
+        if id == ids::INSP_REGION_FILTER_CLIP {
+            host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                entity_bits: info.entity_bits,
+                edit: SpriteFieldEdit::RegionFilterClip(checked),
+            });
+        } else {
+            host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                entity_bits: info.entity_bits,
+                edit: SpriteFieldEdit::RegionEnabled(checked),
+            });
+            // Enabling region on a still-zero rect would make the sprite
+            // vanish (zero-area UV = no-op). Seed the rect to the full
+            // source (spec §3.3 default `[0, 0, w, h]`) so toggling on is
+            // visible and editable.
+            if checked
+                && (info.region_rect[2] <= 0.0 || info.region_rect[3] <= 0.0)
+                && let Some((sw, sh)) = info.source_pixels
+            {
+                host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                    entity_bits: info.entity_bits,
+                    edit: SpriteFieldEdit::RegionRect([0.0, 0.0, sw as f32, sh as f32]),
+                });
+            }
+        }
+        return true;
+    }
+    // W2 Region — X/Y/W/H px NumberInputs. Any one firing re-reads all
+    // four from the store (the changed field already holds its new value,
+    // the others reflect the synced snapshot) → one RegionRect edit. W/H
+    // floor at 0 at the commit boundary.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && matches!(
+            id,
+            ids::INSP_REGION_X | ids::INSP_REGION_Y | ids::INSP_REGION_W | ids::INSP_REGION_H
+        )
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let cur = info.region_rect;
+        let rd =
+            |nid, fallback: f32| host.store().number_value(nid).unwrap_or(fallback as f64) as f32;
+        let rect = [
+            rd(ids::INSP_REGION_X, cur[0]),
+            rd(ids::INSP_REGION_Y, cur[1]),
+            rd(ids::INSP_REGION_W, cur[2]),
+            rd(ids::INSP_REGION_H, cur[3]),
+        ];
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::RegionRect(rect),
+        });
+        return true;
+    }
     // M14.C — Render Source Strategy switcher.
     if let WidgetEvent::Click(id) = ev
         && let Some(requested) = match id {

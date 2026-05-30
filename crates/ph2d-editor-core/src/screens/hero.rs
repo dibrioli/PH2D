@@ -253,6 +253,16 @@ pub struct InspectorSpriteInfo {
     /// Edited via the Per-corner 2×2 swatch grid (W2.T2.7); renders via
     /// the shader's `@location(9..12)` per-corner attributes.
     pub per_corner_tint: [[f32; 4]; 4],
+    /// Region sampling on/off (`Sprite::region_enabled`). When `true`,
+    /// the sprite samples only `region_rect` of its source. Edited in the
+    /// Render Source section (W2.T2.4); renders via the extract sub-UV.
+    pub region_enabled: bool,
+    /// Region sub-rect `[x, y, w, h]` in SOURCE pixels
+    /// (`Sprite::region_rect`). Only meaningful when `region_enabled`.
+    pub region_rect: [f32; 4],
+    /// Region filter clip (`Sprite::region_filter_clip`) — clamps the
+    /// sampler to `region_rect` (half-texel inset) to stop atlas bleed.
+    pub region_filter_clip: bool,
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

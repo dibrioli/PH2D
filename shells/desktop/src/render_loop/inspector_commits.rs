@@ -48,7 +48,12 @@ fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
             clamp_frame(sprite);
         }
         SpriteFieldEdit::RegionEnabled(b) => sprite.region_enabled = b,
-        SpriteFieldEdit::RegionRect(r) => sprite.region_rect = r,
+        SpriteFieldEdit::RegionRect(r) => {
+            // Schema invariant (anatomia §1.6): w/h kept `>= 0`. A negative
+            // extent would invert the sampled UV; x/y may be negative (the
+            // extract clamps the rect into the source).
+            sprite.region_rect = [r[0], r[1], r[2].max(0.0), r[3].max(0.0)];
+        }
         SpriteFieldEdit::RegionFilterClip(b) => sprite.region_filter_clip = b,
         SpriteFieldEdit::Tint(c) => sprite.tint = c,
         SpriteFieldEdit::SelfTint(c) => sprite.self_tint = c,
@@ -119,6 +124,17 @@ mod sprite_field_tests {
         // default hframes=vframes=1 → only cell is 0.
         apply_sprite_field(&mut s, SpriteFieldEdit::Frame(99));
         assert_eq!(s.frame, 0);
+    }
+
+    #[test]
+    fn region_rect_clamps_extent_non_negative_but_keeps_origin() {
+        let mut s = sprite();
+        apply_sprite_field(
+            &mut s,
+            SpriteFieldEdit::RegionRect([-4.0, -2.0, -10.0, 8.0]),
+        );
+        // x/y pass through (extract clamps into the source); w/h floor at 0.
+        assert_eq!(s.region_rect, [-4.0, -2.0, 0.0, 8.0]);
     }
 
     #[test]

@@ -32,6 +32,7 @@ pub(super) fn publish(
     camera: &Camera2d,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    renderer: &ph2d_render::SpriteRenderer,
     window_size: WindowSize,
     last_pointer: (f32, f32),
     frame_ms_ewma: f32,
@@ -403,11 +404,20 @@ pub(super) fn publish(
                     dims.is_some(),
                 )
             }
-            ph2d_render::SpriteSource::Individual { texture_id } => (
-                ph2d_editor::InspectorSpriteSource::Individual { texture_id },
-                None,
-                false,
-            ),
+            ph2d_render::SpriteSource::Individual { texture_id } => {
+                // Source dims come from the renderer's individual-texture
+                // store (the bake's own size) so the Region UI can show
+                // "Source W×H" and seed `region_rect` to the full source —
+                // the extract already supports Individual region sampling.
+                let dims = renderer.individual().dims(texture_id);
+                (
+                    ph2d_editor::InspectorSpriteSource::Individual { texture_id },
+                    dims,
+                    // Reimport recomputes world size from an Atlas asset's
+                    // px/m; Individual bakes have no atlas asset to re-decode.
+                    false,
+                )
+            }
         };
         let world_size = [
             sprite.size[0] * transform.scale.x,
@@ -430,6 +440,9 @@ pub(super) fn publish(
             tint: sprite.tint,
             self_tint: sprite.self_tint,
             per_corner_tint: sprite.per_corner_tint,
+            region_enabled: sprite.region_enabled,
+            region_rect: sprite.region_rect,
+            region_filter_clip: sprite.region_filter_clip,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

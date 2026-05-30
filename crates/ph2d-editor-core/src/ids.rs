@@ -542,6 +542,21 @@ pub const INSP_COLOR_TAB_CORNER: NodeId = hash_node_id("insp_color_tab_corner");
 /// Color & Tint sub-tab — Effects (Tint Fill + Opacity). See [`INSP_COLOR_TAB_TINT`].
 pub const INSP_COLOR_TAB_EFFECTS: NodeId = hash_node_id("insp_color_tab_effects");
 
+/// W2 Sprite Inspector v2 — Region sampling controls (Render Source
+/// section, spec §3.3). Toggle + 4 px NumberInputs (x/y/w/h) + filter
+/// clip. Renders via the extract `region_subrect` sub-UV (W2.T2.4).
+pub const INSP_REGION_ENABLED: NodeId = hash_node_id("insp_region_enabled");
+/// Region rect X NumberInput (source pixels). See [`INSP_REGION_ENABLED`].
+pub const INSP_REGION_X: NodeId = hash_node_id("insp_region_x");
+/// Region rect Y NumberInput (source pixels).
+pub const INSP_REGION_Y: NodeId = hash_node_id("insp_region_y");
+/// Region rect W NumberInput (source pixels, `>= 0`).
+pub const INSP_REGION_W: NodeId = hash_node_id("insp_region_w");
+/// Region rect H NumberInput (source pixels, `>= 0`).
+pub const INSP_REGION_H: NodeId = hash_node_id("insp_region_h");
+/// Region filter-clip toggle (anti atlas-bleed). See [`INSP_REGION_ENABLED`].
+pub const INSP_REGION_FILTER_CLIP: NodeId = hash_node_id("insp_region_filter_clip");
+
 /// W2 Sprite Inspector v2 — Sprite Sheet grid controls (render today via
 /// the extract atlas-rect sub-division). HFrames / VFrames / Frame.
 pub const INSP_SPRITE_HFRAMES: NodeId = hash_node_id("insp_sprite_hframes");

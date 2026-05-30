@@ -18,6 +18,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);
+    populate_region(store);
     populate_sprite_flip(store);
     populate_color_tint(store);
     populate_sprite_sheet(store);
@@ -143,6 +144,45 @@ fn populate_sprite_flip(store: &mut WidgetStore) {
             },
         );
     }
+}
+
+/// W2 Sprite Inspector v2 — Region sampling (Render Source section,
+/// spec §3.3): enable toggle (default off) + 4 px NumberInputs (x/y/w/h,
+/// default 0) + filter-clip toggle (default ON, the Atlas anti-bleed
+/// default). Live values sync from the snapshot.
+fn populate_region(store: &mut WidgetStore) {
+    store.register(
+        ids::INSP_REGION_ENABLED,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
+    for id in [
+        ids::INSP_REGION_X,
+        ids::INSP_REGION_Y,
+        ids::INSP_REGION_W,
+        ids::INSP_REGION_H,
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format!("{:.0}", 0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
+    store.register(
+        ids::INSP_REGION_FILTER_CLIP,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
 }
 
 fn populate_name_editor(store: &mut WidgetStore) {

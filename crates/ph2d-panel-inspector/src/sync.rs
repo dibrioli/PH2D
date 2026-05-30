@@ -168,6 +168,8 @@ pub(crate) fn sync_inspector_from_snapshots(
                 (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
                 (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
                 (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill),
+                (ids::INSP_REGION_ENABLED, sp.region_enabled),
+                (ids::INSP_REGION_FILTER_CLIP, sp.region_filter_clip),
             ] {
                 if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id)
                 {
@@ -187,6 +189,10 @@ pub(crate) fn sync_inspector_from_snapshots(
             (ids::INSP_SPRITE_HFRAMES, sp.hframes as f64),
             (ids::INSP_SPRITE_VFRAMES, sp.vframes as f64),
             (ids::INSP_SPRITE_FRAME, sp.frame as f64),
+            (ids::INSP_REGION_X, sp.region_rect[0] as f64),
+            (ids::INSP_REGION_Y, sp.region_rect[1] as f64),
+            (ids::INSP_REGION_W, sp.region_rect[2] as f64),
+            (ids::INSP_REGION_H, sp.region_rect[3] as f64),
         ] {
             if focus != Some(id) {
                 host.store_mut().set_number_value(id, value);

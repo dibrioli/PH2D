@@ -143,11 +143,19 @@ mod tests {
 
     #[test]
     fn modes_serde_round_trip() {
-        for m in [ClipMode::Disabled, ClipMode::ClipOnly, ClipMode::ClipAndDraw] {
+        for m in [
+            ClipMode::Disabled,
+            ClipMode::ClipOnly,
+            ClipMode::ClipAndDraw,
+        ] {
             let b = postcard::to_allocvec(&m).unwrap();
             assert_eq!(postcard::from_bytes::<ClipMode>(&b).unwrap(), m);
         }
-        for m in [MaskMode::None, MaskMode::VisibleInside, MaskMode::VisibleOutside] {
+        for m in [
+            MaskMode::None,
+            MaskMode::VisibleInside,
+            MaskMode::VisibleOutside,
+        ] {
             let b = postcard::to_allocvec(&m).unwrap();
             assert_eq!(postcard::from_bytes::<MaskMode>(&b).unwrap(), m);
         }

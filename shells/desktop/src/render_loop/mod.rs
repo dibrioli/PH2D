@@ -418,6 +418,7 @@ impl crate::App {
             // §7 ordering edits (W3) — optional-component edits, fanned out
             // to the selection like sprite edits.
             let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
+            let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
@@ -619,6 +620,15 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 ordering_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    EditorAction::InspectorSamplingEdit { entity_bits, edit } => {
+                        if inspector_selection.is_empty() {
+                            sampling_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                sampling_edits.push((t, edit));
                             }
                         }
                     }
@@ -1048,6 +1058,7 @@ impl crate::App {
                 sprite_source_change,
                 &sprite_edits,
                 &ordering_edits,
+                &sampling_edits,
                 hero,
                 sim,
                 renderer,

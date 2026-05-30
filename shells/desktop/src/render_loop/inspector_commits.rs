@@ -18,7 +18,8 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, RequestedSpriteStrategy, SpriteFieldEdit, Toast, ToastQueue,
+    OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, Toast,
+    ToastQueue,
 };
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::collections::BTreeMap;
@@ -97,6 +98,7 @@ pub(super) fn dispatch(
     sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
+    sampling_edits: &[(u64, SamplingFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -280,6 +282,19 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Ordering commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // W3 §9 sampling edits (TextureFilter/Repeat optional components).
+    for &(entity_bits, edit) in sampling_edits {
+        super::inspector_ordering::apply_sampling_edit(
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
             title_dirty = true;
         }
     }

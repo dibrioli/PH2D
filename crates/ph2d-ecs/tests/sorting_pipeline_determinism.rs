@@ -63,7 +63,12 @@ fn build_scene() -> SimWorld {
     w.spawn((t(0.0, 10.0), ChildOf(world), Label(1)));
 
     let char_root = w
-        .spawn((t(0.0, 5.0), ChildOf(world), SortingGroup::default(), Label(2)))
+        .spawn((
+            t(0.0, 5.0),
+            ChildOf(world),
+            SortingGroup::default(),
+            Label(2),
+        ))
         .id();
     w.spawn((t(0.0, 0.0), ChildOf(char_root), ShowBehindParent, Label(3)));
     w.spawn((t(0.0, 0.0), ChildOf(char_root), Label(4)));

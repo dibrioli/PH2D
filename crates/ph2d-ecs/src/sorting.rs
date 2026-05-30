@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 /// Index into the project's named [`SortingLayers`] list (spec §5.2).
 /// Capped at [`SortingLayers::MAX`] layers. Index `0` is the first
 /// (furthest-back) layer; higher indices render on top.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct LayerId(pub u8);
 
 /// Macro-camera nominal layer (Unity-style). Absence → the project's

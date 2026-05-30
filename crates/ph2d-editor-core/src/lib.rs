@@ -119,9 +119,10 @@ pub use project::{
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorOrderingMixed, InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
-    InspectorTransformInfo, InspectorVisibilityInfo, OrderingFieldEdit, RequestedSpriteStrategy,
-    SpriteFieldEdit, ViewFocusKind, paint_hero_screen,
+    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
+    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
+    OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
+    paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

@@ -365,21 +365,25 @@ impl SpriteRenderer {
             return;
         }
         let (filter_tag, repeat_tag) = RenderInstance::unpack_sampling(sampling);
-        let sampler = crate::image_filter::sampler_from_tags(&self.gpu.device, filter_tag, repeat_tag);
-        let bg = self.gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-render atlas per-sampling bg"),
-            layout: &self.pipeline.material_bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.atlas.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-            ],
-        });
+        let sampler =
+            crate::image_filter::sampler_from_tags(&self.gpu.device, filter_tag, repeat_tag);
+        let bg = self
+            .gpu
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render atlas per-sampling bg"),
+                layout: &self.pipeline.material_bgl,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&self.atlas.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&sampler),
+                    },
+                ],
+            });
         self.atlas_sampler_bgs.insert(sampling, bg);
     }
 

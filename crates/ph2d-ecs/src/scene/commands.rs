@@ -340,7 +340,10 @@ mod tests {
             })
             .unwrap();
         apply_editor_commands(sim.world_mut(), &queue, &reg).unwrap();
-        assert!(sim.world().get_entity(entity).is_ok(), "entity still exists");
+        assert!(
+            sim.world().get_entity(entity).is_ok(),
+            "entity still exists"
+        );
     }
 
     #[test]

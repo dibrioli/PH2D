@@ -68,6 +68,43 @@ impl FilterMode {
             concrete => concrete,
         }
     }
+
+    /// Enum discriminant as a `u8` tag (Inspector §9 segmented / snapshot
+    /// / the renderer's packed sampling key). `0 Inherit … 6 LinearAniso`.
+    pub const fn tag(self) -> u8 {
+        self as u8
+    }
+
+    /// Inverse of [`Self::tag`]; out-of-range → `Inherit`.
+    pub const fn from_tag(tag: u8) -> Self {
+        match tag {
+            1 => FilterMode::Nearest,
+            2 => FilterMode::Linear,
+            3 => FilterMode::NearestMipmap,
+            4 => FilterMode::LinearMipmap,
+            5 => FilterMode::NearestAniso,
+            6 => FilterMode::LinearAniso,
+            _ => FilterMode::Inherit,
+        }
+    }
+}
+
+impl RepeatMode {
+    /// Enum discriminant as a `u8` tag. `0 Inherit · 1 Disabled · 2
+    /// Enabled · 3 Mirror`.
+    pub const fn tag(self) -> u8 {
+        self as u8
+    }
+
+    /// Inverse of [`Self::tag`]; out-of-range → `Inherit`.
+    pub const fn from_tag(tag: u8) -> Self {
+        match tag {
+            1 => RepeatMode::Disabled,
+            2 => RepeatMode::Enabled,
+            3 => RepeatMode::Mirror,
+            _ => RepeatMode::Inherit,
+        }
+    }
 }
 
 impl RepeatMode {
@@ -91,7 +128,9 @@ pub fn resolve_texture_filter(
 ) -> FilterMode {
     let mut node = Some(entity);
     while let Some(n) = node {
-        let here = world.get::<TextureFilter>(n).map_or(FilterMode::Inherit, |f| f.0);
+        let here = world
+            .get::<TextureFilter>(n)
+            .map_or(FilterMode::Inherit, |f| f.0);
         if here != FilterMode::Inherit {
             return here;
         }
@@ -109,7 +148,9 @@ pub fn resolve_texture_repeat(
 ) -> RepeatMode {
     let mut node = Some(entity);
     while let Some(n) = node {
-        let here = world.get::<TextureRepeat>(n).map_or(RepeatMode::Inherit, |r| r.0);
+        let here = world
+            .get::<TextureRepeat>(n)
+            .map_or(RepeatMode::Inherit, |r| r.0);
         if here != RepeatMode::Inherit {
             return here;
         }
@@ -155,14 +196,18 @@ mod tests {
         // root(Linear) → mid(Inherit) → leaf(absent): leaf resolves to
         // the root's Linear.
         let root = w.spawn(TextureFilter(FilterMode::Linear)).id();
-        let mid = w.spawn((ChildOf(root), TextureFilter(FilterMode::Inherit))).id();
+        let mid = w
+            .spawn((ChildOf(root), TextureFilter(FilterMode::Inherit)))
+            .id();
         let leaf = w.spawn(ChildOf(mid)).id();
         assert_eq!(
             resolve_texture_filter(&w, leaf, FilterMode::Nearest),
             FilterMode::Linear
         );
         // A concrete override closer to the leaf wins.
-        let leaf2 = w.spawn((ChildOf(mid), TextureFilter(FilterMode::Nearest))).id();
+        let leaf2 = w
+            .spawn((ChildOf(mid), TextureFilter(FilterMode::Nearest)))
+            .id();
         assert_eq!(
             resolve_texture_filter(&w, leaf2, FilterMode::Linear),
             FilterMode::Nearest

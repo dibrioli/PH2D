@@ -9,10 +9,9 @@
 
 use crate::state::{
     self, current_display_unit, current_inspector_name_is_some, current_inspector_ordering,
-    current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
-    current_pixels_per_meter,
-    last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
-    set_last_inspector_visible_h,
+    current_inspector_sampling, current_inspector_sprite, current_inspector_transform,
+    current_inspector_visibility, current_pixels_per_meter, last_inspector_content_h,
+    last_inspector_visible_h, set_last_inspector_content_h, set_last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
@@ -193,16 +192,18 @@ fn paint_inspector(
     let sprite_info = current_inspector_sprite();
     let visibility_info = current_inspector_visibility();
     let ordering_info = current_inspector_ordering();
+    let sampling_info = current_inspector_sampling();
     let name_present = current_inspector_name_is_some();
     let any_section = transform_info.is_some()
         || sprite_info.is_some()
         || visibility_info.is_some()
         || ordering_info.is_some()
+        || sampling_info.is_some()
         || name_present;
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 7] = Default::default();
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 8] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -354,7 +355,32 @@ fn paint_inspector(
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
         y = live_section!(ids::INSP_LIVE_ORDERING_SECTION, 6, SECTION_HEAD_H, {
             sections::paint_ordering_section(
-                scene, text_system, theme, hit_index, store, inner_x, inner_w, y, ord,
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                ord,
+            )
+        });
+    }
+    // W3 §9 Sampling — Transform-bearing entity, sibling of §7.
+    if let Some(samp) = sampling_info.as_ref() {
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = live_section!(ids::INSP_LIVE_SAMPLING_SECTION, 7, SECTION_HEAD_H, {
+            sections::paint_sampling_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                samp,
             )
         });
     }

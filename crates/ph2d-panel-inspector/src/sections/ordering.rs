@@ -77,7 +77,14 @@ fn number_row(
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
     let input = NumberInput::new(id, "", value).step(1.0).state(state);
     paint_number_input_with_buffer(
-        &input, Some(buffer), caret, anchor, rect, scene, text_system, theme,
+        &input,
+        Some(buffer),
+        caret,
+        anchor,
+        rect,
+        scene,
+        text_system,
+        theme,
     );
     y + h + Spacing::Sm.px()
 }
@@ -235,22 +242,44 @@ pub(crate) fn paint_ordering_section(
         return y + header_h;
     }
     let mut yy = y + header_h;
-    let live = |store: &WidgetStore, id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v)
-    {
-        Some(CheckboxValue::Checked) => true,
-        Some(CheckboxValue::Unchecked) => false,
-        _ => snap,
-    };
+    let live =
+        |store: &WidgetStore, id: NodeId, snap: bool| match store.checkbox(id).map(|(_, v)| v) {
+            Some(CheckboxValue::Checked) => true,
+            Some(CheckboxValue::Unchecked) => false,
+            _ => snap,
+        };
     // Macros (not closures) so each row is a direct fn call that
     // re-borrows `scene`/`text_system`/`hit_index` per invocation.
     macro_rules! cb {
         ($yy:expr, $id:expr, $l:expr) => {
-            check_row(scene, text_system, theme, hit_index, store, x, w, $yy, $id, $l)
+            check_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                $yy,
+                $id,
+                $l,
+            )
         };
     }
     macro_rules! ni {
         ($yy:expr, $id:expr, $l:expr) => {
-            number_row(scene, text_system, theme, hit_index, store, x, w, $yy, $id, $l)
+            number_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                $yy,
+                $id,
+                $l,
+            )
         };
     }
 

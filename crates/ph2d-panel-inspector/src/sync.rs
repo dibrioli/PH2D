@@ -16,7 +16,9 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::{InspectorOrderingInfo, InspectorSpriteInfo, SpriteFieldEdit};
+use ph2d_editor_core::screens::hero::{
+    InspectorOrderingInfo, InspectorSpriteInfo, SpriteFieldEdit,
+};
 use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
@@ -175,8 +177,16 @@ fn sync_ordering_fields(
 ) {
     if entity_changed {
         for (id, on, mixed) in [
-            (ids::INSP_ORDER_Z_OVERRIDE, ord.z_index.is_some(), ord.mixed.z_index),
-            (ids::INSP_ORDER_Z_RELATIVE, ord.z_as_relative, ord.mixed.z_as_relative),
+            (
+                ids::INSP_ORDER_Z_OVERRIDE,
+                ord.z_index.is_some(),
+                ord.mixed.z_index,
+            ),
+            (
+                ids::INSP_ORDER_Z_RELATIVE,
+                ord.z_as_relative,
+                ord.mixed.z_as_relative,
+            ),
             (
                 ids::INSP_ORDER_SHOW_BEHIND,
                 ord.show_behind_parent,
@@ -192,8 +202,16 @@ fn sync_ordering_fields(
                 ord.sorting_group,
                 ord.mixed.sorting_group,
             ),
-            (ids::INSP_ORDER_SORT_AT_ROOT, ord.sort_at_root, ord.mixed.sort_at_root),
-            (ids::INSP_ORDER_TOP_LEVEL, ord.top_level, ord.mixed.top_level),
+            (
+                ids::INSP_ORDER_SORT_AT_ROOT,
+                ord.sort_at_root,
+                ord.mixed.sort_at_root,
+            ),
+            (
+                ids::INSP_ORDER_TOP_LEVEL,
+                ord.top_level,
+                ord.mixed.top_level,
+            ),
         ] {
             if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
                 *value = if mixed {

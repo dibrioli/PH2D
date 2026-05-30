@@ -9,7 +9,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::OrderingFieldEdit;
+use ph2d_editor_core::screens::hero::{OrderingFieldEdit, SamplingFieldEdit};
 use ph2d_editor_core::widget::CheckboxValue;
 
 /// Handle a §7 ordering widget event. Returns `true` if consumed.
@@ -126,6 +126,28 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
             edit: OrderingFieldEdit::YSortAxis([ax, ay]),
         });
         return true;
+    }
+    // §9 Sampling — Texture Filter / Repeat segmented selected.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(info) = state::current_inspector_sampling()
+    {
+        let edit = ids::INSP_SAMPLE_FILTER
+            .iter()
+            .position(|&o| o == id)
+            .map(|i| SamplingFieldEdit::Filter(i as u8))
+            .or_else(|| {
+                ids::INSP_SAMPLE_REPEAT
+                    .iter()
+                    .position(|&o| o == id)
+                    .map(|i| SamplingFieldEdit::Repeat(i as u8))
+            });
+        if let Some(edit) = edit {
+            host.bus_mut().push(EditorAction::InspectorSamplingEdit {
+                entity_bits: info.entity_bits,
+                edit,
+            });
+            return true;
+        }
     }
     false
 }

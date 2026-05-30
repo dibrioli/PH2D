@@ -14,10 +14,14 @@ use ph2d_core::Vec2;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommand, EditorCommandQueue};
 use ph2d_ecs::sorting::SortingLayers;
 use ph2d_ecs::{
-    Entity, LayerId, OrderInLayer, ShowBehindParent, SimWorld, SortPoint, SortingGroup,
-    SortingLayer, TopLevel, World, YSort, ZAsRelative, ZIndexOverride,
+    Entity, FilterMode, LayerId, OrderInLayer, RepeatMode, ShowBehindParent, SimWorld, SortPoint,
+    SortingGroup, SortingLayer, TextureFilter, TextureRepeat, TopLevel, World, YSort, ZAsRelative,
+    ZIndexOverride,
 };
-use ph2d_editor::{InspectorOrderingInfo, InspectorOrderingMixed, OrderingFieldEdit};
+use ph2d_editor::{
+    InspectorOrderingInfo, InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed,
+    OrderingFieldEdit, SamplingFieldEdit,
+};
 use serde::Serialize;
 
 /// The §7 ordering fields of one entity, read as display values (absent
@@ -171,7 +175,12 @@ pub(super) fn apply_ordering_edit(
     registry: &ComponentRegistry,
 ) {
     let entity = Entity::from_bits(entity_bits);
-    let cur_ysort = || sim.world().get::<YSort>(entity).copied().unwrap_or_default();
+    let cur_ysort = || {
+        sim.world()
+            .get::<YSort>(entity)
+            .copied()
+            .unwrap_or_default()
+    };
     let cur_group = || {
         sim.world()
             .get::<SortingGroup>(entity)
@@ -189,9 +198,13 @@ pub(super) fn apply_ordering_edit(
         OrderingFieldEdit::ZIndex(None) => {
             queue_remove(queue, registry, entity_bits, "ph2d::ecs::ZIndexOverride")
         }
-        OrderingFieldEdit::ZAsRelative(b) => {
-            queue_set(queue, registry, entity_bits, "ph2d::ecs::ZAsRelative", &ZAsRelative(b))
-        }
+        OrderingFieldEdit::ZAsRelative(b) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::ZAsRelative",
+            &ZAsRelative(b),
+        ),
         OrderingFieldEdit::ShowBehindParent(true) => queue_set(
             queue,
             registry,
@@ -209,11 +222,18 @@ pub(super) fn apply_ordering_edit(
             "ph2d::ecs::SortingLayer",
             &SortingLayer(LayerId(idx)),
         ),
-        OrderingFieldEdit::OrderInLayer(v) => {
-            queue_set(queue, registry, entity_bits, "ph2d::ecs::OrderInLayer", &OrderInLayer(v))
-        }
+        OrderingFieldEdit::OrderInLayer(v) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::OrderInLayer",
+            &OrderInLayer(v),
+        ),
         OrderingFieldEdit::YSortEnabled(b) => {
-            let ys = YSort { enabled: b, ..cur_ysort() };
+            let ys = YSort {
+                enabled: b,
+                ..cur_ysort()
+            };
             queue_set(queue, registry, entity_bits, "ph2d::ecs::YSort", &ys);
         }
         OrderingFieldEdit::YSortPoint(tag) => {
@@ -231,9 +251,13 @@ pub(super) fn apply_ordering_edit(
             queue_set(queue, registry, entity_bits, "ph2d::ecs::YSort", &ys);
         }
         // Preserve `sort_at_root` if the component was already present.
-        OrderingFieldEdit::SortingGroup(true) => {
-            queue_set(queue, registry, entity_bits, "ph2d::ecs::SortingGroup", &cur_group())
-        }
+        OrderingFieldEdit::SortingGroup(true) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::SortingGroup",
+            &cur_group(),
+        ),
         OrderingFieldEdit::SortingGroup(false) => {
             queue_remove(queue, registry, entity_bits, "ph2d::ecs::SortingGroup")
         }
@@ -241,12 +265,87 @@ pub(super) fn apply_ordering_edit(
             let g = SortingGroup { sort_at_root: b };
             queue_set(queue, registry, entity_bits, "ph2d::ecs::SortingGroup", &g);
         }
-        OrderingFieldEdit::TopLevel(true) => {
-            queue_set(queue, registry, entity_bits, "ph2d::ecs::TopLevel", &TopLevel)
-        }
+        OrderingFieldEdit::TopLevel(true) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::TopLevel",
+            &TopLevel,
+        ),
         OrderingFieldEdit::TopLevel(false) => {
             queue_remove(queue, registry, entity_bits, "ph2d::ecs::TopLevel")
         }
+    }
+}
+
+// ─── §9 Sampling (TextureFilter / TextureRepeat) ──────────────────────
+
+/// `(filter_tag, repeat_tag)` of one entity (component absent → `0`
+/// Inherit). Shared by the producer + BulkSelect compare.
+fn sampling_fields(world: &World, entity: Entity) -> (u8, u8) {
+    (
+        world.get::<TextureFilter>(entity).map_or(0, |t| t.0.tag()),
+        world.get::<TextureRepeat>(entity).map_or(0, |t| t.0.tag()),
+    )
+}
+
+/// Build the §9 sampling snapshot, or `None` when the entity has no
+/// `Transform` (not Inspector-worthy).
+pub(super) fn build_sampling_info(
+    world: &World,
+    entity_bits: u64,
+    selected: &[u64],
+    selected_count: usize,
+) -> Option<InspectorSamplingInfo> {
+    let entity = Entity::from_bits(entity_bits);
+    world.get::<ph2d_ecs::Transform>(entity)?;
+    let (filter_tag, repeat_tag) = sampling_fields(world, entity);
+    let mut mixed = InspectorSamplingMixed::default();
+    if selected.len() > 1 {
+        for &bits in selected {
+            let f = sampling_fields(world, Entity::from_bits(bits));
+            mixed.filter |= f.0 != filter_tag;
+            mixed.repeat |= f.1 != repeat_tag;
+        }
+    }
+    Some(InspectorSamplingInfo {
+        entity_bits,
+        filter_tag,
+        repeat_tag,
+        selected_count,
+        mixed,
+    })
+}
+
+/// Apply one [`SamplingFieldEdit`] (§9): a concrete tag attaches the
+/// optional component; tag `0` (`Inherit`) detaches it.
+pub(super) fn apply_sampling_edit(
+    entity_bits: u64,
+    edit: SamplingFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) {
+    match edit {
+        SamplingFieldEdit::Filter(0) => {
+            queue_remove(queue, registry, entity_bits, "ph2d::ecs::TextureFilter")
+        }
+        SamplingFieldEdit::Filter(t) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::TextureFilter",
+            &TextureFilter(FilterMode::from_tag(t)),
+        ),
+        SamplingFieldEdit::Repeat(0) => {
+            queue_remove(queue, registry, entity_bits, "ph2d::ecs::TextureRepeat")
+        }
+        SamplingFieldEdit::Repeat(t) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::TextureRepeat",
+            &TextureRepeat(RepeatMode::from_tag(t)),
+        ),
     }
 }
 

@@ -326,6 +326,14 @@ pub enum EditorAction {
         edit: crate::screens::hero::OrderingFieldEdit,
     },
 
+    /// Inspector → shell channel for a §9 sampling field (Texture Filter
+    /// / Repeat). Optional-component edit like
+    /// [`Self::InspectorOrderingEdit`] (W3 §3.9).
+    InspectorSamplingEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::SamplingFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

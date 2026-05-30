@@ -12,8 +12,8 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorNameInfo, InspectorOrderingInfo, InspectorSpriteInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo,
+    InspectorNameInfo, InspectorOrderingInfo, InspectorSamplingInfo, InspectorSpriteInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -67,6 +67,10 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_ORDERING:
         std::cell::RefCell<Option<InspectorOrderingInfo>> =
         const { std::cell::RefCell::new(None) };
+
+    /// W3 §9: live sampling snapshot for the Sampling section.
+    pub(crate) static CURRENT_INSPECTOR_SAMPLING:
+        std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
 
     /// W3 §7: when the Sorting Layer dropdown is open, the section stashes
     /// `(selected_index, chip_rect)` here so `paint_inspector` paints its
@@ -128,9 +132,15 @@ pub(crate) fn current_inspector_ordering() -> Option<InspectorOrderingInfo> {
     CURRENT_INSPECTOR_ORDERING.with(|c| *c.borrow())
 }
 
-pub(crate) fn set_pending_ordering_dd(
-    chip: Option<(usize, ph2d_editor_core::zones::Rect)>,
-) {
+pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
+    CURRENT_INSPECTOR_SAMPLING.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
+    CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+pub(crate) fn set_pending_ordering_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {
     PENDING_ORDERING_DD.with(|c| c.set(chip));
 }
 

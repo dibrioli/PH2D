@@ -223,9 +223,8 @@ pub(super) fn run(
                 let hidden = sim
                     .get::<ph2d_ecs::Visibility>(sim_entity)
                     .is_some_and(|v| v.hidden);
-                // W3.T3.12 visibility-layer cull: a sprite whose
-                // `VisibilityLayer` mask is disjoint from the active
-                // camera's `cull_mask` is skipped (absence = visible).
+                // W3.T3.12 visibility-layer cull: skip a sprite whose
+                // `VisibilityLayer` is disjoint from the camera cull_mask.
                 let culled = sim
                     .get::<VisibilityLayer>(sim_entity)
                     .is_some_and(|vl| !vl.visible_to(cull_mask));
@@ -284,10 +283,7 @@ pub(super) fn run(
                         world_pos: p,
                     });
                     let z_order = 0u32;
-                    // W3.T3.11: resolve the per-node TextureFilter/Repeat
-                    // hierarchically (nearest concrete ancestor, else the
-                    // project default) and pack into the CPU-only
-                    // `sampling` key the renderer groups draws by.
+                    // W3.T3.11: per-node TextureFilter/Repeat → sampling key.
                     let sampling = ph2d_render::RenderInstance::pack_sampling(
                         resolve_texture_filter(sim, sim_entity, default_filter) as u8,
                         resolve_texture_repeat(sim, sim_entity, default_repeat) as u8,

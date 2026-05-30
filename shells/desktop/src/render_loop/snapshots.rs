@@ -564,10 +564,12 @@ pub(super) fn publish(
             name,
         })
     });
-    // W3 §7: live ordering/sorting snapshot (built in the §7 sibling module).
+    let sel = &inspector_selection; // W3 §7/§9 snapshots (§7 sibling module)
     let inspector_ordering = hero.gizmo.selection.and_then(|b| {
-        let s = &inspector_selection;
-        super::inspector_ordering::build_ordering_info(sim.world(), b, s, selected_count)
+        super::inspector_ordering::build_ordering_info(sim.world(), b, sel, selected_count)
+    });
+    let inspector_sampling = hero.gizmo.selection.and_then(|b| {
+        super::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
     });
     // ADR-0029 Phase C.1: publish snapshots to the panel crate's
     // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
@@ -577,6 +579,7 @@ pub(super) fn publish(
     {
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
+        ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
         ph2d_panel_inspector::set_current_inspector_transform(inspector_transform);
         ph2d_panel_inspector::set_current_inspector_visibility(inspector_visibility);
         ph2d_panel_inspector::set_current_inspector_name(inspector_name);

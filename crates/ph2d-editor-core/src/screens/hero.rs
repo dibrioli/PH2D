@@ -461,6 +461,39 @@ pub enum OrderingFieldEdit {
     TopLevel(bool),
 }
 
+/// Snapshot of the selected entity's W3 §9 sampling components
+/// (`TextureFilter`/`TextureRepeat`). Tags are the
+/// `ph2d_ecs::FilterMode`/`RepeatMode` discriminants; `0` = `Inherit`
+/// (component absent or explicitly Inherit). Raw primitives keep
+/// editor-core loose-coupled from `ph2d-ecs`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct InspectorSamplingInfo {
+    pub entity_bits: u64,
+    pub filter_tag: u8,
+    pub repeat_tag: u8,
+    pub selected_count: usize,
+    pub mixed: InspectorSamplingMixed,
+}
+
+/// BulkSelect divergence flags for the §9 sampling fields.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct InspectorSamplingMixed {
+    pub filter: bool,
+    pub repeat: bool,
+}
+
+/// A single editable §9 sampling field, dispatched as
+/// [`EditorAction::InspectorSamplingEdit`]. Maps to the optional
+/// `TextureFilter`/`TextureRepeat` components: a concrete tag attaches
+/// the component; tag `0` (`Inherit`) detaches it.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SamplingFieldEdit {
+    /// `FilterMode` tag (`0 Inherit … 6 LinearAniso`).
+    Filter(u8),
+    /// `RepeatMode` tag (`0 Inherit · 1 Disabled · 2 Enabled · 3 Mirror`).
+    Repeat(u8),
+}
+
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on
 /// the renderer crate. Stays small (1 enum tag + opt u32) so the
 /// `Inspector*` struct is cheap to clone per frame.

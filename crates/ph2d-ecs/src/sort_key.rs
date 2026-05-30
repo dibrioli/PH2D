@@ -579,7 +579,11 @@ mod tests {
             .spawn((ChildOf(parent), ZIndexOverride(ZIndexOverride::Z_MAX)))
             .id();
         let z = effective_z(&w, child, &mut cache);
-        assert_eq!(z, ZIndexOverride::Z_MAX as i64, "cascade clamps, no overflow");
+        assert_eq!(
+            z,
+            ZIndexOverride::Z_MAX as i64,
+            "cascade clamps, no overflow"
+        );
     }
 
     #[test]
@@ -598,9 +602,7 @@ mod tests {
         let mut w = World::new();
         let mut cache = EntityHashMap::default();
         let parent = w.spawn((YSort::default(), ZIndexOverride(50))).id();
-        let detached = w
-            .spawn((ChildOf(parent), TopLevel, ZIndexOverride(3)))
-            .id();
+        let detached = w.spawn((ChildOf(parent), TopLevel, ZIndexOverride(3))).id();
         // Z: TopLevel ignores parent's 50.
         assert_eq!(effective_z(&w, detached, &mut cache), 3);
         // YSort: TopLevel is not Y-sorted by the parent.

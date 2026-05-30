@@ -16,7 +16,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::{CheckboxValue, TextInputState};
+use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
     inspector_state: &mut state::InspectorState,
@@ -173,7 +173,6 @@ pub(crate) fn sync_inspector_from_snapshots(
         // Transform NumberInputs' tolerated 1-frame post-commit lag.
         let focus = host.store().focus_id();
         for (id, value) in [
-            (ids::INSP_SPRITE_OPACITY, sp.opacity as f64),
             (ids::INSP_SPRITE_HFRAMES, sp.hframes as f64),
             (ids::INSP_SPRITE_VFRAMES, sp.vframes as f64),
             (ids::INSP_SPRITE_FRAME, sp.frame as f64),
@@ -181,6 +180,23 @@ pub(crate) fn sync_inspector_from_snapshots(
             if focus != Some(id) {
                 host.store_mut().set_number_value(id, value);
             }
+        }
+        // Opacity Slider (0..1 storage) + linked percent chip. Skip while
+        // the slider is being dragged or the chip is focused so we don't
+        // fight the user's input.
+        let dragging = matches!(
+            host.store().slider(ids::INSP_SPRITE_OPACITY),
+            Some((SliderState::Dragging, _))
+        );
+        if !dragging && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP) {
+            if let Some(InteractiveState::Slider { value, .. }) =
+                host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
+            {
+                *value = sp.opacity;
+            }
+            // Chip lives in display space (percent) per the integer map.
+            host.store_mut()
+                .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
         }
     }
 }

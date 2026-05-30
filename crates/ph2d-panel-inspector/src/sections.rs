@@ -14,9 +14,9 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, IconButtonStyle,
-    IconGlyph, NumberInput, SectionHeader, TextInput, TextInputState, paint_button, paint_checkbox,
-    paint_icon_button, paint_number_input_with_buffer, paint_section_header,
-    paint_text_input_with_buffer,
+    IconGlyph, NumberInput, SectionHeader, SliderState, TextInput, TextInputState, paint_button,
+    paint_checkbox, paint_icon_button, paint_number_input_with_buffer, paint_section_header,
+    paint_slider_with_chip, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -604,10 +604,8 @@ pub(crate) fn paint_color_tint_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let label_font = TypeToken::Sm.px();
     let field_h = ROW_H_PX;
     let row_gap = Spacing::Sm.px();
-    let label_color = resolve(ColorToken::Text2, theme);
     let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
     let collapsed = store.is_collapsed(ids::INSP_LIVE_COLOR_SECTION);
     let color_id = ids::INSP_LIVE_COLOR_COLOR;
@@ -628,35 +626,23 @@ pub(crate) fn paint_color_tint_section(
     }
     let mut cur_y = y + header_h;
 
-    // Opacity row — label + NumberInput (0.05 step), [0,1] clamped at the
-    // ECS-commit boundary (`apply_sprite_field`). Renders immediately.
-    let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
-    let col_gap = Spacing::Md.px();
-    paint_text(
-        text_system,
-        scene,
-        "Opacity",
-        x,
-        cur_y + (field_h - label_font) * 0.5,
-        label_font,
-        label_col_w,
-        label_color,
-    );
-    let op_x = x + label_col_w + col_gap;
-    let op_w = (w - label_col_w - col_gap).max(0.0);
-    let op_rect = Rect::new(op_x, cur_y, op_w, field_h);
-    hit_index.register(ids::INSP_SPRITE_OPACITY, op_rect);
-    let (op_state, op_value, op_buffer, op_caret, op_anchor) =
-        read_number_input(store, ids::INSP_SPRITE_OPACITY);
-    let op_input = NumberInput::new(ids::INSP_SPRITE_OPACITY, "", op_value)
-        .step(0.05) // LITERAL-PX-OK: opacity NumberInput step
-        .state(op_state);
-    paint_number_input_with_buffer(
-        &op_input,
-        Some(op_buffer),
-        op_caret,
-        op_anchor,
+    // Opacity — Slider 0..1 with a linked 0..100 % chip (spec §3.6).
+    // The slider stores the raw opacity; the chip projects to percent
+    // (populate.rs link). Dragging or editing the chip both fire
+    // ValueChanged(INSP_SPRITE_OPACITY) → SpriteFieldEdit::Opacity.
+    // [0,1] is re-clamped at the ECS-commit boundary. Renders immediately.
+    let (_, op_value) = store
+        .slider(ids::INSP_SPRITE_OPACITY)
+        .unwrap_or((SliderState::Normal, 1.0));
+    let op_rect = Rect::new(x, cur_y, w, field_h);
+    paint_slider_with_chip(
         op_rect,
+        "Opacity",
+        op_value,
+        ids::INSP_SPRITE_OPACITY,
+        ids::INSP_SPRITE_OPACITY_CHIP,
+        store,
+        hit_index,
         scene,
         text_system,
         theme,

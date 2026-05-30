@@ -9,8 +9,10 @@
 //! shared across panels / chrome layers and are not Inspector-specific.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
+use ph2d_editor_core::widget::{
+    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+};
 
 pub fn populate(store: &mut WidgetStore) {
     populate_transform_editor(store);
@@ -44,20 +46,37 @@ fn populate_sprite_sheet(store: &mut WidgetStore) {
     }
 }
 
-/// W2 Sprite Inspector v2 Color & Tint controls: Opacity NumberInput
-/// (default 1.0 = fully opaque) + Tint Fill checkbox (default off). Live
-/// values sync from the snapshot each frame in `sync.rs`.
+/// W2 Sprite Inspector v2 Color & Tint controls: Opacity Slider (0..1
+/// storage, default 1.0) with a linked percent chip (0..100), + Tint Fill
+/// checkbox (default off). Live values sync from the snapshot.
 fn populate_color_tint(store: &mut WidgetStore) {
+    // Opacity Slider 0..1 + linked chip showing 0..100 % (spec §3.6).
     store.register(
         ids::INSP_SPRITE_OPACITY,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 1.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        ids::INSP_SPRITE_OPACITY_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 1.0,
-            buffer: "1".to_string(),
+            value: 100.0, // display space (percent)
+            buffer: format_number(100.0),
             caret: 0,
-            last_committed: 1.0,
+            last_committed: 100.0,
             selection_anchor: None,
         },
+    );
+    // chip_display = slider_storage * 100 (+0); integer-snapped so the
+    // chip is whole percents while the slider track stays continuous.
+    store.link_slider_number_mapped_integer(
+        ids::INSP_SPRITE_OPACITY,
+        ids::INSP_SPRITE_OPACITY_CHIP,
+        100.0,
+        0.0,
     );
     store.register(
         ids::INSP_SPRITE_TINT_FILL,

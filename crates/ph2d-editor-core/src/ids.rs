@@ -498,9 +498,12 @@ pub const INSP_LIVE_COLOR_COLOR: NodeId = hash_node_id("insp_live_color_color");
 pub const INSP_LIVE_SHEET_COLOR: NodeId = hash_node_id("insp_live_sheet_color");
 
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
-/// Final opacity NumberInput (`[0, 1]`; renders today via
-/// `RenderInstance.opacity`).
+/// Final opacity Slider (`0..1` storage; renders today via
+/// `RenderInstance.opacity`). Paired with [`INSP_SPRITE_OPACITY_CHIP`].
 pub const INSP_SPRITE_OPACITY: NodeId = hash_node_id("insp_sprite_opacity");
+/// Numeric chip linked to the Opacity slider, displaying `0..100`
+/// (percent) via an integer-mapped projection.
+pub const INSP_SPRITE_OPACITY_CHIP: NodeId = hash_node_id("insp_sprite_opacity_chip");
 /// Tint Fill (silhouette) checkbox; renders today via `flip_uv` bit 2.
 pub const INSP_SPRITE_TINT_FILL: NodeId = hash_node_id("insp_sprite_tint_fill");
 

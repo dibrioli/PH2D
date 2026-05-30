@@ -218,15 +218,18 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
-    // W2 Color & Tint — Opacity NumberInput committed.
+    // W2 Color & Tint — Opacity Slider moved (drag or linked-chip edit
+    // both fire ValueChanged on the slider id). The slider stores the
+    // raw 0..1 opacity.
     if let WidgetEvent::ValueChanged(id) = ev
         && id == ids::INSP_SPRITE_OPACITY
         && let Some(info) = state::current_inspector_sprite()
     {
         let opacity = host
             .store()
-            .number_value(ids::INSP_SPRITE_OPACITY)
-            .unwrap_or(info.opacity as f64) as f32;
+            .slider(ids::INSP_SPRITE_OPACITY)
+            .map(|(_, v)| v)
+            .unwrap_or(info.opacity);
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
             entity_bits: info.entity_bits,
             edit: SpriteFieldEdit::Opacity(opacity),

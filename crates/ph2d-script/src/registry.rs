@@ -25,9 +25,9 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_script_components(&mut reg);
-        // 4 ecs components (Transform, Name, Visibility, RootOrder)
-        // + 1 script component (LuauScript).
-        assert_eq!(reg.len(), 5);
+        // 18 ecs components (4 foundational + 14 W3 sorting/visibility/
+        // sampling) + 1 script component (LuauScript).
+        assert_eq!(reg.len(), 19);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

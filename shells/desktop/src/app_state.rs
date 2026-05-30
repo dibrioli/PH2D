@@ -112,14 +112,10 @@ pub(crate) struct AppGfx {
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3
     /// zero-alloc verified by `crates/ph2d-ecs/tests/propagate_no_alloc.rs`.
     pub(crate) worklist: WorklistBuf,
-    /// Sprite Inspector v2 W3.T3.8 — reusable scratch for the canonical
-    /// sorting pipeline (`compute_sort_ranks_into`). Threaded like
-    /// `worklist` so the per-frame sort stays allocation-free after
-    /// warm-up (HR-3).
+    /// W3.T3.8 reusable scratch + per-frame input buffer for the
+    /// canonical sorting pipeline; threaded like `worklist` so the sort
+    /// stays allocation-free after warm-up (HR-3).
     pub(crate) sort_scratch: ph2d_ecs::sort_key::SortScratch,
-    /// Reusable per-frame `SortInput` buffer (gathered during the
-    /// propagate walk, fed to the sort pipeline). Cleared + refilled
-    /// each frame; capacity retained (HR-3).
     pub(crate) sort_inputs: Vec<ph2d_ecs::sort_key::SortInput>,
     /// M14.4a live-bridge state. Present in the default editor mode
     /// (i.e. always unless `PH2D_M5_DEMO=1` switched to the legacy

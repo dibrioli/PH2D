@@ -31,17 +31,22 @@ struct InstanceInput {
     // anatomia §4.3). The cascade collapse over ancestors lands in a later
     // wave; in W1 this is `self_tint × tint` (both default WHITE → identity).
     @location(5) tint:      vec4<f32>,
-    @location(6) rotation:  f32,        // radians; M14.7 gizmo
+    // 2x2 world linear basis (column-major): basis.xy = col0 (x axis),
+    // basis.zw = col1 (y axis). Carries rotation + scale + skew exactly;
+    // a non-orthogonal basis renders the true sheared parallelogram
+    // (ADR-0070-amendment-4; ADR-0025-amendment-1 §2.6). Replaces the old
+    // decomposed `rotation` scalar that collapsed skew into rot+scale.
+    @location(6) basis:     vec4<f32>,
     // > 0.5 → this instance's texture is ALREADY premultiplied
     // (BG-Removal Apply bakes premultiplied so bilinear matches the
     // Vello preview). The fragment then skips its post-sample
     // premultiply. 0.0 for every other sprite (atlas + straight
     // individual) so they composite exactly as before.
     @location(7) premultiplied: f32,
-    // Pivot offset (world-scaled local meters): the quad CENTER's
-    // position relative to `world_pos`, which IS the pivot. Added to
-    // the centered corner before rotation so the quad orbits the pivot
-    // rather than its own center. [0,0] = strictly-centered (legacy).
+    // Pivot offset (LOCAL meters): the quad CENTER's position relative
+    // to `world_pos` (the pivot), in the sprite's own local frame. Added
+    // to the centered corner before the basis maps it to world, so the
+    // quad orbits the pivot. [0,0] = strictly-centered (legacy).
     @location(8) anchor: vec2<f32>,
     // v4 per-corner tint (anatomia §4.1/§4.6) — a 4-stop bilinear
     // gradient. Order [TopLeft, TopRight, BottomLeft, BottomRight]; the
@@ -74,20 +79,20 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
-    // Local-space sprite corner. The quad is centered on its own
+    // Local-space sprite corner (the quad is centered on its own
     // geometry, then shifted by `anchor` so the quad center sits at
-    // `anchor` relative to the pivot (`world_pos`). `size` already
-    // carries `Transform.scale` baked at extract time; rotation then
-    // orbits the pivot (applies to anchor + corner together) before the
-    // world translate. anchor [0,0] = strictly-centered (legacy).
+    // `anchor` relative to the pivot `world_pos`). `size` and `anchor`
+    // are LOCAL now — the full world linear transform (rotation + scale
+    // + skew) lives in `basis`. anchor [0,0] = strictly-centered (legacy).
     let local = i.anchor + vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
-    let cos_r = cos(i.rotation);
-    let sin_r = sin(i.rotation);
-    let rotated = vec2<f32>(
-        local.x * cos_r - local.y * sin_r,
-        local.x * sin_r + local.y * cos_r,
+    // Apply the 2x2 world basis: col0 = basis.xy, col1 = basis.zw.
+    // A sheared (non-orthogonal) basis maps the axis-aligned local quad
+    // to the correct parallelogram — true skew, not a rotated rectangle.
+    let mapped = vec2<f32>(
+        local.x * i.basis.x + local.y * i.basis.z,
+        local.x * i.basis.y + local.y * i.basis.w,
     );
-    let world = i.world_pos + rotated;
+    let world = i.world_pos + mapped;
 
     // Logical flip (ADR-0070-amendment-3): flip the TEXTURE sample UV,
     // not the geometry. bit0 mirrors u, bit1 mirrors v. Per-corner tint

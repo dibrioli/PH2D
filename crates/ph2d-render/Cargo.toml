@@ -59,6 +59,12 @@ rect_packer = "0.2"
 # drops criterion's optional gnuplot/rayon pulls — the bench runs in the
 # plain-text reporter path used by the CI bench job.
 criterion = { version = "0.7", default-features = false }
+# naga (same major as wgpu 28) — parse + validate sprite.wgsl at
+# `cargo test` time so a vertex-layout / shader drift (e.g. the
+# rotation→basis ABI change, ADR-0070-amendment-4) is caught before it
+# reaches a GPU pipeline build. Mirrors ph2d-painter-brush's stamp.wgsl
+# naga gate. `wgsl-in` feature for the WGSL front-end.
+naga = { version = "28", features = ["wgsl-in"] }
 
 [[bench]]
 name = "sprites_upload_144b_vs_72b"

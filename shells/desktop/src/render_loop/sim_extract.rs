@@ -110,27 +110,19 @@ pub(super) fn run(
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();
-                    // M14.7 polish: extract scale + rotation from
-                    // the entity's `GlobalTransform` matrix so the
-                    // gizmo's scale handles AND rotation reach the
-                    // shader. Column-major affine:
-                    //   col0 = (cos*sx, sin*sx)
-                    //   col1 = (-sin*sy, cos*sy)
-                    //   col2 = (tx, ty)
-                    // Scale magnitudes come from column lengths;
-                    // rotation comes from atan2(col0.y, col0.x).
-                    // The Sprite's raw `size` is the import-time
-                    // world rect; multiplying here keeps the gizmo
-                    // pipeline orthogonal to the import pipeline
-                    // (no double-scaling).
+                    // ADR-0070-amendment-4: pass the FULL 2x2 world basis
+                    // (col0, col1) to the shader instead of decomposing it
+                    // to atan2(col0) + per-column scale. The old
+                    // decomposition collapsed any skew (a non-orthogonal
+                    // basis) into a rotated rectangle — skew read as
+                    // rotation + stretched scale. The basis carries
+                    // rotation + scale + skew EXACTLY, and the shader maps
+                    // the local quad through it (sheared parallelogram).
+                    // `size`/`anchor` stay LOCAL (the basis applies scale),
+                    // so no double-scaling. Column-major affine:
+                    //   col0 = basis.xy (x axis), col1 = basis.zw (y axis).
                     let affine = gt.affine();
-                    let col0_x = affine[0];
-                    let col0_y = affine[1];
-                    let col1_x = affine[2];
-                    let col1_y = affine[3];
-                    let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
-                    let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
-                    let rotation = col0_y.atan2(col0_x);
+                    let basis = [affine[0], affine[1], affine[2], affine[3]];
                     // M14.5 C: branch on the sprite source. Atlas
                     // sprites resolve UV via `region_uv`; individual
                     // sprites use the full (0..1) UV rect and carry
@@ -182,20 +174,20 @@ pub(super) fn run(
                     );
                     builder.insert(RenderInstance {
                         world_pos: [p.x, p.y],
-                        size: [spr.size[0] * scale_x, spr.size[1] * scale_y],
+                        // LOCAL size — the basis applies world scale.
+                        size: spr.size,
                         atlas_uv,
                         tint: cascade_tint,
-                        rotation,
+                        basis,
                         texture_id,
                         // Flag the BG-Removal-baked premultiplied texture
                         // so the fragment skips its post-sample premultiply
                         // (fringe fix). Straight for every other sprite.
                         premultiplied: if premultiplied_flag { 1.0 } else { 0.0 },
-                        // Pivot offset: scale the intrinsic-local anchor
-                        // by the same `GlobalTransform` scale as `size`,
-                        // so the shader's `anchor + quad*size` stays in
-                        // one consistent (world-scaled) local frame.
-                        anchor: [spr.anchor[0] * scale_x, spr.anchor[1] * scale_y],
+                        // Pivot offset in LOCAL meters — the basis maps it
+                        // to world along with the quad corners, so the quad
+                        // orbits `world_pos` (the pivot) under skew too.
+                        anchor: spr.anchor,
                         per_corner_tint: spr.per_corner_tint,
                         opacity: spr.opacity,
                         flip_uv,

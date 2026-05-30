@@ -17,14 +17,14 @@
 //! we surface a stable `entity_bits` to the editor without exposing a
 //! `bevy_ecs::Entity` across the ADR-0021 / HR-8 boundary.
 //!
-//! ## Rotation handling
+//! ## Rotation / scale / skew handling
 //!
-//! v1 treats every sprite as axis-aligned in world space. The
-//! `Transform.rotation` field exists but is ignored at picking time —
-//! same simplification the renderer uses today (the quad shader does
-//! not apply rotation either). M14.7 D will add rotation support
-//! when the gizmo lands; until then any rotated sprite gets picked
-//! against the un-rotated bbox.
+//! Picking honours the full `RenderInstance.basis` (the 2×2 world
+//! linear map, ADR-0070-amendment-4): [`pick_sprite_at_world`] inverts
+//! the basis to bring the cursor into the sprite's local frame and
+//! tests the local quad, so rotated / scaled / skewed sprites pick
+//! exactly where they render. The rect / gizmo-box paths use the exact
+//! parallelogram AABB. A degenerate basis (det ≈ 0) is unpickable.
 //!
 //! ## Top-most resolution
 //!
@@ -68,6 +68,46 @@ impl WorldBbox {
     }
 }
 
+// ─── basis geometry helpers (ADR-0070-amendment-4) ──────────────────
+//
+// `RenderInstance.basis` is the 2x2 world linear map (rotation + scale +
+// skew), column-major `[col0.x, col0.y, col1.x, col1.y]`, i.e. matrix
+// `M = [[b0, b2], [b1, b3]]`. `size`/`anchor` are now LOCAL, so picking
+// inverts `M` to test the world cursor against the local quad, and uses
+// the exact parallelogram AABB for the rubber-band / gizmo box.
+
+/// Map a WORLD-space delta (cursor − pivot) into the sprite's LOCAL
+/// frame by inverting `basis`. `None` when the basis is degenerate.
+#[inline]
+fn world_delta_to_local(basis: [f32; 4], dx: f32, dy: f32) -> Option<(f32, f32)> {
+    let [b0, b1, b2, b3] = basis;
+    let det = b0 * b3 - b1 * b2;
+    if det.abs() < 1e-12 {
+        return None;
+    }
+    let inv = 1.0 / det;
+    Some(((b3 * dx - b2 * dy) * inv, (-b1 * dx + b0 * dy) * inv))
+}
+
+/// Map a LOCAL point through `basis` to a WORLD delta from the pivot.
+#[inline]
+fn basis_apply(basis: [f32; 4], x: f32, y: f32) -> (f32, f32) {
+    let [b0, b1, b2, b3] = basis;
+    (b0 * x + b2 * y, b1 * x + b3 * y)
+}
+
+/// World-space AABB half-extents of a centered local quad (half-sizes
+/// `half_w`/`half_h`) under `basis` — the exact bbox of the transformed
+/// parallelogram (sum of absolute column contributions).
+#[inline]
+fn world_aabb_half_extents(basis: [f32; 4], half_w: f32, half_h: f32) -> (f32, f32) {
+    let [b0, b1, b2, b3] = basis;
+    (
+        b0.abs() * half_w + b2.abs() * half_h,
+        b1.abs() * half_w + b3.abs() * half_h,
+    )
+}
+
 /// Return the sim-entity bits of the topmost sprite whose axis-aligned
 /// bbox contains `world_pos`. Returns `None` when no sprite covers the
 /// point (e.g. the user clicked empty canvas) — the host treats this
@@ -91,19 +131,20 @@ pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u6
     let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
     for (sim_ref, gt, ri) in q.iter(present) {
         let pos = gt.translation();
+        // LOCAL half-extents (basis applies scale); invert the basis to
+        // bring the world cursor into the sprite's local frame, so the
+        // test honours rotation + scale + skew.
         let half_w = ri.size[0] * 0.5;
         let half_h = ri.size[1] * 0.5;
         let dx = world_pos[0] - pos.x;
         let dy = world_pos[1] - pos.y;
-        let cos_r = ri.rotation.cos();
-        let sin_r = ri.rotation.sin();
-        let local_dx = dx * cos_r + dy * sin_r;
-        let local_dy = -dx * sin_r + dy * cos_r;
-        // The quad center sits at `anchor` in the (world-scaled) local
-        // frame — `world_pos` is the pivot, not necessarily the center
-        // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
-        // the anchor before the half-extent test. anchor [0,0] (every
-        // legacy sprite) collapses to the original centered test.
+        let Some((local_dx, local_dy)) = world_delta_to_local(ri.basis, dx, dy) else {
+            continue;
+        };
+        // The quad center sits at `anchor` in the local frame — `world_pos`
+        // is the pivot, not necessarily the center — so the bbox spans
+        // `[anchor - half, anchor + half]`. anchor [0,0] (every legacy
+        // sprite) collapses to the original centered test.
         if (local_dx - ri.anchor[0]).abs() <= half_w && (local_dy - ri.anchor[1]).abs() <= half_h {
             hits.push(sim_ref.0.to_bits());
         }
@@ -113,13 +154,11 @@ pub fn pick_sprites_at_world(present: &mut World, world_pos: [f32; 2]) -> Vec<u6
     hits
 }
 
-/// Fase 0f: return every sprite whose axis-aligned world bbox
-/// intersects the rect spanning `rect_min`..`rect_max`. Used by the
-/// canvas rubber-band box-select gesture. Rotation is approximated
-/// by the un-rotated AABB (same conservative simplification as
-/// [`pick_sprite_at_world`]); for unrotated sprites — the common case
-/// in PH2D — the result is exact. The order of returned bits matches
-/// archetype iteration; the caller deduplicates as needed.
+/// Fase 0f: return every sprite whose world bbox intersects the rect
+/// spanning `rect_min`..`rect_max`. Used by the canvas rubber-band
+/// box-select gesture. The bbox is the exact AABB of the transformed
+/// parallelogram (rotation + scale + skew via the basis). The order of
+/// returned bits matches archetype iteration; the caller deduplicates.
 pub fn pick_sprites_in_world_rect(
     present: &mut World,
     rect_min: [f32; 2],
@@ -129,10 +168,12 @@ pub fn pick_sprites_in_world_rect(
     let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
     for (sim_ref, gt, ri) in q.iter(present) {
         let pos = gt.translation();
-        let half_w = ri.size[0] * 0.5;
-        let half_h = ri.size[1] * 0.5;
-        let cx = pos.x + ri.anchor[0];
-        let cy = pos.y + ri.anchor[1];
+        // Exact world AABB of the (possibly rotated/scaled/skewed) quad.
+        let (half_w, half_h) =
+            world_aabb_half_extents(ri.basis, ri.size[0] * 0.5, ri.size[1] * 0.5);
+        let (ax, ay) = basis_apply(ri.basis, ri.anchor[0], ri.anchor[1]);
+        let cx = pos.x + ax;
+        let cy = pos.y + ay;
         let smin_x = cx - half_w;
         let smax_x = cx + half_w;
         let smin_y = cy - half_h;
@@ -157,22 +198,17 @@ pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<
         let half_h = ri.size[1] * 0.5;
         let dx = world_pos[0] - pos.x;
         let dy = world_pos[1] - pos.y;
-        // Rotate the cursor delta into the sprite's local frame so the
-        // axis-aligned bbox test matches what the user sees on screen.
-        // Without the inverse rotation, the picking AABB tracks the
-        // unrotated rect — a click on the visible corner of a rotated
-        // sprite would miss. ri.rotation comes from the M14.7 polish
-        // extract path; zero for legacy entities means this collapses
-        // to the original axis-aligned test.
-        let cos_r = ri.rotation.cos();
-        let sin_r = ri.rotation.sin();
-        let local_dx = dx * cos_r + dy * sin_r;
-        let local_dy = -dx * sin_r + dy * cos_r;
-        // The quad center sits at `anchor` in the (world-scaled) local
-        // frame — `world_pos` is the pivot, not necessarily the center
-        // — so the bbox spans `[anchor - half, anchor + half]`. Subtract
-        // the anchor before the half-extent test. anchor [0,0] (every
-        // legacy sprite) collapses to the original centered test.
+        // Invert the 2x2 basis to bring the cursor delta into the sprite's
+        // local frame so the axis-aligned bbox test matches what the user
+        // sees — now honouring rotation + scale + skew (ADR-0070-
+        // amendment-4). A degenerate basis (det~0) can't be hit.
+        let Some((local_dx, local_dy)) = world_delta_to_local(ri.basis, dx, dy) else {
+            continue;
+        };
+        // The quad center sits at `anchor` in the local frame — `world_pos`
+        // is the pivot, not necessarily the center — so the bbox spans
+        // `[anchor - half, anchor + half]`. anchor [0,0] (every legacy
+        // sprite) collapses to the original centered test.
         if (local_dx - ri.anchor[0]).abs() <= half_w && (local_dy - ri.anchor[1]).abs() <= half_h {
             // Last hit wins — within an archetype bevy_ecs walks in
             // insertion order, so the most recently spawned sprite
@@ -192,15 +228,15 @@ pub fn selection_bbox_world(present: &mut World, sim_entity_bits: u64) -> Option
     for (sim_ref, gt, ri) in q.iter(present) {
         if sim_ref.0.to_bits() == sim_entity_bits {
             let pos = gt.translation();
-            let half_w = ri.size[0] * 0.5;
-            let half_h = ri.size[1] * 0.5;
-            // Center the gizmo bbox on the visible quad center
-            // (`pivot + anchor`), not the pivot. Like the pick test
-            // above and this function's v1 contract, rotation is left
-            // out of the bbox (axis-aligned); anchor [0,0] reproduces
-            // the original pivot-centered box.
-            let cx = pos.x + ri.anchor[0];
-            let cy = pos.y + ri.anchor[1];
+            // Exact world AABB of the transformed quad (rotation + scale +
+            // skew via the basis); centered on the visible quad center
+            // (`pivot + basis·anchor`), not the pivot. anchor [0,0]
+            // reproduces the original pivot-centered box.
+            let (half_w, half_h) =
+                world_aabb_half_extents(ri.basis, ri.size[0] * 0.5, ri.size[1] * 0.5);
+            let (ax, ay) = basis_apply(ri.basis, ri.anchor[0], ri.anchor[1]);
+            let cx = pos.x + ax;
+            let cy = pos.y + ay;
             return Some(WorldBbox {
                 min: [cx - half_w, cy - half_h],
                 max: [cx + half_w, cy + half_h],
@@ -234,7 +270,7 @@ mod tests {
             size,
             atlas_uv: [0.0, 0.0, 1.0, 1.0],
             tint: [1.0, 1.0, 1.0, 1.0],
-            rotation: 0.0,
+            basis: RenderInstance::IDENTITY_BASIS,
             texture_id: 0,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
@@ -265,7 +301,7 @@ mod tests {
             size,
             atlas_uv: [0.0, 0.0, 1.0, 1.0],
             tint: [1.0, 1.0, 1.0, 1.0],
-            rotation: 0.0,
+            basis: RenderInstance::IDENTITY_BASIS,
             texture_id: 0,
             premultiplied: 0.0,
             anchor,

@@ -466,7 +466,7 @@ mod tests {
             size: [1.0, 1.0],
             atlas_uv: [0.0, 0.0, 1.0, 1.0],
             tint: [1.0, 1.0, 1.0, 1.0],
-            rotation: 0.0,
+            basis: RenderInstance::IDENTITY_BASIS,
             texture_id,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],

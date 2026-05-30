@@ -18,7 +18,7 @@
 //! |--------|--------|------------------------|----------------|
 //! | `P`    | Vec2   | `world_pos`            | `[0,0]`        |
 //! | `size` | Vec2   | `size`                 | `[1,1]`        |
-//! | `rot`  | Scalar | `rotation` (radians)   | `0`            |
+//! | `rot`  | Scalar | `basis` (rotation rad) | `0` → identity |
 //! | `tint` | Vec4   | `tint` (rgba)          | `[1,1,1,1]`    |
 //!
 //! `atlas_uv`/`anchor`/`texture_id`/`premultiplied` use the shared-atlas
@@ -45,26 +45,34 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
     let rot = stream.get("rot");
     let tint = stream.get("tint");
     (0..n)
-        .map(|i| RenderInstance {
-            world_pos: vec2_at(p, i, [0.0, 0.0]),
-            size: vec2_at(size, i, [1.0, 1.0]),
-            atlas_uv: [0.0, 0.0, 1.0, 1.0],
-            tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
-            rotation: scalar_at(rot, i, 0.0),
-            premultiplied: 0.0,
-            anchor: [0.0, 0.0],
-            // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
-            // no per-corner/opacity/flip authoring surface, so they take
-            // their identity values (white gradient, full opacity, no
-            // flip) — byte-identical render to the pre-v4 path.
-            per_corner_tint: [[1.0; 4]; 4],
-            opacity: 1.0,
-            flip_uv: 0,
-            texture_id: 0,
-            // Node-graph emit doesn't have a hierarchy slot — every
-            // motion node's instances share `z_order = 0`. Renderer's
-            // tiebreaker (`texture_id`) groups them into one run.
-            z_order: 0,
+        .map(|i| {
+            // ADR-0070-amendment-4: RenderInstance carries the 2×2 world
+            // basis, not a rotation scalar. A Motion stream emits only a
+            // rotation (no skew), so the basis is a pure rotation matrix
+            // `[cos, sin, -sin, cos]`. RenderInstance is PresentWorld-only
+            // (HR-5 exempt), so std `sin_cos` is fine here.
+            let (sin_r, cos_r) = scalar_at(rot, i, 0.0).sin_cos();
+            RenderInstance {
+                world_pos: vec2_at(p, i, [0.0, 0.0]),
+                size: vec2_at(size, i, [1.0, 1.0]),
+                atlas_uv: [0.0, 0.0, 1.0, 1.0],
+                tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
+                basis: [cos_r, sin_r, -sin_r, cos_r],
+                premultiplied: 0.0,
+                anchor: [0.0, 0.0],
+                // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has
+                // no per-corner/opacity/flip authoring surface, so they take
+                // their identity values (white gradient, full opacity, no
+                // flip) — byte-identical render to the pre-v4 path.
+                per_corner_tint: [[1.0; 4]; 4],
+                opacity: 1.0,
+                flip_uv: 0,
+                texture_id: 0,
+                // Node-graph emit doesn't have a hierarchy slot — every
+                // motion node's instances share `z_order = 0`. Renderer's
+                // tiebreaker (`texture_id`) groups them into one run.
+                z_order: 0,
+            }
         })
         .collect()
 }
@@ -131,7 +139,8 @@ mod tests {
         assert_eq!(out[0].world_pos, [1.0, 2.0]);
         assert_eq!(out[1].world_pos, [3.0, 4.0]);
         assert_eq!(out[0].size, [5.0, 5.0]);
-        assert_eq!(out[0].rotation, 0.0); // default
+        // rot default 0 → identity basis (ADR-0070-amendment-4).
+        assert_eq!(out[0].basis, RenderInstance::IDENTITY_BASIS);
         assert_eq!(out[1].tint, [1.0, 1.0, 1.0, 1.0]); // default
         assert_eq!(out[0].atlas_uv, [0.0, 0.0, 1.0, 1.0]);
     }

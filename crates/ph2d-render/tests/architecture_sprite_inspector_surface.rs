@@ -48,7 +48,7 @@ fn render_instance_field_count() -> usize {
         size: _,
         atlas_uv: _,
         tint: _,
-        rotation: _,
+        basis: _,
         premultiplied: _,
         anchor: _,
         per_corner_tint: _,
@@ -86,8 +86,10 @@ fn render_instance_field_count_capped() {
 fn render_instance_pod_size_capped() {
     assert_eq!(
         std::mem::size_of::<RenderInstance>(),
-        144,
-        "RenderInstance v4 ABI is FROZEN at 144 bytes (Sprite_projeto §10.11)."
+        156,
+        "RenderInstance ABI is 156 bytes (ADR-0070-amendment-4: `rotation: f32` → \
+         `basis: [f32; 4]` so the shader renders skew as a true parallelogram instead \
+         of decomposing to a lossy rotation scalar). Was 144 at v4 freeze."
     );
 }
 

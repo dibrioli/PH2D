@@ -408,18 +408,28 @@ impl SimComponent for Sprite {}
 #[repr(C)]
 pub struct RenderInstance {
     pub world_pos: [f32; 2],
-    /// Sprite size in world meters. Extract MULTIPLIES the raw
-    /// `Sprite.size` by the entity's `GlobalTransform` scale before
-    /// stamping this field, so the gizmo's scale handles
-    /// (`Transform.scale`) reach the rendered quad.
+    /// Sprite size in LOCAL meters — the raw intrinsic [`Sprite::size`]
+    /// (import rect). Scale/rotation/skew are NOT folded here anymore;
+    /// the full world linear transform lives in [`Self::basis`], which
+    /// the shader applies to the local quad. (Pre-amendment-4 this field
+    /// pre-multiplied `GlobalTransform` scale; that decomposition was
+    /// lossy under skew — see `basis`.)
     pub size: [f32; 2],
     pub atlas_uv: [f32; 4],
     pub tint: [f32; 4],
-    /// World-space rotation in radians, decomposed from
-    /// `GlobalTransform`. Read by the shader to rotate the local
-    /// quad before the world translate. Defaults to 0 for legacy
-    /// extract paths that don't set it.
-    pub rotation: f32,
+    /// The 2×2 world-space linear basis from `GlobalTransform`, column-
+    /// major: `[col0.x, col0.y, col1.x, col1.y]` = `[x_basis, y_basis]`.
+    /// Carries rotation **and** non-uniform scale **and** skew exactly —
+    /// the shader applies `mat2x2(col0, col1) · local` to each quad
+    /// corner, so a sheared (non-orthogonal) basis renders as the true
+    /// parallelogram (ADR-0025-amendment-1 §2.6 skew render step;
+    /// ADR-0070-amendment-4).
+    ///
+    /// This REPLACES the old `rotation: f32` scalar. The previous extract
+    /// decomposed the matrix to `atan2(col0)` + per-column lengths, which
+    /// collapsed any shear into a rotated rectangle (skew read as
+    /// rotation + stretched scale). Identity = `[1, 0, 0, 1]`.
+    pub basis: [f32; 4],
     /// `1.0` → the bound texture is already premultiplied (BG-Removal
     /// Apply); the fragment skips its post-sample premultiply so
     /// bilinear sampling matches the Vello on-canvas preview and the
@@ -427,11 +437,10 @@ pub struct RenderInstance {
     /// sprite. CPU-side this is set from [`Sprite::premultiplied`] at
     /// extract time.
     pub premultiplied: f32,
-    /// Pivot offset in WORLD-scaled local meters (the canonical
-    /// [`Sprite::anchor`] multiplied by `GlobalTransform.scale` at
-    /// extract time, mirroring how `size` is scaled). The shader adds
-    /// it to the centered quad corner BEFORE rotating, so the quad
-    /// orbits `world_pos` (the pivot) rather than its own center.
+    /// Pivot offset in LOCAL meters (the canonical [`Sprite::anchor`],
+    /// no longer scale-folded). The shader adds it to the centered quad
+    /// corner BEFORE applying [`Self::basis`], so the quad orbits
+    /// `world_pos` (the pivot) rather than its own center.
     /// `[0.0, 0.0]` reproduces the historical strictly-centered sprite.
     pub anchor: [f32; 2],
 
@@ -497,7 +506,7 @@ impl RenderInstance {
         3 => Float32x2,  // size
         4 => Float32x4,  // atlas_uv
         5 => Float32x4,  // tint
-        6 => Float32,    // rotation (M14.7)
+        6 => Float32x4,  // basis (2x2 world linear: col0.xy, col1.xy) — ADR-0070-amendment-4
         7 => Float32,    // premultiplied flag (BG-Removal Apply)
         8 => Float32x2,  // anchor (pivot offset; TOOL_PIVOT + Padding-Keep)
         // v4 (Sprite Inspector v2): per_corner_tint occupies 4 attrs
@@ -523,6 +532,12 @@ impl RenderInstance {
     /// Sentinel for `texture_id` meaning "sample from the shared
     /// atlas at material bind group 1".
     pub const ATLAS_TEXTURE_ID: u32 = 0;
+
+    /// Identity 2×2 [`Self::basis`] (`[col0.x, col0.y, col1.x, col1.y]`
+    /// = unit x/y axes) — no rotation/scale/skew. Used by legacy /
+    /// test construction paths that don't derive a basis from a
+    /// `GlobalTransform`.
+    pub const IDENTITY_BASIS: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 
     // ─── `flip_uv` packed-flags bit layout (ADR-0070-amendment-3) ─────
     //
@@ -614,7 +629,7 @@ mod tests {
             size: [10.0, 10.0],
             atlas_uv: [0.0, 0.0, 0.25, 0.25],
             tint: [1.0, 1.0, 1.0, 1.0],
-            rotation: 0.0,
+            basis: RenderInstance::IDENTITY_BASIS,
             premultiplied: 0.0,
             anchor: [0.0, 0.0],
             per_corner_tint: [[1.0; 4]; 4],
@@ -625,13 +640,14 @@ mod tests {
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
-        // v3 GPU fields = 64 bytes (world_pos 8 + size 8 + atlas_uv 16 +
-        // tint 16 + rotation 4 + premultiplied 4 + anchor 8).
-        // v4 adds per_corner_tint [[f32;4];4] (64) + opacity f32 (4) +
-        // flip_uv u32 (4) = +72 → 136 GPU bytes.
-        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 144 bytes,
-        // 4-byte aligned (no tail padding). (Was 72 in v3.)
-        assert_eq!(bytes.len(), 144);
+        // GPU fields = 76 bytes (world_pos 8 + size 8 + atlas_uv 16 +
+        // tint 16 + basis 16 + premultiplied 4 + anchor 8).
+        // + per_corner_tint [[f32;4];4] (64) + opacity f32 (4) +
+        // flip_uv u32 (4) = +72 → 148 GPU bytes.
+        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 156 bytes,
+        // 4-byte aligned (no tail padding). ADR-0070-amendment-4 grew
+        // `rotation: f32` → `basis: [f32;4]` (+12 B over the 144 freeze).
+        assert_eq!(bytes.len(), 156);
     }
 
     #[test]
@@ -673,7 +689,7 @@ mod tests {
             (3, offset_of!(RenderInstance, size) as u64),
             (4, offset_of!(RenderInstance, atlas_uv) as u64),
             (5, offset_of!(RenderInstance, tint) as u64),
-            (6, offset_of!(RenderInstance, rotation) as u64),
+            (6, offset_of!(RenderInstance, basis) as u64),
             (7, offset_of!(RenderInstance, premultiplied) as u64),
             (8, offset_of!(RenderInstance, anchor) as u64),
             // per_corner_tint is one [[f32;4];4] field but FOUR vertex

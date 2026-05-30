@@ -76,12 +76,15 @@ fn build_v4(n: usize) -> Vec<RenderInstance> {
     (0..n)
         .map(|i| {
             let f = i as f32;
+            // ADR-0070-amendment-4: a small rotation as a 2×2 basis
+            // (stride is now 156 B, not 144 — `rotation: f32` → `basis`).
+            let (s, c) = (f * 0.001).sin_cos();
             RenderInstance {
                 world_pos: [f, -f],
                 size: [16.0, 16.0],
                 atlas_uv: [0.0, 0.0, 1.0, 1.0],
                 tint: [1.0, 1.0, 1.0, 1.0],
-                rotation: f * 0.001,
+                basis: [c, s, -s, c],
                 premultiplied: 0.0,
                 anchor: [0.0, 0.0],
                 per_corner_tint: [[1.0; 4]; 4],

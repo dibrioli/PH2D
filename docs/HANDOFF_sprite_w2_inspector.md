@@ -140,10 +140,14 @@ adicione `live_section!(SECTION_ID, idx, ...)` + separator, e registre a seção
    compara 19 campos. Audit 2-lentes pegou 2 stomps silenciosos (D-1 paired-axis →
    variantes per-axis OffsetX/Y+RegionX/Y/W/H; F5 swatch sem indicador → traço) +
    D-3/D-5 — todos fechados.
-5. **PRÓXIMO: GlobalTint cascade** (carry-over §5: tint herdado não cascateia; passe
-   Π(ancestors.tint) análogo a propagate_transforms; smoke `smoke_w2_color_tint.scene`)
-   OU **refactor `sections.rs`** (~1400 linhas; gate `inspector_section_loc_cap` `#[ignore]`)
-   → depois **audit W2 final** (lentes rotacionadas sobre o diff acumulado) → smoke → ship.
+5. ~~**GlobalTint cascade**~~ ✅ **FEITO** (`bb4e5ea`, fechou a smoke do Enio "tint não
+   atua nos filhos"). `cascade_tint_with_ancestors` no extract folda a cadeia de modulate:
+   render = `self_tint × tint × Π(ancestor.tint)` — cada ancestral contribui o `tint`
+   (cascateia), não o `self_tint` (local). Walk ChildOf O(depth), sem alloc (HR-3 verde),
+   raiz bit-idêntica ao antigo. 2 testes provam tint cascateia + self_tint não.
+6. **PRÓXIMO: refactor `sections.rs`** (~1400 linhas; gate `inspector_section_loc_cap`
+   `#[ignore]`) → **audit W2 final** (lentes rotacionadas sobre o diff acumulado) →
+   smoke → **ship** (Coordenador faz push 1× no fechamento da W2).
 4. **BulkSelect (T2.0)** — Checkbox `Indeterminate` já existe; multi-select aplica o
    edit a N sprites (o drain de `sprite_edits` já é Vec).
 5. **GlobalTint cascade** (handoff §5 carry-over) — pass `Π(ancestors.tint)` análogo a

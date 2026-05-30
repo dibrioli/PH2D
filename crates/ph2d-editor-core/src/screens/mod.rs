@@ -18,7 +18,7 @@ pub mod layout;
 
 pub use hero::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,
-    InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     RequestedSpriteStrategy, SpriteFieldEdit, ViewFocusKind, paint_hero_screen,
 };
 pub use layout::{

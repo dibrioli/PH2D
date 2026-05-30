@@ -35,6 +35,10 @@ fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
         SpriteFieldEdit::FlipY(b) => sprite.flip_y = b,
         SpriteFieldEdit::Centered(b) => sprite.centered = b,
         SpriteFieldEdit::Offset(o) => sprite.offset = o,
+        // Per-axis: preserve the OTHER axis (so a bulk edit of one axis
+        // can't stomp a diverging sibling — audit D-1).
+        SpriteFieldEdit::OffsetX(x) => sprite.offset[0] = x,
+        SpriteFieldEdit::OffsetY(y) => sprite.offset[1] = y,
         SpriteFieldEdit::Hframes(n) => {
             sprite.hframes = n.max(1);
             clamp_frame(sprite);
@@ -54,6 +58,12 @@ fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
             // extract clamps the rect into the source).
             sprite.region_rect = [r[0], r[1], r[2].max(0.0), r[3].max(0.0)];
         }
+        // Per-axis: preserve the other three components (audit D-1). W/H
+        // floor at 0 like the whole-vector path.
+        SpriteFieldEdit::RegionX(x) => sprite.region_rect[0] = x,
+        SpriteFieldEdit::RegionY(y) => sprite.region_rect[1] = y,
+        SpriteFieldEdit::RegionW(w) => sprite.region_rect[2] = w.max(0.0),
+        SpriteFieldEdit::RegionH(h) => sprite.region_rect[3] = h.max(0.0),
         SpriteFieldEdit::RegionFilterClip(b) => sprite.region_filter_clip = b,
         SpriteFieldEdit::Tint(c) => sprite.tint = c,
         SpriteFieldEdit::SelfTint(c) => sprite.self_tint = c,
@@ -135,6 +145,27 @@ mod sprite_field_tests {
         );
         // x/y pass through (extract clamps into the source); w/h floor at 0.
         assert_eq!(s.region_rect, [-4.0, -2.0, 0.0, 8.0]);
+    }
+
+    #[test]
+    fn per_axis_edits_preserve_the_other_components() {
+        // BulkSelect D-1: editing one axis must NOT touch the siblings
+        // (so a bulk edit of one axis can't stomp a diverging sibling).
+        let mut s = sprite();
+        s.offset = [3.0, 5.0];
+        apply_sprite_field(&mut s, SpriteFieldEdit::OffsetX(9.0));
+        assert_eq!(s.offset, [9.0, 5.0], "OffsetX left Y untouched");
+
+        s.region_rect = [1.0, 2.0, 3.0, 4.0];
+        apply_sprite_field(&mut s, SpriteFieldEdit::RegionY(8.0));
+        assert_eq!(s.region_rect, [1.0, 8.0, 3.0, 4.0], "RegionY left X/W/H");
+        // W/H still floor at 0 per-axis.
+        apply_sprite_field(&mut s, SpriteFieldEdit::RegionW(-7.0));
+        assert_eq!(
+            s.region_rect,
+            [1.0, 8.0, 0.0, 4.0],
+            "RegionW floored, rest kept"
+        );
     }
 
     #[test]

@@ -403,6 +403,16 @@ impl crate::App {
             // `painter_active` gate runs AFTER any same-frame
             // ActivateTool resolution). Day-7 ship.
             let mut painter_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
+            // BulkSelect (T2.0): the live selection (primary + extras),
+            // captured before the drain so an Inspector sprite edit can
+            // fan out to every selected sprite. Only allocated for a
+            // MULTI-selection; single-select takes the empty path and the
+            // edit's own `entity_bits` (no per-frame alloc — audit D-5).
+            let inspector_selection: Vec<u64> = if hero.gizmo.selected_len() > 1 {
+                hero.gizmo.iter_selected().collect()
+            } else {
+                Vec::new()
+            };
             for action in hero.bus.drain() {
                 use ph2d_editor::action_bus::EditorAction;
                 match action {
@@ -567,7 +577,18 @@ impl crate::App {
                         sprite_source_change.get_or_insert((entity_bits, strategy));
                     }
                     EditorAction::InspectorSpriteEdit { entity_bits, edit } => {
-                        sprite_edits.push((entity_bits, edit));
+                        // BulkSelect: apply to EVERY selected sprite, not
+                        // just the dispatching (primary) entity. The Vec
+                        // includes the primary first; single-select pushes
+                        // one. Fall back to the edit's own entity if the
+                        // selection snapshot is empty (stale dispatch).
+                        if inspector_selection.is_empty() {
+                            sprite_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                sprite_edits.push((t, edit));
+                            }
+                        }
                     }
                     EditorAction::InspectorNameEdit(info) => {
                         // Latest-wins (Option-coalesce parity).

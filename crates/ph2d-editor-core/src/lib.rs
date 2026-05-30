@@ -119,7 +119,7 @@ pub use project::{
 };
 pub use screens::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,
-    InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     RequestedSpriteStrategy, SpriteFieldEdit, ViewFocusKind, paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};

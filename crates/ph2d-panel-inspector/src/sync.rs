@@ -163,18 +163,36 @@ pub(crate) fn sync_inspector_from_snapshots(
         // just-toggled value for one frame — a visible flicker (audit
         // F2). Between switches the widget holds the truth; the next
         // snapshot reflects the commit. Mirrors the Name TextInput.
-        if entity_changed {
-            for (id, on) in [
-                (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
-                (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
-                (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill),
-                (ids::INSP_REGION_ENABLED, sp.region_enabled),
-                (ids::INSP_REGION_FILTER_CLIP, sp.region_filter_clip),
-                (ids::INSP_SPRITE_CENTERED, sp.centered),
+        // Reseed on a selection CHANGE — the primary switching
+        // (`entity_changed`) OR the selection size changing (BulkSelect:
+        // adding/removing an extra). A diverging field seeds Indeterminate
+        // ("Mixed"); toggling it then dispatches a definite value to the
+        // whole selection (which un-mixes it next frame).
+        let selection_changed =
+            entity_changed || sp.selected_count != inspector_state.last_selected_count;
+        inspector_state.last_selected_count = sp.selected_count;
+        if selection_changed {
+            for (id, on, mixed) in [
+                (ids::INSP_SPRITE_FLIP_X, sp.flip_x, sp.mixed.flip_x),
+                (ids::INSP_SPRITE_FLIP_Y, sp.flip_y, sp.mixed.flip_y),
+                (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill, sp.mixed.tint_fill),
+                (
+                    ids::INSP_REGION_ENABLED,
+                    sp.region_enabled,
+                    sp.mixed.region_enabled,
+                ),
+                (
+                    ids::INSP_REGION_FILTER_CLIP,
+                    sp.region_filter_clip,
+                    sp.mixed.region_filter_clip,
+                ),
+                (ids::INSP_SPRITE_CENTERED, sp.centered, sp.mixed.centered),
             ] {
                 if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id)
                 {
-                    *value = if on {
+                    *value = if mixed {
+                        CheckboxValue::Indeterminate
+                    } else if on {
                         CheckboxValue::Checked
                     } else {
                         CheckboxValue::Unchecked
@@ -186,19 +204,58 @@ pub(crate) fn sync_inspector_from_snapshots(
         // skipping the field the user is actively editing. Matches the
         // Transform NumberInputs' tolerated 1-frame post-commit lag.
         let focus = host.store().focus_id();
-        for (id, value) in [
-            (ids::INSP_SPRITE_HFRAMES, sp.hframes as f64),
-            (ids::INSP_SPRITE_VFRAMES, sp.vframes as f64),
-            (ids::INSP_SPRITE_FRAME, sp.frame as f64),
-            (ids::INSP_REGION_X, sp.region_rect[0] as f64),
-            (ids::INSP_REGION_Y, sp.region_rect[1] as f64),
-            (ids::INSP_REGION_W, sp.region_rect[2] as f64),
-            (ids::INSP_REGION_H, sp.region_rect[3] as f64),
-            (ids::INSP_SPRITE_OFFSET_X, sp.offset[0] as f64),
-            (ids::INSP_SPRITE_OFFSET_Y, sp.offset[1] as f64),
+        for (id, value, mixed) in [
+            (
+                ids::INSP_SPRITE_HFRAMES,
+                sp.hframes as f64,
+                sp.mixed.hframes,
+            ),
+            (
+                ids::INSP_SPRITE_VFRAMES,
+                sp.vframes as f64,
+                sp.mixed.vframes,
+            ),
+            (ids::INSP_SPRITE_FRAME, sp.frame as f64, sp.mixed.frame),
+            (
+                ids::INSP_REGION_X,
+                sp.region_rect[0] as f64,
+                sp.mixed.region_x,
+            ),
+            (
+                ids::INSP_REGION_Y,
+                sp.region_rect[1] as f64,
+                sp.mixed.region_y,
+            ),
+            (
+                ids::INSP_REGION_W,
+                sp.region_rect[2] as f64,
+                sp.mixed.region_w,
+            ),
+            (
+                ids::INSP_REGION_H,
+                sp.region_rect[3] as f64,
+                sp.mixed.region_h,
+            ),
+            (
+                ids::INSP_SPRITE_OFFSET_X,
+                sp.offset[0] as f64,
+                sp.mixed.offset_x,
+            ),
+            (
+                ids::INSP_SPRITE_OFFSET_Y,
+                sp.offset[1] as f64,
+                sp.mixed.offset_y,
+            ),
         ] {
             if focus != Some(id) {
-                host.store_mut().set_number_value(id, value);
+                // Mixed → blank the field (no misleading single value, and
+                // a blank blur reverts cleanly — never stomps). Otherwise
+                // reflect the primary's value every frame.
+                if mixed {
+                    host.store_mut().blank_number_input(id);
+                } else {
+                    host.store_mut().set_number_value(id, value);
+                }
             }
         }
         // Opacity Slider (0..1 storage) + linked percent chip. Skip while
@@ -209,14 +266,21 @@ pub(crate) fn sync_inspector_from_snapshots(
             Some((SliderState::Dragging, _))
         );
         if !dragging && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP) {
+            // The slider track can't show "Mixed", so it parks at the
+            // primary's value; the blank percent chip is the Mixed signal.
             if let Some(InteractiveState::Slider { value, .. }) =
                 host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
             {
                 *value = sp.opacity;
             }
-            // Chip lives in display space (percent) per the integer map.
-            host.store_mut()
-                .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
+            if sp.mixed.opacity {
+                host.store_mut()
+                    .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
+            } else {
+                // Chip lives in display space (percent) per the integer map.
+                host.store_mut()
+                    .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
+            }
         }
         // Tint / Self Tint swatches. The BlenderColorPicker round-trips
         // the chosen color through `widget_color(<swatch>)` (mirrored

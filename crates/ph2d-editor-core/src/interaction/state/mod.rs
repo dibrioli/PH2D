@@ -1139,6 +1139,25 @@ impl WidgetStore {
             }
         }
     }
+
+    /// BulkSelect (T2.0): render a NumberInput as "Mixed" by blanking its
+    /// displayed buffer (the underlying `value` / `last_committed` stay
+    /// the primary's, so a focus-then-blur with no typing reverts cleanly
+    /// — `commit_number_buffer` parses the empty buffer, fails, and
+    /// restores `last_committed` WITHOUT emitting `ValueChanged`, so the
+    /// diverging values are never stomped). No-op while this input is
+    /// focused or being drag-scrubbed so it doesn't fight live input.
+    pub fn blank_number_input(&mut self, id: NodeId) {
+        if self.focus_id == Some(id) {
+            return;
+        }
+        if matches!(self.number_input_drag.as_ref(), Some(d) if d.id == id) {
+            return;
+        }
+        if let Some(InteractiveState::NumberInput { buffer, .. }) = self.states.get_mut(&id) {
+            buffer.clear();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1151,6 +1170,45 @@ mod tests {
             s.register(NodeId(*id), st.clone());
         }
         s
+    }
+
+    #[test]
+    fn blank_number_input_clears_buffer_but_keeps_value_and_respects_focus() {
+        let ni = |v: f64| InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: v,
+            buffer: format!("{v}"),
+            caret: 0,
+            last_committed: v,
+            selection_anchor: None,
+        };
+        let mut store = store_with(&[(1, ni(42.0)), (2, ni(7.0))]);
+
+        // BulkSelect "Mixed": blank the display, preserve value/committed.
+        store.blank_number_input(NodeId(1));
+        match store.get(NodeId(1)) {
+            Some(InteractiveState::NumberInput {
+                buffer,
+                value,
+                last_committed,
+                ..
+            }) => {
+                assert!(buffer.is_empty(), "buffer not blanked: {buffer:?}");
+                assert_eq!(*value, 42.0, "value must survive (clean blur revert)");
+                assert_eq!(*last_committed, 42.0);
+            }
+            _ => panic!("not a NumberInput"),
+        }
+
+        // No-op while the field is focused (must not fight live typing).
+        store.set_focus(Some(NodeId(2)));
+        store.blank_number_input(NodeId(2));
+        match store.get(NodeId(2)) {
+            Some(InteractiveState::NumberInput { buffer, .. }) => {
+                assert_eq!(buffer, "7", "focused field must not be blanked");
+            }
+            _ => panic!("not a NumberInput"),
+        }
     }
 
     #[test]

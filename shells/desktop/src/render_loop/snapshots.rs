@@ -19,6 +19,47 @@ use ph2d_host::WindowSize;
 use ph2d_render::{Camera2d, Sprite};
 use std::collections::BTreeMap;
 
+/// BulkSelect (T2.0): compute which editable `Sprite` fields diverge
+/// across the `selected` entities, relative to `primary`. Exact equality
+/// is intentional — "Mixed" means the stored values literally differ, so
+/// editing the field would stomp the divergence. `selected` includes the
+/// primary (a no-op self-compare); unknown / non-sprite entities are
+/// skipped. Returns all-`false` for a single selection.
+#[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
+fn compute_sprite_mixed(
+    world: &ph2d_ecs::World,
+    selected: &[u64],
+    primary: &Sprite,
+) -> ph2d_editor::InspectorSpriteMixed {
+    let mut m = ph2d_editor::InspectorSpriteMixed::default();
+    for &bits in selected {
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let Some(s) = world.get::<Sprite>(entity) else {
+            continue;
+        };
+        m.flip_x |= s.flip_x != primary.flip_x;
+        m.flip_y |= s.flip_y != primary.flip_y;
+        m.tint_fill |= s.tint_fill != primary.tint_fill;
+        m.centered |= s.centered != primary.centered;
+        m.region_enabled |= s.region_enabled != primary.region_enabled;
+        m.region_filter_clip |= s.region_filter_clip != primary.region_filter_clip;
+        m.opacity |= s.opacity != primary.opacity;
+        m.hframes |= s.hframes != primary.hframes;
+        m.vframes |= s.vframes != primary.vframes;
+        m.frame |= s.frame != primary.frame;
+        m.offset_x |= s.offset[0] != primary.offset[0];
+        m.offset_y |= s.offset[1] != primary.offset[1];
+        m.region_x |= s.region_rect[0] != primary.region_rect[0];
+        m.region_y |= s.region_rect[1] != primary.region_rect[1];
+        m.region_w |= s.region_rect[2] != primary.region_rect[2];
+        m.region_h |= s.region_rect[3] != primary.region_rect[3];
+        m.tint |= s.tint != primary.tint;
+        m.self_tint |= s.self_tint != primary.self_tint;
+        m.per_corner |= s.per_corner_tint != primary.per_corner_tint;
+    }
+    m
+}
+
 /// Walks PresentWorld + SimWorld to build the per-frame snapshots
 /// and writes them onto the `HeroScreen`. Caller (orchestrator)
 /// already holds the destructured `AppGfx` refs and the per-frame
@@ -386,11 +427,25 @@ pub(super) fn publish(
     // snapshot of the selected sprite so `paint_inspector` can
     // surface the Render Source section + Reimport button
     // without crossing the ADR-0021 boundary into SimWorld.
+    // BulkSelect (T2.0): the full selection (primary + extras). Only
+    // collected (one alloc) for a MULTI-selection — single-select (the
+    // common case) takes the empty path and skips the Mixed compare.
+    let selected_count = hero.gizmo.selected_len();
+    let inspector_selection: Vec<u64> = if selected_count > 1 {
+        hero.gizmo.iter_selected().collect()
+    } else {
+        Vec::new()
+    };
     let inspector_sprite = hero.gizmo.selection.and_then(|bits| {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let world = sim.world();
         let sprite = world.get::<Sprite>(entity)?;
         let transform = world.get::<Transform>(entity)?;
+        let mixed = if inspector_selection.len() > 1 {
+            compute_sprite_mixed(world, &inspector_selection, sprite)
+        } else {
+            ph2d_editor::InspectorSpriteMixed::default()
+        };
         let name = world
             .get::<Name>(entity)
             .map(|n| n.0.clone())
@@ -452,6 +507,8 @@ pub(super) fn publish(
             region_filter_clip: sprite.region_filter_clip,
             centered: sprite.centered,
             offset: sprite.offset,
+            selected_count,
+            mixed,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

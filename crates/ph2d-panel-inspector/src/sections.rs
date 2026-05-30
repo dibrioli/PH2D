@@ -6,7 +6,9 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorSpriteSource};
 use ph2d_editor_core::widget::panel_chrome::{
     SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive,
@@ -713,6 +715,7 @@ fn paint_tint_swatch_cell(
     label: &str,
     swatch_id: NodeId,
     fallback_rgba: [u8; 4],
+    mixed: bool,
     store: &WidgetStore,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
@@ -737,10 +740,58 @@ fn paint_tint_swatch_cell(
         (cell.w - swatch_px - Spacing::Sm.px()).max(0.0),
         resolve(ColorToken::Text2, theme),
     );
-    let rgba = store.widget_color(swatch_id).unwrap_or(fallback_rgba);
-    let swatch = ColorSwatch::new(swatch_id, label, rgba).size(SwatchSize::Sm);
-    paint_color_swatch(&swatch, swatch_rect, scene, theme);
+    paint_swatch_or_mixed(
+        swatch_rect,
+        swatch_id,
+        fallback_rgba,
+        mixed,
+        store,
+        scene,
+        theme,
+    );
     hit_index.register(swatch_id, swatch_rect);
+}
+
+/// Paint a color swatch, or — when the value diverges across a
+/// multi-selection (`mixed`) — a neutral chip with a centered dash
+/// (BulkSelect, audit F5). A swatch can't go blank like a NumberInput,
+/// so the dash reuses the Indeterminate-checkbox "Mixed" language to warn
+/// the user that picking a color will collapse the diverging tints. The
+/// hit rect is still registered (clicking opens the picker → applies to
+/// all) — the dash is the warning, not a lock.
+fn paint_swatch_or_mixed(
+    rect: Rect,
+    swatch_id: NodeId,
+    fallback_rgba: [u8; 4],
+    mixed: bool,
+    store: &WidgetStore,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    if mixed {
+        paint_mixed_swatch_rect(rect, scene, theme);
+    } else {
+        let rgba = store.widget_color(swatch_id).unwrap_or(fallback_rgba);
+        let swatch = ColorSwatch::new(swatch_id, "", rgba).size(SwatchSize::Sm);
+        paint_color_swatch(&swatch, rect, scene, theme);
+    }
+}
+
+/// The "Mixed" swatch visual (BulkSelect): a neutral chip with a centered
+/// dash, reusing the Indeterminate-checkbox language. Size-agnostic (fills
+/// whatever `rect` it's given), so both the Tint/Self cells and the 2×2
+/// per-corner grid share it.
+fn paint_mixed_swatch_rect(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    let radius = Radius::Sm.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::Bg2, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    paint_icon(
+        scene,
+        IconId::Minus,
+        rect,
+        resolve(ColorToken::Text2, theme),
+        2.0,
+    );
 }
 
 /// W2 Sprite Inspector v2 — Color & Tint section (anatomia §03 §3.6).
@@ -832,6 +883,7 @@ pub(crate) fn paint_color_tint_section(
                 "Tint",
                 ids::INSP_SPRITE_TINT_SWATCH,
                 seed,
+                sp.as_ref().is_some_and(|s| s.mixed.tint),
                 store,
                 hit_index,
                 scene,
@@ -851,6 +903,7 @@ pub(crate) fn paint_color_tint_section(
                 "Self Tint",
                 ids::INSP_SPRITE_SELF_TINT_SWATCH,
                 seed,
+                sp.as_ref().is_some_and(|s| s.mixed.self_tint),
                 store,
                 hit_index,
                 scene,
@@ -957,14 +1010,21 @@ fn paint_per_corner_tab(
         (x, y + swatch_px + gap),
         (x + swatch_px + gap, y + swatch_px + gap),
     ];
+    // Any per-corner divergence across a multi-selection (BulkSelect) →
+    // all four show the Mixed treatment (a single flag covers the array).
+    let per_corner_mixed = sp.is_some_and(|s| s.mixed.per_corner);
     let mut live = [[1.0_f32; 4]; 4];
     for i in 0..4 {
         let fallback = crate::state::tint_f32_to_u8(committed[i]);
         let rgba = store.widget_color(corner_ids[i]).unwrap_or(fallback);
         live[i] = crate::state::tint_u8_to_f32(rgba);
         let sr = Rect::new(positions[i].0, positions[i].1, swatch_px, swatch_px);
-        let sw = ColorSwatch::new(corner_ids[i], a11y[i], rgba).size(SwatchSize::Md);
-        paint_color_swatch(&sw, sr, scene, theme);
+        if per_corner_mixed {
+            paint_mixed_swatch_rect(sr, scene, theme);
+        } else {
+            let sw = ColorSwatch::new(corner_ids[i], a11y[i], rgba).size(SwatchSize::Md);
+            paint_color_swatch(&sw, sr, scene, theme);
+        }
         hit_index.register(corner_ids[i], sr);
     }
     let grid_w = swatch_px * 2.0 + gap;

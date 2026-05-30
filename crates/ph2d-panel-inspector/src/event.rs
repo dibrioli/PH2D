@@ -384,8 +384,12 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             // Enabling region on a still-zero rect would make the sprite
             // vanish (zero-area UV = no-op). Seed the rect to the full
             // source (spec §3.3 default `[0, 0, w, h]`) so toggling on is
-            // visible and editable.
+            // visible and editable. SINGLE-SELECT ONLY: on a multi-select
+            // the source size is per-sprite, so seeding the primary's dims
+            // onto all would give every other sprite a wrong rect (audit
+            // D-3). For a multi-select the user sets the rect explicitly.
             if checked
+                && info.selected_count == 1
                 && (info.region_rect[2] <= 0.0 || info.region_rect[3] <= 0.0)
                 && let Some((sw, sh)) = info.source_pixels
             {
@@ -397,29 +401,33 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         return true;
     }
-    // W2 Region — X/Y/W/H px NumberInputs. Any one firing re-reads all
-    // four from the store (the changed field already holds its new value,
-    // the others reflect the synced snapshot) → one RegionRect edit. W/H
-    // floor at 0 at the commit boundary.
+    // W2 Region — X/Y/W/H px NumberInputs. Each dispatches ONLY its own
+    // axis (per-axis SpriteFieldEdit) so a bulk edit of one axis can't
+    // re-read + stomp a diverging sibling (audit D-1). W/H floor at 0 at
+    // the commit boundary.
     if let WidgetEvent::ValueChanged(id) = ev
-        && matches!(
-            id,
-            ids::INSP_REGION_X | ids::INSP_REGION_Y | ids::INSP_REGION_W | ids::INSP_REGION_H
-        )
+        && let Some(axis) = match id {
+            ids::INSP_REGION_X => Some(0usize),
+            ids::INSP_REGION_Y => Some(1),
+            ids::INSP_REGION_W => Some(2),
+            ids::INSP_REGION_H => Some(3),
+            _ => None,
+        }
         && let Some(info) = state::current_inspector_sprite()
     {
-        let cur = info.region_rect;
-        let rd =
-            |nid, fallback: f32| host.store().number_value(nid).unwrap_or(fallback as f64) as f32;
-        let rect = [
-            rd(ids::INSP_REGION_X, cur[0]),
-            rd(ids::INSP_REGION_Y, cur[1]),
-            rd(ids::INSP_REGION_W, cur[2]),
-            rd(ids::INSP_REGION_H, cur[3]),
-        ];
+        let v = host
+            .store()
+            .number_value(id)
+            .unwrap_or(info.region_rect[axis] as f64) as f32;
+        let edit = match axis {
+            0 => SpriteFieldEdit::RegionX(v),
+            1 => SpriteFieldEdit::RegionY(v),
+            2 => SpriteFieldEdit::RegionW(v),
+            _ => SpriteFieldEdit::RegionH(v),
+        };
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
             entity_bits: info.entity_bits,
-            edit: SpriteFieldEdit::RegionRect(rect),
+            edit,
         });
         return true;
     }
@@ -438,22 +446,24 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
-    // W2 origin — Offset X/Y px NumberInputs → one Offset edit (re-reads
-    // both, the changed field new + the other from the synced snapshot).
+    // W2 origin — Offset X/Y px NumberInputs. Per-axis dispatch (not the
+    // whole Offset vector) so editing one axis can't stomp a diverging
+    // sibling on a multi-selection (audit D-1).
     if let WidgetEvent::ValueChanged(id) = ev
         && matches!(id, ids::INSP_SPRITE_OFFSET_X | ids::INSP_SPRITE_OFFSET_Y)
         && let Some(info) = state::current_inspector_sprite()
     {
-        let cur = info.offset;
-        let rd =
-            |nid, fallback: f32| host.store().number_value(nid).unwrap_or(fallback as f64) as f32;
-        let offset = [
-            rd(ids::INSP_SPRITE_OFFSET_X, cur[0]),
-            rd(ids::INSP_SPRITE_OFFSET_Y, cur[1]),
-        ];
+        let is_x = id == ids::INSP_SPRITE_OFFSET_X;
+        let fallback = if is_x { info.offset[0] } else { info.offset[1] };
+        let v = host.store().number_value(id).unwrap_or(fallback as f64) as f32;
+        let edit = if is_x {
+            SpriteFieldEdit::OffsetX(v)
+        } else {
+            SpriteFieldEdit::OffsetY(v)
+        };
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
             entity_bits: info.entity_bits,
-            edit: SpriteFieldEdit::Offset(offset),
+            edit,
         });
         return true;
     }

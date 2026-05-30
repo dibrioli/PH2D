@@ -270,6 +270,46 @@ pub struct InspectorSpriteInfo {
     /// Intrinsic image offset in pixels (`Sprite::offset`), applied after
     /// `centered`. Renders via `Sprite::resolve_anchor` (px → local m).
     pub offset: [f32; 2],
+    /// Number of sprites in the active selection (primary + extras).
+    /// `1` for a single selection; `> 1` enables BulkSelect (T2.0): edits
+    /// apply to all, and diverging fields show as "Mixed" via [`mixed`].
+    ///
+    /// [`mixed`]: InspectorSpriteInfo::mixed
+    pub selected_count: usize,
+    /// Per-field "values diverge across the selection" flags (BulkSelect).
+    /// All `false` for a single selection. A `true` flag makes the field
+    /// render its Mixed affordance (checkbox → Indeterminate, NumberInput
+    /// → blank) so editing it doesn't silently stomp the diverging values.
+    pub mixed: InspectorSpriteMixed,
+}
+
+/// BulkSelect (T2.0): which editable `Sprite` fields diverge across a
+/// multi-selection. Computed by the host each frame (compare every
+/// selected sprite against the primary). Default = nothing mixed (the
+/// single-selection case). The Inspector reads these to show "Mixed"
+/// affordances instead of a misleading single value.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct InspectorSpriteMixed {
+    pub flip_x: bool,
+    pub flip_y: bool,
+    pub tint_fill: bool,
+    pub centered: bool,
+    pub region_enabled: bool,
+    pub region_filter_clip: bool,
+    pub opacity: bool,
+    pub hframes: bool,
+    pub vframes: bool,
+    pub frame: bool,
+    pub offset_x: bool,
+    pub offset_y: bool,
+    pub region_x: bool,
+    pub region_y: bool,
+    pub region_w: bool,
+    pub region_h: bool,
+    pub tint: bool,
+    pub self_tint: bool,
+    /// Any of the 4 per-corner tints diverge.
+    pub per_corner: bool,
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as
@@ -291,8 +331,18 @@ pub enum SpriteFieldEdit {
     FlipY(bool),
     /// `false` = top-left origin + `offset` applies; `true` = centered.
     Centered(bool),
-    /// Intrinsic-pixel offset applied after `centered`.
+    /// Intrinsic-pixel offset (whole vector) applied after `centered`.
     Offset([f32; 2]),
+    /// Intrinsic-pixel offset X only — leaves Y untouched. The Inspector
+    /// emits this (not [`Offset`]) so editing one axis on a multi-selection
+    /// can't stomp a diverging Y (BulkSelect, audit D-1).
+    ///
+    /// [`Offset`]: SpriteFieldEdit::Offset
+    OffsetX(f32),
+    /// Intrinsic-pixel offset Y only — leaves X untouched. See [`OffsetX`].
+    ///
+    /// [`OffsetX`]: SpriteFieldEdit::OffsetX
+    OffsetY(f32),
     /// Sprite-sheet columns (`>= 1`; clamped at the commit boundary).
     Hframes(u32),
     /// Sprite-sheet rows (`>= 1`).
@@ -301,8 +351,16 @@ pub enum SpriteFieldEdit {
     Frame(u32),
     /// Region (sub-rect) sampling on/off.
     RegionEnabled(bool),
-    /// Region rect `[x, y, w, h]` in source pixels.
+    /// Region rect `[x, y, w, h]` in source pixels (whole vector).
     RegionRect([f32; 4]),
+    /// Region rect X only — leaves Y/W/H untouched (BulkSelect, audit D-1).
+    RegionX(f32),
+    /// Region rect Y only.
+    RegionY(f32),
+    /// Region rect W only (`>= 0`; clamped at commit).
+    RegionW(f32),
+    /// Region rect H only (`>= 0`; clamped at commit).
+    RegionH(f32),
     /// Clamp the sampler to the region (atlas-bleed guard).
     RegionFilterClip(bool),
     /// Inherited modulate (cascades to children).

@@ -26,6 +26,13 @@ pub struct InspectorState {
     /// the buffers so an in-progress edit on entity A doesn't apply
     /// to entity B after a selection switch.
     pub last_entity: Option<u64>,
+    /// BulkSelect (T2.0): the selection size at the last checkbox reseed.
+    /// Checkboxes seed once per selection change (so a just-toggled box
+    /// doesn't flicker back). The primary entity switching is caught by
+    /// `last_entity`; adding/removing an EXTRA keeps the primary but
+    /// changes the count — so we reseed on a count change too, picking up
+    /// the new Mixed state.
+    pub last_selected_count: usize,
 }
 
 thread_local! {

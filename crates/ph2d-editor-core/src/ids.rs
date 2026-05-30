@@ -483,6 +483,8 @@ pub const INSP_LIVE_RENDER_SECTION: NodeId = hash_node_id("insp_live_render_sect
 pub const INSP_LIVE_COLOR_SECTION: NodeId = hash_node_id("insp_live_color_section");
 /// W2 Sprite Inspector v2 — Sprite Sheet live section header.
 pub const INSP_LIVE_SHEET_SECTION: NodeId = hash_node_id("insp_live_sheet_section");
+/// W3 Sprite Inspector v2 §7 — Ordering / Sorting live section header.
+pub const INSP_LIVE_ORDERING_SECTION: NodeId = hash_node_id("insp_live_ordering_section");
 /// Color-circle hit NodeIds — one per Inspector live section, parallel
 /// to [`LIVE_SECTION_IDS`]. Clicking the circle opens the canonical
 /// BlenderPicker pointing at this id; the picker writes the chosen
@@ -496,6 +498,28 @@ pub const INSP_LIVE_RENDER_COLOR: NodeId = hash_node_id("insp_live_render_color"
 pub const INSP_LIVE_COLOR_COLOR: NodeId = hash_node_id("insp_live_color_color");
 /// Color-circle hit id for the Sprite Sheet section header.
 pub const INSP_LIVE_SHEET_COLOR: NodeId = hash_node_id("insp_live_sheet_color");
+/// Color-circle hit id for the Ordering / Sorting section header.
+pub const INSP_LIVE_ORDERING_COLOR: NodeId = hash_node_id("insp_live_ordering_color");
+
+// W3 Sprite Inspector v2 §7 — Ordering / Sorting control ids.
+/// "Override Z Index" toggle (attach/detach `ZIndexOverride`).
+pub const INSP_ORDER_Z_OVERRIDE: NodeId = hash_node_id("insp_order_z_override");
+/// Z Index value (NumberInput, shown when override on).
+pub const INSP_ORDER_Z_INDEX: NodeId = hash_node_id("insp_order_z_index");
+/// "Z as Relative" toggle (shown when override on).
+pub const INSP_ORDER_Z_RELATIVE: NodeId = hash_node_id("insp_order_z_relative");
+/// "Show Behind Parent" marker toggle.
+pub const INSP_ORDER_SHOW_BEHIND: NodeId = hash_node_id("insp_order_show_behind");
+/// "Order in Layer" value (NumberInput).
+pub const INSP_ORDER_ORDER_IN_LAYER: NodeId = hash_node_id("insp_order_order_in_layer");
+/// "Y-Sort" enabled toggle.
+pub const INSP_ORDER_YSORT_ENABLED: NodeId = hash_node_id("insp_order_ysort_enabled");
+/// "Sorting Group" toggle.
+pub const INSP_ORDER_SORTING_GROUP: NodeId = hash_node_id("insp_order_sorting_group");
+/// "Sort At Root" toggle (shown when Sorting Group on).
+pub const INSP_ORDER_SORT_AT_ROOT: NodeId = hash_node_id("insp_order_sort_at_root");
+/// "Top Level" marker toggle.
+pub const INSP_ORDER_TOP_LEVEL: NodeId = hash_node_id("insp_order_top_level");
 
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
 /// Final opacity Slider (`0..1` storage; renders today via
@@ -1159,13 +1183,14 @@ pub const SECTION_IDS: [NodeId; 10] = [
 /// Live Inspector section headers (Name / Visibility / Transform /
 /// Render / Color & Tint / Sprite Sheet). Right-click opens the
 /// SectionOutline menu.
-pub const LIVE_SECTION_IDS: [NodeId; 6] = [
+pub const LIVE_SECTION_IDS: [NodeId; 7] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,
     INSP_LIVE_TRANSFORM_SECTION,
     INSP_LIVE_RENDER_SECTION,
     INSP_LIVE_COLOR_SECTION,
     INSP_LIVE_SHEET_SECTION,
+    INSP_LIVE_ORDERING_SECTION,
 ];
 
 /// Grid-snap floating panel root id.

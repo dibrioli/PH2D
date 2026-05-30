@@ -9,14 +9,14 @@
 //! live in thread-locals owned by [`crate::state`].
 
 use crate::state::{
-    self, current_inspector_name, current_inspector_sprite, current_inspector_transform,
-    current_inspector_visibility,
+    self, current_inspector_name, current_inspector_ordering, current_inspector_sprite,
+    current_inspector_transform, current_inspector_visibility,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, SpriteFieldEdit};
+use ph2d_editor_core::screens::hero::{InspectorOrderingInfo, InspectorSpriteInfo, SpriteFieldEdit};
 use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
@@ -157,6 +157,63 @@ pub(crate) fn sync_inspector_from_snapshots(
     // W2 Sprite Inspector v2 — reflect the editable Sprite fields.
     if let Some(sp) = current_inspector_sprite() {
         sync_sprite_fields(inspector_state, host, &sp, entity_changed);
+    }
+    // W3 §7 — reflect the ordering components (any Transform entity).
+    if let Some(ord) = current_inspector_ordering() {
+        sync_ordering_fields(host, &ord, entity_changed);
+    }
+}
+
+/// Reflect the §7 ordering snapshot onto the Inspector widgets.
+/// Checkboxes seed on entity switch (diverging → Indeterminate);
+/// integer NumberInputs reflect every frame except the focused one
+/// (same rhythm as the sprite/transform fields).
+fn sync_ordering_fields(
+    host: &mut dyn PanelHostInternal,
+    ord: &InspectorOrderingInfo,
+    entity_changed: bool,
+) {
+    if entity_changed {
+        for (id, on, mixed) in [
+            (ids::INSP_ORDER_Z_OVERRIDE, ord.z_index.is_some(), ord.mixed.z_index),
+            (ids::INSP_ORDER_Z_RELATIVE, ord.z_as_relative, ord.mixed.z_as_relative),
+            (
+                ids::INSP_ORDER_SHOW_BEHIND,
+                ord.show_behind_parent,
+                ord.mixed.show_behind_parent,
+            ),
+            (
+                ids::INSP_ORDER_YSORT_ENABLED,
+                ord.y_sort_enabled,
+                ord.mixed.y_sort_enabled,
+            ),
+            (
+                ids::INSP_ORDER_SORTING_GROUP,
+                ord.sorting_group,
+                ord.mixed.sorting_group,
+            ),
+            (ids::INSP_ORDER_SORT_AT_ROOT, ord.sort_at_root, ord.mixed.sort_at_root),
+            (ids::INSP_ORDER_TOP_LEVEL, ord.top_level, ord.mixed.top_level),
+        ] {
+            if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+                *value = if mixed {
+                    CheckboxValue::Indeterminate
+                } else if on {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                };
+            }
+        }
+    }
+    let focus = host.store().focus_id();
+    for (id, value) in [
+        (ids::INSP_ORDER_Z_INDEX, ord.z_index.unwrap_or(0) as f64),
+        (ids::INSP_ORDER_ORDER_IN_LAYER, ord.order_in_layer as f64),
+    ] {
+        if focus != Some(id) {
+            host.store_mut().set_number_value(id, value);
+        }
     }
 }
 

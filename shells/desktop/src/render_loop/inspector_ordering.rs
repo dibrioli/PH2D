@@ -12,12 +12,114 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommand, EditorCommandQueue};
+use ph2d_ecs::sorting::SortingLayers;
 use ph2d_ecs::{
     Entity, LayerId, OrderInLayer, ShowBehindParent, SimWorld, SortPoint, SortingGroup,
-    SortingLayer, TopLevel, YSort, ZAsRelative, ZIndexOverride,
+    SortingLayer, TopLevel, World, YSort, ZAsRelative, ZIndexOverride,
 };
-use ph2d_editor::OrderingFieldEdit;
+use ph2d_editor::{InspectorOrderingInfo, InspectorOrderingMixed, OrderingFieldEdit};
 use serde::Serialize;
+
+/// The §7 ordering fields of one entity, read as display values (absent
+/// component → its pipeline default). Shared by the snapshot producer
+/// and the BulkSelect compare so the two never drift.
+type OrderingFields = (
+    Option<i32>, // z_index (None = no override / DFS)
+    bool,        // z_as_relative
+    bool,        // show_behind_parent
+    u8,          // sorting_layer (default-layer index when absent)
+    i32,         // order_in_layer
+    bool,        // y_sort_enabled
+    u8,          // y_sort_point tag
+    [f32; 2],    // y_sort_axis
+    bool,        // sorting_group
+    bool,        // sort_at_root
+    bool,        // top_level
+);
+
+fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> OrderingFields {
+    let ys = world.get::<YSort>(entity).copied();
+    let group = world.get::<SortingGroup>(entity).copied();
+    (
+        world.get::<ZIndexOverride>(entity).map(|z| z.0),
+        world.get::<ZAsRelative>(entity).is_none_or(|r| r.0),
+        world.get::<ShowBehindParent>(entity).is_some(),
+        world
+            .get::<SortingLayer>(entity)
+            .map_or(default_layer, |l| l.0.0),
+        world.get::<OrderInLayer>(entity).map_or(0, |o| o.0),
+        ys.is_some_and(|y| y.enabled),
+        ys.map_or(0, |y| y.sort_point.tag()),
+        ys.map_or([0.0, 1.0], |y| [y.axis.x, y.axis.y]),
+        group.is_some(),
+        group.is_some_and(|g| g.sort_at_root),
+        world.get::<TopLevel>(entity).is_some(),
+    )
+}
+
+/// BulkSelect (T2.0) for §7: which ordering fields diverge across the
+/// `selected` entities vs the `primary` tuple.
+#[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
+fn ordering_mixed(
+    world: &World,
+    selected: &[u64],
+    primary: &OrderingFields,
+    default_layer: u8,
+) -> InspectorOrderingMixed {
+    let mut m = InspectorOrderingMixed::default();
+    for &bits in selected {
+        let f = ordering_fields(world, Entity::from_bits(bits), default_layer);
+        m.z_index |= f.0 != primary.0;
+        m.z_as_relative |= f.1 != primary.1;
+        m.show_behind_parent |= f.2 != primary.2;
+        m.sorting_layer |= f.3 != primary.3;
+        m.order_in_layer |= f.4 != primary.4;
+        m.y_sort_enabled |= f.5 != primary.5;
+        m.y_sort_point |= f.6 != primary.6;
+        m.y_sort_axis |= f.7 != primary.7;
+        m.sorting_group |= f.8 != primary.8;
+        m.sort_at_root |= f.9 != primary.9;
+        m.top_level |= f.10 != primary.10;
+    }
+    m
+}
+
+/// Build the §7 ordering snapshot for `entity_bits`, or `None` when the
+/// entity has no `Transform` (not an Inspector-worthy entity).
+pub(super) fn build_ordering_info(
+    world: &World,
+    entity_bits: u64,
+    selected: &[u64],
+    selected_count: usize,
+) -> Option<InspectorOrderingInfo> {
+    let entity = Entity::from_bits(entity_bits);
+    world.get::<ph2d_ecs::Transform>(entity)?;
+    let default_layer = world
+        .get_resource::<SortingLayers>()
+        .map_or(2, |l| l.default_index());
+    let f = ordering_fields(world, entity, default_layer);
+    let mixed = if selected.len() > 1 {
+        ordering_mixed(world, selected, &f, default_layer)
+    } else {
+        InspectorOrderingMixed::default()
+    };
+    Some(InspectorOrderingInfo {
+        entity_bits,
+        z_index: f.0,
+        z_as_relative: f.1,
+        show_behind_parent: f.2,
+        sorting_layer: f.3,
+        order_in_layer: f.4,
+        y_sort_enabled: f.5,
+        y_sort_point: f.6,
+        y_sort_axis: f.7,
+        sorting_group: f.8,
+        sort_at_root: f.9,
+        top_level: f.10,
+        selected_count,
+        mixed,
+    })
+}
 
 /// Queue a `SetComponent` (insert/update) for the registered component
 /// `canonical_name` on `entity_bits`. A no-op if the name isn't

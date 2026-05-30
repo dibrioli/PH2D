@@ -23,6 +23,48 @@ pub fn populate(store: &mut WidgetStore) {
     populate_color_tint(store);
     populate_sprite_sheet(store);
     populate_name_editor(store);
+    populate_ordering(store);
+}
+
+/// W3 Sprite Inspector v2 §7 Ordering / Sorting: 7 toggles + 2 integer
+/// NumberInputs. Defaults match the optional-component "absent" state
+/// (everything off, Z as Relative on per Godot). Live values sync from
+/// the snapshot.
+fn populate_ordering(store: &mut WidgetStore) {
+    for (id, on) in [
+        (ids::INSP_ORDER_Z_OVERRIDE, false),
+        (ids::INSP_ORDER_Z_RELATIVE, true),
+        (ids::INSP_ORDER_SHOW_BEHIND, false),
+        (ids::INSP_ORDER_YSORT_ENABLED, false),
+        (ids::INSP_ORDER_SORTING_GROUP, false),
+        (ids::INSP_ORDER_SORT_AT_ROOT, false),
+        (ids::INSP_ORDER_TOP_LEVEL, false),
+    ] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: if on {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                },
+            },
+        );
+    }
+    for id in [ids::INSP_ORDER_Z_INDEX, ids::INSP_ORDER_ORDER_IN_LAYER] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format!("{:.0}", 0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// W2 Sprite Inspector v2 Sprite Sheet grid: Centered toggle (default

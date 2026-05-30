@@ -12,7 +12,8 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorNameInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorNameInfo, InspectorOrderingInfo, InspectorSpriteInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -62,6 +63,11 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<InspectorNameInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// W3 §7: live ordering/sorting snapshot for the Ordering section.
+    pub(crate) static CURRENT_INSPECTOR_ORDERING:
+        std::cell::RefCell<Option<InspectorOrderingInfo>> =
+        const { std::cell::RefCell::new(None) };
+
     /// Per-paint display unit + pixels_per_meter for Transform section
     /// labels + value formatting.
     pub(crate) static CURRENT_DISPLAY_UNIT: std::cell::Cell<ph2d_editor_core::project::DisplayUnit> =
@@ -104,6 +110,14 @@ pub(crate) fn current_inspector_name() -> Option<InspectorNameInfo> {
 
 pub(crate) fn current_inspector_name_is_some() -> bool {
     CURRENT_INSPECTOR_NAME.with(|c| c.borrow().is_some())
+}
+
+pub fn set_current_inspector_ordering(info: Option<InspectorOrderingInfo>) {
+    CURRENT_INSPECTOR_ORDERING.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_ordering() -> Option<InspectorOrderingInfo> {
+    CURRENT_INSPECTOR_ORDERING.with(|c| *c.borrow())
 }
 
 pub fn set_current_display_unit(

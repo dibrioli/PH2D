@@ -34,12 +34,14 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
 mod color_tint;
 mod identity;
+mod ordering;
 mod render_source;
 mod sprite_sheet;
 mod transform;
 
 pub(crate) use color_tint::paint_color_tint_section;
 pub(crate) use identity::{paint_entity_name_row, paint_visibility_row};
+pub(crate) use ordering::paint_ordering_section;
 pub(crate) use render_source::paint_render_source_section;
 pub(crate) use sprite_sheet::paint_sprite_sheet_section;
 pub(crate) use transform::paint_transform_section;

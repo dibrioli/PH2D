@@ -8,8 +8,9 @@
 //! publishes scroll bounds back to the store.
 
 use crate::state::{
-    self, current_display_unit, current_inspector_name_is_some, current_inspector_sprite,
-    current_inspector_transform, current_inspector_visibility, current_pixels_per_meter,
+    self, current_display_unit, current_inspector_name_is_some, current_inspector_ordering,
+    current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
+    current_pixels_per_meter,
     last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
     set_last_inspector_visible_h,
 };
@@ -191,15 +192,17 @@ fn paint_inspector(
     let transform_info = current_inspector_transform();
     let sprite_info = current_inspector_sprite();
     let visibility_info = current_inspector_visibility();
+    let ordering_info = current_inspector_ordering();
     let name_present = current_inspector_name_is_some();
     let any_section = transform_info.is_some()
         || sprite_info.is_some()
         || visibility_info.is_some()
+        || ordering_info.is_some()
         || name_present;
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 6] = Default::default();
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 7] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -342,6 +345,16 @@ fn paint_inspector(
                 inner_x,
                 inner_w,
                 y,
+            )
+        });
+    }
+    // W3 §7 Ordering / Sorting — applies to any Transform-bearing entity
+    // (not sprite-only), so it sits outside the `sprite_info` block.
+    if let Some(ord) = ordering_info.as_ref() {
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = live_section!(ids::INSP_LIVE_ORDERING_SECTION, 6, SECTION_HEAD_H, {
+            sections::paint_ordering_section(
+                scene, text_system, theme, hit_index, store, inner_x, inner_w, y, ord,
             )
         });
     }

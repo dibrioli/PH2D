@@ -564,6 +564,11 @@ pub(super) fn publish(
             name,
         })
     });
+    // W3 §7: live ordering/sorting snapshot (built in the §7 sibling module).
+    let inspector_ordering = hero.gizmo.selection.and_then(|b| {
+        let s = &inspector_selection;
+        super::inspector_ordering::build_ordering_info(sim.world(), b, s, selected_count)
+    });
     // ADR-0029 Phase C.1: publish snapshots to the panel crate's
     // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
     // writes — the field no longer exists; the panel-owned state +
@@ -571,6 +576,7 @@ pub(super) fn publish(
     #[cfg(feature = "panel-inspector")]
     {
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
+        ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_transform(inspector_transform);
         ph2d_panel_inspector::set_current_inspector_visibility(inspector_visibility);
         ph2d_panel_inspector::set_current_inspector_name(inspector_name);

@@ -18,4 +18,10 @@ max-threads = 1
 [[profile.default.overrides]]
 filter = 'package(ph2d-asset-cooker)'
 test-group = 'asset-cooker-ispc'
-retries = 3
+# Bumped 3 → 6 (2026-05-29): the W1.T15-characterized ~50% per-run vendored-ISPC
+# SIGABRT means retries=3 (4 tries) still fails ~0.5^4 ≈ 6% of the time, which
+# cook_all_intra_machine_byte_identity hit on CI macOS. 6 retries (7 tries) →
+# ~0.5^7 ≈ 0.8%. This is the ONLY effective lever: the crash is in vendored ctt
+# (no code root-cause our side — see the test-group note above). The heavier
+# cook_all_* tests do the most encoder work, so they're the most exposed.
+retries = 6

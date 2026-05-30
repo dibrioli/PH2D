@@ -215,6 +215,18 @@ jobs:
       - name: Ensure rust-toolchain.toml channel is installed
         run: rustup show active-toolchain || rustup show
 
+      # Windows-only: load the MSVC dev environment (cl.exe + INCLUDE/LIB)
+      # so meson/dav1d-sys (ph2d-imageio-avif Path C) compile dav1d's C
+      # with MSVC instead of git-bash's MinGW gcc. Without it, dav1d
+      # objects reference MinGW runtime symbols (__mingw_fprintf /
+      # ___chkstk_ms / __mingw_v?printf) that rust-lld (MSVC-flavor link)
+      # cannot resolve when linking the windows-msvc target — the W3.T4
+      # AVIF re-ship broke the windows matrix this way. The env set here
+      # persists to the later `cargo nextest` step (where dav1d builds).
+      - name: Set up MSVC dev environment (Windows native C builds)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       # Windows-only: exclude `target/` and Cargo home from Defender
       # real-time scan. Defender scanning every .o / .rlib / linker
       # intermediate adds ~15-25 % to the Windows wall clock. This

@@ -72,13 +72,18 @@ producer `build_ordering_info`/`ordering_mixed` (inspector_ordering.rs) + sync
 Render-ready (edita no Inspector → vê no canvas via pipeline da Fase 2). 711 tests
 verdes. **PRONTO PRO SMOKE VISUAL do Enio.**
 
-§7 FALTA (PARTE 2 — os 3 widgets de alto risco GUI): **Sorting Layer (Dropdown** via
-`take_pending_dropdown_chip`/`paint_dropdown_popover`, precedente `paint.rs` sample-dd)
-· **Y-Sort Sort Point (Segmented** Center/Pivot/Custom via `paint_segmented_group_adaptive`)
-· **Custom Axis (2 NumberInputs** SÓ se Custom). Emitir `OrderingFieldEdit::SortingLayer/
-YSortPoint/YSortAxis` (já existem no enum + commit handler). ids + populate + sync já
-têm o padrão; só falta o paint+event desses 3.
+§7 PARTE 2 PRONTA (commit `c368459`): **§7 Ordering COMPLETO** — os 3 widgets de
+alto risco GUI entregues. **Sorting Layer Dropdown** (chip + popover deferido via
+pending-slot panel-local `PENDING_ORDERING_DD`, 5 layers canônicas; option click →
+store close+idx + edit) · **Sort Point Segmented** (Tabs::Segmented snapshot-driven,
+tab click → YSortPoint) · **Custom Axis** (2 NumberInputs SÓ se Custom → YSortAxis).
+Row painters = free fns + macro call-sites (closures não re-emprestam &mut); event
+handlers extraídos pra `event_ordering.rs` (cap HR-18). 711 tests verdes, clippy limpo.
+**§7 inteira (11 controles) pronta pro smoke do Enio.** Custom project layers (além
+das 5 canônicas) = follow-up (sem Project Settings UI).
 + omitidos render-first (W4/fase-7): Translucency Priority/Offset · Order Debug Overlay.
+
+⚠️ AJUSTES DO SMOKE pendentes (Enio sinalizou, deixar pro FINAL antes do ship).
 
 §7 INFRA-ANTERIOR (já entregue, referência):
 - **Snapshot producer** em `shells/desktop/.../snapshots.rs`: ler os 8 components

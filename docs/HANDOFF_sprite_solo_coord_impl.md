@@ -110,6 +110,21 @@ Para CADA task/fase do plano, em ordem, **sem parar**:
     data-loss) `rasterize.rs`/`sprite_merge.rs` leem só scale/rotation, **não** zeram
     skew ao assar → sprite assado fica double-sheared. Nenhum é regressão do fix; o fix
     apenas tornou a divergência visível.
+- **SEÇÕES W2 EDITÁVEIS ENTREGUES (render-ready, todas commitadas):** Flip H/V
+  (`7e256b4`) · **Color & Tint** opacity+tint_fill (`9102307`) · sprite-sheet sub-UV no
+  render (`5890469`) · **Sprite Sheet** HFrames/VFrames/Frame (`bbea536`). Inspector tem
+  6 live sections agora (Name/Visibility/Transform/Render/Color&Tint/SpriteSheet).
+  `LIVE_SECTION_IDS`=6, `notes_per_section`=6 em paint.rs. Padrão de seção nova
+  estabelecido (id+populate+section-fn+paint-block+event+sync). editor-core 568 +
+  ph2d-render/ph2d-ecs arch-gates todos verdes.
+  **PENDENTE (próxima sessão), em ordem de menor risco:**
+  1. **Tint / Self Tint colors** (T2.7): registrar color-swatch + abrir o BlenderPicker
+     existente (mecanismo dos color-dots de header) + detectar mudança no sync e despachar
+     `SpriteFieldEdit::Tint/SelfTint`. Render-ready (collapsed_tint). per_corner_tint = 4 swatches.
+  2. **Region render+UI** (T2.4): precisa de sub-UV do region_rect (PIXELS→UV) no extract —
+     requer plumbar source-dims; depois toggle+rect+filter_clip UI (mesmo padrão).
+  3. **offset/centered render+UI**: aplicar offset no extract antes da UI.
+  4. T2.0 BulkSelect · GlobalTint cascade (Π ancestors) · T2.1 refactor sections.rs · audit W2 · W3..W8.
 - **InspectorSpriteEdit infra FECHADA** (`7e256b4`): keystone que destranca TODAS as
   seções editáveis de Sprite. `EditorAction::InspectorSpriteEdit { entity_bits, edit:
   SpriteFieldEdit }` (enum com o set completo declarado). Commit em `inspector_commits.rs`

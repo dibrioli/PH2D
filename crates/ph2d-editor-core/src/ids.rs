@@ -558,6 +558,11 @@ pub const INSP_SAMPLE_REPEAT: [NodeId; 4] = [
     hash_node_id("insp_sample_repeat_enabled"),
     hash_node_id("insp_sample_repeat_mirror"),
 ];
+/// UV tiling/scroll NumberInputs (W3 UvTransform): scale X/Y, offset X/Y.
+pub const INSP_SAMPLE_UV_SCALE_X: NodeId = hash_node_id("insp_sample_uv_scale_x");
+pub const INSP_SAMPLE_UV_SCALE_Y: NodeId = hash_node_id("insp_sample_uv_scale_y");
+pub const INSP_SAMPLE_UV_OFFSET_X: NodeId = hash_node_id("insp_sample_uv_offset_x");
+pub const INSP_SAMPLE_UV_OFFSET_Y: NodeId = hash_node_id("insp_sample_uv_offset_y");
 
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
 /// Final opacity Slider (`0..1` storage; renders today via

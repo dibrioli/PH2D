@@ -9,8 +9,8 @@
 //! live in thread-locals owned by [`crate::state`].
 
 use crate::state::{
-    self, current_inspector_name, current_inspector_ordering, current_inspector_sprite,
-    current_inspector_transform, current_inspector_visibility,
+    self, current_inspector_name, current_inspector_ordering, current_inspector_sampling,
+    current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
@@ -163,6 +163,20 @@ pub(crate) fn sync_inspector_from_snapshots(
     // W3 §7 — reflect the ordering components (any Transform entity).
     if let Some(ord) = current_inspector_ordering() {
         sync_ordering_fields(host, &ord, entity_changed);
+    }
+    // W3 §9 — reflect the UV tiling/scroll NumberInputs.
+    if let Some(samp) = current_inspector_sampling() {
+        let focus = host.store().focus_id();
+        for (id, value) in [
+            (ids::INSP_SAMPLE_UV_SCALE_X, samp.uv_scale[0] as f64),
+            (ids::INSP_SAMPLE_UV_SCALE_Y, samp.uv_scale[1] as f64),
+            (ids::INSP_SAMPLE_UV_OFFSET_X, samp.uv_offset[0] as f64),
+            (ids::INSP_SAMPLE_UV_OFFSET_Y, samp.uv_offset[1] as f64),
+        ] {
+            if focus != Some(id) {
+                host.store_mut().set_number_value(id, value);
+            }
+        }
     }
 }
 

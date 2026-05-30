@@ -149,5 +149,25 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
             return true;
         }
     }
+    // §9 Sampling — UV Scale / Offset NumberInput commits.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && let Some(info) = state::current_inspector_sampling()
+    {
+        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let edit = match id {
+            ids::INSP_SAMPLE_UV_SCALE_X => Some(SamplingFieldEdit::UvScaleX(v)),
+            ids::INSP_SAMPLE_UV_SCALE_Y => Some(SamplingFieldEdit::UvScaleY(v)),
+            ids::INSP_SAMPLE_UV_OFFSET_X => Some(SamplingFieldEdit::UvOffsetX(v)),
+            ids::INSP_SAMPLE_UV_OFFSET_Y => Some(SamplingFieldEdit::UvOffsetY(v)),
+            _ => None,
+        };
+        if let Some(edit) = edit {
+            host.bus_mut().push(EditorAction::InspectorSamplingEdit {
+                entity_bits: info.entity_bits,
+                edit,
+            });
+            return true;
+        }
+    }
     false
 }

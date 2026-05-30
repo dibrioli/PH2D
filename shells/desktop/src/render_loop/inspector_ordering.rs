@@ -15,8 +15,8 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommand, EditorCommandQueue};
 use ph2d_ecs::sorting::SortingLayers;
 use ph2d_ecs::{
     Entity, FilterMode, LayerId, OrderInLayer, RepeatMode, ShowBehindParent, SimWorld, SortPoint,
-    SortingGroup, SortingLayer, TextureFilter, TextureRepeat, TopLevel, World, YSort, ZAsRelative,
-    ZIndexOverride,
+    SortingGroup, SortingLayer, TextureFilter, TextureRepeat, TopLevel, UvTransform, World, YSort,
+    ZAsRelative, ZIndexOverride,
 };
 use ph2d_editor::{
     InspectorOrderingInfo, InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed,
@@ -291,6 +291,7 @@ fn sampling_fields(world: &World, entity: Entity) -> (u8, u8) {
 
 /// Build the §9 sampling snapshot, or `None` when the entity has no
 /// `Transform` (not Inspector-worthy).
+#[allow(clippy::float_cmp)] // exact compare: same stored UvTransform = not mixed
 pub(super) fn build_sampling_info(
     world: &World,
     entity_bits: u64,
@@ -300,31 +301,49 @@ pub(super) fn build_sampling_info(
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let (filter_tag, repeat_tag) = sampling_fields(world, entity);
+    let uvt = world.get::<UvTransform>(entity).copied().unwrap_or_default();
     let mut mixed = InspectorSamplingMixed::default();
     if selected.len() > 1 {
         for &bits in selected {
-            let f = sampling_fields(world, Entity::from_bits(bits));
+            let e = Entity::from_bits(bits);
+            let f = sampling_fields(world, e);
+            let u = world.get::<UvTransform>(e).copied().unwrap_or_default();
             mixed.filter |= f.0 != filter_tag;
             mixed.repeat |= f.1 != repeat_tag;
+            mixed.uv_scale |= u.scale != uvt.scale;
+            mixed.uv_offset |= u.offset != uvt.offset;
         }
     }
     Some(InspectorSamplingInfo {
         entity_bits,
         filter_tag,
         repeat_tag,
+        uv_scale: uvt.scale,
+        uv_offset: uvt.offset,
         selected_count,
         mixed,
     })
 }
 
-/// Apply one [`SamplingFieldEdit`] (§9): a concrete tag attaches the
-/// optional component; tag `0` (`Inherit`) detaches it.
+/// Apply one [`SamplingFieldEdit`] (§9): a concrete filter/repeat tag
+/// attaches the optional component, tag `0` (`Inherit`) detaches it; UV
+/// scale/offset read-modify-write the optional `UvTransform`.
 pub(super) fn apply_sampling_edit(
+    sim: &SimWorld,
     entity_bits: u64,
     edit: SamplingFieldEdit,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) {
+    let cur_uvt = || {
+        sim.world()
+            .get::<UvTransform>(Entity::from_bits(entity_bits))
+            .copied()
+            .unwrap_or_default()
+    };
+    let set_uvt = |uvt: &UvTransform| {
+        queue_set(queue, registry, entity_bits, "ph2d::ecs::UvTransform", uvt)
+    };
     match edit {
         SamplingFieldEdit::Filter(0) => {
             queue_remove(queue, registry, entity_bits, "ph2d::ecs::TextureFilter")
@@ -346,6 +365,26 @@ pub(super) fn apply_sampling_edit(
             "ph2d::ecs::TextureRepeat",
             &TextureRepeat(RepeatMode::from_tag(t)),
         ),
+        SamplingFieldEdit::UvScaleX(v) => {
+            let mut u = cur_uvt();
+            u.scale[0] = v;
+            set_uvt(&u);
+        }
+        SamplingFieldEdit::UvScaleY(v) => {
+            let mut u = cur_uvt();
+            u.scale[1] = v;
+            set_uvt(&u);
+        }
+        SamplingFieldEdit::UvOffsetX(v) => {
+            let mut u = cur_uvt();
+            u.offset[0] = v;
+            set_uvt(&u);
+        }
+        SamplingFieldEdit::UvOffsetY(v) => {
+            let mut u = cur_uvt();
+            u.offset[1] = v;
+            set_uvt(&u);
+        }
     }
 }
 

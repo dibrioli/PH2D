@@ -8,6 +8,57 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSamplingInfo;
 
+/// Label-above row with two NumberInputs (X / Y) for a UV scale/offset
+/// pair. Returns the next `y`.
+#[allow(clippy::too_many_arguments)]
+fn uv_pair_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    label: &str,
+    id_x: NodeId,
+    id_y: NodeId,
+) -> f32 {
+    let h = ROW_H_PX;
+    let label_font = TypeToken::Sm.px();
+    let label_h = label_font + Spacing::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        label,
+        x,
+        y + (label_h - label_font) * 0.5,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let row_y = y + label_h;
+    let gap = Spacing::Sm.px();
+    let cw = ((w - gap) * 0.5).max(0.0);
+    for (i, id) in [id_x, id_y].into_iter().enumerate() {
+        let rect = Rect::new(x + (cw + gap) * i as f32, row_y, cw, h);
+        hit_index.register(id, rect);
+        let (state, value, buffer, caret, anchor) = read_number_input(store, id);
+        let input = NumberInput::new(id, "", value).step(0.1).state(state); // LITERAL-PX-OK: UV step
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            rect,
+            scene,
+            text_system,
+            theme,
+        );
+    }
+    row_y + h + Spacing::Sm.px()
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_sampling_section(
     scene: &mut VectorScene,
@@ -108,6 +159,35 @@ pub(crate) fn paint_sampling_section(
         hit_index.register(item.id, repeat_tabs.tab_rect(repeat_rect, i));
     }
     yy += h + row_gap;
+
+    // UV tiling (scale > 1 tiles) + scroll (offset) — W3 UvTransform. The
+    // repeat segmented above picks how the tiled UV wraps.
+    yy = uv_pair_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "UV Scale",
+        ids::INSP_SAMPLE_UV_SCALE_X,
+        ids::INSP_SAMPLE_UV_SCALE_Y,
+    );
+    yy = uv_pair_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "UV Offset",
+        ids::INSP_SAMPLE_UV_OFFSET_X,
+        ids::INSP_SAMPLE_UV_OFFSET_Y,
+    );
 
     // Anti-halo / edge filtering — atlas-level, read-only (spec §9.3).
     paint_text(

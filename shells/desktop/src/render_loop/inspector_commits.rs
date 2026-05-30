@@ -288,6 +288,7 @@ pub(super) fn dispatch(
     // W3 §9 sampling edits (TextureFilter/Repeat optional components).
     for &(entity_bits, edit) in sampling_edits {
         super::inspector_ordering::apply_sampling_edit(
+            sim,
             entity_bits,
             edit,
             editor_queue,

@@ -466,11 +466,15 @@ pub enum OrderingFieldEdit {
 /// `ph2d_ecs::FilterMode`/`RepeatMode` discriminants; `0` = `Inherit`
 /// (component absent or explicitly Inherit). Raw primitives keep
 /// editor-core loose-coupled from `ph2d-ecs`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InspectorSamplingInfo {
     pub entity_bits: u64,
     pub filter_tag: u8,
     pub repeat_tag: u8,
+    /// `UvTransform.scale` (W3 tiling; `[1,1]` = no tiling).
+    pub uv_scale: [f32; 2],
+    /// `UvTransform.offset` (W3 scroll; `[0,0]` = none).
+    pub uv_offset: [f32; 2],
     pub selected_count: usize,
     pub mixed: InspectorSamplingMixed,
 }
@@ -480,18 +484,26 @@ pub struct InspectorSamplingInfo {
 pub struct InspectorSamplingMixed {
     pub filter: bool,
     pub repeat: bool,
+    pub uv_scale: bool,
+    pub uv_offset: bool,
 }
 
 /// A single editable §9 sampling field, dispatched as
-/// [`EditorAction::InspectorSamplingEdit`]. Maps to the optional
-/// `TextureFilter`/`TextureRepeat` components: a concrete tag attaches
-/// the component; tag `0` (`Inherit`) detaches it.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// [`EditorAction::InspectorSamplingEdit`]. Filter/Repeat map to the
+/// optional `TextureFilter`/`TextureRepeat` (tag `0` = detach); UV
+/// scale/offset map to the optional `UvTransform`.
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SamplingFieldEdit {
     /// `FilterMode` tag (`0 Inherit … 6 LinearAniso`).
     Filter(u8),
     /// `RepeatMode` tag (`0 Inherit · 1 Disabled · 2 Enabled · 3 Mirror`).
     Repeat(u8),
+    /// `UvTransform.scale.x` (W3 tiling). Read-modify-write the component.
+    UvScaleX(f32),
+    UvScaleY(f32),
+    /// `UvTransform.offset.x` (W3 scroll).
+    UvOffsetX(f32),
+    UvOffsetY(f32),
 }
 
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on

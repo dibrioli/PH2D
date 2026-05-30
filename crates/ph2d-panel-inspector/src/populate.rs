@@ -57,6 +57,25 @@ fn populate_sampling(store: &mut WidgetStore) {
         ],
     );
     register_button_ids(store, &ids::INSP_ORDER_LAYER_OPT);
+    // UV tiling/scroll NumberInputs (scale default 1.0, offset 0.0).
+    for (id, value) in [
+        (ids::INSP_SAMPLE_UV_SCALE_X, 1.0_f64),
+        (ids::INSP_SAMPLE_UV_SCALE_Y, 1.0_f64),
+        (ids::INSP_SAMPLE_UV_OFFSET_X, 0.0_f64),
+        (ids::INSP_SAMPLE_UV_OFFSET_Y, 0.0_f64),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// W3 Sprite Inspector v2 §7 Ordering / Sorting: 7 toggles + 2 integer

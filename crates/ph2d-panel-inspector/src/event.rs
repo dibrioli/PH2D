@@ -37,7 +37,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if let WidgetEvent::Click(id) = ev
         && matches!(
             id,
-            ids::INSP_LIVE_TRANSFORM_COLOR | ids::INSP_LIVE_RENDER_COLOR
+            ids::INSP_LIVE_TRANSFORM_COLOR
+                | ids::INSP_LIVE_RENDER_COLOR
+                | ids::INSP_LIVE_COLOR_COLOR
+                | ids::INSP_LIVE_SHEET_COLOR
         )
     {
         let seed = host

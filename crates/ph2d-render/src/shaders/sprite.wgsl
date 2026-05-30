@@ -142,8 +142,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         rgb = sample.rgb * in.corner.rgb * in.tint.rgb;
     }
 
-    // Step 5 — alpha folds every alpha channel + the opacity multiplier.
-    let alpha = sample.a * in.corner.a * in.tint.a * in.opacity;
+    // Step 5 — `extra_alpha` is every alpha multiplier OTHER than the
+    // texel's own α (corner.a · tint.a · opacity). Full alpha folds the
+    // texel α on top.
+    let extra_alpha = in.corner.a * in.tint.a * in.opacity;
+    let alpha = sample.a * extra_alpha;
 
     // Step 6 — premultiply for the PREMULTIPLIED_ALPHA blend (pipeline.rs).
     if (in.premultiplied > 0.5) {
@@ -151,24 +154,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         // the bilinear `textureSample` blended premultiplied texels (like
         // Vello's `draw_image_rgba` preview), so partial-alpha edge texels
         // contribute rgb·α and there's no straight-alpha fringe. We must
-        // NOT multiply rgb by α again (§4.4 — doing so gives rgb·α² and a
-        // dark fringe). Returns the premultiplied rgb as-is with the
-        // collapsed alpha — byte-faithful to §4.2 step 6.
-        //
-        // KNOWN GAP (W2 carry-over, audit H-1): for opacity<1 on a
-        // premultiplied sprite, `alpha` is dimmed but this `rgb` is not,
-        // so the sprite stays full-brightness at reduced coverage instead
-        // of fading. ZERO W1 impact (opacity defaults 1.0; premultiplied
-        // is the narrow BG-Removal-Apply set), but the full reconciliation
-        // (premult rgb should also scale by opacity — and the §4.4 spec
-        // text must be amended to say so) MUST land before opacity ships
-        // as an authorable/animatable channel in W2. Left faithful to the
-        // ratified §4.2 here rather than diverging from spec mid-W1.
-        return vec4<f32>(rgb, alpha);
+        // NOT multiply rgb by the *texel* α again (§4.4 — doing so gives
+        // rgb·α² and a dark fringe). But we MUST scale by `extra_alpha`
+        // (opacity, tint.a, corner.a) so a premultiplied sprite fades
+        // identically to a straight one — the texel α is already baked in,
+        // the authored alpha factors are not (§4.4 amended; audit H-1/E-2).
+        // extra_alpha defaults 1.0 (opacity/tint.a/corner.a all 1) → the
+        // BG-Removal fringe fix is preserved byte-for-byte.
+        return vec4<f32>(rgb * extra_alpha, alpha);
     }
     // Straight (non-premultiplied) sRGB atlas + premultiplied blend:
     // premultiply here so overlap composites linearly without the
-    // dark-fringe artifact. `alpha` already carries opacity, so rgb is
-    // dimmed by opacity through this multiply.
+    // dark-fringe artifact. `alpha` already carries opacity + every alpha
+    // factor, so rgb is dimmed correctly through this multiply.
     return vec4<f32>(rgb * alpha, alpha);
 }

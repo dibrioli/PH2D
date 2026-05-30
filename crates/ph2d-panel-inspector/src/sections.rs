@@ -573,43 +573,6 @@ pub(crate) fn paint_render_source_section(
     );
     cur_y += fmt_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
 
-    // W2 Sprite Inspector v2: logical Flip H / Flip V (Sprite.flip_x/
-    // flip_y). Two checkboxes side by side; toggling dispatches an
-    // InspectorSpriteEdit and the shader mirrors the sampled UV. The
-    // live value is synced from the snapshot in sync.rs each frame.
-    let flip_row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
-    let flip_gap = Spacing::Md.px();
-    let flip_half = ((w - flip_gap) * 0.5).max(0.0);
-    let (fx_state, fx_value) = store
-        .checkbox(ids::INSP_SPRITE_FLIP_X)
-        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-    let fx_rect = Rect::new(x, cur_y, flip_half, flip_row_h);
-    hit_index.register(ids::INSP_SPRITE_FLIP_X, fx_rect);
-    paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
-            .state(fx_state)
-            .value(fx_value),
-        fx_rect,
-        scene,
-        text_system,
-        theme,
-    );
-    let (fy_state, fy_value) = store
-        .checkbox(ids::INSP_SPRITE_FLIP_Y)
-        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-    let fy_rect = Rect::new(x + flip_half + flip_gap, cur_y, flip_half, flip_row_h);
-    hit_index.register(ids::INSP_SPRITE_FLIP_Y, fy_rect);
-    paint_checkbox(
-        &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
-            .state(fy_state)
-            .value(fy_value),
-        fy_rect,
-        scene,
-        text_system,
-        theme,
-    );
-    cur_y += flip_row_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
-
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;
@@ -822,7 +785,44 @@ pub(crate) fn paint_sprite_sheet_section(
         "Frame",
         ids::INSP_SPRITE_FRAME,
     );
-    cur_y += field_h + SECTION_BOTTOM_PAD_PX;
+    cur_y += field_h + row_gap;
+
+    // Logical Flip H / Flip V (Sprite.flip_x/flip_y) — spec §3.4 groups
+    // flip with the Sprite Sheet section. Two checkboxes side by side;
+    // toggling dispatches an InspectorSpriteEdit and the shader mirrors
+    // the sampled UV.
+    let flip_row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
+    let flip_gap = Spacing::Md.px();
+    let flip_half = ((w - flip_gap) * 0.5).max(0.0);
+    let (fx_state, fx_value) = store
+        .checkbox(ids::INSP_SPRITE_FLIP_X)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let fx_rect = Rect::new(x, cur_y, flip_half, flip_row_h);
+    hit_index.register(ids::INSP_SPRITE_FLIP_X, fx_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SPRITE_FLIP_X, "Flip H")
+            .state(fx_state)
+            .value(fx_value),
+        fx_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    let (fy_state, fy_value) = store
+        .checkbox(ids::INSP_SPRITE_FLIP_Y)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let fy_rect = Rect::new(x + flip_half + flip_gap, cur_y, flip_half, flip_row_h);
+    hit_index.register(ids::INSP_SPRITE_FLIP_Y, fy_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SPRITE_FLIP_Y, "Flip V")
+            .state(fy_state)
+            .value(fy_value),
+        fy_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += flip_row_h + SECTION_BOTTOM_PAD_PX;
 
     cur_y
 }

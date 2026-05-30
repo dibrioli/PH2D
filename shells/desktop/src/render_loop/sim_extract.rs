@@ -200,9 +200,15 @@ pub(super) fn run(
                     // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
                     // base atlas_uv rect into an hframes×vframes grid and
                     // select `frame`'s cell. The default 1×1 grid is a
-                    // no-op, so legacy sprites render unchanged.
-                    let atlas_uv =
-                        sprite_sheet_subrect(atlas_uv, spr.hframes, spr.vframes, spr.frame);
+                    // no-op, so legacy sprites render unchanged. Skipped
+                    // under a tool preview override (audit E-3): the
+                    // transient preview texture is a full-frame bake, not
+                    // a sheet, so slicing it would show only one cell.
+                    let atlas_uv = if override_for_entity.is_some() {
+                        atlas_uv
+                    } else {
+                        sprite_sheet_subrect(atlas_uv, spr.hframes, spr.vframes, spr.frame)
+                    };
                     builder.insert(RenderInstance {
                         world_pos: [p.x, p.y],
                         // LOCAL size — the basis applies world scale.

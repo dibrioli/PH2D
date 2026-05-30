@@ -527,6 +527,8 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_LIVE_VISIBILITY_COLOR,
         ids::INSP_LIVE_TRANSFORM_COLOR,
         ids::INSP_LIVE_RENDER_COLOR,
+        ids::INSP_LIVE_COLOR_COLOR,
+        ids::INSP_LIVE_SHEET_COLOR,
     ] {
         store.register(id, InteractiveState::Plain);
     }
@@ -559,6 +561,8 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_LIVE_VISIBILITY_SECTION,
         ids::INSP_LIVE_TRANSFORM_SECTION,
         ids::INSP_LIVE_RENDER_SECTION,
+        ids::INSP_LIVE_COLOR_SECTION,
+        ids::INSP_LIVE_SHEET_SECTION,
         // Widget Gallery showcase sections.
         ids::INSP_SECTION_INPUTS,
         ids::INSP_SECTION_SLIDER,

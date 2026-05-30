@@ -49,14 +49,19 @@ fn sample_sprite(instance: RenderInstance, uv: vec2<f32>) -> vec4<f32> {
         sample.rgb * corner_tint.rgb * cascade_tint.rgb
     };
 
-    // 5. Alpha = sample.a × corner_tint.a × cascade_tint.a × opacity.
-    let alpha = sample.a * corner_tint.a * cascade_tint.a * instance.opacity;
+    // 5. extra_alpha = todos os multiplicadores de alpha EXCETO o α do
+    //    próprio texel (corner_tint.a × cascade_tint.a × opacity). Alpha
+    //    final dobra o α do texel por cima.
+    let extra_alpha = corner_tint.a * cascade_tint.a * instance.opacity;
+    let alpha = sample.a * extra_alpha;
 
-    // 6. Premultiply para blend correto (Mix). PremultAlpha branch documentado.
+    // 6. Premultiply para blend correto (Mix). PremultAlpha branch
+    //    documentado — vide §4.4 (amendment audit H-1/E-2).
     let premul_rgb = if (instance.premultiplied != 0.0) {
-        rgb              // sample já era premultiplicado (BG-Removal apply)
+        rgb * extra_alpha // texel já premult (α baked); escala pelos
+                          // fatores autorados (opacity/tint.a/corner.a)
     } else {
-        rgb * alpha      // standard premultiply para Mix blend
+        rgb * alpha       // standard premultiply para Mix blend
     };
 
     return vec4<f32>(premul_rgb, alpha);
@@ -113,11 +118,14 @@ fn extract_sprite_tint(sprite: &Sprite, ancestors: &[GlobalSpriteState]) -> [f32
 ## 4.4 PremultAlpha gotcha
 
 PH2D já suporta `Sprite.premultiplied: bool` (existente, runtime hint do BG-Removal Apply). Quando true:
-- Sample já está em RGB×alpha (premultiplicado pelo cooker).
-- Fragment shader pula o multiplique pré-blend.
-- Math: `rgb_out = sample_rgb_premultiplied × corner_tint × cascade` (sem multiplicar por alpha porque sample já tem alpha embutido).
+- Sample já está em RGB×alpha (premultiplicado pelo cooker) — o **α do próprio texel** já está embutido no rgb.
+- Fragment shader **NÃO** re-multiplica pelo α do texel (senão RGB×α² → fringe escura).
+- Mas **escala por `extra_alpha`** = os multiplicadores de alpha **autorados** (`corner_tint.a × cascade_tint.a × opacity`), que NÃO estão embutidos no texel. Assim um sprite premultiplicado **desbota igual** a um straight quando opacity<1 ou tint.a<1.
+- Math: `rgb_out = sample_rgb_premultiplied × corner_tint.rgb × cascade.rgb × extra_alpha`.
 
-**Atenção (gate em testes):** quando `premultiplied=true`, **NÃO** aplicar a etapa "premultiply" do passo 6 acima. Senão fica RGB×alpha² → fringe escura.
+**Amendment (audit H-1/E-2, W2):** a versão anterior retornava `rgb` sem escalar por opacity — correto enquanto opacity=1 (W1), mas com opacity autorável na W2 o sprite premultiplicado ficava brilhante a cobertura reduzida em vez de desbotar. Reconciliado: `rgb × extra_alpha` no branch premultiplicado (`extra_alpha=1.0` por default preserva o fix de fringe byte-a-byte).
+
+**Atenção (gate em testes):** quando `premultiplied=true`, **NÃO** aplicar o α do *texel* (`sample.a`) ao rgb — só `extra_alpha`. Aplicar `sample.a` daria RGB×α² → fringe escura.
 
 Fixture de regressão: [tests/premultiplied_tint_correctness.rs](../../crates/ph2d-render/tests/) — compara render de sprite premultiplicado + tint=YELLOW contra fixture golden 4-pixel.
 

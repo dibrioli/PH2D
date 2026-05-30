@@ -143,29 +143,34 @@ pub(crate) fn sync_inspector_from_snapshots(
             CheckboxValue::Unchecked
         };
     }
-    // W2 Sprite Inspector v2: reflect Sprite.flip_x/flip_y in the Flip
-    // H/V checkboxes (unless a flip edit is mid-flight this frame, so we
-    // don't clobber the user's just-toggled value before it commits).
-    let pending_sprite_edit = host
-        .bus()
-        .iter()
-        .any(|a| matches!(a, EditorAction::InspectorSpriteEdit { .. }));
-    if !pending_sprite_edit && let Some(sp) = current_inspector_sprite() {
-        for (id, on) in [
-            (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
-            (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
-            (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill),
-        ] {
-            if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
-                *value = if on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                };
+    // W2 Sprite Inspector v2 — reflect the editable Sprite fields.
+    if let Some(sp) = current_inspector_sprite() {
+        // Checkboxes (Flip H/V, Tint Fill): seed ONLY on entity switch.
+        // A checkbox toggles its own stored value on click, and `sync`
+        // runs AFTER the bus is drained, so an every-frame reseed from
+        // the (still-stale-until-commit) snapshot would revert the
+        // just-toggled value for one frame — a visible flicker (audit
+        // F2). Between switches the widget holds the truth; the next
+        // snapshot reflects the commit. Mirrors the Name TextInput.
+        if entity_changed {
+            for (id, on) in [
+                (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
+                (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
+                (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill),
+            ] {
+                if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id)
+                {
+                    *value = if on {
+                        CheckboxValue::Checked
+                    } else {
+                        CheckboxValue::Unchecked
+                    };
+                }
             }
         }
-        // Numeric fields — don't clobber the buffer of the field the
-        // user is actively editing.
+        // Numeric fields — every frame (so external changes reflect),
+        // skipping the field the user is actively editing. Matches the
+        // Transform NumberInputs' tolerated 1-frame post-commit lag.
         let focus = host.store().focus_id();
         for (id, value) in [
             (ids::INSP_SPRITE_OPACITY, sp.opacity as f64),

@@ -275,6 +275,12 @@ pub(super) fn dispatch(
         let Some(mut sprite) = sim.world().get::<Sprite>(entity).copied() else {
             continue;
         };
+        // `Sprite.premultiplied` is `#[serde(skip)]` — a runtime hint set
+        // by BG-Removal Apply, NOT on the wire. The SetComponent round
+        // trip (postcard → from_bytes) would reset it to `false` and
+        // silently reintroduce the straight-alpha edge fringe. Capture
+        // the live flag and re-assert it after the commit (audit F1).
+        let was_premultiplied = sprite.premultiplied;
         apply_sprite_field(&mut sprite, edit);
         match postcard::to_allocvec(&sprite) {
             Ok(data) => {
@@ -291,6 +297,11 @@ pub(super) fn dispatch(
                 {
                     toasts.push(Toast::error(format!("Sprite commit failed: {e}")));
                     title_dirty = true;
+                } else if was_premultiplied
+                    && let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
+                {
+                    // Re-assert the serde(skip) runtime hint the wire dropped.
+                    s.premultiplied = true;
                 }
             }
             Err(e) => {

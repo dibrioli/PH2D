@@ -1095,7 +1095,8 @@ pub const SECTION_IDS: [NodeId; 10] = [
 ];
 
 /// Live Inspector section headers (Name / Visibility / Transform /
-/// Render / Color & Tint). Right-click opens the SectionOutline menu.
+/// Render / Color & Tint / Sprite Sheet). Right-click opens the
+/// SectionOutline menu.
 pub const LIVE_SECTION_IDS: [NodeId; 6] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,

@@ -167,9 +167,9 @@ pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId)
 /// Two source-of-truth arrays:
 /// - [`crate::ids::SECTION_IDS`] — 10 Widget
 ///   Gallery (showcase) section headers.
-/// - [`crate::ids::LIVE_SECTION_IDS`] — 4 live
+/// - [`crate::ids::LIVE_SECTION_IDS`] — 6 live
 ///   Inspector section headers (Name / Visibility / Transform /
-///   Render Source). Restored in Wave 4.1 so the section outline
+///   Render Source / Color & Tint / Sprite Sheet). Restored in Wave 4.1 so the section outline
 ///   affordance reaches the canonical Inspector, not just the demo
 ///   gallery.
 ///

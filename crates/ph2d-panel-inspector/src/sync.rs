@@ -16,7 +16,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::SpriteFieldEdit;
+use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, SpriteFieldEdit};
 use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
@@ -156,200 +156,213 @@ pub(crate) fn sync_inspector_from_snapshots(
     }
     // W2 Sprite Inspector v2 — reflect the editable Sprite fields.
     if let Some(sp) = current_inspector_sprite() {
-        // Checkboxes (Flip H/V, Tint Fill): seed ONLY on entity switch.
-        // A checkbox toggles its own stored value on click, and `sync`
-        // runs AFTER the bus is drained, so an every-frame reseed from
-        // the (still-stale-until-commit) snapshot would revert the
-        // just-toggled value for one frame — a visible flicker (audit
-        // F2). Between switches the widget holds the truth; the next
-        // snapshot reflects the commit. Mirrors the Name TextInput.
-        // Reseed on a selection CHANGE — the primary switching
-        // (`entity_changed`) OR the selection size changing (BulkSelect:
-        // adding/removing an extra). A diverging field seeds Indeterminate
-        // ("Mixed"); toggling it then dispatches a definite value to the
-        // whole selection (which un-mixes it next frame).
-        let selection_changed =
-            entity_changed || sp.selected_count != inspector_state.last_selected_count;
-        inspector_state.last_selected_count = sp.selected_count;
-        if selection_changed {
-            for (id, on, mixed) in [
-                (ids::INSP_SPRITE_FLIP_X, sp.flip_x, sp.mixed.flip_x),
-                (ids::INSP_SPRITE_FLIP_Y, sp.flip_y, sp.mixed.flip_y),
-                (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill, sp.mixed.tint_fill),
-                (
-                    ids::INSP_REGION_ENABLED,
-                    sp.region_enabled,
-                    sp.mixed.region_enabled,
-                ),
-                (
-                    ids::INSP_REGION_FILTER_CLIP,
-                    sp.region_filter_clip,
-                    sp.mixed.region_filter_clip,
-                ),
-                (ids::INSP_SPRITE_CENTERED, sp.centered, sp.mixed.centered),
-            ] {
-                if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id)
-                {
-                    *value = if mixed {
-                        CheckboxValue::Indeterminate
-                    } else if on {
-                        CheckboxValue::Checked
-                    } else {
-                        CheckboxValue::Unchecked
-                    };
-                }
-            }
-        }
-        // Numeric fields — every frame (so external changes reflect),
-        // skipping the field the user is actively editing. Matches the
-        // Transform NumberInputs' tolerated 1-frame post-commit lag.
-        let focus = host.store().focus_id();
-        for (id, value, mixed) in [
+        sync_sprite_fields(inspector_state, host, &sp, entity_changed);
+    }
+}
+
+/// BulkSelect-aware reflection of the editable `Sprite` fields onto the
+/// Inspector widgets — extracted from `sync_inspector_from_snapshots` for
+/// the `architecture_panel_loc_cap` 200-LOC fn cap (logic verbatim). `sp`
+/// is the live primary snapshot; `entity_changed` gates the
+/// once-per-selection checkbox seed.
+fn sync_sprite_fields(
+    inspector_state: &mut state::InspectorState,
+    host: &mut dyn PanelHostInternal,
+    sp: &InspectorSpriteInfo,
+    entity_changed: bool,
+) {
+    // Checkboxes (Flip H/V, Tint Fill): seed ONLY on entity switch.
+    // A checkbox toggles its own stored value on click, and `sync`
+    // runs AFTER the bus is drained, so an every-frame reseed from
+    // the (still-stale-until-commit) snapshot would revert the
+    // just-toggled value for one frame — a visible flicker (audit
+    // F2). Between switches the widget holds the truth; the next
+    // snapshot reflects the commit. Mirrors the Name TextInput.
+    // Reseed on a selection CHANGE — the primary switching
+    // (`entity_changed`) OR the selection size changing (BulkSelect:
+    // adding/removing an extra). A diverging field seeds Indeterminate
+    // ("Mixed"); toggling it then dispatches a definite value to the
+    // whole selection (which un-mixes it next frame).
+    let selection_changed =
+        entity_changed || sp.selected_count != inspector_state.last_selected_count;
+    inspector_state.last_selected_count = sp.selected_count;
+    if selection_changed {
+        for (id, on, mixed) in [
+            (ids::INSP_SPRITE_FLIP_X, sp.flip_x, sp.mixed.flip_x),
+            (ids::INSP_SPRITE_FLIP_Y, sp.flip_y, sp.mixed.flip_y),
+            (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill, sp.mixed.tint_fill),
             (
-                ids::INSP_SPRITE_HFRAMES,
-                sp.hframes as f64,
-                sp.mixed.hframes,
+                ids::INSP_REGION_ENABLED,
+                sp.region_enabled,
+                sp.mixed.region_enabled,
             ),
             (
-                ids::INSP_SPRITE_VFRAMES,
-                sp.vframes as f64,
-                sp.mixed.vframes,
+                ids::INSP_REGION_FILTER_CLIP,
+                sp.region_filter_clip,
+                sp.mixed.region_filter_clip,
             ),
-            (ids::INSP_SPRITE_FRAME, sp.frame as f64, sp.mixed.frame),
-            (
-                ids::INSP_REGION_X,
-                sp.region_rect[0] as f64,
-                sp.mixed.region_x,
-            ),
-            (
-                ids::INSP_REGION_Y,
-                sp.region_rect[1] as f64,
-                sp.mixed.region_y,
-            ),
-            (
-                ids::INSP_REGION_W,
-                sp.region_rect[2] as f64,
-                sp.mixed.region_w,
-            ),
-            (
-                ids::INSP_REGION_H,
-                sp.region_rect[3] as f64,
-                sp.mixed.region_h,
-            ),
-            (
-                ids::INSP_SPRITE_OFFSET_X,
-                sp.offset[0] as f64,
-                sp.mixed.offset_x,
-            ),
-            (
-                ids::INSP_SPRITE_OFFSET_Y,
-                sp.offset[1] as f64,
-                sp.mixed.offset_y,
-            ),
+            (ids::INSP_SPRITE_CENTERED, sp.centered, sp.mixed.centered),
         ] {
-            if focus != Some(id) {
-                // Mixed → blank the field (no misleading single value, and
-                // a blank blur reverts cleanly — never stomps). Otherwise
-                // reflect the primary's value every frame.
-                if mixed {
-                    host.store_mut().blank_number_input(id);
+            if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+                *value = if mixed {
+                    CheckboxValue::Indeterminate
+                } else if on {
+                    CheckboxValue::Checked
                 } else {
-                    host.store_mut().set_number_value(id, value);
-                }
+                    CheckboxValue::Unchecked
+                };
             }
         }
-        // Opacity Slider (0..1 storage) + linked percent chip. Skip while
-        // the slider is being dragged or the chip is focused so we don't
-        // fight the user's input.
-        let dragging = matches!(
-            host.store().slider(ids::INSP_SPRITE_OPACITY),
-            Some((SliderState::Dragging, _))
-        );
-        if !dragging && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP) {
-            // The slider track can't show "Mixed", so it parks at the
-            // primary's value; the blank percent chip is the Mixed signal.
-            if let Some(InteractiveState::Slider { value, .. }) =
-                host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
+    }
+    // Numeric fields — every frame (so external changes reflect),
+    // skipping the field the user is actively editing. Matches the
+    // Transform NumberInputs' tolerated 1-frame post-commit lag.
+    let focus = host.store().focus_id();
+    for (id, value, mixed) in [
+        (
+            ids::INSP_SPRITE_HFRAMES,
+            sp.hframes as f64,
+            sp.mixed.hframes,
+        ),
+        (
+            ids::INSP_SPRITE_VFRAMES,
+            sp.vframes as f64,
+            sp.mixed.vframes,
+        ),
+        (ids::INSP_SPRITE_FRAME, sp.frame as f64, sp.mixed.frame),
+        (
+            ids::INSP_REGION_X,
+            sp.region_rect[0] as f64,
+            sp.mixed.region_x,
+        ),
+        (
+            ids::INSP_REGION_Y,
+            sp.region_rect[1] as f64,
+            sp.mixed.region_y,
+        ),
+        (
+            ids::INSP_REGION_W,
+            sp.region_rect[2] as f64,
+            sp.mixed.region_w,
+        ),
+        (
+            ids::INSP_REGION_H,
+            sp.region_rect[3] as f64,
+            sp.mixed.region_h,
+        ),
+        (
+            ids::INSP_SPRITE_OFFSET_X,
+            sp.offset[0] as f64,
+            sp.mixed.offset_x,
+        ),
+        (
+            ids::INSP_SPRITE_OFFSET_Y,
+            sp.offset[1] as f64,
+            sp.mixed.offset_y,
+        ),
+    ] {
+        if focus != Some(id) {
+            // Mixed → blank the field (no misleading single value, and
+            // a blank blur reverts cleanly — never stomps). Otherwise
+            // reflect the primary's value every frame.
+            if mixed {
+                host.store_mut().blank_number_input(id);
+            } else {
+                host.store_mut().set_number_value(id, value);
+            }
+        }
+    }
+    // Opacity Slider (0..1 storage) + linked percent chip. Skip while
+    // the slider is being dragged or the chip is focused so we don't
+    // fight the user's input.
+    let dragging = matches!(
+        host.store().slider(ids::INSP_SPRITE_OPACITY),
+        Some((SliderState::Dragging, _))
+    );
+    if !dragging && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP) {
+        // The slider track can't show "Mixed", so it parks at the
+        // primary's value; the blank percent chip is the Mixed signal.
+        if let Some(InteractiveState::Slider { value, .. }) =
+            host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
+        {
+            *value = sp.opacity;
+        }
+        if sp.mixed.opacity {
+            host.store_mut()
+                .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
+        } else {
+            // Chip lives in display space (percent) per the integer map.
+            host.store_mut()
+                .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
+        }
+    }
+    // Tint / Self Tint swatches. The BlenderColorPicker round-trips
+    // the chosen color through `widget_color(<swatch>)` (mirrored
+    // each frame from the picker in `hero.rs`, BEFORE this panel
+    // paints). Two regimes:
+    //   • picker targets THIS swatch → the user is actively picking:
+    //     dispatch the divergence as a Sprite edit (live preview,
+    //     same 1-frame post-commit lag the Opacity slider tolerates).
+    //     Byte-compare against the committed channel so sub-1/255
+    //     float dust doesn't spin the bus every frame, and so the
+    //     stream stops the instant the commit lands (round-trip is
+    //     exact: u8 → /255 → ×255 round-nearest → same u8).
+    //   • otherwise → keep the swatch fill in lock-step with the
+    //     committed channel so undo / external edits reflect.
+    // On an entity switch the top `entity_changed` block has already
+    // closed any tint picker bound to the prior selection, so this
+    // reads `None` on the switch frame and the loop reseeds both
+    // swatches from the new sprite's committed channels.
+    let picker_target = host.store().picker_target();
+    for (swatch_id, chan) in [
+        (ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
+        (ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
+    ] {
+        let committed = state::tint_f32_to_u8(chan);
+        if picker_target == Some(swatch_id) {
+            if let Some(picked) = host.store().widget_color(swatch_id)
+                && picked != committed
             {
-                *value = sp.opacity;
+                let new_chan = state::tint_u8_to_f32(picked);
+                let edit = if swatch_id == ids::INSP_SPRITE_TINT_SWATCH {
+                    SpriteFieldEdit::Tint(new_chan)
+                } else {
+                    SpriteFieldEdit::SelfTint(new_chan)
+                };
+                host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                    entity_bits: sp.entity_bits,
+                    edit,
+                });
             }
-            if sp.mixed.opacity {
-                host.store_mut()
-                    .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
-            } else {
-                // Chip lives in display space (percent) per the integer map.
-                host.store_mut()
-                    .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
-            }
+        } else {
+            host.store_mut().set_widget_color(swatch_id, committed);
         }
-        // Tint / Self Tint swatches. The BlenderColorPicker round-trips
-        // the chosen color through `widget_color(<swatch>)` (mirrored
-        // each frame from the picker in `hero.rs`, BEFORE this panel
-        // paints). Two regimes:
-        //   • picker targets THIS swatch → the user is actively picking:
-        //     dispatch the divergence as a Sprite edit (live preview,
-        //     same 1-frame post-commit lag the Opacity slider tolerates).
-        //     Byte-compare against the committed channel so sub-1/255
-        //     float dust doesn't spin the bus every frame, and so the
-        //     stream stops the instant the commit lands (round-trip is
-        //     exact: u8 → /255 → ×255 round-nearest → same u8).
-        //   • otherwise → keep the swatch fill in lock-step with the
-        //     committed channel so undo / external edits reflect.
-        // On an entity switch the top `entity_changed` block has already
-        // closed any tint picker bound to the prior selection, so this
-        // reads `None` on the switch frame and the loop reseeds both
-        // swatches from the new sprite's committed channels.
-        let picker_target = host.store().picker_target();
-        for (swatch_id, chan) in [
-            (ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
-            (ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
-        ] {
-            let committed = state::tint_f32_to_u8(chan);
-            if picker_target == Some(swatch_id) {
-                if let Some(picked) = host.store().widget_color(swatch_id)
-                    && picked != committed
-                {
-                    let new_chan = state::tint_u8_to_f32(picked);
-                    let edit = if swatch_id == ids::INSP_SPRITE_TINT_SWATCH {
-                        SpriteFieldEdit::Tint(new_chan)
-                    } else {
-                        SpriteFieldEdit::SelfTint(new_chan)
-                    };
-                    host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-                        entity_bits: sp.entity_bits,
-                        edit,
-                    });
-                }
-            } else {
-                host.store_mut().set_widget_color(swatch_id, committed);
+    }
+    // Per-corner tint swatches (TL, TR, BL, BR). Same regime as
+    // Tint/Self, but `PerCornerTint` has no per-index variant, so the
+    // edit carries the WHOLE [[f32;4];4] array with just the picked
+    // corner replaced.
+    let corner_ids = [
+        ids::INSP_SPRITE_CORNER_TL,
+        ids::INSP_SPRITE_CORNER_TR,
+        ids::INSP_SPRITE_CORNER_BL,
+        ids::INSP_SPRITE_CORNER_BR,
+    ];
+    for (i, &corner_id) in corner_ids.iter().enumerate() {
+        let committed = state::tint_f32_to_u8(sp.per_corner_tint[i]);
+        if picker_target == Some(corner_id) {
+            if let Some(picked) = host.store().widget_color(corner_id)
+                && picked != committed
+            {
+                let mut arr = sp.per_corner_tint;
+                arr[i] = state::tint_u8_to_f32(picked);
+                host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                    entity_bits: sp.entity_bits,
+                    edit: SpriteFieldEdit::PerCornerTint(arr),
+                });
             }
-        }
-        // Per-corner tint swatches (TL, TR, BL, BR). Same regime as
-        // Tint/Self, but `PerCornerTint` has no per-index variant, so the
-        // edit carries the WHOLE [[f32;4];4] array with just the picked
-        // corner replaced.
-        let corner_ids = [
-            ids::INSP_SPRITE_CORNER_TL,
-            ids::INSP_SPRITE_CORNER_TR,
-            ids::INSP_SPRITE_CORNER_BL,
-            ids::INSP_SPRITE_CORNER_BR,
-        ];
-        for (i, &corner_id) in corner_ids.iter().enumerate() {
-            let committed = state::tint_f32_to_u8(sp.per_corner_tint[i]);
-            if picker_target == Some(corner_id) {
-                if let Some(picked) = host.store().widget_color(corner_id)
-                    && picked != committed
-                {
-                    let mut arr = sp.per_corner_tint;
-                    arr[i] = state::tint_u8_to_f32(picked);
-                    host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-                        entity_bits: sp.entity_bits,
-                        edit: SpriteFieldEdit::PerCornerTint(arr),
-                    });
-                }
-            } else {
-                host.store_mut().set_widget_color(corner_id, committed);
-            }
+        } else {
+            host.store_mut().set_widget_color(corner_id, committed);
         }
     }
 }

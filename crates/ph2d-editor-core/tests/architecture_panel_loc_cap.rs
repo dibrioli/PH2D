@@ -87,10 +87,10 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     // Split into header/inline-row/stacked-row helpers is a follow-up
     // (one panel at a time, with smoke).
     (
-        "ph2d-panel-inspector/src/sections.rs",
+        "ph2d-panel-inspector/src/sections/transform.rs",
         "paint_transform_section",
-        260,
-        "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred",
+        212,
+        "Wave 11 adaptive label-above + per-section narrow + Rotation align — split deferred. Moved to sections/transform.rs in the §T2.1 file split (sections.rs → per-section modules); allowance reconciled from 260 to the landed 212 LOC.",
     ),
     // Enio 2026-05-26: paint_hierarchy_row cresceu com os 2 novos
     // ícones (lock + group) + companion hit registers + ícone-foco

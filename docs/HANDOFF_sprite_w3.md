@@ -47,6 +47,44 @@ pré-requisito não-óbvio p/ editar components OPCIONAIS (toggle de marker OFF 
 unset de Z = DETACH, que `SetComponent` não faz). Idempotente, unit-tested.
 Análogo ao keystone `InspectorSpriteEdit` da W2. Destranca §7/§8/§9.
 
+§7 LOGIC LAYER PRONTO (commit `6de0b56`): a METADE de lógica do §7.
+- editor-core `hero.rs`: `InspectorOrderingInfo` / `InspectorOrderingMixed` /
+  `OrderingFieldEdit` (11 variants, raw primitives) + `EditorAction::
+  InspectorOrderingEdit{entity_bits,edit}` (re-exportados em screens/mod + lib).
+- shell `inspector_ordering.rs`: `apply_ordering_edit` mapeia cada edit →
+  component opcional via `queue_set`(insert/update)/`queue_remove`(detach);
+  read-modify-write p/ YSort/SortingGroup (preserva irmãos). Drenado em `mod.rs`
+  com o MESMO fan-out BulkSelect dos sprite edits (`ordering_edits` Vec + arm +
+  param em `inspector_commits::dispatch`). 5 unit tests verdes.
+- `SortPoint` simplificado `Custom(Vec2)`→unit `Custom` + `tag()`/`from_tag()`
+  (axis vive em `YSort.axis`; spec §3.7 = Sort Point + Custom Axis widgets
+  separados). Golden de determinismo intacto.
+- shell ganhou `serde` como dep direta (bound do `queue_set`; já no lock).
+
+§7 FALTA (a METADE de PAINT UI — superfície grande, beneficia do smoke visual):
+- **Snapshot producer** em `shells/desktop/.../snapshots.rs`: ler os 8 components
+  opcionais da entidade → `InspectorOrderingInfo` (ausente → default/None;
+  `z_index: None` quando sem ZIndexOverride) + `compute_ordering_mixed` (BulkSelect,
+  compara vs primário) + publicar via thread-local (criar
+  `set_current_inspector_ordering` no `ph2d-panel-inspector`, espelhar o sprite).
+- **Section painter** `ph2d-panel-inspector/src/sections/ordering.rs` (novo): 11
+  controles render-ready (Z Index NumberInput tri-state "—"+botão Set · Z as
+  Relative checkbox SÓ se Z presente · Show Behind Parent · Sorting Layer
+  **Dropdown** via `take_pending_dropdown_chip`/`paint_dropdown_popover` (precedente
+  `paint.rs:400`) · Order in Layer · Y Sort Enabled · Y Sort Sort Point
+  **Segmented** Center/Pivot/Custom · Custom Axis 2×NumberInput SÓ se Custom ·
+  Sorting Group · Sort At Root SÓ se Group · Top Level). Cap fn≤200/file≤600 →
+  helpers que threadam `y`. Emitir `EditorAction::InspectorOrderingEdit` por
+  controle (3-pernas register/hit/event).
+- **Wiring:** `sections/mod.rs` re-export · `paint.rs` call-site + bump
+  `notes_per_section [_;6]→[_;7]` + section-id map · `populate.rs` seed state ·
+  `sync.rs` `sync_ordering_fields` (checkbox seed-on-entity-changed / number
+  per-frame-unless-focado / dropdown+segmented state) · `event.rs` dispatch.
+- **ids.rs:** `INSP_LIVE_ORDERING_SECTION`/`_COLOR` + `LIVE_SECTION_IDS [_;6]→[_;7]`
+  + ids dos 11 controles (+ opções do dropdown).
+- Smoke do Enio valida: editar Z/layer/YSort/show-behind no Inspector → ver no
+  canvas (render já aplica via o pipeline da Fase 2).
+
 PRÓXIMO (ordem render-first; cada fase = 1 sessão focada):
 1. **§7 Ordering Inspector UI** — render JÁ pronto + keystone RemoveComponent
    pronto. Falta a SUPERFÍCIE UI (grande, multi-arquivo). Controles render-ready

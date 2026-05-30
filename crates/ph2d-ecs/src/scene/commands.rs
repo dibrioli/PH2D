@@ -42,6 +42,11 @@ pub enum EditorCommand {
     Spawn {
         components: Vec<(u64 /*type_id*/, Vec<u8>)>,
     },
+    /// Remove an optional component from an existing entity. Used by the
+    /// Sprite Inspector v2 W3 to detach an optional sorting / visibility
+    /// / sampling component (toggling a marker off, unsetting a Z
+    /// override). Idempotent: a no-op if the component is absent.
+    RemoveComponent { entity: u64, type_id: u64 },
     /// Despawn an entity (with HR-11 confirmation handled at the
     /// editor UI level — this queue is post-confirmation).
     Despawn { entity: u64 },
@@ -165,6 +170,13 @@ pub fn apply_editor_commands(
                         .map_err(ApplyError::Registry)?;
                 }
                 spawned.push(entity);
+            }
+            EditorCommand::RemoveComponent { entity, type_id } => {
+                let entry = registry
+                    .get_by_id(type_id)
+                    .ok_or(ApplyError::Registry(RegistryError::UnknownTypeId(type_id)))?;
+                let bevy_entity = entity_from_bits(entity);
+                (entry.remove)(sim_w, bevy_entity);
             }
             EditorCommand::Despawn { entity } => {
                 let bevy_entity = entity_from_bits(entity);
@@ -294,6 +306,41 @@ mod tests {
         apply_editor_commands(sim.world_mut(), &queue, &reg).unwrap();
         let n = sim.world_mut().get::<Name>(entity).unwrap();
         assert_eq!(n.as_str(), "New");
+    }
+
+    #[test]
+    fn apply_remove_component_detaches_and_is_idempotent() {
+        use crate::ZIndexOverride;
+        let mut sim = SimWorld::new();
+        let mut reg = ComponentRegistry::new();
+        register_ecs_components(&mut reg);
+        let z_type_id = crate::scene::stable_type_id("ph2d::ecs::ZIndexOverride");
+
+        // Attach via SetComponent, then detach via RemoveComponent.
+        let entity = sim.world_mut().spawn(ZIndexOverride(5)).id();
+        let queue = EditorCommandQueue::new();
+        queue
+            .push(EditorCommand::RemoveComponent {
+                entity: entity.to_bits(),
+                type_id: z_type_id,
+            })
+            .unwrap();
+        apply_editor_commands(sim.world_mut(), &queue, &reg).unwrap();
+        assert!(
+            sim.world_mut().get::<ZIndexOverride>(entity).is_none(),
+            "RemoveComponent detaches the optional component"
+        );
+
+        // Removing an already-absent component is a no-op (idempotent),
+        // and the entity survives.
+        queue
+            .push(EditorCommand::RemoveComponent {
+                entity: entity.to_bits(),
+                type_id: z_type_id,
+            })
+            .unwrap();
+        apply_editor_commands(sim.world_mut(), &queue, &reg).unwrap();
+        assert!(sim.world().get_entity(entity).is_ok(), "entity still exists");
     }
 
     #[test]

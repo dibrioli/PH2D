@@ -90,13 +90,21 @@ pub type InsertFromBytesFn = fn(&mut World, Entity, &[u8]) -> Result<(), Registr
 /// `Ok(None)` = entity exists but has no component of this type.
 pub type SerializeFn = fn(&World, Entity) -> Result<Option<Vec<u8>>, RegistryError>;
 
+/// Remove the component (if present) from `entity`. A no-op when the
+/// entity is gone or doesn't carry the component — detaching an absent
+/// optional component is idempotent (Sprite Inspector v2 W3: toggling a
+/// marker / unsetting an optional override).
+pub type RemoveFn = fn(&mut World, Entity);
+
 /// One registered Component type's vtable: canonical name + id +
-/// fn pointers for `(de)serialize through postcard`.
+/// fn pointers for `(de)serialize through postcard` + type-erased
+/// removal.
 pub struct ComponentTypeEntry {
     pub canonical_name: &'static str,
     pub type_id: ComponentTypeId,
     pub insert_from_bytes: InsertFromBytesFn,
     pub serialize: SerializeFn,
+    pub remove: RemoveFn,
 }
 
 /// Manual registry of component types known to the spawn / save
@@ -163,6 +171,11 @@ impl ComponentRegistry {
                         Ok(Some(bytes))
                     }
                     None => Ok(None),
+                }
+            },
+            remove: |world, entity| {
+                if let Ok(mut e) = world.get_entity_mut(entity) {
+                    e.remove::<T>();
                 }
             },
         };

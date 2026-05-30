@@ -16,6 +16,31 @@ use ph2d_ecs::{
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
+/// Select the sprite-sheet cell `frame` from a base UV rect
+/// `[u_min, v_min, u_max, v_max]`, dividing it into an `hframes × vframes`
+/// grid (anatomia §03 §3.4). Frame 0 = top-left, `col = frame % hframes`,
+/// `row = frame / hframes` (row increases downward, matching V=0 = top).
+/// `hframes`/`vframes` floor at 1 and `frame` is clamped into the grid,
+/// so the default 1×1 sheet returns the input rect unchanged (no-op for
+/// every legacy sprite). Render-only (PresentWorld), HR-5 exempt.
+fn sprite_sheet_subrect(uv: [f32; 4], hframes: u32, vframes: u32, frame: u32) -> [f32; 4] {
+    let hf = hframes.max(1);
+    let vf = vframes.max(1);
+    if hf == 1 && vf == 1 {
+        return uv;
+    }
+    let cells = hf.saturating_mul(vf).max(1);
+    let frame = frame.min(cells - 1);
+    let col = frame % hf;
+    let row = frame / hf;
+    let [u0, v0, u1, v1] = uv;
+    let cw = (u1 - u0) / hf as f32;
+    let ch = (v1 - v0) / vf as f32;
+    let nu0 = u0 + col as f32 * cw;
+    let nv0 = v0 + row as f32 * ch;
+    [nu0, nv0, nu0 + cw, nv0 + ch]
+}
+
 /// Per-frame override that swaps a sprite entity's texture binding
 /// for a transient one — used by the BG-Removal live preview (Lens F,
 /// 2026-05-26) so the preview pixels render through the SAME sprite
@@ -172,6 +197,12 @@ pub(super) fn run(
                         spr.flip_y,
                         spr.tint_fill,
                     );
+                    // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
+                    // base atlas_uv rect into an hframes×vframes grid and
+                    // select `frame`'s cell. The default 1×1 grid is a
+                    // no-op, so legacy sprites render unchanged.
+                    let atlas_uv =
+                        sprite_sheet_subrect(atlas_uv, spr.hframes, spr.vframes, spr.frame);
                     builder.insert(RenderInstance {
                         world_pos: [p.x, p.y],
                         // LOCAL size — the basis applies world scale.
@@ -197,4 +228,41 @@ pub(super) fn run(
             },
         );
     });
+}
+
+#[cfg(test)]
+mod sprite_sheet_tests {
+    use super::sprite_sheet_subrect;
+
+    const FULL: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+    #[test]
+    fn default_grid_is_identity() {
+        assert_eq!(sprite_sheet_subrect(FULL, 1, 1, 0), FULL);
+        // Zero counts floor to 1 → still identity.
+        assert_eq!(sprite_sheet_subrect(FULL, 0, 0, 5), FULL);
+    }
+
+    #[test]
+    fn two_by_two_selects_cells() {
+        // frame 0 = top-left, 1 = top-right, 2 = bottom-left, 3 = bottom-right.
+        assert_eq!(sprite_sheet_subrect(FULL, 2, 2, 0), [0.0, 0.0, 0.5, 0.5]);
+        assert_eq!(sprite_sheet_subrect(FULL, 2, 2, 1), [0.5, 0.0, 1.0, 0.5]);
+        assert_eq!(sprite_sheet_subrect(FULL, 2, 2, 2), [0.0, 0.5, 0.5, 1.0]);
+        assert_eq!(sprite_sheet_subrect(FULL, 2, 2, 3), [0.5, 0.5, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn frame_past_grid_clamps_to_last_cell() {
+        assert_eq!(sprite_sheet_subrect(FULL, 2, 2, 99), [0.5, 0.5, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn subrect_respects_a_non_unit_base_rect() {
+        // An atlas region [0.2, 0.4, 0.6, 0.8] split 2×1 → left half.
+        let base = [0.2, 0.4, 0.6, 0.8];
+        let left = sprite_sheet_subrect(base, 2, 1, 0);
+        assert!((left[0] - 0.2).abs() < 1e-6 && (left[2] - 0.4).abs() < 1e-6);
+        assert!((left[1] - 0.4).abs() < 1e-6 && (left[3] - 0.8).abs() < 1e-6);
+    }
 }

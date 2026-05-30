@@ -241,6 +241,14 @@ impl crate::App {
         if motion_smoke::enabled() {
             motion_smoke::run(present, renderer);
         } else {
+            // Project px/m for `Sprite::resolve_anchor` (intrinsic-px
+            // `offset` → local meters). `None` only under the M5 demo /
+            // headless, whose sprites use the centered/offset defaults so
+            // the value is inert; fall back to the canonical default.
+            let ppm = hero_screen
+                .as_ref()
+                .map(|h| h.project.pixels_per_meter)
+                .unwrap_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER);
             sim_extract::run(
                 dt,
                 sim,
@@ -249,6 +257,7 @@ impl crate::App {
                 prop_state,
                 worklist,
                 bgremoval_preview_override,
+                ppm,
             );
         }
 

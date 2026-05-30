@@ -112,6 +112,7 @@ pub(crate) struct PreviewOverride {
 
 /// Sim tick → extract pass. Caller provides the destructured
 /// `AppGfx` refs.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn run(
     dt: f32,
     sim: &mut SimWorld,
@@ -124,6 +125,9 @@ pub(super) fn run(
     // replaced. `None` = emit every sprite from its own `Sprite`
     // source.
     preview_override: Option<PreviewOverride>,
+    // Project pixels-per-meter — converts a sprite's intrinsic-px
+    // `offset` into the LOCAL meters `resolve_anchor` works in.
+    pixels_per_meter: f32,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -319,10 +323,13 @@ pub(super) fn run(
                         // so the fragment skips its post-sample premultiply
                         // (fringe fix). Straight for every other sprite.
                         premultiplied: if premultiplied_flag { 1.0 } else { 0.0 },
-                        // Pivot offset in LOCAL meters — the basis maps it
-                        // to world along with the quad corners, so the quad
-                        // orbits `world_pos` (the pivot) under skew too.
-                        anchor: spr.anchor,
+                        // Effective pivot offset in LOCAL meters — folds
+                        // the Godot `centered`/`offset` authoring onto the
+                        // tool `anchor` (resolve_anchor). The basis maps it
+                        // to world with the quad corners, so the quad orbits
+                        // `world_pos` (the pivot) under skew too. Default
+                        // (centered, offset 0, anchor 0) = [0,0] (legacy).
+                        anchor: spr.resolve_anchor(pixels_per_meter),
                         per_corner_tint: spr.per_corner_tint,
                         opacity: spr.opacity,
                         flip_uv,

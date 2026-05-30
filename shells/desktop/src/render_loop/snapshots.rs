@@ -179,6 +179,10 @@ pub(super) fn publish(
     // re-borrow `hero`) can emphasize the pivot dot.
     let pivot_tool_active = hero.store.button_state(ph2d_editor::ids::TOOL_PIVOT)
         == Some(ph2d_editor::widget::ButtonState::Pressed);
+    // Captured Copy so the closure (which can't re-borrow `hero`) can
+    // resolve the same effective anchor the extract stamps — keeping the
+    // selection box aligned with the rendered quad under centered/offset.
+    let gizmo_ppm = hero.project.pixels_per_meter;
     // Onda 2: factor the per-sprite GizmoView build into a closure so
     // the primary, each extra, and the global union all share the
     // exact same world→view math. Single source of truth for the
@@ -209,8 +213,11 @@ pub(super) fn publish(
             let p = gt.translation();
             let half_w = sprite.size[0] * scale_x * 0.5;
             let half_h = sprite.size[1] * scale_y * 0.5;
-            let ax = sprite.anchor[0] * scale_x;
-            let ay = sprite.anchor[1] * scale_y;
+            // Effective anchor (folds centered/offset) so the box tracks
+            // the rendered quad, not just the raw tool pivot.
+            let eff_anchor = sprite.resolve_anchor(gizmo_ppm);
+            let ax = eff_anchor[0] * scale_x;
+            let ay = eff_anchor[1] * scale_y;
             // T1.3.5 cross-OS bit-identical.
             let (sin_r, cos_r) = libm::sincosf(rotation);
             let cx = p.x + ax * cos_r - ay * sin_r;

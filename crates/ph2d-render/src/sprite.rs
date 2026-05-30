@@ -386,6 +386,44 @@ impl Sprite {
             self.tint[3] * self.self_tint[3],
         ]
     }
+
+    /// Resolve the effective quad-center offset from the pivot, in LOCAL
+    /// meters — the value the extract stamps into `RenderInstance.anchor`
+    /// (the shader/picking position the quad center there, see
+    /// `shaders/sprite.wgsl` and `picking.rs`). It folds the Godot-style
+    /// `centered` / `offset` authoring ON TOP of the explicit `anchor`
+    /// (tool pivot from TOOL_PIVOT / Padding-Keep), all additive:
+    ///
+    /// - `centered = true` (default): origin is the quad center — no shift.
+    /// - `centered = false`: origin is the texture top-left, so the quad
+    ///   center sits a half-size to the right and DOWN of the pivot
+    ///   (local frame is Y-up, so "down" is `-y`).
+    /// - `offset` (intrinsic pixels, Godot `+x` right / `+y` down):
+    ///   converted to local meters via `pixels_per_meter` and added (the
+    ///   `+y`-down convention again maps to `-y` local).
+    ///
+    /// `centered = true` + `offset = [0, 0]` returns `anchor` unchanged,
+    /// so every legacy sprite (and the common case) is bit-identical to
+    /// the pre-feature behavior. `size` is the LOCAL quad size in meters
+    /// (the world basis applies scale separately), matching the shader's
+    /// `i.size`.
+    pub fn resolve_anchor(&self, pixels_per_meter: f32) -> [f32; 2] {
+        // Guard a zero/garbage ppm so the px→m divide can't NaN/inf the
+        // quad off-screen; 1 px/m is a harmless fallback.
+        let ppm = if pixels_per_meter > f32::EPSILON {
+            pixels_per_meter
+        } else {
+            1.0
+        };
+        let mut a = self.anchor;
+        if !self.centered {
+            a[0] += self.size[0] * 0.5;
+            a[1] -= self.size[1] * 0.5;
+        }
+        a[0] += self.offset[0] / ppm;
+        a[1] -= self.offset[1] / ppm;
+        a
+    }
 }
 
 impl SimComponent for Sprite {}
@@ -736,6 +774,56 @@ mod tests {
         s.tint = [2.0, 0.0, 0.0, 0.0];
         s.self_tint = [0.5, 7.0, 9.0, 9.0];
         assert_eq!(s.collapsed_tint(), [1.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn resolve_anchor_centered_default_is_unchanged() {
+        // The common case (centered, no offset, no tool pivot) must be
+        // bit-identical to raw `anchor` so every legacy sprite renders
+        // and hit-tests exactly as before.
+        let s = Sprite::atlas(0, [2.0, 3.0], [1.0; 4]);
+        assert_eq!(s.resolve_anchor(100.0), [0.0, 0.0]);
+
+        // A tool-set anchor passes through untouched when centered.
+        let mut s = Sprite::atlas(0, [2.0, 3.0], [1.0; 4]);
+        s.anchor = [0.25, -0.5];
+        assert_eq!(s.resolve_anchor(100.0), [0.25, -0.5]);
+    }
+
+    #[test]
+    fn resolve_anchor_uncentered_puts_pivot_at_top_left() {
+        // centered=false → origin at the texture top-left, so the quad
+        // CENTER sits +half-width right and half-height DOWN (-y local).
+        let mut s = Sprite::atlas(0, [2.0, 4.0], [1.0; 4]);
+        s.centered = false;
+        assert_eq!(s.resolve_anchor(100.0), [1.0, -2.0]);
+    }
+
+    #[test]
+    fn resolve_anchor_offset_is_pixels_over_ppm_with_godot_y_down() {
+        // offset is intrinsic px (Godot +x right / +y down); local frame
+        // is Y-up so +y offset maps to -y. 50 px @ 100 px/m = 0.5 m.
+        let mut s = Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
+        s.offset = [50.0, 100.0];
+        assert_eq!(s.resolve_anchor(100.0), [0.5, -1.0]);
+    }
+
+    #[test]
+    fn resolve_anchor_composes_anchor_centered_and_offset_additively() {
+        let mut s = Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
+        s.anchor = [0.1, 0.2];
+        s.centered = false; // +[1.0, -1.0]
+        s.offset = [100.0, 0.0]; // +[1.0, 0.0] @ 100 ppm
+        assert_eq!(s.resolve_anchor(100.0), [0.1 + 1.0 + 1.0, 0.2 - 1.0]);
+    }
+
+    #[test]
+    fn resolve_anchor_guards_nonpositive_ppm() {
+        // A zero/garbage ppm must not NaN/inf the quad off-screen.
+        let mut s = Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
+        s.offset = [10.0, 0.0];
+        let a = s.resolve_anchor(0.0);
+        assert!(a[0].is_finite() && a[1].is_finite());
     }
 
     #[test]

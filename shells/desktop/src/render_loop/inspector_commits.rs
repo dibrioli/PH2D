@@ -83,102 +83,6 @@ fn clamp_frame(sprite: &mut Sprite) {
     }
 }
 
-#[cfg(test)]
-mod sprite_field_tests {
-    use super::{apply_sprite_field, clamp_frame};
-    use ph2d_editor::SpriteFieldEdit;
-    use ph2d_render::Sprite;
-
-    fn sprite() -> Sprite {
-        Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0])
-    }
-
-    #[test]
-    fn flip_edits_set_the_flags() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(true));
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipY(true));
-        assert!(s.flip_x && s.flip_y);
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(false));
-        assert!(!s.flip_x && s.flip_y);
-    }
-
-    #[test]
-    fn opacity_is_clamped_to_unit() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(2.5));
-        assert_eq!(s.opacity, 1.0);
-        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(-0.3));
-        assert_eq!(s.opacity, 0.0);
-    }
-
-    #[test]
-    fn frame_count_floors_at_one_and_reclamps_frame() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(4));
-        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(2));
-        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(7)); // last cell of 4*2
-        assert_eq!(s.frame, 7);
-        // Shrinking the grid must drag the stale frame back in-range.
-        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(1)); // now 4 cells
-        assert_eq!(s.frame, 3);
-        // 0 is floored to 1 (never a zero-cell sheet).
-        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(0));
-        assert_eq!(s.hframes, 1);
-        assert_eq!(s.frame, 0); // 1*1 = 1 cell → frame 0
-    }
-
-    #[test]
-    fn frame_set_past_grid_is_clamped_immediately() {
-        let mut s = sprite();
-        // default hframes=vframes=1 → only cell is 0.
-        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(99));
-        assert_eq!(s.frame, 0);
-    }
-
-    #[test]
-    fn region_rect_clamps_extent_non_negative_but_keeps_origin() {
-        let mut s = sprite();
-        apply_sprite_field(
-            &mut s,
-            SpriteFieldEdit::RegionRect([-4.0, -2.0, -10.0, 8.0]),
-        );
-        // x/y pass through (extract clamps into the source); w/h floor at 0.
-        assert_eq!(s.region_rect, [-4.0, -2.0, 0.0, 8.0]);
-    }
-
-    #[test]
-    fn per_axis_edits_preserve_the_other_components() {
-        // BulkSelect D-1: editing one axis must NOT touch the siblings
-        // (so a bulk edit of one axis can't stomp a diverging sibling).
-        let mut s = sprite();
-        s.offset = [3.0, 5.0];
-        apply_sprite_field(&mut s, SpriteFieldEdit::OffsetX(9.0));
-        assert_eq!(s.offset, [9.0, 5.0], "OffsetX left Y untouched");
-
-        s.region_rect = [1.0, 2.0, 3.0, 4.0];
-        apply_sprite_field(&mut s, SpriteFieldEdit::RegionY(8.0));
-        assert_eq!(s.region_rect, [1.0, 8.0, 3.0, 4.0], "RegionY left X/W/H");
-        // W/H still floor at 0 per-axis.
-        apply_sprite_field(&mut s, SpriteFieldEdit::RegionW(-7.0));
-        assert_eq!(
-            s.region_rect,
-            [1.0, 8.0, 0.0, 4.0],
-            "RegionW floored, rest kept"
-        );
-    }
-
-    #[test]
-    fn clamp_frame_is_idempotent_in_range() {
-        let mut s = sprite();
-        s.hframes = 3;
-        s.vframes = 3;
-        s.frame = 4;
-        clamp_frame(&mut s);
-        assert_eq!(s.frame, 4);
-    }
-}
-
 /// Dispatches the 5 inspector commits. Returns `true` if any pushed
 /// a toast.
 #[allow(clippy::too_many_arguments)]
@@ -530,4 +434,100 @@ pub(super) fn dispatch(
     }
 
     title_dirty
+}
+
+#[cfg(test)]
+mod sprite_field_tests {
+    use super::{apply_sprite_field, clamp_frame};
+    use ph2d_editor::SpriteFieldEdit;
+    use ph2d_render::Sprite;
+
+    fn sprite() -> Sprite {
+        Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0])
+    }
+
+    #[test]
+    fn flip_edits_set_the_flags() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(true));
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipY(true));
+        assert!(s.flip_x && s.flip_y);
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(false));
+        assert!(!s.flip_x && s.flip_y);
+    }
+
+    #[test]
+    fn opacity_is_clamped_to_unit() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(2.5));
+        assert_eq!(s.opacity, 1.0);
+        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(-0.3));
+        assert_eq!(s.opacity, 0.0);
+    }
+
+    #[test]
+    fn frame_count_floors_at_one_and_reclamps_frame() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(4));
+        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(2));
+        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(7)); // last cell of 4*2
+        assert_eq!(s.frame, 7);
+        // Shrinking the grid must drag the stale frame back in-range.
+        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(1)); // now 4 cells
+        assert_eq!(s.frame, 3);
+        // 0 is floored to 1 (never a zero-cell sheet).
+        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(0));
+        assert_eq!(s.hframes, 1);
+        assert_eq!(s.frame, 0); // 1*1 = 1 cell → frame 0
+    }
+
+    #[test]
+    fn frame_set_past_grid_is_clamped_immediately() {
+        let mut s = sprite();
+        // default hframes=vframes=1 → only cell is 0.
+        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(99));
+        assert_eq!(s.frame, 0);
+    }
+
+    #[test]
+    fn region_rect_clamps_extent_non_negative_but_keeps_origin() {
+        let mut s = sprite();
+        apply_sprite_field(
+            &mut s,
+            SpriteFieldEdit::RegionRect([-4.0, -2.0, -10.0, 8.0]),
+        );
+        // x/y pass through (extract clamps into the source); w/h floor at 0.
+        assert_eq!(s.region_rect, [-4.0, -2.0, 0.0, 8.0]);
+    }
+
+    #[test]
+    fn per_axis_edits_preserve_the_other_components() {
+        // BulkSelect D-1: editing one axis must NOT touch the siblings
+        // (so a bulk edit of one axis can't stomp a diverging sibling).
+        let mut s = sprite();
+        s.offset = [3.0, 5.0];
+        apply_sprite_field(&mut s, SpriteFieldEdit::OffsetX(9.0));
+        assert_eq!(s.offset, [9.0, 5.0], "OffsetX left Y untouched");
+
+        s.region_rect = [1.0, 2.0, 3.0, 4.0];
+        apply_sprite_field(&mut s, SpriteFieldEdit::RegionY(8.0));
+        assert_eq!(s.region_rect, [1.0, 8.0, 3.0, 4.0], "RegionY left X/W/H");
+        // W/H still floor at 0 per-axis.
+        apply_sprite_field(&mut s, SpriteFieldEdit::RegionW(-7.0));
+        assert_eq!(
+            s.region_rect,
+            [1.0, 8.0, 0.0, 4.0],
+            "RegionW floored, rest kept"
+        );
+    }
+
+    #[test]
+    fn clamp_frame_is_idempotent_in_range() {
+        let mut s = sprite();
+        s.hframes = 3;
+        s.vframes = 3;
+        s.frame = 4;
+        clamp_frame(&mut s);
+        assert_eq!(s.frame, 4);
+    }
 }

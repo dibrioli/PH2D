@@ -262,6 +262,7 @@ mod tests {
             translation: Vec2::new(3.0, 4.0),
             rotation: 1.5,
             scale: Vec2::new(2.0, 2.0),
+            ..Transform::IDENTITY
         };
         let bytes = postcard::to_allocvec(&original).unwrap();
 

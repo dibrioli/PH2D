@@ -63,6 +63,9 @@ fn build_world() -> SimWorld {
                 translation: pos,
                 rotation: rot,
                 scale: Vec2::new(scale_factor, scale_factor),
+                // skew=0 → compose/from_transform degenerate bit-
+                // identically to v1, so EXPECTED_GLOBALS_HASH holds.
+                ..Transform::IDENTITY
             })
             .id();
         roots.push(e);
@@ -76,6 +79,7 @@ fn build_world() -> SimWorld {
                     translation: pos,
                     rotation: rot,
                     scale: Vec2::new(1.0, 1.0),
+                    ..Transform::IDENTITY
                 },
                 ChildOf(root),
             ));

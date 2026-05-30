@@ -46,6 +46,7 @@ pub mod root_order;
 pub mod scene;
 pub mod sim;
 pub mod transform;
+pub mod transform_versioned;
 pub mod visibility;
 
 pub use name::Name;
@@ -56,6 +57,9 @@ pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
     WorklistBuf, is_locked_for_edit, parent_world_transform, propagate_transforms,
     propagate_transforms_into_present,
+};
+pub use transform_versioned::{
+    TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use visibility::Visibility;
 

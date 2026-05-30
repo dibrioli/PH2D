@@ -83,6 +83,7 @@ fn three_level_chain_with_rotation_and_scale() {
             translation: Vec2::new(5.0, 5.0),
             rotation: std::f32::consts::FRAC_PI_2,
             scale: Vec2::new(2.0, 2.0),
+            ..Transform::IDENTITY
         })
         .id();
     // Middle: local translate (1, 0) — after parent's rotation+scale
@@ -120,6 +121,67 @@ fn three_level_chain_with_rotation_and_scale() {
     assert!((mid_g.1.translation().y - 7.0).abs() < eps);
     assert!((leaf_g.1.translation().x - 5.0).abs() < eps);
     assert!((leaf_g.1.translation().y - 9.0).abs() < eps);
+}
+
+#[test]
+fn three_level_skew_cascade_shears_leaf(/* ADR-0025-amendment-1 §5 */) {
+    // Root skew_x = 0.3, mid skew_x = 0.2 → composed skew_x = 0.5
+    // (additive cascade §2.2.1). A leaf translated locally to (0, 1)
+    // under a +0.5 skew_x must land at world (tan(0.5), 1): the +Y
+    // offset is sheared into +X by tan(skew_x). No rotation/scale, so
+    // the only effect observable is the skew shear — the clean smoke.
+    let mut sim = SimWorld::new();
+    let mut present = PresentWorld::new();
+
+    let root = sim
+        .world_mut()
+        .spawn(Transform {
+            skew_x: 0.3,
+            ..Transform::IDENTITY
+        })
+        .id();
+    let mid = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                skew_x: 0.2,
+                ..Transform::IDENTITY
+            },
+            ChildOf(root),
+        ))
+        .id();
+    let leaf = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(0.0, 1.0)),
+            ChildOf(mid),
+        ))
+        .id();
+
+    let mut state = TransformPropagationState::new(sim.world_mut());
+    let mut worklist = WorklistBuf::new();
+    let pairs = extract_pairs(&mut sim, &mut present, &mut state, &mut worklist);
+
+    assert_eq!(pairs.len(), 3);
+    let leaf_g = pairs.iter().find(|(e, _)| *e == leaf).unwrap();
+    let expected_x = libm::tanf(0.5);
+    let eps = 1e-5;
+    assert!(
+        (leaf_g.1.translation().x - expected_x).abs() < eps,
+        "leaf world x = {} (expected tan(0.5) = {}); additive skew cascade or shear broken",
+        leaf_g.1.translation().x,
+        expected_x
+    );
+    assert!(
+        (leaf_g.1.translation().y - 1.0).abs() < eps,
+        "leaf world y = {} (expected 1.0); skew must not move the Y axis here",
+        leaf_g.1.translation().y
+    );
+    // root/mid have no translation → stay at the origin.
+    let root_g = pairs.iter().find(|(e, _)| *e == root).unwrap();
+    let mid_g = pairs.iter().find(|(e, _)| *e == mid).unwrap();
+    assert!(root_g.1.translation().abs_diff_eq(Vec2::ZERO, eps));
+    assert!(mid_g.1.translation().abs_diff_eq(Vec2::ZERO, eps));
 }
 
 #[test]

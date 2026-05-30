@@ -96,6 +96,9 @@ pub(super) fn dispatch(
             translation: ph2d_core::Vec2::new(info.translation[0], info.translation[1]),
             rotation: info.rotation_rad,
             scale: ph2d_core::Vec2::new(info.scale[0], info.scale[1]),
+            // skew_x/skew_y are wired through InspectorTransformInfo in
+            // W2.T2.3 (Skew X/Y sliders); default to identity shear here.
+            ..Transform::IDENTITY
         };
         match postcard::to_allocvec(&t) {
             Ok(data) => {

@@ -66,29 +66,76 @@ pub struct Transform {
     pub translation: Vec2,
     pub rotation: f32,
     pub scale: Vec2,
+    /// Skew X in radians — shear that mixes the local Y axis into X
+    /// (`tan(skew_x)`). Default `0.0` (no skew). Typical authoring
+    /// range `[-π/4, +π/4]`; setters clamp to [`Transform::SKEW_LIMIT`]
+    /// so `tan()` never blows toward ±∞ (ADR-0025-amendment-1 §2.5).
+    ///
+    /// `#[serde(default)]` is documentary defense-in-depth only —
+    /// under postcard (positional, non-self-describing) it is *dead*
+    /// on trailing-missing payloads; the load-bearing back-compat path
+    /// is the [`crate::transform_versioned::TransformVersioned`]
+    /// wrapper enum + `migrate_v1_to_v2` (ADR-0025-amendment-1 §2.3,
+    /// mirrors ADR-0070-amendment-2 for `Sprite`).
+    #[serde(default)]
+    pub skew_x: f32,
+    /// Skew Y in radians — shear that mixes the local X axis into Y
+    /// (`tan(skew_y)`). Default `0.0`. See [`Transform::skew_x`].
+    #[serde(default)]
+    pub skew_y: f32,
 }
 
 impl Transform {
     /// Schema version. Bumped (alongside a migration function) when
-    /// the on-disk layout of `Transform` changes.
-    pub const VERSION: u32 = 1;
+    /// the on-disk layout of `Transform` changes. v1→v2 added
+    /// `skew_x`/`skew_y` (ADR-0025-amendment-1).
+    pub const VERSION: u32 = 2;
+
+    /// Clamp bound for `skew_x`/`skew_y`. `tan(θ)` diverges to ±∞ as
+    /// θ → ±π/2, which would poison the affine matrix; we cap at
+    /// `π/2 − ε` (ε = 0.01 rad ≈ 0.57°) per ADR-0025-amendment-1 §2.5
+    /// / §6. Setters route through [`Transform::clamp_skew`].
+    pub const SKEW_LIMIT: f32 = std::f32::consts::FRAC_PI_2 - 0.01;
 
     /// Identity transform: zero translation, zero rotation, unit
-    /// scale. `const` so it can be used in const initializers.
+    /// scale, zero skew. `const` so it can be used in const
+    /// initializers.
     pub const IDENTITY: Self = Self {
         translation: Vec2::new(0.0, 0.0),
         rotation: 0.0,
         scale: Vec2::new(1.0, 1.0),
+        skew_x: 0.0,
+        skew_y: 0.0,
     };
 
-    /// Pure translation, identity rotation/scale. Most common spawn
-    /// helper — equivalent to Unity's `Vector3.position` set.
+    /// Pure translation, identity rotation/scale/skew. Most common
+    /// spawn helper — equivalent to Unity's `Vector3.position` set.
     pub const fn from_translation(t: Vec2) -> Self {
         Self {
             translation: t,
             rotation: 0.0,
             scale: Vec2::new(1.0, 1.0),
+            skew_x: 0.0,
+            skew_y: 0.0,
         }
+    }
+
+    /// Clamp a skew value to `[−SKEW_LIMIT, +SKEW_LIMIT]` so `tan()`
+    /// stays finite (ADR-0025-amendment-1 §2.5). Inspector / authoring
+    /// setters MUST route skew writes through this.
+    #[inline]
+    pub fn clamp_skew(v: f32) -> f32 {
+        v.clamp(-Self::SKEW_LIMIT, Self::SKEW_LIMIT)
+    }
+
+    /// Builder: set both skew axes (clamped) on a copy of `self`.
+    /// Authoring entry point for the Inspector Skew X/Y sliders.
+    #[inline]
+    #[must_use]
+    pub fn with_skew(mut self, skew_x: f32, skew_y: f32) -> Self {
+        self.skew_x = Self::clamp_skew(skew_x);
+        self.skew_y = Self::clamp_skew(skew_y);
+        self
     }
 
     /// Compose `parent` and `child` (both local-space) into a single
@@ -101,16 +148,37 @@ impl Transform {
     /// `(Self, Self) -> Self` signature without trait dispatch.
     ///
     /// Determinism (HR-5): no FMA, no SIMD reordering; `mul` / `add`
-    /// on `f32` are IEEE 754 bit-deterministic. `sin`/`cos` are NOT —
-    /// Rust std `f32::sin_cos` is implementation-defined and routes
-    /// to platform-specific math libraries (target-triple dependent
-    /// on every supported OS), all of which differ from each other
-    /// in the last 1-2 ulps for non-trivial inputs. We therefore
-    /// route through `libm::sincosf` (pure-Rust, `default-features
-    /// = false` so the `arch` feature is OFF) for ONE implementation
-    /// across all targets — required by the `transform_determinism`
-    /// gate's pinned blake3 EXPECTED_HASH (T1.3.5 spec carry-over;
-    /// precedes ADR-0025-amendment-1 skew wire in W2.T2.2).
+    /// on `f32` are IEEE 754 bit-deterministic. `sin`/`cos`/`tan` are
+    /// NOT — Rust std `f32::sin_cos`/`f32::tan` are implementation-
+    /// defined and route to platform-specific math libraries (target-
+    /// triple dependent on every supported OS), all of which differ
+    /// from each other in the last 1-2 ulps for non-trivial inputs.
+    /// We therefore route through `libm::sincosf` / `libm::tanf`
+    /// (pure-Rust, `default-features = false` so the `arch` feature is
+    /// OFF) for ONE implementation across all targets — required by
+    /// the `transform_determinism` + `transform_versioned_postcard`
+    /// gates' pinned blake3 hashes (T1.3.5 + ADR-0025-amendment-1 §2.4).
+    ///
+    /// # Skew (T·R·Sk·S ordering, ADR-0025-amendment-1 §2.2)
+    ///
+    /// `child` translation is mapped into `parent` space as
+    /// `parent.R · parent.Sk · parent.S · child.t`. `Sk` is the shear
+    /// `[[1, tan(skew_x)], [tan(skew_y), 1]]`. The skew terms are
+    /// written as **additive corrections** to the v1 R·S terms so the
+    /// `skew == 0` case (`tan(0) == 0.0`) degenerates *bit-identically*
+    /// to the v1 math — this is what lets `EXPECTED_GLOBALS_HASH` in
+    /// `tests/transform_determinism.rs` survive the v2 bump unchanged
+    /// (every existing scene has `skew == 0`).
+    ///
+    /// `skew_x`/`skew_y` compose **additively** in the output —
+    /// `parent.skew + child.skew`. This is a documented APPROXIMATION
+    /// (§2.2.1): the exact matrix product of two T·R·Sk·S transforms
+    /// does not decompose into orthogonal (skew_x, skew_y) when
+    /// rotation/scale are non-trivial. The convention is *skew on leaf
+    /// entities, rotation/scale on ancestors* (artists apply skew to
+    /// the final image, not the rig), which keeps 99% of real cases
+    /// exact. A `MatrixTransform` Component (amendment-2) is the escape
+    /// hatch if exact cascade skew is ever needed.
     ///
     /// `debug_assert!(rotation.is_finite())` rejects NaN/Inf inputs
     /// in debug builds — a single corrupted rotation poisons the
@@ -121,17 +189,29 @@ impl Transform {
     #[inline]
     pub fn compose(parent: Self, child: Self) -> Self {
         debug_assert!(
-            parent.rotation.is_finite(),
-            "Transform::compose: parent.rotation is non-finite ({}); poisons the subtree's \
-             GlobalTransform and breaks cross-host bit-identical (signaling-vs-quiet NaN drift). \
-             The caller fed a corrupted rotation — fix at source, not here.",
-            parent.rotation
+            parent.rotation.is_finite() && parent.skew_x.is_finite() && parent.skew_y.is_finite(),
+            "Transform::compose: a parent angle is non-finite (rotation={}, skew_x={}, \
+             skew_y={}); `libm::tanf(NaN) = NaN` and `base + NaN = NaN` poisons the entire \
+             subtree's GlobalTransform and breaks cross-host bit-identical (signaling-vs-quiet \
+             NaN drift). The caller fed a corrupted angle — fix at source, not here.",
+            parent.rotation,
+            parent.skew_x,
+            parent.skew_y
         );
         let (sin, cos) = libm::sincosf(parent.rotation);
-        let sx = child.translation.x * parent.scale.x;
-        let sy = child.translation.y * parent.scale.y;
-        let rx = sx * cos - sy * sin;
-        let ry = sx * sin + sy * cos;
+        let tan_sx = libm::tanf(parent.skew_x);
+        let tan_sy = libm::tanf(parent.skew_y);
+        // Scale child translation by parent scale (v1 base).
+        let s_tx = child.translation.x * parent.scale.x;
+        let s_ty = child.translation.y * parent.scale.y;
+        // Apply parent skew shear. Additive corrections so `tan == 0`
+        // leaves the v1 values bit-identical: `s_ty * 0.0 == 0.0` and
+        // `base + 0.0 == base`.
+        let sk_tx = s_tx + s_ty * tan_sx; // skew_x mixes Y into X
+        let sk_ty = s_ty + s_tx * tan_sy; // skew_y mixes X into Y
+        // Rotate (v1 formula, now over the sheared vector).
+        let rx = sk_tx * cos - sk_ty * sin;
+        let ry = sk_tx * sin + sk_ty * cos;
         Self {
             translation: Vec2::new(parent.translation.x + rx, parent.translation.y + ry),
             rotation: parent.rotation + child.rotation,
@@ -139,6 +219,9 @@ impl Transform {
                 parent.scale.x * child.scale.x,
                 parent.scale.y * child.scale.y,
             ),
+            // Additive skew cascade (documented approximation §2.2.1).
+            skew_x: parent.skew_x + child.skew_x,
+            skew_y: parent.skew_y + child.skew_y,
         }
     }
 }
@@ -243,19 +326,48 @@ pub struct GlobalTransform {
 
 impl GlobalTransform {
     /// Build a world-space affine from a fully-composed (post-walk)
-    /// local-space [`Transform`]. `sin`/`cos` route through
-    /// `libm::sincosf` for cross-OS bit-identical output (see
-    /// `Transform::compose` rationale + T1.3.5 carry-over).
+    /// local-space [`Transform`]. `sin`/`cos`/`tan` route through
+    /// `libm::sincosf` / `libm::tanf` for cross-OS bit-identical output
+    /// (see `Transform::compose` rationale + T1.3.5 carry-over).
+    ///
+    /// The linear part is `R · Sk · S` (T·R·Sk·S ordering,
+    /// ADR-0025-amendment-1 §2.2). The skew terms are **additive
+    /// corrections** to the v1 `R · S` columns so a `skew == 0`
+    /// transform produces a *bit-identical* matrix to v1 — preserving
+    /// `EXPECTED_GLOBALS_HASH` across the v2 bump.
     pub fn from_transform(t: Transform) -> Self {
         debug_assert!(
-            t.rotation.is_finite(),
-            "GlobalTransform::from_transform: t.rotation is non-finite ({}); see Transform::compose docstring for HR-5 rationale.",
-            t.rotation
+            t.rotation.is_finite() && t.skew_x.is_finite() && t.skew_y.is_finite(),
+            "GlobalTransform::from_transform: an angle is non-finite (rotation={}, skew_x={}, \
+             skew_y={}); see Transform::compose docstring for HR-5 rationale.",
+            t.rotation,
+            t.skew_x,
+            t.skew_y
         );
         let (sin, cos) = libm::sincosf(t.rotation);
+        let tan_sx = libm::tanf(t.skew_x);
+        let tan_sy = libm::tanf(t.skew_y);
+        let sx = t.scale.x;
+        let sy = t.scale.y;
+        // v1 base columns (R · S) — kept byte-exact.
+        let x_axis_x = cos * sx;
+        let x_axis_y = sin * sx;
+        let y_axis_x = -sin * sy;
+        let y_axis_y = cos * sy;
+        // Skew corrections (R · Sk · S minus R · S). Each term carries
+        // a `tan_*` factor, so it is `0.0` when the axis is skew-free
+        // and the `base ± 0.0` degenerates bit-identically.
         let matrix = Mat3::from_cols(
-            Vec3::new(cos * t.scale.x, sin * t.scale.x, 0.0),
-            Vec3::new(-sin * t.scale.y, cos * t.scale.y, 0.0),
+            Vec3::new(
+                x_axis_x - sin * tan_sy * sx,
+                x_axis_y + cos * tan_sy * sx,
+                0.0,
+            ),
+            Vec3::new(
+                y_axis_x + cos * tan_sx * sy,
+                y_axis_y + sin * tan_sx * sy,
+                0.0,
+            ),
             Vec3::new(t.translation.x, t.translation.y, 1.0),
         );
         Self { matrix }
@@ -502,6 +614,60 @@ mod tests {
         assert_eq!(got, t);
     }
 
+    /// ADR-0025-amendment-1 §2.5 frozen caps: v2 schema is 5 fields,
+    /// 28 bytes (translation 8 + rotation 4 + scale 8 + skew_x 4 +
+    /// skew_y 4, 4-align), VERSION = 2. A size drift here means a field
+    /// was added/reordered without an amendment-2 + cooker bump.
+    #[test]
+    fn transform_v2_caps_frozen() {
+        assert_eq!(
+            std::mem::size_of::<Transform>(),
+            28,
+            "Transform must be 28 bytes (5 fields); changing the layout requires \
+             ADR-0025-amendment-2 + a Transform::VERSION bump + cooker migration"
+        );
+        assert_eq!(Transform::VERSION, 2);
+    }
+
+    #[test]
+    fn skew_clamp_bounds_tan_finite() {
+        // Over-range skew is clamped so tan() never reaches ±∞.
+        let t = Transform::IDENTITY.with_skew(10.0, -10.0);
+        assert_eq!(t.skew_x, Transform::SKEW_LIMIT);
+        assert_eq!(t.skew_y, -Transform::SKEW_LIMIT);
+        assert!(libm::tanf(t.skew_x).is_finite());
+        assert!(libm::tanf(t.skew_y).is_finite());
+        // In-range values pass through untouched.
+        let u = Transform::IDENTITY.with_skew(0.2, -0.3);
+        assert_eq!(u.skew_x, 0.2);
+        assert_eq!(u.skew_y, -0.3);
+    }
+
+    #[test]
+    fn zero_skew_compose_matches_v1_math_bit_identical() {
+        // The whole golden-hash-survives-the-bump guarantee: skew=0
+        // compose must produce bit-identical translation to the pre-skew
+        // formula. Exercise a non-trivial rotation+scale parent.
+        let parent = Transform {
+            translation: Vec2::new(3.0, -2.0),
+            rotation: 0.9,
+            scale: Vec2::new(2.0, 0.5),
+            ..Transform::IDENTITY
+        };
+        let child = Transform::from_translation(Vec2::new(1.5, -0.75));
+        let got = Transform::compose(parent, child);
+        // Recompute with the explicit v1 formula (no skew terms).
+        let (sin, cos) = libm::sincosf(parent.rotation);
+        let sx = child.translation.x * parent.scale.x;
+        let sy = child.translation.y * parent.scale.y;
+        let rx = sx * cos - sy * sin;
+        let ry = sx * sin + sy * cos;
+        let v1_x = parent.translation.x + rx;
+        let v1_y = parent.translation.y + ry;
+        assert_eq!(got.translation.x.to_bits(), v1_x.to_bits());
+        assert_eq!(got.translation.y.to_bits(), v1_y.to_bits());
+    }
+
     #[test]
     fn translation_composes_additively_with_identity_rotation() {
         let parent = Transform::from_translation(Vec2::new(10.0, 5.0));
@@ -518,6 +684,7 @@ mod tests {
             translation: Vec2::new(0.0, 0.0),
             rotation: 0.0,
             scale: Vec2::new(2.0, 3.0),
+            ..Transform::IDENTITY
         };
         let child = Transform::from_translation(Vec2::new(1.0, 1.0));
         let got = Transform::compose(parent, child);
@@ -532,6 +699,7 @@ mod tests {
             translation: Vec2::new(0.0, 0.0),
             rotation: std::f32::consts::FRAC_PI_2,
             scale: Vec2::new(1.0, 1.0),
+            ..Transform::IDENTITY
         };
         let child = Transform::from_translation(Vec2::new(1.0, 0.0));
         let got = Transform::compose(parent, child);
@@ -547,6 +715,7 @@ mod tests {
             translation: Vec2::new(7.0, -3.0),
             rotation: 1.5,
             scale: Vec2::new(2.0, 2.0),
+            ..Transform::IDENTITY
         };
         let gt = GlobalTransform::from_transform(t);
         assert_eq!(gt.translation(), t.translation);

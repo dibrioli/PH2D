@@ -227,6 +227,17 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # Windows-only: git-bash ships a coreutils `link.exe` (makes
+      # hardlinks) in /usr/bin that SHADOWS MSVC's `link.exe` (the
+      # linker) on the bash PATH. meson's dav1d build then finds the
+      # coreutils one and dies "Found GNU link.exe instead of MSVC … not
+      # a linker". Remove it so meson resolves MSVC's link.exe (now on
+      # PATH from msvc-dev-cmd above).
+      - name: Unshadow MSVC link.exe (remove git coreutils link)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: rm -f "/usr/bin/link.exe" "/usr/bin/link" 2>/dev/null || true
+
       # Windows-only: exclude `target/` and Cargo home from Defender
       # real-time scan. Defender scanning every .o / .rlib / linker
       # intermediate adds ~15-25 % to the Windows wall clock. This

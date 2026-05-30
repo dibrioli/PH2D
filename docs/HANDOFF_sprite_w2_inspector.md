@@ -134,10 +134,16 @@ adicione `live_section!(SECTION_ID, idx, ...)` + separator, e registre a seção
    carregar a basis inteira — task do gizmo); (b) centered/offset usam `size` cheio, não
    a célula do sheet (consistente c/ o modelo PH2D quad=size, mas decisão de spec-fidelity
    Godot p/ o Enio).
-4. **PRÓXIMO: BulkSelect (T2.0)** OU **GlobalTint cascade** OU **refactor `sections.rs`**
-   (já ~1230 linhas, gate `inspector_section_loc_cap` está `#[ignore]`) → depois audit W2
-   final → smoke → ship. BulkSelect não precisa de render (Checkbox::Indeterminate existe;
-   multi-select aplica o edit a N sprites — o drain de `sprite_edits` já é Vec).
+4. ~~**BulkSelect (T2.0)**~~ ✅ **FEITO** (`90d965c`). Editar com N sprites selecionados
+   aplica a TODOS (fan-out no drain); campos divergentes mostram "Mixed" (checkbox
+   Indeterminate · NumberInput em branco · swatch com traço). `compute_sprite_mixed`
+   compara 19 campos. Audit 2-lentes pegou 2 stomps silenciosos (D-1 paired-axis →
+   variantes per-axis OffsetX/Y+RegionX/Y/W/H; F5 swatch sem indicador → traço) +
+   D-3/D-5 — todos fechados.
+5. **PRÓXIMO: GlobalTint cascade** (carry-over §5: tint herdado não cascateia; passe
+   Π(ancestors.tint) análogo a propagate_transforms; smoke `smoke_w2_color_tint.scene`)
+   OU **refactor `sections.rs`** (~1400 linhas; gate `inspector_section_loc_cap` `#[ignore]`)
+   → depois **audit W2 final** (lentes rotacionadas sobre o diff acumulado) → smoke → ship.
 4. **BulkSelect (T2.0)** — Checkbox `Indeterminate` já existe; multi-select aplica o
    edit a N sprites (o drain de `sprite_edits` já é Vec).
 5. **GlobalTint cascade** (handoff §5 carry-over) — pass `Π(ancestors.tint)` análogo a

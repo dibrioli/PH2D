@@ -625,3 +625,99 @@ pub(crate) fn paint_render_source_section(
     paint_button(&btn, btn_rect, scene, text_system, theme);
     cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
 }
+
+/// W2 Sprite Inspector v2 — Color & Tint section (anatomia §03 seção 6).
+/// First increment: the render-ready channels — Opacity (final
+/// multiplier `[0,1]`) and Tint Fill (silhouette). Tint / Self Tint /
+/// Per-corner colors follow once the OKLCH picker is wired (T2.7).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_color_tint_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let label_font = TypeToken::Sm.px();
+    let field_h = ROW_H_PX;
+    let row_gap = Spacing::Sm.px();
+    let label_color = resolve(ColorToken::Text2, theme);
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let collapsed = store.is_collapsed(ids::INSP_LIVE_COLOR_SECTION);
+    let color_id = ids::INSP_LIVE_COLOR_COLOR;
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
+    let header = SectionHeader::new(ids::INSP_LIVE_COLOR_SECTION, "Color & Tint")
+        .collapsible(!collapsed)
+        .color(rgba);
+    let header_rect = Rect::new(x, y, w, header_h);
+    paint_section_header(&header, header_rect, scene, text_system, theme);
+    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
+    {
+        hit_index.register(color_id, circle_rect);
+    }
+    if collapsed {
+        return y + header_h;
+    }
+    let mut cur_y = y + header_h;
+
+    // Opacity row — label + NumberInput (0.05 step), [0,1] clamped at the
+    // ECS-commit boundary (`apply_sprite_field`). Renders immediately.
+    let label_col_w = 78.0_f32; // LITERAL-PX-OK: row-label column width
+    let col_gap = Spacing::Md.px();
+    paint_text(
+        text_system,
+        scene,
+        "Opacity",
+        x,
+        cur_y + (field_h - label_font) * 0.5,
+        label_font,
+        label_col_w,
+        label_color,
+    );
+    let op_x = x + label_col_w + col_gap;
+    let op_w = (w - label_col_w - col_gap).max(0.0);
+    let op_rect = Rect::new(op_x, cur_y, op_w, field_h);
+    hit_index.register(ids::INSP_SPRITE_OPACITY, op_rect);
+    let (op_state, op_value, op_buffer, op_caret, op_anchor) =
+        read_number_input(store, ids::INSP_SPRITE_OPACITY);
+    let op_input = NumberInput::new(ids::INSP_SPRITE_OPACITY, "", op_value)
+        .step(0.05) // LITERAL-PX-OK: opacity NumberInput step
+        .state(op_state);
+    paint_number_input_with_buffer(
+        &op_input,
+        Some(op_buffer),
+        op_caret,
+        op_anchor,
+        op_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += field_h + row_gap;
+
+    // Tint Fill checkbox — silhouette mode (texel RGB ignored, tint RGB
+    // fills). Renders immediately via flip_uv bit 2.
+    let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
+    let (tf_state, tf_value) = store
+        .checkbox(ids::INSP_SPRITE_TINT_FILL)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let tf_rect = Rect::new(x, cur_y, w, cb_h);
+    hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
+            .state(tf_state)
+            .value(tf_value),
+        tf_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += cb_h + SECTION_BOTTOM_PAD_PX;
+
+    cur_y
+}

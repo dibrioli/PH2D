@@ -154,6 +154,7 @@ pub(crate) fn sync_inspector_from_snapshots(
         for (id, on) in [
             (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
             (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
+            (ids::INSP_SPRITE_TINT_FILL, sp.tint_fill),
         ] {
             if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
                 *value = if on {
@@ -162,6 +163,12 @@ pub(crate) fn sync_inspector_from_snapshots(
                     CheckboxValue::Unchecked
                 };
             }
+        }
+        // Opacity NumberInput — don't clobber the buffer while the user
+        // is actively editing this field.
+        if host.store().focus_id() != Some(ids::INSP_SPRITE_OPACITY) {
+            host.store_mut()
+                .set_number_value(ids::INSP_SPRITE_OPACITY, sp.opacity as f64);
         }
     }
 }

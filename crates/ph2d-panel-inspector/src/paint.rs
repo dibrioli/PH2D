@@ -199,7 +199,7 @@ fn paint_inspector(
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 4] = Default::default();
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 5] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -316,6 +316,19 @@ fn paint_inspector(
                 inner_w,
                 y,
                 info,
+            )
+        });
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = live_section!(ids::INSP_LIVE_COLOR_SECTION, 4, SECTION_HEAD_H, {
+            sections::paint_color_tint_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
             )
         });
     }

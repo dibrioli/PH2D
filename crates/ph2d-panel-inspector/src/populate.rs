@@ -17,7 +17,32 @@ pub fn populate(store: &mut WidgetStore) {
     populate_visibility_editor(store);
     populate_render_strategy(store);
     populate_sprite_flip(store);
+    populate_color_tint(store);
     populate_name_editor(store);
+}
+
+/// W2 Sprite Inspector v2 Color & Tint controls: Opacity NumberInput
+/// (default 1.0 = fully opaque) + Tint Fill checkbox (default off). Live
+/// values sync from the snapshot each frame in `sync.rs`.
+fn populate_color_tint(store: &mut WidgetStore) {
+    store.register(
+        ids::INSP_SPRITE_OPACITY,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 1.0,
+            buffer: "1".to_string(),
+            caret: 0,
+            last_committed: 1.0,
+            selection_anchor: None,
+        },
+    );
+    store.register(
+        ids::INSP_SPRITE_TINT_FILL,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
 }
 
 /// W2 Sprite Inspector v2: Flip H / Flip V checkboxes. Default

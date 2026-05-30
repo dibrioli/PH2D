@@ -923,6 +923,8 @@ fn strategy_click_raises_pending_when_kind_differs() {
         can_reimport: true,
         flip_x: false,
         flip_y: false,
+        opacity: 1.0,
+        tint_fill: false,
     });
     // Current = Atlas → click on Individual button publishes.
     assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
@@ -1136,6 +1138,8 @@ fn strategy_click_resets_button_state_to_normal() {
         can_reimport: true,
         flip_x: false,
         flip_y: false,
+        opacity: 1.0,
+        tint_fill: false,
     });
     // Simulate dispatch having set Pressed on the click target.
     if let Some(InteractiveState::Button { state }) =

@@ -227,6 +227,12 @@ pub struct InspectorSpriteInfo {
     pub flip_x: bool,
     /// Logical vertical flip (mirrors sampled V).
     pub flip_y: bool,
+    /// Final opacity multiplier `[0, 1]` (Color & Tint section). Renders
+    /// today via `RenderInstance.opacity`.
+    pub opacity: f32,
+    /// Silhouette mode — texel RGB ignored, tint RGB fills. Renders today
+    /// via `flip_uv` bit 2.
+    pub tint_fill: bool,
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

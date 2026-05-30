@@ -200,6 +200,36 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
+    // W2 Color & Tint — Tint Fill (silhouette) toggled.
+    if let WidgetEvent::Toggled(id) = ev
+        && id == ids::INSP_SPRITE_TINT_FILL
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let checked = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::TintFill(checked),
+        });
+        return true;
+    }
+    // W2 Color & Tint — Opacity NumberInput committed.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == ids::INSP_SPRITE_OPACITY
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let opacity = host
+            .store()
+            .number_value(ids::INSP_SPRITE_OPACITY)
+            .unwrap_or(info.opacity as f64) as f32;
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::Opacity(opacity),
+        });
+        return true;
+    }
     // M14.C — Render Source Strategy switcher.
     if let WidgetEvent::Click(id) = ev
         && let Some(requested) = match id {

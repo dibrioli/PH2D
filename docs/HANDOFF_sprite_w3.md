@@ -85,6 +85,25 @@ das 5 canônicas) = follow-up (sem Project Settings UI).
 
 ⚠️ AJUSTES DO SMOKE pendentes (Enio sinalizou, deixar pro FINAL antes do ship).
 
+PHASE 4 PRONTA (commit `f2754bc`): **VisibilityLayer cull** — `Camera2d.cull_mask`
+(CPU-only, default ALL) + extract pula sprite com `VisibilityLayer` disjunto.
+No-op até a §8 setar mask não-default.
+
+PHASE 5 PRONTA (commits `294b044` render + `620a3ca` §9 UI): **per-node
+TextureFilter/Repeat** render-ready + smoke-testável.
+- **ABI ADR-0070-amendment-5**: `RenderInstance.sampling: u32` CPU-only (160B/13
+  campos; vertex layout GPU intacto 148B/11 attrs). Gates re-lockados.
+- Extract resolve hierárquico (`resolve_texture_filter/repeat`, project default =
+  image_filter setting) → packed sampling. Renderer agrupa runs por `(z_order,
+  texture_id, sampling)` + bind group de atlas por-sampling (lazy, limpo no regrow);
+  `image_filter::sampler_from_tags`. **Texturas individuais = sampler global**
+  (per-node nelas = follow-up; maioria dos casos de filtro é atlas).
+- **§9 Sampling section** (8ª live section): Texture Filter segmented (Inherit/
+  Nearest/Linear) + Texture Repeat segmented (Inherit/Clamp/Repeat/Mirror),
+  snapshot-driven; anti-halo label read-only. Inherit = detach.
+- **Smoke do Enio:** selecionar sprite (atlas) → §9 → Texture Filter Nearest vs
+  Linear → ver pixelado vs suave no canvas.
+
 §7 INFRA-ANTERIOR (já entregue, referência):
 - **Snapshot producer** em `shells/desktop/.../snapshots.rs`: ler os 8 components
   opcionais da entidade → `InspectorOrderingInfo` (ausente → default/None;

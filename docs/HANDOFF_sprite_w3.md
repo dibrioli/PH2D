@@ -9,6 +9,83 @@ LEIA PRIMEIRO o mandato + operacional em `docs/HANDOFF_sprite_solo_coord_impl.md
 decisão autônoma). ESTE doc é o ESTADO pós-W2 + as RECEITAS provadas + o PLANO da W3.
 
 ───────────────────────────────────────────────────────────────────
+§0.5 — PROGRESSO W3 SESSÃO 1 (FUNDAÇÃO DE SORTING ENTREGUE — render-first ⭐)
+───────────────────────────────────────────────────────────────────
+**3 commits LOCAIS (não pushados).** Full gate VERDE (`nextest --workspace`
++ `clippy --workspace --keep-going`); só resta o flake caracterizado cooker
+ISPC-macOS. Fases 1+2 do plano (T3.1–T3.8 + T3.19) 100% fechadas e gateadas.
+
+ENTREGUE:
+- **14 components ECS opcionais** em `crates/ph2d-ecs/src/`: `sorting.rs`
+  (ZIndexOverride/ZAsRelative/SortingLayer+`LayerId`+`SortingLayers` resource/
+  OrderInLayer/YSort+`SortPoint`/SortingGroup/ShowBehindParent/TopLevel) ·
+  `masking.rs` (ClipChildren+`ClipMode`/MaskInteraction+`MaskMode`) ·
+  `sampling.rs` (TextureFilter+`FilterMode`/TextureRepeat+`RepeatMode`) ·
+  `visibility_layer.rs` (VisibilityLayer/OnScreenEnabler+`EnableMode`).
+  Todos registrados no `ComponentRegistry` (`register_ecs_components`, 4→18) →
+  cooker serializa só quando presentes; cenas legadas byte-idênticas
+  (`prefab_cook_hash_is_locked` VERDE). Contadores de registry sincronizados
+  em ph2d-render (5→19) + ph2d-script (5→19).
+- **Pipeline canônico T3.8** (`sort_key.rs`) = equivalente sorting do
+  `propagate_transforms`. `SortKey` lexicográfico 7-estágios.
+  `compute_sort_ranks_into(&mut SortScratch, world, inputs)` zero-alloc (HR-3),
+  `EntityHashMap` (ADR-0022). Integrado no extract (`sim_extract.rs`): `z_order`
+  agora é o rank completo, stampado via query `SimRef` pós-walk; cenas sem
+  components reproduzem a ordem DFS anterior EXATA (zero regressão). `SortScratch`
+  + `sort_inputs` threaded por `app_state`/`init`/`mod`/`run` como `WorklistBuf`.
+- **⚠️ DECISÃO DE COORD gravada no header de `sort_key.rs`:** Z bucketiza ANTES
+  de YSort (honra a semântica normativa §5.2-passo-4 Godot; reconcilia contra a
+  lista de §5.1). **FLAG: escrever `ADR-0073-amendment-1`** formalizando isso.
+- **T3.19 determinismo** (`tests/sorting_pipeline_determinism.rs`): golden
+  travado p/ cena canônica 10-sprites/4-níveis (layers/YSort/SortingGroup/
+  ShowBehindParent/Z) — ordem `[0,7,3,2,4,5,1,6,8,9]`. Quantização YSort via
+  `libm::roundf` (cross-OS).
+
+PRÓXIMO (ordem render-first; cada fase = 1 sessão focada):
+1. **§7 Ordering Inspector** — render JÁ pronto (o pipeline aplica tudo).
+   Construir infra `InspectorOrderingEdit` análoga a `InspectorSpriteEdit`, MAS
+   estes são **components ECS opcionais** (não campos do Sprite): commit =
+   read-component-or-default → apply → `SetComponent` (path genérico já existe,
+   `EditorCommand::SetComponent{entity,type_id,data}`); editar quando ausente
+   = INSERIR o component. Mapa do pipeline Inspector (file:line) abaixo em §3.5.
+   **ANTES de pintar:** verificar widgets — Z Index/OrderInLayer/YSort-axis =
+   NumberInput (axis = 2 NumberInputs como OffsetX/Y, sem Vec2Editor); checkboxes
+   p/ ZAsRelative/ShowBehindParent/TopLevel/YSort.enabled/SortingGroup.sort_at_root;
+   **SortingLayer + SortPoint = enum-picker/dropdown** → conferir se existe na
+   Gallery/showcase; se NÃO, criar widget + showcase + gate ANTES (NÃO inventar).
+   Bump `notes_per_section [_;6]→[_;7]` + `LIVE_SECTION_IDS` + section-count gate.
+2. **VisibilityLayer cull** (T3.12) + `Camera2d.cull_mask` — render-first.
+3. **TextureFilter/Repeat** (T3.11): **DECISÃO TOMADA (padrão-ouro):** preservar
+   a ABI de GPU (vertex layout intacto, `vertex_attr_offsets_match_struct`),
+   estender só o tail CPU-only do `RenderInstance` com `filter_mode`/`repeat_mode`
+   resolvidos hierárquico no extract, **re-lockar `render_instance_pod_size_v4`
+   via `ADR-0070-amendment-5`**, e agrupar draw-calls por sampler (spec §9.1).
+   Depois §9 Sampling section.
+4. **ClipChildren backbuffer (3 modos) + MaskInteraction** (T3.9/T3.10): pass
+   GPU + `clip_children_regression` HEADLESS (render-to-image, spec §6.3 — NÃO
+   smoke visual). Depois §8 Visibility section.
+5. **OrderDebugOverlay** (T3.17) · audit ≥2 lentes (T3.20) · fix erro-zero ·
+   ship + push + CI · smoke do Enio.
+
+§3.5 — MAPA DO PIPELINE INSPECTOR (para §7, file:line):
+- Edit enum + snapshot: `crates/ph2d-editor-core/src/screens/hero.rs`
+  (`InspectorSpriteInfo` L203, `InspectorSpriteMixed` L286, `SpriteFieldEdit` L315).
+- Action: `crates/ph2d-editor-core/src/action_bus.rs:312` (`InspectorSpriteEdit{entity_bits,edit}`).
+- Commit: `shells/desktop/src/render_loop/inspector_commits.rs:32` (`apply_sprite_field`),
+  loop+`SetComponent` L224; BulkSelect fan-out `mod.rs:583`.
+- Snapshot producer + mixed: `shells/desktop/src/render_loop/snapshots.rs`
+  (`compute_sprite_mixed` L22, builder L439). Test-sites: `hero/tests.rs:917,1145`.
+- Section pattern: `crates/ph2d-panel-inspector/src/sections/{transform,render_source}.rs`
+  (3-pernas register/read/paint + threading `y` + `info` param). mod.rs re-export.
+- Paint: `paint.rs` (call site L293, `notes_per_section[_;6]` L189, section-id map L202).
+- Sync: `sync.rs` (`sync_sprite_fields` checkbox L174 seed-on-entity-changed,
+  number L217 per-frame-unless-focused).
+- IDs: `crates/ph2d-editor-core/src/ids.rs` (live sections L478, sprite fields L502;
+  `hash_node_id("str")`).
+- `EditorCommand::SetComponent` (genérico p/ qualquer component):
+  `crates/ph2d-ecs/src/scene/commands.rs:30`.
+
+───────────────────────────────────────────────────────────────────
 §1 — ESTADO (W2 ENTREGUE + CI VERDE + SMOKE OK)
 ───────────────────────────────────────────────────────────────────
 **W2 fechada e PUSHADA.** `origin/main` em `284d55e` (era `d15fbaa`). CI run

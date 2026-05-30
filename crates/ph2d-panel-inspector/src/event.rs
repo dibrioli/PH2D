@@ -14,7 +14,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::screens::hero::{
     InspectorNameInfo, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy,
+    RequestedSpriteStrategy, SpriteFieldEdit,
 };
 use ph2d_editor_core::widget::{ButtonState, CheckboxValue};
 
@@ -178,6 +178,26 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 visible,
             },
         ));
+        return true;
+    }
+    // W2 Sprite Inspector v2 — logical Flip H / Flip V toggled.
+    if let WidgetEvent::Toggled(id) = ev
+        && matches!(id, ids::INSP_SPRITE_FLIP_X | ids::INSP_SPRITE_FLIP_Y)
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let checked = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
+        let edit = if id == ids::INSP_SPRITE_FLIP_X {
+            SpriteFieldEdit::FlipX(checked)
+        } else {
+            SpriteFieldEdit::FlipY(checked)
+        };
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit,
+        });
         return true;
     }
     // M14.C — Render Source Strategy switcher.

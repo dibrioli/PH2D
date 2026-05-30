@@ -16,7 +16,23 @@ pub fn populate(store: &mut WidgetStore) {
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);
+    populate_sprite_flip(store);
     populate_name_editor(store);
+}
+
+/// W2 Sprite Inspector v2: Flip H / Flip V checkboxes. Default
+/// Unchecked (the Sprite default `flip_x = flip_y = false`); the live
+/// value is synced from the snapshot each frame in `sync.rs`.
+fn populate_sprite_flip(store: &mut WidgetStore) {
+    for id in [ids::INSP_SPRITE_FLIP_X, ids::INSP_SPRITE_FLIP_Y] {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    }
 }
 
 fn populate_name_editor(store: &mut WidgetStore) {

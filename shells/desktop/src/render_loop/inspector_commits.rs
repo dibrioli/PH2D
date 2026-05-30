@@ -18,10 +18,119 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy, Toast, ToastQueue,
+    RequestedSpriteStrategy, SpriteFieldEdit, Toast, ToastQueue,
 };
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::collections::BTreeMap;
+
+/// Apply one [`SpriteFieldEdit`] to a `Sprite`, enforcing the schema
+/// invariants the Inspector widgets can't (anatomia §1.6): `hframes`/
+/// `vframes >= 1`, `frame < hframes*vframes`, `opacity ∈ [0, 1]`. The
+/// frame index is re-clamped whenever the grid shrinks so a stale frame
+/// can never index past the sheet. This is the single authoring write
+/// boundary for editable Sprite fields (mirrors `Transform::clamp_skew`).
+fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
+    match edit {
+        SpriteFieldEdit::FlipX(b) => sprite.flip_x = b,
+        SpriteFieldEdit::FlipY(b) => sprite.flip_y = b,
+        SpriteFieldEdit::Centered(b) => sprite.centered = b,
+        SpriteFieldEdit::Offset(o) => sprite.offset = o,
+        SpriteFieldEdit::Hframes(n) => {
+            sprite.hframes = n.max(1);
+            clamp_frame(sprite);
+        }
+        SpriteFieldEdit::Vframes(n) => {
+            sprite.vframes = n.max(1);
+            clamp_frame(sprite);
+        }
+        SpriteFieldEdit::Frame(f) => {
+            sprite.frame = f;
+            clamp_frame(sprite);
+        }
+        SpriteFieldEdit::RegionEnabled(b) => sprite.region_enabled = b,
+        SpriteFieldEdit::RegionRect(r) => sprite.region_rect = r,
+        SpriteFieldEdit::RegionFilterClip(b) => sprite.region_filter_clip = b,
+        SpriteFieldEdit::Tint(c) => sprite.tint = c,
+        SpriteFieldEdit::SelfTint(c) => sprite.self_tint = c,
+        SpriteFieldEdit::TintFill(b) => sprite.tint_fill = b,
+        SpriteFieldEdit::Opacity(o) => sprite.opacity = o.clamp(0.0, 1.0),
+        SpriteFieldEdit::PerCornerTint(p) => sprite.per_corner_tint = p,
+    }
+}
+
+/// Clamp `frame` into `[0, hframes*vframes - 1]`. `hframes`/`vframes`
+/// are always `>= 1` here (set via `apply_sprite_field`), so the grid
+/// has at least one cell.
+fn clamp_frame(sprite: &mut Sprite) {
+    let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
+    if sprite.frame >= cells {
+        sprite.frame = cells - 1;
+    }
+}
+
+#[cfg(test)]
+mod sprite_field_tests {
+    use super::{apply_sprite_field, clamp_frame};
+    use ph2d_editor::SpriteFieldEdit;
+    use ph2d_render::Sprite;
+
+    fn sprite() -> Sprite {
+        Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0])
+    }
+
+    #[test]
+    fn flip_edits_set_the_flags() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(true));
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipY(true));
+        assert!(s.flip_x && s.flip_y);
+        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(false));
+        assert!(!s.flip_x && s.flip_y);
+    }
+
+    #[test]
+    fn opacity_is_clamped_to_unit() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(2.5));
+        assert_eq!(s.opacity, 1.0);
+        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(-0.3));
+        assert_eq!(s.opacity, 0.0);
+    }
+
+    #[test]
+    fn frame_count_floors_at_one_and_reclamps_frame() {
+        let mut s = sprite();
+        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(4));
+        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(2));
+        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(7)); // last cell of 4*2
+        assert_eq!(s.frame, 7);
+        // Shrinking the grid must drag the stale frame back in-range.
+        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(1)); // now 4 cells
+        assert_eq!(s.frame, 3);
+        // 0 is floored to 1 (never a zero-cell sheet).
+        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(0));
+        assert_eq!(s.hframes, 1);
+        assert_eq!(s.frame, 0); // 1*1 = 1 cell → frame 0
+    }
+
+    #[test]
+    fn frame_set_past_grid_is_clamped_immediately() {
+        let mut s = sprite();
+        // default hframes=vframes=1 → only cell is 0.
+        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(99));
+        assert_eq!(s.frame, 0);
+    }
+
+    #[test]
+    fn clamp_frame_is_idempotent_in_range() {
+        let mut s = sprite();
+        s.hframes = 3;
+        s.vframes = 3;
+        s.frame = 4;
+        clamp_frame(&mut s);
+        assert_eq!(s.frame, 4);
+    }
+}
 
 /// Dispatches the 5 inspector commits. Returns `true` if any pushed
 /// a toast.
@@ -32,6 +141,7 @@ pub(super) fn dispatch(
     visibility_edit: Option<InspectorVisibilityInfo>,
     name_edit: Option<InspectorNameInfo>,
     sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
+    sprite_edits: &[(u64, SpriteFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -150,6 +260,41 @@ pub(super) fn dispatch(
             }
             Err(e) => {
                 toasts.push(Toast::error(format!("Visibility encode failed: {e}")));
+                title_dirty = true;
+            }
+        }
+    }
+    // W2 Sprite Inspector v2: drain editable Sprite field edits (flip,
+    // region, sprite-sheet, tint channels, opacity, …). For each, read
+    // the entity's current Sprite, apply the one field (clamped), and
+    // commit the whole struct through the SAME SetComponent path as
+    // Transform. Grouped per-entity isn't necessary — applying edits
+    // sequentially re-reads the just-written Sprite each iteration.
+    for &(entity_bits, edit) in sprite_edits {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let Some(mut sprite) = sim.world().get::<Sprite>(entity).copied() else {
+            continue;
+        };
+        apply_sprite_field(&mut sprite, edit);
+        match postcard::to_allocvec(&sprite) {
+            Ok(data) => {
+                let push_res = editor_queue.push(EditorCommand::SetComponent {
+                    entity: entity_bits,
+                    type_id: sprite_type_id,
+                    data,
+                });
+                if let Err(e) = push_res {
+                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    title_dirty = true;
+                } else if let Err(e) =
+                    apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+                {
+                    toasts.push(Toast::error(format!("Sprite commit failed: {e}")));
+                    title_dirty = true;
+                }
+            }
+            Err(e) => {
+                toasts.push(Toast::error(format!("Sprite encode failed: {e}")));
                 title_dirty = true;
             }
         }

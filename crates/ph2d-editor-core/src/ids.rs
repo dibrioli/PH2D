@@ -866,6 +866,13 @@ pub const HIER_RENAME_INPUT: NodeId = hash_node_id("hier_rename_input");
 /// `Sprite.size` against the current `ProjectSettings.pixels_per_meter`.
 pub const INSP_RENDER_SOURCE_REIMPORT: NodeId = hash_node_id("insp_render_source_reimport");
 
+/// W2 Sprite Inspector v2: logical Flip H / Flip V checkboxes in the
+/// Render Source section. Toggling dispatches an
+/// `EditorAction::InspectorSpriteEdit` with `SpriteFieldEdit::FlipX/FlipY`.
+pub const INSP_SPRITE_FLIP_X: NodeId = hash_node_id("insp_sprite_flip_x");
+/// Vertical flip checkbox — see [`INSP_SPRITE_FLIP_X`].
+pub const INSP_SPRITE_FLIP_Y: NodeId = hash_node_id("insp_sprite_flip_y");
+
 /// M14.5 inspector phase: pixel-format segmented picker in the
 /// Render Source section. Pressed = current choice, Normal = the
 /// alternative. RGBA16 is `Disabled` until the asset crate gains

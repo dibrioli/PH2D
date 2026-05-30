@@ -420,6 +420,8 @@ pub(super) fn publish(
             source_kind,
             source_pixels,
             can_reimport,
+            flip_x: sprite.flip_x,
+            flip_y: sprite.flip_y,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

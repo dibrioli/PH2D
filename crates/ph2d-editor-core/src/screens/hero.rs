@@ -222,6 +222,56 @@ pub struct InspectorSpriteInfo {
     /// `true` when Reimport is meaningful — the entity's source
     /// resolves to an `AssetId` we can re-decode at the new px/m.
     pub can_reimport: bool,
+    /// Logical horizontal flip (mirrors sampled U; survives reparenting).
+    /// Editable via the Render Source / Sprite Sheet Flip toggles (W2).
+    pub flip_x: bool,
+    /// Logical vertical flip (mirrors sampled V).
+    pub flip_y: bool,
+}
+
+/// A single editable `Sprite` field, dispatched Inspector → shell as
+/// [`EditorAction::InspectorSpriteEdit`]. The shell reads the entity's
+/// current `Sprite`, applies the one field (clamping where the schema
+/// requires), and commits the whole struct via
+/// `EditorCommand::SetComponent` — the same write path the Transform
+/// commit uses. Payloads are primitives so this enum stays free of any
+/// `ph2d-render` dependency (editor-core must not depend on the renderer).
+///
+/// Variants are added as each W2 section lands; only the ones a wired
+/// section emits are produced today (Flip in W2.T2.4/T2.5). The full set
+/// is declared up front so the action contract is stable.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SpriteFieldEdit {
+    /// Logical horizontal flip.
+    FlipX(bool),
+    /// Logical vertical flip.
+    FlipY(bool),
+    /// `false` = top-left origin + `offset` applies; `true` = centered.
+    Centered(bool),
+    /// Intrinsic-pixel offset applied after `centered`.
+    Offset([f32; 2]),
+    /// Sprite-sheet columns (`>= 1`; clamped at the commit boundary).
+    Hframes(u32),
+    /// Sprite-sheet rows (`>= 1`).
+    Vframes(u32),
+    /// Active frame index (`< hframes * vframes`; clamped).
+    Frame(u32),
+    /// Region (sub-rect) sampling on/off.
+    RegionEnabled(bool),
+    /// Region rect `[x, y, w, h]` in source pixels.
+    RegionRect([f32; 4]),
+    /// Clamp the sampler to the region (atlas-bleed guard).
+    RegionFilterClip(bool),
+    /// Inherited modulate (cascades to children).
+    Tint([f32; 4]),
+    /// Local modulate (does NOT cascade).
+    SelfTint([f32; 4]),
+    /// Silhouette mode — texel RGB ignored, tint RGB fills.
+    TintFill(bool),
+    /// Final opacity multiplier (`[0, 1]`; clamped).
+    Opacity(f32),
+    /// Per-corner bilinear tint `[TL, TR, BL, BR]`.
+    PerCornerTint([[f32; 4]; 4]),
 }
 
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on

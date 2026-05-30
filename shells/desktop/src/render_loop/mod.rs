@@ -383,6 +383,9 @@ impl crate::App {
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
             let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
+            // Sprite field edits (flip/region/sheet/tint/…) — a Vec so a
+            // bulk edit that touches several fields in one frame all apply.
+            let mut sprite_edits: Vec<(u64, ph2d_editor::SpriteFieldEdit)> = Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
@@ -552,6 +555,9 @@ impl crate::App {
                         strategy,
                     } => {
                         sprite_source_change.get_or_insert((entity_bits, strategy));
+                    }
+                    EditorAction::InspectorSpriteEdit { entity_bits, edit } => {
+                        sprite_edits.push((entity_bits, edit));
                     }
                     EditorAction::InspectorNameEdit(info) => {
                         // Latest-wins (Option-coalesce parity).
@@ -977,6 +983,7 @@ impl crate::App {
                 visibility_edit,
                 name_edit,
                 sprite_source_change,
+                &sprite_edits,
                 hero,
                 sim,
                 renderer,

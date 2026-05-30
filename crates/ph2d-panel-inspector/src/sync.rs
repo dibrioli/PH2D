@@ -9,7 +9,8 @@
 //! live in thread-locals owned by [`crate::state`].
 
 use crate::state::{
-    self, current_inspector_name, current_inspector_transform, current_inspector_visibility,
+    self, current_inspector_name, current_inspector_sprite, current_inspector_transform,
+    current_inspector_visibility,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
@@ -141,5 +142,26 @@ pub(crate) fn sync_inspector_from_snapshots(
         } else {
             CheckboxValue::Unchecked
         };
+    }
+    // W2 Sprite Inspector v2: reflect Sprite.flip_x/flip_y in the Flip
+    // H/V checkboxes (unless a flip edit is mid-flight this frame, so we
+    // don't clobber the user's just-toggled value before it commits).
+    let pending_sprite_edit = host
+        .bus()
+        .iter()
+        .any(|a| matches!(a, EditorAction::InspectorSpriteEdit { .. }));
+    if !pending_sprite_edit && let Some(sp) = current_inspector_sprite() {
+        for (id, on) in [
+            (ids::INSP_SPRITE_FLIP_X, sp.flip_x),
+            (ids::INSP_SPRITE_FLIP_Y, sp.flip_y),
+        ] {
+            if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+                *value = if on {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                };
+            }
+        }
     }
 }

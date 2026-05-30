@@ -302,6 +302,18 @@ pub enum EditorAction {
         strategy: crate::screens::hero::RequestedSpriteStrategy,
     },
 
+    /// Inspector → shell channel for a single editable `Sprite` field
+    /// (flip, sprite-sheet grid, region, tint channels, opacity, …).
+    /// The shell reads the entity's current `Sprite`, applies the one
+    /// `edit` (clamping per the schema), and writes the whole struct via
+    /// `EditorCommand::SetComponent` — same path as the Transform commit.
+    /// Raised by the Render Source / Sprite Sheet / 9-Slice / Color & Tint
+    /// sections (W2 Sprite Inspector v2).
+    InspectorSpriteEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::SpriteFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

@@ -43,7 +43,10 @@ const BASELINE: &[(&str, usize)] = &[
     // for chrome fields (name input, search) — replaced when Fluent
     // runtime ships. Path key is `<crate>/src/<rel>`.
     ("ph2d-panel-hierarchy/src/paint.rs", 1),
-    ("ph2d-panel-inspector/src/sections.rs", 1),
+    // The entity-name TextInput placeholder ("Name…"). Moved from
+    // sections.rs to sections/identity.rs in the §T2.1 per-section split;
+    // i18n migration tracked separately (replaced when Fluent ships).
+    ("ph2d-panel-inspector/src/sections/identity.rs", 1),
 ];
 
 #[test]

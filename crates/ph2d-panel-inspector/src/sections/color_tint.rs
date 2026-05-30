@@ -393,10 +393,10 @@ fn paint_corner_gradient_preview(
             // cells overdraw earlier ones, so the bleed is harmless and
             // the final column/row is hidden under the border stroke below.
             let cell = Rect::new(x0, y0, x1 - x0 + 0.5, y1 - y0 + 0.5); // LITERAL-PX-OK: anti-seam overlap
-            scene.fill_rect(
-                rect_to_vello(cell),
-                VelloColor::from_rgba8(b[0], b[1], b[2], b[3]),
-            );
+            // The user's per-corner tint colors, bilerp'd — sprite content,
+            // not chrome, so it lives outside the theme system.
+            let fill = VelloColor::from_rgba8(b[0], b[1], b[2], b[3]); // LITERAL-COLOR-OK: bilerp'd sprite tint, not chrome
+            scene.fill_rect(rect_to_vello(cell), fill);
         }
     }
     stroke_rounded_rect(

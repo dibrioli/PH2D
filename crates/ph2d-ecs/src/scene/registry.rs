@@ -211,6 +211,23 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::Name>("ph2d::ecs::Name");
     reg.register::<crate::Visibility>("ph2d::ecs::Visibility");
     reg.register::<crate::RootOrder>("ph2d::ecs::RootOrder");
+    // Sprite Inspector v2 W3 — sorting / visibility / sampling
+    // components (spec §02). Optional: serialized only when present, so
+    // legacy scenes are byte-unchanged.
+    reg.register::<crate::SortingLayer>("ph2d::ecs::SortingLayer");
+    reg.register::<crate::OrderInLayer>("ph2d::ecs::OrderInLayer");
+    reg.register::<crate::ZIndexOverride>("ph2d::ecs::ZIndexOverride");
+    reg.register::<crate::ZAsRelative>("ph2d::ecs::ZAsRelative");
+    reg.register::<crate::YSort>("ph2d::ecs::YSort");
+    reg.register::<crate::SortingGroup>("ph2d::ecs::SortingGroup");
+    reg.register::<crate::ShowBehindParent>("ph2d::ecs::ShowBehindParent");
+    reg.register::<crate::TopLevel>("ph2d::ecs::TopLevel");
+    reg.register::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
+    reg.register::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
+    reg.register::<crate::TextureFilter>("ph2d::ecs::TextureFilter");
+    reg.register::<crate::TextureRepeat>("ph2d::ecs::TextureRepeat");
+    reg.register::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
+    reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
 }
 
 #[cfg(test)]
@@ -240,11 +257,17 @@ mod tests {
     fn register_ecs_components_populates_registry() {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
-        assert_eq!(reg.len(), 4);
+        // 4 foundational (Transform/Name/Visibility/RootOrder) + 14 W3
+        // sorting/visibility/sampling components.
+        assert_eq!(reg.len(), 18);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
         assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::ZIndexOverride").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::YSort").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::TextureFilter").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::OnScreenEnabler").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Missing").is_none());
     }
 

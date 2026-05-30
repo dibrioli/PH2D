@@ -10,6 +10,7 @@
 //! path stays zero-alloc after warm-up (`tests/propagate_no_alloc.rs`).
 
 use crate::{Velocity, WORLD_HALF};
+use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
     ChildOf, Entity, PresentWorld, SimRef, SimWorld, Transform, TransformPropagationState,
     WorklistBuf, World, propagate_transforms,
@@ -144,6 +145,11 @@ pub(super) fn run(
     renderer: &SpriteRenderer,
     prop_state: &mut TransformPropagationState,
     worklist: &mut WorklistBuf,
+    // Reusable buffers for the W3.T3.8 canonical sorting pipeline: the
+    // scratch + the per-frame `SortInput` collection (both cleared and
+    // reused — HR-3).
+    sort_scratch: &mut SortScratch,
+    sort_inputs: &mut Vec<SortInput>,
     // Tool live-preview override: when `Some`, the entity's
     // `RenderInstance` is emitted with `texture_id` + `premultiplied`
     // replaced. `None` = emit every sprite from its own `Sprite`
@@ -183,16 +189,18 @@ pub(super) fn run(
     // `RenderInstance` for sprite-bearing entities.
     let atlas = renderer.atlas();
     present.world_mut().clear_entities();
+    // Canonical sorting pipeline (W3.T3.8): the old per-frame DFS
+    // counter is replaced by the full 7-stage order (SortingLayer / Z /
+    // YSort / SortingGroup / ShowBehindParent / DFS). We can't know an
+    // entity's rank until the whole tree is walked, so the walk emits
+    // each `RenderInstance` with a placeholder `z_order` + records a
+    // `SortInput` (entity + world position); after the walk the pipeline
+    // ranks them and we stamp `z_order` via a `SimRef` query. Reusing
+    // `sort_inputs` (cleared, capacity retained) keeps this allocation-
+    // free (HR-3). The DFS fallback still protects bakes that promote an
+    // Atlas sprite (texture_id 0) to Individual (>0) from floating up.
+    sort_inputs.clear();
     ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
-        // Sequential `z_order` assigned in `propagate_transforms`
-        // traversal order (DFS of the ChildOf tree, with roots
-        // collated by `RootOrder`). Stamping the counter onto every
-        // `RenderInstance` lets the renderer sort by `(z_order,
-        // texture_id)` so the visual order mirrors the Hierarchy
-        // panel — without it, a Color-EQ/BgRemoval/Padding bake that
-        // promotes an Atlas sprite (texture_id=0) to Individual
-        // (>0) would silently float to the front of the scene.
-        let mut z_counter: u32 = 0;
         propagate_transforms(
             sim_w,
             prop_state,
@@ -253,8 +261,13 @@ pub(super) fn run(
                         } else {
                             (atlas_uv, texture_id, spr.premultiplied)
                         };
-                    let z_order = z_counter;
-                    z_counter += 1;
+                    // Record this sprite for the sort pipeline; `z_order`
+                    // is patched to the computed rank after the walk.
+                    sort_inputs.push(SortInput {
+                        entity: sim_entity,
+                        world_pos: p,
+                    });
+                    let z_order = 0u32;
                     // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
                     // anatomia §4.2/§4.3): `self_tint × tint × Π(ancestor.tint)`.
                     // The per-sprite `collapsed_tint` (self_tint × tint) lives +
@@ -362,6 +375,18 @@ pub(super) fn run(
                 }
             },
         );
+        // Rank every emitted sprite through the canonical pipeline, then
+        // stamp the rank onto each present `RenderInstance` (matched back
+        // to its sim entity via `SimRef`). The renderer sorts by
+        // `(z_order, texture_id)`; ranks are unique so the texture_id
+        // tie-break never fires.
+        compute_sort_ranks_into(sort_scratch, sim_w, sort_inputs);
+        let mut q = present_w.query::<(&SimRef, &mut RenderInstance)>();
+        for (sim_ref, mut ri) in q.iter_mut(present_w) {
+            if let Some(rank) = sort_scratch.rank(sim_ref.0) {
+                ri.z_order = rank;
+            }
+        }
     });
 }
 

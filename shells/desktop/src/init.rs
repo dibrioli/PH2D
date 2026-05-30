@@ -336,6 +336,8 @@ pub(crate) fn build_initial_state(
             .ok(),
         prop_state,
         worklist,
+        sort_scratch: ph2d_ecs::sort_key::SortScratch::new(),
+        sort_inputs: Vec::new(),
         hero_live,
         next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
         atlas_asset_map: BTreeMap::new(),

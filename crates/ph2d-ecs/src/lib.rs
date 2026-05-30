@@ -40,19 +40,31 @@
 //! preserving the ability to swap or version-bump bevy_ecs without
 //! cascading import churn.
 
+pub mod masking;
 pub mod name;
 pub mod present;
 pub mod root_order;
+pub mod sampling;
 pub mod scene;
 pub mod sim;
+pub mod sort_key;
+pub mod sorting;
 pub mod transform;
 pub mod transform_versioned;
 pub mod visibility;
+pub mod visibility_layer;
 
+pub use masking::{ClipChildren, ClipMode, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;
+pub use sampling::{FilterMode, RepeatMode, TextureFilter, TextureRepeat};
 pub use sim::{SimComponent, SimWorld};
+pub use sort_key::{SortInput, SortKey, compute_sort_ranks};
+pub use sorting::{
+    LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,
+    TopLevel, YSort, ZAsRelative, ZIndexOverride,
+};
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
     WorklistBuf, is_locked_for_edit, parent_world_transform, propagate_transforms,
@@ -62,6 +74,7 @@ pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use visibility::Visibility;
+pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 
 // Re-export bevy_ecs essentials. Keep the surface small per LLM1
 // audit anti-pattern "Acoplar API pública a tipos wgpu::* ou

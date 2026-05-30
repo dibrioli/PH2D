@@ -96,6 +96,8 @@ impl crate::App {
             clipboard: _,
             prop_state,
             worklist,
+            sort_scratch,
+            sort_inputs,
             hero_live,
             next_import_cell,
             atlas_asset_map,
@@ -256,6 +258,8 @@ impl crate::App {
                 renderer,
                 prop_state,
                 worklist,
+                sort_scratch,
+                sort_inputs,
                 bgremoval_preview_override,
                 ppm,
             );

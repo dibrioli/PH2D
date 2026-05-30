@@ -78,7 +78,7 @@ aplica. Matriz de render-readiness HOJE:
 | tint_fill | ✅ | flip_uv bit2 → silhueta |
 | hframes/vframes/frame | ✅ | `sprite_sheet_subrect` no extract (5890469) |
 | region_enabled/region_rect/filter_clip | ✅ | `region_subrect` no extract (`20ba954`); UI `bdc82bf` |
-| **offset / centered** | ❌ | extract NÃO aplica offset (precisa fazer) |
+| offset / centered | ✅ | `Sprite::resolve_anchor` → extract+gizmo (`e85e0e5`); UI `f86e70e` |
 
 Antes de fazer a UI de region (T2.4) ou offset, faça primeiro o sub-UV/offset no
 `shells/desktop/src/render_loop/sim_extract.rs` (padrão `sprite_sheet_subrect`).
@@ -124,11 +124,20 @@ adicione `live_section!(SECTION_ID, idx, ...)` + separator, e registre a seção
    sem shader/ABI); UI = toggle + 4 NumberInput (px) + filter_clip na seção Render Source
    (spec §3.3, NÃO é Rect2Editor — eram 4 NumberInputs). Funciona p/ Atlas E Individual
    (fix de source_pixels via renderer.individual().dims). Auditado 2-lentes.
-3. **offset / centered** — PRÓXIMO. Mesmo padrão render-first: aplicar `offset` (px
-   intrínsecos) + `centered` no extract ANTES da UI. `offset` desloca o quad pós-anchor;
-   `centered=false` move a origem pro top-left. Campos já no `Sprite` + `SpriteFieldEdit`
-   (Offset/Centered) + commit já tratam. Falta: render no extract + 2 controles na seção
-   Sprite Sheet (spec §3.4: Centered toggle + Offset X/Y NumberInputs).
+3. ~~**offset / centered**~~ ✅ **FEITO** (render `e85e0e5` + UI `f86e70e`).
+   `Sprite::resolve_anchor(ppm)` resolve centered/offset no campo `anchor` existente
+   (sem shader/ABI): centered=false → +[w/2,-h/2] (origem top-left), offset px→m via ppm
+   (Godot +y-down → -y local), aditivo sobre o anchor de tool. Aplicado em DOIS sites
+   (extract + gizmo box) p/ a caixa de seleção acompanhar o quad; picking auto-segue
+   (lê `ri.anchor`). 6 testes. **2 carry-overs documentados:** (a) gizmo box decompõe
+   o affine → sob skew+anchor≠0 a caixa desloca (o mesmo skew-F1; GizmoView precisa
+   carregar a basis inteira — task do gizmo); (b) centered/offset usam `size` cheio, não
+   a célula do sheet (consistente c/ o modelo PH2D quad=size, mas decisão de spec-fidelity
+   Godot p/ o Enio).
+4. **PRÓXIMO: BulkSelect (T2.0)** OU **GlobalTint cascade** OU **refactor `sections.rs`**
+   (já ~1230 linhas, gate `inspector_section_loc_cap` está `#[ignore]`) → depois audit W2
+   final → smoke → ship. BulkSelect não precisa de render (Checkbox::Indeterminate existe;
+   multi-select aplica o edit a N sprites — o drain de `sprite_edits` já é Vec).
 4. **BulkSelect (T2.0)** — Checkbox `Indeterminate` já existe; multi-select aplica o
    edit a N sprites (o drain de `sprite_edits` já é Vec).
 5. **GlobalTint cascade** (handoff §5 carry-over) — pass `Π(ancestors.tint)` análogo a

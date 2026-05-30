@@ -450,6 +450,8 @@ pub(super) fn publish(
             region_enabled: sprite.region_enabled,
             region_rect: sprite.region_rect,
             region_filter_clip: sprite.region_filter_clip,
+            centered: sprite.centered,
+            offset: sprite.offset,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

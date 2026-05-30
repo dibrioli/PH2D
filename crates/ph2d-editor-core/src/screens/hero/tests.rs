@@ -934,6 +934,8 @@ fn strategy_click_raises_pending_when_kind_differs() {
         region_enabled: false,
         region_rect: [0.0, 0.0, 0.0, 0.0],
         region_filter_clip: true,
+        centered: true,
+        offset: [0.0, 0.0],
     });
     // Current = Atlas → click on Individual button publishes.
     assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
@@ -1158,6 +1160,8 @@ fn strategy_click_resets_button_state_to_normal() {
         region_enabled: false,
         region_rect: [0.0, 0.0, 0.0, 0.0],
         region_filter_clip: true,
+        centered: true,
+        offset: [0.0, 0.0],
     });
     // Simulate dispatch having set Pressed on the click target.
     if let Some(InteractiveState::Button { state }) =

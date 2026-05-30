@@ -557,6 +557,15 @@ pub const INSP_REGION_H: NodeId = hash_node_id("insp_region_h");
 /// Region filter-clip toggle (anti atlas-bleed). See [`INSP_REGION_ENABLED`].
 pub const INSP_REGION_FILTER_CLIP: NodeId = hash_node_id("insp_region_filter_clip");
 
+/// W2 Sprite Inspector v2 — origin controls (Sprite Sheet section, spec
+/// §3.4). Centered toggle + Offset X/Y px NumberInputs. Renders via
+/// `Sprite::resolve_anchor` (W2.T2.6).
+pub const INSP_SPRITE_CENTERED: NodeId = hash_node_id("insp_sprite_centered");
+/// Intrinsic offset X NumberInput (px). See [`INSP_SPRITE_CENTERED`].
+pub const INSP_SPRITE_OFFSET_X: NodeId = hash_node_id("insp_sprite_offset_x");
+/// Intrinsic offset Y NumberInput (px). See [`INSP_SPRITE_CENTERED`].
+pub const INSP_SPRITE_OFFSET_Y: NodeId = hash_node_id("insp_sprite_offset_y");
+
 /// W2 Sprite Inspector v2 — Sprite Sheet grid controls (render today via
 /// the extract atlas-rect sub-division). HFrames / VFrames / Frame.
 pub const INSP_SPRITE_HFRAMES: NodeId = hash_node_id("insp_sprite_hframes");

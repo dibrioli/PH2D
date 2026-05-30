@@ -1122,13 +1122,32 @@ pub(crate) fn paint_sprite_sheet_section(
             theme,
         );
     };
+    // Origin controls (spec §3.4) — Centered toggle (quad center vs
+    // texture top-left + offset) + Offset X/Y (intrinsic px). Render via
+    // Sprite::resolve_anchor (no atlas-UV change — they move the quad).
+    let cb_h = 18.0_f32; // LITERAL-PX-OK: Checkbox visual height
+    let (ce_state, ce_value) = store
+        .checkbox(ids::INSP_SPRITE_CENTERED)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
+    let ce_rect = Rect::new(x, cur_y, w, cb_h);
+    hit_index.register(ids::INSP_SPRITE_CENTERED, ce_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SPRITE_CENTERED, "Centered")
+            .state(ce_state)
+            .value(ce_value),
+        ce_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += cb_h + row_gap;
     number_row(
         scene,
         text_system,
         hit_index,
         cur_y,
-        "H Frames",
-        ids::INSP_SPRITE_HFRAMES,
+        "Offset X",
+        ids::INSP_SPRITE_OFFSET_X,
     );
     cur_y += field_h + row_gap;
     number_row(
@@ -1136,24 +1155,14 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         hit_index,
         cur_y,
-        "V Frames",
-        ids::INSP_SPRITE_VFRAMES,
+        "Offset Y",
+        ids::INSP_SPRITE_OFFSET_Y,
     );
     cur_y += field_h + row_gap;
-    number_row(
-        scene,
-        text_system,
-        hit_index,
-        cur_y,
-        "Frame",
-        ids::INSP_SPRITE_FRAME,
-    );
-    cur_y += field_h + row_gap;
-
-    // Logical Flip H / Flip V (Sprite.flip_x/flip_y) — spec §3.4 groups
-    // flip with the Sprite Sheet section. Two checkboxes side by side;
-    // toggling dispatches an InspectorSpriteEdit and the shader mirrors
-    // the sampled UV.
+    // Logical Flip H / Flip V (Sprite.flip_x/flip_y) — spec §3.4 orders
+    // flip with the origin controls (after Offset, before the frame
+    // grid). Two checkboxes side by side; toggling dispatches an
+    // InspectorSpriteEdit and the shader mirrors the sampled UV.
     let flip_row_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
     let flip_gap = Spacing::Md.px();
     let flip_half = ((w - flip_gap) * 0.5).max(0.0);
@@ -1185,7 +1194,35 @@ pub(crate) fn paint_sprite_sheet_section(
         text_system,
         theme,
     );
-    cur_y += flip_row_h + SECTION_BOTTOM_PAD_PX;
+    cur_y += flip_row_h + row_gap;
+
+    number_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "H Frames",
+        ids::INSP_SPRITE_HFRAMES,
+    );
+    cur_y += field_h + row_gap;
+    number_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "V Frames",
+        ids::INSP_SPRITE_VFRAMES,
+    );
+    cur_y += field_h + row_gap;
+    number_row(
+        scene,
+        text_system,
+        hit_index,
+        cur_y,
+        "Frame",
+        ids::INSP_SPRITE_FRAME,
+    );
+    cur_y += field_h + SECTION_BOTTOM_PAD_PX;
 
     cur_y
 }

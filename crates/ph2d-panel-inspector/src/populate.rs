@@ -25,9 +25,30 @@ pub fn populate(store: &mut WidgetStore) {
     populate_name_editor(store);
 }
 
-/// W2 Sprite Inspector v2 Sprite Sheet grid: HFrames / VFrames (default
-/// 1) + Frame (default 0). Live values sync from the snapshot.
+/// W2 Sprite Inspector v2 Sprite Sheet grid: Centered toggle (default
+/// on) + Offset X/Y (default 0) + HFrames / VFrames (default 1) + Frame
+/// (default 0). Live values sync from the snapshot.
 fn populate_sprite_sheet(store: &mut WidgetStore) {
+    store.register(
+        ids::INSP_SPRITE_CENTERED,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
+    for id in [ids::INSP_SPRITE_OFFSET_X, ids::INSP_SPRITE_OFFSET_Y] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format!("{:.0}", 0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
     for (id, value) in [
         (ids::INSP_SPRITE_HFRAMES, 1.0_f64),
         (ids::INSP_SPRITE_VFRAMES, 1.0_f64),

@@ -423,6 +423,40 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
+    // W2 origin (spec §3.4) — Centered toggle.
+    if let WidgetEvent::Toggled(id) = ev
+        && id == ids::INSP_SPRITE_CENTERED
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let checked = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::Centered(checked),
+        });
+        return true;
+    }
+    // W2 origin — Offset X/Y px NumberInputs → one Offset edit (re-reads
+    // both, the changed field new + the other from the synced snapshot).
+    if let WidgetEvent::ValueChanged(id) = ev
+        && matches!(id, ids::INSP_SPRITE_OFFSET_X | ids::INSP_SPRITE_OFFSET_Y)
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let cur = info.offset;
+        let rd =
+            |nid, fallback: f32| host.store().number_value(nid).unwrap_or(fallback as f64) as f32;
+        let offset = [
+            rd(ids::INSP_SPRITE_OFFSET_X, cur[0]),
+            rd(ids::INSP_SPRITE_OFFSET_Y, cur[1]),
+        ];
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::Offset(offset),
+        });
+        return true;
+    }
     // M14.C — Render Source Strategy switcher.
     if let WidgetEvent::Click(id) = ev
         && let Some(requested) = match id {

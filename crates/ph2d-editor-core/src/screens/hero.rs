@@ -263,6 +263,13 @@ pub struct InspectorSpriteInfo {
     /// Region filter clip (`Sprite::region_filter_clip`) — clamps the
     /// sampler to `region_rect` (half-texel inset) to stop atlas bleed.
     pub region_filter_clip: bool,
+    /// Origin mode (`Sprite::centered`): `true` (default) = quad center;
+    /// `false` = texture top-left + `offset`. Edited in the Sprite Sheet
+    /// section (W2.T2.6); renders via `Sprite::resolve_anchor`.
+    pub centered: bool,
+    /// Intrinsic image offset in pixels (`Sprite::offset`), applied after
+    /// `centered`. Renders via `Sprite::resolve_anchor` (px → local m).
+    pub offset: [f32; 2],
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

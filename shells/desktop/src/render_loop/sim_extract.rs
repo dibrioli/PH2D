@@ -11,10 +11,34 @@
 
 use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::{
-    PresentWorld, SimRef, SimWorld, Transform, TransformPropagationState, WorklistBuf,
-    propagate_transforms,
+    ChildOf, Entity, PresentWorld, SimRef, SimWorld, Transform, TransformPropagationState,
+    WorklistBuf, World, propagate_transforms,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
+
+/// Render tint folding the ancestor modulate chain (anatomia §4.3):
+/// `self_tint × tint × Π(ancestor.tint)`. Each ancestor contributes its
+/// `tint` — the inheriting "modulate" (Godot) — NOT its `self_tint`,
+/// which is local-only. Non-sprite ancestors (empty parents, pure
+/// transforms) contribute nothing. Walks `ChildOf` bottom-up (O(depth));
+/// the common no-parent case is one component miss + the per-sprite
+/// `collapsed_tint`. No allocation (HR-3). Alpha cascades too (spec §4.4
+/// `Π(modulate_ancestors.a)`); `opacity` stays per-sprite and is NOT
+/// folded here.
+fn cascade_tint_with_ancestors(world: &World, entity: Entity, sprite: &Sprite) -> [f32; 4] {
+    let mut tint = sprite.collapsed_tint(); // self_tint × own tint
+    let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(parent) = cur {
+        if let Some(ps) = world.get::<Sprite>(parent) {
+            tint[0] *= ps.tint[0];
+            tint[1] *= ps.tint[1];
+            tint[2] *= ps.tint[2];
+            tint[3] *= ps.tint[3];
+        }
+        cur = world.get::<ChildOf>(parent).map(|c| c.parent());
+    }
+    tint
+}
 
 /// Select the sprite-sheet cell `frame` from a base UV rect
 /// `[u_min, v_min, u_max, v_max]`, dividing it into an `hframes × vframes`
@@ -232,15 +256,15 @@ pub(super) fn run(
                     let z_order = z_counter;
                     z_counter += 1;
                     // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
-                    // anatomia §4.2/§4.3). `collapsed_tint` = self_tint × tint
-                    // (per-component); the per-sprite collapse logic + its
-                    // unit test live in ph2d-render. The ancestor modulate
-                    // product Π(ancestors.tint) is NOT folded — that needs a
-                    // GlobalTint propagation pass (does not exist yet) and is
-                    // W2 work (the 3-level smoke_w2_color_tint.scene validates
-                    // it). For W1, self_tint defaults WHITE → identity → render
-                    // unchanged. per_corner_tint + opacity passthrough.
-                    let cascade_tint = spr.collapsed_tint();
+                    // anatomia §4.2/§4.3): `self_tint × tint × Π(ancestor.tint)`.
+                    // The per-sprite `collapsed_tint` (self_tint × tint) lives +
+                    // is unit-tested in ph2d-render; `cascade_tint_with_ancestors`
+                    // folds in the inherited modulate chain (W2 — so a parent's
+                    // `tint` actually tints its children, while `self_tint` does
+                    // not). Skipped under a preview override (the override emits
+                    // the SAME tint as the source). per_corner_tint + opacity
+                    // pass through unchanged.
+                    let cascade_tint = cascade_tint_with_ancestors(sim, sim_entity, spr);
                     // Packed flip/fill flags (ADR-0070-amendment-3): bit0=flip_x,
                     // bit1=flip_y, bit2=tint_fill. Encoded via the canonical
                     // helper so the bit layout stays single-sourced with the
@@ -464,5 +488,67 @@ mod region_subrect_tests {
         assert!((r[0] - r[2]).abs() < 1e-6, "U collapsed to a point: {r:?}");
         // Center sits at 10.5/64 in U.
         assert!((r[0] - 10.5 / 64.0).abs() < 1e-6, "{r:?}");
+    }
+}
+
+#[cfg(test)]
+mod cascade_tint_tests {
+    use super::cascade_tint_with_ancestors;
+    use ph2d_ecs::{ChildOf, SimWorld};
+    use ph2d_render::Sprite;
+
+    /// Root(tint A, self_tint B) → child(white) → grandchild(tint C).
+    /// Render tint = self_tint × tint × Π(ancestor.tint); an ancestor
+    /// contributes its `tint` (modulate, cascades) but NOT its `self_tint`
+    /// (local) — the exact distinction Enio's smoke flagged as missing.
+    #[test]
+    fn cascade_folds_ancestor_modulate_not_self_modulate() {
+        let mut sim = SimWorld::new();
+        // Root: tint = half-red, self_tint = half-green (local only).
+        let mut root_s = Sprite::atlas(0, [1.0, 1.0], [0.5, 1.0, 1.0, 1.0]);
+        root_s.self_tint = [1.0, 0.5, 1.0, 1.0];
+        let root = sim.world_mut().spawn(root_s).id();
+        let child = sim
+            .world_mut()
+            .spawn((
+                Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+                ChildOf(root),
+            ))
+            .id();
+        let grandchild = sim
+            .world_mut()
+            .spawn((
+                Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 0.5, 1.0]),
+                ChildOf(child),
+            ))
+            .id();
+
+        let w = sim.world();
+        let cascade = |e| {
+            let s = w.get::<Sprite>(e).unwrap();
+            cascade_tint_with_ancestors(w, e, s)
+        };
+        // Root: self_tint × tint, no ancestors.
+        assert_eq!(cascade(root), [0.5, 0.5, 1.0, 1.0]);
+        // Child: root's TINT (half-red) cascades; root's SELF_TINT
+        // (half-green) does NOT — so green stays 1.0. THE key assertion.
+        assert_eq!(cascade(child), [0.5, 1.0, 1.0, 1.0]);
+        // Grandchild: own tint (half-blue) × child (white) × root tint.
+        assert_eq!(cascade(grandchild), [0.5, 1.0, 0.5, 1.0]);
+    }
+
+    #[test]
+    fn root_sprite_cascade_equals_per_sprite_collapse() {
+        // No parent → identical to the old `collapsed_tint` (zero
+        // regression for every root sprite).
+        let mut sim = SimWorld::new();
+        let mut s = Sprite::atlas(0, [1.0, 1.0], [0.4, 0.5, 0.6, 0.7]);
+        s.self_tint = [0.5, 0.5, 1.0, 0.8];
+        let e = sim.world_mut().spawn(s).id();
+        let w = sim.world();
+        assert_eq!(
+            cascade_tint_with_ancestors(w, e, w.get::<Sprite>(e).unwrap()),
+            w.get::<Sprite>(e).unwrap().collapsed_tint()
+        );
     }
 }

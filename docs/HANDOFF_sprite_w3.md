@@ -84,6 +84,21 @@ das 5 canônicas) = follow-up (sem Project Settings UI).
 + omitidos render-first (W4/fase-7): Translucency Priority/Offset · Order Debug Overlay.
 
 ⚠️ AJUSTES DO SMOKE pendentes (Enio sinalizou, deixar pro FINAL antes do ship).
+SMOKE FIX (commit `90c3a9b`): segmented/dropdown clicks estavam mortos (tabs/opções
+hit-registrados mas não no WidgetStore → `is_focusable` rejeitava) → registrados como
+Button no populate. + §9 label overlap corrigido.
+
+UV TILING (commits `48e3ee8` render + `d615fc8` UI): **TextureRepeat agora
+demonstrável** (era no-op — nada empurrava UV fora de [0,1]).
+- **`UvTransform { scale, offset }`** component opcional (registrado; ecs 18→19).
+- **ADR-0070-amendment-6**: `RenderInstance.uv_xform: [f32;4]` GPU attr @location15
+  (vertex 148→164B, 11→12 attrs, struct 160→176B); RepeatMode resolvido em flip_uv
+  bits3-4. Shader resolve UV no **fragment**: `uv = lerp(sub_rect, wrap(quv*scale+
+  offset, mode))` — wrap DENTRO do sub-rect (sem sangrar atlas). Identity = legacy
+  bit-idêntico. Gates re-lockados; naga compile verde.
+- **§9 UI**: UV Scale X/Y + UV Offset X/Y NumberInputs (editam UvTransform RMW).
+- **Smoke:** atlas sprite → §9 → UV Scale 2/2 → Texture Repeat: Repeat → ladrilha
+  2×2 no próprio rect; Mirror → espelha; Clamp → estica. UV Offset → scroll.
 
 PHASE 4 PRONTA (commit `f2754bc`): **VisibilityLayer cull** — `Camera2d.cull_mask`
 (CPU-only, default ALL) + extract pula sprite com `VisibilityLayer` disjunto.

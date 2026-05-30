@@ -11,7 +11,8 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
 use ph2d_editor_core::widget::{
-    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+    ButtonState, CheckboxState, CheckboxValue, DropdownState, SliderOrientation, SliderState,
+    TextInputState,
 };
 
 pub fn populate(store: &mut WidgetStore) {
@@ -52,7 +53,12 @@ fn populate_ordering(store: &mut WidgetStore) {
             },
         );
     }
-    for id in [ids::INSP_ORDER_Z_INDEX, ids::INSP_ORDER_ORDER_IN_LAYER] {
+    for id in [
+        ids::INSP_ORDER_Z_INDEX,
+        ids::INSP_ORDER_ORDER_IN_LAYER,
+        ids::INSP_ORDER_AXIS_X,
+        ids::INSP_ORDER_AXIS_Y,
+    ] {
         store.register(
             id,
             InteractiveState::NumberInput {
@@ -65,6 +71,15 @@ fn populate_ordering(store: &mut WidgetStore) {
             },
         );
     }
+    // Sorting Layer dropdown (default = "Default" layer index 2).
+    store.register(
+        ids::INSP_ORDER_SORTING_LAYER,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(2),
+        },
+    );
 }
 
 /// W2 Sprite Inspector v2 Sprite Sheet grid: Centered toggle (default

@@ -210,10 +210,20 @@ fn sync_ordering_fields(
     for (id, value) in [
         (ids::INSP_ORDER_Z_INDEX, ord.z_index.unwrap_or(0) as f64),
         (ids::INSP_ORDER_ORDER_IN_LAYER, ord.order_in_layer as f64),
+        (ids::INSP_ORDER_AXIS_X, ord.y_sort_axis[0] as f64),
+        (ids::INSP_ORDER_AXIS_Y, ord.y_sort_axis[1] as f64),
     ] {
         if focus != Some(id) {
             host.store_mut().set_number_value(id, value);
         }
+    }
+    // Sorting Layer dropdown selected index — seed on entity switch only
+    // (the option click drives it between switches).
+    if entity_changed
+        && let Some(InteractiveState::Dropdown { selected_index, .. }) =
+            host.store_mut().get_mut(ids::INSP_ORDER_SORTING_LAYER)
+    {
+        *selected_index = Some(ord.sorting_layer as usize);
     }
 }
 

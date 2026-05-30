@@ -520,6 +520,25 @@ pub const INSP_ORDER_SORTING_GROUP: NodeId = hash_node_id("insp_order_sorting_gr
 pub const INSP_ORDER_SORT_AT_ROOT: NodeId = hash_node_id("insp_order_sort_at_root");
 /// "Top Level" marker toggle.
 pub const INSP_ORDER_TOP_LEVEL: NodeId = hash_node_id("insp_order_top_level");
+/// Sorting Layer dropdown chip.
+pub const INSP_ORDER_SORTING_LAYER: NodeId = hash_node_id("insp_order_sorting_layer");
+/// Sorting Layer dropdown option ids (one per canonical project layer,
+/// index = LayerId). Spec §5.2 default set: Background / Midground /
+/// Default / Foreground / UI.
+pub const INSP_ORDER_LAYER_OPT: [NodeId; 5] = [
+    hash_node_id("insp_order_layer_opt_0"),
+    hash_node_id("insp_order_layer_opt_1"),
+    hash_node_id("insp_order_layer_opt_2"),
+    hash_node_id("insp_order_layer_opt_3"),
+    hash_node_id("insp_order_layer_opt_4"),
+];
+/// Y-Sort Sort Point segmented control items (Center / Pivot / Custom).
+pub const INSP_ORDER_SP_CENTER: NodeId = hash_node_id("insp_order_sp_center");
+pub const INSP_ORDER_SP_PIVOT: NodeId = hash_node_id("insp_order_sp_pivot");
+pub const INSP_ORDER_SP_CUSTOM: NodeId = hash_node_id("insp_order_sp_custom");
+/// Y-Sort Custom Axis NumberInputs (shown only when Sort Point = Custom).
+pub const INSP_ORDER_AXIS_X: NodeId = hash_node_id("insp_order_axis_x");
+pub const INSP_ORDER_AXIS_Y: NodeId = hash_node_id("insp_order_axis_y");
 
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
 /// Final opacity Slider (`0..1` storage; renders today via

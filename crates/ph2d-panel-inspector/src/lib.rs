@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod event_ordering;
 mod paint;
 mod populate;
 mod sections;

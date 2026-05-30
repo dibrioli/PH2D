@@ -14,7 +14,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::screens::hero::{
     InspectorNameInfo, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, RequestedSpriteStrategy, SpriteFieldEdit,
+    RequestedSpriteStrategy, SpriteFieldEdit,
 };
 use ph2d_editor_core::widget::{ButtonState, CheckboxValue};
 
@@ -337,62 +337,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
-    // W3 §7 Ordering — checkbox toggles → optional sorting components.
-    if let WidgetEvent::Toggled(id) = ev
-        && let Some(info) = state::current_inspector_ordering()
-    {
-        let checked = matches!(
-            host.store().checkbox(id).map(|(_, v)| v),
-            Some(CheckboxValue::Checked)
-        );
-        let edit = match id {
-            ids::INSP_ORDER_Z_OVERRIDE => {
-                // Attach with the current Z value (store / snapshot / 0);
-                // detach when unchecked.
-                if checked {
-                    let v = host
-                        .store()
-                        .number_value(ids::INSP_ORDER_Z_INDEX)
-                        .map(|f| f as i32)
-                        .or(info.z_index)
-                        .unwrap_or(0);
-                    Some(OrderingFieldEdit::ZIndex(Some(v)))
-                } else {
-                    Some(OrderingFieldEdit::ZIndex(None))
-                }
-            }
-            ids::INSP_ORDER_Z_RELATIVE => Some(OrderingFieldEdit::ZAsRelative(checked)),
-            ids::INSP_ORDER_SHOW_BEHIND => Some(OrderingFieldEdit::ShowBehindParent(checked)),
-            ids::INSP_ORDER_YSORT_ENABLED => Some(OrderingFieldEdit::YSortEnabled(checked)),
-            ids::INSP_ORDER_SORTING_GROUP => Some(OrderingFieldEdit::SortingGroup(checked)),
-            ids::INSP_ORDER_SORT_AT_ROOT => Some(OrderingFieldEdit::SortAtRoot(checked)),
-            ids::INSP_ORDER_TOP_LEVEL => Some(OrderingFieldEdit::TopLevel(checked)),
-            _ => None,
-        };
-        if let Some(edit) = edit {
-            host.bus_mut().push(EditorAction::InspectorOrderingEdit {
-                entity_bits: info.entity_bits,
-                edit,
-            });
-            return true;
-        }
-    }
-    // W3 §7 Ordering — integer NumberInput commits (Z Index, Order in Layer).
-    if let WidgetEvent::ValueChanged(id) = ev
-        && matches!(id, ids::INSP_ORDER_Z_INDEX | ids::INSP_ORDER_ORDER_IN_LAYER)
-        && let Some(info) = state::current_inspector_ordering()
-    {
-        let raw = host.store().number_value(id).unwrap_or(0.0);
-        let v = raw.round() as i32;
-        let edit = if id == ids::INSP_ORDER_Z_INDEX {
-            OrderingFieldEdit::ZIndex(Some(v))
-        } else {
-            OrderingFieldEdit::OrderInLayer(v)
-        };
-        host.bus_mut().push(EditorAction::InspectorOrderingEdit {
-            entity_bits: info.entity_bits,
-            edit,
-        });
+    // W3 §7 Ordering — all ordering widget events (sibling module, LOC).
+    if crate::event_ordering::apply_ordering_event(host, ev) {
         return true;
     }
     // W2 Sprite Sheet — HFrames / VFrames / Frame committed. Integer

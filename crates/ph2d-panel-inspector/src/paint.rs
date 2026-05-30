@@ -429,6 +429,25 @@ fn paint_inspector(
             hit_index.register(opt.id, dd.option_rect(chip, i));
         }
     }
+    // W3 §7 Sorting Layer dropdown popover — same deferred-paint pass,
+    // panel-local pending slot so it never collides with the sample dd.
+    if let Some((sel_idx, chip)) = state::take_pending_ordering_dd() {
+        let label = sections::ordering::LAYER_LABELS
+            .get(sel_idx)
+            .copied()
+            .unwrap_or("Default");
+        let dd = Dropdown::new(
+            ids::INSP_ORDER_SORTING_LAYER,
+            "",
+            sections::ordering::layer_options(),
+        )
+        .selected(label)
+        .open(true);
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
 
     scene.pop_layer();
 

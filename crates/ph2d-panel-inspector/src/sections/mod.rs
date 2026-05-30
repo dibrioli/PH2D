@@ -34,7 +34,7 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
 mod color_tint;
 mod identity;
-mod ordering;
+pub(crate) mod ordering;
 mod render_source;
 mod sprite_sheet;
 mod transform;

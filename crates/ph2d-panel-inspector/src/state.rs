@@ -68,6 +68,14 @@ thread_local! {
         std::cell::RefCell<Option<InspectorOrderingInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// W3 §7: when the Sorting Layer dropdown is open, the section stashes
+    /// `(selected_index, chip_rect)` here so `paint_inspector` paints its
+    /// popover LAST (above every other widget). Panel-local — distinct
+    /// from the showcase's shared `PENDING_DROPDOWN_CHIP`.
+    pub(crate) static PENDING_ORDERING_DD:
+        std::cell::Cell<Option<(usize, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+
     /// Per-paint display unit + pixels_per_meter for Transform section
     /// labels + value formatting.
     pub(crate) static CURRENT_DISPLAY_UNIT: std::cell::Cell<ph2d_editor_core::project::DisplayUnit> =
@@ -118,6 +126,16 @@ pub fn set_current_inspector_ordering(info: Option<InspectorOrderingInfo>) {
 
 pub(crate) fn current_inspector_ordering() -> Option<InspectorOrderingInfo> {
     CURRENT_INSPECTOR_ORDERING.with(|c| *c.borrow())
+}
+
+pub(crate) fn set_pending_ordering_dd(
+    chip: Option<(usize, ph2d_editor_core::zones::Rect)>,
+) {
+    PENDING_ORDERING_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_ordering_dd() -> Option<(usize, ph2d_editor_core::zones::Rect)> {
+    PENDING_ORDERING_DD.with(|c| c.take())
 }
 
 pub fn set_current_display_unit(

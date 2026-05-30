@@ -98,6 +98,18 @@ Para CADA task/fase do plano, em ordem, **sem parar**:
     `inspector_commits.rs`). Construir ISSO antes das seções editáveis. Depois: T2.1
     refactor sections.rs · T2.7 = **estender** BlenderColorPicker (OKLCH já existe) ·
     T2.0 BulkSelect (Checkbox::Indeterminate já existe) · GlobalTint cascade · audit W2 · smoke.
+  - **Render do skew FECHADO + AUDITADO** (`025bd8c`, ADR-0070-amendment-4):
+    `RenderInstance.rotation`→`basis [f32;4]`; shader aplica a base 2×2 (paralelogramo
+    real, não retângulo rotacionado). Auditoria 2-lentes: álgebra correta à mão,
+    no-skew bit-equivalente (zero regressão), picking inverte a base. **Carry-overs de
+    skew-divergence (out-of-scope, pré-existentes, handoff aos donos):**
+    F1 (LOW, cosmético/ADR-ack) gizmo `snapshots.rs build_view` ainda decompõe → caixa
+    de seleção não casa com o sprite cisalhado; fix = rotear por `world_aabb_half_extents`
+    + `basis_apply` (exportar de picking.rs). F2 (MED) `bgremoval_preview.rs` overlay
+    ignora skew + ordem anchor×scale divergente → preview desalinha sob skew. F3 (MED,
+    data-loss) `rasterize.rs`/`sprite_merge.rs` leem só scale/rotation, **não** zeram
+    skew ao assar → sprite assado fica double-sheared. Nenhum é regressão do fix; o fix
+    apenas tornou a divergência visível.
 - **W1 schema-bump FECHADO + CI VERDE** (origin/main em `d15fbaa`). Commits:
   f28db39 (migrator/load_sprite) · e41bff8 (RenderInstance v4 ABI 144B, 11 attrs)
   · 51cca9d (shader §4.2 + extract + arch-gate + bench + ADR-0070-amendment-3

@@ -97,10 +97,11 @@ pub struct Sprite {
     /// quad center: the TOOL_PIVOT tool writes it directly, and the
     /// Padding tool's "Keep" mode sets it so an asymmetric resize keeps
     /// the original content + pivot world-fixed while only the
-    /// transparent borders grow. Extract multiplies it by
-    /// `GlobalTransform.scale` (exactly as it does `size`) before
-    /// stamping `RenderInstance.anchor`; the shader adds it to the
-    /// centered quad corner so rotation orbits the pivot, not the quad.
+    /// transparent borders grow. Since ADR-0070-amendment-4 extract
+    /// stamps this raw into `RenderInstance.anchor` (LOCAL, no longer
+    /// scale-folded); the shader adds it to the centered quad corner
+    /// BEFORE applying the world basis, so the quad orbits the pivot
+    /// (`world_pos`) under rotation/scale/skew, not the quad center.
     ///
     /// `#[serde(default)]` (NOT `skip`): the anchor IS persisted in the
     /// prefab/scene postcard format (a Keep-mode bake must survive

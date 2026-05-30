@@ -515,6 +515,14 @@ pub struct RenderInstance {
     /// identical). A wider flags reconciliation (e.g. packing
     /// `tint_fill`) is a W1.T1.11 contract decision, deferred here.
     pub flip_uv: u32,
+    /// UV tiling/scroll transform (`@location(15)`, ADR-0070-amendment-6):
+    /// `[scale.x, scale.y, offset.x, offset.y]`. The fragment samples
+    /// `wrap(quad_uv * scale + offset)` INSIDE the sprite's own sub-rect
+    /// (no atlas bleed), where the wrap mode is decoded from
+    /// [`Self::flip_uv`] bits 3–4. `[1, 1, 0, 0]` = identity (W3.T3.11
+    /// UvTransform; spec §9.2 tiling/scroll). GPU-read, so it sits before
+    /// the CPU-only tail to keep the vertex attributes contiguous.
+    pub uv_xform: [f32; 4],
 
     /// CPU-side metadata used by the renderer to group same-texture
     /// instances into one draw call; NOT a vertex attribute. Kept after
@@ -566,7 +574,8 @@ impl RenderInstance {
         11 => Float32x4, // per_corner_tint[2] = BottomLeft
         12 => Float32x4, // per_corner_tint[3] = BottomRight
         13 => Float32,   // opacity
-        14 => Uint32,    // flip_uv bitfield (bit0=flip_x, bit1=flip_y)
+        14 => Uint32,    // flip_uv bitfield (bit0=flip_x, bit1=flip_y, bit2=tint_fill, bits3-4=repeat)
+        15 => Float32x4, // uv_xform (scale.xy, offset.xy) — ADR-0070-amendment-6
     ];
 
     pub fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -610,6 +619,21 @@ impl RenderInstance {
         (if flip_x { Self::FLIP_X_BIT } else { 0 })
             | (if flip_y { Self::FLIP_Y_BIT } else { 0 })
             | (if tint_fill { Self::TINT_FILL_BIT } else { 0 })
+    }
+
+    /// Identity [`Self::uv_xform`] — `scale [1,1]`, `offset [0,0]` (no
+    /// tiling, no scroll). Used by every non-tiling construction site.
+    pub const IDENTITY_UV_XFORM: [f32; 4] = [1.0, 1.0, 0.0, 0.0];
+
+    /// Bit offset of the 2-bit resolved-repeat field packed into
+    /// [`Self::flip_uv`] (W3.T3.11): `0 Inherit · 1 Disabled · 2 Enabled
+    /// · 3 Mirror`. The fragment decodes it to pick the in-rect UV wrap.
+    pub const REPEAT_SHIFT: u32 = 3;
+
+    /// Pack a resolved `RepeatMode` tag (`0..=3`) into the `flip_uv`
+    /// repeat bits (OR into the flip-flag word).
+    pub const fn pack_repeat_bits(repeat_tag: u8) -> u32 {
+        ((repeat_tag as u32) & 0b11) << Self::REPEAT_SHIFT
     }
 
     /// Default [`Self::sampling`] key — `Inherit/Inherit`, i.e. the
@@ -702,6 +726,7 @@ mod tests {
             texture_id: RenderInstance::ATLAS_TEXTURE_ID,
             z_order: 0,
             sampling: RenderInstance::SAMPLING_DEFAULT,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
@@ -712,20 +737,20 @@ mod tests {
         // + texture_id u32 (4) + z_order u32 (4) CPU-only = 156 bytes.
         // ADR-0070-amendment-5 adds the CPU-only `sampling: u32` (+4 →
         // 160 B); the GPU vertex layout (148 B / 11 attrs) is unchanged.
-        assert_eq!(bytes.len(), 160);
+        assert_eq!(bytes.len(), 176);
     }
 
     #[test]
     fn vertex_attributes_cover_full_stride() {
-        // The flip_uv flags are the last (11th) vertex attribute, at
-        // location 14. Confirm the attribute array's last offset+size
-        // lands inside the Pod stride so the vertex layout doesn't read
-        // past the instance buffer.
+        // uv_xform is the last (12th) vertex attribute, at location 15
+        // (ADR-0070-amendment-6). Confirm the attribute array's last
+        // offset+size lands inside the Pod stride so the vertex layout
+        // doesn't read past the instance buffer.
         let attrs = RenderInstance::VERTEX_ATTRIBUTES;
         let last = attrs.last().expect("at least one attribute");
-        assert_eq!(last.shader_location, 14, "flip_uv is @location(14)");
-        // Uint32 == 4 bytes.
-        let end = last.offset + 4;
+        assert_eq!(last.shader_location, 15, "uv_xform is @location(15)");
+        // Float32x4 == 16 bytes.
+        let end = last.offset + 16;
         assert!(
             end <= std::mem::size_of::<RenderInstance>() as u64,
             "attr end {end} must fit in stride {}",
@@ -769,6 +794,7 @@ mod tests {
             (12, offset_of!(RenderInstance, per_corner_tint) as u64 + 48),
             (13, offset_of!(RenderInstance, opacity) as u64),
             (14, offset_of!(RenderInstance, flip_uv) as u64),
+            (15, offset_of!(RenderInstance, uv_xform) as u64),
         ];
         let attrs = RenderInstance::VERTEX_ATTRIBUTES;
         assert_eq!(attrs.len(), expect.len(), "attribute count drifted");

@@ -241,6 +241,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::TextureRepeat>("ph2d::ecs::TextureRepeat");
     reg.register::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
     reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
+    reg.register::<crate::UvTransform>("ph2d::ecs::UvTransform");
 }
 
 #[cfg(test)]
@@ -272,7 +273,7 @@ mod tests {
         register_ecs_components(&mut reg);
         // 4 foundational (Transform/Name/Visibility/RootOrder) + 14 W3
         // sorting/visibility/sampling components.
-        assert_eq!(reg.len(), 18);
+        assert_eq!(reg.len(), 19);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

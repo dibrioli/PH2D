@@ -540,6 +540,7 @@ mod tests {
             flip_uv: 0,
             z_order: 0,
             sampling: 0,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         }
     }
 

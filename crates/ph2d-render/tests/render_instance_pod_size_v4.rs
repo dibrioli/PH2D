@@ -14,14 +14,14 @@
 use ph2d_render::RenderInstance;
 
 #[test]
-fn render_instance_pod_size_is_160_bytes() {
+fn render_instance_pod_size_is_176_bytes() {
     assert_eq!(
         std::mem::size_of::<RenderInstance>(),
-        160,
-        "RenderInstance ABI is 160 bytes (ADR-0070-amendment-5: +CPU-only `sampling: u32`; \
-         amendment-4: rotation→basis). The GPU vertex layout (148 B) is unchanged — the new \
-         field is CPU-only metadata. A change to the GPU attrs would desync the vertex \
-         layout — bump requires ADR-0070-amendment-N + a re-bench of sprites_upload_144b_vs_72b."
+        176,
+        "RenderInstance ABI is 176 bytes (amendment-6: +GPU `uv_xform: [f32;4]` for UV \
+         tiling/scroll → vertex layout 164 B / 12 attrs; amendment-5: +CPU-only `sampling`). \
+         A change desyncs the vertex layout — bump requires ADR-0070-amendment-N + a \
+         re-bench of sprites_upload_144b_vs_72b."
     );
 }
 

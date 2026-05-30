@@ -27,7 +27,7 @@ mod tests {
         register_render_components(&mut reg);
         // 18 ecs components (4 foundational + 14 W3 sorting/visibility/
         // sampling) + 1 render component (Sprite).
-        assert_eq!(reg.len(), 19);
+        assert_eq!(reg.len(), 20);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

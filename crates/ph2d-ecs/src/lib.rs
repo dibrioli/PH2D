@@ -59,7 +59,7 @@ pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;
 pub use sampling::{
-    FilterMode, RepeatMode, TextureFilter, TextureRepeat, resolve_texture_filter,
+    FilterMode, RepeatMode, TextureFilter, TextureRepeat, UvTransform, resolve_texture_filter,
     resolve_texture_repeat,
 };
 pub use sim::{SimComponent, SimWorld};

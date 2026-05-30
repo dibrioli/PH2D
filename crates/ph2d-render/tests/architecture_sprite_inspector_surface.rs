@@ -38,10 +38,10 @@ fn sprite_struct_field_count() -> usize {
     20
 }
 
-/// Exactly the 13 v4 `RenderInstance` fields (10 GPU vertex attrs —
-/// counting per_corner_tint as one field that spans 4 attrs — + 3
-/// CPU-only: texture_id / z_order / sampling). Destructure enforces it;
-/// `13` is for the message.
+/// Exactly the 14 v4 `RenderInstance` fields (11 GPU vertex attrs —
+/// per_corner_tint spans 4, + uv_xform from amendment-6 — + 3 CPU-only:
+/// texture_id / z_order / sampling). Destructure enforces it; `14` is
+/// for the message.
 fn render_instance_field_count() -> usize {
     use bytemuck::Zeroable;
     let RenderInstance {
@@ -58,8 +58,9 @@ fn render_instance_field_count() -> usize {
         texture_id: _,
         z_order: _,
         sampling: _,
+        uv_xform: _,
     } = RenderInstance::zeroed();
-    13
+    14
 }
 
 #[test]
@@ -77,11 +78,11 @@ fn sprite_struct_field_count_capped() {
 fn render_instance_field_count_capped() {
     assert_eq!(
         render_instance_field_count(),
-        13,
-        "RenderInstance v4 field count must be exactly 13 (ADR-0070-amendment-5 added \
-         the CPU-only `sampling: u32` for per-node TextureFilter/Repeat draw grouping). \
-         flip_uv is a packed flags word (ADR-0070-amendment-3) — pack new per-instance \
-         GPU bools into its reserved bits instead of adding a vertex attribute."
+        14,
+        "RenderInstance v4 field count must be exactly 14 (amendment-5 added CPU-only \
+         `sampling: u32`; amendment-6 added GPU `uv_xform: [f32;4]` for UV tiling/scroll). \
+         flip_uv is a packed flags word (amendment-3/-6: bits3-4 = repeat) — pack new \
+         per-instance GPU bools into its reserved bits before adding a vertex attribute."
     );
 }
 
@@ -89,11 +90,10 @@ fn render_instance_field_count_capped() {
 fn render_instance_pod_size_capped() {
     assert_eq!(
         std::mem::size_of::<RenderInstance>(),
-        160,
-        "RenderInstance ABI is 160 bytes (ADR-0070-amendment-5: +CPU-only `sampling: u32`; \
-         GPU vertex layout unchanged at 148 B). amendment-4: `rotation: f32` → \
-         `basis: [f32; 4]` so the shader renders skew as a true parallelogram instead \
-         of decomposing to a lossy rotation scalar). Was 144 at v4 freeze."
+        176,
+        "RenderInstance ABI is 176 bytes (amendment-6: +GPU `uv_xform: [f32;4]` for UV \
+         tiling, GPU vertex layout now 164 B / 12 attrs; amendment-5: +CPU-only `sampling`). \
+         A bump requires ADR-0070-amendment-N + a re-bench of sprites_upload_144b_vs_72b."
     );
 }
 

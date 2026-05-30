@@ -8,13 +8,19 @@
 //!
 //! HR-3: `worklist`'s capacity is reused across frames so this hot
 //! path stays zero-alloc after warm-up (`tests/propagate_no_alloc.rs`).
+//!
+// ph2d-loc-cap: per-sprite RenderInstance build accreted every W3 render
+// feature (tint cascade / region / sheet / anchor / flip / sampling /
+// UV tiling / visibility cull / sort). 5 LOC over after amendment-6;
+// follow-up = lift the build closure body into a sibling module (the
+// hot-path context threading makes a mid-session split risky).
 
 use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
     ChildOf, Entity, FilterMode, PresentWorld, RepeatMode, SimRef, SimWorld, Transform,
-    TransformPropagationState, VisibilityLayer, WorklistBuf, World, propagate_transforms,
-    resolve_texture_filter, resolve_texture_repeat,
+    TransformPropagationState, UvTransform, VisibilityLayer, WorklistBuf, World,
+    propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -283,10 +289,15 @@ pub(super) fn run(
                         world_pos: p,
                     });
                     let z_order = 0u32;
-                    // W3.T3.11: per-node TextureFilter/Repeat → sampling key.
-                    let sampling = ph2d_render::RenderInstance::pack_sampling(
-                        resolve_texture_filter(sim, sim_entity, default_filter) as u8,
-                        resolve_texture_repeat(sim, sim_entity, default_repeat) as u8,
+                    // W3.T3.11: per-node filter (→ sampler) + repeat (→ shader
+                    // wrap, in flip_uv) + UV tiling, resolved up the ChildOf chain.
+                    let rfilter = resolve_texture_filter(sim, sim_entity, default_filter);
+                    let rrepeat = resolve_texture_repeat(sim, sim_entity, default_repeat);
+                    let sampling =
+                        ph2d_render::RenderInstance::pack_sampling(rfilter as u8, rrepeat as u8);
+                    let uv_xform = sim.get::<UvTransform>(sim_entity).map_or(
+                        ph2d_render::RenderInstance::IDENTITY_UV_XFORM,
+                        |t| [t.scale[0], t.scale[1], t.offset[0], t.offset[1]],
                     );
                     // Sprite-Inspector-v2 v4 channel collapse (W1.T1.8/T1.10,
                     // anatomia §4.2/§4.3): `self_tint × tint × Π(ancestor.tint)`.
@@ -298,15 +309,14 @@ pub(super) fn run(
                     // the SAME tint as the source). per_corner_tint + opacity
                     // pass through unchanged.
                     let cascade_tint = cascade_tint_with_ancestors(sim, sim_entity, spr);
-                    // Packed flip/fill flags (ADR-0070-amendment-3): bit0=flip_x,
-                    // bit1=flip_y, bit2=tint_fill. Encoded via the canonical
-                    // helper so the bit layout stays single-sourced with the
-                    // WGSL decode. All default false → 0 → no-op.
+                    // Packed flags (amendment-3/-6): bit0=flip_x · bit1=flip_y ·
+                    // bit2=tint_fill · bits3-4=resolved repeat (single-sourced
+                    // helpers keep the bit layout in sync with the WGSL decode).
                     let flip_uv = ph2d_render::RenderInstance::pack_flip_flags(
                         spr.flip_x,
                         spr.flip_y,
                         spr.tint_fill,
-                    );
+                    ) | ph2d_render::RenderInstance::pack_repeat_bits(rrepeat as u8);
                     // Region sub-UV (anatomia §03 §3.5): when enabled,
                     // narrow the base rect to `region_rect` (source pixels
                     // → UV). Applied BEFORE the sheet grid so the grid
@@ -392,6 +402,7 @@ pub(super) fn run(
                         flip_uv,
                         z_order,
                         sampling,
+                        uv_xform,
                     });
                 }
             },

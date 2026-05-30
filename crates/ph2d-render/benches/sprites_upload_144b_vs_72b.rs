@@ -93,6 +93,7 @@ fn build_v4(n: usize) -> Vec<RenderInstance> {
                 texture_id: (i % 8) as u32,
                 z_order: i as u32,
                 sampling: 0,
+                uv_xform: RenderInstance::IDENTITY_UV_XFORM,
             }
         })
         .collect()
@@ -120,7 +121,7 @@ fn build_v3(n: usize) -> Vec<RenderInstanceV3Baseline> {
 fn bench_upload(c: &mut Criterion) {
     // Sanity-pin the strides the comparison rests on, so a future ABI
     // edit that changes them makes the bench's premise visibly wrong.
-    assert_eq!(std::mem::size_of::<RenderInstance>(), 144);
+    assert_eq!(std::mem::size_of::<RenderInstance>(), 176);
     assert_eq!(std::mem::size_of::<RenderInstanceV3Baseline>(), 72);
 
     let mut group = c.benchmark_group("sprites_upload");

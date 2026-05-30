@@ -60,13 +60,22 @@ struct InstanceInput {
     // 1.0 = identity.
     @location(13) opacity: f32,
     // v4 packed flags bitfield (ADR-0070-amendment-3):
-    //   bit0 = flip_x, bit1 = flip_y, bit2 = tint_fill. bits 3+ reserved.
+    //   bit0 = flip_x, bit1 = flip_y, bit2 = tint_fill,
+    //   bits3-4 = resolved RepeatMode (0 Inherit/clamp · 1 Disabled/clamp
+    //   · 2 Enabled/repeat · 3 Mirror) — ADR-0070-amendment-6.
     @location(14) flip_uv: u32,
+    // UV tiling/scroll transform (ADR-0070-amendment-6): scale.xy,
+    // offset.xy. The fragment samples wrap(quad_uv*scale+offset) inside
+    // the sprite's own sub-rect. [1,1,0,0] = identity.
+    @location(15) uv_xform: vec4<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) clip_pos: vec4<f32>,
-    @location(0) uv:   vec2<f32>,
+    // Flipped quad UV in [0,1], interpolated. The fragment turns it into
+    // the texture UV via the tiling transform + in-rect wrap (so tiling
+    // wraps WITHIN the sprite sub-rect — no atlas bleed).
+    @location(0) quv:  vec2<f32>,
     @location(1) tint: vec4<f32>,
     @location(2) premultiplied: f32,
     // Bilinearly-interpolated per-corner tint (anatomia §4.2 step 2).
@@ -75,7 +84,25 @@ struct VertexOutput {
     // tint_fill decoded from flip_uv bit2; >0.5 = silhouette mode.
     // `flat` because it's a per-instance boolean, not a varying.
     @location(5) @interpolate(flat) tint_fill: f32,
+    // Per-instance constants for the fragment's tiling math (flat).
+    @location(6) @interpolate(flat) atlas_uv: vec4<f32>,
+    @location(7) @interpolate(flat) uv_xform: vec4<f32>,
+    @location(8) @interpolate(flat) repeat_mode: u32,
 };
+
+// Wrap `t` into [0,1] per the resolved RepeatMode (W3.T3.11): 2 Enabled
+// → repeat (fract), 3 Mirror → triangle wave, else (Inherit/Disabled) →
+// clamp. Applied per-fragment so tiling stays inside the sprite rect.
+fn wrap_uv(t: vec2<f32>, mode: u32) -> vec2<f32> {
+    switch mode {
+        case 2u: { return fract(t); }
+        case 3u: {
+            let m = t - 2.0 * floor(t * 0.5);  // t mod 2 ∈ [0,2)
+            return 1.0 - abs(m - 1.0);          // 0→0, 1→1, 2→0
+        }
+        default: { return clamp(t, vec2<f32>(0.0), vec2<f32>(1.0)); }
+    }
+}
 
 @vertex
 fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
@@ -103,10 +130,9 @@ fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
     var quv = v.quad_uv;
     if (flip_x) { quv.x = 1.0 - quv.x; }
     if (flip_y) { quv.y = 1.0 - quv.y; }
-    let uv = vec2<f32>(
-        i.atlas_uv.x + quv.x * (i.atlas_uv.z - i.atlas_uv.x),
-        i.atlas_uv.y + quv.y * (i.atlas_uv.w - i.atlas_uv.y),
-    );
+    // The texture UV is resolved in the fragment (tiling + in-rect wrap),
+    // so the vertex just forwards the flipped quad UV + the per-instance
+    // constants the fragment needs.
 
     // Bilinear per-corner tint over the UNFLIPPED quad_uv:
     // (0,0)=TL, (1,0)=TR, (0,1)=BL, (1,1)=BR. At each of the 4 quad
@@ -118,20 +144,34 @@ fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
 
     var out: VertexOutput;
     out.clip_pos = camera.view_proj * vec4<f32>(world, 0.0, 1.0);
-    out.uv = uv;
+    out.quv = quv;
     out.tint = i.tint;
     out.premultiplied = i.premultiplied;
     out.corner = corner;
     out.opacity = i.opacity;
     out.tint_fill = select(0.0, 1.0, (i.flip_uv & 4u) != 0u);
+    out.atlas_uv = i.atlas_uv;
+    out.uv_xform = i.uv_xform;
+    out.repeat_mode = (i.flip_uv >> 3u) & 3u;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // W3.T3.11 tiling/scroll: map the quad UV through the per-sprite
+    // scale/offset, wrap it INSIDE [0,1] (so the tile stays within the
+    // sprite's own sub-rect — never bleeds into atlas neighbours), then
+    // lerp into the sub-rect. Identity (scale 1, offset 0, clamp) → the
+    // wrap is a no-op and `uv` equals the legacy lerp, bit-for-bit.
+    let t = in.quv * in.uv_xform.xy + in.uv_xform.zw;
+    let local = wrap_uv(t, in.repeat_mode);
+    let uv = vec2<f32>(
+        mix(in.atlas_uv.x, in.atlas_uv.z, local.x),
+        mix(in.atlas_uv.y, in.atlas_uv.w, local.y),
+    );
     // anatomia §4.2 canonical multiplicative math. All channels multiply
     // (no add/lerp/max), so composition is commutative and batch-stable.
-    let sample = textureSample(atlas_tex, atlas_sampler, in.uv);
+    let sample = textureSample(atlas_tex, atlas_sampler, uv);
 
     // Step 4 — tint_fill: ignore the texel RGB (silhouette mode), keep
     // alpha. RGB becomes the combined per-corner × cascade tint.

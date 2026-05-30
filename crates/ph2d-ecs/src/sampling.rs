@@ -58,6 +58,33 @@ pub enum RepeatMode {
 #[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TextureRepeat(pub RepeatMode);
 
+/// Per-sprite UV tiling/scroll transform (spec §9.2 use cases: tiling
+/// without a TileMap, background scrolling). The sampled UV inside the
+/// sprite's own sub-rect is `wrap(quad_uv * scale + offset)`, where the
+/// wrap mode comes from the resolved [`RepeatMode`] — so `scale > 1`
+/// tiles and `offset` scrolls, wrapping (Repeat) / mirroring (Mirror) /
+/// clamping (Disabled) inside the sprite rect (no atlas bleed). Optional
+/// component; absence = identity (`scale [1,1]`, `offset [0,0]`).
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UvTransform {
+    pub scale: [f32; 2],
+    pub offset: [f32; 2],
+}
+
+impl UvTransform {
+    /// Identity (no tiling / no scroll).
+    pub const IDENTITY: Self = Self {
+        scale: [1.0, 1.0],
+        offset: [0.0, 0.0],
+    };
+}
+
+impl Default for UvTransform {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
 impl FilterMode {
     /// Resolve `self` against an inherited value: a concrete mode wins;
     /// `Inherit` defers to `inherited`. Used by the extract's

@@ -279,6 +279,7 @@ mod tests {
             flip_uv: 0,
             z_order: 0,
             sampling: 0,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()
@@ -311,6 +312,7 @@ mod tests {
             flip_uv: 0,
             z_order: 0,
             sampling: 0,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()

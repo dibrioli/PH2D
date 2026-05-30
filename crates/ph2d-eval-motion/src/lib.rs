@@ -73,6 +73,7 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
                 // tiebreaker (`texture_id`) groups them into one run.
                 z_order: 0,
                 sampling: 0,
+                uv_xform: RenderInstance::IDENTITY_UV_XFORM,
             }
         })
         .collect()

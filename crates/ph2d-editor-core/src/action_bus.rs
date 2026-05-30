@@ -314,6 +314,18 @@ pub enum EditorAction {
         edit: crate::screens::hero::SpriteFieldEdit,
     },
 
+    /// Inspector → shell channel for a single editable §7 ordering field
+    /// (Z Index, Sorting Layer, Y-Sort, Show Behind Parent, …). Unlike
+    /// [`Self::InspectorSpriteEdit`], each maps to an *optional* ECS
+    /// component: the shell reads-or-defaults, applies, and commits via
+    /// `EditorCommand::SetComponent` (insert/update) or `RemoveComponent`
+    /// (detach). Raised by the Ordering / Sorting section (W3 Sprite
+    /// Inspector v2 §3.7).
+    InspectorOrderingEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::OrderingFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

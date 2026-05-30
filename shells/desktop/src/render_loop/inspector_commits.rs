@@ -18,7 +18,7 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy, SpriteFieldEdit, Toast, ToastQueue,
+    OrderingFieldEdit, RequestedSpriteStrategy, SpriteFieldEdit, Toast, ToastQueue,
 };
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::collections::BTreeMap;
@@ -83,6 +83,9 @@ fn clamp_frame(sprite: &mut Sprite) {
     }
 }
 
+// §7 ordering commit handler lives in the sibling `inspector_ordering`
+// module (HR-18 LOC + separation): `apply_ordering_edit`.
+
 /// Dispatches the 5 inspector commits. Returns `true` if any pushed
 /// a toast.
 #[allow(clippy::too_many_arguments)]
@@ -93,6 +96,7 @@ pub(super) fn dispatch(
     name_edit: Option<InspectorNameInfo>,
     sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
     sprite_edits: &[(u64, SpriteFieldEdit)],
+    ordering_edits: &[(u64, OrderingFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -261,6 +265,25 @@ pub(super) fn dispatch(
             }
         }
     }
+    // W3 Sprite Inspector v2 §7: drain editable ordering edits. Each
+    // maps to an OPTIONAL sorting component — `apply_ordering_edit`
+    // queues a SetComponent (insert/update) or RemoveComponent (detach)
+    // and we apply per edit so a read-modify-write field (YSort /
+    // SortingGroup) re-reads the just-written component next iteration.
+    for &(entity_bits, edit) in ordering_edits {
+        super::inspector_ordering::apply_ordering_edit(
+            sim,
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Ordering commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+
     // M14.E: drain Inspector Name commit → push a
     // `Name(string)` postcard via `EditorCommand::SetComponent`.
     if let Some(info) = name_edit {

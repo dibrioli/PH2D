@@ -379,7 +379,7 @@ fn ysort_key(
             // GlobalTransform (in `inputs`); an ancestor outside the
             // sprite set has no projected point → neutral 0.
             let point = match ys.sort_point {
-                SortPoint::Center | SortPoint::Pivot | SortPoint::Custom(_) => in_set
+                SortPoint::Center | SortPoint::Pivot | SortPoint::Custom => in_set
                     .get(&entity)
                     .map(|&slot| inputs[slot as usize].world_pos)
                     .unwrap_or(Vec2::ZERO),
@@ -485,7 +485,7 @@ mod tests {
             .spawn(YSort {
                 enabled: true,
                 axis: Vec2::new(1.0, 1.0),
-                sort_point: SortPoint::Custom(Vec2::new(1.0, 1.0)),
+                sort_point: SortPoint::Custom,
             })
             .id();
         let a = w.spawn(ChildOf(root)).id(); // x+y = 2

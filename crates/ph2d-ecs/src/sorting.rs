@@ -73,8 +73,11 @@ impl Default for ZAsRelative {
     }
 }
 
-/// Which point of a sprite the Y-sort projects (spec §5.2 passo 3).
-#[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+/// Which point of a sprite the Y-sort projects (spec §5.2 passo 3 +
+/// §3.7). A unit enum — the projection axis lives on [`YSort::axis`]
+/// (the §3.7 "Custom Axis" widget), not inside this variant, so the two
+/// are not double-represented.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortPoint {
     /// Centre of the sprite (default) — uses the world translation.
     #[default]
@@ -82,8 +85,29 @@ pub enum SortPoint {
     /// The sprite pivot (`anchor` applied). Recommended for top-down
     /// RPG (sort by the character's feet).
     Pivot,
-    /// Project onto an arbitrary axis. Iso-45° = `Vec2(1, 1)`.
-    Custom(Vec2),
+    /// Project onto the arbitrary [`YSort::axis`]. Iso-45° = `Vec2(1, 1)`.
+    Custom,
+}
+
+impl SortPoint {
+    /// Tag for the Inspector segmented control / snapshot: 0 Center ·
+    /// 1 Pivot · 2 Custom.
+    pub const fn tag(self) -> u8 {
+        match self {
+            SortPoint::Center => 0,
+            SortPoint::Pivot => 1,
+            SortPoint::Custom => 2,
+        }
+    }
+
+    /// Inverse of [`Self::tag`]; any out-of-range tag maps to `Center`.
+    pub const fn from_tag(tag: u8) -> Self {
+        match tag {
+            1 => SortPoint::Pivot,
+            2 => SortPoint::Custom,
+            _ => SortPoint::Center,
+        }
+    }
 }
 
 /// Y-sort: when an *ancestor* carries `YSort { enabled: true, .. }`,
@@ -252,7 +276,7 @@ mod tests {
 
     #[test]
     fn sort_point_serde_round_trips_custom() {
-        let p = SortPoint::Custom(Vec2::new(1.0, 1.0));
+        let p = SortPoint::Custom;
         let bytes = postcard::to_allocvec(&p).unwrap();
         let back: SortPoint = postcard::from_bytes(&bytes).unwrap();
         assert_eq!(back, p);

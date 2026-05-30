@@ -165,6 +165,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 # { data: Vec<u8> }` and decoded by `apply_editor_commands` via the
 # `ComponentRegistry` registered at boot.
 postcard = { version = "1", features = ["alloc"] }
+# serde: the `Serialize` bound on the §7 ordering-edit `queue_set` helper
+# (postcard-encodes optional sorting components). Already in the lockfile
+# transitively; declaring it direct just names the trait.
+serde = "1"
 wgpu = "28"
 winit = "0.30"
 gilrs = "0.11"

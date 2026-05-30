@@ -22,6 +22,7 @@ mod equalize_sizes_bridge;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
+mod inspector_ordering;
 mod motion_smoke;
 mod padding_bridge;
 mod painter_bridge;
@@ -400,6 +401,9 @@ impl crate::App {
             // Sprite field edits (flip/region/sheet/tint/…) — a Vec so a
             // bulk edit that touches several fields in one frame all apply.
             let mut sprite_edits: Vec<(u64, ph2d_editor::SpriteFieldEdit)> = Vec::new();
+            // §7 ordering edits (W3) — optional-component edits, fanned out
+            // to the selection like sprite edits.
+            let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
@@ -591,6 +595,16 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 sprite_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    EditorAction::InspectorOrderingEdit { entity_bits, edit } => {
+                        // BulkSelect fan-out, same shape as the sprite edit.
+                        if inspector_selection.is_empty() {
+                            ordering_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                ordering_edits.push((t, edit));
                             }
                         }
                     }
@@ -1019,6 +1033,7 @@ impl crate::App {
                 name_edit,
                 sprite_source_change,
                 &sprite_edits,
+                &ordering_edits,
                 hero,
                 sim,
                 renderer,

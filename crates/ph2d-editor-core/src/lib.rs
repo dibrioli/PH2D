@@ -118,9 +118,10 @@ pub use project::{
     MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
 };
 pub use screens::{
-    BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorSpriteInfo,
-    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy, SpriteFieldEdit, ViewFocusKind, paint_hero_screen,
+    BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorOrderingMixed, InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
+    InspectorTransformInfo, InspectorVisibilityInfo, OrderingFieldEdit, RequestedSpriteStrategy,
+    SpriteFieldEdit, ViewFocusKind, paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

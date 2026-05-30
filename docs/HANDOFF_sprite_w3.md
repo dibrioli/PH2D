@@ -61,7 +61,26 @@ Análogo ao keystone `InspectorSpriteEdit` da W2. Destranca §7/§8/§9.
   separados). Golden de determinismo intacto.
 - shell ganhou `serde` como dep direta (bound do `queue_set`; já no lock).
 
-§7 FALTA (a METADE de PAINT UI — superfície grande, beneficia do smoke visual):
+§7 PAINT UI PARTE 1 PRONTA (commit `8cd4410`): a seção §7 Ordering aparece no
+Inspector (7ª live section) com 9 controles checkbox/number funcionando E2E
+(Override Z Index tri-state + Z Index + Z as Relative condicional · Show Behind
+Parent · Order in Layer · Y-Sort · Sorting Group + Sort At Root condicional · Top
+Level). Pipeline completo: bridge thread-local `set_current_inspector_ordering` +
+producer `build_ordering_info`/`ordering_mixed` (inspector_ordering.rs) + sync
+`sync_ordering_fields` + event handlers + `populate_ordering` + paint.rs call +
+`notes_per_section`/`LIVE_SECTION_IDS` [_;6]→[_;7] + 9 control ids + INSP_LIVE_ORDERING.
+Render-ready (edita no Inspector → vê no canvas via pipeline da Fase 2). 711 tests
+verdes. **PRONTO PRO SMOKE VISUAL do Enio.**
+
+§7 FALTA (PARTE 2 — os 3 widgets de alto risco GUI): **Sorting Layer (Dropdown** via
+`take_pending_dropdown_chip`/`paint_dropdown_popover`, precedente `paint.rs` sample-dd)
+· **Y-Sort Sort Point (Segmented** Center/Pivot/Custom via `paint_segmented_group_adaptive`)
+· **Custom Axis (2 NumberInputs** SÓ se Custom). Emitir `OrderingFieldEdit::SortingLayer/
+YSortPoint/YSortAxis` (já existem no enum + commit handler). ids + populate + sync já
+têm o padrão; só falta o paint+event desses 3.
++ omitidos render-first (W4/fase-7): Translucency Priority/Offset · Order Debug Overlay.
+
+§7 INFRA-ANTERIOR (já entregue, referência):
 - **Snapshot producer** em `shells/desktop/.../snapshots.rs`: ler os 8 components
   opcionais da entidade → `InspectorOrderingInfo` (ausente → default/None;
   `z_index: None` quando sem ZIndexOverride) + `compute_ordering_mixed` (BulkSelect,

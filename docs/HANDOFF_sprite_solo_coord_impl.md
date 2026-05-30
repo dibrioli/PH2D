@@ -82,6 +82,22 @@ Para CADA task/fase do plano, em ordem, **sem parar**:
 ───────────────────────────────────────────────────────────────────
 §3 — ESTADO ATUAL (não refaça; construa em cima)
 ───────────────────────────────────────────────────────────────────
+- **W2 EM ANDAMENTO — Transform skew vertical FECHADO (2 commits locais, não pushados):**
+  - **T2.2 foundational** (`ph2d-ecs`): ADR-0025-amendment-1. `Transform` v2 (skew_x/y,
+    28B cap), `compose`/`from_transform` R·Sk·S via `libm::tanf` (skew=0 ⇒ bit-idêntico
+    a v1, golden hash preservado). `transform_versioned.rs` + 3 fixtures v1 (21B) +
+    skew golden + 9 contratos + 3-level cascade smoke. **Auditado 2-lentes** (ABI +
+    determinism): gold-standard. Gap documentado: wrapper é máquina canônica mas
+    ComponentRegistry/cooker serializam Transform BARE (greenfield, simétrico ao Sprite
+    FROZEN) — promover = hook `VersionedComponent` cross-cutting = ADR separado.
+  - **T2.3 UI** (`90227b5`): Skew X/Y editável no Inspector Transform (graus), wire
+    end-to-end (snapshot→sync→paint→event→commit-clamp). editor-core 568 verde.
+  - **PRÓXIMO (pré-requisito p/ T2.4+):** NÃO existe path Inspector→Sprite edit genérico
+    (só `InspectorSpriteSourceChange` + display read-only). T2.4/T2.5/T2.6/T2.8 precisam
+    de um `InspectorSpriteEdit`/`SetComponent::<Sprite>` (análogo ao commit Transform em
+    `inspector_commits.rs`). Construir ISSO antes das seções editáveis. Depois: T2.1
+    refactor sections.rs · T2.7 = **estender** BlenderColorPicker (OKLCH já existe) ·
+    T2.0 BulkSelect (Checkbox::Indeterminate já existe) · GlobalTint cascade · audit W2 · smoke.
 - **W1 schema-bump FECHADO + CI VERDE** (origin/main em `d15fbaa`). Commits:
   f28db39 (migrator/load_sprite) · e41bff8 (RenderInstance v4 ABI 144B, 11 attrs)
   · 51cca9d (shader §4.2 + extract + arch-gate + bench + ADR-0070-amendment-3

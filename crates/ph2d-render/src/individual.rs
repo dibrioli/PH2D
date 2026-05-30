@@ -235,6 +235,13 @@ impl IndividualTextureStore {
         self.entries.get(&id).map(|e| &e.bind_group)
     }
 
+    /// Pixel dimensions `(width, height)` of an entry, or `None` for an
+    /// unknown id. Used by the extract to convert a sprite's pixel-space
+    /// `region_rect` into a UV sub-rect of the (full-unit) texture.
+    pub fn dims(&self, id: u32) -> Option<(u32, u32)> {
+        self.entries.get(&id).map(|e| (e.width, e.height))
+    }
+
     /// Copy the GPU pixel contents of an entry back into a fresh
     /// `Vec<u8>` (RGBA8, tightly packed `width * height * 4`).
     ///

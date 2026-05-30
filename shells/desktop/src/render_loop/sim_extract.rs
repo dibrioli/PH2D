@@ -41,6 +41,55 @@ fn sprite_sheet_subrect(uv: [f32; 4], hframes: u32, vframes: u32, frame: u32) ->
     [nu0, nv0, nu0 + cw, nv0 + ch]
 }
 
+/// Narrow a UV rect to a sprite's pixel-space `region_rect` (anatomia
+/// §03 §3.5). `region` is `[x, y, w, h]` in SOURCE pixels; `(src_w,
+/// src_h)` are the source image's pixel dimensions, so the rect maps to
+/// the fraction `region / src` of the base `uv`. A zero/negative region
+/// or unknown source dims leaves `uv` untouched (region = no-op). When
+/// `filter_clip_half_texel` is `Some((htu, htv))`, the result is inset
+/// by half a texel per side (Godot `region_filter_clip`) so bilinear
+/// sampling can't bleed past the region edge into neighbouring atlas
+/// content. The `htu`/`htv` are in the SAMPLED texture's UV space.
+fn region_subrect(
+    uv: [f32; 4],
+    region: [f32; 4],
+    src_w: f32,
+    src_h: f32,
+    filter_clip_half_texel: Option<(f32, f32)>,
+) -> [f32; 4] {
+    let [u0, v0, u1, v1] = uv;
+    let [rx, ry, rw, rh] = region;
+    if rw <= 0.0 || rh <= 0.0 || src_w <= 0.0 || src_h <= 0.0 {
+        return uv;
+    }
+    let du = u1 - u0;
+    let dv = v1 - v0;
+    // Region beyond the source edges is clamped to the base rect.
+    let mut nu0 = (u0 + du * (rx / src_w)).clamp(u0, u1);
+    let mut nv0 = (v0 + dv * (ry / src_h)).clamp(v0, v1);
+    let mut nu1 = (u0 + du * ((rx + rw) / src_w)).clamp(u0, u1);
+    let mut nv1 = (v0 + dv * ((ry + rh) / src_h)).clamp(v0, v1);
+    if let Some((htu, htv)) = filter_clip_half_texel {
+        nu0 += htu;
+        nv0 += htv;
+        nu1 -= htu;
+        nv1 -= htv;
+        // A region thinner than one texel would invert under the inset;
+        // collapse it to its center so the sample stays inside.
+        if nu1 < nu0 {
+            let m = 0.5 * (nu0 + nu1);
+            nu0 = m;
+            nu1 = m;
+        }
+        if nv1 < nv0 {
+            let m = 0.5 * (nv0 + nv1);
+            nv0 = m;
+            nv1 = m;
+        }
+    }
+    [nu0, nv0, nu1, nv1]
+}
+
 /// Per-frame override that swaps a sprite entity's texture binding
 /// for a transient one — used by the BG-Removal live preview (Lens F,
 /// 2026-05-26) so the preview pixels render through the SAME sprite
@@ -197,13 +246,62 @@ pub(super) fn run(
                         spr.flip_y,
                         spr.tint_fill,
                     );
+                    // Region sub-UV (anatomia §03 §3.5): when enabled,
+                    // narrow the base rect to `region_rect` (source pixels
+                    // → UV). Applied BEFORE the sheet grid so the grid
+                    // divides the region, not the whole source. Skipped
+                    // under a tool preview override (the preview texture is
+                    // a full-frame bake whose pixel space doesn't match the
+                    // authored source's `region_rect`). Default
+                    // `region_enabled = false` → no-op for legacy sprites.
+                    let atlas_uv = if spr.region_enabled && override_for_entity.is_none() {
+                        let src_dims = match spr.source {
+                            ph2d_render::SpriteSource::Atlas { key } => atlas.region_px(key),
+                            ph2d_render::SpriteSource::Individual { texture_id } => {
+                                renderer.individual().dims(texture_id)
+                            }
+                        };
+                        match src_dims {
+                            Some((sw, sh)) => {
+                                // Half-texel size in the SAMPLED texture's UV
+                                // space: atlas sprites sample the shared atlas
+                                // (1 / size_px); individual sprites sample
+                                // their own texture (1 / w, 1 / h).
+                                let half_texel = if spr.region_filter_clip {
+                                    let (tw, th) = match spr.source {
+                                        ph2d_render::SpriteSource::Atlas { .. } => {
+                                            let s = atlas.size_px.max(1) as f32;
+                                            (s, s)
+                                        }
+                                        ph2d_render::SpriteSource::Individual { .. } => {
+                                            (sw.max(1) as f32, sh.max(1) as f32)
+                                        }
+                                    };
+                                    Some((0.5 / tw, 0.5 / th))
+                                } else {
+                                    None
+                                };
+                                region_subrect(
+                                    atlas_uv,
+                                    spr.region_rect,
+                                    sw as f32,
+                                    sh as f32,
+                                    half_texel,
+                                )
+                            }
+                            None => atlas_uv,
+                        }
+                    } else {
+                        atlas_uv
+                    };
                     // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
-                    // base atlas_uv rect into an hframes×vframes grid and
-                    // select `frame`'s cell. The default 1×1 grid is a
-                    // no-op, so legacy sprites render unchanged. Skipped
-                    // under a tool preview override (audit E-3): the
-                    // transient preview texture is a full-frame bake, not
-                    // a sheet, so slicing it would show only one cell.
+                    // (possibly region-narrowed) atlas_uv rect into an
+                    // hframes×vframes grid and select `frame`'s cell. The
+                    // default 1×1 grid is a no-op, so legacy sprites render
+                    // unchanged. Skipped under a tool preview override
+                    // (audit E-3): the transient preview texture is a
+                    // full-frame bake, not a sheet, so slicing it would
+                    // show only one cell.
                     let atlas_uv = if override_for_entity.is_some() {
                         atlas_uv
                     } else {
@@ -270,5 +368,94 @@ mod sprite_sheet_tests {
         let left = sprite_sheet_subrect(base, 2, 1, 0);
         assert!((left[0] - 0.2).abs() < 1e-6 && (left[2] - 0.4).abs() < 1e-6);
         assert!((left[1] - 0.4).abs() < 1e-6 && (left[3] - 0.8).abs() < 1e-6);
+    }
+}
+
+#[cfg(test)]
+mod region_subrect_tests {
+    use super::region_subrect;
+
+    const FULL: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+    fn close(a: [f32; 4], b: [f32; 4]) -> bool {
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-6)
+    }
+
+    #[test]
+    fn zero_or_negative_region_is_identity() {
+        // A degenerate (zero-area) region is treated as "no region".
+        assert_eq!(
+            region_subrect(FULL, [0.0, 0.0, 0.0, 0.0], 64.0, 64.0, None),
+            FULL
+        );
+        assert_eq!(
+            region_subrect(FULL, [10.0, 10.0, -5.0, 8.0], 64.0, 64.0, None),
+            FULL
+        );
+        // Unknown source dims (0) is also identity.
+        assert_eq!(
+            region_subrect(FULL, [0.0, 0.0, 32.0, 32.0], 0.0, 0.0, None),
+            FULL
+        );
+    }
+
+    #[test]
+    fn full_source_region_is_identity() {
+        // region == whole source → the base rect, unchanged.
+        assert!(close(
+            region_subrect(FULL, [0.0, 0.0, 100.0, 100.0], 100.0, 100.0, None),
+            FULL
+        ));
+    }
+
+    #[test]
+    fn right_half_region_maps_to_right_half_uv() {
+        // 100×100 source, region = right half → U in [0.5, 1.0].
+        assert!(close(
+            region_subrect(FULL, [50.0, 0.0, 50.0, 100.0], 100.0, 100.0, None),
+            [0.5, 0.0, 1.0, 1.0]
+        ));
+    }
+
+    #[test]
+    fn region_maps_into_a_non_unit_atlas_rect() {
+        // The source occupies atlas-UV [0.2, 0.2, 0.6, 0.6] (a 0.4×0.4
+        // patch); a centered quarter region [25,25,50,50] of the 100px
+        // source → the middle 0.2×0.2 of that patch = [0.3, 0.3, 0.5, 0.5].
+        let base = [0.2, 0.2, 0.6, 0.6];
+        assert!(close(
+            region_subrect(base, [25.0, 25.0, 50.0, 50.0], 100.0, 100.0, None),
+            [0.3, 0.3, 0.5, 0.5]
+        ));
+    }
+
+    #[test]
+    fn region_beyond_source_edges_is_clamped() {
+        // A region wider than the source can't sample past the base rect.
+        let r = region_subrect(FULL, [0.0, 0.0, 200.0, 200.0], 100.0, 100.0, None);
+        assert!(close(r, FULL));
+    }
+
+    #[test]
+    fn filter_clip_insets_by_half_a_texel() {
+        // 64px atlas texel = 1/64; half-texel = 1/128. Right-half region
+        // [0.5,0,1,1] inset by 1/128 on every side.
+        let ht = 0.5 / 64.0;
+        let r = region_subrect(FULL, [32.0, 0.0, 32.0, 64.0], 64.0, 64.0, Some((ht, ht)));
+        assert!((r[0] - (0.5 + ht)).abs() < 1e-6, "u0 {r:?}");
+        assert!((r[2] - (1.0 - ht)).abs() < 1e-6, "u1 {r:?}");
+        assert!((r[1] - ht).abs() < 1e-6, "v0 {r:?}");
+        assert!((r[3] - (1.0 - ht)).abs() < 1e-6, "v1 {r:?}");
+    }
+
+    #[test]
+    fn sub_texel_region_collapses_to_center_under_filter_clip() {
+        // A 1px-wide region on a 64px source spans 1/64 in U; insetting by
+        // a half-texel (1/128) each side would invert → collapse to center.
+        let ht = 0.5 / 64.0;
+        let r = region_subrect(FULL, [10.0, 0.0, 1.0, 64.0], 64.0, 64.0, Some((ht, ht)));
+        assert!((r[0] - r[2]).abs() < 1e-6, "U collapsed to a point: {r:?}");
+        // Center sits at 10.5/64 in U.
+        assert!((r[0] - 10.5 / 64.0).abs() < 1e-6, "{r:?}");
     }
 }

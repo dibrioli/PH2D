@@ -412,6 +412,14 @@ impl TextureAtlas {
         }
     }
 
+    /// Source pixel dimensions `(w, h)` of `key`'s packed region — i.e.
+    /// the original image size (the atlas packs at native resolution, no
+    /// scaling). `None` for an unknown key. Used by the extract to convert
+    /// a sprite's pixel-space `region_rect` into an atlas-UV sub-rect.
+    pub fn region_px(&self, key: u32) -> Option<(u32, u32)> {
+        self.regions.get(&key).map(|r| (r.w, r.h))
+    }
+
     /// Number of reserved regions. Used by tests; not perf-critical.
     pub fn region_count(&self) -> usize {
         self.regions.len()

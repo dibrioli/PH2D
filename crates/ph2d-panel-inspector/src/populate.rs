@@ -85,17 +85,48 @@ fn populate_color_tint(store: &mut WidgetStore) {
             value: CheckboxValue::Unchecked,
         },
     );
-    // Tint / Self Tint color swatches. Registered as `Plain` (like the
-    // section color-dots in `pre_populate` and grid-snap's swatch) so
-    // `is_focusable` is true and the pointer dispatch arms `active` on
-    // Down → emits `Click` on Up. Without this leg the click is silently
-    // dropped and the picker never opens (the swatch carries no value of
-    // its own — its color lives in the `widget_colors` side-table).
+    // Tint / Self Tint + 4 per-corner color swatches. Registered as
+    // `Plain` (like the section color-dots in `pre_populate` and
+    // grid-snap's swatch) so `is_focusable` is true and the pointer
+    // dispatch arms `active` on Down → emits `Click` on Up. Without this
+    // leg the click is silently dropped and the picker never opens (the
+    // swatch carries no value of its own — its color lives in the
+    // `widget_colors` side-table).
     for id in [
         ids::INSP_SPRITE_TINT_SWATCH,
         ids::INSP_SPRITE_SELF_TINT_SWATCH,
+        ids::INSP_SPRITE_CORNER_TL,
+        ids::INSP_SPRITE_CORNER_TR,
+        ids::INSP_SPRITE_CORNER_BL,
+        ids::INSP_SPRITE_CORNER_BR,
     ] {
         store.register(id, InteractiveState::Plain);
+    }
+    // "Equalize corners" button (copies TL → the other three).
+    store.register(
+        ids::INSP_SPRITE_CORNER_EQUALIZE,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    // Sub-tabs (spec §3.0 D11): segmented Button group, exactly one
+    // `Pressed`. Tint is the default-open sub-tab.
+    for (id, pressed) in [
+        (ids::INSP_COLOR_TAB_TINT, true),
+        (ids::INSP_COLOR_TAB_SELF, false),
+        (ids::INSP_COLOR_TAB_CORNER, false),
+        (ids::INSP_COLOR_TAB_EFFECTS, false),
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: if pressed {
+                    ButtonState::Pressed
+                } else {
+                    ButtonState::Normal
+                },
+            },
+        );
     }
 }
 

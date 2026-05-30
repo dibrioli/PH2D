@@ -248,6 +248,11 @@ pub struct InspectorSpriteInfo {
     /// RGBA `[0, 1]`. Edited via the Self Tint swatch; multiplies
     /// `tint` for this sprite only (Godot `self_modulate` semantics).
     pub self_tint: [f32; 4],
+    /// Per-corner tint `[TL, TR, BL, BR]` — a 4-stop bilinear gradient.
+    /// Each entry linear RGBA `[0, 1]`; default WHITE (no gradient).
+    /// Edited via the Per-corner 2×2 swatch grid (W2.T2.7); renders via
+    /// the shader's `@location(9..12)` per-corner attributes.
+    pub per_corner_tint: [[f32; 4]; 4],
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

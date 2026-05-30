@@ -516,6 +516,31 @@ pub const INSP_SPRITE_TINT_SWATCH: NodeId = hash_node_id("insp_sprite_tint_swatc
 /// Same picker mechanism as [`INSP_SPRITE_TINT_SWATCH`]; dispatched as
 /// `SpriteFieldEdit::SelfTint`.
 pub const INSP_SPRITE_SELF_TINT_SWATCH: NodeId = hash_node_id("insp_sprite_self_tint_swatch");
+/// Per-corner tint swatches `[TL, TR, BL, BR]` — a 4-stop bilinear
+/// gradient (Phaser-style). Each opens the shared picker; the chosen
+/// color replaces one corner of the `[[f32;4];4]` array and dispatches
+/// `SpriteFieldEdit::PerCornerTint`. Renders via the shader's
+/// `@location(9..12)` per-corner attributes.
+pub const INSP_SPRITE_CORNER_TL: NodeId = hash_node_id("insp_sprite_corner_tl");
+/// Per-corner tint swatch — top-right. See [`INSP_SPRITE_CORNER_TL`].
+pub const INSP_SPRITE_CORNER_TR: NodeId = hash_node_id("insp_sprite_corner_tr");
+/// Per-corner tint swatch — bottom-left. See [`INSP_SPRITE_CORNER_TL`].
+pub const INSP_SPRITE_CORNER_BL: NodeId = hash_node_id("insp_sprite_corner_bl");
+/// Per-corner tint swatch — bottom-right. See [`INSP_SPRITE_CORNER_TL`].
+pub const INSP_SPRITE_CORNER_BR: NodeId = hash_node_id("insp_sprite_corner_br");
+/// "Equalize corners" button — copies the top-left corner color to the
+/// other three (spec §3.6 hotkey); dispatches `SpriteFieldEdit::PerCornerTint`.
+pub const INSP_SPRITE_CORNER_EQUALIZE: NodeId = hash_node_id("insp_sprite_corner_equalize");
+/// Color & Tint sub-tabs (spec §3.0 D11 density fix): `[Tint] [Self Tint]
+/// [Per-corner] [Effects]`, one visible at a time. Modeled as a segmented
+/// Button group (exactly one `Pressed`), read via `active_index`.
+pub const INSP_COLOR_TAB_TINT: NodeId = hash_node_id("insp_color_tab_tint");
+/// Color & Tint sub-tab — Self Tint. See [`INSP_COLOR_TAB_TINT`].
+pub const INSP_COLOR_TAB_SELF: NodeId = hash_node_id("insp_color_tab_self");
+/// Color & Tint sub-tab — Per-corner. See [`INSP_COLOR_TAB_TINT`].
+pub const INSP_COLOR_TAB_CORNER: NodeId = hash_node_id("insp_color_tab_corner");
+/// Color & Tint sub-tab — Effects (Tint Fill + Opacity). See [`INSP_COLOR_TAB_TINT`].
+pub const INSP_COLOR_TAB_EFFECTS: NodeId = hash_node_id("insp_color_tab_effects");
 
 /// W2 Sprite Inspector v2 — Sprite Sheet grid controls (render today via
 /// the extract atlas-rect sub-division). HFrames / VFrames / Frame.

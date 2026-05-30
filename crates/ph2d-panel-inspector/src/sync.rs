@@ -45,12 +45,7 @@ pub(crate) fn sync_inspector_from_snapshots(
         // `Some(sp)` sprite block — so it fires even when the new
         // selection has no Sprite (empty entity / note) and the sprite
         // block is skipped entirely.
-        if matches!(
-            host.store().picker_target(),
-            Some(t)
-                if t == ids::INSP_SPRITE_TINT_SWATCH
-                    || t == ids::INSP_SPRITE_SELF_TINT_SWATCH
-        ) {
+        if matches!(host.store().picker_target(), Some(t) if is_sprite_color_swatch(t)) {
             host.store_mut().set_picker_target(None);
         }
         if let Some(info) = transform {
@@ -256,5 +251,48 @@ pub(crate) fn sync_inspector_from_snapshots(
                 host.store_mut().set_widget_color(swatch_id, committed);
             }
         }
+        // Per-corner tint swatches (TL, TR, BL, BR). Same regime as
+        // Tint/Self, but `PerCornerTint` has no per-index variant, so the
+        // edit carries the WHOLE [[f32;4];4] array with just the picked
+        // corner replaced.
+        let corner_ids = [
+            ids::INSP_SPRITE_CORNER_TL,
+            ids::INSP_SPRITE_CORNER_TR,
+            ids::INSP_SPRITE_CORNER_BL,
+            ids::INSP_SPRITE_CORNER_BR,
+        ];
+        for (i, &corner_id) in corner_ids.iter().enumerate() {
+            let committed = state::tint_f32_to_u8(sp.per_corner_tint[i]);
+            if picker_target == Some(corner_id) {
+                if let Some(picked) = host.store().widget_color(corner_id)
+                    && picked != committed
+                {
+                    let mut arr = sp.per_corner_tint;
+                    arr[i] = state::tint_u8_to_f32(picked);
+                    host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                        entity_bits: sp.entity_bits,
+                        edit: SpriteFieldEdit::PerCornerTint(arr),
+                    });
+                }
+            } else {
+                host.store_mut().set_widget_color(corner_id, committed);
+            }
+        }
     }
+}
+
+/// True for any of the 6 Sprite color-swatch ids (Tint, Self Tint, and
+/// the 4 per-corner swatches) whose picker is bound to the current
+/// selection — used to close the picker on an entity switch so the prior
+/// sprite's picked color can't stream onto the next one.
+fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
+    matches!(
+        id,
+        ids::INSP_SPRITE_TINT_SWATCH
+            | ids::INSP_SPRITE_SELF_TINT_SWATCH
+            | ids::INSP_SPRITE_CORNER_TL
+            | ids::INSP_SPRITE_CORNER_TR
+            | ids::INSP_SPRITE_CORNER_BL
+            | ids::INSP_SPRITE_CORNER_BR
+    )
 }

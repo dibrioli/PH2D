@@ -85,6 +85,78 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
 
+    // W2 Color & Tint — sub-tab selection (segmented Button group: pin
+    // exactly one Pressed, mirroring the showcase tab pin). `sections.rs`
+    // reads the active tab via `active_index`.
+    if let WidgetEvent::Click(id) = ev
+        && matches!(
+            id,
+            ids::INSP_COLOR_TAB_TINT
+                | ids::INSP_COLOR_TAB_SELF
+                | ids::INSP_COLOR_TAB_CORNER
+                | ids::INSP_COLOR_TAB_EFFECTS
+        )
+    {
+        for tab in [
+            ids::INSP_COLOR_TAB_TINT,
+            ids::INSP_COLOR_TAB_SELF,
+            ids::INSP_COLOR_TAB_CORNER,
+            ids::INSP_COLOR_TAB_EFFECTS,
+        ] {
+            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(tab) {
+                *state = if tab == id {
+                    ButtonState::Pressed
+                } else {
+                    ButtonState::Normal
+                };
+            }
+        }
+        return true;
+    }
+
+    // W2 Color & Tint — per-corner swatch click opens the picker seeded
+    // from the sprite's CURRENT corner color (TL=0, TR=1, BL=2, BR=3).
+    // `sync.rs` replaces that one corner of the [[f32;4];4] array and
+    // dispatches the whole `SpriteFieldEdit::PerCornerTint`.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(corner) = match id {
+            ids::INSP_SPRITE_CORNER_TL => Some(0usize),
+            ids::INSP_SPRITE_CORNER_TR => Some(1),
+            ids::INSP_SPRITE_CORNER_BL => Some(2),
+            ids::INSP_SPRITE_CORNER_BR => Some(3),
+            _ => None,
+        }
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let seed = state::tint_f32_to_u8(info.per_corner_tint[corner]);
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
+
+    // W2 Color & Tint — "Equalize Corners" copies the top-left corner to
+    // the other three (spec §3.6), dispatched as one PerCornerTint edit.
+    if let WidgetEvent::Click(id) = ev
+        && id == ids::INSP_SPRITE_CORNER_EQUALIZE
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let tl = info.per_corner_tint[0];
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit: SpriteFieldEdit::PerCornerTint([tl; 4]),
+        });
+        // Momentary button — demote the visual back to Normal so it
+        // doesn't stick Pressed after the click.
+        if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
+            *state = ButtonState::Normal;
+        }
+        return true;
+    }
+
     // Close (X) — hide the Inspector. Same effect as toggling the
     // left-rail Inspector pill (vide `chrome/rail_panels.rs`). UI canon
     // post-2026-05-24: every floating panel except Hierarchy has X.

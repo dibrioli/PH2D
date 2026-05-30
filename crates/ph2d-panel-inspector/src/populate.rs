@@ -85,10 +85,10 @@ fn populate_color_tint(store: &mut WidgetStore) {
         ids::INSP_SPRITE_OPACITY_CHIP,
         InteractiveState::NumberInput {
             state: TextInputState::Normal,
-            value: 100.0, // display space (percent)
-            buffer: format_number(100.0),
+            value: 100.0, // LITERAL-PX-OK: opacity percent scale (1.0 → 100 %), not a design token
+            buffer: format_number(100.0), // LITERAL-PX-OK: opacity percent scale
             caret: 0,
-            last_committed: 100.0,
+            last_committed: 100.0, // LITERAL-PX-OK: opacity percent scale
             selection_anchor: None,
         },
     );
@@ -97,7 +97,7 @@ fn populate_color_tint(store: &mut WidgetStore) {
     store.link_slider_number_mapped_integer(
         ids::INSP_SPRITE_OPACITY,
         ids::INSP_SPRITE_OPACITY_CHIP,
-        100.0,
+        100.0, // LITERAL-PX-OK: opacity percent scale (slider 0..1 → chip 0..100)
         0.0,
     );
     store.register(

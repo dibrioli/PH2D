@@ -127,7 +127,7 @@ pub(crate) fn current_pixels_per_meter() -> f32 {
 /// (the `+ 0.5` before truncation) so a committed channel and its
 /// re-decoded byte agree, and the picker doesn't reopen one step off.
 pub(crate) fn tint_f32_to_u8(c: [f32; 4]) -> [u8; 4] {
-    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit denormalize, not a design token
     [q(c[0]), q(c[1]), q(c[2]), q(c[3])]
 }
 
@@ -135,11 +135,12 @@ pub(crate) fn tint_f32_to_u8(c: [f32; 4]) -> [u8; 4] {
 /// color through `widget_color(target)` as `[u8; 4]`; this unpacks it
 /// back to the `[f32; 4]` the `Sprite` tint channels store.
 pub(crate) fn tint_u8_to_f32(c: [u8; 4]) -> [f32; 4] {
+    // LITERAL-PX-OK (×4): sRGB 8-bit normalize, not a design token.
     [
-        c[0] as f32 / 255.0,
-        c[1] as f32 / 255.0,
-        c[2] as f32 / 255.0,
-        c[3] as f32 / 255.0,
+        c[0] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
+        c[1] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
+        c[2] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
+        c[3] as f32 / 255.0, // LITERAL-PX-OK: sRGB byte normalize
     ]
 }
 

@@ -292,8 +292,10 @@ fn sync_sprite_fields(
                 .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
         } else {
             // Chip lives in display space (percent) per the integer map.
-            host.store_mut()
-                .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
+            host.store_mut().set_number_value(
+                ids::INSP_SPRITE_OPACITY_CHIP,
+                (sp.opacity * 100.0) as f64, // LITERAL-PX-OK: opacity percent scale
+            );
         }
     }
     // Tint / Self Tint swatches. The BlenderColorPicker round-trips

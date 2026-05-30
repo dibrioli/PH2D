@@ -240,6 +240,14 @@ pub struct InspectorSpriteInfo {
     pub vframes: u32,
     /// Active sheet frame index (`< hframes*vframes`).
     pub frame: u32,
+    /// Inherited modulate (`Sprite::tint`, cascades to children).
+    /// Linear RGBA `[0, 1]`. Edited via the Color & Tint section's
+    /// Tint swatch (W2.T2.7); renders today via `RenderInstance.tint`.
+    pub tint: [f32; 4],
+    /// Local modulate (`Sprite::self_tint`, does NOT cascade). Linear
+    /// RGBA `[0, 1]`. Edited via the Self Tint swatch; multiplies
+    /// `tint` for this sprite only (Godot `self_modulate` semantics).
+    pub self_tint: [f32; 4],
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as

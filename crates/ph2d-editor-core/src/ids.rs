@@ -506,6 +506,16 @@ pub const INSP_SPRITE_OPACITY: NodeId = hash_node_id("insp_sprite_opacity");
 pub const INSP_SPRITE_OPACITY_CHIP: NodeId = hash_node_id("insp_sprite_opacity_chip");
 /// Tint Fill (silhouette) checkbox; renders today via `flip_uv` bit 2.
 pub const INSP_SPRITE_TINT_FILL: NodeId = hash_node_id("insp_sprite_tint_fill");
+/// Inherited modulate color swatch (`Sprite::tint`, cascades to
+/// children). Clicking opens the shared `INSP_BLENDER_PICKER`
+/// targeting this id; the chosen color round-trips through
+/// `widget_color(id)` and is dispatched as `SpriteFieldEdit::Tint`.
+/// Renders today via `RenderInstance.tint`.
+pub const INSP_SPRITE_TINT_SWATCH: NodeId = hash_node_id("insp_sprite_tint_swatch");
+/// Local modulate color swatch (`Sprite::self_tint`, does NOT cascade).
+/// Same picker mechanism as [`INSP_SPRITE_TINT_SWATCH`]; dispatched as
+/// `SpriteFieldEdit::SelfTint`.
+pub const INSP_SPRITE_SELF_TINT_SWATCH: NodeId = hash_node_id("insp_sprite_self_tint_swatch");
 
 /// W2 Sprite Inspector v2 — Sprite Sheet grid controls (render today via
 /// the extract atlas-rect sub-division). HFrames / VFrames / Frame.

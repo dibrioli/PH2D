@@ -115,6 +115,27 @@ pub(crate) fn current_pixels_per_meter() -> f32 {
     CURRENT_PIXELS_PER_METER.with(|c| c.get())
 }
 
+/// Pack a linear/sRGB f32 RGBA in `[0, 1]` into `[u8; 4]` for the
+/// color-swatch fill + `INSP_BLENDER_PICKER` seed. Round-to-nearest
+/// (the `+ 0.5` before truncation) so a committed channel and its
+/// re-decoded byte agree, and the picker doesn't reopen one step off.
+pub(crate) fn tint_f32_to_u8(c: [f32; 4]) -> [u8; 4] {
+    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    [q(c[0]), q(c[1]), q(c[2]), q(c[3])]
+}
+
+/// Inverse of [`tint_f32_to_u8`]: the picker round-trips the chosen
+/// color through `widget_color(target)` as `[u8; 4]`; this unpacks it
+/// back to the `[f32; 4]` the `Sprite` tint channels store.
+pub(crate) fn tint_u8_to_f32(c: [u8; 4]) -> [f32; 4] {
+    [
+        c[0] as f32 / 255.0,
+        c[1] as f32 / 255.0,
+        c[2] as f32 / 255.0,
+        c[3] as f32 / 255.0,
+    ]
+}
+
 /// Last-known total content height of the inspector body. Used by
 /// `dispatch_wheel` to clamp the scroll offset.
 pub fn last_inspector_content_h() -> f32 {
@@ -131,4 +152,42 @@ pub fn last_inspector_visible_h() -> f32 {
 
 pub(crate) fn set_last_inspector_visible_h(h: f32) {
     LAST_VISIBLE_H.with(|c| c.set(h));
+}
+
+#[cfg(test)]
+mod tint_color_tests {
+    use super::{tint_f32_to_u8, tint_u8_to_f32};
+
+    /// The convergence invariant `sync.rs` relies on: once a picked
+    /// byte color is committed (→ `f32` channel) and the snapshot comes
+    /// back, re-packing it must yield the SAME byte — otherwise the
+    /// "picked != committed" guard never settles and the bus spins
+    /// every frame. Must hold for ALL 256 levels on every channel.
+    #[test]
+    fn u8_to_f32_round_trips_exactly_for_every_level() {
+        for b in 0u8..=255 {
+            let rgba = [b, b, b, b];
+            assert_eq!(
+                tint_f32_to_u8(tint_u8_to_f32(rgba)),
+                rgba,
+                "level {b} did not round-trip"
+            );
+        }
+    }
+
+    #[test]
+    fn f32_to_u8_clamps_out_of_unit_range() {
+        assert_eq!(tint_f32_to_u8([2.0, -0.5, 1.0, 0.0]), [255, 0, 255, 0]);
+    }
+
+    #[test]
+    fn white_default_maps_to_opaque_white() {
+        assert_eq!(tint_f32_to_u8([1.0, 1.0, 1.0, 1.0]), [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn f32_to_u8_rounds_to_nearest_not_truncating() {
+        // 0.5 · 255 = 127.5 → rounds up to 128 (truncation would give 127).
+        assert_eq!(tint_f32_to_u8([0.5, 0.5, 0.5, 0.5]), [128, 128, 128, 128]);
+    }
 }

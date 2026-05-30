@@ -16,6 +16,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::screens::hero::SpriteFieldEdit;
 use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
@@ -37,6 +38,21 @@ pub(crate) fn sync_inspector_from_snapshots(
         host.store_mut().set_focus(None);
         let _ = host.store_mut().end_number_input_drag();
         host.store_mut().end_number_stepper_hold();
+        // Close a tint picker bound to the PREVIOUS selection so its
+        // last-picked color can't stream onto the newly-selected entity
+        // (the host re-mirrors picker → widget_color every frame, so
+        // reseeding the swatch alone can't win). Runs here — above the
+        // `Some(sp)` sprite block — so it fires even when the new
+        // selection has no Sprite (empty entity / note) and the sprite
+        // block is skipped entirely.
+        if matches!(
+            host.store().picker_target(),
+            Some(t)
+                if t == ids::INSP_SPRITE_TINT_SWATCH
+                    || t == ids::INSP_SPRITE_SELF_TINT_SWATCH
+        ) {
+            host.store_mut().set_picker_target(None);
+        }
         if let Some(info) = transform {
             host.store_mut().set_number_value(
                 ids::INSP_TRANSFORM_POS_X,
@@ -197,6 +213,48 @@ pub(crate) fn sync_inspector_from_snapshots(
             // Chip lives in display space (percent) per the integer map.
             host.store_mut()
                 .set_number_value(ids::INSP_SPRITE_OPACITY_CHIP, (sp.opacity * 100.0) as f64);
+        }
+        // Tint / Self Tint swatches. The BlenderColorPicker round-trips
+        // the chosen color through `widget_color(<swatch>)` (mirrored
+        // each frame from the picker in `hero.rs`, BEFORE this panel
+        // paints). Two regimes:
+        //   • picker targets THIS swatch → the user is actively picking:
+        //     dispatch the divergence as a Sprite edit (live preview,
+        //     same 1-frame post-commit lag the Opacity slider tolerates).
+        //     Byte-compare against the committed channel so sub-1/255
+        //     float dust doesn't spin the bus every frame, and so the
+        //     stream stops the instant the commit lands (round-trip is
+        //     exact: u8 → /255 → ×255 round-nearest → same u8).
+        //   • otherwise → keep the swatch fill in lock-step with the
+        //     committed channel so undo / external edits reflect.
+        // On an entity switch the top `entity_changed` block has already
+        // closed any tint picker bound to the prior selection, so this
+        // reads `None` on the switch frame and the loop reseeds both
+        // swatches from the new sprite's committed channels.
+        let picker_target = host.store().picker_target();
+        for (swatch_id, chan) in [
+            (ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
+            (ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),
+        ] {
+            let committed = state::tint_f32_to_u8(chan);
+            if picker_target == Some(swatch_id) {
+                if let Some(picked) = host.store().widget_color(swatch_id)
+                    && picked != committed
+                {
+                    let new_chan = state::tint_u8_to_f32(picked);
+                    let edit = if swatch_id == ids::INSP_SPRITE_TINT_SWATCH {
+                        SpriteFieldEdit::Tint(new_chan)
+                    } else {
+                        SpriteFieldEdit::SelfTint(new_chan)
+                    };
+                    host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+                        entity_bits: sp.entity_bits,
+                        edit,
+                    });
+                }
+            } else {
+                host.store_mut().set_widget_color(swatch_id, committed);
+            }
         }
     }
 }

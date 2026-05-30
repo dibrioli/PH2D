@@ -13,10 +13,11 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, IconButtonStyle,
-    IconGlyph, NumberInput, SectionHeader, SliderState, TextInput, TextInputState, paint_button,
-    paint_checkbox, paint_icon_button, paint_number_input_with_buffer, paint_section_header,
-    paint_slider_with_chip, paint_text_input_with_buffer,
+    Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue, ColorSwatch,
+    IconButtonStyle, IconGlyph, NumberInput, SectionHeader, SliderState, SwatchSize, TextInput,
+    TextInputState, paint_button, paint_checkbox, paint_color_swatch, paint_icon_button,
+    paint_number_input_with_buffer, paint_section_header, paint_slider_with_chip,
+    paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -589,10 +590,53 @@ pub(crate) fn paint_render_source_section(
     cur_y + reimport_h + SECTION_BOTTOM_PAD_PX
 }
 
+/// Paint one labeled tint swatch (label left, swatch right) inside
+/// `cell`. The swatch fill reads `widget_color(swatch_id)` (kept in
+/// sync with the live `Sprite` channel by `sync.rs`), falling back to
+/// `fallback_rgba` on the cold paint. The hit rect is the swatch only,
+/// so the picker opens from the colored chip — matching grid-snap's
+/// color row and the Widget Gallery "Tint" sample.
+#[allow(clippy::too_many_arguments)]
+fn paint_tint_swatch_cell(
+    cell: Rect,
+    label: &str,
+    swatch_id: NodeId,
+    fallback_rgba: [u8; 4],
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let label_font = TypeToken::Sm.px();
+    let swatch_px = SwatchSize::Sm.px();
+    let swatch_rect = Rect::new(
+        cell.x + cell.w - swatch_px,
+        cell.y + (cell.h - swatch_px) * 0.5,
+        swatch_px,
+        swatch_px,
+    );
+    paint_text(
+        text_system,
+        scene,
+        label,
+        cell.x,
+        cell.y + (cell.h - label_font) * 0.5,
+        label_font,
+        (cell.w - swatch_px - Spacing::Sm.px()).max(0.0),
+        resolve(ColorToken::Text2, theme),
+    );
+    let rgba = store.widget_color(swatch_id).unwrap_or(fallback_rgba);
+    let swatch = ColorSwatch::new(swatch_id, label, rgba).size(SwatchSize::Sm);
+    paint_color_swatch(&swatch, swatch_rect, scene, theme);
+    hit_index.register(swatch_id, swatch_rect);
+}
+
 /// W2 Sprite Inspector v2 — Color & Tint section (anatomia §03 seção 6).
-/// First increment: the render-ready channels — Opacity (final
-/// multiplier `[0,1]`) and Tint Fill (silhouette). Tint / Self Tint /
-/// Per-corner colors follow once the OKLCH picker is wired (T2.7).
+/// Render-ready channels: Tint + Self Tint (modulate colors, T2.7 OKLCH
+/// picker), Opacity (final multiplier `[0,1]`), and Tint Fill
+/// (silhouette). Per-corner tint (2×2 grid + gradient preview) follows
+/// in the next increment with the sub-tab density restructure.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_color_tint_section(
     scene: &mut VectorScene,
@@ -625,6 +669,50 @@ pub(crate) fn paint_color_tint_section(
         return y + header_h;
     }
     let mut cur_y = y + header_h;
+
+    // Tint | Self Tint — inherited vs local modulate, side by side
+    // (spec §3.6 "linha Tint | Self Tint lado a lado"). Each swatch
+    // opens the shared BlenderColorPicker (OKLCH) on click; the chosen
+    // color round-trips via `widget_color(id)` and is dispatched as
+    // `SpriteFieldEdit::Tint` / `SelfTint` from `sync.rs`. Renders
+    // immediately (`RenderInstance.tint` = self_tint × tint). The
+    // swatch fill comes from `widget_color`, which `sync.rs` seeds from
+    // the live snapshot each frame; the fallback covers the cold paint
+    // before the first sync.
+    let sp = crate::state::current_inspector_sprite();
+    let tint_seed = sp
+        .as_ref()
+        .map(|s| crate::state::tint_f32_to_u8(s.tint))
+        .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = Sprite tint default
+    let self_seed = sp
+        .as_ref()
+        .map(|s| crate::state::tint_f32_to_u8(s.self_tint))
+        .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = Sprite self_tint default
+    let cell_gap = Spacing::Md.px();
+    let cell_w = ((w - cell_gap) * 0.5).max(0.0);
+    paint_tint_swatch_cell(
+        Rect::new(x, cur_y, cell_w, field_h),
+        "Tint",
+        ids::INSP_SPRITE_TINT_SWATCH,
+        tint_seed,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    paint_tint_swatch_cell(
+        Rect::new(x + cell_w + cell_gap, cur_y, cell_w, field_h),
+        "Self Tint",
+        ids::INSP_SPRITE_SELF_TINT_SWATCH,
+        self_seed,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += field_h + row_gap;
 
     // Opacity — Slider 0..1 with a linked 0..100 % chip (spec §3.6).
     // The slider stores the raw opacity; the chip projects to percent

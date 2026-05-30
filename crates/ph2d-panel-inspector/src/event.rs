@@ -56,6 +56,35 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
 
+    // W2 Color & Tint — Tint / Self Tint swatch click opens the shared
+    // BlenderColorPicker (OKLCH) seeded from the sprite's CURRENT channel
+    // (not the generic per-widget accent the section dot uses). The
+    // chosen color round-trips via `widget_color(<swatch>)` — mirrored
+    // each frame from the picker in `hero.rs` — and `sync.rs` dispatches
+    // it as `SpriteFieldEdit::Tint` / `SelfTint` while the picker targets
+    // this swatch.
+    if let WidgetEvent::Click(id) = ev
+        && matches!(
+            id,
+            ids::INSP_SPRITE_TINT_SWATCH | ids::INSP_SPRITE_SELF_TINT_SWATCH
+        )
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let chan = if id == ids::INSP_SPRITE_TINT_SWATCH {
+            info.tint
+        } else {
+            info.self_tint
+        };
+        let seed = state::tint_f32_to_u8(chan);
+        host.store_mut().set_widget_color(id, seed);
+        host.store_mut().set_picker_target(Some(id));
+        host.store_mut().set_blender_value(
+            ids::INSP_BLENDER_PICKER,
+            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+        );
+        return true;
+    }
+
     // Close (X) — hide the Inspector. Same effect as toggling the
     // left-rail Inspector pill (vide `chrome/rail_panels.rs`). UI canon
     // post-2026-05-24: every floating panel except Hierarchy has X.

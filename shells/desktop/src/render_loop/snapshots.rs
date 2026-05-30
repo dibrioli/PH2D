@@ -427,6 +427,8 @@ pub(super) fn publish(
             hframes: sprite.hframes,
             vframes: sprite.vframes,
             frame: sprite.frame,
+            tint: sprite.tint,
+            self_tint: sprite.self_tint,
         })
     });
     // M14.A: live Transform snapshot for the inspector. Same

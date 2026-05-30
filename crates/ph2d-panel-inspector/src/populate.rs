@@ -85,6 +85,18 @@ fn populate_color_tint(store: &mut WidgetStore) {
             value: CheckboxValue::Unchecked,
         },
     );
+    // Tint / Self Tint color swatches. Registered as `Plain` (like the
+    // section color-dots in `pre_populate` and grid-snap's swatch) so
+    // `is_focusable` is true and the pointer dispatch arms `active` on
+    // Down → emits `Click` on Up. Without this leg the click is silently
+    // dropped and the picker never opens (the swatch carries no value of
+    // its own — its color lives in the `widget_colors` side-table).
+    for id in [
+        ids::INSP_SPRITE_TINT_SWATCH,
+        ids::INSP_SPRITE_SELF_TINT_SWATCH,
+    ] {
+        store.register(id, InteractiveState::Plain);
+    }
 }
 
 /// W2 Sprite Inspector v2: Flip H / Flip V checkboxes. Default

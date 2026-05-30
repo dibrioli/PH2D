@@ -110,6 +110,21 @@ Para CADA task/fase do plano, em ordem, **sem parar**:
     data-loss) `rasterize.rs`/`sprite_merge.rs` leem só scale/rotation, **não** zeram
     skew ao assar → sprite assado fica double-sheared. Nenhum é regressão do fix; o fix
     apenas tornou a divergência visível.
+- **InspectorSpriteEdit infra FECHADA** (`7e256b4`): keystone que destranca TODAS as
+  seções editáveis de Sprite. `EditorAction::InspectorSpriteEdit { entity_bits, edit:
+  SpriteFieldEdit }` (enum com o set completo declarado). Commit em `inspector_commits.rs`
+  via `apply_sprite_field` (clamps: hframes/vframes≥1, frame<cells re-clamp, opacity∈[0,1])
+  → `EditorCommand::SetComponent` (mesmo path do Transform). Provado E2E com **Flip H/V**
+  (render-ready: shader espelha UV via flip_uv). Próxima seção = só adicionar variantes +
+  widgets. 5 testes de clamp + 568 editor-core verdes.
+- **⚠️ EVITE A ARMADILHA DO SKEW (campo autorável mas NÃO renderizado):** o `sim_extract`
+  computa `atlas_uv` só de `region_uv(key)`/`[0,0,1,1]` — **NÃO** aplica region_rect,
+  hframes/vframes/frame nem offset. **Render-ready HOJE** (edita → vê na hora): flip ·
+  tint · self_tint · per_corner_tint · opacity · tint_fill. **Precisa de trabalho no
+  render ANTES da UI** (senão repete o skew): **T2.4 region** (sub-UV do region_rect no
+  extract+shader) · **T2.5 sprite-sheet frame** (sub-UV de hframes/vframes/frame) ·
+  offset/centered. ORDEM SUGERIDA: fazer **T2.8 Color & Tint primeiro** (tudo render-ready)
+  e empacotar o trabalho de sub-UV do extract numa task de render dedicada antes de T2.4/T2.5.
 - **W1 schema-bump FECHADO + CI VERDE** (origin/main em `d15fbaa`). Commits:
   f28db39 (migrator/load_sprite) · e41bff8 (RenderInstance v4 ABI 144B, 11 attrs)
   · 51cca9d (shader §4.2 + extract + arch-gate + bench + ADR-0070-amendment-3

@@ -85,34 +85,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
 
-    // W2 Color & Tint — sub-tab selection (segmented Button group: pin
-    // exactly one Pressed, mirroring the showcase tab pin). `sections.rs`
-    // reads the active tab via `active_index`.
-    if let WidgetEvent::Click(id) = ev
-        && matches!(
-            id,
-            ids::INSP_COLOR_TAB_TINT
-                | ids::INSP_COLOR_TAB_SELF
-                | ids::INSP_COLOR_TAB_CORNER
-                | ids::INSP_COLOR_TAB_EFFECTS
-        )
-    {
-        for tab in [
-            ids::INSP_COLOR_TAB_TINT,
-            ids::INSP_COLOR_TAB_SELF,
-            ids::INSP_COLOR_TAB_CORNER,
-            ids::INSP_COLOR_TAB_EFFECTS,
-        ] {
-            if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(tab) {
-                *state = if tab == id {
-                    ButtonState::Pressed
-                } else {
-                    ButtonState::Normal
-                };
-            }
-        }
-        return true;
-    }
+    // (Color & Tint sub-tabs retired 2026-05-31 — the section stacks all
+    // controls visible at once, so there's no tab selection to pin.)
 
     // W2 Color & Tint — per-corner swatch click opens the picker seeded
     // from the sprite's CURRENT corner color (TL=0, TR=1, BL=2, BR=3).

@@ -135,135 +135,95 @@ pub(crate) fn paint_color_tint_section(
 
     let sp = crate::state::current_inspector_sprite();
 
-    // Sub-tabs (spec §3.0 D11 density fix): [Tint][Self][Corners][Effects],
-    // one visible at a time — keeps the section ~120px instead of the
-    // ~342px a flat stack of all 8 controls would take. Modeled as a
-    // segmented Button group (exactly one Pressed); the selection is read
-    // via `active_index` and pinned on click in `event.rs`.
-    let tab_ids = [
-        ids::INSP_COLOR_TAB_TINT,
-        ids::INSP_COLOR_TAB_SELF,
-        ids::INSP_COLOR_TAB_CORNER,
-        ids::INSP_COLOR_TAB_EFFECTS,
-    ];
-    let selected = active_index(store, &tab_ids).unwrap_or(0);
-    let tabs = Tabs::new(
-        NodeId(0),
-        "Color & Tint mode",
-        vec![
-            TabItem::new(tab_ids[0], "Tint"),
-            TabItem::new(tab_ids[1], "Self"),
-            TabItem::new(tab_ids[2], "Corners"),
-            TabItem::new(tab_ids[3], "Effects"),
-        ],
-    )
-    .variant(TabsVariant::Segmented)
-    .selected(selected);
-    let tabs_rect = Rect::new(x, cur_y, w, ROW_H_PX);
-    paint_tabs(&tabs, tabs_rect, scene, text_system, theme);
-    for (i, item) in tabs.items.iter().enumerate() {
-        hit_index.register(item.id, tabs.tab_rect(tabs_rect, i));
-    }
-    cur_y += ROW_H_PX + row_gap;
+    // All Color & Tint controls stacked + visible at once (user
+    // 2026-05-31: faster to reach than behind the old [Tint][Self]
+    // [Corners][Effects] sub-tabs). Order: Tint · Self Tint · Per-corner
+    // grid + Equalize · Opacity · Tint Fill. Each color swatch opens the
+    // shared BlenderColorPicker (OKLCH); the chosen color round-trips via
+    // `widget_color(id)` and is dispatched as a `SpriteFieldEdit` from
+    // `sync.rs`. WHITE fallback covers the cold paint before first sync.
 
-    // Each color swatch opens the shared BlenderColorPicker (OKLCH); the
-    // chosen color round-trips via `widget_color(id)` and is dispatched
-    // as a `SpriteFieldEdit` from `sync.rs`. Swatch fills come from
-    // `widget_color` (synced from the snapshot each frame); the WHITE
-    // fallback covers the cold paint before the first sync.
-    match selected {
-        // Tint — inherited modulate (cascades to children).
-        0 => {
-            let seed = sp
-                .as_ref()
-                .map(|s| crate::state::tint_f32_to_u8(s.tint))
-                .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = tint default
-            paint_tint_swatch_cell(
-                Rect::new(x, cur_y, w, field_h),
-                "Tint",
-                ids::INSP_SPRITE_TINT_SWATCH,
-                seed,
-                sp.as_ref().is_some_and(|s| s.mixed.tint),
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += field_h + row_gap;
-        }
-        // Self Tint — local modulate (does NOT cascade).
-        1 => {
-            let seed = sp
-                .as_ref()
-                .map(|s| crate::state::tint_f32_to_u8(s.self_tint))
-                .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
-            paint_tint_swatch_cell(
-                Rect::new(x, cur_y, w, field_h),
-                "Self Tint",
-                ids::INSP_SPRITE_SELF_TINT_SWATCH,
-                seed,
-                sp.as_ref().is_some_and(|s| s.mixed.self_tint),
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += field_h + row_gap;
-        }
-        // Per-corner — 2×2 swatch grid + live bilinear gradient preview +
-        // Equalize. Renders via the shader's @location(9..12) attributes.
-        2 => {
-            cur_y = paint_per_corner_tab(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                x,
-                w,
-                cur_y,
-                sp.as_ref(),
-            );
-        }
-        // Effects — Opacity slider-with-chip + Tint Fill silhouette toggle.
-        _ => {
-            let (_, op_value) = store
-                .slider(ids::INSP_SPRITE_OPACITY)
-                .unwrap_or((SliderState::Normal, 1.0));
-            paint_slider_with_chip(
-                Rect::new(x, cur_y, w, field_h),
-                "Opacity",
-                op_value,
-                ids::INSP_SPRITE_OPACITY,
-                ids::INSP_SPRITE_OPACITY_CHIP,
-                store,
-                hit_index,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += field_h + row_gap;
+    // Tint — inherited modulate (cascades to children).
+    let tint_seed = sp
+        .as_ref()
+        .map(|s| crate::state::tint_f32_to_u8(s.tint))
+        .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = tint default
+    paint_tint_swatch_cell(
+        Rect::new(x, cur_y, w, field_h),
+        "Tint",
+        ids::INSP_SPRITE_TINT_SWATCH,
+        tint_seed,
+        sp.as_ref().is_some_and(|s| s.mixed.tint),
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += field_h + row_gap;
 
-            let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
-            let (tf_state, tf_value) = store
-                .checkbox(ids::INSP_SPRITE_TINT_FILL)
-                .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-            let tf_rect = Rect::new(x, cur_y, w, cb_h);
-            hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
-            paint_checkbox(
-                &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
-                    .state(tf_state)
-                    .value(tf_value),
-                tf_rect,
-                scene,
-                text_system,
-                theme,
-            );
-            cur_y += cb_h + row_gap;
-        }
-    }
+    // Self Tint — local modulate (does NOT cascade).
+    let self_seed = sp
+        .as_ref()
+        .map(|s| crate::state::tint_f32_to_u8(s.self_tint))
+        .unwrap_or([0xff, 0xff, 0xff, 0xff]); // LITERAL-COLOR-OK: WHITE = self_tint default
+    paint_tint_swatch_cell(
+        Rect::new(x, cur_y, w, field_h),
+        "Self Tint",
+        ids::INSP_SPRITE_SELF_TINT_SWATCH,
+        self_seed,
+        sp.as_ref().is_some_and(|s| s.mixed.self_tint),
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += field_h + row_gap;
+
+    // Per-corner — 2×2 swatch grid + live bilinear gradient preview +
+    // Equalize. Renders via the shader's @location(9..12) attributes.
+    cur_y = paint_per_corner_tab(
+        scene, text_system, theme, hit_index, store, x, w, cur_y,
+        sp.as_ref(),
+    );
+    cur_y += row_gap;
+
+    // Opacity slider-with-chip.
+    let (_, op_value) = store
+        .slider(ids::INSP_SPRITE_OPACITY)
+        .unwrap_or((SliderState::Normal, 1.0));
+    paint_slider_with_chip(
+        Rect::new(x, cur_y, w, field_h),
+        "Opacity",
+        op_value,
+        ids::INSP_SPRITE_OPACITY,
+        ids::INSP_SPRITE_OPACITY_CHIP,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += field_h + row_gap;
+
+    // Tint Fill silhouette toggle.
+    let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height
+    let (tf_state, tf_value) = store
+        .checkbox(ids::INSP_SPRITE_TINT_FILL)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let tf_rect = Rect::new(x, cur_y, w, cb_h);
+    hit_index.register(ids::INSP_SPRITE_TINT_FILL, tf_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SPRITE_TINT_FILL, "Tint Fill")
+            .state(tf_state)
+            .value(tf_value),
+        tf_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    cur_y += cb_h + row_gap;
 
     cur_y + SECTION_BOTTOM_PAD_PX
 }

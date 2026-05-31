@@ -277,25 +277,8 @@ fn populate_color_tint(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
-    // Sub-tabs (spec §3.0 D11): segmented Button group, exactly one
-    // `Pressed`. Tint is the default-open sub-tab.
-    for (id, pressed) in [
-        (ids::INSP_COLOR_TAB_TINT, true),
-        (ids::INSP_COLOR_TAB_SELF, false),
-        (ids::INSP_COLOR_TAB_CORNER, false),
-        (ids::INSP_COLOR_TAB_EFFECTS, false),
-    ] {
-        store.register(
-            id,
-            InteractiveState::Button {
-                state: if pressed {
-                    ButtonState::Pressed
-                } else {
-                    ButtonState::Normal
-                },
-            },
-        );
-    }
+    // (The Color & Tint sub-tabs were retired 2026-05-31 — the section
+    // now stacks every control visible at once, so no tab Button group.)
 }
 
 /// W2 Sprite Inspector v2: Flip H / Flip V checkboxes. Default

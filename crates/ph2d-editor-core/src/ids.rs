@@ -673,16 +673,8 @@ pub const INSP_SPRITE_CORNER_BR: NodeId = hash_node_id("insp_sprite_corner_br");
 /// "Equalize corners" button — copies the top-left corner color to the
 /// other three (spec §3.6 hotkey); dispatches `SpriteFieldEdit::PerCornerTint`.
 pub const INSP_SPRITE_CORNER_EQUALIZE: NodeId = hash_node_id("insp_sprite_corner_equalize");
-/// Color & Tint sub-tabs (spec §3.0 D11 density fix): `[Tint] [Self Tint]
-/// [Per-corner] [Effects]`, one visible at a time. Modeled as a segmented
-/// Button group (exactly one `Pressed`), read via `active_index`.
-pub const INSP_COLOR_TAB_TINT: NodeId = hash_node_id("insp_color_tab_tint");
-/// Color & Tint sub-tab — Self Tint. See [`INSP_COLOR_TAB_TINT`].
-pub const INSP_COLOR_TAB_SELF: NodeId = hash_node_id("insp_color_tab_self");
-/// Color & Tint sub-tab — Per-corner. See [`INSP_COLOR_TAB_TINT`].
-pub const INSP_COLOR_TAB_CORNER: NodeId = hash_node_id("insp_color_tab_corner");
-/// Color & Tint sub-tab — Effects (Tint Fill + Opacity). See [`INSP_COLOR_TAB_TINT`].
-pub const INSP_COLOR_TAB_EFFECTS: NodeId = hash_node_id("insp_color_tab_effects");
+// (The Color & Tint sub-tab ids `INSP_COLOR_TAB_*` were retired
+// 2026-05-31 — the section now stacks every control visible at once.)
 
 /// W2 Sprite Inspector v2 — Region sampling controls (Render Source
 /// section, spec §3.3). Toggle + 4 px NumberInputs (x/y/w/h) + filter

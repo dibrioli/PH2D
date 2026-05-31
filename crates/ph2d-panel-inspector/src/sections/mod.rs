@@ -19,7 +19,7 @@ pub(crate) use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, InspectorS
 pub(crate) use ph2d_editor_core::widget::panel_chrome::{
     SECTION_BOTTOM_PAD_PX, SECTION_LABEL_TO_CONTROL_PX, paint_segmented_group_adaptive,
 };
-pub(crate) use ph2d_editor_core::widget::showcase::{active_index, read_number_input};
+pub(crate) use ph2d_editor_core::widget::showcase::read_number_input;
 pub(crate) use ph2d_editor_core::widget::{
     BitmaskGrid32, Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue,
     ColorSwatch, IconButtonStyle, IconGlyph, NumberInput, Rect2Editor, Rect2Layout, SectionHeader,

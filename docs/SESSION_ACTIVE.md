@@ -23,19 +23,24 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 commits locais acumulados, ship único no fechamento. A run CI 26722309764 (W1.T8.1) está
 rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
 
-**3 contextos paralelos (write-sets disjuntos):**
-- **Coord (eu)** — coordenando + gateando. KTX2 W1.T8.1 ✅ (CI 26722309764 verde) + W2 Batch A ✅
-  (`d72e751` W2.T1 + `c23e01e` W2.T1.5). Wire undo/redo ✅ (`808383a`). Próximo KTX2 = W2.T2
-  (SpriteSource::CookedTexture, BREAKING, toca mirror chain editor-core) — **espera os 2 slots
-  fecharem** (W2.T2 colide com o picker em editor-core/ids.rs+hero.rs). Bundle CI W1 fica pro fim.
-- **Slot `impl-ktx2` (background)** — **W2.T3** `compressed_pipeline.rs` em `crates/ph2d-render/`
-  (disjunto). Pipeline-per-format; block-alignment do write_texture.
-- **Slot picker-wire (background)** — **T2.3 picker UI** em `editor-core`+`shells/painter_bridge`
-  (spec foundational minha: thumb flutuante + `set_picker_target` + read-back→`SetColorSrgb`).
+**Ambos os slots paralelos FECHARAM + integrados (gate verde, fmt limpo):**
+- **KTX2 W2.T3** ✅ (`29defc6`) — `compressed_pipeline.rs` 1 pipeline compartilhado (todos amostram
+  filterable-float), block-alignment via helpers wgpu, F4 Rgba32Float rejeitado. 15 tests + 2 ignore-GPU.
+- **Picker wire T2.3** ✅ (`b5ba460`) — thumb flutuante top-right (canônico `ColorSwatch`) → abre
+  BlenderPicker seedado → read-back→`apply_ui_edit(SetColorSrgb)`. Anti-loop via último-sRGB-empurrado
+  (AtomicU32), não round-trip (±1 LSB re-disparava). Contrato intacto, gates verdes.
+- **Coord gate fix** ✅ (`f4d24d7`): o UndoController (`640f1d4`) tripava `no_bare_byte_color`
+  (blobs `&[u8]` de textura) — anotado `// COLOR-RAW-OK` (multi-line p/ sobreviver rustfmt) +
+  limpei fmt drift que os 3 agentes paralelos deixaram (color/tool/undo/painter_bridge). fmt --check
+  workspace = 0. **Lição:** nextest `-p` scoped dos slots escondeu o gate de workspace.
 
-**Painter slot anterior — fechado** (3 deliverables): W2.T2.3 surface (`b5085d9`); hue-bug fix
-(`640f1d4`, `c.h.to_degrees()` tool.rs:1638 + 2 regressões); W2.T2.2 undo/redo (mesmo commit,
-`undo.rs` UndoController ring max_depth=300 + swap-model). Undo/redo já **smoke-OK pelo Enio**.
+**KTX2 status:** W1 fechado (CI verde) · W2: T1✅ T1.5✅ T3✅ · **próximo W2.T2** (SpriteSource::
+CookedTexture, BREAKING — mirror chain editor-core; **agora DESBLOQUEADO**, picker liberou editor-core).
+Bundle CI W1 (T10/T11.5/T12) fica pro fim.
+
+**Painter status:** T2.3 surface (`b5085d9`) + hue-fix + T2.2 undo/redo (`640f1d4`) + picker UI
+(`b5ba460`). Undo/redo **smoke-OK pelo Enio**. Picker = **pronto p/ smoke** (painter ativo → thumb
+top-right → pick → cor do stroke muda). Bloqueadas: T2.4 eyedropper, T2.6 a11y, T2.7 audit W2.
 
 **Dívidas foundational do Coord (meu wire, caminho C) — DESBLOQUEIAM o slot Painter:**
 - ✅ **T2.2 undo/redo dispatch** (`808383a`): Cmd+Z context-sensitive (painter ativo → stroke undo;

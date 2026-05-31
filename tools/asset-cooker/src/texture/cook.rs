@@ -237,10 +237,7 @@ fn premul_intent_for_alpha(alpha: AlphaMode) -> ph2d_asset_ktx2::PremulIntent {
 /// The intent is derived from `options.alpha` — see
 /// [`premul_intent_for_alpha`]. Determinism: identical to [`cook`] plus a
 /// pure byte transform, so HR-6 content-addressing still holds.
-pub fn cook_tagged(
-    source_bytes: &[u8],
-    options: CookOptions,
-) -> Result<Vec<u8>, TextureCookError> {
+pub fn cook_tagged(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, TextureCookError> {
     let bytes = cook(source_bytes, options)?;
     let intent = premul_intent_for_alpha(options.alpha);
     Ok(ph2d_asset_ktx2::patch_premul_intent(&bytes, intent)?)

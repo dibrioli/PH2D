@@ -870,8 +870,7 @@ fn serialize_kvd(entries: &[(String, Vec<u8>)]) -> Vec<u8> {
 /// [`PremulIntent::Unspecified`] has no on-disk encoding and is rejected
 /// with [`Ktx2PatchError::UnspecifiedIntent`].
 pub fn patch_premul_intent(bytes: &[u8], intent: PremulIntent) -> Result<Vec<u8>, Ktx2PatchError> {
-    let value_byte =
-        encode_premul_value(intent).ok_or(Ktx2PatchError::UnspecifiedIntent)?;
+    let value_byte = encode_premul_value(intent).ok_or(Ktx2PatchError::UnspecifiedIntent)?;
 
     // Parse + validate the whole container up-front: this rejects bad
     // magic, truncated headers, out-of-bounds section declarations, and
@@ -880,8 +879,8 @@ pub fn patch_premul_intent(bytes: &[u8], intent: PremulIntent) -> Result<Vec<u8>
     // accessors) so the patcher stays agnostic to the Fase-1 format
     // subset — it must round-trip ANY valid KTX2, not just the ones the
     // decoder can classify.
-    let reader = ktx2::Reader::new(bytes)
-        .map_err(|e| Ktx2PatchError::InvalidContainer(format!("{e:?}")))?;
+    let reader =
+        ktx2::Reader::new(bytes).map_err(|e| Ktx2PatchError::InvalidContainer(format!("{e:?}")))?;
     let header = reader.header();
     let index = header.index;
 
@@ -980,7 +979,10 @@ pub fn patch_premul_intent(bytes: &[u8], intent: PremulIntent) -> Result<Vec<u8>
     // New per-level offsets = original + common shift (gaps preserved).
     let mut new_level_offsets: Vec<u64> = Vec::with_capacity(raw_level_index.len());
     for &(off, _len) in &raw_level_index {
-        new_level_offsets.push(off.checked_add(level_shift).ok_or(Ktx2PatchError::OffsetOverflow)?);
+        new_level_offsets.push(
+            off.checked_add(level_shift)
+                .ok_or(Ktx2PatchError::OffsetOverflow)?,
+        );
     }
     // Total output length = end of the last (smallest) level's data.
     let last = raw_level_index
@@ -2048,12 +2050,15 @@ mod tests {
         let orig_img = decode_ktx2_bytes(&orig).expect("orig decodes");
         assert_eq!(orig_img.premul_intent(), PremulIntent::Unspecified);
 
-        let patched = patch_premul_intent(&orig, PremulIntent::Premultiplied)
-            .expect("patch succeeds");
+        let patched =
+            patch_premul_intent(&orig, PremulIntent::Premultiplied).expect("patch succeeds");
         let img = decode_ktx2_bytes(&patched).expect("patched file still decodes");
 
         assert_eq!(img.premul_intent(), PremulIntent::Premultiplied);
-        assert_eq!(img.kvd.get(PH2D_PREMUL_KEY).map(Vec::as_slice), Some(&[1u8][..]));
+        assert_eq!(
+            img.kvd.get(PH2D_PREMUL_KEY).map(Vec::as_slice),
+            Some(&[1u8][..])
+        );
         // Mip data preserved byte-for-byte through the shift.
         assert_eq!(
             img.base_level().data.as_ref(),
@@ -2067,11 +2072,13 @@ mod tests {
     #[test]
     fn patch_straight_round_trips() {
         let orig = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
-        let patched =
-            patch_premul_intent(&orig, PremulIntent::Straight).expect("patch succeeds");
+        let patched = patch_premul_intent(&orig, PremulIntent::Straight).expect("patch succeeds");
         let img = decode_ktx2_bytes(&patched).expect("decodes");
         assert_eq!(img.premul_intent(), PremulIntent::Straight);
-        assert_eq!(img.kvd.get(PH2D_PREMUL_KEY).map(Vec::as_slice), Some(&[0u8][..]));
+        assert_eq!(
+            img.kvd.get(PH2D_PREMUL_KEY).map(Vec::as_slice),
+            Some(&[0u8][..])
+        );
     }
 
     /// Patch into a file that ALREADY has unrelated KVD entries: the
@@ -2088,19 +2095,28 @@ mod tests {
         ];
         let orig = build_fixture(&spec);
 
-        let patched = patch_premul_intent(&orig, PremulIntent::Premultiplied)
-            .expect("patch succeeds");
+        let patched =
+            patch_premul_intent(&orig, PremulIntent::Premultiplied).expect("patch succeeds");
         let img = decode_ktx2_bytes(&patched).expect("decodes");
 
         assert_eq!(img.premul_intent(), PremulIntent::Premultiplied);
-        assert_eq!(img.kvd.get("KTXwriter").map(Vec::as_slice), Some(&b"toktx v4"[..]));
-        assert_eq!(img.kvd.get("KTXorientation").map(Vec::as_slice), Some(&b"rd"[..]));
+        assert_eq!(
+            img.kvd.get("KTXwriter").map(Vec::as_slice),
+            Some(&b"toktx v4"[..])
+        );
+        assert_eq!(
+            img.kvd.get("KTXorientation").map(Vec::as_slice),
+            Some(&b"rd"[..])
+        );
         assert_eq!(img.kvd.len(), 3);
 
         // Re-parse the RAW on-disk KVD order via the ktx2 reader: keys
         // must be in codepoint order (the patcher re-sorts before write).
         let reader = ktx2::Reader::new(&patched[..]).expect("reader parses patched bytes");
-        let keys: Vec<String> = reader.key_value_data().map(|(k, _)| k.to_string()).collect();
+        let keys: Vec<String> = reader
+            .key_value_data()
+            .map(|(k, _)| k.to_string())
+            .collect();
         assert_eq!(keys, vec!["KTXorientation", "KTXwriter", "PH2D_PREMUL"]);
     }
 
@@ -2155,8 +2171,8 @@ mod tests {
         };
         let orig = build_fixture(&spec);
 
-        let patched = patch_premul_intent(&orig, PremulIntent::Premultiplied)
-            .expect("patch succeeds");
+        let patched =
+            patch_premul_intent(&orig, PremulIntent::Premultiplied).expect("patch succeeds");
 
         // ktx2 reader accepts the patched file and reports valid bounds.
         let reader = ktx2::Reader::new(&patched[..]).expect("patched parses via ktx2");
@@ -2186,13 +2202,20 @@ mod tests {
     #[test]
     fn patched_kvd_length_is_4_aligned_and_recorded() {
         let orig = build_fixture(&FixtureSpec::valid_rgba8_srgb_1x1());
-        let patched =
-            patch_premul_intent(&orig, PremulIntent::Straight).expect("patch ok");
+        let patched = patch_premul_intent(&orig, PremulIntent::Straight).expect("patch ok");
         let reader = ktx2::Reader::new(&patched[..]).expect("parses");
         let idx = reader.header().index;
-        assert_eq!(idx.kvd_byte_length % 4, 0, "kvdByteLength must be 4-aligned");
+        assert_eq!(
+            idx.kvd_byte_length % 4,
+            0,
+            "kvdByteLength must be 4-aligned"
+        );
         assert_ne!(idx.kvd_byte_length, 0, "kvd now non-empty");
-        assert_eq!(idx.kvd_byte_offset % 4, 0, "kvdByteOffset must be 4-aligned");
+        assert_eq!(
+            idx.kvd_byte_offset % 4,
+            0,
+            "kvdByteOffset must be 4-aligned"
+        );
     }
 
     #[test]
@@ -2211,8 +2234,7 @@ mod tests {
         use ktx2::dfd::{Basic, Block};
         use ktx2::{Format, Header, Index, LevelIndex};
 
-        let (basic, type_size) =
-            Basic::from_format(Format::R8G8B8A8_SRGB).expect("known format");
+        let (basic, type_size) = Basic::from_format(Format::R8G8B8A8_SRGB).expect("known format");
         let block_bytes = Block::Basic(basic).to_vec();
         let dfd_total: u32 = u32::try_from(4 + block_bytes.len()).unwrap();
         let mut dfd = Vec::new();
@@ -2286,7 +2308,11 @@ mod tests {
         assert_eq!(r1.supercompression_global_data(), &sgd[..]);
         // sgdByteOffset 8-aligned (spec sgdPadding), length unchanged.
         let idx = r1.header().index;
-        assert_eq!(idx.sgd_byte_offset % 8, 0, "sgdByteOffset must be 8-aligned");
+        assert_eq!(
+            idx.sgd_byte_offset % 8,
+            0,
+            "sgdByteOffset must be 8-aligned"
+        );
         assert_eq!(idx.sgd_byte_length, sgd.len() as u64);
         // Level + tag round-trip.
         let img = decode_ktx2_bytes(&patched).expect("decode ok");

@@ -256,7 +256,10 @@ fn cook_tagged_desktop_sprite_color_reports_straight_intent() {
         "PH2D_PREMUL value byte must encode Straight (0)"
     );
     // Format + dims survive the KVD insertion + offset shift untouched.
-    assert_eq!(img.format, plain_img.format, "tag must not change the format");
+    assert_eq!(
+        img.format, plain_img.format,
+        "tag must not change the format"
+    );
     assert_eq!((img.width, img.height), (FIXTURE_W, FIXTURE_H));
     // Base mip payload is byte-identical to the untagged cook.
     assert_eq!(

@@ -959,6 +959,23 @@ impl PainterTool {
         }
     }
 
+    /// Re-bake the cached `stroke_color_oklab` from the current
+    /// `params.active_color` + `params.opacity` **if a stroke is live**.
+    ///
+    /// `stroke_color_oklab` is snapshotted at `begin_stroke` (R4-LG-4) to
+    /// avoid recomputing two transcendentals per pointer event. A color
+    /// edit (`SetColor`/`SetColorSrgb`) or opacity edit mid-stroke must
+    /// refresh this cache, otherwise the in-flight stroke silently keeps
+    /// the old color until the *next* stroke — the same live-edit contract
+    /// `Opacity` established (audit X-7). Between strokes this is a no-op:
+    /// `begin_stroke` re-reads `active_color` anyway.
+    fn refresh_stroke_color_if_in_flight(&mut self) {
+        if self.stroke_active {
+            self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+            self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
+        }
+    }
+
     /// **W2.T2.1 — `PainterUiEdit` dispatch.** Mapeia ADR-0043 §2.3
     /// sidebar edits para canon params. Caller (shell drains via
     /// `EditorAction::ToolPanelEvent` → `handle_panel_event`) NÃO
@@ -980,16 +997,22 @@ impl PainterTool {
                 // at begin_stroke; refresh it mid-stroke so a live slider
                 // edit takes effect on the in-flight stroke instead of
                 // silently deferring to the next stroke (T2.1 made this
-                // edit live-draggable).
-                if self.stroke_active {
-                    self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
-                    self.stroke_color_oklab[3] *= self.params.opacity;
-                }
+                // edit live-draggable). Shared with the SetColor path
+                // (W2.T2.3) via `refresh_stroke_color_if_in_flight`.
+                self.refresh_stroke_color_if_in_flight();
             }
             crate::params::PainterUiEdit::SetColor(c) => {
                 // Audit S-8: NaN guard happens em `begin_stroke`; aqui
                 // só armazena (caller pode ter passado válido).
                 self.params.active_color = c;
+                self.refresh_stroke_color_if_in_flight();
+            }
+            crate::params::PainterUiEdit::SetColorSrgb(rgba) => {
+                // W2.T2.3: picker/hex wire format is sRGB8. Convert to the
+                // painter-native OKLCH (hue in radians) at the single
+                // bridge so the caller never touches the hue convention.
+                self.params.active_color = crate::color::srgb8_to_painter_oklch(rgba);
+                self.refresh_stroke_color_if_in_flight();
             }
             crate::params::PainterUiEdit::SelectBrush(_h) => {
                 // T1.6 R7 L1-4 — `set_brush` exige Brush runtime alongside
@@ -2092,5 +2115,95 @@ mod tests {
             a: 1.0,
         };
         let _ = oklch_to_oklab(c);
+    }
+
+    // ---- W2.T2.3: primary-color surface ----
+
+    #[test]
+    fn set_color_srgb_updates_active_and_snapshot_reflects() {
+        let mut t = PainterTool::default();
+        // Orange sRGB → SetColorSrgb → active_color updated.
+        t.apply_ui_edit(crate::params::PainterUiEdit::SetColorSrgb([255, 136, 0, 255]));
+        let snap = t.ui_snapshot();
+        // Snapshot's sRGB accessor round-trips back to the same bytes
+        // (±1 LSB — the 8-bit quantization tolerance).
+        let got = snap.active_color_srgb8();
+        for ch in 0..4 {
+            assert!(
+                got[ch].abs_diff([255, 136, 0, 255][ch]) <= 1,
+                "channel {ch}: got {got:?}"
+            );
+        }
+        // And the hex accessor shows the swatch.
+        assert_eq!(snap.active_color_hex(), "#FF8800");
+    }
+
+    #[test]
+    fn set_color_oklch_path_still_works() {
+        let mut t = PainterTool::default();
+        let c = OklchColor {
+            l: 0.5,
+            c: 0.1,
+            h: 1.0, // radians
+            a: 1.0,
+        };
+        t.apply_ui_edit(crate::params::PainterUiEdit::SetColor(c));
+        assert_eq!(t.params.active_color, c);
+    }
+
+    #[test]
+    fn next_stroke_uses_color_set_via_ui_edit() {
+        // The headline acceptance: a color set through the UI surface is
+        // the color the NEXT stroke paints with. We assert the cached
+        // stroke color (baked at begin_stroke from active_color) matches
+        // the OKLab of the color we just set.
+        let mut t = PainterTool::default();
+        t.apply_ui_edit(crate::params::PainterUiEdit::SetColorSrgb([255, 0, 0, 255]));
+        t.set_source(flat_source(8, 8, [0, 0, 0, 255]), 8, 8);
+        let _ = t.current_preview();
+        t.begin_stroke(7);
+        // begin_stroke baked active_color → stroke_color_oklab.
+        let expected = oklch_to_oklab(t.params.active_color);
+        // alpha is opacity-scaled (opacity default 1.0).
+        assert_eq!(t.stroke_color_oklab[0], expected[0]);
+        assert_eq!(t.stroke_color_oklab[1], expected[1]);
+        assert_eq!(t.stroke_color_oklab[2], expected[2]);
+        // Red has positive a* (green↔red) in OKLab.
+        assert!(
+            t.stroke_color_oklab[1] > 0.0,
+            "red must have positive OKLab a*; got {}",
+            t.stroke_color_oklab[1]
+        );
+    }
+
+    #[test]
+    fn mid_stroke_color_edit_refreshes_cache() {
+        // A color edit DURING a live stroke must take effect on the
+        // in-flight stroke (refresh_stroke_color_if_in_flight), mirroring
+        // the Opacity live-edit contract (audit X-7).
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [0, 0, 0, 255]), 8, 8);
+        let _ = t.current_preview();
+        t.begin_stroke(7);
+        let before = t.stroke_color_oklab;
+        t.apply_ui_edit(crate::params::PainterUiEdit::SetColorSrgb([0, 0, 255, 255]));
+        let after = t.stroke_color_oklab;
+        assert_ne!(
+            before, after,
+            "mid-stroke color edit must refresh the cached stroke color"
+        );
+        // Blue has negative b* (blue↔yellow) in OKLab.
+        assert!(after[2] < 0.0, "blue must have negative OKLab b*; got {}", after[2]);
+    }
+
+    #[test]
+    fn snapshot_color_accessors_match_default_swatch() {
+        // The default snapshot must expose the default orange swatch via
+        // the accessors so the picker opens on the real color.
+        let snap = crate::params::PainterUiSnapshot::default();
+        let srgb = snap.active_color_srgb8();
+        // Default is a warm orange: red channel dominates blue.
+        assert!(srgb[0] > srgb[2], "default swatch should be warm: {srgb:?}");
+        assert_eq!(snap.active_color_hex(), crate::color::format_hex(srgb));
     }
 }

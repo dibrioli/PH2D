@@ -21,10 +21,15 @@
 //! nos métodos que exigem brush engine real (W1 T1.4+). Smoke W1 day 1:
 //! abrir app sem panic. Pill ainda não aparece (T1.2 implementa).
 
+pub mod color;
 pub mod icon;
 pub mod params;
 pub mod tool;
 
+pub use color::{
+    HexParseError, format_hex, painter_oklch_to_hex, painter_oklch_to_srgb8, parse_hex,
+    parse_hex_to_painter_oklch, srgb8_to_painter_oklch,
+};
 pub use params::{
     PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,

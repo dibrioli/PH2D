@@ -139,7 +139,8 @@ pub enum PainterMode {
 /// Sidebar + topbar events traduzidos do `PanelEvent` genérico para
 /// semântica Painter dentro de `Tool::handle_panel_event`.
 ///
-/// v1 ship: ~15 variants; headroom para W9 (3), W11 (2), W14 (1) + 3 residual.
+/// v1 ship: ~15 variants; +`SetColorSrgb` (W2.T2.3) = 16; headroom para
+/// W9 (3), W11 (2), W14 (1) + 2 residual (cap 24).
 ///
 /// **Audit T1.6 R9 V1-H2:** `#[non_exhaustive]` mirrors the
 /// `BgRemovalUiEdit` precedent (R7 I1-1). Additive variants no
@@ -154,6 +155,13 @@ pub enum PainterUiEdit {
     Opacity(f32),
     // Color
     SetColor(OklchColor),
+    /// Set the primary color from sRGB8 `[r, g, b, a]` bytes — the wire
+    /// format the visual picker + hex field speak. Converted to the
+    /// painter-native OKLCH (hue in radians) inside `apply_ui_edit` via
+    /// `color::srgb8_to_painter_oklch`, so the picker never touches the
+    /// radians/degrees hue convention (W2.T2.3). Cap headroom: this is
+    /// variant 16/24 (was 15 + 9 reserved; consumes 1 reserved slot).
+    SetColorSrgb([u8; 4]),
     // Brush selection
     SelectBrush(BrushHandle),
     // Topbar mode toggles
@@ -173,7 +181,7 @@ pub enum PainterUiEdit {
     ResetSidebar,
     // Symmetry (W9 Drawing Assist)
     ToggleSymmetry,
-    // === 9 slots de headroom (W9+W11+W14+residual) ===
+    // === 8 slots de headroom (W9+W11+W14+residual) ===
     // Reserved para waves futuras:
     //   SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32) — W9
     //   ToggleOnionSkin, SetAnimFps(f32) — W11
@@ -218,6 +226,34 @@ pub struct PainterUiSnapshot {
     pub active_layer_name: String,
     pub active_layer_locked: bool,
     // 15 fields v1 — 3 slots de headroom
+}
+
+impl PainterUiSnapshot {
+    /// Primary color materialized as sRGB8 `[r, g, b, a]` bytes — the
+    /// form the top-bar color thumb + picker swatch paint with.
+    ///
+    /// Computed on demand from [`Self::active_color`] (OKLCH, hue in
+    /// radians) so it costs ZERO snapshot fields (cap 18 stays intact —
+    /// W2.T2.3). Out-of-gamut chroma is clamped at the display boundary.
+    #[must_use]
+    pub fn active_color_srgb8(&self) -> [u8; 4] {
+        crate::color::painter_oklch_to_srgb8(self.active_color)
+    }
+
+    /// Primary color as a hex string (`#RRGGBB` opaque, `#RRGGBBAA`
+    /// otherwise) — what the hex input field displays. Derived from
+    /// [`Self::active_color`]; no snapshot field cost.
+    #[must_use]
+    pub fn active_color_hex(&self) -> String {
+        crate::color::painter_oklch_to_hex(self.active_color)
+    }
+
+    /// Secondary color (long-press slot) as sRGB8 bytes — companion to
+    /// [`Self::active_color_srgb8`] for the dual-swatch affordance.
+    #[must_use]
+    pub fn secondary_color_srgb8(&self) -> [u8; 4] {
+        crate::color::painter_oklch_to_srgb8(self.secondary_color)
+    }
 }
 
 impl Default for PainterUiSnapshot {

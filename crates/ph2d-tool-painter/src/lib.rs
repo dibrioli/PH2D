@@ -23,6 +23,7 @@
 
 pub mod color;
 pub mod icon;
+pub mod layers;
 pub mod params;
 pub mod tool;
 pub mod undo;
@@ -30,6 +31,10 @@ pub mod undo;
 pub use color::{
     HexParseError, format_hex, painter_oklch_to_hex, painter_oklch_to_srgb8, parse_hex,
     parse_hex_to_painter_oklch, srgb8_to_painter_oklch,
+};
+pub use layers::{
+    GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH, MaskLayer,
+    RasterLayer,
 };
 pub use params::{
     PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,

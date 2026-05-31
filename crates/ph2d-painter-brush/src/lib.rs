@@ -62,6 +62,7 @@
 
 pub mod about;
 pub mod atlas;
+pub mod blend;
 pub mod brush;
 pub mod brush_handle;
 pub mod color_dynamics;
@@ -86,6 +87,7 @@ pub mod taper;
 pub mod wet_mix;
 
 pub use about::AboutParams;
+pub use blend::{BlendMode, MAX_BLEND_MODES, apply as apply_blend};
 pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;

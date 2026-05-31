@@ -143,6 +143,15 @@ Spec §15.7. Vivem em [`crates/ph2d-editor-core/src/widget/`](../crates/ph2d-edi
   KeyValueList.
 - Gate: showcase coverage. Sem ECS, sem render — UI pura.
 
+> **DEFERIDO (Enio, 2026-05-31):** §11 Animation inteira espera o **sistema
+> de animação** (módulo runtime separado/futuro). Não construir `SpriteAnimator`
+> tick + `SpriteFrames` asset + seção §11 agora — é view de runtime que ainda
+> não existe; vira casca. Determinismo (fixed-point vs f32) decide-se quando o
+> runtime for feito. Achado de arquitetura p/ quando voltar: `Sprite` é
+> `SimComponent` em `ph2d-render` e `ph2d-ecs` NÃO depende de `ph2d-render`
+> (só dev-dep) → `SpriteAnimator` tem que morar em `ph2d-render`, não em
+> `ph2d-ecs`. Sistema roda no sim loop do shell antes do extract (sim_extract.rs).
+
 ### §11 — Animation (mais demonstrável e independente)
 Spec §3.11 + §15.5. **Render/runtime-first:**
 1. **`SpriteFrames` asset** (lista de frames = região + duração) no AssetDb.

@@ -19,9 +19,11 @@
 use crate::PainterSidebarPanel;
 use crate::state::{self, PainterSidebarPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::rect_to_vello;
+use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
+use ph2d_editor_core::widget::{
+    ColorSwatch, SwatchSize, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
@@ -29,7 +31,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 const SLIDER_LABEL_W: f32 = 70.0; // LITERAL-PX-OK: sidebar slider label column width (component-specific layout, not a global Spacing-scale step)
 const SLIDER_CHIP_W: f32 = 64.0; // LITERAL-PX-OK: sidebar slider value-chip column width (component-specific layout, not a global Spacing-scale step)
@@ -100,6 +102,57 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(body_rect));
 
     let mut y = body_top;
+
+    // Color row — current brush color via the canonical `ColorSwatch`
+    // (Widget Gallery `widget/showcase/color.rs`): a left "Color" label
+    // + the swatch pinned to the row's right edge. Top-most row, mirror
+    // Procreate's "current color" at the top of the tool sidebar.
+    //
+    // Fill comes from the live snapshot (`active_color_srgb8`) so the
+    // swatch tracks the picker in real time as the user drags. The
+    // user RGBA is data (no hex literal here — `paint_color_swatch`
+    // carries the single justified `LITERAL-COLOR-OK`); chrome/label
+    // use tokens.
+    //
+    // The hit is keyed on the SHARED `PAINTER_COLOR_THUMB` id: the
+    // editor-core dispatch opens the Blender picker seeded with this
+    // color, and the shell `painter_bridge` round-trips the picked
+    // color back into the Painter. We only paint + register the hit.
+    let color_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        ROW_H_PX,
+    );
+    let label_font = TypeToken::Base.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        "Color",
+        color_rect.x,
+        color_rect.y + (ROW_H_PX - label_font) * 0.5,
+        label_font,
+        SLIDER_LABEL_W,
+        resolve(ColorToken::Text1, theme),
+    );
+    let swatch_w = Spacing::Xl3.px();
+    let swatch_rect = Rect::new(
+        color_rect.x + color_rect.w - swatch_w,
+        color_rect.y,
+        swatch_w,
+        ROW_H_PX,
+    );
+    let swatch = ColorSwatch::new(
+        core_ids::PAINTER_COLOR_THUMB,
+        "Brush color",
+        snapshot.active_color_srgb8(),
+    )
+    .size(SwatchSize::Md);
+    paint_color_swatch(&swatch, swatch_rect, ctx.scene, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
+    y += ROW_H_PX + row_pad;
 
     // Size slider — size_px display via display_override + SSOT map.
     // Adaptive layout (audit W-4): demotes the label to its own row when

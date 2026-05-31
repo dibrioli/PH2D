@@ -7,15 +7,31 @@ colisões git entre implementadores paralelos). O Coordenador mantém esta seç�
 
 **Não é log histórico.** Entradas concluídas vão para `git log`. Limpe ao encerrar.
 
-**Baseline git:** HEAD = `e5fb811` · **83 commits ahead de origin/main** (todas as
-sessões somadas, zero push nesta jornada). Push é decisão do Enio, via Coordenador,
-1× por jornada após `./scripts/ship.sh` verde.
+**Baseline git (2026-05-31, novo Coord):** `origin/main` = `9491f9f` (**PUSHADO**, CI
+run [26721192390](https://github.com/dibrioli/PH2D/actions/runs/26721192390) **verde** ✓ —
+fundação dos 16 commits). HEAD local = `e15d122` · **1 commit ahead** (só o doc de handoff
+do Coord anterior, docs-only). Os 83 commits do baseline antigo JÁ FORAM shipados. Push é
+decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` verde.
 
 ---
 
-## COORDENADOR (único) — ATIVO 2026-05-28
+## COORDENADOR (único) — ATIVO 2026-05-31 (novo Coord)
 
-Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings escritos:
+**Estado atual:** fundação 100% finalizada (todos os módulos = drop-crates isolados).
+**1 slot ativo:** `impl-ktx2` (W1.T8.1 patcher `PH2D_PREMUL`, background agent). Enio: rodar
+KTX2 solo, sem 2º slot (folga de RAM, foco). 3º slot segurado.
+**⚠️ CORREÇÃO vs handoff de transição:** o slot `impl-avif` **NÃO tem trabalho pendente** —
+AVIF Path C (decode+encode+HDR via libavif-sys dav1d+rav1e) **já fechou e está em origin**
+(`6bd4620` feat + `b1c44d7` audit-16). O handoff `HANDOFF_coordinator_ktx2_imageio_parallel.md`
+copiou o impl-handoff antigo (2026-05-28) sem reconferir; AVIF está DONE.
+**CI do KTX2** (`spike-texture-cook.yml`): bundle do Coord, Enio delegou ("faça o que achar
+melhor") — montar quando o KTX2 chegar no gate de cook, sem ratificação prévia.
+
+---
+
+### (histórico do modelo 5-impl 2026-05-28 — referência de posse, mantida abaixo)
+
+Orquestrando implementadores em módulos físicamente disjuntos. Briefings escritos:
 `docs/HANDOFF_{sprite_w1,imageio_avif,ktx2_w1,painter_w2,vector_w1}_impl.md`.
 
 ### Mapa de posse (anti-colisão — zero overlap de escrita)

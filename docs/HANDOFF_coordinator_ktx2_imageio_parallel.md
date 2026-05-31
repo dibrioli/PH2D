@@ -1,5 +1,12 @@
 # HANDOFF → novo Coordenador — KTX2 ⊕ Image IO em paralelo (2026-05-31)
 
+> **⚠️ CORREÇÃO (novo Coord, 2026-05-31):** a metade **AVIF deste handoff está STALE**.
+> O AVIF Path C (decode+encode+HDR via libavif-sys) **já foi fechado e pushado** em
+> `6bd4620` (feat) + `b1c44d7` (audit-16) — importer E exporter registrados em origin/main.
+> **Não há trabalho `impl-avif` pendente.** Este doc copiou o impl-handoff antigo (2026-05-28)
+> sem reconferir o git. Único trabalho real aberto = **KTX2 W1.T8.1**. Fonte de verdade viva:
+> [`SESSION_ACTIVE.md`](SESSION_ACTIVE.md).
+
 **De:** Coord saindo (fechou a fundação multi-agente + shipou 16 commits).
 **Para:** novo Coordenador único (modelo 1 Coord + **≤3 implementadores**).
 **Plano:** levar **KTX2** e **Image IO (AVIF)** em paralelo.

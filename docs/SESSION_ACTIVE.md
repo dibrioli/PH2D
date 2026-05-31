@@ -23,17 +23,19 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 commits locais acumulados, ship único no fechamento. A run CI 26722309764 (W1.T8.1) está
 rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
 
-**Slots ativos (2):**
-- **KTX2 — levado pelo próprio Coord** (eu). W1.T8.1 ✅ (CI 26722309764 **verde**). W2 Batch A ✅:
-  W2.T1 `wgpu_format_from_ktx2_format` (`d72e751`) + W2.T1.5 `detect_supported_compressions`
-  (`c23e01e`). **Próximo = W2.T2** (SpriteSource::CookedTexture — BREAKING, VERSION 3→4 + mirror
-  chain em editor-core = toca foundational). Bundle CI W1 (T10/T11.5/T12) fica pro fim (é CI).
-- **Painter — `impl-painter` (background agent) — PAUSADO** (3 deliverables, bloqueado nas minhas
-  dívidas foundational). Fechou: W2.T2.3 surface ✅ (`b5085d9`); **hue-bug fix** ✅ (`640f1d4`,
-  `c.h.to_degrees()` em tool.rs:1638 + 2 regressões — WAL gravava hue errado, render ao vivo já
-  estava certo); **W2.T2.2 undo/redo** ✅ (mesmo commit, `undo.rs` UndoController per-stroke texture
-  ring max_depth=300 + redo swap-model; `Redo` era no-op + não re-compunha layer — ambos consertados).
-  API exposta: `undo_last_stroke/redo_last_stroke/can_undo/can_redo`. Contrato 16/24, gates verdes.
+**3 contextos paralelos (write-sets disjuntos):**
+- **Coord (eu)** — coordenando + gateando. KTX2 W1.T8.1 ✅ (CI 26722309764 verde) + W2 Batch A ✅
+  (`d72e751` W2.T1 + `c23e01e` W2.T1.5). Wire undo/redo ✅ (`808383a`). Próximo KTX2 = W2.T2
+  (SpriteSource::CookedTexture, BREAKING, toca mirror chain editor-core) — **espera os 2 slots
+  fecharem** (W2.T2 colide com o picker em editor-core/ids.rs+hero.rs). Bundle CI W1 fica pro fim.
+- **Slot `impl-ktx2` (background)** — **W2.T3** `compressed_pipeline.rs` em `crates/ph2d-render/`
+  (disjunto). Pipeline-per-format; block-alignment do write_texture.
+- **Slot picker-wire (background)** — **T2.3 picker UI** em `editor-core`+`shells/painter_bridge`
+  (spec foundational minha: thumb flutuante + `set_picker_target` + read-back→`SetColorSrgb`).
+
+**Painter slot anterior — fechado** (3 deliverables): W2.T2.3 surface (`b5085d9`); hue-bug fix
+(`640f1d4`, `c.h.to_degrees()` tool.rs:1638 + 2 regressões); W2.T2.2 undo/redo (mesmo commit,
+`undo.rs` UndoController ring max_depth=300 + swap-model). Undo/redo já **smoke-OK pelo Enio**.
 
 **Dívidas foundational do Coord (meu wire, caminho C) — DESBLOQUEIAM o slot Painter:**
 - ✅ **T2.2 undo/redo dispatch** (`808383a`): Cmd+Z context-sensitive (painter ativo → stroke undo;

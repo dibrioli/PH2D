@@ -135,3 +135,137 @@ pub fn wgpu_format_from_ktx2_format(
 
     Ok(mapped)
 }
+
+/// The subset of texture-format adapter features the renderer cares
+/// about, captured from a live device once at startup (W2.T1.5). The
+/// loader (W2.T4) consults it to pick the richest tier the GPU can
+/// actually sample — e.g. a desktop adapter reports BC and uploads the
+/// `Desktop` BC7 artifact; a WebGPU adapter reports none and falls
+/// back to the uncompressed `Constrained` tier.
+///
+/// Stores the masked [`wgpu::Features`] rather than loose booleans so
+/// [`Self::supports`] can reuse [`wgpu_format_from_ktx2_format`] as the
+/// single source of "which feature does this format need" — no second
+/// format→feature table to keep in sync.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompressionFeatureSet {
+    features: wgpu::Features,
+}
+
+impl CompressionFeatureSet {
+    /// Mask of the texture-format features that gate KTX2 uploads.
+    fn relevant_mask() -> wgpu::Features {
+        wgpu::Features::TEXTURE_COMPRESSION_BC
+            | wgpu::Features::TEXTURE_COMPRESSION_ASTC
+            | wgpu::Features::TEXTURE_COMPRESSION_ETC2
+            | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
+    }
+
+    /// Capture the relevant subset of a device's advertised features.
+    #[must_use]
+    pub fn from_features(device_features: wgpu::Features) -> Self {
+        Self {
+            features: device_features & Self::relevant_mask(),
+        }
+    }
+
+    /// `true` if the device can sample BC-compressed textures (desktop).
+    #[must_use]
+    pub fn bc(self) -> bool {
+        self.features
+            .contains(wgpu::Features::TEXTURE_COMPRESSION_BC)
+    }
+
+    /// `true` if the device can sample ASTC LDR textures (mobile / Apple).
+    #[must_use]
+    pub fn astc(self) -> bool {
+        self.features
+            .contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC)
+    }
+
+    /// `true` if the device can sample ETC2 textures (Android fallback).
+    #[must_use]
+    pub fn etc2(self) -> bool {
+        self.features
+            .contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2)
+    }
+
+    /// `true` if this device can legally sample `fmt`. Uncompressed
+    /// core formats need no feature (an empty requirement is always
+    /// satisfied), so they always return `true`; compressed and
+    /// 16-bit-norm formats require their family feature. An
+    /// [`Ktx2Format::Unsupported`] is never sampleable → `false`.
+    #[must_use]
+    pub fn supports(self, fmt: Ktx2Format) -> bool {
+        match wgpu_format_from_ktx2_format(fmt) {
+            Ok((_, required)) => self.features.contains(required),
+            Err(_) => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgpu::Features;
+
+    #[test]
+    fn empty_device_supports_only_core_uncompressed() {
+        let set = CompressionFeatureSet::from_features(Features::empty());
+        assert!(!set.bc() && !set.astc() && !set.etc2());
+        // Core uncompressed: always sampleable.
+        assert!(set.supports(Ktx2Format::Rgba8Unorm));
+        assert!(set.supports(Ktx2Format::Rgba8UnormSrgb));
+        assert!(set.supports(Ktx2Format::Rgba16Float));
+        assert!(set.supports(Ktx2Format::Rgba32Float));
+        // 16-bit-norm + every compressed family: gated → unsupported.
+        assert!(!set.supports(Ktx2Format::Rgba16Unorm));
+        assert!(!set.supports(Ktx2Format::Bc7RgbaUnorm));
+        assert!(!set.supports(Ktx2Format::Astc4x4RgbaUnorm));
+        assert!(!set.supports(Ktx2Format::Etc2Rgba8Unorm));
+        // Unsupported VkFormat is never sampleable.
+        assert!(!set.supports(Ktx2Format::Unsupported(0xDEAD)));
+    }
+
+    #[test]
+    fn bc_only_device_is_a_desktop_adapter() {
+        let set = CompressionFeatureSet::from_features(Features::TEXTURE_COMPRESSION_BC);
+        assert!(set.bc() && !set.astc() && !set.etc2());
+        assert!(set.supports(Ktx2Format::Bc7RgbaUnorm));
+        assert!(set.supports(Ktx2Format::Bc4RUnorm));
+        assert!(set.supports(Ktx2Format::Rgba8Unorm)); // core still fine
+        assert!(!set.supports(Ktx2Format::Astc6x6RgbaUnorm));
+        assert!(!set.supports(Ktx2Format::Etc2Rgb8Unorm));
+    }
+
+    #[test]
+    fn from_features_masks_off_irrelevant_features() {
+        // An unrelated feature must not leak into the captured set.
+        let set = CompressionFeatureSet::from_features(
+            Features::TEXTURE_COMPRESSION_ASTC | Features::DEPTH_CLIP_CONTROL,
+        );
+        assert!(set.astc() && !set.bc() && !set.etc2());
+        assert!(set.supports(Ktx2Format::Astc8x8RgbaUnormSrgb));
+    }
+
+    #[test]
+    fn fully_capable_device_supports_every_concrete_variant() {
+        let set = CompressionFeatureSet::from_features(
+            Features::TEXTURE_COMPRESSION_BC
+                | Features::TEXTURE_COMPRESSION_ASTC
+                | Features::TEXTURE_COMPRESSION_ETC2
+                | Features::TEXTURE_FORMAT_16BIT_NORM,
+        );
+        assert!(set.bc() && set.astc() && set.etc2());
+        // Unsupported stays unsampleable even on a fully-capable device.
+        assert!(!set.supports(Ktx2Format::Unsupported(42)));
+        for fmt in [
+            Ktx2Format::Rgba16Unorm,
+            Ktx2Format::Bc6hRgbSfloat,
+            Ktx2Format::Astc4x4RgbaUnorm,
+            Ktx2Format::Etc2Rgba8UnormSrgb,
+        ] {
+            assert!(set.supports(fmt), "full device should sample {fmt:?}");
+        }
+    }
+}

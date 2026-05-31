@@ -193,6 +193,15 @@ impl SpriteRenderer {
         self.gpu.device.limits().max_texture_dimension_2d
     }
 
+    /// Which KTX2 compression families the active adapter can sample
+    /// (KTX2 Fase 2, W2.T1.5). The loader uses this to pick the richest
+    /// cooked tier the GPU supports and fall back to uncompressed when a
+    /// family is missing. Captures `device.features()` into a
+    /// [`crate::ktx2_format::CompressionFeatureSet`].
+    pub fn detect_supported_compressions(&self) -> crate::ktx2_format::CompressionFeatureSet {
+        crate::ktx2_format::CompressionFeatureSet::from_features(self.gpu.device.features())
+    }
+
     /// Mutable handle to the individual-texture store. The host's
     /// image-import path acquires textures here when the user
     /// selects the Individual source strategy for a sprite (M14.5

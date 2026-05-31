@@ -54,7 +54,7 @@ pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
-pub use ktx2_format::{FormatError, wgpu_format_from_ktx2_format};
+pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
     selection_bbox_world,

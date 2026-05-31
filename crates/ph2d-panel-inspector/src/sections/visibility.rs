@@ -124,31 +124,54 @@ pub(crate) fn paint_visibility_section(
     let label_h = label_font + Spacing::Xs.px();
     let mut yy = y;
 
-    // Visibility Layer — 32-bit mask as a 4-col × 8-row checkbox grid
-    // (canonical BitmaskGrid32 widget). Bit `n` = layer `n+1`; absent
-    // component → all 32 set (ALL).
+    // Visibility Layer — collapsible sub-header + a 32-bit 4×8 checkbox
+    // grid (canonical BitmaskGrid32). Bit `n` = layer `n+1`; absent
+    // component → all 32 set (ALL). The grid is tall and rarely touched,
+    // so the header folds it: clicking the row toggles
+    // `is_collapsed(INSP_VIS_LAYER_HEADER)` (marked collapsible in
+    // `pre_populate`; `apply_click` flips it). Defaults expanded.
+    let layer_collapsed = store.is_collapsed(ids::INSP_VIS_LAYER_HEADER);
+    let hdr_rect = Rect::new(x, yy, w, label_h);
+    hit_index.register(ids::INSP_VIS_LAYER_HEADER, hdr_rect);
+    let chev = (label_h * 0.7).clamp(10.0, 14.0); // LITERAL-PX-OK: sub-header chevron, 70% of label row
+    let chev_rect = Rect::new(x, yy + (label_h - chev) * 0.5, chev, chev);
+    paint_icon(
+        scene,
+        if layer_collapsed {
+            IconId::ChevronRight
+        } else {
+            IconId::ChevronDown
+        },
+        chev_rect,
+        label_color,
+        ph2d_tokens::StrokeToken::Default.px(),
+    );
     paint_text(
         text_system,
         scene,
         "Visibility Layer",
-        x,
+        x + chev + Spacing::Xs.px(),
         yy + (label_h - label_font) * 0.5,
         label_font,
-        w,
+        (w - chev - Spacing::Xs.px()).max(0.0),
         label_color,
     );
     yy += label_h;
-    let grid = BitmaskGrid32::new(
-        ids::INSP_LIVE_VISIBILITY_SECTION,
-        "Visibility Layer",
-        ids::INSP_VIS_LAYER_BIT,
-        info.layer_mask,
-    );
-    for (bit, id) in ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
-        hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
+    if layer_collapsed {
+        yy += row_gap;
+    } else {
+        let grid = BitmaskGrid32::new(
+            ids::INSP_LIVE_VISIBILITY_SECTION,
+            "Visibility Layer",
+            ids::INSP_VIS_LAYER_BIT,
+            info.layer_mask,
+        );
+        for (bit, id) in ids::INSP_VIS_LAYER_BIT.iter().enumerate() {
+            hit_index.register(*id, BitmaskGrid32::cell_rect(x, yy, w, h, bit));
+        }
+        paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);
+        yy += BitmaskGrid32::grid_height(h) + row_gap;
     }
-    paint_bitmask_grid32(&grid, x, yy, w, h, scene, text_system, theme);
-    yy += BitmaskGrid32::grid_height(h) + row_gap;
 
     // Clip Children — Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).
     yy = segmented_row(

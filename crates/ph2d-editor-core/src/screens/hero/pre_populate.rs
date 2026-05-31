@@ -629,6 +629,8 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         // Inspector live sections.
         ids::INSP_LIVE_NAME_SECTION,
         ids::INSP_LIVE_VISIBILITY_SECTION,
+        // §8 Visibility Layer grid — collapsible sub-header.
+        ids::INSP_VIS_LAYER_HEADER,
         ids::INSP_LIVE_TRANSFORM_SECTION,
         ids::INSP_LIVE_RENDER_SECTION,
         ids::INSP_LIVE_COLOR_SECTION,

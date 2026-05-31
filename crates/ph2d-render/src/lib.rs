@@ -25,6 +25,9 @@ pub mod game_rt;
 pub mod image_filter;
 pub mod individual;
 pub mod instance_buffer;
+/// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
+/// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
+pub mod ktx2_format;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;
@@ -51,6 +54,7 @@ pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
+pub use ktx2_format::{FormatError, wgpu_format_from_ktx2_format};
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
     selection_bbox_world,

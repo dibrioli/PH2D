@@ -5173,6 +5173,7 @@ dependencies = [
  "bytemuck",
  "criterion 0.7.0",
  "naga",
+ "ph2d-asset-ktx2",
  "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",

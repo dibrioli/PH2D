@@ -14,6 +14,9 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# KTX2 Fase 2 (W2.T1): typed Ktx2Format → wgpu::TextureFormat mapping.
+# Pure parser crate (ktx2 + thiserror); no cycle (it does not depend on render).
+ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 bevy_ecs = "0.18"
 wgpu = "28"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }

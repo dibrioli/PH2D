@@ -208,11 +208,6 @@ fn sync_ordering_fields(
     if entity_changed {
         for (id, on, mixed) in [
             (
-                ids::INSP_ORDER_Z_OVERRIDE,
-                ord.z_index.is_some(),
-                ord.mixed.z_index,
-            ),
-            (
                 ids::INSP_ORDER_Z_RELATIVE,
                 ord.z_as_relative,
                 ord.mixed.z_as_relative,

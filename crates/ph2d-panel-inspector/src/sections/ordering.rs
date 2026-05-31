@@ -283,11 +283,12 @@ pub(crate) fn paint_ordering_section(
         };
     }
 
-    yy = cb!(yy, ids::INSP_ORDER_Z_OVERRIDE, "Override Z Index");
-    if live(store, ids::INSP_ORDER_Z_OVERRIDE, info.z_index.is_some()) {
-        yy = ni!(yy, ids::INSP_ORDER_Z_INDEX, "Z Index");
-        yy = cb!(yy, ids::INSP_ORDER_Z_RELATIVE, "Z as Relative");
-    }
+    // Z Index — the field IS the override (no separate toggle, Godot-
+    // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
+    // (= default, pure DFS / hierarchy order — `0` and absent sort
+    // identically). Z as Relative pairs with it.
+    yy = ni!(yy, ids::INSP_ORDER_Z_INDEX, "Z Index");
+    yy = cb!(yy, ids::INSP_ORDER_Z_RELATIVE, "Z as Relative");
     yy = cb!(yy, ids::INSP_ORDER_SHOW_BEHIND, "Show Behind Parent");
     yy = ni!(yy, ids::INSP_ORDER_ORDER_IN_LAYER, "Order in Layer");
     yy = layer_row(

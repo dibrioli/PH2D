@@ -122,7 +122,6 @@ fn populate_sampling(store: &mut WidgetStore) {
 /// the snapshot.
 fn populate_ordering(store: &mut WidgetStore) {
     for (id, on) in [
-        (ids::INSP_ORDER_Z_OVERRIDE, false),
         (ids::INSP_ORDER_Z_RELATIVE, true),
         (ids::INSP_ORDER_SHOW_BEHIND, false),
         (ids::INSP_ORDER_YSORT_ENABLED, false),

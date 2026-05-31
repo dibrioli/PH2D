@@ -25,21 +25,6 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
             Some(CheckboxValue::Checked)
         );
         let edit = match id {
-            ids::INSP_ORDER_Z_OVERRIDE => {
-                // Attach with the current Z value (store / snapshot / 0);
-                // detach when unchecked.
-                if checked {
-                    let v = host
-                        .store()
-                        .number_value(ids::INSP_ORDER_Z_INDEX)
-                        .map(|f| f as i32)
-                        .or(info.z_index)
-                        .unwrap_or(0);
-                    Some(OrderingFieldEdit::ZIndex(Some(v)))
-                } else {
-                    Some(OrderingFieldEdit::ZIndex(None))
-                }
-            }
             ids::INSP_ORDER_Z_RELATIVE => Some(OrderingFieldEdit::ZAsRelative(checked)),
             ids::INSP_ORDER_SHOW_BEHIND => Some(OrderingFieldEdit::ShowBehindParent(checked)),
             ids::INSP_ORDER_YSORT_ENABLED => Some(OrderingFieldEdit::YSortEnabled(checked)),
@@ -63,7 +48,9 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
     {
         let v = host.store().number_value(id).unwrap_or(0.0).round() as i32;
         let edit = if id == ids::INSP_ORDER_Z_INDEX {
-            OrderingFieldEdit::ZIndex(Some(v))
+            // The field IS the override: 0 detaches `ZIndexOverride`
+            // (default / pure DFS), any other value attaches it.
+            OrderingFieldEdit::ZIndex(if v == 0 { None } else { Some(v) })
         } else {
             OrderingFieldEdit::OrderInLayer(v)
         };

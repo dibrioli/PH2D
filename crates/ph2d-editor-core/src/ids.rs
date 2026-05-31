@@ -506,9 +506,9 @@ pub const INSP_LIVE_SHEET_COLOR: NodeId = hash_node_id("insp_live_sheet_color");
 pub const INSP_LIVE_ORDERING_COLOR: NodeId = hash_node_id("insp_live_ordering_color");
 
 // W3 Sprite Inspector v2 §7 — Ordering / Sorting control ids.
-/// "Override Z Index" toggle (attach/detach `ZIndexOverride`).
-pub const INSP_ORDER_Z_OVERRIDE: NodeId = hash_node_id("insp_order_z_override");
-/// Z Index value (NumberInput, shown when override on).
+// (INSP_ORDER_Z_OVERRIDE retired 2026-05-31 — the Z Index field IS the
+// override: a non-zero value attaches `ZIndexOverride`, 0 detaches it.)
+/// Z Index value (NumberInput); 0 = no override (default / DFS order).
 pub const INSP_ORDER_Z_INDEX: NodeId = hash_node_id("insp_order_z_index");
 /// "Z as Relative" toggle (shown when override on).
 pub const INSP_ORDER_Z_RELATIVE: NodeId = hash_node_id("insp_order_z_relative");

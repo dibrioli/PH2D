@@ -170,6 +170,31 @@ impl Camera2d {
         (cx_px, cy_px)
     }
 
+    /// World-meters → screen-pixel [`vello::kurbo::Affine`] — the matrix
+    /// form of [`Camera2d::world_to_screen`], for callers that hand an
+    /// `Affine` to a renderer (e.g. the Vector Pen bridge feeding
+    /// `vello::Scene::stroke`/`fill`) instead of projecting points one at
+    /// a time.
+    ///
+    /// Single source of the projection: derived from the SAME uniform
+    /// scale `k = window.height / height_world` and Y-flip as
+    /// `world_to_screen`/`screen_to_world`, so a shell can no longer carry
+    /// a hand-rolled copy that silently diverges (Vector audit H5/M3). The
+    /// returned affine maps `(world_x, world_y)` to `(screen_x, screen_y)`
+    /// with origin at the window's top-left, Y-down.
+    ///
+    /// Assumes square pixels (uniform `k`); if `Camera2d` ever becomes
+    /// anisotropic, this and `world_to_screen` must change together.
+    pub fn world_to_screen_affine(&self, window: WindowSize) -> vello::kurbo::Affine {
+        use vello::kurbo::Affine;
+        let w = window.width.max(1) as f64;
+        let h = window.height.max(1) as f64;
+        let k = h / (self.height_world as f64).max(1e-6);
+        Affine::translate((w * 0.5, h * 0.5))
+            * Affine::scale_non_uniform(k, -k)
+            * Affine::translate((-(self.center[0] as f64), -(self.center[1] as f64)))
+    }
+
     /// Build the view-projection matrix for the given window.
     /// Standard right-handed orthographic — world Y-up maps to wgpu
     /// clip space Y-up (per WebGPU spec §3.4), which means world top
@@ -263,6 +288,26 @@ mod tests {
             let (sx, sy) = cam.world_to_screen(world, win);
             assert!((sx - px.0).abs() < 1e-3, "x: {sx} vs {}", px.0);
             assert!((sy - px.1).abs() < 1e-3, "y: {sy} vs {}", px.1);
+        }
+    }
+
+    #[test]
+    fn world_to_screen_affine_matches_world_to_screen() {
+        // H5/M3: the Affine MUST produce the same screen pixels as the
+        // per-point `world_to_screen`, so the Vector shell bridge can drop
+        // its hand-rolled copy without any visual drift. Pure scale +
+        // translate (no trig) → no libm/determinism concern (HR-5).
+        let cam = Camera2d::new([3.0, -2.0], 8.0);
+        let win = WindowSize {
+            width: 800,
+            height: 600,
+        };
+        let affine = cam.world_to_screen_affine(win);
+        for world in [[0.0, 0.0], [3.0, -2.0], [7.5, 4.25], [-12.0, 9.0]] {
+            let (ex, ey) = cam.world_to_screen(world, win);
+            let p = affine * vello::kurbo::Point::new(world[0] as f64, world[1] as f64);
+            assert!((p.x - ex as f64).abs() < 1e-3, "x: {} vs {ex}", p.x);
+            assert!((p.y - ey as f64).abs() < 1e-3, "y: {} vs {ey}", p.y);
         }
     }
 

@@ -32,7 +32,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_pen::VectorPenTool;
-use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
+use ph2d_vector::{BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 
 /// Pen-blue overlay tint (R, G, B). Distinct per-layer alpha below.
 const PEN_RGB: (u8, u8, u8) = (80, 130, 255);
@@ -61,7 +61,7 @@ pub(super) fn dispatch(
     committed_paths: &mut Vec<ph2d_vector::Ph2dVectorAsset>,
     vector_scene: &mut VectorScene,
 ) {
-    let world_to_screen = world_to_screen_affine(camera, window_size);
+    let world_to_screen = camera.world_to_screen_affine(window_size);
     let scene = vector_scene.inner_mut();
 
     // Layer (a) — committed scene paths: always rendered.
@@ -183,19 +183,4 @@ pub(super) fn dispatch(
             );
         }
     }
-}
-
-/// World-meters → screen-pixel affine derived from the camera.
-///
-/// MUST stay the exact inverse of [`Camera2d::screen_to_world`]: uniform
-/// scale `k = window.height / camera.height_world` (relies on square
-/// pixels), Y inverted (world Y-up → screen Y-down), translated by window
-/// center and camera center. If `Camera2d` ever becomes anisotropic, this
-/// and `screen_to_world` would silently diverge — derive from the camera
-/// instead (see `docs/AUDIT_vector_module_W1_results.md` H5/M3).
-fn world_to_screen_affine(camera: &Camera2d, window: WindowSize) -> Affine {
-    let k = (window.height as f64) / (camera.height_world as f64).max(1e-6);
-    Affine::translate((window.width as f64 * 0.5, window.height as f64 * 0.5))
-        * Affine::scale_non_uniform(k, -k)
-        * Affine::translate((-camera.center[0] as f64, -camera.center[1] as f64))
 }

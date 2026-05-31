@@ -184,7 +184,14 @@ pub(crate) fn paint_color_tint_section(
     // Per-corner — 2×2 swatch grid + live bilinear gradient preview +
     // Equalize. Renders via the shader's @location(9..12) attributes.
     cur_y = paint_per_corner_tab(
-        scene, text_system, theme, hit_index, store, x, w, cur_y,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
         sp.as_ref(),
     );
     cur_y += row_gap;

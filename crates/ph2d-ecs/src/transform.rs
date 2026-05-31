@@ -755,9 +755,15 @@ mod tests {
         let mut present = World::new();
         let mut buf = WorklistBuf::with_capacity(8);
         let mut order = Vec::new();
-        propagate_transforms(&world, &mut state, &mut present, &mut buf, |_s, _p, e, _gt| {
-            order.push(e);
-        });
+        propagate_transforms(
+            &world,
+            &mut state,
+            &mut present,
+            &mut buf,
+            |_s, _p, e, _gt| {
+                order.push(e);
+            },
+        );
         // First-visited = smallest draw_order = furthest back, matching
         // the Hierarchy list (top of list = behind).
         assert_eq!(order, vec![c, a, b]);

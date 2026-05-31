@@ -602,7 +602,7 @@ impl RenderInstance {
         11 => Float32x4, // per_corner_tint[2] = BottomLeft
         12 => Float32x4, // per_corner_tint[3] = BottomRight
         13 => Float32,   // opacity
-        14 => Uint32,    // flip_uv bitfield (bit0=flip_x, bit1=flip_y, bit2=tint_fill, bits3-4=repeat)
+        14 => Uint32,    // flip_uv bitfield (bit0=flip_x, bit1=flip_y, bit2=tint_fill, bits3-4=repeat, bits5-7=blend[CPU-only])
         15 => Float32x4, // uv_xform (scale.xy, offset.xy) — ADR-0070-amendment-6
     ];
 
@@ -629,7 +629,8 @@ impl RenderInstance {
     // `flip_uv` is a general per-instance flags word, not flip-only. The
     // fragment shader (`shaders/sprite.wgsl`) decodes the SAME masks —
     // keep these constants and the WGSL `& Nu` literals in lockstep.
-    // Bits 3..31 are reserved (must be 0) for future per-instance bools.
+    // Bits 3-4 = repeat; bits 5-7 = blend tag (CPU-only, shader ignores);
+    // bits 8..31 reserved (must be 0) for future per-instance flags.
     /// `flip_uv` bit 0 — mirror the sampled texture U (logical flip_x).
     pub const FLIP_X_BIT: u32 = 1 << 0;
     /// `flip_uv` bit 1 — mirror the sampled texture V (logical flip_y).
@@ -662,6 +663,25 @@ impl RenderInstance {
     /// repeat bits (OR into the flip-flag word).
     pub const fn pack_repeat_bits(repeat_tag: u8) -> u32 {
         ((repeat_tag as u32) & 0b11) << Self::REPEAT_SHIFT
+    }
+
+    /// Bit offset of the 3-bit blend-mode tag packed into
+    /// [`Self::flip_uv`] (§10, ADR-0070-amendment-3 free-bit budget):
+    /// bits 5-7 hold `BlendMode::tag()` (`0..=5`). **CPU-only** — the
+    /// renderer reads it to key draw runs onto the matching blend
+    /// pipeline; the WGSL fragment never decodes these bits (blend is
+    /// pipeline state, not shader logic). Zero ABI cost (no new field).
+    pub const BLEND_SHIFT: u32 = 5;
+
+    /// Pack a resolved `BlendMode` tag (`0..=5`) into the `flip_uv`
+    /// blend bits (OR into the flags word). Mirrors [`pack_repeat_bits`].
+    pub const fn pack_blend_bits(blend_tag: u8) -> u32 {
+        ((blend_tag as u32) & 0b111) << Self::BLEND_SHIFT
+    }
+
+    /// Unpack the blend-mode tag (`0..=5`) from a `flip_uv` flags word.
+    pub const fn unpack_blend(flip_uv: u32) -> u8 {
+        ((flip_uv >> Self::BLEND_SHIFT) & 0b111) as u8
     }
 
     /// Default [`Self::sampling`] key — `Inherit/Inherit`, i.e. the
@@ -1005,6 +1025,23 @@ mod tests {
             RenderInstance::pack_flip_flags(true, true, true) & !0b111u32,
             0
         );
+    }
+
+    #[test]
+    fn blend_bits_round_trip_without_clobbering_flip_repeat() {
+        for tag in 0u8..=5 {
+            let packed = RenderInstance::pack_blend_bits(tag);
+            assert_eq!(RenderInstance::unpack_blend(packed), tag);
+            // Blend bits live above the flip/tint (0-2) and repeat (3-4) bits.
+            assert_eq!(packed & 0b1_1111, 0, "blend must not touch bits 0-4");
+        }
+        // Coexists with flip + repeat in one word, each decodes independently.
+        let word = RenderInstance::pack_flip_flags(true, false, true)
+            | RenderInstance::pack_repeat_bits(3)
+            | RenderInstance::pack_blend_bits(4);
+        assert_ne!(word & RenderInstance::FLIP_X_BIT, 0);
+        assert_eq!((word >> RenderInstance::REPEAT_SHIFT) & 0b11, 3);
+        assert_eq!(RenderInstance::unpack_blend(word), 4);
     }
 
     #[test]

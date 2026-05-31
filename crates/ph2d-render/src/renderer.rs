@@ -49,6 +49,11 @@ pub(crate) struct DrawRun {
     /// Part of the run key so mask sources / inside / outside each form
     /// their own runs (drawn with the mark / test / test-outside pipeline).
     pub(crate) mask_role: u8,
+    /// Blend-mode tag (`BlendMode::tag()`, `0..5`) read from
+    /// `RenderInstance::flip_uv` bits 5-7 (§10). Part of the run key so a
+    /// run binds the matching blend pipeline; index `0` (Mix) is the
+    /// zero-regression default. Only honored by the normal pass.
+    pub(crate) blend: u8,
 }
 
 pub struct SpriteRenderer {
@@ -562,16 +567,24 @@ impl SpriteRenderer {
                 multiview_mask: None,
             });
             if count > 0 {
-                pass.set_pipeline(&self.pipeline.pipeline);
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
+                // §10: bind the per-run blend pipeline. Runs are keyed by
+                // blend tag in `compute_runs`, so a run is uniform; rebind
+                // only when the tag changes (tracked to avoid redundant
+                // set_pipeline calls).
+                let mut bound_blend: Option<u8> = None;
                 for run in self
                     .runs
                     .iter()
                     .filter(|r| r.clip_group == 0 && r.mask_role == 0)
                 {
                     let Some(bg) = material_bg(run) else { continue };
+                    if bound_blend != Some(run.blend) {
+                        pass.set_pipeline(self.pipeline.blend_pipeline(run.blend));
+                        bound_blend = Some(run.blend);
+                    }
                     pass.set_bind_group(1, bg, &[]);
                     pass.draw(0..4, run.start..run.end);
                 }
@@ -636,9 +649,10 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             i.clip_group,
             RenderInstance::clip_role(i.clip_meta),
             RenderInstance::mask_role(i.clip_meta),
+            RenderInstance::unpack_blend(i.flip_uv),
         )
     };
-    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8, u8), start: u32, end: u32| {
+    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8, u8, u8), start: u32, end: u32| {
         runs.push(DrawRun {
             texture_id: k.0,
             sampling: k.1,
@@ -647,6 +661,7 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             clip_group: k.2,
             clip_role: k.3,
             mask_role: k.4,
+            blend: k.5,
         });
     };
     let mut start = 0u32;
@@ -710,6 +725,7 @@ mod tests {
                     clip_group: 0,
                     clip_role: 0,
                     mask_role: 0,
+                    blend: 0,
                 },
                 DrawRun {
                     texture_id: 7,
@@ -719,6 +735,7 @@ mod tests {
                     clip_group: 0,
                     clip_role: 0,
                     mask_role: 0,
+                    blend: 0,
                 },
                 DrawRun {
                     texture_id: 12,
@@ -728,6 +745,7 @@ mod tests {
                     clip_group: 0,
                     clip_role: 0,
                     mask_role: 0,
+                    blend: 0,
                 },
             ]
         );

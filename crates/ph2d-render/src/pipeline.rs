@@ -30,10 +30,85 @@ use ph2d_gpu::GpuContext;
 /// never use depth here.
 pub const STENCIL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Stencil8;
 
+/// Number of blend-mode pipelines (mirrors `ph2d_ecs::BlendMode::COUNT`;
+/// kept as a local const so `pipeline.rs` has no ordering dependency on
+/// the enum at array-declaration time).
+pub const BLEND_PIPELINE_COUNT: usize = 6;
+
+/// The premultiplied-source [`wgpu::BlendState`] for a [`BlendMode`] tag
+/// (0..5). The fragment shader emits premultiplied RGB (`rgb *= a`), so
+/// every state below assumes a premultiplied source. Non-`Mix` modes
+/// preserve the destination alpha (coverage) and only vary the color op.
+/// Out-of-range tags fall back to `Mix` (standard over).
+pub fn blend_state_for(tag: u8) -> wgpu::BlendState {
+    use wgpu::{BlendComponent, BlendFactor as F, BlendOperation as Op, BlendState};
+    // Alpha that leaves the destination coverage untouched (FX modes).
+    let keep_dst_alpha = BlendComponent {
+        src_factor: F::Zero,
+        dst_factor: F::One,
+        operation: Op::Add,
+    };
+    let over_color = BlendComponent {
+        src_factor: F::One,
+        dst_factor: F::OneMinusSrcAlpha,
+        operation: Op::Add,
+    };
+    match tag {
+        // Add — dst + src (glow/light).
+        1 => BlendState {
+            color: BlendComponent {
+                src_factor: F::One,
+                dst_factor: F::One,
+                operation: Op::Add,
+            },
+            alpha: keep_dst_alpha,
+        },
+        // Subtract — dst − src (reverse-subtract).
+        2 => BlendState {
+            color: BlendComponent {
+                src_factor: F::One,
+                dst_factor: F::One,
+                operation: Op::ReverseSubtract,
+            },
+            alpha: keep_dst_alpha,
+        },
+        // Multiply — src · dst (darken).
+        3 => BlendState {
+            color: BlendComponent {
+                src_factor: F::Dst,
+                dst_factor: F::Zero,
+                operation: Op::Add,
+            },
+            alpha: keep_dst_alpha,
+        },
+        // Screen — src·(1−dst) + dst (soft lighten).
+        4 => BlendState {
+            color: BlendComponent {
+                src_factor: F::OneMinusDst,
+                dst_factor: F::One,
+                operation: Op::Add,
+            },
+            alpha: keep_dst_alpha,
+        },
+        // Mix (0) / PremultAlpha (5) / anything else — standard
+        // premultiplied "over".
+        _ => BlendState {
+            color: over_color,
+            alpha: over_color,
+        },
+    }
+}
+
 pub struct SpritePipeline {
     /// Normal pass (no stencil): every non-clipped sprite, exactly as
-    /// before ClipChildren existed (zero-regression path).
+    /// before ClipChildren existed (zero-regression path). Equivalent to
+    /// `blend_pipelines[0]` (Mix); kept as the canonical handle the clip
+    /// / mask passes reference for their stencil variants.
     pub pipeline: wgpu::RenderPipeline,
+    /// One pipeline per [`BlendMode`] tag (§10). The normal pass binds
+    /// `blend_pipelines[run.blend]` per draw run; index 0 (Mix) is the
+    /// zero-regression default. Clip / mask passes keep the default blend.
+    pub blend_pipelines: [wgpu::RenderPipeline; BLEND_PIPELINE_COUNT],
     /// Stencil-mark pass: writes the clip-parent / Mask2D silhouette, no
     /// color. Shared by ClipChildren and Mask2D (both mark by alpha cutoff).
     pub mark_pipeline: wgpu::RenderPipeline,
@@ -304,14 +379,44 @@ impl SpritePipeline {
             },
         );
 
+        // §10: one pipeline per BlendMode tag — same normal vs/fs path,
+        // differing only in the color-target BlendState. Index 0 (Mix)
+        // matches `pipeline` (the zero-regression default).
+        let blend_pipelines = std::array::from_fn(|tag| {
+            build_variant(
+                &gpu.device,
+                &layout,
+                &shader,
+                color_format,
+                Variant {
+                    label: "ph2d-render sprite blend pipeline",
+                    vs_entry: "vs_main",
+                    fs_entry: "fs_main",
+                    buffers: &normal_buffers,
+                    color_write: wgpu::ColorWrites::ALL,
+                    blend: Some(blend_state_for(tag as u8)),
+                    depth_stencil: None,
+                },
+            )
+        });
+
         Self {
             pipeline,
+            blend_pipelines,
             mark_pipeline,
             test_pipeline,
             test_outside_pipeline,
             frame_bgl,
             material_bgl,
         }
+    }
+
+    /// Normal-pass pipeline for a [`BlendMode`] tag (0..5). Out-of-range
+    /// tags clamp to `Mix` (index 0).
+    pub fn blend_pipeline(&self, tag: u8) -> &wgpu::RenderPipeline {
+        self.blend_pipelines
+            .get(tag as usize)
+            .unwrap_or(&self.blend_pipelines[0])
     }
 }
 

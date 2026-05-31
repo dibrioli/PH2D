@@ -243,6 +243,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
     reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
     reg.register::<crate::UvTransform>("ph2d::ecs::UvTransform");
+    reg.register::<crate::BlendMode>("ph2d::ecs::BlendMode");
 }
 
 #[cfg(test)]
@@ -273,8 +274,9 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
-        // sorting/visibility/sampling/mask components (incl. Mask2D source).
-        assert_eq!(reg.len(), 20);
+        // sorting/visibility/sampling/mask components (incl. Mask2D source)
+        // + 1 §10 BlendMode.
+        assert_eq!(reg.len(), 21);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

@@ -40,6 +40,7 @@
 //! preserving the ability to swap or version-bump bevy_ecs without
 //! cascading import churn.
 
+pub mod blend;
 pub mod masking;
 pub mod name;
 pub mod present;
@@ -54,6 +55,7 @@ pub mod transform_versioned;
 pub mod visibility;
 pub mod visibility_layer;
 
+pub use blend::BlendMode;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};

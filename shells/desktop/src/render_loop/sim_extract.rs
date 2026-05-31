@@ -414,11 +414,20 @@ pub(super) fn run(
                     // Packed flags (amendment-3/-6): bit0=flip_x · bit1=flip_y ·
                     // bit2=tint_fill · bits3-4=resolved repeat (single-sourced
                     // helpers keep the bit layout in sync with the WGSL decode).
+                    // §10 BlendMode: per-sprite, absent = Mix (tag 0 =
+                    // zero-regression default). Packed into flip_uv bits 5-7
+                    // (CPU-only — the renderer keys draw runs on it).
+                    let blend_tag = sim
+                        .get::<ph2d_ecs::BlendMode>(sim_entity)
+                        .copied()
+                        .unwrap_or_default()
+                        .tag();
                     let flip_uv = ph2d_render::RenderInstance::pack_flip_flags(
                         spr.flip_x,
                         spr.flip_y,
                         spr.tint_fill,
-                    ) | ph2d_render::RenderInstance::pack_repeat_bits(rrepeat as u8);
+                    ) | ph2d_render::RenderInstance::pack_repeat_bits(rrepeat as u8)
+                        | ph2d_render::RenderInstance::pack_blend_bits(blend_tag);
                     // Region sub-UV (anatomia §03 §3.5): when enabled,
                     // narrow the base rect to `region_rect` (source pixels
                     // → UV). Applied BEFORE the sheet grid so the grid

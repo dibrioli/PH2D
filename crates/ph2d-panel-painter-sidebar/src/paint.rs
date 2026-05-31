@@ -237,9 +237,11 @@ fn paint_color_row(
         eye_w,
         ROW_H_PX,
     );
-    // Eyedropper armed visual: Pressed (AccentSoft chip) when armed, else
-    // the dispatcher-tracked hover/press state.
-    let eye_state = if snapshot.eyedropper_armed {
+    // Eyedropper armed visual: Pressed (AccentSoft chip) while a pick is
+    // pending (the picker's `eyedropper_pending`, shared with the picker's
+    // own eyedropper button — one mechanism), else the dispatcher-tracked
+    // hover/press state.
+    let eye_state = if ctx.host.store().eyedropper_pending().is_some() {
         ButtonState::Pressed
     } else {
         ctx.host

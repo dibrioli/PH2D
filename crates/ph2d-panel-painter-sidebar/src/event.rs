@@ -42,13 +42,25 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 )));
             true
         }
-        // Modifier square (T2.4) → ToggleEyedropper. Forward genérico via
-        // PanelEvent::Click; PainterTool::handle_panel_event mapeia o id
-        // pro PainterUiEdit::ToggleEyedropper (arm/disarm). O sample no
-        // canvas (hold + tap) é shell/foundational (Coordenador).
+        // Eyedropper icon (T2.4) — make it FUNCTIONAL by reusing the picker's
+        // proven sample path: open the shared Blender picker seeded with the
+        // current color AND arm its eyedropper (`eyedropper_pending`). The
+        // next canvas click then emits `EyedropperPick`; the shell reads the
+        // rendered pixel (`forwarding.rs` → `read_pixel` → `set_blender_value`)
+        // and the `painter_bridge` (picker_target == PAINTER_COLOR_THUMB)
+        // applies it to the Painter via `SetColorSrgb`. Mirrors the dispatch
+        // open block for PAINTER_COLOR_THUMB (pointer.rs) + sets pending.
+        // Seed from the live snapshot (no color literal).
         WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_MODIFIER_SQUARE => {
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            let seed = crate::state::current_snapshot().active_color_srgb8();
+            let store = host.store_mut();
+            store.set_widget_color(ph2d_editor_core::ids::PAINTER_COLOR_THUMB, seed);
+            store.set_picker_target(Some(ph2d_editor_core::ids::PAINTER_COLOR_THUMB));
+            store.set_blender_value(
+                ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+                ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+            );
+            store.set_eyedropper_pending(Some(ph2d_editor_core::ids::INSP_BLENDER_PICKER));
             true
         }
         // Undo/Redo buttons: sem paint nesta wave (T2.2 replay engine).

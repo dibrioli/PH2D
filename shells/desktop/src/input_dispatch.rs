@@ -267,6 +267,22 @@ impl App {
             button: mapped_button,
             timestamp_ns: Self::timestamp_ns(),
         };
+        // Painter eyedropper (W2.T2.4): capture whether the color picker
+        // popover is open BEFORE the hero dispatch runs — that dispatch may
+        // consume an eyedropper pick on THIS click (sampling a canvas pixel
+        // into the Painter via the picker → painter_bridge path) or dismiss
+        // the popover. While the picker is open, a canvas Primary Down
+        // belongs to the picker, not the brush: we must NOT also start a
+        // stroke (sample-AND-paint on one click). Suppressing the painter
+        // stroke-down lets the click fall through to
+        // `painter_active_consume_canvas_click` (silent consume — no stroke,
+        // no selection-rect).
+        let picker_open_at_press = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map(|h| h.store.picker_target().is_some())
+            .unwrap_or(false);
         self.handler.on_pointer(evt);
         forward_to_hero(self.gfx.as_mut(), evt);
 
@@ -319,8 +335,10 @@ impl App {
             // Painter stroke down (SHELL-only, T1.5): Primary Down over the
             // sprite footprint opens a stroke + carimba the first stamp.
             // Consumes the event so it doesn't pick/move the sprite.
+            // Suppressed while the color picker is open (W2.T2.4 eyedropper):
+            // that click is the picker's (sample / dismiss), never a stroke.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_painter_paint_down(evt.x, evt.y) =>
+                if !picker_open_at_press && self.try_painter_paint_down(evt.x, evt.y) =>
             {
                 return;
             }

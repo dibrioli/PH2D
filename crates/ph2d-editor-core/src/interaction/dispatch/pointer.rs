@@ -578,7 +578,13 @@ pub fn dispatch_pointer_with_text<'frame>(
                     Some(InteractiveState::BlenderHit { .. })
                 );
                 let is_color_target = hit.map(|(id, _)| is_color_target_id(id)).unwrap_or(false);
-                if !inside_outer && !inside_sub && !is_color_target {
+                // Don't dismiss while an eyedropper pick is armed: a click
+                // OUTSIDE the picker is the user sampling a canvas pixel, not
+                // dismissing. Without this guard the dismiss (here) fires
+                // before the eyedropper interception below, closing the
+                // popover before the sample registers (Enio smoke W2.T2.4).
+                let eyedropper_armed = store.eyedropper_pending().is_some();
+                if !inside_outer && !inside_sub && !is_color_target && !eyedropper_armed {
                     store.set_picker_target(None);
                 }
             }

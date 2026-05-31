@@ -1618,12 +1618,12 @@ impl Tool for PainterTool {
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
             }
-            // **W2.T2.4:** modifier square click arms/disarms the
-            // eyedropper-while-held gesture. The on-canvas sample itself
-            // is shell-side; here we only flip `eyedropper_armed`.
-            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE => {
-                self.apply_ui_edit(PainterUiEdit::ToggleEyedropper);
-            }
+            // **W2.T2.4:** the eyedropper icon no longer routes through here
+            // — the sidebar arms the picker's `eyedropper_pending` directly
+            // (panel `event.rs`), so the sampled pixel flows back via the
+            // shared picker → painter_bridge path (`SetColorSrgb`). The
+            // `ToggleEyedropper` UI-edit + `eyedropper_armed` flag remain for
+            // any future direct-arm caller.
             _ => {}
         }
     }

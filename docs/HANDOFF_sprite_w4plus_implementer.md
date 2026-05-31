@@ -176,6 +176,34 @@ Spec §3.10. **Split em DUAS partes:**
   passa a keyar no blend mode; o renderer escolhe a pipeline por-run. O blend
   mode viaja em bits livres de `flip_uv` (zero ABI) OU num campo `blend` CPU-
   tail (amendment-N, igual `sampling`). Seção = segmented 6 modos.
+
+  > **DE-RISCADO (2026-05-31, pronto p/ executar — ZERO-ABI):** confirmado que
+  > `flip_uv` usa só bits 0-4 (flip_x/y bit0-1, tint_fill bit2, repeat bit3-4);
+  > **bits 5-31 livres** ([sprite.rs:632](../crates/ph2d-render/src/sprite.rs#L632)
+  > "reserved for future per-instance bools"). Blend = 3 bits (6 modos) em
+  > bits 5-7 → SEM campo novo, SEM re-lock do gate de size, SEM ADR de ABI.
+  > Passos concretos (render-first per §1.1):
+  > 1. `BlendMode` enum + component em `ph2d-ecs` (mirror `OnScreenEnabler`/
+  >    `VisibilityLayer` em `visibility_layer.rs`); registra em `register_ecs_components`
+  >    → **re-lock 3 count gates** (ecs/render/script registry.rs).
+  > 2. `sprite.rs`: `BLEND_SHIFT=5` + `pack_blend_bits(tag:u8)` + `unpack_blend(flip_uv)`
+  >    (mirror `REPEAT_SHIFT`/`pack_repeat_bits`); atualizar o comentário "bits 3..31
+  >    reserved". WGSL não precisa mudar (decode por máscara, ignora bits 5-7).
+  > 3. `pipeline.rs`: hoje 4 pipelines (normal/mark/test/test_outside) com
+  >    `blend: PREMULTIPLIED_ALPHA_BLENDING`. Criar N variantes de `BlendState` p/
+  >    Add/Sub/Mul/Screen/Mix; guardar array indexado por blend tag.
+  > 4. `renderer.rs::compute_runs` ([:624](../crates/ph2d-render/src/renderer.rs#L624)):
+  >    add `blend: u8` ao key `(texture_id, sampling, clip_group, clip_role, mask_role)`
+  >    + ao `DrawRun` ([:29](../crates/ph2d-render/src/renderer.rs#L29)); o normal
+  >    pass binda a pipeline de blend casada por-run. **Contiguidade:** blend NÃO
+  >    precisa de subtree-contiguity (≠ clip-group); só runs adjacentes de mesmo
+  >    blend mergeiam — z-order interleavado vira mais draw calls (correto, custo OK).
+  > 5. `sim_extract.rs`: resolve `BlendMode` component (ausente→Mix/Premult default)
+  >    → `flip_uv |= pack_blend_bits(tag)` na construção do RenderInstance.
+  > 6. Seção §10 Inspector (espelha §9 Sampling): segmented 6 modos via
+  >    `SegmentedAdaptive` (W6 já existe!) + Material slot **data-stub**.
+  > 7. Gate headless de regressão (mirror `mask_interaction_regression.rs`):
+  >    Add deve clarear sobre fundo; Mul escurecer. + audit adversarial ≥2 lentes.
 - **Material + InstanceShaderParams (STUB ou bloqueado):** o renderer é
   **fixed-function** (não há material/shader runtime). Ou (a) shipa data-stub
   (componente + UI persistem, sem efeito — igual MaskInteraction antes do

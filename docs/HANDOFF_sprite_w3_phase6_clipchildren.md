@@ -283,6 +283,62 @@ quando justificado. **Strings de UI em INGLÊS** (comentário pode ser pt-BR).
 6. **§8 section**: toda a stack §2.1 (espelhar §9). Smoke do Enio.
 7. Commit em blocos (ABI+extract+pipeline+render = 1; gate = 1; §8 = 1).
 
+## 5-BIS. STATUS 2026-05-30 — Deliverable A FECHADO + COMMITADO
+
+**Commit local `45ab07c`** (não pushado): `feat(sprite): W3 §8 ClipChildren
+stencil render (Deliverable A)`. Steps 1–5 da §5 completos e **verificados**:
+
+- **ABI amendment-7**: `RenderInstance` +`clip_group:u32` +`clip_meta:u32`
+  (CPU-tail, 176→**184 B**; GPU layout 164 B/12 attrs INTACTO). 3 gates
+  re-lockados (pod_size 184, field_count 14→16). Helpers `pack_clip_meta`/
+  `clip_role`/`clip_cutoff` + `CLIP_ROLE_*` consts em `sprite.rs`.
+- **Extract** (`sim_extract.rs`): `resolve_clip_grouping()` no post-rank
+  loop (clip_group = rank do clip-parent +1, single-level/innermost). Os 4
+  componentes JÁ estavam no registry (§4.1 era falso alarme — nada a somar).
+- **Pipeline** (`pipeline.rs`): 2 variantes stencil (`mark`/`test`) +
+  `STENCIL_FORMAT=Stencil8` lazy attachment. **DECISÃO CHAVE**: o limite de
+  16 vertex-attrs (loc 0..15) está CHEIO → o `@location(16)` do plano §1.4
+  NÃO cabe. Cutoff viaja per-instance via `clip_meta` **repurposed para
+  `@location(5)`** (normalmente `tint`, não usado no mark) na mark layout.
+  Isso evita o pitfall de uniform-por-grupo (write-ordering no mesmo encoder).
+- **Shader** (`sprite.wgsl`): `vs_stencil_mark`/`fs_stencil_mark` +
+  `MarkInstanceInput` (loc 2/3/4/6/8/14/15 + 5=clip_meta). discard se
+  `texel.a <= cutoff`.
+- **render() multi-pass** + **`clip_pass.rs`** (módulo novo, `pub(crate)`):
+  pass normal (clip_group==0) → clip pass (1 render-pass, stencil Clear(0),
+  ref incremental por span, sem clears inter-grupo). ClipAndDraw desenha a
+  cor do mask via test-pipeline (Equal-ref coincide com a silhueta) → só **3
+  pipelines, não 4**. DrawRun ganhou `clip_group`+`clip_role` (run key).
+- **Gate** `clip_children_regression.rs`: headless 64×64, 4 pixels canônicos
+  × 3 modos + cutoff. **PASSANDO em GPU real** (2/2). Pipeline-compile test
+  valida as 3 pipelines via naga.
+
+### O que sobra: Deliverable B (§8 UI) — CORREÇÕES ao plano §2 (estava STALE)
+
+⚠️ O plano §2 assumia §8 inexistente. **Já existe** estado parcial:
+- `INSP_LIVE_VISIBILITY_SECTION`/`_COLOR` JÁ existem; **`LIVE_SECTION_IDS` JÁ
+  tem comprimento 8 com Visibility no índice 1** (NÃO bumpar p/ 9 — a Sampling
+  é índice 7; reusar o índice 1 existente). `paint.rs` linha 281-296 já pinta
+  a seção 1 chamando `paint_visibility_row` (o toggle Visible).
+- `InspectorVisibilityInfo {entity_bits, visible}` JÁ existe (mínimo, dirige o
+  toggle Visible acima/dentro da seção). `EditorAction::InspectorVisibilityEdit
+  (InspectorVisibilityInfo)` é **tuple-variant** (carrega o info inteiro), NÃO
+  `{entity_bits, edit}`. state/sync/snapshots/event/populate JÁ wirados p/ o
+  toggle Visible (`INSP_VISIBILITY_CHECK`).
+- **Recomendação**: NÃO renomear/quebrar o struct existente. Criar um struct
+  IRMÃO p/ o conteúdo da seção (ex.: `InspectorVisibilitySectionInfo`
+  {entity_bits, clip_mode u8, mask_mode u8, alpha_cutoff f32, layer_mask u32,
+  on_screen bool, rect [f32;4], mixed}) + `VisibilityFieldEdit` enum + um 2º
+  action `InspectorVisibilitySectionEdit {entity_bits, edit}` (espelhar §9
+  Sampling). Pintar os controles novos DENTRO da seção 1, abaixo do toggle
+  Visible (novo `sections/visibility.rs`). Os 2 bugs de smoke (§2.2) seguem
+  válidos: registrar segmented/checkbox como **Button** (is_focusable) +
+  label em row própria. Componentes (`ClipChildren`/`MaskInteraction`/
+  `VisibilityLayer`/`OnScreenEnabler`) já no registry → apply via
+  SetComponent/RemoveComponent direto.
+- Smoke do Enio (ClipChildren visual) precisa do controle ClipChildren da §8
+  p/ setar o modo in-app; até lá, o gate headless É a verificação de A.
+
 ## 6. Decisões abertas (perguntar ao Enio se travar)
 
 - **Nesting de clip** (clip dentro de clip): single-level W3 (warn) vs ref

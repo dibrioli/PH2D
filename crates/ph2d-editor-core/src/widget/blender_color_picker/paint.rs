@@ -194,6 +194,19 @@ pub fn paint_blender_color_picker_with_store(
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
 
+    // Full-rect hit BARRIER for the floating picker, registered FIRST so
+    // the sub-controls below (registered AFTER → win under HitIndex's
+    // back-to-front walk) still take their own clicks, while the dead
+    // space BETWEEN controls (padding bands, gaps) hits the picker itself
+    // instead of falling through to whatever panel sits beneath it. The
+    // picker paints after every panel, so this barrier outranks the
+    // Inspector inputs underneath (fixes click-through, 2026-05-31).
+    // (Earlier code skipped this deliberately, but that reasoning assumed
+    // the barrier was registered LAST; registering it first is safe.)
+    if parent_id.0 != 0 {
+        hit_index.register(parent_id, rect);
+    }
+
     let pad = Spacing::Lg.px();
     let inner_w = rect.w - pad * 2.0;
     let mut y = rect.y + pad;
@@ -238,11 +251,11 @@ pub fn paint_blender_color_picker_with_store(
     if ids.value_slider.0 != 0 {
         hit_index.register(ids.value_slider, hue_rect);
     }
-    // Intentionally NOT registering `parent_id` (the outer picker
-    // rect) in the hit index: it would shadow the SV + hue strip
-    // sub-rects since `HitIndex::hit` walks back-to-front and would
-    // pick the most-recently-registered rect (the outer one) for
-    // any click that lands inside it.
+    // `parent_id` IS registered (once, at the top of this fn) as a
+    // full-rect barrier; because it is registered BEFORE the SV / hue /
+    // channel sub-rects, those win on their own areas under the
+    // back-to-front walk, and only the dead space falls back to the
+    // barrier (so clicks never leak to the panel beneath the picker).
     y += HUE_STRIP_H + ROW_GAP;
 
     // Resulting-color preview swatch — full-width strip showing the

@@ -1101,6 +1101,43 @@ pub fn paint_hero_screen(
     if let Some(view) = hero.gizmo.view {
         crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
+    // Onda 2C + z-order fix: the multi-selection extra + global gizmos
+    // paint here — at the SAME layer as the primary gizmo, i.e. above the
+    // scene but BELOW the floating panels (painted later in this fn). They
+    // used to paint in the shell AFTER `paint_hero_screen` returned, which
+    // put them visually on top of panels AND registered their hit rects
+    // after the panel barriers (so handles were clickable through chrome).
+    // Snapshot `(bits, view)` first so `hero.gizmo` isn't borrowed while
+    // `&mut hero.hit_index` + `&mut hero.gizmo.gizmo_hit_map` are held.
+    let extras_snapshot: Vec<(u64, crate::gizmo::GizmoView)> = hero
+        .gizmo
+        .extra_selection
+        .iter()
+        .copied()
+        .zip(hero.gizmo.extra_views.iter().copied())
+        .collect();
+    for (bits, v) in extras_snapshot {
+        crate::gizmo::paint_sprite_gizmo_keyed(
+            scene,
+            &v,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.gizmo_hit_map,
+            crate::gizmo::GizmoTarget::ExtraIndividual(bits),
+            1.0,
+        );
+    }
+    if let Some(v) = hero.gizmo.global_view {
+        crate::gizmo::paint_sprite_gizmo_keyed(
+            scene,
+            &v,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.gizmo_hit_map,
+            crate::gizmo::GizmoTarget::Global,
+            2.0, // LITERAL-PX-OK: global gizmo outline stroke width
+        );
+    }
     paint_top_bar(
         &layout,
         scene,

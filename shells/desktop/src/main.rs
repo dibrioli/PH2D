@@ -157,6 +157,8 @@ impl App {
             last_painter_pushed_entity: None,
             painter_preview: None,
             painter_commit_requested: false,
+            painter_undo_requested: false,
+            painter_redo_requested: false,
             committed_vector_pen_paths: Vec::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display

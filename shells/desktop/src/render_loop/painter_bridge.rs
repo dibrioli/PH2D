@@ -91,6 +91,8 @@ pub(super) fn dispatch(
     last_painter_pushed_entity: &mut Option<u64>,
     painter_preview: &mut Option<PainterPreview>,
     commit_requested: &mut bool,
+    undo_requested: &mut bool,
+    redo_requested: &mut bool,
 ) -> bool {
     let painter_is_active = tools
         .active()
@@ -101,6 +103,10 @@ pub(super) fn dispatch(
     // `handle_editor_key`). Taken unconditionally so it can't leak to a
     // later painter activation; only acted on in the downcast block below.
     let commit_requested = std::mem::take(commit_requested);
+    // W2.T2.2: same unconditional-take discipline for the stroke
+    // undo/redo flags (Cmd+Z / Cmd+Shift+Z while Painter is active).
+    let undo_requested = std::mem::take(undo_requested);
+    let redo_requested = std::mem::take(redo_requested);
 
     // ── (W2.T2.1) Sidebar visibility + Inspector takeover toggle ──────────
     // Espelha o padrão BgRemoval/Padding bridge: panel sidebar é "takeover"
@@ -212,6 +218,16 @@ pub(super) fn dispatch(
         // the stroke into the sprite this same frame.
         if commit_requested {
             painter.request_commit();
+        }
+        // W2.T2.2: stroke undo/redo. Both methods mark the preview
+        // dirty, so the `take_preview_arc` drain below re-blits the
+        // restored canvas this same frame. Mutually exclusive by
+        // construction (one keypress sets one flag); guarded anyway so a
+        // stray double-set can't undo-then-redo into a no-op.
+        if undo_requested {
+            painter.undo_last_stroke();
+        } else if redo_requested {
+            painter.redo_last_stroke();
         }
         // Selection-drift invalidation (mirror of drive_preview_cache).
         if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)

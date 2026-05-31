@@ -418,6 +418,15 @@ pub(crate) struct App {
     /// `drive_pending_commit`. No concrete-tool downcast in the keyboard
     /// handler (keeps `architecture_no_downcast_to_concrete_tool_in_shell` green).
     pub(crate) painter_commit_requested: bool,
+    /// W2.T2.2: transient flags set by the Cmd+Z / Cmd+Shift+Z keybind
+    /// (only while the Painter tool is active) to undo/redo the last
+    /// brush stroke. Consumed (taken) by `painter_bridge::dispatch` —
+    /// the downcast-allowed site — which calls
+    /// `PainterTool::undo_last_stroke` / `redo_last_stroke` (those mark
+    /// the preview dirty so the bridge re-blits the restored canvas).
+    /// No concrete-tool downcast in the keyboard handler.
+    pub(crate) painter_undo_requested: bool,
+    pub(crate) painter_redo_requested: bool,
     /// W1.T1.7 R8: accumulator of committed Vector Pen `.ph2d-vector`
     /// assets. Each close-path emits one; the bridge stashes them
     /// here and renders ALL committed paths per frame so finished

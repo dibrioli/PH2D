@@ -165,12 +165,28 @@ impl App {
                 gfx.toasts.push(Toast::info("Toast key (T) pressed"));
                 self.title_dirty = true;
             }
-            // Cmd+Z / Ctrl+Z — image-edit undo (Trim, Make Square,
-            // Bg Removal). Single-level by design; broader editor
-            // undo is M14.x. Wave 2.5 PR 11.8b3: bus migration (was
-            // `hero.pending_undo_image_edit = true`).
+            // Cmd+Z / Ctrl+Z — context-sensitive undo. With the Painter
+            // tool active it undoes the last brush stroke (W2.T2.2;
+            // Cmd+Shift+Z redoes); with any other tool it falls back to
+            // the single-level image-edit undo (Trim, Make Square, Bg
+            // Removal — Wave 2.5 PR 11.8b3 bus migration). Tool identity
+            // is matched by id only (no concrete downcast) so the
+            // shell-downcast arch gate stays green; the actual stroke
+            // undo runs in `painter_bridge::dispatch`, the downcast-
+            // allowed site, via the transient flags set here.
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
+                let painter_active = gfx
+                    .tools
+                    .active()
+                    .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+                    .unwrap_or(false);
+                if painter_active {
+                    if self.modifiers.shift_key() {
+                        self.painter_redo_requested = true;
+                    } else {
+                        self.painter_undo_requested = true;
+                    }
+                } else if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.bus
                         .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
                 }

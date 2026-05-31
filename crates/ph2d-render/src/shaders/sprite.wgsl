@@ -158,13 +158,18 @@ fn vs_main(v: VertexInput, i: InstanceInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // W3.T3.11 tiling/scroll: map the quad UV through the per-sprite
-    // scale/offset, wrap it INSIDE [0,1] (so the tile stays within the
-    // sprite's own sub-rect — never bleeds into atlas neighbours), then
-    // lerp into the sub-rect. Identity (scale 1, offset 0, clamp) → the
-    // wrap is a no-op and `uv` equals the legacy lerp, bit-for-bit.
-    let t = in.quv * in.uv_xform.xy + in.uv_xform.zw;
-    let local = wrap_uv(t, in.repeat_mode);
+    // W3.T3.11 tiling + scroll (inside the sprite's own sub-rect — never
+    // bleeds into atlas neighbours):
+    //  1. TILE by `scale`; the RepeatMode governs how the tiling wraps at
+    //     the rect edge (repeat / mirror / clamp).
+    //  2. SCROLL by `offset`; a scroll always WRAPS (fract) so it stays
+    //     continuous and never clamps the sprite off-screen (spec §9.2
+    //     background-scroll use case) — even in Clamp mode. `offset == 0`
+    //     skips the fract so the default (and Clamp tiling) is unchanged,
+    //     keeping identity (scale 1, offset 0) bit-for-bit equal to legacy.
+    let tiled = wrap_uv(in.quv * in.uv_xform.xy, in.repeat_mode);
+    let scrolled = tiled + in.uv_xform.zw;
+    let local = select(scrolled, fract(scrolled), in.uv_xform.zw != vec2<f32>(0.0));
     let uv = vec2<f32>(
         mix(in.atlas_uv.x, in.atlas_uv.z, local.x),
         mix(in.atlas_uv.y, in.atlas_uv.w, local.y),

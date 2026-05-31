@@ -246,6 +246,22 @@ fn paint_per_corner_tab(
     y: f32,
     sp: Option<&InspectorSpriteInfo>,
 ) -> f32 {
+    // Explanatory label — these four swatches are the per-corner (vertex)
+    // tint; the renderer bilinearly interpolates them across the quad, so
+    // distinct corners make a gradient (anatomia §3.6).
+    let label_font = TypeToken::Sm.px();
+    let label_h = label_font + Spacing::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        "Per-Corner Tint (vertex gradient)",
+        x,
+        y + (label_h - label_font) * 0.5,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let y = y + label_h;
     let swatch_px = SwatchSize::Md.px();
     let gap = Spacing::Xs.px();
     let committed = sp

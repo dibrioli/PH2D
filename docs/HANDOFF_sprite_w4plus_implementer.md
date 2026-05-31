@@ -18,6 +18,14 @@
    RGB/HSV/OKLCH**; em OKLCH os 4 sliders viram L/C/H/Alpha (normalizados 0..1) e
    editar L/C/H altera a cor coerentemente.
 
+## §0.3 — Steer do Enio: OnScreenEnabler culling (quando for ligado)
+`OnScreenEnabler` segue **data-stub** (componente + UI + serialização; sem
+sistema runtime). Enio (2026-05-31): o modelo per-node-rect do Godot
+`VisibleOnScreenEnabler2D` **não é moderno** — quando o culling de
+processamento for implementado, NÃO replicar isso à risca; buscar abordagem
+data-oriented (ativação por chunk / spatial-hash / query de visibilidade em
+batch) em vez de um rect por entidade.
+
 ## §0 — Onde estamos (contexto mínimo)
 
 - **W0/W1/W2/W3 = COMPLETOS, pushados, CI verde.** As seções §1-4,6,7,8,9

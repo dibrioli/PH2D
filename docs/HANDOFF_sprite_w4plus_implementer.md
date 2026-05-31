@@ -7,14 +7,37 @@
 
 ---
 
+## §0.2 — Smoke pendente do W6 (Enio, `./play.command`)
+1. Abra o **Widget Gallery** → seção "Inspector v2 (W6)": confira os 6 widgets
+   (Rect2Editor em grade 2×2, BitmaskGrid32 4×8, NumericInputWithUnit "deg",
+   SegmentedAdaptive 4 modos, VariantEditor recursivo, KeyValueList).
+2. Inspector → §8 Visibility: o grid Visibility Layer (32 bits) e o **Enabler Rect**
+   (com On-Screen Enabler ligado) devem renderizar idênticos e editáveis; o rect
+   agora é 2×2 (X Y / W H) em vez de 4 linhas empilhadas.
+3. Color picker (qualquer painel): o toggle de canais agora tem **3 vias
+   RGB/HSV/OKLCH**; em OKLCH os 4 sliders viram L/C/H/Alpha (normalizados 0..1) e
+   editar L/C/H altera a cor coerentemente.
+
 ## §0 — Onde estamos (contexto mínimo)
 
 - **W0/W1/W2/W3 = COMPLETOS, pushados, CI verde.** As seções §1-4,6,7,8,9
   do Inspector funcionam (Identity, Transform+skew, Render Source, Sprite
   Sheet, Color&Tint, Ordering, Visibility+Clip+Mask, Sampling). Render de
   stencil (ClipChildren + Mask2D) auditado (6 lentes) + gates pixel-exatos.
+- **W6 widgets = COMPLETO (local, commit `76d2645`, pré-smoke).** 6 primitivos
+  novos em `crates/ph2d-editor-core/src/widget/` — `Rect2Editor` (Row +
+  Grid2x2), `BitmaskGrid32`, `VariantEditor` (recursivo, depth≤4),
+  `NumericInputWithUnit`, `KeyValueList`, `SegmentedAdaptive` — cada um com
+  a11y + testes + seção no Widget Gallery ("Inspector v2 (W6)", seções 10→11).
+  §8 Visibility re-cabeada (grid inline→`BitmaskGrid32`; rect rows→`Rect2Editor`
+  Grid2x2). **T6.1 OKLCH:** `ChannelMode::Oklch` + toggle RGB/HSV/OKLCH 3-vias
+  + sliders L/C/H/A no BlenderColorPicker (`oklch_lcha()` emite tupla; ph2d-color
+  fica dev-only). Auditoria 3-lentes + round-2 verde. **Smoke pendente do Enio**
+  (vide §0.2). Decisões de layout: Rect2 usa Grid2x2 no Inspector (coluna estreita
+  < MIN_W p/ 4-em-linha); VariantEditor/KeyValueList são referência VISUAL no
+  gallery (interação real é dos consumidores W4/W5).
 - **Falta:** §5 9-Slice · §10 Material&Blend · §11 Animation · §12 Named
-  Anchors · W6 widgets · W7 polish (i18n/a11y) · W8 cooker.
+  Anchors · W7 polish (i18n/a11y) · W8 cooker.
 - **`RenderInstance` ABI = 184 B / 16 campos, FROZEN.** GPU layout 164 B /
   12 attrs (locations 0..15 CHEIOS). Gates: `render_instance_pod_size_v4`,
   `architecture_sprite_inspector_surface`.

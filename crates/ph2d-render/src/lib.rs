@@ -21,6 +21,11 @@ pub mod atlas;
 pub mod camera;
 pub(crate) mod clip_pass;
 pub mod compositor;
+/// Compressed cooked-texture upload path (KTX2 Fase 2, W2.T3). One
+/// shared pipeline uploads BC/ASTC/ETC2/RGBA8 (all sample as
+/// filterable-float in wgpu 28) with block-aligned `write_texture`. See
+/// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
+pub mod compressed_pipeline;
 pub mod game_rt;
 pub mod image_filter;
 pub mod individual;
@@ -50,6 +55,9 @@ pub use atlas::{
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use compositor::Compositor;
+pub use compressed_pipeline::{
+    CompressedTexturePipeline, CompressedUploadError, MipUploadLayout, UploadedCompressedTexture,
+};
 pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use individual::{IndividualTextureError, IndividualTextureStore};

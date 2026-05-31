@@ -4980,6 +4980,7 @@ dependencies = [
  "bytemuck",
  "dhat",
  "naga",
+ "ph2d-color",
  "ph2d-gpu",
  "postcard",
  "serde",

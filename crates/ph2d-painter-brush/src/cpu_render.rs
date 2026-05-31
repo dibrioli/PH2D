@@ -94,6 +94,7 @@
 
 use crate::rendering_mode::RenderingMode;
 use crate::stamp::Stamp;
+use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 
 /// Aplica `stamps` sobre `canvas` (RGBA8 straight, sem gamma — treated as
 /// linear matching wgpu `rgba8unorm` semantics).
@@ -223,16 +224,18 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
                 continue;
             }
             let idx = (world_y as usize * width as usize + world_x as usize) * 4;
-            // Decode dst RGBA8 → premul linear vec4. Canvas storage é
-            // tratado como straight u8 (sem gamma) — preserva paridade
-            // com `wgpu::TextureFormat::Rgba8Unorm` (sem sRGB encoding).
-            // Mas pra alpha-over correto, precisamos da forma PREMUL.
-            // Converte straight → premul aqui, e premul → straight de
-            // volta no write.
+            // Decode dst RGBA8 → straight LINEAR. The canvas is sRGB-encoded
+            // (the sprite it mirrors uploads as `Rgba8UnormSrgb`), so
+            // alpha-over compositing must run in LINEAR light — decode RGB
+            // through the IEC-61966 sRGB transfer (the SAME `ph2d-color` fn
+            // the render/replay/swatch path uses, so a painted stroke matches
+            // its swatch). Alpha is NOT gamma-encoded → straight `/255`.
+            // Straight→premul follows for correct alpha-over; premul→straight
+            // + re-encode to sRGB happens on write below. (gamma fix 2026-05-31)
             let dst_straight = [
-                canvas[idx] as f32 / 255.0,
-                canvas[idx + 1] as f32 / 255.0,
-                canvas[idx + 2] as f32 / 255.0,
+                srgb_to_linear_byte(canvas[idx]),
+                srgb_to_linear_byte(canvas[idx + 1]),
+                srgb_to_linear_byte(canvas[idx + 2]),
                 canvas[idx + 3] as f32 / 255.0,
             ];
             let dst_alpha = dst_straight[3];
@@ -274,9 +277,12 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
             } else {
                 [0.0, 0.0, 0.0, 0.0]
             };
-            canvas[idx] = (out_straight[0] * 255.0 + 0.5) as u8;
-            canvas[idx + 1] = (out_straight[1] * 255.0 + 0.5) as u8;
-            canvas[idx + 2] = (out_straight[2] * 255.0 + 0.5) as u8;
+            // Re-encode RGB linear → sRGB byte (mirror of the read decode), so
+            // the canvas stays sRGB for the `Rgba8UnormSrgb` sprite + the
+            // replay path. Alpha is straight light → plain quantize, no gamma.
+            canvas[idx] = linear_to_srgb_byte(out_straight[0]);
+            canvas[idx + 1] = linear_to_srgb_byte(out_straight[1]);
+            canvas[idx + 2] = linear_to_srgb_byte(out_straight[2]);
             canvas[idx + 3] = (out_straight[3] * 255.0 + 0.5) as u8;
         }
     }
@@ -472,6 +478,48 @@ mod tests {
         );
         // Top-left corner of the canvas must be untouched.
         assert_eq!(canvas[0..4], [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn painted_byte_is_srgb_encoded_color_not_raw_linear() {
+        // GAMMA FIX (2026-05-31): a stamp must write the sRGB-ENCODED color —
+        // the value the `Rgba8UnormSrgb` sprite + the sidebar swatch + the
+        // replay path show — NOT the raw linear value. Before the fix the
+        // compositor wrote `linear * 255`, so a stroke came out dark/
+        // desaturated and mismatched its swatch (Enio W2 smoke). A
+        // UniformGlaze-over on a TRANSPARENT canvas yields straight RGB =
+        // the source color exactly (un-premul cancels coverage alpha), so the
+        // painted byte must equal `linear_to_srgb_byte(linear)`.
+        let (w, h) = (8, 8);
+        let mut canvas = empty_canvas(w, h);
+        let mut s = red_stamp(4.0, 4.0, 6.0);
+        s.shape_layer = 2; // square_hard → shape α = 1 in the interior.
+        apply_stamps(&mut canvas, w, h, &[s]);
+        let idx = (4 * w as usize + 4) * 4;
+        assert!(canvas[idx + 3] > 0, "center pixel must be painted");
+        let linear = oklab_to_linear_srgb(s.color_oklab[0], s.color_oklab[1], s.color_oklab[2]);
+        for c in 0..3 {
+            let lin_c = linear[c].clamp(0.0, 1.0);
+            let want_srgb = linear_to_srgb_byte(lin_c);
+            let old_raw_linear = (lin_c * 255.0 + 0.5) as u8;
+            assert_eq!(
+                canvas[idx + c],
+                want_srgb,
+                "channel {c}: painted byte {} must equal the sRGB encoding {} (= swatch), \
+                 not the raw-linear {}",
+                canvas[idx + c],
+                want_srgb,
+                old_raw_linear,
+            );
+            // Fix proof: for a mid-range channel, sRGB-encode is strictly
+            // brighter than the old raw-linear byte (the visible bug symptom).
+            if (0.02..0.98).contains(&lin_c) {
+                assert!(
+                    want_srgb > old_raw_linear,
+                    "channel {c}: sRGB {want_srgb} must lift mid linear above raw {old_raw_linear}",
+                );
+            }
+        }
     }
 
     #[test]

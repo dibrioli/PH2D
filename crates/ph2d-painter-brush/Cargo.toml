@@ -56,6 +56,12 @@ blake3 = "1"
 # (audit 2026-05-26 C-G1) pre-empt — T1.4 wires `StampPipeline` via
 # `ph2d-gpu::GpuContext` + direct `wgpu` types for the bind group layout.
 ph2d-gpu = { path = "../ph2d-gpu" }
+# Canonical sRGB ↔ linear transfer functions (IEC 61966) reused by the
+# stamp compositor's gamma boundary — the canvas is sRGB-encoded
+# (`Rgba8UnormSrgb` sprite) but alpha-over blending must happen in linear
+# light. Reusing `ph2d-color` avoids a 3rd encoder drifting from the
+# render/replay path (gamma bug fix 2026-05-31). Pure color crate, no cycle.
+ph2d-color = { path = "../ph2d-color" }
 # Direct `wgpu` dep for ComputePipeline/BindGroupLayout/etc types
 # referenced by `stamp_pipeline.rs`. Version pinned to match `ph2d-gpu`
 # (transitive resolution would otherwise risk version skew on minor

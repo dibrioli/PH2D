@@ -148,6 +148,50 @@ fn oklab_to_linear_srgb(L: f32, a: f32, b: f32) -> vec3<f32> {
     );
 }
 
+// ── sRGB gamma transfer (gamma fix 2026-05-31) ───────────────────────────
+//
+// The canvas is sRGB-encoded (the sprite it backs uploads as
+// `Rgba8UnormSrgb`), so alpha-over compositing must run in LINEAR light.
+// These mirror `ph2d_color::srgb::{srgb_to_linear_byte, linear_to_srgb_byte}`
+// (IEC 61966) on normalized [0,1] values — the literals are kept
+// bit-identical to the Rust side so the CPU MVP (`cpu_render.rs`) and this
+// GPU path stay in agreement (same discipline as the OKLab coefficient gate).
+fn srgb_to_linear(v: f32) -> f32 {
+    if v <= 0.04045 {
+        return v / 12.92;
+    }
+    return pow((v + 0.055) / 1.055, 2.4);
+}
+
+fn linear_to_srgb(v: f32) -> f32 {
+    let c = clamp(v, 0.0, 1.0);
+    if c <= 0.0031308 {
+        return c * 12.92;
+    }
+    return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+
+// Gamma applies to STRAIGHT values; the canvas is stored premultiplied, so
+// un-premultiply → decode/encode the RGB → re-premultiply. Alpha is light-
+// linear (never gamma-encoded) and passes through.
+fn premul_srgb_to_premul_linear(p: vec4<f32>) -> vec4<f32> {
+    if p.a <= 0.0 {
+        return vec4<f32>(0.0, 0.0, 0.0, p.a);
+    }
+    let s = p.rgb / p.a;
+    let lin = vec3<f32>(srgb_to_linear(s.r), srgb_to_linear(s.g), srgb_to_linear(s.b));
+    return vec4<f32>(lin * p.a, p.a);
+}
+
+fn premul_linear_to_premul_srgb(p: vec4<f32>) -> vec4<f32> {
+    if p.a <= 0.0 {
+        return vec4<f32>(0.0, 0.0, 0.0, p.a);
+    }
+    let s = p.rgb / p.a;
+    let enc = vec3<f32>(linear_to_srgb(s.r), linear_to_srgb(s.g), linear_to_srgb(s.b));
+    return vec4<f32>(enc * p.a, p.a);
+}
+
 // ── Procedural shape kernels (slot dispatch — T1.6) ──────────────────────
 //
 // Each kernel is a pure function `(uv) -> alpha` analytically identical to
@@ -537,7 +581,10 @@ fn cs_stamp(
     // every wgpu 28 backend; no sampler needed. `vec4<i32>(coord)` is
     // safe because the bounds check above guarantees `world_x/world_y`
     // are in `[0, canvas_w/h)`.
-    let dst = textureLoad(canvas_in, coord, 0);
+    // Gamma fix (2026-05-31): the stored canvas is sRGB-encoded premultiplied;
+    // decode to premultiplied LINEAR so the alpha-over rendering modes blend in
+    // linear light (mirror of cpu_render.rs's decode-on-read).
+    let dst = premul_srgb_to_premul_linear(textureLoad(canvas_in, coord, 0));
 
     let result = apply_rendering_mode(stamp.rendering_mode, src_premul, dst, stamp.wet_amount);
     // NaN guard: WGSL `clamp(NaN, lo, hi)` is implementation-defined
@@ -548,5 +595,8 @@ fn cs_stamp(
     let result_finite = select(vec4<f32>(0.0), result, result == result);
     let result_clamped = clamp(result_finite, vec4<f32>(0.0), vec4<f32>(1.0));
 
-    textureStore(canvas_out, coord, result_clamped);
+    // Re-encode premultiplied linear → premultiplied sRGB before store, so the
+    // canvas stays sRGB for the `Rgba8UnormSrgb` sprite (mirror of the CPU
+    // encode-on-write). Gamma fix (2026-05-31).
+    textureStore(canvas_out, coord, premul_linear_to_premul_srgb(result_clamped));
 }

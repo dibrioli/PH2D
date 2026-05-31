@@ -204,6 +204,19 @@ Spec §3.10. **Split em DUAS partes:**
   >    `SegmentedAdaptive` (W6 já existe!) + Material slot **data-stub**.
   > 7. Gate headless de regressão (mirror `mask_interaction_regression.rs`):
   >    Add deve clarear sobre fundo; Mul escurecer. + audit adversarial ≥2 lentes.
+
+  > **RENDER CORE FEITO (2026-05-31, commit local):** passos 1-5 + 7 prontos:
+  > `BlendMode` component (ph2d-ecs, 6 modos, absent=Mix) + 3 count gates
+  > (21/22/22) + `flip_uv` bits 5-7 (`pack_blend_bits`/`unpack_blend`, ABI
+  > 184B intacta) + 6 pipelines (`blend_state_for` premult-source) +
+  > `compute_runs` keyado por blend + bind por-run + extract resolve +
+  > gate headless `blend_mode_regression` VERDE (composita em LINEAR:
+  > Multiply<Mix<Screen<Add, Subtract no fundo). **FALTA (passo 6):** a
+  > **seção §10 Inspector** (espelha §9 Sampling — ~15 arquivos: ids/hero
+  > snapshot+edit+Mixed/action_bus/sections/panel state·sync·event_ordering·
+  > populate·paint/shell inspector_*·snapshots·commits·mod) com segmented 6
+  > modos via `SegmentedAdaptive` (W6) + Material slot data-stub. Sem ela o
+  > blend só responde ao componente via código/cena, não pela UI do Inspector.
 - **Material + InstanceShaderParams (STUB ou bloqueado):** o renderer é
   **fixed-function** (não há material/shader runtime). Ou (a) shipa data-stub
   (componente + UI persistem, sem efeito — igual MaskInteraction antes do

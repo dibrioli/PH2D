@@ -70,22 +70,53 @@ pub fn paint_slider_row(
 // (the canonical app-wide chip used by `paint_slider_with_chip`).
 // Callers should use the new module instead.
 
-/// Display chroma ceiling used to normalize OKLCH chroma into the
-/// 0..1 slider/chip range. The sRGB gamut tops out near 0.37 chroma;
-/// 0.4 leaves a touch of headroom so the slider never pins before the
-/// most-saturated representable colors.
+/// Absolute upper bound on OKLCH chroma searched for the in-gamut
+/// maximum. The sRGB gamut never exceeds ~0.37; 0.4 is a safe ceiling.
 pub const OKLCH_CHROMA_MAX: f32 = 0.4;
 /// Hue is stored in degrees; normalize against a full turn.
 pub const OKLCH_HUE_MAX: f32 = 360.0;
 
+/// Largest OKLCH chroma representable in sRGB for the given lightness +
+/// hue, found by binary search over [`oklch_in_gamut`]. The Chroma
+/// slider is normalized against this (rather than a fixed ceiling) so
+/// its top — `1.0` — always lands on the most-saturated color that L+H
+/// can actually display, instead of pinning early as the fixed-ceiling
+/// scale did (most L/H reach well under 0.4 in sRGB).
+pub fn max_in_gamut_chroma(l: f64, h_deg: f64) -> f64 {
+    // L outside (0,1) has no representable chroma (pure black/white).
+    if l <= 0.0 || l >= 1.0 {
+        return 0.0;
+    }
+    let mut lo = 0.0_f64;
+    let mut hi = OKLCH_CHROMA_MAX as f64;
+    // 20 bisections → ~4e-7 precision, far below 8-bit quantization.
+    for _ in 0..20 {
+        let mid = (lo + hi) * 0.5;
+        if ph2d_tokens::oklch_in_gamut(l, mid, h_deg) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
+
 /// The picker's current sRGB value as OKLCH channels normalized to
-/// 0..1 for the uniform slider/chip model: `[L, C/CHROMA_MAX, H/360,
-/// A]`. Mirrors how `rgba_to_hsv` feeds the HSV channel rows.
+/// 0..1 for the uniform slider/chip model: `[L, C/maxC(L,H), H/360,
+/// A]`. Chroma is **gamut-relative** (see [`max_in_gamut_chroma`]) so
+/// the slider top is always reachable. Mirrors how `rgba_to_hsv` feeds
+/// the HSV channel rows.
 pub fn oklch_norm_channels(rgba: [u8; 4]) -> [f32; 4] {
     let (l, c, h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
+    let max_c = max_in_gamut_chroma(l, h);
+    let c_norm = if max_c > 1e-6 {
+        (c / max_c).clamp(0.0, 1.0) as f32
+    } else {
+        0.0
+    };
     [
         (l as f32).clamp(0.0, 1.0),
-        (c as f32 / OKLCH_CHROMA_MAX).clamp(0.0, 1.0),
+        c_norm,
         (h as f32 / OKLCH_HUE_MAX).clamp(0.0, 1.0),
         rgba[3] as f32 / 255.0,
     ]
@@ -94,13 +125,15 @@ pub fn oklch_norm_channels(rgba: [u8; 4]) -> [f32; 4] {
 /// Inverse of one channel edit in [`oklch_norm_channels`] space: take
 /// the current `rgba`, overwrite OKLCH channel `idx` (0=L,1=C,2=H,3=A)
 /// with the normalized `norm` (0..1), and convert back to sRGB bytes.
+/// Chroma denormalizes against [`max_in_gamut_chroma`] for the current
+/// lightness + hue, so `norm = 1.0` reaches the gamut boundary.
 pub fn oklch_set_channel(rgba: [u8; 4], idx: u8, norm: f32) -> [u8; 4] {
     let (mut l, mut c, mut h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
     let mut a = rgba[3];
     let n = norm.clamp(0.0, 1.0);
     match idx {
         0 => l = n as f64,
-        1 => c = (n * OKLCH_CHROMA_MAX) as f64,
+        1 => c = n as f64 * max_in_gamut_chroma(l, h),
         2 => h = (n * OKLCH_HUE_MAX) as f64,
         3 => a = (n * 255.0).round() as u8,
         _ => {}

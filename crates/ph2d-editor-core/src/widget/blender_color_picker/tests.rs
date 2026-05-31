@@ -1,6 +1,6 @@
 //! Smoke + state-round-trip tests for the picker.
 
-use super::channels::{oklch_norm_channels, oklch_set_channel, rgba_to_hsv};
+use super::channels::{max_in_gamut_chroma, oklch_norm_channels, oklch_set_channel, rgba_to_hsv};
 use super::paint::paint_blender_color_picker;
 use super::state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
@@ -140,6 +140,30 @@ fn oklch_norm_channels_in_unit_range() {
             assert!((0.0..=1.0).contains(&v), "channel {v} out of 0..1 for {rgba:?}");
         }
     }
+}
+
+#[test]
+fn chroma_slider_top_is_reachable() {
+    // Regression for the smoke report "Chroma quase nunca chega a 1":
+    // with gamut-relative normalization, pushing chroma to norm=1 on a
+    // mid color must produce a value whose displayed chroma reads back
+    // at ~1 (the gamut boundary), not pinned far below.
+    let base = [120u8, 80, 60, 255];
+    let maxed = oklch_set_channel(base, 1, 1.0);
+    let displayed_c = oklch_norm_channels(maxed)[1];
+    assert!(
+        displayed_c > 0.9,
+        "chroma slider should reach ~1 (gamut-relative), got {displayed_c}"
+    );
+}
+
+#[test]
+fn max_in_gamut_chroma_zero_at_lightness_extremes() {
+    // Pure black / white can't carry chroma.
+    assert_eq!(max_in_gamut_chroma(0.0, 30.0), 0.0);
+    assert_eq!(max_in_gamut_chroma(1.0, 30.0), 0.0);
+    // A mid lightness has representable chroma.
+    assert!(max_in_gamut_chroma(0.6, 30.0) > 0.05);
 }
 
 #[test]

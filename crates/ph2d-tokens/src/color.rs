@@ -105,6 +105,19 @@ impl Color {
 ///
 /// `l` in 0..1, `c` ~0..0.4, `h_deg` in degrees.
 pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
+    let [lr, lg, lb] = oklch_to_linear_srgb(l, c, h_deg);
+    [
+        linear_to_srgb_byte(lr),
+        linear_to_srgb_byte(lg),
+        linear_to_srgb_byte(lb),
+    ]
+}
+
+/// OKLCH → **linear** sRGB, NOT clamped. Returns the raw linear RGB so
+/// callers can test gamut membership ([`oklch_in_gamut`]) before the
+/// per-channel clamp that [`oklch_to_srgb`] applies. `l` in 0..1, `c`
+/// ~0..0.4, `h_deg` in degrees.
+pub fn oklch_to_linear_srgb(l: f64, c: f64, h_deg: f64) -> [f64; 3] {
     // OKLCH → OKLAB
     let h_rad = h_deg.to_radians();
     let a = c * h_rad.cos();
@@ -120,15 +133,23 @@ pub fn oklch_to_srgb(l: f64, c: f64, h_deg: f64) -> [u8; 3] {
     let s3 = s_ * s_ * s_;
 
     // LMS → linear sRGB
-    let lr = 4.076_741_662_1 * l3 - 3.307_711_591_3 * m3 + 0.230_969_929_2 * s3;
-    let lg = -1.268_438_004_6 * l3 + 2.609_757_401_1 * m3 - 0.341_319_396_5 * s3;
-    let lb = -0.004_196_086_3 * l3 - 0.703_418_614_7 * m3 + 1.707_614_701_0 * s3;
-
     [
-        linear_to_srgb_byte(lr),
-        linear_to_srgb_byte(lg),
-        linear_to_srgb_byte(lb),
+        4.076_741_662_1 * l3 - 3.307_711_591_3 * m3 + 0.230_969_929_2 * s3,
+        -1.268_438_004_6 * l3 + 2.609_757_401_1 * m3 - 0.341_319_396_5 * s3,
+        -0.004_196_086_3 * l3 - 0.703_418_614_7 * m3 + 1.707_614_701_0 * s3,
     ]
+}
+
+/// True if OKLCH `(l, c, h_deg)` lands inside the sRGB gamut — i.e. all
+/// three linear channels fall within `[0, 1]` (small epsilon) BEFORE
+/// the clamp in [`oklch_to_srgb`]. Used by the color picker to scale
+/// the Chroma slider against the maximum representable chroma for the
+/// current lightness + hue (so the slider top is always reachable).
+pub fn oklch_in_gamut(l: f64, c: f64, h_deg: f64) -> bool {
+    const EPS: f64 = 1e-4;
+    oklch_to_linear_srgb(l, c, h_deg)
+        .iter()
+        .all(|&v| v >= -EPS && v <= 1.0 + EPS)
 }
 
 fn linear_to_srgb_byte(linear: f64) -> u8 {

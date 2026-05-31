@@ -209,9 +209,15 @@ impl MipUploadLayout {
         // still occupies one full block of storage.
         let blocks_x = width_px.div_ceil(block_w);
         let blocks_y = height_px.div_ceil(block_h);
-        let bytes_per_row = blocks_x * block_bytes;
+        // checked_mul: a pathologically large mip — only reachable via a
+        // caller that bypasses the decoder's MAX_DIMENSION cap (e.g. a future
+        // loader feeding raw dims) — would otherwise overflow `u32` here
+        // (panic in debug, silent wrap in release). On overflow return `None`,
+        // which `mip_layouts` surfaces as a clean `CompressedUploadError`,
+        // honoring the "corrupt artifact → clean error, no panic" contract.
+        let bytes_per_row = blocks_x.checked_mul(block_bytes)?;
         let rows_per_image = blocks_y;
-        let total_bytes = (bytes_per_row as usize) * (rows_per_image as usize);
+        let total_bytes = (bytes_per_row as usize).checked_mul(rows_per_image as usize)?;
         Some(Self {
             width_px,
             height_px,

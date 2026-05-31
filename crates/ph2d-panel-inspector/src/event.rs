@@ -464,7 +464,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             // `HandPacked` strategy purely for change-detection.
             InspectorSpriteSource::CookedTexture => RequestedSpriteStrategy::HandPacked,
         };
-        if requested != current {
+        // For a cooked source, route EVERY radio click (audit L2): mapping
+        // `current` to `HandPacked` above means a Hand-packed click would
+        // otherwise short-circuit `requested != current` and give no toast,
+        // while Atlas/Individual clicks do — inconsistent feedback. Force the
+        // route so `inspector_commits` rejects any strategy click uniformly.
+        let cooked = matches!(info.source_kind, InspectorSpriteSource::CookedTexture);
+        if requested != current || cooked {
             host.bus_mut()
                 .push(EditorAction::InspectorSpriteSourceChange {
                     entity_bits: info.entity_bits,

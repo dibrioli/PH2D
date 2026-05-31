@@ -72,10 +72,12 @@ impl SpriteSource {
 /// extract phase (ADR-0025).
 ///
 /// `Serialize`/`Deserialize` derives let `Sprite` round-trip through
-/// the `PrefabDoc` / `SceneDoc` postcard pipeline (M14.3). All fields
-/// are POD-shaped (`SpriteSource` is `#[repr(Rust)]` enum with `u32`
-/// payloads), so the wire format stays stable across rustc versions
-/// as long as `SpriteSource`'s variant order doesn't change.
+/// the `PrefabDoc` / `SceneDoc` postcard pipeline (M14.3). `SpriteSource`'s
+/// payloads are fixed-size (`u32` for `Atlas`/`Individual`, a 32-byte
+/// [`ph2d_asset::LogicalTextureId`] for `CookedTexture`), and postcard
+/// encodes the variant via an append-only varint discriminant — so the
+/// wire format stays stable across rustc versions as long as variants are
+/// only appended (never reordered or inserted before existing ones).
 #[derive(Component, Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
     /// Schema version (HR-14 mitigation). Bumped 3 → 4 in W1 when the

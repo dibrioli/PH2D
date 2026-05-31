@@ -321,6 +321,76 @@ fn clip_children_three_modes_4px() {
 }
 
 #[test]
+fn clip_member_survives_interloping_z_order() {
+    // W3 §8 audit (HIGH): a clip group's instances must stay CONTIGUOUS in
+    // the sorted buffer or the clip pass's consecutive-run span scan splits
+    // the group and the members render against an unmarked stencil → VANISH.
+    // Here a foreign non-clip sprite X (clip_group 0) gets a z_order rank
+    // BETWEEN the clip-parent (z 0) and the member (z 2). The renderer's
+    // clip-anchor sort must still keep [parent, member] adjacent so the
+    // member clips correctly. (Pre-fix this asserted RED→black: the member
+    // disappeared.)
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping clip_member_survives_interloping_z_order: no headless GPU");
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let parent_tex = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 255, 255, 255]))
+        .expect("parent");
+    let child_tex = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 0, 0, 255]))
+        .expect("child");
+    let interloper_tex = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [0, 0, 255, 255]))
+        .expect("interloper");
+    let target = make_target(&gpu);
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let camera = Camera2d::new([0.0, 0.0], 4.0);
+    let window = WindowSize::new(W, H);
+
+    let mask = RenderInstance::pack_clip_meta(RenderInstance::CLIP_ROLE_MASK_CLIP_ONLY, 0.5);
+    let pixels = render_pixels(
+        &gpu,
+        &mut renderer,
+        &target,
+        &view,
+        &camera,
+        window,
+        &[
+            // clip-parent (z 0) + member (z 2) in clip_group 1 ...
+            instance(parent_tex, [0.0, 0.0], [2.0, 2.0], 0, 1, mask),
+            instance(child_tex, [0.5, 0.0], [2.0, 2.0], 2, 1, 0),
+            // ... with a foreign non-clip sprite whose rank (z 1) interleaves
+            // between them. Placed at a top corner, off the sampled rows.
+            instance(interloper_tex, [1.3, 1.3], [0.3, 0.3], 1, 0, 0),
+        ],
+    );
+    assert_rgb(
+        &pixels,
+        40,
+        32,
+        [255, 0, 0],
+        "interloped member-inside still clips RED",
+    );
+    assert_rgb(
+        &pixels,
+        52,
+        32,
+        [0, 0, 0],
+        "interloped member-outside still clipped",
+    );
+    assert_rgb(
+        &pixels,
+        20,
+        32,
+        [0, 0, 0],
+        "interloped ClipOnly mould still invisible",
+    );
+}
+
+#[test]
 fn clip_cutoff_thresholds_silhouette() {
     // A HALF-alpha (α≈0.5) parent in ClipOnly: a low cutoff (0.2) keeps the
     // silhouette (member draws inside), a high cutoff (0.8) discards it

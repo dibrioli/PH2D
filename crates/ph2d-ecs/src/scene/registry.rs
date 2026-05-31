@@ -272,8 +272,8 @@ mod tests {
     fn register_ecs_components_populates_registry() {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
-        // 4 foundational (Transform/Name/Visibility/RootOrder) + 15 W3
-        // sorting/visibility/sampling/mask components (+Mask2D source).
+        // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
+        // sorting/visibility/sampling/mask components (incl. Mask2D source).
         assert_eq!(reg.len(), 20);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());

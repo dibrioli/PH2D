@@ -162,7 +162,17 @@ impl crate::App {
             // intermediate — all three; then the compositor's bind
             // group must be rebuilt against the new texture views.
             *layout = EditorLayout::new(size.width as f32, size.height as f32);
-            let dim = (size.width, size.height);
+            // Size every offscreen RT to the surface's CLAMPED size, not the
+            // raw winit size. `surface.resize` clamps each dim to ≥1, and
+            // `game_rt.ensure_size` REJECTS a 0 dim (keeps its old size). On a
+            // transient 0-dimension frame (minimize/restore) the raw size
+            // would diverge: game_rt stays old while the W3 §8 clip/mask
+            // stencil sizes to `surface.size()` → a render pass pairing the
+            // game_rt color attachment with a differently-sized stencil =
+            // wgpu validation panic. Using the clamped size keeps color +
+            // stencil extents equal every frame (audit MEDIUM fix).
+            let clamped = surface.size();
+            let dim = (clamped.width, clamped.height);
             game_rt.ensure_size(surface.gpu(), dim);
             tonemap.ensure_size(surface.gpu(), dim);
             tonemap.rebind_game_view(

@@ -185,12 +185,14 @@ pub(super) fn apply_visibility_section_edit(
             )
         }
         VisibilityFieldEdit::AlphaCutoff(v) => {
-            // RMW: keep the mode (no-op if no MaskInteraction yet).
-            let mut m = sim
-                .world()
-                .get::<MaskInteraction>(entity)
-                .copied()
-                .unwrap_or_default();
+            // RMW that keeps the mode — but a genuine NO-OP when the entity
+            // has no MaskInteraction. `unwrap_or_default()` would fabricate a
+            // None-mode mask; on a BulkSelect fan-out the cutoff edit reaches
+            // mask-less siblings too, which would silently attach a spurious
+            // None-mode component (audit LOW fix). Let-else skips them.
+            let Some(mut m) = sim.world().get::<MaskInteraction>(entity).copied() else {
+                return;
+            };
             m.alpha_cutoff = v;
             queue_set(
                 queue,

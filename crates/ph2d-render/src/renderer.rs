@@ -469,8 +469,27 @@ impl SpriteRenderer {
         // sharing a bind group + sampler into contiguous runs within an
         // unchanged z slice (W3.T3.11). z_order stays primary so render
         // order matches the Hierarchy panel.
-        self.scratch
-            .sort_by_key(|i| (i.z_order, i.texture_id, i.sampling));
+        //
+        // PRIMARY key = clip anchor (W3 §8 audit fix): a clip-group's
+        // instances MUST be contiguous because `clip_pass::encode_clip_groups`
+        // batches each group by a consecutive-run scan. The canonical sort
+        // rank (`z_order`) does NOT guarantee that — a clip member with a
+        // divergent `ZIndexOverride`/`YSort`, or a foreign sprite whose rank
+        // lands between the clip-parent and a descendant, would split the
+        // span and the clipped members would silently VANISH (drawn against
+        // an unmarked stencil). Anchoring every clip instance on its
+        // clip-parent's rank (`clip_group - 1`, the parent's own `z_order`)
+        // keeps the whole subtree as one contiguous block. Non-clip / mask
+        // instances anchor on their own `z_order` → byte-identical order
+        // (the mask pass batches by role, not contiguity, so it's unaffected).
+        self.scratch.sort_by_key(|i| {
+            let clip_anchor = if i.clip_group != 0 {
+                i.clip_group - 1
+            } else {
+                i.z_order
+            };
+            (clip_anchor, i.z_order, i.texture_id, i.sampling)
+        });
         compute_runs(&self.scratch, &mut self.runs);
         // Ensure an atlas bind group exists for every distinct sampling
         // used by an atlas run (built lazily; one per filter/repeat pair).

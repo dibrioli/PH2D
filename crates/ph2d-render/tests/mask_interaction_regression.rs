@@ -263,3 +263,74 @@ fn mask_interaction_inside_outside_3px() {
         "source-only @ inside-mask (invisible)",
     );
 }
+
+#[test]
+fn mask_cutoff_carves_silhouette() {
+    // W3 §8 audit (coverage): the Mask2D source's alpha_cutoff must carve
+    // its silhouette in the MARK pass (the discard branch). A HALF-alpha
+    // (α≈0.5) source: cutoff 0.2 keeps the mask (Inside responder shows),
+    // cutoff 0.8 discards it entirely (Inside responder carved to black).
+    // Mirrors clip_cutoff_thresholds_silhouette but through the mask pass.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping mask_cutoff_carves_silhouette: no headless GPU");
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let mask_tex = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 255, 255, 128]))
+        .expect("half-alpha mask");
+    let resp_tex = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 0, 0, 255]))
+        .expect("responder");
+    let target = make_target(&gpu);
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let camera = Camera2d::new([0.0, 0.0], 4.0);
+    let window = WindowSize::new(W, H);
+    let inside_meta = RenderInstance::with_mask_role(0, RenderInstance::MASK_ROLE_INSIDE);
+
+    let scene = |cut: f32| {
+        let src = RenderInstance::with_mask_role(
+            RenderInstance::pack_clip_meta(0, cut),
+            RenderInstance::MASK_ROLE_SOURCE,
+        );
+        [
+            instance(mask_tex, [2.0, 2.0], 0, src),
+            instance(resp_tex, [3.0, 3.0], 1, inside_meta),
+        ]
+    };
+
+    let low = render_pixels(
+        &gpu,
+        &mut renderer,
+        &target,
+        &view,
+        &camera,
+        window,
+        &scene(0.2),
+    );
+    assert_rgb(
+        &low,
+        32,
+        32,
+        [255, 0, 0],
+        "cutoff 0.2 keeps mask → Inside shows",
+    );
+
+    let high = render_pixels(
+        &gpu,
+        &mut renderer,
+        &target,
+        &view,
+        &camera,
+        window,
+        &scene(0.8),
+    );
+    assert_rgb(
+        &high,
+        32,
+        32,
+        [0, 0, 0],
+        "cutoff 0.8 discards mask → Inside carved",
+    );
+}

@@ -66,9 +66,19 @@ fn cascade_tint_with_ancestors(world: &World, entity: Entity, sprite: &Sprite) -
 /// intersected with the inner. True nested intersection is a future wave
 /// (handoff §6); the regression gate marks the single-level contract.
 ///
-/// `ranks` must already be filled by the sort pipeline. Subtree
-/// contiguity in `z_order` (DFS) is what lets the renderer batch a group
-/// into one stencil mark→test→draw triple (handoff §1.3).
+/// `ranks` must already be filled by the sort pipeline. The renderer's
+/// **clip-anchor sort** (renderer.rs) keeps every clip group contiguous so
+/// it batches into one stencil mark→test→draw triple — we do NOT rely on
+/// raw `z_order`/DFS adjacency (a divergent member Z or an interloping
+/// sprite would otherwise split the span; W3 §8 audit fix).
+///
+/// **Hidden / culled clip-parent (known W3 behavior, audit LOW):** a
+/// clip-parent that is `Visibility.hidden` or `VisibilityLayer`-culled
+/// emits no `SortInput`, so `ranks.rank(parent)` is `None` and its members
+/// fall through to `CLIP_GROUP_NONE` → they render UNCLIPPED (Visibility is
+/// per-entity, it does not propagate to descendants). Graceful (children
+/// don't vanish) but means hiding a mould un-clips its children. Proper
+/// subtree-hide = visibility propagation, a future wave.
 fn resolve_clip_grouping(sim: &World, entity: Entity, ranks: &SortScratch) -> (u32, u32) {
     // This entity owns a clip? → it is the mask source for its group.
     if let Some(cc) = sim.get::<ClipChildren>(entity)
@@ -113,6 +123,12 @@ fn resolve_clip_grouping(sim: &World, entity: Entity, ranks: &SortScratch) -> (u
 /// - [`Mask2D`] source → role SOURCE; its `alpha_cutoff` is packed into
 ///   the shared cutoff bits so the mark pass thresholds the silhouette.
 /// - [`MaskInteraction`] responder → role INSIDE / OUTSIDE.
+///
+/// **Hidden / culled Mask2D source (known W3 behavior, audit LOW):** a
+/// hidden/culled source emits no instance → it marks nothing → responders
+/// behave as "no mask present" (Inside shows nowhere, Outside everywhere).
+/// Intuitive (no source = no mask), but silent. Matches the hidden
+/// clip-parent semantics in [`resolve_clip_grouping`].
 fn resolve_mask_meta(sim: &World, entity: Entity, clip_group: u32, clip_meta: u32) -> u32 {
     if clip_group != RenderInstance::CLIP_GROUP_NONE {
         return clip_meta;

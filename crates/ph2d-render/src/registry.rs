@@ -25,7 +25,7 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_render_components(&mut reg);
-        // 19 ecs components (4 foundational + 15 W3 sorting/visibility/
+        // 20 ecs components (4 foundational + 16 W3 sorting/visibility/
         // sampling/mask) + 1 render component (Sprite).
         assert_eq!(reg.len(), 21);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());

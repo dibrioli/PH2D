@@ -14,7 +14,8 @@
 //! - `mark` — writes the clip-parent silhouette into the stencil
 //!   buffer (`Replace` ref where the texel alpha clears the cutoff),
 //!   color writes MASKED OFF. Reads the per-instance `clip_meta`
-//!   (cutoff) via an extra vertex attribute `@location(16)`.
+//!   (cutoff) via `@location(5)` — the freed `tint` slot repurposed,
+//!   since the 16-attribute device limit (`@location` 0..15) is full.
 //! - `test` — draws the clipped descendants with stencil `Equal ref`
 //!   (read-only), so they only appear inside the marked silhouette.
 //!   Reuses `vs_main`/`fs_main` (the normal color path).
@@ -402,8 +403,8 @@ mod tests {
         //
         // W3 §8: this now ALSO compiles + validates the stencil-mark /
         // stencil-test pipelines (`vs_stencil_mark` / `fs_stencil_mark` +
-        // the `@location(16)` clip_meta vertex attribute + the two
-        // `DepthStencilState`s on the `Stencil8` format).
+        // the `clip_meta` vertex attribute at the repurposed `@location(5)`
+        // + the two `DepthStencilState`s on the `Stencil8` format).
         //
         // Skips gracefully (passes) on adapter-less CI; runs on dev Macs +
         // Mac CI, which is where the Enio smoke also runs.

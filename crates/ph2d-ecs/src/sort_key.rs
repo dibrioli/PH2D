@@ -439,9 +439,10 @@ mod tests {
 
     #[test]
     fn z_override_buckets_before_ysort() {
-        // YSort parent with two children; the higher-Y child would draw
-        // in front, but giving the lower-Y child a higher Z must move it
-        // in front (Z buckets before YSort — §5.2 passo 4).
+        // YSort parent with two children; by Y alone the bottom-of-screen
+        // (lower-Y, default axis (0,-1)) child draws in front, but giving
+        // the OTHER child a higher Z must move it in front regardless
+        // (Z buckets before YSort — §5.2 passo 4).
         let mut w = World::new();
         let parent = w.spawn(YSort::default()).id();
         let low_y = w.spawn((ChildOf(parent), ZIndexOverride(10))).id();
@@ -473,9 +474,11 @@ mod tests {
             input(rock, 0.0, 15.0),
         ];
         let r = ranks(&w, &inputs);
-        // player (y=5) behind, tree (y=10) middle, rock (y=15) front.
-        assert!(r[&player] < r[&tree]);
-        assert!(r[&tree] < r[&rock]);
+        // World is Y-up + default axis (0,-1) → "lower on screen = in
+        // front": rock (y=15, highest/top) behind, player (y=5, lowest/
+        // bottom) front.
+        assert!(r[&rock] < r[&tree]);
+        assert!(r[&tree] < r[&player]);
     }
 
     #[test]

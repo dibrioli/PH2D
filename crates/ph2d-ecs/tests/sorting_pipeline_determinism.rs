@@ -135,13 +135,14 @@ fn canonical_scene_order_is_locked() {
     // Derivation:
     //  - Background layer (0): bg[0] first.
     //  - Default layer (2): enemy[7] (Z=-5) buckets behind everything at
-    //    z=0; then YSort orders the z=0 items by world Y — char block
-    //    (y=5) < tree[1] (y=10) < rock[6] (y=15). Inside the char block:
-    //    shadow[3] draws behind the parent, then char[2], body[4], and
-    //    hat[5] last (relative Z +5).
+    //    z=0; then YSort orders the z=0 items by world Y. World is Y-up +
+    //    default axis (0,-1) → "lower on screen = in front", so back→front
+    //    is rock[6] (y=15, top) → tree[1] (y=10) → char block (y=5,
+    //    bottom). Inside the char block: shadow[3] behind the parent, then
+    //    char[2], body[4], hat[5] last (relative Z +5).
     //  - Foreground (3): fx[8].
     //  - UI (4): ui[9].
-    let expected = vec![0u8, 7, 3, 2, 4, 5, 1, 6, 8, 9];
+    let expected = vec![0u8, 7, 6, 1, 3, 2, 4, 5, 8, 9];
     assert_eq!(
         order, expected,
         "sorting pipeline render order drifted — confirm intent, then re-lock"

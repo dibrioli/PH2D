@@ -118,8 +118,12 @@ impl SortPoint {
 #[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct YSort {
     pub enabled: bool,
-    /// Projection axis. `Vec2(0, 1)` = plain vertical (more Y = more in
-    /// front). Iso games use `Vec2(1, 1)`.
+    /// Projection axis; the entity with the **larger** `pos · axis`
+    /// draws in front. World space is **Y-up** (camera.rs §11.1: higher
+    /// world Y = higher on screen), so the canonical default `Vec2(0,-1)`
+    /// makes the sprite **lower on screen draw in front** — the standard
+    /// 2.5D / top-down convention (Godot's Y-sort). Iso games use
+    /// `Vec2(-1, -1)` (down-right = front).
     pub axis: Vec2,
     pub sort_point: SortPoint,
 }
@@ -128,7 +132,8 @@ impl Default for YSort {
     fn default() -> Self {
         Self {
             enabled: true,
-            axis: Vec2::new(0.0, 1.0),
+            // Y-up world → project -Y so "lower on screen = in front".
+            axis: Vec2::new(0.0, -1.0),
             sort_point: SortPoint::Center,
         }
     }
@@ -248,7 +253,8 @@ mod tests {
     fn defaults_match_godot_conventions() {
         assert!(ZAsRelative::default().0, "z_as_relative defaults true");
         assert!(YSort::default().enabled);
-        assert_eq!(YSort::default().axis, Vec2::new(0.0, 1.0));
+        // Y-up world → default projects -Y so "lower on screen = front".
+        assert_eq!(YSort::default().axis, Vec2::new(0.0, -1.0));
         assert!(!SortingGroup::default().sort_at_root);
     }
 

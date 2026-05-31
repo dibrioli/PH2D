@@ -532,6 +532,13 @@ impl TransformPropagationState {
 /// `WorklistBuf`; the function performs no `Vec::push` that grows
 /// past capacity, no `Box::new`, no `String::from`. Entities without
 /// `Transform` are silently skipped.
+/// Root draw-order key: the explicit `RootOrder.0`, or `u32::MAX` when
+/// absent (so un-ordered roots fall after explicit ones, matching
+/// `build_hierarchy_snapshot`).
+fn root_order_key(world: &World, e: Entity) -> u32 {
+    world.get::<crate::RootOrder>(e).map_or(u32::MAX, |r| r.0)
+}
+
 pub fn propagate_transforms<F>(
     sim_w: &World,
     state: &mut TransformPropagationState,
@@ -558,9 +565,22 @@ pub fn propagate_transforms<F>(
         worklist.stack.push((entity, Transform::IDENTITY));
     }
 
-    // Sort roots ascending so DFS order is platform-stable across
-    // archetype reordering by `bevy_ecs` minor-version bumps.
-    worklist.stack.sort_unstable_by_key(|&(e, _)| e.to_bits());
+    // Order the root seeds so the canvas DRAW order follows the
+    // Hierarchy list (Godot 2D: top of the list draws behind, bottom on
+    // top). The Hierarchy panel (`build_hierarchy_snapshot`) sorts roots
+    // ASCENDING by `(RootOrder, entity_id)`; this DFS pops the stack
+    // LIFO, so we sort DESCENDING by the same key — the lowest-order
+    // root ends up on top of the stack, is popped + visited FIRST, and
+    // gets the smallest `draw_order` (furthest back). Reordering a root
+    // in the Hierarchy rewrites its `RootOrder`, so the stacking follows.
+    // (Absent `RootOrder` = `u32::MAX`, matching the snapshot, so
+    // un-ordered roots sort after explicit ones by entity id — stable
+    // across `bevy_ecs` archetype reordering.)
+    worklist.stack.sort_unstable_by(|&(a, _), &(b, _)| {
+        let ka = (root_order_key(sim_w, a), a.to_bits());
+        let kb = (root_order_key(sim_w, b), b.to_bits());
+        kb.cmp(&ka)
+    });
 
     // Phase 2 — DFS. Pop, compute world transform, invoke callback,
     // push children in reverse so the natural insertion order is
@@ -719,6 +739,28 @@ mod tests {
         };
         let gt = GlobalTransform::from_transform(t);
         assert_eq!(gt.translation(), t.translation);
+    }
+
+    #[test]
+    fn root_draw_order_follows_root_order_not_entity_id() {
+        // Hierarchy order must drive canvas stacking (Godot-style): the
+        // DFS visit order (→ draw_order) follows `RootOrder`, not spawn
+        // order. Spawn so entity-id order (a<b<c) disagrees with RootOrder
+        // (c=0 < a=1 < b=2); the visit order must be c, a, b.
+        let mut world = World::new();
+        let a = world.spawn((Transform::IDENTITY, crate::RootOrder(1))).id();
+        let b = world.spawn((Transform::IDENTITY, crate::RootOrder(2))).id();
+        let c = world.spawn((Transform::IDENTITY, crate::RootOrder(0))).id();
+        let mut state = TransformPropagationState::new(&mut world);
+        let mut present = World::new();
+        let mut buf = WorklistBuf::with_capacity(8);
+        let mut order = Vec::new();
+        propagate_transforms(&world, &mut state, &mut present, &mut buf, |_s, _p, e, _gt| {
+            order.push(e);
+        });
+        // First-visited = smallest draw_order = furthest back, matching
+        // the Hierarchy list (top of list = behind).
+        assert_eq!(order, vec![c, a, b]);
     }
 
     #[test]

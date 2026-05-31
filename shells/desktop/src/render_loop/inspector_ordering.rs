@@ -129,7 +129,7 @@ pub(super) fn build_ordering_info(
 /// `canonical_name` on `entity_bits`. A no-op if the name isn't
 /// registered or the value won't encode (neither happens for the W3
 /// components — registration + serde are gate-asserted).
-fn queue_set<T: Serialize>(
+pub(super) fn queue_set<T: Serialize>(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,
@@ -149,7 +149,7 @@ fn queue_set<T: Serialize>(
 
 /// Queue a `RemoveComponent` (detach) for the registered component
 /// `canonical_name` on `entity_bits`. Idempotent at apply time.
-fn queue_remove(
+pub(super) fn queue_remove(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,
@@ -301,7 +301,10 @@ pub(super) fn build_sampling_info(
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let (filter_tag, repeat_tag) = sampling_fields(world, entity);
-    let uvt = world.get::<UvTransform>(entity).copied().unwrap_or_default();
+    let uvt = world
+        .get::<UvTransform>(entity)
+        .copied()
+        .unwrap_or_default();
     let mut mixed = InspectorSamplingMixed::default();
     if selected.len() > 1 {
         for &bits in selected {
@@ -341,9 +344,8 @@ pub(super) fn apply_sampling_edit(
             .copied()
             .unwrap_or_default()
     };
-    let set_uvt = |uvt: &UvTransform| {
-        queue_set(queue, registry, entity_bits, "ph2d::ecs::UvTransform", uvt)
-    };
+    let set_uvt =
+        |uvt: &UvTransform| queue_set(queue, registry, entity_bits, "ph2d::ecs::UvTransform", uvt);
     match edit {
         SamplingFieldEdit::Filter(0) => {
             queue_remove(queue, registry, entity_bits, "ph2d::ecs::TextureFilter")

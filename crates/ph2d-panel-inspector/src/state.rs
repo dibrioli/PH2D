@@ -13,7 +13,7 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorNameInfo, InspectorOrderingInfo, InspectorSamplingInfo, InspectorSpriteInfo,
-    InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -71,6 +71,13 @@ thread_local! {
     /// W3 §9: live sampling snapshot for the Sampling section.
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
+
+    /// W3 §8: live visibility-section snapshot (layer mask / clip / mask /
+    /// on-screen). Distinct from `CURRENT_INSPECTOR_VISIBILITY` (the Visible
+    /// toggle row).
+    pub(crate) static CURRENT_INSPECTOR_VISIBILITY_SECTION:
+        std::cell::Cell<Option<InspectorVisibilitySectionInfo>> =
+        const { std::cell::Cell::new(None) };
 
     /// W3 §7: when the Sorting Layer dropdown is open, the section stashes
     /// `(selected_index, chip_rect)` here so `paint_inspector` paints its
@@ -138,6 +145,14 @@ pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+pub fn set_current_inspector_visibility_section(info: Option<InspectorVisibilitySectionInfo>) {
+    CURRENT_INSPECTOR_VISIBILITY_SECTION.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_visibility_section() -> Option<InspectorVisibilitySectionInfo> {
+    CURRENT_INSPECTOR_VISIBILITY_SECTION.with(|c| c.get())
 }
 
 pub(crate) fn set_pending_ordering_dd(chip: Option<(usize, ph2d_editor_core::zones::Rect)>) {

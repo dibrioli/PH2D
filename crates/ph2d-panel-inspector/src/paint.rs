@@ -10,8 +10,9 @@
 use crate::state::{
     self, current_display_unit, current_inspector_name_is_some, current_inspector_ordering,
     current_inspector_sampling, current_inspector_sprite, current_inspector_transform,
-    current_inspector_visibility, current_pixels_per_meter, last_inspector_content_h,
-    last_inspector_visible_h, set_last_inspector_content_h, set_last_inspector_visible_h,
+    current_inspector_visibility, current_inspector_visibility_section, current_pixels_per_meter,
+    last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
+    set_last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
@@ -280,7 +281,7 @@ fn paint_inspector(
     }
     if visibility_info.is_some() {
         y = live_section!(ids::INSP_LIVE_VISIBILITY_SECTION, 1, ROW_H_PX, {
-            sections::paint_visibility_row(
+            let mut yy = sections::paint_visibility_row(
                 scene,
                 text_system,
                 theme,
@@ -289,7 +290,23 @@ fn paint_inspector(
                 inner_x,
                 inner_w,
                 y,
-            )
+            );
+            // W3 §8: the optional-component controls (layer mask / clip /
+            // mask / on-screen) sit directly below the Visible toggle.
+            if let Some(vis) = current_inspector_visibility_section() {
+                yy = sections::paint_visibility_section(
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
+                    store,
+                    inner_x,
+                    inner_w,
+                    yy,
+                    &vis,
+                );
+            }
+            yy
         });
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
     }

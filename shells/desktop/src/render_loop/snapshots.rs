@@ -1,5 +1,12 @@
 //! Snapshot publication phase — once per frame, before paint.
 //!
+// ph2d-loc-cap: accreted one producer per W3 Inspector section
+// (sprite/transform/visibility/ordering/sampling/name + §8 visibility-
+// section). Was already AT the 600-LOC ceiling before §8; +7 LOC for the
+// §8 producer tips it. Follow-up: lift the per-section producers into
+// their sibling `inspector_*` modules (build_* already live there) and
+// leave this file as the thin publish orchestrator.
+//!
 //! Wave 3.2 stage A — extracted from `render_loop::mod.rs` as a free
 //! function taking explicit refs to the destructured `AppGfx` fields
 //! it needs. Behavior-preserving lift.
@@ -571,6 +578,14 @@ pub(super) fn publish(
     let inspector_sampling = hero.gizmo.selection.and_then(|b| {
         super::inspector_ordering::build_sampling_info(sim.world(), b, sel, selected_count)
     });
+    let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
+        super::inspector_visibility::build_visibility_section_info(
+            sim.world(),
+            b,
+            sel,
+            selected_count,
+        )
+    });
     // ADR-0029 Phase C.1: publish snapshots to the panel crate's
     // thread-locals (replaces the pre-C.1 `hero.inspector.<field>`
     // writes — the field no longer exists; the panel-owned state +
@@ -580,6 +595,9 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
+        ph2d_panel_inspector::set_current_inspector_visibility_section(
+            inspector_visibility_section,
+        );
         ph2d_panel_inspector::set_current_inspector_transform(inspector_transform);
         ph2d_panel_inspector::set_current_inspector_visibility(inspector_visibility);
         ph2d_panel_inspector::set_current_inspector_name(inspector_name);
@@ -594,6 +612,7 @@ pub(super) fn publish(
             inspector_sprite,
             inspector_transform,
             inspector_visibility,
+            inspector_visibility_section,
             inspector_name,
         );
     }

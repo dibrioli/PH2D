@@ -290,6 +290,17 @@ pub enum EditorAction {
     /// `INSP_VISIBILITY_CHECK` checkbox.
     InspectorVisibilityEdit(crate::screens::hero::InspectorVisibilityInfo),
 
+    /// Inspector → shell channel for a §8 Visibility-SECTION field
+    /// (VisibilityLayer bitmask / ClipChildren / MaskInteraction /
+    /// OnScreenEnabler). Optional-component edit like
+    /// [`Self::InspectorSamplingEdit`] (W3 §3.8). Distinct from
+    /// [`Self::InspectorVisibilityEdit`], which is the always-on
+    /// "Visible" toggle.
+    InspectorVisibilitySectionEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::VisibilityFieldEdit,
+    },
+
     /// Inspector → shell channel for `Sprite` source-strategy
     /// switches. Payload: `(entity_bits, requested_strategy)`.
     /// Shell does the actual swap: Atlas → Individual re-decodes

@@ -19,7 +19,7 @@ use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
     OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, Toast,
-    ToastQueue,
+    ToastQueue, VisibilityFieldEdit,
 };
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::collections::BTreeMap;
@@ -99,6 +99,7 @@ pub(super) fn dispatch(
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
+    visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -296,6 +297,21 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // W3 §8 visibility-section edits (VisibilityLayer / ClipChildren /
+    // MaskInteraction / OnScreenEnabler optional components).
+    for &(entity_bits, edit) in visibility_section_edits {
+        super::inspector_visibility::apply_visibility_section_edit(
+            sim,
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Visibility commit failed: {e}")));
             title_dirty = true;
         }
     }

@@ -9,7 +9,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::{OrderingFieldEdit, SamplingFieldEdit};
+use ph2d_editor_core::screens::hero::{OrderingFieldEdit, SamplingFieldEdit, VisibilityFieldEdit};
 use ph2d_editor_core::widget::CheckboxValue;
 
 /// Handle a §7 ordering widget event. Returns `true` if consumed.
@@ -166,6 +166,73 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
                 entity_bits: info.entity_bits,
                 edit,
             });
+            return true;
+        }
+    }
+    // §8 Visibility — split out to keep this fn under the 200-LOC cap.
+    apply_visibility_section_event(host, ev)
+}
+
+/// Handle a §8 visibility-section widget event (segmented Clip / Mask,
+/// the 32-bit layer bitmask, the On-Screen toggle, and the cutoff / rect
+/// NumberInputs). Returns `true` if consumed.
+fn apply_visibility_section_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // Segmented (Clip / Mask) + bitmask + on-screen clicks.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(info) = state::current_inspector_visibility_section()
+    {
+        let edit = ids::INSP_VIS_CLIP
+            .iter()
+            .position(|&o| o == id)
+            .map(|i| VisibilityFieldEdit::ClipMode(i as u8))
+            .or_else(|| {
+                ids::INSP_VIS_MASK
+                    .iter()
+                    .position(|&o| o == id)
+                    .map(|i| VisibilityFieldEdit::MaskMode(i as u8))
+            })
+            .or_else(|| {
+                ids::INSP_VIS_LAYER_BIT
+                    .iter()
+                    .position(|&o| o == id)
+                    .map(|n| {
+                        // Toggle this bit relative to the snapshot value.
+                        let on = (info.layer_mask >> n as u32) & 1 == 0;
+                        VisibilityFieldEdit::LayerBit(n as u8, on)
+                    })
+            })
+            .or_else(|| {
+                (id == ids::INSP_VIS_ON_SCREEN)
+                    .then_some(VisibilityFieldEdit::OnScreen(!info.on_screen))
+            });
+        if let Some(edit) = edit {
+            host.bus_mut()
+                .push(EditorAction::InspectorVisibilitySectionEdit {
+                    entity_bits: info.entity_bits,
+                    edit,
+                });
+            return true;
+        }
+    }
+    // Mask Alpha Cutoff + Enabler Rect NumberInput commits.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && let Some(info) = state::current_inspector_visibility_section()
+    {
+        let v = host.store().number_value(id).unwrap_or(0.0) as f32;
+        let edit = match id {
+            ids::INSP_VIS_ALPHA_CUTOFF => Some(VisibilityFieldEdit::AlphaCutoff(v)),
+            ids::INSP_VIS_RECT_X => Some(VisibilityFieldEdit::RectX(v)),
+            ids::INSP_VIS_RECT_Y => Some(VisibilityFieldEdit::RectY(v)),
+            ids::INSP_VIS_RECT_W => Some(VisibilityFieldEdit::RectW(v)),
+            ids::INSP_VIS_RECT_H => Some(VisibilityFieldEdit::RectH(v)),
+            _ => None,
+        };
+        if let Some(edit) = edit {
+            host.bus_mut()
+                .push(EditorAction::InspectorVisibilitySectionEdit {
+                    entity_bits: info.entity_bits,
+                    edit,
+                });
             return true;
         }
     }

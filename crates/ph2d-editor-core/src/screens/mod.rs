@@ -20,8 +20,9 @@ pub use hero::{
     BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorOrderingInfo,
     InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
-    paint_hero_screen,
+    InspectorVisibilityMixed, InspectorVisibilitySectionInfo, OrderingFieldEdit,
+    RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
+    VisibilityFieldEdit, paint_hero_screen,
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIER_ROW_H, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H,

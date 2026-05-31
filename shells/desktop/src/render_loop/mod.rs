@@ -23,6 +23,7 @@ mod hierarchy;
 mod image_edit;
 mod inspector_commits;
 mod inspector_ordering;
+mod inspector_visibility;
 mod motion_smoke;
 mod padding_bridge;
 mod painter_bridge;
@@ -419,6 +420,8 @@ impl crate::App {
             // to the selection like sprite edits.
             let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
+            let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
+                Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
@@ -629,6 +632,16 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 sampling_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    EditorAction::InspectorVisibilitySectionEdit { entity_bits, edit } => {
+                        // BulkSelect fan-out, same shape as the sampling edit.
+                        if inspector_selection.is_empty() {
+                            visibility_section_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                visibility_section_edits.push((t, edit));
                             }
                         }
                     }
@@ -1059,6 +1072,7 @@ impl crate::App {
                 &sprite_edits,
                 &ordering_edits,
                 &sampling_edits,
+                &visibility_section_edits,
                 hero,
                 sim,
                 renderer,

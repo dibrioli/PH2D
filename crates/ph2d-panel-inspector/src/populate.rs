@@ -26,6 +26,37 @@ pub fn populate(store: &mut WidgetStore) {
     populate_name_editor(store);
     populate_ordering(store);
     populate_sampling(store);
+    populate_visibility_section(store);
+}
+
+/// W3 §8 Visibility section: register the segmented + bitmask + toggle ids
+/// as `Button`s (is_focusable) and the cutoff/rect NumberInputs. Live
+/// values come from the snapshot; defaults match the optional-component
+/// "absent" state (cutoff 0.5, rect zero).
+fn populate_visibility_section(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_VIS_CLIP);
+    register_button_ids(store, &ids::INSP_VIS_MASK);
+    register_button_ids(store, &ids::INSP_VIS_LAYER_BIT);
+    register_button_ids(store, &[ids::INSP_VIS_ON_SCREEN]);
+    for (id, value) in [
+        (ids::INSP_VIS_ALPHA_CUTOFF, 0.5_f64),
+        (ids::INSP_VIS_RECT_X, 0.0_f64),
+        (ids::INSP_VIS_RECT_Y, 0.0_f64),
+        (ids::INSP_VIS_RECT_W, 0.0_f64),
+        (ids::INSP_VIS_RECT_H, 0.0_f64),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// Register the W3 segmented-tab + dropdown-option ids as `Button`s so

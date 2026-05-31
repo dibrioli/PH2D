@@ -506,6 +506,65 @@ pub enum SamplingFieldEdit {
     UvOffsetY(f32),
 }
 
+/// W3 §8 Visibility-section snapshot (the collapsible section body, NOT
+/// the always-on "Visible" toggle — that stays [`InspectorVisibilityInfo`]).
+/// Mirrors the optional ECS components `VisibilityLayer` / `ClipChildren`
+/// / `MaskInteraction` / `OnScreenEnabler`; editor-core stays loose-coupled
+/// from `ph2d-ecs` so the shell maps tags ↔ enums at the boundary.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct InspectorVisibilitySectionInfo {
+    pub entity_bits: u64,
+    /// `VisibilityLayer` bitmask; absent component → `u32::MAX` (all 32
+    /// layers, the canonical "visible to every camera" default).
+    pub layer_mask: u32,
+    /// `ClipChildren.mode` tag (`0 Disabled · 1 ClipOnly · 2 ClipAndDraw`).
+    pub clip_mode: u8,
+    /// `MaskInteraction.mode` tag (`0 None · 1 VisibleInside · 2 VisibleOutside`).
+    pub mask_mode: u8,
+    /// `MaskInteraction.alpha_cutoff` (`[0,1]`; shown when mask != None).
+    pub alpha_cutoff: f32,
+    /// `OnScreenEnabler` present?
+    pub on_screen: bool,
+    /// `OnScreenEnabler.rect` `[x, y, w, h]` world meters (shown when on).
+    pub rect: [f32; 4],
+    pub selected_count: usize,
+    pub mixed: InspectorVisibilityMixed,
+}
+
+/// BulkSelect divergence flags for the §8 visibility-section fields.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct InspectorVisibilityMixed {
+    pub layer_mask: bool,
+    pub clip_mode: bool,
+    pub mask_mode: bool,
+    pub alpha_cutoff: bool,
+    pub on_screen: bool,
+    pub rect: bool,
+}
+
+/// A single editable §8 visibility-section field, dispatched as
+/// [`EditorAction::InspectorVisibilitySectionEdit`]. Each maps to an
+/// optional ECS component (presence = override): a `0`/`Disabled`/`None`
+/// tag or an all-layers/false value detaches it.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum VisibilityFieldEdit {
+    /// Toggle `VisibilityLayer` bit `n` (`0..32`) on/off.
+    LayerBit(u8, bool),
+    /// `ClipChildren.mode` tag (`0` detaches → no clip).
+    ClipMode(u8),
+    /// `MaskInteraction.mode` tag (`0` detaches → ignores masks).
+    MaskMode(u8),
+    /// `MaskInteraction.alpha_cutoff` (read-modify-write, keeps mode).
+    AlphaCutoff(f32),
+    /// `OnScreenEnabler` present? (`false` detaches.)
+    OnScreen(bool),
+    /// `OnScreenEnabler.rect` components (read-modify-write).
+    RectX(f32),
+    RectY(f32),
+    RectW(f32),
+    RectH(f32),
+}
+
 /// Mirror of `ph2d_render::SpriteSource` that doesn't depend on
 /// the renderer crate. Stays small (1 enum tag + opt u32) so the
 /// `Inspector*` struct is cheap to clone per frame.

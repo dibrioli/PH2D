@@ -564,6 +564,63 @@ pub const INSP_SAMPLE_UV_SCALE_Y: NodeId = hash_node_id("insp_sample_uv_scale_y"
 pub const INSP_SAMPLE_UV_OFFSET_X: NodeId = hash_node_id("insp_sample_uv_offset_x");
 pub const INSP_SAMPLE_UV_OFFSET_Y: NodeId = hash_node_id("insp_sample_uv_offset_y");
 
+// ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
+/// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).
+pub const INSP_VIS_CLIP: [NodeId; 3] = [
+    hash_node_id("insp_vis_clip_disabled"),
+    hash_node_id("insp_vis_clip_clip_only"),
+    hash_node_id("insp_vis_clip_clip_and_draw"),
+];
+/// Mask Interaction segmented: None / VisibleInside / VisibleOutside (0/1/2).
+pub const INSP_VIS_MASK: [NodeId; 3] = [
+    hash_node_id("insp_vis_mask_none"),
+    hash_node_id("insp_vis_mask_inside"),
+    hash_node_id("insp_vis_mask_outside"),
+];
+/// Mask alpha-cutoff NumberInput (shown when Mask != None).
+pub const INSP_VIS_ALPHA_CUTOFF: NodeId = hash_node_id("insp_vis_alpha_cutoff");
+/// On-Screen Enabler toggle + its Rect2 editor (x/y/w/h, shown when on).
+pub const INSP_VIS_ON_SCREEN: NodeId = hash_node_id("insp_vis_on_screen");
+pub const INSP_VIS_RECT_X: NodeId = hash_node_id("insp_vis_rect_x");
+pub const INSP_VIS_RECT_Y: NodeId = hash_node_id("insp_vis_rect_y");
+pub const INSP_VIS_RECT_W: NodeId = hash_node_id("insp_vis_rect_w");
+pub const INSP_VIS_RECT_H: NodeId = hash_node_id("insp_vis_rect_h");
+/// VisibilityLayer bitmask — 32 checkboxes (4 cols × 8 rows), bit `n`.
+pub const INSP_VIS_LAYER_BIT: [NodeId; 32] = [
+    hash_node_id("insp_vis_layer_bit_0"),
+    hash_node_id("insp_vis_layer_bit_1"),
+    hash_node_id("insp_vis_layer_bit_2"),
+    hash_node_id("insp_vis_layer_bit_3"),
+    hash_node_id("insp_vis_layer_bit_4"),
+    hash_node_id("insp_vis_layer_bit_5"),
+    hash_node_id("insp_vis_layer_bit_6"),
+    hash_node_id("insp_vis_layer_bit_7"),
+    hash_node_id("insp_vis_layer_bit_8"),
+    hash_node_id("insp_vis_layer_bit_9"),
+    hash_node_id("insp_vis_layer_bit_10"),
+    hash_node_id("insp_vis_layer_bit_11"),
+    hash_node_id("insp_vis_layer_bit_12"),
+    hash_node_id("insp_vis_layer_bit_13"),
+    hash_node_id("insp_vis_layer_bit_14"),
+    hash_node_id("insp_vis_layer_bit_15"),
+    hash_node_id("insp_vis_layer_bit_16"),
+    hash_node_id("insp_vis_layer_bit_17"),
+    hash_node_id("insp_vis_layer_bit_18"),
+    hash_node_id("insp_vis_layer_bit_19"),
+    hash_node_id("insp_vis_layer_bit_20"),
+    hash_node_id("insp_vis_layer_bit_21"),
+    hash_node_id("insp_vis_layer_bit_22"),
+    hash_node_id("insp_vis_layer_bit_23"),
+    hash_node_id("insp_vis_layer_bit_24"),
+    hash_node_id("insp_vis_layer_bit_25"),
+    hash_node_id("insp_vis_layer_bit_26"),
+    hash_node_id("insp_vis_layer_bit_27"),
+    hash_node_id("insp_vis_layer_bit_28"),
+    hash_node_id("insp_vis_layer_bit_29"),
+    hash_node_id("insp_vis_layer_bit_30"),
+    hash_node_id("insp_vis_layer_bit_31"),
+];
+
 /// W2 Sprite Inspector v2 — Color & Tint section controls.
 /// Final opacity Slider (`0..1` storage; renders today via
 /// `RenderInstance.opacity`). Paired with [`INSP_SPRITE_OPACITY_CHIP`].

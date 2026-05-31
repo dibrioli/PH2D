@@ -11,6 +11,7 @@
 use crate::state::{
     self, current_inspector_name, current_inspector_ordering, current_inspector_sampling,
     current_inspector_sprite, current_inspector_transform, current_inspector_visibility,
+    current_inspector_visibility_section,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
@@ -172,6 +173,21 @@ pub(crate) fn sync_inspector_from_snapshots(
             (ids::INSP_SAMPLE_UV_SCALE_Y, samp.uv_scale[1] as f64),
             (ids::INSP_SAMPLE_UV_OFFSET_X, samp.uv_offset[0] as f64),
             (ids::INSP_SAMPLE_UV_OFFSET_Y, samp.uv_offset[1] as f64),
+        ] {
+            if focus != Some(id) {
+                host.store_mut().set_number_value(id, value);
+            }
+        }
+    }
+    // W3 §8 — reflect the Mask Alpha Cutoff + Enabler Rect NumberInputs.
+    if let Some(vis) = current_inspector_visibility_section() {
+        let focus = host.store().focus_id();
+        for (id, value) in [
+            (ids::INSP_VIS_ALPHA_CUTOFF, vis.alpha_cutoff as f64),
+            (ids::INSP_VIS_RECT_X, vis.rect[0] as f64),
+            (ids::INSP_VIS_RECT_Y, vis.rect[1] as f64),
+            (ids::INSP_VIS_RECT_W, vis.rect[2] as f64),
+            (ids::INSP_VIS_RECT_H, vis.rect[3] as f64),
         ] {
             if focus != Some(id) {
                 host.store_mut().set_number_value(id, value);

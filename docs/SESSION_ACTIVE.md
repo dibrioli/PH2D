@@ -36,10 +36,17 @@ rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
   API exposta: `undo_last_stroke/redo_last_stroke/can_undo/can_redo`. Contrato 16/24, gates verdes.
 
 **Dívidas foundational do Coord (meu wire, caminho C) — DESBLOQUEIAM o slot Painter:**
-- T2.3 picker: wirar `blender_color_picker` (editor-core) → `PainterUiEdit::SetColorSrgb` + color
-  thumb na Painter top bar + dispatch. API já exposta pelo slot.
-- T2.2 undo/redo: dispatch 2-finger→`PainterUiEdit::Undo` / 3-finger→`Redo` (já roteiam pros métodos).
-- (Bloqueadas até esses wires: T2.4 modifier/eyedropper, T2.6 a11y, T2.7 smoke+audit W2.)
+- ✅ **T2.2 undo/redo dispatch** (`808383a`): Cmd+Z context-sensitive (painter ativo → stroke undo;
+  senão → image-edit undo existente) + Cmd+Shift+Z redo. Flags transientes em app_state → consumidas
+  no `painter_bridge` (site downcast) → `undo_last_stroke/redo_last_stroke` (preview_dirty já setado
+  pelo slot → tela reverte). Shell compila. **Smoke-ável.**
+- ⏳ **T2.3 picker wire** (PRÓXIMO, dimensionado): mecanismo = `store.set_picker_target(Some(NodeId))`
+  abre o `BlenderColorPicker` flutuante único (`INSP_BLENDER_PICKER`); read-back via
+  `blender_picker(...).value.rgba`. Precisa: (1) NodeId novo do target painter (ids.rs); (2) color
+  thumb na Painter top bar (editor-core chrome) + hit + click→`set_picker_target`+seed da
+  `active_color_srgb8()`; (3) read-back no `painter_bridge` (tem store+tool) → `SetColorSrgb` quando
+  target==painter E cor mudou. Multi-arquivo editor-core+shell.
+- (Bloqueadas até o picker: T2.4 modifier/eyedropper, T2.6 a11y, T2.7 smoke+audit W2.)
 
 **⚠️ AVIF está DONE** (não há slot): Path C decode+encode+HDR já em origin (`6bd4620`+`b1c44d7`);
 o handoff de transição estava stale nessa metade.

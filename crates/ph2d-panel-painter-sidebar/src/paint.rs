@@ -21,8 +21,9 @@ use crate::state::{self, PainterSidebarPanelState, set_last_content_h, set_last_
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
+    Button, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
     paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::widget::panel_chrome::{
@@ -167,9 +168,6 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     );
     y += opacity_h + row_pad;
 
-    // Modifier square (T2.4) — arms eyedropper-while-held. Helper-extracted.
-    y = paint_modifier_square(ctx, rect, y, &snapshot, theme, row_pad);
-
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -190,19 +188,26 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
 
 /// Paint the top-most "Color" row — current brush color via the canonical
 /// [`ColorSwatch`] (Widget Gallery `widget/showcase/color.rs`): a left
-/// "Color" label + the swatch pinned to the row's right edge, mirroring
-/// Procreate's "current color" at the top of the tool sidebar.
+/// "Color" label, then the eyedropper icon + the swatch pinned to the
+/// row's right edge, mirroring Procreate's "current color" + pick
+/// affordance at the top of the tool sidebar.
 ///
-/// Fill comes from the live snapshot (`active_color_srgb8`) so the swatch
+/// Swatch fill comes from the live snapshot (`active_color_srgb8`) so it
 /// tracks the picker in real time. The user RGBA is data — no hex literal
 /// here; `paint_color_swatch` carries the single justified
 /// `LITERAL-COLOR-OK`. Label/chrome use tokens.
 ///
-/// The hit is keyed on the SHARED `PAINTER_COLOR_THUMB` id: the editor-core
-/// dispatch opens the Blender picker seeded with this color, and the shell
-/// `painter_bridge` round-trips the picked color back into the Painter —
-/// placement-agnostic, so we only paint + register the hit. Returns the
-/// `y` advanced past this row.
+/// Two hits are registered:
+/// - `PAINTER_COLOR_THUMB` (swatch) → editor-core dispatch opens the
+///   Blender picker seeded with this color; the shell `painter_bridge`
+///   round-trips the picked color back into the Painter (placement-agnostic).
+/// - `PAINTER_SIDEBAR_MODIFIER_SQUARE` (eyedropper icon, T2.4) → arms/
+///   disarms the eyedropper-while-held gesture (Pressed/AccentSoft when
+///   armed). Routes `Click` → `PanelEvent::Click` →
+///   `PainterUiEdit::ToggleEyedropper`. The on-canvas sample itself is
+///   shell/foundational (Coordinator).
+///
+/// Returns the `y` advanced past this row.
 fn paint_color_row(
     ctx: &mut PaintCtx,
     rect: Rect,
@@ -217,6 +222,32 @@ fn paint_color_row(
         rect.w - PANEL_HEAD_PAD * 2.0,
         ROW_H_PX,
     );
+    // Swatch pinned to the right edge; eyedropper icon just left of it.
+    let swatch_w = Spacing::Xl3.px();
+    let swatch_rect = Rect::new(
+        color_rect.x + color_rect.w - swatch_w,
+        color_rect.y,
+        swatch_w,
+        ROW_H_PX,
+    );
+    let eye_w = ROW_H_PX; // square icon chip, row-height
+    let eye_rect = Rect::new(
+        swatch_rect.x - Spacing::Sm.px() - eye_w,
+        color_rect.y,
+        eye_w,
+        ROW_H_PX,
+    );
+    // Eyedropper armed visual: Pressed (AccentSoft chip) when armed, else
+    // the dispatcher-tracked hover/press state.
+    let eye_state = if snapshot.eyedropper_armed {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE)
+            .unwrap_or(ButtonState::Normal)
+    };
+
     let label_font = TypeToken::Base.px();
     paint_text(
         ctx.text_system,
@@ -228,13 +259,7 @@ fn paint_color_row(
         SLIDER_LABEL_W,
         resolve(ColorToken::Text1, theme),
     );
-    let swatch_w = Spacing::Xl3.px();
-    let swatch_rect = Rect::new(
-        color_rect.x + color_rect.w - swatch_w,
-        color_rect.y,
-        swatch_w,
-        ROW_H_PX,
-    );
+
     let swatch = ColorSwatch::new(
         core_ids::PAINTER_COLOR_THUMB,
         "Brush color",
@@ -242,56 +267,14 @@ fn paint_color_row(
     )
     .size(SwatchSize::Md);
     paint_color_swatch(&swatch, swatch_rect, ctx.scene, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
-    y + ROW_H_PX + row_pad
-}
 
-/// Paint the modifier square (T2.4) — arms the eyedropper-while-held
-/// gesture. Default action label is "Eyedropper" (configurable in W10
-/// Gesture Controls; W2 ships the default). Armed state reflects
-/// `snapshot.eyedropper_armed` (Accent fill + Pressed), mirroring
-/// BgRemoval's "Pick colors" affordance.
-///
-/// Arm/disarm routes through the panel event channel: `WidgetEvent::Click`
-/// → `PanelEvent::Click` → `PainterTool::handle_panel_event` →
-/// `PainterUiEdit::ToggleEyedropper`. The on-canvas sample gesture itself
-/// (hold + tap canvas → read pixel → primary slot) is shell/foundational
-/// (Coordinator). Returns the `y` advanced past this row.
-fn paint_modifier_square(
-    ctx: &mut PaintCtx,
-    rect: Rect,
-    y: f32,
-    snapshot: &ph2d_tool_painter::PainterUiSnapshot,
-    theme: ph2d_tokens::Theme,
-    row_pad: f32,
-) -> f32 {
-    let square_rect = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        y,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        ROW_H_PX,
-    );
-    let state = if snapshot.eyedropper_armed {
-        ButtonState::Pressed
-    } else {
-        ctx.host
-            .store()
-            .button_state(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE)
-            .unwrap_or(ButtonState::Normal)
-    };
-    let kind = if snapshot.eyedropper_armed {
-        ButtonKind::Accent
-    } else {
-        ButtonKind::Default
-    };
-    let btn = Button::new(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, "Eyedropper")
-        .kind(kind)
-        .state(state);
-    paint_button(&btn, square_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, square_rect);
+    let eye = Button::new(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, "Eyedropper")
+        .icon_only(IconId::EyePencil)
+        .state(eye_state);
+    paint_button(&eye, eye_rect, ctx.scene, ctx.text_system, theme);
+
+    let hit_index = ctx.host.hit_index_mut();
+    hit_index.register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
+    hit_index.register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, eye_rect);
     y + ROW_H_PX + row_pad
 }

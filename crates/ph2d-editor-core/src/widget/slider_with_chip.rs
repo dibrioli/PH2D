@@ -148,7 +148,16 @@ pub fn paint_slider_with_chip_layout(
         theme,
     );
     if slider_id.0 != 0 {
-        hit_index.register(slider_id, track_rect);
+        // The clickable / draggable zone is TALLER than the thin visual
+        // track — it spans the full row height at the track's horizontal
+        // span, so the slider is easy to grab (color-picker channel rows
+        // were a ~10 px sliver). Same x/w as `track_rect`, so the
+        // cursor→value mapping (horizontal) is unchanged; only the
+        // vertical catch area grows. Stays within the track column (label
+        // is left of `track_x`, chip is right of `track_x + track_w`), so
+        // it never steals their clicks.
+        let hit_rect = Rect::new(track_x, rect.y, track_w, rect.h);
+        hit_index.register(slider_id, hit_rect);
     }
 
     // Chip — read its NumberInput state straight from the store so

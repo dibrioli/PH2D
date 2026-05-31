@@ -55,6 +55,18 @@ ctt = { version = "0.4.0", default-features = false, features = [
 # Image decoder for source files (PNG mainly; jpeg/webp puxados se necessário em W4+).
 # Versão alinhada workspace standard (ph2d-asset / ph2d-imageio-*).
 image = { version = "0.25", default-features = false, features = ["png"] }
+# W1.T8.1 — KTX2 KVD patcher. `ctt`/`ktx2 0.5` são READ-ONLY (zero writer), então
+# um KTX2 recém-cookado nunca carrega o tag de alpha-intent PH2D. `cook_tagged`
+# faz patch post-hoc dos bytes via `ph2d_asset_ktx2::patch_premul_intent` para
+# que `Ktx2Image::premul_intent()` no runtime devolva o intent correto.
+#
+# NB (reverte parcialmente a decisão W1.T4/Lente σ "dev-only só"): a stance
+# original era só espelhar constantes sem dep de produção; o patcher é uma
+# necessidade NOVA (emit, não mirror). asset-ktx2 é parser puro (ktx2 +
+# thiserror, sem ISPC, sem ciclo — não depende de asset-cooker), então promover
+# de dev-dep a dep normal é low-risk e fica 100% nesta crate. `cook` cru
+# permanece sem o tag (não-breaking para chamadores existentes).
+ph2d-asset-ktx2 = { path = "../../crates/ph2d-asset-ktx2" }
 # Audit W1.T11+T14 ι-CRITICAL-1 fix (2026-05-28): Rust std `f32::sin/cos` documenta
 # precisão non-deterministic cross-platform. Fixtures que usam transcendentals
 # (brush_atlas_256_r8 + normal_map_512) precisam de libm para HR-6 cross-machine
@@ -73,12 +85,11 @@ libm = { version = "=0.2.16", default-features = false }
 toml = "0.9"
 
 # W1.T15 audit Lente σ (seam) — gate executável do seam cook → decode.
-# DEV-ONLY: o cooker NÃO ganha dep de produção em asset-ktx2 (decisão pragmática
-# W1.T4, ph2d-asset/src/asset.rs). asset-ktx2 é parser puro (ktx2 + thiserror),
-# sem ISPC e sem ciclo (não depende de asset-cooker). Usado só pra provar que os
-# bytes KTX2 que o ctt emite realmente decodificam pelo nosso parser — VkFormat
-# do encoder bate com ktx2::Format do decoder.
-ph2d-asset-ktx2 = { path = "../../crates/ph2d-asset-ktx2" }
+# asset-ktx2 agora é dep de produção (vide [dependencies], W1.T8.1); o gate
+# σ continua usando o MESMO crate. asset-ktx2 é parser puro (ktx2 + thiserror),
+# sem ISPC e sem ciclo (não depende de asset-cooker). Prova que os bytes KTX2
+# que o ctt emite decodificam pelo nosso parser (VkFormat do encoder ↔
+# ktx2::Format do decoder) E que o tag patcheado faz round-trip.
 
 # Audit T1.6 CI: machete pega `ctt` como unused porque W1.T0 ainda
 # não wired (lib API consumida só em W1.T1+). Dep deliberada per

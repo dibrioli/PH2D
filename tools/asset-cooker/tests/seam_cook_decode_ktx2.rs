@@ -18,15 +18,22 @@
 //! `Ktx2Format::Unsupported`, que é o fallback silencioso de VkFormat divergente).
 //!
 //! NÃO testa: pixel correctness do bloco comprimido (precisa GPU transcode, W2);
-//! cross-machine byte-determinism (D2/W1.T10 canonical runner ⏳); kvd PH2D_PREMUL
-//! (ctt 0.4.0 é READ-ONLY, não emite kvd — W1.T8 deferred honesto).
+//! cross-machine byte-determinism (D2/W1.T10 canonical runner ⏳).
+//!
+//! W1.T8.1 fechou o deferral kvd PH2D_PREMUL: `ctt`/`ktx2 0.5` continuam
+//! READ-ONLY, mas `cook_tagged` faz patch post-hoc dos bytes (insere a key
+//! PH2D_PREMUL na seção keyValueData via `ph2d_asset_ktx2::patch_premul_intent`).
+//! Os testes `cook_tagged_*` abaixo travam o round-trip cook → patch → decode →
+//! `premul_intent()`.
 //!
 //! ⚠️ ISPC encoders = global state não-thread-safe → rode com
 //! `RUST_TEST_THREADS=1 cargo test -p ph2d-asset-cooker` (vide armadilha #1 do
 //! módulo). Os encoders aqui crasham determinísticamente se rodados em paralelo.
 
-use ph2d_asset_cooker::texture::{AssetClass, CookOptions, Tier, cook, cook_all, fixtures};
-use ph2d_asset_ktx2::{Ktx2Format, decode_ktx2_bytes};
+use ph2d_asset_cooker::texture::{
+    AssetClass, CookOptions, Tier, cook, cook_all, cook_all_tagged, cook_tagged, fixtures,
+};
+use ph2d_asset_ktx2::{Ktx2Format, PH2D_PREMUL_KEY, PremulIntent, decode_ktx2_bytes};
 
 /// O fixture canônico (W1.T11) é 64×64 — as dimensões devem sobreviver o
 /// round-trip cook → decode intactas (o encoder não reescala mip 0).
@@ -204,6 +211,75 @@ fn cook_all_every_tier_decodes_to_a_known_format() {
                 Ktx2Format::Unsupported(raw) => raw,
                 _ => 0,
             }
+        );
+    }
+}
+
+// ── W1.T8.1 PH2D_PREMUL tag round-trip (cook_tagged) ────────────────────
+
+/// End-to-end seam for the patcher: `cook_tagged` (Desktop/SpriteColor,
+/// default `Straight` alpha) must stamp the KVD so the parser reports
+/// `Straight` instead of the pre-T8.1 `Unspecified`, while the format +
+/// dims still round-trip unchanged. Exercises the BC7 (non-empty,
+/// multi-mip-capable) artifact, not just a 1×1 synthetic.
+#[test]
+fn cook_tagged_desktop_sprite_color_reports_straight_intent() {
+    let png = fixtures::gradient_64x64();
+    let opts = CookOptions::for_asset_class(Tier::Desktop, AssetClass::SpriteColor);
+
+    // Baseline: plain `cook` carries no tag.
+    let plain = cook(&png, opts).expect("plain cook");
+    let plain_img = decode_ktx2_bytes(&plain).expect("plain decodes");
+    assert_eq!(
+        plain_img.premul_intent(),
+        PremulIntent::Unspecified,
+        "untagged cook must stay Unspecified (regression guard for the deferral)"
+    );
+
+    // Tagged: the patcher inserts PH2D_PREMUL.
+    let tagged = cook_tagged(&png, opts).expect("cook_tagged");
+    let img = decode_ktx2_bytes(&tagged).expect("tagged decodes");
+
+    assert_eq!(
+        img.premul_intent(),
+        PremulIntent::Straight,
+        "cook_tagged must stamp the source alpha intent (Straight)"
+    );
+    assert_eq!(
+        img.kvd.get(PH2D_PREMUL_KEY).map(Vec::as_slice),
+        Some(&[0u8][..]),
+        "PH2D_PREMUL value byte must encode Straight (0)"
+    );
+    // Format + dims survive the KVD insertion + offset shift untouched.
+    assert_eq!(img.format, plain_img.format, "tag must not change the format");
+    assert_eq!((img.width, img.height), (FIXTURE_W, FIXTURE_H));
+    // Base mip payload is byte-identical to the untagged cook.
+    assert_eq!(
+        img.base_level().data.as_ref(),
+        plain_img.base_level().data.as_ref(),
+        "tagging must not perturb the mip data"
+    );
+}
+
+/// `cook_all_tagged` stamps every tier's artifact; each decodes to a known
+/// format AND reports the `Straight` intent (the `for_asset_class` default).
+#[test]
+fn cook_all_tagged_every_tier_carries_premul_intent() {
+    let png = fixtures::gradient_64x64();
+    let artifacts = cook_all_tagged(&png, AssetClass::SpriteColor).expect("cook_all_tagged");
+    assert_eq!(artifacts.len(), 5, "one tagged artifact per tier");
+
+    for (tier, bytes) in &artifacts {
+        let img = decode_ktx2_bytes(bytes)
+            .unwrap_or_else(|e| panic!("tagged artifact for {tier:?} failed to decode: {e:?}"));
+        assert!(
+            !matches!(img.format, Ktx2Format::Unsupported(_)),
+            "{tier:?}: tagged artifact decoded to Unsupported — seam broken"
+        );
+        assert_eq!(
+            img.premul_intent(),
+            PremulIntent::Straight,
+            "{tier:?}: cook_all_tagged must carry the PH2D_PREMUL Straight tag"
         );
     }
 }

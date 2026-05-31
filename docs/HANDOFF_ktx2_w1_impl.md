@@ -96,7 +96,12 @@ COMMIT / REPORT
     fixados, M adjacent reportados>."
 
 DEPOIS de W1.T15 (PERGUNTE-ME antes de iniciar qualquer um):
-  - W1.T8.1 (patcher post-hoc PH2D_PREMUL, ~200-400 LOC) — baixo risco, sua pasta.
+  - W1.T8.1 (patcher post-hoc PH2D_PREMUL, ~200-400 LOC) — ✅ FEITO 2026-05-31.
+    `ph2d_asset_ktx2::patch_premul_intent` (insere KV PH2D_PREMUL, reescreve
+    kvd/sgd/level offsets, rebuild do tail; insert-only; SGD align(8) coberto).
+    Cooker wired via `cook_tagged`/`cook_all_tagged` + CLI; asset-ktx2 virou dep
+    de produção do cooker. ~14 tests (11 unit + 2 seam end-to-end via ctt real).
+    Detalhe completo: docs/plans/2026-05-texture-compression-waves.md §W1.T8.1.
   - W1.T10/T12/T13 (CI canonical runner + LFS) — ALTO RISCO, toca workflows.
     Eu renegocio estratégia com o Enio antes (provável spike-texture-cook.yml
     separado em vez de mexer no spike.yml).

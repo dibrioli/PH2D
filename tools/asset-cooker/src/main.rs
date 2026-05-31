@@ -182,9 +182,11 @@ fn run_texture_cook_all(
     asset_class: AssetClass,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let png_bytes = std::fs::read(input)?;
-    // cook_all retorna TODOS os bytes em memória antes de qualquer write — se
-    // o cook em si falhar, FS continua intacto.
-    let artifacts = texture::cook_all(&png_bytes, asset_class)
+    // cook_all_tagged retorna TODOS os bytes em memória antes de qualquer write
+    // — se o cook em si falhar, FS continua intacto. `_tagged` (W1.T8.1) stampa
+    // a key PH2D_PREMUL para que o parser runtime devolva o alpha-intent correto
+    // em vez de Unspecified.
+    let artifacts = texture::cook_all_tagged(&png_bytes, asset_class)
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
     std::fs::create_dir_all(output_dir)?;
     let stem = input
@@ -242,7 +244,8 @@ fn run_texture_cook(
     // correto (Linear para NormalMap/SingleChannel, sRGB para SpriteColor/UI).
     // `..Default::default()` aplicaria sRGB universalmente → gamma bug em normal maps.
     let options = CookOptions::for_asset_class(tier, asset_class);
-    let ktx2_bytes = texture::cook(&png_bytes, options)
+    // `cook_tagged` (W1.T8.1) stampa a key PH2D_PREMUL nos bytes cookados.
+    let ktx2_bytes = texture::cook_tagged(&png_bytes, options)
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
     if let Some(parent) = output.parent() {
         std::fs::create_dir_all(parent)?;

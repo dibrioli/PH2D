@@ -58,6 +58,12 @@ pub enum TextureCookError {
     Io(std::io::Error),
     /// `ctt::convert` failed (invalid format/encoder combo, OOM, etc.).
     Ctt(ctt::Error),
+    /// W1.T8.1 — post-hoc `PH2D_PREMUL` patch of the cooked KTX2 bytes
+    /// failed (only reachable from [`cook_tagged`] / [`cook_all_tagged`]).
+    /// Practically unreachable: the bytes come straight from `ctt`, are a
+    /// fresh container with no PH2D_PREMUL key, and the intent is never
+    /// `Unspecified` (mapped from a concrete [`ctt::AlphaMode`]).
+    Patch(ph2d_asset_ktx2::Ktx2PatchError),
 }
 
 impl std::fmt::Display for TextureCookError {
@@ -66,6 +72,7 @@ impl std::fmt::Display for TextureCookError {
             Self::Decode(e) => write!(f, "texture cook: PNG decode failed: {e}"),
             Self::Io(e) => write!(f, "texture cook: I/O error: {e}"),
             Self::Ctt(e) => write!(f, "texture cook: ctt::convert failed: {e:?}"),
+            Self::Patch(e) => write!(f, "texture cook: PH2D_PREMUL patch failed: {e}"),
         }
     }
 }
@@ -87,6 +94,12 @@ impl From<std::io::Error> for TextureCookError {
 impl From<ctt::Error> for TextureCookError {
     fn from(e: ctt::Error) -> Self {
         Self::Ctt(e)
+    }
+}
+
+impl From<ph2d_asset_ktx2::Ktx2PatchError> for TextureCookError {
+    fn from(e: ph2d_asset_ktx2::Ktx2PatchError) -> Self {
+        Self::Patch(e)
     }
 }
 
@@ -194,6 +207,45 @@ pub fn cook(source_bytes: &[u8], options: CookOptions) -> Result<Vec<u8>, Textur
     }
 }
 
+/// W1.T8.1 — map the cooker's source [`ctt::AlphaMode`] to the on-disk
+/// [`ph2d_asset_ktx2::PremulIntent`] tag.
+///
+/// - `Straight` → `Straight` (RGB not premultiplied).
+/// - `Premultiplied` → `Premultiplied`.
+/// - `Opaque` → `Straight`: an opaque image has alpha ≡ 1, so premultiplied
+///   and straight RGB are identical; tagging it `Straight` is the
+///   conservative, lossless choice (the renderer treats `Straight` as the
+///   safe default per `PremulIntent` docs).
+fn premul_intent_for_alpha(alpha: AlphaMode) -> ph2d_asset_ktx2::PremulIntent {
+    use ph2d_asset_ktx2::PremulIntent;
+    match alpha {
+        AlphaMode::Straight | AlphaMode::Opaque => PremulIntent::Straight,
+        AlphaMode::Premultiplied => PremulIntent::Premultiplied,
+    }
+}
+
+/// W1.T8.1 — like [`cook`], but stamps the resulting KTX2 with PH2D's
+/// `PH2D_PREMUL` key/value so the runtime parser's
+/// [`ph2d_asset_ktx2::Ktx2Image::premul_intent`] reports the source alpha
+/// intent instead of `Unspecified`.
+///
+/// The `ctt` / `ktx2 0.5` stack is read-only (no KTX2 writer), so the tag
+/// is inserted post-hoc into the cooked bytes via
+/// [`ph2d_asset_ktx2::patch_premul_intent`] (which rewrites the KVD
+/// section + downstream offsets while preserving the mip data byte-for-byte).
+///
+/// The intent is derived from `options.alpha` — see
+/// [`premul_intent_for_alpha`]. Determinism: identical to [`cook`] plus a
+/// pure byte transform, so HR-6 content-addressing still holds.
+pub fn cook_tagged(
+    source_bytes: &[u8],
+    options: CookOptions,
+) -> Result<Vec<u8>, TextureCookError> {
+    let bytes = cook(source_bytes, options)?;
+    let intent = premul_intent_for_alpha(options.alpha);
+    Ok(ph2d_asset_ktx2::patch_premul_intent(&bytes, intent)?)
+}
+
 /// W1.T6 — multi-tier batch emit. Para um único source PNG, gera N artefatos
 /// KTX2 (um per [`Tier`]) usando a [`target_matrix`](super::target_matrix)
 /// canônica para a `AssetClass` dada. Retorna `BTreeMap<Tier, Vec<u8>>` —
@@ -228,6 +280,29 @@ pub fn cook_all(
         let options = CookOptions::for_asset_class(tier, asset_class);
         let bytes = cook(source_bytes, options)?;
         out.insert(tier, bytes);
+    }
+    Ok(out)
+}
+
+/// W1.T8.1 — [`cook_all`] but every artifact carries the `PH2D_PREMUL`
+/// tag (see [`cook_tagged`]). `for_asset_class` defaults `alpha` to
+/// `Straight`, so the emitted tag is `Straight` unless a caller threads a
+/// premultiplied source through a future API.
+pub fn cook_all_tagged(
+    source_bytes: &[u8],
+    asset_class: AssetClass,
+) -> Result<std::collections::BTreeMap<Tier, Vec<u8>>, TextureCookError> {
+    use std::collections::BTreeMap;
+    let mut out = BTreeMap::new();
+    for &tier in &[
+        Tier::Desktop,
+        Tier::Mobile,
+        Tier::Web,
+        Tier::LowEnd,
+        Tier::Constrained,
+    ] {
+        let options = CookOptions::for_asset_class(tier, asset_class);
+        out.insert(tier, cook_tagged(source_bytes, options)?);
     }
     Ok(out)
 }

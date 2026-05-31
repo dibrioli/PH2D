@@ -4,9 +4,14 @@
 //! ι/κ→T11+T14, ν/ξ→T9) auditaram cada task ISOLADAMENTE. O seam entre os dois
 //! lados do pipeline — o ctt encoder que `cook` usa pra EMITIR KTX2 e o parser
 //! `ph2d_asset_ktx2::decode_ktx2_bytes` que o renderer W2 vai usar pra LER KTX2 —
-//! nunca foi exercitado por nenhum teste do workspace:
+//! nunca foi exercitado por nenhum teste do workspace. Até este gate (W1.T15) +
+//! a W1.T8.1, valia:
 //!
-//!   - `tools/asset-cooker/` não depende de `ph2d-asset-ktx2` (parser).
+//!   - `tools/asset-cooker/` não tinha dep de PRODUÇÃO em `ph2d-asset-ktx2`
+//!     (parser) — só este gate σ o usava como dev-dep. **Mudou na W1.T8.1:**
+//!     `cook_tagged` precisa de `patch_premul_intent`, então asset-ktx2 virou
+//!     dep normal (parser puro: ktx2 + thiserror, sem ISPC, sem ciclo — vide
+//!     justificativa no `[dependencies]` do Cargo.toml).
 //!   - `crates/ph2d-asset/` também não (decisão pragmática W1.T4, asset.rs).
 //!   - Os testes do cooker checam só os 12 bytes de magic header.
 //!   - Os testes do parser usam um `build_fixture` hand-construído, não bytes ctt.

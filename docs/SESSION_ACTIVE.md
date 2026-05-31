@@ -39,8 +39,15 @@ CookedTexture, BREAKING — mirror chain editor-core; **agora DESBLOQUEADO**, pi
 Bundle CI W1 (T10/T11.5/T12) fica pro fim.
 
 **Painter status:** T2.3 surface (`b5085d9`) + hue-fix + T2.2 undo/redo (`640f1d4`) + picker UI
-(`b5ba460`). Undo/redo **smoke-OK pelo Enio**. Picker = **pronto p/ smoke** (painter ativo → thumb
-top-right → pick → cor do stroke muda). Bloqueadas: T2.4 eyedropper, T2.6 a11y, T2.7 audit W2.
+(`b5ba460`). Undo/redo **smoke-OK pelo Enio**.
+**🔻 Painter DELEGADO a JANELA SEPARADA** — handoff `docs/HANDOFF_painter_w2_sidebar_color.md`
+(implementador segue: swatch DENTRO do painel + T2.4/T2.6/T2.7). Coord (esta sessão) já fez a
+parte foundational:
+- ✅ Picker thumb flutuante REMOVIDO (`6125409`) — aterrissou órfão na top bar (Enio). O swatch
+  certo vai DENTRO do painel sidebar (canônico `ColorSwatch` da Widget Gallery, §5.2) = task do impl.
+- ✅ Click-through CORRIGIDO (`0bcf952`) — painel Painter não deixa mais pintar através dele
+  (`cursor_over_hero_panel` lista `PAINTER_SIDEBAR_PANEL` + `painter_pointer_uv` None sobre painel).
+Wire do picker (dispatch + bridge, keyed em `PAINTER_COLOR_THUMB`) fica dormente até o impl registrar o hit.
 
 **Dívidas foundational do Coord (meu wire, caminho C) — DESBLOQUEIAM o slot Painter:**
 - ✅ **T2.2 undo/redo dispatch** (`808383a`): Cmd+Z context-sensitive (painter ativo → stroke undo;

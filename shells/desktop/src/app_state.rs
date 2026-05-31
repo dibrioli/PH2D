@@ -6,13 +6,21 @@
 //! `crate::App` / `crate::AppGfx` paths unchanged. All fields stay
 //! `pub(crate)` — these are shell-internal aggregates, not a public
 //! API surface.
+//
+// ph2d-loc-cap: AppGfx + App are the shell's two top-level aggregates —
+// each new editor subsystem (renderer / asset / tool / per-tool preview
+// state, and now the W2.T4 cooked-texture LogicalTextureMap) adds one
+// field + its doc here, so this definitions file accretes past 600 LOC by
+// design. Already over on origin/main (608) before this field; splitting
+// App/AppGfx into per-subsystem sub-structs is a tracked decomposition
+// refactor, not mid-feature work.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use bumpalo::Bump;
-use ph2d_asset::{AssetDb, AssetId};
+use ph2d_asset::{AssetDb, AssetId, LogicalTextureMap};
 use ph2d_core::FixedStep;
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
@@ -47,6 +55,14 @@ pub(crate) struct AppGfx {
     /// M6 — set when PNG fixtures loaded successfully; held so the
     /// AssetDb keeps `Arc<Asset>` alive for hot-reload follow-ups.
     pub(crate) asset_db: AssetDb,
+    /// KTX2 Fase 2 (W2.T4): `LogicalTextureId → BTreeMap<TierIndex, AssetId>`
+    /// — which cooked KTX2 artifact (in `asset_db`) backs a tier-agnostic
+    /// logical texture for each platform tier. The cooked-texture loader
+    /// pass (`cooked_texture_bridge`) reads this and the device tier to
+    /// resolve and upload a `SpriteSource::CookedTexture` sprite's pixels.
+    /// Empty until a cooked texture is loaded (e.g. the `PH2D_KTX2_SMOKE`
+    /// harness).
+    pub(crate) logical_texture_map: LogicalTextureMap,
     /// M6 — true when the atlas was composed from real PNG files (vs the
     /// procedural dummy fallback). Surfaced in window title.
     pub(crate) atlas_is_real: bool,

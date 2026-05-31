@@ -24,9 +24,10 @@
 //!
 //! Audit Lente δ W1.T3: §Symbol Registry registra esta entry como "W1.T4 cria".
 
-use crate::{AssetId, TierIndex};
+use crate::{Asset, AssetDb, AssetId, TierIndex};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Identidade lógica de uma textura — hash blake3 dos bytes do source PNG.
 ///
@@ -140,6 +141,32 @@ impl LogicalTextureMap {
     }
 }
 
+/// W2.T4 loader resolve: a tier-cooked [`Asset::TextureKtx2`] for one
+/// `(logical, tier)` pair, or `None` when no artifact is registered for
+/// that tier (or its [`AssetId`] is absent from `db`).
+///
+/// Composes [`LogicalTextureMap::resolve`] (logical+tier → `AssetId`) with
+/// [`AssetDb::get`] (`AssetId` → `Arc<Asset>`) — the exact two-step the
+/// plan's §6 W2.T4 entry calls for (`AssetDb` is content-addressed: it has
+/// only `get(&AssetId)`, no `resolve_for_tier`, so the logical→id mapping
+/// must come from the external [`LogicalTextureMap`]).
+///
+/// This is the **single-tier primitive**. The device-aware *fallback
+/// ladder* (descend to a device-sampleable tier when the preferred one is
+/// missing — [`TierIndex::fallback_ladder`]) is driven by the renderer-side
+/// loader, which owns the GPU capability set; `ph2d-asset` stays
+/// host-agnostic (HR-1: no `ph2d-render`/`wgpu` dependency here).
+#[must_use]
+pub fn logical_texture_resolve(
+    map: &LogicalTextureMap,
+    logical: LogicalTextureId,
+    tier: TierIndex,
+    db: &AssetDb,
+) -> Option<Arc<Asset>> {
+    let asset_id = map.resolve(logical, tier)?;
+    db.get(&asset_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,6 +256,36 @@ mod tests {
 
         assert_eq!(map.logical_count(), 2);
         assert_eq!(map.entry_count(), 3);
+    }
+
+    #[test]
+    fn logical_texture_resolve_composes_map_and_db() {
+        // A KTX2 blob registered for (logical hero.png, Desktop) resolves
+        // logical+tier → AssetId → Arc<Asset::TextureKtx2>.
+        let db = AssetDb::new();
+        let blob = b"\xABKTX 20\xBB\r\n\x1A\n-fake-desktop-bc7"; // not decoded here
+        let asset_id = db.insert_ktx2_bytes(TierIndex::DESKTOP, blob);
+
+        let mut map = LogicalTextureMap::new();
+        let logical = LogicalTextureId::from_source_bytes(b"hero.png");
+        map.insert(logical, TierIndex::DESKTOP, asset_id);
+
+        let resolved =
+            logical_texture_resolve(&map, logical, TierIndex::DESKTOP, &db).expect("present");
+        match &*resolved {
+            Asset::TextureKtx2 { tier, blob: got } => {
+                assert_eq!(*tier, TierIndex::DESKTOP);
+                assert_eq!(&got[..], &blob[..]);
+            }
+            other => panic!("expected TextureKtx2, got {other:?}"),
+        }
+
+        // A tier with no registered artifact resolves to None (caller
+        // descends the fallback ladder).
+        assert!(logical_texture_resolve(&map, logical, TierIndex::MOBILE, &db).is_none());
+        // An unknown logical id is also None.
+        let other = LogicalTextureId::from_source_bytes(b"villain.png");
+        assert!(logical_texture_resolve(&map, other, TierIndex::DESKTOP, &db).is_none());
     }
 
     #[test]

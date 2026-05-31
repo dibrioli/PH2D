@@ -654,6 +654,28 @@ impl RenderInstance {
     /// atlas at material bind group 1".
     pub const ATLAS_TEXTURE_ID: u32 = 0;
 
+    /// High-bit tag carving a distinct `texture_id` namespace for cooked
+    /// KTX2 textures (W2.T4): an id with this bit set binds the
+    /// [`crate::cooked_texture::CookedTextureStore`] entry, NOT an
+    /// `IndividualTextureStore` one. This keeps the additive cooked-texture
+    /// path off the Individual id space (which allocates `1..` and never
+    /// reaches `2^31`) without changing the [`RenderInstance`] ABI —
+    /// `texture_id` is CPU-only metadata, so the 184 B / 16-attr GPU layout
+    /// (frozen by ADR-0070) is untouched. The renderer's `material_bg`
+    /// dispatch is the only reader: `0` → atlas, high-bit set → cooked, else
+    /// individual. Cooked ids sort *after* individuals within a `z_order`
+    /// slice (they're large `u32`s), which is harmless since `z_order` is
+    /// the primary sort key.
+    pub const COOKED_TEXTURE_ID_BIT: u32 = 1 << 31;
+
+    /// `true` if `texture_id` is in the cooked-texture namespace
+    /// ([`Self::COOKED_TEXTURE_ID_BIT`] set). The atlas sentinel (`0`) and
+    /// individual ids (`1..2^31`) both return `false`.
+    #[must_use]
+    pub const fn is_cooked_texture_id(texture_id: u32) -> bool {
+        texture_id & Self::COOKED_TEXTURE_ID_BIT != 0
+    }
+
     /// Identity 2×2 [`Self::basis`] (`[col0.x, col0.y, col1.x, col1.y]`
     /// = unit x/y axes) — no rotation/scale/skew. Used by legacy /
     /// test construction paths that don't derive a basis from a

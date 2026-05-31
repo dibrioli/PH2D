@@ -45,6 +45,7 @@ mod input_handlers;
 mod input_log;
 mod integration;
 mod keymap;
+mod ktx2_smoke;
 mod name_unique;
 mod render_loop;
 mod sim_populate;

@@ -121,6 +121,11 @@ ph2d-panel-registry-init = { path = "../../crates/ph2d-panel-registry-init", def
 #   visible via window title until Vello widget paint wires in)
 # - ph2d-tokens (M12): semantic tokens for theme switching
 ph2d-asset = { path = "../../crates/ph2d-asset" }
+# KTX2 Fase 2 (W2.T4): the `PH2D_KTX2_SMOKE` harness cooks an RGBA8 KTX2 in
+# memory via `encode_uncompressed_rgba8` so the cooked-texture loader path has
+# a real artifact to render — no ISPC / committed binary fixture. Pure
+# read+write codec crate, no GPU / cycle.
+ph2d-asset-ktx2 = { path = "../../crates/ph2d-asset-ktx2" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-editor = { path = "../../crates/ph2d-editor" }

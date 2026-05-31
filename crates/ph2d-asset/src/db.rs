@@ -19,6 +19,7 @@ use crate::id::AssetId;
 use crate::loader::{decode_image_bytes, decode_png_bytes};
 use crate::prefab::PrefabDoc;
 use crate::scene::SceneDoc;
+use crate::tier::TierIndex;
 use crate::watcher::ReloadEvent;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -140,6 +141,31 @@ impl AssetDb {
             .entry(id)
             .or_insert_with(|| Arc::new(Asset::Scene(Arc::new(doc))));
         Ok(id)
+    }
+
+    /// Store a **cooked KTX2 blob** (one tier's artifact emitted by
+    /// `tools/asset-cooker`) under its content-addressed [`AssetId`]
+    /// (`blake3(bytes)`, HR-6). Idempotent — re-inserting identical bytes
+    /// is a no-op. The KTX2 container is **not** decoded here: `ph2d-asset`
+    /// deliberately carries no `ph2d-asset-ktx2` dependency (W1.T4), so the
+    /// raw bytes are stored verbatim and the renderer (W2.T4 loader) decodes
+    /// then uploads them via `ph2d_asset_ktx2::decode_ktx2_bytes` at upload
+    /// time (not the hot path; HR-3 ok).
+    ///
+    /// `tier` records which platform tier this artifact targets (Desktop=BC,
+    /// Mobile=ASTC, … per the cooker target matrix); the loader resolves a
+    /// [`crate::LogicalTextureId`] + the active device tier to one of these
+    /// via [`crate::LogicalTextureMap`] / [`crate::logical_texture_resolve`].
+    pub fn insert_ktx2_bytes(&self, tier: TierIndex, bytes: &[u8]) -> AssetId {
+        let id = AssetId::from_bytes(bytes);
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id.entry(id).or_insert_with(|| {
+            Arc::new(Asset::TextureKtx2 {
+                tier,
+                blob: Arc::new(bytes.to_vec()),
+            })
+        });
+        id
     }
 
     pub fn get(&self, id: &AssetId) -> Option<Arc<Asset>> {
@@ -271,6 +297,33 @@ mod tests {
             // explicitly here made `_` unreachable (clippy).
             _ => unreachable!("insert_png_bytes can only produce Asset::ImageRgba8"),
         }
+    }
+
+    #[test]
+    fn insert_ktx2_bytes_stores_blob_and_tier_idempotently() {
+        let db = AssetDb::new();
+        let blob = vec![0xABu8, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30]; // partial KTX2 magic
+        let id1 = db.insert_ktx2_bytes(TierIndex::DESKTOP, &blob);
+        let id2 = db.insert_ktx2_bytes(TierIndex::DESKTOP, &blob);
+        // Content-addressed (HR-6): identical bytes → identical id, one entry.
+        assert_eq!(id1, id2);
+        assert_eq!(db.len_assets(), 1);
+
+        match &*db.get(&id1).expect("present") {
+            Asset::TextureKtx2 { tier, blob: got } => {
+                assert_eq!(*tier, TierIndex::DESKTOP);
+                assert_eq!(&got[..], &blob[..]);
+            }
+            _ => unreachable!("insert_ktx2_bytes only produces Asset::TextureKtx2"),
+        }
+
+        // A different tier of the SAME bytes hashes the same — content
+        // addressing keys on bytes, so the first-writer tier wins (the
+        // cooker emits distinct bytes per tier, so this collision can't
+        // happen in practice; the `or_insert_with` keeps it deterministic).
+        let id3 = db.insert_ktx2_bytes(TierIndex::MOBILE, &blob);
+        assert_eq!(id3, id1);
+        assert_eq!(db.len_assets(), 1);
     }
 
     #[test]

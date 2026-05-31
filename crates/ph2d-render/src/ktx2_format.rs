@@ -190,6 +190,37 @@ impl CompressionFeatureSet {
             .contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2)
     }
 
+    /// The richest cooked [`ph2d_asset::TierIndex`] this device can
+    /// sample, by capability (W2.T4 loader entry point): BC →
+    /// [`Desktop`](ph2d_asset::TierIndex::DESKTOP), else ASTC →
+    /// [`Mobile`](ph2d_asset::TierIndex::MOBILE), else ETC2 →
+    /// [`LowEnd`](ph2d_asset::TierIndex::LOW_END), else uncompressed RGBA8 →
+    /// [`Constrained`](ph2d_asset::TierIndex::CONSTRAINED) (ADR-0053 tiers).
+    ///
+    /// The loader feeds this into [`ph2d_asset::TierIndex::fallback_ladder`]:
+    /// the preferred tier here is the *richest* the GPU advertises, and the
+    /// ladder descends from it to the universal RGBA8 floor when a sprite's
+    /// logical texture wasn't cooked for the preferred tier.
+    ///
+    /// `Web` (tier 2) is **not** auto-selected — it is adapter-dependent and
+    /// chosen explicitly by a Web build; on native adapters the BC/ASTC/ETC2
+    /// ladder plus the `Constrained` floor cover every device. The precedence
+    /// is "desktop-class first": a device advertising both BC and ASTC picks
+    /// the BC `Desktop` tier.
+    #[must_use]
+    pub fn best_tier(self) -> ph2d_asset::TierIndex {
+        use ph2d_asset::TierIndex;
+        if self.bc() {
+            TierIndex::DESKTOP
+        } else if self.astc() {
+            TierIndex::MOBILE
+        } else if self.etc2() {
+            TierIndex::LOW_END
+        } else {
+            TierIndex::CONSTRAINED
+        }
+    }
+
     /// `true` if this device can legally sample `fmt`. Uncompressed
     /// core formats need no feature (an empty requirement is always
     /// satisfied), so they always return `true`; compressed and
@@ -246,6 +277,42 @@ mod tests {
         );
         assert!(set.astc() && !set.bc() && !set.etc2());
         assert!(set.supports(Ktx2Format::Astc8x8RgbaUnormSrgb));
+    }
+
+    #[test]
+    fn best_tier_picks_richest_supported_family() {
+        use ph2d_asset::TierIndex;
+        // Desktop-class BC → Desktop tier.
+        assert_eq!(
+            CompressionFeatureSet::from_features(Features::TEXTURE_COMPRESSION_BC).best_tier(),
+            TierIndex::DESKTOP
+        );
+        // Apple-Silicon-class (ASTC, no BC) → Mobile, even with ETC2 present.
+        assert_eq!(
+            CompressionFeatureSet::from_features(
+                Features::TEXTURE_COMPRESSION_ASTC | Features::TEXTURE_COMPRESSION_ETC2
+            )
+            .best_tier(),
+            TierIndex::MOBILE
+        );
+        // ETC2-only → LowEnd.
+        assert_eq!(
+            CompressionFeatureSet::from_features(Features::TEXTURE_COMPRESSION_ETC2).best_tier(),
+            TierIndex::LOW_END
+        );
+        // No compression family → the uncompressed RGBA8 floor.
+        assert_eq!(
+            CompressionFeatureSet::from_features(Features::empty()).best_tier(),
+            TierIndex::CONSTRAINED
+        );
+        // BC takes precedence over ASTC (desktop-class first).
+        assert_eq!(
+            CompressionFeatureSet::from_features(
+                Features::TEXTURE_COMPRESSION_BC | Features::TEXTURE_COMPRESSION_ASTC
+            )
+            .best_tier(),
+            TierIndex::DESKTOP
+        );
     }
 
     #[test]

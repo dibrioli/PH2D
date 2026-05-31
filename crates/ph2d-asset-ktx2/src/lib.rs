@@ -728,6 +728,106 @@ pub fn decode_ktx2_bytes(bytes: &[u8]) -> Result<Ktx2Image, Ktx2Error> {
     })
 }
 
+/// Encode a single-mip, **uncompressed RGBA8** KTX2 container from raw
+/// straight-alpha pixels.
+///
+/// This is the `Constrained`-tier cooked artifact — the universal RGBA8
+/// floor the W2.T4 loader's fallback ladder lands on when no compressed tier
+/// fits the device (or none was cooked). The compressed BC/ASTC/ETC2 tiers
+/// come from the offline `cooker` (`tools/asset-cooker`) + an ISPC encoder,
+/// out of this pure read-side codec's scope; the uncompressed case needs no
+/// encoder library, so it lives here and keeps the cooked-texture loader
+/// path (and its GPU smoke) self-contained — no ISPC, no committed binary
+/// fixture.
+///
+/// `rgba` is tight-packed `width * height * 4` bytes. `srgb` picks the
+/// transfer: `true` → `VK_FORMAT_R8G8B8A8_SRGB` (the canonical sprite
+/// encoding, decoded by the GPU sampler), `false` → `..._UNORM`. The output
+/// round-trips through [`decode_ktx2_bytes`] to a single-level
+/// [`Ktx2Image`] (pinned by a unit test). No KVD / SGD / supercompression.
+///
+/// # Errors
+/// [`Ktx2Error::ZeroDimension`] for a 0-sized image, or
+/// [`Ktx2Error::InvalidContainer`] when `rgba.len() != width * height * 4`.
+pub fn encode_uncompressed_rgba8(
+    width: u32,
+    height: u32,
+    srgb: bool,
+    rgba: &[u8],
+) -> Result<Vec<u8>, Ktx2Error> {
+    use ktx2::dfd::{Basic, Block};
+    use ktx2::{Format, Header, Index, LevelIndex};
+
+    if width == 0 || height == 0 {
+        return Err(Ktx2Error::ZeroDimension);
+    }
+    let expected = (width as usize) * (height as usize) * 4;
+    if rgba.len() != expected {
+        return Err(Ktx2Error::InvalidContainer(format!(
+            "rgba len {} != width*height*4 = {expected}",
+            rgba.len()
+        )));
+    }
+
+    let format = if srgb {
+        Format::R8G8B8A8_SRGB
+    } else {
+        Format::R8G8B8A8_UNORM
+    };
+    // Data Format Descriptor: a single Basic block (4-byte total-size prefix
+    // + the block), mirroring `build_fixture` in the decode tests.
+    let (basic, type_size) = Basic::from_format(format).expect("RGBA8 is a known KTX2 format");
+    let block_bytes = Block::Basic(basic).to_vec();
+    let dfd_total_size = 4 + block_bytes.len() as u32;
+    let mut dfd_section = Vec::with_capacity(dfd_total_size as usize);
+    dfd_section.extend_from_slice(&dfd_total_size.to_le_bytes());
+    dfd_section.extend_from_slice(&block_bytes);
+
+    // Fixed KTX2 layout: 80-byte header, one 24-byte level-index entry, the
+    // DFD, then the level payload. No KVD / SGD.
+    let dfd_byte_offset: u32 = 80 + 24;
+    let dfd_byte_length = dfd_section.len() as u32;
+    // Level data 4-aligned with ≥1 slack byte after the DFD — `Reader::new`
+    // enforces `dfd_end < input.len()` (the `+ 4 & !3` keeps it strictly
+    // above the DFD and 4-aligned, matching the KTX2 mip-padding rule).
+    let level_data_offset = ((dfd_byte_offset + dfd_byte_length) + 4) & !3;
+    let total_len = level_data_offset as usize + rgba.len();
+
+    let header = Header {
+        format: Some(format),
+        type_size,
+        pixel_width: width,
+        pixel_height: height,
+        pixel_depth: 0,
+        layer_count: 0,
+        face_count: 1,
+        level_count: 1,
+        supercompression_scheme: None,
+        index: Index {
+            dfd_byte_offset,
+            dfd_byte_length,
+            kvd_byte_offset: 0,
+            kvd_byte_length: 0,
+            sgd_byte_offset: 0,
+            sgd_byte_length: 0,
+        },
+    };
+
+    let mut buf = vec![0u8; total_len];
+    buf[0..80].copy_from_slice(&header.as_bytes());
+    let entry = LevelIndex {
+        byte_offset: u64::from(level_data_offset),
+        byte_length: rgba.len() as u64,
+        uncompressed_byte_length: rgba.len() as u64,
+    };
+    buf[80..104].copy_from_slice(&entry.as_bytes());
+    buf[dfd_byte_offset as usize..(dfd_byte_offset + dfd_byte_length) as usize]
+        .copy_from_slice(&dfd_section);
+    let start = level_data_offset as usize;
+    buf[start..start + rgba.len()].copy_from_slice(rgba);
+    Ok(buf)
+}
+
 // ── post-hoc KVD patcher (W1.T8.1) ──────────────────────────────────
 
 /// Failures while patching a `PH2D_PREMUL` key into an already-cooked
@@ -1080,6 +1180,48 @@ fn parse_level_index(bytes: &[u8], level_count: u32) -> Option<Vec<(u64, u64)>> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── uncompressed RGBA8 encoder round-trip (W2.T4) ──────────────
+
+    #[test]
+    fn encode_uncompressed_rgba8_round_trips_through_decode() {
+        // A 2×2 RGBA8 image: distinct corners so a transposed / mis-strided
+        // decode would be caught.
+        let (w, h) = (2u32, 2u32);
+        let rgba: Vec<u8> = vec![
+            255, 0, 0, 255, // TL red
+            0, 255, 0, 255, // TR green
+            0, 0, 255, 255, // BL blue
+            255, 255, 0, 128, // BR semi-transparent yellow
+        ];
+        for srgb in [true, false] {
+            let bytes = encode_uncompressed_rgba8(w, h, srgb, &rgba).expect("encode");
+            let img = decode_ktx2_bytes(&bytes).expect("decode round-trips");
+            assert_eq!((img.width, img.height), (w, h));
+            assert_eq!(img.mip_levels.len(), 1, "single mip");
+            assert_eq!(&img.base_level().data[..], &rgba[..], "payload preserved");
+            let want = if srgb {
+                Ktx2Format::Rgba8UnormSrgb
+            } else {
+                Ktx2Format::Rgba8Unorm
+            };
+            assert_eq!(img.format, want, "transfer function preserved (srgb={srgb})");
+        }
+    }
+
+    #[test]
+    fn encode_uncompressed_rgba8_rejects_bad_inputs() {
+        // Wrong buffer length → InvalidContainer (not a panic / silent crop).
+        assert!(matches!(
+            encode_uncompressed_rgba8(2, 2, true, &[0u8; 3]),
+            Err(Ktx2Error::InvalidContainer(_))
+        ));
+        // Zero dimension → ZeroDimension.
+        assert!(matches!(
+            encode_uncompressed_rgba8(0, 4, true, &[]),
+            Err(Ktx2Error::ZeroDimension)
+        ));
+    }
 
     // ── garbage-input rejection (no fixture needed) ────────────────
 

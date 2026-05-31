@@ -228,6 +228,60 @@ impl MipUploadLayout {
     }
 }
 
+/// HR-13 budget ceiling (MB) for the cooked-texture cache (W2.T5).
+///
+/// **Interim declaration** (plan §6 W2.T5 mitigation): a standalone budget
+/// constant pending the future cross-subsystem aggregator
+/// (`architecture_render_budget_registered`) that will sum this against the
+/// tools + core baselines vs a platform total. Sized from the plan's W2
+/// VRAM projection — the compressed render-texture working set lands near
+/// ~200 MB on the iPad tier (ASTC, the constrained target) — so a 256 MB
+/// cooked-cache ceiling leaves headroom on desktop while staying inside the
+/// mobile envelope. Accounted against [`compressed_size_per_format`] summed
+/// over the live cooked textures
+/// ([`CookedTextureStore::cache_bytes`](crate::cooked_texture::CookedTextureStore::cache_bytes)).
+pub const COMPRESSED_TEXTURE_CACHE_BUDGET_MB: u32 = 256;
+
+/// Total GPU byte footprint of a `width × height` texture in `format` with
+/// `mip_count` mip levels — the W2.T5 HR-13 budget-accounting primitive.
+///
+/// wgpu exposes no cross-vendor VRAM query (`device.poll` only drives
+/// command completion; Metal/D3D12/Vulkan introspection isn't portable), so
+/// the plan's §6 strategy is a deterministic block-math estimate: sum
+/// [`MipUploadLayout::for_mip`]'s block-aligned `total_bytes` over every mip
+/// (each dimension halved per level, floored at 1). It therefore shares the
+/// EXACT block math the uploader uses — a compressed format counts its real
+/// block footprint; uncompressed RGBA8 degenerates to `w*h*4` plus the
+/// ~⅓ mip tail. Returns `0` for a zero-size texture or a non-color format
+/// (`for_mip` → `None`). `u64` so an 8192² RGBA8 pyramid (~256 MB) can't
+/// overflow; a `mip_count` past the pyramid floor contributes 1×1 mips only
+/// (via the saturating shift), never panics.
+#[must_use]
+pub fn compressed_size_per_format(
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+    mip_count: u32,
+) -> u64 {
+    // A degenerate 0-area base texture is never uploadable → 0 bytes. (The
+    // per-level `.max(1)` floor below is only for SUB-1 mip-tail levels of a
+    // real pyramid, not for a genuinely empty base.)
+    if width == 0 || height == 0 {
+        return 0;
+    }
+    let mut total = 0u64;
+    for level in 0..mip_count {
+        // `checked_shr` saturates a shift ≥ 32 to None → `0`, floored to 1,
+        // so a pathological `mip_count` adds 1×1 mips instead of panicking.
+        let w = width.checked_shr(level).unwrap_or(0).max(1);
+        let h = height.checked_shr(level).unwrap_or(0).max(1);
+        if let Some(layout) = MipUploadLayout::for_mip(format, w, h) {
+            total += layout.total_bytes as u64;
+        }
+    }
+    total
+}
+
 /// A fully uploaded cooked texture, ready to bind at `@group(1)`.
 ///
 /// The `bind_group` is built against the bind-group layout passed to
@@ -664,6 +718,46 @@ mod tests {
         let l = MipUploadLayout::for_mip(Tf::Etc2Rgb8Unorm, 64, 64).unwrap();
         assert_eq!(l.bytes_per_row, 16 * 8);
         assert_eq!(l.rows_per_image, 16);
+    }
+
+    // ── compressed_size_per_format budget accounting (GPU-independent) ──
+
+    #[test]
+    fn size_single_mip_rgba8_is_w_times_h_times_4() {
+        // One mip, uncompressed: classic w*h*4.
+        assert_eq!(
+            compressed_size_per_format(Tf::Rgba8Unorm, 64, 32, 1),
+            64 * 32 * 4
+        );
+    }
+
+    #[test]
+    fn size_single_mip_bc7_is_block_footprint_not_pixels() {
+        // 64×32 BC7 = 16×8 blocks * 16 B = 2048 B (¼ of the RGBA8 8192 B —
+        // the plan's -75% desktop saving, exactly).
+        assert_eq!(compressed_size_per_format(Tf::Bc7RgbaUnorm, 64, 32, 1), 2048);
+        assert_eq!(
+            compressed_size_per_format(Tf::Rgba8Unorm, 64, 32, 1),
+            2048 * 4
+        );
+    }
+
+    #[test]
+    fn size_full_pyramid_sums_every_mip() {
+        // 8×8 BC7 pyramid: 8×8(=4 blocks) + 4×4(1) + 2×2(1) + 1×1(1) blocks
+        // = 7 blocks * 16 B = 112 B.
+        let got = compressed_size_per_format(Tf::Bc7RgbaUnorm, 8, 8, 4);
+        assert_eq!(got, (4 + 1 + 1 + 1) * 16);
+    }
+
+    #[test]
+    fn size_is_robust_to_overlong_mip_count_and_zero_dims() {
+        // mip_count past the pyramid floor adds only 1×1 mips (no panic).
+        let sane = compressed_size_per_format(Tf::Bc7RgbaUnorm, 4, 4, 3);
+        let overlong = compressed_size_per_format(Tf::Bc7RgbaUnorm, 4, 4, 40);
+        assert!(overlong >= sane, "extra 1×1 mips only add footprint");
+        // Zero size → zero bytes (degenerate, never negative/overflow).
+        assert_eq!(compressed_size_per_format(Tf::Rgba8Unorm, 0, 0, 1), 0);
     }
 
     // ── mip_layouts pyramid validation (GPU-independent) ────────────────

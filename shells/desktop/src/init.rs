@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use bumpalo::Bump;
-use ph2d_asset::AssetDb;
+use ph2d_asset::{AssetDb, LogicalTextureMap};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, stable_type_id};
 use ph2d_ecs::scene::{EditorCommandQueue, HierarchySnapshot, HierarchyWalkState};
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
@@ -79,6 +79,10 @@ pub(crate) fn build_initial_state(
     // failure logs and falls back to the M5 procedural dummy —
     // the shell must boot regardless of asset-pipeline issues.
     let asset_db = AssetDb::new();
+    // KTX2 Fase 2 (W2.T4): logical-texture → per-tier cooked AssetId map.
+    // Empty until a cooked texture is loaded (e.g. the PH2D_KTX2_SMOKE
+    // harness below, or a future scene/import path).
+    let mut logical_texture_map = LogicalTextureMap::new();
     let assets_dir = integration::demo_assets_dir();
     let (atlas, atlas_is_real) =
         match crate::atlas_loader::load_atlas(surface.gpu(), &asset_db, &assets_dir) {
@@ -137,6 +141,10 @@ pub(crate) fn build_initial_state(
             handler.elapsed_ms()
         );
     }
+    // W2.T4 end-to-end smoke (PH2D_KTX2_SMOKE=1): cook an RGBA8 KTX2 in
+    // memory, register it, and spawn a `SpriteSource::CookedTexture` sprite so
+    // the loader path renders it. No-op unless the env var is set.
+    crate::ktx2_smoke::spawn_if_enabled(&mut sim, &asset_db, &mut logical_texture_map);
     let present = PresentWorld::new();
     // ADR-0025 M14.1: build the cached propagation queries AFTER
     // populate_sim so bevy_ecs has already seen the Transform
@@ -316,6 +324,7 @@ pub(crate) fn build_initial_state(
         present,
         camera,
         asset_db,
+        logical_texture_map,
         atlas_is_real,
         script,
         theme,

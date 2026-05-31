@@ -74,6 +74,20 @@ impl TierIndex {
         self.0
     }
 
+    /// Canonical device-fallback ladder starting at `self` (the device's
+    /// preferred tier) and descending toward the universal RGBA8 floor
+    /// [`Self::CONSTRAINED`]: Desktop → Mobile → Web → LowEnd → Constrained
+    /// (ascending `u8`, ADR-0053 ordering — plan §6 W2.T4 addendum). The
+    /// W2.T4 loader walks this, taking the first tier that has a cooked
+    /// artifact AND whose format the device can sample (the upload rejects an
+    /// unsampleable format), so a missing preferred tier degrades gracefully
+    /// instead of rendering nothing. `Constrained` (uncompressed RGBA8) is
+    /// always last and always device-sampleable, so the ladder is never
+    /// empty. Allocation-free (HR-3) — a `0..=4`-bounded filter_map iterator.
+    pub fn fallback_ladder(self) -> impl Iterator<Item = TierIndex> {
+        (self.0..Self::COUNT as u8).filter_map(Self::new)
+    }
+
     /// Nome canônico curto (mesma grafia de `ph2d_host::DeviceTier` esperada
     /// no slot futuro). Útil em logs / debug overlays.
     #[must_use]
@@ -126,6 +140,35 @@ mod tests {
         assert_eq!(TierIndex::WEB.name(), "Web");
         assert_eq!(TierIndex::LOW_END.name(), "LowEnd");
         assert_eq!(TierIndex::CONSTRAINED.name(), "Constrained");
+    }
+
+    #[test]
+    fn fallback_ladder_descends_to_constrained() {
+        let v = |t: TierIndex| t.fallback_ladder().collect::<Vec<_>>();
+        // Desktop walks the whole ladder down to the RGBA8 floor.
+        assert_eq!(
+            v(TierIndex::DESKTOP),
+            vec![
+                TierIndex::DESKTOP,
+                TierIndex::MOBILE,
+                TierIndex::WEB,
+                TierIndex::LOW_END,
+                TierIndex::CONSTRAINED,
+            ]
+        );
+        // Mid-ladder starts at self.
+        assert_eq!(
+            v(TierIndex::WEB),
+            vec![TierIndex::WEB, TierIndex::LOW_END, TierIndex::CONSTRAINED]
+        );
+        // The floor is its own (non-empty) ladder — never renders nothing.
+        assert_eq!(v(TierIndex::CONSTRAINED), vec![TierIndex::CONSTRAINED]);
+        // Every ladder ends at Constrained (the universal fallback).
+        for u in 0..TierIndex::COUNT as u8 {
+            let t = TierIndex::new(u).unwrap();
+            assert_eq!(t.fallback_ladder().last(), Some(TierIndex::CONSTRAINED));
+            assert_eq!(t.fallback_ladder().next(), Some(t), "ladder starts at self");
+        }
     }
 
     #[test]

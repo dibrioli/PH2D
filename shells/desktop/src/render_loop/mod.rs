@@ -25,6 +25,7 @@ mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
 mod motion_smoke;
+mod cooked_texture_bridge;
 mod padding_bridge;
 mod painter_bridge;
 mod present;
@@ -103,6 +104,7 @@ impl crate::App {
             hero_live,
             next_import_cell,
             atlas_asset_map,
+            logical_texture_map,
             component_registry,
             editor_queue,
             transform_type_id,
@@ -274,6 +276,16 @@ impl crate::App {
                 ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
                 ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
             };
+            // W2.T4 cooked-texture loader: resolve + decode + upload every
+            // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
+            // descending the fallback ladder) BEFORE extract reads back the
+            // cached `texture_id`. Idempotent + cheap after the first upload.
+            cooked_texture_bridge::ensure_uploaded(
+                sim,
+                renderer,
+                asset_db,
+                logical_texture_map,
+            );
             sim_extract::run(
                 dt,
                 sim,

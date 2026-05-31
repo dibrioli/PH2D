@@ -26,6 +26,10 @@ pub mod compositor;
 /// filterable-float in wgpu 28) with block-aligned `write_texture`. See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod compressed_pipeline;
+/// Renderer-side cache of cooked KTX2 textures — the W2.T4 loader path that
+/// makes [`SpriteSource::CookedTexture`] render. See
+/// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
+pub mod cooked_texture;
 pub mod game_rt;
 pub mod image_filter;
 pub mod individual;
@@ -56,8 +60,10 @@ pub use atlas::{
 pub use camera::{Camera2d, CameraUniform};
 pub use compositor::Compositor;
 pub use compressed_pipeline::{
-    CompressedTexturePipeline, CompressedUploadError, MipUploadLayout, UploadedCompressedTexture,
+    COMPRESSED_TEXTURE_CACHE_BUDGET_MB, CompressedTexturePipeline, CompressedUploadError,
+    MipUploadLayout, UploadedCompressedTexture, compressed_size_per_format,
 };
+pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use game_rt::GameRt;
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use individual::{IndividualTextureError, IndividualTextureStore};

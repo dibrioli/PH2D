@@ -64,6 +64,11 @@ pub struct SpriteRenderer {
     /// pipeline's `material_bgl` so each entry's bind group can drop
     /// straight into `set_bind_group(1, ...)` at draw time.
     individual: IndividualTextureStore,
+    /// KTX2 Fase 2 (W2.T4): cooked GPU-compressed textures. Lazily built on
+    /// the first cooked sprite, bound through the SAME `material_bgl`. Its
+    /// `texture_id`s live in the [`RenderInstance::COOKED_TEXTURE_ID_BIT`]
+    /// namespace so the draw loop routes them here, not to `individual`.
+    cooked: crate::cooked_texture::CookedTextureStore,
     instance_buffer: InstanceBuffer,
     quad_buffer: wgpu::Buffer,
     camera_buffer: wgpu::Buffer,
@@ -161,6 +166,9 @@ impl SpriteRenderer {
             pipeline,
             atlas,
             individual,
+            // Built lazily on the first cooked sprite (W2.T4) — a scene
+            // with none never allocates the compressed pipeline.
+            cooked: crate::cooked_texture::CookedTextureStore::new(),
             instance_buffer,
             quad_buffer,
             camera_buffer,
@@ -200,6 +208,61 @@ impl SpriteRenderer {
     /// [`crate::ktx2_format::CompressionFeatureSet`].
     pub fn detect_supported_compressions(&self) -> crate::ktx2_format::CompressionFeatureSet {
         crate::ktx2_format::CompressionFeatureSet::from_features(self.gpu.device.features())
+    }
+
+    /// The richest cooked [`ph2d_asset::TierIndex`] this device can sample,
+    /// derived from [`Self::detect_supported_compressions`] (W2.T4). This is
+    /// the **preferred** tier the loader feeds into
+    /// [`ph2d_asset::TierIndex::fallback_ladder`]; it's cheap (one device
+    /// feature query) so the loader can call it per upload pass without
+    /// caching. On an Apple-Silicon Mac this resolves to `Mobile` (ASTC, no
+    /// BC); on a desktop BC adapter, `Desktop`; on a bare WebGPU adapter,
+    /// `Constrained` (uncompressed RGBA8).
+    #[must_use]
+    pub fn active_device_tier(&self) -> ph2d_asset::TierIndex {
+        self.detect_supported_compressions().best_tier()
+    }
+
+    /// Read access to the cooked-texture store (W2.T4). The extract phase
+    /// uses [`CookedTextureStore::texture_id`](crate::cooked_texture::CookedTextureStore::texture_id)
+    /// to resolve a sprite's `logical_id` to the cached `texture_id`.
+    #[must_use]
+    pub fn cooked(&self) -> &crate::cooked_texture::CookedTextureStore {
+        &self.cooked
+    }
+
+    /// Ensure the cooked KTX2 texture for `logical_id` is decoded, uploaded,
+    /// and cached, returning its `texture_id` (in the cooked namespace). The
+    /// W2.T4 loader resolves `logical_id + tier → (asset_id, blob)` upstream
+    /// (it owns the asset DB + logical map) and hands the bytes here; this
+    /// method owns only the GPU upload + cache. Idempotent — a repeat call
+    /// for an already-uploaded `logical_id`/`asset_id` is two map lookups.
+    ///
+    /// # Errors
+    /// [`CookedTextureError`]: a corrupt KTX2 blob, or a format this device
+    /// cannot sample (the loader should descend its fallback ladder) /
+    /// otherwise un-uploadable. Nothing is cached on error.
+    pub fn ensure_cooked_texture(
+        &mut self,
+        logical_id: ph2d_asset::LogicalTextureId,
+        asset_id: ph2d_asset::AssetId,
+        ktx2_blob: &[u8],
+    ) -> Result<u32, crate::cooked_texture::CookedTextureError> {
+        self.cooked.ensure(
+            &self.gpu,
+            &self.pipeline.material_bgl,
+            logical_id,
+            asset_id,
+            ktx2_blob,
+        )
+    }
+
+    /// The cooked `texture_id` a `logical_id` resolved to, or `None` if it
+    /// was never [`ensure_cooked_texture`](Self::ensure_cooked_texture)d.
+    /// The extract phase stamps this into the sprite's `RenderInstance`.
+    #[must_use]
+    pub fn cooked_texture_id(&self, logical_id: ph2d_asset::LogicalTextureId) -> Option<u32> {
+        self.cooked.texture_id(logical_id)
     }
 
     /// Mutable handle to the individual-texture store. The host's
@@ -542,15 +605,18 @@ impl SpriteRenderer {
             });
         // Resolve a run's material bind group. Atlas (texture_id == 0) uses
         // the per-sampling cached bind group (W3.T3.11; falls back to the
-        // project-default material bg if not yet built); individual textures
-        // look up the pre-built bind group in the store. A missing
-        // individual (id released before render saw it) yields `None` →
-        // the run is skipped.
+        // project-default material bg if not yet built); a cooked id (W2.T4,
+        // `COOKED_TEXTURE_ID_BIT` set) binds the cooked-texture store; every
+        // other id is an individual texture. A missing entry in either store
+        // (id released / not-yet-uploaded before render saw it) yields
+        // `None` → the run is skipped (sprite renders nothing this frame).
         let material_bg = |run: &DrawRun| -> Option<&wgpu::BindGroup> {
             if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
                 self.atlas_sampler_bgs
                     .get(&run.sampling)
                     .or(Some(&self.material_bind_group))
+            } else if RenderInstance::is_cooked_texture_id(run.texture_id) {
+                self.cooked.bind_group(run.texture_id)
             } else {
                 self.individual.bind_group(run.texture_id)
             }

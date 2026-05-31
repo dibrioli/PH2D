@@ -338,18 +338,19 @@ pub(super) fn run(
                     .is_some_and(|vl| !vl.visible_to(cull_mask));
                 let override_for_entity =
                     preview_override.filter(|o| o.entity_bits == sim_entity.to_bits());
-                // W2.T2: skip CookedTexture sprites in extract. Their
-                // tier-agnostic LogicalTextureId is only resolved to an
-                // uploaded GPU texture by the W2.T4 loader; until that
-                // lands they render nothing (invisible, NOT a garbage
-                // atlas bind) — same shape as a hidden/culled sprite
-                // (builder spawned, no RenderInstance). The `match
-                // spr.source` arms below carry a neutral fallback purely
-                // for static exhaustiveness; this guard makes them dead.
+                // W2.T4: CookedTexture sprites are now LIVE. The
+                // `cooked_texture_bridge` loader pass (run just before this
+                // extract) resolved each `logical_id` for the device tier and
+                // uploaded its KTX2 into the renderer's cooked-texture cache;
+                // the `CookedTexture` arm below reads back the cached
+                // `texture_id`. A sprite whose logical texture wasn't uploaded
+                // (no cooked tier on this device) returns early → no
+                // RenderInstance → invisible, the same shape as a
+                // hidden/culled sprite (the W2.T2 skip-guard's behavior, now
+                // resolved per-sprite instead of blanket).
                 if !hidden
                     && !culled
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
-                    && !matches!(spr.source, ph2d_render::SpriteSource::CookedTexture { .. })
                 {
                     let p = gt.translation();
                     // ADR-0070-amendment-4: pass the FULL 2x2 world basis
@@ -378,11 +379,18 @@ pub(super) fn run(
                         ph2d_render::SpriteSource::Individual { texture_id } => {
                             ([0.0, 0.0, 1.0, 1.0], texture_id)
                         }
-                        // Dead past the W2.T2 extract guard; neutral fallback.
-                        ph2d_render::SpriteSource::CookedTexture { .. } => (
-                            [0.0, 0.0, 1.0, 1.0],
-                            ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
-                        ),
+                        // W2.T4: resolve the tier-agnostic logical id to the
+                        // cooked `texture_id` the loader pass uploaded. The id
+                        // is in the `COOKED_TEXTURE_ID_BIT` namespace so the
+                        // renderer's draw loop binds the cooked store. Not yet
+                        // uploaded (no device tier / asset) → skip this sprite
+                        // this frame (no RenderInstance, invisible).
+                        ph2d_render::SpriteSource::CookedTexture { logical_id } => {
+                            match renderer.cooked_texture_id(logical_id) {
+                                Some(id) => ([0.0, 0.0, 1.0, 1.0], id),
+                                None => return,
+                            }
+                        }
                     };
                     // Lens F (2026-05-26): if a tool's live preview
                     // claims this entity, substitute the texture binding
@@ -456,8 +464,13 @@ pub(super) fn run(
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 renderer.individual().dims(texture_id)
                             }
-                            // Dead past the W2.T2 extract guard.
-                            ph2d_render::SpriteSource::CookedTexture { .. } => None,
+                            // W2.T4: a cooked sprite owns its native-resolution
+                            // texture; `texture_id` here is the resolved cooked
+                            // id (region_enabled defaults false, so this is a
+                            // no-op for the common cooked sprite).
+                            ph2d_render::SpriteSource::CookedTexture { .. } => {
+                                renderer.cooked().dims(texture_id)
+                            }
                         };
                         match src_dims {
                             Some((sw, sh)) => {
@@ -471,12 +484,12 @@ pub(super) fn run(
                                             let s = atlas.size_px.max(1) as f32;
                                             (s, s)
                                         }
-                                        ph2d_render::SpriteSource::Individual { .. } => {
+                                        // Cooked + Individual both sample their
+                                        // OWN native-resolution texture, so the
+                                        // half-texel is `1 / (w, h)` (W2.T4).
+                                        ph2d_render::SpriteSource::Individual { .. }
+                                        | ph2d_render::SpriteSource::CookedTexture { .. } => {
                                             (sw.max(1) as f32, sh.max(1) as f32)
-                                        }
-                                        // Dead past the W2.T2 extract guard.
-                                        ph2d_render::SpriteSource::CookedTexture { .. } => {
-                                            (1.0, 1.0)
                                         }
                                     };
                                     Some((0.5 / tw, 0.5 / th))

@@ -77,6 +77,7 @@ pub fn paint_blender_picker_demo(
         interp_perceptual: ids::BLENDER_INTERP_PERCEPTUAL,
         channel_rgb: ids::BLENDER_CHANNEL_RGB,
         channel_hsv: ids::BLENDER_CHANNEL_HSV,
+        channel_oklch: ids::BLENDER_CHANNEL_OKLCH,
         channels: [
             ids::BLENDER_CHANNEL_0,
             ids::BLENDER_CHANNEL_1,

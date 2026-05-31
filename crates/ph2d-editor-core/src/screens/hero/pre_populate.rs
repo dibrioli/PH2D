@@ -120,6 +120,7 @@ fn populate_blender_picker(store: &mut WidgetStore) {
         ),
         (ids::BLENDER_CHANNEL_RGB, BlenderHitKind::ChannelRgb),
         (ids::BLENDER_CHANNEL_HSV, BlenderHitKind::ChannelHsv),
+        (ids::BLENDER_CHANNEL_OKLCH, BlenderHitKind::ChannelOklch),
     ] {
         store.register(
             id,
@@ -319,6 +320,8 @@ fn populate_samples(store: &mut WidgetStore) {
     store.register(ids::INSP_SAMPLE_SWATCH, InteractiveState::Plain);
     store.set_widget_color(ids::INSP_SAMPLE_SWATCH, [120, 60, 200, 255]);
 
+    populate_w6_samples(store);
+
     for id in [
         ids::INSP_SAMPLE_BTN_PRIMARY,
         ids::INSP_SAMPLE_BTN_SECONDARY,
@@ -400,6 +403,73 @@ fn populate_samples(store: &mut WidgetStore) {
         (ids::INSP_SAMPLE_TAG_REMOVE, "Removable Tag"),
     ] {
         store.set_tooltip(id, text);
+    }
+}
+
+/// Sprite Inspector v2 W6 (spec §15.7): Widget Gallery samples for the
+/// new foundational widgets. The four scalar widgets are wired live;
+/// the two composite editors (VariantEditor / KeyValueList) render as
+/// visual references (no store state — interaction lives in their
+/// consuming Inspector sections, W4/W5).
+fn populate_w6_samples(store: &mut WidgetStore) {
+    // Rect2Editor: X / Y / W / H number inputs.
+    for (id, v) in [
+        (ids::INSP_SAMPLE_W6_RECT[0], 0.0_f64),
+        (ids::INSP_SAMPLE_W6_RECT[1], 0.0),
+        (ids::INSP_SAMPLE_W6_RECT[2], 100.0), // LITERAL-PX-OK: Rect2 demo seed (w)
+        (ids::INSP_SAMPLE_W6_RECT[3], 50.0),  // LITERAL-PX-OK: Rect2 demo seed (h)
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: v,
+                buffer: crate::interaction::format_number(v),
+                caret: 0,
+                last_committed: v,
+                selection_anchor: None,
+            },
+        );
+    }
+    // NumericInputWithUnit: a rotation in degrees.
+    store.register(
+        ids::INSP_SAMPLE_W6_UNIT,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 90.0, // LITERAL-PX-OK: NumericInputWithUnit demo seed (deg)
+            buffer: crate::interaction::format_number(90.0), // LITERAL-PX-OK: demo seed
+            caret: 0,
+            last_committed: 90.0, // LITERAL-PX-OK: demo seed
+            selection_anchor: None,
+        },
+    );
+    // BitmaskGrid32: a recognizable demo pattern.
+    const DEMO_MASK: u32 = 0b1011_0101;
+    for (bit, id) in ids::INSP_SAMPLE_W6_MASK.iter().enumerate() {
+        let checked = (DEMO_MASK >> bit as u32) & 1 == 1;
+        store.register(
+            *id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: if checked {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                },
+            },
+        );
+    }
+    // SegmentedAdaptive: 4 draw-mode buttons, "Sliced" pre-selected.
+    for id in ids::INSP_SAMPLE_W6_SEG {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    if let Some(InteractiveState::Button { state }) = store.get_mut(ids::INSP_SAMPLE_W6_SEG[1]) {
+        *state = ButtonState::Pressed;
     }
 }
 
@@ -574,6 +644,7 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_SECTION_ACTIONS,
         ids::INSP_SECTION_IDENTITY,
         ids::INSP_SECTION_CARD,
+        ids::INSP_SECTION_W6,
     ] {
         store.mark_collapsible_section(id);
     }

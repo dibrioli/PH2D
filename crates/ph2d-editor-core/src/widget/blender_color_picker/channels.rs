@@ -70,6 +70,45 @@ pub fn paint_slider_row(
 // (the canonical app-wide chip used by `paint_slider_with_chip`).
 // Callers should use the new module instead.
 
+/// Display chroma ceiling used to normalize OKLCH chroma into the
+/// 0..1 slider/chip range. The sRGB gamut tops out near 0.37 chroma;
+/// 0.4 leaves a touch of headroom so the slider never pins before the
+/// most-saturated representable colors.
+pub const OKLCH_CHROMA_MAX: f32 = 0.4;
+/// Hue is stored in degrees; normalize against a full turn.
+pub const OKLCH_HUE_MAX: f32 = 360.0;
+
+/// The picker's current sRGB value as OKLCH channels normalized to
+/// 0..1 for the uniform slider/chip model: `[L, C/CHROMA_MAX, H/360,
+/// A]`. Mirrors how `rgba_to_hsv` feeds the HSV channel rows.
+pub fn oklch_norm_channels(rgba: [u8; 4]) -> [f32; 4] {
+    let (l, c, h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
+    [
+        (l as f32).clamp(0.0, 1.0),
+        (c as f32 / OKLCH_CHROMA_MAX).clamp(0.0, 1.0),
+        (h as f32 / OKLCH_HUE_MAX).clamp(0.0, 1.0),
+        rgba[3] as f32 / 255.0,
+    ]
+}
+
+/// Inverse of one channel edit in [`oklch_norm_channels`] space: take
+/// the current `rgba`, overwrite OKLCH channel `idx` (0=L,1=C,2=H,3=A)
+/// with the normalized `norm` (0..1), and convert back to sRGB bytes.
+pub fn oklch_set_channel(rgba: [u8; 4], idx: u8, norm: f32) -> [u8; 4] {
+    let (mut l, mut c, mut h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
+    let mut a = rgba[3];
+    let n = norm.clamp(0.0, 1.0);
+    match idx {
+        0 => l = n as f64,
+        1 => c = (n * OKLCH_CHROMA_MAX) as f64,
+        2 => h = (n * OKLCH_HUE_MAX) as f64,
+        3 => a = (n * 255.0).round() as u8,
+        _ => {}
+    }
+    let [r, g, b] = ph2d_tokens::oklch_to_srgb(l, c, h);
+    [r, g, b, a]
+}
+
 pub fn rgba_to_hsv(rgba: [u8; 4]) -> (f32, f32, f32, f32) {
     let r = rgba[0] as f32 / 255.0;
     let g = rgba[1] as f32 / 255.0;

@@ -24,12 +24,14 @@ pub fn paint_channel_toggle(
         vec![
             RadioOption::new(NodeId(0), "rgb", "RGB"),
             RadioOption::new(NodeId(0), "hsv", "HSV"),
+            RadioOption::new(NodeId(0), "oklch", "OKLCH"),
         ],
     )
     .orientation(RadioOrientation::Segmented)
     .selected(match cp.channel_mode {
         ChannelMode::Rgb => "rgb",
         ChannelMode::Hsv => "hsv",
+        ChannelMode::Oklch => "oklch",
     });
     paint_radio_group_with_labels(&group, rect, scene, text_system, theme);
 }

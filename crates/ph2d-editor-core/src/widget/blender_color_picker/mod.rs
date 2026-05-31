@@ -38,7 +38,7 @@ pub mod wheel;
 #[cfg(test)]
 mod tests;
 
-pub use channels::{hsv_to_rgba8, rgba_to_hsv};
+pub use channels::{hsv_to_rgba8, oklch_norm_channels, oklch_set_channel, rgba_to_hsv};
 pub use hex_field::parse_hex;
 pub use paint::{
     BlenderSubIds, paint_blender_color_picker, paint_blender_color_picker_with_store,

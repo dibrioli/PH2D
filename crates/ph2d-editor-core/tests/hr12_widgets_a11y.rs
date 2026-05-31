@@ -74,6 +74,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ("showcase/color.rs", "section painter; widgets emit a11y"),
     ("showcase/identity.rs", "section painter; widgets emit a11y"),
     ("showcase/inputs.rs", "section painter; widgets emit a11y"),
+    (
+        "showcase/inspector_w6.rs",
+        "section painter; widgets emit a11y",
+    ),
     ("showcase/lists.rs", "section painter; widgets emit a11y"),
     ("showcase/notes.rs", "note painter; TextInput emits a11y"),
     ("showcase/slider.rs", "section painter; widgets emit a11y"),

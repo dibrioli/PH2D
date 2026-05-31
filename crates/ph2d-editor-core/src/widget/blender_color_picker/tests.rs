@@ -1,6 +1,6 @@
 //! Smoke + state-round-trip tests for the picker.
 
-use super::channels::rgba_to_hsv;
+use super::channels::{oklch_norm_channels, oklch_set_channel, rgba_to_hsv};
 use super::paint::paint_blender_color_picker;
 use super::state::{
     BlenderColorPicker, ChannelMode, ColorPalette, InterpolationMode, default_palette,
@@ -100,6 +100,60 @@ fn paint_smoke_hsv_mode() {
             .interpolation(InterpolationMode::Linear),
         Theme::Sunstone,
     );
+}
+
+#[test]
+fn paint_smoke_oklch_mode() {
+    smoke(
+        BlenderColorPicker::new(NodeId(1), "x")
+            .channel_mode(ChannelMode::Oklch)
+            .value(ColorValue::from_rgba8(120, 200, 80, 255)),
+        Theme::Forge,
+    );
+}
+
+#[test]
+fn oklch_mode_swap_does_not_change_value() {
+    let cp = BlenderColorPicker::new(NodeId(1), "x")
+        .channel_mode(ChannelMode::Oklch)
+        .value(ColorValue::from_rgba8(120, 200, 80, 255));
+    assert_eq!(cp.value.rgba, [120, 200, 80, 255]);
+}
+
+#[test]
+fn oklch_lcha_builds_oklch_color() {
+    // The picker emits an L/C/H/A tuple (editor-core keeps ph2d-color
+    // dev-only); the consumer builds OklchColor from it. White → L≈1,
+    // C≈0.
+    let cp = BlenderColorPicker::new(NodeId(1), "x").value(ColorValue::from_rgba8(255, 255, 255, 255));
+    let (l, c, _h, a) = cp.oklch_lcha();
+    let oklch = ph2d_color::OklchColor::new(l, c, _h, a);
+    assert!((oklch.l - 1.0).abs() < 0.02, "white L≈1, got {}", oklch.l);
+    assert!(oklch.c < 0.02, "white chroma≈0, got {}", oklch.c);
+    assert!((oklch.a - 1.0).abs() < 1e-3);
+}
+
+#[test]
+fn oklch_norm_channels_in_unit_range() {
+    for rgba in [[255, 0, 0, 255], [0, 255, 0, 128], [0, 0, 0, 255], [255, 255, 255, 255]] {
+        for v in oklch_norm_channels(rgba) {
+            assert!((0.0..=1.0).contains(&v), "channel {v} out of 0..1 for {rgba:?}");
+        }
+    }
+}
+
+#[test]
+fn oklch_set_channel_lightness_monotone() {
+    // Raising normalized lightness on a mid color should not decrease
+    // the resulting perceptual luminance proxy (sum of RGB).
+    let base = [120u8, 80, 60, 255];
+    let darker = oklch_set_channel(base, 0, 0.2);
+    let lighter = oklch_set_channel(base, 0, 0.9);
+    let sum = |c: [u8; 4]| c[0] as u32 + c[1] as u32 + c[2] as u32;
+    assert!(sum(lighter) > sum(darker), "higher L should brighten: {darker:?} vs {lighter:?}");
+    // Alpha channel edit leaves RGB intact.
+    let a_edit = oklch_set_channel(base, 3, 0.5);
+    assert_eq!([a_edit[0], a_edit[1], a_edit[2]], [base[0], base[1], base[2]]);
 }
 
 #[test]

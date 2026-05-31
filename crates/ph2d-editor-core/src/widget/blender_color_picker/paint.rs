@@ -1,7 +1,7 @@
 //! Top-level layout: orchestrates wheel + value slider + segmented
 //! toggles + 4 channel rows + hex field + palettes.
 
-use super::channels::{paint_slider_row, rgba_to_hsv};
+use super::channels::{oklch_norm_channels, paint_slider_row, rgba_to_hsv};
 use super::hex_field::{paint_eyedropper, paint_hex_field};
 use super::palette::{paint_palettes, paint_palettes_with_hits};
 use super::segmented::paint_channel_toggle;
@@ -41,7 +41,8 @@ pub struct BlenderSubIds {
     pub interp_perceptual: NodeId,
     pub channel_rgb: NodeId,
     pub channel_hsv: NodeId,
-    /// Channel slider ids 0..4 (R/H, G/S, B/V, A).
+    pub channel_oklch: NodeId,
+    /// Channel slider ids 0..4 (R/H/L, G/S/C, B/V/H, A).
     pub channels: [NodeId; 4],
     /// Channel value chip `NumberInput` ids 0..4 (mirror channels).
     pub channels_num: [NodeId; 4],
@@ -71,6 +72,7 @@ impl BlenderSubIds {
             interp_perceptual: NodeId(0),
             channel_rgb: NodeId(0),
             channel_hsv: NodeId(0),
+            channel_oklch: NodeId(0),
             channels: [NodeId(0); 4],
             channels_num: [NodeId(0); 4],
             hex: NodeId(0),
@@ -116,6 +118,7 @@ pub fn paint_blender_color_picker(
     let labels = match cp.channel_mode {
         ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
         ChannelMode::Hsv => ["Hue", "Saturation", "Value", "Alpha"],
+        ChannelMode::Oklch => ["Lightness", "Chroma", "Hue", "Alpha"],
     };
     let values = match cp.channel_mode {
         ChannelMode::Rgb => [
@@ -130,6 +133,7 @@ pub fn paint_blender_color_picker(
             let (_, _, v, a) = rgba_to_hsv(cp.value.rgba);
             [cp.hsv_h, cp.hsv_s, v, a]
         }
+        ChannelMode::Oklch => oklch_norm_channels(cp.value.rgba),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
@@ -257,22 +261,22 @@ pub fn paint_blender_color_picker_with_store(
     let _ = ids.interp_linear;
     let _ = ids.interp_perceptual;
 
-    // Channel mode toggle (RGB / HSV).
+    // Channel mode toggle (RGB / HSV / OKLCH) — three equal segments,
+    // matching the 3-option RadioGroup painted in `paint_channel_toggle`.
     let chan_rect = Rect::new(rect.x + pad, y, inner_w, TOGGLE_H);
     paint_channel_toggle(&local, chan_rect, scene, text_system, theme);
-    if ids.channel_rgb.0 != 0 || ids.channel_hsv.0 != 0 {
-        let half_w = chan_rect.w * 0.5;
-        if ids.channel_rgb.0 != 0 {
-            hit_index.register(
-                ids.channel_rgb,
-                Rect::new(chan_rect.x, chan_rect.y, half_w, chan_rect.h),
-            );
-        }
-        if ids.channel_hsv.0 != 0 {
-            hit_index.register(
-                ids.channel_hsv,
-                Rect::new(chan_rect.x + half_w, chan_rect.y, half_w, chan_rect.h),
-            );
+    if ids.channel_rgb.0 != 0 || ids.channel_hsv.0 != 0 || ids.channel_oklch.0 != 0 {
+        let seg_w = chan_rect.w / 3.0;
+        for (i, id) in [ids.channel_rgb, ids.channel_hsv, ids.channel_oklch]
+            .into_iter()
+            .enumerate()
+        {
+            if id.0 != 0 {
+                hit_index.register(
+                    id,
+                    Rect::new(chan_rect.x + seg_w * i as f32, chan_rect.y, seg_w, chan_rect.h),
+                );
+            }
         }
     }
     y += TOGGLE_H + ROW_GAP;
@@ -280,6 +284,7 @@ pub fn paint_blender_color_picker_with_store(
     let labels = match local.channel_mode {
         ChannelMode::Rgb => ["Red", "Green", "Blue", "Alpha"],
         ChannelMode::Hsv => ["Hue", "Saturation", "Value", "Alpha"],
+        ChannelMode::Oklch => ["Lightness", "Chroma", "Hue", "Alpha"],
     };
     let values = match local.channel_mode {
         ChannelMode::Rgb => [
@@ -297,6 +302,12 @@ pub fn paint_blender_color_picker_with_store(
             let (_, _, v, a) = rgba_to_hsv(local.value.rgba);
             [local.hsv_h, local.hsv_s, v, a]
         }
+        // OKLCH channels derive directly from the sRGB value (no
+        // retained anchor): L/C/H normalized to 0..1 for the uniform
+        // slider model. Gray collapses hue to 0 — acceptable, as the
+        // hue strip above stays HSV-spatial and OKLCH rows are a
+        // numeric alt-view.
+        ChannelMode::Oklch => oklch_norm_channels(local.value.rgba),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;

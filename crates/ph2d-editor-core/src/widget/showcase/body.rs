@@ -103,7 +103,7 @@ pub fn paint_showcase_body(
     // tagged with `Some(i)` paint immediately above `SECTION_IDS[i]`;
     // notes with `None` paint at the tail after the last section.
     let all_notes = store.notes_for_panel(ids::GAL_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 10] = Default::default();
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 11] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -199,6 +199,7 @@ pub fn paint_showcase_body(
     section!(paint_actions_section, ids::INSP_SECTION_ACTIONS);
     section!(paint_identity_section, ids::INSP_SECTION_IDENTITY);
     section!(paint_card_section, ids::INSP_SECTION_CARD);
+    section!(paint_inspector_w6_section, ids::INSP_SECTION_W6);
     // Trailing notes (anchor = None or out-of-range section index)
     // paint at the bottom after all sections.
     for (slot, note) in &trailing_notes {

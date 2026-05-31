@@ -19,7 +19,7 @@ use ph2d_a11y::NodeId;
 /// current `value` + `channel_mode`. Used when seeding a chip's
 /// edit buffer on focus arrival.
 pub(super) fn derive_blender_channel_value(store: &WidgetStore, parent: NodeId, idx: u8) -> f64 {
-    use crate::widget::{ChannelMode, rgba_to_hsv};
+    use crate::widget::{ChannelMode, oklch_norm_channels, rgba_to_hsv};
     let Some((cur, mode, _, _)) = store.blender_picker(parent) else {
         return 0.0;
     };
@@ -29,6 +29,7 @@ pub(super) fn derive_blender_channel_value(store: &WidgetStore, parent: NodeId, 
             let (h, s, v, a) = rgba_to_hsv(cur.rgba);
             [h, s, v, a][idx as usize] as f64
         }
+        ChannelMode::Oklch => oklch_norm_channels(cur.rgba)[idx as usize] as f64,
     }
 }
 
@@ -79,6 +80,14 @@ pub(super) fn apply_blender_channel_value(
             let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
             store.set_blender_value_with_hsv(parent, new_value, h, s);
         }
+        ChannelMode::Oklch => {
+            // OKLCH derives directly from the current sRGB value: edit
+            // one normalized L/C/H/A channel and convert back (the
+            // hue strip stays HSV-spatial, so no OKLCH anchor needed).
+            let rgba = crate::widget::oklch_set_channel(cur.rgba, idx, n);
+            let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+            store.set_blender_value(parent, new_value);
+        }
     }
 }
 
@@ -124,6 +133,10 @@ pub(super) fn apply_blender_hit(
         }
         BlenderHitKind::ChannelHsv => {
             store.set_blender_channel_mode(parent, ChannelMode::Hsv);
+            Some(parent)
+        }
+        BlenderHitKind::ChannelOklch => {
+            store.set_blender_channel_mode(parent, ChannelMode::Oklch);
             Some(parent)
         }
         BlenderHitKind::ChannelSlider(idx) => {

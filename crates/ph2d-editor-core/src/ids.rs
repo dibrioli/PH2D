@@ -797,6 +797,71 @@ pub const INSP_SECTION_ACTIONS_COLOR: NodeId = hash_node_id("insp_section_action
 pub const INSP_SECTION_IDENTITY_COLOR: NodeId = hash_node_id("insp_section_identity_color");
 pub const INSP_SECTION_CARD_COLOR: NodeId = hash_node_id("insp_section_card_color");
 
+// Sprite Inspector v2 W6 (spec §15.7): Widget Gallery showcase section
+// for the new Inspector v2 foundational widgets (Rect2Editor,
+// BitmaskGrid32, NumericInputWithUnit, VariantEditor, KeyValueList,
+// SegmentedAdaptive).
+pub const INSP_SECTION_W6: NodeId = hash_node_id("insp_section_w6");
+pub const INSP_SECTION_W6_COLOR: NodeId = hash_node_id("insp_section_w6_color");
+/// Rect2Editor demo: X/Y/W/H number inputs.
+pub const INSP_SAMPLE_W6_RECT: [NodeId; 4] = [
+    hash_node_id("insp_sample_w6_rect_x"),
+    hash_node_id("insp_sample_w6_rect_y"),
+    hash_node_id("insp_sample_w6_rect_w"),
+    hash_node_id("insp_sample_w6_rect_h"),
+];
+/// BitmaskGrid32 demo: 32 per-bit checkbox hit ids.
+pub const INSP_SAMPLE_W6_MASK: [NodeId; 32] = [
+    hash_node_id("insp_sample_w6_mask_0"),
+    hash_node_id("insp_sample_w6_mask_1"),
+    hash_node_id("insp_sample_w6_mask_2"),
+    hash_node_id("insp_sample_w6_mask_3"),
+    hash_node_id("insp_sample_w6_mask_4"),
+    hash_node_id("insp_sample_w6_mask_5"),
+    hash_node_id("insp_sample_w6_mask_6"),
+    hash_node_id("insp_sample_w6_mask_7"),
+    hash_node_id("insp_sample_w6_mask_8"),
+    hash_node_id("insp_sample_w6_mask_9"),
+    hash_node_id("insp_sample_w6_mask_10"),
+    hash_node_id("insp_sample_w6_mask_11"),
+    hash_node_id("insp_sample_w6_mask_12"),
+    hash_node_id("insp_sample_w6_mask_13"),
+    hash_node_id("insp_sample_w6_mask_14"),
+    hash_node_id("insp_sample_w6_mask_15"),
+    hash_node_id("insp_sample_w6_mask_16"),
+    hash_node_id("insp_sample_w6_mask_17"),
+    hash_node_id("insp_sample_w6_mask_18"),
+    hash_node_id("insp_sample_w6_mask_19"),
+    hash_node_id("insp_sample_w6_mask_20"),
+    hash_node_id("insp_sample_w6_mask_21"),
+    hash_node_id("insp_sample_w6_mask_22"),
+    hash_node_id("insp_sample_w6_mask_23"),
+    hash_node_id("insp_sample_w6_mask_24"),
+    hash_node_id("insp_sample_w6_mask_25"),
+    hash_node_id("insp_sample_w6_mask_26"),
+    hash_node_id("insp_sample_w6_mask_27"),
+    hash_node_id("insp_sample_w6_mask_28"),
+    hash_node_id("insp_sample_w6_mask_29"),
+    hash_node_id("insp_sample_w6_mask_30"),
+    hash_node_id("insp_sample_w6_mask_31"),
+];
+/// NumericInputWithUnit demo.
+pub const INSP_SAMPLE_W6_UNIT: NodeId = hash_node_id("insp_sample_w6_unit");
+/// VariantEditor demo root id (per-row kind dropdowns derive from this).
+pub const INSP_SAMPLE_W6_VARIANT: NodeId = hash_node_id("insp_sample_w6_variant");
+/// KeyValueList demo: one entry's key/value/remove ids + the add button.
+pub const INSP_SAMPLE_W6_KV_KEY: NodeId = hash_node_id("insp_sample_w6_kv_key");
+pub const INSP_SAMPLE_W6_KV_VAL: NodeId = hash_node_id("insp_sample_w6_kv_val");
+pub const INSP_SAMPLE_W6_KV_REMOVE: NodeId = hash_node_id("insp_sample_w6_kv_remove");
+pub const INSP_SAMPLE_W6_KV_ADD: NodeId = hash_node_id("insp_sample_w6_kv_add");
+/// SegmentedAdaptive demo: four 9-slice draw-mode options.
+pub const INSP_SAMPLE_W6_SEG: [NodeId; 4] = [
+    hash_node_id("insp_sample_w6_seg_0"),
+    hash_node_id("insp_sample_w6_seg_1"),
+    hash_node_id("insp_sample_w6_seg_2"),
+    hash_node_id("insp_sample_w6_seg_3"),
+];
+
 // Pre-allocated note hit-slot ids. Each note in `notes_per_panel`
 // gets one of these slots assigned by position. Right-clicking a
 // slot opens the `NoteBackground` context menu for that index.
@@ -998,6 +1063,7 @@ pub const BLENDER_INTERP_LINEAR: NodeId = hash_node_id("blender_interp_linear");
 pub const BLENDER_INTERP_PERCEPTUAL: NodeId = hash_node_id("blender_interp_perceptual");
 pub const BLENDER_CHANNEL_RGB: NodeId = hash_node_id("blender_channel_rgb");
 pub const BLENDER_CHANNEL_HSV: NodeId = hash_node_id("blender_channel_hsv");
+pub const BLENDER_CHANNEL_OKLCH: NodeId = hash_node_id("blender_channel_oklch");
 // Channel value chips — interactive `NumberInput`s mirrored
 // to the channel sliders. Display the current channel value
 // (R/G/B/A or H/S/V/A depending on `channel_mode`) in 0..1.
@@ -1269,7 +1335,7 @@ pub fn hier_icon_companion_to_row(id: NodeId) -> Option<NodeId> {
 
 /// Stable id list for every collapsible section header in the
 /// Inspector (Widget Gallery showcase mode).
-pub const SECTION_IDS: [NodeId; 10] = [
+pub const SECTION_IDS: [NodeId; 11] = [
     INSP_SECTION_INPUTS,
     INSP_SECTION_SLIDER,
     INSP_SECTION_SWITCHES,
@@ -1280,6 +1346,7 @@ pub const SECTION_IDS: [NodeId; 10] = [
     INSP_SECTION_ACTIONS,
     INSP_SECTION_IDENTITY,
     INSP_SECTION_CARD,
+    INSP_SECTION_W6,
 ];
 
 /// Live Inspector section headers (Name / Visibility / Transform /

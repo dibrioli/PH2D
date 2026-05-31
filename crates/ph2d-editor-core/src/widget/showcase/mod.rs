@@ -105,7 +105,7 @@ pub const NOTE_BODY_IDS: [NodeId; 12] = [
 
 /// Color-circle hit NodeIds — one per section header, in the same
 /// order as `SECTION_IDS`.
-pub const SECTION_COLOR_IDS: [NodeId; 10] = [
+pub const SECTION_COLOR_IDS: [NodeId; 11] = [
     ids::INSP_SECTION_INPUTS_COLOR,
     ids::INSP_SECTION_SLIDER_COLOR,
     ids::INSP_SECTION_SWITCHES_COLOR,
@@ -116,6 +116,7 @@ pub const SECTION_COLOR_IDS: [NodeId; 10] = [
     ids::INSP_SECTION_ACTIONS_COLOR,
     ids::INSP_SECTION_IDENTITY_COLOR,
     ids::INSP_SECTION_CARD_COLOR,
+    ids::INSP_SECTION_W6_COLOR,
 ];
 
 pub const RADIO_GROUP_IDS: [NodeId; 3] = [
@@ -359,6 +360,10 @@ pub fn apply_showcase_event(
             pin_showcase_button_selection(store, id, &TAB_GROUP_IDS);
             return true;
         }
+        if crate::ids::INSP_SAMPLE_W6_SEG.contains(&id) {
+            pin_showcase_button_selection(store, id, &crate::ids::INSP_SAMPLE_W6_SEG);
+            return true;
+        }
     }
     false
 }
@@ -393,6 +398,7 @@ mod card;
 mod color;
 mod identity;
 mod inputs;
+mod inspector_w6;
 mod lists;
 mod slider;
 mod status;
@@ -404,6 +410,7 @@ use card::paint_card_section;
 use color::paint_color_section;
 use identity::paint_identity_section;
 use inputs::paint_inputs_section;
+use inspector_w6::paint_inspector_w6_section;
 use lists::paint_lists_section;
 use slider::paint_slider_section;
 use status::paint_status_section;

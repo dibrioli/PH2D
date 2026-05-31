@@ -271,6 +271,26 @@ impl WidgetStore {
                     *hsv_h = h;
                     *hsv_s = s;
                 }
+                ChannelMode::Oklch => {
+                    // OKLCH derives directly from the current sRGB value
+                    // (no retained anchor): overwrite one normalized
+                    // L/C/H/A channel and convert back. `norm` is the
+                    // 0..1 slider/chip value matching the painter's
+                    // `oklch_norm_channels` display scale.
+                    let rgba = crate::widget::oklch_set_channel(
+                        value.rgba,
+                        channel_idx,
+                        norm.clamp(0.0, 1.0),
+                    );
+                    *value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+                    // Keep the HSV anchor in sync so switching back to
+                    // HSV/SV-rect doesn't snap the hue.
+                    let (h, s, v, _) = crate::widget::rgba_to_hsv(value.rgba);
+                    if s > 1e-3 && v > 1e-3 {
+                        *hsv_h = h;
+                        *hsv_s = s;
+                    }
+                }
             }
         }
     }

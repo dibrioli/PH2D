@@ -1,0 +1,151 @@
+//! [`SegmentedAdaptive`] — a typed segmented control that reflows
+//! overflowing options onto new rows instead of clipping labels.
+//!
+//! Sprite Inspector v2 W6 (spec §15.7, T6.7). Thin typed wrapper over
+//! the canonical [`paint_segmented_group_adaptive`](super::panel_chrome::paint_segmented_group_adaptive)
+//! chrome helper (the single source of truth for adaptive segmented
+//! layout). Used for the 9-Slice draw modes (§3.5) and any segmented
+//! control with enough options that they don't fit one row at the
+//! Inspector's narrow column width. Owns the option list + a11y; the
+//! paint helper registers per-segment hits as it lays them out.
+
+use super::panel_chrome::paint_segmented_group_adaptive;
+use crate::interaction::HitIndex;
+use crate::zones::Rect;
+use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
+use ph2d_text::TextSystem;
+use ph2d_tokens::Theme;
+use ph2d_vector::VectorScene;
+
+#[derive(Clone, Debug)]
+pub struct SegmentedOption {
+    pub id: NodeId,
+    pub label: String,
+}
+
+impl SegmentedOption {
+    pub fn new(id: NodeId, label: impl Into<String>) -> Self {
+        Self {
+            id,
+            label: label.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SegmentedAdaptive {
+    pub id: NodeId,
+    pub label: String,
+    pub options: Vec<SegmentedOption>,
+    /// Index of the selected option. Out-of-range clamps to no
+    /// selection (all segments render unselected).
+    pub selected: usize,
+}
+
+impl SegmentedAdaptive {
+    pub fn new(id: NodeId, label: impl Into<String>, options: Vec<SegmentedOption>) -> Self {
+        Self {
+            id,
+            label: label.into(),
+            options,
+            selected: 0,
+        }
+    }
+
+    pub fn selected(mut self, index: usize) -> Self {
+        self.selected = index;
+        self
+    }
+
+    pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
+        let mut b = NodeBuilder::new(Role::RadioGroup)
+            .label(&self.label)
+            .bounds(x, y, w, h);
+        for opt in &self.options {
+            b = b.child(opt.id);
+        }
+        b.build()
+    }
+}
+
+/// Paint the adaptive segmented group, returning the total height used
+/// (≥ `rect.h` when options reflow onto extra rows). Per-segment hit
+/// rects are registered by the underlying chrome helper.
+pub fn paint_segmented_adaptive(
+    widget: &SegmentedAdaptive,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+) -> f32 {
+    let segments: Vec<(&str, bool, NodeId)> = widget
+        .options
+        .iter()
+        .enumerate()
+        .map(|(i, opt)| (opt.label.as_str(), i == widget.selected, opt.id))
+        .collect();
+    paint_segmented_group_adaptive(rect, &segments, scene, text_system, theme, hit_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> SegmentedAdaptive {
+        SegmentedAdaptive::new(
+            NodeId(1),
+            "Draw Mode",
+            vec![
+                SegmentedOption::new(NodeId(2), "Simple"),
+                SegmentedOption::new(NodeId(3), "Sliced"),
+                SegmentedOption::new(NodeId(4), "Tiled"),
+                SegmentedOption::new(NodeId(5), "Tiled Fit"),
+            ],
+        )
+        .selected(1)
+    }
+
+    #[test]
+    fn selected_index_stored() {
+        assert_eq!(fixture().selected, 1);
+    }
+
+    #[test]
+    fn a11y_role_is_radiogroup_with_children() {
+        let node = fixture().build_a11y(0.0, 0.0, 200.0, 28.0);
+        assert_eq!(node.role(), Role::RadioGroup);
+    }
+
+    #[test]
+    fn paint_returns_height_at_least_row_for_narrow_width() {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut hit = HitIndex::default();
+        // Narrow width forces reflow → height should exceed a single row.
+        let h = paint_segmented_adaptive(
+            &fixture(),
+            Rect::new(0.0, 0.0, 60.0, 28.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+            &mut hit,
+        );
+        assert!(h >= 28.0);
+    }
+
+    #[test]
+    fn paint_smoke_wide() {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut hit = HitIndex::default();
+        paint_segmented_adaptive(
+            &fixture(),
+            Rect::new(0.0, 0.0, 400.0, 28.0),
+            &mut scene,
+            &mut text,
+            Theme::Blueprint,
+            &mut hit,
+        );
+    }
+}

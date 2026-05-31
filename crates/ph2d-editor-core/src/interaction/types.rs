@@ -22,8 +22,10 @@ pub enum BlenderHitKind {
     InterpolationPerceptual,
     ChannelRgb,
     ChannelHsv,
-    /// One of the 4 horizontal channel sliders (R/G/B/A or H/S/V/A).
-    /// Index 0..3: 0 = R/H, 1 = G/S, 2 = B/V, 3 = A.
+    /// Switch the channel sliders to OKLCH (L/C/H/Alpha).
+    ChannelOklch,
+    /// One of the 4 horizontal channel sliders (R/G/B/A, H/S/V/A, or
+    /// L/C/H/A). Index 0..3: 0 = R/H/L, 1 = G/S/C, 2 = B/V/H, 3 = A.
     ChannelSlider(u8),
     /// The hex `#RRGGBBAA` text input field.
     Hex,

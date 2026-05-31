@@ -1,7 +1,7 @@
 //! `BlenderColorPicker` data + supporting enums + palettes.
 
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
-use ph2d_tokens::ColorValue;
+use ph2d_tokens::{ColorValue, srgb_to_oklch};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum InterpolationMode {
@@ -16,6 +16,8 @@ pub enum ChannelMode {
     #[default]
     Rgb,
     Hsv,
+    /// Perceptual OKLCH channels (Lightness / Chroma / Hue / Alpha).
+    Oklch,
 }
 
 /// One palette: a named collection of editable swatches.
@@ -144,6 +146,19 @@ impl BlenderColorPicker {
     pub fn sync_hex(&mut self) {
         let [r, g, b, a] = self.value.rgba;
         self.hex = format!("#{r:02X}{g:02X}{b:02X}{a:02X}");
+    }
+
+    /// The picker's current value as OKLCH `(L, C, H_deg, A)`, all
+    /// `f32`, derived from the sRGB `value` via the canonical token
+    /// conversion. This is the OKLCH output other systems consume
+    /// (design tokens, perceptual interpolation). Returned as a tuple
+    /// rather than `ph2d_color::OklchColor` because editor-core keeps
+    /// `ph2d-color` as a dev-only dependency (no runtime cycle); the
+    /// consumer constructs `OklchColor::new(l, c, h, a)` from this.
+    pub fn oklch_lcha(&self) -> (f32, f32, f32, f32) {
+        let [r, g, b, a] = self.value.rgba;
+        let (l, c, h) = srgb_to_oklch(r, g, b);
+        (l as f32, c as f32, h as f32, a as f32 / 255.0)
     }
 
     /// Pick the swatch at `(palette_index, swatch_index)` and set

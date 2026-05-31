@@ -14,6 +14,7 @@
 
 // <ph2d-widget-sync:begin>
 mod avatar;
+mod bitmask_grid32;
 mod blender_color_picker;
 mod button;
 mod card;
@@ -25,16 +26,20 @@ mod context_menu;
 mod divider;
 mod dropdown;
 mod icon_button;
+mod key_value_list;
 mod list_item;
 mod modal;
 mod number_input;
+mod numeric_input_with_unit;
 pub mod panel_chrome;
 mod pill_group;
 mod popover;
 mod progress_bar;
 mod radio_group;
+mod rect2_editor;
 mod scrollbar;
 mod section_header;
+mod segmented_adaptive;
 pub mod showcase;
 mod slider;
 mod slider_with_chip;
@@ -48,15 +53,18 @@ mod toggle;
 mod tool_rail;
 mod tooltip;
 mod tree_view;
+mod variant_editor;
 mod vector3_editor;
 // <ph2d-widget-sync:end>
 
 pub use avatar::{Avatar, AvatarShape, AvatarState, paint_avatar};
+pub use bitmask_grid32::{BITMASK_COLS, BITMASK_ROWS, BitmaskGrid32, paint_bitmask_grid32};
 pub use blender_color_picker::{
     BlenderColorPicker, BlenderSubIds, ChannelMode, ColorPalette, InterpolationMode,
     apply_blender_value_pick, apply_blender_wheel_pick, default_palette, hsv_to_rgba8,
-    paint_blender_color_picker, paint_blender_color_picker_with_store,
-    paint_blender_color_picker_with_store_compat, parse_hex, rgba_to_hsv, value_pick, wheel_pick,
+    oklch_norm_channels, oklch_set_channel, paint_blender_color_picker,
+    paint_blender_color_picker_with_store, paint_blender_color_picker_with_store_compat, parse_hex,
+    rgba_to_hsv, value_pick, wheel_pick,
 };
 pub use button::{Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, paint_button};
 pub use card::{Card, paint_card, pop_card_body_clip, push_card_body_clip};
@@ -73,17 +81,25 @@ pub use dropdown::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport,
 };
 pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
+pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
     MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, paint_number_input,
     paint_number_input_with_buffer,
 };
+pub use numeric_input_with_unit::{
+    NumericInputWithUnit, Unit, paint_numeric_input_with_unit, parse as parse_numeric_with_unit,
+};
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
+};
+pub use rect2_editor::{
+    RECT2_HANDLE_COUNT, Rect2Editor, Rect2Layout, paint_rect2_editor,
+    paint_rect2_editor_with_state, paint_rect2_handles,
 };
 pub use scrollbar::{
     BG_REMOVAL_SCROLLBAR_ID, COLOR_EQUALIZATION_SCROLLBAR_ID, EQUALIZE_SIZES_SCROLLBAR_ID,
@@ -93,6 +109,7 @@ pub use scrollbar::{
     thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };
 pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_header};
+pub use segmented_adaptive::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,
@@ -113,4 +130,8 @@ pub use tool_rail::{
 };
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};
+pub use variant_editor::{
+    MAX_VARIANT_DEPTH, VariantEditor, VariantKind, VariantRow, VariantValue, flatten as flatten_variant,
+    paint_variant_editor,
+};
 pub use vector3_editor::{Vector3Editor, paint_vector3_editor, paint_vector3_editor_with_state};

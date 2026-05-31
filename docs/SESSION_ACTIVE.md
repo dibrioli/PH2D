@@ -34,9 +34,12 @@ rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
   limpei fmt drift que os 3 agentes paralelos deixaram (color/tool/undo/painter_bridge). fmt --check
   workspace = 0. **Lição:** nextest `-p` scoped dos slots escondeu o gate de workspace.
 
-**KTX2 status:** W1 fechado (CI verde) · W2: T1✅ T1.5✅ T3✅ · **próximo W2.T2** (SpriteSource::
-CookedTexture, BREAKING — mirror chain editor-core; **agora DESBLOQUEADO**, picker liberou editor-core).
-Bundle CI W1 (T10/T11.5/T12) fica pro fim.
+**KTX2 status:** W1 fechado (CI verde) · **W2: T1✅ T1.5✅ T2✅ T3✅ + AUDITADA (3 lentes
+adversariais → APPROVE consolidado, 0 CRIT/HIGH/MED; 3 LOW remediados `4b48b07`).** W2.T2
+(SpriteSource::CookedTexture) = tier-agnóstico/aditivo, sem bump de versão, mirror chain minimal.
+**Próximo = W2.T4 (loader/render)** — acende a CookedTexture na tela (hoje extract a PULA).
+Handoff pronto: [`docs/HANDOFF_ktx2_w2_loader.md`](HANDOFF_ktx2_w2_loader.md) (W2.T4 + T5 + T6 +
+W1 CI bundle). Bundle CI W1 (T10/T11.5/T12) fica pro fim.
 
 **Painter status:** T2.3 surface (`b5085d9`) + hue-fix + T2.2 undo/redo (`640f1d4`) + picker UI
 (`b5ba460`). Undo/redo **smoke-OK pelo Enio**.

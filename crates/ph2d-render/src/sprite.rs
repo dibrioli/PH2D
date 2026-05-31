@@ -660,8 +660,10 @@ impl RenderInstance {
     /// `IndividualTextureStore` one. This keeps the additive cooked-texture
     /// path off the Individual id space (which allocates `1..` and never
     /// reaches `2^31`) without changing the [`RenderInstance`] ABI —
-    /// `texture_id` is CPU-only metadata, so the 184 B / 16-attr GPU layout
-    /// (frozen by ADR-0070) is untouched. The renderer's `material_bg`
+    /// `texture_id` is CPU-only metadata sitting in the tail AFTER the last
+    /// vertex attribute, so the frozen layout (184 B struct, 12 GPU vertex
+    /// attributes @location 2..15; ADR-0070) is untouched and the high bit
+    /// can never reach a `@location`. The renderer's `material_bg`
     /// dispatch is the only reader: `0` → atlas, high-bit set → cooked, else
     /// individual. Cooked ids sort *after* individuals within a `z_order`
     /// slice (they're large `u32`s), which is harmless since `z_order` is

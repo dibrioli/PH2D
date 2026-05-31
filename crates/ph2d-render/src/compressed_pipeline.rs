@@ -230,16 +230,20 @@ impl MipUploadLayout {
 
 /// HR-13 budget ceiling (MB) for the cooked-texture cache (W2.T5).
 ///
-/// **Interim declaration** (plan §6 W2.T5 mitigation): a standalone budget
-/// constant pending the future cross-subsystem aggregator
-/// (`architecture_render_budget_registered`) that will sum this against the
-/// tools + core baselines vs a platform total. Sized from the plan's W2
-/// VRAM projection — the compressed render-texture working set lands near
-/// ~200 MB on the iPad tier (ASTC, the constrained target) — so a 256 MB
-/// cooked-cache ceiling leaves headroom on desktop while staying inside the
-/// mobile envelope. Accounted against [`compressed_size_per_format`] summed
-/// over the live cooked textures
-/// ([`CookedTextureStore::cache_bytes`](crate::cooked_texture::CookedTextureStore::cache_bytes)).
+/// **Declared, NOT yet enforced.** Nothing compares
+/// [`CookedTextureStore::cache_bytes`](crate::cooked_texture::CookedTextureStore::cache_bytes)
+/// against this constant today — there is no eviction or upload rejection on
+/// overrun. This is the plan's §6 W2.T5 *interim mitigation* ("declarar
+/// constante mesmo sem aggregator"): the constant + the
+/// [`compressed_size_per_format`] accounting primitive land now; the
+/// cross-subsystem aggregator that actually checks it against a platform total
+/// (`architecture_render_budget_registered`, summing render + tools + core vs
+/// `Platform::max_total_mb`) is a follow-up.
+///
+/// The `256` is an interim ceiling, not a measured working set: the plan's W2
+/// VRAM projection puts *total* render textures+meshes near ~200 MB on the
+/// iPad/ASTC tier, so 256 MB for the cooked cache alone is a deliberately
+/// loose placeholder to be tightened when the aggregator lands.
 pub const COMPRESSED_TEXTURE_CACHE_BUDGET_MB: u32 = 256;
 
 /// Total GPU byte footprint of a `width × height` texture in `format` with

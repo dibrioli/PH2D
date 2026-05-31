@@ -37,10 +37,20 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 thread_local! {
-    /// Logical ids we've already warned about (no device-sampleable cooked
-    /// tier). Render-loop is single-threaded; this keeps the "missing cooked
-    /// texture" warning to once-per-id instead of once-per-frame.
-    static WARNED_MISSING: RefCell<BTreeSet<LogicalTextureId>> = const { RefCell::new(BTreeSet::new()) };
+    /// Logical ids we've GIVEN UP on — no device-sampleable cooked tier
+    /// resolved, OR every candidate tier failed to decode/upload (a corrupt
+    /// artifact). Render-loop is single-threaded. Two jobs: (1) warn once
+    /// per id instead of once per frame; (2) STOP retrying — a permanently-
+    /// missing/corrupt blob must not re-walk the ladder + re-decode every
+    /// frame (the upload cache only short-circuits *successful* loads, so
+    /// without this a hard-error sprite would spin + spam forever). A future
+    /// async asset-reload path would clear this set on reload.
+    static GIVEN_UP: RefCell<BTreeSet<LogicalTextureId>> = const { RefCell::new(BTreeSet::new()) };
+}
+
+/// `true` if we've already given up on `logical_id` (read-only peek).
+fn given_up(logical_id: LogicalTextureId) -> bool {
+    GIVEN_UP.with_borrow(|s| s.contains(&logical_id))
 }
 
 /// Ensure every `SpriteSource::CookedTexture` sprite in `sim` has its KTX2
@@ -64,8 +74,13 @@ pub(super) fn ensure_uploaded(
         if renderer.cooked_texture_id(logical_id).is_some() {
             continue; // already uploaded (steady state).
         }
-        // Descend the device fallback ladder, taking the first tier that has
-        // a cooked artifact AND that this GPU can sample.
+        if given_up(logical_id) {
+            continue; // permanently missing/corrupt — don't re-walk/re-decode.
+        }
+        // Descend the device fallback ladder, taking the first tier that has a
+        // cooked artifact AND that this GPU can sample. Record the last hard
+        // error (corrupt/unmappable blob) so a give-up can report a cause.
+        let mut last_error: Option<String> = None;
         for tier in preferred.fallback_ladder() {
             let Some(asset_id) = logical_map.resolve(logical_id, tier) else {
                 continue;
@@ -82,22 +97,32 @@ pub(super) fn ensure_uploaded(
                 Err(CookedTextureError::Upload(
                     CompressedUploadError::FormatUnsupportedByDevice(_),
                 )) => continue,
-                // A corrupt blob or other hard error: surface + stop (descending
-                // wouldn't help a structurally-broken artifact for this tier, but
-                // a different tier might still resolve, so keep walking).
+                // A corrupt/unmappable blob for THIS tier: a different (lower)
+                // tier might still resolve, so keep walking — but remember the
+                // cause in case every tier fails.
                 Err(e) => {
-                    eprintln!("W2.T4 cooked texture {logical_id} (tier {tier}): {e}");
+                    last_error = Some(format!("tier {tier}: {e}"));
                     continue;
                 }
             }
         }
+        // Nothing bound after the whole ladder → give up: warn ONCE and never
+        // retry this id (the cache only short-circuits successes, so without
+        // give-up a missing/corrupt blob would re-walk + re-decode every frame
+        // and spam the log).
         if renderer.cooked_texture_id(logical_id).is_none() {
-            WARNED_MISSING.with_borrow_mut(|warned| {
-                if warned.insert(logical_id) {
-                    eprintln!(
-                        "W2.T4: no device-sampleable cooked KTX2 tier for logical texture \
-                         {logical_id} — sprite renders invisible until one is loaded"
-                    );
+            GIVEN_UP.with_borrow_mut(|s| {
+                if s.insert(logical_id) {
+                    match &last_error {
+                        Some(cause) => eprintln!(
+                            "W2.T4: cooked KTX2 for logical texture {logical_id} failed to load \
+                             ({cause}) — sprite renders invisible"
+                        ),
+                        None => eprintln!(
+                            "W2.T4: no device-sampleable cooked KTX2 tier for logical texture \
+                             {logical_id} — sprite renders invisible"
+                        ),
+                    }
                 }
             });
         }

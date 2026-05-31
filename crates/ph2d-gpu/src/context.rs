@@ -51,6 +51,24 @@ impl GpuContext {
         }))
         .map_err(|e| GpuError::NoAdapter(format!("{e:?}")))?;
 
+        // Request the texture-compression families this adapter actually
+        // advertises (KTX2 Fase 2 / W2.T4). wgpu only reports a feature in
+        // `device.features()` if it was REQUESTED *and* granted — an
+        // unrequested feature is invisible even on a capable adapter. So the
+        // cooked-texture loader's `CompressionFeatureSet::best_tier()` (which
+        // reads `device.features()`) would always fall to the uncompressed
+        // RGBA8 `Constrained` tier unless we enable these here. Intersecting
+        // the adapter's advertised features with the mask means we only ever
+        // request what the adapter supports, so `request_device` cannot fail
+        // on them (BC on desktop D3D12/Vulkan/Intel-Metal, ASTC/ETC2 on Apple
+        // Silicon + mobile, none on a bare WebGPU adapter → RGBA8 floor).
+        // Mirrors `CompressionFeatureSet::relevant_mask`.
+        let compression_features = adapter.features()
+            & (wgpu::Features::TEXTURE_COMPRESSION_BC
+                | wgpu::Features::TEXTURE_COMPRESSION_ASTC
+                | wgpu::Features::TEXTURE_COMPRESSION_ETC2
+                | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM);
+
         // Limits::default() (desktop tier) is required by Vello's
         // compute pipelines (M11 widget paint) — downlevel_defaults
         // caps storage texture bindings and workgroup sizes too low
@@ -58,7 +76,7 @@ impl GpuContext {
         // need to revisit if/when they pick a downlevel adapter.
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
-            required_features: wgpu::Features::empty(),
+            required_features: compression_features,
             required_limits: wgpu::Limits::default(),
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
@@ -77,5 +95,38 @@ impl GpuContext {
     /// Default Instance with PRIMARY backends (Metal/Vulkan/D3D12/WebGPU).
     pub fn default_instance() -> wgpu::Instance {
         wgpu::Instance::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression guard (W2.T4): every texture-compression family the adapter
+    /// advertises MUST be granted on the created device, or the cooked-texture
+    /// loader's `best_tier()` silently falls to the RGBA8 floor on capable
+    /// hardware. `required_features: Features::empty()` (the pre-W2.T4 default)
+    /// fails this. #[ignore] — needs a real adapter (no GPU on CI).
+    #[test]
+    #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+    fn device_enables_every_adapter_advertised_compression_feature() {
+        let mask = wgpu::Features::TEXTURE_COMPRESSION_BC
+            | wgpu::Features::TEXTURE_COMPRESSION_ASTC
+            | wgpu::Features::TEXTURE_COMPRESSION_ETC2
+            | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM;
+        let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+            return; // no adapter on this machine — nothing to assert.
+        };
+        let adapter_caps = gpu.adapter.features() & mask;
+        let device_caps = gpu.device.features() & mask;
+        assert_eq!(
+            device_caps, adapter_caps,
+            "device must grant every adapter-advertised compression family \
+             (adapter={adapter_caps:?}, device={device_caps:?}) — else best_tier() \
+             silently picks RGBA8 on capable hardware"
+        );
+        // On any real desktop / Apple-Silicon adapter at least ONE compression
+        // family is present; a bare WebGPU adapter legitimately has none.
+        eprintln!("compression features granted on this device: {device_caps:?}");
     }
 }

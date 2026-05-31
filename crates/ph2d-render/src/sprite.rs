@@ -571,6 +571,7 @@ pub struct RenderInstance {
     /// - bits 8–15 = `alpha_cutoff` quantized to `u8` as
     ///   `round(cutoff * 255)` (only read for the mask-source instance,
     ///   to threshold its silhouette in the stencil-mark pass).
+    ///
     /// Use [`Self::pack_clip_meta`] / [`Self::clip_role`] /
     /// [`Self::clip_cutoff`] — never hand-pack.
     pub clip_meta: u32,

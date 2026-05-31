@@ -33,6 +33,7 @@ pub mod chrome;
 pub mod color_picker_demo;
 pub mod context_menu_overlay;
 pub mod fixture;
+pub mod painter_color_thumb;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
@@ -1302,6 +1303,21 @@ pub fn paint_hero_screen(
     if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }
+    // W2.T2.3: Painter color thumb — floating swatch in the canvas
+    // top-right, only while the Painter tool is active. Painted just
+    // before the picker so a click on the thumb (hit registered here)
+    // opens the picker on the next frame. Compute the active bool
+    // before the disjoint field borrows below (is_panel_visible takes
+    // &hero).
+    let painter_active = hero.is_panel_visible("painter_sidebar");
+    painter_color_thumb::paint_painter_color_thumb(
+        &layout,
+        scene,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        painter_active,
+    );
     // BlenderColorPicker — painted AFTER every floating panel
     // (Inspector, Hierarchy, Widget Gallery, Grid Settings) so it
     // never sits visually behind one of them. The painter is a no-op

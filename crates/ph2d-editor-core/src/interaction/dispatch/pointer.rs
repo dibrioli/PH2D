@@ -607,6 +607,25 @@ pub fn dispatch_pointer_with_text<'frame>(
                 }
             }
 
+            // W2.T2.3: Painter color thumb → open the shared Blender
+            // picker seeded with the thumb's last published color (the
+            // bridge keeps `widget_color(PAINTER_COLOR_THUMB)` synced
+            // to the Painter's live active color). Mirror of the
+            // showcase color-target open pattern. Short-circuit the
+            // rest of Down so the click doesn't focus/drag the canvas.
+            if matches!(hit, Some((id, _)) if id == crate::ids::PAINTER_COLOR_THUMB) {
+                let seed = store
+                    .widget_color(crate::ids::PAINTER_COLOR_THUMB)
+                    .unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+                store.set_widget_color(crate::ids::PAINTER_COLOR_THUMB, seed);
+                store.set_picker_target(Some(crate::ids::PAINTER_COLOR_THUMB));
+                store.set_blender_value(
+                    crate::ids::INSP_BLENDER_PICKER,
+                    ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
+                );
+                return events.into_bump_slice();
+            }
+
             // Compute the new focus target (if the click landed on a
             // focusable widget). Blur+commit the previous focus
             // whenever it isn't the same target — including the case
@@ -1095,7 +1114,10 @@ pub fn dispatch_pointer_with_text<'frame>(
 /// that the field accepted the click).
 fn is_color_target_id(id: ph2d_a11y::NodeId) -> bool {
     let v = id.0;
-    (360..=369).contains(&v) || v == 328
+    // W2.T2.3: the Painter color thumb is a hashed id (outside the raw
+    // legacy range), so it can't be matched arithmetically — clicking it
+    // re-opens the picker rather than dismissing it.
+    (360..=369).contains(&v) || v == 328 || id == crate::ids::PAINTER_COLOR_THUMB
 }
 
 /// Detect a Down landing on the Combobox's inline clear-✕ icon. When

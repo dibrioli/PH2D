@@ -260,6 +260,54 @@ pub(super) fn dispatch(
         } else {
             None
         });
+
+        // ── (W2.T2.3) Color thumb ⟷ Blender picker round-trip ──────────
+        //
+        // The thumb is a floating swatch in the canvas top-right that
+        // opens the shared `INSP_BLENDER_PICKER` (pointer.rs Down) seeded
+        // with the Painter's live color. Two directions, mutually
+        // exclusive by the picker_target test to avoid a feedback loop:
+        //
+        //   • target == thumb  → picker is DRIVING. Push the picked sRGB
+        //     into the Painter via SetColorSrgb. Do NOT write widget_color
+        //     here — hero.rs's generic picker read-back
+        //     (`set_widget_color(target, value.rgba)`) already mirrors the
+        //     live picker value into the thumb every frame while open.
+        //   • target != thumb → publish the Painter's live color into the
+        //     thumb so the swatch reflects color set by other means
+        //     (eyedropper, future shortcuts).
+        //
+        // Change-detection tracks the LAST sRGB we pushed (picker→picker
+        // comparison) rather than `active_color_srgb8()`. The sRGB8↔OKLCH
+        // round-trip is only stable within ±1 LSB (see `color::tests::
+        // srgb_black_and_white_round_trip_within_lsb`), so comparing the
+        // picker's exact bytes against the round-tripped painter color
+        // would re-fire `apply_ui_edit` (→ preview-dirty) every frame on a
+        // 1-LSB mismatch. Comparing picker-bytes to the last picker-bytes
+        // we applied is exact and idempotent. Reset on close so re-opening
+        // the same color still seeds the painter once.
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static LAST_PUSHED_SRGB: AtomicU32 = AtomicU32::new(u32::MAX);
+        if hero.store.picker_target() == Some(ph2d_editor::ids::PAINTER_COLOR_THUMB) {
+            if let Some((value, _, _, _)) =
+                hero.store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            {
+                let packed = u32::from_le_bytes(value.rgba);
+                if LAST_PUSHED_SRGB.swap(packed, Ordering::Relaxed) != packed {
+                    painter
+                        .apply_ui_edit(ph2d_tool_painter::PainterUiEdit::SetColorSrgb(value.rgba));
+                }
+            }
+        } else {
+            // Picker not driving the thumb: forget the applied value (so a
+            // later re-open re-seeds) and mirror the live painter color
+            // into the thumb swatch.
+            LAST_PUSHED_SRGB.store(u32::MAX, Ordering::Relaxed);
+            hero.store.set_widget_color(
+                ph2d_editor::ids::PAINTER_COLOR_THUMB,
+                painter.ui_snapshot().active_color_srgb8(),
+            );
+        }
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

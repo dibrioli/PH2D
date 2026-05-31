@@ -280,6 +280,11 @@ pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sideba
 /// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
 pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");
+/// Floating color thumb painted in the canvas top-right while the
+/// Painter tool is active (W2.T2.3). Clicking it opens the shared
+/// `INSP_BLENDER_PICKER` seeded with the Painter's active color; the
+/// chosen color is applied back via `PainterUiEdit::SetColorSrgb`.
+pub const PAINTER_COLOR_THUMB: NodeId = hash_node_id("painter.color_thumb");
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

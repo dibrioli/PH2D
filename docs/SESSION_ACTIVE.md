@@ -30,7 +30,7 @@ Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings esc
 
 **Pontos compartilhados resolvidos:**
 - `crates/ph2d-asset/` → escrita só do **Impl-3 (KTX2)**; Impl-2 (AVIF) só **lê** o bridge `loader.rs::decode_via_imageio_registry`.
-- `crates/ph2d-render/` → exclusivo do **Impl-1 (Sprite)**. Vector H5/M3 (mover `world_to_screen_affine` p/ `Camera2d`) está **BLOQUEADO** até o Coord liberar pós-fechamento Sprite W1.
+- `crates/ph2d-render/` → **LIBERADO** (Sprite W1 fechado 2026-05-29). Vector H5/M3 (mover `world_to_screen_affine` p/ `Camera2d`, single-source) está **DESBLOQUEADO** — é a próxima consolidação foundational recomendada (remove a duplicação shell↔render).
 - `shells/desktop/` bridges → cada tool dona do seu: `vector_pen_bridge.rs` + `vector_pen_input.rs` = **Impl-5** (exceção tool-bridge §3.A.4). Plumbing compartilhado (`render_loop/mod.rs`, keybinds, `painter_bridge.rs`) = **Coordenador**.
 
 ### Itens que o Coordenador segura (não delegados)

@@ -1,122 +1,90 @@
 ═══════════════════════════════════════════════════════════════════
-BRIEFING — Implementador · módulo VECTOR (continuação W1)
-Autor: Coordenador (sessão 2026-05-28) · você é o Vector, 5º dos 5 implementadores
+HANDOFF — Vector Module · RETOMADA W1 (2026-05-29)
+Foco: FINALIZAR A FUNDAÇÃO do Vector → vira drop-crate isolado (ADR-0075)
 ═══════════════════════════════════════════════════════════════════
 
-VOCÊ É: o ÚNICO implementador do módulo Vector. Os outros 4 estão em módulos
-disjuntos (Sprite/render, imageio-avif, KTX2, Painter) — você não os vê.
+CONTEXTO (mudou desde o handoff anterior):
+- **Sprite W1 FECHADO** → `crates/ph2d-render/` está **LIBERADO** (não mais reservado).
+  Isso DESBLOQUEIA o H5/M3 — a última costura foundational do Vector.
+- **T1.4 (Levien cubic fit) DONE** (`ae64a0f` + `4001160`, com golden + Send/Sync gates).
+  NÃO refazer. T1.1-T1.3/T1.5/T1.7 + audit Blocos 0/1/2 também fechados.
+- Norte: [ADR-0075](architecture/decisions/0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md)
+  — monorepo Rust + ECS-decoupling. Velocidade: DIRETRIZ §6.6. Cap: **≤3 agentes**.
 
-DIRETRIZ DO PROJETO (Enio, 2026-05-28): "o melhor possível, sem pensar em
-custos". Atenção redobrada AQUI: a sessão Vector anterior fechou com baixa
-confiança do Enio (10 R-rounds = falha de design upfront). A auditoria 6-lente
-(docs/AUDIT_vector_module_W1_results.md) confirmou data-model sólido, SEM
-redesign — mas o padrão é padrão-ouro absoluto: T1.4 sai como implementação
-REAL (não stub), com golden tests, e fecha com re-audit. Sem corner-cut.
-
-───────────────────────────────────────────────────────────────────
-CONTEXTO (leia nesta ordem)
-───────────────────────────────────────────────────────────────────
-  1. docs/AUDIT_vector_module_W1_results.md (achados das 6 lentes).
-  2. docs/HANDOFF_vector_module_W1_continuation.md (estado; §2 o que está FECHADO).
-  3. docs/Vector Module/17_plano_de_implementacao.md (plano W1, T1.4/T1.6).
-  4. DIRETRIZ §7 (anti-colisão git) + §6 (codificação rápida).
-  5. Memórias: project-vector-module-w1-audit, feedback-audit-lens-diversity,
-     feedback-scoped-commit-shared-index, feedback-git-stash-multiagent-danger,
-     feedback-app-ui-english-only, feedback-perfection-no-deferrals.
-
-  Blocos 0/1/2 JÁ commitados (8b60f8c, 3617672, 2732962) — NÃO re-faça.
-  Persistência (C1-C3) foi removida (auto-save) e DEFERE pra W2 AssetDb —
-  decisão adjacente ratificada pelo Enio, NÃO é gap in-scope teu.
+OBJETIVO DESTA RETOMADA: fechar o **H5/M3** (consolidação foundational) → depois disso
+o Vector não toca mais nenhum crate compartilhado e sai da lista de fontes de conflito.
 
 ───────────────────────────────────────────────────────────────────
-SANITY CHECK (rode primeiro — baseline já validado por mim)
+SANITY CHECK
 ───────────────────────────────────────────────────────────────────
-  source scripts/slot-env.sh impl-vector   # ou CARGO_TARGET_DIR=target/<slot>
-  git log --oneline -3                      # HEAD=e5fb811; contém 2732962/3617672/8b60f8c
-  git status -sb -- crates/ph2d-vector-doc/ crates/ph2d-vector-traits/ \
-    crates/ph2d-brush-traits/ crates/ph2d-tool-vector-pen/
-    # esperado: limpo EXCETO 3 untracked _audit_send_sync.rs (vide TASK 0)
-  CARGO_TARGET_DIR=target/<slot> cargo test -p ph2d-vector-doc      # 21 unit + 12 arch-gate
-  CARGO_TARGET_DIR=target/<slot> cargo test -p ph2d-tool-vector-pen # 28 tests
-
-  ⚠️ HEAD=e5fb811, 83 ahead. Working tree tem WIP de outras 4 sessões. NADA é seu.
+  bash scripts/slot-seed.sh impl-vector     # clone CoW warm → imprime CARGO_TARGET_DIR=<path>
+  # prefixe CADA cargo com esse path (Bash-tool não persiste env):
+  #   CARGO_TARGET_DIR=<path> cargo check -p ph2d-vector-doc
+  git log --oneline | grep -i vector | head   # confirma 4001160 (T1.4) na história
+  CARGO_TARGET_DIR=<path> cargo nextest run -E 'rdeps(ph2d-vector-doc)' --cargo-profile ci-test  # baseline
 
 ───────────────────────────────────────────────────────────────────
-SUA PASTA EXCLUSIVA (zero colisão hoje — edite SÓ aqui)
+SUA PASTA (vector isolado) + 1 touchpoint foundational AUTORIZADO
 ───────────────────────────────────────────────────────────────────
-  crates/ph2d-vector-doc/   crates/ph2d-vector-traits/
-  crates/ph2d-brush-traits/   crates/ph2d-tool-vector-pen/
-  shells/desktop/src/render_loop/vector_pen_bridge.rs   ← SEU (tool-bridge, §3.A.4)
-  shells/desktop/src/input_dispatch/vector_pen_input.rs ← SEU
-
-NÃO TOQUE:
-  - crates/ph2d-render/ — RESERVADO pela sessão Sprite (bump v3→v4). H5/M3
-    (mover world_to_screen_affine pra Camera2d) está BLOQUEADO até eu liberar.
-    NÃO comece H5/M3 até eu te avisar "Sprite soltou ph2d-render".
-  - shells/desktop/src/render_loop/mod.rs (intent-drain), keybinds, painter_bridge.rs
-    — são plumbing compartilhado, MEUS (Coord). Precisa de algo lá? PARE e reporte.
-  - Qualquer foundational fora da sua pasta → PARE e reporte.
-  - UI strings sempre em INGLÊS (feedback-app-ui-english-only).
+  crates/ph2d-vector-doc/ · ph2d-vector-traits/ · ph2d-brush-traits/ · ph2d-tool-vector-pen/
+  shells/desktop/src/render_loop/vector_pen_bridge.rs   (seu tool-bridge)
+  shells/desktop/src/input_dispatch/vector_pen_input.rs
+  ⚠️ **crates/ph2d-render/src/camera.rs** — foundational, **AUTORIZADO p/ o H5/M3** (Sprite
+     liberou; nenhum outro agente em ph2d-render agora). É a ÚNICA edição foundational desta
+     retomada. Qualquer OUTRO arquivo de ph2d-render / editor-core / shell plumbing → PARE e
+     reporte ao Coord.
 
 ───────────────────────────────────────────────────────────────────
-TASK 0 — os 3 _audit_send_sync.rs untracked (decida primeiro)
+TASK 1 (PRIORIDADE — foundational) — H5/M3: Camera2d como fonte única da projeção
 ───────────────────────────────────────────────────────────────────
-  crates/ph2d-brush-traits/tests/_audit_send_sync.rs
-  crates/ph2d-brush-traits/tests/_audit_dyn_send_sync.rs
-  crates/ph2d-vector-traits/tests/_audit_send_sync.rs
-  Sobraram untracked da sessão de auditoria. Decida (são sua pasta):
-  - Se enforçam invariante real (Send+Sync nas traits) → padrão-ouro = formalize
-    como arch-gate nomeado + comente o porquê + COMITE (git add -- <esses paths>).
-  - Se eram scratch descartável → remova.
-  Não os deixe pendurados como untracked órfão.
+Problema: o shell reimplementa a projeção câmera→tela à mão em
+`vector_pen_bridge.rs:196` (`world_to_screen_affine`), que PODE divergir do
+`Camera2d::screen_to_world`. A matemática já existe em `Camera2d` — falta consolidar.
+
+  1. Em `crates/ph2d-render/src/camera.rs`: adicione
+       `pub fn world_to_screen_affine(&self, window: WindowSize) -> vello::kurbo::Affine`
+     (ph2d-render JÁ depende de `vello = "0.8"` → `Affine` é OK; sem dep nova).
+     **Derive da MESMA base** que `world_to_screen`/`screen_to_world` (k = window.h /
+     height_world.max(1e-6); translate(center_screen) · scale_non_uniform(k, -k) ·
+     translate(-center)). Ideal: componha de primitivas já existentes p/ NÃO poder divergir.
+  2. Teste no mesmo módulo (espelhe `world_to_screen_round_trips_screen_to_world`):
+     transforme alguns pontos-mundo pela Affine e compare com `world_to_screen` (mesma
+     saída ± epsilon). Determinismo HR-5: se usar trig, via libm (não deve precisar — é
+     escala/translação linear).
+  3. Em `vector_pen_bridge.rs`: **delete** o `fn world_to_screen_affine` local (linha ~196)
+     e chame `camera.world_to_screen_affine(window_size)` no lugar (linha ~64).
+  4. Verifique: `cargo check -p ph2d-render -p ph2d-tool-vector-pen` + o teste novo verde.
+
+  DoD: zero duplicação da projeção; shell não pode mais divergir do Camera2d. Reporte a
+  assinatura final ao Coord (é foundational — eu confiro no ship).
 
 ───────────────────────────────────────────────────────────────────
-TASK 1 = T1.4 — Levien cubic fit (stub → real)
+TASK 2 — fechamento W1 (depois do H5/M3)
 ───────────────────────────────────────────────────────────────────
-  crates/ph2d-vector-doc/src/cubic_fit.rs é stub de 38 linhas (retorna input
-  sem mudança). Implemente fit_cubic_levien REAL (Raph Levien 2021):
-  https://raphlinus.github.io/curves/2021/03/11/bezier-fitting.html
-  - DoD do próprio stub: < 0.5 px max error nas 5 fixtures canônicas.
-  - Golden test (feliz + edge: poucos samples / colinear-degenera-pra-reta /
-    cusp). Determinismo HR-5: se usar transcendentais, via libm (grep
-    sin/cos/tan/atan2/sqrt/pow — não f32:: nativo).
-  - Pasta isolada → baixo risco de colisão.
+  - LOW carry-overs §3.4 do audit (tolerância dedup 12px acoplada ao close-path · cursor
+    crosshair no Pen ativo · atalho de teclado P · cap interativo conta só vertices) — o
+    Coord prioriza quais entram em W1 vs W2; pergunte antes de pegar.
+  - Mini-round de re-audit (1 round, lentes que pegaram alvo grande — NÃO round do zero;
+    a auditoria 6-lente já cobre o grosso).
+  - SMOKE (Enio, fim de W1): Pen pill → 3 cliques = triângulo; 4º perto do 1º = fecha;
+    Esc cancela/limpa; sem `.ph2d-vector` no root; click rejeitado → toast.
 
-DEPOIS (PERGUNTE-ME antes):
-  - H5/M3 affine → SÓ quando eu liberar ph2d-render (Sprite session).
-  - T1.6 CRDT replay → re-escopar pós scene-ownership; exige custom Deserialize
-    depth-bounded + gate (Lente A do relatório). Não comece sem meu OK.
-  - LOW items §3.4 do handoff (dedup 12px, crosshair, atalho P, cap segments) —
-    eu priorizo.
+DEFERIDO p/ W2 (NÃO nesta retomada): **T1.6 CRDT undo** (Ctrl+Z) — o plano coloca undo
+via CRDT no W2 Day-14 (começar LWW per ADR-0057, migrar se necessário). Não abra agora.
 
 ───────────────────────────────────────────────────────────────────
-DISCIPLINA GIT (colisões ativas — 5 implementadores no índice compartilhado)
+LOOP (DIRETRIZ §6.6) + GIT + ANTI-COLISÃO
 ───────────────────────────────────────────────────────────────────
-  - NUNCA git stash (na sessão anterior um pop injetou conflict markers no
-    arquivo de OUTRO agente — proibido; isole por raciocínio estático de paths).
-  - NUNCA git add -A / -a / git add . / reset --hard / restore / clean.
-  - git add -- <só seus paths>  ;  git commit --no-verify -m "msg" -- <seus paths>
-  - RACE-GUARD antes do commit:
-      git diff --cached --name-only          # só seus arquivos?
-      git diff --name-only --diff-filter=U   # algum unmerged? → aborte, me avise
-  - --no-verify legítimo SÓ se o hook falhar em drift alheio (imageio-svg clippy,
-    asset-cooker fmt, render_loop/mod.rs fmt — todos MEUS p/ limpar no ship). Seu
-    diff deve passar rustfmt --check + cargo test -p <crate> isolado.
-  - Commits LOCAIS, sem push (eu faço ship+push 1× por jornada).
+  - Inner loop = SÓ `cargo check -p` (prefixado com o CARGO_TARGET_DIR do slot) ou
+    `scripts/cargo-check-narrow.sh`. ZERO test/clippy/auditor POR TASK.
+  - Gate 1× no fechamento: `scripts/nextest-impacted.sh` (já força o golden de determinismo
+    via `binary(transform_determinism)`) + clippy --all-targets + ≥2 lentes sobre o diff.
+  - git: `git add -- <seus paths>` (nunca -A / stash); `git commit --no-verify -m "msg" -- <paths>`;
+    race-guard (`git diff --cached --name-only` + `--diff-filter=U`) antes de comitar.
+  - NÃO pusha (Coord faz ship). NÃO use o `target/` default.
+  - Precisou de algo fora da sua pasta (além do camera.rs autorizado)? PARE e reporte ao Coord.
+  - UI strings em INGLÊS.
 
-───────────────────────────────────────────────────────────────────
-FECHAMENTO (mandato padrão-ouro + alta cadência DIRETRIZ §6.6) / REPORT
-───────────────────────────────────────────────────────────────────
-  INNER LOOP por task = SÓ `cargo check -p ph2d-vector-doc` (ou cargo-check-narrow.sh).
-  NADA de test / clippy --all-targets / auditor POR TASK.
-  NO FECHAMENTO do módulo (1×, NÃO por task) — sobre o diff ACUMULADO:
-  cargo nextest (scripts/nextest-impacted.sh — impacto + golden determinismo) +
-  clippy --all-targets + ≥2 auditorias adversariais (lentes ROTACIONADAS, não reuse
-  as 6 do relatório) → remediar CRITICAL/HIGH/MEDIUM → re-audit erro-zero.
-  T1.8 audit formal: a auditoria existente cobre a maior parte; 1 mini-round
-  pós-T1.4 confirmando (lentes que pegaram alvo grande), não round do zero.
-  SMOKE (Enio, fim de W1): vide handoff §3.5 (triângulo persiste, Esc cancela/
-  limpa, sem .ph2d-vector no root, click rejeitado → toast).
-  Reporte por task: "T1.X pronto, commit local <sha>, ph2d-vector-doc +
-  tool-vector-pen verdes, audit <K lentes> erro-zero."
+REPORTE ao fechar: "Vector H5/M3 pronto, commit <sha>, Camera2d::world_to_screen_affine +
+teste de consistência verdes, shell consolidado. [W1 status]."
 ═══════════════════════════════════════════════════════════════════

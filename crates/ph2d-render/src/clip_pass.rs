@@ -133,3 +133,73 @@ pub(crate) fn encode_clip_groups<'a>(
         }
     }
 }
+
+/// Encode the global Mask2D pass (spec §6.4/§6.6). Marks EVERY `Mask2D`
+/// source silhouette into a fresh stencil (shared `ref = 1`), then draws
+/// the `MaskInteraction` responders: `VisibleInside` where `stencil == 1`,
+/// `VisibleOutside` where `stencil != 1`. With no source present the
+/// stencil stays `0` → Inside responders draw nowhere, Outside everywhere
+/// (the Unity default). Scope is global in W3; per-sorting-layer scoping
+/// (`MaskCustomRange`) is a future refinement.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn encode_mask_pass<'a>(
+    encoder: &mut wgpu::CommandEncoder,
+    target: &wgpu::TextureView,
+    stencil: &wgpu::TextureView,
+    pipe: &SpritePipeline,
+    frame_bg: &wgpu::BindGroup,
+    quad_buf: &wgpu::Buffer,
+    instance_buf: &wgpu::Buffer,
+    runs: &[DrawRun],
+    resolve_material: impl Fn(&DrawRun) -> Option<&'a wgpu::BindGroup>,
+) {
+    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("ph2d-render mask pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: target,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+            view: stencil,
+            depth_ops: None,
+            stencil_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(0),
+                store: wgpu::StoreOp::Discard,
+            }),
+        }),
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+    pass.set_bind_group(0, frame_bg, &[]);
+    pass.set_vertex_buffer(0, quad_buf.slice(..));
+    pass.set_vertex_buffer(1, instance_buf.slice(..));
+
+    const REF: u32 = 1;
+    let draw = |pass: &mut wgpu::RenderPass, role: u8| {
+        for run in runs.iter().filter(|r| r.mask_role == role) {
+            if let Some(bg) = resolve_material(run) {
+                pass.set_bind_group(1, bg, &[]);
+                pass.draw(0..4, run.start..run.end);
+            }
+        }
+    };
+
+    // 1. Mark every Mask2D silhouette (no color; cutoff in clip_meta).
+    pass.set_pipeline(&pipe.mark_pipeline);
+    pass.set_stencil_reference(REF);
+    draw(&mut pass, RenderInstance::MASK_ROLE_SOURCE);
+    // 2. VisibleInside responders — only where masked.
+    pass.set_pipeline(&pipe.test_pipeline);
+    pass.set_stencil_reference(REF);
+    draw(&mut pass, RenderInstance::MASK_ROLE_INSIDE);
+    // 3. VisibleOutside responders — only where NOT masked.
+    pass.set_pipeline(&pipe.test_outside_pipeline);
+    pass.set_stencil_reference(REF);
+    draw(&mut pass, RenderInstance::MASK_ROLE_OUTSIDE);
+}

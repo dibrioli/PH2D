@@ -11,7 +11,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    ClipChildren, ClipMode, Entity, MaskInteraction, MaskMode, OnScreenEnabler, SimWorld,
+    ClipChildren, ClipMode, Entity, Mask2D, MaskInteraction, MaskMode, OnScreenEnabler, SimWorld,
     VisibilityLayer, World,
 };
 use ph2d_editor::{InspectorVisibilityMixed, InspectorVisibilitySectionInfo, VisibilityFieldEdit};
@@ -53,7 +53,9 @@ fn mask_mode_from_tag(t: u8) -> MaskMode {
 /// The §8 visibility fields of one entity (absent component → its
 /// canonical default). Shared by the snapshot producer + the BulkSelect
 /// compare so the two never drift.
-fn visibility_fields(world: &World, entity: Entity) -> (u32, u8, u8, f32, bool, [f32; 4]) {
+type VisFields = (u32, u8, u8, f32, bool, bool, [f32; 4]);
+
+fn visibility_fields(world: &World, entity: Entity) -> VisFields {
     let layer_mask = world
         .get::<VisibilityLayer>(entity)
         .map_or(VisibilityLayer::ALL, |v| v.0);
@@ -63,12 +65,14 @@ fn visibility_fields(world: &World, entity: Entity) -> (u32, u8, u8, f32, bool, 
     let mask = world.get::<MaskInteraction>(entity).copied();
     let mask_mode = mask.map_or(0, |m| mask_mode_tag(m.mode));
     let alpha_cutoff = mask.map_or(MaskInteraction::DEFAULT_CUTOFF, |m| m.alpha_cutoff);
+    let mask_source = world.get::<Mask2D>(entity).is_some();
     let on = world.get::<OnScreenEnabler>(entity).copied();
     (
         layer_mask,
         clip_mode,
         mask_mode,
         alpha_cutoff,
+        mask_source,
         on.is_some(),
         on.map_or([0.0; 4], |o| o.rect),
     )
@@ -85,7 +89,7 @@ pub(super) fn build_visibility_section_info(
 ) -> Option<InspectorVisibilitySectionInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
-    let (layer_mask, clip_mode, mask_mode, alpha_cutoff, on_screen, rect) =
+    let (layer_mask, clip_mode, mask_mode, alpha_cutoff, mask_source, on_screen, rect) =
         visibility_fields(world, entity);
     let mut mixed = InspectorVisibilityMixed::default();
     if selected.len() > 1 {
@@ -95,8 +99,9 @@ pub(super) fn build_visibility_section_info(
             mixed.clip_mode |= f.1 != clip_mode;
             mixed.mask_mode |= f.2 != mask_mode;
             mixed.alpha_cutoff |= f.3 != alpha_cutoff;
-            mixed.on_screen |= f.4 != on_screen;
-            mixed.rect |= f.5 != rect;
+            mixed.mask_source |= f.4 != mask_source;
+            mixed.on_screen |= f.5 != on_screen;
+            mixed.rect |= f.6 != rect;
         }
     }
     Some(InspectorVisibilitySectionInfo {
@@ -105,6 +110,7 @@ pub(super) fn build_visibility_section_info(
         clip_mode,
         mask_mode,
         alpha_cutoff,
+        mask_source,
         on_screen,
         rect,
         selected_count,
@@ -193,6 +199,16 @@ pub(super) fn apply_visibility_section_edit(
                 "ph2d::ecs::MaskInteraction",
                 &m.clamped(),
             );
+        }
+        VisibilityFieldEdit::MaskSource(true) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::Mask2D",
+            &Mask2D::new(),
+        ),
+        VisibilityFieldEdit::MaskSource(false) => {
+            queue_remove(queue, registry, entity_bits, "ph2d::ecs::Mask2D")
         }
         VisibilityFieldEdit::OnScreen(true) => queue_set(
             queue,

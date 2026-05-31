@@ -33,10 +33,15 @@ pub struct SpritePipeline {
     /// Normal pass (no stencil): every non-clipped sprite, exactly as
     /// before ClipChildren existed (zero-regression path).
     pub pipeline: wgpu::RenderPipeline,
-    /// Stencil-mark pass: writes the clip-parent silhouette, no color.
+    /// Stencil-mark pass: writes the clip-parent / Mask2D silhouette, no
+    /// color. Shared by ClipChildren and Mask2D (both mark by alpha cutoff).
     pub mark_pipeline: wgpu::RenderPipeline,
-    /// Stencil-test pass: draws clipped descendants where `stencil == ref`.
+    /// Stencil-test pass: draws where `stencil == ref` (ClipChildren
+    /// members + MaskInteraction `VisibleInside` responders).
     pub test_pipeline: wgpu::RenderPipeline,
+    /// Inverse stencil-test pass: draws where `stencil != ref`
+    /// (MaskInteraction `VisibleOutside` responders).
+    pub test_outside_pipeline: wgpu::RenderPipeline,
     pub frame_bgl: wgpu::BindGroupLayout,
     pub material_bgl: wgpu::BindGroupLayout,
 }
@@ -214,6 +219,25 @@ impl SpritePipeline {
             },
             bias: wgpu::DepthBiasState::default(),
         };
+        // Inverse test (Mask2D VisibleOutside): draw where stencil != ref.
+        let test_outside_face = wgpu::StencilFaceState {
+            compare: wgpu::CompareFunction::NotEqual,
+            fail_op: wgpu::StencilOperation::Keep,
+            depth_fail_op: wgpu::StencilOperation::Keep,
+            pass_op: wgpu::StencilOperation::Keep,
+        };
+        let test_outside_ds = wgpu::DepthStencilState {
+            format: STENCIL_FORMAT,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Always,
+            stencil: wgpu::StencilState {
+                front: test_outside_face,
+                back: test_outside_face,
+                read_mask: 0xff,
+                write_mask: 0x00,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        };
 
         let pipeline = build_variant(
             &gpu.device,
@@ -263,10 +287,27 @@ impl SpritePipeline {
             },
         );
 
+        let test_outside_pipeline = build_variant(
+            &gpu.device,
+            &layout,
+            &shader,
+            color_format,
+            Variant {
+                label: "ph2d-render mask stencil-test-outside pipeline",
+                vs_entry: "vs_main",
+                fs_entry: "fs_main",
+                buffers: &normal_buffers,
+                color_write: wgpu::ColorWrites::ALL,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                depth_stencil: Some(test_outside_ds),
+            },
+        );
+
         Self {
             pipeline,
             mark_pipeline,
             test_pipeline,
+            test_outside_pipeline,
             frame_bgl,
             material_bgl,
         }

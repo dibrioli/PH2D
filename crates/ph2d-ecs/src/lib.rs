@@ -54,7 +54,7 @@ pub mod transform_versioned;
 pub mod visibility;
 pub mod visibility_layer;
 
-pub use masking::{ClipChildren, ClipMode, MaskInteraction, MaskMode};
+pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;

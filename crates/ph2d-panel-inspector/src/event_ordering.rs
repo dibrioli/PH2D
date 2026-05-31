@@ -202,6 +202,10 @@ fn apply_visibility_section_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
                     })
             })
             .or_else(|| {
+                (id == ids::INSP_VIS_MASK_SOURCE)
+                    .then_some(VisibilityFieldEdit::MaskSource(!info.mask_source))
+            })
+            .or_else(|| {
                 (id == ids::INSP_VIS_ON_SCREEN)
                     .then_some(VisibilityFieldEdit::OnScreen(!info.on_screen))
             });

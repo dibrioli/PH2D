@@ -37,7 +37,7 @@ fn populate_visibility_section(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_VIS_CLIP);
     register_button_ids(store, &ids::INSP_VIS_MASK);
     register_button_ids(store, &ids::INSP_VIS_LAYER_BIT);
-    register_button_ids(store, &[ids::INSP_VIS_ON_SCREEN]);
+    register_button_ids(store, &[ids::INSP_VIS_MASK_SOURCE, ids::INSP_VIS_ON_SCREEN]);
     for (id, value) in [
         (ids::INSP_VIS_ALPHA_CUTOFF, 0.5_f64),
         (ids::INSP_VIS_RECT_X, 0.0_f64),

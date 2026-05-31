@@ -18,9 +18,10 @@
 use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
-    ChildOf, ClipChildren, ClipMode, Entity, FilterMode, PresentWorld, RepeatMode, SimRef,
-    SimWorld, Transform, TransformPropagationState, UvTransform, VisibilityLayer, WorklistBuf,
-    World, propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
+    ChildOf, ClipChildren, ClipMode, Entity, FilterMode, Mask2D, MaskInteraction, MaskMode,
+    PresentWorld, RepeatMode, SimRef, SimWorld, Transform, TransformPropagationState, UvTransform,
+    VisibilityLayer, WorklistBuf, World, propagate_transforms, resolve_texture_filter,
+    resolve_texture_repeat,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -97,6 +98,40 @@ fn resolve_clip_grouping(sim: &World, entity: Entity, ranks: &SortScratch) -> (u
         cur = sim.get::<ChildOf>(p).map(|c| c.parent());
     }
     (RenderInstance::CLIP_GROUP_NONE, 0)
+}
+
+/// Fold the Mask2D / MaskInteraction role into `clip_meta` (bits 16-17),
+/// reusing the stencil grouping packer (spec §6.4/§6.6). The mask feature
+/// is GLOBAL (no `clip_group`); the role just routes the instance to the
+/// mask pass.
+///
+/// **Precedence:** a clip-parent/member (`clip_group != 0`) is left
+/// untouched — in W3 a sprite is either a clip participant OR a mask
+/// participant, not both (the stencil buffer is reused per pass, so
+/// combining them on one sprite is out of scope).
+///
+/// - [`Mask2D`] source → role SOURCE; its `alpha_cutoff` is packed into
+///   the shared cutoff bits so the mark pass thresholds the silhouette.
+/// - [`MaskInteraction`] responder → role INSIDE / OUTSIDE.
+fn resolve_mask_meta(sim: &World, entity: Entity, clip_group: u32, clip_meta: u32) -> u32 {
+    if clip_group != RenderInstance::CLIP_GROUP_NONE {
+        return clip_meta;
+    }
+    if let Some(m) = sim.get::<Mask2D>(entity) {
+        // Source: pack the mask cutoff into the (currently-empty) cutoff
+        // bits, then stamp the SOURCE role.
+        let base = RenderInstance::pack_clip_meta(0, m.clamped().alpha_cutoff);
+        return RenderInstance::with_mask_role(base, RenderInstance::MASK_ROLE_SOURCE);
+    }
+    if let Some(mi) = sim.get::<MaskInteraction>(entity) {
+        let role = match mi.mode {
+            MaskMode::VisibleInside => RenderInstance::MASK_ROLE_INSIDE,
+            MaskMode::VisibleOutside => RenderInstance::MASK_ROLE_OUTSIDE,
+            MaskMode::None => return clip_meta,
+        };
+        return RenderInstance::with_mask_role(clip_meta, role);
+    }
+    clip_meta
 }
 
 /// Select the sprite-sheet cell `frame` from a base UV rect
@@ -476,10 +511,11 @@ pub(super) fn run(
                 ri.z_order = rank;
             }
             // ADR-0070-amendment-7: tag the clip-stencil group from the
-            // now-final ranks (clip_group = clip_parent rank + 1).
+            // now-final ranks (clip_group = clip_parent rank + 1), then
+            // fold in the Mask2D / MaskInteraction role (bits 16-17).
             let (clip_group, clip_meta) = resolve_clip_grouping(sim_w, sim_ref.0, sort_scratch);
             ri.clip_group = clip_group;
-            ri.clip_meta = clip_meta;
+            ri.clip_meta = resolve_mask_meta(sim_w, sim_ref.0, clip_group, clip_meta);
         }
     });
 }

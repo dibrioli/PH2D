@@ -569,11 +569,16 @@ pub struct RenderInstance {
     /// - bits 0–1 = role: `0` member · `1` mask source (`ClipOnly`) ·
     ///   `2` mask source (`ClipAndDraw`),
     /// - bits 8–15 = `alpha_cutoff` quantized to `u8` as
-    ///   `round(cutoff * 255)` (only read for the mask-source instance,
-    ///   to threshold its silhouette in the stencil-mark pass).
+    ///   `round(cutoff * 255)` (read for the clip mask-source AND the
+    ///   Mask2D source to threshold its silhouette in the mark pass),
+    /// - bits 16–17 = Mask2D/MaskInteraction role (`MASK_ROLE_*`): `0`
+    ///   none · `1` Mask2D source · `2` responder VisibleInside · `3`
+    ///   responder VisibleOutside. Orthogonal to the clip bits — the mask
+    ///   feature is global, so it does NOT use `clip_group`.
     ///
     /// Use [`Self::pack_clip_meta`] / [`Self::clip_role`] /
-    /// [`Self::clip_cutoff`] — never hand-pack.
+    /// [`Self::clip_cutoff`] / [`Self::with_mask_role`] /
+    /// [`Self::mask_role`] — never hand-pack.
     pub clip_meta: u32,
 }
 
@@ -709,9 +714,39 @@ impl RenderInstance {
     }
 
     /// Extract the `alpha_cutoff` in `[0, 1]` from [`Self::clip_meta`]
-    /// (dequantizes the stored `u8`).
+    /// (dequantizes the stored `u8`). Shared by the ClipChildren mark pass
+    /// AND the Mask2D mark pass (a sprite is a clip-parent OR a mask source,
+    /// never both, so the same cutoff slot serves whichever).
     pub fn clip_cutoff(clip_meta: u32) -> f32 {
         ((clip_meta >> Self::CLIP_CUTOFF_SHIFT) & 0xFF) as f32 / 255.0
+    }
+
+    // ─── Mask2D / MaskInteraction roles, packed in `clip_meta` bits 16-17
+    //     (no new ABI field — the mask feature is GLOBAL, so it doesn't
+    //     reuse the per-subtree `clip_group`; only a 2-bit role is needed).
+    //
+    /// [`Self::clip_meta`] mask role (bits 16-17) — not part of any mask.
+    pub const MASK_ROLE_NONE: u8 = 0;
+    /// Mask role — a [`ph2d_ecs::Mask2D`] SOURCE: marks the shared mask
+    /// stencil at its silhouette (cutoff from bits 8-15), draws no color.
+    pub const MASK_ROLE_SOURCE: u8 = 1;
+    /// Mask role — a `VisibleInside` responder: drawn where `stencil == ref`.
+    pub const MASK_ROLE_INSIDE: u8 = 2;
+    /// Mask role — a `VisibleOutside` responder: drawn where `stencil != ref`.
+    pub const MASK_ROLE_OUTSIDE: u8 = 3;
+
+    const MASK_ROLE_SHIFT: u32 = 16;
+    const MASK_ROLE_MASK: u32 = 0b11;
+
+    /// OR a mask role (`MASK_ROLE_*`) into a `clip_meta` word (preserving
+    /// any clip role / cutoff already packed in the low bits).
+    pub const fn with_mask_role(clip_meta: u32, role: u8) -> u32 {
+        clip_meta | (((role as u32) & Self::MASK_ROLE_MASK) << Self::MASK_ROLE_SHIFT)
+    }
+
+    /// Extract the mask role (`MASK_ROLE_*`) from [`Self::clip_meta`].
+    pub const fn mask_role(clip_meta: u32) -> u8 {
+        ((clip_meta >> Self::MASK_ROLE_SHIFT) & Self::MASK_ROLE_MASK) as u8
     }
 }
 

@@ -108,6 +108,47 @@ impl Default for MaskInteraction {
     }
 }
 
+/// A sprite that serves as a mask SOURCE for sibling [`MaskInteraction`]
+/// responders (Unity SpriteMask, spec §6.4/§6.6). The entity's `Sprite`
+/// texture alpha — thresholded by [`Mask2D::alpha_cutoff`] — is the mask
+/// silhouette. The mask itself does NOT draw its own color (it's a
+/// mould, like Unity's default SpriteMask). Scope is GLOBAL in W3 (every
+/// responder reacts to the union of every `Mask2D`); per-sorting-layer
+/// scoping (`MaskCustomRange`, spec §6.5) is a future refinement. The
+/// full Mask2D module (source = SpriteRef vs renderer, sort point, its
+/// own Inspector — spec §6.6) is future; this is the minimal source
+/// component that makes [`MaskInteraction`] demonstrable.
+#[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Mask2D {
+    /// Alpha threshold that counts as "inside" the mask. Range `[0, 1]`.
+    pub alpha_cutoff: f32,
+}
+
+impl Mask2D {
+    /// Default cutoff (intuitive midpoint, mirrors [`MaskInteraction`]).
+    pub const DEFAULT_CUTOFF: f32 = 0.5;
+
+    /// Construct with the canonical default cutoff.
+    pub const fn new() -> Self {
+        Self {
+            alpha_cutoff: Self::DEFAULT_CUTOFF,
+        }
+    }
+
+    /// Clamp `alpha_cutoff` into `[0, 1]`.
+    pub fn clamped(self) -> Self {
+        Self {
+            alpha_cutoff: self.alpha_cutoff.clamp(0.0, 1.0),
+        }
+    }
+}
+
+impl Default for Mask2D {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +200,14 @@ mod tests {
             let b = postcard::to_allocvec(&m).unwrap();
             assert_eq!(postcard::from_bytes::<MaskMode>(&b).unwrap(), m);
         }
+    }
+
+    #[test]
+    fn mask2d_defaults_and_clamps() {
+        assert_eq!(Mask2D::default().alpha_cutoff, Mask2D::DEFAULT_CUTOFF);
+        assert_eq!(Mask2D { alpha_cutoff: 9.0 }.clamped().alpha_cutoff, 1.0);
+        assert_eq!(Mask2D { alpha_cutoff: -2.0 }.clamped().alpha_cutoff, 0.0);
+        let b = postcard::to_allocvec(&Mask2D::new()).unwrap();
+        assert_eq!(postcard::from_bytes::<Mask2D>(&b).unwrap(), Mask2D::new());
     }
 }

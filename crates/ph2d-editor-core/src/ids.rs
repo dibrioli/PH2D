@@ -579,6 +579,8 @@ pub const INSP_VIS_MASK: [NodeId; 3] = [
 ];
 /// Mask alpha-cutoff NumberInput (shown when Mask != None).
 pub const INSP_VIS_ALPHA_CUTOFF: NodeId = hash_node_id("insp_vis_alpha_cutoff");
+/// "Mask Source (Mask2D)" toggle — makes this sprite a mask source.
+pub const INSP_VIS_MASK_SOURCE: NodeId = hash_node_id("insp_vis_mask_source");
 /// On-Screen Enabler toggle + its Rect2 editor (x/y/w/h, shown when on).
 pub const INSP_VIS_ON_SCREEN: NodeId = hash_node_id("insp_vis_on_screen");
 pub const INSP_VIS_RECT_X: NodeId = hash_node_id("insp_vis_rect_x");

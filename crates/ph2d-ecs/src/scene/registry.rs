@@ -237,6 +237,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::TopLevel>("ph2d::ecs::TopLevel");
     reg.register::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
     reg.register::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
+    reg.register::<crate::Mask2D>("ph2d::ecs::Mask2D");
     reg.register::<crate::TextureFilter>("ph2d::ecs::TextureFilter");
     reg.register::<crate::TextureRepeat>("ph2d::ecs::TextureRepeat");
     reg.register::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
@@ -271,9 +272,9 @@ mod tests {
     fn register_ecs_components_populates_registry() {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
-        // 4 foundational (Transform/Name/Visibility/RootOrder) + 14 W3
-        // sorting/visibility/sampling components.
-        assert_eq!(reg.len(), 19);
+        // 4 foundational (Transform/Name/Visibility/RootOrder) + 15 W3
+        // sorting/visibility/sampling/mask components (+Mask2D source).
+        assert_eq!(reg.len(), 20);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

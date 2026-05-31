@@ -523,6 +523,8 @@ pub struct InspectorVisibilitySectionInfo {
     pub mask_mode: u8,
     /// `MaskInteraction.alpha_cutoff` (`[0,1]`; shown when mask != None).
     pub alpha_cutoff: f32,
+    /// `Mask2D` present? (this sprite is a mask SOURCE).
+    pub mask_source: bool,
     /// `OnScreenEnabler` present?
     pub on_screen: bool,
     /// `OnScreenEnabler.rect` `[x, y, w, h]` world meters (shown when on).
@@ -538,6 +540,7 @@ pub struct InspectorVisibilityMixed {
     pub clip_mode: bool,
     pub mask_mode: bool,
     pub alpha_cutoff: bool,
+    pub mask_source: bool,
     pub on_screen: bool,
     pub rect: bool,
 }
@@ -556,6 +559,8 @@ pub enum VisibilityFieldEdit {
     MaskMode(u8),
     /// `MaskInteraction.alpha_cutoff` (read-modify-write, keeps mode).
     AlphaCutoff(f32),
+    /// `Mask2D` present? — make this sprite a mask source (`false` detaches).
+    MaskSource(bool),
     /// `OnScreenEnabler` present? (`false` detaches.)
     OnScreen(bool),
     /// `OnScreenEnabler.rect` components (read-modify-write).

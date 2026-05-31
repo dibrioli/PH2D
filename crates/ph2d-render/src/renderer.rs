@@ -44,6 +44,11 @@ pub(crate) struct DrawRun {
     /// run key so the single mask-source instance always forms its own
     /// run (drawn with the stencil-mark pipeline), separate from members.
     pub(crate) clip_role: u8,
+    /// Mask role (`RenderInstance::MASK_ROLE_*`): `0` none, `1` Mask2D
+    /// source, `2` responder VisibleInside, `3` responder VisibleOutside.
+    /// Part of the run key so mask sources / inside / outside each form
+    /// their own runs (drawn with the mark / test / test-outside pipeline).
+    pub(crate) mask_role: u8,
 }
 
 pub struct SpriteRenderer {
@@ -484,11 +489,13 @@ impl SpriteRenderer {
             .queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
 
-        // W3 §8: does this frame contain any ClipChildren group? The common
-        // case (none) takes the exact pre-clip single-pass path below — zero
-        // regression, and the stencil attachment is never even allocated.
+        // W3 §8: does this frame contain any ClipChildren group or Mask2D /
+        // MaskInteraction role? The common case (neither) takes the exact
+        // pre-stencil single-pass path below — zero regression, and the
+        // stencil attachment is never even allocated.
         let has_clip = count > 0 && self.runs.iter().any(|r| r.clip_group != 0);
-        if has_clip {
+        let has_mask = count > 0 && self.runs.iter().any(|r| r.mask_role != 0);
+        if has_clip || has_mask {
             // Stencil must match the color target; the live editor's GameRt
             // tracks the window size, so size the stencil to the window.
             self.ensure_clip_stencil((window.width, window.height));
@@ -516,9 +523,9 @@ impl SpriteRenderer {
             }
         };
         {
-            // Normal pass: every `clip_group == 0` run. When the frame has
-            // no clip group this is ALL runs — byte-identical to the legacy
-            // single pass.
+            // Normal pass: every plain run (`clip_group == 0 && mask_role
+            // == 0`). When the frame has no clip/mask this is ALL runs —
+            // byte-identical to the legacy single pass.
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-render sprite pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -540,7 +547,11 @@ impl SpriteRenderer {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
-                for run in self.runs.iter().filter(|r| r.clip_group == 0) {
+                for run in self
+                    .runs
+                    .iter()
+                    .filter(|r| r.clip_group == 0 && r.mask_role == 0)
+                {
                     let Some(bg) = material_bg(run) else { continue };
                     pass.set_bind_group(1, bg, &[]);
                     pass.draw(0..4, run.start..run.end);
@@ -553,6 +564,24 @@ impl SpriteRenderer {
         if has_clip {
             let stencil = &self.clip_stencil.as_ref().expect("ensured above").view;
             crate::clip_pass::encode_clip_groups(
+                &mut encoder,
+                target,
+                stencil,
+                &self.pipeline,
+                &self.frame_bind_group,
+                &self.quad_buffer,
+                self.instance_buffer.buffer(),
+                &self.runs,
+                material_bg,
+            );
+        }
+        // Mask pass (only if a Mask2D source / responder exists): mark every
+        // Mask2D silhouette into a fresh stencil, then draw VisibleInside
+        // responders where stencil == ref and VisibleOutside where != ref.
+        // Global scope (one shared ref), composited on top (color Load).
+        if has_mask {
+            let stencil = &self.clip_stencil.as_ref().expect("ensured above").view;
+            crate::clip_pass::encode_mask_pass(
                 &mut encoder,
                 target,
                 stencil,
@@ -587,9 +616,10 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             i.sampling,
             i.clip_group,
             RenderInstance::clip_role(i.clip_meta),
+            RenderInstance::mask_role(i.clip_meta),
         )
     };
-    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8), start: u32, end: u32| {
+    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8, u8), start: u32, end: u32| {
         runs.push(DrawRun {
             texture_id: k.0,
             sampling: k.1,
@@ -597,6 +627,7 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
             end,
             clip_group: k.2,
             clip_role: k.3,
+            mask_role: k.4,
         });
     };
     let mut start = 0u32;
@@ -659,6 +690,7 @@ mod tests {
                     end: 3,
                     clip_group: 0,
                     clip_role: 0,
+                    mask_role: 0,
                 },
                 DrawRun {
                     texture_id: 7,
@@ -667,6 +699,7 @@ mod tests {
                     end: 5,
                     clip_group: 0,
                     clip_role: 0,
+                    mask_role: 0,
                 },
                 DrawRun {
                     texture_id: 12,
@@ -675,6 +708,7 @@ mod tests {
                     end: 6,
                     clip_group: 0,
                     clip_role: 0,
+                    mask_role: 0,
                 },
             ]
         );

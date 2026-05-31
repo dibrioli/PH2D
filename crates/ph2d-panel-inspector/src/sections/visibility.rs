@@ -202,6 +202,20 @@ pub(crate) fn paint_visibility_section(
         );
     }
 
+    // Mask Source toggle — makes this sprite a Mask2D source (its silhouette
+    // masks sibling VisibleInside/Outside responders).
+    let src_rect = Rect::new(x, yy, w, h);
+    hit_index.register(ids::INSP_VIS_MASK_SOURCE, src_rect);
+    let src_cb = Checkbox::new(ids::INSP_VIS_MASK_SOURCE, "Mask Source (Mask2D)").value(
+        if info.mask_source {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        },
+    );
+    paint_checkbox(&src_cb, src_rect, scene, text_system, theme);
+    yy += h + row_gap;
+
     // On-Screen Enabler toggle (presence of the component).
     let on_rect = Rect::new(x, yy, w, h);
     hit_index.register(ids::INSP_VIS_ON_SCREEN, on_rect);

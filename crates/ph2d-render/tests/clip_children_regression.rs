@@ -35,8 +35,8 @@
 
 use ph2d_ecs::PresentWorld;
 use ph2d_gpu::GpuContext;
-use ph2d_render::{Camera2d, RenderInstance, SpriteRenderer, TextureAtlas};
 use ph2d_host::WindowSize;
+use ph2d_render::{Camera2d, RenderInstance, SpriteRenderer, TextureAtlas};
 
 const W: u32 = 64;
 const H: u32 = 64;
@@ -218,8 +218,7 @@ fn clip_children_three_modes_4px() {
         return;
     };
     let atlas = TextureAtlas::new(&gpu, 256);
-    let mut renderer =
-        SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
     let parent_tex = renderer
         .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 255, 255, 255]))
         .expect("parent tex");
@@ -266,9 +265,21 @@ fn clip_children_three_modes_4px() {
             instance(child_tex, [0.5, 0.0], [2.0, 2.0], 1, 1, member_meta),
         ],
     );
-    assert_rgb(&clip_only, 20, 32, [0, 0, 0], "ClipOnly parent-only (mould invisible)");
+    assert_rgb(
+        &clip_only,
+        20,
+        32,
+        [0, 0, 0],
+        "ClipOnly parent-only (mould invisible)",
+    );
     assert_rgb(&clip_only, 40, 32, [255, 0, 0], "ClipOnly member-inside");
-    assert_rgb(&clip_only, 52, 32, [0, 0, 0], "ClipOnly member-outside (clipped)");
+    assert_rgb(
+        &clip_only,
+        52,
+        32,
+        [0, 0, 0],
+        "ClipOnly member-outside (clipped)",
+    );
     assert_rgb(&clip_only, 4, 4, [0, 0, 0], "ClipOnly background");
 
     let clip_draw_mask =
@@ -285,9 +296,27 @@ fn clip_children_three_modes_4px() {
             instance(child_tex, [0.5, 0.0], [2.0, 2.0], 1, 1, member_meta),
         ],
     );
-    assert_rgb(&clip_and_draw, 20, 32, [255, 255, 255], "ClipAndDraw parent-only");
-    assert_rgb(&clip_and_draw, 40, 32, [255, 0, 0], "ClipAndDraw member-inside");
-    assert_rgb(&clip_and_draw, 52, 32, [0, 0, 0], "ClipAndDraw member-outside (clipped)");
+    assert_rgb(
+        &clip_and_draw,
+        20,
+        32,
+        [255, 255, 255],
+        "ClipAndDraw parent-only",
+    );
+    assert_rgb(
+        &clip_and_draw,
+        40,
+        32,
+        [255, 0, 0],
+        "ClipAndDraw member-inside",
+    );
+    assert_rgb(
+        &clip_and_draw,
+        52,
+        32,
+        [0, 0, 0],
+        "ClipAndDraw member-outside (clipped)",
+    );
     assert_rgb(&clip_and_draw, 4, 4, [0, 0, 0], "ClipAndDraw background");
 }
 
@@ -302,8 +331,7 @@ fn clip_cutoff_thresholds_silhouette() {
         return;
     };
     let atlas = TextureAtlas::new(&gpu, 256);
-    let mut renderer =
-        SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
     let parent_tex = renderer
         .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 255, 255, 128]))
         .expect("half-alpha parent");
@@ -323,9 +351,37 @@ fn clip_cutoff_thresholds_silhouette() {
         ]
     };
 
-    let low = render_pixels(&gpu, &mut renderer, &target, &view, &camera, window, &scene(0.2));
-    assert_rgb(&low, 40, 32, [255, 0, 0], "cutoff 0.2 keeps silhouette → member shows");
+    let low = render_pixels(
+        &gpu,
+        &mut renderer,
+        &target,
+        &view,
+        &camera,
+        window,
+        &scene(0.2),
+    );
+    assert_rgb(
+        &low,
+        40,
+        32,
+        [255, 0, 0],
+        "cutoff 0.2 keeps silhouette → member shows",
+    );
 
-    let high = render_pixels(&gpu, &mut renderer, &target, &view, &camera, window, &scene(0.8));
-    assert_rgb(&high, 40, 32, [0, 0, 0], "cutoff 0.8 discards silhouette → member clipped");
+    let high = render_pixels(
+        &gpu,
+        &mut renderer,
+        &target,
+        &view,
+        &camera,
+        window,
+        &scene(0.8),
+    );
+    assert_rgb(
+        &high,
+        40,
+        32,
+        [0, 0, 0],
+        "cutoff 0.8 discards silhouette → member clipped",
+    );
 }

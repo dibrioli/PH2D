@@ -552,6 +552,28 @@ pub struct RenderInstance {
     /// project `ImageFilterMode`). ADR-0070-amendment-5: this grows the
     /// CPU-only tail (GPU vertex layout unchanged).
     pub sampling: u32,
+    /// Clip-stencil grouping key (CPU-side; NOT a vertex attribute).
+    /// `0` = the instance takes no part in any [`ClipChildren`] silhouette
+    /// clip — the renderer paints it in the normal pass exactly as before
+    /// (zero-regression identity). A non-zero value is the *clip-group id*,
+    /// defined as `clip_parent.z_order + 1` (so it is unique per clip-parent
+    /// and never collides with the `0` sentinel). Both the clip-parent
+    /// (mask source) and every clipped descendant of one subtree carry the
+    /// SAME `clip_group`; the renderer batches them into a stencil
+    /// mark→test→draw triple. ADR-0070-amendment-7 (grows the CPU-only
+    /// tail; the GPU vertex layout is unchanged, so no attribute moves).
+    pub clip_group: u32,
+    /// Clip role + quantized cutoff for a clip-group member (CPU-side; NOT
+    /// a vertex attribute). Only meaningful when [`Self::clip_group`] != 0.
+    /// Bit layout (ADR-0070-amendment-7):
+    /// - bits 0–1 = role: `0` member · `1` mask source (`ClipOnly`) ·
+    ///   `2` mask source (`ClipAndDraw`),
+    /// - bits 8–15 = `alpha_cutoff` quantized to `u8` as
+    ///   `round(cutoff * 255)` (only read for the mask-source instance,
+    ///   to threshold its silhouette in the stencil-mark pass).
+    /// Use [`Self::pack_clip_meta`] / [`Self::clip_role`] /
+    /// [`Self::clip_cutoff`] — never hand-pack.
+    pub clip_meta: u32,
 }
 
 impl PresentComponent for RenderInstance {}
@@ -651,6 +673,45 @@ impl RenderInstance {
     pub const fn unpack_sampling(sampling: u32) -> (u8, u8) {
         ((sampling & 0xFF) as u8, ((sampling >> 8) & 0xFF) as u8)
     }
+
+    // ─── `clip_group` / `clip_meta` (ADR-0070-amendment-7) ────────────
+    //
+    /// Sentinel [`Self::clip_group`] meaning "no clip" — the instance
+    /// renders in the normal pass (identity / zero-regression path).
+    pub const CLIP_GROUP_NONE: u32 = 0;
+
+    /// [`Self::clip_meta`] role (bits 0–1) — a clipped descendant of a
+    /// clip-parent; painted with the stencil test `Equal ref`.
+    pub const CLIP_ROLE_MEMBER: u8 = 0;
+    /// [`Self::clip_meta`] role — the mask source for a `ClipOnly` parent
+    /// (silhouette marks the stencil; the parent itself does NOT draw).
+    pub const CLIP_ROLE_MASK_CLIP_ONLY: u8 = 1;
+    /// [`Self::clip_meta`] role — the mask source for a `ClipAndDraw`
+    /// parent (silhouette marks the stencil AND the parent draws normally).
+    pub const CLIP_ROLE_MASK_CLIP_AND_DRAW: u8 = 2;
+
+    const CLIP_ROLE_MASK: u32 = 0b11;
+    const CLIP_CUTOFF_SHIFT: u32 = 8;
+
+    /// Pack a clip role (`CLIP_ROLE_*`) and an `alpha_cutoff` in `[0, 1]`
+    /// into the [`Self::clip_meta`] word. Cutoff is quantized to `u8`
+    /// (`round(cutoff * 255)`) — exact enough for a binary silhouette
+    /// threshold and keeps the field GPU-uploadable if ever promoted.
+    pub fn pack_clip_meta(role: u8, alpha_cutoff: f32) -> u32 {
+        let q = (alpha_cutoff.clamp(0.0, 1.0) * 255.0).round() as u32;
+        ((role as u32) & Self::CLIP_ROLE_MASK) | ((q & 0xFF) << Self::CLIP_CUTOFF_SHIFT)
+    }
+
+    /// Extract the clip role (`CLIP_ROLE_*`) from [`Self::clip_meta`].
+    pub const fn clip_role(clip_meta: u32) -> u8 {
+        (clip_meta & Self::CLIP_ROLE_MASK) as u8
+    }
+
+    /// Extract the `alpha_cutoff` in `[0, 1]` from [`Self::clip_meta`]
+    /// (dequantizes the stored `u8`).
+    pub fn clip_cutoff(clip_meta: u32) -> f32 {
+        ((clip_meta >> Self::CLIP_CUTOFF_SHIFT) & 0xFF) as f32 / 255.0
+    }
 }
 
 /// Vertex of the unit quad used as the geometry for every sprite
@@ -727,17 +788,20 @@ mod tests {
             z_order: 0,
             sampling: RenderInstance::SAMPLING_DEFAULT,
             uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            clip_group: RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&inst);
         assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
         // GPU fields = 76 bytes (world_pos 8 + size 8 + atlas_uv 16 +
         // tint 16 + basis 16 + premultiplied 4 + anchor 8).
         // + per_corner_tint [[f32;4];4] (64) + opacity f32 (4) +
-        // flip_uv u32 (4) = +72 → 148 GPU bytes.
-        // + texture_id u32 (4) + z_order u32 (4) CPU-only = 156 bytes.
-        // ADR-0070-amendment-5 adds the CPU-only `sampling: u32` (+4 →
-        // 160 B); the GPU vertex layout (148 B / 11 attrs) is unchanged.
-        assert_eq!(bytes.len(), 176);
+        // flip_uv u32 (4) + uv_xform [f32;4] (16) = +88 → 164 GPU bytes.
+        // + texture_id u32 (4) + z_order u32 (4) + sampling u32 (4)
+        // CPU-only = 176 bytes. ADR-0070-amendment-7 adds the CPU-only
+        // `clip_group: u32` + `clip_meta: u32` (+8 → 184 B); the GPU
+        // vertex layout (164 B / 12 attrs) is unchanged.
+        assert_eq!(bytes.len(), 184);
     }
 
     #[test]

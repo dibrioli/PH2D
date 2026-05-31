@@ -26,14 +26,24 @@ use ph2d_host::WindowSize;
 /// `render()` allocation-free (HR-3). `start` and `end` index into the
 /// instance buffer.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct DrawRun {
-    texture_id: u32,
+pub(crate) struct DrawRun {
+    pub(crate) texture_id: u32,
     /// Packed per-node sampling key (`RenderInstance::sampling`). For
     /// atlas runs the renderer binds the matching cached sampler
     /// (W3.T3.11); individual textures keep the global store sampler.
-    sampling: u32,
-    start: u32,
-    end: u32,
+    pub(crate) sampling: u32,
+    pub(crate) start: u32,
+    pub(crate) end: u32,
+    /// ClipChildren stencil group (`RenderInstance::clip_group`). `0` =
+    /// the normal pass; a non-zero id batches this run into one clip
+    /// span (ADR-0070-amendment-7). Part of the run key so a clip-group's
+    /// runs never merge with the surrounding normal sprites.
+    pub(crate) clip_group: u32,
+    /// Clip role of this run (`RenderInstance::CLIP_ROLE_*`): `0` member,
+    /// `1` ClipOnly mask source, `2` ClipAndDraw mask source. Part of the
+    /// run key so the single mask-source instance always forms its own
+    /// run (drawn with the stencil-mark pipeline), separate from members.
+    pub(crate) clip_role: u8,
 }
 
 pub struct SpriteRenderer {
@@ -61,6 +71,19 @@ pub struct SpriteRenderer {
     /// one draw call's worth of instances; the renderer walks them in
     /// order, swaps bind group 1 per run, and emits the draw.
     runs: Vec<DrawRun>,
+    /// Lazily-allocated `Stencil8` attachment for the ClipChildren clip
+    /// pass (W3 §8). `None` until the first frame that contains a clip
+    /// group — scenes with no clip never pay for it (zero-regression).
+    /// Re-created when the target size changes.
+    clip_stencil: Option<ClipStencil>,
+}
+
+/// The `Stencil8` texture + its view + the size it was allocated for.
+/// Cached on [`SpriteRenderer`] and reused across frames (HR-3); only
+/// re-created when the render target's size changes.
+struct ClipStencil {
+    view: wgpu::TextureView,
+    size: (u32, u32),
 }
 
 impl SpriteRenderer {
@@ -138,6 +161,8 @@ impl SpriteRenderer {
             // Real workloads keep distinct textures small (typically
             // 1 atlas + a few individuals); 16 is a reasonable seed.
             runs: Vec::with_capacity(16),
+            // Allocated lazily on the first clipped frame.
+            clip_stencil: None,
         }
     }
 
@@ -387,6 +412,31 @@ impl SpriteRenderer {
         self.atlas_sampler_bgs.insert(sampling, bg);
     }
 
+    /// Ensure the `Stencil8` clip attachment exists at `size`, (re)creating
+    /// it on first use or a size change (HR-3: reused otherwise). The
+    /// `TextureView` keeps the texture alive, so the texture handle can drop.
+    fn ensure_clip_stencil(&mut self, size: (u32, u32)) {
+        if self.clip_stencil.as_ref().map(|s| s.size) == Some(size) {
+            return;
+        }
+        let tex = self.gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-render clip stencil"),
+            size: wgpu::Extent3d {
+                width: size.0.max(1),
+                height: size.1.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: crate::pipeline::STENCIL_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.clip_stencil = Some(ClipStencil { view, size });
+    }
+
     pub fn render(
         &mut self,
         target: &wgpu::TextureView,
@@ -434,13 +484,41 @@ impl SpriteRenderer {
             .queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&camera_uniform));
 
+        // W3 §8: does this frame contain any ClipChildren group? The common
+        // case (none) takes the exact pre-clip single-pass path below — zero
+        // regression, and the stencil attachment is never even allocated.
+        let has_clip = count > 0 && self.runs.iter().any(|r| r.clip_group != 0);
+        if has_clip {
+            // Stencil must match the color target; the live editor's GameRt
+            // tracks the window size, so size the stencil to the window.
+            self.ensure_clip_stencil((window.width, window.height));
+        }
+
         let mut encoder = self
             .gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-render sprite encoder"),
             });
+        // Resolve a run's material bind group. Atlas (texture_id == 0) uses
+        // the per-sampling cached bind group (W3.T3.11; falls back to the
+        // project-default material bg if not yet built); individual textures
+        // look up the pre-built bind group in the store. A missing
+        // individual (id released before render saw it) yields `None` →
+        // the run is skipped.
+        let material_bg = |run: &DrawRun| -> Option<&wgpu::BindGroup> {
+            if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+                self.atlas_sampler_bgs
+                    .get(&run.sampling)
+                    .or(Some(&self.material_bind_group))
+            } else {
+                self.individual.bind_group(run.texture_id)
+            }
+        };
         {
+            // Normal pass: every `clip_group == 0` run. When the frame has
+            // no clip group this is ALL runs — byte-identical to the legacy
+            // single pass.
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-render sprite pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -462,27 +540,29 @@ impl SpriteRenderer {
                 pass.set_bind_group(0, &self.frame_bind_group, &[]);
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, self.instance_buffer.buffer().slice(..));
-                for run in &self.runs {
-                    // Pick the right material bind group per run. Atlas
-                    // (texture_id == 0) uses the per-sampling cached bind
-                    // group (W3.T3.11; falls back to the project-default
-                    // material bg if not yet built); individual textures
-                    // look up the pre-built bind group in the store
-                    // (global sampler — per-node sampling on individual
-                    // textures is a follow-up). Missing individuals (id
-                    // released before render saw it) silently skip.
-                    let bg = if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
-                        self.atlas_sampler_bgs
-                            .get(&run.sampling)
-                            .or(Some(&self.material_bind_group))
-                    } else {
-                        self.individual.bind_group(run.texture_id)
-                    };
-                    let Some(bg) = bg else { continue };
+                for run in self.runs.iter().filter(|r| r.clip_group == 0) {
+                    let Some(bg) = material_bg(run) else { continue };
                     pass.set_bind_group(1, bg, &[]);
                     pass.draw(0..4, run.start..run.end);
                 }
             }
+        }
+        // Clip pass (only if a clip group exists): stencil mark → test the
+        // descendants → optional ClipAndDraw mask color. Composites on top
+        // of the normal pass (color Load).
+        if has_clip {
+            let stencil = &self.clip_stencil.as_ref().expect("ensured above").view;
+            crate::clip_pass::encode_clip_groups(
+                &mut encoder,
+                target,
+                stencil,
+                &self.pipeline,
+                &self.frame_bind_group,
+                &self.quad_buffer,
+                self.instance_buffer.buffer(),
+                &self.runs,
+                material_bg,
+            );
         }
         self.gpu.queue.submit(Some(encoder.finish()));
     }
@@ -498,27 +578,37 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
     if scratch.is_empty() {
         return;
     }
-    let key = |i: &RenderInstance| (i.texture_id, i.sampling);
+    // Key also on `(clip_group, clip_role)` so a clip-group's instances
+    // never merge into a neighbouring normal run, and the single mask
+    // source forms its own run apart from its members (W3 §8).
+    let key = |i: &RenderInstance| {
+        (
+            i.texture_id,
+            i.sampling,
+            i.clip_group,
+            RenderInstance::clip_role(i.clip_meta),
+        )
+    };
+    let emit = |runs: &mut Vec<DrawRun>, k: (u32, u32, u32, u8), start: u32, end: u32| {
+        runs.push(DrawRun {
+            texture_id: k.0,
+            sampling: k.1,
+            start,
+            end,
+            clip_group: k.2,
+            clip_role: k.3,
+        });
+    };
     let mut start = 0u32;
     let mut current = key(&scratch[0]);
     for (i, inst) in scratch.iter().enumerate().skip(1) {
         if key(inst) != current {
-            runs.push(DrawRun {
-                texture_id: current.0,
-                sampling: current.1,
-                start,
-                end: i as u32,
-            });
+            emit(runs, current, start, i as u32);
             current = key(inst);
             start = i as u32;
         }
     }
-    runs.push(DrawRun {
-        texture_id: current.0,
-        sampling: current.1,
-        start,
-        end: scratch.len() as u32,
-    });
+    emit(runs, current, start, scratch.len() as u32);
 }
 
 #[cfg(test)]
@@ -541,6 +631,8 @@ mod tests {
             z_order: 0,
             sampling: 0,
             uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            clip_group: RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
         }
     }
 
@@ -564,19 +656,25 @@ mod tests {
                     texture_id: 0,
                     sampling: 0,
                     start: 0,
-                    end: 3
+                    end: 3,
+                    clip_group: 0,
+                    clip_role: 0,
                 },
                 DrawRun {
                     texture_id: 7,
                     sampling: 0,
                     start: 3,
-                    end: 5
+                    end: 5,
+                    clip_group: 0,
+                    clip_role: 0,
                 },
                 DrawRun {
                     texture_id: 12,
                     sampling: 0,
                     start: 5,
-                    end: 6
+                    end: 6,
+                    clip_group: 0,
+                    clip_role: 0,
                 },
             ]
         );

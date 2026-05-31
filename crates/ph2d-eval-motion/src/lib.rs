@@ -74,6 +74,9 @@ pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
                 z_order: 0,
                 sampling: 0,
                 uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+                // Node-graph emit has no hierarchy → no clip silhouette.
+                clip_group: RenderInstance::CLIP_GROUP_NONE,
+                clip_meta: 0,
             }
         })
         .collect()

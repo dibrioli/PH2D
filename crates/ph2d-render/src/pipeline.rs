@@ -7,14 +7,51 @@
 //! vertex buffer slot (instance step mode) — cheaper than a third
 //! bind group for streaming data. Single triangle-strip draw call per
 //! batch.
+//!
+//! W3 §8 ClipChildren (ADR-0070-amendment-7 / ADR-0074-amendment-1):
+//! beside the `normal` pipeline (no stencil) there are two stencil
+//! variants sharing the same layout + shader module:
+//! - `mark` — writes the clip-parent silhouette into the stencil
+//!   buffer (`Replace` ref where the texel alpha clears the cutoff),
+//!   color writes MASKED OFF. Reads the per-instance `clip_meta`
+//!   (cutoff) via an extra vertex attribute `@location(16)`.
+//! - `test` — draws the clipped descendants with stencil `Equal ref`
+//!   (read-only), so they only appear inside the marked silhouette.
+//!   Reuses `vs_main`/`fs_main` (the normal color path).
 
 use crate::sprite::{QuadVertex, RenderInstance};
 use ph2d_gpu::GpuContext;
 
+/// Stencil attachment format for the ClipChildren mark/test passes
+/// (ADR-0074-amendment-1). `Stencil8` is a WebGPU-required, stencil-only
+/// format (no depth aspect → the render pass needs no depth ops), keeping
+/// the clip pass minimal. Chosen over `Depth24PlusStencil8` because we
+/// never use depth here.
+pub const STENCIL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Stencil8;
+
 pub struct SpritePipeline {
+    /// Normal pass (no stencil): every non-clipped sprite, exactly as
+    /// before ClipChildren existed (zero-regression path).
     pub pipeline: wgpu::RenderPipeline,
+    /// Stencil-mark pass: writes the clip-parent silhouette, no color.
+    pub mark_pipeline: wgpu::RenderPipeline,
+    /// Stencil-test pass: draws clipped descendants where `stencil == ref`.
+    pub test_pipeline: wgpu::RenderPipeline,
     pub frame_bgl: wgpu::BindGroupLayout,
     pub material_bgl: wgpu::BindGroupLayout,
+}
+
+/// The parts of a sprite render pipeline that vary between the normal /
+/// mark / test variants. Everything else (primitive state, multisample,
+/// pipeline layout, shader module) is shared.
+struct Variant<'a> {
+    label: &'a str,
+    vs_entry: &'a str,
+    fs_entry: &'a str,
+    buffers: &'a [wgpu::VertexBufferLayout<'a>],
+    color_write: wgpu::ColorWrites,
+    blend: Option<wgpu::BlendState>,
+    depth_stencil: Option<wgpu::DepthStencilState>,
 }
 
 impl SpritePipeline {
@@ -74,59 +111,221 @@ impl SpritePipeline {
                 source: wgpu::ShaderSource::Wgsl(include_str!("shaders/sprite.wgsl").into()),
             });
 
-        let pipeline = gpu
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("ph2d-render sprite pipeline"),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[QuadVertex::buffer_layout(), RenderInstance::buffer_layout()],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: color_format,
-                        // M14.5: premultiplied alpha throughout the
-                        // pipeline (game_rt → tonemap → compositor).
-                        // The fragment shader is responsible for
-                        // emitting `color.rgb *= color.a` before
-                        // return so sprites with α<1 composite
-                        // correctly when multiple draw on top of
-                        // each other inside the RT.
-                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleStrip,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
+        // Normal-pass vertex buffers: quad + the 12-attr instance layout.
+        let normal_buffers = [QuadVertex::buffer_layout(), RenderInstance::buffer_layout()];
+
+        // Mark-pass instance layout. The 16-attribute device limit
+        // (`@location` 0..15) is already FULL (quad 0..1 + instance 2..15),
+        // so `clip_meta` can't be a 17th attribute. The mark vertex shader
+        // only needs the geometry + UV inputs, so we build a minimal layout
+        // over the SAME instance buffer (explicit per-field offsets) and
+        // REPURPOSE the freed `@location(5)` (normally `tint`, which the mark
+        // shader ignores) to carry `clip_meta` from its real CPU-tail offset.
+        // wgpu interprets each pipeline's own layout, so this aliases nothing.
+        let off = |f| f as wgpu::BufferAddress;
+        let mark_attrs = [
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x2,
+                offset: off(std::mem::offset_of!(RenderInstance, world_pos)),
+                shader_location: 2,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x2,
+                offset: off(std::mem::offset_of!(RenderInstance, size)),
+                shader_location: 3,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x4,
+                offset: off(std::mem::offset_of!(RenderInstance, atlas_uv)),
+                shader_location: 4,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x4,
+                offset: off(std::mem::offset_of!(RenderInstance, basis)),
+                shader_location: 6,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x2,
+                offset: off(std::mem::offset_of!(RenderInstance, anchor)),
+                shader_location: 8,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Uint32,
+                offset: off(std::mem::offset_of!(RenderInstance, flip_uv)),
+                shader_location: 14,
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x4,
+                offset: off(std::mem::offset_of!(RenderInstance, uv_xform)),
+                shader_location: 15,
+            },
+            // Repurposed: clip_meta (cutoff bits) at @location(5).
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Uint32,
+                offset: off(std::mem::offset_of!(RenderInstance, clip_meta)),
+                shader_location: 5,
+            },
+        ];
+        let mark_buffers = [
+            QuadVertex::buffer_layout(),
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<RenderInstance>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: &mark_attrs,
+            },
+        ];
+
+        // Stencil mark: write `ref` (Replace) wherever the fragment survives
+        // the alpha cutoff; color writes off. front == back (cull_mode None).
+        let mark_face = wgpu::StencilFaceState {
+            compare: wgpu::CompareFunction::Always,
+            fail_op: wgpu::StencilOperation::Keep,
+            depth_fail_op: wgpu::StencilOperation::Keep,
+            pass_op: wgpu::StencilOperation::Replace,
+        };
+        let mark_ds = wgpu::DepthStencilState {
+            format: STENCIL_FORMAT,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Always,
+            stencil: wgpu::StencilState {
+                front: mark_face,
+                back: mark_face,
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        };
+        // Stencil test: draw only where `stencil == ref`; never write stencil.
+        let test_face = wgpu::StencilFaceState {
+            compare: wgpu::CompareFunction::Equal,
+            fail_op: wgpu::StencilOperation::Keep,
+            depth_fail_op: wgpu::StencilOperation::Keep,
+            pass_op: wgpu::StencilOperation::Keep,
+        };
+        let test_ds = wgpu::DepthStencilState {
+            format: STENCIL_FORMAT,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Always,
+            stencil: wgpu::StencilState {
+                front: test_face,
+                back: test_face,
+                read_mask: 0xff,
+                write_mask: 0x00,
+            },
+            bias: wgpu::DepthBiasState::default(),
+        };
+
+        let pipeline = build_variant(
+            &gpu.device,
+            &layout,
+            &shader,
+            color_format,
+            Variant {
+                label: "ph2d-render sprite pipeline",
+                vs_entry: "vs_main",
+                fs_entry: "fs_main",
+                buffers: &normal_buffers,
+                color_write: wgpu::ColorWrites::ALL,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                 depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview_mask: None,
-                cache: None,
-            });
+            },
+        );
+        let mark_pipeline = build_variant(
+            &gpu.device,
+            &layout,
+            &shader,
+            color_format,
+            Variant {
+                label: "ph2d-render clip stencil-mark pipeline",
+                vs_entry: "vs_stencil_mark",
+                fs_entry: "fs_stencil_mark",
+                buffers: &mark_buffers,
+                // Mark writes ONLY the stencil — no color (the silhouette
+                // is a mould, not pixels). spec §6.2 step 1.
+                color_write: wgpu::ColorWrites::empty(),
+                blend: None,
+                depth_stencil: Some(mark_ds),
+            },
+        );
+        let test_pipeline = build_variant(
+            &gpu.device,
+            &layout,
+            &shader,
+            color_format,
+            Variant {
+                label: "ph2d-render clip stencil-test pipeline",
+                vs_entry: "vs_main",
+                fs_entry: "fs_main",
+                buffers: &normal_buffers,
+                color_write: wgpu::ColorWrites::ALL,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                depth_stencil: Some(test_ds),
+            },
+        );
 
         Self {
             pipeline,
+            mark_pipeline,
+            test_pipeline,
             frame_bgl,
             material_bgl,
         }
     }
+}
+
+/// Build one sprite render pipeline variant. The primitive state
+/// (triangle-strip, CCW, no cull) + multisample are identical across all
+/// three; only the entry points / vertex buffers / color-write / blend /
+/// depth-stencil differ (the [`Variant`] fields).
+fn build_variant(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+    color_format: wgpu::TextureFormat,
+    v: Variant,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(v.label),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some(v.vs_entry),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: v.buffers,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some(v.fs_entry),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: color_format,
+                // M14.5: premultiplied alpha throughout the pipeline
+                // (game_rt → tonemap → compositor). The fragment emits
+                // `color.rgb *= color.a` before return so sprites with α<1
+                // composite correctly. The mark variant masks color off, so
+                // its blend is None (irrelevant — nothing is written).
+                blend: v.blend,
+                write_mask: v.color_write,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleStrip,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: v.depth_stencil,
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview_mask: None,
+        cache: None,
+    })
 }
 
 #[cfg(test)]
@@ -154,11 +353,16 @@ mod tests {
         // closes the T1.7a "pipeline unverified by CI" gap). Building the
         // pipeline runs naga's WGSL front-end + validator on
         // `shaders/sprite.wgsl` AND binds `RenderInstance::buffer_layout()`'s
-        // 11 vertex attributes (@location 2..14) against the v4
+        // 12 vertex attributes (@location 2..15) against the v4
         // `InstanceInput`. A WGSL syntax/type error (e.g. the new
         // per-corner `mix`, the `& Nu` flag decode, `select`, the `flat`
         // interpolation) or a location/format mismatch raises an
         // uncaptured validation error → wgpu panics → this test fails.
+        //
+        // W3 §8: this now ALSO compiles + validates the stencil-mark /
+        // stencil-test pipelines (`vs_stencil_mark` / `fs_stencil_mark` +
+        // the `@location(16)` clip_meta vertex attribute + the two
+        // `DepthStencilState`s on the `Stencil8` format).
         //
         // Skips gracefully (passes) on adapter-less CI; runs on dev Macs +
         // Mac CI, which is where the Enio smoke also runs.
@@ -166,7 +370,7 @@ mod tests {
             return;
         };
         let _pipeline = SpritePipeline::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb);
-        // Reaching here means naga validated the v4 shader and the vertex
-        // layout bound without an uncaptured device error.
+        // Reaching here means naga validated the v4 shader + both stencil
+        // variants and every vertex layout bound without a device error.
     }
 }

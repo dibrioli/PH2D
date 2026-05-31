@@ -19,6 +19,7 @@
 
 pub mod atlas;
 pub mod camera;
+pub(crate) mod clip_pass;
 pub mod compositor;
 pub mod game_rt;
 pub mod image_filter;

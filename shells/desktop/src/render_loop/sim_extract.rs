@@ -18,9 +18,9 @@
 use crate::{Velocity, WORLD_HALF};
 use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
-    ChildOf, Entity, FilterMode, PresentWorld, RepeatMode, SimRef, SimWorld, Transform,
-    TransformPropagationState, UvTransform, VisibilityLayer, WorklistBuf, World,
-    propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
+    ChildOf, ClipChildren, ClipMode, Entity, FilterMode, PresentWorld, RepeatMode, SimRef,
+    SimWorld, Transform, TransformPropagationState, UvTransform, VisibilityLayer, WorklistBuf,
+    World, propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -46,6 +46,57 @@ fn cascade_tint_with_ancestors(world: &World, entity: Entity, sprite: &Sprite) -
         cur = world.get::<ChildOf>(parent).map(|c| c.parent());
     }
     tint
+}
+
+/// Resolve the clip-stencil grouping for one emitted instance
+/// (ADR-0070-amendment-7, spec §6.2). Returns `(clip_group, clip_meta)`
+/// packed for [`RenderInstance`]:
+///
+/// - The instance is a **clip-parent** (has [`ClipChildren`] with a
+///   non-`Disabled` mode) → it is the mask SOURCE of its own group. The
+///   group id is `rank(self) + 1` (unique, never the `0` sentinel) and
+///   the role encodes `ClipOnly` / `ClipAndDraw` + the quantized cutoff.
+/// - Else the instance is a descendant of a clip-parent → it is a MEMBER,
+///   tagged with the NEAREST (innermost) clip-ancestor's group id.
+/// - Else no clip → `(CLIP_GROUP_NONE, 0)` (normal-pass identity).
+///
+/// **Single-level (W3):** a clip-parent nested under another clip-parent
+/// owns its own independent group — the outer silhouette is NOT
+/// intersected with the inner. True nested intersection is a future wave
+/// (handoff §6); the regression gate marks the single-level contract.
+///
+/// `ranks` must already be filled by the sort pipeline. Subtree
+/// contiguity in `z_order` (DFS) is what lets the renderer batch a group
+/// into one stencil mark→test→draw triple (handoff §1.3).
+fn resolve_clip_grouping(sim: &World, entity: Entity, ranks: &SortScratch) -> (u32, u32) {
+    // This entity owns a clip? → it is the mask source for its group.
+    if let Some(cc) = sim.get::<ClipChildren>(entity)
+        && cc.mode != ClipMode::Disabled
+        && let Some(rank) = ranks.rank(entity)
+    {
+        let role = match cc.mode {
+            ClipMode::ClipOnly => RenderInstance::CLIP_ROLE_MASK_CLIP_ONLY,
+            ClipMode::ClipAndDraw => RenderInstance::CLIP_ROLE_MASK_CLIP_AND_DRAW,
+            // Filtered out by the `!= Disabled` guard above.
+            ClipMode::Disabled => RenderInstance::CLIP_ROLE_MEMBER,
+        };
+        let meta = RenderInstance::pack_clip_meta(role, cc.clamped().alpha_cutoff);
+        return (rank + 1, meta);
+    }
+    // Otherwise: descendant of a clip-parent? Walk up ChildOf, take the
+    // nearest clip-ancestor (innermost wins → single-level).
+    let mut cur = sim.get::<ChildOf>(entity).map(|c| c.parent());
+    while let Some(p) = cur {
+        if let Some(cc) = sim.get::<ClipChildren>(p)
+            && cc.mode != ClipMode::Disabled
+            && let Some(rank) = ranks.rank(p)
+        {
+            let meta = RenderInstance::pack_clip_meta(RenderInstance::CLIP_ROLE_MEMBER, 0.0);
+            return (rank + 1, meta);
+        }
+        cur = sim.get::<ChildOf>(p).map(|c| c.parent());
+    }
+    (RenderInstance::CLIP_GROUP_NONE, 0)
 }
 
 /// Select the sprite-sheet cell `frame` from a base UV rect
@@ -403,6 +454,12 @@ pub(super) fn run(
                         z_order,
                         sampling,
                         uv_xform,
+                        // Clip-stencil grouping needs the final z_order
+                        // rank (clip_group = clip_parent rank + 1), so it is
+                        // stamped in the post-walk pass below, like z_order
+                        // itself (ADR-0070-amendment-7). Placeholder here.
+                        clip_group: RenderInstance::CLIP_GROUP_NONE,
+                        clip_meta: 0,
                     });
                 }
             },
@@ -418,6 +475,11 @@ pub(super) fn run(
             if let Some(rank) = sort_scratch.rank(sim_ref.0) {
                 ri.z_order = rank;
             }
+            // ADR-0070-amendment-7: tag the clip-stencil group from the
+            // now-final ranks (clip_group = clip_parent rank + 1).
+            let (clip_group, clip_meta) = resolve_clip_grouping(sim_w, sim_ref.0, sort_scratch);
+            ri.clip_group = clip_group;
+            ri.clip_meta = clip_meta;
         }
     });
 }

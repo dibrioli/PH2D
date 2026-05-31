@@ -214,3 +214,87 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // factor, so rgb is dimmed correctly through this multiply.
     return vec4<f32>(rgb * alpha, alpha);
 }
+
+// ─── ClipChildren stencil-mark pass (W3 §8; ADR-0070/0074-amendment) ───
+//
+// The mark pass writes the clip-parent SILHOUETTE into the stencil buffer
+// (the pipeline does the `Replace ref` where this fragment survives). It
+// emits no color (the pipeline masks color writes off). The 16-attribute
+// device limit is full, so the mark pipeline uses a MINIMAL instance
+// layout (only the geometry + UV inputs it needs) and REPURPOSES the freed
+// @location(5) — normally `tint`, unused here — to carry `clip_meta` from
+// its real offset. Bits 8–15 hold the alpha cutoff quantized to u8, so a
+// fragment whose texel alpha is ≤ the cutoff is discarded (carving the
+// binary mask, spec §6.2/§6.4).
+
+struct MarkInstanceInput {
+    @location(2) world_pos: vec2<f32>,
+    @location(3) size:      vec2<f32>,
+    @location(4) atlas_uv:  vec4<f32>,
+    @location(6) basis:     vec4<f32>,
+    @location(8) anchor:    vec2<f32>,
+    @location(14) flip_uv:  u32,
+    @location(15) uv_xform: vec4<f32>,
+    // Repurposed location (see comment above): clip_meta, NOT tint.
+    @location(5) clip_meta: u32,
+};
+
+struct StencilMarkOutput {
+    @builtin(position) clip_pos: vec4<f32>,
+    @location(0) quv: vec2<f32>,
+    @location(1) @interpolate(flat) atlas_uv: vec4<f32>,
+    @location(2) @interpolate(flat) uv_xform: vec4<f32>,
+    @location(3) @interpolate(flat) repeat_mode: u32,
+    @location(4) @interpolate(flat) cutoff: f32,
+};
+
+@vertex
+fn vs_stencil_mark(v: VertexInput, i: MarkInstanceInput) -> StencilMarkOutput {
+    // Position EXACTLY like vs_main so the silhouette covers the same
+    // pixels the parent would draw (anchor + size + 2x2 basis).
+    let local = i.anchor + vec2<f32>(v.quad_pos.x * i.size.x, v.quad_pos.y * i.size.y);
+    let mapped = vec2<f32>(
+        local.x * i.basis.x + local.y * i.basis.z,
+        local.x * i.basis.y + local.y * i.basis.w,
+    );
+    let world = i.world_pos + mapped;
+
+    // Same logical flip as vs_main so the sampled silhouette matches.
+    let flip_x = (i.flip_uv & 1u) != 0u;
+    let flip_y = (i.flip_uv & 2u) != 0u;
+    var quv = v.quad_uv;
+    if (flip_x) { quv.x = 1.0 - quv.x; }
+    if (flip_y) { quv.y = 1.0 - quv.y; }
+
+    var out: StencilMarkOutput;
+    out.clip_pos = camera.view_proj * vec4<f32>(world, 0.0, 1.0);
+    out.quv = quv;
+    out.atlas_uv = i.atlas_uv;
+    out.uv_xform = i.uv_xform;
+    out.repeat_mode = (i.flip_uv >> 3u) & 3u;
+    // Dequantize the u8 cutoff stored in clip_meta bits 8–15.
+    out.cutoff = f32((i.clip_meta >> 8u) & 0xffu) / 255.0;
+    return out;
+}
+
+@fragment
+fn fs_stencil_mark(in: StencilMarkOutput) -> @location(0) vec4<f32> {
+    // Resolve the texture UV with the SAME tiling/scroll math as fs_main
+    // so a tiled / scrolled parent masks by its visible silhouette.
+    let tiled = wrap_uv(in.quv * in.uv_xform.xy, in.repeat_mode);
+    let scrolled = tiled + in.uv_xform.zw;
+    let local = select(scrolled, fract(scrolled), in.uv_xform.zw != vec2<f32>(0.0));
+    let uv = vec2<f32>(
+        mix(in.atlas_uv.x, in.atlas_uv.z, local.x),
+        mix(in.atlas_uv.y, in.atlas_uv.w, local.y),
+    );
+    // The parent's texel alpha is the silhouette. Below the cutoff = OUTSIDE
+    // the mask → discard so the pipeline does NOT write the stencil there.
+    let a = textureSample(atlas_tex, atlas_sampler, uv).a;
+    if (a <= in.cutoff) {
+        discard;
+    }
+    // Color is masked off by the pipeline; the stencil `Replace` is what
+    // matters. Return a defined value to satisfy the fragment signature.
+    return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+}

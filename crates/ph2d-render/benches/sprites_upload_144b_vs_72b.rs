@@ -94,6 +94,8 @@ fn build_v4(n: usize) -> Vec<RenderInstance> {
                 z_order: i as u32,
                 sampling: 0,
                 uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+                clip_group: RenderInstance::CLIP_GROUP_NONE,
+                clip_meta: 0,
             }
         })
         .collect()

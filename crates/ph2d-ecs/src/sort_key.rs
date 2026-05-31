@@ -355,37 +355,58 @@ fn effective_z(world: &World, entity: Entity, cache: &mut EntityHashMap<i64>) ->
     eff
 }
 
-/// Quantized YSort key for `entity` (spec §5.2 passo 3). `0` unless a
-/// strict ancestor (up to a [`TopLevel`] boundary) has
+/// Quantized YSort key for `entity` (spec §5.2 passo 3 +
+/// ADR-0073-amendment-2). `0` unless the entity ITSELF, or a strict
+/// ancestor (up to a [`TopLevel`] boundary), has
 /// `YSort { enabled: true, .. }`. Higher projected position → larger
-/// key → drawn in front.
+/// key → drawn in front (so with the default axis `(0,-1)` on a Y-up
+/// world, a sprite lower on screen draws in front).
 fn ysort_key(
     world: &World,
     entity: Entity,
     inputs: &[SortInput],
     in_set: &EntityHashMap<u32>,
 ) -> i64 {
+    // Project `entity`'s own world position onto `ys.axis` and quantize.
+    // Center / Pivot both project the world translation in W3 (precise
+    // pivot offset is a follow-up); Custom only changes the axis. The
+    // position comes from the extract's GlobalTransform (in `inputs`); an
+    // entity outside the sprite set has no projected point → neutral 0.
+    let project = |ys: &YSort| -> i64 {
+        let point = match ys.sort_point {
+            SortPoint::Center | SortPoint::Pivot | SortPoint::Custom => in_set
+                .get(&entity)
+                .map(|&slot| inputs[slot as usize].world_pos)
+                .unwrap_or(Vec2::ZERO),
+        };
+        let proj = point.x * ys.axis.x + point.y * ys.axis.y;
+        libm::roundf(proj * YSORT_SCALE) as i64
+    };
+
+    // Self-inclusive (ADR-0073-amendment-2): the entity's OWN
+    // `YSort { enabled: true, .. }` makes it participate directly — even
+    // as a flat root with no parent, which is the editor's common case
+    // (sprites import as roots, and the Inspector §7 toggle writes the
+    // component onto the selected entity itself). Checked BEFORE the
+    // TopLevel/ancestor walk: self-intent is explicit and `TopLevel`
+    // only governs *inherited* cascade, not an entity's own opt-in.
+    if let Some(ys) = world.get::<YSort>(entity)
+        && ys.enabled
+    {
+        return project(ys);
+    }
     if world.get::<TopLevel>(entity).is_some() {
         return 0;
     }
+    // Cascade: a strict ancestor (up to a TopLevel boundary) with
+    // `YSort { enabled: true, .. }` sorts its descendants (Godot
+    // `y_sort_enabled` semantics, spec §5.2 passo 3).
     let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
     while let Some(p) = cur {
         if let Some(ys) = world.get::<YSort>(p)
             && ys.enabled
         {
-            // Center / Pivot both project the world translation in W3
-            // (precise pivot offset is a follow-up); Custom only changes
-            // the axis. The position comes from the extract's
-            // GlobalTransform (in `inputs`); an ancestor outside the
-            // sprite set has no projected point → neutral 0.
-            let point = match ys.sort_point {
-                SortPoint::Center | SortPoint::Pivot | SortPoint::Custom => in_set
-                    .get(&entity)
-                    .map(|&slot| inputs[slot as usize].world_pos)
-                    .unwrap_or(Vec2::ZERO),
-            };
-            let proj = point.x * ys.axis.x + point.y * ys.axis.y;
-            return libm::roundf(proj * YSORT_SCALE) as i64;
+            return project(ys);
         }
         if world.get::<TopLevel>(p).is_some() {
             break;

@@ -55,7 +55,10 @@ fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> Ordering
         world.get::<OrderInLayer>(entity).map_or(0, |o| o.0),
         ys.is_some_and(|y| y.enabled),
         ys.map_or(0, |y| y.sort_point.tag()),
-        ys.map_or([0.0, 1.0], |y| [y.axis.x, y.axis.y]),
+        // No component yet → show the canonical default axis (0,-1),
+        // matching `YSort::default()` (lower-on-screen = front). A stale
+        // [0,1] here would mislead the §7 Custom Axis field.
+        ys.map_or([0.0, -1.0], |y| [y.axis.x, y.axis.y]),
         group.is_some(),
         group.is_some_and(|g| g.sort_at_root),
         world.get::<TopLevel>(entity).is_some(),

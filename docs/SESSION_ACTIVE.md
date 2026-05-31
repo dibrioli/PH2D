@@ -18,14 +18,32 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 ## COORDENADOR (único) — ATIVO 2026-05-31 (novo Coord)
 
 **Estado atual:** fundação 100% finalizada (todos os módulos = drop-crates isolados).
-**1 slot ativo:** `impl-ktx2` (W1.T8.1 patcher `PH2D_PREMUL`, background agent). Enio: rodar
-KTX2 solo, sem 2º slot (folga de RAM, foco). 3º slot segurado.
-**⚠️ CORREÇÃO vs handoff de transição:** o slot `impl-avif` **NÃO tem trabalho pendente** —
-AVIF Path C (decode+encode+HDR via libavif-sys dav1d+rav1e) **já fechou e está em origin**
-(`6bd4620` feat + `b1c44d7` audit-16). O handoff `HANDOFF_coordinator_ktx2_imageio_parallel.md`
-copiou o impl-handoff antigo (2026-05-28) sem reconferir; AVIF está DONE.
-**CI do KTX2** (`spike-texture-cook.yml`): bundle do Coord, Enio delegou ("faça o que achar
-melhor") — montar quando o KTX2 chegar no gate de cook, sem ratificação prévia.
+
+**Modo de entrega (Enio 2026-05-31):** **SEM push/CI até o fim de TODA a implementação** —
+commits locais acumulados, ship único no fechamento. A run CI 26722309764 (W1.T8.1) está
+rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
+
+**Slots ativos (2):**
+- **KTX2 — levado pelo próprio Coord** (eu). W1.T8.1 ✅ (CI 26722309764 **verde**). W2 Batch A ✅:
+  W2.T1 `wgpu_format_from_ktx2_format` (`d72e751`) + W2.T1.5 `detect_supported_compressions`
+  (`c23e01e`). **Próximo = W2.T2** (SpriteSource::CookedTexture — BREAKING, VERSION 3→4 + mirror
+  chain em editor-core = toca foundational). Bundle CI W1 (T10/T11.5/T12) fica pro fim (é CI).
+- **Painter — `impl-painter` (background agent) — PAUSADO** (3 deliverables, bloqueado nas minhas
+  dívidas foundational). Fechou: W2.T2.3 surface ✅ (`b5085d9`); **hue-bug fix** ✅ (`640f1d4`,
+  `c.h.to_degrees()` em tool.rs:1638 + 2 regressões — WAL gravava hue errado, render ao vivo já
+  estava certo); **W2.T2.2 undo/redo** ✅ (mesmo commit, `undo.rs` UndoController per-stroke texture
+  ring max_depth=300 + redo swap-model; `Redo` era no-op + não re-compunha layer — ambos consertados).
+  API exposta: `undo_last_stroke/redo_last_stroke/can_undo/can_redo`. Contrato 16/24, gates verdes.
+
+**Dívidas foundational do Coord (meu wire, caminho C) — DESBLOQUEIAM o slot Painter:**
+- T2.3 picker: wirar `blender_color_picker` (editor-core) → `PainterUiEdit::SetColorSrgb` + color
+  thumb na Painter top bar + dispatch. API já exposta pelo slot.
+- T2.2 undo/redo: dispatch 2-finger→`PainterUiEdit::Undo` / 3-finger→`Redo` (já roteiam pros métodos).
+- (Bloqueadas até esses wires: T2.4 modifier/eyedropper, T2.6 a11y, T2.7 smoke+audit W2.)
+
+**⚠️ AVIF está DONE** (não há slot): Path C decode+encode+HDR já em origin (`6bd4620`+`b1c44d7`);
+o handoff de transição estava stale nessa metade.
+**CI do KTX2** (`spike-texture-cook.yml`): bundle do Coord, Enio delegou — montar no fim.
 
 ---
 

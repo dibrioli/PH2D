@@ -99,6 +99,32 @@ Nenhum BLOQUEIA ship. Todos documentados; viram trabalho de wave futura:
 
 ---
 
+## §3.1 — Auditoria multiagêntica W3 Phase 6 (2026-05-31)
+
+6 lentes adversariais (stencil/GPU · ABI/determinism · UI dispatch ·
+cross-feature · test-coverage · resource/panic) + verificação adversarial
+de cada finding. **Resultado: 1 HIGH + 1 MEDIUM + LOWs, todos sanados (commit
+`05b16e9`):**
+
+- **HIGH — contiguidade de clip-group:** o clip pass batcha por scan de runs
+  consecutivos, mas o sort era só `(z_order,...)` → um membro com
+  ZIndexOverride/YSort divergente, ou um sprite alheio interpolando por rank,
+  quebrava o span → membros recortados **SUMIAM** (data loss, alcançável pela
+  UI §7 Ordering já shipada). Fix: sort primário por clip-anchor
+  (`clip_group-1` = rank do clip-parent) → grupo sempre contíguo. + teste e2e.
+- **MEDIUM — stencil dimensionado pela winit size crua** podia divergir do
+  game_rt num frame 0-dim transitório → panic de attachment-extent. Fix:
+  dimensionar offscreen RTs pela `surface.size()` clampada.
+- **LOWs:** AlphaCutoff RMW não fabrica mais MaskInteraction None em sibling
+  sem máscara; docs `@location(16)`→`(5)`; prose de contagem 15→16; teste de
+  mask-cutoff carving; semântica hidden/culled clip-parent + Mask2D source
+  documentada (membros des-recortam / máscara some — itens §3.4/§3.5 abaixo).
+
+Findings semânticos documentados (não-bugs, decisões de wave futura):
+hidden/culled clip-parent un-clip dos filhos (Visibility é per-entity, sem
+propagação); hidden Mask2D source = sem máscara; BulkSelect mixed flags
+computadas mas não pintadas como indeterminate (consistente com §7/§9 — W7).
+
 ## §4 — Roadmap W4–W8 (waves futuras, NÃO feitas)
 
 Cada wave = drop-in seguindo o padrão do módulo: spec → ADR(s) → render-first

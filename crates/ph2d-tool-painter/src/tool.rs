@@ -2345,7 +2345,10 @@ mod tests {
         assert!(!t.ui_snapshot().redo_enabled);
         t.undo_last_stroke();
         assert!(!t.ui_snapshot().undo_enabled);
-        assert!(t.ui_snapshot().redo_enabled, "redo_enabled no longer hardcoded false");
+        assert!(
+            t.ui_snapshot().redo_enabled,
+            "redo_enabled no longer hardcoded false"
+        );
     }
 
     #[test]
@@ -2487,7 +2490,9 @@ mod tests {
     fn set_color_srgb_updates_active_and_snapshot_reflects() {
         let mut t = PainterTool::default();
         // Orange sRGB → SetColorSrgb → active_color updated.
-        t.apply_ui_edit(crate::params::PainterUiEdit::SetColorSrgb([255, 136, 0, 255]));
+        t.apply_ui_edit(crate::params::PainterUiEdit::SetColorSrgb([
+            255, 136, 0, 255,
+        ]));
         let snap = t.ui_snapshot();
         // Snapshot's sRGB accessor round-trips back to the same bytes
         // (±1 LSB — the 8-bit quantization tolerance).
@@ -2557,7 +2562,11 @@ mod tests {
             "mid-stroke color edit must refresh the cached stroke color"
         );
         // Blue has negative b* (blue↔yellow) in OKLab.
-        assert!(after[2] < 0.0, "blue must have negative OKLab b*; got {}", after[2]);
+        assert!(
+            after[2] < 0.0,
+            "blue must have negative OKLab b*; got {}",
+            after[2]
+        );
     }
 
     #[test]

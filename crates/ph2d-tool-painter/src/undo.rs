@@ -116,9 +116,13 @@ impl UndoController {
     ///
     /// `pre_stroke_pixels` is cloned into a [`LayerSnapshot`]; the caller keeps
     /// ownership of its live buffer.
-    pub fn record_pre_stroke(&mut self, seq: u64, pre_stroke_pixels: &[u8]) {
-        let snapshot =
-            LayerSnapshot::new_in_memory(self.layer_id, seq, pre_stroke_pixels.to_vec());
+    pub fn record_pre_stroke(
+        &mut self,
+        seq: u64,
+        // COLOR-RAW-OK: opaque layer RGBA8 canvas snapshot blob, cloned + re-blit wholesale.
+        pre_stroke_pixels: &[u8],
+    ) {
+        let snapshot = LayerSnapshot::new_in_memory(self.layer_id, seq, pre_stroke_pixels.to_vec());
         self.undo.push(UndoEntry { seq, snapshot });
         // Any new edit invalidates the redo branch.
         self.redo.clear();
@@ -134,14 +138,19 @@ impl UndoController {
     /// The caller must pair this with `stroke_history.undo()` to keep the
     /// semantic canon in sync (the controller owns *pixels*, `StrokeHistory`
     /// owns the *record*).
-    pub fn undo(&mut self, current_pixels: &[u8]) -> Option<Vec<u8>> {
+    pub fn undo(
+        &mut self,
+        // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
+        current_pixels: &[u8],
+    ) -> Option<Vec<u8>> {
         let mut entry = self.undo.pop()?;
         // Swap: hand back the stored pre-image, and stash the current
         // (post-stroke) pixels so redo can restore them. A single snapshot per
         // entry suffices because the entry alternates direction as it moves
         // between stacks.
         let restore = entry_pixels(&entry)?;
-        entry.snapshot = LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
+        entry.snapshot =
+            LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
         self.redo.push(entry);
         Some(restore)
     }
@@ -150,10 +159,15 @@ impl UndoController {
     /// (the *pre*-stroke state after the matching undo); the controller returns
     /// the stored *post*-image and parks `current_pixels` back on the undo
     /// stack. Returns `None` when the redo stack is empty.
-    pub fn redo(&mut self, current_pixels: &[u8]) -> Option<Vec<u8>> {
+    pub fn redo(
+        &mut self,
+        // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
+        current_pixels: &[u8],
+    ) -> Option<Vec<u8>> {
         let mut entry = self.redo.pop()?;
         let restore = entry_pixels(&entry)?;
-        entry.snapshot = LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
+        entry.snapshot =
+            LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
         self.undo.push(entry);
         Some(restore)
     }
@@ -329,7 +343,11 @@ mod tests {
         for seq in 0..10u64 {
             s.paint(seq, solid(4, (seq + 1) as u8));
         }
-        assert!(s.c.undo_depth() <= 4, "cap enforced; got {}", s.c.undo_depth());
+        assert!(
+            s.c.undo_depth() <= 4,
+            "cap enforced; got {}",
+            s.c.undo_depth()
+        );
         // The most recent stroke (9→10) must still undo exactly.
         assert!(s.undo());
         assert_eq!(s.live, solid(4, 9));

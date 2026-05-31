@@ -289,8 +289,9 @@ pub(super) fn dispatch(
         use std::sync::atomic::{AtomicU32, Ordering};
         static LAST_PUSHED_SRGB: AtomicU32 = AtomicU32::new(u32::MAX);
         if hero.store.picker_target() == Some(ph2d_editor::ids::PAINTER_COLOR_THUMB) {
-            if let Some((value, _, _, _)) =
-                hero.store.blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            if let Some((value, _, _, _)) = hero
+                .store
+                .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
             {
                 let packed = u32::from_le_bytes(value.rgba);
                 if LAST_PUSHED_SRGB.swap(packed, Ordering::Relaxed) != packed {

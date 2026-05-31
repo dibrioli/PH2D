@@ -241,7 +241,10 @@ mod tests {
 
     #[test]
     fn parse_bad_length_is_error() {
-        assert_eq!(parse_hex("#12345").unwrap_err(), HexParseError::BadLength(5));
+        assert_eq!(
+            parse_hex("#12345").unwrap_err(),
+            HexParseError::BadLength(5)
+        );
         assert_eq!(parse_hex("#1").unwrap_err(), HexParseError::BadLength(1));
         assert_eq!(
             parse_hex("#1234567").unwrap_err(),
@@ -252,7 +255,10 @@ mod tests {
     #[test]
     fn parse_bad_digit_is_error() {
         // 'g' is not a hex digit; error names the offending char.
-        assert_eq!(parse_hex("#gg8800").unwrap_err(), HexParseError::BadDigit('g'));
+        assert_eq!(
+            parse_hex("#gg8800").unwrap_err(),
+            HexParseError::BadDigit('g')
+        );
     }
 
     #[test]
@@ -310,7 +316,11 @@ mod tests {
         // Sanity: |h| ≤ 4π so tool::oklch_to_oklab's production assert holds.
         assert!(oklch.h.abs() <= 4.0 * core::f32::consts::PI);
         // Orange has real chroma.
-        assert!(oklch.c > 0.05, "orange should have visible chroma; got {}", oklch.c);
+        assert!(
+            oklch.c > 0.05,
+            "orange should have visible chroma; got {}",
+            oklch.c
+        );
     }
 
     #[test]

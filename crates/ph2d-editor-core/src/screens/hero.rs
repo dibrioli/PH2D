@@ -506,6 +506,36 @@ pub enum SamplingFieldEdit {
     UvOffsetY(f32),
 }
 
+/// §10 Material & Blend-section snapshot. Mirrors the optional ECS
+/// `BlendMode` component (absent = `Mix`); editor-core stays loose-
+/// coupled from `ph2d-ecs` (carries the resolved `blend_tag` only).
+/// Material/InstanceShaderParams are a future runtime — the section
+/// shows a placeholder for them.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct InspectorBlendInfo {
+    pub entity_bits: u64,
+    /// `BlendMode::tag()` (`0 Mix · 1 Add · 2 Subtract · 3 Multiply ·
+    /// 4 Screen · 5 PremultAlpha`). `0` = component absent (default).
+    pub blend_tag: u8,
+    pub selected_count: usize,
+    pub mixed: InspectorBlendMixed,
+}
+
+/// BulkSelect divergence flags for the §10 blend fields.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub struct InspectorBlendMixed {
+    pub blend: bool,
+}
+
+/// A single editable §10 blend field, dispatched as
+/// [`EditorAction::InspectorBlendEdit`]. Maps to the optional
+/// `BlendMode` component (tag `0` = `Mix` = detach the component).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BlendFieldEdit {
+    /// `BlendMode` tag (`0..5`); `0` (Mix) detaches the component.
+    Blend(u8),
+}
+
 /// W3 §8 Visibility-section snapshot (the collapsible section body, NOT
 /// the always-on "Visible" toggle — that stays [`InspectorVisibilityInfo`]).
 /// Mirrors the optional ECS components `VisibilityLayer` / `ClipChildren`

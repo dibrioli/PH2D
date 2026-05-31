@@ -17,7 +17,8 @@ pub mod hero;
 pub mod layout;
 
 pub use hero::{
-    BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorOrderingInfo,
+    BlendFieldEdit, BottomHudStats, HeroScreen, HeroSelection, InspectorBlendInfo,
+    InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
     InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo, OrderingFieldEdit,

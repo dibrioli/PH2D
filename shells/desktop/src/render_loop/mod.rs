@@ -430,6 +430,7 @@ impl crate::App {
             // to the selection like sprite edits.
             let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
+            let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
@@ -642,6 +643,15 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 sampling_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    EditorAction::InspectorBlendEdit { entity_bits, edit } => {
+                        if inspector_selection.is_empty() {
+                            blend_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                blend_edits.push((t, edit));
                             }
                         }
                     }
@@ -1037,6 +1047,7 @@ impl crate::App {
                 &sprite_edits,
                 &ordering_edits,
                 &sampling_edits,
+                &blend_edits,
                 &visibility_section_edits,
                 hero,
                 sim,

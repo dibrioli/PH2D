@@ -8,7 +8,8 @@
 //! publishes scroll bounds back to the store.
 
 use crate::state::{
-    self, current_display_unit, current_inspector_name_is_some, current_inspector_ordering,
+    self, current_display_unit, current_inspector_blend, current_inspector_name_is_some,
+    current_inspector_ordering,
     current_inspector_sampling, current_inspector_sprite, current_inspector_transform,
     current_inspector_visibility, current_inspector_visibility_section, current_pixels_per_meter,
     last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
@@ -194,17 +195,19 @@ fn paint_inspector(
     let visibility_info = current_inspector_visibility();
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
+    let blend_info = current_inspector_blend();
     let name_present = current_inspector_name_is_some();
     let any_section = transform_info.is_some()
         || sprite_info.is_some()
         || visibility_info.is_some()
         || ordering_info.is_some()
         || sampling_info.is_some()
+        || blend_info.is_some()
         || name_present;
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 8] = Default::default();
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 9] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -398,6 +401,23 @@ fn paint_inspector(
                 inner_w,
                 y,
                 samp,
+            )
+        });
+    }
+    // §10 Material & Blend — Transform-bearing entity, sibling of §9.
+    if let Some(blend) = blend_info.as_ref() {
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = live_section!(ids::INSP_LIVE_BLEND_SECTION, 8, SECTION_HEAD_H, {
+            sections::paint_material_blend_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                blend,
             )
         });
     }

@@ -9,7 +9,9 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::screens::hero::{OrderingFieldEdit, SamplingFieldEdit, VisibilityFieldEdit};
+use ph2d_editor_core::screens::hero::{
+    BlendFieldEdit, OrderingFieldEdit, SamplingFieldEdit, VisibilityFieldEdit,
+};
 use ph2d_editor_core::widget::CheckboxValue;
 
 /// Handle a §7 ordering widget event. Returns `true` if consumed.
@@ -148,6 +150,18 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
             });
             return true;
         }
+    }
+    // §10 Material & Blend — Blend Mode segmented selected (tag 0 = Mix
+    // detaches the optional component).
+    if let WidgetEvent::Click(id) = ev
+        && let Some(info) = state::current_inspector_blend()
+        && let Some(i) = ids::INSP_SAMPLE_BLEND.iter().position(|&o| o == id)
+    {
+        host.bus_mut().push(EditorAction::InspectorBlendEdit {
+            entity_bits: info.entity_bits,
+            edit: BlendFieldEdit::Blend(i as u8),
+        });
+        return true;
     }
     // §9 Sampling — UV Scale / Offset NumberInput commits.
     if let WidgetEvent::ValueChanged(id) = ev

@@ -19,8 +19,9 @@ use ph2d_ecs::{
     ZAsRelative, ZIndexOverride,
 };
 use ph2d_editor::{
-    InspectorOrderingInfo, InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed,
-    OrderingFieldEdit, SamplingFieldEdit,
+    BlendFieldEdit, InspectorBlendInfo, InspectorBlendMixed, InspectorOrderingInfo,
+    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, OrderingFieldEdit,
+    SamplingFieldEdit,
 };
 use serde::Serialize;
 
@@ -387,6 +388,61 @@ pub(super) fn apply_sampling_edit(
             u.offset[1] = v;
             set_uvt(&u);
         }
+    }
+}
+
+/// §10 Material & Blend snapshot: the optional `BlendMode` tag (absent =
+/// `Mix` = tag 0). Gated on a `Transform`-bearing (Inspector-worthy)
+/// entity like the other section builders.
+pub(super) fn build_blend_info(
+    world: &World,
+    entity_bits: u64,
+    selected: &[u64],
+    selected_count: usize,
+) -> Option<InspectorBlendInfo> {
+    let entity = Entity::from_bits(entity_bits);
+    world.get::<ph2d_ecs::Transform>(entity)?;
+    let blend_tag = world
+        .get::<ph2d_ecs::BlendMode>(entity)
+        .map_or(0, |b| b.tag());
+    let mut mixed = InspectorBlendMixed::default();
+    if selected.len() > 1 {
+        for &bits in selected {
+            let bt = world
+                .get::<ph2d_ecs::BlendMode>(Entity::from_bits(bits))
+                .map_or(0, |b| b.tag());
+            mixed.blend |= bt != blend_tag;
+        }
+    }
+    Some(InspectorBlendInfo {
+        entity_bits,
+        blend_tag,
+        selected_count,
+        mixed,
+    })
+}
+
+/// Apply one [`BlendFieldEdit`] (§10): a concrete blend tag attaches the
+/// optional `BlendMode` component; tag `0` (`Mix`, the default) detaches
+/// it (zero-regression — absent renders as Mix).
+pub(super) fn apply_blend_edit(
+    _sim: &SimWorld,
+    entity_bits: u64,
+    edit: BlendFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) {
+    match edit {
+        BlendFieldEdit::Blend(0) => {
+            queue_remove(queue, registry, entity_bits, "ph2d::ecs::BlendMode")
+        }
+        BlendFieldEdit::Blend(t) => queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::ecs::BlendMode",
+            &ph2d_ecs::BlendMode::from_tag(t),
+        ),
     }
 }
 

@@ -345,6 +345,14 @@ pub enum EditorAction {
         edit: crate::screens::hero::SamplingFieldEdit,
     },
 
+    /// Inspector → shell channel for a §10 Material & Blend field (Blend
+    /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]
+    /// (§3.10); tag `0` (Mix) detaches the `BlendMode` component.
+    InspectorBlendEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::BlendFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

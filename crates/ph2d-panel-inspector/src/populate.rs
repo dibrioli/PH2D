@@ -27,6 +27,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_ordering(store);
     populate_sampling(store);
     populate_visibility_section(store);
+    populate_blend(store);
 }
 
 /// W3 §8 Visibility section: register the segmented + bitmask + toggle ids
@@ -74,6 +75,12 @@ fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
             },
         );
     }
+}
+
+/// §10 Material & Blend: register the 6 blend-mode segmented ids as
+/// `Button`s (is_focusable → clicks route). Selection is snapshot-driven.
+fn populate_blend(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_SAMPLE_BLEND);
 }
 
 fn populate_sampling(store: &mut WidgetStore) {

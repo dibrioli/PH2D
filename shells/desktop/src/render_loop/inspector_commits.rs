@@ -17,7 +17,7 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
-    HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
     OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, Toast,
     ToastQueue, VisibilityFieldEdit,
 };
@@ -99,6 +99,7 @@ pub(super) fn dispatch(
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
+    blend_edits: &[(u64, BlendFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -297,6 +298,20 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // §10 Material & Blend edits (BlendMode optional component).
+    for &(entity_bits, edit) in blend_edits {
+        super::inspector_ordering::apply_blend_edit(
+            sim,
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Blend commit failed: {e}")));
             title_dirty = true;
         }
     }

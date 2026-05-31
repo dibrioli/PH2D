@@ -12,8 +12,9 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorNameInfo, InspectorOrderingInfo, InspectorSamplingInfo, InspectorSpriteInfo,
-    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorBlendInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorSamplingInfo,
+    InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorVisibilitySectionInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -71,6 +72,10 @@ thread_local! {
     /// W3 §9: live sampling snapshot for the Sampling section.
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
+
+    /// §10: live Material & Blend snapshot for the Blend section.
+    pub(crate) static CURRENT_INSPECTOR_BLEND:
+        std::cell::Cell<Option<InspectorBlendInfo>> = const { std::cell::Cell::new(None) };
 
     /// W3 §8: live visibility-section snapshot (layer mask / clip / mask /
     /// on-screen). Distinct from `CURRENT_INSPECTOR_VISIBILITY` (the Visible
@@ -145,6 +150,14 @@ pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+pub fn set_current_inspector_blend(info: Option<InspectorBlendInfo>) {
+    CURRENT_INSPECTOR_BLEND.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_blend() -> Option<InspectorBlendInfo> {
+    CURRENT_INSPECTOR_BLEND.with(|c| c.get())
 }
 
 pub fn set_current_inspector_visibility_section(info: Option<InspectorVisibilitySectionInfo>) {

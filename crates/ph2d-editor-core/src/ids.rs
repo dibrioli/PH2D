@@ -487,6 +487,8 @@ pub const INSP_LIVE_SHEET_SECTION: NodeId = hash_node_id("insp_live_sheet_sectio
 pub const INSP_LIVE_ORDERING_SECTION: NodeId = hash_node_id("insp_live_ordering_section");
 /// W3 Sprite Inspector v2 §9 — Sampling live section header.
 pub const INSP_LIVE_SAMPLING_SECTION: NodeId = hash_node_id("insp_live_sampling_section");
+/// Sprite Inspector v2 §10 — Material & Blend live section header.
+pub const INSP_LIVE_BLEND_SECTION: NodeId = hash_node_id("insp_live_blend_section");
 /// Color-circle hit NodeIds — one per Inspector live section, parallel
 /// to [`LIVE_SECTION_IDS`]. Clicking the circle opens the canonical
 /// BlenderPicker pointing at this id; the picker writes the chosen
@@ -563,6 +565,20 @@ pub const INSP_SAMPLE_UV_SCALE_X: NodeId = hash_node_id("insp_sample_uv_scale_x"
 pub const INSP_SAMPLE_UV_SCALE_Y: NodeId = hash_node_id("insp_sample_uv_scale_y");
 pub const INSP_SAMPLE_UV_OFFSET_X: NodeId = hash_node_id("insp_sample_uv_offset_x");
 pub const INSP_SAMPLE_UV_OFFSET_Y: NodeId = hash_node_id("insp_sample_uv_offset_y");
+
+/// §10 Material & Blend — section accent color dot.
+pub const INSP_LIVE_BLEND_COLOR: NodeId = hash_node_id("insp_live_blend_color");
+/// §10 Blend Mode segmented items, indexed by `BlendMode::tag()` (0..5):
+/// Mix / Add / Subtract / Multiply / Screen / Premult. Tag 0 (Mix) =
+/// detach the optional `BlendMode` component (default).
+pub const INSP_SAMPLE_BLEND: [NodeId; 6] = [
+    hash_node_id("insp_sample_blend_mix"),
+    hash_node_id("insp_sample_blend_add"),
+    hash_node_id("insp_sample_blend_subtract"),
+    hash_node_id("insp_sample_blend_multiply"),
+    hash_node_id("insp_sample_blend_screen"),
+    hash_node_id("insp_sample_blend_premult"),
+];
 
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).
@@ -1350,9 +1366,9 @@ pub const SECTION_IDS: [NodeId; 11] = [
 ];
 
 /// Live Inspector section headers (Name / Visibility / Transform /
-/// Render / Color & Tint / Sprite Sheet). Right-click opens the
-/// SectionOutline menu.
-pub const LIVE_SECTION_IDS: [NodeId; 8] = [
+/// Render / Color & Tint / Sprite Sheet / Ordering / Sampling /
+/// Material & Blend). Right-click opens the SectionOutline menu.
+pub const LIVE_SECTION_IDS: [NodeId; 9] = [
     INSP_LIVE_NAME_SECTION,
     INSP_LIVE_VISIBILITY_SECTION,
     INSP_LIVE_TRANSFORM_SECTION,
@@ -1361,6 +1377,7 @@ pub const LIVE_SECTION_IDS: [NodeId; 8] = [
     INSP_LIVE_SHEET_SECTION,
     INSP_LIVE_ORDERING_SECTION,
     INSP_LIVE_SAMPLING_SECTION,
+    INSP_LIVE_BLEND_SECTION,
 ];
 
 /// Grid-snap floating panel root id.

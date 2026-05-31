@@ -118,7 +118,8 @@ pub use project::{
     MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
 };
 pub use screens::{
-    BottomHudStats, HeroScreen, HeroSelection, InspectorNameInfo, InspectorOrderingInfo,
+    BlendFieldEdit, BottomHudStats, HeroScreen, HeroSelection, InspectorBlendInfo,
+    InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
     InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo, OrderingFieldEdit,

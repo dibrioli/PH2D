@@ -25,6 +25,7 @@ pub mod color;
 pub mod icon;
 pub mod params;
 pub mod tool;
+pub mod undo;
 
 pub use color::{
     HexParseError, format_hex, painter_oklch_to_hex, painter_oklch_to_srgb8, parse_hex,
@@ -35,6 +36,7 @@ pub use params::{
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
 pub use tool::PainterTool;
+pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

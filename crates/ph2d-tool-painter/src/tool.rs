@@ -352,6 +352,25 @@ pub struct PainterTool {
     /// bridge W11 emitir toast "Painter durability degraded — recent
     /// strokes in-memory only" via [`Self::last_wal_error`].
     last_wal_error: Option<JournalError>,
+    // === W2.T2.2 fields — snapshot-based undo/redo (ADR-0046 §2.6) ===
+    /// Snapshot-based undo/redo over the layer texture. Owns the *pixels* the
+    /// user steps back/forward through; `stroke_history` owns the parallel
+    /// *semantic* records. Driven at stroke boundaries (vide [`crate::undo`]).
+    undo: crate::undo::UndoController,
+    /// Layer texture captured at `begin_stroke` (the pre-stroke pre-image).
+    /// Handed to [`crate::undo::UndoController::record_pre_stroke`] at commit
+    /// (non-empty `end_stroke`); discarded on the empty-stroke recycle path so
+    /// a no-paint gesture never pollutes the undo stack.
+    pending_pre_stroke: Option<Vec<u8>>,
+    /// Redo branch of *semantic* records. `stroke_history.undo()` returns the
+    /// popped [`StrokeRecord`]; `stroke_history.redo(record)` needs it back, so
+    /// undo parks it here and redo replays it. Kept parallel (same LIFO order)
+    /// to the texture redo stack inside [`crate::undo::UndoController`], and
+    /// cleared at the same boundary: a NEW committed stroke clears BOTH (the
+    /// controller's redo stack in `record_pre_stroke`, this Vec in
+    /// `end_stroke`) so a later redo can never resurrect a record from a
+    /// discarded branch. (See `new_stroke_after_undo_invalidates_redo`.)
+    undo_redo_records: Vec<StrokeRecord>,
 }
 
 impl Default for PainterTool {
@@ -390,6 +409,9 @@ impl Default for PainterTool {
             layer_target: LayerId(0),
             cached_brush_hash: None,
             last_wal_error: None,
+            undo: crate::undo::UndoController::default(),
+            pending_pre_stroke: None,
+            undo_redo_records: Vec::new(),
         }
     }
 }
@@ -556,6 +578,16 @@ impl PainterTool {
         }
         self.scheduler.begin_stroke(seed);
         self.stroke_active = true;
+        // **W2.T2.2 undo capture:** snapshot the layer texture BEFORE any
+        // stamp of this stroke lands (painting happens later in
+        // `queue_pointer` via `apply_stamps`). Held in `pending_pre_stroke`
+        // and committed to the undo stack only if the stroke is non-empty
+        // (`end_stroke`); the empty-stroke recycle path discards it so a
+        // no-paint gesture never creates a phantom undo slot (mirrors the V-1
+        // empty-stroke gate for `stroke_history`). Cloning the texture per
+        // stroke-begin is the inherent cost of snapshot-based undo (CPU-MVP
+        // W2; W11 `T-replay` replaces it with delta/replay).
+        self.pending_pre_stroke = Some(self.canvas_rgba.as_ref().clone());
         // R4-LG-4: cache OKLab color at stroke boundary. UI updates to
         // `params.active_color` between strokes — recomputing the two
         // transcendentals per pointer event is pure waste otherwise.
@@ -792,6 +824,9 @@ impl PainterTool {
                 let _ = journal.cancel_stroke();
             }
             self.current_samples.clear();
+            // No PartialStroke ⇒ nothing committed ⇒ drop the pre-image so it
+            // doesn't leak into the next stroke's commit (W2.T2.2).
+            self.pending_pre_stroke = None;
             return;
         };
         // **V-7:** mem::take em vez de mem::replace+Vec::with_capacity —
@@ -814,6 +849,9 @@ impl PainterTool {
             }
             // Recycle seq pra próximo stroke usar (Q-2 parity).
             self.next_seq = partial.seq;
+            // Empty stroke painted nothing ⇒ drop the pre-image (no undo slot;
+            // mirrors the V-1 phantom-record gate above) — W2.T2.2.
+            self.pending_pre_stroke = None;
             return;
         }
         partial.samples_count_in_journal = samples.len() as u32;
@@ -834,8 +872,24 @@ impl PainterTool {
                 self.last_wal_error = Some(e);
             }
         }
+        let committed_seq = partial.seq;
         let record = partial_to_record(partial, samples);
         self.stroke_history.push(record);
+        // **W2.T2.2 undo commit:** the stroke painted pixels onto `canvas_rgba`
+        // and is now canonical; record the pre-stroke pre-image (captured at
+        // `begin_stroke`) so an undo can restore the layer to its pre-stroke
+        // state. Keyed by the committed seq for checkpoint thinning. If the
+        // pre-image is somehow absent (e.g. a direct `end_stroke` without a
+        // matching `begin_stroke` — guarded against, but fail-safe), skip
+        // rather than push a bogus slot.
+        if let Some(pre) = self.pending_pre_stroke.take() {
+            self.undo.record_pre_stroke(committed_seq, &pre);
+        }
+        // A NEW committed stroke invalidates the redo branch (standard linear
+        // history). The texture redo stack is cleared inside `record_pre_stroke`;
+        // clear the parallel semantic redo records here so a later redo can
+        // never resurrect a stale record from a discarded branch.
+        self.undo_redo_records.clear();
         // **S-5 WAL rotation:** após commit, checka se journal precisa
         // rotacionar (cap 500 MiB OR 100 commits). T1.9 ship: rotate só
         // depois de canon flush (caller W11 contract). Aqui apenas surface
@@ -950,8 +1004,12 @@ impl PainterTool {
             mode: self.params.mode,
             eyedropper_armed: self.params.eyedropper_armed,
             symmetry_enabled: self.params.symmetry.is_some(),
-            undo_enabled: !self.stroke_history.is_empty(),
-            redo_enabled: false, // redo-stack é caller-side W11+ (vide T2.2)
+            // **W2.T2.2:** reflect the snapshot-undo controller, the actual
+            // source of truth for whether undo/redo will do anything (the
+            // texture stacks). `stroke_history.is_empty()` could disagree on
+            // the `set_source` reset boundary; `can_undo`/`can_redo` are exact.
+            undo_enabled: self.undo.can_undo(),
+            redo_enabled: self.undo.can_redo(),
             stroke_in_flight: self.stroke_active,
             takeover_active: self.params.takeover_active,
             active_layer_name: String::new(),
@@ -1032,14 +1090,10 @@ impl PainterTool {
                 self.params.eyedropper_armed = !self.params.eyedropper_armed;
             }
             crate::params::PainterUiEdit::Undo => {
-                // Pop stroke do history. Re-render canvas requer replay
-                // engine (W11 T-replay full); W2.T2.2 ship com snapshot-
-                // based undo (texture clone preserved).
-                let _ = self.stroke_history.undo();
+                self.undo_last_stroke();
             }
             crate::params::PainterUiEdit::Redo => {
-                // Idem Undo — redo precisa do undo-stack mantido side-car
-                // (carry-over W11 T-replay).
+                self.redo_last_stroke();
             }
             crate::params::PainterUiEdit::ResetSidebar => {
                 // Long-press reset (ADR-0043 §2.3). Restore defaults
@@ -1063,6 +1117,86 @@ impl PainterTool {
             // affordances visuais geridas shell-side (não mutam tool state).
             _ => {}
         }
+    }
+
+    // =========================================================================
+    // W2.T2.2 — undo / redo public API (driven by gesture dispatch).
+    //
+    // The gesture wiring is foundational/shell (Coordinator): a 2-finger tap
+    // resolves to `EditorAction::Undo` and a 3-finger tap to `EditorAction::
+    // Redo`. The shell calls these methods (or routes through
+    // `apply_ui_edit(PainterUiEdit::Undo / ::Redo)`, which delegates here).
+    // Both restore the layer texture in place and keep `stroke_history` (the
+    // semantic canon) in sync, so any consumer of either stays consistent.
+    // =========================================================================
+
+    /// Undo the most recently committed stroke: restore the layer texture to
+    /// its pre-stroke pre-image and pop the matching semantic record onto the
+    /// redo branch. Returns `true` if a stroke was undone (the canvas changed),
+    /// `false` if there was nothing to undo. After a successful undo the live
+    /// preview is marked dirty so the shell re-blits the restored texture.
+    ///
+    /// **Active-stroke contract:** an in-flight stroke is committed
+    /// (`end_stroke`) before undoing, so the undo lands on a clean stroke
+    /// boundary (mirrors the implicit-close in `begin_stroke`).
+    pub fn undo_last_stroke(&mut self) -> bool {
+        if self.stroke_active {
+            self.end_stroke();
+        }
+        // Pass the live (post-stroke) canvas so the controller can stash it for
+        // a later redo, and hand back the pre-stroke pre-image to restore.
+        let current = self.canvas_rgba.as_ref().clone();
+        let Some(pixels) = self.undo.undo(&current) else {
+            return false;
+        };
+        // Restore pixels in place; keep the Arc allocation when uniquely owned.
+        let canvas = Arc::make_mut(&mut self.canvas_rgba);
+        *canvas = pixels;
+        // Keep the semantic canon in lock-step: pop the record the undo backed
+        // out of, holding it so `redo` can re-insert it (StrokeHistory::redo
+        // needs the popped record — the gap this task closed).
+        if let Some(rec) = self.stroke_history.undo() {
+            self.undo_redo_records.push(rec);
+        }
+        self.preview_dirty = true;
+        true
+    }
+
+    /// Redo the most recently undone stroke: re-apply its post-stroke texture
+    /// and re-insert its semantic record. Returns `true` if a stroke was
+    /// redone, `false` if the redo branch was empty.
+    pub fn redo_last_stroke(&mut self) -> bool {
+        if self.stroke_active {
+            self.end_stroke();
+        }
+        // Pass the live (pre-stroke) canvas so the controller can stash it for a
+        // later undo, and hand back the post-stroke image to restore.
+        let current = self.canvas_rgba.as_ref().clone();
+        let Some(pixels) = self.undo.redo(&current) else {
+            return false;
+        };
+        let canvas = Arc::make_mut(&mut self.canvas_rgba);
+        *canvas = pixels;
+        // Re-insert the semantic record we held back during the matching undo.
+        if let Some(rec) = self.undo_redo_records.pop() {
+            self.stroke_history.redo(rec);
+        }
+        self.preview_dirty = true;
+        true
+    }
+
+    /// `true` if there is at least one committed stroke to undo (drives the
+    /// sidebar `undo_enabled` affordance).
+    #[must_use]
+    pub fn can_undo(&self) -> bool {
+        self.undo.can_undo()
+    }
+
+    /// `true` if there is at least one undone stroke to redo (drives the
+    /// sidebar `redo_enabled` affordance — previously hardcoded `false`).
+    #[must_use]
+    pub fn can_redo(&self) -> bool {
+        self.undo.can_redo()
     }
 
     /// Desfaz o anexo de journal — drop libera advisory lock + registry.
@@ -1528,6 +1662,15 @@ impl RasterEditTool for PainterTool {
         // canvas errado. Bridge garante ordem (source push antes de
         // queue_pointer) mas defesa-em-profundidade.
         self.end_stroke();
+        // **W2.T2.2:** a fresh source is a different working canvas (the bridge
+        // only re-pushes when the selected sprite entity changes —
+        // `drive_source_push`). Undo/redo over the OLD canvas is meaningless on
+        // the NEW one, so reset the snapshot stacks + the parallel semantic
+        // redo branch. `stroke_history` itself is the persisted canon and is
+        // reset by the caller's project/canvas lifecycle, not here.
+        self.undo.clear();
+        self.undo_redo_records.clear();
+        self.pending_pre_stroke = None;
     }
 
     /// Devolve referência ao working canvas iff houve update desde a
@@ -1635,11 +1778,25 @@ fn pointer_to_raw_sample(sample: PointerSample) -> RawPointerSample {
 /// Converte `PainterTool` `OklchColor` (ph2d-tool-painter stub) → ph2d-color
 /// `OklchColor` (canonical type). Painter mantém type local em params.rs
 /// pra evitar dep transitive antes do T-color full (ADR-0051).
+///
+/// **HUE UNIT BOUNDARY (correctness — radians → degrees):** the painter
+/// stub's `h` is in **RADIANS** (its native unit — `color.rs` derives it
+/// via `atan2` and `tool::oklch_to_oklab` consumes it as radians, asserting
+/// `|h| ≤ 4π`). The canonical [`ph2d_color::OklchColor`] documents `h` as
+/// **degrees `[0, 360)`** and every consumer that turns it into pixels calls
+/// `.to_linear()` → `.to_radians()`. `StrokeRecord.primary_color` is this
+/// canonical type and `ph2d-painter-stroke` stores/serializes/replays it as
+/// opaque data (zero hue math anywhere in that crate — verified), so the
+/// degrees contract is only honored when the *first* canonical consumer runs
+/// (render / reproject / Inspector W12+). A naïve field-by-field copy wrote
+/// e.g. `π rad ≈ 3.14` as "3.14 degrees" into the WAL — a wildly wrong hue
+/// baked permanently into the persisted stroke. Convert at this boundary so
+/// the painter keeps radians internally and the canon stays in degrees.
 fn painter_color_to_stroke_oklch(c: OklchColor) -> StrokeOklchColor {
     StrokeOklchColor {
         l: c.l,
         c: c.c,
-        h: c.h,
+        h: c.h.to_degrees(),
         a: c.a,
     }
 }
@@ -2000,6 +2157,213 @@ mod tests {
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // W2.T2.2 — undo / redo end-to-end through PainterTool.
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// Paint one full visible stroke (Begin → one stamp at center → End) with a
+    /// red-ish color so the center pixel changes. Returns the live canvas after
+    /// the stroke for byte comparison.
+    fn paint_one_stroke(t: &mut PainterTool, seed: u64, at: [f32; 2]) -> Vec<u8> {
+        t.params.active_color = crate::params::OklchColor {
+            l: 0.6,
+            c: 0.2,
+            h: 0.5,
+            a: 1.0,
+        };
+        t.params.size_px = 16.0;
+        t.begin_stroke(seed);
+        t.queue_pointer(PointerSample {
+            position: at,
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        t.end_stroke();
+        t.canvas_rgba.as_ref().clone()
+    }
+
+    #[test]
+    fn undo_restores_layer_to_pre_stroke_state() {
+        // Spec criterion #1: undo restores the layer to the pre-stroke state.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(32, 32, [0, 0, 0, 255]), 32, 32);
+        let _ = t.current_preview();
+        let pristine = t.canvas_rgba.as_ref().clone();
+        let painted = paint_one_stroke(&mut t, 42, [16.0, 16.0]);
+        assert_ne!(painted, pristine, "stroke must change the canvas");
+        assert!(t.can_undo());
+        assert!(!t.can_redo());
+
+        assert!(t.undo_last_stroke(), "undo must report it acted");
+        assert_eq!(
+            t.canvas_rgba.as_ref(),
+            &pristine,
+            "undo must restore the exact pre-stroke texture"
+        );
+        // Semantic canon stays in sync.
+        assert!(t.stroke_history.is_empty(), "history record popped too");
+        assert!(!t.can_undo());
+        assert!(t.can_redo());
+    }
+
+    #[test]
+    fn redo_reapplies_the_undone_stroke() {
+        // Spec criterion #2: redo reapplies the last undo.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(32, 32, [0, 0, 0, 255]), 32, 32);
+        let _ = t.current_preview();
+        let painted = paint_one_stroke(&mut t, 7, [16.0, 16.0]);
+        t.undo_last_stroke();
+        assert!(t.redo_last_stroke(), "redo must report it acted");
+        assert_eq!(
+            t.canvas_rgba.as_ref(),
+            &painted,
+            "redo must restore the exact post-stroke texture"
+        );
+        assert_eq!(t.stroke_history.len(), 1, "semantic record re-inserted");
+        assert!(t.can_undo());
+        assert!(!t.can_redo());
+    }
+
+    #[test]
+    fn two_undos_then_two_redos_walk_states_in_order() {
+        // Locks the undo↔redo ordering sync between the texture controller and
+        // the semantic `stroke_history` across multiple strokes.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(32, 32, [0, 0, 0, 255]), 32, 32);
+        let _ = t.current_preview();
+        let s0 = t.canvas_rgba.as_ref().clone();
+        let s1 = paint_one_stroke(&mut t, 1, [8.0, 8.0]);
+        let s2 = paint_one_stroke(&mut t, 2, [24.0, 24.0]);
+        assert_eq!(t.stroke_history.len(), 2);
+        // Undo back to pristine, two steps.
+        t.undo_last_stroke();
+        assert_eq!(t.canvas_rgba.as_ref(), &s1);
+        t.undo_last_stroke();
+        assert_eq!(t.canvas_rgba.as_ref(), &s0);
+        assert!(t.stroke_history.is_empty());
+        // Redo forward, two steps — must reach s1 then s2 (forward order).
+        t.redo_last_stroke();
+        assert_eq!(t.canvas_rgba.as_ref(), &s1);
+        assert_eq!(t.stroke_history.len(), 1);
+        t.redo_last_stroke();
+        assert_eq!(t.canvas_rgba.as_ref(), &s2);
+        assert_eq!(t.stroke_history.len(), 2);
+    }
+
+    #[test]
+    fn undo_redo_on_empty_history_is_a_noop() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [0; 4]), 8, 8);
+        let _ = t.current_preview();
+        assert!(!t.undo_last_stroke(), "nothing to undo");
+        assert!(!t.redo_last_stroke(), "nothing to redo");
+    }
+
+    #[test]
+    fn empty_stroke_creates_no_undo_slot() {
+        // A Begin→End with no painted sample must NOT push an undo entry (mirrors
+        // the V-1 phantom-record gate on stroke_history).
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [0; 4]), 8, 8);
+        let _ = t.current_preview();
+        t.begin_stroke(1);
+        t.end_stroke(); // no queue_pointer between → empty
+        assert!(!t.can_undo(), "empty stroke must not create an undo slot");
+    }
+
+    #[test]
+    fn new_stroke_after_undo_invalidates_redo() {
+        // After undo, painting a new stroke discards the redo branch (both the
+        // texture stack and the parallel semantic redo records).
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(32, 32, [0, 0, 0, 255]), 32, 32);
+        let _ = t.current_preview();
+        paint_one_stroke(&mut t, 1, [10.0, 10.0]);
+        paint_one_stroke(&mut t, 2, [20.0, 20.0]);
+        t.undo_last_stroke();
+        assert!(t.can_redo());
+        // New stroke after an undo:
+        paint_one_stroke(&mut t, 3, [16.0, 16.0]);
+        assert!(!t.can_redo(), "new stroke must invalidate redo");
+    }
+
+    #[test]
+    fn undo_250_strokes_without_corruption() {
+        // Spec criterion #3: undo 250× without corrupting the layer. Each
+        // stroke paints at a distinct location; after 250 undos the canvas must
+        // be byte-identical to the pristine pre-paint source.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(64, 64, [0, 0, 0, 255]), 64, 64);
+        let _ = t.current_preview();
+        let pristine = t.canvas_rgba.as_ref().clone();
+        for i in 0..250u64 {
+            let x = (i % 64) as f32;
+            let y = ((i / 64) % 64) as f32;
+            paint_one_stroke(&mut t, i + 1, [x, y]);
+        }
+        // Undo every stroke (DEFAULT_MAX_DEPTH=300 > 250, so none were dropped).
+        // After 250 undos the canvas must be byte-identical to the pristine
+        // pre-paint source — the corruption gate.
+        let mut undone = 0usize;
+        while t.undo_last_stroke() {
+            undone += 1;
+            assert_eq!(t.canvas_rgba.len(), pristine.len(), "size never corrupts");
+        }
+        assert_eq!(undone, 250, "all 250 strokes undoable");
+        assert_eq!(
+            t.canvas_rgba.as_ref(),
+            &pristine,
+            "250 undos must restore the exact pristine canvas"
+        );
+        assert!(!t.can_undo());
+    }
+
+    #[test]
+    fn set_source_resets_undo_history() {
+        // A fresh source (different sprite selected) must reset undo/redo — you
+        // can't undo strokes from a different canvas onto this one.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(16, 16, [0; 4]), 16, 16);
+        let _ = t.current_preview();
+        paint_one_stroke(&mut t, 1, [8.0, 8.0]);
+        assert!(t.can_undo());
+        // Switch to a different source.
+        t.set_source(flat_source(16, 16, [255; 4]), 16, 16);
+        assert!(!t.can_undo(), "new source must clear undo");
+        assert!(!t.can_redo(), "new source must clear redo");
+    }
+
+    #[test]
+    fn ui_snapshot_reflects_undo_redo_availability() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(16, 16, [0, 0, 0, 255]), 16, 16);
+        let _ = t.current_preview();
+        assert!(!t.ui_snapshot().undo_enabled);
+        assert!(!t.ui_snapshot().redo_enabled);
+        paint_one_stroke(&mut t, 1, [8.0, 8.0]);
+        assert!(t.ui_snapshot().undo_enabled);
+        assert!(!t.ui_snapshot().redo_enabled);
+        t.undo_last_stroke();
+        assert!(!t.ui_snapshot().undo_enabled);
+        assert!(t.ui_snapshot().redo_enabled, "redo_enabled no longer hardcoded false");
+    }
+
+    #[test]
+    fn undo_via_ui_edit_dispatch_path() {
+        // The PainterUiEdit::Undo / ::Redo path (the apply_ui_edit dispatch the
+        // shell also drives) must behave identically to the direct methods.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(16, 16, [0, 0, 0, 255]), 16, 16);
+        let _ = t.current_preview();
+        let pristine = t.canvas_rgba.as_ref().clone();
+        let painted = paint_one_stroke(&mut t, 1, [8.0, 8.0]);
+        t.apply_ui_edit(crate::params::PainterUiEdit::Undo);
+        assert_eq!(t.canvas_rgba.as_ref(), &pristine);
+        t.apply_ui_edit(crate::params::PainterUiEdit::Redo);
+        assert_eq!(t.canvas_rgba.as_ref(), &painted);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
     // Round-2 audit fixes — closing verbal-claim gaps with executable gates.
     // ──────────────────────────────────────────────────────────────────────
 
@@ -2205,5 +2569,50 @@ mod tests {
         // Default is a warm orange: red channel dominates blue.
         assert!(srgb[0] > srgb[2], "default swatch should be warm: {srgb:?}");
         assert_eq!(snap.active_color_hex(), crate::color::format_hex(srgb));
+    }
+
+    #[test]
+    fn painter_color_to_stroke_oklch_converts_radians_to_degrees() {
+        // Regression: the painter stub stores hue in RADIANS; the canonical
+        // ph2d_color::OklchColor (StrokeRecord.primary_color) is DEGREES.
+        // π rad must land as ~180° in the stored record, NOT "3.14 degrees".
+        let painter = OklchColor {
+            l: 0.7,
+            c: 0.18,
+            h: std::f32::consts::PI, // 180° expressed in radians
+            a: 1.0,
+        };
+        let stored = painter_color_to_stroke_oklch(painter);
+        assert!(
+            (stored.h - 180.0).abs() < 1e-3,
+            "π rad must convert to 180 degrees in the canonical record; got {}",
+            stored.h
+        );
+        // L/C/A pass through untouched (only hue carries a unit).
+        assert_eq!(stored.l, painter.l);
+        assert_eq!(stored.c, painter.c);
+        assert_eq!(stored.a, painter.a);
+    }
+
+    #[test]
+    fn stored_stroke_color_renders_to_the_same_srgb_as_the_painter_swatch() {
+        // End-to-end correctness: a saturated orange chosen in the picker
+        // (sRGB) → painter OKLCH(rad) → StrokeRecord.primary_color → the
+        // canonical degrees consumer (`to_srgb`, which does `.to_radians()`)
+        // must reproduce the ORIGINAL color. Pre-fix, the radians hue was
+        // mis-read as degrees and this round-trip diverged by a huge margin.
+        let picked = [255u8, 136, 0, 255]; // saturated orange
+        let painter = crate::color::srgb8_to_painter_oklch(picked);
+        let stored = painter_color_to_stroke_oklch(painter); // radians → degrees
+        // The canonical render path (what render/reproject/Inspector use):
+        let rendered = stored.to_srgb().0;
+        for ch in 0..4 {
+            assert!(
+                rendered[ch].abs_diff(picked[ch]) <= 1,
+                "channel {ch} diverged: picked={picked:?} rendered_from_record={rendered:?} \
+                 (stored hue={}°)",
+                stored.h
+            );
+        }
     }
 }

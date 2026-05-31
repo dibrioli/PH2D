@@ -124,39 +124,22 @@ pub(crate) fn paint_visibility_section(
     let label_h = label_font + Spacing::Xs.px();
     let mut yy = y;
 
-    // Visibility Layer — collapsible sub-header + a 32-bit 4×8 checkbox
-    // grid (canonical BitmaskGrid32). Bit `n` = layer `n+1`; absent
-    // component → all 32 set (ALL). The grid is tall and rarely touched,
-    // so the header folds it: clicking the row toggles
-    // `is_collapsed(INSP_VIS_LAYER_HEADER)` (marked collapsible in
-    // `pre_populate`; `apply_click` flips it). Defaults expanded.
+    // Visibility Layer — collapsible sub-section using the CANONICAL
+    // section header (a divider above + UPPERCASE title + chevron), so it
+    // matches every other section. The 32-bit 4×8 grid is tall + advanced
+    // (camera cull mask, not z-order), so it defaults COLLAPSED
+    // (`set_collapsed` in `pre_populate`). Clicking the header toggles
+    // `is_collapsed(INSP_VIS_LAYER_HEADER)` via `apply_click` (the id is
+    // marked collapsible). Bit `n` = layer `n+1`; absent component → ALL.
+    yy = paint_section_separator(scene, theme, x, w, yy);
     let layer_collapsed = store.is_collapsed(ids::INSP_VIS_LAYER_HEADER);
-    let hdr_rect = Rect::new(x, yy, w, label_h);
-    hit_index.register(ids::INSP_VIS_LAYER_HEADER, hdr_rect);
-    let chev = (label_h * 0.7).clamp(10.0, 14.0); // LITERAL-PX-OK: sub-header chevron, 70% of label row
-    let chev_rect = Rect::new(x, yy + (label_h - chev) * 0.5, chev, chev);
-    paint_icon(
-        scene,
-        if layer_collapsed {
-            IconId::ChevronRight
-        } else {
-            IconId::ChevronDown
-        },
-        chev_rect,
-        label_color,
-        ph2d_tokens::StrokeToken::Default.px(),
-    );
-    paint_text(
-        text_system,
-        scene,
-        "Visibility Layer",
-        x + chev + Spacing::Xs.px(),
-        yy + (label_h - label_font) * 0.5,
-        label_font,
-        (w - chev - Spacing::Xs.px()).max(0.0),
-        label_color,
-    );
-    yy += label_h;
+    let layer_header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let layer_header = SectionHeader::new(ids::INSP_VIS_LAYER_HEADER, "Visibility Layer")
+        .collapsible(!layer_collapsed);
+    let layer_header_rect = Rect::new(x, yy, w, layer_header_h);
+    paint_section_header(&layer_header, layer_header_rect, scene, text_system, theme);
+    hit_index.register(ids::INSP_VIS_LAYER_HEADER, layer_header_rect);
+    yy += layer_header_h;
     if layer_collapsed {
         yy += row_gap;
     } else {

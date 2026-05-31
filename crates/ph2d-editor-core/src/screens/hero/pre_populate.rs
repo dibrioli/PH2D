@@ -650,4 +650,7 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     ] {
         store.mark_collapsible_section(id);
     }
+    // §8 Visibility Layer grid defaults COLLAPSED — it's a tall, advanced
+    // (camera cull-mask) control, rarely touched in the common flow.
+    store.set_collapsed(ids::INSP_VIS_LAYER_HEADER, true);
 }

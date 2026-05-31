@@ -352,7 +352,8 @@ impl App {
                 return;
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.painter_active_consume_canvas_click() =>
+                if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
+                    && self.painter_active_consume_canvas_click() =>
             {
                 return;
             }

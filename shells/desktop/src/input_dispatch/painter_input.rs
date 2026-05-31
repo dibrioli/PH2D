@@ -180,6 +180,19 @@ impl App {
     ///   suporte completo de rotação é W2 quando o sidebar Painter
     ///   adicionar gesto rotate-aware.
     fn painter_pointer_uv(&mut self, px: f32, py: f32) -> Option<(f32, f32, u32, u32)> {
+        // Don't paint THROUGH docked chrome. The Painter sidebar is a
+        // right-dock takeover that overlaps the sprite footprint, so a
+        // Primary Down (or a drag) over the panel would otherwise deposit
+        // stamps "behind" the panel. Returning None here gates both the
+        // stroke-start (`try_painter_paint_down`) and the mid-stroke stamp
+        // (`painter_drag_move`, whose None branch breaks the segment so a
+        // drag re-entering the canvas doesn't smear across the panel). The
+        // click then falls through to the panel's own UI dispatch (slider
+        // etc.); the silent-consume arm is gated on the same predicate in
+        // `input_dispatch.rs` so the panel actually receives it.
+        if crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), px, py) {
+            return None;
+        }
         let gfx = self.gfx.as_mut()?;
         let painter_active = gfx
             .tools

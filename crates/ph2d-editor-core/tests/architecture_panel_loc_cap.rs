@@ -107,6 +107,23 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         300,
         "Enio 2026-05-26 lock/group icons + icon-companion hit zone — split deferred",
     ),
+    // Pre-existing oversized event dispatcher. Was ~493 LOC on
+    // origin/main; the 2026-05-31 Color & Tint sub-tab removal cut it to
+    // 353. The body is a sequence of independent first-match-wins
+    // `if let WidgetEvent::… { … return true }` blocks. A clean extraction
+    // into per-cluster `try_*` helpers (each well under cap) is ready, but
+    // the gate's brace-walk parser miscounts the helpers — it tracks
+    // `'`/`"` inside `//` comments, so an odd apostrophe ("doesn't",
+    // "sprite's") overruns the function boundary. Landing the split needs
+    // a comment-aware parser fix first, which re-baselines EVERY panel's
+    // allowance (it unmasks other pre-existing violations too) — a
+    // deliberate foundational pass, not a pause-time rush. Frozen at 353.
+    (
+        "ph2d-panel-inspector/src/event.rs",
+        "apply_event_impl",
+        353,
+        "pre-existing oversized dispatcher (was ~493 on origin/main, cut to 353 by the Color&Tint sub-tab removal); per-cluster try_* split is ready but blocked on a comment-aware parser fix that re-baselines all panel allowances — deferred to a deliberate pass",
+    ),
 ];
 
 #[test]

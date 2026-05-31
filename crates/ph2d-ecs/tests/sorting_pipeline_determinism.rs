@@ -37,7 +37,7 @@ fn t(x: f32, y: f32) -> Transform {
 /// Layout (labels in brackets):
 /// ```text
 /// bg     [0]  SortingLayer "Background"(0)
-/// world       (no sprite — organizational YSort root, axis = +Y)
+/// world       (no sprite — organizational YSort root, axis = (0,-1))
 /// ├ tree [1]  y=10
 /// ├ char [2]  y=5  SortingGroup (multi-piece block root)
 /// │ ├ shadow[3]  ShowBehindParent

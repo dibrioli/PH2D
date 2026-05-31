@@ -158,6 +158,8 @@ pub(crate) fn paint_render_source_section(
             format!("Individual \u{00b7} texture {}", texture_id)
         }
         InspectorSpriteSource::HandPacked => "Hand-packed".to_string(),
+        // W2.T2: tier-cooked KTX2 — read-only marker, no key/id shown.
+        InspectorSpriteSource::CookedTexture => "Cooked texture".to_string(),
     };
     cur_y = paint_pair(scene, text_system, "Storage", &storage_detail, cur_y);
     if let Some((pw, ph)) = info.source_pixels {

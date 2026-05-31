@@ -17,6 +17,9 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 # KTX2 Fase 2 (W2.T1): typed Ktx2Format → wgpu::TextureFormat mapping.
 # Pure parser crate (ktx2 + thiserror); no cycle (it does not depend on render).
 ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
+# KTX2 Fase 2 (W2.T2): SpriteSource::CookedTexture stores a LogicalTextureId.
+# ph2d-asset does not depend on ph2d-render → no cycle.
+ph2d-asset = { path = "../ph2d-asset" }
 bevy_ecs = "0.18"
 wgpu = "28"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }

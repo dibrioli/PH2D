@@ -459,6 +459,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             InspectorSpriteSource::Atlas { .. } => RequestedSpriteStrategy::Atlas,
             InspectorSpriteSource::Individual { .. } => RequestedSpriteStrategy::Individual,
             InspectorSpriteSource::HandPacked => RequestedSpriteStrategy::HandPacked,
+            // W2.T2: no `CookedTexture` strategy exists (cooked sources
+            // aren't authored from the inspector). Map to the read-only
+            // `HandPacked` strategy purely for change-detection.
+            InspectorSpriteSource::CookedTexture => RequestedSpriteStrategy::HandPacked,
         };
         if requested != current {
             host.bus_mut()

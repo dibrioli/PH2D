@@ -42,6 +42,23 @@ pub enum SpriteSource {
     /// out by [`crate::individual::IndividualTextureStore::acquire`].
     /// Stable for the lifetime of the texture in the store.
     Individual { texture_id: u32 },
+    /// A tier-cooked KTX2 texture (KTX2 Fase 2, W2.T2). Stores the
+    /// **tier-agnostic** [`ph2d_asset::LogicalTextureId`] so the sprite
+    /// stays portable across devices; extract / the loader (W2.T4)
+    /// resolve `logical_id` + the active `DeviceTier` to the concrete
+    /// `AssetId` → `Asset::TextureKtx2` for upload via
+    /// [`crate::compressed_pipeline`] (W2.T3).
+    ///
+    /// Appended as postcard discriminant `2` — purely additive, so
+    /// existing v4 blobs (which only ever encode `Atlas`/`Individual`)
+    /// keep loading and `Sprite::VERSION` stays `4` (the `Sprite`
+    /// struct field count is unchanged, frozen by ADR-0070). No
+    /// `#[non_exhaustive]`: like [`crate::sprite_versioned::SpriteVersioned`],
+    /// the postcard discriminant is the stability contract and all
+    /// consumers are in-workspace, so exhaustive matches are wanted.
+    CookedTexture {
+        logical_id: ph2d_asset::LogicalTextureId,
+    },
 }
 
 impl SpriteSource {
@@ -296,6 +313,23 @@ impl Sprite {
     pub fn individual(texture_id: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
         let mut s = Self::atlas(0, size, tint);
         s.source = SpriteSource::Individual { texture_id };
+        s.region_filter_clip = false;
+        s
+    }
+
+    /// Convenience constructor for tier-cooked KTX2 sprites (KTX2 Fase 2,
+    /// W2.T2). `logical_id` is the tier-agnostic
+    /// [`ph2d_asset::LogicalTextureId`]; the loader (W2.T4) resolves it
+    /// against the active `DeviceTier` to the concrete cooked asset.
+    /// Like [`Sprite::individual`], cooked textures are native-resolution
+    /// (no atlas-neighbor bleed) so `region_filter_clip` is `false`.
+    pub fn cooked_texture(
+        logical_id: ph2d_asset::LogicalTextureId,
+        size: [f32; 2],
+        tint: [f32; 4],
+    ) -> Self {
+        let mut s = Self::atlas(0, size, tint);
+        s.source = SpriteSource::CookedTexture { logical_id };
         s.region_filter_clip = false;
         s
     }

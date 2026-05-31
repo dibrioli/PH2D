@@ -338,9 +338,18 @@ pub(super) fn run(
                     .is_some_and(|vl| !vl.visible_to(cull_mask));
                 let override_for_entity =
                     preview_override.filter(|o| o.entity_bits == sim_entity.to_bits());
+                // W2.T2: skip CookedTexture sprites in extract. Their
+                // tier-agnostic LogicalTextureId is only resolved to an
+                // uploaded GPU texture by the W2.T4 loader; until that
+                // lands they render nothing (invisible, NOT a garbage
+                // atlas bind) — same shape as a hidden/culled sprite
+                // (builder spawned, no RenderInstance). The `match
+                // spr.source` arms below carry a neutral fallback purely
+                // for static exhaustiveness; this guard makes them dead.
                 if !hidden
                     && !culled
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
+                    && !matches!(spr.source, ph2d_render::SpriteSource::CookedTexture { .. })
                 {
                     let p = gt.translation();
                     // ADR-0070-amendment-4: pass the FULL 2x2 world basis
@@ -369,6 +378,11 @@ pub(super) fn run(
                         ph2d_render::SpriteSource::Individual { texture_id } => {
                             ([0.0, 0.0, 1.0, 1.0], texture_id)
                         }
+                        // Dead past the W2.T2 extract guard; neutral fallback.
+                        ph2d_render::SpriteSource::CookedTexture { .. } => (
+                            [0.0, 0.0, 1.0, 1.0],
+                            ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
+                        ),
                     };
                     // Lens F (2026-05-26): if a tool's live preview
                     // claims this entity, substitute the texture binding
@@ -442,6 +456,8 @@ pub(super) fn run(
                             ph2d_render::SpriteSource::Individual { texture_id } => {
                                 renderer.individual().dims(texture_id)
                             }
+                            // Dead past the W2.T2 extract guard.
+                            ph2d_render::SpriteSource::CookedTexture { .. } => None,
                         };
                         match src_dims {
                             Some((sw, sh)) => {
@@ -457,6 +473,10 @@ pub(super) fn run(
                                         }
                                         ph2d_render::SpriteSource::Individual { .. } => {
                                             (sw.max(1) as f32, sh.max(1) as f32)
+                                        }
+                                        // Dead past the W2.T2 extract guard.
+                                        ph2d_render::SpriteSource::CookedTexture { .. } => {
+                                            (1.0, 1.0)
                                         }
                                     };
                                     Some((0.5 / tw, 0.5 / th))

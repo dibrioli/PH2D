@@ -436,6 +436,53 @@ fn versioned_wrapper_round_trip_preserves_v4() {
 }
 
 // ---------------------------------------------------------------------------
+// 4b. SpriteSource::CookedTexture (KTX2 Fase 2, W2.T2) — additive variant
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cooked_texture_is_appended_as_source_variant_tag_2() {
+    use ph2d_asset::LogicalTextureId;
+    // postcard encodes the bare enum's variant tag as byte[0]. CookedTexture
+    // is APPENDED after Atlas(0)/Individual(1) → tag 2. Inserting it earlier
+    // would silently rewrite the source byte of every existing v4 blob.
+    let id = LogicalTextureId::from_source_bytes(b"probe");
+    assert_eq!(
+        postcard::to_allocvec(&SpriteSource::Atlas { key: 0 }).unwrap()[0],
+        0
+    );
+    assert_eq!(
+        postcard::to_allocvec(&SpriteSource::Individual { texture_id: 0 }).unwrap()[0],
+        1
+    );
+    assert_eq!(
+        postcard::to_allocvec(&SpriteSource::CookedTexture { logical_id: id }).unwrap()[0],
+        2,
+        "CookedTexture must serialize as variant tag 2 (additive append, never inserted)"
+    );
+}
+
+#[test]
+fn versioned_v4_cooked_texture_round_trips_preserving_logical_id() {
+    use ph2d_asset::LogicalTextureId;
+    let logical_id = LogicalTextureId::from_source_bytes(b"cooked-texture-fixture");
+    let original = Sprite::cooked_texture(logical_id, [64.0, 32.0], [0.25, 0.5, 0.75, 1.0]);
+    let bytes =
+        postcard::to_allocvec(&SpriteVersioned::V4(original)).expect("serialize V4 envelope");
+    assert_eq!(bytes[0], 0x01, "V4 envelope discriminant must be 0x01");
+    let restored: SpriteVersioned = postcard::from_bytes(&bytes).expect("deserialize V4 envelope");
+    match restored {
+        SpriteVersioned::V4(s) => {
+            assert_eq!(s.source, SpriteSource::CookedTexture { logical_id });
+            assert_eq!(
+                s, original,
+                "cooked-texture v4 round trip must preserve every wire field"
+            );
+        }
+        SpriteVersioned::V3(_) => panic!("V4 envelope dispatched as V3 — discriminant regression"),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // 5. Fuzzing surface — hostile bytes must not panic / OOM
 // ---------------------------------------------------------------------------
 

@@ -605,9 +605,19 @@ pub enum VisibilityFieldEdit {
 /// `Inspector*` struct is cheap to clone per frame.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InspectorSpriteSource {
-    Atlas { key: u32 },
-    Individual { texture_id: u32 },
+    Atlas {
+        key: u32,
+    },
+    Individual {
+        texture_id: u32,
+    },
     HandPacked,
+    /// A tier-cooked KTX2 texture (KTX2 Fase 2, W2.T2). A read-only
+    /// display marker — the inspector shows "Cooked texture" but offers
+    /// no authoring radio (cooked sources come from the asset pipeline,
+    /// not the inspector). The runtime source carries the tier-agnostic
+    /// `LogicalTextureId`; the mirror drops it (display only).
+    CookedTexture,
 }
 
 /// Snapshot of the selected entity's local `Transform` published to

@@ -482,6 +482,19 @@ pub(super) fn dispatch(
                 // keep this branch explicit so an out-of-band publish
                 // (script, future MCP) doesn't accidentally bounce.
             }
+            // W2.T2: a cooked KTX2 source can't be re-authored into an
+            // Atlas/Individual/Hand-packed strategy from the inspector (it
+            // has no atlas key nor a CPU-readable bake). Reject any
+            // requested change and snap the radio back. Placed before the
+            // generic `(Some(_), …)` / `(_, HandPacked)` arms so all three
+            // cooked-source cases get this accurate message.
+            (Some(ph2d_render::SpriteSource::CookedTexture { .. }), _) => {
+                toasts.push(Toast::info(
+                    "Cooked textures come from the asset pipeline — render strategy is read-only",
+                ));
+                title_dirty = true;
+                reject_visual_reset(hero, requested);
+            }
             (Some(_), RequestedSpriteStrategy::Atlas) => {
                 toasts.push(Toast::info(
                     "Individual · Atlas swap is M14.C+ (atlas re-insert path)",

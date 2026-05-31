@@ -487,6 +487,14 @@ pub(super) fn publish(
                     false,
                 )
             }
+            // W2.T2: a cooked KTX2 source — read-only display marker. Dims
+            // come from the W2.T4 loader (logical_id → tier asset); unknown
+            // here, so the Region UI shows no "Source W×H" and no reimport.
+            ph2d_render::SpriteSource::CookedTexture { .. } => (
+                ph2d_editor::InspectorSpriteSource::CookedTexture,
+                None,
+                false,
+            ),
         };
         let world_size = [
             sprite.size[0] * transform.scale.x,

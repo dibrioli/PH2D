@@ -84,6 +84,10 @@ pub(crate) fn read_sprite_source(
                 AlphaMode::from_premultiplied_flag(old_premultiplied),
             )
         }
+        // W2.T2: a tier-cooked KTX2 texture is GPU-compressed (BC/ASTC/
+        // ETC2) with no CPU-side RGBA — the raster image tools (Trim,
+        // Make Square, Bg Removal) can't read it back to edit. Unsupported.
+        SpriteSource::CookedTexture { .. } => return None,
     };
     Some(SourceRead {
         image,

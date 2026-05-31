@@ -193,7 +193,7 @@ pub(crate) fn paint_color_tint_section(
     let (_, op_value) = store
         .slider(ids::INSP_SPRITE_OPACITY)
         .unwrap_or((SliderState::Normal, 1.0));
-    paint_slider_with_chip(
+    let opacity_h = paint_slider_with_chip(
         Rect::new(x, cur_y, w, field_h),
         "Opacity",
         op_value,
@@ -205,7 +205,7 @@ pub(crate) fn paint_color_tint_section(
         text_system,
         theme,
     );
-    cur_y += field_h + row_gap;
+    cur_y += opacity_h + row_gap;
 
     // Tint Fill silhouette toggle.
     let cb_h = 18.0_f32; // LITERAL-PX-OK: matches Checkbox visual height

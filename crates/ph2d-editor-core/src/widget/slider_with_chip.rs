@@ -55,6 +55,12 @@ pub const DEFAULT_CHIP_W: f32 = crate::widget::number_input::MIN_W_PX;
 /// (e.g. Inspector fields that show "160" for a slider at 0.62),
 /// use [`paint_slider_with_chip_layout`] and pass `chip_value` /
 /// `display_override` separately.
+/// Returns the total vertical extent used: `rect.h` in the normal
+/// (one-row) layout, or taller when the panel is narrow and the label
+/// demotes to its own row above (see
+/// [`paint_slider_with_chip_layout_adaptive`]). **Callers must advance
+/// their y-cursor by the returned value**, not a fixed row height, so
+/// the demoted label doesn't overlap the next control.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_slider_with_chip(
     rect: Rect,
@@ -67,8 +73,8 @@ pub fn paint_slider_with_chip(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
-    paint_slider_with_chip_layout(
+) -> f32 {
+    paint_slider_with_chip_layout_adaptive(
         rect,
         label,
         value,
@@ -83,7 +89,7 @@ pub fn paint_slider_with_chip(
         scene,
         text_system,
         theme,
-    );
+    )
 }
 
 /// Layout-flexible variant of [`paint_slider_with_chip`].

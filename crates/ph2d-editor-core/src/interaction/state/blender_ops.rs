@@ -277,8 +277,11 @@ impl WidgetStore {
                     // the chroma/hue the user dialed in persist even when
                     // the sRGB form is gray or gamut-clamped (no slider
                     // snap-back; hue survives chroma≈0).
-                    *value =
-                        crate::widget::oklch_set_channel(value.oklch, channel_idx, norm.clamp(0.0, 1.0));
+                    *value = crate::widget::oklch_set_channel(
+                        value.oklch,
+                        channel_idx,
+                        norm.clamp(0.0, 1.0),
+                    );
                     // Keep the HSV anchor in sync so switching back to
                     // HSV/SV-rect doesn't snap the hue.
                     let (h, s, v, _) = crate::widget::rgba_to_hsv(value.rgba);

@@ -131,7 +131,7 @@ pub use tool_rail::{
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};
 pub use variant_editor::{
-    MAX_VARIANT_DEPTH, VariantEditor, VariantKind, VariantRow, VariantValue, flatten as flatten_variant,
-    paint_variant_editor,
+    MAX_VARIANT_DEPTH, VariantEditor, VariantKind, VariantRow, VariantValue,
+    flatten as flatten_variant, paint_variant_editor,
 };
 pub use vector3_editor::{Vector3Editor, paint_vector3_editor, paint_vector3_editor_with_state};

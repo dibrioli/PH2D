@@ -24,8 +24,7 @@ pub(crate) use ph2d_editor_core::widget::{
     BitmaskGrid32, Button, ButtonKind, ButtonState, Checkbox, CheckboxState, CheckboxValue,
     ColorSwatch, IconButtonStyle, IconGlyph, NumberInput, Rect2Editor, Rect2Layout, SectionHeader,
     SliderState, SwatchSize, TabItem, Tabs, TabsVariant, TextInput, TextInputState,
-    paint_bitmask_grid32,
-    paint_button, paint_checkbox, paint_color_swatch, paint_icon_button,
+    paint_bitmask_grid32, paint_button, paint_checkbox, paint_color_swatch, paint_icon_button,
     paint_number_input_with_buffer, paint_rect2_editor_with_state, paint_section_header,
     paint_slider_with_chip, paint_tabs, paint_text_input_with_buffer,
 };

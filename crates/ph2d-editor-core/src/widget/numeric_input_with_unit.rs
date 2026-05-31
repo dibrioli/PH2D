@@ -182,7 +182,13 @@ mod tests {
 
     #[test]
     fn suffix_round_trips() {
-        for u in [Unit::Px, Unit::Meters, Unit::Degrees, Unit::Radians, Unit::Percent] {
+        for u in [
+            Unit::Px,
+            Unit::Meters,
+            Unit::Degrees,
+            Unit::Radians,
+            Unit::Percent,
+        ] {
             assert_eq!(Unit::parse_suffix(u.suffix()), Some(u));
         }
     }
@@ -209,14 +215,16 @@ mod tests {
 
     #[test]
     fn state_propagates_to_input() {
-        let w = NumericInputWithUnit::new(NumberInput::new(NodeId(1), "Rotation", 90.0), Unit::Degrees)
-            .state(TextInputState::Disabled);
+        let w =
+            NumericInputWithUnit::new(NumberInput::new(NodeId(1), "Rotation", 90.0), Unit::Degrees)
+                .state(TextInputState::Disabled);
         assert_eq!(w.input.state, TextInputState::Disabled);
     }
 
     #[test]
     fn input_and_chip_partition_host_without_overlap() {
-        let widget = NumericInputWithUnit::new(NumberInput::new(NodeId(1), "Rotation", 90.0), Unit::Degrees);
+        let widget =
+            NumericInputWithUnit::new(NumberInput::new(NodeId(1), "Rotation", 90.0), Unit::Degrees);
         let host = Rect::new(0.0, 0.0, 200.0, 28.0);
         let field = widget.input_rect(host);
         let chip = widget.unit_rect(host);
@@ -244,7 +252,13 @@ mod tests {
 
     #[test]
     fn paint_smoke_all_units() {
-        for u in [Unit::Px, Unit::Meters, Unit::Degrees, Unit::Radians, Unit::Percent] {
+        for u in [
+            Unit::Px,
+            Unit::Meters,
+            Unit::Degrees,
+            Unit::Radians,
+            Unit::Percent,
+        ] {
             smoke(u, TextInputState::Normal, Theme::Forge);
         }
     }

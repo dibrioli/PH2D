@@ -164,11 +164,11 @@ impl Rect2Editor {
         let cx = content.x + content.w * 0.5;
         let cy = content.y + content.h * 0.5;
         let anchors = [
-            (content.x, content.y),                       // TL
-            (content.x + content.w, content.y),           // TR
-            (content.x, content.y + content.h),           // BL
+            (content.x, content.y),                         // TL
+            (content.x + content.w, content.y),             // TR
+            (content.x, content.y + content.h),             // BL
             (content.x + content.w, content.y + content.h), // BR
-            (cx, cy),                                     // center
+            (cx, cy),                                       // center
         ];
         std::array::from_fn(|i| {
             let (ax, ay) = anchors[i];
@@ -195,7 +195,16 @@ pub fn paint_rect2_editor(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    paint_rect2_editor_with_state(v, [None; 4], [0; 4], [None; 4], rect, scene, text_system, theme);
+    paint_rect2_editor_with_state(
+        v,
+        [None; 4],
+        [0; 4],
+        [None; 4],
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 /// Like [`paint_rect2_editor`] but renders per-field live edit buffers
@@ -269,12 +278,7 @@ pub fn paint_rect2_editor_with_state(
 /// Paint the canvas drag handles for a rect occupying `content`. Each
 /// corner is a filled square with a border; the center handle is
 /// drawn in the accent tint to distinguish "move" from "resize".
-pub fn paint_rect2_handles(
-    content: Rect,
-    size: f32,
-    scene: &mut VectorScene,
-    theme: Theme,
-) {
+pub fn paint_rect2_handles(content: Rect, size: f32, scene: &mut VectorScene, theme: Theme) {
     let handles = Rect2Editor::handle_rects(content, size);
     let radius = Radius::Sm.px();
     let stroke = StrokeToken::Default.px();
@@ -285,7 +289,13 @@ pub fn paint_rect2_handles(
             ColorToken::Bg3 // corners = resize
         };
         fill_rounded_rect(scene, *h, radius, resolve(fill, theme));
-        stroke_rounded_rect(scene, *h, radius, stroke, resolve(ColorToken::BorderStrong, theme));
+        stroke_rounded_rect(
+            scene,
+            *h,
+            radius,
+            stroke,
+            resolve(ColorToken::BorderStrong, theme),
+        );
     }
 }
 
@@ -340,7 +350,10 @@ mod tests {
         let r = v.field_rects(host);
         // X,Y on top row; W,H on bottom row.
         assert!((r[0].y - r[1].y).abs() < 0.01, "X and Y share the top row");
-        assert!((r[2].y - r[3].y).abs() < 0.01, "W and H share the bottom row");
+        assert!(
+            (r[2].y - r[3].y).abs() < 0.01,
+            "W and H share the bottom row"
+        );
         assert!(r[2].y > r[0].y, "bottom row is below top row");
         // Two columns: X left of Y, W left of H.
         assert!(r[0].x < r[1].x);
@@ -386,7 +399,13 @@ mod tests {
     fn smoke(v: Rect2Editor, theme: Theme) {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
-        paint_rect2_editor(&v, Rect::new(0.0, 0.0, 400.0, 32.0), &mut scene, &mut text, theme);
+        paint_rect2_editor(
+            &v,
+            Rect::new(0.0, 0.0, 400.0, 32.0),
+            &mut scene,
+            &mut text,
+            theme,
+        );
         paint_rect2_handles(Rect::new(50.0, 50.0, 120.0, 80.0), 8.0, &mut scene, theme);
     }
 

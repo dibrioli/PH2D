@@ -185,20 +185,38 @@ fn blend_modes_composite_as_advertised() {
 
     // Linear-space expectations (see module table).
     let mix = render_mode(&mut renderer, 0);
-    assert!((mix as i32 - 55).abs() <= 14, "Mix centre {mix}, expected ~55");
+    assert!(
+        (mix as i32 - 55).abs() <= 14,
+        "Mix centre {mix}, expected ~55"
+    );
     let add = render_mode(&mut renderer, 1);
-    assert!((add as i32 - 110).abs() <= 16, "Add centre {add}, expected ~110");
+    assert!(
+        (add as i32 - 110).abs() <= 16,
+        "Add centre {add}, expected ~110"
+    );
     assert!(add > mix, "Add must lighten vs Mix");
     let sub = render_mode(&mut renderer, 2);
     assert!(sub <= 14, "Subtract centre {sub}, expected ~0 (darkest)");
     let mul = render_mode(&mut renderer, 3);
-    assert!((mul as i32 - 12).abs() <= 14, "Multiply centre {mul}, expected ~12");
+    assert!(
+        (mul as i32 - 12).abs() <= 14,
+        "Multiply centre {mul}, expected ~12"
+    );
     assert!(mul < mix, "Multiply must darken vs Mix");
     let screen = render_mode(&mut renderer, 4);
-    assert!((screen as i32 - 98).abs() <= 16, "Screen centre {screen}, expected ~98");
-    assert!(screen > mix && screen < add, "Screen lightens but softer than Add");
+    assert!(
+        (screen as i32 - 98).abs() <= 16,
+        "Screen centre {screen}, expected ~98"
+    );
+    assert!(
+        screen > mix && screen < add,
+        "Screen lightens but softer than Add"
+    );
     let premult = render_mode(&mut renderer, 5);
-    assert!((premult as i32 - 55).abs() <= 14, "PremultAlpha centre {premult}, expected ~55");
+    assert!(
+        (premult as i32 - 55).abs() <= 14,
+        "PremultAlpha centre {premult}, expected ~55"
+    );
 }
 
 #[test]
@@ -228,5 +246,8 @@ fn absent_blend_is_zero_regression_over() {
     let px = readback(&gpu, &target);
     let c = channel(&px, 32, 32);
     // fg byte 200 → linear 0.573 → readback byte ~146 (linear target).
-    assert!((c as i32 - 146).abs() <= 16, "opaque fg over bg = fg (linear ~146), got {c}");
+    assert!(
+        (c as i32 - 146).abs() <= 16,
+        "opaque fg over bg = fg (linear ~146), got {c}"
+    );
 }

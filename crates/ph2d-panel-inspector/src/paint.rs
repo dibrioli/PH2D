@@ -9,11 +9,10 @@
 
 use crate::state::{
     self, current_display_unit, current_inspector_blend, current_inspector_name_is_some,
-    current_inspector_ordering,
-    current_inspector_sampling, current_inspector_sprite, current_inspector_transform,
-    current_inspector_visibility, current_inspector_visibility_section, current_pixels_per_meter,
-    last_inspector_content_h, last_inspector_visible_h, set_last_inspector_content_h,
-    set_last_inspector_visible_h,
+    current_inspector_ordering, current_inspector_sampling, current_inspector_sprite,
+    current_inspector_transform, current_inspector_visibility,
+    current_inspector_visibility_section, current_pixels_per_meter, last_inspector_content_h,
+    last_inspector_visible_h, set_last_inspector_content_h, set_last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};

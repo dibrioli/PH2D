@@ -243,10 +243,18 @@ pub(crate) fn paint_visibility_section(
         let editor = Rect2Editor::new(
             ids::INSP_LIVE_VISIBILITY_SECTION,
             "Enabler Rect",
-            NumberInput::new(ids::INSP_VIS_RECT_X, "", vx).step(0.1).state(sx), // LITERAL-PX-OK: rect editor step
-            NumberInput::new(ids::INSP_VIS_RECT_Y, "", vy).step(0.1).state(sy), // LITERAL-PX-OK: rect editor step
-            NumberInput::new(ids::INSP_VIS_RECT_W, "", vw).step(0.1).state(sw), // LITERAL-PX-OK: rect editor step
-            NumberInput::new(ids::INSP_VIS_RECT_H, "", vh).step(0.1).state(sh), // LITERAL-PX-OK: rect editor step
+            NumberInput::new(ids::INSP_VIS_RECT_X, "", vx)
+                .step(0.1)
+                .state(sx), // LITERAL-PX-OK: rect editor step
+            NumberInput::new(ids::INSP_VIS_RECT_Y, "", vy)
+                .step(0.1)
+                .state(sy), // LITERAL-PX-OK: rect editor step
+            NumberInput::new(ids::INSP_VIS_RECT_W, "", vw)
+                .step(0.1)
+                .state(sw), // LITERAL-PX-OK: rect editor step
+            NumberInput::new(ids::INSP_VIS_RECT_H, "", vh)
+                .step(0.1)
+                .state(sh), // LITERAL-PX-OK: rect editor step
         )
         // 2×2 grid: the Inspector column is too narrow for four number
         // inputs in one row (each would fall below NumberInput's usable

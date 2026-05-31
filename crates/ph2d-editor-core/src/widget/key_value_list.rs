@@ -59,7 +59,12 @@ pub struct KeyValueList {
 }
 
 impl KeyValueList {
-    pub fn new(id: NodeId, label: impl Into<String>, entries: Vec<KeyValueEntry>, add_id: NodeId) -> Self {
+    pub fn new(
+        id: NodeId,
+        label: impl Into<String>,
+        entries: Vec<KeyValueEntry>,
+        add_id: NodeId,
+    ) -> Self {
         Self {
             id,
             label: label.into(),
@@ -74,7 +79,12 @@ impl KeyValueList {
     }
 
     pub fn row_rect(host: Rect, row_h: f32, i: usize) -> Rect {
-        Rect::new(host.x, host.y + i as f32 * (row_h + Spacing::Xs.px()), host.w, row_h)
+        Rect::new(
+            host.x,
+            host.y + i as f32 * (row_h + Spacing::Xs.px()),
+            host.w,
+            row_h,
+        )
     }
 
     pub fn key_rect(row: Rect, row_h: f32) -> Rect {
@@ -129,7 +139,12 @@ fn paint_field(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    fill_rounded_rect(scene, rect, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+    fill_rounded_rect(
+        scene,
+        rect,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg3, theme),
+    );
     stroke_rounded_rect(
         scene,
         rect,
@@ -171,15 +186,36 @@ pub fn paint_key_value_list(
         let key_rect = KeyValueList::key_rect(row, row_h);
         let value_rect = KeyValueList::value_rect(row, row_h);
         let remove_rect = KeyValueList::remove_rect(row, row_h);
-        paint_field(&entry.key, key_rect, entry.key.is_empty(), scene, text_system, theme);
-        paint_field(&entry.value, value_rect, entry.value.is_empty(), scene, text_system, theme);
-        let remove = Button::new(entry.remove_id, "Remove")
-            .kind(ButtonKind::IconOnly { icon: IconId::Trash });
+        paint_field(
+            &entry.key,
+            key_rect,
+            entry.key.is_empty(),
+            scene,
+            text_system,
+            theme,
+        );
+        paint_field(
+            &entry.value,
+            value_rect,
+            entry.value.is_empty(),
+            scene,
+            text_system,
+            theme,
+        );
+        let remove = Button::new(entry.remove_id, "Remove").kind(ButtonKind::IconOnly {
+            icon: IconId::Trash,
+        });
         paint_button(&remove, remove_rect, scene, text_system, theme);
     }
-    let add = Button::new(list.add_id, "Add parameter")
-        .kind(ButtonKind::IconOnly { icon: IconId::Add });
-    paint_button(&add, list.add_button_rect(host, row_h), scene, text_system, theme);
+    let add =
+        Button::new(list.add_id, "Add parameter").kind(ButtonKind::IconOnly { icon: IconId::Add });
+    paint_button(
+        &add,
+        list.add_button_rect(host, row_h),
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 #[cfg(test)]
@@ -227,14 +263,24 @@ mod tests {
 
     #[test]
     fn a11y_role_is_group() {
-        assert_eq!(fixture().build_a11y(0.0, 0.0, 300.0, 200.0).role(), Role::Group);
+        assert_eq!(
+            fixture().build_a11y(0.0, 0.0, 300.0, 200.0).role(),
+            Role::Group
+        );
     }
 
     #[test]
     fn paint_smoke() {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
-        paint_key_value_list(&fixture(), Rect::new(0.0, 0.0, 300.0, 200.0), 24.0, &mut scene, &mut text, Theme::Forge);
+        paint_key_value_list(
+            &fixture(),
+            Rect::new(0.0, 0.0, 300.0, 200.0),
+            24.0,
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+        );
     }
 
     #[test]
@@ -242,6 +288,13 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let empty = KeyValueList::new(NodeId(1), "Empty", vec![], NodeId(99));
-        paint_key_value_list(&empty, Rect::new(0.0, 0.0, 300.0, 60.0), 24.0, &mut scene, &mut text, Theme::Blueprint);
+        paint_key_value_list(
+            &empty,
+            Rect::new(0.0, 0.0, 300.0, 60.0),
+            24.0,
+            &mut scene,
+            &mut text,
+            Theme::Blueprint,
+        );
     }
 }

@@ -287,7 +287,12 @@ pub fn paint_blender_color_picker_with_store(
             if id.0 != 0 {
                 hit_index.register(
                     id,
-                    Rect::new(chan_rect.x + seg_w * i as f32, chan_rect.y, seg_w, chan_rect.h),
+                    Rect::new(
+                        chan_rect.x + seg_w * i as f32,
+                        chan_rect.y,
+                        seg_w,
+                        chan_rect.h,
+                    ),
                 );
             }
         }

@@ -125,7 +125,8 @@ fn oklch_lcha_builds_oklch_color() {
     // The picker emits an L/C/H/A tuple (editor-core keeps ph2d-color
     // dev-only); the consumer builds OklchColor from it. White → L≈1,
     // C≈0.
-    let cp = BlenderColorPicker::new(NodeId(1), "x").value(ColorValue::from_rgba8(255, 255, 255, 255));
+    let cp =
+        BlenderColorPicker::new(NodeId(1), "x").value(ColorValue::from_rgba8(255, 255, 255, 255));
     let (l, c, _h, a) = cp.oklch_lcha();
     let oklch = ph2d_color::OklchColor::new(l, c, _h, a);
     assert!((oklch.l - 1.0).abs() < 0.02, "white L≈1, got {}", oklch.l);
@@ -135,10 +136,18 @@ fn oklch_lcha_builds_oklch_color() {
 
 #[test]
 fn oklch_norm_channels_in_unit_range() {
-    for rgba in [[255, 0, 0, 255], [0, 255, 0, 128], [0, 0, 0, 255], [255, 255, 255, 255]] {
+    for rgba in [
+        [255, 0, 0, 255],
+        [0, 255, 0, 128],
+        [0, 0, 0, 255],
+        [255, 255, 255, 255],
+    ] {
         let cv = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
         for v in oklch_norm_channels(cv.oklch) {
-            assert!((0.0..=1.0).contains(&v), "channel {v} out of 0..1 for {rgba:?}");
+            assert!(
+                (0.0..=1.0).contains(&v),
+                "channel {v} out of 0..1 for {rgba:?}"
+            );
         }
     }
 }

@@ -60,7 +60,17 @@ pub(super) fn paint_inspector_w6_section(
     let label_h = label_font + Spacing::Xs.px();
 
     // ── Rect2Editor ─────────────────────────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "Rect2Editor", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "Rect2Editor",
+        label_h,
+        label_font,
+    );
     let (sx, vx, bx, cx, ax) = read_number_input(store, ids::INSP_SAMPLE_W6_RECT[0]);
     let (sy, vy, by, cy, ay) = read_number_input(store, ids::INSP_SAMPLE_W6_RECT[1]);
     let (sw, vw, bw, cw, aw) = read_number_input(store, ids::INSP_SAMPLE_W6_RECT[2]);
@@ -92,7 +102,17 @@ pub(super) fn paint_inspector_w6_section(
     y += rect2_h + ROW_GAP;
 
     // ── NumericInputWithUnit ────────────────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "NumericInputWithUnit (deg)", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "NumericInputWithUnit (deg)",
+        label_h,
+        label_font,
+    );
     let (us, uv, ub, uc, ua) = read_number_input(store, ids::INSP_SAMPLE_W6_UNIT);
     let unit_widget = NumericInputWithUnit::new(
         NumberInput::new(ids::INSP_SAMPLE_W6_UNIT, "", uv).state(us),
@@ -113,7 +133,17 @@ pub(super) fn paint_inspector_w6_section(
     y += W6_FIELD_H + ROW_GAP;
 
     // ── BitmaskGrid32 ───────────────────────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "BitmaskGrid32", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "BitmaskGrid32",
+        label_h,
+        label_font,
+    );
     let mut mask = 0u32;
     for (bit, id) in ids::INSP_SAMPLE_W6_MASK.iter().enumerate() {
         let (_state, value) = store
@@ -124,7 +154,12 @@ pub(super) fn paint_inspector_w6_section(
         }
     }
     let cell_h = Density::Compact.row_h_px();
-    let grid = BitmaskGrid32::new(ids::INSP_SECTION_W6, "Visibility Layer", ids::INSP_SAMPLE_W6_MASK, mask);
+    let grid = BitmaskGrid32::new(
+        ids::INSP_SECTION_W6,
+        "Visibility Layer",
+        ids::INSP_SAMPLE_W6_MASK,
+        mask,
+    );
     for (bit, id) in ids::INSP_SAMPLE_W6_MASK.iter().enumerate() {
         hit_index.register(*id, BitmaskGrid32::cell_rect(x, y, w, cell_h, bit));
     }
@@ -132,7 +167,17 @@ pub(super) fn paint_inspector_w6_section(
     y += BitmaskGrid32::grid_height(cell_h) + ROW_GAP;
 
     // ── SegmentedAdaptive ───────────────────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "SegmentedAdaptive (9-slice modes)", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "SegmentedAdaptive (9-slice modes)",
+        label_h,
+        label_font,
+    );
     let selected = active_index(store, &W6_SEG_IDS).unwrap_or(0);
     let seg = SegmentedAdaptive::new(
         ids::INSP_SECTION_W6,
@@ -156,7 +201,17 @@ pub(super) fn paint_inspector_w6_section(
     y += seg_h + ROW_GAP;
 
     // ── VariantEditor (visual reference) ────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "VariantEditor (recursive, depth \u{2264}4)", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "VariantEditor (recursive, depth \u{2264}4)",
+        label_h,
+        label_font,
+    );
     let variant = VariantEditor::new(
         ids::INSP_SAMPLE_W6_VARIANT,
         "user_data",
@@ -178,7 +233,17 @@ pub(super) fn paint_inspector_w6_section(
     y += W6_FIELD_H * variant_rows as f32 + ROW_GAP;
 
     // ── KeyValueList (visual reference) ─────────────────────────────
-    y = mini_label(scene, text_system, theme, x, w, y, "KeyValueList", label_h, label_font);
+    y = mini_label(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        "KeyValueList",
+        label_h,
+        label_font,
+    );
     let kv = KeyValueList::new(
         ids::INSP_SECTION_W6,
         "Shader Params",
@@ -188,7 +253,6 @@ pub(super) fn paint_inspector_w6_section(
             ids::INSP_SAMPLE_W6_KV_REMOVE,
             "hue_shift",
             "0.25", // LITERAL-PX-OK: showcase demo value preview string
-
         )],
         ids::INSP_SAMPLE_W6_KV_ADD,
     );

@@ -119,9 +119,9 @@ pub use project::{
 };
 pub use screens::{
     BlendFieldEdit, BottomHudStats, HeroScreen, HeroSelection, InspectorBlendInfo,
-    InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
-    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed,
+    InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo, InspectorSpriteMixed,
+    InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo, OrderingFieldEdit,
     RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, ViewFocusKind,
     VisibilityFieldEdit, paint_hero_screen,

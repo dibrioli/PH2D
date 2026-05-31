@@ -96,7 +96,10 @@ impl VariantValue {
             VariantValue::Int(n) => n.to_string(),
             VariantValue::Float(f) => crate::interaction::format_number(*f),
             VariantValue::Color(rgba) => {
-                format!("#{:02X}{:02X}{:02X}{:02X}", rgba[0], rgba[1], rgba[2], rgba[3])
+                format!(
+                    "#{:02X}{:02X}{:02X}{:02X}",
+                    rgba[0], rgba[1], rgba[2], rgba[3]
+                )
             }
             VariantValue::Dict(entries) => format!("{{{}}}", entries.len()),
         }
@@ -257,7 +260,8 @@ pub fn paint_variant_editor(
         match row.kind {
             VariantKind::Color => {
                 let rgba = parse_color_preview(&row.preview);
-                let sw = ColorSwatch::new(editor.row_kind_id(i), "Value", rgba).size(SwatchSize::Sm);
+                let sw =
+                    ColorSwatch::new(editor.row_kind_id(i), "Value", rgba).size(SwatchSize::Sm);
                 paint_color_swatch(&sw, val_rect, scene, theme);
             }
             _ => {
@@ -288,12 +292,7 @@ fn parse_color_preview(s: &str) -> [u8; 4] {
     if hex.len() == 8
         && let Ok(n) = u32::from_str_radix(hex, 16)
     {
-        return [
-            (n >> 24) as u8,
-            (n >> 16) as u8,
-            (n >> 8) as u8,
-            n as u8,
-        ];
+        return [(n >> 24) as u8, (n >> 16) as u8, (n >> 8) as u8, n as u8];
     }
     [0, 0, 0, 255]
 }
@@ -342,8 +341,14 @@ mod tests {
         }
         let rows = flatten(&v);
         let max_depth = rows.iter().map(|r| r.depth).max().unwrap();
-        assert!(max_depth <= MAX_VARIANT_DEPTH, "max depth {max_depth} exceeds cap");
-        assert!(rows.iter().any(|r| r.clamped), "deep dict should mark a clamped row");
+        assert!(
+            max_depth <= MAX_VARIANT_DEPTH,
+            "max depth {max_depth} exceeds cap"
+        );
+        assert!(
+            rows.iter().any(|r| r.clamped),
+            "deep dict should mark a clamped row"
+        );
     }
 
     #[test]
@@ -373,7 +378,14 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         let ed = VariantEditor::new(NodeId(500), "Params", value);
-        paint_variant_editor(&ed, Rect::new(0.0, 0.0, 300.0, 200.0), 24.0, &mut scene, &mut text, theme);
+        paint_variant_editor(
+            &ed,
+            Rect::new(0.0, 0.0, 300.0, 200.0),
+            24.0,
+            &mut scene,
+            &mut text,
+            theme,
+        );
     }
 
     #[test]

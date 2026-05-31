@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(parse("90deg"), Some((90.0, Some(Unit::Degrees))));
         assert_eq!(parse("12.5 px"), Some((12.5, Some(Unit::Px))));
         assert_eq!(parse("50%"), Some((50.0, Some(Unit::Percent))));
-        assert_eq!(parse("3.14rad"), Some((3.14, Some(Unit::Radians))));
+        assert_eq!(parse("2.25rad"), Some((2.25, Some(Unit::Radians))));
         assert_eq!(parse("7m"), Some((7.0, Some(Unit::Meters))));
     }
 

@@ -208,7 +208,7 @@ pub fn paint_rect2_editor(
 }
 
 /// Like [`paint_rect2_editor`] but renders per-field live edit buffers
-/// + caret + selection. The arrays index 0/1/2/3 = X/Y/W/H. Pass
+/// with caret + selection. The arrays index 0/1/2/3 = X/Y/W/H; pass
 /// `[None; 4]` / `[0; 4]` for the static (unfocused) case.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_rect2_editor_with_state(

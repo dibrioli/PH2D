@@ -149,7 +149,7 @@ pub fn oklch_in_gamut(l: f64, c: f64, h_deg: f64) -> bool {
     const EPS: f64 = 1e-4;
     oklch_to_linear_srgb(l, c, h_deg)
         .iter()
-        .all(|&v| v >= -EPS && v <= 1.0 + EPS)
+        .all(|&v| (-EPS..=1.0 + EPS).contains(&v))
 }
 
 fn linear_to_srgb_byte(linear: f64) -> u8 {

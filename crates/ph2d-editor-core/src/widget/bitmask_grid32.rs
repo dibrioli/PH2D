@@ -94,6 +94,7 @@ impl BitmaskGrid32 {
 /// Paint the 32 checkbox cells. The caller is responsible for
 /// registering each cell's hit rect (via [`BitmaskGrid32::cell_rect`])
 /// so clicks toggle the bit.
+#[allow(clippy::too_many_arguments)]
 pub fn paint_bitmask_grid32(
     grid: &BitmaskGrid32,
     origin_x: f32,

@@ -30,7 +30,11 @@ Orquestrando 5 implementadores em módulos físicamente disjuntos. Briefings esc
 
 **Pontos compartilhados resolvidos:**
 - `crates/ph2d-asset/` → escrita só do **Impl-3 (KTX2)**; Impl-2 (AVIF) só **lê** o bridge `loader.rs::decode_via_imageio_registry`.
-- `crates/ph2d-render/` → **LIBERADO** (Sprite W1 fechado 2026-05-29). Vector H5/M3 (mover `world_to_screen_affine` p/ `Camera2d`, single-source) está **DESBLOQUEADO** — é a próxima consolidação foundational recomendada (remove a duplicação shell↔render).
+- `crates/ph2d-render/` → **LIBERADO** (Sprite W1 fechado 2026-05-29). Vector H5/M3
+  **FECHADO** (`172eff2`): `Camera2d::world_to_screen_affine` é fonte única; shell consolidado.
+  → **Vector não tem mais touchpoint foundational = drop-crate isolado puro.** LOW §3.4 deferido p/ W2.
+- **Touchpoint foundational restante entre os módulos abertos:** só o **Painter T2.5 shell-wire**
+  (`shells/desktop` keybind/bridge) — e esse é **bundle do Coord**. Fechado ele, fundação finalizada.
 - `shells/desktop/` bridges → cada tool dona do seu: `vector_pen_bridge.rs` + `vector_pen_input.rs` = **Impl-5** (exceção tool-bridge §3.A.4). Plumbing compartilhado (`render_loop/mod.rs`, keybinds, `painter_bridge.rs`) = **Coordenador**.
 
 ### Itens que o Coordenador segura (não delegados)

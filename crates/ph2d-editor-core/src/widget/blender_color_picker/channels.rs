@@ -6,7 +6,7 @@
 use crate::paint::{paint_text_centered, resolve};
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ColorValue, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 pub fn paint_slider_row(
@@ -101,13 +101,19 @@ pub fn max_in_gamut_chroma(l: f64, h_deg: f64) -> f64 {
     lo
 }
 
-/// The picker's current sRGB value as OKLCH channels normalized to
-/// 0..1 for the uniform slider/chip model: `[L, C/maxC(L,H), H/360,
-/// A]`. Chroma is **gamut-relative** (see [`max_in_gamut_chroma`]) so
-/// the slider top is always reachable. Mirrors how `rgba_to_hsv` feeds
-/// the HSV channel rows.
-pub fn oklch_norm_channels(rgba: [u8; 4]) -> [f32; 4] {
-    let (l, c, h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
+/// A [`ColorValue`]'s STORED OKLCH `(L,C,H,A)` as channel norms in 0..1
+/// for the uniform slider/chip model: `[L, C/maxC(L,H), H/360, A]`.
+///
+/// Reads `value.oklch` directly rather than re-deriving from `rgba` —
+/// `ColorValue::from_oklch` keeps the exact OKLCH the user dialed in, so
+/// the chroma + hue survive even when the sRGB form is gray or gamut-
+/// clamped. (Re-deriving via `srgb_to_oklch(value.rgba)` lost hue at
+/// chroma≈0 and snapped the chroma thumb back through 8-bit
+/// quantization — that was the "can't move Chroma/Hue until I change
+/// Lightness" bug.) Chroma is **gamut-relative** (see
+/// [`max_in_gamut_chroma`]) so the slider top is always reachable.
+pub fn oklch_norm_channels(oklch: (f64, f64, f64, f64)) -> [f32; 4] {
+    let (l, c, h, a) = oklch;
     let max_c = max_in_gamut_chroma(l, h);
     let c_norm = if max_c > 1e-6 {
         (c / max_c).clamp(0.0, 1.0) as f32
@@ -118,28 +124,29 @@ pub fn oklch_norm_channels(rgba: [u8; 4]) -> [f32; 4] {
         (l as f32).clamp(0.0, 1.0),
         c_norm,
         (h as f32 / OKLCH_HUE_MAX).clamp(0.0, 1.0),
-        rgba[3] as f32 / 255.0,
+        (a as f32).clamp(0.0, 1.0),
     ]
 }
 
-/// Inverse of one channel edit in [`oklch_norm_channels`] space: take
-/// the current `rgba`, overwrite OKLCH channel `idx` (0=L,1=C,2=H,3=A)
-/// with the normalized `norm` (0..1), and convert back to sRGB bytes.
+/// Edit one OKLCH channel (0=L,1=C,2=H,3=A) of `oklch` by normalized
+/// `norm` (0..1) and return a [`ColorValue`] built via
+/// [`ColorValue::from_oklch`] — so the edited OKLCH is stored EXACTLY
+/// (round-trip-free) alongside the clamped sRGB. The other channels are
+/// preserved, so dragging Hue at chroma≈0 still records the hue (it
+/// shows once Chroma is raised) and dragging Chroma never snaps back.
 /// Chroma denormalizes against [`max_in_gamut_chroma`] for the current
-/// lightness + hue, so `norm = 1.0` reaches the gamut boundary.
-pub fn oklch_set_channel(rgba: [u8; 4], idx: u8, norm: f32) -> [u8; 4] {
-    let (mut l, mut c, mut h) = ph2d_tokens::srgb_to_oklch(rgba[0], rgba[1], rgba[2]);
-    let mut a = rgba[3];
-    let n = norm.clamp(0.0, 1.0);
+/// L+H, so `norm = 1.0` reaches the gamut boundary.
+pub fn oklch_set_channel(oklch: (f64, f64, f64, f64), idx: u8, norm: f32) -> ColorValue {
+    let (mut l, mut c, mut h, mut a) = oklch;
+    let n = norm.clamp(0.0, 1.0) as f64;
     match idx {
-        0 => l = n as f64,
-        1 => c = n as f64 * max_in_gamut_chroma(l, h),
-        2 => h = (n * OKLCH_HUE_MAX) as f64,
-        3 => a = (n * 255.0).round() as u8,
+        0 => l = n,
+        1 => c = n * max_in_gamut_chroma(l, h),
+        2 => h = n * OKLCH_HUE_MAX as f64,
+        3 => a = n,
         _ => {}
     }
-    let [r, g, b] = ph2d_tokens::oklch_to_srgb(l, c, h);
-    [r, g, b, a]
+    ColorValue::from_oklch(l, c, h, a)
 }
 
 pub fn rgba_to_hsv(rgba: [u8; 4]) -> (f32, f32, f32, f32) {

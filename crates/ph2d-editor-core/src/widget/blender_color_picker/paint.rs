@@ -133,7 +133,7 @@ pub fn paint_blender_color_picker(
             let (_, _, v, a) = rgba_to_hsv(cp.value.rgba);
             [cp.hsv_h, cp.hsv_s, v, a]
         }
-        ChannelMode::Oklch => oklch_norm_channels(cp.value.rgba),
+        ChannelMode::Oklch => oklch_norm_channels(cp.value.oklch),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;
@@ -320,7 +320,7 @@ pub fn paint_blender_color_picker_with_store(
         // slider model. Gray collapses hue to 0 — acceptable, as the
         // hue strip above stays HSV-spatial and OKLCH rows are a
         // numeric alt-view.
-        ChannelMode::Oklch => oklch_norm_channels(local.value.rgba),
+        ChannelMode::Oklch => oklch_norm_channels(local.value.oklch),
     };
     for (i, (label, val)) in labels.iter().zip(values.iter()).enumerate() {
         let row_y = y + (SLIDER_ROW_H + 4.0) * i as f32;

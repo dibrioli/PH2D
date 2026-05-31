@@ -40,6 +40,14 @@ pub(super) fn is_focusable(store: &WidgetStore, id: NodeId) -> bool {
         // are still focusable for keyboard nav purposes — they don't
         // emit click events but accept Tab focus.
         Some(InteractiveState::Plain) => true,
+        // The BlenderPicker container is a NON-focusable hit BARRIER: it
+        // is hit-registered (full picker rect) so clicks in the dead
+        // space between its sub-controls don't fall through to the panel
+        // beneath it — but it must NOT become `active`, or a drag across
+        // that dead space would emit a stream of `ValueChanged(picker)`
+        // events (unhandled-event spam). Its real controls are separate
+        // `BlenderHit` ids, which stay focusable via the catch-all below.
+        Some(InteractiveState::BlenderPicker { .. }) => false,
         // Phases C-D add per-kind focusability for the rest.
         Some(_) => true,
         None => false,

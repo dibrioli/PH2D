@@ -29,7 +29,7 @@ pub(super) fn derive_blender_channel_value(store: &WidgetStore, parent: NodeId, 
             let (h, s, v, a) = rgba_to_hsv(cur.rgba);
             [h, s, v, a][idx as usize] as f64
         }
-        ChannelMode::Oklch => oklch_norm_channels(cur.rgba)[idx as usize] as f64,
+        ChannelMode::Oklch => oklch_norm_channels(cur.oklch)[idx as usize] as f64,
     }
 }
 
@@ -81,11 +81,10 @@ pub(super) fn apply_blender_channel_value(
             store.set_blender_value_with_hsv(parent, new_value, h, s);
         }
         ChannelMode::Oklch => {
-            // OKLCH derives directly from the current sRGB value: edit
-            // one normalized L/C/H/A channel and convert back (the
-            // hue strip stays HSV-spatial, so no OKLCH anchor needed).
-            let rgba = crate::widget::oklch_set_channel(cur.rgba, idx, n);
-            let new_value = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+            // Edit one OKLCH channel off the value's STORED oklch and
+            // rebuild via `from_oklch` (round-trip-free), so chroma/hue
+            // persist across edits even at chroma≈0 / gamut clamp.
+            let new_value = crate::widget::oklch_set_channel(cur.oklch, idx, n);
             store.set_blender_value(parent, new_value);
         }
     }

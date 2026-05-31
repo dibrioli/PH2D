@@ -136,7 +136,8 @@ fn oklch_lcha_builds_oklch_color() {
 #[test]
 fn oklch_norm_channels_in_unit_range() {
     for rgba in [[255, 0, 0, 255], [0, 255, 0, 128], [0, 0, 0, 255], [255, 255, 255, 255]] {
-        for v in oklch_norm_channels(rgba) {
+        let cv = ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]);
+        for v in oklch_norm_channels(cv.oklch) {
             assert!((0.0..=1.0).contains(&v), "channel {v} out of 0..1 for {rgba:?}");
         }
     }
@@ -144,16 +145,40 @@ fn oklch_norm_channels_in_unit_range() {
 
 #[test]
 fn chroma_slider_top_is_reachable() {
-    // Regression for the smoke report "Chroma quase nunca chega a 1":
-    // with gamut-relative normalization, pushing chroma to norm=1 on a
-    // mid color must produce a value whose displayed chroma reads back
-    // at ~1 (the gamut boundary), not pinned far below.
-    let base = [120u8, 80, 60, 255];
-    let maxed = oklch_set_channel(base, 1, 1.0);
-    let displayed_c = oklch_norm_channels(maxed)[1];
+    // "Chroma quase nunca chega a 1": with gamut-relative normalization,
+    // pushing chroma to norm=1 produces a value whose displayed chroma
+    // reads back at ~1 (the gamut boundary), not pinned far below.
+    let base = ColorValue::from_rgba8(120, 80, 60, 255);
+    let maxed = oklch_set_channel(base.oklch, 1, 1.0);
+    let displayed_c = oklch_norm_channels(maxed.oklch)[1];
     assert!(
         displayed_c > 0.9,
         "chroma slider should reach ~1 (gamut-relative), got {displayed_c}"
+    );
+}
+
+#[test]
+fn oklch_channel_edits_are_round_trip_free() {
+    // Smoke report "can't move Chroma/Hue until I change Lightness": the
+    // edited value's STORED oklch must reflect the norm exactly, so the
+    // slider thumb tracks (no snap-back) and hue persists at chroma≈0.
+    // Near-white gray (high L, chroma≈0) — the problematic default.
+    let gray = ColorValue::from_rgba8(231, 231, 231, 255);
+    // Drag Hue to ~0.5 turn: even though the color stays ~gray, the
+    // stored hue must read back at ~0.5 (not collapse to 0).
+    let hue_set = oklch_set_channel(gray.oklch, 2, 0.5);
+    assert!(
+        (oklch_norm_channels(hue_set.oklch)[2] - 0.5).abs() < 0.02,
+        "hue must persist at chroma≈0, got {}",
+        oklch_norm_channels(hue_set.oklch)[2]
+    );
+    // Drag Chroma to 0.6: the displayed chroma reads back at ~0.6 (no
+    // 8-bit snap-back), because we store the exact oklch.
+    let chroma_set = oklch_set_channel(hue_set.oklch, 1, 0.6);
+    assert!(
+        (oklch_norm_channels(chroma_set.oklch)[1] - 0.6).abs() < 0.02,
+        "chroma thumb must track (no snap-back), got {}",
+        oklch_norm_channels(chroma_set.oklch)[1]
     );
 }
 
@@ -170,14 +195,17 @@ fn max_in_gamut_chroma_zero_at_lightness_extremes() {
 fn oklch_set_channel_lightness_monotone() {
     // Raising normalized lightness on a mid color should not decrease
     // the resulting perceptual luminance proxy (sum of RGB).
-    let base = [120u8, 80, 60, 255];
-    let darker = oklch_set_channel(base, 0, 0.2);
-    let lighter = oklch_set_channel(base, 0, 0.9);
-    let sum = |c: [u8; 4]| c[0] as u32 + c[1] as u32 + c[2] as u32;
-    assert!(sum(lighter) > sum(darker), "higher L should brighten: {darker:?} vs {lighter:?}");
-    // Alpha channel edit leaves RGB intact.
-    let a_edit = oklch_set_channel(base, 3, 0.5);
-    assert_eq!([a_edit[0], a_edit[1], a_edit[2]], [base[0], base[1], base[2]]);
+    let base = ColorValue::from_rgba8(120, 80, 60, 255);
+    let darker = oklch_set_channel(base.oklch, 0, 0.2);
+    let lighter = oklch_set_channel(base.oklch, 0, 0.9);
+    let sum = |c: ColorValue| c.rgba[0] as u32 + c.rgba[1] as u32 + c.rgba[2] as u32;
+    assert!(sum(lighter) > sum(darker), "higher L should brighten");
+    // Alpha channel edit leaves the sRGB color intact.
+    let a_edit = oklch_set_channel(base.oklch, 3, 0.5);
+    assert_eq!(
+        [a_edit.rgba[0], a_edit.rgba[1], a_edit.rgba[2]],
+        [base.rgba[0], base.rgba[1], base.rgba[2]]
+    );
 }
 
 #[test]

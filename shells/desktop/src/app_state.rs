@@ -409,6 +409,15 @@ pub(crate) struct App {
     /// commits (Apply) which bakes the canvas into the sprite texture.
     /// Cleared on Apply + deactivate.
     pub(crate) painter_preview: Option<PainterPreview>,
+    /// W2.T2.5: transient flag set by the Cmd/Ctrl+Enter keybind in
+    /// `input_handlers::handle_editor_key` to commit the active Painter
+    /// stroke into the sprite WITHOUT switching tools. Consumed (taken)
+    /// by `painter_bridge::dispatch` — the only site allowed to downcast
+    /// to `PainterTool` — which calls `request_commit()`. The
+    /// deactivate-commit path (tool switch) is separate via
+    /// `drive_pending_commit`. No concrete-tool downcast in the keyboard
+    /// handler (keeps `architecture_no_downcast_to_concrete_tool_in_shell` green).
+    pub(crate) painter_commit_requested: bool,
     /// W1.T1.7 R8: accumulator of committed Vector Pen `.ph2d-vector`
     /// assets. Each close-path emits one; the bridge stashes them
     /// here and renders ALL committed paths per frame so finished

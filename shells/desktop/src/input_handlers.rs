@@ -175,6 +175,16 @@ impl App {
                         .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
                 }
             }
+            // Cmd+Enter / Ctrl+Enter — commit the active Painter stroke into
+            // the sprite WITHOUT switching tools (W2.T2.5). Sets a transient
+            // flag consumed by `painter_bridge::dispatch` (the only downcast-
+            // allowed site), which calls `PainterTool::request_commit`. If
+            // Painter isn't active the flag is just taken and ignored. No
+            // concrete-tool downcast here — keeps
+            // `architecture_no_downcast_to_concrete_tool_in_shell` green.
+            KeyCode::Enter if self.modifiers.super_key() || self.modifiers.control_key() => {
+                self.painter_commit_requested = true;
+            }
             // Digit shortcuts (1=Brush, 2=Move, 3=BgRemoval) retired
             // — they collided with every numeric chip in the Image
             // Tools panels (Color EQ Tile Grid, Equalize Sizes Fixed

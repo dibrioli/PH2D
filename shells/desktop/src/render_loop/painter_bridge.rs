@@ -90,11 +90,17 @@ pub(super) fn dispatch(
     vector_scene: &mut VectorScene,
     last_painter_pushed_entity: &mut Option<u64>,
     painter_preview: &mut Option<PainterPreview>,
+    commit_requested: &mut bool,
 ) -> bool {
     let painter_is_active = tools
         .active()
         .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
         .unwrap_or(false);
+
+    // W2.T2.5: consume the Cmd/Ctrl+Enter commit flag (set in
+    // `handle_editor_key`). Taken unconditionally so it can't leak to a
+    // later painter activation; only acted on in the downcast block below.
+    let commit_requested = std::mem::take(commit_requested);
 
     // ── (W2.T2.1) Sidebar visibility + Inspector takeover toggle ──────────
     // Espelha o padrão BgRemoval/Padding bridge: panel sidebar é "takeover"
@@ -201,6 +207,12 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_painter::PainterTool>()
     {
+        // W2.T2.5: Cmd/Ctrl+Enter commit-without-switching — set
+        // pending_commit so the `drive_pending_commit` drain below bakes
+        // the stroke into the sprite this same frame.
+        if commit_requested {
+            painter.request_commit();
+        }
         // Selection-drift invalidation (mirror of drive_preview_cache).
         if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)
             && existing.entity_bits != sel

@@ -952,6 +952,7 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
+                &mut self.painter_commit_requested,
             );
             // Vector Pen tool ⟷ shell bridge. Per-frame world-space
             // render of committed scene paths + in-progress overlay. The

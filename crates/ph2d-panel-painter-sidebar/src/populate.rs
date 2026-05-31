@@ -11,8 +11,11 @@
 //!   senão digitar no chip clampa o slider ao máximo (split-brain 2026-05-27).
 //! - W-3: seed vem do `PainterUiSnapshot::default()`, não de literais ⇒ seed
 //!   e o fallback do `paint` nunca divergem.
-//! - Y-7/T2.2/T2.4: undo/redo/modifier buttons só são registrados quando
-//!   pintados (não nesta wave) — registrar sem paint deixa roteamento morto.
+//! - Y-7/T2.2: undo/redo buttons só são registrados quando pintados (não
+//!   nesta wave) — registrar sem paint deixa roteamento morto.
+//! - T2.4: o modifier square JÁ é pintado (`paint::paint_modifier_square`),
+//!   então é registrado aqui como `Button` (dispatcher rastreia hover/press
+//!   + roteia o `Click` → `ToggleEyedropper`).
 
 use crate::ids;
 use ph2d_a11y::NodeId;
@@ -23,9 +26,19 @@ use ph2d_tool_painter::{
 };
 
 pub fn populate(store: &mut WidgetStore) {
-    // Close (X) button — único button com paint nesta wave.
+    // Close (X) button.
     store.register(
         ph2d_editor_core::ids::PAINTER_SIDEBAR_CLOSE,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
+    // Modifier square (T2.4) — eyedropper-while-held affordance. Painted in
+    // `paint::paint_modifier_square`, so registering it here is live (not
+    // dead routing). Dispatcher tracks hover/press + emits its `Click`.
+    store.register(
+        ids::MODIFIER_SQUARE,
         InteractiveState::Button {
             state: ButtonState::Normal,
         },

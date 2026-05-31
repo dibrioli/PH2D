@@ -22,7 +22,8 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::{
-    ColorSwatch, SwatchSize, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
@@ -103,56 +104,9 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
 
     let mut y = body_top;
 
-    // Color row — current brush color via the canonical `ColorSwatch`
-    // (Widget Gallery `widget/showcase/color.rs`): a left "Color" label
-    // + the swatch pinned to the row's right edge. Top-most row, mirror
-    // Procreate's "current color" at the top of the tool sidebar.
-    //
-    // Fill comes from the live snapshot (`active_color_srgb8`) so the
-    // swatch tracks the picker in real time as the user drags. The
-    // user RGBA is data (no hex literal here — `paint_color_swatch`
-    // carries the single justified `LITERAL-COLOR-OK`); chrome/label
-    // use tokens.
-    //
-    // The hit is keyed on the SHARED `PAINTER_COLOR_THUMB` id: the
-    // editor-core dispatch opens the Blender picker seeded with this
-    // color, and the shell `painter_bridge` round-trips the picked
-    // color back into the Painter. We only paint + register the hit.
-    let color_rect = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        y,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        ROW_H_PX,
-    );
-    let label_font = TypeToken::Base.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        "Color",
-        color_rect.x,
-        color_rect.y + (ROW_H_PX - label_font) * 0.5,
-        label_font,
-        SLIDER_LABEL_W,
-        resolve(ColorToken::Text1, theme),
-    );
-    let swatch_w = Spacing::Xl3.px();
-    let swatch_rect = Rect::new(
-        color_rect.x + color_rect.w - swatch_w,
-        color_rect.y,
-        swatch_w,
-        ROW_H_PX,
-    );
-    let swatch = ColorSwatch::new(
-        core_ids::PAINTER_COLOR_THUMB,
-        "Brush color",
-        snapshot.active_color_srgb8(),
-    )
-    .size(SwatchSize::Md);
-    paint_color_swatch(&swatch, swatch_rect, ctx.scene, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
-    y += ROW_H_PX + row_pad;
+    // Color row (top-most — Procreate "current color"). Helper keeps this
+    // fn under the panel-fn LOC cap.
+    y = paint_color_row(ctx, rect, y, &snapshot, theme, row_pad);
 
     // Size slider — size_px display via display_override + SSOT map.
     // Adaptive layout (audit W-4): demotes the label to its own row when
@@ -213,6 +167,9 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     );
     y += opacity_h + row_pad;
 
+    // Modifier square (T2.4) — arms eyedropper-while-held. Helper-extracted.
+    y = paint_modifier_square(ctx, rect, y, &snapshot, theme, row_pad);
+
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -229,4 +186,112 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         core_ids::PAINTER_SIDEBAR_CLOSE,
         panel_close_button_rect(rect),
     );
+}
+
+/// Paint the top-most "Color" row — current brush color via the canonical
+/// [`ColorSwatch`] (Widget Gallery `widget/showcase/color.rs`): a left
+/// "Color" label + the swatch pinned to the row's right edge, mirroring
+/// Procreate's "current color" at the top of the tool sidebar.
+///
+/// Fill comes from the live snapshot (`active_color_srgb8`) so the swatch
+/// tracks the picker in real time. The user RGBA is data — no hex literal
+/// here; `paint_color_swatch` carries the single justified
+/// `LITERAL-COLOR-OK`. Label/chrome use tokens.
+///
+/// The hit is keyed on the SHARED `PAINTER_COLOR_THUMB` id: the editor-core
+/// dispatch opens the Blender picker seeded with this color, and the shell
+/// `painter_bridge` round-trips the picked color back into the Painter —
+/// placement-agnostic, so we only paint + register the hit. Returns the
+/// `y` advanced past this row.
+fn paint_color_row(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    y: f32,
+    snapshot: &ph2d_tool_painter::PainterUiSnapshot,
+    theme: ph2d_tokens::Theme,
+    row_pad: f32,
+) -> f32 {
+    let color_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        ROW_H_PX,
+    );
+    let label_font = TypeToken::Base.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        "Color",
+        color_rect.x,
+        color_rect.y + (ROW_H_PX - label_font) * 0.5,
+        label_font,
+        SLIDER_LABEL_W,
+        resolve(ColorToken::Text1, theme),
+    );
+    let swatch_w = Spacing::Xl3.px();
+    let swatch_rect = Rect::new(
+        color_rect.x + color_rect.w - swatch_w,
+        color_rect.y,
+        swatch_w,
+        ROW_H_PX,
+    );
+    let swatch = ColorSwatch::new(
+        core_ids::PAINTER_COLOR_THUMB,
+        "Brush color",
+        snapshot.active_color_srgb8(),
+    )
+    .size(SwatchSize::Md);
+    paint_color_swatch(&swatch, swatch_rect, ctx.scene, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
+    y + ROW_H_PX + row_pad
+}
+
+/// Paint the modifier square (T2.4) — arms the eyedropper-while-held
+/// gesture. Default action label is "Eyedropper" (configurable in W10
+/// Gesture Controls; W2 ships the default). Armed state reflects
+/// `snapshot.eyedropper_armed` (Accent fill + Pressed), mirroring
+/// BgRemoval's "Pick colors" affordance.
+///
+/// Arm/disarm routes through the panel event channel: `WidgetEvent::Click`
+/// → `PanelEvent::Click` → `PainterTool::handle_panel_event` →
+/// `PainterUiEdit::ToggleEyedropper`. The on-canvas sample gesture itself
+/// (hold + tap canvas → read pixel → primary slot) is shell/foundational
+/// (Coordinator). Returns the `y` advanced past this row.
+fn paint_modifier_square(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    y: f32,
+    snapshot: &ph2d_tool_painter::PainterUiSnapshot,
+    theme: ph2d_tokens::Theme,
+    row_pad: f32,
+) -> f32 {
+    let square_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        ROW_H_PX,
+    );
+    let state = if snapshot.eyedropper_armed {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let kind = if snapshot.eyedropper_armed {
+        ButtonKind::Accent
+    } else {
+        ButtonKind::Default
+    };
+    let btn = Button::new(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, "Eyedropper")
+        .kind(kind)
+        .state(state);
+    paint_button(&btn, square_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, square_rect);
+    y + ROW_H_PX + row_pad
 }

@@ -42,10 +42,18 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 )));
             true
         }
-        // Undo/Redo/Modifier buttons: sem paint nesta wave (T2.2 replay
-        // engine / T2.4 eyedropper-while-held). Forwarding volta junto do
-        // paint correspondente — registrar sem paint = roteamento morto
-        // (audit Y-7, 2026-05-28).
+        // Modifier square (T2.4) → ToggleEyedropper. Forward genérico via
+        // PanelEvent::Click; PainterTool::handle_panel_event mapeia o id
+        // pro PainterUiEdit::ToggleEyedropper (arm/disarm). O sample no
+        // canvas (hold + tap) é shell/foundational (Coordenador).
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_MODIFIER_SQUARE => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
+        // Undo/Redo buttons: sem paint nesta wave (T2.2 replay engine).
+        // Forwarding volta junto do paint — registrar sem paint =
+        // roteamento morto (audit Y-7, 2026-05-28).
         _ => false,
     }
 }

@@ -48,7 +48,7 @@ use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
 // hence the single-line LITERAL-PX-OK justifications.
 const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
-const OPACITY_CHIP_W: f32 = 52.0; // LITERAL-PX-OK: opacity numeric-chip column width
+const OPACITY_CHIP_W: f32 = 72.0; // LITERAL-PX-OK: opacity numeric-chip column width (= canon number_input MIN_W_PX)
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right ↑↓ reorder button column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
@@ -183,10 +183,29 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     paint_scrollbar(body_rect, scroll_y, content_h, body_h, false, ctx.scene, theme);
 
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(
-        core_ids::PAINTER_LAYERS_CLOSE,
-        panel_close_button_rect(rect),
-    );
+    // Re-register ALL header chrome AFTER the body rows. `HitIndex::hit` is
+    // last-registered-wins, and scrolled-up rows have hit rects with `y <
+    // body_top` that overlap the header — without this they shadow the
+    // dock-toggle / drag / resize handles (audit HIGH). The body paint is
+    // clipped so those rows are invisible, but their hits are not clipped.
+    {
+        let close = panel_close_button_rect(rect);
+        let toggle = Rect::new(
+            close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
+            close.y,
+            TOGGLE_BTN_W,
+            close.h,
+        );
+        let hit = ctx.host.hit_index_mut();
+        hit.register(
+            core_ids::INSP_DRAG_HANDLE,
+            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
+        );
+        hit.register(core_ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
+        hit.register(core_ids::INSP_RESIZE_HANDLE_BL, panel_resize_handle_rect_bl(rect));
+        hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
+        hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
+    }
 
     // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
     // offset to the new content (so deleting/collapsing rows snaps back).

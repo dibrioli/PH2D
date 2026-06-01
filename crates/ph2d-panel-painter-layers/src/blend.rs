@@ -11,20 +11,59 @@ use ph2d_editor_core::ids::{
 };
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Dropdown, DropdownOption, DropdownState, paint_dropdown_popover_in_viewport,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{BlendMode, MAX_BLEND_MODES};
+use std::cell::RefCell;
 
 const BLEND_POPOVER_W: f32 = 132.0; // LITERAL-PX-OK: open blend list width (extends left so long mode names fit one line)
-/// Width below which paint_text never wraps — the custom blend chip lays the
-/// mode name on a single line and the chip clip truncates any overflow.
-const CHIP_TEXT_NOWRAP_W: f32 = 4096.0; // LITERAL-PX-OK: layout width, not a design value
+
+thread_local! {
+    /// Cache of the 22 blend-mode chip labels pre-fitted (ellipsized) to the
+    /// current chip text-column width. Recomputed only when the width changes
+    /// (panel resize) — so the per-frame cost is an index + a short clone, NOT
+    /// per-chip text measurement. Replaces the old per-chip Vello `push_clip`
+    /// (10 clip layers/frame at 10 layers — the layers-panel FPS sink).
+    static FITTED_LABELS: RefCell<(f32, Vec<String>)> = const { RefCell::new((-1.0, Vec::new())) };
+}
+
+/// The blend-mode name for `mode`, truncated with an ellipsis to fit `max_w` at
+/// `font` (single line, no Vello clip). Memoised per `max_w`.
+fn fitted_label(ts: &mut TextSystem, mode: u8, font: f32, max_w: f32) -> String {
+    FITTED_LABELS.with(|c| {
+        let mut cache = c.borrow_mut();
+        if (cache.0 - max_w).abs() > 0.5 || cache.1.len() != MAX_BLEND_MODES as usize {
+            cache.1 = (0..MAX_BLEND_MODES)
+                .map(|m| fit_one(ts, BlendMode::from_u8(m).name(), font, max_w))
+                .collect();
+            cache.0 = max_w;
+        }
+        cache.1[mode as usize].clone()
+    })
+}
+
+/// Longest prefix of `name` (+ ellipsis when truncated) that fits `max_w`.
+fn fit_one(ts: &mut TextSystem, name: &str, font: f32, max_w: f32) -> String {
+    if ts.prefix_width(name, font) <= max_w {
+        return name.to_string();
+    }
+    let budget = (max_w - ts.prefix_width("…", font)).max(0.0);
+    let mut cut = 0;
+    for (i, _) in name.char_indices().skip(1) {
+        if ts.prefix_width(&name[..i], font) > budget {
+            break;
+        }
+        cut = i;
+    }
+    format!("{}…", &name[..cut])
+}
 
 /// All 22 blend modes as `Dropdown` options for the layer with runtime id
 /// `layer_u64` (value = wire discriminant, label = display name).
@@ -113,23 +152,23 @@ pub(crate) fn paint_blend_chip(
         StrokeToken::Default.px(),
     );
 
-    // Mode name — smaller font, single line, clipped to the text column.
+    // Mode name — smaller font, single line, pre-truncated to the text column
+    // (memoised ellipsis). No Vello clip: a per-chip `push_clip` is a per-frame
+    // clip layer, and 10 of them (10 layers) was the panel's FPS sink.
     let font = TypeToken::Sm.px();
     let text_x = rect.x + pad;
     let text_w = (chevron_rect.x - Spacing::Xs.px() - text_x).max(0.0);
-    let text_clip = Rect::new(text_x, rect.y, text_w, rect.h);
-    ctx.scene.push_clip(&rect_to_vello(text_clip));
+    let label = fitted_label(ctx.text_system, cur_mode, font, text_w);
     paint_text(
         ctx.text_system,
         ctx.scene,
-        BlendMode::from_u8(cur_mode).name(),
+        &label,
         text_x,
         rect.y + (rect.h - font) * 0.5,
         font,
-        CHIP_TEXT_NOWRAP_W,
+        text_w,
         resolve(ColorToken::Text1, theme),
     );
-    ctx.scene.pop_layer();
 
     ctx.host.hit_index_mut().register(id, rect);
     if open {

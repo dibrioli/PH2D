@@ -1407,15 +1407,23 @@ impl PainterTool {
     }
 
     /// Move a layer one step toward the FRONT (top of z-order) — layers panel
-    /// ↑ reorder button. No-op at the top. Invalidates the composite.
+    /// ↑ reorder button. No-op mid-stroke (structural-edit lifecycle, mirror of
+    /// `select_layer`) or at the top. Invalidates the composite.
     pub fn move_layer_up(&mut self, id: RtLayerId) {
+        if self.stroke_active {
+            return;
+        }
         self.layers.move_up(id);
         self.invalidate_composite();
     }
 
     /// Move a layer one step toward the BACK (bottom of z-order) — layers panel
-    /// ↓ reorder button. No-op at the bottom. Invalidates the composite.
+    /// ↓ reorder button. No-op mid-stroke or at the bottom. Invalidates the
+    /// composite.
     pub fn move_layer_down(&mut self, id: RtLayerId) {
+        if self.stroke_active {
+            return;
+        }
         self.layers.move_down(id);
         self.invalidate_composite();
     }
@@ -2061,6 +2069,11 @@ impl RasterEditTool for PainterTool {
         self.scheduler.end_stroke();
         self.stroke_active = false;
         self.has_painted_since_source = false;
+        // W3 (audit L-2): reset the dock-mode flag so re-activating on another
+        // sprite opens the default brush sidebar, not a stale Layers dock.
+        // (`set_source` rebuilds layers/images/composited on the next push, but
+        // it never touches this flag, so reset it here.)
+        self.dock_shows_layers = false;
         // T1.9: drop journal (libera flock + in-process registry) +
         // descarta PartialStroke em-progresso. `stroke_history` é
         // PRESERVADO — caller decide se persiste no canon antes do

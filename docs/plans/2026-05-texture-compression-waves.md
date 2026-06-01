@@ -242,7 +242,7 @@ Mudanças futuras = amendment ADR-0055.
 ### Batch C — Pipeline-per-format renderer
 
 - **W2.T3** — `crates/ph2d-render/src/compressed_pipeline.rs` — pipeline-per-format selection (BC7/BC6H/ASTC/ETC2/RGBA8 paths); bind group differ por format. LOC ~600.
-- **W2.T4** — Loader path (Round 4 fix: `AssetDb::resolve_for_tier` NÃO existe — content-addressed AssetDb tem só `fn get(&AssetId)`): **LogicalTextureId resolution via mapping externo** em `crates/ph2d-asset/src/logical_texture.rs` (NOVO W1.T4): `pub fn logical_texture_resolve(logical_id: LogicalTextureId, tier: TierIndex, db: &AssetDb) -> Option<Arc<Asset>>` → resolve LogicalId→AssetId→AssetDb.get. Renderer reads `Asset::TextureKtx2` → `wgpu::queue::write_texture` direct. LOC ~250.
+- **W2.T4** — ✅ **FECHADO** (`d0d6c21` loader + `9745772` device-features remediation + `385e7e2` magenta). Loader path: **LogicalTextureId resolution via mapping externo** em `crates/ph2d-asset/src/logical_texture.rs`: `logical_texture_resolve(logical_id, tier, db) -> Option<Arc<Asset>>` → LogicalId→AssetId→AssetDb.get; renderer decode+upload via `compressed_pipeline`; bridge `cooked_texture_bridge.rs` desce a fallback-ladder por-frame com GIVEN_UP (warn-once). **Magenta-sprite fallback (addendum §372) FEITO** — `CookedTextureStore::mark_missing` mapeia logical_id sem artifact a um placeholder magenta 8×8 (debug-aid visível, não invisible silencioso). Smoke do Enio OK; auditado (W2.T6 + sessão 2026-06-01).
 
 ### Batch D — Memory budget + audit
 

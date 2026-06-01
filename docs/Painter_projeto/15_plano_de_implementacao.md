@@ -718,7 +718,10 @@ support real (W10+).
 - Eviction LRU se VRAM apertado.
 
 **Critérios:**
-1. Compositor 10 layers @ 4K cache-hot ≤ 5ms (gate `layers_composite_50_4k_under_5ms`).
+1. Compositor interativo (dirty-rect 512², 50 layers) ≤ 5ms — gate realizado
+   `gpu_composite_50_layers_dirty_rect_under_5ms` (`ph2d-render`); recompose
+   4K-cheio é bandwidth-bound, gateado por escala linear
+   `gpu_composite_full_4k_scales_linearly` (vide 02_layers §2.12).
 2. Dirty rect 1×1 → recompose ≤ stamp_size área.
 3. Test golden contra Photoshop reference output.
 

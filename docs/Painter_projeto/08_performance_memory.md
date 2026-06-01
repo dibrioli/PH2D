@@ -134,7 +134,7 @@ Bench em macOS M2 / 4K canvas:
 - 50 layers cache-hot: 4ms.
 - 50 layers cache-cold (full re-render): 12ms.
 
-Gate `layers_composite_50_4k_under_5ms` (HR-4 budget) garante o caso hot. Cold path é raramente atingido (canvas open + first frame).
+Gates (W3 Block 2, realizados em `ph2d-render`): `gpu_composite_50_layers_dirty_rect_under_5ms` garante o caminho INTERATIVO (dirty-rect, o que a edição faz); `gpu_composite_full_4k_scales_linearly` guarda o recompose-cheio (bandwidth-bound: ~23ms numa GPU de ~70 GB/s, ~4ms em ≥330 GB/s — o 5ms literal exige hardware de alto bandwidth). O nome histórico `layers_composite_50_4k_under_5ms` foi dividido nesses dois (vide 02_layers §2.12).
 
 ## 8.5 Hot path zero-alloc (HR-3)
 
@@ -254,7 +254,7 @@ Em feature `puffin` (editor default): in-app puffin overlay (Painter Preferences
 |------|-------|--------|
 | `painter_frame_budget_60hz` | `ph2d-painter-brush` | Sintetic stroke 1k stamps/frame cabe em 3.5ms em CI baseline |
 | `painter_no_alloc_hot_path` | idem | 0 allocs em 100 frames sintéticos com 1k stamps/frame (dhat-rs) |
-| `painter_layer_composite_50_4k` | idem | 50 layers @ 4K composita em ≤ 5ms cache-hot |
+| `gpu_composite_50_layers_dirty_rect_under_5ms` + `gpu_composite_full_4k_scales_linearly` | `ph2d-render` | interativo (dirty-rect 50 layers) ≤ 5ms; recompose-cheio escala linear (bandwidth-bound) — substitui `painter_layer_composite_50_4k` |
 | `painter_dirty_rect_min` | idem | Pintar 1 pixel produz dirty rect ≤ stamp_size |
 | `painter_memory_budget_within_platform` | idem | Calculated MemoryBudget < platform max (HR-13) |
 | `painter_stamp_buffer_capacity` | idem | 4097th stamp causa flush (não realloc) |

@@ -88,10 +88,22 @@ replayarem. Seta `version=2` + `recompute_checksum`.
 
 ### 2.5 Validação + cook-hash
 
-- `validate_caps_post_deserialize` valida a árvore recursivamente: name length
-  (`MAX_LAYER_NAME_BYTES=256`), profundidade de grupo (`MAX_GROUP_DEPTH=8`,
-  mirror runtime), e **contagem total de nodes** (incluindo filhos + masks) ≤
-  `MAX_LAYERS` (1000 = 999 + overflow; runtime cap 999 = spec §2.2, Procreate).
+- **Depth-bounded deserialize (defesa DoS primária — audit 2026-06-01 CRITICAL).**
+  `LayerNode` é recursivo (`Group{children}` + `mask: Option<Box<LayerNode>>`);
+  o `Deserialize` *derivado* recursaria sem limite e `load()` desserializa
+  ANTES de validar, então um file forjado de ~600 KB com cadeia profunda
+  estourava a pilha (SIGABRT incatchável) ANTES do cap de profundidade rodar.
+  **`LayerNode` tem `Deserialize` hand-written** com guarda de profundidade
+  (thread-local + RAII) que erra acima de `MAX_LAYER_NODE_DESERIALIZE_DEPTH=32`
+  → file malformado retorna `Err`, nunca aborta. `Serialize` segue derivado
+  (wire + cook-hash inalterados). Regressões: cadeia profunda de grupo + de
+  mask retornam `Err`; árvore legítima (≤ `MAX_GROUP_DEPTH`) ainda carrega.
+- `validate_caps_post_deserialize` (defesa-em-profundidade, sobre a árvore já
+  bounded pelo deserialize): name length (`MAX_LAYER_NAME_BYTES=256`),
+  profundidade de **grupo E mask** (`MAX_GROUP_DEPTH=8`, ambas em `depth+1`),
+  **contagem total de nodes** (filhos + masks) ≤ `MAX_LAYERS` (1000 = 999 +
+  overflow; runtime cap 999 = spec §2.2, Procreate), e **`LAYER_FLAG_ACTIVE` ≤
+  1** (mapeia pro runtime `active: Option<LayerId>`; 0 ou 1, ≥2 rejeitado).
 - Cook-hash (blake3 sobre os bytes serializados, ADR-0046 §2.7.1) re-locka
   automaticamente no save de qualquer v2. Files v1 verificam com o hash v1
   (pré-migração); a migração re-computa. **Sem fixtures on-disk** (procedurais)

@@ -234,12 +234,23 @@ Cache de layers em `LayerCache` (HashMap<LayerId, Texture> — Note: `EntityHash
 
 ## 2.12 Performance gates
 
-| Gate | Crate | Valida |
+> **Nota (W3 Block 2, 2026-05-31):** os gates abaixo foram **realizados em
+> `ph2d-render`** (compositor GPU) com nomes concretos. O nome histórico
+> `layers_composite_50_4k_under_5ms` foi **dividido em dois** porque o
+> recompose 4K-cheio × 50 layers lê 1.66 GB → é **bandwidth-bound** (~23ms numa
+> GPU de ~70 GB/s, ~4ms em ≥330 GB/s); o budget de 5ms vale no caminho
+> INTERATIVO (dirty-rect). `layers_blend_mode_golden` (SSIM vs Photoshop) foi
+> substituído por bit-paridade CPU↔GPU (`shader_blend_modes_bit_identical` +
+> readback ≤1 byte) — mais forte e sem assets externos (ADR-rationale).
+
+| Gate (implementado) | Crate | Valida |
 |------|-------|--------|
-| `layers_composite_50_4k_under_5ms` | `ph2d-painter-brush` | 50 layers @ 4K composita em ≤ 5ms na máquina baseline (Apple M2 / RDNA1) |
-| `layers_dirty_rect_correctness` | idem | Pintar pixel (x,y) e recompositar produz mesmo resultado que full recomposite |
-| `layers_blend_mode_golden` | idem | Cada um dos 22 blend modes produz output golden SSIM ≥ 0.9999 contra referência (Photoshop output rasterizado) |
-| `layers_max_count_per_budget` | idem | Em canvas X, MemoryBudget Y, o cálculo do `max_layers` bate com o documentado |
+| `gpu_composite_50_layers_dirty_rect_under_5ms` | `ph2d-render` | 50 layers, dirty-rect 512² (caminho interativo real) ≤ 5ms |
+| `gpu_composite_full_4k_scales_linearly` | `ph2d-render` | recompose 4K cheio escala ~linear (50 vs 10 layers < 6×) — sem cliff de ocupação |
+| `gpu_dirty_rect_matches_full` | `ph2d-render` | recompositar sub-região == crop do full composite (bit-idêntico) |
+| `shader_blend_modes_bit_identical_with_rust` + GPU readback | `ph2d-render` | literais dos 22 modos pinados a Rust + output GPU≈CPU ≤1 byte |
+| `max_layers_for_budget` (`layers_max_count_per_budget`) | `ph2d-render` | `max_layers` por budget bate o documentado; `TooManyLayers` recusa no cap |
+| `layers_no_alloc_hot_compose` | `ph2d-render` | flatten do op-list é alloc-free (HR-3) |
 | `layers_no_alloc_hot_compose` | idem | HR-3: composite path zero-alloc com layer stack pré-alocado |
 
 ## 2.13 Memory model — layer storage

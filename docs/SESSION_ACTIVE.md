@@ -15,13 +15,35 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 
 ---
 
-## COORDENADOR (único) — ATIVO 2026-05-31 (novo Coord)
+## COORDENADOR (único) — ATIVO 2026-06-01
 
-**Estado atual:** fundação 100% finalizada (todos os módulos = drop-crates isolados).
+**Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
+locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
-**Modo de entrega (Enio 2026-05-31):** **SEM push/CI até o fim de TODA a implementação** —
-commits locais acumulados, ship único no fechamento. A run CI 26722309764 (W1.T8.1) está
-rodando e **deixamos terminar** (não cancelar); nenhuma nova run até o fim.
+### ATUALIZAÇÃO 2026-06-01 — Painter W3 + KTX2 fechados pelo Coord (auditados)
+
+Tudo LOCAL, não-pushado. (A seção histórica abaixo descreve a jornada anterior — superseded.)
+
+- **Painter W3 Block 2 — compositor GPU** (`6ba3ed7`): `ph2d-render::LayerCompositor`,
+  22 modos W3C + grupos (2 entry points cs_flat/cs_grouped), cache texture-array +
+  dirty-rect, paridade bit-a-bit vs `apply_blend` ≤1 byte. Perf gates honestos
+  (dirty-rect interativo <5ms; full-4K bandwidth-bound → escala linear).
+- **Persistência v2** (`249735e`, ADR-0046-amд-1): `LayerStackEntry::Node` — layer stack
+  sobrevive save/load; migração v1→v2; ponte u64↔u32 (stroke records ficam u32).
+- **KTX2 W2.T4 fechado** (`385e7e2`): magenta missing-texture placeholder (addendum do plano).
+- **Divergência LayerStack ratificada** (Opção A + cap=999) — handoffs RATIFIED + block2_done.
+- **AUDITORIA MULTI-AGÊNTICA** (2026-06-01, 33 agentes, 6 lentes): pegou **1 CRITICAL real**
+  (stack-overflow DoS na desserialização recursiva do LayerNode num savefile forjado) +
+  6 LOW/MEDIUM. **Todos remediados** (`4368a77` deserialize depth-guard + 3 LOW; `834b840`
+  active-flag + deep-nest parity + readback + WGSL). Relatório:
+  [`docs/AUDIT_painter_w3_ktx2_session_2026-06-01.md`](AUDIT_painter_w3_ktx2_session_2026-06-01.md).
+
+**Implementador (janela separada):** fez Block 1 in-memory (`5d91c91`/`a375479`, tool owns
+LayerStack + composite preview) + painel read-only (`6e17c5a`) consumindo a API/ratificação.
+
+**Pendente do Enio:** dock toggle (C, recomendado) + palavra de **ship** (working tree tem
+WIP do implementador → ship fecha quando ele terminar a integração). Follow-ups aceitos-LOW
+no relatório (eviction/version tests, region test, etc. — sem caller de produção ainda).
 
 **Ambos os slots paralelos FECHARAM + integrados (gate verde, fmt limpo):**
 - **KTX2 W2.T3** ✅ (`29defc6`) — `compressed_pipeline.rs` 1 pipeline compartilhado (todos amostram

@@ -37,8 +37,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, SliderOrientation, SliderState, TextInputState, paint_button,
-    paint_scrollbar, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonState, Slider, SliderOrientation, SliderState, paint_button, paint_scrollbar,
+    paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -48,7 +48,7 @@ use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
 // hence the single-line LITERAL-PX-OK justifications.
 const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
-const OPACITY_CHIP_W: f32 = 72.0; // LITERAL-PX-OK: opacity numeric-chip column width (= canon number_input MIN_W_PX)
+const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right ↑↓ reorder button column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
@@ -454,32 +454,34 @@ fn paint_layer_row(
         IconId::ChevronDown,
     );
 
-    // ── Opacity slider + numeric chip (line 2) ──────────────────────────
+    // ── Opacity: a BARE slider (no numeric chip → no per-row Vello clip,
+    // which was the panel FPS sink) + a plain "NN%" readout (line 2). ───
     let op_slider = painter_layer_widget_id(id.0, PainterLayerWidget::Opacity);
-    let op_chip = painter_layer_widget_id(id.0, PainterLayerWidget::OpacityChip);
+    register_opacity(ctx.host.store_mut(), op_slider, layer.opacity);
     let pct = (layer.opacity * PCT_SCALE).round();
-    register_opacity(ctx.host.store_mut(), op_slider, op_chip, layer.opacity, pct);
-    let op_display = format!("{pct:.0}%");
-    let op_rect = Rect::new(x, op_y, content_right - x, ROW_H_PX);
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let op_h = paint_slider_with_chip_layout_adaptive(
-        op_rect,
-        "",
-        layer.opacity,
-        pct as f64,
-        Some(&op_display),
-        op_slider,
-        op_chip,
-        0.0,
-        OPACITY_CHIP_W,
-        store,
-        hit_index,
-        ctx.scene,
+    let slider_w = (content_right - x - OPACITY_PCT_W - cell_gap).max(0.0);
+    let st = ctx
+        .host
+        .store()
+        .slider(op_slider)
+        .map(|(s, _)| s)
+        .unwrap_or(SliderState::Normal);
+    let mut slider = Slider::new(op_slider, "").accent(true).state(st);
+    slider.value = layer.opacity;
+    paint_slider(&slider, Rect::new(x, op_y, slider_w, ROW_H_PX), ctx.scene, theme);
+    ctx.host.hit_index_mut().register(op_slider, Rect::new(x, op_y, slider_w, ROW_H_PX));
+    paint_text(
         ctx.text_system,
-        theme,
+        ctx.scene,
+        &format!("{pct:.0}%"),
+        x + slider_w + cell_gap,
+        op_y + (ROW_H_PX - font) * 0.5,
+        font,
+        OPACITY_PCT_W,
+        resolve(ColorToken::Text2, theme),
     );
 
-    op_y + op_h + Spacing::Sm.px()
+    op_y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// Paint one ↑/↓ reorder button. When `enabled`, it draws at full contrast and
@@ -519,16 +521,10 @@ pub(crate) fn register_button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     );
 }
 
-/// `register_if_absent` the per-row opacity slider + chip, seeded from the
-/// snapshot, and (re)link them with the `0..1 → 0..100` affine projection
-/// (idempotent; canon DIRETRIZ §5.2). Storage is `0..1` on both.
-fn register_opacity(
-    store: &mut WidgetStore,
-    slider: ph2d_a11y::NodeId,
-    chip: ph2d_a11y::NodeId,
-    value: f32,
-    pct: f32,
-) {
+/// `register_if_absent` the per-row opacity slider (bare, `0..1` storage). The
+/// dispatch maps a drag to a fresh value from the registered hit rect; the
+/// panel forwards the resulting `ValueChanged` as `SetValue` to the tool.
+fn register_opacity(store: &mut WidgetStore, slider: ph2d_a11y::NodeId, value: f32) {
     store.register_if_absent(
         slider,
         InteractiveState::Slider {
@@ -537,16 +533,4 @@ fn register_opacity(
             orientation: SliderOrientation::Horizontal,
         },
     );
-    store.register_if_absent(
-        chip,
-        InteractiveState::NumberInput {
-            state: TextInputState::Normal,
-            value: pct as f64,
-            buffer: format!("{pct:.0}"),
-            caret: 0,
-            last_committed: pct as f64,
-            selection_anchor: None,
-        },
-    );
-    store.link_slider_number_mapped_integer(slider, chip, PCT_SCALE, 0.0); // LITERAL-PX-OK: 0..1→0..100% affine, not a design value
 }

@@ -40,9 +40,10 @@ pub enum PointerSource {
 /// Identidade de uma layer raster/group/mask dentro de um `LayerStack`.
 ///
 /// Stub W3: newtype sobre `u32` (4G layers possíveis; cap operacional é
-/// `MAX_LAYERS = 200` per spec §2.2 mas tipo aguenta mais). Quando
-/// `ph2d-painter-layers` nascer, esse alias migra pra lá e ganha
-/// helpers (`new`, `as_index`, etc.).
+/// `HARD_CAP_LAYERS = 999` per spec §2.2 — espelha Procreate — mas o tipo
+/// aguenta mais). O modelo runtime W3 vive em `ph2d_tool_painter::layers`
+/// (`LayerId(u64)`); a ponte de persistência mapeia u64→u32 no save
+/// (Coord ratification 2026-05-31, HANDOFF_painter_w3_layerstack_divergence_RATIFIED.md).
 #[derive(
     Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]

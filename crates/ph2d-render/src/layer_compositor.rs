@@ -61,9 +61,10 @@ fn build_srgb_lut() -> [f32; SRGB_LUT_LEN] {
 /// device's `max_texture_array_layers`.
 pub const LAYER_CACHE_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
 
-/// Largest layer stack the contract allows (mirrors
-/// `ph2d_tool_painter::layers::HARD_CAP_LAYERS`). Independent of the per-budget
-/// cap — this is the absolute upper bound the panel will never exceed.
+/// Largest layer stack the contract allows — spec §2.2 `HARD_CAP_LAYERS = 999`
+/// (mirrors Procreate), matching `ph2d_tool_painter::layers::HARD_CAP_LAYERS`
+/// and the savefile `MAX_LAYERS = 1000` (999 + overflow headroom). Independent
+/// of the per-budget cap — the absolute ceiling the cache will never exceed.
 pub const HARD_CAP_LAYERS: u32 = 999;
 
 /// Maximum cached slices for a `width × height` canvas under `budget` bytes.

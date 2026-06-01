@@ -58,9 +58,10 @@ pub const MAX_STROKES_PER_CANON: usize = 1_000_000;
 /// Audit T1.8 L5-I7.
 pub const MAX_BRUSH_SNAPSHOTS: usize = 10_000;
 
-/// Máximo de layers em `PaintProject::layer_stack.layers`. Spec §2.2
-/// menciona 200 layers operacional; cap 1000 cobre overflow.
-/// Audit T1.8 L5-I1.
+/// Máximo de layers em `PaintProject::layer_stack.layers`. Spec §2.2 fixa o
+/// `HARD_CAP_LAYERS = 999` operacional (espelha Procreate); o cap 1000 = 999 + 1
+/// de overflow headroom (savefile ≥ runtime cap, então todo stack criável é
+/// salvável). Audit T1.8 L5-I1.
 pub const MAX_LAYERS: usize = 1_000;
 
 /// Máximo de bytes em cada `LayerStackEntry::Reserved(Vec<u8>)`.

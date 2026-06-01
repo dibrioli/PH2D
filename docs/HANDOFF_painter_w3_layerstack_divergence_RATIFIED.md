@@ -55,10 +55,13 @@ ADR-0046/0045 amendment (persistência), EU autoro. Define:
   …) + encoding por-layer { id_u32, name, kind, blend_mode (u8 `BlendMode::to_u8`),
   opacity, visible, locked, alpha_locked, clipping, is_reference, mask }.
 - a ponte u64↔u32 (acima) + re-lock do cook-hash.
-- **reconciliação de cap:** savefile `MAX_LAYERS=200` (spec §2.2) vs runtime
-  `HARD_CAP_LAYERS=999`. Vou alinhar (provável: runtime passa a respeitar o cap
-  persistível, ou o ADR sobe o savefile pra bater a spec). Até lá, **não confie em
-  >200 layers serem saváveis** — se quiser, já clampe a criação em 200 no runtime.
+
+**Cap: NÃO há conflito (era comentário stale).** Spec §2.2 (linha 145) fixa
+`HARD_CAP_LAYERS = 999` (espelha Procreate). Runtime = 999 ✓, savefile
+`MAX_LAYERS = 1000` (999 + overflow) ✓, meu Block 2 = 999 ✓ — tudo já alinhado.
+O "200" que eu (Coord) tinha flagado era comentário errado em `device.rs:43` +
+`persistence.rs:62` citando mal a spec; corrigi ambos (comment-only, sem impacto
+de wire/ABI/cook-hash). **Cap fica 999 — pode criar até 999 layers saváveis.**
 
 ───────────────────────────────────────────────────────────────────
 5. VOCÊ SEGUE AGORA (desbloqueado)

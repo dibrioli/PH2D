@@ -297,8 +297,12 @@ pub struct PainterTool {
     /// per HR-5 (deterministic iteration even in `PresentWorld`).
     images: BTreeMap<RtLayerId, LayerImage>,
     /// Cached composite output (non-trivial stacks only), so `current_preview`
-    /// can hand back a stable `&[u8]`. Invalidated (`None`) on any layer edit.
-    composited: Option<Vec<u8>>,
+    /// can hand back a stable `&[u8]` and `take_preview_arc` can hand back an
+    /// `Arc::clone` (no full-canvas copy). Stored behind an `Arc` so the bridge
+    /// drain is zero-copy; the dirty-rect blit mutates in place via
+    /// `Arc::make_mut` (clones once only if the bridge still holds the prior
+    /// Arc). Invalidated (`None`) on any layer edit.
+    composited: Option<Arc<Vec<u8>>>,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -1346,6 +1350,13 @@ impl PainterTool {
     }
 
     /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.
+    ///
+    /// Unlike the STRUCTURAL edits (`add_raster_layer`/`select_layer`/
+    /// `move_layer_*`), the three metadata setters below are intentionally NOT
+    /// guarded by `!stroke_active`: they only touch `Layer` flags (no buffer
+    /// swap, no `canvas_rgba`/`images`/undo reshuffle), so they cannot corrupt
+    /// an in-flight stroke. `invalidate_composite` just drops the cache, which a
+    /// mid-stroke edit recovers from on the next drain.
     pub fn set_layer_visible(&mut self, id: RtLayerId, visible: bool) {
         self.layers.set_visible(id, visible);
         self.invalidate_composite();
@@ -1708,7 +1719,9 @@ impl PainterTool {
                     };
                     composite_region(&self.layers, &src, w, h, bbox)
                 };
-                let cache = self.composited.as_mut().expect("checked is_some");
+                // `make_mut`: unique-borrow (zero-copy) once the bridge dropped
+                // its prior Arc; clone-once if it's still holding the cache.
+                let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
                 blit_region(cache, w, &region, bbox);
             }
             _ => {
@@ -1717,10 +1730,10 @@ impl PainterTool {
                     active_rgba: &self.canvas_rgba,
                     images: &self.images,
                 };
-                self.composited = Some(composite(&self.layers, &src, w, h));
+                self.composited = Some(Arc::new(composite(&self.layers, &src, w, h)));
             }
         }
-        Some((Arc::new(self.composited.as_ref().expect("just set").clone()), w, h))
+        Some((Arc::clone(self.composited.as_ref().expect("just set")), w, h))
     }
 
     /// True iff at least one stamp landed in `canvas_rgba` since the
@@ -2115,8 +2128,12 @@ impl RasterEditTool for PainterTool {
             };
             composite(&self.layers, &src, w, h)
         };
-        self.composited = Some(composited);
-        Some((self.composited.as_deref().unwrap_or(&[]), w, h))
+        self.composited = Some(Arc::new(composited));
+        Some((
+            self.composited.as_ref().map(|a| a.as_slice()).unwrap_or(&[]),
+            w,
+            h,
+        ))
     }
 
     fn take_pending_commit(&mut self) -> bool {
@@ -2669,6 +2686,49 @@ mod tests {
         let (full_drain, _, _) = t.take_preview_arc().expect("dirty");
         assert_eq!(region_drain, *full_drain, "dirty-rect drain == full recompose");
         assert_eq!(&full_drain[i..i + 3], &[0, 0, 200], "the painted pixel shows");
+    }
+
+    #[test]
+    fn dirty_rect_drain_matches_full_with_group_and_blend() {
+        // Lens-6 gap: the flat test above never exercises the GROUP sub-window
+        // recursion through the `take_preview_arc` fast lane (composite_region +
+        // blit_region). A group with a blended, ACTIVE child above a base must
+        // crop bit-for-bit too — proving the cache/blit integration holds when
+        // the composite recurses, not just for a flat raster.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4); // base red (Layer 1 → images)
+        let child = t.add_raster_layer("child").unwrap(); // active → canvas_rgba
+        // Wrap `child` in a Screen/0.8 group; child blends Multiply. The tool
+        // doesn't expose add_group yet, so build the stack directly (tests have
+        // field access). `child` stays active, so its pixels = `canvas_rgba`.
+        t.layers.set_blend_mode(child, BlendMode::Multiply);
+        let group = t.layers.add_group("group").unwrap();
+        t.layers.set_blend_mode(group, BlendMode::Screen);
+        t.layers.set_opacity(group, 0.8);
+        assert!(t.layers.move_into_group(child, group));
+        t.layers.set_active(child);
+        assert!(!t.is_trivial_stack(), "group + 2 rasters must be non-trivial");
+        // First drain → full composite cached.
+        t.preview_dirty = true;
+        let _ = t.take_preview_arc().expect("dirty");
+        // Paint one pixel of the active (child) layer.
+        let canvas = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+        let (px, py, cw) = (2usize, 1usize, 4usize);
+        let i = (py * cw + px) * 4;
+        canvas[i..i + 4].copy_from_slice(&[80, 220, 120, 255]);
+        // Region drain (only the changed pixel) — goes through the group path.
+        t.dirty_rect = Some(Region { x: 2, y: 1, w: 1, h: 1 });
+        t.preview_dirty = true;
+        let (region_drain, _, _) = t.take_preview_arc().expect("dirty");
+        let region_drain = (*region_drain).clone();
+        // Full recompose of the identical state (force the cache miss).
+        t.composited = None;
+        t.preview_dirty = true;
+        let (full_drain, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(
+            region_drain, *full_drain,
+            "group dirty-rect drain == full recompose"
+        );
     }
 
     #[test]

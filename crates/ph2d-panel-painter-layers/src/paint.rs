@@ -37,8 +37,9 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, Slider, SliderOrientation, SliderState, paint_button, paint_scrollbar,
-    paint_slider,
+    Button, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, Slider, SliderOrientation, SliderState,
+    paint_button, paint_scrollbar, paint_slider, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -176,11 +177,24 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     ctx.scene.pop_layer();
 
     // Visual scrollbar (self-gates when the content fits). Wheel/trackpad
-    // scrolling already works via the generic `dispatch_wheel` once the bounds
-    // below are published. NOTE: thumb-DRAG needs a foundational
-    // `scrollbar_panel_for_id` entry + a `widget::*_SCROLLBAR_ID` const
-    // (Coord follow-up); the wheel covers the interaction meanwhile.
-    paint_scrollbar(body_rect, scroll_y, content_h, body_h, false, ctx.scene, theme);
+    // scrolling works via the generic `dispatch_wheel` once the bounds below are
+    // published; thumb-DRAG works via the foundational
+    // `scrollbar_panel_for_id → PAINTER_LAYERS_PANEL` mapping (Coord `d5146b7`)
+    // plus the hit-rect registered in the post-body chrome block. `is_active`
+    // tints the thumb Accent while dragging (mirror of the Inspector).
+    let scrollbar_active = matches!(
+        ctx.host.store().scrollbar_drag(),
+        Some(d) if d.panel == core_ids::PAINTER_LAYERS_PANEL
+    );
+    paint_scrollbar(
+        body_rect,
+        scroll_y,
+        content_h,
+        body_h,
+        scrollbar_active,
+        ctx.scene,
+        theme,
+    );
 
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     // Re-register ALL header chrome AFTER the body rows. `HitIndex::hit` is
@@ -205,6 +219,15 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         hit.register(core_ids::INSP_RESIZE_HANDLE_BL, panel_resize_handle_rect_bl(rect));
         hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
         hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
+        // Scrollbar thumb-drag: register the thumb hit-rect AFTER the rows (same
+        // last-wins reason as the chrome above). Gated to when the scrollbar is
+        // actually shown; the rect must match `paint_scrollbar`'s internal
+        // `track_rect → thumb_rect` so the grab aligns with the painted thumb.
+        if scrollbar_is_needed(content_h, body_h) {
+            let track = scrollbar_track_rect(body_rect);
+            let thumb = scrollbar_thumb_rect(track, scroll_y, content_h, body_h);
+            hit.register(PAINTER_LAYERS_SCROLLBAR_ID, thumb);
+        }
     }
 
     // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the

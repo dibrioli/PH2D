@@ -579,4 +579,66 @@ mod tests {
         assert!(out.iter().all(|c| c.is_finite()), "NaN propagated: {out:?}");
         assert_eq!(out[0], 0.0, "NaN channel sanitized to 0");
     }
+
+    #[test]
+    fn separable_mode_value_goldens() {
+        // Pinned-VALUE goldens for the separable modes that previously had only
+        // the distinctness check (a wrong-but-still-distinct formula — e.g.
+        // Overlay with un-swapped operands, or VividLight's 0.5 split inverted —
+        // passed every prior test). With OPAQUE inputs, `apply` returns the
+        // per-channel blend B(cb,cs) verbatim (αo=1, Cs'=B), so the golden is the
+        // hand-computed W3C/Photoshop formula value. Inputs picked per mode to
+        // land on a non-degenerate (non-clamped) result.
+        //               (mode, cb, cs, expected B(cb,cs), derivation)
+        let cases: &[(BlendMode, f32, f32, f32)] = &[
+            (BlendMode::Overlay, 0.6, 0.3, 0.44),         // 1-2(1-.6)(1-.3) = hardlight(cs,cb)
+            (BlendMode::HardLight, 0.6, 0.3, 0.36),       // 2·.6·.3
+            (BlendMode::SoftLight, 0.6, 0.3, 0.504),      // .6-(1-2·.3)·.6·(1-.6)
+            (BlendMode::ColorDodge, 0.6, 0.3, 0.857_143), // .6/(1-.3)
+            (BlendMode::ColorBurn, 0.5, 0.6, 0.166_666_7), // 1-(1-.5)/.6
+            (BlendMode::Exclusion, 0.6, 0.3, 0.54),       // .6+.3-2·.6·.3
+            (BlendMode::LinearBurn, 0.6, 0.7, 0.3),       // .6+.7-1
+            (BlendMode::LinearLight, 0.6, 0.3, 0.2),      // .6+2·.3-1
+            (BlendMode::VividLight, 0.6, 0.3, 0.333_333_3), // burn(.6, 2·.3)
+        ];
+        for &(mode, cb, cs, want) in cases {
+            let out = apply(mode, [cb, cb, cb, 1.0], [cs, cs, cs, 1.0]);
+            assert!(
+                (out[0] - want).abs() < 1e-4,
+                "{mode:?}({cb},{cs}) = {} want {want}",
+                out[0]
+            );
+            assert!((out[3] - 1.0).abs() < 1e-6, "{mode:?} opaque αo must be 1");
+        }
+    }
+
+    #[test]
+    fn hsl_hue_saturation_composition_goldens() {
+        // Hue/Saturation had no pin (only Color/Luminosity did). Pin the
+        // COMPOSITION — which source contributes hue/sat/lum, the real miswire
+        // risk — via the W3C §10 identities:
+        //   Hue        = set_lum(set_sat(Cs, sat(Cb)), lum(Cb))  → keeps Cb lum & sat
+        //   Saturation = set_lum(set_sat(Cb, sat(Cs)), lum(Cb))  → keeps Cb lum, takes Cs sat
+        // Inputs chosen so set_lum's ClipColor does not engage (verified by hand).
+        let dst = [0.8, 0.2, 0.2, 1.0]; // saturated red backdrop
+        let src = [0.3, 0.3, 0.6, 1.0]; // bluish, lower saturation
+        let cb = [dst[0], dst[1], dst[2]];
+        let cs = [src[0], src[1], src[2]];
+
+        let hue = apply(BlendMode::Hue, dst, src);
+        let hue_rgb = [hue[0], hue[1], hue[2]];
+        assert!((lum(hue_rgb) - lum(cb)).abs() < 1e-3, "Hue keeps backdrop lum");
+        assert!((sat(hue_rgb) - sat(cb)).abs() < 1e-3, "Hue keeps backdrop sat");
+
+        let saturation = apply(BlendMode::Saturation, dst, src);
+        let sat_rgb = [saturation[0], saturation[1], saturation[2]];
+        assert!(
+            (lum(sat_rgb) - lum(cb)).abs() < 1e-3,
+            "Saturation keeps backdrop lum"
+        );
+        assert!(
+            (sat(sat_rgb) - sat(cs)).abs() < 1e-3,
+            "Saturation takes source sat"
+        );
+    }
 }

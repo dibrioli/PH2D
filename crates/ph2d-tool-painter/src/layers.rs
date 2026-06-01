@@ -431,6 +431,9 @@ impl LayerStack {
         }
         // Drop from arena.
         self.arena.retain(|l| !to_remove.contains(&l.id));
+        // NOTE: `to_remove` was gathered by `collect_subtree`, which is
+        // depth-bounded (defense-in-depth vs a forged/deserialized cycle), so
+        // this never loops or over-collects even on a malformed tree.
         // Scrub any dangling mask reference pointing at a removed layer
         // (audit W3: a mask child is part of the owner's subtree, but a mask
         // removed independently must not leave its owner pointing at a dead id).
@@ -445,7 +448,20 @@ impl LayerStack {
     }
 
     fn collect_subtree(&self, id: LayerId, out: &mut Vec<LayerId>) {
+        self.collect_subtree_bounded(id, out, 0);
+    }
+
+    /// Recursion body for [`Self::collect_subtree`], depth-bounded so a
+    /// forged/deserialized stack that smuggles a cycle (a group listing an
+    /// ancestor in `children`) past the runtime construction guards cannot
+    /// stack-overflow `remove`. Mirrors the compositor's `composite_into`
+    /// guard; the runtime API (`move_into_group`'s `is_descendant` check)
+    /// already prevents building such a tree.
+    fn collect_subtree_bounded(&self, id: LayerId, out: &mut Vec<LayerId>, depth: usize) {
         out.push(id);
+        if depth > MAX_GROUP_DEPTH {
+            return;
+        }
         // TODO(W3.T3.5 mask wiring): when masks become creatable, a layer's
         // mask child must be collected here too (else removing the owner leaks
         // its mask). Deferred — the mask's structural membership (root vs
@@ -457,7 +473,7 @@ impl LayerStack {
         }) = self.get(id)
         {
             for &child in &g.children {
-                self.collect_subtree(child, out);
+                self.collect_subtree_bounded(child, out, depth + 1);
             }
         }
     }

@@ -1,7 +1,7 @@
 # Plano de waves — Cooked Texture Compression Pipeline (ADR-0055)
 
 **Data:** 2026-05-27 (atualizado noite — v4 Accepted)
-**Status:** **W0 FECHADA 2026-05-27 noite** — ADR-0055-v4 Accepted (strategic-only ≤200 LOC) após 2ª opinião de 3 LLMs externas convergir em Opção 4 (ADR enxuto + plano vivo canônico). v3 Round 3+4 (660 LOC com snippets de código) arquivada em [`docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md`](../archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md). Tabela canon de 22 símbolos migrada para §Symbol Registry deste plano. 13 vapor dependencies (E1..E13) catalogadas em §Open Issues. **W1.T0 destrancada** — próximo: `cargo add ctt` + sweep-grep E1..E13 + audit do source de `ctt`.
+**Status:** **W0+W1+W2 FECHADAS** (atualizado 2026-06-01) — ADR-0055-v4 Accepted (strategic-only ≤200 LOC). W1 codec/cooker + W2.T3 compressed_pipeline + W2.T4 cooked-texture loader + W2.T5 budget todos LANDED (`d0d6c21`, `29defc6`, etc.). **W3 = Painter-integration** (brush atlas BC4 / UI ASTC) próximo. v3 Round 3+4 arquivada em [`docs/archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md`](../archive/adrs-rounds-history/0055-v3-round-3-and-4-superseded.md); tabela de 22 símbolos em §Symbol Registry; vapor deps E1..E13 em §Open Issues.
 **Arquitetura:** [ADR-0055-v4](../architecture/decisions/0055-cooked-texture-compression-pipeline.md) (Accepted strategic).
 **Consome (não toca):** Fase 1 codec puro `crates/ph2d-asset-ktx2/` (4 commits f30e225..b276cef, 1207 LOC, 26 tests, ✅ frozen).
 **Substrato:** mesmo padrão drop-crate + arch-gate de ADR-0040 (tools) / ADR-0054 (imageio), mas com particularidade: cooker mora em `tools/asset-cooker` (FROZEN 2026-05-22), não em crate satélite isolado.

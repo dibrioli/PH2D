@@ -31,6 +31,26 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 - **Premultiply (Painter item 3): NÃO mexer** — byte-space é o correto; troquei p/ linear por engano
   e revertei (`3870733`). Ver `feedback-documented-decision-chesterton-fence`.
 
+### ESTADO REAL DOS MÓDULOS (2026-06-01) — fonte única; seções históricas abaixo são superseded
+| Módulo | Estado | Tracker |
+|---|---|---|
+| **Painter** | W0-W2 fechados; **W3 ATIVO** (impl em janela separada): layers panel + compositor GPU 22-modos + persist v2 + dirty-rect FPS-fix + audit-remediation | `HANDOFF_painter_w3_*` |
+| **Vector** | **W1 FECHADA** (auditada); **W2 ATIVO** (slot impl-vector) | `HANDOFF_vector_w2_impl.md` |
+| **Sprite Inspector v2** | W0-W3 + W6 + W10 completos (§0-§9 + render Visibility/Ordering/Sampling/ClipChildren + widgets + OKLCH + Material&Blend) | `HANDOFF_sprite_inspector_v2.md` |
+| **KTX2 Fase 2** | W0+W1+W2 fechados (cooker+pipeline+budget); W3 Painter-integration | `2026-05-texture-compression-waves.md` |
+| **imageio AVIF** | W0-W3 fechado (Path C real encode/decode, zero RUSTSEC) | `2026-05-imageio-waves.md` |
+| **Nodes** | W1+W2 fechados + contrato CONGELADO; fan-out aberto | `HANDOFF_node_system.md` |
+
+**Agentes ativos (RAM 3/3):** Painter impl (W3) · Vector impl (W2) · Coord. **Não abrir 4º.**
+
+**⚠ Gate VERMELHO a resolver no ship:** `shell_files_respect_hr18_loc_cap` →
+`shells/desktop/src/render_loop/inspector_commits.rs` 616 LOC > 600. **Owner = Sprite
+Inspector v2** (`ca538e4`/`ad4e918`/`546bf43`). Decompor `apply_sprite_field` OU declarar
+`// ph2d-loc-cap:` exceção. NÃO é arquivo do Painter/Vector/Coord.
+
+**Pre-existing failures (seção histórica abaixo):** status NÃO re-verificado nesta jornada
+(`PanelEvent::Activated`, `history_integration_t19` 4 tests) — Impl Painter confirma ao fechar W3.
+
 ### ATUALIZAÇÃO 2026-06-01 — Painter W3 + KTX2 fechados pelo Coord (auditados)
 
 Tudo LOCAL, não-pushado. (A seção histórica abaixo descreve a jornada anterior — superseded.)

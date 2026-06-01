@@ -55,10 +55,10 @@
 
 - [`docs/plans/2026-05-node-waves.md`](docs/plans/2026-05-node-waves.md) — sistema de nós ([ADR-0030..0039](docs/architecture/decisions/)): W1+W2 fechados + contrato CONGELADO; fan-out aberto. Tracker: [`docs/HANDOFF_node_system.md`](docs/HANDOFF_node_system.md).
 - [`docs/plans/2026-05-wave-11-carry-overs.md`](docs/plans/2026-05-wave-11-carry-overs.md) — carry-overs pós-Wave 10 ([ADR-0042](docs/architecture/decisions/0042-wave-10-closure.md)).
-- [`docs/Painter_projeto/15_plano_de_implementacao.md`](docs/Painter_projeto/15_plano_de_implementacao.md) — **Painter** (W0 ratificado, [ADR-0043..0053](docs/architecture/decisions/)); mandato §0 padrão-ouro. Handoff: [`docs/HANDOFF_painter.md`](docs/HANDOFF_painter.md).
-- [`docs/Vector Module/17_plano_de_implementacao.md`](docs/Vector%20Module/17_plano_de_implementacao.md) — **Vector Module** (W0 ratificada, [ADR-0056..0068](docs/architecture/decisions/)); W1 aberta.
-- **Sprite Inspector v2** ([ADR-0069..0074](docs/architecture/decisions/)) — W1 schema bump; tracker [`docs/HANDOFF_sprite_inspector_v2.md`](docs/HANDOFF_sprite_inspector_v2.md).
-- **KTX2 Fase 2** ([ADR-0055](docs/architecture/decisions/)) — W1 ~85%; **imageio** ([ADR-0054](docs/architecture/decisions/)).
+- [`docs/Painter_projeto/15_plano_de_implementacao.md`](docs/Painter_projeto/15_plano_de_implementacao.md) — **Painter** ([ADR-0043..0053](docs/architecture/decisions/)): W0-W2 fechados; **W3 ATIVO** (layers panel + compositor GPU 22-modos + persist v2 layer-stack + dirty-rect preview). Handoffs: [`docs/HANDOFF_painter.md`](docs/HANDOFF_painter.md) + `HANDOFF_painter_w3_*`.
+- [`docs/Vector Module/17_plano_de_implementacao.md`](docs/Vector%20Module/17_plano_de_implementacao.md) — **Vector Module** ([ADR-0056..0068](docs/architecture/decisions/)): **W1 FECHADA** (auditada 2026-06-01); **W2 ABERTA** (Pencil/Shapes/Select/Color/Undo). Handoff: [`docs/HANDOFF_vector_w2_impl.md`](docs/HANDOFF_vector_w2_impl.md).
+- **Sprite Inspector v2** ([ADR-0069..0074](docs/architecture/decisions/)) — W0-W3 + W6 + W10 completos (§0-§9 Inspector + ClipChildren/Visibility/Ordering/Sampling render + widgets + OKLCH picker + Material&Blend); tracker [`docs/HANDOFF_sprite_inspector_v2.md`](docs/HANDOFF_sprite_inspector_v2.md).
+- **KTX2 Fase 2** ([ADR-0055](docs/architecture/decisions/)) — W0+W1+W2 fechados (cooker + renderer pipeline + budget); W3 Painter-integration. **imageio AVIF** ([ADR-0054](docs/architecture/decisions/)) — W0-W3 fechado (Path C real encode/decode via libavif, zero RUSTSEC).
 
 Sub-handoffs vivos dos implementadores: `docs/HANDOFF_*_impl.md`. Históricos: [`docs/archive/plans-completed/`](docs/archive/plans-completed/).
 

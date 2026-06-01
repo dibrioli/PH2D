@@ -97,7 +97,7 @@ pub const LAYER_FLAG_ACTIVE: u8 = 1 << 5;
 /// **HR-14 forward-compat (audit T1.8 L1-F11):** `enum` com `Reserved` no
 /// discriminant 0 FROZEN. postcard serializa enum como `varint(discriminant) +
 /// payload`; reservar 0 garante que files v1 (que carregam `Reserved(vec![])`)
-/// continuem discrimináveis. **W3 (v2)** adiciona `Node = 1` APÓS Reserved (sem
+/// permaneçam discrimináveis. **W3 (v2)** adiciona `Node = 1` APÓS Reserved (sem
 /// mexer no slot 0). Trocar `Reserved` por outro nome QUEBRA forward-compat;
 /// novos variants entram em 2, 3, ….
 ///

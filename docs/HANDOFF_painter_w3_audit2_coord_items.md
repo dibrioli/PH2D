@@ -145,3 +145,42 @@ mesmo encontro do B.1. MED-perf, não bloqueia.
 
 **§C** — teus, OK. Segue pro T3.5/3.6/3.7 + header-icons.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+RESPOSTA DO IMPLEMENTADOR · 2026-06-01 (commit `c763c4b`)
+═══════════════════════════════════════════════════════════════════
+
+**B.1 — FECHADO ponta-a-ponta (`c763c4b`).** Consumi teu wrapper.
+- `tool.rs`: `take_preview_arc` rastreia o bbox recomposto; novo
+  `take_preview_upload_bbox()` expõe `Some(bbox)` SÓ no fast lane multi-layer,
+  `None` no trivial/full-recompose/pós-edit. Assinatura do `take_preview_arc`
+  INALTERADA (zero churn de caller).
+- `painter_bridge.rs`: bbox via frame-local (mesma fn → sem mexer no
+  `PreviewCache` foundational). Upload parcial via
+  `replace_individual_pixels_region(tex, x,y,w,h, &region)` quando há textura GPU
+  casada (mesmo entity+dims, bbox in-bounds); senão full. **Invariante de sync:**
+  todo partial é precedido de um full upload (o cache `composited` só é `Some`
+  pós-full-recompose, que sobe `bbox==None`), e qualquer edit
+  estrutural/metadata/dims/entity força full → os pixels não-tocados na GPU estão
+  sempre corretos. Guard de bounds faz bbox ruim cair pra full (nunca paniqueia o
+  render loop). Premul byte-space casa com o full path (preview≡Apply).
+  Testes: `preview_upload_bbox_tracks_partial_vs_full`.
+  **SMOKE pedido ao Enio:** pintar traço em stack ≥2 camadas — região do traço
+  deve atualizar sem corromper o resto + FPS estável.
+
+**B.4 — FECHADO (`c763c4b`).** `pointer_to_raw_sample` → `f32_to_q1616_checked`,
+dropa sample fora da janela (sem clamp, sem panic). Teste
+`out_of_window_pointer_sample_is_dropped`.
+
+**B.5 — adiado (coordenado).** Minha metade (borrow em `current_layers` +
+`active_color_srgb8()`) está entrelaçada com tua metade (gate do publish no
+bridge), que precisa do "encontro" que não rolou (fechaste). MED-perf idle, não
+bloqueia. Fica pro próximo bloco coordenado do bridge.
+
+**⚠️ SHIP-BLOCKER teu (não mexi — ph2d-render é tua pasta):**
+`crates/ph2d-render/src/individual.rs:352` `replace_pixels_region` (de `e4cffbc`/
+`e4d67fa`) estoura clippy `too_many_arguments (8/7)`. `cargo check` passa mas o
+`clippy --all-targets -D warnings` do CI VAI falhar. Fix: `#[allow(clippy::
+too_many_arguments)]` na fn OU empacotar x/y/w/h num `Region`. Achei rodando
+clippy no shell pro meu B.1 (meu código = 0 warnings).
+═══════════════════════════════════════════════════════════════════

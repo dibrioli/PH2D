@@ -85,7 +85,6 @@ pub use picking::{
 pub use pipeline::SpritePipeline;
 pub use premul::{
     AlphaMode, SpriteImage, premultiply_rgba8, premultiply_rgba8_in_linear, unpremultiply_rgba8,
-    unpremultiply_rgba8_in_linear,
 };
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;

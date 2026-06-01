@@ -20,6 +20,17 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 **Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
 locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
+### ATUALIZAÇÃO 2026-06-01 — Vector W2 ATIVADO (slot dedicado)
+- **Vector W1 FECHADA** (auditada; `8ce8c97` closure + `b3b2f00` M8 + `69febf7` T1.8).
+  cubic_fit REAL; crdt/spiro stubs → W2. Smoke Pen OK.
+- **Vector impl arranca W2** (Pencil/Shapes/Select/Color/Undo) no slot `slot-impl-vector`
+  (re-seedado warm). Briefing: [`docs/HANDOFF_vector_w2_impl.md`](HANDOFF_vector_w2_impl.md). Caminho (A) drop-crate.
+- **Budget RAM CHEIO:** Painter impl + Vector impl + Coord = 3/3 cargos. **Não abrir 4º agente.**
+- **Coord segura (foundational p/ Vector W2):** `ph2d-vector` API pública (10+ deps), `Camera2d`,
+  `mod.rs` shared dispatch, gate `vello_kurbo` (W2-deferred, implementar se W2 add deps), AssetDb host.
+- **Premultiply (Painter item 3): NÃO mexer** — byte-space é o correto; troquei p/ linear por engano
+  e revertei (`3870733`). Ver `feedback-documented-decision-chesterton-fence`.
+
 ### ATUALIZAÇÃO 2026-06-01 — Painter W3 + KTX2 fechados pelo Coord (auditados)
 
 Tudo LOCAL, não-pushado. (A seção histórica abaixo descreve a jornada anterior — superseded.)
@@ -106,7 +117,7 @@ Orquestrando implementadores em módulos físicamente disjuntos. Briefings escri
 | 2 | `impl-avif` | Image I/O AVIF | `crates/ph2d-imageio-avif/` | (A)/(D) |
 | 3 | `impl-ktx2` | KTX2 Fase 2 | `crates/ph2d-asset-ktx2/` · `tools/asset-cooker/` · `crates/ph2d-asset/` | (A)/(D) |
 | 4 | `impl-painter` | Painter W2 | `crates/ph2d-tool-painter/` · `crates/ph2d-panel-painter-sidebar/` (+`painter-stroke`/`-brush`) | (A)/(D) |
-| 5 | `impl-vector` | Vector W1 | `crates/ph2d-vector-doc/` · `-traits/` · `crates/ph2d-brush-traits/` · `crates/ph2d-tool-vector-pen/` · shells bridges abaixo | (A)/(D) |
+| 5 | `impl-vector` | **Vector W2** (W1 FECHADA 2026-06-01) | crates `ph2d-tool-vector-{pencil,shape,select,direct}` (NOVOS) · `ph2d-vector-doc/src/{crdt,spiro}.rs` · shells `vector_*_bridge/input/toggle` | (A) drop-crate |
 
 **Pontos compartilhados resolvidos:**
 - `crates/ph2d-asset/` → escrita só do **Impl-3 (KTX2)**; Impl-2 (AVIF) só **lê** o bridge `loader.rs::decode_via_imageio_registry`.

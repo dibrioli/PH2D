@@ -16,6 +16,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_ADD,
         // Dock-mode toggle ("Brush") in the header (mode C).
         ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
+        // "Apply" CTA — commits the composite to the sprite (shared id with the
+        // sidebar panel).
+        ph2d_editor_core::ids::PAINTER_APPLY,
     ];
     for id in buttons {
         store.register(

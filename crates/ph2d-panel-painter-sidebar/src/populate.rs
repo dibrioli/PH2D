@@ -43,6 +43,15 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
+    // "Apply" CTA — commits the painting to the sprite (shared id with the
+    // layers panel; only one painter panel is visible at a time).
+    store.register(
+        ph2d_editor_core::ids::PAINTER_APPLY,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
     // Modifier square (T2.4) — eyedropper-while-held affordance. Painted in
     // `paint::paint_modifier_square`, so registering it here is live (not
     // dead routing). Dispatcher tracks hover/press + emits its `Click`.

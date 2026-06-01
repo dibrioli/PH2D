@@ -173,6 +173,29 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     );
     y += opacity_h + row_pad;
 
+    // Apply CTA — commit the painting into the active sprite (accent, full
+    // width). The only discoverable commit; Cmd/Ctrl+Enter is the hidden
+    // shortcut. Shared id + tool routing with the layers panel.
+    let apply_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        ROW_H_PX,
+    );
+    let apply_st = ctx
+        .host
+        .store()
+        .button_state(core_ids::PAINTER_APPLY)
+        .unwrap_or(ButtonState::Normal);
+    let apply_btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
+        .accent()
+        .state(apply_st);
+    paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_APPLY, apply_rect);
+    y += ROW_H_PX + row_pad;
+
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);

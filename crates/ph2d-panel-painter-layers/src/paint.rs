@@ -52,6 +52,7 @@ const OPACITY_CHIP_W: f32 = 52.0; // LITERAL-PX-OK: opacity numeric-chip column 
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right ↑↓ reorder button column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
+const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
@@ -152,7 +153,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     }
 
     y += Spacing::Xs.px();
-    paint_add_button(ctx, rect.x + PANEL_HEAD_PAD, content_w, y, theme);
+    // Footer: "+ Layer" (left) + the "Apply" CTA (right) — Apply commits the
+    // composite into the sprite (the only discoverable commit; Cmd/Ctrl+Enter
+    // is the hidden shortcut).
+    let footer_x = rect.x + PANEL_HEAD_PAD;
+    paint_add_button(ctx, footer_x, ADD_BTN_W, y, theme);
+    let apply_rect = Rect::new(footer_x + content_w - APPLY_BTN_W, y, APPLY_BTN_W, ROW_H_PX);
+    paint_apply_button(ctx, apply_rect, theme);
     y += ROW_H_PX;
 
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
@@ -208,6 +215,23 @@ fn paint_add_button(ctx: &mut PaintCtx, x: f32, w: f32, y: f32, theme: ph2d_toke
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_LAYERS_ADD, btn_rect);
+}
+
+/// "Apply" footer CTA — commits the live layer composite into the sprite
+/// (routes to `PainterTool::request_commit`). Accent-filled for prominence.
+fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
+    let st = ctx
+        .host
+        .store()
+        .button_state(core_ids::PAINTER_APPLY)
+        .unwrap_or(ButtonState::Normal);
+    let btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
+        .accent()
+        .state(st);
+    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_APPLY, rect);
 }
 
 /// Paint `ids` (top→bottom) as interactive rows, recursing into non-collapsed

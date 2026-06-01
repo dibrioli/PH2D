@@ -37,6 +37,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // "Apply" CTA → forward as Click; the tool calls `request_commit` and
+        // the bridge bakes the composite into the sprite next frame.
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_APPLY => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Slider drag — read freshly-dispatched value, forward normalizado.
         // PainterTool::handle_panel_event mapeia 0..1 back to size_px /
         // opacity full scale conforme `PainterUiEdit` semântica.

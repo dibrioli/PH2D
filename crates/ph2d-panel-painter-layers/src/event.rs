@@ -38,9 +38,12 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
-        // Fixed chrome buttons: "+ Layer" + dock toggle → forward as Click.
+        // Fixed chrome buttons: "+ Layer" + dock toggle + Apply CTA → forward
+        // as Click (the tool maps each to its action).
         WidgetEvent::Click(id)
-            if id == core_ids::PAINTER_LAYERS_ADD || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK =>
+            if id == core_ids::PAINTER_LAYERS_ADD
+                || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
+                || id == core_ids::PAINTER_APPLY =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

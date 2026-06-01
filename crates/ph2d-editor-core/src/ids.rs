@@ -307,6 +307,11 @@ pub const PAINTER_LAYERS_TOGGLE_DOCK: NodeId = hash_node_id("painter_layers.togg
 /// slot docado pra layers (mostra "Layers"). Mirror simétrico de
 /// [`PAINTER_LAYERS_TOGGLE_DOCK`].
 pub const PAINTER_SIDEBAR_TOGGLE_DOCK: NodeId = hash_node_id("painter_sidebar.toggle_dock");
+/// "Apply" CTA (shared by both painter panels) — commits the live layer
+/// composite into the active sprite. Routes `PanelEvent::Click` →
+/// `PainterTool::request_commit` (the bridge bakes via `run_full` next frame).
+/// Without it the only way to commit was the invisible Cmd/Ctrl+Enter shortcut.
+pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
 
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via

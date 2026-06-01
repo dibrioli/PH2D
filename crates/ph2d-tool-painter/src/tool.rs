@@ -1860,6 +1860,11 @@ impl Tool for PainterTool {
                 let name = format!("Layer {}", self.layers.len() + 1);
                 self.add_raster_layer(name);
             }
+            // ── Apply CTA (either panel) — commit the composite to the sprite.
+            // The bridge's drive_pending_commit bakes it (run_full) next frame.
+            PanelEvent::Click(id) if id == core_ids::PAINTER_APPLY => {
+                self.request_commit();
+            }
             // ── Layers panel: per-row click (row select / visibility eye) ──
             PanelEvent::Click(id) => {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
@@ -2381,6 +2386,19 @@ mod tests {
         t.handle_panel_event(PanelEvent::Click(PAINTER_LAYERS_ADD));
         assert_eq!(t.layers().len(), 2, "+Layer adds a raster layer");
         assert_ne!(t.layers().active(), before, "the new layer becomes active");
+    }
+
+    #[test]
+    fn panel_event_apply_requests_commit() {
+        use ph2d_editor_core::ids::PAINTER_APPLY;
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [1, 2, 3, 255]), 2, 2);
+        t.handle_panel_event(PanelEvent::Click(PAINTER_APPLY));
+        assert!(
+            t.take_pending_commit(),
+            "the Apply CTA sets pending_commit (the bridge bakes it next frame)"
+        );
     }
 
     #[test]

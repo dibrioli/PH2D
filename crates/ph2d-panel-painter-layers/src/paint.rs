@@ -17,8 +17,9 @@
 
 use crate::PainterLayersPanel;
 use crate::state::{self, PainterLayersPanelState, set_last_content_h, set_last_visible_h};
+use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{paint_text, rect_to_vello};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -27,8 +28,13 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::paint::resolve;
-use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
+
+// Read-only layer-row metrics (W3.T3.4 1st pass). Component-specific layout,
+// not global Spacing steps.
+const LAYER_META_W: f32 = 96.0; // LITERAL-PX-OK: right column for "Blend · NN%" meta text
+const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
@@ -92,45 +98,40 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     let mut y = body_top;
 
-    // ── PLACEHOLDER body ──────────────────────────────────────────────
-    // SCAFFOLD: renders a single "No layers" text row (or the live layer
-    // count when the shell publishes a snapshot) so the panel is visibly
-    // alive. The Implementer replaces THIS block with the real layer rows.
-    //
-    // TODO(impl W3.T3.4): layer rows
-    //   Read the published stack via `state::current_layers()` (Option<
-    //   ph2d_tool_painter::LayerStack>). For each layer in root z-order
-    //   (top→bottom), paint a row:
-    //     thumb + name + visibility toggle + opacity slider + blend dropdown.
-    //   Use `ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES}` for the blend
-    //   popover order (T3.3). Register each row's interactive widgets in
-    //   `populate.rs` + classify their events in `event.rs` (ToolPanelEvent
-    //   canal genérico, mirror do sidebar). Add the per-row NodeIds in
-    //   editor-core `ids.rs` alongside `PAINTER_LAYERS_*`.
-    let label_font = TypeToken::Base.px();
-    let placeholder = match state::current_layers() {
-        Some(stack) => {
-            let n = stack.len();
-            if n == 0 {
-                "No layers".to_string()
-            } else {
-                format!("{n} layer(s) — rows pending (W3.T3.4)")
-            }
+    // Layer rows (W3.T3.4, read-only 1st pass) — render the published runtime
+    // `LayerStack` snapshot top→bottom, recursing groups. INTERACTIVE controls
+    // (visibility toggle / opacity slider / blend dropdown) + the composite-
+    // preview that reflects them are the next block, gated on the tool↔
+    // LayerStack integration (see HANDOFF_painter_w3_layerstack_divergence_coord.md).
+    match state::current_layers() {
+        Some(stack) if !stack.is_empty() => {
+            let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
+            y = paint_layer_subtree(
+                ctx,
+                theme,
+                &stack,
+                stack.root(),
+                0,
+                rect.x + PANEL_HEAD_PAD,
+                content_w,
+                y,
+            );
         }
-        None => "No layers".to_string(),
-    };
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &placeholder,
-        rect.x + PANEL_HEAD_PAD,
-        y,
-        label_font,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        resolve(ColorToken::Text2, theme),
-    );
-    y += label_font + Spacing::Md.px();
-    // ──────────────────────────────────────────────────────────────────
+        _ => {
+            let font = TypeToken::Base.px();
+            paint_text(
+                ctx.text_system,
+                ctx.scene,
+                "No layers",
+                rect.x + PANEL_HEAD_PAD,
+                y,
+                font,
+                rect.w - PANEL_HEAD_PAD * 2.0,
+                resolve(ColorToken::Text2, theme),
+            );
+            y += font + Spacing::Md.px();
+        }
+    }
 
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
@@ -146,4 +147,104 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_LAYERS_CLOSE, panel_close_button_rect(rect));
+}
+
+/// Paint the layers in `ids` (top→bottom) as read-only rows, recursing into
+/// groups (indented; a collapsed group hides its children). Returns the `y`
+/// advanced past the painted rows.
+///
+/// Read-only (W3.T3.4 1st pass): no hit registration / event wiring yet —
+/// the visibility toggle / opacity slider / blend dropdown interactions land
+/// in the next block once the tool↔LayerStack integration is ratified.
+#[allow(clippy::too_many_arguments)]
+fn paint_layer_subtree(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    stack: &LayerStack,
+    ids: &[LayerId],
+    depth: usize,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
+    let font = TypeToken::Base.px();
+    let row_gap = Spacing::Xs.px();
+    let cell_gap = Spacing::Sm.px();
+    let thumb_w = Spacing::Xl2.px();
+    let indent = depth as f32 * LAYER_INDENT_STEP;
+    for &id in ids {
+        let Some(layer) = stack.get(id) else { continue };
+        let row_x = x + indent;
+        let row_w = (w - indent).max(0.0);
+        let label_y = y + (ROW_H_PX - font) * 0.5;
+
+        // Visibility eye — read-only indicator (Text1 visible / disabled hidden).
+        let eye_rect = Rect::new(row_x, y, ROW_H_PX, ROW_H_PX);
+        let eye_color = resolve(
+            if layer.visible {
+                ColorToken::Text1
+            } else {
+                ColorToken::TextDisabled
+            },
+            theme,
+        );
+        let eye_icon = if layer.visible {
+            IconId::Eye
+        } else {
+            IconId::EyeClosed
+        };
+        paint_icon(ctx.scene, eye_icon, eye_rect, eye_color, StrokeToken::Default.px());
+
+        // Thumb placeholder — no per-layer pixels in the panel yet (the
+        // real thumbnail arrives with the tool↔LayerStack integration).
+        let thumb_rect = Rect::new(
+            eye_rect.x + ROW_H_PX + cell_gap,
+            y + (ROW_H_PX - thumb_w) * 0.5,
+            thumb_w,
+            thumb_w,
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            thumb_rect,
+            Radius::Sm.px(),
+            resolve(ColorToken::BgElev, theme),
+        );
+
+        // Name (clipped to leave the meta column on the right).
+        let name_x = thumb_rect.x + thumb_w + cell_gap;
+        let name_w = (row_x + row_w - LAYER_META_W - name_x).max(0.0);
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            &layer.name,
+            name_x,
+            label_y,
+            font,
+            name_w,
+            resolve(ColorToken::Text1, theme),
+        );
+
+        // Meta: "Blend  NN%" (dim, right column).
+        let meta = format!("{}  {:.0}%", layer.blend_mode.name(), layer.opacity * 100.0);
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            &meta,
+            row_x + row_w - LAYER_META_W,
+            label_y,
+            font,
+            LAYER_META_W,
+            resolve(ColorToken::Text2, theme),
+        );
+
+        y += ROW_H_PX + row_gap;
+
+        // Recurse into non-collapsed groups.
+        if let LayerKind::Group(g) = &layer.kind
+            && !g.collapsed
+        {
+            y = paint_layer_subtree(ctx, theme, stack, &g.children, depth + 1, x, w, y);
+        }
+    }
+    y
 }

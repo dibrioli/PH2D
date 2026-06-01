@@ -9,8 +9,8 @@
 //!
 //! ## SCAFFOLD (Coordenador, caminho B)
 //!
-//! Este crate entrega: chrome canon (surface + corner dot + title "Layers"
-//! + close + drag/resize handles), o snapshot publish (`set_current_layers`),
+//! Este crate entrega: chrome canon (surface, corner dot, title "Layers",
+//! close, drag/resize handles), o snapshot publish (`set_current_layers`),
 //! a docagem (layout slot + visibility), o registro no panel-registry-init,
 //! e um body **placeholder** ("No layers"). O Implementador preenche as
 //! layer rows reais — ver `// TODO(impl W3.T3.4)` em `paint.rs`.

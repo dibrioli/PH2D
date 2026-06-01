@@ -122,6 +122,36 @@ impl BlendMode {
     pub fn to_u8(self) -> u8 {
         self as u8
     }
+
+    /// Display name for the layer panel + blend-mode popover
+    /// (`02_layers.md` §2.2 wording). UI string — English.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Normal => "Normal",
+            Self::Multiply => "Multiply",
+            Self::Darken => "Darken",
+            Self::ColorBurn => "Color Burn",
+            Self::LinearBurn => "Linear Burn",
+            Self::Lighten => "Lighten",
+            Self::Screen => "Screen",
+            Self::ColorDodge => "Color Dodge",
+            Self::Add => "Add",
+            Self::Overlay => "Overlay",
+            Self::SoftLight => "Soft Light",
+            Self::HardLight => "Hard Light",
+            Self::VividLight => "Vivid Light",
+            Self::LinearLight => "Linear Light",
+            Self::Difference => "Difference",
+            Self::Exclusion => "Exclusion",
+            Self::Hue => "Hue",
+            Self::Saturation => "Saturation",
+            Self::Color => "Color",
+            Self::Luminosity => "Luminosity",
+            Self::Behind => "Behind",
+            Self::Clear => "Clear",
+        }
+    }
 }
 
 /// Composite `src` over `dst` under `mode`.
@@ -356,6 +386,17 @@ mod tests {
     fn from_u8_out_of_range_falls_back_to_normal() {
         assert_eq!(BlendMode::from_u8(MAX_BLEND_MODES), BlendMode::Normal);
         assert_eq!(BlendMode::from_u8(255), BlendMode::Normal);
+    }
+
+    #[test]
+    fn every_mode_has_a_distinct_nonempty_name() {
+        let mut seen = std::collections::BTreeSet::new();
+        for v in 0..MAX_BLEND_MODES {
+            let n = BlendMode::from_u8(v).name();
+            assert!(!n.is_empty(), "mode {v} has empty name");
+            assert!(seen.insert(n), "duplicate blend name {n:?}");
+        }
+        assert_eq!(seen.len(), MAX_BLEND_MODES as usize);
     }
 
     #[test]

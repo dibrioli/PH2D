@@ -75,6 +75,17 @@ pub enum IndividualTextureError {
     },
     /// `readback`'s requested texture id has no entry in the store.
     NotFound(u32),
+    /// A [`IndividualTextureStore::replace_pixels_region`] sub-rect lies
+    /// outside the entry's current texture dimensions (a partial write
+    /// past the edge would corrupt neighbouring rows or panic in wgpu).
+    RegionOutOfBounds {
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        tex_width: u32,
+        tex_height: u32,
+    },
     /// The GPU command queue accepted the copy but the buffer never
     /// finished mapping. Worth surfacing distinctly from a generic
     /// I/O error so the caller can decide whether to retry (device
@@ -90,6 +101,17 @@ impl std::fmt::Display for IndividualTextureError {
                 "rgba buffer length {got} doesn't match width*height*4 = {expected}"
             ),
             Self::NotFound(id) => write!(f, "no individual texture with id {id}"),
+            Self::RegionOutOfBounds {
+                x,
+                y,
+                width,
+                height,
+                tex_width,
+                tex_height,
+            } => write!(
+                f,
+                "region {width}×{height} at ({x},{y}) exceeds texture {tex_width}×{tex_height}"
+            ),
             Self::ReadbackFailed(detail) => write!(f, "GPU readback failed: {detail}"),
         }
     }
@@ -310,6 +332,63 @@ impl IndividualTextureStore {
         }
         Ok(())
     }
+
+    /// Upload a sub-rectangle of pixels into an existing entry's texture,
+    /// leaving the rest untouched (`queue.write_texture` with a non-zero
+    /// origin + partial extent).
+    ///
+    /// The Painter dirty-rect composite path uploads only the bounding
+    /// box a stroke touched instead of the whole canvas — O(bbox) per
+    /// frame instead of O(W×H) (Painter W3 audit item 1a — the GPU end of
+    /// the dirty-rect path). The texture id, bind group and dims stay
+    /// stable, so SimWorld references and the cached bind group remain
+    /// valid; no reallocation occurs.
+    ///
+    /// `region_rgba` must be tightly packed `width * height * 4` bytes for
+    /// the sub-rect ALONE (not the full texture). The region must lie
+    /// fully within the entry's current dims. A zero-area region is a
+    /// no-op (an empty dirty-rect); an unknown id is a silent no-op
+    /// (mirror of [`Self::replace_pixels`]).
+    pub fn replace_pixels_region(
+        &mut self,
+        gpu: &GpuContext,
+        id: u32,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        region_rgba: &[u8],
+    ) -> Result<(), IndividualTextureError> {
+        let Some(entry) = self.entries.get(&id) else {
+            return Ok(());
+        };
+        // The sub-rect must lie fully within the current texture; a write
+        // past the edge would corrupt neighbouring rows or panic in wgpu.
+        let in_bounds = x.checked_add(width).is_some_and(|r| r <= entry.width)
+            && y.checked_add(height).is_some_and(|b| b <= entry.height);
+        if !in_bounds {
+            return Err(IndividualTextureError::RegionOutOfBounds {
+                x,
+                y,
+                width,
+                height,
+                tex_width: entry.width,
+                tex_height: entry.height,
+            });
+        }
+        if width == 0 || height == 0 {
+            return Ok(()); // empty dirty-rect — nothing to upload
+        }
+        let expected = (width as usize) * (height as usize) * 4;
+        if region_rgba.len() != expected {
+            return Err(IndividualTextureError::PixelLengthMismatch {
+                got: region_rgba.len(),
+                expected,
+            });
+        }
+        write_pixels_region(gpu, &entry.texture, x, y, width, height, region_rgba);
+        Ok(())
+    }
 }
 
 fn create_entry(
@@ -374,6 +453,40 @@ fn write_pixels(gpu: &GpuContext, texture: &wgpu::Texture, width: u32, height: u
             aspect: wgpu::TextureAspect::All,
         },
         rgba,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+}
+
+/// Upload a tightly-packed `width × height` RGBA8 sub-rect to `(x, y)` of
+/// `texture`, leaving the rest of the texture untouched. Caller guarantees
+/// the rect is in-bounds and `region_rgba.len() == width * height * 4`.
+#[allow(clippy::too_many_arguments)]
+fn write_pixels_region(
+    gpu: &GpuContext,
+    texture: &wgpu::Texture,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    region_rgba: &[u8],
+) {
+    gpu.queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d { x, y, z: 0 },
+            aspect: wgpu::TextureAspect::All,
+        },
+        region_rgba,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
             bytes_per_row: Some(width * 4),

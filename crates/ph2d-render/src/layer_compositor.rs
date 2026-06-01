@@ -607,9 +607,12 @@ impl LayerCompositor {
     /// Pick a slice index for a new key: the first unused index, else evict the
     /// least-recently-used slice not touched this `epoch`.
     fn alloc_slice(&mut self, array_cap: u32, epoch: u64) -> Result<u32, LayerCompositeError> {
-        let used: std::collections::BTreeSet<u32> = self.cache.values().map(|c| c.slice).collect();
+        // Allocation-free (HR-3): scan for the first slice no cached layer
+        // holds. O(array_cap × cache_len), array_cap ≤ HARD_CAP_LAYERS, and
+        // this runs only on a NEW-key resolution (not the steady-state path)
+        // — cheaper than collecting a BTreeSet per new key (audit LOW).
         for s in 0..array_cap {
-            if !used.contains(&s) {
+            if !self.cache.values().any(|c| c.slice == s) {
                 return Ok(s);
             }
         }
@@ -820,13 +823,22 @@ fn validate_op_list(ops: &[LayerOp]) -> Result<(), LayerCompositeError> {
 
 /// Distinct `Layer` keys referenced by `ops`.
 fn distinct_layer_count(ops: &[LayerOp]) -> u32 {
-    let mut seen = std::collections::BTreeSet::new();
-    for op in ops {
+    // Allocation-free (HR-3): count each `Layer` key only at its FIRST
+    // occurrence. O(n²) in op count, but n is a few hundred at most and this is
+    // off the GPU-bound cost — cheaper than a per-`composite()` BTreeSet alloc
+    // on the documented real-time path (audit 2026-06-01 LOW).
+    let mut count = 0u32;
+    for (i, op) in ops.iter().enumerate() {
         if let LayerOp::Layer { key, .. } = op {
-            seen.insert(*key);
+            let is_first = !ops[..i]
+                .iter()
+                .any(|o| matches!(o, LayerOp::Layer { key: k, .. } if k == key));
+            if is_first {
+                count += 1;
+            }
         }
     }
-    seen.len() as u32
+    count
 }
 
 /// Reusable scratch for the flattened GPU op-list. Construct once, reuse
@@ -881,7 +893,10 @@ pub fn flatten_layer_ops(
                 kind: OP_LAYER,
                 layer_slot: slot_of(*key),
                 blend_mode: *blend_mode as u32,
-                opacity: *opacity,
+                // Clamp to [0,1] to match the CPU reference (compositor.rs
+                // clamps layer.opacity before folding into source alpha); an
+                // out-of-range opacity would otherwise diverge (audit LOW).
+                opacity: opacity.clamp(0.0, 1.0),
             },
             LayerOp::PushGroup => GpuOp {
                 kind: OP_PUSH_GROUP,
@@ -896,7 +911,7 @@ pub fn flatten_layer_ops(
                 kind: OP_POP_GROUP,
                 layer_slot: 0,
                 blend_mode: *blend_mode as u32,
-                opacity: *opacity,
+                opacity: opacity.clamp(0.0, 1.0),
             },
         };
         out.push(g);

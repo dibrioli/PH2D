@@ -670,8 +670,20 @@ fn validate_layer_node(node: &LayerNode, depth: usize, total: &mut usize) -> Res
             max: MAX_LAYER_NAME_BYTES,
         });
     }
+    // A mask is a nested node too — bound it at `depth + 1` exactly like a
+    // group child, so a forged mask-of-mask-of-… chain can't recurse the
+    // validator unbounded (defense-in-depth; the deserializer now also caps
+    // nesting at MAX_LAYER_NODE_DESERIALIZE_DEPTH, but the validator must stay
+    // independently sound). Audit 2026-06-01.
     if let Some(mask) = &node.mask {
-        validate_layer_node(mask, depth, total)?;
+        if depth + 1 > MAX_GROUP_DEPTH {
+            return Err(LoadError::CapExceeded {
+                kind: "layer_node.mask_depth",
+                got: depth + 1,
+                max: MAX_GROUP_DEPTH,
+            });
+        }
+        validate_layer_node(mask, depth + 1, total)?;
     }
     if let LayerNodeKind::Group { children, .. } = &node.kind {
         if depth + 1 > MAX_GROUP_DEPTH {

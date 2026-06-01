@@ -94,7 +94,7 @@ pub use determinism::{
 pub use device::{
     CanvasId, LAYER_FLAG_ACTIVE, LAYER_FLAG_ALPHA_LOCKED, LAYER_FLAG_CLIPPING,
     LAYER_FLAG_IS_REFERENCE, LAYER_FLAG_LOCKED, LAYER_FLAG_VISIBLE, LayerId, LayerNode,
-    LayerNodeKind, LayerStack, LayerStackEntry, PointerSource,
+    LayerNodeKind, LayerStack, LayerStackEntry, MAX_LAYER_NODE_DESERIALIZE_DEPTH, PointerSource,
 };
 pub use durability::{
     AtomicWriteError, AutoSave, AutoSaveError, AutoSavePolicy, AutoSaveState, CrashRecovery,

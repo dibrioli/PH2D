@@ -4,12 +4,16 @@
 
 use ph2d_painter_stroke::{
     CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerId, LayerNode, LayerNodeKind,
-    LayerStackEntry, LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES, MAX_LAYERS, PaintProject,
-    load, save,
+    LayerStackEntry, LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES,
+    MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS, PaintProject, load, save,
 };
 
 fn canvas(w: u32, h: u32) -> CanvasInfo {
-    CanvasInfo { width: w, height: h, ..CanvasInfo::default() }
+    CanvasInfo {
+        width: w,
+        height: h,
+        ..CanvasInfo::default()
+    }
 }
 
 fn raster(id: u32, name: &str) -> LayerNode {
@@ -169,6 +173,87 @@ fn load_rejects_groups_nested_past_max_depth() {
             })
         ),
         "must reject groups nested past MAX_GROUP_DEPTH"
+    );
+}
+
+// ── Audit 2026-06-01 CRITICAL regression: deep-nesting stack-overflow DoS ──
+// A forged file with a Group/mask chain deeper than the recursive deserializer
+// could handle used to SIGABRT inside postcard::from_bytes BEFORE any cap
+// validation. The depth-guarded LayerNode Deserialize must now return Err
+// (graceful), never abort. We nest a bit past MAX_LAYER_NODE_DESERIALIZE_DEPTH
+// — shallow enough that the (unguarded) SERIALIZE side does not overflow here,
+// deep enough that LOAD's guard must reject it.
+
+fn deep_group_chain(depth: usize) -> LayerNode {
+    let mut node = raster(0, "leaf");
+    for i in 1..depth {
+        node = LayerNode {
+            id: LayerId(i as u32),
+            name: "g".to_string(),
+            kind: LayerNodeKind::Group {
+                children: vec![node],
+                collapsed: false,
+            },
+            blend_mode: 0,
+            opacity: 1.0,
+            modifiers: LAYER_FLAG_VISIBLE,
+            mask: None,
+        };
+    }
+    node
+}
+
+#[test]
+fn load_rejects_node_nesting_past_deserialize_depth_without_aborting() {
+    let depth = (MAX_LAYER_NODE_DESERIALIZE_DEPTH + 8) as usize;
+    let mut p = PaintProject::new(canvas(8, 8));
+    p.layer_stack.layers = vec![LayerStackEntry::Node(deep_group_chain(depth))];
+    p.recompute_checksum();
+    let bytes = postcard::to_allocvec(&p).unwrap();
+    // Graceful Err (Deserialization from the depth guard), NOT a process abort.
+    assert!(
+        load(&bytes).is_err(),
+        "a node tree deeper than the deserialize bound must return Err, not SIGABRT"
+    );
+}
+
+#[test]
+fn load_rejects_deep_mask_chain_without_aborting() {
+    // Same DoS via the mask field (Option<Box<LayerNode>>) instead of groups.
+    let depth = (MAX_LAYER_NODE_DESERIALIZE_DEPTH + 8) as usize;
+    let mut node = raster(0, "leaf");
+    for i in 1..depth {
+        let mut m = raster(i as u32, "m");
+        m.kind = LayerNodeKind::Mask {
+            width: 1,
+            height: 1,
+            inverted: false,
+        };
+        m.mask = Some(Box::new(node));
+        node = m;
+    }
+    let mut p = PaintProject::new(canvas(8, 8));
+    p.layer_stack.layers = vec![LayerStackEntry::Node(node)];
+    p.recompute_checksum();
+    let bytes = postcard::to_allocvec(&p).unwrap();
+    assert!(
+        load(&bytes).is_err(),
+        "a deep mask chain must return Err, not SIGABRT"
+    );
+}
+
+#[test]
+fn load_accepts_legit_max_depth_tree() {
+    // A legitimately-deep tree (MAX_GROUP_DEPTH groups) is WELL under the
+    // deserialize bound and must load cleanly — the DoS fix must not reject
+    // valid documents.
+    let mut p = PaintProject::new(canvas(8, 8));
+    p.layer_stack.layers = vec![LayerStackEntry::Node(deep_group_chain(MAX_GROUP_DEPTH))];
+    p.recompute_checksum();
+    let bytes = postcard::to_allocvec(&p).unwrap();
+    assert!(
+        load(&bytes).is_ok(),
+        "a MAX_GROUP_DEPTH tree must still load"
     );
 }
 

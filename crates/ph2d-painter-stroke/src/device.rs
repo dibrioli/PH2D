@@ -123,7 +123,12 @@ impl Default for LayerStackEntry {
 /// Option<LayerId>` do runtime virando ownership aninhado ([`Self::mask`]) e os
 /// 6 bools modifier compactados em [`Self::modifiers`]. 7 fields (cap gate
 /// co-locado em `tests`).
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+///
+/// `Deserialize` is HAND-WRITTEN (below) with a nesting-depth guard — the
+/// derived recursive decode would stack-overflow on a forged deep tree before
+/// any cap validation could run (audit 2026-06-01 CRITICAL). `Serialize` stays
+/// derived, so the wire format + cook-hash are unchanged.
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct LayerNode {
     /// Id u32 (runtime `LayerId(u64)` narrowed no save; widened no load).
     pub id: LayerId,
@@ -161,6 +166,79 @@ pub enum LayerNodeKind {
         children: Vec<LayerNode>,
         collapsed: bool,
     } = 2,
+}
+
+/// Max [`LayerNode`] nesting depth the deserializer accepts before erroring — a
+/// STACK-OVERFLOW backstop for forged `.ph2d-painter` files (audit 2026-06-01
+/// CRITICAL). postcard's *derived* `Deserialize` recurses one stack frame per
+/// nested `Group` child / `mask` with NO depth limit, and `load()` deserializes
+/// BEFORE [`crate::persistence::validate_caps_post_deserialize`] runs — so a
+/// ~600 KB forged deep chain would overflow the stack (uncatchable SIGABRT)
+/// before the `MAX_GROUP_DEPTH` cap could reject it. The hand-written
+/// `Deserialize` below threads a depth counter and errors past this bound, so a
+/// malformed file returns `Err`, never aborts. Set comfortably above the
+/// legitimate max (`MAX_GROUP_DEPTH = 8` + a mask + slack); the precise
+/// structural cap is still enforced post-deserialize.
+pub const MAX_LAYER_NODE_DESERIALIZE_DEPTH: u32 = 32;
+
+thread_local! {
+    /// Current `LayerNode` deserialization nesting depth (the painter is
+    /// single-threaded; each `load()` unwinds this to 0 via the RAII guard).
+    static LAYER_NODE_DE_DEPTH: core::cell::Cell<u32> = const { core::cell::Cell::new(0) };
+}
+
+/// RAII: decrements the de-depth on scope exit (incl. early `Err`/unwind), so a
+/// rejected or partial deserialize never leaks depth into the next `load()`.
+struct LayerNodeDepthGuard;
+impl Drop for LayerNodeDepthGuard {
+    fn drop(&mut self) {
+        LAYER_NODE_DE_DEPTH.with(|c| c.set(c.get().saturating_sub(1)));
+    }
+}
+
+/// Field-for-field twin that drives the (recursive) derived decode AFTER the
+/// depth guard has been entered. Reads byte-identical to a derived `LayerNode`
+/// (same field order — postcard is positional), so the wire format is
+/// unchanged; its `kind`/`mask` recurse back into [`LayerNode`]'s guarded
+/// `Deserialize`, threading the depth counter through the whole chain.
+#[derive(Deserialize)]
+struct LayerNodeWire {
+    id: LayerId,
+    name: String,
+    kind: LayerNodeKind,
+    blend_mode: u8,
+    opacity: f32,
+    modifiers: u8,
+    mask: Option<Box<LayerNode>>,
+}
+
+impl<'de> Deserialize<'de> for LayerNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let depth = LAYER_NODE_DE_DEPTH.with(|c| {
+            let d = c.get() + 1;
+            c.set(d);
+            d
+        });
+        let _guard = LayerNodeDepthGuard; // decrements on return (Ok or Err)
+        if depth > MAX_LAYER_NODE_DESERIALIZE_DEPTH {
+            return Err(<D::Error as serde::de::Error>::custom(
+                "layer node nesting exceeds MAX_LAYER_NODE_DESERIALIZE_DEPTH",
+            ));
+        }
+        let w = LayerNodeWire::deserialize(deserializer)?;
+        Ok(Self {
+            id: w.id,
+            name: w.name,
+            kind: w.kind,
+            blend_mode: w.blend_mode,
+            opacity: w.opacity,
+            modifiers: w.modifiers,
+            mask: w.mask,
+        })
+    }
 }
 
 #[cfg(test)]

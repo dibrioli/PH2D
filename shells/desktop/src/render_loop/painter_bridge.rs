@@ -136,6 +136,19 @@ pub(super) fn dispatch(
         if was != painter_is_active {
             hero.panel_visibility
                 .insert("inspector", !painter_is_active);
+            // W3.T3.4: bring the layers panel into the paint z-order the
+            // moment Painter opens (canonical `bump_panel_z` "panel first
+            // opened" path). Unlike `painter_sidebar`, `PAINTER_LAYERS_PANEL`
+            // is NOT in the `z_order` fallback list in editor-core
+            // `screens/hero.rs`, so without this it stays out of the paint
+            // walk and never renders even when its visibility flips true
+            // (mode C toggle → sidebar hides, layers shows nothing).
+            // FOLLOW-UP (Coord): also add `ids::PAINTER_LAYERS_PANEL` to that
+            // fallback list (mirror `PAINTER_SIDEBAR_PANEL`) as defense-in-depth.
+            if painter_is_active {
+                hero.store
+                    .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);
+            }
         }
     }
 

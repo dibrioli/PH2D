@@ -19,6 +19,7 @@ ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy", optional = true }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
+ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
 ph2d-panel-painter-sidebar = { path = "../ph2d-panel-painter-sidebar", optional = true }
 ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
 ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = true }
@@ -42,6 +43,7 @@ panel-grid-snap = ["dep:ph2d-panel-grid-snap"]
 panel-hierarchy = ["dep:ph2d-panel-hierarchy"]
 panel-inspector = ["dep:ph2d-panel-inspector"]
 panel-padding = ["dep:ph2d-panel-padding"]
+panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
 panel-painter-sidebar = ["dep:ph2d-panel-painter-sidebar"]
 panel-upscale = ["dep:ph2d-panel-upscale"]
 panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]

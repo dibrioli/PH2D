@@ -286,6 +286,15 @@ pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");
 /// chosen color is applied back via `PainterUiEdit::SetColorSrgb`.
 pub const PAINTER_COLOR_THUMB: NodeId = hash_node_id("painter.color_thumb");
 
+/// Painter layers panel container — the typed `ph2d-panel-painter-layers`
+/// outer rect. Right-docked (same geometry slot as the Inspector, mirror
+/// do `PAINTER_SIDEBAR_PANEL`) and only visible while the `painter` tool
+/// is active. W3.T3.4 plan §6 / design 02_layers.md §2.3.
+pub const PAINTER_LAYERS_PANEL: NodeId = hash_node_id("painter_layers_panel");
+/// Close (X) button do Painter layers panel — routes pra `CancelActiveTool`
+/// (canon BgRemoval/Painter sidebar). Deactivates Painter tool quando clicado.
+pub const PAINTER_LAYERS_CLOSE: NodeId = hash_node_id("painter_layers.close");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

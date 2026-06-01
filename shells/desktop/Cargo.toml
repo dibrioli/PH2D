@@ -144,6 +144,12 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # modifier square + undo/redo buttons. Right-docked (Inspector slot
 # takeover) quando Painter ativo. Gated por feature `panel-painter-sidebar`.
 ph2d-panel-painter-sidebar = { path = "../../crates/ph2d-panel-painter-sidebar", optional = true }
+# W3.T3.4: Painter layers panel — typed panel listando as layers do
+# LayerStack (thumb + name + visibility + opacity + blend). Right-docked
+# (Inspector slot takeover, mirror do sidebar) quando Painter ativo.
+# Gated por feature `panel-painter-layers`. Shell publica o snapshot via
+# `ph2d_panel_painter_layers::set_current_layers` (painter_bridge.rs).
+ph2d-panel-painter-layers = { path = "../../crates/ph2d-panel-painter-layers", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -222,6 +228,7 @@ default = [
     "panel-equalize-sizes",
     "panel-upscale",
     "panel-painter-sidebar",
+    "panel-painter-layers",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -237,4 +244,5 @@ panel-color-equalization = ["ph2d-panel-registry-init/panel-color-equalization",
 panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph2d-panel-equalize-sizes"]
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-painter-sidebar = ["ph2d-panel-registry-init/panel-painter-sidebar", "dep:ph2d-panel-painter-sidebar"]
+panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

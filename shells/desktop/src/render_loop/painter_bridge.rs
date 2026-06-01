@@ -114,6 +114,13 @@ pub(super) fn dispatch(
     // pra não stompar toggle manual do rail (Wave 10 Etapa 4 fix).
     hero.panel_visibility
         .insert("painter_sidebar", painter_is_active);
+    // W3.T3.4 SCAFFOLD: the layers panel is wired + docks, but stays HIDDEN
+    // for now. It currently shares the Inspector takeover slot with the
+    // brush sidebar, so showing it would overlap/cover Color/Size/Opacity/
+    // eyedropper. The implementer flips this on (→ `painter_is_active` or a
+    // dedicated toggle) once the real rows land AND the sidebar-vs-layers
+    // dock layout is resolved (side-by-side / stacked / toggle).
+    hero.panel_visibility.insert("painter_layers", false);
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -260,6 +267,14 @@ pub(super) fn dispatch(
         } else {
             None
         });
+
+        // (W3.T3.4 SCAFFOLD) Layers snapshot publish pro docked layers panel.
+        // Publica `None` por enquanto → panel pinta o placeholder "No layers".
+        // TODO(impl W3.T3.4): quando o tool↔LayerStack integration landar
+        // (foundational, Coordenador), trocar por
+        // `Some(painter.layer_stack().clone())` quando painter_is_active.
+        #[cfg(feature = "panel-painter-layers")]
+        ph2d_panel_painter_layers::set_current_layers(None);
 
         // ── (W2.T2.3) Color thumb ⟷ Blender picker round-trip ──────────
         //

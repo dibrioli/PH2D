@@ -4671,6 +4671,7 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-painter-layers",
  "ph2d-panel-painter-sidebar",
  "ph2d-panel-registry-init",
  "ph2d-panel-upscale",
@@ -5100,6 +5101,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-painter-layers"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-painter-brush",
+ "ph2d-tokens",
+ "ph2d-tool-painter",
+]
+
+[[package]]
 name = "ph2d-panel-painter-sidebar"
 version = "0.0.0"
 dependencies = [
@@ -5122,6 +5135,7 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
+ "ph2d-panel-painter-layers",
  "ph2d-panel-painter-sidebar",
  "ph2d-panel-sync",
  "ph2d-panel-upscale",

@@ -1046,6 +1046,10 @@ pub fn paint_hero_screen(
     // afetavam o painter_sidebar visualmente + rect publicado divergia do
     // que dispatch hit-test usava → click vazava pra canvas atrás.
     layout.painter_sidebar = insp_rect;
+    // W3.T3.4: Painter layers panel shares the Inspector dock slot too —
+    // mirror the resized/dragged rect so its chrome + published panel rect
+    // align with dispatch hit-test (else clicks leak to the canvas behind).
+    layout.painter_layers = insp_rect;
     if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
         || (insp_clamped_off.1 - insp_off.1).abs() > f32::EPSILON
     {

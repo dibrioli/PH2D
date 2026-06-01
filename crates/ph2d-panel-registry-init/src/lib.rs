@@ -56,6 +56,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
     #[cfg(feature = "panel-padding")]
     reg.push(ErasedPanel::new::<ph2d_panel_padding::PaddingPanel>());
+    #[cfg(feature = "panel-painter-layers")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_painter_layers::PainterLayersPanel,
+    >());
     #[cfg(feature = "panel-painter-sidebar")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_painter_sidebar::PainterSidebarPanel,
@@ -100,6 +104,10 @@ mod tests {
         // unification enables the panel and this count drifts; cf. memory
         // feedback-fanout-registry-init-friction).
         #[cfg(feature = "panel-painter-sidebar")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-painter-layers")]
         {
             n += 1;
         }

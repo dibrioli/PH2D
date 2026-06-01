@@ -117,12 +117,28 @@ Investigação Coord (2026-06-01) achou que o escopo é ~10× o que o handoff su
   é sutil. `premultiply_rgba8_in_linear` é a matemática correta mas não tem o
   unpremul-inverso casado.
 
-**Veredito:** half-flip = bug latente de re-edit; full-flip = refactor multi-site com
-hazard de round-trip + determinismo + smoke multi-feature. **NÃO é tarefa de fim de
-sessão.** Recomendação: aceitar a convenção byte-space por ora (consistente +
-round-trip-safe), OU agendar um mini-projeto "gamma-correct premul" dedicado
-(premul linear + unpremul linear casado + auditoria de pares + check cook-hash +
-smoke em todos os image tools). Decisão de prioridade = Enio.
+**ATUALIZAÇÃO — FEITO (gold-standard, `008b5bf`).** Enio: "decida pelo padrão-ouro".
+Os hazards foram TODOS limpos antes de executar:
+- **Determinismo: SEGURO** — verifiquei que bytes premultiplicados NUNCA são
+  serializados (cook/asset paths são straight-alpha only; zero ref a `AlphaMode`/
+  premul em `ph2d-asset-cooker`/`ph2d-asset`). Zero impacto de cook-hash.
+- **Round-trip: PRESERVADO** — troquei o par casado dentro de `SpriteImage`:
+  `into_premultiplied → premultiply_rgba8_in_linear` + novo
+  `into_straight → unpremultiply_rgba8_in_linear` (inverso exato). Bake→re-edit
+  continua correto.
+- **WYSIWYG: PRESERVADO** — os 2 previews (painter_bridge + bgremoval_preview)
+  trocaram junto, idênticos ao Apply (ambos lineares).
+- **Invariante do shader: CORRETA** — `Rgba8UnormSrgb` hw-decode recupera
+  `rgb_linear·a_linear` (o byte-space dava `srgb_decode(srgb(rgb)·a)`, o undershoot =
+  halo). Novos testes provam o invariante linear + round-trip.
+- ph2d-render 138 testes verdes; shell compila. **Falta só smoke visual do Enio**
+  (o halo nas bordas translúcidas deve sumir em Painter + BgRemoval + merge etc.).
+
+**⚠ NÃO-RELACIONADO mas detectado:** o gate `shell_files_respect_hr18_loc_cap` está
+VERMELHO por `src/render_loop/inspector_commits.rs — 616 LOC` (cap 600) — arquivo do
+**Sprite Inspector** (`ca538e4`/`ad4e918`/`546bf43`), NÃO do Painter nem meu. Owner do
+Sprite Inspector deve decompor ou declarar exceção `// ph2d-loc-cap:`. Reportado por
+disciplina de escopo (não fixo arquivo alheio).
 
 **Item 1b — GPU `LayerCompositor` como caminho real-time: SEQUENCIADO (Coord).**
 Depende do teu dirty-rect in-pasta landar primeiro (que o Item 1a destrava). Quando

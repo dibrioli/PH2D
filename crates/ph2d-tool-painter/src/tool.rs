@@ -1406,6 +1406,20 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Move a layer one step toward the FRONT (top of z-order) — layers panel
+    /// ↑ reorder button. No-op at the top. Invalidates the composite.
+    pub fn move_layer_up(&mut self, id: RtLayerId) {
+        self.layers.move_up(id);
+        self.invalidate_composite();
+    }
+
+    /// Move a layer one step toward the BACK (bottom of z-order) — layers panel
+    /// ↓ reorder button. No-op at the bottom. Invalidates the composite.
+    pub fn move_layer_down(&mut self, id: RtLayerId) {
+        self.layers.move_down(id);
+        self.invalidate_composite();
+    }
+
     // ── W3.T3.4 dock toggle (mode C) ────────────────────────────────────
 
     /// Which painter panel is shown in the shared right-dock slot —
@@ -1855,6 +1869,8 @@ impl Tool for PainterTool {
                             let now = self.layers.get(layer).map(|l| l.visible).unwrap_or(true);
                             self.set_layer_visible(layer, !now);
                         }
+                        PainterLayerWidget::MoveUp => self.move_layer_up(layer),
+                        PainterLayerWidget::MoveDown => self.move_layer_down(layer),
                         // Opacity slider/chip emit SetValue; Blend emits
                         // SelectOption — neither arrives as a Click.
                         _ => {}
@@ -2548,6 +2564,20 @@ mod tests {
             &[0, 0, 200],
             "Apply bakes the composite (blue top over red base)"
         );
+    }
+
+    #[test]
+    fn move_layer_reorders_within_root() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [10, 20, 30, 255]), 2, 2);
+        let l1 = t.layers().root()[0]; // base (Layer 1)
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap();
+        assert_eq!(t.layers().root(), &[l3, l2, l1], "new layers stack on top");
+        t.move_layer_down(l3);
+        assert_eq!(t.layers().root(), &[l2, l3, l1], "↓ moves L3 below L2");
+        t.move_layer_up(l3);
+        assert_eq!(t.layers().root(), &[l3, l2, l1], "↑ moves it back to top");
     }
 
     /// **Audit T1.6 R7 L1-5 contract update:** `queue_pointer` without

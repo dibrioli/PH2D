@@ -284,6 +284,42 @@ impl LayerStack {
         }
     }
 
+    /// `(index, sibling_count)` of `id` within its parent (root or group).
+    /// `None` if `id` is unknown. Used by the layers panel to enable/disable
+    /// the per-row move-up/down (↑↓) reorder buttons at the list edges.
+    #[must_use]
+    pub fn sibling_pos(&self, id: LayerId) -> Option<(usize, usize)> {
+        let list: &[LayerId] = match self.parent_of(id) {
+            None => &self.root,
+            Some(pid) => match &self.arena[self.index_of(pid)?].kind {
+                LayerKind::Group(g) => &g.children,
+                _ => return None,
+            },
+        };
+        let idx = list.iter().position(|&x| x == id)?;
+        Some((idx, list.len()))
+    }
+
+    /// Move `id` one step toward the FRONT (top of z-order, index 0) within its
+    /// parent. No-op if already first or unknown.
+    pub fn move_up(&mut self, id: LayerId) {
+        if let Some((i, _)) = self.sibling_pos(id)
+            && i > 0
+        {
+            self.reorder(id, i - 1);
+        }
+    }
+
+    /// Move `id` one step toward the BACK (bottom of z-order) within its
+    /// parent. No-op if already last or unknown.
+    pub fn move_down(&mut self, id: LayerId) {
+        if let Some((i, n)) = self.sibling_pos(id)
+            && i + 1 < n
+        {
+            self.reorder(id, i + 1);
+        }
+    }
+
     /// Reorder `id` to `new_index` within its current parent (root or
     /// group). Clamps to the sibling count. No-op if `id` is unknown.
     pub fn reorder(&mut self, id: LayerId, new_index: usize) {

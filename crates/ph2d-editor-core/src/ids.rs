@@ -333,6 +333,10 @@ pub enum PainterLayerWidget {
     OpacityChip,
     /// The blend-mode dropdown chip (opens the blend popover).
     Blend,
+    /// The move-up (↑) reorder button — moves the layer toward the front/top.
+    MoveUp,
+    /// The move-down (↓) reorder button — moves the layer toward the back.
+    MoveDown,
 }
 
 impl PainterLayerWidget {
@@ -346,16 +350,20 @@ impl PainterLayerWidget {
             Self::Opacity => "opacity",
             Self::OpacityChip => "opacity_chip",
             Self::Blend => "blend",
+            Self::MoveUp => "move_up",
+            Self::MoveDown => "move_down",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 5] = [
+    pub const ALL: [PainterLayerWidget; 7] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
         Self::OpacityChip,
         Self::Blend,
+        Self::MoveUp,
+        Self::MoveDown,
     ];
 }
 

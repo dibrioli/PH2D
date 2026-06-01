@@ -69,11 +69,17 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     )));
                 return true;
             }
-            // Per-row row-select / visibility eye → forward as Click. (The
-            // blend chip click is the dropdown open/close — handled by the
-            // generic Dropdown dispatch, not forwarded.)
+            // Per-row row-select / visibility eye / reorder ↑↓ → forward as
+            // Click. (The blend chip click is the dropdown open/close — handled
+            // by the generic Dropdown dispatch, not forwarded.)
             match decode(&stack, id) {
-                Some((_, PainterLayerWidget::Row | PainterLayerWidget::Visibility)) => {
+                Some((
+                    _,
+                    PainterLayerWidget::Row
+                    | PainterLayerWidget::Visibility
+                    | PainterLayerWidget::MoveUp
+                    | PainterLayerWidget::MoveDown,
+                )) => {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
                     true

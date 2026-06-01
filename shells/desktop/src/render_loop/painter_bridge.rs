@@ -280,41 +280,14 @@ pub(super) fn dispatch(
         }
         // Zero-copy preview drain — populates cache iff a new frame
         // arrived AND a sprite is selected to tag it with.
-        let drained = painter.take_preview_arc();
-        let did_recompose = drained.is_some();
-        if let (Some(sel), Some((rgba, w, h))) = (hero.gizmo.selection, drained) {
+        if let (Some(sel), Some((rgba, w, h))) = (hero.gizmo.selection, painter.take_preview_arc())
+        {
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
                 rgba,
                 width: w,
                 height: h,
             });
-        }
-        // PERF PROBE — `PH2D_PAINTER_PERF=1` prints once/sec: frames/s (≈ FPS),
-        // composite-drains/s (0 ≈ idle → cost is the panel/scene; high → the
-        // composite is the cost), and layer count. Diagnostic only; remove
-        // once the FPS regression is pinned.
-        {
-            use std::cell::Cell;
-            static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-            thread_local! {
-                static ACC: Cell<Option<(std::time::Instant, u32, u32)>> =
-                    const { Cell::new(None) };
-            }
-            if *ON.get_or_init(|| std::env::var("PH2D_PAINTER_PERF").is_ok()) {
-                let now = std::time::Instant::now();
-                let (last, frames, comps) = ACC.with(|a| a.get()).unwrap_or((now, 0, 0));
-                let (frames, comps) = (frames + 1, comps + did_recompose as u32);
-                if now.duration_since(last).as_secs_f32() >= 1.0 {
-                    eprintln!(
-                        "[painter-perf] {frames} fps · {comps} composite-drains/s · {} layers",
-                        painter.layers().len()
-                    );
-                    ACC.with(|a| a.set(Some((now, 0, 0))));
-                } else {
-                    ACC.with(|a| a.set(Some((last, frames, comps))));
-                }
-            }
         }
         // Apply / commit capture — same trait path as bgremoval.
         apply_selection = ph2d_tool_runtime::drive_pending_commit(

@@ -29,7 +29,7 @@ use ph2d_editor_core::ids::{
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
-    paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -40,7 +40,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     Button, ButtonState, Dropdown, DropdownOption, DropdownState, SliderOrientation, SliderState,
-    TextInputState, paint_button, paint_dropdown_chip, paint_dropdown_popover_in_viewport,
+    TextInputState, paint_button, paint_dropdown_popover_in_viewport,
     paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
@@ -51,6 +51,7 @@ use ph2d_tool_painter::{BlendMode, Layer, LayerId, LayerKind, LayerStack, MAX_BL
 // hence the single-line LITERAL-PX-OK justifications.
 const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
 const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
+const BLEND_POPOVER_W: f32 = 132.0; // LITERAL-PX-OK: open blend list width (extends left so long mode names fit one line)
 const OPACITY_CHIP_W: f32 = 52.0; // LITERAL-PX-OK: opacity numeric-chip column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
@@ -98,7 +99,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Dock-toggle ("Brush") + close (X).
+    // Dock-toggle (Brush) + close (X).
     paint_dock_toggle(ctx, rect, theme);
     paint_panel_close_button(
         rect,
@@ -115,7 +116,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
 
-    let mut y = body_top;
+    // Extra top padding so the active-row accent outline (which outsets above
+    // the row) is not clipped at the body top, and the first row sits clear of
+    // the Layers title.
+    let mut y = body_top + Spacing::Md.px();
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
 
     match state::current_layers() {
@@ -164,7 +168,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         .hit_index_mut()
         .register(core_ids::PAINTER_LAYERS_CLOSE, panel_close_button_rect(rect));
 
-    // Deferred: the single open blend dropdown's popover, on top of everything.
+    // Deferred: the single open blend dropdown popover, on top of everything.
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
         paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
     }
@@ -217,11 +221,16 @@ fn paint_layer_subtree(
     mut y: f32,
 ) -> f32 {
     let indent = depth as f32 * LAYER_INDENT_STEP;
-    for &id in ids {
+    let last = ids.len().saturating_sub(1);
+    for (i, &id) in ids.iter().enumerate() {
         let Some(layer) = stack.get(id) else { continue };
         let row_x = x + indent;
         let row_w = (w - indent).max(0.0);
-        y = paint_layer_row(ctx, theme, id, layer, active == Some(id), row_x, row_w, y);
+        // The bottom-most root layer IS the sprite image (the base): painting
+        // it edits the image directly and it has nothing beneath to blend with,
+        // so it gets no blend-mode dropdown (Photoshop "Background" semantics).
+        let is_base = depth == 0 && i == last;
+        y = paint_layer_row(ctx, theme, id, layer, active == Some(id), is_base, row_x, row_w, y);
 
         if let LayerKind::Group(g) = &layer.kind
             && !g.collapsed
@@ -242,6 +251,7 @@ fn paint_layer_row(
     id: LayerId,
     layer: &Layer,
     is_active: bool,
+    is_base: bool,
     x: f32,
     w: f32,
     y: f32,
@@ -273,10 +283,11 @@ fn paint_layer_row(
     ctx.host.hit_index_mut().register(eye_id, eye_rect);
 
     // ── Name (right next to the eye; click anywhere up to the blend chip
-    // selects the layer) ────────────────────────────────────────────────
-    let blend_x = x + w - BLEND_CHIP_W;
+    // selects the layer). The base layer has no blend chip, so its name +
+    // hit-rect run to the row's right edge. ─────────────────────────────
     let name_x = eye_rect.x + ROW_H_PX + cell_gap;
-    let name_w = (blend_x - cell_gap - name_x).max(0.0);
+    let name_right = if is_base { x + w } else { x + w - BLEND_CHIP_W - cell_gap };
+    let name_w = (name_right - name_x).max(0.0);
     paint_text(
         ctx.text_system,
         ctx.scene,
@@ -289,13 +300,16 @@ fn paint_layer_row(
     );
     let row_id = painter_layer_widget_id(id.0, PainterLayerWidget::Row);
     register_button(ctx.host.store_mut(), row_id);
-    let select_rect = Rect::new(name_x, y, (blend_x - cell_gap - name_x).max(0.0), ROW_H_PX);
-    ctx.host.hit_index_mut().register(row_id, select_rect);
+    ctx.host
+        .hit_index_mut()
+        .register(row_id, Rect::new(name_x, y, name_w, ROW_H_PX));
 
-    // ── Blend-mode dropdown chip (opens a popover list) ─────────────────
-    let blend_rect = Rect::new(blend_x, y, BLEND_CHIP_W, ROW_H_PX);
-    let cur_mode = layer.blend_mode.to_u8();
-    paint_blend_chip(ctx, theme, id.0, cur_mode, blend_rect);
+    // ── Blend-mode dropdown chip (opens a popover list) — skipped for the
+    // base layer (it IS the image; nothing below to blend with). ────────
+    if !is_base {
+        let blend_rect = Rect::new(x + w - BLEND_CHIP_W, y, BLEND_CHIP_W, ROW_H_PX);
+        paint_blend_chip(ctx, theme, id.0, layer.blend_mode.to_u8(), blend_rect);
+    }
 
     // ── Opacity slider + numeric chip (line 2) ──────────────────────────
     let op_y = y + ROW_H_PX + row_gap;
@@ -340,9 +354,16 @@ fn blend_options(layer_u64: u64) -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// Paint the closed blend dropdown chip for a row, register it, and (if the
-/// store says it's open AND no other dropdown already claimed the popover)
-/// stash it for the deferred popover pass.
+/// Width below which paint_text never wraps — the custom blend chip lays the
+/// mode name on a single line and the chip clip truncates any overflow.
+const CHIP_TEXT_NOWRAP_W: f32 = 4096.0; // LITERAL-PX-OK: layout width, not a design value
+
+/// Paint a compact blend-mode chip (registered as a `Dropdown` for the generic
+/// open/close dispatch) and, if open (single-open enforced), stash it for the
+/// deferred popover pass. Custom-painted — smaller font + a hard single-line
+/// clip so long names ("Color Burn", "Linear Light") truncate instead of
+/// wrapping to two lines, which the canon `paint_dropdown_chip` (Base font +
+/// wide padding) does in this narrow column.
 fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u64, cur_mode: u8, rect: Rect) {
     let id = painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend);
     let store = ctx.host.store_mut();
@@ -354,10 +375,7 @@ fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u6
             selected_index: Some(cur_mode as usize),
         },
     );
-    let (dd_state, store_open) = match store.get(id) {
-        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-        _ => (DropdownState::Normal, false),
-    };
+    let store_open = matches!(store.get(id), Some(InteractiveState::Dropdown { open: true, .. }));
     // One popover at a time: only the first open dropdown (top→bottom) wins.
     let open = store_open && state::pending_blend_dd().is_none();
     if store_open && !open
@@ -365,11 +383,37 @@ fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u6
     {
         *o = false;
     }
-    let dd = Dropdown::new(id, "", blend_options(layer_u64))
-        .selected(cur_mode)
-        .open(open)
-        .state(dd_state);
-    paint_dropdown_chip(&dd, rect, ctx.scene, ctx.text_system, theme);
+
+    let radius = Radius::Sm.px();
+    fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
+    let border = if open { ColorToken::Accent } else { ColorToken::Border };
+    stroke_rounded_rect(ctx.scene, rect, radius, StrokeToken::Default.px(), resolve(border, theme));
+
+    // Chevron (right), sized ~half the chip height.
+    let chevron = Spacing::Md.px();
+    let pad = Spacing::Sm.px();
+    let chevron_rect = Rect::new(rect.x + rect.w - pad - chevron, rect.y + (rect.h - chevron) * 0.5, chevron, chevron);
+    let icon = if open { IconId::ChevronUp } else { IconId::ChevronDown };
+    paint_icon(ctx.scene, icon, chevron_rect, resolve(ColorToken::Text2, theme), StrokeToken::Default.px());
+
+    // Mode name — smaller font, single line, clipped to the text column.
+    let font = TypeToken::Sm.px();
+    let text_x = rect.x + pad;
+    let text_w = (chevron_rect.x - Spacing::Xs.px() - text_x).max(0.0);
+    let text_clip = Rect::new(text_x, rect.y, text_w, rect.h);
+    ctx.scene.push_clip(&rect_to_vello(text_clip));
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        BlendMode::from_u8(cur_mode).name(),
+        text_x,
+        rect.y + (rect.h - font) * 0.5,
+        font,
+        CHIP_TEXT_NOWRAP_W,
+        resolve(ColorToken::Text1, theme),
+    );
+    ctx.scene.pop_layer();
+
     ctx.host.hit_index_mut().register(id, rect);
     if open {
         state::set_pending_blend_dd(Some((layer_u64, rect, cur_mode)));
@@ -388,8 +432,12 @@ fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64:
     .selected(cur_mode)
     .open(true);
     let viewport = ctx.viewport;
-    let panel = dd.popover_rect_clamped(chip_rect, viewport);
-    paint_dropdown_popover_in_viewport(&dd, chip_rect, Some(viewport), ctx.scene, ctx.text_system, theme);
+    // Wider than the chip so long mode names fit one line; right-aligned to the
+    // chip's right edge so it extends LEFT into the panel (stays on-screen).
+    let pop_w = BLEND_POPOVER_W.max(chip_rect.w);
+    let pop_chip = Rect::new(chip_rect.x + chip_rect.w - pop_w, chip_rect.y, pop_w, chip_rect.h);
+    let panel = dd.popover_rect_clamped(pop_chip, viewport);
+    paint_dropdown_popover_in_viewport(&dd, pop_chip, Some(viewport), ctx.scene, ctx.text_system, theme);
     // Register option buttons (mutable store) then their hit rects (mutable
     // hit_index) in separate borrows — `store_and_hit_index_mut` hands back an
     // immutable store, which can't `register_if_absent`.
@@ -401,7 +449,7 @@ fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64:
     }
     let hit_index = ctx.host.hit_index_mut();
     for (i, opt) in dd.options.iter().enumerate() {
-        hit_index.register(opt.id, dd.option_rect_in(chip_rect, panel, i));
+        hit_index.register(opt.id, dd.option_rect_in(pop_chip, panel, i));
     }
 }
 

@@ -174,6 +174,7 @@ fn expected_icon_slug(manifest_id: &str) -> Option<&'static str> {
         "trim_transparency" => "trim-transparency",
         "upscale" => "upscale",
         "vector_pen" => "vector-pen",
+        "vector_pencil" => "vector-pencil",
         // <ph2d-tool-sync:icon-slugs:end>
         _ => return None,
     })

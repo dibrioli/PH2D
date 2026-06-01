@@ -26,6 +26,7 @@
 //! | [`edit_log`]       | [`VectorOp`] enum + [`EditLog`] event sourcing. |
 //! | [`style`]          | [`StyleRef`] / [`FillRef`] / [`StyleTable`] / [`StrokeStyle`] / supporting types. |
 //! | [`cubic_fit`]      | Levien single-cubic Bézier fitting ([`fit_cubic_levien`](cubic_fit::fit_cubic_levien)). |
+//! | [`hobby`]          | Hobby interpolating spline ([`fit_hobby_open`](hobby::fit_hobby_open)) — Pencil tool fitter. |
 //! | [`spiro`]          | Spiro / Hyperbezier Assist Modes (stub — W2+ populates). |
 //! | [`postcard_schema`]| [`Ph2dVectorAsset`] + [`bounded_decode`](postcard_schema::bounded_decode). |
 //! | [`deterministic`]  | Q16.16 fixed-point opt-in (per ADR-0056 §2.7). |
@@ -48,6 +49,7 @@ pub mod deterministic;
 pub mod dormant;
 pub mod edit_log;
 pub mod hit_test;
+pub mod hobby;
 pub mod network;
 pub mod postcard_schema;
 pub mod region;

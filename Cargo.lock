@@ -5423,6 +5423,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector-pen",
+ "ph2d-tool-vector-pencil",
  "toml 0.9.12+spec-1.1.0",
 ]
 
@@ -5475,6 +5476,20 @@ dependencies = [
  "ph2d-vector",
  "ph2d-vector-doc",
  "smallvec",
+]
+
+[[package]]
+name = "ph2d-tool-vector-pencil"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-a11y",
+ "ph2d-color",
+ "ph2d-core",
+ "ph2d-editor-core",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "ph2d-vector-doc",
 ]
 
 [[package]]

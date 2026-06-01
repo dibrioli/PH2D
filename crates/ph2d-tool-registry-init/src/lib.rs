@@ -39,6 +39,7 @@ pub fn register_all(reg: &mut Registry) {
     ph2d_tool_trim_transparency::register(reg);
     ph2d_tool_upscale::register(reg);
     ph2d_tool_vector_pen::register(reg);
+    ph2d_tool_vector_pencil::register(reg);
     // <ph2d-tool-sync:end>
 }
 
@@ -59,6 +60,7 @@ pub fn register_all_tools(reg: &mut ToolRegistry) {
     reg.register(ph2d_tool_painter::make());
     reg.register(ph2d_tool_upscale::make());
     reg.register(ph2d_tool_vector_pen::make());
+    reg.register(ph2d_tool_vector_pencil::make());
     // <ph2d-tool-sync:tools:end>
 }
 

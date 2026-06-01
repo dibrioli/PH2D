@@ -146,6 +146,13 @@ pub const UPSCALE_SCROLLBAR_ID: NodeId = NodeId(827);
 /// sub-sections (Fixed chips, Grid offset slider + arrange toggle,
 /// upscale algorithm row) easily push the body past dock height.
 pub const EQUALIZE_SIZES_SCROLLBAR_ID: NodeId = NodeId(828);
+/// Painter Layers floating panel scrollbar — the layer stack grows past
+/// the panel height once a few layers are added. Independent thumb id so
+/// dispatch routes drag-scroll without aliasing the Inspector / other
+/// panels. Wheel-scroll already works via the generic `dispatch_wheel`;
+/// the panel registers this id on its `scrollbar_thumb_rect` to enable
+/// thumb-DRAG (Painter W3 audit item 4).
+pub const PAINTER_LAYERS_SCROLLBAR_ID: NodeId = NodeId(829);
 
 #[cfg(test)]
 mod tests {

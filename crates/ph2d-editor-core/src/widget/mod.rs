@@ -104,7 +104,8 @@ pub use rect2_editor::{
 pub use scrollbar::{
     BG_REMOVAL_SCROLLBAR_ID, COLOR_EQUALIZATION_SCROLLBAR_ID, EQUALIZE_SIZES_SCROLLBAR_ID,
     GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
-    INSPECTOR_SCROLLBAR_ID, PADDING_SCROLLBAR_ID, SCROLLBAR_W, UPSCALE_SCROLLBAR_ID,
+    INSPECTOR_SCROLLBAR_ID, PADDING_SCROLLBAR_ID, PAINTER_LAYERS_SCROLLBAR_ID, SCROLLBAR_W,
+    UPSCALE_SCROLLBAR_ID,
     delta_for_drag as scrollbar_delta_for_drag, is_needed as scrollbar_is_needed, paint_scrollbar,
     thumb_rect as scrollbar_thumb_rect, track_rect as scrollbar_track_rect,
 };

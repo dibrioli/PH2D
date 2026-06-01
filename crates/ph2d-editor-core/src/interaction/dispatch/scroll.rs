@@ -84,6 +84,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(crate::ids::UPS_PANEL)
     } else if id == crate::widget::EQUALIZE_SIZES_SCROLLBAR_ID {
         Some(crate::ids::EQS_PANEL)
+    } else if id == crate::widget::PAINTER_LAYERS_SCROLLBAR_ID {
+        Some(ids::PAINTER_LAYERS_PANEL)
     } else {
         None
     }

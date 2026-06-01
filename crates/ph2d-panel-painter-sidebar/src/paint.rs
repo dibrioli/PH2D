@@ -18,19 +18,19 @@
 
 use crate::PainterSidebarPanel;
 use crate::state::{self, PainterSidebarPanelState, set_last_content_h, set_last_visible_h};
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
-    paint_slider_with_chip_layout_adaptive,
-};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
     panel_close_button_rect, panel_drag_handle_rect, panel_resize_handle_rect,
     panel_resize_handle_rect_bl,
+};
+use ph2d_editor_core::widget::{
+    Button, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};

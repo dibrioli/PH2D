@@ -2269,7 +2269,10 @@ mod tests {
         t.set_layer_visible(id, false);
         let (px, _, _) = t.current_preview().expect("dirty after edit");
         // Every pixel fully transparent (invisible single layer → nothing).
-        assert!(px.chunks_exact(4).all(|p| p[3] == 0), "hidden layer must clear alpha");
+        assert!(
+            px.chunks_exact(4).all(|p| p[3] == 0),
+            "hidden layer must clear alpha"
+        );
     }
 
     #[test]
@@ -2280,7 +2283,11 @@ mod tests {
         t.set_layer_opacity(id, 0.5);
         let (px, _, _) = t.current_preview().expect("dirty after edit");
         // αo = 0.5 over transparent → ~127 (alpha is linear coverage).
-        assert!((px[3] as i32 - 127).abs() <= 2, "expected ~127 alpha, got {}", px[3]);
+        assert!(
+            (px[3] as i32 - 127).abs() <= 2,
+            "expected ~127 alpha, got {}",
+            px[3]
+        );
     }
 
     #[test]
@@ -2290,7 +2297,11 @@ mod tests {
         let src = flat_source(8, 8, [123, 45, 200, 255]);
         t.set_source(src.clone(), 8, 8);
         let (px, _, _) = t.current_preview().unwrap();
-        assert_eq!(px, src.as_slice(), "trivial stack must skip composite (fast path)");
+        assert_eq!(
+            px,
+            src.as_slice(),
+            "trivial stack must skip composite (fast path)"
+        );
     }
 
     #[test]
@@ -2316,11 +2327,18 @@ mod tests {
         let base = t.layers().active().unwrap();
         let top = t.add_raster_layer("Layer 2").unwrap();
         // Active is the fresh transparent top.
-        assert!(t.canvas_rgba.iter().all(|&b| b == 0), "new layer canvas is transparent");
+        assert!(
+            t.canvas_rgba.iter().all(|&b| b == 0),
+            "new layer canvas is transparent"
+        );
         // Switch to base → its red pixels load into the working canvas.
         t.select_layer(base);
         assert_eq!(t.layers().active(), Some(base));
-        assert!(t.canvas_rgba.chunks_exact(4).all(|p| p == [200, 50, 50, 255]));
+        assert!(
+            t.canvas_rgba
+                .chunks_exact(4)
+                .all(|p| p == [200, 50, 50, 255])
+        );
         // Back to top → transparent again.
         t.select_layer(top);
         assert!(t.canvas_rgba.iter().all(|&b| b == 0));
@@ -2394,7 +2412,11 @@ mod tests {
         assert_eq!(t.layers().active(), Some(top));
         let row = painter_layer_widget_id(base.0, PainterLayerWidget::Row);
         t.handle_panel_event(PanelEvent::Click(row));
-        assert_eq!(t.layers().active(), Some(base), "row click selects that layer");
+        assert_eq!(
+            t.layers().active(),
+            Some(base),
+            "row click selects that layer"
+        );
     }
 
     #[test]
@@ -2404,9 +2426,15 @@ mod tests {
         let mut t = PainterTool::default();
         assert!(!t.dock_shows_layers());
         t.handle_panel_event(PanelEvent::Click(PAINTER_SIDEBAR_TOGGLE_DOCK));
-        assert!(t.dock_shows_layers(), "sidebar 'Layers' shows the layers panel");
+        assert!(
+            t.dock_shows_layers(),
+            "sidebar 'Layers' shows the layers panel"
+        );
         t.handle_panel_event(PanelEvent::Click(PAINTER_LAYERS_TOGGLE_DOCK));
-        assert!(!t.dock_shows_layers(), "layers 'Brush' shows the brush sidebar");
+        assert!(
+            !t.dock_shows_layers(),
+            "layers 'Brush' shows the brush sidebar"
+        );
     }
 
     #[test]
@@ -2460,7 +2488,11 @@ mod tests {
         t.canvas_rgba = std::sync::Arc::new([0, 0, 200, 255].repeat(4));
         t.preview_dirty = true;
         let (rgba2, _, _) = t.take_preview_arc().expect("dirty");
-        assert_eq!(&rgba2[0..3], &[0, 0, 200], "opaque top covers base in the Arc preview");
+        assert_eq!(
+            &rgba2[0..3],
+            &[0, 0, 200],
+            "opaque top covers base in the Arc preview"
+        );
     }
 
     #[test]

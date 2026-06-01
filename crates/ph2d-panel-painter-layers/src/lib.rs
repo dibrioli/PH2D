@@ -30,9 +30,7 @@ mod paint;
 mod populate;
 pub mod state;
 
-pub use state::{
-    PainterLayersPanelState, last_content_h, last_visible_h, set_current_layers,
-};
+pub use state::{PainterLayersPanelState, last_content_h, last_visible_h, set_current_layers};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

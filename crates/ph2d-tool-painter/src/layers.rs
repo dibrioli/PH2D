@@ -207,13 +207,21 @@ impl LayerStack {
 
     /// Add a raster layer at the **top** of the root stack and make it
     /// active. Returns `None` if the hard cap is reached.
-    pub fn add_raster(&mut self, name: impl Into<String>, width: u32, height: u32) -> Option<LayerId> {
+    pub fn add_raster(
+        &mut self,
+        name: impl Into<String>,
+        width: u32,
+        height: u32,
+    ) -> Option<LayerId> {
         if self.arena.len() >= HARD_CAP_LAYERS {
             return None;
         }
         let id = self.alloc_id();
-        self.arena
-            .push(Layer::new(id, name, LayerKind::Raster(RasterLayer { width, height })));
+        self.arena.push(Layer::new(
+            id,
+            name,
+            LayerKind::Raster(RasterLayer { width, height }),
+        ));
         self.root.insert(0, id);
         self.active = Some(id);
         Some(id)
@@ -226,8 +234,11 @@ impl LayerStack {
             return None;
         }
         let id = self.alloc_id();
-        self.arena
-            .push(Layer::new(id, name, LayerKind::Group(GroupLayer::default())));
+        self.arena.push(Layer::new(
+            id,
+            name,
+            LayerKind::Group(GroupLayer::default()),
+        ));
         self.root.insert(0, id);
         Some(id)
     }
@@ -317,7 +328,10 @@ impl LayerStack {
         }
         // Target must be a group, and must not be a descendant of `id`
         // (that would orphan the subtree / create a cycle).
-        if !matches!(self.get(group_id).map(|l| &l.kind), Some(LayerKind::Group(_))) {
+        if !matches!(
+            self.get(group_id).map(|l| &l.kind),
+            Some(LayerKind::Group(_))
+        ) {
             return false;
         }
         if self.is_descendant(group_id, id) {
@@ -401,7 +415,11 @@ impl LayerStack {
         // its mask). Deferred — the mask's structural membership (root vs
         // owner-attached) is undefined until T3.5 designs mask creation; the
         // dangling-owner-ref case is already handled by `remove`'s scrub.
-        if let Some(Layer { kind: LayerKind::Group(g), .. }) = self.get(id) {
+        if let Some(Layer {
+            kind: LayerKind::Group(g),
+            ..
+        }) = self.get(id)
+        {
             for &child in &g.children {
                 self.collect_subtree(child, out);
             }
@@ -513,7 +531,11 @@ mod tests {
         s.get_mut(owner).unwrap().mask = Some(mask);
         s.remove(mask);
         assert!(s.get(owner).is_some(), "owner survives mask removal");
-        assert_eq!(s.get(owner).unwrap().mask, None, "dangling mask ref scrubbed");
+        assert_eq!(
+            s.get(owner).unwrap().mask,
+            None,
+            "dangling mask ref scrubbed"
+        );
     }
 
     #[test]

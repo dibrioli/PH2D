@@ -40,8 +40,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         // Fixed chrome buttons: "+ Layer" + dock toggle → forward as Click.
         WidgetEvent::Click(id)
-            if id == core_ids::PAINTER_LAYERS_ADD
-                || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK =>
+            if id == core_ids::PAINTER_LAYERS_ADD || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

@@ -81,7 +81,8 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     // Dock-slot drag + resize handles (shared canon — Inspector right-dock).
     {
-        let drag_rect = panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
+        let drag_rect =
+            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
         let resize_rect = panel_resize_handle_rect(rect);
         let resize_bl_rect = panel_resize_handle_rect_bl(rect);
         let hit_index = ctx.host.hit_index_mut();
@@ -164,9 +165,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     ctx.scene.pop_layer();
 
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_LAYERS_CLOSE, panel_close_button_rect(rect));
+    ctx.host.hit_index_mut().register(
+        core_ids::PAINTER_LAYERS_CLOSE,
+        panel_close_button_rect(rect),
+    );
 
     // Deferred: the single open blend dropdown popover, on top of everything.
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
@@ -178,7 +180,12 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 /// sidebar. Placed left of the close button.
 fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
     let close = panel_close_button_rect(rect);
-    let btn_rect = Rect::new(close.x - Spacing::Sm.px() - TOGGLE_BTN_W, close.y, TOGGLE_BTN_W, close.h);
+    let btn_rect = Rect::new(
+        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
+        close.y,
+        TOGGLE_BTN_W,
+        close.h,
+    );
     let st = ctx
         .host
         .store()
@@ -230,7 +237,17 @@ fn paint_layer_subtree(
         // it edits the image directly and it has nothing beneath to blend with,
         // so it gets no blend-mode dropdown (Photoshop "Background" semantics).
         let is_base = depth == 0 && i == last;
-        y = paint_layer_row(ctx, theme, id, layer, active == Some(id), is_base, row_x, row_w, y);
+        y = paint_layer_row(
+            ctx,
+            theme,
+            id,
+            layer,
+            active == Some(id),
+            is_base,
+            row_x,
+            row_w,
+            y,
+        );
 
         if let LayerKind::Group(g) = &layer.kind
             && !g.collapsed
@@ -267,7 +284,13 @@ fn paint_layer_row(
     if is_active {
         let pad = Spacing::Xs.px();
         let hl = Rect::new(x - pad, y - pad, w + pad * 2.0, row_total_h + pad * 2.0);
-        stroke_rounded_rect(ctx.scene, hl, Radius::Sm.px(), StrokeToken::Default.px(), resolve(ColorToken::Accent, theme));
+        stroke_rounded_rect(
+            ctx.scene,
+            hl,
+            Radius::Sm.px(),
+            StrokeToken::Default.px(),
+            resolve(ColorToken::Accent, theme),
+        );
     }
 
     // ── Visibility eye toggle (Button) ──────────────────────────────────
@@ -275,18 +298,36 @@ fn paint_layer_row(
     let eye_id = painter_layer_widget_id(id.0, PainterLayerWidget::Visibility);
     register_button(ctx.host.store_mut(), eye_id);
     let eye_color = resolve(
-        if layer.visible { ColorToken::Text1 } else { ColorToken::TextDisabled },
+        if layer.visible {
+            ColorToken::Text1
+        } else {
+            ColorToken::TextDisabled
+        },
         theme,
     );
-    let eye_icon = if layer.visible { IconId::Eye } else { IconId::EyeClosed };
-    paint_icon(ctx.scene, eye_icon, eye_rect, eye_color, StrokeToken::Default.px());
+    let eye_icon = if layer.visible {
+        IconId::Eye
+    } else {
+        IconId::EyeClosed
+    };
+    paint_icon(
+        ctx.scene,
+        eye_icon,
+        eye_rect,
+        eye_color,
+        StrokeToken::Default.px(),
+    );
     ctx.host.hit_index_mut().register(eye_id, eye_rect);
 
     // ── Name (right next to the eye; click anywhere up to the blend chip
     // selects the layer). The base layer has no blend chip, so its name +
     // hit-rect run to the row's right edge. ─────────────────────────────
     let name_x = eye_rect.x + ROW_H_PX + cell_gap;
-    let name_right = if is_base { x + w } else { x + w - BLEND_CHIP_W - cell_gap };
+    let name_right = if is_base {
+        x + w
+    } else {
+        x + w - BLEND_CHIP_W - cell_gap
+    };
     let name_w = (name_right - name_x).max(0.0);
     paint_text(
         ctx.text_system,
@@ -364,7 +405,13 @@ const CHIP_TEXT_NOWRAP_W: f32 = 4096.0; // LITERAL-PX-OK: layout width, not a de
 /// clip so long names ("Color Burn", "Linear Light") truncate instead of
 /// wrapping to two lines, which the canon `paint_dropdown_chip` (Base font +
 /// wide padding) does in this narrow column.
-fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u64, cur_mode: u8, rect: Rect) {
+fn paint_blend_chip(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_u64: u64,
+    cur_mode: u8,
+    rect: Rect,
+) {
     let id = painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend);
     let store = ctx.host.store_mut();
     store.register_if_absent(
@@ -375,10 +422,14 @@ fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u6
             selected_index: Some(cur_mode as usize),
         },
     );
-    let store_open = matches!(store.get(id), Some(InteractiveState::Dropdown { open: true, .. }));
+    let store_open = matches!(
+        store.get(id),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
     // One popover at a time: only the first open dropdown (top→bottom) wins.
     let open = store_open && state::pending_blend_dd().is_none();
-    if store_open && !open
+    if store_open
+        && !open
         && let Some(InteractiveState::Dropdown { open: o, .. }) = store.get_mut(id)
     {
         *o = false;
@@ -386,15 +437,40 @@ fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u6
 
     let radius = Radius::Sm.px();
     fill_rounded_rect(ctx.scene, rect, radius, resolve(ColorToken::Bg1, theme));
-    let border = if open { ColorToken::Accent } else { ColorToken::Border };
-    stroke_rounded_rect(ctx.scene, rect, radius, StrokeToken::Default.px(), resolve(border, theme));
+    let border = if open {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    stroke_rounded_rect(
+        ctx.scene,
+        rect,
+        radius,
+        StrokeToken::Default.px(),
+        resolve(border, theme),
+    );
 
     // Chevron (right), sized ~half the chip height.
     let chevron = Spacing::Md.px();
     let pad = Spacing::Sm.px();
-    let chevron_rect = Rect::new(rect.x + rect.w - pad - chevron, rect.y + (rect.h - chevron) * 0.5, chevron, chevron);
-    let icon = if open { IconId::ChevronUp } else { IconId::ChevronDown };
-    paint_icon(ctx.scene, icon, chevron_rect, resolve(ColorToken::Text2, theme), StrokeToken::Default.px());
+    let chevron_rect = Rect::new(
+        rect.x + rect.w - pad - chevron,
+        rect.y + (rect.h - chevron) * 0.5,
+        chevron,
+        chevron,
+    );
+    let icon = if open {
+        IconId::ChevronUp
+    } else {
+        IconId::ChevronDown
+    };
+    paint_icon(
+        ctx.scene,
+        icon,
+        chevron_rect,
+        resolve(ColorToken::Text2, theme),
+        StrokeToken::Default.px(),
+    );
 
     // Mode name — smaller font, single line, clipped to the text column.
     let font = TypeToken::Sm.px();
@@ -423,7 +499,13 @@ fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u6
 /// Deferred paint of the single open blend dropdown popover (on top of the
 /// rows, clamped to the viewport so it stays on-screen). Registers each option
 /// as a Button + its hit rect so option clicks dispatch.
-fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u64, chip_rect: Rect, cur_mode: u8) {
+fn paint_blend_popover(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_u64: u64,
+    chip_rect: Rect,
+    cur_mode: u8,
+) {
     let dd = Dropdown::new(
         painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend),
         "",
@@ -435,9 +517,21 @@ fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64:
     // Wider than the chip so long mode names fit one line; right-aligned to the
     // chip's right edge so it extends LEFT into the panel (stays on-screen).
     let pop_w = BLEND_POPOVER_W.max(chip_rect.w);
-    let pop_chip = Rect::new(chip_rect.x + chip_rect.w - pop_w, chip_rect.y, pop_w, chip_rect.h);
+    let pop_chip = Rect::new(
+        chip_rect.x + chip_rect.w - pop_w,
+        chip_rect.y,
+        pop_w,
+        chip_rect.h,
+    );
     let panel = dd.popover_rect_clamped(pop_chip, viewport);
-    paint_dropdown_popover_in_viewport(&dd, pop_chip, Some(viewport), ctx.scene, ctx.text_system, theme);
+    paint_dropdown_popover_in_viewport(
+        &dd,
+        pop_chip,
+        Some(viewport),
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
     // Register option buttons (mutable store) then their hit rects (mutable
     // hit_index) in separate borrows — `store_and_hit_index_mut` hands back an
     // immutable store, which can't `register_if_absent`.
@@ -456,7 +550,12 @@ fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64:
 /// `register_if_absent` a per-row Button slot (dispatch needs the store entry
 /// to emit `Click`; paint draws the visuals).
 fn register_button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    store.register_if_absent(id, InteractiveState::Button { state: ButtonState::Normal });
+    store.register_if_absent(
+        id,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }
 
 /// `register_if_absent` the per-row opacity slider + chip, seeded from the

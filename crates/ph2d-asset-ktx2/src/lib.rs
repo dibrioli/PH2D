@@ -1205,7 +1205,10 @@ mod tests {
             } else {
                 Ktx2Format::Rgba8Unorm
             };
-            assert_eq!(img.format, want, "transfer function preserved (srgb={srgb})");
+            assert_eq!(
+                img.format, want,
+                "transfer function preserved (srgb={srgb})"
+            );
         }
     }
 

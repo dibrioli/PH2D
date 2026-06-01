@@ -96,8 +96,19 @@ pub struct Region {
 
 /// Composite the whole stack → canvas-sized straight sRGB8 RGBA.
 #[must_use]
-pub fn composite(stack: &LayerStack, src: &impl LayerPixelSource, width: u32, height: u32) -> Vec<u8> { // COLOR-RAW-OK: straight sRGB8 canvas pixels — GPU-uploadable blob (mirrors ph2d-render LayerPixels.rgba8), not a typed color value
-    let region = Region { x: 0, y: 0, w: width, h: height };
+pub fn composite(
+    stack: &LayerStack,
+    src: &impl LayerPixelSource,
+    width: u32,
+    height: u32,
+) -> Vec<u8> {
+    // COLOR-RAW-OK: straight sRGB8 canvas pixels — GPU-uploadable blob (mirrors ph2d-render LayerPixels.rgba8), not a typed color value
+    let region = Region {
+        x: 0,
+        y: 0,
+        w: width,
+        h: height,
+    };
     let acc = composite_region_linear(stack, src, width, height, region);
     encode(&acc)
 }
@@ -181,7 +192,9 @@ fn composite_into(
         let mode = layer.blend_mode;
         match &layer.kind {
             LayerKind::Raster(_) => {
-                let Some(rgba) = src.layer_rgba(id) else { continue };
+                let Some(rgba) = src.layer_rgba(id) else {
+                    continue;
+                };
                 // Bounds guard: the highest texel index this window reads is
                 // the bottom-right corner. Skip a too-short buffer rather than
                 // panic-index (defense vs a mismatched/forged provider).
@@ -201,7 +214,18 @@ fn composite_into(
                 // Composite the children into their own sub-window, then
                 // blend that as a single layer (group blend/opacity).
                 let mut sub = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-                composite_into(&mut sub, &g.children, stack, src, canvas_w, rx, ry, rw, rh, depth + 1);
+                composite_into(
+                    &mut sub,
+                    &g.children,
+                    stack,
+                    src,
+                    canvas_w,
+                    rx,
+                    ry,
+                    rw,
+                    rh,
+                    depth + 1,
+                );
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let lx = gx - rx;
                     let ly = gy - ry;
@@ -362,7 +386,11 @@ mod tests {
         src.insert(bottom, solid(w, h, [0, 0, 0, 255]));
         src.insert(child, solid(w, h, [255, 255, 255, 255]));
         let out = composite(&s, &src, w, h);
-        assert!((out[0] as i32 - 188).abs() <= 1, "group 50% → ~188, got {}", out[0]);
+        assert!(
+            (out[0] as i32 - 188).abs() <= 1,
+            "group 50% → ~188, got {}",
+            out[0]
+        );
     }
 
     #[test]
@@ -393,7 +421,12 @@ mod tests {
         src.insert(top, t);
 
         let full = composite(&s, &src, w, h);
-        let region = Region { x: 1, y: 1, w: 2, h: 2 };
+        let region = Region {
+            x: 1,
+            y: 1,
+            w: 2,
+            h: 2,
+        };
         let part = composite_region(&s, &src, w, h, region);
         for ly in 0..region.h {
             for lx in 0..region.w {
@@ -442,7 +475,12 @@ mod tests {
         src.insert(child, cimg);
 
         let full = composite(&s, &src, w, h);
-        let region = Region { x: 1, y: 0, w: 2, h: 3 };
+        let region = Region {
+            x: 1,
+            y: 0,
+            w: 2,
+            h: 3,
+        };
         let part = composite_region(&s, &src, w, h, region);
         for ly in 0..region.h {
             for lx in 0..region.w {

@@ -114,7 +114,10 @@ impl BlendMode {
     /// mixes whole RGB triples rather than per-channel.
     #[must_use]
     pub fn is_hsl(self) -> bool {
-        matches!(self, Self::Hue | Self::Saturation | Self::Color | Self::Luminosity)
+        matches!(
+            self,
+            Self::Hue | Self::Saturation | Self::Color | Self::Luminosity
+        )
     }
 
     /// Stable popover/wire discriminant.
@@ -205,7 +208,11 @@ pub fn apply(mode: BlendMode, dst: [f32; 4], src: [f32; 4]) -> [f32; 4] {
 /// poison a whole layer. Defense-in-depth (audit W3 L-1).
 #[inline]
 fn sanitize01(v: f32) -> f32 {
-    if v.is_finite() { v.clamp(0.0, 1.0) } else { 0.0 }
+    if v.is_finite() {
+        v.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 /// Plain source-over (`Normal`) — used by `Behind` with swapped roles.
@@ -425,7 +432,10 @@ mod tests {
                 continue; // Clear with αs=0 is also a no-op; tested separately
             }
             let out = apply(mode, dst, src);
-            assert!(approx(out, dst), "{mode:?} mutated backdrop on αs=0: {out:?}");
+            assert!(
+                approx(out, dst),
+                "{mode:?} mutated backdrop on αs=0: {out:?}"
+            );
         }
     }
 
@@ -440,7 +450,10 @@ mod tests {
     fn multiply_by_black_yields_black() {
         let dst = [0.3, 0.5, 0.7, 1.0];
         let black = [0.0, 0.0, 0.0, 1.0];
-        assert!(approx(apply(BlendMode::Multiply, dst, black), [0.0, 0.0, 0.0, 1.0]));
+        assert!(approx(
+            apply(BlendMode::Multiply, dst, black),
+            [0.0, 0.0, 0.0, 1.0]
+        ));
     }
 
     #[test]
@@ -467,7 +480,10 @@ mod tests {
     #[test]
     fn difference_with_self_is_black() {
         let c = [0.4, 0.6, 0.2, 1.0];
-        assert!(approx(apply(BlendMode::Difference, c, c), [0.0, 0.0, 0.0, 1.0]));
+        assert!(approx(
+            apply(BlendMode::Difference, c, c),
+            [0.0, 0.0, 0.0, 1.0]
+        ));
     }
 
     #[test]
@@ -483,7 +499,11 @@ mod tests {
         let dst = [0.3, 0.5, 0.7, 1.0];
         let src = [0.0, 0.0, 0.0, 1.0];
         let out = apply(BlendMode::Clear, dst, src);
-        assert!(out[3].abs() < EPS, "Clear should zero alpha, got {}", out[3]);
+        assert!(
+            out[3].abs() < EPS,
+            "Clear should zero alpha, got {}",
+            out[3]
+        );
     }
 
     #[test]
@@ -551,7 +571,11 @@ mod tests {
     fn nan_input_is_sanitized_not_propagated() {
         // A single corrupt (NaN) source channel must not poison the output
         // (audit W3 L-1 — `f32::clamp` passes NaN through).
-        let out = apply(BlendMode::Normal, [0.2, 0.4, 0.6, 1.0], [f32::NAN, 0.5, 0.5, 1.0]);
+        let out = apply(
+            BlendMode::Normal,
+            [0.2, 0.4, 0.6, 1.0],
+            [f32::NAN, 0.5, 0.5, 1.0],
+        );
         assert!(out.iter().all(|c| c.is_finite()), "NaN propagated: {out:?}");
         assert_eq!(out[0], 0.0, "NaN channel sanitized to 0");
     }

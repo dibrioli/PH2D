@@ -56,7 +56,7 @@ use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
-use ph2d_render::{Camera2d, SpriteRenderer, premultiply_rgba8};
+use ph2d_render::{Camera2d, SpriteRenderer, premultiply_rgba8_in_linear};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -385,12 +385,13 @@ pub(super) fn dispatch(
     // transient `IndividualTextureStore` slot; NEXT frame's `sim_extract` reads
     // `painter_preview_gpu` to emit a `PreviewOverride` that SUPPRESSES the
     // source sprite and samples THIS texture in its place. The composite is
-    // STRAIGHT sRGB8 (the canvas / `take_preview_arc`); byte-space
-    // `premultiply_rgba8` matches EXACTLY what Apply's
-    // `SpriteImage::into_premultiplied` produces, so the live preview is
-    // byte-for-byte identical to the committed result on the same
-    // `Rgba8UnormSrgb` + premul-blend sprite shader (no Vello gamma/blend
-    // divergence, no image duplication). 1-frame lag is imperceptible.
+    // STRAIGHT sRGB8 (the canvas / `take_preview_arc`); gamma-correct
+    // `premultiply_rgba8_in_linear` matches EXACTLY what Apply's
+    // `SpriteImage::into_premultiplied` produces (both linear now), so the
+    // live preview is byte-for-byte identical to the committed result on the
+    // same `Rgba8UnormSrgb` + premul-blend sprite shader (no halo, no Vello
+    // gamma/blend divergence, no image duplication). 1-frame lag is
+    // imperceptible.
     match painter_preview.as_ref() {
         Some(preview) => {
             let cache_token = Arc::as_ptr(&preview.rgba) as usize;
@@ -405,7 +406,7 @@ pub(super) fn dispatch(
             };
             if needs_upload {
                 let mut premul_bytes = (*preview.rgba).clone();
-                premultiply_rgba8(&mut premul_bytes);
+                premultiply_rgba8_in_linear(&mut premul_bytes);
                 let upload_result: Result<u32, _> = match *painter_preview_gpu {
                     Some(gpu) => renderer
                         .replace_individual_pixels(

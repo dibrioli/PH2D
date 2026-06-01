@@ -241,15 +241,14 @@ pub(super) fn dispatch(
     // Apply (`Rgba8UnormSrgb` + premul blend) → byte-for-byte parity,
     // no Vello-internal gamma/blend divergence.
     //
-    // Premultiplication: byte-space `premultiply_rgba8` mirrors
-    // EXACTLY what the Apply path does in
-    // `SpriteImage::into_premultiplied`. Both produce identical bytes
-    // that, when uploaded to `Rgba8UnormSrgb`, the GPU decodes to
-    // identical linear values for the sprite shader's bilinear
-    // sample. The gamma-correct variant from earlier (Fix C) is
-    // intentionally NOT used here — its job was to compensate for
-    // Vello's `Rgba8Unorm` raw-byte interpretation, which no longer
-    // applies once the preview leaves the Vello path entirely.
+    // Premultiplication: gamma-correct `premultiply_rgba8_in_linear`
+    // mirrors EXACTLY what the Apply path does in
+    // `SpriteImage::into_premultiplied` (both linear now). Uploaded to
+    // `Rgba8UnormSrgb`, the GPU hw-decode recovers `rgb_linear · a_linear`
+    // — the correct premultiplied value the sprite shader's blend expects.
+    // The old byte-space `premultiply_rgba8` undershot after hw-decode,
+    // darkening translucent edges (the silhouette halo); both preview and
+    // Apply switched to linear together so they stay byte-for-byte identical.
     //
     // The 1-frame lag introduced by reading `bgremoval_preview_gpu`
     // on the NEXT frame's extract (this dispatch runs after the
@@ -271,7 +270,7 @@ pub(super) fn dispatch(
             };
             if needs_upload {
                 let mut premul_bytes = (*preview.rgba).clone();
-                ph2d_render::premultiply_rgba8(&mut premul_bytes);
+                ph2d_render::premultiply_rgba8_in_linear(&mut premul_bytes);
                 let upload_result: Result<u32, _> = match *bgremoval_preview_gpu {
                     Some(gpu) => renderer
                         .replace_individual_pixels(

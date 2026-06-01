@@ -100,18 +100,30 @@ impl SpriteImage {
 
     /// Convert to STRAIGHT alpha (no-op if already straight). Call before
     /// any algorithm that reasons about true colours (segmentation).
+    ///
+    /// Gamma-correct: uses [`unpremultiply_rgba8_in_linear`], the matched
+    /// inverse of the linear bake in [`Self::into_premultiplied`], so a
+    /// bake → re-edit round trip stays correct.
     pub fn into_straight(mut self) -> Self {
         if self.alpha == AlphaMode::Premultiplied {
-            unpremultiply_rgba8(&mut self.pixels);
+            unpremultiply_rgba8_in_linear(&mut self.pixels);
             self.alpha = AlphaMode::Straight;
         }
         self
     }
 
     /// Convert to PREMULTIPLIED alpha (no-op if already premultiplied).
+    ///
+    /// Gamma-correct premultiply ([`premultiply_rgba8_in_linear`]): the bake
+    /// stores `srgb_encode(rgb_linear · a_linear)`, which the sprite shader
+    /// (sampling `Rgba8UnormSrgb` → hw sRGB-decode) reads back as the correct
+    /// linear premultiplied value `rgb_linear · a_linear`. The old byte-space
+    /// `rgb · a` undershot after hw-decode, darkening translucent edges (the
+    /// "halo"). This is the canonical bake for every image-tool Apply path, so
+    /// the fix lands once here.
     pub fn into_premultiplied(mut self) -> Self {
         if self.alpha == AlphaMode::Straight {
-            premultiply_rgba8(&mut self.pixels);
+            premultiply_rgba8_in_linear(&mut self.pixels);
             self.alpha = AlphaMode::Premultiplied;
         }
         self
@@ -137,15 +149,15 @@ pub fn premultiply_rgba8(rgba: &mut [u8]) {
 /// as sRGB-encoded RGB equals `rgb_linear * a_linear` — exactly what a
 /// gamma-correct compositor expects.
 ///
-/// Used by the BG-Removal preview overlay (Enio 2026-05-26): the
-/// straight `premultiply_rgba8` produced bytes that the sprite shader
-/// (sampling `Rgba8UnormSrgb` — hw decode → linear bilinear) and the
-/// Vello compositor (sampling `Rgba8Unorm` — raw bytes-as-linear) read
-/// as DIFFERENT linear values, producing a visible "light halo" at the
-/// silhouette edge on the overlay path. Pre-encoding in linear closes
-/// that gap: sprite hw-decode recovers the linear premul; Vello reads
-/// the sRGB-encoded bytes through its sRGB-space compose path with
-/// the SAME effective premul applied.
+/// The canonical premultiply for every image-tool Apply path (via
+/// [`SpriteImage::into_premultiplied`]) and the live previews that mirror
+/// it (Painter, BG-Removal). The straight `premultiply_rgba8` produced
+/// bytes that the sprite shader (sampling `Rgba8UnormSrgb` — hw decode →
+/// linear bilinear) read as `srgb_decode(srgb(rgb)·a) ≠ rgb_linear·a`,
+/// undershooting and darkening translucent edges (the silhouette "halo").
+/// Pre-encoding in linear closes that gap: the sprite hw-decode recovers
+/// exactly `rgb_linear · a_linear`, the value premultiplied-alpha blending
+/// expects. Its matched inverse is [`unpremultiply_rgba8_in_linear`].
 ///
 /// ~10× the CPU cost of `premultiply_rgba8` (3 f32 srgb_to_linear +
 /// 3 multiplies + 3 linear_to_srgb per pixel) — still <50 ms at 1K²
@@ -202,6 +214,39 @@ pub fn unpremultiply_rgba8(rgba: &mut [u8]) {
             px[0] = unmul(px[0] as u32, a);
             px[1] = unmul(px[1] as u32, a);
             px[2] = unmul(px[2] as u32, a);
+        }
+    }
+}
+
+/// Gamma-correct inverse of [`premultiply_rgba8_in_linear`]: sRGB-decode each
+/// channel → divide by linear alpha → sRGB-encode. Recovers the straight sRGB
+/// colour from bytes that encode `rgb_linear · a_linear`.
+///
+/// This is the matched partner of [`premultiply_rgba8_in_linear`]: the
+/// straight↔premultiplied round trip used by the re-edit path (bake →
+/// `into_premultiplied`, later read back → `into_straight`) stays gamma-correct
+/// only if BOTH halves use the linear variants. Fully-transparent texels carry
+/// no recoverable colour and collapse to `(0,0,0,0)`. At low alpha the 8-bit
+/// premultiplied storage cannot retain full colour precision (the division
+/// amplifies quantisation — the same inherent loss [`unpremultiply_rgba8`] has);
+/// alpha is always exact.
+pub fn unpremultiply_rgba8_in_linear(rgba: &mut [u8]) {
+    for px in rgba.chunks_exact_mut(4) {
+        let a = px[3];
+        if a == 0 {
+            px[0] = 0;
+            px[1] = 0;
+            px[2] = 0;
+            continue;
+        }
+        let a_lin = a as f32 / 255.0;
+        for ch in px[..3].iter_mut() {
+            let premul = srgb_to_linear(*ch as f32 / 255.0);
+            // Clamp guards a stored premul byte that rounded slightly above
+            // `linear · a_lin`, which would otherwise yield linear > 1.
+            let linear = (premul / a_lin).min(1.0);
+            let out_srgb = linear_to_srgb(linear);
+            *ch = (out_srgb * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
         }
     }
 }
@@ -337,6 +382,64 @@ mod tests {
         );
         assert!(AlphaMode::Premultiplied.is_premultiplied());
         assert!(!AlphaMode::Straight.is_premultiplied());
+    }
+
+    #[test]
+    fn linear_premul_round_trips_for_visible_alpha() {
+        // The gamma-correct pair (premultiply_rgba8_in_linear ↔
+        // unpremultiply_rgba8_in_linear) must round-trip straight colour for
+        // the visible-interior alpha range, just like the byte-space pair —
+        // otherwise the bake → re-edit cycle (into_premultiplied →
+        // into_straight) would corrupt colour. Allow ±2 (one extra step for
+        // the two sRGB transfer round-trips on top of the alpha-division).
+        for a in 128u32..=255 {
+            for c in (0u32..=255).step_by(5) {
+                let mut px = [c as u8, c as u8, c as u8, a as u8];
+                let orig = c as i32;
+                premultiply_rgba8_in_linear(&mut px);
+                unpremultiply_rgba8_in_linear(&mut px);
+                for (ch, &v) in px[..3].iter().enumerate() {
+                    let d = (v as i32 - orig).abs();
+                    assert!(
+                        d <= 2,
+                        "channel {ch}: a={a} c={c} linear round-trip {v} vs {orig} (delta {d})",
+                    );
+                }
+                assert_eq!(px[3], a as u8, "alpha must be untouched");
+            }
+        }
+    }
+
+    #[test]
+    fn linear_premul_recovers_linear_premultiplied_invariant() {
+        // After hw sRGB-decode the stored bytes satisfy the premultiplied
+        // invariant in LINEAR space: rgb_linear <= a_linear — what the sprite
+        // shader's blend needs. The BYTE-space invariant (rgb_byte <= a_byte)
+        // deliberately does NOT hold for the linear bake (linear→sRGB encode
+        // brightens), and must not — that byte-space bound was the halo bug.
+        // Tolerance allows one byte of sRGB rounding (~0.004 linear at the top,
+        // where srgb_to_linear's slope ≈ 2.3).
+        for a in 0u32..=255 {
+            let mut px = [255u8, 255, 255, a as u8];
+            premultiply_rgba8_in_linear(&mut px);
+            let a_lin = a as f32 / 255.0;
+            for &v in &px[..3] {
+                let rgb_lin = srgb_to_linear(v as f32 / 255.0);
+                assert!(
+                    rgb_lin <= a_lin + 0.01,
+                    "decoded rgb_linear {rgb_lin} > a_linear {a_lin} (a={a}, byte={v})",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn linear_fully_transparent_collapses_to_zero() {
+        let mut px = [123u8, 45, 200, 0];
+        premultiply_rgba8_in_linear(&mut px);
+        assert_eq!(px, [0, 0, 0, 0]);
+        unpremultiply_rgba8_in_linear(&mut px);
+        assert_eq!(px, [0, 0, 0, 0]);
     }
 
     #[test]

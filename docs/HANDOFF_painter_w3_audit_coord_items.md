@@ -95,17 +95,34 @@ do `paint_scrollbar` existente:
 (espelho exato do Inspector em `paint.rs:467-472`). Confirme que o painel já publica
 `panel_content_h` + `panel_visible_h` (o wheel já usa) — se sim, o drag liga.
 
-**Item 3 — premultiply byte-space vs linear: DECIDIDO = trocar p/ linear.**
-Verdade verificada: 2 callers byte-space (`bgremoval_preview.rs:274` +
-`painter_bridge.rs:408`, ambos PREVIEW); `premultiply_rgba8_in_linear` tem ZERO
-callers HOJE — mas o doc dele diz que foi criado (2026-05-26) exatamente p/ matar
-esse halo. É a matemática correta (sRGB→linear · ×a · linear→sRGB = `rgb_linear·a`
-que o sampler `Rgba8UnormSrgb` espera). **Não é swap cego de 2 linhas:** WYSIWYG
-exige trocar preview **E** o bake/Apply JUNTOS (senão preview≠Apply), e é mudança
-VISUAL → exige smoke do Enio. Além disso `painter_bridge.rs` é tua pasta ativa.
-**Execução coordenada (Coord, quando o Enio aprovar o smoke):** trocar os 2 previews
-+ verificar/alinhar o premultiply do bake do Apply, num commit único, + smoke. Custo
-~10× CPU mas <50ms@1K² (dentro do budget). NÃO bloqueia teu trabalho.
+**Item 3 — premultiply byte-space vs linear: DECISÃO REVISTA pós blast-radius =
+NÃO trocar agora; agendar refactor próprio ou aceitar a convenção.**
+Investigação Coord (2026-06-01) achou que o escopo é ~10× o que o handoff sugeriu:
+- O premul de bake canônico é `SpriteImage::into_premultiplied()` (usa byte-space
+  `premultiply_rgba8`), chamado por **8 sites de produção em TODOS os image tools**:
+  color_equalization (×2), sprite_merge, bgremoval (×2), rasterize, equalize_sizes,
+  painter, upscale — + os 2 previews que o espelham (`painter_bridge.rs:408`,
+  `bgremoval_preview.rs:274`). Trocar p/ linear muda a cor de borda translúcida do
+  bake de **todos** eles.
+- **Hazard de round-trip:** `into_premultiplied` tem invariante documentada com
+  `unpremultiply_rgba8` (±1/canal). O ciclo bake→re-edit faz premul e depois
+  unpremul (`old_premultiplied` em `drain_painter`). Trocar só o premul p/ linear,
+  deixando o unpremul byte-space, **corrompe cor ao re-editar** uma sprite pintada.
+  Switch correto exige `unpremultiply_*_in_linear` casado + auditar todo par
+  premul/unpremul.
+- **Hazard de determinismo:** se bytes premultiplicados forem serializados em
+  qualquer lugar, mudar a matemática do premul faz drift de cook-hash → gate
+  replay-hash do CI. Precisa verificar antes.
+- byte-space É consistente (preview==Apply, WYSIWYG holds) e round-trip-safe; o halo
+  é sutil. `premultiply_rgba8_in_linear` é a matemática correta mas não tem o
+  unpremul-inverso casado.
+
+**Veredito:** half-flip = bug latente de re-edit; full-flip = refactor multi-site com
+hazard de round-trip + determinismo + smoke multi-feature. **NÃO é tarefa de fim de
+sessão.** Recomendação: aceitar a convenção byte-space por ora (consistente +
+round-trip-safe), OU agendar um mini-projeto "gamma-correct premul" dedicado
+(premul linear + unpremul linear casado + auditoria de pares + check cook-hash +
+smoke em todos os image tools). Decisão de prioridade = Enio.
 
 **Item 1b — GPU `LayerCompositor` como caminho real-time: SEQUENCIADO (Coord).**
 Depende do teu dirty-rect in-pasta landar primeiro (que o Item 1a destrava). Quando

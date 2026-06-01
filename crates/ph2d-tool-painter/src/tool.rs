@@ -199,7 +199,8 @@ use ph2d_color::OklchColor as StrokeOklchColor;
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{RasterEditTool, Tool};
 use ph2d_painter_brush::{
-    Brush, BrushParamsHash, MAX_STAMP_SIZE_PX, PointerSample, StampScheduler, apply_stamps, library,
+    Brush, BrushParamsHash, MAX_STAMP_SIZE_PX, PointerSample, Stamp, StampScheduler, apply_stamps,
+    library,
 };
 use ph2d_painter_stroke::{
     CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
@@ -208,7 +209,7 @@ use ph2d_painter_stroke::{
     StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
 };
 
-use crate::compositor::{LayerImage, LayerPixelSource, composite};
+use crate::compositor::{LayerImage, LayerPixelSource, Region, composite, composite_region};
 use crate::layers::{LayerId as RtLayerId, LayerKind, LayerStack};
 use crate::params::{BrushHandle, OklchColor, PainterMode, PainterParams};
 use ph2d_painter_brush::BlendMode;
@@ -398,6 +399,13 @@ pub struct PainterTool {
     /// tool (not a panel) so both panels + the shell agree without a
     /// panel→panel dependency (`architecture_cycle_prevention` forbids it).
     dock_shows_layers: bool,
+    /// **W3 perf — dirty-rect preview.** Accumulated bbox (canvas px) of stamps
+    /// deposited since the last preview drain. When set AND a full composite is
+    /// cached (`composited`), `take_preview_arc` recomposites ONLY this region
+    /// (`composite_region`) and blits it into the cache — O(N×bbox) instead of
+    /// O(N×W×H) per stroke frame. Cleared by `invalidate_composite` (a
+    /// structural edit forces a full recompose) and consumed each drain.
+    dirty_rect: Option<Region>,
 }
 
 impl Default for PainterTool {
@@ -443,6 +451,7 @@ impl Default for PainterTool {
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
             dock_shows_layers: false,
+            dirty_rect: None,
         }
     }
 }
@@ -772,6 +781,14 @@ impl PainterTool {
         // (residual_dist, pressure) but paint nothing this event — the input
         // record below still captures them.
         if !stamps.is_empty() {
+            // **W3 perf:** accumulate the stamped bbox so the next preview drain
+            // recomposites only this region, not the full canvas.
+            if let Some(bbox) = stamps_bbox(stamps, self.source_size.0, self.source_size.1) {
+                self.dirty_rect = Some(match self.dirty_rect {
+                    Some(prev) => union_region(prev, bbox),
+                    None => bbox,
+                });
+            }
             // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
             // (zero alloc), clone-once when bridge cached the prior Arc
             // (16 MB once per preview drain cycle, NOT per pointer event).
@@ -1308,6 +1325,10 @@ impl PainterTool {
     /// Mark the composite stale so the next `current_preview` recomputes.
     fn invalidate_composite(&mut self) {
         self.composited = None;
+        // Drop any accumulated dirty-rect: a structural edit (opacity / blend /
+        // visibility / reorder / add / select) can change the composite OUTSIDE
+        // the stamped region, so the next drain must do a FULL recompose.
+        self.dirty_rect = None;
         self.preview_dirty = true;
     }
 
@@ -1667,20 +1688,39 @@ impl PainterTool {
         // on-canvas preview shows only the active layer's working buffer and
         // overlapping layers / per-layer opacity / blend modes are invisible.
         // Mirror of [`RasterEditTool::current_preview`]'s composite branch.
-        // (Perf: full-frame recomposite per dirty drain; dirty-rect gating is a
-        // follow-up — see the GPU `LayerCompositor` path for the interactive
-        // fast lane.)
         if self.is_trivial_stack() {
             return Some((Arc::clone(&self.canvas_rgba), w, h));
         }
         let active = self.layers.active().unwrap_or(RtLayerId(0));
-        let src = ToolPixelSource {
-            active_id: active,
-            active_rgba: &self.canvas_rgba,
-            images: &self.images,
-        };
-        let composited = composite(&self.layers, &src, w, h);
-        Some((Arc::new(composited), w, h))
+        // **W3 perf — dirty-rect fast lane.** When a valid full composite is
+        // cached AND only the active layer changed (a stroke) within a known
+        // bbox, recomposite ONLY that region and blit it into the cache —
+        // O(N×bbox) vs O(N×W×H). Otherwise (no cache after a structural edit,
+        // or first drain) do a full recompose. The bridge still uploads the
+        // full texture; the win is the composite itself (the dominant cost).
+        match (self.composited.is_some(), self.dirty_rect.take()) {
+            (true, Some(bbox)) => {
+                let region = {
+                    let src = ToolPixelSource {
+                        active_id: active,
+                        active_rgba: &self.canvas_rgba,
+                        images: &self.images,
+                    };
+                    composite_region(&self.layers, &src, w, h, bbox)
+                };
+                let cache = self.composited.as_mut().expect("checked is_some");
+                blit_region(cache, w, &region, bbox);
+            }
+            _ => {
+                let src = ToolPixelSource {
+                    active_id: active,
+                    active_rgba: &self.canvas_rgba,
+                    images: &self.images,
+                };
+                self.composited = Some(composite(&self.layers, &src, w, h));
+            }
+        }
+        Some((Arc::new(self.composited.as_ref().expect("just set").clone()), w, h))
     }
 
     /// True iff at least one stamp landed in `canvas_rgba` since the
@@ -1925,6 +1965,59 @@ impl Tool for PainterTool {
         // Painter substituir o proto (T1.X close W1), is_default() flipa
         // para true e brush proto é deletado.
         false
+    }
+}
+
+/// Bounding box (canvas px, clamped to `[0,w)×[0,h)`) of a batch of stamps —
+/// the dirty region a stroke event touched. `None` if the batch lands fully
+/// outside the canvas (degenerate). Each stamp footprint is `position ± size/2`
+/// plus a 1 px margin for soft (anti-aliased) edges.
+fn stamps_bbox(stamps: &[Stamp], w: u32, h: u32) -> Option<Region> {
+    let (mut minx, mut miny, mut maxx, mut maxy) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for s in stamps {
+        let r = s.size_px * 0.5 + 1.0; // +1px: soft-edge / AA margin (canvas px, not a UI value)
+        minx = minx.min(s.position_world[0] - r);
+        miny = miny.min(s.position_world[1] - r);
+        maxx = maxx.max(s.position_world[0] + r);
+        maxy = maxy.max(s.position_world[1] + r);
+    }
+    let x0 = minx.floor().clamp(0.0, w as f32) as u32;
+    let y0 = miny.floor().clamp(0.0, h as f32) as u32;
+    let x1 = maxx.ceil().clamp(0.0, w as f32) as u32;
+    let y1 = maxy.ceil().clamp(0.0, h as f32) as u32;
+    if x1 <= x0 || y1 <= y0 {
+        return None;
+    }
+    Some(Region {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    })
+}
+
+/// Smallest [`Region`] covering both `a` and `b`.
+fn union_region(a: Region, b: Region) -> Region {
+    let x0 = a.x.min(b.x);
+    let y0 = a.y.min(b.y);
+    let x1 = (a.x + a.w).max(b.x + b.w);
+    let y1 = (a.y + a.h).max(b.y + b.h);
+    Region {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    }
+}
+
+/// Blit a freshly-composited `region` (its own `bbox.w × bbox.h` RGBA8 buffer)
+/// into the full-canvas composite `cache` at `bbox`, row by row.
+fn blit_region(cache: &mut [u8], canvas_w: u32, region: &[u8], bbox: Region) {
+    let row_bytes = (bbox.w * 4) as usize;
+    for ry in 0..bbox.h {
+        let src_off = (ry * bbox.w * 4) as usize;
+        let dst_off = (((bbox.y + ry) * canvas_w + bbox.x) * 4) as usize;
+        cache[dst_off..dst_off + row_bytes].copy_from_slice(&region[src_off..src_off + row_bytes]);
     }
 }
 
@@ -2548,6 +2641,34 @@ mod tests {
             &[0, 0, 200],
             "opaque top covers base in the Arc preview"
         );
+    }
+
+    #[test]
+    fn dirty_rect_drain_matches_full_recompose() {
+        // The stroke-time fast lane: composite ONLY the dirty bbox into the
+        // cache must be byte-identical to a full recompose of the same state.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4); // base red (L1)
+        let _top = t.add_raster_layer("L2").unwrap(); // transparent top, active
+        // First drain → full composite cached (all red; L2 is transparent).
+        t.preview_dirty = true;
+        let _ = t.take_preview_arc().expect("dirty");
+        // Paint one pixel of the active (top) layer blue.
+        let canvas = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+        let (px, py, cw) = (1usize, 1usize, 4usize);
+        let i = (py * cw + px) * 4; // byte offset of pixel (1,1)
+        canvas[i..i + 4].copy_from_slice(&[0, 0, 200, 255]);
+        // Region drain (only the changed pixel).
+        t.dirty_rect = Some(Region { x: 1, y: 1, w: 1, h: 1 });
+        t.preview_dirty = true;
+        let (region_drain, _, _) = t.take_preview_arc().expect("dirty");
+        let region_drain = (*region_drain).clone();
+        // Full recompose of the identical state (force the cache miss).
+        t.composited = None;
+        t.preview_dirty = true;
+        let (full_drain, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(region_drain, *full_drain, "dirty-rect drain == full recompose");
+        assert_eq!(&full_drain[i..i + 3], &[0, 0, 200], "the painted pixel shows");
     }
 
     #[test]

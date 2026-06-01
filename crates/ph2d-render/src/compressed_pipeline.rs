@@ -739,7 +739,10 @@ mod tests {
     fn size_single_mip_bc7_is_block_footprint_not_pixels() {
         // 64×32 BC7 = 16×8 blocks * 16 B = 2048 B (¼ of the RGBA8 8192 B —
         // the plan's -75% desktop saving, exactly).
-        assert_eq!(compressed_size_per_format(Tf::Bc7RgbaUnorm, 64, 32, 1), 2048);
+        assert_eq!(
+            compressed_size_per_format(Tf::Bc7RgbaUnorm, 64, 32, 1),
+            2048
+        );
         assert_eq!(
             compressed_size_per_format(Tf::Rgba8Unorm, 64, 32, 1),
             2048 * 4

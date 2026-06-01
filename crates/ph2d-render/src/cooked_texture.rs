@@ -142,7 +142,9 @@ impl CookedTextureStore {
     /// uploads against, or `None` before the first upload built it.
     #[must_use]
     pub fn feature_set(&self) -> Option<CompressionFeatureSet> {
-        self.pipeline.as_ref().map(CompressedTexturePipeline::feature_set)
+        self.pipeline
+            .as_ref()
+            .map(CompressedTexturePipeline::feature_set)
     }
 
     /// Total GPU byte footprint of every cached cooked texture (W2.T5 HR-13
@@ -273,7 +275,11 @@ mod tests {
                 .bind_group(RenderInstance::COOKED_TEXTURE_ID_BIT | 1)
                 .is_none()
         );
-        assert!(store.dims(RenderInstance::COOKED_TEXTURE_ID_BIT | 1).is_none());
+        assert!(
+            store
+                .dims(RenderInstance::COOKED_TEXTURE_ID_BIT | 1)
+                .is_none()
+        );
     }
 
     #[test]
@@ -329,7 +335,10 @@ mod tests {
         assert_eq!(store.dims(id), Some((w, h)));
         assert_eq!(store.len(), 1);
         assert!(store.cache_bytes() >= (w * h * 4) as u64, "RGBA8 footprint");
-        assert!(store.feature_set().is_some(), "pipeline built on first upload");
+        assert!(
+            store.feature_set().is_some(),
+            "pipeline built on first upload"
+        );
 
         // Idempotent: same logical id → same id, no new upload.
         let again = store.ensure(&gpu, &bgl, logical, asset_id, &blob).unwrap();

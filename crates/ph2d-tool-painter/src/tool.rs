@@ -1320,6 +1320,62 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
+    /// `images` before a layer switch — so the layer we're leaving keeps its
+    /// pixels. (The active layer is otherwise NOT stored in `images`.)
+    fn flush_active_to_images(&mut self) {
+        if let Some(active) = self.layers.active() {
+            let (w, h) = self.source_size;
+            self.images.insert(
+                active,
+                LayerImage {
+                    width: w,
+                    height: h,
+                    rgba8: self.canvas_rgba.as_ref().clone(),
+                },
+            );
+        }
+    }
+
+    /// Add a new transparent raster layer at the top of the stack and make
+    /// it active. The previous active layer's pixels are flushed to `images`;
+    /// the new active starts as a fresh transparent `canvas_rgba`. Returns the
+    /// new id, or `None` mid-stroke / before a source is set / at the cap.
+    pub fn add_raster_layer(&mut self, name: impl Into<String>) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None; // lifecycle: no structural edits mid-stroke
+        }
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        self.flush_active_to_images();
+        let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
+        self.images.remove(&id); // active lives in canvas_rgba, not images
+        self.canvas_rgba = Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]);
+        self.invalidate_composite();
+        Some(id)
+    }
+
+    /// Make `id` the active layer: flush the current active's pixels to
+    /// `images`, load `id`'s pixels into `canvas_rgba` (transparent if it has
+    /// none yet). No-op mid-stroke, if `id` is already active, or unknown.
+    pub fn select_layer(&mut self, id: RtLayerId) {
+        if self.stroke_active || self.layers.active() == Some(id) || self.layers.get(id).is_none() {
+            return;
+        }
+        self.flush_active_to_images();
+        let (w, h) = self.source_size;
+        let buf = self
+            .images
+            .remove(&id)
+            .map(|img| img.rgba8)
+            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        self.canvas_rgba = Arc::new(buf);
+        self.layers.set_active(id);
+        self.invalidate_composite();
+    }
+
     /// Configura `next_seq` baseline pra anchor monotonic per-canvas.
     /// Caller invoca após `load(canon_bytes)` passando
     /// `paint_project.last_persisted_seq().map(|s| s + 1).unwrap_or(0)`
@@ -2112,6 +2168,51 @@ mod tests {
         t.set_source(src.clone(), 8, 8);
         let (px, _, _) = t.current_preview().unwrap();
         assert_eq!(px, src.as_slice(), "trivial stack must skip composite (fast path)");
+    }
+
+    #[test]
+    fn add_layer_stacks_transparent_on_top_base_shows_through() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4); // base = red
+        let base = t.layers().active().unwrap();
+        let top = t.add_raster_layer("Layer 2").expect("add layer");
+        assert_eq!(t.layers().len(), 2);
+        assert_eq!(t.layers().active(), Some(top));
+        assert_eq!(t.layers().root().first(), Some(&top), "new layer on top");
+        assert_ne!(top, base);
+        // Top is transparent → base red composites through.
+        let (px, _, _) = t.current_preview().expect("dirty after add");
+        assert_eq!(&px[0..3], &[200, 50, 50]);
+        assert_eq!(px[3], 255);
+    }
+
+    #[test]
+    fn select_layer_round_trips_working_buffers() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2); // base red
+        let base = t.layers().active().unwrap();
+        let top = t.add_raster_layer("Layer 2").unwrap();
+        // Active is the fresh transparent top.
+        assert!(t.canvas_rgba.iter().all(|&b| b == 0), "new layer canvas is transparent");
+        // Switch to base → its red pixels load into the working canvas.
+        t.select_layer(base);
+        assert_eq!(t.layers().active(), Some(base));
+        assert!(t.canvas_rgba.chunks_exact(4).all(|p| p == [200, 50, 50, 255]));
+        // Back to top → transparent again.
+        t.select_layer(top);
+        assert!(t.canvas_rgba.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn painting_top_layer_composites_over_base() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2); // base red
+        let _top = t.add_raster_layer("Layer 2").unwrap();
+        // Simulate a stroke filling the (active) top layer opaque blue.
+        t.canvas_rgba = std::sync::Arc::new([0, 0, 200, 255].repeat(4));
+        t.preview_dirty = true;
+        let (px, _, _) = t.current_preview().expect("dirty");
+        assert_eq!(&px[0..3], &[0, 0, 200], "opaque top layer covers base");
     }
 
     #[test]

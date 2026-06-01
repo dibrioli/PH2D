@@ -251,6 +251,10 @@ pub(super) fn dispatch(
     //
     // `drive_pending_commit` stays on the generic `&mut dyn RasterEditTool`
     // path — it's only called once per Apply, not per frame.
+    // B.1: carries the partial dirty bbox from the preview drain to the GPU
+    // upload below (frame-local — same function scope, so no `PreviewCache`
+    // field change needed). `Some` = upload only this sub-rect; `None` = full.
+    let mut painter_dirty_bbox: Option<(u32, u32, u32, u32)> = None;
     if let Some(tool) = tools.active_mut()
         && let Some(painter) = tool
             .as_any_mut()
@@ -282,6 +286,8 @@ pub(super) fn dispatch(
         // arrived AND a sprite is selected to tag it with.
         if let (Some(sel), Some((rgba, w, h))) = (hero.gizmo.selection, painter.take_preview_arc())
         {
+            // B.1: the bbox the drain recomposed (Some = partial fast lane).
+            painter_dirty_bbox = painter.take_preview_upload_bbox();
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
                 rgba,
@@ -404,19 +410,61 @@ pub(super) fn dispatch(
                 }
             };
             if needs_upload {
-                let mut premul_bytes = (*preview.rgba).clone();
-                premultiply_rgba8(&mut premul_bytes);
-                let upload_result: Result<u32, _> = match *painter_preview_gpu {
-                    Some(gpu) => renderer
-                        .replace_individual_pixels(
-                            gpu.texture_id,
-                            preview.width,
-                            preview.height,
-                            &premul_bytes,
-                        )
-                        .map(|()| gpu.texture_id),
+                // B.1: partial sub-rect upload when the drain reported a tracked
+                // dirty bbox AND a matching GPU texture already holds the prior
+                // full frame (same entity + dims). The fast lane only fires after
+                // a full upload synced the texture (the composite cache is `Some`
+                // only post-full-recompose, which uploads `bbox == None`), and any
+                // structural / metadata / dims / entity change forces a full
+                // upload — so the un-touched GPU pixels are always current. The
+                // `bx+bw<=w && by+bh<=h` guard keeps `extract_region` in bounds
+                // (defensive — a bad bbox falls back to full, never panics the
+                // render loop). Everything else → full upload.
+                let partial = painter_dirty_bbox.and_then(|(bx, by, bw, bh)| {
+                    match *painter_preview_gpu {
+                        Some(gpu)
+                            if gpu.entity_bits == preview.entity_bits
+                                && gpu.width == preview.width
+                                && gpu.height == preview.height
+                                && bw > 0
+                                && bh > 0
+                                && bx + bw <= preview.width
+                                && by + bh <= preview.height =>
+                        {
+                            Some((gpu.texture_id, bx, by, bw, bh))
+                        }
+                        _ => None,
+                    }
+                });
+                let upload_result: Result<u32, _> = match partial {
+                    Some((texture_id, bx, by, bw, bh)) => {
+                        // Gather + premultiply ONLY the bbox sub-rect (tightly
+                        // packed bw*bh*4) and upload it over the existing texture.
+                        let mut region =
+                            extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
+                        premultiply_rgba8(&mut region);
+                        renderer
+                            .replace_individual_pixels_region(texture_id, bx, by, bw, bh, &region)
+                            .map(|()| texture_id)
+                    }
                     None => {
-                        renderer.acquire_individual(preview.width, preview.height, &premul_bytes)
+                        let mut premul_bytes = (*preview.rgba).clone();
+                        premultiply_rgba8(&mut premul_bytes);
+                        match *painter_preview_gpu {
+                            Some(gpu) => renderer
+                                .replace_individual_pixels(
+                                    gpu.texture_id,
+                                    preview.width,
+                                    preview.height,
+                                    &premul_bytes,
+                                )
+                                .map(|()| gpu.texture_id),
+                            None => renderer.acquire_individual(
+                                preview.width,
+                                preview.height,
+                                &premul_bytes,
+                            ),
+                        }
                     }
                 };
                 match upload_result {
@@ -442,6 +490,21 @@ pub(super) fn dispatch(
         None => release_preview_texture(renderer, painter_preview_gpu),
     }
     !apply_selection.is_empty()
+}
+
+/// Gather a tightly-packed `w*h*4` RGBA8 sub-rect at `(x, y)` out of a
+/// canvas-sized straight buffer (row stride `stride_px*4`) — the inverse of the
+/// compositor's `blit_region`, for the B.1 partial GPU upload. The caller's
+/// guard (`x+w <= stride_px`, `y+h <= height`) keeps every row copy in bounds.
+fn extract_region(full: &[u8], stride_px: u32, x: u32, y: u32, w: u32, h: u32) -> Vec<u8> {
+    let row_bytes = (w * 4) as usize;
+    let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
+    for ry in 0..h {
+        let src_off = (((y + ry) * stride_px + x) * 4) as usize;
+        let dst_off = (ry * w * 4) as usize;
+        out[dst_off..dst_off + row_bytes].copy_from_slice(&full[src_off..src_off + row_bytes]);
+    }
+    out
 }
 
 /// Release the Painter live-preview's `IndividualTextureStore` slot (if any)

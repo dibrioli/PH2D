@@ -206,7 +206,7 @@ use ph2d_painter_stroke::{
     CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
     SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
     SAMPLE_FLAG_TILT_UNAVAILABLE, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory, StrokeJournal,
-    StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
+    StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_checked,
 };
 
 use crate::compositor::{LayerImage, LayerPixelSource, Region, composite, composite_region};
@@ -303,6 +303,14 @@ pub struct PainterTool {
     /// `Arc::make_mut` (clones once only if the bridge still holds the prior
     /// Arc). Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
+    /// The dirty bbox `(x, y, w, h)` the LAST `take_preview_arc` recomposed —
+    /// `Some` iff that drain took the partial fast lane (a stroke into a valid
+    /// cache), `None` for a full composite (trivial stack / full recompose /
+    /// post-structural-edit). The bridge reads this via `take_preview_upload_bbox`
+    /// to upload only the sub-rect (B.1) instead of the full GPU texture. Reset
+    /// on every drain, so a `None`-returning (not-dirty) drain leaves it stale —
+    /// harmless, the bridge only reads it right after a `Some` drain.
+    preview_upload_bbox: Option<Region>,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -430,6 +438,7 @@ impl Default for PainterTool {
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             composited: None,
+            preview_upload_bbox: None,
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
@@ -817,7 +826,12 @@ impl PainterTool {
         // `attach_journal` DEVE ser invocado de novo (a journal nova
         // nasce com `last_flush_ms = 0`, evitando flush storm da
         // diferença sintético→wall-clock). Vide doc de `attach_journal`.
-        let raw = pointer_to_raw_sample(sample);
+        let Some(raw) = pointer_to_raw_sample(sample) else {
+            // **B.4 audit-2:** position out of the Q16.16 useful window — drop it
+            // (no record, no clamp). Off-window also means off-canvas, so any
+            // stamp emitted above already painted nothing.
+            return;
+        };
         if self.current_samples.len() < u16::MAX as usize {
             self.current_samples.push(raw);
             // **V-2 cascade fix:** only call journal.add_sample if journal
@@ -1700,6 +1714,10 @@ impl PainterTool {
         // overlapping layers / per-layer opacity / blend modes are invisible.
         // Mirror of [`RasterEditTool::current_preview`]'s composite branch.
         if self.is_trivial_stack() {
+            // Trivial single-layer path stays a full upload (the T1.5 fast path,
+            // smoke-validated). Partial upload is scoped to the multi-layer
+            // composite below — the case the dirty-rect win targets.
+            self.preview_upload_bbox = None;
             return Some((Arc::clone(&self.canvas_rgba), w, h));
         }
         let active = self.layers.active().unwrap_or(RtLayerId(0));
@@ -1723,6 +1741,10 @@ impl PainterTool {
                 // its prior Arc; clone-once if it's still holding the cache.
                 let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
                 blit_region(cache, w, &region, bbox);
+                // B.1: only `bbox` changed in the cache since the last drain (and
+                // the last drain uploaded), so the bridge may upload just this
+                // sub-rect on top of the already-synced GPU texture.
+                self.preview_upload_bbox = Some(bbox);
             }
             _ => {
                 let src = ToolPixelSource {
@@ -1731,9 +1753,21 @@ impl PainterTool {
                     images: &self.images,
                 };
                 self.composited = Some(Arc::new(composite(&self.layers, &src, w, h)));
+                // Full recompose (first drain / post-structural-or-metadata edit)
+                // → the bridge must upload the whole texture to re-sync.
+                self.preview_upload_bbox = None;
             }
         }
         Some((Arc::clone(self.composited.as_ref().expect("just set")), w, h))
+    }
+
+    /// Drains the dirty bbox `(x, y, w, h)` of the LAST [`Self::take_preview_arc`]
+    /// — `Some` iff that drain was a partial fast-lane update the bridge may
+    /// upload as a sub-rect (B.1); `None` = upload the full texture. Call right
+    /// after `take_preview_arc` on the same frame. `take` so a later not-dirty
+    /// drain can't replay a stale partial.
+    pub fn take_preview_upload_bbox(&mut self) -> Option<(u32, u32, u32, u32)> {
+        self.preview_upload_bbox.take().map(|r| (r.x, r.y, r.w, r.h))
     }
 
     /// True iff at least one stamp landed in `canvas_rgba` since the
@@ -2220,7 +2254,7 @@ impl RasterEditTool for PainterTool {
 /// MCP replay leem `azimuth_q88 == 0` como "azimuth = 0 rad" (não
 /// "azimuth desconhecido") → brushes que rotacionam por azimuth produzem
 /// arte determinística-mente DIFERENTE do stroke original.
-fn pointer_to_raw_sample(sample: PointerSample) -> RawPointerSample {
+fn pointer_to_raw_sample(sample: PointerSample) -> Option<RawPointerSample> {
     // **U-7 audit:** tilt flag setado quando sample.tilt == 0 (mouse/trackpad
     // path NÃO produz tilt). Pencil/stylus com tilt real seta tilt > 0 ⇒
     // flag NÃO setado. Wire T-input (W11+) override este heuristic com
@@ -2232,14 +2266,20 @@ fn pointer_to_raw_sample(sample: PointerSample) -> RawPointerSample {
     if sample.tilt == 0.0 {
         flags |= SAMPLE_FLAG_TILT_UNAVAILABLE;
     }
-    RawPointerSample {
-        x_q1616: f32_to_q1616_saturating(sample.position[0]),
-        y_q1616: f32_to_q1616_saturating(sample.position[1]),
+    // **B.4 audit-2:** CHECKED Q16.16 conversion (the frozen crate's documented
+    // path for un-validated input). A position outside the useful window
+    // (|v| >= 32768, ADR-0046 §2.2) is out-of-spec — return `None` so the caller
+    // drops the whole sample, rather than record a CLAMPED position (silent W12
+    // replay divergence) or trip `_saturating`'s debug_assert. The earlier
+    // finite-guard in `queue_pointer` already rejected NaN/Inf.
+    Some(RawPointerSample {
+        x_q1616: f32_to_q1616_checked(sample.position[0])?,
+        y_q1616: f32_to_q1616_checked(sample.position[1])?,
         pressure_q88: f32_to_q88(sample.pressure),
         tilt_q88: f32_to_q88(sample.tilt),
         flags,
         ..Default::default()
-    }
+    })
 }
 
 /// Converte `PainterTool` `OklchColor` (ph2d-tool-painter stub) → ph2d-color
@@ -2729,6 +2769,79 @@ mod tests {
             region_drain, *full_drain,
             "group dirty-rect drain == full recompose"
         );
+    }
+
+    #[test]
+    fn out_of_window_pointer_sample_is_dropped() {
+        // B.4 audit-2: a pointer position outside the Q16.16 useful window
+        // (|v| >= 32768, ADR-0046 §2.2) must be DROPPED from the history record
+        // (no clamp, no panic). Pre-fix this tripped `f32_to_q1616_saturating`'s
+        // debug_assert in test builds; now `_checked` returns None → sample skipped.
+        let mut t = PainterTool::default();
+        t.params.size_px = 8.0;
+        t.set_source(flat_source(16, 16, [0, 0, 0, 255]), 16, 16);
+        t.begin_stroke(7);
+        t.queue_pointer(PointerSample {
+            position: [8.0, 8.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        let recorded = t.current_samples.len();
+        assert!(recorded >= 1, "in-window sample recorded");
+        // Out-of-window position: dropped (no panic, no growth, no clamped record).
+        t.queue_pointer(PointerSample {
+            position: [40000.0, 8.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        assert_eq!(
+            t.current_samples.len(),
+            recorded,
+            "out-of-window position dropped, not recorded as a clamped sample"
+        );
+        t.end_stroke();
+    }
+
+    #[test]
+    fn preview_upload_bbox_tracks_partial_vs_full() {
+        // B.1: the bridge uploads a partial GPU sub-rect ONLY when
+        // `take_preview_arc` took the dirty-rect fast lane. Pin the contract the
+        // bridge relies on: Some(bbox) after a fast-lane drain; None after a full
+        // recompose; None for the trivial single-layer path; drained after read.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4);
+        // Trivial single-layer drain → full upload (None).
+        t.preview_dirty = true;
+        let _ = t.take_preview_arc().expect("dirty");
+        assert_eq!(
+            t.take_preview_upload_bbox(),
+            None,
+            "trivial single-layer stack = full upload"
+        );
+        // Add a layer → non-trivial; first drain is a full recompose → None.
+        let _top = t.add_raster_layer("L2").unwrap();
+        t.preview_dirty = true;
+        let _ = t.take_preview_arc().expect("dirty");
+        assert_eq!(
+            t.take_preview_upload_bbox(),
+            None,
+            "first non-trivial drain = full recompose = full upload"
+        );
+        // Stroke into the now-valid cache → fast lane → partial bbox.
+        t.dirty_rect = Some(Region {
+            x: 1,
+            y: 1,
+            w: 2,
+            h: 2,
+        });
+        t.preview_dirty = true;
+        let _ = t.take_preview_arc().expect("dirty");
+        assert_eq!(
+            t.take_preview_upload_bbox(),
+            Some((1, 1, 2, 2)),
+            "fast-lane drain = partial upload of the dirty bbox"
+        );
+        assert_eq!(t.take_preview_upload_bbox(), None, "bbox drained after read");
     }
 
     #[test]

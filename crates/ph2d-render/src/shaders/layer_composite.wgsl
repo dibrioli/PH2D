@@ -303,7 +303,13 @@ fn over(top: vec4<f32>, bottom: vec4<f32>) -> vec4<f32> {
 }
 
 // Composite `src` over `dst` under `mode`. Straight linear-sRGB RGBA in
-// [0,1]. Bit-for-bit port of `ph2d_painter_brush::blend::apply`.
+// [0,1]. Port of `ph2d_painter_brush::blend::apply` over FINITE inputs: the
+// Rust side additionally routes outputs through `sanitize01` (NaN/±inf → 0,
+// defense-in-depth); this port uses plain `clamp` instead, because layer
+// inputs are LUT-bounded-finite (decode_layer reads rgba8unorm → finite LUT)
+// and every division is guarded by `ao > F32_EPSILON`, so a non-finite value
+// can't arise here (audit 2026-06-01 LOW — confirmed unreachable). The literal
+// constants are still pinned to Rust by shader_blend_modes_bit_identical.
 fn apply_blend(mode: u32, dst: vec4<f32>, src: vec4<f32>) -> vec4<f32> {
     let ab = clamp(dst.a, 0.0, 1.0);
     let as_ = clamp(src.a, 0.0, 1.0);

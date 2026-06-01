@@ -240,6 +240,57 @@ fn gpu_composite_matches_cpu_reference_grouped_stack() {
     );
 }
 
+/// MAX-depth nesting: a group chain 8 levels deep exercises the `cs_grouped`
+/// per-pixel accumulator `stack[d]` for d=1..7 (the riskiest WGSL — a
+/// hand-written, dynamically-indexed stack machine) against the CPU recursion.
+/// The depth-1 grouped test above only reaches stack[0]; this reaches the cap.
+/// (Audit 2026-06-01 coverage gap.)
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_composite_matches_cpu_reference_deep_nested_groups() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let (w, h) = (24u32, 24u32);
+    let depth = 8usize; // MAX_GROUP_STACK
+    let mut prov = MapProvider::default();
+    for k in 0..=depth as u64 {
+        prov.insert(k, 1, varied_canvas(w, h, k as u32 + 1));
+    }
+    // bg, then `depth` nested [PushGroup, Layer(mode d)], closed by `depth`
+    // PopGroups with varied blend modes — every stack level carries real blends.
+    let mut ops = vec![LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    for d in 1..=depth {
+        ops.push(LayerOp::PushGroup);
+        ops.push(LayerOp::Layer {
+            key: d as u64,
+            blend_mode: (d % MAX_BLEND_MODES as usize) as u8,
+            opacity: 0.8,
+        });
+    }
+    for d in (1..=depth).rev() {
+        ops.push(LayerOp::PopGroup {
+            blend_mode: ((d * 3) % MAX_BLEND_MODES as usize) as u8,
+            opacity: 0.7,
+        });
+    }
+    let region = Region::full(w, h);
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let want = cpu_composite(&ops, &prov, w, h, region);
+    let diff = max_byte_diff(&got, &want);
+    assert!(
+        diff <= 1,
+        "depth-{depth} nested groups diverged from CPU reference by {diff} bytes"
+    );
+}
+
 /// `layers_dirty_rect_correctness`: recompositing a sub-region is bit-identical
 /// to the same rect cropped from a full composite (per-pixel independence).
 #[test]

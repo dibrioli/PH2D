@@ -87,7 +87,9 @@ pub const LAYER_FLAG_ALPHA_LOCKED: u8 = 1 << 2;
 pub const LAYER_FLAG_CLIPPING: u8 = 1 << 3;
 /// Marca como reference (geometry source pra ColorDrop/fill).
 pub const LAYER_FLAG_IS_REFERENCE: u8 = 1 << 4;
-/// A layer ativa (selecionada). Exatamente uma `Node` no stack carrega este bit.
+/// A layer ativa (selecionada). **No máximo uma** `Node` no stack carrega este
+/// bit (mapeia pro runtime `active: Option<LayerId>` — 0 = nada selecionado, 1
+/// = a ativa; ≥2 é rejeitado no load). Audit 2026-06-01.
 pub const LAYER_FLAG_ACTIVE: u8 = 1 << 5;
 
 /// Entry de um `LayerStack`.

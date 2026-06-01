@@ -258,6 +258,31 @@ fn load_accepts_legit_max_depth_tree() {
 }
 
 #[test]
+fn load_rejects_more_than_one_active_layer() {
+    // The active flag maps to runtime `active: Option<LayerId>` — 0 or 1. Two
+    // ACTIVE nodes is ambiguous → rejected (audit 2026-06-01). 0 is legal
+    // (covered implicitly by other tests with no ACTIVE).
+    let mut p = PaintProject::new(canvas(8, 8));
+    let mut a = raster(0, "a");
+    a.modifiers |= LAYER_FLAG_ACTIVE;
+    let mut b = raster(1, "b");
+    b.modifiers |= LAYER_FLAG_ACTIVE;
+    p.layer_stack.layers = vec![LayerStackEntry::Node(a), LayerStackEntry::Node(b)];
+    p.recompute_checksum();
+    let bytes = postcard::to_allocvec(&p).unwrap();
+    assert!(
+        matches!(
+            load(&bytes),
+            Err(LoadError::CapExceeded {
+                kind: "layer_stack.active_flags",
+                ..
+            })
+        ),
+        "must reject ≥2 active layers"
+    );
+}
+
+#[test]
 fn load_rejects_overlong_layer_name() {
     let mut p = PaintProject::new(canvas(8, 8));
     let mut node = raster(0, "x");

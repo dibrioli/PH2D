@@ -633,6 +633,7 @@ pub fn validate_caps_post_deserialize(p: &PaintProject) -> Result<(), LoadError>
     // EVERY node (group children + masks) toward MAX_LAYERS so a forged file
     // can't smuggle millions of layers under a short top-level Vec.
     let mut total_nodes = 0usize;
+    let mut active_nodes = 0usize;
     for entry in &p.layer_stack.layers {
         match entry {
             LayerStackEntry::Reserved(bytes) => {
@@ -644,7 +645,9 @@ pub fn validate_caps_post_deserialize(p: &PaintProject) -> Result<(), LoadError>
                     });
                 }
             }
-            LayerStackEntry::Node(node) => validate_layer_node(node, 0, &mut total_nodes)?,
+            LayerStackEntry::Node(node) => {
+                validate_layer_node(node, 0, &mut total_nodes, &mut active_nodes)?;
+            }
         }
     }
     if total_nodes > MAX_LAYERS {
@@ -654,15 +657,34 @@ pub fn validate_caps_post_deserialize(p: &PaintProject) -> Result<(), LoadError>
             max: MAX_LAYERS,
         });
     }
+    // The active layer maps to the runtime `active: Option<LayerId>` (0 or 1).
+    // 0 ACTIVE flags is legal (nothing selected); ≥2 is malformed and would
+    // make the runtime's "which layer is active" ambiguous — reject it.
+    if active_nodes > 1 {
+        return Err(LoadError::CapExceeded {
+            kind: "layer_stack.active_flags",
+            got: active_nodes,
+            max: 1,
+        });
+    }
 
     Ok(())
 }
 
-/// Recursively validate one [`LayerNode`] subtree: name length, group nesting
-/// depth, and the running total node count. Masks (`Option<Box<LayerNode>>`)
-/// and group children both count + recurse. ADR-0046-amendment-1.
-fn validate_layer_node(node: &LayerNode, depth: usize, total: &mut usize) -> Result<(), LoadError> {
+/// Recursively validate one [`LayerNode`] subtree: name length, group/mask
+/// nesting depth, the running total node count, and the running count of nodes
+/// carrying [`LAYER_FLAG_ACTIVE`]. Masks (`Option<Box<LayerNode>>`) and group
+/// children both count + recurse. ADR-0046-amendment-1.
+fn validate_layer_node(
+    node: &LayerNode,
+    depth: usize,
+    total: &mut usize,
+    active: &mut usize,
+) -> Result<(), LoadError> {
     *total += 1;
+    if node.modifiers & LAYER_FLAG_ACTIVE != 0 {
+        *active += 1;
+    }
     if node.name.len() > MAX_LAYER_NAME_BYTES {
         return Err(LoadError::CapExceeded {
             kind: "layer_node.name",
@@ -683,7 +705,7 @@ fn validate_layer_node(node: &LayerNode, depth: usize, total: &mut usize) -> Res
                 max: MAX_GROUP_DEPTH,
             });
         }
-        validate_layer_node(mask, depth + 1, total)?;
+        validate_layer_node(mask, depth + 1, total, active)?;
     }
     if let LayerNodeKind::Group { children, .. } = &node.kind {
         if depth + 1 > MAX_GROUP_DEPTH {
@@ -694,7 +716,7 @@ fn validate_layer_node(node: &LayerNode, depth: usize, total: &mut usize) -> Res
             });
         }
         for child in children {
-            validate_layer_node(child, depth + 1, total)?;
+            validate_layer_node(child, depth + 1, total, active)?;
         }
     }
     Ok(())

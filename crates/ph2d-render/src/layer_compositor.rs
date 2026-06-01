@@ -967,7 +967,13 @@ fn readback_rgba8(gpu: &GpuContext, texture: &wgpu::Texture, width: u32, height:
         let _ = tx.send(r);
     });
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-    let _ = rx.recv();
+    // Check the map result: on failure (device lost / validation) return empty
+    // rather than letting `get_mapped_range` panic with an opaque "not mapped"
+    // message that hides the real cause (audit 2026-06-01 LOW; test-path only).
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        _ => return Vec::new(),
+    }
 
     let mapped = staging.slice(..).get_mapped_range();
     let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));

@@ -38,7 +38,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     Button, ButtonState, SliderOrientation, SliderState, TextInputState, paint_button,
-    paint_slider_with_chip_layout_adaptive,
+    paint_scrollbar, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -115,10 +115,17 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     ctx.scene.push_clip(&rect_to_vello(body_rect));
 
-    // Extra top padding so the active-row accent outline (which outsets above
-    // the row) is not clipped at the body top, and the first row sits clear of
-    // the Layers title.
-    let mut y = body_top + Spacing::Md.px();
+    let scroll_y = ctx
+        .host
+        .store()
+        .panel_scroll(core_ids::PAINTER_LAYERS_PANEL)
+        .max(0.0);
+    // Body content scrolls: the paint origin is offset up by the scroll
+    // position; content_h is measured from it (scroll-independent). Extra top
+    // padding so the active-row accent outline is not clipped at the body top
+    // and the first row sits clear of the Layers title.
+    let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
+    let mut y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
 
     match state::current_layers() {
@@ -162,17 +169,36 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     paint_apply_button(ctx, apply_rect, theme);
     y += ROW_H_PX;
 
-    let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
+    let content_h = (y - body_paint_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
 
     ctx.scene.pop_layer();
+
+    // Visual scrollbar (self-gates when the content fits). Wheel/trackpad
+    // scrolling already works via the generic `dispatch_wheel` once the bounds
+    // below are published. NOTE: thumb-DRAG needs a foundational
+    // `scrollbar_panel_for_id` entry + a `widget::*_SCROLLBAR_ID` const
+    // (Coord follow-up); the wheel covers the interaction meanwhile.
+    paint_scrollbar(body_rect, scroll_y, content_h, body_h, false, ctx.scene, theme);
 
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     ctx.host.hit_index_mut().register(
         core_ids::PAINTER_LAYERS_CLOSE,
         panel_close_button_rect(rect),
     );
+
+    // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
+    // offset to the new content (so deleting/collapsing rows snaps back).
+    {
+        let store = ctx.host.store_mut();
+        store.set_panel_content_h(core_ids::PAINTER_LAYERS_PANEL, content_h);
+        store.set_panel_visible_h(core_ids::PAINTER_LAYERS_PANEL, body_h);
+        let max_scroll = (content_h - body_h).max(0.0);
+        if store.panel_scroll(core_ids::PAINTER_LAYERS_PANEL) > max_scroll {
+            store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
+        }
+    }
 
     // Deferred: the single open blend dropdown popover, on top of everything.
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {

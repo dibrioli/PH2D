@@ -294,6 +294,110 @@ pub const PAINTER_LAYERS_PANEL: NodeId = hash_node_id("painter_layers_panel");
 /// Close (X) button do Painter layers panel — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Painter sidebar). Deactivates Painter tool quando clicado.
 pub const PAINTER_LAYERS_CLOSE: NodeId = hash_node_id("painter_layers.close");
+/// "+ Layer" button no rodapé do body do Painter layers panel. Click →
+/// `PainterTool::add_raster_layer` (cria + ativa uma raster transparente no
+/// topo). W3.T3.4 UI-plumbing.
+pub const PAINTER_LAYERS_ADD: NodeId = hash_node_id("painter_layers.add");
+/// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
+/// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
+/// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`
+/// (`dock_shows_layers`); o bridge lê e computa a visibilidade.
+pub const PAINTER_LAYERS_TOGGLE_DOCK: NodeId = hash_node_id("painter_layers.toggle_dock");
+/// Dock-mode toggle no header do Painter **sidebar** (brush) panel — alterna o
+/// slot docado pra layers (mostra "Layers"). Mirror simétrico de
+/// [`PAINTER_LAYERS_TOGGLE_DOCK`].
+pub const PAINTER_SIDEBAR_TOGGLE_DOCK: NodeId = hash_node_id("painter_sidebar.toggle_dock");
+
+/// Per-layer-row interactive widget kind, used to derive a stable, collision-
+/// safe [`NodeId`] for each control painted on a Painter layers-panel row via
+/// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's
+/// runtime id + the kind tag, so the panel (paint/event) and the tool
+/// (`handle_panel_event`) agree on the id without sharing any per-row id table
+/// — the decoder simply iterates `layers × kinds`, recomputes the id, and
+/// matches. Mirror in spirit of the `hier_*_companion` per-row ids, but
+/// hash-based (no companion-bit dispatcher allowlist needed, since the panel
+/// registers these in the `WidgetStore` itself during `paint`).
+///
+/// `layer_id` is passed as a raw `u64` (the `LayerId`/`RtLayerId` newtype's
+/// inner value) so this stays in `ph2d-editor-core` without a dependency edge
+/// to `ph2d-tool-painter` (which would be a cycle).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PainterLayerWidget {
+    /// The row body — click selects (activates) the layer.
+    Row,
+    /// The eye toggle — click flips the layer's visibility.
+    Visibility,
+    /// The opacity slider (stores `0..1`).
+    Opacity,
+    /// The opacity numeric chip paired with [`Self::Opacity`].
+    OpacityChip,
+    /// The blend-mode dropdown chip (opens the blend popover).
+    Blend,
+}
+
+impl PainterLayerWidget {
+    /// Stable tag woven into the hashed id string. Changing a tag changes
+    /// every derived id for that kind — keep stable.
+    #[must_use]
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Row => "row",
+            Self::Visibility => "vis",
+            Self::Opacity => "opacity",
+            Self::OpacityChip => "opacity_chip",
+            Self::Blend => "blend",
+        }
+    }
+
+    /// All kinds, in a fixed order — the decoder iterates this.
+    pub const ALL: [PainterLayerWidget; 5] = [
+        Self::Row,
+        Self::Visibility,
+        Self::Opacity,
+        Self::OpacityChip,
+        Self::Blend,
+    ];
+}
+
+/// Runtime FNV-1a 64-bit over `s`, byte-identical to the `const fn`
+/// [`ph2d_tool_registry::hash_node_id`] (which only accepts `&'static str`).
+/// Needed because the per-row layer ids below are derived from a runtime
+/// `format!` (the layer id is only known at runtime). Kept here, private to
+/// the additive per-row helpers, so the hashing stays consistent with the rest
+/// of the id space (same offset basis / prime / `NodeId(0)` bump).
+fn fnv_node_id_runtime(s: &str) -> NodeId {
+    const FNV_OFFSET_BASIS_64: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
+    let mut hash: u64 = FNV_OFFSET_BASIS_64;
+    for &b in s.as_bytes() {
+        hash ^= b as u64;
+        hash = hash.wrapping_mul(FNV_PRIME_64);
+    }
+    if hash == 0 {
+        hash = 1; // reserve NodeId(0) = a11y root, mirror of hash_node_id
+    }
+    NodeId(hash)
+}
+
+/// Derive the stable [`NodeId`] for the `kind` control on the Painter
+/// layers-panel row whose layer has runtime id `layer_id`. FNV-hashed from
+/// `"painter_layer.<kind>.<layer_id>"`. Runtime `format!` is acceptable here:
+/// the layers panel is not a hot path (≤8 layers, repainted per frame like the
+/// sidebar formats "NN px"). See [`PainterLayerWidget`].
+#[must_use]
+pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
+}
+
+/// Derive the stable [`NodeId`] for blend-mode option `mode` (the
+/// [`BlendMode`](ph2d_painter_brush) wire discriminant, `0..MAX_BLEND_MODES`)
+/// in the open blend dropdown popover of the row whose layer has runtime id
+/// `layer_id`. Only the single open popover's options are ever hit-registered,
+/// so the `format!` cost is bounded.
+#[must_use]
+pub fn painter_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_layer.blendopt.{layer_id}.{mode}"))
+}
 
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and

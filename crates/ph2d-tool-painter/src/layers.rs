@@ -172,6 +172,13 @@ impl LayerStack {
         &self.root
     }
 
+    /// Iterate every layer id in the arena (groups + nested children
+    /// included), in arena order. Used by `PainterTool::handle_panel_event` to
+    /// decode a per-row widget [`NodeId`] back to its layer.
+    pub fn all_ids(&self) -> impl Iterator<Item = LayerId> + '_ {
+        self.arena.iter().map(|l| l.id)
+    }
+
     #[must_use]
     pub fn active(&self) -> Option<LayerId> {
         self.active

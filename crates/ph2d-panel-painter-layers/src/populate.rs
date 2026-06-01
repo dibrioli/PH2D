@@ -1,27 +1,28 @@
-//! Painter layers `populate` — pre-registers widget IDs no `WidgetStore`
-//! ao boot do host (uma vez via `Panel::populate`). Mirror do sidebar.
+//! Painter layers `populate` — pre-registers the panel's **fixed-id** widget
+//! slots in the `WidgetStore` at host boot (once via `Panel::populate`).
 //!
-//! **SCAFFOLD:** só o close (X) button é registrado (é o único widget
-//! pintado pelo chrome). O Implementador registra aqui os widgets das
-//! layer rows (visibility toggle, opacity slider+chip, blend dropdown,
-//! row-select) quando preencher `paint`. Y-7 audit: registrar sem paint
-//! deixa roteamento morto — registre só o que `paint` pinta.
+//! Per-row widgets (eye toggle, opacity slider+chip, blend chip, row select)
+//! have *dynamic* ids derived from the live layer ids, so they are registered
+//! in `paint` via `register_if_absent` (the panel owns `store_mut` there) —
+//! they can't be known at boot. Only the chrome buttons live here.
 
-use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::ButtonState;
-use ph2d_editor_core::interaction::InteractiveState;
 
 pub fn populate(store: &mut WidgetStore) {
-    // Close (X) button.
-    store.register(
+    let buttons = [
         ph2d_editor_core::ids::PAINTER_LAYERS_CLOSE,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
-
-    // TODO(impl W3.T3.4): register per-layer-row widgets (visibility
-    // toggle Button, opacity Slider + NumberInput chip with the affine
-    // link, blend-mode dropdown Button) — one set per visible row, mirror
-    // do register_slider_chip_pair do sidebar.
+        // "+ Layer" footer button.
+        ph2d_editor_core::ids::PAINTER_LAYERS_ADD,
+        // Dock-mode toggle ("Brush") in the header (mode C).
+        ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
+    ];
+    for id in buttons {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }

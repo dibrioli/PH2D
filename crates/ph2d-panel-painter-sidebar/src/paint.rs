@@ -86,6 +86,11 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
+    // Dock-toggle button ("Layers") — mode C: swaps the shared dock slot to
+    // the layers panel. Sits just left of the close (X) button. Mirror do
+    // `ph2d-panel-painter-layers` header toggle ("Brush").
+    paint_dock_toggle(ctx, rect, theme);
+
     // Close (X) button — routes pra CancelActiveTool (canon BgRemoval).
     paint_panel_close_button(
         rect,
@@ -279,4 +284,30 @@ fn paint_color_row(
     hit_index.register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, eye_rect);
     y + ROW_H_PX + row_pad
+}
+
+/// Header dock-toggle ("Layers") — swaps the shared dock slot to the layers
+/// panel (mode C). Placed left of the close button. Mirror do header toggle
+/// ("Brush") em `ph2d-panel-painter-layers`. The toggle state lives on the
+/// `PainterTool` (`dock_shows_layers`), flipped via `handle_panel_event`; the
+/// shell `painter_bridge` reads it to drive panel visibility.
+fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
+    const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
+    let close = panel_close_button_rect(rect);
+    let btn_rect = Rect::new(
+        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
+        close.y,
+        TOGGLE_BTN_W,
+        close.h,
+    );
+    let st = ctx
+        .host
+        .store()
+        .button_state(core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK)
+        .unwrap_or(ButtonState::Normal);
+    let btn = Button::new(core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK, "Layers").state(st);
+    paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK, btn_rect);
 }

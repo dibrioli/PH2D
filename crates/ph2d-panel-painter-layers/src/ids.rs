@@ -5,11 +5,13 @@
 //! source of truth) para que `PainterTool::handle_panel_event` possa
 //! referenciá-los sem cycle dep (tool → panel-layers).
 //!
-//! **SCAFFOLD:** só o panel container + close existem hoje. O Implementador
-//! adiciona `PAINTER_LAYERS_*` para os widgets das rows (visibility,
-//! opacity slider/chip, blend dropdown, reorder handle) em editor-core
-//! `ids.rs` e re-exporta aqui.
+//! Container + close are fixed; the "+ Layer" footer button and the header
+//! dock-toggle are also fixed ids. The per-row widget ids (visibility / opacity
+//! slider+chip / blend chip / row-select) are *dynamic* — derived at paint time
+//! via [`ph2d_editor_core::ids::painter_layer_widget_id`] — so they aren't
+//! re-exported here.
 
 pub use ph2d_editor_core::ids::{
-    PAINTER_LAYERS_CLOSE as CLOSE, PAINTER_LAYERS_PANEL as PANEL,
+    PAINTER_LAYERS_ADD as ADD, PAINTER_LAYERS_CLOSE as CLOSE, PAINTER_LAYERS_PANEL as PANEL,
+    PAINTER_LAYERS_TOGGLE_DOCK as TOGGLE_DOCK,
 };

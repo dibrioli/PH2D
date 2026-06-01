@@ -30,6 +30,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
+        // Dock-mode toggle ("Layers") → forward as Click; the tool flips
+        // `dock_shows_layers` and the shell swaps the docked panel (mode C).
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_TOGGLE_DOCK => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Slider drag — read freshly-dispatched value, forward normalizado.
         // PainterTool::handle_panel_event mapeia 0..1 back to size_px /
         // opacity full scale conforme `PainterUiEdit` semântica.

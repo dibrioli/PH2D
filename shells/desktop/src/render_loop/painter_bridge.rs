@@ -108,19 +108,27 @@ pub(super) fn dispatch(
     let undo_requested = std::mem::take(undo_requested);
     let redo_requested = std::mem::take(redo_requested);
 
-    // ── (W2.T2.1) Sidebar visibility + Inspector takeover toggle ──────────
-    // Espelha o padrão BgRemoval/Padding bridge: panel sidebar é "takeover"
-    // do slot Inspector quando Painter ativo. Edge-triggered inspector hide
-    // pra não stompar toggle manual do rail (Wave 10 Etapa 4 fix).
+    // ── (W2.T2.1 + W3.T3.4) Dock visibility (mode C toggle) ───────────────
+    // Espelha o padrão BgRemoval/Padding bridge: o slot Inspector vira
+    // "takeover" do Painter quando ativo. Mode C (Enio): o slot compartilhado
+    // alterna entre a brush sidebar e o layers panel via
+    // `PainterTool::dock_shows_layers` (flipado por qualquer um dos toggles de
+    // header). Lê o flag via downcast (o estado vive no tool, não num painel —
+    // evita dep panel→panel). Edge-triggered inspector hide pra não stompar
+    // toggle manual do rail (Wave 10 Etapa 4 fix).
+    let painter_shows_layers = painter_is_active
+        && tools
+            .active_mut()
+            .and_then(|t| {
+                t.as_any_mut()
+                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+            })
+            .map(|p| p.dock_shows_layers())
+            .unwrap_or(false);
     hero.panel_visibility
-        .insert("painter_sidebar", painter_is_active);
-    // W3.T3.4 SCAFFOLD: the layers panel is wired + docks, but stays HIDDEN
-    // for now. It currently shares the Inspector takeover slot with the
-    // brush sidebar, so showing it would overlap/cover Color/Size/Opacity/
-    // eyedropper. The implementer flips this on (→ `painter_is_active` or a
-    // dedicated toggle) once the real rows land AND the sidebar-vs-layers
-    // dock layout is resolved (side-by-side / stacked / toggle).
-    hero.panel_visibility.insert("painter_layers", false);
+        .insert("painter_sidebar", painter_is_active && !painter_shows_layers);
+    hero.panel_visibility
+        .insert("painter_layers", painter_is_active && painter_shows_layers);
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -268,13 +276,14 @@ pub(super) fn dispatch(
             None
         });
 
-        // (W3.T3.4 SCAFFOLD) Layers snapshot publish pro docked layers panel.
-        // Publica `None` por enquanto → panel pinta o placeholder "No layers".
-        // TODO(impl W3.T3.4): quando o tool↔LayerStack integration landar
-        // (foundational, Coordenador), trocar por
-        // `Some(painter.layer_stack().clone())` quando painter_is_active.
+        // (W3.T3.4) Layers snapshot publish pro docked layers panel — the
+        // panel paints a row per layer off this clone. `None` when Painter is
+        // inactive (panel falls back to the "No layers" placeholder / is
+        // hidden anyway).
         #[cfg(feature = "panel-painter-layers")]
-        ph2d_panel_painter_layers::set_current_layers(None);
+        ph2d_panel_painter_layers::set_current_layers(
+            painter_is_active.then(|| painter.layers().clone()),
+        );
 
         // ── (W2.T2.3) Color thumb ⟷ Blender picker round-trip ──────────
         //

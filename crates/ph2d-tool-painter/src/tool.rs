@@ -390,6 +390,14 @@ pub struct PainterTool {
     /// `end_stroke`) so a later redo can never resurrect a record from a
     /// discarded branch. (See `new_stroke_after_undo_invalidates_redo`.)
     undo_redo_records: Vec<StrokeRecord>,
+    /// **W3.T3.4 dock toggle (mode C):** which painter panel occupies the
+    /// shared right-dock slot — `false` = brush sidebar, `true` = layers panel.
+    /// Toggled via `handle_panel_event` (either panel's header toggle button);
+    /// the shell `painter_bridge` reads this (downcast) to drive
+    /// `panel_visibility` for `painter_sidebar` / `painter_layers`. Lives on the
+    /// tool (not a panel) so both panels + the shell agree without a
+    /// panel→panel dependency (`architecture_cycle_prevention` forbids it).
+    dock_shows_layers: bool,
 }
 
 impl Default for PainterTool {
@@ -434,6 +442,7 @@ impl Default for PainterTool {
             undo: crate::undo::UndoController::default(),
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
+            dock_shows_layers: false,
         }
     }
 }
@@ -1397,6 +1406,42 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    // ── W3.T3.4 dock toggle (mode C) ────────────────────────────────────
+
+    /// Which painter panel is shown in the shared right-dock slot —
+    /// `false` = brush sidebar, `true` = layers panel. The shell
+    /// `painter_bridge` reads this to compute `panel_visibility`.
+    #[must_use]
+    pub fn dock_shows_layers(&self) -> bool {
+        self.dock_shows_layers
+    }
+
+    /// Flip the dock between the brush sidebar and the layers panel. Raised by
+    /// either panel's header toggle button (`handle_panel_event`).
+    pub fn toggle_dock(&mut self) {
+        self.dock_shows_layers = !self.dock_shows_layers;
+    }
+
+    /// Decode a per-row layers-panel widget [`NodeId`] back to its
+    /// `(layer, kind)` by recomputing [`painter_layer_widget_id`] for every
+    /// current layer × kind and matching. `None` if `id` isn't a per-row
+    /// widget of any layer. (≤8 layers × 5 kinds = ≤40 cheap FNV hashes; the
+    /// layers panel is not a hot path.)
+    fn decode_layer_widget(
+        &self,
+        id: ph2d_a11y::NodeId,
+    ) -> Option<(RtLayerId, ph2d_editor_core::ids::PainterLayerWidget)> {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        for layer in self.layers.all_ids() {
+            for kind in PainterLayerWidget::ALL {
+                if painter_layer_widget_id(layer.0, kind) == id {
+                    return Some((layer, kind));
+                }
+            }
+        }
+        None
+    }
+
     /// Configura `next_seq` baseline pra anchor monotonic per-canvas.
     /// Caller invoca após `load(canon_bytes)` passando
     /// `paint_project.last_persisted_seq().map(|s| s + 1).unwrap_or(0)`
@@ -1762,22 +1807,62 @@ impl Tool for PainterTool {
         // square (T2.4 eyedropper-while-held) não têm paint nesta wave;
         // o roteamento delas volta junto do paint correspondente.
         use crate::params::PainterUiEdit;
-        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
         match event {
+            // ── Brush sidebar sliders (W2.T2.1) ───────────────────────────
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_SIZE_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Size(v as f32));
             }
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
             }
+            // ── Dock toggle (mode C) — either panel's header button ────────
+            PanelEvent::Click(id)
+                if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
+                    || id == core_ids::PAINTER_SIDEBAR_TOGGLE_DOCK =>
+            {
+                self.toggle_dock();
+            }
+            // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
+                let name = format!("Layer {}", self.layers.len() + 1);
+                self.add_raster_layer(name);
+            }
+            // ── Layers panel: per-row click (row select / visibility eye) ──
+            PanelEvent::Click(id) => {
+                if let Some((layer, kind)) = self.decode_layer_widget(id) {
+                    match kind {
+                        PainterLayerWidget::Row => self.select_layer(layer),
+                        PainterLayerWidget::Visibility => {
+                            let now = self.layers.get(layer).map(|l| l.visible).unwrap_or(true);
+                            self.set_layer_visible(layer, !now);
+                        }
+                        // Opacity slider/chip emit SetValue; Blend emits
+                        // SelectOption — neither arrives as a Click.
+                        _ => {}
+                    }
+                }
+            }
+            // ── Layers panel: per-row opacity slider (stores 0..1) ─────────
+            PanelEvent::SetValue(id, v) => {
+                if let Some((layer, PainterLayerWidget::Opacity)) = self.decode_layer_widget(id) {
+                    self.set_layer_opacity(layer, v as f32);
+                }
+            }
+            // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
+            PanelEvent::SelectOption(id, value) => {
+                if let Some((layer, PainterLayerWidget::Blend)) = self.decode_layer_widget(id)
+                    && let Ok(mode) = value.parse::<u8>()
+                {
+                    self.set_layer_blend_mode(layer, BlendMode::from_u8(mode));
+                }
+            }
             // **W2.T2.4:** the eyedropper icon no longer routes through here
             // — the sidebar arms the picker's `eyedropper_pending` directly
             // (panel `event.rs`), so the sampled pixel flows back via the
-            // shared picker → painter_bridge path (`SetColorSrgb`). The
-            // `ToggleEyedropper` UI-edit + `eyedropper_armed` flag remain for
-            // any future direct-arm caller.
-            _ => {}
+            // shared picker → painter_bridge path (`SetColorSrgb`).
+            PanelEvent::Toggle(_, _) => {}
         }
     }
 
@@ -2222,6 +2307,108 @@ mod tests {
         // Back to top → transparent again.
         t.select_layer(top);
         assert!(t.canvas_rgba.iter().all(|&b| b == 0));
+    }
+
+    // ── W3.T3.4 UI-plumbing: handle_panel_event routing (per-row decode) ──
+
+    #[test]
+    fn panel_event_add_layer_creates_and_activates() {
+        use ph2d_editor_core::ids::PAINTER_LAYERS_ADD;
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        assert_eq!(t.layers().len(), 1);
+        let before = t.layers().active();
+        t.handle_panel_event(PanelEvent::Click(PAINTER_LAYERS_ADD));
+        assert_eq!(t.layers().len(), 2, "+Layer adds a raster layer");
+        assert_ne!(t.layers().active(), before, "the new layer becomes active");
+    }
+
+    #[test]
+    fn panel_event_eye_click_toggles_visibility() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        let id = t.layers().active().unwrap();
+        let eye = painter_layer_widget_id(id.0, PainterLayerWidget::Visibility);
+        assert!(t.layers().get(id).unwrap().visible);
+        t.handle_panel_event(PanelEvent::Click(eye));
+        assert!(!t.layers().get(id).unwrap().visible, "eye click hides");
+        t.handle_panel_event(PanelEvent::Click(eye));
+        assert!(t.layers().get(id).unwrap().visible, "eye click re-shows");
+    }
+
+    #[test]
+    fn panel_event_opacity_setvalue_sets_layer_opacity() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        let id = t.layers().active().unwrap();
+        let slider = painter_layer_widget_id(id.0, PainterLayerWidget::Opacity);
+        t.handle_panel_event(PanelEvent::SetValue(slider, 0.5));
+        assert!((t.layers().get(id).unwrap().opacity - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn panel_event_blend_selectoption_sets_mode() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        let id = t.layers().active().unwrap();
+        let blend = painter_layer_widget_id(id.0, PainterLayerWidget::Blend);
+        t.handle_panel_event(PanelEvent::SelectOption(
+            blend,
+            BlendMode::Multiply.to_u8().to_string(),
+        ));
+        assert_eq!(t.layers().get(id).unwrap().blend_mode, BlendMode::Multiply);
+    }
+
+    #[test]
+    fn panel_event_row_click_selects_layer() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        let base = t.layers().active().unwrap();
+        let top = t.add_raster_layer("Layer 2").unwrap();
+        assert_eq!(t.layers().active(), Some(top));
+        let row = painter_layer_widget_id(base.0, PainterLayerWidget::Row);
+        t.handle_panel_event(PanelEvent::Click(row));
+        assert_eq!(t.layers().active(), Some(base), "row click selects that layer");
+    }
+
+    #[test]
+    fn panel_event_dock_toggle_flips_from_either_panel() {
+        use ph2d_editor_core::ids::{PAINTER_LAYERS_TOGGLE_DOCK, PAINTER_SIDEBAR_TOGGLE_DOCK};
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        assert!(!t.dock_shows_layers());
+        t.handle_panel_event(PanelEvent::Click(PAINTER_SIDEBAR_TOGGLE_DOCK));
+        assert!(t.dock_shows_layers(), "sidebar 'Layers' shows the layers panel");
+        t.handle_panel_event(PanelEvent::Click(PAINTER_LAYERS_TOGGLE_DOCK));
+        assert!(!t.dock_shows_layers(), "layers 'Brush' shows the brush sidebar");
+    }
+
+    #[test]
+    fn panel_event_chrome_ids_are_not_decoded_as_rows() {
+        // A fixed chrome id (the +Layer button) must take the ADD branch, not
+        // be misread as a per-row widget (collision-safety of the hash ids).
+        use ph2d_editor_core::ids::{PAINTER_LAYERS_ADD, PainterLayerWidget};
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0; 4]), 2, 2);
+        assert!(
+            t.decode_layer_widget(PAINTER_LAYERS_ADD).is_none(),
+            "the +Layer chrome id is not a per-row widget"
+        );
+        // And every real per-row id decodes back to its (layer, kind).
+        let id = t.layers().active().unwrap();
+        for kind in PainterLayerWidget::ALL {
+            let wid = ph2d_editor_core::ids::painter_layer_widget_id(id.0, kind);
+            assert_eq!(t.decode_layer_widget(wid), Some((id, kind)));
+        }
     }
 
     #[test]

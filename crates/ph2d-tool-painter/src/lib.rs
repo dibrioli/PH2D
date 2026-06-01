@@ -40,6 +40,9 @@ pub use layers::{
     GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH, MaskLayer,
     RasterLayer,
 };
+// Re-export so callers of `set_layer_blend_mode` / the layers panel can name
+// the blend mode without a direct `ph2d-painter-brush` import.
+pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
 pub use params::{
     PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,

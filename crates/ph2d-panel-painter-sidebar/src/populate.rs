@@ -34,6 +34,15 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
+    // Dock-mode toggle ("Layers") in the header (mode C) — swaps the shared
+    // dock slot to the layers panel.
+    store.register(
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
     // Modifier square (T2.4) — eyedropper-while-held affordance. Painted in
     // `paint::paint_modifier_square`, so registering it here is live (not
     // dead routing). Dispatcher tracks hover/press + emits its `Click`.

@@ -316,8 +316,13 @@ impl LayerStack {
         if self.is_descendant(group_id, id) {
             return false;
         }
-        // Depth check: the group's own depth + 1 (for `id`) must stay ≤ cap.
-        if self.depth(group_id) + 1 > MAX_GROUP_DEPTH {
+        // Depth check (audit W3): cap the moved item at depth
+        // `MAX_GROUP_DEPTH - 1` (i.e. ≤ 8 levels, depths 0..=7). This matches
+        // the FROZEN savefile validator (`ph2d-painter-stroke` rejects a Group
+        // node at depth ≥ MAX_GROUP_DEPTH), so a runtime tree built here is
+        // always saveable. (Was `> MAX_GROUP_DEPTH`, which allowed a 9th level
+        // the savefile would reject — divergence flagged to the Coordinator.)
+        if self.depth(group_id) + 1 >= MAX_GROUP_DEPTH {
             return false;
         }
         // Detach from current parent.
@@ -369,6 +374,14 @@ impl LayerStack {
         }
         // Drop from arena.
         self.arena.retain(|l| !to_remove.contains(&l.id));
+        // Scrub any dangling mask reference pointing at a removed layer
+        // (audit W3: a mask child is part of the owner's subtree, but a mask
+        // removed independently must not leave its owner pointing at a dead id).
+        for layer in &mut self.arena {
+            if layer.mask.is_some_and(|m| to_remove.contains(&m)) {
+                layer.mask = None;
+            }
+        }
         if self.active.is_some_and(|a| to_remove.contains(&a)) {
             self.active = self.root.first().copied();
         }
@@ -376,6 +389,11 @@ impl LayerStack {
 
     fn collect_subtree(&self, id: LayerId, out: &mut Vec<LayerId>) {
         out.push(id);
+        // TODO(W3.T3.5 mask wiring): when masks become creatable, a layer's
+        // mask child must be collected here too (else removing the owner leaks
+        // its mask). Deferred — the mask's structural membership (root vs
+        // owner-attached) is undefined until T3.5 designs mask creation; the
+        // dangling-owner-ref case is already handled by `remove`'s scrub.
         if let Some(Layer { kind: LayerKind::Group(g), .. }) = self.get(id) {
             for &child in &g.children {
                 self.collect_subtree(child, out);
@@ -452,29 +470,43 @@ mod tests {
     }
 
     #[test]
-    fn group_depth_cap_rejects_level_9() {
+    fn group_nesting_capped_at_8_levels_matching_savefile() {
         let mut s = LayerStack::new();
-        // Build a chain of 8 nested groups (depths 0..=7), then a 9th.
         let mut groups = Vec::new();
-        for i in 0..MAX_GROUP_DEPTH + 1 {
+        for i in 0..MAX_GROUP_DEPTH + 2 {
             groups.push(s.add_group(format!("g{i}")).unwrap());
         }
-        // Nest g1 in g0, g2 in g1, ... up to the cap.
-        // g0 depth 0; nesting g1→g0 gives g1 depth 1; ... g7→g6 gives depth 7.
-        let mut ok_depth = 0;
-        for i in 1..groups.len() {
-            let moved = s.move_into_group(groups[i], groups[i - 1]);
-            if moved {
-                ok_depth = i;
+        // Nest the chain as deep as the cap allows.
+        let mut deepest = groups[0]; // depth 0
+        for &g in &groups[1..] {
+            if s.move_into_group(g, deepest) {
+                deepest = g;
             } else {
-                // The move that would push depth to 8 (a 9th level) is rejected.
                 break;
             }
         }
-        // Deepest successful nest sits at depth ≤ MAX_GROUP_DEPTH.
-        assert!(s.depth(groups[ok_depth]) <= MAX_GROUP_DEPTH);
-        // The cap held: the level-9 nest was rejected.
-        assert!(ok_depth < groups.len() - 1 || s.depth(groups[ok_depth]) <= MAX_GROUP_DEPTH);
+        // Deepest group sits at depth MAX_GROUP_DEPTH-1 = 7 → 8 levels (0..=7),
+        // matching the frozen savefile validator (rejects a Group at depth ≥ 8).
+        assert_eq!(s.depth(deepest), MAX_GROUP_DEPTH - 1);
+        // A further nest (would reach depth MAX_GROUP_DEPTH) is rejected.
+        let extra = *groups.last().unwrap();
+        assert!(
+            !s.move_into_group(extra, deepest),
+            "nesting past {MAX_GROUP_DEPTH} levels must be rejected (savefile parity)"
+        );
+    }
+
+    #[test]
+    fn remove_scrubs_dangling_mask_reference() {
+        // audit W3: removing a layer that another layer references as its mask
+        // must scrub the now-dangling ref (no `mask: Some(dead_id)`).
+        let mut s = LayerStack::new();
+        let owner = s.add_raster("owner", 8, 8).unwrap();
+        let mask = s.add_raster("mask", 8, 8).unwrap();
+        s.get_mut(owner).unwrap().mask = Some(mask);
+        s.remove(mask);
+        assert!(s.get(owner).is_some(), "owner survives mask removal");
+        assert_eq!(s.get(owner).unwrap().mask, None, "dangling mask ref scrubbed");
     }
 
     #[test]

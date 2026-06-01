@@ -225,7 +225,7 @@ fn paint_layer_subtree(
         );
 
         // Meta: "Blend  NN%" (dim, right column).
-        let meta = format!("{}  {:.0}%", layer.blend_mode.name(), layer.opacity * 100.0);
+        let meta = format!("{}  {:.0}%", layer.blend_mode.name(), layer.opacity * 100.0); // LITERAL-PX-OK: opacity fraction→percent for the meta string, not a design value
         paint_text(
             ctx.text_system,
             ctx.scene,

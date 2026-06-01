@@ -194,10 +194,18 @@ pub fn apply(mode: BlendMode, dst: [f32; 4], src: [f32; 4]) -> [f32; 4] {
         let cs_eff = (1.0 - ab) * cs[ch] + ab * blended[ch];
         // premultiplied source-over, then un-premultiply by αo
         let co_premul = as_ * cs_eff + ab * (1.0 - as_) * cb[ch];
-        *o = (co_premul / ao).clamp(0.0, 1.0);
+        *o = sanitize01(co_premul / ao);
     }
     out[3] = ao;
     out
+}
+
+/// Clamp to `[0, 1]`, mapping non-finite (NaN/±∞) to 0 — `f32::clamp`
+/// passes NaN through, so a single corrupt input texel would otherwise
+/// poison a whole layer. Defense-in-depth (audit W3 L-1).
+#[inline]
+fn sanitize01(v: f32) -> f32 {
+    if v.is_finite() { v.clamp(0.0, 1.0) } else { 0.0 }
 }
 
 /// Plain source-over (`Normal`) — used by `Behind` with swapped roles.
@@ -211,7 +219,7 @@ fn over(top: [f32; 4], bottom: [f32; 4]) -> [f32; 4] {
     let mut out = [0.0f32; 4];
     for (ch, o) in out.iter_mut().take(3).enumerate() {
         let premul = at * top[ch] + abm * (1.0 - at) * bottom[ch];
-        *o = (premul / ao).clamp(0.0, 1.0);
+        *o = sanitize01(premul / ao);
     }
     out[3] = ao;
     out
@@ -537,5 +545,14 @@ mod tests {
             let out = apply(mode, dst, src);
             assert!((out[3] - 0.7).abs() < EPS, "{mode:?} αo wrong: {}", out[3]);
         }
+    }
+
+    #[test]
+    fn nan_input_is_sanitized_not_propagated() {
+        // A single corrupt (NaN) source channel must not poison the output
+        // (audit W3 L-1 — `f32::clamp` passes NaN through).
+        let out = apply(BlendMode::Normal, [0.2, 0.4, 0.6, 1.0], [f32::NAN, 0.5, 0.5, 1.0]);
+        assert!(out.iter().all(|c| c.is_finite()), "NaN propagated: {out:?}");
+        assert_eq!(out[0], 0.0, "NaN channel sanitized to 0");
     }
 }

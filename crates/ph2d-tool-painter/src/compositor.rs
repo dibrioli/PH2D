@@ -17,7 +17,7 @@
 //! `ph2d-render` sibling; this CPU path backs the dirty-rect / golden
 //! correctness gates and is what tests assert against.
 
-use crate::layers::{LayerId, LayerKind, LayerStack};
+use crate::layers::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH};
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_painter_brush::{BlendMode, apply_blend};
 use std::collections::BTreeMap;
@@ -96,7 +96,7 @@ pub struct Region {
 
 /// Composite the whole stack → canvas-sized straight sRGB8 RGBA.
 #[must_use]
-pub fn composite(stack: &LayerStack, src: &impl LayerPixelSource, width: u32, height: u32) -> Vec<u8> {
+pub fn composite(stack: &LayerStack, src: &impl LayerPixelSource, width: u32, height: u32) -> Vec<u8> { // COLOR-RAW-OK: straight sRGB8 canvas pixels — GPU-uploadable blob (mirrors ph2d-render LayerPixels.rgba8), not a typed color value
     let region = Region { x: 0, y: 0, w: width, h: height };
     let acc = composite_region_linear(stack, src, width, height, region);
     encode(&acc)
@@ -144,7 +144,7 @@ fn composite_region_linear(
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-    composite_into(&mut acc, stack.root(), stack, src, width, rx, ry, rw, rh);
+    composite_into(&mut acc, stack.root(), stack, src, width, rx, ry, rw, rh, 0);
     acc
 }
 
@@ -162,7 +162,15 @@ fn composite_into(
     ry: u32,
     rw: u32,
     rh: u32,
+    depth: usize,
 ) {
+    // Defense-in-depth (audit W3): never recurse past the group-nesting cap,
+    // even if a (future deserialized / forged) stack smuggles a cycle or an
+    // over-deep tree past the data-model guards — bounded work, no stack
+    // overflow. The runtime API already caps construction at MAX_GROUP_DEPTH.
+    if depth > MAX_GROUP_DEPTH {
+        return;
+    }
     // Bottom-to-top (§2.11): the panel order is top-first, so iterate rev.
     for &id in ids.iter().rev() {
         let Some(layer) = stack.get(id) else { continue };
@@ -193,7 +201,7 @@ fn composite_into(
                 // Composite the children into their own sub-window, then
                 // blend that as a single layer (group blend/opacity).
                 let mut sub = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-                composite_into(&mut sub, &g.children, stack, src, canvas_w, rx, ry, rw, rh);
+                composite_into(&mut sub, &g.children, stack, src, canvas_w, rx, ry, rw, rh, depth + 1);
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let lx = gx - rx;
                     let ly = gy - ry;
@@ -397,6 +405,55 @@ mod tests {
                     &full[fi..fi + 4],
                     &part[pi..pi + 4],
                     "dirty-rect pixel ({gx},{gy}) diverged from full recompose"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dirty_rect_matches_full_with_group_and_blend() {
+        // audit W3 F2: exercise the GROUP sub-window recursion in the dirty-rect
+        // path (the flat-raster test above doesn't). A nested group with a
+        // blended child must crop bit-for-bit too.
+        let (w, h) = (4, 4);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", w, h).unwrap();
+        let group = s.add_group("group").unwrap();
+        let child = s.add_raster("child", w, h).unwrap();
+        s.move_into_group(child, group);
+        s.set_blend_mode(child, BlendMode::Multiply);
+        s.set_opacity(child, 0.6);
+        s.set_blend_mode(group, BlendMode::Screen);
+        s.set_opacity(group, 0.8);
+        let mut src = MapPixelSource::default();
+        let mut bimg = LayerImage::transparent(w, h);
+        let mut cimg = LayerImage::transparent(w, h);
+        for i in 0..(w * h) as usize {
+            bimg.rgba8[i * 4] = (i * 11 % 256) as u8;
+            bimg.rgba8[i * 4 + 1] = (i * 7 % 256) as u8;
+            bimg.rgba8[i * 4 + 2] = (i * 5 % 256) as u8;
+            bimg.rgba8[i * 4 + 3] = 255;
+            cimg.rgba8[i * 4] = (i * 13 % 256) as u8;
+            cimg.rgba8[i * 4 + 1] = (i * 3 % 256) as u8;
+            cimg.rgba8[i * 4 + 2] = (i * 17 % 256) as u8;
+            cimg.rgba8[i * 4 + 3] = 200;
+        }
+        src.insert(base, bimg);
+        src.insert(child, cimg);
+
+        let full = composite(&s, &src, w, h);
+        let region = Region { x: 1, y: 0, w: 2, h: 3 };
+        let part = composite_region(&s, &src, w, h, region);
+        for ly in 0..region.h {
+            for lx in 0..region.w {
+                let gx = region.x + lx;
+                let gy = region.y + ly;
+                let fi = ((gy * w + gx) * 4) as usize;
+                let pi = ((ly * region.w + lx) * 4) as usize;
+                assert_eq!(
+                    &full[fi..fi + 4],
+                    &part[pi..pi + 4],
+                    "group dirty-rect pixel ({gx},{gy}) diverged"
                 );
             }
         }

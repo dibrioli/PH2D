@@ -1302,6 +1302,19 @@ impl PainterTool {
         self.preview_dirty = true;
     }
 
+    /// Drop undo/redo history at a layer switch. **Audit W3 (data-loss):**
+    /// the undo controller snapshots `canvas_rgba` = whatever layer is active
+    /// NOW; it is NOT yet layer-keyed. Without this reset, undo after switching
+    /// layers would blit one layer's pre-image onto a DIFFERENT layer's working
+    /// buffer. Clearing on switch makes undo not cross a layer change — safe
+    /// v1; per-layer (transactional) undo is the Coordinator's follow-up.
+    /// Mirror of the reset `set_source` does.
+    fn reset_undo_after_layer_switch(&mut self) {
+        self.undo.clear();
+        self.undo_redo_records.clear();
+        self.pending_pre_stroke = None;
+    }
+
     /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.
     pub fn set_layer_visible(&mut self, id: RtLayerId, visible: bool) {
         self.layers.set_visible(id, visible);
@@ -1349,10 +1362,17 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return None;
         }
+        // Cap check BEFORE flushing (audit W3): otherwise a cap-hit add would
+        // leave the just-flushed active layer stranded in `images`, breaking
+        // the "active is never in images" invariant.
+        if self.layers.len() >= crate::layers::HARD_CAP_LAYERS {
+            return None;
+        }
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]);
+        self.reset_undo_after_layer_switch();
         self.invalidate_composite();
         Some(id)
     }
@@ -1373,6 +1393,7 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.layers.set_active(id);
+        self.reset_undo_after_layer_switch();
         self.invalidate_composite();
     }
 

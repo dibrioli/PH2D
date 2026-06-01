@@ -2006,22 +2006,30 @@ impl RasterEditTool for PainterTool {
     /// place via CPU path. Não toca state — bridge é responsável por
     /// chamar `deactivate` se for o ciclo de fim-de-tool.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
-        // **R5-LI-C fix:** `mem::replace` takes the original Arc out
-        // (leaving an empty stub) BEFORE `unwrap_or_clone` is called.
-        // Without this, `Arc::clone(&self.canvas_rgba)` bumps the
-        // refcount before unwrap sees it, forcing the clone branch
-        // ALWAYS. With mem::replace, the bridge already dropped its
-        // `painter_preview = None` in the Apply teardown path
-        // (`painter_bridge.rs:202`), so the take-out arc has refcount=1
-        // → `unwrap_or_clone` returns the inner Vec without allocation.
-        // The stub `Arc::new(Vec::new())` is harmless: `deactivate`
-        // immediately replaces it on the standard Apply teardown.
+        let (w, h) = self.source_size;
+        // **W3 multi-layer Apply:** bake the full layer COMPOSITE (exactly what
+        // the live preview shows — base layer + every layer above with their
+        // opacity / blend / visibility), not just the active layer's working
+        // buffer. Without this, Apply with ≥2 layers silently discards the
+        // non-active layers (data loss + the baked sprite would not match the
+        // preview). Mirror of `take_preview_arc` / `current_preview`.
+        if !self.is_trivial_stack() {
+            let active = self.layers.active().unwrap_or(RtLayerId(0));
+            let src = ToolPixelSource {
+                active_id: active,
+                active_rgba: &self.canvas_rgba,
+                images: &self.images,
+            };
+            return (composite(&self.layers, &src, w, h), w, h);
+        }
+        // Trivial single-layer fast path. **R5-LI-C:** `mem::replace` takes the
+        // original Arc out (leaving an empty stub) BEFORE `unwrap_or_clone`, so
+        // the take-out arc has refcount=1 → `unwrap_or_clone` returns the inner
+        // Vec without allocation (the bridge already dropped its preview Arc in
+        // the Apply teardown path). The stub is harmless: `deactivate` replaces
+        // it immediately on the standard Apply teardown.
         let canvas = std::mem::replace(&mut self.canvas_rgba, Arc::new(Vec::new()));
-        (
-            Arc::unwrap_or_clone(canvas),
-            self.source_size.0,
-            self.source_size.1,
-        )
+        (Arc::unwrap_or_clone(canvas), w, h)
     }
 
     fn deactivate(&mut self) {
@@ -2523,6 +2531,19 @@ mod tests {
         let (out, w, h) = t.run_full();
         assert_eq!((w, h), (4, 4));
         assert_eq!(out, src);
+    }
+
+    #[test]
+    fn run_full_bakes_multi_layer_composite() {
+        // Apply must bake the full composite (what the preview shows), not just
+        // the active layer — else the other layers are lost on Apply.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2); // base red (Layer 1)
+        let _top = t.add_raster_layer("Layer 2").unwrap(); // transparent top, active
+        t.canvas_rgba = std::sync::Arc::new([0, 0, 200, 255].repeat(4)); // paint top blue
+        let (out, w, h) = t.run_full();
+        assert_eq!((w, h), (2, 2));
+        assert_eq!(&out[0..3], &[0, 0, 200], "Apply bakes the composite (blue top over red base)");
     }
 
     /// **Audit T1.6 R7 L1-5 contract update:** `queue_pointer` without

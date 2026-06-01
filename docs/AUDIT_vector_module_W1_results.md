@@ -138,6 +138,39 @@ Recomendação: **(1)** — remove a liability (C1/C2/C3) imediatamente, e o sce
 ---
 
 ## §7 — Sobre T1.4 / T1.6 / T1.8 (pergunta do §4 do handoff)
-- **T1.4 (Levien cubic fit)**: `cubic_fit.rs` é stub straight-line. Faz sentido manter como W2 — sem dependência quebrada.
-- **T1.6 (CRDT)**: `crdt.rs` stub + `BatchOp` slot reservado removido por segurança (correto). Quando landar, exige custom `Deserialize` depth-bounded + gate (M-nota da Lente A). Re-escopar p/ depois da decisão §6.
-- **T1.8 (audit formal)**: **esta auditoria o substitui em parte.** Re-rodar como mini-audit (1 round, lentes que pegaram alvo grande) APÓS os Blocos 1+2, pra confirmar fixes.
+- **T1.4 (Levien cubic fit)**: ~~stub straight-line~~ **CORRIGIDO 2026-06-01: já IMPLEMENTADO.** `cubic_fit.rs` é um fit Levien moment-matching completo (`fit_cubic_levien`, ~244 LOC, bracket-and-bisect, HR-5-clean, HR-4 NaN/Inf-guarded, Hausdorff scorer two-sided) + 13 testes in-module + `tests/cubic_fit_levien.rs` com fixtures reais (arcos 60°/90°, S-curve `<0.5px`, round-trip exato `<0.25px`, equivariância rotação/translação, controles negativos 180°/closed-loop). A afirmação "stub" acima estava desatualizada. Falta só o subdivisor multi-cubic (split em ≤90° chords) = W2.
+- **T1.6 (CRDT)**: `crdt.rs` stub (42 LOC, `CrdtReplay{site_id, peer_clocks}` sem `apply/merge/replay`) — forward-compat correto, `crdt_state = None` no W1. Quando landar, exige custom `Deserialize` depth-bounded + gate. Genuinamente W2.
+- **T1.8 (audit formal)**: **executado 2026-06-01** — ver §8.
+
+---
+
+## §8 — T1.8: mini-auditoria de confirmação + FECHAMENTO W1 (2026-06-01)
+
+**Método:** 3 lentes adversariais paralelas read-only (A+G arch/security · D+B correctness/UX · F+E testing/quality) sobre a working tree viva pós-remediação. Cada achado classificado CONFIRMED-FIXED / STILL-OPEN / NEW-REGRESSION com file:line.
+
+**Resultado:** remediação **CONFIRMADA**. Tudo do escopo Bloco 1 + Bloco 2-foundational verificado FIXED em código (não verbal):
+
+| Finding | Verdito T1.8 | Evidência |
+|---|---|---|
+| C1 (lixo .ph2d-vector) | ✅ FIXED | `.gitignore:57` + zero arquivos no root |
+| C2/C3/M6 (auto-save) | ✅ FIXED | zero `fs::write`/`as_secs` nos shell files; cena in-memory |
+| C4 (gate vello_kurbo "mentira-doc") | ✅ FIXED (2026-06-01) | CLAUDE.md §6 + ADR-0059 §2.8 + README §7.1/L6F1 todos marcados "W2-deferred — não existe ainda" (`69febf7`) |
+| H1 (HR-3 hot-path) | ✅ FIXED | overlay indexado O(N) via BTreeMap lookup; scratch BezPath reusado |
+| H2 (clear-scene) | ✅ FIXED | Esc-idle → `committed_vector_pen_paths.clear()` in-memory = **opção (1)** |
+| H3 (bounded_decode pré-decode) | ✅ FIXED | `bytes.len() > MAX_ASSET_SIZE` antes de `from_bytes`; doc honesto |
+| H4 (3 consts LLM-gen) | ✅ FIXED | consts + gate value-asserting em `architecture_vector_contract_surface` |
+| H5/M3 (Camera2d affine) | ✅ FIXED | `world_to_screen_affine` fonte única + round-trip test; cópia shell deletada |
+| H7(a) (Esc cancela path) | ✅ FIXED | `try_vector_pen_escape` → `reset_path`, wired em keyboard.rs |
+| H7(b) (toast destrutivo no deactivate) | ✅ FIXED (2026-06-01) | `pen_has_in_progress_path` (downcast no bridge allowlisted) + `Toast::warning` no drain `CancelActiveTool` (`69febf7`) |
+| M1/M9 (gate strict) | ✅ FIXED | `assert_capped_strict`/`assert_exact_strict` nos enums congelados + inline SmallVec caps |
+| M2 (clamp magnitude) | ✅ FIXED | `MAX_COORD_MAGNITUDE=1e7` + NaN/Inf guard, 2 tests |
+| M7 (Rejected toast) | ✅ FIXED | `Toast::warning` no Rejected; NoOp-near-vertex silencioso documentado |
+| M8 (write-path bounds) | ✅ FIXED (2026-06-01) | `check_asset_bounds` shared + `bounded_encode` (valida→encode→MAX_ASSET_SIZE); `save_vector_asset` = wrapper default-bounds; sem bypass `to_allocvec` em produção; +2 tests (`b3b2f00`) |
+| M5 (R-history comments) | ✅ FIXED | shell files limpos; só invariantes 1-linha |
+
+**Residuais aceitos (não-bloqueantes, rastreados p/ W2):**
+- **H3 transiente:** `MAX_ASSET_SIZE=100MB` permite pico de heap multi-GB durante `from_bytes` antes dos caps post-decode. Fix-doc tomado (opção OR da auditoria); reader `take`-bounded ou valor menor = W2 hardening. **Honestamente documentado, não escondido.**
+- **Persistência real (§6 opção 1):** `save/load_vector_asset` + `bounded_encode/decode` sem caller de produção; cena vive em `committed_vector_pen_paths` (in-memory). AssetDb + load-on-open = W2.
+- **T1.6 CRDT + subdivisor multi-cubic + `AssistModeStub`** = W2.
+
+**VEREDITO: Vector Module W1 FECHADA (2026-06-01).** Data model sólido, correctness verificada, bridge/persistência limpos pós-remediação, 4 CRITICAL + todos HIGH/MEDIUM in-scope fechados, gates executáveis verdes. Carry-overs para W2 são genuínos (AssetDb, CRDT, subdivisor, gate vello_kurbo), nenhum silenciosamente quebrado. Commits da remediação: `3617672` (Bloco 1) + `172eff2` (H5/M3) + `b3b2f00` (M8) + `69febf7` (T1.8 close).

@@ -50,11 +50,25 @@ teu) SE a integração mostrar fricção real — é contido, não toca meu Bloc
 ───────────────────────────────────────────────────────────────────
 4. O QUE É MEU (Coord) — não te bloqueia
 ───────────────────────────────────────────────────────────────────
-ADR-0046/0045 amendment (persistência), EU autoro. Define:
-- variants reais do `LayerStackEntry` APÓS `Reserved=0` (Raster=1, Group=2, Mask=3,
-  …) + encoding por-layer { id_u32, name, kind, blend_mode (u8 `BlendMode::to_u8`),
-  opacity, visible, locked, alpha_locked, clipping, is_reference, mask }.
-- a ponte u64↔u32 (acima) + re-lock do cook-hash.
+**FEITO ✅ (Coord):** ADR-0046-amendment-1 + o formato congelado v2 já estão
+implementados + gateados (crate `ph2d-painter-stroke`, `SCHEMA_VERSION=2`). Você
+NÃO define formato — só escreve a **ponte** runtime↔savefile no TEU crate:
+
+- Tipos prontos (re-exportados em `ph2d_painter_stroke`): `LayerStackEntry::Node(LayerNode)`,
+  `LayerNode { id: LayerId(u32), name, kind: LayerNodeKind, blend_mode: u8, opacity,
+  modifiers: u8, mask: Option<Box<LayerNode>> }`, `LayerNodeKind::{Raster{w,h},
+  Mask{w,h,inverted},Group{children,collapsed}}`, e os flags `LAYER_FLAG_{VISIBLE,
+  LOCKED,ALPHA_LOCKED,CLIPPING,IS_REFERENCE,ACTIVE}`.
+- **Contrato da ponte (SAVE):** `device::LayerStack.layers` = teus root em **z-order
+  top-first** (índice 0 = topo); cada `Node` = uma `layers::Layer` (id `as u32`,
+  bools → bits `modifiers`, `blend_mode.to_u8()`, mask `Option<LayerId>` → resolve a
+  layer e aninha como `Box<LayerNode>`); grupos aninham filhos recursivamente; a layer
+  ativa recebe `LAYER_FLAG_ACTIVE`. `next_id` NÃO serializa.
+- **Contrato da ponte (LOAD):** reconstrói arena/root da árvore; widen id `u32→u64`;
+  `next_id = max(id)+1`; a layer com `LAYER_FLAG_ACTIVE` vira `active`.
+- Caps que o `load` JÁ valida por você (rejeita file forjado): profundidade de grupo
+  ≤8, nome ≤256 B, total de nodes ≤999. `migrate_v1_to_v2` já cria 1 raster default.
+- cook-hash re-locka sozinho no `save`. Detalhe completo: ADR-0046-amendment-1.
 
 **Cap: NÃO há conflito (era comentário stale).** Spec §2.2 (linha 145) fixa
 `HARD_CAP_LAYERS = 999` (espelha Procreate). Runtime = 999 ✓, savefile

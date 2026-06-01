@@ -25,8 +25,9 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # Painter (T3.1/T3.2). O panel lê o stack (via snapshot publicado pelo
 # shell, padrão sidebar) e renderiza as rows.
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
-# BlendMode + MAX_BLEND_MODES (T3.3) — popover/dropdown de blend por layer.
-ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# BlendMode + MAX_BLEND_MODES (T3.3) chegam RE-EXPORTADOS por ph2d-tool-painter
+# (`ph2d_tool_painter::{BlendMode, MAX_BLEND_MODES}`), não via dep direto a
+# ph2d-painter-brush — que o `cargo machete` flagrou como não-usado (CI lint).
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 

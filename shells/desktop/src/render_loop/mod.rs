@@ -500,6 +500,20 @@ impl crate::App {
                     // tool-internal (no shell-cached preview), so no
                     // padding-specific cleanup is needed here.
                     EditorAction::CancelActiveTool => {
+                        // Audit H7 — destructive-deactivate warn (mirror of the
+                        // Painter unflushed-strokes warn below). Toggling the Pen
+                        // pill off while a path is mid-author runs
+                        // `on_deactivate → reset_path`, silently discarding the
+                        // in-progress vertices. Surface the loss via toast BEFORE
+                        // set_active fires the deactivate path. Downcast lives in
+                        // the allowlisted bridge; this dispatch stays downcast-free.
+                        if vector_pen_bridge::pen_has_in_progress_path(tools) {
+                            toasts.push(Toast::warning(
+                                "Vector Pen: in-progress path discarded. Close \
+                                 the path or press Esc to cancel deliberately."
+                                    .to_string(),
+                            ));
+                        }
                         if let Some(default_id) = tools.default_tool_id()
                             && tools.set_active(&default_id)
                         {

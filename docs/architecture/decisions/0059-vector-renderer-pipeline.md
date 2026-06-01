@@ -111,7 +111,7 @@ Pattern paralelo a Painter ADR-0052 (tear-resistant stroke commit). Gate `vector
 Vello upgrade per quarter; spread em N crates = N-cost upgrade. Solução:
 - **`ph2d-vector`** crate (existing, expanded em W1.T1.3) é o **único** com direct dep em `vello::*` / `kurbo::*` / `peniko::*`.
 - Outros 31 crates Vector consomem PH2D-domain types via `ph2d_vector::{Pos2d, Network, Bez, ...}` re-exports.
-- Arch-gate `vello_kurbo_only_in_ph2d_vector`: zero `use vello::*` ou `use kurbo::*` fora de `ph2d-vector` crate.
+- Arch-gate `vello_kurbo_only_in_ph2d_vector` (**W2-deferred — não existe ainda**; ver CLAUDE.md §6 + AUDIT_vector_module_W1_results.md C4): *quando implementado* asseritará zero `use vello::*` ou `use kurbo::*` fora de `ph2d-vector` crate. Hoje a invariante é mantida só por convenção / doc-comment (`ph2d-vector/src/lib.rs`), **não** por gate executável.
 
 ### 2.9 Editor + runtime sharing renderer (HR-7)
 

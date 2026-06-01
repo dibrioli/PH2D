@@ -49,6 +49,28 @@ const FIRST_VERTEX_SCALE: f64 = 1.6;
 /// line (emits nothing meaningful, skipped).
 const RUBBER_BAND_MIN_WORLD: f32 = 0.001;
 
+/// Returns `true` iff the Vector Pen is the active tool AND has an
+/// in-progress (un-closed) path.
+///
+/// Audit H7 (destructive-deactivate warn): the shell calls this BEFORE a
+/// Pen-pill toggle-off / tool switch runs `Tool::on_deactivate →
+/// reset_path`, which silently discards the in-progress vertices. Mirror
+/// of [`super::painter_bridge::painter_has_unflushed_strokes`]. The
+/// tool-concrete downcast lives here in the allowlisted bridge so the
+/// central dispatch stays downcast-free per the
+/// `architecture_no_downcast_to_concrete_tool_in_shell` gate.
+#[must_use]
+pub(super) fn pen_has_in_progress_path(tools: &mut ToolRegistry) -> bool {
+    tools
+        .active_mut()
+        .and_then(|t| {
+            t.as_any_mut()
+                .downcast_mut::<VectorPenTool>()
+                .map(|p| p.has_in_progress_path())
+        })
+        .unwrap_or(false)
+}
+
 /// Per-frame Vector Pen bridge dispatch.
 ///
 /// Early-returns if the active tool isn't `vector_pen`. No mutation on

@@ -450,14 +450,15 @@ pub(crate) struct App {
     /// No concrete-tool downcast in the keyboard handler.
     pub(crate) painter_undo_requested: bool,
     pub(crate) painter_redo_requested: bool,
-    /// W1.T1.7 R8: accumulator of committed Vector Pen `.ph2d-vector`
-    /// assets. Each close-path emits one; the bridge stashes them
-    /// here and renders ALL committed paths per frame so finished
-    /// triangles persist on canvas while a new in-progress path is
-    /// authored. Cleared only when the Pen tool is deactivated (next
-    /// activation starts the scene fresh) or on explicit "new
-    /// document" (W2+). W2+ migrates to a real scene-graph asset
-    /// store so committed paths persist across tool switches.
+    /// Accumulator of committed Vector Pen `.ph2d-vector` assets. Each
+    /// close-path emits one; the bridge stashes them here and renders ALL
+    /// committed paths per frame, so finished triangles persist on canvas
+    /// — including across tool switches; they are scene state, NOT Pen-tool
+    /// state (see the `vector_pen_bridge` module doc). Cleared in-memory
+    /// only, via Esc when no path is in progress (`try_vector_pen_escape`).
+    /// W1 has no disk persistence; W2 migrates to a real scene-graph AssetDb
+    /// (load-on-open + save-as), per AUDIT_vector_module_W1_results.md §6
+    /// option (1).
     pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the

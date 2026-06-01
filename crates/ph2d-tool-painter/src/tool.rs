@@ -2543,7 +2543,11 @@ mod tests {
         t.canvas_rgba = std::sync::Arc::new([0, 0, 200, 255].repeat(4)); // paint top blue
         let (out, w, h) = t.run_full();
         assert_eq!((w, h), (2, 2));
-        assert_eq!(&out[0..3], &[0, 0, 200], "Apply bakes the composite (blue top over red base)");
+        assert_eq!(
+            &out[0..3],
+            &[0, 0, 200],
+            "Apply bakes the composite (blue top over red base)"
+        );
     }
 
     /// **Audit T1.6 R7 L1-5 contract update:** `queue_pointer` without

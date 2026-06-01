@@ -1508,3 +1508,41 @@ pub const LIVE_SECTION_IDS: [NodeId; 9] = [
 
 /// Grid-snap floating panel root id.
 pub const GS_PANEL: NodeId = NodeId(1000);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// W3 audit-2 B.2: [`fnv_node_id_runtime`] is a hand-copied twin of
+    /// [`ph2d_tool_registry::hash_node_id`] (same offset basis / prime /
+    /// `NodeId(0)` bump) used to derive the per-row painter widget ids. Editing
+    /// one twin's basis or prime would silently diverge the runtime ids from the
+    /// const id space, misrouting clicks. Pin the twin agreement + the
+    /// empty-string FNV-1a-64 offset basis (the value `hash_node_id("")` also
+    /// returns; `!= 0`, so it never shadows `NodeId(0)` = a11y root).
+    #[test]
+    fn fnv_node_id_runtime_agrees_with_hash_node_id() {
+        assert_eq!(
+            fnv_node_id_runtime("").0,
+            0xcbf2_9ce4_8422_2325,
+            "empty-string hash must equal the FNV-1a-64 offset basis",
+        );
+        assert_eq!(fnv_node_id_runtime("").0, hash_node_id("").0);
+
+        for s in [
+            "a",
+            "painter_layer.row.0",
+            "painter_layer.blend.42",
+            "painter_layer.blendopt.7.3",
+            "painter_layers_panel",
+            "the quick brown fox",
+            "x",
+        ] {
+            assert_eq!(
+                fnv_node_id_runtime(s).0,
+                hash_node_id(s).0,
+                "fnv_node_id_runtime / hash_node_id diverged on {s:?}",
+            );
+        }
+    }
+}

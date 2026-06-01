@@ -337,6 +337,34 @@ impl SpriteRenderer {
         )
     }
 
+    /// Upload only a sub-rectangle into an existing individual texture,
+    /// leaving the rest untouched. Renderer-side wrapper over
+    /// [`IndividualTextureStore::replace_pixels_region`] — the dirty-rect
+    /// path (Painter stroke preview) uploads just the stamp's bbox instead
+    /// of the whole canvas. No bind-group rebuild (dims are unchanged), so
+    /// `material_bgl` is not needed. `region_rgba` is the tightly-packed
+    /// `width * height * 4` bytes for the sub-rect alone; the region must lie
+    /// within the texture's current dims.
+    pub fn replace_individual_pixels_region(
+        &mut self,
+        texture_id: u32,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        region_rgba: &[u8],
+    ) -> Result<(), IndividualTextureError> {
+        self.individual.replace_pixels_region(
+            &self.gpu,
+            texture_id,
+            x,
+            y,
+            width,
+            height,
+            region_rgba,
+        )
+    }
+
     pub fn atlas(&self) -> &TextureAtlas {
         &self.atlas
     }

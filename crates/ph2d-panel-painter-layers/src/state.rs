@@ -17,6 +17,7 @@
 //! pra perf, troque o tipo aqui — `set_current_layers`/`current_layers` são
 //! os únicos pontos de contato com o shell.
 
+use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::LayerStack;
 use std::cell::{Cell, RefCell};
 
@@ -30,6 +31,28 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     /// Última altura visível do body (panel rect minus title + paddings).
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+
+    /// The single open blend-mode dropdown to render as a deferred popover on
+    /// top of the rows (after the body clip pops): `(layer_id, chip_rect,
+    /// current_mode_u8)`. Set during row paint, drained at the end of `paint`.
+    /// Enforces one-open-at-a-time. `(u64, Rect, u8)` is `Copy`.
+    static PENDING_BLEND_DD: Cell<Option<(u64, Rect, u8)>> = const { Cell::new(None) };
+}
+
+/// Stash the open blend dropdown for the deferred popover pass.
+pub(crate) fn set_pending_blend_dd(v: Option<(u64, Rect, u8)>) {
+    PENDING_BLEND_DD.with(|c| c.set(v));
+}
+
+/// Peek the pending blend dropdown (non-consuming) — used to enforce a single
+/// open popover when more than one dropdown's store state says "open".
+pub(crate) fn pending_blend_dd() -> Option<(u64, Rect, u8)> {
+    PENDING_BLEND_DD.with(|c| c.get())
+}
+
+/// Take (and clear) the pending blend dropdown for the deferred popover paint.
+pub(crate) fn take_pending_blend_dd() -> Option<(u64, Rect, u8)> {
+    PENDING_BLEND_DD.with(|c| c.take())
 }
 
 /// State per-instance retido do `PainterLayersPanel`. Vazio

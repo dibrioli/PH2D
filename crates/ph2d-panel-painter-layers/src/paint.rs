@@ -6,27 +6,31 @@
 //! - Chrome publish (`set_panel_rect`) pra dispatch hit-test
 //! - Canon chrome: dark-glass surface + corner dot + title "Layers" + a
 //!   dock-toggle button ("Brush", mode C) + close (X) button
-//! - Drag handle + 2 resize handles (Inspector slot shared canon)
 //! - One interactive row per layer (top→bottom, recursing groups):
-//!   * line 1: visibility eye toggle · thumb · name (click = select) · blend
-//!     mode chip (click = cycle to the next mode)
+//!   * line 1: visibility eye toggle · name (click = select) · blend-mode
+//!     dropdown chip (opens a popover list — canon `Dropdown` widget)
 //!   * line 2: opacity slider + numeric chip (`0..1` storage, % display)
+//!   * the active layer's row gets an accent outline
 //! - "+ Layer" button at the foot of the body
+//! - the single open blend dropdown's popover is painted last (on top)
 //!
 //! Per-row widget ids are derived via
 //! [`ph2d_editor_core::ids::painter_layer_widget_id`] and **registered in the
 //! `WidgetStore` here in `paint`** (the panel owns `store_mut`), so the normal
 //! dispatch path emits `WidgetEvent`s — no hierarchy-style companion-bit
 //! dispatcher allowlist needed. `event.rs` classifies those into a tool-
-//! agnostic [`PanelEvent`] forwarded over `EditorAction::ToolPanelEvent`; the
-//! shell calls `PainterTool::handle_panel_event`.
+//! agnostic [`PanelEvent`] forwarded over `EditorAction::ToolPanelEvent`.
 
 use crate::PainterLayersPanel;
 use crate::state::{self, PainterLayersPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget, painter_layer_widget_id};
+use ph2d_editor_core::ids::{
+    self as core_ids, PainterLayerWidget, painter_layer_blend_option_id, painter_layer_widget_id,
+};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{
+    paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -35,20 +39,22 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, SliderOrientation, SliderState, TextInputState, paint_button,
+    Button, ButtonState, Dropdown, DropdownOption, DropdownState, SliderOrientation, SliderState,
+    TextInputState, paint_button, paint_dropdown_chip, paint_dropdown_popover_in_viewport,
     paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
+use ph2d_tool_painter::{BlendMode, Layer, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
 // Per-row layout metrics. Component-specific layout (not global Spacing steps),
 // hence the single-line LITERAL-PX-OK justifications.
 const LAYER_INDENT_STEP: f32 = 14.0; // LITERAL-PX-OK: per-nesting-level indent for group children
-const BLEND_CHIP_W: f32 = 84.0; // LITERAL-PX-OK: blend-mode chip column width
+const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip column width
 const OPACITY_CHIP_W: f32 = 52.0; // LITERAL-PX-OK: opacity numeric-chip column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
+const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
@@ -62,6 +68,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     let rect: Rect = ctx.layout.painter_layers;
     let theme = ctx.host.theme();
+    state::set_pending_blend_dd(None);
 
     ctx.host
         .store_mut()
@@ -71,8 +78,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
 
-    // Dock-slot drag + resize handles (shared canon — Inspector right-dock
-    // slot persistence, mirror do sidebar).
+    // Dock-slot drag + resize handles (shared canon — Inspector right-dock).
     {
         let drag_rect = panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
         let resize_rect = panel_resize_handle_rect(rect);
@@ -83,7 +89,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         hit_index.register(core_ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
     }
 
-    // Title — reserve room pra close button.
     let title_size = paint_panel_title(
         rect,
         "Layers",
@@ -93,11 +98,8 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Dock-toggle button ("Brush") — mode C: swaps the shared dock slot back
-    // to the brush sidebar. Sits just left of the close (X) button.
+    // Dock-toggle ("Brush") + close (X).
     paint_dock_toggle(ctx, rect, theme);
-
-    // Close (X) button — routes pra CancelActiveTool (canon BgRemoval).
     paint_panel_close_button(
         rect,
         core_ids::PAINTER_LAYERS_CLOSE,
@@ -147,7 +149,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         }
     }
 
-    // "+ Layer" button — append a transparent raster on top.
     y += Spacing::Xs.px();
     paint_add_button(ctx, rect.x + PANEL_HEAD_PAD, content_w, y, theme);
     y += ROW_H_PX;
@@ -158,26 +159,22 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     ctx.scene.pop_layer();
 
-    // Bottom-LEFT resize corner dot (mirror canon BR).
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-
-    // Re-register close button no fim do frame pra scrolled body widgets
-    // não shadowarem o close (canon panel_chrome doc).
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_LAYERS_CLOSE, panel_close_button_rect(rect));
+
+    // Deferred: the single open blend dropdown's popover, on top of everything.
+    if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
+        paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
+    }
 }
 
 /// Header dock-toggle ("Brush") — swaps the shared dock slot to the brush
-/// sidebar. Placed left of the close button (`PANEL_HEADER_CLOSE_RESERVE`).
+/// sidebar. Placed left of the close button.
 fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
     let close = panel_close_button_rect(rect);
-    let btn_rect = Rect::new(
-        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
-        close.y,
-        TOGGLE_BTN_W,
-        close.h,
-    );
+    let btn_rect = Rect::new(close.x - Spacing::Sm.px() - TOGGLE_BTN_W, close.y, TOGGLE_BTN_W, close.h);
     let st = ctx
         .host
         .store()
@@ -192,8 +189,7 @@ fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) 
 
 /// "+ Layer" footer button.
 fn paint_add_button(ctx: &mut PaintCtx, x: f32, w: f32, y: f32, theme: ph2d_tokens::Theme) {
-    let btn_w = ADD_BTN_W.min(w);
-    let btn_rect = Rect::new(x, y, btn_w, ROW_H_PX);
+    let btn_rect = Rect::new(x, y, ADD_BTN_W.min(w), ROW_H_PX);
     let st = ctx
         .host
         .store()
@@ -236,9 +232,9 @@ fn paint_layer_subtree(
     y
 }
 
-/// Paint one interactive layer row (eye · thumb · name(select) · blend chip,
-/// then an opacity slider underneath) and register its per-row widgets. The
-/// active row gets a subtle highlight background. Returns the next `y`.
+/// Paint one interactive layer row (eye · name(select) · blend dropdown, then
+/// an opacity slider underneath) and register its per-row widgets. The active
+/// row gets an accent outline. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
 fn paint_layer_row(
     ctx: &mut PaintCtx,
@@ -252,14 +248,16 @@ fn paint_layer_row(
 ) -> f32 {
     let font = TypeToken::Base.px();
     let cell_gap = Spacing::Sm.px();
-    let thumb_w = Spacing::Xl2.px();
     let row_gap = Spacing::Xs.px();
     let label_y = y + (ROW_H_PX - font) * 0.5;
+    let row_total_h = ROW_H_PX * 2.0 + row_gap;
 
-    // Active-row highlight spanning both lines.
+    // Active-row accent outline (spans both lines), slightly outset into the
+    // panel padding so it frames the row without clipping the slider.
     if is_active {
-        let hl = Rect::new(x, y, w, ROW_H_PX * 2.0 + row_gap);
-        fill_rounded_rect(ctx.scene, hl, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+        let pad = Spacing::Xs.px();
+        let hl = Rect::new(x - pad, y - pad, w + pad * 2.0, row_total_h + pad * 2.0);
+        stroke_rounded_rect(ctx.scene, hl, Radius::Sm.px(), StrokeToken::Default.px(), resolve(ColorToken::Accent, theme));
     }
 
     // ── Visibility eye toggle (Button) ──────────────────────────────────
@@ -274,18 +272,10 @@ fn paint_layer_row(
     paint_icon(ctx.scene, eye_icon, eye_rect, eye_color, StrokeToken::Default.px());
     ctx.host.hit_index_mut().register(eye_id, eye_rect);
 
-    // ── Thumb placeholder ───────────────────────────────────────────────
-    let thumb_rect = Rect::new(
-        eye_rect.x + ROW_H_PX + cell_gap,
-        y + (ROW_H_PX - thumb_w) * 0.5,
-        thumb_w,
-        thumb_w,
-    );
-    fill_rounded_rect(ctx.scene, thumb_rect, Radius::Sm.px(), resolve(ColorToken::BgElev, theme));
-
-    // ── Name (click anywhere thumb→blend selects the layer) ─────────────
+    // ── Name (right next to the eye; click anywhere up to the blend chip
+    // selects the layer) ────────────────────────────────────────────────
     let blend_x = x + w - BLEND_CHIP_W;
-    let name_x = thumb_rect.x + thumb_w + cell_gap;
+    let name_x = eye_rect.x + ROW_H_PX + cell_gap;
     let name_w = (blend_x - cell_gap - name_x).max(0.0);
     paint_text(
         ctx.text_system,
@@ -299,27 +289,19 @@ fn paint_layer_row(
     );
     let row_id = painter_layer_widget_id(id.0, PainterLayerWidget::Row);
     register_button(ctx.host.store_mut(), row_id);
-    let select_rect = Rect::new(thumb_rect.x, y, (blend_x - cell_gap - thumb_rect.x).max(0.0), ROW_H_PX);
+    let select_rect = Rect::new(name_x, y, (blend_x - cell_gap - name_x).max(0.0), ROW_H_PX);
     ctx.host.hit_index_mut().register(row_id, select_rect);
 
-    // ── Blend-mode chip (click cycles to the next mode) ─────────────────
+    // ── Blend-mode dropdown chip (opens a popover list) ─────────────────
     let blend_rect = Rect::new(blend_x, y, BLEND_CHIP_W, ROW_H_PX);
-    let blend_id = painter_layer_widget_id(id.0, PainterLayerWidget::Blend);
-    register_button(ctx.host.store_mut(), blend_id);
-    let blend_st = ctx
-        .host
-        .store()
-        .button_state(blend_id)
-        .unwrap_or(ButtonState::Normal);
-    let blend_btn = Button::new(blend_id, layer.blend_mode.name()).state(blend_st);
-    paint_button(&blend_btn, blend_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(blend_id, blend_rect);
+    let cur_mode = layer.blend_mode.to_u8();
+    paint_blend_chip(ctx, theme, id.0, cur_mode, blend_rect);
 
     // ── Opacity slider + numeric chip (line 2) ──────────────────────────
     let op_y = y + ROW_H_PX + row_gap;
     let op_slider = painter_layer_widget_id(id.0, PainterLayerWidget::Opacity);
     let op_chip = painter_layer_widget_id(id.0, PainterLayerWidget::OpacityChip);
-    let pct = (layer.opacity * 100.0).round(); // LITERAL-PX-OK: opacity fraction→percent for the chip readout, not a design value
+    let pct = (layer.opacity * PCT_SCALE).round();
     register_opacity(ctx.host.store_mut(), op_slider, op_chip, layer.opacity, pct);
     let op_display = format!("{pct:.0}%");
     let op_rect = Rect::new(x, op_y, w, ROW_H_PX);
@@ -342,6 +324,85 @@ fn paint_layer_row(
     );
 
     op_y + op_h + Spacing::Sm.px()
+}
+
+/// All 22 blend modes as `Dropdown` options for the layer with runtime id
+/// `layer_u64` (value = wire discriminant, label = display name).
+fn blend_options(layer_u64: u64) -> Vec<DropdownOption<u8>> {
+    (0..MAX_BLEND_MODES)
+        .map(|m| {
+            DropdownOption::new(
+                painter_layer_blend_option_id(layer_u64, m),
+                m,
+                BlendMode::from_u8(m).name(),
+            )
+        })
+        .collect()
+}
+
+/// Paint the closed blend dropdown chip for a row, register it, and (if the
+/// store says it's open AND no other dropdown already claimed the popover)
+/// stash it for the deferred popover pass.
+fn paint_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u64, cur_mode: u8, rect: Rect) {
+    let id = painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend);
+    let store = ctx.host.store_mut();
+    store.register_if_absent(
+        id,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(cur_mode as usize),
+        },
+    );
+    let (dd_state, store_open) = match store.get(id) {
+        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
+        _ => (DropdownState::Normal, false),
+    };
+    // One popover at a time: only the first open dropdown (top→bottom) wins.
+    let open = store_open && state::pending_blend_dd().is_none();
+    if store_open && !open
+        && let Some(InteractiveState::Dropdown { open: o, .. }) = store.get_mut(id)
+    {
+        *o = false;
+    }
+    let dd = Dropdown::new(id, "", blend_options(layer_u64))
+        .selected(cur_mode)
+        .open(open)
+        .state(dd_state);
+    paint_dropdown_chip(&dd, rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(id, rect);
+    if open {
+        state::set_pending_blend_dd(Some((layer_u64, rect, cur_mode)));
+    }
+}
+
+/// Deferred paint of the single open blend dropdown popover (on top of the
+/// rows, clamped to the viewport so it stays on-screen). Registers each option
+/// as a Button + its hit rect so option clicks dispatch.
+fn paint_blend_popover(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, layer_u64: u64, chip_rect: Rect, cur_mode: u8) {
+    let dd = Dropdown::new(
+        painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend),
+        "",
+        blend_options(layer_u64),
+    )
+    .selected(cur_mode)
+    .open(true);
+    let viewport = ctx.viewport;
+    let panel = dd.popover_rect_clamped(chip_rect, viewport);
+    paint_dropdown_popover_in_viewport(&dd, chip_rect, Some(viewport), ctx.scene, ctx.text_system, theme);
+    // Register option buttons (mutable store) then their hit rects (mutable
+    // hit_index) in separate borrows — `store_and_hit_index_mut` hands back an
+    // immutable store, which can't `register_if_absent`.
+    {
+        let store = ctx.host.store_mut();
+        for opt in dd.options.iter() {
+            register_button(store, opt.id);
+        }
+    }
+    let hit_index = ctx.host.hit_index_mut();
+    for (i, opt) in dd.options.iter().enumerate() {
+        hit_index.register(opt.id, dd.option_rect_in(chip_rect, panel, i));
+    }
 }
 
 /// `register_if_absent` a per-row Button slot (dispatch needs the store entry
@@ -379,11 +440,5 @@ fn register_opacity(
             selection_anchor: None,
         },
     );
-    // 0..1 slider storage ↔ 0..100 % chip (integer percent).
-    store.link_slider_number_mapped_integer(slider, chip, 100.0, 0.0); // LITERAL-PX-OK: 0..1→0..100% affine scale, not a design value
-}
-
-/// Compute the next blend-mode wire discriminant (wraps), for the cycle chip.
-pub(crate) fn next_blend_mode(current: u8) -> u8 {
-    (current + 1) % MAX_BLEND_MODES
+    store.link_slider_number_mapped_integer(slider, chip, PCT_SCALE, 0.0); // LITERAL-PX-OK: 0..1→0..100% affine, not a design value
 }

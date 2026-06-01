@@ -1637,11 +1637,28 @@ impl PainterTool {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
         }
-        Some((
-            Arc::clone(&self.canvas_rgba),
-            self.source_size.0,
-            self.source_size.1,
-        ))
+        let (w, h) = self.source_size;
+        // **W3 multi-layer fix:** the trivial stack (single visible opaque
+        // Normal raster — the T1.5 single-layer case) stays the zero-copy fast
+        // path. Any non-trivial stack (≥2 layers, or a layer with opacity<1 /
+        // non-Normal blend / hidden) MUST be composited here, otherwise the
+        // on-canvas preview shows only the active layer's working buffer and
+        // overlapping layers / per-layer opacity / blend modes are invisible.
+        // Mirror of [`RasterEditTool::current_preview`]'s composite branch.
+        // (Perf: full-frame recomposite per dirty drain; dirty-rect gating is a
+        // follow-up — see the GPU `LayerCompositor` path for the interactive
+        // fast lane.)
+        if self.is_trivial_stack() {
+            return Some((Arc::clone(&self.canvas_rgba), w, h));
+        }
+        let active = self.layers.active().unwrap_or(RtLayerId(0));
+        let src = ToolPixelSource {
+            active_id: active,
+            active_rgba: &self.canvas_rgba,
+            images: &self.images,
+        };
+        let composited = composite(&self.layers, &src, w, h);
+        Some((Arc::new(composited), w, h))
     }
 
     /// True iff at least one stamp landed in `canvas_rgba` since the
@@ -2421,6 +2438,29 @@ mod tests {
         t.preview_dirty = true;
         let (px, _, _) = t.current_preview().expect("dirty");
         assert_eq!(&px[0..3], &[0, 0, 200], "opaque top layer covers base");
+    }
+
+    #[test]
+    fn take_preview_arc_composites_multi_layer() {
+        // W3 smoke regression: the on-canvas preview goes through
+        // `take_preview_arc` (the bridge fast path), which must composite the
+        // multi-layer stack — not just hand back the active layer's
+        // `canvas_rgba`, or overlapping layers / opacity / blend never show.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2); // base red (Layer 1)
+        let _top = t.add_raster_layer("Layer 2").unwrap(); // transparent top, active
+        t.preview_dirty = true;
+        let (rgba, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(
+            &rgba[0..4],
+            &[200, 50, 50, 255],
+            "transparent top composites over the red base (not the empty active layer)"
+        );
+        // Paint the top opaque blue → the Arc preview now shows blue over red.
+        t.canvas_rgba = std::sync::Arc::new([0, 0, 200, 255].repeat(4));
+        t.preview_dirty = true;
+        let (rgba2, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(&rgba2[0..3], &[0, 0, 200], "opaque top covers base in the Arc preview");
     }
 
     #[test]

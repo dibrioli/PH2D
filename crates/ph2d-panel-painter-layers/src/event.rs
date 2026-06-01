@@ -5,21 +5,23 @@
 //! tool-agnostic [`PanelEvent`] and pushed via `EditorAction::ToolPanelEvent`;
 //! the shell's action-bus drain calls `PainterTool::handle_panel_event` on the
 //! active tool, which decodes the per-row id back to its `(layer, kind)` and
-//! applies the edit (`set_layer_visible/opacity/blend_mode`, `select_layer`,
-//! `add_raster_layer`, `toggle_dock`).
+//! applies the edit.
 //!
 //! Per-row ids are decoded here only to pick the right `PanelEvent` shape:
 //! row-select / visibility eye → `Click`, opacity slider → `SetValue`, blend
-//! chip → `SelectOption` carrying the *next* mode (the chip cycles). The
-//! decode uses the published `current_layers()` snapshot.
+//! dropdown option → `SelectOption(blend_id, mode_u8)`. The blend chip itself
+//! opens/closes its popover via the generic `Dropdown` dispatch (not routed
+//! here). The decode uses the published `current_layers()` snapshot.
 
 use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget, painter_layer_widget_id};
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::ids::{
+    self as core_ids, PainterLayerWidget, painter_layer_blend_option_id, painter_layer_widget_id,
+};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_tool_painter::{LayerId, LayerStack};
+use ph2d_tool_painter::{LayerId, LayerStack, MAX_BLEND_MODES};
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,
@@ -36,8 +38,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
-        // Fixed chrome buttons: "+ Layer" + dock toggle → forward as a plain
-        // Click; the tool routes by id.
+        // Fixed chrome buttons: "+ Layer" + dock toggle → forward as Click.
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_LAYERS_ADD
                 || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK =>
@@ -46,32 +47,38 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
-        // Per-row click: row-select / visibility eye → Click; blend chip →
-        // SelectOption(next mode).
         WidgetEvent::Click(id) => {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
-            let Some((layer, kind)) = decode(&stack, id) else {
-                return false;
-            };
-            match kind {
-                PainterLayerWidget::Row | PainterLayerWidget::Visibility => {
+            // Blend dropdown option picked → close the dropdown + apply.
+            if let Some((layer, mode)) = decode_blend_option(&stack, id) {
+                let blend_id = painter_layer_widget_id(layer.0, PainterLayerWidget::Blend);
+                if let Some(InteractiveState::Dropdown {
+                    open,
+                    selected_index,
+                    ..
+                }) = host.store_mut().get_mut(blend_id)
+                {
+                    *open = false;
+                    *selected_index = Some(mode as usize);
+                }
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        blend_id,
+                        mode.to_string(),
+                    )));
+                return true;
+            }
+            // Per-row row-select / visibility eye → forward as Click. (The
+            // blend chip click is the dropdown open/close — handled by the
+            // generic Dropdown dispatch, not forwarded.)
+            match decode(&stack, id) {
+                Some((_, PainterLayerWidget::Row | PainterLayerWidget::Visibility)) => {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
                     true
                 }
-                PainterLayerWidget::Blend => {
-                    let cur = stack.get(layer).map(|l| l.blend_mode.to_u8()).unwrap_or(0);
-                    let next = crate::paint::next_blend_mode(cur);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            id,
-                            next.to_string(),
-                        )));
-                    true
-                }
-                // Opacity slider/chip emit ValueChanged, not Click.
                 _ => false,
             }
         }
@@ -97,12 +104,23 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 }
 
 /// Decode a per-row widget id → `(layer, kind)` via the published snapshot.
-/// Mirror of `PainterTool::decode_layer_widget` (panel-side, snapshot-driven).
 fn decode(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(LayerId, PainterLayerWidget)> {
     for layer in stack.all_ids() {
         for kind in PainterLayerWidget::ALL {
             if painter_layer_widget_id(layer.0, kind) == id {
                 return Some((layer, kind));
+            }
+        }
+    }
+    None
+}
+
+/// Decode a blend-mode popover option id → `(layer, mode_u8)`.
+fn decode_blend_option(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(LayerId, u8)> {
+    for layer in stack.all_ids() {
+        for m in 0..MAX_BLEND_MODES {
+            if painter_layer_blend_option_id(layer.0, m) == id {
+                return Some((layer, m));
             }
         }
     }

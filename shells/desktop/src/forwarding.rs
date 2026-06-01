@@ -126,7 +126,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
-        PAINTER_SIDEBAR_PANEL, UPS_PANEL,
+        PAINTER_LAYERS_PANEL, PAINTER_SIDEBAR_PANEL, UPS_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -154,6 +154,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // sprite footprint extends UNDER the docked panel, so the
         // painter would open a stroke "through" the panel chrome.
         || inside(PAINTER_SIDEBAR_PANEL)
+        // Painter layers panel — same right-dock takeover slot (mode C
+        // toggle), so the same suppression applies; without it clicks on
+        // the layers panel paint a stroke on the sprite behind it (W3.T3.4
+        // smoke). Mirror of the sidebar line above.
+        || inside(PAINTER_LAYERS_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

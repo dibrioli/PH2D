@@ -91,7 +91,11 @@ pub use determinism::{
     f32_to_q88, f32_to_q1616, f32_to_q1616_checked, f32_to_q1616_saturating, q88_to_f32,
     q1616_to_f32,
 };
-pub use device::{CanvasId, LayerId, LayerStack, LayerStackEntry, PointerSource};
+pub use device::{
+    CanvasId, LAYER_FLAG_ACTIVE, LAYER_FLAG_ALPHA_LOCKED, LAYER_FLAG_CLIPPING,
+    LAYER_FLAG_IS_REFERENCE, LAYER_FLAG_LOCKED, LAYER_FLAG_VISIBLE, LayerId, LayerNode,
+    LayerNodeKind, LayerStack, LayerStackEntry, PointerSource,
+};
 pub use durability::{
     AtomicWriteError, AutoSave, AutoSaveError, AutoSavePolicy, AutoSaveState, CrashRecovery,
     DRAIN_DEADLINE_DEFAULT_MS, DRAIN_FLUSH_WAL_PHASE_MS, DRAIN_WRITE_CANON_PHASE_MS, FlushPolicy,
@@ -104,10 +108,11 @@ pub use history::{
     StrokeHistoryIter,
 };
 pub use persistence::{
-    CanvasInfo, ColorProfile, LoadError, MAX_BRUSH_SNAPSHOTS, MAX_CANON_BYTES, MAX_LAYERS,
-    MAX_RESERVED_PAYLOAD, MAX_SNAPSHOTS_PER_CACHE, MAX_STROKES_PER_CANON,
-    PAINT_PROJECT_CACHE_MAGIC, PAINT_PROJECT_MAGIC, PaintProject, PaintProjectCache, SaveError,
-    SerializedRTree, apply_migrations, load, save, validate_caps_post_deserialize,
+    CanvasInfo, ColorProfile, LoadError, MAX_BRUSH_SNAPSHOTS, MAX_CANON_BYTES, MAX_GROUP_DEPTH,
+    MAX_LAYER_NAME_BYTES, MAX_LAYERS, MAX_RESERVED_PAYLOAD, MAX_SNAPSHOTS_PER_CACHE,
+    MAX_STROKES_PER_CANON, PAINT_PROJECT_CACHE_MAGIC, PAINT_PROJECT_MAGIC, PaintProject,
+    PaintProjectCache, SaveError, SerializedRTree, apply_migrations, load, save,
+    validate_caps_post_deserialize,
 };
 pub use record::{
     CapExceeded, MAX_SAMPLES_PER_STROKE, RawPointerSample, SAMPLE_FLAG_AZIMUTH_UNAVAILABLE,
@@ -120,7 +125,11 @@ pub use snapshot::{
     LayerSnapshot, SNAPSHOT_STROKE_INTERVAL, SNAPSHOT_VERSION, SnapshotPathError, SnapshotStorage,
 };
 
-/// HR-14 schema version do canon savefile (`.ph2d-painter`). v1 = 1.
-/// Bump quando schema do `PaintProject` mudar — migration helper em
-/// [`persistence::migrate_v1_to_v2`] etc.
-pub const SCHEMA_VERSION: u32 = 1;
+/// HR-14 schema version do canon savefile (`.ph2d-painter`).
+/// - v1 = stub `LayerStackEntry::Reserved` (sem modelo de layer).
+/// - **v2 (W3, ADR-0046-amendment-1)** = `LayerStackEntry::Node` real (layer
+///   stack persistível). Files v1 migram via [`persistence::migrate_v1_to_v2`].
+///
+/// Bump quando schema do `PaintProject` mudar; cada bump exige um migration
+/// helper sequencial em `persistence`.
+pub const SCHEMA_VERSION: u32 = 2;

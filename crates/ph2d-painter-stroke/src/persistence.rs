@@ -18,7 +18,10 @@ use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
 use crate::SCHEMA_VERSION;
-use crate::device::{LayerStack, LayerStackEntry};
+use crate::device::{
+    LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerId, LayerNode, LayerNodeKind, LayerStack,
+    LayerStackEntry,
+};
 use crate::history::StrokeHistory;
 use crate::record::MAX_SAMPLES_PER_STROKE;
 use crate::snapshot::LayerSnapshot;
@@ -69,6 +72,16 @@ pub const MAX_LAYERS: usize = 1_000;
 /// Cap 4KB previne uso como covert-channel/storage abuse.
 /// Audit T1.8 L5-I9.
 pub const MAX_RESERVED_PAYLOAD: usize = 4 * 1024;
+
+/// Profundidade máxima de aninhamento de grupos (`LayerNodeKind::Group`).
+/// Espelha `ph2d_tool_painter::layers::MAX_GROUP_DEPTH` (W3). Um file forjado
+/// com aninhamento mais fundo é rejeitado pra prevenir stack overflow no
+/// (de)serializador recursivo / compositor. ADR-0046-amendment-1.
+pub const MAX_GROUP_DEPTH: usize = 8;
+
+/// Máximo de bytes no nome de uma `LayerNode`. Previne nomes patológicos num
+/// file forjado. ADR-0046-amendment-1.
+pub const MAX_LAYER_NAME_BYTES: usize = 256;
 
 /// Máximo de snapshots em `PaintProjectCache::snapshots`. Sidecar default
 /// budget LRU 200 MB; snapshot típico 16 MB ⇒ ~12 snapshots simultâneos.
@@ -616,18 +629,62 @@ pub fn validate_caps_post_deserialize(p: &PaintProject) -> Result<(), LoadError>
         });
     }
 
-    // Per-LayerStackEntry::Reserved payload cap (L5-I9).
+    // Per-entry: Reserved payload cap (v1) + recursive Node tree (v2). Counts
+    // EVERY node (group children + masks) toward MAX_LAYERS so a forged file
+    // can't smuggle millions of layers under a short top-level Vec.
+    let mut total_nodes = 0usize;
     for entry in &p.layer_stack.layers {
-        let LayerStackEntry::Reserved(bytes) = entry;
-        if bytes.len() > MAX_RESERVED_PAYLOAD {
-            return Err(LoadError::CapExceeded {
-                kind: "layer_stack_entry.reserved",
-                got: bytes.len(),
-                max: MAX_RESERVED_PAYLOAD,
-            });
+        match entry {
+            LayerStackEntry::Reserved(bytes) => {
+                if bytes.len() > MAX_RESERVED_PAYLOAD {
+                    return Err(LoadError::CapExceeded {
+                        kind: "layer_stack_entry.reserved",
+                        got: bytes.len(),
+                        max: MAX_RESERVED_PAYLOAD,
+                    });
+                }
+            }
+            LayerStackEntry::Node(node) => validate_layer_node(node, 0, &mut total_nodes)?,
         }
     }
+    if total_nodes > MAX_LAYERS {
+        return Err(LoadError::CapExceeded {
+            kind: "layer_stack.nodes",
+            got: total_nodes,
+            max: MAX_LAYERS,
+        });
+    }
 
+    Ok(())
+}
+
+/// Recursively validate one [`LayerNode`] subtree: name length, group nesting
+/// depth, and the running total node count. Masks (`Option<Box<LayerNode>>`)
+/// and group children both count + recurse. ADR-0046-amendment-1.
+fn validate_layer_node(node: &LayerNode, depth: usize, total: &mut usize) -> Result<(), LoadError> {
+    *total += 1;
+    if node.name.len() > MAX_LAYER_NAME_BYTES {
+        return Err(LoadError::CapExceeded {
+            kind: "layer_node.name",
+            got: node.name.len(),
+            max: MAX_LAYER_NAME_BYTES,
+        });
+    }
+    if let Some(mask) = &node.mask {
+        validate_layer_node(mask, depth, total)?;
+    }
+    if let LayerNodeKind::Group { children, .. } = &node.kind {
+        if depth + 1 > MAX_GROUP_DEPTH {
+            return Err(LoadError::CapExceeded {
+                kind: "layer_node.group_depth",
+                got: depth + 1,
+                max: MAX_GROUP_DEPTH,
+            });
+        }
+        for child in children {
+            validate_layer_node(child, depth + 1, total)?;
+        }
+    }
     Ok(())
 }
 
@@ -650,25 +707,39 @@ fn validate_brush_snapshots_unique(p: &PaintProject) -> Result<(), LoadError> {
 /// Aplica migration chain v1 → vN sequencialmente. T1.8 ship é no-op
 /// (SCHEMA_VERSION=1). Audit T1.8 L3-G1/L5-I5/L5-I10/L4-H14: helper VIVO
 /// (sempre chamado por `load`), pra futuro dev não-esquecer de descomentar.
-pub fn apply_migrations(_p: &mut PaintProject) -> Result<(), LoadError> {
-    // Em SCHEMA_VERSION=1 não há migration. Quando v2 nascer:
-    // if _p.version == 1 { migrate_v1_to_v2(_p)?; }
-    // if _p.version == 2 { migrate_v2_to_v3(_p)?; }
-    // ...
+pub fn apply_migrations(p: &mut PaintProject) -> Result<(), LoadError> {
+    // Chain sequencial: cada migration sobe UM nível. Um file vN passa por
+    // vN→vN+1, …, até SCHEMA_VERSION. (v2→v3 entra aqui quando nascer.)
+    if p.version == 1 {
+        migrate_v1_to_v2(p)?;
+    }
     Ok(())
 }
 
-/// Migration v1 → v2 — STUB até v2 nascer. Audit T1.8 L1-F4/L4-H14:
-/// `#[doc(hidden)]` esconde de rustdoc downstream até estar pronto;
-/// retorna `Ok(())` (no-op) em vez de panic.
+/// Migration v1 → v2 (ADR-0046-amendment-1): files v1 carregam só
+/// `LayerStackEntry::Reserved` (sem modelo de layer) mas têm `history` cujos
+/// strokes miram `device::LayerId(0)` (o default v1). Reconstrói **uma raster
+/// layer default** (id 0, ativa, dims do canvas) pra esses strokes replayarem
+/// numa layer real. Depois seta `version = 2` e re-locka o checksum.
 ///
-/// Quando v2 for criada, esta fn DEVE:
-/// 1. Adicionar/preencher novos fields no `p`.
-/// 2. Setar `p.version = 2`.
-/// 3. Chamar `p.recompute_checksum()`.
-/// 4. NOT recursively call validate_caps_post_deserialize (load faz no fim).
-#[doc(hidden)]
-pub fn migrate_v1_to_v2(_p: &mut PaintProject) -> Result<(), LoadError> {
+/// `Reserved`s vazios = "stack vazio" → também produzem a layer default (um
+/// canvas v1 sempre teve conteúdo numa layer implícita).
+pub fn migrate_v1_to_v2(p: &mut PaintProject) -> Result<(), LoadError> {
+    let default_layer = LayerNode {
+        id: LayerId(0),
+        name: "Layer 1".to_string(),
+        kind: LayerNodeKind::Raster {
+            width: p.canvas.width,
+            height: p.canvas.height,
+        },
+        blend_mode: 0, // Normal
+        opacity: 1.0,
+        modifiers: LAYER_FLAG_VISIBLE | LAYER_FLAG_ACTIVE,
+        mask: None,
+    };
+    p.layer_stack.layers = vec![LayerStackEntry::Node(default_layer)];
+    p.version = 2;
+    p.recompute_checksum();
     Ok(())
 }
 

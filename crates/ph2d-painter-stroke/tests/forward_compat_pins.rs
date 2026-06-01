@@ -68,15 +68,18 @@ fn layer_stack_entry_reserved_discriminant_is_zero() {
 #[test]
 fn paint_project_field_order_is_stable() {
     // Audit T1.8 L1-F5 reforçado: serialização do project começa com
-    // magic (12B) seguido por version (varint). Pra `version = 1`, varint
-    // = `0x01`. Total prefix = 13 bytes literais e previsíveis. Qualquer
-    // mudança em declaration order quebra este test.
+    // magic (12B) seguido por version (varint). `SCHEMA_VERSION < 128` → 1
+    // byte. Total prefix = 13 bytes previsíveis. Qualquer mudança em
+    // declaration order quebra este test. (v2: byte 12 = 0x02.)
     let p = PaintProject::new(CanvasInfo::default());
     let bytes = postcard::to_allocvec(&p).expect("serialize");
     assert_eq!(&bytes[..12], PAINT_PROJECT_MAGIC.as_slice());
+    // version must be a 1-byte varint for the 13-byte prefix to hold.
+    const { assert!(ph2d_painter_stroke::SCHEMA_VERSION < 128) };
     assert_eq!(
-        bytes[12], 0x01,
-        "byte 12 deve ser version varint = 0x01 (SCHEMA_VERSION)"
+        bytes[12],
+        ph2d_painter_stroke::SCHEMA_VERSION as u8,
+        "byte 12 deve ser o version varint (SCHEMA_VERSION)"
     );
 }
 

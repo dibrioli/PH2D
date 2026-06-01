@@ -75,8 +75,9 @@ fn paint_project_magic_and_version_stable() {
     assert_eq!(p.magic, PAINT_PROJECT_MAGIC);
     assert_eq!(p.version, SCHEMA_VERSION);
     assert_eq!(
-        SCHEMA_VERSION, 1,
-        "v1 = 1 (HR-14 — bump exige migration helper)"
+        SCHEMA_VERSION, 2,
+        "v2 = layer-stack format (W3, ADR-0046-amendment-1); bump exige \
+         migration helper — migrate_v1_to_v2 + tests/layer_stack_v2.rs"
     );
 }
 

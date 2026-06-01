@@ -71,6 +71,15 @@ criterion = { version = "0.7", default-features = false }
 # reaches a GPU pipeline build. Mirrors ph2d-painter-brush's stamp.wgsl
 # naga gate. `wgsl-in` feature for the WGSL front-end.
 naga = { version = "28", features = ["wgsl-in"] }
+# Painter W3 Block 2: the blend math source-of-truth `apply_blend` + `BlendMode`
+# is the CPU REFERENCE for `shader_blend_modes_bit_identical_with_rust` and the
+# GPU↔CPU readback parity gate. Dev-dep only — production `LayerCompositor`
+# speaks raw `u8` blend codes (no enum coupling), and ph2d-painter-brush does
+# NOT depend on ph2d-render, so this is acyclic.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# dhat for the HR-3 zero-alloc gate `layers_no_alloc_hot_compose` (the op-list
+# flatten path must not allocate once its scratch is warm). Dev-dep only.
+dhat = "0.3"
 
 [[bench]]
 name = "sprites_upload_144b_vs_72b"

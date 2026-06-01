@@ -37,6 +37,11 @@ pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).
 pub mod ktx2_format;
+/// GPU layer compositor (Painter W3, Block 2) — real-time sibling of the CPU
+/// reference `ph2d_tool_painter::compositor`. 22 W3C blend modes + groups via a
+/// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
+/// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
+pub mod layer_compositor;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;
@@ -69,6 +74,10 @@ pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
+pub use layer_compositor::{
+    GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_BYTES, LayerCompositeError, LayerCompositor,
+    LayerOp, LayerPixelProvider, LayerPixels, Region, flatten_layer_ops, max_layers_for_budget,
+};
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
     selection_bbox_world,

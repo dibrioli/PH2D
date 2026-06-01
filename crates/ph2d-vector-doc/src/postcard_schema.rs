@@ -341,6 +341,22 @@ pub fn bounded_decode(
             asset.network.version,
         ));
     }
+    check_asset_bounds(&asset, &bounds)?;
+    Ok(asset)
+}
+
+/// Enforce every per-collection [`AssetBounds`] cap on an already-decoded
+/// (or about-to-be-encoded) asset.
+///
+/// Shared by [`bounded_decode`] (read path) and [`bounded_encode`] (write
+/// path) so the producer can never emit an asset that the loader would
+/// reject under the same bounds — R1 audit Lens-G MED-G/M8: closes the
+/// write/read asymmetry where `save_vector_asset` previously serialized
+/// geometry that `bounded_decode` would refuse.
+fn check_asset_bounds(
+    asset: &Ph2dVectorAsset,
+    bounds: &AssetBounds,
+) -> Result<(), BoundedDecodeError> {
     check_bound(
         "vertices",
         asset.network.vertices.len(),
@@ -414,7 +430,7 @@ pub fn bounded_decode(
         asset.edit_log.snapshots.len(),
         bounds.max_snapshots,
     )?;
-    Ok(asset)
+    Ok(())
 }
 
 #[inline]
@@ -488,11 +504,31 @@ pub fn load_and_validate_vector_asset(
     Ok(asset)
 }
 
-/// Serialize an asset to postcard bytes. Mirror of [`load_vector_asset`]
-/// for the write path.
+/// Bounded encode — the safe write path, mirror of [`bounded_decode`].
+///
+/// Enforces the **same** [`AssetBounds`] caps the loader applies, *before*
+/// serializing, then asserts the encoded payload fits `MAX_ASSET_SIZE`.
+/// This guarantees the invariant the R1 audit Lens-G/M8 flagged as missing:
+/// **anything `bounded_encode` produces, `bounded_decode` accepts under the
+/// same bounds** — the producer can no longer write geometry the loader
+/// rejects.
 ///
 /// Returns `Vec<u8>` because postcard's serializer needs a sink — the
 /// caller decides whether to write to disk, memory, or network.
-pub fn save_vector_asset(asset: &Ph2dVectorAsset) -> Result<Vec<u8>, postcard::Error> {
-    postcard::to_allocvec(asset)
+pub fn bounded_encode(
+    asset: &Ph2dVectorAsset,
+    bounds: AssetBounds,
+) -> Result<Vec<u8>, BoundedDecodeError> {
+    check_asset_bounds(asset, &bounds)?;
+    let bytes = postcard::to_allocvec(asset)?;
+    if bytes.len() > MAX_ASSET_SIZE {
+        return Err(BoundedDecodeError::AssetTooLarge { size: bytes.len() });
+    }
+    Ok(bytes)
+}
+
+/// Serialize an asset to postcard bytes. Mirror of [`load_vector_asset`]
+/// for the write path: [`bounded_encode`] with default [`AssetBounds`].
+pub fn save_vector_asset(asset: &Ph2dVectorAsset) -> Result<Vec<u8>, BoundedDecodeError> {
+    bounded_encode(asset, AssetBounds::default())
 }

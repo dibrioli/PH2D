@@ -268,7 +268,9 @@ fn bounded_decode_rejects_unknown_inner_network_version() {
 fn bounded_decode_rejects_oversized_author_string() {
     let mut asset = Ph2dVectorAsset::default();
     asset.metadata.author = "x".repeat(300); // > default 256
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: the bounded writer (`save_vector_asset`) would reject
+    // this over-cap asset (M8), so forge the payload to exercise the decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -289,7 +291,8 @@ fn bounded_decode_rejects_oversized_peer_clocks_map() {
         crdt.peer_clocks.insert(i, 0);
     }
     asset.crdt_state = Some(crdt);
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -332,7 +335,8 @@ fn bounded_decode_rejects_oversized_app_version_string() {
     // R2 audit Lens-F MED-F3: app_version cap was missing dedicated test.
     let mut asset = Ph2dVectorAsset::default();
     asset.metadata.app_version = "v".repeat(100); // > default 64
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -352,7 +356,8 @@ fn bounded_decode_rejects_oversized_style_strokes_table() {
     for i in 0..5000_u32 {
         asset.styles.strokes.insert(i, StrokeStyle::default());
     }
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -372,7 +377,8 @@ fn bounded_decode_rejects_oversized_style_fills_table() {
     for i in 0..5000_u32 {
         asset.styles.fills.insert(i, FillSolid::default());
     }
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -394,7 +400,8 @@ fn bounded_decode_rejects_oversized_region_segments() {
         region.segments.push((i, true));
     }
     asset.network.regions.push(region);
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -417,7 +424,8 @@ fn bounded_decode_rejects_oversized_snapshots() {
             .snapshots
             .push((i, NetworkSnapshot::from(VectorNetwork::empty())));
     }
-    let bytes = save_vector_asset(&asset).expect("serialize");
+    // Raw encode: bounded writer would reject (M8) — forge to test decoder.
+    let bytes = postcard::to_allocvec(&asset).expect("serialize");
     let err = bounded_decode(&bytes, AssetBounds::default()).expect_err("should reject");
     match err {
         ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
@@ -438,4 +446,33 @@ fn dormant_fractures_field_round_trips_through_postcard() {
     let bytes = save_vector_asset(&asset).expect("serialize");
     let decoded = load_vector_asset(&bytes).expect("deserialize");
     assert_eq!(decoded.dormant_fractures, asset.dormant_fractures);
+}
+
+#[test]
+fn bounded_encode_rejects_over_cap_asset() {
+    // M8 (R1 audit Lens-G): the write path enforces the same caps the
+    // loader does, so a producer can never emit a file `bounded_decode`
+    // would refuse. An over-cap asset fails encode rather than serializing.
+    let mut asset = Ph2dVectorAsset::default();
+    asset.metadata.author = "x".repeat(300); // > default 256
+    let err = save_vector_asset(&asset).expect_err("over-cap must not serialize");
+    match err {
+        ph2d_vector_doc::BoundedDecodeError::BoundsExceeded { field, cap, actual } => {
+            assert_eq!(field, "metadata.author");
+            assert_eq!(cap, 256);
+            assert_eq!(actual, 300);
+        }
+        other => panic!("expected BoundsExceeded, got {other:?}"),
+    }
+}
+
+#[test]
+fn bounded_encode_output_always_round_trips_through_bounded_decode() {
+    // M8 invariant: anything the bounded writer emits, the bounded reader
+    // accepts under the same bounds — write/read symmetry.
+    let mut asset = Ph2dVectorAsset::default();
+    asset.network = build_triangle();
+    let bytes = save_vector_asset(&asset).expect("legit asset must serialize");
+    let decoded = load_vector_asset(&bytes).expect("bounded_encode output must decode");
+    assert_eq!(decoded, asset);
 }

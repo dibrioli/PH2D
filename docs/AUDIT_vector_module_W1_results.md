@@ -129,6 +129,12 @@ Pasta: `crates/ph2d-tool-vector-pen/` + `shells/desktop/src/render_loop/vector_p
 
 Recomendação: **(1)** — remove a liability (C1/C2/C3) imediatamente, e o scene-document real entra estruturado no W2 junto do AssetDb, evitando um terceiro design improvisado.
 
+> **RATIFICADO 2026-06-01 (Enio): opção (1).** Nota: a opção (1) **já foi a
+> implementada** no commit `3617672` ("remove auto-save, HR-3 overlay, Esc") —
+> auto-save removido, cena só in-memory, Esc-quando-ocioso → `committed_vector_pen_paths.clear()`
+> com doc "no persistence until W2 AssetDb". A ratificação confirma o que já está
+> em `origin/main`; nada a mudar. Persistência real = W2 AssetDb.
+
 ---
 
 ## §7 — Sobre T1.4 / T1.6 / T1.8 (pergunta do §4 do handoff)

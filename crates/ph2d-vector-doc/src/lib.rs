@@ -64,7 +64,8 @@ pub use network::{
 pub use postcard_schema::{
     AssetBounds, AuthoringMetadata, BoundedDecodeError, EmbeddedAsset, EmbeddedKind,
     LoadAndValidateError, MAX_ASSET_SIZE, PH2D_VECTOR_ASSET_SCHEMA_VERSION, Ph2dVectorAsset,
-    bounded_decode, load_and_validate_vector_asset, load_vector_asset, save_vector_asset,
+    bounded_decode, bounded_encode, load_and_validate_vector_asset, load_vector_asset,
+    save_vector_asset,
 };
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use style::{

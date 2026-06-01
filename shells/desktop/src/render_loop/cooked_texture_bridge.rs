@@ -16,23 +16,21 @@
 //! A tier the device can't actually sample (`FormatUnsupportedByDevice`) is
 //! skipped and the ladder descends; `Constrained` (uncompressed RGBA8) is the
 //! universal floor, so a cooked artifact registered for it always binds. A
-//! logical texture with no cooked artifact for ANY ladder rung stays
-//! invisible (like a hidden/culled sprite) and is warned about ONCE (deduped
-//! so a permanently-missing asset can't spam the log every frame).
+//! logical texture with no cooked artifact for ANY ladder rung is mapped to a
+//! **magenta missing-texture placeholder** (W2.T4 plan addendum — a visible
+//! debug indicator, not a silent invisible drop) and is warned about ONCE
+//! (deduped so a permanently-missing asset can't spam the log every frame).
 //!
-//! The pass is idempotent + cheap after warm-up: an already-uploaded
-//! `logical_id` short-circuits on a single map lookup, so steady-state cost is
-//! one `&Sprite` query walk (the same per-frame pattern `sim_extract` uses).
-//!
-//! **Known follow-up (W2.T4 addendum):** the plan calls for a magenta
-//! missing-texture sprite when no cooked artifact resolves. This pass renders
-//! such sprites *invisible* (safe, matches hidden/culled) + logs once; the
-//! magenta debug indicator is a small renderer-side enhancement left for a
-//! follow-up so this loader stays additive.
+//! The pass is idempotent + cheap after warm-up: an already-uploaded (or
+//! magenta-marked) `logical_id` short-circuits on a single map lookup, so
+//! steady-state cost is one `&Sprite` query walk (same per-frame pattern as
+//! `sim_extract`).
 
 use ph2d_asset::{Asset, AssetDb, LogicalTextureId, LogicalTextureMap};
 use ph2d_ecs::SimWorld;
-use ph2d_render::{CompressedUploadError, CookedTextureError, Sprite, SpriteRenderer, SpriteSource};
+use ph2d_render::{
+    CompressedUploadError, CookedTextureError, Sprite, SpriteRenderer, SpriteSource,
+};
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 
@@ -106,21 +104,29 @@ pub(super) fn ensure_uploaded(
                 }
             }
         }
-        // Nothing bound after the whole ladder → give up: warn ONCE and never
-        // retry this id (the cache only short-circuits successes, so without
-        // give-up a missing/corrupt blob would re-walk + re-decode every frame
-        // and spam the log).
+        // Nothing bound after the whole ladder → give up. Map the id to the
+        // magenta missing-texture placeholder (W2.T4 plan addendum) so the
+        // sprite renders visibly magenta — a debug aid, not an invisible
+        // silent drop. The placeholder mapping also short-circuits the loader
+        // on later frames (cooked_texture_id → Some), so we never re-walk +
+        // re-decode a missing/corrupt blob; GIVEN_UP keeps the warn to once.
         if renderer.cooked_texture_id(logical_id).is_none() {
+            let magenta = renderer.mark_cooked_missing(logical_id).is_ok();
             GIVEN_UP.with_borrow_mut(|s| {
                 if s.insert(logical_id) {
+                    let shown = if magenta {
+                        "renders magenta (missing texture)"
+                    } else {
+                        "renders invisible"
+                    };
                     match &last_error {
                         Some(cause) => eprintln!(
                             "W2.T4: cooked KTX2 for logical texture {logical_id} failed to load \
-                             ({cause}) — sprite renders invisible"
+                             ({cause}) — sprite {shown}"
                         ),
                         None => eprintln!(
                             "W2.T4: no device-sampleable cooked KTX2 tier for logical texture \
-                             {logical_id} — sprite renders invisible"
+                             {logical_id} — sprite {shown}"
                         ),
                     }
                 }

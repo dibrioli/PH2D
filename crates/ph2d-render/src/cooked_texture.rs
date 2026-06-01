@@ -38,7 +38,7 @@ use crate::compressed_pipeline::{
 use crate::ktx2_format::CompressionFeatureSet;
 use crate::sprite::RenderInstance;
 use ph2d_asset::{AssetId, LogicalTextureId};
-use ph2d_asset_ktx2::{Ktx2Error, decode_ktx2_bytes};
+use ph2d_asset_ktx2::{Ktx2Error, decode_ktx2_bytes, encode_uncompressed_rgba8};
 use ph2d_gpu::GpuContext;
 use std::collections::BTreeMap;
 
@@ -103,6 +103,9 @@ pub struct CookedTextureStore {
     /// Next id to hand out, in the [`RenderInstance::COOKED_TEXTURE_ID_BIT`]
     /// namespace.
     next_id: u32,
+    /// Shared magenta "missing texture" placeholder (W2.T4 plan addendum),
+    /// built lazily on the first [`Self::mark_missing`]. `None` until then.
+    missing_id: Option<u32>,
 }
 
 impl Default for CookedTextureStore {
@@ -124,6 +127,7 @@ impl CookedTextureStore {
             // First cooked id = the namespace bit | 1 (so it's never the
             // atlas sentinel `0` and never collides with an individual id).
             next_id: RenderInstance::COOKED_TEXTURE_ID_BIT | 1,
+            missing_id: None,
         }
     }
 
@@ -253,6 +257,61 @@ impl CookedTextureStore {
         self.logical_to_id.insert(logical_id, id);
         Ok(id)
     }
+
+    /// Map `logical_id` to a magenta **missing-texture** placeholder, so a
+    /// sprite whose cooked artifact can't be resolved (no device-sampleable
+    /// tier, or a corrupt blob) renders visibly magenta instead of invisibly —
+    /// the W2.T4 plan addendum's debug indicator. The placeholder (an 8×8 solid
+    /// magenta RGBA8, built once via the same encode→decode→upload path as a
+    /// real cooked texture) is shared by every missing id. After this,
+    /// [`Self::texture_id`]`(logical_id)` resolves to the placeholder.
+    ///
+    /// # Errors
+    /// [`CookedTextureError`] only if the (tiny, always-valid) placeholder
+    /// fails to build/upload — the caller treats that as "stay invisible".
+    pub fn mark_missing(
+        &mut self,
+        gpu: &GpuContext,
+        material_bgl: &wgpu::BindGroupLayout,
+        logical_id: LogicalTextureId,
+    ) -> Result<u32, CookedTextureError> {
+        let id = self.ensure_missing(gpu, material_bgl)?;
+        self.logical_to_id.insert(logical_id, id);
+        Ok(id)
+    }
+
+    /// Lazily build (and cache) the shared magenta placeholder; returns its id.
+    fn ensure_missing(
+        &mut self,
+        gpu: &GpuContext,
+        material_bgl: &wgpu::BindGroupLayout,
+    ) -> Result<u32, CookedTextureError> {
+        if let Some(id) = self.missing_id {
+            return Ok(id);
+        }
+        let pipeline = self.pipeline.get_or_insert_with(|| {
+            let feature_set = CompressionFeatureSet::from_features(gpu.device.features());
+            CompressedTexturePipeline::with_layout(gpu, feature_set, material_bgl.clone())
+        });
+        // 8×8 solid magenta, sRGB — an unmistakable "missing texture" marker.
+        const DIM: u32 = 8;
+        let magenta = [255u8, 0, 255, 255].repeat((DIM * DIM) as usize);
+        let blob = encode_uncompressed_rgba8(DIM, DIM, true, &magenta)?;
+        let image = decode_ktx2_bytes(&blob)?;
+        let uploaded = pipeline.upload(
+            gpu,
+            &image,
+            Some("ph2d-render cooked missing-texture (magenta)"),
+        )?;
+        let id = self.next_id;
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("CookedTextureStore: cooked texture_id space exhausted");
+        self.entries.insert(id, uploaded);
+        self.missing_id = Some(id);
+        Ok(id)
+    }
 }
 
 #[cfg(test)]
@@ -352,5 +411,44 @@ mod tests {
         assert_eq!(id2, id, "same asset → same cooked id (deduped)");
         assert_eq!(store.len(), 1, "no second upload");
         assert_eq!(store.texture_id(logical2), Some(id));
+    }
+
+    #[test]
+    #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+    fn mark_missing_binds_magenta_placeholder_shared_across_ids() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let bgl = crate::compressed_pipeline::CompressedTexturePipeline::material_bind_group_layout(
+            &gpu.device,
+        );
+        let mut store = CookedTextureStore::new();
+
+        // An unresolvable logical id → magenta placeholder (W2.T4 addendum).
+        let missing = LogicalTextureId::from_source_bytes(b"deleted.png");
+        let id = store
+            .mark_missing(&gpu, &bgl, missing)
+            .expect("magenta builds + uploads");
+        assert!(
+            RenderInstance::is_cooked_texture_id(id),
+            "placeholder in cooked namespace"
+        );
+        assert!(store.bind_group(id).is_some(), "placeholder binds");
+        assert_eq!(
+            store.texture_id(missing),
+            Some(id),
+            "logical id now resolves to magenta"
+        );
+        assert_eq!(store.dims(id), Some((8, 8)), "8×8 magenta");
+
+        // A SECOND missing id shares the one placeholder upload (no growth).
+        let len_after_first = store.len();
+        let missing2 = LogicalTextureId::from_source_bytes(b"also_gone.png");
+        let id2 = store
+            .mark_missing(&gpu, &bgl, missing2)
+            .expect("second mark");
+        assert_eq!(id2, id, "the magenta placeholder is shared");
+        assert_eq!(store.len(), len_after_first, "no second placeholder upload");
+        assert_eq!(store.texture_id(missing2), Some(id));
     }
 }

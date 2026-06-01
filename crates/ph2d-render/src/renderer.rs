@@ -265,6 +265,19 @@ impl SpriteRenderer {
         self.cooked.texture_id(logical_id)
     }
 
+    /// Map `logical_id` to the magenta missing-texture placeholder (W2.T4 plan
+    /// addendum) so a sprite whose cooked artifact can't be resolved renders
+    /// visibly magenta instead of invisibly. The loader calls this after its
+    /// fallback ladder is exhausted. Returns the placeholder `texture_id`, or
+    /// the error if even the placeholder fails to build (caller stays invisible).
+    pub fn mark_cooked_missing(
+        &mut self,
+        logical_id: ph2d_asset::LogicalTextureId,
+    ) -> Result<u32, crate::cooked_texture::CookedTextureError> {
+        self.cooked
+            .mark_missing(&self.gpu, &self.pipeline.material_bgl, logical_id)
+    }
+
     /// Mutable handle to the individual-texture store. The host's
     /// image-import path acquires textures here when the user
     /// selects the Individual source strategy for a sprite (M14.5

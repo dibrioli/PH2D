@@ -117,22 +117,21 @@ Investigação Coord (2026-06-01) achou que o escopo é ~10× o que o handoff su
   é sutil. `premultiply_rgba8_in_linear` é a matemática correta mas não tem o
   unpremul-inverso casado.
 
-**ATUALIZAÇÃO — FEITO (gold-standard, `008b5bf`).** Enio: "decida pelo padrão-ouro".
-Os hazards foram TODOS limpos antes de executar:
-- **Determinismo: SEGURO** — verifiquei que bytes premultiplicados NUNCA são
-  serializados (cook/asset paths são straight-alpha only; zero ref a `AlphaMode`/
-  premul em `ph2d-asset-cooker`/`ph2d-asset`). Zero impacto de cook-hash.
-- **Round-trip: PRESERVADO** — troquei o par casado dentro de `SpriteImage`:
-  `into_premultiplied → premultiply_rgba8_in_linear` + novo
-  `into_straight → unpremultiply_rgba8_in_linear` (inverso exato). Bake→re-edit
-  continua correto.
-- **WYSIWYG: PRESERVADO** — os 2 previews (painter_bridge + bgremoval_preview)
-  trocaram junto, idênticos ao Apply (ambos lineares).
-- **Invariante do shader: CORRETA** — `Rgba8UnormSrgb` hw-decode recupera
-  `rgb_linear·a_linear` (o byte-space dava `srgb_decode(srgb(rgb)·a)`, o undershoot =
-  halo). Novos testes provam o invariante linear + round-trip.
-- ph2d-render 138 testes verdes; shell compila. **Falta só smoke visual do Enio**
-  (o halo nas bordas translúcidas deve sumir em Painter + BgRemoval + merge etc.).
+**ATUALIZAÇÃO FINAL — REVERTIDO (`3870733`). EU ERREI; NÃO MEXER.**
+Cheguei a trocar pra linear (`008b5bf`) achando que era a "matemática correta".
+**Estava errado e reintroduzi um bug que o Enio já tinha corrigido há tempos.**
+- O halo NUNCA foi um bug vivo do byte-space: era artefato do **path do Vello**
+  (`Rgba8Unorm` raw-byte). Foi corrigido **movendo o preview pro path do sprite
+  shader** (`Rgba8UnormSrgb` + premul blend), onde byte-space é correto e bate
+  byte-a-byte com o Apply.
+- O comentário que eu SOBRESCREVI no `bgremoval_preview.rs` dizia LITERALMENTE:
+  *"the gamma-correct variant (Fix C) is intentionally NOT used here — its job was
+  to compensate for Vello's Rgba8Unorm raw-byte interpretation, which no longer
+  applies once the preview leaves the Vello path."* Ignorei uma decisão documentada.
+- `premultiply_rgba8_in_linear` é o helper vestigial do Fix-C (Vello), **sem caller
+  de produção, e assim deve ficar**. A convenção byte-space (`premultiply_rgba8` /
+  `unpremultiply_rgba8`) é o canônico correto pro path atual.
+- **NÃO retrabalhar Item 3.** Não há halo a corrigir; o byte-space É a correção.
 
 **⚠ NÃO-RELACIONADO mas detectado:** o gate `shell_files_respect_hr18_loc_cap` está
 VERMELHO por `src/render_loop/inspector_commits.rs — 616 LOC` (cap 600) — arquivo do

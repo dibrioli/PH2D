@@ -18,6 +18,7 @@
 
 mod bgremoval_preview;
 mod color_equalization_bridge;
+mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
 mod hierarchy;
 mod image_edit;
@@ -25,7 +26,6 @@ mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
 mod motion_smoke;
-mod cooked_texture_bridge;
 mod padding_bridge;
 mod painter_bridge;
 mod present;
@@ -251,6 +251,19 @@ impl crate::App {
                 // Byte-space premul upload + Apply uses the same flag.
                 premultiplied: true,
             });
+        // W3 Painter sprite-suppression: same single `preview_override` slot.
+        // The base layer composite REPLACES the source sprite in-place (no
+        // overlay duplication) so its opacity/representation affects the whole
+        // image. Painter and BgRemoval are never active simultaneously (one
+        // active tool), so `.or()` picks whichever is live.
+        let painter_preview_override: Option<sim_extract::PreviewOverride> = self
+            .painter_preview_gpu
+            .map(|gpu| sim_extract::PreviewOverride {
+                entity_bits: gpu.entity_bits,
+                texture_id: gpu.texture_id,
+                premultiplied: true,
+            });
+        let preview_override = painter_preview_override.or(bgremoval_preview_override);
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
         // canvas this frame — cook grid→transform→clone and publish its
         // RenderInstances instead of the M5 demo sim. Debug-only; off by default.
@@ -280,12 +293,7 @@ impl crate::App {
             // `SpriteSource::CookedTexture` sprite's KTX2 (for the device tier,
             // descending the fallback ladder) BEFORE extract reads back the
             // cached `texture_id`. Idempotent + cheap after the first upload.
-            cooked_texture_bridge::ensure_uploaded(
-                sim,
-                renderer,
-                asset_db,
-                logical_texture_map,
-            );
+            cooked_texture_bridge::ensure_uploaded(sim, renderer, asset_db, logical_texture_map);
             sim_extract::run(
                 dt,
                 sim,
@@ -295,7 +303,7 @@ impl crate::App {
                 worklist,
                 sort_scratch,
                 sort_inputs,
-                bgremoval_preview_override,
+                preview_override,
                 ppm,
                 camera.cull_mask,
                 default_filter,
@@ -964,9 +972,11 @@ impl crate::App {
                 vector_scene,
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
+                &mut self.painter_preview_gpu,
                 &mut self.painter_commit_requested,
                 &mut self.painter_undo_requested,
                 &mut self.painter_redo_requested,
+                toasts,
             );
             // Vector Pen tool ⟷ shell bridge. Per-frame world-space
             // render of committed scene paths + in-progress overlay. The

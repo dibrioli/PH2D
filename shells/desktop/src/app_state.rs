@@ -420,11 +420,18 @@ pub(crate) struct App {
     /// (`ph2d_tool_runtime::drive_source_push`) consume it directly.
     pub(crate) last_painter_pushed_entity: Option<u64>,
     /// Cached on-canvas live preview for the Painter tool — drained
-    /// from `PainterTool::current_preview` each frame the canvas was
-    /// painted into. Drawn over the sprite footprint until the user
-    /// commits (Apply) which bakes the canvas into the sprite texture.
-    /// Cleared on Apply + deactivate.
+    /// from `PainterTool::current_preview` (the layer composite) each
+    /// frame the canvas was painted into. The CPU source of truth for
+    /// [`Self::painter_preview_gpu`]. Cleared on Apply + deactivate.
     pub(crate) painter_preview: Option<PainterPreview>,
+    /// GPU slot backing the Painter live preview (W3 sprite-suppression).
+    /// Mirrors [`Self::bgremoval_preview_gpu`]: the bridge uploads the
+    /// premultiplied composite into an `IndividualTextureStore` slot and
+    /// the next frame's `sim_extract` emits a `PreviewOverride` pointing
+    /// here — so the base layer's opacity/representation affects the WHOLE
+    /// sprite in-place (no Vello overlay duplicating the image). `None`
+    /// when the preview cache is `None`.
+    pub(crate) painter_preview_gpu: Option<PainterPreviewGpu>,
     /// W2.T2.5: transient flag set by the Cmd/Ctrl+Enter keybind in
     /// `input_handlers::handle_editor_key` to commit the active Painter
     /// stroke into the sprite WITHOUT switching tools. Consumed (taken)
@@ -537,8 +544,10 @@ pub(crate) type BgremovalPreview = ph2d_tool_runtime::PreviewCache;
 
 /// GPU-side companion to [`BgremovalPreview`] (Lens F, 2026-05-26).
 ///
-/// Owns the transient `IndividualTextureStore` slot that backs the
-/// on-canvas live preview. The CPU-side `BgremovalPreview` cache is
+/// Owns the transient `IndividualTextureStore` slot that backs a tool's
+/// on-canvas live preview. **Tool-agnostic** — shared by BgRemoval and the
+/// Painter (see [`PainterPreviewGpu`]); the fields carry no BgR-specific
+/// state. The CPU-side preview cache (`PreviewCache`) is
 /// the source of truth (Arc-shared with the tool's `current_preview`);
 /// the bridge replays it onto this texture whenever the `Arc` buffer
 /// is swapped. `arc_ptr` is `Arc::as_ptr` of the last uploaded buffer
@@ -569,6 +578,12 @@ pub(crate) struct BgremovalPreviewGpu {
 /// Same generic `ph2d_tool_runtime::PreviewCache` shape as BgR / CEQ /
 /// Upscale — `drive_source_push` + `drive_preview_cache` consume directly.
 pub(crate) type PainterPreview = ph2d_tool_runtime::PreviewCache;
+
+/// GPU preview slot for the Painter — same tool-agnostic shape as
+/// [`BgremovalPreviewGpu`] (texture_id + dims + arc_token + entity_bits).
+/// Aliased so the Painter bridge reads as its own type while sharing the
+/// one implementation (W3 sprite-suppression).
+pub(crate) type PainterPreviewGpu = BgremovalPreviewGpu;
 
 /// Cached on-canvas live preview bitmap for the Color Equalization
 /// tool. Wave 10 / Etapa 3: now uniformized with BgR + Upscale as

@@ -22,9 +22,10 @@
 //!    sets the flag; bridge converts to `EditorAction::OneShotImageOp`.
 //! 4. (Painter-specific) Inactive-path cache clear (mirror of
 //!    BgRemoval's safety pattern after the Wave 10 C1 audit fix).
-//! 5. (Painter-specific) On-canvas overlay paints the cached canvas
-//!    RGBA on top of the sprite footprint (sprite suppression is W2 —
-//!    T1.5 MVP relies on canvas alpha covering source).
+//! 5. (Painter-specific) GPU preview lifecycle — uploads the composite
+//!    into an `IndividualTextureStore` slot for the next frame's
+//!    `PreviewOverride` (sprite suppression — see below), replacing the
+//!    old Vello on-canvas overlay.
 //!
 //! ## Cleanup semantics
 //!
@@ -35,23 +36,30 @@
 //! shell's image_edit dispatch writes back into the sprite texture
 //! (same path as bgremoval / CEQ / upscale).
 //!
-//! ## Sprite suppression
+//! ## Sprite suppression (W3 — replaces the Vello overlay)
 //!
-//! T1.5 MVP intentionally does NOT suppress the underlying sprite in
-//! sim_extract while a stroke is in flight — the canvas overlay paints
-//! on top with full alpha so the user sees the painted state directly.
-//! W2 may add suppression once the sidebar gains an "isolate stroke"
-//! affordance.
+//! The live preview is the LAYER COMPOSITE (base layer = the sprite image
+//! itself + strokes). It no longer paints as a Vello overlay ON TOP of the
+//! still-rendered sprite (that duplicated the image: lowering the base
+//! layer's opacity faded only the overlay, revealing the full-opacity sprite
+//! underneath — Enio smoke 2026-06-01). Instead, mirroring BgRemoval, the
+//! bridge uploads the premultiplied composite into an `IndividualTextureStore`
+//! slot ([`PainterPreviewGpu`]); the next frame's `sim_extract` emits a
+//! `PreviewOverride` that SUPPRESSES the source sprite and samples this
+//! texture in its place. So the composite (incl. base-layer opacity) IS the
+//! sprite, in-place, through the same sprite shader as Apply.
 
-use crate::app_state::PainterPreview;
+use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
+use ph2d_editor::toast::{Toast, ToastQueue};
 use ph2d_host::WindowSize;
-use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
+use ph2d_render::{Camera2d, SpriteRenderer, premultiply_rgba8};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Whether the active Painter tool has unflushed strokes since its last
 /// source push — painting that would be LOST on a mode toggle.
@@ -85,14 +93,19 @@ pub(super) fn dispatch(
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
-    camera: &Camera2d,
-    window_size: WindowSize,
-    vector_scene: &mut VectorScene,
+    // Reserved (the on-canvas preview now goes through the sprite pipeline via
+    // a PreviewOverride, not a Vello overlay): kept for future UI hints / the
+    // GPU LayerCompositor upload path. See module header "Sprite suppression".
+    _camera: &Camera2d,
+    _window_size: WindowSize,
+    _vector_scene: &mut VectorScene,
     last_painter_pushed_entity: &mut Option<u64>,
     painter_preview: &mut Option<PainterPreview>,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     commit_requested: &mut bool,
     undo_requested: &mut bool,
     redo_requested: &mut bool,
+    toasts: &mut ToastQueue,
 ) -> bool {
     let painter_is_active = tools
         .active()
@@ -125,8 +138,10 @@ pub(super) fn dispatch(
             })
             .map(|p| p.dock_shows_layers())
             .unwrap_or(false);
-    hero.panel_visibility
-        .insert("painter_sidebar", painter_is_active && !painter_shows_layers);
+    hero.panel_visibility.insert(
+        "painter_sidebar",
+        painter_is_active && !painter_shows_layers,
+    );
     hero.panel_visibility
         .insert("painter_layers", painter_is_active && painter_shows_layers);
     {
@@ -365,29 +380,79 @@ pub(super) fn dispatch(
         }
         *painter_preview = None;
     }
-    // On-canvas preview overlay (straight-alpha, on top of the sprite's
-    // footprint). T1.5 MVP: the underlying sprite is NOT suppressed —
-    // canvas alpha covers it; user sees the painted result directly.
-    if let Some(preview) = &*painter_preview {
-        let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
-        if let (Some(tr), Some(sprite)) = (
-            sim.world().get::<ph2d_ecs::Transform>(entity),
-            sim.world().get::<Sprite>(entity),
-        ) {
-            let cx = tr.translation.x + sprite.anchor[0];
-            let cy = tr.translation.y + sprite.anchor[1];
-            let (sw, sh) = (sprite.size[0], sprite.size[1]);
-            let (x0, y0) = camera.world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
-            let (x1, y1) = camera.world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
-            let quality = ph2d_editor::image_quality_for(hero.project.image_filter);
-            vector_scene.draw_image_rgba(
-                &preview.rgba,
-                preview.width,
-                preview.height,
-                (x0 as f64, y0 as f64, x1 as f64, y1 as f64),
-                quality,
-            );
+    // ── GPU lifecycle for the live-preview texture (W3 sprite-suppression) ──
+    // Mirror of `bgremoval_preview`: upload the premultiplied composite into a
+    // transient `IndividualTextureStore` slot; NEXT frame's `sim_extract` reads
+    // `painter_preview_gpu` to emit a `PreviewOverride` that SUPPRESSES the
+    // source sprite and samples THIS texture in its place. The composite is
+    // STRAIGHT sRGB8 (the canvas / `take_preview_arc`); byte-space
+    // `premultiply_rgba8` matches EXACTLY what Apply's
+    // `SpriteImage::into_premultiplied` produces, so the live preview is
+    // byte-for-byte identical to the committed result on the same
+    // `Rgba8UnormSrgb` + premul-blend sprite shader (no Vello gamma/blend
+    // divergence, no image duplication). 1-frame lag is imperceptible.
+    match painter_preview.as_ref() {
+        Some(preview) => {
+            let cache_token = Arc::as_ptr(&preview.rgba) as usize;
+            let needs_upload = match *painter_preview_gpu {
+                None => true,
+                Some(gpu) => {
+                    gpu.arc_token != cache_token
+                        || gpu.entity_bits != preview.entity_bits
+                        || gpu.width != preview.width
+                        || gpu.height != preview.height
+                }
+            };
+            if needs_upload {
+                let mut premul_bytes = (*preview.rgba).clone();
+                premultiply_rgba8(&mut premul_bytes);
+                let upload_result: Result<u32, _> = match *painter_preview_gpu {
+                    Some(gpu) => renderer
+                        .replace_individual_pixels(
+                            gpu.texture_id,
+                            preview.width,
+                            preview.height,
+                            &premul_bytes,
+                        )
+                        .map(|()| gpu.texture_id),
+                    None => {
+                        renderer.acquire_individual(preview.width, preview.height, &premul_bytes)
+                    }
+                };
+                match upload_result {
+                    Ok(texture_id) => {
+                        *painter_preview_gpu = Some(PainterPreviewGpu {
+                            texture_id,
+                            width: preview.width,
+                            height: preview.height,
+                            arc_token: cache_token,
+                            entity_bits: preview.entity_bits,
+                        });
+                    }
+                    Err(e) => {
+                        toasts.push(Toast::error(format!(
+                            "Painter: upload da preview pra GPU falhou ({e}). \
+                             Tentando novamente no próximo frame."
+                        )));
+                        release_preview_texture(renderer, painter_preview_gpu);
+                    }
+                }
+            }
         }
+        None => release_preview_texture(renderer, painter_preview_gpu),
     }
     !apply_selection.is_empty()
+}
+
+/// Release the Painter live-preview's `IndividualTextureStore` slot (if any)
+/// and zero the GPU cache. Called when the preview cache turns `None` (tool
+/// deactivated, Apply committed, no source) and on upload error — next frame
+/// re-acquires from scratch.
+fn release_preview_texture(
+    renderer: &mut SpriteRenderer,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+) {
+    if let Some(gpu) = painter_preview_gpu.take() {
+        renderer.individual_mut().release(gpu.texture_id);
+    }
 }

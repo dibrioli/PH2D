@@ -208,7 +208,11 @@ use ph2d_painter_stroke::{
     StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_saturating,
 };
 
+use crate::compositor::{LayerImage, LayerPixelSource, composite};
+use crate::layers::{LayerId as RtLayerId, LayerKind, LayerStack};
 use crate::params::{BrushHandle, OklchColor, PainterMode, PainterParams};
+use ph2d_painter_brush::BlendMode;
+use std::collections::BTreeMap;
 
 // Marker for the empty-apply guard (R3-LF-5): a stamp was actually
 // deposited since the last `set_source`. `drain_painter` early-returns
@@ -279,6 +283,21 @@ pub struct PainterTool {
     /// amortized to one canvas-clone per "preview frame cycle" rather
     /// than per pointer event.
     canvas_rgba: Arc<Vec<u8>>,
+    /// **W3.T3.1/T3.2 — layer model (runtime canon, ADR-0046-amд-1 Option A).**
+    /// The `LayerStack` is the source of truth for layer structure + per-layer
+    /// blend/opacity/visibility/flags. The ACTIVE layer's working pixels live
+    /// in `canvas_rgba` (the Arc zero-copy preview buffer strokes mutate);
+    /// non-active layers' pixels live in `images`. For the common single-layer
+    /// case the stack is "trivial" and `current_preview` returns `canvas_rgba`
+    /// byte-for-byte (no composite) — preserving the T1.5 fast path exactly.
+    layers: LayerStack,
+    /// Per-(non-active-)layer pixel buffers (canvas-sized straight sRGB8).
+    /// The active layer is NOT stored here — it's `canvas_rgba`. `BTreeMap`
+    /// per HR-5 (deterministic iteration even in `PresentWorld`).
+    images: BTreeMap<RtLayerId, LayerImage>,
+    /// Cached composite output (non-trivial stacks only), so `current_preview`
+    /// can hand back a stable `&[u8]`. Invalidated (`None`) on any layer edit.
+    composited: Option<Vec<u8>>,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -388,6 +407,9 @@ impl Default for PainterTool {
         Self {
             params,
             canvas_rgba: Arc::new(Vec::new()),
+            layers: LayerStack::new(),
+            images: BTreeMap::new(),
+            composited: None,
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
@@ -1244,6 +1266,60 @@ impl PainterTool {
         self.layer_target = layer;
     }
 
+    // ── W3 layer model (runtime canon, ADR-0046-amд-1 Option A) ─────────
+
+    /// Read-only view of the runtime layer stack — what the docked layers
+    /// panel renders (the shell snapshots `layers().clone()` per frame).
+    #[must_use]
+    pub fn layers(&self) -> &LayerStack {
+        &self.layers
+    }
+
+    /// `true` when the stack is a single visible, opaque, Normal raster with
+    /// no mask/clip — i.e. the composite is byte-identical to `canvas_rgba`,
+    /// so `current_preview` skips compositing entirely (T1.5 fast path).
+    fn is_trivial_stack(&self) -> bool {
+        let root = self.layers.root();
+        if root.len() != 1 {
+            return false;
+        }
+        match self.layers.get(root[0]) {
+            Some(l) => {
+                matches!(l.kind, LayerKind::Raster(_))
+                    && l.visible
+                    && l.opacity >= 1.0
+                    && l.blend_mode == BlendMode::Normal
+                    && l.mask.is_none()
+                    && !l.clipping
+            }
+            None => true, // empty/degenerate → nothing to composite
+        }
+    }
+
+    /// Mark the composite stale so the next `current_preview` recomputes.
+    fn invalidate_composite(&mut self) {
+        self.composited = None;
+        self.preview_dirty = true;
+    }
+
+    /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.
+    pub fn set_layer_visible(&mut self, id: RtLayerId, visible: bool) {
+        self.layers.set_visible(id, visible);
+        self.invalidate_composite();
+    }
+
+    /// Set a layer's opacity (0..=1). No-op if `id` unknown.
+    pub fn set_layer_opacity(&mut self, id: RtLayerId, opacity: f32) {
+        self.layers.set_opacity(id, opacity);
+        self.invalidate_composite();
+    }
+
+    /// Set a layer's blend mode. No-op if `id` unknown.
+    pub fn set_layer_blend_mode(&mut self, id: RtLayerId, mode: BlendMode) {
+        self.layers.set_blend_mode(id, mode);
+        self.invalidate_composite();
+    }
+
     /// Configura `next_seq` baseline pra anchor monotonic per-canvas.
     /// Caller invoca após `load(canon_bytes)` passando
     /// `paint_project.last_persisted_seq().map(|s| s + 1).unwrap_or(0)`
@@ -1644,6 +1720,26 @@ impl Tool for PainterTool {
     }
 }
 
+/// [`LayerPixelSource`] over the tool's live buffers: the ACTIVE layer reads
+/// `canvas_rgba` (the Arc working buffer — zero-copy, always current), every
+/// other layer reads its `images` entry. Built transiently inside
+/// `current_preview` for the non-trivial composite path.
+struct ToolPixelSource<'a> {
+    active_id: RtLayerId,
+    active_rgba: &'a [u8],
+    images: &'a BTreeMap<RtLayerId, LayerImage>,
+}
+
+impl LayerPixelSource for ToolPixelSource<'_> {
+    fn layer_rgba(&self, id: RtLayerId) -> Option<&[u8]> {
+        if id == self.active_id {
+            Some(self.active_rgba)
+        } else {
+            self.images.get(&id).map(|img| img.rgba8.as_slice())
+        }
+    }
+}
+
 impl RasterEditTool for PainterTool {
     /// Inicializa o working canvas a partir do source do sprite. RGBA8
     /// straight; é o estado base sobre o qual os stamps depositam.
@@ -1661,6 +1757,15 @@ impl RasterEditTool for PainterTool {
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;
+        // **W3 (ADR-0046-amд-1 Option A):** a fresh source = a fresh single-
+        // raster stack. The lone layer's pixels ARE `canvas_rgba` (the active
+        // working buffer), so `images` stays empty and the stack is trivial →
+        // `current_preview` keeps the exact T1.5 fast path. Multi-layer state
+        // only appears once the layers panel adds layers.
+        self.layers = LayerStack::new();
+        self.layers.add_raster("Layer 1", width, height);
+        self.images.clear();
+        self.composited = None;
         // R3-LF-5: reset "painted since source" — fresh source = clean
         // slate for the Apply-emptiness check.
         self.has_painted_since_source = false;
@@ -1679,13 +1784,38 @@ impl RasterEditTool for PainterTool {
         self.pending_pre_stroke = None;
     }
 
-    /// Devolve referência ao working canvas iff houve update desde a
-    /// última call. Comportamento ADR-0041 — drena `preview_dirty`.
+    /// Devolve referência ao composite atual iff houve update desde a última
+    /// call. Comportamento ADR-0041 — drena `preview_dirty`.
+    ///
+    /// **W3 (ADR-0046-amд-1 Option A):** for the trivial stack (single
+    /// visible, opaque, Normal raster — the common case, and the only state
+    /// reachable until the layers panel adds layers) this returns
+    /// `canvas_rgba` byte-for-byte (exact T1.5 fast path, zero composite, zero
+    /// alloc). For a non-trivial stack (a hidden/faded/blended/multi layer) it
+    /// composites the runtime `LayerStack` (active layer = `canvas_rgba`,
+    /// others = `images`) into a cached buffer — the CPU reference; the GPU
+    /// compositor (Block 2) is the real-time path the shell uses for big stacks.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
         }
-        Some((&self.canvas_rgba, self.source_size.0, self.source_size.1))
+        let (w, h) = self.source_size;
+        if self.is_trivial_stack() {
+            return Some((&self.canvas_rgba, w, h));
+        }
+        // Non-trivial: composite the runtime stack (CPU reference). Compute
+        // with immutable borrows first, then cache, then hand back the cache.
+        let composited = {
+            let active = self.layers.active().unwrap_or(RtLayerId(0));
+            let src = ToolPixelSource {
+                active_id: active,
+                active_rgba: &self.canvas_rgba,
+                images: &self.images,
+            };
+            composite(&self.layers, &src, w, h)
+        };
+        self.composited = Some(composited);
+        Some((self.composited.as_deref().unwrap_or(&[]), w, h))
     }
 
     fn take_pending_commit(&mut self) -> bool {
@@ -1936,6 +2066,52 @@ mod tests {
         assert_eq!(px, src.as_slice());
         // Drained — next call returns None.
         assert!(t.current_preview().is_none());
+    }
+
+    #[test]
+    fn set_source_creates_single_raster_layer() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(8, 8, [10, 20, 30, 255]), 8, 8);
+        let stack = t.layers();
+        assert_eq!(stack.len(), 1);
+        assert_eq!(stack.root().len(), 1);
+        let id = stack.active().expect("active layer");
+        let layer = stack.get(id).expect("layer");
+        assert!(matches!(layer.kind, crate::layers::LayerKind::Raster(_)));
+        assert!(layer.visible && layer.opacity >= 1.0);
+        assert_eq!(layer.blend_mode, BlendMode::Normal);
+    }
+
+    #[test]
+    fn hidden_layer_composites_to_transparent() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4);
+        let id = t.layers().active().unwrap();
+        t.set_layer_visible(id, false);
+        let (px, _, _) = t.current_preview().expect("dirty after edit");
+        // Every pixel fully transparent (invisible single layer → nothing).
+        assert!(px.chunks_exact(4).all(|p| p[3] == 0), "hidden layer must clear alpha");
+    }
+
+    #[test]
+    fn half_opacity_layer_halves_alpha() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [255, 255, 255, 255]), 2, 2);
+        let id = t.layers().active().unwrap();
+        t.set_layer_opacity(id, 0.5);
+        let (px, _, _) = t.current_preview().expect("dirty after edit");
+        // αo = 0.5 over transparent → ~127 (alpha is linear coverage).
+        assert!((px[3] as i32 - 127).abs() <= 2, "expected ~127 alpha, got {}", px[3]);
+    }
+
+    #[test]
+    fn trivial_stack_preview_is_byte_exact_source() {
+        // The N=1 default stack must NOT composite — preview == source bytes.
+        let mut t = PainterTool::default();
+        let src = flat_source(8, 8, [123, 45, 200, 255]);
+        t.set_source(src.clone(), 8, 8);
+        let (px, _, _) = t.current_preview().unwrap();
+        assert_eq!(px, src.as_slice(), "trivial stack must skip composite (fast path)");
     }
 
     #[test]

@@ -43,14 +43,17 @@ impl LayerImage {
     }
 }
 
-/// Resolves a layer's pixels for the compositor. Backed by the tool
-/// canvas + GPU `LayerCache` at runtime; a [`BTreeMap`] in tests
-/// ([`MapPixelSource`]). `BTreeMap` (not `HashMap`) per HR-5.
+/// Resolves a layer's pixels for the compositor: the canvas-sized straight
+/// sRGB8 RGBA bytes (`canvas_w * canvas_h * 4`) for a raster/mask layer.
+/// Returns a borrowed slice (mirror of the GPU `LayerPixels { rgba8: &[u8] }`)
+/// so a host can hand the active layer's working buffer (e.g. the tool's
+/// `Arc<Vec<u8>>` canvas) without cloning. `None` for unknown/group layers.
 pub trait LayerPixelSource {
-    fn image(&self, id: LayerId) -> Option<&LayerImage>;
+    fn layer_rgba(&self, id: LayerId) -> Option<&[u8]>;
 }
 
 /// Trivial [`LayerPixelSource`] over a `BTreeMap` — tests + simple hosts.
+/// `BTreeMap` (not `HashMap`) per HR-5.
 #[derive(Clone, Debug, Default)]
 pub struct MapPixelSource {
     pub images: BTreeMap<LayerId, LayerImage>,
@@ -63,8 +66,8 @@ impl MapPixelSource {
 }
 
 impl LayerPixelSource for MapPixelSource {
-    fn image(&self, id: LayerId) -> Option<&LayerImage> {
-        self.images.get(&id)
+    fn layer_rgba(&self, id: LayerId) -> Option<&[u8]> {
+        self.images.get(&id).map(|img| img.rgba8.as_slice())
     }
 }
 
@@ -170,12 +173,20 @@ fn composite_into(
         let mode = layer.blend_mode;
         match &layer.kind {
             LayerKind::Raster(_) => {
-                let Some(img) = src.image(id) else { continue };
-                if img.width != canvas_w {
-                    continue; // mismatched layer image — skip rather than misindex
+                let Some(rgba) = src.layer_rgba(id) else { continue };
+                // Bounds guard: the highest texel index this window reads is
+                // the bottom-right corner. Skip a too-short buffer rather than
+                // panic-index (defense vs a mismatched/forged provider).
+                let max_idx = if rw == 0 || rh == 0 {
+                    0
+                } else {
+                    ((ry + rh - 1) * canvas_w + (rx + rw - 1)) as usize
+                };
+                if rgba.len() < (max_idx + 1) * 4 {
+                    continue;
                 }
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
-                    decode(&img.rgba8, (gy * canvas_w + gx) as usize)
+                    decode(rgba, (gy * canvas_w + gx) as usize)
                 });
             }
             LayerKind::Group(g) => {

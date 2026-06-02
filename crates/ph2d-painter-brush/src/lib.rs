@@ -61,6 +61,7 @@
 //! - `ph2d-painter-stroke` (ADR-0046) — consome `BrushHandle` + `BrushParamsHash` em `StrokeRecord`.
 
 pub mod about;
+pub mod adjustments;
 pub mod atlas;
 pub mod blend;
 pub mod brush;

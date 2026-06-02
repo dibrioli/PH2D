@@ -137,15 +137,16 @@ locais, todos `cargo check`/clippy/teste verdes — não pushei):
   tool). +6 ids canônicos (e enrolei o trio PANEL/CLOSE/FILL_SWATCH, que nunca
   estava, no node_id_collisions). Gate cross-crate: nº de opções == `ShapeKind::ALL`.
 
-- **§4.1 (Rank 10 — vetor como objeto de cena) — ADR FECHADO (`3d8eb6b`,
-  ADR-0076), execução COORDENADA.** Caminho B aprovado, **refinado**: lê o
-  `Transform` da entidade pareada DIRETO da SimWorld (alvo autoritativo do gizmo),
-  então o boundary sim/present (ADR-0021) NÃO se mexe no MVP raiz-only — blast-radius
-  = shell + 1 componente (`VectorSceneRef`). Schema congelado intacto. O ADR traz o
-  plano de execução em 4 passos (§5). **Execução toca `vector_pen_bridge.rs` +
-  `input_dispatch.rs` (TEUS, contestados)** → ou eu executo numa janela em que tu
-  estejas parado neles, ou TU executas sob o ADR-0076. Decisão fechada; combinemos a
-  janela.
+- **§4.1 (Rank 10 — vetor como objeto de cena) — ADR-0076 + IMPLEMENTADO
+  (`3d8eb6b` ADR, `3fafc1e` impl; Enio liberou "vector parado").** Caminho B
+  refinado (lê `Transform` da SimWorld direto → boundary sim/present intacto).
+  Vetor commitado agora aparece na hierarquia (entidade nomeada) e PEGA no gizmo
+  (move/rotaciona/escala). 7 arquivos shell, schema congelado intacto, clippy-clean,
+  math pura testada (5 unit tests). **Descoberta:** o gizmo não desenhava handles sem
+  Sprite (`build_view` → `get::<Sprite>?`) → adicionei ramo vetor que dimensiona a
+  `GizmoView` pela AABB rest-pose (ADR-0076 §6). **Pendente: smoke visual do Enio**
+  (alinhamento da caixa, pick sob rotação, feel do drag) — provável iteração.
+  Fora de escopo (§2.7): reparent, persistência do placement, ícone na hierarquia.
 
 - **§4.3 (consolidar 5 pills → 1 modo VECTOR) — SEQUENCIADO p/ passo dedicado.**
   Não é polish rápido: é paridade-ImageToolsV1 inteira (estado `vector_mode` + 

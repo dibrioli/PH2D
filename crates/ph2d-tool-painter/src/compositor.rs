@@ -194,6 +194,10 @@ fn composite_into(
         return;
     }
     // Bottom-to-top (§2.11): the panel order is top-first, so iterate rev.
+    // T3.6: a clipping layer clips to the nearest NON-clipping raster below it
+    // (§2.8); consecutive clipping layers chain to the same base. As we walk up,
+    // `clip_base` holds that base raster's straight pixels (alpha = the clip).
+    let mut clip_base: Option<&[u8]> = None;
     for &id in ids.iter().rev() {
         let Some(layer) = stack.get(id) else { continue };
         if !layer.visible || layer.opacity <= 0.0 {
@@ -228,6 +232,9 @@ fn composite_into(
                     }
                     _ => None,
                 });
+                // T3.6: a clipping layer paints only where its clip base is
+                // opaque — multiply its alpha by the base's straight alpha.
+                let clip = if layer.clipping { clip_base } else { None };
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let idx = (gy * canvas_w + gx) as usize;
                     let mut s = decode(rgba, idx);
@@ -235,8 +242,16 @@ fn composite_into(
                         let v = mask_value(mrgba, idx);
                         s[3] *= if inverted { 1.0 - v } else { v };
                     }
+                    if let Some(base) = clip {
+                        s[3] *= base[idx * 4 + 3] as f32 / 255.0;
+                    }
                     s
                 });
+                // A NON-clipping raster becomes the clip base for the layers
+                // above it; a clipping raster chains to the same base.
+                if !layer.clipping {
+                    clip_base = Some(rgba);
+                }
             }
             LayerKind::Group(g) => {
                 // Composite the children into their own sub-window, then
@@ -259,6 +274,8 @@ fn composite_into(
                     let ly = gy - ry;
                     sub[(ly * rw + lx) as usize]
                 });
+                // A group is not a raster clip base — it breaks the clip chain.
+                clip_base = None;
             }
             // Mask layers composite via their parent (T3.5); skip standalone.
             LayerKind::Mask(_) => continue,
@@ -489,6 +506,50 @@ mod tests {
             "gray mask → partial red, got {}",
             out[0]
         );
+    }
+
+    #[test]
+    fn clipping_layer_paints_only_where_base_is_opaque() {
+        // T3.6: a clipping raster is masked by the base's straight alpha —
+        // visible only where the base below it is opaque.
+        let (w, h) = (2, 1);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", w, h).unwrap();
+        let clip = s.add_raster("clip", w, h).unwrap();
+        s.get_mut(clip).unwrap().clipping = true;
+        let mut src = MapPixelSource::default();
+        let mut bimg = LayerImage::transparent(w, h);
+        bimg.rgba8[0..4].copy_from_slice(&[0, 200, 0, 255]); // left opaque green
+        bimg.rgba8[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
+        src.insert(base, bimg);
+        src.insert(clip, solid(w, h, [200, 0, 0, 255])); // opaque red everywhere
+        let out = composite(&s, &src, w, h);
+        assert_eq!(&out[0..4], &[200, 0, 0, 255], "clip shows over opaque base");
+        assert_eq!(out[7], 0, "clip hidden where base is transparent");
+    }
+
+    #[test]
+    fn consecutive_clipping_layers_share_one_base() {
+        // T3.6: two clipping layers chain to the SAME base (the first
+        // non-clipping raster below), not to each other.
+        let (w, h) = (2, 1);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", w, h).unwrap();
+        let c1 = s.add_raster("c1", w, h).unwrap();
+        let c2 = s.add_raster("c2", w, h).unwrap();
+        s.get_mut(c1).unwrap().clipping = true;
+        s.get_mut(c2).unwrap().clipping = true;
+        let mut src = MapPixelSource::default();
+        let mut bimg = LayerImage::transparent(w, h);
+        bimg.rgba8[0..4].copy_from_slice(&[10, 10, 10, 255]); // left opaque
+        bimg.rgba8[4..8].copy_from_slice(&[0, 0, 0, 0]); // right transparent
+        src.insert(base, bimg);
+        src.insert(c1, solid(w, h, [0, 0, 0, 0])); // c1 transparent (no cover)
+        src.insert(c2, solid(w, h, [200, 0, 0, 255])); // c2 opaque red
+        let out = composite(&s, &src, w, h);
+        // c2 visible on the left proves it clips to the BASE, not to (transparent) c1.
+        assert_eq!(&out[0..3], &[200, 0, 0], "c2 clips to the base → red on left");
+        assert_eq!(out[7], 0, "c2 hidden where the base is transparent");
     }
 
     #[test]

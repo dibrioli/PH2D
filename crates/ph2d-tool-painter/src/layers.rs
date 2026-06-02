@@ -309,6 +309,15 @@ impl LayerStack {
         }
     }
 
+    /// Set a layer's clipping-mask modifier (§2.8) — non-destructive; the
+    /// compositor clips it to the nearest non-clipping raster below. No-op if
+    /// `id` is unknown.
+    pub fn set_clipping(&mut self, id: LayerId, clipping: bool) {
+        if let Some(l) = self.get_mut(id) {
+            l.clipping = clipping;
+        }
+    }
+
     /// The ordered list (top-to-bottom) of the parent that directly holds
     /// `id`: either a group's children or the root. Returns the owning
     /// group id (`None` = root) for callers that need to walk upward.

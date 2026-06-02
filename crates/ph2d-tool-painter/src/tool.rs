@@ -1402,6 +1402,13 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Toggle a layer's clipping-mask modifier (§2.8) — non-destructive (the
+    /// painting is preserved; only the composite changes). No-op if `id` unknown.
+    pub fn set_layer_clipping(&mut self, id: RtLayerId, clipping: bool) {
+        self.layers.set_clipping(id, clipping);
+        self.invalidate_composite();
+    }
+
     /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
     /// `images` before a layer switch — so the layer we're leaving keeps its
     /// pixels. (The active layer is otherwise NOT stored in `images`.)

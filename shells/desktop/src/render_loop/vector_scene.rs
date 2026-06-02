@@ -23,6 +23,7 @@
 
 use ph2d_ecs::{Component, Entity, Name, SimWorld, Transform};
 use ph2d_vector::Ph2dVectorAsset;
+use ph2d_vector_doc::VectorSelection;
 
 /// Links a scene entity to the same-index `Ph2dVectorAsset`, plus its rest-pose
 /// AABB (world coords, pre-placement). Editor-runtime glue — NOT persisted; it is
@@ -204,6 +205,57 @@ pub(crate) fn pick(
         }
     }
     None
+}
+
+/// Bridge the two object-level selections so a vector selected anywhere is
+/// selected everywhere:
+/// - **`gizmo_selection`** (`hero.gizmo.selection`) — set by the hierarchy panel
+///   and the canvas gizmo-pick; drives the gizmo box + hierarchy highlight.
+/// - **`vector_selection.networks`** — set by the vector Select tool; drives the
+///   fill/color apply (`vector_inspector_bridge`).
+///
+/// Edge-triggered: whichever side CHANGED since last frame propagates to the
+/// other (so they never fight). Result: select a shape in the hierarchy →
+/// recolor it; select it with the Select tool → the gizmo appears; etc. The
+/// vertex-level selection (Direct tool) is orthogonal and untouched.
+pub(crate) fn sync_object_selection(
+    gizmo_selection: &mut Option<u64>,
+    vector_selection: &mut VectorSelection,
+    entities: &[Entity],
+    last_gizmo: &mut Option<u64>,
+    last_networks: &mut Vec<usize>,
+) {
+    let entity_index = |bits: u64| entities.iter().position(|&e| e.to_bits() == bits);
+    let is_vector = |bits: u64| entities.iter().any(|&e| e.to_bits() == bits);
+
+    if *gizmo_selection != *last_gizmo {
+        // Gizmo / hierarchy changed the selection → derive the vector network so
+        // the fill picker recolors the right shape.
+        match gizmo_selection.and_then(entity_index) {
+            Some(idx) => vector_selection.select_only_network(idx),
+            // Selected a sprite / nothing → drop the object-level network pick
+            // (any vertex selection is a different tool's concern, left as-is).
+            None => vector_selection.networks.clear(),
+        }
+    } else if vector_selection.networks != *last_networks {
+        // A vector tool changed the network selection → arm the gizmo so the box
+        // appears + the hierarchy highlights, even though the pick came from the
+        // Select tool rather than a canvas gizmo-pick.
+        match vector_selection
+            .networks
+            .first()
+            .and_then(|&i| entities.get(i))
+        {
+            Some(&e) => *gizmo_selection = Some(e.to_bits()),
+            None => {
+                if gizmo_selection.is_some_and(is_vector) {
+                    *gizmo_selection = None;
+                }
+            }
+        }
+    }
+    *last_gizmo = *gizmo_selection;
+    last_networks.clone_from(&vector_selection.networks);
 }
 
 #[cfg(test)]

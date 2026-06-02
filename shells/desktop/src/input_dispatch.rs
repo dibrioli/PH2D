@@ -283,6 +283,25 @@ impl App {
         }
     }
 
+    /// `true` if `(x, y)` lands on a transform-gizmo handle (corner / edge /
+    /// rotate / interior, or a keyed extra / global handle). ADR-0076: lets a
+    /// gizmo-handle click fall THROUGH the vector tools' canvas-consume arms so
+    /// the gizmo transforms a selected vector even while a vector Select / Direct
+    /// / Shape tool is active (otherwise the tool eats the drag and the gizmo
+    /// never engages).
+    fn cursor_on_gizmo_handle(&self, x: f32, y: f32) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .and_then(|h| {
+                h.hit_index.hit(x, y).map(|id| {
+                    ph2d_editor::gizmo_kind_for_id(id).is_some()
+                        || h.gizmo.gizmo_hit_map.contains_key(&id)
+                })
+            })
+            .unwrap_or(false)
+    }
+
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
@@ -336,6 +355,10 @@ impl App {
         // extra-colour swatch deletes it; a Primary Down/drag over the
         // sprite samples colours. Both consume the event so the normal
         // canvas/gizmo/context-menu logic below does not run.
+        // ADR-0076: a gizmo-handle click must reach the transform-gizmo path
+        // (below the consume block) even while a vector tool is active — so it
+        // bypasses the vector tools' unconditional canvas-consume arms.
+        let on_gizmo_handle = self.cursor_on_gizmo_handle(evt.x, evt.y);
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
                 if self.try_eyedropper_delete(evt.x, evt.y) =>
@@ -411,7 +434,7 @@ impl App {
             // the canvas region; misses don't open rubber-band or
             // change selection).
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.vector_pen_active_consume_canvas_click() =>
+                if !on_gizmo_handle && self.vector_pen_active_consume_canvas_click() =>
             {
                 return;
             }
@@ -426,7 +449,7 @@ impl App {
             }
             // Pencil active but Down landed OFF-canvas → silent consume.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.vector_pencil_active_consume_canvas_click() =>
+                if !on_gizmo_handle && self.vector_pencil_active_consume_canvas_click() =>
             {
                 return;
             }
@@ -439,7 +462,7 @@ impl App {
                 return;
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.vector_shape_active_consume_canvas_click() =>
+                if !on_gizmo_handle && self.vector_shape_active_consume_canvas_click() =>
             {
                 return;
             }
@@ -452,7 +475,7 @@ impl App {
                 return;
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.vector_select_active_consume_canvas_click() =>
+                if !on_gizmo_handle && self.vector_select_active_consume_canvas_click() =>
             {
                 return;
             }
@@ -464,7 +487,7 @@ impl App {
                 return;
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.vector_direct_active_consume_canvas_click() =>
+                if !on_gizmo_handle && self.vector_direct_active_consume_canvas_click() =>
             {
                 return;
             }

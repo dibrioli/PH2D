@@ -1062,6 +1062,18 @@ impl crate::App {
                 &mut self.vector_scene_entities,
                 &self.committed_vector_pen_paths,
             );
+            // ADR-0076: bridge the gizmo/hierarchy selection ⟷ the vector tools'
+            // network selection, so a shape selected anywhere is selected
+            // everywhere (gizmo box + fill/color + hierarchy highlight). Runs
+            // BEFORE the selection-overlay + inspector bridges so they paint /
+            // apply against the unified selection this same frame.
+            vector_scene::sync_object_selection(
+                &mut hero.gizmo.selection,
+                &mut self.vector_selection,
+                &self.vector_scene_entities,
+                &mut self.last_synced_gizmo_sel,
+                &mut self.last_synced_vec_networks,
+            );
             // Vector Select / Direct-Select ⟷ shell overlay (T2.3). Pure
             // feedback (never mutates the scene): selected-network outlines +
             // vertex dots + the live marquee rect, read from the shared

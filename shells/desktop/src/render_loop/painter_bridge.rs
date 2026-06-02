@@ -310,14 +310,30 @@ pub(super) fn dispatch(
             None
         });
 
-        // (W3.T3.4) Layers snapshot publish pro docked layers panel — the
-        // panel paints a row per layer off this clone. `None` when Painter is
-        // inactive (panel falls back to the "No layers" placeholder / is
-        // hidden anyway).
+        // (W3.T3.4 + B.5 perf) Layers snapshot publish pro docked layers panel.
+        // The panel paints a row per layer off this clone. **Gated on
+        // `layers_revision()`:** the `LayerStack` is metadata-only, but the clone
+        // (N rows × name `String`) ran EVERY frame Painter was active — including
+        // every mouse-move during a layer drag, which made the reparent feel
+        // sluggish (Enio 2026-06-02 "muito lenta"). `layers_revision` bumps only
+        // on structural/metadata edits (`invalidate_composite` + `set_source`),
+        // NOT strokes and NOT cursor moves. So during an in-flight drag the
+        // structure is stable → we skip the clone entirely; the panel keeps its
+        // last published snapshot and reads the live `painter_layer_drag()` cursor
+        // for the overlay (panel re-paints every frame regardless). First
+        // activation always publishes (sentinel `u64::MAX` ≠ any real revision);
+        // the single persistent `PainterTool` instance keeps `layers_revision`
+        // monotonic for the app lifetime, so an unchanged revision genuinely means
+        // an unchanged stack (never a stale skip).
         #[cfg(feature = "panel-painter-layers")]
-        ph2d_panel_painter_layers::set_current_layers(
-            painter_is_active.then(|| painter.layers().clone()),
-        );
+        {
+            use std::sync::atomic::{AtomicU64, Ordering};
+            static LAST_LAYERS_REV: AtomicU64 = AtomicU64::new(u64::MAX);
+            let rev = painter.layers_revision();
+            if LAST_LAYERS_REV.swap(rev, Ordering::Relaxed) != rev {
+                ph2d_panel_painter_layers::set_current_layers(Some(painter.layers().clone()));
+            }
+        }
 
         // ── (W2.T2.3) Color thumb ⟷ Blender picker round-trip ──────────
         //

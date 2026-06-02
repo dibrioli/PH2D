@@ -1490,7 +1490,19 @@ impl PainterTool {
         };
         let moved = match drop {
             PainterLayerDrop::Inside(t) => match self.decode_layer_widget(t) {
-                Some((g, _)) => self.layers.move_into_group(d, g),
+                // Middle band: drop INTO a group folder. If the target isn't a
+                // group (or the nest is rejected — depth cap / cycle),
+                // `move_into_group` returns `false` WITHOUT mutating (its guards
+                // precede the detach), so we fall back to a sibling insert ABOVE
+                // the target. This kills the dead 40% middle band on normal layer
+                // rows: every position over a row now resolves to a meaningful
+                // move, and the panel's drop indicator mirrors it (box for a
+                // group, before-line for a leaf). Photoshop/Procreate semantics:
+                // you only nest into a folder; over a leaf it's always before/after.
+                Some((tgt, _)) => {
+                    self.layers.move_into_group(d, tgt)
+                        || self.layers.move_to_sibling_of(d, tgt, false)
+                }
                 None => false,
             },
             PainterLayerDrop::Before(t) => match self.decode_layer_widget(t) {
@@ -3287,6 +3299,27 @@ mod tests {
         t.handle_layer_reparent(row(l2), PainterLayerDrop::End);
         assert_eq!(t.layers.depth(l2), 0, "l2 pulled back to root");
         assert_eq!(t.layers.root().last(), Some(&base), "base still pinned bottom");
+    }
+
+    #[test]
+    fn handle_layer_reparent_inside_leaf_falls_back_to_before_sibling() {
+        // W3.T3.8: the middle ("Inside") band over a NON-group layer must not be
+        // a dead no-op — it falls back to a before-sibling insert so every drop
+        // position is meaningful and the panel's drop indicator (a before-line
+        // over leaves) tells the truth.
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::interaction::PainterLayerDrop;
+        let row = |l: RtLayerId| painter_layer_widget_id(l.0, PainterLayerWidget::Row);
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (Layer 1)
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap(); // root = [l3, l2, base]
+        assert_eq!(t.layers.root()[0], l3, "L3 starts topmost");
+        // Drop l2 on the MIDDLE band of l3 (a leaf raster, not a group).
+        t.handle_layer_reparent(row(l2), PainterLayerDrop::Inside(row(l3)));
+        assert_eq!(t.layers.depth(l2), 0, "no nesting into a leaf — stays at root");
+        assert_eq!(t.layers.root()[0], l2, "l2 inserted before l3 as a sibling");
+        assert_eq!(t.layers.root()[1], l3);
     }
 
     #[test]

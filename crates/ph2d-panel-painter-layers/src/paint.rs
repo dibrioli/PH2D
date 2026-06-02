@@ -25,9 +25,9 @@ use crate::PainterLayersPanel;
 use crate::state::{self, PainterLayersPanelState, set_last_content_h, set_last_visible_h};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget, painter_layer_widget_id};
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{HierarchyDragState, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
-    paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text, rect_to_vello, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -56,6 +56,9 @@ const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
 const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
 const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
+const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar thickness
+const GHOST_PAD: f32 = 7.0; // LITERAL-PX-OK: floating drag-ghost pill horizontal text padding
+const GHOST_CHAR_ADV: f32 = 0.62; // LITERAL-PX-OK: rough glyph-advance fraction of font px (ghost pill sizing, cosmetic)
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
@@ -140,6 +143,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // layer branch, pushed in the scroll-bounds block below.
     let mut painter_row_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
         std::collections::BTreeSet::new();
+    // W3.T3.8 drag overlay: the live reparent gesture (id being dragged + the
+    // latest cursor). Copied out (state is `Copy`) so no store borrow lingers
+    // into the `store_mut()` calls below. `None` unless a drag passed the
+    // distance threshold (`active`).
+    let dragging = ctx.host.store().painter_layer_drag().filter(|d| d.active);
+    // The floating "lifted layer" pill (name + cursor) painted last, unclipped.
+    let mut ghost: Option<(String, f32, f32)> = None;
     match state::current_layers() {
         Some(stack) if !stack.is_empty() => {
             painter_row_ids = stack
@@ -147,6 +157,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
                 .map(|l| painter_layer_widget_id(l.0, PainterLayerWidget::Row))
                 .collect();
             let active = stack.active();
+            // Full-row drop bands collected during the walk (id, full-row rect,
+            // is_group) so the indicator below mirrors `find_painter_layer_drop`
+            // exactly (same rows, same 30/40/30) — WYSIWYG drop.
+            let mut drag_rows: Vec<(ph2d_a11y::NodeId, Rect, bool)> = Vec::new();
             y = paint_layer_subtree(
                 ctx,
                 theme,
@@ -157,7 +171,30 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
                 rect.x + PANEL_HEAD_PAD,
                 content_w,
                 y,
+                dragging,
+                &mut drag_rows,
             );
+            if let Some(d) = dragging {
+                // Live drop indicator, on top of the rows (still inside the body
+                // clip so it can't bleed over the header/footer).
+                paint_drop_indicator(
+                    ctx,
+                    theme,
+                    &drag_rows,
+                    d.cursor_y,
+                    d.dragged,
+                    rect.x + PANEL_HEAD_PAD,
+                    content_w,
+                );
+                // Decode the dragged NodeId → its layer name for the ghost pill.
+                ghost = stack
+                    .all_ids()
+                    .find(|lid| {
+                        painter_layer_widget_id(lid.0, PainterLayerWidget::Row) == d.dragged
+                    })
+                    .and_then(|lid| stack.get(lid))
+                    .map(|l| (l.name.clone(), d.cursor_x, d.cursor_y));
+            }
         }
         _ => {
             let font = TypeToken::Base.px();
@@ -269,6 +306,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
         crate::blend::paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
     }
+
+    // W3.T3.8: the floating drag ghost is the very top layer (a drag and an open
+    // blend popover are mutually exclusive, so order vs the popover is moot).
+    // Painted after the body clip pop so it tracks the cursor past the list.
+    if let Some((name, cx, cy)) = ghost {
+        paint_drag_ghost(ctx, theme, &name, cx, cy);
+    }
 }
 
 /// Header dock-toggle ("Brush") — swaps the shared dock slot to the brush
@@ -341,6 +385,7 @@ fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme)
 /// Paint `ids` (top→bottom) as interactive rows, recursing into non-collapsed
 /// groups (indented). Returns the `y` advanced past the painted rows.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn paint_layer_subtree(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -351,6 +396,8 @@ fn paint_layer_subtree(
     x: f32,
     w: f32,
     mut y: f32,
+    dragging: Option<HierarchyDragState>,
+    drag_rows: &mut Vec<(ph2d_a11y::NodeId, Rect, bool)>,
 ) -> f32 {
     let indent = depth as f32 * LAYER_INDENT_STEP;
     let last = ids.len().saturating_sub(1);
@@ -383,12 +430,26 @@ fn paint_layer_subtree(
             row_x,
             row_w,
             y,
+            dragging,
+            drag_rows,
         );
 
         if let LayerKind::Group(g) = &layer.kind
             && !g.collapsed
         {
-            y = paint_layer_subtree(ctx, theme, stack, &g.children, active, depth + 1, x, w, y);
+            y = paint_layer_subtree(
+                ctx,
+                theme,
+                stack,
+                &g.children,
+                active,
+                depth + 1,
+                x,
+                w,
+                y,
+                dragging,
+                drag_rows,
+            );
         }
     }
     y
@@ -410,6 +471,8 @@ fn paint_layer_row(
     x: f32,
     w: f32,
     y: f32,
+    dragging: Option<HierarchyDragState>,
+    drag_rows: &mut Vec<(ph2d_a11y::NodeId, Rect, bool)>,
 ) -> f32 {
     let font = TypeToken::Base.px();
     let cell_gap = Spacing::Sm.px();
@@ -421,6 +484,27 @@ fn paint_layer_row(
     // ↑↓ reorder buttons; the rest of the row content stops at `content_right`.
     let reorder_x = x + w - REORDER_W;
     let content_right = reorder_x - cell_gap;
+
+    // W3.T3.8 drag overlay: identify this row's draggable handle id once (reused
+    // for the hit-rect below). Only while a drag is in flight do we record its
+    // FULL-row band for the drop indicator — no per-frame Vec churn when idle.
+    let row_id = painter_layer_widget_id(id.0, PainterLayerWidget::Row);
+    let is_dragged = dragging.map(|d| d.dragged == row_id).unwrap_or(false);
+    if dragging.is_some() {
+        drag_rows.push((row_id, Rect::new(x, y, w, row_total_h), layer.is_group()));
+    }
+    // The row being dragged reads as "lifted": a soft accent wash in place while
+    // the real content tracks the cursor as the floating ghost (Procreate-style).
+    if is_dragged {
+        let pad = Spacing::Xs.px();
+        let lift = Rect::new(x - pad, y - pad, w + pad * 2.0, row_total_h + pad * 2.0);
+        fill_rounded_rect(
+            ctx.scene,
+            lift,
+            Radius::Sm.px(),
+            resolve(ColorToken::AccentSoft, theme),
+        );
+    }
 
     // Active-row accent outline (spans both lines), slightly outset into the
     // panel padding so it frames the row without clipping the slider.
@@ -479,11 +563,16 @@ fn paint_layer_row(
         name_w,
         resolve(ColorToken::Text1, theme),
     );
-    let row_id = painter_layer_widget_id(id.0, PainterLayerWidget::Row);
     register_button(ctx.host.store_mut(), row_id);
+    // Hit rect spans the FULL row height (both lines), not just the name line, so
+    // the whole row is a drag handle + drop target — and the drop indicator's
+    // bands (computed off this same geometry) match where the reparent lands.
+    // The per-cell widgets (eye registered above; blend/slider/reorder below) are
+    // registered with their own rects and win by last-registration, so this wider
+    // rect only claims the otherwise-empty row body for select/drag.
     ctx.host
         .hit_index_mut()
-        .register(row_id, Rect::new(name_x, y, name_w, ROW_H_PX));
+        .register(row_id, Rect::new(name_x, y, name_w, row_total_h));
 
     // ── Blend-mode dropdown chip (opens a popover list) — skipped for the
     // base layer (it IS the image; nothing below to blend with). ────────
@@ -541,6 +630,102 @@ fn paint_layer_row(
     );
 
     op_y + ROW_H_PX + Spacing::Sm.px()
+}
+
+/// Live drop indicator for an in-progress layer drag — painted on top of the
+/// rows, mirroring `find_painter_layer_drop`'s 30/40/30 band split so the user
+/// sees exactly where the reparent lands (WYSIWYG drop):
+///   - top 30% of a row → a bar at the row's top edge (insert before)
+///   - middle 40% → an outline box AROUND a group (nest inside); over a leaf the
+///     tool falls back to before-sibling, so the top bar shows there too
+///   - bottom 30% → a bar at the row's bottom edge (insert after)
+///   - below every row → a bar above the base (End → root bottom)
+/// Skips the dragged row itself, exactly as the dispatch does.
+fn paint_drop_indicator(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    rows: &[(ph2d_a11y::NodeId, Rect, bool)],
+    cursor_y: f32,
+    dragged: ph2d_a11y::NodeId,
+    x: f32,
+    w: f32,
+) {
+    let accent = resolve(ColorToken::Accent, theme);
+    let bar = |ctx: &mut PaintCtx, y: f32| {
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, y - DROP_BAR_H * 0.5, w, DROP_BAR_H),
+            Radius::Sm.px(),
+            accent,
+        );
+    };
+    for &(id, rect, is_group) in rows {
+        if id == dragged {
+            continue;
+        }
+        let top = rect.y;
+        let bot = rect.y + rect.h;
+        if cursor_y < top || cursor_y >= bot {
+            continue;
+        }
+        let inside_top = top + rect.h * 0.3;
+        let inside_bot = top + rect.h * 0.7;
+        if cursor_y < inside_top {
+            bar(ctx, top);
+        } else if cursor_y < inside_bot {
+            if is_group {
+                stroke_rounded_rect(ctx.scene, rect, Radius::Sm.px(), StrokeToken::Thick.px(), accent);
+            } else {
+                bar(ctx, top);
+            }
+        } else {
+            bar(ctx, bot);
+        }
+        return;
+    }
+    // Below every visible row → End (root bottom, just above the base sprite,
+    // which is the bottom-most row). Draw the bar at the base's top edge.
+    if let Some(&(_, base, _)) = rows.last() {
+        bar(ctx, base.y);
+    }
+}
+
+/// Floating pill that tracks the cursor during a layer drag — the real-time
+/// "this layer is moving" cue (Procreate-style). Painted unclipped (after the
+/// body clip is popped) so it follows the cursor even past the list bounds.
+fn paint_drag_ghost(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    name: &str,
+    cursor_x: f32,
+    cursor_y: f32,
+) {
+    let font = TypeToken::Base.px();
+    let text_w = (name.chars().count() as f32) * font * GHOST_CHAR_ADV;
+    let pill_w = text_w + GHOST_PAD * 2.0;
+    let pill_h = ROW_H_PX;
+    // Sit just below-right of the cursor so the pointer doesn't cover the label.
+    let px = cursor_x + Spacing::Sm.px();
+    let py = cursor_y - pill_h * 0.5;
+    let pill = Rect::new(px, py, pill_w, pill_h);
+    fill_rounded_rect(ctx.scene, pill, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+    stroke_rounded_rect(
+        ctx.scene,
+        pill,
+        Radius::Sm.px(),
+        StrokeToken::Default.px(),
+        resolve(ColorToken::Accent, theme),
+    );
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        name,
+        px + GHOST_PAD,
+        py + (pill_h - font) * 0.5,
+        font,
+        text_w,
+        resolve(ColorToken::Text1, theme),
+    );
 }
 
 /// Paint one ↑/↓ reorder button. When `enabled`, it draws at full contrast and

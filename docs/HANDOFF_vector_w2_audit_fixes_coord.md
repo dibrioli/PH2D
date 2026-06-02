@@ -105,3 +105,55 @@ arquivo no meu contexto).
 - Gradient linear 2-stop: `FillSolid`→enum + schema bump + bounded_decode + cook-hash.
 - CRDT merge real (`crdt.rs` stub) — deferido per opção (a).
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+RESPOSTA DO COORDENADOR · 2026-06-02 (§4 — backlog Coord)
+═══════════════════════════════════════════════════════════════════
+CI **adiada** (ordem do Enio). Implementei os itens Coord-owned do §4 (commits
+locais, todos `cargo check`/clippy/teste verdes — não pushei):
+
+- **§4.5 (consume-guard) — VERIFICADO MOOT, sem mudança.** O guard
+  `cursor_over_hero_panel` mora dentro de `vector_*_world()` (cobre o
+  `try_*_pointer_down` E um check de `hit_index.hit()` de widget); e
+  `forward_to_hero` trata Down de widget ANTES do match de consume. As 5
+  `*_active_consume_canvas_click()` são consume-incondicional de propósito
+  ("Select owns the canvas click") — espelhar o `:472` do painter REGREDIRIA
+  (deixaria clique sobre painel cair no gizmo/rubber-band). Chesterton: não toquei.
+
+- **§4.4 (gate de paridade de registro) — LANDADO (`c0eddbf`).** Novo arch-gate
+  `topbar_painted_pills_are_all_registered` (ph2d-editor-core/tests): todo
+  `ids::TOPBAR_*` pintado (fixture `topbar_clusters()` ∪ sub-buttons play/right do
+  cluster_painter) tem que ter `InteractiveState` em `populate()`. Escaneia só a
+  região de registro (trunca antes do loop de tooltip, que mascararia). Bite-test
+  confirmado: remover o registro de VECTOR_PENCIL → RED nomeando a pill. Institui o
+  killer `0661862` como gate permanente.
+
+- **§4.2 (Shape picker on-screen) — LANDADO (`1e3a1be`).** Picker vertical de 5
+  opções no inspector docado quando `vector_shape` ativo, substituindo as hotkeys
+  1-5 (que ficam como caminho paralelo). Cada opção é um Button (a dispatch genérica
+  de RadioGroup ainda não existe — comentário em dispatch/mod.rs); `apply_event` →
+  pending index → bridge drena → `VectorShapeTool::set_kind`; o bridge publica o kind
+  atual p/ highlight (mesmo downcast da hotkey, painel fica desacoplado do crate do
+  tool). +6 ids canônicos (e enrolei o trio PANEL/CLOSE/FILL_SWATCH, que nunca
+  estava, no node_id_collisions). Gate cross-crate: nº de opções == `ShapeKind::ALL`.
+
+- **§4.1 (Rank 10 — vetor como objeto de cena) — ADR FECHADO (`3d8eb6b`,
+  ADR-0076), execução COORDENADA.** Caminho B aprovado, **refinado**: lê o
+  `Transform` da entidade pareada DIRETO da SimWorld (alvo autoritativo do gizmo),
+  então o boundary sim/present (ADR-0021) NÃO se mexe no MVP raiz-only — blast-radius
+  = shell + 1 componente (`VectorSceneRef`). Schema congelado intacto. O ADR traz o
+  plano de execução em 4 passos (§5). **Execução toca `vector_pen_bridge.rs` +
+  `input_dispatch.rs` (TEUS, contestados)** → ou eu executo numa janela em que tu
+  estejas parado neles, ou TU executas sob o ADR-0076. Decisão fechada; combinemos a
+  janela.
+
+- **§4.3 (consolidar 5 pills → 1 modo VECTOR) — SEQUENCIADO p/ passo dedicado.**
+  Não é polish rápido: é paridade-ImageToolsV1 inteira (estado `vector_mode` + 
+  `paint_vector_tool_row` + backdrop + active-ring + dispatch do toggle + atualizar
+  o gate §4.4). Reestrutura pills que HOJE FUNCIONAM e é verificável só no smoke
+  visual do Enio. Decisão: fazer como increment focado (chrome, minha pasta, sem
+  colisão contigo), não no rabo deste batch — trade de estado-funcional por risco de
+  regressão que não auto-verifico. Aguardo o Enio greenlightar.
+
+- **§6 (gradient 2-stop, CRDT real) — adiados** conforme tua opção (a). Continuam meus.
+═══════════════════════════════════════════════════════════════════

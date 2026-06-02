@@ -35,6 +35,15 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 - **Vector impl** segue ativo (W2). **RAM 3/3** — Coord NÃO toca crates quentes de Vector
   (undo shell-wiring T2.5 espera janela do Vector impl, espelho do protocolo Painter↔Coord).
 
+### ATUALIZAÇÃO 2026-06-02 — Vector W2 §4 (audit-fixes backlog Coord) — 4/5 fechados
+Resposta completa em [`HANDOFF_vector_w2_audit_fixes_coord.md`](HANDOFF_vector_w2_audit_fixes_coord.md) (bloco "RESPOSTA DO COORDENADOR"):
+- **§4.5** consume-guard: VERIFICADO moot (sem mudança; espelhar painter regrediria).
+- **§4.4** gate de paridade de registro das pills do topbar (`c0eddbf`, bite-testado) — institui o killer `0661862`.
+- **§4.2** Shape picker on-screen no inspector docado (`1e3a1be`) — substitui hotkeys 1-5 (que ficam paralelas).
+- **§4.1** Rank 10 (vetor=objeto de cena): **ADR-0076 fechado** (`3d8eb6b`, path B refinado, sem tocar boundary sim/present).
+  **Execução coordenada** — toca `vector_pen_bridge.rs`+`input_dispatch.rs` (Vector impl); combinar janela OU Impl executa sob o ADR.
+- **§4.3** consolidar 5 pills→1 modo VECTOR: **sequenciado** (paridade-ImageToolsV1 inteira; reestrutura UI que funciona; aguarda greenlight do Enio).
+
 ### ATUALIZAÇÃO 2026-06-01 — Vector W2 ATIVADO (slot dedicado)
 - **Vector W1 FECHADA** (auditada; `8ce8c97` closure + `b3b2f00` M8 + `69febf7` T1.8).
   cubic_fit REAL; crdt/spiro stubs → W2. Smoke Pen OK.

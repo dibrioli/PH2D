@@ -318,6 +318,31 @@ impl LayerStack {
         }
     }
 
+    /// Set a layer's alpha-lock modifier (§2.10) — paint restricted to existing
+    /// alpha. No-op if `id` is unknown.
+    pub fn set_alpha_locked(&mut self, id: LayerId, locked: bool) {
+        if let Some(l) = self.get_mut(id) {
+            l.alpha_locked = locked;
+        }
+    }
+
+    /// Set a layer's reference modifier (§2.9). Only ONE reference layer per
+    /// canvas: setting `id` as reference clears `is_reference` on every other
+    /// layer. No-op if `id` is unknown.
+    pub fn set_reference(&mut self, id: LayerId, is_reference: bool) {
+        if self.index_of(id).is_none() {
+            return;
+        }
+        if is_reference {
+            // Exclusive — exactly one reference layer at a time.
+            for l in &mut self.arena {
+                l.is_reference = l.id == id;
+            }
+        } else if let Some(l) = self.get_mut(id) {
+            l.is_reference = false;
+        }
+    }
+
     /// The ordered list (top-to-bottom) of the parent that directly holds
     /// `id`: either a group's children or the root. Returns the owning
     /// group id (`None` = root) for callers that need to walk upward.
@@ -723,6 +748,34 @@ mod tests {
         s.remove(parent);
         assert_eq!(s.len(), 0, "parent + mask both removed");
         assert!(s.get(mask).is_none(), "mask did not leak");
+    }
+
+    #[test]
+    fn reference_layer_is_exclusive() {
+        // §2.9: only one reference layer per canvas — setting a new one clears
+        // the previous.
+        let mut s = LayerStack::new();
+        let a = s.add_raster("a", 4, 4).unwrap();
+        let b = s.add_raster("b", 4, 4).unwrap();
+        s.set_reference(a, true);
+        assert!(s.get(a).unwrap().is_reference);
+        s.set_reference(b, true);
+        assert!(s.get(b).unwrap().is_reference);
+        assert!(!s.get(a).unwrap().is_reference, "previous reference cleared");
+        s.set_reference(b, false);
+        assert!(!s.get(b).unwrap().is_reference, "toggled off");
+    }
+
+    #[test]
+    fn alpha_lock_and_clipping_flags_round_trip() {
+        let mut s = LayerStack::new();
+        let r = s.add_raster("r", 4, 4).unwrap();
+        s.set_alpha_locked(r, true);
+        s.set_clipping(r, true);
+        assert!(s.get(r).unwrap().alpha_locked);
+        assert!(s.get(r).unwrap().clipping);
+        s.set_alpha_locked(r, false);
+        assert!(!s.get(r).unwrap().alpha_locked);
     }
 
     #[test]

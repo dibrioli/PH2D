@@ -199,8 +199,8 @@ use ph2d_color::OklchColor as StrokeOklchColor;
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{RasterEditTool, Tool};
 use ph2d_painter_brush::{
-    Brush, BrushParamsHash, MAX_STAMP_SIZE_PX, PointerSample, Stamp, StampScheduler, apply_stamps,
-    library,
+    Brush, BrushParamsHash, MAX_STAMP_SIZE_PX, PointerSample, Stamp, StampScheduler,
+    apply_stamps_with_options, library,
 };
 use ph2d_painter_stroke::{
     CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
@@ -795,6 +795,10 @@ impl PainterTool {
         {
             return;
         }
+        // T3.7: alpha-lock restricts paint to the active layer's existing alpha.
+        // Read it before the scheduler `&mut` borrow that `stamps` extends (a
+        // whole-`self` method can't coexist with that partial mutable borrow).
+        let alpha_lock = self.active_alpha_locked();
         let size_px = self.effective_size_px();
         let stamps = self
             .scheduler
@@ -818,7 +822,13 @@ impl PainterTool {
             // Explicit `Vec<u8>` annotation prevents the compiler from
             // coercing through `Arc<[u8]>::make_mut` (different impl).
             let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
-            apply_stamps(canvas_vec, self.source_size.0, self.source_size.1, stamps);
+            apply_stamps_with_options(
+                canvas_vec,
+                self.source_size.0,
+                self.source_size.1,
+                stamps,
+                alpha_lock,
+            );
             self.preview_dirty = true;
             self.has_painted_since_source = true;
         }
@@ -1409,6 +1419,32 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// Toggle a layer's alpha-lock modifier (§2.10). Future paint into this
+    /// layer is then clamped to its existing alpha. No-op if `id` unknown.
+    pub fn set_layer_alpha_locked(&mut self, id: RtLayerId, locked: bool) {
+        self.layers.set_alpha_locked(id, locked);
+        self.invalidate_composite();
+    }
+
+    /// Toggle a layer's reference modifier (§2.9) — exclusive (setting one
+    /// clears the others). No-op if `id` unknown. Full ColorDrop behavior is W7;
+    /// this is the non-destructive flag + UI badge.
+    pub fn set_layer_reference(&mut self, id: RtLayerId, is_reference: bool) {
+        self.layers.set_reference(id, is_reference);
+        self.invalidate_composite();
+    }
+
+    /// Add an empty group at the top of the stack (§2.1); the user nests layers
+    /// into it from the panel. No-op (`None`) mid-stroke or at the hard cap.
+    pub fn add_group(&mut self) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        let id = self.layers.add_group("Group")?;
+        self.invalidate_composite();
+        Some(id)
+    }
+
     /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
     /// `images` before a layer switch — so the layer we're leaving keeps its
     /// pixels. (The active layer is otherwise NOT stored in `images`.)
@@ -1486,6 +1522,16 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| matches!(l.kind, LayerKind::Mask(_)))
+    }
+
+    /// `true` when the active layer has its alpha locked — paint is then
+    /// restricted to the layer's existing alpha (§2.10).
+    #[must_use]
+    pub fn active_alpha_locked(&self) -> bool {
+        self.layers
+            .active()
+            .and_then(|id| self.layers.get(id))
+            .is_some_and(|l| l.alpha_locked)
     }
 
     /// The active stroke color, forced ACHROMATIC (chroma 0) when the edit

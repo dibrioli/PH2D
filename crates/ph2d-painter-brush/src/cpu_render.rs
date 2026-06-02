@@ -107,6 +107,20 @@ use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 /// Porter-Duff alpha-over correta — equivalente ao ping-pong A↔B do
 /// pipeline GPU (single dispatch por stamp + swap).
 pub fn apply_stamps(canvas: &mut [u8], width: u32, height: u32, stamps: &[Stamp]) {
+    apply_stamps_with_options(canvas, width, height, stamps, false);
+}
+
+/// Like [`apply_stamps`], but `alpha_lock` restricts painting to existing alpha
+/// (§2.10): a pixel that starts fully transparent is left untouched, and the
+/// destination alpha is held constant (only the color blends within the locked
+/// alpha). Used when the active layer has its alpha locked.
+pub fn apply_stamps_with_options(
+    canvas: &mut [u8],
+    width: u32,
+    height: u32,
+    stamps: &[Stamp],
+    alpha_lock: bool,
+) {
     // Audit T1.5 round 1 A-L4 — production-grade length guard so a
     // mismatch panics on the spot instead of reading/writing past the
     // canvas in release builds.
@@ -116,11 +130,11 @@ pub fn apply_stamps(canvas: &mut [u8], width: u32, height: u32, stamps: &[Stamp]
         "canvas buffer size must match width*height*4 RGBA8"
     );
     for stamp in stamps {
-        apply_one_stamp(canvas, width, height, stamp);
+        apply_one_stamp(canvas, width, height, stamp, alpha_lock);
     }
 }
 
-fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
+fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, alpha_lock: bool) {
     // Paridade com shader: filtra degenerate sizes antes de qualquer
     // arithmetic. Mantém canvas inalterado para inputs lixo. NaN é
     // caught pelo `is_finite()` (não-finito); ≤ 0 captura zero/negativo.
@@ -277,13 +291,21 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp) {
             } else {
                 [0.0, 0.0, 0.0, 0.0]
             };
+            // T3.7 alpha-lock (§2.10): paint only within existing alpha. A
+            // fully-transparent destination pixel is left untouched, and the
+            // destination alpha is held constant — only the color blends.
+            if alpha_lock && dst_alpha <= 0.0 {
+                continue;
+            }
             // Re-encode RGB linear → sRGB byte (mirror of the read decode), so
             // the canvas stays sRGB for the `Rgba8UnormSrgb` sprite + the
             // replay path. Alpha is straight light → plain quantize, no gamma.
             canvas[idx] = linear_to_srgb_byte(out_straight[0]);
             canvas[idx + 1] = linear_to_srgb_byte(out_straight[1]);
             canvas[idx + 2] = linear_to_srgb_byte(out_straight[2]);
-            canvas[idx + 3] = (out_straight[3] * 255.0 + 0.5) as u8;
+            if !alpha_lock {
+                canvas[idx + 3] = (out_straight[3] * 255.0 + 0.5) as u8;
+            }
         }
     }
 }
@@ -461,6 +483,45 @@ mod tests {
         s.flow = 1.0;
         s.rendering_mode = RenderingMode::UniformGlaze as u32;
         s
+    }
+
+    #[test]
+    fn alpha_lock_skips_transparent_and_locks_alpha() {
+        // T3.7 §2.10: with alpha_lock, paint lands only where the canvas already
+        // has alpha, and the alpha is held constant everywhere (only color blends).
+        let (w, h) = (16u32, 16u32);
+        // Left half opaque white, right half fully transparent.
+        let mut canvas = vec![0u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..(w / 2) {
+                let i = ((y * w + x) * 4) as usize;
+                canvas[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+        let before = canvas.clone();
+        // A large opaque-red stamp over the whole canvas, alpha-locked.
+        let s = red_stamp((w / 2) as f32, (h / 2) as f32, (w * 2) as f32);
+        apply_stamps_with_options(&mut canvas, w, h, &[s], true);
+        // Alpha is locked at EVERY pixel (transparent stays transparent, opaque
+        // stays opaque).
+        for i in (0..canvas.len()).step_by(4) {
+            assert_eq!(canvas[i + 3], before[i + 3], "alpha locked at pixel {}", i / 4);
+        }
+        // Transparent (right) half is byte-for-byte untouched (no color leak).
+        for y in 0..h {
+            for x in (w / 2)..w {
+                let i = ((y * w + x) * 4) as usize;
+                assert_eq!(&canvas[i..i + 4], &before[i..i + 4], "transparent untouched");
+            }
+        }
+        // Some opaque (left) pixel had its color blended toward the paint.
+        let any_color_changed = (0..h).any(|y| {
+            (0..(w / 2)).any(|x| {
+                let i = ((y * w + x) * 4) as usize;
+                canvas[i..i + 3] != before[i..i + 3]
+            })
+        });
+        assert!(any_color_changed, "alpha-locked paint still blends color on opaque pixels");
     }
 
     #[test]

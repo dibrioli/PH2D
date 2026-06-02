@@ -1,5 +1,5 @@
 use super::*;
-use crate::interaction::{HitIndex, InteractiveState};
+use crate::interaction::{HitIndex, InteractiveState, PainterLayerDrop};
 use crate::widget::{
     ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, ToggleState,
 };
@@ -266,6 +266,65 @@ fn hierarchy_drag_in_live_mode_emits_reparent_intent() {
             } if *dragged == dragged_id && *np == parent_id
         )),
         "expected HierReparent Inside({parent_id:?}); got {evts:?}"
+    );
+}
+
+#[test]
+fn painter_layer_drag_emits_reparent_with_resolved_drop() {
+    // W3 T3.8: Primary Down on a painter layer row + a threshold-crossing
+    // Move + Up over the middle of a target row resolves to
+    // `PainterLayerDrop::Inside` and emits a `PainterLayerReparent`. The
+    // dispatch does NO structure mutation — the painter tool applies it.
+    let mut store = WidgetStore::with_capacity(8);
+    let target_id = ph2d_a11y::NodeId(200_000);
+    let dragged_id = ph2d_a11y::NodeId(200_001);
+    store.register(target_id, InteractiveState::Plain);
+    store.register(dragged_id, InteractiveState::Plain);
+    let mut row_set = std::collections::BTreeSet::new();
+    row_set.insert(target_id);
+    row_set.insert(dragged_id);
+    store.set_painter_layer_row_ids(row_set);
+    let mut hits = HitIndex::new();
+    // Target row y=0..20 (Inside band 6..14), dragged row y=30..50.
+    hits.register(target_id, Rect::new(0.0, 0.0, 200.0, 20.0));
+    hits.register(dragged_id, Rect::new(0.0, 30.0, 200.0, 20.0));
+    let arena = Bump::new();
+    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 100.0, 40.0), &arena);
+    // Move up past the 5px threshold (dy = 30).
+    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Move, 100.0, 10.0), &arena);
+    let evts = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 100.0, 10.0), &arena);
+    assert!(
+        evts.iter().any(|e| matches!(
+            e,
+            WidgetEvent::PainterLayerReparent {
+                dragged,
+                drop: PainterLayerDrop::Inside(t),
+            } if *dragged == dragged_id && *t == target_id
+        )),
+        "expected PainterLayerReparent Inside({target_id:?}); got {evts:?}"
+    );
+}
+
+#[test]
+fn painter_layer_sub_threshold_click_emits_no_reparent() {
+    // A Down+Up on the same row WITHOUT crossing the drag threshold is a
+    // click, not a drag → no reparent (row select stays the panel's job).
+    let mut store = WidgetStore::with_capacity(8);
+    let row_id = ph2d_a11y::NodeId(200_010);
+    store.register(row_id, InteractiveState::Plain);
+    let mut row_set = std::collections::BTreeSet::new();
+    row_set.insert(row_id);
+    store.set_painter_layer_row_ids(row_set);
+    let mut hits = HitIndex::new();
+    hits.register(row_id, Rect::new(0.0, 0.0, 200.0, 20.0));
+    let arena = Bump::new();
+    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 100.0, 10.0), &arena);
+    let evts = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 100.0, 11.0), &arena);
+    assert!(
+        !evts
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::PainterLayerReparent { .. })),
+        "a sub-threshold click must not emit a reparent; got {evts:?}"
     );
 }
 

@@ -7,7 +7,7 @@
 
 use super::blender::{apply_blender_channel_value, apply_blender_hit};
 use super::focus::{apply_click, is_focusable};
-use super::hierarchy::{HierDrop, find_hierarchy_drop};
+use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
 use super::hover::{set_widget_pressed, set_widget_released, update_hover};
 use super::number_input::{apply_number_stepper_if_hit, update_drag_value};
 use super::scroll::scrollbar_panel_for_id;
@@ -138,6 +138,11 @@ pub fn dispatch_pointer_with_text<'frame>(
             // each Move so the painter can render the drop indicator.
             if store.hierarchy_drag().is_some() {
                 store.update_hierarchy_drag(event.x, event.y);
+            }
+            // Painter layers-panel row drag (W3 T3.8) — advance the anchor so
+            // the panel can render the drop indicator + flip `active`.
+            if store.painter_layer_drag().is_some() {
+                store.update_painter_layer_drag(event.x, event.y);
             }
             // M14.A: NumberInput drag-or-slider. When a Down on the
             // NumberInput body seeded `number_input_drag`, every Move
@@ -873,6 +878,12 @@ pub fn dispatch_pointer_with_text<'frame>(
                 if store.is_hierarchy_row(id) {
                     store.begin_hierarchy_drag(id, event.x, event.y, event.timestamp_ns);
                 }
+                // Painter layers-panel row drag (W3 T3.8) — same anchor as the
+                // hierarchy; the Up handler resolves the drop into a
+                // `PainterLayerReparent` for the painter tool to apply.
+                if store.is_painter_layer_row(id) {
+                    store.begin_painter_layer_drag(id, event.x, event.y, event.timestamp_ns);
+                }
                 // Scrollbar thumb drag — snapshot the panel
                 // metrics so subsequent Move events can compute a
                 // proportional `panel_scroll` delta. The
@@ -1064,6 +1075,33 @@ pub fn dispatch_pointer_with_text<'frame>(
                             after: None,
                         });
                     }
+                }
+            }
+            // Painter layers-panel row drag (W3 T3.8): on Up of an ACTIVE drag,
+            // resolve the drop band → emit `PainterLayerReparent` for the
+            // painter tool to apply. NO store-side mutation (the tool owns the
+            // LayerStack). Drop-on-self (drifted back onto the dragged row) is a
+            // no-op. Only one row drag can be active per frame, so the hierarchy
+            // block above already no-op'd when this one is `Some`.
+            if let Some(drag) = store.end_painter_layer_drag()
+                && drag.active
+            {
+                let over_self = hit_index
+                    .iter_registrations()
+                    .find(|(id, _)| *id == drag.dragged)
+                    .map(|(_, r)| {
+                        event.y >= r.y
+                            && event.y < r.y + r.h
+                            && event.x >= r.x
+                            && event.x < r.x + r.w
+                    })
+                    .unwrap_or(false);
+                if !over_self {
+                    let drop = find_painter_layer_drop(hit_index, store, event.y, drag.dragged);
+                    events.push(WidgetEvent::PainterLayerReparent {
+                        dragged: drag.dragged,
+                        drop,
+                    });
                 }
             }
             if let Some(active) = store.active_id() {

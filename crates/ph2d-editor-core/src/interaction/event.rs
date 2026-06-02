@@ -81,4 +81,29 @@ pub enum WidgetEvent {
         /// resolving the next-sibling slot in the dispatcher.
         after: Option<NodeId>,
     },
+    /// W3 T3.8 — a Painter layers-panel row was drag-reparented (reorder
+    /// and/or drop-into-group). The dispatch resolves only the geometry
+    /// (`drop` band relative to a target row); the painter tool — which
+    /// owns the `LayerStack` — reverses the `NodeId`s to `LayerId`s and
+    /// applies `move_into_group` / `reorder`. NodeIds keep this `Copy`.
+    PainterLayerReparent {
+        dragged: NodeId,
+        drop: PainterLayerDrop,
+    },
+}
+
+/// Where a dragged Painter layer row was dropped, relative to a target
+/// row. Mirror of the hierarchy's `HierDrop`, but the consumer (the
+/// painter tool) resolves it against the `LayerStack`, not the dispatch.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PainterLayerDrop {
+    /// Drop just before the target row (same parent) — previous sibling.
+    Before(NodeId),
+    /// Drop INTO the target row, as a child (the tool no-ops if the
+    /// target isn't a group, or rejects on depth/cycle).
+    Inside(NodeId),
+    /// Drop just after the target row (same parent) — next sibling.
+    After(NodeId),
+    /// Dropped below every row → root level, bottom of the stack.
+    End,
 }

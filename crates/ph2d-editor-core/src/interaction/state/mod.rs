@@ -451,6 +451,17 @@ pub struct WidgetStore {
     /// `super_key()` and `control_key()` so panel handlers can treat
     /// the two as interchangeable (toggle-select modifier).
     pub(super) cmd_held: bool,
+    /// In-progress Painter layers-panel row drag (W3 T3.8 — reorder +
+    /// drop-into-group). Reuses the generic [`HierarchyDragState`] anchor
+    /// (dragged id + down/cursor pos + active threshold). Unlike the
+    /// hierarchy drag, the dispatch never mutates structure here — the
+    /// painter tool owns the `LayerStack` and resolves the drop.
+    pub(super) painter_layer_drag: Option<HierarchyDragState>,
+    /// Every `NodeId` currently displayed as a Painter layer row. The
+    /// layers panel republishes the set each frame; dispatch reads it to
+    /// decide "this Down is on a draggable layer row" (mirror of
+    /// [`Self::hierarchy_row_ids`]).
+    pub(super) painter_layer_row_ids: std::collections::BTreeSet<NodeId>,
 }
 
 impl WidgetStore {
@@ -515,6 +526,8 @@ impl WidgetStore {
             number_stepper_hold: None,
             shift_held: false,
             cmd_held: false,
+            painter_layer_drag: None,
+            painter_layer_row_ids: std::collections::BTreeSet::new(),
         }
     }
 
@@ -1048,6 +1061,66 @@ impl WidgetStore {
 
     pub fn is_hierarchy_row(&self, id: NodeId) -> bool {
         self.hierarchy_row_ids.contains(&id)
+    }
+
+    // ── Painter layers-panel row drag (W3 T3.8) — mirror of the hierarchy
+    //    drag, but the dispatch never mutates structure (the painter tool
+    //    owns the LayerStack and resolves the emitted `PainterLayerReparent`).
+
+    /// Snapshot of the in-progress painter layer-row drag, if any.
+    pub fn painter_layer_drag(&self) -> Option<HierarchyDragState> {
+        self.painter_layer_drag
+    }
+
+    /// Begin a painter layer-row drag (Primary Down on a row). `active`
+    /// flips once the cursor passes the 5px threshold (see
+    /// [`Self::update_painter_layer_drag`]).
+    pub fn begin_painter_layer_drag(
+        &mut self,
+        dragged: NodeId,
+        down_x: f32,
+        down_y: f32,
+        timestamp_ns: u128,
+    ) {
+        self.painter_layer_drag = Some(HierarchyDragState {
+            dragged,
+            down_x,
+            down_y,
+            cursor_x: down_x,
+            cursor_y: down_y,
+            active: false,
+            down_timestamp_ns: timestamp_ns,
+        });
+    }
+
+    /// Advance the drag cursor; flips `active` once past the 5px threshold.
+    pub fn update_painter_layer_drag(&mut self, cursor_x: f32, cursor_y: f32) {
+        if let Some(d) = self.painter_layer_drag.as_mut() {
+            d.cursor_x = cursor_x;
+            d.cursor_y = cursor_y;
+            let dx = cursor_x - d.down_x;
+            let dy = cursor_y - d.down_y;
+            if (dx * dx + dy * dy) > 25.0 {
+                d.active = true;
+            }
+        }
+    }
+
+    /// Take the in-progress drag (cleared on Up).
+    pub fn end_painter_layer_drag(&mut self) -> Option<HierarchyDragState> {
+        self.painter_layer_drag.take()
+    }
+
+    /// Republish the set of `NodeId`s that are currently painter layer rows.
+    /// The layers panel calls this each frame with `painter_layer_widget_id(
+    /// layer, Row)` for every visible row.
+    pub fn set_painter_layer_row_ids(&mut self, ids: std::collections::BTreeSet<NodeId>) {
+        self.painter_layer_row_ids = ids;
+    }
+
+    /// Is `id` a draggable painter layer row?
+    pub fn is_painter_layer_row(&self, id: NodeId) -> bool {
+        self.painter_layer_row_ids.contains(&id)
     }
 
     /// Depth in the parent tree (0 = root). Capped at 32 levels as

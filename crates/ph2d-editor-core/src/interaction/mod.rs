@@ -49,7 +49,7 @@ pub use drag::{
     NUMBER_INPUT_DRAG_THRESHOLD_PX, NumberInputDragState, NumberStepperHoldState,
     STEPPER_HOLD_INITIAL_DELAY_NS, STEPPER_REPEAT_INTERVAL_NS, ScrollbarDragAnchor,
 };
-pub use event::WidgetEvent;
+pub use event::{PainterLayerDrop, WidgetEvent};
 pub use hit::HitIndex;
 pub use state::{InteractiveState, WidgetStore};
 pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData};

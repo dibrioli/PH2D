@@ -10,7 +10,7 @@
 //! handler in `screens::hero` matches on it to issue the actual
 //! ECS mutation.
 
-use super::super::{HitIndex, WidgetStore};
+use super::super::{HitIndex, PainterLayerDrop, WidgetStore};
 use ph2d_a11y::NodeId;
 
 /// Drop kind resolved at the end of a hierarchy DnD: a sibling
@@ -100,4 +100,39 @@ pub(super) fn find_hierarchy_drop(
     // index past the last existing root, so the panel will paint it
     // at the very bottom on the next frame.
     HierDrop::End
+}
+
+/// Resolve where a dragged Painter layer row was dropped, by hit-testing
+/// `cursor_y` against the registered row rects. Mirror of
+/// [`find_hierarchy_drop`] — same 30/40/30 band split (Before / Inside /
+/// After) — but keyed on [`WidgetStore::is_painter_layer_row`] and
+/// returning a [`PainterLayerDrop`] for the painter tool to resolve against
+/// its `LayerStack`. The dispatch does NOT mutate any structure here.
+pub(super) fn find_painter_layer_drop(
+    hit_index: &HitIndex,
+    store: &WidgetStore,
+    cursor_y: f32,
+    dragged: NodeId,
+) -> PainterLayerDrop {
+    for (id, rect) in hit_index.iter_registrations() {
+        if !store.is_painter_layer_row(id) || id == dragged {
+            continue;
+        }
+        let top = rect.y;
+        let bot = rect.y + rect.h;
+        if cursor_y < top || cursor_y >= bot {
+            continue;
+        }
+        let inside_top = top + rect.h * 0.3;
+        let inside_bot = top + rect.h * 0.7;
+        if cursor_y < inside_top {
+            return PainterLayerDrop::Before(id);
+        } else if cursor_y < inside_bot {
+            return PainterLayerDrop::Inside(id);
+        } else {
+            return PainterLayerDrop::After(id);
+        }
+    }
+    // Below every visible row → root level, bottom of the stack.
+    PainterLayerDrop::End
 }

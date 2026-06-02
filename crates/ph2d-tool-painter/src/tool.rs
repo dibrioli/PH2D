@@ -1548,7 +1548,10 @@ impl PainterTool {
         };
         // Masks are owner-attached (not in the z-order) — never reparent one
         // (the row is selectable, but dragging it must not touch the stack).
-        if matches!(self.layers.get(d).map(|l| &l.kind), Some(LayerKind::Mask(_))) {
+        if matches!(
+            self.layers.get(d).map(|l| &l.kind),
+            Some(LayerKind::Mask(_))
+        ) {
             return;
         }
         let moved = match drop {
@@ -3656,7 +3659,10 @@ mod tests {
         assert_eq!(t.params.active_color.l, 0.0, "mask brush defaults to black");
         assert_eq!(t.params.active_color.c, 0.0);
         t.select_layer(l2); // leave the mask → restore
-        assert_eq!(t.params.active_color, orange, "real color restored on leaving");
+        assert_eq!(
+            t.params.active_color, orange,
+            "real color restored on leaving"
+        );
     }
 
     #[test]
@@ -3733,7 +3739,11 @@ mod tests {
         t.handle_layer_reparent(row(mask), PainterLayerDrop::Inside(row(base)));
         assert_eq!(t.layers.root(), before.as_slice(), "mask drag is a no-op");
         assert!(!t.layers.root().contains(&mask));
-        assert_eq!(t.layers.get(l2).unwrap().mask, Some(mask), "mask still attached");
+        assert_eq!(
+            t.layers.get(l2).unwrap().mask,
+            Some(mask),
+            "mask still attached"
+        );
     }
 
     #[test]
@@ -4730,7 +4740,11 @@ mod tests {
             }
         }
         assert!(t.apply_mask(mask), "apply bakes + removes the mask");
-        assert_eq!(t.layers.active(), Some(l2), "parent becomes the edit target");
+        assert_eq!(
+            t.layers.active(),
+            Some(l2),
+            "parent becomes the edit target"
+        );
         assert!(t.layers.get(mask).is_none(), "mask layer removed");
         assert_eq!(
             t.layers.get(l2).unwrap().mask,
@@ -4768,9 +4782,7 @@ mod tests {
         t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
         t.add_raster_layer("L2").unwrap();
         let mask = t.add_mask_to_active().unwrap();
-        let is_inv = |t: &PainterTool, id: RtLayerId| {
-            matches!(t.layers.get(id).map(|l| &l.kind), Some(LayerKind::Mask(m)) if m.inverted)
-        };
+        let is_inv = |t: &PainterTool, id: RtLayerId| matches!(t.layers.get(id).map(|l| &l.kind), Some(LayerKind::Mask(m)) if m.inverted);
         assert!(!is_inv(&t, mask));
         t.toggle_mask_inverted(mask);
         assert!(is_inv(&t, mask));
@@ -4790,7 +4802,11 @@ mod tests {
         t.select_additive(l2); // selection = {L3, L2}
         let g = t.group_selected().unwrap(); // wraps L2 + L3 into g
         t.select_single(g); // click the group row
-        assert_ne!(t.layers.active(), Some(g), "a group is never the paint target");
+        assert_ne!(
+            t.layers.active(),
+            Some(g),
+            "a group is never the paint target"
+        );
         assert!(
             matches!(
                 t.layers

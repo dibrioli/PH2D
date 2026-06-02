@@ -364,7 +364,12 @@ fn paint_mask_row(
 
     // Right-aligned affordances: [ Inv ] [ Apply ]. The label runs up to them.
     let apply_rect = Rect::new(x + w - MASK_APPLY_W, y, MASK_APPLY_W, ROW_H_PX);
-    let inv_rect = Rect::new(apply_rect.x - cell_gap - MASK_INV_W, y, MASK_INV_W, ROW_H_PX);
+    let inv_rect = Rect::new(
+        apply_rect.x - cell_gap - MASK_INV_W,
+        y,
+        MASK_INV_W,
+        ROW_H_PX,
+    );
 
     let label = if inverted { "Mask · Inverted" } else { "Mask" };
     let label_x = x + Spacing::Sm.px();

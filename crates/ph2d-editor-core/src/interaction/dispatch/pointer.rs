@@ -628,9 +628,7 @@ pub fn dispatch_pointer_with_text<'frame>(
             if let Some((id, _)) = hit
                 && store.is_picker_swatch(id)
             {
-                let seed = store
-                    .widget_color(id)
-                    .unwrap_or([0x88, 0x88, 0x88, 0xFF]);
+                let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
                 store.set_widget_color(id, seed);
                 store.set_picker_target(Some(id));
                 store.set_blender_value(

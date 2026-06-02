@@ -80,8 +80,8 @@ pub use postcard_schema::{
 pub use recolor::apply_fill_to_selection;
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use selection::VectorSelection;
-pub use undo::{VectorRedoAction, VectorUndoAction, apply_redo, apply_undo};
 pub use style::{
     FillRef, FillSolid, Segment, SegmentId, StrokeCap, StrokeJoin, StrokeStyle, StyleRef,
     StyleRefMap, StyleTable,
 };
+pub use undo::{VectorRedoAction, VectorUndoAction, apply_redo, apply_undo};

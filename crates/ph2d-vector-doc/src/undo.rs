@@ -155,8 +155,12 @@ mod tests {
         let mut sel = VectorSelection::new();
         sel.select_only_network(1);
         // Undo the creation of the last (idx 1).
-        let redo = apply_undo(VectorUndoAction::Create { asset: 1 }, &mut committed, &mut sel)
-            .expect("redo action");
+        let redo = apply_undo(
+            VectorUndoAction::Create { asset: 1 },
+            &mut committed,
+            &mut sel,
+        )
+        .expect("redo action");
         assert_eq!(committed.len(), 1);
         assert!(sel.is_empty(), "stale selection pruned by retain_below");
         assert!(matches!(redo, VectorRedoAction::Recreate { .. }));
@@ -181,17 +185,39 @@ mod tests {
                 &mut a.network,
             );
         }
-        let moved = committed[0].network.vertices.iter().find(|v| v.id == 1).unwrap().pos;
+        let moved = committed[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 1)
+            .unwrap()
+            .pos;
         assert_eq!(moved, Vec2::new(50.0, 20.0));
         // Undo the edit.
-        let redo = apply_undo(VectorUndoAction::Edit { asset: 0 }, &mut committed, &mut sel)
-            .expect("redo");
-        let back = committed[0].network.vertices.iter().find(|v| v.id == 1).unwrap().pos;
+        let redo = apply_undo(
+            VectorUndoAction::Edit { asset: 0 },
+            &mut committed,
+            &mut sel,
+        )
+        .expect("redo");
+        let back = committed[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 1)
+            .unwrap()
+            .pos;
         assert_eq!(back, Vec2::new(10.0, 0.0), "vertex restored");
         assert!(matches!(redo, VectorRedoAction::Reedit { asset: 0, .. }));
         // Redo re-applies the move.
         apply_redo(redo, &mut committed, &mut sel).expect("undo");
-        let redone = committed[0].network.vertices.iter().find(|v| v.id == 1).unwrap().pos;
+        let redone = committed[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 1)
+            .unwrap()
+            .pos;
         assert_eq!(redone, Vec2::new(50.0, 20.0));
     }
 
@@ -199,14 +225,28 @@ mod tests {
     fn create_undo_on_empty_scene_is_none() {
         let mut committed: Vec<Ph2dVectorAsset> = Vec::new();
         let mut sel = VectorSelection::new();
-        assert!(apply_undo(VectorUndoAction::Create { asset: 0 }, &mut committed, &mut sel).is_none());
+        assert!(
+            apply_undo(
+                VectorUndoAction::Create { asset: 0 },
+                &mut committed,
+                &mut sel
+            )
+            .is_none()
+        );
     }
 
     #[test]
     fn edit_undo_on_stale_index_is_none() {
         let mut committed = vec![segment_asset()];
         let mut sel = VectorSelection::new();
-        assert!(apply_undo(VectorUndoAction::Edit { asset: 9 }, &mut committed, &mut sel).is_none());
+        assert!(
+            apply_undo(
+                VectorUndoAction::Edit { asset: 9 },
+                &mut committed,
+                &mut sel
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -217,18 +257,45 @@ mod tests {
         {
             let b = &mut committed[1];
             let _ = b.edit_log.push_and_apply(
-                VectorOp::MoveVertex { id: 0, new_pos: Vec2::new(5.0, 5.0) },
+                VectorOp::MoveVertex {
+                    id: 0,
+                    new_pos: Vec2::new(5.0, 5.0),
+                },
                 &mut b.network,
             );
         }
         // Undo Edit B.
-        apply_undo(VectorUndoAction::Edit { asset: 1 }, &mut committed, &mut sel).unwrap();
-        assert_eq!(committed[1].network.vertices.iter().find(|v| v.id == 0).unwrap().pos, Vec2::ZERO);
+        apply_undo(
+            VectorUndoAction::Edit { asset: 1 },
+            &mut committed,
+            &mut sel,
+        )
+        .unwrap();
+        assert_eq!(
+            committed[1]
+                .network
+                .vertices
+                .iter()
+                .find(|v| v.id == 0)
+                .unwrap()
+                .pos,
+            Vec2::ZERO
+        );
         // Undo Create B (pop tail).
-        apply_undo(VectorUndoAction::Create { asset: 1 }, &mut committed, &mut sel).unwrap();
+        apply_undo(
+            VectorUndoAction::Create { asset: 1 },
+            &mut committed,
+            &mut sel,
+        )
+        .unwrap();
         assert_eq!(committed.len(), 1);
         // Undo Create A.
-        apply_undo(VectorUndoAction::Create { asset: 0 }, &mut committed, &mut sel).unwrap();
+        apply_undo(
+            VectorUndoAction::Create { asset: 0 },
+            &mut committed,
+            &mut sel,
+        )
+        .unwrap();
         assert!(committed.is_empty());
     }
 }

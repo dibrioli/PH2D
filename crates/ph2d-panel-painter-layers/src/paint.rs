@@ -382,15 +382,34 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
     let y = toolbar_rect.y + ((toolbar_rect.h - ROW_H_PX) * 0.5).max(0.0);
     let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
     let specs = [
-        (core_ids::PAINTER_LAYERS_MASK, "Mask", mods.is_some_and(|m| m.has_mask)),
-        (core_ids::PAINTER_LAYERS_CLIP, "Clip", mods.is_some_and(|m| m.clipping)),
-        (core_ids::PAINTER_LAYERS_ALPHA_LOCK, "Lock", mods.is_some_and(|m| m.alpha_locked)),
-        (core_ids::PAINTER_LAYERS_REFERENCE, "Ref", mods.is_some_and(|m| m.is_reference)),
+        (
+            core_ids::PAINTER_LAYERS_MASK,
+            "Mask",
+            mods.is_some_and(|m| m.has_mask),
+        ),
+        (
+            core_ids::PAINTER_LAYERS_CLIP,
+            "Clip",
+            mods.is_some_and(|m| m.clipping),
+        ),
+        (
+            core_ids::PAINTER_LAYERS_ALPHA_LOCK,
+            "Lock",
+            mods.is_some_and(|m| m.alpha_locked),
+        ),
+        (
+            core_ids::PAINTER_LAYERS_REFERENCE,
+            "Ref",
+            mods.is_some_and(|m| m.is_reference),
+        ),
     ];
     for (id, label, on) in specs {
         let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
         let st = if raster {
-            ctx.host.store().button_state(id).unwrap_or(ButtonState::Normal)
+            ctx.host
+                .store()
+                .button_state(id)
+                .unwrap_or(ButtonState::Normal)
         } else {
             ButtonState::Disabled
         };

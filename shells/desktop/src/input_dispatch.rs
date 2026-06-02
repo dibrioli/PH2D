@@ -305,20 +305,13 @@ impl App {
         // PainterLayerReparent on Up of an active layer-row drag; route it to
         // the active PainterTool, which reverses NodeId→LayerId and applies
         // move_into_group / reorder. The downcast mirrors the painter bridge.
-        let painter_reparent = forward_to_hero(self.gfx.as_mut(), evt);
-        if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
-            eprintln!("[drag] ROUTE forward_to_hero → {painter_reparent:?}");
-        }
-        if let Some((dragged, drop)) = painter_reparent
+        if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
             && let Some(gfx) = self.gfx.as_mut()
             && let Some(tool) = gfx.tools.active_mut()
             && let Some(painter) = tool
                 .as_any_mut()
                 .downcast_mut::<ph2d_tool_painter::PainterTool>()
         {
-            if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
-                eprintln!("[drag] ROUTE → handle_layer_reparent applied");
-            }
             painter.handle_layer_reparent(dragged, drop);
         }
 

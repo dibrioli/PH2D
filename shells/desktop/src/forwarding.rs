@@ -8,6 +8,7 @@
 //! forwarder.
 
 use crate::AppGfx;
+use ph2d_editor::interaction::PainterLayerDrop;
 use ph2d_editor::WidgetEvent;
 use ph2d_host::{KeyEvent, PointerEvent};
 
@@ -16,11 +17,19 @@ use ph2d_host::{KeyEvent, PointerEvent};
 /// [`WidgetEvent`]s into `HeroScreen::apply_event` (consumed events
 /// drive hero-level state mutations) and logs unconsumed ones to
 /// stderr for the developer to verify wiring.
-pub fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
-    let Some(gfx) = gfx else { return };
-    let Some(hero) = gfx.hero_screen.as_mut() else {
-        return;
-    };
+///
+/// Returns a `PainterLayerReparent` payload `(dragged, drop)` when the
+/// drag dispatch emitted one — the caller (which holds the `ToolRegistry`)
+/// routes it to the active `PainterTool::handle_layer_reparent`. `None`
+/// otherwise. (The hero/chrome can't own this: it's a tool mutation, and
+/// `forward_to_hero` has no `ToolRegistry`.)
+#[must_use]
+pub fn forward_to_hero(
+    gfx: Option<&mut AppGfx>,
+    event: PointerEvent,
+) -> Option<(ph2d_editor::NodeId, PainterLayerDrop)> {
+    let gfx = gfx?;
+    let hero = gfx.hero_screen.as_mut()?;
     // Snapshot events before applying — apply_event may mutate hero,
     // but the events slice itself lives in the arena (immutable view).
     // Threads the live TextSystem so click→caret on text widgets
@@ -29,6 +38,7 @@ pub fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
     let snapshot: Vec<WidgetEvent> = hero
         .handle_pointer_with_text(event, &mut gfx.text_system, &gfx.hero_arena)
         .to_vec();
+    let mut reparent = None;
     for e in snapshot {
         // Eyedropper pick — read the rendered pixel at the click
         // position from vello_pass's intermediate texture and apply
@@ -41,10 +51,17 @@ pub fn forward_to_hero(gfx: Option<&mut AppGfx>, event: PointerEvent) {
             }
             continue;
         }
+        // Painter layers drag-reparent (W3 T3.8): surface to the caller,
+        // which holds the `ToolRegistry`, to apply on the active PainterTool.
+        if let WidgetEvent::PainterLayerReparent { dragged, drop } = e {
+            reparent = Some((dragged, drop));
+            continue;
+        }
         if !hero.apply_event(e) {
             eprintln!("[hero] unhandled event: {e:?}");
         }
     }
+    reparent
 }
 
 /// Forward a translated [`KeyEvent`] (with editor-canonical

@@ -223,7 +223,9 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
-        forward_to_hero(self.gfx.as_mut(), evt);
+        // A reparent only fires on pointer-Up (handled in on_mouse_input);
+        // Move never emits one.
+        let _ = forward_to_hero(self.gfx.as_mut(), evt);
         // M14.7 C: advance an open gizmo drag against the latest cursor
         // (MovePivot / scale / rotate / translate). Extracted to the
         // `gizmo_drag` sibling to keep this dispatch hub readable.
@@ -299,7 +301,19 @@ impl App {
             .map(|h| h.store.picker_target().is_some())
             .unwrap_or(false);
         self.handler.on_pointer(evt);
-        forward_to_hero(self.gfx.as_mut(), evt);
+        // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
+        // PainterLayerReparent on Up of an active layer-row drag; route it to
+        // the active PainterTool, which reverses NodeId→LayerId and applies
+        // move_into_group / reorder. The downcast mirrors the painter bridge.
+        if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
+            && let Some(gfx) = self.gfx.as_mut()
+            && let Some(tool) = gfx.tools.active_mut()
+            && let Some(painter) = tool
+                .as_any_mut()
+                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+        {
+            painter.handle_layer_reparent(dragged, drop);
+        }
 
         // BgRemoval eyedropper (SHELL-only). A Secondary Down on an
         // extra-colour swatch deletes it; a Primary Down/drag over the

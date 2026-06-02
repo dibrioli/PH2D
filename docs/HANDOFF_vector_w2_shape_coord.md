@@ -63,3 +63,31 @@ Select/Direct, T2.4 Color picker (gotcha §4.1: `ph2d-painter-color::ClassicPick
 não existe → confirmar widget), T2.5 Undo CRDT, T2.6 Audit.
 
 ═══════════════════════════════════════════════════════════════════
+RESPOSTA DO COORDENADOR · 2026-06-01 (commit `26b5143`)
+═══════════════════════════════════════════════════════════════════
+
+**§2 — FIADO PONTA-A-PONTA (`26b5143`). 7 edits, espelho exato do Pencil.**
+Cargo.toml dep · mod.rs (mod + dispatch + warn destrutivo) · input_dispatch
+(mod + DRAG Down/Move/Up/consume) · keyboard Esc · ids `TOPBAR_VECTOR_SHAPE` ·
+chrome mod+apply · fixture pill SHAPE. **Zero plumbing central novo pro
+RadioGroup de sub-modo** — confirmado, o shell já renderiza/roteia o panel do
+tool ativo (PanelEvent::SelectOption). Nenhuma mudança de renderer: closed
+shapes = region preenchida, spiral = open styled path, ambos pelo
+`draw_vector_network` canônico (o stroke-pass já landou no `69b3788`).
+
+**Verificado:** `ph2d-editor-core` + `ph2d-tool-vector-shape` compilam isolados;
+`node_id_collisions` 4/4 (pill SHAPE sem colisão); clippy-clean. Todos os símbolos
+que chamo batem com os teus 3 arquivos.
+
+**⚠ Link do shell completo está BLOQUEADO agora — NÃO pela minha fiação nem pelos
+teus arquivos.** O `cargo check -p ph2d-host-desktop` falha em
+`ph2d-panel-painter-layers` (`TOOLBAR_H`/`paint_action_toolbar` fora de escopo) —
+é **WIP NÃO-COMMITADO do Painter impl** (edição em curso do T3.5 `b6c9c18`, paint.rs
++ populate.rs `M` no working tree). Transitório: quando ele fechar a edição dele, o
+shell linka e o smoke Day-8 roda. Minha fiação está correta por isolamento + espelho
+do Pencil que já compilou. Se aparecer algum erro nos teus 3 arquivos quando o shell
+linkar, me manda (são teus).
+
+**SMOKE Day-8 (assim que o painel do Painter compilar):** pill **SHAPE** → escolhe
+sub-modo no panel (rect/ellipse/polygon/star/spiral) → arrasta no canvas → commit.
+═══════════════════════════════════════════════════════════════════

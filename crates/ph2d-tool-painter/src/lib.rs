@@ -46,8 +46,11 @@ pub use params::{
     PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
+pub use ph2d_painter_brush::adjustments::{
+    AdjustmentKind, AdjustmentLayer, AdjustmentParams, HsbParams,
+};
 pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
-pub use tool::{PainterTool, set_pending_select_mods};
+pub use tool::{HsbField, PainterTool, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;

@@ -258,6 +258,15 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
+/// Which field of an HSB adjustment a slider edits ([`PainterTool::
+/// set_adjustment_hsb`]). W4 T4.3.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum HsbField {
+    Hue,
+    Saturation,
+    Brightness,
+}
+
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -1809,6 +1818,56 @@ impl PainterTool {
         true
     }
 
+    /// Create a non-destructive adjustment layer of `kind` at the top of the
+    /// stack and SELECT it (highlight) WITHOUT changing the paint target — an
+    /// adjustment has no pixel buffer, so the previously active raster stays the
+    /// edit target (mirror of the group guard, [`Self::set_active_layer`]).
+    /// No-op (`None`) mid-stroke or at the layer cap. W4 T4.3 (HSB Day-4 smoke).
+    pub fn add_adjustment_layer(
+        &mut self,
+        kind: ph2d_painter_brush::adjustments::AdjustmentKind,
+    ) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        let prev_active = self.layers.active();
+        let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
+        // Not paintable — restore the prior raster as the edit target. The
+        // canvas_rgba is untouched (add_adjustment does not flush/load), so a
+        // plain `set_active` (no buffer dance) keeps it consistent.
+        if let Some(p) = prev_active {
+            self.layers.set_active(p);
+        }
+        self.reset_selection_to(id); // highlight the new adjustment row
+        self.invalidate_composite();
+        Some(id)
+    }
+
+    /// Set one HSB field of adjustment layer `id` from a normalized `0..1`
+    /// slider value: Hue → `0..1` turns; Saturation / Brightness → `-1..1`
+    /// (slider `0.5` = neutral `0`). No-op mid-stroke or if `id` is not an HSB
+    /// adjustment. Invalidates the composite so the live preview re-renders.
+    pub fn set_adjustment_hsb(&mut self, id: RtLayerId, field: HsbField, slider01: f32) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let ph2d_painter_brush::adjustments::AdjustmentParams::HueSaturationBrightness(p) =
+            &mut adj.params
+        else {
+            return;
+        };
+        let v = slider01.clamp(0.0, 1.0);
+        match field {
+            HsbField::Hue => p.h = v,                     // 0..1 turns
+            HsbField::Saturation => p.s = v * 2.0 - 1.0,  // -1..1
+            HsbField::Brightness => p.b = v * 2.0 - 1.0,  // -1..1
+        }
+        self.invalidate_composite();
+    }
+
     /// `true` when the active edit target is a grayscale mask.
     #[must_use]
     pub fn active_is_mask(&self) -> bool {
@@ -2636,6 +2695,13 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
                 self.group_selected();
             }
+            // ── "+ Adj" — create an HSB adjustment layer (W4 T4.3; the full
+            // 24-kind menu lands with T4.15) ───────────────────────────────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT => {
+                self.add_adjustment_layer(
+                    ph2d_painter_brush::adjustments::AdjustmentKind::HueSaturationBrightness,
+                );
+            }
             // ── Modifier toolbar (acts on the ACTIVE layer) ────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
                 self.add_mask_to_active();
@@ -2698,10 +2764,23 @@ impl Tool for PainterTool {
                     }
                 }
             }
-            // ── Layers panel: per-row opacity slider (stores 0..1) ─────────
+            // ── Layers panel: per-row sliders (opacity + adjustment H/S/B),
+            // all stored 0..1; the tool maps each to its target. ───────────
             PanelEvent::SetValue(id, v) => {
-                if let Some((layer, PainterLayerWidget::Opacity)) = self.decode_layer_widget(id) {
-                    self.set_layer_opacity(layer, v as f32);
+                if let Some((layer, kind)) = self.decode_layer_widget(id) {
+                    match kind {
+                        PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
+                        PainterLayerWidget::AdjHue => {
+                            self.set_adjustment_hsb(layer, HsbField::Hue, v as f32)
+                        }
+                        PainterLayerWidget::AdjSat => {
+                            self.set_adjustment_hsb(layer, HsbField::Saturation, v as f32)
+                        }
+                        PainterLayerWidget::AdjBright => {
+                            self.set_adjustment_hsb(layer, HsbField::Brightness, v as f32)
+                        }
+                        _ => {}
+                    }
                 }
             }
             // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
@@ -4831,5 +4910,50 @@ mod tests {
             Some(l2),
             "an empty group does not steal the paint target"
         );
+    }
+
+    // ── W4 T4.3 — adjustment layer create + HSB edit ──────────────────────
+
+    #[test]
+    fn add_adjustment_layer_keeps_a_paintable_active_target() {
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2); // base raster (active)
+        let base = t.layers.active().unwrap();
+        let adj = t
+            .add_adjustment_layer(AdjustmentKind::HueSaturationBrightness)
+            .expect("adjustment created");
+        // The adjustment has no pixel buffer — it must NOT become the paint
+        // target (that would blank the canvas + swallow strokes).
+        assert_ne!(t.layers.active(), Some(adj));
+        assert_eq!(
+            t.layers.active(),
+            Some(base),
+            "the prior raster stays the edit target"
+        );
+        assert!(t.selection().contains(&adj), "the new adjustment is selected");
+    }
+
+    #[test]
+    fn set_adjustment_hsb_maps_sliders_to_params() {
+        use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2);
+        let adj = t
+            .add_adjustment_layer(AdjustmentKind::HueSaturationBrightness)
+            .unwrap();
+        t.set_adjustment_hsb(adj, HsbField::Hue, 0.5); // 0.5 turns
+        t.set_adjustment_hsb(adj, HsbField::Saturation, 1.0); // slider 1 → s = +1
+        t.set_adjustment_hsb(adj, HsbField::Brightness, 0.0); // slider 0 → b = -1
+        let params = match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => a.params.clone(),
+            _ => panic!("expected an adjustment layer"),
+        };
+        let AdjustmentParams::HueSaturationBrightness(p) = params else {
+            panic!("params are not HSB");
+        };
+        assert!((p.h - 0.5).abs() < 1e-6, "hue maps 0..1 turns directly");
+        assert!((p.s - 1.0).abs() < 1e-6, "saturation slider 1 → +1");
+        assert!((p.b + 1.0).abs() < 1e-6, "brightness slider 0 → -1");
     }
 }

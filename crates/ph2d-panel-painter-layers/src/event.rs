@@ -50,7 +50,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 || id == core_ids::PAINTER_LAYERS_MASK
                 || id == core_ids::PAINTER_LAYERS_CLIP
                 || id == core_ids::PAINTER_LAYERS_ALPHA_LOCK
-                || id == core_ids::PAINTER_LAYERS_REFERENCE =>
+                || id == core_ids::PAINTER_LAYERS_REFERENCE
+                || id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -120,7 +121,16 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
-            if let Some((_, PainterLayerWidget::Opacity)) = decode(&stack, id) {
+            // Per-row sliders: opacity + the adjustment H/S/B (all stored 0..1).
+            if let Some((_, kind)) = decode(&stack, id)
+                && matches!(
+                    kind,
+                    PainterLayerWidget::Opacity
+                        | PainterLayerWidget::AdjHue
+                        | PainterLayerWidget::AdjSat
+                        | PainterLayerWidget::AdjBright
+                )
+            {
                 let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

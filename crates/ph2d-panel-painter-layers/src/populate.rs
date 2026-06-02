@@ -19,6 +19,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
         ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
         ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
+        // "+ Adj" — create an adjustment layer (W4 T4.3).
+        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
         // Modifier toolbar (acts on the active layer): Mask / Clip / Lock / Ref.
         ph2d_editor_core::ids::PAINTER_LAYERS_MASK,
         ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,

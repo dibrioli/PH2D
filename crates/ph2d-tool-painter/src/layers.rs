@@ -401,18 +401,30 @@ impl LayerStack {
     pub fn set_visible(&mut self, id: LayerId, visible: bool) {
         if let Some(l) = self.get_mut(id) {
             l.visible = visible;
+            // Adjustment layers are inner-authoritative (amendment-1): mirror
+            // the field into the payload so the compositor honors the change.
+            if let LayerKind::Adjustment(adj) = &mut l.kind {
+                adj.visible = visible;
+            }
         }
     }
 
     pub fn set_opacity(&mut self, id: LayerId, opacity: f32) {
         if let Some(l) = self.get_mut(id) {
-            l.opacity = opacity.clamp(0.0, 1.0);
+            let v = opacity.clamp(0.0, 1.0);
+            l.opacity = v;
+            if let LayerKind::Adjustment(adj) = &mut l.kind {
+                adj.opacity = v;
+            }
         }
     }
 
     pub fn set_blend_mode(&mut self, id: LayerId, mode: BlendMode) {
         if let Some(l) = self.get_mut(id) {
             l.blend_mode = mode;
+            if let LayerKind::Adjustment(adj) = &mut l.kind {
+                adj.blend_mode = mode;
+            }
         }
     }
 

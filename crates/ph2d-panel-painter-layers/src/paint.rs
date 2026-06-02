@@ -356,6 +356,11 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
             IconId::Trash,
             "Delete layer",
         ),
+        (
+            core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+            IconId::ColorEqualization,
+            "Add adjustment",
+        ),
     ];
     for (id, icon, label) in specs {
         let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);

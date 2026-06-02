@@ -8,10 +8,10 @@
 //! - per-kind sub-`*Params` structs with the field caps in §2.6.
 //!
 //! This module defines ONLY the data + sensible `Default`s + serde. The compute
-//! logic (`apply_adjustment(kind, params, &mut [[f32; 4]])` per ADR-0045 §2.7
-//! + the W4-triage Coord decision — straight LINEAR f32 acc, not 8-bit, so the
-//! per-frame composite never round-trips through sRGB8) is the implementer's
-//! (T4.3+). T4.2 ships the no-op stub + the compositor wiring around it.
+//! logic (`apply_adjustment(kind, params, &mut [[f32; 4]])` per ADR-0045 §2.7,
+//! plus the W4-triage Coord decision — straight LINEAR f32 acc, not 8-bit, so
+//! the per-frame composite never round-trips through sRGB8) is the
+//! implementer's (T4.3+). T4.2 ships the no-op stub + the compositor wiring.
 //!
 //! **Amendment-1 crate-placement:** `AdjustmentLayer.{id, clipped_by, mask}` are
 //! raw `u64` (LayerId values), not the `LayerId` newtype, because `LayerId` lives
@@ -524,6 +524,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         *kind,
         "apply_adjustment: kind/params variant mismatch"
     );
+    // single_match today (only HSB is implemented); the match grows an arm per
+    // kind as T4.4+ land, so keep the `match` shape rather than churning to
+    // `if let` and back.
+    #[allow(clippy::single_match)]
     match (kind, params) {
         // T4.3 — Hue/Saturation/Brightness (Day-4 smoke). The other 23 kinds
         // are still no-ops (identity) until their own T4.x arm lands.

@@ -337,6 +337,10 @@ pub const PAINTER_LAYERS_ALPHA_LOCK: NodeId = hash_node_id("painter_layers.alpha
 /// Modifier toolbar "Ref" toggle — flips the active layer's reference modifier
 /// (§2.9, exclusive). W3.T3.7.
 pub const PAINTER_LAYERS_REFERENCE: NodeId = hash_node_id("painter_layers.reference");
+/// Action toolbar "+ Adj" — creates a non-destructive adjustment layer (W4
+/// T4.3; HSB for the Day-4 smoke, full 24-kind menu lands with T4.15).
+pub const PAINTER_LAYERS_ADD_ADJUSTMENT: NodeId =
+    hash_node_id("painter_layers.add_adjustment");
 /// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
 /// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
 /// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`
@@ -387,6 +391,12 @@ pub enum PainterLayerWidget {
     /// (Mask rows only) the Apply button — destructively bakes the mask into
     /// the parent layer's alpha and removes the mask (§2.7).
     MaskApply,
+    /// (Adjustment rows only) the Hue slider of an HSB adjustment (W4 T4.3).
+    AdjHue,
+    /// (Adjustment rows only) the Saturation slider of an HSB adjustment.
+    AdjSat,
+    /// (Adjustment rows only) the Brightness slider of an HSB adjustment.
+    AdjBright,
 }
 
 impl PainterLayerWidget {
@@ -404,11 +414,14 @@ impl PainterLayerWidget {
             Self::MoveDown => "move_down",
             Self::MaskInvert => "mask_invert",
             Self::MaskApply => "mask_apply",
+            Self::AdjHue => "adj_hue",
+            Self::AdjSat => "adj_sat",
+            Self::AdjBright => "adj_bright",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 9] = [
+    pub const ALL: [PainterLayerWidget; 12] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -418,6 +431,9 @@ impl PainterLayerWidget {
         Self::MoveDown,
         Self::MaskInvert,
         Self::MaskApply,
+        Self::AdjHue,
+        Self::AdjSat,
+        Self::AdjBright,
     ];
 }
 

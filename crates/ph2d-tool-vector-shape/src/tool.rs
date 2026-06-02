@@ -322,9 +322,7 @@ impl VectorShapeTool {
                 let radii = (current - anchor).abs() * 0.5;
                 primitives::ellipse(center, radii)
             }
-            ShapeKind::Polygon => {
-                primitives::polygon(anchor, radius, self.polygon_sides, rotation)
-            }
+            ShapeKind::Polygon => primitives::polygon(anchor, radius, self.polygon_sides, rotation),
             ShapeKind::Star => primitives::star(
                 anchor,
                 radius,
@@ -370,7 +368,7 @@ impl VectorShapeTool {
 
 /// Synthesize a replay-safe geometry [`EditLog`] from an already-built
 /// network: AddVertex / AddSegment / AddRegion / SetRegionFill. Each op is
-/// network-applyable, so replaying the log from genesis reconstructs the
+/// network-applicable, so replaying the log from genesis reconstructs the
 /// same geometry (the foundation for T2.5 undo). Stroke `style_ref` is
 /// materialized on the network (SetStrokeStyle needs asset context absent
 /// until T2.5), mirroring the Pencil.
@@ -513,7 +511,13 @@ mod tests {
             if kind == ShapeKind::Spiral {
                 assert!(asset.network.regions.is_empty(), "spiral is open");
                 // Open stroked: every segment carries the stroke ref.
-                assert!(asset.network.segments.iter().all(|s| s.style_ref == Some(0)));
+                assert!(
+                    asset
+                        .network
+                        .segments
+                        .iter()
+                        .all(|s| s.style_ref == Some(0))
+                );
             } else {
                 assert_eq!(asset.network.regions.len(), 1, "{kind:?} is closed");
                 assert_eq!(asset.network.regions[0].fill, Some(0));
@@ -528,7 +532,10 @@ mod tests {
         let asset = drag_commit(&mut t, Vec2::ZERO, Vec2::new(40.0, 0.0));
         let mut replay = VectorNetwork::empty();
         for op in &asset.edit_log.ops {
-            assert!(op.apply_to_network(&mut replay).is_ok(), "non-applyable op");
+            assert!(
+                op.apply_to_network(&mut replay).is_ok(),
+                "non-applicable op"
+            );
         }
         assert_eq!(replay.vertices.len(), asset.network.vertices.len());
         assert_eq!(replay.segments.len(), asset.network.segments.len());
@@ -597,7 +604,10 @@ mod tests {
     #[test]
     fn nan_begin_is_ignored() {
         let mut t = VectorShapeTool::new();
-        assert_eq!(t.begin_shape(Vec2::new(f32::NAN, 0.0)), ShapeOutcome::Ignored);
+        assert_eq!(
+            t.begin_shape(Vec2::new(f32::NAN, 0.0)),
+            ShapeOutcome::Ignored
+        );
         assert!(!t.has_in_progress_shape());
     }
 

@@ -148,7 +148,11 @@ pub fn star(
     let pts: Vec<Vec2> = (0..n)
         .map(|i| {
             let a = f64::from(rotation) + std::f64::consts::TAU * f64::from(i) / f64::from(n);
-            let r = if i % 2 == 0 { outer_radius } else { inner_radius };
+            let r = if i % 2 == 0 {
+                outer_radius
+            } else {
+                inner_radius
+            };
             point_on_circle(center, r, a)
         })
         .collect();
@@ -205,7 +209,8 @@ fn closed_polyline(pts: &[Vec2]) -> VectorNetwork {
     }
     for i in 0..n {
         let end = ((i + 1) % n) as u32;
-        net.segments.push(Segment::straight(i as u32, i as u32, end));
+        net.segments
+            .push(Segment::straight(i as u32, i as u32, end));
     }
     push_region_over_all_segments(&mut net);
     net
@@ -215,7 +220,11 @@ fn closed_polyline(pts: &[Vec2]) -> VectorNetwork {
 /// (all forward). Id 0.
 fn push_region_over_all_segments(net: &mut VectorNetwork) {
     let mut region = Region::new(0, WindingRule::NonZero);
-    region.segments = net.segments.iter().map(|s| (s.id, true) as SegmentRef).collect();
+    region.segments = net
+        .segments
+        .iter()
+        .map(|s| (s.id, true) as SegmentRef)
+        .collect();
     net.regions.push(region);
 }
 
@@ -278,14 +287,21 @@ mod tests {
             let nx = f64::from(m.x - c.x) / f64::from(r.x);
             let ny = f64::from(m.y - c.y) / f64::from(r.y);
             let on = nx * nx + ny * ny;
-            assert!((on - 1.0).abs() < 0.01, "arc {i} midpoint off ellipse: {on}");
+            assert!(
+                (on - 1.0).abs() < 0.01,
+                "arc {i} midpoint off ellipse: {on}"
+            );
         }
     }
 
     #[test]
     fn polygon_vertex_count_and_clamp() {
         assert_eq!(polygon(Vec2::ZERO, 50.0, 5, 0.0).vertices.len(), 5);
-        assert_eq!(polygon(Vec2::ZERO, 50.0, 2, 0.0).vertices.len(), 3, "clamp up to 3");
+        assert_eq!(
+            polygon(Vec2::ZERO, 50.0, 2, 0.0).vertices.len(),
+            3,
+            "clamp up to 3"
+        );
         assert_eq!(
             polygon(Vec2::ZERO, 50.0, 999, 0.0).vertices.len(),
             MAX_POLYGON_SIDES as usize,
@@ -339,7 +355,9 @@ mod tests {
         let net = spiral(Vec2::ZERO, 1.0, 100.0, 9999.0, 9999, 0.0);
         assert!(net.validate().is_ok());
         // turns ≤ 64, spt ≤ 64 → ≤ 64*64+1 vertices.
-        assert!(net.vertices.len() <= (MAX_SPIRAL_TURNS * MAX_SPIRAL_SAMPLES_PER_TURN + 1) as usize);
+        assert!(
+            net.vertices.len() <= (MAX_SPIRAL_TURNS * MAX_SPIRAL_SAMPLES_PER_TURN + 1) as usize
+        );
     }
 
     #[test]

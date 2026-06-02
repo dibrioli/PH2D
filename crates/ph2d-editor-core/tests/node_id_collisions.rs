@@ -338,21 +338,45 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("BGR_SWATCH_11", ids::BGR_SWATCH_11),
     // Painter chrome (W3 audit-2 B.3 — were absent from the uniqueness set).
     ("PAINTER_SIDEBAR_PANEL", ids::PAINTER_SIDEBAR_PANEL),
-    ("PAINTER_SIDEBAR_SIZE_SLIDER", ids::PAINTER_SIDEBAR_SIZE_SLIDER),
+    (
+        "PAINTER_SIDEBAR_SIZE_SLIDER",
+        ids::PAINTER_SIDEBAR_SIZE_SLIDER,
+    ),
     ("PAINTER_SIDEBAR_SIZE_CHIP", ids::PAINTER_SIDEBAR_SIZE_CHIP),
-    ("PAINTER_SIDEBAR_OPACITY_SLIDER", ids::PAINTER_SIDEBAR_OPACITY_SLIDER),
-    ("PAINTER_SIDEBAR_OPACITY_CHIP", ids::PAINTER_SIDEBAR_OPACITY_CHIP),
-    ("PAINTER_SIDEBAR_UNDO_BUTTON", ids::PAINTER_SIDEBAR_UNDO_BUTTON),
-    ("PAINTER_SIDEBAR_REDO_BUTTON", ids::PAINTER_SIDEBAR_REDO_BUTTON),
-    ("PAINTER_SIDEBAR_MODIFIER_SQUARE", ids::PAINTER_SIDEBAR_MODIFIER_SQUARE),
+    (
+        "PAINTER_SIDEBAR_OPACITY_SLIDER",
+        ids::PAINTER_SIDEBAR_OPACITY_SLIDER,
+    ),
+    (
+        "PAINTER_SIDEBAR_OPACITY_CHIP",
+        ids::PAINTER_SIDEBAR_OPACITY_CHIP,
+    ),
+    (
+        "PAINTER_SIDEBAR_UNDO_BUTTON",
+        ids::PAINTER_SIDEBAR_UNDO_BUTTON,
+    ),
+    (
+        "PAINTER_SIDEBAR_REDO_BUTTON",
+        ids::PAINTER_SIDEBAR_REDO_BUTTON,
+    ),
+    (
+        "PAINTER_SIDEBAR_MODIFIER_SQUARE",
+        ids::PAINTER_SIDEBAR_MODIFIER_SQUARE,
+    ),
     ("PAINTER_SIDEBAR_CLOSE", ids::PAINTER_SIDEBAR_CLOSE),
-    ("PAINTER_SIDEBAR_TOGGLE_DOCK", ids::PAINTER_SIDEBAR_TOGGLE_DOCK),
+    (
+        "PAINTER_SIDEBAR_TOGGLE_DOCK",
+        ids::PAINTER_SIDEBAR_TOGGLE_DOCK,
+    ),
     ("PAINTER_COLOR_THUMB", ids::PAINTER_COLOR_THUMB),
     ("PAINTER_APPLY", ids::PAINTER_APPLY),
     ("PAINTER_LAYERS_PANEL", ids::PAINTER_LAYERS_PANEL),
     ("PAINTER_LAYERS_CLOSE", ids::PAINTER_LAYERS_CLOSE),
     ("PAINTER_LAYERS_ADD", ids::PAINTER_LAYERS_ADD),
-    ("PAINTER_LAYERS_TOGGLE_DOCK", ids::PAINTER_LAYERS_TOGGLE_DOCK),
+    (
+        "PAINTER_LAYERS_TOGGLE_DOCK",
+        ids::PAINTER_LAYERS_TOGGLE_DOCK,
+    ),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200
@@ -426,14 +450,20 @@ fn no_chrome_id_is_companion_misread() {
 /// extended to the per-row painter id space.
 #[test]
 fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
-    use ids::PainterLayerWidget::{
-        Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility,
-    };
+    use ids::PainterLayerWidget::{Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility};
 
     let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
     let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
 
-    let kinds = [Row, Visibility, Opacity, OpacityChip, Blend, MoveUp, MoveDown];
+    let kinds = [
+        Row,
+        Visibility,
+        Opacity,
+        OpacityChip,
+        Blend,
+        MoveUp,
+        MoveDown,
+    ];
     // Dense small ids + sparse/large runtime ids (LayerId is a u64 monotonic).
     let layer_ids = [0u64, 1, 2, 3, 7, 42, 255, 1000, 0x_dead_beef, u64::MAX];
 

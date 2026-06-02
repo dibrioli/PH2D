@@ -436,8 +436,8 @@ pub(super) fn dispatch(
                 // `bx+bw<=w && by+bh<=h` guard keeps `extract_region` in bounds
                 // (defensive — a bad bbox falls back to full, never panics the
                 // render loop). Everything else → full upload.
-                let partial = painter_dirty_bbox.and_then(|(bx, by, bw, bh)| {
-                    match *painter_preview_gpu {
+                let partial =
+                    painter_dirty_bbox.and_then(|(bx, by, bw, bh)| match *painter_preview_gpu {
                         Some(gpu)
                             if gpu.entity_bits == preview.entity_bits
                                 && gpu.width == preview.width
@@ -450,8 +450,7 @@ pub(super) fn dispatch(
                             Some((gpu.texture_id, bx, by, bw, bh))
                         }
                         _ => None,
-                    }
-                });
+                    });
                 let upload_result: Result<u32, _> = match partial {
                     Some((texture_id, bx, by, bw, bh)) => {
                         // Gather + premultiply ONLY the bbox sub-rect (tightly

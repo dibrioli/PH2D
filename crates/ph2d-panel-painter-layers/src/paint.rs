@@ -58,7 +58,6 @@ const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
 const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar thickness
 const GHOST_PAD: f32 = 7.0; // LITERAL-PX-OK: floating drag-ghost pill horizontal text padding
-const GHOST_CHAR_ADV: f32 = 0.62; // LITERAL-PX-OK: rough glyph-advance fraction of font px (ghost pill sizing, cosmetic)
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
@@ -268,7 +267,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
             panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
         );
         hit.register(core_ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-        hit.register(core_ids::INSP_RESIZE_HANDLE_BL, panel_resize_handle_rect_bl(rect));
+        hit.register(
+            core_ids::INSP_RESIZE_HANDLE_BL,
+            panel_resize_handle_rect_bl(rect),
+        );
         hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
         hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
         // Scrollbar thumb-drag: register the thumb hit-rect AFTER the rows (same
@@ -348,8 +350,16 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     let specs = [
         (core_ids::PAINTER_LAYERS_ADD, IconId::Add, "New layer"),
         (core_ids::PAINTER_LAYERS_GROUP, IconId::Group, "New group"),
-        (core_ids::PAINTER_LAYERS_DUPLICATE, IconId::Duplicate, "Duplicate layer"),
-        (core_ids::PAINTER_LAYERS_DELETE, IconId::Trash, "Delete layer"),
+        (
+            core_ids::PAINTER_LAYERS_DUPLICATE,
+            IconId::Duplicate,
+            "Duplicate layer",
+        ),
+        (
+            core_ids::PAINTER_LAYERS_DELETE,
+            IconId::Trash,
+            "Delete layer",
+        ),
     ];
     for (id, icon, label) in specs {
         let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
@@ -384,7 +394,6 @@ fn paint_apply_button(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme)
 
 /// Paint `ids` (top→bottom) as interactive rows, recursing into non-collapsed
 /// groups (indented). Returns the `y` advanced past the painted rows.
-#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 fn paint_layer_subtree(
     ctx: &mut PaintCtx,
@@ -551,7 +560,11 @@ fn paint_layer_row(
     // hit-rect run to the row's right edge. ─────────────────────────────
     let name_x = eye_rect.x + ROW_H_PX + cell_gap;
     let blend_x = content_right - BLEND_CHIP_W;
-    let name_right = if is_base { content_right } else { blend_x - cell_gap };
+    let name_right = if is_base {
+        content_right
+    } else {
+        blend_x - cell_gap
+    };
     let name_w = (name_right - name_x).max(0.0);
     paint_text(
         ctx.text_system,
@@ -616,8 +629,15 @@ fn paint_layer_row(
         .unwrap_or(SliderState::Normal);
     let mut slider = Slider::new(op_slider, "").accent(true).state(st);
     slider.value = layer.opacity;
-    paint_slider(&slider, Rect::new(x, op_y, slider_w, ROW_H_PX), ctx.scene, theme);
-    ctx.host.hit_index_mut().register(op_slider, Rect::new(x, op_y, slider_w, ROW_H_PX));
+    paint_slider(
+        &slider,
+        Rect::new(x, op_y, slider_w, ROW_H_PX),
+        ctx.scene,
+        theme,
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(op_slider, Rect::new(x, op_y, slider_w, ROW_H_PX));
     paint_text(
         ctx.text_system,
         ctx.scene,
@@ -634,13 +654,14 @@ fn paint_layer_row(
 
 /// Live drop indicator for an in-progress layer drag — painted on top of the
 /// rows, mirroring `find_painter_layer_drop`'s 30/40/30 band split so the user
-/// sees exactly where the reparent lands (WYSIWYG drop):
-///   - top 30% of a row → a bar at the row's top edge (insert before)
-///   - middle 40% → an outline box AROUND a group (nest inside); over a leaf the
-///     tool falls back to before-sibling, so the top bar shows there too
-///   - bottom 30% → a bar at the row's bottom edge (insert after)
-///   - below every row → a bar above the base (End → root bottom)
-/// Skips the dragged row itself, exactly as the dispatch does.
+/// sees exactly where the reparent lands (WYSIWYG drop). Skips the dragged row
+/// itself, exactly as the dispatch does. Bands:
+///
+/// - top 30% of a row → a bar at the row's top edge (insert before)
+/// - middle 40% → an outline box around a group (nest inside); over a leaf the
+///   tool falls back to before-sibling, so the top bar shows there too
+/// - bottom 30% → a bar at the row's bottom edge (insert after)
+/// - below every row → a bar above the base (End → root bottom)
 fn paint_drop_indicator(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -674,7 +695,13 @@ fn paint_drop_indicator(
             bar(ctx, top);
         } else if cursor_y < inside_bot {
             if is_group {
-                stroke_rounded_rect(ctx.scene, rect, Radius::Sm.px(), StrokeToken::Thick.px(), accent);
+                stroke_rounded_rect(
+                    ctx.scene,
+                    rect,
+                    Radius::Sm.px(),
+                    StrokeToken::Thick.px(),
+                    accent,
+                );
             } else {
                 bar(ctx, top);
             }
@@ -701,14 +728,20 @@ fn paint_drag_ghost(
     cursor_y: f32,
 ) {
     let font = TypeToken::Base.px();
-    let text_w = (name.chars().count() as f32) * font * GHOST_CHAR_ADV;
+    // True pixel advance (Inter is proportional — char count ≠ width).
+    let text_w = ctx.text_system.prefix_width(name, font);
     let pill_w = text_w + GHOST_PAD * 2.0;
     let pill_h = ROW_H_PX;
     // Sit just below-right of the cursor so the pointer doesn't cover the label.
     let px = cursor_x + Spacing::Sm.px();
     let py = cursor_y - pill_h * 0.5;
     let pill = Rect::new(px, py, pill_w, pill_h);
-    fill_rounded_rect(ctx.scene, pill, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        pill,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
     stroke_rounded_rect(
         ctx.scene,
         pill,

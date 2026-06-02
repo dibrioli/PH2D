@@ -2008,7 +2008,11 @@ impl PainterTool {
                 self.preview_upload_bbox = None;
             }
         }
-        Some((Arc::clone(self.composited.as_ref().expect("just set")), w, h))
+        Some((
+            Arc::clone(self.composited.as_ref().expect("just set")),
+            w,
+            h,
+        ))
     }
 
     /// Drains the dirty bbox `(x, y, w, h)` of the LAST [`Self::take_preview_arc`]
@@ -2017,7 +2021,9 @@ impl PainterTool {
     /// after `take_preview_arc` on the same frame. `take` so a later not-dirty
     /// drain can't replay a stale partial.
     pub fn take_preview_upload_bbox(&mut self) -> Option<(u32, u32, u32, u32)> {
-        self.preview_upload_bbox.take().map(|r| (r.x, r.y, r.w, r.h))
+        self.preview_upload_bbox
+            .take()
+            .map(|r| (r.x, r.y, r.w, r.h))
     }
 
     /// B.5: monotonic revision of the published layer structure. The bridge
@@ -2449,7 +2455,10 @@ impl RasterEditTool for PainterTool {
         };
         self.composited = Some(Arc::new(composited));
         Some((
-            self.composited.as_ref().map(|a| a.as_slice()).unwrap_or(&[]),
+            self.composited
+                .as_ref()
+                .map(|a| a.as_slice())
+                .unwrap_or(&[]),
             w,
             h,
         ))
@@ -3001,7 +3010,12 @@ mod tests {
         let i = (py * cw + px) * 4; // byte offset of pixel (1,1)
         canvas[i..i + 4].copy_from_slice(&[0, 0, 200, 255]);
         // Region drain (only the changed pixel).
-        t.dirty_rect = Some(Region { x: 1, y: 1, w: 1, h: 1 });
+        t.dirty_rect = Some(Region {
+            x: 1,
+            y: 1,
+            w: 1,
+            h: 1,
+        });
         t.preview_dirty = true;
         let (region_drain, _, _) = t.take_preview_arc().expect("dirty");
         let region_drain = (*region_drain).clone();
@@ -3009,8 +3023,15 @@ mod tests {
         t.composited = None;
         t.preview_dirty = true;
         let (full_drain, _, _) = t.take_preview_arc().expect("dirty");
-        assert_eq!(region_drain, *full_drain, "dirty-rect drain == full recompose");
-        assert_eq!(&full_drain[i..i + 3], &[0, 0, 200], "the painted pixel shows");
+        assert_eq!(
+            region_drain, *full_drain,
+            "dirty-rect drain == full recompose"
+        );
+        assert_eq!(
+            &full_drain[i..i + 3],
+            &[0, 0, 200],
+            "the painted pixel shows"
+        );
     }
 
     #[test]
@@ -3032,7 +3053,10 @@ mod tests {
         t.layers.set_opacity(group, 0.8);
         assert!(t.layers.move_into_group(child, group));
         t.layers.set_active(child);
-        assert!(!t.is_trivial_stack(), "group + 2 rasters must be non-trivial");
+        assert!(
+            !t.is_trivial_stack(),
+            "group + 2 rasters must be non-trivial"
+        );
         // First drain → full composite cached.
         t.preview_dirty = true;
         let _ = t.take_preview_arc().expect("dirty");
@@ -3042,7 +3066,12 @@ mod tests {
         let i = (py * cw + px) * 4;
         canvas[i..i + 4].copy_from_slice(&[80, 220, 120, 255]);
         // Region drain (only the changed pixel) — goes through the group path.
-        t.dirty_rect = Some(Region { x: 2, y: 1, w: 1, h: 1 });
+        t.dirty_rect = Some(Region {
+            x: 2,
+            y: 1,
+            w: 1,
+            h: 1,
+        });
         t.preview_dirty = true;
         let (region_drain, _, _) = t.take_preview_arc().expect("dirty");
         let region_drain = (*region_drain).clone();
@@ -3126,7 +3155,11 @@ mod tests {
             Some((1, 1, 2, 2)),
             "fast-lane drain = partial upload of the dirty bbox"
         );
-        assert_eq!(t.take_preview_upload_bbox(), None, "bbox drained after read");
+        assert_eq!(
+            t.take_preview_upload_bbox(),
+            None,
+            "bbox drained after read"
+        );
     }
 
     #[test]
@@ -3191,7 +3224,11 @@ mod tests {
         // White mask → parent fully visible.
         t.preview_dirty = true;
         let (rgba, _, _) = t.take_preview_arc().expect("dirty");
-        assert_eq!(&rgba[0..4], &[200, 0, 0, 255], "white mask reveals red parent");
+        assert_eq!(
+            &rgba[0..4],
+            &[200, 0, 0, 255],
+            "white mask reveals red parent"
+        );
         // Paint the mask black → parent hidden (alpha 0).
         let canvas = std::sync::Arc::make_mut(&mut t.canvas_rgba);
         for px in canvas.chunks_exact_mut(4) {
@@ -3215,7 +3252,11 @@ mod tests {
         t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
         assert_eq!(t.effective_active_color().c, 0.3, "raster keeps chroma");
         t.add_mask_to_active().unwrap();
-        assert_eq!(t.effective_active_color().c, 0.0, "mask paint is achromatic");
+        assert_eq!(
+            t.effective_active_color().c,
+            0.0,
+            "mask paint is achromatic"
+        );
     }
 
     #[test]
@@ -3234,7 +3275,11 @@ mod tests {
         let dup = t.duplicate_layer(l2).expect("duplicate the active raster");
         assert_eq!(t.layers.active(), Some(dup), "the copy is active");
         assert_ne!(dup, l2);
-        assert_eq!(&t.canvas_rgba[0..4], &[100, 110, 120, 255], "copy has source pixels");
+        assert_eq!(
+            &t.canvas_rgba[0..4],
+            &[100, 110, 120, 255],
+            "copy has source pixels"
+        );
         // The copy sits directly above the source (above = lower index).
         let root = t.layers.root();
         let dpos = root.iter().position(|&x| x == dup).unwrap();
@@ -3269,17 +3314,31 @@ mod tests {
         t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (Layer 1)
         let l2 = t.add_raster_layer("L2").unwrap(); // active
         let g = t.group_active().expect("group the active layer");
-        assert_eq!(t.layers.active(), Some(l2), "the layer stays active, not the group");
-        assert_eq!(t.layers.depth(l2), 1, "l2 nested one level inside the group");
+        assert_eq!(
+            t.layers.active(),
+            Some(l2),
+            "the layer stays active, not the group"
+        );
+        assert_eq!(
+            t.layers.depth(l2),
+            1,
+            "l2 nested one level inside the group"
+        );
         assert!(matches!(t.layers.get(g).unwrap().kind, LayerKind::Group(_)));
-        assert!(!t.layers.root().contains(&l2), "l2 left the root (now in the group)");
+        assert!(
+            !t.layers.root().contains(&l2),
+            "l2 left the root (now in the group)"
+        );
     }
 
     #[test]
     fn group_active_refuses_base_sprite() {
         let mut t = PainterTool::default();
         t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
-        assert!(t.group_active().is_none(), "base sprite active → can't group it");
+        assert!(
+            t.group_active().is_none(),
+            "base sprite active → can't group it"
+        );
     }
 
     #[test]
@@ -3298,7 +3357,11 @@ mod tests {
         // Drag l2 back out to the root bottom (above base).
         t.handle_layer_reparent(row(l2), PainterLayerDrop::End);
         assert_eq!(t.layers.depth(l2), 0, "l2 pulled back to root");
-        assert_eq!(t.layers.root().last(), Some(&base), "base still pinned bottom");
+        assert_eq!(
+            t.layers.root().last(),
+            Some(&base),
+            "base still pinned bottom"
+        );
     }
 
     #[test]
@@ -3317,7 +3380,11 @@ mod tests {
         assert_eq!(t.layers.root()[0], l3, "L3 starts topmost");
         // Drop l2 on the MIDDLE band of l3 (a leaf raster, not a group).
         t.handle_layer_reparent(row(l2), PainterLayerDrop::Inside(row(l3)));
-        assert_eq!(t.layers.depth(l2), 0, "no nesting into a leaf — stays at root");
+        assert_eq!(
+            t.layers.depth(l2),
+            0,
+            "no nesting into a leaf — stays at root"
+        );
         assert_eq!(t.layers.root()[0], l2, "l2 inserted before l3 as a sibling");
         assert_eq!(t.layers.root()[1], l3);
     }

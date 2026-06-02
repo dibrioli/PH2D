@@ -87,6 +87,10 @@ pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("vector_pen");
 pub const TOPBAR_VECTOR_PENCIL: NodeId = hash_node_id("vector_pencil");
 /// Vector Shape pill (W2 T2.2) — same `hash_node_id(manifest.id)` convention.
 pub const TOPBAR_VECTOR_SHAPE: NodeId = hash_node_id("vector_shape");
+/// Vector Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
+pub const TOPBAR_VECTOR_SELECT: NodeId = hash_node_id("vector_select");
+/// Vector Direct-Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
+pub const TOPBAR_VECTOR_DIRECT: NodeId = hash_node_id("vector_direct");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

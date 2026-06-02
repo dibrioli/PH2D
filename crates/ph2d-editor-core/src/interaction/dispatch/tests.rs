@@ -289,10 +289,25 @@ fn painter_layer_drag_emits_reparent_with_resolved_drop() {
     hits.register(target_id, Rect::new(0.0, 0.0, 200.0, 20.0));
     hits.register(dragged_id, Rect::new(0.0, 30.0, 200.0, 20.0));
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 100.0, 40.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 100.0, 40.0),
+        &arena,
+    );
     // Move up past the 5px threshold (dy = 30).
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Move, 100.0, 10.0), &arena);
-    let evts = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 100.0, 10.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 100.0, 10.0),
+        &arena,
+    );
+    let evts = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 100.0, 10.0),
+        &arena,
+    );
     assert!(
         evts.iter().any(|e| matches!(
             e,
@@ -318,8 +333,18 @@ fn painter_layer_sub_threshold_click_emits_no_reparent() {
     let mut hits = HitIndex::new();
     hits.register(row_id, Rect::new(0.0, 0.0, 200.0, 20.0));
     let arena = Bump::new();
-    let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Down, 100.0, 10.0), &arena);
-    let evts = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Up, 100.0, 11.0), &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 100.0, 10.0),
+        &arena,
+    );
+    let evts = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 100.0, 11.0),
+        &arena,
+    );
     assert!(
         !evts
             .iter()

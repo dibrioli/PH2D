@@ -139,7 +139,11 @@ impl VectorNetwork {
                 continue;
             };
             for (side, offset, handle) in [
-                (TangentSide::OutAtStart, s.out_at_start, start + s.out_at_start),
+                (
+                    TangentSide::OutAtStart,
+                    s.out_at_start,
+                    start + s.out_at_start,
+                ),
                 (TangentSide::InAtEnd, s.in_at_end, end + s.in_at_end),
             ] {
                 // A (near-)zero tangent has no distinct handle — it sits on
@@ -366,8 +370,7 @@ mod tests {
             net.vertices.push(Vertex::auto(i as u32, p));
         }
         for i in 0..4u32 {
-            net.segments
-                .push(Segment::straight(i, i, (i + 1) % 4));
+            net.segments.push(Segment::straight(i, i, (i + 1) % 4));
         }
         let mut r = Region::new(0, WindingRule::EvenOdd);
         r.segments = (0..4u32).map(|i| (i, true) as SegmentRef).collect();

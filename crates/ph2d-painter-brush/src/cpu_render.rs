@@ -505,13 +505,22 @@ mod tests {
         // Alpha is locked at EVERY pixel (transparent stays transparent, opaque
         // stays opaque).
         for i in (0..canvas.len()).step_by(4) {
-            assert_eq!(canvas[i + 3], before[i + 3], "alpha locked at pixel {}", i / 4);
+            assert_eq!(
+                canvas[i + 3],
+                before[i + 3],
+                "alpha locked at pixel {}",
+                i / 4
+            );
         }
         // Transparent (right) half is byte-for-byte untouched (no color leak).
         for y in 0..h {
             for x in (w / 2)..w {
                 let i = ((y * w + x) * 4) as usize;
-                assert_eq!(&canvas[i..i + 4], &before[i..i + 4], "transparent untouched");
+                assert_eq!(
+                    &canvas[i..i + 4],
+                    &before[i..i + 4],
+                    "transparent untouched"
+                );
             }
         }
         // Some opaque (left) pixel had its color blended toward the paint.
@@ -521,7 +530,10 @@ mod tests {
                 canvas[i..i + 3] != before[i..i + 3]
             })
         });
-        assert!(any_color_changed, "alpha-locked paint still blends color on opaque pixels");
+        assert!(
+            any_color_changed,
+            "alpha-locked paint still blends color on opaque pixels"
+        );
     }
 
     #[test]

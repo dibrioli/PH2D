@@ -132,7 +132,10 @@ pub fn fit_hobby_open_with_curl(knots: &[Vec2], curl: f32) -> Vec<TangentsCubic>
             )
         })
         .collect();
-    let d: Vec<f64> = chords.iter().map(|c| hypot(c.0, c.1).max(MIN_CHORD)).collect();
+    let d: Vec<f64> = chords
+        .iter()
+        .map(|c| hypot(c.0, c.1).max(MIN_CHORD))
+        .collect();
 
     // Turning angles γ at every knot. γ₀ and γₙ are boundary sentinels
     // (0); interior γᵢ is the signed angle from chord i−1 to chord i.
@@ -243,7 +246,11 @@ fn rotate(v: (f64, f64), ang: f64) -> (f64, f64) {
 #[inline]
 fn normalize(v: (f64, f64)) -> (f64, f64) {
     let m = hypot(v.0, v.1);
-    if m > 1e-12 { (v.0 / m, v.1 / m) } else { (0.0, 0.0) }
+    if m > 1e-12 {
+        (v.0 / m, v.1 / m)
+    } else {
+        (0.0, 0.0)
+    }
 }
 
 #[inline]
@@ -297,10 +304,7 @@ mod tests {
         let c1 = p0 + tan[i].out_at_start;
         let c2 = p3 + tan[i].in_at_end;
         let mt = 1.0 - t;
-        p0 * (mt * mt * mt)
-            + c1 * (3.0 * mt * mt * t)
-            + c2 * (3.0 * mt * t * t)
-            + p3 * (t * t * t)
+        p0 * (mt * mt * mt) + c1 * (3.0 * mt * mt * t) + c2 * (3.0 * mt * t * t) + p3 * (t * t * t)
     }
 
     /// Tangent direction of segment `i` at its start (= `out_at_start`)
@@ -325,7 +329,9 @@ mod tests {
 
     #[test]
     fn count_is_one_tangent_per_segment() {
-        let knots: Vec<Vec2> = (0..7).map(|i| Vec2::new(i as f32, (i % 2) as f32)).collect();
+        let knots: Vec<Vec2> = (0..7)
+            .map(|i| Vec2::new(i as f32, (i % 2) as f32))
+            .collect();
         assert_eq!(fit_hobby_open(&knots).len(), knots.len() - 1);
     }
 

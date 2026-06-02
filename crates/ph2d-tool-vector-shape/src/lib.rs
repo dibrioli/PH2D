@@ -20,9 +20,7 @@
 pub mod icon;
 pub mod tool;
 
-pub use tool::{
-    MAX_COORD_MAGNITUDE, MIN_DRAG_DIST_PX, ShapeKind, ShapeOutcome, VectorShapeTool,
-};
+pub use tool::{MAX_COORD_MAGNITUDE, MIN_DRAG_DIST_PX, ShapeKind, ShapeOutcome, VectorShapeTool};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

@@ -452,7 +452,11 @@ mod tests {
         src.insert(top, solid(w, h, [200, 0, 0, 255])); // red on top
         src.insert(mask, solid(w, h, [0, 0, 0, 255])); // black → hide top
         let out = composite(&s, &src, w, h);
-        assert_eq!(&out[0..3], &[0, 200, 0], "black mask hides top → green shows");
+        assert_eq!(
+            &out[0..3],
+            &[0, 200, 0],
+            "black mask hides top → green shows"
+        );
     }
 
     #[test]
@@ -483,7 +487,11 @@ mod tests {
         src.insert(top, solid(w, h, [200, 0, 0, 255]));
         src.insert(mask, solid(w, h, [0, 0, 0, 255])); // black, but inverted → visible
         let out = composite(&s, &src, w, h);
-        assert_eq!(&out[0..3], &[200, 0, 0], "inverted black mask → top visible");
+        assert_eq!(
+            &out[0..3],
+            &[200, 0, 0],
+            "inverted black mask → top visible"
+        );
     }
 
     #[test]
@@ -548,7 +556,11 @@ mod tests {
         src.insert(c2, solid(w, h, [200, 0, 0, 255])); // c2 opaque red
         let out = composite(&s, &src, w, h);
         // c2 visible on the left proves it clips to the BASE, not to (transparent) c1.
-        assert_eq!(&out[0..3], &[200, 0, 0], "c2 clips to the base → red on left");
+        assert_eq!(
+            &out[0..3],
+            &[200, 0, 0],
+            "c2 clips to the base → red on left"
+        );
         assert_eq!(out[7], 0, "c2 hidden where the base is transparent");
     }
 

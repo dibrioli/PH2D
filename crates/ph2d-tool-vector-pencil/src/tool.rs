@@ -254,7 +254,11 @@ impl VectorPencilTool {
     /// state.
     pub fn finish_stroke(&mut self) -> PencilStrokeOutcome {
         self.recording = false;
-        let knots = decimate(&self.samples, self.decimation_stride, self.min_sample_distance_px);
+        let knots = decimate(
+            &self.samples,
+            self.decimation_stride,
+            self.min_sample_distance_px,
+        );
         self.samples.clear();
         if knots.len() < 2 {
             return PencilStrokeOutcome::TooShort;
@@ -266,7 +270,7 @@ impl VectorPencilTool {
 
         for (i, &knot) in knots.iter().enumerate() {
             // push_and_apply only fails on context-needing ops; AddVertex
-            // is always network-applyable, so this cannot error here.
+            // is always network-applicable, so this cannot error here.
             let _ = edit_log.push_and_apply(
                 VectorOp::AddVertex {
                     id: i as u32,
@@ -291,7 +295,7 @@ impl VectorPencilTool {
         // Materialize the stroke style directly on every segment +
         // StyleTable. `SetStrokeStyle` needs asset-level apply context
         // (absent until T2.5), so the stroke assignment lives in the
-        // serialized network/styles rather than the (network-applyable)
+        // serialized network/styles rather than the (network-applicable)
         // edit_log — the log stays pure geometry for replay-based undo.
         for seg in network.segments.iter_mut() {
             seg.style_ref = Some(self.default_stroke_ref);
@@ -444,7 +448,10 @@ mod tests {
     #[test]
     fn begin_then_extend_records_samples() {
         let mut t = VectorPencilTool::new();
-        assert_eq!(t.begin_stroke(StrokeSample::point(Vec2::ZERO)), PencilStrokeOutcome::Started);
+        assert_eq!(
+            t.begin_stroke(StrokeSample::point(Vec2::ZERO)),
+            PencilStrokeOutcome::Started
+        );
         assert!(t.is_recording());
         assert_eq!(
             t.extend_stroke(StrokeSample::point(Vec2::new(50.0, 0.0))),
@@ -521,11 +528,13 @@ mod tests {
 
     #[test]
     fn committed_edit_log_is_pure_geometry_and_replayable() {
-        // edit_log holds only network-applyable AddVertex + AddSegment ops
+        // edit_log holds only network-applicable AddVertex + AddSegment ops
         // (no SetStrokeStyle), so a from-genesis replay reconstructs the
         // geometry exactly — the foundation T2.5 undo builds on.
         let mut t = VectorPencilTool::new();
-        let pts: Vec<Vec2> = (0..30).map(|i| Vec2::new(i as f32 * 4.0, (i % 3) as f32 * 8.0)).collect();
+        let pts: Vec<Vec2> = (0..30)
+            .map(|i| Vec2::new(i as f32 * 4.0, (i % 3) as f32 * 8.0))
+            .collect();
         drag(&mut t, &pts);
         t.finish_stroke();
         let asset = t.take_committed_asset().expect("committed");
@@ -535,7 +544,10 @@ mod tests {
         // Replay from genesis reproduces the same vertex/segment counts.
         let mut replay = VectorNetwork::empty();
         for op in &asset.edit_log.ops {
-            assert!(op.apply_to_network(&mut replay).is_ok(), "non-applyable op in log");
+            assert!(
+                op.apply_to_network(&mut replay).is_ok(),
+                "non-applicable op in log"
+            );
         }
         assert_eq!(replay.vertices.len(), v);
         assert_eq!(replay.segments.len(), s);
@@ -553,7 +565,10 @@ mod tests {
     #[test]
     fn cancel_drops_in_progress_without_commit() {
         let mut t = VectorPencilTool::new();
-        drag(&mut t, &[Vec2::ZERO, Vec2::new(50.0, 0.0), Vec2::new(80.0, 30.0)]);
+        drag(
+            &mut t,
+            &[Vec2::ZERO, Vec2::new(50.0, 0.0), Vec2::new(80.0, 30.0)],
+        );
         t.cancel_stroke();
         assert!(!t.has_in_progress_stroke());
         assert!(!t.is_recording());
@@ -618,7 +633,10 @@ mod tests {
         t.finish_stroke();
         assert!(t.take_committed_asset().is_some());
         // Begin again: clean slate.
-        assert_eq!(t.begin_stroke(StrokeSample::point(Vec2::new(200.0, 200.0))), PencilStrokeOutcome::Started);
+        assert_eq!(
+            t.begin_stroke(StrokeSample::point(Vec2::new(200.0, 200.0))),
+            PencilStrokeOutcome::Started
+        );
         assert_eq!(t.sample_count(), 1);
     }
 

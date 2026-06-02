@@ -134,7 +134,11 @@ fn replace_pixels_region_updates_only_the_subrect() {
         .expect("region replace");
 
     let (ow, oh, out) = store.readback(&gpu, id).expect("readback");
-    assert_eq!((ow, oh), (w, h), "dims must stay stable across a region write");
+    assert_eq!(
+        (ow, oh),
+        (w, h),
+        "dims must stay stable across a region write"
+    );
     for y in 0..h {
         for x in 0..w {
             let idx = ((y * w + x) * 4) as usize;
@@ -173,13 +177,18 @@ fn replace_pixels_region_rejects_out_of_bounds_and_bad_length() {
     // In-bounds rect but the pixel slice is the wrong length.
     let bad_len = store.replace_pixels_region(&gpu, id, 0, 0, 4, 4, &[0u8; 7]);
     assert!(
-        matches!(bad_len, Err(IndividualTextureError::PixelLengthMismatch { .. })),
+        matches!(
+            bad_len,
+            Err(IndividualTextureError::PixelLengthMismatch { .. })
+        ),
         "expected PixelLengthMismatch, got {bad_len:?}"
     );
 
     // A zero-area dirty-rect is a clean no-op.
     assert!(
-        store.replace_pixels_region(&gpu, id, 0, 0, 0, 0, &[]).is_ok(),
+        store
+            .replace_pixels_region(&gpu, id, 0, 0, 0, 0, &[])
+            .is_ok(),
         "zero-area region must be a no-op"
     );
 

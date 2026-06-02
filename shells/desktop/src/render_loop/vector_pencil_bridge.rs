@@ -110,10 +110,7 @@ pub(super) fn dispatch(
     let color = Color::from_rgba8(OVERLAY_RGB.0, OVERLAY_RGB.1, OVERLAY_RGB.2, OVERLAY_ALPHA);
 
     let mut path = BezPath::new();
-    path.move_to(Point::new(
-        samples[0].pos.x as f64,
-        samples[0].pos.y as f64,
-    ));
+    path.move_to(Point::new(samples[0].pos.x as f64, samples[0].pos.y as f64));
     for s in &samples[1..] {
         path.line_to(Point::new(s.pos.x as f64, s.pos.y as f64));
     }

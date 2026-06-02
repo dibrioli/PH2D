@@ -220,7 +220,7 @@ impl Tool for VectorSelectTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_vector_doc::{Region, Segment, StyleTable, Vertex, VectorNetwork, WindingRule};
+    use ph2d_vector_doc::{Region, Segment, StyleTable, VectorNetwork, Vertex, WindingRule};
 
     /// A filled square network at `[origin, origin+size]`.
     fn square_asset(origin: Vec2, size: f32) -> Ph2dVectorAsset {
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn marquee_crossing_selects_touched_networks() {
         let scene = vec![
-            square_asset(Vec2::ZERO, 50.0),          // 0..50
+            square_asset(Vec2::ZERO, 50.0),            // 0..50
             square_asset(Vec2::new(200.0, 0.0), 50.0), // 200..250
         ];
         let mut sel = VectorSelection::new();

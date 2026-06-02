@@ -311,7 +311,11 @@ impl LayerStack {
         let parent = self.parent_of(id);
         let inserted = self
             .sibling_list_mut(parent)
-            .and_then(|list| list.iter().position(|&x| x == id).map(|pos| list.insert(pos, new_id)))
+            .and_then(|list| {
+                list.iter()
+                    .position(|&x| x == id)
+                    .map(|pos| list.insert(pos, new_id))
+            })
             .is_some();
         if !inserted {
             self.arena.pop(); // orphan cleanup (source had no parent list — unreachable)
@@ -571,11 +575,11 @@ impl LayerStack {
             self.root.insert(0, moved); // target's parent vanished — don't lose `moved`
             return false;
         };
-        let Some(tpos) = list.iter().position(|&x| x == target) else {
+        let Some(target_pos) = list.iter().position(|&x| x == target) else {
             self.root.insert(0, moved);
             return false;
         };
-        let mut idx = if after { tpos + 1 } else { tpos };
+        let mut idx = if after { target_pos + 1 } else { target_pos };
         if to_root {
             // The base sprite occupies the last root slot — never insert past it.
             idx = idx.min(list.len().saturating_sub(1));
@@ -882,7 +886,10 @@ mod tests {
         assert!(s.get(a).unwrap().is_reference);
         s.set_reference(b, true);
         assert!(s.get(b).unwrap().is_reference);
-        assert!(!s.get(a).unwrap().is_reference, "previous reference cleared");
+        assert!(
+            !s.get(a).unwrap().is_reference,
+            "previous reference cleared"
+        );
         s.set_reference(b, false);
         assert!(!s.get(b).unwrap().is_reference, "toggled off");
     }
@@ -932,8 +939,14 @@ mod tests {
         let mut s = LayerStack::new();
         let base = s.add_raster("base", 8, 8).unwrap();
         let x = s.add_raster("x", 8, 8).unwrap();
-        assert!(!s.move_to_sibling_of(base, x, false), "base can't be reordered");
-        assert!(!s.move_to_root_bottom_above_base(base), "base can't move to bottom");
+        assert!(
+            !s.move_to_sibling_of(base, x, false),
+            "base can't be reordered"
+        );
+        assert!(
+            !s.move_to_root_bottom_above_base(base),
+            "base can't move to bottom"
+        );
     }
 
     #[test]
@@ -947,7 +960,11 @@ mod tests {
         assert!(s.move_to_root_bottom_above_base(inner));
         assert_eq!(s.depth(inner), 0, "inner back at root level");
         assert_eq!(s.root().last(), Some(&base), "base still pinned bottom");
-        assert_eq!(s.root().iter().rev().nth(1), Some(&inner), "inner just above base");
+        assert_eq!(
+            s.root().iter().rev().nth(1),
+            Some(&inner),
+            "inner just above base"
+        );
     }
 
     #[test]
@@ -957,6 +974,10 @@ mod tests {
         let mask = s.add_mask(parent).unwrap();
         s.remove(mask);
         assert!(s.get(parent).is_some(), "parent survives mask removal");
-        assert_eq!(s.get(parent).unwrap().mask, None, "dangling mask ref scrubbed");
+        assert_eq!(
+            s.get(parent).unwrap().mask,
+            None,
+            "dangling mask ref scrubbed"
+        );
     }
 }

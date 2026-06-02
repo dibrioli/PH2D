@@ -141,9 +141,13 @@ impl VectorDirectTool {
         match grab.target {
             GrabTarget::Vertex(vid) => {
                 // Tangent offsets are relative, so they follow the vertex.
-                let _ = asset
-                    .edit_log
-                    .push_and_apply(VectorOp::MoveVertex { id: vid, new_pos: pos }, &mut asset.network);
+                let _ = asset.edit_log.push_and_apply(
+                    VectorOp::MoveVertex {
+                        id: vid,
+                        new_pos: pos,
+                    },
+                    &mut asset.network,
+                );
             }
             GrabTarget::Tangent(seg, side) => {
                 apply_tangent_drag(asset, seg, side, pos, alt);
@@ -298,13 +302,14 @@ impl Tool for VectorDirectTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_vector_doc::{Segment, StyleTable, Vertex, VectorNetwork};
+    use ph2d_vector_doc::{Segment, StyleTable, VectorNetwork, Vertex};
 
     /// Two segments sharing vertex 1 (a smooth corner), kind set by caller.
     fn two_segment_asset(kind: VertexKind) -> Ph2dVectorAsset {
         let mut net = VectorNetwork::empty();
         net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
-        net.vertices.push(Vertex::new(1, Vec2::new(50.0, 0.0), kind));
+        net.vertices
+            .push(Vertex::new(1, Vec2::new(50.0, 0.0), kind));
         net.vertices.push(Vertex::auto(2, Vec2::new(100.0, 0.0)));
         // seg 0: 0→1, seg 1: 1→2.
         let mut s0 = Segment::straight(0, 0, 1);
@@ -327,14 +332,21 @@ mod tests {
         assert!(sel.contains_vertex(0, 0));
         // Move it.
         t.drag_to(&mut scene, Vec2::new(5.0, 12.0), false);
-        let v = scene[0].network.vertices.iter().find(|v| v.id == 0).unwrap();
+        let v = scene[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 0)
+            .unwrap();
         assert_eq!(v.pos, Vec2::new(5.0, 12.0));
         // Logged as MoveVertex (replay-safe for T2.5).
-        assert!(scene[0]
-            .edit_log
-            .ops
-            .iter()
-            .any(|o| matches!(o, VectorOp::MoveVertex { id: 0, .. })));
+        assert!(
+            scene[0]
+                .edit_log
+                .ops
+                .iter()
+                .any(|o| matches!(o, VectorOp::MoveVertex { id: 0, .. }))
+        );
     }
 
     #[test]
@@ -350,7 +362,12 @@ mod tests {
         );
         // Drag the handle to (60,20) → new offset from vertex1(50,0) = (10,20).
         t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false);
-        let s1 = scene[0].network.segments.iter().find(|s| s.id == 1).unwrap();
+        let s1 = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 1)
+            .unwrap();
         assert_eq!(s1.out_at_start, Vec2::new(10.0, 20.0));
     }
 
@@ -364,7 +381,12 @@ mod tests {
         t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false);
         // seg1.out = (10,20); the opposite handle (seg0.in_at_end on vertex1)
         // mirrors to -(10,20) = (-10,-20).
-        let s0 = scene[0].network.segments.iter().find(|s| s.id == 0).unwrap();
+        let s0 = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap();
         assert_eq!(s0.in_at_end, Vec2::new(-10.0, -20.0), "smooth mirror");
     }
 
@@ -376,10 +398,24 @@ mod tests {
         t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0);
         t.drag_to(&mut scene, Vec2::new(60.0, 20.0), true); // alt
         // Vertex 1 becomes Free; opposite handle is NOT mirrored.
-        let v1 = scene[0].network.vertices.iter().find(|v| v.id == 1).unwrap();
+        let v1 = scene[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 1)
+            .unwrap();
         assert_eq!(v1.kind, VertexKind::Free, "tangent broken → Free");
-        let s0 = scene[0].network.segments.iter().find(|s| s.id == 0).unwrap();
-        assert_eq!(s0.in_at_end, Vec2::new(-10.0, 0.0), "opposite handle unchanged");
+        let s0 = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap();
+        assert_eq!(
+            s0.in_at_end,
+            Vec2::new(-10.0, 0.0),
+            "opposite handle unchanged"
+        );
     }
 
     #[test]
@@ -396,7 +432,10 @@ mod tests {
     fn drag_without_grab_is_idle() {
         let mut scene = vec![two_segment_asset(VertexKind::Free)];
         let mut t = VectorDirectTool::new();
-        assert_eq!(t.drag_to(&mut scene, Vec2::new(1.0, 1.0), false), DirectOutcome::Idle);
+        assert_eq!(
+            t.drag_to(&mut scene, Vec2::new(1.0, 1.0), false),
+            DirectOutcome::Idle
+        );
     }
 
     #[test]
@@ -410,7 +449,12 @@ mod tests {
             DirectOutcome::Idle
         );
         // Vertex unmoved.
-        let v = scene[0].network.vertices.iter().find(|v| v.id == 0).unwrap();
+        let v = scene[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 0)
+            .unwrap();
         assert_eq!(v.pos, Vec2::new(0.0, 0.0));
     }
 

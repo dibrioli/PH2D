@@ -8,8 +8,8 @@
 //! forwarder.
 
 use crate::AppGfx;
-use ph2d_editor::interaction::PainterLayerDrop;
 use ph2d_editor::WidgetEvent;
+use ph2d_editor::interaction::PainterLayerDrop;
 use ph2d_host::{KeyEvent, PointerEvent};
 
 /// Forward a pointer event to the hero screen's interaction

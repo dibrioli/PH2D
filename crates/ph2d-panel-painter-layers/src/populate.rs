@@ -12,8 +12,13 @@ use ph2d_editor_core::widget::ButtonState;
 pub fn populate(store: &mut WidgetStore) {
     let buttons = [
         ph2d_editor_core::ids::PAINTER_LAYERS_CLOSE,
-        // "+ Layer" footer button.
+        // Action toolbar (below the header): New layer / Group / Duplicate /
+        // Delete. MUST be registered here or the dispatcher drops the click
+        // (paint + hit_index alone is not enough — feedback-panel-populate-register).
         ph2d_editor_core::ids::PAINTER_LAYERS_ADD,
+        ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
+        ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
+        ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
         // Dock-mode toggle ("Brush") in the header (mode C).
         ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
         // "Apply" CTA — commits the composite to the sprite (shared id with the

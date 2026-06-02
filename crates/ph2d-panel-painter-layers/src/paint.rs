@@ -52,7 +52,8 @@ const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip colum
 const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right ↑↓ reorder button column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
-const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: header action icon-button square
+const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
+const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
 const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
 
@@ -109,8 +110,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Body region (clipped).
-    let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    // Action toolbar strip (New / Group / Duplicate / Delete) sits one row BELOW
+    // the header, between it and the scrollable list — fixed, not scrolled.
+    let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+    let toolbar_rect = Rect::new(rect.x, header_bottom, rect.w, TOOLBAR_H);
+
+    // Body region (clipped), starting below the toolbar.
+    let body_top = header_bottom + TOOLBAR_H;
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
 
@@ -230,9 +236,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         }
     }
 
-    // Header action icons (New layer / Group / Duplicate / Delete). Painted +
-    // registered AFTER the rows (same last-wins reason as the chrome above).
-    paint_header_actions(ctx, rect, theme);
+    // Action toolbar icons (New layer / Group / Duplicate / Delete) — one row
+    // below the header. Painted + registered AFTER the rows (same last-wins
+    // reason as the chrome above; scrolled rows must not shadow the toolbar).
+    paint_action_toolbar(ctx, toolbar_rect, theme);
 
     // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
     // offset to the new content (so deleting/collapsing rows snaps back).
@@ -274,24 +281,22 @@ fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) 
         .register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, btn_rect);
 }
 
-/// Header action icons (right side, left of the dock-toggle): New layer / New
-/// group / Duplicate / Delete — the canonical ghost-icon button (mirror of the
-/// Hierarchy header "+"). Laid out right-to-left; painted + registered post-body
-/// so scrolled rows don't shadow them.
-fn paint_header_actions(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
-    let close = panel_close_button_rect(rect);
-    // Start just left of the dock-toggle (which sits left of the close button).
-    let mut x = close.x - Spacing::Sm.px() - TOGGLE_BTN_W - Spacing::Sm.px();
-    // Right-to-left, so the visual order reads New · Group · Duplicate · Delete.
+/// Action toolbar (one row below the header): New layer · Group · Duplicate ·
+/// Delete — the canonical ghost-icon button (same look as the Hierarchy header
+/// "+"). Laid out left-to-right inside `toolbar_rect`; painted + registered
+/// post-body so scrolled rows don't shadow them.
+fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+    let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
+    // Vertically center the square icon within the toolbar strip.
+    let y = toolbar_rect.y + ((toolbar_rect.h - HEADER_ICON_W) * 0.5).max(0.0);
     let specs = [
-        (core_ids::PAINTER_LAYERS_DELETE, IconId::Trash, "Delete layer"),
-        (core_ids::PAINTER_LAYERS_DUPLICATE, IconId::Duplicate, "Duplicate layer"),
-        (core_ids::PAINTER_LAYERS_GROUP, IconId::Group, "New group"),
         (core_ids::PAINTER_LAYERS_ADD, IconId::Add, "New layer"),
+        (core_ids::PAINTER_LAYERS_GROUP, IconId::Group, "New group"),
+        (core_ids::PAINTER_LAYERS_DUPLICATE, IconId::Duplicate, "Duplicate layer"),
+        (core_ids::PAINTER_LAYERS_DELETE, IconId::Trash, "Delete layer"),
     ];
     for (id, icon, label) in specs {
-        x -= HEADER_ICON_W;
-        let btn_rect = Rect::new(x, close.y, HEADER_ICON_W, close.h);
+        let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
         let st = ctx
             .host
             .store()
@@ -300,7 +305,7 @@ fn paint_header_actions(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Them
         let btn = Button::new(id, label).icon_only(icon).state(st);
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, btn_rect);
-        x -= Spacing::Xs.px();
+        x += HEADER_ICON_W + Spacing::Xs.px();
     }
 }
 

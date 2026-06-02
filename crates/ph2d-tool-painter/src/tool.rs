@@ -1434,8 +1434,8 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// Add an empty group at the top of the stack (§2.1); the user nests layers
-    /// into it from the panel. No-op (`None`) mid-stroke or at the hard cap.
+    /// Add an empty group at the top of the stack (§2.1). No-op (`None`)
+    /// mid-stroke or at the hard cap.
     pub fn add_group(&mut self) -> Option<RtLayerId> {
         if self.stroke_active {
             return None;
@@ -1443,6 +1443,30 @@ impl PainterTool {
         let id = self.layers.add_group("Group")?;
         self.invalidate_composite();
         Some(id)
+    }
+
+    /// Wrap the ACTIVE layer in a new group and return the group id. Interim
+    /// behavior until multi-select lands (group-the-selection): for now a single
+    /// active layer is nested so the "Group" button does something visible. The
+    /// active layer stays the edit target (its `canvas_rgba` is untouched). No-op
+    /// (`None`) mid-stroke, with no active layer, on the base sprite, or at cap.
+    pub fn group_active(&mut self) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        let active = self.layers.active()?;
+        // The base sprite is pinned at root bottom — don't nest it.
+        if self.layers.root().last() == Some(&active) {
+            return None;
+        }
+        let g = self.layers.add_group("Group")?;
+        if !self.layers.move_into_group(active, g) {
+            self.layers.remove(g); // couldn't nest (depth/cycle) — drop the empty group
+            return None;
+        }
+        self.layers.set_active(active); // keep painting the layer, not the group
+        self.invalidate_composite();
+        Some(g)
     }
 
     /// Remove `id` (and its subtree + mask) and clean up the tool buffers (the
@@ -2160,7 +2184,7 @@ impl Tool for PainterTool {
                 }
             }
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
-                self.add_group();
+                self.group_active();
             }
             // ── Apply CTA (either panel) — commit the composite to the sprite.
             // The bridge's drive_pending_commit bakes it (run_full) next frame.
@@ -3186,6 +3210,25 @@ mod tests {
         let base = t.layers.root()[0]; // only layer = the base sprite
         assert!(!t.delete_layer(base), "the base sprite is not removable");
         assert_eq!(t.layers.len(), 1);
+    }
+
+    #[test]
+    fn group_active_wraps_the_active_layer() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (Layer 1)
+        let l2 = t.add_raster_layer("L2").unwrap(); // active
+        let g = t.group_active().expect("group the active layer");
+        assert_eq!(t.layers.active(), Some(l2), "the layer stays active, not the group");
+        assert_eq!(t.layers.depth(l2), 1, "l2 nested one level inside the group");
+        assert!(matches!(t.layers.get(g).unwrap().kind, LayerKind::Group(_)));
+        assert!(!t.layers.root().contains(&l2), "l2 left the root (now in the group)");
+    }
+
+    #[test]
+    fn group_active_refuses_base_sprite() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        assert!(t.group_active().is_none(), "base sprite active → can't group it");
     }
 
     #[test]

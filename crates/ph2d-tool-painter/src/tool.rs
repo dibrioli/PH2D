@@ -319,6 +319,11 @@ pub struct PainterTool {
     /// NOT bump it (pixels aren't reflected in the panel structure), which is the
     /// whole point — no republish mid-paint.
     layers_revision: u64,
+    /// The brush color saved when entering mask-edit, restored on leaving. A
+    /// mask starts WHITE (all visible) and the expected action is to HIDE, so
+    /// editing a mask defaults the brush to BLACK; this remembers the user's
+    /// real color so it comes back when they return to a normal layer.
+    color_before_mask: Option<OklchColor>,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -448,6 +453,7 @@ impl Default for PainterTool {
             composited: None,
             preview_upload_bbox: None,
             layers_revision: 0,
+            color_before_mask: None,
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
@@ -1651,6 +1657,7 @@ impl PainterTool {
         self.images.remove(&mask); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
         self.layers.set_active(mask);
+        self.sync_mask_brush_color(); // entering a mask → black brush (hide)
         self.reset_undo_after_layer_switch();
         self.invalidate_composite();
         Some(mask)
@@ -1687,6 +1694,33 @@ impl PainterTool {
         }
     }
 
+    /// Sync the brush color with mask-edit mode: entering a mask defaults the
+    /// brush to BLACK — a mask starts WHITE (all visible), so the expected first
+    /// action is to HIDE (white still reveals). Saves the user's real color and
+    /// restores it on leaving the mask. (The default brush is a LIGHT orange,
+    /// which grayed for a mask barely hides — masking looked like a no-op.)
+    /// Call after every `set_active`.
+    fn sync_mask_brush_color(&mut self) {
+        let now_mask = self
+            .layers
+            .active()
+            .and_then(|a| self.layers.get(a))
+            .is_some_and(|l| matches!(l.kind, LayerKind::Mask(_)));
+        if now_mask {
+            if self.color_before_mask.is_none() {
+                self.color_before_mask = Some(self.params.active_color);
+            }
+            self.params.active_color = OklchColor {
+                l: 0.0,
+                c: 0.0,
+                h: 0.0,
+                a: 1.0,
+            };
+        } else if let Some(c) = self.color_before_mask.take() {
+            self.params.active_color = c;
+        }
+    }
+
     /// Make `id` the active layer: flush the current active's pixels to
     /// `images`, load `id`'s pixels into `canvas_rgba` (transparent if it has
     /// none yet). No-op mid-stroke, if `id` is already active, or unknown.
@@ -1703,6 +1737,7 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.layers.set_active(id);
+        self.sync_mask_brush_color(); // mask ↔ normal layer: swap to/from black
         self.reset_undo_after_layer_switch();
         self.invalidate_composite();
     }
@@ -3232,6 +3267,28 @@ mod tests {
             a: 1.0,
         };
         assert_eq!(t.active_color_srgb8(), t.ui_snapshot().active_color_srgb8());
+    }
+
+    #[test]
+    fn mask_edit_defaults_brush_to_black_and_restores() {
+        // The mask starts WHITE (all visible); entering it defaults the brush to
+        // BLACK (hide) and restores the real color on leaving — otherwise the
+        // default LIGHT color barely hides and masking looks like a no-op.
+        let orange = crate::params::OklchColor {
+            l: 0.7,
+            c: 0.18,
+            h: 0.5,
+            a: 1.0,
+        };
+        let mut t = PainterTool::default();
+        t.params.active_color = orange;
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap();
+        t.add_mask_to_active().unwrap(); // enter mask
+        assert_eq!(t.params.active_color.l, 0.0, "mask brush defaults to black");
+        assert_eq!(t.params.active_color.c, 0.0);
+        t.select_layer(l2); // leave the mask → restore
+        assert_eq!(t.params.active_color, orange, "real color restored on leaving");
     }
 
     #[test]

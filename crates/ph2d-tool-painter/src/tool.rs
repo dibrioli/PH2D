@@ -1445,6 +1445,67 @@ impl PainterTool {
         Some(id)
     }
 
+    /// Remove `id` (and its subtree + mask) and clean up the tool buffers (the
+    /// `images` entries + the active `canvas_rgba` + undo). The base sprite (root
+    /// bottom) is NOT removable. No-op (`false`) mid-stroke, if `id` is unknown,
+    /// or if `id` is the base.
+    pub fn delete_layer(&mut self, id: RtLayerId) -> bool {
+        if self.stroke_active || self.layers.get(id).is_none() {
+            return false;
+        }
+        // The base sprite (bottom of root) is permanent — Apply bakes into it.
+        if self.layers.root().last() == Some(&id) {
+            return false;
+        }
+        let was_active = self.layers.active() == Some(id);
+        self.layers.remove(id); // drops subtree + mask, repoints active
+        // Drop `images` entries for any layer that no longer exists.
+        let alive: std::collections::BTreeSet<RtLayerId> = self.layers.all_ids().collect();
+        self.images.retain(|lid, _| alive.contains(lid));
+        if was_active {
+            // The deleted layer's working buffer is discarded with it; load the
+            // NEW active's pixels into `canvas_rgba` (transparent if none).
+            let (w, h) = self.source_size;
+            let buf = self
+                .layers
+                .active()
+                .and_then(|a| self.images.remove(&a))
+                .map(|img| img.rgba8)
+                .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+            self.canvas_rgba = Arc::new(buf);
+        }
+        self.reset_undo_after_layer_switch();
+        self.invalidate_composite();
+        true
+    }
+
+    /// Duplicate `id` (a raster) above itself — clones the layer + its pixels,
+    /// inserts above, and makes the copy the active edit target. No-op (`None`)
+    /// mid-stroke, for a non-raster, or at the cap.
+    pub fn duplicate_layer(&mut self, id: RtLayerId) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        if !matches!(self.layers.get(id)?.kind, LayerKind::Raster(_)) {
+            return None;
+        }
+        // Ensure the source pixels live in `images` (flush the active), copy them,
+        // duplicate the model, then make the copy the active edit target.
+        self.flush_active_to_images();
+        let (w, h) = self.source_size;
+        let src_pixels = self
+            .images
+            .get(&id)
+            .map(|img| img.rgba8.clone())
+            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        let new_id = self.layers.duplicate(id)?; // sets active = new_id
+        self.images.remove(&new_id); // active lives in canvas_rgba
+        self.canvas_rgba = Arc::new(src_pixels);
+        self.reset_undo_after_layer_switch();
+        self.invalidate_composite();
+        Some(new_id)
+    }
+
     /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
     /// `images` before a layer switch — so the layer we're leaving keeps its
     /// pixels. (The active layer is otherwise NOT stored in `images`.)
@@ -2086,6 +2147,20 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
                 let name = format!("Layer {}", self.layers.len() + 1);
                 self.add_raster_layer(name);
+            }
+            // ── Header actions: duplicate / delete / group the active layer ─
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_DUPLICATE => {
+                if let Some(active) = self.layers.active() {
+                    self.duplicate_layer(active);
+                }
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_DELETE => {
+                if let Some(active) = self.layers.active() {
+                    self.delete_layer(active);
+                }
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
+                self.add_group();
             }
             // ── Apply CTA (either panel) — commit the composite to the sprite.
             // The bridge's drive_pending_commit bakes it (run_full) next frame.
@@ -3073,6 +3148,44 @@ mod tests {
         // No source / no active raster → no-op.
         let mut t = PainterTool::default();
         assert!(t.add_mask_to_active().is_none(), "no source = no mask");
+    }
+
+    #[test]
+    fn duplicate_layer_clones_pixels_above_and_activates() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [10, 20, 30, 255]), 2, 2); // base (Layer 1)
+        let l2 = t.add_raster_layer("L2").unwrap(); // active, transparent
+        t.canvas_rgba = std::sync::Arc::new([100, 110, 120, 255].repeat(4)); // paint L2
+        let dup = t.duplicate_layer(l2).expect("duplicate the active raster");
+        assert_eq!(t.layers.active(), Some(dup), "the copy is active");
+        assert_ne!(dup, l2);
+        assert_eq!(&t.canvas_rgba[0..4], &[100, 110, 120, 255], "copy has source pixels");
+        // The copy sits directly above the source (above = lower index).
+        let root = t.layers.root();
+        let dpos = root.iter().position(|&x| x == dup).unwrap();
+        let l2pos = root.iter().position(|&x| x == l2).unwrap();
+        assert_eq!(dpos + 1, l2pos, "copy inserted directly above the source");
+    }
+
+    #[test]
+    fn delete_layer_removes_repoints_active_and_drops_buffer() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (Layer 1)
+        let l2 = t.add_raster_layer("L2").unwrap(); // active
+        assert!(t.delete_layer(l2), "delete the active non-base layer");
+        assert!(t.layers.get(l2).is_none(), "layer gone");
+        assert!(!t.images.contains_key(&l2), "images entry dropped");
+        assert_eq!(t.layers.len(), 1, "the base remains");
+        assert_eq!(t.layers.active(), t.layers.root().first().copied());
+    }
+
+    #[test]
+    fn delete_layer_refuses_the_base_sprite() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let base = t.layers.root()[0]; // only layer = the base sprite
+        assert!(!t.delete_layer(base), "the base sprite is not removable");
+        assert_eq!(t.layers.len(), 1);
     }
 
     #[test]

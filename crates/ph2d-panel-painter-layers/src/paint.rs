@@ -52,7 +52,7 @@ const BLEND_CHIP_W: f32 = 92.0; // LITERAL-PX-OK: blend-mode dropdown chip colum
 const OPACITY_PCT_W: f32 = 44.0; // LITERAL-PX-OK: plain "NN%" readout column right of the bare opacity slider
 const REORDER_W: f32 = 16.0; // LITERAL-PX-OK: far-right ↑↓ reorder button column width
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
-const ADD_BTN_W: f32 = 96.0; // LITERAL-PX-OK: "+ Layer" button width
+const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: header action icon-button square
 const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 const PCT_SCALE: f32 = 100.0; // LITERAL-PX-OK: opacity fraction→percent scale, not a design value
 
@@ -161,11 +161,11 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     }
 
     y += Spacing::Xs.px();
-    // Footer: "+ Layer" (left) + the "Apply" CTA (right) — Apply commits the
-    // composite into the sprite (the only discoverable commit; Cmd/Ctrl+Enter
-    // is the hidden shortcut).
+    // Footer: the "Apply" CTA (right) — commits the composite into the sprite
+    // (the only discoverable commit; Cmd/Ctrl+Enter is the hidden shortcut).
+    // "+ Layer" moved to the header icon cluster (New layer / Group / Duplicate /
+    // Delete) — `paint_header_actions`, registered post-body (last-wins).
     let footer_x = rect.x + PANEL_HEAD_PAD;
-    paint_add_button(ctx, footer_x, ADD_BTN_W, y, theme);
     let apply_rect = Rect::new(footer_x + content_w - APPLY_BTN_W, y, APPLY_BTN_W, ROW_H_PX);
     paint_apply_button(ctx, apply_rect, theme);
     y += ROW_H_PX;
@@ -230,6 +230,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         }
     }
 
+    // Header action icons (New layer / Group / Duplicate / Delete). Painted +
+    // registered AFTER the rows (same last-wins reason as the chrome above).
+    paint_header_actions(ctx, rect, theme);
+
     // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
     // offset to the new content (so deleting/collapsing rows snaps back).
     {
@@ -270,19 +274,34 @@ fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) 
         .register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, btn_rect);
 }
 
-/// "+ Layer" footer button.
-fn paint_add_button(ctx: &mut PaintCtx, x: f32, w: f32, y: f32, theme: ph2d_tokens::Theme) {
-    let btn_rect = Rect::new(x, y, ADD_BTN_W.min(w), ROW_H_PX);
-    let st = ctx
-        .host
-        .store()
-        .button_state(core_ids::PAINTER_LAYERS_ADD)
-        .unwrap_or(ButtonState::Normal);
-    let btn = Button::new(core_ids::PAINTER_LAYERS_ADD, "+ Layer").state(st);
-    paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_LAYERS_ADD, btn_rect);
+/// Header action icons (right side, left of the dock-toggle): New layer / New
+/// group / Duplicate / Delete — the canonical ghost-icon button (mirror of the
+/// Hierarchy header "+"). Laid out right-to-left; painted + registered post-body
+/// so scrolled rows don't shadow them.
+fn paint_header_actions(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
+    let close = panel_close_button_rect(rect);
+    // Start just left of the dock-toggle (which sits left of the close button).
+    let mut x = close.x - Spacing::Sm.px() - TOGGLE_BTN_W - Spacing::Sm.px();
+    // Right-to-left, so the visual order reads New · Group · Duplicate · Delete.
+    let specs = [
+        (core_ids::PAINTER_LAYERS_DELETE, IconId::Trash, "Delete layer"),
+        (core_ids::PAINTER_LAYERS_DUPLICATE, IconId::Duplicate, "Duplicate layer"),
+        (core_ids::PAINTER_LAYERS_GROUP, IconId::Group, "New group"),
+        (core_ids::PAINTER_LAYERS_ADD, IconId::Add, "New layer"),
+    ];
+    for (id, icon, label) in specs {
+        x -= HEADER_ICON_W;
+        let btn_rect = Rect::new(x, close.y, HEADER_ICON_W, close.h);
+        let st = ctx
+            .host
+            .store()
+            .button_state(id)
+            .unwrap_or(ButtonState::Normal);
+        let btn = Button::new(id, label).icon_only(icon).state(st);
+        paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
+        ctx.host.hit_index_mut().register(id, btn_rect);
+        x -= Spacing::Xs.px();
+    }
 }
 
 /// "Apply" footer CTA — commits the live layer composite into the sprite

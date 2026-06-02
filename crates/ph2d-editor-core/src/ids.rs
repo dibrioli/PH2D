@@ -301,6 +301,15 @@ pub const PAINTER_LAYERS_CLOSE: NodeId = hash_node_id("painter_layers.close");
 /// `PainterTool::add_raster_layer` (cria + ativa uma raster transparente no
 /// topo). W3.T3.4 UI-plumbing.
 pub const PAINTER_LAYERS_ADD: NodeId = hash_node_id("painter_layers.add");
+/// Header "Duplicate" icon-button — Click → `PainterTool::duplicate_layer`
+/// (clones the active raster + its pixels above itself). W3.T3.5 header batch.
+pub const PAINTER_LAYERS_DUPLICATE: NodeId = hash_node_id("painter_layers.duplicate");
+/// Header "Delete" icon-button — Click → `PainterTool::delete_layer` (removes
+/// the active layer + its subtree/mask; the base sprite is not removable).
+pub const PAINTER_LAYERS_DELETE: NodeId = hash_node_id("painter_layers.delete");
+/// Header "Group" icon-button — Click → `PainterTool::add_group` (empty group
+/// at the top; the user nests layers into it). W3.T3.7.
+pub const PAINTER_LAYERS_GROUP: NodeId = hash_node_id("painter_layers.group");
 /// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
 /// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
 /// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`

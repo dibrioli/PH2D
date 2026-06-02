@@ -43,7 +43,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_LAYERS_ADD
                 || id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
-                || id == core_ids::PAINTER_APPLY =>
+                || id == core_ids::PAINTER_APPLY
+                || id == core_ids::PAINTER_LAYERS_DUPLICATE
+                || id == core_ids::PAINTER_LAYERS_DELETE
+                || id == core_ids::PAINTER_LAYERS_GROUP =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

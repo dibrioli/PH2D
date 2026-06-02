@@ -291,6 +291,36 @@ impl LayerStack {
         }
     }
 
+    /// Duplicate `id` immediately ABOVE itself in its parent list, returning the
+    /// new id and making it active. Clones the layer's metadata (the name gains
+    /// " copy"). The mask child + reference flag are NOT copied (mask
+    /// duplication needs a fresh buffer — a follow-up; reference is exclusive).
+    /// The caller copies the pixel buffer. `None` at the cap or unknown `id`.
+    pub fn duplicate(&mut self, id: LayerId) -> Option<LayerId> {
+        if self.arena.len() >= HARD_CAP_LAYERS {
+            return None;
+        }
+        let mut copy = self.get(id)?.clone();
+        let new_id = self.alloc_id();
+        copy.id = new_id;
+        copy.name = format!("{} copy", copy.name);
+        copy.mask = None;
+        copy.is_reference = false;
+        self.arena.push(copy);
+        // Insert just above the source (index 0 = top, so `pos` itself is "above").
+        let parent = self.parent_of(id);
+        let inserted = self
+            .sibling_list_mut(parent)
+            .and_then(|list| list.iter().position(|&x| x == id).map(|pos| list.insert(pos, new_id)))
+            .is_some();
+        if !inserted {
+            self.arena.pop(); // orphan cleanup (source had no parent list — unreachable)
+            return None;
+        }
+        self.active = Some(new_id);
+        Some(new_id)
+    }
+
     pub fn set_visible(&mut self, id: LayerId, visible: bool) {
         if let Some(l) = self.get_mut(id) {
             l.visible = visible;

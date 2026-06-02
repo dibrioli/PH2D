@@ -34,6 +34,7 @@ mod snapshots;
 mod upscale_bridge;
 mod vector_pen_bridge;
 mod vector_pencil_bridge;
+mod vector_shape_bridge;
 
 use crate::*;
 
@@ -519,6 +520,13 @@ impl crate::App {
                             toasts.push(Toast::warning(
                                 "Vector Pencil: in-progress stroke discarded. \
                                  Finish the stroke or press Esc to cancel deliberately."
+                                    .to_string(),
+                            ));
+                        }
+                        if vector_shape_bridge::shape_has_in_progress_shape(tools) {
+                            toasts.push(Toast::warning(
+                                "Vector Shape: in-progress shape discarded. \
+                                 Finish the drag or press Esc to cancel deliberately."
                                     .to_string(),
                             ));
                         }
@@ -1018,6 +1026,16 @@ impl crate::App {
             // bridge's `draw_vector_network`; the pencil bridge owns the live
             // overlay + the drain only.
             vector_pencil_bridge::dispatch(
+                tools,
+                camera,
+                window_size,
+                &mut self.committed_vector_pen_paths,
+                vector_scene,
+            );
+            // Vector Shape ⟷ shell bridge — drains the committed shape + paints
+            // the in-progress preview. Committed paths (closed fills + spiral
+            // strokes) render via the pen bridge's canonical `draw_vector_network`.
+            vector_shape_bridge::dispatch(
                 tools,
                 camera,
                 window_size,

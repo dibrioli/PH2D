@@ -4694,6 +4694,7 @@ dependencies = [
  "ph2d-tool-upscale",
  "ph2d-tool-vector-pen",
  "ph2d-tool-vector-pencil",
+ "ph2d-tool-vector-shape",
  "ph2d-vector",
  "postcard",
  "rfd",

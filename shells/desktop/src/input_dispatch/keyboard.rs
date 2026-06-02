@@ -57,6 +57,15 @@ impl App {
         {
             return;
         }
+        // Vector Shape: Escape cancels the in-progress shape drag, or clears
+        // the committed scene when none is open. Mirror of the Pen/Pencil.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.try_vector_shape_escape()
+        {
+            return;
+        }
 
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused

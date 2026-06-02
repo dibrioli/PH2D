@@ -53,6 +53,7 @@ mod painter_input;
 pub(crate) mod protect_brush;
 mod vector_pen_input;
 mod vector_pencil_input;
+mod vector_shape_input;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -186,6 +187,12 @@ impl App {
         // pan / drive a gizmo / extend a rubber-band. No-ops (returns false)
         // when no pencil stroke is active.
         if self.try_vector_pencil_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Vector Shape drag (T2.2): while a shape is being rubber-banded out,
+        // every motion resizes the live preview. Early-return so it doesn't
+        // pan / drive a gizmo. No-ops when no shape drag is active.
+        if self.try_vector_shape_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -392,6 +399,19 @@ impl App {
             {
                 return;
             }
+            // Vector Shape — Primary Down inside the footprint starts a shape
+            // drag (drag-authored, like the Pencil); Move resizes the preview,
+            // Up commits. Off-canvas Down is silently consumed.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_vector_shape_pointer_down(evt.x, evt.y) =>
+            {
+                return;
+            }
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.vector_shape_active_consume_canvas_click() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
                     && self.painter_active_consume_canvas_click() =>
@@ -405,6 +425,9 @@ impl App {
                 // Commit the freehand stroke (fit → Hobby → push committed
                 // asset). No-ops when no pencil stroke is open.
                 self.try_vector_pencil_pointer_up();
+                // Commit the shape (generate primitive → push). No-op when no
+                // shape drag is open.
+                self.try_vector_shape_pointer_up();
             }
             _ => {}
         }

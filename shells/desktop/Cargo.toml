@@ -73,6 +73,9 @@ ph2d-tool-vector-pen = { path = "../../crates/ph2d-tool-vector-pen" }
 # Vector Pencil — freehand stroke fitted to cubics via Hobby's algorithm
 # (W2 T2.1). Drag-authored; renders as a styled open path.
 ph2d-tool-vector-pencil = { path = "../../crates/ph2d-tool-vector-pencil" }
+# Vector Shape — 5 primitives (rect/ellipse/polygon/star/spiral) via a panel
+# RadioGroup sub-mode picker (W2 T2.2). Drag-authored.
+ph2d-tool-vector-shape = { path = "../../crates/ph2d-tool-vector-shape" }
 # Make Square one-shot — the shell drain calls
 # `ph2d_tool_make_square::make_square` on the selected sprite's source
 # RGBA and swaps the texture (ADR-0040 T1.5: was reached via the

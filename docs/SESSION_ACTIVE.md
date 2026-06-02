@@ -43,14 +43,19 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
 **Agentes ativos (RAM 3/3):** Painter impl (W3) · Vector impl (W2) · Coord. **Não abrir 4º.**
 
-**⚠ Gates VERMELHOS a resolver no ship (cada um do seu owner):**
-1. `shell_files_respect_hr18_loc_cap` → `render_loop/inspector_commits.rs` 616 LOC > 600.
-   **Owner = Sprite Inspector v2** (`ca538e4`/`ad4e918`/`546bf43`). Decompor `apply_sprite_field`
-   OU declarar `// ph2d-loc-cap:`. NÃO é Painter/Vector/Coord.
-2. `arch_mode_has_reconcile` (editor-core, cross-crate) → `ph2d-tool-painter/src/layers.rs::set_blend_mode`
-   (commit `612cc34` T3.5). **Owner = Painter impl**: setter `set_*_mode` sem reconcile/invalidate call
-   — adicionar reconcile inline OU entry em `BENIGN_SET_MODE`. NÃO é Vector/Coord (detectado ao
-   wirar o Pencil; cargo-check esconde, é teste cross-crate).
+**⚠ Gate VERMELHO restante (1) a resolver no ship:**
+1. `shell_files_respect_hr18_loc_cap` → `render_loop/inspector_commits.rs` 616 LOC > 600 (16 over).
+   **Owner = Sprite Inspector v2** (módulo COMPLETO, sem owner ativo). Decompor (extrair
+   `apply_sprite_field`/`clamp_frame` ou o `mod tests` p/ arquivo-filho) OU `// ph2d-loc-cap:`.
+   NÃO é Painter/Vector. Coord resolve no ship-prep quando o Enio mandar (decompor preferido).
+
+**✅ RESOLVIDO pelo Coord (`12853c1`):** `arch_mode_has_reconcile` (era
+`set_blend_mode` do Painter) — era pure field-write benigno (espelho do `set_opacity`
+não-flagado; compositor lê `blend_mode` fresh, sem cache no LayerStack). Entrou em
+`BENIGN_SET_MODE`. Gate verde.
+
+**✅ Vector W2 wiring (Pencil 69b3788 + Shape 26b5143) verificado:** shell completo
+compila + clippy-clean após o Painter fechar o T3.5 (`d53d52d`). Smokes Day-4/Day-8 prontos.
 
 **Pre-existing failures (seção histórica abaixo):** status NÃO re-verificado nesta jornada
 (`PanelEvent::Activated`, `history_integration_t19` 4 tests) — Impl Painter confirma ao fechar W3.

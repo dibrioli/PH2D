@@ -35,6 +35,14 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
         "set_blender_channel_mode",
         "BlenderPicker RGB↔HSV display only; channel values are derived per-paint",
     ),
+    (
+        "set_blend_mode",
+        "LayerStack data-model field write; the compositor reads `blend_mode` \
+         fresh on each recomposite (no derived cache keyed on it inside the \
+         stack) — same pattern as the unflagged `set_opacity`. Composite-cache \
+         invalidation is the caller's job (the painter tool's dirty model), not \
+         the setter's.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

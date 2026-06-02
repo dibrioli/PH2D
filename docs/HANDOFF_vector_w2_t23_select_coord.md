@@ -125,3 +125,54 @@ de fiação (App field + input routing click/drag/marquee + passagem das refs + 
 overlay de seleção). É o mesmo fluxo invertido do Pencil/Shape, com os deltas de edição
 que tu sinalizar.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+ENTREGUE → Coordenador · T2.3 tools prontos (`d9a4218`) · solicito fiação
+Implementador · 2026-06-02
+═══════════════════════════════════════════════════════════════════
+
+## §6 — Pronto + verificado (commit `d9a4218`)
+
+| Artefato | Verificação |
+|---|---|
+| `VectorSelection` (`ph2d-vector-doc::selection`) | 7 testes ✓ — **o struct que tu seguras no `App`** |
+| hit-test (`bbox`/`region_contains_point`/`nearest_tangent_handle`) | 11 testes ✓ (zero-handle skip) |
+| `ph2d-tool-vector-select` (click topmost + marquee crossing/window + shift) | 15 testes ✓ |
+| `ph2d-tool-vector-direct` (grab vértice/handle → Move ops no edit_log; mirror smooth; alt=Free) | 15 testes ✓ |
+| Registro (IconId/SVG/design-TOML/tool-sync, order 40/50) | icons + registry-init gates ✓ |
+| clippy | limpo nos 3 crates |
+
+## §7 — Fiação que solicito (batch)
+
+**Meus arquivos prontos (território meu, aguardam teus símbolos):**
+- `chrome/vector_select_toggle.rs` + `chrome/vector_direct_toggle.rs` (pills).
+- `render_loop/vector_selection_bridge.rs` (**overlay**: bbox de networks
+  selecionados + dots de vértices + retângulo de marquee). Assinatura:
+  `dispatch(tools: &mut ToolRegistry, camera, window_size, committed: &[Ph2dVectorAsset], selection: &VectorSelection, vector_scene)`.
+
+**Teu (shell/foundational + FSM + compila contra o `App` real):**
+1. **`App` field:** `pub vector_selection: VectorSelection` (`use ph2d_vector_doc::VectorSelection`) + `Default`. Passa por-ref aos inputs + ao overlay bridge.
+2. **`Cargo.toml`:** deps `ph2d-tool-vector-select` + `ph2d-tool-vector-direct`.
+3. **`ids.rs`:** `TOPBAR_VECTOR_SELECT` + `TOPBAR_VECTOR_DIRECT`.
+4. **`chrome/mod.rs`:** `mod` + `apply` dos 2 toggles na cadeia.
+5. **`fixture.rs`:** pills SELECT (`IconId::VectorSelect`) + DIRECT (`IconId::VectorDirect`) no cluster `vector_tools`.
+6. **`render_loop/mod.rs`:** `mod vector_selection_bridge;` + chamar `dispatch(...)` depois dos tool bridges.
+7. **`input_dispatch.rs` — input FSM (deixo contigo: muta `&mut committed` +
+   `&mut vector_selection` junto do borrow do tool = borrow-sensitive; tu
+   compila contra o `App`).** Os tools já expõem a API; a lógica:
+   - **Select** — Down→`select.begin_marquee(world)`; Move-pressed→`select.update_marquee(world)`;
+     Up→ se `marquee_rect()` diagonal `< ~3px/k` (clique) → `select.cancel_marquee()` +
+     `select.click(&committed, &mut sel, world, shift)`; senão `select.finish_marquee(&committed, &mut sel, MarqueeMode::Crossing)`.
+   - **Direct** — Down→`direct.begin_drag(&committed, &mut sel, world, GRAB_TOL_PX/k)`;
+     Move→`direct.drag_to(&mut committed, world, alt)`; Up→`direct.end_drag()`.
+   - **Esc** — `cancel_marquee`/`cancel_drag` + `sel.clear()`; após qualquer
+     clear da cena, `sel.retain_below(committed.len())`.
+   - Modifiers shift (Select add) / alt (Direct break) vêm do evento.
+
+**Se algum dos meus 3 arquivos (toggles + overlay) der erro quando linkar, me manda — são meus.**
+
+## §8 — Lembrete (defer aprovado)
+Inspector panel = item Coord-B teu, pós-T2.3. T2.4 Color picker ainda precisa
+da definição do widget (`ClassicPicker` não existe → `ph2d-color`?). T2.5 Undo
+cai natural sobre os edit_logs (Move ops já logados).
+═══════════════════════════════════════════════════════════════════

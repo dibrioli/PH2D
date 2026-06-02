@@ -28,6 +28,7 @@
 //! | [`cubic_fit`]      | Levien single-cubic Bézier fitting ([`fit_cubic_levien`](cubic_fit::fit_cubic_levien)). |
 //! | [`hobby`]          | Hobby interpolating spline ([`fit_hobby_open`](hobby::fit_hobby_open)) — Pencil tool fitter. |
 //! | [`primitives`]     | Procedural shapes (rect/ellipse/polygon/star/spiral) — Shape tool + W3 vector-source node. |
+//! | [`recolor`]        | [`apply_fill_to_selection`](recolor::apply_fill_to_selection) — T2.4 solid-fill apply (logged). |
 //! | [`selection`]      | [`VectorSelection`] — shared Select / Direct-Select editor state (T2.3). |
 //! | [`undo`]           | [`VectorUndoAction`] — document-level undo/redo over the committed scene (T2.5). |
 //! | [`spiro`]          | Spiro / Hyperbezier Assist Modes (stub — W2+ populates). |
@@ -56,6 +57,7 @@ pub mod hobby;
 pub mod network;
 pub mod postcard_schema;
 pub mod primitives;
+pub mod recolor;
 pub mod region;
 pub mod selection;
 pub mod spiro;
@@ -75,6 +77,7 @@ pub use postcard_schema::{
     bounded_decode, bounded_encode, load_and_validate_vector_asset, load_vector_asset,
     save_vector_asset,
 };
+pub use recolor::apply_fill_to_selection;
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use selection::VectorSelection;
 pub use undo::{VectorRedoAction, VectorUndoAction, apply_redo, apply_undo};

@@ -28,6 +28,7 @@ mod blend;
 mod event;
 pub mod ids;
 mod paint;
+mod paint_rows;
 mod populate;
 pub mod state;
 

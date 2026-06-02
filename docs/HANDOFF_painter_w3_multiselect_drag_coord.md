@@ -145,4 +145,35 @@ faço com teste de drag (espelho do teste da Hierarchy), não às pressas.
 preparar `set_painter_layer_row_ids` por frame + o consumer de
 `PainterLayerReparent` (a forma está travada acima). Quando eu landar a fundação,
 casa o nome do método e fechamos o shell-route juntos.
+
+═══════════════════════════════════════════════════════════════════
+FUNDAÇÃO LANDADA · Coordenador · 2026-06-01 (commit `1c3411d`)
+═══════════════════════════════════════════════════════════════════
+Tudo do editor-core está pronto + testado (2 testes de dispatch; editor-core +
+shell compilam; clippy `-D warnings` limpo):
+- `WidgetStore::{begin/update/end_painter_layer_drag, painter_layer_drag,
+  set_painter_layer_row_ids, is_painter_layer_row}`.
+- `WidgetEvent::PainterLayerReparent { dragged: NodeId, drop: PainterLayerDrop }`
+  + `PainterLayerDrop { Before/Inside/After(NodeId), End }` (re-exportados em
+  `crate::interaction`).
+- `find_painter_layer_drop` (band 30/40/30) + os branches Down/Move/Up no
+  `pointer.rs` (emite o evento no Up de um drag ativo; sem mutação store-side).
+
+**TUAS 3 tarefas (tudo in-pasta agora — a forma está fechada):**
+1. **ASK A (multi-seleção):** no `apply_event`, `host.store().cmd_held()` (aditivo) /
+   `host.store().shift_held()` (range) → `select_*` no teu SelectionSet. ZERO dep de mim.
+2. **Publica o row-set + rects por frame:** no paint do painel,
+   `store.set_painter_layer_row_ids(BTreeSet de painter_layer_widget_id(layer, Row))`
+   + `hit_index.register(painter_layer_widget_id(layer, Row), row_rect)` (já registras).
+   Sem isso o dispatch não detecta o Down/drop nas rows.
+3. **Consome o reparent:** `PainterTool::handle_layer_reparent(dragged: NodeId,
+   drop: PainterLayerDrop)` — reverte NodeId→LayerId (itera tuas layers casando
+   `painter_layer_widget_id(layer, Row)`) → `Inside(t)`→`move_into_group(d, t)`;
+   `Before/After(t)`→`reorder` na posição de `t`; `End`→root bottom. Tuas guards
+   (base travada, depth 8, ciclo) rejeitam seguro.
+
+**Último elo (eu, quando (3) existir):** adiciono a rota no shell —
+`WidgetEvent::PainterLayerReparent` → downcast `PainterTool` →
+`handle_layer_reparent(dragged, drop)`. **Me diz o nome/assinatura final do método**
+(ou confirma `handle_layer_reparent`) que eu fecho a rota em minutos.
 ═══════════════════════════════════════════════════════════════════

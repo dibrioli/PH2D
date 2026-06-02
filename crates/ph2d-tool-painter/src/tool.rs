@@ -311,6 +311,14 @@ pub struct PainterTool {
     /// on every drain, so a `None`-returning (not-dirty) drain leaves it stale —
     /// harmless, the bridge only reads it right after a `Some` drain.
     preview_upload_bbox: Option<Region>,
+    /// Monotonic counter bumped on every change to the PUBLISHED layer structure
+    /// (add / select / reorder / visibility / opacity / blend / source reset) —
+    /// i.e. exactly the `invalidate_composite` chokepoint plus `set_source`. The
+    /// bridge reads `layers_revision()` to publish the `LayerStack` snapshot ONLY
+    /// when it changed (B.5), instead of deep-cloning it every frame. Strokes do
+    /// NOT bump it (pixels aren't reflected in the panel structure), which is the
+    /// whole point — no republish mid-paint.
+    layers_revision: u64,
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
@@ -439,6 +447,7 @@ impl Default for PainterTool {
             images: BTreeMap::new(),
             composited: None,
             preview_upload_bbox: None,
+            layers_revision: 0,
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
@@ -1348,6 +1357,10 @@ impl PainterTool {
         // the stamped region, so the next drain must do a FULL recompose.
         self.dirty_rect = None;
         self.preview_dirty = true;
+        // B.5: every structural/metadata edit funnels through here, so this is
+        // the single chokepoint that bumps the publish revision (set_source is
+        // the only structural reset that bypasses it — bumped there too).
+        self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
     /// Drop undo/redo history at a layer switch. **Audit W3 (data-loss):**
@@ -1770,6 +1783,24 @@ impl PainterTool {
         self.preview_upload_bbox.take().map(|r| (r.x, r.y, r.w, r.h))
     }
 
+    /// B.5: monotonic revision of the published layer structure. The bridge
+    /// publishes the `LayerStack` snapshot only when this changes, instead of
+    /// deep-cloning it every frame. Bumped by `invalidate_composite` (all
+    /// structural/metadata edits) + `set_source`; strokes don't bump it.
+    #[must_use]
+    pub fn layers_revision(&self) -> u64 {
+        self.layers_revision
+    }
+
+    /// B.5: the active primary color as sRGB8 `[r, g, b, a]`, direct from
+    /// `params.active_color` — so the bridge reads the color without building a
+    /// full `ui_snapshot` (a `String`-allocating call) every frame. Identical to
+    /// [`PainterUiSnapshot::active_color_srgb8`].
+    #[must_use]
+    pub fn active_color_srgb8(&self) -> [u8; 4] {
+        crate::color::painter_oklch_to_srgb8(self.params.active_color)
+    }
+
     /// True iff at least one stamp landed in `canvas_rgba` since the
     /// last `set_source`. Used by `drain_painter` (Apply) to skip the
     /// bake when the user clicked Apply without painting anything,
@@ -2114,6 +2145,9 @@ impl RasterEditTool for PainterTool {
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
         self.composited = None;
+        // B.5: a fresh single-raster stack is a published-structure change, and
+        // `set_source` resets `composited` directly (not via invalidate_composite).
+        self.layers_revision = self.layers_revision.wrapping_add(1);
         // R3-LF-5: reset "painted since source" — fresh source = clean
         // slate for the Apply-emptiness check.
         self.has_painted_since_source = false;
@@ -2842,6 +2876,51 @@ mod tests {
             "fast-lane drain = partial upload of the dirty bbox"
         );
         assert_eq!(t.take_preview_upload_bbox(), None, "bbox drained after read");
+    }
+
+    #[test]
+    fn layers_revision_bumps_on_structure_not_strokes() {
+        // B.5: the bridge republishes the LayerStack only when this changes, so
+        // it MUST bump on every published-structure edit and MUST NOT bump on a
+        // stroke (pixels aren't shown in the panel — bumping would defeat the
+        // per-frame-clone elimination).
+        let mut t = PainterTool::default();
+        t.params.size_px = 4.0;
+        t.set_source(flat_source(8, 8, [0, 0, 0, 255]), 8, 8);
+        let r0 = t.layers_revision();
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let r1 = t.layers_revision();
+        assert!(r1 > r0, "add_raster_layer bumps the publish revision");
+        t.set_layer_opacity(l2, 0.5);
+        let r2 = t.layers_revision();
+        assert!(r2 > r1, "opacity edit bumps the publish revision");
+        // A stroke paints pixels but must NOT bump the structure revision.
+        t.begin_stroke(1);
+        t.queue_pointer(PointerSample {
+            position: [4.0, 4.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        t.end_stroke();
+        assert_eq!(
+            t.layers_revision(),
+            r2,
+            "a stroke must not bump the publish revision"
+        );
+    }
+
+    #[test]
+    fn active_color_srgb8_matches_snapshot() {
+        // B.5: the direct accessor the bridge will use must equal the snapshot
+        // path it replaces (so dropping the per-frame ui_snapshot is lossless).
+        let mut t = PainterTool::default();
+        t.params.active_color = crate::params::OklchColor {
+            l: 0.6,
+            c: 0.2,
+            h: 0.5,
+            a: 1.0,
+        };
+        assert_eq!(t.active_color_srgb8(), t.ui_snapshot().active_color_srgb8());
     }
 
     #[test]

@@ -77,7 +77,7 @@ pub use postcard_schema::{
     bounded_decode, bounded_encode, load_and_validate_vector_asset, load_vector_asset,
     save_vector_asset,
 };
-pub use recolor::apply_fill_to_selection;
+pub use recolor::{apply_fill_to_selection, preview_fill_on_selection};
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use selection::VectorSelection;
 pub use style::{

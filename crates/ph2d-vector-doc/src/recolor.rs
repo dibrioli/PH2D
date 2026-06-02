@@ -19,7 +19,7 @@ use crate::edit_log::VectorOp;
 use crate::postcard_schema::Ph2dVectorAsset;
 use crate::region::RegionId;
 use crate::selection::VectorSelection;
-use crate::style::FillSolid;
+use crate::style::{FillRef, FillSolid};
 
 /// Apply solid fill `rgba` (sRGB8) to every region of every network in
 /// `selection`. Each network gets a fresh fill entry + one logged
@@ -48,6 +48,33 @@ pub fn apply_fill_to_selection(
                 },
                 &mut asset.network,
             );
+        }
+    }
+}
+
+/// Live-preview recolor (NO log, NO new fill): set the **color** of every fill
+/// slot referenced by the selected networks' regions IN PLACE, for real-time
+/// picker feedback. Call [`apply_fill_to_selection`] once first to establish a
+/// logged region→fill assignment (so the recolor stays undoable); this only
+/// repaints the already-assigned slots as the user drags the picker, so it
+/// never grows the style table or the edit_log. Regions with no fill yet are
+/// skipped (the first logged apply gives them one). sRGB8 → OKLCH at the
+/// boundary, same as [`apply_fill_to_selection`].
+pub fn preview_fill_on_selection(
+    committed: &mut [Ph2dVectorAsset],
+    selection: &VectorSelection,
+    rgba: [u8; 4],
+) {
+    let color = srgb8_to_oklch(rgba);
+    for &idx in &selection.networks {
+        let Some(asset) = committed.get_mut(idx) else {
+            continue;
+        };
+        let refs: Vec<FillRef> = asset.network.regions.iter().filter_map(|r| r.fill).collect();
+        for fref in refs {
+            if let Some(slot) = asset.styles.fills.get_mut(&fref) {
+                slot.color = color;
+            }
         }
     }
 }
@@ -169,6 +196,29 @@ mod tests {
         assert!(committed[0].network.regions.is_empty());
         // No fills inserted (nothing to fill).
         assert!(committed[0].styles.fills.is_empty());
+    }
+
+    #[test]
+    fn preview_recolors_in_place_without_logging() {
+        let mut committed = vec![triangle_asset()];
+        let mut sel = VectorSelection::new();
+        sel.select_only_network(0);
+        // Establish a logged fill first (one op, one new fill).
+        apply_fill_to_selection(&mut committed, &sel, [10, 20, 30, 255]);
+        let ops = committed[0].edit_log.ops.len();
+        let fills = committed[0].styles.fills.len();
+        // Preview a different color: recolors in place — NO new op, NO new fill.
+        preview_fill_on_selection(&mut committed, &sel, [200, 40, 40, 255]);
+        assert_eq!(committed[0].edit_log.ops.len(), ops, "preview must not log");
+        assert_eq!(
+            committed[0].styles.fills.len(),
+            fills,
+            "preview must not insert a fill"
+        );
+        let back = fill_color_of(&committed[0]).expect("region has fill").to_srgb();
+        assert!(back.r().abs_diff(200) <= 2, "r={}", back.r());
+        assert!(back.g().abs_diff(40) <= 2, "g={}", back.g());
+        assert!(back.b().abs_diff(40) <= 2, "b={}", back.b());
     }
 
     #[test]

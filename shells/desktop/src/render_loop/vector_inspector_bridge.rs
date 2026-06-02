@@ -18,7 +18,9 @@
 
 use ph2d_editor::HeroScreen;
 use ph2d_editor::ToolRegistry;
-use ph2d_vector_doc::{Ph2dVectorAsset, VectorSelection, apply_fill_to_selection};
+use ph2d_vector_doc::{
+    Ph2dVectorAsset, VectorSelection, apply_fill_to_selection, preview_fill_on_selection,
+};
 
 /// Per-frame vector inspector plumbing. Safe to call every frame.
 pub(super) fn dispatch(
@@ -63,19 +65,28 @@ pub(super) fn dispatch(
             .set_widget_color(ph2d_editor::ids::VECTOR_INSPECTOR_FILL_SWATCH, value.rgba);
     }
 
-    // ── APPLY JOIN (T2.4): edge-triggered recolor of the selected regions ──
-    // When the fill picker CLOSES (target Some→None), commit the chosen color
-    // to every selected network once via the tested helper (insert_fill +
-    // logged `SetRegionFill`, undoable). Edge-triggered — NOT per-frame —
-    // because `apply_fill_to_selection` allocates a fresh fill + op per call;
-    // running it every frame while the picker drags would spam the style table
-    // and the edit_log. No-op when the selection is empty.
+    // ── APPLY JOIN (T2.4): REAL-TIME recolor of the selected regions ──────
+    // While the fill picker is open, the canvas tracks the picker live. The
+    // FIRST frame does one logged `apply_fill_to_selection` (a single undoable
+    // `SetRegionFill` that establishes the region→fill assignment); every
+    // subsequent frame recolors that fill slot IN PLACE via
+    // `preview_fill_on_selection` (no new fill, no new op) — so the preview is
+    // real-time without spamming the style table / edit_log per drag-frame.
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static PICKER_WAS_OPEN: AtomicBool = AtomicBool::new(false);
+        static COMMITTED_INITIAL: AtomicBool = AtomicBool::new(false);
         let was_open = PICKER_WAS_OPEN.swap(picker_open, Ordering::Relaxed);
-        if was_open && !picker_open && !selection.networks.is_empty() {
-            apply_fill_to_selection(committed, selection, *vector_fill_color);
+        if picker_open && !selection.networks.is_empty() {
+            // Picker just opened → the next apply must be the logged one.
+            if !was_open {
+                COMMITTED_INITIAL.store(false, Ordering::Relaxed);
+            }
+            if COMMITTED_INITIAL.swap(true, Ordering::Relaxed) {
+                preview_fill_on_selection(committed, selection, *vector_fill_color);
+            } else {
+                apply_fill_to_selection(committed, selection, *vector_fill_color);
+            }
         }
     }
 

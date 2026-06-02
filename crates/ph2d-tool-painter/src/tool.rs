@@ -653,7 +653,8 @@ impl PainterTool {
         // R4-LG-4: cache OKLab color at stroke boundary. UI updates to
         // `params.active_color` between strokes — recomputing the two
         // transcendentals per pointer event is pure waste otherwise.
-        self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+        // `effective_active_color` grays it when painting into a mask (§2.7).
+        self.stroke_color_oklab = oklch_to_oklab(self.effective_active_color());
         // **W2.T2.1 Day-7 — stroke-level opacity wire:** Stamp.opacity é
         // hardcoded 1.0 no scheduler (T1.7 TODO "taper + stroke-level
         // opacity"). Aplicamos `params.opacity` como pre-multiply no
@@ -1104,7 +1105,7 @@ impl PainterTool {
     /// `begin_stroke` re-reads `active_color` anyway.
     fn refresh_stroke_color_if_in_flight(&mut self) {
         if self.stroke_active {
-            self.stroke_color_oklab = oklch_to_oklab(self.params.active_color);
+            self.stroke_color_oklab = oklch_to_oklab(self.effective_active_color());
             self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
         }
     }
@@ -1443,6 +1444,53 @@ impl PainterTool {
         self.reset_undo_after_layer_switch();
         self.invalidate_composite();
         Some(id)
+    }
+
+    /// Create a grayscale mask on the ACTIVE raster layer (§2.7) and make the
+    /// mask the edit target — a fresh opaque-WHITE buffer (fully visible). The
+    /// brush then paints luminance into it (`effective_active_color` grays the
+    /// stroke). No-op (`None`) mid-stroke, if the active layer isn't a raster,
+    /// if it already has a mask, or at the hard cap.
+    pub fn add_mask_to_active(&mut self) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        let active = self.layers.active()?;
+        if !matches!(self.layers.get(active)?.kind, LayerKind::Raster(_)) {
+            return None; // only a raster takes a mask (not a group / another mask)
+        }
+        let mask = self.layers.add_mask(active)?;
+        // The parent raster (still active) flushes to images; the mask becomes
+        // the active edit target with a fresh opaque-WHITE buffer (full visible).
+        self.flush_active_to_images();
+        let (w, h) = self.source_size;
+        self.images.remove(&mask); // active lives in canvas_rgba, not images
+        self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
+        self.layers.set_active(mask);
+        self.reset_undo_after_layer_switch();
+        self.invalidate_composite();
+        Some(mask)
+    }
+
+    /// `true` when the active edit target is a grayscale mask.
+    #[must_use]
+    pub fn active_is_mask(&self) -> bool {
+        self.layers
+            .active()
+            .and_then(|id| self.layers.get(id))
+            .is_some_and(|l| matches!(l.kind, LayerKind::Mask(_)))
+    }
+
+    /// The active stroke color, forced ACHROMATIC (chroma 0) when the edit
+    /// target is a mask so brush paint lands as luminance (white = reveal,
+    /// black = hide, §2.7). Unchanged for a normal raster.
+    fn effective_active_color(&self) -> OklchColor {
+        let c = self.params.active_color;
+        if self.active_is_mask() {
+            OklchColor { c: 0.0, ..c }
+        } else {
+            c
+        }
     }
 
     /// Make `id` the active layer: flush the current active's pixels to
@@ -2921,6 +2969,57 @@ mod tests {
             a: 1.0,
         };
         assert_eq!(t.active_color_srgb8(), t.ui_snapshot().active_color_srgb8());
+    }
+
+    #[test]
+    fn add_mask_to_active_white_buffer_reveals_then_black_hides() {
+        // T3.5 tool wiring: add a mask to the active raster → mask becomes the
+        // edit target with an opaque-WHITE buffer (parent fully visible), and
+        // painting it black hides the parent in the LIVE preview.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [200, 0, 0, 255]), 4, 4); // red base (Layer 1, active)
+        let mask = t.add_mask_to_active().expect("active raster takes a mask");
+        assert_eq!(t.layers.active(), Some(mask), "mask is the edit target");
+        assert!(t.active_is_mask());
+        assert!(
+            t.canvas_rgba.iter().all(|&b| b == 255),
+            "mask starts opaque white"
+        );
+        // White mask → parent fully visible.
+        t.preview_dirty = true;
+        let (rgba, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(&rgba[0..4], &[200, 0, 0, 255], "white mask reveals red parent");
+        // Paint the mask black → parent hidden (alpha 0).
+        let canvas = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+        for px in canvas.chunks_exact_mut(4) {
+            px.copy_from_slice(&[0, 0, 0, 255]);
+        }
+        t.preview_dirty = true;
+        let (rgba2, _, _) = t.take_preview_arc().expect("dirty");
+        assert_eq!(rgba2[3], 0, "black mask hides the parent (alpha 0)");
+    }
+
+    #[test]
+    fn mask_paint_is_achromatic() {
+        // §2.7: painting into a mask forces the stroke color to grayscale.
+        let mut t = PainterTool::default();
+        t.params.active_color = crate::params::OklchColor {
+            l: 0.6,
+            c: 0.3,
+            h: 1.0,
+            a: 1.0,
+        };
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        assert_eq!(t.effective_active_color().c, 0.3, "raster keeps chroma");
+        t.add_mask_to_active().unwrap();
+        assert_eq!(t.effective_active_color().c, 0.0, "mask paint is achromatic");
+    }
+
+    #[test]
+    fn add_mask_to_active_rejects_non_raster_active() {
+        // No source / no active raster → no-op.
+        let mut t = PainterTool::default();
+        assert!(t.add_mask_to_active().is_none(), "no source = no mask");
     }
 
     #[test]

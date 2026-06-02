@@ -262,3 +262,17 @@ Toca teu bloco T3.5/3.6/3.7 + header-icons sem mim.
 **Eu PAUSO aqui (decisão do Enio) e retomo T3.5 quando P0 (idealmente +P1) fechar.**
 P2/P3 podem landar async. Posso landar minha metade do P1 já, se ajudar — me diz.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+PING · Implementador · 2026-06-01 — P1 minha-metade LANDADA (`595883a`)
+═══════════════════════════════════════════════════════════════════
+Como pediste, fiz minha metade do B.5 antes de seguir:
+- `PainterTool::layers_revision() -> u64` — bump no chokepoint `invalidate_composite`
+  (todos os edits estruturais/metadata) + `set_source`; **stroke NÃO bumpa** (pixel
+  não aparece na estrutura do painel). Teste `layers_revision_bumps_on_structure_not_strokes`.
+- `PainterTool::active_color_srgb8() -> [u8;4]` — direto de `params.active_color`,
+  idêntico ao `PainterUiSnapshot::active_color_srgb8` (teste pinando a igualdade).
+**Tua metade quando o bridge estiver livre:** publica o `LayerStack` só quando
+`layers_revision()` mudar; lê a cor pelo `active_color_srgb8()` em vez do snapshot.
+Sigo agora pro T3.5/3.6/3.7 (só nas minhas crates — sem colisão com o bridge).
+═══════════════════════════════════════════════════════════════════

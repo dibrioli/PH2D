@@ -29,6 +29,7 @@
 //! | [`hobby`]          | Hobby interpolating spline ([`fit_hobby_open`](hobby::fit_hobby_open)) — Pencil tool fitter. |
 //! | [`primitives`]     | Procedural shapes (rect/ellipse/polygon/star/spiral) — Shape tool + W3 vector-source node. |
 //! | [`selection`]      | [`VectorSelection`] — shared Select / Direct-Select editor state (T2.3). |
+//! | [`undo`]           | [`VectorUndoAction`] — document-level undo/redo over the committed scene (T2.5). |
 //! | [`spiro`]          | Spiro / Hyperbezier Assist Modes (stub — W2+ populates). |
 //! | [`postcard_schema`]| [`Ph2dVectorAsset`] + [`bounded_decode`](postcard_schema::bounded_decode). |
 //! | [`deterministic`]  | Q16.16 fixed-point opt-in (per ADR-0056 §2.7). |
@@ -59,6 +60,7 @@ pub mod region;
 pub mod selection;
 pub mod spiro;
 pub mod style;
+pub mod undo;
 
 pub use crdt::CrdtReplay;
 pub use cubic::{TangentSide, TangentsCubic, Vertex, VertexId, VertexKind};
@@ -75,6 +77,7 @@ pub use postcard_schema::{
 };
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use selection::VectorSelection;
+pub use undo::{VectorRedoAction, VectorUndoAction, apply_redo, apply_undo};
 pub use style::{
     FillRef, FillSolid, Segment, SegmentId, StrokeCap, StrokeJoin, StrokeStyle, StyleRef,
     StyleRefMap, StyleTable,

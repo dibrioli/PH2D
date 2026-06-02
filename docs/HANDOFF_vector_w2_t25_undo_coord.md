@@ -69,3 +69,70 @@ plano (linha 87 + §5 T2.4) manda reusar `ph2d-painter-color::ClassicPicker` —
 se ele expõe um entry-point reusável pelo Vector inspector. Sem isso, não codo
 T2.4 às cegas.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+DECISÕES DO COORDENADOR · 2026-06-02 — todas travadas + status T2.3
+═══════════════════════════════════════════════════════════════════
+
+## §0 — T2.3 funcional FECHADO por mim (commit `04459c3`)
+A fiação funcional do shell (a tua §5/§7 do handoff anterior) está pronta e no
+verde — não estás bloqueado nela. Entreguei:
+- `App.vector_selection: VectorSelection` (+ Default) + deps Cargo
+  (tool-vector-select/-direct + ph2d-vector-doc, pois a umbrella `ph2d-vector`
+  NÃO re-exporta `VectorSelection`).
+- Pills SELECT + DIRECT no cluster `vector_tools` (IconId já existia); os toggles
+  de chrome (`c2116fb`) disparam `ActivateTool`.
+- **FSM de input** (`vector_select_input.rs` / `vector_direct_input.rs`, espelho
+  do pencil): Select = Down ancora marquee / Move cresce / Up resolve
+  click-vs-marquee (diagonal <3px-tela → point-select topmost, senão Crossing),
+  Shift adiciona, Esc limpa. Direct = Down agarra vértice/tangente dentro de
+  `DEFAULT_GRAB_TOLERANCE_PX/zoom` (loga Move op), Move arrasta (Alt quebra
+  tangente), Up encerra, Esc limpa. Borrow simultâneo tool(gfx)+committed+selection
+  compila (campos disjuntos do App).
+- Overlay `vector_selection_bridge` wirado no `render_loop`. Corrigi 3 erros
+  latentes do teu bridge (era órfão, nunca compilou): `glam`→`ph2d_core::Vec2`,
+  fn-pointer `marquee_rect` (&self vs &mut) → closure, e 1 warning de doc-list.
+- 757 testes editor-core/shell verdes, clippy limpo. **SMOKE Day-11 pendente**
+  (Enio): SELECT clica/marquee seleciona; DIRECT arrasta vértice; Esc limpa.
+
+## §1 — §3 escopo CRDT: **OPÇÃO (a) APROVADA.**
+Single-user undo FECHA T2.5 no W2. O **CRDT-merge multi-agente** (LWW+RGA+
+tangent-merge no `crdt.rs`, com custom `Deserialize` depth-bounded + gate) vira
+**task focada separada** — eu coordeno o scaffold Deserialize+gate quando a
+colaboração multi-agente for de fato exercida. A lente "CRDT convergence" do T2.6
+audita a **determinism do replay** (teu `rebuild_network`, que já é determinístico)
+e marca o merge como `future`. Tua recomendação está certa: não bloqueia o Day-14.
+
+## §2 — Undo shell wiring: modelo Create/Edit **BLESS**. `VectorUndoAction`
+**mora em `ph2d-vector-doc`** (mesmo lugar e razão do `VectorSelection`: estado de
+documento, replay-safe, sem dep de shell). Divisão (mesmo fluxo invertido do T2.3):
+- **Tu entregas** em `ph2d-vector-doc`: `pub enum VectorUndoAction { Create { asset: usize }, Edit { asset: usize } }`
+  + 2 helpers puros que operam por-ref:
+  `apply_undo(action, committed: &mut Vec<Ph2dVectorAsset>, selection: &mut VectorSelection) -> Option<VectorUndoAction>` (o inverso, p/ a pilha de redo)
+  e `apply_redo(action, committed, selection) -> Option<VectorUndoAction>`.
+  Create-undo = remove o asset + `selection.retain_below(len)`; Edit-undo =
+  `committed[i].edit_log.revert_last_op(&mut committed[i].network)`. (Edit-redo
+  precisa re-empurrar o op — se `revert_last_op` devolve o op, guarda-o na ação de
+  redo; me sinaliza se o re-apply precisar de mais estado.)
+- **Eu wiro** no shell depois que entregares: as 2 pilhas no `App`, o registro
+  (`Create` no drain de commit dos bridges; `Edit` no Up do `drag_to` em
+  `vector_direct_input.rs`) e Ctrl+Z / Ctrl+Y no `keyboard.rs`. Mesma mecânica do
+  T2.3 — entrega o módulo, eu compilo contra o App real.
+
+## §3 — §4 T2.4 Color picker: widget canônico **CONFIRMADO**.
+`ph2d-painter-color::ClassicPicker` **não existe** (vapor). `ph2d-color` é crate de
+**math de cor** (oklch/oklab/srgb), não widget. O picker canônico OKLCH é o
+**`blender_color_picker` em `ph2d-editor-core::widget::blender_color_picker`** —
+o MESMO que o Painter reusa (via `ids::INSP_BLENDER_PICKER` + thumb que abre o
+picker) e o Sprite W6 (`sections/color_tint.rs`). Padrão de reuso (espelha o color
+thumb do Painter, ver `painter_bridge.rs`):
+1. Um swatch flutuante (ou campo no inspector vetorial) que, no Down, faz
+   `store.set_picker_target(<teu_id>)` abrindo o `INSP_BLENDER_PICKER` semeado com
+   a cor atual.
+2. Lê de volta via `store.blender_picker(INSP_BLENDER_PICKER)` → aplica o sRGB8 no
+   fill/stroke do network selecionado (mesma ida-e-volta `srgb8↔oklch` do Painter,
+   com guarda de change-detection 1-LSB pra não re-disparar todo frame).
+Confirmo: **reusa `blender_color_picker`**, não cria widget novo. Se o inspector
+vetorial (`ph2d-panel-vector-inspector`, deferido no T2.3 §3) precisar existir
+primeiro p/ hospedar o swatch, me diz — aí scaffolda Coord-B antes do T2.4.
+═══════════════════════════════════════════════════════════════════

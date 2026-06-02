@@ -381,6 +381,49 @@ impl EditLog {
         self.push(op);
         Ok(())
     }
+
+    /// Replay this log's ops into a fresh network, preserving the state
+    /// that lives on the network but **not** in the op stream — per-segment
+    /// `style_ref` (strokes the Pencil/Shape tools materialize directly,
+    /// since `SetStrokeStyle` needs asset context the network-only apply
+    /// lacks) and the `deterministic` flag — by carrying them over from
+    /// `prev` (the pre-rebuild network) by segment id.
+    ///
+    /// O(N_ops); editor write path (undo / canonicalization), never the
+    /// render tick.
+    #[must_use]
+    pub fn rebuild_network(&self, prev: &VectorNetwork) -> VectorNetwork {
+        let mut net = VectorNetwork::empty();
+        for op in &self.ops {
+            let _ = op.apply_to_network(&mut net);
+        }
+        net.deterministic = prev.deterministic;
+        for seg in net.segments.iter_mut() {
+            if seg.style_ref.is_none()
+                && let Some(old) = prev.segments.iter().find(|s| s.id == seg.id)
+            {
+                seg.style_ref = old.style_ref;
+            }
+        }
+        net
+    }
+
+    /// Undo the most-recent op: pop it and rebuild `net` to the prior state
+    /// ([`Self::rebuild_network`] replay of the remaining ops, styles
+    /// preserved). Returns the popped op so the caller can stack it for
+    /// redo (re-apply with [`Self::push_and_apply`]); `None` if empty.
+    ///
+    /// **T2.5 single-asset undo primitive** — formalizes the `pop()` +
+    /// recompute pattern [`Self::pop`]'s docs describe. Cross-asset /
+    /// create-vs-edit action granularity, the redo stack, and the Ctrl+Z/Y
+    /// chrome handlers live in the shell undo stack (foundational — see the
+    /// T2.5 Coord handoff). Multi-agent CRDT *merge* convergence is a
+    /// separate concern ([`crate::crdt`]); single-user undo needs only this.
+    pub fn revert_last_op(&mut self, net: &mut VectorNetwork) -> Option<VectorOp> {
+        let op = self.ops.pop()?;
+        *net = self.rebuild_network(net);
+        Some(op)
+    }
 }
 
 /// Pinned snapshot of a [`VectorNetwork`] at a specific point in the
@@ -398,5 +441,185 @@ pub struct NetworkSnapshot {
 impl From<VectorNetwork> for NetworkSnapshot {
     fn from(network: VectorNetwork) -> Self {
         Self { network }
+    }
+}
+
+#[cfg(test)]
+mod undo_tests {
+    use super::*;
+
+    /// A filled triangle built via ops (mirror of the Pen tool): 3
+    /// AddVertex + 3 AddSegment + AddRegion + SetRegionFill.
+    fn triangle() -> (EditLog, VectorNetwork) {
+        let mut log = EditLog::new();
+        let mut net = VectorNetwork::empty();
+        for (i, p) in [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(100.0, 0.0),
+            Vec2::new(50.0, 80.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let _ = log.push_and_apply(
+                VectorOp::AddVertex {
+                    id: i as u32,
+                    pos: p,
+                    kind: VertexKind::Auto,
+                },
+                &mut net,
+            );
+        }
+        for i in 0..3u32 {
+            let _ = log.push_and_apply(
+                VectorOp::AddSegment {
+                    id: i,
+                    start: i,
+                    end: (i + 1) % 3,
+                    tangents: TangentsCubic::ZERO,
+                },
+                &mut net,
+            );
+        }
+        let _ = log.push_and_apply(
+            VectorOp::AddRegion {
+                id: 0,
+                segments: [(0u32, true), (1, true), (2, true)].into_iter().collect(),
+                winding: WindingRule::NonZero,
+            },
+            &mut net,
+        );
+        let _ = log.push_and_apply(
+            VectorOp::SetRegionFill {
+                id: 0,
+                fill: Some(0),
+            },
+            &mut net,
+        );
+        (log, net)
+    }
+
+    fn vpos(net: &VectorNetwork, id: VertexId) -> Vec2 {
+        net.vertices.iter().find(|v| v.id == id).unwrap().pos
+    }
+
+    #[test]
+    fn revert_last_op_undoes_a_vertex_move_and_keeps_the_fill() {
+        let (mut log, mut net) = triangle();
+        let _ = log.push_and_apply(
+            VectorOp::MoveVertex {
+                id: 2,
+                new_pos: Vec2::new(70.0, 90.0),
+            },
+            &mut net,
+        );
+        assert_eq!(vpos(&net, 2), Vec2::new(70.0, 90.0));
+        let undone = log.revert_last_op(&mut net).expect("op");
+        assert!(matches!(undone, VectorOp::MoveVertex { id: 2, .. }));
+        assert_eq!(vpos(&net, 2), Vec2::new(50.0, 80.0), "vertex restored");
+        assert_eq!(net.regions.len(), 1);
+        assert_eq!(net.regions[0].fill, Some(0), "fill survives the rebuild");
+        assert!(net.validate().is_ok());
+    }
+
+    #[test]
+    fn redo_reapplies_the_popped_op() {
+        let (mut log, mut net) = triangle();
+        let _ = log.push_and_apply(
+            VectorOp::MoveVertex {
+                id: 0,
+                new_pos: Vec2::new(5.0, 5.0),
+            },
+            &mut net,
+        );
+        let op = log.revert_last_op(&mut net).unwrap();
+        assert_eq!(vpos(&net, 0), Vec2::new(0.0, 0.0));
+        let _ = log.push_and_apply(op, &mut net);
+        assert_eq!(vpos(&net, 0), Vec2::new(5.0, 5.0), "redo re-applies");
+    }
+
+    #[test]
+    fn rebuild_preserves_directly_set_stroke_style_ref() {
+        // A stroked open path with style_ref set directly (as Pencil/Shape
+        // do, not via op) + a move. Undo must keep the stroke style_ref.
+        let mut log = EditLog::new();
+        let mut net = VectorNetwork::empty();
+        let _ = log.push_and_apply(
+            VectorOp::AddVertex {
+                id: 0,
+                pos: Vec2::ZERO,
+                kind: VertexKind::Auto,
+            },
+            &mut net,
+        );
+        let _ = log.push_and_apply(
+            VectorOp::AddVertex {
+                id: 1,
+                pos: Vec2::new(10.0, 0.0),
+                kind: VertexKind::Auto,
+            },
+            &mut net,
+        );
+        let _ = log.push_and_apply(
+            VectorOp::AddSegment {
+                id: 0,
+                start: 0,
+                end: 1,
+                tangents: TangentsCubic::ZERO,
+            },
+            &mut net,
+        );
+        net.segments[0].style_ref = Some(7); // direct, not logged
+        let _ = log.push_and_apply(
+            VectorOp::MoveVertex {
+                id: 1,
+                new_pos: Vec2::new(20.0, 5.0),
+            },
+            &mut net,
+        );
+        log.revert_last_op(&mut net);
+        assert_eq!(
+            net.segments[0].style_ref,
+            Some(7),
+            "stroke style_ref survives undo"
+        );
+        assert_eq!(vpos(&net, 1), Vec2::new(10.0, 0.0));
+    }
+
+    #[test]
+    fn revert_all_ops_empties_the_network() {
+        let (mut log, mut net) = triangle();
+        let mut count = 0;
+        while log.revert_last_op(&mut net).is_some() {
+            count += 1;
+            assert!(count < 100, "runaway");
+        }
+        assert!(net.vertices.is_empty() && net.segments.is_empty() && net.regions.is_empty());
+        assert!(log.revert_last_op(&mut net).is_none(), "empty log → None");
+    }
+
+    #[test]
+    fn fifty_move_undo_then_redo_no_corruption() {
+        // DoD: 50+ ops undo/redo without corruption.
+        let (mut log, mut net) = triangle();
+        for i in 0..50u32 {
+            let _ = log.push_and_apply(
+                VectorOp::MoveVertex {
+                    id: 1,
+                    new_pos: Vec2::new(100.0 + i as f32, i as f32),
+                },
+                &mut net,
+            );
+        }
+        let mut redo = Vec::new();
+        for _ in 0..50 {
+            redo.push(log.revert_last_op(&mut net).unwrap());
+        }
+        assert_eq!(vpos(&net, 1), Vec2::new(100.0, 0.0), "back to original");
+        while let Some(op) = redo.pop() {
+            let _ = log.push_and_apply(op, &mut net);
+        }
+        assert_eq!(vpos(&net, 1), Vec2::new(149.0, 49.0), "fully redone");
+        assert!(net.validate().is_ok());
     }
 }

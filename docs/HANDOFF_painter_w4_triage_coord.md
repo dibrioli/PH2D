@@ -105,8 +105,11 @@ cut-point `CompositorCache` (ADR-0045 §2.7). GPU compute por-kind
 LayerCompositor foundational) — otimização, NÃO bloqueia o ship das 24. Segue CPU.
 
 ## §2 — Hook de compute (a assinatura que eu chamo por kind)
-**`pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, rgba: &mut [u8]);`**
-- Opera **in-place** no buffer RGBA8 do **acumulador** (o composite das layers
+**`pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &mut [[f32; 4]]);`**
+> ⚠️ SUPERSEDED no landing: troquei o `&mut [u8]` proposto por **`&mut [[f32; 4]]`
+> (linear straight)** — o acumulador do compositor já é linear f32; u8 forçaria
+> round-trip sRGB por frame. Ver bloco **T4.2 LANDADO** no fim do doc (autoritativo).
+- Opera **in-place** no acumulador linear `[f32;4]`/pixel (o composite das layers
   abaixo do cut point). Free fn, não trait — mais simples, sem vtable no hot loop,
   e o `match kind` interno é teu (T4.3+), vetorizável por kind.
 - **Mask / opacity / blend-mode NÃO entram aqui** — o compositor (meu T4.2) faz:
@@ -150,25 +153,41 @@ ph2d-painter-contracts + kind_params_match/psd_mapping como unit tests no módul
 ## Superfície que TU implementas contra (T4.3+)
 ```rust
 use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, /* + os 24 *Params */};
-// Hook de compute (decisão da triagem §2): tu implementas isto.
-pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, rgba: &mut [u8]) { /* match kind */ }
+// Hook de compute — JÁ EXISTE como stub no-op (T4.2). Tu trocas o corpo por `match kind`.
+// ⚠️ ASSINATURA FINAL: acc é `&mut [[f32; 4]]` (linear STRAIGHT f32), NÃO `&mut [u8]`.
+pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &mut [[f32; 4]]) { /* match kind */ }
 ```
+- **Por que f32 linear e não u8:** o compositor opera o acumulador inteiro em linear
+  straight `[f32;4]` por pixel; passar `&mut [u8]` forçaria round-trip sRGB8↔linear por
+  frame (perda + custo). Tu recebes/escreves linear straight (R,G,B,A em `0..=1`, alpha =
+  cobertura). Converte pra OKLab/HSL no teu compute se precisares; devolve linear.
 - `AdjustmentParams::neutral_for(kind)` te dá o seed neutro (HSB = `HsbParams{0,0,0}`).
 - `AdjustmentLayer::new(id, name, kind)` cria layer neutra; `kind_params_match()` é o invariante.
 - Mask/opacity/blend NÃO entram no `apply_adjustment` — o compositor (meu T4.2) copia
-  o acumulador → aplica → blenda por (mask×opacity). Teu compute fica puro.
+  o acumulador → `apply_adjustment(copy)` → blenda copy↔base por (mask×opacity) com
+  `apply_blend`+lerp, preservando a cobertura `base[3]`. Teu compute fica puro.
 - `AdjustmentKind::psd_export()` é o mapa PSD congelado (W16).
 
 ## **Podes fan-out JÁ** (T4.3 HSB → Day-4 smoke, depois os 23):
 Cada kind = 1 task isolada (compute fn + UI popover sliders + golden SSIM≥0.999),
-zero dep entre kinds. **Importante:** o `apply_adjustment` roda standalone (testável
-em `&mut [u8]`) ANTES do T4.2 existir — não precisas esperar o `LayerKind::Adjustment`
-pra implementar+testar a lógica de cada kind. Quando o T4.2 landar, ele só chama
-teu `apply_adjustment`.
+zero dep entre kinds. O `apply_adjustment` roda standalone (testável sobre um
+`&mut [[f32; 4]]` de fixtures) — não precisas do `LayerKind::Adjustment` pra
+implementar+testar a lógica. O T4.2 já o chama no compositor.
 
-## T4.2 (meu, próximo) — coordena a janela
-`LayerKind::Adjustment(AdjustmentLayer)` + persist v2 + cook-hash + `CompositorCache`
-TOCA o teu `ph2d-tool-painter/src/layers.rs` (crate quente). Me avisa quando tiveres
-uma janela em layers.rs/compositor.rs sem WIP, que eu lando sem colidir. Até lá tu
-implementas os kinds (compute) livremente em `ph2d-painter-brush`.
+═══════════════════════════════════════════════════════════════════
+T4.2 LANDADO (commit d97f906) — compositor wiring DESBLOQUEADO
+═══════════════════════════════════════════════════════════════════
+- `LayerKind::Adjustment(AdjustmentLayer)` (variant aditivo; `Eq` removido do enum —
+  AdjustmentLayer carrega f32; nada dependia de `Eq`). Serde aditivo → **sem** bump de
+  persist/cook-hash (confirmado: não há versão/golden de layer-stack que re-lockar).
+- `LayerStack::add_adjustment(kind) -> Option<LayerId>` (aloca id, nome `{kind:?}`,
+  insere no topo do root, vira ativa) + `adjustment_mut(id) -> Option<&mut AdjustmentLayer>`
+  — usa estes pro teu UI/edição (T4.15).
+- Compositor: arm `Adjustment` (copy→apply_adjustment→blend por opacity×mask) +
+  `CompositorCache` skeleton (BTreeMap/HR-5, cut-point invalidation). Perf-gate 4K
+  `#[ignore]`-soft (W5 fia cut-points; ADR-0045 §2.11).
+- `apply_adjustment` é **no-op stub** (identidade) até tu landares cada kind. T4.3 HSB
+  primeiro → smoke Day-4.
+- Gates: 81/81 painter-contracts verdes; `brush_no_sub_sub_structs` re-escopado pra
+  excluir `adjustments.rs` (crate agora homesteada 2 contratos: ADR-0044 + ADR-0045).
 ═══════════════════════════════════════════════════════════════════

@@ -135,8 +135,17 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let mut y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
 
+    // Row-id set published to the dispatch so it knows which NodeIds are
+    // draggable layer rows (Coord drag foundation `1c3411d`). Filled in the
+    // layer branch, pushed in the scroll-bounds block below.
+    let mut painter_row_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
+        std::collections::BTreeSet::new();
     match state::current_layers() {
         Some(stack) if !stack.is_empty() => {
+            painter_row_ids = stack
+                .all_ids()
+                .map(|l| painter_layer_widget_id(l.0, PainterLayerWidget::Row))
+                .collect();
             let active = stack.active();
             y = paint_layer_subtree(
                 ctx,
@@ -251,6 +260,9 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         if store.panel_scroll(core_ids::PAINTER_LAYERS_PANEL) > max_scroll {
             store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
         }
+        // Tell the dispatch which NodeIds are draggable layer rows (Down on one
+        // of these begins a `PainterLayerReparent` drag — Coord drag foundation).
+        store.set_painter_layer_row_ids(painter_row_ids);
     }
 
     // Deferred: the single open blend dropdown popover, on top of everything.

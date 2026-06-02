@@ -511,6 +511,97 @@ impl LayerStack {
         false
     }
 
+    /// Nesting height of `id`'s subtree (0 = leaf, 1 = group of leaves, …).
+    /// Bounded by [`MAX_GROUP_DEPTH`] (defense vs a forged deep/cyclic tree).
+    fn subtree_height(&self, id: LayerId) -> usize {
+        self.subtree_height_bounded(id, 0)
+    }
+
+    fn subtree_height_bounded(&self, id: LayerId, depth: usize) -> usize {
+        if depth > MAX_GROUP_DEPTH {
+            return 0;
+        }
+        match self.get(id) {
+            Some(Layer {
+                kind: LayerKind::Group(g),
+                ..
+            }) if !g.children.is_empty() => {
+                1 + g
+                    .children
+                    .iter()
+                    .map(|&c| self.subtree_height_bounded(c, depth + 1))
+                    .max()
+                    .unwrap_or(0)
+            }
+            _ => 0,
+        }
+    }
+
+    /// Move `moved` to sit directly before/after `target` in TARGET's parent
+    /// list (drag-reorder / cross-parent reparent). Detaches `moved` first.
+    /// Rejected (`false`) if either is unknown, `moved` is the base sprite
+    /// (pinned at root bottom), `target` is a descendant of `moved` (cycle), or
+    /// the move would exceed [`MAX_GROUP_DEPTH`]. Keeps the base sprite last in
+    /// root (never inserts a layer below it).
+    pub fn move_to_sibling_of(&mut self, moved: LayerId, target: LayerId, after: bool) -> bool {
+        if moved == target || self.index_of(moved).is_none() || self.index_of(target).is_none() {
+            return false;
+        }
+        if self.root.last() == Some(&moved) {
+            return false; // the base sprite never moves
+        }
+        if self.is_descendant(target, moved) {
+            return false; // can't move into your own subtree
+        }
+        let target_parent = self.parent_of(target);
+        if self.depth(target) + self.subtree_height(moved) >= MAX_GROUP_DEPTH {
+            return false; // moved's subtree wouldn't fit at target's depth
+        }
+        // Detach `moved` from its current parent.
+        let from = self.parent_of(moved);
+        if let Some(list) = self.sibling_list_mut(from)
+            && let Some(p) = list.iter().position(|&x| x == moved)
+        {
+            list.remove(p);
+        }
+        // Insert before/after `target` in target's parent list (find pos AFTER
+        // the detach so same-list index shifts are accounted for).
+        let to_root = target_parent.is_none();
+        let Some(list) = self.sibling_list_mut(target_parent) else {
+            self.root.insert(0, moved); // target's parent vanished — don't lose `moved`
+            return false;
+        };
+        let Some(tpos) = list.iter().position(|&x| x == target) else {
+            self.root.insert(0, moved);
+            return false;
+        };
+        let mut idx = if after { tpos + 1 } else { tpos };
+        if to_root {
+            // The base sprite occupies the last root slot — never insert past it.
+            idx = idx.min(list.len().saturating_sub(1));
+        }
+        list.insert(idx, moved);
+        true
+    }
+
+    /// Move `moved` to the bottom of root, just ABOVE the base sprite (which
+    /// stays pinned last). Used for a drop in the empty space below the list.
+    /// Rejected (`false`) if `moved` is unknown or is the base itself.
+    pub fn move_to_root_bottom_above_base(&mut self, moved: LayerId) -> bool {
+        if self.index_of(moved).is_none() || self.root.last() == Some(&moved) {
+            return false;
+        }
+        let from = self.parent_of(moved);
+        if let Some(list) = self.sibling_list_mut(from)
+            && let Some(p) = list.iter().position(|&x| x == moved)
+        {
+            list.remove(p);
+        }
+        let idx = self.root.len().saturating_sub(1); // just above the base
+        self.root.insert(idx, moved);
+        true
+    }
+
     /// `true` if `maybe_descendant` is nested anywhere under `ancestor`.
     fn is_descendant(&self, maybe_descendant: LayerId, ancestor: LayerId) -> bool {
         let mut cur = maybe_descendant;
@@ -806,6 +897,57 @@ mod tests {
         assert!(s.get(r).unwrap().clipping);
         s.set_alpha_locked(r, false);
         assert!(!s.get(r).unwrap().alpha_locked);
+    }
+
+    #[test]
+    fn move_to_sibling_reorders_and_pins_base() {
+        let mut s = LayerStack::new();
+        let a = s.add_raster("a", 8, 8).unwrap(); // root=[a]   (a = base, bottom)
+        let b = s.add_raster("b", 8, 8).unwrap(); // [b, a]
+        let c = s.add_raster("c", 8, 8).unwrap(); // [c, b, a]
+        assert!(s.move_to_sibling_of(c, b, true));
+        assert_eq!(s.root(), &[b, c, a], "c after b");
+        assert!(s.move_to_sibling_of(c, b, false));
+        assert_eq!(s.root(), &[c, b, a], "c before b");
+        // Dropping after the base clamps to above it — base stays pinned bottom.
+        assert!(s.move_to_sibling_of(c, a, true));
+        assert_eq!(s.root().last(), Some(&a), "base stays at root bottom");
+    }
+
+    #[test]
+    fn move_to_sibling_into_group_via_targets_parent() {
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 8, 8).unwrap();
+        let g = s.add_group("g").unwrap();
+        let inner = s.add_raster("inner", 8, 8).unwrap();
+        assert!(s.move_into_group(inner, g));
+        let x = s.add_raster("x", 8, 8).unwrap();
+        // Drop x before `inner` (inside g) → x joins the group.
+        assert!(s.move_to_sibling_of(x, inner, false));
+        assert_eq!(s.depth(x), 1, "x moved into the group (target's parent)");
+    }
+
+    #[test]
+    fn base_sprite_never_moves() {
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", 8, 8).unwrap();
+        let x = s.add_raster("x", 8, 8).unwrap();
+        assert!(!s.move_to_sibling_of(base, x, false), "base can't be reordered");
+        assert!(!s.move_to_root_bottom_above_base(base), "base can't move to bottom");
+    }
+
+    #[test]
+    fn move_to_root_bottom_lands_above_base() {
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", 8, 8).unwrap();
+        let g = s.add_group("g").unwrap();
+        let inner = s.add_raster("inner", 8, 8).unwrap();
+        s.move_into_group(inner, g);
+        // Pull `inner` out of the group to root bottom (above the base).
+        assert!(s.move_to_root_bottom_above_base(inner));
+        assert_eq!(s.depth(inner), 0, "inner back at root level");
+        assert_eq!(s.root().last(), Some(&base), "base still pinned bottom");
+        assert_eq!(s.root().iter().rev().nth(1), Some(&inner), "inner just above base");
     }
 
     #[test]

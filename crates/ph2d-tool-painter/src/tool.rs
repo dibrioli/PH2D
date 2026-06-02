@@ -1469,6 +1469,45 @@ impl PainterTool {
         Some(g)
     }
 
+    /// Apply a drag-drop reparent/reorder emitted by the dispatch
+    /// (`WidgetEvent::PainterLayerReparent`). Reverses the dragged + target
+    /// `NodeId`s to `LayerId`s via the per-row widget id, then dispatches to
+    /// `move_into_group` (drop INTO a group) / `move_to_sibling_of` (before /
+    /// after) / `move_to_root_bottom_above_base` (drop at the end). The
+    /// LayerStack guards (base pinned, `MAX_GROUP_DEPTH`, cycle) reject unsafe
+    /// drops. No-op mid-stroke or if `dragged` doesn't resolve to a layer.
+    pub fn handle_layer_reparent(
+        &mut self,
+        dragged: ph2d_a11y::NodeId,
+        drop: ph2d_editor_core::interaction::PainterLayerDrop,
+    ) {
+        use ph2d_editor_core::interaction::PainterLayerDrop;
+        if self.stroke_active {
+            return;
+        }
+        let Some(d) = self.decode_layer_widget(dragged).map(|(l, _)| l) else {
+            return;
+        };
+        let moved = match drop {
+            PainterLayerDrop::Inside(t) => match self.decode_layer_widget(t) {
+                Some((g, _)) => self.layers.move_into_group(d, g),
+                None => false,
+            },
+            PainterLayerDrop::Before(t) => match self.decode_layer_widget(t) {
+                Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, false),
+                None => false,
+            },
+            PainterLayerDrop::After(t) => match self.decode_layer_widget(t) {
+                Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, true),
+                None => false,
+            },
+            PainterLayerDrop::End => self.layers.move_to_root_bottom_above_base(d),
+        };
+        if moved {
+            self.invalidate_composite();
+        }
+    }
+
     /// Remove `id` (and its subtree + mask) and clean up the tool buffers (the
     /// `images` entries + the active `canvas_rgba` + undo). The base sprite (root
     /// bottom) is NOT removable. No-op (`false`) mid-stroke, if `id` is unknown,
@@ -3229,6 +3268,25 @@ mod tests {
         let mut t = PainterTool::default();
         t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
         assert!(t.group_active().is_none(), "base sprite active → can't group it");
+    }
+
+    #[test]
+    fn handle_layer_reparent_drags_into_group_and_reorders() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::interaction::PainterLayerDrop;
+        let row = |l: RtLayerId| painter_layer_widget_id(l.0, PainterLayerWidget::Row);
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (Layer 1)
+        let base = t.layers.root()[0];
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let g = t.add_group().unwrap(); // empty group at top → root=[g, l2, base]
+        // Drag l2 INTO the group.
+        t.handle_layer_reparent(row(l2), PainterLayerDrop::Inside(row(g)));
+        assert_eq!(t.layers.depth(l2), 1, "l2 nested into the group via drag");
+        // Drag l2 back out to the root bottom (above base).
+        t.handle_layer_reparent(row(l2), PainterLayerDrop::End);
+        assert_eq!(t.layers.depth(l2), 0, "l2 pulled back to root");
+        assert_eq!(t.layers.root().last(), Some(&base), "base still pinned bottom");
     }
 
     #[test]

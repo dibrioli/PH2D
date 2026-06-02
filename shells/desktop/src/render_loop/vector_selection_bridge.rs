@@ -68,6 +68,71 @@ pub(super) fn dispatch(
         );
     }
 
+    // Layer 1.5 — Direct-Select editable affordances. When Direct is the
+    // active tool, surface EVERY vertex (a grab target) + every non-zero
+    // tangent handle across the committed scene, so the user has something
+    // to aim at — `selection.vertices` is empty until a grab succeeds, a
+    // chicken-and-egg that made Direct feel dead. Drawn before Layer 2 so a
+    // grabbed/selected vertex renders brighter on top. Pure feedback.
+    let direct_active = tools
+        .active()
+        .map(|t| t.id() == ph2d_editor::ToolId::new("vector_direct"))
+        .unwrap_or(false);
+    if direct_active {
+        let handle_w = MARQUEE_WIDTH_PX / k;
+        let aff_dot_r = VERTEX_DOT_RADIUS_PX / k;
+        let ctrl_r = (VERTEX_DOT_RADIUS_PX * 0.7) / k;
+        for asset in committed {
+            // Tangent handles: a thin line vertex→control-point + a control
+            // dot, per non-zero tangent (straight segments have zero tangents
+            // and draw nothing — mirror of `nearest_tangent_handle`'s skip).
+            for seg in &asset.network.segments {
+                let (Some(start), Some(end)) = (
+                    asset.network.vertices.iter().find(|v| v.id == seg.start),
+                    asset.network.vertices.iter().find(|v| v.id == seg.end),
+                ) else {
+                    continue;
+                };
+                for (base, tan) in [(start.pos, seg.out_at_start), (end.pos, seg.in_at_end)] {
+                    if tan.length_squared() < 1e-6 {
+                        continue;
+                    }
+                    let ctrl = base + tan;
+                    let mut line = BezPath::new();
+                    line.move_to(Point::new(base.x as f64, base.y as f64));
+                    line.line_to(Point::new(ctrl.x as f64, ctrl.y as f64));
+                    scene.stroke(
+                        &Stroke::new(handle_w),
+                        world_to_screen,
+                        &Brush::Solid(accent(MARQUEE_LINE_ALPHA)),
+                        None,
+                        &line,
+                    );
+                    let dot = Circle::new(Point::new(ctrl.x as f64, ctrl.y as f64), ctrl_r);
+                    scene.fill(
+                        Fill::NonZero,
+                        world_to_screen,
+                        &Brush::Solid(accent(VERTEX_ALPHA)),
+                        None,
+                        &dot,
+                    );
+                }
+            }
+            // Vertex dots (grab targets) — dimmer than the selected-vertex
+            // highlight that Layer 2 paints on top.
+            for v in &asset.network.vertices {
+                let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), aff_dot_r);
+                scene.fill(
+                    Fill::NonZero,
+                    world_to_screen,
+                    &Brush::Solid(accent(OUTLINE_ALPHA)),
+                    None,
+                    &c,
+                );
+            }
+        }
+    }
+
     // Layer 2 — selected vertex dots.
     let dot_r = VERTEX_DOT_RADIUS_PX / k;
     for &(asset_idx, vid) in &selection.vertices {

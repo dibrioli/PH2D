@@ -881,6 +881,13 @@ pub fn dispatch_pointer_with_text<'frame>(
                 // Painter layers-panel row drag (W3 T3.8) — same anchor as the
                 // hierarchy; the Up handler resolves the drop into a
                 // `PainterLayerReparent` for the painter tool to apply.
+                if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
+                    eprintln!(
+                        "[drag] DOWN hit id={:#018x} is_painter_row={}",
+                        id.0,
+                        store.is_painter_layer_row(id)
+                    );
+                }
                 if store.is_painter_layer_row(id) {
                     store.begin_painter_layer_drag(id, event.x, event.y, event.timestamp_ns);
                 }
@@ -1083,7 +1090,14 @@ pub fn dispatch_pointer_with_text<'frame>(
             // LayerStack). Drop-on-self (drifted back onto the dragged row) is a
             // no-op. Only one row drag can be active per frame, so the hierarchy
             // block above already no-op'd when this one is `Some`.
-            if let Some(drag) = store.end_painter_layer_drag()
+            let painter_drag_end = store.end_painter_layer_drag();
+            if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
+                eprintln!(
+                    "[drag] UP painter_drag active={:?}",
+                    painter_drag_end.map(|d| d.active)
+                );
+            }
+            if let Some(drag) = painter_drag_end
                 && drag.active
             {
                 let over_self = hit_index
@@ -1098,10 +1112,15 @@ pub fn dispatch_pointer_with_text<'frame>(
                     .unwrap_or(false);
                 if !over_self {
                     let drop = find_painter_layer_drop(hit_index, store, event.y, drag.dragged);
+                    if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
+                        eprintln!("[drag] UP emit dragged={:#018x} drop={drop:?}", drag.dragged.0);
+                    }
                     events.push(WidgetEvent::PainterLayerReparent {
                         dragged: drag.dragged,
                         drop,
                     });
+                } else if std::env::var_os("PH2D_DRAG_DEBUG").is_some() {
+                    eprintln!("[drag] UP over_self → no emit");
                 }
             }
             if let Some(active) = store.active_id() {

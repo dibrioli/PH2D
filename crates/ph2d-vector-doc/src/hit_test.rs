@@ -25,6 +25,12 @@ use crate::style::SegmentId;
 /// within ~0.1 % of the true curve — ample for click-select hit testing.
 const DEFAULT_FLATTEN_STEPS: usize = 16;
 
+/// Below this squared tangent-offset length a cubic handle is treated as
+/// coincident with its vertex (a straight segment has a zero tangent) and
+/// is **not** a grabbable handle — so [`VectorNetwork::nearest_tangent_handle`]
+/// skips it and the vertex wins the grab.
+const MIN_HANDLE_LEN_SQ: f32 = 1e-6;
+
 impl VectorNetwork {
     /// Return the [`VertexId`] of the vertex closest to `p` within
     /// `tolerance` pixels (Euclidean distance), or `None` if every
@@ -132,10 +138,16 @@ impl VectorNetwork {
             else {
                 continue;
             };
-            for (side, handle) in [
-                (TangentSide::OutAtStart, start + s.out_at_start),
-                (TangentSide::InAtEnd, end + s.in_at_end),
+            for (side, offset, handle) in [
+                (TangentSide::OutAtStart, s.out_at_start, start + s.out_at_start),
+                (TangentSide::InAtEnd, s.in_at_end, end + s.in_at_end),
             ] {
+                // A (near-)zero tangent has no distinct handle — it sits on
+                // the vertex (straight segment). Skip it so the vertex wins
+                // the grab instead of a phantom coincident handle.
+                if offset.length_squared() < MIN_HANDLE_LEN_SQ {
+                    continue;
+                }
                 let d_sq = (handle - p).length_squared();
                 if d_sq > tol_sq {
                     continue;
@@ -383,5 +395,18 @@ mod tests {
             Some((7, TangentSide::InAtEnd))
         );
         assert_eq!(net.nearest_tangent_handle(Vec2::new(50.0, 50.0), 5.0), None);
+    }
+
+    #[test]
+    fn nearest_tangent_handle_skips_zero_length_handles() {
+        // A straight segment (zero tangents) has handles coincident with
+        // its vertices — they must NOT be grabbable, so a point right on a
+        // vertex finds no handle (the vertex grab wins upstream).
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
+        net.vertices.push(Vertex::auto(1, Vec2::new(100.0, 0.0)));
+        net.segments.push(Segment::straight(0, 0, 1)); // zero tangents
+        assert_eq!(net.nearest_tangent_handle(Vec2::new(0.0, 0.0), 5.0), None);
+        assert_eq!(net.nearest_tangent_handle(Vec2::new(100.0, 0.0), 5.0), None);
     }
 }

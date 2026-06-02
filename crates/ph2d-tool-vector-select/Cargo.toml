@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-tool-vector-select"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Vector Module Select tool — network-level click + marquee selection over
+# the shared committed scene (plan T2.3). Drop-crate per DIRETRIZ §3.A.
+# Operates on `&[Ph2dVectorAsset]` + `&mut VectorSelection` passed by the
+# shell. Selection overlay + input routing wired by the Coord batch.
+
+[lib]
+
+[dependencies]
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-core = { path = "../ph2d-core" }
+
+# Icon BezPath.
+ph2d-vector = { path = "../ph2d-vector" }
+
+# VectorSelection + Ph2dVectorAsset + hit-test (bbox / region_contains_point).
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+
+glam = "0.30"

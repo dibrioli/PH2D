@@ -28,6 +28,7 @@
 //! | [`cubic_fit`]      | Levien single-cubic Bézier fitting ([`fit_cubic_levien`](cubic_fit::fit_cubic_levien)). |
 //! | [`hobby`]          | Hobby interpolating spline ([`fit_hobby_open`](hobby::fit_hobby_open)) — Pencil tool fitter. |
 //! | [`primitives`]     | Procedural shapes (rect/ellipse/polygon/star/spiral) — Shape tool + W3 vector-source node. |
+//! | [`selection`]      | [`VectorSelection`] — shared Select / Direct-Select editor state (T2.3). |
 //! | [`spiro`]          | Spiro / Hyperbezier Assist Modes (stub — W2+ populates). |
 //! | [`postcard_schema`]| [`Ph2dVectorAsset`] + [`bounded_decode`](postcard_schema::bounded_decode). |
 //! | [`deterministic`]  | Q16.16 fixed-point opt-in (per ADR-0056 §2.7). |
@@ -55,6 +56,7 @@ pub mod network;
 pub mod postcard_schema;
 pub mod primitives;
 pub mod region;
+pub mod selection;
 pub mod spiro;
 pub mod style;
 
@@ -72,6 +74,7 @@ pub use postcard_schema::{
     save_vector_asset,
 };
 pub use region::{Region, RegionId, SegmentRef, WindingRule};
+pub use selection::VectorSelection;
 pub use style::{
     FillRef, FillSolid, Segment, SegmentId, StrokeCap, StrokeJoin, StrokeStyle, StyleRef,
     StyleRefMap, StyleTable,

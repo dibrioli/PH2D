@@ -84,6 +84,17 @@ fn decode(rgba8: &[u8], idx: usize) -> [f32; 4] {
     ]
 }
 
+/// Straight grayscale value `[0, 1]` of a mask texel — Rec.601 luma of the
+/// straight sRGB bytes (`R = G = B` for grayscale mask paint; the formula also
+/// degrades gracefully for a non-grayscale mask). White (255) = fully visible,
+/// black = hidden. The mask multiplies the parent's alpha — a coverage op, so
+/// computed in straight space (no transfer function), per §2.7.
+#[inline]
+fn mask_value(rgba8: &[u8], idx: usize) -> f32 {
+    let b = idx * 4;
+    (0.299 * rgba8[b] as f32 + 0.587 * rgba8[b + 1] as f32 + 0.114 * rgba8[b + 2] as f32) / 255.0
+}
+
 /// A rectangular sub-region of the canvas (dirty rect), clamped to bounds
 /// by the compositor.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -206,8 +217,25 @@ fn composite_into(
                 if rgba.len() < (max_idx + 1) * 4 {
                     continue;
                 }
+                // T3.5: an attached grayscale mask multiplies this layer's alpha
+                // (white = visible, black = hidden; `1 - value` when inverted).
+                // Mask pixels are canvas-sized RGBA8 in the same source; a
+                // missing/short mask buffer is treated as "no mask" (no panic).
+                let mask = layer.mask.and_then(|mid| match &stack.get(mid)?.kind {
+                    LayerKind::Mask(m) => {
+                        let mrgba = src.layer_rgba(mid)?;
+                        (mrgba.len() >= (max_idx + 1) * 4).then_some((mrgba, m.inverted))
+                    }
+                    _ => None,
+                });
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
-                    decode(rgba, (gy * canvas_w + gx) as usize)
+                    let idx = (gy * canvas_w + gx) as usize;
+                    let mut s = decode(rgba, idx);
+                    if let Some((mrgba, inverted)) = mask {
+                        let v = mask_value(mrgba, idx);
+                        s[3] *= if inverted { 1.0 - v } else { v };
+                    }
+                    s
                 });
             }
             LayerKind::Group(g) => {
@@ -389,6 +417,76 @@ mod tests {
         assert!(
             (out[0] as i32 - 188).abs() <= 1,
             "group 50% → ~188, got {}",
+            out[0]
+        );
+    }
+
+    #[test]
+    fn mask_black_hides_parent_reveals_below() {
+        // T3.5: a black mask on the top raster fully hides it → the layer below
+        // shows through (mask multiplies the parent's alpha to 0).
+        let (w, h) = (1, 1);
+        let mut s = LayerStack::new();
+        let bottom = s.add_raster("bottom", w, h).unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        let mask = s.add_mask(top).unwrap();
+        let mut src = MapPixelSource::default();
+        src.insert(bottom, solid(w, h, [0, 200, 0, 255])); // green below
+        src.insert(top, solid(w, h, [200, 0, 0, 255])); // red on top
+        src.insert(mask, solid(w, h, [0, 0, 0, 255])); // black → hide top
+        let out = composite(&s, &src, w, h);
+        assert_eq!(&out[0..3], &[0, 200, 0], "black mask hides top → green shows");
+    }
+
+    #[test]
+    fn mask_white_keeps_parent_fully_visible() {
+        let (w, h) = (1, 1);
+        let mut s = LayerStack::new();
+        let bottom = s.add_raster("bottom", w, h).unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        let mask = s.add_mask(top).unwrap();
+        let mut src = MapPixelSource::default();
+        src.insert(bottom, solid(w, h, [0, 200, 0, 255]));
+        src.insert(top, solid(w, h, [200, 0, 0, 255]));
+        src.insert(mask, solid(w, h, [255, 255, 255, 255])); // white → full visible
+        let out = composite(&s, &src, w, h);
+        assert_eq!(&out[0..3], &[200, 0, 0], "white mask keeps top visible");
+    }
+
+    #[test]
+    fn mask_inverted_flips_black_to_visible() {
+        let (w, h) = (1, 1);
+        let mut s = LayerStack::new();
+        let bottom = s.add_raster("bottom", w, h).unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        let mask = s.add_mask(top).unwrap();
+        s.set_mask_inverted(mask, true);
+        let mut src = MapPixelSource::default();
+        src.insert(bottom, solid(w, h, [0, 200, 0, 255]));
+        src.insert(top, solid(w, h, [200, 0, 0, 255]));
+        src.insert(mask, solid(w, h, [0, 0, 0, 255])); // black, but inverted → visible
+        let out = composite(&s, &src, w, h);
+        assert_eq!(&out[0..3], &[200, 0, 0], "inverted black mask → top visible");
+    }
+
+    #[test]
+    fn mask_gray_is_partial_visibility() {
+        // A mid-gray mask (~50%) partially reveals: result is between top and
+        // bottom. Use Normal blend; assert the red channel lands strictly between
+        // the fully-hidden (green's 0 red) and fully-shown (top's 200) extremes.
+        let (w, h) = (1, 1);
+        let mut s = LayerStack::new();
+        let bottom = s.add_raster("bottom", w, h).unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        let mask = s.add_mask(top).unwrap();
+        let mut src = MapPixelSource::default();
+        src.insert(bottom, solid(w, h, [0, 0, 0, 255])); // black below
+        src.insert(top, solid(w, h, [255, 0, 0, 255])); // red on top
+        src.insert(mask, solid(w, h, [128, 128, 128, 255])); // ~50% visible
+        let out = composite(&s, &src, w, h);
+        assert!(
+            out[0] > 0 && out[0] < 255,
+            "gray mask → partial red, got {}",
             out[0]
         );
     }

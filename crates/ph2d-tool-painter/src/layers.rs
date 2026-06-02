@@ -243,6 +243,54 @@ impl LayerStack {
         Some(id)
     }
 
+    /// Create a grayscale mask bound to raster `parent` (§2.7) and return its
+    /// id. The mask is NOT inserted into the z-order (`root` / group children) —
+    /// it composites *through* its parent (multiplying the parent's alpha), so
+    /// it lives in the arena referenced only by `parent.mask`. Rejected
+    /// (`None`) if `parent` is unknown, isn't a raster, already has a mask, or
+    /// the hard cap is reached. Does NOT change the active selection — the tool
+    /// decides the edit target and allocates the (white) pixel buffer.
+    pub fn add_mask(&mut self, parent: LayerId) -> Option<LayerId> {
+        let (w, h) = match self.get(parent) {
+            Some(Layer {
+                kind: LayerKind::Raster(r),
+                mask: None,
+                ..
+            }) => (r.width, r.height),
+            _ => return None,
+        };
+        if self.arena.len() >= HARD_CAP_LAYERS {
+            return None;
+        }
+        let id = self.alloc_id();
+        self.arena.push(Layer::new(
+            id,
+            "Mask",
+            LayerKind::Mask(MaskLayer {
+                width: w,
+                height: h,
+                inverted: false,
+            }),
+        ));
+        // Owner-attached: referenced via `parent.mask`, never in a sibling list.
+        if let Some(p) = self.get_mut(parent) {
+            p.mask = Some(id);
+        }
+        Some(id)
+    }
+
+    /// Toggle a mask's `Invert mask` flag (§2.7) — the compositor uses
+    /// `1 - value`. No-op if `id` is unknown or not a mask.
+    pub fn set_mask_inverted(&mut self, id: LayerId, inverted: bool) {
+        if let Some(Layer {
+            kind: LayerKind::Mask(m),
+            ..
+        }) = self.get_mut(id)
+        {
+            m.inverted = inverted;
+        }
+    }
+
     pub fn set_visible(&mut self, id: LayerId, visible: bool) {
         if let Some(l) = self.get_mut(id) {
             l.visible = visible;
@@ -462,11 +510,12 @@ impl LayerStack {
         if depth > MAX_GROUP_DEPTH {
             return;
         }
-        // TODO(W3.T3.5 mask wiring): when masks become creatable, a layer's
-        // mask child must be collected here too (else removing the owner leaks
-        // its mask). Deferred — the mask's structural membership (root vs
-        // owner-attached) is undefined until T3.5 designs mask creation; the
-        // dangling-owner-ref case is already handled by `remove`'s scrub.
+        // T3.5: an attached mask is owner-attached (referenced via `mask`, not in
+        // any sibling list), so it's only reachable here — collect it so removing
+        // the owner removes the mask too (no leak in the tool's `images` map).
+        if let Some(mask_id) = self.get(id).and_then(|l| l.mask) {
+            out.push(mask_id);
+        }
         if let Some(Layer {
             kind: LayerKind::Group(g),
             ..
@@ -630,5 +679,50 @@ mod tests {
         s.remove(a);
         let b = s.add_raster("b", 8, 8).unwrap();
         assert_ne!(a, b, "freed id must not be reused");
+    }
+
+    #[test]
+    fn add_mask_binds_to_raster_and_is_out_of_zorder() {
+        // T3.5: a mask attaches to its raster parent via `mask`, NOT into root.
+        let mut s = LayerStack::new();
+        let r = s.add_raster("r", 8, 8).unwrap();
+        let m = s.add_mask(r).unwrap();
+        assert_eq!(s.get(r).unwrap().mask, Some(m), "parent points at the mask");
+        assert!(matches!(s.get(m).unwrap().kind, LayerKind::Mask(_)));
+        assert!(!s.root().contains(&m), "mask is not in the z-order");
+        assert_eq!(s.len(), 2, "both live in the arena");
+    }
+
+    #[test]
+    fn add_mask_rejects_group_and_double_mask() {
+        let mut s = LayerStack::new();
+        let g = s.add_group("g").unwrap();
+        assert!(s.add_mask(g).is_none(), "a group cannot have a mask");
+        let r = s.add_raster("r", 8, 8).unwrap();
+        assert!(s.add_mask(r).is_some());
+        assert!(s.add_mask(r).is_none(), "no second mask on one raster");
+    }
+
+    #[test]
+    fn remove_parent_also_removes_its_mask() {
+        // T3.5 closes the old collect_subtree TODO: removing the owner must drop
+        // its owner-attached mask too (else it leaks in the tool's images map).
+        let mut s = LayerStack::new();
+        let parent = s.add_raster("p", 4, 4).unwrap();
+        let mask = s.add_mask(parent).unwrap();
+        assert_eq!(s.len(), 2);
+        s.remove(parent);
+        assert_eq!(s.len(), 0, "parent + mask both removed");
+        assert!(s.get(mask).is_none(), "mask did not leak");
+    }
+
+    #[test]
+    fn remove_mask_alone_scrubs_parent_ref() {
+        let mut s = LayerStack::new();
+        let parent = s.add_raster("p", 4, 4).unwrap();
+        let mask = s.add_mask(parent).unwrap();
+        s.remove(mask);
+        assert!(s.get(parent).is_some(), "parent survives mask removal");
+        assert_eq!(s.get(parent).unwrap().mask, None, "dangling mask ref scrubbed");
     }
 }

@@ -19,7 +19,8 @@
 //! `LayerStack` converts at the boundary (`LayerId(x)` / `x.0`).
 
 use crate::blend::BlendMode;
-use ph2d_color::OklchColor;
+use ph2d_color::oklab::OklabColor;
+use ph2d_color::{LinearRgba, OklchColor};
 use serde::{Deserialize, Serialize};
 
 // ─────────────────────────── shared sub-types ───────────────────────────
@@ -539,106 +540,51 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
     }
 }
 
-/// Hue/Saturation/Brightness in sRGB-display HSL space (Photoshop / Procreate
-/// convention — this app is the Procreate successor, and the W4 golden targets
-/// a Photoshop reference). `acc` is straight LINEAR f32 RGBA; only RGB is
-/// transformed — the alpha (= coverage) is preserved. `h` rotates the hue wheel
-/// (in turns), `s` scales saturation (`-1` = grayscale, `+1` = 2× clamped), `b`
-/// shifts lightness toward black (`-1`) or white (`+1`). Neutral `{0, 0, 0}`
-/// early-returns an EXACT identity (and skips the per-pixel sRGB round-trip).
+/// Hue / Saturation / Brightness in **OKLab** (the project's perceptual color
+/// space — gold standard, and the brush engine's native space). `acc` is
+/// straight LINEAR f32 RGBA; only RGB is transformed — the alpha (= coverage)
+/// is preserved.
+///
+/// - **Hue** (`h`, in turns) is a RIGID rotation of the `(a, b)` chroma vector,
+///   so chroma magnitude is preserved exactly and near-neutral pixels stay
+///   neutral. HSL hue is numerically unstable for near-gray pixels (tiny chroma
+///   → ill-defined hue), so rotating it scatters incoherent colors — the colored
+///   speckle Enio hit on the gray background. An OKLab rotation has no such
+///   instability.
+/// - **Saturation** (`s`, `-1..1`) scales chroma (`-1` = grayscale, `+1` = 2×).
+/// - **Brightness** (`b`, `-1..1`) lerps toward black (`-1`) / white (`+1`) in
+///   linear light, so the extremes are EXACT black / white (matches Procreate).
+///
+/// Neutral `{0, 0, 0}` early-returns an EXACT identity (and skips the OKLab
+/// round-trip — also the hot-path win while dragging).
 fn apply_hsb(p: &HsbParams, acc: &mut [[f32; 4]]) {
     if p.h == 0.0 && p.s == 0.0 && p.b == 0.0 {
         return;
     }
+    let hue_rad = p.h * std::f32::consts::TAU; // turns → radians
+    let (hue_sin, hue_cos) = hue_rad.sin_cos();
+    let chroma_scale = (1.0 + p.s).max(0.0); // -1 → 0 (gray), +1 → 2×
     for px in acc.iter_mut() {
-        let (mut h, mut s, mut l) = rgb_to_hsl(
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
-        );
-        h = (h + p.h).rem_euclid(1.0);
-        s = (s * (1.0 + p.s)).clamp(0.0, 1.0);
-        l = if p.b >= 0.0 {
-            l + (1.0 - l) * p.b
-        } else {
-            l * (1.0 + p.b)
-        };
-        let (r, g, b) = hsl_to_rgb(h, s, l);
-        px[0] = srgb_to_linear_f32(r);
-        px[1] = srgb_to_linear_f32(g);
-        px[2] = srgb_to_linear_f32(b);
-    }
-}
-
-/// Standard sRGB transfer (linear → gamma), clamped to `[0, 1]`.
-#[inline]
-fn linear_to_srgb_f32(c: f32) -> f32 {
-    let c = c.clamp(0.0, 1.0);
-    if c <= 0.003_130_8 {
-        12.92 * c
-    } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
-    }
-}
-
-/// Standard sRGB transfer (gamma → linear), clamped to `[0, 1]`.
-#[inline]
-fn srgb_to_linear_f32(c: f32) -> f32 {
-    let c = c.clamp(0.0, 1.0);
-    if c <= 0.040_45 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
-}
-
-/// sRGB RGB (`0..=1`) → HSL with hue in TURNS (`0..1`), saturation + lightness
-/// in `0..=1`. The hue sector is picked with `>=` (not float `==`) so the
-/// max-channel test is exact without a float-equality lint.
-fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
-    let max = r.max(g).max(b);
-    let min = r.min(g).min(b);
-    let l = (max + min) * 0.5;
-    let d = max - min;
-    if d <= 0.0 {
-        return (0.0, 0.0, l); // achromatic
-    }
-    let s = (d / (1.0 - (2.0 * l - 1.0).abs())).clamp(0.0, 1.0);
-    let h = if r >= g && r >= b {
-        (g - b) / d
-    } else if g >= b {
-        (b - r) / d + 2.0
-    } else {
-        (r - g) / d + 4.0
-    };
-    ((h / 6.0).rem_euclid(1.0), s, l)
-}
-
-/// HSL (hue in TURNS) → sRGB RGB (`0..=1`).
-fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (f32, f32, f32) {
-    if s <= 0.0 {
-        return (l, l, l); // achromatic
-    }
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
-    let p = 2.0 * l - q;
-    (
-        hue_channel(p, q, h + 1.0 / 3.0),
-        hue_channel(p, q, h),
-        hue_channel(p, q, h - 1.0 / 3.0),
-    )
-}
-
-/// One channel of the HSL→RGB reconstruction (`t` in turns, wrapped to `0..1`).
-fn hue_channel(p: f32, q: f32, t: f32) -> f32 {
-    let t = t.rem_euclid(1.0);
-    if t < 1.0 / 6.0 {
-        p + (q - p) * 6.0 * t
-    } else if t < 0.5 {
-        q
-    } else if t < 2.0 / 3.0 {
-        p + (q - p) * (2.0 / 3.0 - t) * 6.0
-    } else {
-        p
+        let lab = OklabColor::from_linear(LinearRgba::new(px[0], px[1], px[2], 1.0));
+        // Hue rotation (rigid) + saturation (scale) of the chroma vector; L kept.
+        let a = (lab.a * hue_cos - lab.b * hue_sin) * chroma_scale;
+        let b = (lab.a * hue_sin + lab.b * hue_cos) * chroma_scale;
+        let out = OklabColor::new(lab.l, a, b, 1.0).to_linear();
+        let (mut r, mut g, mut bl) = (out.r(), out.g(), out.b());
+        // Brightness: lerp toward black / white in linear (exact at the ends).
+        if p.b > 0.0 {
+            r += (1.0 - r) * p.b;
+            g += (1.0 - g) * p.b;
+            bl += (1.0 - bl) * p.b;
+        } else if p.b < 0.0 {
+            let k = 1.0 + p.b;
+            r *= k;
+            g *= k;
+            bl *= k;
+        }
+        px[0] = r;
+        px[1] = g;
+        px[2] = bl;
     }
 }
 
@@ -827,21 +773,23 @@ mod tests {
 
     #[test]
     fn hsb_hue_rotation_shifts_red_toward_green() {
-        // +1/3 turn rotates pure red (hue 0) to green (hue 1/3).
+        // +1/3 turn (120°) rotates red's OKLab chroma vector into the green
+        // half-plane → green becomes the dominant channel.
         let out = apply(1.0 / 3.0, 0.0, 0.0, [1.0, 0.0, 0.0, 1.0]);
         assert!(
-            out[1] > 0.9 && out[0] < 0.1 && out[2] < 0.1,
+            out[1] > out[0] && out[1] > out[2],
             "red rotated +1/3 turn is green-dominant: {out:?}"
         );
     }
 
     #[test]
     fn hsb_full_turn_hue_is_identity() {
-        // A whole-turn hue rotation returns the original hue (within round-trip).
+        // A whole-turn hue rotation is a 2π chroma rotation → original color
+        // (within the OKLab linear round-trip, ~1e-3).
         let px = [0.7, 0.2, 0.4, 1.0];
         let out = apply(1.0, 0.0, 0.0, px);
         for c in 0..3 {
-            assert!((out[c] - px[c]).abs() < 1e-3, "full-turn ~identity: {out:?}");
+            assert!((out[c] - px[c]).abs() < 5e-3, "full-turn ~identity: {out:?}");
         }
     }
 }

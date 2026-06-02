@@ -13,4 +13,17 @@ pub fn populate(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    // Shape-kind picker options (§4.2). The generic RadioGroup dispatch is not
+    // wired yet, so each option is a plain `Button` — its `Click` is mapped to a
+    // pending kind-index in `apply_event`, drained by the shell bridge. Registered
+    // unconditionally (one-time install); when the Shape tool is inactive `paint`
+    // skips the hit-rects so these never receive a `Click`.
+    for id in crate::ids::SHAPE_OPTION_IDS {
+        store.register_if_absent(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }

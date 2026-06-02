@@ -377,6 +377,39 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
         "PAINTER_LAYERS_TOGGLE_DOCK",
         ids::PAINTER_LAYERS_TOGGLE_DOCK,
     ),
+    // Vector Inspector (W2 T2.4 + §4.2). The PANEL/CLOSE/FILL_SWATCH trio
+    // pre-dates this row but was never enrolled in the uniqueness check —
+    // closed here alongside the new Shape-kind picker option ids.
+    ("VECTOR_INSPECTOR_PANEL", ids::VECTOR_INSPECTOR_PANEL),
+    ("VECTOR_INSPECTOR_CLOSE", ids::VECTOR_INSPECTOR_CLOSE),
+    (
+        "VECTOR_INSPECTOR_FILL_SWATCH",
+        ids::VECTOR_INSPECTOR_FILL_SWATCH,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_KIND",
+        ids::VECTOR_INSPECTOR_SHAPE_KIND,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_RECT",
+        ids::VECTOR_INSPECTOR_SHAPE_RECT,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_ELLIPSE",
+        ids::VECTOR_INSPECTOR_SHAPE_ELLIPSE,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_POLYGON",
+        ids::VECTOR_INSPECTOR_SHAPE_POLYGON,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_STAR",
+        ids::VECTOR_INSPECTOR_SHAPE_STAR,
+    ),
+    (
+        "VECTOR_INSPECTOR_SHAPE_SPIRAL",
+        ids::VECTOR_INSPECTOR_SHAPE_SPIRAL,
+    ),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

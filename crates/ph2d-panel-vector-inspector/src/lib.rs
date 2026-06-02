@@ -20,7 +20,10 @@ mod paint;
 mod populate;
 pub mod state;
 
-pub use state::{VectorInspectorPanelState, last_content_h, last_visible_h, set_current_fill};
+pub use state::{
+    VectorInspectorPanelState, last_content_h, last_visible_h, set_current_fill, set_current_shape,
+    take_pending_shape_selection,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

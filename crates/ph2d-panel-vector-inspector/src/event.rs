@@ -14,6 +14,17 @@ pub(crate) fn apply_event(
             host.set_panel_visible("vector_inspector", false);
             true
         }
+        // Shape-kind option click (§4.2): record the chosen index; the shell
+        // bridge drains it into `VectorShapeTool::set_kind`. Index is the
+        // option's position in `ShapeKind::ALL` order (see `ids::SHAPE_OPTION_IDS`).
+        WidgetEvent::Click(id) if crate::ids::SHAPE_OPTION_IDS.contains(&id) => {
+            let index = crate::ids::SHAPE_OPTION_IDS
+                .iter()
+                .position(|&o| o == id)
+                .expect("id is in SHAPE_OPTION_IDS (matched by the guard above)");
+            crate::state::set_pending_shape(index as u8);
+            true
+        }
         _ => false,
     })
 }

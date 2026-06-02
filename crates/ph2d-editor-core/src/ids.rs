@@ -100,6 +100,18 @@ pub const VECTOR_INSPECTOR_CLOSE: NodeId = hash_node_id("vector_inspector.close"
 /// picker on Down via `is_picker_swatch`); the shell read-back applies the
 /// picked color to the selected regions.
 pub const VECTOR_INSPECTOR_FILL_SWATCH: NodeId = hash_node_id("vector_inspector.fill_swatch");
+/// Vector Inspector Shape-kind picker (W2 §4.2) — the on-screen replacement for
+/// the interim hotkeys 1-5. A vertical 5-option segmented control shown only
+/// while the `vector_shape` tool is active. `_KIND` is the group/label id; the
+/// five `_SHAPE_*` ids are the per-option Button hit-targets (the generic
+/// RadioGroup dispatch is not wired yet, so each option is a Button — its
+/// `Click` routes through the shell bridge to `VectorShapeTool::set_kind`).
+pub const VECTOR_INSPECTOR_SHAPE_KIND: NodeId = hash_node_id("vector_inspector.shape_kind");
+pub const VECTOR_INSPECTOR_SHAPE_RECT: NodeId = hash_node_id("vector_inspector.shape.rect");
+pub const VECTOR_INSPECTOR_SHAPE_ELLIPSE: NodeId = hash_node_id("vector_inspector.shape.ellipse");
+pub const VECTOR_INSPECTOR_SHAPE_POLYGON: NodeId = hash_node_id("vector_inspector.shape.polygon");
+pub const VECTOR_INSPECTOR_SHAPE_STAR: NodeId = hash_node_id("vector_inspector.shape.star");
+pub const VECTOR_INSPECTOR_SHAPE_SPIRAL: NodeId = hash_node_id("vector_inspector.shape.spiral");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /
@@ -339,8 +351,7 @@ pub const PAINTER_LAYERS_ALPHA_LOCK: NodeId = hash_node_id("painter_layers.alpha
 pub const PAINTER_LAYERS_REFERENCE: NodeId = hash_node_id("painter_layers.reference");
 /// Action toolbar "+ Adj" — creates a non-destructive adjustment layer (W4
 /// T4.3; HSB for the Day-4 smoke, full 24-kind menu lands with T4.15).
-pub const PAINTER_LAYERS_ADD_ADJUSTMENT: NodeId =
-    hash_node_id("painter_layers.add_adjustment");
+pub const PAINTER_LAYERS_ADD_ADJUSTMENT: NodeId = hash_node_id("painter_layers.add_adjustment");
 /// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
 /// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
 /// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`

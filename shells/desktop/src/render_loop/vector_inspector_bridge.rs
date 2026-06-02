@@ -36,6 +36,9 @@ pub(super) fn dispatch(
             let id = t.id();
             id == ph2d_editor::ToolId::new("vector_select")
                 || id == ph2d_editor::ToolId::new("vector_direct")
+                // Shape too (§4.2): it hosts the Shape-kind picker + shares the
+                // fill swatch (new shapes take the current fill color).
+                || id == ph2d_editor::ToolId::new("vector_shape")
         })
         .unwrap_or(false);
 
@@ -93,4 +96,52 @@ pub(super) fn dispatch(
     // ── Publish the current fill color so the panel paints the swatch ─────
     #[cfg(feature = "panel-vector-inspector")]
     ph2d_panel_vector_inspector::set_current_fill(*vector_fill_color);
+
+    // ── Shape-kind picker (§4.2) — the on-screen replacement for hotkeys 1-5.
+    // Mirror of the fill read-back: drain a pending option click into the active
+    // Shape tool (`set_kind`) and publish its current kind so the panel paints
+    // the selected option. Only meaningful while `vector_shape` is active; the
+    // downcast yields `None` otherwise (panel hides the row). ────────────────
+    #[cfg(feature = "panel-vector-inspector")]
+    {
+        use ph2d_tool_vector_shape::{ShapeKind, VectorShapeTool};
+        if let Some(shape) = tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<VectorShapeTool>())
+        {
+            if let Some(index) = ph2d_panel_vector_inspector::take_pending_shape_selection()
+                && let Some(&kind) = ShapeKind::ALL.get(index as usize)
+            {
+                shape.set_kind(kind);
+            }
+            let idx = ShapeKind::ALL
+                .iter()
+                .position(|&k| k == shape.kind())
+                .unwrap_or(0) as u8;
+            ph2d_panel_vector_inspector::set_current_shape(true, idx);
+        } else {
+            ph2d_panel_vector_inspector::set_current_shape(false, 0);
+        }
+    }
+}
+
+#[cfg(all(test, feature = "panel-vector-inspector"))]
+mod tests {
+    use ph2d_tool_vector_shape::ShapeKind;
+
+    /// The inspector's Shape-kind picker must expose exactly one option per
+    /// `ShapeKind` variant — the panel is decoupled from the tool crate, so this
+    /// cross-crate count is the only thing that catches a drift (e.g. the tool
+    /// gains a 6th kind but the panel still paints 5). The drain
+    /// (`ShapeKind::ALL.get(index)`) degrades safely on mismatch, but a stale
+    /// picker would silently hide the new kind — this fails the build instead.
+    #[test]
+    fn shape_picker_exposes_one_option_per_kind() {
+        assert_eq!(
+            ph2d_panel_vector_inspector::ids::SHAPE_OPTION_IDS.len(),
+            ShapeKind::ALL.len(),
+            "add the new option id + label in ph2d-panel-vector-inspector::ids when \
+             ShapeKind grows (and the matching VECTOR_INSPECTOR_SHAPE_* id in editor-core)"
+        );
+    }
 }

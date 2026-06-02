@@ -162,6 +162,7 @@ impl App {
             painter_undo_requested: false,
             painter_redo_requested: false,
             committed_vector_pen_paths: Vec::new(),
+            vector_scene_entities: Vec::new(),
             vector_selection: ph2d_vector_doc::VectorSelection::default(),
             vector_fill_color: [0x88, 0x88, 0x88, 0xFF],
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first

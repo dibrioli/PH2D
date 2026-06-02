@@ -38,6 +38,7 @@ mod upscale_bridge;
 mod vector_inspector_bridge;
 mod vector_pen_bridge;
 mod vector_pencil_bridge;
+pub(crate) mod vector_scene;
 mod vector_selection_bridge;
 mod vector_shape_bridge;
 
@@ -1017,12 +1018,17 @@ impl crate::App {
             // render of committed scene paths + in-progress overlay. The
             // network IS the asset (ADR-0056 §1.1); world coords come from
             // `camera.screen_to_world` in `vector_pen_input.rs`.
+            // ADR-0076 (Rank 10): per-asset placement affines (the `Transform`
+            // overlay) so a gizmo-moved vector renders at its new position.
+            // Identity for un-moved assets ⇒ bit-identical to the old path.
+            let vector_placements = vector_scene::placements(sim, &self.vector_scene_entities);
             vector_pen_bridge::dispatch(
                 tools,
                 camera,
                 window_size,
                 self.last_pointer,
                 &mut self.committed_vector_pen_paths,
+                &vector_placements,
                 vector_scene,
             );
             // Vector Pencil ⟷ shell bridge — drains the committed freehand
@@ -1046,6 +1052,15 @@ impl crate::App {
                 window_size,
                 &mut self.committed_vector_pen_paths,
                 vector_scene,
+            );
+            // ADR-0076: re-sync the per-asset scene entities AFTER every commit
+            // bridge (pen/pencil/shape append; Esc-clear truncates). Spawns
+            // Transform+Name+VectorSceneRef for new assets (→ hierarchy + gizmo),
+            // despawns removed. O(delta); usually a no-op.
+            vector_scene::reconcile(
+                sim,
+                &mut self.vector_scene_entities,
+                &self.committed_vector_pen_paths,
             );
             // Vector Select / Direct-Select ⟷ shell overlay (T2.3). Pure
             // feedback (never mutates the scene): selected-network outlines +

@@ -32,7 +32,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_pen::VectorPenTool;
-use ph2d_vector::{BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 
 /// Pen-blue overlay tint (R, G, B). Distinct per-layer alpha below.
 const PEN_RGB: (u8, u8, u8) = (80, 130, 255);
@@ -81,14 +81,33 @@ pub(super) fn dispatch(
     window_size: WindowSize,
     last_pointer: (f32, f32),
     committed_paths: &mut Vec<ph2d_vector::Ph2dVectorAsset>,
+    placements: &[[f32; 6]],
     vector_scene: &mut VectorScene,
 ) {
     let world_to_screen = camera.world_to_screen_affine(window_size);
     let scene = vector_scene.inner_mut();
 
-    // Layer (a) — committed scene paths: always rendered.
-    for asset in committed_paths.iter() {
-        ph2d_vector::draw_vector_network(scene, &asset.network, &asset.styles, world_to_screen);
+    // Layer (a) — committed scene paths: always rendered, each composed with its
+    // ADR-0076 placement affine (`world_to_screen ∘ placement`). An asset committed
+    // THIS frame isn't reconciled into `placements` yet → identity (its rest pose,
+    // which is exactly where a brand-new vector belongs).
+    for (i, asset) in committed_paths.iter().enumerate() {
+        let placement = placements.get(i).map_or(Affine::IDENTITY, |m| {
+            Affine::new([
+                m[0] as f64,
+                m[1] as f64,
+                m[2] as f64,
+                m[3] as f64,
+                m[4] as f64,
+                m[5] as f64,
+            ])
+        });
+        ph2d_vector::draw_vector_network(
+            scene,
+            &asset.network,
+            &asset.styles,
+            world_to_screen * placement,
+        );
     }
 
     let is_pen_active = tools

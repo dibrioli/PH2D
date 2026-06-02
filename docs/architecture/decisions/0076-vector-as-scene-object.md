@@ -203,3 +203,44 @@ Ambos retornam **sim entity bits** ⇒ seleção unificada; o gizmo segue daí s
 (W2). Executar numa janela em que o Impl esteja parado nesses arquivos, ou delegar a
 execução ao Impl SOB este ADR. **A decisão (este ADR) está fechada; a execução é
 coordenada.**
+
+---
+
+## 6. Status de implementação (2026-06-02 — Coord, vector parado)
+
+**IMPLEMENTADO** (commit local; aguarda smoke visual do Enio). 7 arquivos shell,
+zero mudança no boundary sim/present, schema congelado intacto, clippy-clean.
+
+**Ajuste de contrato vs. §2.2 (as-built):** `VectorSceneRef` ficou
+`{ bbox_min: [f32;2], bbox_max: [f32;2] }` (rest-pose AABB) em vez de `{ asset: u64 }`.
+O vínculo entidade↔asset é **posicional** (`entities[i]`↔`assets[i]`, §2.3), então não
+precisa de chave `asset`; e a AABB é necessária para a `GizmoView` (descoberta acima). O
+`Transform` aplica-se **sobre o centróide** dessa AABB (não sobre a origem) para o pivot do
+gizmo cair no vetor — `placement_affine`/`world_to_rest` encapsulam essa álgebra (testada).
+
+**Descoberta que estendeu o plano §5 (4→5 sites):** o gizmo **não desenha handles**
+a partir do `Transform` — `snapshots.rs::build_view` faz `get::<Sprite>(e)?` e
+retorna `None` sem Sprite, ou seja, sem `GizmoView` = sem caixa agarrável. O plano
+original (4 passos) não previa isso. **Solução:** um ramo vetor em `build_view` que
+dimensiona a `GizmoView` pela **AABB rest-pose** (carregada em `VectorSceneRef`)
+transformada pelo `Transform` da SimWorld (`vector_scene::gizmo_box`) — lê SimWorld
+direto, consistente com o render-compose, sem mirror para PresentWorld.
+
+**Sites entregues:**
+1. `render_loop/vector_scene.rs` (NOVO) — `VectorSceneRef` + math pura testada
+   (`placement_affine`/`world_to_rest`/`gizmo_box`, 5 unit tests: identity-no-op,
+   translate, rotate-about-centroid, inverse round-trip, box-on-pivot) +
+   `reconcile`/`placements`/`pick`.
+2. `app_state.rs` + `main.rs` — campo `vector_scene_entities` + init.
+3. `render_loop/mod.rs` — `placements()` antes do pen bridge + `reconcile()` após os
+   3 commit-bridges (pen/pencil/shape).
+4. `vector_pen_bridge.rs` — compõe `world_to_screen * placement` por asset (identity
+   ⇒ bit-idêntico ao path antigo).
+5. `snapshots.rs` — ramo vetor em `build_view` (GizmoView via AABB+Transform).
+6. `input_dispatch.rs` — `pick()` vetor como fallback do pick de sprite (mesmos
+   sim-bits ⇒ flui pelo replace/toggle/gizmo existente, write genérico já serve).
+
+**Pendente de smoke (provável iteração visual):** alinhamento da caixa do gizmo,
+precisão do pick sob rotação/escala, e o "feel" do drag. **Fora de escopo (ADR §2.7):**
+reparent/agrupar (precisa GlobalTransform), persistência do placement, ícone de vetor
+na hierarquia.

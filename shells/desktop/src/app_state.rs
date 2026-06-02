@@ -460,6 +460,13 @@ pub(crate) struct App {
     /// (load-on-open + save-as), per AUDIT_vector_module_W1_results.md §6
     /// option (1).
     pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
+    /// ADR-0076 (Rank 10) — one SimWorld entity per committed vector asset,
+    /// positional with `committed_vector_pen_paths` (`entities[i]` ↔ asset `i`).
+    /// Gives each vector a `Transform` (gizmo-movable) + `Name` (hierarchy) without
+    /// thawing the frozen `Ph2dVectorAsset` schema. Re-synced every frame by
+    /// `render_loop::vector_scene::reconcile`. NOT persisted (rebuilt from the
+    /// asset vec each session).
+    pub(crate) vector_scene_entities: Vec<ph2d_ecs::Entity>,
     /// W2.T2.3 — shared vector selection (network + vertex picks) over
     /// `committed_vector_pen_paths`. Document state, NOT tool state: Select and
     /// Direct-Select are two separate `Tool` instances in the registry, so the

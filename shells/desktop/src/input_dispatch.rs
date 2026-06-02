@@ -809,7 +809,18 @@ impl App {
                             }
                         }
                         let picked = if hits.is_empty() {
-                            None
+                            // ADR-0076 (Rank 10): no sprite under the cursor — fall
+                            // back to the vector scene objects. The result is a sim
+                            // entity bits value, identical in kind to a sprite pick,
+                            // so it flows through the same replace/toggle/gizmo path
+                            // below (and the gizmo's Transform write) with no special
+                            // casing.
+                            crate::render_loop::vector_scene::pick(
+                                &gfx.sim,
+                                &self.vector_scene_entities,
+                                &self.committed_vector_pen_paths,
+                                world_pos,
+                            )
                         } else {
                             hits.get(self.cycle_pick_idx).copied()
                         };

@@ -430,8 +430,8 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
         Blend, MoveDown, MoveUp, Opacity, OpacityChip, Row, Visibility,
     };
 
-    let chrome: std::collections::HashSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
-    let mut seen: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let chrome: std::collections::BTreeSet<u64> = CHROME_IDS.iter().map(|(_, id)| id.0).collect();
+    let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
 
     let kinds = [Row, Visibility, Opacity, OpacityChip, Blend, MoveUp, MoveDown];
     // Dense small ids + sparse/large runtime ids (LayerId is a u64 monotonic).

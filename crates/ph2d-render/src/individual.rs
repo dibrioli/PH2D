@@ -349,6 +349,10 @@ impl IndividualTextureStore {
     /// fully within the entry's current dims. A zero-area region is a
     /// no-op (an empty dirty-rect); an unknown id is a silent no-op
     /// (mirror of [`Self::replace_pixels`]).
+    // x/y/w/h is the idiomatic graphics sub-rect form (mirrors
+    // `queue.write_texture`'s origin + extent); packing into a struct would
+    // break the bridge consumer for no clarity gain.
+    #[allow(clippy::too_many_arguments)]
     pub fn replace_pixels_region(
         &mut self,
         gpu: &GpuContext,

@@ -164,7 +164,7 @@ fn replace_pixels_region_rejects_out_of_bounds_and_bad_length() {
         .expect("acquire");
 
     // Sub-rect past the right edge (10 + 8 > 16).
-    let oob = store.replace_pixels_region(&gpu, id, 10, 0, 8, 4, &vec![0u8; 8 * 4 * 4]);
+    let oob = store.replace_pixels_region(&gpu, id, 10, 0, 8, 4, &[0u8; 8 * 4 * 4]);
     assert!(
         matches!(oob, Err(IndividualTextureError::RegionOutOfBounds { .. })),
         "expected RegionOutOfBounds, got {oob:?}"

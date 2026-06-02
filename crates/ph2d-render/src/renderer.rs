@@ -345,6 +345,8 @@ impl SpriteRenderer {
     /// `material_bgl` is not needed. `region_rgba` is the tightly-packed
     /// `width * height * 4` bytes for the sub-rect alone; the region must lie
     /// within the texture's current dims.
+    // x/y/w/h sub-rect form mirrors the store method + `write_texture`.
+    #[allow(clippy::too_many_arguments)]
     pub fn replace_individual_pixels_region(
         &mut self,
         texture_id: u32,

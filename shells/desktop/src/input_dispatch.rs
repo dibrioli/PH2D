@@ -54,6 +54,7 @@ pub(crate) mod protect_brush;
 mod vector_direct_input;
 mod vector_pen_input;
 mod vector_pencil_input;
+mod vector_persist;
 mod vector_select_input;
 mod vector_shape_input;
 

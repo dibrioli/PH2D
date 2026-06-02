@@ -106,6 +106,28 @@ impl App {
             return;
         }
 
+        // Vector scene export/import (W2): Cmd/Ctrl+S saves the committed
+        // vector scene to a `.ph2dvec` file, Cmd/Ctrl+O loads one — gated on a
+        // vector tool being active so they don't shadow a future global
+        // save/open. Interim until whole-scene persistence lands.
+        if state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.super_key() || self.modifiers.control_key())
+            && self.any_vector_tool_active()
+        {
+            match physical_key {
+                PhysicalKey::Code(KeyCode::KeyS) => {
+                    self.save_vector_scene();
+                    return;
+                }
+                PhysicalKey::Code(KeyCode::KeyO) => {
+                    self.load_vector_scene();
+                    return;
+                }
+                _ => {}
+            }
+        }
+
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused
         // widget.

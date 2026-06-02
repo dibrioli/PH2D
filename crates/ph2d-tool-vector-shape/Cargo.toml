@@ -1,0 +1,37 @@
+[package]
+name = "ph2d-tool-vector-shape"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Vector Module Shape tool — rect/ellipse/polygon/star/spiral with a drag +
+# a panel sub-mode picker (plan T2.2). Drop-crate per DIRETRIZ §3.A:
+# isolated, zero edit central. Geometry from ph2d-vector-doc::primitives
+# (shared with the W3 vector-source node). Preview + commit via
+# `vector_shape_bridge.rs`.
+
+[lib]
+
+[dependencies]
+# Tool contract + ToolManifest + chrome Registry + panel widgets (RadioGroup).
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+# A11y role + NodeId (panel control ids) + memory budget canonicals.
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-core = { path = "../ph2d-core" }
+
+# Vello / kurbo via ph2d-vector for the icon BezPath.
+ph2d-vector = { path = "../ph2d-vector" }
+
+# Vector data model + shape primitives (rect/ellipse/polygon/star/spiral).
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+
+# OklchColor for the seeded fill / stroke + color injection.
+ph2d-color = { path = "../ph2d-color" }
+
+# Math primitives — glam::Vec2.
+glam = "0.30"

@@ -60,6 +60,7 @@ ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
 ph2d-tool-upscale = { path = "../ph2d-tool-upscale" }
 ph2d-tool-vector-pen = { path = "../ph2d-tool-vector-pen" }
 ph2d-tool-vector-pencil = { path = "../ph2d-tool-vector-pencil" }
+ph2d-tool-vector-shape = { path = "../ph2d-tool-vector-shape" }
 # <ph2d-tool-sync:end>
 
 [dev-dependencies]

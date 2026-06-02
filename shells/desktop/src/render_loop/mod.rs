@@ -1061,7 +1061,13 @@ impl crate::App {
             );
             // Vector Inspector (W2.T2.4): panel visibility + fill-swatch picker
             // read-back + publish (`hero`/`tools` still in scope from above).
-            vector_inspector_bridge::dispatch(hero, tools, &mut self.vector_fill_color);
+            vector_inspector_bridge::dispatch(
+                hero,
+                tools,
+                &mut self.vector_fill_color,
+                &mut self.committed_vector_pen_paths,
+                &self.vector_selection,
+            );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo
             // AND the multi-selection extras + global gizmo (the latter

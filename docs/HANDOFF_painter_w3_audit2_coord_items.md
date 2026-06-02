@@ -184,3 +184,48 @@ bloqueia. Fica pro próximo bloco coordenado do bridge.
 too_many_arguments)]` na fn OU empacotar x/y/w/h num `Region`. Achei rodando
 clippy no shell pro meu B.1 (meu código = 0 warnings).
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+PEDIDO CONSOLIDADO · Implementador · 2026-06-01 (batched a pedido do Enio)
+═══════════════════════════════════════════════════════════════════
+Vou abrir o bloco **T3.5 Mask + T3.6 Clipping + T3.7 Alpha-lock/Reference/Group +
+header-icons (delete/duplicate)**. **VERIFIQUEI que é ~100% in-pasta:** os IconId
+`Add/Copy/Delete/Duplicate/Plus/Trash` JÁ existem (`icons.rs`); nenhum variant novo
+de `PainterUiEdit`/`PanelEvent` (toggles/cria/delete roteiam pelos 4 PanelEvent
+existentes + kinds aditivos de `PainterLayerWidget` em `ids.rs`); compositor/tool/
+panel são meus. Então **nada abaixo BLOQUEIA esse bloco** exceto o clippy no ship.
+Batchando tudo que é teu pra você limpar de uma vez. Prioridade ↓:
+
+**P0 — BLOQUEIA O SHIP (antes do próximo push):**
+Clippy `too_many_arguments (8/7)` em `ph2d-render/src/individual.rs:352`
+(`replace_pixels_region`) + o wrapper `renderer.rs:348`
+(`replace_individual_pixels_region`). `#[allow]` ou empacotar x/y/w/h num `Region`.
+CI `clippy --all-targets -D warnings` falha até fechar.
+
+**P1 — débito de perf (B.5, tua metade; enquanto estiver no bridge):**
+O bridge publica `painter.layers().clone()` todo frame (~L313) + monta
+`ui_snapshot()` (allocs de String) todo frame (~L302/361), incondicional enquanto
+Painter ativo. Gateie na mudança.
+- **Minha metade (eu landeio primeiro se quiser):** exponho
+  `PainterTool::layers_revision() -> u64` (bump em toda mutação do LayerStack) +
+  `active_color_srgb8()` accessor.
+- **Tua metade:** publica só quando `layers_revision` mudou; lê a cor pelo accessor
+  em vez de montar snapshot inteiro.
+
+**P2 — scaffold pra T3.8 (gestures, DEPOIS de T3.5-T3.7 — sem pressa):**
+Drag-reorder do layers panel: dispatch foundational + WidgetEvent, espelho do
+Hierarchy `find_hierarchy_drop` + `HierReparent` (em `interaction/dispatch/pointer.rs`).
+Preciso de um `find_painter_layer_drop` (hit-test da row arrastada → slot/grupo
+alvo) + um WidgetEvent `PainterLayerReorder { layer, new_parent, new_index }` que o
+tool consome. Os ↑↓ são o interim; o drag é o deliverable do T3.8.
+
+**P3 — enhancement opcional (melhora UX do T3.5+, NÃO é DoD):**
+Canal de publish de THUMBNAIL-pixels por layer (bridge → panel). Hoje o panel só
+recebe a ESTRUTURA do LayerStack, então as rows não mostram thumbnail real de
+raster/mask. Um canal publicando um RGBA pequeno downsampled por layer-id deixaria
+eu renderizar thumbnails de verdade (+ indicadores visuais de mask/clip). Baixa
+prioridade; sigo com rows structure-only enquanto isso.
+
+**Eu PAUSO aqui (decisão do Enio) e retomo T3.5 quando P0 (idealmente +P1) fechar.**
+P2/P3 podem landar async. Posso landar minha metade do P1 já, se ajudar — me diz.
+═══════════════════════════════════════════════════════════════════

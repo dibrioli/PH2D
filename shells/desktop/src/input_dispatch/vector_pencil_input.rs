@@ -27,7 +27,9 @@ use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
 use ph2d_editor::toast::Toast;
-use ph2d_tool_vector_pencil::{PencilStrokeOutcome, StrokeSample, VectorPencilTool};
+use ph2d_tool_vector_pencil::{
+    DEFAULT_MIN_SAMPLE_DISTANCE_PX, PencilStrokeOutcome, StrokeSample, VectorPencilTool,
+};
 
 impl App {
     /// `true` iff the Pencil tool is the active tool.
@@ -71,11 +73,19 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        // The near-duplicate reject radius is authored in screen pixels but
+        // applied against WORLD chord lengths (extend_stroke / decimate), so
+        // convert px→world at the current zoom (mirror of the Pen + Direct
+        // tolerance fix). Without this the raw 1.5px reads as 1.5 world units
+        // (~120 screen px at the default zoom) and a normal freehand stroke
+        // is filtered down to <2 knots → "too short" / a crude straight line.
+        let scale = (gfx.surface.size().height as f32) / gfx.camera.height_world.max(f32::EPSILON);
         if let Some(pencil) = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorPencilTool>())
         {
+            pencil.min_sample_distance_px = DEFAULT_MIN_SAMPLE_DISTANCE_PX / scale;
             pencil.begin_stroke(StrokeSample::point(world));
             return true;
         }

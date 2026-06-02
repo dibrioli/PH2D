@@ -14,7 +14,7 @@ use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
 use ph2d_editor::toast::Toast;
-use ph2d_tool_vector_pen::{PenClickOutcome, VectorPenTool};
+use ph2d_tool_vector_pen::{DEFAULT_CLOSE_PATH_TOLERANCE_PX, PenClickOutcome, VectorPenTool};
 
 impl App {
     /// Primary Down — adds a vertex / extends path / close-paths the
@@ -52,12 +52,23 @@ impl App {
         }
         let window_size = gfx.surface.size();
         let world = gfx.camera.screen_to_world((px, py), window_size);
+        // The close-path tolerance is authored in screen pixels but
+        // `nearest_vertex` compares WORLD distances, so convert px→world at
+        // the current zoom (k = px per world unit), mirroring
+        // `vector_direct_input.rs`. Without this the raw 12px reads as 12
+        // world units (~the whole viewport at the default zoom), so every
+        // click after the first snaps onto an existing vertex → the path
+        // closes prematurely (the "só desenha triângulos" symptom).
+        let scale = (window_size.height as f32) / gfx.camera.height_world.max(f32::EPSILON);
         let outcome = match gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorPenTool>())
         {
-            Some(pen) => pen.on_canvas_click(Vec2::new(world[0], world[1])),
+            Some(pen) => {
+                pen.close_path_tolerance_px = DEFAULT_CLOSE_PATH_TOLERANCE_PX / scale;
+                pen.on_canvas_click(Vec2::new(world[0], world[1]))
+            }
             None => return false,
         };
         // Surface a hint when the click did nothing actionable (vertex

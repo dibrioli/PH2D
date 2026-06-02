@@ -342,7 +342,9 @@ pub fn paint_top_bar(
     // is intentionally absent now — the engine's identity is carried
     // by the leftmost theme chip (also labelled "PH2D"). Leaving the
     // gap transparent also keeps the topbar's bg fully see-through.
-    let _ = x; // silence unused-after-removal
+    // (`x` now holds the left group's right edge — used to clamp the right
+    // group below so it can't overlap the left clusters when the bar
+    // overflows.)
 
     if image_tools_mode {
         // Mode on — replace the right half with the image-action row.
@@ -360,7 +362,14 @@ pub fn paint_top_bar(
         }
         right_w += cluster_width(c);
     }
-    let right_x = layout.top_bar.x + layout.top_bar.w - right_w;
+    // Right-align the right clusters — but clamp so the group never starts
+    // before the left group ends (`x` = left-group right edge + gap). When
+    // the bar overflows (too many clusters for the width), this stops the
+    // leftmost right clusters (the vector tool pills) from being painted
+    // under Save/Open/IMG — they stay on-screen + clickable; the rightmost
+    // clusters clip off the right edge instead (restored by the W2-close
+    // topbar UI pass). No-op when everything fits.
+    let right_x = (layout.top_bar.x + layout.top_bar.w - right_w).max(x);
     // Single agrupador backdrop spanning ALL right clusters (Enio
     // 2026-05-24: "Os componentes da direita apenas um fundo").
     if right_w > 0.0 {

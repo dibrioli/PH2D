@@ -66,6 +66,24 @@ impl App {
         {
             return;
         }
+        // Vector Select: Escape cancels an in-progress marquee + clears the
+        // selection (Select EDITS the selection, it never appends to the scene).
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.try_vector_select_escape()
+        {
+            return;
+        }
+        // Vector Direct-Select: Escape cancels an in-progress grab + clears the
+        // selection.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.try_vector_direct_escape()
+        {
+            return;
+        }
 
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused

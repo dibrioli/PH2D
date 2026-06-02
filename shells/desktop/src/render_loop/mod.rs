@@ -37,6 +37,7 @@ mod snapshots;
 mod upscale_bridge;
 mod vector_pen_bridge;
 mod vector_pencil_bridge;
+mod vector_selection_bridge;
 mod vector_shape_bridge;
 
 use crate::*;
@@ -1043,6 +1044,18 @@ impl crate::App {
                 camera,
                 window_size,
                 &mut self.committed_vector_pen_paths,
+                vector_scene,
+            );
+            // Vector Select / Direct-Select ⟷ shell overlay (T2.3). Pure
+            // feedback (never mutates the scene): selected-network outlines +
+            // vertex dots + the live marquee rect, read from the shared
+            // `vector_selection` + the active Select tool's marquee.
+            vector_selection_bridge::dispatch(
+                tools,
+                camera,
+                window_size,
+                &self.committed_vector_pen_paths,
+                &self.vector_selection,
                 vector_scene,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen

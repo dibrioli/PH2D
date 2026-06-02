@@ -51,8 +51,10 @@ mod gizmo_drag;
 mod keyboard;
 mod painter_input;
 pub(crate) mod protect_brush;
+mod vector_direct_input;
 mod vector_pen_input;
 mod vector_pencil_input;
+mod vector_select_input;
 mod vector_shape_input;
 
 impl App {
@@ -193,6 +195,16 @@ impl App {
         // every motion resizes the live preview. Early-return so it doesn't
         // pan / drive a gizmo. No-ops when no shape drag is active.
         if self.try_vector_shape_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Vector Select marquee (T2.3): grow the rubber-band while dragging.
+        // No-ops unless a marquee is open.
+        if self.try_vector_select_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Vector Direct-Select drag (T2.3): move the grabbed vertex / tangent
+        // (Alt breaks it). No-ops unless a grab is live.
+        if self.try_vector_direct_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -424,6 +436,31 @@ impl App {
             {
                 return;
             }
+            // Vector Select — Primary Down anchors a marquee; the CursorMoved
+            // drag grows it and the Up arm resolves click-vs-marquee. Off-canvas
+            // Down is silently consumed (Select owns the canvas click).
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_vector_select_pointer_down(evt.x, evt.y) =>
+            {
+                return;
+            }
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.vector_select_active_consume_canvas_click() =>
+            {
+                return;
+            }
+            // Vector Direct-Select — Primary Down grabs the nearest vertex /
+            // tangent; Move drags it, Up ends. Off-canvas Down is consumed.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_vector_direct_pointer_down(evt.x, evt.y) =>
+            {
+                return;
+            }
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.vector_direct_active_consume_canvas_click() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
                     && self.painter_active_consume_canvas_click() =>
@@ -440,6 +477,12 @@ impl App {
                 // Commit the shape (generate primitive → push). No-op when no
                 // shape drag is open.
                 self.try_vector_shape_pointer_up();
+                // Resolve a Select gesture (click vs marquee). No-op when no
+                // marquee is open.
+                self.try_vector_select_pointer_up();
+                // End a Direct-Select grab (the Move op stays logged for undo).
+                // No-op when no grab is live.
+                self.try_vector_direct_pointer_up();
             }
             _ => {}
         }

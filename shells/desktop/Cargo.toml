@@ -76,6 +76,15 @@ ph2d-tool-vector-pencil = { path = "../../crates/ph2d-tool-vector-pencil" }
 # Vector Shape — 5 primitives (rect/ellipse/polygon/star/spiral) via a panel
 # RadioGroup sub-mode picker (W2 T2.2). Drag-authored.
 ph2d-tool-vector-shape = { path = "../../crates/ph2d-tool-vector-shape" }
+# Vector Select + Direct-Select (W2 T2.3) — edit the committed scene + the
+# shared `VectorSelection`, not append. Downcast in vector_select_input.rs /
+# vector_direct_input.rs; overlay in vector_selection_bridge.rs.
+ph2d-tool-vector-select = { path = "../../crates/ph2d-tool-vector-select" }
+ph2d-tool-vector-direct = { path = "../../crates/ph2d-tool-vector-direct" }
+# VectorSelection (W2 T2.3) — the shared document selection held on `App` over
+# `committed_vector_pen_paths`. Most vector-doc types reach the shell via the
+# `ph2d-vector` umbrella re-export, but `VectorSelection` is not re-exported.
+ph2d-vector-doc = { path = "../../crates/ph2d-vector-doc" }
 # Make Square one-shot — the shell drain calls
 # `ph2d_tool_make_square::make_square` on the selected sprite's source
 # RGBA and swaps the texture (ADR-0040 T1.5: was reached via the

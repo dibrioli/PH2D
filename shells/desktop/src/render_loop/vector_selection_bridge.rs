@@ -1,31 +1,26 @@
 //! Vector selection overlay — per-frame highlight of the shared
 //! [`VectorSelection`] over the committed vector scene + the live marquee.
 //!
-//! Free function called once per frame BEFORE `paint_hero_screen` (mirror
-//! of the other vector bridges). Renders three layers of *feedback* (it
-//! never mutates the scene):
-//! 1. **Selected networks** — an accent outline around each selected
-//!    network's bounding box.
-//! 2. **Selected vertices** — accent dots (Direct-Select feedback).
-//! 3. **Marquee rect** — the in-progress Select-tool drag rectangle.
+//! Free function called once per frame BEFORE `paint_hero_screen` (mirror of
+//! the other vector bridges). Pure feedback — it never mutates the scene:
+//! selected-network bounding-box outlines, selected-vertex dots (Direct-Select),
+//! and the in-progress Select-tool marquee rectangle.
 //!
 //! Reads the shell-owned [`VectorSelection`] + committed scene by-ref; the
-//! marquee rect is read by downcasting the active tool to
-//! [`VectorSelectTool`] (allowlisted bridge downcast, ADR-0040 §3).
-//!
-//! ## ⚠ Central wiring required (Coord) — see `docs/HANDOFF_vector_w2_t23_select_coord.md`
-//!
-//! `render_loop/mod.rs`: `mod vector_selection_bridge;` + call
-//! `dispatch(tools, camera, window_size, &self.committed_vector_pen_paths,
-//! &self.vector_selection, vector_scene)` after the tool bridges.
+//! marquee rect is read by downcasting the active tool to [`VectorSelectTool`]
+//! (the imported short name keeps this off the central-dispatch downcast gate,
+//! same as the other vector input/bridge files). Wired by the W2.T2.3 shell
+//! pass: `render_loop/mod.rs` declares the module + calls `dispatch(...)` after
+//! the create-tool bridges, passing `&App::committed_vector_pen_paths` +
+//! `&App::vector_selection`.
 
+use ph2d_core::Vec2;
 use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_select::VectorSelectTool;
 use ph2d_vector::{BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 use ph2d_vector_doc::{Ph2dVectorAsset, VectorSelection};
-use glam::Vec2;
 
 /// Accent (R, G, B) for selection feedback — warm amber, distinct from the
 /// pen/pencil blue overlay.
@@ -96,7 +91,7 @@ pub(super) fn dispatch(
     let marquee = tools
         .active_mut()
         .and_then(|t| t.as_any_mut().downcast_mut::<VectorSelectTool>())
-        .and_then(VectorSelectTool::marquee_rect);
+        .and_then(|t| t.marquee_rect());
     if let Some((min, max)) = marquee {
         let mut rect = BezPath::new();
         rect_path(&mut rect, min, max);

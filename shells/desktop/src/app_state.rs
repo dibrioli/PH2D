@@ -460,6 +460,12 @@ pub(crate) struct App {
     /// (load-on-open + save-as), per AUDIT_vector_module_W1_results.md §6
     /// option (1).
     pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
+    /// W2.T2.3 — shared vector selection (network + vertex picks) over
+    /// `committed_vector_pen_paths`. Document state, NOT tool state: Select and
+    /// Direct-Select are two separate `Tool` instances in the registry, so the
+    /// selection can't live in either (the inactive one drops from dispatch). The
+    /// input handlers + the `vector_selection_bridge` overlay borrow it by-ref.
+    pub(crate) vector_selection: ph2d_vector_doc::VectorSelection,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

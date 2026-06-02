@@ -81,6 +81,26 @@ pub(crate) fn paint_layer_subtree(
             drag_rows,
         );
 
+        // T3.5: a layer's attached mask renders as an indented, selectable
+        // sub-row directly under it (one nesting level deeper).
+        if let Some(mask_id) = layer.mask {
+            let inverted = matches!(
+                stack.get(mask_id).map(|l| &l.kind),
+                Some(LayerKind::Mask(mk)) if mk.inverted
+            );
+            let mask_indent = (depth + 1) as f32 * LAYER_INDENT_STEP;
+            y = paint_mask_row(
+                ctx,
+                theme,
+                mask_id,
+                inverted,
+                active == Some(mask_id),
+                x + mask_indent,
+                (w - mask_indent).max(0.0),
+                y,
+            );
+        }
+
         if let LayerKind::Group(g) = &layer.kind
             && !g.collapsed
         {
@@ -288,6 +308,54 @@ fn paint_layer_row(
     );
 
     op_y + ROW_H_PX + Spacing::Sm.px()
+}
+
+/// Paint a layer's attached mask (§2.7) as an indented, selectable sub-row: a
+/// "Mask" label (+ "· Inverted") with the active accent outline. Selecting it
+/// routes through the normal Row path → the tool makes the mask the edit target
+/// (grayscale paint). Single line. Returns the next `y`.
+#[allow(clippy::too_many_arguments)]
+fn paint_mask_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    mask_id: LayerId,
+    inverted: bool,
+    is_active: bool,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let font = TypeToken::Base.px();
+    let row_rect = Rect::new(x, y, w, ROW_H_PX);
+    if is_active {
+        stroke_rounded_rect(
+            ctx.scene,
+            row_rect,
+            Radius::Sm.px(),
+            StrokeToken::Default.px(),
+            resolve(ColorToken::Accent, theme),
+        );
+    }
+    let label = if inverted { "Mask · Inverted" } else { "Mask" };
+    let label_x = x + Spacing::Sm.px();
+    let label_y = y + (ROW_H_PX - font) * 0.5;
+    let label_w = (w - Spacing::Sm.px() * 2.0).max(0.0);
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        label,
+        label_x,
+        label_y,
+        font,
+        label_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    // Selectable via the normal Row path (the tool's select_layer loads the
+    // mask's buffer + the brush paints it grayscale).
+    let row_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::Row);
+    register_button(ctx.host.store_mut(), row_id);
+    ctx.host.hit_index_mut().register(row_id, row_rect);
+    y + ROW_H_PX + Spacing::Xs.px()
 }
 
 /// Live drop indicator for an in-progress layer drag, painted on top of the

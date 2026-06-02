@@ -210,6 +210,14 @@ impl LayerStack {
         })
     }
 
+    /// `true` if `id` is a mask layer — owner-attached, not in the z-order, so
+    /// the panel excludes it from the draggable row-set (a mask row is
+    /// selectable but never drag-reparented).
+    #[must_use]
+    pub fn is_mask(&self, id: LayerId) -> bool {
+        matches!(self.get(id).map(|l| &l.kind), Some(LayerKind::Mask(_)))
+    }
+
     /// Set the primary selection. No-op if `id` is unknown.
     pub fn set_active(&mut self, id: LayerId) {
         if self.index_of(id).is_some() {

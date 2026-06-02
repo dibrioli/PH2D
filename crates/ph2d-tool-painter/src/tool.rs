@@ -1488,6 +1488,11 @@ impl PainterTool {
         let Some(d) = self.decode_layer_widget(dragged).map(|(l, _)| l) else {
             return;
         };
+        // Masks are owner-attached (not in the z-order) — never reparent one
+        // (the row is selectable, but dragging it must not touch the stack).
+        if matches!(self.layers.get(d).map(|l| &l.kind), Some(LayerKind::Mask(_))) {
+            return;
+        }
         let moved = match drop {
             PainterLayerDrop::Inside(t) => match self.decode_layer_widget(t) {
                 // Middle band: drop INTO a group folder. If the target isn't a
@@ -3286,6 +3291,24 @@ mod tests {
         // No source / no active raster → no-op.
         let mut t = PainterTool::default();
         assert!(t.add_mask_to_active().is_none(), "no source = no mask");
+    }
+
+    #[test]
+    fn handle_layer_reparent_ignores_a_dragged_mask() {
+        use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+        use ph2d_editor_core::interaction::PainterLayerDrop;
+        let row = |l: RtLayerId| painter_layer_widget_id(l.0, PainterLayerWidget::Row);
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let mask = t.add_mask_to_active().unwrap(); // mask on l2 (owner-attached)
+        let before = t.layers.root().to_vec();
+        let base = *before.last().unwrap();
+        // Dragging the mask must be a no-op — it never enters the z-order.
+        t.handle_layer_reparent(row(mask), PainterLayerDrop::Inside(row(base)));
+        assert_eq!(t.layers.root(), before.as_slice(), "mask drag is a no-op");
+        assert!(!t.layers.root().contains(&mask));
+        assert_eq!(t.layers.get(l2).unwrap().mask, Some(mask), "mask still attached");
     }
 
     #[test]

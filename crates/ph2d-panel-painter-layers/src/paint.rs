@@ -143,6 +143,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         Some(stack) if !stack.is_empty() => {
             painter_row_ids = stack
                 .all_ids()
+                .filter(|&l| !stack.is_mask(l)) // masks are selectable but not draggable
                 .map(|l| painter_layer_widget_id(l.0, PainterLayerWidget::Row))
                 .collect();
             let active = stack.active();

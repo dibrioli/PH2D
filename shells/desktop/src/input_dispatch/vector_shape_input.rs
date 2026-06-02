@@ -18,7 +18,7 @@ use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
 use ph2d_editor::toast::Toast;
-use ph2d_tool_vector_shape::{ShapeOutcome, VectorShapeTool};
+use ph2d_tool_vector_shape::{ShapeKind, ShapeOutcome, VectorShapeTool};
 
 impl App {
     fn vector_shape_is_active(&self) -> bool {
@@ -150,6 +150,35 @@ impl App {
             if let Some(gfx) = self.gfx.as_mut() {
                 gfx.toasts.push(Toast::info("Vector scene cleared"));
             }
+            return true;
+        }
+        false
+    }
+
+    /// Pick the active sub-mode by [`ShapeKind::ALL`] index (0-4) — driven by
+    /// the number-key hotkeys 1-5 while Shape is active. Returns `true`
+    /// (consumes the key) iff Shape is active and `index` is valid. This is
+    /// the functional path to all five sub-modes; the on-screen picker is the
+    /// end-of-implementation chrome polish (the retired floating panel is not
+    /// revived — ADR/decision 2026-05-17).
+    pub(crate) fn try_vector_shape_set_kind(&mut self, index: usize) -> bool {
+        if !self.vector_shape_is_active() {
+            return false;
+        }
+        let Some(&kind) = ShapeKind::ALL.get(index) else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        if let Some(shape) = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<VectorShapeTool>())
+        {
+            shape.set_kind(kind);
+            gfx.toasts
+                .push(Toast::info(format!("Shape: {}", kind.value())));
             return true;
         }
         false

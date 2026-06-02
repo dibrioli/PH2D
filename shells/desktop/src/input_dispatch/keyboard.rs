@@ -85,6 +85,27 @@ impl App {
             return;
         }
 
+        // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
+        // Polygon / Star / Spiral) while Shape is active — the functional
+        // selector until the on-screen picker lands in the end-of-impl chrome
+        // pass. Consumed only when Shape is active, so digits otherwise fall
+        // through to the hero pipeline / demo controls below.
+        let shape_kind_index = match physical_key {
+            PhysicalKey::Code(KeyCode::Digit1) => Some(0),
+            PhysicalKey::Code(KeyCode::Digit2) => Some(1),
+            PhysicalKey::Code(KeyCode::Digit3) => Some(2),
+            PhysicalKey::Code(KeyCode::Digit4) => Some(3),
+            PhysicalKey::Code(KeyCode::Digit5) => Some(4),
+            _ => None,
+        };
+        if state == ElementState::Pressed
+            && !repeat
+            && let Some(index) = shape_kind_index
+            && self.try_vector_shape_set_kind(index)
+        {
+            return;
+        }
+
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused
         // widget.

@@ -381,6 +381,12 @@ pub enum PainterLayerWidget {
     MoveUp,
     /// The move-down (↓) reorder button — moves the layer toward the back.
     MoveDown,
+    /// (Mask rows only) the Invert toggle — flips the mask's `inverted` flag
+    /// (§2.7); the compositor already honors it (`1 - value`).
+    MaskInvert,
+    /// (Mask rows only) the Apply button — destructively bakes the mask into
+    /// the parent layer's alpha and removes the mask (§2.7).
+    MaskApply,
 }
 
 impl PainterLayerWidget {
@@ -396,11 +402,13 @@ impl PainterLayerWidget {
             Self::Blend => "blend",
             Self::MoveUp => "move_up",
             Self::MoveDown => "move_down",
+            Self::MaskInvert => "mask_invert",
+            Self::MaskApply => "mask_apply",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 7] = [
+    pub const ALL: [PainterLayerWidget; 9] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -408,6 +416,8 @@ impl PainterLayerWidget {
         Self::Blend,
         Self::MoveUp,
         Self::MoveDown,
+        Self::MaskInvert,
+        Self::MaskApply,
     ];
 }
 

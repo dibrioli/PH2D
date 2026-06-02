@@ -147,6 +147,9 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
                 .map(|l| painter_layer_widget_id(l.0, PainterLayerWidget::Row))
                 .collect();
             let active = stack.active();
+            // W3 multi-select: the rows to highlight (active = strong outline,
+            // the rest = soft wash). Published by the bridge each frame.
+            let selected = state::current_selection();
             // Full-row drop bands collected during the walk (id, full-row rect,
             // is_group) so the indicator below mirrors `find_painter_layer_drop`
             // exactly (same rows, same 30/40/30) — WYSIWYG drop.
@@ -157,6 +160,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
                 &stack,
                 stack.root(),
                 active,
+                &selected,
                 0,
                 rect.x + PANEL_HEAD_PAD,
                 content_w,

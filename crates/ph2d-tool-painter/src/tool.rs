@@ -220,6 +220,44 @@ use std::collections::BTreeMap;
 // when this is false to avoid wasting a new Individual texture + undo
 // snapshot on identity-baking the source pixels.
 
+thread_local! {
+    // Pending Cmd/Shift modifiers for layer-row selects, KEYED BY the row's
+    // widget NodeId. Written by the layers panel apply_event (the only place
+    // that can read host.store().cmd_held / shift_held) right before it forwards
+    // a row Click, and read + removed by handle_panel_event keyed by the SAME
+    // click NodeId. The frozen PanelEvent (4 variants) cannot carry the bits and
+    // handle_panel_event gets no store, so this side channel bridges the gap.
+    //
+    // Keyed by NodeId (not a single slot) on purpose: the panel writes
+    // SYNCHRONOUSLY during apply_event, but the matching ToolPanelEvent::Click
+    // is queued on the action bus and drained later, once per frame. The bus is
+    // a FIFO that can hold MULTIPLE row clicks in one drain batch; a single
+    // shared slot would let a later click's modifiers clobber an earlier,
+    // still-undrained click. Keying by the click's own NodeId keeps each click's
+    // modifiers with it. Bounded by the rows clicked between drains; entries are
+    // removed on consume (a rare failed-decode leaves one stale entry, harmless
+    // and overwritten on the next click of that exact row).
+    static PENDING_SELECT_MODS:
+        std::cell::RefCell<std::collections::BTreeMap<ph2d_a11y::NodeId, (bool, bool)>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// Stash the Cmd/Ctrl + Shift state for the row-select click on `row_id`.
+/// Called by the layers panel `apply_event` immediately before it forwards that
+/// row's `Click` (it is the only side with `host.store()` access to the live
+/// modifier state). Consumed by [`PainterTool::handle_panel_event`] on the
+/// matching click. See `PENDING_SELECT_MODS` for why this is keyed by id.
+pub fn set_pending_select_mods(row_id: ph2d_a11y::NodeId, cmd: bool, shift: bool) {
+    PENDING_SELECT_MODS.with(|m| {
+        m.borrow_mut().insert(row_id, (cmd, shift));
+    });
+}
+
+/// Take + remove the pending modifiers for `row_id` (default = no modifiers).
+fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
+    PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
+}
+
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -431,6 +469,16 @@ pub struct PainterTool {
     /// O(N×W×H) per stroke frame. Cleared by `invalidate_composite` (a
     /// structural edit forces a full recompose) and consumed each drain.
     dirty_rect: Option<Region>,
+    /// **W3 multi-selection.** The set of layer rows highlighted in the panel.
+    /// A plain row click collapses it to one layer; Cmd/Ctrl-click toggles a
+    /// member; Shift-click selects a contiguous run along the visible row
+    /// order; `group_selected` wraps the whole set in a new group. The active
+    /// (paint-target) layer is conceptually always a member — `selection()`
+    /// folds it in for the panel highlight publish. The authoritative copy
+    /// lives here (the tool owns layer structure); the panel renders a per-
+    /// frame snapshot (bridge `set_current_selection`). Masks are never
+    /// members (owner-attached, not in the z-order run).
+    selection: std::collections::BTreeSet<RtLayerId>,
 }
 
 impl Default for PainterTool {
@@ -480,6 +528,7 @@ impl Default for PainterTool {
             undo_redo_records: Vec::new(),
             dock_shows_layers: false,
             dirty_rect: None,
+            selection: std::collections::BTreeSet::new(),
         }
     }
 }
@@ -1471,6 +1520,9 @@ impl PainterTool {
             return None;
         }
         self.layers.set_active(active); // keep painting the layer, not the group
+        self.selection.clear();
+        self.selection.insert(g);
+        self.selection.insert(active);
         self.invalidate_composite();
         Some(g)
     }
@@ -1560,6 +1612,7 @@ impl PainterTool {
                 .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
             self.canvas_rgba = Arc::new(buf);
         }
+        self.prune_selection(); // drop the deleted subtree + mask from the highlight
         self.reset_undo_after_layer_switch();
         self.invalidate_composite();
         true
@@ -1588,6 +1641,7 @@ impl PainterTool {
         self.images.remove(&new_id); // active lives in canvas_rgba
         self.canvas_rgba = Arc::new(src_pixels);
         self.reset_undo_after_layer_switch();
+        self.reset_selection_to(new_id);
         self.invalidate_composite();
         Some(new_id)
     }
@@ -1632,6 +1686,7 @@ impl PainterTool {
         self.images.remove(&id); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]);
         self.reset_undo_after_layer_switch();
+        self.reset_selection_to(id);
         self.invalidate_composite();
         Some(id)
     }
@@ -1659,8 +1714,96 @@ impl PainterTool {
         self.layers.set_active(mask);
         self.sync_mask_brush_color(); // entering a mask → black brush (hide)
         self.reset_undo_after_layer_switch();
+        self.reset_selection_to(mask);
         self.invalidate_composite();
         Some(mask)
+    }
+
+    /// Toggle a mask's `Invert` flag (§2.7). The live compositor already honors
+    /// it (`1 - value`), so this just flips the flag + invalidates the
+    /// composite. No-op mid-stroke or if `mask_id` is not a mask.
+    pub fn toggle_mask_inverted(&mut self, mask_id: RtLayerId) {
+        if self.stroke_active {
+            return;
+        }
+        let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
+            Some(LayerKind::Mask(m)) => m.inverted,
+            _ => return,
+        };
+        self.layers.set_mask_inverted(mask_id, !inverted);
+        self.invalidate_composite();
+    }
+
+    /// **Apply mask (§2.7) — destructive bake.** Multiply each parent texel's
+    /// straight alpha by the mask coverage (Rec.601 luma, `1 - v` when the mask
+    /// is inverted — EXACTLY the live compositor's `mask_value` path, so the
+    /// baked result equals what was previewed), then remove the mask. The parent
+    /// becomes the active edit target carrying the baked pixels (mirror of mask
+    /// deletion). No-op (`false`) mid-stroke, if `mask_id` is not a mask, its
+    /// parent is gone, or a buffer is missing/short.
+    pub fn apply_mask(&mut self, mask_id: RtLayerId) -> bool {
+        if self.stroke_active {
+            return false;
+        }
+        // Resolve the mask + its invert flag, then the owning parent raster
+        // (the layer whose `.mask == Some(mask_id)`).
+        let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
+            Some(LayerKind::Mask(m)) => m.inverted,
+            _ => return false,
+        };
+        let Some(parent) = self
+            .layers
+            .all_ids()
+            .find(|&p| self.layers.get(p).and_then(|l| l.mask) == Some(mask_id))
+        else {
+            return false;
+        };
+        // Flush the live active buffer so BOTH parent + mask pixels are in
+        // `images` regardless of which (if either) is currently active.
+        self.flush_active_to_images();
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let Some(mask_px) = self.images.get(&mask_id).map(|img| img.rgba8.clone()) else {
+            return false;
+        };
+        let Some(parent_img) = self.images.get_mut(&parent) else {
+            return false;
+        };
+        if parent_img.rgba8.len() < n * 4 || mask_px.len() < n * 4 {
+            return false; // degenerate buffers — refuse rather than index OOB
+        }
+        for idx in 0..n {
+            let v = crate::compositor::mask_value(&mask_px, idx);
+            let cov = if inverted { 1.0 - v } else { v };
+            let a = parent_img.rgba8[idx * 4 + 3] as f32;
+            parent_img.rgba8[idx * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
+        }
+        // Remove the mask (this also scrubs `parent.mask` back to None + repoints
+        // active off the mask) and drop its now-baked buffer.
+        let was_active = self.layers.active();
+        self.layers.remove(mask_id);
+        self.images.remove(&mask_id);
+        // The parent takes over as the active edit target iff the mask (or
+        // nothing) was active; an unrelated active layer is left untouched.
+        let new_active = match was_active {
+            Some(a) if a == mask_id => parent,
+            Some(a) => a,
+            None => parent,
+        };
+        self.layers.set_active(new_active);
+        // Reload `canvas_rgba` from `images[new_active]` (the baked parent when
+        // `new_active == parent`), restoring the "active not in images" invariant.
+        let buf = self
+            .images
+            .remove(&new_active)
+            .map(|img| img.rgba8)
+            .unwrap_or_else(|| vec![0u8; n * 4]);
+        self.canvas_rgba = Arc::new(buf);
+        self.sync_mask_brush_color(); // leaving the mask → restore the real color
+        self.reset_undo_after_layer_switch();
+        self.reset_selection_to(new_active);
+        self.invalidate_composite();
+        true
     }
 
     /// `true` when the active edit target is a grayscale mask.
@@ -1721,13 +1864,55 @@ impl PainterTool {
         }
     }
 
-    /// Make `id` the active layer: flush the current active's pixels to
+    /// The first raster layer (depth-first pre-order) inside group `id`, or
+    /// `None` for an empty group / a group containing only groups. Lets
+    /// activating a group "enter" its top paintable layer (a group itself has no
+    /// pixel buffer). Masks are owner-attached (not in `children`), so this only
+    /// ever returns a raster.
+    fn first_paintable_descendant(&self, id: RtLayerId) -> Option<RtLayerId> {
+        let children = match self.layers.get(id).map(|l| &l.kind) {
+            Some(LayerKind::Group(g)) => g.children.clone(),
+            _ => return None,
+        };
+        for child in children {
+            match self.layers.get(child).map(|l| &l.kind) {
+                Some(LayerKind::Raster(_)) => return Some(child),
+                Some(LayerKind::Group(_)) => {
+                    if let Some(found) = self.first_paintable_descendant(child) {
+                        return Some(found);
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// Make `id` the active edit target: flush the current active's pixels to
     /// `images`, load `id`'s pixels into `canvas_rgba` (transparent if it has
-    /// none yet). No-op mid-stroke, if `id` is already active, or unknown.
-    pub fn select_layer(&mut self, id: RtLayerId) {
-        if self.stroke_active || self.layers.active() == Some(id) || self.layers.get(id).is_none() {
+    /// none yet), swap the mask brush color, reset undo, invalidate. No buffer
+    /// work if `id` is already active. Shared by `select_layer` / the multi-
+    /// select `select_single` / `select_additive` / `select_range`. Caller owns
+    /// the `selection` set bookkeeping. A Group id is resolved to its first
+    /// paintable descendant (a group can never be the paint target).
+    fn set_active_layer(&mut self, id: RtLayerId) {
+        // A Group has NO pixel buffer — making it the paint target would load a
+        // throwaway transparent `canvas_rgba` (the composite never reads it) and
+        // silently swallow strokes. Resolve a group to its first paintable
+        // descendant so clicking a group "enters" it; an empty group (or unknown
+        // id) leaves the active target unchanged.
+        let target = match self.layers.get(id).map(|l| &l.kind) {
+            Some(LayerKind::Group(_)) => match self.first_paintable_descendant(id) {
+                Some(t) => t,
+                None => return,
+            },
+            Some(_) => id,
+            None => return,
+        };
+        if self.layers.active() == Some(target) {
             return;
         }
+        let id = target;
         self.flush_active_to_images();
         let (w, h) = self.source_size;
         let buf = self
@@ -1740,6 +1925,171 @@ impl PainterTool {
         self.sync_mask_brush_color(); // mask ↔ normal layer: swap to/from black
         self.reset_undo_after_layer_switch();
         self.invalidate_composite();
+    }
+
+    /// Collapse the multi-selection to a single layer (selection bookkeeping
+    /// only — does NOT touch the active edit target). Called by the structural
+    /// ops (add / duplicate) that already set the active layer themselves, so a
+    /// stale multi-selection does not linger as a phantom highlight.
+    fn reset_selection_to(&mut self, id: RtLayerId) {
+        self.selection.clear();
+        self.selection.insert(id);
+    }
+
+    /// Drop any selection members that no longer exist (after a delete/remove).
+    fn prune_selection(&mut self) {
+        self.selection.retain(|id| self.layers.get(*id).is_some());
+    }
+
+    /// Make `id` the active layer and collapse the multi-selection to it (a
+    /// plain row click). No-op mid-stroke or unknown id. (Kept under the
+    /// historic name; callers that just want a single active layer still work.)
+    pub fn select_layer(&mut self, id: RtLayerId) {
+        self.select_single(id);
+    }
+
+    /// Plain row click — replace the selection with `id` and make it active.
+    /// No-op mid-stroke or for an unknown id.
+    pub fn select_single(&mut self, id: RtLayerId) {
+        if self.stroke_active || self.layers.get(id).is_none() {
+            return;
+        }
+        self.set_active_layer(id);
+        self.selection.clear();
+        self.selection.insert(id);
+    }
+
+    /// Cmd/Ctrl-click — toggle `id` in the selection. Adding it makes it the
+    /// active edit target; removing the active member repoints active to
+    /// another member. Never empties the selection (a toggle-off of the lone
+    /// member is ignored). No-op mid-stroke or for an unknown id.
+    pub fn select_additive(&mut self, id: RtLayerId) {
+        if self.stroke_active || self.layers.get(id).is_none() {
+            return;
+        }
+        // The current active is always a selected row — fold it in so the FIRST
+        // Cmd-click extends the active layer rather than replacing it.
+        if let Some(a) = self.layers.active() {
+            self.selection.insert(a);
+        }
+        if self.selection.contains(&id) {
+            if self.selection.len() == 1 {
+                return; // keep at least one member selected
+            }
+            self.selection.remove(&id);
+            if self.layers.active() == Some(id)
+                && let Some(&next) = self.selection.iter().next()
+            {
+                self.set_active_layer(next);
+            }
+        } else {
+            self.selection.insert(id);
+            self.set_active_layer(id);
+        }
+    }
+
+    /// Shift-click — select the contiguous run of layers between the current
+    /// active (anchor) and `id` along the visible row order, and make `id`
+    /// active. Falls back to `select_single` if either endpoint is not in the
+    /// visible z-order run (e.g. a mask sub-row, or no active anchor). No-op
+    /// mid-stroke or for an unknown id.
+    pub fn select_range(&mut self, id: RtLayerId) {
+        if self.stroke_active || self.layers.get(id).is_none() {
+            return;
+        }
+        let order = self.visible_row_order();
+        let bi = order.iter().position(|&x| x == id);
+        let ai = self
+            .layers
+            .active()
+            .and_then(|a| order.iter().position(|&x| x == a));
+        match (ai, bi) {
+            (Some(ai), Some(bi)) => {
+                let (lo, hi) = if ai <= bi { (ai, bi) } else { (bi, ai) };
+                self.selection.clear();
+                self.selection.extend(order[lo..=hi].iter().copied());
+                self.set_active_layer(id);
+            }
+            _ => self.select_single(id),
+        }
+    }
+
+    /// The visible layer rows in panel order (top-to-bottom pre-order): each
+    /// root entry, descending into non-collapsed groups. Masks are owner-
+    /// attached sub-rows (not in the z-order) and are excluded — they are not
+    /// range-selectable or groupable. Drives `select_range` + `group_selected`.
+    fn visible_row_order(&self) -> Vec<RtLayerId> {
+        fn walk(stack: &LayerStack, ids: &[RtLayerId], out: &mut Vec<RtLayerId>) {
+            for &id in ids {
+                out.push(id);
+                if let Some(LayerKind::Group(g)) = stack.get(id).map(|l| &l.kind)
+                    && !g.collapsed
+                {
+                    walk(stack, &g.children, out);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(&self.layers, self.layers.root(), &mut out);
+        out
+    }
+
+    /// The current multi-selection folded with the active layer — the set of
+    /// rows the panel highlights. Published each frame by the bridge
+    /// (`set_current_selection`). Always includes the active layer (so a fresh
+    /// tool with an empty `selection` still highlights its active row).
+    #[must_use]
+    pub fn selection(&self) -> std::collections::BTreeSet<RtLayerId> {
+        let mut s = self.selection.clone();
+        if let Some(a) = self.layers.active() {
+            s.insert(a);
+        }
+        s
+    }
+
+    /// Wrap ALL selected layers in a new group (multi-select Group). Creates a
+    /// group, moves every selected non-base layer into it (in visible z-order,
+    /// skipping the base sprite and anything the depth/cycle guards reject), and
+    /// keeps the current active layer as the edit target (it is reparented, not
+    /// removed, so it stays valid + paintable). The selection collapses to the
+    /// new group. Falls back to `group_active` (the interim single-layer wrap)
+    /// when fewer than two layers are selected. No-op (`None`) mid-stroke or if
+    /// the group could not be created / nothing could be nested.
+    pub fn group_selected(&mut self) -> Option<RtLayerId> {
+        if self.stroke_active {
+            return None;
+        }
+        // Collect selected layers in stable visible order; the base sprite
+        // (pinned at root bottom) is never groupable.
+        let base = self.layers.root().last().copied();
+        let targets: Vec<RtLayerId> = self
+            .visible_row_order()
+            .into_iter()
+            .filter(|id| self.selection.contains(id) && Some(*id) != base)
+            .collect();
+        if targets.len() < 2 {
+            return self.group_active();
+        }
+        let g = self.layers.add_group("Group")?;
+        let mut moved_any = false;
+        for &id in &targets {
+            if self.layers.move_into_group(id, g) {
+                moved_any = true;
+            }
+        }
+        if !moved_any {
+            self.layers.remove(g); // could not nest anything — drop the empty group
+            return None;
+        }
+        // Active is unchanged by grouping (its layer was reparented, not moved
+        // out of focus). Collapse the selection to the new group for a clear cue.
+        self.selection.clear();
+        self.selection.insert(g);
+        if let Some(a) = self.layers.active() {
+            self.selection.insert(a);
+        }
+        self.invalidate_composite();
+        Some(g)
     }
 
     /// Move a layer one step toward the FRONT (top of z-order) — layers panel
@@ -2281,7 +2631,7 @@ impl Tool for PainterTool {
                 }
             }
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
-                self.group_active();
+                self.group_selected();
             }
             // ── Modifier toolbar (acts on the ACTIVE layer) ────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
@@ -2314,13 +2664,31 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) => {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
-                        PainterLayerWidget::Row => self.select_layer(layer),
+                        // Multi-select: the panel stashed the Cmd/Shift state for
+                        // this row click (frozen PanelEvent + store-less
+                        // handle_panel_event can not carry it). Shift = range,
+                        // Cmd/Ctrl = toggle additive, plain = single.
+                        PainterLayerWidget::Row => {
+                            let (cmd, shift) = take_pending_select_mods(id);
+                            if shift {
+                                self.select_range(layer);
+                            } else if cmd {
+                                self.select_additive(layer);
+                            } else {
+                                self.select_single(layer);
+                            }
+                        }
                         PainterLayerWidget::Visibility => {
                             let now = self.layers.get(layer).map(|l| l.visible).unwrap_or(true);
                             self.set_layer_visible(layer, !now);
                         }
                         PainterLayerWidget::MoveUp => self.move_layer_up(layer),
                         PainterLayerWidget::MoveDown => self.move_layer_down(layer),
+                        // Mask row affordances (§2.7).
+                        PainterLayerWidget::MaskInvert => self.toggle_mask_inverted(layer),
+                        PainterLayerWidget::MaskApply => {
+                            self.apply_mask(layer);
+                        }
                         // Opacity slider/chip emit SetValue; Blend emits
                         // SelectOption — neither arrives as a Click.
                         _ => {}
@@ -4236,5 +4604,216 @@ mod tests {
                 stored.h
             );
         }
+    }
+
+    // ── W3 multi-selection ────────────────────────────────────────────────
+
+    #[test]
+    fn select_additive_toggles_selection_membership() {
+        // Cmd/Ctrl-click extends the selection, then toggles a member back out,
+        // repointing the active edit target to a remaining member.
+        use std::collections::BTreeSet;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base = Layer 1
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap(); // active = L3
+        assert_eq!(t.selection(), BTreeSet::from([l3]));
+        t.select_additive(l2); // extend: {L3, L2}, active = L2
+        assert_eq!(t.layers.active(), Some(l2));
+        assert_eq!(t.selection(), BTreeSet::from([l2, l3]));
+        t.select_additive(l2); // toggle L2 out: {L3}, active repointed to L3
+        assert_eq!(t.selection(), BTreeSet::from([l3]));
+        assert_eq!(t.layers.active(), Some(l3));
+    }
+
+    #[test]
+    fn select_additive_never_empties_the_selection() {
+        use std::collections::BTreeSet;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap(); // active = L2, selection = {L2}
+        t.select_additive(l2); // toggling the lone member is ignored
+        assert_eq!(t.selection(), BTreeSet::from([l2]));
+        assert_eq!(t.layers.active(), Some(l2));
+    }
+
+    #[test]
+    fn select_range_selects_the_contiguous_run() {
+        // Shift-click selects every row between the active anchor and the click
+        // along the visible order (newest on top): [L4, L3, L2, base].
+        use std::collections::BTreeSet;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap();
+        let l4 = t.add_raster_layer("L4").unwrap(); // active anchor = L4 (top)
+        t.select_range(l2); // anchor L4 .. L2 → {L4, L3, L2}
+        assert_eq!(t.selection(), BTreeSet::from([l2, l3, l4]));
+        assert_eq!(t.layers.active(), Some(l2));
+    }
+
+    #[test]
+    fn group_selected_wraps_every_selected_layer() {
+        use std::collections::BTreeSet;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base (root bottom)
+        let base = t.layers.root().last().copied().unwrap();
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap(); // active = L3
+        t.select_additive(l2); // selection = {L3, L2}
+        let g = t.group_selected().expect("two selected layers group");
+        // The base sprite stays pinned at root bottom.
+        assert_eq!(t.layers.root().last(), Some(&base));
+        // Both selected layers are now children of the new group.
+        let children: BTreeSet<_> = match &t.layers.get(g).unwrap().kind {
+            LayerKind::Group(gl) => gl.children.iter().copied().collect(),
+            _ => panic!("group_selected must create a group"),
+        };
+        assert_eq!(children, BTreeSet::from([l2, l3]));
+        // Selection collapses to the new group.
+        assert!(t.selection().contains(&g));
+    }
+
+    #[test]
+    fn group_selected_single_falls_back_to_group_active() {
+        // Fewer than two selected → the interim single-layer wrap (group_active).
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap(); // active = L2, selection = {L2}
+        let g = t
+            .group_selected()
+            .expect("single selection wraps the active layer");
+        let children = match &t.layers.get(g).unwrap().kind {
+            LayerKind::Group(gl) => gl.children.clone(),
+            _ => panic!("expected a group"),
+        };
+        assert_eq!(children, vec![l2]);
+    }
+
+    #[test]
+    fn delete_layer_prunes_the_selection() {
+        // A deleted layer must not linger as a phantom highlight.
+        use std::collections::BTreeSet;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let l3 = t.add_raster_layer("L3").unwrap();
+        t.select_additive(l2); // selection = {L3, L2}
+        assert_eq!(t.selection(), BTreeSet::from([l2, l3]));
+        t.delete_layer(l2);
+        assert!(
+            !t.selection().contains(&l2),
+            "deleted layer pruned from selection"
+        );
+    }
+
+    // ── W3 mask Invert / Apply (§2.7) ─────────────────────────────────────
+
+    #[test]
+    fn apply_mask_black_bakes_parent_alpha_to_zero() {
+        // A fully black mask, applied, multiplies the parent's alpha to 0 — the
+        // SAME coverage the live compositor previewed (preview ≡ Apply).
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2); // base red
+        let l2 = t.add_raster_layer("L2").unwrap(); // active, transparent
+        {
+            let c = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+            for px in c.chunks_exact_mut(4) {
+                px.copy_from_slice(&[10, 20, 30, 255]); // opaque content
+            }
+        }
+        let mask = t.add_mask_to_active().unwrap(); // active = mask (white)
+        {
+            let c = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+            for px in c.chunks_exact_mut(4) {
+                px.copy_from_slice(&[0, 0, 0, 255]); // paint the mask black (hide)
+            }
+        }
+        assert!(t.apply_mask(mask), "apply bakes + removes the mask");
+        assert_eq!(t.layers.active(), Some(l2), "parent becomes the edit target");
+        assert!(t.layers.get(mask).is_none(), "mask layer removed");
+        assert_eq!(
+            t.layers.get(l2).unwrap().mask,
+            None,
+            "parent mask reference cleared"
+        );
+        assert!(
+            t.canvas_rgba.chunks_exact(4).all(|px| px[3] == 0),
+            "black mask baked the parent alpha to 0"
+        );
+    }
+
+    #[test]
+    fn apply_mask_white_preserves_parent_alpha() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2);
+        t.add_raster_layer("L2").unwrap();
+        {
+            let c = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+            for px in c.chunks_exact_mut(4) {
+                px.copy_from_slice(&[10, 20, 30, 200]);
+            }
+        }
+        let mask = t.add_mask_to_active().unwrap(); // white mask = full visible
+        assert!(t.apply_mask(mask));
+        assert!(
+            t.canvas_rgba.chunks_exact(4).all(|px| px[3] == 200),
+            "white mask preserves the parent alpha"
+        );
+    }
+
+    #[test]
+    fn toggle_mask_inverted_flips_the_flag() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        t.add_raster_layer("L2").unwrap();
+        let mask = t.add_mask_to_active().unwrap();
+        let is_inv = |t: &PainterTool, id: RtLayerId| {
+            matches!(t.layers.get(id).map(|l| &l.kind), Some(LayerKind::Mask(m)) if m.inverted)
+        };
+        assert!(!is_inv(&t, mask));
+        t.toggle_mask_inverted(mask);
+        assert!(is_inv(&t, mask));
+        t.toggle_mask_inverted(mask);
+        assert!(!is_inv(&t, mask));
+    }
+
+    #[test]
+    fn selecting_a_group_enters_its_first_paintable_layer() {
+        // A group has no pixel buffer; selecting it must NOT make the group the
+        // paint target (that would blank the canvas + swallow strokes). It
+        // resolves to the group's first paintable descendant instead.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2); // base
+        let l2 = t.add_raster_layer("L2").unwrap();
+        let _l3 = t.add_raster_layer("L3").unwrap(); // active = L3
+        t.select_additive(l2); // selection = {L3, L2}
+        let g = t.group_selected().unwrap(); // wraps L2 + L3 into g
+        t.select_single(g); // click the group row
+        assert_ne!(t.layers.active(), Some(g), "a group is never the paint target");
+        assert!(
+            matches!(
+                t.layers
+                    .active()
+                    .and_then(|a| t.layers.get(a))
+                    .map(|l| &l.kind),
+                Some(LayerKind::Raster(_))
+            ),
+            "active resolves to a raster inside the group"
+        );
+    }
+
+    #[test]
+    fn selecting_an_empty_group_keeps_the_current_active() {
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [0, 0, 0, 255]), 2, 2);
+        let l2 = t.add_raster_layer("L2").unwrap(); // active = L2
+        let g = t.add_group().unwrap(); // empty group at root top
+        t.select_single(g);
+        assert_eq!(
+            t.layers.active(),
+            Some(l2),
+            "an empty group does not steal the paint target"
+        );
     }
 }

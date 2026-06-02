@@ -13,10 +13,14 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Slider, SliderOrientation, SliderState, paint_slider};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, ButtonState, Slider, SliderOrientation, SliderState, paint_button,
+    paint_slider,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
+use std::collections::BTreeSet;
 
 // Per-row layout metrics. Component-specific layout (not global Spacing steps),
 // hence the single-line LITERAL-PX-OK justifications.
@@ -29,6 +33,8 @@ const DROP_BAR_H: f32 = 2.0; // LITERAL-PX-OK: W3.T3.8 drag drop-indicator bar t
 const GHOST_PAD: f32 = 7.0; // LITERAL-PX-OK: floating drag-ghost pill horizontal text padding
 const DROP_BAND_TOP: f32 = 0.3; // LITERAL-PX-OK: top 30% = insert-before band (mirror of find_painter_layer_drop)
 const DROP_BAND_BOT: f32 = 0.7; // LITERAL-PX-OK: bottom 30% = insert-after band (mirror of find_painter_layer_drop)
+const MASK_INV_W: f32 = 34.0; // LITERAL-PX-OK: mask-row "Inv" toggle button width
+const MASK_APPLY_W: f32 = 48.0; // LITERAL-PX-OK: mask-row "Apply" button width
 
 /// Paint `ids` (top-to-bottom) as interactive rows, recursing into
 /// non-collapsed groups (indented). Returns the `y` advanced past the rows.
@@ -39,6 +45,7 @@ pub(crate) fn paint_layer_subtree(
     stack: &LayerStack,
     ids: &[LayerId],
     active: Option<LayerId>,
+    selected: &BTreeSet<LayerId>,
     depth: usize,
     x: f32,
     w: f32,
@@ -71,6 +78,7 @@ pub(crate) fn paint_layer_subtree(
             id,
             layer,
             active == Some(id),
+            selected.contains(&id),
             is_base,
             can_up,
             can_down,
@@ -110,6 +118,7 @@ pub(crate) fn paint_layer_subtree(
                 stack,
                 &g.children,
                 active,
+                selected,
                 depth + 1,
                 x,
                 w,
@@ -132,6 +141,7 @@ fn paint_layer_row(
     id: LayerId,
     layer: &Layer,
     is_active: bool,
+    is_selected: bool,
     is_base: bool,
     can_up: bool,
     can_down: bool,
@@ -168,6 +178,20 @@ fn paint_layer_row(
         fill_rounded_rect(
             ctx.scene,
             lift,
+            Radius::Sm.px(),
+            resolve(ColorToken::AccentSoft, theme),
+        );
+    }
+
+    // Multi-select wash: a selected row that is NOT the active one gets a soft
+    // accent fill behind its content; the active row keeps the strong outline
+    // below. Skipped while dragged (the lift wash already fills the row).
+    if is_selected && !is_active && !is_dragged {
+        let pad = Spacing::Xs.px();
+        let sel = Rect::new(x - pad, y - pad, w + pad * 2.0, row_total_h + pad * 2.0);
+        fill_rounded_rect(
+            ctx.scene,
+            sel,
             Radius::Sm.px(),
             resolve(ColorToken::AccentSoft, theme),
         );
@@ -311,9 +335,10 @@ fn paint_layer_row(
 }
 
 /// Paint a layer's attached mask (§2.7) as an indented, selectable sub-row: a
-/// "Mask" label (+ "· Inverted") with the active accent outline. Selecting it
-/// routes through the normal Row path → the tool makes the mask the edit target
-/// (grayscale paint). Single line. Returns the next `y`.
+/// "Mask" label (+ "· Inverted") with the active accent outline, plus the
+/// Invert toggle + Apply (destructive bake) affordances on the right. Selecting
+/// the row routes through the normal Row path → the tool makes the mask the edit
+/// target (grayscale paint). Single line. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
 fn paint_mask_row(
     ctx: &mut PaintCtx,
@@ -326,20 +351,25 @@ fn paint_mask_row(
     y: f32,
 ) -> f32 {
     let font = TypeToken::Base.px();
-    let row_rect = Rect::new(x, y, w, ROW_H_PX);
+    let cell_gap = Spacing::Xs.px();
     if is_active {
         stroke_rounded_rect(
             ctx.scene,
-            row_rect,
+            Rect::new(x, y, w, ROW_H_PX),
             Radius::Sm.px(),
             StrokeToken::Default.px(),
             resolve(ColorToken::Accent, theme),
         );
     }
+
+    // Right-aligned affordances: [ Inv ] [ Apply ]. The label runs up to them.
+    let apply_rect = Rect::new(x + w - MASK_APPLY_W, y, MASK_APPLY_W, ROW_H_PX);
+    let inv_rect = Rect::new(apply_rect.x - cell_gap - MASK_INV_W, y, MASK_INV_W, ROW_H_PX);
+
     let label = if inverted { "Mask · Inverted" } else { "Mask" };
     let label_x = x + Spacing::Sm.px();
     let label_y = y + (ROW_H_PX - font) * 0.5;
-    let label_w = (w - Spacing::Sm.px() * 2.0).max(0.0);
+    let label_w = (inv_rect.x - cell_gap - label_x).max(0.0);
     paint_text(
         ctx.text_system,
         ctx.scene,
@@ -350,11 +380,45 @@ fn paint_mask_row(
         label_w,
         resolve(ColorToken::Text2, theme),
     );
-    // Selectable via the normal Row path (the tool's select_layer loads the
-    // mask's buffer + the brush paints it grayscale).
+
+    // Register the row-select hit rect FIRST, spanning the FULL row. The two
+    // buttons register AFTER and win their own cells (HitIndex is last-
+    // registration-wins), so the whole row selects EXCEPT the button cells —
+    // robust even when deep nesting shrinks the row (no dead/negative select
+    // band, and the buttons' left edges are not shadowed by the row rect).
     let row_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::Row);
     register_button(ctx.host.store_mut(), row_id);
-    ctx.host.hit_index_mut().register(row_id, row_rect);
+    ctx.host
+        .hit_index_mut()
+        .register(row_id, Rect::new(x, y, w, ROW_H_PX));
+
+    // Invert toggle — accent-filled when on (mirror of the modifier toolbar).
+    let inv_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskInvert);
+    register_button(ctx.host.store_mut(), inv_id);
+    let inv_st = ctx
+        .host
+        .store()
+        .button_state(inv_id)
+        .unwrap_or(ButtonState::Normal);
+    let mut inv_btn = Button::new(inv_id, "Inv").state(inv_st);
+    if inverted {
+        inv_btn.kind = ButtonKind::Accent;
+    }
+    paint_button(&inv_btn, inv_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(inv_id, inv_rect);
+
+    // Apply — destructive bake into the parent alpha, then remove the mask.
+    let apply_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskApply);
+    register_button(ctx.host.store_mut(), apply_id);
+    let apply_st = ctx
+        .host
+        .store()
+        .button_state(apply_id)
+        .unwrap_or(ButtonState::Normal);
+    let apply_btn = Button::new(apply_id, "Apply").state(apply_st);
+    paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(apply_id, apply_rect);
+
     y + ROW_H_PX + Spacing::Xs.px()
 }
 

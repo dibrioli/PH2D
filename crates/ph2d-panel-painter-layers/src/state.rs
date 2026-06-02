@@ -18,13 +18,21 @@
 //! os únicos pontos de contato com o shell.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_tool_painter::LayerStack;
+use ph2d_tool_painter::{LayerId, LayerStack};
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
 
 thread_local! {
     /// Snapshot do `LayerStack` publicado pelo host antes de cada `paint`.
     /// `None` até o primeiro push (panel pinta o placeholder "No layers").
     static CURRENT_LAYERS: RefCell<Option<LayerStack>> = const { RefCell::new(None) };
+
+    /// Multi-selection set published by the bridge each frame (W3 multi-select):
+    /// the layer rows the panel highlights. Always includes the active layer
+    /// (the tool folds it in via `selection()`); a single-element set means just
+    /// the active row, so no extra "also-selected" wash is drawn for it.
+    static CURRENT_SELECTION: RefCell<BTreeSet<LayerId>> =
+        const { RefCell::new(BTreeSet::new()) };
 
     /// Última altura de conteúdo scrollable medida (set por paint, lido
     /// pelo orchestrator content_h publish). Paridade com o sidebar.
@@ -74,6 +82,17 @@ pub fn set_current_layers(stack: Option<LayerStack>) {
 /// placeholder "No layers".
 pub(crate) fn current_layers() -> Option<LayerStack> {
     CURRENT_LAYERS.with(|c| c.borrow().clone())
+}
+
+/// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por
+/// frame quando o `painter` tool é ativo (mirror de [`set_current_layers`]).
+pub fn set_current_selection(sel: BTreeSet<LayerId>) {
+    CURRENT_SELECTION.with(|c| *c.borrow_mut() = sel);
+}
+
+/// Lê o set de multi-seleção publicado neste frame — as rows a destacar.
+pub(crate) fn current_selection() -> BTreeSet<LayerId> {
+    CURRENT_SELECTION.with(|c| c.borrow().clone())
 }
 
 pub fn last_content_h() -> f32 {

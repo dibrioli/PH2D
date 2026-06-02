@@ -90,7 +90,7 @@ fn decode(rgba8: &[u8], idx: usize) -> [f32; 4] {
 /// black = hidden. The mask multiplies the parent's alpha — a coverage op, so
 /// computed in straight space (no transfer function), per §2.7.
 #[inline]
-fn mask_value(rgba8: &[u8], idx: usize) -> f32 {
+pub(crate) fn mask_value(rgba8: &[u8], idx: usize) -> f32 {
     let b = idx * 4;
     (0.299 * rgba8[b] as f32 + 0.587 * rgba8[b + 1] as f32 + 0.114 * rgba8[b + 2] as f32) / 255.0
 }

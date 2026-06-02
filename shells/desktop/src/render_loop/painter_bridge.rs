@@ -355,6 +355,13 @@ pub(super) fn dispatch(
             if LAST_LAYERS_REV.swap(rev, Ordering::Relaxed) != rev {
                 ph2d_panel_painter_layers::set_current_layers(Some(painter.layers().clone()));
             }
+            // (W3 multi-select) Publish the selection set every frame — a tiny
+            // BTreeSet (≤ HARD_CAP_LAYERS u64s). NOT gated on `layers_revision`:
+            // a plain re-click that collapses a multi-selection onto the
+            // already-active layer changes the selection WITHOUT a structural
+            // edit, so a revision gate would miss it. The panel reads this for
+            // the multi-row highlight (active = strong outline, others = wash).
+            ph2d_panel_painter_layers::set_current_selection(painter.selection());
         }
 
         // ── (W2.T2.3) Color thumb ⟷ Blender picker round-trip ──────────

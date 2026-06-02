@@ -83,12 +83,28 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             // Click. (The blend chip click is the dropdown open/close — handled
             // by the generic Dropdown dispatch, not forwarded.)
             match decode(&stack, id) {
+                Some((_, PainterLayerWidget::Row)) => {
+                    // Multi-select: carry the live Cmd/Shift state to the tool's
+                    // row-select. The frozen PanelEvent can not hold it and the
+                    // tool's handle_panel_event gets no store, so stash it in the
+                    // tool-crate thread-local right before forwarding the Click.
+                    // Cmd/Ctrl = toggle additive, Shift = range, plain = single.
+                    ph2d_tool_painter::set_pending_select_mods(
+                        id,
+                        host.store().cmd_held(),
+                        host.store().shift_held(),
+                    );
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+                    true
+                }
                 Some((
                     _,
-                    PainterLayerWidget::Row
-                    | PainterLayerWidget::Visibility
+                    PainterLayerWidget::Visibility
                     | PainterLayerWidget::MoveUp
-                    | PainterLayerWidget::MoveDown,
+                    | PainterLayerWidget::MoveDown
+                    | PainterLayerWidget::MaskInvert
+                    | PainterLayerWidget::MaskApply,
                 )) => {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

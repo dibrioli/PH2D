@@ -524,8 +524,118 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         *kind,
         "apply_adjustment: kind/params variant mismatch"
     );
-    // No-op until T4.3+ fills the per-kind compute.
-    let _ = acc;
+    match (kind, params) {
+        // T4.3 — Hue/Saturation/Brightness (Day-4 smoke). The other 23 kinds
+        // are still no-ops (identity) until their own T4.x arm lands.
+        (
+            AdjustmentKind::HueSaturationBrightness,
+            AdjustmentParams::HueSaturationBrightness(p),
+        ) => apply_hsb(p, acc),
+        _ => {}
+    }
+}
+
+/// Hue/Saturation/Brightness in sRGB-display HSL space (Photoshop / Procreate
+/// convention — this app is the Procreate successor, and the W4 golden targets
+/// a Photoshop reference). `acc` is straight LINEAR f32 RGBA; only RGB is
+/// transformed — the alpha (= coverage) is preserved. `h` rotates the hue wheel
+/// (in turns), `s` scales saturation (`-1` = grayscale, `+1` = 2× clamped), `b`
+/// shifts lightness toward black (`-1`) or white (`+1`). Neutral `{0, 0, 0}`
+/// early-returns an EXACT identity (and skips the per-pixel sRGB round-trip).
+fn apply_hsb(p: &HsbParams, acc: &mut [[f32; 4]]) {
+    if p.h == 0.0 && p.s == 0.0 && p.b == 0.0 {
+        return;
+    }
+    for px in acc.iter_mut() {
+        let (mut h, mut s, mut l) = rgb_to_hsl(
+            linear_to_srgb_f32(px[0]),
+            linear_to_srgb_f32(px[1]),
+            linear_to_srgb_f32(px[2]),
+        );
+        h = (h + p.h).rem_euclid(1.0);
+        s = (s * (1.0 + p.s)).clamp(0.0, 1.0);
+        l = if p.b >= 0.0 {
+            l + (1.0 - l) * p.b
+        } else {
+            l * (1.0 + p.b)
+        };
+        let (r, g, b) = hsl_to_rgb(h, s, l);
+        px[0] = srgb_to_linear_f32(r);
+        px[1] = srgb_to_linear_f32(g);
+        px[2] = srgb_to_linear_f32(b);
+    }
+}
+
+/// Standard sRGB transfer (linear → gamma), clamped to `[0, 1]`.
+#[inline]
+fn linear_to_srgb_f32(c: f32) -> f32 {
+    let c = c.clamp(0.0, 1.0);
+    if c <= 0.003_130_8 {
+        12.92 * c
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// Standard sRGB transfer (gamma → linear), clamped to `[0, 1]`.
+#[inline]
+fn srgb_to_linear_f32(c: f32) -> f32 {
+    let c = c.clamp(0.0, 1.0);
+    if c <= 0.040_45 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// sRGB RGB (`0..=1`) → HSL with hue in TURNS (`0..1`), saturation + lightness
+/// in `0..=1`. The hue sector is picked with `>=` (not float `==`) so the
+/// max-channel test is exact without a float-equality lint.
+fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let l = (max + min) * 0.5;
+    let d = max - min;
+    if d <= 0.0 {
+        return (0.0, 0.0, l); // achromatic
+    }
+    let s = (d / (1.0 - (2.0 * l - 1.0).abs())).clamp(0.0, 1.0);
+    let h = if r >= g && r >= b {
+        (g - b) / d
+    } else if g >= b {
+        (b - r) / d + 2.0
+    } else {
+        (r - g) / d + 4.0
+    };
+    ((h / 6.0).rem_euclid(1.0), s, l)
+}
+
+/// HSL (hue in TURNS) → sRGB RGB (`0..=1`).
+fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (f32, f32, f32) {
+    if s <= 0.0 {
+        return (l, l, l); // achromatic
+    }
+    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+    let p = 2.0 * l - q;
+    (
+        hue_channel(p, q, h + 1.0 / 3.0),
+        hue_channel(p, q, h),
+        hue_channel(p, q, h - 1.0 / 3.0),
+    )
+}
+
+/// One channel of the HSL→RGB reconstruction (`t` in turns, wrapped to `0..1`).
+fn hue_channel(p: f32, q: f32, t: f32) -> f32 {
+    let t = t.rem_euclid(1.0);
+    if t < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * t
+    } else if t < 0.5 {
+        q
+    } else if t < 2.0 / 3.0 {
+        p + (q - p) * (2.0 / 3.0 - t) * 6.0
+    } else {
+        p
+    }
 }
 
 /// PSD export classification — frozen mapping table (ADR-0045 §2.8). A
@@ -655,6 +765,79 @@ mod tests {
             let bytes = postcard::to_allocvec(&layer).expect("serialize");
             let back: AdjustmentLayer = postcard::from_bytes(&bytes).expect("deserialize");
             assert_eq!(layer, back, "postcard round-trip for {kind:?}");
+        }
+    }
+
+    // ── T4.3 — Hue/Saturation/Brightness compute (Day-4 smoke) ────────────
+    //
+    // Invariant/property tests (neutral identity, hue rotation, desaturation,
+    // brightness extremes, alpha preservation). A pixel-exact golden vs a
+    // Photoshop reference (SSIM ≥ 0.999, plan §7) needs a real PS-exported
+    // fixture asset — flagged to the Coord, not faked here.
+
+    fn hsb(h: f32, s: f32, b: f32) -> AdjustmentParams {
+        AdjustmentParams::HueSaturationBrightness(HsbParams { h, s, b })
+    }
+
+    fn apply(h: f32, s: f32, b: f32, px: [f32; 4]) -> [f32; 4] {
+        let mut acc = [px];
+        apply_adjustment(&AdjustmentKind::HueSaturationBrightness, &hsb(h, s, b), &mut acc);
+        acc[0]
+    }
+
+    #[test]
+    fn hsb_neutral_is_exact_identity() {
+        let px = [0.3, 0.6, 0.1, 0.8];
+        assert_eq!(apply(0.0, 0.0, 0.0, px), px, "neutral {{0,0,0}} is a no-op");
+    }
+
+    #[test]
+    fn hsb_preserves_alpha() {
+        let out = apply(0.25, 0.5, -0.3, [0.8, 0.2, 0.2, 0.42]);
+        assert_eq!(out[3], 0.42, "alpha (coverage) is never touched");
+    }
+
+    #[test]
+    fn hsb_saturation_minus_one_is_grayscale() {
+        // s = -1 collapses saturation → R == G == B (achromatic).
+        let out = apply(0.0, -1.0, 0.0, [1.0, 0.0, 0.0, 1.0]);
+        assert!(
+            (out[0] - out[1]).abs() < 1e-5 && (out[1] - out[2]).abs() < 1e-5,
+            "fully desaturated red is gray: {out:?}"
+        );
+    }
+
+    #[test]
+    fn hsb_brightness_extremes_clamp_to_black_and_white() {
+        let black = apply(0.0, 0.0, -1.0, [1.0, 0.0, 0.0, 1.0]);
+        assert!(
+            black[0] < 1e-4 && black[1] < 1e-4 && black[2] < 1e-4,
+            "brightness -1 → black: {black:?}"
+        );
+        let white = apply(0.0, 0.0, 1.0, [1.0, 0.0, 0.0, 1.0]);
+        assert!(
+            white[0] > 0.999 && white[1] > 0.999 && white[2] > 0.999,
+            "brightness +1 → white: {white:?}"
+        );
+    }
+
+    #[test]
+    fn hsb_hue_rotation_shifts_red_toward_green() {
+        // +1/3 turn rotates pure red (hue 0) to green (hue 1/3).
+        let out = apply(1.0 / 3.0, 0.0, 0.0, [1.0, 0.0, 0.0, 1.0]);
+        assert!(
+            out[1] > 0.9 && out[0] < 0.1 && out[2] < 0.1,
+            "red rotated +1/3 turn is green-dominant: {out:?}"
+        );
+    }
+
+    #[test]
+    fn hsb_full_turn_hue_is_identity() {
+        // A whole-turn hue rotation returns the original hue (within round-trip).
+        let px = [0.7, 0.2, 0.4, 1.0];
+        let out = apply(1.0, 0.0, 0.0, px);
+        for c in 0..3 {
+            assert!((out[c] - px[c]).abs() < 1e-3, "full-turn ~identity: {out:?}");
         }
     }
 }

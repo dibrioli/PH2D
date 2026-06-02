@@ -462,6 +462,13 @@ pub struct WidgetStore {
     /// decide "this Down is on a draggable layer row" (mirror of
     /// [`Self::hierarchy_row_ids`]).
     pub(super) painter_layer_row_ids: std::collections::BTreeSet<NodeId>,
+    /// Every `NodeId` that is a "picker swatch" — a [`crate::widget::ColorSwatch`]
+    /// whose Down opens the canonical Blender color picker seeded with the
+    /// swatch's current `widget_color`. Panels register their picker swatches
+    /// here as they paint (idempotent; the ids are stable). Generalizes the
+    /// former per-id `PAINTER_COLOR_THUMB` special-case so any panel swatch
+    /// (Painter brush color, Vector fill, …) opens the picker uniformly.
+    pub(super) picker_swatch_ids: std::collections::BTreeSet<NodeId>,
 }
 
 impl WidgetStore {
@@ -528,6 +535,7 @@ impl WidgetStore {
             cmd_held: false,
             painter_layer_drag: None,
             painter_layer_row_ids: std::collections::BTreeSet::new(),
+            picker_swatch_ids: std::collections::BTreeSet::new(),
         }
     }
 
@@ -1121,6 +1129,18 @@ impl WidgetStore {
     /// Is `id` a draggable painter layer row?
     pub fn is_painter_layer_row(&self, id: NodeId) -> bool {
         self.painter_layer_row_ids.contains(&id)
+    }
+
+    /// Mark `id` as a picker swatch — a [`crate::widget::ColorSwatch`] whose
+    /// Down opens the Blender picker seeded with its `widget_color`. Panels
+    /// call this as they paint each picker swatch (idempotent; ids are stable).
+    pub fn register_picker_swatch(&mut self, id: NodeId) {
+        self.picker_swatch_ids.insert(id);
+    }
+
+    /// Does a Down on `id` open the canonical color picker?
+    pub fn is_picker_swatch(&self, id: NodeId) -> bool {
+        self.picker_swatch_ids.contains(&id)
     }
 
     /// Depth in the parent tree (0 = root). Capped at 32 levels as

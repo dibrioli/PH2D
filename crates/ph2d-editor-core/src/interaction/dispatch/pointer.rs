@@ -618,18 +618,21 @@ pub fn dispatch_pointer_with_text<'frame>(
                 }
             }
 
-            // W2.T2.3: Painter color thumb → open the shared Blender
-            // picker seeded with the thumb's last published color (the
-            // bridge keeps `widget_color(PAINTER_COLOR_THUMB)` synced
-            // to the Painter's live active color). Mirror of the
-            // showcase color-target open pattern. Short-circuit the
-            // rest of Down so the click doesn't focus/drag the canvas.
-            if matches!(hit, Some((id, _)) if id == crate::ids::PAINTER_COLOR_THUMB) {
+            // Picker swatch → open the shared Blender picker seeded with the
+            // swatch's last published color. GENERALIZED (was a per-id
+            // `PAINTER_COLOR_THUMB` special-case): any panel that paints a
+            // `ColorSwatch` and calls `store.register_picker_swatch(id)` gets
+            // this for free (Painter brush color, Vector fill, …). The bridge /
+            // panel keeps `widget_color(id)` synced to the live color. Short-
+            // circuit the rest of Down so the click doesn't focus/drag the canvas.
+            if let Some((id, _)) = hit
+                && store.is_picker_swatch(id)
+            {
                 let seed = store
-                    .widget_color(crate::ids::PAINTER_COLOR_THUMB)
+                    .widget_color(id)
                     .unwrap_or([0x88, 0x88, 0x88, 0xFF]);
-                store.set_widget_color(crate::ids::PAINTER_COLOR_THUMB, seed);
-                store.set_picker_target(Some(crate::ids::PAINTER_COLOR_THUMB));
+                store.set_widget_color(id, seed);
+                store.set_picker_target(Some(id));
                 store.set_blender_value(
                     crate::ids::INSP_BLENDER_PICKER,
                     ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),

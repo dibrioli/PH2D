@@ -306,6 +306,12 @@ fn paint_color_row(
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, eye_rect);
+    // The brush-color swatch opens the Blender picker on Down via the generic
+    // `is_picker_swatch` dispatch (pointer.rs) — register it each paint
+    // (idempotent). Replaces the former per-id `PAINTER_COLOR_THUMB` special-case.
+    ctx.host
+        .store_mut()
+        .register_picker_swatch(core_ids::PAINTER_COLOR_THUMB);
     y + ROW_H_PX + row_pad
 }
 

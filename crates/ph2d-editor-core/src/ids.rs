@@ -91,6 +91,15 @@ pub const TOPBAR_VECTOR_SHAPE: NodeId = hash_node_id("vector_shape");
 pub const TOPBAR_VECTOR_SELECT: NodeId = hash_node_id("vector_select");
 /// Vector Direct-Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
 pub const TOPBAR_VECTOR_DIRECT: NodeId = hash_node_id("vector_direct");
+/// Vector Inspector panel (W2 T2.4) — minimal right-docked panel hosting the
+/// fill swatch (+ future vertex/node params). Outer-rect id for `z_order`.
+pub const VECTOR_INSPECTOR_PANEL: NodeId = hash_node_id("vector_inspector.panel");
+/// Vector Inspector close (X) button.
+pub const VECTOR_INSPECTOR_CLOSE: NodeId = hash_node_id("vector_inspector.close");
+/// Vector Inspector fill-color swatch — a picker swatch (opens the Blender
+/// picker on Down via `is_picker_swatch`); the shell read-back applies the
+/// picked color to the selected regions.
+pub const VECTOR_INSPECTOR_FILL_SWATCH: NodeId = hash_node_id("vector_inspector.fill_swatch");
 /// Widget Gallery cluster — toggles the floating reference panel
 /// that showcases every canonical widget (Inputs / Slider /
 /// Switches / Lists / Vector / Status / Color / Actions / Identity /

@@ -66,6 +66,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-upscale")]
     reg.push(ErasedPanel::new::<ph2d_panel_upscale::UpscalePanel>());
+    #[cfg(feature = "panel-vector-inspector")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_vector_inspector::VectorInspectorPanel,
+    >());
     #[cfg(feature = "panel-widget-gallery")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_widget_gallery::WidgetGalleryPanel,
@@ -108,6 +112,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-painter-layers")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-vector-inspector")]
         {
             n += 1;
         }

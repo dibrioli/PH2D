@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-panel-vector-inspector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Vector Inspector — typed `Panel<State>` (ADR-0029) for the Vector module
+# (W2.T2.4). Right-docked (Inspector geometry slot); visible only when a vector
+# selection tool (Select/Direct) is active. Minimal v1: a fill-color swatch (a
+# picker swatch — opens the shared Blender picker; the shell read-back applies
+# the picked color to the selected regions). Future: vertex/node param editors.
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[dev-dependencies]
+ph2d-host = { path = "../ph2d-host" }

@@ -4675,6 +4675,7 @@ dependencies = [
  "ph2d-panel-painter-sidebar",
  "ph2d-panel-registry-init",
  "ph2d-panel-upscale",
+ "ph2d-panel-vector-inspector",
  "ph2d-render",
  "ph2d-script",
  "ph2d-text",
@@ -5144,6 +5145,7 @@ dependencies = [
  "ph2d-panel-painter-sidebar",
  "ph2d-panel-sync",
  "ph2d-panel-upscale",
+ "ph2d-panel-vector-inspector",
  "ph2d-panel-widget-gallery",
 ]
 
@@ -5160,6 +5162,16 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-tool-upscale",
+]
+
+[[package]]
+name = "ph2d-panel-vector-inspector"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-tokens",
 ]
 
 [[package]]

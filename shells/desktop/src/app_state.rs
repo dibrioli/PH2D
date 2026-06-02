@@ -466,6 +466,11 @@ pub(crate) struct App {
     /// selection can't live in either (the inactive one drops from dispatch). The
     /// input handlers + the `vector_selection_bridge` overlay borrow it by-ref.
     pub(crate) vector_selection: ph2d_vector_doc::VectorSelection,
+    /// W2.T2.4 — the current vector fill color (sRGB8) the Inspector swatch
+    /// drives. The `vector_inspector_bridge` updates it from the Blender picker
+    /// read-back + publishes it to the panel; the impl's apply-fill reads it to
+    /// fill the selected regions. Default mid-grey.
+    pub(crate) vector_fill_color: [u8; 4],
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

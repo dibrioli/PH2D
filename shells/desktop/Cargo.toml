@@ -165,6 +165,10 @@ ph2d-panel-painter-sidebar = { path = "../../crates/ph2d-panel-painter-sidebar",
 # Gated por feature `panel-painter-layers`. Shell publica o snapshot via
 # `ph2d_panel_painter_layers::set_current_layers` (painter_bridge.rs).
 ph2d-panel-painter-layers = { path = "../../crates/ph2d-panel-painter-layers", optional = true }
+# Vector inspector (W2.T2.4) — right-docked when a vector selection tool is
+# active. Gated by `panel-vector-inspector`. Shell publishes the current fill
+# color via `ph2d_panel_vector_inspector::set_current_fill` (vector_inspector_bridge.rs).
+ph2d-panel-vector-inspector = { path = "../../crates/ph2d-panel-vector-inspector", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -244,6 +248,7 @@ default = [
     "panel-upscale",
     "panel-painter-sidebar",
     "panel-painter-layers",
+    "panel-vector-inspector",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -260,4 +265,5 @@ panel-equalize-sizes = ["ph2d-panel-registry-init/panel-equalize-sizes", "dep:ph
 panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-panel-upscale"]
 panel-painter-sidebar = ["ph2d-panel-registry-init/panel-painter-sidebar", "dep:ph2d-panel-painter-sidebar"]
 panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
+panel-vector-inspector = ["ph2d-panel-registry-init/panel-vector-inspector", "dep:ph2d-panel-vector-inspector"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

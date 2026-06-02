@@ -35,6 +35,7 @@ mod present;
 mod sim_extract;
 mod snapshots;
 mod upscale_bridge;
+mod vector_inspector_bridge;
 mod vector_pen_bridge;
 mod vector_pencil_bridge;
 mod vector_selection_bridge;
@@ -1058,6 +1059,9 @@ impl crate::App {
                 &self.vector_selection,
                 vector_scene,
             );
+            // Vector Inspector (W2.T2.4): panel visibility + fill-swatch picker
+            // read-back + publish (`hero`/`tools` still in scope from above).
+            vector_inspector_bridge::dispatch(hero, tools, &mut self.vector_fill_color);
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo
             // AND the multi-selection extras + global gizmo (the latter

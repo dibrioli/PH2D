@@ -20,6 +20,21 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 **Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
 locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
+### ATUALIZAÇÃO 2026-06-02 — Painter W4 T4.1+T4.2 LANDADOS (Coord)
+- **W4 Adjustment Layers ABERTO.** Contrato congelado `ph2d-painter-brush::adjustments`
+  (ADR-0045 + `0045-amendment-1`: ids `u64` crus + mask-as-id + inner-authoritative).
+- **T4.1** (`051455b`) + **T4.2** (`d97f906`): `LayerKind::Adjustment(AdjustmentLayer)` +
+  compositor arm (copy→`apply_adjustment`→blend por opacity×mask) + `CompositorCache`
+  skeleton (BTreeMap/HR-5). Hook **`apply_adjustment(kind, params, acc: &mut [[f32;4]])`**
+  (linear straight f32, NÃO u8) = no-op stub. Gates 81/81 painter-contracts verdes
+  (`brush_no_sub_sub_structs` re-escopado p/ excluir `adjustments.rs`). Serde aditivo →
+  sem re-lock persist/cook-hash.
+- **Painter impl DESBLOQUEADO** p/ fan-out T4.3 (HSB) → smoke Day-4 → 23 kinds + T4.15/T4.16,
+  tudo em `ph2d-painter-brush` (compute puro, sem tocar layers/compositor). Briefing:
+  [`HANDOFF_painter_w4_triage_coord.md`](HANDOFF_painter_w4_triage_coord.md).
+- **Vector impl** segue ativo (W2). **RAM 3/3** — Coord NÃO toca crates quentes de Vector
+  (undo shell-wiring T2.5 espera janela do Vector impl, espelho do protocolo Painter↔Coord).
+
 ### ATUALIZAÇÃO 2026-06-01 — Vector W2 ATIVADO (slot dedicado)
 - **Vector W1 FECHADA** (auditada; `8ce8c97` closure + `b3b2f00` M8 + `69febf7` T1.8).
   cubic_fit REAL; crdt/spiro stubs → W2. Smoke Pen OK.

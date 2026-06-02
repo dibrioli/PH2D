@@ -304,15 +304,13 @@ impl App {
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
         // PainterLayerReparent on Up of an active layer-row drag; route it to
         // the active PainterTool, which reverses NodeId→LayerId and applies
-        // move_into_group / reorder. The downcast mirrors the painter bridge.
+        // move_into_group / reorder. The concrete-tool downcast lives in the
+        // allowlisted painter bridge so central dispatch stays downcast-free
+        // (architecture_no_downcast_to_concrete_tool_in_shell gate).
         if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
             && let Some(gfx) = self.gfx.as_mut()
-            && let Some(tool) = gfx.tools.active_mut()
-            && let Some(painter) = tool
-                .as_any_mut()
-                .downcast_mut::<ph2d_tool_painter::PainterTool>()
         {
-            painter.handle_layer_reparent(dragged, drop);
+            crate::render_loop::painter_bridge::apply_layer_reparent(&mut gfx.tools, dragged, drop);
         }
 
         // BgRemoval eyedropper (SHELL-only). A Secondary Down on an

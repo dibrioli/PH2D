@@ -81,6 +81,28 @@ pub(crate) fn painter_has_unflushed_strokes(tools: &mut ToolRegistry) -> bool {
         .unwrap_or(false)
 }
 
+/// Apply a Painter layers drag-reparent (W3 T3.8) emitted by the dispatch on
+/// Up of an active layer-row drag. The active `PainterTool` reverses
+/// `NodeId`→`LayerId` and applies `move_into_group` / reorder.
+///
+/// Lives here (an allowlisted bridge file) rather than inline in
+/// `input_dispatch` so the central dispatch stays free of tool-concrete
+/// downcasts, per the `architecture_no_downcast_to_concrete_tool_in_shell`
+/// gate. Mirror of [`painter_has_unflushed_strokes`]. No-op if the active tool
+/// is not the Painter.
+pub(crate) fn apply_layer_reparent(
+    tools: &mut ToolRegistry,
+    dragged: ph2d_editor::NodeId,
+    drop: ph2d_editor::interaction::PainterLayerDrop,
+) {
+    if let Some(painter) = tools.active_mut().and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+    }) {
+        painter.handle_layer_reparent(dragged, drop);
+    }
+}
+
 /// Returns `true` iff an Apply committed this frame (caller tears the
 /// tool down — deactivate + restore Inspector — so the on-canvas overlay
 /// stops re-rendering on top of the freshly baked sprite).

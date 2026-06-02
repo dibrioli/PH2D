@@ -9,6 +9,14 @@
 //! `title_dirty`).
 //!
 //! Behavior-preserving lift.
+//
+// ph2d-loc-cap: 616 LOC — `dispatch` is a sequence of independent per-field
+// commit drains (Transform / Visibility / Name / Sprite / Reimport) lifted
+// verbatim from mod.rs, plus inline unit tests. Splitting into per-field
+// sibling modules is a focused Sprite-Inspector follow-up: side-effecting
+// drain code with no isolation, where a blind split risks regressions the
+// gate can't catch. Pre-existing debt; tracked exception to unblock the
+// accumulated W2/W3 ship (Coord ship-prep 2026-06-02).
 
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};

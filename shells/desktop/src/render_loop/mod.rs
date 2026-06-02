@@ -27,7 +27,10 @@ mod inspector_ordering;
 mod inspector_visibility;
 mod motion_smoke;
 mod padding_bridge;
-mod painter_bridge;
+// `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
+// render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
+// bridge instead of downcasting in central dispatch.
+pub(crate) mod painter_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;

@@ -107,3 +107,35 @@ Também pendente de W1 (nota do Enio): carry-overs LOW §3.4, mini-round de
 re-audit, smoke do Enio. T1.6 CRDT undo deferido p/ W2 (T2.5).
 
 ═══════════════════════════════════════════════════════════════════
+RESPOSTA DO COORDENADOR · 2026-06-01 (commit `69b3788`)
+═══════════════════════════════════════════════════════════════════
+
+**§2 — DECIDI OPÇÃO A (padrão-ouro) E FIZ.** O `draw_vector_network` agora tem
+stroke-pass canônico: stroke de todo segmento cujo `style_ref` resolve a um
+`StrokeStyle`. NÃO é violação de contrato congelado — o próprio doc do W1 dizia
+"strokes deferred to W2, lands with the Pencil tool". Pen region edges não têm
+`style_ref` → pulados (zero double-draw Pen+Pencil). +4 testes em ph2d-vector.
+→ **AÇÃO TUA:** **delete o interino `stroke_styled_segments` + a Layer (a)** do
+teu `vector_pencil_bridge.rs` (linhas ~89-92 + a fn). Os committed paths agora
+renderizam (fill+stroke) pelo `draw_vector_network` que o **pen bridge** já chama
+por frame. Mantém só a Layer (b) (overlay in-progress) + o drain do
+`take_committed_asset`. Até deletares = double-stroke benigno (idêntico, solid).
+
+**§3 — FIADO PONTA-A-PONTA (`69b3788`). Shell compila.** Os 7 edits:
+1. `Cargo.toml` dep ✓ · 2. `mod.rs` mod + dispatch call + warn destrutivo (o pill
+reconcile já varre o cluster `vector_tools` genérico → pega a PENCIL sozinho) ·
+3. `input_dispatch.rs` mod + roteamento de **DRAG** (Down→pointer_down,
+CursorMoved→pointer_drag, Up→pointer_up, off-canvas consume) espelhando o
+**Painter** (drag, não o click do Pen) · 4. `keyboard.rs` Esc · 5. `ids.rs`
+`TOPBAR_VECTOR_PENCIL` · 6. `chrome/mod.rs` mod + apply · 7. `fixture.rs` pill PENCIL.
+Verificado: shell `cargo check` ✓, ph2d-vector 5/5 stroke, editor-core 620+4,
+clippy-clean ph2d-vector + shell.
+
+**SMOKE Day-4 PRONTO p/ o Enio:** ativa o pill **PENCIL** no TopBar → arrasta no
+canvas → traço freehand suavizado em cubics (Hobby). Esc cancela / limpa cena.
+
+**⚠ Ship-blocker NÃO-teu, NÃO-meu:** o gate `arch_mode_has_reconcile` (editor-core,
+cross-crate) está VERMELHO por `ph2d-tool-painter/src/layers.rs::set_blend_mode`
+(commit `612cc34` T3.5 do **Painter impl**) — falta um reconcile/invalidate call
+ou entry em `BENIGN_SET_MODE`. Flaguei pro Painter impl; não é do Vector.
+═══════════════════════════════════════════════════════════════════

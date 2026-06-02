@@ -43,10 +43,14 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
 **Agentes ativos (RAM 3/3):** Painter impl (W3) · Vector impl (W2) · Coord. **Não abrir 4º.**
 
-**⚠ Gate VERMELHO a resolver no ship:** `shell_files_respect_hr18_loc_cap` →
-`shells/desktop/src/render_loop/inspector_commits.rs` 616 LOC > 600. **Owner = Sprite
-Inspector v2** (`ca538e4`/`ad4e918`/`546bf43`). Decompor `apply_sprite_field` OU declarar
-`// ph2d-loc-cap:` exceção. NÃO é arquivo do Painter/Vector/Coord.
+**⚠ Gates VERMELHOS a resolver no ship (cada um do seu owner):**
+1. `shell_files_respect_hr18_loc_cap` → `render_loop/inspector_commits.rs` 616 LOC > 600.
+   **Owner = Sprite Inspector v2** (`ca538e4`/`ad4e918`/`546bf43`). Decompor `apply_sprite_field`
+   OU declarar `// ph2d-loc-cap:`. NÃO é Painter/Vector/Coord.
+2. `arch_mode_has_reconcile` (editor-core, cross-crate) → `ph2d-tool-painter/src/layers.rs::set_blend_mode`
+   (commit `612cc34` T3.5). **Owner = Painter impl**: setter `set_*_mode` sem reconcile/invalidate call
+   — adicionar reconcile inline OU entry em `BENIGN_SET_MODE`. NÃO é Vector/Coord (detectado ao
+   wirar o Pencil; cargo-check esconde, é teste cross-crate).
 
 **Pre-existing failures (seção histórica abaixo):** status NÃO re-verificado nesta jornada
 (`PanelEvent::Activated`, `history_integration_t19` 4 tests) — Impl Painter confirma ao fechar W3.

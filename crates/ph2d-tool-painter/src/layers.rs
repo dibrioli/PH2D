@@ -22,6 +22,7 @@
 //! compositor walks them in reverse (bottom-up) per §2.11.
 
 use ph2d_painter_brush::BlendMode;
+use ph2d_painter_brush::adjustments::AdjustmentLayer;
 use serde::{Deserialize, Serialize};
 
 /// Maximum group nesting depth (§2.6). A would-be level-9 group folds to
@@ -66,13 +67,20 @@ pub struct GroupLayer {
     pub collapsed: bool,
 }
 
-/// The three real layer kinds. Modifiers (clip/reference/alpha-lock) are
-/// flags on [`Layer`], not kinds (see module docs).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// The real layer kinds. Modifiers (clip/reference/alpha-lock) are flags on
+/// [`Layer`], not kinds (see module docs). W4 (ADR-0045 + amendment-1): the
+/// non-destructive `Adjustment` kind carries an [`AdjustmentLayer`] payload
+/// whose inner fields (opacity/blend/mask/…) are authoritative over the outer
+/// [`Layer`]'s for an adjustment node.
+///
+/// `Eq` was dropped when `Adjustment` landed — `AdjustmentLayer` holds `f32`
+/// params, so the enum is `PartialEq` only (it was never used as a map key).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum LayerKind {
     Raster(RasterLayer),
     Mask(MaskLayer),
     Group(GroupLayer),
+    Adjustment(AdjustmentLayer),
 }
 
 /// A single layer: identity + kind + composite params + modifier flags.
@@ -259,6 +267,37 @@ impl LayerStack {
         self.root.insert(0, id);
         self.active = Some(id);
         Some(id)
+    }
+
+    /// Add a non-destructive adjustment layer (W4, ADR-0045) at the top of the
+    /// root stack, neutral (no-op) for `kind`, and make it active. The outer
+    /// [`Layer`] mirrors the inner [`AdjustmentLayer`]'s defaults at creation;
+    /// the inner payload is authoritative thereafter (amendment-1). Returns
+    /// `None` at the hard cap. The compositor applies it to the layers below.
+    pub fn add_adjustment(
+        &mut self,
+        kind: ph2d_painter_brush::adjustments::AdjustmentKind,
+    ) -> Option<LayerId> {
+        if self.arena.len() >= HARD_CAP_LAYERS {
+            return None;
+        }
+        let id = self.alloc_id();
+        let name = format!("{kind:?}");
+        let adj = AdjustmentLayer::new(id.0, name.clone(), kind);
+        self.arena
+            .push(Layer::new(id, name, LayerKind::Adjustment(adj)));
+        self.root.insert(0, id);
+        self.active = Some(id);
+        Some(id)
+    }
+
+    /// Mutable access to an adjustment layer's payload (for the UI to edit its
+    /// `params` / opacity / blend / mask). `None` if `id` is not an adjustment.
+    pub fn adjustment_mut(&mut self, id: LayerId) -> Option<&mut AdjustmentLayer> {
+        match &mut self.get_mut(id)?.kind {
+            LayerKind::Adjustment(adj) => Some(adj),
+            _ => None,
+        }
     }
 
     /// Add an empty group at the top of the root stack. Returns `None` if

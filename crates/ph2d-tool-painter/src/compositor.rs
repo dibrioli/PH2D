@@ -277,9 +277,110 @@ fn composite_into(
                 // A group is not a raster clip base — it breaks the clip chain.
                 clip_base = None;
             }
+            // W4 (ADR-0045 §2.7, CPU-first): a non-destructive adjustment
+            // transforms the layers BELOW it — already in `acc` (we walk
+            // bottom-up). Copy the window, run the kind's compute, then blend
+            // the result back over `acc` by the adjustment's OWN opacity × mask
+            // in its blend mode (inner fields authoritative, amendment-1).
+            // `apply_adjustment` works in straight linear f32 — no 8-bit round-
+            // trip in the per-frame composite. Mask/opacity live HERE, not in
+            // the compute hook (W4-triage Coord decision).
+            LayerKind::Adjustment(adj) => {
+                if !adj.visible || adj.opacity <= 0.0 {
+                    continue;
+                }
+                let adj_opacity = adj.opacity.clamp(0.0, 1.0);
+                let adj_mode = adj.blend_mode;
+                let mut adjusted = acc.to_vec();
+                ph2d_painter_brush::adjustments::apply_adjustment(
+                    &adj.kind,
+                    &adj.params,
+                    &mut adjusted,
+                );
+                // Optional mask — raw layer-id (amendment-1): white = full
+                // effect. Missing/short buffer = no mask (full effect).
+                let mask = adj.mask.and_then(|mid| {
+                    let m = match &stack.get(LayerId(mid))?.kind {
+                        LayerKind::Mask(m) => m.inverted,
+                        _ => return None,
+                    };
+                    Some((src.layer_rgba(LayerId(mid))?, m))
+                });
+                for ly in 0..rh {
+                    for lx in 0..rw {
+                        let i = (ly * rw + lx) as usize;
+                        let gidx = ((ry + ly) * canvas_w + (rx + lx)) as usize;
+                        let mut t = adj_opacity;
+                        if let Some((mrgba, inverted)) = mask
+                            && mrgba.len() >= (gidx + 1) * 4
+                        {
+                            let v = mask_value(mrgba, gidx);
+                            t *= if inverted { 1.0 - v } else { v };
+                        }
+                        if t <= 0.0 {
+                            continue;
+                        }
+                        let base = acc[i];
+                        // Blend the adjusted color (carrying the base's coverage)
+                        // over the base in the adjustment's mode, then lerp by t
+                        // so opacity/mask scale the effect; coverage is kept.
+                        let src_px = [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
+                        let blended = apply_blend(adj_mode, base, src_px);
+                        acc[i] = [
+                            base[0] + (blended[0] - base[0]) * t,
+                            base[1] + (blended[1] - base[1]) * t,
+                            base[2] + (blended[2] - base[2]) * t,
+                            base[3],
+                        ];
+                    }
+                }
+                // An adjustment is not a raster clip base — it breaks the chain.
+                clip_base = None;
+            }
             // Mask layers composite via their parent (T3.5); skip standalone.
             LayerKind::Mask(_) => continue,
         }
+    }
+}
+
+/// W4 compositor recomposition cache (ADR-0045 §2.7) — **skeleton**. Each
+/// adjustment layer is a "cut point": the accumulator BELOW it is cached, so a
+/// change at layer N only invalidates cut points ≥ N (above stay valid). This
+/// is the perf lever for the soft `adjustment_layer_recomposition_perf_4k` gate
+/// (≤1 ms slider-drag @ 4K). v1 composites inline (no cache wired into the hot
+/// path yet); this type + the dirty-rect field land the contract (HR-5
+/// `BTreeMap`, not `HashMap`) for the impl/T4.x to wire.
+#[derive(Default)]
+pub struct CompositorCache {
+    /// Cached straight-linear accumulator just below each adjustment layer,
+    /// keyed by the adjustment's [`LayerId`]. Stable key + deterministic
+    /// iteration (HR-5 — no `std::HashMap` in the compositor, ADR-0022).
+    cuts: std::collections::BTreeMap<LayerId, Vec<[f32; 4]>>,
+    /// Recompose only this sub-rect (the dab/transform bbox); `None` = full.
+    dirty_rect: Option<Region>,
+}
+
+impl CompositorCache {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Invalidate every cut point at or above the changed layer (skeleton:
+    /// clears all until the dirty-tracking walk lands). Cuts strictly below
+    /// `changed` stay valid.
+    pub fn invalidate_from(&mut self, _changed: LayerId, _stack: &LayerStack) {
+        self.cuts.clear();
+    }
+
+    /// Mark the sub-rect to recompose next drain.
+    pub fn mark_dirty(&mut self, region: Region) {
+        self.dirty_rect = Some(region);
+    }
+
+    #[must_use]
+    pub fn dirty_rect(&self) -> Option<Region> {
+        self.dirty_rect
     }
 }
 
@@ -666,5 +767,52 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn adjustment_layer_noop_stub_is_identity() {
+        // W4 T4.2: an adjustment layer composites end-to-end (the no-op
+        // `apply_adjustment` stub leaves the layers below unchanged) — verifies
+        // the LayerKind::Adjustment arm runs + the path is wired. A real arm
+        // goes live the next frame once the implementer fills the compute.
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        let (w, h) = (2, 2);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", w, h).unwrap();
+        let _adj = s
+            .add_adjustment(AdjustmentKind::HueSaturationBrightness)
+            .unwrap();
+        let mut src = MapPixelSource::default();
+        src.insert(base, solid(w, h, [120, 60, 200, 255]));
+        let out = composite(&s, &src, w, h);
+        for px in out.chunks_exact(4) {
+            assert_eq!(
+                &px[0..3],
+                &[120, 60, 200],
+                "no-op adjustment changed the pixel"
+            );
+            assert_eq!(px[3], 255);
+        }
+    }
+
+    #[test]
+    fn compositor_cache_skeleton_round_trips() {
+        let mut c = CompositorCache::new();
+        assert!(c.dirty_rect().is_none());
+        c.mark_dirty(Region {
+            x: 0,
+            y: 0,
+            w: 4,
+            h: 4,
+        });
+        assert_eq!(c.dirty_rect().map(|r| r.w), Some(4));
+        c.invalidate_from(LayerId(1), &LayerStack::new()); // skeleton: clears
+    }
+
+    #[test]
+    #[ignore = "W4 soft perf gate (ADR-0045 §2.11): inline full-recompose is bandwidth-bound; W5 wires CompositorCache cut-points into composite + un-ignores (hard ≤1ms @4K)"]
+    fn adjustment_layer_recomposition_perf_4k() {
+        // Budget: slider-drag recompose @ 4K, 10 adjustment layers ≤ 1 ms.
+        // Fleshed when the CompositorCache cut-point lands in the hot path.
     }
 }

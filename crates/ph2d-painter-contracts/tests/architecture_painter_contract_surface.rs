@@ -60,6 +60,37 @@ fn crate_source(crate_name: &str) -> String {
     out
 }
 
+/// Like [`crate_source`] but skips files whose file-name is in `exclude`.
+///
+/// **Why (ADR-0045 amendment-1):** `ph2d-painter-brush` is now the homestead of
+/// TWO frozen contracts — the brush engine (ADR-0044) and the adjustment-layer
+/// surface (ADR-0045 `adjustments.rs`, placed here to dodge the `LayerId` crate
+/// cycle). The brush-flatness heuristic (`brush_no_sub_sub_structs`) was
+/// calibrated for brush-only and would mis-count the 29 adjustment sub-`*Params`
+/// structs as brush bloat. The adjustment surface has its OWN dedicated caps
+/// (the `adjustments` mod below: kind/params/field/destructive counts), so the
+/// brush gate explicitly excludes `adjustments.rs` to measure only what it
+/// claims to guard.
+fn crate_source_excluding(crate_name: &str, exclude: &[&str]) -> String {
+    let dir = workspace_root().join("crates").join(crate_name).join("src");
+    if !dir.exists() {
+        return String::new();
+    }
+    let mut out = String::new();
+    for entry in WalkDir::new(&dir).into_iter().flatten() {
+        if entry.path().extension().is_some_and(|e| e == "rs")
+            && !exclude
+                .iter()
+                .any(|x| entry.path().file_name().is_some_and(|f| f == *x))
+            && let Ok(s) = std::fs::read_to_string(entry.path())
+        {
+            out.push('\n');
+            out.push_str(&s);
+        }
+    }
+    out
+}
+
 /// Total LOC of a crate's `src/`.
 fn crate_loc(crate_name: &str) -> Option<usize> {
     let src = crate_source(crate_name);
@@ -345,7 +376,11 @@ mod brush_engine {
         // identifica patterns suspeitos: campos cujo tipo começa maiúscula sem ser
         // primitivo conhecido nem `Vec`/`Option`/enum-known. Heuristic; refinar
         // se vier falso-positivo legítimo.
-        let src = crate_source(CRATE);
+        // Brush-engine source ONLY — `adjustments.rs` (ADR-0045) is a sibling
+        // contract in this crate by amendment-1 and is gated separately below
+        // (see `crate_source_excluding` rationale). Counting its 29 sub-`*Params`
+        // structs here would be a category error against ADR-0044 §2.2.
+        let src = crate_source_excluding(CRATE, &["adjustments.rs"]);
         if src.is_empty() {
             return; // vacuous
         }

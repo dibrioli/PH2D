@@ -8,8 +8,10 @@
 //! - per-kind sub-`*Params` structs with the field caps in §2.6.
 //!
 //! This module defines ONLY the data + sensible `Default`s + serde. The compute
-//! logic (`apply_adjustment(kind, params, &mut [u8])` per ADR-0045 §2.7 + the
-//! W4-triage Coord decision) is the implementer's (T4.3+).
+//! logic (`apply_adjustment(kind, params, &mut [[f32; 4]])` per ADR-0045 §2.7
+//! + the W4-triage Coord decision — straight LINEAR f32 acc, not 8-bit, so the
+//! per-frame composite never round-trips through sRGB8) is the implementer's
+//! (T4.3+). T4.2 ships the no-op stub + the compositor wiring around it.
 //!
 //! **Amendment-1 crate-placement:** `AdjustmentLayer.{id, clipped_by, mask}` are
 //! raw `u64` (LayerId values), not the `LayerId` newtype, because `LayerId` lives
@@ -498,6 +500,32 @@ impl AdjustmentLayer {
     pub fn kind_params_match(&self) -> bool {
         self.params.kind() == self.kind
     }
+}
+
+/// Apply a non-destructive adjustment to a window of the compositor's
+/// accumulator IN PLACE. `acc` is **straight, LINEAR f32 RGBA** (the same space
+/// `ph2d_tool_painter::compositor` blends in) — operating on f32 keeps a stack
+/// of adjustments band-free (no 8-bit round-trip in the per-frame composite).
+///
+/// Mask / opacity / blend-mode are handled by the compositor AROUND this call
+/// (copy → `apply_adjustment` → blend by mask×opacity in the layer's blend
+/// mode), so this fn is the pure `kind` + `params` → pixel transform. Kinds
+/// conventionally defined in display space (Curves / Levels / Posterize)
+/// convert linear↔sRGB internally.
+///
+/// **STUB (W4 T4.1/T4.2 Coord):** the hook signature + wiring are landed (the
+/// compositor calls this for every `LayerKind::Adjustment`), but the per-kind
+/// compute is the implementer's (T4.3+, HSB first for the Day-4 smoke). Replace
+/// the no-op body with `match kind { … }`; an implemented arm goes live the next
+/// frame.
+pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &mut [[f32; 4]]) {
+    debug_assert_eq!(
+        params.kind(),
+        *kind,
+        "apply_adjustment: kind/params variant mismatch"
+    );
+    // No-op until T4.3+ fills the per-kind compute.
+    let _ = acc;
 }
 
 /// PSD export classification — frozen mapping table (ADR-0045 §2.8). A

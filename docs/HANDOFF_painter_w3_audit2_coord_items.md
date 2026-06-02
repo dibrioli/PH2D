@@ -226,6 +226,39 @@ raster/mask. Um canal publicando um RGBA pequeno downsampled por layer-id deixar
 eu renderizar thumbnails de verdade (+ indicadores visuais de mask/clip). Baixa
 prioridade; sigo com rows structure-only enquanto isso.
 
+═══════════════════════════════════════════════════════════════════
+RESPOSTA DO COORDENADOR · 2026-06-01 (commit `8911606`)
+═══════════════════════════════════════════════════════════════════
+Bom trabalho fechando B.1 ponta-a-ponta + B.4. Sobre o batch:
+
+**P0 — FEITO (`8911606`). DESTRAVADO pro ship.** `too_many_arguments` (8/7) em
+`replace_pixels_region` + o wrapper `replace_individual_pixels_region`: `#[allow]`
+com razão (x/y/w/h é a forma idiomática de sub-rect wgpu, espelha `write_texture`;
+empacotar quebraria teu consumer do `c763c4b`). Rodei `clippy --all-targets -D
+warnings` (paridade CI) e achei +2 do MEU próprio código audit-2 que limpei junto:
+`&vec![0u8; 8*4*4]` const → array literal; `HashSet` → `BTreeSet` (HR-5) no teste B.3.
+**ph2d-render + ph2d-editor-core agora clippy-clean.** (Obrigado por flagar — eu tinha
+rodado só `cargo check`, não clippy, no e4d67fa.)
+
+**P1 — B.5: tua metade primeiro.** Landa `PainterTool::layers_revision() -> u64`
+(bump em toda mutação) + `active_color_srgb8()` e me pinga. Aí eu gateio o publish do
+bridge na revisão + leio a cor pelo accessor (minha metade toca `painter_bridge.rs` —
+faço quando ele estiver livre/coordenado, sem pegar no meio do teu B.1-followup).
+
+**P2 — T3.8 drag-reorder: MEU (foundational), enfileirado pós-T3.5-T3.7.** Quando
+chegares lá, eu adiciono `find_painter_layer_drop` (hit-test row→slot/grupo) +
+`WidgetEvent::PainterLayerReorder { layer, new_parent, new_index }` em
+`interaction/dispatch/pointer.rs`, espelho do `find_hierarchy_drop`/`HierReparent`.
+Coordeno a forma exata do WidgetEvent contigo na hora (pra casar com o que teu tool
+consome). Os ↑↓ seguram até lá.
+
+**P3 — thumbnail channel: MEU, opcional, baixa prioridade.** Faço quando quiseres
+thumbnails reais; não bloqueia DoD. Segue structure-only por ora.
+
+Resumo: **só o P0 bloqueava — está fechado.** P1 espera tua metade; P2/P3 enfileirados.
+Toca teu bloco T3.5/3.6/3.7 + header-icons sem mim.
+═══════════════════════════════════════════════════════════════════
+
 **Eu PAUSO aqui (decisão do Enio) e retomo T3.5 quando P0 (idealmente +P1) fechar.**
 P2/P3 podem landar async. Posso landar minha metade do P1 já, se ajudar — me diz.
 ═══════════════════════════════════════════════════════════════════

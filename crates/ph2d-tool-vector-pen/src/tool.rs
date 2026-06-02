@@ -10,8 +10,8 @@ use glam::Vec2;
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_vector_doc::{
-    EditLog, FillSolid, Ph2dVectorAsset, RepresentationMode, StyleTable, TangentsCubic,
-    VectorNetwork, VectorOp, VertexKind, WindingRule,
+    EditLog, FillSolid, Ph2dVectorAsset, RepresentationMode, SegmentId, StyleTable, TangentSide,
+    TangentsCubic, VectorNetwork, VectorOp, VertexKind, WindingRule,
 };
 
 /// Default pixel tolerance for close-path detection. Tuned for typical
@@ -69,6 +69,20 @@ pub struct VectorPenTool {
     /// ADR-0056 §2.4. Spiro / Hyperbezier Assist Modes toggle via
     /// [`Self::set_authoring_hint`] (W2 wires the HUD `S` / `H` keys).
     authoring_hint: RepresentationMode,
+
+    /// Out-handle pulled at the most recent anchor by a click-drag, awaiting
+    /// the NEXT segment (its `out_at_start`). `None` = the previous click had
+    /// no drag → the next segment starts straight.
+    pending_out_tangent: Option<Vec2>,
+
+    /// Segment whose incoming handle is being live-dragged this gesture, so
+    /// [`Self::finish_handle`] can log one `MoveTangent` on pointer-up.
+    handle_drag_seg: Option<SegmentId>,
+
+    /// `true` between a click (anchor placed) and its pointer-up — the window
+    /// in which a Primary drag pulls Bézier handles. Set in
+    /// [`Self::on_canvas_click`], cleared in [`Self::finish_handle`] / reset.
+    handle_drag_active: bool,
 }
 
 impl Default for VectorPenTool {
@@ -91,6 +105,9 @@ impl Default for VectorPenTool {
             close_path_tolerance_px: DEFAULT_CLOSE_PATH_TOLERANCE_PX,
             pending_committed: None,
             authoring_hint: RepresentationMode::Cubic,
+            pending_out_tangent: None,
+            handle_drag_seg: None,
+            handle_drag_active: false,
         }
     }
 }
@@ -177,6 +194,9 @@ impl VectorPenTool {
         };
         self.default_fill_ref = self.styles.insert_fill(visible_fill);
         self.authoring_hint = RepresentationMode::Cubic;
+        self.pending_out_tangent = None;
+        self.handle_drag_seg = None;
+        self.handle_drag_active = false;
     }
 
     /// Main pointer handler — called by the T1.7 shell bridge each time
@@ -275,19 +295,29 @@ impl VectorPenTool {
             return PenClickOutcome::Rejected;
         }
 
-        // If this is NOT the first vertex, connect from the previous
-        // one with a straight cubic (zero tangents = degenerate-cubic
-        // straight line; kurbo / Vello handle correctly).
+        // A fresh anchor was placed: a Primary drag that follows now pulls
+        // its Bézier handles (W2 click-drag). Cleared on pointer-up.
+        self.handle_drag_active = true;
+
+        // If this is NOT the first vertex, connect from the previous one.
+        // The start tangent is the out-handle pulled at the PREVIOUS anchor
+        // (if the user dragged there) — `TangentsCubic::ZERO` otherwise
+        // (degenerate cubic = straight line; kurbo / Vello handle correctly).
+        // The end tangent stays zero until a drag at THIS anchor sets it.
         let connect = self.network.vertices.len() >= 2;
         if connect {
             let prev_id = self.network.vertices[self.network.vertices.len() - 2].id;
             let new_seg_id = self.network.next_segment_id();
+            let out_at_start = self.pending_out_tangent.take().unwrap_or(Vec2::ZERO);
             let _ = self.edit_log.push_and_apply(
                 VectorOp::AddSegment {
                     id: new_seg_id,
                     start: prev_id,
                     end: new_vertex_id,
-                    tangents: TangentsCubic::ZERO,
+                    tangents: TangentsCubic {
+                        out_at_start,
+                        in_at_end: Vec2::ZERO,
+                    },
                 },
                 &mut self.network,
             );
@@ -295,6 +325,65 @@ impl VectorPenTool {
         } else {
             PenClickOutcome::AddedFirstVertex
         }
+    }
+
+    /// Click-drag Bézier handle extrusion (W2). While the Primary button is
+    /// held after a click placed an anchor, the drag delta pulls that anchor's
+    /// handles: the outgoing handle (carried to the NEXT segment via
+    /// `pending_out_tangent`) and, on the segment arriving at this anchor, the
+    /// mirrored incoming handle (a smooth point). Direct-mutates for a live
+    /// preview; the single logged `MoveTangent` lands on [`Self::finish_handle`]
+    /// so one drag = one op (not one per motion event). Returns `true` iff a
+    /// handle was updated.
+    pub fn drag_handle(&mut self, drag_pos: Vec2) -> bool {
+        if !self.handle_drag_active || !drag_pos.x.is_finite() || !drag_pos.y.is_finite() {
+            return false;
+        }
+        let Some(anchor) = self.network.vertices.last().copied() else {
+            return false;
+        };
+        let delta = drag_pos - anchor.pos;
+        // Out-handle for the next segment leaving this anchor.
+        self.pending_out_tangent = Some(delta);
+        // Mirror onto the arriving segment's incoming handle (smooth point).
+        if let Some(seg) = self
+            .network
+            .segments
+            .iter_mut()
+            .rev()
+            .find(|s| s.end == anchor.id)
+        {
+            seg.in_at_end = -delta;
+            self.handle_drag_seg = Some(seg.id);
+        }
+        true
+    }
+
+    /// End a click-drag handle pull (pointer-up). Logs the arriving segment's
+    /// final incoming tangent as ONE `MoveTangent` op (replay-safe — the live
+    /// network already carries the value from [`Self::drag_handle`]) and closes
+    /// the drag window. `pending_out_tangent` is preserved: the next click's
+    /// segment consumes it as `out_at_start`.
+    pub fn finish_handle(&mut self) {
+        if let Some(seg_id) = self.handle_drag_seg.take() {
+            let final_in = self
+                .network
+                .segments
+                .iter()
+                .find(|s| s.id == seg_id)
+                .map(|s| s.in_at_end);
+            if let Some(new_pos) = final_in {
+                let _ = self.edit_log.push_and_apply(
+                    VectorOp::MoveTangent {
+                        seg: seg_id,
+                        which: TangentSide::InAtEnd,
+                        new_pos,
+                    },
+                    &mut self.network,
+                );
+            }
+        }
+        self.handle_drag_active = false;
     }
 
     /// Close the current path: connect last vertex back to the first

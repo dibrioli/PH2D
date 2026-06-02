@@ -129,6 +129,59 @@ impl App {
         false
     }
 
+    /// Pointer Move while the primary button is held after a click — pull the
+    /// just-placed anchor's Bézier handles (W2 click-drag). No-ops (returns
+    /// `false`) unless the Pen is active AND a click-drag window is open
+    /// (`VectorPenTool::drag_handle` self-gates on `handle_drag_active`), so a
+    /// plain hover between clicks never distorts the path.
+    pub(crate) fn try_vector_pen_pointer_drag(&mut self, px: f32, py: f32) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let pen_active = gfx
+            .tools
+            .active()
+            .map(|t| t.id() == ph2d_editor::ToolId::new("vector_pen"))
+            .unwrap_or(false);
+        if !pen_active {
+            return false;
+        }
+        let world = gfx.camera.screen_to_world((px, py), gfx.surface.size());
+        match gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<VectorPenTool>())
+        {
+            Some(pen) => pen.drag_handle(Vec2::new(world[0], world[1])),
+            None => false,
+        }
+    }
+
+    /// Primary Up — close the click-drag handle window (logs the pulled
+    /// incoming tangent once). No-op when the Pen isn't active.
+    pub(crate) fn try_vector_pen_pointer_up(&mut self) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let pen_active = gfx
+            .tools
+            .active()
+            .map(|t| t.id() == ph2d_editor::ToolId::new("vector_pen"))
+            .unwrap_or(false);
+        if !pen_active {
+            return false;
+        }
+        if let Some(pen) = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<VectorPenTool>())
+        {
+            pen.finish_handle();
+            return true;
+        }
+        false
+    }
+
     /// When the Pen tool is active the entire viewport is its canvas —
     /// no "off-canvas" concept exists. Sibling of
     /// `painter_active_consume_canvas_click` for parity; guards the

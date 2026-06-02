@@ -184,6 +184,12 @@ impl App {
         if self.painter_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Vector Pen handle drag (W2): while the Primary button is held after
+        // placing an anchor, motion pulls its Bézier handles. Early-return so
+        // it doesn't pan / drive a gizmo. No-ops unless a Pen click-drag is live.
+        if self.try_vector_pen_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Vector Pencil stroke drag (T2.1): while a freehand stroke is open,
         // every motion records another sample. Early-return so it doesn't
         // pan / drive a gizmo / extend a rubber-band. No-ops (returns false)
@@ -471,6 +477,9 @@ impl App {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
                 self.end_painter_paint();
+                // Close a Pen click-drag handle window (logs the pulled
+                // tangent). No-op when the Pen isn't mid-click-drag.
+                self.try_vector_pen_pointer_up();
                 // Commit the freehand stroke (fit → Hobby → push committed
                 // asset). No-ops when no pencil stroke is open.
                 self.try_vector_pencil_pointer_up();

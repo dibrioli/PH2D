@@ -137,3 +137,38 @@ tabela PSD num doc de referência — eu transcrevo no enum/gate atômico em cim
   hand-maintained de `node_id_collisions.rs` — follow-up Coord aditivo, faço junto
   do landing de T4.1 (mesma passada de contrato).
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+T4.1 LANDADO (commit 051455b) — fan-out DESBLOQUEADO
+═══════════════════════════════════════════════════════════════════
+Contrato congelado em `ph2d-painter-brush::adjustments` (novo módulo, gate-clean).
+Encontrei 3 conflitos do ADR escrito vs árvore real → resolvidos no
+**`docs/architecture/decisions/0045-amendment-1.md`** (ids `u64` crus +
+mask-as-id + integração inner-authoritative). Os 6 gates §2.10 verdes (4 count em
+ph2d-painter-contracts + kind_params_match/psd_mapping como unit tests no módulo).
+
+## Superfície que TU implementas contra (T4.3+)
+```rust
+use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, /* + os 24 *Params */};
+// Hook de compute (decisão da triagem §2): tu implementas isto.
+pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, rgba: &mut [u8]) { /* match kind */ }
+```
+- `AdjustmentParams::neutral_for(kind)` te dá o seed neutro (HSB = `HsbParams{0,0,0}`).
+- `AdjustmentLayer::new(id, name, kind)` cria layer neutra; `kind_params_match()` é o invariante.
+- Mask/opacity/blend NÃO entram no `apply_adjustment` — o compositor (meu T4.2) copia
+  o acumulador → aplica → blenda por (mask×opacity). Teu compute fica puro.
+- `AdjustmentKind::psd_export()` é o mapa PSD congelado (W16).
+
+## **Podes fan-out JÁ** (T4.3 HSB → Day-4 smoke, depois os 23):
+Cada kind = 1 task isolada (compute fn + UI popover sliders + golden SSIM≥0.999),
+zero dep entre kinds. **Importante:** o `apply_adjustment` roda standalone (testável
+em `&mut [u8]`) ANTES do T4.2 existir — não precisas esperar o `LayerKind::Adjustment`
+pra implementar+testar a lógica de cada kind. Quando o T4.2 landar, ele só chama
+teu `apply_adjustment`.
+
+## T4.2 (meu, próximo) — coordena a janela
+`LayerKind::Adjustment(AdjustmentLayer)` + persist v2 + cook-hash + `CompositorCache`
+TOCA o teu `ph2d-tool-painter/src/layers.rs` (crate quente). Me avisa quando tiveres
+uma janela em layers.rs/compositor.rs sem WIP, que eu lando sem colidir. Até lá tu
+implementas os kinds (compute) livremente em `ph2d-painter-brush`.
+═══════════════════════════════════════════════════════════════════

@@ -18,13 +18,15 @@ max-threads = 1
 [[profile.default.overrides]]
 filter = 'package(ph2d-asset-cooker)'
 test-group = 'asset-cooker-ispc'
-# Bumped 3 → 6 (2026-05-29): the W1.T15-characterized ~50% per-run vendored-ISPC
-# SIGABRT means retries=3 (4 tries) still fails ~0.5^4 ≈ 6% of the time, which
-# cook_all_intra_machine_byte_identity hit on CI macOS. 6 retries (7 tries) →
-# ~0.5^7 ≈ 0.8%. This is the ONLY effective lever: the crash is in vendored ctt
-# (no code root-cause our side — see the test-group note above). The heavier
-# cook_all_* tests do the most encoder work, so they're the most exposed.
-retries = 6
+# Bumped 3 → 6 (2026-05-29) → 10 (2026-06-02): the W1.T15-characterized ~50%
+# per-run vendored-ISPC SIGABRT. 6 retries (7 tries) → ~0.5^7 ≈ 0.8% PER TEST,
+# but across the ~10 cook tests the aggregate residual is ~1-(0.992)^10 ≈ 8% of
+# CI runs — and `seam_cook_decode_ktx2::cook_tagged_desktop_sprite_color_reports_
+# straight_intent` hit it on macOS (aborted 7/7) 2026-06-02. 10 retries (11 tries)
+# → ~0.5^11 ≈ 0.05% per test, aggregate ~0.5%. This is the ONLY effective lever:
+# the crash is in vendored ctt (no code root-cause our side — see the test-group
+# note). Retries are nearly free — each aborts in ~0.06s.
+retries = 10
 
 # ph2d-painter-brush `painter_no_alloc_hot_path` measures the brush scheduler
 # hot path with dhat (heap-block delta). It is alloc-free in isolation (5/5) and

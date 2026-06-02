@@ -2243,6 +2243,28 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
                 self.group_active();
             }
+            // ── Modifier toolbar (acts on the ACTIVE layer) ────────────────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
+                self.add_mask_to_active();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_CLIP => {
+                if let Some(a) = self.layers.active() {
+                    let now = self.layers.get(a).is_some_and(|l| l.clipping);
+                    self.set_layer_clipping(a, !now);
+                }
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ALPHA_LOCK => {
+                if let Some(a) = self.layers.active() {
+                    let now = self.layers.get(a).is_some_and(|l| l.alpha_locked);
+                    self.set_layer_alpha_locked(a, !now);
+                }
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_REFERENCE => {
+                if let Some(a) = self.layers.active() {
+                    let now = self.layers.get(a).is_some_and(|l| l.is_reference);
+                    self.set_layer_reference(a, !now);
+                }
+            }
             // ── Apply CTA (either panel) — commit the composite to the sprite.
             // The bridge's drive_pending_commit bakes it (run_full) next frame.
             PanelEvent::Click(id) if id == core_ids::PAINTER_APPLY => {
@@ -3264,6 +3286,29 @@ mod tests {
         // No source / no active raster → no-op.
         let mut t = PainterTool::default();
         assert!(t.add_mask_to_active().is_none(), "no source = no mask");
+    }
+
+    #[test]
+    fn modifier_toolbar_routes_toggle_the_active_layer() {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2); // base
+        let l2 = t.add_raster_layer("L2").unwrap(); // active raster
+        // Clip toggles on then off.
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_CLIP));
+        assert!(t.layers.get(l2).unwrap().clipping, "clip on");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_CLIP));
+        assert!(!t.layers.get(l2).unwrap().clipping, "clip off");
+        // Lock + Ref toggle on.
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_ALPHA_LOCK));
+        assert!(t.layers.get(l2).unwrap().alpha_locked, "lock on");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_REFERENCE));
+        assert!(t.layers.get(l2).unwrap().is_reference, "ref on");
+        // Mask creates + activates a mask; active_modifiers reflects raster state.
+        assert!(t.layers.active_modifiers().unwrap().is_raster);
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_MASK));
+        assert!(t.active_is_mask(), "mask created + active");
     }
 
     #[test]

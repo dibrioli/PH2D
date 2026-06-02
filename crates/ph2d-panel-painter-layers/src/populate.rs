@@ -19,6 +19,11 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
         ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
         ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
+        // Modifier toolbar (acts on the active layer): Mask / Clip / Lock / Ref.
+        ph2d_editor_core::ids::PAINTER_LAYERS_MASK,
+        ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,
+        ph2d_editor_core::ids::PAINTER_LAYERS_ALPHA_LOCK,
+        ph2d_editor_core::ids::PAINTER_LAYERS_REFERENCE,
         // Dock-mode toggle ("Brush") in the header (mode C).
         ph2d_editor_core::ids::PAINTER_LAYERS_TOGGLE_DOCK,
         // "Apply" CTA — commits the composite to the sprite (shared id with the

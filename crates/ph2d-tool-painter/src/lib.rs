@@ -37,8 +37,8 @@ pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
 };
 pub use layers::{
-    GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH, MaskLayer,
-    RasterLayer,
+    GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers, LayerStack,
+    MAX_GROUP_DEPTH, MaskLayer, RasterLayer,
 };
 // Re-export so callers of `set_layer_blend_mode` / the layers panel can name
 // the blend mode without a direct `ph2d-painter-brush` import.

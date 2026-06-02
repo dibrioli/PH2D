@@ -46,7 +46,11 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 || id == core_ids::PAINTER_APPLY
                 || id == core_ids::PAINTER_LAYERS_DUPLICATE
                 || id == core_ids::PAINTER_LAYERS_DELETE
-                || id == core_ids::PAINTER_LAYERS_GROUP =>
+                || id == core_ids::PAINTER_LAYERS_GROUP
+                || id == core_ids::PAINTER_LAYERS_MASK
+                || id == core_ids::PAINTER_LAYERS_CLIP
+                || id == core_ids::PAINTER_LAYERS_ALPHA_LOCK
+                || id == core_ids::PAINTER_LAYERS_REFERENCE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

@@ -34,7 +34,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button, paint_scrollbar,
+    Button, ButtonKind, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button, paint_scrollbar,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -44,6 +44,7 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 const TOGGLE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: header dock-toggle button width
 const HEADER_ICON_W: f32 = 28.0; // LITERAL-PX-OK: action icon-button square
 const TOOLBAR_H: f32 = 36.0; // LITERAL-PX-OK: action toolbar strip height (icon + pad)
+const MOD_BTN_W: f32 = 52.0; // LITERAL-PX-OK: modifier toggle button width (text)
 const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
@@ -99,13 +100,15 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    // Action toolbar strip (New / Group / Duplicate / Delete) sits one row BELOW
-    // the header, between it and the scrollable list — fixed, not scrolled.
+    // Two fixed toolbar strips below the header: actions (New / Group /
+    // Duplicate / Delete) then modifiers (Mask / Clip / Lock / Ref), between the
+    // header and the scrollable list.
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let toolbar_rect = Rect::new(rect.x, header_bottom, rect.w, TOOLBAR_H);
+    let modifier_toolbar_rect = Rect::new(rect.x, header_bottom + TOOLBAR_H, rect.w, TOOLBAR_H);
 
-    // Body region (clipped), starting below the toolbar.
-    let body_top = header_bottom + TOOLBAR_H;
+    // Body region (clipped), starting below both toolbar strips.
+    let body_top = header_bottom + TOOLBAR_H * 2.0;
     let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
 
@@ -275,6 +278,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // below the header. Painted + registered AFTER the rows (same last-wins
     // reason as the chrome above; scrolled rows must not shadow the toolbar).
     paint_action_toolbar(ctx, toolbar_rect, theme);
+    paint_modifier_toolbar(ctx, modifier_toolbar_rect, theme);
 
     // Publish scroll bounds so `dispatch_wheel` scrolls this panel + clamp the
     // offset to the new content (so deleting/collapsing rows snaps back).
@@ -359,6 +363,41 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, btn_rect);
         x += HEADER_ICON_W + Spacing::Xs.px();
+    }
+}
+
+/// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggle
+/// buttons acting on the ACTIVE layer. The three toggles fill `Accent` when on
+/// (read from the active layer's flags); Mask is a create action (Accent = the
+/// layer already has a mask). Disabled + un-registered when the active layer
+/// isn't a raster (a group/mask can't take these), so the click is a no-op.
+fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
+    let mods = state::current_layers().and_then(|s| s.active_modifiers());
+    let raster = mods.is_some_and(|m| m.is_raster);
+    let y = toolbar_rect.y + ((toolbar_rect.h - ROW_H_PX) * 0.5).max(0.0);
+    let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
+    let specs = [
+        (core_ids::PAINTER_LAYERS_MASK, "Mask", mods.is_some_and(|m| m.has_mask)),
+        (core_ids::PAINTER_LAYERS_CLIP, "Clip", mods.is_some_and(|m| m.clipping)),
+        (core_ids::PAINTER_LAYERS_ALPHA_LOCK, "Lock", mods.is_some_and(|m| m.alpha_locked)),
+        (core_ids::PAINTER_LAYERS_REFERENCE, "Ref", mods.is_some_and(|m| m.is_reference)),
+    ];
+    for (id, label, on) in specs {
+        let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
+        let st = if raster {
+            ctx.host.store().button_state(id).unwrap_or(ButtonState::Normal)
+        } else {
+            ButtonState::Disabled
+        };
+        let mut btn = Button::new(id, label).state(st);
+        if on && raster {
+            btn.kind = ButtonKind::Accent; // toggle ON = filled accent
+        }
+        paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
+        if raster {
+            ctx.host.hit_index_mut().register(id, btn_rect);
+        }
+        x += MOD_BTN_W + Spacing::Xs.px();
     }
 }
 

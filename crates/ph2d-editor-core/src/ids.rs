@@ -316,6 +316,18 @@ pub const PAINTER_LAYERS_DELETE: NodeId = hash_node_id("painter_layers.delete");
 /// Header "Group" icon-button — Click → `PainterTool::add_group` (empty group
 /// at the top; the user nests layers into it). W3.T3.7.
 pub const PAINTER_LAYERS_GROUP: NodeId = hash_node_id("painter_layers.group");
+/// Modifier toolbar "Mask" — Click → `PainterTool::add_mask_to_active` (creates
+/// a grayscale mask on the active raster + makes it the edit target). W3.T3.5.
+pub const PAINTER_LAYERS_MASK: NodeId = hash_node_id("painter_layers.mask");
+/// Modifier toolbar "Clip" toggle — flips the active layer's clipping-mask
+/// modifier (§2.8). W3.T3.6.
+pub const PAINTER_LAYERS_CLIP: NodeId = hash_node_id("painter_layers.clip");
+/// Modifier toolbar "Lock" toggle — flips the active layer's alpha-lock
+/// modifier (§2.10). W3.T3.7.
+pub const PAINTER_LAYERS_ALPHA_LOCK: NodeId = hash_node_id("painter_layers.alpha_lock");
+/// Modifier toolbar "Ref" toggle — flips the active layer's reference modifier
+/// (§2.9, exclusive). W3.T3.7.
+pub const PAINTER_LAYERS_REFERENCE: NodeId = hash_node_id("painter_layers.reference");
 /// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
 /// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
 /// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`

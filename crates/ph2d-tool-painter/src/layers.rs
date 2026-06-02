@@ -120,6 +120,18 @@ impl Layer {
     }
 }
 
+/// Modifier flags of the active layer — the layers panel's modifier toolbar
+/// (Mask / Clip / Lock / Ref) paints its toggle state from this. `Copy`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct LayerModifiers {
+    /// Only a raster can take a mask / be clipped / alpha-locked.
+    pub is_raster: bool,
+    pub has_mask: bool,
+    pub clipping: bool,
+    pub alpha_locked: bool,
+    pub is_reference: bool,
+}
+
 /// The layer stack for one canvas. A flat arena (`arena`) keyed by
 /// [`LayerId`], plus the top-level z-order (`root`); groups reference
 /// their children by id. This keeps reorder/nest cheap and lets the
@@ -182,6 +194,20 @@ impl LayerStack {
     #[must_use]
     pub fn active(&self) -> Option<LayerId> {
         self.active
+    }
+
+    /// Modifier flags of the active layer — what the layers panel's modifier
+    /// toolbar paints its toggle state from. `None` if there's no active layer.
+    #[must_use]
+    pub fn active_modifiers(&self) -> Option<LayerModifiers> {
+        let l = self.get(self.active?)?;
+        Some(LayerModifiers {
+            is_raster: matches!(l.kind, LayerKind::Raster(_)),
+            has_mask: l.mask.is_some(),
+            clipping: l.clipping,
+            alpha_locked: l.alpha_locked,
+            is_reference: l.is_reference,
+        })
     }
 
     /// Set the primary selection. No-op if `id` is unknown.

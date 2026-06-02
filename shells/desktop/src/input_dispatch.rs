@@ -52,6 +52,7 @@ mod keyboard;
 mod painter_input;
 pub(crate) mod protect_brush;
 mod vector_pen_input;
+mod vector_pencil_input;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
@@ -178,6 +179,13 @@ impl App {
         // every motion deposits another stamp via the StampScheduler. Early-
         // return so it doesn't move the sprite or drive a gizmo.
         if self.painter_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Vector Pencil stroke drag (T2.1): while a freehand stroke is open,
+        // every motion records another sample. Early-return so it doesn't
+        // pan / drive a gizmo / extend a rubber-band. No-ops (returns false)
+        // when no pencil stroke is active.
+        if self.try_vector_pencil_pointer_drag(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
@@ -369,6 +377,21 @@ impl App {
             {
                 return;
             }
+            // Vector Pencil — Primary Down inside the sprite footprint STARTS
+            // a freehand stroke (drag-authored, unlike the Pen's click); the
+            // CursorMoved drag + the Up arm below extend and commit it. Only
+            // one vector tool is ever active, so this coexists with the Pen.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.try_vector_pencil_pointer_down(evt.x, evt.y) =>
+            {
+                return;
+            }
+            // Pencil active but Down landed OFF-canvas → silent consume.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.vector_pencil_active_consume_canvas_click() =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
                     && self.painter_active_consume_canvas_click() =>
@@ -379,6 +402,9 @@ impl App {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
                 self.end_painter_paint();
+                // Commit the freehand stroke (fit → Hobby → push committed
+                // asset). No-ops when no pencil stroke is open.
+                self.try_vector_pencil_pointer_up();
             }
             _ => {}
         }

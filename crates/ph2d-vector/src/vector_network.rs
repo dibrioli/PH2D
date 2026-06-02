@@ -11,8 +11,11 @@
 //!   direction).
 //! - Fills each region with its referenced [`ph2d_vector_doc::FillSolid`]
 //!   color (OKLCH → sRGB → linear via `peniko::Color::from_rgba8`).
-//! - Strokes are deferred to W2 (the stroke vocabulary lands with the
-//!   Pencil tool); W1 ships fill-only.
+//! - Strokes each segment carrying a `style_ref` that resolves to a
+//!   [`ph2d_vector_doc::StrokeStyle`] (W2 — landed with the Pencil tool).
+//!   Pen region edges have no per-segment `style_ref`, so they're skipped
+//!   (the region fill drew them) — Pen fills + Pencil strokes mix with no
+//!   double-draw.
 //!
 //! ## Allocation behavior (HR-3 honest accounting)
 //!
@@ -38,7 +41,7 @@ use ph2d_color::OklchColor;
 use ph2d_vector_doc::{Region, Segment, SegmentId, VectorNetwork, Vertex, VertexId};
 use std::collections::BTreeMap;
 use vello::Scene;
-use vello::kurbo::{Affine, BezPath, Point};
+use vello::kurbo::{Affine, BezPath, Point, Stroke};
 use vello::peniko::{Brush, Color, Fill};
 
 /// Scratch lookup tables built once per `draw_vector_network` call so
@@ -115,6 +118,51 @@ pub fn draw_vector_network(
         scene.fill(winding, transform, &Brush::Solid(color), None, &path);
         drawn += 1;
     }
+
+    // Stroke pass (W2 — "the stroke vocabulary lands with the Pencil tool",
+    // per the module doc). Stroke every segment whose `style_ref` resolves to a
+    // [`StrokeStyle`] in `styles`. Pen region edges carry NO per-segment
+    // `style_ref` (the region's fill draws them), so they're skipped here — the
+    // committed list can mix Pen fills + Pencil strokes with no double-draw.
+    let mut seg_path = BezPath::new();
+    for segment in &network.segments {
+        let Some(style_ref) = segment.style_ref else {
+            continue;
+        };
+        let Some(stroke_style) = styles.strokes.get(&style_ref) else {
+            continue;
+        };
+        let (Some(start_v), Some(end_v)) = (
+            lookup.vertices.get(&segment.start),
+            lookup.vertices.get(&segment.end),
+        ) else {
+            continue;
+        };
+        let start = Point::new(start_v.pos.x as f64, start_v.pos.y as f64);
+        let end = Point::new(end_v.pos.x as f64, end_v.pos.y as f64);
+        // Cubic control points from the tangent offset vectors (renderer
+        // convention: c1 = start + out_at_start, c2 = end + in_at_end).
+        let c1 = Point::new(
+            start.x + segment.out_at_start.x as f64,
+            start.y + segment.out_at_start.y as f64,
+        );
+        let c2 = Point::new(
+            end.x + segment.in_at_end.x as f64,
+            end.y + segment.in_at_end.y as f64,
+        );
+        seg_path.truncate(0);
+        seg_path.move_to(start);
+        seg_path.curve_to(c1, c2, end);
+        scene.stroke(
+            &Stroke::new(f64::from(stroke_style.width)),
+            transform,
+            &Brush::Solid(oklch_to_color(stroke_style.color)),
+            None,
+            &seg_path,
+        );
+        drawn += 1;
+    }
+
     drawn
 }
 
@@ -224,7 +272,9 @@ pub fn oklch_to_color(color: OklchColor) -> Color {
 mod tests {
     use super::*;
     use glam::Vec2;
-    use ph2d_vector_doc::{FillSolid, Region, Segment, StyleTable, Vertex, WindingRule};
+    use ph2d_vector_doc::{
+        FillSolid, Region, Segment, StrokeStyle, StyleTable, Vertex, WindingRule,
+    };
     use vello::Scene;
 
     fn make_triangle_network() -> VectorNetwork {
@@ -284,7 +334,62 @@ mod tests {
         let styles = make_styles_with_red_fill();
         let mut scene = Scene::new();
         let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
+        // Fill drawn; the 3 region segments carry no `style_ref` (Pen),
+        // so the stroke pass skips them — still 1.
         assert_eq!(drawn, 1);
+    }
+
+    /// Two vertices + one open segment carrying a `style_ref` that resolves to
+    /// a stroke (a committed Pencil path). No region.
+    fn make_styled_open_segment(seg_id_base: u32) -> (VectorNetwork, StyleTable) {
+        let mut net = VectorNetwork::empty();
+        let a = seg_id_base * 2;
+        let b = a + 1;
+        net.vertices.push(Vertex::auto(a, Vec2::new(0.0, 0.0)));
+        net.vertices.push(Vertex::auto(b, Vec2::new(100.0, 0.0)));
+        let mut seg = Segment::straight(seg_id_base, a, b);
+        seg.style_ref = Some(7);
+        net.segments.push(seg);
+        let mut styles = StyleTable::default();
+        styles.strokes.insert(7, StrokeStyle::default());
+        (net, styles)
+    }
+
+    #[test]
+    fn draw_vector_network_strokes_styled_open_segment() {
+        let (net, styles) = make_styled_open_segment(0);
+        let mut scene = Scene::new();
+        let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
+        assert_eq!(drawn, 1, "a styled open segment must be stroked");
+    }
+
+    #[test]
+    fn draw_vector_network_skips_segment_with_unresolved_style_ref() {
+        let (mut net, _) = make_styled_open_segment(0);
+        // style_ref points at a stroke not present in the (empty) table.
+        let styles = StyleTable::default();
+        net.segments[0].style_ref = Some(99);
+        let mut scene = Scene::new();
+        let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
+        assert_eq!(drawn, 0, "an unresolved style_ref must not stroke");
+    }
+
+    #[test]
+    fn draw_vector_network_mixes_pen_fill_and_pencil_stroke_no_double_draw() {
+        // Pen triangle (filled region, unstyled segments) + a Pencil open
+        // segment (styled). Exactly 1 fill + 1 stroke; the 3 Pen segments are
+        // unstyled so the stroke pass never double-draws them.
+        let mut net = make_triangle_network();
+        net.vertices.push(Vertex::auto(3, Vec2::new(200.0, 0.0)));
+        net.vertices.push(Vertex::auto(4, Vec2::new(300.0, 0.0)));
+        let mut seg = Segment::straight(3, 3, 4);
+        seg.style_ref = Some(7);
+        net.segments.push(seg);
+        let mut styles = make_styles_with_red_fill();
+        styles.strokes.insert(7, StrokeStyle::default());
+        let mut scene = Scene::new();
+        let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
+        assert_eq!(drawn, 2, "1 Pen fill + 1 Pencil stroke");
     }
 
     #[test]

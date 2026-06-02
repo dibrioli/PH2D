@@ -67,6 +67,7 @@ mod settings_text;
 mod settings_unit;
 mod theme;
 mod vector_pen_toggle;
+mod vector_pencil_toggle;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
 
@@ -89,4 +90,5 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
         || vector_pen_toggle::apply(hero, event)
+        || vector_pencil_toggle::apply(hero, event)
 }

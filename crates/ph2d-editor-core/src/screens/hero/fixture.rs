@@ -59,6 +59,10 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_VECTOR_PEN,
             TopBarCluster::single("PEN", IconId::VectorPen),
         ),
+        (
+            ids::TOPBAR_VECTOR_PENCIL,
+            TopBarCluster::single("PENCIL", IconId::VectorPencil),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

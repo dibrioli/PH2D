@@ -33,6 +33,7 @@ mod sim_extract;
 mod snapshots;
 mod upscale_bridge;
 mod vector_pen_bridge;
+mod vector_pencil_bridge;
 
 use crate::*;
 
@@ -511,6 +512,13 @@ impl crate::App {
                             toasts.push(Toast::warning(
                                 "Vector Pen: in-progress path discarded. Close \
                                  the path or press Esc to cancel deliberately."
+                                    .to_string(),
+                            ));
+                        }
+                        if vector_pencil_bridge::pencil_has_in_progress_stroke(tools) {
+                            toasts.push(Toast::warning(
+                                "Vector Pencil: in-progress stroke discarded. \
+                                 Finish the stroke or press Esc to cancel deliberately."
                                     .to_string(),
                             ));
                         }
@@ -1001,6 +1009,18 @@ impl crate::App {
                 camera,
                 window_size,
                 self.last_pointer,
+                &mut self.committed_vector_pen_paths,
+                vector_scene,
+            );
+            // Vector Pencil ⟷ shell bridge — drains the committed freehand
+            // stroke into the shared scene + paints the in-progress sample
+            // overlay. Committed paths render (fill + stroke) via the pen
+            // bridge's `draw_vector_network`; the pencil bridge owns the live
+            // overlay + the drain only.
+            vector_pencil_bridge::dispatch(
+                tools,
+                camera,
+                window_size,
                 &mut self.committed_vector_pen_paths,
                 vector_scene,
             );

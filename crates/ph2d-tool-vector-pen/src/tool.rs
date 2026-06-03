@@ -405,8 +405,12 @@ impl VectorPenTool {
         let first_id = self.network.vertices[0].id;
         let last_id = self.network.vertices[self.network.vertices.len() - 1].id;
 
-        // Closing segment last → first.
+        // Closing segment last → first. Carry the out-handle pulled at the LAST
+        // vertex (a click-drag there) into the closing edge's start tangent, so a
+        // closed Pen shape keeps its authored curvature on the closing edge
+        // instead of snapping to a hard straight line.
         let close_seg_id = self.network.next_segment_id();
+        let out_at_start = self.pending_out_tangent.take().unwrap_or(Vec2::ZERO);
         if self
             .edit_log
             .push_and_apply(
@@ -414,7 +418,10 @@ impl VectorPenTool {
                     id: close_seg_id,
                     start: last_id,
                     end: first_id,
-                    tangents: TangentsCubic::ZERO,
+                    tangents: TangentsCubic {
+                        out_at_start,
+                        in_at_end: Vec2::ZERO,
+                    },
                 },
                 &mut self.network,
             )

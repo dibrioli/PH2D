@@ -80,20 +80,39 @@ pub(super) fn dispatch(
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static PICKER_WAS_OPEN: AtomicBool = AtomicBool::new(false);
-        static COMMITTED_INITIAL: AtomicBool = AtomicBool::new(false);
+        static ESTABLISHED: AtomicBool = AtomicBool::new(false);
         let was_open = PICKER_WAS_OPEN.swap(picker_open, Ordering::Relaxed);
         if picker_open && !selection.networks.is_empty() {
-            // Picker just opened → the next apply must be the logged one.
+            // Picker just opened → start a fresh recolor session.
             if !was_open {
-                COMMITTED_INITIAL.store(false, Ordering::Relaxed);
+                ESTABLISHED.store(false, Ordering::Relaxed);
             }
-            if COMMITTED_INITIAL.swap(true, Ordering::Relaxed) {
+            if ESTABLISHED.load(Ordering::Relaxed) {
+                // Real-time: repaint the established fill slot in place.
                 preview_fill_on_selection(committed, selection, *vector_fill_color);
             } else {
-                // First apply of this pick session → snapshot the pre-recolor
-                // scene so one Ctrl+Z reverts the whole recolor.
-                crate::input_dispatch::vector_undo::checkpoint(undo, redo, committed);
-                apply_fill_to_selection(committed, selection, *vector_fill_color);
+                // Establish ONCE — but only on the first ACTUAL colour change vs
+                // the selection's current fill, so opening + closing the picker
+                // without a change costs no undo step / no orphaned fill (#9).
+                let current = selection
+                    .networks
+                    .first()
+                    .and_then(|&i| committed.get(i))
+                    .and_then(|a| {
+                        a.network
+                            .regions
+                            .first()
+                            .and_then(|r| r.fill)
+                            .and_then(|fr| a.styles.fills.get(&fr))
+                            .map(|f| f.color.to_srgb().0)
+                    });
+                if current != Some(*vector_fill_color) {
+                    // First real change → one logged, undoable establish; later
+                    // frames preview in place.
+                    crate::input_dispatch::vector_undo::checkpoint(undo, redo, committed);
+                    apply_fill_to_selection(committed, selection, *vector_fill_color);
+                    ESTABLISHED.store(true, Ordering::Relaxed);
+                }
             }
         }
     }

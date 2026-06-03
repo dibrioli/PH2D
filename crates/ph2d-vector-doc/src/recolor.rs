@@ -88,7 +88,7 @@ pub fn preview_fill_on_selection(
 /// intermediate (sRGB → linear → OKLab → polar OKLCH). Hue in **degrees**
 /// `[0, 360)`, matching [`OklchColor`]'s contract.
 #[must_use]
-fn srgb8_to_oklch(rgba: [u8; 4]) -> OklchColor {
+pub fn srgb8_to_oklch(rgba: [u8; 4]) -> OklchColor {
     let lab: OklabColor = OklabColor::from_linear(SrgbRgba(rgba).to_linear());
     let chroma = (lab.a * lab.a + lab.b * lab.b).sqrt();
     let mut hue = lab.b.atan2(lab.a).to_degrees();

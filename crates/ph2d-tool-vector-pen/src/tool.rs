@@ -345,6 +345,14 @@ impl VectorPenTool {
         let delta = drag_pos - anchor.pos;
         // Out-handle for the next segment leaving this anchor.
         self.pending_out_tangent = Some(delta);
+        // Tag the anchor a SMOOTH (Mirror) point. Every authoring path otherwise
+        // leaves vertices as `Auto`, and Direct-Select's smooth-mirror + Alt
+        // tangent-break gate on Mirror/Aligned — so without this the T2.3 DoD
+        // "tangent break funciona" is unreachable in product. (Kind is a hint,
+        // not a logged op; the snapshot undo captures it with the asset.)
+        if let Some(v) = self.network.vertices.iter_mut().find(|v| v.id == anchor.id) {
+            v.kind = VertexKind::Mirror;
+        }
         // Mirror onto the arriving segment's incoming handle (smooth point).
         if let Some(seg) = self
             .network
@@ -549,6 +557,18 @@ mod tests {
         assert_eq!(out, PenClickOutcome::AddedFirstVertex);
         assert_eq!(t.current_network().vertices.len(), 1);
         assert_eq!(t.current_network().segments.len(), 0);
+    }
+
+    #[test]
+    fn drag_handle_tags_anchor_smooth_mirror() {
+        // A click-drag must author a SMOOTH (Mirror) anchor so Direct-Select's
+        // smooth-mirror + Alt tangent-break (which gate on Mirror/Aligned) work
+        // on Pen-authored geometry — DoD "tangent break funciona".
+        let mut t = VectorPenTool::new();
+        t.on_canvas_click(Vec2::new(10.0, 10.0)); // opens the handle-drag window
+        assert!(t.drag_handle(Vec2::new(20.0, 10.0)), "handle pulled");
+        let v = t.current_network().vertices.last().expect("anchor exists");
+        assert_eq!(v.kind, VertexKind::Mirror);
     }
 
     #[test]

@@ -171,7 +171,20 @@ pub(super) fn dispatch(
         };
         seg_path.truncate(0);
         seg_path.move_to(start);
-        seg_path.line_to(end);
+        // Render the live cubic when the segment carries tangents (W2 Pen
+        // click-drag authoring) — straight `line_to` otherwise. Control points
+        // are anchor + tangent vector (ADR-0056: ctrl = pos + tangent). Without
+        // this the dragged Bézier was invisible during authoring (only straight
+        // guidelines showed).
+        let out = seg.out_at_start;
+        let inn = seg.in_at_end;
+        if out.length_squared() < 1e-12 && inn.length_squared() < 1e-12 {
+            seg_path.line_to(end);
+        } else {
+            let c1 = Point::new(start.x + out.x as f64, start.y + out.y as f64);
+            let c2 = Point::new(end.x + inn.x as f64, end.y + inn.y as f64);
+            seg_path.curve_to(c1, c2, end);
+        }
         scene.stroke(
             &Stroke::new(line_width_world),
             world_to_screen,

@@ -120,6 +120,27 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-vector-inspector")]
     ph2d_panel_vector_inspector::set_current_fill(*vector_fill_color);
 
+    // ── Inject the current fill colour into the active create-tool (#6) ───
+    // The picker shows for select/direct/shape, but the chosen colour persists
+    // in vector_fill_color across tool switches. Without this a shape/path
+    // committed after picking still carried the seeded blue default. The setters
+    // were tested but had ZERO shell callers. (Pen has no swatch yet but honours
+    // the persisted colour.)
+    {
+        let fill = ph2d_vector_doc::srgb8_to_oklch(*vector_fill_color);
+        if let Some(t) = tools.active_mut() {
+            let any = t.as_any_mut();
+            if let Some(s) = any.downcast_mut::<ph2d_tool_vector_shape::VectorShapeTool>() {
+                s.set_default_fill(fill);
+                s.set_default_stroke(fill, ph2d_tool_vector_shape::DEFAULT_STROKE_WIDTH_PX);
+            } else if let Some(p) = any.downcast_mut::<ph2d_tool_vector_pen::VectorPenTool>() {
+                p.set_default_fill(fill);
+            } else if let Some(p) = any.downcast_mut::<ph2d_tool_vector_pencil::VectorPencilTool>() {
+                p.set_default_stroke(fill, ph2d_tool_vector_pencil::DEFAULT_STROKE_WIDTH_PX);
+            }
+        }
+    }
+
     // ── Shape-kind picker (§4.2) — the on-screen replacement for hotkeys 1-5.
     // Mirror of the fill read-back: drain a pending option click into the active
     // Shape tool (`set_kind`) and publish its current kind so the panel paints

@@ -167,6 +167,8 @@ impl App {
             last_synced_vec_networks: Vec::new(),
             vector_selection: ph2d_vector_doc::VectorSelection::default(),
             vector_fill_color: [0x88, 0x88, 0x88, 0xFF],
+            vector_undo_stack: Vec::new(),
+            vector_redo_stack: Vec::new(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

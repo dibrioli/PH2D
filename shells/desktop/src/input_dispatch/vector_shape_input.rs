@@ -115,7 +115,8 @@ impl App {
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorShapeTool>())
             .filter(|s| s.has_in_progress_shape())
             .map(|s| s.finish_shape(min_commit));
-        match outcome {
+        let committed = matches!(outcome, Some(ShapeOutcome::Committed));
+        let result = match outcome {
             Some(ShapeOutcome::Committed) => true,
             Some(ShapeOutcome::TooSmall) => {
                 gfx.toasts
@@ -123,7 +124,13 @@ impl App {
                 true
             }
             _ => false,
+        };
+        // Snapshot the pre-commit scene (the bridge drains the shape next
+        // frame) so Ctrl+Z removes it.
+        if committed {
+            self.vector_checkpoint();
         }
+        result
     }
 
     /// Escape while Shape is active: cancel the drag; if none, clear the
@@ -155,6 +162,7 @@ impl App {
             return true;
         }
         if !self.committed_vector_pen_paths.is_empty() {
+            self.vector_checkpoint();
             self.committed_vector_pen_paths.clear();
             if let Some(gfx) = self.gfx.as_mut() {
                 gfx.toasts.push(Toast::info("Vector scene cleared"));

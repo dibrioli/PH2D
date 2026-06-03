@@ -129,7 +129,8 @@ impl App {
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorPencilTool>())
             .filter(|p| p.is_recording())
             .map(VectorPencilTool::finish_stroke);
-        match outcome {
+        let committed = matches!(outcome, Some(PencilStrokeOutcome::Committed));
+        let result = match outcome {
             Some(PencilStrokeOutcome::Committed) => true,
             Some(PencilStrokeOutcome::TooShort) => {
                 gfx.toasts
@@ -137,7 +138,13 @@ impl App {
                 true
             }
             _ => false,
+        };
+        // Snapshot the pre-commit scene (the bridge drains the stroke next
+        // frame) so Ctrl+Z removes it.
+        if committed {
+            self.vector_checkpoint();
         }
+        result
     }
 
     /// Escape while the Pencil is active: cancel the in-progress stroke;
@@ -170,6 +177,7 @@ impl App {
             return true;
         }
         if !self.committed_vector_pen_paths.is_empty() {
+            self.vector_checkpoint();
             self.committed_vector_pen_paths.clear();
             if let Some(gfx) = self.gfx.as_mut() {
                 gfx.toasts.push(Toast::info("Vector scene cleared"));

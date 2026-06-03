@@ -124,6 +124,20 @@ impl App {
                     self.load_vector_scene();
                     return;
                 }
+                // Ctrl/Cmd+Z undoes the last vector action; +Shift redoes.
+                PhysicalKey::Code(KeyCode::KeyZ) => {
+                    if self.modifiers.shift_key() {
+                        self.vector_redo();
+                    } else {
+                        self.vector_undo();
+                    }
+                    return;
+                }
+                // Ctrl/Cmd+Y — Windows-style redo alias.
+                PhysicalKey::Code(KeyCode::KeyY) => {
+                    self.vector_redo();
+                    return;
+                }
                 _ => {}
             }
         }

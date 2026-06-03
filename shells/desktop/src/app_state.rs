@@ -485,6 +485,16 @@ pub(crate) struct App {
     /// read-back + publishes it to the panel; the impl's apply-fill reads it to
     /// fill the selected regions. Default mid-grey.
     pub(crate) vector_fill_color: [u8; 4],
+    /// W2.T2.5 — vector scene undo/redo: snapshots of
+    /// `committed_vector_pen_paths`. Snapshot-based (not per-op
+    /// `revert_last_op`) so ONE Ctrl+Z reverts a whole user action — a
+    /// committed shape, a Direct vertex/tangent edit, a recolor, or an
+    /// Esc-clear — coherently with the scene-object mirror (reconcile
+    /// re-aligns the ECS entities to the restored asset list). Gizmo MOVES
+    /// (entity `Transform`) are a separate scene-undo domain, not captured
+    /// here. Bounded depth (oldest dropped) — see `input_dispatch::vector_undo`.
+    pub(crate) vector_undo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
+    pub(crate) vector_redo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

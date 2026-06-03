@@ -57,6 +57,7 @@ mod vector_pencil_input;
 mod vector_persist;
 mod vector_select_input;
 mod vector_shape_input;
+pub(crate) mod vector_undo;
 
 impl App {
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {

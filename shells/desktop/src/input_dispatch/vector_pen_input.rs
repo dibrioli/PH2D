@@ -79,6 +79,11 @@ impl App {
                 "Vector click rejected — vertex limit or position out of bounds",
             ));
         }
+        // A close-path commits a new shape (the bridge drains it next frame) →
+        // snapshot the pre-commit scene so Ctrl+Z removes the just-closed shape.
+        if matches!(outcome, PenClickOutcome::ClosedPath) {
+            self.vector_checkpoint();
+        }
         true
     }
 
@@ -120,6 +125,7 @@ impl App {
             return true;
         }
         if !self.committed_vector_pen_paths.is_empty() {
+            self.vector_checkpoint();
             self.committed_vector_pen_paths.clear();
             if let Some(gfx) = self.gfx.as_mut() {
                 gfx.toasts.push(Toast::info("Vector scene cleared"));

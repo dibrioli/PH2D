@@ -29,6 +29,8 @@ pub(super) fn dispatch(
     vector_fill_color: &mut [u8; 4],
     committed: &mut [Ph2dVectorAsset],
     selection: &VectorSelection,
+    undo: &mut Vec<Vec<Ph2dVectorAsset>>,
+    redo: &mut Vec<Vec<Ph2dVectorAsset>>,
 ) {
     let vector_active = tools
         .active()
@@ -88,6 +90,9 @@ pub(super) fn dispatch(
             if COMMITTED_INITIAL.swap(true, Ordering::Relaxed) {
                 preview_fill_on_selection(committed, selection, *vector_fill_color);
             } else {
+                // First apply of this pick session → snapshot the pre-recolor
+                // scene so one Ctrl+Z reverts the whole recolor.
+                crate::input_dispatch::vector_undo::checkpoint(undo, redo, committed);
                 apply_fill_to_selection(committed, selection, *vector_fill_color);
             }
         }

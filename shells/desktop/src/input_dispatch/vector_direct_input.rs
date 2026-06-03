@@ -19,7 +19,7 @@
 use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
-use ph2d_tool_vector_direct::{DEFAULT_GRAB_TOLERANCE_PX, VectorDirectTool};
+use ph2d_tool_vector_direct::{DEFAULT_GRAB_TOLERANCE_PX, DirectOutcome, VectorDirectTool};
 
 impl App {
     fn vector_direct_is_active(&self) -> bool {
@@ -75,23 +75,32 @@ impl App {
             &gfx.sim,
             &self.vector_scene_entities,
         );
-        if let Some(direct) = gfx
+        let Some(direct) = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorDirectTool>())
-        {
-            // `direct` borrows `self.gfx.tools`; `committed` / `selection` are
-            // disjoint `App` fields → simultaneous borrow is sound.
-            let _ = direct.begin_drag(
+        else {
+            return false;
+        };
+        // `direct` borrows `self.gfx.tools`; `committed` / `selection` are
+        // disjoint `App` fields → simultaneous borrow is sound.
+        let grabbed = matches!(
+            direct.begin_drag(
                 &self.committed_vector_pen_paths,
                 &mut self.vector_selection,
                 world,
                 tol,
                 &inv,
-            );
-            return true;
+            ),
+            DirectOutcome::Grabbed(_)
+        );
+        // A grab precedes an in-place vertex/tangent edit (drag_to next frames)
+        // → snapshot the pre-edit scene so Ctrl+Z reverts it. Direct consumes
+        // the canvas click regardless (it owns the canvas while active).
+        if grabbed {
+            self.vector_checkpoint();
         }
-        false
+        true
     }
 
     /// Pointer Move while pressed — drag the grabbed handle. Alt breaks the

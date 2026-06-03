@@ -1105,6 +1105,8 @@ impl crate::App {
                 &mut self.vector_fill_color,
                 &mut self.committed_vector_pen_paths,
                 &self.vector_selection,
+                &mut self.vector_undo_stack,
+                &mut self.vector_redo_stack,
             );
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo

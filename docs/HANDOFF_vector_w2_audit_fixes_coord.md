@@ -183,3 +183,32 @@ placement-aware exige a Direct tool aceitar inverse-placements por-forma (increm
 focado; toca `ph2d-tool-vector-direct`). §4.3 (consolidar pills) e persistência do
 placement (ADR-0076 §2.7) seguem sequenciados.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+AUDITORIA GERAL (gizmo + Painter + Vector) · 2026-06-02 — 3 lentes adversariais
+═══════════════════════════════════════════════════════════════════
+CI baseline `a6c7775` VERDE (todos os jobs: lint/MSRV/macOS/win/ubuntu/replay×3/ECS).
+
+**Bug delete-órfão (vetor) — CORRIGIDO (`bbbe721`):** deletar a forma na hierarquia
+despawnava a entidade mas deixava o asset → forma fantasma não-selecionável.
+`vector_scene::prune_deleted` (antes do reconcile) dropa o asset cuja entidade sumiu.
+
+**Bug gizmo multi-seleção "scale X muda Y" — LIMITAÇÃO FUNDAMENTAL, adiado.**
+Atinge sprite E vetor (pré-existente, não-regressão). Análise: o caminho un-rotated
+está CORRETO (sem swap — tracei o ScaleEdge + a propagação de extras). O swap só
+aparece com formas ROTACIONADAS em group-scale: um scale não-uniforme em eixos-world
+de um filho rotacionado é um SHEAR, não representável como `Transform.scale` local.
+Não há fix limpo (exigiria suporte a shear OU group-scale só-uniforme p/ rotacionados).
+O fix proposto pela auditoria (estender o hotfix de zerar-rotação) forçaria scale
+world-axis numa alça individual rotada (errado). Não blind-patcho o gizmo foundational
+— precisa de decisão de design (uniform-only p/ grupos rotacionados?) + smoke.
+
+**Painter (W3 layers/compositor + W4 adjustments) — LIMPO.** O único "bug" levantado
+(opacity do adjustment como lerp pós-blend) é MISANALYSIS: lerp pós-blend É a semântica
+correta de adjustment-layer (Photoshop), distinta da raster de propósito, idêntica em
+Normal. HSB (T4.3) verificado correto (OKLab, sem NaN em chroma-zero, alpha preservado).
+
+**Vector (tools + render + hit-test) — LIMPO.** Preview/commit split, multi-recolor
+(todas as networks), sem double-render (ordem de drain), geração de primitivas (caps
+respeitados, sem degenerate-crash), point-in-polygon NaN-safe — tudo verificado.
+═══════════════════════════════════════════════════════════════════

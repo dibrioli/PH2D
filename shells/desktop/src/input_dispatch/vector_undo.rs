@@ -8,11 +8,19 @@
 //!
 //! **Why snapshot, not the event-sourced `revert_last_op`:** one Ctrl+Z must
 //! revert a whole user action across MANY assets (a recolor touches every
-//! selected network; a commit appends one) and stay coherent with the
-//! scene-object mirror — `vector_scene::reconcile` re-aligns the ECS entities
-//! to the restored asset list each frame, so a snapshot restore "just works".
-//! Gizmo MOVES (entity `Transform`) are a separate scene-undo domain and are
-//! NOT captured here (the checkpoints fire on asset mutations only).
+//! selected network; a commit appends one).
+//!
+//! **Restore re-pairs the ECS mirror by RECONSTRUCTION, not by trusting
+//! `reconcile`:** `vector_scene::reconcile` re-pairs entities↔assets by COUNT
+//! (tail spawn/despawn), so restoring a same-length-but-different-content
+//! snapshot (e.g. undo after a non-tail delete) would mis-bind assets to stale
+//! entities (wrong placement + gizmo box). So [`App::vector_undo`] /
+//! [`App::vector_redo`] (and the Cmd+O load) despawn ALL vector entities after
+//! swapping the asset list, letting the next-frame `reconcile` rebuild
+//! entities[i] from assets[i] at rest centroids. Gizmo MOVES (entity
+//! `Transform`) are a separate scene-undo domain and are NOT captured here, so
+//! a surviving shape's placement resets on undo — acceptable and strictly safer
+//! than rendering one shape at another's moved position.
 
 use ph2d_editor::toast::Toast;
 use ph2d_vector::Ph2dVectorAsset;
@@ -54,19 +62,36 @@ impl App {
         }
     }
 
+    /// Despawn every vector scene entity + clear the parallel Vec so the next
+    /// `vector_scene::reconcile` rebuilds entities[i] from assets[i] at rest
+    /// centroids. Used when the asset list is REPLACED wholesale (undo / redo /
+    /// load): reconcile re-pairs by COUNT, so an identity-shuffled or
+    /// same-length-different-content list would otherwise mis-bind assets to
+    /// stale entities (wrong placement + gizmo box). Rebuilding re-pairs by
+    /// reconstruction.
+    pub(crate) fn despawn_all_vector_entities(&mut self) {
+        let ents: Vec<_> = self.vector_scene_entities.drain(..).collect();
+        if let Some(gfx) = self.gfx.as_mut() {
+            for e in ents {
+                let _ = gfx.sim.world_mut().despawn(e);
+            }
+        }
+    }
+
     /// Ctrl+Z — restore the previous committed-scene snapshot. The current
     /// state moves to the redo stack. Selection is cleared (its indices may be
     /// stale against the restored scene); `reconcile` re-aligns the ECS mirror
     /// next frame. Returns `true` (consumes the key) iff something was undone.
     pub(crate) fn vector_undo(&mut self) -> bool {
         let Some(prev) = self.vector_undo_stack.pop() else {
-            self.push_vector_undo_toast("Nothing to undo");
+            // Silent: the caller falls through to painter / image-edit undo.
             return false;
         };
         self.vector_redo_stack
             .push(self.committed_vector_pen_paths.clone());
         self.committed_vector_pen_paths = prev;
         self.vector_selection.clear();
+        self.despawn_all_vector_entities();
         self.push_vector_undo_toast("Undo");
         true
     }
@@ -74,13 +99,14 @@ impl App {
     /// Ctrl+Shift+Z / Ctrl+Y — replay the next redo snapshot.
     pub(crate) fn vector_redo(&mut self) -> bool {
         let Some(next) = self.vector_redo_stack.pop() else {
-            self.push_vector_undo_toast("Nothing to redo");
+            // Silent: the caller falls through to painter / image-edit redo.
             return false;
         };
         self.vector_undo_stack
             .push(self.committed_vector_pen_paths.clone());
         self.committed_vector_pen_paths = next;
         self.vector_selection.clear();
+        self.despawn_all_vector_entities();
         self.push_vector_undo_toast("Redo");
         true
     }

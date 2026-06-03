@@ -196,6 +196,21 @@ pub(crate) fn reconcile(
 /// unselectable shape stuck on the canvas. Run BEFORE [`reconcile`] (which would
 /// otherwise see matching lengths and no-op). Walks back-to-front so removals
 /// don't shift unprocessed indices; keeps `assets[i]` ↔ `entities[i]` aligned.
+/// `true` if [`prune_deleted`] would remove at least one asset this frame — an
+/// entity in the asset-paired prefix lost its `Transform` (was despawned via
+/// Delete / hierarchy row). Lets the caller snapshot the pre-delete scene for
+/// undo exactly once per delete frame (and skip clearing redo on no-op frames).
+pub(crate) fn will_prune(
+    sim: &SimWorld,
+    assets: &[Ph2dVectorAsset],
+    entities: &[Entity],
+) -> bool {
+    let n = entities.len().min(assets.len());
+    entities[..n]
+        .iter()
+        .any(|&e| sim.world().get::<Transform>(e).is_none())
+}
+
 pub(crate) fn prune_deleted(
     sim: &SimWorld,
     assets: &mut Vec<Ph2dVectorAsset>,

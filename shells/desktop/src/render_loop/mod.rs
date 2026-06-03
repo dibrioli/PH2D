@@ -1057,6 +1057,19 @@ impl crate::App {
             // hierarchy row), drop its asset too — otherwise the shape renders but
             // is gone from the ECS (no gizmo, no pick = orphaned + unselectable).
             // Runs BEFORE reconcile (which would no-op on matching lengths).
+            // Snapshot the pre-delete scene first (once, only on a real delete
+            // frame) so Ctrl+Z restores the deleted shape.
+            if vector_scene::will_prune(
+                sim,
+                &self.committed_vector_pen_paths,
+                &self.vector_scene_entities,
+            ) {
+                crate::input_dispatch::vector_undo::checkpoint(
+                    &mut self.vector_undo_stack,
+                    &mut self.vector_redo_stack,
+                    &self.committed_vector_pen_paths,
+                );
+            }
             vector_scene::prune_deleted(
                 sim,
                 &mut self.committed_vector_pen_paths,

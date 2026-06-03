@@ -148,6 +148,14 @@ impl App {
         match result {
             Ok(paths) => {
                 let n = paths.len();
+                // Snapshot the pre-load scene so Ctrl+Z restores it (a load is a
+                // new history branch — checkpoint also clears redo).
+                self.vector_checkpoint();
+                // Rebuild the ECS mirror from scratch: a bare reassignment leaks
+                // entities (reconcile despawns only the Vec tail) and the new
+                // shapes would inherit the previous scene's stale gizmo
+                // placements + bboxes.
+                self.despawn_all_vector_entities();
                 self.committed_vector_pen_paths = paths;
                 self.vector_selection.clear();
                 self.push_toast(Toast::success(format!("Loaded {n} vector path(s)")));

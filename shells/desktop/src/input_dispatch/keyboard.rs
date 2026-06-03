@@ -106,10 +106,30 @@ impl App {
             return;
         }
 
-        // Vector scene export/import (W2): Cmd/Ctrl+S saves the committed
-        // vector scene to a `.ph2dvec` file, Cmd/Ctrl+O loads one — gated on a
-        // vector tool being active so they don't shadow a future global
-        // save/open. Interim until whole-scene persistence lands.
+        // Vector undo/redo is a DOCUMENT-global op (works under ANY active tool —
+        // the natural flow is: draw a shape → switch to Move to gizmo-position it
+        // → Ctrl+Z to undo the draw). Consume the key ONLY when something was
+        // actually undone/redone, so painter / image-edit undo still receives
+        // Ctrl+Z on an empty vector stack (vector_undo/redo are silent + return
+        // false when empty).
+        if state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.super_key() || self.modifiers.control_key())
+        {
+            let did = match physical_key {
+                PhysicalKey::Code(KeyCode::KeyZ) if self.modifiers.shift_key() => self.vector_redo(),
+                PhysicalKey::Code(KeyCode::KeyZ) => self.vector_undo(),
+                PhysicalKey::Code(KeyCode::KeyY) => self.vector_redo(),
+                _ => false,
+            };
+            if did {
+                return;
+            }
+        }
+
+        // Vector scene export/import (W2): Cmd/Ctrl+S saves the committed vector
+        // scene to a `.ph2dvec` file, Cmd/Ctrl+O loads one — gated on a vector
+        // tool being active so they don't shadow a future global save/open.
         if state == ElementState::Pressed
             && !repeat
             && (self.modifiers.super_key() || self.modifiers.control_key())
@@ -122,20 +142,6 @@ impl App {
                 }
                 PhysicalKey::Code(KeyCode::KeyO) => {
                     self.load_vector_scene();
-                    return;
-                }
-                // Ctrl/Cmd+Z undoes the last vector action; +Shift redoes.
-                PhysicalKey::Code(KeyCode::KeyZ) => {
-                    if self.modifiers.shift_key() {
-                        self.vector_redo();
-                    } else {
-                        self.vector_undo();
-                    }
-                    return;
-                }
-                // Ctrl/Cmd+Y — Windows-style redo alias.
-                PhysicalKey::Code(KeyCode::KeyY) => {
-                    self.vector_redo();
                     return;
                 }
                 _ => {}

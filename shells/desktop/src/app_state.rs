@@ -489,10 +489,12 @@ pub(crate) struct App {
     /// `committed_vector_pen_paths`. Snapshot-based (not per-op
     /// `revert_last_op`) so ONE Ctrl+Z reverts a whole user action — a
     /// committed shape, a Direct vertex/tangent edit, a recolor, or an
-    /// Esc-clear — coherently with the scene-object mirror (reconcile
-    /// re-aligns the ECS entities to the restored asset list). Gizmo MOVES
-    /// (entity `Transform`) are a separate scene-undo domain, not captured
-    /// here. Bounded depth (oldest dropped) — see `input_dispatch::vector_undo`.
+    /// Esc-clear. On restore the ECS mirror is REBUILT (all vector entities
+    /// despawned → reconcile respawns from the restored assets): reconcile
+    /// re-pairs by COUNT, so a same-length-different-content snapshot can't be
+    /// trusted to re-align by identity. Gizmo MOVES (entity `Transform`) are a
+    /// separate scene-undo domain, not captured here. Bounded depth (oldest
+    /// dropped) — see `input_dispatch::vector_undo`.
     pub(crate) vector_undo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
     pub(crate) vector_redo_stack: Vec<Vec<ph2d_vector::Ph2dVectorAsset>>,
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT

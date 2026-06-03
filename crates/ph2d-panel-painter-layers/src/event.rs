@@ -121,14 +121,17 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
-            // Per-row sliders: opacity + the adjustment H/S/B (all stored 0..1).
+            // Per-row sliders: opacity + the adjustment param slots (0..1).
             if let Some((_, kind)) = decode(&stack, id)
                 && matches!(
                     kind,
                     PainterLayerWidget::Opacity
-                        | PainterLayerWidget::AdjHue
-                        | PainterLayerWidget::AdjSat
-                        | PainterLayerWidget::AdjBright
+                        | PainterLayerWidget::AdjParam0
+                        | PainterLayerWidget::AdjParam1
+                        | PainterLayerWidget::AdjParam2
+                        | PainterLayerWidget::AdjParam3
+                        | PainterLayerWidget::AdjParam4
+                        | PainterLayerWidget::AdjParam5
                 )
             {
                 let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);

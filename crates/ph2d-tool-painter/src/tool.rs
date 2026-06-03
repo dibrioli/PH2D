@@ -258,14 +258,6 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
-/// Which field of an HSB adjustment a slider edits ([`PainterTool::
-/// set_adjustment_hsb`]). W4 T4.3.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HsbField {
-    Hue,
-    Saturation,
-    Brightness,
-}
 
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
@@ -1843,28 +1835,23 @@ impl PainterTool {
         Some(id)
     }
 
-    /// Set one HSB field of adjustment layer `id` from a normalized `0..1`
-    /// slider value: Hue → `0..1` turns; Saturation / Brightness → `-1..1`
-    /// (slider `0.5` = neutral `0`). No-op mid-stroke or if `id` is not an HSB
-    /// adjustment. Invalidates the composite so the live preview re-renders.
-    pub fn set_adjustment_hsb(&mut self, id: RtLayerId, field: HsbField, slider01: f32) {
+    /// Set slider `slot` of adjustment layer `id` from a normalized `0..1`
+    /// value (the panel's per-slot sliders). The per-kind mapping lives in
+    /// `adjustments::set_adjustment_slider_param` (HSB / Brightness-Contrast /
+    /// …). No-op mid-stroke or if `id` is not an adjustment. Invalidates the
+    /// composite so the live preview re-renders.
+    pub fn set_adjustment_param(&mut self, id: RtLayerId, slot: usize, slider01: f32) {
         if self.stroke_active {
             return;
         }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let ph2d_painter_brush::adjustments::AdjustmentParams::HueSaturationBrightness(p) =
-            &mut adj.params
-        else {
-            return;
-        };
-        let v = slider01.clamp(0.0, 1.0);
-        match field {
-            HsbField::Hue => p.h = v,                    // 0..1 turns
-            HsbField::Saturation => p.s = v * 2.0 - 1.0, // -1..1
-            HsbField::Brightness => p.b = v * 2.0 - 1.0, // -1..1
-        }
+        ph2d_painter_brush::adjustments::set_adjustment_slider_param(
+            &mut adj.params,
+            slot,
+            slider01,
+        );
         self.invalidate_composite();
     }
 
@@ -2770,15 +2757,12 @@ impl Tool for PainterTool {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
-                        PainterLayerWidget::AdjHue => {
-                            self.set_adjustment_hsb(layer, HsbField::Hue, v as f32)
-                        }
-                        PainterLayerWidget::AdjSat => {
-                            self.set_adjustment_hsb(layer, HsbField::Saturation, v as f32)
-                        }
-                        PainterLayerWidget::AdjBright => {
-                            self.set_adjustment_hsb(layer, HsbField::Brightness, v as f32)
-                        }
+                        PainterLayerWidget::AdjParam0 => self.set_adjustment_param(layer, 0, v as f32),
+                        PainterLayerWidget::AdjParam1 => self.set_adjustment_param(layer, 1, v as f32),
+                        PainterLayerWidget::AdjParam2 => self.set_adjustment_param(layer, 2, v as f32),
+                        PainterLayerWidget::AdjParam3 => self.set_adjustment_param(layer, 3, v as f32),
+                        PainterLayerWidget::AdjParam4 => self.set_adjustment_param(layer, 4, v as f32),
+                        PainterLayerWidget::AdjParam5 => self.set_adjustment_param(layer, 5, v as f32),
                         _ => {}
                     }
                 }
@@ -4945,9 +4929,9 @@ mod tests {
         let adj = t
             .add_adjustment_layer(AdjustmentKind::HueSaturationBrightness)
             .unwrap();
-        t.set_adjustment_hsb(adj, HsbField::Hue, 0.5); // 0.5 turns
-        t.set_adjustment_hsb(adj, HsbField::Saturation, 1.0); // slider 1 → s = +1
-        t.set_adjustment_hsb(adj, HsbField::Brightness, 0.0); // slider 0 → b = -1
+        t.set_adjustment_param(adj, 0, 0.5); // Hue → 0.5 turns
+        t.set_adjustment_param(adj, 1, 1.0); // Sat slider 1 → +1
+        t.set_adjustment_param(adj, 2, 0.0); // Bright slider 0 → -1
         let params = match &t.layers.get(adj).unwrap().kind {
             LayerKind::Adjustment(a) => a.params.clone(),
             _ => panic!("expected an adjustment layer"),

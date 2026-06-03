@@ -525,16 +525,84 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         *kind,
         "apply_adjustment: kind/params variant mismatch"
     );
-    // single_match today (only HSB is implemented); the match grows an arm per
-    // kind as T4.4+ land, so keep the `match` shape rather than churning to
-    // `if let` and back.
-    #[allow(clippy::single_match)]
+    // The match grows an arm per kind as T4.x land; the remaining kinds stay
+    // no-ops (identity) until theirs ships.
     match (kind, params) {
-        // T4.3 — Hue/Saturation/Brightness (Day-4 smoke). The other 23 kinds
-        // are still no-ops (identity) until their own T4.x arm lands.
+        // T4.3 — Hue/Saturation/Brightness (Day-4 smoke).
         (AdjustmentKind::HueSaturationBrightness, AdjustmentParams::HueSaturationBrightness(p)) => {
             apply_hsb(p, acc)
         }
+        // T4.7 — Brightness/Contrast.
+        (AdjustmentKind::BrightnessContrast, AdjustmentParams::BrightnessContrast(p)) => {
+            apply_brightness_contrast(p, acc)
+        }
+        _ => {}
+    }
+}
+
+/// Brightness/Contrast. `acc` is straight LINEAR f32 RGBA (alpha preserved).
+/// Contrast scales each channel around the perceptual mid-gray pivot; brightness
+/// then lerps toward black (`-1`) / white (`+1`) — exact extremes (the same
+/// brightness model as [`apply_hsb`], for consistency). Both `-1..1`, neutral 0.
+fn apply_brightness_contrast(p: &BrightnessContrastParams, acc: &mut [[f32; 4]]) {
+    if p.brightness == 0.0 && p.contrast == 0.0 {
+        return;
+    }
+    // sRGB 0.5 in linear light — contrast pivots around perceptual mid-gray
+    // (a linear-0.5 pivot would sit far too bright).
+    const PIVOT: f32 = 0.214_041_14;
+    let scale = 1.0 + p.contrast; // -1 → flat to pivot, +1 → 2×
+    for px in acc.iter_mut() {
+        for ch in px.iter_mut().take(3) {
+            // Contrast around the pivot, clamped so the brightness lerp below
+            // stays well-defined (LDR; the compositor encode clamps anyway).
+            let mut v = ((*ch - PIVOT) * scale + PIVOT).clamp(0.0, 1.0);
+            if p.brightness > 0.0 {
+                v += (1.0 - v) * p.brightness;
+            } else if p.brightness < 0.0 {
+                v *= 1.0 + p.brightness;
+            }
+            *ch = v;
+        }
+    }
+}
+
+/// The slider-editable params of an adjustment, as `(label, value01)` in slot
+/// order — what the layers panel renders as a labeled slider per slot, and the
+/// inverse of [`set_adjustment_slider_param`]. Kinds with bespoke controls
+/// (Curves, Gradient Map, …) return empty here and get their own UI later.
+#[must_use]
+pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str, f32)> {
+    match params {
+        AdjustmentParams::HueSaturationBrightness(p) => vec![
+            ("Hue", p.h.clamp(0.0, 1.0)),
+            ("Sat", (p.s + 1.0) * 0.5),
+            ("Bright", (p.b + 1.0) * 0.5),
+        ],
+        AdjustmentParams::BrightnessContrast(p) => vec![
+            ("Bright", (p.brightness + 1.0) * 0.5),
+            ("Contrast", (p.contrast + 1.0) * 0.5),
+        ],
+        _ => Vec::new(),
+    }
+}
+
+/// Set slider `slot` of an adjustment from a normalized `0..1` value (inverse of
+/// [`adjustment_slider_params`]). Out-of-range slots / non-slider kinds no-op.
+pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, value01: f32) {
+    let v = value01.clamp(0.0, 1.0);
+    match params {
+        AdjustmentParams::HueSaturationBrightness(p) => match slot {
+            0 => p.h = v,             // 0..1 turns
+            1 => p.s = v * 2.0 - 1.0, // -1..1
+            2 => p.b = v * 2.0 - 1.0, // -1..1
+            _ => {}
+        },
+        AdjustmentParams::BrightnessContrast(p) => match slot {
+            0 => p.brightness = v * 2.0 - 1.0,
+            1 => p.contrast = v * 2.0 - 1.0,
+            _ => {}
+        },
         _ => {}
     }
 }
@@ -797,5 +865,80 @@ mod tests {
                 "full-turn ~identity: {out:?}"
             );
         }
+    }
+
+    // ── T4.7 — Brightness/Contrast + generic slider plumbing ──────────────
+
+    fn apply_bc(brightness: f32, contrast: f32, px: [f32; 4]) -> [f32; 4] {
+        let mut acc = [px];
+        apply_adjustment(
+            &AdjustmentKind::BrightnessContrast,
+            &AdjustmentParams::BrightnessContrast(BrightnessContrastParams {
+                brightness,
+                contrast,
+                legacy: false,
+            }),
+            &mut acc,
+        );
+        acc[0]
+    }
+
+    #[test]
+    fn brightness_contrast_neutral_is_identity() {
+        let px = [0.3, 0.6, 0.1, 0.5];
+        assert_eq!(apply_bc(0.0, 0.0, px), px);
+        assert_eq!(
+            apply_bc(0.4, -0.3, [0.5, 0.5, 0.5, 0.42])[3],
+            0.42,
+            "alpha kept"
+        );
+    }
+
+    #[test]
+    fn contrast_pushes_brights_up_darks_down() {
+        // +contrast pushes a bright pixel brighter and a dark pixel darker
+        // (around the perceptual mid-gray pivot).
+        let bright = apply_bc(0.0, 0.5, [0.8, 0.8, 0.8, 1.0]);
+        let dark = apply_bc(0.0, 0.5, [0.05, 0.05, 0.05, 1.0]);
+        assert!(bright[0] > 0.8, "bright got brighter: {bright:?}");
+        assert!(dark[0] < 0.05, "dark got darker: {dark:?}");
+    }
+
+    #[test]
+    fn bc_brightness_extremes_clamp_to_black_and_white() {
+        assert!(
+            apply_bc(-1.0, 0.0, [0.7, 0.4, 0.2, 1.0])
+                .iter()
+                .take(3)
+                .all(|&v| v < 1e-4)
+        );
+        assert!(
+            apply_bc(1.0, 0.0, [0.7, 0.4, 0.2, 1.0])
+                .iter()
+                .take(3)
+                .all(|&v| v > 0.999)
+        );
+    }
+
+    #[test]
+    fn slider_params_round_trip() {
+        // adjustment_slider_params is the inverse of set_adjustment_slider_param.
+        let mut hsb = AdjustmentParams::HueSaturationBrightness(HsbParams::default());
+        set_adjustment_slider_param(&mut hsb, 0, 0.25);
+        set_adjustment_slider_param(&mut hsb, 1, 0.75);
+        set_adjustment_slider_param(&mut hsb, 2, 0.10);
+        let read = adjustment_slider_params(&hsb);
+        assert_eq!(read.len(), 3);
+        for (got, want) in read.iter().map(|r| r.1).zip([0.25, 0.75, 0.10]) {
+            assert!(
+                (got - want).abs() < 1e-6,
+                "hsb slot round-trip: {got} vs {want}"
+            );
+        }
+        let mut bc = AdjustmentParams::BrightnessContrast(BrightnessContrastParams::default());
+        set_adjustment_slider_param(&mut bc, 1, 0.9);
+        let bc_read = adjustment_slider_params(&bc);
+        assert_eq!(bc_read.len(), 2);
+        assert!((bc_read[1].1 - 0.9).abs() < 1e-6);
     }
 }

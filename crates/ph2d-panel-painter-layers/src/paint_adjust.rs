@@ -1,9 +1,12 @@
-//! Painter layers panel — adjustment-layer controls (W4 T4.3).
+//! Painter layers panel — adjustment-layer controls (W4 T4.3+).
 //!
 //! Split out of `paint_rows.rs` (panel-LOC cap): renders the per-kind edit
-//! controls for a `LayerKind::Adjustment` row. v1 = the 3 HSB sliders (Hue /
-//! Saturation / Brightness) for the Day-4 smoke; the other 23 kinds get their
-//! own control strips here as their T4.x arms land.
+//! controls for a `LayerKind::Adjustment` row. The slider params come from
+//! `ph2d_tool_painter::adjustment_slider_params` (the single per-kind source of
+//! truth, next to the params) — HSB = Hue/Sat/Bright, Brightness/Contrast =
+//! Bright/Contrast, etc. Adding a slider-based kind needs ZERO panel change.
+//! Kinds with bespoke controls (Curves, Gradient Map, …) return no sliders and
+//! get their own UI here later.
 
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -12,32 +15,43 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Slider, SliderOrientation, SliderState, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
-use ph2d_tool_painter::HsbParams;
+use ph2d_tool_painter::AdjustmentParams;
 
-const ADJ_LABEL_W: f32 = 16.0; // LITERAL-PX-OK: single-letter H/S/B label column
+const ADJ_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: slider-param label column ("Contrast")
 
-/// Render the 3 HSB sliders (Hue / Saturation / Brightness) for an adjustment
-/// layer, indented below its main row. Each slider STORES `0..1`; the tool maps
-/// it back (Hue `0..1` turns; Sat/Bright `-1..1` with `0.5` = neutral), so the
-/// displayed position is derived from the live params each frame. Returns the
-/// next `y`.
-pub(crate) fn paint_adjustment_hsb(
+/// The generic per-slot slider widget kind (≤6 slider params per adjustment).
+fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
+    Some(match slot {
+        0 => PainterLayerWidget::AdjParam0,
+        1 => PainterLayerWidget::AdjParam1,
+        2 => PainterLayerWidget::AdjParam2,
+        3 => PainterLayerWidget::AdjParam3,
+        4 => PainterLayerWidget::AdjParam4,
+        5 => PainterLayerWidget::AdjParam5,
+        _ => return None,
+    })
+}
+
+/// Render an adjustment layer's slider params (label + slider per slot),
+/// indented below its main row. Each slider STORES `0..1`; the tool maps it back
+/// per kind (`set_adjustment_param`), so the displayed position is derived from
+/// the live params each frame. Returns the next `y`.
+pub(crate) fn paint_adjustment_params(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     layer_id: u64,
-    params: &HsbParams,
+    params: &AdjustmentParams,
     x: f32,
     w: f32,
     mut y: f32,
 ) -> f32 {
     let font = TypeToken::Base.px();
     let gap = Spacing::Xs.px();
-    let rows = [
-        ("H", PainterLayerWidget::AdjHue, params.h.clamp(0.0, 1.0)),
-        ("S", PainterLayerWidget::AdjSat, (params.s + 1.0) * 0.5),
-        ("B", PainterLayerWidget::AdjBright, (params.b + 1.0) * 0.5),
-    ];
-    for (label, kind, val01) in rows {
+    for (slot, (label, val01)) in ph2d_tool_painter::adjustment_slider_params(params)
+        .into_iter()
+        .enumerate()
+    {
+        let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
         register_slider(ctx.host.store_mut(), id, val01);
         paint_text(
@@ -71,7 +85,7 @@ pub(crate) fn paint_adjustment_hsb(
 /// `register_if_absent` a per-row adjustment slider (bare, `0..1` storage). The
 /// dispatch maps a drag to a fresh value; `event.rs` forwards the resulting
 /// `ValueChanged` as `SetValue` to the tool. Mirror of `paint_rows`'s opacity
-/// slider registration (the chip-less variant — no per-row Vello clip).
+/// slider registration (chip-less — no per-row Vello clip).
 fn register_slider(store: &mut WidgetStore, id: ph2d_a11y::NodeId, value: f32) {
     store.register_if_absent(
         id,

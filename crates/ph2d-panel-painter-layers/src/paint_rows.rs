@@ -19,7 +19,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{AdjustmentParams, Layer, LayerId, LayerKind, LayerStack};
+use ph2d_tool_painter::{Layer, LayerId, LayerKind, LayerStack};
 use std::collections::BTreeSet;
 
 // Per-row layout metrics. Component-specific layout (not global Spacing steps),
@@ -89,16 +89,14 @@ pub(crate) fn paint_layer_subtree(
             drag_rows,
         );
 
-        // W4 T4.3: an adjustment layer renders its per-kind edit controls
-        // (HSB = 3 sliders) indented under its row.
-        if let LayerKind::Adjustment(adj) = &layer.kind
-            && let AdjustmentParams::HueSaturationBrightness(p) = &adj.params
-        {
-            y = crate::paint_adjust::paint_adjustment_hsb(
+        // W4 T4.3+: an adjustment layer renders its per-kind slider params
+        // (HSB / Brightness-Contrast / …) indented under its row.
+        if let LayerKind::Adjustment(adj) = &layer.kind {
+            y = crate::paint_adjust::paint_adjustment_params(
                 ctx,
                 theme,
                 id.0,
-                p,
+                &adj.params,
                 row_x + LAYER_INDENT_STEP,
                 (row_w - LAYER_INDENT_STEP).max(0.0),
                 y,

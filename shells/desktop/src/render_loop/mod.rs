@@ -1103,6 +1103,7 @@ impl crate::App {
             // `vector_selection` + the active Select tool's marquee.
             vector_selection_bridge::dispatch(
                 tools,
+                hero.theme,
                 camera,
                 window_size,
                 &self.committed_vector_pen_paths,

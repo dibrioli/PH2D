@@ -3,39 +3,64 @@
 //!
 //! Free function called once per frame BEFORE `paint_hero_screen` (mirror of
 //! the other vector bridges). Pure feedback — it never mutates the scene:
-//! selected-network bounding-box outlines, selected-vertex dots (Direct-Select),
-//! and the in-progress Select-tool marquee rectangle.
+//! Direct-Select vertex/handle affordances + the in-progress Select-tool
+//! marquee rectangle. The object-selection box itself is the transform gizmo
+//! (ADR-0076); this overlay only adds the *vertex-level* editing affordances.
 //!
-//! Reads the shell-owned [`VectorSelection`] + committed scene by-ref; the
-//! marquee rect is read by downcasting the active tool to [`VectorSelectTool`]
-//! (the imported short name keeps this off the central-dispatch downcast gate,
-//! same as the other vector input/bridge files). Wired by the W2.T2.3 shell
-//! pass: `render_loop/mod.rs` declares the module + calls `dispatch(...)` after
-//! the create-tool bridges, passing `&App::committed_vector_pen_paths` +
-//! `&App::vector_selection`.
+//! **Visual language (Illustrator/Affinity/Figma convention).** Every glyph is
+//! projected to SCREEN space and drawn at a constant pixel size (`Affine::
+//! IDENTITY` + pre-multiplied point), so affordances never distort with a
+//! gizmo-scaled/rotated shape or with zoom. Anchors are shaped by their
+//! [`VertexKind`] — round = smooth ([`VertexKind::Mirror`]/[`Aligned`]),
+//! square = corner ([`VertexKind::Free`]), diamond = renderer-chosen
+//! ([`VertexKind::Auto`]). State is shown by colour + fill:
+//!
+//! | State        | Anchor                       | Tangent handle              |
+//! |--------------|------------------------------|-----------------------------|
+//! | idle ("rest")| hollow ring, `BorderStrong`  | thin `BorderStrong` line    |
+//! | selected     | filled `Accent`              | (anchor of a grabbed handle)|
+//! | **grabbed**  | filled `AccentHover` + ring  | thick `Accent` line + dot   |
+//!
+//! The grabbed handle/anchor is the saturated accent; everything else is the
+//! neutral border colour — a real hue/chroma contrast that survives every
+//! theme (the accent stack is monochromatic per theme). This satisfies the
+//! "selected handle a different colour from the rest" request directly.
+//!
+//! All colours/strokes/sizes come from [`ph2d_tokens`] (HR-15: zero hex, zero
+//! UI `f32` literal). Reads the shell-owned [`VectorSelection`] + committed
+//! scene + the active tool (downcast to [`VectorDirectTool`]/[`VectorSelectTool`]
+//! by the imported short name, off the central-dispatch downcast gate). Wired by
+//! `render_loop/mod.rs` after the create-tool bridges.
 
 use ph2d_core::Vec2;
 use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
+use ph2d_tool_vector_direct::{DirectGrab, GrabTarget, VectorDirectTool};
 use ph2d_tool_vector_select::VectorSelectTool;
-use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
-use ph2d_vector_doc::{Ph2dVectorAsset, VectorSelection};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Scene, Stroke, VectorScene};
+use ph2d_vector_doc::{Ph2dVectorAsset, TangentSide, VectorSelection, VertexKind};
 
-/// Accent (R, G, B) for selection feedback — warm amber, distinct from the
-/// pen/pencil blue overlay.
-const ACCENT_RGB: (u8, u8, u8) = (255, 170, 60);
-const OUTLINE_ALPHA: u8 = 210;
-const VERTEX_ALPHA: u8 = 235;
-const MARQUEE_FILL_ALPHA: u8 = 40;
-const MARQUEE_LINE_ALPHA: u8 = 180;
-/// Screen-px sizes (converted to world by dividing by the camera scale).
-const VERTEX_DOT_RADIUS_PX: f64 = 4.0;
-const MARQUEE_WIDTH_PX: f64 = 1.0;
+/// Resolve a design-token colour for the active theme into a Vello [`Color`]
+/// at full opacity (`from_oklch` tokens carry `a = 255`; we draw crisp
+/// affordances, so we override any soft token alpha).
+fn solid(tok: ColorToken, theme: Theme) -> Color {
+    let c = tok.resolve(theme);
+    Color::from_rgba8(c.r, c.g, c.b, 255)
+}
+
+/// Resolve a token to a Vello [`Color`] keeping an explicit alpha (marquee tint).
+fn tint(tok: ColorToken, theme: Theme, alpha: u8) -> Color {
+    let c = tok.resolve(theme);
+    Color::from_rgba8(c.r, c.g, c.b, alpha)
+}
 
 /// Per-frame selection overlay dispatch. Safe to call every frame.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn dispatch(
     tools: &mut ToolRegistry,
+    theme: Theme,
     camera: &Camera2d,
     window_size: WindowSize,
     committed: &[Ph2dVectorAsset],
@@ -44,11 +69,21 @@ pub(super) fn dispatch(
     vector_scene: &mut VectorScene,
 ) {
     let world_to_screen = camera.world_to_screen_affine(window_size);
-    let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
     let scene = vector_scene.inner_mut();
-    let accent = |a: u8| Color::from_rgba8(ACCENT_RGB.0, ACCENT_RGB.1, ACCENT_RGB.2, a);
-    // ADR-0076: compose each asset's placement so the overlay tracks a gizmo-moved
-    // shape instead of ghosting at its rest pose. Identity for un-moved shapes.
+
+    // Token palette (resolved once per frame).
+    let rest = solid(ColorToken::BorderStrong, theme); // idle affordances
+    let sel = solid(ColorToken::Accent, theme); // selected / grabbed handle
+    let grab_fill = solid(ColorToken::AccentHover, theme); // grabbed anchor body
+    let line_thin = StrokeToken::Thin.px() as f64;
+    let line_thick = StrokeToken::Thick.px() as f64;
+    let r_rest = Spacing::Xs.px() as f64; // 4 px idle anchor
+    let r_active = Spacing::Sm.px() as f64; // 6 px selected/grabbed anchor
+    let r_ctrl = Spacing::Xxs.px() as f64; // 2 px tangent control dot
+
+    // ADR-0076: compose each asset's placement so the overlay tracks a gizmo-
+    // moved shape instead of ghosting at its rest pose. Identity for un-moved
+    // shapes. The returned affine maps a network-local point → SCREEN pixels.
     let placement_xf = |idx: usize| -> Affine {
         let local = placements.get(idx).map_or(Affine::IDENTITY, |m| {
             Affine::new([
@@ -63,29 +98,26 @@ pub(super) fn dispatch(
         world_to_screen * local
     };
 
-    // Layer 1 (network bounding-box outline) REMOVED — the transform gizmo box now
-    // IS the object-selection indicator (ADR-0076); a second amber rect drawn here
-    // just doubled up with the gizmo. Vertex-level affordances (Direct) stay below.
+    // Direct-Select active? + the live grab (which exact vertex/handle is being
+    // dragged) — one borrow of the tool registry. Affordances are Direct-only:
+    // when Direct isn't active the object gizmo owns selection feedback.
+    let (direct_active, grab): (bool, Option<DirectGrab>) = match tools
+        .active_mut()
+        .and_then(|t| t.as_any_mut().downcast_mut::<VectorDirectTool>())
+    {
+        Some(t) => (true, t.grab()),
+        None => (false, None),
+    };
 
-    // Layer 1.5 — Direct-Select editable affordances. When Direct is the
-    // active tool, surface EVERY vertex (a grab target) + every non-zero
-    // tangent handle across the committed scene, so the user has something
-    // to aim at — `selection.vertices` is empty until a grab succeeds, a
-    // chicken-and-egg that made Direct feel dead. Drawn before Layer 2 so a
-    // grabbed/selected vertex renders brighter on top. Pure feedback.
-    let direct_active = tools
-        .active()
-        .map(|t| t.id() == ph2d_editor::ToolId::new("vector_direct"))
-        .unwrap_or(false);
     if direct_active {
-        let handle_w = MARQUEE_WIDTH_PX / k;
-        let aff_dot_r = VERTEX_DOT_RADIUS_PX / k;
-        let ctrl_r = (VERTEX_DOT_RADIUS_PX * 0.7) / k;
         for (idx, asset) in committed.iter().enumerate() {
             let xf = placement_xf(idx);
-            // Tangent handles: a thin line vertex→control-point + a control
-            // dot, per non-zero tangent (straight segments have zero tangents
-            // and draw nothing — mirror of `nearest_tangent_handle`'s skip).
+            let to_screen = |p: Vec2| xf * Point::new(p.x as f64, p.y as f64);
+
+            // ── Tangent handles: line vertex→control + a control dot, per
+            // non-zero tangent (straight segments have zero tangents → nothing,
+            // mirror of `nearest_tangent_handle`'s skip). The grabbed handle is
+            // the saturated accent (thick); the rest are the neutral border.
             for seg in &asset.network.segments {
                 let (Some(start), Some(end)) = (
                     asset.network.vertices.iter().find(|v| v.id == seg.start),
@@ -93,96 +125,186 @@ pub(super) fn dispatch(
                 ) else {
                     continue;
                 };
-                for (base, tan) in [(start.pos, seg.out_at_start), (end.pos, seg.in_at_end)] {
+                for (base, tan, side) in [
+                    (start.pos, seg.out_at_start, TangentSide::OutAtStart),
+                    (end.pos, seg.in_at_end, TangentSide::InAtEnd),
+                ] {
                     if tan.length_squared() < 1e-6 {
                         continue;
                     }
-                    let ctrl = base + tan;
+                    let grabbed = grab
+                        == Some(DirectGrab {
+                            asset: idx,
+                            target: GrabTarget::Tangent(seg.id, side),
+                        });
+                    let (col, w, dot_r) = if grabbed {
+                        (sel, line_thick, r_rest)
+                    } else {
+                        (rest, line_thin, r_ctrl)
+                    };
+                    let p0 = to_screen(base);
+                    let p1 = to_screen(base + tan);
                     let mut line = BezPath::new();
-                    line.move_to(Point::new(base.x as f64, base.y as f64));
-                    line.line_to(Point::new(ctrl.x as f64, ctrl.y as f64));
+                    line.move_to(p0);
+                    line.line_to(p1);
                     scene.stroke(
-                        &Stroke::new(handle_w),
-                        xf,
-                        &Brush::Solid(accent(MARQUEE_LINE_ALPHA)),
+                        &Stroke::new(w),
+                        Affine::IDENTITY,
+                        &Brush::Solid(col),
                         None,
                         &line,
                     );
-                    let dot = Circle::new(Point::new(ctrl.x as f64, ctrl.y as f64), ctrl_r);
                     scene.fill(
                         Fill::NonZero,
-                        xf,
-                        &Brush::Solid(accent(VERTEX_ALPHA)),
+                        Affine::IDENTITY,
+                        &Brush::Solid(col),
                         None,
-                        &dot,
+                        &Circle::new(p1, dot_r),
                     );
                 }
             }
-            // Vertex dots (grab targets) — dimmer than the selected-vertex
-            // highlight that Layer 2 paints on top.
+
+            // ── Anchors (grab targets). Shape = VertexKind; state = colour/fill.
             for v in &asset.network.vertices {
-                let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), aff_dot_r);
-                scene.fill(
-                    Fill::NonZero,
-                    xf,
-                    &Brush::Solid(accent(OUTLINE_ALPHA)),
-                    None,
-                    &c,
-                );
+                let center = to_screen(v.pos);
+                let grabbed = grab
+                    == Some(DirectGrab {
+                        asset: idx,
+                        target: GrabTarget::Vertex(v.id),
+                    });
+                let selected = selection.vertices.contains(&(idx, v.id));
+                if grabbed {
+                    // Brightest body + an accent ring so the active point pops.
+                    paint_anchor(
+                        scene,
+                        center,
+                        v.kind,
+                        r_active,
+                        Some(&Brush::Solid(grab_fill)),
+                        Some((&Brush::Solid(sel), line_thin)),
+                    );
+                } else if selected {
+                    paint_anchor(
+                        scene,
+                        center,
+                        v.kind,
+                        r_active,
+                        Some(&Brush::Solid(sel)),
+                        None,
+                    );
+                } else {
+                    // Idle: hollow neutral ring (low clutter across many points).
+                    paint_anchor(
+                        scene,
+                        center,
+                        v.kind,
+                        r_rest,
+                        None,
+                        Some((&Brush::Solid(rest), line_thin)),
+                    );
+                }
             }
         }
     }
 
-    // Layer 2 — selected vertex dots.
-    let dot_r = VERTEX_DOT_RADIUS_PX / k;
-    for &(asset_idx, vid) in &selection.vertices {
-        let Some(asset) = committed.get(asset_idx) else {
-            continue;
-        };
-        let Some(v) = asset.network.vertices.iter().find(|v| v.id == vid) else {
-            continue;
-        };
-        let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), dot_r);
-        scene.fill(
-            Fill::NonZero,
-            placement_xf(asset_idx),
-            &Brush::Solid(accent(VERTEX_ALPHA)),
-            None,
-            &c,
-        );
-    }
-
-    // Layer 3 — live marquee rect (only while the Select tool is dragging).
+    // ── Live marquee rect (only while the Select tool is dragging). Projected
+    // to screen + drawn at a constant 1 px border, accent-tinted fill.
     let marquee = tools
         .active_mut()
         .and_then(|t| t.as_any_mut().downcast_mut::<VectorSelectTool>())
         .and_then(|t| t.marquee_rect());
     if let Some((min, max)) = marquee {
+        let a = world_to_screen * Point::new(min.x as f64, min.y as f64);
+        let b = world_to_screen * Point::new(max.x as f64, max.y as f64);
         let mut rect = BezPath::new();
-        rect_path(&mut rect, min, max);
-        // Subtle fill + crisp outline.
+        rect_path(&mut rect, a, b);
         scene.fill(
             Fill::NonZero,
-            world_to_screen,
-            &Brush::Solid(accent(MARQUEE_FILL_ALPHA)),
+            Affine::IDENTITY,
+            &Brush::Solid(tint(ColorToken::Accent, theme, 40)),
             None,
             &rect,
         );
         scene.stroke(
-            &Stroke::new(MARQUEE_WIDTH_PX / k),
-            world_to_screen,
-            &Brush::Solid(accent(MARQUEE_LINE_ALPHA)),
+            &Stroke::new(line_thin),
+            Affine::IDENTITY,
+            &Brush::Solid(tint(ColorToken::Accent, theme, 180)),
             None,
             &rect,
         );
     }
 }
 
-/// Build a closed axis-aligned rectangle path from `(min, max)`.
-fn rect_path(path: &mut BezPath, min: Vec2, max: Vec2) {
-    path.move_to(Point::new(min.x as f64, min.y as f64));
-    path.line_to(Point::new(max.x as f64, min.y as f64));
-    path.line_to(Point::new(max.x as f64, max.y as f64));
-    path.line_to(Point::new(min.x as f64, max.y as f64));
+/// Paint one anchor glyph at screen `center`: round (smooth), square (corner)
+/// or diamond (auto) per [`VertexKind`], with an optional filled `body` and an
+/// optional `ring` stroke `(brush, width)`. Constant-px (caller pre-projects).
+fn paint_anchor(
+    scene: &mut Scene,
+    center: Point,
+    kind: VertexKind,
+    r: f64,
+    body: Option<&Brush>,
+    ring: Option<(&Brush, f64)>,
+) {
+    match kind {
+        VertexKind::Mirror | VertexKind::Aligned => {
+            let c = Circle::new(center, r);
+            if let Some(b) = body {
+                scene.fill(Fill::NonZero, Affine::IDENTITY, b, None, &c);
+            }
+            if let Some((b, w)) = ring {
+                scene.stroke(&Stroke::new(w), Affine::IDENTITY, b, None, &c);
+            }
+        }
+        VertexKind::Free => paint_path(scene, &square_path(center, r), body, ring),
+        VertexKind::Auto => paint_path(scene, &diamond_path(center, r), body, ring),
+    }
+}
+
+/// Fill + optionally stroke a closed [`BezPath`] glyph (square / diamond).
+fn paint_path(
+    scene: &mut Scene,
+    path: &BezPath,
+    body: Option<&Brush>,
+    ring: Option<(&Brush, f64)>,
+) {
+    if let Some(b) = body {
+        scene.fill(Fill::NonZero, Affine::IDENTITY, b, None, path);
+    }
+    if let Some((b, w)) = ring {
+        scene.stroke(&Stroke::new(w), Affine::IDENTITY, b, None, path);
+    }
+}
+
+/// Axis-aligned square of half-extent `h`, centred at `c` (corner anchor).
+fn square_path(c: Point, h: f64) -> BezPath {
+    let mut p = BezPath::new();
+    p.move_to(Point::new(c.x - h, c.y - h));
+    p.line_to(Point::new(c.x + h, c.y - h));
+    p.line_to(Point::new(c.x + h, c.y + h));
+    p.line_to(Point::new(c.x - h, c.y + h));
+    p.close_path();
+    p
+}
+
+/// 45°-rotated square (diamond) of half-extent `h`, centred at `c` (auto anchor).
+fn diamond_path(c: Point, h: f64) -> BezPath {
+    let mut p = BezPath::new();
+    p.move_to(Point::new(c.x, c.y - h));
+    p.line_to(Point::new(c.x + h, c.y));
+    p.line_to(Point::new(c.x, c.y + h));
+    p.line_to(Point::new(c.x - h, c.y));
+    p.close_path();
+    p
+}
+
+/// Build a closed axis-aligned rectangle path between screen corners `a`/`b`.
+fn rect_path(path: &mut BezPath, a: Point, b: Point) {
+    let (x0, x1) = (a.x.min(b.x), a.x.max(b.x));
+    let (y0, y1) = (a.y.min(b.y), a.y.max(b.y));
+    path.move_to(Point::new(x0, y0));
+    path.line_to(Point::new(x1, y0));
+    path.line_to(Point::new(x1, y1));
+    path.line_to(Point::new(x0, y1));
     path.close_path();
 }

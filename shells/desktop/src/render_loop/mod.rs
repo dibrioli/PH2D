@@ -1053,6 +1053,15 @@ impl crate::App {
                 &mut self.committed_vector_pen_paths,
                 vector_scene,
             );
+            // ADR-0076: if a vector's scene entity was deleted externally (Delete /
+            // hierarchy row), drop its asset too — otherwise the shape renders but
+            // is gone from the ECS (no gizmo, no pick = orphaned + unselectable).
+            // Runs BEFORE reconcile (which would no-op on matching lengths).
+            vector_scene::prune_deleted(
+                sim,
+                &mut self.committed_vector_pen_paths,
+                &mut self.vector_scene_entities,
+            );
             // ADR-0076: re-sync the per-asset scene entities AFTER every commit
             // bridge (pen/pencil/shape append; Esc-clear truncates). Spawns
             // Transform+Name+VectorSceneRef for new assets (→ hierarchy + gizmo),

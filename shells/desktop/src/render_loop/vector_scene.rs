@@ -165,6 +165,27 @@ pub(crate) fn reconcile(
     }
 }
 
+/// Remove assets whose scene entity was despawned EXTERNALLY (e.g. the user
+/// deleted the row in the hierarchy / pressed Delete). Without this the entity is
+/// gone (no gizmo, no pick) but the asset still renders → an orphaned,
+/// unselectable shape stuck on the canvas. Run BEFORE [`reconcile`] (which would
+/// otherwise see matching lengths and no-op). Walks back-to-front so removals
+/// don't shift unprocessed indices; keeps `assets[i]` ↔ `entities[i]` aligned.
+pub(crate) fn prune_deleted(
+    sim: &SimWorld,
+    assets: &mut Vec<Ph2dVectorAsset>,
+    entities: &mut Vec<Entity>,
+) {
+    let n = entities.len().min(assets.len());
+    for i in (0..n).rev() {
+        // A live vector entity always has a Transform; `None` ⇒ despawned.
+        if sim.world().get::<Transform>(entities[i]).is_none() {
+            entities.remove(i);
+            assets.remove(i);
+        }
+    }
+}
+
 /// The entity's composed WORLD transform (`parent_world ∘ local`), so a vector
 /// parented in the hierarchy renders/picks at its parent-relative world position
 /// (ADR-0076 §2.7). For a root entity this equals its local `Transform`. The gizmo

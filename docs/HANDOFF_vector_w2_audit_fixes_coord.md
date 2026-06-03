@@ -244,3 +244,33 @@ o `VectorSceneRef` + `Transform.translation` da entidade quando o asset muda
 Smoke pendente do Enio: undo cross-tool, Ctrl+O load+undo, delete+undo, click em
 linha aberta, cor numa forma nova, mirror/break via Pen+Direct, curva Bézier.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+PEDIDO → Coord · menu botão-direito de TIPO DE PONTO (Direct-Select) · 2026-06-03
+═══════════════════════════════════════════════════════════════════
+**Contexto:** o Mac do Enio compartilha 1 botão físico p/ Cmd+Alt → o
+Alt-tangent-break é inalcançável. Implementei (commit `b62a70d`) os 4 tipos
+pro de ponto (Corner/Smooth/Asymmetric/Auto = `VertexKind` Free/Mirror/Aligned/
+Auto, todos FROZEN-já-existentes) + a ação `VectorDirectTool::set_selected_vertex_kind(committed, selection, kind)` + um **stopgap de teclado** (Direct ativo + vértice
+selecionado → teclas **1-4**). Funciona HOJE, Alt-free.
+
+**O que o Enio pediu (UI própria) — é TUA chrome (editor-core context-menu):**
+Botão-direito num vértice (Direct ativo) → menu com **Corner / Smooth /
+Asymmetric / Auto** → seta o tipo. O `ContextMenuKind` é enum FECHADO em
+`crates/ph2d-editor-core/.../widget/context_menu.rs` + `context_menu_overlay.rs`
+(match em `req.kind`) + `apply_event` — toda essa chain é tua pasta.
+
+**Contrato sugerido (mínimo):**
+1. `ContextMenuKind::VectorPointType` (novo variant) + 4 entry ids
+   (`CTX_MENU_VPOINT_CORNER/SMOOTH/ASYM/AUTO`) + entries no
+   `paint_context_menu_overlay` (espelha o bloco `ThemeSelector`).
+2. `apply_event`: ao clicar um entry, exponha o índice escolhido (0-3) num
+   getter drenável — **idêntico ao padrão `take_pending_shape_selection()`** que
+   tu já fez pro Shape picker. (Não precisa saber de vetor; só "qual entry".)
+3. Eu faço o resto no shell (minha pasta): detectar Secondary-Down sobre um
+   vértice em Direct (`nearest_vertex` já existe) → `store.set_context_menu(VectorPointType{...})` na posição do cursor → drenar a escolha → chamar
+   `set_selected_vertex_kind`. Bloqueado só no teu variant (não compila sem ele).
+
+**Sem mudança de contrato vetorial** (VertexKind/VectorOp intactos). Quando o
+variant landar, te aviso e fecho o shell-glue.
+═══════════════════════════════════════════════════════════════════

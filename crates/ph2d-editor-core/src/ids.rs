@@ -500,6 +500,17 @@ pub fn painter_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_layer.blendopt.{layer_id}.{mode}"))
 }
 
+/// Derive the stable [`NodeId`] for the `index`-th kind option in the open
+/// "+ Adjustment" kind-picker popover (W4 T4.15). The index is the position in
+/// `AdjustmentKind::ALL` (the wire value the panel forwards back to the tool's
+/// `add_adjustment_layer`). Fixed (not per-layer) like the toolbar buttons, but
+/// derived so the panel paint/event and the popover stay in sync without a table.
+/// Only the open popover's options are hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_adjustment_kind_option_id(index: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_layers.adjkind.{index}"))
+}
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

@@ -45,6 +45,23 @@ thread_local! {
     /// current_mode_u8)`. Set during row paint, drained at the end of `paint`.
     /// Enforces one-open-at-a-time. `(u64, Rect, u8)` is `Copy`.
     static PENDING_BLEND_DD: Cell<Option<(u64, Rect, u8)>> = const { Cell::new(None) };
+
+    /// The open "+ Adjustment" kind-picker menu, as the synthetic chip `Rect`
+    /// the deferred popover anchors to (full content width, at the action-toolbar
+    /// row). Set when the `+ Adj` dropdown's store state is open; drained at the
+    /// end of `paint` to render the 24-kind list on top of everything (mirror of
+    /// [`PENDING_BLEND_DD`]). W4 T4.15.
+    static PENDING_ADJ_MENU: Cell<Option<Rect>> = const { Cell::new(None) };
+}
+
+/// Stash the open "+ Adjustment" kind menu for the deferred popover pass.
+pub(crate) fn set_pending_adj_menu(v: Option<Rect>) {
+    PENDING_ADJ_MENU.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending "+ Adjustment" kind menu for the deferred paint.
+pub(crate) fn take_pending_adj_menu() -> Option<Rect> {
+    PENDING_ADJ_MENU.with(|c| c.take())
 }
 
 /// Stash the open blend dropdown for the deferred popover pass.

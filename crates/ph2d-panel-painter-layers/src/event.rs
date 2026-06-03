@@ -50,11 +50,30 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 || id == core_ids::PAINTER_LAYERS_MASK
                 || id == core_ids::PAINTER_LAYERS_CLIP
                 || id == core_ids::PAINTER_LAYERS_ALPHA_LOCK
-                || id == core_ids::PAINTER_LAYERS_REFERENCE
-                || id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
+                || id == core_ids::PAINTER_LAYERS_REFERENCE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
+        // "+ Adjustment" kind-picker option (W4 T4.15): close the dropdown +
+        // forward the chosen kind index. The `+ Adj` chip itself is a Dropdown —
+        // its open/close is the generic dispatch (no Click forwarded here). The
+        // kind index is the position in `AdjustmentKind::ALL`; the tool maps it
+        // back via `add_adjustment_layer`.
+        WidgetEvent::Click(id) if decode_adjustment_kind_option(id).is_some() => {
+            let idx = decode_adjustment_kind_option(id).unwrap();
+            if let Some(InteractiveState::Dropdown { open, .. }) = host
+                .store_mut()
+                .get_mut(core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT)
+            {
+                *open = false;
+            }
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+                    idx.to_string(),
+                )));
             true
         }
         WidgetEvent::Click(id) => {
@@ -157,6 +176,15 @@ fn decode(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(LayerId, Painter
         }
     }
     None
+}
+
+/// Decode a "+ Adjustment" kind-picker option id → its index into
+/// [`ph2d_tool_painter::AdjustmentKind::ALL`]. Fixed (not per-layer), so iterate
+/// the 24 stable ids. `None` for any other widget.
+fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..ph2d_tool_painter::AdjustmentKind::ALL.len() as u8)
+        .find(|&i| core_ids::painter_adjustment_kind_option_id(i) == id)
+        .map(usize::from)
 }
 
 /// Decode a blend-mode popover option id → `(layer, mode_u8)`.

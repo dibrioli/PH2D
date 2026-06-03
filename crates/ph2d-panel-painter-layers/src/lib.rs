@@ -24,6 +24,7 @@
 
 #![forbid(unsafe_code)]
 
+mod adjust_menu;
 mod blend;
 mod event;
 pub mod ids;

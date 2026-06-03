@@ -338,6 +338,74 @@ pub enum AdjustmentKind {
     BlackAndWhite,
 }
 
+impl AdjustmentKind {
+    /// Every v1 [`AdjustmentKind`], in canonical menu order (the "+ Adjustment"
+    /// picker iterates this, and the layout-stable index is the wire value the
+    /// panel forwards back to `add_adjustment_layer`). The order mirrors the enum
+    /// and the params discriminated union; keep all three in lock-step. Tier 1 is
+    /// the first 12 (the `psd_mapping_is_canonical` gate asserts the counts).
+    pub const ALL: [AdjustmentKind; 24] = [
+        // Tier 1
+        Self::HueSaturationBrightness,
+        Self::ColorBalance,
+        Self::Curves,
+        Self::GradientMap,
+        Self::BrightnessContrast,
+        Self::GaussianBlur,
+        Self::MotionBlur,
+        Self::Bloom,
+        Self::Noise,
+        Self::Sharpen,
+        Self::Halftone,
+        Self::ChromaticAberration,
+        // Tier 2
+        Self::Vibrance,
+        Self::ColorLookupLut,
+        Self::PhotoFilter,
+        Self::Posterize,
+        Self::Threshold,
+        Self::Invert,
+        Self::Levels,
+        Self::SelectiveColor,
+        Self::ChannelMixer,
+        Self::Exposure,
+        Self::ShadowsHighlights,
+        Self::BlackAndWhite,
+    ];
+
+    /// Human-readable name for the "+ Adjustment" menu + the layer-row label
+    /// (English — UI is always English, [[feedback-app-ui-english-only]]).
+    #[must_use]
+    pub const fn display_name(self) -> &'static str {
+        match self {
+            Self::HueSaturationBrightness => "Hue/Saturation",
+            Self::ColorBalance => "Color Balance",
+            Self::Curves => "Curves",
+            Self::GradientMap => "Gradient Map",
+            Self::BrightnessContrast => "Brightness/Contrast",
+            Self::GaussianBlur => "Gaussian Blur",
+            Self::MotionBlur => "Motion Blur",
+            Self::Bloom => "Bloom",
+            Self::Noise => "Noise",
+            Self::Sharpen => "Sharpen",
+            Self::Halftone => "Halftone",
+            Self::ChromaticAberration => "Chromatic Aberration",
+            Self::Vibrance => "Vibrance",
+            Self::ColorLookupLut => "Color Lookup",
+            Self::PhotoFilter => "Photo Filter",
+            Self::Posterize => "Posterize",
+            Self::Threshold => "Threshold",
+            Self::Invert => "Invert",
+            Self::Levels => "Levels",
+            Self::SelectiveColor => "Selective Color",
+            Self::ChannelMixer => "Channel Mixer",
+            Self::Exposure => "Exposure",
+            Self::ShadowsHighlights => "Shadows/Highlights",
+            Self::BlackAndWhite => "Black & White",
+        }
+    }
+}
+
 /// Destructive-only adjustments — cap ≤ 8 (v1 = 5). Separate enum so the type
 /// system blocks `AdjustmentLayer { kind: Liquify }` (§2.4).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -536,7 +604,137 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::BrightnessContrast, AdjustmentParams::BrightnessContrast(p)) => {
             apply_brightness_contrast(p, acc)
         }
+        // T4.x — Exposure (linear gain + offset + gamma).
+        (AdjustmentKind::Exposure, AdjustmentParams::Exposure(p)) => apply_exposure(p, acc),
+        // T4.x — Vibrance (OKLab chroma, low-saturation-weighted).
+        (AdjustmentKind::Vibrance, AdjustmentParams::Vibrance(p)) => apply_vibrance(p, acc),
+        // T4.x — Posterize (display-space level quantization).
+        (AdjustmentKind::Posterize, AdjustmentParams::Posterize(p)) => apply_posterize(p, acc),
+        // T4.x — Threshold (display-space luma → black/white).
+        (AdjustmentKind::Threshold, AdjustmentParams::Threshold(p)) => apply_threshold(p, acc),
+        // T4.x — Invert (display-space photographic negative).
+        (AdjustmentKind::Invert, AdjustmentParams::Invert(_)) => apply_invert(acc),
         _ => {}
+    }
+}
+
+// ─────────────────────── sRGB transfer (display space) ───────────────────
+//
+// Continuous f32 sRGB ↔ linear transfer (IEC 61966), for kinds conventionally
+// defined in display space (Invert / Posterize / Threshold). The `ph2d_color`
+// crate exposes only the 8-bit byte transfer; these f32 twins avoid the
+// quantization round-trip while staying byte-identical at the sample points.
+
+/// linear-light intensity → sRGB-encoded `0..=1` (display space).
+#[inline]
+fn linear_to_srgb_f32(v: f32) -> f32 {
+    let v = v.clamp(0.0, 1.0);
+    if v <= 0.003_130_8 {
+        v * 12.92
+    } else {
+        1.055 * v.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// sRGB-encoded `0..=1` (display space) → linear-light intensity.
+#[inline]
+fn srgb_to_linear_f32(v: f32) -> f32 {
+    let v = v.clamp(0.0, 1.0);
+    if v <= 0.040_45 {
+        v / 12.92
+    } else {
+        ((v + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// Exposure — `acc` is straight LINEAR f32 RGBA (alpha preserved). A photographic
+/// exposure in stops (`exposure_ev`, a `2^ev` gain on linear light), then a
+/// linear `offset` (lifts/drops the floor), then a `gamma_correction` applied as
+/// a power in linear (stored as an offset from 1.0 so the all-zero `Default` is
+/// an exact identity). Neutral `{0,0,0}` early-returns identity.
+fn apply_exposure(p: &ExposureParams, acc: &mut [[f32; 4]]) {
+    if p.exposure_ev == 0.0 && p.offset == 0.0 && p.gamma_correction == 0.0 {
+        return;
+    }
+    let gain = 2.0_f32.powf(p.exposure_ev);
+    let inv_gamma = 1.0 / (1.0 + p.gamma_correction).max(1e-3);
+    for px in acc.iter_mut() {
+        for ch in px.iter_mut().take(3) {
+            let v = (*ch * gain + p.offset).max(0.0);
+            *ch = v.powf(inv_gamma);
+        }
+    }
+}
+
+/// Vibrance — OKLab chroma scaling. `vibrance` boosts chroma MORE for
+/// low-saturation pixels (and tapers off as a pixel approaches full chroma — the
+/// "protect already-saturated colors / skin tones" behavior), while `saturation`
+/// scales every pixel's chroma uniformly. Both `-1..1`, neutral 0. Rotation-free
+/// (hue preserved) and gray-safe (zero chroma stays zero — no rainbow). Alpha
+/// preserved; neutral early-returns identity.
+fn apply_vibrance(p: &VibranceParams, acc: &mut [[f32; 4]]) {
+    if p.vibrance == 0.0 && p.saturation == 0.0 {
+        return;
+    }
+    let sat_mul = (1.0 + p.saturation).max(0.0);
+    // OKLab chroma is ~0..0.4 for in-gamut sRGB; normalize against that so the
+    // vibrance weight (1 - normalized_chroma) reads "how unsaturated is this".
+    const CHROMA_NORM: f32 = 0.4;
+    for px in acc.iter_mut() {
+        let lab = OklabColor::from_linear(LinearRgba::new(px[0], px[1], px[2], 1.0));
+        let chroma = (lab.a * lab.a + lab.b * lab.b).sqrt();
+        if chroma > 1e-6 {
+            let nc = (chroma / CHROMA_NORM).min(1.0);
+            let vib_mul = (1.0 + p.vibrance * (1.0 - nc)).max(0.0);
+            let scale = sat_mul * vib_mul;
+            let out = OklabColor::new(lab.l, lab.a * scale, lab.b * scale, 1.0).to_linear();
+            px[0] = out.r();
+            px[1] = out.g();
+            px[2] = out.b();
+        }
+    }
+}
+
+/// Posterize — quantize each channel to `levels` (`2..=32`) evenly-spaced steps
+/// in DISPLAY (sRGB) space (where the bands read as Photoshop's do), then convert
+/// back to linear. `acc` is straight LINEAR f32 RGBA (alpha preserved). Always
+/// applies (a freshly-created Posterize is a visible effect, like Photoshop).
+fn apply_posterize(p: &PosterizeParams, acc: &mut [[f32; 4]]) {
+    let levels = p.levels.clamp(2, 32) as f32;
+    let steps = levels - 1.0;
+    for px in acc.iter_mut() {
+        for ch in px.iter_mut().take(3) {
+            let s = linear_to_srgb_f32(*ch);
+            let q = (s * steps).round() / steps;
+            *ch = srgb_to_linear_f32(q);
+        }
+    }
+}
+
+/// Threshold — every pixel becomes pure black or white by comparing its display-
+/// space luma (Rec.601 weights on sRGB, matching Photoshop's Threshold) against
+/// `threshold` (`0..=255`). `acc` is straight LINEAR f32 RGBA (alpha preserved).
+fn apply_threshold(p: &ThresholdParams, acc: &mut [[f32; 4]]) {
+    let cut = p.threshold as f32 / 255.0;
+    for px in acc.iter_mut() {
+        let luma = 0.299 * linear_to_srgb_f32(px[0])
+            + 0.587 * linear_to_srgb_f32(px[1])
+            + 0.114 * linear_to_srgb_f32(px[2]);
+        let v = if luma >= cut { 1.0 } else { 0.0 };
+        px[0] = v;
+        px[1] = v;
+        px[2] = v;
+    }
+}
+
+/// Invert — a photographic negative: `1 - x` per channel in DISPLAY (sRGB) space
+/// (a linear `1 - x` would skew midtones), converted back to linear. `acc` is
+/// straight LINEAR f32 RGBA (alpha preserved).
+fn apply_invert(acc: &mut [[f32; 4]]) {
+    for px in acc.iter_mut() {
+        for ch in px.iter_mut().take(3) {
+            *ch = srgb_to_linear_f32(1.0 - linear_to_srgb_f32(*ch));
+        }
     }
 }
 
@@ -583,6 +781,21 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             ("Bright", (p.brightness + 1.0) * 0.5),
             ("Contrast", (p.contrast + 1.0) * 0.5),
         ],
+        // Exposure: EV -4..4, Offset -0.5..0.5, Gamma -0.9..0.9 (all centered).
+        AdjustmentParams::Exposure(p) => vec![
+            ("Expo", (p.exposure_ev + 4.0) / 8.0),
+            ("Offset", p.offset + 0.5),
+            ("Gamma", (p.gamma_correction + 0.9) / 1.8),
+        ],
+        AdjustmentParams::Vibrance(p) => vec![
+            ("Vib", (p.vibrance + 1.0) * 0.5),
+            ("Sat", (p.saturation + 1.0) * 0.5),
+        ],
+        // Posterize levels 2..=32; Threshold cutoff 0..=255.
+        AdjustmentParams::Posterize(p) => {
+            vec![("Levels", (p.levels.clamp(2, 32) as f32 - 2.0) / 30.0)]
+        }
+        AdjustmentParams::Threshold(p) => vec![("Level", p.threshold as f32 / 255.0)],
         _ => Vec::new(),
     }
 }
@@ -603,6 +816,23 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             1 => p.contrast = v * 2.0 - 1.0,
             _ => {}
         },
+        AdjustmentParams::Exposure(p) => match slot {
+            0 => p.exposure_ev = v * 8.0 - 4.0,      // -4..4 EV
+            1 => p.offset = v - 0.5,                 // -0.5..0.5
+            2 => p.gamma_correction = v * 1.8 - 0.9, // -0.9..0.9 (effective γ 0.1..1.9)
+            _ => {}
+        },
+        AdjustmentParams::Vibrance(p) => match slot {
+            0 => p.vibrance = v * 2.0 - 1.0,
+            1 => p.saturation = v * 2.0 - 1.0,
+            _ => {}
+        },
+        AdjustmentParams::Posterize(p) if slot == 0 => {
+            p.levels = (2.0 + v * 30.0).round().clamp(2.0, 32.0) as u8;
+        }
+        AdjustmentParams::Threshold(p) if slot == 0 => {
+            p.threshold = (v * 255.0).round().clamp(0.0, 255.0) as u8;
+        }
         _ => {}
     }
 }
@@ -703,35 +933,11 @@ impl AdjustmentKind {
 mod tests {
     use super::*;
 
-    /// Every `AdjustmentKind` v1 variant (24). Keeping this list in the test is
-    /// the hand-maintained mirror of the enum; a new variant must be added here
-    /// (and to `psd_export`), so the two behavioral gates below cover it.
-    const ALL_KINDS: &[AdjustmentKind] = &[
-        AdjustmentKind::HueSaturationBrightness,
-        AdjustmentKind::ColorBalance,
-        AdjustmentKind::Curves,
-        AdjustmentKind::GradientMap,
-        AdjustmentKind::BrightnessContrast,
-        AdjustmentKind::GaussianBlur,
-        AdjustmentKind::MotionBlur,
-        AdjustmentKind::Bloom,
-        AdjustmentKind::Noise,
-        AdjustmentKind::Sharpen,
-        AdjustmentKind::Halftone,
-        AdjustmentKind::ChromaticAberration,
-        AdjustmentKind::Vibrance,
-        AdjustmentKind::ColorLookupLut,
-        AdjustmentKind::PhotoFilter,
-        AdjustmentKind::Posterize,
-        AdjustmentKind::Threshold,
-        AdjustmentKind::Invert,
-        AdjustmentKind::Levels,
-        AdjustmentKind::SelectiveColor,
-        AdjustmentKind::ChannelMixer,
-        AdjustmentKind::Exposure,
-        AdjustmentKind::ShadowsHighlights,
-        AdjustmentKind::BlackAndWhite,
-    ];
+    /// Every `AdjustmentKind` v1 variant (24) — the public canonical list the
+    /// "+ Adjustment" menu also iterates. A new variant added to the enum must be
+    /// added to `AdjustmentKind::ALL` (and `psd_export` + `display_name`), so the
+    /// behavioral gates below cover it.
+    const ALL_KINDS: &[AdjustmentKind] = &AdjustmentKind::ALL;
 
     /// Gate `adjustment_layer_kind_params_match` (§2.10): the runtime invariant
     /// — a layer built with `neutral_for(kind)` has matching kind/params for
@@ -770,6 +976,18 @@ mod tests {
             .filter(|k| matches!(k.psd_export(), PsdExport::Layered(_)))
             .count();
         assert_eq!(tier1_layered, 5, "Tier 1: 5 layered, 7 baked");
+    }
+
+    #[test]
+    fn all_kinds_have_nonempty_distinct_display_names() {
+        // Every kind in the menu shows a non-empty, unique English label.
+        assert_eq!(AdjustmentKind::ALL.len(), 24);
+        let mut seen = std::collections::BTreeSet::new();
+        for &kind in &AdjustmentKind::ALL {
+            let name = kind.display_name();
+            assert!(!name.is_empty(), "empty display_name for {kind:?}");
+            assert!(seen.insert(name), "duplicate display_name {name:?}");
+        }
     }
 
     #[test]
@@ -918,6 +1136,165 @@ mod tests {
                 .take(3)
                 .all(|&v| v > 0.999)
         );
+    }
+
+    // ── T4.x — per-pixel fan-out kinds (Invert/Exposure/Vibrance/Posterize/
+    // Threshold): invariant tests (neutral identity, extremes, alpha, gray-safe).
+
+    fn run(kind: AdjustmentKind, params: AdjustmentParams, px: [f32; 4]) -> [f32; 4] {
+        let mut acc = [px];
+        apply_adjustment(&kind, &params, &mut acc);
+        acc[0]
+    }
+
+    #[test]
+    fn invert_is_a_display_space_negative() {
+        let white = run(
+            AdjustmentKind::Invert,
+            AdjustmentParams::Invert(InvertParams {}),
+            [1.0, 1.0, 1.0, 0.7],
+        );
+        assert!(
+            white.iter().take(3).all(|&v| v < 1e-4),
+            "white → black: {white:?}"
+        );
+        assert_eq!(white[3], 0.7, "alpha preserved");
+        let black = run(
+            AdjustmentKind::Invert,
+            AdjustmentParams::Invert(InvertParams {}),
+            [0.0, 0.0, 0.0, 1.0],
+        );
+        assert!(
+            black.iter().take(3).all(|&v| v > 0.999),
+            "black → white: {black:?}"
+        );
+    }
+
+    #[test]
+    fn exposure_neutral_identity_and_ev_brightens() {
+        let px = [0.2, 0.4, 0.1, 0.55];
+        let neutral = run(
+            AdjustmentKind::Exposure,
+            AdjustmentParams::Exposure(ExposureParams::default()),
+            px,
+        );
+        assert_eq!(neutral, px, "all-zero Exposure is an exact identity");
+        // +1 EV doubles linear light.
+        let up = run(
+            AdjustmentKind::Exposure,
+            AdjustmentParams::Exposure(ExposureParams {
+                exposure_ev: 1.0,
+                offset: 0.0,
+                gamma_correction: 0.0,
+            }),
+            [0.25, 0.25, 0.25, 0.4],
+        );
+        assert!((up[0] - 0.5).abs() < 1e-5, "+1 EV: 0.25 → 0.5: {up:?}");
+        assert_eq!(up[3], 0.4, "alpha preserved");
+    }
+
+    #[test]
+    fn vibrance_neutral_identity_and_gray_stays_gray() {
+        let px = [0.6, 0.3, 0.15, 0.9];
+        let neutral = run(
+            AdjustmentKind::Vibrance,
+            AdjustmentParams::Vibrance(VibranceParams::default()),
+            px,
+        );
+        assert_eq!(neutral, px, "neutral Vibrance is an exact identity");
+        // A gray pixel has zero chroma → any vibrance/saturation leaves it gray
+        // (no rainbow speckle — the same gray-safety as the OKLab HSB).
+        let gray = run(
+            AdjustmentKind::Vibrance,
+            AdjustmentParams::Vibrance(VibranceParams {
+                vibrance: 1.0,
+                saturation: 1.0,
+            }),
+            [0.5, 0.5, 0.5, 1.0],
+        );
+        assert!(
+            (gray[0] - gray[1]).abs() < 1e-4 && (gray[1] - gray[2]).abs() < 1e-4,
+            "gray stays gray under max vibrance: {gray:?}"
+        );
+    }
+
+    #[test]
+    fn vibrance_full_desaturation_is_grayscale() {
+        let out = run(
+            AdjustmentKind::Vibrance,
+            AdjustmentParams::Vibrance(VibranceParams {
+                vibrance: 0.0,
+                saturation: -1.0,
+            }),
+            [1.0, 0.0, 0.0, 1.0],
+        );
+        assert!(
+            (out[0] - out[1]).abs() < 1e-4 && (out[1] - out[2]).abs() < 1e-4,
+            "saturation -1 collapses red to gray: {out:?}"
+        );
+    }
+
+    #[test]
+    fn posterize_two_levels_snaps_to_black_or_white() {
+        // levels = 2 → each channel rounds to display 0 or 1.
+        for &c in &[0.05_f32, 0.3, 0.7, 0.95] {
+            let out = run(
+                AdjustmentKind::Posterize,
+                AdjustmentParams::Posterize(PosterizeParams { levels: 2 }),
+                [c, c, c, 0.5],
+            );
+            assert!(
+                out[0] < 1e-4 || out[0] > 0.999,
+                "posterize-2 snaps {c} to an endpoint: {out:?}"
+            );
+            assert_eq!(out[3], 0.5, "alpha preserved");
+        }
+    }
+
+    #[test]
+    fn threshold_splits_on_luma() {
+        let bright = run(
+            AdjustmentKind::Threshold,
+            AdjustmentParams::Threshold(ThresholdParams { threshold: 128 }),
+            [0.9, 0.9, 0.9, 0.6],
+        );
+        assert!(
+            bright.iter().take(3).all(|&v| v > 0.999),
+            "bright → white: {bright:?}"
+        );
+        assert_eq!(bright[3], 0.6, "alpha preserved");
+        let dark = run(
+            AdjustmentKind::Threshold,
+            AdjustmentParams::Threshold(ThresholdParams { threshold: 128 }),
+            [0.02, 0.02, 0.02, 1.0],
+        );
+        assert!(
+            dark.iter().take(3).all(|&v| v < 1e-4),
+            "dark → black: {dark:?}"
+        );
+    }
+
+    #[test]
+    fn fanout_slider_round_trips() {
+        // Each new slider kind: set then read returns the same 0..1 (the panel
+        // relies on this for stable thumb positions). Quantized kinds (Posterize/
+        // Threshold) round-trip on the canonical step grid.
+        let mut exp = AdjustmentParams::Exposure(ExposureParams::default());
+        for (slot, want) in [(0usize, 0.2_f32), (1, 0.8), (2, 0.35)] {
+            set_adjustment_slider_param(&mut exp, slot, want);
+        }
+        let read = adjustment_slider_params(&exp);
+        for (got, want) in read.iter().map(|r| r.1).zip([0.2, 0.8, 0.35]) {
+            assert!(
+                (got - want).abs() < 1e-6,
+                "exposure round-trip {got} vs {want}"
+            );
+        }
+        let mut vib = AdjustmentParams::Vibrance(VibranceParams::default());
+        set_adjustment_slider_param(&mut vib, 0, 0.9);
+        set_adjustment_slider_param(&mut vib, 1, 0.1);
+        let vr = adjustment_slider_params(&vib);
+        assert!((vr[0].1 - 0.9).abs() < 1e-6 && (vr[1].1 - 0.1).abs() < 1e-6);
     }
 
     #[test]

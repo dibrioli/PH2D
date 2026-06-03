@@ -258,7 +258,6 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
-
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -2682,13 +2681,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_GROUP => {
                 self.group_selected();
             }
-            // ── "+ Adj" — create an HSB adjustment layer (W4 T4.3; the full
-            // 24-kind menu lands with T4.15) ───────────────────────────────
-            PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT => {
-                self.add_adjustment_layer(
-                    ph2d_painter_brush::adjustments::AdjustmentKind::HueSaturationBrightness,
-                );
-            }
             // ── Modifier toolbar (acts on the ACTIVE layer) ────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_MASK => {
                 self.add_mask_to_active();
@@ -2757,14 +2749,38 @@ impl Tool for PainterTool {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
-                        PainterLayerWidget::AdjParam0 => self.set_adjustment_param(layer, 0, v as f32),
-                        PainterLayerWidget::AdjParam1 => self.set_adjustment_param(layer, 1, v as f32),
-                        PainterLayerWidget::AdjParam2 => self.set_adjustment_param(layer, 2, v as f32),
-                        PainterLayerWidget::AdjParam3 => self.set_adjustment_param(layer, 3, v as f32),
-                        PainterLayerWidget::AdjParam4 => self.set_adjustment_param(layer, 4, v as f32),
-                        PainterLayerWidget::AdjParam5 => self.set_adjustment_param(layer, 5, v as f32),
+                        PainterLayerWidget::AdjParam0 => {
+                            self.set_adjustment_param(layer, 0, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam1 => {
+                            self.set_adjustment_param(layer, 1, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam2 => {
+                            self.set_adjustment_param(layer, 2, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam3 => {
+                            self.set_adjustment_param(layer, 3, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam4 => {
+                            self.set_adjustment_param(layer, 4, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam5 => {
+                            self.set_adjustment_param(layer, 5, v as f32)
+                        }
                         _ => {}
                     }
+                }
+            }
+            // ── "+ Adjustment" kind pick (W4 T4.15): value = index into
+            // `AdjustmentKind::ALL`; create that kind's layer ───────────────
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
+            {
+                if let Ok(idx) = value.parse::<usize>()
+                    && let Some(&kind) =
+                        ph2d_painter_brush::adjustments::AdjustmentKind::ALL.get(idx)
+                {
+                    self.add_adjustment_layer(kind);
                 }
             }
             // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
@@ -4942,5 +4958,42 @@ mod tests {
         assert!((p.h - 0.5).abs() < 1e-6, "hue maps 0..1 turns directly");
         assert!((p.s - 1.0).abs() < 1e-6, "saturation slider 1 → +1");
         assert!((p.b + 1.0).abs() < 1e-6, "brightness slider 0 → -1");
+    }
+
+    #[test]
+    fn add_adjustment_via_kind_menu_select_creates_that_kind() {
+        // W4 T4.15: the "+ Adjustment" picker forwards the chosen kind's index in
+        // `AdjustmentKind::ALL` as a `SelectOption` on PAINTER_LAYERS_ADD_ADJUSTMENT;
+        // the tool maps it back and creates that exact kind (not always HSB).
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2);
+        let before = t.layers.len();
+        // Index 4 in AdjustmentKind::ALL = BrightnessContrast.
+        let idx = AdjustmentKind::ALL
+            .iter()
+            .position(|&k| k == AdjustmentKind::BrightnessContrast)
+            .unwrap();
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+            idx.to_string(),
+        ));
+        assert_eq!(t.layers.len(), before + 1, "a layer was added");
+        let kind = t
+            .layers
+            .all_ids()
+            .filter_map(|id| match &t.layers.get(id).unwrap().kind {
+                LayerKind::Adjustment(a) => Some(a.kind),
+                _ => None,
+            })
+            .next()
+            .expect("an adjustment layer was created");
+        assert_eq!(
+            kind,
+            AdjustmentKind::BrightnessContrast,
+            "the picked kind is the one created"
+        );
     }
 }

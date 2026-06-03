@@ -60,6 +60,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let rect: Rect = ctx.layout.painter_layers;
     let theme = ctx.host.theme();
     state::set_pending_blend_dd(None);
+    state::set_pending_adj_menu(None);
 
     ctx.host
         .store_mut()
@@ -305,6 +306,12 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         crate::blend::paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
     }
 
+    // Deferred: the open "+ Adjustment" kind-picker menu, on top of everything
+    // (after the blend popover — only one is realistically open at a time).
+    if let Some(menu_chip) = state::take_pending_adj_menu() {
+        crate::adjust_menu::paint_adjustment_menu_popover(ctx, theme, menu_chip);
+    }
+
     // W3.T3.8: the floating drag ghost is the very top layer (a drag and an open
     // blend popover are mutually exclusive, so order vs the popover is moot).
     // Painted after the body clip pop so it tracks the cursor past the list.
@@ -356,11 +363,6 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
             IconId::Trash,
             "Delete layer",
         ),
-        (
-            core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
-            IconId::ColorEqualization,
-            "Add adjustment",
-        ),
     ];
     for (id, icon, label) in specs {
         let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
@@ -373,6 +375,34 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
         ctx.host.hit_index_mut().register(id, btn_rect);
         x += HEADER_ICON_W + Spacing::Xs.px();
+    }
+
+    // "+ Adj" — a Dropdown (W4 T4.15), not a plain action: clicking it toggles a
+    // 24-kind picker open via the generic Dropdown dispatch. Painted as an icon
+    // button (Accent-filled while open); when open, stash a full-width synthetic
+    // chip at this toolbar row so the deferred popover drops straight down the
+    // panel (every kind name fits one line — narrow right-align like the blend
+    // chip would clip the long names).
+    let adj_id = core_ids::PAINTER_LAYERS_ADD_ADJUSTMENT;
+    let adj_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
+    let open = matches!(
+        ctx.host.store().get(adj_id),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let mut adj_btn = Button::new(adj_id, "Add adjustment").icon_only(IconId::ColorEqualization);
+    if open {
+        adj_btn.kind = ButtonKind::Accent;
+    }
+    paint_button(&adj_btn, adj_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(adj_id, adj_rect);
+    if open {
+        let menu_chip = Rect::new(
+            toolbar_rect.x + PANEL_HEAD_PAD,
+            y,
+            (toolbar_rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
+            ROW_H_PX,
+        );
+        state::set_pending_adj_menu(Some(menu_chip));
     }
 }
 

@@ -7,7 +7,7 @@
 //! they can't be known at boot. Only the chrome buttons live here.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::ButtonState;
+use ph2d_editor_core::widget::{ButtonState, DropdownState};
 
 pub fn populate(store: &mut WidgetStore) {
     let buttons = [
@@ -19,8 +19,6 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
         ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
         ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
-        // "+ Adj" — create an adjustment layer (W4 T4.3).
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
         // Modifier toolbar (acts on the active layer): Mask / Clip / Lock / Ref.
         ph2d_editor_core::ids::PAINTER_LAYERS_MASK,
         ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,
@@ -40,4 +38,17 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // "+ Adj" is a Dropdown, not a plain Button (W4 T4.15): clicking it toggles
+    // the 24-kind picker popover open/closed via the generic Dropdown dispatch
+    // (which emits no Click — the panel observes `open` via the store), exactly
+    // like the per-row blend chip. Painted as an icon button; the open popover
+    // is a deferred pass in `paint`.
+    store.register(
+        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
 }

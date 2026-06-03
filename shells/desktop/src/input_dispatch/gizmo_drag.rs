@@ -255,6 +255,51 @@ impl App {
                 // pivot)`. The primary then behaves consistently with
                 // every other selected sprite — "as if the group is a
                 // single rigid object around the global pivot".
+                // ── Uniform-only group scale for ROTATED selections (Enio
+                // 2026-06-03). A non-uniform WORLD-axis scale of a rotated child is
+                // a SHEAR, which `Transform.scale` (local, per-child) cannot
+                // represent → the reported X↔Y swap. Standard editor behaviour:
+                // when the multi-selection contains a rotated object, scaling stays
+                // PROPORTIONAL (both axes by the dominant drag factor). A single
+                // (non-group) scale keeps its correct local-axis non-uniform
+                // behaviour. Applied to `new_t` BEFORE the factor + primary write
+                // below so the primary AND every extra scale uniformly.
+                let new_t = if !self.group_drag_starts.is_empty()
+                    && matches!(
+                        drag.kind,
+                        ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                            | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                    )
+                    && (drag.start_transform.rotation != 0.0
+                        || self
+                            .group_drag_starts
+                            .iter()
+                            .any(|s| s.start_transform.rotation != 0.0))
+                {
+                    let ss = drag.start_transform.scale;
+                    let fx = if ss[0].abs() > f32::EPSILON {
+                        new_t.scale[0] / ss[0]
+                    } else {
+                        1.0
+                    };
+                    let fy = if ss[1].abs() > f32::EPSILON {
+                        new_t.scale[1] / ss[1]
+                    } else {
+                        1.0
+                    };
+                    // The axis the user is actually dragging drives both.
+                    let uniform = if (fx - 1.0).abs() >= (fy - 1.0).abs() {
+                        fx
+                    } else {
+                        fy
+                    };
+                    ph2d_editor::TransformSnapshot {
+                        scale: [ss[0] * uniform, ss[1] * uniform],
+                        ..new_t
+                    }
+                } else {
+                    new_t
+                };
                 let start_scale = drag.start_transform.scale;
                 let factor_x = if start_scale[0].abs() > f32::EPSILON {
                     new_t.scale[0] / start_scale[0]

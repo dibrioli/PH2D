@@ -1114,6 +1114,29 @@ impl crate::App {
             // in `on_mouse_input`). Painting them inside `paint_hero_screen`
             // (before the floating panels) keeps gizmos BELOW the panels
             // both visually and in hit-test (z-order fix 2026-05-31).
+            // ADR-0076: the vertex-edit / authoring vector tools (Direct / Pen /
+            // Pencil / Shape) must NOT show the object-transform gizmo. Its painted
+            // box + handles overlay the shape, and those tools' `vector_*_world`
+            // reject any click over a `hit_index` widget — so the gizmo's hit-rects
+            // would block EVERY vertex/handle grab + canvas click (Enio: "Direct
+            // não move pontos/handles"). The gizmo belongs to object selection
+            // (Select) + the arrow/Move tools. Suppress the painted view here; the
+            // selection stays armed (hierarchy highlight) — just no box/handles.
+            let suppress_gizmo = tools
+                .active()
+                .map(|t| {
+                    let id = t.id();
+                    id == ph2d_editor::ToolId::new("vector_direct")
+                        || id == ph2d_editor::ToolId::new("vector_pen")
+                        || id == ph2d_editor::ToolId::new("vector_pencil")
+                        || id == ph2d_editor::ToolId::new("vector_shape")
+                })
+                .unwrap_or(false);
+            if suppress_gizmo {
+                hero.gizmo.view = None;
+                hero.gizmo.extra_views.clear();
+                hero.gizmo.global_view = None;
+            }
             hero.gizmo.gizmo_hit_map.clear();
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
             // Fase 0f: overlay the active rubber-band rect on top of

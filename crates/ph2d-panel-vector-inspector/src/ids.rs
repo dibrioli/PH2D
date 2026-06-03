@@ -33,10 +33,10 @@ mod tests {
             SHAPE_OPTION_LABELS.len(),
             "every option id needs exactly one label"
         );
-        for i in 0..SHAPE_OPTION_IDS.len() {
-            for j in (i + 1)..SHAPE_OPTION_IDS.len() {
+        for (i, &a) in SHAPE_OPTION_IDS.iter().enumerate() {
+            for &b in SHAPE_OPTION_IDS.iter().skip(i + 1) {
                 assert_ne!(
-                    SHAPE_OPTION_IDS[i], SHAPE_OPTION_IDS[j],
+                    a, b,
                     "option ids must be distinct so hit-routing is unambiguous"
                 );
             }

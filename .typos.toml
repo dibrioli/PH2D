@@ -20,6 +20,10 @@ extend-ignore-identifiers-re = [
 # Project-specific names (not typos).
 ph2d = "ph2d"
 PH2D = "PH2D"
+# Photoshop PSD 4-char adjustment-layer type keys (Adobe's literal format tags,
+# ADR-0045 `adjustments::AdjustmentKind::psd_export`): e.g. Levels = "levl",
+# Brightness/Contrast = "brit". They are file-format signatures, not English.
+levl = "levl"
 # Library/crate names.
 rquickjs = "rquickjs"
 flecs = "flecs"

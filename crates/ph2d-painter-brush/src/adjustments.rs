@@ -532,10 +532,9 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
     match (kind, params) {
         // T4.3 — Hue/Saturation/Brightness (Day-4 smoke). The other 23 kinds
         // are still no-ops (identity) until their own T4.x arm lands.
-        (
-            AdjustmentKind::HueSaturationBrightness,
-            AdjustmentParams::HueSaturationBrightness(p),
-        ) => apply_hsb(p, acc),
+        (AdjustmentKind::HueSaturationBrightness, AdjustmentParams::HueSaturationBrightness(p)) => {
+            apply_hsb(p, acc)
+        }
         _ => {}
     }
 }
@@ -731,7 +730,11 @@ mod tests {
 
     fn apply(h: f32, s: f32, b: f32, px: [f32; 4]) -> [f32; 4] {
         let mut acc = [px];
-        apply_adjustment(&AdjustmentKind::HueSaturationBrightness, &hsb(h, s, b), &mut acc);
+        apply_adjustment(
+            &AdjustmentKind::HueSaturationBrightness,
+            &hsb(h, s, b),
+            &mut acc,
+        );
         acc[0]
     }
 
@@ -789,7 +792,10 @@ mod tests {
         let px = [0.7, 0.2, 0.4, 1.0];
         let out = apply(1.0, 0.0, 0.0, px);
         for c in 0..3 {
-            assert!((out[c] - px[c]).abs() < 5e-3, "full-turn ~identity: {out:?}");
+            assert!(
+                (out[c] - px[c]).abs() < 5e-3,
+                "full-turn ~identity: {out:?}"
+            );
         }
     }
 }

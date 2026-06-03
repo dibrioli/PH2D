@@ -70,7 +70,12 @@ pub fn preview_fill_on_selection(
         let Some(asset) = committed.get_mut(idx) else {
             continue;
         };
-        let refs: Vec<FillRef> = asset.network.regions.iter().filter_map(|r| r.fill).collect();
+        let refs: Vec<FillRef> = asset
+            .network
+            .regions
+            .iter()
+            .filter_map(|r| r.fill)
+            .collect();
         for fref in refs {
             if let Some(slot) = asset.styles.fills.get_mut(&fref) {
                 slot.color = color;
@@ -215,7 +220,9 @@ mod tests {
             fills,
             "preview must not insert a fill"
         );
-        let back = fill_color_of(&committed[0]).expect("region has fill").to_srgb();
+        let back = fill_color_of(&committed[0])
+            .expect("region has fill")
+            .to_srgb();
         assert!(back.r().abs_diff(200) <= 2, "r={}", back.r());
         assert!(back.g().abs_diff(40) <= 2, "g={}", back.g());
         assert!(back.b().abs_diff(40) <= 2, "b={}", back.b());

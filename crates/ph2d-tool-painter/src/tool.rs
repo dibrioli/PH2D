@@ -1861,9 +1861,9 @@ impl PainterTool {
         };
         let v = slider01.clamp(0.0, 1.0);
         match field {
-            HsbField::Hue => p.h = v,                     // 0..1 turns
-            HsbField::Saturation => p.s = v * 2.0 - 1.0,  // -1..1
-            HsbField::Brightness => p.b = v * 2.0 - 1.0,  // -1..1
+            HsbField::Hue => p.h = v,                    // 0..1 turns
+            HsbField::Saturation => p.s = v * 2.0 - 1.0, // -1..1
+            HsbField::Brightness => p.b = v * 2.0 - 1.0, // -1..1
         }
         self.invalidate_composite();
     }
@@ -4931,7 +4931,10 @@ mod tests {
             Some(base),
             "the prior raster stays the edit target"
         );
-        assert!(t.selection().contains(&adj), "the new adjustment is selected");
+        assert!(
+            t.selection().contains(&adj),
+            "the new adjustment is selected"
+        );
     }
 
     #[test]

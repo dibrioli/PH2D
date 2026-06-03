@@ -158,3 +158,28 @@ locais, todos `cargo check`/clippy/teste verdes — não pushei):
 
 - **§6 (gradient 2-stop, CRDT real) — adiados** conforme tua opção (a). Continuam meus.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+VECTOR SCENE-OBJECT POLISH + AUDIT · 2026-06-02 (Coord, vector parado)
+═══════════════════════════════════════════════════════════════════
+Rank 10 (ADR-0076) levado a paridade-sprite via smoke iterativo do Enio. Commits
+locais (acumulando p/ ship único):
+- `c357ea9` unify selection (gizmo/hierarchy ⟷ vector_selection) + gizmo grab através das tools vetoriais.
+- `771a7d6` scale-drift fix (modelo translation ABSOLUTO = centroide) + overlay segue a forma movida.
+- `c813541` Select click placement-aware (clique no vazio deseleciona; forma movida pega na nova pos).
+- `b71438f` 6 fixes: P1 cor da forma selecionada no picker · P2 click-to-drag · P3 remove retângulo
+  âmbar (só gizmo) · P4 parenting na hierarquia (world_transform = parent∘local) · P5 preview do Shape
+  desde o 1º movimento (+ cancel pixel-based) · P6 multi-seleção (set primário+extras ⟷ networks).
+- `274af5b` marquee placement-aware (AABB world da forma movida) + prune defensivo de networks.
+
+**Auditoria (2 lentes adversariais) — verificado CORRETO, sem mudança:** ordem de
+compose do parenting (parent∘local), consistência placement/fill/overlay, guard de
+escala degenerada, self-heal do gizmo via snapshots prune.
+
+**FOLLOW-UP conhecido (edge case de feature nova, NÃO regressão):** o GRAB de vértice
+da ferramenta **Direct** ainda é rest-pose — editar vértices de uma forma JÁ MOVIDA
+pelo gizmo pega os pontos errados. Forma não-movida (caminho comum) funciona. Fix
+placement-aware exige a Direct tool aceitar inverse-placements por-forma (incremento
+focado; toca `ph2d-tool-vector-direct`). §4.3 (consolidar pills) e persistência do
+placement (ADR-0076 §2.7) seguem sequenciados.
+═══════════════════════════════════════════════════════════════════

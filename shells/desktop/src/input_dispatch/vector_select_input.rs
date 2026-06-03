@@ -126,20 +126,42 @@ impl App {
         };
         // `sel` borrows `self.gfx.tools`; `committed` / `selection` are disjoint
         // `App` fields → simultaneous borrow is sound.
-        if (max - min).length() * k < VECTOR_SELECT_CLICK_PX {
+        let is_click = (max - min).length() * k < VECTOR_SELECT_CLICK_PX;
+        if is_click {
             sel.cancel_marquee();
-            sel.click(
-                &self.committed_vector_pen_paths,
-                &mut self.vector_selection,
-                min,
-                additive,
-            );
         } else {
             sel.finish_marquee(
                 &self.committed_vector_pen_paths,
                 &mut self.vector_selection,
                 MarqueeMode::Crossing,
             );
+        }
+        // ADR-0076: a click resolves PLACEMENT-AWARE — hit-test each shape's MOVED
+        // visual (the gizmo may have transformed it), not its rest-pose vertices.
+        // `VectorSelectTool::click` tests rest-pose, so it picked a moved shape's
+        // now-empty rest spot + missed its new one. `sel`'s borrow has ended above.
+        if is_click {
+            let Some(gfx) = self.gfx.as_ref() else {
+                return true;
+            };
+            let hit = crate::render_loop::vector_scene::pick_index(
+                &gfx.sim,
+                &self.vector_scene_entities,
+                &self.committed_vector_pen_paths,
+                [min.x, min.y],
+            );
+            match hit {
+                Some(idx) if additive => {
+                    if self.vector_selection.contains_network(idx) {
+                        self.vector_selection.networks.retain(|&n| n != idx);
+                    } else {
+                        self.vector_selection.networks.push(idx);
+                    }
+                }
+                Some(idx) => self.vector_selection.select_only_network(idx),
+                None if !additive => self.vector_selection.clear(),
+                None => {}
+            }
         }
         true
     }

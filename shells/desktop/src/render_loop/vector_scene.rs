@@ -188,16 +188,18 @@ pub(crate) fn placements(sim: &SimWorld, entities: &[Entity]) -> Vec<[f32; 6]> {
         .collect()
 }
 
-/// Topmost vector under `world_pos`, as sim entity bits, or `None`. Inverts each
-/// entity's placement before the point-in-region test (the vertices are rest-pose;
-/// the `Transform` moved the visual). Iterates top-first to match the sprite pick.
-pub(crate) fn pick(
+/// Topmost vector under `world_pos`, as the positional index into `entities` /
+/// `assets`, or `None`. Inverts each entity's placement before the point-in-region
+/// test (the vertices are rest-pose; the `Transform` moved the visual), so a
+/// gizmo-moved shape is hit at its NEW position, not its rest pose. Iterates
+/// top-first to match the sprite pick.
+pub(crate) fn pick_index(
     sim: &SimWorld,
     entities: &[Entity],
     assets: &[Ph2dVectorAsset],
     world_pos: [f32; 2],
-) -> Option<u64> {
-    for (&e, asset) in entities.iter().zip(assets).rev() {
+) -> Option<usize> {
+    for (i, (&e, asset)) in entities.iter().zip(assets).enumerate().rev() {
         let (Some(t), Some(v)) = (
             sim.world().get::<Transform>(e),
             sim.world().get::<VectorSceneRef>(e),
@@ -220,10 +222,20 @@ pub(crate) fn pick(
             .iter()
             .any(|region| asset.network.region_contains_point(region, p))
         {
-            return Some(e.to_bits());
+            return Some(i);
         }
     }
     None
+}
+
+/// As [`pick_index`] but yields the sim entity bits (for the gizmo selection).
+pub(crate) fn pick(
+    sim: &SimWorld,
+    entities: &[Entity],
+    assets: &[Ph2dVectorAsset],
+    world_pos: [f32; 2],
+) -> Option<u64> {
+    pick_index(sim, entities, assets, world_pos).map(|i| entities[i].to_bits())
 }
 
 /// Bridge the two object-level selections so a vector selected anywhere is

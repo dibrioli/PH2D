@@ -313,11 +313,14 @@ impl App {
             .as_ref()
             .map(|g| {
                 let world = g.camera.screen_to_world((x, y), g.surface.size());
+                let scale =
+                    (g.surface.size().height as f32) / g.camera.height_world.max(f32::EPSILON);
                 crate::render_loop::vector_scene::pick_index(
                     &g.sim,
                     &self.vector_scene_entities,
                     &self.committed_vector_pen_paths,
                     world,
+                    crate::render_loop::vector_scene::STROKE_PICK_TOLERANCE_PX / scale,
                 )
                 .is_some()
             })
@@ -884,6 +887,9 @@ impl App {
                                 &self.vector_scene_entities,
                                 &self.committed_vector_pen_paths,
                                 world_pos,
+                                crate::render_loop::vector_scene::STROKE_PICK_TOLERANCE_PX
+                                    / ((gfx.surface.size().height as f32)
+                                        / gfx.camera.height_world.max(f32::EPSILON)),
                             )
                         } else {
                             hits.get(self.cycle_pick_idx).copied()

@@ -204,6 +204,43 @@ impl VectorNetwork {
         }
         pts
     }
+
+    /// The [`SegmentId`] whose flattened cubic passes closest to `p`, if within
+    /// `tolerance` (network-local units). For click-selecting OPEN stroked paths
+    /// (Pencil / Spiral / open Pen) that have no fillable region — the region
+    /// test alone can never hit them. Flattens each segment with the same
+    /// `eval_cubic` + `DEFAULT_FLATTEN_STEPS` as the region boundary; O(S × steps)
+    /// write path. Ties broken by lowest distance then insertion order.
+    #[must_use]
+    pub fn nearest_segment_within(&self, p: Vec2, tolerance: f32) -> Option<SegmentId> {
+        let tol_sq = tolerance * tolerance;
+        let mut best: Option<(SegmentId, f32)> = None;
+        for seg in &self.segments {
+            let (Some(a), Some(b)) = (self.vertex_pos(seg.start), self.vertex_pos(seg.end)) else {
+                continue;
+            };
+            let c1 = a + seg.out_at_start;
+            let c2 = b + seg.in_at_end;
+            let mut prev = a;
+            let mut min_sq = f32::INFINITY;
+            for k in 1..=DEFAULT_FLATTEN_STEPS {
+                let t = k as f32 / DEFAULT_FLATTEN_STEPS as f32;
+                let cur = eval_cubic(a, c1, c2, b, t);
+                min_sq = min_sq.min(point_to_segment_sq(p, prev, cur));
+                prev = cur;
+            }
+            if min_sq <= tol_sq {
+                let better = match best {
+                    Some((_, d)) => min_sq < d,
+                    None => true,
+                };
+                if better {
+                    best = Some((seg.id, min_sq));
+                }
+            }
+        }
+        best.map(|(id, _)| id)
+    }
 }
 
 /// Evaluate a cubic Bézier at `t`.
@@ -211,6 +248,18 @@ impl VectorNetwork {
 fn eval_cubic(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
     let mt = 1.0 - t;
     p0 * (mt * mt * mt) + p1 * (3.0 * mt * mt * t) + p2 * (3.0 * mt * t * t) + p3 * (t * t * t)
+}
+
+/// Squared distance from `p` to the segment `a`–`b` (clamped projection).
+#[inline]
+fn point_to_segment_sq(p: Vec2, a: Vec2, b: Vec2) -> f32 {
+    let ab = b - a;
+    let len_sq = ab.length_squared();
+    if len_sq < 1e-12 {
+        return (p - a).length_squared();
+    }
+    let t = ((p - a).dot(ab) / len_sq).clamp(0.0, 1.0);
+    (p - (a + ab * t)).length_squared()
 }
 
 /// Even-odd (parity) point-in-polygon ray cast (+x ray).
@@ -268,6 +317,18 @@ mod tests {
         net.vertices.push(Vertex::auto(1, Vec2::new(100.0, 0.0)));
         net.vertices.push(Vertex::auto(2, Vec2::new(50.0, 86.6)));
         net
+    }
+
+    #[test]
+    fn nearest_segment_within_hits_open_stroke_body() {
+        // An open 2-vertex stroke (no region). A click near the segment BODY
+        // (not a vertex) is detected within tolerance; a far click is not.
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
+        net.vertices.push(Vertex::auto(1, Vec2::new(100.0, 0.0)));
+        net.segments.push(Segment::straight(0, 0, 1));
+        assert_eq!(net.nearest_segment_within(Vec2::new(50.0, 2.0), 5.0), Some(0));
+        assert_eq!(net.nearest_segment_within(Vec2::new(50.0, 50.0), 5.0), None);
     }
 
     /// Closed triangle network with a NonZero region over its 3 edges.

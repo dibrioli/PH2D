@@ -141,6 +141,7 @@ impl App {
                 &self.vector_scene_entities,
                 &self.committed_vector_pen_paths,
                 [min.x, min.y],
+                crate::render_loop::vector_scene::STROKE_PICK_TOLERANCE_PX / k,
             ) {
                 Some(idx) if additive => {
                     if self.vector_selection.contains_network(idx) {

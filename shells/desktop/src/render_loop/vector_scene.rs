@@ -284,16 +284,25 @@ pub(crate) fn inverse_placements(sim: &SimWorld, entities: &[Entity]) -> Vec<[f3
         .collect()
 }
 
+/// Screen-px band within which a click on an OPEN stroked path's body selects it.
+/// Callers convert to world units (÷ camera scale) before passing to [`pick`] /
+/// [`pick_index`] so the hit width is zoom-independent.
+pub(crate) const STROKE_PICK_TOLERANCE_PX: f32 = 6.0;
+
 /// Topmost vector under `world_pos`, as the positional index into `entities` /
 /// `assets`, or `None`. Inverts each entity's placement before the point-in-region
 /// test (the vertices are rest-pose; the `Transform` moved the visual), so a
 /// gizmo-moved shape is hit at its NEW position, not its rest pose. Iterates
-/// top-first to match the sprite pick.
+/// top-first to match the sprite pick. `stroke_tol_world` is the world-space
+/// click band for OPEN stroked paths (Pencil / Spiral / open Pen) that have no
+/// fillable region — they fail the region test, so the stroke body is the only
+/// pickable surface.
 pub(crate) fn pick_index(
     sim: &SimWorld,
     entities: &[Entity],
     assets: &[Ph2dVectorAsset],
     world_pos: [f32; 2],
+    stroke_tol_world: f32,
 ) -> Option<usize> {
     for (i, (&e, asset)) in entities.iter().zip(assets).enumerate().rev() {
         let (Some(t), Some(v)) = (
@@ -320,6 +329,16 @@ pub(crate) fn pick_index(
         {
             return Some(i);
         }
+        // Fallback for OPEN stroked paths (no region): hit the stroke body. `p`
+        // is rest-pose, so divide the world tolerance by the entity scale.
+        let scale = ((t.scale.x.abs() + t.scale.y.abs()) * 0.5).max(1e-6);
+        if asset
+            .network
+            .nearest_segment_within(p, stroke_tol_world / scale)
+            .is_some()
+        {
+            return Some(i);
+        }
     }
     None
 }
@@ -330,8 +349,9 @@ pub(crate) fn pick(
     entities: &[Entity],
     assets: &[Ph2dVectorAsset],
     world_pos: [f32; 2],
+    stroke_tol_world: f32,
 ) -> Option<u64> {
-    pick_index(sim, entities, assets, world_pos).map(|i| entities[i].to_bits())
+    pick_index(sim, entities, assets, world_pos, stroke_tol_world).map(|i| entities[i].to_bits())
 }
 
 /// Marquee hit-test (Crossing): indices of shapes whose MOVED world AABB

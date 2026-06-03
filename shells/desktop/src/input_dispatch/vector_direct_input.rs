@@ -69,6 +69,12 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        // ADR-0076: per-shape inverse placements so the grab hit-tests each shape's
+        // MOVED visual (gizmo-transformed), not its rest pose.
+        let inv = crate::render_loop::vector_scene::inverse_placements(
+            &gfx.sim,
+            &self.vector_scene_entities,
+        );
         if let Some(direct) = gfx
             .tools
             .active_mut()
@@ -81,6 +87,7 @@ impl App {
                 &mut self.vector_selection,
                 world,
                 tol,
+                &inv,
             );
             return true;
         }
@@ -97,13 +104,17 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        let inv = crate::render_loop::vector_scene::inverse_placements(
+            &gfx.sim,
+            &self.vector_scene_entities,
+        );
         if let Some(direct) = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorDirectTool>())
             && direct.is_dragging()
         {
-            direct.drag_to(&mut self.committed_vector_pen_paths, world, alt);
+            direct.drag_to(&mut self.committed_vector_pen_paths, world, alt, &inv);
             return true;
         }
         false

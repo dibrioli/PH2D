@@ -111,6 +111,31 @@ pub(crate) fn world_to_rest(
     Some([c[0] + rx / s[0], c[1] + ry / s[1]])
 }
 
+/// Inverse of [`placement_affine`] as an affine `[xx, xy, yx, yy, zx, zy]` (world →
+/// rest). Algebraically identical to [`world_to_rest`] but as a matrix, so a tool
+/// can map a world cursor into a shape's rest frame per-asset (e.g. the Direct tool
+/// editing a gizmo-moved shape's vertices). Near-zero scale axes are clamped so the
+/// matrix stays finite.
+pub(crate) fn inverse_placement_affine(
+    translation: [f32; 2],
+    r: f32,
+    s: [f32; 2],
+    c: [f32; 2],
+) -> [f32; 6] {
+    let sx = if s[0].abs() > 1e-6 { s[0] } else { 1e-6 };
+    let sy = if s[1].abs() > 1e-6 { s[1] } else { 1e-6 };
+    let (sin, cos) = libm::sincosf(r);
+    // M⁻¹ = diag(1/s)·R(−r), column-major.
+    let xx = cos / sx;
+    let xy = -sin / sy;
+    let yx = sin / sx;
+    let yy = cos / sy;
+    // inv(w) = M⁻¹·(w − translation) + c ⇒ affine translation = c − M⁻¹·translation
+    let zx = c[0] - (xx * translation[0] + yx * translation[1]);
+    let zy = c[1] - (xy * translation[0] + yy * translation[1]);
+    [xx, xy, yx, yy, zx, zy]
+}
+
 /// World-space gizmo box for a vector entity: `(center, half_scaled, rotation)`.
 /// The box is centered on the absolute `translation` (== the object centre, so it
 /// matches the gizmo's own pivot model); the painter rotates it by `rotation` around
@@ -209,6 +234,30 @@ pub(crate) fn placements(sim: &SimWorld, entities: &[Entity]) -> Vec<[f32; 6]> {
                 sim.world().get::<VectorSceneRef>(e),
             ) {
                 (Some(t), Some(v)) => placement_affine(
+                    [t.translation.x, t.translation.y],
+                    t.rotation,
+                    [t.scale.x, t.scale.y],
+                    v.centroid(),
+                ),
+                _ => [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            }
+        })
+        .collect()
+}
+
+/// Per-asset INVERSE placement affine (world → rest), parallel to `entities`. The
+/// Direct tool maps the world cursor into each shape's rest frame with these so its
+/// vertex/tangent hit-tests + writes land on the gizmo-moved shape, not its rest
+/// pose. Missing entities yield the identity (world == rest).
+pub(crate) fn inverse_placements(sim: &SimWorld, entities: &[Entity]) -> Vec<[f32; 6]> {
+    entities
+        .iter()
+        .map(|&e| {
+            match (
+                world_transform(sim, e),
+                sim.world().get::<VectorSceneRef>(e),
+            ) {
+                (Some(t), Some(v)) => inverse_placement_affine(
                     [t.translation.x, t.translation.y],
                     t.rotation,
                     [t.scale.x, t.scale.y],
@@ -461,5 +510,18 @@ mod tests {
         assert!(close(center, [510.0, 255.0]));
         assert!(close(half, [200.0, 50.0])); // scale ⊙ half
         assert!((rot - 0.3).abs() < EPS);
+    }
+
+    #[test]
+    fn inverse_placement_affine_undoes_placement() {
+        // The Direct tool maps the world cursor back to rest via this inverse —
+        // it must exactly undo the forward placement (translate + rotate + scale).
+        let (t, r, s, c) = ([12.0, -7.0], 0.7, [1.5, 0.8], [320.0, 240.0]);
+        let fwd = placement_affine(t, r, s, c);
+        let inv = inverse_placement_affine(t, r, s, c);
+        let rest = [331.0, 233.0];
+        let world = apply(fwd, rest);
+        let back = apply(inv, world);
+        assert!(close(back, rest), "inv∘fwd {back:?} != {rest:?}");
     }
 }

@@ -96,10 +96,16 @@ impl VectorDirectTool {
         selection: &mut VectorSelection,
         pos: Vec2,
         tolerance: f32,
+        inv_placements: &[[f32; 6]],
     ) -> DirectOutcome {
         for (idx, asset) in committed.iter().enumerate().rev() {
+            // ADR-0076: map the world cursor into THIS shape's rest frame (it may be
+            // gizmo-moved), so the hit-test lands on the shape's current visual.
+            let local = inv_placements
+                .get(idx)
+                .map_or(pos, |&m| apply_affine(m, pos));
             // Tangent handles first (smaller, drawn over vertices).
-            if let Some((seg, side)) = asset.network.nearest_tangent_handle(pos, tolerance) {
+            if let Some((seg, side)) = asset.network.nearest_tangent_handle(local, tolerance) {
                 self.grab = Some(DirectGrab {
                     asset: idx,
                     target: GrabTarget::Tangent(seg, side),
@@ -109,7 +115,7 @@ impl VectorDirectTool {
                 }
                 return DirectOutcome::Grabbed(GrabTarget::Tangent(seg, side));
             }
-            if let Some(vid) = asset.network.nearest_vertex(pos, tolerance) {
+            if let Some(vid) = asset.network.nearest_vertex(local, tolerance) {
                 self.grab = Some(DirectGrab {
                     asset: idx,
                     target: GrabTarget::Vertex(vid),
@@ -128,29 +134,35 @@ impl VectorDirectTool {
         committed: &mut [Ph2dVectorAsset],
         pos: Vec2,
         alt: bool,
+        inv_placements: &[[f32; 6]],
     ) -> DirectOutcome {
         let Some(grab) = self.grab else {
-            return DirectOutcome::Idle;
-        };
-        let Some(asset) = committed.get_mut(grab.asset) else {
             return DirectOutcome::Idle;
         };
         if !(pos.x.is_finite() && pos.y.is_finite()) {
             return DirectOutcome::Idle;
         }
+        // ADR-0076: write the vertex/tangent in the shape's REST frame — map the
+        // world cursor back through the grabbed shape's inverse placement.
+        let local = inv_placements
+            .get(grab.asset)
+            .map_or(pos, |&m| apply_affine(m, pos));
+        let Some(asset) = committed.get_mut(grab.asset) else {
+            return DirectOutcome::Idle;
+        };
         match grab.target {
             GrabTarget::Vertex(vid) => {
                 // Tangent offsets are relative, so they follow the vertex.
                 let _ = asset.edit_log.push_and_apply(
                     VectorOp::MoveVertex {
                         id: vid,
-                        new_pos: pos,
+                        new_pos: local,
                     },
                     &mut asset.network,
                 );
             }
             GrabTarget::Tangent(seg, side) => {
-                apply_tangent_drag(asset, seg, side, pos, alt);
+                apply_tangent_drag(asset, seg, side, local, alt);
             }
         }
         DirectOutcome::Moved
@@ -166,6 +178,15 @@ impl VectorDirectTool {
     pub fn cancel_drag(&mut self) {
         self.grab = None;
     }
+}
+
+/// Apply a column-major affine `[xx, xy, yx, yy, zx, zy]` (the inverse placement,
+/// world → rest) to a point. ADR-0076: lets Direct edit a gizmo-moved shape.
+fn apply_affine(m: [f32; 6], p: Vec2) -> Vec2 {
+    Vec2::new(
+        m[0] * p.x + m[2] * p.y + m[4],
+        m[1] * p.x + m[3] * p.y + m[5],
+    )
 }
 
 /// The vertex a tangent handle is anchored to.
@@ -327,11 +348,11 @@ mod tests {
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
         // Grab vertex 0 at (0,0).
-        let out = t.begin_drag(&scene, &mut sel, Vec2::new(0.0, 0.0), 5.0);
+        let out = t.begin_drag(&scene, &mut sel, Vec2::new(0.0, 0.0), 5.0, &[]);
         assert_eq!(out, DirectOutcome::Grabbed(GrabTarget::Vertex(0)));
         assert!(sel.contains_vertex(0, 0));
         // Move it.
-        t.drag_to(&mut scene, Vec2::new(5.0, 12.0), false);
+        t.drag_to(&mut scene, Vec2::new(5.0, 12.0), false, &[]);
         let v = scene[0]
             .network
             .vertices
@@ -355,13 +376,13 @@ mod tests {
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
         // Handle of seg 1 out_at_start sits at vertex1 + (10,0) = (60,0).
-        let out = t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0);
+        let out = t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0, &[]);
         assert_eq!(
             out,
             DirectOutcome::Grabbed(GrabTarget::Tangent(1, TangentSide::OutAtStart))
         );
         // Drag the handle to (60,20) → new offset from vertex1(50,0) = (10,20).
-        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false);
+        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false, &[]);
         let s1 = scene[0]
             .network
             .segments
@@ -377,8 +398,8 @@ mod tests {
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
         // Grab seg1 out handle at (60,0), drag up.
-        t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0);
-        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false);
+        t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0, &[]);
+        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), false, &[]);
         // seg1.out = (10,20); the opposite handle (seg0.in_at_end on vertex1)
         // mirrors to -(10,20) = (-10,-20).
         let s0 = scene[0]
@@ -395,8 +416,8 @@ mod tests {
         let mut scene = vec![two_segment_asset(VertexKind::Mirror)];
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
-        t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0);
-        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), true); // alt
+        t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0, &[]);
+        t.drag_to(&mut scene, Vec2::new(60.0, 20.0), true, &[]); // alt
         // Vertex 1 becomes Free; opposite handle is NOT mirrored.
         let v1 = scene[0]
             .network
@@ -423,7 +444,7 @@ mod tests {
         let scene = vec![two_segment_asset(VertexKind::Free)];
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
-        let out = t.begin_drag(&scene, &mut sel, Vec2::new(500.0, 500.0), 5.0);
+        let out = t.begin_drag(&scene, &mut sel, Vec2::new(500.0, 500.0), 5.0, &[]);
         assert_eq!(out, DirectOutcome::Missed);
         assert!(!t.is_dragging());
     }
@@ -433,7 +454,7 @@ mod tests {
         let mut scene = vec![two_segment_asset(VertexKind::Free)];
         let mut t = VectorDirectTool::new();
         assert_eq!(
-            t.drag_to(&mut scene, Vec2::new(1.0, 1.0), false),
+            t.drag_to(&mut scene, Vec2::new(1.0, 1.0), false, &[]),
             DirectOutcome::Idle
         );
     }
@@ -443,9 +464,9 @@ mod tests {
         let mut scene = vec![two_segment_asset(VertexKind::Free)];
         let mut sel = VectorSelection::new();
         let mut t = VectorDirectTool::new();
-        t.begin_drag(&scene, &mut sel, Vec2::new(0.0, 0.0), 5.0);
+        t.begin_drag(&scene, &mut sel, Vec2::new(0.0, 0.0), 5.0, &[]);
         assert_eq!(
-            t.drag_to(&mut scene, Vec2::new(f32::NAN, 0.0), false),
+            t.drag_to(&mut scene, Vec2::new(f32::NAN, 0.0), false, &[]),
             DirectOutcome::Idle
         );
         // Vertex unmoved.

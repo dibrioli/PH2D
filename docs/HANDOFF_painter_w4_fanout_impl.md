@@ -44,6 +44,14 @@ local pronto p/ ship do Coord. **PEDIDO DE SMOKE ao Enio** (ver fim do report).
     pixel**. Posterize mantém `round()` exato no índice de banda. **Curves/Levels/
     GradientMap (display-space) DEVEM usar o mesmo LUT** — não chame `powf` por
     pixel. commit `9e12b31`.
+    **►► RE-SMOKE (Enio): FPS AINDA cai — agora em TODOS os kinds, incl. HSB/B-C.**
+    Isso CONFIRMA que o compute nunca foi o gargalo dominante: é o **recompose de
+    canvas INTEIRO por frame de drag** (bandwidth-bound — lê todas as layers +
+    reupload). **= o `CompositorCache` (ADR-0045 §2.7/§2.11), que segue SKELETON**
+    (`compositor.rs` `CompositorCache::invalidate_from` = "skeleton: clears"; gate
+    `adjustment_layer_recomposition_perf_4k` `#[ignore]` "W5 wires CompositorCache").
+    **=> ESCALADO AO COORD (W5).** Fora da minha pasta (inegociável #2 + §3/§5). O
+    compute (LUT + OKLab) está no orçamento; o lever estrutural é do Coord.
   - **AINDA NÃO** (próximo impl): **espaciais** Gaussian/Motion/Sharpen/Bloom/
     ChromaticAberration + **Noise** (precisam vizinhança/seed-por-posição — §3 é
     Coord-boundary, PARE e alinhe). **Bespoke-UI** Curves/GradientMap/ColorLookup/

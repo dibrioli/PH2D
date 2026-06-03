@@ -178,6 +178,32 @@ impl VectorDirectTool {
     pub fn cancel_drag(&mut self) {
         self.grab = None;
     }
+
+    /// Set the [`VertexKind`] of every selected vertex — Corner ([`VertexKind::Free`])
+    /// / Smooth ([`VertexKind::Mirror`]) / Asymmetric ([`VertexKind::Aligned`]) /
+    /// Auto. This is the action behind the right-click point-type menu (and the
+    /// Alt-free keyboard stopgap) — it picks the continuity intent that the NEXT
+    /// tangent drag honours (mirror / collinear / independent). Kind is a hint,
+    /// not a logged op (FROZEN `VectorOp` set), so it is mutated directly; the
+    /// snapshot undo captures it with the asset. Returns `true` if any selected
+    /// vertex was changed.
+    pub fn set_selected_vertex_kind(
+        &self,
+        committed: &mut [Ph2dVectorAsset],
+        selection: &VectorSelection,
+        kind: VertexKind,
+    ) -> bool {
+        let mut changed = false;
+        for &(asset_idx, vid) in &selection.vertices {
+            if let Some(asset) = committed.get_mut(asset_idx)
+                && let Some(v) = asset.network.vertices.iter_mut().find(|v| v.id == vid)
+            {
+                v.kind = kind;
+                changed = true;
+            }
+        }
+        changed
+    }
 }
 
 /// Apply a column-major affine `[xx, xy, yx, yy, zx, zy]` (the inverse placement,
@@ -255,20 +281,48 @@ fn apply_tangent_drag(
         &mut asset.network,
     );
 
-    // Mirror the opposite incident handle on a still-smooth vertex.
+    // Update the opposite incident handle on a still-smooth vertex:
+    // - Mirror   → equal + opposite (`-new_tangent`).
+    // - Aligned  → COLLINEAR but the opposite keeps its OWN length
+    //   (Illustrator "asymmetric smooth"): `-dir(new_tangent) * |opposite|`.
     if smooth
         && !alt
         && let Some((opp_seg, opp_side)) = opposite_tangent(asset, anchor_vid, seg)
     {
+        let opp_new = if matches!(kind, VertexKind::Aligned) {
+            let len = current_tangent(asset, opp_seg, opp_side).length();
+            if new_tangent.length() > 1e-6 {
+                -new_tangent.normalize() * len
+            } else {
+                Vec2::ZERO
+            }
+        } else {
+            -new_tangent
+        };
         let _ = asset.edit_log.push_and_apply(
             VectorOp::MoveTangent {
                 seg: opp_seg,
                 which: opp_side,
-                new_pos: -new_tangent,
+                new_pos: opp_new,
             },
             &mut asset.network,
         );
     }
+}
+
+/// The current tangent vector on `seg`'s `side` — read before mirroring so the
+/// Aligned (asymmetric) case can preserve the opposite handle's own length.
+fn current_tangent(asset: &Ph2dVectorAsset, seg: SegmentId, side: TangentSide) -> Vec2 {
+    asset
+        .network
+        .segments
+        .iter()
+        .find(|s| s.id == seg)
+        .map(|s| match side {
+            TangentSide::OutAtStart => s.out_at_start,
+            TangentSide::InAtEnd => s.in_at_end,
+        })
+        .unwrap_or(Vec2::ZERO)
 }
 
 /// The other tangent handle incident to `anchor_vid` (a different segment
@@ -409,6 +463,43 @@ mod tests {
             .find(|s| s.id == 0)
             .unwrap();
         assert_eq!(s0.in_at_end, Vec2::new(-10.0, -20.0), "smooth mirror");
+    }
+
+    #[test]
+    fn aligned_vertex_keeps_opposite_handle_length() {
+        // Asymmetric smooth: drag one handle → opposite stays COLLINEAR but
+        // keeps its OWN length (unlike Mirror, which equalizes).
+        let mut scene = vec![two_segment_asset(VertexKind::Aligned)];
+        let mut sel = VectorSelection::new();
+        let mut t = VectorDirectTool::new();
+        // Grab seg1.out at (60,0) [offset (10,0) from vertex1@(50,0)]; seg0.in
+        // starts at (-10,0) → length 10.
+        t.begin_drag(&scene, &mut sel, Vec2::new(60.0, 0.0), 4.0, &[]);
+        // Drag to (50,40) → grabbed offset (0,40); opposite collinear-opposite is
+        // direction (0,-1) × original length 10 = (0,-10).
+        t.drag_to(&mut scene, Vec2::new(50.0, 40.0), false, &[]);
+        let s0 = scene[0].network.segments.iter().find(|s| s.id == 0).unwrap();
+        assert!(
+            (s0.in_at_end - Vec2::new(0.0, -10.0)).length() < 1e-3,
+            "aligned opposite = collinear @ original length, got {:?}",
+            s0.in_at_end
+        );
+    }
+
+    #[test]
+    fn set_selected_vertex_kind_changes_kind() {
+        let mut scene = vec![two_segment_asset(VertexKind::Auto)];
+        let mut sel = VectorSelection::new();
+        sel.select_only_vertex(0, 1);
+        let t = VectorDirectTool::new();
+        assert!(t.set_selected_vertex_kind(&mut scene, &sel, VertexKind::Mirror));
+        let v1 = scene[0]
+            .network
+            .vertices
+            .iter()
+            .find(|v| v.id == 1)
+            .unwrap();
+        assert_eq!(v1.kind, VertexKind::Mirror);
     }
 
     #[test]

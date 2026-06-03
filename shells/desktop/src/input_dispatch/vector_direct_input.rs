@@ -19,7 +19,9 @@
 use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
+use ph2d_editor::toast::Toast;
 use ph2d_tool_vector_direct::{DEFAULT_GRAB_TOLERANCE_PX, DirectOutcome, VectorDirectTool};
+use ph2d_vector_doc::VertexKind;
 
 impl App {
     fn vector_direct_is_active(&self) -> bool {
@@ -172,6 +174,46 @@ impl App {
             acted = true;
         }
         acted
+    }
+
+    /// Set the point type of the SELECTED vertices — the Alt-free path to the
+    /// tangent-continuity intent (`index` 0..=3 → Corner/Free, Smooth/Mirror,
+    /// Asymmetric/Aligned, Auto). The proper UI is the right-click menu (Coord
+    /// chrome); this is the keyboard stopgap (the Mac Alt/Cmd-shared key can't
+    /// reach the Alt tangent-break). Returns `true` (consumes) iff Direct is
+    /// active with a vertex selected.
+    pub(crate) fn try_vector_direct_set_point_kind(&mut self, index: usize) -> bool {
+        if !self.vector_direct_is_active() || self.vector_selection.vertices.is_empty() {
+            return false;
+        }
+        let (kind, label) = match index {
+            0 => (VertexKind::Free, "Corner"),
+            1 => (VertexKind::Mirror, "Smooth"),
+            2 => (VertexKind::Aligned, "Asymmetric"),
+            3 => (VertexKind::Auto, "Auto"),
+            _ => return false,
+        };
+        // Snapshot before the kind change (undoable + coherent with Ctrl+Z).
+        self.vector_checkpoint();
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let changed = gfx
+            .tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<VectorDirectTool>())
+            .map(|d| {
+                d.set_selected_vertex_kind(
+                    &mut self.committed_vector_pen_paths,
+                    &self.vector_selection,
+                    kind,
+                )
+            })
+            .unwrap_or(false);
+        if changed {
+            gfx.toasts.push(Toast::info(format!("Point: {label}")));
+        }
+        changed
     }
 
     /// The whole viewport is Direct's canvas — guard the canvas-pick / sprite

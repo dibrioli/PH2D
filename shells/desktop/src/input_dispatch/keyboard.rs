@@ -106,6 +106,26 @@ impl App {
             return;
         }
 
+        // Vector Direct-Select: number keys 1-4 set the SELECTED vertex's point
+        // type (1 Corner / 2 Smooth / 3 Asymmetric / 4 Auto) — the Alt-free path
+        // to tangent-continuity intent (the Mac Alt/Cmd-shared key can't reach
+        // the Alt break; the proper UI is the right-click menu, Coord chrome).
+        // No-op unless Direct is active with a vertex selected.
+        let direct_point_kind = match physical_key {
+            PhysicalKey::Code(KeyCode::Digit1) => Some(0),
+            PhysicalKey::Code(KeyCode::Digit2) => Some(1),
+            PhysicalKey::Code(KeyCode::Digit3) => Some(2),
+            PhysicalKey::Code(KeyCode::Digit4) => Some(3),
+            _ => None,
+        };
+        if state == ElementState::Pressed
+            && !repeat
+            && let Some(index) = direct_point_kind
+            && self.try_vector_direct_set_point_kind(index)
+        {
+            return;
+        }
+
         // Vector undo/redo is a DOCUMENT-global op (works under ANY active tool —
         // the natural flow is: draw a shape → switch to Move to gizmo-position it
         // → Ctrl+Z to undo the draw). Consume the key ONLY when something was

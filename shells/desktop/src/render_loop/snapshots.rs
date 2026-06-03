@@ -240,12 +240,11 @@ pub(super) fn publish(
         |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
             let sim_entity = ph2d_ecs::Entity::from_bits(bits);
             // ADR-0076 (Rank 10): a vector scene object has NO Sprite — size the
-            // gizmo box from its rest-pose AABB + the SimWorld `Transform` (the
-            // gizmo's own write target), reading SimWorld directly (the transform
-            // is applied about the rest centroid, so the box + pivot track the
-            // vector at any placement). Root-only MVP ⇒ no GlobalTransform needed.
+            // gizmo box from its rest-pose AABB + its composed WORLD transform
+            // (`parent_world ∘ local`), so the box tracks the vector at any
+            // placement AND follows a hierarchy parent (§2.7).
             if sim.world().get::<Sprite>(sim_entity).is_none() {
-                let t = sim.world().get::<ph2d_ecs::Transform>(sim_entity)?;
+                let t = crate::render_loop::vector_scene::world_transform(sim, sim_entity)?;
                 let v = sim
                     .world()
                     .get::<crate::render_loop::vector_scene::VectorSceneRef>(sim_entity)?;

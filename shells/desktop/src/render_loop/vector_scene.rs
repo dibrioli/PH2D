@@ -165,6 +165,17 @@ pub(crate) fn reconcile(
     }
 }
 
+/// The entity's composed WORLD transform (`parent_world ∘ local`), so a vector
+/// parented in the hierarchy renders/picks at its parent-relative world position
+/// (ADR-0076 §2.7). For a root entity this equals its local `Transform`. The gizmo
+/// drag already writes the LOCAL transform (it captures `parent_world` + unrotates),
+/// so reading the composed world here keeps render/pick in lockstep with sprites.
+pub(crate) fn world_transform(sim: &SimWorld, e: Entity) -> Option<Transform> {
+    let local = *sim.world().get::<Transform>(e)?;
+    let parent = ph2d_ecs::parent_world_transform(sim.world(), e);
+    Some(Transform::compose(parent, local))
+}
+
 /// Per-asset placement affine (parallel to `entities` / `assets`), for the render
 /// bridge to compose `world_to_screen * placement`. Missing/identity entities
 /// yield the identity affine.
@@ -173,7 +184,7 @@ pub(crate) fn placements(sim: &SimWorld, entities: &[Entity]) -> Vec<[f32; 6]> {
         .iter()
         .map(|&e| {
             match (
-                sim.world().get::<Transform>(e),
+                world_transform(sim, e),
                 sim.world().get::<VectorSceneRef>(e),
             ) {
                 (Some(t), Some(v)) => placement_affine(
@@ -201,7 +212,7 @@ pub(crate) fn pick_index(
 ) -> Option<usize> {
     for (i, (&e, asset)) in entities.iter().zip(assets).enumerate().rev() {
         let (Some(t), Some(v)) = (
-            sim.world().get::<Transform>(e),
+            world_transform(sim, e),
             sim.world().get::<VectorSceneRef>(e),
         ) else {
             continue;
@@ -239,53 +250,57 @@ pub(crate) fn pick(
 }
 
 /// Bridge the two object-level selections so a vector selected anywhere is
-/// selected everywhere:
-/// - **`gizmo_selection`** (`hero.gizmo.selection`) — set by the hierarchy panel
-///   and the canvas gizmo-pick; drives the gizmo box + hierarchy highlight.
-/// - **`vector_selection.networks`** — set by the vector Select tool; drives the
-///   fill/color apply (`vector_inspector_bridge`).
+/// selected everywhere — including MULTI-select (sprite parity):
+/// - the gizmo selection SET (`hero.gizmo.selection` primary + `extra_selection`)
+///   — set by the hierarchy + canvas gizmo-pick (Shift-click adds extras);
+/// - **`vector_selection.networks`** — drives the fill/color apply + Select
+///   overlay (`vector_inspector_bridge` / `vector_selection_bridge`).
 ///
-/// Edge-triggered: whichever side CHANGED since last frame propagates to the
-/// other (so they never fight). Result: select a shape in the hierarchy →
-/// recolor it; select it with the Select tool → the gizmo appears; etc. The
-/// vertex-level selection (Direct tool) is orthogonal and untouched.
+/// Edge-triggered on the full SET: whichever side changed this frame propagates to
+/// the other (so they never fight). Select shapes anywhere (hierarchy, canvas,
+/// Shift-click) → gizmo boxes + fill + overlay all cover the same set. The
+/// vertex-level selection (Direct tool) is orthogonal and cleared on object-select.
 pub(crate) fn sync_object_selection(
     gizmo_selection: &mut Option<u64>,
+    gizmo_extras: &mut Vec<u64>,
     vector_selection: &mut VectorSelection,
     entities: &[Entity],
-    last_gizmo: &mut Option<u64>,
+    last_gizmo_set: &mut Vec<u64>,
     last_networks: &mut Vec<usize>,
 ) {
-    let entity_index = |bits: u64| entities.iter().position(|&e| e.to_bits() == bits);
-    let is_vector = |bits: u64| entities.iter().any(|&e| e.to_bits() == bits);
+    let index_for = |bits: u64| entities.iter().position(|&e| e.to_bits() == bits);
 
-    if *gizmo_selection != *last_gizmo {
-        // Gizmo / hierarchy changed the selection → derive the vector network so
-        // the fill picker recolors the right shape.
-        match gizmo_selection.and_then(entity_index) {
-            Some(idx) => vector_selection.select_only_network(idx),
-            // Selected a sprite / nothing → drop the object-level network pick
-            // (any vertex selection is a different tool's concern, left as-is).
-            None => vector_selection.networks.clear(),
-        }
+    // Current gizmo selection set: primary first, then the multi-select extras.
+    let gizmo_set: Vec<u64> = gizmo_selection
+        .iter()
+        .copied()
+        .chain(gizmo_extras.iter().copied())
+        .collect();
+
+    if gizmo_set != *last_gizmo_set {
+        // Gizmo / hierarchy changed the set → derive the vector networks (the
+        // vector members of the set, in order) so the fill + overlay cover them.
+        // Object-level select supersedes any vertex selection.
+        vector_selection.networks = gizmo_set.iter().filter_map(|&b| index_for(b)).collect();
+        vector_selection.vertices.clear();
     } else if vector_selection.networks != *last_networks {
-        // A vector tool changed the network selection → arm the gizmo so the box
-        // appears + the hierarchy highlights, even though the pick came from the
-        // Select tool rather than a canvas gizmo-pick.
-        match vector_selection
+        // A vector tool changed the networks → arm the gizmo set (first = primary,
+        // rest = extras) so the boxes + hierarchy highlight appear.
+        let bits: Vec<u64> = vector_selection
             .networks
-            .first()
-            .and_then(|&i| entities.get(i))
-        {
-            Some(&e) => *gizmo_selection = Some(e.to_bits()),
-            None => {
-                if gizmo_selection.is_some_and(is_vector) {
-                    *gizmo_selection = None;
-                }
-            }
-        }
+            .iter()
+            .filter_map(|&i| entities.get(i).map(|e| e.to_bits()))
+            .collect();
+        *gizmo_selection = bits.first().copied();
+        *gizmo_extras = bits.into_iter().skip(1).collect();
     }
-    *last_gizmo = *gizmo_selection;
+
+    let new_set: Vec<u64> = gizmo_selection
+        .iter()
+        .copied()
+        .chain(gizmo_extras.iter().copied())
+        .collect();
+    last_gizmo_set.clone_from(&new_set);
     last_networks.clone_from(&vector_selection.networks);
 }
 

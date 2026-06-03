@@ -30,7 +30,6 @@ const VERTEX_ALPHA: u8 = 235;
 const MARQUEE_FILL_ALPHA: u8 = 40;
 const MARQUEE_LINE_ALPHA: u8 = 180;
 /// Screen-px sizes (converted to world by dividing by the camera scale).
-const OUTLINE_WIDTH_PX: f64 = 1.5;
 const VERTEX_DOT_RADIUS_PX: f64 = 4.0;
 const MARQUEE_WIDTH_PX: f64 = 1.0;
 
@@ -64,25 +63,9 @@ pub(super) fn dispatch(
         world_to_screen * local
     };
 
-    // Layer 1 — selected network bounding boxes (accent outline).
-    let outline_w = OUTLINE_WIDTH_PX / k;
-    for &idx in &selection.networks {
-        let Some(asset) = committed.get(idx) else {
-            continue;
-        };
-        let Some((min, max)) = asset.network.bounding_box() else {
-            continue;
-        };
-        let mut path = BezPath::new();
-        rect_path(&mut path, min, max);
-        scene.stroke(
-            &Stroke::new(outline_w),
-            placement_xf(idx),
-            &Brush::Solid(accent(OUTLINE_ALPHA)),
-            None,
-            &path,
-        );
-    }
+    // Layer 1 (network bounding-box outline) REMOVED — the transform gizmo box now
+    // IS the object-selection indicator (ADR-0076); a second amber rect drawn here
+    // just doubled up with the gizmo. Vertex-level affordances (Direct) stay below.
 
     // Layer 1.5 — Direct-Select editable affordances. When Direct is the
     // active tool, surface EVERY vertex (a grab target) + every non-zero

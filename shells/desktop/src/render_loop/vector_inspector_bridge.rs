@@ -93,6 +93,24 @@ pub(super) fn dispatch(
         }
     }
 
+    // ── Load the SELECTED shape's current fill into the picker (Enio: "the
+    //    color picker should assume the shape's current colour"). Only while the
+    //    picker is CLOSED — once it's open, the live picked colour drives instead
+    //    (and recolors the shape via the apply block above). So selecting a shape
+    //    loads its colour; opening the picker then starts from there.
+    if !picker_open
+        && let Some(&idx) = selection.networks.first()
+        && let Some(asset) = committed.get(idx)
+        && let Some(region) = asset.network.regions.first()
+        && let Some(fref) = region.fill
+        && let Some(fill) = asset.styles.fills.get(&fref)
+    {
+        let rgba = fill.color.to_srgb().0;
+        *vector_fill_color = rgba;
+        hero.store
+            .set_widget_color(ph2d_editor::ids::VECTOR_INSPECTOR_FILL_SWATCH, rgba);
+    }
+
     // ── Publish the current fill color so the panel paints the swatch ─────
     #[cfg(feature = "panel-vector-inspector")]
     ph2d_panel_vector_inspector::set_current_fill(*vector_fill_color);

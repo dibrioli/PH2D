@@ -1069,9 +1069,10 @@ impl crate::App {
             // apply against the unified selection this same frame.
             vector_scene::sync_object_selection(
                 &mut hero.gizmo.selection,
+                &mut hero.gizmo.extra_selection,
                 &mut self.vector_selection,
                 &self.vector_scene_entities,
-                &mut self.last_synced_gizmo_sel,
+                &mut self.last_synced_gizmo_set,
                 &mut self.last_synced_vec_networks,
             );
             // Vector Select / Direct-Select ⟷ shell overlay (T2.3). Pure

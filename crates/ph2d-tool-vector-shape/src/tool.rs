@@ -53,8 +53,15 @@ const OPT_STAR: NodeId = NodeId(254);
 const OPT_SPIRAL: NodeId = NodeId(255);
 
 /// Minimum drag length (world px) below which `finish_shape` commits
-/// nothing (a click, not a drag).
+/// nothing (a click, not a drag). The shell passes a CAMERA-derived (pixel-based)
+/// threshold to `finish_shape` so the cancel feels consistent at any zoom; this
+/// constant is the fallback default.
 pub const MIN_DRAG_DIST_PX: f32 = 2.0;
+
+/// The preview is decoupled from the commit threshold (Enio): it appears from the
+/// FIRST movement of the mouse, not only once the shape has grown past the cancel
+/// size. This tiny floor only skips the degenerate zero-delta point.
+pub const PREVIEW_MIN_DIST: f32 = 1e-3;
 
 /// Same off-canvas magnitude guard as the Pen / Pencil tools.
 pub const MAX_COORD_MAGNITUDE: f32 = 1.0e7;
@@ -274,9 +281,11 @@ impl VectorShapeTool {
     }
 
     /// Finish + commit the shape. Returns [`ShapeOutcome::TooSmall`] for a
-    /// click-sized drag. Always returns to idle.
-    pub fn finish_shape(&mut self) -> ShapeOutcome {
-        let built = self.build_styled_network();
+    /// click-sized drag (`min_commit` world-distance threshold — the shell derives
+    /// it from a pixel constant ÷ camera scale so the cancel is zoom-consistent).
+    /// Always returns to idle.
+    pub fn finish_shape(&mut self, min_commit: f32) -> ShapeOutcome {
+        let built = self.build_styled_network(min_commit);
         self.anchor = None;
         let Some(network) = built else {
             return ShapeOutcome::TooSmall;
@@ -298,19 +307,21 @@ impl VectorShapeTool {
     /// frame via `draw_vector_network`.
     #[must_use]
     pub fn preview_network(&self) -> Option<VectorNetwork> {
-        self.build_styled_network()
+        // Preview from the first movement (tiny floor) — NOT gated by the commit
+        // cancel threshold, so the user sees the shape as soon as they start dragging.
+        self.build_styled_network(PREVIEW_MIN_DIST)
     }
 
-    /// Build the styled network for the current `anchor → current` drag,
-    /// or `None` if idle / non-finite / smaller than [`MIN_DRAG_DIST_PX`].
-    fn build_styled_network(&self) -> Option<VectorNetwork> {
+    /// Build the styled network for the current `anchor → current` drag, or `None`
+    /// if idle / non-finite / shorter than `min_dist` (world distance).
+    fn build_styled_network(&self, min_dist: f32) -> Option<VectorNetwork> {
         let anchor = self.anchor?;
         let current = self.current;
         if !Self::coord_is_sane(current) {
             return None;
         }
         let delta = current - anchor;
-        if delta.length() < MIN_DRAG_DIST_PX {
+        if delta.length() < min_dist {
             return None;
         }
         let rotation = delta.y.atan2(delta.x);
@@ -475,7 +486,7 @@ mod tests {
     fn drag_commit(tool: &mut VectorShapeTool, a: Vec2, b: Vec2) -> Ph2dVectorAsset {
         tool.begin_shape(a);
         tool.update_shape(b);
-        assert_eq!(tool.finish_shape(), ShapeOutcome::Committed);
+        assert_eq!(tool.finish_shape(MIN_DRAG_DIST_PX), ShapeOutcome::Committed);
         tool.take_committed_asset().expect("committed asset")
     }
 
@@ -548,7 +559,7 @@ mod tests {
         let mut t = VectorShapeTool::new();
         t.begin_shape(Vec2::new(5.0, 5.0));
         t.update_shape(Vec2::new(5.5, 5.0)); // < MIN_DRAG_DIST_PX
-        assert_eq!(t.finish_shape(), ShapeOutcome::TooSmall);
+        assert_eq!(t.finish_shape(MIN_DRAG_DIST_PX), ShapeOutcome::TooSmall);
         assert!(t.take_committed_asset().is_none());
     }
 

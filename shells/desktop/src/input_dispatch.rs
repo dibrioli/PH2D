@@ -302,6 +302,27 @@ impl App {
             .unwrap_or(false)
     }
 
+    /// `true` if `(x, y)` lands on a committed vector shape (placement-aware).
+    /// ADR-0076: lets the vector Select tool's marquee/consume arms YIELD a
+    /// shape-body click to the gizmo canvas-pick path, which selects it + opens a
+    /// translate drag in the SAME gesture (click-to-drag, like a sprite). Only an
+    /// EMPTY canvas click then begins a rubber-band marquee.
+    fn cursor_on_vector_shape(&self, x: f32, y: f32) -> bool {
+        self.gfx
+            .as_ref()
+            .map(|g| {
+                let world = g.camera.screen_to_world((x, y), g.surface.size());
+                crate::render_loop::vector_scene::pick_index(
+                    &g.sim,
+                    &self.vector_scene_entities,
+                    &self.committed_vector_pen_paths,
+                    world,
+                )
+                .is_some()
+            })
+            .unwrap_or(false)
+    }
+
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,
@@ -359,6 +380,10 @@ impl App {
         // (below the consume block) even while a vector tool is active — so it
         // bypasses the vector tools' unconditional canvas-consume arms.
         let on_gizmo_handle = self.cursor_on_gizmo_handle(evt.x, evt.y);
+        // ADR-0076: a click on a vector shape body should select + click-to-drag via
+        // the gizmo path (like a sprite) — so the Select tool's marquee/consume arms
+        // yield it. Only empty canvas begins a marquee.
+        let on_vector_shape = self.cursor_on_vector_shape(evt.x, evt.y);
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
                 if self.try_eyedropper_delete(evt.x, evt.y) =>
@@ -470,12 +495,14 @@ impl App {
             // drag grows it and the Up arm resolves click-vs-marquee. Off-canvas
             // Down is silently consumed (Select owns the canvas click).
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_vector_select_pointer_down(evt.x, evt.y) =>
+                if !on_vector_shape && self.try_vector_select_pointer_down(evt.x, evt.y) =>
             {
                 return;
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !on_gizmo_handle && self.vector_select_active_consume_canvas_click() =>
+                if !on_gizmo_handle
+                    && !on_vector_shape
+                    && self.vector_select_active_consume_canvas_click() =>
             {
                 return;
             }

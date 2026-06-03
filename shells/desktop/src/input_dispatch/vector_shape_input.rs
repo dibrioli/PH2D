@@ -20,6 +20,10 @@ use ph2d_core::Vec2;
 use ph2d_editor::toast::Toast;
 use ph2d_tool_vector_shape::{ShapeKind, ShapeOutcome, VectorShapeTool};
 
+/// Screen-pixel drag below which a Shape gesture is a click (cancel), not a draw.
+/// Converted to world units via the camera scale at commit time (zoom-consistent).
+const SHAPE_CANCEL_PX: f32 = 4.0;
+
 impl App {
     fn vector_shape_is_active(&self) -> bool {
         self.gfx
@@ -100,12 +104,17 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        // Cancel threshold in WORLD units = pixel constant ÷ camera scale, so a
+        // "click, not a drag" cancels consistently at any zoom (the preview already
+        // showed from the first movement — this only gates the COMMIT).
+        let k = (gfx.surface.size().height as f32) / gfx.camera.height_world.max(f32::EPSILON);
+        let min_commit = SHAPE_CANCEL_PX / k;
         let outcome = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<VectorShapeTool>())
             .filter(|s| s.has_in_progress_shape())
-            .map(VectorShapeTool::finish_shape);
+            .map(|s| s.finish_shape(min_commit));
         match outcome {
             Some(ShapeOutcome::Committed) => true,
             Some(ShapeOutcome::TooSmall) => {

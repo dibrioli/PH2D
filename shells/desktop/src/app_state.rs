@@ -468,10 +468,11 @@ pub(crate) struct App {
     /// asset vec each session).
     pub(crate) vector_scene_entities: Vec<ph2d_ecs::Entity>,
     /// ADR-0076 selection bridge (`vector_scene::sync_object_selection`):
-    /// previous-frame snapshot of the two object selections (gizmo entity bits +
-    /// vector network indices), so the sync detects which side changed this
-    /// frame and propagates to the other (edge-triggered, no fighting).
-    pub(crate) last_synced_gizmo_sel: Option<u64>,
+    /// previous-frame snapshot of the two object selections (the gizmo selection
+    /// SET — primary + multi-select extras — and the vector network indices), so
+    /// the sync detects which side changed this frame and propagates to the other
+    /// (edge-triggered, no fighting).
+    pub(crate) last_synced_gizmo_set: Vec<u64>,
     pub(crate) last_synced_vec_networks: Vec<usize>,
     /// W2.T2.3 — shared vector selection (network + vertex picks) over
     /// `committed_vector_pen_paths`. Document state, NOT tool state: Select and

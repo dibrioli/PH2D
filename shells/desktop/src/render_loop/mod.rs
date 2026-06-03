@@ -1083,6 +1083,7 @@ impl crate::App {
                 camera,
                 window_size,
                 &self.committed_vector_pen_paths,
+                &vector_placements,
                 &self.vector_selection,
                 vector_scene,
             );

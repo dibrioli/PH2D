@@ -710,6 +710,19 @@ impl App {
                                 .world()
                                 .get::<ph2d_render::Sprite>(entity)
                                 .map(|s| [s.size[0] * 0.5, s.size[1] * 0.5])
+                                // ADR-0076: a vector has no Sprite — feed its
+                                // rest-pose AABB half so the gizmo's scale pivot has
+                                // a real extent (a zero half makes the scale factor
+                                // divide by ~0 and the pivot land at the origin →
+                                // the shape drifts while scaling).
+                                .or_else(|| {
+                                    gfx.sim
+                                        .world()
+                                        .get::<crate::render_loop::vector_scene::VectorSceneRef>(
+                                            entity,
+                                        )
+                                        .map(|v| v.half())
+                                })
                                 .unwrap_or([0.0, 0.0]);
                             // Onda 2C: pivot world depends on target.
                             // PrimaryIndividual / ExtraIndividual use the

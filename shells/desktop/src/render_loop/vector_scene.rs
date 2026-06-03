@@ -4,9 +4,10 @@
 //! is mirrored to ONE SimWorld entity carrying `(Transform, Name, VectorSceneRef)`:
 //!
 //! - **`Transform`** is a PLACEMENT overlay — the vertices stay in their frozen
-//!   rest-pose world coords; the transform is applied **about the rest centroid**
-//!   (§2.4) so the gizmo pivot lands on the vector instead of the world origin.
-//!   `IDENTITY` ⇒ the vector renders exactly where it was authored (zero regression).
+//!   rest-pose world coords; `Transform.translation` is the shape's ABSOLUTE world
+//!   centre (spawned = the rest centroid) and the geometry is local to that centroid,
+//!   so the gizmo's pivot / scale math (which treats translation as the object centre)
+//!   stays consistent and the shape renders exactly where authored at spawn.
 //! - **`Name`** makes it appear in the scene hierarchy (snapshot queries
 //!   `With<Transform>`).
 //! - **`VectorSceneRef`** carries the rest-pose AABB so the gizmo-view builder
@@ -61,25 +62,38 @@ fn asset_bbox(asset: &Ph2dVectorAsset) -> ([f32; 2], [f32; 2]) {
 
 /// Placement affine `[xx, xy, yx, yy, zx, zy]` (column-major, == `Transform::affine`
 /// / `kurbo::Affine::new` order) mapping a rest-pose point `p` →
-/// `c + t + R(r)·(s ⊙ (p − c))`. At `t=0, r=0, s=1` this is the identity, so an
-/// un-moved vector composes to exactly `world_to_screen`.
-pub(crate) fn placement_affine(t: [f32; 2], r: f32, s: [f32; 2], c: [f32; 2]) -> [f32; 6] {
+/// `translation + R(r)·(s ⊙ (p − c))`, where `translation` is the entity's ABSOLUTE
+/// `Transform.translation` (spawned = the centroid `c`) and the geometry is local to
+/// the centroid. At `translation = c, r = 0, s = 1` this maps `p → p` (rest pose), so
+/// an un-moved vector composes to exactly `world_to_screen`.
+///
+/// Translation is modeled ABSOLUTE (not a delta from `c`) so the gizmo's pivot /
+/// scale math — which treats `Transform.translation` as the object's world centre —
+/// stays consistent with the render + pick. A delta model put the gizmo pivot at the
+/// world origin → scale drifted.
+pub(crate) fn placement_affine(
+    translation: [f32; 2],
+    r: f32,
+    s: [f32; 2],
+    c: [f32; 2],
+) -> [f32; 6] {
     let (sin, cos) = libm::sincosf(r); // cross-OS bit-identical (mirror of gizmo math)
     // linear M = R(r)·diag(s) — columns x_axis, y_axis.
     let xx = cos * s[0];
     let xy = sin * s[0];
     let yx = -sin * s[1];
     let yy = cos * s[1];
-    // translation = (c + t) − M·c
+    // world(rest) = translation + M·(rest − c) ⇒ affine translation = translation − M·c
     let mcx = xx * c[0] + yx * c[1];
     let mcy = xy * c[0] + yy * c[1];
-    [xx, xy, yx, yy, c[0] + t[0] - mcx, c[1] + t[1] - mcy]
+    [xx, xy, yx, yy, translation[0] - mcx, translation[1] - mcy]
 }
 
 /// Inverse of [`placement_affine`]: world point → rest-pose point. `None` if a
-/// scale axis is ~0 (non-invertible).
+/// scale axis is ~0 (non-invertible). `translation` is the absolute
+/// `Transform.translation` (see [`placement_affine`]).
 pub(crate) fn world_to_rest(
-    t: [f32; 2],
+    translation: [f32; 2],
     r: f32,
     s: [f32; 2],
     c: [f32; 2],
@@ -89,38 +103,35 @@ pub(crate) fn world_to_rest(
         return None;
     }
     let (sin, cos) = libm::sincosf(r);
-    let dx = w[0] - c[0] - t[0];
-    let dy = w[1] - c[1] - t[1];
-    // R(−r)·delta, then ÷ scale.
+    // rest = c + (R(−r)·(w − translation)) ÷ s
+    let dx = w[0] - translation[0];
+    let dy = w[1] - translation[1];
     let rx = cos * dx + sin * dy;
     let ry = -sin * dx + cos * dy;
     Some([c[0] + rx / s[0], c[1] + ry / s[1]])
 }
 
 /// World-space gizmo box for a vector entity: `(center, half_scaled, rotation)`.
-/// The box is centered on the pivot (`c + t`); the painter rotates it by
-/// `rotation` around that center (same convention as the sprite path).
+/// The box is centered on the absolute `translation` (== the object centre, so it
+/// matches the gizmo's own pivot model); the painter rotates it by `rotation` around
+/// that center (same convention as the sprite path). `half` is the rest-pose AABB
+/// half-extent scaled by `s`.
 pub(crate) fn gizmo_box(
-    t: [f32; 2],
+    translation: [f32; 2],
     r: f32,
     s: [f32; 2],
     vref: &VectorSceneRef,
 ) -> ([f32; 2], [f32; 2], f32) {
-    let c = vref.centroid();
     let h = vref.half();
-    (
-        [c[0] + t[0], c[1] + t[1]],
-        [s[0].abs() * h[0], s[1].abs() * h[1]],
-        r,
-    )
+    (translation, [s[0].abs() * h[0], s[1].abs() * h[1]], r)
 }
 
 // ───────────────────────── ECS glue ─────────────────────────
 
 /// Re-sync the entity vec to match `assets` exactly (positional). Despawns the
-/// tail when assets shrank (Esc-clear), spawns `(Transform::IDENTITY, Name,
-/// VectorSceneRef)` for new appends. Idempotent / O(delta) — call once per frame
-/// after the commit bridges have drained.
+/// tail when assets shrank (Esc-clear), spawns `(Transform::from_translation(
+/// centroid), Name, VectorSceneRef)` for new appends. Idempotent / O(delta) —
+/// call once per frame after the commit bridges have drained.
 pub(crate) fn reconcile(
     sim: &mut SimWorld,
     entities: &mut Vec<Entity>,
@@ -134,10 +145,18 @@ pub(crate) fn reconcile(
     while entities.len() < assets.len() {
         let i = entities.len();
         let (bbox_min, bbox_max) = asset_bbox(&assets[i]);
+        // Spawn AT the rest centroid (absolute-translation model — see
+        // `placement_affine`): translation == centroid renders the vector exactly
+        // at its authored rest pose, and gives the gizmo a pivot ON the shape (a
+        // zero translation would put the pivot at the world origin → scale drift).
+        let centroid = ph2d_core::Vec2::new(
+            (bbox_min[0] + bbox_max[0]) * 0.5,
+            (bbox_min[1] + bbox_max[1]) * 0.5,
+        );
         let e = sim
             .world_mut()
             .spawn((
-                Transform::IDENTITY,
+                Transform::from_translation(centroid),
                 Name::new(format!("Vector {}", i + 1)),
                 VectorSceneRef { bbox_min, bbox_max },
             ))
@@ -275,50 +294,63 @@ mod tests {
     }
 
     #[test]
-    fn identity_placement_is_no_op() {
-        let c = [500.0, 300.0]; // rest centroid far from origin
-        let m = placement_affine([0.0, 0.0], 0.0, [1.0, 1.0], c);
-        // Any rest point maps to itself.
+    fn at_centroid_is_rest_pose() {
+        // translation == centroid, identity rot/scale ⇒ every rest point maps to
+        // itself (the un-moved vector renders exactly where authored).
+        let c = [500.0, 300.0];
+        let m = placement_affine(c, 0.0, [1.0, 1.0], c);
         assert!(close(apply(m, [510.0, 280.0]), [510.0, 280.0]));
         assert!(close(apply(m, c), c));
     }
 
     #[test]
     fn translation_moves_geometry_rigidly() {
+        // Move the centre to c+(20,-10) ⇒ every point shifts by (20,-10).
         let c = [500.0, 300.0];
-        let m = placement_affine([20.0, -10.0], 0.0, [1.0, 1.0], c);
+        let m = placement_affine([520.0, 290.0], 0.0, [1.0, 1.0], c);
         assert!(close(apply(m, [510.0, 280.0]), [530.0, 270.0]));
+        assert!(close(apply(m, c), [520.0, 290.0]));
     }
 
     #[test]
-    fn rotation_is_about_centroid_not_origin() {
+    fn rotation_is_about_the_centre() {
+        // Centre held at c, 90°: a point at c+(10,0) → c+(0,10).
         let c = [100.0, 0.0];
-        // 90° about the centroid: a point at centroid+(10,0) → centroid+(0,10).
-        let m = placement_affine([0.0, 0.0], std::f32::consts::FRAC_PI_2, [1.0, 1.0], c);
+        let m = placement_affine(c, std::f32::consts::FRAC_PI_2, [1.0, 1.0], c);
         assert!(close(apply(m, [110.0, 0.0]), [100.0, 10.0]));
-        // The centroid itself is the fixed point.
+        assert!(close(apply(m, c), c)); // the centre is the fixed point
+    }
+
+    #[test]
+    fn scale_about_the_centre_does_not_drift() {
+        // Pure 2× scale with the centre held at c: the centre stays put (no drift),
+        // extents double. This is the regression the absolute-translation model fixes.
+        let c = [200.0, 100.0];
+        let m = placement_affine(c, 0.0, [2.0, 2.0], c);
         assert!(close(apply(m, c), c));
+        assert!(close(apply(m, [210.0, 100.0]), [220.0, 100.0])); // +10 from centre → +20
     }
 
     #[test]
     fn world_to_rest_inverts_placement() {
-        let (t, r, s, c) = ([12.0, -7.0], 0.7, [1.5, 0.8], [320.0, 240.0]);
-        let m = placement_affine(t, r, s, c);
+        let (translation, r, s, c) = ([312.0, 233.0], 0.7, [1.5, 0.8], [320.0, 240.0]);
+        let m = placement_affine(translation, r, s, c);
         let rest = [331.0, 233.0];
         let world = apply(m, rest);
-        let back = world_to_rest(t, r, s, c, world).expect("invertible");
+        let back = world_to_rest(translation, r, s, c, world).expect("invertible");
         assert!(close(back, rest), "round-trip {back:?} != {rest:?}");
     }
 
     #[test]
-    fn gizmo_box_centers_on_pivot() {
+    fn gizmo_box_centers_on_translation() {
         let v = VectorSceneRef {
             bbox_min: [400.0, 200.0],
             bbox_max: [600.0, 300.0],
         };
-        // centroid = (500,250), half = (100,50).
-        let (center, half, rot) = gizmo_box([10.0, 5.0], 0.3, [2.0, 1.0], &v);
-        assert!(close(center, [510.0, 255.0])); // c + t
+        // half = (100,50); the box centre is the ABSOLUTE translation (== the gizmo's
+        // own pivot model), not the rest centroid.
+        let (center, half, rot) = gizmo_box([510.0, 255.0], 0.3, [2.0, 1.0], &v);
+        assert!(close(center, [510.0, 255.0]));
         assert!(close(half, [200.0, 50.0])); // scale ⊙ half
         assert!((rot - 0.3).abs() < EPS);
     }

@@ -19,7 +19,7 @@ use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_select::VectorSelectTool;
-use ph2d_vector::{BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 use ph2d_vector_doc::{Ph2dVectorAsset, VectorSelection};
 
 /// Accent (R, G, B) for selection feedback — warm amber, distinct from the
@@ -40,6 +40,7 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     committed: &[Ph2dVectorAsset],
+    placements: &[[f32; 6]],
     selection: &VectorSelection,
     vector_scene: &mut VectorScene,
 ) {
@@ -47,6 +48,21 @@ pub(super) fn dispatch(
     let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
     let scene = vector_scene.inner_mut();
     let accent = |a: u8| Color::from_rgba8(ACCENT_RGB.0, ACCENT_RGB.1, ACCENT_RGB.2, a);
+    // ADR-0076: compose each asset's placement so the overlay tracks a gizmo-moved
+    // shape instead of ghosting at its rest pose. Identity for un-moved shapes.
+    let placement_xf = |idx: usize| -> Affine {
+        let local = placements.get(idx).map_or(Affine::IDENTITY, |m| {
+            Affine::new([
+                m[0] as f64,
+                m[1] as f64,
+                m[2] as f64,
+                m[3] as f64,
+                m[4] as f64,
+                m[5] as f64,
+            ])
+        });
+        world_to_screen * local
+    };
 
     // Layer 1 — selected network bounding boxes (accent outline).
     let outline_w = OUTLINE_WIDTH_PX / k;
@@ -61,7 +77,7 @@ pub(super) fn dispatch(
         rect_path(&mut path, min, max);
         scene.stroke(
             &Stroke::new(outline_w),
-            world_to_screen,
+            placement_xf(idx),
             &Brush::Solid(accent(OUTLINE_ALPHA)),
             None,
             &path,
@@ -82,7 +98,8 @@ pub(super) fn dispatch(
         let handle_w = MARQUEE_WIDTH_PX / k;
         let aff_dot_r = VERTEX_DOT_RADIUS_PX / k;
         let ctrl_r = (VERTEX_DOT_RADIUS_PX * 0.7) / k;
-        for asset in committed {
+        for (idx, asset) in committed.iter().enumerate() {
+            let xf = placement_xf(idx);
             // Tangent handles: a thin line vertex→control-point + a control
             // dot, per non-zero tangent (straight segments have zero tangents
             // and draw nothing — mirror of `nearest_tangent_handle`'s skip).
@@ -103,7 +120,7 @@ pub(super) fn dispatch(
                     line.line_to(Point::new(ctrl.x as f64, ctrl.y as f64));
                     scene.stroke(
                         &Stroke::new(handle_w),
-                        world_to_screen,
+                        xf,
                         &Brush::Solid(accent(MARQUEE_LINE_ALPHA)),
                         None,
                         &line,
@@ -111,7 +128,7 @@ pub(super) fn dispatch(
                     let dot = Circle::new(Point::new(ctrl.x as f64, ctrl.y as f64), ctrl_r);
                     scene.fill(
                         Fill::NonZero,
-                        world_to_screen,
+                        xf,
                         &Brush::Solid(accent(VERTEX_ALPHA)),
                         None,
                         &dot,
@@ -124,7 +141,7 @@ pub(super) fn dispatch(
                 let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), aff_dot_r);
                 scene.fill(
                     Fill::NonZero,
-                    world_to_screen,
+                    xf,
                     &Brush::Solid(accent(OUTLINE_ALPHA)),
                     None,
                     &c,
@@ -145,7 +162,7 @@ pub(super) fn dispatch(
         let c = Circle::new(Point::new(v.pos.x as f64, v.pos.y as f64), dot_r);
         scene.fill(
             Fill::NonZero,
-            world_to_screen,
+            placement_xf(asset_idx),
             &Brush::Solid(accent(VERTEX_ALPHA)),
             None,
             &c,

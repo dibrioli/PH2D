@@ -34,6 +34,16 @@ local pronto p/ ship do Coord. **PEDIDO DE SMOKE ao Enio** (ver fim do report).
     **Exposure** (EV/offset/gamma, 3), **Vibrance** (chroma OKLab low-sat-weighted,
     2; gray-safe), **Posterize** (quantize display, 1), **Threshold** (luma display
     → P&B, 1). Todos: alpha preservado + neutral early-return (onde aplicável).
+  - **PERF (lição — aplique nos próximos display-space kinds):** o smoke do Enio
+    pegou queda de FPS no drag dos kinds display-space (Invert/Posterize/Threshold/
+    Exposure faziam até **6 `powf`/pixel** — round-trip sRGB por canal — vs o
+    `cbrt` único dos kinds OKLab). Como o recompose é canvas-inteiro por frame (o
+    `CompositorCache` é lever do Coord, §3), `powf`/pixel domina. **Fix:** todo op
+    per-canal display-space é função 1-D do input → `build_lut`/`sample_lut`
+    (N=1024) UMA vez por call, inner loop = clamp+index+lerp, **0 transcendentais/
+    pixel**. Posterize mantém `round()` exato no índice de banda. **Curves/Levels/
+    GradientMap (display-space) DEVEM usar o mesmo LUT** — não chame `powf` por
+    pixel. commit `9e12b31`.
   - **AINDA NÃO** (próximo impl): **espaciais** Gaussian/Motion/Sharpen/Bloom/
     ChromaticAberration + **Noise** (precisam vizinhança/seed-por-posição — §3 é
     Coord-boundary, PARE e alinhe). **Bespoke-UI** Curves/GradientMap/ColorLookup/

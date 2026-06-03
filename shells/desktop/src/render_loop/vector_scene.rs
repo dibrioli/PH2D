@@ -249,6 +249,59 @@ pub(crate) fn pick(
     pick_index(sim, entities, assets, world_pos).map(|i| entities[i].to_bits())
 }
 
+/// Marquee hit-test (Crossing): indices of shapes whose MOVED world AABB
+/// intersects the rect spanned by `a`/`b`. Placement-aware (mirrors the click
+/// pick) so a gizmo-moved shape is caught at its NEW position, not its rest pose.
+pub(crate) fn marquee_hits(
+    sim: &SimWorld,
+    entities: &[Entity],
+    assets: &[Ph2dVectorAsset],
+    a: [f32; 2],
+    b: [f32; 2],
+) -> Vec<usize> {
+    let rlo = [a[0].min(b[0]), a[1].min(b[1])];
+    let rhi = [a[0].max(b[0]), a[1].max(b[1])];
+    let mut hits = Vec::new();
+    for (i, (&e, asset)) in entities.iter().zip(assets).enumerate() {
+        let Some((bmin, bmax)) = asset.network.bounding_box() else {
+            continue;
+        };
+        let (Some(t), Some(v)) = (
+            world_transform(sim, e),
+            sim.world().get::<VectorSceneRef>(e),
+        ) else {
+            continue;
+        };
+        let m = placement_affine(
+            [t.translation.x, t.translation.y],
+            t.rotation,
+            [t.scale.x, t.scale.y],
+            v.centroid(),
+        );
+        // World AABB of the 4 placed rest-bbox corners.
+        let corners = [
+            [bmin.x, bmin.y],
+            [bmax.x, bmin.y],
+            [bmax.x, bmax.y],
+            [bmin.x, bmax.y],
+        ];
+        let mut wmin = [f32::INFINITY; 2];
+        let mut wmax = [f32::NEG_INFINITY; 2];
+        for p in corners {
+            let wx = m[0] * p[0] + m[2] * p[1] + m[4];
+            let wy = m[1] * p[0] + m[3] * p[1] + m[5];
+            wmin[0] = wmin[0].min(wx);
+            wmin[1] = wmin[1].min(wy);
+            wmax[0] = wmax[0].max(wx);
+            wmax[1] = wmax[1].max(wy);
+        }
+        if wmin[0] <= rhi[0] && wmax[0] >= rlo[0] && wmin[1] <= rhi[1] && wmax[1] >= rlo[1] {
+            hits.push(i);
+        }
+    }
+    hits
+}
+
 /// Bridge the two object-level selections so a vector selected anywhere is
 /// selected everywhere — including MULTI-select (sprite parity):
 /// - the gizmo selection SET (`hero.gizmo.selection` primary + `extra_selection`)
@@ -269,6 +322,13 @@ pub(crate) fn sync_object_selection(
     last_networks: &mut Vec<usize>,
 ) {
     let index_for = |bits: u64| entities.iter().position(|&e| e.to_bits() == bits);
+
+    // Defensive (audit): drop network indices past the current entity count — an
+    // Esc-clear / despawn shrank `entities` between frames. `.get()` already makes
+    // the bridges OOB-safe, but pruning here keeps `vector_selection` honest so the
+    // edge-trigger below doesn't reason about dead indices. (The gizmo side
+    // self-heals via the snapshots build_view prune.)
+    vector_selection.networks.retain(|&i| i < entities.len());
 
     // Current gizmo selection set: primary first, then the multi-select extras.
     let gizmo_set: Vec<u64> = gizmo_selection

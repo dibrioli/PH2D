@@ -20,7 +20,7 @@
 use crate::App;
 use crate::forwarding::cursor_over_hero_panel;
 use ph2d_core::Vec2;
-use ph2d_tool_vector_select::{MarqueeMode, VectorSelectTool};
+use ph2d_tool_vector_select::VectorSelectTool;
 
 /// Below this screen-space marquee diagonal an Up is a click (point-select the
 /// topmost network) rather than a crossing-marquee select.
@@ -124,33 +124,24 @@ impl App {
         let Some((min, max)) = sel.marquee_rect() else {
             return false;
         };
-        // `sel` borrows `self.gfx.tools`; `committed` / `selection` are disjoint
-        // `App` fields → simultaneous borrow is sound.
+        // `sel` borrows `self.gfx.tools`. Cancel the tool-side marquee; we resolve
+        // BOTH the click and the marquee PLACEMENT-AWARE below (the tool's own
+        // hit-tests are rest-pose, so they'd select a gizmo-moved shape at its old
+        // position). `sel`'s borrow ends here.
         let is_click = (max - min).length() * k < VECTOR_SELECT_CLICK_PX;
+        sel.cancel_marquee();
+        let Some(gfx) = self.gfx.as_ref() else {
+            return true;
+        };
         if is_click {
-            sel.cancel_marquee();
-        } else {
-            sel.finish_marquee(
-                &self.committed_vector_pen_paths,
-                &mut self.vector_selection,
-                MarqueeMode::Crossing,
-            );
-        }
-        // ADR-0076: a click resolves PLACEMENT-AWARE — hit-test each shape's MOVED
-        // visual (the gizmo may have transformed it), not its rest-pose vertices.
-        // `VectorSelectTool::click` tests rest-pose, so it picked a moved shape's
-        // now-empty rest spot + missed its new one. `sel`'s borrow has ended above.
-        if is_click {
-            let Some(gfx) = self.gfx.as_ref() else {
-                return true;
-            };
-            let hit = crate::render_loop::vector_scene::pick_index(
+            // A click point-selects the topmost MOVED shape under the cursor (or
+            // clears on empty). Shift toggles.
+            match crate::render_loop::vector_scene::pick_index(
                 &gfx.sim,
                 &self.vector_scene_entities,
                 &self.committed_vector_pen_paths,
                 [min.x, min.y],
-            );
-            match hit {
+            ) {
                 Some(idx) if additive => {
                     if self.vector_selection.contains_network(idx) {
                         self.vector_selection.networks.retain(|&n| n != idx);
@@ -161,6 +152,25 @@ impl App {
                 Some(idx) => self.vector_selection.select_only_network(idx),
                 None if !additive => self.vector_selection.clear(),
                 None => {}
+            }
+        } else {
+            // Crossing marquee over the shapes' MOVED world AABBs. Shift extends.
+            let hits = crate::render_loop::vector_scene::marquee_hits(
+                &gfx.sim,
+                &self.vector_scene_entities,
+                &self.committed_vector_pen_paths,
+                [min.x, min.y],
+                [max.x, max.y],
+            );
+            if additive {
+                for h in hits {
+                    if !self.vector_selection.networks.contains(&h) {
+                        self.vector_selection.networks.push(h);
+                    }
+                }
+            } else {
+                self.vector_selection.networks = hits;
+                self.vector_selection.vertices.clear();
             }
         }
         true

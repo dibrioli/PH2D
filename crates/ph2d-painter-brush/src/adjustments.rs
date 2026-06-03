@@ -647,6 +647,37 @@ fn srgb_to_linear_f32(v: f32) -> f32 {
     }
 }
 
+// ─────────────────────────── per-call 1-D LUT ───────────────────────────
+//
+// PERF (handoff §3 — the implementer's perf duty is "keep the compute cheap;
+// avoid redundant transcendentals"). A stack of adjustments re-composites the
+// whole canvas every drag frame (the structural `CompositorCache` cut-point is
+// the Coord's W4 lever, not this), so a per-pixel `powf` dominates: the naive
+// display-space kinds cost up to 6 `powf`/pixel (an sRGB round-trip per channel)
+// — visibly worse than the OKLab kinds' single `cbrt` round-trip, which is the
+// FPS Enio felt. Every per-channel display-space op here is a 1-D function of the
+// input, so build its LUT ONCE per call (N evals) and make the per-pixel inner
+// loop a clamp + index + lerp: ZERO transcendentals/pixel.
+
+const LUT_N: usize = 1024;
+
+/// Build a 1-D LUT sampling `f` uniformly over the input domain `0..=1`.
+fn build_lut<F: Fn(f32) -> f32>(f: F) -> [f32; LUT_N] {
+    core::array::from_fn(|i| f(i as f32 / (LUT_N - 1) as f32))
+}
+
+/// Sample a [`build_lut`] table at `v` (clamped to `0..=1`) with linear
+/// interpolation between the two bracketing entries.
+#[inline]
+fn sample_lut(lut: &[f32; LUT_N], v: f32) -> f32 {
+    let t = v.clamp(0.0, 1.0) * (LUT_N - 1) as f32;
+    let i = t as usize; // floor (t ≥ 0); always in 0..=LUT_N-1
+    let frac = t - i as f32;
+    let a = lut[i];
+    let b = lut[(i + 1).min(LUT_N - 1)];
+    a + (b - a) * frac
+}
+
 /// Exposure — `acc` is straight LINEAR f32 RGBA (alpha preserved). A photographic
 /// exposure in stops (`exposure_ev`, a `2^ev` gain on linear light), then a
 /// linear `offset` (lifts/drops the floor), then a `gamma_correction` applied as
@@ -658,10 +689,12 @@ fn apply_exposure(p: &ExposureParams, acc: &mut [[f32; 4]]) {
     }
     let gain = 2.0_f32.powf(p.exposure_ev);
     let inv_gamma = 1.0 / (1.0 + p.gamma_correction).max(1e-3);
+    // The whole chain is a 1-D function of the input channel — LUT it (the only
+    // `powf` left is the per-call table build, not per pixel).
+    let lut = build_lut(|v| (v * gain + p.offset).max(0.0).powf(inv_gamma));
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            let v = (*ch * gain + p.offset).max(0.0);
-            *ch = v.powf(inv_gamma);
+            *ch = sample_lut(&lut, *ch);
         }
     }
 }
@@ -700,13 +733,20 @@ fn apply_vibrance(p: &VibranceParams, acc: &mut [[f32; 4]]) {
 /// back to linear. `acc` is straight LINEAR f32 RGBA (alpha preserved). Always
 /// applies (a freshly-created Posterize is a visible effect, like Photoshop).
 fn apply_posterize(p: &PosterizeParams, acc: &mut [[f32; 4]]) {
-    let levels = p.levels.clamp(2, 32) as f32;
-    let steps = levels - 1.0;
+    let levels = p.levels.clamp(2, 32);
+    let steps = (levels - 1) as f32;
+    // Encode (linear→sRGB) LUT picks the band; `band_out[k]` is the exact linear
+    // value of band `k` (≤32 transcendentals total, none per pixel). The hard
+    // `round()` stays exact so the quantization boundaries don't smear.
+    let encode = build_lut(linear_to_srgb_f32);
+    let band_out: [f32; 32] =
+        core::array::from_fn(|k| srgb_to_linear_f32((k as f32 / steps).min(1.0)));
+    let max_k = (levels - 1) as usize;
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            let s = linear_to_srgb_f32(*ch);
-            let q = (s * steps).round() / steps;
-            *ch = srgb_to_linear_f32(q);
+            let s = sample_lut(&encode, *ch);
+            let k = ((s * steps).round() as usize).min(max_k);
+            *ch = band_out[k];
         }
     }
 }
@@ -716,10 +756,11 @@ fn apply_posterize(p: &PosterizeParams, acc: &mut [[f32; 4]]) {
 /// `threshold` (`0..=255`). `acc` is straight LINEAR f32 RGBA (alpha preserved).
 fn apply_threshold(p: &ThresholdParams, acc: &mut [[f32; 4]]) {
     let cut = p.threshold as f32 / 255.0;
+    let encode = build_lut(linear_to_srgb_f32); // luma is computed in display space
     for px in acc.iter_mut() {
-        let luma = 0.299 * linear_to_srgb_f32(px[0])
-            + 0.587 * linear_to_srgb_f32(px[1])
-            + 0.114 * linear_to_srgb_f32(px[2]);
+        let luma = 0.299 * sample_lut(&encode, px[0])
+            + 0.587 * sample_lut(&encode, px[1])
+            + 0.114 * sample_lut(&encode, px[2]);
         let v = if luma >= cut { 1.0 } else { 0.0 };
         px[0] = v;
         px[1] = v;
@@ -731,9 +772,10 @@ fn apply_threshold(p: &ThresholdParams, acc: &mut [[f32; 4]]) {
 /// (a linear `1 - x` would skew midtones), converted back to linear. `acc` is
 /// straight LINEAR f32 RGBA (alpha preserved).
 fn apply_invert(acc: &mut [[f32; 4]]) {
+    let lut = build_lut(|v| srgb_to_linear_f32(1.0 - linear_to_srgb_f32(v)));
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            *ch = srgb_to_linear_f32(1.0 - linear_to_srgb_f32(*ch));
+            *ch = sample_lut(&lut, *ch);
         }
     }
 }
@@ -1272,6 +1314,25 @@ mod tests {
             dark.iter().take(3).all(|&v| v < 1e-4),
             "dark → black: {dark:?}"
         );
+    }
+
+    #[test]
+    fn invert_lut_tracks_direct_reference() {
+        // The per-call LUT (perf path) must match the exact display-space
+        // transfer across the range (handoff §3: cheaper compute, same result).
+        for i in 0..=64 {
+            let v = i as f32 / 64.0;
+            let direct = srgb_to_linear_f32(1.0 - linear_to_srgb_f32(v));
+            let out = run(
+                AdjustmentKind::Invert,
+                AdjustmentParams::Invert(InvertParams {}),
+                [v, v, v, 1.0],
+            )[0];
+            assert!(
+                (out - direct).abs() < 2e-3,
+                "invert LUT vs direct at {v}: {out} vs {direct}"
+            );
+        }
     }
 
     #[test]

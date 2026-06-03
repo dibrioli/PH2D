@@ -140,6 +140,61 @@ pub fn composite_region(
     encode(&acc)
 }
 
+/// Composite the FULL canvas with the cut-point cache (ADR-0045 §2.7) — the
+/// slider-drag FPS lever. On a param-only change of a root adjustment (after
+/// `cache.invalidate_above(adj, stack)`), this restarts from that adjustment's
+/// cached accumulator-below instead of recomposing the layers underneath; on a
+/// cold cache (or structural change → `invalidate_from`) it composes the whole
+/// stack and (re)fills the cuts. **Bit-identical to [`composite`]** — the layers
+/// below the restart point are unchanged, and an adjustment resets `clip_base`, so
+/// the restart state matches the full walk (gate `cache_matches_full_recompose`).
+#[must_use]
+pub fn composite_with_cache(
+    stack: &LayerStack,
+    src: &impl LayerPixelSource,
+    width: u32,
+    height: u32,
+    cache: &mut CompositorCache,
+) -> Vec<u8> {
+    let root = stack.root();
+    // Highest root adjustment (smallest index = MOST below-layers cached) whose
+    // cut is still valid. Its cut is the composite of everything below it.
+    let start = root.iter().enumerate().find(|&(_, &id)| {
+        matches!(
+            stack.get(id).map(|l| &l.kind),
+            Some(LayerKind::Adjustment(_))
+        ) && cache.cuts.contains_key(&id)
+    });
+    let (mut acc, ids): (Vec<[f32; 4]>, &[LayerId]) = match start {
+        // `composite_into` walks `ids` REVERSED (panel order is top-first;
+        // index 0 = topmost). So the cut at panel index `i` = composite of the
+        // layers BELOW it (`root[i+1..]`). Seed `acc` with that cut, then hand
+        // `root[..=i]` (the adjustment + everything above): the reversed walk
+        // processes the adjustment FIRST (on the correct below-acc), then the
+        // layers above it. Restarting from the smallest valid index reuses the
+        // largest cut (most below-layers cached) → fewest layers recomposed.
+        Some((i, &id)) => (cache.cuts[&id].clone(), &root[..=i]),
+        None => (
+            vec![[0.0f32; 4]; (width as usize) * (height as usize)],
+            root,
+        ),
+    };
+    composite_into(
+        &mut acc,
+        ids,
+        stack,
+        src,
+        width,
+        0,
+        0,
+        width,
+        height,
+        0,
+        Some(cache),
+    );
+    encode(&acc)
+}
+
 fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     let mut out = vec![0u8; acc.len() * 4];
     for (px, lin) in acc.iter().enumerate() {
@@ -166,7 +221,19 @@ fn composite_region_linear(
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-    composite_into(&mut acc, stack.root(), stack, src, width, rx, ry, rw, rh, 0);
+    composite_into(
+        &mut acc,
+        stack.root(),
+        stack,
+        src,
+        width,
+        rx,
+        ry,
+        rw,
+        rh,
+        0,
+        None,
+    );
     acc
 }
 
@@ -185,6 +252,7 @@ fn composite_into(
     rw: u32,
     rh: u32,
     depth: usize,
+    mut cache: Option<&mut CompositorCache>,
 ) {
     // Defense-in-depth (audit W3): never recurse past the group-nesting cap,
     // even if a (future deserialized / forged) stack smuggles a cycle or an
@@ -268,6 +336,7 @@ fn composite_into(
                     rw,
                     rh,
                     depth + 1,
+                    None,
                 );
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let lx = gx - rx;
@@ -288,6 +357,19 @@ fn composite_into(
             LayerKind::Adjustment(adj) => {
                 if !adj.visible || adj.opacity <= 0.0 {
                     continue;
+                }
+                // W5 cut-point cache (ADR-0045 §2.7): at the ROOT, snapshot the
+                // accumulator BELOW this adjustment (the composite of everything
+                // below it) keyed by its id, so a later param-only change can
+                // restart from here (`composite_with_cache`) instead of recomposing
+                // the whole stack. Stored BEFORE applying the adjustment. Only
+                // depth-0 adjustments cache; group-internal ones recompose in their
+                // (smaller) sub-buffer. An adjustment resets `clip_base` below, so
+                // restarting here is bit-identical to the full walk.
+                if depth == 0
+                    && let Some(c) = cache.as_deref_mut()
+                {
+                    c.cuts.insert(id, acc.to_vec());
                 }
                 let adj_opacity = adj.opacity.clamp(0.0, 1.0);
                 let adj_mode = adj.blend_mode;
@@ -366,11 +448,31 @@ impl CompositorCache {
         Self::default()
     }
 
-    /// Invalidate every cut point at or above the changed layer (skeleton:
-    /// clears all until the dirty-tracking walk lands). Cuts strictly below
-    /// `changed` stay valid.
+    /// STRUCTURAL change (add / remove / reorder / visibility / opacity / pixels
+    /// of a layer): the composite below some cut points changed. Conservative-
+    /// correct: clear ALL cuts (cheap — they refill on the next full compose). A
+    /// finer LayerId→depth mapping could keep cuts strictly below `changed`, but
+    /// "clear all on structural" is the safe default (ADR-0045 §2.7 note).
     pub fn invalidate_from(&mut self, _changed: LayerId, _stack: &LayerStack) {
         self.cuts.clear();
+    }
+
+    /// PARAM-only change of root adjustment `adj` (the slider-drag hot path): the
+    /// layers BELOW `adj` are unchanged, so `cuts[adj]` (the acc-below) stays
+    /// valid; only the cuts ABOVE `adj` (which consumed `adj`'s output) are
+    /// dropped. `composite_with_cache` then restarts from `adj`'s cut instead of
+    /// recomposing the stack. `adj` not in the root ⇒ clear all (conservative).
+    pub fn invalidate_above(&mut self, adj: LayerId, stack: &LayerStack) {
+        let root = stack.root();
+        let pos = |id: LayerId| root.iter().position(|&x| x == id);
+        let Some(adj_pos) = pos(adj) else {
+            self.cuts.clear();
+            return;
+        };
+        // Panel order is top-first → "above" = smaller index. Keep cuts at the
+        // adjustment and below (index ≥ adj_pos); drop those above it.
+        self.cuts
+            .retain(|&k, _| pos(k).is_some_and(|p| p >= adj_pos));
     }
 
     /// Mark the sub-rect to recompose next drain.
@@ -814,5 +916,154 @@ mod tests {
     fn adjustment_layer_recomposition_perf_4k() {
         // Budget: slider-drag recompose @ 4K, 10 adjustment layers ≤ 1 ms.
         // Fleshed when the CompositorCache cut-point lands in the hot path.
+    }
+
+    // ── W5 CompositorCache cut-point cache (ADR-0045 §2.7) ────────────────
+    /// A per-pixel-varied opaque raster so blends + adjustments are non-trivial
+    /// (a uniform fill would hide a slicing/ordering bug).
+    fn varied(w: u32, h: u32, seed: u32) -> LayerImage {
+        let mut img = LayerImage::transparent(w, h);
+        for i in 0..(w * h) as usize {
+            let i = i as u32;
+            img.rgba8[(i * 4) as usize] = ((i * 11 + seed * 3) % 256) as u8;
+            img.rgba8[(i * 4 + 1) as usize] = ((i * 7 + seed * 5) % 256) as u8;
+            img.rgba8[(i * 4 + 2) as usize] = ((i * 5 + seed * 13) % 256) as u8;
+            img.rgba8[(i * 4 + 3) as usize] = 255;
+        }
+        img
+    }
+
+    fn bc(brightness: f32, contrast: f32) -> ph2d_painter_brush::adjustments::AdjustmentParams {
+        use ph2d_painter_brush::adjustments::{AdjustmentParams, BrightnessContrastParams};
+        AdjustmentParams::BrightnessContrast(BrightnessContrastParams {
+            brightness,
+            contrast,
+            legacy: false,
+        })
+    }
+
+    #[test]
+    fn cache_matches_full_recompose() {
+        // The cut-point cache MUST be bit-identical to the reference full
+        // recompose — cold, and after a param-only change of either a lower or a
+        // higher adjustment (the slider-drag hot path). Creation order is
+        // bottom→top, so the panel root ends up
+        // [top, adj_high, mid, adj_low, base] (index 0 = topmost).
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        let (w, h) = (4, 4);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("base", w, h).unwrap();
+        let adj_low = s
+            .add_adjustment(AdjustmentKind::BrightnessContrast)
+            .unwrap();
+        let mid = s.add_raster("mid", w, h).unwrap();
+        let adj_high = s
+            .add_adjustment(AdjustmentKind::BrightnessContrast)
+            .unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        s.adjustment_mut(adj_low).unwrap().params = bc(0.15, 0.10);
+        s.adjustment_mut(adj_high).unwrap().params = bc(-0.20, 0.25);
+        s.set_opacity(top, 0.6);
+        s.set_blend_mode(top, BlendMode::Screen);
+        let mut src = MapPixelSource::default();
+        src.insert(base, varied(w, h, 1));
+        src.insert(mid, varied(w, h, 2));
+        src.insert(top, varied(w, h, 3));
+
+        // Cold cache == full recompose (and populates both cuts).
+        let mut cache = CompositorCache::new();
+        let full = composite(&s, &src, w, h);
+        let cold = composite_with_cache(&s, &src, w, h, &mut cache);
+        assert_eq!(cold, full, "cold cache diverged from full recompose");
+
+        // Param change on the LOWER adjustment: its cut (below it) stays valid,
+        // the higher cut is dropped → restart from adj_low.
+        s.adjustment_mut(adj_low).unwrap().params = bc(0.40, -0.10);
+        cache.invalidate_above(adj_low, &s);
+        let full_low = composite(&s, &src, w, h);
+        let warm_low = composite_with_cache(&s, &src, w, h, &mut cache);
+        assert_eq!(warm_low, full_low, "lower-adj param-change cache diverged");
+
+        // Param change on the HIGHER adjustment: reuses the lower cut entirely
+        // → restart from adj_high (fewest layers recomposed).
+        s.adjustment_mut(adj_high).unwrap().params = bc(0.05, 0.50);
+        cache.invalidate_above(adj_high, &s);
+        let full_high = composite(&s, &src, w, h);
+        let warm_high = composite_with_cache(&s, &src, w, h, &mut cache);
+        assert_eq!(
+            warm_high, full_high,
+            "higher-adj param-change cache diverged"
+        );
+    }
+
+    #[test]
+    fn cache_hit_skips_below_layers() {
+        // The bandwidth win: a param-only change of an adjustment must NOT re-read
+        // the layers below its cut (only the adjustment + layers above recompose).
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        use std::cell::RefCell;
+        use std::collections::BTreeMap;
+
+        /// Counts `layer_rgba` reads per layer. Interior mutability keeps the
+        /// trait's `&self`; the returned slice borrows `inner` (not the cell), so
+        /// there is no borrow conflict.
+        struct CountingSource<'a> {
+            inner: &'a MapPixelSource,
+            reads: RefCell<BTreeMap<LayerId, usize>>,
+        }
+        impl LayerPixelSource for CountingSource<'_> {
+            fn layer_rgba(&self, id: LayerId) -> Option<&[u8]> {
+                *self.reads.borrow_mut().entry(id).or_default() += 1;
+                self.inner.layer_rgba(id)
+            }
+        }
+
+        let (w, h) = (4, 4);
+        let mut s = LayerStack::new();
+        // root = [top, adj, mid, base] (index 0 = topmost).
+        let base = s.add_raster("base", w, h).unwrap();
+        let mid = s.add_raster("mid", w, h).unwrap();
+        let adj = s
+            .add_adjustment(AdjustmentKind::BrightnessContrast)
+            .unwrap();
+        let top = s.add_raster("top", w, h).unwrap();
+        s.adjustment_mut(adj).unwrap().params = bc(0.2, 0.1);
+        let mut inner = MapPixelSource::default();
+        inner.insert(base, varied(w, h, 1));
+        inner.insert(mid, varied(w, h, 2));
+        inner.insert(top, varied(w, h, 3));
+        let src = CountingSource {
+            inner: &inner,
+            reads: RefCell::new(BTreeMap::new()),
+        };
+
+        // Cold compose reads every raster ≥ once.
+        let mut cache = CompositorCache::new();
+        let _ = composite_with_cache(&s, &src, w, h, &mut cache);
+        assert!(src.reads.borrow().get(&base).copied().unwrap_or(0) >= 1);
+        assert!(src.reads.borrow().get(&mid).copied().unwrap_or(0) >= 1);
+        assert!(src.reads.borrow().get(&top).copied().unwrap_or(0) >= 1);
+
+        // Param-only change → cache hit restarts from the adjustment's cut; the
+        // below-layers (base, mid) are not re-read, the above-layer (top) is.
+        src.reads.borrow_mut().clear();
+        s.adjustment_mut(adj).unwrap().params = bc(0.5, -0.2);
+        cache.invalidate_above(adj, &s);
+        let _ = composite_with_cache(&s, &src, w, h, &mut cache);
+        let reads = src.reads.borrow();
+        assert_eq!(
+            reads.get(&base).copied().unwrap_or(0),
+            0,
+            "below layer `base` was re-read on a cache hit"
+        );
+        assert_eq!(
+            reads.get(&mid).copied().unwrap_or(0),
+            0,
+            "below layer `mid` was re-read on a cache hit"
+        );
+        assert!(
+            reads.get(&top).copied().unwrap_or(0) >= 1,
+            "above layer `top` must recompose"
+        );
     }
 }

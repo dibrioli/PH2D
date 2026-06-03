@@ -212,3 +212,35 @@ Normal. HSB (T4.3) verificado correto (OKLab, sem NaN em chroma-zero, alpha pres
 (todas as networks), sem double-render (ordem de drain), geração de primitivas (caps
 respeitados, sem degenerate-crash), point-in-polygon NaN-safe — tudo verificado.
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+T2.6 CLOSE-OUT AUDIT (multiagêntica) + FIXES · 2026-06-03 (Impl)
+═══════════════════════════════════════════════════════════════════
+Veredito: **SHIP_WITH_FIXES, 0 blockers.** Contratos íntegros (12/12),
+forbid(unsafe) ok, sem panics em write/render path. 10 bugs HIGH/MED
+confirmados (1 refutado). **Implementei 10/11** (5 commits locais):
+
+- `c61ca67` cluster 1 — coerência undo/persistência (#1 load checkpoint+despawn,
+  #2 delete-from-hierarchy undoable via will_prune guard, #3 undo des-gated do
+  vector-tool + silent-on-empty, #4 undo/redo rebuild do ECS mirror).
+- `35e5b37` cluster 2 — features mortas (#6 cor→tool Shape/Pen/Pencil,
+  #7 Pen drag tagga Mirror → Direct mirror/break vivos, #8 curva Bézier visível
+  no overlay).
+- `d9af3f2` #5 — open paths (Pencil/Spiral/Pen-aberto) click-selecionáveis
+  (`nearest_segment_within` em hit_test + fallback no pick_index/pick).
+- `24781dd` polish — #9 recolor sem undo-step espúrio + #11 Pen close-path handle.
+
+Toquei **aditivamente** tua `vector_scene.rs` (helper `will_prune` read-only +
+param `stroke_tol_world` em pick/pick_index + STROKE_PICK_TOLERANCE_PX). Sem
+mudança de contrato. Testes: pen 29 / vector-doc 70 / shape 20 / direct 15 / bin
+codec+undo verdes; shell `cargo check` verde.
+
+**FALTA #10 (MEDIUM, TEU domínio):** `VectorSceneRef` (bbox/centroide) só é escrito
+no spawn (reconcile) — após uma edição Direct de vértice a gizmo-box fica stale
+(off-center/mis-sized) e um rotate/scale posterior pivota errado. Fix: recomputar
+o `VectorSceneRef` + `Transform.translation` da entidade quando o asset muda
+(reconcile/scene-object = tua pasta). Companion: invalidar redo em gizmo-move.
+
+Smoke pendente do Enio: undo cross-tool, Ctrl+O load+undo, delete+undo, click em
+linha aberta, cor numa forma nova, mirror/break via Pen+Direct, curva Bézier.
+═══════════════════════════════════════════════════════════════════

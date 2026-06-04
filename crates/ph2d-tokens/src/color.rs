@@ -328,6 +328,12 @@ pub enum ColorToken {
     GridLine,
     /// `grid-axis` — major axis line on canvas.
     GridAxis,
+    /// `curve-r` — red channel tint for the Curves editor (R tab curve + handle ring).
+    CurveR,
+    /// `curve-g` — green channel tint for the Curves editor.
+    CurveG,
+    /// `curve-b` — blue channel tint for the Curves editor.
+    CurveB,
     /// `canvas` — viewport background (scene render target backdrop).
     Canvas,
 }
@@ -374,6 +380,9 @@ impl ColorToken {
             Self::FocusRing => "focus-ring",
             Self::GridLine => "grid-line",
             Self::GridAxis => "grid-axis",
+            Self::CurveR => "curve-r",
+            Self::CurveG => "curve-g",
+            Self::CurveB => "curve-b",
             Self::Canvas => "canvas",
         }
     }

@@ -53,50 +53,50 @@ pub(crate) const PARAMS: [ParamSpec; 8] = [
         id: ids::VGRAPH_KIND,
         label: "Kind",
         lo: 0.0,
-        hi: 4.0,
+        hi: 4.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
         default: 0.0,
     },
     ParamSpec {
         id: ids::VGRAPH_WIDTH,
         label: "Width",
         lo: 0.0,
-        hi: 400.0,
-        default: 100.0,
+        hi: 400.0,      // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        default: 100.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_HEIGHT,
         label: "Height",
         lo: 0.0,
-        hi: 400.0,
-        default: 100.0,
+        hi: 400.0,      // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        default: 100.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_SIDES,
         label: "Sides",
-        lo: 3.0,
-        hi: 24.0,
-        default: 6.0,
+        lo: 3.0,      // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        hi: 24.0,     // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        default: 6.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_INNER_RATIO,
         label: "Inner Ratio",
         lo: 0.0,
         hi: 1.0,
-        default: 0.4,
+        default: 0.4, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_TURNS,
         label: "Turns",
         lo: 1.0,
-        hi: 12.0,
-        default: 3.0,
+        hi: 12.0,     // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        default: 3.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_SAMPLES_PER_TURN,
         label: "Samples/Turn",
-        lo: 4.0,
-        hi: 64.0,
-        default: 24.0,
+        lo: 4.0,       // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        hi: 64.0,      // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        default: 24.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
     },
     ParamSpec {
         id: ids::VGRAPH_ROTATION,
@@ -195,12 +195,12 @@ impl VectorGraphParams {
     /// `default_matches_param_specs`.
     const DEFAULT_CONST: Self = Self {
         kind: 0.0,
-        width: 100.0,
-        height: 100.0,
-        sides: 6.0,
-        inner_ratio: 0.4,
-        turns: 3.0,
-        samples_per_turn: 24.0,
+        width: 100.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        height: 100.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        sides: 6.0,   // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        inner_ratio: 0.4, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        turns: 3.0,   // LITERAL-PX-OK: geometry-graph node param value (non-design data)
+        samples_per_turn: 24.0, // LITERAL-PX-OK: geometry-graph node param value (non-design data)
         rotation: 0.0,
     };
 }

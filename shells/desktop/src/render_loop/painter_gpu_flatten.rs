@@ -142,7 +142,7 @@ mod tests {
         s.set_clipping(top, true);
         assert!(
             flatten_for_gpu(&s).is_none(),
-            "clipping isn't in the GPU op-list v1 → CPU fallback"
+            "clipping isn't in the GPU op-list v1 -> CPU fallback"
         );
     }
 
@@ -153,7 +153,7 @@ mod tests {
         s.add_mask(base).unwrap();
         assert!(
             flatten_for_gpu(&s).is_none(),
-            "a per-layer mask isn't in the GPU op-list v1 → CPU fallback"
+            "a per-layer mask isn't in the GPU op-list v1 -> CPU fallback"
         );
     }
 }

@@ -92,22 +92,31 @@ fn crate_has_image_tools_cluster(crate_dir: &Path) -> bool {
 }
 
 fn crate_implements_raster_edit_tool(crate_dir: &Path) -> bool {
-    let src = crate_dir.join("src");
-    for entry in fs::read_dir(&src).into_iter().flatten().flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) != Some("rs") {
-            continue;
-        }
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for line in content.lines() {
-            let t = line.trim_start();
-            if t.starts_with("//") {
+    // Walk `src/` RECURSIVELY: a god-object split (tool.rs → tool/, algorithm/…)
+    // moves `impl RasterEditTool for` into a SUBDIRECTORY, so a top-level-only
+    // scan would wrongly report the tool as non-implementing (2026-06-04).
+    let mut stack = vec![crate_dir.join("src")];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
                 continue;
             }
-            if t.contains("impl RasterEditTool for") {
-                return true;
+            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue;
+            }
+            let Ok(content) = fs::read_to_string(&path) else {
+                continue;
+            };
+            for line in content.lines() {
+                let t = line.trim_start();
+                if t.starts_with("//") {
+                    continue;
+                }
+                if t.contains("impl RasterEditTool for") {
+                    return true;
+                }
             }
         }
     }

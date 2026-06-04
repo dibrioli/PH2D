@@ -376,15 +376,22 @@ fn chord_axis(
     (d.length() > 1e-4).then(|| d.normalize())
 }
 
+/// Unit direction from `vid` toward the OTHER endpoint of `seg` (`None` if the
+/// edge is degenerate). Used to give a Corner's default handles an edge-aligned
+/// direction so they're grabbable without bending the edge.
+fn dir_along_edge(asset: &Ph2dVectorAsset, vid: VertexId, seg: SegmentId) -> Option<Vec2> {
+    let s = asset.network.segments.iter().find(|s| s.id == seg)?;
+    let other = if s.start == vid { s.end } else { s.start };
+    let d = vpos(asset, other)? - vpos(asset, vid)?;
+    (d.length() > 1e-4).then(|| d.normalize())
+}
+
 /// Re-derive `vid`'s incident tangents to satisfy `kind` IMMEDIATELY (eager) —
 /// so picking Smooth/Asymmetric/Auto reshapes the curve at once, not on the next
 /// handle drag. Only the canonical 2-handle case (one out segment + one in
 /// segment) re-derives; Free leaves the handles independent; endpoints/unusual
 /// topology are left as-is. Logged via `MoveTangent` (replay-safe).
 fn apply_kind_eager(asset: &mut Ph2dVectorAsset, vid: VertexId, kind: VertexKind) {
-    if matches!(kind, VertexKind::Free) {
-        return;
-    }
     let mut out: Option<(SegmentId, Vec2)> = None;
     let mut inc: Option<(SegmentId, Vec2)> = None;
     for s in &asset.network.segments {
@@ -400,34 +407,54 @@ fn apply_kind_eager(asset: &mut Ph2dVectorAsset, vid: VertexId, kind: VertexKind
 
     // Mirror/Aligned preserve the user's current tangent line; Auto uses the
     // prev→next chord (auto-smooth).
-    let axis = match kind {
-        VertexKind::Auto => chord_axis(asset, out_seg, in_seg),
-        _ => handle_axis(out_t, in_t).or_else(|| chord_axis(asset, out_seg, in_seg)),
-    };
-    let Some(axis) = axis else {
-        return;
-    };
-
     // A STRAIGHT corner (rectangle / clicked Pen) has zero existing handles, so
-    // deriving magnitude from them would collapse both handles onto the vertex
-    // (invisible + ungrabbable — the bug). Fall back to an auto length (a third
-    // of the adjacent edge) so Smooth/Asymmetric produce real, grabbable handles.
+    // deriving magnitude from them would collapse both onto the vertex (invisible
+    // + ungrabbable — the bug). Fall back to an auto length (a third of the
+    // adjacent edge) so EVERY type produces real, grabbable handles.
     let auto_out = seg_chord_len(asset, out_seg) / 3.0;
     let auto_in = seg_chord_len(asset, in_seg) / 3.0;
     let len_or = |existing: f32, fallback: f32| if existing > 1e-3 { existing } else { fallback };
+
     let (out_new, in_new) = match kind {
-        VertexKind::Mirror => {
-            let existing = (out_t.length() + in_t.length()) * 0.5;
-            let mag = len_or(existing, (auto_out + auto_in) * 0.5);
-            (axis * mag, -axis * mag)
+        // Corner: INDEPENDENT handles, each along its OWN edge (not collinear), so
+        // a straight corner gets visible/grabbable handles WITHOUT bending the
+        // edges — the user then pulls each freely. Existing handles are kept.
+        VertexKind::Free => {
+            let out_new = if out_t.length() > 1e-3 {
+                out_t
+            } else {
+                dir_along_edge(asset, vid, out_seg).map_or(out_t, |d| d * auto_out)
+            };
+            let in_new = if in_t.length() > 1e-3 {
+                in_t
+            } else {
+                dir_along_edge(asset, vid, in_seg).map_or(in_t, |d| d * auto_in)
+            };
+            (out_new, in_new)
         }
-        VertexKind::Aligned => {
-            let out_len = len_or(out_t.length(), auto_out);
-            let in_len = len_or(in_t.length(), auto_in);
-            (axis * out_len, -axis * in_len)
+        // Smooth family: collinear about a single tangent axis (current handle
+        // line for Mirror/Aligned, prev→next chord for Auto + degenerate fallback).
+        _ => {
+            let axis = match kind {
+                VertexKind::Auto => chord_axis(asset, out_seg, in_seg),
+                _ => handle_axis(out_t, in_t).or_else(|| chord_axis(asset, out_seg, in_seg)),
+            };
+            let Some(axis) = axis else {
+                return;
+            };
+            match kind {
+                VertexKind::Mirror => {
+                    let mag = len_or((out_t.length() + in_t.length()) * 0.5, (auto_out + auto_in) * 0.5);
+                    (axis * mag, -axis * mag)
+                }
+                VertexKind::Aligned => (
+                    axis * len_or(out_t.length(), auto_out),
+                    -axis * len_or(in_t.length(), auto_in),
+                ),
+                VertexKind::Auto => (axis * auto_out, -axis * auto_in),
+                VertexKind::Free => unreachable!(),
+            }
         }
-        VertexKind::Auto => (axis * auto_out, -axis * auto_in),
-        VertexKind::Free => return,
     };
     let _ = asset.edit_log.push_and_apply(
         VectorOp::MoveTangent {
@@ -622,6 +649,46 @@ mod tests {
             .find(|v| v.id == 1)
             .unwrap();
         assert_eq!(v1.kind, VertexKind::Mirror);
+    }
+
+    #[test]
+    fn set_kind_corner_on_straight_gives_independent_grabbable_handles() {
+        // Corner on a straight rectangle vertex must give grabbable handles too
+        // (Enio: "corner ainda fica com handles dentro do ponto") — INDEPENDENT,
+        // each along its own edge (not collinear), so the edges stay straight.
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
+        net.vertices
+            .push(Vertex::new(1, Vec2::new(100.0, 0.0), VertexKind::Free));
+        net.vertices.push(Vertex::auto(2, Vec2::new(100.0, 100.0)));
+        net.segments.push(Segment::straight(0, 0, 1));
+        net.segments.push(Segment::straight(1, 1, 2));
+        let mut scene = vec![Ph2dVectorAsset::from_network(net, StyleTable::default())];
+        let mut sel = VectorSelection::new();
+        sel.select_only_vertex(0, 1);
+        let t = VectorDirectTool::new();
+        t.set_selected_vertex_kind(&mut scene, &sel, VertexKind::Free);
+        let out = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 1)
+            .unwrap()
+            .out_at_start;
+        let inn = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap()
+            .in_at_end;
+        assert!(out.length() > 1.0, "out handle grabbable, got {out:?}");
+        assert!(inn.length() > 1.0, "in handle grabbable, got {inn:?}");
+        // Independent (NOT forced collinear-opposite): out toward next, in toward prev.
+        assert!(
+            (out.normalize() + inn.normalize()).length() > 0.1,
+            "corner handles are independent, not collinear"
+        );
     }
 
     #[test]

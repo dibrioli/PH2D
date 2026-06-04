@@ -166,6 +166,43 @@ no `dispatch`, em volta de `take_preview_arc` e do bloco de upload):
 
 **ESCOPO/COLISÃO:** decode/encode/wiring são tudo `compositor.rs` + `tool.rs`
 (foundational, e o `2b68ab2` está VIVO nesse arquivo) → **Coord-only**. Eu (impl)
-NÃO editei pra não colidir com o teu cache em voo (inegociável #2). O probe segue
-uncommitted no meu working tree.
+fiz só o LUT de decode/encode (commit `902a6cb`, funções `decode`/`encode` — NÃO
+o arm Adjustment nem o cache). O probe foi revertido (working tree limpo).
+
+───────────────────────────────────────────────────────────────────
+§8 — ►► BREAKDOWN EM RELEASE (pós-LUT `902a6cb`) — o powf NÃO era o grande ◄◄
+───────────────────────────────────────────────────────────────────
+O LUT só deu ~30% (80→56ms): o `powf` era ~24ms, não 78ms (powf ARM ~4ns).
+**O Enio está rodando RELEASE** (o número dele bate com meu bench release; debug
+seria ~370ms). Decompus o `composite()` 1024² em RELEASE (`opt-level=3`+thin-LTO):
+
+    base only (decode+blend+encode) ............ 14.8 ms
+    + adjustment arm (acc.to_vec + blend-back) .. +8.9 ms  (≈ 24 ms p/ kinds baratos)
+    + Brightness/Contrast (math barato) ........ +1.0 ms  → B/C total ~25 ms (40 fps)
+    + HSB OKLab cbrt round-trip ................ +30  ms  → HSB total ~55 ms (18 fps)
+
+**Achados:**
+  1. **O `composite()` da CPU é o caminho REFERÊNCIA** (o doc do módulo diz: "the
+     real-time zero-alloc GPU compositor ... is the Coordinator's `ph2d-render`
+     sibling"). **Mas o painter live-preview chama o `composite()` da CPU todo
+     frame** (`take_preview_arc`→`composite`). Real-time deveria ir pelo
+     **GPU LayerCompositor (`ph2d-render`)**. ← raiz arquitetural.
+  2. **O cache (`2b68ab2`) ainda não está wirado** → a base (~15ms) recompõe todo
+     frame mesmo só mexendo no param. Wirar derruba os ~15ms da base + os ~9ms do
+     arm (na verdade o arm roda sempre; o cache tira o decode/blend da base) →
+     **kinds baratos ~60fps**; HSB cai p/ ~45ms (cbrt sobra).
+  3. **HSB/Vibrance: o OKLab `cbrt` (~30ms@1024²) domina** e é per-pixel todo
+     frame — NEM o cache tira isso (é o apply do próprio adjustment). @4K seria
+     ~480ms → o gate `≤1ms@4K` é **impossível na CPU**; só fecha no **GPU**.
+
+**PRIORIDADE (Coord):**
+  A. **Wire o cache no `take_preview_arc`** (maior alavanca p/ a maioria dos kinds;
+     já 80% pronto em `2b68ab2`). → kinds baratos a 60fps.
+  B. **Caminho real-time = GPU**: rotear o preview do painter pelo
+     `ph2d-render` LayerCompositor (precisa suporte a adjustment no GPU — peça
+     grande, mas é o único jeito de HSB@4K caber em 1ms). É a resolução durável.
+  C. (CPU interino, secundário) `apply_blend` fast-path Normal/opaco (corta div/px
+     do base-blend + blend-back); fast-`cbrt` no OKLab p/ HSB/Vibrance (−~20ms).
+  Eu (impl) posso fazer o fast-`cbrt` em `adjustments.rs` (minha pasta) se você
+  pedir — mas o ganho real (GPU) e o wiring do cache são teus.
 ═══════════════════════════════════════════════════════════════════

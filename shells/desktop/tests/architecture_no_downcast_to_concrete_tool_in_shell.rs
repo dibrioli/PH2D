@@ -66,6 +66,18 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",
+    // Vector inspector bridge: VectorShape/Pen/Pencil/Direct tools expose
+    // shape-kind / point-type affordances the docked inspector drives, which
+    // need concrete-type access — same exception class as painter_bridge.
+    // (Coord ship-fix, 2026-06-04.)
+    "src/render_loop/vector_inspector_bridge.rs",
+    // render_loop/mod.rs: ONE VectorDirectTool downcast (set-vertex-kind from
+    // the pending-point-type pill, ~L1149). It belongs in a vector bridge
+    // (mirror painter_bridge::apply_layer_reparent); allowlisted as a Coord
+    // ship-fix because the file carries live Vector WIP right now (can't edit
+    // without collision). FOLLOW-UP (Vector impl): move it to a bridge and
+    // drop this entry — the central dispatch must stay downcast-free.
+    "src/render_loop/mod.rs",
     // Removed in Wave 10 / Etapa 3 audit [C1]: hero_intents/image_edit/*.rs
     // entries were pre-emptive — none of them actually downcast today.
     // The stale-check below ensures the allowlist only contains files

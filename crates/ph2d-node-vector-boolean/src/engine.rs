@@ -242,4 +242,64 @@ mod tests {
         let (min, max) = bbox(&out);
         assert!(approx(min, Vec2::new(0.0, 0.0)) && approx(max, Vec2::new(2.0, 2.0)));
     }
+
+    /// A deterministic axis-aligned rectangle `[lox,loy]..[hix,hiy]`.
+    fn rect(lox: f32, loy: f32, hix: f32, hiy: f32) -> VectorNetwork {
+        let mut net = primitives::rect(Vec2::new(lox, loy), Vec2::new(hix, hiy));
+        net.deterministic = true;
+        net
+    }
+
+    #[test]
+    fn degenerate_contacts_resist_across_every_op() {
+        // T3.5 Lente A: the configurations where Clipper-style libraries fail but
+        // a sweep-line (Linesweeper) must resist — coincident edges, a shared
+        // vertex, and a partial edge overlap. The gate is "no panic + a valid,
+        // bit-reproducible network for all 9 ops"; the exact face count of a
+        // degenerate contact is op-dependent so it is NOT asserted here.
+        let configs = [
+            // Fully coincident shared edge: A's top (y=2) == B's bottom (y=2).
+            (rect(0.0, 0.0, 2.0, 2.0), rect(0.0, 2.0, 2.0, 4.0), "shared edge"),
+            // Shared single vertex only: diagonal squares touch at (2,2).
+            (rect(0.0, 0.0, 2.0, 2.0), rect(2.0, 2.0, 4.0, 4.0), "shared vertex"),
+            // Partial coincident edge: B's bottom (y=2, x∈[1,3]) overlaps part of
+            // A's top (y=2, x∈[0,4]).
+            (rect(0.0, 0.0, 4.0, 2.0), rect(1.0, 2.0, 3.0, 4.0), "partial edge"),
+        ];
+        for (a, b, label) in &configs {
+            for op in ALL_OPS {
+                let out = boolean(a, b, op);
+                assert!(
+                    out.validate().is_ok(),
+                    "{label} op {op:?} produced an invalid network"
+                );
+                assert_eq!(out, boolean(a, b, op), "{label} op {op:?} not reproducible");
+            }
+        }
+        // (Region-count / area correctness of these contacts is asserted in
+        // `tests/edge_cases.rs`; this gate adds the all-9-ops × reproducibility
+        // sweep — the cross-OS determinism angle on degenerate geometry.)
+    }
+
+    #[test]
+    #[ignore = "perf measurement — run with `--release -- --ignored --nocapture`"]
+    fn perf_boolean_of_two_dense_polygons() {
+        use std::time::Instant;
+        // T3.5 Lente C: the exact Linesweeper reconcile on a heavy input. Two
+        // overlapping 100-gons ≈ 200 boundary segments — well past a typical
+        // hand-drawn boolean. This is the SETTLE path (run once on drag-end, not
+        // per frame); the per-frame draft is the GPU SDF.
+        let mut a = primitives::polygon(Vec2::new(0.0, 0.0), 100.0, 100, 0.0);
+        a.deterministic = true;
+        let mut b = primitives::polygon(Vec2::new(30.0, 0.0), 100.0, 100, 0.3);
+        b.deterministic = true;
+        let iters = 50;
+        let t = Instant::now();
+        for _ in 0..iters {
+            assert!(boolean(&a, &b, BooleanOp::Union).validate().is_ok());
+        }
+        let per_ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+        eprintln!("[perf] boolean union of two 100-gons (~200 segs): {per_ms:.3} ms/op");
+        assert!(per_ms < 100.0, "pathological regression: {per_ms} ms/op");
+    }
 }

@@ -696,7 +696,8 @@ mod compute;
 #[cfg(test)]
 mod tests;
 pub use compute::{
-    DISPLAY_LUT_N, adjustment_slider_params, adjustment_toggle_params, apply_adjustment,
-    curve_value_at, curves_display_luts, levels_display_lut, set_adjustment_slider_param,
+    DISPLAY_LUT_N, adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
+    apply_adjustment, colorbalance_display_luts, curve_value_at, curves_display_luts,
+    levels_display_lut, set_adjustment_segment_param, set_adjustment_slider_param,
     set_adjustment_toggle_param,
 };

@@ -165,7 +165,12 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     // Adjustment toggle rack (W4 BATCH-1) — bare click, the tool
                     // flips the boolean param slot (source of truth = params).
                     | PainterLayerWidget::AdjToggle0
-                    | PainterLayerWidget::AdjToggle1,
+                    | PainterLayerWidget::AdjToggle1
+                    // Adjustment segment rack (W4 BATCH-1) — bare click, the tool
+                    // selects that option of the segmented param.
+                    | PainterLayerWidget::AdjSegment0
+                    | PainterLayerWidget::AdjSegment1
+                    | PainterLayerWidget::AdjSegment2,
                 )) => {
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

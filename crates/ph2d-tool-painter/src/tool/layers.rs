@@ -607,6 +607,29 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// Select option `option` of adjustment layer `id`'s segmented param (the
+    /// panel's segment-button row, e.g. Color Balance's tonal range). The per-kind
+    /// mapping lives in `adjustments::set_adjustment_segment_param`. No-op
+    /// mid-stroke or if `id` is not an adjustment. Routes the preview through the
+    /// same cut-cache fast lane as a slider edit ([`Self::set_adjustment_param`]).
+    pub fn set_adjustment_segment(&mut self, id: RtLayerId, option: usize) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        ph2d_painter_brush::adjustments::set_adjustment_segment_param(&mut adj.params, option);
+        // Same param-only hot lane as `set_adjustment_param` (a scope change only
+        // rebuilds this adjustment's transfer; layers below keep their cuts).
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
     /// Move control point `point_index` of adjustment `id`'s `channel` curve to
     /// normalized `(x01, y01)` (both `0..=1`). `channel`: 0 = master (RGB),
     /// 1 = R, 2 = G, 3 = B. The bespoke curve-editor UI calls this on a point

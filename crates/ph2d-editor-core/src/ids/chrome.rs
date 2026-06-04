@@ -395,6 +395,13 @@ pub enum PainterLayerWidget {
     /// params. 2 slots cover the toggle-bearing kinds.
     AdjToggle0,
     AdjToggle1,
+    /// (Adjustment rows only) the Nth segment of the adjustment's single
+    /// segmented (1-of-N, N ≤ 3) param (W4 BATCH-1, e.g. Color Balance's tonal
+    /// range Shadows/Midtones/Highlights). A click selects that option tool-side
+    /// (the Curves channel-tab pattern); source of truth = the params.
+    AdjSegment0,
+    AdjSegment1,
+    AdjSegment2,
 }
 
 impl PainterLayerWidget {
@@ -420,11 +427,14 @@ impl PainterLayerWidget {
             Self::AdjParam5 => "adj_param5",
             Self::AdjToggle0 => "adj_toggle0",
             Self::AdjToggle1 => "adj_toggle1",
+            Self::AdjSegment0 => "adj_segment0",
+            Self::AdjSegment1 => "adj_segment1",
+            Self::AdjSegment2 => "adj_segment2",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 17] = [
+    pub const ALL: [PainterLayerWidget; 20] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -442,6 +452,9 @@ impl PainterLayerWidget {
         Self::AdjParam5,
         Self::AdjToggle0,
         Self::AdjToggle1,
+        Self::AdjSegment0,
+        Self::AdjSegment1,
+        Self::AdjSegment2,
     ];
 }
 

@@ -160,6 +160,11 @@ impl Tool for PainterTool {
                         // boolean param slot (Photo Filter's Preserve Luminosity, …).
                         PainterLayerWidget::AdjToggle0 => self.flip_adjustment_toggle(layer, 0),
                         PainterLayerWidget::AdjToggle1 => self.flip_adjustment_toggle(layer, 1),
+                        // Adjustment segment rack (W4 BATCH-1): a click selects that
+                        // option of the segmented param (Color Balance's tonal range).
+                        PainterLayerWidget::AdjSegment0 => self.set_adjustment_segment(layer, 0),
+                        PainterLayerWidget::AdjSegment1 => self.set_adjustment_segment(layer, 1),
+                        PainterLayerWidget::AdjSegment2 => self.set_adjustment_segment(layer, 2),
                         // Opacity slider/chip emit SetValue; Blend emits
                         // SelectOption — neither arrives as a Click.
                         _ => {}

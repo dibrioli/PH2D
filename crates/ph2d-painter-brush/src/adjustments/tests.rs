@@ -831,3 +831,175 @@ fn photo_filter_toggle_round_trips() {
     assert!(adjustment_toggle_params(&hsb).is_empty());
     set_adjustment_toggle_param(&mut hsb, 0, true); // no-op, must not panic
 }
+
+// ── W4 BATCH-1 — Color Balance (per-channel tonal shift + segment rack) ──
+
+fn colorbalance(cr: f32, mg: f32, yb: f32, scope: ToneScope, preserve: bool) -> AdjustmentParams {
+    AdjustmentParams::ColorBalance(ColorBalanceParams {
+        cyan_red: cr,
+        magenta_green: mg,
+        yellow_blue: yb,
+        scope,
+        preserve_luminosity: preserve,
+    })
+}
+
+#[test]
+fn color_balance_neutral_is_exact_identity() {
+    let px = [0.3, 0.55, 0.2, 0.7];
+    // The all-zero Default (no shifts) is a no-op …
+    assert_eq!(
+        run(
+            AdjustmentKind::ColorBalance,
+            AdjustmentParams::ColorBalance(ColorBalanceParams::default()),
+            px,
+        ),
+        px,
+        "default Color Balance is an exact identity",
+    );
+    // … and so is any scope/preserve combo while the shifts are zero.
+    assert_eq!(
+        run(
+            AdjustmentKind::ColorBalance,
+            colorbalance(0.0, 0.0, 0.0, ToneScope::Highlights, true),
+            px,
+        ),
+        px,
+        "zero shifts ignore scope + preserve",
+    );
+}
+
+#[test]
+fn color_balance_red_bias_lifts_only_red_without_preserve() {
+    // A midtone Red-Cyan bias (no preserve) is a pure per-channel shift: R rises,
+    // G/B untouched.
+    let mid = srgb_to_linear_f32(0.5);
+    let out = run(
+        AdjustmentKind::ColorBalance,
+        colorbalance(1.0, 0.0, 0.0, ToneScope::Midtones, false),
+        [mid, mid, mid, 1.0],
+    );
+    assert!(out[0] > mid + 1e-3, "red bias lifts R: {out:?}");
+    assert!(
+        (out[1] - mid).abs() < 3e-3 && (out[2] - mid).abs() < 3e-3,
+        "G/B untouched (per-channel, no preserve): {out:?}"
+    );
+    assert_eq!(out[3], 1.0, "alpha preserved");
+}
+
+#[test]
+fn color_balance_shadow_scope_targets_dark_tones() {
+    // A Shadows red bias lifts a dark pixel's red far more than a bright pixel's
+    // (the tonal-range weight falls off toward white).
+    let p = colorbalance(1.0, 0.0, 0.0, ToneScope::Shadows, false);
+    let dark = srgb_to_linear_f32(0.2);
+    let bright = srgb_to_linear_f32(0.85);
+    let od = run(
+        AdjustmentKind::ColorBalance,
+        p.clone(),
+        [dark, dark, dark, 1.0],
+    );
+    let ob = run(
+        AdjustmentKind::ColorBalance,
+        p,
+        [bright, bright, bright, 1.0],
+    );
+    let dark_lift = linear_to_srgb_f32(od[0]) - 0.2;
+    let bright_lift = linear_to_srgb_f32(ob[0]) - 0.85;
+    assert!(
+        dark_lift > bright_lift + 1e-2,
+        "shadows scope lifts dark red more than bright: {dark_lift} vs {bright_lift}"
+    );
+}
+
+#[test]
+fn color_balance_preserve_luminosity_holds_display_luma() {
+    // With preserve-luminosity the shift moves color but not display brightness.
+    let mid = srgb_to_linear_f32(0.5);
+    let out = run(
+        AdjustmentKind::ColorBalance,
+        colorbalance(0.8, 0.0, -0.4, ToneScope::Midtones, true),
+        [mid, mid, mid, 1.0],
+    );
+    let l_in = 0.299 * 0.5 + 0.587 * 0.5 + 0.114 * 0.5;
+    let l_out = 0.299 * linear_to_srgb_f32(out[0])
+        + 0.587 * linear_to_srgb_f32(out[1])
+        + 0.114 * linear_to_srgb_f32(out[2]);
+    assert!(
+        (l_out - l_in).abs() < 5e-3,
+        "preserve-lum keeps display luma: {l_out} vs {l_in}"
+    );
+}
+
+#[test]
+fn color_balance_apply_tracks_exported_lut() {
+    // apply_color_balance (no preserve) samples the SAME per-channel tables the
+    // GPU binds (the Curves adj_luts machinery, reused).
+    let p = ColorBalanceParams {
+        cyan_red: 0.6,
+        magenta_green: -0.3,
+        yellow_blue: 0.4,
+        scope: ToneScope::Midtones,
+        preserve_luminosity: false,
+    };
+    let luts = colorbalance_display_luts(&p);
+    for &disp in &[0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+        let lin = srgb_to_linear_f32(disp);
+        let mut acc = [[lin, lin, lin, 1.0]];
+        apply_color_balance(&p, &mut acc);
+        let s = linear_to_srgb_f32(lin);
+        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let idx = t as usize;
+        let frac = t - idx as f32;
+        let a = luts[0][idx];
+        let b = luts[0][(idx + 1).min(DISPLAY_LUT_N - 1)];
+        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        assert!(
+            (acc[0][0] - expected).abs() < 1e-6,
+            "apply_color_balance uses the exported LUT at {disp}"
+        );
+    }
+}
+
+#[test]
+fn color_balance_segment_round_trips() {
+    // The generic segment rack: read reflects the scope, set selects it.
+    let mut p = AdjustmentParams::ColorBalance(ColorBalanceParams::default());
+    let (opts, sel) = adjustment_segment_params(&p).expect("has a segmented param");
+    assert_eq!(opts.len(), 3, "Shadows / Midtones / Highlights");
+    assert_eq!(sel, 1, "default scope is Midtones (index 1)");
+    set_adjustment_segment_param(&mut p, 2);
+    assert_eq!(
+        adjustment_segment_params(&p).unwrap().1,
+        2,
+        "selected Highlights"
+    );
+    set_adjustment_segment_param(&mut p, 0);
+    assert_eq!(
+        adjustment_segment_params(&p).unwrap().1,
+        0,
+        "selected Shadows"
+    );
+    // A non-segmented kind returns None + ignores the setter (no panic).
+    let mut hsb = AdjustmentParams::HueSaturationBrightness(HsbParams::default());
+    assert!(adjustment_segment_params(&hsb).is_none());
+    set_adjustment_segment_param(&mut hsb, 1);
+}
+
+#[test]
+fn color_balance_slider_and_toggle_round_trip() {
+    let mut p = AdjustmentParams::ColorBalance(ColorBalanceParams::default());
+    for (slot, want) in [(0usize, 0.7_f32), (1, 0.2), (2, 0.9)] {
+        set_adjustment_slider_param(&mut p, slot, want);
+    }
+    let read = adjustment_slider_params(&p);
+    assert_eq!(read.len(), 3, "Color Balance exposes 3 sliders");
+    for (got, want) in read.iter().map(|r| r.1).zip([0.7, 0.2, 0.9]) {
+        assert!((got - want).abs() < 1e-6, "cb slider {got} vs {want}");
+    }
+    let tog = adjustment_toggle_params(&p);
+    assert_eq!(tog.len(), 1, "Color Balance exposes 1 toggle");
+    assert!(!tog[0].1, "default preserve-luminosity off");
+    set_adjustment_toggle_param(&mut p, 0, true);
+    assert!(adjustment_toggle_params(&p)[0].1, "toggle flips");
+}

@@ -55,6 +55,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::PhotoFilter, AdjustmentParams::PhotoFilter(p)) => {
             apply_photo_filter(p, acc)
         }
+        // W4 BATCH-1 — Color Balance (per-channel tonal-range-weighted shift).
+        (AdjustmentKind::ColorBalance, AdjustmentParams::ColorBalance(p)) => {
+            apply_color_balance(p, acc)
+        }
         _ => {}
     }
 }
@@ -536,6 +540,93 @@ pub(crate) fn apply_photo_filter(p: &PhotoFilterParams, acc: &mut [[f32; 4]]) {
     }
 }
 
+/// The tonal-range weight for display value `s` (`0..1`) under `scope` — how
+/// strongly a Color-Balance shift applies at that tone. Shadows fall off toward
+/// white (`(1-s)²`), Highlights rise toward white (`s²`), Midtones hump at mid
+/// (`1-(2s-1)²`). All in `0..=1`, smooth, zero at the off-end so the shift never
+/// touches the opposite tonal extreme.
+fn colorbalance_weight(s: f32, scope: ToneScope) -> f32 {
+    let s = s.clamp(0.0, 1.0);
+    match scope {
+        ToneScope::Shadows => (1.0 - s) * (1.0 - s),
+        ToneScope::Highlights => s * s,
+        ToneScope::Midtones => {
+            let d = 2.0 * s - 1.0;
+            1.0 - d * d
+        }
+    }
+}
+
+/// Per-channel DISPLAY-space shift-transfer LUTs for [`ColorBalanceParams`]
+/// (`[R, G, B]`). `lut_c[i]` = display input `i/255` biased by
+/// `shift_c · weight(i/255, scope)` (clamped). This is the GPU-mandate
+/// deliverable's math: the compositor's `adj_luts` binding uploads exactly these
+/// (the same 3×256 machinery the Curves `ADJ_CURVES` case samples), so the
+/// real-time GPU path reuses Curves' transfer-LUT sampling. The
+/// preserve-luminosity renorm is the per-pixel step ON TOP (CPU below; a shader
+/// flag for the GPU — see the W4 handoff §GPU-COORD).
+#[must_use]
+pub fn colorbalance_display_luts(p: &ColorBalanceParams) -> [[f32; DISPLAY_LUT_N]; 3] {
+    // Full-slider strength on a fully-weighted tone (a moderate, Photoshop-ish
+    // shift — a ±1 slider moves a fully-weighted display value by up to this).
+    const K: f32 = 0.5;
+    let shifts = [p.cyan_red, p.magenta_green, p.yellow_blue];
+    core::array::from_fn(|c| {
+        let shift = shifts[c].clamp(-1.0, 1.0) * K;
+        build_display_lut(|s| (s + shift * colorbalance_weight(s, p.scope)).clamp(0.0, 1.0))
+    })
+}
+
+/// `true` for a Color-Balance params that is an exact identity (all three shifts
+/// neutral), so [`apply_color_balance`] can early-return before the per-pixel
+/// sRGB round-trip — the neutral hot path while dragging another layer.
+fn colorbalance_is_neutral(p: &ColorBalanceParams) -> bool {
+    p.cyan_red == 0.0 && p.magenta_green == 0.0 && p.yellow_blue == 0.0
+}
+
+/// Color Balance — Photoshop-style per-channel tonal-range-weighted color shift
+/// in DISPLAY space. The Red-Cyan / Magenta-Green / Yellow-Blue sliders bias the
+/// R / G / B channel toward the warm end (`+`) or its complement (`-`), masked by
+/// `scope`'s tonal weight ([`colorbalance_weight`]); `preserve_luminosity`
+/// renormalizes each pixel's display luma so the shift moves color WITHOUT
+/// changing brightness (Photoshop's default). Builds the per-channel LUTs
+/// ([`colorbalance_display_luts`], the same tables the GPU binds) once, then maps
+/// each pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA (alpha
+/// preserved). Neutral shifts early-return an exact identity.
+pub(crate) fn apply_color_balance(p: &ColorBalanceParams, acc: &mut [[f32; 4]]) {
+    if colorbalance_is_neutral(p) {
+        return;
+    }
+    let luts = colorbalance_display_luts(p);
+    // Rec.601 display luma (matches the Threshold kernel + Photoshop's luma).
+    const LW: [f32; 3] = [0.299, 0.587, 0.114];
+    for px in acc.iter_mut() {
+        let s = [
+            linear_to_srgb_f32(px[0]),
+            linear_to_srgb_f32(px[1]),
+            linear_to_srgb_f32(px[2]),
+        ];
+        let mut o = [
+            sample_display_lut(&luts[0], s[0]),
+            sample_display_lut(&luts[1], s[1]),
+            sample_display_lut(&luts[2], s[2]),
+        ];
+        if p.preserve_luminosity {
+            let l_in = LW[0] * s[0] + LW[1] * s[1] + LW[2] * s[2];
+            let l_out = LW[0] * o[0] + LW[1] * o[1] + LW[2] * o[2];
+            if l_out > 1e-6 {
+                let k = l_in / l_out;
+                for v in &mut o {
+                    *v = (*v * k).clamp(0.0, 1.0);
+                }
+            }
+        }
+        for (c, ov) in o.iter().enumerate() {
+            px[c] = srgb_to_linear_f32(*ov);
+        }
+    }
+}
+
 /// The slider-editable params of an adjustment, as `(label, value01)` in slot
 /// order — what the layers panel renders as a labeled slider per slot, and the
 /// inverse of [`set_adjustment_slider_param`]. Kinds with bespoke controls
@@ -572,6 +663,14 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
         AdjustmentParams::PhotoFilter(p) => vec![
             ("Temp", (p.temperature.clamp(-1.0, 1.0) + 1.0) * 0.5),
             ("Density", p.density.clamp(0.0, 1.0)),
+        ],
+        // Color Balance: the 3 bipolar color-axis shifts (centered; 0.5 = neutral).
+        // `scope` is a segment (see `adjustment_segment_params`) and
+        // `preserve_luminosity` a toggle (see `adjustment_toggle_params`).
+        AdjustmentParams::ColorBalance(p) => vec![
+            ("C/R", (p.cyan_red.clamp(-1.0, 1.0) + 1.0) * 0.5),
+            ("M/G", (p.magenta_green.clamp(-1.0, 1.0) + 1.0) * 0.5),
+            ("Y/B", (p.yellow_blue.clamp(-1.0, 1.0) + 1.0) * 0.5),
         ],
         // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
         // black/gamma/white + output black/white. (Curves needs the bespoke
@@ -625,6 +724,12 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             1 => p.density = v,                 // 0..1
             _ => {}
         },
+        AdjustmentParams::ColorBalance(p) => match slot {
+            0 => p.cyan_red = v * 2.0 - 1.0,      // -1..1
+            1 => p.magenta_green = v * 2.0 - 1.0, // -1..1
+            2 => p.yellow_blue = v * 2.0 - 1.0,   // -1..1
+            _ => {}
+        },
         AdjustmentParams::Levels(p) => match slot {
             0 => p.black_point = v,
             1 => p.gamma = levels_slider_to_gamma(v),
@@ -648,6 +753,7 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
 pub fn adjustment_toggle_params(params: &AdjustmentParams) -> Vec<(&'static str, bool)> {
     match params {
         AdjustmentParams::PhotoFilter(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
+        AdjustmentParams::ColorBalance(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
         _ => Vec::new(),
     }
 }
@@ -657,7 +763,43 @@ pub fn adjustment_toggle_params(params: &AdjustmentParams) -> Vec<(&'static str,
 pub fn set_adjustment_toggle_param(params: &mut AdjustmentParams, slot: usize, on: bool) {
     match params {
         AdjustmentParams::PhotoFilter(p) if slot == 0 => p.preserve_luminosity = on,
+        AdjustmentParams::ColorBalance(p) if slot == 0 => p.preserve_luminosity = on,
         _ => {}
+    }
+}
+
+/// The single segmented (1-of-N, N ≤ 3) param of an adjustment, as
+/// `(options, selected)` — what the layers panel renders as a segment-button row
+/// (mirror of the Curves channel tabs). The inverse setter is
+/// [`set_adjustment_segment_param`]. Kinds with no segmented param return `None`.
+/// Currently the Color-Balance tonal range (Shadows / Midtones / Highlights).
+#[must_use]
+pub fn adjustment_segment_params(params: &AdjustmentParams) -> Option<(Vec<&'static str>, usize)> {
+    match params {
+        AdjustmentParams::ColorBalance(p) => Some((
+            vec!["Shadows", "Midtones", "Highlights"],
+            match p.scope {
+                ToneScope::Shadows => 0,
+                ToneScope::Midtones => 1,
+                ToneScope::Highlights => 2,
+            },
+        )),
+        _ => None,
+    }
+}
+
+/// Select option `option` of an adjustment's segmented param (inverse of
+/// [`adjustment_segment_params`]). Out-of-range options clamp to the nearest
+/// valid; non-segmented kinds no-op.
+pub fn set_adjustment_segment_param(params: &mut AdjustmentParams, option: usize) {
+    // A single segmented kind today (Color Balance's tonal range); becomes a
+    // `match` when a second segmented param ships.
+    if let AdjustmentParams::ColorBalance(p) = params {
+        p.scope = match option {
+            0 => ToneScope::Shadows,
+            2 => ToneScope::Highlights,
+            _ => ToneScope::Midtones,
+        };
     }
 }
 

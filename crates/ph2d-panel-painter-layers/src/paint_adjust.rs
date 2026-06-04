@@ -73,6 +73,16 @@ fn toggle_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
     })
 }
 
+/// The per-option widget kind of the single segmented param (≤3 options).
+fn segment_slot_kind(option: usize) -> Option<PainterLayerWidget> {
+    Some(match option {
+        0 => PainterLayerWidget::AdjSegment0,
+        1 => PainterLayerWidget::AdjSegment1,
+        2 => PainterLayerWidget::AdjSegment2,
+        _ => return None,
+    })
+}
+
 /// Render an adjustment layer's edit controls, indented below its main row. For
 /// slider kinds (the common case) this is one labeled slider per slot; for
 /// bespoke kinds (Curves) it dispatches to the dedicated editor. Each slider
@@ -129,6 +139,44 @@ pub(crate) fn paint_adjustment_params(
         let rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
         paint_slider(&slider, rect, ctx.scene, theme);
         ctx.host.hit_index_mut().register(id, rect);
+        y += ROW_H_PX + gap;
+    }
+    // Segment rack (W4 BATCH-1): the adjustment's single 1-of-N (N ≤ 3) param as a
+    // row of segment buttons spanning the width (Color Balance's tonal range) —
+    // same mechanic as the Curves channel tabs (per-segment button, active tint,
+    // click selects tool-side). Rendered between the sliders and the toggles.
+    if let Some((options, selected)) = ph2d_tool_painter::adjustment_segment_params(params) {
+        let n = options.len().clamp(1, 3);
+        let seg_w = w / n as f32;
+        for (option, label) in options.iter().enumerate().take(3) {
+            let Some(kind) = segment_slot_kind(option) else {
+                break;
+            };
+            let id = painter_layer_widget_id(layer_id, kind);
+            let srect = Rect::new(
+                x + option as f32 * seg_w,
+                y,
+                (seg_w - 2.0).max(0.0), // LITERAL-PX-OK: 2px inter-segment gutter
+                ROW_H_PX,
+            );
+            let active = option == selected;
+            let (bg, fg) = if active {
+                (ColorToken::AccentSoft, ColorToken::Text1)
+            } else {
+                (ColorToken::Bg2, ColorToken::Text2)
+            };
+            fill_rounded_rect(ctx.scene, srect, Radius::Sm.px(), resolve(bg, theme));
+            paint_text_centered(
+                ctx.text_system,
+                ctx.scene,
+                label,
+                srect,
+                font,
+                resolve(fg, theme),
+            );
+            register_button(ctx.host.store_mut(), id);
+            ctx.host.hit_index_mut().register(id, srect);
+        }
         y += ROW_H_PX + gap;
     }
     // Toggle rack (W4 BATCH-1): a label on the left + a right-aligned switch per

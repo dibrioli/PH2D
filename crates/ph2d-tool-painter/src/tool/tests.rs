@@ -1963,6 +1963,44 @@ fn photo_filter_toggle_click_routes_to_flip() {
 }
 
 #[test]
+fn color_balance_segment_click_routes_to_set_scope() {
+    // W4 BATCH-1: a Color Balance tonal-range segment forwards a bare
+    // Click(AdjSegmentN); handle_panel_event decodes it + selects that scope.
+    use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, ToneScope};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::ColorBalance)
+        .unwrap();
+    let scope = |t: &PainterTool| -> ToneScope {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::ColorBalance(p) => p.scope,
+                _ => panic!("not a color balance"),
+            },
+            _ => panic!("not an adjustment"),
+        }
+    };
+    assert_eq!(
+        scope(&t),
+        ToneScope::Midtones,
+        "fresh Color Balance is Midtones"
+    );
+    let seg2 = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjSegment2);
+    t.handle_panel_event(PanelEvent::Click(seg2));
+    assert_eq!(
+        scope(&t),
+        ToneScope::Highlights,
+        "segment-2 click → Highlights"
+    );
+    let seg0 = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjSegment0);
+    t.handle_panel_event(PanelEvent::Click(seg0));
+    assert_eq!(scope(&t), ToneScope::Shadows, "segment-0 click → Shadows");
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

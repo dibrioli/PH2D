@@ -30,10 +30,19 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (verificado nesta sessão — NÃO refaça)
 ───────────────────────────────────────────────────────────────────
-**9/24 kinds PRONTOS** (compute CPU + GPU + paridade):
+**10/24 kinds PRONTOS** (compute CPU + GPU + paridade):
   HSB(0), BrightnessContrast(1), Invert(2), Posterize(3), Threshold(4),
   Exposure(5), Vibrance(6) — escalares; **Curves(7) + Levels(8)** — LUT
-  display-space (binding `adj_luts`, esta sessão).
+  display-space (binding `adj_luts`); **PhotoFilter** — CPU-first (gel
+  warm/cool linear + preserve-lum), `gpu_params` empacotado mas `gpu_code=None`
+  até o Coord landar `ADJ_PHOTO_FILTER` (vide §GPU-COORD abaixo).
+
+**INFRA NOVA (esta sessão — REUSE p/ os próximos):** a **toggle rack** genérica
+existe. Um kind com param `bool` agora vira UI só adicionando arms em
+`adjustment_toggle_params` + `set_adjustment_toggle_param` (compute.rs) — o painel
+já renderiza um switch por slot (`AdjToggle0/1` ids, padrão click→flip espelho do
+mask-invert; tool `flip_adjustment_toggle`). ZERO UI nova p/ ColorBalance
+(preserve_lum), ChannelMixer (monochromatic), Noise (monochromatic), etc.
 
 **A engine está VIVA E PROVADA** — REUSE, não reinvente:
   - `compute.rs::apply_adjustment(kind, params, &mut [[f32;4]])` — dispatch
@@ -50,9 +59,9 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**15 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+**14 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
 faz nada): ColorBalance, GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
-Sharpen, Halftone, ChromaticAberration, ColorLookupLut, PhotoFilter,
+Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
 SelectiveColor, ChannelMixer, ShadowsHighlights, BlackAndWhite. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
 
@@ -65,10 +74,11 @@ recomendada (fácil→difícil). Params já existem em `mod.rs` (contrato congel
 **BATCH 1 — slider-rack (espelho do Levels: ZERO UI nova):** adicione arms em
 `adjustment_slider_params` + `set_adjustment_slider_param` (compute.rs) e o painel
 genérico já renderiza. Compute = arm em `apply_adjustment`.
-  1. **PhotoFilter** `{temperature, density, preserve_luminosity}` — 2 sliders +
-     1 toggle. Multiplica por uma cor de filtro quente/fria; density = força;
-     preserve_lum = re-normaliza L. **Cabe em [f32;3] → GPU escalar direto** (peça
-     o case WGSL ao Coord). O MAIS FÁCIL — comece aqui.
+  1. **PhotoFilter** `{temperature, density, preserve_luminosity}` — ✅ **PRONTO**
+     (commit `d45aa8e`). Gel warm/cool em LINEAR (multiply físico) + preserve-lum
+     (renorm Rec.709). 2 sliders (Temp centrado / Density) + 1 toggle via a toggle
+     rack nova. `gpu_params=[temp,density,preserve]` empacotado; falta só o case
+     WGSL do Coord (§GPU-COORD). Precedente vivo p/ os toggles dos próximos.
   2. **ColorBalance** `{cyan_red, magenta_green, yellow_blue, scope, preserve_lum}`
      — 3 sliders + scope (Shadows/Mid/Highlights, segmented) + toggle. Shifts
      cabem em [f32;3]; `scope`+`preserve` = >3 → **GPU precisa expansão de params
@@ -105,6 +115,34 @@ pass `layer_composite.wgsl`). O mandato real-time = esses PRECISAM da GPU (CPU
 per-pixel-neighborhood é lentíssimo). **É uma etapa arquitetural do COORD** (criar
 o mecanismo ping-pong) antes de qualquer um desses. NÃO tente CPU-first aqui sem
 alinhar — vira dívida. Reporte ao Coord quando chegar a vez.
+
+───────────────────────────────────────────────────────────────────
+§GPU-COORD — port WGSL do PhotoFilter (escalar, [f32;3]) — pendência do Coord
+───────────────────────────────────────────────────────────────────
+CPU pronto (`apply_photo_filter`, compute.rs) + `gpu_params=[temperature, density,
+preserve_lum01]` já empacotado. Para virar real-time: (1) add const
+`ADJ_PHOTO_FILTER` no `layer_composite.wgsl` + o case em `apply_adjustment`;
+(2) flip `gpu_code(PhotoFilter)` de `None` p/ o código (próximo livre = 9) em
+`mod.rs`. O case opera no acc LINEAR (mesmo espaço da CPU):
+```
+let t = p0; let density = p1;
+if (density == 0.0 || t == 0.0) { return rgb; }          // identidade
+let WARM = vec3(1.0, 0.75, 0.45); let COOL = vec3(0.55, 0.80, 1.0);
+let anchor = select(COOL, WARM, t >= 0.0);
+let mag = abs(t);
+let gel = vec3(1.0) + (anchor - vec3(1.0)) * mag;        // white→anchor por |t|
+let eff = vec3(1.0) + (gel - vec3(1.0)) * density;       // white→gel por density
+let LW = vec3(0.2126, 0.7152, 0.0722);                   // Rec.709 linear luma
+let l_in = dot(rgb, LW);
+var outc = rgb * eff;
+if (p2 > 0.5) {                                          // preserve_luminosity
+    let l_out = dot(outc, LW);
+    if (l_out > 1e-6) { outc = outc * (l_in / l_out); }
+}
+return outc;
+```
+Gate de paridade: `gpu_adjustment_matches_cpu_reference_each_kind` (já cobre
+auto quando `gpu_code` vira Some — neutro garante finitos via o contract test).
 
 ───────────────────────────────────────────────────────────────────
 §4 — RECEITA por kind (o loop que você repete)

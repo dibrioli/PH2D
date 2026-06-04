@@ -509,6 +509,22 @@ impl PainterTool {
         }
         let prev_active = self.layers.active();
         let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
+        // Bespoke Curves editor: seed the master curve with 5 fixed-x identity
+        // handles so the curve canvas opens with draggable control points (the
+        // generic `AdjParam` sliders the editor reuses bind to these by index).
+        // The data-model default stays empty (a bit-exact identity for persisted /
+        // programmatic layers); a user-created Curves layer gets editable handles.
+        if kind == ph2d_painter_brush::adjustments::AdjustmentKind::Curves
+            && let Some(adj) = self.layers.adjustment_mut(id)
+            && let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params
+        {
+            c.points_rgb.points = (0..5)
+                .map(|i| {
+                    let t = i as f32 / 4.0;
+                    [t, t]
+                })
+                .collect();
+        }
         // Not paintable — restore the prior raster as the edit target. The
         // canvas_rgba is untouched (add_adjustment does not flush/load), so a
         // plain `set_active` (no buffer dance) keeps it consistent.
@@ -550,6 +566,54 @@ impl PainterTool {
         self.preview_dirty = true;
         // The adjustment's params live in the published LayerStack, so the panel
         // snapshot must republish (mirror of `invalidate_composite`'s bump).
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
+    /// Move control point `point_index` of adjustment `id`'s `channel` curve to
+    /// normalized `(x01, y01)` (both `0..=1`). `channel`: 0 = master (RGB),
+    /// 1 = R, 2 = G, 3 = B. The bespoke curve-editor UI calls this on a point
+    /// drag (the Curves analogue of [`Self::set_adjustment_param`] — Curves does
+    /// not fit the generic ≤6-slider rack). No-op mid-stroke, for a non-Curves
+    /// layer, an out-of-range channel, or a missing point index. Re-sorts the
+    /// channel's points by x (the spline eval assumes ascending x) and routes the
+    /// preview through the same cut-point cache fast lane as a slider drag.
+    pub fn set_curve_point(
+        &mut self,
+        id: RtLayerId,
+        channel: u8,
+        point_index: usize,
+        x01: f32,
+        y01: f32,
+    ) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+            return;
+        };
+        let pts = match channel {
+            0 => &mut c.points_rgb,
+            1 => &mut c.points_r,
+            2 => &mut c.points_g,
+            3 => &mut c.points_b,
+            _ => return,
+        };
+        let Some(p) = pts.points.get_mut(point_index) else {
+            return;
+        };
+        p[0] = x01.clamp(0.0, 1.0);
+        p[1] = y01.clamp(0.0, 1.0);
+        pts.points.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        // Same hot-path cut-cache restart as `set_adjustment_param`: a param-only
+        // change leaves the layers below untouched, so keep their cuts.
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 

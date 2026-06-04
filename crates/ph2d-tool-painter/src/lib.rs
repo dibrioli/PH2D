@@ -47,8 +47,8 @@ pub use params::{
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
 pub use ph2d_painter_brush::adjustments::{
-    AdjustmentKind, AdjustmentLayer, AdjustmentParams, HsbParams, adjustment_slider_params,
-    set_adjustment_slider_param,
+    AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams,
+    adjustment_slider_params, curves_display_luts, set_adjustment_slider_param,
 };
 pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
 pub use tool::{PainterTool, set_pending_select_mods};

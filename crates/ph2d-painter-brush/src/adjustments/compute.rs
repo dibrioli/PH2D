@@ -47,6 +47,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::Threshold, AdjustmentParams::Threshold(p)) => apply_threshold(p, acc),
         // T4.x — Invert (display-space photographic negative).
         (AdjustmentKind::Invert, AdjustmentParams::Invert(_)) => apply_invert(acc),
+        // W4 bespoke — Curves (per-channel display-space tone curves, LUT-baked).
+        (AdjustmentKind::Curves, AdjustmentParams::Curves(p)) => apply_curves(p, acc),
+        // W4 bespoke — Levels (display-space black/gamma/white + output remap).
+        (AdjustmentKind::Levels, AdjustmentParams::Levels(p)) => apply_levels(p, acc),
         _ => {}
     }
 }
@@ -109,6 +113,238 @@ pub(crate) fn sample_lut(lut: &[f32; LUT_N], v: f32) -> f32 {
     let a = lut[i];
     let b = lut[(i + 1).min(LUT_N - 1)];
     a + (b - a) * frac
+}
+
+// ───────────────── display-space 1-D transfer LUTs (Curves / Levels) ──────────
+//
+// Curves and Levels are both per-channel 1-D transfers DEFINED IN DISPLAY (sRGB)
+// space — `out_ch = f(in_ch)` — so they bake to a per-channel table indexed in
+// display space. This is the real-time strategy (handoff §3): a `[f32; 256]`
+// table per channel is what the GPU compositor's `adj_luts` binding samples
+// (`adj_luts[base + ch*256 + round(s*255)]`), turning a curve that would cost a
+// spline eval / `powf` per pixel into a single L1 lookup. The CPU kernels below
+// sample the SAME tables, so GPU↔CPU parity is "do they read the same table"
+// (within the ±tolerance the parity gate allows for the GPU's nearest vs the
+// CPU's lerp lookup). The exporters are `pub` so the tool's GPU flatten can
+// build the buffer (`ph2d-render` stays decoupled — the tool feeds it the bytes).
+
+/// Width of a display-space transfer LUT (one entry per 8-bit display value).
+/// The GPU `adj_luts` storage buffer uses this as its per-channel stride.
+pub const DISPLAY_LUT_N: usize = 256;
+
+/// Build a 256-entry display-space transfer table: `lut[i]` is the output for
+/// display input `i / 255`. `f` maps display `0..=1` → display `0..=1`.
+fn build_display_lut<F: Fn(f32) -> f32>(f: F) -> [f32; DISPLAY_LUT_N] {
+    core::array::from_fn(|i| f(i as f32 / (DISPLAY_LUT_N - 1) as f32))
+}
+
+/// Sample a [`build_display_lut`] table at display `s` (`0..=1`) with linear
+/// interpolation. The GPU samples the same table with a nearest lookup; the
+/// difference is bounded by one 8-bit step and absorbed by the ±tolerance
+/// GPU↔CPU parity gate.
+#[inline]
+fn sample_display_lut(lut: &[f32; DISPLAY_LUT_N], s: f32) -> f32 {
+    let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+    let i = t as usize;
+    let frac = t - i as f32;
+    let a = lut[i];
+    let b = lut[(i + 1).min(DISPLAY_LUT_N - 1)];
+    a + (b - a) * frac
+}
+
+/// Fritsch–Carlson monotone tangent at control point `i` of a tone curve — the
+/// Hermite slope used by the segments on either side. Clamped against the
+/// adjacent secants so the spline stays MONOTONE (never overshoots past the
+/// control points — a tone curve must not wiggle out of the points' range).
+fn monotone_tangent(points: &[[f32; 2]], i: usize) -> f32 {
+    let n = points.len();
+    let secant = |a: usize, b: usize| {
+        let dx = points[b][0] - points[a][0];
+        if dx.abs() <= 1e-9 {
+            0.0
+        } else {
+            (points[b][1] - points[a][1]) / dx
+        }
+    };
+    // Raw tangent: endpoints use the one-sided secant, interior the average.
+    let mut m = if i == 0 {
+        secant(0, 1)
+    } else if i == n - 1 {
+        secant(n - 2, n - 1)
+    } else {
+        0.5 * (secant(i - 1, i) + secant(i, i + 1))
+    };
+    // Monotonicity clamp (Fritsch–Carlson sufficient condition |m| ≤ 3|d| per
+    // adjacent secant; a flat or sign-flipping secant forces a flat tangent).
+    let neighbors = [
+        (i > 0).then(|| secant(i - 1, i)),
+        (i + 1 < n).then(|| secant(i, i + 1)),
+    ];
+    for d in neighbors.into_iter().flatten() {
+        if d == 0.0 {
+            m = 0.0;
+        } else {
+            let r = m / d;
+            if r < 0.0 {
+                m = 0.0;
+            } else if r > 3.0 {
+                m = 3.0 * d;
+            }
+        }
+    }
+    m
+}
+
+/// Evaluate a tone curve `points` (normalized `[x, y]` in `0..=1`, sorted by x)
+/// at display-space input `x`. Empty → the identity (`y = x`); one point → a
+/// constant; two or more → a monotone cubic-Hermite spline ([`monotone_tangent`]).
+/// Outside the point span the endpoints extend flat (Photoshop's clamp).
+fn eval_curve(points: &[[f32; 2]], x: f32) -> f32 {
+    match points.len() {
+        0 => return x.clamp(0.0, 1.0),
+        1 => return points[0][1].clamp(0.0, 1.0),
+        _ => {}
+    }
+    let x = x.clamp(0.0, 1.0);
+    let n = points.len();
+    if x <= points[0][0] {
+        return points[0][1].clamp(0.0, 1.0);
+    }
+    if x >= points[n - 1][0] {
+        return points[n - 1][1].clamp(0.0, 1.0);
+    }
+    let mut i = 0;
+    while i + 1 < n && points[i + 1][0] < x {
+        i += 1;
+    }
+    let (x0, y0) = (points[i][0], points[i][1]);
+    let (x1, y1) = (points[i + 1][0], points[i + 1][1]);
+    let h = x1 - x0;
+    if h <= 1e-9 {
+        return y1.clamp(0.0, 1.0); // coincident control points — take the later
+    }
+    let m0 = monotone_tangent(points, i);
+    let m1 = monotone_tangent(points, i + 1);
+    let t = (x - x0) / h;
+    let (t2, t3) = (t * t, t * t * t);
+    // Cubic Hermite basis.
+    let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
+    let h10 = t3 - 2.0 * t2 + t;
+    let h01 = -2.0 * t3 + 3.0 * t2;
+    let h11 = t3 - t2;
+    (h00 * y0 + h10 * h * m0 + h01 * y1 + h11 * h * m1).clamp(0.0, 1.0)
+}
+
+/// Photoshop-style Levels transfer in DISPLAY space: display input `s` (`0..=1`)
+/// → display output. Input black/white points clip+stretch the range, `gamma`
+/// (the midtone slider, effective neutral `1.0`) reshapes it, and the output
+/// black/white compress into a target range. Neutral params are an exact identity.
+fn levels_transfer(s: f32, p: &LevelsParams) -> f32 {
+    let s = s.clamp(0.0, 1.0);
+    let bp = p.black_point.clamp(0.0, 1.0);
+    let wp = p.white_point.clamp(0.0, 1.0);
+    // Input remap: stretch [bp, wp] → [0, 1]; a degenerate span (wp ≤ bp) is a
+    // hard step at bp.
+    let span = wp - bp;
+    let t = if span > 1e-6 {
+        ((s - bp) / span).clamp(0.0, 1.0)
+    } else if s >= bp {
+        1.0
+    } else {
+        0.0
+    };
+    // Midtone gamma (PS: out = t^(1/γ); γ > 1 brightens). Neutral γ = 1.
+    let g = if p.gamma > 1e-3 {
+        t.powf(1.0 / p.gamma)
+    } else {
+        t
+    };
+    // Output remap: compress [0, 1] → [output_black, output_white].
+    let ob = p.output_black.clamp(0.0, 1.0);
+    let ow = p.output_white.clamp(0.0, 1.0);
+    ob + g * (ow - ob)
+}
+
+/// Per-channel display-space transfer LUTs for a [`CurvesParams`] — `[R, G, B]`,
+/// each a 256-entry display→display table baking the master (RGB) curve composed
+/// over the per-channel curve (`out = master(channel(in))`, Photoshop order).
+/// **The GPU-mandate deliverable's math**: the compositor's `adj_luts` binding
+/// uploads exactly these tables and the WGSL `ADJ_CURVES` case samples them, so
+/// CPU [`apply_curves`] and the GPU read the SAME function.
+#[must_use]
+pub fn curves_display_luts(p: &CurvesParams) -> [[f32; DISPLAY_LUT_N]; 3] {
+    let chans = [&p.points_r, &p.points_g, &p.points_b];
+    core::array::from_fn(|c| {
+        build_display_lut(|s| eval_curve(&p.points_rgb.points, eval_curve(&chans[c].points, s)))
+    })
+}
+
+/// Channel-uniform display-space transfer LUT for a [`LevelsParams`] (the same
+/// table applies to R/G/B). The GPU `ADJ_LEVELS` case samples this 256-entry
+/// table; CPU [`apply_levels`] samples the same one.
+#[must_use]
+pub fn levels_display_lut(p: &LevelsParams) -> [f32; DISPLAY_LUT_N] {
+    build_display_lut(|s| levels_transfer(s, p))
+}
+
+/// `true` for a Levels params that is an exact identity (so [`apply_levels`] can
+/// early-return without the per-pixel sRGB round-trip — the neutral hot path).
+fn levels_is_neutral(p: &LevelsParams) -> bool {
+    p.black_point == 0.0
+        && p.white_point == 1.0
+        && p.gamma == 1.0
+        && p.output_black == 0.0
+        && p.output_white == 1.0
+}
+
+/// Curves — per-channel tone curve in DISPLAY space. Builds the per-channel LUTs
+/// ([`curves_display_luts`], the same tables the GPU samples) once, then maps each
+/// pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA (alpha
+/// preserved). All-empty curves (the neutral default) early-return an exact
+/// identity (skipping the round-trip — the hot-path win, mirror of [`apply_hsb`]).
+pub(crate) fn apply_curves(p: &CurvesParams, acc: &mut [[f32; 4]]) {
+    if p.points_rgb.points.is_empty()
+        && p.points_r.points.is_empty()
+        && p.points_g.points.is_empty()
+        && p.points_b.points.is_empty()
+    {
+        return;
+    }
+    let luts = curves_display_luts(p);
+    for px in acc.iter_mut() {
+        for (ch, v) in px.iter_mut().take(3).enumerate() {
+            let s = linear_to_srgb_f32(*v);
+            *v = srgb_to_linear_f32(sample_display_lut(&luts[ch], s));
+        }
+    }
+}
+
+/// Levels — Photoshop-style black/gamma/white input remap + output remap in
+/// DISPLAY space. Builds the channel-uniform LUT ([`levels_display_lut`]) once,
+/// then maps each pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA
+/// (alpha preserved). Neutral params early-return an exact identity.
+pub(crate) fn apply_levels(p: &LevelsParams, acc: &mut [[f32; 4]]) {
+    if levels_is_neutral(p) {
+        return;
+    }
+    let lut = levels_display_lut(p);
+    for px in acc.iter_mut() {
+        for v in px.iter_mut().take(3) {
+            let s = linear_to_srgb_f32(*v);
+            *v = srgb_to_linear_f32(sample_display_lut(&lut, s));
+        }
+    }
+}
+
+/// Levels gamma ↔ slider: log-symmetric so the neutral γ=1 sits at the slider
+/// midpoint and the usable range is γ ∈ [0.1, 10].
+fn levels_gamma_to_slider(gamma: f32) -> f32 {
+    (gamma.max(1e-3).log10() / 2.0 + 0.5).clamp(0.0, 1.0)
+}
+
+/// Inverse of [`levels_gamma_to_slider`].
+fn levels_slider_to_gamma(s: f32) -> f32 {
+    10.0_f32.powf((s.clamp(0.0, 1.0) - 0.5) * 2.0)
 }
 
 /// Exposure — `acc` is straight LINEAR f32 RGBA (alpha preserved). A photographic
@@ -271,6 +507,16 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             vec![("Levels", (p.levels.clamp(2, 32) as f32 - 2.0) / 30.0)]
         }
         AdjustmentParams::Threshold(p) => vec![("Level", p.threshold as f32 / 255.0)],
+        // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
+        // black/gamma/white + output black/white. (Curves needs the bespoke
+        // curve canvas — handoff §4 — so it returns no generic sliders.)
+        AdjustmentParams::Levels(p) => vec![
+            ("Black", p.black_point.clamp(0.0, 1.0)),
+            ("Gamma", levels_gamma_to_slider(p.gamma)),
+            ("White", p.white_point.clamp(0.0, 1.0)),
+            ("Out Lo", p.output_black.clamp(0.0, 1.0)),
+            ("Out Hi", p.output_white.clamp(0.0, 1.0)),
+        ],
         _ => Vec::new(),
     }
 }
@@ -307,6 +553,24 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
         }
         AdjustmentParams::Threshold(p) if slot == 0 => {
             p.threshold = (v * 255.0).round().clamp(0.0, 255.0) as u8;
+        }
+        AdjustmentParams::Levels(p) => match slot {
+            0 => p.black_point = v,
+            1 => p.gamma = levels_slider_to_gamma(v),
+            2 => p.white_point = v,
+            3 => p.output_black = v,
+            4 => p.output_white = v,
+            _ => {}
+        },
+        // Curves' bespoke editor reuses the generic `AdjParam` slider widgets as
+        // its fixed-x master handles (one vertical slider per control point): a
+        // slot's value is that point's Y. (X is fixed in v1 — a free-2D point drag
+        // is the Coord-side `InteractiveState::CurvePoint` upgrade; see the W4
+        // bespoke handoff.) Per-channel R/G/B curves edit through `set_curve_point`.
+        AdjustmentParams::Curves(c) => {
+            if let Some(p) = c.points_rgb.points.get_mut(slot) {
+                p[1] = v;
+            }
         }
         _ => {}
     }

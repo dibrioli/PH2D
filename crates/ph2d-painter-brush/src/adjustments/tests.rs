@@ -422,6 +422,279 @@ fn fanout_slider_round_trips() {
     assert!((vr[0].1 - 0.9).abs() < 1e-6 && (vr[1].1 - 0.1).abs() < 1e-6);
 }
 
+// ── W4 bespoke — Levels (generic-slider path) ─────────────────────────
+
+fn levels(
+    black_point: f32,
+    gamma: f32,
+    white_point: f32,
+    output_black: f32,
+    output_white: f32,
+) -> AdjustmentParams {
+    AdjustmentParams::Levels(LevelsParams {
+        black_point,
+        gamma,
+        white_point,
+        output_black,
+        output_white,
+    })
+}
+
+#[test]
+fn levels_neutral_default_is_exact_identity() {
+    // The manual neutral Default (NOT the degenerate all-zero derive) is a no-op.
+    let d = LevelsParams::default();
+    assert_eq!((d.black_point, d.gamma, d.white_point), (0.0, 1.0, 1.0));
+    let px = [0.2, 0.4, 0.1, 0.55];
+    let out = run(
+        AdjustmentKind::Levels,
+        AdjustmentParams::Levels(LevelsParams::default()),
+        px,
+    );
+    assert_eq!(out, px, "neutral Levels is an exact identity");
+}
+
+#[test]
+fn levels_gamma_above_one_brightens_midtones() {
+    // A mid-gray pixel (≈ display 0.5) gets brighter under γ = 2 (PS: out = t^(1/γ)).
+    let mid = srgb_to_linear_f32(0.5);
+    let out = run(
+        AdjustmentKind::Levels,
+        levels(0.0, 2.0, 1.0, 0.0, 1.0),
+        [mid, mid, mid, 1.0],
+    );
+    assert!(out[0] > mid + 1e-3, "γ=2 lifts the midtone: {out:?}");
+    assert_eq!(out[3], 1.0, "alpha preserved");
+}
+
+#[test]
+fn levels_input_points_clip_to_black_and_white() {
+    // black_point=0.25 / white_point=0.75: anything ≤ 0.25 → black, ≥ 0.75 → white.
+    let p = levels(0.25, 1.0, 0.75, 0.0, 1.0);
+    let lo = run(
+        AdjustmentKind::Levels,
+        p.clone(),
+        [srgb_to_linear_f32(0.15); 4],
+    );
+    assert!(
+        lo[0] < 1e-3,
+        "below the input black point clips to black: {lo:?}"
+    );
+    let hi = run(AdjustmentKind::Levels, p, [srgb_to_linear_f32(0.85); 4]);
+    assert!(
+        hi[0] > 0.999,
+        "above the input white point clips to white: {hi:?}"
+    );
+}
+
+#[test]
+fn levels_output_range_compresses() {
+    // output_black=0.2 / output_white=0.8 maps display white → display 0.8.
+    let out = run(
+        AdjustmentKind::Levels,
+        levels(0.0, 1.0, 1.0, 0.2, 0.8),
+        [1.0, 1.0, 1.0, 0.4],
+    );
+    let want = srgb_to_linear_f32(0.8);
+    assert!(
+        (out[0] - want).abs() < 5e-3,
+        "white compresses toward output_white: {out:?} want {want}"
+    );
+    let out_lo = run(
+        AdjustmentKind::Levels,
+        levels(0.0, 1.0, 1.0, 0.2, 0.8),
+        [0.0, 0.0, 0.0, 1.0],
+    );
+    let want_lo = srgb_to_linear_f32(0.2);
+    assert!(
+        (out_lo[0] - want_lo).abs() < 5e-3,
+        "black lifts toward output_black: {out_lo:?}"
+    );
+}
+
+#[test]
+fn levels_slider_round_trips() {
+    // The 5 generic-slider slots (incl. the log-symmetric gamma) round-trip.
+    let mut p = AdjustmentParams::Levels(LevelsParams::default());
+    let want = [0.1_f32, 0.7, 0.9, 0.15, 0.85];
+    for (slot, &w) in want.iter().enumerate() {
+        set_adjustment_slider_param(&mut p, slot, w);
+    }
+    let read = adjustment_slider_params(&p);
+    assert_eq!(read.len(), 5, "Levels exposes 5 generic sliders");
+    for (got, w) in read.iter().map(|r| r.1).zip(want) {
+        assert!(
+            (got - w).abs() < 1e-5,
+            "levels slider round-trip {got} vs {w}"
+        );
+    }
+    // Slider 0.5 → neutral γ = 1.
+    let mut q = AdjustmentParams::Levels(LevelsParams::default());
+    set_adjustment_slider_param(&mut q, 1, 0.5);
+    if let AdjustmentParams::Levels(lp) = &q {
+        assert!((lp.gamma - 1.0).abs() < 1e-4, "slider 0.5 is neutral γ");
+    }
+}
+
+#[test]
+fn levels_display_lut_neutral_is_identity_ramp() {
+    // The exported GPU LUT for a neutral Levels is the display identity ramp.
+    let lut = levels_display_lut(&LevelsParams::default());
+    for (i, &v) in lut.iter().enumerate() {
+        let want = i as f32 / (DISPLAY_LUT_N - 1) as f32;
+        assert!((v - want).abs() < 1e-6, "neutral ramp at {i}");
+    }
+}
+
+#[test]
+fn levels_apply_tracks_exported_lut() {
+    // apply_levels samples the SAME table the GPU binds (curves/levels parity is
+    // "do CPU and GPU read the same LUT"). Replicate the in-kernel sample here.
+    let p = LevelsParams {
+        black_point: 0.1,
+        gamma: 1.6,
+        white_point: 0.9,
+        output_black: 0.05,
+        output_white: 0.95,
+    };
+    let lut = levels_display_lut(&p);
+    for &disp in &[0.0_f32, 0.2, 0.37, 0.5, 0.83, 1.0] {
+        let lin = srgb_to_linear_f32(disp);
+        let mut acc = [[lin, lin, lin, 1.0]];
+        apply_levels(&p, &mut acc);
+        let s = linear_to_srgb_f32(lin);
+        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let idx = t as usize;
+        let frac = t - idx as f32;
+        let a = lut[idx];
+        let b = lut[(idx + 1).min(DISPLAY_LUT_N - 1)];
+        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        assert!(
+            (acc[0][0] - expected).abs() < 1e-6,
+            "apply_levels uses the exported LUT at {disp}: {} vs {expected}",
+            acc[0][0]
+        );
+    }
+}
+
+// ── W4 bespoke — Curves (per-channel display-space tone curve) ─────────
+
+fn curves(rgb: Vec<[f32; 2]>) -> AdjustmentParams {
+    AdjustmentParams::Curves(CurvesParams {
+        points_rgb: ControlPoints { points: rgb },
+        points_r: ControlPoints::default(),
+        points_g: ControlPoints::default(),
+        points_b: ControlPoints::default(),
+    })
+}
+
+#[test]
+fn curves_empty_is_exact_identity() {
+    // The neutral default (all-empty point lists) is a bit-exact no-op.
+    let px = [0.3, 0.6, 0.1, 0.8];
+    let out = run(
+        AdjustmentKind::Curves,
+        AdjustmentParams::Curves(CurvesParams::default()),
+        px,
+    );
+    assert_eq!(out, px, "empty curves are an exact identity");
+}
+
+#[test]
+fn curves_diagonal_points_track_identity() {
+    // Five evenly-spaced points on the diagonal interpolate back to identity
+    // (the seed a fixed-x curve editor would create — must not perturb pixels).
+    let diag: Vec<[f32; 2]> = (0..5).map(|i| [i as f32 / 4.0, i as f32 / 4.0]).collect();
+    let p = curves(diag);
+    for i in 0..=32 {
+        let lin = srgb_to_linear_f32(i as f32 / 32.0);
+        let out = run(AdjustmentKind::Curves, p.clone(), [lin, lin, lin, 1.0]);
+        assert!(
+            (out[0] - lin).abs() < 3e-3,
+            "diagonal curve ≈ identity at display {}: {} vs {lin}",
+            i as f32 / 32.0,
+            out[0]
+        );
+    }
+}
+
+#[test]
+fn curves_lifting_midtone_brightens() {
+    // A control point above the diagonal at display 0.5 lifts the midtones.
+    let p = curves(vec![[0.0, 0.0], [0.5, 0.7], [1.0, 1.0]]);
+    let mid = srgb_to_linear_f32(0.5);
+    let out = run(AdjustmentKind::Curves, p, [mid, mid, mid, 0.6]);
+    assert!(out[0] > mid + 1e-2, "midtone lifted: {out:?}");
+    assert_eq!(out[3], 0.6, "alpha preserved");
+}
+
+#[test]
+fn curves_display_lut_is_monotone_and_bounded() {
+    // A steep S-curve must stay in [0,1] and non-decreasing (the monotone spline
+    // never overshoots — no out-of-gamut wiggle the naive cubic would render).
+    let p = CurvesParams {
+        points_rgb: ControlPoints {
+            points: vec![[0.0, 0.0], [0.2, 0.02], [0.8, 0.98], [1.0, 1.0]],
+        },
+        ..Default::default()
+    };
+    let luts = curves_display_luts(&p);
+    for lut in &luts {
+        let mut prev = -1.0_f32;
+        for (i, &v) in lut.iter().enumerate() {
+            assert!((0.0..=1.0).contains(&v), "LUT entry {i} out of [0,1]: {v}");
+            assert!(v >= prev - 1e-6, "LUT non-monotone at {i}: {v} < {prev}");
+            prev = v;
+        }
+    }
+}
+
+#[test]
+fn curves_per_channel_only_touches_that_channel() {
+    // A red-only curve shifts R but leaves G/B alone (per-channel independence).
+    let p = AdjustmentParams::Curves(CurvesParams {
+        points_r: ControlPoints {
+            points: vec![[0.0, 0.0], [0.5, 0.8], [1.0, 1.0]],
+        },
+        ..Default::default()
+    });
+    let v = srgb_to_linear_f32(0.5);
+    let out = run(AdjustmentKind::Curves, p, [v, v, v, 1.0]);
+    assert!(out[0] > v + 1e-2, "R lifted: {out:?}");
+    assert!(
+        (out[1] - v).abs() < 3e-3 && (out[2] - v).abs() < 3e-3,
+        "G/B unchanged"
+    );
+}
+
+#[test]
+fn curves_apply_tracks_exported_lut() {
+    // apply_curves samples the SAME per-channel tables the GPU binds.
+    let p = CurvesParams {
+        points_rgb: ControlPoints {
+            points: vec![[0.0, 0.05], [0.5, 0.4], [1.0, 0.95]],
+        },
+        ..Default::default()
+    };
+    let luts = curves_display_luts(&p);
+    for &disp in &[0.0_f32, 0.27, 0.5, 0.61, 1.0] {
+        let lin = srgb_to_linear_f32(disp);
+        let mut acc = [[lin, lin, lin, 1.0]];
+        apply_curves(&p, &mut acc);
+        let s = linear_to_srgb_f32(lin);
+        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let idx = t as usize;
+        let frac = t - idx as f32;
+        let a = luts[0][idx];
+        let b = luts[0][(idx + 1).min(DISPLAY_LUT_N - 1)];
+        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        assert!(
+            (acc[0][0] - expected).abs() < 1e-6,
+            "apply_curves uses the exported LUT at {disp}"
+        );
+    }
+}
+
 #[test]
 fn slider_params_round_trip() {
     // adjustment_slider_params is the inverse of set_adjustment_slider_param.

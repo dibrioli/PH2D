@@ -241,14 +241,31 @@ impl Default for ThresholdParams {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct InvertParams {}
 
-/// `Levels` — black/gamma/white in + output black/white, flat per §2.6.
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+/// `Levels` — black/gamma/white in + output black/white, flat per §2.6. All
+/// fields are `0..=1` except `gamma` (effective midtone power, neutral `1.0`).
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LevelsParams {
     pub black_point: f32,
     pub gamma: f32,
     pub white_point: f32,
     pub output_black: f32,
     pub output_white: f32,
+}
+
+impl Default for LevelsParams {
+    /// The NEUTRAL identity — a freshly-created Levels layer is a no-op until the
+    /// user drags a handle. (A derived all-zero default would be degenerate:
+    /// `white_point == black_point == 0` collapses the input range and `gamma == 0`
+    /// is not a valid power.)
+    fn default() -> Self {
+        Self {
+            black_point: 0.0,
+            gamma: 1.0,
+            white_point: 1.0,
+            output_black: 0.0,
+            output_white: 1.0,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -664,4 +681,7 @@ impl AdjustmentKind {
 mod compute;
 #[cfg(test)]
 mod tests;
-pub use compute::{adjustment_slider_params, apply_adjustment, set_adjustment_slider_param};
+pub use compute::{
+    DISPLAY_LUT_N, adjustment_slider_params, apply_adjustment, curves_display_luts,
+    levels_display_lut, set_adjustment_slider_param,
+};

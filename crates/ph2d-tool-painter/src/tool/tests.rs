@@ -1800,6 +1800,59 @@ fn set_adjustment_hsb_maps_sliders_to_params() {
 }
 
 #[test]
+fn set_curve_point_moves_the_targeted_point_and_arms_the_cache() {
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, ControlPoints};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::Curves).unwrap();
+    // Seed the master curve with 3 identity handles (what the bespoke editor
+    // creates) so there's a point to drag.
+    if let AdjustmentParams::Curves(c) = &mut t.layers.adjustment_mut(adj).unwrap().params {
+        c.points_rgb = ControlPoints {
+            points: vec![[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]],
+        };
+    }
+    t.adjustment_cache_pending = false; // clear the seed-time state
+    // Lift the middle handle (brighten midtones).
+    t.set_curve_point(adj, 0, 1, 0.5, 0.8);
+    let params = match &t.layers.get(adj).unwrap().kind {
+        LayerKind::Adjustment(a) => a.params.clone(),
+        _ => panic!("expected an adjustment layer"),
+    };
+    let AdjustmentParams::Curves(c) = params else {
+        panic!("params are not Curves");
+    };
+    let mid = c.points_rgb.points[1];
+    assert!(
+        (mid[0] - 0.5).abs() < 1e-6 && (mid[1] - 0.8).abs() < 1e-6,
+        "middle handle moved to (0.5, 0.8): {mid:?}"
+    );
+    assert!(
+        t.adjustment_cache_pending,
+        "a curve edit arms the cut-cache fast lane (like a slider drag)"
+    );
+    // Out-of-range channel / point index are no-ops (no panic).
+    t.set_curve_point(adj, 9, 0, 0.1, 0.1);
+    t.set_curve_point(adj, 0, 99, 0.1, 0.1);
+}
+
+#[test]
+fn set_curve_point_on_non_curves_layer_is_a_noop() {
+    use ph2d_painter_brush::adjustments::AdjustmentKind;
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [200, 0, 0, 255]), 2, 2);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::BrightnessContrast)
+        .unwrap();
+    t.adjustment_cache_pending = false;
+    t.set_curve_point(adj, 0, 0, 0.5, 0.5);
+    assert!(
+        !t.adjustment_cache_pending,
+        "set_curve_point on a non-Curves layer does nothing"
+    );
+}
+
+#[test]
 fn adjustment_param_drain_uses_cache_bit_identically() {
     // W5: a slider-drag drain routes through `composite_with_cache` (cut-point
     // cache). Prove the warm-restart preview is byte-identical to a cold full

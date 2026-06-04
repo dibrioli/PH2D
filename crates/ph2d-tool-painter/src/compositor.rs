@@ -18,9 +18,83 @@
 //! correctness gates and is what tests assert against.
 
 use crate::layers::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH};
-use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use ph2d_color::srgb::srgb_to_linear_byte;
 use ph2d_painter_brush::{BlendMode, apply_blend};
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
+
+// ─────────────────────── sRGB transfer LUTs (PERF) ───────────────────────
+//
+// The CPU compositor decodes every layer pixel sRGB→linear and encodes the
+// composite linear→sRGB. Both `ph2d_color` byte transfers are `powf`, and a
+// full-canvas adjustment recompose runs EVERY drag frame (no dirty-rect: a
+// global adjustment changes the whole canvas). Measured 1024² = ~80 ms/frame,
+// ~80 ns/px = 6 powf/px (3 decode + 3 encode) — the slider-drag FPS sink Enio
+// hit. Both are 1-D transfers, so a per-process LUT removes the per-pixel powf:
+//   - decode: input is `u8` (256 values) → a 256-entry table is BIT-IDENTICAL
+//     (gate `decode_lut_is_bit_exact_with_srgb_to_linear_byte`).
+//   - encode: 255-threshold table + `partition_point` returns the SAME byte as
+//     `linear_to_srgb_byte`'s round-to-nearest (gate
+//     `encode_via_threshold_matches_linear_to_srgb_byte`), no per-pixel powf.
+
+/// sRGB→linear decode LUT, `u8` → linear f32. Each entry IS `srgb_to_linear_byte`
+/// so the decode stays bit-exact.
+static SRGB_DECODE_LUT: LazyLock<[f32; 256]> =
+    LazyLock::new(|| core::array::from_fn(|i| srgb_to_linear_byte(i as u8)));
+
+/// Linear thresholds of the 255 byte-rounding boundaries: `THRESH[b]` is the
+/// smallest linear value whose `linear_to_srgb_byte` is `> b` (i.e. the b↔b+1
+/// step). `partition_point(|t| t <= v)` then counts how many boundaries `v` has
+/// crossed = the exact byte. The thresholds are binary-searched against
+/// `linear_to_srgb_byte` ITSELF (not the analytic `srgb_to_linear` inverse) so
+/// the result is BIT-for-BIT identical to the powf path — a `powf(2.4)`-derived
+/// threshold rounds differently within ~1 ULP of a boundary (gate
+/// `encode_via_threshold_matches_linear_to_srgb_byte`).
+static SRGB_ENCODE_THRESH: LazyLock<[f32; 255]> = LazyLock::new(|| {
+    use ph2d_color::srgb::linear_to_srgb_byte;
+    core::array::from_fn(|b| {
+        let target = b as u8 + 1; // first byte ABOVE this boundary
+        // Bisect [0,1] for the step edge; 40 iters ≫ f32 precision over [0,1].
+        let (mut lo, mut hi) = (0.0f32, 1.0f32);
+        for _ in 0..40 {
+            let mid = 0.5 * (lo + hi);
+            if linear_to_srgb_byte(mid) >= target {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        hi
+    })
+});
+
+/// Coarse linear→byte guess LUT (4096 cells), `ENCODE_COARSE[round(v*4095)]`.
+/// The cell width (1/4095) is below the tightest byte-boundary spacing, so the
+/// guess is within ±1 of the exact byte everywhere; [`encode_byte`] refines it
+/// against [`SRGB_ENCODE_THRESH`]. This makes encode a branch-light index +
+/// (usually zero) correction instead of an 8-step binary search per channel.
+static SRGB_ENCODE_COARSE: LazyLock<[u8; 4096]> = LazyLock::new(|| {
+    use ph2d_color::srgb::linear_to_srgb_byte;
+    core::array::from_fn(|i| linear_to_srgb_byte(i as f32 / 4095.0))
+});
+
+/// Encode one straight-linear channel to an 8-bit sRGB byte — byte-exact with
+/// `ph2d_color::srgb::linear_to_srgb_byte`, no per-pixel `powf` and no binary
+/// search. Tables passed by ref so the caller forces each `LazyLock` once per
+/// composite. `thresh[b]` is the b↔b+1 step edge; the coarse guess is corrected
+/// ±1 (the `while`s run at most once in practice; the bound makes it robust).
+#[inline]
+fn encode_byte(thresh: &[f32; 255], coarse: &[u8; 4096], v: f32) -> u8 {
+    let v = v.clamp(0.0, 1.0);
+    let mut b = coarse[(v * 4095.0) as usize] as usize;
+    while b < 255 && v >= thresh[b] {
+        b += 1;
+    }
+    while b > 0 && v < thresh[b - 1] {
+        b -= 1;
+    }
+    b as u8
+}
 
 /// RGBA8 (straight, sRGB-encoded) pixels for one layer — canvas-sized.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,10 +150,11 @@ impl LayerPixelSource for MapPixelSource {
 #[inline]
 fn decode(rgba8: &[u8], idx: usize) -> [f32; 4] {
     let b = idx * 4;
+    let lut = &*SRGB_DECODE_LUT; // hoist the LazyLock force out of the channels
     [
-        srgb_to_linear_byte(rgba8[b]),
-        srgb_to_linear_byte(rgba8[b + 1]),
-        srgb_to_linear_byte(rgba8[b + 2]),
+        lut[rgba8[b] as usize],
+        lut[rgba8[b + 1] as usize],
+        lut[rgba8[b + 2] as usize],
         rgba8[b + 3] as f32 / 255.0,
     ]
 }
@@ -196,11 +271,15 @@ pub fn composite_with_cache(
 }
 
 fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
+    // Force each LazyLock once per composite, not per pixel.
+    let thresh = &*SRGB_ENCODE_THRESH;
+    let coarse = &*SRGB_ENCODE_COARSE;
     let mut out = vec![0u8; acc.len() * 4];
     for (px, lin) in acc.iter().enumerate() {
-        out[px * 4] = linear_to_srgb_byte(lin[0]);
-        out[px * 4 + 1] = linear_to_srgb_byte(lin[1]);
-        out[px * 4 + 2] = linear_to_srgb_byte(lin[2]);
+        out[px * 4] = encode_byte(thresh, coarse, lin[0]);
+        out[px * 4 + 1] = encode_byte(thresh, coarse, lin[1]);
+        out[px * 4 + 2] = encode_byte(thresh, coarse, lin[2]);
+        // Alpha is straight coverage — no transfer function (round, not LUT).
         out[px * 4 + 3] = (lin[3].clamp(0.0, 1.0) * 255.0).round() as u8;
     }
     out
@@ -512,6 +591,60 @@ fn blend_window(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── sRGB transfer LUTs (PERF, byte/bit-exact) ─────────────────────────
+
+    #[test]
+    fn decode_lut_is_bit_exact_with_srgb_to_linear_byte() {
+        // The decode LUT must be the SAME bits as the powf path for every byte
+        // (the GPU compositor's `.to_bits()` gate decodes identically).
+        for b in 0u16..=255 {
+            let b = b as u8;
+            assert_eq!(
+                SRGB_DECODE_LUT[b as usize].to_bits(),
+                srgb_to_linear_byte(b).to_bits(),
+                "decode LUT drifted at byte {b}"
+            );
+        }
+    }
+
+    #[test]
+    fn encode_via_threshold_matches_linear_to_srgb_byte() {
+        use ph2d_color::srgb::linear_to_srgb_byte;
+        // The LUT encode must produce the SAME byte as the powf round-to-nearest
+        // across a dense linear sweep (real pixel data) — byte-exact, no powf.
+        let thresh = &*SRGB_ENCODE_THRESH;
+        let coarse = &*SRGB_ENCODE_COARSE;
+        for i in 0..=300_000u32 {
+            let v = i as f32 / 300_000.0;
+            assert_eq!(
+                encode_byte(thresh, coarse, v),
+                linear_to_srgb_byte(v),
+                "encode mismatch at v={v}"
+            );
+        }
+        // Endpoints + out-of-range clamp.
+        assert_eq!(encode_byte(thresh, coarse, 0.0), linear_to_srgb_byte(0.0));
+        assert_eq!(encode_byte(thresh, coarse, 1.0), linear_to_srgb_byte(1.0));
+        assert_eq!(encode_byte(thresh, coarse, -1.0), 0);
+        assert_eq!(encode_byte(thresh, coarse, 2.0), 255);
+    }
+
+    #[test]
+    fn decode_then_encode_round_trips_every_byte() {
+        // A pixel that is only decoded + re-encoded (no blend) must survive
+        // unchanged for every byte — proves the two LUTs are mutual inverses.
+        let thresh = &*SRGB_ENCODE_THRESH;
+        let coarse = &*SRGB_ENCODE_COARSE;
+        for b in 0u16..=255 {
+            let b = b as u8;
+            assert_eq!(
+                encode_byte(thresh, coarse, SRGB_DECODE_LUT[b as usize]),
+                b,
+                "round-trip byte {b}"
+            );
+        }
+    }
 
     fn solid(w: u32, h: u32, rgba: [u8; 4]) -> LayerImage {
         LayerImage {

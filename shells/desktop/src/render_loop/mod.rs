@@ -1122,6 +1122,32 @@ impl crate::App {
                 &mut self.vector_undo_stack,
                 &mut self.vector_redo_stack,
             );
+            // Drain the right-click point-type menu choice (chrome parked a 0..=3
+            // index in `pending_vector_point_type`) → apply EAGER to the selected
+            // vertices via the Direct tool (re-derives tangents on the spot).
+            if let Some(pt_idx) = hero.take_pending_vector_point_type() {
+                let kind = match pt_idx {
+                    0 => ph2d_vector_doc::VertexKind::Free,
+                    1 => ph2d_vector_doc::VertexKind::Mirror,
+                    2 => ph2d_vector_doc::VertexKind::Aligned,
+                    _ => ph2d_vector_doc::VertexKind::Auto,
+                };
+                if let Some(direct) = tools.active_mut().and_then(|t| {
+                    t.as_any_mut()
+                        .downcast_mut::<ph2d_tool_vector_direct::VectorDirectTool>()
+                }) {
+                    crate::input_dispatch::vector_undo::checkpoint(
+                        &mut self.vector_undo_stack,
+                        &mut self.vector_redo_stack,
+                        &self.committed_vector_pen_paths,
+                    );
+                    direct.set_selected_vertex_kind(
+                        &mut self.committed_vector_pen_paths,
+                        &self.vector_selection,
+                        kind,
+                    );
+                }
+            }
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo
             // AND the multi-selection extras + global gizmo (the latter

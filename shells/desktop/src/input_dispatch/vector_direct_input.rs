@@ -216,6 +216,55 @@ impl App {
         changed
     }
 
+    /// Secondary (right-button) Down while Direct is active: if a vertex is under
+    /// the cursor (rest-frame hit-test, placement-aware), select it and open the
+    /// point-type context menu at the cursor. The chrome handler parks the choice
+    /// (`pending_vector_point_type`); `render_loop` drains it into
+    /// `set_selected_vertex_kind`. Returns `true` (consumes) iff the menu opened.
+    pub(crate) fn try_vector_direct_open_point_menu(&mut self, px: f32, py: f32) -> bool {
+        let Some(world) = self.vector_direct_world(px, py) else {
+            return false;
+        };
+        let tol = DEFAULT_GRAB_TOLERANCE_PX / self.vector_direct_camera_scale();
+        let Some(gfx) = self.gfx.as_ref() else {
+            return false;
+        };
+        let inv = crate::render_loop::vector_scene::inverse_placements(
+            &gfx.sim,
+            &self.vector_scene_entities,
+        );
+        // Topmost vertex under the cursor — each shape hit-tested in its own rest
+        // frame (gizmo-moved shapes invert via `inv`, mirror of `begin_drag`).
+        let mut hit: Option<(usize, ph2d_vector_doc::VertexId)> = None;
+        for (idx, asset) in self.committed_vector_pen_paths.iter().enumerate().rev() {
+            let local = inv.get(idx).map_or(world, |&m| {
+                Vec2::new(
+                    m[0] * world.x + m[2] * world.y + m[4],
+                    m[1] * world.x + m[3] * world.y + m[5],
+                )
+            });
+            if let Some(vid) = asset.network.nearest_vertex(local, tol) {
+                hit = Some((idx, vid));
+                break;
+            }
+        }
+        let Some((idx, vid)) = hit else {
+            return false;
+        };
+        self.vector_selection.select_only_vertex(idx, vid);
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            hero.store
+                .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
+                    x: px,
+                    y: py,
+                    kind: ph2d_editor::interaction::ContextMenuKind::VectorPointType,
+                });
+        }
+        true
+    }
+
     /// The whole viewport is Direct's canvas — guard the canvas-pick / sprite
     /// rubber-band fall-through (sibling of `vector_pencil_active_consume_…`).
     pub(crate) fn vector_direct_active_consume_canvas_click(&self) -> bool {

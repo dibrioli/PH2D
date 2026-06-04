@@ -181,12 +181,13 @@ impl VectorDirectTool {
 
     /// Set the [`VertexKind`] of every selected vertex — Corner ([`VertexKind::Free`])
     /// / Smooth ([`VertexKind::Mirror`]) / Asymmetric ([`VertexKind::Aligned`]) /
-    /// Auto. This is the action behind the right-click point-type menu (and the
-    /// Alt-free keyboard stopgap) — it picks the continuity intent that the NEXT
-    /// tangent drag honours (mirror / collinear / independent). Kind is a hint,
-    /// not a logged op (FROZEN `VectorOp` set), so it is mutated directly; the
-    /// snapshot undo captures it with the asset. Returns `true` if any selected
-    /// vertex was changed.
+    /// Auto — and re-derive its incident tangents IMMEDIATELY (eager) so the curve
+    /// reshapes the moment the type is chosen, not on the next handle drag (Enio).
+    /// Smooth → collinear + equal magnitude; Asymmetric → collinear, keep each
+    /// length; Auto → collinear along the prev→next chord with auto length; Corner
+    /// → handles left independent. Kind itself is a hint (not a logged op); the
+    /// tangent re-derivation logs `MoveTangent` and the snapshot undo captures it.
+    /// Returns `true` if any selected vertex was changed.
     pub fn set_selected_vertex_kind(
         &self,
         committed: &mut [Ph2dVectorAsset],
@@ -195,12 +196,16 @@ impl VectorDirectTool {
     ) -> bool {
         let mut changed = false;
         for &(asset_idx, vid) in &selection.vertices {
-            if let Some(asset) = committed.get_mut(asset_idx)
-                && let Some(v) = asset.network.vertices.iter_mut().find(|v| v.id == vid)
-            {
-                v.kind = kind;
-                changed = true;
-            }
+            let Some(asset) = committed.get_mut(asset_idx) else {
+                continue;
+            };
+            let Some(v) = asset.network.vertices.iter_mut().find(|v| v.id == vid) else {
+                continue;
+            };
+            v.kind = kind;
+            // `v`'s borrow ends here → re-derive the tangents eagerly.
+            apply_kind_eager(asset, vid, kind);
+            changed = true;
         }
         changed
     }
@@ -323,6 +328,115 @@ fn current_tangent(asset: &Ph2dVectorAsset, seg: SegmentId, side: TangentSide) -
             TangentSide::InAtEnd => s.in_at_end,
         })
         .unwrap_or(Vec2::ZERO)
+}
+
+/// Vertex position (network-local rest pose) by id.
+fn vpos(asset: &Ph2dVectorAsset, vid: VertexId) -> Option<Vec2> {
+    asset
+        .network
+        .vertices
+        .iter()
+        .find(|v| v.id == vid)
+        .map(|v| v.pos)
+}
+
+/// Endpoint distance of a segment (for Auto handle lengths).
+fn seg_chord_len(asset: &Ph2dVectorAsset, seg: SegmentId) -> f32 {
+    asset
+        .network
+        .segments
+        .iter()
+        .find(|s| s.id == seg)
+        .and_then(|s| Some((vpos(asset, s.start)?, vpos(asset, s.end)?)))
+        .map(|(a, b)| (b - a).length())
+        .unwrap_or(0.0)
+}
+
+/// Unit "outgoing" axis from the current handles: prefer the longer non-zero one
+/// (the in-handle points backward, so its axis is negated). `None` if both ~zero.
+fn handle_axis(out_t: Vec2, in_t: Vec2) -> Option<Vec2> {
+    if out_t.length() > 1e-4 {
+        Some(out_t.normalize())
+    } else if in_t.length() > 1e-4 {
+        Some(-in_t.normalize())
+    } else {
+        None
+    }
+}
+
+/// Unit axis along the prev→next chord through `vid` (Auto + degenerate fallback).
+fn chord_axis(
+    asset: &Ph2dVectorAsset,
+    out_seg: SegmentId,
+    in_seg: SegmentId,
+) -> Option<Vec2> {
+    let next = asset.network.segments.iter().find(|s| s.id == out_seg)?.end;
+    let prev = asset.network.segments.iter().find(|s| s.id == in_seg)?.start;
+    let d = vpos(asset, next)? - vpos(asset, prev)?;
+    (d.length() > 1e-4).then(|| d.normalize())
+}
+
+/// Re-derive `vid`'s incident tangents to satisfy `kind` IMMEDIATELY (eager) —
+/// so picking Smooth/Asymmetric/Auto reshapes the curve at once, not on the next
+/// handle drag. Only the canonical 2-handle case (one out segment + one in
+/// segment) re-derives; Free leaves the handles independent; endpoints/unusual
+/// topology are left as-is. Logged via `MoveTangent` (replay-safe).
+fn apply_kind_eager(asset: &mut Ph2dVectorAsset, vid: VertexId, kind: VertexKind) {
+    if matches!(kind, VertexKind::Free) {
+        return;
+    }
+    let mut out: Option<(SegmentId, Vec2)> = None;
+    let mut inc: Option<(SegmentId, Vec2)> = None;
+    for s in &asset.network.segments {
+        if s.start == vid && out.is_none() {
+            out = Some((s.id, s.out_at_start));
+        } else if s.end == vid && inc.is_none() {
+            inc = Some((s.id, s.in_at_end));
+        }
+    }
+    let (Some((out_seg, out_t)), Some((in_seg, in_t))) = (out, inc) else {
+        return;
+    };
+
+    // Mirror/Aligned preserve the user's current tangent line; Auto uses the
+    // prev→next chord (auto-smooth).
+    let axis = match kind {
+        VertexKind::Auto => chord_axis(asset, out_seg, in_seg),
+        _ => handle_axis(out_t, in_t).or_else(|| chord_axis(asset, out_seg, in_seg)),
+    };
+    let Some(axis) = axis else {
+        return;
+    };
+
+    let (out_new, in_new) = match kind {
+        VertexKind::Mirror => {
+            let mag = (out_t.length() + in_t.length()) * 0.5;
+            (axis * mag, -axis * mag)
+        }
+        VertexKind::Aligned => (axis * out_t.length(), -axis * in_t.length()),
+        VertexKind::Auto => {
+            let out_len = seg_chord_len(asset, out_seg) / 3.0;
+            let in_len = seg_chord_len(asset, in_seg) / 3.0;
+            (axis * out_len, -axis * in_len)
+        }
+        VertexKind::Free => return,
+    };
+    let _ = asset.edit_log.push_and_apply(
+        VectorOp::MoveTangent {
+            seg: out_seg,
+            which: TangentSide::OutAtStart,
+            new_pos: out_new,
+        },
+        &mut asset.network,
+    );
+    let _ = asset.edit_log.push_and_apply(
+        VectorOp::MoveTangent {
+            seg: in_seg,
+            which: TangentSide::InAtEnd,
+            new_pos: in_new,
+        },
+        &mut asset.network,
+    );
 }
 
 /// The other tangent handle incident to `anchor_vid` (a different segment
@@ -500,6 +614,51 @@ mod tests {
             .find(|v| v.id == 1)
             .unwrap();
         assert_eq!(v1.kind, VertexKind::Mirror);
+    }
+
+    #[test]
+    fn set_kind_smooth_re_derives_tangents_eagerly() {
+        // Asymmetric, non-collinear handles → picking Smooth collinearizes +
+        // equalizes them IMMEDIATELY (no drag needed).
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
+        net.vertices.push(Vertex::new(1, Vec2::new(50.0, 0.0), VertexKind::Free));
+        net.vertices.push(Vertex::auto(2, Vec2::new(100.0, 0.0)));
+        let mut s0 = Segment::straight(0, 0, 1);
+        s0.in_at_end = Vec2::new(-5.0, 5.0); // not collinear with s1.out
+        let mut s1 = Segment::straight(1, 1, 2);
+        s1.out_at_start = Vec2::new(10.0, 0.0);
+        net.segments.push(s0);
+        net.segments.push(s1);
+        let mut scene = vec![Ph2dVectorAsset::from_network(net, StyleTable::default())];
+        let mut sel = VectorSelection::new();
+        sel.select_only_vertex(0, 1);
+        let t = VectorDirectTool::new();
+        t.set_selected_vertex_kind(&mut scene, &sel, VertexKind::Mirror);
+        let out = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 1)
+            .unwrap()
+            .out_at_start;
+        let inn = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap()
+            .in_at_end;
+        assert!(
+            (out.length() - inn.length()).abs() < 1e-3,
+            "equal magnitude: {} vs {}",
+            out.length(),
+            inn.length()
+        );
+        assert!(
+            (out.normalize() + inn.normalize()).length() < 1e-3,
+            "collinear-opposite"
+        );
     }
 
     #[test]

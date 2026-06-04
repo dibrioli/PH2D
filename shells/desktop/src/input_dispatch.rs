@@ -402,6 +402,13 @@ impl App {
             {
                 return;
             }
+            // Vector Direct-Select: right-click a vertex → open the point-type
+            // context menu (Corner/Smooth/Asymmetric/Auto). No-op off a vertex.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.try_vector_direct_open_point_menu(evt.x, evt.y) =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
                 // End any erase drag (no-op when not erasing).
                 self.end_protect_paint();

@@ -38,6 +38,9 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 ph2d-node-motion-grid = { path = "../../crates/ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../../crates/ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
+# Vector geometry-graph smoke (W3 T3.1): the `vector.source` op cooked by
+# `render_loop::vector_graph_bridge`.
+ph2d-node-vector-source = { path = "../../crates/ph2d-node-vector-source" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built
@@ -169,6 +172,9 @@ ph2d-panel-painter-layers = { path = "../../crates/ph2d-panel-painter-layers", o
 # active. Gated by `panel-vector-inspector`. Shell publishes the current fill
 # color via `ph2d_panel_vector_inspector::set_current_fill` (vector_inspector_bridge.rs).
 ph2d-panel-vector-inspector = { path = "../../crates/ph2d-panel-vector-inspector", optional = true }
+# Vector Geometry-Graph panel (W3 T3.1): 8 param sliders publishing to the
+# `current_graph_params` bus that `vector_graph_bridge` cooks + renders.
+ph2d-panel-vector-graph = { path = "../../crates/ph2d-panel-vector-graph", optional = true }
 # ADR-0029 Phase C.2: direct dep on the panel-hierarchy crate so the
 # host can call `sync_from_hierarchy` / `clear_live_hierarchy` /
 # `set_live_component_count` and read the panel-owned live entries
@@ -249,6 +255,7 @@ default = [
     "panel-painter-sidebar",
     "panel-painter-layers",
     "panel-vector-inspector",
+    "panel-vector-graph",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -266,4 +273,5 @@ panel-upscale        = ["ph2d-panel-registry-init/panel-upscale", "dep:ph2d-pane
 panel-painter-sidebar = ["ph2d-panel-registry-init/panel-painter-sidebar", "dep:ph2d-panel-painter-sidebar"]
 panel-painter-layers = ["ph2d-panel-registry-init/panel-painter-layers", "dep:ph2d-panel-painter-layers"]
 panel-vector-inspector = ["ph2d-panel-registry-init/panel-vector-inspector", "dep:ph2d-panel-vector-inspector"]
+panel-vector-graph = ["ph2d-panel-registry-init/panel-vector-graph", "dep:ph2d-panel-vector-graph"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]

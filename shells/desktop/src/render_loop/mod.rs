@@ -35,6 +35,7 @@ mod present;
 mod sim_extract;
 mod snapshots;
 mod upscale_bridge;
+mod vector_graph_bridge;
 mod vector_inspector_bridge;
 mod vector_pen_bridge;
 mod vector_pencil_bridge;
@@ -1111,6 +1112,14 @@ impl crate::App {
                 &self.vector_selection,
                 vector_scene,
             );
+            // Vector Geometry-Graph smoke (W3 T3.1): show the param-slider panel
+            // under PH2D_VECTOR_GRAPH=1, then cook `vector.source` from those
+            // sliders and draw the network into the shared scene — the node-graph
+            // PRODUCER path the W2 tool-direct render doesn't cover. Off → no-op
+            // (normal app untouched, mirror of `motion_smoke`).
+            let vgraph_visible = vector_graph_bridge::enabled();
+            hero.panel_visibility.insert("vector_graph", vgraph_visible);
+            vector_graph_bridge::dispatch(vgraph_visible, camera, window_size, vector_scene);
             // Vector Inspector (W2.T2.4): panel visibility + fill-swatch picker
             // read-back + publish (`hero`/`tools` still in scope from above).
             vector_inspector_bridge::dispatch(

@@ -253,6 +253,9 @@ name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "as-raw-xcb-connection"
@@ -3345,6 +3348,7 @@ checksum = "7564e90fe3c0d5771e1f0bc95322b21baaeaa0d9213fa6a0b61c99f8b17b3bfb"
 dependencies = [
  "arrayvec",
  "euclid",
+ "serde",
  "smallvec",
 ]
 
@@ -3446,6 +3450,19 @@ name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
+
+[[package]]
+name = "linesweeper"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8421b276e96af0ace5f3d8d2d165d0dea07fe764d2fe94ec06bb1acaf8a1e759"
+dependencies = [
+ "arrayvec",
+ "kurbo 0.13.0",
+ "polycool",
+ "rustc-hash 2.1.2",
+ "smallvec",
+]
 
 [[package]]
 name = "linux-raw-sys"
@@ -4972,12 +4989,26 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-node-sync",
+ "ph2d-node-vector-boolean",
  "ph2d-node-vector-source",
 ]
 
 [[package]]
 name = "ph2d-node-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-node-vector-boolean"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "kurbo 0.13.0",
+ "linesweeper",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
 
 [[package]]
 name = "ph2d-node-vector-source"
@@ -5737,6 +5768,15 @@ name = "pollster"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3"
+
+[[package]]
+name = "polycool"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50596ddc09eb5ad5f75cacd40209568e66df71baf86e1499a0e99c4cff12a5a6"
+dependencies = [
+ "arrayvec",
+]
 
 [[package]]
 name = "portable-atomic"

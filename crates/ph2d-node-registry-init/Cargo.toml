@@ -20,6 +20,7 @@ ph2d-node-debug-wave = { path = "../ph2d-node-debug-wave" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
+ph2d-node-vector-boolean = { path = "../ph2d-node-vector-boolean" }
 ph2d-node-vector-source = { path = "../ph2d-node-vector-source" }
 # <ph2d-node-sync:end>
 

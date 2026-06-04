@@ -40,6 +40,7 @@ const CURVE_CANVAS_H: f32 = 132.0; // LITERAL-PX-OK: bespoke curve-editor canvas
 const CURVE_HANDLE_R: f32 = 4.0; // LITERAL-PX-OK: control-point handle radius
 const CURVE_GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a handle's pointer grab box
 const CURVE_STROKE_W: f32 = 1.5; // LITERAL-PX-OK: plotted-curve stroke width
+const CURVE_GRID_W: f32 = 1.0; // LITERAL-PX-OK: grid / identity-diagonal stroke width
 const CURVE_BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/− point-button width
 const MAX_CURVE_POINTS: usize = 8; // contract cap (≤8 control points per channel)
 
@@ -204,6 +205,35 @@ fn paint_curve_editor(
         Radius::Sm.px(),
         1.0, // LITERAL-PX-OK: 1px hairline border
         resolve(ColorToken::TextDisabled, theme),
+    );
+    // Quarter grid + the identity diagonal (so a curve's deviation from no-op is
+    // readable) — the canonical curve-editor backdrop, behind the curve.
+    let grid = resolve(ColorToken::GridLine, theme);
+    for i in 1..4 {
+        let f = i as f32 / 4.0;
+        let gx = canvas.x + f * canvas.w;
+        let gy = canvas.y + f * canvas.h;
+        stroke_polyline(
+            ctx.scene,
+            &[(gx, canvas.y), (gx, canvas.y + canvas.h)],
+            CURVE_GRID_W,
+            grid,
+        );
+        stroke_polyline(
+            ctx.scene,
+            &[(canvas.x, gy), (canvas.x + canvas.w, gy)],
+            CURVE_GRID_W,
+            grid,
+        );
+    }
+    stroke_polyline(
+        ctx.scene,
+        &[
+            (canvas.x, canvas.y + canvas.h), // bottom-left (in 0 → out 0)
+            (canvas.x + canvas.w, canvas.y), // top-right (in 1 → out 1)
+        ],
+        CURVE_GRID_W,
+        resolve(ColorToken::GridAxis, theme),
     );
     let pts = match channel {
         1 => &c.points_r,

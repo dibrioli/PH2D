@@ -313,7 +313,10 @@ fn gpu_adjustment_matches_cpu_reference_each_kind() {
     let got = comp.read_output(&gpu).expect("readback");
     let want = cpu_composite(&ops, &prov, w, h, region);
     let d = max_byte_diff(&got, &want);
-    assert!(d <= 4, "partial-opacity adjustment parity: max byte diff {d}");
+    assert!(
+        d <= 4,
+        "partial-opacity adjustment parity: max byte diff {d}"
+    );
 }
 
 #[test]

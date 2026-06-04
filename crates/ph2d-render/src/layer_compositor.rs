@@ -1343,9 +1343,11 @@ mod tests {
         assert!(LAYER_COMPOSITE_WGSL.contains("const OP_LAYER: u32 = 0u;"));
         assert!(LAYER_COMPOSITE_WGSL.contains("const OP_PUSH_GROUP: u32 = 1u;"));
         assert!(LAYER_COMPOSITE_WGSL.contains("const OP_POP_GROUP: u32 = 2u;"));
+        assert!(LAYER_COMPOSITE_WGSL.contains("const OP_ADJUSTMENT: u32 = 3u;"));
         assert_eq!(OP_LAYER, 0);
         assert_eq!(OP_PUSH_GROUP, 1);
         assert_eq!(OP_POP_GROUP, 2);
+        assert_eq!(OP_ADJUSTMENT, 3);
     }
 
     /// Pin every numeric literal the GPU blend math shares with the Rust
@@ -1397,6 +1399,51 @@ mod tests {
                 parsed.to_bits(),
                 expected.to_bits(),
                 "blend literal drift: WGSL `{token}` is 0x{:08x}, Rust `{expected}` is 0x{:08x}",
+                parsed.to_bits(),
+                expected.to_bits(),
+            );
+        }
+    }
+
+    /// Pin the W4 adjustment literals (OKLab matrices + B/C pivot) bit-identical
+    /// to the Rust source they mirror (`ph2d_color::oklab` + `ph2d_painter_brush
+    /// ::adjustments`). Mirror of the blend-mode gate: a future edit that re-
+    /// introduces the full-precision OKLab spec coefficients (which drift the
+    /// GPU↔CPU adjustment parity past the ±4-byte bound — see the GPU gate
+    /// `gpu_adjustment_matches_cpu_reference_each_kind`) is caught here, on the
+    /// no-GPU CI lane.
+    #[test]
+    fn shader_adjustment_coefficients_bit_identical_with_rust() {
+        let pairs: &[(&str, f32)] = &[
+            // B/C perceptual mid-gray pivot (apply_brightness_contrast PIVOT).
+            ("0.21404114", 0.214_041_14),
+            // OKLab from_linear (ph2d_color::oklab::OklabColor::from_linear).
+            ("0.41222147", 0.412_221_47),
+            ("0.5363325", 0.536_332_5),
+            ("0.2119035", 0.211_903_5),
+            ("0.6299787", 0.629_978_7),
+            ("0.21045426", 0.210_454_26),
+            ("1.9779985", 1.977_998_5),
+            ("0.80867577", 0.808_675_77),
+            // OKLab to_linear (OklabColor::to_linear).
+            ("0.39633778", 0.396_337_78),
+            ("1.2914855", 1.291_485_5),
+            ("4.0767417", 4.076_741_7),
+            ("2.6097574", 2.609_757_4),
+            ("1.7076147", 1.707_614_7),
+        ];
+        for (lit, expected) in pairs {
+            assert!(
+                LAYER_COMPOSITE_WGSL.contains(lit),
+                "adjustment literal `{lit}` not found verbatim in layer_composite.wgsl"
+            );
+            let parsed: f32 = lit
+                .parse()
+                .unwrap_or_else(|e| panic!("adjustment literal `{lit}` failed f32 parse: {e:?}"));
+            assert_eq!(
+                parsed.to_bits(),
+                expected.to_bits(),
+                "adjustment literal drift: WGSL `{lit}` is 0x{:08x}, Rust is 0x{:08x}",
                 parsed.to_bits(),
                 expected.to_bits(),
             );

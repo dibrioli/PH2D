@@ -45,6 +45,9 @@ pub mod layer_compositor;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;
+/// Straight → premultiplied GPU blit bridging the layer compositor's straight
+/// output into the premultiplied Painter preview slot (ADR-0045 Phase 3).
+pub mod preview_premul;
 pub mod registry;
 pub mod renderer;
 pub mod sprite;
@@ -86,6 +89,7 @@ pub use pipeline::SpritePipeline;
 pub use premul::{
     AlphaMode, SpriteImage, premultiply_rgba8, premultiply_rgba8_in_linear, unpremultiply_rgba8,
 };
+pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{QuadVertex, RenderInstance, Sprite, SpriteSource};

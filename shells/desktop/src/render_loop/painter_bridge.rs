@@ -49,6 +49,7 @@
 //! texture in its place. So the composite (incl. base-layer opacity) IS the
 //! sprite, in-place, through the same sprite shader as Apply.
 
+use super::painter_gpu_preview::{self, PainterGpuPreview};
 use crate::app_state::{PainterPreview, PainterPreviewGpu};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
@@ -124,6 +125,9 @@ pub(super) fn dispatch(
     last_painter_pushed_entity: &mut Option<u64>,
     painter_preview: &mut Option<PainterPreview>,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    // GPU live-preview session (compositor + premul blit). `None` until the
+    // first GPU-representable frame lazily builds it (ADR-0045 Phase 3 step 2).
+    painter_gpu_preview: &mut Option<PainterGpuPreview>,
     commit_requested: &mut bool,
     undo_requested: &mut bool,
     redo_requested: &mut bool,
@@ -277,6 +281,9 @@ pub(super) fn dispatch(
     // upload below (frame-local — same function scope, so no `PreviewCache`
     // field change needed). `Some` = upload only this sub-rect; `None` = full.
     let mut painter_dirty_bbox: Option<(u32, u32, u32, u32)> = None;
+    // True when the GPU producer owns the preview slot this frame (representable
+    // stack) — gates the CPU lifecycle block off so the two never fight the slot.
+    let mut gpu_owns_preview = false;
     if let Some(tool) = tools.active_mut()
         && let Some(painter) = tool
             .as_any_mut()
@@ -304,9 +311,23 @@ pub(super) fn dispatch(
         {
             *painter_preview = None;
         }
-        // Zero-copy preview drain — populates cache iff a new frame
-        // arrived AND a sprite is selected to tag it with.
-        if let (Some(sel), Some((rgba, w, h))) = (hero.gizmo.selection, painter.take_preview_arc())
+        // GPU-vs-CPU preview decision (ADR-0045 Phase 3 step 2): representable
+        // stack → GPU composite (fast slider drags), else CPU `take_preview_arc`
+        // below. Both end in `painter_preview_gpu`. See `try_drive`.
+        gpu_owns_preview = painter_gpu_preview::try_drive(
+            painter_gpu_preview,
+            renderer,
+            painter,
+            hero.gizmo.selection,
+            painter_preview_gpu,
+            toasts,
+        );
+        if gpu_owns_preview {
+            // CPU cache unused while the GPU owns the slot — clear it so the
+            // inactive/apply release + the gated CPU block below see `None`.
+            *painter_preview = None;
+        } else if let (Some(sel), Some((rgba, w, h))) =
+            (hero.gizmo.selection, painter.take_preview_arc())
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
             painter_dirty_bbox = painter.take_preview_upload_bbox();
@@ -430,6 +451,10 @@ pub(super) fn dispatch(
                 });
         }
         *painter_preview = None;
+        // Apply baked the strokes — release the preview slot explicitly (the GPU
+        // producer gated the CPU `None => release` off) and hand bookkeeping back.
+        release_preview_texture(renderer, painter_preview_gpu);
+        gpu_owns_preview = false;
     }
     // ── GPU lifecycle for the live-preview texture (W3 sprite-suppression) ──
     // Mirror of `bgremoval_preview`: upload the premultiplied composite into a
@@ -442,7 +467,11 @@ pub(super) fn dispatch(
     // byte-for-byte identical to the committed result on the same
     // `Rgba8UnormSrgb` + premul-blend sprite shader (no Vello gamma/blend
     // divergence, no image duplication). 1-frame lag is imperceptible.
-    match painter_preview.as_ref() {
+    //
+    // On a GPU-owned frame the GPU producer fills the slot; hide the CPU cache
+    // from this block so it neither re-uploads nor releases that slot.
+    let cpu_preview = painter_preview.as_ref().filter(|_| !gpu_owns_preview);
+    match cpu_preview {
         Some(preview) => {
             let cache_token = Arc::as_ptr(&preview.rgba) as usize;
             let needs_upload = match *painter_preview_gpu {
@@ -531,7 +560,13 @@ pub(super) fn dispatch(
                 }
             }
         }
-        None => release_preview_texture(renderer, painter_preview_gpu),
+        None => {
+            // Release only when the CPU path owns the slot; on a GPU-owned frame
+            // the GPU producer owns it — leave it intact for next frame.
+            if !gpu_owns_preview {
+                release_preview_texture(renderer, painter_preview_gpu);
+            }
+        }
     }
     !apply_selection.is_empty()
 }

@@ -299,6 +299,42 @@ impl SpriteRenderer {
             .acquire(&self.gpu, &self.pipeline.material_bgl, width, height, rgba)
     }
 
+    /// Borrow the renderer's [`GpuContext`] (cheap `Arc`-backed handles).
+    /// Tool preview bridges that own a GPU compute pass (the Painter live
+    /// preview's `LayerCompositor` + `PreviewPremul`) need it to build and
+    /// drive their own pipelines without the renderer re-exporting every wgpu
+    /// primitive.
+    #[must_use]
+    pub fn gpu(&self) -> &GpuContext {
+        &self.gpu
+    }
+
+    /// Acquire an EMPTY individual texture slot (`width × height`) — no pixel
+    /// upload — and return its `texture_id`. The caller fills it the same frame
+    /// via [`Self::copy_texture_into_individual`] before it is sampled. The
+    /// Painter GPU live preview uses this so a resize doesn't pay a wasted
+    /// full-canvas zero upload. Wrapper over
+    /// [`IndividualTextureStore::acquire_empty`].
+    pub fn acquire_individual_empty(&mut self, width: u32, height: u32) -> u32 {
+        self.individual
+            .acquire_empty(&self.gpu, &self.pipeline.material_bgl, width, height)
+    }
+
+    /// Copy a GPU source texture into an existing individual slot (no CPU
+    /// readback). Wrapper over [`IndividualTextureStore::copy_from_texture`] —
+    /// the Painter GPU preview blits the premultiplied compositor output
+    /// straight into the preview slot.
+    pub fn copy_texture_into_individual(
+        &mut self,
+        texture_id: u32,
+        src: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        self.individual
+            .copy_from_texture(&self.gpu, texture_id, src, width, height)
+    }
+
     /// Convenience for the image-edit path: copy an individual
     /// texture's GPU contents back to a `Vec<u8>` (RGBA8, tightly
     /// packed). Used by Trim Transparency / Background Removal when

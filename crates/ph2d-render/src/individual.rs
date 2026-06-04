@@ -91,6 +91,16 @@ pub enum IndividualTextureError {
     /// I/O error so the caller can decide whether to retry (device
     /// likely lost — see ADR-0020) or fail loudly.
     ReadbackFailed(String),
+    /// A [`IndividualTextureStore::copy_from_texture`] source texture's
+    /// dimensions did not match the destination entry's. A `copy_texture_to_
+    /// texture` past the edge would be a wgpu validation error, so reject it
+    /// at the boundary with a precise diagnostic.
+    CopySizeMismatch {
+        width: u32,
+        height: u32,
+        tex_width: u32,
+        tex_height: u32,
+    },
 }
 
 impl std::fmt::Display for IndividualTextureError {
@@ -113,6 +123,15 @@ impl std::fmt::Display for IndividualTextureError {
                 "region {width}×{height} at ({x},{y}) exceeds texture {tex_width}×{tex_height}"
             ),
             Self::ReadbackFailed(detail) => write!(f, "GPU readback failed: {detail}"),
+            Self::CopySizeMismatch {
+                width,
+                height,
+                tex_width,
+                tex_height,
+            } => write!(
+                f,
+                "copy source {width}×{height} doesn't match texture {tex_width}×{tex_height}"
+            ),
         }
     }
 }
@@ -221,6 +240,92 @@ impl IndividualTextureStore {
         let entry = create_entry(gpu, material_bgl, &self.sampler, width, height, rgba);
         self.entries.insert(id, entry);
         Ok(id)
+    }
+
+    /// Allocate an EMPTY individually-owned texture (`width × height`,
+    /// `Rgba8UnormSrgb`, `COPY_DST`) and return its `texture_id`. Refcount
+    /// starts at 1. Unlike [`Self::acquire`], no pixels are uploaded — the
+    /// texture contents are undefined until the caller fills the slot (e.g.
+    /// [`Self::copy_from_texture`] from a GPU compositor output the same
+    /// frame, before it is ever sampled). The Painter GPU live preview uses
+    /// this to avoid a wasted full-canvas zero upload on every resize.
+    pub fn acquire_empty(
+        &mut self,
+        gpu: &GpuContext,
+        material_bgl: &wgpu::BindGroupLayout,
+        width: u32,
+        height: u32,
+    ) -> u32 {
+        let id = self.next_id;
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("IndividualTextureStore: u32 id space exhausted");
+        let entry = create_entry_empty(gpu, material_bgl, &self.sampler, width, height);
+        self.entries.insert(id, entry);
+        id
+    }
+
+    /// Copy a `width × height` source texture into an existing entry's texture
+    /// via a GPU texture-to-texture copy — no CPU readback. Used by the Painter
+    /// GPU live preview: the layer compositor's straight-sRGB8 `rgba8unorm`
+    /// output (after the premultiply blit) is copied byte-for-byte into the
+    /// `Rgba8UnormSrgb` preview slot. The two formats are COPY-COMPATIBLE
+    /// (`remove_srgb_suffix()` agrees — same texel block; sRGB-ness differs
+    /// only at sample time, which is exactly the premultiplied → linear decode
+    /// the sprite shader expects). `src` must carry `COPY_SRC`; the entry's
+    /// texture already carries `COPY_DST`.
+    ///
+    /// Errors on an unknown id or a size mismatch. A zero-area copy is a no-op.
+    pub fn copy_from_texture(
+        &self,
+        gpu: &GpuContext,
+        id: u32,
+        src: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        if entry.width != width || entry.height != height {
+            return Err(IndividualTextureError::CopySizeMismatch {
+                width,
+                height,
+                tex_width: entry.width,
+                tex_height: entry.height,
+            });
+        }
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render individual copy_from_texture encoder"),
+            });
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: src,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &entry.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([encoder.finish()]);
+        Ok(())
     }
 
     /// Increment the refcount for an existing entry. The renderer
@@ -403,6 +508,23 @@ fn create_entry(
     height: u32,
     rgba: &[u8],
 ) -> IndividualTextureEntry {
+    let entry = create_entry_empty(gpu, material_bgl, sampler, width, height);
+    write_pixels(gpu, &entry.texture, width, height, rgba);
+    entry
+}
+
+/// Build an [`IndividualTextureEntry`] with an UNINITIALISED texture (no pixel
+/// upload). Shared by [`create_entry`] (which then writes pixels) and
+/// [`IndividualTextureStore::acquire_empty`] (which leaves the fill to a later
+/// GPU copy). The texture/view/bind-group are otherwise identical, so a slot
+/// created either way is sampled the same way.
+fn create_entry_empty(
+    gpu: &GpuContext,
+    material_bgl: &wgpu::BindGroupLayout,
+    sampler: &wgpu::Sampler,
+    width: u32,
+    height: u32,
+) -> IndividualTextureEntry {
     let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-render individual texture"),
         size: wgpu::Extent3d {
@@ -416,13 +538,13 @@ fn create_entry(
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
         // COPY_SRC required for `readback()` to copy this texture's
         // contents back into a staging buffer (F2 — Image Tools edit
-        // path on Individual-source sprites).
+        // path on Individual-source sprites). COPY_DST also feeds
+        // `copy_from_texture` (the Painter GPU preview blit).
         usage: wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_DST
             | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
-    write_pixels(gpu, &texture, width, height, rgba);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("ph2d-render individual bg"),

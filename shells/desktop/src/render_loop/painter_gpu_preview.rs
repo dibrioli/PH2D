@@ -1,0 +1,233 @@
+//! Painter GPU live-preview producer (ADR-0045 Phase 3, step 2).
+//!
+//! The CPU producer in [`super::painter_bridge`] composites the layer stack on
+//! the CPU (`take_preview_arc`) and uploads premultiplied bytes into the preview
+//! slot. This is the GPU sibling: when the stack is GPU-representable
+//! ([`super::painter_gpu_flatten::flatten_for_gpu`] returns `Some`), it
+//! composites on the GPU [`LayerCompositor`], premultiplies the straight output
+//! via [`PreviewPremul`], and copies the result straight into the SAME
+//! `IndividualTextureStore` preview slot — **no CPU readback**. Both producers
+//! end in `painter_preview_gpu`; the next frame's `sim_extract` emits the
+//! `PreviewOverride` either way.
+//!
+//! ## Why it wins
+//!
+//! An adjustment-slider drag changes only `gpu_params` (no layer pixels), so the
+//! compositor keeps every layer slice cached (their pixel versions are stable —
+//! see `PainterTool::layer_pixel_versions`) and re-runs just the compute
+//! (~1.7 ms @1024² vs ~55 ms for the CPU HSB recompose). The straight→premul
+//! handoff is the one piece of fresh render work — see [`ph2d_render::premul`]
+//! and `HANDOFF_painter_gpu_preview_coord.md`.
+
+use crate::app_state::PainterPreviewGpu;
+use ph2d_editor::toast::{Toast, ToastQueue};
+use ph2d_gpu::GpuContext;
+use ph2d_render::PreviewPremul;
+use ph2d_render::SpriteRenderer;
+use ph2d_render::layer_compositor::{
+    LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
+};
+use ph2d_tool_painter::PainterTool;
+
+/// Per-session GPU state for the Painter live preview: the layer compositor, the
+/// straight→premultiplied blit, and a cached [`GpuContext`] handle (cheap
+/// `Arc`-backed clone). Created lazily on the first GPU-representable frame and
+/// kept for the tool session: the compositor's own slice cache invalidates on a
+/// canvas-dims change, and the tool's monotonic pixel versions handle layer-key
+/// reuse across sources, so the same instance stays correct across edits.
+pub(crate) struct PainterGpuPreview {
+    gpu: GpuContext,
+    compositor: LayerCompositor,
+    premul: PreviewPremul,
+}
+
+impl PainterGpuPreview {
+    fn new(gpu: &GpuContext) -> Self {
+        Self {
+            gpu: gpu.clone(),
+            compositor: LayerCompositor::new(gpu),
+            premul: PreviewPremul::new(gpu),
+        }
+    }
+}
+
+/// Adapts [`PainterTool::preview_layer_pixels`] to the render crate's
+/// [`LayerPixelProvider`] — the tool stays decoupled from `ph2d-render`, so the
+/// bridge owns this glue.
+struct PainterLayerProvider<'a> {
+    tool: &'a PainterTool,
+}
+
+impl LayerPixelProvider for PainterLayerProvider<'_> {
+    fn layer_pixels(&self, key: u64) -> Option<LayerPixels<'_>> {
+        self.tool
+            .preview_layer_pixels(key)
+            .map(|(version, rgba8)| LayerPixels { version, rgba8 })
+    }
+}
+
+/// Decide GPU-vs-CPU for this frame and, when GPU, recomposite into the preview
+/// slot. Returns `true` iff the GPU producer owns the slot (the stack is
+/// GPU-representable) — the caller then gates its CPU upload block off. On the
+/// CPU branch (no selection, or a stack with mask / clip / reference / masked or
+/// non-ported adjustment → `flatten_for_gpu` returns `None`) this is a no-op and
+/// the caller runs `take_preview_arc` + the CPU upload path.
+///
+/// Drains the preview-dirty flag WITHOUT a CPU composite, so it recomposites on
+/// the GPU only when the preview actually changed; an idle representable stack
+/// keeps its slot. Also drains the tracked dirty-bbox so it can't leak into a
+/// later CPU frame.
+pub(super) fn try_drive(
+    session_slot: &mut Option<PainterGpuPreview>,
+    renderer: &mut SpriteRenderer,
+    painter: &mut PainterTool,
+    selection: Option<u64>,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
+) -> bool {
+    let Some(sel) = selection else {
+        return false;
+    };
+    let Some(ops) = super::painter_gpu_flatten::flatten_for_gpu(painter.layers()) else {
+        return false;
+    };
+    if painter.take_preview_dirty() {
+        let (w, h) = painter.source_size();
+        drive(
+            session_slot,
+            renderer,
+            painter,
+            sel,
+            ops,
+            w,
+            h,
+            painter_preview_gpu,
+            toasts,
+        );
+    }
+    let _ = painter.take_preview_upload_bbox();
+    true
+}
+
+/// Composite `ops` on the GPU, premultiply, and copy into the preview slot,
+/// pointing `painter_preview_gpu` at it. The slot is (re)acquired empty when
+/// missing / resized. On any GPU error the slot is released and a toast queued
+/// (the CPU path can take over next frame). Returns `true` iff a preview texture
+/// is now live in the slot.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn drive(
+    session_slot: &mut Option<PainterGpuPreview>,
+    renderer: &mut SpriteRenderer,
+    tool: &PainterTool,
+    entity_bits: u64,
+    ops: Vec<LayerOp>,
+    width: u32,
+    height: u32,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
+) -> bool {
+    if width == 0 || height == 0 {
+        return false;
+    }
+    let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
+
+    // 1) GPU composite over the flattened op-list (slices cached by version).
+    let provider = PainterLayerProvider { tool };
+    if let Err(e) = session.compositor.composite(
+        &session.gpu,
+        &ops,
+        &provider,
+        width,
+        height,
+        Region::full(width, height),
+    ) {
+        toasts.push(Toast::error(format!(
+            "Painter: GPU preview composite falhou ({e}). Caindo no caminho CPU."
+        )));
+        release_slot(renderer, painter_preview_gpu);
+        return false;
+    }
+
+    // 2) Premultiply the straight `rgba8unorm` output into a COPY_SRC texture
+    //    (the sprite preview slot samples PREMULTIPLIED — see `ph2d_render::premul`).
+    {
+        let Some(comp_out) = session.compositor.output_texture() else {
+            return false;
+        };
+        if session
+            .premul
+            .run(&session.gpu, comp_out, width, height)
+            .is_none()
+        {
+            return false;
+        }
+    }
+
+    // 3) Ensure a preview slot of the right size, then COPY the premultiplied
+    //    result into it (rgba8unorm → Rgba8UnormSrgb is copy-compatible).
+    let slot = ensure_slot(renderer, painter_preview_gpu, entity_bits, width, height);
+    let Some(premul_tex) = session.premul.output_texture() else {
+        return false;
+    };
+    if let Err(e) = renderer.copy_texture_into_individual(slot, premul_tex, width, height) {
+        toasts.push(Toast::error(format!(
+            "Painter: GPU preview copy falhou ({e}). Caindo no caminho CPU."
+        )));
+        release_slot(renderer, painter_preview_gpu);
+        return false;
+    }
+    true
+}
+
+/// Ensure `painter_preview_gpu` holds a slot sized `width × height`; reuse the
+/// existing slot when the dims match (the copy overwrites its contents),
+/// otherwise release the old slot and acquire a fresh EMPTY one. Returns the
+/// slot's `texture_id`. `arc_token` is `0` — the GPU producer has no CPU `Arc`
+/// cache token, and the next CPU frame's `arc_token != cache_token` test then
+/// correctly forces a full re-upload on a GPU→CPU transition.
+fn ensure_slot(
+    renderer: &mut SpriteRenderer,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    entity_bits: u64,
+    width: u32,
+    height: u32,
+) -> u32 {
+    if let Some(existing) = *painter_preview_gpu
+        && existing.width == width
+        && existing.height == height
+    {
+        *painter_preview_gpu = Some(PainterPreviewGpu {
+            texture_id: existing.texture_id,
+            width,
+            height,
+            arc_token: 0,
+            entity_bits,
+        });
+        return existing.texture_id;
+    }
+    if let Some(old) = painter_preview_gpu.take() {
+        renderer.individual_mut().release(old.texture_id);
+    }
+    let id = renderer.acquire_individual_empty(width, height);
+    *painter_preview_gpu = Some(PainterPreviewGpu {
+        texture_id: id,
+        width,
+        height,
+        arc_token: 0,
+        entity_bits,
+    });
+    id
+}
+
+/// Release the preview slot (if any) and clear the GPU cache — on a GPU error so
+/// the next frame re-acquires from scratch (or the CPU path takes over). Mirror
+/// of `painter_bridge::release_preview_texture`, kept local so the two preview
+/// producers don't reach into each other.
+fn release_slot(
+    renderer: &mut SpriteRenderer,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+) {
+    if let Some(gpu) = painter_preview_gpu.take() {
+        renderer.individual_mut().release(gpu.texture_id);
+    }
+}

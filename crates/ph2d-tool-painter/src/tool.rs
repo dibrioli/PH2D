@@ -360,6 +360,23 @@ pub struct PainterTool {
     /// NOT bump it (pixels aren't reflected in the panel structure), which is the
     /// whole point — no republish mid-paint.
     layers_revision: u64,
+    /// Per-layer pixel CONTENT version for the GPU preview compositor
+    /// (`ph2d_render::LayerPixelProvider`, consumed via the shell bridge's
+    /// `preview_layer_pixels`). A layer's entry bumps to the next `pixel_clock`
+    /// value whenever its PIXELS change — a stroke stamp, undo/redo, mask
+    /// flatten, or a fresh `set_source` — and ONLY then. Metadata edits
+    /// (opacity / blend / visibility / adjustment params) funnel through
+    /// `invalidate_composite`, which does NOT touch this, so the GPU compositor
+    /// keeps a layer's texture-array slice cached across an adjustment-slider
+    /// drag (zero pixels changed → zero re-upload → pure GPU recompute, the
+    /// whole point of the GPU path). `BTreeMap` per HR-5 (deterministic order).
+    layer_pixel_versions: BTreeMap<RtLayerId, u64>,
+    /// Monotonic source for [`Self::layer_pixel_versions`] bumps. Never reset
+    /// (not even on `set_source`), so a layer key REUSED across a source swap
+    /// (the `LayerStack` restarts ids at 1) always gets a strictly-greater
+    /// version than the compositor cached for the previous image → no stale
+    /// slice. A never-seen layer's default `0` differs from any real bump.
+    pixel_clock: u64,
     /// The brush color saved when entering mask-edit, restored on leaving. A
     /// mask starts WHITE (all visible) and the expected action is to HIDE, so
     /// editing a mask defaults the brush to BLACK; this remembers the user's
@@ -517,6 +534,8 @@ impl Default for PainterTool {
             composited: None,
             preview_upload_bbox: None,
             layers_revision: 0,
+            layer_pixel_versions: BTreeMap::new(),
+            pixel_clock: 0,
             color_before_mask: None,
             source_size: (0, 0),
             preview_dirty: false,
@@ -904,6 +923,10 @@ impl PainterTool {
             );
             self.preview_dirty = true;
             self.has_painted_since_source = true;
+            // GPU preview: the active layer's pixels just changed → bump its
+            // content version so the compositor re-uploads only its slice.
+            let active = self.layers.active();
+            self.bump_layer_pixels(active);
         }
 
         // T1.9: persist sample em history vetorial (in-memory) + journal.
@@ -1318,6 +1341,9 @@ impl PainterTool {
             self.undo_redo_records.push(rec);
         }
         self.preview_dirty = true;
+        // GPU preview: the active layer's pixels were restored → bump version.
+        let active = self.layers.active();
+        self.bump_layer_pixels(active);
         true
     }
 
@@ -1341,6 +1367,9 @@ impl PainterTool {
             self.stroke_history.redo(rec);
         }
         self.preview_dirty = true;
+        // GPU preview: the active layer's pixels were restored → bump version.
+        let active = self.layers.active();
+        self.bump_layer_pixels(active);
         true
     }
 
@@ -1410,6 +1439,65 @@ impl PainterTool {
     #[must_use]
     pub fn layers(&self) -> &LayerStack {
         &self.layers
+    }
+
+    /// Canvas dimensions `(width, height)` of the current source — what the GPU
+    /// preview composites at. `(0, 0)` before any `set_source`.
+    #[must_use]
+    pub fn source_size(&self) -> (u32, u32) {
+        self.source_size
+    }
+
+    /// Bump `id`'s pixel CONTENT version (the GPU preview compositor's cache
+    /// key — see [`Self::layer_pixel_versions`]). Call from every canvas
+    /// pixel-write chokepoint (stroke stamp, undo/redo, mask flatten, fresh
+    /// source). No-op when `id` is `None` (degenerate / empty stack).
+    fn bump_layer_pixels(&mut self, id: Option<RtLayerId>) {
+        if let Some(id) = id {
+            self.pixel_clock = self.pixel_clock.wrapping_add(1);
+            self.layer_pixel_versions.insert(id, self.pixel_clock);
+        }
+    }
+
+    /// Borrow one layer's straight-sRGB8 pixels + its content version for the
+    /// GPU preview compositor (the shell bridge adapts this to
+    /// `ph2d_render::LayerPixelProvider`; the tool stays decoupled from the
+    /// render crate). The ACTIVE layer reads the live `canvas_rgba` working
+    /// buffer (always current — strokes mutate it in place); every other layer
+    /// reads its `images` entry. `version` changes iff the layer's PIXELS
+    /// changed (see [`Self::layer_pixel_versions`]), so the compositor
+    /// re-uploads a slice only on a real pixel edit. `None` for an unknown key
+    /// or an empty active buffer (the bridge then falls back to the CPU
+    /// compositor). W3 GPU preview (ADR-0045 Phase 3, step 2).
+    #[must_use]
+    pub fn preview_layer_pixels(&self, key: u64) -> Option<(u64, &[u8])> {
+        let id = RtLayerId(key);
+        let version = self.layer_pixel_versions.get(&id).copied().unwrap_or(0);
+        if self.layers.active() == Some(id) {
+            let buf = self.canvas_rgba.as_ref().as_slice();
+            if buf.is_empty() {
+                return None;
+            }
+            Some((version, buf))
+        } else {
+            self.images
+                .get(&id)
+                .map(|img| (version, img.rgba8.as_slice()))
+        }
+    }
+
+    /// Drain the `preview_dirty` flag WITHOUT compositing — the GPU preview
+    /// path's equivalent of the dirty gate inside [`Self::take_preview_arc`],
+    /// for when the shell composites on the GPU instead of the CPU. Returns
+    /// `true` iff the preview changed since the last drain (so the bridge
+    /// recomposites this frame). Mirrors `take_preview_arc`'s empty-canvas
+    /// guard so an un-sourced tool reports clean.
+    #[must_use]
+    pub fn take_preview_dirty(&mut self) -> bool {
+        if self.canvas_rgba.is_empty() {
+            return false;
+        }
+        std::mem::take(&mut self.preview_dirty)
     }
 
     /// `true` when the stack is a single visible, opaque, Normal raster with
@@ -1810,6 +1898,8 @@ impl PainterTool {
         let was_active = self.layers.active();
         self.layers.remove(mask_id);
         self.images.remove(&mask_id);
+        // GPU preview: the parent's alpha was baked → bump its content version.
+        self.bump_layer_pixels(Some(parent));
         // The parent takes over as the active edit target iff the mask (or
         // nothing) was active; an unrelated active layer is left untouched.
         let new_active = match was_active {
@@ -2970,6 +3060,14 @@ impl RasterEditTool for PainterTool {
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
+        // GPU preview: a fresh `LayerStack` restarts layer ids at 1, so a key
+        // can be REUSED for a different image. Clear the version map and bump
+        // the new active layer; `pixel_clock` stays monotonic, so the bumped
+        // version is strictly greater than anything the compositor cached for
+        // the previous source under the same key → no stale slice.
+        self.layer_pixel_versions.clear();
+        let active = self.layers.active();
+        self.bump_layer_pixels(active);
         self.composited = None;
         // B.5: a fresh single-raster stack is a published-structure change, and
         // `set_source` resets `composited` directly (not via invalidate_composite).
@@ -3314,6 +3412,45 @@ mod tests {
         assert!(matches!(layer.kind, crate::layers::LayerKind::Raster(_)));
         assert!(layer.visible && layer.opacity >= 1.0);
         assert_eq!(layer.blend_mode, BlendMode::Normal);
+    }
+
+    #[test]
+    fn gpu_preview_versions_track_pixels_not_metadata() {
+        // The GPU preview provider (`preview_layer_pixels`) reports a per-layer
+        // pixel content version. It must bump on a PIXEL change and stay stable
+        // on a METADATA edit (so the GPU compositor keeps the slice cached
+        // across an opacity / adjustment slider drag), and survive layer-id
+        // reuse across `set_source`.
+        let mut t = PainterTool::default();
+        t.set_source(flat_source(4, 4, [10, 20, 30, 255]), 4, 4);
+        let active = t
+            .layers()
+            .active()
+            .expect("set_source creates an active raster");
+        let key = active.0;
+        let (v0, px) = t
+            .preview_layer_pixels(key)
+            .expect("active layer reads the canvas buffer");
+        assert_eq!(px.len(), 4 * 4 * 4, "active layer pixels = canvas_rgba");
+        assert!(v0 > 0, "set_source bumps the new layer off the default 0");
+
+        // Metadata edit (opacity) → version UNCHANGED (the caching invariant).
+        t.set_layer_opacity(active, 0.5);
+        let (v1, _) = t.preview_layer_pixels(key).expect("layer still present");
+        assert_eq!(v1, v0, "an opacity edit must not bump the pixel version");
+
+        // A fresh source reuses layer id 1 for a DIFFERENT image; the version
+        // must be strictly greater so the compositor never samples a stale slice.
+        t.set_source(flat_source(2, 2, [200, 200, 200, 255]), 2, 2);
+        let reused = t.layers().active().expect("active");
+        let (v2, _) = t.preview_layer_pixels(reused.0).expect("present");
+        assert!(
+            v2 > v1,
+            "key reuse across set_source must produce a strictly greater version"
+        );
+
+        // Unknown key → None (the bridge then falls back to the CPU path).
+        assert!(t.preview_layer_pixels(9_999).is_none());
     }
 
     #[test]

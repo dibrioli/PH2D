@@ -432,6 +432,13 @@ pub(crate) struct App {
     /// sprite in-place (no Vello overlay duplicating the image). `None`
     /// when the preview cache is `None`.
     pub(crate) painter_preview_gpu: Option<PainterPreviewGpu>,
+    /// GPU live-preview session for the Painter (ADR-0045 Phase 3 step 2):
+    /// holds the `LayerCompositor` + straight→premul blit. Lazily built on the
+    /// first GPU-representable frame and reused for the tool session; drives the
+    /// SAME `painter_preview_gpu` slot the CPU producer uses, so the GPU path is
+    /// transparent to `sim_extract`'s `PreviewOverride`.
+    pub(crate) painter_gpu_preview:
+        Option<crate::render_loop::painter_gpu_preview::PainterGpuPreview>,
     /// W2.T2.5: transient flag set by the Cmd/Ctrl+Enter keybind in
     /// `input_handlers::handle_editor_key` to commit the active Painter
     /// stroke into the sprite WITHOUT switching tools. Consumed (taken)

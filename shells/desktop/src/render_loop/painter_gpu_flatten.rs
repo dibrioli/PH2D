@@ -22,10 +22,8 @@ use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
 /// Flatten `stack` into a GPU op-list, or `None` if it is not GPU-representable
 /// (mask / clipping / reference layer / masked adjustment / non-ported
 /// adjustment kind) — the caller then uses the CPU compositor.
-// Consumed by the GPU preview path in `painter_bridge` (Phase 3 step 2); landed
-// + tested ahead of that wiring (the GPU-vs-CPU decision is the architectural
-// heart). Remove the allow when the bridge calls it.
-#[allow(dead_code)]
+// Consumed by the GPU preview path in `painter_bridge` (Phase 3 step 2): the
+// GPU-vs-CPU decision (a representable stack → GPU compositor, else CPU).
 pub(super) fn flatten_for_gpu(stack: &LayerStack) -> Option<Vec<LayerOp>> {
     let mut ops = Vec::new();
     flatten_ids(stack, stack.root(), &mut ops)?;

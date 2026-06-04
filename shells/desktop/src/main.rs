@@ -158,6 +158,7 @@ impl App {
             last_painter_pushed_entity: None,
             painter_preview: None,
             painter_preview_gpu: None,
+            painter_gpu_preview: None,
             painter_commit_requested: false,
             painter_undo_requested: false,
             painter_redo_requested: false,

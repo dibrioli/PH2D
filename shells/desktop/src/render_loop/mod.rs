@@ -32,6 +32,7 @@ mod padding_bridge;
 // bridge instead of downcasting in central dispatch.
 pub(crate) mod painter_bridge;
 mod painter_gpu_flatten;
+pub(crate) mod painter_gpu_preview;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -1011,6 +1012,7 @@ impl crate::App {
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
                 &mut self.painter_preview_gpu,
+                &mut self.painter_gpu_preview,
                 &mut self.painter_commit_requested,
                 &mut self.painter_undo_requested,
                 &mut self.painter_redo_requested,

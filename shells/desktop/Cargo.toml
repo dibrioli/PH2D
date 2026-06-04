@@ -190,6 +190,9 @@ ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # Editor's `Paint` trait lowers widgets into a `VectorScene` that the
 # render crate's `VelloPass` then composites onto the surface.
 ph2d-vector = { path = "../../crates/ph2d-vector" }
+# ADR-0065 Phase 3: the geometry-graph smoke bridge draws the SDF *draft*
+# (silhouette contour) during a slider drag, before the exact reconcile.
+ph2d-vector-sdf = { path = "../../crates/ph2d-vector-sdf" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the

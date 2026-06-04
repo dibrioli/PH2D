@@ -4680,6 +4680,7 @@ dependencies = [
  "ph2d-node-motion-grid",
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
+ "ph2d-node-vector-boolean",
  "ph2d-node-vector-source",
  "ph2d-nodegraph",
  "ph2d-painter-brush",
@@ -4719,6 +4720,7 @@ dependencies = [
  "ph2d-tool-vector-shape",
  "ph2d-vector",
  "ph2d-vector-doc",
+ "ph2d-vector-sdf",
  "postcard",
  "rfd",
  "serde",
@@ -5661,6 +5663,17 @@ dependencies = [
  "kurbo 0.13.0",
  "linesweeper",
  "ph2d-vector-doc",
+]
+
+[[package]]
+name = "ph2d-vector-sdf"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "glam 0.30.10",
+ "ph2d-gpu",
+ "ph2d-vector-doc",
+ "wgpu",
 ]
 
 [[package]]

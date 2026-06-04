@@ -29,6 +29,9 @@ use ph2d_vector_doc::{Segment, SegmentId, VectorNetwork, VertexId, WindingRule};
 use std::collections::BTreeMap;
 
 pub mod gpu;
+pub mod marching;
+
+pub use marching::marching_contour;
 
 /// Cubic subdivisions per segment when flattening to the boundary polyline.
 /// FIXED (not adaptive) so the silhouette is bit-stable across platforms — the

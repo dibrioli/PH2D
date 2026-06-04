@@ -25,6 +25,15 @@
 //! Builds registry + graph + cook INLINE each frame: cheap for three nodes, and
 //! it keeps the smoke self-contained (no state threaded through `init`).
 //! Persisting the `Cook` (re-cook only on edit) is the W3 perf follow-up.
+//!
+//! - **T3.1 SDF draft+reconcile (ADR-0065 Phase 3):** while a slider is actively
+//!   moving the params **and** the op has an SDF form (Union/Subtract/Intersect/
+//!   Exclude/Outline), draw the cheap [`ph2d_vector_sdf`] silhouette contour (the
+//!   *draft*) instead of cooking the exact boolean. The frame the params settle,
+//!   fall back to the exact Linesweeper reconcile. The four topology-only ops
+//!   (Divide/Trim/Merge/Crop) have no SDF → always exact. CPU SDF at draft-res is
+//!   the least-friction path (the bridge has no `GpuContext` threaded through);
+//!   GPU SDF is the scale follow-up.
 
 use ph2d_host::WindowSize;
 use ph2d_node_registry::NodeRegistry;
@@ -32,9 +41,32 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_panel_vector_graph::VectorGraphParams;
 use ph2d_render::Camera2d;
-use ph2d_vector::{VectorScene, draw_vector_network};
+use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Scene, Stroke, VectorScene, draw_vector_network};
 use ph2d_vector_doc::{FillSolid, StyleTable, VectorNetwork};
+use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour, network_sdf};
+use std::cell::RefCell;
 use std::sync::OnceLock;
+
+/// Draft SDF grid resolution per side. 96² is ~1 ms on CPU for the smoke's
+/// few-edge sources — enough contour fidelity for a drag preview (ADR-0065 §2.2).
+const DRAFT_RES: u32 = 96;
+/// World-pixel margin around the silhouette so it never clips the grid edge.
+const DRAFT_PAD: f32 = 16.0;
+/// Half-width (world px) of the `Outline` op's draft band (the op carries no
+/// radius param in the smoke).
+const DRAFT_OUTLINE_RADIUS: f32 = 6.0;
+/// Draft contour stroke width in world px — a thin "this is a preview" outline.
+const DRAFT_STROKE_WORLD: f64 = 1.5;
+/// Draft contour color: a distinct accent so the preview reads as not-final.
+const DRAFT_RGB: (u8, u8, u8) = (79, 195, 247);
+const DRAFT_ALPHA: u8 = 230;
+
+thread_local! {
+    /// Last `(params, op)` `dispatch` saw, so it can tell an active slider drag
+    /// (params changing frame-to-frame) from a settled state. The render loop is
+    /// single-threaded; this is the bridge's only per-frame state (handoff §2.B).
+    static LAST_KEY: RefCell<Option<(VectorGraphParams, i64)>> = const { RefCell::new(None) };
+}
 
 /// Is the geometry-graph smoke enabled? Read once from `PH2D_VECTOR_GRAPH=1`.
 /// The shell drives the `vector_graph` panel's visibility from this (so the
@@ -58,7 +90,21 @@ pub(super) fn dispatch(
         return;
     }
     let p = ph2d_panel_vector_graph::current_graph_params();
-    let Some(mut net) = cook_boolean_smoke(&p, bool_op_from_env()) else {
+    let op = bool_op_from_env();
+    let op_key = op.round() as i64;
+    let world_to_screen = camera.world_to_screen_affine(window_size);
+
+    // Draft+reconcile gate (ADR-0065 §2.2): while params are CHANGING and the op
+    // has an SDF form, show the cheap silhouette draft; once they settle (≥1
+    // stable frame), fall through to the exact reconcile below. The op (from env)
+    // is constant per run, so `changed` tracks slider drags.
+    if let Some(sdf_op) = draft_op(params_changed((p, op_key)), op_key)
+        && draw_draft(&p, sdf_op, world_to_screen, vector_scene.inner_mut())
+    {
+        return;
+    }
+
+    let Some(mut net) = cook_boolean_smoke(&p, op) else {
         return;
     };
 
@@ -72,8 +118,101 @@ pub(super) fn dispatch(
         region.fill = Some(fref);
     }
 
-    let world_to_screen = camera.world_to_screen_affine(window_size);
     draw_vector_network(vector_scene.inner_mut(), &net, &styles, world_to_screen);
+}
+
+/// Has the `(params, op)` key changed since the previous frame? Records `key`
+/// for next frame. A change means a slider is being dragged → show the draft;
+/// equal for two frames means settled → show the exact reconcile.
+fn params_changed(key: (VectorGraphParams, i64)) -> bool {
+    LAST_KEY.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let changed = slot.as_ref() != Some(&key);
+        *slot = Some(key);
+        changed
+    })
+}
+
+/// The draft+reconcile decision: draft only while params are `changed` AND the
+/// op has an SDF form. `None` → the caller shows the exact reconcile.
+fn draft_op(changed: bool, op: i64) -> Option<SdfOp> {
+    if changed { sdf_op_from_index(op) } else { None }
+}
+
+/// Map a `vector.boolean` op discriminant (`0..=8`, declaration order) to its
+/// SDF-representable form, or `None` for the four topology-only ops
+/// (`Divide`/`Trim`/`Merge`/`Crop`) and any out-of-range value — those have no
+/// silhouette SDF and must always render the exact reconcile (ADR-0065 §2.1).
+fn sdf_op_from_index(op: i64) -> Option<SdfOp> {
+    match op {
+        0 => Some(SdfOp::Union),
+        1 => Some(SdfOp::Subtract),
+        2 => Some(SdfOp::Intersect),
+        3 => Some(SdfOp::Exclude),
+        8 => Some(SdfOp::Outline {
+            radius: DRAFT_OUTLINE_RADIUS,
+        }),
+        _ => None,
+    }
+}
+
+/// Draw the SDF *draft* of `source(a) + source(b) ∘ op`: SDF each operand over a
+/// co-located window, combine with the `min/max` kernel, march out the zero
+/// contour, and stroke it as a thin preview outline. Returns `false` (so the
+/// caller falls back to the exact reconcile) if a source fails to cook or the
+/// grids don't co-locate.
+fn draw_draft(p: &VectorGraphParams, op: SdfOp, world_to_screen: Affine, scene: &mut Scene) -> bool {
+    let Some(net_a) = cook_source(p, 0.0) else {
+        return false;
+    };
+    let Some(net_b) = cook_source(p, std::f32::consts::FRAC_PI_4) else {
+        return false;
+    };
+    // Co-locate the sampling window over BOTH operands (same res + bounds) so
+    // `boolean_sdf` can combine them cell-for-cell.
+    let ba = Bounds::of_network(&net_a, DRAFT_PAD);
+    let bb = Bounds::of_network(&net_b, DRAFT_PAD);
+    let bounds = Bounds {
+        min: ba.min.min(bb.min),
+        max: ba.max.max(bb.max),
+    };
+    let sdf_a = network_sdf(&net_a, DRAFT_RES, bounds);
+    let sdf_b = network_sdf(&net_b, DRAFT_RES, bounds);
+    let Some(draft) = boolean_sdf(&sdf_a, &sdf_b, op) else {
+        return false;
+    };
+    let segs = marching_contour(&draft);
+    if segs.is_empty() {
+        return false;
+    }
+
+    let mut path = BezPath::new();
+    for s in &segs {
+        path.move_to(Point::new(f64::from(s[0].x), f64::from(s[0].y)));
+        path.line_to(Point::new(f64::from(s[1].x), f64::from(s[1].y)));
+    }
+    let color = Color::from_rgba8(DRAFT_RGB.0, DRAFT_RGB.1, DRAFT_RGB.2, DRAFT_ALPHA);
+    scene.stroke(
+        &Stroke::new(DRAFT_STROKE_WORLD),
+        world_to_screen,
+        &Brush::Solid(color),
+        None,
+        &path,
+    );
+    true
+}
+
+/// Cook a single `vector.source` node seeded from the panel params (rotation
+/// offset by `rot`) → its `VectorNetwork`, for the SDF draft's per-operand
+/// silhouette. Mirrors `cook_boolean_smoke`'s two source nodes.
+fn cook_source(p: &VectorGraphParams, rot: f32) -> Option<VectorNetwork> {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_vector_source::register(&mut reg).ok()?;
+    let mut g = Graph::new();
+    let node = add_source(&mut g, p, rot);
+    let mut cook = Cook::new();
+    let out = cook.cook(&g, &reg, node, 0.0).ok()?;
+    Some(out.first()?.as_any()?.downcast_ref::<VectorNetwork>()?.clone())
 }
 
 /// Cook `source(a) + source(b = a rotated 45°) + boolean(op)` and return the
@@ -165,5 +304,45 @@ mod tests {
                 "boolean op {op} must cook"
             );
         }
+    }
+
+    #[test]
+    fn only_five_ops_have_an_sdf_draft() {
+        // Union/Subtract/Intersect/Exclude/Outline draft; the four topology-only
+        // ops (Divide/Trim/Merge/Crop) and out-of-range values never do.
+        for op in [0, 1, 2, 3, 8] {
+            assert!(sdf_op_from_index(op).is_some(), "op {op} has an SDF form");
+        }
+        for op in [4, 5, 6, 7, 99, -1] {
+            assert!(
+                sdf_op_from_index(op).is_none(),
+                "op {op} is topology-only / invalid → exact"
+            );
+        }
+    }
+
+    #[test]
+    fn draft_gate_needs_both_changing_and_sdf() {
+        // The decision the per-frame state machine drives.
+        assert!(
+            matches!(draft_op(true, 0), Some(SdfOp::Union)),
+            "changing + SDF op → draft"
+        );
+        assert!(draft_op(false, 0).is_none(), "settled → exact even for an SDF op");
+        assert!(
+            draft_op(true, 4).is_none(),
+            "changing + Divide (topology-only) → exact"
+        );
+        assert!(
+            matches!(draft_op(true, 8), Some(SdfOp::Outline { .. })),
+            "changing + Outline → draft"
+        );
+    }
+
+    #[test]
+    fn cook_source_yields_geometry() {
+        let net = cook_source(&VectorGraphParams::default(), 0.0)
+            .expect("a single vector.source must cook to a network");
+        assert!(!net.vertices.is_empty(), "a source shape has vertices");
     }
 }

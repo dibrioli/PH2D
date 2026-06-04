@@ -5780,6 +5780,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vector-fanout-audit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+]
+
+[[package]]
 name = "ph2d-vector-graph"
 version = "0.0.0"
 dependencies = [

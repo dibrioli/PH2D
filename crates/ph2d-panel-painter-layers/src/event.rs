@@ -16,7 +16,8 @@
 use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
-    self as core_ids, PainterLayerWidget, painter_layer_blend_option_id, painter_layer_widget_id,
+    self as core_ids, PainterLayerWidget, painter_curve_editor_id, painter_layer_blend_option_id,
+    painter_layer_widget_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -137,6 +138,25 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // value and forward normalized (the linked chip edit propagates back
         // to the slider, so its ValueChanged arrives here too — single route).
         WidgetEvent::ValueChanged(id) => {
+            // W4 §3 — a Curves control-point 2-D drag stashed its (parent, channel,
+            // index, x, y) on the store (global slot, `Some` only when the active
+            // widget is a `CurvePoint`, so this `ValueChanged` IS that drag). Drain
+            // it, re-derive the layer from the editor `parent`, and forward to the
+            // tool as `SelectOption(PAINTER_CURVE_EDIT, "layer:ch:idx:x:y")`.
+            if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
+                if let Some(stack) = state::current_layers()
+                    && let Some(layer) = stack
+                        .all_ids()
+                        .find(|l| painter_curve_editor_id(l.0) == parent)
+                {
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_CURVE_EDIT,
+                            format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
+                        )));
+                }
+                return true;
+            }
             let Some(stack) = state::current_layers() else {
                 return false;
             };

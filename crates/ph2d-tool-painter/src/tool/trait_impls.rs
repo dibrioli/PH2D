@@ -202,6 +202,24 @@ impl Tool for PainterTool {
                     self.add_adjustment_layer(kind);
                 }
             }
+            // ── Curves editor 2-D point drag (W4 §3): value =
+            // "layer:channel:index:x:y" (the panel drained it from the store's
+            // curve_point_drag slot and re-derived the layer). ──────────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_EDIT => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(c), Some(i), Some(xs), Some(ys)) =
+                    (it.next(), it.next(), it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(ch), Ok(idx), Ok(x), Ok(y)) = (
+                        l.parse::<u64>(),
+                        c.parse::<u8>(),
+                        i.parse::<usize>(),
+                        xs.parse::<f32>(),
+                        ys.parse::<f32>(),
+                    )
+                {
+                    self.set_curve_point(RtLayerId(layer), ch, idx, x, y);
+                }
+            }
             // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
             PanelEvent::SelectOption(id, value) => {
                 if let Some((layer, PainterLayerWidget::Blend)) = self.decode_layer_widget(id)

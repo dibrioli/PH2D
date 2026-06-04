@@ -1902,6 +1902,36 @@ fn set_curve_point_on_non_curves_layer_is_a_noop() {
 }
 
 #[test]
+fn curve_edit_panel_event_routes_to_set_curve_point() {
+    // The free-2D editor forwards a drag as SelectOption(PAINTER_CURVE_EDIT,
+    // "layer:channel:index:x:y"); handle_panel_event must parse + apply it.
+    use ph2d_editor_core::ids::PAINTER_CURVE_EDIT;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::Curves).unwrap();
+    let payload = format!("{}:0:2:0.5:0.8", adj.0);
+    t.handle_panel_event(PanelEvent::SelectOption(PAINTER_CURVE_EDIT, payload));
+    let mid = match &t.layers.get(adj).unwrap().kind {
+        LayerKind::Adjustment(a) => match &a.params {
+            AdjustmentParams::Curves(c) => c.points_rgb.points[2],
+            _ => panic!("not curves"),
+        },
+        _ => panic!("not an adjustment"),
+    };
+    assert!(
+        (mid[0] - 0.5).abs() < 1e-6 && (mid[1] - 0.8).abs() < 1e-6,
+        "panel curve-edit event moved master point 2 to (0.5, 0.8): {mid:?}"
+    );
+    // A malformed payload is a no-op (no panic).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_CURVE_EDIT,
+        "garbage".into(),
+    ));
+}
+
+#[test]
 fn adjustment_param_drain_uses_cache_bit_identically() {
     // W5: a slider-drag drain routes through `composite_with_cache` (cut-point
     // cache). Prove the warm-restart preview is byte-identical to a cold full

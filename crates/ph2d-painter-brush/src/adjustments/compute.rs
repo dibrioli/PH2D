@@ -562,16 +562,8 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             4 => p.output_white = v,
             _ => {}
         },
-        // Curves' bespoke editor reuses the generic `AdjParam` slider widgets as
-        // its fixed-x master handles (one vertical slider per control point): a
-        // slot's value is that point's Y. (X is fixed in v1 — a free-2D point drag
-        // is the Coord-side `InteractiveState::CurvePoint` upgrade; see the W4
-        // bespoke handoff.) Per-channel R/G/B curves edit through `set_curve_point`.
-        AdjustmentParams::Curves(c) => {
-            if let Some(p) = c.points_rgb.points.get_mut(slot) {
-                p[1] = v;
-            }
-        }
+        // Curves has no generic sliders — its bespoke editor drives free 2-D point
+        // drags through `PainterTool::set_curve_point` (W4 §3), not this slot path.
         _ => {}
     }
 }

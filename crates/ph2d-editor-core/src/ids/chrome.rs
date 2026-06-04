@@ -484,6 +484,31 @@ pub fn painter_adjustment_kind_option_id(index: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_layers.adjkind.{index}"))
 }
 
+/// Derive the stable [`NodeId`] of the bespoke Curves editor (the `parent` of its
+/// draggable control points, W4 §3). The 2-D drag dispatch stashes the result
+/// keyed by this parent; the panel drains it on `ValueChanged(<this id>)` and
+/// forwards to `PainterTool::set_curve_point`. Per Curves adjustment layer.
+#[must_use]
+pub fn painter_curve_editor_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_curve.editor.{layer_id}"))
+}
+
+/// Derive the stable [`NodeId`] for control point `index` of `channel`
+/// (0 = master, 1 = R, 2 = G, 3 = B) in the Curves editor of `layer_id` (W4 §3).
+/// Registered as an [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState)
+/// with a small grab rect; the 2-D drag normalizes against the editor's canvas.
+#[must_use]
+pub fn painter_curve_point_id(layer_id: u64, channel: u8, index: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_curve.pt.{layer_id}.{channel}.{index}"))
+}
+
+/// Fixed routing id for a Curves control-point edit forwarded from the panel to
+/// the tool (W4 §3). The panel drains the 2-D drag from the store and emits
+/// `SelectOption(PAINTER_CURVE_EDIT, "layer:channel:index:x:y")`; the tool's
+/// `handle_panel_event` parses it into a `set_curve_point` call. A fixed id (not
+/// per-layer) avoids a reverse hash — the payload carries the layer.
+pub const PAINTER_CURVE_EDIT: NodeId = hash_node_id("painter_curve_edit");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

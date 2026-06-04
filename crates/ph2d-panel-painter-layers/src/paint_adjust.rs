@@ -7,18 +7,22 @@
 //! Bright/Contrast, Levels = Black/Gamma/White/Out-Lo/Out-Hi, etc. Adding a
 //! slider-based kind needs ZERO panel change.
 //!
-//! **Bespoke kinds (W4):** Curves does not fit the generic ≤6-slider rack, so it
-//! gets a dedicated curve canvas here ([`paint_curve_editor`]). To stay inside
-//! the existing interaction machinery (no new `InteractiveState`/dispatch), the
-//! editor REUSES the generic `AdjParam` slider widgets as its fixed-x master
-//! handles — one *vertical* slider per control point, whose value is the point's
-//! Y. A free-2D point drag (arbitrary X) is the foundational
-//! `InteractiveState::CurvePoint` + dispatch upgrade owned by the Coordinator
-//! (see `docs/HANDOFF_painter_w4_bespoke_kinds_coord.md`).
+//! **Bespoke kinds (W4 §3):** Curves gets a dedicated curve canvas
+//! ([`paint_curve_editor`]) with FREE 2-D draggable control points. Each handle
+//! registers an `InteractiveState::CurvePoint` (carrying the plotting canvas) +
+//! a small grab rect; the foundational dispatch (`interaction/dispatch/curve.rs`)
+//! normalizes the pointer within the canvas to `(x, y)` and stashes it on the
+//! store, which the panel drains on `ValueChanged(editor_id)` and forwards to
+//! `PainterTool::set_curve_point` (see `event.rs`). v1 edits the master (RGB)
+//! curve; per-channel R/G/B tabs + add/remove points are the next increment.
 
-use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+use ph2d_editor_core::ids::{
+    PainterLayerWidget, painter_curve_editor_id, painter_curve_point_id, painter_layer_widget_id,
+};
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_circle, fill_rounded_rect, paint_text, resolve, stroke_polyline, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Slider, SliderOrientation, SliderState, paint_slider};
 use ph2d_editor_core::zones::Rect;
@@ -28,7 +32,10 @@ use ph2d_tool_painter::{AdjustmentParams, CurvesParams};
 const ADJ_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: slider-param label column ("Contrast")
 const CURVE_CANVAS_H: f32 = 132.0; // LITERAL-PX-OK: bespoke curve-editor canvas height
 const CURVE_HANDLE_R: f32 = 4.0; // LITERAL-PX-OK: control-point handle radius
-const CURVE_DOT_R: f32 = 1.25; // LITERAL-PX-OK: curve sample-dot radius (the plotted spline)
+const CURVE_GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a handle's pointer grab box
+const CURVE_STROKE_W: f32 = 1.5; // LITERAL-PX-OK: plotted-curve stroke width
+const CURVE_CHANNEL_MASTER: u8 = 0; // master (RGB) curve — v1 edits this channel
+const MAX_CURVE_POINTS: usize = 8; // contract cap (≤8 control points per channel)
 
 /// The generic per-slot slider widget kind (≤6 slider params per adjustment).
 fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
@@ -105,12 +112,11 @@ pub(crate) fn paint_adjustment_params(
 }
 
 /// Bespoke Curves editor: a square canvas plotting the live master tone curve
-/// plus its draggable control points. The control points reuse the generic
-/// `AdjParam` slider widgets as *vertical* sliders (one per point) over a thin
-/// drag strip at the point's fixed X — so a drag updates the point's Y through
-/// the same `SetValue → set_adjustment_param` path as every other adjustment,
-/// with no new interaction primitive. v1 edits the master (RGB) curve at fixed X;
-/// per-channel R/G/B and free-X point drags are the Coordinator upgrade.
+/// plus its FREE 2-D draggable control points. Each handle registers an
+/// `InteractiveState::CurvePoint` (carrying the `canvas` rect, so the dispatch
+/// normalizes the drag against the full plotting area, not the small grab box) +
+/// a grab rect in the `HitIndex`. The drag result is drained in `event.rs` and
+/// forwarded to `PainterTool::set_curve_point`. v1 edits the master (RGB) curve.
 fn paint_curve_editor(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -136,62 +142,66 @@ fn paint_curve_editor(
         1.0, // LITERAL-PX-OK: 1px hairline border
         resolve(ColorToken::TextDisabled, theme),
     );
-    // Plot the master tone curve by sampling its display-space LUT (the exact
-    // table the GPU will bind once Curves goes real-time). Dense small dots read
-    // as a continuous stroke without a polyline primitive in the panel toolkit.
+    // Plot the master tone curve as a smooth polyline by sampling its display-
+    // space LUT (the exact table the GPU compositor binds — so the on-screen
+    // curve matches the rendered pixels). `points_r/g/b` are empty in v1, so
+    // `luts[0]` is the master curve.
     let luts = ph2d_tool_painter::curves_display_luts(c);
     let master = &luts[0];
-    let curve_color = resolve(ColorToken::Accent, theme);
-    let samples = (canvas.w * 0.5).clamp(48.0, 200.0) as usize;
+    let samples = (canvas.w * 0.5).clamp(48.0, 256.0) as usize;
+    let mut poly: Vec<(f32, f32)> = Vec::with_capacity(samples + 1);
     for k in 0..=samples {
         let t = k as f32 / samples as f32; // display x 0..1
         let idx = (t * (master.len() - 1) as f32).round() as usize;
-        let yv = master[idx]; // display y 0..1
-        let px = canvas.x + t * canvas.w;
-        let py = canvas.y + (1.0 - yv) * canvas.h;
-        fill_rounded_rect(
-            ctx.scene,
-            Rect::new(
-                px - CURVE_DOT_R,
-                py - CURVE_DOT_R,
-                CURVE_DOT_R * 2.0,
-                CURVE_DOT_R * 2.0,
-            ),
-            CURVE_DOT_R,
-            curve_color,
-        );
+        poly.push((
+            canvas.x + t * canvas.w,
+            canvas.y + (1.0 - master[idx]) * canvas.h,
+        ));
     }
-    // Control-point handles: one vertical slider per master point. Strips are
-    // narrower than the inter-point spacing so they never overlap.
-    let n = c.points_rgb.points.len().max(1) as f32;
-    let strip_w = (canvas.w / n * 0.6).clamp(10.0, 22.0);
-    let handle_color = resolve(ColorToken::Text1, theme);
-    let handle_ring = resolve(ColorToken::Accent, theme);
-    for (slot, pt) in c.points_rgb.points.iter().enumerate() {
-        let Some(kind) = slot_kind(slot) else { break };
-        let id = painter_layer_widget_id(layer_id, kind);
-        let px = canvas.x + pt[0].clamp(0.0, 1.0) * canvas.w;
-        // Vertical drag strip spanning the full canvas height (the dispatch maps
-        // pointer Y → `1 - (py - rect.y) / rect.h`, i.e. the point's Y in 0..1).
-        let strip_x = (px - strip_w * 0.5).clamp(canvas.x, canvas.x + canvas.w - strip_w);
-        let strip = Rect::new(strip_x, canvas.y, strip_w, canvas.h);
-        register_slider(
-            ctx.host.store_mut(),
+    stroke_polyline(
+        ctx.scene,
+        &poly,
+        CURVE_STROKE_W,
+        resolve(ColorToken::Accent, theme),
+    );
+
+    // Free 2-D draggable control points (master channel).
+    let parent = painter_curve_editor_id(layer_id);
+    let ring = resolve(ColorToken::Accent, theme);
+    let fill = resolve(ColorToken::Text1, theme);
+    for (index, pt) in c
+        .points_rgb
+        .points
+        .iter()
+        .enumerate()
+        .take(MAX_CURVE_POINTS)
+    {
+        let id = painter_curve_point_id(layer_id, CURVE_CHANNEL_MASTER, index as u8);
+        let cx = canvas.x + pt[0].clamp(0.0, 1.0) * canvas.w;
+        let cy = canvas.y + (1.0 - pt[1].clamp(0.0, 1.0)) * canvas.h;
+        // Overwrite each frame so the carried `canvas` tracks panel resizes (the
+        // CurvePoint has no per-frame drag state — the result lands in the store's
+        // `curve_point_drag` slot, drained by the panel).
+        ctx.host.store_mut().register(
             id,
-            pt[1].clamp(0.0, 1.0),
-            SliderOrientation::Vertical,
+            InteractiveState::CurvePoint {
+                parent,
+                channel: CURVE_CHANNEL_MASTER,
+                index: index as u8,
+                canvas,
+            },
         );
-        ctx.host.hit_index_mut().register(id, strip);
-        // Handle dot at the point's (x, y).
-        let py = canvas.y + (1.0 - pt[1].clamp(0.0, 1.0)) * canvas.h;
-        let dot = Rect::new(
-            px - CURVE_HANDLE_R,
-            py - CURVE_HANDLE_R,
-            CURVE_HANDLE_R * 2.0,
-            CURVE_HANDLE_R * 2.0,
+        let grab = Rect::new(
+            cx - CURVE_GRAB_R,
+            cy - CURVE_GRAB_R,
+            CURVE_GRAB_R * 2.0,
+            CURVE_GRAB_R * 2.0,
         );
-        fill_rounded_rect(ctx.scene, dot, CURVE_HANDLE_R, handle_color);
-        stroke_rounded_rect(ctx.scene, dot, CURVE_HANDLE_R, 1.5, handle_ring); // LITERAL-PX-OK: handle ring
+        ctx.host.hit_index_mut().register(id, grab);
+        // Ring + fill (no stroke-circle helper — a slightly larger ring circle
+        // under the fill gives a 1.5px outline).
+        fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R + 1.5, ring);
+        fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R, fill);
     }
     y += CURVE_CANVAS_H + gap;
     y

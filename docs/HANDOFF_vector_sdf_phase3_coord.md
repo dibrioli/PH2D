@@ -102,3 +102,28 @@ Hoje o bridge cozinha o **exato** todo frame. O draft+reconcile (ADR-0065):
 - API: `crates/ph2d-vector-sdf/src/lib.rs` (`network_sdf`/`boolean_sdf`/`SdfOp`/`network_edges`) + `src/gpu.rs` (`GpuSdf`) + `shaders/network_sdf.wgsl`.
 - Bridge a estender: `shells/desktop/src/render_loop/vector_graph_bridge.rs` (`cook_boolean_smoke` = o reconcile exato já lá).
 ═══════════════════════════════════════════════════════════════════
+
+## §6 — STATUS: CLOSED (2026-06-04, smoke-OK do Enio)
+
+Phase 3 ENTREGUE + validado visualmente. Commits locais (não-pushados):
+- `58ee181` — `marching.rs` (marching_contour, determinístico) + draft/reconcile
+  gate no bridge (5 ops SDF; 4 topológicos → exato). CPU 96² (não GPU — bridge
+  não recebe `GpuContext`; ver follow-up). Testes: marching 3/3 + bridge 5/5.
+- `87aa7ec` — auto-frame: as fontes (~100 wu) estouravam a câmera default
+  (`height_world` 10) → blob de tela cheia. Local `Camera2d` enquadra o resultado.
+- `e2156d5` — `VGRAPH_PANEL` na lista fallback do z-order (editor-core paint.rs):
+  o painel de sliders nunca pintava (gap pré-existente do smoke; só o cook fora
+  validado). Agora doca sobre o inspector quando `PH2D_VECTOR_GRAPH=1`.
+
+**Smoke (Enio 2026-06-04):** painel + 8 sliders OK, cria Rect/Ellipse/Polygon/
+Star/Spiral, draft+reconcile funciona. Quirks aceitos como artefatos do scaffold
+(união-de-2-cópias-rotacionadas = demo de booleana; Height ignorado em radiais =
+contrato do `vector.source`).
+
+**FOLLOW-UP (deferido, BAIXO valor):** GPU SDF no bridge. A ADR §amendment-1 §195
+previa "GPU silhouette during drag", mas p/ o caso vetorial (fontes pequenas,
+poucas arestas) o CPU 96² é ~1ms — não é gargalo. GPU só rende em escala (4K/
+muitas arestas) que o smoke não exercita. Threadear `GpuContext` no bridge
+(assinatura `dispatch` muda → toca `mod.rs` CONTENDED-Vector) **só quando houver
+necessidade de perf real medida** (não otimizar prematuro). Não bloqueia nada.
+═══════════════════════════════════════════════════════════════════

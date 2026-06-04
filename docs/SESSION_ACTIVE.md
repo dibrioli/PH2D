@@ -15,10 +15,25 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 
 ---
 
-## COORDENADOR (único) — ATIVO 2026-06-01
+## COORDENADOR (único) — ATIVO 2026-06-04
 
 **Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
 locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
+
+### ATUALIZAÇÃO 2026-06-04 — ADR-0065 SDF Phase 3 CLOSED (Coord, smoke-OK)
+- **SDF draft+reconcile wireado no geometry-graph smoke** (`58ee181` + `87aa7ec` +
+  `e2156d5`): marching-squares (`ph2d-vector-sdf::marching`) + gate draft-vs-exato
+  no `vector_graph_bridge` (5 ops SDF, 4 topológicos → exato) + auto-frame + fix do
+  painel de sliders (z-order fallback em editor-core `paint.rs`). Smoke-OK do Enio.
+  Detalhe + follow-up GPU (deferido, baixo valor): [`HANDOFF_vector_sdf_phase3_coord.md`](HANDOFF_vector_sdf_phase3_coord.md) §6.
+- **W3 roadmap:** milestone "Day 16: SDF Hybrid draft preview" atingido. ADR-0065
+  fechado (Phase 1+2+3).
+- **⚠ Baseline real:** HEAD local **~26 commits ahead de origin/main** (inclui SDF
+  Phases 1-3 + Painter W4 §3 curve editor + vector boolean W3 §3.B). **Nada pushado.**
+  Ship é decisão do Enio (1×/jornada após `./scripts/ship.sh` verde). `Cargo.lock`
+  re-sincronizado em `58ee181` (pegou edge vector-boolean stale + vector-sdf).
+- **Estado do impl Vector/Painter:** confirmar com o Enio antes de tocar crates
+  quentes — sessões paralelas podem estar ativas.
 
 ### ATUALIZAÇÃO 2026-06-02 — Painter W4 T4.1+T4.2 LANDADOS (Coord)
 - **W4 Adjustment Layers ABERTO.** Contrato congelado `ph2d-painter-brush::adjustments`

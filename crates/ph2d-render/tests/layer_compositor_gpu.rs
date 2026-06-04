@@ -50,6 +50,56 @@ impl LayerPixelProvider for MapProvider {
     }
 }
 
+/// CPU reference for an `OP_ADJUSTMENT` op — mirrors the WGSL `apply_adjustment_op`
+/// using the CANONICAL `ph2d_painter_brush::adjustments::apply_adjustment` (the
+/// same fn the CPU compositor's Adjustment arm calls). The GPU↔CPU map of `kind`
+/// code + `[f32;3]` params is the contract the painter tool's flatten emits.
+fn cpu_adjust_op(code: u8, p: [f32; 3], blend: u8, opacity: f32, acc: [f32; 4]) -> [f32; 4] {
+    use ph2d_painter_brush::adjustments::{
+        AdjustmentParams, BrightnessContrastParams, ExposureParams, HsbParams, InvertParams,
+        PosterizeParams, ThresholdParams, VibranceParams, apply_adjustment,
+    };
+    let params = match code {
+        0 => AdjustmentParams::HueSaturationBrightness(HsbParams {
+            h: p[0],
+            s: p[1],
+            b: p[2],
+        }),
+        1 => AdjustmentParams::BrightnessContrast(BrightnessContrastParams {
+            brightness: p[0],
+            contrast: p[1],
+            legacy: false,
+        }),
+        2 => AdjustmentParams::Invert(InvertParams {}),
+        3 => AdjustmentParams::Posterize(PosterizeParams { levels: p[0] as u8 }),
+        4 => AdjustmentParams::Threshold(ThresholdParams {
+            threshold: (p[0] * 255.0).round() as u8,
+        }),
+        5 => AdjustmentParams::Exposure(ExposureParams {
+            exposure_ev: p[0],
+            offset: p[1],
+            gamma_correction: p[2],
+        }),
+        6 => AdjustmentParams::Vibrance(VibranceParams {
+            vibrance: p[0],
+            saturation: p[1],
+        }),
+        _ => return acc,
+    };
+    let kind = params.kind();
+    let mut px = [acc];
+    apply_adjustment(&kind, &params, &mut px);
+    let src_px = [px[0][0], px[0][1], px[0][2], acc[3]];
+    let blended = apply_blend(BlendMode::from_u8(blend), acc, src_px);
+    let t = opacity.clamp(0.0, 1.0);
+    [
+        acc[0] + (blended[0] - acc[0]) * t,
+        acc[1] + (blended[1] - acc[1]) * t,
+        acc[2] + (blended[2] - acc[2]) * t,
+        acc[3],
+    ]
+}
+
 /// CPU reference — mirrors `layer_composite.wgsl`'s per-pixel stack machine
 /// op-for-op, using the canonical `apply_blend` + sRGB transfer. This is the
 /// math the GPU shader must reproduce (the tool's `composite` uses the same
@@ -92,6 +142,14 @@ fn cpu_composite(ops: &[LayerOp], prov: &MapProvider, w: u32, _h: u32, region: R
                         sp -= 1;
                         sub[3] *= *opacity;
                         stack[sp] = apply_blend(BlendMode::from_u8(*blend_mode), stack[sp], sub);
+                    }
+                    LayerOp::Adjustment {
+                        kind,
+                        params,
+                        blend_mode,
+                        opacity,
+                    } => {
+                        stack[sp] = cpu_adjust_op(*kind, *params, *blend_mode, *opacity, stack[sp]);
                     }
                 }
             }
@@ -178,6 +236,86 @@ fn gpu_composite_matches_cpu_reference_each_mode() {
 /// A deep stack: many modes + a nested group + opacity, all at once. Proves the
 /// stack machine (PushGroup / PopGroupBlend) composites groups identically to
 /// the CPU recursion.
+/// Each implemented adjustment kind, isolated: a varied backdrop + one
+/// adjustment op (W4). Proves the WGSL adjustment kernels reproduce the
+/// canonical `ph2d_painter_brush::adjustments::apply_adjustment` within
+/// tolerance. OKLab uses `pow(x, 1/3)` on the GPU vs libm `cbrt` on the CPU,
+/// and the display-space kinds use `pow` vs the CPU LUT — both ULP-bounded, so
+/// the bound (±4 bytes) is wider than the ±1 of the pure-blend gate but still
+/// comfortably sub-perceptual; it catches a mis-ported formula or wrong code.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_adjustment_matches_cpu_reference_each_kind() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let region = Region::full(w, h);
+    // (kind code, params) for each implemented kind, deliberately non-neutral.
+    let cases: &[(u8, [f32; 3])] = &[
+        (0, [0.15, 0.4, 0.1]), // HSB
+        (1, [0.2, 0.3, 0.0]),  // Brightness/Contrast
+        (2, [0.0, 0.0, 0.0]),  // Invert
+        (3, [6.0, 0.0, 0.0]),  // Posterize (6 levels)
+        (4, [0.5, 0.0, 0.0]),  // Threshold (cut 0.5)
+        (5, [1.0, 0.05, 0.2]), // Exposure (+1 EV, +offset, +gamma)
+        (6, [0.6, 0.2, 0.0]),  // Vibrance
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+    for &(code, params) in cases {
+        let mut prov = MapProvider::default();
+        prov.insert(1, 1, varied_canvas(w, h, 5));
+        let ops = vec![
+            LayerOp::Layer {
+                key: 1,
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+            LayerOp::Adjustment {
+                kind: code,
+                params,
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+        ];
+        comp.composite(&gpu, &ops, &prov, w, h, region)
+            .expect("composite");
+        let got = comp.read_output(&gpu).expect("readback");
+        let want = cpu_composite(&ops, &prov, w, h, region);
+        let diff = max_byte_diff(&got, &want);
+        assert!(
+            diff <= 4,
+            "adjustment kind {code}: GPU vs CPU max byte diff {diff}"
+        );
+    }
+    // Partial opacity must lerp the effect toward the base (the arm's opacity).
+    // Version 2 (not 1): `comp` is reused from the loop above, which cached key 1
+    // at version 1 — a stale-version reuse would skip the re-upload (the cache is
+    // correct; the test must bump the version when the pixels change).
+    let mut prov = MapProvider::default();
+    prov.insert(1, 2, varied_canvas(w, h, 9));
+    let ops = vec![
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::Adjustment {
+            kind: 1,
+            params: [0.6, 0.5, 0.0],
+            blend_mode: 0,
+            opacity: 0.5,
+        },
+    ];
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let want = cpu_composite(&ops, &prov, w, h, region);
+    let d = max_byte_diff(&got, &want);
+    assert!(d <= 4, "partial-opacity adjustment parity: max byte diff {d}");
+}
+
 #[test]
 #[ignore = "needs a GPU device"]
 fn gpu_composite_matches_cpu_reference_grouped_stack() {
@@ -371,6 +509,45 @@ fn measure_composite(
     }
     times.sort_by(|a, b| a.partial_cmp(b).unwrap());
     times[times.len() / 2]
+}
+
+/// The PAYOFF (W4): an adjustment slider-drag recomposites the FULL canvas every
+/// frame (the layers are cached — only the adjustment params buffer + the compute
+/// dispatch re-run; zero CPU pixel work, zero re-upload). On the CPU reference
+/// this was ~55 ms @1024² for HSB (OKLab cbrt-bound); on the GPU the same is
+/// sub-millisecond — the whole point of routing the preview through here. Prints
+/// the numbers; asserts a generous interactive bound (full-canvas adjustment
+/// must beat one 60 Hz frame with headroom, hardware-independently).
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_adjustment_drag_full_canvas_perf() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    for &(w, h) in &[(1024u32, 1024u32), (2048u32, 2048u32)] {
+        let mut prov = MapProvider::default();
+        prov.insert(1, 1, varied_canvas(w, h, 3));
+        let ops = vec![
+            LayerOp::Layer {
+                key: 1,
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+            LayerOp::Adjustment {
+                kind: 0, // HSB — the cbrt-heavy worst case
+                params: [0.15, 0.4, 0.1],
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+        ];
+        let median = measure_composite(&gpu, &mut comp, &ops, &prov, w, h, Region::full(w, h), 32);
+        eprintln!("[perf] base+HSB full {w}×{h} GPU composite: median {median:.3} ms");
+        assert!(
+            median < 8.0,
+            "full-canvas adjustment {w}×{h} = {median:.2} ms exceeds the 8 ms interactive budget"
+        );
+    }
 }
 
 /// `layers_composite_50_4k_interactive_under_5ms` — the INTERACTIVE latency

@@ -133,6 +133,19 @@ pub enum LayerOp {
     PushGroup,
     /// End a group: blend the sub-accumulator over the parent as one layer.
     PopGroup { blend_mode: u8, opacity: f32 },
+    /// Apply a non-destructive adjustment to the current accumulator (everything
+    /// below it). `kind` is an `ADJ_*` code — the caller maps its
+    /// `AdjustmentKind` to a code (the render crate stays decoupled from the
+    /// painter tool); an unknown code is an identity no-op in the shader.
+    /// `params` are the kind's ≤3 scalar params (see the WGSL `apply_adjustment`);
+    /// `blend_mode`/`opacity` are the adjustment's own — the effect blends back
+    /// over the base by these. W4 (ADR-0045).
+    Adjustment {
+        kind: u8,
+        params: [f32; 3],
+        blend_mode: u8,
+        opacity: f32,
+    },
 }
 
 /// Borrowed straight-sRGB8 pixels for one layer plus a cheap content version.
@@ -212,6 +225,20 @@ struct GpuOp {
 const OP_LAYER: u32 = 0;
 const OP_PUSH_GROUP: u32 = 1;
 const OP_POP_GROUP: u32 = 2;
+const OP_ADJUSTMENT: u32 = 3;
+
+/// Per-adjustment params as the shader sees them (16 bytes; mirrors WGSL
+/// `AdjParams`). `kind` is an `ADJ_*` code; `p0/p1/p2` are the kind's scalar
+/// params. Lives in a storage buffer indexed by an `OP_ADJUSTMENT` op's
+/// `layer_slot`.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct AdjParamsGpu {
+    kind: u32,
+    p0: f32,
+    p1: f32,
+    p2: f32,
+}
 
 /// Compositor globals (32 bytes; mirrors WGSL `Globals`).
 #[repr(C)]
@@ -274,6 +301,9 @@ pub struct LayerCompositor {
     globals_buffer: wgpu::Buffer,
     /// Immutable sRGB→linear decode LUT (uploaded once at construction).
     srgb_lut_buffer: wgpu::Buffer,
+    /// Persistent adjustment-params storage buffer (grown as needed; always
+    /// holds ≥1 element so binding 5 is never zero-sized).
+    adj_params_buffer: Option<(wgpu::Buffer, u64)>,
 }
 
 impl LayerCompositor {
@@ -352,6 +382,19 @@ impl LayerCompositor {
                         },
                         count: None,
                     },
+                    // 5: adjustment params storage (read; ≥1 element always bound)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(
+                                core::mem::size_of::<AdjParamsGpu>() as u64,
+                            ),
+                        },
+                        count: None,
+                    },
                 ],
             });
 
@@ -407,6 +450,7 @@ impl LayerCompositor {
             op_buffer: None,
             globals_buffer,
             srgb_lut_buffer,
+            adj_params_buffer: None,
         }
     }
 
@@ -482,6 +526,7 @@ impl LayerCompositor {
         }
         self.ensure_out(gpu, region.w, region.h);
         self.upload_op_buffer(gpu);
+        self.upload_adj_buffer(gpu);
         self.write_globals(gpu, canvas_w, canvas_h, region);
         let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
         self.dispatch(gpu, region, has_groups);
@@ -702,7 +747,7 @@ impl LayerCompositor {
     /// (Re)upload the flattened op-list into the persistent storage buffer,
     /// growing it only when the op count exceeds the current capacity.
     fn upload_op_buffer(&mut self, gpu: &GpuContext) {
-        let bytes: &[u8] = bytemuck::cast_slice(&self.scratch_ops.0);
+        let bytes: &[u8] = bytemuck::cast_slice(&self.scratch_ops.ops);
         let needed = bytes.len().max(core::mem::size_of::<GpuOp>()) as u64;
         let grow = match &self.op_buffer {
             Some((_, cap)) => *cap < needed,
@@ -718,6 +763,43 @@ impl LayerCompositor {
             self.op_buffer = Some((buffer, needed));
         }
         if let Some((buffer, _)) = &self.op_buffer {
+            gpu.queue.write_buffer(buffer, 0, bytes);
+        }
+    }
+
+    /// Upload the flattened adjustment params (binding 5). Always writes ≥1
+    /// element (a zero-filled dummy when there are no adjustments) so the storage
+    /// binding is never zero-sized. Grows like the op buffer (HR-3: no realloc
+    /// once warm).
+    fn upload_adj_buffer(&mut self, gpu: &GpuContext) {
+        let one = core::mem::size_of::<AdjParamsGpu>() as u64;
+        let dummy = [AdjParamsGpu {
+            kind: 0,
+            p0: 0.0,
+            p1: 0.0,
+            p2: 0.0,
+        }];
+        let src: &[AdjParamsGpu] = if self.scratch_ops.adj.is_empty() {
+            &dummy
+        } else {
+            &self.scratch_ops.adj
+        };
+        let bytes: &[u8] = bytemuck::cast_slice(src);
+        let needed = (bytes.len() as u64).max(one);
+        let grow = match &self.adj_params_buffer {
+            Some((_, cap)) => *cap < needed,
+            None => true,
+        };
+        if grow {
+            let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render layer_composite adj params"),
+                size: needed,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.adj_params_buffer = Some((buffer, needed));
+        }
+        if let Some((buffer, _)) = &self.adj_params_buffer {
             gpu.queue.write_buffer(buffer, 0, bytes);
         }
     }
@@ -738,9 +820,12 @@ impl LayerCompositor {
     }
 
     fn dispatch(&self, gpu: &GpuContext, region: Region, has_groups: bool) {
-        let (Some(array), Some(out), Some((op_buffer, _))) =
-            (&self.array, &self.out, &self.op_buffer)
-        else {
+        let (Some(array), Some(out), Some((op_buffer, _)), Some((adj_buffer, _))) = (
+            &self.array,
+            &self.out,
+            &self.op_buffer,
+            &self.adj_params_buffer,
+        ) else {
             return;
         };
         let pipeline = if has_groups {
@@ -771,6 +856,10 @@ impl LayerCompositor {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: self.srgb_lut_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: adj_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -812,7 +901,9 @@ fn validate_op_list(ops: &[LayerOp]) -> Result<(), LayerCompositeError> {
                     .checked_sub(1)
                     .ok_or(LayerCompositeError::MalformedOpList)?;
             }
-            LayerOp::Layer { .. } => {}
+            // Layers + adjustments are depth-neutral (an adjustment transforms
+            // the current accumulator in place, like a layer blends over it).
+            LayerOp::Layer { .. } | LayerOp::Adjustment { .. } => {}
         }
     }
     if depth != 0 {
@@ -845,29 +936,35 @@ fn distinct_layer_count(ops: &[LayerOp]) -> u32 {
 /// across frames: [`flatten_layer_ops`] clears and refills it without
 /// allocating once it is warm (HR-3 — `layers_no_alloc_hot_compose`).
 #[derive(Default)]
-pub struct GpuOpScratch(Vec<GpuOp>);
+pub struct GpuOpScratch {
+    ops: Vec<GpuOp>,
+    /// Per-adjustment params, parallel to the `OP_ADJUSTMENT` ops (each such op's
+    /// `layer_slot` indexes this). Reused across frames like `ops` (HR-3).
+    adj: Vec<AdjParamsGpu>,
+}
 
 impl GpuOpScratch {
     #[must_use]
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self::default()
     }
 
+    /// Number of compositor ops (`len()` historically meant the op count).
     #[must_use]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.ops.len()
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.ops.is_empty()
     }
 
-    /// Backing capacity — exposed for the no-alloc gate to assert stability.
+    /// Backing op capacity — exposed for the no-alloc gate to assert stability.
     #[doc(hidden)]
     #[must_use]
     pub fn capacity(&self) -> usize {
-        self.0.capacity()
+        self.ops.capacity()
     }
 }
 
@@ -881,8 +978,8 @@ pub fn flatten_layer_ops(
     slot_of: impl Fn(u64) -> u32,
     scratch: &mut GpuOpScratch,
 ) {
-    let out = &mut scratch.0;
-    out.clear();
+    scratch.ops.clear();
+    scratch.adj.clear();
     for op in ops {
         let g = match op {
             LayerOp::Layer {
@@ -913,8 +1010,29 @@ pub fn flatten_layer_ops(
                 blend_mode: *blend_mode as u32,
                 opacity: opacity.clamp(0.0, 1.0),
             },
+            LayerOp::Adjustment {
+                kind,
+                params,
+                blend_mode,
+                opacity,
+            } => {
+                // The op's `layer_slot` indexes the params we stash in parallel.
+                let params_index = scratch.adj.len() as u32;
+                scratch.adj.push(AdjParamsGpu {
+                    kind: *kind as u32,
+                    p0: params[0],
+                    p1: params[1],
+                    p2: params[2],
+                });
+                GpuOp {
+                    kind: OP_ADJUSTMENT,
+                    layer_slot: params_index,
+                    blend_mode: *blend_mode as u32,
+                    opacity: opacity.clamp(0.0, 1.0),
+                }
+            }
         };
-        out.push(g);
+        scratch.ops.push(g);
     }
 }
 
@@ -1090,6 +1208,12 @@ mod tests {
                 blend_mode: 1,
                 opacity: 0.5,
             },
+            LayerOp::Adjustment {
+                kind: 0, // ADJ_HSB
+                params: [0.25, 0.5, -0.1],
+                blend_mode: 0,
+                opacity: 0.75,
+            },
             LayerOp::PushGroup,
             LayerOp::Layer {
                 key: 7,
@@ -1103,14 +1227,22 @@ mod tests {
         ];
         let mut scratch = GpuOpScratch::new();
         flatten_layer_ops(&ops, slot_of, &mut scratch);
-        assert_eq!(scratch.0.len(), 4);
-        assert_eq!(scratch.0[0].kind, OP_LAYER);
-        assert_eq!(scratch.0[0].layer_slot, 1); // key 9 → slice 1
-        assert_eq!(scratch.0[0].blend_mode, 1);
-        assert_eq!(scratch.0[1].kind, OP_PUSH_GROUP);
-        assert_eq!(scratch.0[2].layer_slot, 3); // key 7 → slice 3
-        assert_eq!(scratch.0[3].kind, OP_POP_GROUP);
-        assert_eq!(scratch.0[3].blend_mode, 6);
+        assert_eq!(scratch.ops.len(), 5);
+        assert_eq!(scratch.ops[0].kind, OP_LAYER);
+        assert_eq!(scratch.ops[0].layer_slot, 1); // key 9 → slice 1
+        assert_eq!(scratch.ops[0].blend_mode, 1);
+        // The adjustment op carries its params index in layer_slot + its own blend/opacity.
+        assert_eq!(scratch.ops[1].kind, OP_ADJUSTMENT);
+        assert_eq!(scratch.ops[1].layer_slot, 0); // first (only) adjustment → params[0]
+        assert!((scratch.ops[1].opacity - 0.75).abs() < 1e-6);
+        assert_eq!(scratch.adj.len(), 1);
+        assert_eq!(scratch.adj[0].kind, 0);
+        assert!((scratch.adj[0].p0 - 0.25).abs() < 1e-6);
+        assert!((scratch.adj[0].p2 + 0.1).abs() < 1e-6);
+        assert_eq!(scratch.ops[2].kind, OP_PUSH_GROUP);
+        assert_eq!(scratch.ops[3].layer_slot, 3); // key 7 → slice 3
+        assert_eq!(scratch.ops[4].kind, OP_POP_GROUP);
+        assert_eq!(scratch.ops[4].blend_mode, 6);
 
         // Re-flattening into the same scratch must not grow capacity (HR-3).
         let cap = scratch.capacity();

@@ -52,6 +52,23 @@ const F32_EPSILON: f32 = 1.1920929e-7; // f32::EPSILON (2^-23), mirror of Rust
 const OP_LAYER: u32 = 0u;
 const OP_PUSH_GROUP: u32 = 1u;
 const OP_POP_GROUP: u32 = 2u;
+// W4 (ADR-0045): a non-destructive adjustment transforms the current-depth
+// accumulator (everything BELOW it) in place, then blends the result back over
+// itself by the adjustment's own opacity in its blend mode — the GPU mirror of
+// the CPU `composite_into` Adjustment arm. `layer_slot` is reused as the index
+// into `adj_params`; `blend_mode` + `opacity` are the adjustment's.
+const OP_ADJUSTMENT: u32 = 3u;
+
+// Adjustment kind codes — mirror the Rust mapping in the painter tool's flatten
+// (`AdjustmentKind` → code). Only the implemented kinds; an unknown code is an
+// identity no-op (forward-compatible with kinds the GPU shader doesn't know yet).
+const ADJ_HSB: u32 = 0u;
+const ADJ_BRIGHTNESS_CONTRAST: u32 = 1u;
+const ADJ_INVERT: u32 = 2u;
+const ADJ_POSTERIZE: u32 = 3u;
+const ADJ_THRESHOLD: u32 = 4u;
+const ADJ_EXPOSURE: u32 = 5u;
+const ADJ_VIBRANCE: u32 = 6u;
 
 // One flattened compositor op. 16 bytes; `layer_slot` is the texture-array
 // slice for OP_LAYER, ignored otherwise; `blend_mode` + `opacity` apply to
@@ -61,6 +78,15 @@ struct Op {
     layer_slot: u32,
     blend_mode: u32,
     opacity: f32,
+}
+
+// Per-adjustment params (16 bytes; mirrors Rust `AdjParamsGpu`). `kind` is an
+// `ADJ_*` code; `p0/p1/p2` are the kind's scalar params (see `apply_adjustment`).
+struct AdjParams {
+    kind: u32,
+    p0: f32,
+    p1: f32,
+    p2: f32,
 }
 
 struct Globals {
@@ -90,6 +116,8 @@ struct Globals {
 // approximation, no f16 loss) AND ~20× faster than 150 `pow`/pixel. The
 // `srgb_lut_matches_cpu_transfer` gate pins the table to the Rust function.
 @group(0) @binding(4) var<storage, read> srgb_lut: array<f32, 256>;
+// Per-adjustment params, indexed by an OP_ADJUSTMENT op's `layer_slot`.
+@group(0) @binding(5) var<storage, read> adj_params: array<AdjParams>;
 
 // ── sRGB gamma transfer (bit-identical to ph2d_color::srgb) ───────────────
 // Encode mirror of `linear_to_srgb_byte` on a normalized [0,1] value (the
@@ -348,6 +376,140 @@ fn apply_blend(mode: u32, dst: vec4<f32>, src: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(out, ao);
 }
 
+// ── Adjustment kernels (W4) — GPU mirror of ph2d_painter_brush::adjustments ──
+// Inputs/outputs are STRAIGHT LINEAR rgb (the accumulator space). Display-space
+// kinds (Invert/Posterize/Threshold) convert linear↔sRGB internally — same as
+// the CPU. OKLab uses `pow(x, 1/3)` for the cube root (the CPU uses libm cbrt;
+// ULP-bounded, asserted within tolerance by the GPU↔CPU parity gate).
+
+// Continuous sRGB→linear (the LUT decode is byte-input only; display-space
+// adjustments need the f32 transfer). Bit-literal twin of the encode below.
+fn srgb_to_linear_f32(c: f32) -> f32 {
+    let v = clamp(c, 0.0, 1.0);
+    if v <= 0.04045 {
+        return v / 12.92;
+    }
+    return pow((v + 0.055) / 1.055, 2.4);
+}
+
+// Linear sRGB → OKLab. Coefficients bit-identical to
+// `ph2d_color::oklab::OklabColor::from_linear` (the rounded f32 literals the
+// Rust source uses — NOT the full-precision spec values, or the GPU↔CPU parity
+// drifts). Pinned by `shader_adjustment_coefficients_bit_identical_with_rust`.
+fn oklab_from_linear(c: vec3<f32>) -> vec3<f32> {
+    let l = 0.41222147 * c.r + 0.5363325 * c.g + 0.051445993 * c.b;
+    let m = 0.2119035 * c.r + 0.6806995 * c.g + 0.10739696 * c.b;
+    let s = 0.08830246 * c.r + 0.28171884 * c.g + 0.6299787 * c.b;
+    let l_ = pow(max(l, 0.0), 0.3333333333);
+    let m_ = pow(max(m, 0.0), 0.3333333333);
+    let s_ = pow(max(s, 0.0), 0.3333333333);
+    return vec3<f32>(
+        0.21045426 * l_ + 0.7936178 * m_ - 0.004072047 * s_,
+        1.9779985 * l_ - 2.4285922 * m_ + 0.4505937 * s_,
+        0.025904037 * l_ + 0.78277177 * m_ - 0.80867577 * s_,
+    );
+}
+
+// OKLab → linear sRGB. Coefficients bit-identical to `OklabColor::to_linear`.
+fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
+    let l_ = lab.x + 0.39633778 * lab.y + 0.21580376 * lab.z;
+    let m_ = lab.x - 0.105561346 * lab.y - 0.06385417 * lab.z;
+    let s_ = lab.x - 0.08948418 * lab.y - 1.2914855 * lab.z;
+    let l3 = l_ * l_ * l_;
+    let m3 = m_ * m_ * m_;
+    let s3 = s_ * s_ * s_;
+    return vec3<f32>(
+        4.0767417 * l3 - 3.3077116 * m3 + 0.23096994 * s3,
+        -1.268438 * l3 + 2.6097574 * m3 - 0.34131938 * s3,
+        -0.0041960863 * l3 - 0.7034186 * m3 + 1.7076147 * s3,
+    );
+}
+
+// Apply an adjustment kind to a straight-linear rgb triple (RGB transform only;
+// the caller preserves alpha = coverage). Unknown kind → identity.
+fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>) -> vec3<f32> {
+    switch ap.kind {
+        case 0u: { // ADJ_HSB — p0=hue(turns), p1=sat(-1..1), p2=bright(-1..1)
+            let hue_rad = ap.p0 * 6.2831853072;
+            let hc = cos(hue_rad);
+            let hs = sin(hue_rad);
+            let chroma_scale = max(1.0 + ap.p1, 0.0);
+            let lab = oklab_from_linear(rgb);
+            let a = (lab.y * hc - lab.z * hs) * chroma_scale;
+            let b = (lab.y * hs + lab.z * hc) * chroma_scale;
+            var out = oklab_to_linear(vec3<f32>(lab.x, a, b));
+            if ap.p2 > 0.0 {
+                out = out + (vec3<f32>(1.0) - out) * ap.p2;
+            } else if ap.p2 < 0.0 {
+                out = out * (1.0 + ap.p2);
+            }
+            return out;
+        }
+        case 1u: { // ADJ_BRIGHTNESS_CONTRAST — p0=brightness, p1=contrast
+            let PIVOT = 0.21404114;
+            let scale = 1.0 + ap.p1;
+            var v = clamp((rgb - vec3<f32>(PIVOT)) * scale + vec3<f32>(PIVOT), vec3<f32>(0.0), vec3<f32>(1.0));
+            if ap.p0 > 0.0 {
+                v = v + (vec3<f32>(1.0) - v) * ap.p0;
+            } else if ap.p0 < 0.0 {
+                v = v * (1.0 + ap.p0);
+            }
+            return v;
+        }
+        case 2u: { // ADJ_INVERT — display-space negative
+            return vec3<f32>(
+                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.r)),
+                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.g)),
+                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.b)),
+            );
+        }
+        case 3u: { // ADJ_POSTERIZE — p0=levels (2..32), display-space quantize
+            let levels = clamp(ap.p0, 2.0, 32.0);
+            let steps = levels - 1.0;
+            let s = vec3<f32>(linear_to_srgb(rgb.r), linear_to_srgb(rgb.g), linear_to_srgb(rgb.b));
+            let q = round(s * steps) / steps;
+            return vec3<f32>(srgb_to_linear_f32(q.r), srgb_to_linear_f32(q.g), srgb_to_linear_f32(q.b));
+        }
+        case 4u: { // ADJ_THRESHOLD — p0=cut (0..1), display-space luma → B/W
+            let luma = 0.299 * linear_to_srgb(rgb.r) + 0.587 * linear_to_srgb(rgb.g) + 0.114 * linear_to_srgb(rgb.b);
+            let v = select(0.0, 1.0, luma >= ap.p0);
+            return vec3<f32>(v, v, v);
+        }
+        case 5u: { // ADJ_EXPOSURE — p0=EV, p1=offset, p2=gamma_correction
+            let gain = exp2(ap.p0);
+            let inv_gamma = 1.0 / max(1.0 + ap.p2, 0.001);
+            let v = max(rgb * gain + vec3<f32>(ap.p1), vec3<f32>(0.0));
+            return pow(v, vec3<f32>(inv_gamma));
+        }
+        case 6u: { // ADJ_VIBRANCE — p0=vibrance, p1=saturation (OKLab chroma)
+            let sat_mul = max(1.0 + ap.p1, 0.0);
+            let lab = oklab_from_linear(rgb);
+            let chroma = sqrt(lab.y * lab.y + lab.z * lab.z);
+            if chroma > 1e-6 {
+                let nc = min(chroma / 0.4, 1.0);
+                let vib_mul = max(1.0 + ap.p0 * (1.0 - nc), 0.0);
+                let scale = sat_mul * vib_mul;
+                return oklab_to_linear(vec3<f32>(lab.x, lab.y * scale, lab.z * scale));
+            }
+            return rgb;
+        }
+        default: { return rgb; }
+    }
+}
+
+// Apply an OP_ADJUSTMENT over the current accumulator (everything below). Mirror
+// of the CPU arm: transform acc.rgb by the kind, blend the result back over acc
+// in the adjustment's mode, then lerp by the adjustment's opacity; coverage
+// (acc.a) is preserved.
+fn apply_adjustment_op(op: Op, acc: vec4<f32>) -> vec4<f32> {
+    let ap = adj_params[op.layer_slot];
+    let adj_rgb = apply_adjustment(ap, acc.rgb);
+    let src_px = vec4<f32>(adj_rgb, acc.a);
+    let blended = apply_blend(op.blend_mode, acc, src_px);
+    let t = clamp(op.opacity, 0.0, 1.0);
+    return vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);
+}
+
 // Map a thread to its (output local, canvas global) coordinate. Returns false
 // for threads outside the region / canvas (which must early-out). `out_local`
 // is where to store; `coord` is where to sample the layers.
@@ -384,9 +546,13 @@ fn cs_flat(@builtin(global_invocation_id) gid: vec3<u32>) {
     var acc = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     for (var i: u32 = 0u; i < g.op_count; i = i + 1u) {
         let op = ops[i];
-        var s = decode_layer(op.layer_slot, coord);
-        s.a = s.a * op.opacity;
-        acc = apply_blend(op.blend_mode, acc, s);
+        if op.kind == OP_ADJUSTMENT {
+            acc = apply_adjustment_op(op, acc);
+        } else {
+            var s = decode_layer(op.layer_slot, coord);
+            s.a = s.a * op.opacity;
+            acc = apply_blend(op.blend_mode, acc, s);
+        }
     }
     textureStore(out_tex, out_local, encode_final(acc));
 }
@@ -436,6 +602,14 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
                         let d = sp - 1u;
                         stack[d] = apply_blend(op.blend_mode, stack[d], sub);
                     }
+                }
+            }
+            case 3u: { // OP_ADJUSTMENT — transform the current-depth accumulator
+                if sp == 0u {
+                    acc0 = apply_adjustment_op(op, acc0);
+                } else {
+                    let d = sp - 1u;
+                    stack[d] = apply_adjustment_op(op, stack[d]);
                 }
             }
             default: {}

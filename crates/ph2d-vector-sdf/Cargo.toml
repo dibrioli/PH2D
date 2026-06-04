@@ -19,3 +19,8 @@ authors.workspace = true
 [dependencies]
 ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 glam = "0.30"
+# GPU compute port (ADR-0065 phase 2): the per-pixel SDF + `min/max` boolean as
+# a wgpu compute pass — the real-time draft. The CPU core stays the parity oracle.
+ph2d-gpu = { path = "../ph2d-gpu" }
+wgpu = "28"
+bytemuck = { version = "1", features = ["derive"] }

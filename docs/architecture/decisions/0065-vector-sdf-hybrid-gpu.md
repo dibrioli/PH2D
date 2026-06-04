@@ -195,8 +195,10 @@ This ADR decided the *draft+reconcile* shape (§1–§5); this amendment records
 - **Phasing = CPU-core-first → GPU-parity** (the layer_compositor discipline):
   **Phase 1 (LANDED):** the pure-Rust core (`network_sdf` / `boolean_sdf`,
   5 tests) — the source of truth, a CPU silhouette fallback (usable at draft
-  res), AND the GPU parity oracle. **Phase 2 (next):** `boolean_sdf.wgsl` (the
-  same per-pixel SDF + `min/max`) + a wgpu compute pipeline mirroring
-  `ph2d-render/src/layer_compositor/`, gated by a Metal parity test vs Phase 1.
-  **Phase 3:** wire the draft into `vector_graph_bridge` (silhouette during drag)
-  alongside the exact-engine reconcile.
+  res), AND the GPU parity oracle. **Phase 2 (LANDED):** `shaders/network_sdf.wgsl`
+  (the same per-pixel SDF + NonZero winding) + a `GpuSdf` wgpu compute pipeline
+  mirroring `ph2d-render/src/layer_compositor/`, gated by a Metal parity test
+  (GPU ≈ CPU, sub-pixel). The `min/max` boolean combine stays in the trivial,
+  already-tested CPU `boolean_sdf`. **Phase 3 (next):** wire the draft into
+  `vector_graph_bridge` (GPU silhouette during drag) alongside the exact-engine
+  reconcile.

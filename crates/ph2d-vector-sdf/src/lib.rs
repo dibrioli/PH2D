@@ -28,6 +28,8 @@ use glam::Vec2;
 use ph2d_vector_doc::{Segment, SegmentId, VectorNetwork, VertexId, WindingRule};
 use std::collections::BTreeMap;
 
+pub mod gpu;
+
 /// Cubic subdivisions per segment when flattening to the boundary polyline.
 /// FIXED (not adaptive) so the silhouette is bit-stable across platforms — the
 /// draft trades a little smoothness for determinism (ADR-0065 §2.4).
@@ -168,6 +170,20 @@ pub fn region_loops(net: &VectorNetwork) -> Vec<(Vec<Vec2>, WindingRule)> {
         }
     }
     loops
+}
+
+/// Flatten `net`'s region boundaries into a flat list of directed edges
+/// `[a.x, a.y, b.x, b.y]` — the GPU upload form (and a stable boundary
+/// enumeration). Closing edges included.
+#[must_use]
+pub fn network_edges(net: &VectorNetwork) -> Vec<[f32; 4]> {
+    let mut edges = Vec::new();
+    for (pts, _winding) in region_loops(net) {
+        for w in pts.windows(2) {
+            edges.push([w[0].x, w[0].y, w[1].x, w[1].y]);
+        }
+    }
+    edges
 }
 
 /// Distance from `p` to the line segment `[a, b]`.

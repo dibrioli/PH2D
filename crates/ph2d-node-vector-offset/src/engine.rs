@@ -151,7 +151,10 @@ mod tests {
     fn round_and_bevel_joins_both_produce_valid_offsets() {
         for join in [Join::Round, Join::Bevel, Join::Miter] {
             let out = offset(&square(0.0, 2.0), 1.0, join, 4.0);
-            assert!(out.validate().is_ok(), "join {join:?} produced invalid offset");
+            assert!(
+                out.validate().is_ok(),
+                "join {join:?} produced invalid offset"
+            );
             assert_eq!(out.regions.len(), 1);
         }
     }

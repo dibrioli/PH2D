@@ -176,7 +176,11 @@ fn union_nested_returns_outer() {
 fn golden_intersection_corners_are_exact_on_the_grid() {
     // [0,2]² ∩ [1,3]² = exactly the unit square [1,2]². With Q16.16 snapping the
     // four corners are bit-exact integers on every target — the cross-OS golden.
-    let out = boolean(&square(0.0, 0.0, 2.0, 2.0), &square(1.0, 1.0, 3.0, 3.0), BooleanOp::Intersect);
+    let out = boolean(
+        &square(0.0, 0.0, 2.0, 2.0),
+        &square(1.0, 1.0, 3.0, 3.0),
+        BooleanOp::Intersect,
+    );
     assert!(out.validate().is_ok());
     assert_eq!(out.regions.len(), 1);
     let mut corners: Vec<(f32, f32)> = out.vertices.iter().map(|v| (v.pos.x, v.pos.y)).collect();
@@ -187,6 +191,10 @@ fn golden_intersection_corners_are_exact_on_the_grid() {
         "intersection corners must be exact grid integers"
     );
     // And byte-stable across a re-run.
-    let again = boolean(&square(0.0, 0.0, 2.0, 2.0), &square(1.0, 1.0, 3.0, 3.0), BooleanOp::Intersect);
+    let again = boolean(
+        &square(0.0, 0.0, 2.0, 2.0),
+        &square(1.0, 1.0, 3.0, 3.0),
+        BooleanOp::Intersect,
+    );
     assert_eq!(out, again);
 }

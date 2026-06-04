@@ -28,7 +28,10 @@ fn main() {
         .map(|i| {
             let x = (i % 10) as f32 * 30.0;
             let y = (i / 10) as f32 * 30.0;
-            (poly(x, y, 20.0, sides), poly(x + 10.0, y + 10.0, 20.0, sides))
+            (
+                poly(x, y, 20.0, sides),
+                poly(x + 10.0, y + 10.0, 20.0, sides),
+            )
         })
         .collect();
     let t = Instant::now();
@@ -53,7 +56,12 @@ fn main() {
     let mut sink = 0usize;
     for i in 0..500 {
         let a = poly((i % 17) as f32 * 11.0, (i % 13) as f32 * 9.0, 18.0, sides);
-        let b = poly((i % 17) as f32 * 11.0 + 8.0, (i % 13) as f32 * 9.0 + 6.0, 18.0, sides);
+        let b = poly(
+            (i % 17) as f32 * 11.0 + 8.0,
+            (i % 13) as f32 * 9.0 + 6.0,
+            18.0,
+            sides,
+        );
         sink += boolean(&a, &b, ops[i % ops.len()]).regions.len();
     }
     let dt = t.elapsed().as_secs_f64() * 1000.0;

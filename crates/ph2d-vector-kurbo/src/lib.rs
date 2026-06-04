@@ -167,7 +167,13 @@ impl Builder {
     /// Push a segment with explicit cubic tangents (relative offsets). `Segment`
     /// is `#[non_exhaustive]`, so we go through the `straight` constructor and
     /// then set the public tangent fields.
-    fn push_segment(&mut self, start: VertexId, end: VertexId, out_at_start: Vec2, in_at_end: Vec2) {
+    fn push_segment(
+        &mut self,
+        start: VertexId,
+        end: VertexId,
+        out_at_start: Vec2,
+        in_at_end: Vec2,
+    ) {
         let id = self.next_s;
         self.next_s += 1;
         let mut s = Segment::straight(id, start, end);
@@ -221,8 +227,16 @@ fn emit_contour(b: &mut Builder, path: &BezPath) {
             PathEl::LineTo(p) => {
                 let Some(sv) = start_v else { continue };
                 close_or_extend(
-                    b, &mut refs, &mut cur_v, &mut cur_pos, &mut closed, sv, start_pos, p,
-                    Vec2::ZERO, Vec2::ZERO,
+                    b,
+                    &mut refs,
+                    &mut cur_v,
+                    &mut cur_pos,
+                    &mut closed,
+                    sv,
+                    start_pos,
+                    p,
+                    Vec2::ZERO,
+                    Vec2::ZERO,
                 );
             }
             PathEl::QuadTo(c, p) => {
@@ -232,7 +246,16 @@ fn emit_contour(b: &mut Builder, path: &BezPath) {
                 let out = (vec(c) - vec(cur_pos)) * (2.0_f32 / 3.0);
                 let inn = (vec(c) - vec(p)) * (2.0_f32 / 3.0);
                 close_or_extend(
-                    b, &mut refs, &mut cur_v, &mut cur_pos, &mut closed, sv, start_pos, p, out, inn,
+                    b,
+                    &mut refs,
+                    &mut cur_v,
+                    &mut cur_pos,
+                    &mut closed,
+                    sv,
+                    start_pos,
+                    p,
+                    out,
+                    inn,
                 );
             }
             PathEl::CurveTo(c1, c2, p) => {
@@ -240,7 +263,16 @@ fn emit_contour(b: &mut Builder, path: &BezPath) {
                 let out = vec(c1) - vec(cur_pos);
                 let inn = vec(c2) - vec(p);
                 close_or_extend(
-                    b, &mut refs, &mut cur_v, &mut cur_pos, &mut closed, sv, start_pos, p, out, inn,
+                    b,
+                    &mut refs,
+                    &mut cur_v,
+                    &mut cur_pos,
+                    &mut closed,
+                    sv,
+                    start_pos,
+                    p,
+                    out,
+                    inn,
                 );
             }
             PathEl::ClosePath => {

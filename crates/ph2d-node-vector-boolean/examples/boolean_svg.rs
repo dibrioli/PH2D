@@ -47,10 +47,7 @@ fn main() {
         COLS as f64 * CELL,
         rows as f64 * CELL
     );
-    let _ = writeln!(
-        svg,
-        "<rect width='100%' height='100%' fill='#fafafa'/>"
-    );
+    let _ = writeln!(svg, "<rect width='100%' height='100%' fill='#fafafa'/>");
 
     for (i, (name, op)) in ops.iter().enumerate() {
         let dx = (i % COLS) as f64 * CELL;

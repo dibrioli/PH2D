@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-node-vector-bend-path"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+ph2d-vector-graph = { path = "../ph2d-vector-graph" }
+# Math primitives — glam::Vec2 (the network carries glam vectors).
+glam = "0.30"

@@ -52,7 +52,11 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   por-nó (plumbo quando o impl pedir), audit T4.13, ship.
 - **Sem colisão pendente:** minhas edições de audit em `ph2d-node-vector-boolean/engine.rs`
   já estão COMMITADAS (`16a7120`) — o impl ramifica do HEAD local e as recebe limpas.
-- **RAM:** Coord + impl Vector = 2 cargos. Teto 3 — ok. Escalono se abrir 3º.
+- **Implementador Painter = ATIVO** (W4 §3 curve editor). Posse: `ph2d-panel-painter-layers`
+  + `ph2d-tool-painter` + ids aditivos. Coord entregou os 3 tokens cromáticos `curve-r/g/b`
+  (`756eb8e`, foundational §3.C) que o desbloqueiam — wire de 2-3 linhas é dele.
+- **RAM 3/3:** Coord + impl Vector (W4) + impl Painter (curve). **TETO — não abrir 4º.**
+  Coord minimiza cargo próprio; sequencio se houver contenção.
 
 ### ATUALIZAÇÃO 2026-06-02 — Painter W4 T4.1+T4.2 LANDADOS (Coord)
 - **W4 Adjustment Layers ABERTO.** Contrato congelado `ph2d-painter-brush::adjustments`

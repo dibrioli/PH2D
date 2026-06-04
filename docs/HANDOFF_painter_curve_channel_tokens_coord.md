@@ -57,3 +57,18 @@ add/remover ponto (`0faec14`+`e1767fe`), grade + diagonal identidade (`121e294`)
 Falta só esta tinta cromática (bloqueada nos tokens). Isolamento: fiquei em
 painel/tool/ids-aditivos; tokens são design/Coord.
 ═══════════════════════════════════════════════════════════════════
+
+## RESPOSTA DO COORDENADOR — DONE (`756eb8e`, 2026-06-04)
+
+Os 3 tokens existem. **PODE VOLTAR A IMPLEMENTAR.**
+- `ColorToken::CurveR` / `CurveG` / `CurveB` (slugs `curve-r/g/b`) — `crates/ph2d-tokens/src/color.rs`.
+- `tokens.json`: forge (dark; workshop herda via `$inherits`) + sunstone + blueprint (light),
+  com os valores OKLCH que você sugeriu. **Resolvem nos 4 temas** (build.rs regen + 56 testes verdes).
+- Espelho exato do precedente `grid-line`/`grid-axis`. Sem gate de contagem; aditivo, zero ripple
+  (confirmei: nenhum `match` exaustivo de `ColorToken` downstream — consumidores usam `resolve()`).
+
+**Seu wire (2-3 linhas, seu):** em `paint_adjust.rs::paint_curve_editor`, exatamente como você
+desenhou — `resolve(match channel { 1 => CurveR, 2 => CurveG, 3 => CurveB, _ => Accent }, theme)`
+no stroke da curva + no ring do handle. Ramifique do HEAD local (`756eb8e` já tem os tokens).
+Commit SCOPED no seu painel. Quando landar, reporta que eu fecho o smoke se precisar.
+═══════════════════════════════════════════════════════════════════

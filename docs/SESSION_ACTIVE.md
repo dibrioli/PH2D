@@ -29,9 +29,13 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 - **GPU SDF no bridge DONE** (`e853b04`, smoke-OK): draft do drag computa na GPU
   (`GpuSdf` cacheado), `min/max`+marching na CPU. `surface.gpu()` threadado no
   call-site. **ADR-0065 100% FECHADO** (Phase 1+2+3 + GPU).
-- **W3 roadmap:** milestone "Day 16: SDF Hybrid draft preview" atingido.
-- **PRÓXIMO p/ impl Vector = W4** (12 geometry nodes, fan-out drop-crate A). Handoff
-  escrito: [`HANDOFF_vector_w4_geometry_nodes_impl.md`](HANDOFF_vector_w4_geometry_nodes_impl.md).
+- **W3 (§6 do plano):** T3.1 (panel) · T3.2 (source) · T3.3 (boolean+SDF) · T3.4
+  (`vector.offset`) = TODOS feitos. **Falta T3.5 (audit + fechamento W3, 3 lentes:
+  edge-cases boolean / SDF-vs-Linesweeper / perf) = COORD, pendente.** Sem ele o W3
+  não fecha pelo DoD-por-wave (§1 do plano).
+- **PRÓXIMO p/ impl Vector = W4** (12 geometry nodes, fan-out drop-crate A) — deps
+  (T3.1+T0.3) satisfeitas, roda **em paralelo** ao T3.5. Handoff escrito:
+  [`HANDOFF_vector_w4_geometry_nodes_impl.md`](HANDOFF_vector_w4_geometry_nodes_impl.md).
   SDF (`ph2d-vector-sdf` + bridge) é Coord-owned — impl NÃO toca.
 - **⚠ Baseline real:** HEAD local **~26 commits ahead de origin/main** (inclui SDF
   Phases 1-3 + Painter W4 §3 curve editor + vector boolean W3 §3.B). **Nada pushado.**

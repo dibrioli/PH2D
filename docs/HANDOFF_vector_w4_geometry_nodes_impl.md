@@ -35,6 +35,13 @@ e o draft+reconcile já está wireado no `vector_graph_bridge` pelo Coord (draft
 drag → reconcile exato no settle). **NÃO toque em `ph2d-vector-sdf` nem no bridge** — são do
 Coord. Detalhe: [`HANDOFF_vector_sdf_phase3_coord.md`](HANDOFF_vector_sdf_phase3_coord.md).
 
+**Estado real do W3 (§6 do plano):** T3.1 (panel) · T3.2 (source) · T3.3 (boolean+SDF) ·
+**T3.4 (`vector.offset`)** = TODOS feitos. Falta só **T3.5 (audit + fechamento W3** — 3
+lentes: edge-cases boolean / SDF-vs-Linesweeper / perf), que é **Coord-orchestrado** e
+roda **em paralelo** ao teu W4 (deps de W4 = T3.1 + T0.3, já satisfeitas — não te bloqueia).
+Não faça o T3.5; é meu. Se tua implementação de W4 expuser um bug de boolean/offset/SDF,
+reporta ao Coord (entra na lente do audit).
+
 ## §2 — TUA TASK: W4 (plano §7) — 12 geometry nodes, drop-crate fan-out (A)
 
 Caminho **(A) DIRETRIZ §3.A** — cada nó é um crate isolado, zero edit central, wiring gerado.

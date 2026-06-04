@@ -49,7 +49,13 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   **Testes visuais ricos per-node DEFERIDOS p/ a UI de grafo** (Enio 2026-06-04 — smoke é
   hardcoded source→1-transform). Smoke wiring `PH2D_VECTOR_NODE=<slug>` (`f0ca76d`). Relatório:
   [`AUDIT_vector_w4_session_2026-06-04.md`](AUDIT_vector_w4_session_2026-06-04.md).
-- **Impl Vector LIVRE** p/ próximo wave (W5: GPU stroke + variable-width + SDF full, §8) quando Enio liberar.
+- **W5 LIBERADO p/ impl Vector** (Enio 2026-06-04) — handoff [`HANDOFF_vector_w5_impl.md`](HANDOFF_vector_w5_impl.md).
+  ⚠️ **W5 é Coord-heavy, NÃO fan-out limpo.** Fatia do impl (tool/node-local, startable):
+  captura de pressão no `ph2d-tool-vector-pencil` + riqueza de perfil no `ph2d-node-vector-width-profile`.
+  **Coord segura (foundational):** render variable-width em `ph2d-vector` (`vector_network.rs` hoje
+  largura constante), modelo WidthProfile (**possível ADR de contrato — NÃO inchar `Vertex`/`Segment`**),
+  T5.2 SDF-full (N-ops + ativação asset/tool + gate `vector_sdf_real_time` novo) no `ph2d-vector-sdf`+bridge.
+  Ponto de integração: Coord entrega o modelo+render, impl liga a pressão capturada.
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**
   crates NOVOS `crates/ph2d-node-vector-{outline-stroke,roughen,twist,bend-path,
   pattern-along-path,scatter,width-profile,hatch,mirror,corner-round,warp,recolor}/` +

@@ -29,7 +29,10 @@ use crate::attr::Stream;
 use crate::effect::Effect;
 use crate::graph::{Graph, NodeId};
 use crate::node::{NodeManifest, NodeOp, NodeTypeId};
+use crate::value::CookValue;
+use std::any::Any;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 /// Resolves a node type id to its operation impl. Implemented by the node
 /// registry (W1.T3); kept as a trait so the cook engine is decoupled from it.
@@ -41,18 +44,28 @@ pub trait OpResolver {
 /// inputs, the playhead, and its own resolved parameters — never the graph.
 /// FBP black box (ADR-0031).
 pub struct EvalCtx<'a> {
-    inputs: &'a [Stream],
+    inputs: &'a [CookValue],
     playhead: f64,
     manifest: &'static NodeManifest,
     overrides: Option<&'a BTreeMap<String, f32>>,
-    outputs: Vec<Stream>,
+    outputs: Vec<CookValue>,
 }
 
 impl<'a> EvalCtx<'a> {
-    /// The cooked stream on input `port` (empty if unconnected; for a `pre`
-    /// port, the previous tick's value).
+    /// The cooked **instance stream** on input `port` (empty if unconnected, or
+    /// if the upstream emitted a non-stream value; for a `pre` port, the
+    /// previous tick's value). The value's domain is guaranteed by `PortType`
+    /// checking at connect time, so a motion node reads its columns directly.
     pub fn input(&self, port: usize) -> &Stream {
-        &self.inputs[port]
+        self.inputs[port].as_stream()
+    }
+
+    /// The cooked **opaque value** on input `port` (e.g. a geometry
+    /// `VectorNetwork`), type-erased; the domain layer downcasts it. `None` if
+    /// the input is unconnected or carries an instance stream rather than an
+    /// opaque value (ADR-0058-amendment-1).
+    pub fn input_any(&self, port: usize) -> Option<&(dyn Any + Send + Sync)> {
+        self.inputs.get(port).and_then(CookValue::as_any)
     }
 
     pub fn input_count(&self) -> usize {
@@ -82,9 +95,19 @@ impl<'a> EvalCtx<'a> {
             })
     }
 
-    /// Emit the next output port's stream. Call once per output port, in order.
+    /// Emit the next output port's **instance stream**. Call once per output
+    /// port, in order.
     pub fn emit(&mut self, stream: Stream) {
-        self.outputs.push(stream);
+        self.outputs.push(CookValue::Instances(stream));
+    }
+
+    /// Emit the next output port's **opaque value** — a domain-specific rich
+    /// value (e.g. a geometry `VectorNetwork`) carried type-erased behind
+    /// `Arc<dyn Any>` (ADR-0058-amendment-1). Call once per output port, in
+    /// order, just like [`Self::emit`]. The domain layer
+    /// (`ph2d-vector-graph::VectorEvalExt::emit_network`) wraps this.
+    pub fn emit_any(&mut self, value: Arc<dyn Any + Send + Sync>) {
+        self.outputs.push(CookValue::Opaque(value));
     }
 }
 
@@ -148,7 +171,7 @@ fn params_fingerprint(overrides: Option<&BTreeMap<String, f32>>) -> u64 {
 }
 
 struct Cached {
-    outputs: Vec<Stream>,
+    outputs: Vec<CookValue>,
     revision: u64,
     fingerprint: Fingerprint,
 }
@@ -159,7 +182,7 @@ struct Cached {
 #[derive(Default)]
 pub struct Cook {
     cache: BTreeMap<NodeId, Cached>,
-    prev_outputs: BTreeMap<NodeId, Vec<Stream>>,
+    prev_outputs: BTreeMap<NodeId, Vec<CookValue>>,
     tick: u64,
     /// Monotonic revision clock. Bumped only on an actual recompute; a node's
     /// stored revision changes iff it recomputed, so a downstream consumer
@@ -213,7 +236,7 @@ impl Cook {
         ops: &dyn OpResolver,
         target: NodeId,
         playhead: f64,
-    ) -> Result<&[Stream], CookError> {
+    ) -> Result<&[CookValue], CookError> {
         self.cook_node(graph, ops, target, playhead)?;
         Ok(&self.cache.get(&target).expect("just cooked").outputs)
     }
@@ -232,7 +255,7 @@ impl Cook {
 
         // 1. Resolve inputs: cook forward edges (recording revisions); read
         //    `pre` edges from the previous-tick snapshot without recursing.
-        let mut input_streams: Vec<Stream> = Vec::with_capacity(manifest.inputs.len());
+        let mut input_values: Vec<CookValue> = Vec::with_capacity(manifest.inputs.len());
         let mut input_revs: Vec<u64> = Vec::new();
         let mut consumes_pre = false;
         for port in 0..manifest.inputs.len() {
@@ -240,13 +263,13 @@ impl Cook {
                 Some((src, src_port, false)) => {
                     let rev = self.cook_node(graph, ops, src, playhead)?;
                     input_revs.push(rev);
-                    input_streams.push(self.cur_output(src, src_port));
+                    input_values.push(self.cur_output(src, src_port));
                 }
                 Some((src, src_port, true)) => {
                     consumes_pre = true;
-                    input_streams.push(self.prev_output(src, src_port));
+                    input_values.push(self.prev_output(src, src_port));
                 }
-                None => input_streams.push(Stream::default()),
+                None => input_values.push(CookValue::Empty),
             }
         }
 
@@ -267,7 +290,7 @@ impl Cook {
 
         // 3. Recompute.
         let mut ctx = EvalCtx {
-            inputs: &input_streams,
+            inputs: &input_values,
             playhead,
             manifest,
             overrides: graph.node_param_overrides(node),
@@ -295,7 +318,7 @@ impl Cook {
         Ok(revision)
     }
 
-    fn cur_output(&self, node: NodeId, port: usize) -> Stream {
+    fn cur_output(&self, node: NodeId, port: usize) -> CookValue {
         self.cache
             .get(&node)
             .and_then(|c| c.outputs.get(port))
@@ -303,7 +326,7 @@ impl Cook {
             .unwrap_or_default()
     }
 
-    fn prev_output(&self, node: NodeId, port: usize) -> Stream {
+    fn prev_output(&self, node: NodeId, port: usize) -> CookValue {
         self.prev_outputs
             .get(&node)
             .and_then(|outs| outs.get(port))
@@ -365,6 +388,10 @@ mod tests {
             Some(Column::Scalar(v)) => v.clone(),
             _ => vec![],
         }
+    }
+    // A cooked output port is a `CookValue`; motion outputs view as a stream.
+    fn out_scalars(v: &CookValue) -> Vec<f32> {
+        scalars(v.as_stream())
     }
 
     struct Gen {
@@ -503,7 +530,7 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         let out = cook.cook(&g, &o, scale, 0.0).unwrap();
-        assert_eq!(scalars(&out[0]), vec![2.0, 4.0, 6.0]);
+        assert_eq!(out_scalars(&out[0]), vec![2.0, 4.0, 6.0]);
     }
 
     #[test]
@@ -549,19 +576,19 @@ mod tests {
 
         // tick 0: feedback empty → gen
         assert_eq!(
-            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
             vec![1.0, 2.0, 3.0]
         );
         cook.advance_tick(&g, &o, 0.0).unwrap();
         // tick 1: gen + prev(=[1,2,3])
         assert_eq!(
-            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
             vec![2.0, 4.0, 6.0]
         );
         cook.advance_tick(&g, &o, 0.0).unwrap();
         // tick 2: gen + prev(=[2,4,6])
         assert_eq!(
-            scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
+            out_scalars(&cook.cook(&g, &o, acc, 0.0).unwrap()[0]),
             vec![3.0, 6.0, 9.0]
         );
 
@@ -575,7 +602,7 @@ mod tests {
         let n = g.add_node("test.nonexistent");
         let o = ops();
         let mut cook = Cook::new();
-        assert_eq!(cook.cook(&g, &o, n, 0.0), Err(CookError::UnknownType));
+        assert_eq!(cook.cook(&g, &o, n, 0.0).map(|_| ()), Err(CookError::UnknownType));
     }
 
     #[test]
@@ -600,7 +627,7 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         let out = cook.cook(&g, &o, acc, 0.0).unwrap();
-        assert_eq!(scalars(&out[0]), vec![2.0, 4.0, 6.0]); // [1,2,3] + [1,2,3]
+        assert_eq!(out_scalars(&out[0]), vec![2.0, 4.0, 6.0]); // [1,2,3] + [1,2,3]
         assert_eq!(o.generator.calls.load(Ordering::Relaxed), 1);
     }
 
@@ -613,7 +640,7 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         assert_eq!(
-            cook.cook(&g, &o, n, 0.0),
+            cook.cook(&g, &o, n, 0.0).map(|_| ()),
             Err(CookError::OutputCountMismatch {
                 node: n,
                 expected: 1,
@@ -667,11 +694,11 @@ mod tests {
         let mut cook = Cook::new();
 
         // tick 0: prev(s) is empty (s not cooked yet) → c emits empty.
-        assert!(scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]).is_empty());
+        assert!(out_scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]).is_empty());
         cook.advance_tick(&g, &o, 0.0).unwrap(); // cooks s, snapshots it
         // tick 1: c reads last tick's s → [1,2,3].
         assert_eq!(
-            scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]),
+            out_scalars(&cook.cook(&g, &o, c, 0.0).unwrap()[0]),
             vec![1.0, 2.0, 3.0]
         );
     }
@@ -684,7 +711,7 @@ mod tests {
         let o = ops();
         let mut cook = Cook::new();
         assert_eq!(
-            cook.cook(&g, &o, NodeId(999), 0.0),
+            cook.cook(&g, &o, NodeId(999), 0.0).map(|_| ()),
             Err(CookError::UnknownNode)
         );
     }
@@ -736,15 +763,15 @@ mod tests {
         };
         let mut cook = Cook::new();
         // No override → manifest default (7).
-        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![7.0]);
+        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![7.0]);
         // Editing the override and re-cooking the SAME Cook must recompute, not
         // return the memoized pre-edit stream (params fold into the fingerprint).
         g.set_param(n, "k", 42.0);
-        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![42.0]);
+        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![42.0]);
         assert_eq!(o.echo.calls.load(Ordering::Relaxed), 2); // recomputed
         // A second edit (override → a different override) must also recompute.
         g.set_param(n, "k", 43.0);
-        assert_eq!(scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![43.0]);
+        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![43.0]);
         assert_eq!(o.echo.calls.load(Ordering::Relaxed), 3);
     }
 

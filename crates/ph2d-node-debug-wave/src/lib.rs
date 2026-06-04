@@ -153,7 +153,7 @@ mod tests {
         g.validate(&ops).expect("well-typed");
         let mut cook = Cook::new();
         let out = cook.cook(&g, &ops, wave, 0.0).unwrap();
-        match out[0].get("v") {
+        match out[0].as_stream().get("v") {
             Some(Column::Scalar(v)) => assert_eq!(v, &vec![10.0, 20.0, 30.0]),
             other => panic!("expected scalar column, got {other:?}"),
         }

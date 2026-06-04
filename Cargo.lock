@@ -4970,11 +4970,23 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
  "ph2d-node-sync",
+ "ph2d-node-vector-source",
 ]
 
 [[package]]
 name = "ph2d-node-sync"
 version = "0.0.0"
+
+[[package]]
+name = "ph2d-node-vector-source"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
 
 [[package]]
 name = "ph2d-nodegraph"
@@ -5574,6 +5586,15 @@ dependencies = [
  "serde",
  "smallvec",
  "walkdir",
+]
+
+[[package]]
+name = "ph2d-vector-graph"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
 ]
 
 [[package]]

@@ -35,11 +35,15 @@ ph2d-nodegraph (core engine)
     └── vector-luau-script (W4 / W9)
 ```
 
-### 2.1.2 Contrato congelado (ADR-0039)
+### 2.1.2 Contrato congelado (ADR-0039) + carrier de geometria (ADR-0058-amendment-1)
 
-Caps de NodeOp / OpResolver / NodeManifest (= 2 / 1 / 8) continuam válidos para domain `vector`. Sem cap-bump previsto.
+Caps de NodeOp / OpResolver / NodeManifest (= 2 / 1 / 8) continuam válidos para domain `vector` — **intactos** (gate `architecture_contract_surface` verde). O carrier de geometria vive nos internos *ungated* do cook, não na superfície que o nó implementa.
 
-Param vocabulary aceita: `f32`, `u32`, `i32`, `String`, `Color`, `Path` (VectorNetwork ref), `bool`.
+**Carrier (real):** o output de um nó vetorial (`VectorNetwork`) trafega na edge pelo canal opaco type-erased do cook — `CookValue::Opaque(Arc<dyn Any + Send + Sync>)` — com acessores tipados na crate de borda `ph2d-vector-graph`: `VectorEvalExt::{emit_network, input_network}` + a constante `VECTOR_PORT` (`Domain::Vector` / `Clock::Static`). O substrato `ph2d-nodegraph` permanece domain-agnostic (zero deps; não conhece `VectorNetwork`). Detalhe normativo: **[ADR-0058-amendment-1](../architecture/decisions/0058-amendment-1.md)**.
+
+**Param vocabulary (real):** `ParamSpec` congelado é **`f32`-only**. Params de seleção/contagem (`kind`, `sides`, `turns`, `samples_per_turn`) viajam como **discriminante/contagem `f32`** via `param_as_count` (conversão total/saturating já no substrato). Vocabulário tipado (`u32`/`String`/`Color`/`Path`-ref) é refinamento futuro **fora** do contrato atual (amendment §2.4) — não é pré-requisito dos nós W3/W4.
+
+**Clock:** geometria estática usa `Clock::Static` ("cooked once, re-cook on param edit"). Não existe `Clock::None`.
 
 Effect kinds: `Pure` (most nodes), `Temporal` (animação), `Stateful` (cache-aware multi-frame).
 
@@ -53,39 +57,45 @@ Para cada node: ID + manifest + params + algorithm + complexity.
 
 **Crítica A absorvida (vide [README §11.B](README.md)):** 5 primitives (rect / ellipse / polygon / star / spiral) consolidados num único crate multi-variant — não 5 crates triviais.
 
+**API real (implementada, `crates/ph2d-node-vector-source`):** o `NodeManifest` usa os 8 campos congelados; o output é `VECTOR_PORT` (não há `Output::path`); params são `f32` (não há `Param::enum_var/u32`); `eval` **emite** pelo canal opaco (não retorna `Result<VectorNetwork>`). `kind` é discriminante `f32` (`0`=Rect … `4`=Spiral).
+
 ```rust
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("vector.source"),
-    name: "Vector Source",
+    name: "vector.source",
     inputs: &[],
-    outputs: &[Output::path("network")],
+    outputs: &[PortSpec { name: "out", ty: VECTOR_PORT }], // Domain::Vector / Clock::Static
     effect: Effect::Pure,
-    clock: Clock::None,
-    params: &[
-        Param::enum_var("kind", &["Rect", "Ellipse", "Polygon", "Star", "Spiral"], "Rect"),
-        Param::f32("width", 100.0, 1.0..=4096.0),
-        Param::f32("height", 100.0, 1.0..=4096.0),
-        Param::u32("sides", 6, 3..=64),       // poly/star
-        Param::f32("inner_radius", 0.4, 0.0..=1.0), // star
-        Param::u32("turns", 3, 1..=20),        // spiral
-        // ...
+    clock: Clock::Static,
+    params: &[ // f32-only: kind=discriminante 0..=4; width/height/inner_ratio/rotation; sides/turns/samples_per_turn=contagens
+        ParamSpec { name: "kind", default: 0.0 },
+        ParamSpec { name: "width", default: 100.0 },
+        ParamSpec { name: "height", default: 100.0 },
+        ParamSpec { name: "sides", default: 6.0 },
+        ParamSpec { name: "inner_ratio", default: 0.4 },
+        ParamSpec { name: "turns", default: 3.0 },
+        ParamSpec { name: "samples_per_turn", default: 24.0 },
+        ParamSpec { name: "rotation", default: 0.0 },
     ],
-    lowerings: Lowerings::Pure(eval),
+    lowerings: &[LoweringKind::Cpu],
 };
 
-fn eval(ctx: &EvalCtx) -> Result<VectorNetwork> {
-    match ctx.param_enum("kind")? {
-        "Rect" => Ok(emit_rect(ctx.param_f32("width")?, ctx.param_f32("height")?)),
-        "Ellipse" => Ok(emit_ellipse(ctx.param_f32("width")?, ctx.param_f32("height")?)),
-        "Polygon" => Ok(emit_polygon(ctx.param_u32("sides")?, ctx.param_f32("width")?)),
-        "Star" => Ok(emit_star(ctx.param_u32("sides")?, ctx.param_f32("width")?, ctx.param_f32("inner_radius")?)),
-        "Spiral" => Ok(emit_spiral(ctx.param_u32("turns")?, ctx.param_f32("width")?)),
-        _ => Err(Error::InvalidParam("kind")),
-    }
+// `kind` → 1 dos 5 geradores de `ph2d-vector-doc::primitives` (rect/ellipse/
+// polygon/star/spiral), depois snap Q16.16 (cross-OS bit-identical), emit opaco.
+fn eval(&self, ctx: &mut EvalCtx<'_>) {
+    let net = source_network(
+        param_as_count(ctx.param("kind"), KIND_MAX),
+        ctx.param("width"), ctx.param("height"),
+        param_as_count(ctx.param("sides"), MAX_SIDES) as u32,
+        ctx.param("inner_ratio"), ctx.param("turns"),
+        param_as_count(ctx.param("samples_per_turn"), MAX_SAMPLES_PER_TURN) as u32,
+        ctx.param("rotation"),
+    );
+    ctx.emit_network(net); // VectorEvalExt → CookValue::Opaque(Arc<VectorNetwork>)
 }
 ```
 
-**Complexity:** O(1) per primitive (constant vertex count).
+**Complexity:** O(1) per primitive (constant vertex count, exceto spiral = O(turns·samples)).
 
 ### 2.2.2 `vector-boolean` — 9 variants
 

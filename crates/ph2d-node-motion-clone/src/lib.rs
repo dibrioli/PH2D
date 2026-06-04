@@ -199,8 +199,8 @@ mod tests {
         .unwrap();
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, clone, 0.0).unwrap();
-        assert_eq!(out[0].count(), 3);
-        match out[0].get("P").unwrap() {
+        assert_eq!(out[0].as_stream().count(), 3);
+        match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [2.0, 0.0], [4.0, 0.0]]),
             _ => panic!("P"),
         }
@@ -223,8 +223,8 @@ mod tests {
         g.set_param(clone, "step_x", 5.0);
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, clone, 0.0).unwrap();
-        assert_eq!(out[0].count(), 2);
-        match out[0].get("P").unwrap() {
+        assert_eq!(out[0].as_stream().count(), 2);
+        match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [5.0, 0.0]]),
             _ => panic!("P"),
         }

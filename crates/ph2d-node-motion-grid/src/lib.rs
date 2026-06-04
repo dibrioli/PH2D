@@ -115,8 +115,8 @@ mod tests {
         let n = g.add_node("motion.grid");
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        let p = out[0].get("P").unwrap();
-        assert_eq!(out[0].count(), 9); // 3×3
+        let p = out[0].as_stream().get("P").unwrap();
+        assert_eq!(out[0].as_stream().count(), 9); // 3×3
         match p {
             Column::Vec2(v) => {
                 assert_eq!(v[0], [0.0, 0.0]);
@@ -137,8 +137,8 @@ mod tests {
         g.set_param(n, "rows", 2.0);
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        assert_eq!(out[0].count(), 6);
-        match out[0].get("P").unwrap() {
+        assert_eq!(out[0].as_stream().count(), 6);
+        match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => {
                 assert_eq!(v.len(), 6);
                 assert_eq!(v[5], [2.0, 1.0]); // last of row 1

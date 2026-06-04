@@ -62,6 +62,17 @@ impl Stream {
         }
     }
 
+    /// The empty stream (zero elements, no columns) as a `const` — the value of
+    /// an unconnected input. Equal to [`Stream::default`], but `const` so a
+    /// `static EMPTY_STREAM` can be borrowed for `&Stream` accessors (see
+    /// [`crate::value::CookValue::as_stream`]).
+    pub const fn empty() -> Self {
+        Self {
+            count: 0,
+            attrs: BTreeMap::new(),
+        }
+    }
+
     pub fn count(&self) -> usize {
         self.count
     }

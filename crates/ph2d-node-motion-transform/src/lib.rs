@@ -161,13 +161,13 @@ mod tests {
         .unwrap();
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, xf, 0.0).unwrap();
-        assert_eq!(out[0].count(), 2);
-        match out[0].get("P").unwrap() {
+        assert_eq!(out[0].as_stream().count(), 2);
+        match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[1.0, 1.0], [2.0, 2.0]]),
             _ => panic!("P"),
         }
         // size carried through unchanged
-        match out[0].get("size").unwrap() {
+        match out[0].as_stream().get("size").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[5.0, 5.0], [5.0, 5.0]]),
             _ => panic!("size"),
         }
@@ -192,7 +192,7 @@ mod tests {
         g.set_param(xf, "offset_y", 1.0);
         let mut cook = Cook::new();
         let out = cook.cook(&g, &Ops, xf, 0.0).unwrap();
-        match out[0].get("P").unwrap() {
+        match out[0].as_stream().get("P").unwrap() {
             // (1,1)*2+(10,1) = (12,3) ; (2,2)*2+(10,1) = (14,5)
             Column::Vec2(v) => assert_eq!(v, &vec![[12.0, 3.0], [14.0, 5.0]]),
             _ => panic!("P"),

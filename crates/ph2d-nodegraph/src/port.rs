@@ -10,9 +10,14 @@
 /// Which data family flows on the edge (ADR-0030 §1.2).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Domain {
-    /// Ephemeral per-instance stream (motion / geometry). Lowers to GPU
-    /// instancing or vector. No identity, **not** ECS components (ADR-0035).
+    /// Ephemeral per-instance stream (motion). Lowers to GPU instancing. No
+    /// identity, **not** ECS components (ADR-0035).
     Instances,
+    /// A vector geometry value — a `VectorNetwork` (vertices / segments /
+    /// regions), carried type-erased on the edge (ADR-0058-amendment-1). A
+    /// whole-value with variable topology, distinct from the per-element
+    /// `Instances` stream; cooked under [`Clock::Static`] for a static source.
+    Vector,
     /// Per-element field sampled on a grid/pixel (shader / SDF). Lowers to WGSL.
     Field,
     /// Time-sampled audio signal (sound). Lowers to a DSP graph.

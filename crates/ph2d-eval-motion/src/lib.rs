@@ -101,7 +101,13 @@ pub fn evaluate_motion(
     playhead: f64,
 ) -> Result<Vec<RenderInstance>, CookError> {
     let outputs = cook.cook(graph, ops, target, playhead)?;
-    Ok(outputs.first().map(lower_to_instances).unwrap_or_default())
+    // A cooked output port is a `CookValue`; a Motion target's port 0 is an
+    // instance stream (ADR-0058-amendment-1). A non-stream value lowers to no
+    // instances (its `as_stream()` is empty).
+    Ok(outputs
+        .first()
+        .map(|v| lower_to_instances(v.as_stream()))
+        .unwrap_or_default())
 }
 
 fn scalar_at(c: Option<&Column>, i: usize, default: f32) -> f32 {

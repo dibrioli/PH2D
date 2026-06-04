@@ -220,6 +220,25 @@ impl Tool for PainterTool {
                     self.set_curve_point(RtLayerId(layer), ch, idx, x, y);
                 }
             }
+            // ── Curves editor add a point (W4 §3): value = "layer:channel" ──
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_ADD => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(c)) = (it.next(), it.next())
+                    && let (Ok(layer), Ok(ch)) = (l.parse::<u64>(), c.parse::<u8>())
+                {
+                    self.add_curve_point(RtLayerId(layer), ch);
+                }
+            }
+            // ── Curves editor remove a point (W4 §3): value = "layer:channel:index" ─
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_REMOVE => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(c), Some(i)) = (it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(ch), Ok(idx)) =
+                        (l.parse::<u64>(), c.parse::<u8>(), i.parse::<usize>())
+                {
+                    self.remove_curve_point(RtLayerId(layer), ch, idx);
+                }
+            }
             // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
             PanelEvent::SelectOption(id, value) => {
                 if let Some((layer, PainterLayerWidget::Blend)) = self.decode_layer_widget(id)

@@ -20,7 +20,7 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::{LayerId, LayerStack};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 thread_local! {
     /// Snapshot do `LayerStack` publicado pelo host antes de cada `paint`.
@@ -52,6 +52,40 @@ thread_local! {
     /// end of `paint` to render the 24-kind list on top of everything (mirror of
     /// [`PENDING_BLEND_DD`]). W4 T4.15.
     static PENDING_ADJ_MENU: Cell<Option<Rect>> = const { Cell::new(None) };
+
+    /// Active curve-editor channel TAB per Curves layer (W4 §3): `0` = master
+    /// (RGB), `1` = R, `2` = G, `3` = B. Pure VIEW state (which channel the curve
+    /// canvas shows + edits) — it never goes to the tool; `set_curve_point` carries
+    /// the channel. Keyed by layer id so multiple expanded Curves layers each keep
+    /// their own tab. Default (absent) = master.
+    static ACTIVE_CURVE_CHANNEL: RefCell<BTreeMap<u64, u8>> = const { RefCell::new(BTreeMap::new()) };
+
+    /// Last-interacted curve control point `(layer, channel, index)` — set when a
+    /// handle is dragged (W4 §3), read by the "−" (remove) button so it knows which
+    /// point to drop. `None` until a handle is touched.
+    static SELECTED_CURVE_POINT: Cell<Option<(u64, u8, usize)>> = const { Cell::new(None) };
+}
+
+/// Set the active channel tab for `layer`'s curve editor (W4 §3).
+pub(crate) fn set_active_curve_channel(layer: u64, channel: u8) {
+    ACTIVE_CURVE_CHANNEL.with(|c| {
+        c.borrow_mut().insert(layer, channel);
+    });
+}
+
+/// The active channel tab for `layer`'s curve editor (default `0` = master).
+pub(crate) fn active_curve_channel(layer: u64) -> u8 {
+    ACTIVE_CURVE_CHANNEL.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
+}
+
+/// Record the last-interacted curve point (for the remove button).
+pub(crate) fn set_selected_curve_point(v: Option<(u64, u8, usize)>) {
+    SELECTED_CURVE_POINT.with(|c| c.set(v));
+}
+
+/// The last-interacted curve point `(layer, channel, index)`, if any.
+pub(crate) fn selected_curve_point() -> Option<(u64, u8, usize)> {
+    SELECTED_CURVE_POINT.with(|c| c.get())
 }
 
 /// Stash the open "+ Adjustment" kind menu for the deferred popover pass.

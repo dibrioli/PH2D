@@ -509,6 +509,35 @@ pub fn painter_curve_point_id(layer_id: u64, channel: u8, index: u8) -> NodeId {
 /// per-layer) avoids a reverse hash — the payload carries the layer.
 pub const PAINTER_CURVE_EDIT: NodeId = hash_node_id("painter_curve_edit");
 
+/// Derive the [`NodeId`] of the `channel` tab (0 = RGB/master, 1 = R, 2 = G,
+/// 3 = B) of `layer_id`'s Curves editor (W4 §3). A click switches the canvas to
+/// that channel — pure panel view state, not forwarded to the tool.
+#[must_use]
+pub fn painter_curve_tab_id(layer_id: u64, channel: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_curve.tab.{layer_id}.{channel}"))
+}
+
+/// Derive the [`NodeId`] of the "+ point" / "− point" button of `layer_id`'s
+/// Curves editor (W4 §3). Click → the panel forwards an add/remove on the active
+/// channel via [`PAINTER_CURVE_ADD`] / [`PAINTER_CURVE_REMOVE`].
+#[must_use]
+pub fn painter_curve_add_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_curve.add.{layer_id}"))
+}
+
+/// See [`painter_curve_add_id`].
+#[must_use]
+pub fn painter_curve_remove_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_curve.remove.{layer_id}"))
+}
+
+/// Fixed routing id — panel → tool "add a control point" (W4 §3). Payload
+/// `"layer:channel"`; the tool calls `add_curve_point`.
+pub const PAINTER_CURVE_ADD: NodeId = hash_node_id("painter_curve_add");
+/// Fixed routing id — panel → tool "remove a control point" (W4 §3). Payload
+/// `"layer:channel:index"`; the tool calls `remove_curve_point`.
+pub const PAINTER_CURVE_REMOVE: NodeId = hash_node_id("painter_curve_remove");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

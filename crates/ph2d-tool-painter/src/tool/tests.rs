@@ -1975,6 +1975,37 @@ fn add_remove_curve_point_respects_cap_floor_and_curve() {
 }
 
 #[test]
+fn curve_add_remove_panel_events_route_to_tool() {
+    use ph2d_editor_core::ids::{PAINTER_CURVE_ADD, PAINTER_CURVE_REMOVE};
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::Curves).unwrap();
+    let count = |t: &PainterTool| match &t.layers.get(adj).unwrap().kind {
+        LayerKind::Adjustment(a) => match &a.params {
+            AdjustmentParams::Curves(c) => c.points_rgb.points.len(),
+            _ => panic!(),
+        },
+        _ => panic!(),
+    };
+    assert_eq!(count(&t), 5);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_CURVE_ADD,
+        format!("{}:0", adj.0),
+    ));
+    assert_eq!(count(&t), 6, "add event inserted a master point");
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_CURVE_REMOVE,
+        format!("{}:0:1", adj.0),
+    ));
+    assert_eq!(count(&t), 5, "remove event dropped a master point");
+    // Malformed payloads are no-ops (no panic).
+    t.handle_panel_event(PanelEvent::SelectOption(PAINTER_CURVE_ADD, "x".into()));
+    t.handle_panel_event(PanelEvent::SelectOption(PAINTER_CURVE_REMOVE, "x".into()));
+}
+
+#[test]
 fn adjustment_param_drain_uses_cache_bit_identically() {
     // W5: a slider-drag drain routes through `composite_with_cache` (cut-point
     // cache). Prove the warm-restart preview is byte-identical to a cold full

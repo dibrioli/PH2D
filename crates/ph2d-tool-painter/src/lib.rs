@@ -48,7 +48,7 @@ pub use params::{
 };
 pub use ph2d_painter_brush::adjustments::{
     AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams,
-    adjustment_slider_params, curves_display_luts, set_adjustment_slider_param,
+    adjustment_slider_params, curve_value_at, curves_display_luts, set_adjustment_slider_param,
 };
 pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
 pub use tool::{PainterTool, set_pending_select_mods};

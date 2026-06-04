@@ -16,7 +16,8 @@
 use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
-    self as core_ids, PainterLayerWidget, painter_curve_editor_id, painter_layer_blend_option_id,
+    self as core_ids, PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id,
+    painter_curve_remove_id, painter_curve_tab_id, painter_layer_blend_option_id,
     painter_layer_widget_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -81,6 +82,41 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
+            // W4 §3 — Curves editor chrome: channel tabs (panel-local view state,
+            // never forwarded) + the +/− point buttons (forwarded to the tool on
+            // the ACTIVE channel; remove targets the last-dragged point, else a
+            // middle interior point).
+            for layer in stack.all_ids() {
+                let lid = layer.0;
+                if (0u8..4).any(|ch| painter_curve_tab_id(lid, ch) == id) {
+                    let ch = (0u8..4)
+                        .find(|&ch| painter_curve_tab_id(lid, ch) == id)
+                        .unwrap();
+                    state::set_active_curve_channel(lid, ch);
+                    return true;
+                }
+                if painter_curve_add_id(lid) == id {
+                    let ch = state::active_curve_channel(lid);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_CURVE_ADD,
+                            format!("{lid}:{ch}"),
+                        )));
+                    return true;
+                }
+                if painter_curve_remove_id(lid) == id {
+                    let (ch, idx) = match state::selected_curve_point() {
+                        Some((sl, sch, sidx)) if sl == lid => (sch, sidx),
+                        _ => (state::active_curve_channel(lid), 1),
+                    };
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_CURVE_REMOVE,
+                            format!("{lid}:{ch}:{idx}"),
+                        )));
+                    return true;
+                }
+            }
             // Blend dropdown option picked → close the dropdown + apply.
             if let Some((layer, mode)) = decode_blend_option(&stack, id) {
                 let blend_id = painter_layer_widget_id(layer.0, PainterLayerWidget::Blend);
@@ -149,6 +185,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         .all_ids()
                         .find(|l| painter_curve_editor_id(l.0) == parent)
                 {
+                    // Remember the touched point so the "−" button knows what to drop.
+                    state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                             core_ids::PAINTER_CURVE_EDIT,

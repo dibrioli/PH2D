@@ -171,3 +171,32 @@ Gates: `vector_sdf_real_time` + `boolean_sdf_cross_os` + `vector_sdf_fallback_gr
 - msdfgen (multi-channel SDF reference): <https://github.com/Chlumsky/msdfgen>
 - ADR-0059 renderer pipeline (parent context).
 - ADR-0063 runtime physics (Tier 0 Dormant integration).
+
+---
+
+## Amendment 1 — implementation (2026-06-04, Coord)
+
+This ADR decided the *draft+reconcile* shape (§1–§5); this amendment records the
+**implementation placement + phasing** as the draft layer lands.
+
+- **Placement = satellite crate `ph2d-vector-sdf`** (not inside `ph2d-vector`).
+  `ph2d-vector` has no GPU layer (it renders via vello); coupling it to wgpu for
+  the SDF would be the wrong cut. A drop-crate mirrors the `ph2d-vector-kurbo`
+  precedent (the reconcile half) and confines the SDF compute. Deps: `ph2d-
+  vector-doc` + `glam` (the GPU port adds `ph2d-gpu` + `wgpu` + `bytemuck`).
+- **Algorithm (analytic, not jump-flood):** flatten each region's cubic boundary
+  to a fixed-subdivision polyline (renderer's `c1 = start+out_at_start` /
+  `c2 = end+in_at_end` convention), then per grid cell take `min` unsigned
+  distance to the boundary edges × the inside sign (NonZero winding-number /
+  EvenOdd ray-crossing). `boolean_sdf` is the §2.1 `min/max` combine of two
+  co-located grids (Union/Subtract/Intersect/Exclude/Outline). The other 4 ops
+  are topology → Linesweeper only. Determinism (§2.4): fixed `SUBDIV_PER_SEGMENT`
+  + fixed grid + ordered per-pixel reductions + `BTreeMap` (no random hasher).
+- **Phasing = CPU-core-first → GPU-parity** (the layer_compositor discipline):
+  **Phase 1 (LANDED):** the pure-Rust core (`network_sdf` / `boolean_sdf`,
+  5 tests) — the source of truth, a CPU silhouette fallback (usable at draft
+  res), AND the GPU parity oracle. **Phase 2 (next):** `boolean_sdf.wgsl` (the
+  same per-pixel SDF + `min/max`) + a wgpu compute pipeline mirroring
+  `ph2d-render/src/layer_compositor/`, gated by a Metal parity test vs Phase 1.
+  **Phase 3:** wire the draft into `vector_graph_bridge` (silhouette during drag)
+  alongside the exact-engine reconcile.

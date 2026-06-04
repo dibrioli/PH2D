@@ -4994,6 +4994,7 @@ dependencies = [
  "ph2d-node-vector-bend-path",
  "ph2d-node-vector-boolean",
  "ph2d-node-vector-corner-round",
+ "ph2d-node-vector-hatch",
  "ph2d-node-vector-mirror",
  "ph2d-node-vector-offset",
  "ph2d-node-vector-outline-stroke",
@@ -5002,6 +5003,7 @@ dependencies = [
  "ph2d-node-vector-scatter",
  "ph2d-node-vector-source",
  "ph2d-node-vector-twist",
+ "ph2d-node-vector-warp",
 ]
 
 [[package]]
@@ -5033,6 +5035,17 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-vector-corner-round"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
+name = "ph2d-node-vector-hatch"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
@@ -5123,6 +5136,17 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-vector-twist"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
+name = "ph2d-node-vector-warp"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",

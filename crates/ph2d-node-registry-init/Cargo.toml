@@ -23,6 +23,7 @@ ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-vector-bend-path = { path = "../ph2d-node-vector-bend-path" }
 ph2d-node-vector-boolean = { path = "../ph2d-node-vector-boolean" }
 ph2d-node-vector-corner-round = { path = "../ph2d-node-vector-corner-round" }
+ph2d-node-vector-hatch = { path = "../ph2d-node-vector-hatch" }
 ph2d-node-vector-mirror = { path = "../ph2d-node-vector-mirror" }
 ph2d-node-vector-offset = { path = "../ph2d-node-vector-offset" }
 ph2d-node-vector-outline-stroke = { path = "../ph2d-node-vector-outline-stroke" }
@@ -31,6 +32,7 @@ ph2d-node-vector-roughen = { path = "../ph2d-node-vector-roughen" }
 ph2d-node-vector-scatter = { path = "../ph2d-node-vector-scatter" }
 ph2d-node-vector-source = { path = "../ph2d-node-vector-source" }
 ph2d-node-vector-twist = { path = "../ph2d-node-vector-twist" }
+ph2d-node-vector-warp = { path = "../ph2d-node-vector-warp" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

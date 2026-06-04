@@ -686,6 +686,6 @@ mod compute;
 #[cfg(test)]
 mod tests;
 pub use compute::{
-    DISPLAY_LUT_N, adjustment_slider_params, apply_adjustment, curves_display_luts,
+    DISPLAY_LUT_N, adjustment_slider_params, apply_adjustment, curve_value_at, curves_display_luts,
     levels_display_lut, set_adjustment_slider_param,
 };

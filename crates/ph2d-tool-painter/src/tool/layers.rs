@@ -3,6 +3,10 @@
 
 use super::*;
 
+/// Max control points per Curves channel (ADR-0045 §2.6 `ControlPoints` cap).
+/// The bespoke editor's add-point button stops here.
+pub const MAX_CURVE_POINTS_PER_CHANNEL: usize = 8;
+
 impl PainterTool {
     // ── W3 layer model (runtime canon, ADR-0046-amд-1 Option A) ─────────
 
@@ -509,21 +513,25 @@ impl PainterTool {
         }
         let prev_active = self.layers.active();
         let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
-        // Bespoke Curves editor: seed the master curve with 5 fixed-x identity
-        // handles so the curve canvas opens with draggable control points (the
-        // generic `AdjParam` sliders the editor reuses bind to these by index).
-        // The data-model default stays empty (a bit-exact identity for persisted /
-        // programmatic layers); a user-created Curves layer gets editable handles.
+        // Bespoke Curves editor: seed EVERY channel (master + R/G/B) with 5
+        // evenly-spaced identity handles so the curve canvas — and each R/G/B tab —
+        // opens with draggable control points. The data-model default stays empty
+        // (a bit-exact identity for persisted / programmatic layers); a user-created
+        // Curves layer gets editable handles. All-diagonal seeds = identity output.
         if kind == ph2d_painter_brush::adjustments::AdjustmentKind::Curves
             && let Some(adj) = self.layers.adjustment_mut(id)
             && let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params
         {
-            c.points_rgb.points = (0..5)
+            let identity: Vec<[f32; 2]> = (0..5)
                 .map(|i| {
                     let t = i as f32 / 4.0;
                     [t, t]
                 })
                 .collect();
+            c.points_rgb.points = identity.clone();
+            c.points_r.points = identity.clone();
+            c.points_g.points = identity.clone();
+            c.points_b.points = identity;
         }
         // Not paintable — restore the prior raster as the edit target. The
         // canvas_rgba is untouched (add_adjustment does not flush/load), so a
@@ -627,14 +635,89 @@ impl PainterTool {
         let p = &mut pts.points[point_index];
         p[0] = x01.clamp(0.0, 1.0).clamp(left, right);
         p[1] = y01.clamp(0.0, 1.0);
-        // Same hot-path cut-cache restart as `set_adjustment_param`: a param-only
-        // change leaves the layers below untouched, so keep their cuts.
+        self.after_curve_edit(id);
+    }
+
+    /// Cut-cache restart + republish after any curve edit (move/add/remove a
+    /// point): a curve change is param-only relative to the layers BELOW the
+    /// adjustment, so keep their cuts and restart from this adjustment's cut via
+    /// `composite_with_cache` (the GPU LUT path then re-renders in real time —
+    /// same hot-path lane as `set_adjustment_param`).
+    fn after_curve_edit(&mut self, id: RtLayerId) {
         self.compositor_cache.invalidate_above(id, &self.layers);
         self.composited = None;
         self.dirty_rect = None;
         self.adjustment_cache_pending = true;
         self.preview_dirty = true;
         self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
+    /// Insert a control point on `channel`'s curve of adjustment `id` at the
+    /// midpoint of its widest X-gap, with Y sampled ON the current curve (so the
+    /// rendered output is unchanged until the new point is dragged). Returns the
+    /// inserted index, or `None` (no-op) mid-stroke, for a non-Curves layer, an
+    /// out-of-range channel, a degenerate (<2-point) curve, or at the ≤8-point cap.
+    pub fn add_curve_point(&mut self, id: RtLayerId, channel: u8) -> Option<usize> {
+        if self.stroke_active {
+            return None;
+        }
+        let adj = self.layers.adjustment_mut(id)?;
+        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+            return None;
+        };
+        let pts = match channel {
+            0 => &mut c.points_rgb,
+            1 => &mut c.points_r,
+            2 => &mut c.points_g,
+            3 => &mut c.points_b,
+            _ => return None,
+        };
+        let n = pts.points.len();
+        if !(2..MAX_CURVE_POINTS_PER_CHANNEL).contains(&n) {
+            return None;
+        }
+        let mut best_gap = -1.0_f32;
+        let mut new_x = 0.5_f32;
+        let mut insert_at = n;
+        for i in 0..n - 1 {
+            let gap = pts.points[i + 1][0] - pts.points[i][0];
+            if gap > best_gap {
+                best_gap = gap;
+                new_x = (pts.points[i][0] + pts.points[i + 1][0]) * 0.5;
+                insert_at = i + 1;
+            }
+        }
+        let new_y = ph2d_painter_brush::adjustments::curve_value_at(&pts.points, new_x);
+        pts.points.insert(insert_at, [new_x, new_y]);
+        self.after_curve_edit(id);
+        Some(insert_at)
+    }
+
+    /// Remove control point `index` of `channel`'s curve of adjustment `id`. No-op
+    /// mid-stroke, for a non-Curves layer, an out-of-range channel/index, or when
+    /// only the two endpoints remain (a curve needs ≥2 points).
+    pub fn remove_curve_point(&mut self, id: RtLayerId, channel: u8, index: usize) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+            return;
+        };
+        let pts = match channel {
+            0 => &mut c.points_rgb,
+            1 => &mut c.points_r,
+            2 => &mut c.points_g,
+            3 => &mut c.points_b,
+            _ => return,
+        };
+        if pts.points.len() <= 2 || index >= pts.points.len() {
+            return;
+        }
+        pts.points.remove(index);
+        self.after_curve_edit(id);
     }
 
     /// `true` when the active edit target is a grayscale mask.

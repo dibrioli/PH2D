@@ -1932,6 +1932,49 @@ fn curve_edit_panel_event_routes_to_set_curve_point() {
 }
 
 #[test]
+fn add_remove_curve_point_respects_cap_floor_and_curve() {
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::Curves).unwrap();
+    let pts = |t: &PainterTool| -> Vec<[f32; 2]> {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::Curves(c) => c.points_rgb.points.clone(),
+                _ => panic!(),
+            },
+            _ => panic!(),
+        }
+    };
+    assert_eq!(pts(&t).len(), 5, "seeded with 5 master points");
+    // An inserted point sits ON the (identity) curve → y ≈ x, output unchanged.
+    let idx = t.add_curve_point(adj, 0).expect("added");
+    let p = pts(&t)[idx];
+    assert!(
+        (p[0] - p[1]).abs() < 1e-3,
+        "inserted point on the identity curve: {p:?}"
+    );
+    // Fill to the 8-point cap, then it refuses.
+    while t.add_curve_point(adj, 0).is_some() {}
+    assert_eq!(pts(&t).len(), 8, "stops at the ≤8 cap");
+    assert!(
+        pts(&t).windows(2).all(|w| w[0][0] <= w[1][0]),
+        "points stay ascending in x: {:?}",
+        pts(&t)
+    );
+    // Remove interior points down to the 2-endpoint floor.
+    while pts(&t).len() > 2 {
+        t.remove_curve_point(adj, 0, 1);
+    }
+    assert_eq!(pts(&t).len(), 2);
+    t.remove_curve_point(adj, 0, 1);
+    assert_eq!(pts(&t).len(), 2, "won't remove below the 2 endpoints");
+    // Out-of-range / non-curves are no-ops (no panic).
+    t.remove_curve_point(adj, 9, 0);
+    t.remove_curve_point(adj, 0, 99);
+}
+
+#[test]
 fn adjustment_param_drain_uses_cache_bit_identically() {
     // W5: a slider-drag drain routes through `composite_with_cache` (cut-point
     // cache). Prove the warm-restart preview is byte-identical to a cold full

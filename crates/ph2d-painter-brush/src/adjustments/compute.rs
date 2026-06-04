@@ -235,6 +235,15 @@ fn eval_curve(points: &[[f32; 2]], x: f32) -> f32 {
     (h00 * y0 + h10 * h * m0 + h01 * y1 + h11 * h * m1).clamp(0.0, 1.0)
 }
 
+/// Sample a tone curve `points` (normalized `[x, y]`, ascending x) at `x`,
+/// returning the output `y`. Public entry to the monotone spline eval
+/// ([`eval_curve`]) for the tool — e.g. placing a newly-inserted control point ON
+/// the current curve so adding it leaves the output unchanged.
+#[must_use]
+pub fn curve_value_at(points: &[[f32; 2]], x: f32) -> f32 {
+    eval_curve(points, x)
+}
+
 /// Photoshop-style Levels transfer in DISPLAY space: display input `s` (`0..=1`)
 /// → display output. Input black/white points clip+stretch the range, `gamma`
 /// (the midtone slider, effective neutral `1.0`) reshapes it, and the output

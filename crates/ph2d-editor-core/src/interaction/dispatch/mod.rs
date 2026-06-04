@@ -13,6 +13,7 @@
 
 mod blender;
 pub mod clipboard;
+mod curve;
 mod focus;
 pub mod hierarchy;
 mod hover;

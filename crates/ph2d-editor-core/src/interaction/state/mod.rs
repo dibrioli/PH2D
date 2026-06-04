@@ -154,6 +154,23 @@ pub enum InteractiveState {
         parent: NodeId,
         kind: BlenderHitKind,
     },
+    /// 2-D draggable control point of a Curves/Levels-style editor (W4 §3). The
+    /// dispatcher normalizes the pointer within `canvas` (the plotting area, NOT
+    /// the small grab rect) to `(x, y)` in `[0, 1]` (y inverted: canvas top =
+    /// 1.0 = high output) and stashes `(parent, channel, index, x, y)` via
+    /// [`WidgetStore::set_curve_point_drag`] for the panel to read each frame and
+    /// forward to its tool (`PainterTool::set_curve_point`). Mirrors
+    /// [`InteractiveState::BlenderHit`]'s pointer-in-rect routing.
+    CurvePoint {
+        parent: NodeId,
+        /// `0` = master, `1` = R, `2` = G, `3` = B (the editor's active channel).
+        channel: u8,
+        /// Index of the dragged point within the channel's control set.
+        index: u8,
+        /// The curve plotting area, in the same coords as the hit rect — the
+        /// drag normalizes against THIS, not the handle's small grab rect.
+        canvas: Rect,
+    },
     Modal {
         // Open/closed lives on the host; store only tracks ESC->dismiss intent.
         dismissing: bool,
@@ -459,6 +476,12 @@ pub struct WidgetStore {
     /// hierarchy drag, the dispatch never mutates structure here — the
     /// painter tool owns the `LayerStack` and resolves the drop.
     pub(super) painter_layer_drag: Option<HierarchyDragState>,
+    /// W4 §3 — pending Curves/Levels control-point drag, set by the dispatch
+    /// when a [`InteractiveState::CurvePoint`] is dragged and drained by the
+    /// panel each frame: `(parent, channel, index, x01, y01)`. Like the layer
+    /// drags, the dispatch never mutates curve state here — the painter tool
+    /// owns the curve and applies it via `set_curve_point`.
+    pub(super) curve_point_drag: Option<(NodeId, u8, u8, f32, f32)>,
     /// Every `NodeId` currently displayed as a Painter layer row. The
     /// layers panel republishes the set each frame; dispatch reads it to
     /// decide "this Down is on a draggable layer row" (mirror of

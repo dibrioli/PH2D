@@ -186,6 +186,21 @@ impl WidgetStore {
         self.painter_layer_drag.take()
     }
 
+    /// W4 §3 — record a Curves/Levels control-point drag computed by the
+    /// dispatch (`x`/`y` already normalized to `[0, 1]`). The panel drains it
+    /// with [`Self::take_curve_point_drag`] and forwards to its tool's
+    /// `set_curve_point`.
+    pub fn set_curve_point_drag(&mut self, parent: NodeId, channel: u8, index: u8, x: f32, y: f32) {
+        self.curve_point_drag =
+            Some((parent, channel, index, x.clamp(0.0, 1.0), y.clamp(0.0, 1.0)));
+    }
+
+    /// Take the pending curve-point drag `(parent, channel, index, x01, y01)`,
+    /// if any. Drained once per frame by the curve editor panel.
+    pub fn take_curve_point_drag(&mut self) -> Option<(NodeId, u8, u8, f32, f32)> {
+        self.curve_point_drag.take()
+    }
+
     /// Republish the set of `NodeId`s that are currently painter layer rows.
     /// The layers panel calls this each frame with `painter_layer_widget_id(
     /// layer, Row)` for every visible row.

@@ -63,6 +63,7 @@ impl WidgetStore {
             shift_held: false,
             cmd_held: false,
             painter_layer_drag: None,
+            curve_point_drag: None,
             painter_layer_row_ids: std::collections::BTreeSet::new(),
             picker_swatch_ids: std::collections::BTreeSet::new(),
         }

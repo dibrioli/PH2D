@@ -28,7 +28,8 @@ use crate::zones::{Layout, Rect, Zone};
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_tokens::{Color as TokenColor, ColorToken, Theme};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Color, Fill, Glyph, Rect as VelloRect, RoundedRect, Stroke, VectorScene,
+    Affine, BezPath, Brush, Circle, Color, Fill, Glyph, Rect as VelloRect, RoundedRect, Stroke,
+    VectorScene,
 };
 
 /// Per-frame paint context. Built by the shell, threaded through
@@ -184,6 +185,36 @@ pub fn stroke_rounded_rect(
     scene
         .inner_mut()
         .stroke(&stroke, Affine::IDENTITY, color, None, &rr);
+}
+
+/// Fill a circle centered at `(cx, cy)` with radius `r` — curve-editor control-
+/// point handles (W4 §3) and any round dot. `r <= 0` is a no-op.
+pub fn fill_circle(scene: &mut VectorScene, cx: f32, cy: f32, r: f32, color: Color) {
+    if r <= 0.0 {
+        return;
+    }
+    let circle = Circle::new((cx as f64, cy as f64), r as f64);
+    scene
+        .inner_mut()
+        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &circle);
+}
+
+/// Stroke a polyline through `points` (round joins/caps) — a smooth curve drawn
+/// through its sampled output (W4 §3), replacing the dense-dot fallback. Fewer
+/// than two points is a no-op.
+pub fn stroke_polyline(scene: &mut VectorScene, points: &[(f32, f32)], width: f32, color: Color) {
+    if points.len() < 2 {
+        return;
+    }
+    let mut path = BezPath::new();
+    path.move_to((points[0].0 as f64, points[0].1 as f64));
+    for &(x, y) in &points[1..] {
+        path.line_to((x as f64, y as f64));
+    }
+    let stroke = Stroke::new(width as f64);
+    scene
+        .inner_mut()
+        .stroke(&stroke, Affine::IDENTITY, color, None, &path);
 }
 
 /// Render an icon centered inside `rect`. The source icons are 24x24

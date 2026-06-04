@@ -6,6 +6,7 @@
 //! `clear_combobox_if_button_hit`) live here.
 
 use super::blender::{apply_blender_channel_value, apply_blender_hit};
+use super::curve::apply_curve_point_drag;
 use super::focus::{apply_click, is_focusable};
 use super::hierarchy::{HierDrop, find_hierarchy_drop, find_painter_layer_drop};
 use super::hover::{set_widget_pressed, set_widget_released, update_hover};
@@ -343,6 +344,16 @@ pub fn dispatch_pointer_with_text<'frame>(
                     if drag_apply
                         && let Some(parent) =
                             apply_blender_hit(store, active, rect, event.x, event.y, event.button)
+                    {
+                        events.push(WidgetEvent::ValueChanged(parent));
+                    }
+                    // W4 §3 — drag the active curve control point (normalizes
+                    // against the editor's plotting canvas carried in the variant).
+                    let is_curve =
+                        matches!(store.get(active), Some(InteractiveState::CurvePoint { .. }));
+                    if is_curve
+                        && let Some(parent) =
+                            apply_curve_point_drag(store, active, event.x, event.y)
                     {
                         events.push(WidgetEvent::ValueChanged(parent));
                     }
@@ -716,6 +727,20 @@ pub fn dispatch_pointer_with_text<'frame>(
             {
                 store.set_active(Some(id));
                 store.set_active_rect(Some(rect));
+                return events.into_bump_slice();
+            }
+
+            // W4 §3 — Down on a curve control point: make it active (so Move
+            // drags it) and apply the initial position now (click-to-move).
+            // Handled before `is_focusable` so it skips the focus/number-buffer
+            // machinery — the curve lives in the painter tool, not the store.
+            if let Some((id, _)) = hit
+                && matches!(store.get(id), Some(InteractiveState::CurvePoint { .. }))
+            {
+                store.set_active(Some(id));
+                if let Some(parent) = apply_curve_point_drag(store, id, event.x, event.y) {
+                    events.push(WidgetEvent::ValueChanged(parent));
+                }
                 return events.into_bump_slice();
             }
 

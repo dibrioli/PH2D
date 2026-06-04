@@ -387,6 +387,14 @@ pub enum PainterLayerWidget {
     AdjParam3,
     AdjParam4,
     AdjParam5,
+    /// (Adjustment rows only) generic boolean toggle for the adjustment's Nth
+    /// toggle param (W4 BATCH-1, e.g. Photo Filter's "Preserve Luminosity"). The
+    /// kind decides what each slot means
+    /// (`ph2d_painter_brush::adjustments::adjustment_toggle_params`); a click
+    /// flips it tool-side (like [`Self::MaskInvert`]), source of truth = the
+    /// params. 2 slots cover the toggle-bearing kinds.
+    AdjToggle0,
+    AdjToggle1,
 }
 
 impl PainterLayerWidget {
@@ -410,11 +418,13 @@ impl PainterLayerWidget {
             Self::AdjParam3 => "adj_param3",
             Self::AdjParam4 => "adj_param4",
             Self::AdjParam5 => "adj_param5",
+            Self::AdjToggle0 => "adj_toggle0",
+            Self::AdjToggle1 => "adj_toggle1",
         }
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 15] = [
+    pub const ALL: [PainterLayerWidget; 17] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -430,6 +440,8 @@ impl PainterLayerWidget {
         Self::AdjParam3,
         Self::AdjParam4,
         Self::AdjParam5,
+        Self::AdjToggle0,
+        Self::AdjToggle1,
     ];
 }
 

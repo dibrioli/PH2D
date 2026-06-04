@@ -718,3 +718,116 @@ fn slider_params_round_trip() {
     assert_eq!(bc_read.len(), 2);
     assert!((bc_read[1].1 - 0.9).abs() < 1e-6);
 }
+
+// ── W4 BATCH-1 — Photo Filter (warm/cool gel + toggle rack) ───────────
+
+fn photo(temperature: f32, density: f32, preserve: bool, px: [f32; 4]) -> [f32; 4] {
+    run(
+        AdjustmentKind::PhotoFilter,
+        AdjustmentParams::PhotoFilter(PhotoFilterParams {
+            temperature,
+            density,
+            preserve_luminosity: preserve,
+        }),
+        px,
+    )
+}
+
+/// Rec.709 linear luma — the same weights `apply_photo_filter` renormalizes on.
+fn luma(px: [f32; 4]) -> f32 {
+    0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]
+}
+
+#[test]
+fn photo_filter_neutral_is_exact_identity() {
+    let px = [0.3, 0.55, 0.2, 0.7];
+    // The all-zero Default (density 0) is a no-op …
+    assert_eq!(
+        run(
+            AdjustmentKind::PhotoFilter,
+            AdjustmentParams::PhotoFilter(PhotoFilterParams::default()),
+            px,
+        ),
+        px,
+        "default Photo Filter is an exact identity",
+    );
+    // … and so is a zero temperature even at full density (the unit gel).
+    assert_eq!(
+        photo(0.0, 1.0, true, px),
+        px,
+        "temperature 0 is the unit gel"
+    );
+}
+
+#[test]
+fn photo_filter_warm_shifts_red_above_blue() {
+    // A warm gel passes red and cuts blue → a neutral gray reads warmer (R > B).
+    let out = photo(0.8, 0.6, false, [0.5, 0.5, 0.5, 1.0]);
+    assert!(
+        out[0] > out[2] + 1e-3,
+        "warm filter pushes red above blue: {out:?}"
+    );
+    assert_eq!(out[3], 1.0, "alpha preserved");
+}
+
+#[test]
+fn photo_filter_cool_shifts_blue_above_red() {
+    // A cool gel passes blue and cuts red → blue dominates a neutral gray.
+    let out = photo(-0.8, 0.6, false, [0.5, 0.5, 0.5, 0.4]);
+    assert!(
+        out[2] > out[0] + 1e-3,
+        "cool filter pushes blue above red: {out:?}"
+    );
+    assert_eq!(out[3], 0.4, "alpha preserved");
+}
+
+#[test]
+fn photo_filter_preserve_luminosity_holds_luma() {
+    // With preserve-luminosity the gel shifts hue but not brightness: a gray
+    // pixel's luma is unchanged (exact for an achromatic input).
+    let px = [0.5, 0.5, 0.5, 1.0];
+    let kept = photo(0.9, 0.8, true, px);
+    assert!(
+        (luma(kept) - luma(px)).abs() < 1e-4,
+        "preserve-lum keeps luma: {} vs {}",
+        luma(kept),
+        luma(px)
+    );
+    // Without preservation the warm multiply darkens (blue cut, red unchanged).
+    let dropped = photo(0.9, 0.8, false, px);
+    assert!(
+        luma(dropped) < luma(px) - 1e-3,
+        "no preserve-lum darkens: {} vs {}",
+        luma(dropped),
+        luma(px)
+    );
+}
+
+#[test]
+fn photo_filter_slider_round_trips() {
+    // Temperature (centered) + Density round-trip through the generic rack.
+    let mut p = AdjustmentParams::PhotoFilter(PhotoFilterParams::default());
+    set_adjustment_slider_param(&mut p, 0, 0.75); // temp +0.5
+    set_adjustment_slider_param(&mut p, 1, 0.4); // density 0.4
+    let read = adjustment_slider_params(&p);
+    assert_eq!(read.len(), 2, "Photo Filter exposes 2 sliders");
+    assert!((read[0].1 - 0.75).abs() < 1e-6 && (read[1].1 - 0.4).abs() < 1e-6);
+}
+
+#[test]
+fn photo_filter_toggle_round_trips() {
+    // The generic toggle rack: read reflects the param, set flips it.
+    let mut p = AdjustmentParams::PhotoFilter(PhotoFilterParams::default());
+    let read = adjustment_toggle_params(&p);
+    assert_eq!(read.len(), 1, "Photo Filter exposes 1 toggle");
+    assert!(!read[0].1, "default preserve-luminosity is off (neutral)");
+    set_adjustment_toggle_param(&mut p, 0, true);
+    assert!(
+        adjustment_toggle_params(&p)[0].1,
+        "set_adjustment_toggle_param flips the toggle"
+    );
+    // A non-toggle kind exposes no toggles + ignores the setter.
+    let mut hsb = AdjustmentParams::HueSaturationBrightness(HsbParams::default());
+    assert!(adjustment_toggle_params(&hsb).is_empty());
+    set_adjustment_toggle_param(&mut hsb, 0, true); // no-op, must not panic
+}

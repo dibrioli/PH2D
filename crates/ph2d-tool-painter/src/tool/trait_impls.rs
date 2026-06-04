@@ -156,6 +156,10 @@ impl Tool for PainterTool {
                         PainterLayerWidget::MaskApply => {
                             self.apply_mask(layer);
                         }
+                        // Adjustment toggle rack (W4 BATCH-1): a click flips the
+                        // boolean param slot (Photo Filter's Preserve Luminosity, …).
+                        PainterLayerWidget::AdjToggle0 => self.flip_adjustment_toggle(layer, 0),
+                        PainterLayerWidget::AdjToggle1 => self.flip_adjustment_toggle(layer, 1),
                         // Opacity slider/chip emit SetValue; Blend emits
                         // SelectOption — neither arrives as a Click.
                         _ => {}

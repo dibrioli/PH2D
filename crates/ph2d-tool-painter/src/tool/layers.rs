@@ -577,6 +577,36 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// Flip toggle `slot` of adjustment layer `id` (the panel's per-slot switches,
+    /// e.g. Photo Filter's "Preserve Luminosity"). The params are the single
+    /// source of truth, so the panel forwards a bare click and the tool reads the
+    /// current value + inverts it (mirror of [`Self::toggle_mask_inverted`]). The
+    /// per-kind mapping lives in `adjustments::{adjustment_toggle_params,
+    /// set_adjustment_toggle_param}`. No-op mid-stroke or if `id` is not an
+    /// adjustment. Routes the preview through the same cut-cache fast lane as a
+    /// slider edit ([`Self::set_adjustment_param`]).
+    pub fn flip_adjustment_toggle(&mut self, id: RtLayerId, slot: usize) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let cur = ph2d_painter_brush::adjustments::adjustment_toggle_params(&adj.params)
+            .get(slot)
+            .map(|(_, on)| *on)
+            .unwrap_or(false);
+        ph2d_painter_brush::adjustments::set_adjustment_toggle_param(&mut adj.params, slot, !cur);
+        // Same param-only hot lane as `set_adjustment_param`: keep the cuts below
+        // this adjustment, restart from its cut, republish for the panel snapshot.
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
     /// Move control point `point_index` of adjustment `id`'s `channel` curve to
     /// normalized `(x01, y01)` (both `0..=1`). `channel`: 0 = master (RGB),
     /// 1 = R, 2 = G, 3 = B. The bespoke curve-editor UI calls this on a point

@@ -1932,6 +1932,37 @@ fn curve_edit_panel_event_routes_to_set_curve_point() {
 }
 
 #[test]
+fn photo_filter_toggle_click_routes_to_flip() {
+    // W4 BATCH-1: a Photo Filter's "Preserve Luminosity" switch forwards a bare
+    // Click(AdjToggle0); handle_panel_event must decode it back to the layer +
+    // flip the boolean param (the mask-invert affordance pattern).
+    use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::PhotoFilter).unwrap();
+    let preserve = |t: &PainterTool| -> bool {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::PhotoFilter(p) => p.preserve_luminosity,
+                _ => panic!("not a photo filter"),
+            },
+            _ => panic!("not an adjustment"),
+        }
+    };
+    assert!(
+        !preserve(&t),
+        "fresh Photo Filter starts with preserve-lum off"
+    );
+    let toggle_id = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjToggle0);
+    t.handle_panel_event(PanelEvent::Click(toggle_id));
+    assert!(preserve(&t), "the toggle click flipped preserve-lum on");
+    t.handle_panel_event(PanelEvent::Click(toggle_id));
+    assert!(!preserve(&t), "a second click flipped it back off");
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

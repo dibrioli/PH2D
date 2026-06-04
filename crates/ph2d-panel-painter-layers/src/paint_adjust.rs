@@ -30,12 +30,16 @@ use ph2d_editor_core::paint::{
     stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Slider, SliderOrientation, SliderState, paint_slider};
+use ph2d_editor_core::widget::{
+    Slider, SliderOrientation, SliderState, Toggle, ToggleState, paint_slider, paint_toggle,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{AdjustmentParams, CurvesParams};
 
 const ADJ_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: slider-param label column ("Contrast")
+const ADJ_TOGGLE_W: f32 = 34.0; // LITERAL-PX-OK: toggle-rack switch pill width
+const ADJ_TOGGLE_H: f32 = 18.0; // LITERAL-PX-OK: toggle-rack switch pill height (inset in ROW_H)
 const CURVE_CANVAS_H: f32 = 132.0; // LITERAL-PX-OK: bespoke curve-editor canvas height
 const CURVE_HANDLE_R: f32 = 4.0; // LITERAL-PX-OK: control-point handle radius
 const CURVE_GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a handle's pointer grab box
@@ -56,6 +60,15 @@ fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
         3 => PainterLayerWidget::AdjParam3,
         4 => PainterLayerWidget::AdjParam4,
         5 => PainterLayerWidget::AdjParam5,
+        _ => return None,
+    })
+}
+
+/// The generic per-slot toggle widget kind (≤2 toggle params per adjustment).
+fn toggle_slot_kind(slot: usize) -> Option<PainterLayerWidget> {
+    Some(match slot {
+        0 => PainterLayerWidget::AdjToggle0,
+        1 => PainterLayerWidget::AdjToggle1,
         _ => return None,
     })
 }
@@ -116,6 +129,41 @@ pub(crate) fn paint_adjustment_params(
         let rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
         paint_slider(&slider, rect, ctx.scene, theme);
         ctx.host.hit_index_mut().register(id, rect);
+        y += ROW_H_PX + gap;
+    }
+    // Toggle rack (W4 BATCH-1): a label on the left + a right-aligned switch per
+    // boolean param (Photo Filter's Preserve Luminosity, …). The switch is a
+    // button (click) painted with the live param value — the params are the
+    // single source of truth, the tool flips on click (mirror of the mask-invert
+    // affordance). Adding a toggle-bearing kind needs ZERO panel change.
+    for (slot, (label, on)) in ph2d_tool_painter::adjustment_toggle_params(params)
+        .into_iter()
+        .enumerate()
+    {
+        let Some(kind) = toggle_slot_kind(slot) else {
+            break;
+        };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            label,
+            x,
+            y + (ROW_H_PX - font) * 0.5,
+            font,
+            (w - ADJ_TOGGLE_W - gap).max(0.0),
+            resolve(ColorToken::Text2, theme),
+        );
+        let toggle_rect = Rect::new(
+            x + w - ADJ_TOGGLE_W,
+            y + (ROW_H_PX - ADJ_TOGGLE_H) * 0.5,
+            ADJ_TOGGLE_W,
+            ADJ_TOGGLE_H,
+        );
+        let toggle = Toggle::new(id, "").on(on).state(ToggleState::Normal);
+        paint_toggle(&toggle, toggle_rect, ctx.scene, theme);
+        register_button(ctx.host.store_mut(), id);
+        ctx.host.hit_index_mut().register(id, toggle_rect);
         y += ROW_H_PX + gap;
     }
     y

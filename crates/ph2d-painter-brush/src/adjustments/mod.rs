@@ -543,6 +543,16 @@ impl AdjustmentParams {
             Self::Threshold(p) => [p.threshold as f32 / 255.0, 0.0, 0.0],
             Self::Exposure(p) => [p.exposure_ev, p.offset, p.gamma_correction],
             Self::Vibrance(p) => [p.vibrance, p.saturation, 0.0],
+            // W4 BATCH-1 — Photo Filter fits the ≤3 scalar GPU rack: temperature,
+            // density, preserve-luminosity (as 0/1). This packing is INERT until
+            // the Coord lands the `ADJ_PHOTO_FILTER` WGSL case + flips
+            // `gpu_code(PhotoFilter)` from `None` to its code (CPU-first phase, the
+            // compositor uses `apply_photo_filter` until then). See the W4 handoff.
+            Self::PhotoFilter(p) => [
+                p.temperature,
+                p.density,
+                if p.preserve_luminosity { 1.0 } else { 0.0 },
+            ],
             _ => [0.0, 0.0, 0.0],
         }
     }
@@ -686,6 +696,7 @@ mod compute;
 #[cfg(test)]
 mod tests;
 pub use compute::{
-    DISPLAY_LUT_N, adjustment_slider_params, apply_adjustment, curve_value_at, curves_display_luts,
-    levels_display_lut, set_adjustment_slider_param,
+    DISPLAY_LUT_N, adjustment_slider_params, adjustment_toggle_params, apply_adjustment,
+    curve_value_at, curves_display_luts, levels_display_lut, set_adjustment_slider_param,
+    set_adjustment_toggle_param,
 };

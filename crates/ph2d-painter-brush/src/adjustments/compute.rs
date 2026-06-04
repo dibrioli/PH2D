@@ -51,6 +51,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::Curves, AdjustmentParams::Curves(p)) => apply_curves(p, acc),
         // W4 bespoke — Levels (display-space black/gamma/white + output remap).
         (AdjustmentKind::Levels, AdjustmentParams::Levels(p)) => apply_levels(p, acc),
+        // W4 BATCH-1 — Photo Filter (warm/cool gel: linear multiply + luma preserve).
+        (AdjustmentKind::PhotoFilter, AdjustmentParams::PhotoFilter(p)) => {
+            apply_photo_filter(p, acc)
+        }
         _ => {}
     }
 }
@@ -485,6 +489,53 @@ pub(crate) fn apply_brightness_contrast(p: &BrightnessContrastParams, acc: &mut 
     }
 }
 
+/// Photo Filter — a colored gel over the image. A photographic filter is a
+/// physical sheet of tinted glass in front of the lens, so it is a straight
+/// LINEAR-light multiply (the space `acc` already lives in — no sRGB round-trip).
+/// `temperature` (`-1..1`, neutral 0) picks a WARM (`>0`, passes red/green, cuts
+/// blue) or COOL (`<0`, passes blue, cuts red) gel; `density` (`0..1`) is its
+/// strength; with `preserve_luminosity` each pixel's luminance is renormalized
+/// after the multiply so the filter shifts color WITHOUT darkening (Photoshop's
+/// default). Alpha (= coverage) is preserved. Neutral (`density == 0` OR
+/// `temperature == 0`, both ⇒ the unit gel) early-returns an exact identity — the
+/// drag hot path, mirror of [`apply_hsb`].
+pub(crate) fn apply_photo_filter(p: &PhotoFilterParams, acc: &mut [[f32; 4]]) {
+    if p.density == 0.0 || p.temperature == 0.0 {
+        return;
+    }
+    let t = p.temperature.clamp(-1.0, 1.0);
+    let density = p.density.clamp(0.0, 1.0);
+    // Linear-light gel transmittances at full strength (`|t| = 1`). Warm cuts the
+    // blue channel; cool cuts red — the classic 85 (warming) / 80 (cooling) gels.
+    const WARM: [f32; 3] = [1.0, 0.75, 0.45];
+    const COOL: [f32; 3] = [0.55, 0.80, 1.0];
+    let anchor = if t >= 0.0 { WARM } else { COOL };
+    let mag = t.abs();
+    // Effective per-channel gain: blend neutral white → anchor by |t|, then
+    // white → that gel by density (both lerps fold into one factor per channel).
+    let eff: [f32; 3] = core::array::from_fn(|c| {
+        let gel = 1.0 + (anchor[c] - 1.0) * mag;
+        1.0 + (gel - 1.0) * density
+    });
+    // Linear Rec.709 luma (acc is linear light) for the optional preserve-lum renorm.
+    const LW: [f32; 3] = [0.2126, 0.7152, 0.0722];
+    for px in acc.iter_mut() {
+        let l_in = LW[0] * px[0] + LW[1] * px[1] + LW[2] * px[2];
+        for (c, e) in eff.iter().enumerate() {
+            px[c] *= e;
+        }
+        if p.preserve_luminosity {
+            let l_out = LW[0] * px[0] + LW[1] * px[1] + LW[2] * px[2];
+            if l_out > 1e-6 {
+                let k = l_in / l_out;
+                for c in px.iter_mut().take(3) {
+                    *c *= k;
+                }
+            }
+        }
+    }
+}
+
 /// The slider-editable params of an adjustment, as `(label, value01)` in slot
 /// order — what the layers panel renders as a labeled slider per slot, and the
 /// inverse of [`set_adjustment_slider_param`]. Kinds with bespoke controls
@@ -516,6 +567,12 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             vec![("Levels", (p.levels.clamp(2, 32) as f32 - 2.0) / 30.0)]
         }
         AdjustmentParams::Threshold(p) => vec![("Level", p.threshold as f32 / 255.0)],
+        // Photo Filter: Temperature -1..1 (centered; 0.5 = neutral) + Density 0..1.
+        // `preserve_luminosity` is a toggle (see `adjustment_toggle_params`).
+        AdjustmentParams::PhotoFilter(p) => vec![
+            ("Temp", (p.temperature.clamp(-1.0, 1.0) + 1.0) * 0.5),
+            ("Density", p.density.clamp(0.0, 1.0)),
+        ],
         // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
         // black/gamma/white + output black/white. (Curves needs the bespoke
         // curve canvas — handoff §4 — so it returns no generic sliders.)
@@ -563,6 +620,11 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
         AdjustmentParams::Threshold(p) if slot == 0 => {
             p.threshold = (v * 255.0).round().clamp(0.0, 255.0) as u8;
         }
+        AdjustmentParams::PhotoFilter(p) => match slot {
+            0 => p.temperature = v * 2.0 - 1.0, // -1..1
+            1 => p.density = v,                 // 0..1
+            _ => {}
+        },
         AdjustmentParams::Levels(p) => match slot {
             0 => p.black_point = v,
             1 => p.gamma = levels_slider_to_gamma(v),
@@ -573,6 +635,28 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
         },
         // Curves has no generic sliders — its bespoke editor drives free 2-D point
         // drags through `PainterTool::set_curve_point` (W4 §3), not this slot path.
+        _ => {}
+    }
+}
+
+/// The boolean (toggle) params of an adjustment, as `(label, on)` in slot order
+/// — the toggle-rack twin of [`adjustment_slider_params`]. The layers panel
+/// renders each as a small switch row under the slider rack; the inverse setter
+/// is [`set_adjustment_toggle_param`]. Kinds with no toggles return empty. Adding
+/// a toggle-bearing kind needs ZERO panel change (the rack iterates this).
+#[must_use]
+pub fn adjustment_toggle_params(params: &AdjustmentParams) -> Vec<(&'static str, bool)> {
+    match params {
+        AdjustmentParams::PhotoFilter(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
+        _ => Vec::new(),
+    }
+}
+
+/// Set toggle `slot` of an adjustment (inverse of [`adjustment_toggle_params`]).
+/// Out-of-range slots / non-toggle kinds no-op.
+pub fn set_adjustment_toggle_param(params: &mut AdjustmentParams, slot: usize, on: bool) {
+    match params {
+        AdjustmentParams::PhotoFilter(p) if slot == 0 => p.preserve_luminosity = on,
         _ => {}
     }
 }

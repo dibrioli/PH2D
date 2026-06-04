@@ -168,6 +168,16 @@ pub fn apply(mode: BlendMode, dst: [f32; 4], src: [f32; 4]) -> [f32; 4] {
     let cb = [dst[0], dst[1], dst[2]];
     let cs = [src[0], src[1], src[2]];
 
+    // Fast path: an OPAQUE `Normal` source fully replaces the backdrop. This is
+    // BIT-IDENTICAL to the general path below (for `Normal`, `B(Cb,Cs)=Cs`; with
+    // αs=1 ⇒ αo=1, Cs'=(1-αb)Cs+αb·Cs=Cs, Co=sanitize(Cs/1)) and skips 3
+    // divisions/px. Keeps the same `sanitize01` (NaN→0, clamp — audit W3 L-1) so
+    // it matches exactly. The overwhelmingly common compositor case (opaque base
+    // raster + adjustment blend-back over an opaque base) — the composite floor.
+    if mode == BlendMode::Normal && as_ >= 1.0 {
+        return [sanitize01(cs[0]), sanitize01(cs[1]), sanitize01(cs[2]), 1.0];
+    }
+
     match mode {
         // Erase: keep backdrop color, attenuate its alpha by the source's.
         BlendMode::Clear => return [cb[0], cb[1], cb[2], ab * (1.0 - as_)],
@@ -388,6 +398,35 @@ mod tests {
 
     fn approx(a: [f32; 4], b: [f32; 4]) -> bool {
         (0..4).all(|i| (a[i] - b[i]).abs() < EPS)
+    }
+
+    #[test]
+    fn normal_opaque_fast_path_is_bit_identical() {
+        // The opaque-Normal fast path must be byte-for-byte the general formula
+        // (not just approx) — it feeds the live preview AND the committed bake.
+        let backdrops = [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.2, 0.5, 0.9, 0.3],
+            [0.7, 0.1, 0.4, 1.0],
+            [1.0, 1.0, 1.0, 0.6],
+        ];
+        let srcs = [
+            [0.0, 0.0, 0.0, 1.0],
+            [0.12, 0.34, 0.56, 1.0],
+            [0.9, 0.8, 0.1, 1.0],
+            [1.0, 0.0, 0.5, 1.0],
+        ];
+        for dst in backdrops {
+            for src in srcs {
+                let fast = apply(BlendMode::Normal, dst, src);
+                // The general path yields the source exactly for opaque Normal.
+                assert_eq!(
+                    fast.map(f32::to_bits),
+                    [src[0], src[1], src[2], 1.0].map(f32::to_bits),
+                    "opaque Normal must return the source exactly (dst={dst:?} src={src:?})"
+                );
+            }
+        }
     }
 
     #[test]

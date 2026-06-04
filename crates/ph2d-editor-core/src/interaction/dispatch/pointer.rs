@@ -734,10 +734,15 @@ pub fn dispatch_pointer_with_text<'frame>(
             // drags it) and apply the initial position now (click-to-move).
             // Handled before `is_focusable` so it skips the focus/number-buffer
             // machinery — the curve lives in the painter tool, not the store.
-            if let Some((id, _)) = hit
+            if let Some((id, rect)) = hit
                 && matches!(store.get(id), Some(InteractiveState::CurvePoint { .. }))
             {
                 store.set_active(Some(id));
+                // Set active_rect too: the Move-drag block is gated on
+                // `active_rect.is_some()`. The VALUE is irrelevant to the mapping
+                // (`apply_curve_point_drag` normalizes against the variant's
+                // `canvas`, not this rect) — only its PRESENCE unlocks the drag.
+                store.set_active_rect(Some(rect));
                 if let Some(parent) = apply_curve_point_drag(store, id, event.x, event.y) {
                     events.push(WidgetEvent::ValueChanged(parent));
                 }

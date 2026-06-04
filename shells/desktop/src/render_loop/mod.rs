@@ -1122,7 +1122,15 @@ impl crate::App {
             // (normal app untouched, mirror of `motion_smoke`).
             let vgraph_visible = vector_graph_bridge::enabled();
             hero.panel_visibility.insert("vector_graph", vgraph_visible);
-            vector_graph_bridge::dispatch(vgraph_visible, camera, window_size, vector_scene);
+            // `surface.gpu()` (&GpuContext, disjoint from `vector_scene`) feeds the
+            // ADR-0065 GPU SDF draft during a slider drag.
+            vector_graph_bridge::dispatch(
+                vgraph_visible,
+                camera,
+                window_size,
+                vector_scene,
+                surface.gpu(),
+            );
             // Vector Inspector (W2.T2.4): panel visibility + fill-swatch picker
             // read-back + publish (`hero`/`tools` still in scope from above).
             vector_inspector_bridge::dispatch(

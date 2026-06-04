@@ -31,10 +31,11 @@
 //!   Exclude/Outline), draw the cheap [`ph2d_vector_sdf`] silhouette contour (the
 //!   *draft*) instead of cooking the exact boolean. The frame the params settle,
 //!   fall back to the exact Linesweeper reconcile. The four topology-only ops
-//!   (Divide/Trim/Merge/Crop) have no SDF → always exact. CPU SDF at draft-res is
-//!   the least-friction path (the bridge has no `GpuContext` threaded through);
-//!   GPU SDF is the scale follow-up.
+//!   (Divide/Trim/Merge/Crop) have no SDF → always exact. The silhouette SDF runs
+//!   on the GPU (`ph2d_vector_sdf::gpu::GpuSdf`, pipeline cached); the `min/max`
+//!   combine + marching-squares stay on the CPU.
 
+use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::Cook;
@@ -43,7 +44,8 @@ use ph2d_panel_vector_graph::VectorGraphParams;
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Scene, Stroke, VectorScene, draw_vector_network};
 use ph2d_vector_doc::{FillSolid, StyleTable, VectorNetwork};
-use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour, network_sdf};
+use ph2d_vector_sdf::gpu::GpuSdf;
+use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour};
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
@@ -69,6 +71,11 @@ thread_local! {
     /// (params changing frame-to-frame) from a settled state. The render loop is
     /// single-threaded; this is the bridge's only per-frame state (handoff §2.B).
     static LAST_KEY: RefCell<Option<(VectorGraphParams, i64)>> = const { RefCell::new(None) };
+
+    /// ADR-0065 Phase 3: the GPU SDF compute pipeline, built once on the first
+    /// draft frame and reused (pipeline creation is cheap but not free). Single
+    /// render thread → thread-local. Holds wgpu handles (Arc-backed).
+    static GPU_SDF: RefCell<Option<GpuSdf>> = const { RefCell::new(None) };
 }
 
 /// Is the geometry-graph smoke enabled? Read once from `PH2D_VECTOR_GRAPH=1`.
@@ -88,6 +95,7 @@ pub(super) fn dispatch(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    gpu: &GpuContext,
 ) {
     if !visible {
         return;
@@ -112,7 +120,7 @@ pub(super) fn dispatch(
     // is constant per run, so `changed` tracks slider drags. Both paths share
     // `to_screen` so the shape doesn't jump when the drag settles.
     if let Some(sdf_op) = draft_op(params_changed((p, op_key)), op_key)
-        && draw_draft(&net_a, &net_b, sdf_op, to_screen, vector_scene.inner_mut())
+        && draw_draft(&net_a, &net_b, sdf_op, to_screen, vector_scene.inner_mut(), gpu)
     {
         return;
     }
@@ -169,17 +177,19 @@ fn sdf_op_from_index(op: i64) -> Option<SdfOp> {
     }
 }
 
-/// Draw the SDF *draft* of `source(a) ∘ source(b)`: SDF each operand over a
-/// co-located window, combine with the `min/max` kernel, march out the zero
-/// contour, and stroke it as a thin preview outline (under `to_screen`). Returns
-/// `false` (so the caller falls back to the exact reconcile) if the grids don't
-/// co-locate or the contour is empty.
+/// Draw the SDF *draft* of `source(a) ∘ source(b)`: SDF each operand on the GPU
+/// over a co-located window (ADR-0065 Phase 3 — the real-time path), combine with
+/// the `min/max` kernel on the CPU, march out the zero contour, and stroke it as
+/// a thin preview outline (under `to_screen`). Returns `false` (so the caller
+/// falls back to the exact reconcile) if the grids don't co-locate or the contour
+/// is empty.
 fn draw_draft(
     net_a: &VectorNetwork,
     net_b: &VectorNetwork,
     op: SdfOp,
     to_screen: Affine,
     scene: &mut Scene,
+    gpu: &GpuContext,
 ) -> bool {
     // Co-locate the sampling window over BOTH operands (same res + bounds) so
     // `boolean_sdf` can combine them cell-for-cell.
@@ -189,8 +199,17 @@ fn draw_draft(
         min: ba.min.min(bb.min),
         max: ba.max.max(bb.max),
     };
-    let sdf_a = network_sdf(net_a, DRAFT_RES, bounds);
-    let sdf_b = network_sdf(net_b, DRAFT_RES, bounds);
+    // GPU silhouette per operand, reusing the cached compute pipeline. The trivial
+    // `min/max` combine + marching stay on the CPU (GpuSdf handles device-loss by
+    // returning a flat field, so this never panics on a bad frame).
+    let (sdf_a, sdf_b) = GPU_SDF.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let pipe = slot.get_or_insert_with(|| GpuSdf::new(gpu));
+        (
+            pipe.network_sdf(gpu, net_a, DRAFT_RES, bounds),
+            pipe.network_sdf(gpu, net_b, DRAFT_RES, bounds),
+        )
+    });
     let Some(draft) = boolean_sdf(&sdf_a, &sdf_b, op) else {
         return false;
     };

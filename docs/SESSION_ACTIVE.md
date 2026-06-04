@@ -42,8 +42,17 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   Phases 1-3 + Painter W4 §3 curve editor + vector boolean W3 §3.B). **Nada pushado.**
   Ship é decisão do Enio (1×/jornada após `./scripts/ship.sh` verde). `Cargo.lock`
   re-sincronizado em `58ee181` (pegou edge vector-boolean stale + vector-sdf).
-- **Estado do impl Vector/Painter:** confirmar com o Enio antes de tocar crates
-  quentes — sessões paralelas podem estar ativas.
+### MAPA DE POSSE — W4 ATIVO (2026-06-04)
+- **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**
+  crates NOVOS `crates/ph2d-node-vector-{outline-stroke,roughen,twist,bend-path,
+  pattern-along-path,scatter,width-profile,hatch,mirror,corner-round,warp,recolor}/` +
+  o diff GERADO de `ph2d-node-registry-init` (via `cargo run -p ph2d-node-sync`).
+- **Coord (eu) NÃO toca** os crates de nó W4. Coord segura: `ph2d-vector-sdf` + bridge
+  `vector_graph_bridge` (SDF), `render_loop/mod.rs` (CONTENDED), foundational, smoke-wiring
+  por-nó (plumbo quando o impl pedir), audit T4.13, ship.
+- **Sem colisão pendente:** minhas edições de audit em `ph2d-node-vector-boolean/engine.rs`
+  já estão COMMITADAS (`16a7120`) — o impl ramifica do HEAD local e as recebe limpas.
+- **RAM:** Coord + impl Vector = 2 cargos. Teto 3 — ok. Escalono se abrir 3º.
 
 ### ATUALIZAÇÃO 2026-06-02 — Painter W4 T4.1+T4.2 LANDADOS (Coord)
 - **W4 Adjustment Layers ABERTO.** Contrato congelado `ph2d-painter-brush::adjustments`

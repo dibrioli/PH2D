@@ -209,7 +209,10 @@ use ph2d_painter_stroke::{
     StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_checked,
 };
 
-use crate::compositor::{LayerImage, LayerPixelSource, Region, composite, composite_region};
+use crate::compositor::{
+    CompositorCache, LayerImage, LayerPixelSource, Region, composite, composite_region,
+    composite_with_cache,
+};
 use crate::layers::{LayerId as RtLayerId, LayerKind, LayerStack};
 use crate::params::{BrushHandle, OklchColor, PainterMode, PainterParams};
 use ph2d_painter_brush::BlendMode;
@@ -479,6 +482,19 @@ pub struct PainterTool {
     /// frame snapshot (bridge `set_current_selection`). Masks are never
     /// members (owner-attached, not in the z-order run).
     selection: std::collections::BTreeSet<RtLayerId>,
+    /// **W5 cut-point cache (ADR-0045 §2.7).** Caches the composite-below each
+    /// root adjustment so a slider-drag on an adjustment param restarts from the
+    /// cut instead of recomposing the whole stack every frame (the dominant
+    /// preview cost — base recompose ~15 ms @1024²). Populated/consumed ONLY via
+    /// `composite_with_cache` on the `adjustment_cache_pending` path; ANY other
+    /// composite (stroke fast-lane / cold full / structural `invalidate_composite`)
+    /// drops the cuts, since they mutate below-layers without updating the cut.
+    compositor_cache: CompositorCache,
+    /// Set by `set_adjustment_param` so the next `take_preview_arc` full recompose
+    /// routes through the cut-point cache (`composite_with_cache`) instead of a
+    /// cold `composite`. Honoured only when no stroke also dirtied the frame;
+    /// taken on consume.
+    adjustment_cache_pending: bool,
 }
 
 impl Default for PainterTool {
@@ -529,6 +545,8 @@ impl Default for PainterTool {
             dock_shows_layers: false,
             dirty_rect: None,
             selection: std::collections::BTreeSet::new(),
+            compositor_cache: CompositorCache::new(),
+            adjustment_cache_pending: false,
         }
     }
 }
@@ -1423,6 +1441,12 @@ impl PainterTool {
         // the stamped region, so the next drain must do a FULL recompose.
         self.dirty_rect = None;
         self.preview_dirty = true;
+        // W5: a structural edit (add/remove/reorder/visibility/opacity/blend/
+        // select) changes the composite below some adjustment → every cut is
+        // potentially stale. Conservative-correct: drop them all (they cold-
+        // refill on the next slider-drag). The id is ignored by `invalidate_from`.
+        self.compositor_cache
+            .invalidate_from(RtLayerId(0), &self.layers);
         // B.5: every structural/metadata edit funnels through here, so this is
         // the single chokepoint that bumps the publish revision (set_source is
         // the only structural reset that bypasses it — bumped there too).
@@ -1851,7 +1875,20 @@ impl PainterTool {
             slot,
             slider01,
         );
-        self.invalidate_composite();
+        // W5 slider-drag hot path: a param-only change leaves every layer BELOW
+        // this adjustment untouched, so keep their cuts and drop only the cuts
+        // ABOVE it; the next drain restarts from this adjustment's cut via
+        // `composite_with_cache` instead of recomposing the whole stack. (NOT the
+        // structural `invalidate_composite`, which would clear all cuts + force a
+        // cold full recompose every drag frame — the exact cost we're killing.)
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
+        // The adjustment's params live in the published LayerStack, so the panel
+        // snapshot must republish (mirror of `invalidate_composite`'s bump).
+        self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
     /// `true` when the active edit target is a grayscale mask.
@@ -2415,7 +2452,9 @@ impl PainterTool {
         // O(N×bbox) vs O(N×W×H). Otherwise (no cache after a structural edit,
         // or first drain) do a full recompose. The bridge still uploads the
         // full texture; the win is the composite itself (the dominant cost).
-        match (self.composited.is_some(), self.dirty_rect.take()) {
+        let dirty = self.dirty_rect.take();
+        let stroke_dirtied = dirty.is_some();
+        match (self.composited.is_some(), dirty) {
             (true, Some(bbox)) => {
                 let region = {
                     let src = ToolPixelSource {
@@ -2425,6 +2464,11 @@ impl PainterTool {
                     };
                     composite_region(&self.layers, &src, w, h, bbox)
                 };
+                // W5: a stroke changed the active layer's pixels — any adjustment
+                // cut above it is now stale. Drop all cuts (next slider-drag cold-
+                // fills) + the pending flag (the stroke supersedes it).
+                self.compositor_cache.invalidate_from(active, &self.layers);
+                self.adjustment_cache_pending = false;
                 // `make_mut`: unique-borrow (zero-copy) once the bridge dropped
                 // its prior Arc; clone-once if it's still holding the cache.
                 let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
@@ -2440,7 +2484,20 @@ impl PainterTool {
                     active_rgba: &self.canvas_rgba,
                     images: &self.images,
                 };
-                self.composited = Some(Arc::new(composite(&self.layers, &src, w, h)));
+                let composed =
+                    if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
+                        // W5 slider-drag: restart from the cut-point cache — the layers
+                        // below the changed adjustment are unchanged, so only this
+                        // adjustment + the layers above recompose. Bit-identical to a
+                        // full `composite` (gate `cache_matches_full_recompose`).
+                        composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
+                    } else {
+                        // Cold full recompose (first drain / a stroke with no cache to
+                        // blit into / structural edit): the cuts are stale — drop them.
+                        self.compositor_cache.invalidate_from(active, &self.layers);
+                        composite(&self.layers, &src, w, h)
+                    };
+                self.composited = Some(Arc::new(composed));
                 // Full recompose (first drain / post-structural-or-metadata edit)
                 // → the bridge must upload the whole texture to re-sync.
                 self.preview_upload_bbox = None;
@@ -4958,6 +5015,46 @@ mod tests {
         assert!((p.h - 0.5).abs() < 1e-6, "hue maps 0..1 turns directly");
         assert!((p.s - 1.0).abs() < 1e-6, "saturation slider 1 → +1");
         assert!((p.b + 1.0).abs() < 1e-6, "brightness slider 0 → -1");
+    }
+
+    #[test]
+    fn adjustment_param_drain_uses_cache_bit_identically() {
+        // W5: a slider-drag drain routes through `composite_with_cache` (cut-point
+        // cache). Prove the warm-restart preview is byte-identical to a cold full
+        // `composite` of the same final state — the wiring must not drift from the
+        // reference path (the perf win is correctness-free).
+        use ph2d_painter_brush::adjustments::AdjustmentKind;
+        let (w, h) = (4u32, 4u32);
+        // Varied base so a cache slicing/ordering bug would surface (a flat fill
+        // would hide it).
+        let mut base = vec![0u8; (w * h * 4) as usize];
+        for i in 0..(w * h) as usize {
+            base[i * 4] = (i * 13 % 256) as u8;
+            base[i * 4 + 1] = (i * 7 % 256) as u8;
+            base[i * 4 + 2] = (i * 5 % 256) as u8;
+            base[i * 4 + 3] = 255;
+        }
+        let mut t = PainterTool::default();
+        t.set_source(base, w, h);
+        let adj = t
+            .add_adjustment_layer(AdjustmentKind::BrightnessContrast)
+            .unwrap();
+        // Frame 1 of the drag → cold `composite_with_cache` (populates the cut).
+        t.set_adjustment_param(adj, 0, 0.3);
+        let _ = t.take_preview_arc().expect("preview");
+        // Frame 2: change the param → `invalidate_above` keeps the below-cut +
+        // arms the pending flag → warm restart from the cut.
+        t.set_adjustment_param(adj, 0, 0.8);
+        let warm = (*t.take_preview_arc().expect("preview").0).clone();
+        // Force a cold full `composite` of the identical final state (cache miss).
+        t.composited = None;
+        t.adjustment_cache_pending = false;
+        t.preview_dirty = true;
+        let cold = (*t.take_preview_arc().expect("preview").0).clone();
+        assert_eq!(
+            warm, cold,
+            "adjustment-param cache-restart drain diverged from a cold full recompose"
+        );
     }
 
     #[test]

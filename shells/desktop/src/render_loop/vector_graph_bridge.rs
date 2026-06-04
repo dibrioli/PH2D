@@ -47,6 +47,9 @@ use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour, network_sdf}
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
+/// Multiplier on the result's bounding box for the auto-framing camera height —
+/// 1.5 = 50% headroom so the shape sits comfortably inside the viewport.
+const FRAME_MARGIN: f32 = 1.5;
 /// Draft SDF grid resolution per side. 96² is ~1 ms on CPU for the smoke's
 /// few-edge sources — enough contour fidelity for a drag preview (ADR-0065 §2.2).
 const DRAFT_RES: u32 = 96;
@@ -92,14 +95,24 @@ pub(super) fn dispatch(
     let p = ph2d_panel_vector_graph::current_graph_params();
     let op = bool_op_from_env();
     let op_key = op.round() as i64;
-    let world_to_screen = camera.world_to_screen_affine(window_size);
+
+    // Cook the two smoke sources up front: needed for the auto-framing transform
+    // and, on the draft path, for the per-operand SDF. The sources are ~100 world
+    // units but the default camera shows only ~10 (`Camera2d::height_world`), so we
+    // frame the *result* into view rather than trusting the live camera — otherwise
+    // the shape fills the whole screen as a flat blob (the prior smoke's gotcha).
+    let Some((net_a, net_b)) = smoke_sources(&p) else {
+        return;
+    };
+    let to_screen = framing_affine(&net_a, &net_b, camera, window_size);
 
     // Draft+reconcile gate (ADR-0065 §2.2): while params are CHANGING and the op
     // has an SDF form, show the cheap silhouette draft; once they settle (≥1
     // stable frame), fall through to the exact reconcile below. The op (from env)
-    // is constant per run, so `changed` tracks slider drags.
+    // is constant per run, so `changed` tracks slider drags. Both paths share
+    // `to_screen` so the shape doesn't jump when the drag settles.
     if let Some(sdf_op) = draft_op(params_changed((p, op_key)), op_key)
-        && draw_draft(&p, sdf_op, world_to_screen, vector_scene.inner_mut())
+        && draw_draft(&net_a, &net_b, sdf_op, to_screen, vector_scene.inner_mut())
     {
         return;
     }
@@ -118,7 +131,7 @@ pub(super) fn dispatch(
         region.fill = Some(fref);
     }
 
-    draw_vector_network(vector_scene.inner_mut(), &net, &styles, world_to_screen);
+    draw_vector_network(vector_scene.inner_mut(), &net, &styles, to_screen);
 }
 
 /// Has the `(params, op)` key changed since the previous frame? Records `key`
@@ -156,28 +169,28 @@ fn sdf_op_from_index(op: i64) -> Option<SdfOp> {
     }
 }
 
-/// Draw the SDF *draft* of `source(a) + source(b) ∘ op`: SDF each operand over a
+/// Draw the SDF *draft* of `source(a) ∘ source(b)`: SDF each operand over a
 /// co-located window, combine with the `min/max` kernel, march out the zero
-/// contour, and stroke it as a thin preview outline. Returns `false` (so the
-/// caller falls back to the exact reconcile) if a source fails to cook or the
-/// grids don't co-locate.
-fn draw_draft(p: &VectorGraphParams, op: SdfOp, world_to_screen: Affine, scene: &mut Scene) -> bool {
-    let Some(net_a) = cook_source(p, 0.0) else {
-        return false;
-    };
-    let Some(net_b) = cook_source(p, std::f32::consts::FRAC_PI_4) else {
-        return false;
-    };
+/// contour, and stroke it as a thin preview outline (under `to_screen`). Returns
+/// `false` (so the caller falls back to the exact reconcile) if the grids don't
+/// co-locate or the contour is empty.
+fn draw_draft(
+    net_a: &VectorNetwork,
+    net_b: &VectorNetwork,
+    op: SdfOp,
+    to_screen: Affine,
+    scene: &mut Scene,
+) -> bool {
     // Co-locate the sampling window over BOTH operands (same res + bounds) so
     // `boolean_sdf` can combine them cell-for-cell.
-    let ba = Bounds::of_network(&net_a, DRAFT_PAD);
-    let bb = Bounds::of_network(&net_b, DRAFT_PAD);
+    let ba = Bounds::of_network(net_a, DRAFT_PAD);
+    let bb = Bounds::of_network(net_b, DRAFT_PAD);
     let bounds = Bounds {
         min: ba.min.min(bb.min),
         max: ba.max.max(bb.max),
     };
-    let sdf_a = network_sdf(&net_a, DRAFT_RES, bounds);
-    let sdf_b = network_sdf(&net_b, DRAFT_RES, bounds);
+    let sdf_a = network_sdf(net_a, DRAFT_RES, bounds);
+    let sdf_b = network_sdf(net_b, DRAFT_RES, bounds);
     let Some(draft) = boolean_sdf(&sdf_a, &sdf_b, op) else {
         return false;
     };
@@ -194,12 +207,43 @@ fn draw_draft(p: &VectorGraphParams, op: SdfOp, world_to_screen: Affine, scene: 
     let color = Color::from_rgba8(DRAFT_RGB.0, DRAFT_RGB.1, DRAFT_RGB.2, DRAFT_ALPHA);
     scene.stroke(
         &Stroke::new(DRAFT_STROKE_WORLD),
-        world_to_screen,
+        to_screen,
         &Brush::Solid(color),
         None,
         &path,
     );
     true
+}
+
+/// Cook the two smoke operands — `source(a)` and `source(b = a rotated 45°)` —
+/// once per frame, shared by the auto-framing transform and the draft SDF.
+fn smoke_sources(p: &VectorGraphParams) -> Option<(VectorNetwork, VectorNetwork)> {
+    Some((cook_source(p, 0.0)?, cook_source(p, std::f32::consts::FRAC_PI_4)?))
+}
+
+/// A world→screen transform that frames the two operands' combined bounds into
+/// the viewport, centered with [`FRAME_MARGIN`] headroom. Sidesteps the live
+/// camera (default `height_world` 10 ≪ the ~100-unit smoke shapes) so the result
+/// is always visible at a sane size, whatever the sliders say.
+fn framing_affine(
+    net_a: &VectorNetwork,
+    net_b: &VectorNetwork,
+    camera: &Camera2d,
+    window_size: WindowSize,
+) -> Affine {
+    let ba = Bounds::of_network(net_a, 0.0);
+    let bb = Bounds::of_network(net_b, 0.0);
+    let min = ba.min.min(bb.min);
+    let max = ba.max.max(bb.max);
+    let center = (min + max) * 0.5;
+    let span = max - min;
+    let mut cam = *camera;
+    cam.center = [center.x, center.y];
+    // Bypass `Camera2d::zoom`'s clamp (≤100) by setting the field directly — the
+    // smoke shapes routinely exceed it and this transform never touches the real
+    // camera.
+    cam.height_world = (span.x.max(span.y) * FRAME_MARGIN).max(1.0);
+    cam.world_to_screen_affine(window_size)
 }
 
 /// Cook a single `vector.source` node seeded from the panel params (rotation

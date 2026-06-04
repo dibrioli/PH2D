@@ -155,6 +155,14 @@ pub struct HeroScreen {
     /// to the left of their parent when the right edge is reached).
     /// Defaults to a zero rect until the first paint.
     pub last_viewport: Rect,
+    /// Pending Direct-Select vertex continuity kind chosen from the right-click
+    /// point-type menu (`ContextMenuKind::VectorPointType`), as a 0..=3 index
+    /// (`0 Corner / 1 Smooth / 2 Asymmetric / 3 Auto` — the `VertexKind` order).
+    /// The chrome handler writes it on the entry click; the shell drains it via
+    /// [`HeroScreen::take_pending_vector_point_type`] each frame and calls the
+    /// vector tool (editor-core can't reference `VertexKind`, so it crosses the
+    /// crate boundary as an index). Mirror of the panel `take_pending_*` pattern.
+    pub pending_vector_point_type: Option<u8>,
     // Wave 2.5 PR 11.8c: 6 hierarchy fields migrated to the bus.
     //   pending_visibility_toggle → EditorAction::HierToggleVisibility { row }
     //   pending_reparent          → EditorAction::HierReparent(HierReparentIntent)
@@ -774,7 +782,17 @@ impl HeroScreen {
             dragging_files: None,
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
+            pending_vector_point_type: None,
         }
+    }
+
+    /// Drain the pending Direct-Select vertex continuity kind chosen from the
+    /// right-click point-type menu, as a 0..=3 index (`0 Corner / 1 Smooth /
+    /// 2 Asymmetric / 3 Auto`). `None` until the user picks an entry; returns it
+    /// once and clears. The shell maps the index to `VertexKind` and calls
+    /// `VectorDirectTool::set_selected_vertex_kind` on the live selection.
+    pub fn take_pending_vector_point_type(&mut self) -> Option<u8> {
+        self.pending_vector_point_type.take()
     }
 
     /// ADR-0029 Phase C.1 panel-visibility accessor. Mirrors the

@@ -55,6 +55,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
+mod point_type;
 mod radius;
 mod rail_panels;
 mod rail_size;
@@ -92,6 +93,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
+        || point_type::apply(hero, event)
         || vector_pen_toggle::apply(hero, event)
         || vector_pencil_toggle::apply(hero, event)
         || vector_shape_toggle::apply(hero, event)

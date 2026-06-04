@@ -163,4 +163,13 @@ pub enum ContextMenuKind {
     /// is deferred (needs inline TextInput state-machine) and not
     /// surfaced in this menu yet.
     HierarchyRow { row: NodeId },
+    /// Right-clicked on a Direct-Select vertex (vector tool). Menu offers the
+    /// 4 frozen vertex continuity kinds — Corner / Smooth / Asymmetric / Auto
+    /// (`ph2d_vector_doc::VertexKind` Free/Mirror/Aligned/Auto). No payload: it
+    /// applies to the live `VectorSelection`, which the secondary-click selected.
+    /// The chrome handler routes the click into `HeroScreen.pending_vector_point_type`
+    /// as a 0..=3 index; the shell drains it and calls
+    /// `VectorDirectTool::set_selected_vertex_kind` (editor-core can't depend on
+    /// the vector-doc crate, so the kind crosses the boundary as an index).
+    VectorPointType,
 }

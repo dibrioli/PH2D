@@ -1259,6 +1259,13 @@ pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
 /// toast when fewer than 2 sprites are selected (silent no-op
 /// otherwise feels broken).
 pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
+// Vector Direct-Select point-type menu (secondary-click on a vertex). The 4
+// FROZEN VertexKind continuity options; the chrome handler maps a click to a
+// 0..=3 index in `HeroScreen.pending_vector_point_type` for the shell to apply.
+pub const CTX_MENU_POINT_TYPE_CORNER: NodeId = hash_node_id("ctx_menu_point_type_corner");
+pub const CTX_MENU_POINT_TYPE_SMOOTH: NodeId = hash_node_id("ctx_menu_point_type_smooth");
+pub const CTX_MENU_POINT_TYPE_ASYMMETRIC: NodeId = hash_node_id("ctx_menu_point_type_asymmetric");
+pub const CTX_MENU_POINT_TYPE_AUTO: NodeId = hash_node_id("ctx_menu_point_type_auto");
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = hash_node_id("ctx_scene_search");
 pub const CTX_SCENE_ROW_0: NodeId = hash_node_id("ctx_scene_row_0");

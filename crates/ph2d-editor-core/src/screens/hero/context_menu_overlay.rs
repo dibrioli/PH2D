@@ -322,6 +322,16 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
+        // Vector Direct-Select vertex continuity (Illustrator/Affinity order:
+        // Corner → Smooth → Asymmetric → Auto). The Direct overlay glyphs mirror
+        // these (square / round / round / diamond). No swatch — the shape IS the
+        // affordance, painted by the canvas overlay, not a menu glyph.
+        ContextMenuKind::VectorPointType => &[
+            (ids::CTX_MENU_POINT_TYPE_CORNER, "Corner", None),
+            (ids::CTX_MENU_POINT_TYPE_SMOOTH, "Smooth", None),
+            (ids::CTX_MENU_POINT_TYPE_ASYMMETRIC, "Asymmetric", None),
+            (ids::CTX_MENU_POINT_TYPE_AUTO, "Auto", None),
+        ],
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

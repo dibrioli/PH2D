@@ -69,6 +69,10 @@ const ADJ_POSTERIZE: u32 = 3u;
 const ADJ_THRESHOLD: u32 = 4u;
 const ADJ_EXPOSURE: u32 = 5u;
 const ADJ_VIBRANCE: u32 = 6u;
+// W4 bespoke — display-space 1-D transfer LUTs (binding 6 `adj_luts`). `p0` is
+// reused as the base float index of this op's table block in `adj_luts`.
+const ADJ_CURVES: u32 = 7u;
+const ADJ_LEVELS: u32 = 8u;
 
 // One flattened compositor op. 16 bytes; `layer_slot` is the texture-array
 // slice for OP_LAYER, ignored otherwise; `blend_mode` + `opacity` apply to
@@ -118,6 +122,11 @@ struct Globals {
 @group(0) @binding(4) var<storage, read> srgb_lut: array<f32, 256>;
 // Per-adjustment params, indexed by an OP_ADJUSTMENT op's `layer_slot`.
 @group(0) @binding(5) var<storage, read> adj_params: array<AdjParams>;
+// W4 — display-space transfer LUTs for Curves (3×256 R/G/B) and Levels (1×256).
+// Built CPU-side from `curves_display_luts`/`levels_display_lut` (the SAME table
+// the CPU compositor reads), concatenated per Curves/Levels op; `AdjParams.p0`
+// holds the op's base float offset. Stride per channel = 256 (`DISPLAY_LUT_N`).
+@group(0) @binding(6) var<storage, read> adj_luts: array<f32>;
 
 // ── sRGB gamma transfer (bit-identical to ph2d_color::srgb) ───────────────
 // Encode mirror of `linear_to_srgb_byte` on a normalized [0,1] value (the
@@ -492,6 +501,26 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>) -> vec3<f32> {
                 return oklab_to_linear(vec3<f32>(lab.x, lab.y * scale, lab.z * scale));
             }
             return rgb;
+        }
+        case 7u: { // ADJ_CURVES — p0=base; 3 tables (R/G/B), 256 each, display-space
+            let base = u32(ap.p0);
+            let sr = clamp(linear_to_srgb(rgb.r), 0.0, 1.0);
+            let sg = clamp(linear_to_srgb(rgb.g), 0.0, 1.0);
+            let sb = clamp(linear_to_srgb(rgb.b), 0.0, 1.0);
+            let or_ = adj_luts[base + 0u * 256u + u32(sr * 255.0 + 0.5)];
+            let og = adj_luts[base + 1u * 256u + u32(sg * 255.0 + 0.5)];
+            let ob = adj_luts[base + 2u * 256u + u32(sb * 255.0 + 0.5)];
+            return vec3<f32>(srgb_to_linear_f32(or_), srgb_to_linear_f32(og), srgb_to_linear_f32(ob));
+        }
+        case 8u: { // ADJ_LEVELS — p0=base; 1 table (channel-uniform), display-space
+            let base = u32(ap.p0);
+            let sr = clamp(linear_to_srgb(rgb.r), 0.0, 1.0);
+            let sg = clamp(linear_to_srgb(rgb.g), 0.0, 1.0);
+            let sb = clamp(linear_to_srgb(rgb.b), 0.0, 1.0);
+            let or_ = adj_luts[base + u32(sr * 255.0 + 0.5)];
+            let og = adj_luts[base + u32(sg * 255.0 + 0.5)];
+            let ob = adj_luts[base + u32(sb * 255.0 + 0.5)];
+            return vec3<f32>(srgb_to_linear_f32(or_), srgb_to_linear_f32(og), srgb_to_linear_f32(ob));
         }
         default: { return rgb; }
     }

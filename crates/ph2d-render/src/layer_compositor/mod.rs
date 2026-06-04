@@ -309,6 +309,9 @@ pub struct LayerCompositor {
     /// Persistent adjustment-params storage buffer (grown as needed; always
     /// holds ≥1 element so binding 5 is never zero-sized).
     adj_params_buffer: Option<(wgpu::Buffer, u64)>,
+    /// Persistent display-space transfer-LUT storage buffer (W4 Curves/Levels;
+    /// grown as needed; always holds ≥1 f32 so binding 6 is never zero-sized).
+    adj_luts_buffer: Option<(wgpu::Buffer, u64)>,
 }
 
 /// Validate group push/pop balance + depth without touching the GPU.

@@ -89,6 +89,17 @@ impl LayerCompositor {
                         },
                         count: None,
                     },
+                    // 6: display-space transfer LUTs (Curves/Levels); ≥1 f32 bound
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(4),
+                        },
+                        count: None,
+                    },
                 ],
             });
 
@@ -145,6 +156,7 @@ impl LayerCompositor {
             globals_buffer,
             srgb_lut_buffer,
             adj_params_buffer: None,
+            adj_luts_buffer: None,
         }
     }
 
@@ -172,10 +184,33 @@ impl LayerCompositor {
     /// Composite `ops` into the output texture, covering `region` of the
     /// `canvas_w × canvas_h` canvas. Uploads only layers whose version changed
     /// since the last call. Encodes + submits one compute dispatch.
+    /// Composite with no display-space transfer LUTs — the common case (the
+    /// op-list has no Curves/Levels adjustment). Thin wrapper over
+    /// [`Self::composite_with_luts`] with an empty `adj_luts`.
     pub fn composite(
         &mut self,
         gpu: &GpuContext,
         ops: &[LayerOp],
+        src: &impl LayerPixelProvider,
+        canvas_w: u32,
+        canvas_h: u32,
+        region: Region,
+    ) -> Result<(), LayerCompositeError> {
+        self.composite_with_luts(gpu, ops, &[], src, canvas_w, canvas_h, region)
+    }
+
+    /// Composite an op-list, with `adj_luts` carrying the concatenated display-
+    /// space transfer tables for any `ADJ_CURVES`(7)/`ADJ_LEVELS`(8) op (each
+    /// such op's `params[0]` is its base float offset into `adj_luts`; Curves =
+    /// 3×256 R/G/B, Levels = 1×256). Built CPU-side from `curves_display_luts`/
+    /// `levels_display_lut` so the GPU reads the SAME table the CPU compositor
+    /// does (parity gate). `adj_luts` may be empty when no such op is present.
+    #[allow(clippy::too_many_arguments)] // gpu+ops+luts+src+dims+region are all intrinsic
+    pub fn composite_with_luts(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        adj_luts: &[f32],
         src: &impl LayerPixelProvider,
         canvas_w: u32,
         canvas_h: u32,
@@ -221,6 +256,7 @@ impl LayerCompositor {
         self.ensure_out(gpu, region.w, region.h);
         self.upload_op_buffer(gpu);
         self.upload_adj_buffer(gpu);
+        self.upload_adj_luts_buffer(gpu, adj_luts);
         self.write_globals(gpu, canvas_w, canvas_h, region);
         let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
         self.dispatch(gpu, region, has_groups);
@@ -498,6 +534,37 @@ impl LayerCompositor {
         }
     }
 
+    /// Upload the concatenated display-space transfer LUTs (binding 6). Writes
+    /// ≥1 f32 (a single `0.0` when there are no Curves/Levels ops) so the storage
+    /// binding is never zero-sized. Grows like the other buffers (HR-3: no
+    /// realloc once warm).
+    fn upload_adj_luts_buffer(&mut self, gpu: &GpuContext, adj_luts: &[f32]) {
+        let dummy = [0.0f32];
+        let src: &[f32] = if adj_luts.is_empty() {
+            &dummy
+        } else {
+            adj_luts
+        };
+        let bytes: &[u8] = bytemuck::cast_slice(src);
+        let needed = (bytes.len() as u64).max(4);
+        let grow = match &self.adj_luts_buffer {
+            Some((_, cap)) => *cap < needed,
+            None => true,
+        };
+        if grow {
+            let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render layer_composite adj luts"),
+                size: needed,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.adj_luts_buffer = Some((buffer, needed));
+        }
+        if let Some((buffer, _)) = &self.adj_luts_buffer {
+            gpu.queue.write_buffer(buffer, 0, bytes);
+        }
+    }
+
     fn write_globals(&self, gpu: &GpuContext, canvas_w: u32, canvas_h: u32, region: Region) {
         let g = GpuGlobals {
             canvas_width: canvas_w,
@@ -514,12 +581,20 @@ impl LayerCompositor {
     }
 
     fn dispatch(&self, gpu: &GpuContext, region: Region, has_groups: bool) {
-        let (Some(array), Some(out), Some((op_buffer, _)), Some((adj_buffer, _))) = (
+        let (
+            Some(array),
+            Some(out),
+            Some((op_buffer, _)),
+            Some((adj_buffer, _)),
+            Some((luts_buffer, _)),
+        ) = (
             &self.array,
             &self.out,
             &self.op_buffer,
             &self.adj_params_buffer,
-        ) else {
+            &self.adj_luts_buffer,
+        )
+        else {
             return;
         };
         let pipeline = if has_groups {
@@ -554,6 +629,10 @@ impl LayerCompositor {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: adj_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: luts_buffer.as_entire_binding(),
                 },
             ],
         });

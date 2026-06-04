@@ -12,6 +12,7 @@
 
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_gpu::GpuContext;
+use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
@@ -316,6 +317,113 @@ fn gpu_adjustment_matches_cpu_reference_each_kind() {
     assert!(
         d <= 4,
         "partial-opacity adjustment parity: max byte diff {d}"
+    );
+}
+
+/// W4 §2 — GPU display-space transfer LUTs (binding 6 `adj_luts`), indexed by
+/// the op's `params[0]` base. Proves both the Curves per-channel indexing
+/// (`base + c*256 + idx`, 3 distinct tables) and the Levels channel-uniform
+/// indexing (`base + idx`, 1 table), the latter against the REAL
+/// `levels_display_lut` exporter. For a single OPAQUE base layer (Normal,
+/// opacity 1) + a Curves/Levels op (Normal, opacity 1), the GPU output byte for
+/// channel `c` is `round(lut[c][base_byte] * 255)` — the decode→display
+/// round-trip recovers the source byte to index the table.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_adjustment_luts_curves_levels_parity() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (32u32, 32u32);
+    let region = Region::full(w, h);
+    // Opaque varied base → alpha is trivial, the adjustment is pure RGB.
+    let mut base = varied_canvas(w, h, 3);
+    for i in 0..(w * h) as usize {
+        base[i * 4 + 3] = 255;
+    }
+    let mut comp = LayerCompositor::new(&gpu);
+
+    // ── Curves: 3 DISTINCT tables (identity R / invert G / half B) prove that
+    //    `adj_luts[base + c*256 + idx]` selects the right per-channel table.
+    let mut curves_lut = vec![0.0f32; 3 * 256];
+    for i in 0..256 {
+        let v = i as f32 / 255.0;
+        curves_lut[i] = v; // R: identity
+        curves_lut[256 + i] = 1.0 - v; // G: invert
+        curves_lut[512 + i] = v * 0.5; // B: half
+    }
+    let ops = vec![
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::Adjustment {
+            kind: 7,
+            params: [0.0, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+    let mut prov = MapProvider::default();
+    prov.insert(1, 1, base.clone());
+    comp.composite_with_luts(&gpu, &ops, &curves_lut, &prov, w, h, region)
+        .expect("curves composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let mut want = vec![0u8; got.len()];
+    for p in 0..(w * h) as usize {
+        for c in 0..3 {
+            let b = base[p * 4 + c] as usize;
+            want[p * 4 + c] = (curves_lut[c * 256 + b] * 255.0 + 0.5) as u8;
+        }
+        want[p * 4 + 3] = 255;
+    }
+    let diff = max_byte_diff(&got, &want);
+    assert!(
+        diff <= 4,
+        "Curves 3-table GPU LUT parity: max byte diff {diff}"
+    );
+
+    // ── Levels: 1 table (channel-uniform) from the REAL `levels_display_lut`.
+    let lp = LevelsParams {
+        black_point: 0.2,
+        gamma: 1.5,
+        white_point: 0.85,
+        output_black: 0.05,
+        output_white: 0.95,
+    };
+    let levels_lut = levels_display_lut(&lp).to_vec();
+    let ops = vec![
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::Adjustment {
+            kind: 8,
+            params: [0.0, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+    let mut prov = MapProvider::default();
+    prov.insert(1, 2, base.clone());
+    comp.composite_with_luts(&gpu, &ops, &levels_lut, &prov, w, h, region)
+        .expect("levels composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let mut want = vec![0u8; got.len()];
+    for p in 0..(w * h) as usize {
+        for c in 0..3 {
+            let b = base[p * 4 + c] as usize;
+            want[p * 4 + c] = (levels_lut[b] * 255.0 + 0.5) as u8;
+        }
+        want[p * 4 + 3] = 255;
+    }
+    let diff = max_byte_diff(&got, &want);
+    assert!(
+        diff <= 4,
+        "Levels 1-table GPU LUT parity: max byte diff {diff}"
     );
 }
 

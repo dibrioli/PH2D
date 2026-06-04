@@ -408,17 +408,25 @@ fn apply_kind_eager(asset: &mut Ph2dVectorAsset, vid: VertexId, kind: VertexKind
         return;
     };
 
+    // A STRAIGHT corner (rectangle / clicked Pen) has zero existing handles, so
+    // deriving magnitude from them would collapse both handles onto the vertex
+    // (invisible + ungrabbable — the bug). Fall back to an auto length (a third
+    // of the adjacent edge) so Smooth/Asymmetric produce real, grabbable handles.
+    let auto_out = seg_chord_len(asset, out_seg) / 3.0;
+    let auto_in = seg_chord_len(asset, in_seg) / 3.0;
+    let len_or = |existing: f32, fallback: f32| if existing > 1e-3 { existing } else { fallback };
     let (out_new, in_new) = match kind {
         VertexKind::Mirror => {
-            let mag = (out_t.length() + in_t.length()) * 0.5;
+            let existing = (out_t.length() + in_t.length()) * 0.5;
+            let mag = len_or(existing, (auto_out + auto_in) * 0.5);
             (axis * mag, -axis * mag)
         }
-        VertexKind::Aligned => (axis * out_t.length(), -axis * in_t.length()),
-        VertexKind::Auto => {
-            let out_len = seg_chord_len(asset, out_seg) / 3.0;
-            let in_len = seg_chord_len(asset, in_seg) / 3.0;
+        VertexKind::Aligned => {
+            let out_len = len_or(out_t.length(), auto_out);
+            let in_len = len_or(in_t.length(), auto_in);
             (axis * out_len, -axis * in_len)
         }
+        VertexKind::Auto => (axis * auto_out, -axis * auto_in),
         VertexKind::Free => return,
     };
     let _ = asset.edit_log.push_and_apply(
@@ -614,6 +622,45 @@ mod tests {
             .find(|v| v.id == 1)
             .unwrap();
         assert_eq!(v1.kind, VertexKind::Mirror);
+    }
+
+    #[test]
+    fn set_kind_smooth_on_straight_corner_creates_grabbable_handles() {
+        // A rectangle-style STRAIGHT corner has zero handles → Smooth must give
+        // it real (non-zero), collinear-opposite handles, not collapse both onto
+        // the vertex (the "alças no mesmo ponto, impossível mover" bug).
+        let mut net = VectorNetwork::empty();
+        net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
+        net.vertices
+            .push(Vertex::new(1, Vec2::new(100.0, 0.0), VertexKind::Free));
+        net.vertices.push(Vertex::auto(2, Vec2::new(100.0, 100.0)));
+        net.segments.push(Segment::straight(0, 0, 1)); // zero tangents
+        net.segments.push(Segment::straight(1, 1, 2)); // zero tangents
+        let mut scene = vec![Ph2dVectorAsset::from_network(net, StyleTable::default())];
+        let mut sel = VectorSelection::new();
+        sel.select_only_vertex(0, 1);
+        let t = VectorDirectTool::new();
+        t.set_selected_vertex_kind(&mut scene, &sel, VertexKind::Mirror);
+        let out = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 1)
+            .unwrap()
+            .out_at_start;
+        let inn = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap()
+            .in_at_end;
+        assert!(out.length() > 1.0, "out handle grabbable, got {out:?}");
+        assert!(inn.length() > 1.0, "in handle grabbable, got {inn:?}");
+        assert!(
+            (out.normalize() + inn.normalize()).length() < 1e-3,
+            "collinear-opposite"
+        );
     }
 
     #[test]

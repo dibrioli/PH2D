@@ -118,3 +118,43 @@ Tudo em §4 é `compositor.rs` (arm Adjustment + cache) / `tool.rs` (cache wirin
 Commits painter locais desta sessão (não pushados, entram no teu ship): `5e4c49f`,
 `9e12b31`, `902a6cb` (código) + handoffs. ADR-0045 §2.7 (cache) + §2.11 (gate soft).
 ═══════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────
+RESPOSTA DO COORD · 2026-06-03 · §4.A LANDADO (`62ba0a5`)
+───────────────────────────────────────────────────────────────────
+- **§4.A (cache no drain) FEITO** — `PainterTool` agora possui um
+  `CompositorCache` + flag `adjustment_cache_pending`. `set_adjustment_param`
+  faz `invalidate_above(id)` (mantém cuts de baixo) + arma o flag em vez do
+  `invalidate_composite` (que limpava tudo + forçava full cold todo frame).
+  `take_preview_arc` (ramo `_ =>`): pending && sem stroke no frame →
+  `composite_with_cache` (warm restart); senão `composite` frio.
+- **Invariante de correção:** cuts só valem entre param-edits consecutivos.
+  `invalidate_composite` (estrutural) limpa tudo; o stroke fast-lane + qualquer
+  full-cold limpam também; stroke limpa o flag (guard `!stroke_dirtied` cobre a
+  corrida stroke-após-param).
+- **Gate novo** `adjustment_param_drain_uses_cache_bit_identically` (tool.rs):
+  drain warm == full cold, byte-a-byte. `cache_matches_full_recompose`,
+  `cache_hit_skips_below_layers` e os 2 `dirty_rect_drain_matches_full` seguem
+  verdes (211 testes painter, 1 ignored).
+- **`adjustment_layer_recomposition_perf_4k` segue `#[ignore]`** — ≤1ms@4K na CPU
+  é impossível (HSB cbrt ~480ms@4K); isso é o §4.B (GPU), esforço separado.
+- **Resta (TEU, se quiser perseguir 60fps no HSB@4K):** §4.B (preview pela GPU
+  `ph2d-render` LayerCompositor c/ adjustment no shader) — peça grande, durável.
+  §4.C interino (fast-`cbrt` no OKLab em `adjustments.rs`, tua pasta) tu mesmo
+  podes fazer p/ aliviar HSB@1024² enquanto o GPU não vem.
+- Commit local (não pushado), entra no ship batch do fim do dia.
+───────────────────────────────────────────────────────────────────
+
+───────────────────────────────────────────────────────────────────
+IMPL · 2026-06-03 · §4.C fast-cbrt MEDIDO = NÃO VALE (revertido)
+───────────────────────────────────────────────────────────────────
+Implementei + medi o fast-`cbrt` (bit-hack + 2 Halley) no OKLab forward de
+`apply_hsb`/`apply_vibrance` (adjustments.rs, byte-exato vs canonical < 1e-3):
+**HSB composite 1024² = 49ms vs 55ms — só ~5ms.** O custo do OKLab é as MATRIZES
+(~25 mul/px) + cbrt, não só o cbrt; mesmo um cbrt perfeito → HSB ~43ms (23fps).
+**=> CPU está esgotada p/ HSB/Vibrance.** Revertido (não vale um cbrt aproximado
+no caminho perceptual/bake por 5ms que não bate 60fps). **Só §4.B (GPU) fecha
+HSB.** Kinds baratos: o cache (§4.A `62ba0a5`) deve botá-los a ~60fps — falta o
+Enio confirmar num kind barato (B/C/Exposure) p/ separar "HSB CPU-bound" (esperado)
+de "cache não pega" (bug).
+═══════════════════════════════════════════════════════════════════

@@ -4996,6 +4996,8 @@ dependencies = [
  "ph2d-node-vector-corner-round",
  "ph2d-node-vector-mirror",
  "ph2d-node-vector-offset",
+ "ph2d-node-vector-outline-stroke",
+ "ph2d-node-vector-recolor",
  "ph2d-node-vector-roughen",
  "ph2d-node-vector-scatter",
  "ph2d-node-vector-source",
@@ -5061,6 +5063,29 @@ dependencies = [
  "ph2d-vector-doc",
  "ph2d-vector-graph",
  "ph2d-vector-kurbo",
+]
+
+[[package]]
+name = "ph2d-node-vector-outline-stroke"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+ "ph2d-vector-kurbo",
+]
+
+[[package]]
+name = "ph2d-node-vector-recolor"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
 ]
 
 [[package]]

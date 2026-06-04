@@ -25,6 +25,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_vector_corner_round::register(reg)?;
     ph2d_node_vector_mirror::register(reg)?;
     ph2d_node_vector_offset::register(reg)?;
+    ph2d_node_vector_outline_stroke::register(reg)?;
+    ph2d_node_vector_recolor::register(reg)?;
     ph2d_node_vector_roughen::register(reg)?;
     ph2d_node_vector_scatter::register(reg)?;
     ph2d_node_vector_source::register(reg)?;

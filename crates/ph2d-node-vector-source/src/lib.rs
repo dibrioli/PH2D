@@ -119,6 +119,10 @@ fn snap_vec2(v: Vec2) -> Vec2 {
 /// returned network is flagged `deterministic`. Pure and isolated so the
 /// variant selection + snapping is unit-tested directly, alongside the
 /// end-to-end cook test that drives it through the real graph.
+// The 8 source params (kind + 2 dims + 5 shape knobs) are the geometry contract
+// surface — packing them into a struct would just move the arity to the struct
+// and obscure the call sites. Documented ship-fix (Coord).
+#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn source_network(
     kind: usize,

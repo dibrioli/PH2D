@@ -112,4 +112,60 @@ walk atual (ou invalidar todos os cuts num structural edit, conservador-correto)
     `run_full` (~2987), drain (~2416-2444).
   - Contrato congelado: `AdjustmentKind≤32` etc. (CLAUDE.md §6) — o cache não toca
     o contrato (é interno do compositor).
+
+───────────────────────────────────────────────────────────────────
+§7 — ►► MEDIÇÃO REAL (smoke Enio 2026-06-03) + DESCOBERTA CRÍTICA ◄◄
+───────────────────────────────────────────────────────────────────
+Instrumentei o `painter_bridge` (probe temporário, uncommitted — repro no fim) e
+o Enio mediu o drag de slider. Canvas **1024×1024**, por frame:
+
+    [painter-perf] 1024x1024 drain(composite+encode)=~80ms upload(clone+premul+gpu)=~1.1ms
+
+**=> O custo é 100% CPU drain (composite+encode). Upload é ~1ms (irrelevante —
+Apple Silicon memória unificada).** 80ms / 1M px = ~80 ns/px = a assinatura de
+`powf`: o compositor faz **decode sRGB→linear da base (3 powf/px)** + **encode
+linear→sRGB da saída (3 powf/px)** = **6 powf/px sobre o canvas inteiro, todo
+frame**. (Por isso até Brightness/Contrast — zero transcendental no compute do
+kind — cai: o custo é o decode/encode do compositor, não o kind.)
+
+**DESCOBERTA CRÍTICA — o CompositorCache sozinho NÃO resolve:**
+  1. **O cache core (`2b68ab2`) NÃO está wirado no hot-path do tool.** O
+     `PainterTool::take_preview_arc` (tool.rs ~2443) ainda chama `composite()`
+     puro, não `composite_with_cache`. **Wire:** o `PainterTool` precisa POSSUIR um
+     `CompositorCache`, chamar `composite_with_cache` no drain, e
+     `invalidate_from`/`invalidate_above` no edit (param de adjustment = só o cut
+     dele p/ cima; structural = clear). Hoje `set_adjustment_param`→
+     `invalidate_composite` força full.
+  2. **MESMO wirado, o cache só remove o DECODE das layers abaixo (~40ms num doc
+     base+1adj). O ENCODE (~40ms) PERMANECE** — `composite_with_cache` re-`encode`
+     o canvas inteiro todo frame (a saída do adjustment muda). => cache wirado ≈
+     **40ms ≈ 25fps, ainda não suave.**
+
+**=> FIX COMPLETO = cache (wirado) + LUT do decode E encode.** As duas peças são
+ortogonais e AMBAS necessárias. O LUT é o que tira os 6 powf/px:
+  - **decode** (`compositor.rs::decode`, ~77): `srgb_to_linear_byte` recebe `u8` →
+    **LUT de 256 entradas é EXATA** (zero erro). ATENÇÃO: mantenha bit-idêntico —
+    o gate `layer_compositor.rs:~1026` faz `assert .to_bits() == srgb_to_linear_byte(b)`.
+    Uma LUT com os valores exatos do powf é bit-idêntica. (Com o cache warm, o
+    decode-LUT só importa no cold/first-frame; mas é trivial e cobre isso.)
+  - **encode** (`compositor.rs::encode`, ~198): `linear_to_srgb_byte` recebe `f32`.
+    Use tabela de 255 thresholds `t[b]=srgb_to_linear((b+0.5)/255)` +
+    `partition_point` (ou LUT 4096 + ajuste ±1) → byte-EXATO, zero powf/px. **Adicione
+    um teste de sweep denso: encode_lut(v) == linear_to_srgb_byte(v) p/ ~1e5 v** —
+    o encode alimenta o bake do Apply (não achei cook-hash, mas seja exato).
+  Esperado pós-fix: 80ms → ~5-10ms (drag suave a 60fps), e o cache derruba o
+  decode das below-layers em docs com muitas camadas.
+
+**Probe pra re-medir** (cole no `shells/desktop/src/render_loop/painter_bridge.rs`,
+no `dispatch`, em volta de `take_preview_arc` e do bloco de upload):
+    let _t0 = std::time::Instant::now();
+    let drained = painter.take_preview_arc();
+    let drain_ms = _t0.elapsed().as_secs_f32()*1000.0;
+    // … gate em painter_dirty_bbox.is_none() (full recompose) …
+    eprintln!("[painter-perf] {w}x{h} drain={drain_ms:.2}ms upload={up_ms:.2}ms");
+
+**ESCOPO/COLISÃO:** decode/encode/wiring são tudo `compositor.rs` + `tool.rs`
+(foundational, e o `2b68ab2` está VIVO nesse arquivo) → **Coord-only**. Eu (impl)
+NÃO editei pra não colidir com o teu cache em voo (inegociável #2). O probe segue
+uncommitted no meu working tree.
 ═══════════════════════════════════════════════════════════════════

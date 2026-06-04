@@ -43,6 +43,11 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   Ship é decisão do Enio (1×/jornada após `./scripts/ship.sh` verde). `Cargo.lock`
   re-sincronizado em `58ee181` (pegou edge vector-boolean stale + vector-sdf).
 ### MAPA DE POSSE — W4 ATIVO (2026-06-04)
+- **W4 progresso:** **11/12 geometry nodes ENTREGUES** pelo impl (verdes, ~80 testes;
+  `03c28b5..4db8408`). `pattern-along-path` (12º) deferido p/ W8 (binário + painter-brush).
+  Coord wireou o **smoke `PH2D_VECTOR_NODE=<slug>`** (`f0ca76d`) p/ ver cada nó na tela →
+  aguarda smoke visual do Enio → então T4.13 audit fecha. Detalhe:
+  [`HANDOFF_vector_w4_nodes_coord.md`](HANDOFF_vector_w4_nodes_coord.md).
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**
   crates NOVOS `crates/ph2d-node-vector-{outline-stroke,roughen,twist,bend-path,
   pattern-along-path,scatter,width-profile,hatch,mirror,corner-round,warp,recolor}/` +

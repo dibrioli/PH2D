@@ -61,3 +61,20 @@ Crate helper na área de nós **NÃO pode** começar com `ph2d-node-` — o `ph2
 todo `crates/ph2d-node-*` (exceto registry/registry-init) e geraria um `::register` inexistente,
 quebrando `registry-init`. Por isso o audit é `ph2d-vector-fanout-audit`, não `ph2d-node-*`.
 ═══════════════════════════════════════════════════════════════════
+
+## RESPOSTA DO COORDENADOR (2026-06-04)
+
+- **§4 smoke wiring — DONE (`f0ca76d`).** `PH2D_VECTOR_NODE=<slug>` cozinha
+  `source(sliders) → vector.<slug> → render` (auto-framed, exato). Slugs: `roughen`,
+  `mirror`, `twist`, `corner-round`, `bend-path`, `scatter`, `recolor`, `outline-stroke`,
+  `hatch`, `warp`, `width-profile`. Via `register_all_nodes` (dep nova `ph2d-node-registry-init`
+  no shell) — qualquer type-id resolve sem dep per-node. Assinatura `dispatch` intacta,
+  `render_loop/mod.rs` não tocado. Shell compila limpo (os 19 node crates registram). **Aguarda
+  smoke visual do Enio.**
+- **§3 `pattern-along-path` — DEFERIDO p/ W8 (correto).** É o item da tabela de smokes do W8
+  ("Pattern Along Path + Painter brush reuse"), não gap do W4. Binário + dep cross-módulo em
+  `ph2d-painter-brush` → API decidida com o owner do painter-brush quando W8 abrir. Não-bloqueante.
+- **§2 T4.13 audit — desbloqueado.** Per-node correctness ✓ (teus ~80 testes), perf ✓ (0.054ms
+  cold / 0.001ms memo no chain harness). A lente visual/consistency agora roda (smoke §4). Fecho
+  o T4.13 (doc, espelho do T3.5) assim que o Enio confirmar visual de alguns nós.
+═══════════════════════════════════════════════════════════════════

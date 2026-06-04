@@ -43,11 +43,13 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   Ship é decisão do Enio (1×/jornada após `./scripts/ship.sh` verde). `Cargo.lock`
   re-sincronizado em `58ee181` (pegou edge vector-boolean stale + vector-sdf).
 ### MAPA DE POSSE — W4 ATIVO (2026-06-04)
-- **W4 progresso:** **11/12 geometry nodes ENTREGUES** pelo impl (verdes, ~80 testes;
-  `03c28b5..4db8408`). `pattern-along-path` (12º) deferido p/ W8 (binário + painter-brush).
-  Coord wireou o **smoke `PH2D_VECTOR_NODE=<slug>`** (`f0ca76d`) p/ ver cada nó na tela →
-  aguarda smoke visual do Enio → então T4.13 audit fecha. Detalhe:
-  [`HANDOFF_vector_w4_nodes_coord.md`](HANDOFF_vector_w4_nodes_coord.md).
+- **W4 FECHADO** (11/12 nodes; 12º `pattern-along-path`→W8). **T4.13 audit DONE** (APPROVE,
+  0 crit/high/med): per-node ✓ (~80 testes + spot-check Coord corner-round/mirror 7+7 verdes),
+  perf ✓ (chain 0.054ms cold/0.001ms memo), render ✓ (smoke-OK Enio: corner-round + mirror).
+  **Testes visuais ricos per-node DEFERIDOS p/ a UI de grafo** (Enio 2026-06-04 — smoke é
+  hardcoded source→1-transform). Smoke wiring `PH2D_VECTOR_NODE=<slug>` (`f0ca76d`). Relatório:
+  [`AUDIT_vector_w4_session_2026-06-04.md`](AUDIT_vector_w4_session_2026-06-04.md).
+- **Impl Vector LIVRE** p/ próximo wave (W5: GPU stroke + variable-width + SDF full, §8) quando Enio liberar.
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**
   crates NOVOS `crates/ph2d-node-vector-{outline-stroke,roughen,twist,bend-path,
   pattern-along-path,scatter,width-profile,hatch,mirror,corner-round,warp,recolor}/` +

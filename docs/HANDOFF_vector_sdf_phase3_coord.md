@@ -120,10 +120,12 @@ Star/Spiral, draft+reconcile funciona. Quirks aceitos como artefatos do scaffold
 (união-de-2-cópias-rotacionadas = demo de booleana; Height ignorado em radiais =
 contrato do `vector.source`).
 
-**FOLLOW-UP (deferido, BAIXO valor):** GPU SDF no bridge. A ADR §amendment-1 §195
-previa "GPU silhouette during drag", mas p/ o caso vetorial (fontes pequenas,
-poucas arestas) o CPU 96² é ~1ms — não é gargalo. GPU só rende em escala (4K/
-muitas arestas) que o smoke não exercita. Threadear `GpuContext` no bridge
-(assinatura `dispatch` muda → toca `mod.rs` CONTENDED-Vector) **só quando houver
-necessidade de perf real medida** (não otimizar prematuro). Não bloqueia nada.
+**GPU SDF no bridge — DONE** (`e853b04`, smoke-OK do Enio 2026-06-04). A ADR
+§amendment-1 §195 previa "GPU silhouette during drag" — entregue: o draft do drag
+computa a silhueta de cada operando na GPU (`ph2d_vector_sdf::gpu::GpuSdf`, pipeline
+cacheado em thread-local), só `min/max` combine + marching ficam na CPU. `surface.gpu()`
+threadado no `dispatch` (call-site `mod.rs:1125`, arg disjunto de `vector_scene`).
+`GpuSdf::network_sdf` degrada (campo achatado) em device-loss → nunca paniqueia.
+**ADR-0065 100% FECHADO (Phase 1+2+3 + GPU).** Validável só no smoke (parity test é
+`#[ignore]`). Visualmente idêntico ao CPU (paridade sub-pixel da Phase 2).
 ═══════════════════════════════════════════════════════════════════

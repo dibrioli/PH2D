@@ -4992,8 +4992,12 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-node-sync",
  "ph2d-node-vector-boolean",
+ "ph2d-node-vector-corner-round",
+ "ph2d-node-vector-mirror",
  "ph2d-node-vector-offset",
+ "ph2d-node-vector-roughen",
  "ph2d-node-vector-source",
+ "ph2d-node-vector-twist",
 ]
 
 [[package]]
@@ -5013,6 +5017,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-vector-corner-round"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
+name = "ph2d-node-vector-mirror"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
 name = "ph2d-node-vector-offset"
 version = "0.0.0"
 dependencies = [
@@ -5025,7 +5051,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-vector-roughen"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
 name = "ph2d-node-vector-source"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
+name = "ph2d-node-vector-twist"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",

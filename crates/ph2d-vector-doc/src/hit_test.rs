@@ -327,7 +327,10 @@ mod tests {
         net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
         net.vertices.push(Vertex::auto(1, Vec2::new(100.0, 0.0)));
         net.segments.push(Segment::straight(0, 0, 1));
-        assert_eq!(net.nearest_segment_within(Vec2::new(50.0, 2.0), 5.0), Some(0));
+        assert_eq!(
+            net.nearest_segment_within(Vec2::new(50.0, 2.0), 5.0),
+            Some(0)
+        );
         assert_eq!(net.nearest_segment_within(Vec2::new(50.0, 50.0), 5.0), None);
     }
 

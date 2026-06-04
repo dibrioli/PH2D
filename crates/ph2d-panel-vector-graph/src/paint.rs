@@ -145,7 +145,7 @@ fn set_track(mut slider: Slider, track: f32) -> Slider {
 fn format_value(id: NodeId, value: f32) -> String {
     use crate::ids;
     if id == ids::VGRAPH_KIND {
-        let idx = (value.round() as i64).clamp(0, KIND_NAMES.len() as i64 - 1) as usize;
+        let idx = (value.round() as i64).clamp(0, KIND_NAMES.len() as i64 - 1) as usize; // CLAMP-OK: integer clamp, no NaN; 0..=len-1 valid (KIND_NAMES non-empty)
         KIND_NAMES[idx].to_string()
     } else if id == ids::VGRAPH_INNER_RATIO {
         format!("{value:.2}")

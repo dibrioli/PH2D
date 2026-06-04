@@ -365,13 +365,14 @@ fn handle_axis(out_t: Vec2, in_t: Vec2) -> Option<Vec2> {
 }
 
 /// Unit axis along the prev→next chord through `vid` (Auto + degenerate fallback).
-fn chord_axis(
-    asset: &Ph2dVectorAsset,
-    out_seg: SegmentId,
-    in_seg: SegmentId,
-) -> Option<Vec2> {
+fn chord_axis(asset: &Ph2dVectorAsset, out_seg: SegmentId, in_seg: SegmentId) -> Option<Vec2> {
     let next = asset.network.segments.iter().find(|s| s.id == out_seg)?.end;
-    let prev = asset.network.segments.iter().find(|s| s.id == in_seg)?.start;
+    let prev = asset
+        .network
+        .segments
+        .iter()
+        .find(|s| s.id == in_seg)?
+        .start;
     let d = vpos(asset, next)? - vpos(asset, prev)?;
     (d.length() > 1e-4).then(|| d.normalize())
 }
@@ -444,7 +445,10 @@ fn apply_kind_eager(asset: &mut Ph2dVectorAsset, vid: VertexId, kind: VertexKind
             };
             match kind {
                 VertexKind::Mirror => {
-                    let mag = len_or((out_t.length() + in_t.length()) * 0.5, (auto_out + auto_in) * 0.5);
+                    let mag = len_or(
+                        (out_t.length() + in_t.length()) * 0.5,
+                        (auto_out + auto_in) * 0.5,
+                    );
                     (axis * mag, -axis * mag)
                 }
                 VertexKind::Aligned => (
@@ -627,7 +631,12 @@ mod tests {
         // Drag to (50,40) → grabbed offset (0,40); opposite collinear-opposite is
         // direction (0,-1) × original length 10 = (0,-10).
         t.drag_to(&mut scene, Vec2::new(50.0, 40.0), false, &[]);
-        let s0 = scene[0].network.segments.iter().find(|s| s.id == 0).unwrap();
+        let s0 = scene[0]
+            .network
+            .segments
+            .iter()
+            .find(|s| s.id == 0)
+            .unwrap();
         assert!(
             (s0.in_at_end - Vec2::new(0.0, -10.0)).length() < 1e-3,
             "aligned opposite = collinear @ original length, got {:?}",
@@ -736,7 +745,8 @@ mod tests {
         // equalizes them IMMEDIATELY (no drag needed).
         let mut net = VectorNetwork::empty();
         net.vertices.push(Vertex::auto(0, Vec2::new(0.0, 0.0)));
-        net.vertices.push(Vertex::new(1, Vec2::new(50.0, 0.0), VertexKind::Free));
+        net.vertices
+            .push(Vertex::new(1, Vec2::new(50.0, 0.0), VertexKind::Free));
         net.vertices.push(Vertex::auto(2, Vec2::new(100.0, 0.0)));
         let mut s0 = Segment::straight(0, 0, 1);
         s0.in_at_end = Vec2::new(-5.0, 5.0); // not collinear with s1.out

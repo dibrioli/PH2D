@@ -121,7 +121,9 @@ mod tests {
             &PASS_MAN
         }
         fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            let n = ctx.input_network(0).map_or(0.0, |net| net.vertices.len() as f32);
+            let n = ctx
+                .input_network(0)
+                .map_or(0.0, |net| net.vertices.len() as f32);
             ctx.emit(Stream::new(1).with("v", Column::Scalar(vec![n])));
         }
     }

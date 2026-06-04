@@ -602,7 +602,10 @@ mod tests {
         let n = g.add_node("test.nonexistent");
         let o = ops();
         let mut cook = Cook::new();
-        assert_eq!(cook.cook(&g, &o, n, 0.0).map(|_| ()), Err(CookError::UnknownType));
+        assert_eq!(
+            cook.cook(&g, &o, n, 0.0).map(|_| ()),
+            Err(CookError::UnknownType)
+        );
     }
 
     #[test]
@@ -763,15 +766,24 @@ mod tests {
         };
         let mut cook = Cook::new();
         // No override → manifest default (7).
-        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![7.0]);
+        assert_eq!(
+            out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]),
+            vec![7.0]
+        );
         // Editing the override and re-cooking the SAME Cook must recompute, not
         // return the memoized pre-edit stream (params fold into the fingerprint).
         g.set_param(n, "k", 42.0);
-        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![42.0]);
+        assert_eq!(
+            out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]),
+            vec![42.0]
+        );
         assert_eq!(o.echo.calls.load(Ordering::Relaxed), 2); // recomputed
         // A second edit (override → a different override) must also recompute.
         g.set_param(n, "k", 43.0);
-        assert_eq!(out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]), vec![43.0]);
+        assert_eq!(
+            out_scalars(&cook.cook(&g, &o, n, 0.0).unwrap()[0]),
+            vec![43.0]
+        );
         assert_eq!(o.echo.calls.load(Ordering::Relaxed), 3);
     }
 

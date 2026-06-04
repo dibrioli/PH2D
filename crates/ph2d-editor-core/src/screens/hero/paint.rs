@@ -275,6 +275,10 @@ pub fn paint_hero_screen(
     for &fallback in &[
         ids::HIER_PANEL,
         ids::INSP_PANEL,
+        // Geometry-graph smoke panel (ADR-0065): docks over the inspector rect
+        // when `PH2D_VECTOR_GRAPH=1`. Its own `paint()` no-ops when hidden, so
+        // this is inert in the normal app. After INSP_PANEL → paints on top.
+        ids::VGRAPH_PANEL,
         ids::BGR_PANEL,
         ids::PAD_PANEL,
         ids::CEQ_PANEL,

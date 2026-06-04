@@ -79,9 +79,13 @@ fn crate_source_excluding(crate_name: &str, exclude: &[&str]) -> String {
     let mut out = String::new();
     for entry in WalkDir::new(&dir).into_iter().flatten() {
         if entry.path().extension().is_some_and(|e| e == "rs")
-            && !exclude
-                .iter()
-                .any(|x| entry.path().file_name().is_some_and(|f| f == *x))
+            && !exclude.iter().any(|x| {
+                // Match a file name (`foo.rs`) OR a path component (`foo` —
+                // excludes a whole `foo/` directory, so a module that split from
+                // `foo.rs` into `foo/{mod,…}.rs` stays excluded).
+                entry.path().file_name().is_some_and(|f| f == *x)
+                    || entry.path().components().any(|c| c.as_os_str() == *x)
+            })
             && let Ok(s) = std::fs::read_to_string(entry.path())
         {
             out.push('\n');
@@ -376,11 +380,13 @@ mod brush_engine {
         // identifica patterns suspeitos: campos cujo tipo começa maiúscula sem ser
         // primitivo conhecido nem `Vec`/`Option`/enum-known. Heuristic; refinar
         // se vier falso-positivo legítimo.
-        // Brush-engine source ONLY — `adjustments.rs` (ADR-0045) is a sibling
-        // contract in this crate by amendment-1 and is gated separately below
-        // (see `crate_source_excluding` rationale). Counting its 29 sub-`*Params`
-        // structs here would be a category error against ADR-0044 §2.2.
-        let src = crate_source_excluding(CRATE, &["adjustments.rs"]);
+        // Brush-engine source ONLY — the `adjustments/` module (ADR-0045) is a
+        // sibling contract in this crate by amendment-1 and is gated separately
+        // below (see `crate_source_excluding` rationale). Counting its 29
+        // sub-`*Params` structs here would be a category error against ADR-0044
+        // §2.2. (`adjustments.rs` was split into `adjustments/` 2026-06-04 — the
+        // exclusion now matches the directory component, not the old filename.)
+        let src = crate_source_excluding(CRATE, &["adjustments"]);
         if src.is_empty() {
             return; // vacuous
         }

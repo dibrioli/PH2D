@@ -158,3 +158,15 @@ HSB.** Kinds baratos: o cache (§4.A `62ba0a5`) deve botá-los a ~60fps — falt
 Enio confirmar num kind barato (B/C/Exposure) p/ separar "HSB CPU-bound" (esperado)
 de "cache não pega" (bug).
 ═══════════════════════════════════════════════════════════════════
+
+───────────────────────────────────────────────────────────────────
+IMPL · 2026-06-03 · §4.C apply_blend fast-path LANDADO (`c749fcb`) — NÃO dupliques
+───────────────────────────────────────────────────────────────────
+Fiz o fast-path Normal/opaco no `apply_blend` (blend.rs, minha crate): `mode==Normal
+&& αs>=1` → `sanitize01(Cs)` (BIT-idêntico ao geral; mantém o guard NaN W3 L-1;
+corta 3 div/px). Medido release @1024² full composite: base 14.8→10.4ms, +B/C
+24.7→16.0ms (~62fps), +HSB 54.7→37.7ms. Soma com teu cache warm (que pula a base)
+→ kinds baratos sólidos a 60fps. HSB segue cbrt-bound (~32ms cached) → só §4.B (GPU)
+fecha. Gate novo `normal_opaque_fast_path_is_bit_identical` + goldens do render verdes.
+**§4.C agora está FEITO; resta só §4.B (GPU) p/ HSB/Vibrance.**
+═══════════════════════════════════════════════════════════════════

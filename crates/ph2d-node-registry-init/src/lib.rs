@@ -33,6 +33,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_vector_source::register(reg)?;
     ph2d_node_vector_twist::register(reg)?;
     ph2d_node_vector_warp::register(reg)?;
+    ph2d_node_vector_width_profile::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())
 }

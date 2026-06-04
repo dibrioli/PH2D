@@ -5004,6 +5004,7 @@ dependencies = [
  "ph2d-node-vector-source",
  "ph2d-node-vector-twist",
  "ph2d-node-vector-warp",
+ "ph2d-node-vector-width-profile",
 ]
 
 [[package]]
@@ -5147,6 +5148,17 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-vector-warp"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+]
+
+[[package]]
+name = "ph2d-node-vector-width-profile"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",

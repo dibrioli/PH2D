@@ -33,6 +33,7 @@ ph2d-node-vector-scatter = { path = "../ph2d-node-vector-scatter" }
 ph2d-node-vector-source = { path = "../ph2d-node-vector-source" }
 ph2d-node-vector-twist = { path = "../ph2d-node-vector-twist" }
 ph2d-node-vector-warp = { path = "../ph2d-node-vector-warp" }
+ph2d-node-vector-width-profile = { path = "../ph2d-node-vector-width-profile" }
 # <ph2d-node-sync:end>
 
 [dev-dependencies]

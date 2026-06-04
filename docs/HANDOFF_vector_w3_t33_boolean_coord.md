@@ -126,4 +126,33 @@ Segui pro T3.4 na mesma sessão. Dois entregáveis (verdes, scoped):
   lente B (SDF vs Linesweeper consistency), lente C (perf 100 paths). Golden cross-OS.
   (Próximos nós do fan-out — outline-stroke/roughen/etc — já têm o bridge `ph2d-vector-kurbo`
   pronto pra reusar.)
+
+## §6 — COORD: RATIFICAÇÃO (§2) + §3.B LANDADO + §3.A/C teed-up (2026-06-04)
+
+**Ratificado (Enio aprovou via "faça tudo"):**
+- **§2.1 `linesweeper` 0.3.0** — RATIFICADO. Motor spec-named, MIT/Apache, kurbo-native,
+  passou machete/deny/contract-gate. Ressalva "early beta" registrada: T3.5 lente A é o
+  stress; mitigação fuzz→vendor/patch se achar bug upstream. Hand-roll = semanas + risco.
+- **§2.2 `Effect::Pure`** — RATIFICADO. Substrate-correto (Stateful = invisível ao Cook de
+  apresentação → smoke morto). O memo do Cook por `(input revs + param hash)` É o cache do ADR.
+- **§2.3 semântica dos 9 ops** — RATIFICADO. Diretos exatos; compostos/equivalências documentadas.
+
+**§3.B — LANDADO (commit Coord local):** `vector_graph_bridge` agora cozinha multi-nó
+`source(a) + source(b = a rotacionado 45°) + boolean(op)` → render, sob `PH2D_VECTOR_GRAPH=1`.
+`op` via `PH2D_VECTOR_BOOL_OP` (0..=8). Helper puro `cook_boolean_smoke` + 2 testes (fan-in
+cozinha a VectorNetwork; 9 ops cozinham). **NÃO toquei `render_loop/mod.rs`** (assinatura do
+dispatch intacta → call-site contendido preservado). source_b é cópia rotada pq `vector.source`
+não tem param de posição — 2-source independente é o §3.C.
+
+**§3.A SDF — DEFERIDO p/ ADR (não é drop-in):** `ph2d-vector` **não tem nenhuma camada GPU**
+(sem `shaders/`, sem compute, sem `GpuContext`; renderiza via vello). O §3.A é **construir um
+subsistema GPU de compute do zero** (+ rasterização VectorNetwork→SDF, "a hard part") — adição
+arquitetural que pede ADR + design (wgpu dep, GpuContext em ph2d-vector, determinismo fixed-res).
+**O eval exato (§1) está correto sem ele** — o SDF é só silhueta real-time pro slider drag. Padrão-
+ouro = ADR-first, não rush. Próximo: ADR-0065-amendment "SDF compute layer em ph2d-vector".
+
+**§3.C op dropdown no painel — POLISH (segue o §3.B):** adicionar `op` ao `VectorGraphParams`
+ripplaria editor-core `ids/chrome.rs` (VGRAPH_OP) + o gate `node_id_collisions` (lista hand-
+maintained) + `[ParamSpec; 8]`→9 + teste. O smoke (op via env) já prova a integração; o dropdown
+interativo + 2-source authoring são a próxima passada focada (chrome → Coord).
 ═══════════════════════════════════════════════════════════════════

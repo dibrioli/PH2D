@@ -41,6 +41,9 @@ ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
 # Vector geometry-graph smoke (W3 T3.1): the `vector.source` op cooked by
 # `render_loop::vector_graph_bridge`.
 ph2d-node-vector-source = { path = "../../crates/ph2d-node-vector-source" }
+# W3 T3.3 boolean smoke: the `vector_graph_bridge` cooks source(a)+source(b)+
+# boolean(op) when `PH2D_VECTOR_GRAPH=1`, proving source→boolean→render live.
+ph2d-node-vector-boolean = { path = "../../crates/ph2d-node-vector-boolean" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

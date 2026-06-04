@@ -121,8 +121,10 @@ mod tests {
         // Distinct assets by vertex count so snapshots compare unequal.
         let mut net = VectorNetwork::empty();
         for i in 0..n {
-            net.vertices
-                .push(ph2d_vector_doc::Vertex::auto(i, ph2d_core::Vec2::new(i as f32, 0.0)));
+            net.vertices.push(ph2d_vector_doc::Vertex::auto(
+                i,
+                ph2d_core::Vec2::new(i as f32, 0.0),
+            ));
         }
         Ph2dVectorAsset::from_network(net, StyleTable::default())
     }

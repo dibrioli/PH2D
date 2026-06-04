@@ -137,7 +137,9 @@ impl App {
             && (self.modifiers.super_key() || self.modifiers.control_key())
         {
             let did = match physical_key {
-                PhysicalKey::Code(KeyCode::KeyZ) if self.modifiers.shift_key() => self.vector_redo(),
+                PhysicalKey::Code(KeyCode::KeyZ) if self.modifiers.shift_key() => {
+                    self.vector_redo()
+                }
                 PhysicalKey::Code(KeyCode::KeyZ) => self.vector_undo(),
                 PhysicalKey::Code(KeyCode::KeyY) => self.vector_redo(),
                 _ => false,

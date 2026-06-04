@@ -154,7 +154,8 @@ pub(super) fn dispatch(
                 s.set_default_stroke(fill, ph2d_tool_vector_shape::DEFAULT_STROKE_WIDTH_PX);
             } else if let Some(p) = any.downcast_mut::<ph2d_tool_vector_pen::VectorPenTool>() {
                 p.set_default_fill(fill);
-            } else if let Some(p) = any.downcast_mut::<ph2d_tool_vector_pencil::VectorPencilTool>() {
+            } else if let Some(p) = any.downcast_mut::<ph2d_tool_vector_pencil::VectorPencilTool>()
+            {
                 p.set_default_stroke(fill, ph2d_tool_vector_pencil::DEFAULT_STROKE_WIDTH_PX);
             }
         }

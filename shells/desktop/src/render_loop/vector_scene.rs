@@ -200,11 +200,7 @@ pub(crate) fn reconcile(
 /// entity in the asset-paired prefix lost its `Transform` (was despawned via
 /// Delete / hierarchy row). Lets the caller snapshot the pre-delete scene for
 /// undo exactly once per delete frame (and skip clearing redo on no-op frames).
-pub(crate) fn will_prune(
-    sim: &SimWorld,
-    assets: &[Ph2dVectorAsset],
-    entities: &[Entity],
-) -> bool {
+pub(crate) fn will_prune(sim: &SimWorld, assets: &[Ph2dVectorAsset], entities: &[Entity]) -> bool {
     let n = entities.len().min(assets.len());
     entities[..n]
         .iter()

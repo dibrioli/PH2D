@@ -30,19 +30,26 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (verificado nesta sessão — NÃO refaça)
 ───────────────────────────────────────────────────────────────────
-**10/24 kinds PRONTOS** (compute CPU + GPU + paridade):
+**11/24 kinds PRONTOS** (compute CPU + GPU + paridade):
   HSB(0), BrightnessContrast(1), Invert(2), Posterize(3), Threshold(4),
   Exposure(5), Vibrance(6) — escalares; **Curves(7) + Levels(8)** — LUT
   display-space (binding `adj_luts`); **PhotoFilter** — CPU-first (gel
   warm/cool linear + preserve-lum), `gpu_params` empacotado mas `gpu_code=None`
-  até o Coord landar `ADJ_PHOTO_FILTER` (vide §GPU-COORD abaixo).
+  até o Coord landar `ADJ_PHOTO_FILTER` (§GPU-COORD); **ColorBalance** — CPU-first
+  (shift per-canal display-space pesado por tonal-range + preserve-lum); GPU =
+  per-channel `adj_luts` (reuso da máquina de Curves) + flag preserve (§GPU-COORD-CB).
 
-**INFRA NOVA (esta sessão — REUSE p/ os próximos):** a **toggle rack** genérica
-existe. Um kind com param `bool` agora vira UI só adicionando arms em
-`adjustment_toggle_params` + `set_adjustment_toggle_param` (compute.rs) — o painel
-já renderiza um switch por slot (`AdjToggle0/1` ids, padrão click→flip espelho do
-mask-invert; tool `flip_adjustment_toggle`). ZERO UI nova p/ ColorBalance
-(preserve_lum), ChannelMixer (monochromatic), Noise (monochromatic), etc.
+**INFRA NOVA (REUSE p/ os próximos):**
+  - **toggle rack** genérica: kind com `bool` vira UI só com arms em
+    `adjustment_toggle_params` + `set_adjustment_toggle_param` (compute.rs) — o
+    painel renderiza um switch por slot (`AdjToggle0/1`, click→flip espelho do
+    mask-invert; tool `flip_adjustment_toggle`). Usado por PhotoFilter +
+    ColorBalance; pronto p/ ChannelMixer (monochromatic), Noise (monochromatic).
+  - **segment rack** genérica (1-de-N, N≤3): `adjustment_segment_params` +
+    `set_adjustment_segment_param` (compute.rs); painel renderiza uma fileira de
+    segment-buttons (`AdjSegment0/1/2`, padrão das abas de canal do Curves; tool
+    `set_adjustment_segment`). Usado pelo scope do ColorBalance; pronto p/
+    SelectiveColor `method` (Relative/Absolute), GradientMap `interpolation`.
 
 **A engine está VIVA E PROVADA** — REUSE, não reinvente:
   - `compute.rs::apply_adjustment(kind, params, &mut [[f32;4]])` — dispatch
@@ -59,8 +66,8 @@ mask-invert; tool `flip_adjustment_toggle`). ZERO UI nova p/ ColorBalance
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**14 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
-faz nada): ColorBalance, GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
+**13 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+faz nada): GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
 Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
 SelectiveColor, ChannelMixer, ShadowsHighlights, BlackAndWhite. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
@@ -80,9 +87,12 @@ genérico já renderiza. Compute = arm em `apply_adjustment`.
      rack nova. `gpu_params=[temp,density,preserve]` empacotado; falta só o case
      WGSL do Coord (§GPU-COORD). Precedente vivo p/ os toggles dos próximos.
   2. **ColorBalance** `{cyan_red, magenta_green, yellow_blue, scope, preserve_lum}`
-     — 3 sliders + scope (Shadows/Mid/Highlights, segmented) + toggle. Shifts
-     cabem em [f32;3]; `scope`+`preserve` = >3 → **GPU precisa expansão de params
-     (Coord) OU CPU-first**. O segmented de scope é um toggle bespoke pequeno.
+     — ✅ **PRONTO** (commit pendente). 3 sliders (C/R, M/G, Y/B) + scope via a
+     segment rack nova + toggle preserve via a toggle rack. Compute = shift
+     per-canal display-space pesado por máscara tonal (Shadows `(1-s)²` / Mid
+     `1-(2s-1)²` / Highlights `s²`) + preserve-lum (renorm Rec.601). GPU NÃO é
+     escalar: é per-channel `adj_luts` (reuso de Curves) + flag preserve — export
+     `colorbalance_display_luts` pronto; spec no §GPU-COORD-CB.
   3. **BlackAndWhite** `{reds,yellows,greens,cyans,blues,magentas, tint_color,
      tint_amount}` — 6 sliders (peso por hue → luma) + tint (reuse o picker OKLCH
      do Sprite Inspector) + amount. >3 params → CPU-first; GPU = Coord.
@@ -143,6 +153,33 @@ return outc;
 ```
 Gate de paridade: `gpu_adjustment_matches_cpu_reference_each_kind` (já cobre
 auto quando `gpu_code` vira Some — neutro garante finitos via o contract test).
+
+───────────────────────────────────────────────────────────────────
+§GPU-COORD-CB — port WGSL do ColorBalance (LUT per-channel + preserve) — Coord
+───────────────────────────────────────────────────────────────────
+ColorBalance NÃO é escalar [f32;3] — é um transfer per-canal display-space (com
+scope baked na LUT) + um renorm de luma opcional. CPU pronto
+(`apply_color_balance`). O caminho GPU real-time **reusa a máquina do Curves**:
+1. flatten chama `colorbalance_display_luts(p) -> [[f32;256];3]` (já exportado) e
+   sobe nas MESMAS `adj_luts` (3×256) que o `ADJ_CURVES` lê;
+2. add `ADJ_COLOR_BALANCE` no `layer_composite.wgsl`: amostra `adj_luts` per-canal
+   (idêntico ao case Curves) e, se `preserve_luminosity`, faz o renorm display:
+```
+// rgb_lin (linear) -> display, amostra LUT per-canal, (renorm), -> linear
+let s = vec3(lin_to_srgb(rgb.r), lin_to_srgb(rgb.g), lin_to_srgb(rgb.b));
+var o = vec3(sample_adj_lut(base, 0u, s.r), sample_adj_lut(base, 1u, s.g),
+             sample_adj_lut(base, 2u, s.b));
+if (preserve > 0.5) {
+    let LW = vec3(0.299, 0.587, 0.114);                 // Rec.601 display luma
+    let l_in = dot(s, LW); let l_out = dot(o, LW);
+    if (l_out > 1e-6) { o = clamp(o * (l_in / l_out), vec3(0.0), vec3(1.0)); }
+}
+return vec3(srgb_to_lin(o.r), srgb_to_lin(o.g), srgb_to_lin(o.b));
+```
+   `preserve_luminosity` precisa chegar ao shader (1 scalar — via `adj_params` ou
+   um bit no header da LUT; decisão do Coord). Sem preserve, o case é literalmente
+   o do Curves (3×256 transfer) — pode até compartilhar `ADJ_CURVES` se o flatten
+   preencher `adj_luts` com as tabelas do ColorBalance.
 
 ───────────────────────────────────────────────────────────────────
 §4 — RECEITA por kind (o loop que você repete)

@@ -404,6 +404,28 @@ impl AdjustmentKind {
             Self::BlackAndWhite => "Black & White",
         }
     }
+
+    /// GPU adjustment-kernel code for the real-time compositor
+    /// (`ph2d-render::layer_composite.wgsl` `ADJ_*` / `apply_adjustment`), or
+    /// `None` for a kind the GPU shader does not implement yet (the compositor
+    /// falls back to the CPU path for those). This is the tool↔shader contract —
+    /// the painter flatten emits `LayerOp::Adjustment { kind: gpu_code(), .. }`.
+    /// Keep in lock-step with the WGSL `ADJ_*` consts + the GPU parity gate
+    /// `gpu_adjustment_matches_cpu_reference_each_kind`.
+    #[must_use]
+    pub fn gpu_code(self) -> Option<u8> {
+        Some(match self {
+            Self::HueSaturationBrightness => 0,
+            Self::BrightnessContrast => 1,
+            Self::Invert => 2,
+            Self::Posterize => 3,
+            Self::Threshold => 4,
+            Self::Exposure => 5,
+            Self::Vibrance => 6,
+            // Not yet ported to the GPU shader (bespoke-UI / spatial kinds).
+            _ => return None,
+        })
+    }
 }
 
 /// Destructive-only adjustments — cap ≤ 8 (v1 = 5). Separate enum so the type
@@ -478,6 +500,29 @@ impl AdjustmentParams {
             Self::Exposure(_) => AdjustmentKind::Exposure,
             Self::ShadowsHighlights(_) => AdjustmentKind::ShadowsHighlights,
             Self::BlackAndWhite(_) => AdjustmentKind::BlackAndWhite,
+        }
+    }
+
+    /// The ≤3 scalar params the GPU shader reads (`layer_composite.wgsl`
+    /// `apply_adjustment`), in `(p0, p1, p2)` order. The tool↔shader contract:
+    /// the painter flatten emits `LayerOp::Adjustment { params: gpu_params(), .. }`
+    /// alongside [`AdjustmentKind::gpu_code`]. Mirrors the WGSL param meaning per
+    /// kind (validated by `gpu_adjustment_matches_cpu_reference_each_kind`).
+    /// Kinds without a GPU code return zeros (unused — the compositor uses the
+    /// CPU path for them).
+    #[must_use]
+    pub fn gpu_params(&self) -> [f32; 3] {
+        match self {
+            Self::HueSaturationBrightness(p) => [p.h, p.s, p.b],
+            Self::BrightnessContrast(p) => [p.brightness, p.contrast, 0.0],
+            Self::Invert(_) => [0.0, 0.0, 0.0],
+            Self::Posterize(p) => [p.levels as f32, 0.0, 0.0],
+            // Threshold's shader cut is normalized (`luma >= p0`); the CPU stores
+            // a `0..=255` byte, so divide to match `apply_threshold`.
+            Self::Threshold(p) => [p.threshold as f32 / 255.0, 0.0, 0.0],
+            Self::Exposure(p) => [p.exposure_ev, p.offset, p.gamma_correction],
+            Self::Vibrance(p) => [p.vibrance, p.saturation, 0.0],
+            _ => [0.0, 0.0, 0.0],
         }
     }
 
@@ -1018,6 +1063,42 @@ mod tests {
             .filter(|k| matches!(k.psd_export(), PsdExport::Layered(_)))
             .count();
         assert_eq!(tier1_layered, 5, "Tier 1: 5 layered, 7 baked");
+    }
+
+    #[test]
+    fn gpu_code_and_params_contract() {
+        // The 7 GPU-implemented kinds map to codes 0..=6; the rest are None
+        // (CPU-only). Codes must match the WGSL `ADJ_*` consts.
+        assert_eq!(AdjustmentKind::HueSaturationBrightness.gpu_code(), Some(0));
+        assert_eq!(AdjustmentKind::BrightnessContrast.gpu_code(), Some(1));
+        assert_eq!(AdjustmentKind::Invert.gpu_code(), Some(2));
+        assert_eq!(AdjustmentKind::Posterize.gpu_code(), Some(3));
+        assert_eq!(AdjustmentKind::Threshold.gpu_code(), Some(4));
+        assert_eq!(AdjustmentKind::Exposure.gpu_code(), Some(5));
+        assert_eq!(AdjustmentKind::Vibrance.gpu_code(), Some(6));
+        assert_eq!(AdjustmentKind::Curves.gpu_code(), None);
+        assert_eq!(AdjustmentKind::GaussianBlur.gpu_code(), None);
+        // params order matches the WGSL apply_adjustment reading.
+        let hsb = AdjustmentParams::HueSaturationBrightness(HsbParams {
+            h: 0.1,
+            s: 0.2,
+            b: 0.3,
+        });
+        assert_eq!(hsb.gpu_params(), [0.1, 0.2, 0.3]);
+        let thr = AdjustmentParams::Threshold(ThresholdParams { threshold: 128 });
+        assert!((thr.gpu_params()[0] - 128.0 / 255.0).abs() < 1e-6);
+        let post = AdjustmentParams::Posterize(PosterizeParams { levels: 6 });
+        assert_eq!(post.gpu_params()[0], 6.0);
+        // Every GPU-coded kind's neutral params produce finite gpu_params.
+        for &kind in &AdjustmentKind::ALL {
+            if kind.gpu_code().is_some() {
+                let p = AdjustmentParams::neutral_for(kind).gpu_params();
+                assert!(
+                    p.iter().all(|v| v.is_finite()),
+                    "{kind:?} gpu_params non-finite"
+                );
+            }
+        }
     }
 
     #[test]

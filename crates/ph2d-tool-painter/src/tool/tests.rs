@@ -1837,6 +1837,55 @@ fn set_curve_point_moves_the_targeted_point_and_arms_the_cache() {
 }
 
 #[test]
+fn set_curve_point_clamps_x_between_neighbours_keeping_index_stable() {
+    // Free-2D editor binds a stable index per handle; X must clamp to the
+    // neighbours' span (never reorder) so a drag past a neighbour can't make the
+    // next frame grab a different point.
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::Curves).unwrap();
+    // add_adjustment_layer seeds 5 evenly-spaced master handles (x = 0,.25,.5,.75,1).
+    // Drag the middle (index 2) hard right and hard left; it pins at its neighbours.
+    t.set_curve_point(adj, 0, 2, 0.95, 0.6);
+    let read = |t: &PainterTool| -> [f32; 2] {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => {
+                let AdjustmentParams::Curves(c) = &a.params else {
+                    panic!()
+                };
+                c.points_rgb.points[2]
+            }
+            _ => panic!(),
+        }
+    };
+    let p = read(&t);
+    assert!(
+        (p[0] - 0.75).abs() < 1e-6,
+        "x clamped to the right neighbour (0.75): {p:?}"
+    );
+    assert!((p[1] - 0.6).abs() < 1e-6, "y is free");
+    t.set_curve_point(adj, 0, 2, 0.05, 0.4);
+    assert!(
+        (read(&t)[0] - 0.25).abs() < 1e-6,
+        "x clamped to the left neighbour (0.25)"
+    );
+    // The point list stays length-5 and strictly ordered (no reorder/drop).
+    let pts: Vec<[f32; 2]> = match &t.layers.get(adj).unwrap().kind {
+        LayerKind::Adjustment(a) => match &a.params {
+            AdjustmentParams::Curves(c) => c.points_rgb.points.clone(),
+            _ => panic!(),
+        },
+        _ => panic!(),
+    };
+    assert_eq!(pts.len(), 5, "no point added/dropped");
+    assert!(
+        pts.windows(2).all(|w| w[0][0] <= w[1][0]),
+        "points stay ascending in x: {pts:?}"
+    );
+}
+
+#[test]
 fn set_curve_point_on_non_curves_layer_is_a_noop() {
     use ph2d_painter_brush::adjustments::AdjustmentKind;
     let mut t = PainterTool::default();

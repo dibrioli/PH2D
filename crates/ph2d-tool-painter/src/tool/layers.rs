@@ -574,9 +574,15 @@ impl PainterTool {
     /// 1 = R, 2 = G, 3 = B. The bespoke curve-editor UI calls this on a point
     /// drag (the Curves analogue of [`Self::set_adjustment_param`] — Curves does
     /// not fit the generic ≤6-slider rack). No-op mid-stroke, for a non-Curves
-    /// layer, an out-of-range channel, or a missing point index. Re-sorts the
-    /// channel's points by x (the spline eval assumes ascending x) and routes the
-    /// preview through the same cut-point cache fast lane as a slider drag.
+    /// layer, an out-of-range channel, or a missing point index.
+    ///
+    /// X is **clamped between the two neighbours** (not re-sorted): the free-2D
+    /// editor binds a stable `point_index` per handle, so a sort here would make
+    /// the next drag frame grab a *different* point as soon as a point crossed its
+    /// neighbour. Clamping keeps the points ordered (the spline eval needs
+    /// ascending x) AND the index stable for the whole gesture. Routes the preview
+    /// through the same cut-point cache fast lane as a slider drag (so the GPU LUT
+    /// path re-renders Curves in real time).
     pub fn set_curve_point(
         &mut self,
         id: RtLayerId,
@@ -601,12 +607,26 @@ impl PainterTool {
             3 => &mut c.points_b,
             _ => return,
         };
-        let Some(p) = pts.points.get_mut(point_index) else {
+        let n = pts.points.len();
+        if point_index >= n {
             return;
+        }
+        // Clamp X into the neighbours' span so the points stay ordered without a
+        // sort (stable index across the drag — see the doc comment). Endpoints are
+        // free to the [0,1] domain edge on their outer side.
+        let left = if point_index == 0 {
+            0.0
+        } else {
+            pts.points[point_index - 1][0]
         };
-        p[0] = x01.clamp(0.0, 1.0);
+        let right = if point_index + 1 == n {
+            1.0
+        } else {
+            pts.points[point_index + 1][0]
+        };
+        let p = &mut pts.points[point_index];
+        p[0] = x01.clamp(0.0, 1.0).clamp(left, right);
         p[1] = y01.clamp(0.0, 1.0);
-        pts.points.sort_by(|a, b| a[0].total_cmp(&b[0]));
         // Same hot-path cut-cache restart as `set_adjustment_param`: a param-only
         // change leaves the layers below untouched, so keep their cuts.
         self.compositor_cache.invalidate_above(id, &self.layers);

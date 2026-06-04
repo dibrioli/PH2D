@@ -31,6 +31,7 @@ mod padding_bridge;
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge instead of downcasting in central dispatch.
 pub(crate) mod painter_bridge;
+mod painter_gpu_flatten;
 mod present;
 mod sim_extract;
 mod snapshots;

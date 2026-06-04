@@ -241,6 +241,17 @@ fn paint_curve_editor(
         3 => &c.points_b,
         _ => &c.points_rgb,
     };
+    // Tint the curve + handle rings by the active channel (master = accent), so
+    // it's obvious which channel you're editing.
+    let curve_color = resolve(
+        match channel {
+            1 => ColorToken::CurveR,
+            2 => ColorToken::CurveG,
+            3 => ColorToken::CurveB,
+            _ => ColorToken::Accent,
+        },
+        theme,
+    );
     // Plot the channel's own tone curve (the monotone spline the GPU also bakes)
     // as a smooth polyline through its sampled output.
     let samples = (canvas.w * 0.5).clamp(48.0, 256.0) as usize;
@@ -250,15 +261,10 @@ fn paint_curve_editor(
         let yv = ph2d_tool_painter::curve_value_at(&pts.points, t);
         poly.push((canvas.x + t * canvas.w, canvas.y + (1.0 - yv) * canvas.h));
     }
-    stroke_polyline(
-        ctx.scene,
-        &poly,
-        CURVE_STROKE_W,
-        resolve(ColorToken::Accent, theme),
-    );
+    stroke_polyline(ctx.scene, &poly, CURVE_STROKE_W, curve_color);
 
     let parent = painter_curve_editor_id(layer_id);
-    let ring = resolve(ColorToken::Accent, theme);
+    let ring = curve_color;
     let fill = resolve(ColorToken::Text1, theme);
     for (index, pt) in pts.points.iter().enumerate().take(MAX_CURVE_POINTS) {
         let id = painter_curve_point_id(layer_id, channel, index as u8);

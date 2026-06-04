@@ -16,6 +16,7 @@
 //! from that reference is a correctness bug; keep them in lock-step.
 
 use ph2d_painter_brush::BlendMode;
+use ph2d_painter_brush::adjustments::{AdjustmentParams, curves_display_luts, levels_display_lut};
 use ph2d_render::layer_compositor::LayerOp;
 use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
 
@@ -24,13 +25,19 @@ use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
 /// adjustment kind) — the caller then uses the CPU compositor.
 // Consumed by the GPU preview path in `painter_bridge` (Phase 3 step 2): the
 // GPU-vs-CPU decision (a representable stack → GPU compositor, else CPU).
-pub(super) fn flatten_for_gpu(stack: &LayerStack) -> Option<Vec<LayerOp>> {
+pub(super) fn flatten_for_gpu(stack: &LayerStack) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     let mut ops = Vec::new();
-    flatten_ids(stack, stack.root(), &mut ops)?;
-    Some(ops)
+    let mut adj_luts = Vec::new();
+    flatten_ids(stack, stack.root(), &mut ops, &mut adj_luts)?;
+    Some((ops, adj_luts))
 }
 
-fn flatten_ids(stack: &LayerStack, ids: &[LayerId], ops: &mut Vec<LayerOp>) -> Option<()> {
+fn flatten_ids(
+    stack: &LayerStack,
+    ids: &[LayerId],
+    ops: &mut Vec<LayerOp>,
+    adj_luts: &mut Vec<f32>,
+) -> Option<()> {
     // Bottom-to-top, mirror of `composite_into`'s `ids.iter().rev()`.
     for &id in ids.iter().rev() {
         let Some(layer) = stack.get(id) else { continue };
@@ -55,7 +62,7 @@ fn flatten_ids(stack: &LayerStack, ids: &[LayerId], ops: &mut Vec<LayerOp>) -> O
             }),
             LayerKind::Group(g) => {
                 ops.push(LayerOp::PushGroup);
-                flatten_ids(stack, &g.children, ops)?;
+                flatten_ids(stack, &g.children, ops, adj_luts)?;
                 ops.push(LayerOp::PopGroup {
                     blend_mode,
                     opacity,
@@ -70,9 +77,34 @@ fn flatten_ids(stack: &LayerStack, ids: &[LayerId], ops: &mut Vec<LayerOp>) -> O
                     return None;
                 }
                 let kind = adj.kind.gpu_code()?;
+                // Curves(7)/Levels(8) are GPU display-space transfer LUTs: build
+                // the table from the SAME exporter the CPU compositor reads, append
+                // it to `adj_luts`, and pass its base float offset in `params[0]`
+                // (the WGSL `apply_adjustment` reads `adj_luts[base + c*256 + idx]`).
+                let params = match kind {
+                    7 => {
+                        let AdjustmentParams::Curves(cp) = &adj.params else {
+                            return None;
+                        };
+                        let base = adj_luts.len();
+                        for channel in curves_display_luts(cp) {
+                            adj_luts.extend_from_slice(&channel);
+                        }
+                        [base as f32, 0.0, 0.0]
+                    }
+                    8 => {
+                        let AdjustmentParams::Levels(lp) = &adj.params else {
+                            return None;
+                        };
+                        let base = adj_luts.len();
+                        adj_luts.extend_from_slice(&levels_display_lut(lp));
+                        [base as f32, 0.0, 0.0]
+                    }
+                    _ => adj.params.gpu_params(),
+                };
                 ops.push(LayerOp::Adjustment {
                     kind,
-                    params: adj.params.gpu_params(),
+                    params,
                     blend_mode: BlendMode::to_u8(adj.blend_mode),
                     opacity: adj.opacity.clamp(0.0, 1.0),
                 });
@@ -96,11 +128,41 @@ mod tests {
         let _adj = s
             .add_adjustment(AdjustmentKind::HueSaturationBrightness)
             .unwrap();
-        let ops = flatten_for_gpu(&s).expect("base + HSB adjustment is GPU-representable");
+        let (ops, _luts) = flatten_for_gpu(&s).expect("base + HSB adjustment is GPU-representable");
         // Reversed walk (root is top-first [adj, base]) → base first, then adj.
         assert!(matches!(ops[0], LayerOp::Layer { key, .. } if key == base.0));
         assert!(matches!(ops[1], LayerOp::Adjustment { .. }));
         assert_eq!(ops.len(), 2);
+    }
+
+    #[test]
+    fn curves_and_levels_emit_display_luts_with_base_offset() {
+        // Curves(7) emits a 3×256 table block, Levels(8) a 1×256 block; each op's
+        // params[0] is its base float offset into the concatenated `adj_luts`.
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let _curves = s.add_adjustment(AdjustmentKind::Curves).unwrap();
+        let _levels = s.add_adjustment(AdjustmentKind::Levels).unwrap();
+        let (ops, luts) =
+            flatten_for_gpu(&s).expect("base + Curves + Levels is GPU-representable (W4 §2)");
+        assert_eq!(luts.len(), 3 * 256 + 256, "Curves 3×256 + Levels 1×256");
+        let mut bases: Vec<(u8, f32)> = ops
+            .iter()
+            .filter_map(|o| match o {
+                LayerOp::Adjustment { kind, params, .. } if *kind == 7 || *kind == 8 => {
+                    Some((*kind, params[0]))
+                }
+                _ => None,
+            })
+            .collect();
+        bases.sort_by_key(|&(_, base)| base as u32);
+        // Two LUT ops at distinct, in-range base offsets (0 and one of 256/768).
+        assert_eq!(bases.len(), 2, "one Curves + one Levels LUT op");
+        assert_eq!(bases[0].1, 0.0, "first LUT op starts at base 0");
+        assert!(
+            (bases[1].1 as usize) < luts.len(),
+            "second LUT op's base is in range"
+        );
     }
 
     #[test]
@@ -110,7 +172,7 @@ mod tests {
         let child = s.add_raster("child", 4, 4).unwrap();
         let g = s.add_group("group").unwrap();
         s.move_into_group(child, g);
-        let ops = flatten_for_gpu(&s).expect("plain group is GPU-representable");
+        let (ops, _luts) = flatten_for_gpu(&s).expect("plain group is GPU-representable");
         // Somewhere: PushGroup, Layer(child), PopGroup.
         let push = ops.iter().position(|o| matches!(o, LayerOp::PushGroup));
         let pop = ops

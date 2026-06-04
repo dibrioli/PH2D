@@ -50,8 +50,9 @@ fn psd_mapping_is_canonical() {
 
 #[test]
 fn gpu_code_and_params_contract() {
-    // The 7 GPU-implemented kinds map to codes 0..=6; the rest are None
-    // (CPU-only). Codes must match the WGSL `ADJ_*` consts.
+    // The 9 GPU-implemented kinds map to codes 0..=8 (0..=6 scalar, 7/8 the W4
+    // display-space transfer LUTs); the rest are None (CPU-only). Codes must
+    // match the WGSL `ADJ_*` consts.
     assert_eq!(AdjustmentKind::HueSaturationBrightness.gpu_code(), Some(0));
     assert_eq!(AdjustmentKind::BrightnessContrast.gpu_code(), Some(1));
     assert_eq!(AdjustmentKind::Invert.gpu_code(), Some(2));
@@ -59,7 +60,8 @@ fn gpu_code_and_params_contract() {
     assert_eq!(AdjustmentKind::Threshold.gpu_code(), Some(4));
     assert_eq!(AdjustmentKind::Exposure.gpu_code(), Some(5));
     assert_eq!(AdjustmentKind::Vibrance.gpu_code(), Some(6));
-    assert_eq!(AdjustmentKind::Curves.gpu_code(), None);
+    assert_eq!(AdjustmentKind::Curves.gpu_code(), Some(7));
+    assert_eq!(AdjustmentKind::Levels.gpu_code(), Some(8));
     assert_eq!(AdjustmentKind::GaussianBlur.gpu_code(), None);
     // params order matches the WGSL apply_adjustment reading.
     let hsb = AdjustmentParams::HueSaturationBrightness(HsbParams {

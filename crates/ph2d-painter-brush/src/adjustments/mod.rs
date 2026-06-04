@@ -439,7 +439,11 @@ impl AdjustmentKind {
             Self::Threshold => 4,
             Self::Exposure => 5,
             Self::Vibrance => 6,
-            // Not yet ported to the GPU shader (bespoke-UI / spatial kinds).
+            // W4 bespoke — display-space 1-D transfer LUTs uploaded to the
+            // compositor's binding-6 `adj_luts` (Curves = 3×256, Levels = 1×256).
+            Self::Curves => 7,
+            Self::Levels => 8,
+            // Not yet ported to the GPU shader (spatial / multi-pass kinds).
             _ => return None,
         })
     }

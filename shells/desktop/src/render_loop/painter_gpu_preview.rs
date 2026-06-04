@@ -88,7 +88,8 @@ pub(super) fn try_drive(
     let Some(sel) = selection else {
         return false;
     };
-    let Some(ops) = super::painter_gpu_flatten::flatten_for_gpu(painter.layers()) else {
+    let Some((ops, adj_luts)) = super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
+    else {
         return false;
     };
     if painter.take_preview_dirty() {
@@ -99,6 +100,7 @@ pub(super) fn try_drive(
             painter,
             sel,
             ops,
+            adj_luts,
             w,
             h,
             painter_preview_gpu,
@@ -121,6 +123,7 @@ pub(super) fn drive(
     tool: &PainterTool,
     entity_bits: u64,
     ops: Vec<LayerOp>,
+    adj_luts: Vec<f32>,
     width: u32,
     height: u32,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
@@ -133,9 +136,10 @@ pub(super) fn drive(
 
     // 1) GPU composite over the flattened op-list (slices cached by version).
     let provider = PainterLayerProvider { tool };
-    if let Err(e) = session.compositor.composite(
+    if let Err(e) = session.compositor.composite_with_luts(
         &session.gpu,
         &ops,
+        &adj_luts,
         &provider,
         width,
         height,

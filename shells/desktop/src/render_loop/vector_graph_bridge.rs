@@ -101,6 +101,20 @@ pub(super) fn dispatch(
         return;
     }
     let p = ph2d_panel_vector_graph::current_graph_params();
+
+    // W4 transform-node smoke: `PH2D_VECTOR_NODE=<slug>` (e.g. `roughen`, `mirror`,
+    // `corner-round`) cooks source(sliders) → `vector.<slug>` → render, so each of
+    // the 11 unary geometry nodes is visible on screen (no node-graph editor yet).
+    // They have no boolean draft and cook cheaply (~0.05 ms), so render the exact
+    // output every frame, auto-framed. When the flag is set this owns the frame.
+    if let Some(slug) = node_slug() {
+        if let Some(mut net) = cook_transform_smoke(&p, slug) {
+            let to_screen = framing_affine(&net, &net, camera, window_size);
+            render_filled(&mut net, to_screen, vector_scene.inner_mut());
+        }
+        return;
+    }
+
     let op = bool_op_from_env();
     let op_key = op.round() as i64;
 
@@ -128,18 +142,21 @@ pub(super) fn dispatch(
     let Some(mut net) = cook_boolean_smoke(&p, op) else {
         return;
     };
+    render_filled(&mut net, to_screen, vector_scene.inner_mut());
+}
 
-    // The boolean emits geometry whose regions carry fill refs that resolve in
-    // an asset's StyleTable — there's no asset here, so give every region one
-    // visible default fill (the smoke renders the silhouette; styling is a
-    // follow-up). Open results have no region → nothing fills.
+/// Give every region a visible default fill and draw the network under
+/// `to_screen`. The cooked geometry carries fill refs that resolve in an asset's
+/// StyleTable — there's no asset in the smoke, so a default fill makes the
+/// silhouette visible (styling is a follow-up). Open results (no region) draw
+/// nothing. Shared by the boolean + transform smoke paths.
+fn render_filled(net: &mut VectorNetwork, to_screen: Affine, scene: &mut Scene) {
     let mut styles = StyleTable::default();
     let fref = styles.insert_fill(FillSolid::default());
     for region in &mut net.regions {
         region.fill = Some(fref);
     }
-
-    draw_vector_network(vector_scene.inner_mut(), &net, &styles, to_screen);
+    draw_vector_network(scene, net, &styles, to_screen);
 }
 
 /// Has the `(params, op)` key changed since the previous frame? Records `key`
@@ -278,6 +295,29 @@ fn cook_source(p: &VectorGraphParams, rot: f32) -> Option<VectorNetwork> {
     Some(out.first()?.as_any()?.downcast_ref::<VectorNetwork>()?.clone())
 }
 
+/// Cook `source(sliders) → vector.<slug>` (a W4 unary geometry node) with the
+/// node's default params, returning its output network. Uses the all-nodes
+/// registry so any node type-id resolves without a per-node dep; an unknown slug
+/// fails the cook → `None` (caller draws nothing). The transform uses MANIFEST
+/// defaults — moving the source sliders drives the input shape so the effect is
+/// visible live.
+fn cook_transform_smoke(p: &VectorGraphParams, slug: &str) -> Option<VectorNetwork> {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).ok()?;
+    let mut g = Graph::new();
+    let source = add_source(&mut g, p, 0.0);
+    let node = g.add_node(&format!("vector.{slug}"));
+    g.connect(Edge {
+        from: (source, 0),
+        to: (node, 0),
+        delayed: false,
+    })
+    .ok()?;
+    let mut cook = Cook::new();
+    let out = cook.cook(&g, &reg, node, 0.0).ok()?;
+    Some(out.first()?.as_any()?.downcast_ref::<VectorNetwork>()?.clone())
+}
+
 /// Cook `source(a) + source(b = a rotated 45°) + boolean(op)` and return the
 /// result network, or `None` if registration / connection / cook / downcast
 /// fails. Pure (no rendering) so the multi-node fan-in wiring is unit-testable —
@@ -338,6 +378,15 @@ fn bool_op_from_env() -> f32 {
         .ok()
         .and_then(|v| v.parse::<f32>().ok())
         .unwrap_or(0.0)
+}
+
+/// W4 transform-smoke slug from `PH2D_VECTOR_NODE` (e.g. `roughen`, `mirror`,
+/// `corner-round`, `bend-path`, `outline-stroke`, `width-profile`, `twist`,
+/// `scatter`, `hatch`, `warp`, `recolor`). Read once. `None` → boolean smoke.
+fn node_slug() -> Option<&'static str> {
+    static SLUG: OnceLock<Option<String>> = OnceLock::new();
+    SLUG.get_or_init(|| std::env::var("PH2D_VECTOR_NODE").ok().filter(|s| !s.is_empty()))
+        .as_deref()
 }
 
 #[cfg(test)]

@@ -4680,6 +4680,7 @@ dependencies = [
  "ph2d-node-motion-grid",
  "ph2d-node-motion-transform",
  "ph2d-node-registry",
+ "ph2d-node-registry-init",
  "ph2d-node-vector-boolean",
  "ph2d-node-vector-source",
  "ph2d-nodegraph",

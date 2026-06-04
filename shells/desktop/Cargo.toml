@@ -44,6 +44,10 @@ ph2d-node-vector-source = { path = "../../crates/ph2d-node-vector-source" }
 # W3 T3.3 boolean smoke: the `vector_graph_bridge` cooks source(a)+source(b)+
 # boolean(op) when `PH2D_VECTOR_GRAPH=1`, proving source→boolean→render live.
 ph2d-node-vector-boolean = { path = "../../crates/ph2d-node-vector-boolean" }
+# W4 transform-node smoke: the bridge cooks source→vector.<slug>→render under
+# PH2D_VECTOR_NODE=<slug>; register_all_nodes gives every node by type-id without
+# a per-node dep (the 11 W4 geometry nodes + future ones).
+ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
 # Tool registry — convention-by-discovery infrastructure (PR 8 of
 # the migration plan: `docs/Migracao/2026-05-convention-by-discovery.md`).
 # `init.rs` calls `register_all()` at boot and stashes the built

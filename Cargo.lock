@@ -4990,6 +4990,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-node-sync",
  "ph2d-node-vector-boolean",
+ "ph2d-node-vector-offset",
  "ph2d-node-vector-source",
 ]
 
@@ -5002,12 +5003,23 @@ name = "ph2d-node-vector-boolean"
 version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
- "kurbo 0.13.0",
- "linesweeper",
  "ph2d-node-registry",
  "ph2d-nodegraph",
  "ph2d-vector-doc",
  "ph2d-vector-graph",
+ "ph2d-vector-kurbo",
+]
+
+[[package]]
+name = "ph2d-node-vector-offset"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
+ "ph2d-vector-kurbo",
 ]
 
 [[package]]
@@ -5638,6 +5650,16 @@ version = "0.0.0"
 dependencies = [
  "glam 0.30.10",
  "ph2d-nodegraph",
+ "ph2d-vector-doc",
+]
+
+[[package]]
+name = "ph2d-vector-kurbo"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "kurbo 0.13.0",
+ "linesweeper",
  "ph2d-vector-doc",
 ]
 

@@ -21,6 +21,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_grid::register(reg)?;
     ph2d_node_motion_transform::register(reg)?;
     ph2d_node_vector_boolean::register(reg)?;
+    ph2d_node_vector_offset::register(reg)?;
     ph2d_node_vector_source::register(reg)?;
     // <ph2d-node-sync:end>
     Ok(())

@@ -1508,3 +1508,270 @@ fn selective_color_slider_and_segment_round_trip() {
     );
     assert_eq!(SELCOLOR_BUCKETS.len(), 9, "9 color groups");
 }
+
+// ── W4 spatial mesh — kernel contract + window/coordinate kernels ──────────────
+
+#[test]
+fn gpu_spatial_code_maps_only_the_four_spatial_kinds() {
+    use AdjustmentKind::*;
+    // SPATIAL_* codes, in lock-step with `ph2d_render::layer_compositor`.
+    assert_eq!(GaussianBlur.gpu_spatial_code(), Some(0));
+    assert_eq!(Sharpen.gpu_spatial_code(), Some(1));
+    assert_eq!(MotionBlur.gpu_spatial_code(), Some(2));
+    assert_eq!(ChromaticAberration.gpu_spatial_code(), Some(3));
+    // Everything else is per-pixel or not-yet-ported — no spatial code, and the
+    // two paths are mutually exclusive (a kind is never both per-pixel & spatial).
+    for &k in ALL_KINDS {
+        let spatial = k.gpu_spatial_code();
+        let perpixel = k.gpu_code();
+        assert!(
+            !(spatial.is_some() && perpixel.is_some()),
+            "{k:?} must not have BOTH a per-pixel and a spatial GPU code"
+        );
+        if !matches!(k, GaussianBlur | Sharpen | MotionBlur | ChromaticAberration) {
+            assert_eq!(spatial, None, "{k:?} is not a ported spatial kind");
+        }
+    }
+}
+
+#[test]
+fn spatial_params_pack_mirrors_the_kernel_contract() {
+    let g = AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 4.0 });
+    assert_eq!(g.spatial_params(), Some([4.0, 0.0, 0.0, 0.0]));
+    let s = AdjustmentParams::Sharpen(SharpenParams {
+        amount: 0.7,
+        radius: 2.0,
+        mask_edges: false,
+    });
+    assert_eq!(s.spatial_params(), Some([0.7, 2.0, 0.0, 0.0]));
+    let m = AdjustmentParams::MotionBlur(MotionBlurParams {
+        distance: 12.0,
+        angle: 1.5,
+    });
+    assert_eq!(m.spatial_params(), Some([12.0, 1.5, 0.0, 0.0]));
+    let c = AdjustmentParams::ChromaticAberration(ChromaticAberrationParams {
+        red_shift: 3.0,
+        green_shift: 0.0,
+        blue_shift: -3.0,
+        falloff_center: 0.5,
+    });
+    assert_eq!(c.spatial_params(), Some([3.0, 0.0, -3.0, 0.5]));
+    // Per-pixel kind → no spatial pack.
+    assert_eq!(
+        AdjustmentParams::Invert(InvertParams {}).spatial_params(),
+        None
+    );
+}
+
+#[test]
+fn gaussian_weights_sum_to_one() {
+    for r in [0.5_f32, 1.0, 3.0, 8.0, 50.0] {
+        let (w, half) = gaussian_weights(r);
+        assert_eq!(w.len(), half as usize + 1);
+        // Full kernel = centre + 2·flanks.
+        let sum = w[0] + 2.0 * w[1..].iter().sum::<f32>();
+        assert!((sum - 1.0).abs() < 1e-5, "radius {r}: kernel sum {sum} != 1");
+        assert!(w[0] >= w[w.len() - 1], "centre tap is the heaviest");
+    }
+}
+
+fn flat_window(n: u32, px: [f32; 4]) -> Vec<[f32; 4]> {
+    vec![px; (n * n) as usize]
+}
+
+#[test]
+fn gaussian_blur_of_a_flat_field_is_identity() {
+    // Weights sum to 1 + clamp-to-edge ⇒ a constant image is unchanged (incl. the
+    // border pixels, which would otherwise leak from outside).
+    let n = 8;
+    let mut acc = flat_window(n, [0.5, 0.25, 0.75, 1.0]);
+    apply_gaussian(
+        &GaussianBlurParams { radius: 3.0 },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    for p in &acc {
+        assert!((p[0] - 0.5).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5 && (p[2] - 0.75).abs() < 1e-5);
+        assert_eq!(p[3], 1.0, "alpha preserved");
+    }
+}
+
+#[test]
+fn gaussian_blur_spreads_an_impulse() {
+    let n = 9;
+    let mut acc = flat_window(n, [0.0, 0.0, 0.0, 1.0]);
+    let centre = (4 * n + 4) as usize;
+    acc[centre] = [1.0, 1.0, 1.0, 1.0];
+    apply_gaussian(
+        &GaussianBlurParams { radius: 2.0 },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    assert!(acc[centre][0] < 1.0, "centre energy spread out");
+    let neighbour = (4 * n + 5) as usize;
+    assert!(acc[neighbour][0] > 0.0, "energy reached the neighbour");
+    // Energy is conserved (separable, normalised, no clamping of a positive field).
+    let total: f32 = acc.iter().map(|p| p[0]).sum();
+    assert!((total - 1.0).abs() < 1e-3, "blur conserves energy: {total}");
+}
+
+#[test]
+fn motion_and_chroma_neutral_params_are_identity() {
+    let n = 6;
+    let orig = flat_window(n, [0.3, 0.6, 0.9, 1.0]);
+    let mut a = orig.clone();
+    apply_motion_blur(
+        &MotionBlurParams {
+            distance: 0.0,
+            angle: 0.0,
+        },
+        &mut a,
+        AdjustWindow::full(n, n),
+    );
+    assert_eq!(a, orig, "zero-distance motion is a no-op");
+    let mut b = orig.clone();
+    apply_chromatic_aberration(
+        &ChromaticAberrationParams {
+            red_shift: 0.0,
+            green_shift: 0.0,
+            blue_shift: 0.0,
+            falloff_center: 0.0,
+        },
+        &mut b,
+        AdjustWindow::full(n, n),
+    );
+    assert_eq!(b, orig, "zero-shift chroma is a no-op");
+}
+
+#[test]
+fn noise_is_deterministic_per_absolute_coordinate() {
+    // Same content + same params ⇒ identical (deterministic). AND a sub-window
+    // hashes the ABSOLUTE coordinate, so its pixels match the full window's
+    // corresponding pixels — the dirty-rect invariant for a coordinate kind.
+    let p = NoiseParams {
+        amount: 0.5,
+        kind: NoiseKind::Uniform,
+        monochromatic: false,
+    };
+    let mut full = flat_window(4, [0.5, 0.5, 0.5, 1.0]);
+    apply_noise(&p, &mut full, AdjustWindow::full(4, 4));
+    let mut full2 = flat_window(4, [0.5, 0.5, 0.5, 1.0]);
+    apply_noise(&p, &mut full2, AdjustWindow::full(4, 4));
+    assert_eq!(full, full2, "noise is deterministic");
+
+    // 2×2 sub-window anchored at (1,1) — pixel (lx,ly) = absolute (1+lx,1+ly).
+    let mut sub = flat_window(2, [0.5, 0.5, 0.5, 1.0]);
+    apply_noise(
+        &p,
+        &mut sub,
+        AdjustWindow {
+            width: 2,
+            height: 2,
+            origin_x: 1,
+            origin_y: 1,
+        },
+    );
+    for ly in 0..2u32 {
+        for lx in 0..2u32 {
+            let s = sub[(ly * 2 + lx) as usize];
+            let f = full[((1 + ly) * 4 + (1 + lx)) as usize];
+            assert!(
+                (s[0] - f[0]).abs() < 1e-6,
+                "sub-window noise matches full at absolute ({},{})",
+                1 + lx,
+                1 + ly
+            );
+        }
+    }
+}
+
+#[test]
+fn noise_amount_zero_is_identity_and_monochromatic_is_gray_delta() {
+    let n = 4;
+    let base = [0.4, 0.4, 0.4, 1.0];
+    let mut acc = flat_window(n, base);
+    apply_noise(
+        &NoiseParams {
+            amount: 0.0,
+            kind: NoiseKind::Gaussian,
+            monochromatic: false,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    assert!(acc.iter().all(|p| *p == base), "amount 0 is a no-op");
+
+    // Monochromatic ⇒ the same delta on R/G/B (started from a gray pixel).
+    let mut mono = flat_window(n, base);
+    apply_noise(
+        &NoiseParams {
+            amount: 0.8,
+            kind: NoiseKind::Uniform,
+            monochromatic: true,
+        },
+        &mut mono,
+        AdjustWindow::full(n, n),
+    );
+    for p in &mono {
+        assert!(
+            (p[0] - p[1]).abs() < 1e-6 && (p[1] - p[2]).abs() < 1e-6,
+            "monochromatic noise keeps R==G==B: {p:?}"
+        );
+    }
+}
+
+#[test]
+fn halftone_outputs_only_black_or_white_ink() {
+    let n = 16;
+    let mut acc = flat_window(n, [0.5, 0.5, 0.5, 0.6]);
+    apply_halftone(
+        &HalftoneParams {
+            dot_size: 4.0,
+            angle: 0.3,
+            shape: HalftoneShape::Dot,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    let mut saw_ink = false;
+    let mut saw_paper = false;
+    for p in &acc {
+        assert!(
+            (p[0] - p[1]).abs() < 1e-6 && (p[1] - p[2]).abs() < 1e-6,
+            "halftone is achromatic"
+        );
+        assert!(p[0] < 1e-3 || p[0] > 1.0 - 1e-3, "pixel is ink or paper: {p:?}");
+        assert_eq!(p[3], 0.6, "alpha preserved");
+        saw_ink |= p[0] < 1e-3;
+        saw_paper |= p[0] > 1.0 - 1e-3;
+    }
+    // A 50%-gray field screens to a mix of ink and paper.
+    assert!(saw_ink && saw_paper, "midtone gray yields a dot pattern");
+}
+
+#[test]
+fn halftone_extremes_are_solid() {
+    let n = 8;
+    let params = HalftoneParams {
+        dot_size: 4.0,
+        angle: 0.0,
+        shape: HalftoneShape::Dot,
+    };
+    // Pure white ⇒ all paper (no ink).
+    let mut white = flat_window(n, [1.0, 1.0, 1.0, 1.0]);
+    apply_halftone(&params, &mut white, AdjustWindow::full(n, n));
+    assert!(white.iter().all(|p| p[0] > 1.0 - 1e-3), "white → all paper");
+}
+
+#[test]
+fn windowed_dispatch_delegates_per_pixel_kinds() {
+    // A per-pixel kind through `apply_adjustment_windowed` == the flat path.
+    let px = [0.8, 0.2, 0.5, 0.9];
+    let kind = AdjustmentKind::Invert;
+    let params = AdjustmentParams::Invert(InvertParams {});
+    let mut a = [px];
+    apply_adjustment_windowed(&kind, &params, &mut a, AdjustWindow::full(1, 1));
+    let mut b = [px];
+    apply_adjustment(&kind, &params, &mut b);
+    assert_eq!(a, b, "windowed dispatch matches the flat path for per-pixel kinds");
+}

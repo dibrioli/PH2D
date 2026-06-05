@@ -498,7 +498,35 @@ impl AdjustmentKind {
             // compositor's binding-6 `adj_luts` (Curves = 3×256, Levels = 1×256).
             Self::Curves => 7,
             Self::Levels => 8,
-            // Not yet ported to the GPU shader (spatial / multi-pass kinds).
+            // Not yet ported to the per-pixel GPU shader. Spatial kinds run on
+            // the multi-pass pass-graph instead — see `gpu_spatial_code`.
+            _ => return None,
+        })
+    }
+
+    /// GPU **spatial** kernel code for the multi-pass pass-graph
+    /// (`ph2d-render::LayerCompositor` `SpatialAdjustment` path), or `None` for a
+    /// kind that is not a (ported) spatial/neighbourhood op. These are the kinds
+    /// `gpu_code` returns `None` for AND the compositor can run as a separable /
+    /// gather pass: the painter flatten emits `LayerOp::SpatialAdjustment { kernel:
+    /// gpu_spatial_code(), .. }` for them (vs. the scalar `LayerOp::Adjustment` for
+    /// `gpu_code` kinds, vs. the CPU fallback for kinds with neither).
+    ///
+    /// The codes MIRROR `ph2d_render::layer_compositor::SPATIAL_*` (kept in
+    /// lock-step the same way `gpu_code` mirrors the WGSL `ADJ_*` consts — no
+    /// `ph2d-render` dependency here, that would be a cycle). Reconciled with the
+    /// pass-graph by the spatial parity gates (`gpu_<kind>_matches_cpu_reference`).
+    ///
+    /// `Bloom` / `ShadowsHighlights` are spatial too but need extra pass-graph
+    /// infra (mip pyramid / tonal combine) that has not landed — they stay `None`
+    /// (CPU fallback) until their kernel ships.
+    #[must_use]
+    pub fn gpu_spatial_code(self) -> Option<u8> {
+        Some(match self {
+            Self::GaussianBlur => 0,        // SPATIAL_GAUSSIAN
+            Self::Sharpen => 1,             // SPATIAL_SHARPEN
+            Self::MotionBlur => 2,          // SPATIAL_MOTION
+            Self::ChromaticAberration => 3, // SPATIAL_CHROMA
             _ => return None,
         })
     }
@@ -610,6 +638,30 @@ impl AdjustmentParams {
             ],
             _ => [0.0, 0.0, 0.0],
         }
+    }
+
+    /// The 4 scalars the spatial pass-graph reads (`LayerOp::SpatialAdjustment`
+    /// `params: [f32; 4]`), or `None` for a non-spatial kind. Packing mirrors
+    /// `ph2d_render::layer_compositor::SPATIAL_*` (validated by the spatial parity
+    /// gates), in lock-step with [`AdjustmentKind::gpu_spatial_code`]:
+    /// - `GaussianBlur` → `[radius, 0, 0, 0]`
+    /// - `Sharpen` → `[amount, radius, 0, 0]` (unsharp: `base + amount·(base−blur)`)
+    /// - `MotionBlur` → `[distance, angle_rad, 0, 0]`
+    /// - `ChromaticAberration` → `[red_shift, green_shift, blue_shift, falloff_center]`
+    ///
+    /// The painter flatten passes this verbatim into the op so the GPU and the CPU
+    /// reference (`apply_*` in `compute.rs`) read identical numbers.
+    #[must_use]
+    pub fn spatial_params(&self) -> Option<[f32; 4]> {
+        Some(match self {
+            Self::GaussianBlur(p) => [p.radius, 0.0, 0.0, 0.0],
+            Self::Sharpen(p) => [p.amount, p.radius, 0.0, 0.0],
+            Self::MotionBlur(p) => [p.distance, p.angle, 0.0, 0.0],
+            Self::ChromaticAberration(p) => {
+                [p.red_shift, p.green_shift, p.blue_shift, p.falloff_center]
+            }
+            _ => return None,
+        })
     }
 
     /// Neutral (no-op) params for `kind` — the seed when a new adjustment layer
@@ -748,6 +800,7 @@ impl AdjustmentKind {
 
 // ── Submodules (god-module split, 2026-06-04; pure move) ──
 mod compute;
+mod spatial;
 #[cfg(test)]
 mod tests;
 pub use compute::{
@@ -758,4 +811,11 @@ pub use compute::{
     remove_gradient_stop, selective_color_slider_params, set_adjustment_segment_param,
     set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
     set_gradient_stop_color_param, set_selective_color_param,
+};
+// Window-/coordinate-aware kernels (spatial blurs + Noise/Halftone) and the
+// canonical spatial math the GPU pass-graph reconciles against (W4 spatial mesh).
+pub use spatial::{
+    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_chromatic_aberration,
+    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_sharpen, gaussian_weights,
+    motion_weights,
 };

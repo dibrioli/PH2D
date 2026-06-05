@@ -1,10 +1,12 @@
 //! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU
 //! `ph2d_render::LayerCompositor` (Painter GPU preview, ADR-0045 Phase 3).
 //!
-//! This is the **GPU-vs-CPU gate** (handoff §3): the GPU op-list v1
-//! (`Layer`/`PushGroup`/`PopGroup`/`Adjustment`) cannot represent per-layer
-//! masks, clipping, reference layers, or masked adjustments — and a non-ported
-//! adjustment kind has no `gpu_code()`. When the stack uses ANY of those,
+//! This is the **GPU-vs-CPU gate** (handoff §3): the GPU op-list
+//! (`Layer`/`PushGroup`/`PopGroup`/`Adjustment`/`SpatialAdjustment`) cannot
+//! represent per-layer masks, clipping, reference layers, or masked adjustments —
+//! and a kind with neither a per-pixel `gpu_code()` nor a spatial
+//! `gpu_spatial_code()` (e.g. Bloom / Noise / Halftone / ColorLookup /
+//! ShadowsHighlights) has no GPU op. When the stack uses ANY of those,
 //! [`flatten_for_gpu`] returns `None` and the bridge falls back to the CPU
 //! `take_preview_arc` path (correct, just slower — and it has the cut-point
 //! cache). When it returns `Some`, the GPU composites the whole stack
@@ -75,6 +77,20 @@ fn flatten_ids(
                 // Masked adjustment + non-ported kind → CPU.
                 if adj.mask.is_some() {
                     return None;
+                }
+                // Spatial (neighbourhood) kinds run on the pass-graph as a
+                // `SpatialAdjustment` (Gaussian/Sharpen/Motion/Chroma). `kernel`
+                // is the `SPATIAL_*` code; `params` the kernel's 4 scalars — both
+                // kept in lock-step with `ph2d-render` by the spatial parity gates.
+                if let Some(kernel) = adj.kind.gpu_spatial_code() {
+                    let params = adj.params.spatial_params().unwrap_or([0.0; 4]);
+                    ops.push(LayerOp::SpatialAdjustment {
+                        kernel,
+                        params,
+                        blend_mode: BlendMode::to_u8(adj.blend_mode),
+                        opacity: adj.opacity.clamp(0.0, 1.0),
+                    });
+                    continue;
                 }
                 let kind = adj.kind.gpu_code()?;
                 // Curves(7)/Levels(8) are GPU display-space transfer LUTs: build
@@ -188,11 +204,30 @@ mod tests {
     fn non_ported_adjustment_falls_back_to_cpu() {
         let mut s = LayerStack::new();
         let _base = s.add_raster("base", 4, 4).unwrap();
-        // GaussianBlur is a spatial op with no `gpu_code()` → not representable.
-        let _adj = s.add_adjustment(AdjustmentKind::GaussianBlur).unwrap();
+        // Bloom has neither a per-pixel `gpu_code()` nor a `gpu_spatial_code()`
+        // (it needs mip-pyramid infra that has not landed) → not representable.
+        let _adj = s.add_adjustment(AdjustmentKind::Bloom).unwrap();
         assert!(
             flatten_for_gpu(&s).is_none(),
             "a non-ported adjustment kind must force the CPU fallback"
+        );
+    }
+
+    #[test]
+    fn spatial_adjustment_emits_pass_graph_op() {
+        // GaussianBlur is a spatial kind → emits `SpatialAdjustment` (the GPU
+        // pass-graph), NOT a CPU fallback. `params[0]` carries the radius.
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let _adj = s.add_adjustment(AdjustmentKind::GaussianBlur).unwrap();
+        let (ops, _luts) =
+            flatten_for_gpu(&s).expect("base + GaussianBlur is GPU-representable (pass-graph)");
+        assert!(
+            ops.iter().any(|o| matches!(
+                o,
+                LayerOp::SpatialAdjustment { kernel, .. } if *kernel == 0 // SPATIAL_GAUSSIAN
+            )),
+            "GaussianBlur must flatten to a SpatialAdjustment(SPATIAL_GAUSSIAN): {ops:?}"
         );
     }
 

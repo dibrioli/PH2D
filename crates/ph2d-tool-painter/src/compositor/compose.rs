@@ -276,10 +276,23 @@ fn composite_into(
                 let adj_opacity = adj.opacity.clamp(0.0, 1.0);
                 let adj_mode = adj.blend_mode;
                 let mut adjusted = acc.to_vec();
-                ph2d_painter_brush::adjustments::apply_adjustment(
+                // Window-aware dispatch: spatial blurs (Gaussian/Sharpen/Motion/
+                // Chroma) need the 2-D layout; Noise/Halftone need the absolute
+                // canvas coordinate (origin + local). Per-pixel kinds delegate to
+                // the flat `apply_adjustment` inside. (Spatial blur on a dirty-rect
+                // sub-window is clamp-to-edge approximate at the seam — the GPU
+                // pass-graph with halo is the exact real-time path; a full-canvas
+                // recompose here, the common param-drag case, is exact.)
+                ph2d_painter_brush::adjustments::apply_adjustment_windowed(
                     &adj.kind,
                     &adj.params,
                     &mut adjusted,
+                    ph2d_painter_brush::adjustments::AdjustWindow {
+                        width: rw,
+                        height: rh,
+                        origin_x: rx,
+                        origin_y: ry,
+                    },
                 );
                 // Optional mask — raw layer-id (amendment-1): white = full
                 // effect. Missing/short buffer = no mask (full effect).

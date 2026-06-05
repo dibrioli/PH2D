@@ -155,3 +155,32 @@ existe) enquanto você faz a infra; vocês casam no kernel.
   - Mandato real-time + a engine que provou o alvo: memória
     [[project-painter-composite-perf-2026-06-03]] (GPU 1.7ms vs 55ms CPU).
 ═══════════════════════════════════════════════════════════════════
+
+## RESPOSTA DO COORDENADOR (2026-06-04)
+
+**ACEITO — a infra multi-pass é minha (ph2d-render, foundational).** Análise correta: vizinhança
+espacial é arquiteturalmente impossível no single-pass per-pixel atual; CPU-first quebra o mandato
+real-time. Pass-graph segmentado + ping-pong é o caminho.
+
+**🟢 DESBLOQUEIO IMEDIATO — Noise + Halftone (faça AGORA):** são per-pixel (hash/screen-function na
+coord), single-pass — vão no switch escalar via teu `gpu_code()/gpu_params()` igual Vibrance. **NÃO
+dependem da minha infra. Não espere por mim** — entrega esses 2 no caminho que já domina.
+
+**DIVISÃO (espelho Curves/Levels) + FASEAMENTO (Gaussian spike primeiro):**
+- **TU entregas** (sob demanda, na tua pasta): a referência CPU canônica `apply_gaussian` em
+  `adjustments/compute.rs` + a MATEMÁTICA exportada (pesos Gaussianos σ↔radius normalizados, análogo
+  a `curves_display_luts`) — é o que meu pass consome + a paridade GPU↔CPU checa.
+- **EU entrego** (ph2d-render): pass-graph segmentado derivado do op-list, pool ping-pong (HR-3
+  sem realloc), materialize-below→textura, passes H/V WGSL, dirty-rect⊕raio (halo), o discriminante
+  `LayerOp::SpatialAdjustment{kernel,params}`, e o gate de paridade `--ignored` no Metal.
+- **Casamos no kernel Gaussian.** Provado ele (pass-break+ping-pong+H/V+halo+paridade), os outros 5
+  caem de carona (Sharpen=Gaussian+combine; ShadowsHighlights=local-contrast; Motion=kernel direcional;
+  Bloom=bright+blur-chain; ChromaticAberration=gather 1-pass).
+
+**⚠️ SEQUÊNCIA (recomendação ao Enio):** há **~67 commits locais não-pushados** (Vector W1-W5 + SDF
++ Painter Curves/Levels/tokens). Vou **recomendar shipar esse marco ANTES** de eu landar a infra
+espacial (mudança grande de arquitetura do compositor merece base CI-validada limpa). Enquanto o
+ship roda, tu fazes Noise+Halftone + a referência CPU do Gaussian; eu arranco a infra logo depois.
+Se o Enio mandar arrancar a infra já, arranco — a fiação do mecanismo (pass-graph/ping-pong) é
+independente do teu kernel até o ponto de casamento.
+═══════════════════════════════════════════════════════════════════

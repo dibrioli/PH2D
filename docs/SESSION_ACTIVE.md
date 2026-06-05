@@ -56,6 +56,14 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   largura constante), modelo WidthProfile (**possível ADR de contrato — NÃO inchar `Vertex`/`Segment`**),
   T5.2 SDF-full (N-ops + ativação asset/tool + gate `vector_sdf_real_time` novo) no `ph2d-vector-sdf`+bridge.
   Ponto de integração: Coord entrega o modelo+render, impl liga a pressão capturada.
+- **W5 foundational — Coord progresso (2026-06-04):** **T5.1 primitiva variable-width
+  ✅** (`79ecd2e`, `draw_variable_width_stroke`+band testável, zero contrato/serde). **T5.2
+  gate `vector_sdf_real_time` ✅** (`7b03e48`): GPU 64-path boolean draft = **5.33ms/frame
+  < 8.33ms (120FPS)**; CPU = 140ms (confirma GPU necessária). **Ambas capacidades CORE
+  landadas.** Falta: integração pencil-bridge (← impl expõe pressão) + ativação SDF asset/
+  tool-mode (← gated na UI de grafo, deferível). WidthProfile-no-StrokeStyle = opcional (serde).
+- ⚠️ **Painter impl tem arquivos STAGED no índice compartilhado** (mid-commit) — commits
+  Coord scoped por pathspec (`-- <paths>`), sem agarrar. Não fazer `git commit` sem pathspec.
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**
   crates NOVOS `crates/ph2d-node-vector-{outline-stroke,roughen,twist,bend-path,
   pattern-along-path,scatter,width-profile,hatch,mirror,corner-round,warp,recolor}/` +

@@ -2088,6 +2088,41 @@ fn black_and_white_tint_toggle_and_hue_slider_route() {
 }
 
 #[test]
+fn gradient_map_endpoint_slider_and_interpolation_route() {
+    // W4 BATCH-2: Gradient Map reuses the generic racks — a SetValue on an
+    // endpoint RGB slider edits the stop color; an AdjSegment click sets the
+    // interpolation. Confirms the generic routes reach the GradientMap params.
+    use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, GradientInterp};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t.add_adjustment_layer(AdjustmentKind::GradientMap).unwrap();
+    let params = |t: &PainterTool| -> AdjustmentParams {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => a.params.clone(),
+            _ => panic!("not an adjustment"),
+        }
+    };
+    // Lo R slider (AdjParam0) → 1.0 sets the first stop's red to 255.
+    let lo_r = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjParam0);
+    t.handle_panel_event(PanelEvent::SetValue(lo_r, 1.0));
+    // Interpolation segment (AdjSegment1) → Smooth.
+    let seg1 = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjSegment1);
+    t.handle_panel_event(PanelEvent::Click(seg1));
+    match params(&t) {
+        AdjustmentParams::GradientMap(p) => {
+            assert_eq!(p.stops[0].color[0], 255, "Lo R slider set the first stop");
+            assert!(
+                matches!(p.interpolation, GradientInterp::Smooth),
+                "segment click selected Smooth"
+            );
+        }
+        _ => panic!("not a gradient map"),
+    }
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

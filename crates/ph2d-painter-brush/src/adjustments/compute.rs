@@ -67,6 +67,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::BlackAndWhite, AdjustmentParams::BlackAndWhite(p)) => {
             apply_black_and_white(p, acc)
         }
+        // W4 BATCH-2 — Gradient Map (luma → gradient color, 256→RGB LUT).
+        (AdjustmentKind::GradientMap, AdjustmentParams::GradientMap(p)) => {
+            apply_gradient_map(p, acc)
+        }
         _ => {}
     }
 }
@@ -790,6 +794,86 @@ pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]
     }
 }
 
+/// A single gradient stop's color (`[u8;4]` sRGB) → linear RGB.
+fn stop_linear(color: [u8; 4]) -> [f32; 3] {
+    [
+        srgb_to_linear_f32(color[0] as f32 / 255.0),
+        srgb_to_linear_f32(color[1] as f32 / 255.0),
+        srgb_to_linear_f32(color[2] as f32 / 255.0),
+    ]
+}
+
+/// Sample a gradient (`stops` ASCENDING by offset) at `offset` (`0..=1`) →
+/// linear RGB. Outside the stop span the endpoints extend flat; `Smooth` applies
+/// a smoothstep to the inter-stop `t`. Empty stops fall back to a black→white
+/// ramp (so the LUT is well-defined even for a degenerate gradient).
+fn gradient_sample(stops: &[ColorStop], interp: GradientInterp, offset: f32) -> [f32; 3] {
+    if stops.is_empty() {
+        let v = srgb_to_linear_f32(offset.clamp(0.0, 1.0));
+        return [v, v, v];
+    }
+    let n = stops.len();
+    if offset <= stops[0].offset {
+        return stop_linear(stops[0].color);
+    }
+    if offset >= stops[n - 1].offset {
+        return stop_linear(stops[n - 1].color);
+    }
+    let mut i = 0;
+    while i + 1 < n && stops[i + 1].offset < offset {
+        i += 1;
+    }
+    let (s0, s1) = (&stops[i], &stops[i + 1]);
+    let span = s1.offset - s0.offset;
+    let mut t = if span > 1e-6 {
+        ((offset - s0.offset) / span).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    if matches!(interp, GradientInterp::Smooth) {
+        t = t * t * (3.0 - 2.0 * t);
+    }
+    let (c0, c1) = (stop_linear(s0.color), stop_linear(s1.color));
+    core::array::from_fn(|ch| c0[ch] + (c1[ch] - c0[ch]) * t)
+}
+
+/// The 256-entry luma→linear-RGB table a [`GradientMapParams`] resolves to — the
+/// real-time strategy (handoff §2.5): build the gradient ONCE, then the per-pixel
+/// inner loop is a luma + table lookup. **The GPU-mandate deliverable's math**:
+/// this is an RGB-OUTPUT LUT (3 channels from ONE luma input), NOT the per-channel
+/// `adj_luts` transfer Curves uses, so the GPU needs a new 256×RGB binding mode
+/// (Coord — see the W4 handoff §GPU-COORD-GM). Stops are sorted here so the table
+/// is correct regardless of authoring order.
+#[must_use]
+pub fn gradient_map_lut(p: &GradientMapParams) -> [[f32; 3]; 256] {
+    let mut stops = p.stops.clone();
+    stops.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+    core::array::from_fn(|i| gradient_sample(&stops, p.interpolation, i as f32 / 255.0))
+}
+
+/// Gradient Map — remaps each pixel's DISPLAY-space luma (Rec.601, like Threshold)
+/// to a color along the gradient ([`gradient_map_lut`], the same table the GPU
+/// binds). Builds the LUT once, then the per-pixel loop is a luma + lerped lookup.
+/// `acc` is straight LINEAR f32 RGBA (alpha preserved). Always applies (a fresh
+/// Gradient Map is a visible remap, like Posterize).
+pub(crate) fn apply_gradient_map(p: &GradientMapParams, acc: &mut [[f32; 4]]) {
+    let lut = gradient_map_lut(p);
+    let encode = build_lut(linear_to_srgb_f32); // luma is computed in display space
+    for px in acc.iter_mut() {
+        let luma = 0.299 * sample_lut(&encode, px[0])
+            + 0.587 * sample_lut(&encode, px[1])
+            + 0.114 * sample_lut(&encode, px[2]);
+        let t = luma.clamp(0.0, 1.0) * 255.0;
+        let i = t as usize;
+        let frac = t - i as f32;
+        let a = lut[i.min(255)];
+        let b = lut[(i + 1).min(255)];
+        for ch in 0..3 {
+            px[ch] = a[ch] + (b[ch] - a[ch]) * frac;
+        }
+    }
+}
+
 /// The slider-editable params of an adjustment, as `(label, value01)` in slot
 /// order — what the layers panel renders as a labeled slider per slot, and the
 /// inverse of [`set_adjustment_slider_param`]. Kinds with bespoke controls
@@ -852,6 +936,26 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
                 v.push(("Tint", p.tint_amount.clamp(0.0, 1.0)));
             }
             v
+        }
+        // Gradient Map (duotone editor): the two endpoint stop colors as RGB
+        // (`0..255 → 0..1`); `interpolation` is a segment (Linear / Smooth). The
+        // compute supports N stops; this editor drives the first + last.
+        AdjustmentParams::GradientMap(p) => {
+            let lo = p.stops.first().map(|s| s.color).unwrap_or([0, 0, 0, 255]);
+            let hi = p
+                .stops
+                .last()
+                .map(|s| s.color)
+                .unwrap_or([255, 255, 255, 255]);
+            let ch = |b: u8| b as f32 / 255.0;
+            vec![
+                ("Lo R", ch(lo[0])),
+                ("Lo G", ch(lo[1])),
+                ("Lo B", ch(lo[2])),
+                ("Hi R", ch(hi[0])),
+                ("Hi G", ch(hi[1])),
+                ("Hi B", ch(hi[2])),
+            ]
         }
         // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
         // black/gamma/white + output black/white. (Curves needs the bespoke
@@ -938,6 +1042,21 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             4 => p.output_white = v,
             _ => {}
         },
+        // Gradient Map: slots 0..2 = the low (first) stop's RGB, 3..5 = the high
+        // (last) stop's RGB. No-op if the gradient is missing its two endpoints.
+        AdjustmentParams::GradientMap(p) if p.stops.len() >= 2 => {
+            let byte = (v * 255.0).round().clamp(0.0, 255.0) as u8;
+            let last = p.stops.len() - 1;
+            match slot {
+                0 => p.stops[0].color[0] = byte,
+                1 => p.stops[0].color[1] = byte,
+                2 => p.stops[0].color[2] = byte,
+                3 => p.stops[last].color[0] = byte,
+                4 => p.stops[last].color[1] = byte,
+                5 => p.stops[last].color[2] = byte,
+                _ => {}
+            }
+        }
         // Curves has no generic sliders — its bespoke editor drives free 2-D point
         // drags through `PainterTool::set_curve_point` (W4 §3), not this slot path.
         _ => {}
@@ -1000,6 +1119,13 @@ pub fn adjustment_segment_params(params: &AdjustmentParams) -> Option<(Vec<&'sta
                 ToneScope::Highlights => 2,
             },
         )),
+        AdjustmentParams::GradientMap(p) => Some((
+            vec!["Linear", "Smooth"],
+            match p.interpolation {
+                GradientInterp::Linear => 0,
+                GradientInterp::Smooth => 1,
+            },
+        )),
         _ => None,
     }
 }
@@ -1008,14 +1134,22 @@ pub fn adjustment_segment_params(params: &AdjustmentParams) -> Option<(Vec<&'sta
 /// [`adjustment_segment_params`]). Out-of-range options clamp to the nearest
 /// valid; non-segmented kinds no-op.
 pub fn set_adjustment_segment_param(params: &mut AdjustmentParams, option: usize) {
-    // A single segmented kind today (Color Balance's tonal range); becomes a
-    // `match` when a second segmented param ships.
-    if let AdjustmentParams::ColorBalance(p) = params {
-        p.scope = match option {
-            0 => ToneScope::Shadows,
-            2 => ToneScope::Highlights,
-            _ => ToneScope::Midtones,
-        };
+    match params {
+        AdjustmentParams::ColorBalance(p) => {
+            p.scope = match option {
+                0 => ToneScope::Shadows,
+                2 => ToneScope::Highlights,
+                _ => ToneScope::Midtones,
+            };
+        }
+        AdjustmentParams::GradientMap(p) => {
+            p.interpolation = if option == 1 {
+                GradientInterp::Smooth
+            } else {
+                GradientInterp::Linear
+            };
+        }
+        _ => {}
     }
 }
 

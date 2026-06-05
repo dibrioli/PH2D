@@ -121,10 +121,31 @@ pub struct CurvesParams {
     pub points_b: ControlPoints,
 }
 
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GradientMapParams {
     pub stops: Vec<ColorStop>,
     pub interpolation: GradientInterp,
+}
+
+impl Default for GradientMapParams {
+    /// A black→white duotone — the canonical neutral Gradient Map (maps luma to a
+    /// grayscale ramp). (A derived empty-`stops` default would have no gradient to
+    /// sample; the duotone editor also relies on the two endpoint stops existing.)
+    fn default() -> Self {
+        Self {
+            stops: vec![
+                ColorStop {
+                    offset: 0.0,
+                    color: [0, 0, 0, 255],
+                },
+                ColorStop {
+                    offset: 1.0,
+                    color: [255, 255, 255, 255],
+                },
+            ],
+            interpolation: GradientInterp::Linear,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -732,6 +753,6 @@ mod tests;
 pub use compute::{
     DISPLAY_LUT_N, adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
     apply_adjustment, channel_mixer_slider_params, colorbalance_display_luts, curve_value_at,
-    curves_display_luts, levels_display_lut, set_adjustment_segment_param,
+    curves_display_luts, gradient_map_lut, levels_display_lut, set_adjustment_segment_param,
     set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
 };

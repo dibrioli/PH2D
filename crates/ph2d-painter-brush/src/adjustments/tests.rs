@@ -1259,3 +1259,128 @@ fn black_and_white_slider_and_tint_toggle_round_trip() {
         "disabling tint hides its sliders"
     );
 }
+
+// ── W4 BATCH-2 — Gradient Map (luma → gradient, duotone editor) ───────
+
+fn gstop(offset: f32, color: [u8; 4]) -> ColorStop {
+    ColorStop { offset, color }
+}
+
+fn gmap(stops: Vec<ColorStop>, interp: GradientInterp) -> AdjustmentParams {
+    AdjustmentParams::GradientMap(GradientMapParams {
+        stops,
+        interpolation: interp,
+    })
+}
+
+#[test]
+fn gradient_map_default_maps_to_luma_grayscale() {
+    // The black→white duotone Default remaps a color to the gray of its luma.
+    let out = run(
+        AdjustmentKind::GradientMap,
+        AdjustmentParams::GradientMap(GradientMapParams::default()),
+        [
+            srgb_to_linear_f32(0.8),
+            srgb_to_linear_f32(0.2),
+            srgb_to_linear_f32(0.1),
+            0.6,
+        ],
+    );
+    assert!(
+        (out[0] - out[1]).abs() < 1e-4 && (out[1] - out[2]).abs() < 1e-4,
+        "achromatic gray: {out:?}"
+    );
+    assert_eq!(out[3], 0.6, "alpha preserved");
+}
+
+#[test]
+fn gradient_map_duotone_maps_luma_to_endpoints() {
+    let p = gmap(
+        vec![gstop(0.0, [0, 0, 0, 255]), gstop(1.0, [255, 0, 0, 255])],
+        GradientInterp::Linear,
+    );
+    let white = run(AdjustmentKind::GradientMap, p.clone(), [1.0, 1.0, 1.0, 1.0]);
+    assert!(
+        white[0] > 0.99 && white[1] < 1e-3 && white[2] < 1e-3,
+        "white (luma 1) → red endpoint: {white:?}"
+    );
+    let black = run(AdjustmentKind::GradientMap, p, [0.0, 0.0, 0.0, 1.0]);
+    assert!(
+        black.iter().take(3).all(|&v| v < 1e-3),
+        "black (luma 0) → black endpoint: {black:?}"
+    );
+}
+
+#[test]
+fn gradient_map_smooth_bends_the_ramp() {
+    let stops = vec![gstop(0.0, [0, 0, 0, 255]), gstop(1.0, [255, 255, 255, 255])];
+    let lin = run(
+        AdjustmentKind::GradientMap,
+        gmap(stops.clone(), GradientInterp::Linear),
+        [srgb_to_linear_f32(0.25); 4],
+    )[0];
+    let smooth = run(
+        AdjustmentKind::GradientMap,
+        gmap(stops, GradientInterp::Smooth),
+        [srgb_to_linear_f32(0.25); 4],
+    )[0];
+    assert!(
+        (lin - smooth).abs() > 1e-3,
+        "smoothstep bends the ramp at a midtone: {lin} vs {smooth}"
+    );
+}
+
+#[test]
+fn gradient_map_apply_tracks_lut() {
+    let p = GradientMapParams {
+        stops: vec![
+            gstop(0.0, [10, 20, 30, 255]),
+            gstop(1.0, [200, 100, 50, 255]),
+        ],
+        interpolation: GradientInterp::Linear,
+    };
+    let lut = gradient_map_lut(&p);
+    let encode = build_lut(linear_to_srgb_f32);
+    for &disp in &[0.0_f32, 0.3, 0.5, 0.9, 1.0] {
+        let lin = srgb_to_linear_f32(disp);
+        let luma = sample_lut(&encode, lin); // gray → every channel identical
+        let t = luma.clamp(0.0, 1.0) * 255.0;
+        let i = t as usize;
+        let frac = t - i as f32;
+        let a = lut[i.min(255)];
+        let b = lut[(i + 1).min(255)];
+        let expected = a[0] + (b[0] - a[0]) * frac;
+        let mut acc = [[lin, lin, lin, 1.0]];
+        apply_gradient_map(&p, &mut acc);
+        assert!(
+            (acc[0][0] - expected).abs() < 1e-5,
+            "apply_gradient_map reads the exported LUT at {disp}"
+        );
+    }
+}
+
+#[test]
+fn gradient_map_slider_and_segment_round_trip() {
+    let mut p = AdjustmentParams::GradientMap(GradientMapParams::default());
+    assert_eq!(
+        adjustment_slider_params(&p).len(),
+        6,
+        "6 RGB endpoint sliders (Lo/Hi × R/G/B)"
+    );
+    set_adjustment_slider_param(&mut p, 0, 1.0); // Lo R → 255
+    set_adjustment_slider_param(&mut p, 5, 1.0); // Hi B → 255
+    let read = adjustment_slider_params(&p);
+    assert!(
+        (read[0].1 - 1.0).abs() < 1e-6 && (read[5].1 - 1.0).abs() < 1e-6,
+        "RGB sliders round-trip"
+    );
+    let (opts, sel) = adjustment_segment_params(&p).expect("has a segmented param");
+    assert_eq!(opts, vec!["Linear", "Smooth"]);
+    assert_eq!(sel, 0, "default interpolation is Linear");
+    set_adjustment_segment_param(&mut p, 1);
+    assert_eq!(
+        adjustment_segment_params(&p).unwrap().1,
+        1,
+        "Smooth selected"
+    );
+}

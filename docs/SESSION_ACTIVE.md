@@ -32,6 +32,19 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (b) — Spatial mesh WIRADA (impl `ac2978c`) + reconciliação (Coord `21ae78e`)
+- **Painter impl fechou o P0:** flatten emite `LayerOp::SpatialAdjustment` pros 4 kernels (Gaussian/
+  Sharpen/Motion/Chroma) → minha infra GPU executa no slider-drag; **Noise+Halftone** landaram (CPU
+  coord-aware); refs CPU canônicas (`apply_{gaussian,sharpen,motion_blur,chromatic_aberration}` em
+  `ph2d-painter-brush::adjustments::spatial`). **Commit-path W2 verificado** (strokes persistem).
+- **Reconciliação Coord:** a math de `gaussian_weights`/`motion_weights` do impl é **bit-idêntica** à
+  minha. **NÃO deleguei** (`pub use`) — `ph2d-painter-brush` é DEV-dep de `ph2d-render` (desacoplamento
+  documentado: render foundational, acíclico). Fiz **pino-por-teste** (`tests/spatial_weights_parity.rs`,
+  verde) = single-source-of-truth sem acoplar. Resposta: [`HANDOFF_painter_w4_spatial_reconcile_coord.md`](HANDOFF_painter_w4_spatial_reconcile_coord.md).
+- **Aberto (coordenado):** Bloom (pyramid infra minha) + ShadowsHighlights (combine minha, ref CPU dele)
+  + ColorLookupLut (dele) + Noise/Halftone-GPU (minha WGSL, não-urgente) + Sharpen mask_edges (preciso
+  do modelo dele). Flatten mora no bridge `painter_gpu_flatten.rs` (território Painter impl, não tool).
+
 ### ATUALIZAÇÃO 2026-06-05 (novo Coord) — Spatial GPU multipass infra LANDADA (Gaussian spike)
 - **Infra espacial multi-pass = FEITA + PROVADA** (commit local `ee1028a`, `ph2d-render`,
   NÃO pushado). Pass-graph segmentado: materialize-below (`Rgba32Float` linear) → ping-pong

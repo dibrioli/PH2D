@@ -25,6 +25,8 @@
 //! | [`wgsl_codegen`]  | DAG → WGSL string (SSA in `fill_main`) + topology hash        |
 //! | [`ubo`]           | `FillParamsUbo` (per-frame params, zero-alloc updates)        |
 //! | [`cache`]         | in-memory LRU compile cache (codegen + naga validate)         |
+//! | [`diffusion_curve`] | diffusion-curve authoring model (Orzan sides → OKLab) — W7  |
+//! | [`poisson_cpu`]   | deterministic multigrid Poisson solver → [`ColorField`] — W7  |
 //!
 //! ## W6 scope (handoff §2.X frontier)
 //!
@@ -41,11 +43,15 @@ use ph2d_color::OklchColor;
 use smallvec::SmallVec;
 
 pub mod cache;
+pub mod diffusion_curve;
 pub mod eval;
+pub mod poisson_cpu;
 pub mod ubo;
 pub mod wgsl_codegen;
 
 pub use cache::CompileCache;
+pub use diffusion_curve::{ColorStop, DiffusionCurve, DiffusionCurveSet};
+pub use poisson_cpu::{solve_color_field, ColorField, Resolution};
 pub use wgsl_codegen::{CompiledFill, TopologyHash};
 
 /// Inline node capacity / hard cap on graph size (ADR-0060 §2.7 — adding nodes

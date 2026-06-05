@@ -15,10 +15,22 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 
 ---
 
-## COORDENADOR (único) — ATIVO 2026-06-04
+## COORDENADOR (único) — ATIVO 2026-06-05
 
 **Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
 locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
+
+### 🚀 SHIP 2026-06-05 — origin/main = `1156441` (78 commits, CI 3-OS VERDE)
+[CI run 26992155064](https://github.com/dibrioli/PH2D/actions/runs/26992155064) **success**
+(ubuntu/macOS/windows + replay-hash + ECS/physics + MSRV). **Shipado:** Vector W1-W5
+(fechados+auditados) + SDF Hybrid ADR-0065 (CPU+GPU) + Painter W4 (Curves/Levels/B&W/
+Selective Color/Gradient Map + curve-r/g/b tokens) + geometry nodes + variable-width stroke.
+**Ship-prep (Coord absorveu 9 gate-blockers):** fmt-drift, Cargo.lock re-sync, clippy
+needless-borrow, typos `^ba$` allowlist, panel-LOC OVERAGE, tofu→ASCII, hex+14×magic LITERAL-OK.
+**⚠ Follow-ups do Painter impl (débito documentado, não-bloqueante):** tokenizar os `1.5px`
+ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_adjust.rs` (829 LOC,
+OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
+multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
 ### ATUALIZAÇÃO 2026-06-04 — ADR-0065 SDF Phase 3 CLOSED (Coord, smoke-OK)
 - **SDF draft+reconcile wireado no geometry-graph smoke** (`58ee181` + `87aa7ec` +

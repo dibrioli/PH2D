@@ -30,14 +30,16 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (verificado nesta sessão — NÃO refaça)
 ───────────────────────────────────────────────────────────────────
-**11/24 kinds PRONTOS** (compute CPU + GPU + paridade):
+**12/24 kinds PRONTOS** (compute CPU + GPU + paridade):
   HSB(0), BrightnessContrast(1), Invert(2), Posterize(3), Threshold(4),
   Exposure(5), Vibrance(6) — escalares; **Curves(7) + Levels(8)** — LUT
   display-space (binding `adj_luts`); **PhotoFilter** — CPU-first (gel
   warm/cool linear + preserve-lum), `gpu_params` empacotado mas `gpu_code=None`
   até o Coord landar `ADJ_PHOTO_FILTER` (§GPU-COORD); **ColorBalance** — CPU-first
   (shift per-canal display-space pesado por tonal-range + preserve-lum); GPU =
-  per-channel `adj_luts` (reuso da máquina de Curves) + flag preserve (§GPU-COORD-CB).
+  per-channel `adj_luts` (reuso da máquina de Curves) + flag preserve (§GPU-COORD-CB);
+  **ChannelMixer** — CPU-first (matriz 3×4 display-space + mono); GPU = matriz
+  uniform 12-float (cross-channel, NÃO é LUT) → expansão de uniform do Coord.
 
 **INFRA NOVA (REUSE p/ os próximos):**
   - **toggle rack** genérica: kind com `bool` vira UI só com arms em
@@ -66,10 +68,10 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**13 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+**12 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
 faz nada): GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
 Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
-SelectiveColor, ChannelMixer, ShadowsHighlights, BlackAndWhite. **Cap ≤32 (24
+SelectiveColor, ShadowsHighlights, BlackAndWhite. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
 
 ───────────────────────────────────────────────────────────────────
@@ -97,8 +99,16 @@ genérico já renderiza. Compute = arm em `apply_adjustment`.
      tint_amount}` — 6 sliders (peso por hue → luma) + tint (reuse o picker OKLCH
      do Sprite Inspector) + amount. >3 params → CPU-first; GPU = Coord.
   4. **ChannelMixer** `{red_out:[f32;4], green_out, blue_out, monochromatic}` —
-     matriz 3×4 (12 sliders agrupados por canal de saída, ou abas tipo Curves) +
-     toggle mono. >3 params → CPU-first; GPU = matriz uniform (Coord).
+     ✅ **PRONTO** (commit `e596f41`). Matriz 3×4 display-space (PS aplica no
+     canal gamma-encoded) + mono (linha red_out → gray em todos os canais).
+     **Default manual = matriz identidade** (o derive all-zero era degenerado →
+     tudo preto, a armadilha do Levels). UI bespoke tipo Curves: abas de canal de
+     saída (view-state `active_mixer_channel`) + 4 sliders (R/G/B source + Const)
+     da linha ativa + toggle mono. Edit forwarda `SelectOption(PAINTER_MIXER_EDIT,
+     "layer:output:slot:value")` (a aba ativa carrega o canal). GPU = matriz
+     uniform 12-float (cross-channel, NÃO cabe em `adj_luts`) → expansão de uniform
+     do Coord; `gpu_code=None` até lá. Helpers `paint_labeled_slider`/
+     `paint_toggle_row` extraídos (DRY entre racks genéricos + mixer).
 
 **BATCH 2 — bespoke (reuse os padrões do Curves):**
   5. **GradientMap** `{stops: Vec<ColorStop>, interpolation}` — mapeia LUMA →

@@ -16,7 +16,7 @@ use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_GAUSSIAN, SPATIAL_SHARPEN, gaussian_weights,
+    SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN, gaussian_weights, motion_weights,
 };
 use std::collections::BTreeMap;
 
@@ -1118,5 +1118,129 @@ fn gpu_sharpen_matches_cpu_reference() {
     assert!(
         d_sub <= 4,
         "sharpen sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
+}
+
+/// Directional (motion) blur over a full-canvas linear buffer — a single 1-D
+/// pass averaging `2·half+1` taps along `dir`, nearest sampling at floor(x+0.5),
+/// clamp-to-edge. Mirror of `cs_blur_dir`.
+fn cpu_motion_blur_linear(
+    src: &[[f32; 4]],
+    w: u32,
+    h: u32,
+    weights: &[f32],
+    half: u32,
+    dir: [f32; 2],
+) -> Vec<[f32; 4]> {
+    let wi = w as i32;
+    let hi = h as i32;
+    let mut out = vec![[0.0f32; 4]; src.len()];
+    for y in 0..hi {
+        for x in 0..wi {
+            let px = x as f32;
+            let py = y as f32;
+            let mut acc = [0.0f32; 4];
+            let c = src[(y * wi + x) as usize];
+            for k in 0..4 {
+                acc[k] += c[k] * weights[0];
+            }
+            for i in 1..=half as i32 {
+                let ox = dir[0] * i as f32;
+                let oy = dir[1] * i as f32;
+                let xa = ((px + ox + 0.5).floor() as i32).clamp(0, wi - 1);
+                let ya = ((py + oy + 0.5).floor() as i32).clamp(0, hi - 1);
+                let xb = ((px - ox + 0.5).floor() as i32).clamp(0, wi - 1);
+                let yb = ((py - oy + 0.5).floor() as i32).clamp(0, hi - 1);
+                let a = src[(ya * wi + xa) as usize];
+                let b = src[(yb * wi + xb) as usize];
+                for k in 0..4 {
+                    acc[k] += (a[k] + b[k]) * weights[i as usize];
+                }
+            }
+            out[(y * wi + x) as usize] = acc;
+        }
+    }
+    out
+}
+
+/// GPU MotionBlur vs a full CPU recompose — proves the pass-graph swaps the BLUR
+/// STAGE (directional 1-pass) while reusing materialise/combine/encode, the
+/// complement to Sharpen (which swapped the combine). Direction is computed
+/// CPU-side (cos/sin of the angle) for both GPU + reference, so there is no GPU
+/// transcendental in the hot path. Same opaque-base / full + sub-region / ±4B.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_motion_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 6);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 2));
+
+    let distance = 9.0f32;
+    let angle = 0.6f32; // radians
+    let (weights, half) = motion_weights(distance);
+    let dir = [angle.cos(), angle.sin()];
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.7,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_MOTION,
+            params: [distance, angle, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let blurred = cpu_motion_blur_linear(&mat, w, h, &weights, half, dir);
+    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, None);
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    assert!(
+        d_full <= 4,
+        "motion full-region GPU vs CPU max byte diff {d_full}"
+    );
+
+    let sub = Region {
+        x: 18,
+        y: 20,
+        w: 26,
+        h: 18,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    assert!(
+        d_sub <= 4,
+        "motion sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
     );
 }

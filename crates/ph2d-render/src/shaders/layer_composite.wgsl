@@ -768,12 +768,16 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
     textureStore(seg_out, out_local, acc0);
 }
 
-// ── cs_blur_h / cs_blur_v — separable convolution (clamp-to-edge) ────────────
+// ── blur passes — separable (cs_blur_h/v) + directional (cs_blur_dir) ────────
 struct BlurGlobals {
     width: u32,
     height: u32,
     half: u32, // kernel reaches ±half; weights[0..=half], weights[0] = centre
-    _pad: u32,
+    _pad0: u32,
+    dir_x: f32, // motion direction (cs_blur_dir); ignored by cs_blur_h/v
+    dir_y: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 @group(0) @binding(10) var<uniform> blur_g: BlurGlobals;
 @group(0) @binding(11) var blur_src: texture_2d<f32>;
@@ -810,6 +814,37 @@ fn cs_blur_h(@builtin(global_invocation_id) gid: vec3<u32>) {
 @compute @workgroup_size(8, 8, 1)
 fn cs_blur_v(@builtin(global_invocation_id) gid: vec3<u32>) {
     blur_core(gid, vec2<i32>(0, 1));
+}
+
+// Directional (motion) blur — a single 1-D pass: average `2·half+1` taps along
+// `(dir_x, dir_y)` (a unit vector, computed CPU-side from the angle so no GPU
+// sin/cos parity drift). Nearest sampling at rounded offsets, clamp-to-edge.
+// The impl's canonical apply_motion_blur may bilinear-sample for smoothness — a
+// quality refinement; the mechanism (swappable blur stage) is what this proves.
+@compute @workgroup_size(8, 8, 1)
+fn cs_blur_dir(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= blur_g.width || y >= blur_g.height {
+        return;
+    }
+    let p = vec2<f32>(f32(x), f32(y));
+    let dir = vec2<f32>(blur_g.dir_x, blur_g.dir_y);
+    let lo = vec2<i32>(0, 0);
+    let hi = vec2<i32>(i32(blur_g.width) - 1, i32(blur_g.height) - 1);
+    let half_off = vec2<f32>(0.5, 0.5);
+    var acc = textureLoad(blur_src, vec2<i32>(p), 0) * blur_weights[0];
+    for (var i: u32 = 1u; i <= blur_g.half; i = i + 1u) {
+        let off = dir * f32(i);
+        // floor(x + 0.5) = round-half-up — bit-identical to the Rust reference
+        // (WGSL `round` is ties-to-even, which would pick a different tap on a
+        // half-integer offset).
+        let pa = clamp(vec2<i32>(floor(p + off + half_off)), lo, hi);
+        let pb = clamp(vec2<i32>(floor(p - off + half_off)), lo, hi);
+        let w = blur_weights[i];
+        acc = acc + (textureLoad(blur_src, pa, 0) + textureLoad(blur_src, pb, 0)) * w;
+    }
+    textureStore(blur_dst, vec2<i32>(p), acc);
 }
 
 // ── cs_combine — derive the kernel result from base+blurred, blend over base ──

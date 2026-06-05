@@ -245,6 +245,11 @@ impl LayerCompositor {
             make_pipeline_for(&bgl_blur, "cs_blur_h", "ph2d-render layer_composite blur_h");
         let pipeline_blur_v =
             make_pipeline_for(&bgl_blur, "cs_blur_v", "ph2d-render layer_composite blur_v");
+        let pipeline_blur_dir = make_pipeline_for(
+            &bgl_blur,
+            "cs_blur_dir",
+            "ph2d-render layer_composite blur_dir",
+        );
         let pipeline_combine = make_pipeline_for(
             &bgl_combine,
             "cs_combine",
@@ -333,6 +338,7 @@ impl LayerCompositor {
             pipeline_segment,
             pipeline_blur_h,
             pipeline_blur_v,
+            pipeline_blur_dir,
             pipeline_combine,
             pipeline_encode,
             bgl_segment,
@@ -877,25 +883,72 @@ impl LayerCompositor {
         region: Region,
     ) -> Result<(), LayerCompositeError> {
         /// One root-level spatial pass break: where it sits in the op-list, its
-        /// (provisional) blur weights + half-width, the combine mode + amount,
-        /// and its blend/opacity.
+        /// (provisional) blur kernel (weights + half + separable-vs-directional),
+        /// the combine mode + amount, and its blend/opacity.
         struct Break {
             idx: usize,
             weights: Vec<f32>,
             half: u32,
+            directional: bool,
+            dir: [f32; 2],
             combine_mode: u32,
             amount: f32,
             blend: u8,
             opacity: f32,
         }
 
-        // Resolve a spatial kernel to its blur radius + combine mode + amount.
-        // GAUSSIAN: params[0]=radius, passthrough combine. SHARPEN (unsharp mask):
-        // params[0]=amount, params[1]=blur radius, sharpen combine. Unknown → None.
-        fn resolve_kernel(kernel: u8, params: &[f32; 4]) -> Option<(f32, u32, f32)> {
+        /// The blur kernel + combine a spatial op resolves to.
+        struct KernelPlan {
+            weights: Vec<f32>,
+            half: u32,
+            directional: bool,
+            dir: [f32; 2],
+            combine_mode: u32,
+            amount: f32,
+        }
+
+        // Resolve a spatial kernel to its blur kernel + combine. GAUSSIAN:
+        // params[0]=radius, separable, passthrough. SHARPEN: params[0]=amount,
+        // params[1]=blur radius, separable, unsharp combine. MOTION:
+        // params[0]=distance, params[1]=angle (rad), directional box, passthrough.
+        fn resolve_kernel(kernel: u8, params: &[f32; 4]) -> Option<KernelPlan> {
             match kernel {
-                k if k == SPATIAL_GAUSSIAN => Some((params[0], COMBINE_GAUSSIAN, 0.0)),
-                k if k == SPATIAL_SHARPEN => Some((params[1], COMBINE_SHARPEN, params[0])),
+                k if k == SPATIAL_GAUSSIAN => {
+                    let (weights, half) = gaussian_weights(params[0]);
+                    Some(KernelPlan {
+                        weights,
+                        half,
+                        directional: false,
+                        dir: [0.0, 0.0],
+                        combine_mode: COMBINE_GAUSSIAN,
+                        amount: 0.0,
+                    })
+                }
+                k if k == SPATIAL_SHARPEN => {
+                    let (weights, half) = gaussian_weights(params[1]);
+                    Some(KernelPlan {
+                        weights,
+                        half,
+                        directional: false,
+                        dir: [0.0, 0.0],
+                        combine_mode: COMBINE_SHARPEN,
+                        amount: params[0],
+                    })
+                }
+                k if k == SPATIAL_MOTION => {
+                    let (weights, half) = motion_weights(params[0]);
+                    let angle = params[1];
+                    Some(KernelPlan {
+                        weights,
+                        half,
+                        directional: true,
+                        // Direction computed CPU-side so the GPU does no sin/cos
+                        // (no transcendental parity drift).
+                        dir: [angle.cos(), angle.sin()],
+                        combine_mode: COMBINE_GAUSSIAN,
+                        amount: 0.0,
+                    })
+                }
                 _ => None,
             }
         }
@@ -913,18 +966,18 @@ impl LayerCompositor {
                     blend_mode,
                     opacity,
                 } if depth == 0 => {
-                    let Some((radius, combine_mode, amount)) = resolve_kernel(*kernel, params)
-                    else {
+                    let Some(plan) = resolve_kernel(*kernel, params) else {
                         continue; // unknown kernel → identity (segment loop no-ops it)
                     };
-                    let (weights, half) = gaussian_weights(radius);
-                    total_halo = total_halo.saturating_add(half);
+                    total_halo = total_halo.saturating_add(plan.half);
                     breaks.push(Break {
                         idx: i,
-                        weights,
-                        half,
-                        combine_mode,
-                        amount,
+                        weights: plan.weights,
+                        half: plan.half,
+                        directional: plan.directional,
+                        dir: plan.dir,
+                        combine_mode: plan.combine_mode,
+                        amount: plan.amount,
                         blend: *blend_mode,
                         opacity: *opacity,
                     });
@@ -983,7 +1036,7 @@ impl LayerCompositor {
             );
             cur = dst;
             self.upload_blur_weights(gpu, &b.weights);
-            self.run_blur(gpu, cur, b.half, work);
+            self.run_blur(gpu, cur, b.half, b.directional, b.dir, work);
             self.run_combine(
                 gpu,
                 cur,
@@ -1213,9 +1266,18 @@ impl LayerCompositor {
         );
     }
 
-    /// Separable Gaussian over `base[base_idx]` → `blur[1]` (H into `blur[0]`,
-    /// then V into `blur[1]`). Weights must already be uploaded.
-    fn run_blur(&self, gpu: &GpuContext, base_idx: usize, half: u32, work: Region) {
+    /// Blur `base[base_idx]` into `blur[1]` (the combine reads `blur[1]`).
+    /// Separable: H into `blur[0]` then V into `blur[1]` (2 passes). Directional
+    /// (motion): one `cs_blur_dir` pass along `dir`. Weights already uploaded.
+    fn run_blur(
+        &self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        half: u32,
+        directional: bool,
+        dir: [f32; 2],
+        work: Region,
+    ) {
         let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
         else {
             return;
@@ -1224,7 +1286,11 @@ impl LayerCompositor {
             width: work.w,
             height: work.h,
             half,
-            _pad: 0,
+            _pad0: 0,
+            dir_x: dir[0],
+            dir_y: dir[1],
+            _pad1: 0.0,
+            _pad2: 0.0,
         };
         gpu.queue
             .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&g));
@@ -1252,6 +1318,20 @@ impl LayerCompositor {
                 ],
             })
         };
+        if directional {
+            // One 1-D pass straight into blur[1] (no separability for an
+            // arbitrary direction).
+            let bg = blur_bg(&work_tex.base[base_idx].view, &work_tex.blur[1].view);
+            self.dispatch_pass(
+                gpu,
+                &self.pipeline_blur_dir,
+                &bg,
+                work.w,
+                work.h,
+                "ph2d-render layer_composite blur_dir pass",
+            );
+            return;
+        }
         let bg_h = blur_bg(&work_tex.base[base_idx].view, &work_tex.blur[0].view);
         self.dispatch_pass(
             gpu,

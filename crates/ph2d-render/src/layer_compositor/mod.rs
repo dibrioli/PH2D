@@ -184,6 +184,11 @@ pub enum LayerOp {
 /// combine step (`COMBINE_SHARPEN`).
 pub const SPATIAL_GAUSSIAN: u8 = 0;
 pub const SPATIAL_SHARPEN: u8 = 1;
+/// Directional (motion) blur — a single 1-D pass along `angle` of length
+/// `distance` (`params[0]` = distance, `params[1]` = angle in radians). Unlike
+/// Gaussian/Sharpen (axis-aligned separable H/V), this swaps the BLUR STAGE for
+/// `cs_blur_dir`; the combine is the passthrough (`COMBINE_GAUSSIAN`).
+pub const SPATIAL_MOTION: u8 = 2;
 
 /// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
 /// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
@@ -224,6 +229,19 @@ pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
         }
     }
     (weights, half)
+}
+
+/// PROVISIONAL motion-blur kernel — uniform box along the motion line (linear
+/// motion = every position contributes equally), to be reconciled with the
+/// impl's canonical `apply_motion_blur`. Returns `(weights, half)` for the
+/// symmetric `2·half+1`-tap average (`weights[i] = 1/(2·half+1)`); `half =
+/// ceil(distance/2)` so the line spans ≈ `distance` px. The taps are sampled
+/// along the direction by `cs_blur_dir` (see [`SPATIAL_MOTION`]).
+#[must_use]
+pub fn motion_weights(distance: f32) -> (Vec<f32>, u32) {
+    let half = ((distance.max(0.0) / 2.0).ceil() as u32).clamp(1, MAX_BLUR_HALF);
+    let w = 1.0 / (2 * half + 1) as f32;
+    (vec![w; half as usize + 1], half)
 }
 
 /// Does this op-list contain a spatial adjustment (a pass break)? When false,
@@ -376,16 +394,21 @@ struct SegGlobals {
     _pad2: u32,
 }
 
-/// Globals for `cs_blur_h`/`cs_blur_v` (16 bytes; mirrors WGSL `BlurGlobals`).
-/// A separable convolution over a `width × height` linear texture with the
-/// symmetric kernel `weights[0..=half]` (clamp-to-edge at the texture border).
+/// Globals for the blur passes (32 bytes; mirrors WGSL `BlurGlobals`). A
+/// convolution over a `width × height` linear texture with the symmetric kernel
+/// `weights[0..=half]` (clamp-to-edge). `cs_blur_h`/`cs_blur_v` ignore the
+/// direction (axis-aligned); `cs_blur_dir` samples taps along `(dir_x, dir_y)`.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct BlurGlobals {
     width: u32,
     height: u32,
     half: u32,
-    _pad: u32,
+    _pad0: u32,
+    dir_x: f32,
+    dir_y: f32,
+    _pad1: f32,
+    _pad2: f32,
 }
 
 /// Globals for `cs_combine` (32 bytes; mirrors WGSL `CombineGlobals`). Blends
@@ -480,6 +503,8 @@ pub struct LayerCompositor {
     /// Separable-blur horizontal / vertical passes (shared bgl `bgl_blur`).
     pipeline_blur_h: wgpu::ComputePipeline,
     pipeline_blur_v: wgpu::ComputePipeline,
+    /// Directional (motion) blur — single 1-D pass along `(dir_x, dir_y)`.
+    pipeline_blur_dir: wgpu::ComputePipeline,
     /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
     pipeline_combine: wgpu::ComputePipeline,
     /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to

@@ -919,3 +919,47 @@ fn cs_encode(@builtin(global_invocation_id) gid: vec3<u32>) {
     let acc = textureLoad(enc_src, src, 0);
     textureStore(enc_out, out_local, encode_final(acc));
 }
+
+// ── cs_chroma — chromatic-aberration GATHER (per-channel radial shift) ───────
+// A different spatial primitive: not a neighbourhood average but a per-channel
+// resample of the below-composite at radially-shifted coords (R/G/B diverge
+// toward the edges → colour fringing). `dir = local − centre`; channel c samples
+// at `local − dir·scale_c`. `centre` (work-local) + `scale_c = shift_c/half_diag`
+// are precomputed CPU-side, so the per-pixel path is exact IEEE (no sqrt) and
+// nearest sampling (`floor(x+0.5)`) is parity-robust. Combine = passthrough.
+struct ChromaGlobals {
+    width: u32,
+    height: u32,
+    center_x: f32, // canvas centre in work_region-local coords
+    center_y: f32,
+    scale_r: f32, // shift_c / half_diag (px-at-corner → per-unit-dir displacement)
+    scale_g: f32,
+    scale_b: f32,
+    _pad: f32,
+}
+@group(0) @binding(21) var<uniform> chroma_g: ChromaGlobals;
+@group(0) @binding(22) var chroma_src: texture_2d<f32>;
+@group(0) @binding(23) var chroma_dst: texture_storage_2d<rgba32float, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn cs_chroma(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= chroma_g.width || y >= chroma_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let local_f = vec2<f32>(f32(x), f32(y));
+    let dir = local_f - vec2<f32>(chroma_g.center_x, chroma_g.center_y);
+    let lo = vec2<i32>(0, 0);
+    let hi = vec2<i32>(i32(chroma_g.width) - 1, i32(chroma_g.height) - 1);
+    let half_off = vec2<f32>(0.5, 0.5);
+    let sr = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_r + half_off)), lo, hi);
+    let sg = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_g + half_off)), lo, hi);
+    let sb = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_b + half_off)), lo, hi);
+    let r = textureLoad(chroma_src, sr, 0).r;
+    let g = textureLoad(chroma_src, sg, 0).g;
+    let b = textureLoad(chroma_src, sb, 0).b;
+    let a = textureLoad(chroma_src, p, 0).a; // coverage from the unshifted centre
+    textureStore(chroma_dst, p, vec4<f32>(r, g, b, a));
+}

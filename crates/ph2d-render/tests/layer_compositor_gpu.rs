@@ -16,7 +16,8 @@ use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN, gaussian_weights, motion_weights,
+    SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN, gaussian_weights,
+    motion_weights,
 };
 use std::collections::BTreeMap;
 
@@ -1242,5 +1243,125 @@ fn gpu_motion_matches_cpu_reference() {
     assert!(
         d_sub <= 4,
         "motion sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
+}
+
+/// Chromatic-aberration gather over a full-canvas linear buffer — per-channel
+/// radial resample, nearest at floor(x+0.5), clamp-to-edge. Mirror of `cs_chroma`
+/// (full canvas ⇒ work origin = 0, centre = canvas centre). The per-channel
+/// scale = shift / half_diag is precomputed exactly as the orchestrator does.
+fn cpu_chroma_gather(src: &[[f32; 4]], w: u32, h: u32, shifts: [f32; 3]) -> Vec<[f32; 4]> {
+    let cw = w as f32;
+    let ch = h as f32;
+    let half_diag = 0.5 * (cw * cw + ch * ch).sqrt();
+    let inv = if half_diag > 0.0 {
+        1.0 / half_diag
+    } else {
+        0.0
+    };
+    let cx = cw * 0.5;
+    let cy = ch * 0.5;
+    let scale = [shifts[0] * inv, shifts[1] * inv, shifts[2] * inv];
+    let wi = w as i32;
+    let hi = h as i32;
+    let mut out = vec![[0.0f32; 4]; src.len()];
+    for y in 0..hi {
+        for x in 0..wi {
+            let lfx = x as f32;
+            let lfy = y as f32;
+            let dirx = lfx - cx;
+            let diry = lfy - cy;
+            let sample = |sc: f32| -> usize {
+                let sx = ((lfx - dirx * sc + 0.5).floor() as i32).clamp(0, wi - 1);
+                let sy = ((lfy - diry * sc + 0.5).floor() as i32).clamp(0, hi - 1);
+                (sy * wi + sx) as usize
+            };
+            let r = src[sample(scale[0])][0];
+            let g = src[sample(scale[1])][1];
+            let b = src[sample(scale[2])][2];
+            let a = src[(y * wi + x) as usize][3];
+            out[(y * wi + x) as usize] = [r, g, b, a];
+        }
+    }
+    out
+}
+
+/// GPU ChromaticAberration vs a full CPU recompose — proves the pass-graph also
+/// handles a GATHER stage (per-channel divergent radial resample), distinct from
+/// the neighbourhood-average blurs. Centre + per-channel scales are precomputed
+/// CPU-side so the gather does no per-pixel sqrt (parity-robust nearest sampling).
+/// Same opaque-base / full + sub-region / ±4B structure as the other spatial gates.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_chroma_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 5);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 3));
+
+    // Classic CA: red fringes outward, blue inward, green fixed.
+    let shifts = [3.0f32, 0.0, -3.0];
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.5,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_CHROMA,
+            params: [shifts[0], shifts[1], shifts[2], 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference: materialise → chroma gather → passthrough → above.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let gathered = cpu_chroma_gather(&mat, w, h, shifts);
+    let combined = cpu_combine_linear(&mat, &gathered, 0, 1.0, None);
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    assert!(
+        d_full <= 4,
+        "chroma full-region GPU vs CPU max byte diff {d_full}"
+    );
+
+    let sub = Region {
+        x: 20,
+        y: 20,
+        w: 24,
+        h: 24,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    assert!(
+        d_sub <= 4,
+        "chroma sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
     );
 }

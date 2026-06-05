@@ -217,6 +217,16 @@ impl LayerCompositor {
                     storage_tex(20, wgpu::TextureFormat::Rgba8Unorm), // out (sRGB8)
                 ],
             });
+        let bgl_chroma = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite chroma bgl"),
+                entries: &[
+                    uniform(21, core::mem::size_of::<ChromaGlobals>() as u64),
+                    sampled(22, wgpu::TextureViewDimension::D2), // src (base, linear)
+                    storage_tex(23, f32_lin),                    // dst (linear)
+                ],
+            });
 
         let make_pipeline_for = |bgl: &wgpu::BindGroupLayout, entry: &str, label: &str| {
             let layout = gpu
@@ -260,6 +270,11 @@ impl LayerCompositor {
             "cs_encode",
             "ph2d-render layer_composite encode",
         );
+        let pipeline_chroma = make_pipeline_for(
+            &bgl_chroma,
+            "cs_chroma",
+            "ph2d-render layer_composite chroma",
+        );
 
         let make_uniform_buf = |size: u64, label: &str| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -284,6 +299,10 @@ impl LayerCompositor {
         let encode_globals_buffer = make_uniform_buf(
             core::mem::size_of::<EncodeGlobals>() as u64,
             "ph2d-render layer_composite encode globals",
+        );
+        let chroma_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<ChromaGlobals>() as u64,
+            "ph2d-render layer_composite chroma globals",
         );
 
         // 1×1 linear dummy bound as base_in for the first (start-from-zero) segment.
@@ -339,16 +358,19 @@ impl LayerCompositor {
             pipeline_blur_h,
             pipeline_blur_v,
             pipeline_blur_dir,
+            pipeline_chroma,
             pipeline_combine,
             pipeline_encode,
             bgl_segment,
             bgl_blur,
             bgl_combine,
             bgl_encode,
+            bgl_chroma,
             seg_globals_buffer,
             blur_globals_buffer,
             combine_globals_buffer,
             encode_globals_buffer,
+            chroma_globals_buffer,
             blur_weights_buffer: None,
             seg_base_dummy,
             work: None,
@@ -882,35 +904,46 @@ impl LayerCompositor {
         canvas_h: u32,
         region: Region,
     ) -> Result<(), LayerCompositeError> {
+        /// How a spatial op's blur stage produces the adjusted texture (into
+        /// `blur[1]`, which the combine reads).
+        enum BlurStage {
+            /// Separable box: `cs_blur_h` then `cs_blur_v` (uses `weights`/`half`).
+            Separable,
+            /// Directional motion blur: one `cs_blur_dir` pass along `dir`.
+            Directional([f32; 2]),
+            /// Chromatic-aberration gather: `cs_chroma`, per-channel shift `[r,g,b]`
+            /// (px at the canvas corner). No weights.
+            Chroma([f32; 3]),
+        }
+
         /// One root-level spatial pass break: where it sits in the op-list, its
-        /// (provisional) blur kernel (weights + half + separable-vs-directional),
-        /// the combine mode + amount, and its blend/opacity.
+        /// (provisional) blur stage (+ weights/half), the combine mode + amount,
+        /// and its blend/opacity.
         struct Break {
             idx: usize,
             weights: Vec<f32>,
             half: u32,
-            directional: bool,
-            dir: [f32; 2],
+            stage: BlurStage,
             combine_mode: u32,
             amount: f32,
             blend: u8,
             opacity: f32,
         }
 
-        /// The blur kernel + combine a spatial op resolves to.
+        /// The blur stage + combine a spatial op resolves to.
         struct KernelPlan {
             weights: Vec<f32>,
             half: u32,
-            directional: bool,
-            dir: [f32; 2],
+            stage: BlurStage,
             combine_mode: u32,
             amount: f32,
         }
 
-        // Resolve a spatial kernel to its blur kernel + combine. GAUSSIAN:
+        // Resolve a spatial kernel to its blur stage + combine. GAUSSIAN:
         // params[0]=radius, separable, passthrough. SHARPEN: params[0]=amount,
         // params[1]=blur radius, separable, unsharp combine. MOTION:
         // params[0]=distance, params[1]=angle (rad), directional box, passthrough.
+        // CHROMA: params[0..3]=R/G/B shift, directional gather, passthrough.
         fn resolve_kernel(kernel: u8, params: &[f32; 4]) -> Option<KernelPlan> {
             match kernel {
                 k if k == SPATIAL_GAUSSIAN => {
@@ -918,8 +951,7 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights,
                         half,
-                        directional: false,
-                        dir: [0.0, 0.0],
+                        stage: BlurStage::Separable,
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
                     })
@@ -929,8 +961,7 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights,
                         half,
-                        directional: false,
-                        dir: [0.0, 0.0],
+                        stage: BlurStage::Separable,
                         combine_mode: COMBINE_SHARPEN,
                         amount: params[0],
                     })
@@ -938,13 +969,25 @@ impl LayerCompositor {
                 k if k == SPATIAL_MOTION => {
                     let (weights, half) = motion_weights(params[0]);
                     let angle = params[1];
+                    // Direction computed CPU-side so the GPU does no sin/cos.
+                    let stage = BlurStage::Directional([angle.cos(), angle.sin()]);
                     Some(KernelPlan {
                         weights,
                         half,
-                        directional: true,
-                        // Direction computed CPU-side so the GPU does no sin/cos
-                        // (no transcendental parity drift).
-                        dir: [angle.cos(), angle.sin()],
+                        stage,
+                        combine_mode: COMBINE_GAUSSIAN,
+                        amount: 0.0,
+                    })
+                }
+                k if k == SPATIAL_CHROMA => {
+                    let shifts = [params[0], params[1], params[2]];
+                    // Halo = the largest per-channel shift (px at the corner).
+                    let max_shift = shifts.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+                    let half = (max_shift.ceil() as u32).clamp(1, MAX_BLUR_HALF);
+                    Some(KernelPlan {
+                        weights: Vec::new(),
+                        half,
+                        stage: BlurStage::Chroma(shifts),
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
                     })
@@ -974,8 +1017,7 @@ impl LayerCompositor {
                         idx: i,
                         weights: plan.weights,
                         half: plan.half,
-                        directional: plan.directional,
-                        dir: plan.dir,
+                        stage: plan.stage,
                         combine_mode: plan.combine_mode,
                         amount: plan.amount,
                         blend: *blend_mode,
@@ -1035,8 +1077,20 @@ impl LayerCompositor {
                 canvas_h,
             );
             cur = dst;
-            self.upload_blur_weights(gpu, &b.weights);
-            self.run_blur(gpu, cur, b.half, b.directional, b.dir, work);
+            // Blur stage → writes the adjusted texture into blur[1].
+            match &b.stage {
+                BlurStage::Separable => {
+                    self.upload_blur_weights(gpu, &b.weights);
+                    self.run_blur(gpu, cur, b.half, false, [0.0, 0.0], work);
+                }
+                BlurStage::Directional(dir) => {
+                    self.upload_blur_weights(gpu, &b.weights);
+                    self.run_blur(gpu, cur, b.half, true, *dir, work);
+                }
+                BlurStage::Chroma(shifts) => {
+                    self.run_chroma(gpu, cur, *shifts, work, canvas_w, canvas_h);
+                }
+            }
             self.run_combine(
                 gpu,
                 cur,
@@ -1349,6 +1403,73 @@ impl LayerCompositor {
             work.w,
             work.h,
             "ph2d-render layer_composite blur_v pass",
+        );
+    }
+
+    /// Chromatic-aberration gather over `base[base_idx]` → `blur[1]` (the combine
+    /// reads `blur[1]`). The radial centre + per-channel scales are precomputed
+    /// here so the GPU does no per-pixel `sqrt` (parity-robust nearest sampling).
+    fn run_chroma(
+        &self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        shifts: [f32; 3],
+        work: Region,
+        canvas_w: u32,
+        canvas_h: u32,
+    ) {
+        let Some(work_tex) = &self.work else {
+            return;
+        };
+        let cw = canvas_w as f32;
+        let ch = canvas_h as f32;
+        // Half the canvas diagonal — the max distance from centre, so a shift of
+        // `shift_c` px at the corner is `scale_c = shift_c / half_diag` per unit
+        // of `dir = local − centre`.
+        let half_diag = 0.5 * (cw * cw + ch * ch).sqrt();
+        let inv = if half_diag > 0.0 {
+            1.0 / half_diag
+        } else {
+            0.0
+        };
+        let g = ChromaGlobals {
+            width: work.w,
+            height: work.h,
+            // Canvas centre expressed in work_region-local coords.
+            center_x: cw * 0.5 - work.x as f32,
+            center_y: ch * 0.5 - work.y as f32,
+            scale_r: shifts[0] * inv,
+            scale_g: shifts[1] * inv,
+            scale_b: shifts[2] * inv,
+            _pad: 0.0,
+        };
+        gpu.queue
+            .write_buffer(&self.chroma_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render layer_composite chroma bg"),
+            layout: &self.bgl_chroma,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 21,
+                    resource: self.chroma_globals_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 22,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 23,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.blur[1].view),
+                },
+            ],
+        });
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_chroma,
+            &bind_group,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite chroma pass",
         );
     }
 

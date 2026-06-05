@@ -243,6 +243,10 @@ fn shader_struct_sizes_match_rust_abi() {
         wgsl_struct_span("EncodeGlobals"),
         core::mem::size_of::<EncodeGlobals>()
     );
+    assert_eq!(
+        wgsl_struct_span("ChromaGlobals"),
+        core::mem::size_of::<ChromaGlobals>()
+    );
 }
 
 #[test]

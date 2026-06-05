@@ -189,6 +189,14 @@ pub const SPATIAL_SHARPEN: u8 = 1;
 /// Gaussian/Sharpen (axis-aligned separable H/V), this swaps the BLUR STAGE for
 /// `cs_blur_dir`; the combine is the passthrough (`COMBINE_GAUSSIAN`).
 pub const SPATIAL_MOTION: u8 = 2;
+/// Chromatic aberration — a single GATHER pass (`cs_chroma`) that samples the
+/// below-composite at per-channel RADIALLY-shifted coords (R/G/B fringe toward
+/// the edges). `params[0..3]` = red/green/blue shift in px (at the canvas corner),
+/// `params[3]` = falloff_center (RESERVED in the spike — the provisional model is
+/// linear-radial; the impl's `apply_chromatic_aberration` defines the curve).
+/// The per-channel scales + centre are precomputed CPU-side so the gather does no
+/// per-pixel sqrt (parity-robust, like motion); combine is the passthrough.
+pub const SPATIAL_CHROMA: u8 = 3;
 
 /// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
 /// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
@@ -439,6 +447,24 @@ struct EncodeGlobals {
     src_off_y: u32,
 }
 
+/// Globals for `cs_chroma` (32 bytes; mirrors WGSL `ChromaGlobals`). The radial
+/// centre is given in `work_region`-LOCAL coords (`canvas_centre − work_origin`),
+/// and `scale_c = shift_c / half_diag` is precomputed CPU-side, so the gather's
+/// per-pixel displacement `dir·scale_c` (`dir = local − centre`) uses only exact
+/// IEEE ops — no per-pixel `sqrt` → parity-robust nearest sampling.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct ChromaGlobals {
+    width: u32,
+    height: u32,
+    center_x: f32,
+    center_y: f32,
+    scale_r: f32,
+    scale_g: f32,
+    scale_b: f32,
+    _pad: f32,
+}
+
 /// A cached layer's place in the texture array + dirty tracking.
 struct CachedSlice {
     slice: u32,
@@ -505,6 +531,8 @@ pub struct LayerCompositor {
     pipeline_blur_v: wgpu::ComputePipeline,
     /// Directional (motion) blur — single 1-D pass along `(dir_x, dir_y)`.
     pipeline_blur_dir: wgpu::ComputePipeline,
+    /// Chromatic-aberration gather — per-channel radial shift (single pass).
+    pipeline_chroma: wgpu::ComputePipeline,
     /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
     pipeline_combine: wgpu::ComputePipeline,
     /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to
@@ -514,12 +542,14 @@ pub struct LayerCompositor {
     bgl_blur: wgpu::BindGroupLayout,
     bgl_combine: wgpu::BindGroupLayout,
     bgl_encode: wgpu::BindGroupLayout,
+    bgl_chroma: wgpu::BindGroupLayout,
     /// Per-pass uniform buffers (rewritten + submitted per pass; queue ordering
     /// makes single shared buffers safe). Created once.
     seg_globals_buffer: wgpu::Buffer,
     blur_globals_buffer: wgpu::Buffer,
     combine_globals_buffer: wgpu::Buffer,
     encode_globals_buffer: wgpu::Buffer,
+    chroma_globals_buffer: wgpu::Buffer,
     /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
     blur_weights_buffer: Option<(wgpu::Buffer, u64)>,
     /// 1×1 linear dummy bound as `base_in` for the first segment (start-from-zero).

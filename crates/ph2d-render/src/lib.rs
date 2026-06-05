@@ -79,9 +79,9 @@ pub use instance_buffer::InstanceBuffer;
 pub use ktx2_format::{CompressionFeatureSet, FormatError, wgpu_format_from_ktx2_format};
 pub use layer_compositor::{
     GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_BYTES, LayerCompositeError, LayerCompositor,
-    LayerOp, LayerPixelProvider, LayerPixels, MAX_BLUR_HALF, Region, SPATIAL_GAUSSIAN,
-    SPATIAL_MOTION, SPATIAL_SHARPEN, flatten_layer_ops, gaussian_weights, has_spatial,
-    max_layers_for_budget, motion_weights,
+    LayerOp, LayerPixelProvider, LayerPixels, MAX_BLUR_HALF, Region, SPATIAL_CHROMA,
+    SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN, flatten_layer_ops, gaussian_weights,
+    has_spatial, max_layers_for_budget, motion_weights,
 };
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,

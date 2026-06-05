@@ -74,8 +74,13 @@ quando me entregar a ref CPU+pesos de cada um, espelho de §2):
   + `apply_sharpen` canônico p/ reconciliar (o `amount` já é o coef. unsharp padrão;
   **`mask_edges` está DEFERIDO** — me diz a semântica que ligo). Prova que a infra é
   multi-kernel, não Gaussian-only.
+- ✅ **MotionBlur JÁ LANDADO** (commit `f1a3621`) — `SPATIAL_MOTION=2`, blur direcional
+  1-pass (`cs_blur_dir`, taps ao longo de `(cos angle, sin angle)`), prova que o
+  **estágio de blur** é trocável (não só o combine). Params: `[distance, angle_rad, 0, 0]`.
+  Gate `gpu_motion_matches_cpu_reference` verde. **Falta tua parte:** wire do tool
+  (`AdjustmentKind::MotionBlur → SPATIAL_MOTION`) + `apply_motion_blur` canônico (o box
+  uniforme é placeholder; **nearest-tap → bilinear** é refino de qualidade teu).
 - **ShadowsHighlights** = contraste local (blur do canal como mapa de tom) + combine.
-- **MotionBlur** = kernel direcional (mesmo mecanismo, dir≠eixo).
 - **Bloom** = bright-pass + blur-chain + add (mip/Kawase p/ raio grande).
 - **ChromaticAberration** = gather de 1 pass (a textura-de-baixo já é amostrável).
 Cada um: um `SPATIAL_*` code novo + (talvez) um par de entry points WGSL + a ref

@@ -45,10 +45,14 @@ multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + V
 - **Handoff escrito ao Painter impl:** [`HANDOFF_painter_w4_spatial_gaussian_impl.md`](HANDOFF_painter_w4_spatial_gaussian_impl.md)
   — (A) wire do tool flatten p/ emitir `SpatialAdjustment{kernel,...}` pros kinds espaciais
   (`ph2d-tool-painter`); (B) `apply_gaussian`/`apply_sharpen` canônicos (`ph2d-painter-brush`).
-- **✅ Sharpen TAMBÉM landado** (commit `49c475d`) — `SPATIAL_SHARPEN`, unsharp mask, reusa
-  toda a máquina de blur (só `cs_combine` muda via `combine_mode`). `gpu_sharpen_matches_cpu_
-  reference` verde. **Infra provada multi-kernel.** ShadowsHighlights/Motion/Bloom/
-  ChromaticAberration caem na MESMA infra (impl entrega a ref de cada).
+- **✅ Sharpen + MotionBlur TAMBÉM landados** (`49c475d` + `f1a3621`) — provam a infra
+  multi-kernel nos **dois eixos**: Sharpen troca o **combine** (unsharp via `combine_mode`),
+  Motion troca o **estágio de blur** (direcional 1-pass `cs_blur_dir`). 3 gates GPU verdes
+  (`gpu_{gaussian,sharpen,motion}_matches_cpu_reference`, full + sub-region halo, ±4B).
+  ShadowsHighlights/Bloom/ChromaticAberration caem na MESMA infra (impl entrega a ref de cada).
+- **Posse imutável:** TUDO em `ph2d-render` (Coord). Impl faz só o wire do tool + as refs CPU
+  canônicas (`apply_{gaussian,sharpen,motion_blur}`) na pasta dele. **6 commits de infra/kernel
+  locais, não-pushados.**
 - **Posse:** `ph2d-render` (infra, Coord — impl NÃO toca). Limitações documentadas (não-bloq.):
   spatial-dentro-de-grupo = no-op; Rgba16Float + batching de submits = tuning pós-paridade.
 

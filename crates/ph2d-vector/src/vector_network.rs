@@ -37,6 +37,7 @@
 //!   migration. Until then this comment documents the intent, not an
 //!   enforced gate.
 
+use glam::Vec2;
 use ph2d_color::OklchColor;
 use ph2d_vector_doc::{Region, Segment, SegmentId, VectorNetwork, Vertex, VertexId};
 use std::collections::BTreeMap;
@@ -166,6 +167,84 @@ pub fn draw_vector_network(
     drawn
 }
 
+/// Draw a **variable-width stroke** (plan §8 T5.1 / ADR-0059) by expanding a
+/// centerline polyline into a filled band and filling it on the GPU. Each point
+/// is offset by ±`width/2` along the local normal; per-point widths give a smooth
+/// taper (e.g. pen pressure). The width data is a **render-time parameter** — not
+/// stored in the `VectorNetwork` — so this adds no contract / serialization
+/// surface. `centerline` and `widths` must match length; `< 2` points draws nothing.
+pub fn draw_variable_width_stroke(
+    scene: &mut Scene,
+    centerline: &[Vec2],
+    widths: &[f32],
+    color: OklchColor,
+    transform: Affine,
+) {
+    let Some(band) = variable_width_band(centerline, widths) else {
+        return;
+    };
+    scene.fill(
+        Fill::NonZero,
+        transform,
+        &Brush::Solid(oklch_to_color(color)),
+        None,
+        &band,
+    );
+}
+
+/// Expand a centerline polyline + per-point widths into the closed band polygon
+/// that is the stroke outline. Pure + testable (no Vello). Each point's normal is
+/// perpendicular to the averaged in/out tangent, so corners offset cleanly.
+/// `None` if `< 2` points or a length mismatch.
+#[must_use]
+pub fn variable_width_band(centerline: &[Vec2], widths: &[f32]) -> Option<BezPath> {
+    let n = centerline.len();
+    if n < 2 || widths.len() != n {
+        return None;
+    }
+    let to_point = |v: Vec2| Point::new(f64::from(v.x), f64::from(v.y));
+    // Offset rails: left[i] / right[i] = centerline[i] ± normal_i · width_i/2.
+    let mut left = Vec::with_capacity(n);
+    let mut right = Vec::with_capacity(n);
+    for i in 0..n {
+        let incoming = if i > 0 {
+            centerline[i] - centerline[i - 1]
+        } else {
+            Vec2::ZERO
+        };
+        let outgoing = if i + 1 < n {
+            centerline[i + 1] - centerline[i]
+        } else {
+            Vec2::ZERO
+        };
+        let mut tangent = incoming + outgoing;
+        if tangent.length_squared() < 1e-12 {
+            // Coincident neighbors: fall back to whichever side has direction.
+            tangent = if outgoing.length_squared() > 0.0 {
+                outgoing
+            } else {
+                incoming
+            };
+        }
+        let t = tangent.normalize_or_zero();
+        let normal = Vec2::new(-t.y, t.x);
+        let half = widths[i] * 0.5;
+        left.push(centerline[i] + normal * half);
+        right.push(centerline[i] - normal * half);
+    }
+    // Trace the left rail forward, the right rail back → one closed outline.
+    let mut band = BezPath::new();
+    band.move_to(to_point(left[0]));
+    for &p in &left[1..] {
+        band.line_to(to_point(p));
+    }
+    for &p in right.iter().rev() {
+        band.line_to(to_point(p));
+    }
+    band.close_path();
+    Some(band)
+}
+
 /// Build a closed `kurbo::BezPath` for one region.
 ///
 /// Pure function; testable without Vello.
@@ -276,6 +355,26 @@ mod tests {
         FillSolid, Region, Segment, StrokeStyle, StyleTable, Vertex, WindingRule,
     };
     use vello::Scene;
+    use vello::kurbo::Shape;
+
+    #[test]
+    fn variable_width_band_expands_to_a_tapered_quad() {
+        // Straight segment, half-widths 1 → 2: the band spans x∈[0,10], y∈[-2,2].
+        let line = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)];
+        let band = variable_width_band(&line, &[2.0, 4.0]).expect("two points expand");
+        let bb = band.bounding_box();
+        assert!((bb.x0 - 0.0).abs() < 1e-6 && (bb.x1 - 10.0).abs() < 1e-6);
+        assert!((bb.y0 + 2.0).abs() < 1e-6 && (bb.y1 - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn variable_width_band_rejects_degenerate() {
+        assert!(variable_width_band(&[Vec2::ZERO], &[1.0]).is_none(), "needs ≥2 points");
+        assert!(
+            variable_width_band(&[Vec2::ZERO, Vec2::X], &[1.0]).is_none(),
+            "len mismatch"
+        );
+    }
 
     fn make_triangle_network() -> VectorNetwork {
         let mut net = VectorNetwork::empty();

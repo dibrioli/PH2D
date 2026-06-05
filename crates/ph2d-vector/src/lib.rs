@@ -24,7 +24,10 @@ pub mod scene;
 pub mod vector_network;
 
 pub use scene::VectorScene;
-pub use vector_network::{build_region_path, draw_vector_network, oklch_to_color};
+pub use vector_network::{
+    build_region_path, draw_variable_width_stroke, draw_vector_network, oklch_to_color,
+    variable_width_band,
+};
 
 // Re-export the Vector Module document types so downstream callers
 // (e.g. the W1.T1.7 shell bridge) can construct/inspect networks

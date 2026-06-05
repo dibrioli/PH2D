@@ -39,7 +39,14 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
   (shift per-canal display-space pesado por tonal-range + preserve-lum); GPU =
   per-channel `adj_luts` (reuso da máquina de Curves) + flag preserve (§GPU-COORD-CB);
   **ChannelMixer** — CPU-first (matriz 3×4 display-space + mono); GPU = matriz
-  uniform 12-float (cross-channel, NÃO é LUT) → expansão de uniform do Coord.
+  uniform 12-float (cross-channel, NÃO é LUT) → expansão de uniform do Coord;
+  **BlackAndWhite** — CPU-first (decomposição 6-hue → luma ponderada + tint OKLab);
+  GPU = algoritmo per-pixel nonlinear (nem LUT nem matriz) → port WGSL do Coord.
+
+**✅ BATCH-1 COMPLETA** (PhotoFilter + ColorBalance + ChannelMixer + BlackAndWhite).
+Os 4 kinds per-pixel slider/toggle/segment estão prontos CPU-first; o caminho GPU
+de cada um está especificado pro Coord (escalar / `adj_luts` / matriz uniform /
+algoritmo WGSL). Próximo da implementação = **BATCH-2** (GradientMap + SelectiveColor).
 
 **INFRA NOVA (REUSE p/ os próximos):**
   - **toggle rack** genérica: kind com `bool` vira UI só com arms em
@@ -68,10 +75,10 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**12 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+**11 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
 faz nada): GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
 Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
-SelectiveColor, ShadowsHighlights, BlackAndWhite. **Cap ≤32 (24
+SelectiveColor, ShadowsHighlights. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
 
 ───────────────────────────────────────────────────────────────────
@@ -96,8 +103,14 @@ genérico já renderiza. Compute = arm em `apply_adjustment`.
      escalar: é per-channel `adj_luts` (reuso de Curves) + flag preserve — export
      `colorbalance_display_luts` pronto; spec no §GPU-COORD-CB.
   3. **BlackAndWhite** `{reds,yellows,greens,cyans,blues,magentas, tint_color,
-     tint_amount}` — 6 sliders (peso por hue → luma) + tint (reuse o picker OKLCH
-     do Sprite Inspector) + amount. >3 params → CPU-first; GPU = Coord.
+     tint_amount}` — ✅ **PRONTO** (commit `85c96ec`). 6 sliders de peso por hue
+     (decomposição RGB-hexágono → luma display-space) + Tint switch + (com tint)
+     sliders Hue + amount. **Default manual = pesos PS 40/60/40/60/20/80** (o
+     all-zero colapsava tudo em `min(r,g,b)`). Tint controlado por Hue+amount
+     sliders (dirige o `OklchColor` por completo) — SEM popover de picker (decisão:
+     o BlenderColorPicker é integração de popover grande; sliders Hue+amount são
+     gold-standard e bastam). UI bespoke só pela ORDEM (switch entre os 6 hue e os
+     tint sliders). GPU = algoritmo per-pixel nonlinear → port WGSL do Coord.
   4. **ChannelMixer** `{red_out:[f32;4], green_out, blue_out, monochromatic}` —
      ✅ **PRONTO** (commit `e596f41`). Matriz 3×4 display-space (PS aplica no
      canal gamma-encoded) + mono (linha red_out → gray em todos os canais).

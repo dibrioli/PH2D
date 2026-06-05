@@ -33,6 +33,14 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         660,
         "Enio 2026-05-26 dither strength+grain rows — split deferred",
     ),
+    // Coord 2026-06-04 ship-prep: Painter W4 adjustment panels (Curves/Levels/
+    // B&W/Selective Color/Gradient Map) grew this orchestrator. Per-adjustment
+    // sibling split is a Painter-impl follow-up; frozen at the ship-canonical 829.
+    (
+        "ph2d-panel-painter-layers/src/paint_adjust.rs",
+        829,
+        "Painter W4 bespoke adjustment panels — per-adjustment split deferred (Painter impl follow-up)",
+    ),
 ];
 
 /// Per-function overage allowance. Each entry:
@@ -123,6 +131,21 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "apply_event_impl",
         353,
         "pre-existing oversized dispatcher (was ~493 on origin/main, cut to 353 by the Color&Tint sub-tab removal); per-cluster try_* split is ready but blocked on a comment-aware parser fix that re-baselines all panel allowances — deferred to a deliberate pass",
+    ),
+    // Coord 2026-06-04 ship-prep: Painter W4 adjustment dispatch + param rows grew
+    // with the bespoke kinds. Per-cluster / per-kind helper split is a Painter-impl
+    // follow-up; frozen at the ship-canonical LOC.
+    (
+        "ph2d-panel-painter-layers/src/event.rs",
+        "apply_event_impl",
+        299,
+        "Painter W4 adjustment event dispatch grew with bespoke kinds — per-cluster split deferred (Painter impl follow-up)",
+    ),
+    (
+        "ph2d-panel-painter-layers/src/paint_adjust.rs",
+        "paint_adjustment_params",
+        227,
+        "Painter W4 per-adjustment param rows — per-kind helper split deferred (Painter impl follow-up)",
     ),
 ];
 

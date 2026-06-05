@@ -14,6 +14,10 @@ extend-ignore-identifiers-re = [
     # "PN" wanting "ON". Audit-9 Lens O O-5 (2026-05-26): anchored
     # regex `^PNGs$` instead of unanchored substring `PNGs`.
     "^PNGs$",
+    # `ba` — the `vector.boolean` engine's reverse-direction closure (B∘A,
+    # mirror of the `ab` = A∘B forward) in `ph2d-node-vector-boolean`. A
+    # deliberate short identifier, not a typo of `by`/`be`. Anchored (2026-06-04).
+    "^ba$",
 ]
 
 [default.extend-words]

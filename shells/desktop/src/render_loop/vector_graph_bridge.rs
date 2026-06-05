@@ -219,11 +219,11 @@ fn draw_draft(
 ) -> bool {
     // Co-locate the sampling window over BOTH operands (same res + bounds) so
     // `boolean_sdf` can combine them cell-for-cell.
-    let ba = Bounds::of_network(net_a, DRAFT_PAD);
-    let bb = Bounds::of_network(net_b, DRAFT_PAD);
+    let bounds_a = Bounds::of_network(net_a, DRAFT_PAD);
+    let bounds_b = Bounds::of_network(net_b, DRAFT_PAD);
     let bounds = Bounds {
-        min: ba.min.min(bb.min),
-        max: ba.max.max(bb.max),
+        min: bounds_a.min.min(bounds_b.min),
+        max: bounds_a.max.max(bounds_b.max),
     };
     // GPU silhouette per operand, reusing the cached compute pipeline. The trivial
     // `min/max` combine + marching stay on the CPU (GpuSdf handles device-loss by
@@ -279,10 +279,10 @@ fn framing_affine(
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Affine {
-    let ba = Bounds::of_network(net_a, 0.0);
-    let bb = Bounds::of_network(net_b, 0.0);
-    let min = ba.min.min(bb.min);
-    let max = ba.max.max(bb.max);
+    let bounds_a = Bounds::of_network(net_a, 0.0);
+    let bounds_b = Bounds::of_network(net_b, 0.0);
+    let min = bounds_a.min.min(bounds_b.min);
+    let max = bounds_a.max.max(bounds_b.max);
     let center = (min + max) * 0.5;
     let span = max - min;
     let mut cam = *camera;
@@ -323,7 +323,7 @@ fn cook_transform_smoke(p: &VectorGraphParams, slug: &str) -> Option<VectorNetwo
     ph2d_node_registry_init::register_all_nodes(&mut reg).ok()?;
     let mut g = Graph::new();
     let source = add_source(&mut g, p, 0.0);
-    let node = g.add_node(&format!("vector.{slug}"));
+    let node = g.add_node(format!("vector.{slug}"));
     g.connect(Edge {
         from: (source, 0),
         to: (node, 0),

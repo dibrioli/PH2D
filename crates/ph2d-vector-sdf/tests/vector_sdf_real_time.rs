@@ -51,11 +51,11 @@ fn scatter_squares(count: u32, dx: f32, dy: f32) -> VectorNetwork {
 
 /// Co-located sampling window over both operands (so `boolean_sdf` can combine).
 fn shared_bounds(a: &VectorNetwork, b: &VectorNetwork) -> Bounds {
-    let ba = Bounds::of_network(a, 8.0);
-    let bb = Bounds::of_network(b, 8.0);
+    let bounds_a = Bounds::of_network(a, 8.0);
+    let bounds_b = Bounds::of_network(b, 8.0);
     Bounds {
-        min: ba.min.min(bb.min),
-        max: ba.max.max(bb.max),
+        min: bounds_a.min.min(bounds_b.min),
+        max: bounds_a.max.max(bounds_b.max),
     }
 }
 

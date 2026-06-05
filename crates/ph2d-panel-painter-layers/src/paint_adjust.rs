@@ -498,8 +498,8 @@ fn paint_selective_color(
 /// preview, which samples the LINEAR `gradient_map_lut` the canvas uses.
 fn lin_to_srgb8(v: f32) -> u8 {
     let v = v.clamp(0.0, 1.0);
-    let s = if v <= 0.003_130_8 {
-        // LITERAL-PX-OK: IEC sRGB transfer constant
+    let cutoff = 0.003_130_8; // LITERAL-PX-OK: IEC sRGB linear-segment cutoff
+    let s = if v <= cutoff {
         v * 12.92 // LITERAL-PX-OK: IEC sRGB transfer constant
     } else {
         1.055 * v.powf(1.0 / 2.4) - 0.055 // LITERAL-PX-OK: IEC sRGB transfer constants

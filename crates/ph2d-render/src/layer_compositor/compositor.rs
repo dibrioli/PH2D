@@ -125,6 +125,179 @@ impl LayerCompositor {
         let pipeline_flat = make_pipeline("cs_flat", "ph2d-render layer_composite flat");
         let pipeline_grouped = make_pipeline("cs_grouped", "ph2d-render layer_composite grouped");
 
+        // ── Segmented spatial pass-graph BGLs + pipelines (bindings 7–20) ─────
+        let storage_ro = |binding: u32, min: u64| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(min),
+            },
+            count: None,
+        };
+        let uniform = |binding: u32, min: u64| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(min),
+            },
+            count: None,
+        };
+        let sampled = |binding: u32, dim: wgpu::TextureViewDimension| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: dim,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let storage_tex = |binding: u32, format: wgpu::TextureFormat| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::StorageTexture {
+                access: wgpu::StorageTextureAccess::WriteOnly,
+                format,
+                view_dimension: wgpu::TextureViewDimension::D2,
+            },
+            count: None,
+        };
+        let f32_lin = wgpu::TextureFormat::Rgba32Float;
+        let op_sz = core::mem::size_of::<GpuOp>() as u64;
+        let adj_sz = core::mem::size_of::<AdjParamsGpu>() as u64;
+
+        let bgl_segment = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite seg bgl"),
+                entries: &[
+                    storage_ro(0, op_sz),                            // ops
+                    sampled(2, wgpu::TextureViewDimension::D2Array), // layers
+                    storage_ro(4, SRGB_LUT_LEN as u64 * 4),          // srgb lut
+                    storage_ro(5, adj_sz),                           // adj params
+                    storage_ro(6, 4),                                // adj luts
+                    uniform(7, core::mem::size_of::<SegGlobals>() as u64),
+                    storage_tex(8, f32_lin), // seg_out (linear)
+                    sampled(9, wgpu::TextureViewDimension::D2), // base_in
+                ],
+            });
+        let bgl_blur = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite blur bgl"),
+                entries: &[
+                    uniform(10, core::mem::size_of::<BlurGlobals>() as u64),
+                    sampled(11, wgpu::TextureViewDimension::D2), // src
+                    storage_tex(12, f32_lin),                    // dst
+                    storage_ro(13, 4),                           // weights (≥1 f32)
+                ],
+            });
+        let bgl_combine = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite combine bgl"),
+                entries: &[
+                    uniform(14, core::mem::size_of::<CombineGlobals>() as u64),
+                    sampled(15, wgpu::TextureViewDimension::D2), // base
+                    sampled(16, wgpu::TextureViewDimension::D2), // blurred
+                    storage_tex(17, f32_lin),                    // dst
+                ],
+            });
+        let bgl_encode = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite encode bgl"),
+                entries: &[
+                    uniform(18, core::mem::size_of::<EncodeGlobals>() as u64),
+                    sampled(19, wgpu::TextureViewDimension::D2), // src (linear)
+                    storage_tex(20, wgpu::TextureFormat::Rgba8Unorm), // out (sRGB8)
+                ],
+            });
+
+        let make_pipeline_for = |bgl: &wgpu::BindGroupLayout, entry: &str, label: &str| {
+            let layout = gpu
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some(label),
+                    bind_group_layouts: &[bgl],
+                    immediate_size: 0,
+                });
+            gpu.device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&layout),
+                    module: &shader,
+                    entry_point: Some(entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    cache: None,
+                })
+        };
+        let pipeline_segment = make_pipeline_for(
+            &bgl_segment,
+            "cs_segment",
+            "ph2d-render layer_composite segment",
+        );
+        let pipeline_blur_h =
+            make_pipeline_for(&bgl_blur, "cs_blur_h", "ph2d-render layer_composite blur_h");
+        let pipeline_blur_v =
+            make_pipeline_for(&bgl_blur, "cs_blur_v", "ph2d-render layer_composite blur_v");
+        let pipeline_combine = make_pipeline_for(
+            &bgl_combine,
+            "cs_combine",
+            "ph2d-render layer_composite combine",
+        );
+        let pipeline_encode = make_pipeline_for(
+            &bgl_encode,
+            "cs_encode",
+            "ph2d-render layer_composite encode",
+        );
+
+        let make_uniform_buf = |size: u64, label: &str| {
+            gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        };
+        let seg_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<SegGlobals>() as u64,
+            "ph2d-render layer_composite seg globals",
+        );
+        let blur_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<BlurGlobals>() as u64,
+            "ph2d-render layer_composite blur globals",
+        );
+        let combine_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<CombineGlobals>() as u64,
+            "ph2d-render layer_composite combine globals",
+        );
+        let encode_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<EncodeGlobals>() as u64,
+            "ph2d-render layer_composite encode globals",
+        );
+
+        // 1×1 linear dummy bound as base_in for the first (start-from-zero) segment.
+        let dummy_tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-render layer_composite seg base dummy"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: f32_lin,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let seg_base_dummy = dummy_tex.create_view(&wgpu::TextureViewDescriptor::default());
+
         let globals_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-render layer_composite globals"),
             size: core::mem::size_of::<GpuGlobals>() as u64,
@@ -157,6 +330,22 @@ impl LayerCompositor {
             srgb_lut_buffer,
             adj_params_buffer: None,
             adj_luts_buffer: None,
+            pipeline_segment,
+            pipeline_blur_h,
+            pipeline_blur_v,
+            pipeline_combine,
+            pipeline_encode,
+            bgl_segment,
+            bgl_blur,
+            bgl_combine,
+            bgl_encode,
+            seg_globals_buffer,
+            blur_globals_buffer,
+            combine_globals_buffer,
+            encode_globals_buffer,
+            blur_weights_buffer: None,
+            seg_base_dummy,
+            work: None,
         }
     }
 
@@ -257,6 +446,14 @@ impl LayerCompositor {
         self.upload_op_buffer(gpu);
         self.upload_adj_buffer(gpu);
         self.upload_adj_luts_buffer(gpu, adj_luts);
+
+        // Spatial adjustment present → take the segmented pass-graph (materialise
+        // → blur → combine → continue → encode). The single-pass path below stays
+        // bit-identical for the common (no-spatial) case.
+        if has_spatial(ops) {
+            return self.composite_segmented(gpu, ops, canvas_w, canvas_h, region);
+        }
+
         self.write_globals(gpu, canvas_w, canvas_h, region);
         let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
         self.dispatch(gpu, region, has_groups);
@@ -655,5 +852,494 @@ impl LayerCompositor {
             );
         }
         gpu.queue.submit([encoder.finish()]);
+    }
+
+    // ── Segmented spatial pass-graph (W4) ────────────────────────────────────
+
+    /// Composite an op-list containing ≥1 root-level spatial adjustment via the
+    /// pass-graph: split the op-list at each depth-0 spatial op into segments;
+    /// materialise the below-composite into a linear intermediate, run the
+    /// separable kernel through the ping-pong pair, blend back, continue the
+    /// layers above, and finally encode the requested region to straight sRGB8.
+    /// All intermediates are linear `Rgba32Float`; the only sRGB encode is the
+    /// final `cs_encode`. Each pass operates over `work_region` = the requested
+    /// dirty rect dilated by the total blur halo so the kernel has valid
+    /// neighbours up to the region edge.
+    ///
+    /// Op/adj/luts buffers + the layer array are already uploaded by the caller;
+    /// `out` is sized to `region`.
+    fn composite_segmented(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        canvas_w: u32,
+        canvas_h: u32,
+        region: Region,
+    ) -> Result<(), LayerCompositeError> {
+        /// One root-level spatial pass break: where it sits in the op-list, its
+        /// (provisional) kernel weights + half-width, and its blend/opacity.
+        struct Break {
+            idx: usize,
+            weights: Vec<f32>,
+            half: u32,
+            blend: u8,
+            opacity: f32,
+        }
+
+        let mut breaks: Vec<Break> = Vec::new();
+        let mut depth: i32 = 0;
+        let mut total_halo: u32 = 0;
+        for (i, op) in ops.iter().enumerate() {
+            match op {
+                LayerOp::PushGroup => depth += 1,
+                LayerOp::PopGroup { .. } => depth -= 1,
+                LayerOp::SpatialAdjustment {
+                    kernel,
+                    params,
+                    blend_mode,
+                    opacity,
+                } if depth == 0 && *kernel == SPATIAL_GAUSSIAN => {
+                    let (weights, half) = gaussian_weights(params[0]);
+                    total_halo = total_halo.saturating_add(half);
+                    breaks.push(Break {
+                        idx: i,
+                        weights,
+                        half,
+                        blend: *blend_mode,
+                        opacity: *opacity,
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        // No effective break (every spatial op is nested in a group or an
+        // unknown kernel) → fall back to the single pass; the segment loops /
+        // `cs_flat` no-op the `OP_SPATIAL` placeholders, so the effect is simply
+        // skipped rather than corrupting the composite (documented limitation:
+        // spatial-inside-group is a follow-up).
+        if breaks.is_empty() {
+            self.write_globals(gpu, canvas_w, canvas_h, region);
+            let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
+            self.dispatch(gpu, region, has_groups);
+            return Ok(());
+        }
+
+        // work_region = region dilated by the total halo, clamped to the canvas.
+        let x0 = region.x.saturating_sub(total_halo);
+        let y0 = region.y.saturating_sub(total_halo);
+        let x1 = (region.x + region.w)
+            .saturating_add(total_halo)
+            .min(canvas_w);
+        let y1 = (region.y + region.h)
+            .saturating_add(total_halo)
+            .min(canvas_h);
+        let work = Region {
+            x: x0,
+            y: y0,
+            w: x1 - x0,
+            h: y1 - y0,
+        };
+        self.ensure_work_textures(gpu, work.w, work.h);
+
+        // Running base alternates between base[0]/base[1] across segments +
+        // combines; the blur ping-pong uses blur[0]/blur[1]. No pass ever reads
+        // and writes the same texture.
+        let mut cur: usize = 0;
+        let mut seg_start: u32 = 0;
+        let mut from_base = false;
+        for b in &breaks {
+            let dst = if from_base { cur ^ 1 } else { cur };
+            self.run_segment(
+                gpu,
+                seg_start,
+                b.idx as u32,
+                from_base,
+                cur,
+                dst,
+                work,
+                canvas_w,
+                canvas_h,
+            );
+            cur = dst;
+            self.upload_blur_weights(gpu, &b.weights);
+            self.run_blur(gpu, cur, b.half, work);
+            self.run_combine(gpu, cur, cur ^ 1, b.blend, b.opacity, work);
+            cur ^= 1;
+            seg_start = b.idx as u32 + 1;
+            from_base = true;
+        }
+        // Layers above the last spatial break (if any).
+        if (seg_start as usize) < ops.len() {
+            self.run_segment(
+                gpu,
+                seg_start,
+                ops.len() as u32,
+                true,
+                cur,
+                cur ^ 1,
+                work,
+                canvas_w,
+                canvas_h,
+            );
+            cur ^= 1;
+        }
+        self.run_encode(gpu, cur, region, work);
+        Ok(())
+    }
+
+    /// Ensure the linear work intermediates are at least `w × h` (grow-only —
+    /// passes are bounded by `work_region`, so a larger texture just has an
+    /// unused border; this avoids reallocating when the dirty rect shrinks).
+    fn ensure_work_textures(&mut self, gpu: &GpuContext, w: u32, h: u32) {
+        if let Some(work) = &self.work
+            && work.width >= w
+            && work.height >= h
+        {
+            return;
+        }
+        let nw = w.max(self.work.as_ref().map_or(0, |t| t.width)).max(1);
+        let nh = h.max(self.work.as_ref().map_or(0, |t| t.height)).max(1);
+        let make = |label: &str| {
+            let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width: nw,
+                    height: nh,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba32Float,
+                usage: wgpu::TextureUsages::STORAGE_BINDING
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            WorkTex { texture, view }
+        };
+        self.work = Some(WorkTextures {
+            width: nw,
+            height: nh,
+            base: [
+                make("ph2d-render layer_composite work base0"),
+                make("ph2d-render layer_composite work base1"),
+            ],
+            blur: [
+                make("ph2d-render layer_composite work blur0"),
+                make("ph2d-render layer_composite work blur1"),
+            ],
+        });
+    }
+
+    /// Upload the separable Gaussian weights (binding 13). Grows like the other
+    /// persistent buffers; writes ≥1 f32 so the storage binding is never empty.
+    fn upload_blur_weights(&mut self, gpu: &GpuContext, weights: &[f32]) {
+        let dummy = [0.0f32];
+        let src: &[f32] = if weights.is_empty() { &dummy } else { weights };
+        let bytes: &[u8] = bytemuck::cast_slice(src);
+        let needed = (bytes.len() as u64).max(4);
+        let grow = match &self.blur_weights_buffer {
+            Some((_, cap)) => *cap < needed,
+            None => true,
+        };
+        if grow {
+            let buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render layer_composite blur weights"),
+                size: needed,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.blur_weights_buffer = Some((buffer, needed));
+        }
+        if let Some((buffer, _)) = &self.blur_weights_buffer {
+            gpu.queue.write_buffer(buffer, 0, bytes);
+        }
+    }
+
+    /// Run one compute pass (encoder → pass → submit) over a `w × h` grid.
+    fn dispatch_pass(
+        &self,
+        gpu: &GpuContext,
+        pipeline: &wgpu::ComputePipeline,
+        bind_group: &wgpu::BindGroup,
+        w: u32,
+        h: u32,
+        label: &str,
+    ) {
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some(label) });
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some(label),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.dispatch_workgroups(w.div_ceil(WORKGROUP_EDGE), h.div_ceil(WORKGROUP_EDGE), 1);
+        }
+        gpu.queue.submit([encoder.finish()]);
+    }
+
+    /// Composite `ops[op_start..op_end]` over `work` into `base[dst_idx]`,
+    /// starting from `base[src_idx]` when `from_base` (else from zero).
+    #[allow(clippy::too_many_arguments)]
+    fn run_segment(
+        &self,
+        gpu: &GpuContext,
+        op_start: u32,
+        op_end: u32,
+        from_base: bool,
+        src_idx: usize,
+        dst_idx: usize,
+        work: Region,
+        canvas_w: u32,
+        canvas_h: u32,
+    ) {
+        let (
+            Some(work_tex),
+            Some(array),
+            Some((op_buffer, _)),
+            Some((adj_buffer, _)),
+            Some((luts_buffer, _)),
+        ) = (
+            &self.work,
+            &self.array,
+            &self.op_buffer,
+            &self.adj_params_buffer,
+            &self.adj_luts_buffer,
+        )
+        else {
+            return;
+        };
+        let g = SegGlobals {
+            canvas_width: canvas_w,
+            canvas_height: canvas_h,
+            region_x: work.x,
+            region_y: work.y,
+            region_w: work.w,
+            region_h: work.h,
+            op_start,
+            op_end,
+            seg_from_base: u32::from(from_base),
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+        gpu.queue
+            .write_buffer(&self.seg_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let base_in_view = if from_base {
+            &work_tex.base[src_idx].view
+        } else {
+            &self.seg_base_dummy
+        };
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render layer_composite seg bg"),
+            layout: &self.bgl_segment,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: op_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&array.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.srgb_lut_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: adj_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: luts_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: self.seg_globals_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[dst_idx].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: wgpu::BindingResource::TextureView(base_in_view),
+                },
+            ],
+        });
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_segment,
+            &bind_group,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite seg pass",
+        );
+    }
+
+    /// Separable Gaussian over `base[base_idx]` → `blur[1]` (H into `blur[0]`,
+    /// then V into `blur[1]`). Weights must already be uploaded.
+    fn run_blur(&self, gpu: &GpuContext, base_idx: usize, half: u32, work: Region) {
+        let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
+        else {
+            return;
+        };
+        let g = BlurGlobals {
+            width: work.w,
+            height: work.h,
+            half,
+            _pad: 0,
+        };
+        gpu.queue
+            .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let blur_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
+            gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite blur bg"),
+                layout: &self.bgl_blur,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: self.blur_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 11,
+                        resource: wgpu::BindingResource::TextureView(src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 12,
+                        resource: wgpu::BindingResource::TextureView(dst),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 13,
+                        resource: weights_buffer.as_entire_binding(),
+                    },
+                ],
+            })
+        };
+        let bg_h = blur_bg(&work_tex.base[base_idx].view, &work_tex.blur[0].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_h,
+            &bg_h,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite blur_h pass",
+        );
+        let bg_v = blur_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_v,
+            &bg_v,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite blur_v pass",
+        );
+    }
+
+    /// Blend `blur[1]` (the blurred result) over `base[base_idx]` per the
+    /// adjustment's `blend`/`opacity` into `base[dst_idx]`.
+    fn run_combine(
+        &self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        dst_idx: usize,
+        blend: u8,
+        opacity: f32,
+        work: Region,
+    ) {
+        let Some(work_tex) = &self.work else {
+            return;
+        };
+        let g = CombineGlobals {
+            width: work.w,
+            height: work.h,
+            blend_mode: u32::from(blend),
+            _pad0: 0,
+            opacity,
+            _pad1: 0.0,
+            _pad2: 0.0,
+            _pad3: 0.0,
+        };
+        gpu.queue
+            .write_buffer(&self.combine_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render layer_composite combine bg"),
+            layout: &self.bgl_combine,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 14,
+                    resource: self.combine_globals_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 15,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 16,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.blur[1].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 17,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[dst_idx].view),
+                },
+            ],
+        });
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_combine,
+            &bind_group,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite combine pass",
+        );
+    }
+
+    /// Encode `base[base_idx]` (linear, work_region-sized) cropped to `region`
+    /// into the straight-sRGB8 `out` texture.
+    fn run_encode(&self, gpu: &GpuContext, base_idx: usize, region: Region, work: Region) {
+        let (Some(work_tex), Some(out)) = (&self.work, &self.out) else {
+            return;
+        };
+        let g = EncodeGlobals {
+            out_w: region.w,
+            out_h: region.h,
+            src_off_x: region.x - work.x,
+            src_off_y: region.y - work.y,
+        };
+        gpu.queue
+            .write_buffer(&self.encode_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render layer_composite encode bg"),
+            layout: &self.bgl_encode,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 18,
+                    resource: self.encode_globals_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 19,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 20,
+                    resource: wgpu::BindingResource::TextureView(&out.view),
+                },
+            ],
+        });
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_encode,
+            &bind_group,
+            region.w,
+            region.h,
+            "ph2d-render layer_composite encode pass",
+        );
     }
 }

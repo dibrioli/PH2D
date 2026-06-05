@@ -151,6 +151,76 @@ pub enum LayerOp {
         blend_mode: u8,
         opacity: f32,
     },
+    /// Apply a SPATIAL (neighbourhood) adjustment to the current accumulator
+    /// (everything below it). Unlike [`LayerOp::Adjustment`] — which is a
+    /// per-pixel transform foldable into the single-pass compositor — a spatial
+    /// effect reads a *radius* of neighbours, so it is architecturally a **pass
+    /// break**: the compositor materialises the below-composite into a texture,
+    /// runs the kernel as 1+ ping-pong passes, blends the result back, then
+    /// continues the layers above as a new segment (Painter W4 spatial infra).
+    ///
+    /// `kernel` is a `SPATIAL_*` code (the caller maps its `AdjustmentKind`);
+    /// `params` are the kernel's scalars (`SPATIAL_GAUSSIAN` uses `params[0]` =
+    /// radius). `blend_mode`/`opacity` are the adjustment's own — the effect
+    /// blends back over the base by these, mirroring the `Adjustment` arm. An
+    /// unknown `kernel` is an identity no-op (forward-compatible).
+    SpatialAdjustment {
+        kernel: u8,
+        params: [f32; 4],
+        blend_mode: u8,
+        opacity: f32,
+    },
+}
+
+/// Spatial-kernel codes — the `kernel` discriminant of
+/// [`LayerOp::SpatialAdjustment`]. The painter tool maps its
+/// `AdjustmentKind::GaussianBlur` (etc.) to one of these. Only `GAUSSIAN` is
+/// implemented in the spike; the others are reserved so the contract is stable
+/// as they land on the same pass-graph (Sharpen = Gaussian + combine, etc.).
+pub const SPATIAL_GAUSSIAN: u8 = 0;
+
+/// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
+/// Bounds the weights buffer + the per-pixel tap count + the dirty-rect halo.
+/// A 256-radius blur is already far past any interactive use.
+pub const MAX_BLUR_HALF: u32 = 256;
+
+/// PROVISIONAL Gaussian kernel — **to be reconciled with the Painter impl's
+/// canonical `apply_gaussian`** (the σ↔radius mapping + weights are the impl's
+/// math per the W4 spatial division of labour; this is the placeholder the
+/// pass-graph spike runs against so GPU↔CPU parity tests the *mechanism*, not
+/// the artistic curve). Returns `(weights, half_width)` where `weights[i]` is
+/// the symmetric weight for offset `±i` (`weights[0]` = centre tap), normalised
+/// so the full kernel sums to 1. σ = radius/3 (radius ≈ 3σ); `half = ceil(radius)`.
+#[must_use]
+pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
+    let r = radius.max(0.0);
+    let half = (r.ceil() as u32).clamp(1, MAX_BLUR_HALF);
+    let sigma = (r / 3.0).max(1e-3);
+    let two_sigma_sq = 2.0 * sigma * sigma;
+    let mut weights = Vec::with_capacity(half as usize + 1);
+    let mut sum = 0.0f32;
+    for i in 0..=half {
+        let x = i as f32;
+        let g = (-(x * x) / two_sigma_sq).exp();
+        weights.push(g);
+        // The centre tap is counted once; each ±i flank tap is counted twice.
+        sum += if i == 0 { g } else { 2.0 * g };
+    }
+    if sum > 0.0 {
+        for w in &mut weights {
+            *w /= sum;
+        }
+    }
+    (weights, half)
+}
+
+/// Does this op-list contain a spatial adjustment (a pass break)? When false,
+/// the compositor takes the untouched single-pass path; when true, it takes the
+/// segmented pass-graph.
+#[must_use]
+pub fn has_spatial(ops: &[LayerOp]) -> bool {
+    ops.iter()
+        .any(|o| matches!(o, LayerOp::SpatialAdjustment { .. }))
 }
 
 /// Borrowed straight-sRGB8 pixels for one layer plus a cheap content version.
@@ -231,6 +301,11 @@ const OP_LAYER: u32 = 0;
 const OP_PUSH_GROUP: u32 = 1;
 const OP_POP_GROUP: u32 = 2;
 const OP_ADJUSTMENT: u32 = 3;
+/// Placeholder for a [`LayerOp::SpatialAdjustment`] in the flattened GPU op
+/// array: the segment compute loop treats it as a no-op (the spatial effect is
+/// driven CPU-side as a pass break), but emitting it keeps the GPU op indices
+/// 1:1 with the `LayerOp` list so segment ranges are trivial to compute.
+const OP_SPATIAL: u32 = 4;
 
 /// Per-adjustment params as the shader sees them (16 bytes; mirrors WGSL
 /// `AdjParams`). `kind` is an `ADJ_*` code; `p0/p1/p2` are the kind's scalar
@@ -257,6 +332,76 @@ struct GpuGlobals {
     region_h: u32,
     op_count: u32,
     _pad: u32,
+}
+
+// ── Segmented (spatial pass-graph) GPU mirrors ───────────────────────────────
+//
+// The single-pass `cs_flat`/`cs_grouped` write straight sRGB8 directly and start
+// from a zeroed accumulator. The segmented path instead composites *runs* of ops
+// into linear `Rgba32Float` intermediates (so a spatial kernel can read a radius
+// of neighbours), with these per-pass uniforms. Each pass operates on the
+// `work_region` = the requested dirty rect dilated by the total blur halo (so the
+// kernel has valid neighbours up to the region edge); intermediate local coords
+// map to canvas coords via `region_*`, exactly like `resolve_pixel`.
+
+/// Globals for `cs_segment` (48 bytes; mirrors WGSL `SegGlobals`). Composites
+/// `ops[op_start..op_end]` over `work_region` into a linear target, starting the
+/// accumulator from `base_in` when `seg_from_base != 0` (else from zero).
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct SegGlobals {
+    canvas_width: u32,
+    canvas_height: u32,
+    region_x: u32,
+    region_y: u32,
+    region_w: u32,
+    region_h: u32,
+    op_start: u32,
+    op_end: u32,
+    seg_from_base: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
+/// Globals for `cs_blur_h`/`cs_blur_v` (16 bytes; mirrors WGSL `BlurGlobals`).
+/// A separable convolution over a `width × height` linear texture with the
+/// symmetric kernel `weights[0..=half]` (clamp-to-edge at the texture border).
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct BlurGlobals {
+    width: u32,
+    height: u32,
+    half: u32,
+    _pad: u32,
+}
+
+/// Globals for `cs_combine` (32 bytes; mirrors WGSL `CombineGlobals`). Blends
+/// the blurred result back over the base per the adjustment's `blend_mode` +
+/// `opacity` — the spatial mirror of `apply_adjustment_op`.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct CombineGlobals {
+    width: u32,
+    height: u32,
+    blend_mode: u32,
+    _pad0: u32,
+    opacity: f32,
+    _pad1: f32,
+    _pad2: f32,
+    _pad3: f32,
+}
+
+/// Globals for `cs_encode` (16 bytes; mirrors WGSL `EncodeGlobals`). Reads the
+/// final linear `work_region` intermediate at `(src_off_x, src_off_y)` and
+/// writes the `out_w × out_h` straight-sRGB8 output (the requested dirty rect).
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct EncodeGlobals {
+    out_w: u32,
+    out_h: u32,
+    src_off_x: u32,
+    src_off_y: u32,
 }
 
 /// A cached layer's place in the texture array + dirty tracking.
@@ -312,6 +457,57 @@ pub struct LayerCompositor {
     /// Persistent display-space transfer-LUT storage buffer (W4 Curves/Levels;
     /// grown as needed; always holds ≥1 f32 so binding 6 is never zero-sized).
     adj_luts_buffer: Option<(wgpu::Buffer, u64)>,
+
+    // ── Segmented spatial pass-graph (W4) ────────────────────────────────────
+    // Only built/used when an op-list contains a `LayerOp::SpatialAdjustment`;
+    // the single-pass path above is untouched (bit-identical for the common
+    // case). Pipelines are created once at construction (cheap, no textures).
+    /// Composites a run of ops into a linear `Rgba32Float` intermediate, optionally
+    /// starting from a base texture (segment between pass breaks).
+    pipeline_segment: wgpu::ComputePipeline,
+    /// Separable-blur horizontal / vertical passes (shared bgl `bgl_blur`).
+    pipeline_blur_h: wgpu::ComputePipeline,
+    pipeline_blur_v: wgpu::ComputePipeline,
+    /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
+    pipeline_combine: wgpu::ComputePipeline,
+    /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to
+    /// the requested dirty rect).
+    pipeline_encode: wgpu::ComputePipeline,
+    bgl_segment: wgpu::BindGroupLayout,
+    bgl_blur: wgpu::BindGroupLayout,
+    bgl_combine: wgpu::BindGroupLayout,
+    bgl_encode: wgpu::BindGroupLayout,
+    /// Per-pass uniform buffers (rewritten + submitted per pass; queue ordering
+    /// makes single shared buffers safe). Created once.
+    seg_globals_buffer: wgpu::Buffer,
+    blur_globals_buffer: wgpu::Buffer,
+    combine_globals_buffer: wgpu::Buffer,
+    encode_globals_buffer: wgpu::Buffer,
+    /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
+    blur_weights_buffer: Option<(wgpu::Buffer, u64)>,
+    /// 1×1 linear dummy bound as `base_in` for the first segment (start-from-zero).
+    seg_base_dummy: wgpu::TextureView,
+    /// Linear `Rgba32Float` work intermediates, sized to the current `work_region`
+    /// (rebuilt when it grows). `base[2]` ping-pong across segments + combines;
+    /// `blur[2]` ping-pong across the separable H/V passes. Reused across frames.
+    work: Option<WorkTextures>,
+}
+
+/// Linear `Rgba32Float` intermediates for the segmented pass-graph, all sized to
+/// the active `work_region`. Each texture carries both `STORAGE_BINDING` (written
+/// by a pass) and `TEXTURE_BINDING` (sampled by a later pass) usage; the single
+/// default view serves either role (never the same texture in one pass).
+struct WorkTextures {
+    width: u32,
+    height: u32,
+    base: [WorkTex; 2],
+    blur: [WorkTex; 2],
+}
+
+struct WorkTex {
+    #[allow(dead_code)] // kept alive; the view is what binds
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
 }
 
 /// Validate group push/pop balance + depth without touching the GPU.
@@ -332,7 +528,12 @@ fn validate_op_list(ops: &[LayerOp]) -> Result<(), LayerCompositeError> {
             }
             // Layers + adjustments are depth-neutral (an adjustment transforms
             // the current accumulator in place, like a layer blends over it).
-            LayerOp::Layer { .. } | LayerOp::Adjustment { .. } => {}
+            // A spatial adjustment is likewise depth-neutral at the op-list
+            // level — its multi-pass machinery runs between segments, but it
+            // does not push/pop a group.
+            LayerOp::Layer { .. }
+            | LayerOp::Adjustment { .. }
+            | LayerOp::SpatialAdjustment { .. } => {}
         }
     }
     if depth != 0 {
@@ -460,6 +661,16 @@ pub fn flatten_layer_ops(
                     opacity: opacity.clamp(0.0, 1.0),
                 }
             }
+            // Spatial adjustments are driven CPU-side as pass breaks; emit a
+            // no-op placeholder so GPU op indices mirror the `LayerOp` list 1:1
+            // (the segment compute loop ignores `OP_SPATIAL`). The kernel/params
+            // are read from the original op-list by the segmented orchestrator.
+            LayerOp::SpatialAdjustment { .. } => GpuOp {
+                kind: OP_SPATIAL,
+                layer_slot: 0,
+                blend_mode: 0,
+                opacity: 1.0,
+            },
         };
         scratch.ops.push(g);
     }

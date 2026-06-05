@@ -577,11 +577,14 @@ fn cs_flat(@builtin(global_invocation_id) gid: vec3<u32>) {
         let op = ops[i];
         if op.kind == OP_ADJUSTMENT {
             acc = apply_adjustment_op(op, acc);
-        } else {
+        } else if op.kind == OP_LAYER {
             var s = decode_layer(op.layer_slot, coord);
             s.a = s.a * op.opacity;
             acc = apply_blend(op.blend_mode, acc, s);
         }
+        // Other kinds (groups, OP_SPATIAL) never reach cs_flat — the Rust side
+        // dispatches cs_grouped for groups and the segmented pass-graph for any
+        // spatial op. The explicit OP_LAYER guard is defence-in-depth.
     }
     textureStore(out_tex, out_local, encode_final(acc));
 }
@@ -646,4 +649,226 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 
     textureStore(out_tex, out_local, encode_final(acc0));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPATIAL PASS-GRAPH (Painter W4) — multi-pass infra for neighbourhood filters
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// A spatial adjustment (Gaussian/Bloom/Sharpen/…) reads a RADIUS of neighbours,
+// which the single-pass per-pixel compositor (acc in a register) cannot do. The
+// Rust side splits the op-list at each root-level spatial adjustment into
+// segments and drives this graph: cs_segment materialises the below-composite
+// into a linear Rgba32Float texture → cs_blur_h/cs_blur_v run the separable
+// kernel through a ping-pong pair → cs_combine blends the result back over the
+// base → cs_segment continues the layers above → cs_encode writes straight
+// sRGB8. All passes work in STRAIGHT LINEAR space (the accumulator space); the
+// final encode is the only linear→sRGB step (byte-identical to the single-pass
+// `encode_final`). These entry points share every helper above (apply_blend,
+// decode_layer, apply_adjustment, encode_final) — no duplicated math.
+//
+// Bindings 7–20 are this graph's; the single-pass path (0–6) is untouched. Each
+// pipeline binds only the subset its entry point uses.
+
+// ── cs_segment — composite ops[op_start..op_end] into a linear intermediate ──
+struct SegGlobals {
+    canvas_width: u32,
+    canvas_height: u32,
+    region_x: u32,
+    region_y: u32,
+    region_w: u32,
+    region_h: u32,
+    op_start: u32,
+    op_end: u32,
+    seg_from_base: u32, // 0 → start accumulator from zero; else from base_in
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+@group(0) @binding(7) var<uniform> sg: SegGlobals;
+// Linear straight-sRGB Rgba32Float intermediate this segment writes.
+@group(0) @binding(8) var seg_out: texture_storage_2d<rgba32float, write>;
+// The running base (previous segment / combine result), work_region-sized so
+// its local coord is 1:1 with seg_out. Only read when sg.seg_from_base != 0.
+@group(0) @binding(9) var base_in: texture_2d<f32>;
+
+// A segment is a complete root-level run with any fully-contained groups (the
+// Rust side only breaks at depth-0 spatial ops). Mirror of cs_grouped, but the
+// root accumulator starts from base_in and the result is written LINEAR (no
+// encode) for the next pass to sample. OP_SPATIAL placeholders are no-ops here.
+@compute @workgroup_size(8, 8, 1)
+fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let lx = gid.x;
+    let ly = gid.y;
+    if lx >= sg.region_w || ly >= sg.region_h {
+        return;
+    }
+    let out_local = vec2<i32>(i32(lx), i32(ly));
+    let gx = sg.region_x + lx;
+    let gy = sg.region_y + ly;
+    if gx >= sg.canvas_width || gy >= sg.canvas_height {
+        // Halo pixel outside the canvas — clamp-to-edge is the kernel's job;
+        // here we simply leave it transparent (the layers have no data there).
+        textureStore(seg_out, out_local, vec4<f32>(0.0, 0.0, 0.0, 0.0));
+        return;
+    }
+    let coord = vec2<i32>(i32(gx), i32(gy));
+
+    var acc0 = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    if sg.seg_from_base != 0u {
+        acc0 = textureLoad(base_in, out_local, 0);
+    }
+    var stack: array<vec4<f32>, MAX_GROUP_STACK>;
+    var sp: u32 = 0u;
+
+    for (var i: u32 = sg.op_start; i < sg.op_end; i = i + 1u) {
+        let op = ops[i];
+        switch op.kind {
+            case 0u: { // OP_LAYER
+                var s = decode_layer(op.layer_slot, coord);
+                s.a = s.a * op.opacity;
+                if sp == 0u {
+                    acc0 = apply_blend(op.blend_mode, acc0, s);
+                } else {
+                    let d = sp - 1u;
+                    stack[d] = apply_blend(op.blend_mode, stack[d], s);
+                }
+            }
+            case 1u: { // OP_PUSH_GROUP
+                if sp < MAX_GROUP_STACK {
+                    sp = sp + 1u;
+                    stack[sp - 1u] = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+                }
+            }
+            case 2u: { // OP_POP_GROUP
+                if sp > 0u {
+                    var sub = stack[sp - 1u];
+                    sp = sp - 1u;
+                    sub.a = sub.a * op.opacity;
+                    if sp == 0u {
+                        acc0 = apply_blend(op.blend_mode, acc0, sub);
+                    } else {
+                        let d = sp - 1u;
+                        stack[d] = apply_blend(op.blend_mode, stack[d], sub);
+                    }
+                }
+            }
+            case 3u: { // OP_ADJUSTMENT (per-pixel)
+                if sp == 0u {
+                    acc0 = apply_adjustment_op(op, acc0);
+                } else {
+                    let d = sp - 1u;
+                    stack[d] = apply_adjustment_op(op, stack[d]);
+                }
+            }
+            default: {} // OP_SPATIAL placeholder / unknown — no-op
+        }
+    }
+
+    textureStore(seg_out, out_local, acc0);
+}
+
+// ── cs_blur_h / cs_blur_v — separable convolution (clamp-to-edge) ────────────
+struct BlurGlobals {
+    width: u32,
+    height: u32,
+    half: u32, // kernel reaches ±half; weights[0..=half], weights[0] = centre
+    _pad: u32,
+}
+@group(0) @binding(10) var<uniform> blur_g: BlurGlobals;
+@group(0) @binding(11) var blur_src: texture_2d<f32>;
+@group(0) @binding(12) var blur_dst: texture_storage_2d<rgba32float, write>;
+// Symmetric Gaussian weights weights[0..=half] (centre + flanks), normalised so
+// the full 2·half+1 kernel sums to 1. Built CPU-side by `gaussian_weights`; the
+// SAME values feed the CPU parity reference (the math is the painter impl's
+// canonical `apply_gaussian` once reconciled — the mechanism is what this proves).
+@group(0) @binding(13) var<storage, read> blur_weights: array<f32>;
+
+fn blur_core(gid: vec3<u32>, dir: vec2<i32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= blur_g.width || y >= blur_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let lo = vec2<i32>(0, 0);
+    let hi = vec2<i32>(i32(blur_g.width) - 1, i32(blur_g.height) - 1);
+    var acc = textureLoad(blur_src, p, 0) * blur_weights[0];
+    for (var i: u32 = 1u; i <= blur_g.half; i = i + 1u) {
+        let off = dir * i32(i);
+        let pa = clamp(p + off, lo, hi);
+        let pb = clamp(p - off, lo, hi);
+        let w = blur_weights[i];
+        acc = acc + (textureLoad(blur_src, pa, 0) + textureLoad(blur_src, pb, 0)) * w;
+    }
+    textureStore(blur_dst, p, acc);
+}
+@compute @workgroup_size(8, 8, 1)
+fn cs_blur_h(@builtin(global_invocation_id) gid: vec3<u32>) {
+    blur_core(gid, vec2<i32>(1, 0));
+}
+@compute @workgroup_size(8, 8, 1)
+fn cs_blur_v(@builtin(global_invocation_id) gid: vec3<u32>) {
+    blur_core(gid, vec2<i32>(0, 1));
+}
+
+// ── cs_combine — blend the blurred result back over the base ─────────────────
+struct CombineGlobals {
+    width: u32,
+    height: u32,
+    blend_mode: u32,
+    _pad0: u32,
+    opacity: f32,
+    _pad1: f32,
+    _pad2: f32,
+    _pad3: f32,
+}
+@group(0) @binding(14) var<uniform> comb_g: CombineGlobals;
+@group(0) @binding(15) var comb_base: texture_2d<f32>;
+@group(0) @binding(16) var comb_blurred: texture_2d<f32>;
+@group(0) @binding(17) var comb_dst: texture_storage_2d<rgba32float, write>;
+
+// Spatial mirror of apply_adjustment_op: the kernel result (blurred.rgb) is the
+// "adjusted" value; blend it over the base in the adjustment's mode, lerp by its
+// opacity, preserve coverage (base.a). Alpha/premultiply handling is a kernel-
+// semantics refinement owned by the impl's canonical apply_gaussian.
+@compute @workgroup_size(8, 8, 1)
+fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= comb_g.width || y >= comb_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let acc = textureLoad(comb_base, p, 0);
+    let blurred = textureLoad(comb_blurred, p, 0);
+    let src_px = vec4<f32>(blurred.rgb, acc.a);
+    let blended = apply_blend(comb_g.blend_mode, acc, src_px);
+    let t = clamp(comb_g.opacity, 0.0, 1.0);
+    let out = vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);
+    textureStore(comb_dst, p, out);
+}
+
+// ── cs_encode — final linear intermediate → straight sRGB8 (cropped) ─────────
+struct EncodeGlobals {
+    out_w: u32,
+    out_h: u32,
+    src_off_x: u32, // offset of the requested region inside the work_region texture
+    src_off_y: u32,
+}
+@group(0) @binding(18) var<uniform> enc_g: EncodeGlobals;
+@group(0) @binding(19) var enc_src: texture_2d<f32>;
+@group(0) @binding(20) var enc_out: texture_storage_2d<rgba8unorm, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn cs_encode(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= enc_g.out_w || y >= enc_g.out_h {
+        return;
+    }
+    let out_local = vec2<i32>(i32(x), i32(y));
+    let src = vec2<i32>(i32(enc_g.src_off_x + x), i32(enc_g.src_off_y + y));
+    let acc = textureLoad(enc_src, src, 0);
+    textureStore(enc_out, out_local, encode_final(acc));
 }

@@ -16,6 +16,7 @@ use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
+    SPATIAL_GAUSSIAN, gaussian_weights,
 };
 use std::collections::BTreeMap;
 
@@ -152,6 +153,11 @@ fn cpu_composite(ops: &[LayerOp], prov: &MapProvider, w: u32, _h: u32, region: R
                     } => {
                         stack[sp] = cpu_adjust_op(*kind, *params, *blend_mode, *opacity, stack[sp]);
                     }
+                    // Spatial adjustments take the segmented pass-graph, not this
+                    // single-pass reference — `gpu_gaussian_matches_cpu_reference`
+                    // has its own materialise→blur→combine reference. Never present
+                    // in op-lists handed to `cpu_composite`.
+                    LayerOp::SpatialAdjustment { .. } => {}
                 }
             }
             let acc = stack[0];
@@ -785,5 +791,241 @@ fn gpu_too_many_layers_errors_at_budget_cap() {
             requested: cap + 1,
             cap
         }
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPATIAL PASS-GRAPH (Painter W4) — Gaussian-blur parity
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Proves the segmented infra (materialise-below → separable H/V ping-pong →
+// combine → continue-above → encode) reproduces a full CPU recompose of the same
+// op-list, AND that the dirty-rect ⊕ halo path equals the full recompose cropped.
+// The Gaussian weights are the provisional `gaussian_weights` (the σ↔radius math
+// is the painter impl's canonical `apply_gaussian` once reconciled) — both GPU
+// and this reference read the SAME weights, so the test proves the *mechanism*.
+
+/// Decode one straight-sRGB8 texel at byte offset `i` to straight linear RGBA.
+fn cpu_decode_px(b: &[u8], i: usize) -> [f32; 4] {
+    [
+        srgb_to_linear_byte(b[i]),
+        srgb_to_linear_byte(b[i + 1]),
+        srgb_to_linear_byte(b[i + 2]),
+        b[i + 3] as f32 / 255.0,
+    ]
+}
+
+/// Composite a run of `Layer`/`Adjustment` ops over the full canvas into a linear
+/// RGBA buffer, starting each pixel from `base` (or zero). Mirror of `cs_segment`
+/// for the test's group-free op runs.
+fn cpu_seg_linear(
+    ops: &[LayerOp],
+    prov: &MapProvider,
+    w: u32,
+    h: u32,
+    base: Option<&[[f32; 4]]>,
+) -> Vec<[f32; 4]> {
+    let n = (w * h) as usize;
+    let mut out = vec![[0.0f32; 4]; n];
+    for (p, slot) in out.iter_mut().enumerate() {
+        let mut acc = base.map_or([0.0f32; 4], |b| b[p]);
+        let i = p * 4;
+        for op in ops {
+            match op {
+                LayerOp::Layer {
+                    key,
+                    blend_mode,
+                    opacity,
+                } => {
+                    let bb = prov.bytes(*key);
+                    let mut s = cpu_decode_px(bb, i);
+                    s[3] *= *opacity;
+                    acc = apply_blend(BlendMode::from_u8(*blend_mode), acc, s);
+                }
+                LayerOp::Adjustment {
+                    kind,
+                    params,
+                    blend_mode,
+                    opacity,
+                } => {
+                    acc = cpu_adjust_op(*kind, *params, *blend_mode, *opacity, acc);
+                }
+                _ => {} // no groups / spatial ops inside a segment run (test invariant)
+            }
+        }
+        *slot = acc;
+    }
+    out
+}
+
+/// Separable Gaussian over a full-canvas linear buffer (H then V, clamp-to-edge),
+/// using the symmetric `weights[0..=half]`. Mirror of `cs_blur_h`/`cs_blur_v`.
+fn cpu_blur_linear(src: &[[f32; 4]], w: u32, h: u32, weights: &[f32], half: u32) -> Vec<[f32; 4]> {
+    let wi = w as i32;
+    let hi = h as i32;
+    let pass = |inp: &[[f32; 4]], dx: i32, dy: i32| -> Vec<[f32; 4]> {
+        let mut out = vec![[0.0f32; 4]; inp.len()];
+        for y in 0..hi {
+            for x in 0..wi {
+                let mut acc = [0.0f32; 4];
+                let c = inp[(y * wi + x) as usize];
+                for k in 0..4 {
+                    acc[k] += c[k] * weights[0];
+                }
+                for i in 1..=half as i32 {
+                    let xa = (x + dx * i).clamp(0, wi - 1);
+                    let ya = (y + dy * i).clamp(0, hi - 1);
+                    let xb = (x - dx * i).clamp(0, wi - 1);
+                    let yb = (y - dy * i).clamp(0, hi - 1);
+                    let a = inp[(ya * wi + xa) as usize];
+                    let b = inp[(yb * wi + xb) as usize];
+                    for k in 0..4 {
+                        acc[k] += (a[k] + b[k]) * weights[i as usize];
+                    }
+                }
+                out[(y * wi + x) as usize] = acc;
+            }
+        }
+        out
+    };
+    let tmp = pass(src, 1, 0);
+    pass(&tmp, 0, 1)
+}
+
+/// Blend the blurred result over the base per `blend`/`opacity`, preserving
+/// coverage. Mirror of `cs_combine`.
+fn cpu_combine_linear(
+    base: &[[f32; 4]],
+    blurred: &[[f32; 4]],
+    blend: u8,
+    opacity: f32,
+) -> Vec<[f32; 4]> {
+    base.iter()
+        .zip(blurred)
+        .map(|(acc, bl)| {
+            let src_px = [bl[0], bl[1], bl[2], acc[3]];
+            let blended = apply_blend(BlendMode::from_u8(blend), *acc, src_px);
+            let t = opacity.clamp(0.0, 1.0);
+            [
+                acc[0] + (blended[0] - acc[0]) * t,
+                acc[1] + (blended[1] - acc[1]) * t,
+                acc[2] + (blended[2] - acc[2]) * t,
+                acc[3],
+            ]
+        })
+        .collect()
+}
+
+/// Encode a full-canvas linear buffer → straight sRGB8. Mirror of `encode_final`.
+fn cpu_encode_full(buf: &[[f32; 4]]) -> Vec<u8> {
+    let mut out = vec![0u8; buf.len() * 4];
+    for (p, px) in buf.iter().enumerate() {
+        out[p * 4] = linear_to_srgb_byte(px[0]);
+        out[p * 4 + 1] = linear_to_srgb_byte(px[1]);
+        out[p * 4 + 2] = linear_to_srgb_byte(px[2]);
+        out[p * 4 + 3] = (px[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    }
+    out
+}
+
+/// Crop a full-canvas sRGB8 buffer to `region`.
+fn cpu_crop(canvas: &[u8], w: u32, region: Region) -> Vec<u8> {
+    let mut out = vec![0u8; (region.w * region.h * 4) as usize];
+    for ly in 0..region.h {
+        for lx in 0..region.w {
+            let src = (((region.y + ly) * w + (region.x + lx)) * 4) as usize;
+            let dst = ((ly * region.w + lx) * 4) as usize;
+            out[dst..dst + 4].copy_from_slice(&canvas[src..src + 4]);
+        }
+    }
+    out
+}
+
+/// GPU spatial pass-graph vs a full CPU recompose, for a Gaussian-blur
+/// adjustment between a (below) opaque base and an (above) layer.
+///
+/// (1) Full-region: proves materialise → blur → combine → continue → encode.
+/// (2) Sub-region: proves the dirty-rect ⊕ halo recompose equals the full
+///     recompose cropped to the same rect (no seam at the work-region edge).
+///
+/// Opaque base ⇒ coverage is 1 everywhere, so the blur's alpha/premultiply
+/// handling is unambiguous (that choice is a kernel-semantics refinement owned by
+/// the impl's `apply_gaussian`). Tolerance ±4 bytes: `Rgba32Float` intermediates
+/// match the CPU f32, so divergence is only `pow` (sRGB encode) + add-reassoc ULP.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_gaussian_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    // Opaque base (force alpha 255) + a partially-transparent top layer.
+    let mut base = varied_canvas(w, h, 3);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 7));
+
+    let radius = 4.0f32;
+    let (weights, half) = gaussian_weights(radius);
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.6,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_GAUSSIAN,
+            params: [radius, 0.0, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let blurred = cpu_blur_linear(&mat, w, h, &weights, half);
+    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0);
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    // (1) Full region.
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    assert!(
+        d_full <= 4,
+        "gaussian full-region GPU vs CPU max byte diff {d_full}"
+    );
+
+    // (2) Sub-region — the work_region is dilated by the halo and cropped back.
+    let sub = Region {
+        x: 20,
+        y: 18,
+        w: 24,
+        h: 22,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    assert!(
+        d_sub <= 4,
+        "gaussian sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
     );
 }

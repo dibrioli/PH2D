@@ -226,6 +226,23 @@ fn shader_struct_sizes_match_rust_abi() {
         wgsl_struct_span("Globals"),
         core::mem::size_of::<GpuGlobals>()
     );
+    // Spatial pass-graph (W4) globals — Rust POD ↔ WGSL uniform mirrors.
+    assert_eq!(
+        wgsl_struct_span("SegGlobals"),
+        core::mem::size_of::<SegGlobals>()
+    );
+    assert_eq!(
+        wgsl_struct_span("BlurGlobals"),
+        core::mem::size_of::<BlurGlobals>()
+    );
+    assert_eq!(
+        wgsl_struct_span("CombineGlobals"),
+        core::mem::size_of::<CombineGlobals>()
+    );
+    assert_eq!(
+        wgsl_struct_span("EncodeGlobals"),
+        core::mem::size_of::<EncodeGlobals>()
+    );
 }
 
 #[test]
@@ -240,6 +257,10 @@ fn shader_op_kind_discriminants_match_wgsl() {
     assert_eq!(OP_PUSH_GROUP, 1);
     assert_eq!(OP_POP_GROUP, 2);
     assert_eq!(OP_ADJUSTMENT, 3);
+    // OP_SPATIAL (4) is the flatten placeholder for a spatial adjustment; the
+    // segment loops + cs_flat treat it as a no-op (default arm), so the WGSL has
+    // no `case 4u` — pin the Rust discriminant so the placeholder stays distinct.
+    assert_eq!(OP_SPATIAL, 4);
 }
 
 /// Pin every numeric literal the GPU blend math shares with the Rust

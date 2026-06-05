@@ -209,13 +209,17 @@ const COMBINE_SHARPEN: u32 = 1;
 /// A 256-radius blur is already far past any interactive use.
 pub const MAX_BLUR_HALF: u32 = 256;
 
-/// PROVISIONAL Gaussian kernel — **to be reconciled with the Painter impl's
-/// canonical `apply_gaussian`** (the σ↔radius mapping + weights are the impl's
-/// math per the W4 spatial division of labour; this is the placeholder the
-/// pass-graph spike runs against so GPU↔CPU parity tests the *mechanism*, not
-/// the artistic curve). Returns `(weights, half_width)` where `weights[i]` is
-/// the symmetric weight for offset `±i` (`weights[0]` = centre tap), normalised
-/// so the full kernel sums to 1. σ = radius/3 (radius ≈ 3σ); `half = ceil(radius)`.
+/// Separable-Gaussian half-kernel. Returns `(weights, half_width)` where
+/// `weights[i]` is the symmetric weight for offset `±i` (`weights[0]` = centre
+/// tap), normalised so the full kernel sums to 1. σ = radius/3 (radius ≈ 3σ,
+/// the textbook truncation); `half = ceil(radius)`.
+///
+/// This is `ph2d-render`'s SELF-CONTAINED copy: the crate is foundational and
+/// must not gain a production dependency on the painter tool's domain crate (the
+/// decoupling, see `Cargo.toml`). The painter impl's `ph2d_painter_brush::
+/// adjustments::gaussian_weights` is the canonical math and this is bit-identical
+/// to it — pinned by the `spatial_weights_parity` dev-test so the two copies can
+/// never drift (single source of truth without coupling the libs).
 #[must_use]
 pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     let r = radius.max(0.0);
@@ -239,12 +243,15 @@ pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     (weights, half)
 }
 
-/// PROVISIONAL motion-blur kernel — uniform box along the motion line (linear
-/// motion = every position contributes equally), to be reconciled with the
-/// impl's canonical `apply_motion_blur`. Returns `(weights, half)` for the
-/// symmetric `2·half+1`-tap average (`weights[i] = 1/(2·half+1)`); `half =
+/// Motion-blur kernel — uniform box along the motion line (constant-velocity
+/// linear motion exposes every position equally). Returns `(weights, half)` for
+/// the symmetric `2·half+1`-tap average (`weights[i] = 1/(2·half+1)`); `half =
 /// ceil(distance/2)` so the line spans ≈ `distance` px. The taps are sampled
 /// along the direction by `cs_blur_dir` (see [`SPATIAL_MOTION`]).
+///
+/// `ph2d-render`'s self-contained copy, bit-identical to the canonical
+/// `ph2d_painter_brush::adjustments::motion_weights` (decoupling preserved;
+/// pinned by the `spatial_weights_parity` dev-test). See [`gaussian_weights`].
 #[must_use]
 pub fn motion_weights(distance: f32) -> (Vec<f32>, u32) {
     let half = ((distance.max(0.0) / 2.0).ceil() as u32).clamp(1, MAX_BLUR_HALF);

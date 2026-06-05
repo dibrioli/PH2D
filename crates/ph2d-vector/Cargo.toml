@@ -35,8 +35,8 @@ ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 # is positioned downstream of ph2d-color (foundational); no cycle risk.
 ph2d-color = { path = "../ph2d-color" }
 
-[dev-dependencies]
-# glam — used by inline tests in vector_network.rs to construct
-# `Vec2` vertex positions matching the ph2d-vector-doc data model
-# (which embeds `glam::Vec2`, not `kurbo::Vec2`). NOT a runtime dep.
+# glam — `Vec2` is the centerline/vertex vector type for the variable-width
+# stroke geometry (`variable_width_band` / `draw_variable_width_stroke`, W5
+# T5.1, both `pub`/module-scope) and the ph2d-vector-doc data model. A RUNTIME
+# dep since W5 (was dev-only before the stroke geometry landed).
 glam = "0.30"

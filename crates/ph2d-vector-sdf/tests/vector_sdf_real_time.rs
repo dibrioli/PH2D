@@ -10,7 +10,7 @@
 //!   on the GPU must fit the 8.33 ms ProMotion budget.
 
 use ph2d_gpu::GpuContext;
-use ph2d_vector_doc::{Region, Segment, Vertex, VertexId, VertexKind, VectorNetwork, WindingRule};
+use ph2d_vector_doc::{Region, Segment, VectorNetwork, Vertex, VertexId, VertexKind, WindingRule};
 use ph2d_vector_sdf::gpu::GpuSdf;
 use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour, network_sdf};
 use std::time::Instant;

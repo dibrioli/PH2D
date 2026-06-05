@@ -416,7 +416,10 @@ mod tests {
 
     #[test]
     fn variable_width_band_rejects_degenerate() {
-        assert!(variable_width_band(&[Vec2::ZERO], &[1.0]).is_none(), "needs ≥2 points");
+        assert!(
+            variable_width_band(&[Vec2::ZERO], &[1.0]).is_none(),
+            "needs ≥2 points"
+        );
         assert!(
             variable_width_band(&[Vec2::ZERO, Vec2::X], &[1.0]).is_none(),
             "len mismatch"

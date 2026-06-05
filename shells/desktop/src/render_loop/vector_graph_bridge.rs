@@ -42,7 +42,9 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_panel_vector_graph::VectorGraphParams;
 use ph2d_render::Camera2d;
-use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Scene, Stroke, VectorScene, draw_vector_network};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Color, Point, Scene, Stroke, VectorScene, draw_vector_network,
+};
 use ph2d_vector_doc::{FillSolid, StyleTable, VectorNetwork};
 use ph2d_vector_sdf::gpu::GpuSdf;
 use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour};
@@ -134,7 +136,14 @@ pub(super) fn dispatch(
     // is constant per run, so `changed` tracks slider drags. Both paths share
     // `to_screen` so the shape doesn't jump when the drag settles.
     if let Some(sdf_op) = draft_op(params_changed((p, op_key)), op_key)
-        && draw_draft(&net_a, &net_b, sdf_op, to_screen, vector_scene.inner_mut(), gpu)
+        && draw_draft(
+            &net_a,
+            &net_b,
+            sdf_op,
+            to_screen,
+            vector_scene.inner_mut(),
+            gpu,
+        )
     {
         return;
     }
@@ -254,7 +263,10 @@ fn draw_draft(
 /// Cook the two smoke operands — `source(a)` and `source(b = a rotated 45°)` —
 /// once per frame, shared by the auto-framing transform and the draft SDF.
 fn smoke_sources(p: &VectorGraphParams) -> Option<(VectorNetwork, VectorNetwork)> {
-    Some((cook_source(p, 0.0)?, cook_source(p, std::f32::consts::FRAC_PI_4)?))
+    Some((
+        cook_source(p, 0.0)?,
+        cook_source(p, std::f32::consts::FRAC_PI_4)?,
+    ))
 }
 
 /// A world→screen transform that frames the two operands' combined bounds into
@@ -292,7 +304,12 @@ fn cook_source(p: &VectorGraphParams, rot: f32) -> Option<VectorNetwork> {
     let node = add_source(&mut g, p, rot);
     let mut cook = Cook::new();
     let out = cook.cook(&g, &reg, node, 0.0).ok()?;
-    Some(out.first()?.as_any()?.downcast_ref::<VectorNetwork>()?.clone())
+    Some(
+        out.first()?
+            .as_any()?
+            .downcast_ref::<VectorNetwork>()?
+            .clone(),
+    )
 }
 
 /// Cook `source(sliders) → vector.<slug>` (a W4 unary geometry node) with the
@@ -315,7 +332,12 @@ fn cook_transform_smoke(p: &VectorGraphParams, slug: &str) -> Option<VectorNetwo
     .ok()?;
     let mut cook = Cook::new();
     let out = cook.cook(&g, &reg, node, 0.0).ok()?;
-    Some(out.first()?.as_any()?.downcast_ref::<VectorNetwork>()?.clone())
+    Some(
+        out.first()?
+            .as_any()?
+            .downcast_ref::<VectorNetwork>()?
+            .clone(),
+    )
 }
 
 /// Cook `source(a) + source(b = a rotated 45°) + boolean(op)` and return the
@@ -385,8 +407,12 @@ fn bool_op_from_env() -> f32 {
 /// `scatter`, `hatch`, `warp`, `recolor`). Read once. `None` → boolean smoke.
 fn node_slug() -> Option<&'static str> {
     static SLUG: OnceLock<Option<String>> = OnceLock::new();
-    SLUG.get_or_init(|| std::env::var("PH2D_VECTOR_NODE").ok().filter(|s| !s.is_empty()))
-        .as_deref()
+    SLUG.get_or_init(|| {
+        std::env::var("PH2D_VECTOR_NODE")
+            .ok()
+            .filter(|s| !s.is_empty())
+    })
+    .as_deref()
 }
 
 #[cfg(test)]
@@ -440,7 +466,10 @@ mod tests {
             matches!(draft_op(true, 0), Some(SdfOp::Union)),
             "changing + SDF op → draft"
         );
-        assert!(draft_op(false, 0).is_none(), "settled → exact even for an SDF op");
+        assert!(
+            draft_op(false, 0).is_none(),
+            "settled → exact even for an SDF op"
+        );
         assert!(
             draft_op(true, 4).is_none(),
             "changing + Divide (topology-only) → exact"

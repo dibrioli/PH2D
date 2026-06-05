@@ -259,12 +259,24 @@ mod tests {
         // degenerate contact is op-dependent so it is NOT asserted here.
         let configs = [
             // Fully coincident shared edge: A's top (y=2) == B's bottom (y=2).
-            (rect(0.0, 0.0, 2.0, 2.0), rect(0.0, 2.0, 2.0, 4.0), "shared edge"),
+            (
+                rect(0.0, 0.0, 2.0, 2.0),
+                rect(0.0, 2.0, 2.0, 4.0),
+                "shared edge",
+            ),
             // Shared single vertex only: diagonal squares touch at (2,2).
-            (rect(0.0, 0.0, 2.0, 2.0), rect(2.0, 2.0, 4.0, 4.0), "shared vertex"),
+            (
+                rect(0.0, 0.0, 2.0, 2.0),
+                rect(2.0, 2.0, 4.0, 4.0),
+                "shared vertex",
+            ),
             // Partial coincident edge: B's bottom (y=2, x∈[1,3]) overlaps part of
             // A's top (y=2, x∈[0,4]).
-            (rect(0.0, 0.0, 4.0, 2.0), rect(1.0, 2.0, 3.0, 4.0), "partial edge"),
+            (
+                rect(0.0, 0.0, 4.0, 2.0),
+                rect(1.0, 2.0, 3.0, 4.0),
+                "partial edge",
+            ),
         ];
         for (a, b, label) in &configs {
             for op in ALL_OPS {

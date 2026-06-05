@@ -563,6 +563,23 @@ pub const PAINTER_CURVE_ADD: NodeId = hash_node_id("painter_curve_add");
 /// `"layer:channel:index"`; the tool calls `remove_curve_point`.
 pub const PAINTER_CURVE_REMOVE: NodeId = hash_node_id("painter_curve_remove");
 
+/// Derive the [`NodeId`] of the `channel` output tab (0 = Red/Gray, 1 = Green,
+/// 2 = Blue) of `layer_id`'s bespoke Channel-Mixer editor (W4 BATCH-1). A click
+/// switches which output row the 4 weight sliders edit — pure panel view state,
+/// not forwarded to the tool.
+#[must_use]
+pub fn painter_mixer_tab_id(layer_id: u64, channel: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_mixer.tab.{layer_id}.{channel}"))
+}
+
+/// Fixed routing id for a Channel-Mixer weight edit forwarded from the panel to
+/// the tool (W4 BATCH-1). The bespoke editor's 4 sliders emit
+/// `SelectOption(PAINTER_MIXER_EDIT, "layer:output:slot:value")` (the active
+/// output tab carries the channel the frozen `SetValue` can not); the tool's
+/// `handle_panel_event` parses it into a `set_channel_mixer_weight` call. A fixed
+/// id (not per-layer) — the payload carries the layer.
+pub const PAINTER_MIXER_EDIT: NodeId = hash_node_id("painter_mixer_edit");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

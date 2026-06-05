@@ -18,12 +18,12 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id,
     painter_curve_remove_id, painter_curve_tab_id, painter_layer_blend_option_id,
-    painter_layer_widget_id,
+    painter_layer_widget_id, painter_mixer_tab_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_tool_painter::{LayerId, LayerStack, MAX_BLEND_MODES};
+use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,
@@ -93,6 +93,15 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         .find(|&ch| painter_curve_tab_id(lid, ch) == id)
                         .unwrap();
                     state::set_active_curve_channel(lid, ch);
+                    return true;
+                }
+                // Channel Mixer output-channel tab (W4 BATCH-1): panel-local view
+                // state, never forwarded (the weight edit carries the channel).
+                if (0u8..3).any(|ch| painter_mixer_tab_id(lid, ch) == id) {
+                    let ch = (0u8..3)
+                        .find(|&ch| painter_mixer_tab_id(lid, ch) == id)
+                        .unwrap();
+                    state::set_active_mixer_channel(lid, ch);
                     return true;
                 }
                 if painter_curve_add_id(lid) == id {
@@ -208,8 +217,24 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 return false;
             };
             // Per-row sliders: opacity + the adjustment param slots (0..1).
-            if let Some((_, kind)) = decode(&stack, id)
-                && matches!(
+            if let Some((layer, kind)) = decode(&stack, id) {
+                // Channel Mixer weight slider (AdjParam0..3 on a ChannelMixer
+                // layer): forward the active output tab + slot via PAINTER_MIXER_EDIT
+                // — the generic SetValue can not carry which output row this edits.
+                if let Some(slot) = adj_param_slot(kind)
+                    && slot <= 3
+                    && layer_is_channel_mixer(&stack, layer)
+                {
+                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+                    let out = state::active_mixer_channel(layer.0).min(2);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_MIXER_EDIT,
+                            format!("{}:{out}:{slot}:{v}", layer.0),
+                        )));
+                    return true;
+                }
+                if matches!(
                     kind,
                     PainterLayerWidget::Opacity
                         | PainterLayerWidget::AdjParam0
@@ -218,14 +243,14 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         | PainterLayerWidget::AdjParam3
                         | PainterLayerWidget::AdjParam4
                         | PainterLayerWidget::AdjParam5
-                )
-            {
-                let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-                host.bus_mut()
-                    .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                        id, v as f64,
-                    )));
-                return true;
+                ) {
+                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                            id, v as f64,
+                        )));
+                    return true;
+                }
             }
             false
         }
@@ -243,6 +268,29 @@ fn decode(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(LayerId, Painter
         }
     }
     None
+}
+
+/// The slider slot index of an `AdjParamN` widget kind (`None` for non-slider
+/// widgets). Used to route a Channel-Mixer weight slider with its slot.
+fn adj_param_slot(kind: PainterLayerWidget) -> Option<usize> {
+    Some(match kind {
+        PainterLayerWidget::AdjParam0 => 0,
+        PainterLayerWidget::AdjParam1 => 1,
+        PainterLayerWidget::AdjParam2 => 2,
+        PainterLayerWidget::AdjParam3 => 3,
+        PainterLayerWidget::AdjParam4 => 4,
+        PainterLayerWidget::AdjParam5 => 5,
+        _ => return None,
+    })
+}
+
+/// `true` when `layer` is a Channel-Mixer adjustment (its weight sliders route
+/// through `PAINTER_MIXER_EDIT`, not the generic `SetValue`).
+fn layer_is_channel_mixer(stack: &LayerStack, layer: LayerId) -> bool {
+    matches!(
+        stack.get(layer).map(|l| &l.kind),
+        Some(LayerKind::Adjustment(adj)) if matches!(adj.params, AdjustmentParams::ChannelMixer(_))
+    )
 }
 
 /// Decode a "+ Adjustment" kind-picker option id → its index into

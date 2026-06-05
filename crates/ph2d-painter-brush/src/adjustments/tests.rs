@@ -1003,3 +1003,145 @@ fn color_balance_slider_and_toggle_round_trip() {
     set_adjustment_toggle_param(&mut p, 0, true);
     assert!(adjustment_toggle_params(&p)[0].1, "toggle flips");
 }
+
+// ── W4 BATCH-1 — Channel Mixer (3×4 display matrix + tabs/mono) ────────
+
+fn mixer(r: [f32; 4], g: [f32; 4], b: [f32; 4], mono: bool) -> AdjustmentParams {
+    AdjustmentParams::ChannelMixer(ChannelMixerParams {
+        red_out: r,
+        green_out: g,
+        blue_out: b,
+        monochromatic: mono,
+    })
+}
+
+#[test]
+fn channel_mixer_default_is_exact_identity() {
+    // The manual identity Default (NOT the degenerate all-zero derive) is a no-op.
+    let d = ChannelMixerParams::default();
+    assert_eq!(d.red_out, [1.0, 0.0, 0.0, 0.0]);
+    let px = [0.3, 0.55, 0.2, 0.7];
+    assert_eq!(
+        run(
+            AdjustmentKind::ChannelMixer,
+            AdjustmentParams::ChannelMixer(ChannelMixerParams::default()),
+            px,
+        ),
+        px,
+        "identity matrix is an exact identity",
+    );
+}
+
+#[test]
+fn channel_mixer_swaps_red_and_blue() {
+    // red_out reads Blue, blue_out reads Red → the R and B channels swap.
+    let px = [
+        srgb_to_linear_f32(0.8),
+        srgb_to_linear_f32(0.4),
+        srgb_to_linear_f32(0.1),
+        1.0,
+    ];
+    let out = run(
+        AdjustmentKind::ChannelMixer,
+        mixer(
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 0.0],
+            false,
+        ),
+        px,
+    );
+    assert!(
+        (linear_to_srgb_f32(out[0]) - 0.1).abs() < 3e-3,
+        "out R = in B: {}",
+        linear_to_srgb_f32(out[0])
+    );
+    assert!(
+        (linear_to_srgb_f32(out[2]) - 0.8).abs() < 3e-3,
+        "out B = in R: {}",
+        linear_to_srgb_f32(out[2])
+    );
+    assert!(
+        (linear_to_srgb_f32(out[1]) - 0.4).abs() < 3e-3,
+        "G unchanged"
+    );
+    assert_eq!(out[3], 1.0, "alpha preserved");
+}
+
+#[test]
+fn channel_mixer_monochrome_writes_weighted_gray() {
+    // Monochrome writes the red_out mix to all three channels (a weighted B&W).
+    let px = [
+        srgb_to_linear_f32(0.8),
+        srgb_to_linear_f32(0.4),
+        srgb_to_linear_f32(0.1),
+        0.5,
+    ];
+    let out = run(
+        AdjustmentKind::ChannelMixer,
+        mixer(
+            [0.3, 0.5, 0.2, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            true,
+        ),
+        px,
+    );
+    let gray_disp = 0.3 * 0.8 + 0.5 * 0.4 + 0.2 * 0.1;
+    assert!(
+        (out[0] - out[1]).abs() < 1e-5 && (out[1] - out[2]).abs() < 1e-5,
+        "all channels equal (gray): {out:?}"
+    );
+    assert!(
+        (linear_to_srgb_f32(out[0]) - gray_disp).abs() < 3e-3,
+        "gray = weighted display sum: {} vs {gray_disp}",
+        linear_to_srgb_f32(out[0])
+    );
+    assert_eq!(out[3], 0.5, "alpha preserved");
+}
+
+#[test]
+fn channel_mixer_constant_offsets_output() {
+    let v = srgb_to_linear_f32(0.5);
+    let out = run(
+        AdjustmentKind::ChannelMixer,
+        mixer(
+            [1.0, 0.0, 0.0, 0.25],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            false,
+        ),
+        [v, v, v, 1.0],
+    );
+    assert!(
+        (linear_to_srgb_f32(out[0]) - 0.75).abs() < 3e-3,
+        "constant lifts R to display 0.75: {}",
+        linear_to_srgb_f32(out[0])
+    );
+    assert!(
+        (linear_to_srgb_f32(out[1]) - 0.5).abs() < 3e-3,
+        "G unchanged"
+    );
+}
+
+#[test]
+fn channel_mixer_slider_and_toggle_round_trip() {
+    // The bespoke per-output-row sliders + the mono toggle (generic rack).
+    let mut p = ChannelMixerParams::default();
+    for (slot, want) in [(0usize, 0.6_f32), (1, 0.9), (2, 0.3), (3, 0.7)] {
+        set_channel_mixer_param(&mut p, 1, slot, want); // Green output row
+    }
+    let read = channel_mixer_slider_params(&p, 1);
+    assert_eq!(read.len(), 4, "4 weight sliders (R/G/B source + Const)");
+    for (got, want) in read.iter().map(|r| r.1).zip([0.6, 0.9, 0.3, 0.7]) {
+        assert!((got - want).abs() < 1e-6, "mixer slider {got} vs {want}");
+    }
+    // Setting the Green row must not disturb the Red row (still identity).
+    assert_eq!(p.red_out, [1.0, 0.0, 0.0, 0.0], "Red row untouched");
+    let mut ap = AdjustmentParams::ChannelMixer(p);
+    let tog = adjustment_toggle_params(&ap);
+    assert_eq!(tog.len(), 1, "Channel Mixer exposes 1 toggle (Monochrome)");
+    assert!(!tog[0].1, "default mono off");
+    set_adjustment_toggle_param(&mut ap, 0, true);
+    assert!(adjustment_toggle_params(&ap)[0].1, "mono flips");
+}

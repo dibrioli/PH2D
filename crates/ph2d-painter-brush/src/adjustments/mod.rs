@@ -282,13 +282,28 @@ pub struct SelectiveColorParams {
     pub method: SelectiveMethod,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ChannelMixerParams {
     /// `[r, g, b, constant]` per output channel.
     pub red_out: [f32; 4],
     pub green_out: [f32; 4],
     pub blue_out: [f32; 4],
     pub monochromatic: bool,
+}
+
+impl Default for ChannelMixerParams {
+    /// The NEUTRAL identity — a freshly-created Channel Mixer passes R/G/B through
+    /// unmixed (the identity matrix) until the user drags a weight. (A derived
+    /// all-zero default would be degenerate: every output collapses to black — the
+    /// same trap the Levels default avoids.)
+    fn default() -> Self {
+        Self {
+            red_out: [1.0, 0.0, 0.0, 0.0],
+            green_out: [0.0, 1.0, 0.0, 0.0],
+            blue_out: [0.0, 0.0, 1.0, 0.0],
+            monochromatic: false,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -697,7 +712,7 @@ mod compute;
 mod tests;
 pub use compute::{
     DISPLAY_LUT_N, adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
-    apply_adjustment, colorbalance_display_luts, curve_value_at, curves_display_luts,
-    levels_display_lut, set_adjustment_segment_param, set_adjustment_slider_param,
-    set_adjustment_toggle_param,
+    apply_adjustment, channel_mixer_slider_params, colorbalance_display_luts, curve_value_at,
+    curves_display_luts, levels_display_lut, set_adjustment_segment_param,
+    set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
 };

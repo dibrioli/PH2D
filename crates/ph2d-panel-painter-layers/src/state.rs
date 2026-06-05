@@ -64,6 +64,25 @@ thread_local! {
     /// handle is dragged (W4 §3), read by the "−" (remove) button so it knows which
     /// point to drop. `None` until a handle is touched.
     static SELECTED_CURVE_POINT: Cell<Option<(u64, u8, usize)>> = const { Cell::new(None) };
+
+    /// Active output-channel TAB per Channel-Mixer layer (W4 BATCH-1): `0` = Red
+    /// (or Gray when monochrome), `1` = Green, `2` = Blue. Pure VIEW state (which
+    /// output row the 4 weight sliders edit) — it never goes to the tool; the
+    /// slider edit carries the channel in its `PAINTER_MIXER_EDIT` payload. Keyed
+    /// by layer id. Default (absent) = Red.
+    static ACTIVE_MIXER_CHANNEL: RefCell<BTreeMap<u64, u8>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+/// Set the active output-channel tab for `layer`'s Channel Mixer (W4 BATCH-1).
+pub(crate) fn set_active_mixer_channel(layer: u64, channel: u8) {
+    ACTIVE_MIXER_CHANNEL.with(|c| {
+        c.borrow_mut().insert(layer, channel);
+    });
+}
+
+/// The active output-channel tab for `layer`'s Channel Mixer (default `0` = Red).
+pub(crate) fn active_mixer_channel(layer: u64) -> u8 {
+    ACTIVE_MIXER_CHANNEL.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
 }
 
 /// Set the active channel tab for `layer`'s curve editor (W4 §3).

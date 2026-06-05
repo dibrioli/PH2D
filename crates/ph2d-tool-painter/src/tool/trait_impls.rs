@@ -229,6 +229,23 @@ impl Tool for PainterTool {
                     self.set_curve_point(RtLayerId(layer), ch, idx, x, y);
                 }
             }
+            // ── Channel Mixer weight edit (W4 BATCH-1): value =
+            // "layer:output:slot:value" (the bespoke editor's active output tab
+            // carries the channel the frozen SetValue can not). ─────────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_MIXER_EDIT => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(o), Some(s), Some(v)) =
+                    (it.next(), it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(output), Ok(slot), Ok(val)) = (
+                        l.parse::<u64>(),
+                        o.parse::<usize>(),
+                        s.parse::<usize>(),
+                        v.parse::<f32>(),
+                    )
+                {
+                    self.set_channel_mixer_weight(RtLayerId(layer), output, slot, val);
+                }
+            }
             // ── Curves editor add a point (W4 §3): value = "layer:channel" ──
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_ADD => {
                 let mut it = value.split(':');

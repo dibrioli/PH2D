@@ -22,7 +22,7 @@ use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::ids::{
     PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_point_id,
-    painter_curve_remove_id, painter_curve_tab_id, painter_layer_widget_id,
+    painter_curve_remove_id, painter_curve_tab_id, painter_layer_widget_id, painter_mixer_tab_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
@@ -102,7 +102,11 @@ pub(crate) fn paint_adjustment_params(
     if let AdjustmentParams::Curves(c) = params {
         return paint_curve_editor(ctx, theme, layer_id, c, x, w, y);
     }
-    let font = TypeToken::Base.px();
+    // Bespoke: Channel Mixer gets output-channel tabs + 4 weight sliders + mono.
+    if matches!(params, AdjustmentParams::ChannelMixer(_)) {
+        return paint_channel_mixer(ctx, theme, layer_id, params, x, w, y);
+    }
+    let font = TypeToken::Base.px(); // segment-rack labels (slider/toggle rows self-size)
     let gap = Spacing::Xs.px();
     for (slot, (label, val01)) in ph2d_tool_painter::adjustment_slider_params(params)
         .into_iter()
@@ -110,35 +114,7 @@ pub(crate) fn paint_adjustment_params(
     {
         let Some(kind) = slot_kind(slot) else { break };
         let id = painter_layer_widget_id(layer_id, kind);
-        register_slider(
-            ctx.host.store_mut(),
-            id,
-            val01,
-            SliderOrientation::Horizontal,
-        );
-        paint_text(
-            ctx.text_system,
-            ctx.scene,
-            label,
-            x,
-            y + (ROW_H_PX - font) * 0.5,
-            font,
-            ADJ_LABEL_W,
-            resolve(ColorToken::Text2, theme),
-        );
-        let slider_x = x + ADJ_LABEL_W + gap;
-        let slider_w = (w - ADJ_LABEL_W - gap).max(0.0);
-        let st = ctx
-            .host
-            .store()
-            .slider(id)
-            .map(|(s, _)| s)
-            .unwrap_or(SliderState::Normal);
-        let mut slider = Slider::new(id, "").accent(true).state(st);
-        slider.value = val01.clamp(0.0, 1.0);
-        let rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
-        paint_slider(&slider, rect, ctx.scene, theme);
-        ctx.host.hit_index_mut().register(id, rect);
+        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
         y += ROW_H_PX + gap;
     }
     // Segment rack (W4 BATCH-1): the adjustment's single 1-of-N (N ≤ 3) param as a
@@ -192,26 +168,180 @@ pub(crate) fn paint_adjustment_params(
             break;
         };
         let id = painter_layer_widget_id(layer_id, kind);
-        paint_text(
+        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    y
+}
+
+/// Render one labeled `0..1` slider row (label column + horizontal slider): the
+/// shared body of the generic slider rack AND the bespoke Channel-Mixer weight
+/// sliders. The slider STORES `0..1`; the value is derived from the live params
+/// each frame, so the caller passes `val01`. Registers the hit rect; the caller
+/// advances `y`.
+fn paint_labeled_slider(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    val01: f32,
+    row: Rect,
+) {
+    let (x, w, y) = (row.x, row.w, row.y);
+    let font = TypeToken::Base.px();
+    let gap = Spacing::Xs.px();
+    register_slider(
+        ctx.host.store_mut(),
+        id,
+        val01,
+        SliderOrientation::Horizontal,
+    );
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        label,
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        ADJ_LABEL_W,
+        resolve(ColorToken::Text2, theme),
+    );
+    let slider_x = x + ADJ_LABEL_W + gap;
+    let slider_w = (w - ADJ_LABEL_W - gap).max(0.0);
+    let st = ctx
+        .host
+        .store()
+        .slider(id)
+        .map(|(s, _)| s)
+        .unwrap_or(SliderState::Normal);
+    let mut slider = Slider::new(id, "").accent(true).state(st);
+    slider.value = val01.clamp(0.0, 1.0);
+    let rect = Rect::new(slider_x, y, slider_w, ROW_H_PX);
+    paint_slider(&slider, rect, ctx.scene, theme);
+    ctx.host.hit_index_mut().register(id, rect);
+}
+
+/// Render one toggle row (left label + right-aligned switch painted with the live
+/// param value): the shared body of the generic toggle rack AND the Channel-Mixer
+/// monochrome switch. Registers the switch as a button (click → the tool flips the
+/// param); the caller advances `y`.
+fn paint_toggle_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    on: bool,
+    row: Rect,
+) {
+    let (x, w, y) = (row.x, row.w, row.y);
+    let font = TypeToken::Base.px();
+    let gap = Spacing::Xs.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        label,
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        (w - ADJ_TOGGLE_W - gap).max(0.0),
+        resolve(ColorToken::Text2, theme),
+    );
+    let toggle_rect = Rect::new(
+        x + w - ADJ_TOGGLE_W,
+        y + (ROW_H_PX - ADJ_TOGGLE_H) * 0.5,
+        ADJ_TOGGLE_W,
+        ADJ_TOGGLE_H,
+    );
+    let toggle = Toggle::new(id, "").on(on).state(ToggleState::Normal);
+    paint_toggle(&toggle, toggle_rect, ctx.scene, theme);
+    register_button(ctx.host.store_mut(), id);
+    ctx.host.hit_index_mut().register(id, toggle_rect);
+}
+
+/// Bespoke Channel Mixer editor: a row of output-channel tabs (Red/Green/Blue, or
+/// a single Gray tab when monochrome) + the 4 weight sliders (R/G/B source +
+/// Constant) of the ACTIVE output row + the Monochrome switch. The active tab is
+/// panel-local VIEW state ([`state::active_mixer_channel`]); a weight-slider drag
+/// forwards `SelectOption(PAINTER_MIXER_EDIT, "layer:output:slot:value")` from
+/// `event.rs` (the active output carries the channel the generic slider rack can
+/// not). Returns the next `y`.
+fn paint_channel_mixer(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    params: &AdjustmentParams,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
+    let AdjustmentParams::ChannelMixer(m) = params else {
+        return y;
+    };
+    let gap = Spacing::Xs.px();
+    let font = TypeToken::Base.px();
+    // Monochrome collapses the three output rows to a single Gray tab.
+    let mono = ph2d_tool_painter::adjustment_toggle_params(params)
+        .first()
+        .map(|(_, on)| *on)
+        .unwrap_or(false);
+    let tabs: &[&str] = if mono {
+        &["Gray"]
+    } else {
+        &["Red", "Green", "Blue"]
+    };
+    let active = if mono {
+        0u8
+    } else {
+        state::active_mixer_channel(layer_id).min(2)
+    };
+    // ── Output-channel tab row ──
+    let tab_w = w / tabs.len() as f32;
+    for (ch, label) in tabs.iter().enumerate() {
+        let trect = Rect::new(
+            x + ch as f32 * tab_w,
+            y,
+            (tab_w - 2.0).max(0.0), // LITERAL-PX-OK: 2px inter-tab gutter
+            ROW_H_PX,
+        );
+        let (bg, fg) = if ch as u8 == active {
+            (ColorToken::AccentSoft, ColorToken::Text1)
+        } else {
+            (ColorToken::Bg2, ColorToken::Text2)
+        };
+        fill_rounded_rect(ctx.scene, trect, Radius::Sm.px(), resolve(bg, theme));
+        paint_text_centered(
             ctx.text_system,
             ctx.scene,
             label,
-            x,
-            y + (ROW_H_PX - font) * 0.5,
+            trect,
             font,
-            (w - ADJ_TOGGLE_W - gap).max(0.0),
-            resolve(ColorToken::Text2, theme),
+            resolve(fg, theme),
         );
-        let toggle_rect = Rect::new(
-            x + w - ADJ_TOGGLE_W,
-            y + (ROW_H_PX - ADJ_TOGGLE_H) * 0.5,
-            ADJ_TOGGLE_W,
-            ADJ_TOGGLE_H,
-        );
-        let toggle = Toggle::new(id, "").on(on).state(ToggleState::Normal);
-        paint_toggle(&toggle, toggle_rect, ctx.scene, theme);
+        let id = painter_mixer_tab_id(layer_id, ch as u8);
         register_button(ctx.host.store_mut(), id);
-        ctx.host.hit_index_mut().register(id, toggle_rect);
+        ctx.host.hit_index_mut().register(id, trect);
+    }
+    y += ROW_H_PX + gap;
+    // ── The active output row's 4 weight sliders (R/G/B source + Constant) ──
+    for (slot, (label, val01)) in ph2d_tool_painter::channel_mixer_slider_params(m, active as usize)
+        .into_iter()
+        .enumerate()
+    {
+        let Some(kind) = slot_kind(slot) else { break };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    // ── Monochrome switch (the generic toggle rack, rendered inline) ──
+    for (slot, (label, on)) in ph2d_tool_painter::adjustment_toggle_params(params)
+        .into_iter()
+        .enumerate()
+    {
+        let Some(kind) = toggle_slot_kind(slot) else {
+            break;
+        };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
         y += ROW_H_PX + gap;
     }
     y

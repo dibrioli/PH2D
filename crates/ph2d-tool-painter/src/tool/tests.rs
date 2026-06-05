@@ -2001,6 +2001,56 @@ fn color_balance_segment_click_routes_to_set_scope() {
 }
 
 #[test]
+fn channel_mixer_weight_edit_routes_to_set_weight() {
+    // W4 BATCH-1: a Channel Mixer weight slider forwards
+    // SelectOption(PAINTER_MIXER_EDIT, "layer:output:slot:value") (the bespoke
+    // editor's active output tab carries the channel); handle_panel_event must
+    // parse + apply it to the right matrix cell.
+    use ph2d_editor_core::ids::PAINTER_MIXER_EDIT;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, ChannelMixerParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::ChannelMixer)
+        .unwrap();
+    let mixer = |t: &PainterTool| -> ChannelMixerParams {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::ChannelMixer(p) => *p,
+                _ => panic!("not a channel mixer"),
+            },
+            _ => panic!("not an adjustment"),
+        }
+    };
+    assert_eq!(
+        mixer(&t).green_out,
+        [0.0, 1.0, 0.0, 0.0],
+        "fresh mixer is the identity matrix"
+    );
+    // Green output (1), Blue-source slot (2), value 0.75 → weight 0.75*4-2 = 1.0.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_MIXER_EDIT,
+        format!("{}:1:2:0.75", adj.0),
+    ));
+    assert!(
+        (mixer(&t).green_out[2] - 1.0).abs() < 1e-5,
+        "green_out blue-source weight set to 1.0: {:?}",
+        mixer(&t).green_out
+    );
+    assert_eq!(
+        mixer(&t).red_out,
+        [1.0, 0.0, 0.0, 0.0],
+        "the Red output row stays untouched"
+    );
+    // A malformed payload is a no-op (no panic).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_MIXER_EDIT,
+        "garbage".into(),
+    ));
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

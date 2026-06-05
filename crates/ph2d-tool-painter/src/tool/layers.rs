@@ -607,6 +607,38 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// Set weight `slot` (0 = R, 1 = G, 2 = B source, 3 = constant) of Channel
+    /// Mixer `id`'s `output` row (0 = Red/Gray, 1 = Green, 2 = Blue) from a
+    /// normalized `0..1` value. The bespoke mixer editor forwards this with the
+    /// active output tab in the payload (the channel the generic slider rack can
+    /// not carry). No-op mid-stroke or if `id` is not a Channel Mixer. Routes the
+    /// preview through the same cut-cache fast lane as a slider edit.
+    pub fn set_channel_mixer_weight(
+        &mut self,
+        id: RtLayerId,
+        output: usize,
+        slot: usize,
+        value01: f32,
+    ) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let ph2d_painter_brush::adjustments::AdjustmentParams::ChannelMixer(m) = &mut adj.params
+        else {
+            return;
+        };
+        ph2d_painter_brush::adjustments::set_channel_mixer_param(m, output, slot, value01);
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
     /// Select option `option` of adjustment layer `id`'s segmented param (the
     /// panel's segment-button row, e.g. Color Balance's tonal range). The per-kind
     /// mapping lives in `adjustments::set_adjustment_segment_param`. No-op

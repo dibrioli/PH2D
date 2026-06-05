@@ -452,7 +452,7 @@ fn paint_selective_color(
     let active = state::active_selective_bucket(layer_id).min(8);
     // ── 9 color-group tabs (single-char labels span the width) ──
     const TABS: [&str; 9] = ["R", "Y", "G", "C", "B", "M", "W", "N", "K"];
-    let tab_w = w / 9.0;
+    let tab_w = w / 9.0; // LITERAL-PX-OK: 9 color-group tab count
     for (bucket, label) in TABS.iter().enumerate() {
         let trect = Rect::new(
             x + bucket as f32 * tab_w,
@@ -499,11 +499,12 @@ fn paint_selective_color(
 fn lin_to_srgb8(v: f32) -> u8 {
     let v = v.clamp(0.0, 1.0);
     let s = if v <= 0.003_130_8 {
-        v * 12.92
+        // LITERAL-PX-OK: IEC sRGB transfer constant
+        v * 12.92 // LITERAL-PX-OK: IEC sRGB transfer constant
     } else {
-        1.055 * v.powf(1.0 / 2.4) - 0.055
+        1.055 * v.powf(1.0 / 2.4) - 0.055 // LITERAL-PX-OK: IEC sRGB transfer constants
     };
-    (s * 255.0).round() as u8
+    (s * 255.0).round() as u8 // LITERAL-PX-OK: 8-bit byte range
 }
 
 /// Bespoke Gradient Map editor: a +/− stop-button row, then a gradient preview
@@ -562,14 +563,9 @@ fn paint_gradient_map(
     let slice_w = bar.w / slices as f32;
     for i in 0..slices {
         let off = i as f32 / (slices - 1).max(1) as f32;
-        let c = lut[(off * 255.0).round() as usize];
-        // LITERAL-COLOR-OK: the gradient's own colors (data), not a theme token.
-        let col = ph2d_vector::Color::from_rgba8(
-            lin_to_srgb8(c[0]),
-            lin_to_srgb8(c[1]),
-            lin_to_srgb8(c[2]),
-            255,
-        );
+        let c = lut[(off * 255.0).round() as usize]; // LITERAL-PX-OK: 8-bit LUT index
+        let [r, g, b] = [lin_to_srgb8(c[0]), lin_to_srgb8(c[1]), lin_to_srgb8(c[2])];
+        let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: gradient data
         let srect = Rect::new(bar.x + i as f32 * slice_w, bar.y, slice_w + 1.0, bar.h);
         fill_rounded_rect(ctx.scene, srect, 0.0, col);
     }
@@ -605,13 +601,13 @@ fn paint_gradient_map(
         );
         ctx.host.hit_index_mut().register(id, grab);
         // LITERAL-COLOR-OK: the stop's own color (data).
-        let scol = ph2d_vector::Color::from_rgba8(stop.color[0], stop.color[1], stop.color[2], 255);
+        let scol = ph2d_vector::Color::from_rgba8(stop.color[0], stop.color[1], stop.color[2], 255); // LITERAL-COLOR-OK: stop's own color (data)
         let ring = if index == selected {
             ColorToken::Accent
         } else {
             ColorToken::TextDisabled
         };
-        fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R + 1.5, resolve(ring, theme));
+        fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R + 1.5, resolve(ring, theme)); // LITERAL-PX-OK: 1.5px ring outline
         fill_circle(ctx.scene, cx, cy, GRAD_HANDLE_R, scol);
     }
     y += GRAD_BAR_H + GRAD_HANDLE_R + gap;
@@ -654,7 +650,7 @@ fn paint_curve_editor(
     // ── Tab + button row: [RGB][R][G][B] … [+][−] ──
     let buttons_w = CURVE_BTN_W * 2.0 + gap;
     let tabs_w = (w - buttons_w - gap).max(0.0);
-    let tab_w = tabs_w / 4.0;
+    let tab_w = tabs_w / 4.0; // LITERAL-PX-OK: 4 channel tabs (RGB + master)
     for ch in 0u8..4 {
         let trect = Rect::new(x + ch as f32 * tab_w, y, (tab_w - 2.0).max(0.0), ROW_H_PX);
         let active = ch == channel;
@@ -720,7 +716,7 @@ fn paint_curve_editor(
     // readable) — the canonical curve-editor backdrop, behind the curve.
     let grid = resolve(ColorToken::GridLine, theme);
     for i in 1..4 {
-        let f = i as f32 / 4.0;
+        let f = i as f32 / 4.0; // LITERAL-PX-OK: 4 grid divisions (curve editor thirds)
         let gx = canvas.x + f * canvas.w;
         let gy = canvas.y + f * canvas.h;
         stroke_polyline(
@@ -764,7 +760,7 @@ fn paint_curve_editor(
     );
     // Plot the channel's own tone curve (the monotone spline the GPU also bakes)
     // as a smooth polyline through its sampled output.
-    let samples = (canvas.w * 0.5).clamp(48.0, 256.0) as usize;
+    let samples = (canvas.w * 0.5).clamp(48.0, 256.0) as usize; // LITERAL-PX-OK: curve sample-count clamp
     let mut poly: Vec<(f32, f32)> = Vec::with_capacity(samples + 1);
     for k in 0..=samples {
         let t = k as f32 / samples as f32; // display x 0..1
@@ -801,7 +797,7 @@ fn paint_curve_editor(
         ctx.host.hit_index_mut().register(id, grab);
         // Ring + fill (no stroke-circle helper — a slightly larger ring circle
         // under the fill gives a 1.5px outline).
-        fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R + 1.5, ring);
+        fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R + 1.5, ring); // LITERAL-PX-OK: 1.5px ring outline
         fill_circle(ctx.scene, cx, cy, CURVE_HANDLE_R, fill);
     }
     y += CURVE_CANVAS_H + gap;

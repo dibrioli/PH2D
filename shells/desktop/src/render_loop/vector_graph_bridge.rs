@@ -1,4 +1,4 @@
-//! Vector Geometry-Graph smoke bridge (W3 T3.1 source → T3.3 boolean) — the
+//! Vector Geometry-Graph smoke bridge (W3 T3.1 source -> T3.3 boolean) — the
 //! **producer** half of the node-graph path that the W2 tool-direct render
 //! doesn't cover.
 //!
@@ -31,7 +31,7 @@
 //!   Exclude/Outline), draw the cheap [`ph2d_vector_sdf`] silhouette contour (the
 //!   *draft*) instead of cooking the exact boolean. The frame the params settle,
 //!   fall back to the exact Linesweeper reconcile. The four topology-only ops
-//!   (Divide/Trim/Merge/Crop) have no SDF → always exact. The silhouette SDF runs
+//!   (Divide/Trim/Merge/Crop) have no SDF -> always exact. The silhouette SDF runs
 //!   on the GPU (`ph2d_vector_sdf::gpu::GpuSdf`, pipeline cached); the `min/max`
 //!   combine + marching-squares stay on the CPU.
 
@@ -76,7 +76,7 @@ thread_local! {
 
     /// ADR-0065 Phase 3: the GPU SDF compute pipeline, built once on the first
     /// draft frame and reused (pipeline creation is cheap but not free). Single
-    /// render thread → thread-local. Holds wgpu handles (Arc-backed).
+    /// render thread -> thread-local. Holds wgpu handles (Arc-backed).
     static GPU_SDF: RefCell<Option<GpuSdf>> = const { RefCell::new(None) };
 }
 
@@ -105,7 +105,7 @@ pub(super) fn dispatch(
     let p = ph2d_panel_vector_graph::current_graph_params();
 
     // W4 transform-node smoke: `PH2D_VECTOR_NODE=<slug>` (e.g. `roughen`, `mirror`,
-    // `corner-round`) cooks source(sliders) → `vector.<slug>` → render, so each of
+    // `corner-round`) cooks source(sliders) -> `vector.<slug>` -> render, so each of
     // the 11 unary geometry nodes is visible on screen (no node-graph editor yet).
     // They have no boolean draft and cook cheaply (~0.05 ms), so render the exact
     // output every frame, auto-framed. When the flag is set this owns the frame.
@@ -169,8 +169,8 @@ fn render_filled(net: &mut VectorNetwork, to_screen: Affine, scene: &mut Scene) 
 }
 
 /// Has the `(params, op)` key changed since the previous frame? Records `key`
-/// for next frame. A change means a slider is being dragged → show the draft;
-/// equal for two frames means settled → show the exact reconcile.
+/// for next frame. A change means a slider is being dragged -> show the draft;
+/// equal for two frames means settled -> show the exact reconcile.
 fn params_changed(key: (VectorGraphParams, i64)) -> bool {
     LAST_KEY.with(|cell| {
         let mut slot = cell.borrow_mut();
@@ -181,7 +181,7 @@ fn params_changed(key: (VectorGraphParams, i64)) -> bool {
 }
 
 /// The draft+reconcile decision: draft only while params are `changed` AND the
-/// op has an SDF form. `None` → the caller shows the exact reconcile.
+/// op has an SDF form. `None` -> the caller shows the exact reconcile.
 fn draft_op(changed: bool, op: i64) -> Option<SdfOp> {
     if changed { sdf_op_from_index(op) } else { None }
 }
@@ -269,7 +269,7 @@ fn smoke_sources(p: &VectorGraphParams) -> Option<(VectorNetwork, VectorNetwork)
     ))
 }
 
-/// A world→screen transform that frames the two operands' combined bounds into
+/// A world->screen transform that frames the two operands' combined bounds into
 /// the viewport, centered with [`FRAME_MARGIN`] headroom. Sidesteps the live
 /// camera (default `height_world` 10 ≪ the ~100-unit smoke shapes) so the result
 /// is always visible at a sane size, whatever the sliders say.
@@ -295,7 +295,7 @@ fn framing_affine(
 }
 
 /// Cook a single `vector.source` node seeded from the panel params (rotation
-/// offset by `rot`) → its `VectorNetwork`, for the SDF draft's per-operand
+/// offset by `rot`) -> its `VectorNetwork`, for the SDF draft's per-operand
 /// silhouette. Mirrors `cook_boolean_smoke`'s two source nodes.
 fn cook_source(p: &VectorGraphParams, rot: f32) -> Option<VectorNetwork> {
     let mut reg = NodeRegistry::new();
@@ -312,10 +312,10 @@ fn cook_source(p: &VectorGraphParams, rot: f32) -> Option<VectorNetwork> {
     )
 }
 
-/// Cook `source(sliders) → vector.<slug>` (a W4 unary geometry node) with the
+/// Cook `source(sliders) -> vector.<slug>` (a W4 unary geometry node) with the
 /// node's default params, returning its output network. Uses the all-nodes
 /// registry so any node type-id resolves without a per-node dep; an unknown slug
-/// fails the cook → `None` (caller draws nothing). The transform uses MANIFEST
+/// fails the cook -> `None` (caller draws nothing). The transform uses MANIFEST
 /// defaults — moving the source sliders drives the input shape so the effect is
 /// visible live.
 fn cook_transform_smoke(p: &VectorGraphParams, slug: &str) -> Option<VectorNetwork> {
@@ -354,7 +354,7 @@ fn cook_boolean_smoke(p: &VectorGraphParams, op: f32) -> Option<VectorNetwork> {
     let source_b = add_source(&mut g, p, std::f32::consts::FRAC_PI_4);
     let boolean = g.add_node("vector.boolean");
     g.set_param(boolean, "op", op);
-    // a → boolean input 0, b → boolean input 1 (MANIFEST input order).
+    // a -> boolean input 0, b -> boolean input 1 (MANIFEST input order).
     g.connect(Edge {
         from: (source_a, 0),
         to: (boolean, 0),
@@ -404,7 +404,7 @@ fn bool_op_from_env() -> f32 {
 
 /// W4 transform-smoke slug from `PH2D_VECTOR_NODE` (e.g. `roughen`, `mirror`,
 /// `corner-round`, `bend-path`, `outline-stroke`, `width-profile`, `twist`,
-/// `scatter`, `hatch`, `warp`, `recolor`). Read once. `None` → boolean smoke.
+/// `scatter`, `hatch`, `warp`, `recolor`). Read once. `None` -> boolean smoke.
 fn node_slug() -> Option<&'static str> {
     static SLUG: OnceLock<Option<String>> = OnceLock::new();
     SLUG.get_or_init(|| {
@@ -454,7 +454,7 @@ mod tests {
         for op in [4, 5, 6, 7, 99, -1] {
             assert!(
                 sdf_op_from_index(op).is_none(),
-                "op {op} is topology-only / invalid → exact"
+                "op {op} is topology-only / invalid -> exact"
             );
         }
     }
@@ -464,19 +464,19 @@ mod tests {
         // The decision the per-frame state machine drives.
         assert!(
             matches!(draft_op(true, 0), Some(SdfOp::Union)),
-            "changing + SDF op → draft"
+            "changing + SDF op -> draft"
         );
         assert!(
             draft_op(false, 0).is_none(),
-            "settled → exact even for an SDF op"
+            "settled -> exact even for an SDF op"
         );
         assert!(
             draft_op(true, 4).is_none(),
-            "changing + Divide (topology-only) → exact"
+            "changing + Divide (topology-only) -> exact"
         );
         assert!(
             matches!(draft_op(true, 8), Some(SdfOp::Outline { .. })),
-            "changing + Outline → draft"
+            "changing + Outline -> draft"
         );
     }
 

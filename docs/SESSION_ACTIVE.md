@@ -66,6 +66,13 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   (≤6 cap, postcard round-trip verde, zero schema-bump), renderer expande band variable-width.
   **→ Foundational W5 independente COMPLETO** (3 peças: primitiva + WidthProfile + gate SDF). Só
   resta integração (pencil-bridge ← impl expõe pressão; ativação SDF ← UI) — gated em outros.
+- **W5 FECHADO** (T5.1+T5.2+T5.3). Integração pressão→variable-width pelo impl (`19cd7e4`:
+  live preview band + commit per-segment WidthProfile). **T5.3 audit DONE** (APPROVE, 0 crit/high/med):
+  data-path verificado input→render (25 testes pencil + fiação real bridge→`draw_variable_width_stroke`
+  + tool→`width_profile`); SDF gate 5.33ms; regressão-safe (mouse=constante=W2). **Lente VISUAL-pixels
+  DEFERIDA** (Enio sem device de pressão — data-path test-coberto). Piece C (node bulge) deferido.
+  Relatório: [`AUDIT_vector_w5_session_2026-06-04.md`](AUDIT_vector_w5_session_2026-06-04.md).
+  **Impl Vector LIVRE p/ W6** (procedural fill, §9) quando Enio liberar.
 - ⚠️ **Painter impl tem arquivos STAGED no índice compartilhado** (mid-commit) — commits
   Coord scoped por pathspec (`-- <paths>`), sem agarrar. Não fazer `git commit` sem pathspec.
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**

@@ -32,6 +32,23 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (novo Coord) — Spatial GPU multipass infra LANDADA (Gaussian spike)
+- **Infra espacial multi-pass = FEITA + PROVADA** (commit local `ee1028a`, `ph2d-render`,
+  NÃO pushado). Pass-graph segmentado: materialize-below (`Rgba32Float` linear) → ping-pong
+  H/V separável → combine → continua acima → encode. Quebra a op-list em cada `LayerOp::
+  SpatialAdjustment` de nível-raiz; **single-pass byte-idêntico no caso comum** (10 gates GPU
+  anteriores regression-limpos). `gpu_gaussian_matches_cpu_reference` VERDE em Metal (full +
+  sub-region dirty-rect⊕halo, ±4B). naga + struct-ABI gates estendidos pros novos mirrors.
+- **`gaussian_weights` é PROVISIONAL** (σ=radius/3) — placeholder até o impl entregar o
+  `apply_gaussian` canônico; GPU+CPU-ref leem os mesmos pesos (prova o MECANISMO). Reconciliação
+  = trocar a fórmula de pesos (Coord) quando o impl entregar.
+- **Handoff escrito ao Painter impl:** [`HANDOFF_painter_w4_spatial_gaussian_impl.md`](HANDOFF_painter_w4_spatial_gaussian_impl.md)
+  — (A) wire do tool flatten p/ emitir `SpatialAdjustment{kernel:SPATIAL_GAUSSIAN,...}` pros
+  kinds espaciais (`ph2d-tool-painter`); (B) `apply_gaussian` canônico (`ph2d-painter-brush`).
+  Sharpen/ShadowsHighlights/Motion/Bloom/ChromaticAberration caem na MESMA infra depois.
+- **Posse:** `ph2d-render` (infra, Coord — impl NÃO toca). Limitações documentadas (não-bloq.):
+  spatial-dentro-de-grupo = no-op; Rgba16Float + batching de submits = tuning pós-paridade.
+
 ### ATUALIZAÇÃO 2026-06-04 — ADR-0065 SDF Phase 3 CLOSED (Coord, smoke-OK)
 - **SDF draft+reconcile wireado no geometry-graph smoke** (`58ee181` + `87aa7ec` +
   `e2156d5`): marching-squares (`ph2d-vector-sdf::marching`) + gate draft-vs-exato

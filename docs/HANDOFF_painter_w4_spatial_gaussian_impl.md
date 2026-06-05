@@ -80,9 +80,17 @@ quando me entregar a ref CPU+pesos de cada um, espelho de §2):
   Gate `gpu_motion_matches_cpu_reference` verde. **Falta tua parte:** wire do tool
   (`AdjustmentKind::MotionBlur → SPATIAL_MOTION`) + `apply_motion_blur` canônico (o box
   uniforme é placeholder; **nearest-tap → bilinear** é refino de qualidade teu).
-- **ShadowsHighlights** = contraste local (blur do canal como mapa de tom) + combine.
-- **Bloom** = bright-pass + blur-chain + add (mip/Kawase p/ raio grande).
-- **ChromaticAberration** = gather de 1 pass (a textura-de-baixo já é amostrável).
+- ✅ **ChromaticAberration JÁ LANDADO** (commit `97d8086`) — `SPATIAL_CHROMA=3`, gather
+  per-canal radial (`cs_chroma`), o **3º primitivo** (resample, não média de vizinhança).
+  Params: `[red_shift, green_shift, blue_shift, falloff_center]` (px no canto;
+  `falloff_center` RESERVADO — modelo linear). Centro+scales precomputados na CPU →
+  zero `sqrt` por-pixel (paridade-robusta). Gate `gpu_chroma_matches_cpu_reference` verde.
+  **Falta tua parte:** wire (`AdjustmentKind::ChromaticAberration → SPATIAL_CHROMA`) +
+  `apply_chromatic_aberration` canônico (define a curva de falloff + bilinear p/ qualidade).
+- **ShadowsHighlights** = contraste local (blur do canal como mapa de tom) + combine. ⚠️ math
+  tonal é teu domínio — me entrega a ref CPU que eu faço a infra (combine variante).
+- **Bloom** = bright-pass + blur-chain + add (mip/Kawase p/ raio grande). ⚠️ mip-chain é o
+  único que precisa de infra extra (downsample/upsample pyramid) — coordenamos quando priorizar.
 Cada um: um `SPATIAL_*` code novo + (talvez) um par de entry points WGSL + a ref
 CPU tua. **Não precisa esperar** — Noise+Halftone (per-pixel, `gpu_code()`/switch
 escalar) seguem desbloqueados independentes da infra (faz quando quiser).

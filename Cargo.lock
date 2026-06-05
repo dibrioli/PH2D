@@ -5309,6 +5309,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-painter",
+ "ph2d-vector",
 ]
 
 [[package]]

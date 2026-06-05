@@ -30,7 +30,7 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (verificado nesta sessão — NÃO refaça)
 ───────────────────────────────────────────────────────────────────
-**12/24 kinds PRONTOS** (compute CPU + GPU + paridade):
+**14/24 kinds PRONTOS** (compute CPU + GPU + paridade):
   HSB(0), BrightnessContrast(1), Invert(2), Posterize(3), Threshold(4),
   Exposure(5), Vibrance(6) — escalares; **Curves(7) + Levels(8)** — LUT
   display-space (binding `adj_luts`); **PhotoFilter** — CPU-first (gel
@@ -41,7 +41,10 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
   **ChannelMixer** — CPU-first (matriz 3×4 display-space + mono); GPU = matriz
   uniform 12-float (cross-channel, NÃO é LUT) → expansão de uniform do Coord;
   **BlackAndWhite** — CPU-first (decomposição 6-hue → luma ponderada + tint OKLab);
-  GPU = algoritmo per-pixel nonlinear (nem LUT nem matriz) → port WGSL do Coord.
+  GPU = algoritmo per-pixel nonlinear (nem LUT nem matriz) → port WGSL do Coord;
+  **GradientMap** — CPU-first (luma → cor via LUT 256→RGB; duotone editor); GPU =
+  binding novo 256×RGB-output (1 input luma → 3 canais, NÃO é o `adj_luts` per-canal)
+  → modo de binding novo do Coord; `gradient_map_lut` exportado.
 
 **✅ BATCH-1 COMPLETA** (PhotoFilter + ColorBalance + ChannelMixer + BlackAndWhite).
 Os 4 kinds per-pixel slider/toggle/segment estão prontos CPU-first; o caminho GPU
@@ -75,8 +78,8 @@ algoritmo WGSL). Próximo da implementação = **BATCH-2** (GradientMap + Select
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**11 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
-faz nada): GradientMap, GaussianBlur, MotionBlur, Bloom, Noise,
+**10 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+faz nada): GaussianBlur, MotionBlur, Bloom, Noise,
 Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
 SelectiveColor, ShadowsHighlights. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
@@ -123,13 +126,17 @@ genérico já renderiza. Compute = arm em `apply_adjustment`.
      do Coord; `gpu_code=None` até lá. Helpers `paint_labeled_slider`/
      `paint_toggle_row` extraídos (DRY entre racks genéricos + mixer).
 
-**BATCH 2 — bespoke (reuse os padrões do Curves):**
-  5. **GradientMap** `{stops: Vec<ColorStop>, interpolation}` — mapeia LUMA →
-     cor do gradiente. Compute: build de uma **LUT 256→RGB** (luma indexa), depois
-     amostra. UI: editor de stops (handles 1-D arrastáveis ao longo de uma barra +
-     color-pick por stop + add/remover) — **MESMA mecânica do curve editor**
-     (CurvePoint dispatch + abas/add-remove). GPU: a LUT é RGB-saída (não
-     per-canal-transfer) → **binding novo/estendido (`adj_luts` RGB-mode) = Coord**.
+**BATCH 2:**
+  5. **GradientMap** `{stops: Vec<ColorStop>, interpolation}` — ✅ **PRONTO (duotone)**
+     (commit `d00e45b`). Compute: LUT 256→RGB (luma indexa) + lerp por pixel,
+     interp Linear/smoothstep, stops ordenados; suporta N stops. **Default = duotone
+     black→white**. UI = 100% genérica (ZERO bespoke/id novo): 6 sliders RGB dos 2
+     endpoints (Lo/Hi × R/G/B) + segment de interpolação (Linear/Smooth). GPU =
+     binding 256×RGB-output novo (Coord); `gradient_map_lut` exportado.
+     **ENHANCEMENT pendente** (não-bloqueante): editor N-stops arrastável (CurvePoint
+     dispatch x→offset + add/remove + barra de preview + color por stop). O compute
+     já suporta N stops; só falta a UI rica. Decisão: duotone primeiro (completo e
+     útil) sem o popover de picker; N-stops é incremento isolado por cima.
   6. **SelectiveColor** `{9× CmykAdjust, method}` — classifica o pixel em 1 dos 9
      baldes (R/Y/G/C/B/M/whites/neutrals/blacks) e aplica CMYK. UI: seletor de cor
      (dropdown 9) + 4 sliders CMYK + method (Relative/Absolute) toggle. CPU-first.

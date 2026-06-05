@@ -61,7 +61,11 @@ locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
   gate `vector_sdf_real_time` ✅** (`7b03e48`): GPU 64-path boolean draft = **5.33ms/frame
   < 8.33ms (120FPS)**; CPU = 140ms (confirma GPU necessária). **Ambas capacidades CORE
   landadas.** Falta: integração pencil-bridge (← impl expõe pressão) + ativação SDF asset/
-  tool-mode (← gated na UI de grafo, deferível). WidthProfile-no-StrokeStyle = opcional (serde).
+  tool-mode (← gated na UI de grafo, deferível). **WidthProfile-no-StrokeStyle ✅** (`8dca426`):
+  `WidthProfile{start,end,bulge}`+`scale_at` em `ph2d-vector-doc`, 5º campo Option na StrokeStyle
+  (≤6 cap, postcard round-trip verde, zero schema-bump), renderer expande band variable-width.
+  **→ Foundational W5 independente COMPLETO** (3 peças: primitiva + WidthProfile + gate SDF). Só
+  resta integração (pencil-bridge ← impl expõe pressão; ativação SDF ← UI) — gated em outros.
 - ⚠️ **Painter impl tem arquivos STAGED no índice compartilhado** (mid-commit) — commits
   Coord scoped por pathspec (`-- <paths>`), sem agarrar. Não fazer `git commit` sem pathspec.
 - **Implementador Vector = ATIVO em W4** (fan-out 12 geometry nodes). **Posse exclusiva:**

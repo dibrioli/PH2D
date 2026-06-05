@@ -43,9 +43,12 @@ multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + V
   `apply_gaussian` canônico; GPU+CPU-ref leem os mesmos pesos (prova o MECANISMO). Reconciliação
   = trocar a fórmula de pesos (Coord) quando o impl entregar.
 - **Handoff escrito ao Painter impl:** [`HANDOFF_painter_w4_spatial_gaussian_impl.md`](HANDOFF_painter_w4_spatial_gaussian_impl.md)
-  — (A) wire do tool flatten p/ emitir `SpatialAdjustment{kernel:SPATIAL_GAUSSIAN,...}` pros
-  kinds espaciais (`ph2d-tool-painter`); (B) `apply_gaussian` canônico (`ph2d-painter-brush`).
-  Sharpen/ShadowsHighlights/Motion/Bloom/ChromaticAberration caem na MESMA infra depois.
+  — (A) wire do tool flatten p/ emitir `SpatialAdjustment{kernel,...}` pros kinds espaciais
+  (`ph2d-tool-painter`); (B) `apply_gaussian`/`apply_sharpen` canônicos (`ph2d-painter-brush`).
+- **✅ Sharpen TAMBÉM landado** (commit `49c475d`) — `SPATIAL_SHARPEN`, unsharp mask, reusa
+  toda a máquina de blur (só `cs_combine` muda via `combine_mode`). `gpu_sharpen_matches_cpu_
+  reference` verde. **Infra provada multi-kernel.** ShadowsHighlights/Motion/Bloom/
+  ChromaticAberration caem na MESMA infra (impl entrega a ref de cada).
 - **Posse:** `ph2d-render` (infra, Coord — impl NÃO toca). Limitações documentadas (não-bloq.):
   spatial-dentro-de-grupo = no-op; Rgba16Float + batching de submits = tuning pós-paridade.
 

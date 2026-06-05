@@ -66,7 +66,14 @@ kernel de convolução, que é genérico 4-canais). Documenta em `apply_gaussian
 ## §3 — O QUE VEM DE CARONA (mesma infra, depois do Gaussian)
 Provado o Gaussian, os outros caem na MESMA infra (eu faço a parte ph2d-render
 quando me entregar a ref CPU+pesos de cada um, espelho de §2):
-- **Sharpen** = `src + amount·(src − blur(src))` → reusa o Gaussian + 1 combine.
+- ✅ **Sharpen JÁ LANDADO** (commit `49c475d`) — `SPATIAL_SHARPEN=1`, unsharp mask
+  (`base + amount·(base − blur)`), reusa TODA a máquina de blur; só o `cs_combine`
+  muda (switch `combine_mode`). Params: `[amount, radius, 0, 0]`. Gate
+  `gpu_sharpen_matches_cpu_reference` verde. **Falta tua parte:** wire do tool
+  (emitir `SpatialAdjustment{kernel:SPATIAL_SHARPEN,...}` pro `AdjustmentKind::Sharpen`)
+  + `apply_sharpen` canônico p/ reconciliar (o `amount` já é o coef. unsharp padrão;
+  **`mask_edges` está DEFERIDO** — me diz a semântica que ligo). Prova que a infra é
+  multi-kernel, não Gaussian-only.
 - **ShadowsHighlights** = contraste local (blur do canal como mapa de tom) + combine.
 - **MotionBlur** = kernel direcional (mesmo mecanismo, dir≠eixo).
 - **Bloom** = bright-pass + blur-chain + add (mip/Kawase p/ raio grande).

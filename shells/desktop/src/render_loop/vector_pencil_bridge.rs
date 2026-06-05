@@ -32,7 +32,8 @@ use ph2d_editor::ToolRegistry;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_vector_pencil::VectorPencilTool;
-use ph2d_vector::{BezPath, Brush, Color, Ph2dVectorAsset, Point, Stroke, VectorScene};
+use ph2d_vector::{Ph2dVectorAsset, VectorScene, draw_variable_width_stroke};
+use ph2d_vector_doc::srgb8_to_oklch;
 
 /// Pencil-blue overlay tint for the in-progress (un-smoothed) polyline.
 const OVERLAY_RGB: (u8, u8, u8) = (90, 140, 255);
@@ -107,18 +108,16 @@ pub(super) fn dispatch(
     let scene = vector_scene.inner_mut();
     let k = (window_size.height as f64) / (camera.height_world as f64).max(1e-6);
     let line_width_world = OVERLAY_LINE_WIDTH_PX / k;
-    let color = Color::from_rgba8(OVERLAY_RGB.0, OVERLAY_RGB.1, OVERLAY_RGB.2, OVERLAY_ALPHA);
 
-    let mut path = BezPath::new();
-    path.move_to(Point::new(samples[0].pos.x as f64, samples[0].pos.y as f64));
-    for s in &samples[1..] {
-        path.line_to(Point::new(s.pos.x as f64, s.pos.y as f64));
-    }
-    scene.stroke(
-        &Stroke::new(line_width_world),
-        world_to_screen,
-        &Brush::Solid(color),
-        None,
-        &path,
-    );
+    // W5 live preview: expand the in-progress polyline into a variable-width band
+    // driven by per-sample pen pressure (`StrokeSample.pressure`, 0..=1; 1.0 on
+    // pressure-less devices → constant width = the W2 look). The base width is the
+    // constant-screen-thickness overlay width, so the taper scales with zoom.
+    let overlay = srgb8_to_oklch([OVERLAY_RGB.0, OVERLAY_RGB.1, OVERLAY_RGB.2, OVERLAY_ALPHA]);
+    let centerline: Vec<_> = samples.iter().map(|s| s.pos).collect();
+    let widths: Vec<f32> = samples
+        .iter()
+        .map(|s| line_width_world as f32 * s.pressure)
+        .collect();
+    draw_variable_width_stroke(scene, &centerline, &widths, overlay, world_to_screen);
 }

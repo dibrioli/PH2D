@@ -34,8 +34,13 @@ use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_vector_doc::{
     EditLog, Ph2dVectorAsset, StrokeCap, StrokeJoin, StrokeStyle, StyleRef, StyleTable,
-    VectorNetwork, VectorOp, VertexKind, hobby,
+    VectorNetwork, VectorOp, VertexKind, WidthProfile, hobby,
 };
+
+/// A knot's pressure within this of `1.0` counts as "no pressure" (mouse /
+/// trackpad). Below the whole stroke that holds, the W2 constant-width path is
+/// kept (one shared style, no per-segment profiles).
+const PRESSURE_EPS: f32 = 1.0e-3;
 
 /// Raw-sample count per emitted cubic (plan DoD: "1 cubic per 10 input
 /// samples"). The decimator keeps every `stride`-th filtered sample plus
@@ -263,18 +268,19 @@ impl VectorPencilTool {
         if knots.len() < 2 {
             return PencilStrokeOutcome::TooShort;
         }
-        let tangents = hobby::fit_hobby_open(&knots);
+        let positions: Vec<Vec2> = knots.iter().map(|k| k.pos).collect();
+        let tangents = hobby::fit_hobby_open(&positions);
 
         let mut network = VectorNetwork::empty();
         let mut edit_log = EditLog::new();
 
-        for (i, &knot) in knots.iter().enumerate() {
+        for (i, knot) in knots.iter().enumerate() {
             // push_and_apply only fails on context-needing ops; AddVertex
             // is always network-applicable, so this cannot error here.
             let _ = edit_log.push_and_apply(
                 VectorOp::AddVertex {
                     id: i as u32,
-                    pos: knot,
+                    pos: knot.pos,
                     kind: VertexKind::Auto,
                 },
                 &mut network,
@@ -292,16 +298,47 @@ impl VectorPencilTool {
             );
         }
 
-        // Materialize the stroke style directly on every segment +
-        // StyleTable. `SetStrokeStyle` needs asset-level apply context
-        // (absent until T2.5), so the stroke assignment lives in the
-        // serialized network/styles rather than the (network-applicable)
-        // edit_log — the log stays pure geometry for replay-based undo.
-        for seg in network.segments.iter_mut() {
-            seg.style_ref = Some(self.default_stroke_ref);
+        // Materialize the stroke style on each segment + a FRESH per-asset
+        // `StyleTable` (the tool's table is the editing template; the committed
+        // asset carries only its own styles). `SetStrokeStyle` needs asset-level
+        // apply context (absent until T2.5), so the assignment lives in the
+        // serialized network/styles, not the (network-applicable) edit_log —
+        // the log stays pure geometry for replay-based undo.
+        //
+        // **W5 pressure → variable width:** when the device reported real
+        // pressure variation, give every SEGMENT its own style carrying a
+        // `WidthProfile` tapering between its two knots' pressures — the renderer
+        // (`draw_vector_network`) expands `width_profile` to variable width
+        // automatically, no baked geometry. Constant pressure (mouse / trackpad,
+        // all `1.0`) keeps one shared style = the W2 constant-width path.
+        let base = self
+            .styles
+            .strokes
+            .get(&self.default_stroke_ref)
+            .copied()
+            .unwrap_or_default();
+        let mut asset_styles = StyleTable::default();
+        let has_pressure = knots
+            .iter()
+            .any(|k| (k.pressure - 1.0).abs() > PRESSURE_EPS);
+        if has_pressure {
+            for (i, seg) in network.segments.iter_mut().enumerate() {
+                let mut style = base;
+                style.width_profile = Some(WidthProfile {
+                    start: knots[i].pressure.max(0.0),
+                    end: knots[i + 1].pressure.max(0.0),
+                    bulge: 0.0,
+                });
+                seg.style_ref = Some(asset_styles.insert_stroke(style));
+            }
+        } else {
+            let stroke_ref = asset_styles.insert_stroke(base);
+            for seg in network.segments.iter_mut() {
+                seg.style_ref = Some(stroke_ref);
+            }
         }
 
-        let mut asset = Ph2dVectorAsset::from_network(network, self.styles.clone());
+        let mut asset = Ph2dVectorAsset::from_network(network, asset_styles);
         asset.edit_log = edit_log;
         self.pending_committed = Some(asset);
         PencilStrokeOutcome::Committed
@@ -338,12 +375,12 @@ impl VectorPencilTool {
 /// 2. Keep every `stride`-th survivor plus the first and last point, so
 ///    the knot count is ≈ `survivors / stride` (→ ≈ 1 cubic per `stride`
 ///    raw samples, the plan DoD).
-fn decimate(samples: &[StrokeSample], stride: usize, min_dist: f32) -> Vec<Vec2> {
-    let mut filtered: Vec<Vec2> = Vec::new();
-    for s in samples {
+fn decimate(samples: &[StrokeSample], stride: usize, min_dist: f32) -> Vec<StrokeSample> {
+    let mut filtered: Vec<StrokeSample> = Vec::new();
+    for &s in samples {
         match filtered.last() {
-            Some(&last) if (s.pos - last).length() < min_dist => {}
-            _ => filtered.push(s.pos),
+            Some(last) if (s.pos - last.pos).length() < min_dist => {}
+            _ => filtered.push(s),
         }
     }
     if filtered.len() <= 2 {
@@ -351,7 +388,7 @@ fn decimate(samples: &[StrokeSample], stride: usize, min_dist: f32) -> Vec<Vec2>
     }
     let stride = stride.max(1);
     let last_idx = filtered.len() - 1;
-    let mut knots: Vec<Vec2> = Vec::with_capacity(filtered.len() / stride + 2);
+    let mut knots: Vec<StrokeSample> = Vec::with_capacity(filtered.len() / stride + 2);
     knots.push(filtered[0]);
     let mut i = stride;
     while i < last_idx {
@@ -623,6 +660,78 @@ mod tests {
         let stroke = asset.styles.strokes.values().next().expect("a stroke");
         assert_eq!(stroke.color, custom);
         assert_eq!(stroke.width, 5.0);
+    }
+
+    #[test]
+    fn constant_pressure_keeps_one_shared_constant_width_style() {
+        // Mouse/trackpad (pressure 1.0 everywhere) → one shared style, no
+        // width_profile (the W2 constant-width path is preserved).
+        let mut t = VectorPencilTool::new();
+        let pts: Vec<Vec2> = (0..30).map(|i| Vec2::new(i as f32 * 5.0, 0.0)).collect();
+        drag(&mut t, &pts);
+        t.finish_stroke();
+        let asset = t.take_committed_asset().expect("committed");
+        assert_eq!(asset.styles.strokes.len(), 1, "one shared style");
+        let style = asset.styles.strokes.values().next().unwrap();
+        assert!(
+            style.width_profile.is_none(),
+            "constant pressure = no profile"
+        );
+        for seg in &asset.network.segments {
+            assert_eq!(seg.style_ref, Some(0));
+        }
+    }
+
+    #[test]
+    fn pressure_variation_assigns_per_segment_width_profiles() {
+        // A real pressure ramp 0.2 → 1.0 → each segment gets its own style with
+        // a WidthProfile tapering between its endpoints' pressures.
+        let mut t = VectorPencilTool::new();
+        t.begin_stroke(StrokeSample {
+            pos: Vec2::ZERO,
+            pressure: 0.2,
+            tilt: 0.0,
+            azimuth: 0.0,
+        });
+        for i in 1..30 {
+            let p = 0.2 + 0.8 * (i as f32 / 29.0);
+            t.extend_stroke(StrokeSample {
+                pos: Vec2::new(i as f32 * 5.0, 0.0),
+                pressure: p,
+                tilt: 0.0,
+                azimuth: 0.0,
+            });
+        }
+        t.finish_stroke();
+        let asset = t.take_committed_asset().expect("committed");
+
+        let n = asset.network.segments.len();
+        assert_eq!(
+            asset.styles.strokes.len(),
+            n,
+            "one width-profile style per segment"
+        );
+        for seg in &asset.network.segments {
+            let style = asset
+                .styles
+                .strokes
+                .get(&seg.style_ref.expect("a style ref"))
+                .expect("style resolves");
+            assert!(
+                style.width_profile.is_some(),
+                "pressure stroke → width_profile"
+            );
+        }
+        // Pressure rises along the stroke → the last segment is wider than the first.
+        let prof = |seg_idx: usize| {
+            let r = asset.network.segments[seg_idx].style_ref.unwrap();
+            asset.styles.strokes.get(&r).unwrap().width_profile.unwrap()
+        };
+        assert!(
+            prof(0).start < prof(n - 1).end,
+            "rising pressure → wider toward the end"
+        );
+        assert!(asset.network.validate().is_ok());
     }
 
     #[test]

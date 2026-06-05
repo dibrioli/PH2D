@@ -82,6 +82,6 @@ pub use region::{Region, RegionId, SegmentRef, WindingRule};
 pub use selection::VectorSelection;
 pub use style::{
     FillRef, FillSolid, Segment, SegmentId, StrokeCap, StrokeJoin, StrokeStyle, StyleRef,
-    StyleRefMap, StyleTable,
+    StyleRefMap, StyleTable, WidthProfile,
 };
 pub use undo::{VectorRedoAction, VectorUndoAction, apply_redo, apply_undo};

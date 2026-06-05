@@ -62,17 +62,55 @@ impl Segment {
     }
 }
 
-/// Stroke style — minimal placeholder. Full stroke vocabulary
-/// (variable width, dash pattern, caps, joins, brush ref) arrives in
-/// W2-W5 per the Vector Module plan §§5-8.
+/// A 1-D variable-width profile for a stroke (Vector Module plan §8 T5.1).
 ///
-/// **Cap (ADR-0056 §2.3):** ≤ 6 fields. Currently 4; expansion via
-/// 0056-amendment-N.md when the Studio panel (W15) lands.
+/// Width along the stroke = `StrokeStyle.width × scale(t)`, where `scale`
+/// interpolates `start` → `end` over the stroke parameter `t ∈ [0,1]` with a
+/// midpoint `bulge` (calligraphic swell). `None` on a [`StrokeStyle`] = constant
+/// width (the common case). Per-sample, pressure-/jitter-driven width is a
+/// *render-time* concern (`ph2d_vector::draw_variable_width_stroke`), not part of
+/// this persisted parametric profile.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WidthProfile {
+    /// Width scale at the stroke start (× the base [`StrokeStyle::width`]).
+    pub start: f32,
+    /// Width scale at the stroke end.
+    pub end: f32,
+    /// Midpoint swell: `> 0` bulges (brush/calligraphic), `< 0` pinches, `0` linear.
+    pub bulge: f32,
+}
+
+impl Default for WidthProfile {
+    fn default() -> Self {
+        // Identity: constant width along the stroke.
+        Self {
+            start: 1.0,
+            end: 1.0,
+            bulge: 0.0,
+        }
+    }
+}
+
+impl WidthProfile {
+    /// Width scale at parameter `t ∈ [0,1]` along the stroke (clamped). Linear
+    /// `start`→`end` taper plus a parabolic `bulge` peaking at the midpoint.
+    #[must_use]
+    pub fn scale_at(&self, t: f32) -> f32 {
+        let t = t.clamp(0.0, 1.0);
+        let linear = self.start + (self.end - self.start) * t;
+        linear + self.bulge * 4.0 * t * (1.0 - t)
+    }
+}
+
+/// Stroke style — minimal placeholder. Full stroke vocabulary
+/// (dash pattern, brush ref) still arrives later per the Vector Module plan.
+///
+/// **Cap (ADR-0056 §2.3):** ≤ 6 fields. Currently 5 (W5 added `width_profile`);
+/// further expansion via 0056-amendment-N.md when the Studio panel (W15) lands.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct StrokeStyle {
-    /// Constant width in network-local pixels (variable-width via per-segment
-    /// width-profile arrives W5).
+    /// Base width in network-local pixels (scaled per-`t` by `width_profile`).
     pub width: f32,
 
     /// OKLCH color of the stroke (alpha included).
@@ -83,6 +121,12 @@ pub struct StrokeStyle {
 
     /// Corner-join style.
     pub join: StrokeJoin,
+
+    /// Variable-width profile (plan §8 T5.1); `None` = constant `width`. Appended
+    /// (`Option`, default `None`) → backward-compatible with v1 assets, no schema
+    /// bump (mirrors the `dormant_fractures` precedent).
+    #[serde(default)]
+    pub width_profile: Option<WidthProfile>,
 }
 
 impl Default for StrokeStyle {
@@ -92,6 +136,7 @@ impl Default for StrokeStyle {
             color: ph2d_color::OklchColor::opaque(0.0, 0.0, 0.0),
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
+            width_profile: None,
         }
     }
 }
@@ -178,4 +223,37 @@ impl Default for FillSolid {
 pub struct StyleRefMap {
     /// Direct style references the network uses.
     pub refs: SmallVec<[StyleRef; 8]>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn width_profile_tapers_and_bulges() {
+        let taper = WidthProfile {
+            start: 1.0,
+            end: 3.0,
+            bulge: 0.0,
+        };
+        assert!((taper.scale_at(0.0) - 1.0).abs() < 1e-6);
+        assert!((taper.scale_at(0.5) - 2.0).abs() < 1e-6);
+        assert!((taper.scale_at(1.0) - 3.0).abs() < 1e-6);
+        // Out-of-range clamps to the endpoints.
+        assert!((taper.scale_at(-1.0) - 1.0).abs() < 1e-6);
+        assert!((taper.scale_at(2.0) - 3.0).abs() < 1e-6);
+        // A pure bulge swells at the midpoint (4·0.5·0.5 = 1 × bulge).
+        let bulge = WidthProfile {
+            start: 1.0,
+            end: 1.0,
+            bulge: 0.5,
+        };
+        assert!((bulge.scale_at(0.5) - 1.5).abs() < 1e-6);
+        assert!((bulge.scale_at(0.0) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn stroke_style_default_is_constant_width() {
+        assert!(StrokeStyle::default().width_profile.is_none());
+    }
 }

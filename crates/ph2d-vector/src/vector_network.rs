@@ -139,6 +139,21 @@ pub fn draw_vector_network(
         ) else {
             continue;
         };
+        // Variable-width (W5 T5.1): a `width_profile` expands the segment into a
+        // filled band; otherwise the common constant-width stroke below.
+        if let Some(profile) = stroke_style.width_profile {
+            stroke_segment_variable_width(
+                scene,
+                segment,
+                start_v.pos,
+                end_v.pos,
+                stroke_style,
+                profile,
+                transform,
+            );
+            drawn += 1;
+            continue;
+        }
         let start = Point::new(start_v.pos.x as f64, start_v.pos.y as f64);
         let end = Point::new(end_v.pos.x as f64, end_v.pos.y as f64);
         // Cubic control points from the tangent offset vectors (renderer
@@ -165,6 +180,38 @@ pub fn draw_vector_network(
     }
 
     drawn
+}
+
+/// Stroke one cubic segment with a per-`t` [`ph2d_vector_doc::WidthProfile`] by
+/// flattening it to a polyline (16 subdivisions) and expanding into a filled band
+/// (the profile scales the base `width` along the segment). v1 applies the profile
+/// PER SEGMENT; whole-stroke pressure uses [`draw_variable_width_stroke`] directly.
+fn stroke_segment_variable_width(
+    scene: &mut Scene,
+    segment: &Segment,
+    start: Vec2,
+    end: Vec2,
+    style: &ph2d_vector_doc::StrokeStyle,
+    profile: ph2d_vector_doc::WidthProfile,
+    transform: Affine,
+) {
+    const SUBDIV: usize = 16;
+    let c1 = start + segment.out_at_start;
+    let c2 = end + segment.in_at_end;
+    let mut centerline = Vec::with_capacity(SUBDIV + 1);
+    let mut widths = Vec::with_capacity(SUBDIV + 1);
+    for i in 0..=SUBDIV {
+        let t = i as f32 / SUBDIV as f32;
+        centerline.push(cubic_point(start, c1, c2, end, t));
+        widths.push(style.width * profile.scale_at(t));
+    }
+    draw_variable_width_stroke(scene, &centerline, &widths, style.color, transform);
+}
+
+/// Cubic Bézier point at `t ∈ [0, 1]`.
+fn cubic_point(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
+    let u = 1.0 - t;
+    p0 * (u * u * u) + p1 * (3.0 * u * u * t) + p2 * (3.0 * u * t * t) + p3 * (t * t * t)
 }
 
 /// Draw a **variable-width stroke** (plan §8 T5.1 / ADR-0059) by expanding a

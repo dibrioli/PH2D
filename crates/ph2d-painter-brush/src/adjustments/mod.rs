@@ -751,10 +751,11 @@ mod compute;
 #[cfg(test)]
 mod tests;
 pub use compute::{
-    DISPLAY_LUT_N, SELCOLOR_BUCKETS, adjustment_segment_params, adjustment_slider_params,
-    adjustment_toggle_params, apply_adjustment, channel_mixer_slider_params,
-    colorbalance_display_luts, curve_value_at, curves_display_luts, gradient_map_lut,
-    levels_display_lut, selective_color_slider_params, set_adjustment_segment_param,
+    DISPLAY_LUT_N, SELCOLOR_BUCKETS, add_gradient_stop, adjustment_segment_params,
+    adjustment_slider_params, adjustment_toggle_params, apply_adjustment,
+    channel_mixer_slider_params, colorbalance_display_luts, curve_value_at, curves_display_luts,
+    gradient_map_lut, gradient_stop_color_params, levels_display_lut, move_gradient_stop,
+    remove_gradient_stop, selective_color_slider_params, set_adjustment_segment_param,
     set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
-    set_selective_color_param,
+    set_gradient_stop_color_param, set_selective_color_param,
 };

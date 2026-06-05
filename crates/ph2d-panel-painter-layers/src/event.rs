@@ -17,7 +17,8 @@ use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id,
-    painter_curve_remove_id, painter_curve_tab_id, painter_layer_blend_option_id,
+    painter_curve_remove_id, painter_curve_tab_id, painter_gradient_add_id,
+    painter_gradient_editor_id, painter_gradient_remove_id, painter_layer_blend_option_id,
     painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -134,6 +135,25 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         )));
                     return true;
                 }
+                // Gradient Map +/− stop buttons (W4 BATCH-2): "−" drops the
+                // selected stop (else the last one).
+                if painter_gradient_add_id(lid) == id {
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_GRADIENT_ADD,
+                            lid.to_string(),
+                        )));
+                    return true;
+                }
+                if painter_gradient_remove_id(lid) == id {
+                    let idx = state::selected_gradient_stop(lid);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_GRADIENT_REMOVE,
+                            format!("{lid}:{idx}"),
+                        )));
+                    return true;
+                }
             }
             // Blend dropdown option picked → close the dropdown + apply.
             if let Some((layer, mode)) = decode_blend_option(&stack, id) {
@@ -207,18 +227,33 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             // it, re-derive the layer from the editor `parent`, and forward to the
             // tool as `SelectOption(PAINTER_CURVE_EDIT, "layer:ch:idx:x:y")`.
             if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
-                if let Some(stack) = state::current_layers()
-                    && let Some(layer) = stack
+                if let Some(stack) = state::current_layers() {
+                    if let Some(layer) = stack
                         .all_ids()
                         .find(|l| painter_curve_editor_id(l.0) == parent)
-                {
-                    // Remember the touched point so the "−" button knows what to drop.
-                    state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                            core_ids::PAINTER_CURVE_EDIT,
-                            format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
-                        )));
+                    {
+                        // Remember the touched point so the "−" button knows what to drop.
+                        state::set_selected_curve_point(Some((layer.0, ch, usize::from(idx))));
+                        host.bus_mut().push(EditorAction::ToolPanelEvent(
+                            PanelEvent::SelectOption(
+                                core_ids::PAINTER_CURVE_EDIT,
+                                format!("{}:{ch}:{idx}:{x}:{y}", layer.0),
+                            ),
+                        ));
+                    } else if let Some(layer) = stack
+                        .all_ids()
+                        .find(|l| painter_gradient_editor_id(l.0) == parent)
+                    {
+                        // Gradient Map stop drag — `x` is the new offset; selecting the
+                        // dragged stop drives its color sliders + the "−" button.
+                        state::set_selected_gradient_stop(layer.0, usize::from(idx));
+                        host.bus_mut().push(EditorAction::ToolPanelEvent(
+                            PanelEvent::SelectOption(
+                                core_ids::PAINTER_GRADIENT_EDIT,
+                                format!("{}:{idx}:{x}", layer.0),
+                            ),
+                        ));
+                    }
                 }
                 return true;
             }
@@ -255,6 +290,21 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                             core_ids::PAINTER_SELCOLOR_EDIT,
                             format!("{}:{bucket}:{slot}:{v}", layer.0),
+                        )));
+                    return true;
+                }
+                // Gradient Map RGB slider (AdjParam0..2 on a GradientMap layer):
+                // forward the selected stop + slot via PAINTER_GRADIENT_COLOR.
+                if let Some(slot) = adj_param_slot(kind)
+                    && slot <= 2
+                    && layer_is_gradient_map(&stack, layer)
+                {
+                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+                    let stop = state::selected_gradient_stop(layer.0);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_GRADIENT_COLOR,
+                            format!("{}:{stop}:{slot}:{v}", layer.0),
                         )));
                     return true;
                 }
@@ -327,6 +377,15 @@ fn layer_is_selective_color(stack: &LayerStack, layer: LayerId) -> bool {
     matches!(
         stack.get(layer).map(|l| &l.kind),
         Some(LayerKind::Adjustment(adj)) if matches!(adj.params, AdjustmentParams::SelectiveColor(_))
+    )
+}
+
+/// `true` when `layer` is a Gradient-Map adjustment (its RGB sliders route through
+/// `PAINTER_GRADIENT_COLOR`, not the generic `SetValue`).
+fn layer_is_gradient_map(stack: &LayerStack, layer: LayerId) -> bool {
+    matches!(
+        stack.get(layer).map(|l| &l.kind),
+        Some(LayerKind::Adjustment(adj)) if matches!(adj.params, AdjustmentParams::GradientMap(_))
     )
 }
 

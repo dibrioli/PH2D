@@ -252,6 +252,44 @@ impl Tool for PainterTool {
                     self.set_channel_mixer_weight(RtLayerId(layer), output, slot, val);
                 }
             }
+            // ── Gradient Map editor (W4 BATCH-2): stop drag / add / remove /
+            // selected-stop color, each carrying the stop index in the payload. ─
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_EDIT => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(i), Some(o)) = (it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(idx), Ok(off)) =
+                        (l.parse::<u64>(), i.parse::<usize>(), o.parse::<f32>())
+                {
+                    self.set_gradient_stop_offset(RtLayerId(layer), idx, off);
+                }
+            }
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_ADD => {
+                if let Ok(layer) = value.parse::<u64>() {
+                    self.add_gradient_stop(RtLayerId(layer));
+                }
+            }
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_REMOVE => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(i)) = (it.next(), it.next())
+                    && let (Ok(layer), Ok(idx)) = (l.parse::<u64>(), i.parse::<usize>())
+                {
+                    self.remove_gradient_stop(RtLayerId(layer), idx);
+                }
+            }
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_GRADIENT_COLOR => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(st), Some(s), Some(v)) =
+                    (it.next(), it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(stop), Ok(slot), Ok(val)) = (
+                        l.parse::<u64>(),
+                        st.parse::<usize>(),
+                        s.parse::<usize>(),
+                        v.parse::<f32>(),
+                    )
+                {
+                    self.set_gradient_stop_color(RtLayerId(layer), stop, slot, val);
+                }
+            }
             // ── Selective Color CMYK edit (W4 BATCH-2): value =
             // "layer:bucket:slot:value" (the bespoke editor's active bucket tab
             // carries the group the frozen SetValue can not). ───────────────

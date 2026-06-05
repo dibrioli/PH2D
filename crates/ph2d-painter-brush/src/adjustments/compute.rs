@@ -855,6 +855,89 @@ pub fn gradient_map_lut(p: &GradientMapParams) -> [[f32; 3]; 256] {
     core::array::from_fn(|i| gradient_sample(&stops, p.interpolation, i as f32 / 255.0))
 }
 
+/// The 3 RGB sliders (`(label, value01)`, `0..255 → 0..1`) of gradient `stop` —
+/// what the bespoke editor renders for the selected stop. Out-of-range stops
+/// return black. Inverse of [`set_gradient_stop_color_param`].
+#[must_use]
+pub fn gradient_stop_color_params(p: &GradientMapParams, stop: usize) -> Vec<(&'static str, f32)> {
+    let c = p.stops.get(stop).map(|s| s.color).unwrap_or([0, 0, 0, 255]);
+    vec![
+        ("Red", c[0] as f32 / 255.0),
+        ("Green", c[1] as f32 / 255.0),
+        ("Blue", c[2] as f32 / 255.0),
+    ]
+}
+
+/// Set RGB slider `slot` (0 = R, 1 = G, 2 = B) of gradient `stop` from a
+/// normalized `0..1` value. Inverse of [`gradient_stop_color_params`]. Out-of-range
+/// stops/slots no-op.
+pub fn set_gradient_stop_color_param(
+    p: &mut GradientMapParams,
+    stop: usize,
+    slot: usize,
+    value01: f32,
+) {
+    let byte = (value01.clamp(0.0, 1.0) * 255.0).round() as u8;
+    if let Some(s) = p.stops.get_mut(stop)
+        && slot < 3
+    {
+        s.color[slot] = byte;
+    }
+}
+
+/// Move gradient `stop` to `offset` (clamped `0..=1`). The stops keep their Vec
+/// order (a stable index per editor handle, so a drag never re-binds to a
+/// different stop); [`gradient_map_lut`] sorts a copy at sample time, so stops may
+/// cross freely. No-op for an out-of-range index.
+pub fn move_gradient_stop(p: &mut GradientMapParams, stop: usize, offset: f32) {
+    if let Some(s) = p.stops.get_mut(stop) {
+        s.offset = offset.clamp(0.0, 1.0);
+    }
+}
+
+/// Insert a stop at the midpoint of the widest offset gap, its color sampled ON
+/// the current gradient (so the rendered map is unchanged until the new stop is
+/// recolored). Returns the inserted index, or `None` at the ≤16-stop cap or for a
+/// degenerate (<1-stop) gradient. Mirror of `add_curve_point`.
+pub fn add_gradient_stop(p: &mut GradientMapParams) -> Option<usize> {
+    const MAX_STOPS: usize = 16;
+    let n = p.stops.len();
+    if !(1..MAX_STOPS).contains(&n) {
+        return None;
+    }
+    // Widest gap between adjacent (sorted) stops, else after the last stop.
+    let mut stops = p.stops.clone();
+    stops.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+    let (mut best_gap, mut new_off) = (-1.0_f32, 0.5_f32);
+    for w in stops.windows(2) {
+        let gap = w[1].offset - w[0].offset;
+        if gap > best_gap {
+            best_gap = gap;
+            new_off = (w[0].offset + w[1].offset) * 0.5;
+        }
+    }
+    let lin = gradient_sample(&stops, p.interpolation, new_off);
+    let color = [
+        (linear_to_srgb_f32(lin[0]) * 255.0).round() as u8,
+        (linear_to_srgb_f32(lin[1]) * 255.0).round() as u8,
+        (linear_to_srgb_f32(lin[2]) * 255.0).round() as u8,
+        255,
+    ];
+    p.stops.push(ColorStop {
+        offset: new_off,
+        color,
+    });
+    Some(p.stops.len() - 1)
+}
+
+/// Remove gradient `stop`. No-op when only two stops remain (a gradient needs ≥2)
+/// or `stop` is out of range. Mirror of `remove_curve_point`.
+pub fn remove_gradient_stop(p: &mut GradientMapParams, stop: usize) {
+    if p.stops.len() > 2 && stop < p.stops.len() {
+        p.stops.remove(stop);
+    }
+}
+
 /// Gradient Map — remaps each pixel's DISPLAY-space luma (Rec.601, like Threshold)
 /// to a color along the gradient ([`gradient_map_lut`], the same table the GPU
 /// binds). Builds the LUT once, then the per-pixel loop is a luma + lerped lookup.
@@ -1081,26 +1164,9 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             }
             v
         }
-        // Gradient Map (duotone editor): the two endpoint stop colors as RGB
-        // (`0..255 → 0..1`); `interpolation` is a segment (Linear / Smooth). The
-        // compute supports N stops; this editor drives the first + last.
-        AdjustmentParams::GradientMap(p) => {
-            let lo = p.stops.first().map(|s| s.color).unwrap_or([0, 0, 0, 255]);
-            let hi = p
-                .stops
-                .last()
-                .map(|s| s.color)
-                .unwrap_or([255, 255, 255, 255]);
-            let ch = |b: u8| b as f32 / 255.0;
-            vec![
-                ("Lo R", ch(lo[0])),
-                ("Lo G", ch(lo[1])),
-                ("Lo B", ch(lo[2])),
-                ("Hi R", ch(hi[0])),
-                ("Hi G", ch(hi[1])),
-                ("Hi B", ch(hi[2])),
-            ]
-        }
+        // Gradient Map has a bespoke N-stop editor (preview bar + draggable stops
+        // + the SELECTED stop's RGB sliders, see `gradient_stop_color_params`), so
+        // it exposes no generic slider rack here.
         // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
         // black/gamma/white + output black/white. (Curves needs the bespoke
         // curve canvas — handoff §4 — so it returns no generic sliders.)
@@ -1186,21 +1252,8 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             4 => p.output_white = v,
             _ => {}
         },
-        // Gradient Map: slots 0..2 = the low (first) stop's RGB, 3..5 = the high
-        // (last) stop's RGB. No-op if the gradient is missing its two endpoints.
-        AdjustmentParams::GradientMap(p) if p.stops.len() >= 2 => {
-            let byte = (v * 255.0).round().clamp(0.0, 255.0) as u8;
-            let last = p.stops.len() - 1;
-            match slot {
-                0 => p.stops[0].color[0] = byte,
-                1 => p.stops[0].color[1] = byte,
-                2 => p.stops[0].color[2] = byte,
-                3 => p.stops[last].color[0] = byte,
-                4 => p.stops[last].color[1] = byte,
-                5 => p.stops[last].color[2] = byte,
-                _ => {}
-            }
-        }
+        // Gradient Map has a bespoke editor (its stop colors go through
+        // `set_gradient_stop_color_param`), so no generic slider slot here.
         // Curves has no generic sliders — its bespoke editor drives free 2-D point
         // drags through `PainterTool::set_curve_point` (W4 §3), not this slot path.
         _ => {}

@@ -33,6 +33,10 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 # TextSystem::prefix_width — measure blend-mode names to pre-truncate (ellipsis)
 # the chip label, replacing the per-frame Vello clip (FPS).
 ph2d-text = { path = "../ph2d-text" }
+# Vello `Color` for data-driven fills — the Gradient Map preview bar + stop
+# handles render the user's actual gradient colors (not theme tokens), the same
+# way `widget::color_swatch` builds `Color::from_rgba8`.
+ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }

@@ -639,6 +639,60 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// Gradient-Map editor mutators (W4 BATCH-2) — move / add / remove a stop +
+    /// set the selected stop's RGB. Each routes the preview through the same
+    /// cut-cache fast lane as a slider edit. No-op mid-stroke or for a non-Gradient
+    /// layer / out-of-range stop (delegated to the brush helpers).
+    pub fn set_gradient_stop_offset(&mut self, id: RtLayerId, stop: usize, offset: f32) {
+        if let Some(g) = self.gradient_params_mut(id) {
+            ph2d_painter_brush::adjustments::move_gradient_stop(g, stop, offset);
+            self.after_curve_edit(id);
+        }
+    }
+
+    /// Insert a stop on Gradient-Map `id` (midpoint of the widest gap, color on the
+    /// current gradient). Returns the inserted index, or `None` (cap / non-Gradient).
+    pub fn add_gradient_stop(&mut self, id: RtLayerId) -> Option<usize> {
+        let g = self.gradient_params_mut(id)?;
+        let idx = ph2d_painter_brush::adjustments::add_gradient_stop(g);
+        if idx.is_some() {
+            self.after_curve_edit(id);
+        }
+        idx
+    }
+
+    /// Remove stop `stop` from Gradient-Map `id` (keeps ≥2 stops).
+    pub fn remove_gradient_stop(&mut self, id: RtLayerId, stop: usize) {
+        if let Some(g) = self.gradient_params_mut(id) {
+            ph2d_painter_brush::adjustments::remove_gradient_stop(g, stop);
+            self.after_curve_edit(id);
+        }
+    }
+
+    /// Set RGB slider `slot` of Gradient-Map `id`'s `stop` from a `0..1` value.
+    pub fn set_gradient_stop_color(&mut self, id: RtLayerId, stop: usize, slot: usize, value: f32) {
+        if let Some(g) = self.gradient_params_mut(id) {
+            ph2d_painter_brush::adjustments::set_gradient_stop_color_param(g, stop, slot, value);
+            self.after_curve_edit(id);
+        }
+    }
+
+    /// `&mut GradientMapParams` of adjustment `id`, or `None` mid-stroke / for a
+    /// non-Gradient-Map layer.
+    fn gradient_params_mut(
+        &mut self,
+        id: RtLayerId,
+    ) -> Option<&mut ph2d_painter_brush::adjustments::GradientMapParams> {
+        if self.stroke_active {
+            return None;
+        }
+        let adj = self.layers.adjustment_mut(id)?;
+        match &mut adj.params {
+            ph2d_painter_brush::adjustments::AdjustmentParams::GradientMap(g) => Some(g),
+            _ => None,
+        }
+    }
+
     /// Set CMYK slider `slot` (0 = C, 1 = M, 2 = Y, 3 = K) of Selective-Color
     /// `id`'s color group `bucket` (0..9: Reds … Blacks) from a normalized `0..1`
     /// value. The bespoke editor forwards this with the active bucket in the

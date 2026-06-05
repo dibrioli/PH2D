@@ -1360,20 +1360,24 @@ fn gradient_map_apply_tracks_lut() {
 }
 
 #[test]
-fn gradient_map_slider_and_segment_round_trip() {
+fn gradient_map_stop_color_and_segment_round_trip() {
+    // The bespoke N-stop editor: per-stop RGB sliders + the interpolation segment.
     let mut p = AdjustmentParams::GradientMap(GradientMapParams::default());
-    assert_eq!(
-        adjustment_slider_params(&p).len(),
-        6,
-        "6 RGB endpoint sliders (Lo/Hi × R/G/B)"
-    );
-    set_adjustment_slider_param(&mut p, 0, 1.0); // Lo R → 255
-    set_adjustment_slider_param(&mut p, 5, 1.0); // Hi B → 255
-    let read = adjustment_slider_params(&p);
     assert!(
-        (read[0].1 - 1.0).abs() < 1e-6 && (read[5].1 - 1.0).abs() < 1e-6,
-        "RGB sliders round-trip"
+        adjustment_slider_params(&p).is_empty(),
+        "Gradient Map has no generic slider rack (bespoke editor)"
     );
+    if let AdjustmentParams::GradientMap(g) = &mut p {
+        assert_eq!(gradient_stop_color_params(g, 1).len(), 3, "3 RGB per stop");
+        set_gradient_stop_color_param(g, 0, 0, 1.0); // stop 0 red → 255
+        set_gradient_stop_color_param(g, 1, 2, 0.0); // stop 1 blue → 0
+        assert_eq!(g.stops[0].color[0], 255, "stop-0 red set");
+        assert_eq!(g.stops[1].color[2], 0, "stop-1 blue set");
+        assert!(
+            (gradient_stop_color_params(g, 0)[0].1 - 1.0).abs() < 1e-6,
+            "RGB round-trip"
+        );
+    }
     let (opts, sel) = adjustment_segment_params(&p).expect("has a segmented param");
     assert_eq!(opts, vec!["Linear", "Smooth"]);
     assert_eq!(sel, 0, "default interpolation is Linear");
@@ -1383,6 +1387,30 @@ fn gradient_map_slider_and_segment_round_trip() {
         1,
         "Smooth selected"
     );
+}
+
+#[test]
+fn gradient_map_add_move_remove_stops() {
+    let mut g = GradientMapParams::default(); // 2 stops (black@0, white@1)
+    assert_eq!(g.stops.len(), 2);
+    // Add inserts at the widest gap's midpoint (offset 0.5) with the on-gradient color.
+    let idx = add_gradient_stop(&mut g).expect("added");
+    assert_eq!(g.stops.len(), 3);
+    assert!(
+        (g.stops[idx].offset - 0.5).abs() < 1e-4,
+        "inserted at the gap midpoint"
+    );
+    // Move keeps the index stable (no reorder) + clamps to 0..1.
+    move_gradient_stop(&mut g, idx, 1.5);
+    assert_eq!(g.stops[idx].offset, 1.0, "offset clamps to 1");
+    // Remove holds the ≥2-stop floor.
+    remove_gradient_stop(&mut g, idx);
+    assert_eq!(g.stops.len(), 2);
+    remove_gradient_stop(&mut g, 0);
+    assert_eq!(g.stops.len(), 2, "never drops below 2 stops");
+    // Fill to the 16-stop cap, then add refuses.
+    while add_gradient_stop(&mut g).is_some() {}
+    assert_eq!(g.stops.len(), 16, "stops at the ≤16 cap");
 }
 
 // ── W4 BATCH-2 — Selective Color (9-group CMYK) ───────────────────────

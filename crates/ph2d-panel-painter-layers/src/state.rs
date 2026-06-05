@@ -77,6 +77,11 @@ thread_local! {
     /// edit) — the slider edit carries the bucket in its `PAINTER_SELCOLOR_EDIT`
     /// payload. Keyed by layer id. Default (absent) = Reds.
     static ACTIVE_SELECTIVE_BUCKET: RefCell<BTreeMap<u64, u8>> = const { RefCell::new(BTreeMap::new()) };
+
+    /// Selected gradient stop per Gradient-Map layer (W4 BATCH-2): which stop the
+    /// RGB color sliders edit + the "−" button removes. Set when a stop handle is
+    /// dragged/clicked. Keyed by layer id. Default (absent) = the first stop.
+    static SELECTED_GRADIENT_STOP: RefCell<BTreeMap<u64, usize>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 /// Set the active output-channel tab for `layer`'s Channel Mixer (W4 BATCH-1).
@@ -101,6 +106,18 @@ pub(crate) fn set_active_selective_bucket(layer: u64, bucket: u8) {
 /// The active color-group bucket for `layer`'s Selective Color (default `0` = Reds).
 pub(crate) fn active_selective_bucket(layer: u64) -> u8 {
     ACTIVE_SELECTIVE_BUCKET.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
+}
+
+/// Set the selected gradient stop for `layer`'s Gradient Map editor (W4 BATCH-2).
+pub(crate) fn set_selected_gradient_stop(layer: u64, stop: usize) {
+    SELECTED_GRADIENT_STOP.with(|c| {
+        c.borrow_mut().insert(layer, stop);
+    });
+}
+
+/// The selected gradient stop for `layer`'s Gradient Map (default `0` = first stop).
+pub(crate) fn selected_gradient_stop(layer: u64) -> usize {
+    SELECTED_GRADIENT_STOP.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
 }
 
 /// Set the active channel tab for `layer`'s curve editor (W4 §3).

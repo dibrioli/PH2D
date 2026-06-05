@@ -2088,38 +2088,59 @@ fn black_and_white_tint_toggle_and_hue_slider_route() {
 }
 
 #[test]
-fn gradient_map_endpoint_slider_and_interpolation_route() {
-    // W4 BATCH-2: Gradient Map reuses the generic racks — a SetValue on an
-    // endpoint RGB slider edits the stop color; an AdjSegment click sets the
-    // interpolation. Confirms the generic routes reach the GradientMap params.
-    use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+fn gradient_map_stop_editor_routes() {
+    // W4 BATCH-2: the bespoke N-stop editor — add / move / recolor / remove a stop
+    // (each carries the stop index in the payload) + the interpolation segment.
+    use ph2d_editor_core::ids::{
+        PAINTER_GRADIENT_ADD, PAINTER_GRADIENT_COLOR, PAINTER_GRADIENT_EDIT,
+        PAINTER_GRADIENT_REMOVE, PainterLayerWidget, painter_layer_widget_id,
+    };
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, GradientInterp};
     let mut t = PainterTool::default();
     t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
     let adj = t.add_adjustment_layer(AdjustmentKind::GradientMap).unwrap();
-    let params = |t: &PainterTool| -> AdjustmentParams {
+    let gmap = |t: &PainterTool| -> ph2d_painter_brush::adjustments::GradientMapParams {
         match &t.layers.get(adj).unwrap().kind {
-            LayerKind::Adjustment(a) => a.params.clone(),
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::GradientMap(p) => p.clone(),
+                _ => panic!("not a gradient map"),
+            },
             _ => panic!("not an adjustment"),
         }
     };
-    // Lo R slider (AdjParam0) → 1.0 sets the first stop's red to 255.
-    let lo_r = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjParam0);
-    t.handle_panel_event(PanelEvent::SetValue(lo_r, 1.0));
+    assert_eq!(gmap(&t).stops.len(), 2, "default duotone has 2 stops");
+    // Add a stop (→ index 2 at the gap midpoint).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_GRADIENT_ADD,
+        format!("{}", adj.0),
+    ));
+    assert_eq!(gmap(&t).stops.len(), 3, "add inserted a stop");
+    // Move stop 2 to offset 0.25.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_GRADIENT_EDIT,
+        format!("{}:2:0.25", adj.0),
+    ));
+    assert!(
+        (gmap(&t).stops[2].offset - 0.25).abs() < 1e-5,
+        "stop 2 moved to 0.25"
+    );
+    // Recolor stop 2's red to 255 (slot 0).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_GRADIENT_COLOR,
+        format!("{}:2:0:1.0", adj.0),
+    ));
+    assert_eq!(gmap(&t).stops[2].color[0], 255, "stop 2 red set to 255");
     // Interpolation segment (AdjSegment1) → Smooth.
     let seg1 = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjSegment1);
     t.handle_panel_event(PanelEvent::Click(seg1));
-    match params(&t) {
-        AdjustmentParams::GradientMap(p) => {
-            assert_eq!(p.stops[0].color[0], 255, "Lo R slider set the first stop");
-            assert!(
-                matches!(p.interpolation, GradientInterp::Smooth),
-                "segment click selected Smooth"
-            );
-        }
-        _ => panic!("not a gradient map"),
-    }
+    assert!(matches!(gmap(&t).interpolation, GradientInterp::Smooth));
+    // Remove stop 2.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_GRADIENT_REMOVE,
+        format!("{}:2", adj.0),
+    ));
+    assert_eq!(gmap(&t).stops.len(), 2, "remove dropped the stop");
 }
 
 #[test]

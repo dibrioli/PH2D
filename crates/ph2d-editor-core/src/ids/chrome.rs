@@ -603,6 +603,47 @@ pub fn painter_selcolor_bucket_id(layer_id: u64, bucket: u8) -> NodeId {
 /// into a `set_selective_color_value` call.
 pub const PAINTER_SELCOLOR_EDIT: NodeId = hash_node_id("painter_selcolor_edit");
 
+/// Derive the [`NodeId`] of the bespoke Gradient-Map editor (the `parent` of its
+/// draggable stop handles, W4 BATCH-2). The 1-D drag dispatch (a `CurvePoint`
+/// whose `x` is the stop offset) stashes the result keyed by this parent.
+#[must_use]
+pub fn painter_gradient_editor_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_gradient.editor.{layer_id}"))
+}
+
+/// Derive the [`NodeId`] of gradient stop `index`'s draggable handle on
+/// `layer_id`'s Gradient-Map editor (W4 BATCH-2). Registered as an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) over the
+/// preview bar; the drag's `x` becomes the stop offset.
+#[must_use]
+pub fn painter_gradient_stop_id(layer_id: u64, index: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_gradient.stop.{layer_id}.{index}"))
+}
+
+/// Derive the [`NodeId`] of the "+ stop" / "− stop" button of `layer_id`'s
+/// Gradient-Map editor (W4 BATCH-2). See [`PAINTER_GRADIENT_ADD`] / [`PAINTER_GRADIENT_REMOVE`].
+#[must_use]
+pub fn painter_gradient_add_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_gradient.add.{layer_id}"))
+}
+
+/// See [`painter_gradient_add_id`].
+#[must_use]
+pub fn painter_gradient_remove_id(layer_id: u64) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_gradient.remove.{layer_id}"))
+}
+
+/// Fixed routing id — panel → tool Gradient-Map stop drag (W4 BATCH-2). Payload
+/// `"layer:index:offset"`; the tool calls `set_gradient_stop_offset`.
+pub const PAINTER_GRADIENT_EDIT: NodeId = hash_node_id("painter_gradient_edit");
+/// Fixed routing id — panel → tool "add a gradient stop". Payload `"layer"`.
+pub const PAINTER_GRADIENT_ADD: NodeId = hash_node_id("painter_gradient_add");
+/// Fixed routing id — panel → tool "remove a gradient stop". Payload `"layer:index"`.
+pub const PAINTER_GRADIENT_REMOVE: NodeId = hash_node_id("painter_gradient_remove");
+/// Fixed routing id — panel → tool selected-stop RGB edit (W4 BATCH-2). Payload
+/// `"layer:stop:slot:value"`; the tool calls `set_gradient_stop_color`.
+pub const PAINTER_GRADIENT_COLOR: NodeId = hash_node_id("painter_gradient_color");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

@@ -812,14 +812,14 @@ fn cs_blur_v(@builtin(global_invocation_id) gid: vec3<u32>) {
     blur_core(gid, vec2<i32>(0, 1));
 }
 
-// ── cs_combine — blend the blurred result back over the base ─────────────────
+// ── cs_combine — derive the kernel result from base+blurred, blend over base ──
 struct CombineGlobals {
     width: u32,
     height: u32,
     blend_mode: u32,
-    _pad0: u32,
+    combine_mode: u32, // 0 = Gaussian (passthrough blurred); 1 = Sharpen (unsharp)
     opacity: f32,
-    _pad1: f32,
+    amount: f32, // unsharp amount (combine_mode == 1)
     _pad2: f32,
     _pad3: f32,
 }
@@ -828,10 +828,14 @@ struct CombineGlobals {
 @group(0) @binding(16) var comb_blurred: texture_2d<f32>;
 @group(0) @binding(17) var comb_dst: texture_storage_2d<rgba32float, write>;
 
-// Spatial mirror of apply_adjustment_op: the kernel result (blurred.rgb) is the
-// "adjusted" value; blend it over the base in the adjustment's mode, lerp by its
-// opacity, preserve coverage (base.a). Alpha/premultiply handling is a kernel-
-// semantics refinement owned by the impl's canonical apply_gaussian.
+// Spatial mirror of apply_adjustment_op: derive the "adjusted" RGB from the base
+// + the kernel's blurred copy, blend it over the base in the adjustment's mode,
+// lerp by opacity, preserve coverage (base.a).
+//   - GAUSSIAN: adjusted = blurred.rgb.
+//   - SHARPEN:  adjusted = base + amount·(base − blurred)  (unsharp mask), the
+//     blur passes produce `blur(src)` and this recovers the high-frequency boost.
+// Alpha/premultiply handling is a kernel-semantics refinement owned by the impl's
+// canonical apply_gaussian/apply_sharpen.
 @compute @workgroup_size(8, 8, 1)
 fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = gid.x;
@@ -842,7 +846,15 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     let p = vec2<i32>(i32(x), i32(y));
     let acc = textureLoad(comb_base, p, 0);
     let blurred = textureLoad(comb_blurred, p, 0);
-    let src_px = vec4<f32>(blurred.rgb, acc.a);
+    var adj_rgb = blurred.rgb;
+    if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask
+        adj_rgb = clamp(
+            acc.rgb + comb_g.amount * (acc.rgb - blurred.rgb),
+            vec3<f32>(0.0),
+            vec3<f32>(1.0),
+        );
+    }
+    let src_px = vec4<f32>(adj_rgb, acc.a);
     let blended = apply_blend(comb_g.blend_mode, acc, src_px);
     let t = clamp(comb_g.opacity, 0.0, 1.0);
     let out = vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);

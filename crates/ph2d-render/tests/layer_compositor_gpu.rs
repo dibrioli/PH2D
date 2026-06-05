@@ -16,7 +16,7 @@ use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_GAUSSIAN, gaussian_weights,
+    SPATIAL_GAUSSIAN, SPATIAL_SHARPEN, gaussian_weights,
 };
 use std::collections::BTreeMap;
 
@@ -892,18 +892,29 @@ fn cpu_blur_linear(src: &[[f32; 4]], w: u32, h: u32, weights: &[f32], half: u32)
     pass(&tmp, 0, 1)
 }
 
-/// Blend the blurred result over the base per `blend`/`opacity`, preserving
-/// coverage. Mirror of `cs_combine`.
+/// Derive the kernel result from base + blurred, blend it over the base per
+/// `blend`/`opacity`, preserving coverage. Mirror of `cs_combine`. `sharpen`
+/// = `None` → Gaussian (passthrough blurred); `Some(amount)` → unsharp mask
+/// (`base + amount·(base − blurred)`, clamped).
 fn cpu_combine_linear(
     base: &[[f32; 4]],
     blurred: &[[f32; 4]],
     blend: u8,
     opacity: f32,
+    sharpen: Option<f32>,
 ) -> Vec<[f32; 4]> {
     base.iter()
         .zip(blurred)
         .map(|(acc, bl)| {
-            let src_px = [bl[0], bl[1], bl[2], acc[3]];
+            let adj = match sharpen {
+                None => [bl[0], bl[1], bl[2]],
+                Some(a) => [
+                    (acc[0] + a * (acc[0] - bl[0])).clamp(0.0, 1.0),
+                    (acc[1] + a * (acc[1] - bl[1])).clamp(0.0, 1.0),
+                    (acc[2] + a * (acc[2] - bl[2])).clamp(0.0, 1.0),
+                ],
+            };
+            let src_px = [adj[0], adj[1], adj[2], acc[3]];
             let blended = apply_blend(BlendMode::from_u8(blend), *acc, src_px);
             let t = opacity.clamp(0.0, 1.0);
             [
@@ -995,7 +1006,7 @@ fn gpu_gaussian_matches_cpu_reference() {
     // CPU full-canvas reference.
     let mat = cpu_seg_linear(&below, &prov, w, h, None);
     let blurred = cpu_blur_linear(&mat, w, h, &weights, half);
-    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0);
+    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, None);
     let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
     let want_full = cpu_encode_full(&above_lin);
 
@@ -1027,5 +1038,85 @@ fn gpu_gaussian_matches_cpu_reference() {
     assert!(
         d_sub <= 4,
         "gaussian sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
+}
+
+/// GPU Sharpen (unsharp mask) vs a full CPU recompose — proves the pass-graph
+/// generalises to a SECOND kernel on the SAME blur machinery (Sharpen = Gaussian
+/// blur + a combine variant: `base + amount·(base − blur(base))`). Same opaque-
+/// base / full + sub-region structure + ±4B tolerance as the Gaussian gate.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_sharpen_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 4);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 8));
+
+    let amount = 0.8f32;
+    let radius = 3.0f32;
+    let (weights, half) = gaussian_weights(radius);
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.5,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_SHARPEN,
+            params: [amount, radius, 0.0, 0.0], // amount, blur radius
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference: materialise → blur(base) → unsharp combine → above.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let blurred = cpu_blur_linear(&mat, w, h, &weights, half);
+    let combined = cpu_combine_linear(&mat, &blurred, 0, 1.0, Some(amount));
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&combined));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    assert!(
+        d_full <= 4,
+        "sharpen full-region GPU vs CPU max byte diff {d_full}"
+    );
+
+    let sub = Region {
+        x: 22,
+        y: 16,
+        w: 20,
+        h: 24,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    assert!(
+        d_sub <= 4,
+        "sharpen sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
     );
 }

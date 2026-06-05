@@ -174,10 +174,22 @@ pub enum LayerOp {
 
 /// Spatial-kernel codes — the `kernel` discriminant of
 /// [`LayerOp::SpatialAdjustment`]. The painter tool maps its
-/// `AdjustmentKind::GaussianBlur` (etc.) to one of these. Only `GAUSSIAN` is
-/// implemented in the spike; the others are reserved so the contract is stable
-/// as they land on the same pass-graph (Sharpen = Gaussian + combine, etc.).
+/// `AdjustmentKind::GaussianBlur`/`Sharpen` (etc.) to one of these. The
+/// remaining kinds are reserved so the contract is stable as they land on the
+/// same pass-graph (Motion/Bloom/ShadowsHighlights/ChromaticAberration).
+///
+/// `SPATIAL_GAUSSIAN` reads `params[0]` = radius. `SPATIAL_SHARPEN` is unsharp
+/// mask (`src + amount·(src − blur(src))`) — `params[0]` = amount, `params[1]` =
+/// blur radius — and reuses the Gaussian blur passes, differing only in the
+/// combine step (`COMBINE_SHARPEN`).
 pub const SPATIAL_GAUSSIAN: u8 = 0;
+pub const SPATIAL_SHARPEN: u8 = 1;
+
+/// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
+/// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
+/// computes the unsharp mask from base + blurred. Both then blend over the base.
+const COMBINE_GAUSSIAN: u32 = 0;
+const COMBINE_SHARPEN: u32 = 1;
 
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + the per-pixel tap count + the dirty-rect halo.
@@ -385,9 +397,9 @@ struct CombineGlobals {
     width: u32,
     height: u32,
     blend_mode: u32,
-    _pad0: u32,
+    combine_mode: u32, // COMBINE_GAUSSIAN (0) | COMBINE_SHARPEN (1)
     opacity: f32,
-    _pad1: f32,
+    amount: f32, // unsharp amount for COMBINE_SHARPEN (ignored otherwise)
     _pad2: f32,
     _pad3: f32,
 }

@@ -877,13 +877,27 @@ impl LayerCompositor {
         region: Region,
     ) -> Result<(), LayerCompositeError> {
         /// One root-level spatial pass break: where it sits in the op-list, its
-        /// (provisional) kernel weights + half-width, and its blend/opacity.
+        /// (provisional) blur weights + half-width, the combine mode + amount,
+        /// and its blend/opacity.
         struct Break {
             idx: usize,
             weights: Vec<f32>,
             half: u32,
+            combine_mode: u32,
+            amount: f32,
             blend: u8,
             opacity: f32,
+        }
+
+        // Resolve a spatial kernel to its blur radius + combine mode + amount.
+        // GAUSSIAN: params[0]=radius, passthrough combine. SHARPEN (unsharp mask):
+        // params[0]=amount, params[1]=blur radius, sharpen combine. Unknown → None.
+        fn resolve_kernel(kernel: u8, params: &[f32; 4]) -> Option<(f32, u32, f32)> {
+            match kernel {
+                k if k == SPATIAL_GAUSSIAN => Some((params[0], COMBINE_GAUSSIAN, 0.0)),
+                k if k == SPATIAL_SHARPEN => Some((params[1], COMBINE_SHARPEN, params[0])),
+                _ => None,
+            }
         }
 
         let mut breaks: Vec<Break> = Vec::new();
@@ -898,13 +912,19 @@ impl LayerCompositor {
                     params,
                     blend_mode,
                     opacity,
-                } if depth == 0 && *kernel == SPATIAL_GAUSSIAN => {
-                    let (weights, half) = gaussian_weights(params[0]);
+                } if depth == 0 => {
+                    let Some((radius, combine_mode, amount)) = resolve_kernel(*kernel, params)
+                    else {
+                        continue; // unknown kernel → identity (segment loop no-ops it)
+                    };
+                    let (weights, half) = gaussian_weights(radius);
                     total_halo = total_halo.saturating_add(half);
                     breaks.push(Break {
                         idx: i,
                         weights,
                         half,
+                        combine_mode,
+                        amount,
                         blend: *blend_mode,
                         opacity: *opacity,
                     });
@@ -964,7 +984,16 @@ impl LayerCompositor {
             cur = dst;
             self.upload_blur_weights(gpu, &b.weights);
             self.run_blur(gpu, cur, b.half, work);
-            self.run_combine(gpu, cur, cur ^ 1, b.blend, b.opacity, work);
+            self.run_combine(
+                gpu,
+                cur,
+                cur ^ 1,
+                b.blend,
+                b.opacity,
+                b.combine_mode,
+                b.amount,
+                work,
+            );
             cur ^= 1;
             seg_start = b.idx as u32 + 1;
             from_base = true;
@@ -1243,8 +1272,10 @@ impl LayerCompositor {
         );
     }
 
-    /// Blend `blur[1]` (the blurred result) over `base[base_idx]` per the
-    /// adjustment's `blend`/`opacity` into `base[dst_idx]`.
+    /// Derive the kernel result from `base[base_idx]` + `blur[1]` (per
+    /// `combine_mode`/`amount`) and blend it over `base[base_idx]` by
+    /// `blend`/`opacity` into `base[dst_idx]`.
+    #[allow(clippy::too_many_arguments)]
     fn run_combine(
         &self,
         gpu: &GpuContext,
@@ -1252,6 +1283,8 @@ impl LayerCompositor {
         dst_idx: usize,
         blend: u8,
         opacity: f32,
+        combine_mode: u32,
+        amount: f32,
         work: Region,
     ) {
         let Some(work_tex) = &self.work else {
@@ -1261,9 +1294,9 @@ impl LayerCompositor {
             width: work.w,
             height: work.h,
             blend_mode: u32::from(blend),
-            _pad0: 0,
+            combine_mode,
             opacity,
-            _pad1: 0.0,
+            amount,
             _pad2: 0.0,
             _pad3: 0.0,
         };

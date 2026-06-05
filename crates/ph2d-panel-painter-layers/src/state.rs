@@ -71,6 +71,12 @@ thread_local! {
     /// slider edit carries the channel in its `PAINTER_MIXER_EDIT` payload. Keyed
     /// by layer id. Default (absent) = Red.
     static ACTIVE_MIXER_CHANNEL: RefCell<BTreeMap<u64, u8>> = const { RefCell::new(BTreeMap::new()) };
+
+    /// Active color-group bucket TAB per Selective-Color layer (W4 BATCH-2):
+    /// `0..9` = Reds … Blacks. Pure VIEW state (which group the 4 CMYK sliders
+    /// edit) — the slider edit carries the bucket in its `PAINTER_SELCOLOR_EDIT`
+    /// payload. Keyed by layer id. Default (absent) = Reds.
+    static ACTIVE_SELECTIVE_BUCKET: RefCell<BTreeMap<u64, u8>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 /// Set the active output-channel tab for `layer`'s Channel Mixer (W4 BATCH-1).
@@ -83,6 +89,18 @@ pub(crate) fn set_active_mixer_channel(layer: u64, channel: u8) {
 /// The active output-channel tab for `layer`'s Channel Mixer (default `0` = Red).
 pub(crate) fn active_mixer_channel(layer: u64) -> u8 {
     ACTIVE_MIXER_CHANNEL.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
+}
+
+/// Set the active color-group bucket tab for `layer`'s Selective Color (W4 BATCH-2).
+pub(crate) fn set_active_selective_bucket(layer: u64, bucket: u8) {
+    ACTIVE_SELECTIVE_BUCKET.with(|c| {
+        c.borrow_mut().insert(layer, bucket);
+    });
+}
+
+/// The active color-group bucket for `layer`'s Selective Color (default `0` = Reds).
+pub(crate) fn active_selective_bucket(layer: u64) -> u8 {
+    ACTIVE_SELECTIVE_BUCKET.with(|c| c.borrow().get(&layer).copied().unwrap_or(0))
 }
 
 /// Set the active channel tab for `layer`'s curve editor (W4 §3).

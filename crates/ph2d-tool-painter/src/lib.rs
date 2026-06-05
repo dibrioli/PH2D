@@ -47,11 +47,12 @@ pub use params::{
     opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
 pub use ph2d_painter_brush::adjustments::{
-    AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams,
+    AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams, SELCOLOR_BUCKETS,
     adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
     channel_mixer_slider_params, colorbalance_display_luts, curve_value_at, curves_display_luts,
-    gradient_map_lut, set_adjustment_segment_param, set_adjustment_slider_param,
-    set_adjustment_toggle_param, set_channel_mixer_param,
+    gradient_map_lut, selective_color_slider_params, set_adjustment_segment_param,
+    set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
+    set_selective_color_param,
 };
 pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
 pub use tool::{PainterTool, set_pending_select_mods};

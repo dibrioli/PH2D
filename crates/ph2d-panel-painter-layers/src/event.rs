@@ -18,7 +18,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id,
     painter_curve_remove_id, painter_curve_tab_id, painter_layer_blend_option_id,
-    painter_layer_widget_id, painter_mixer_tab_id,
+    painter_layer_widget_id, painter_mixer_tab_id, painter_selcolor_bucket_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -102,6 +102,15 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         .find(|&ch| painter_mixer_tab_id(lid, ch) == id)
                         .unwrap();
                     state::set_active_mixer_channel(lid, ch);
+                    return true;
+                }
+                // Selective Color group tab (W4 BATCH-2): panel-local view state,
+                // never forwarded (the CMYK edit carries the bucket).
+                if (0u8..9).any(|bk| painter_selcolor_bucket_id(lid, bk) == id) {
+                    let bk = (0u8..9)
+                        .find(|&bk| painter_selcolor_bucket_id(lid, bk) == id)
+                        .unwrap();
+                    state::set_active_selective_bucket(lid, bk);
                     return true;
                 }
                 if painter_curve_add_id(lid) == id {
@@ -234,6 +243,21 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         )));
                     return true;
                 }
+                // Selective Color CMYK slider (AdjParam0..3 on a SelectiveColor
+                // layer): forward the active bucket + slot via PAINTER_SELCOLOR_EDIT.
+                if let Some(slot) = adj_param_slot(kind)
+                    && slot <= 3
+                    && layer_is_selective_color(&stack, layer)
+                {
+                    let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+                    let bucket = state::active_selective_bucket(layer.0).min(8);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                            core_ids::PAINTER_SELCOLOR_EDIT,
+                            format!("{}:{bucket}:{slot}:{v}", layer.0),
+                        )));
+                    return true;
+                }
                 if matches!(
                     kind,
                     PainterLayerWidget::Opacity
@@ -294,6 +318,15 @@ fn layer_is_channel_mixer(stack: &LayerStack, layer: LayerId) -> bool {
     matches!(
         stack.get(layer).map(|l| &l.kind),
         Some(LayerKind::Adjustment(adj)) if matches!(adj.params, AdjustmentParams::ChannelMixer(_))
+    )
+}
+
+/// `true` when `layer` is a Selective-Color adjustment (its CMYK sliders route
+/// through `PAINTER_SELCOLOR_EDIT`, not the generic `SetValue`).
+fn layer_is_selective_color(stack: &LayerStack, layer: LayerId) -> bool {
+    matches!(
+        stack.get(layer).map(|l| &l.kind),
+        Some(LayerKind::Adjustment(adj)) if matches!(adj.params, AdjustmentParams::SelectiveColor(_))
     )
 }
 

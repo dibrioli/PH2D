@@ -1384,3 +1384,99 @@ fn gradient_map_slider_and_segment_round_trip() {
         "Smooth selected"
     );
 }
+
+// ── W4 BATCH-2 — Selective Color (9-group CMYK) ───────────────────────
+
+#[test]
+fn selective_color_neutral_is_exact_identity() {
+    let px = [0.3, 0.55, 0.2, 0.7];
+    assert_eq!(
+        run(
+            AdjustmentKind::SelectiveColor,
+            AdjustmentParams::SelectiveColor(SelectiveColorParams::default()),
+            px,
+        ),
+        px,
+        "all-zero groups is an exact identity"
+    );
+}
+
+#[test]
+fn selective_color_reds_cyan_reduces_red() {
+    let mut sc = SelectiveColorParams::default();
+    sc.reds.cyan = 1.0; // full cyan on the Reds group
+    let red = [
+        srgb_to_linear_f32(0.9),
+        srgb_to_linear_f32(0.1),
+        srgb_to_linear_f32(0.1),
+        1.0,
+    ];
+    let out = run(
+        AdjustmentKind::SelectiveColor,
+        AdjustmentParams::SelectiveColor(sc),
+        red,
+    );
+    assert!(
+        linear_to_srgb_f32(out[0]) < 0.9 - 1e-2,
+        "Reds-cyan reduces a red pixel's red: {}",
+        linear_to_srgb_f32(out[0])
+    );
+    assert_eq!(out[3], 1.0, "alpha preserved");
+}
+
+#[test]
+fn selective_color_blacks_target_shadows_not_highlights() {
+    let mut sc = SelectiveColorParams::default();
+    sc.blacks.black = 1.0; // darken via the Blacks group
+    let dark = run(
+        AdjustmentKind::SelectiveColor,
+        AdjustmentParams::SelectiveColor(sc),
+        [srgb_to_linear_f32(0.15); 4],
+    );
+    assert!(
+        linear_to_srgb_f32(dark[0]) < 0.15 - 1e-2,
+        "Blacks-black darkens a shadow: {}",
+        linear_to_srgb_f32(dark[0])
+    );
+    let bright = run(
+        AdjustmentKind::SelectiveColor,
+        AdjustmentParams::SelectiveColor(sc),
+        [srgb_to_linear_f32(0.9); 4],
+    );
+    assert!(
+        linear_to_srgb_f32(bright[0]) > 0.9 - 5e-2,
+        "the Blacks group barely touches a highlight: {}",
+        linear_to_srgb_f32(bright[0])
+    );
+}
+
+#[test]
+fn selective_color_slider_and_segment_round_trip() {
+    let mut s = SelectiveColorParams::default();
+    for (slot, want) in [(0usize, 0.75_f32), (1, 0.2), (2, 0.9), (3, 0.4)] {
+        set_selective_color_param(&mut s, 3, slot, want); // Cyans group
+    }
+    let read = selective_color_slider_params(&s, 3);
+    assert_eq!(read.len(), 4, "4 CMYK sliders per group");
+    for (got, want) in read.iter().map(|r| r.1).zip([0.75, 0.2, 0.9, 0.4]) {
+        assert!((got - want).abs() < 1e-6, "cmyk round-trip {got} vs {want}");
+    }
+    // Editing the Cyans group leaves the Reds group neutral (0.5 = zero shift).
+    assert!(
+        selective_color_slider_params(&s, 0)
+            .iter()
+            .all(|r| (r.1 - 0.5).abs() < 1e-6),
+        "Reds group untouched"
+    );
+    let mut p = AdjustmentParams::SelectiveColor(s);
+    let (opts, sel) = adjustment_segment_params(&p).expect("has a segmented param");
+    assert_eq!(opts, vec!["Relative", "Absolute"]);
+    assert_eq!(sel, 0, "default method is Relative");
+    set_adjustment_segment_param(&mut p, 1);
+    assert_eq!(
+        adjustment_segment_params(&p).unwrap().1,
+        1,
+        "Absolute selected"
+    );
+    assert_eq!(SELCOLOR_BUCKETS.len(), 9, "9 color groups");
+}

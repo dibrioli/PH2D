@@ -23,6 +23,7 @@ use crate::state;
 use ph2d_editor_core::ids::{
     PainterLayerWidget, painter_curve_add_id, painter_curve_editor_id, painter_curve_point_id,
     painter_curve_remove_id, painter_curve_tab_id, painter_layer_widget_id, painter_mixer_tab_id,
+    painter_selcolor_bucket_id,
 };
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{
@@ -113,7 +114,10 @@ pub(crate) fn paint_adjustment_params(
     if matches!(params, AdjustmentParams::BlackAndWhite(_)) {
         return paint_black_and_white(ctx, theme, layer_id, params, x, w, y);
     }
-    let font = TypeToken::Base.px(); // segment-rack labels (slider/toggle rows self-size)
+    // Bespoke: Selective Color gets a 9-bucket tab row + 4 CMYK sliders + method.
+    if matches!(params, AdjustmentParams::SelectiveColor(_)) {
+        return paint_selective_color(ctx, theme, layer_id, params, x, w, y);
+    }
     let gap = Spacing::Xs.px();
     for (slot, (label, val01)) in ph2d_tool_painter::adjustment_slider_params(params)
         .into_iter()
@@ -124,44 +128,9 @@ pub(crate) fn paint_adjustment_params(
         paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
         y += ROW_H_PX + gap;
     }
-    // Segment rack (W4 BATCH-1): the adjustment's single 1-of-N (N ≤ 3) param as a
-    // row of segment buttons spanning the width (Color Balance's tonal range) —
-    // same mechanic as the Curves channel tabs (per-segment button, active tint,
-    // click selects tool-side). Rendered between the sliders and the toggles.
-    if let Some((options, selected)) = ph2d_tool_painter::adjustment_segment_params(params) {
-        let n = options.len().clamp(1, 3);
-        let seg_w = w / n as f32;
-        for (option, label) in options.iter().enumerate().take(3) {
-            let Some(kind) = segment_slot_kind(option) else {
-                break;
-            };
-            let id = painter_layer_widget_id(layer_id, kind);
-            let srect = Rect::new(
-                x + option as f32 * seg_w,
-                y,
-                (seg_w - 2.0).max(0.0), // LITERAL-PX-OK: 2px inter-segment gutter
-                ROW_H_PX,
-            );
-            let active = option == selected;
-            let (bg, fg) = if active {
-                (ColorToken::AccentSoft, ColorToken::Text1)
-            } else {
-                (ColorToken::Bg2, ColorToken::Text2)
-            };
-            fill_rounded_rect(ctx.scene, srect, Radius::Sm.px(), resolve(bg, theme));
-            paint_text_centered(
-                ctx.text_system,
-                ctx.scene,
-                label,
-                srect,
-                font,
-                resolve(fg, theme),
-            );
-            register_button(ctx.host.store_mut(), id);
-            ctx.host.hit_index_mut().register(id, srect);
-        }
-        y += ROW_H_PX + gap;
-    }
+    // Segment rack (the adjustment's single 1-of-N param, e.g. Color Balance's
+    // tonal range / Gradient Map's interpolation), between the sliders + toggles.
+    y = paint_segment_rack(ctx, theme, layer_id, params, x, w, y);
     // Toggle rack (W4 BATCH-1): a label on the left + a right-aligned switch per
     // boolean param (Photo Filter's Preserve Luminosity, …). The switch is a
     // button (click) painted with the live param value — the params are the
@@ -398,6 +367,122 @@ fn paint_black_and_white(
         y += ROW_H_PX + gap;
     }
     y
+}
+
+/// Render the adjustment's single segmented param (1-of-N, N ≤ 3) as a row of
+/// segment buttons spanning `w` — the shared body of the generic rack AND the
+/// Selective-Color method row. No-op (returns `y` unchanged) for a kind with no
+/// segmented param; otherwise advances one row.
+fn paint_segment_rack(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    params: &AdjustmentParams,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let Some((options, selected)) = ph2d_tool_painter::adjustment_segment_params(params) else {
+        return y;
+    };
+    let font = TypeToken::Base.px();
+    let gap = Spacing::Xs.px();
+    let n = options.len().clamp(1, 3);
+    let seg_w = w / n as f32;
+    for (option, label) in options.iter().enumerate().take(3) {
+        let Some(kind) = segment_slot_kind(option) else {
+            break;
+        };
+        let id = painter_layer_widget_id(layer_id, kind);
+        let srect = Rect::new(
+            x + option as f32 * seg_w,
+            y,
+            (seg_w - 2.0).max(0.0), // LITERAL-PX-OK: 2px inter-segment gutter
+            ROW_H_PX,
+        );
+        let (bg, fg) = if option == selected {
+            (ColorToken::AccentSoft, ColorToken::Text1)
+        } else {
+            (ColorToken::Bg2, ColorToken::Text2)
+        };
+        fill_rounded_rect(ctx.scene, srect, Radius::Sm.px(), resolve(bg, theme));
+        paint_text_centered(
+            ctx.text_system,
+            ctx.scene,
+            label,
+            srect,
+            font,
+            resolve(fg, theme),
+        );
+        register_button(ctx.host.store_mut(), id);
+        ctx.host.hit_index_mut().register(id, srect);
+    }
+    y + ROW_H_PX + gap
+}
+
+/// Bespoke Selective Color editor: a row of 9 color-group tabs
+/// (R/Y/G/C/B/M/W/N/K), then the 4 CMYK sliders of the ACTIVE group, then the
+/// method segment (Relative/Absolute). The active tab is panel-local VIEW state
+/// ([`state::active_selective_bucket`]); a CMYK-slider drag forwards
+/// `SelectOption(PAINTER_SELCOLOR_EDIT, "layer:bucket:slot:value")` from
+/// `event.rs` (the active bucket carries the group). Returns the next `y`.
+fn paint_selective_color(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    params: &AdjustmentParams,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
+    let AdjustmentParams::SelectiveColor(s) = params else {
+        return y;
+    };
+    let gap = Spacing::Xs.px();
+    let font = TypeToken::Base.px();
+    let active = state::active_selective_bucket(layer_id).min(8);
+    // ── 9 color-group tabs (single-char labels span the width) ──
+    const TABS: [&str; 9] = ["R", "Y", "G", "C", "B", "M", "W", "N", "K"];
+    let tab_w = w / 9.0;
+    for (bucket, label) in TABS.iter().enumerate() {
+        let trect = Rect::new(
+            x + bucket as f32 * tab_w,
+            y,
+            (tab_w - 1.0).max(0.0), // LITERAL-PX-OK: 1px inter-tab gutter
+            ROW_H_PX,
+        );
+        let (bg, fg) = if bucket as u8 == active {
+            (ColorToken::AccentSoft, ColorToken::Text1)
+        } else {
+            (ColorToken::Bg2, ColorToken::Text2)
+        };
+        fill_rounded_rect(ctx.scene, trect, Radius::Sm.px(), resolve(bg, theme));
+        paint_text_centered(
+            ctx.text_system,
+            ctx.scene,
+            label,
+            trect,
+            font,
+            resolve(fg, theme),
+        );
+        let id = painter_selcolor_bucket_id(layer_id, bucket as u8);
+        register_button(ctx.host.store_mut(), id);
+        ctx.host.hit_index_mut().register(id, trect);
+    }
+    y += ROW_H_PX + gap;
+    // ── 4 CMYK sliders for the active group ──
+    for (slot, (label, val01)) in
+        ph2d_tool_painter::selective_color_slider_params(s, active as usize)
+            .into_iter()
+            .enumerate()
+    {
+        let Some(kind) = slot_kind(slot) else { break };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    // ── method segment (Relative / Absolute) ──
+    paint_segment_rack(ctx, theme, layer_id, params, x, w, y)
 }
 
 /// Bespoke Curves editor: a row of channel tabs (RGB/R/G/B) + add/remove-point

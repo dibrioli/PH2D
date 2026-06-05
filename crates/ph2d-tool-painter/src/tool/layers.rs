@@ -639,6 +639,37 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// Set CMYK slider `slot` (0 = C, 1 = M, 2 = Y, 3 = K) of Selective-Color
+    /// `id`'s color group `bucket` (0..9: Reds … Blacks) from a normalized `0..1`
+    /// value. The bespoke editor forwards this with the active bucket in the
+    /// payload (the group the generic slider rack can not carry). No-op mid-stroke
+    /// or if `id` is not a Selective Color. Same cut-cache fast lane as a slider.
+    pub fn set_selective_color_value(
+        &mut self,
+        id: RtLayerId,
+        bucket: usize,
+        slot: usize,
+        value01: f32,
+    ) {
+        if self.stroke_active {
+            return;
+        }
+        let Some(adj) = self.layers.adjustment_mut(id) else {
+            return;
+        };
+        let ph2d_painter_brush::adjustments::AdjustmentParams::SelectiveColor(s) = &mut adj.params
+        else {
+            return;
+        };
+        ph2d_painter_brush::adjustments::set_selective_color_param(s, bucket, slot, value01);
+        self.compositor_cache.invalidate_above(id, &self.layers);
+        self.composited = None;
+        self.dirty_rect = None;
+        self.adjustment_cache_pending = true;
+        self.preview_dirty = true;
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
     /// Select option `option` of adjustment layer `id`'s segmented param (the
     /// panel's segment-button row, e.g. Color Balance's tonal range). The per-kind
     /// mapping lives in `adjustments::set_adjustment_segment_param`. No-op

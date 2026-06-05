@@ -252,6 +252,23 @@ impl Tool for PainterTool {
                     self.set_channel_mixer_weight(RtLayerId(layer), output, slot, val);
                 }
             }
+            // ── Selective Color CMYK edit (W4 BATCH-2): value =
+            // "layer:bucket:slot:value" (the bespoke editor's active bucket tab
+            // carries the group the frozen SetValue can not). ───────────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_SELCOLOR_EDIT => {
+                let mut it = value.split(':');
+                if let (Some(l), Some(bk), Some(s), Some(v)) =
+                    (it.next(), it.next(), it.next(), it.next())
+                    && let (Ok(layer), Ok(bucket), Ok(slot), Ok(val)) = (
+                        l.parse::<u64>(),
+                        bk.parse::<usize>(),
+                        s.parse::<usize>(),
+                        v.parse::<f32>(),
+                    )
+                {
+                    self.set_selective_color_value(RtLayerId(layer), bucket, slot, val);
+                }
+            }
             // ── Curves editor add a point (W4 §3): value = "layer:channel" ──
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_ADD => {
                 let mut it = value.split(':');

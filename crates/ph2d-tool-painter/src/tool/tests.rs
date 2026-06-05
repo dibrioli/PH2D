@@ -2123,6 +2123,54 @@ fn gradient_map_endpoint_slider_and_interpolation_route() {
 }
 
 #[test]
+fn selective_color_cmyk_edit_and_method_route() {
+    // W4 BATCH-2: a Selective Color CMYK slider forwards
+    // SelectOption(PAINTER_SELCOLOR_EDIT, "layer:bucket:slot:value") (the active
+    // bucket tab carries the group); the method uses the generic segment route.
+    use ph2d_editor_core::ids::{
+        PAINTER_SELCOLOR_EDIT, PainterLayerWidget, painter_layer_widget_id,
+    };
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, SelectiveMethod};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::SelectiveColor)
+        .unwrap();
+    let sel = |t: &PainterTool| -> ph2d_painter_brush::adjustments::SelectiveColorParams {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::SelectiveColor(p) => *p,
+                _ => panic!("not a selective color"),
+            },
+            _ => panic!("not an adjustment"),
+        }
+    };
+    // Cyans group (bucket 3), Cyan slot (0), value 1.0 → cyans.cyan = 1.0.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_SELCOLOR_EDIT,
+        format!("{}:3:0:1.0", adj.0),
+    ));
+    assert!(
+        (sel(&t).cyans.cyan - 1.0).abs() < 1e-5,
+        "PAINTER_SELCOLOR_EDIT set the Cyans group's cyan"
+    );
+    assert_eq!(sel(&t).reds.cyan, 0.0, "the Reds group stays untouched");
+    // Method segment (AdjSegment1) → Absolute.
+    let seg1 = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjSegment1);
+    t.handle_panel_event(PanelEvent::Click(seg1));
+    assert!(
+        matches!(sel(&t).method, SelectiveMethod::Absolute),
+        "segment click selected the Absolute method"
+    );
+    // A malformed payload is a no-op (no panic).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        PAINTER_SELCOLOR_EDIT,
+        "garbage".into(),
+    ));
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

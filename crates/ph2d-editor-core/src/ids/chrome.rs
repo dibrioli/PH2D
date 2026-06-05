@@ -588,6 +588,21 @@ pub fn painter_mixer_tab_id(layer_id: u64, channel: u8) -> NodeId {
 /// id (not per-layer) — the payload carries the layer.
 pub const PAINTER_MIXER_EDIT: NodeId = hash_node_id("painter_mixer_edit");
 
+/// Derive the [`NodeId`] of the `bucket` color-group tab (0..9: Reds … Blacks) of
+/// `layer_id`'s bespoke Selective-Color editor (W4 BATCH-2). A click switches
+/// which group the 4 CMYK sliders edit — pure panel view state, not forwarded.
+#[must_use]
+pub fn painter_selcolor_bucket_id(layer_id: u64, bucket: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_selcolor.bucket.{layer_id}.{bucket}"))
+}
+
+/// Fixed routing id for a Selective-Color CMYK edit forwarded from the panel to
+/// the tool (W4 BATCH-2). The bespoke editor's 4 sliders emit
+/// `SelectOption(PAINTER_SELCOLOR_EDIT, "layer:bucket:slot:value")` (the active
+/// bucket carries the group the frozen `SetValue` can not); the tool parses it
+/// into a `set_selective_color_value` call.
+pub const PAINTER_SELCOLOR_EDIT: NodeId = hash_node_id("painter_selcolor_edit");
+
 /// Background-Removal panel container — the typed `ph2d-panel-bgremoval`
 /// outer rect. Right-docked (same geometry slot as the Inspector) and
 /// only visible while the `bgremoval` tool is active.

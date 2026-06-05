@@ -30,7 +30,7 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
 ───────────────────────────────────────────────────────────────────
 §1 — ESTADO (verificado nesta sessão — NÃO refaça)
 ───────────────────────────────────────────────────────────────────
-**14/24 kinds PRONTOS** (compute CPU + GPU + paridade):
+**15/24 kinds PRONTOS** (compute CPU + GPU + paridade):
   HSB(0), BrightnessContrast(1), Invert(2), Posterize(3), Threshold(4),
   Exposure(5), Vibrance(6) — escalares; **Curves(7) + Levels(8)** — LUT
   display-space (binding `adj_luts`); **PhotoFilter** — CPU-first (gel
@@ -42,9 +42,15 @@ Autor: Implementador Painter (sessão 2026-06-04, pós Curves/Levels) · CONTEXT
   uniform 12-float (cross-channel, NÃO é LUT) → expansão de uniform do Coord;
   **BlackAndWhite** — CPU-first (decomposição 6-hue → luma ponderada + tint OKLab);
   GPU = algoritmo per-pixel nonlinear (nem LUT nem matriz) → port WGSL do Coord;
-  **GradientMap** — CPU-first (luma → cor via LUT 256→RGB; duotone editor); GPU =
-  binding novo 256×RGB-output (1 input luma → 3 canais, NÃO é o `adj_luts` per-canal)
-  → modo de binding novo do Coord; `gradient_map_lut` exportado.
+  **GradientMap** — CPU-first (luma → cor via LUT 256→RGB; **editor N-stops completo**:
+  barra de preview + stops arrastáveis + add/remove + cor por stop); GPU = binding
+  novo 256×RGB-output (1 input luma → 3 canais, NÃO é o `adj_luts` per-canal) → modo
+  de binding novo do Coord; `gradient_map_lut` exportado;
+  **SelectiveColor** — CPU-first (9 grupos: 6 hue + 3 tonais; shift CMYK Relative/
+  Absolute); GPU = algoritmo per-pixel nonlinear → port WGSL do Coord.
+
+**✅ BATCH-2 COMPLETA** (GradientMap + SelectiveColor). Resta só ColorLookupLut
+(LUT 3D, Coord-led) + os 8 espaciais multi-pass (Coord-led, handoff `feb5115`).
 
 **✅ BATCH-1 COMPLETA** (PhotoFilter + ColorBalance + ChannelMixer + BlackAndWhite).
 Os 4 kinds per-pixel slider/toggle/segment estão prontos CPU-first; o caminho GPU
@@ -78,10 +84,10 @@ algoritmo WGSL). Próximo da implementação = **BATCH-2** (GradientMap + Select
     landou) + abas de canal + add/remover ponto + tinta por canal. Precedente
     COMPLETO p/ qualquer Ui 1-D/2-D arrastável.
 
-**10 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
+**9 STUBS** (no-op identity hoje — `_ => {}`, gpu_code None; menu mostra mas não
 faz nada): GaussianBlur, MotionBlur, Bloom, Noise,
 Sharpen, Halftone, ChromaticAberration, ColorLookupLut,
-SelectiveColor, ShadowsHighlights. **Cap ≤32 (24
+ShadowsHighlights. **Cap ≤32 (24
 usados) — sobra; NÃO adicione kinds, só implemente os existentes.**
 
 ───────────────────────────────────────────────────────────────────
@@ -126,20 +132,23 @@ genérico já renderiza. Compute = arm em `apply_adjustment`.
      do Coord; `gpu_code=None` até lá. Helpers `paint_labeled_slider`/
      `paint_toggle_row` extraídos (DRY entre racks genéricos + mixer).
 
-**BATCH 2:**
-  5. **GradientMap** `{stops: Vec<ColorStop>, interpolation}` — ✅ **PRONTO (duotone)**
-     (commit `d00e45b`). Compute: LUT 256→RGB (luma indexa) + lerp por pixel,
-     interp Linear/smoothstep, stops ordenados; suporta N stops. **Default = duotone
-     black→white**. UI = 100% genérica (ZERO bespoke/id novo): 6 sliders RGB dos 2
-     endpoints (Lo/Hi × R/G/B) + segment de interpolação (Linear/Smooth). GPU =
-     binding 256×RGB-output novo (Coord); `gradient_map_lut` exportado.
-     **ENHANCEMENT pendente** (não-bloqueante): editor N-stops arrastável (CurvePoint
-     dispatch x→offset + add/remove + barra de preview + color por stop). O compute
-     já suporta N stops; só falta a UI rica. Decisão: duotone primeiro (completo e
-     útil) sem o popover de picker; N-stops é incremento isolado por cima.
-  6. **SelectiveColor** `{9× CmykAdjust, method}` — classifica o pixel em 1 dos 9
-     baldes (R/Y/G/C/B/M/whites/neutrals/blacks) e aplica CMYK. UI: seletor de cor
-     (dropdown 9) + 4 sliders CMYK + method (Relative/Absolute) toggle. CPU-first.
+**BATCH 2 — ✅ COMPLETA:**
+  5. **GradientMap** — ✅ **PRONTO (editor N-stops completo)** (`d00e45b` duotone →
+     `889b02c` N-stops). Compute: LUT 256→RGB (luma indexa) + lerp por pixel, interp
+     Linear/smoothstep, stops ordenados (a LUT ordena uma cópia → índice estável por
+     handle). **Default = duotone black→white**. UI bespoke (`paint_gradient_map`):
+     barra de preview (cores reais via `ph2d_vector::Color`) + stops arrastáveis
+     (CurvePoint x→offset, parent = `gradient_editor_id` distinto do Curves) + add/
+     remove (≤16 stops, ≥2 floor) + cor RGB do stop selecionado + segment de interp.
+     Rotas `PAINTER_GRADIENT_{EDIT,ADD,REMOVE,COLOR}`. GPU = binding 256×RGB-output
+     novo (Coord); `gradient_map_lut` exportado. (Picker OKLCH por stop = refinamento
+     futuro; sliders RGB já dão cor arbitrária.)
+  6. **SelectiveColor** — ✅ **PRONTO** (commit `5d95a2d`). 9 grupos (6 hue via
+     decomposição do hexágono + 3 tonais Whites/Neutrals/Blacks por máscara de luma)
+     + shift CMYK acumulado (C/M/Y subtraem R/G/B, K escurece) Relative/Absolute. UI
+     bespoke: fileira de 9 tabs (R/Y/G/C/B/M/W/N/K, view-state) + 4 sliders CMYK do
+     grupo ativo (rota `PAINTER_SELCOLOR_EDIT`) + method via segment rack. GPU =
+     algoritmo per-pixel nonlinear → port WGSL do Coord; `gpu_code=None`.
 
 **DIFERE (precisa infra do Coord ANTES — não comece sem):**
   7. **ColorLookupLut** `{lut_3d, intensity, profile}` — LUT 3D (.cube): file IO +

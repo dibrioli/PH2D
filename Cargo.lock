@@ -5792,6 +5792,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vector-fill"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "bytemuck",
+ "glam 0.30.10",
+ "naga",
+ "ph2d-color",
+ "ph2d-expr",
+ "smallvec",
+]
+
+[[package]]
 name = "ph2d-vector-graph"
 version = "0.0.0"
 dependencies = [

@@ -63,6 +63,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::ChannelMixer, AdjustmentParams::ChannelMixer(p)) => {
             apply_channel_mixer(p, acc)
         }
+        // W4 BATCH-1 — Black & White (6-hue luminance mix + optional tint).
+        (AdjustmentKind::BlackAndWhite, AdjustmentParams::BlackAndWhite(p)) => {
+            apply_black_and_white(p, acc)
+        }
         _ => {}
     }
 }
@@ -722,6 +726,70 @@ pub fn set_channel_mixer_param(
     }
 }
 
+/// Black & White — a hue-aware grayscale conversion in DISPLAY space. Each pixel
+/// is decomposed into its six hue components (reds/yellows/greens/cyans/blues/
+/// magentas, the RGB hue hexagon), and the per-hue sliders weight how much each
+/// contributes to the output gray (`-2..3`; the achromatic floor `min(r,g,b)`
+/// always passes through). With a `tint_color` (+ `tint_amount`) the gray is then
+/// colorized in OKLab — the tint's hue/chroma applied at each pixel's lightness
+/// (Photoshop's "Tint"). `acc` is straight LINEAR f32 RGBA (alpha preserved).
+/// Always applies (a fresh Black & White is a visible grayscale, like Posterize).
+pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]]) {
+    let w = [p.reds, p.yellows, p.greens, p.cyans, p.blues, p.magentas];
+    // Tint is active only with a color AND a non-zero amount; precompute its
+    // OKLab chroma direction (hue in degrees → the (a, b) unit vector × chroma).
+    let tint = p.tint_color.filter(|_| p.tint_amount != 0.0);
+    let (ta, tb) = match tint {
+        Some(t) => {
+            let (s, c) = t.h.to_radians().sin_cos();
+            (t.c * c * p.tint_amount, t.c * s * p.tint_amount)
+        }
+        None => (0.0, 0.0),
+    };
+    for px in acc.iter_mut() {
+        let (r, g, b) = (
+            linear_to_srgb_f32(px[0]),
+            linear_to_srgb_f32(px[1]),
+            linear_to_srgb_f32(px[2]),
+        );
+        let m = r.min(g).min(b);
+        let (rr, gg, bb) = (r - m, g - m, b - m);
+        // The chroma remainder (one channel is 0) falls in one hue sector between
+        // two adjacent vertices; split it into the two pure-hue amounts.
+        let (reds, yellows, greens, cyans, blues, magentas) = if b <= r && b <= g {
+            let yellow = rr.min(gg); // R–G sector (blue is the achromatic floor)
+            (rr - yellow, yellow, gg - yellow, 0.0, 0.0, 0.0)
+        } else if r <= g && r <= b {
+            let cyan = gg.min(bb); // G–B sector (red floor)
+            (0.0, 0.0, gg - cyan, cyan, bb - cyan, 0.0)
+        } else {
+            let magenta = bb.min(rr); // B–R sector (green floor)
+            (rr - magenta, 0.0, 0.0, 0.0, bb - magenta, magenta)
+        };
+        let gray = (m
+            + reds * w[0]
+            + yellows * w[1]
+            + greens * w[2]
+            + cyans * w[3]
+            + blues * w[4]
+            + magentas * w[5])
+            .clamp(0.0, 1.0);
+        let gray_lin = srgb_to_linear_f32(gray);
+        if tint.is_some() {
+            // Colorize: keep the gray's OKLab lightness, set the tint chroma vector.
+            let l = OklabColor::from_linear(LinearRgba::new(gray_lin, gray_lin, gray_lin, 1.0)).l;
+            let out = OklabColor::new(l, ta, tb, 1.0).to_linear();
+            px[0] = out.r();
+            px[1] = out.g();
+            px[2] = out.b();
+        } else {
+            px[0] = gray_lin;
+            px[1] = gray_lin;
+            px[2] = gray_lin;
+        }
+    }
+}
+
 /// The slider-editable params of an adjustment, as `(label, value01)` in slot
 /// order — what the layers panel renders as a labeled slider per slot, and the
 /// inverse of [`set_adjustment_slider_param`]. Kinds with bespoke controls
@@ -767,6 +835,24 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             ("M/G", (p.magenta_green.clamp(-1.0, 1.0) + 1.0) * 0.5),
             ("Y/B", (p.yellow_blue.clamp(-1.0, 1.0) + 1.0) * 0.5),
         ],
+        // Black & White: 6 per-hue weights (`-2..3 → 0..1`); the Tint toggle adds
+        // the Hue + Tint-amount sliders (slots 6/7) only while a tint is set.
+        AdjustmentParams::BlackAndWhite(p) => {
+            let weight = |v: f32| (v.clamp(-2.0, 3.0) + 2.0) / 5.0;
+            let mut v = vec![
+                ("Reds", weight(p.reds)),
+                ("Yellows", weight(p.yellows)),
+                ("Greens", weight(p.greens)),
+                ("Cyans", weight(p.cyans)),
+                ("Blues", weight(p.blues)),
+                ("Magentas", weight(p.magentas)),
+            ];
+            if let Some(t) = p.tint_color {
+                v.push(("Hue", t.h.rem_euclid(360.0) / 360.0));
+                v.push(("Tint", p.tint_amount.clamp(0.0, 1.0)));
+            }
+            v
+        }
         // Levels maps cleanly onto the generic slider rack (5 ≤ 6 slots): input
         // black/gamma/white + output black/white. (Curves needs the bespoke
         // curve canvas — handoff §4 — so it returns no generic sliders.)
@@ -825,6 +911,25 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             2 => p.yellow_blue = v * 2.0 - 1.0,   // -1..1
             _ => {}
         },
+        AdjustmentParams::BlackAndWhite(p) => {
+            let weight = v * 5.0 - 2.0; // 0..1 → -2..3
+            match slot {
+                0 => p.reds = weight,
+                1 => p.yellows = weight,
+                2 => p.greens = weight,
+                3 => p.cyans = weight,
+                4 => p.blues = weight,
+                5 => p.magentas = weight,
+                // Tint Hue / amount (only meaningful while a tint is set).
+                6 => {
+                    if let Some(t) = &mut p.tint_color {
+                        t.h = v * 360.0;
+                    }
+                }
+                7 => p.tint_amount = v,
+                _ => {}
+            }
+        }
         AdjustmentParams::Levels(p) => match slot {
             0 => p.black_point = v,
             1 => p.gamma = levels_slider_to_gamma(v),
@@ -850,6 +955,7 @@ pub fn adjustment_toggle_params(params: &AdjustmentParams) -> Vec<(&'static str,
         AdjustmentParams::PhotoFilter(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
         AdjustmentParams::ColorBalance(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
         AdjustmentParams::ChannelMixer(p) => vec![("Monochrome", p.monochromatic)],
+        AdjustmentParams::BlackAndWhite(p) => vec![("Tint", p.tint_color.is_some())],
         _ => Vec::new(),
     }
 }
@@ -861,6 +967,19 @@ pub fn set_adjustment_toggle_param(params: &mut AdjustmentParams, slot: usize, o
         AdjustmentParams::PhotoFilter(p) if slot == 0 => p.preserve_luminosity = on,
         AdjustmentParams::ColorBalance(p) if slot == 0 => p.preserve_luminosity = on,
         AdjustmentParams::ChannelMixer(p) if slot == 0 => p.monochromatic = on,
+        // Black & White Tint: enabling seeds a classic warm sepia + a visible
+        // amount (so the toggle has an immediate effect); the Hue/Tint sliders
+        // then refine it. Disabling drops the tint back to a plain grayscale.
+        AdjustmentParams::BlackAndWhite(p) if slot == 0 => {
+            if on {
+                p.tint_color = Some(OklchColor::opaque(0.7, 0.1, 70.0));
+                if p.tint_amount == 0.0 {
+                    p.tint_amount = 0.5;
+                }
+            } else {
+                p.tint_color = None;
+            }
+        }
         _ => {}
     }
 }

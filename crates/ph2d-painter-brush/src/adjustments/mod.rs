@@ -325,7 +325,7 @@ pub struct ShadowsHighlightsParams {
     pub midtone_contrast: f32,
 }
 
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BlackAndWhiteParams {
     pub reds: f32,
     pub yellows: f32,
@@ -335,6 +335,25 @@ pub struct BlackAndWhiteParams {
     pub magentas: f32,
     pub tint_color: Option<OklchColor>,
     pub tint_amount: f32,
+}
+
+impl Default for BlackAndWhiteParams {
+    /// Photoshop's default per-hue weights (40/60/40/60/20/80 %) — a sensible
+    /// neutral grayscale on creation. (A derived all-zero default would collapse
+    /// every pixel to its `min(r,g,b)` — a too-dark, hue-blind conversion; the
+    /// same degenerate-default trap as Levels / Channel Mixer.)
+    fn default() -> Self {
+        Self {
+            reds: 0.4,
+            yellows: 0.6,
+            greens: 0.4,
+            cyans: 0.6,
+            blues: 0.2,
+            magentas: 0.8,
+            tint_color: None,
+            tint_amount: 0.0,
+        }
+    }
 }
 
 // ───────────────────────────── the enums ────────────────────────────────

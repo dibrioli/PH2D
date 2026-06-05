@@ -243,6 +243,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         | PainterLayerWidget::AdjParam3
                         | PainterLayerWidget::AdjParam4
                         | PainterLayerWidget::AdjParam5
+                        | PainterLayerWidget::AdjParam6
+                        | PainterLayerWidget::AdjParam7
                 ) {
                     let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
                     host.bus_mut()
@@ -280,6 +282,8 @@ fn adj_param_slot(kind: PainterLayerWidget) -> Option<usize> {
         PainterLayerWidget::AdjParam3 => 3,
         PainterLayerWidget::AdjParam4 => 4,
         PainterLayerWidget::AdjParam5 => 5,
+        PainterLayerWidget::AdjParam6 => 6,
+        PainterLayerWidget::AdjParam7 => 7,
         _ => return None,
     })
 }

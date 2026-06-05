@@ -1145,3 +1145,117 @@ fn channel_mixer_slider_and_toggle_round_trip() {
     set_adjustment_toggle_param(&mut ap, 0, true);
     assert!(adjustment_toggle_params(&ap)[0].1, "mono flips");
 }
+
+// ── W4 BATCH-1 — Black & White (6-hue mix + tint) ─────────────────────
+
+fn bw(weights: [f32; 6], tint: Option<OklchColor>, amount: f32) -> AdjustmentParams {
+    let [reds, yellows, greens, cyans, blues, magentas] = weights;
+    AdjustmentParams::BlackAndWhite(BlackAndWhiteParams {
+        reds,
+        yellows,
+        greens,
+        cyans,
+        blues,
+        magentas,
+        tint_color: tint,
+        tint_amount: amount,
+    })
+}
+
+#[test]
+fn black_and_white_default_grayscales() {
+    // The manual PS-weight Default converts a saturated color to achromatic gray.
+    let d = BlackAndWhiteParams::default();
+    assert_eq!((d.reds, d.blues, d.magentas), (0.4, 0.2, 0.8));
+    let out = run(
+        AdjustmentKind::BlackAndWhite,
+        AdjustmentParams::BlackAndWhite(BlackAndWhiteParams::default()),
+        [
+            srgb_to_linear_f32(0.8),
+            srgb_to_linear_f32(0.2),
+            srgb_to_linear_f32(0.1),
+            0.6,
+        ],
+    );
+    assert!(
+        (out[0] - out[1]).abs() < 1e-5 && (out[1] - out[2]).abs() < 1e-5,
+        "output is achromatic gray: {out:?}"
+    );
+    assert_eq!(out[3], 0.6, "alpha preserved");
+}
+
+#[test]
+fn black_and_white_red_weight_controls_red_brightness() {
+    // A pure red maps to a gray scaled by the reds weight (no tint).
+    let red = [srgb_to_linear_f32(1.0), 0.0, 0.0, 1.0];
+    let hi = run(
+        AdjustmentKind::BlackAndWhite,
+        bw([2.0, 0.0, 0.0, 0.0, 0.0, 0.0], None, 0.0),
+        red,
+    );
+    let lo = run(AdjustmentKind::BlackAndWhite, bw([0.0; 6], None, 0.0), red);
+    assert!(
+        linear_to_srgb_f32(hi[0]) > linear_to_srgb_f32(lo[0]) + 0.3,
+        "higher reds weight brightens red: {} vs {}",
+        linear_to_srgb_f32(hi[0]),
+        linear_to_srgb_f32(lo[0])
+    );
+    assert!(
+        linear_to_srgb_f32(lo[0]) < 1e-2,
+        "reds weight 0 sends pure red to black"
+    );
+}
+
+#[test]
+fn black_and_white_tint_adds_chroma() {
+    let tint = Some(OklchColor::opaque(0.7, 0.1, 70.0));
+    let tinted = run(
+        AdjustmentKind::BlackAndWhite,
+        bw([0.4, 0.6, 0.4, 0.6, 0.2, 0.8], tint, 1.0),
+        [srgb_to_linear_f32(0.5); 4],
+    );
+    let spread = (tinted[0] - tinted[1]).abs() + (tinted[0] - tinted[2]).abs();
+    assert!(spread > 1e-3, "tint introduces chroma: {tinted:?}");
+    let gray = run(
+        AdjustmentKind::BlackAndWhite,
+        bw([0.4, 0.6, 0.4, 0.6, 0.2, 0.8], None, 1.0),
+        [srgb_to_linear_f32(0.5); 4],
+    );
+    assert!(
+        (gray[0] - gray[1]).abs() < 1e-5 && (gray[1] - gray[2]).abs() < 1e-5,
+        "no tint stays achromatic: {gray:?}"
+    );
+}
+
+#[test]
+fn black_and_white_slider_and_tint_toggle_round_trip() {
+    let mut p = AdjustmentParams::BlackAndWhite(BlackAndWhiteParams::default());
+    assert_eq!(
+        adjustment_slider_params(&p).len(),
+        6,
+        "6 hue sliders, no tint sliders yet"
+    );
+    let tog = adjustment_toggle_params(&p);
+    assert_eq!(tog.len(), 1);
+    assert!(!tog[0].1, "tint off by default");
+    set_adjustment_toggle_param(&mut p, 0, true);
+    assert!(adjustment_toggle_params(&p)[0].1, "tint enabled");
+    assert_eq!(
+        adjustment_slider_params(&p).len(),
+        8,
+        "enabling tint reveals the Hue + amount sliders"
+    );
+    set_adjustment_slider_param(&mut p, 0, 0.9); // reds weight
+    set_adjustment_slider_param(&mut p, 6, 0.25); // tint hue → 90°
+    set_adjustment_slider_param(&mut p, 7, 0.4); // tint amount
+    let read = adjustment_slider_params(&p);
+    assert!((read[0].1 - 0.9).abs() < 1e-6, "reds round-trip");
+    assert!((read[6].1 - 0.25).abs() < 1e-5, "tint hue round-trip");
+    assert!((read[7].1 - 0.4).abs() < 1e-6, "tint amount round-trip");
+    set_adjustment_toggle_param(&mut p, 0, false);
+    assert_eq!(
+        adjustment_slider_params(&p).len(),
+        6,
+        "disabling tint hides its sliders"
+    );
+}

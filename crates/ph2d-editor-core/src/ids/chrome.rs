@@ -387,6 +387,10 @@ pub enum PainterLayerWidget {
     AdjParam3,
     AdjParam4,
     AdjParam5,
+    /// Slots 6/7 cover slider-heavier kinds (Black & White: 6 hue weights + the
+    /// Tint Hue/amount sliders).
+    AdjParam6,
+    AdjParam7,
     /// (Adjustment rows only) generic boolean toggle for the adjustment's Nth
     /// toggle param (W4 BATCH-1, e.g. Photo Filter's "Preserve Luminosity"). The
     /// kind decides what each slot means
@@ -425,6 +429,8 @@ impl PainterLayerWidget {
             Self::AdjParam3 => "adj_param3",
             Self::AdjParam4 => "adj_param4",
             Self::AdjParam5 => "adj_param5",
+            Self::AdjParam6 => "adj_param6",
+            Self::AdjParam7 => "adj_param7",
             Self::AdjToggle0 => "adj_toggle0",
             Self::AdjToggle1 => "adj_toggle1",
             Self::AdjSegment0 => "adj_segment0",
@@ -434,7 +440,7 @@ impl PainterLayerWidget {
     }
 
     /// All kinds, in a fixed order — the decoder iterates this.
-    pub const ALL: [PainterLayerWidget; 20] = [
+    pub const ALL: [PainterLayerWidget; 22] = [
         Self::Row,
         Self::Visibility,
         Self::Opacity,
@@ -450,6 +456,8 @@ impl PainterLayerWidget {
         Self::AdjParam3,
         Self::AdjParam4,
         Self::AdjParam5,
+        Self::AdjParam6,
+        Self::AdjParam7,
         Self::AdjToggle0,
         Self::AdjToggle1,
         Self::AdjSegment0,

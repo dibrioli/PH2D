@@ -2051,6 +2051,43 @@ fn channel_mixer_weight_edit_routes_to_set_weight() {
 }
 
 #[test]
+fn black_and_white_tint_toggle_and_hue_slider_route() {
+    // W4 BATCH-1: the Tint switch (AdjToggle0) enables the tint; the Hue slider
+    // (AdjParam6) then routes through the generic SetValue path to set the hue.
+    use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams, BlackAndWhiteParams};
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [128, 128, 128, 255]), 2, 2);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::BlackAndWhite)
+        .unwrap();
+    let bw = |t: &PainterTool| -> BlackAndWhiteParams {
+        match &t.layers.get(adj).unwrap().kind {
+            LayerKind::Adjustment(a) => match &a.params {
+                AdjustmentParams::BlackAndWhite(p) => p.clone(),
+                _ => panic!("not a black & white"),
+            },
+            _ => panic!("not an adjustment"),
+        }
+    };
+    assert!(bw(&t).tint_color.is_none(), "fresh B&W has no tint");
+    let toggle = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjToggle0);
+    t.handle_panel_event(PanelEvent::Click(toggle));
+    assert!(
+        bw(&t).tint_color.is_some(),
+        "the Tint switch enabled the tint"
+    );
+    let hue = painter_layer_widget_id(adj.0, PainterLayerWidget::AdjParam6);
+    t.handle_panel_event(PanelEvent::SetValue(hue, 0.25));
+    assert!(
+        (bw(&t).tint_color.unwrap().h - 90.0).abs() < 1e-3,
+        "hue slider (0.25) set the tint hue to 90°: {:?}",
+        bw(&t).tint_color
+    );
+}
+
+#[test]
 fn add_remove_curve_point_respects_cap_floor_and_curve() {
     use ph2d_painter_brush::adjustments::{AdjustmentKind, AdjustmentParams};
     let mut t = PainterTool::default();

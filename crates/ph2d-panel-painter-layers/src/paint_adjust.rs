@@ -51,7 +51,7 @@ const MAX_CURVE_POINTS: usize = 8; // contract cap (≤8 control points per chan
 /// Channel tab labels (index = channel: 0 = master/RGB, 1 = R, 2 = G, 3 = B).
 const CURVE_TAB_LABELS: [&str; 4] = ["RGB", "R", "G", "B"];
 
-/// The generic per-slot slider widget kind (≤6 slider params per adjustment).
+/// The generic per-slot slider widget kind (≤8 slider params per adjustment).
 fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
     Some(match slot {
         0 => PainterLayerWidget::AdjParam0,
@@ -60,6 +60,8 @@ fn slot_kind(slot: usize) -> Option<PainterLayerWidget> {
         3 => PainterLayerWidget::AdjParam3,
         4 => PainterLayerWidget::AdjParam4,
         5 => PainterLayerWidget::AdjParam5,
+        6 => PainterLayerWidget::AdjParam6,
+        7 => PainterLayerWidget::AdjParam7,
         _ => return None,
     })
 }
@@ -105,6 +107,11 @@ pub(crate) fn paint_adjustment_params(
     // Bespoke: Channel Mixer gets output-channel tabs + 4 weight sliders + mono.
     if matches!(params, AdjustmentParams::ChannelMixer(_)) {
         return paint_channel_mixer(ctx, theme, layer_id, params, x, w, y);
+    }
+    // Bespoke: Black & White wants the Tint toggle BETWEEN the 6 hue sliders and
+    // the (conditional) tint sliders, so it owns its ordering.
+    if matches!(params, AdjustmentParams::BlackAndWhite(_)) {
+        return paint_black_and_white(ctx, theme, layer_id, params, x, w, y);
     }
     let font = TypeToken::Base.px(); // segment-rack labels (slider/toggle rows self-size)
     let gap = Spacing::Xs.px();
@@ -342,6 +349,52 @@ fn paint_channel_mixer(
         };
         let id = painter_layer_widget_id(layer_id, kind);
         paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    y
+}
+
+/// Bespoke Black & White editor: the 6 per-hue weight sliders, then the Tint
+/// switch, then (only while a tint is set) the Tint Hue + amount sliders — the
+/// switch sits BETWEEN its hue sliders and the tint sliders it gates (the generic
+/// rack would render it last). All slots come from the generic
+/// `adjustment_slider_params` (6, or 8 with a tint); this fn only controls the
+/// ORDER (toggle inserted after slot 5). Returns the next `y`.
+fn paint_black_and_white(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    layer_id: u64,
+    params: &AdjustmentParams,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let sliders = ph2d_tool_painter::adjustment_slider_params(params);
+    // The 6 per-hue weight sliders (always present).
+    for (slot, &(label, val01)) in sliders.iter().enumerate().take(6) {
+        let Some(kind) = slot_kind(slot) else { break };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    // The Tint switch.
+    for (slot, (label, on)) in ph2d_tool_painter::adjustment_toggle_params(params)
+        .into_iter()
+        .enumerate()
+    {
+        let Some(kind) = toggle_slot_kind(slot) else {
+            break;
+        };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_toggle_row(ctx, theme, id, label, on, Rect::new(x, y, w, ROW_H_PX));
+        y += ROW_H_PX + gap;
+    }
+    // The tint Hue + amount sliders (slots 6+), present only while a tint is set.
+    for (slot, &(label, val01)) in sliders.iter().enumerate().skip(6) {
+        let Some(kind) = slot_kind(slot) else { break };
+        let id = painter_layer_widget_id(layer_id, kind);
+        paint_labeled_slider(ctx, theme, id, label, val01, Rect::new(x, y, w, ROW_H_PX));
         y += ROW_H_PX + gap;
     }
     y

@@ -195,6 +195,12 @@ impl Tool for PainterTool {
                         PainterLayerWidget::AdjParam5 => {
                             self.set_adjustment_param(layer, 5, v as f32)
                         }
+                        PainterLayerWidget::AdjParam6 => {
+                            self.set_adjustment_param(layer, 6, v as f32)
+                        }
+                        PainterLayerWidget::AdjParam7 => {
+                            self.set_adjustment_param(layer, 7, v as f32)
+                        }
                         _ => {}
                     }
                 }

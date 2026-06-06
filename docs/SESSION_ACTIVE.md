@@ -32,6 +32,18 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (c) — Vector W7 step 1 (impl `903d5ce`) + golden/smoke (Coord `e058b84`)
+- **Vector impl arrancou W7 (diffusion curve) prototype-first** (Opção A do meu handoff): `poisson_cpu.rs`
+  multigrid V-cycle CPU + `diffusion_curve.rs` (Orzan→OKLab) em `ph2d-vector-fill`. 17 tests (ground-truth
+  analítico `harmonic_*` + `straight_red_blue` + determinismo). Decisões aterradas (multigrid p/ CPU tier
+  per ADR-0060; difusão em OKLab não OKLCH; precompute→ColorField).
+- **Golden/smoke Coord (o ping):** `tests/diffusion_golden.rs` (`#[ignore]`) — cena canônica @ 129² +
+  oracle hash `0x3fcf9e8af30ad1ff` (sRGB8-quant) + preview ANSI truecolor no terminal. Difusão confirmada
+  visualmente. Additivo (2 dev-deps + test; src do impl intocado). Resposta: [`HANDOFF_vector_w7_golden_coord.md`](HANDOFF_vector_w7_golden_coord.md).
+- **Impl segue step 2** (MeshGradient node = sample do ColorField; não precisa do meu contrato). **Coord
+  thread foundational:** contrato Region→FillGraph / gradient_id→DiffusionCurveSet (ph2d-vector-doc congelado
+  + ADR-0056-amendment) → acende W6 fill + W7 diffusion no renderer (live smoke do Enio). Não bloqueia o impl.
+
 ### ATUALIZAÇÃO 2026-06-05 (b) — Spatial mesh WIRADA (impl `ac2978c`) + reconciliação (Coord `21ae78e`)
 - **Painter impl fechou o P0:** flatten emite `LayerOp::SpatialAdjustment` pros 4 kernels (Gaussian/
   Sharpen/Motion/Chroma) → minha infra GPU executa no slider-drag; **Noise+Halftone** landaram (CPU

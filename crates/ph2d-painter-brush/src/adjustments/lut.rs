@@ -134,7 +134,8 @@ pub fn apply_color_lookup(p: &ColorLookupLutParams, acc: &mut [[f32; 4]]) {
         return;
     }
     let look = LUT_PRESETS[idx].1;
-    for px in acc.iter_mut() {
+    // Per-pixel + independent → parallel (the grade is 6 transcendentals/pixel).
+    super::spatial::par_pixels(acc, |px| {
         let d = [
             linear_to_srgb_f32(px[0]),
             linear_to_srgb_f32(px[1]),
@@ -145,5 +146,5 @@ pub fn apply_color_lookup(p: &ColorLookupLutParams, acc: &mut [[f32; 4]]) {
             let out_d = d[c] + (clamp01(graded[c]) - d[c]) * amount;
             px[c] = srgb_to_linear_f32(out_d);
         }
-    }
+    });
 }

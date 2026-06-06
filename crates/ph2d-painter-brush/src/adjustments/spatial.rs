@@ -225,6 +225,69 @@ pub fn apply_gaussian(p: &GaussianBlurParams, acc: &mut [[f32; 4]], win: AdjustW
 /// Separable Gaussian blur of ALL 4 channels in place. The buffer MUST already be
 /// premultiplied ([`premultiply`]); the output stays premultiplied. Shared by
 /// Gaussian + the blur stage of Sharpen.
+/// Compute the `h` rows of a `w`-wide output buffer, splitting them across the
+/// available CPUs via SCOPED THREADS (no new deps). `row(y, out_row)` fills one
+/// output row from shared input it captures — each thread owns a disjoint
+/// `&mut` band, so it is data-race-free, and the per-pixel work is independent of
+/// thread count, so the result is BIT-IDENTICAL regardless of CPU count (keeps
+/// determinism + GPU parity). Small buffers run serially (thread setup not worth
+/// it). This is the lever that takes the CPU-fallback kernels to hardware max.
+fn par_rows<T, F>(out: &mut [T], w: usize, h: usize, row: F)
+where
+    T: Send,
+    F: Fn(usize, &mut [T]) + Sync,
+{
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .min(h.max(1));
+    if threads <= 1 || w * h < 1 << 14 {
+        for (y, r) in out.chunks_mut(w.max(1)).enumerate() {
+            row(y, r);
+        }
+        return;
+    }
+    let rows_per = h.div_ceil(threads);
+    std::thread::scope(|s| {
+        for (band_idx, band) in out.chunks_mut(rows_per * w).enumerate() {
+            let row = &row;
+            let y0 = band_idx * rows_per;
+            s.spawn(move || {
+                for (i, r) in band.chunks_mut(w).enumerate() {
+                    row(y0 + i, r);
+                }
+            });
+        }
+    });
+}
+
+/// Parallel in-place map over a flat buffer for COORDINATE-INDEPENDENT per-pixel
+/// ops (each element transformed from itself only). Scoped threads, bit-identical
+/// (element order irrelevant), serial for small buffers. (Siblings — e.g. the
+/// Color Lookup grade in `lut` — reuse this; hence `pub(super)`.)
+pub(super) fn par_pixels<T, F>(buf: &mut [T], f: F)
+where
+    T: Send,
+    F: Fn(&mut T) + Sync,
+{
+    let n = buf.len();
+    let threads = std::thread::available_parallelism()
+        .map(|t| t.get())
+        .unwrap_or(1)
+        .min(n.max(1));
+    if threads <= 1 || n < 1 << 14 {
+        buf.iter_mut().for_each(&f);
+        return;
+    }
+    let chunk = n.div_ceil(threads);
+    std::thread::scope(|s| {
+        for band in buf.chunks_mut(chunk) {
+            let f = &f;
+            s.spawn(move || band.iter_mut().for_each(f));
+        }
+    });
+}
+
 fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {
     let (w, h) = (win.width as i32, win.height as i32);
     if w == 0 || h == 0 {
@@ -232,35 +295,41 @@ fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {
     }
     let (weights, half) = gaussian_weights(radius);
     let half = half as i32;
-    let mut tmp = acc.to_vec();
-    // Horizontal pass → tmp.
-    for y in 0..h {
-        for x in 0..w {
+    let (wu, hu) = (w as usize, h as usize);
+    // Horizontal pass: read `acc` → write `tmp` (rows in parallel).
+    let mut tmp = vec![[0.0f32; 4]; acc.len()];
+    {
+        let src: &[[f32; 4]] = acc;
+        par_rows(&mut tmp, wu, hu, |y, out_row| {
+            let y = y as i32;
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let mut c = [0.0f32; 4];
+                for k in -half..=half {
+                    let s = sample_clamp(src, w, h, x as i32 + k, y);
+                    let wgt = weights[k.unsigned_abs() as usize];
+                    for ch in 0..4 {
+                        c[ch] += s[ch] * wgt;
+                    }
+                }
+                *o = c;
+            }
+        });
+    }
+    // Vertical pass: read `tmp` → write `acc` (rows in parallel).
+    par_rows(acc, wu, hu, |y, out_row| {
+        let y = y as i32;
+        for (x, o) in out_row.iter_mut().enumerate() {
             let mut c = [0.0f32; 4];
             for k in -half..=half {
+                let s = sample_clamp(&tmp, w, h, x as i32, y + k);
                 let wgt = weights[k.unsigned_abs() as usize];
-                let s = sample_clamp(acc, w, h, x + k, y);
                 for ch in 0..4 {
                     c[ch] += s[ch] * wgt;
                 }
             }
-            tmp[(y * w + x) as usize] = c;
+            *o = c;
         }
-    }
-    // Vertical pass → acc.
-    for y in 0..h {
-        for x in 0..w {
-            let mut c = [0.0f32; 4];
-            for k in -half..=half {
-                let wgt = weights[k.unsigned_abs() as usize];
-                let s = sample_clamp(&tmp, w, h, x, y + k);
-                for ch in 0..4 {
-                    c[ch] += s[ch] * wgt;
-                }
-            }
-            acc[(y * w + x) as usize] = c;
-        }
-    }
+    });
 }
 
 /// Unsharp-mask sharpen in premultiplied linear: `out = base + amount·(base −
@@ -419,11 +488,11 @@ pub fn apply_noise(p: &NoiseParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     if p.amount <= 0.0 {
         return;
     }
-    for ly in 0..win.height {
-        for lx in 0..win.width {
-            let gx = win.origin_x + lx;
-            let gy = win.origin_y + ly;
-            let px = &mut acc[(ly * win.width + lx) as usize];
+    let (wu, hu) = (win.width as usize, win.height as usize);
+    par_rows(acc, wu, hu, |y, out_row| {
+        let gy = win.origin_y + y as u32;
+        for (x, px) in out_row.iter_mut().enumerate() {
+            let gx = win.origin_x + x as u32;
             let n0 = noise_value(gx, gy, 0, p.kind);
             let (n1, n2) = if p.monochromatic {
                 (n0, n0)
@@ -439,7 +508,7 @@ pub fn apply_noise(p: &NoiseParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
                 px[c] = srgb_to_linear_f32(v);
             }
         }
-    }
+    });
 }
 
 /// Rec.709 display luma of a linear pixel.
@@ -464,11 +533,11 @@ pub fn apply_halftone(p: &HalftoneParams, acc: &mut [[f32; 4]], win: AdjustWindo
     let (sin, cos) = p.angle.sin_cos();
     let white = srgb_to_linear_f32(1.0);
     let black = srgb_to_linear_f32(0.0);
-    for ly in 0..win.height {
-        for lx in 0..win.width {
-            let gx = (win.origin_x + lx) as f32;
-            let gy = (win.origin_y + ly) as f32;
-            let px = &mut acc[(ly * win.width + lx) as usize];
+    let (wu, hu) = (win.width as usize, win.height as usize);
+    par_rows(acc, wu, hu, |y, out_row| {
+        let gy = (win.origin_y + y as u32) as f32;
+        for (x, px) in out_row.iter_mut().enumerate() {
+            let gx = (win.origin_x + x as u32) as f32;
             let l = display_luma(px);
             // dark = more ink. A coverage below half-a-pixel of dot reads as clean
             // paper — this also absorbs the f32 luma of "pure white" not being
@@ -501,7 +570,7 @@ pub fn apply_halftone(p: &HalftoneParams, acc: &mut [[f32; 4]], win: AdjustWindo
             px[1] = g;
             px[2] = g;
         }
-    }
+    });
 }
 
 // ──────────────────────────── Bloom + Shadows/Highlights ──────────────────────
@@ -526,28 +595,36 @@ fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) {
     }
     let (weights, half) = gaussian_weights(radius);
     let half = half as i32;
+    let (wu, hu) = (w as usize, h as usize);
     let tap = |buf: &[f32], x: i32, y: i32| -> f32 {
         buf[(y.clamp(0, h - 1) * w + x.clamp(0, w - 1)) as usize]
     };
-    let mut tmp = field.to_vec();
-    for y in 0..h {
-        for x in 0..w {
+    // Horizontal pass: read `field` → write `tmp` (rows in parallel).
+    let mut tmp = vec![0.0f32; field.len()];
+    {
+        let src: &[f32] = field;
+        par_rows(&mut tmp, wu, hu, |y, out_row| {
+            let y = y as i32;
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let mut s = 0.0;
+                for k in -half..=half {
+                    s += tap(src, x as i32 + k, y) * weights[k.unsigned_abs() as usize];
+                }
+                *o = s;
+            }
+        });
+    }
+    // Vertical pass: read `tmp` → write `field`.
+    par_rows(field, wu, hu, |y, out_row| {
+        let y = y as i32;
+        for (x, o) in out_row.iter_mut().enumerate() {
             let mut s = 0.0;
             for k in -half..=half {
-                s += tap(field, x + k, y) * weights[k.unsigned_abs() as usize];
+                s += tap(&tmp, x as i32, y + k) * weights[k.unsigned_abs() as usize];
             }
-            tmp[(y * w + x) as usize] = s;
+            *o = s;
         }
-    }
-    for y in 0..h {
-        for x in 0..w {
-            let mut s = 0.0;
-            for k in -half..=half {
-                s += tap(&tmp, x, y + k) * weights[k.unsigned_abs() as usize];
-            }
-            field[(y * w + x) as usize] = s;
-        }
-    }
+    });
 }
 
 /// Bloom — bright-pass → blur → additive glow, in **premultiplied** linear. Pixels
@@ -565,15 +642,19 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
         return;
     }
     let knee = p.falloff.max(1e-3);
+    let (wu, hu) = (w as usize, h as usize);
     // Bright-pass at full res (premultiplied: `color·alpha·weight`; transparent → 0).
-    let mut bright = acc.to_vec();
-    for (g, base) in bright.iter_mut().zip(acc.iter()) {
-        let w_bright = smoothstep(p.threshold, p.threshold + knee, display_luma(base));
-        let k = base[3].clamp(0.0, 1.0) * w_bright;
-        g[0] = base[0] * k;
-        g[1] = base[1] * k;
-        g[2] = base[2] * k;
-        g[3] = k;
+    let mut bright = vec![[0.0f32; 4]; acc.len()];
+    {
+        let src: &[[f32; 4]] = acc;
+        par_rows(&mut bright, wu, hu, |y, out_row| {
+            for (x, g) in out_row.iter_mut().enumerate() {
+                let base = src[y * wu + x];
+                let w_bright = smoothstep(p.threshold, p.threshold + knee, display_luma(&base));
+                let k = base[3].clamp(0.0, 1.0) * w_bright;
+                *g = [base[0] * k, base[1] * k, base[2] * k, k];
+            }
+        });
     }
     // PERF: the glow is low-frequency, so blur it at REDUCED resolution — the
     // standard bloom trick + a mirror of the GPU mip pyramid. Downsample the
@@ -593,31 +674,35 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
         separable_blur_premul(p.radius / factor as f32, &mut small, AdjustWindow::full(sw as u32, sh as u32));
         small // upsampled on read below
     };
-    // Add the glow onto the premultiplied base, then back to straight.
+    // Add the glow onto the premultiplied base, then back to straight (parallel).
     premultiply(acc);
+    let intensity = p.intensity;
+    let glow = &glow;
     if factor == 1 {
-        for (o, g) in acc.iter_mut().zip(glow.iter()) {
-            o[0] += p.intensity * g[0];
-            o[1] += p.intensity * g[1];
-            o[2] += p.intensity * g[2];
-            o[3] = (o[3] + p.intensity * g[3]).clamp(0.0, 1.0);
-        }
+        par_rows(acc, wu, hu, |y, out_row| {
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let g = glow[y * wu + x];
+                o[0] += intensity * g[0];
+                o[1] += intensity * g[1];
+                o[2] += intensity * g[2];
+                o[3] = (o[3] + intensity * g[3]).clamp(0.0, 1.0);
+            }
+        });
     } else {
         let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
         let inv = 1.0 / factor as f32;
-        for y in 0..h {
-            for x in 0..w {
+        par_rows(acc, wu, hu, |y, out_row| {
+            let fy = (y as f32 + 0.5) * inv - 0.5;
+            for (x, o) in out_row.iter_mut().enumerate() {
                 // Centre-aligned map from full → small space.
                 let fx = (x as f32 + 0.5) * inv - 0.5;
-                let fy = (y as f32 + 0.5) * inv - 0.5;
-                let g = bilinear(&glow, sw, sh, fx, fy);
-                let o = &mut acc[(y * w + x) as usize];
-                o[0] += p.intensity * g[0];
-                o[1] += p.intensity * g[1];
-                o[2] += p.intensity * g[2];
-                o[3] = (o[3] + p.intensity * g[3]).clamp(0.0, 1.0);
+                let g = bilinear(glow, sw, sh, fx, fy);
+                o[0] += intensity * g[0];
+                o[1] += intensity * g[1];
+                o[2] += intensity * g[2];
+                o[3] = (o[3] + intensity * g[3]).clamp(0.0, 1.0);
             }
-        }
+        });
     }
     unpremultiply(acc);
 }
@@ -691,36 +776,41 @@ pub fn apply_shadows_highlights(
     separable_blur_scalar(p.highlights_radius, &mut local_hi, win);
     let tw_s = p.shadows_tonal_width.max(1e-3);
     let tw_h = p.highlights_tonal_width.max(1e-3);
-    for (i, px) in acc.iter_mut().enumerate() {
-        let l = display_luma(px);
-        // Membership from the LOCAL tone: deep-shadow / bright-highlight weights.
-        let ws = 1.0 - smoothstep(0.0, tw_s, local_lo[i]);
-        let wh = smoothstep(1.0 - tw_h, 1.0, local_hi[i]);
-        let mut new_l = l + p.shadows_amount * ws - p.highlights_amount * wh;
-        new_l = (0.5 + (new_l - 0.5) * (1.0 + p.midtone_contrast)).clamp(0.0, 1.0);
-        // Re-tone the pixel in display space, preserving hue (scale toward new_l).
-        let mut d = [
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
-        ];
-        if l > 1e-4 {
-            let ratio = new_l / l;
-            for c in &mut d {
-                *c = (*c * ratio).clamp(0.0, 1.0);
+    let (wu, hu) = (win.width as usize, win.height as usize);
+    let (lo, hi) = (&local_lo, &local_hi);
+    par_rows(acc, wu, hu, |y, out_row| {
+        for (x, px) in out_row.iter_mut().enumerate() {
+            let i = y * wu + x;
+            let l = display_luma(px);
+            // Membership from the LOCAL tone: deep-shadow / bright-highlight weights.
+            let ws = 1.0 - smoothstep(0.0, tw_s, lo[i]);
+            let wh = smoothstep(1.0 - tw_h, 1.0, hi[i]);
+            let mut new_l = l + p.shadows_amount * ws - p.highlights_amount * wh;
+            new_l = (0.5 + (new_l - 0.5) * (1.0 + p.midtone_contrast)).clamp(0.0, 1.0);
+            // Re-tone in display space, preserving hue (scale toward new_l).
+            let mut d = [
+                linear_to_srgb_f32(px[0]),
+                linear_to_srgb_f32(px[1]),
+                linear_to_srgb_f32(px[2]),
+            ];
+            if l > 1e-4 {
+                let ratio = new_l / l;
+                for c in &mut d {
+                    *c = (*c * ratio).clamp(0.0, 1.0);
+                }
+            } else {
+                d = [new_l, new_l, new_l];
             }
-        } else {
-            d = [new_l, new_l, new_l];
-        }
-        // Saturation tweak in the corrected regions.
-        let cc = p.color_correction * (ws + wh).min(1.0);
-        if cc != 0.0 {
-            for c in &mut d {
-                *c = (new_l + (*c - new_l) * (1.0 + cc)).clamp(0.0, 1.0);
+            // Saturation tweak in the corrected regions.
+            let cc = p.color_correction * (ws + wh).min(1.0);
+            if cc != 0.0 {
+                for c in &mut d {
+                    *c = (new_l + (*c - new_l) * (1.0 + cc)).clamp(0.0, 1.0);
+                }
             }
+            px[0] = srgb_to_linear_f32(d[0]);
+            px[1] = srgb_to_linear_f32(d[1]);
+            px[2] = srgb_to_linear_f32(d[2]);
         }
-        px[0] = srgb_to_linear_f32(d[0]);
-        px[1] = srgb_to_linear_f32(d[1]);
-        px[2] = srgb_to_linear_f32(d[2]);
-    }
+    });
 }

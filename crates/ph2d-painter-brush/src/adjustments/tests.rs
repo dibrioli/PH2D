@@ -2110,6 +2110,48 @@ fn bloom_and_shadows_highlights_slider_round_trip() {
 }
 
 #[test]
+fn parallel_kernels_are_deterministic_and_coord_correct_at_scale() {
+    // A canvas above the par_rows threshold (>16384 px) runs multithreaded. Two
+    // runs must be byte-identical (no data race / nondeterministic interleave),
+    // and a deep-interior pixel must match the SAME absolute coord computed in a
+    // tiny (serial) sub-window — proving the band-split indexing is correct.
+    let n = 200u32; // 40_000 px → parallel path
+    let params = NoiseParams {
+        amount: 0.6,
+        kind: NoiseKind::Gaussian,
+        monochromatic: false,
+    };
+    let mk = || {
+        let mut a = vec![[0.5f32, 0.5, 0.5, 1.0]; (n * n) as usize];
+        apply_noise(&params, &mut a, AdjustWindow::full(n, n));
+        a
+    };
+    let a = mk();
+    let b = mk();
+    assert_eq!(a, b, "parallel kernel is deterministic across runs");
+
+    // Same absolute coord (137,151) via a 2×2 serial sub-window must match.
+    let mut sub = vec![[0.5f32, 0.5, 0.5, 1.0]; 4];
+    apply_noise(
+        &params,
+        &mut sub,
+        AdjustWindow {
+            width: 2,
+            height: 2,
+            origin_x: 137,
+            origin_y: 151,
+        },
+    );
+    let full = a[(151 * n + 137) as usize];
+    for c in 0..3 {
+        assert!(
+            (sub[0][c] - full[c]).abs() < 1e-6,
+            "parallel large-canvas pixel matches the serial sub-window at (137,151)"
+        );
+    }
+}
+
+#[test]
 fn feathers_coverage_set_is_blur_family_plus_bloom() {
     use AdjustmentKind::*;
     for k in [GaussianBlur, Sharpen, MotionBlur, ChromaticAberration, Bloom] {

@@ -80,13 +80,14 @@ fn flatten_ids(
                 }
                 // Spatial (neighbourhood) kinds run on the pass-graph as a
                 // `SpatialAdjustment` (Gaussian/Sharpen/Motion/Chroma). `kernel`
-                // is the `SPATIAL_*` code; `params` the kernel's 4 scalars — both
-                // kept in lock-step with `ph2d-render` by the spatial parity gates.
+                // is the `SPATIAL_*` code; `params` the kernel's scalars (zero-
+                // padded into the 8-wide op — only S/H uses the tail) — kept in
+                // lock-step with `ph2d-render` by the spatial parity gates.
                 if let Some(kernel) = adj.kind.gpu_spatial_code() {
-                    let params = adj.params.spatial_params().unwrap_or([0.0; 4]);
+                    let p = adj.params.spatial_params().unwrap_or([0.0; 4]);
                     ops.push(LayerOp::SpatialAdjustment {
                         kernel,
-                        params,
+                        params: [p[0], p[1], p[2], p[3], 0.0, 0.0, 0.0, 0.0],
                         blend_mode: BlendMode::to_u8(adj.blend_mode),
                         opacity: adj.opacity.clamp(0.0, 1.0),
                     });

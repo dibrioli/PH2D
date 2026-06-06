@@ -1055,3 +1055,96 @@ fn cs_bloom_bright(@builtin(global_invocation_id) gid: vec3<u32>) {
     let k = clamp(base.a, 0.0, 1.0) * w_bright;
     textureStore(bloom_glow, p, vec4<f32>(base.rgb * k, k));
 }
+
+// ── Shadows/Highlights — LOCAL tonal correction (cs_sh_luma + cs_combine_sh) ──
+// Mirror of `apply_shadows_highlights`: blur the DISPLAY luma into two local-
+// average tone maps (separate radii for shadows / highlights), then lift shadows
+// / recover highlights by the NEIGHBOURHOOD tone — preserving local contrast,
+// unlike a global curve. Coverage is PRESERVED (a tonal op, not an image blur —
+// `feathers_coverage()` is false). The two scalar blurs reuse the shared
+// `cs_blur_h/v` (`premul_read = 0`) over a luma field stored in `.r`.
+struct ShGlobals {
+    width: u32,
+    height: u32,
+    shadows_amount: f32,
+    highlights_amount: f32,
+    shadows_tonal_width: f32,
+    highlights_tonal_width: f32,
+    color_correction: f32,
+    midtone_contrast: f32,
+    blend_mode: u32,
+    opacity: f32,
+    _pad0: u32,
+    _pad1: u32,
+}
+@group(0) @binding(27) var<uniform> sh_g: ShGlobals;
+@group(0) @binding(28) var sh_base: texture_2d<f32>;      // straight-linear base
+@group(0) @binding(29) var sh_luma_out: texture_storage_2d<rgba32float, write>;
+@group(0) @binding(30) var sh_lo: texture_2d<f32>;        // blurred luma (shadows radius)
+@group(0) @binding(31) var sh_hi: texture_2d<f32>;        // blurred luma (highlights radius)
+@group(0) @binding(32) var sh_dst: texture_storage_2d<rgba32float, write>;
+
+// Extract the display luma of the base into `.r` (the field the two scalar blurs
+// convolve). `.gba` are unused (the blur carries them as 0).
+@compute @workgroup_size(8, 8, 1)
+fn cs_sh_luma(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= sh_g.width || y >= sh_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let base = textureLoad(sh_base, p, 0);
+    textureStore(sh_luma_out, p, vec4<f32>(display_luma(base.rgb), 0.0, 0.0, 0.0));
+}
+
+// Apply the local tonal correction from base + the two blurred luma maps, then
+// blend the adjustment's own mode/opacity over the base (coverage = base.a).
+@compute @workgroup_size(8, 8, 1)
+fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= sh_g.width || y >= sh_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let base = textureLoad(sh_base, p, 0); // straight linear (coverage = base.a)
+    let l = display_luma(base.rgb);
+    let local_lo = textureLoad(sh_lo, p, 0).r;
+    let local_hi = textureLoad(sh_hi, p, 0).r;
+    let tw_s = max(sh_g.shadows_tonal_width, 1e-3);
+    let tw_h = max(sh_g.highlights_tonal_width, 1e-3);
+    // Membership from the LOCAL tone: deep-shadow / bright-highlight weights.
+    let ws = 1.0 - smoothstep(0.0, tw_s, local_lo);
+    let wh = smoothstep(1.0 - tw_h, 1.0, local_hi);
+    var new_l = l + sh_g.shadows_amount * ws - sh_g.highlights_amount * wh;
+    new_l = clamp(0.5 + (new_l - 0.5) * (1.0 + sh_g.midtone_contrast), 0.0, 1.0);
+    // Re-tone in DISPLAY space, preserving hue (scale the display RGB toward new_l).
+    var d = vec3<f32>(linear_to_srgb(base.r), linear_to_srgb(base.g), linear_to_srgb(base.b));
+    if l > 1e-4 {
+        d = clamp(d * (new_l / l), vec3<f32>(0.0), vec3<f32>(1.0));
+    } else {
+        d = vec3<f32>(new_l, new_l, new_l);
+    }
+    // Saturation tweak in the corrected regions.
+    let cc = sh_g.color_correction * min(ws + wh, 1.0);
+    if cc != 0.0 {
+        d = clamp(
+            vec3<f32>(new_l) + (d - vec3<f32>(new_l)) * (1.0 + cc),
+            vec3<f32>(0.0),
+            vec3<f32>(1.0),
+        );
+    }
+    let corrected = vec3<f32>(
+        srgb_to_linear_f32(d.r),
+        srgb_to_linear_f32(d.g),
+        srgb_to_linear_f32(d.b),
+    );
+    // The adjustment's own blend/opacity over the base; coverage PRESERVED.
+    var result_rgb = corrected;
+    if sh_g.blend_mode != 0u {
+        result_rgb = apply_blend(sh_g.blend_mode, base, vec4<f32>(corrected, base.a)).rgb;
+    }
+    let t = clamp(sh_g.opacity, 0.0, 1.0);
+    textureStore(sh_dst, p, vec4<f32>(mix(base.rgb, result_rgb, t), base.a));
+}

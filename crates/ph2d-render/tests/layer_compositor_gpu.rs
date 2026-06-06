@@ -13,13 +13,14 @@
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::adjustments::{
-    AdjustWindow, BloomParams, LevelsParams, apply_bloom, levels_display_lut,
+    AdjustWindow, BloomParams, LevelsParams, ShadowsHighlightsParams, apply_bloom,
+    apply_shadows_highlights, levels_display_lut,
 };
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN,
-    gaussian_weights, motion_weights,
+    SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS,
+    SPATIAL_SHARPEN, gaussian_weights, motion_weights,
 };
 use std::collections::BTreeMap;
 
@@ -999,7 +1000,7 @@ fn gpu_gaussian_matches_cpu_reference() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_GAUSSIAN,
-            params: [radius, 0.0, 0.0, 0.0],
+            params: [radius, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1081,7 +1082,7 @@ fn gpu_sharpen_matches_cpu_reference() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_SHARPEN,
-            params: [amount, radius, 0.0, 0.0], // amount, blur radius
+            params: [amount, radius, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], // amount, blur radius
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1205,7 +1206,7 @@ fn gpu_motion_matches_cpu_reference() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_MOTION,
-            params: [distance, angle, 0.0, 0.0],
+            params: [distance, angle, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1325,7 +1326,7 @@ fn gpu_chroma_matches_cpu_reference() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_CHROMA,
-            params: [shifts[0], shifts[1], shifts[2], 0.0],
+            params: [shifts[0], shifts[1], shifts[2], 0.0, 0.0, 0.0, 0.0, 0.0],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1403,7 +1404,7 @@ fn gpu_gaussian_feathers_coverage_into_transparency() {
         },
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_GAUSSIAN,
-            params: [4.0, 0.0, 0.0, 0.0],
+            params: [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1488,7 +1489,16 @@ fn gpu_bloom_matches_cpu_reference() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_BLOOM,
-            params: [bp.threshold, bp.intensity, bp.radius, bp.falloff],
+            params: [
+                bp.threshold,
+                bp.intensity,
+                bp.radius,
+                bp.falloff,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1509,7 +1519,10 @@ fn gpu_bloom_matches_cpu_reference() {
         .expect("composite full");
     let got_full = comp.read_output(&gpu).expect("readback full");
     let d_full = max_byte_diff(&got_full, &want_full);
-    assert!(d_full <= 5, "bloom full-region GPU vs CPU max byte diff {d_full}");
+    assert!(
+        d_full <= 5,
+        "bloom full-region GPU vs CPU max byte diff {d_full}"
+    );
 
     let sub = Region {
         x: 20,
@@ -1572,7 +1585,16 @@ fn gpu_bloom_haloes_into_transparency() {
         below[0],
         LayerOp::SpatialAdjustment {
             kernel: SPATIAL_BLOOM,
-            params: [bp.threshold, bp.intensity, bp.radius, bp.falloff],
+            params: [
+                bp.threshold,
+                bp.intensity,
+                bp.radius,
+                bp.falloff,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
             blend_mode: 0,
             opacity: 1.0,
         },
@@ -1598,5 +1620,120 @@ fn gpu_bloom_haloes_into_transparency() {
         "bloom should halo coverage past the source: edge alpha {halo} ~ 0 (no glow)"
     );
     assert!(alpha(32, 32) >= 250, "square centre stays opaque");
-    assert!(alpha(2, 32) <= 8, "far field stays clear, alpha {}", alpha(2, 32));
+    assert!(
+        alpha(2, 32) <= 8,
+        "far field stays clear, alpha {}",
+        alpha(2, 32)
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPATIAL PASS-GRAPH (Painter W4) — Shadows/Highlights (LOCAL tonal correction)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// S/H is the first MULTI-MAP spatial kind: cs_sh_luma extracts the display luma,
+// TWO scalar blurs (shadows + highlights radii) build local tone maps, and
+// cs_combine_sh applies the tonal correction (its OWN combine — coverage
+// PRESERVED, since S/H is non-feathering). Reconciles DIRECTLY against the impl's
+// canonical apply_shadows_highlights (Normal + opacity 1 ⇒ the combine output
+// equals it). Exercises the 8-wide `params` channel end-to-end.
+
+/// GPU Shadows/Highlights vs `apply_shadows_highlights` over an opaque varied base
+/// plus an above layer (full + dirty-rect ⊕ halo). Proves the luma extract, the
+/// two different-radii scalar blurs, and the 2-map tonal combine reproduce the
+/// kernel. ±4 like the other adjustment gates (observed 0 on Metal): S/H stacks
+/// display↔linear round-trips, a smoothstep, and a `new_l / l` re-tone division
+/// atop the blur's `pow`/reassoc ULP.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_shadows_highlights_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 11);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 4));
+
+    let shp = ShadowsHighlightsParams {
+        shadows_amount: 0.3,
+        shadows_tonal_width: 0.5,
+        shadows_radius: 5.0,
+        highlights_amount: 0.25,
+        highlights_tonal_width: 0.4,
+        highlights_radius: 7.0,
+        color_correction: 0.2,
+        midtone_contrast: 0.15,
+    };
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.6,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_SHADOWS_HIGHLIGHTS,
+            params: [
+                shp.shadows_amount,
+                shp.shadows_tonal_width,
+                shp.shadows_radius,
+                shp.highlights_amount,
+                shp.highlights_tonal_width,
+                shp.highlights_radius,
+                shp.color_correction,
+                shp.midtone_contrast,
+            ],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference: materialise → apply_shadows_highlights → above.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mut corrected = mat.clone();
+    apply_shadows_highlights(&shp, &mut corrected, AdjustWindow::full(w, h));
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&corrected));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    eprintln!("[S/H] full-region GPU vs apply_shadows_highlights max byte diff {d_full}");
+    assert!(
+        d_full <= 4,
+        "S/H full-region GPU vs CPU max byte diff {d_full}"
+    );
+
+    let sub = Region {
+        x: 18,
+        y: 20,
+        w: 26,
+        h: 18,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    eprintln!("[S/H] sub-region (dirty-rect ⊕ halo) max byte diff {d_sub}");
+    assert!(
+        d_sub <= 4,
+        "S/H sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
 }

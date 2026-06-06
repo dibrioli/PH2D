@@ -161,12 +161,14 @@ pub enum LayerOp {
     ///
     /// `kernel` is a `SPATIAL_*` code (the caller maps its `AdjustmentKind`);
     /// `params` are the kernel's scalars (`SPATIAL_GAUSSIAN` uses `params[0]` =
-    /// radius). `blend_mode`/`opacity` are the adjustment's own — the effect
-    /// blends back over the base by these, mirroring the `Adjustment` arm. An
-    /// unknown `kernel` is an identity no-op (forward-compatible).
+    /// radius; `SPATIAL_SHADOWS_HIGHLIGHTS` uses all 8). `blend_mode`/`opacity`
+    /// are the adjustment's own — the effect blends back over the base by these,
+    /// mirroring the `Adjustment` arm. An unknown `kernel` is an identity no-op
+    /// (forward-compatible). The 8-scalar `params` is the widest spatial kind
+    /// (S/H); the 4-scalar kinds zero-pad the tail.
     SpatialAdjustment {
         kernel: u8,
-        params: [f32; 4],
+        params: [f32; 8],
         blend_mode: u8,
         opacity: f32,
     },
@@ -204,6 +206,15 @@ pub const SPATIAL_CHROMA: u8 = 3;
 /// glow feathers coverage (haloes outward), so the combine adopts its alpha.
 /// Mirror of `ph2d_painter_brush::adjustments::spatial::apply_bloom`.
 pub const SPATIAL_BLOOM: u8 = 4;
+/// Shadows/Highlights — LOCAL tonal correction. Uses all 8 `params`:
+/// `[shadows_amount, shadows_tonal_width, shadows_radius, highlights_amount,
+/// highlights_tonal_width, highlights_radius, color_correction, midtone_contrast]`.
+/// `cs_sh_luma` extracts the display luma; the shared scalar blur builds two
+/// local-average tone maps (the two radii); `cs_combine_sh` lifts shadows /
+/// recovers highlights by the neighbourhood tone. Coverage is PRESERVED (a tonal
+/// op, NOT an image blur). Mirror of
+/// `ph2d_painter_brush::adjustments::spatial::apply_shadows_highlights`.
+pub const SPATIAL_SHADOWS_HIGHLIGHTS: u8 = 5;
 
 /// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
 /// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
@@ -497,6 +508,27 @@ struct BloomGlobals {
     falloff: f32,
 }
 
+/// Globals for `cs_sh_luma` + `cs_combine_sh` (48 bytes; mirrors WGSL `ShGlobals`).
+/// The luma pass reads only `width`/`height`; the combine reads the 6 tonal scalars
+/// plus the adjustment's own `blend_mode`/`opacity`. The two radii drive the blurs
+/// (CPU-side weights), so they are NOT in this uniform.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct ShGlobals {
+    width: u32,
+    height: u32,
+    shadows_amount: f32,
+    highlights_amount: f32,
+    shadows_tonal_width: f32,
+    highlights_tonal_width: f32,
+    color_correction: f32,
+    midtone_contrast: f32,
+    blend_mode: u32,
+    opacity: f32,
+    _pad0: u32,
+    _pad1: u32,
+}
+
 /// A cached layer's place in the texture array + dirty tracking.
 struct CachedSlice {
     slice: u32,
@@ -568,6 +600,10 @@ pub struct LayerCompositor {
     /// Bloom bright-pass — extract the premultiplied bright-excess glow (the only
     /// Bloom-specific pass; the blur + additive combine reuse the shared machinery).
     pipeline_bloom_bright: wgpu::ComputePipeline,
+    /// Shadows/Highlights luma extract — display luma → `.r` for the two scalar blurs.
+    pipeline_sh_luma: wgpu::ComputePipeline,
+    /// Shadows/Highlights tonal combine — local correction from base + 2 luma maps.
+    pipeline_sh_combine: wgpu::ComputePipeline,
     /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
     pipeline_combine: wgpu::ComputePipeline,
     /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to
@@ -579,6 +615,8 @@ pub struct LayerCompositor {
     bgl_encode: wgpu::BindGroupLayout,
     bgl_chroma: wgpu::BindGroupLayout,
     bgl_bloom: wgpu::BindGroupLayout,
+    bgl_sh_luma: wgpu::BindGroupLayout,
+    bgl_sh_combine: wgpu::BindGroupLayout,
     /// Per-pass uniform buffers (rewritten + submitted per pass; queue ordering
     /// makes single shared buffers safe). Created once.
     seg_globals_buffer: wgpu::Buffer,
@@ -587,6 +625,7 @@ pub struct LayerCompositor {
     encode_globals_buffer: wgpu::Buffer,
     chroma_globals_buffer: wgpu::Buffer,
     bloom_globals_buffer: wgpu::Buffer,
+    sh_globals_buffer: wgpu::Buffer,
     /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
     blur_weights_buffer: Option<(wgpu::Buffer, u64)>,
     /// 1×1 linear dummy bound as `base_in` for the first segment (start-from-zero).
@@ -606,6 +645,10 @@ struct WorkTextures {
     height: u32,
     base: [WorkTex; 2],
     blur: [WorkTex; 2],
+    /// Shadows/Highlights scratch: `sh[0]` holds the extracted luma field, `sh[1]`
+    /// the blurred shadows tone map (the highlights map reuses `blur[1]`, the blur
+    /// temp `blur[0]`). Only written by the S/H sub-graph; allocated with the rest.
+    sh: [WorkTex; 2],
 }
 
 struct WorkTex {

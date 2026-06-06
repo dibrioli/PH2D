@@ -1,5 +1,18 @@
 use super::*;
 
+/// The 6 Shadows/Highlights tonal scalars `cs_combine_sh` reads (the two radii
+/// drive the blurs instead, so they live in the `BlurStage::Sh` weights). Pulled
+/// from `SpatialAdjustment.params` by `resolve_kernel`.
+#[derive(Copy, Clone)]
+struct ShTonal {
+    shadows_amount: f32,
+    highlights_amount: f32,
+    shadows_tonal_width: f32,
+    highlights_tonal_width: f32,
+    color_correction: f32,
+    midtone_contrast: f32,
+}
+
 impl LayerCompositor {
     /// Build the compute pipeline. Cheap — no GPU textures until the first
     /// [`Self::composite`].
@@ -237,6 +250,29 @@ impl LayerCompositor {
                     storage_tex(26, f32_lin),                    // glow (premultiplied)
                 ],
             });
+        let sh_sz = core::mem::size_of::<ShGlobals>() as u64;
+        let bgl_sh_luma = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite sh luma bgl"),
+                entries: &[
+                    uniform(27, sh_sz),
+                    sampled(28, wgpu::TextureViewDimension::D2), // base (linear)
+                    storage_tex(29, f32_lin),                    // luma field (.r)
+                ],
+            });
+        let bgl_sh_combine =
+            gpu.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("ph2d-render layer_composite sh combine bgl"),
+                    entries: &[
+                        uniform(27, sh_sz),
+                        sampled(28, wgpu::TextureViewDimension::D2), // base (linear)
+                        sampled(30, wgpu::TextureViewDimension::D2), // local_lo (shadows)
+                        sampled(31, wgpu::TextureViewDimension::D2), // local_hi (highlights)
+                        storage_tex(32, f32_lin),                    // dst (linear)
+                    ],
+                });
 
         let make_pipeline_for = |bgl: &wgpu::BindGroupLayout, entry: &str, label: &str| {
             let layout = gpu
@@ -290,6 +326,16 @@ impl LayerCompositor {
             "cs_bloom_bright",
             "ph2d-render layer_composite bloom_bright",
         );
+        let pipeline_sh_luma = make_pipeline_for(
+            &bgl_sh_luma,
+            "cs_sh_luma",
+            "ph2d-render layer_composite sh_luma",
+        );
+        let pipeline_sh_combine = make_pipeline_for(
+            &bgl_sh_combine,
+            "cs_combine_sh",
+            "ph2d-render layer_composite sh_combine",
+        );
 
         let make_uniform_buf = |size: u64, label: &str| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -322,6 +368,10 @@ impl LayerCompositor {
         let bloom_globals_buffer = make_uniform_buf(
             core::mem::size_of::<BloomGlobals>() as u64,
             "ph2d-render layer_composite bloom globals",
+        );
+        let sh_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<ShGlobals>() as u64,
+            "ph2d-render layer_composite sh globals",
         );
 
         // 1×1 linear dummy bound as base_in for the first (start-from-zero) segment.
@@ -379,6 +429,8 @@ impl LayerCompositor {
             pipeline_blur_dir,
             pipeline_chroma,
             pipeline_bloom_bright,
+            pipeline_sh_luma,
+            pipeline_sh_combine,
             pipeline_combine,
             pipeline_encode,
             bgl_segment,
@@ -387,12 +439,15 @@ impl LayerCompositor {
             bgl_encode,
             bgl_chroma,
             bgl_bloom,
+            bgl_sh_luma,
+            bgl_sh_combine,
             seg_globals_buffer,
             blur_globals_buffer,
             combine_globals_buffer,
             encode_globals_buffer,
             chroma_globals_buffer,
             bloom_globals_buffer,
+            sh_globals_buffer,
             blur_weights_buffer: None,
             seg_base_dummy,
             work: None,
@@ -940,6 +995,18 @@ impl LayerCompositor {
             /// glow, then the separable blur (`weights`/`half`, `premul_read = 0`)
             /// spreads it; `COMBINE_BLOOM` adds `intensity·glow` back.
             Bloom { threshold: f32, falloff: f32 },
+            /// Shadows/Highlights: `cs_sh_luma` extracts the display luma, two scalar
+            /// blurs (shadows / highlights radii) build local tone maps, and
+            /// `cs_combine_sh` applies the tonal correction (its OWN combine — the
+            /// shared `run_combine` is skipped). Carries the 6 tonal scalars + the
+            /// two radii's weights.
+            Sh {
+                lo_weights: Vec<f32>,
+                lo_half: u32,
+                hi_weights: Vec<f32>,
+                hi_half: u32,
+                tonal: ShTonal,
+            },
         }
 
         /// One root-level spatial pass break: where it sits in the op-list, its
@@ -970,7 +1037,7 @@ impl LayerCompositor {
         // params[1]=blur radius, separable, unsharp combine. MOTION:
         // params[0]=distance, params[1]=angle (rad), directional box, passthrough.
         // CHROMA: params[0..3]=R/G/B shift, directional gather, passthrough.
-        fn resolve_kernel(kernel: u8, params: &[f32; 4]) -> Option<KernelPlan> {
+        fn resolve_kernel(kernel: u8, params: &[f32; 8]) -> Option<KernelPlan> {
             match kernel {
                 k if k == SPATIAL_GAUSSIAN => {
                     let (weights, half) = gaussian_weights(params[0]);
@@ -1031,6 +1098,33 @@ impl LayerCompositor {
                         },
                         combine_mode: COMBINE_BLOOM,
                         amount: params[1], // intensity
+                    })
+                }
+                k if k == SPATIAL_SHADOWS_HIGHLIGHTS => {
+                    // params: [shad_amount, shad_tonal_width, shad_radius,
+                    //          high_amount, high_tonal_width, high_radius,
+                    //          color_correction, midtone_contrast].
+                    let (lo_weights, lo_half) = gaussian_weights(params[2]);
+                    let (hi_weights, hi_half) = gaussian_weights(params[5]);
+                    Some(KernelPlan {
+                        weights: Vec::new(),
+                        half: lo_half.max(hi_half), // halo = the larger blur radius
+                        stage: BlurStage::Sh {
+                            lo_weights,
+                            lo_half,
+                            hi_weights,
+                            hi_half,
+                            tonal: ShTonal {
+                                shadows_amount: params[0],
+                                shadows_tonal_width: params[1],
+                                highlights_amount: params[3],
+                                highlights_tonal_width: params[4],
+                                color_correction: params[6],
+                                midtone_contrast: params[7],
+                            },
+                        },
+                        combine_mode: COMBINE_GAUSSIAN, // unused (S/H has its own combine)
+                        amount: 0.0,
                     })
                 }
                 _ => None,
@@ -1118,34 +1212,63 @@ impl LayerCompositor {
                 canvas_h,
             );
             cur = dst;
-            // Blur stage → writes the adjusted texture into blur[1].
-            match &b.stage {
+            // Stage → writes the adjusted texture into blur[1] for the SHARED
+            // combine; or, for S/H, runs its OWN sub-graph + combine into base[dst].
+            let shared_combine = match &b.stage {
                 BlurStage::Separable => {
                     self.upload_blur_weights(gpu, &b.weights);
                     self.run_blur(gpu, cur, b.half, false, [0.0, 0.0], work);
+                    true
                 }
                 BlurStage::Directional(dir) => {
                     self.upload_blur_weights(gpu, &b.weights);
                     self.run_blur(gpu, cur, b.half, true, *dir, work);
+                    true
                 }
                 BlurStage::Chroma(shifts) => {
                     self.run_chroma(gpu, cur, *shifts, work, canvas_w, canvas_h);
+                    true
                 }
                 BlurStage::Bloom { threshold, falloff } => {
                     self.upload_blur_weights(gpu, &b.weights);
                     self.run_bloom(gpu, cur, *threshold, *falloff, b.half, work);
+                    true
                 }
+                BlurStage::Sh {
+                    lo_weights,
+                    lo_half,
+                    hi_weights,
+                    hi_half,
+                    tonal,
+                } => {
+                    self.run_shadows_highlights(
+                        gpu,
+                        cur,
+                        cur ^ 1,
+                        lo_weights,
+                        *lo_half,
+                        hi_weights,
+                        *hi_half,
+                        *tonal,
+                        b.blend,
+                        b.opacity,
+                        work,
+                    );
+                    false // S/H wrote base[cur ^ 1] itself
+                }
+            };
+            if shared_combine {
+                self.run_combine(
+                    gpu,
+                    cur,
+                    cur ^ 1,
+                    b.blend,
+                    b.opacity,
+                    b.combine_mode,
+                    b.amount,
+                    work,
+                );
             }
-            self.run_combine(
-                gpu,
-                cur,
-                cur ^ 1,
-                b.blend,
-                b.opacity,
-                b.combine_mode,
-                b.amount,
-                work,
-            );
             cur ^= 1;
             seg_start = b.idx as u32 + 1;
             from_base = true;
@@ -1211,6 +1334,10 @@ impl LayerCompositor {
             blur: [
                 make("ph2d-render layer_composite work blur0"),
                 make("ph2d-render layer_composite work blur1"),
+            ],
+            sh: [
+                make("ph2d-render layer_composite work sh0"),
+                make("ph2d-render layer_composite work sh1"),
             ],
         });
     }
@@ -1637,6 +1764,188 @@ impl LayerCompositor {
             work.w,
             work.h,
             "ph2d-render layer_composite bloom blur_v pass",
+        );
+    }
+
+    /// Shadows/Highlights sub-graph: `cs_sh_luma` extracts the display luma into
+    /// `sh[0]`, two scalar blurs build the local tone maps (shadows radius → `sh[1]`,
+    /// highlights radius → `blur[1]`), then `cs_combine_sh` applies the tonal
+    /// correction (`base[base_idx]` + the two maps → `base[dst_idx]`), coverage
+    /// preserved. Mirror of `apply_shadows_highlights`. `&mut self` because the two
+    /// blurs upload DIFFERENT weights between their dispatches.
+    #[allow(clippy::too_many_arguments)]
+    fn run_shadows_highlights(
+        &mut self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        dst_idx: usize,
+        lo_weights: &[f32],
+        lo_half: u32,
+        hi_weights: &[f32],
+        hi_half: u32,
+        tonal: ShTonal,
+        blend: u8,
+        opacity: f32,
+        work: Region,
+    ) {
+        // ShGlobals — written once; the luma pass + the combine both read it.
+        let g = ShGlobals {
+            width: work.w,
+            height: work.h,
+            shadows_amount: tonal.shadows_amount,
+            highlights_amount: tonal.highlights_amount,
+            shadows_tonal_width: tonal.shadows_tonal_width,
+            highlights_tonal_width: tonal.highlights_tonal_width,
+            color_correction: tonal.color_correction,
+            midtone_contrast: tonal.midtone_contrast,
+            blend_mode: u32::from(blend),
+            opacity,
+            _pad0: 0,
+            _pad1: 0,
+        };
+        gpu.queue
+            .write_buffer(&self.sh_globals_buffer, 0, bytemuck::bytes_of(&g));
+        // (1) luma extract: base[base_idx] → sh[0].
+        if let Some(work_tex) = &self.work {
+            let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite sh luma bg"),
+                layout: &self.bgl_sh_luma,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 27,
+                        resource: self.sh_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 28,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 29,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.sh[0].view),
+                    },
+                ],
+            });
+            self.dispatch_pass(
+                gpu,
+                &self.pipeline_sh_luma,
+                &bg,
+                work.w,
+                work.h,
+                "ph2d-render layer_composite sh luma pass",
+            );
+        }
+        // (2) shadows tone map: blur sh[0] → sh[1].
+        self.upload_blur_weights(gpu, lo_weights);
+        self.sh_scalar_blur(gpu, lo_half, true, work);
+        // (3) highlights tone map: blur sh[0] → blur[1].
+        self.upload_blur_weights(gpu, hi_weights);
+        self.sh_scalar_blur(gpu, hi_half, false, work);
+        // (4) tonal combine: base[base_idx] + sh[1] (lo) + blur[1] (hi) → base[dst_idx].
+        if let Some(work_tex) = &self.work {
+            let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite sh combine bg"),
+                layout: &self.bgl_sh_combine,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 27,
+                        resource: self.sh_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 28,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 30,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.sh[1].view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 31,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.blur[1].view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 32,
+                        resource: wgpu::BindingResource::TextureView(&work_tex.base[dst_idx].view),
+                    },
+                ],
+            });
+            self.dispatch_pass(
+                gpu,
+                &self.pipeline_sh_combine,
+                &bg,
+                work.w,
+                work.h,
+                "ph2d-render layer_composite sh combine pass",
+            );
+        }
+    }
+
+    /// One scalar separable blur of the luma field `sh[0]` → `dst` (`sh[1]` when
+    /// `dst_sh1`, else `blur[1]`), via `blur[0]` as the H temp. `premul_read = 0`
+    /// (a scalar field, not premultiplied colour). Weights already uploaded by the
+    /// caller. Mirror of `separable_blur_scalar`.
+    fn sh_scalar_blur(&self, gpu: &GpuContext, half: u32, dst_sh1: bool, work: Region) {
+        let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
+        else {
+            return;
+        };
+        let bg_blur = BlurGlobals {
+            width: work.w,
+            height: work.h,
+            half,
+            _pad0: 0,
+            dir_x: 0.0,
+            dir_y: 0.0,
+            premul_read: 0.0,
+            _pad2: 0.0,
+        };
+        gpu.queue
+            .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&bg_blur));
+        let blur_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
+            gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite sh blur bg"),
+                layout: &self.bgl_blur,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: self.blur_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 11,
+                        resource: wgpu::BindingResource::TextureView(src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 12,
+                        resource: wgpu::BindingResource::TextureView(dst),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 13,
+                        resource: weights_buffer.as_entire_binding(),
+                    },
+                ],
+            })
+        };
+        let bg_h = blur_bg(&work_tex.sh[0].view, &work_tex.blur[0].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_h,
+            &bg_h,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite sh blur_h pass",
+        );
+        let dst_view = if dst_sh1 {
+            &work_tex.sh[1].view
+        } else {
+            &work_tex.blur[1].view
+        };
+        let bg_v = blur_bg(&work_tex.blur[0].view, dst_view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_v,
+            &bg_v,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite sh blur_v pass",
         );
     }
 

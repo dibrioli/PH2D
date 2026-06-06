@@ -66,6 +66,11 @@ impl crate::App {
         self.pump_gamepad();
         self.push_input_to_script();
 
+        // P4 (ADR-0061): drain any finished background LLM-vector generation and
+        // commit it to the live document. Cheap non-blocking try_recv; runs here
+        // in the clean-borrow region before the `gfx` split below.
+        self.poll_llm_vector();
+
         // M14.7 polish (7.3 fix): drain `pending_drops` atomically
         // BEFORE the render walks PresentWorld. Each path imports
         // exactly once, so a batch drop of N files always produces

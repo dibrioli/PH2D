@@ -201,6 +201,11 @@ ph2d-vector-sdf = { path = "../../crates/ph2d-vector-sdf" }
 # with a diffusion-curve mesh gradient (PH2D_VECTOR_FILL_SMOKE=1) — solved here +
 # rendered via the procedural-fill image path. `glam::Vec2` authors the curves.
 ph2d-vector-fill = { path = "../../crates/ph2d-vector-fill" }
+# P4 (ADR-0061): LLM-driven vector authoring. The pure sanitizer + the network
+# I/O client (15 s timeout + cache fallback) the editor drives on a worker
+# thread; `build_network_from_json` is the security boundary.
+ph2d-vector-llm = { path = "../../crates/ph2d-vector-llm" }
+ph2d-vector-llm-client = { path = "../../crates/ph2d-vector-llm-client" }
 glam = "0.30"
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can

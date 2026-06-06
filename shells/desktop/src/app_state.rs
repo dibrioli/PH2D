@@ -467,6 +467,13 @@ pub(crate) struct App {
     /// (load-on-open + save-as), per AUDIT_vector_module_W1_results.md §6
     /// option (1).
     pub(crate) committed_vector_pen_paths: Vec<ph2d_vector::Ph2dVectorAsset>,
+
+    /// P4 (ADR-0061) LLM-vector authoring subsystem: at most one in-flight
+    /// background generation + the persistent fallback cache + the API key.
+    /// Results are drained each frame by [`App::poll_llm_vector`] and committed
+    /// to `committed_vector_pen_paths` as new editable assets.
+    pub(crate) llm_vector: crate::llm_vector::LlmVectorEngine,
+
     /// ADR-0076 (Rank 10) — one SimWorld entity per committed vector asset,
     /// positional with `committed_vector_pen_paths` (`entities[i]` ↔ asset `i`).
     /// Gives each vector a `Transform` (gizmo-movable) + `Name` (hierarchy) without

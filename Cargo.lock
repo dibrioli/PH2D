@@ -4732,6 +4732,8 @@ dependencies = [
  "ph2d-vector",
  "ph2d-vector-doc",
  "ph2d-vector-fill",
+ "ph2d-vector-llm",
+ "ph2d-vector-llm-client",
  "ph2d-vector-sdf",
  "postcard",
  "rfd",

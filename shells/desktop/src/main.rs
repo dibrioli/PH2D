@@ -46,6 +46,7 @@ mod input_log;
 mod integration;
 mod keymap;
 mod ktx2_smoke;
+mod llm_vector;
 mod name_unique;
 mod render_loop;
 mod sim_populate;
@@ -163,6 +164,7 @@ impl App {
             painter_undo_requested: false,
             painter_redo_requested: false,
             committed_vector_pen_paths: Vec::new(),
+            llm_vector: crate::llm_vector::LlmVectorEngine::new(),
             vector_scene_entities: Vec::new(),
             last_synced_gizmo_set: Vec::new(),
             last_synced_vec_networks: Vec::new(),

@@ -85,6 +85,22 @@ impl App {
             return;
         }
 
+        // LLM vector authoring (P4, ADR-0061) — smoke trigger. Cmd/Ctrl+Shift+G
+        // fires a background LLM generation of a demo shape into the live vector
+        // document, so the end-to-end pipeline (fetch → sanitize → inject →
+        // render → undo) is verifiable now. The user-facing prompt modal that
+        // replaces this fixed prompt is the next increment. Needs
+        // ANTHROPIC_API_KEY in the environment.
+        if state == ElementState::Pressed
+            && !repeat
+            && (self.modifiers.super_key() || self.modifiers.control_key())
+            && self.modifiers.shift_key()
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyG))
+        {
+            self.submit_llm_vector_smoke();
+            return;
+        }
+
         // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
         // Polygon / Star / Spiral) while Shape is active — the functional
         // selector until the on-screen picker lands in the end-of-impl chrome

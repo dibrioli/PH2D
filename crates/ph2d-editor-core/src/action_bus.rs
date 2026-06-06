@@ -381,6 +381,13 @@ pub enum EditorAction {
     /// same pipeline as Transform / Visibility. Raised by
     /// `TextChanged` on `INSP_ENTITY_NAME`.
     InspectorNameEdit(crate::screens::hero::InspectorNameInfo),
+
+    /// Settings → Anthropic API key (P4, ADR-0061). Carries the key the user
+    /// entered/pasted in the API-key submenu's `TextInput`. The shell drains and
+    /// persists it to the user config dir (`llm_vector::save_api_key`); the
+    /// LLM-vector authoring feature resolves it lazily on the next generation.
+    /// Raised by clicking `CTX_MENU_API_KEY_SAVE`.
+    SetApiKey(String),
 }
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single

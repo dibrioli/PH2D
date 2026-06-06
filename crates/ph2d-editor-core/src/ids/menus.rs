@@ -93,6 +93,16 @@ pub const CTX_MENU_TEXT_DEFAULT: NodeId = hash_node_id("ctx_menu_text_default");
 pub const CTX_MENU_TEXT_CRISP_HEAVY: NodeId = hash_node_id("ctx_menu_text_crisp_heavy");
 pub const CTX_MENU_TEXT_CRISP_HEAVY_PLUS: NodeId = hash_node_id("ctx_menu_text_crisp_heavy_plus");
 
+/// Top-level Settings entry that opens the Anthropic API-key submenu (P4,
+/// ADR-0061) — a `TextInput` + a Save row so the user can paste/enter the key
+/// the LLM-vector authoring feature needs. The key is persisted by the shell to
+/// the user config dir (never to the project).
+pub const CTX_MENU_SETTINGS_API_KEY: NodeId = hash_node_id("ctx_menu_settings_api_key");
+/// The API-key `TextInput` field inside the submenu (its buffer is the key).
+pub const CTX_MENU_API_KEY_INPUT: NodeId = hash_node_id("ctx_menu_api_key_input");
+/// The "Save" row inside the submenu — commits the field's buffer.
+pub const CTX_MENU_API_KEY_SAVE: NodeId = hash_node_id("ctx_menu_api_key_save");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

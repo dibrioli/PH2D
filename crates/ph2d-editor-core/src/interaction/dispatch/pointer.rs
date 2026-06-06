@@ -563,7 +563,17 @@ pub fn dispatch_pointer_with_text<'frame>(
                     Some(id) if id == crate::ids::CTX_SCENE_SEARCH
                         || crate::ids::CTX_SCENE_ROWS.contains(&id)
                 );
-                if !inside_scene_list {
+                // Same rule for the API-key popover (P4): clicking its TextInput
+                // (to focus + type/paste) or its Save row must NOT close the menu.
+                let inside_api_key = matches!(
+                    store.context_menu().map(|r| r.kind),
+                    Some(ContextMenuKind::SettingsApiKeySubmenu)
+                ) && matches!(
+                    hit_id,
+                    Some(id) if id == crate::ids::CTX_MENU_API_KEY_INPUT
+                        || id == crate::ids::CTX_MENU_API_KEY_SAVE
+                );
+                if !inside_scene_list && !inside_api_key {
                     store.close_context_menu();
                 }
             }

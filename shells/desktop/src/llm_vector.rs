@@ -180,6 +180,26 @@ fn api_key_hint() -> String {
     }
 }
 
+/// Persist `key` to the config file ([`api_key_file_path`]), creating the parent
+/// dir. The next generation resolves it via [`resolve_api_key`]. An empty/blank
+/// `key` clears the stored key (writes an empty file → `resolve` returns `None`).
+/// On unix the file is `chmod 600` (owner-only) since it holds a secret.
+pub(crate) fn save_api_key(key: &str) -> std::io::Result<()> {
+    let path = api_key_file_path().ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::NotFound, "no user config directory")
+    })?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&path, key.trim())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
+}
+
 /// Append a freshly-generated network to the live vector document as a new
 /// editable asset, snapshotting undo first — mirrors the Pen-tool commit
 /// (`vector_pen_bridge`). A free function so it is unit-testable without

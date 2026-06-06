@@ -258,6 +258,11 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_SETTINGS_FILTER, "Image filter", None),
             (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
             (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
+            (
+                ids::CTX_MENU_SETTINGS_API_KEY,
+                "Anthropic API Key\u{2026}",
+                None,
+            ),
         ],
         // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
         // presets as before the cascade, just one click deeper.
@@ -309,6 +314,9 @@ pub fn paint_context_menu_overlay(
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
+        // Likewise the API-key submenu paints a TextInput + Save row in its own
+        // branch (P4, ADR-0061); the simple-row loop is skipped.
+        ContextMenuKind::SettingsApiKeySubmenu => &[],
         // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
         // the Unity / Godot / Blender convention: Rename first (the
         // most common edit), then additive ops (Duplicate, Add
@@ -336,6 +344,10 @@ pub fn paint_context_menu_overlay(
 
     if matches!(req.kind, ContextMenuKind::SceneList) {
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
+        return;
+    }
+    if matches!(req.kind, ContextMenuKind::SettingsApiKeySubmenu) {
+        paint_api_key_submenu(req, scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
@@ -576,4 +588,117 @@ fn paint_scene_list(
             let _ = IconId::Search; // keep IconId import in scope
         }
     }
+}
+
+/// Paint the Settings → Anthropic API-key submenu (P4, ADR-0061): a `TextInput`
+/// for the key plus a Save row. Mirrors [`paint_scene_list`]'s in-menu
+/// `TextInput`; focus + keyboard + paste use the standard widget dispatch, and
+/// the menu-close guard in `dispatch::pointer` keeps the popover open while the
+/// user types into the field.
+fn paint_api_key_submenu(
+    req: crate::interaction::ContextMenuRequest,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    let menu_w = 320.0_f32; // LITERAL-PX-OK: API-key popover width (long key string)
+    let field_h = 30.0_f32; // LITERAL-PX-OK: API-key field height (matches scene-list search)
+    let title_h = ROW_H;
+    let hint_h = ROW_H;
+    let save_h = ROW_H;
+    let gap = Spacing::Xs.px();
+
+    // Current field buffer + caret/selection from the TextInput state.
+    let (key, caret, anchor, ti_state) = match store.get(ids::CTX_MENU_API_KEY_INPUT) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            state,
+        }) => (text.as_str(), *caret, *selection_anchor, *state),
+        _ => ("", 0, None, crate::widget::TextInputState::Normal),
+    };
+
+    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + save_h + gap * 3.0;
+    let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
+
+    // Floating panel surface.
+    let radius = Radius::Md.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+
+    let inner_x = rect.x + Spacing::Xs.px();
+    let inner_w = rect.w - Spacing::Xs.px() * 2.0;
+    let pad_x = Spacing::Md.px();
+    let font = TypeToken::Sm.px();
+
+    // Title.
+    let mut y = rect.y + PAD_Y;
+    paint_text(
+        text_system,
+        scene,
+        "Anthropic API Key",
+        inner_x + pad_x,
+        y + (title_h - font) * 0.5,
+        font,
+        inner_w - pad_x * 2.0,
+        resolve(ColorToken::Text1, theme),
+    );
+    y += title_h + gap;
+
+    // Hint.
+    paint_text(
+        text_system,
+        scene,
+        "Paste your key (sk-ant-\u{2026}), then Save.",
+        inner_x + pad_x,
+        y + (hint_h - font) * 0.5,
+        font,
+        inner_w - pad_x * 2.0,
+        resolve(ColorToken::Text3, theme),
+    );
+    y += hint_h + gap;
+
+    // The key field.
+    let field_rect = Rect::new(inner_x, y, inner_w, field_h);
+    hit_index.register(ids::CTX_MENU_API_KEY_INPUT, field_rect);
+    let ti = TextInput::new(ids::CTX_MENU_API_KEY_INPUT, "")
+        .placeholder("sk-ant-\u{2026}")
+        .state(ti_state);
+    paint_text_input_with_buffer(
+        &ti,
+        Some(key),
+        Some(caret),
+        anchor,
+        field_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    y += field_h + gap;
+
+    // Save row — hover highlight + hit, like a menu row.
+    let save_rect = Rect::new(inner_x, y, inner_w, save_h);
+    hit_index.register(ids::CTX_MENU_API_KEY_SAVE, save_rect);
+    if Some(ids::CTX_MENU_API_KEY_SAVE) == store.hot_id() {
+        fill_rounded_rect(
+            scene,
+            save_rect,
+            Radius::Sm.px(),
+            resolve(ColorToken::Bg2, theme),
+        );
+    }
+    paint_text(
+        text_system,
+        scene,
+        "Save",
+        save_rect.x + pad_x,
+        save_rect.y + (save_h - font) * 0.5,
+        font,
+        save_rect.w - pad_x * 2.0,
+        resolve(ColorToken::Accent, theme),
+    );
 }

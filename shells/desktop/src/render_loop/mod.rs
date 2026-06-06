@@ -756,6 +756,27 @@ impl crate::App {
                             wgpu::PresentMode::Immediate
                         });
                     }
+                    EditorAction::SetApiKey(key) => {
+                        // P4 (ADR-0061): persist the Anthropic key to the user
+                        // config dir; the LLM-vector feature resolves it lazily
+                        // on the next generation. Empty input clears it.
+                        let cleared = key.trim().is_empty();
+                        match crate::llm_vector::save_api_key(&key) {
+                            Ok(()) => {
+                                toasts.push(Toast::info(
+                                    if cleared {
+                                        "Anthropic API key cleared."
+                                    } else {
+                                        "Anthropic API key saved."
+                                    }
+                                    .to_string(),
+                                ));
+                            }
+                            Err(e) => {
+                                toasts.push(Toast::warning(format!("Failed to save API key: {e}")));
+                            }
+                        }
+                    }
                     // (Bgremoval bake leftover handled inside the
                     // `OneShotImageOp` arm above — defers to the
                     // image_edit drain site so `bgremoval_active` is

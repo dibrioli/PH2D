@@ -151,6 +151,10 @@ pub enum ContextMenuKind {
     /// writes `HeroScreen.text_rendering`; the next frame's
     /// `set_text_rendering` publishes the choice to `paint_text*`.
     SettingsTextSubmenu,
+    /// Settings → Anthropic API key (P4, ADR-0061). A dedicated popover with a
+    /// `TextInput` (`CTX_MENU_API_KEY_INPUT`) + a Save row
+    /// (`CTX_MENU_API_KEY_SAVE`); painted by its own branch, like [`Self::SceneList`].
+    SettingsApiKeySubmenu,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

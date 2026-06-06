@@ -25,8 +25,8 @@ pub mod vector_network;
 
 pub use scene::VectorScene;
 pub use vector_network::{
-    build_region_path, draw_variable_width_stroke, draw_vector_network, oklch_to_color,
-    variable_width_band,
+    ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,
+    draw_vector_network_with_fills, oklch_to_color, variable_width_band,
 };
 
 // Re-export the Vector Module document types so downstream callers

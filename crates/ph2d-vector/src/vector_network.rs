@@ -42,8 +42,11 @@ use ph2d_color::OklchColor;
 use ph2d_vector_doc::{Region, Segment, SegmentId, VectorNetwork, Vertex, VertexId};
 use std::collections::BTreeMap;
 use vello::Scene;
-use vello::kurbo::{Affine, BezPath, Point, Stroke};
-use vello::peniko::{Brush, Color, Fill};
+use vello::kurbo::{Affine, BezPath, Point, Shape, Stroke};
+use vello::peniko::{
+    BlendMode, Blob, Brush, Color, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
+    ImageQuality,
+};
 
 /// Scratch lookup tables built once per `draw_vector_network` call so
 /// `build_region_path_indexed` resolves segment / vertex refs in
@@ -93,30 +96,66 @@ pub fn draw_vector_network(
     styles: &ph2d_vector_doc::StyleTable,
     transform: Affine,
 ) -> usize {
+    // Solid + fallback fills only. The `*_with_fills` variant renders
+    // procedural fills (W6 shader graph / W7 diffusion) as image brushes.
+    draw_vector_network_with_fills(scene, network, styles, transform, |_| None)
+}
+
+/// Like [`draw_vector_network`] but `fill_image` may supply a rasterized
+/// [`ProceduralFillImage`] for a procedural [`ph2d_vector_doc::FillRef`]
+/// (ADR-0056-amendment-3): the region is filled with that image clipped to its
+/// path (W6 shader graph / W7 diffusion mesh gradient). A procedural fill the
+/// resolver returns `None` for falls back to its solid
+/// [`ph2d_vector_doc::ProceduralFill::fallback`] (graceful degrade).
+pub fn draw_vector_network_with_fills(
+    scene: &mut Scene,
+    network: &VectorNetwork,
+    styles: &ph2d_vector_doc::StyleTable,
+    transform: Affine,
+    fill_image: impl Fn(ph2d_vector_doc::FillRef) -> Option<ProceduralFillImage>,
+) -> usize {
     // R4 audit Lens-K HIGH-K1: build segment+vertex indexes ONCE per
     // frame instead of triple linear scan per region.segment ref.
-    // Per typical-asset profile (100 regions, 32 segs/region, 500 segs,
-    // 300 vertices) this drops the lookup cost from ~3.5M ops/frame to
-    // ~4k ops/frame (~1000× speedup) without changing the output.
     let lookup = NetworkLookup::build(network);
     let mut drawn = 0;
     for region in &network.regions {
         let Some(fill_ref) = region.fill else {
             continue;
         };
-        let Some(fill_solid) = styles.fills.get(&fill_ref) else {
-            continue;
-        };
         let path = build_region_path_indexed(&lookup, region);
         if path.is_empty() {
             continue;
         }
-        let color = oklch_to_color(fill_solid.color);
         let winding = match region.winding {
             ph2d_vector_doc::WindingRule::EvenOdd => Fill::EvenOdd,
             ph2d_vector_doc::WindingRule::NonZero => Fill::NonZero,
         };
-        scene.fill(winding, transform, &Brush::Solid(color), None, &path);
+        // Procedural fills (W6/W7) resolve FIRST; a solid (or a procedural
+        // fallback) takes the plain `Brush::Solid` path.
+        match styles.resolve_fill(fill_ref) {
+            Some(ph2d_vector_doc::ResolvedFill::Solid(s)) => {
+                scene.fill(
+                    winding,
+                    transform,
+                    &Brush::Solid(oklch_to_color(s.color)),
+                    None,
+                    &path,
+                );
+            }
+            Some(ph2d_vector_doc::ResolvedFill::Procedural(p)) => match fill_image(fill_ref) {
+                Some(img) => fill_region_with_image(scene, winding, transform, &path, &img),
+                None => {
+                    scene.fill(
+                        winding,
+                        transform,
+                        &Brush::Solid(oklch_to_color(p.fallback)),
+                        None,
+                        &path,
+                    );
+                }
+            },
+            None => continue,
+        }
         drawn += 1;
     }
 
@@ -180,6 +219,55 @@ pub fn draw_vector_network(
     }
 
     drawn
+}
+
+/// An RGBA8 image a procedural fill (W6 shader graph / W7 diffusion mesh
+/// gradient) rasterizes to, for the Vello image-brush draw path. `rgba` is
+/// straight (non-premultiplied) sRGB8, exactly `width × height × 4` bytes.
+/// `ph2d-vector` stays decoupled from `ph2d-vector-fill` — the caller (the
+/// render bridge) evaluates the procedural fill and hands the bytes here.
+pub struct ProceduralFillImage {
+    pub rgba: std::sync::Arc<Vec<u8>>,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Fill `path` (region-local coords) with `img`, clipped to the path and mapped
+/// onto the path's local bounding box. `transform` is region-local → screen.
+fn fill_region_with_image(
+    scene: &mut Scene,
+    winding: Fill,
+    transform: Affine,
+    path: &BezPath,
+    img: &ProceduralFillImage,
+) {
+    if img.width == 0
+        || img.height == 0
+        || img.rgba.len() != (img.width as usize) * (img.height as usize) * 4
+    {
+        return;
+    }
+    let bbox = path.bounding_box();
+    if bbox.width() <= 0.0 || bbox.height() <= 0.0 {
+        return;
+    }
+    // Clip subsequent drawing to the region (path → screen via `transform`).
+    scene.push_layer(winding, BlendMode::default(), 1.0, transform, path);
+    // Image pixels (0..w, 0..h) → region-local bbox → screen.
+    let sx = bbox.width() / f64::from(img.width);
+    let sy = bbox.height() / f64::from(img.height);
+    let img_to_screen =
+        transform * Affine::translate((bbox.x0, bbox.y0)) * Affine::scale_non_uniform(sx, sy);
+    let image = ImageData {
+        data: Blob::new(img.rgba.clone()),
+        format: ImageFormat::Rgba8,
+        alpha_type: ImageAlphaType::Alpha,
+        width: img.width,
+        height: img.height,
+    };
+    let brush = ImageBrush::new(image).with_quality(ImageQuality::Medium);
+    scene.draw_image(brush.as_ref(), img_to_screen);
+    scene.pop_layer();
 }
 
 /// Stroke one cubic segment with a per-`t` [`ph2d_vector_doc::WidthProfile`] by
@@ -399,7 +487,7 @@ mod tests {
     use super::*;
     use glam::Vec2;
     use ph2d_vector_doc::{
-        FillSolid, Region, Segment, StrokeStyle, StyleTable, Vertex, WindingRule,
+        FillSolid, ProceduralFill, Region, Segment, StrokeStyle, StyleTable, Vertex, WindingRule,
     };
     use vello::Scene;
     use vello::kurbo::Shape;
@@ -485,6 +573,46 @@ mod tests {
         let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
         // Fill drawn; the 3 region segments carry no `style_ref` (Pen),
         // so the stroke pass skips them — still 1.
+        assert_eq!(drawn, 1);
+    }
+
+    #[test]
+    fn procedural_fill_falls_back_to_solid_without_an_image() {
+        // A region whose fill resolves to a procedural fill (ADR-0056-amendment-3)
+        // but no image is supplied → fallback solid is drawn (graceful degrade).
+        let net = make_triangle_network(); // region.fill = Some(0)
+        let mut styles = StyleTable::default();
+        let pref = styles.insert_procedural(ProceduralFill::diffusion(
+            7,
+            OklchColor::opaque(0.6, 0.1, 200.0),
+        ));
+        assert_eq!(
+            pref, 0,
+            "shares the FillRef namespace; region.fill = Some(0)"
+        );
+        let mut scene = Scene::new();
+        let drawn = draw_vector_network(&mut scene, &net, &styles, Affine::IDENTITY);
+        assert_eq!(drawn, 1);
+    }
+
+    #[test]
+    fn procedural_fill_renders_image_when_resolver_supplies_one() {
+        let net = make_triangle_network();
+        let mut styles = StyleTable::default();
+        styles.insert_procedural(ProceduralFill::shader_graph(
+            3,
+            OklchColor::opaque(0.5, 0.0, 0.0),
+        ));
+        let rgba = std::sync::Arc::new(vec![255u8; 2 * 2 * 4]);
+        let mut scene = Scene::new();
+        let drawn =
+            draw_vector_network_with_fills(&mut scene, &net, &styles, Affine::IDENTITY, |fr| {
+                (fr == 0).then(|| ProceduralFillImage {
+                    rgba: rgba.clone(),
+                    width: 2,
+                    height: 2,
+                })
+            });
         assert_eq!(drawn, 1);
     }
 

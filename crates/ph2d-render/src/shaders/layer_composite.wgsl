@@ -769,6 +769,13 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 // ── blur passes — separable (cs_blur_h/v) + directional (cs_blur_dir) ────────
+//
+// PREMULTIPLIED convolution: the FIRST blur pass premultiplies each tap (rgb*a)
+// on read (`premul_read != 0`), so transparent texels — which carry garbage RGB
+// under a=0 — contribute zero. Colour AND coverage (alpha) blur together →
+// soft feather into transparency, no colour leak (the combine un-premultiplies).
+// Later passes read already-premultiplied data (premul_read = 0). For an opaque
+// base (a=1 everywhere) premultiply is the identity, so this is a no-op there.
 struct BlurGlobals {
     width: u32,
     height: u32,
@@ -776,7 +783,7 @@ struct BlurGlobals {
     _pad0: u32,
     dir_x: f32, // motion direction (cs_blur_dir); ignored by cs_blur_h/v
     dir_y: f32,
-    _pad1: f32,
+    premul_read: f32, // 1 = premultiply each tap on read (first pass); 0 = already premul
     _pad2: f32,
 }
 @group(0) @binding(10) var<uniform> blur_g: BlurGlobals;
@@ -788,6 +795,15 @@ struct BlurGlobals {
 // canonical `apply_gaussian` once reconciled — the mechanism is what this proves).
 @group(0) @binding(13) var<storage, read> blur_weights: array<f32>;
 
+// Read a tap, premultiplying on the first pass (see the premul note above).
+fn load_blur_tap(p: vec2<i32>) -> vec4<f32> {
+    let t = textureLoad(blur_src, p, 0);
+    if blur_g.premul_read != 0.0 {
+        return vec4<f32>(t.rgb * t.a, t.a);
+    }
+    return t;
+}
+
 fn blur_core(gid: vec3<u32>, dir: vec2<i32>) {
     let x = gid.x;
     let y = gid.y;
@@ -797,13 +813,13 @@ fn blur_core(gid: vec3<u32>, dir: vec2<i32>) {
     let p = vec2<i32>(i32(x), i32(y));
     let lo = vec2<i32>(0, 0);
     let hi = vec2<i32>(i32(blur_g.width) - 1, i32(blur_g.height) - 1);
-    var acc = textureLoad(blur_src, p, 0) * blur_weights[0];
+    var acc = load_blur_tap(p) * blur_weights[0];
     for (var i: u32 = 1u; i <= blur_g.half; i = i + 1u) {
         let off = dir * i32(i);
         let pa = clamp(p + off, lo, hi);
         let pb = clamp(p - off, lo, hi);
         let w = blur_weights[i];
-        acc = acc + (textureLoad(blur_src, pa, 0) + textureLoad(blur_src, pb, 0)) * w;
+        acc = acc + (load_blur_tap(pa) + load_blur_tap(pb)) * w;
     }
     textureStore(blur_dst, p, acc);
 }
@@ -833,7 +849,7 @@ fn cs_blur_dir(@builtin(global_invocation_id) gid: vec3<u32>) {
     let lo = vec2<i32>(0, 0);
     let hi = vec2<i32>(i32(blur_g.width) - 1, i32(blur_g.height) - 1);
     let half_off = vec2<f32>(0.5, 0.5);
-    var acc = textureLoad(blur_src, vec2<i32>(p), 0) * blur_weights[0];
+    var acc = load_blur_tap(vec2<i32>(p)) * blur_weights[0];
     for (var i: u32 = 1u; i <= blur_g.half; i = i + 1u) {
         let off = dir * f32(i);
         // floor(x + 0.5) = round-half-up — bit-identical to the Rust reference
@@ -842,7 +858,7 @@ fn cs_blur_dir(@builtin(global_invocation_id) gid: vec3<u32>) {
         let pa = clamp(vec2<i32>(floor(p + off + half_off)), lo, hi);
         let pb = clamp(vec2<i32>(floor(p - off + half_off)), lo, hi);
         let w = blur_weights[i];
-        acc = acc + (textureLoad(blur_src, pa, 0) + textureLoad(blur_src, pb, 0)) * w;
+        acc = acc + (load_blur_tap(pa) + load_blur_tap(pb)) * w;
     }
     textureStore(blur_dst, vec2<i32>(p), acc);
 }
@@ -863,14 +879,26 @@ struct CombineGlobals {
 @group(0) @binding(16) var comb_blurred: texture_2d<f32>;
 @group(0) @binding(17) var comb_dst: texture_storage_2d<rgba32float, write>;
 
-// Spatial mirror of apply_adjustment_op: derive the "adjusted" RGB from the base
-// + the kernel's blurred copy, blend it over the base in the adjustment's mode,
-// lerp by opacity, preserve coverage (base.a).
-//   - GAUSSIAN: adjusted = blurred.rgb.
-//   - SHARPEN:  adjusted = base + amount·(base − blurred)  (unsharp mask), the
-//     blur passes produce `blur(src)` and this recovers the high-frequency boost.
-// Alpha/premultiply handling is a kernel-semantics refinement owned by the impl's
-// canonical apply_gaussian/apply_sharpen.
+// Un-premultiply a premultiplied texel → straight RGBA (with its feathered alpha).
+fn unpremultiply(c: vec4<f32>) -> vec4<f32> {
+    if c.a > F32_EPSILON {
+        return vec4<f32>(c.rgb / c.a, c.a);
+    }
+    return vec4<f32>(0.0, 0.0, 0.0, c.a);
+}
+
+// Spatial mirror of apply_adjustment_op, PREMULTIPLY-aware (the kernel ran in
+// premultiplied space). The blurred input is premultiplied; un-premultiply it to
+// recover straight RGBA with the kernel's FEATHERED alpha (soft coverage into
+// transparency). Then:
+//   - GAUSSIAN/MOTION/CHROMA: adjusted = blurred (the kernel result).
+//   - SHARPEN: adjusted = base + amount·(base − blurred) (unsharp, 4 channels).
+//   - result = (Normal) ? adjusted : blend(base, adjusted) — Normal REPLACES the
+//     base so the feathered edge fades to transparent (not composited over it).
+//   - out = lerp(base, result, opacity) on ALL 4 channels (coverage is feathered).
+// A neutral kernel (radius 0) ⇒ blurred == base ⇒ exact identity. For an opaque
+// base, premultiply is the identity and this reduces to the old preserve-base-alpha
+// behaviour, so the opaque-base parity gates are unchanged.
 @compute @workgroup_size(8, 8, 1)
 fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = gid.x;
@@ -879,21 +907,22 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let acc = textureLoad(comb_base, p, 0);
-    let blurred = textureLoad(comb_blurred, p, 0);
-    var adj_rgb = blurred.rgb;
-    if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask
-        adj_rgb = clamp(
-            acc.rgb + comb_g.amount * (acc.rgb - blurred.rgb),
-            vec3<f32>(0.0),
-            vec3<f32>(1.0),
+    let acc = textureLoad(comb_base, p, 0); // straight base (materialise output)
+    let blurred = unpremultiply(textureLoad(comb_blurred, p, 0));
+    var adj = blurred;
+    if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask (4 channels)
+        adj = clamp(
+            acc + comb_g.amount * (acc - blurred),
+            vec4<f32>(0.0),
+            vec4<f32>(1.0),
         );
     }
-    let src_px = vec4<f32>(adj_rgb, acc.a);
-    let blended = apply_blend(comb_g.blend_mode, acc, src_px);
+    var result = adj;
+    if comb_g.blend_mode != 0u { // not Normal → blend the adjusted over the base
+        result = apply_blend(comb_g.blend_mode, acc, adj);
+    }
     let t = clamp(comb_g.opacity, 0.0, 1.0);
-    let out = vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);
-    textureStore(comb_dst, p, out);
+    textureStore(comb_dst, p, mix(acc, result, t));
 }
 
 // ── cs_encode — final linear intermediate → straight sRGB8 (cropped) ─────────
@@ -957,9 +986,13 @@ fn cs_chroma(@builtin(global_invocation_id) gid: vec3<u32>) {
     let sr = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_r + half_off)), lo, hi);
     let sg = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_g + half_off)), lo, hi);
     let sb = clamp(vec2<i32>(floor(local_f - dir * chroma_g.scale_b + half_off)), lo, hi);
-    let r = textureLoad(chroma_src, sr, 0).r;
-    let g = textureLoad(chroma_src, sg, 0).g;
-    let b = textureLoad(chroma_src, sb, 0).b;
+    // PREMULTIPLIED gather: each shifted channel is weighted by ITS texel's alpha,
+    // so a transparent shifted texel contributes zero colour (no blue speckle).
+    // Coverage (alpha) is sampled UNSHIFTED — the lens shifts colour, not coverage.
+    // Output is premultiplied (combine un-premultiplies); opaque base ⇒ identity.
+    let tr = textureLoad(chroma_src, sr, 0);
+    let tg = textureLoad(chroma_src, sg, 0);
+    let tb = textureLoad(chroma_src, sb, 0);
     let a = textureLoad(chroma_src, p, 0).a; // coverage from the unshifted centre
-    textureStore(chroma_dst, p, vec4<f32>(r, g, b, a));
+    textureStore(chroma_dst, p, vec4<f32>(tr.r * tr.a, tg.g * tg.a, tb.b * tb.a, a));
 }

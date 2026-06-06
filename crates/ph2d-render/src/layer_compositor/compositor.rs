@@ -1336,18 +1336,24 @@ impl LayerCompositor {
         else {
             return;
         };
-        let g = BlurGlobals {
-            width: work.w,
-            height: work.h,
-            half,
-            _pad0: 0,
-            dir_x: dir[0],
-            dir_y: dir[1],
-            _pad1: 0.0,
-            _pad2: 0.0,
+        // Write the blur uniforms with the pass's `premul_read`. Per-pass write
+        // (not once up front): the queue applies writes/submits in order, so the
+        // H/dir pass reads premul=1 (premultiply on tap) and V reads premul=0
+        // (source already premultiplied). See the WGSL premul note.
+        let write_globals = |premul_read: f32| {
+            let g = BlurGlobals {
+                width: work.w,
+                height: work.h,
+                half,
+                _pad0: 0,
+                dir_x: dir[0],
+                dir_y: dir[1],
+                premul_read,
+                _pad2: 0.0,
+            };
+            gpu.queue
+                .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&g));
         };
-        gpu.queue
-            .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&g));
         let blur_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
             gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("ph2d-render layer_composite blur bg"),
@@ -1374,7 +1380,8 @@ impl LayerCompositor {
         };
         if directional {
             // One 1-D pass straight into blur[1] (no separability for an
-            // arbitrary direction).
+            // arbitrary direction). Premultiplies on read.
+            write_globals(1.0);
             let bg = blur_bg(&work_tex.base[base_idx].view, &work_tex.blur[1].view);
             self.dispatch_pass(
                 gpu,
@@ -1386,6 +1393,7 @@ impl LayerCompositor {
             );
             return;
         }
+        write_globals(1.0); // H premultiplies the straight base on read
         let bg_h = blur_bg(&work_tex.base[base_idx].view, &work_tex.blur[0].view);
         self.dispatch_pass(
             gpu,
@@ -1395,6 +1403,7 @@ impl LayerCompositor {
             work.h,
             "ph2d-render layer_composite blur_h pass",
         );
+        write_globals(0.0); // V reads already-premultiplied data
         let bg_v = blur_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
         self.dispatch_pass(
             gpu,

@@ -422,7 +422,11 @@ struct BlurGlobals {
     _pad0: u32,
     dir_x: f32,
     dir_y: f32,
-    _pad1: f32,
+    /// `1.0` = premultiply each tap on read (the first blur pass), `0.0` = the
+    /// source is already premultiplied (later passes). Premultiplied convolution
+    /// feathers coverage into transparency instead of leaking garbage RGB from
+    /// transparent texels (identity for an opaque base).
+    premul_read: f32,
     _pad2: f32,
 }
 

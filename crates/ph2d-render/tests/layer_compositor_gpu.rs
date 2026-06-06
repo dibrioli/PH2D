@@ -1365,3 +1365,70 @@ fn gpu_chroma_matches_cpu_reference() {
         "chroma sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
     );
 }
+
+/// Premultiplied pass-graph: a GaussianBlur over a layer with TRANSPARENT
+/// background must FEATHER the coverage (soft alpha into transparency), not keep a
+/// hard silhouette edge. Base = opaque white square on a transparent field; after
+/// the blur, the square's edge has PARTIAL alpha (the old straight-RGBA path left
+/// it a hard 0/255 step — it preserved base.a — so this test only passes with the
+/// premultiplied fix). Centre stays opaque; far transparency stays clear.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_gaussian_feathers_coverage_into_transparency() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    // Opaque white square [20,44)², transparent (a=0) elsewhere.
+    let mut base = vec![0u8; (w * h * 4) as usize];
+    for y in 20..44u32 {
+        for x in 20..44u32 {
+            let i = ((y * w + x) * 4) as usize;
+            base[i] = 255;
+            base[i + 1] = 255;
+            base[i + 2] = 255;
+            base[i + 3] = 255;
+        }
+    }
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, base);
+    let ops = vec![
+        LayerOp::Layer {
+            key: 0,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_GAUSSIAN,
+            params: [4.0, 0.0, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("composite");
+    let out = comp.read_output(&gpu).expect("readback");
+    let alpha = |x: u32, y: u32| out[((y * w + x) * 4 + 3) as usize];
+
+    // Centre stays fully opaque (every blur tap is inside the square).
+    assert!(
+        alpha(32, 32) >= 250,
+        "centre alpha {} not opaque",
+        alpha(32, 32)
+    );
+    // 1 px OUTSIDE the left edge: the coverage feathered out → partial alpha.
+    // (Straight RGBA would leave this 0 — a hard edge.)
+    let edge = alpha(19, 32);
+    assert!(
+        edge > 15 && edge < 240,
+        "edge alpha {edge} should be feathered (not a hard 0/255 step)"
+    );
+    // Far into transparency: stays clear.
+    assert!(
+        alpha(2, 32) <= 8,
+        "far alpha {} should stay clear",
+        alpha(2, 32)
+    );
+}

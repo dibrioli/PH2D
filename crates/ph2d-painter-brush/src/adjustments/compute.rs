@@ -1177,8 +1177,84 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             ("Out Lo", p.output_black.clamp(0.0, 1.0)),
             ("Out Hi", p.output_white.clamp(0.0, 1.0)),
         ],
+        // W4 spatial mesh — the GPU pass-graph kinds. Radius/Distance 0..SPATIAL_PX,
+        // Angle a full turn, Sharpen amount 0..2 (unsharp coef). Ranges are the
+        // inverse of `set_adjustment_slider_param`.
+        AdjustmentParams::GaussianBlur(p) => {
+            vec![("Radius", (p.radius / SPATIAL_PX_MAX).clamp(0.0, 1.0))]
+        }
+        AdjustmentParams::MotionBlur(p) => vec![
+            ("Distance", (p.distance / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            ("Angle", angle_to_slider(p.angle)),
+        ],
+        AdjustmentParams::Sharpen(p) => vec![
+            ("Amount", (p.amount / SHARPEN_AMOUNT_MAX).clamp(0.0, 1.0)),
+            ("Radius", (p.radius / SHARPEN_RADIUS_MAX).clamp(0.0, 1.0)),
+        ],
+        // Chromatic Aberration: 3 bipolar per-channel shifts (centered; 0.5 =
+        // none). `falloff_center` is RESERVED (no slider — linear-radial model).
+        AdjustmentParams::ChromaticAberration(p) => vec![
+            ("Red", shift_to_slider(p.red_shift)),
+            ("Green", shift_to_slider(p.green_shift)),
+            ("Blue", shift_to_slider(p.blue_shift)),
+        ],
+        // Noise amount 0..1; the distribution (`kind`) is a segment + `mono` a
+        // toggle (see the respective accessors).
+        AdjustmentParams::Noise(p) => vec![("Amount", p.amount.clamp(0.0, 1.0))],
+        // Halftone dot size 1..HALFTONE_DOT_MAX px + screen angle; the cell shape
+        // is a segment.
+        AdjustmentParams::Halftone(p) => vec![
+            (
+                "Dot Size",
+                ((p.dot_size - 1.0) / (HALFTONE_DOT_MAX - 1.0)).clamp(0.0, 1.0),
+            ),
+            ("Angle", angle_to_slider(p.angle)),
+        ],
         _ => Vec::new(),
     }
+}
+
+// ── W4 spatial/coordinate slider ranges (UI ↔ param mapping, single source) ──
+//
+// The panel slider thumb is a normalized `0..1`; these constants are the physical
+// extents `adjustment_slider_params` / `set_adjustment_slider_param` map to/from.
+
+/// Max blur radius / motion distance exposed on the slider (px). The kernel cap
+/// (`MAX_BLUR_HALF = 256`) is far past any interactive use; 100 px is a generous
+/// editable range with a usable thumb resolution.
+const SPATIAL_PX_MAX: f32 = 100.0;
+/// Max unsharp-mask amount (the `base + amount·(base−blur)` coefficient).
+const SHARPEN_AMOUNT_MAX: f32 = 2.0;
+/// Max sharpen blur radius (px) — sharpening uses a small support.
+const SHARPEN_RADIUS_MAX: f32 = 20.0;
+/// Half-range of a chromatic-aberration per-channel shift (px at the canvas
+/// corner); the slider is bipolar `−MAX..+MAX` (0.5 = no shift).
+const CHROMA_SHIFT_MAX: f32 = 10.0;
+/// Max halftone cell size (px); the minimum is 1 px (a single-pixel screen).
+const HALFTONE_DOT_MAX: f32 = 32.0;
+
+/// Radians angle → `0..1` slider (one full turn).
+#[inline]
+fn angle_to_slider(angle: f32) -> f32 {
+    angle.rem_euclid(std::f32::consts::TAU) / std::f32::consts::TAU
+}
+
+/// `0..1` slider → radians (inverse of [`angle_to_slider`]).
+#[inline]
+fn slider_to_angle(v: f32) -> f32 {
+    v * std::f32::consts::TAU
+}
+
+/// Bipolar px shift `−MAX..+MAX` → `0..1` slider (0.5 = no shift).
+#[inline]
+fn shift_to_slider(shift: f32) -> f32 {
+    ((shift / CHROMA_SHIFT_MAX).clamp(-1.0, 1.0) + 1.0) * 0.5
+}
+
+/// `0..1` slider → bipolar px shift (inverse of [`shift_to_slider`]).
+#[inline]
+fn slider_to_shift(v: f32) -> f32 {
+    (v * 2.0 - 1.0) * CHROMA_SHIFT_MAX
 }
 
 /// Set slider `slot` of an adjustment from a normalized `0..1` value (inverse of
@@ -1252,6 +1328,30 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
             4 => p.output_white = v,
             _ => {}
         },
+        // W4 spatial mesh — inverse of `adjustment_slider_params`.
+        AdjustmentParams::GaussianBlur(p) if slot == 0 => p.radius = v * SPATIAL_PX_MAX,
+        AdjustmentParams::MotionBlur(p) => match slot {
+            0 => p.distance = v * SPATIAL_PX_MAX,
+            1 => p.angle = slider_to_angle(v),
+            _ => {}
+        },
+        AdjustmentParams::Sharpen(p) => match slot {
+            0 => p.amount = v * SHARPEN_AMOUNT_MAX,
+            1 => p.radius = v * SHARPEN_RADIUS_MAX,
+            _ => {}
+        },
+        AdjustmentParams::ChromaticAberration(p) => match slot {
+            0 => p.red_shift = slider_to_shift(v),
+            1 => p.green_shift = slider_to_shift(v),
+            2 => p.blue_shift = slider_to_shift(v),
+            _ => {}
+        },
+        AdjustmentParams::Noise(p) if slot == 0 => p.amount = v,
+        AdjustmentParams::Halftone(p) => match slot {
+            0 => p.dot_size = 1.0 + v * (HALFTONE_DOT_MAX - 1.0),
+            1 => p.angle = slider_to_angle(v),
+            _ => {}
+        },
         // Gradient Map has a bespoke editor (its stop colors go through
         // `set_gradient_stop_color_param`), so no generic slider slot here.
         // Curves has no generic sliders — its bespoke editor drives free 2-D point
@@ -1272,6 +1372,10 @@ pub fn adjustment_toggle_params(params: &AdjustmentParams) -> Vec<(&'static str,
         AdjustmentParams::ColorBalance(p) => vec![("Preserve Lum.", p.preserve_luminosity)],
         AdjustmentParams::ChannelMixer(p) => vec![("Monochrome", p.monochromatic)],
         AdjustmentParams::BlackAndWhite(p) => vec![("Tint", p.tint_color.is_some())],
+        // Noise: monochrome = one luma grain vs independent per-channel. (Sharpen's
+        // `mask_edges` is intentionally NOT exposed yet — its gate is a deferred
+        // joint CPU+GPU follow-up, so a toggle here would be a no-op affordance.)
+        AdjustmentParams::Noise(p) => vec![("Monochrome", p.monochromatic)],
         _ => Vec::new(),
     }
 }
@@ -1283,6 +1387,7 @@ pub fn set_adjustment_toggle_param(params: &mut AdjustmentParams, slot: usize, o
         AdjustmentParams::PhotoFilter(p) if slot == 0 => p.preserve_luminosity = on,
         AdjustmentParams::ColorBalance(p) if slot == 0 => p.preserve_luminosity = on,
         AdjustmentParams::ChannelMixer(p) if slot == 0 => p.monochromatic = on,
+        AdjustmentParams::Noise(p) if slot == 0 => p.monochromatic = on,
         // Black & White Tint: enabling seeds a classic warm sepia + a visible
         // amount (so the toggle has an immediate effect); the Hue/Tint sliders
         // then refine it. Disabling drops the tint back to a plain grayscale.
@@ -1330,6 +1435,22 @@ pub fn adjustment_segment_params(params: &AdjustmentParams) -> Option<(Vec<&'sta
                 SelectiveMethod::Absolute => 1,
             },
         )),
+        // W4 — Noise distribution + Halftone cell shape.
+        AdjustmentParams::Noise(p) => Some((
+            vec!["Gaussian", "Uniform"],
+            match p.kind {
+                NoiseKind::Gaussian => 0,
+                NoiseKind::Uniform => 1,
+            },
+        )),
+        AdjustmentParams::Halftone(p) => Some((
+            vec!["Dot", "Line", "Circle"],
+            match p.shape {
+                HalftoneShape::Dot => 0,
+                HalftoneShape::Line => 1,
+                HalftoneShape::Circle => 2,
+            },
+        )),
         _ => None,
     }
 }
@@ -1358,6 +1479,20 @@ pub fn set_adjustment_segment_param(params: &mut AdjustmentParams, option: usize
                 SelectiveMethod::Absolute
             } else {
                 SelectiveMethod::Relative
+            };
+        }
+        AdjustmentParams::Noise(p) => {
+            p.kind = if option == 1 {
+                NoiseKind::Uniform
+            } else {
+                NoiseKind::Gaussian
+            };
+        }
+        AdjustmentParams::Halftone(p) => {
+            p.shape = match option {
+                1 => HalftoneShape::Line,
+                2 => HalftoneShape::Circle,
+                _ => HalftoneShape::Dot,
             };
         }
         _ => {}

@@ -1775,3 +1775,104 @@ fn windowed_dispatch_delegates_per_pixel_kinds() {
     apply_adjustment(&kind, &params, &mut b);
     assert_eq!(a, b, "windowed dispatch matches the flat path for per-pixel kinds");
 }
+
+// ── W4 spatial/coord kinds expose editable UI (the integration gap fix) ────────
+//
+// Without these, a GaussianBlur layer is dead-in-product: the "+ Adjustment" menu
+// can create it, but the panel renders no Radius slider, so the radius stays 0 (a
+// no-op blur). These assert each live-compute kind has a slider rack that
+// round-trips, plus the Noise/Halftone toggle & segment plumbing.
+
+#[test]
+fn spatial_kinds_each_expose_a_slider_rack() {
+    // Every W4 spatial/coord kind with LIVE compute must expose ≥1 generic slider
+    // (else it cannot be tuned from the panel — the bug Enio caught).
+    let expect = [
+        (AdjustmentKind::GaussianBlur, 1),
+        (AdjustmentKind::MotionBlur, 2),
+        (AdjustmentKind::Sharpen, 2),
+        (AdjustmentKind::ChromaticAberration, 3),
+        (AdjustmentKind::Noise, 1),
+        (AdjustmentKind::Halftone, 2),
+    ];
+    for (kind, n) in expect {
+        let params = AdjustmentParams::neutral_for(kind);
+        let sliders = adjustment_slider_params(&params);
+        assert_eq!(
+            sliders.len(),
+            n,
+            "{kind:?} must expose {n} slider(s), got {sliders:?}"
+        );
+    }
+}
+
+#[test]
+fn spatial_slider_round_trips_and_moves_the_param() {
+    // Set every slot to 0.75, read it back (round-trip), and confirm the radius/
+    // amount actually left its neutral 0 (so compute is reachable from the panel).
+    for kind in [
+        AdjustmentKind::GaussianBlur,
+        AdjustmentKind::MotionBlur,
+        AdjustmentKind::Sharpen,
+        AdjustmentKind::ChromaticAberration,
+        AdjustmentKind::Noise,
+        AdjustmentKind::Halftone,
+    ] {
+        let mut params = AdjustmentParams::neutral_for(kind);
+        let n = adjustment_slider_params(&params).len();
+        for slot in 0..n {
+            set_adjustment_slider_param(&mut params, slot, 0.75);
+        }
+        for (slot, got) in adjustment_slider_params(&params).iter().enumerate() {
+            assert!(
+                (got.1 - 0.75).abs() < 1e-6,
+                "{kind:?} slot {slot} round-trip: {} vs 0.75",
+                got.1
+            );
+        }
+    }
+    // GaussianBlur radius specifically: slot 0 = 0.5 → 50 px (mid of 0..100).
+    let mut g = AdjustmentParams::GaussianBlur(GaussianBlurParams::default());
+    set_adjustment_slider_param(&mut g, 0, 0.5);
+    let AdjustmentParams::GaussianBlur(gp) = &g else {
+        unreachable!()
+    };
+    assert!((gp.radius - 50.0).abs() < 1e-3, "radius 0.5 → 50px: {}", gp.radius);
+}
+
+#[test]
+fn chroma_slider_is_bipolar_centered() {
+    // 0.5 = no shift; 1.0 = +MAX; 0.0 = −MAX.
+    let mut c = AdjustmentParams::ChromaticAberration(ChromaticAberrationParams::default());
+    set_adjustment_slider_param(&mut c, 0, 0.5);
+    let AdjustmentParams::ChromaticAberration(cp) = &c else {
+        unreachable!()
+    };
+    assert!(cp.red_shift.abs() < 1e-4, "0.5 centers to no shift");
+    assert!(
+        (adjustment_slider_params(&c)[0].1 - 0.5).abs() < 1e-6,
+        "neutral reads back at 0.5"
+    );
+}
+
+#[test]
+fn noise_and_halftone_segments_and_toggle_round_trip() {
+    // Noise: distribution segment (Gaussian/Uniform) + monochrome toggle.
+    let mut noise = AdjustmentParams::Noise(NoiseParams::default());
+    let (opts, sel) = adjustment_segment_params(&noise).expect("Noise has a distribution segment");
+    assert_eq!(opts, vec!["Gaussian", "Uniform"]);
+    assert_eq!(sel, 0, "default distribution is Gaussian");
+    set_adjustment_segment_param(&mut noise, 1);
+    assert_eq!(adjustment_segment_params(&noise).unwrap().1, 1, "Uniform selected");
+    assert_eq!(adjustment_toggle_params(&noise), vec![("Monochrome", false)]);
+    set_adjustment_toggle_param(&mut noise, 0, true);
+    assert!(adjustment_toggle_params(&noise)[0].1, "monochrome toggled on");
+
+    // Halftone: cell-shape segment (Dot/Line/Circle).
+    let mut ht = AdjustmentParams::Halftone(HalftoneParams::default());
+    let (shapes, s0) = adjustment_segment_params(&ht).expect("Halftone has a shape segment");
+    assert_eq!(shapes, vec!["Dot", "Line", "Circle"]);
+    assert_eq!(s0, 0, "default shape is Dot");
+    set_adjustment_segment_param(&mut ht, 2);
+    assert_eq!(adjustment_segment_params(&ht).unwrap().1, 2, "Circle selected");
+}

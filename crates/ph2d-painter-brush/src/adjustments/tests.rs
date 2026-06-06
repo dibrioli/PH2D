@@ -1592,7 +1592,9 @@ fn gaussian_blur_of_a_flat_field_is_identity() {
     );
     for p in &acc {
         assert!((p[0] - 0.5).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5 && (p[2] - 0.75).abs() < 1e-5);
-        assert_eq!(p[3], 1.0, "alpha preserved");
+        // Alpha is blurred now (premultiplied), but a flat OPAQUE field's coverage
+        // stays ~1 (the kernel is normalised; interior pixels see all-opaque taps).
+        assert!((p[3] - 1.0).abs() < 1e-5, "interior coverage stays ~opaque: {}", p[3]);
     }
 }
 
@@ -1641,6 +1643,88 @@ fn motion_and_chroma_neutral_params_are_identity() {
         AdjustWindow::full(n, n),
     );
     assert_eq!(b, orig, "zero-shift chroma is a no-op");
+}
+
+#[test]
+fn gaussian_feathers_coverage_into_transparency() {
+    // An opaque dot on a fully-transparent field: after the blur, coverage (alpha)
+    // must SPREAD outward — a neighbour that was transparent now has alpha > 0
+    // (soft edge), not stay clipped to the original silhouette (Enio's report).
+    let n = 9;
+    let mut acc = flat_window(n, [0.0, 0.0, 0.0, 0.0]); // transparent
+    let centre = (4 * n + 4) as usize;
+    acc[centre] = [1.0, 1.0, 1.0, 1.0]; // one opaque white texel
+    apply_gaussian(
+        &GaussianBlurParams { radius: 2.0 },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    assert!(acc[centre][3] < 1.0, "centre coverage softened: {}", acc[centre][3]);
+    let neighbour = (4 * n + 5) as usize;
+    assert!(
+        acc[neighbour][3] > 0.0,
+        "coverage feathered into the transparent neighbour: {}",
+        acc[neighbour][3]
+    );
+}
+
+#[test]
+fn premultiplied_blur_ignores_transparent_texel_colour() {
+    // The speckle root cause: transparent texels carry arbitrary stale RGB. A
+    // straight-space blur/gather would spray that colour into visible pixels
+    // (Enio's blue dots). Premultiplied, a transparent texel is (0,0,0,0) → it
+    // contributes nothing. An opaque WHITE dot surrounded by transparent-BLUE
+    // garbage must NOT pick up any blue.
+    let n = 7;
+    let mut acc = flat_window(n, [0.0, 0.0, 1.0, 0.0]); // transparent, but RGB=blue
+    let centre = (3 * n + 3) as usize;
+    acc[centre] = [1.0, 1.0, 1.0, 1.0];
+    apply_gaussian(
+        &GaussianBlurParams { radius: 2.0 },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    // Wherever there is visible coverage, the colour is neutral (R≈G≈B) — no blue
+    // cast leaked in from the transparent texels.
+    for p in &acc {
+        if p[3] > 1e-3 {
+            assert!(
+                (p[2] - p[0]).abs() < 1e-3 && (p[2] - p[1]).abs() < 1e-3,
+                "visible pixel stayed neutral (no transparent-blue bleed): {p:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn chroma_does_not_speckle_transparent_regions() {
+    // ChromaticAberration over transparent-blue garbage: every output pixel that
+    // is (still) fully transparent must be EXACTLY transparent black — no stray
+    // colour speckle survives the premultiplied gather + unpremultiply.
+    let n = 8;
+    let mut acc = flat_window(n, [0.0, 0.0, 1.0, 0.0]); // transparent blue garbage
+    // a small opaque patch so the gather has SOMETHING to move
+    for &i in &[(3 * n + 3) as usize, (3 * n + 4) as usize, (4 * n + 3) as usize] {
+        acc[i] = [1.0, 0.2, 0.2, 1.0];
+    }
+    apply_chromatic_aberration(
+        &ChromaticAberrationParams {
+            red_shift: 4.0,
+            green_shift: 0.0,
+            blue_shift: -4.0,
+            falloff_center: 0.0,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    for p in &acc {
+        if p[3] <= 1e-4 {
+            assert_eq!(
+                *p, [0.0, 0.0, 0.0, 0.0],
+                "a transparent output pixel must be clean transparent black, not speckle"
+            );
+        }
+    }
 }
 
 #[test]

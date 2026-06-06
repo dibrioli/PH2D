@@ -303,6 +303,14 @@ fn composite_into(
                     };
                     Some((src.layer_rgba(LayerId(mid))?, m))
                 });
+                // A SPATIAL kind (Gaussian/Sharpen/Motion/Chroma) is a
+                // neighbourhood filter: it produces a NEW version of the
+                // below-composite with FEATHERED coverage (it ran premultiplied,
+                // so the alpha spread outward). Its combine must therefore adopt
+                // the adjusted alpha (a blur of a transparent layer softens its
+                // silhouette), unlike a per-pixel colour adjustment, which keeps
+                // the base coverage. Lock-step with the GPU pass-graph combine.
+                let is_spatial = adj.kind.gpu_spatial_code().is_some();
                 for ly in 0..rh {
                     for lx in 0..rw {
                         let i = (ly * rw + lx) as usize;
@@ -318,17 +326,37 @@ fn composite_into(
                             continue;
                         }
                         let base = acc[i];
-                        // Blend the adjusted color (carrying the base's coverage)
-                        // over the base in the adjustment's mode, then lerp by t
-                        // so opacity/mask scale the effect; coverage is kept.
-                        let src_px = [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
-                        let blended = apply_blend(adj_mode, base, src_px);
-                        acc[i] = [
-                            base[0] + (blended[0] - base[0]) * t,
-                            base[1] + (blended[1] - base[1]) * t,
-                            base[2] + (blended[2] - base[2]) * t,
-                            base[3],
-                        ];
+                        if is_spatial {
+                            // Replace (Normal) or blend the filtered RGBA over the
+                            // base, then lerp ALL 4 channels by t — so opacity/mask
+                            // scale the effect AND its new coverage. A neutral
+                            // (radius 0) kernel left `adjusted == base`, so this is
+                            // an exact identity.
+                            let result = if adj_mode == BlendMode::Normal {
+                                adjusted[i]
+                            } else {
+                                apply_blend(adj_mode, base, adjusted[i])
+                            };
+                            acc[i] = [
+                                base[0] + (result[0] - base[0]) * t,
+                                base[1] + (result[1] - base[1]) * t,
+                                base[2] + (result[2] - base[2]) * t,
+                                base[3] + (result[3] - base[3]) * t,
+                            ];
+                        } else {
+                            // Per-pixel colour adjustment: blend the adjusted color
+                            // (carrying the base's coverage) over the base, lerp by
+                            // t; coverage is KEPT (adjustments don't change alpha).
+                            let src_px =
+                                [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
+                            let blended = apply_blend(adj_mode, base, src_px);
+                            acc[i] = [
+                                base[0] + (blended[0] - base[0]) * t,
+                                base[1] + (blended[1] - base[1]) * t,
+                                base[2] + (blended[2] - base[2]) * t,
+                                base[3],
+                            ];
+                        }
                     }
                 }
                 // An adjustment is not a raster clip base — it breaks the chain.

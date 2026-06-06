@@ -5830,6 +5830,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vector-font"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-vector-doc",
+ "ph2d-vector-traits",
+ "skrifa 0.40.0",
+ "smallvec",
+]
+
+[[package]]
 name = "ph2d-vector-graph"
 version = "0.0.0"
 dependencies = [

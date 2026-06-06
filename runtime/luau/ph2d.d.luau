@@ -21,6 +21,14 @@ export type Ph2d = {
         get_component: (entity: number, component: string) -> { data: any },
         spawn_entity: () -> { entity: number },
     },
+    vector: {
+        clear_scene: (confirmation_token: string) -> { removed_count: number },
+        delete_path: (path_id: number, confirmation_token: string) -> { removed: boolean },
+        inspect: (path_id: number) -> { found: boolean, vertices: number?, segments: number?, regions: number?, bounds: { number }? },
+        modify: (path_id: number, blob: string) -> { replaced: boolean },
+        paint_shape: (blob: string) -> { path_id: number, vertices: number },
+        query: () -> { paths: { number } },
+    },
 }
 
 declare ph2d: Ph2d

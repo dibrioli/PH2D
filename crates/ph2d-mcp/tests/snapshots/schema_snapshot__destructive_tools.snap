@@ -3,3 +3,5 @@ source: crates/ph2d-mcp/tests/schema_snapshot.rs
 expression: sorted
 ---
 - scene.delete_entity
+- vector.clear_scene
+- vector.delete_path

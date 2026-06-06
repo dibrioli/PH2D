@@ -32,3 +32,21 @@ expression: tools
 - name: state_set
   description: "Write a per-entity lateral state field. Value must be POD (HR-16): number/string/bool/nil or nested table thereof."
   destructive: false
+- name: vector.clear_scene
+  description: Remove every vector path from the scene. Destructive — requires a confirmation_token (HR-11). Returns the number of paths removed.
+  destructive: true
+- name: vector.delete_path
+  description: Delete one vector path. Destructive — requires a confirmation_token (HR-11).
+  destructive: true
+- name: vector.inspect
+  description: "Summarize one vector path: vertex / segment / region counts and axis-aligned bounds [min_x, min_y, max_x, max_y]. Returns found=false when the path id is unknown."
+  destructive: false
+- name: vector.modify
+  description: Replace the geometry of an existing path with a freshly-sanitized LLM4SVG blob. Returns replaced=false when the path id is unknown.
+  destructive: false
+- name: vector.paint_shape
+  description: "Author an editable vector path from an LLM4SVG semantic-token blob (e.g. spiral{turns}, polygon{sides}, star, ellipse, rect, path). The blob is sanitized (numeric bounds enforced before any geometry is allocated); returns the new path id and its vertex count."
+  destructive: false
+- name: vector.query
+  description: List the ids of all vector paths currently in the scene (ascending).
+  destructive: false

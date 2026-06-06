@@ -4932,6 +4932,8 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "insta",
+ "ph2d-vector-doc",
+ "ph2d-vector-llm",
  "serde",
  "serde_json",
 ]

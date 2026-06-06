@@ -22,7 +22,9 @@
 pub mod catalog;
 pub mod governance;
 pub mod host;
+pub mod vector;
 
+use ph2d_vector_llm::{LlmError, build_network_from_json};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -30,6 +32,7 @@ use std::collections::HashMap;
 pub use catalog::{CATALOG, ToolSpec};
 pub use governance::{ConfirmationStore, ConfirmationToken};
 pub use host::{McpHost, MemoryHost};
+pub use vector::{MemoryVectorScene, PathSummary, VectorSceneHost};
 
 /// JSON-RPC 2.0 request envelope.
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -150,47 +153,53 @@ impl Server {
         response
     }
 
-    fn dispatch_inner<H: McpHost>(&mut self, host: &mut H, req: &Request) -> Response {
+    /// Resolve the requested tool and enforce HR-11 (a `destructive` tool needs
+    /// a valid single-use `confirmation_token` unless `--unsafe-mcp`). Returns
+    /// `Some(error_response)` when the call must be rejected (unknown tool /
+    /// missing-or-invalid token) and `None` when dispatch may proceed. Shared by
+    /// [`dispatch`](Self::dispatch) (ECS) and
+    /// [`dispatch_vector`](Self::dispatch_vector).
+    fn precheck(&mut self, req: &Request) -> Option<Response> {
         let id = req.id.clone();
         let tool = match self.tools.get(&req.method) {
             Some(t) => t.clone(),
             None => {
-                return Response {
-                    jsonrpc: "2.0".into(),
+                return Some(err_response(
                     id,
-                    result: None,
-                    error: Some(RpcError::new(
+                    RpcError::new(
                         RpcError::METHOD_NOT_FOUND,
                         format!("unknown tool: {}", req.method),
-                    )),
-                };
+                    ),
+                ));
             }
         };
-
         if tool.destructive && !self.unsafe_mcp {
-            // Validate confirmation_token in params.
+            // Validate confirmation_token in params (single-use, consumed here).
             let token = req
                 .params
                 .get("confirmation_token")
                 .and_then(|v| v.as_str());
-            let ok = match token {
-                Some(t) => self.confirmations.consume(t),
-                None => false,
-            };
+            let ok = matches!(token, Some(t) if self.confirmations.consume(t));
             if !ok {
-                return Response {
-                    jsonrpc: "2.0".into(),
+                return Some(err_response(
                     id,
-                    result: None,
-                    error: Some(RpcError::new(
+                    RpcError::new(
                         RpcError::DESTRUCTIVE_REQUIRES_TOKEN,
                         format!(
                             "tool {} is destructive (HR-11); valid confirmation_token required",
                             req.method
                         ),
-                    )),
-                };
+                    ),
+                ));
             }
+        }
+        None
+    }
+
+    fn dispatch_inner<H: McpHost>(&mut self, host: &mut H, req: &Request) -> Response {
+        let id = req.id.clone();
+        if let Some(resp) = self.precheck(req) {
+            return resp;
         }
 
         let result: Result<Value, RpcError> = match req.method.as_str() {
@@ -258,18 +267,78 @@ impl Server {
         };
 
         match result {
-            Ok(value) => Response {
-                jsonrpc: "2.0".into(),
-                id,
-                result: Some(value),
-                error: None,
-            },
-            Err(err) => Response {
-                jsonrpc: "2.0".into(),
-                id,
-                result: None,
-                error: Some(err),
-            },
+            Ok(value) => ok_response(id, value),
+            Err(err) => err_response(id, err),
+        }
+    }
+
+    /// Dispatch a vector-authoring (`vector.*`) request against a
+    /// [`VectorSceneHost`]. The LLM4SVG blob is run through
+    /// [`build_network_from_json`] — the bounds-before-allocation sanitizer —
+    /// **here, at the trust boundary**, so a host never sees an unsanitized
+    /// blob (ADR-0061 §2.4). HR-11 + the audit log are shared with
+    /// [`dispatch`](Self::dispatch).
+    pub fn dispatch_vector<H: VectorSceneHost>(&mut self, host: &mut H, req: &Request) -> Response {
+        let response = self.dispatch_vector_inner(host, req);
+        if let Some(audit_entry) = self.audit_for(req, &response) {
+            self.audit.push(audit_entry);
+        }
+        response
+    }
+
+    fn dispatch_vector_inner<H: VectorSceneHost>(
+        &mut self,
+        host: &mut H,
+        req: &Request,
+    ) -> Response {
+        let id = req.id.clone();
+        if let Some(resp) = self.precheck(req) {
+            return resp;
+        }
+
+        let result: Result<Value, RpcError> = match req.method.as_str() {
+            "vector.paint_shape" => (|| {
+                let blob = str_param(req, "blob")?;
+                let net = build_network_from_json(blob).map_err(llm_invalid_params)?;
+                let vertices = net.vertices.len();
+                let path_id = host.add_path(net);
+                Ok(serde_json::json!({ "path_id": path_id, "vertices": vertices }))
+            })(),
+            "vector.modify" => (|| {
+                let path_id = u64_param(req, "path_id")?;
+                let blob = str_param(req, "blob")?;
+                let net = build_network_from_json(blob).map_err(llm_invalid_params)?;
+                let replaced = host.replace_path(path_id, net);
+                Ok(serde_json::json!({ "replaced": replaced }))
+            })(),
+            "vector.query" => Ok(serde_json::json!({ "paths": host.list_paths() })),
+            "vector.inspect" => (|| {
+                let path_id = u64_param(req, "path_id")?;
+                Ok(match host.inspect_path(path_id) {
+                    Some(s) => serde_json::json!({
+                        "found": true,
+                        "vertices": s.vertices,
+                        "segments": s.segments,
+                        "regions": s.regions,
+                        "bounds": s.bounds,
+                    }),
+                    None => serde_json::json!({ "found": false }),
+                })
+            })(),
+            "vector.delete_path" => (|| {
+                let path_id = u64_param(req, "path_id")?;
+                Ok(serde_json::json!({ "removed": host.delete_path(path_id) }))
+            })(),
+            "vector.clear_scene" => Ok(serde_json::json!({ "removed_count": host.clear_scene() })),
+            other => Err(RpcError::new(
+                RpcError::METHOD_NOT_FOUND,
+                format!("not a vector tool: {other}"),
+            )),
+        };
+
+        match result {
+            Ok(value) => ok_response(id, value),
+            Err(err) => err_response(id, err),
         }
     }
 
@@ -304,6 +373,49 @@ fn now_ns() -> u128 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0)
+}
+
+// ── response + param helpers (shared by both dispatch paths) ────────────────
+
+fn ok_response(id: Option<Value>, value: Value) -> Response {
+    Response {
+        jsonrpc: "2.0".into(),
+        id,
+        result: Some(value),
+        error: None,
+    }
+}
+
+fn err_response(id: Option<Value>, err: RpcError) -> Response {
+    Response {
+        jsonrpc: "2.0".into(),
+        id,
+        result: None,
+        error: Some(err),
+    }
+}
+
+fn str_param<'a>(req: &'a Request, key: &str) -> Result<&'a str, RpcError> {
+    req.params
+        .get(key)
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| RpcError::new(RpcError::INVALID_PARAMS, format!("missing {key}")))
+}
+
+fn u64_param(req: &Request, key: &str) -> Result<u64, RpcError> {
+    req.params
+        .get(key)
+        .and_then(|v| v.as_u64())
+        .ok_or_else(|| RpcError::new(RpcError::INVALID_PARAMS, format!("missing {key}")))
+}
+
+/// Map a sanitizer/parse failure to a JSON-RPC `INVALID_PARAMS` error — the
+/// blob was structurally or numerically out of bounds and no geometry was built.
+fn llm_invalid_params(e: LlmError) -> RpcError {
+    RpcError::new(
+        RpcError::INVALID_PARAMS,
+        format!("invalid LLM4SVG blob: {e}"),
+    )
 }
 
 #[cfg(test)]

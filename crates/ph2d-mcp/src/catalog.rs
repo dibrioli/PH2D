@@ -120,6 +120,61 @@ pub const CATALOG: &[ToolSpec] = &[
         output_schema_json: r#"{"type":"object","properties":{"keys":{"type":"array","items":{"type":"string"}}},"required":["keys"]}"#,
         luau_signature: "state_keys(entity: number): { string }",
     },
+    // ─── ADR-0061 P4: LLM4SVG vector authoring (Inovação #4) ─────────
+    // An external agent (Claude via MCP) *is* the LLM here: it emits an
+    // LLM4SVG semantic-token blob and calls these. The server runs every
+    // blob through `ph2d_vector_llm::build_network_from_json` (the
+    // bounds-before-alloc sanitizer) so only validated geometry ever
+    // reaches the scene host — the trust boundary is the dispatch layer,
+    // not the host. `delete_path` / `clear_scene` are HR-11 destructive.
+    ToolSpec {
+        name: "vector.paint_shape",
+        description: "Author an editable vector path from an LLM4SVG semantic-token blob (e.g. spiral{turns}, polygon{sides}, star, ellipse, rect, path). The blob is sanitized (numeric bounds enforced before any geometry is allocated); returns the new path id and its vertex count.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"blob":{"type":"string"}},"required":["blob"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"path_id":{"type":"integer"},"vertices":{"type":"integer"}},"required":["path_id","vertices"]}"#,
+        luau_signature: "paint_shape(blob: string): { path_id: number, vertices: number }",
+    },
+    ToolSpec {
+        name: "vector.modify",
+        description: "Replace the geometry of an existing path with a freshly-sanitized LLM4SVG blob. Returns replaced=false when the path id is unknown.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"path_id":{"type":"integer"},"blob":{"type":"string"}},"required":["path_id","blob"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"replaced":{"type":"boolean"}},"required":["replaced"]}"#,
+        luau_signature: "modify(path_id: number, blob: string): { replaced: boolean }",
+    },
+    ToolSpec {
+        name: "vector.query",
+        description: "List the ids of all vector paths currently in the scene (ascending).",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{}}"#,
+        output_schema_json: r#"{"type":"object","properties":{"paths":{"type":"array","items":{"type":"integer"}}},"required":["paths"]}"#,
+        luau_signature: "query(): { paths: { number } }",
+    },
+    ToolSpec {
+        name: "vector.inspect",
+        description: "Summarize one vector path: vertex / segment / region counts and axis-aligned bounds [min_x, min_y, max_x, max_y]. Returns found=false when the path id is unknown.",
+        destructive: false,
+        input_schema_json: r#"{"type":"object","properties":{"path_id":{"type":"integer"}},"required":["path_id"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"found":{"type":"boolean"},"vertices":{"type":"integer"},"segments":{"type":"integer"},"regions":{"type":"integer"},"bounds":{"type":"array","items":{"type":"number"}}},"required":["found"]}"#,
+        luau_signature: "inspect(path_id: number): { found: boolean, vertices: number?, segments: number?, regions: number?, bounds: { number }? }",
+    },
+    ToolSpec {
+        name: "vector.delete_path",
+        description: "Delete one vector path. Destructive — requires a confirmation_token (HR-11).",
+        destructive: true,
+        input_schema_json: r#"{"type":"object","properties":{"path_id":{"type":"integer"},"confirmation_token":{"type":"string"}},"required":["path_id","confirmation_token"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"removed":{"type":"boolean"}},"required":["removed"]}"#,
+        luau_signature: "delete_path(path_id: number, confirmation_token: string): { removed: boolean }",
+    },
+    ToolSpec {
+        name: "vector.clear_scene",
+        description: "Remove every vector path from the scene. Destructive — requires a confirmation_token (HR-11). Returns the number of paths removed.",
+        destructive: true,
+        input_schema_json: r#"{"type":"object","properties":{"confirmation_token":{"type":"string"}},"required":["confirmation_token"]}"#,
+        output_schema_json: r#"{"type":"object","properties":{"removed_count":{"type":"integer"}},"required":["removed_count"]}"#,
+        luau_signature: "clear_scene(confirmation_token: string): { removed_count: number }",
+    },
 ];
 
 #[cfg(test)]
@@ -129,10 +184,12 @@ mod tests {
     #[test]
     fn catalog_has_expected_tool_count() {
         // 5 base (M9, c6-prompts.md gate) + 5 M14.2 additions
-        // (script.attach + scene.find_by_name + state.get/set/keys).
+        // (script.attach + scene.find_by_name + state.get/set/keys)
+        // + 6 ADR-0061 P4 vector.* tools (paint_shape / modify / query /
+        // inspect / delete_path / clear_scene).
         // Adjust this number deliberately when adding tools so PRs
         // surface API surface changes for review (HR-10 parity).
-        assert_eq!(CATALOG.len(), 10);
+        assert_eq!(CATALOG.len(), 16);
     }
 
     #[test]

@@ -282,6 +282,10 @@ pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.re
 pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
 /// Pigment toggle (W5) — flips the active brush Linear ↔ Subtractive (pigment).
 pub const PAINTER_SIDEBAR_PIGMENT_TOGGLE: NodeId = hash_node_id("painter_sidebar.pigment_toggle");
+/// Accumulate toggle (W5) — flips the active brush wash ↔ build-up (orthogonal
+/// to pigment).
+pub const PAINTER_SIDEBAR_ACCUMULATE_TOGGLE: NodeId =
+    hash_node_id("painter_sidebar.accumulate_toggle");
 /// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
 pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");

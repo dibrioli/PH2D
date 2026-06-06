@@ -367,6 +367,7 @@ pub fn apply_stamps_wash(
     height: u32,
     stamps: &[Stamp],
     opacity_cap: f32,
+    pigment: bool,
     alpha_lock: bool,
 ) {
     let n = (width as usize) * (height as usize);
@@ -375,7 +376,9 @@ pub fn apply_stamps_wash(
     assert_eq!(coverage.len(), n, "coverage size must match width*height");
     let cap = opacity_cap.clamp(0.0, 1.0);
     for stamp in stamps {
-        apply_one_stamp_wash(canvas, backdrop, coverage, width, height, stamp, cap, alpha_lock);
+        apply_one_stamp_wash(
+            canvas, backdrop, coverage, width, height, stamp, cap, pigment, alpha_lock,
+        );
     }
 }
 
@@ -388,6 +391,7 @@ fn apply_one_stamp_wash(
     height: u32,
     stamp: &Stamp,
     opacity_cap: f32,
+    pigment: bool,
     alpha_lock: bool,
 ) {
     if !stamp.size_px.is_finite()
@@ -417,7 +421,8 @@ fn apply_one_stamp_wash(
     let shape_slot = stamp.shape_layer;
     // Pigment prepared once per stamp (constant across the footprint; varies
     // stamp-to-stamp only under hue jitter, which we honour by re-preparing).
-    let prep = crate::pigment_mix::prepare_pigment(rgb_clamped);
+    // `None` when the brush is in linear (non-pigment) wash mode.
+    let prep = pigment.then(|| crate::pigment_mix::prepare_pigment(rgb_clamped));
 
     let cos_r = stamp.rotation_rad.cos();
     let sin_r = -stamp.rotation_rad.sin();
@@ -486,9 +491,19 @@ fn apply_one_stamp_wash(
                 }
                 continue;
             }
-            // Subtractive mix: how much of the FINAL pigment is the new brush.
+            // How much of the FINAL colour is the new brush. Pigment → subtractive
+            // K-M mix; else a plain linear lerp toward the brush colour (still
+            // opacity-capped — that's the wash, independent of pigment).
             let t = (eff / out_a).clamp(0.0, 1.0);
-            let mixed = crate::pigment_mix::mix_prepared(&prep, [back[0], back[1], back[2]], t);
+            let mixed = if let Some(ref prep) = prep {
+                crate::pigment_mix::mix_prepared(prep, [back[0], back[1], back[2]], t)
+            } else {
+                [
+                    back[0] + (rgb_clamped[0] - back[0]) * t,
+                    back[1] + (rgb_clamped[1] - back[1]) * t,
+                    back[2] + (rgb_clamped[2] - back[2]) * t,
+                ]
+            };
             canvas[idx] = linear_to_srgb_byte(mixed[0].clamp(0.0, 1.0));
             canvas[idx + 1] = linear_to_srgb_byte(mixed[1].clamp(0.0, 1.0));
             canvas[idx + 2] = linear_to_srgb_byte(mixed[2].clamp(0.0, 1.0));

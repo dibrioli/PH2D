@@ -20,7 +20,9 @@
 use crate::ids;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
+use ph2d_editor_core::widget::{
+    ButtonState, CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+};
 use ph2d_tool_painter::{
     PainterUiSnapshot, opacity_chip_mapping, opacity01_to_pct, size_chip_mapping, size01_to_px,
 };
@@ -62,12 +64,23 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
-    // Pigment toggle (W5) — painted in `paint`, routed via `event::apply_event`
-    // → `ToolPanelEvent::Click` → `handle_panel_event` → `TogglePigment`.
+    // Pigment + Accumulate checkboxes (W5) — painted in `paint`, routed via
+    // `event::apply_event` (Toggled) → `ToolPanelEvent::Click` →
+    // `handle_panel_event` → Toggle{Pigment,Accumulate}. Initial values mirror the
+    // default brush (pigment ON / accumulate OFF); the Toggled→tool flip keeps the
+    // dispatcher value and the brush flag in sync thereafter.
     store.register(
         ids::PIGMENT_TOGGLE,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
+    store.register(
+        ids::ACCUMULATE_TOGGLE,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
         },
     );
 

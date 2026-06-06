@@ -81,9 +81,12 @@ impl Tool for PainterTool {
             {
                 self.toggle_dock();
             }
-            // ── Pigment toggle (W5) — flip Linear ↔ Subtractive pigment ────
+            // ── Pigment / Accumulate checkboxes (W5) ───────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE => {
                 self.apply_ui_edit(PainterUiEdit::TogglePigment);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE => {
+                self.apply_ui_edit(PainterUiEdit::ToggleAccumulate);
             }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {

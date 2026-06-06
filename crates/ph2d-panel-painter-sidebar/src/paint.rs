@@ -29,8 +29,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonState, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, SwatchSize,
+    paint_button, paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
@@ -113,6 +113,9 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     // Color row (top-most — Procreate "current color"). Helper keeps this
     // fn under the panel-fn LOC cap.
     y = paint_color_row(ctx, rect, y, &snapshot, theme, row_pad);
+
+    // Pigment + Accumulate checkboxes (W5) — two orthogonal brush-mixing toggles.
+    y = paint_pigment_row(ctx, rect, y, &snapshot, theme, row_pad);
 
     // Size slider — size_px display via display_override + SSOT map.
     // Adaptive layout (audit W-4): demotes the label to its own row when
@@ -265,14 +268,6 @@ fn paint_color_row(
         eye_w,
         ROW_H_PX,
     );
-    // Pigment toggle (W5) — square chip left of the eyedropper. Pressed = the
-    // active brush is in Subtractive (pigment) mode.
-    let pigment_rect = Rect::new(
-        eye_rect.x - Spacing::Sm.px() - eye_w,
-        color_rect.y,
-        eye_w,
-        ROW_H_PX,
-    );
     // Eyedropper armed visual: Pressed (AccentSoft chip) while a pick is
     // pending (the picker's `eyedropper_pending`, shared with the picker's
     // own eyedropper button — one mechanism), else the dispatcher-tracked
@@ -311,31 +306,72 @@ fn paint_color_row(
         .state(eye_state);
     paint_button(&eye, eye_rect, ctx.scene, ctx.text_system, theme);
 
-    // Pigment toggle: Pressed (AccentSoft) while the brush is in Subtractive
-    // (pigment) mode, else the dispatcher-tracked hover/press state.
-    let pigment_state = if snapshot.pigment_enabled {
-        ButtonState::Pressed
-    } else {
-        ctx.host
-            .store()
-            .button_state(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE)
-            .unwrap_or(ButtonState::Normal)
-    };
-    let pigment = Button::new(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, "Pigment")
-        .icon_only(IconId::Palette)
-        .state(pigment_state);
-    paint_button(&pigment, pigment_rect, ctx.scene, ctx.text_system, theme);
-
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, eye_rect);
-    hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pigment_rect);
     // The brush-color swatch opens the Blender picker on Down via the generic
     // `is_picker_swatch` dispatch (pointer.rs) — register it each paint
     // (idempotent). Replaces the former per-id `PAINTER_COLOR_THUMB` special-case.
     ctx.host
         .store_mut()
         .register_picker_swatch(core_ids::PAINTER_COLOR_THUMB);
+    y + ROW_H_PX + row_pad
+}
+
+/// Pigment + Accumulate checkboxes (W5) — two orthogonal mixing toggles, side by
+/// side. **Pigment** = subtractive Kubelka-Munk pigment vs Linear OKLab lerp.
+/// **Accumulate** = build-up (dabs stack unbounded) vs wash (opacity-capped). The
+/// checked state mirrors the brush model (snapshot); a click emits `Toggled`,
+/// routed to `handle_panel_event` → the matching brush-flag flip.
+fn paint_pigment_row(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    y: f32,
+    snapshot: &ph2d_tool_painter::PainterUiSnapshot,
+    theme: ph2d_tokens::Theme,
+    row_pad: f32,
+) -> f32 {
+    let row_x = rect.x + PANEL_HEAD_PAD;
+    let row_w = rect.w - PANEL_HEAD_PAD * 2.0;
+    let half = row_w * 0.5;
+    let pig_rect = Rect::new(row_x, y, half, ROW_H_PX);
+    let acc_rect = Rect::new(row_x + half, y, half, ROW_H_PX);
+
+    let pig_state = ctx
+        .host
+        .store()
+        .checkbox(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE)
+        .map(|(s, _)| s)
+        .unwrap_or(CheckboxState::Normal);
+    let pig_val = if snapshot.pigment_enabled {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    let pig = Checkbox::new(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, "Pigment")
+        .state(pig_state)
+        .value(pig_val);
+    paint_checkbox(&pig, pig_rect, ctx.scene, ctx.text_system, theme);
+
+    let acc_state = ctx
+        .host
+        .store()
+        .checkbox(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE)
+        .map(|(s, _)| s)
+        .unwrap_or(CheckboxState::Normal);
+    let acc_val = if snapshot.accumulate_enabled {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    let acc = Checkbox::new(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, "Accumulate")
+        .state(acc_state)
+        .value(acc_val);
+    paint_checkbox(&acc, acc_rect, ctx.scene, ctx.text_system, theme);
+
+    let hit_index = ctx.host.hit_index_mut();
+    hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pig_rect);
+    hit_index.register(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, acc_rect);
     y + ROW_H_PX + row_pad
 }
 

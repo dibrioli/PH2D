@@ -54,13 +54,14 @@ impl PainterTool {
         // alpha do color (STRAIGHT alpha → shader premultiplies). Per-
         // stamp opacity dynamics (taper) vem em W5+ Brush Studio.
         //
-        // **W5 Mixbox wash exception:** pigment strokes route through
-        // `apply_stamps_wash`, where opacity is the per-STROKE *cap* on
-        // coverage — NOT a per-dab multiply (that re-introduces the
-        // build-up-to-yellow bug). So for Mixbox we keep the colour alpha
-        // at the UI value and hand `params.opacity` to the wash path as the
-        // cap; coverage is a fresh zeroed per-pixel buffer over the source.
-        let wash = self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Subtractive;
+        // **W5 wash vs build-up (orthogonal to pigment).** When the brush is NOT
+        // in accumulate mode, strokes route through `apply_stamps_wash`, where
+        // opacity is the per-STROKE *cap* on coverage — NOT a per-dab multiply
+        // (that builds up unbounded). We keep the colour alpha at the UI value and
+        // hand `params.opacity` to the wash path as the cap; coverage is a fresh
+        // zeroed per-pixel buffer over the source. `accumulate=true` falls through
+        // to the normal per-dab build-up path (opacity baked into the alpha).
+        let wash = !self.brush.rendering.accumulate;
         if wash {
             self.wash_opacity_cap = self.params.opacity.clamp(0.0, 1.0);
             let (w, h) = self.source_size;
@@ -237,16 +238,20 @@ impl PainterTool {
             // coercing through `Arc<[u8]>::make_mut` (different impl).
             let (w, h) = self.source_size;
             let opacity_cap = self.wash_opacity_cap;
+            let pigment =
+                self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Subtractive;
             let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
-            // **W5 Mixbox wash path:** when a pigment stroke is active AND we have
-            // the pre-stroke backdrop snapshot, composite each dab against the
-            // backdrop with opacity-capped coverage (stable green). Otherwise the
-            // normal per-dab build-up path. The two fields are disjoint from
-            // `canvas_rgba`, so the borrow checker permits all three at once.
+            // **W5 wash path (accumulate OFF):** composite each dab against the
+            // pre-stroke backdrop with opacity-capped coverage — stable, no build-up.
+            // `pigment` selects subtractive K-M vs a plain linear lerp (orthogonal).
+            // `accumulate ON` clears `wash_coverage` at begin_stroke → falls to the
+            // per-dab build-up path. The fields are disjoint from `canvas_rgba`, so
+            // the borrow checker permits all three at once.
             match (self.wash_coverage.as_mut(), self.pending_pre_stroke.as_deref()) {
                 (Some(coverage), Some(backdrop)) if backdrop.len() == canvas_vec.len() => {
                     ph2d_painter_brush::apply_stamps_wash(
-                        canvas_vec, backdrop, coverage, w, h, stamps, opacity_cap, alpha_lock,
+                        canvas_vec, backdrop, coverage, w, h, stamps, opacity_cap, pigment,
+                        alpha_lock,
                     );
                 }
                 _ => {
@@ -530,6 +535,7 @@ impl PainterTool {
             active_layer_locked: false,
             pigment_enabled: self.brush.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,
+            accumulate_enabled: self.brush.rendering.accumulate,
         }
     }
 
@@ -639,6 +645,12 @@ impl PainterTool {
                     PigmentMode::Linear => PigmentMode::Subtractive,
                     _ => PigmentMode::Linear,
                 };
+                self.cached_brush_hash = None;
+            }
+            crate::params::PainterUiEdit::ToggleAccumulate => {
+                // Flip wash ↔ build-up (orthogonal to pigment). Takes effect at the
+                // next begin_stroke (which reads this to set up the wash buffer).
+                self.brush.rendering.accumulate = !self.brush.rendering.accumulate;
                 self.cached_brush_hash = None;
             }
             // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são

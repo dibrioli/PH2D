@@ -41,7 +41,15 @@ pub struct RenderingParams {
     /// `false` = wet_mix matemático (default); `true` = Shallow Water solver
     /// se device tier capable (`fluid_capable()` true).
     pub fluid_enabled: bool,
-    // 10 fields v1, 4 slots de headroom (cap 14).
+    /// **W5 — stroke accumulation (orthogonal to `pigment_mode`).** `false` =
+    /// *wash*: opacity caps the stroke's coverage (overlapping dabs within one
+    /// stroke build up to `opacity`, no further — a single firm pass is a stable
+    /// mix). `true` = *build-up*: dabs accumulate unbounded over the live canvas
+    /// (scrubbing drives the stroke toward the brush colour). Default `false`
+    /// (wash) — the conventional Photoshop-brush behaviour.
+    #[serde(default)]
+    pub accumulate: bool,
+    // 11 fields v1, 3 slots de headroom (cap 14).
 }
 
 impl Default for RenderingParams {
@@ -57,6 +65,7 @@ impl Default for RenderingParams {
             alpha_threshold: 0.0,
             stroke_blend_mode_index: 0, // Normal (layer blend mode index in spec §2.2)
             fluid_enabled: false,
+            accumulate: false, // wash (opacity-capped) by default
         }
     }
 }

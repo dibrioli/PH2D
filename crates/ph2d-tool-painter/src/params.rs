@@ -184,7 +184,10 @@ pub enum PainterUiEdit {
     // W5 pigment mixing — flip the active brush between Linear (OKLab lerp) and
     // Subtractive (Kubelka-Munk pigment). User-facing label: "Pigment".
     TogglePigment,
-    // === 7 slots de headroom (W9+W11+W14+residual) ===
+    // W5 stroke accumulation — flip wash (opacity-capped) ↔ build-up. Orthogonal
+    // to pigment. User-facing label: "Accumulate".
+    ToggleAccumulate,
+    // === 6 slots de headroom (W9+W11+W14+residual) ===
     // Reserved para waves futuras:
     //   SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32) — W9
     //   ToggleOnionSkin, SetAnimFps(f32) — W11
@@ -230,7 +233,9 @@ pub struct PainterUiSnapshot {
     pub active_layer_locked: bool,
     // W5 pigment toggle display state: true = Subtractive (pigment), false = Linear.
     pub pigment_enabled: bool,
-    // 16 fields v1 — 2 slots de headroom
+    // W5 accumulate toggle display state: true = build-up, false = wash (capped).
+    pub accumulate_enabled: bool,
+    // 17 fields v1 — 1 slot de headroom
 }
 
 impl PainterUiSnapshot {
@@ -284,6 +289,7 @@ impl Default for PainterUiSnapshot {
             // Mirror the default smoke brush (Subtractive) so the fallback
             // snapshot doesn't flicker the toggle off before the real push.
             pigment_enabled: true,
+            accumulate_enabled: false, // wash by default
         }
     }
 }

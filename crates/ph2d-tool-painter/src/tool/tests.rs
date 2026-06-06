@@ -512,6 +512,34 @@ fn toggle_pigment_flips_brush_mode_and_snapshot() {
 }
 
 #[test]
+fn toggle_accumulate_flips_brush_flag_and_snapshot() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default(); // accumulate OFF (wash) by default
+    assert!(!t.ui_snapshot().accumulate_enabled, "default wash (accumulate OFF)");
+    assert!(!t.active_brush().rendering.accumulate);
+    t.apply_ui_edit(crate::params::PainterUiEdit::ToggleAccumulate);
+    assert!(t.ui_snapshot().accumulate_enabled, "toggled to build-up");
+    assert!(t.active_brush().rendering.accumulate);
+    // via the sidebar checkbox route (Click on the accumulate id).
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE,
+    ));
+    assert!(!t.active_brush().rendering.accumulate, "back to wash");
+}
+
+#[test]
+fn pigment_and_accumulate_are_independent() {
+    // The two toggles are orthogonal — flipping one must not move the other.
+    let mut t = PainterTool::default(); // pigment ON, accumulate OFF
+    t.apply_ui_edit(crate::params::PainterUiEdit::ToggleAccumulate); // accumulate ON
+    assert!(t.ui_snapshot().pigment_enabled, "pigment untouched by accumulate toggle");
+    assert!(t.ui_snapshot().accumulate_enabled);
+    t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment); // pigment OFF
+    assert!(!t.ui_snapshot().pigment_enabled);
+    assert!(t.ui_snapshot().accumulate_enabled, "accumulate untouched by pigment toggle");
+}
+
+#[test]
 fn pigment_toggle_via_panel_event_click() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::PigmentMode;

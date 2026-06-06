@@ -32,6 +32,20 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (e) — Renderer embed do procedural-fill END-TO-END (Coord `1797097`+`9b9463c`)
+- **Slice 1 (`1797097`, `ph2d-vector`):** `draw_vector_network` resolve fills via `resolve_fill`
+  (procedural-first); `draw_vector_network_with_fills(..., fill_image)` pinta região procedural com
+  **image brush Vello clipado ao path** (W6/W7). Decoplado (`ProceduralFillImage` = RGBA cru; sem dep
+  em `ph2d-vector-fill`). Fallback sólido se sem imagem. 22 lib tests (+2 novos), clippy limpo.
+- **Slice 2 (`9b9463c`, shell bridge):** **SMOKE LIVE** — `PH2D_VECTOR_FILL_SMOKE=1` enche a geometria
+  cozida com o **mesh gradient de diffusion W7** (cena canônica solv multigrid → sRGB8 → image clipado).
+  Cacheado thread-local (espelho do `GPU_SDF`). Vello não tem hook de fragment → image-brush é o caminho
+  (igual o contour do SDF). **Comando:** `PH2D_VECTOR_GRAPH=1 PH2D_VECTOR_FILL_SMOKE=1 <run>` + abrir painel.
+- **Provado o chain inteiro:** contrato → `resolve_fill` → registry/solve → render na tela. GPU-resident
+  (W6 fill_main injection / W7 GPU WoS que o impl landou `898ee4a`) é o follow-up de perf.
+- **Impls em paralelo (sem colisão):** Vector W7 step 3 GPU WoS (`898ee4a`); Painter handoff premul
+  (`8d147bb` — débito do meu pass-graph espacial, não-urgente).
+
 ### ATUALIZAÇÃO 2026-06-05 (d) — Contrato Region→procedural-fill LANDADO (Coord `d598f78`, ADR-0056-amend-3)
 - **Foundational mine fechado:** `StyleTable` agora resolve um `FillRef` pra fill PROCEDURAL (W6 shader
   graph / W7 diffusion), não só sólido. Aditivo + desacoplado + version-safe: `ProceduralFill{kind,id,fallback}`

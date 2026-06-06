@@ -20,6 +20,20 @@ decisão do Enio, via Coordenador, 1× por jornada após `./scripts/ship.sh` ver
 **Modo de entrega (Enio):** **SEM push/CI até o fim de TODA a implementação** — commits
 locais acumulados, ship único no fechamento. Ship só quando o Enio mandar.
 
+### 🚀 SHIP 2026-06-06 — origin/main = `28160c0` (39 commits, CI 3-OS VERDE)
+[CI run 27049675955](https://github.com/dibrioli/PH2D/actions/runs/27049675955) **success**
+(3-OS ubuntu/macOS/windows + lint + MSRV 1.92 + replay-hash 3-OS + ECS/physics). **Shipado
+(3 agentes):** Coord — spatial GPU pass-graph (Gaussian/Sharpen/Motion/Chroma + **premul fix**
+feather/speckle) + contrato **Region→procedural-fill** (ADR-0056-amendment-3) + renderer embed
+(procedural fill como image-brush Vello) + **FieldStore/W6 FillGraph eval→render**. Painter impl —
+W4 spatial mesh wire + Noise/Halftone + premul CPU ref + ColorLookupLut + UI racks. Vector impl —
+W6 procedural-fill foundation + W7 diffusion (CPU multigrid steps 1/2 + GPU WoS step 3) + W8
+pattern-along-path (18º geometry node). **Ship-prep (Coord absorveu drift de `--no-verify`):**
+Cargo.lock do crate W8 + fmt(12) + clippy type_complexity ×2 (LookFn/SmokeImage aliases) +
+arch-gate `set_coord_mode`→BENIGN. **Lição:** `clippy -p` sem `-D warnings` esconde `type_complexity`
+(warn-by-default) que o ship.sh (`-D warnings`) pega; nextest `--no-fail-fast` confirmou 1 única
+falha de teste. **Follow-up CI (não-bloq):** actions/checkout@v4 usa Node20 deprecado (atualizar p/ v5).
+
 ### 🚀 SHIP 2026-06-05 — origin/main = `1156441` (78 commits, CI 3-OS VERDE)
 [CI run 26992155064](https://github.com/dibrioli/PH2D/actions/runs/26992155064) **success**
 (ubuntu/macOS/windows + replay-hash + ECS/physics + MSRV). **Shipado:** Vector W1-W5

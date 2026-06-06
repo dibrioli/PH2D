@@ -309,6 +309,9 @@ pub const PAINTER_COLOR_THUMB: NodeId = hash_node_id("painter.color_thumb");
 /// do `PAINTER_SIDEBAR_PANEL`) and only visible while the `painter` tool
 /// is active. W3.T3.4 plan §6 / design 02_layers.md §2.3.
 pub const PAINTER_LAYERS_PANEL: NodeId = hash_node_id("painter_layers_panel");
+/// Brush Studio panel (W5) — the brush parameter editor. Shares the right-dock
+/// geometry with the sidebar (occupies the same slot when opened).
+pub const PAINTER_BRUSH_STUDIO_PANEL: NodeId = hash_node_id("painter_brush_studio_panel");
 /// Close (X) button do Painter layers panel — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Painter sidebar). Deactivates Painter tool quando clicado.
 pub const PAINTER_LAYERS_CLOSE: NodeId = hash_node_id("painter_layers.close");

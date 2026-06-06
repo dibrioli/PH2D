@@ -19,6 +19,56 @@ fn red_stamp(x: f32, y: f32, size: f32) -> Stamp {
 }
 
 #[test]
+fn mixbox_pigment_paints_blue_plus_yellow_as_green_in_the_live_path() {
+    // The live painter renders strokes through THIS cpu_render path. Paint a
+    // half-coverage YELLOW stamp (pigment_mode=Mixbox) over a BLUE canvas: the
+    // result must be green-dominant AND clearly greener than the Linear blend of
+    // the same stroke (which is a muddy grey). Locks the W5 smoke end-to-end.
+    let (w, h) = (8u32, 8u32);
+    let blue_canvas = || {
+        let mut c = vec![0u8; (w * h * 4) as usize];
+        for px in c.chunks_exact_mut(4) {
+            px.copy_from_slice(&[0, 0, 255, 255]); // opaque sRGB blue
+        }
+        c
+    };
+    // Yellow stamp (OKLab of linear-sRGB (1,1,0)), half opacity, full footprint.
+    let mut s = Stamp::zeroed();
+    s.position_world = [3.5, 3.5];
+    s.size_px = 8.0;
+    s.color_oklab = [0.968, -0.0713, 0.1984, 1.0];
+    s.opacity = 0.5;
+    s.flow = 1.0;
+    s.rendering_mode = RenderingMode::UniformGlaze as u32;
+
+    let center = ((3 * w + 3) * 4) as usize;
+    let mut linear = blue_canvas();
+    s.pigment_mode = 0;
+    apply_stamps(&mut linear, w, h, &[s]);
+
+    let mut mix = blue_canvas();
+    s.pigment_mode = 1;
+    apply_stamps(&mut mix, w, h, &[s]);
+
+    let (mr, mg, mb) = (mix[center] as i32, mix[center + 1] as i32, mix[center + 2] as i32);
+    let (lr, lg, lb) = (
+        linear[center] as i32,
+        linear[center + 1] as i32,
+        linear[center + 2] as i32,
+    );
+    // Mixbox: green CLEARLY leads (a real green).
+    assert!(
+        mg > mr + 15 && mg > mb + 15,
+        "Mixbox blue+yellow is green-dominant: mix=({mr},{mg},{mb}) linear=({lr},{lg},{lb})"
+    );
+    // Linear: a flat grey — green does NOT lead. This is the contrast the smoke shows.
+    assert!(
+        (lg - lr).abs() < 12 && (lg - lb).abs() < 12,
+        "Linear blend is grey (green doesn't lead): linear=({lr},{lg},{lb})"
+    );
+}
+
+#[test]
 fn alpha_lock_skips_transparent_and_locks_alpha() {
     // T3.7 §2.10: with alpha_lock, paint lands only where the canvas already
     // has alpha, and the alpha is held constant everywhere (only color blends).

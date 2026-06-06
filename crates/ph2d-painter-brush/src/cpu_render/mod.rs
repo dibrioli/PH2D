@@ -265,7 +265,24 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
                 rgb_clamped[2] * combined_alpha,
                 combined_alpha,
             ];
-            let result = apply_rendering_mode(mode, src_premul, dst_premul, wet);
+            // Mixbox (pigment_mode==1): the deposited pigment MIXES subtractively
+            // with the wet backdrop (mirror of `stamp.wgsl`). The canvas colour =
+            // `mixbox_lerp(backdrop, brush, deposit)`, coverage accumulates
+            // alpha-over; `deposit` = share of the final pigment that is NEW (1 over
+            // blank → pure brush; <1 over paint → an even mix → yellow over blue =
+            // green). Bypasses the linear rendering-mode colour blend.
+            let result = if stamp.pigment_mode == 1 {
+                let out_a = combined_alpha + dst_alpha * (1.0 - combined_alpha);
+                let deposit = combined_alpha / out_a.max(1e-4);
+                let mixed = crate::mixbox::mixbox_lerp_linear(
+                    [dst_straight[0], dst_straight[1], dst_straight[2]],
+                    rgb_clamped,
+                    deposit,
+                );
+                [mixed[0] * out_a, mixed[1] * out_a, mixed[2] * out_a, out_a]
+            } else {
+                apply_rendering_mode(mode, src_premul, dst_premul, wet)
+            };
             // NaN guard (paridade D-2.F7).
             let result = [
                 if result[0].is_nan() { 0.0 } else { result[0] },

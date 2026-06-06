@@ -166,12 +166,27 @@ pub struct MotionBlurParams {
     pub angle: f32,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BloomParams {
     pub threshold: f32,
     pub intensity: f32,
     pub radius: f32,
     pub falloff: f32,
+}
+
+impl Default for BloomParams {
+    /// Neutral on creation (`intensity 0` → no glow), but the threshold / radius /
+    /// falloff are seeded to usable values so raising "Intensity" immediately
+    /// blooms the bright areas with a sensible soft glow (a derived all-zero
+    /// default would bloom the WHOLE image with a 0-px radius — a hard double).
+    fn default() -> Self {
+        Self {
+            threshold: 0.7,
+            intensity: 0.0,
+            radius: 20.0,
+            falloff: 0.15,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
@@ -349,7 +364,7 @@ pub struct ExposureParams {
     pub gamma_correction: f32,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ShadowsHighlightsParams {
     pub shadows_amount: f32,
     pub shadows_tonal_width: f32,
@@ -359,6 +374,25 @@ pub struct ShadowsHighlightsParams {
     pub highlights_radius: f32,
     pub color_correction: f32,
     pub midtone_contrast: f32,
+}
+
+impl Default for ShadowsHighlightsParams {
+    /// Neutral on creation (both `*_amount` and `midtone_contrast` = 0 → identity),
+    /// but the tonal widths + local radii seed to usable values so the first
+    /// amount-drag behaves like a smooth Photoshop-style local correction (a
+    /// derived all-zero default would make the tonal widths a hard 0-width step).
+    fn default() -> Self {
+        Self {
+            shadows_amount: 0.0,
+            shadows_tonal_width: 0.5,
+            shadows_radius: 30.0,
+            highlights_amount: 0.0,
+            highlights_tonal_width: 0.5,
+            highlights_radius: 30.0,
+            color_correction: 0.0,
+            midtone_contrast: 0.0,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -544,6 +578,29 @@ impl AdjustmentKind {
             Self::ChromaticAberration => 3, // SPATIAL_CHROMA
             _ => return None,
         })
+    }
+
+    /// Does this kind's compute CHANGE COVERAGE (feather / extend alpha), so the
+    /// compositor combine must ADOPT the kernel's output alpha instead of
+    /// preserving the base coverage? True for the blur-family (their premultiplied
+    /// blur spreads alpha — soft edges into transparency) + `Bloom` (its glow
+    /// haloes outward). False for tonal / per-pixel kinds — including
+    /// `ShadowsHighlights`, which blurs only an INTERNAL luma map but outputs the
+    /// base coverage. Drives the `is_spatial` branch in `compositor::compose`.
+    ///
+    /// Note this is BROADER than [`Self::gpu_spatial_code`]: `Bloom` feathers
+    /// coverage but has no GPU spatial kernel yet (runs on the CPU fallback), so
+    /// the two sets differ on purpose.
+    #[must_use]
+    pub fn feathers_coverage(self) -> bool {
+        matches!(
+            self,
+            Self::GaussianBlur
+                | Self::Sharpen
+                | Self::MotionBlur
+                | Self::ChromaticAberration
+                | Self::Bloom
+        )
     }
 }
 
@@ -834,7 +891,7 @@ pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
 // Window-/coordinate-aware kernels (spatial blurs + Noise/Halftone) and the
 // canonical spatial math the GPU pass-graph reconciles against (W4 spatial mesh).
 pub use spatial::{
-    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_chromatic_aberration,
-    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_sharpen,
-    gaussian_weights, motion_weights,
+    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_bloom, apply_chromatic_aberration,
+    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_shadows_highlights,
+    apply_sharpen, gaussian_weights, motion_weights,
 };

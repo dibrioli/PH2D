@@ -1220,9 +1220,33 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             ("Look", preset_to_slider(p.lut_3d.0)),
             ("Amount", p.intensity.clamp(0.0, 1.0)),
         ],
+        // Bloom: bright-pass threshold + glow intensity (0..2) + blur radius +
+        // soft-knee falloff.
+        AdjustmentParams::Bloom(p) => vec![
+            ("Threshold", p.threshold.clamp(0.0, 1.0)),
+            ("Intensity", (p.intensity / BLOOM_INTENSITY_MAX).clamp(0.0, 1.0)),
+            ("Radius", (p.radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            ("Falloff", p.falloff.clamp(0.0, 1.0)),
+        ],
+        // Shadows/Highlights: 8 params — shadows (amount/width/radius), highlights
+        // (amount/width/radius), color correction (bipolar), midtone contrast
+        // (bipolar). Fills the 8-slot generic rack exactly.
+        AdjustmentParams::ShadowsHighlights(p) => vec![
+            ("Shad Amt", p.shadows_amount.clamp(0.0, 1.0)),
+            ("Shad Wid", p.shadows_tonal_width.clamp(0.0, 1.0)),
+            ("Shad Rad", (p.shadows_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            ("High Amt", p.highlights_amount.clamp(0.0, 1.0)),
+            ("High Wid", p.highlights_tonal_width.clamp(0.0, 1.0)),
+            ("High Rad", (p.highlights_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            ("Color", (p.color_correction.clamp(-1.0, 1.0) + 1.0) * 0.5),
+            ("Contrast", (p.midtone_contrast.clamp(-1.0, 1.0) + 1.0) * 0.5),
+        ],
         _ => Vec::new(),
     }
 }
+
+/// Max bloom glow intensity exposed on the slider (the additive-glow multiplier).
+const BLOOM_INTENSITY_MAX: f32 = 2.0;
 
 /// Built-in Color Lookup preset index → `0..1` slider (quantized on the preset
 /// grid; index 0 = None at the far left).
@@ -1381,6 +1405,24 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
         AdjustmentParams::ColorLookupLut(p) => match slot {
             0 => p.lut_3d = LutHandle(slider_to_preset(v)),
             1 => p.intensity = v,
+            _ => {}
+        },
+        AdjustmentParams::Bloom(p) => match slot {
+            0 => p.threshold = v,
+            1 => p.intensity = v * BLOOM_INTENSITY_MAX,
+            2 => p.radius = v * SPATIAL_PX_MAX,
+            3 => p.falloff = v,
+            _ => {}
+        },
+        AdjustmentParams::ShadowsHighlights(p) => match slot {
+            0 => p.shadows_amount = v,
+            1 => p.shadows_tonal_width = v,
+            2 => p.shadows_radius = v * SPATIAL_PX_MAX,
+            3 => p.highlights_amount = v,
+            4 => p.highlights_tonal_width = v,
+            5 => p.highlights_radius = v * SPATIAL_PX_MAX,
+            6 => p.color_correction = v * 2.0 - 1.0, // -1..1
+            7 => p.midtone_contrast = v * 2.0 - 1.0, // -1..1
             _ => {}
         },
         // Gradient Map has a bespoke editor (its stop colors go through

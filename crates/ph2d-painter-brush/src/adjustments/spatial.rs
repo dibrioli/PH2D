@@ -110,6 +110,10 @@ pub fn apply_adjustment_windowed(
         }
         (AdjustmentKind::Noise, AdjustmentParams::Noise(p)) => apply_noise(p, acc, win),
         (AdjustmentKind::Halftone, AdjustmentParams::Halftone(p)) => apply_halftone(p, acc, win),
+        (AdjustmentKind::Bloom, AdjustmentParams::Bloom(p)) => apply_bloom(p, acc, win),
+        (AdjustmentKind::ShadowsHighlights, AdjustmentParams::ShadowsHighlights(p)) => {
+            apply_shadows_highlights(p, acc, win)
+        }
         // Every other kind is per-pixel and position-independent.
         _ => super::compute::apply_adjustment(kind, params, acc),
     }
@@ -497,5 +501,141 @@ pub fn apply_halftone(p: &HalftoneParams, acc: &mut [[f32; 4]], win: AdjustWindo
             px[1] = g;
             px[2] = g;
         }
+    }
+}
+
+// ──────────────────────────── Bloom + Shadows/Highlights ──────────────────────
+
+/// Smooth Hermite interpolation: 0 below `e0`, 1 above `e1`, an S-curve between.
+#[inline]
+fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
+    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// Separable Gaussian blur of a SCALAR field (a tone map) in place, clamp-to-edge.
+/// Used by Shadows/Highlights to build the local-average luma. `radius ≤ 0` leaves
+/// the field unblurred (a global, per-pixel tone reference).
+fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) {
+    if radius <= 0.0 {
+        return;
+    }
+    let (w, h) = (win.width as i32, win.height as i32);
+    if w == 0 || h == 0 {
+        return;
+    }
+    let (weights, half) = gaussian_weights(radius);
+    let half = half as i32;
+    let tap = |buf: &[f32], x: i32, y: i32| -> f32 {
+        buf[(y.clamp(0, h - 1) * w + x.clamp(0, w - 1)) as usize]
+    };
+    let mut tmp = field.to_vec();
+    for y in 0..h {
+        for x in 0..w {
+            let mut s = 0.0;
+            for k in -half..=half {
+                s += tap(field, x + k, y) * weights[k.unsigned_abs() as usize];
+            }
+            tmp[(y * w + x) as usize] = s;
+        }
+    }
+    for y in 0..h {
+        for x in 0..w {
+            let mut s = 0.0;
+            for k in -half..=half {
+                s += tap(&tmp, x, y + k) * weights[k.unsigned_abs() as usize];
+            }
+            field[(y * w + x) as usize] = s;
+        }
+    }
+}
+
+/// Bloom — bright-pass → blur → additive glow, in **premultiplied** linear. Pixels
+/// whose display luma is above `threshold` (softened by the `falloff` knee) are
+/// extracted as the bright EXCESS, blurred by `radius`, and added back scaled by
+/// `intensity`. The glow is premultiplied, so it carries coverage and **haloes
+/// outward** past the bright source into transparency (the bloom look). Bloom is a
+/// coverage-feathering kind (see `AdjustmentKind::feathers_coverage`).
+pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
+    if p.intensity <= 0.0 || p.radius <= 0.0 {
+        return;
+    }
+    let knee = p.falloff.max(1e-3);
+    // Bright-pass, premultiplied: keep `color·alpha·weight`; transparent → 0.
+    let mut glow = acc.to_vec();
+    for (g, base) in glow.iter_mut().zip(acc.iter()) {
+        let w_bright = smoothstep(p.threshold, p.threshold + knee, display_luma(base));
+        let a = base[3].clamp(0.0, 1.0);
+        let k = a * w_bright;
+        g[0] = base[0] * k;
+        g[1] = base[1] * k;
+        g[2] = base[2] * k;
+        g[3] = k;
+    }
+    separable_blur_premul(p.radius, &mut glow, win);
+    // Add the glow onto the premultiplied base, then back to straight.
+    premultiply(acc);
+    for (o, g) in acc.iter_mut().zip(glow.iter()) {
+        o[0] += p.intensity * g[0];
+        o[1] += p.intensity * g[1];
+        o[2] += p.intensity * g[2];
+        o[3] = (o[3] + p.intensity * g[3]).clamp(0.0, 1.0);
+    }
+    unpremultiply(acc);
+}
+
+/// Shadows/Highlights — LOCAL tonal correction. The display luma is blurred into a
+/// local-average tone map (separate `*_radius` for each), so shadows lift /
+/// highlights recover based on the NEIGHBOURHOOD tone — preserving local contrast,
+/// unlike a global curve. `*_tonal_width` set how far into the range each reaches;
+/// `midtone_contrast` is an S-curve around mid-grey; `color_correction` scales
+/// saturation in the corrected regions. Coverage is PRESERVED (a tonal op, not an
+/// image blur — `feathers_coverage` is false).
+pub fn apply_shadows_highlights(
+    p: &ShadowsHighlightsParams,
+    acc: &mut [[f32; 4]],
+    win: AdjustWindow,
+) {
+    if p.shadows_amount == 0.0 && p.highlights_amount == 0.0 && p.midtone_contrast == 0.0 {
+        return;
+    }
+    // Local-average luma maps (one per correction radius).
+    let mut local_lo: Vec<f32> = acc.iter().map(display_luma).collect();
+    let mut local_hi = local_lo.clone();
+    separable_blur_scalar(p.shadows_radius, &mut local_lo, win);
+    separable_blur_scalar(p.highlights_radius, &mut local_hi, win);
+    let tw_s = p.shadows_tonal_width.max(1e-3);
+    let tw_h = p.highlights_tonal_width.max(1e-3);
+    for (i, px) in acc.iter_mut().enumerate() {
+        let l = display_luma(px);
+        // Membership from the LOCAL tone: deep-shadow / bright-highlight weights.
+        let ws = 1.0 - smoothstep(0.0, tw_s, local_lo[i]);
+        let wh = smoothstep(1.0 - tw_h, 1.0, local_hi[i]);
+        let mut new_l = l + p.shadows_amount * ws - p.highlights_amount * wh;
+        new_l = (0.5 + (new_l - 0.5) * (1.0 + p.midtone_contrast)).clamp(0.0, 1.0);
+        // Re-tone the pixel in display space, preserving hue (scale toward new_l).
+        let mut d = [
+            linear_to_srgb_f32(px[0]),
+            linear_to_srgb_f32(px[1]),
+            linear_to_srgb_f32(px[2]),
+        ];
+        if l > 1e-4 {
+            let ratio = new_l / l;
+            for c in &mut d {
+                *c = (*c * ratio).clamp(0.0, 1.0);
+            }
+        } else {
+            d = [new_l, new_l, new_l];
+        }
+        // Saturation tweak in the corrected regions.
+        let cc = p.color_correction * (ws + wh).min(1.0);
+        if cc != 0.0 {
+            for c in &mut d {
+                *c = (new_l + (*c - new_l) * (1.0 + cc)).clamp(0.0, 1.0);
+            }
+        }
+        px[0] = srgb_to_linear_f32(d[0]);
+        px[1] = srgb_to_linear_f32(d[1]);
+        px[2] = srgb_to_linear_f32(d[2]);
     }
 }

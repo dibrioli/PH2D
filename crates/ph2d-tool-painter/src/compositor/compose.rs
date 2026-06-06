@@ -303,14 +303,14 @@ fn composite_into(
                     };
                     Some((src.layer_rgba(LayerId(mid))?, m))
                 });
-                // A SPATIAL kind (Gaussian/Sharpen/Motion/Chroma) is a
-                // neighbourhood filter: it produces a NEW version of the
-                // below-composite with FEATHERED coverage (it ran premultiplied,
-                // so the alpha spread outward). Its combine must therefore adopt
-                // the adjusted alpha (a blur of a transparent layer softens its
-                // silhouette), unlike a per-pixel colour adjustment, which keeps
-                // the base coverage. Lock-step with the GPU pass-graph combine.
-                let is_spatial = adj.kind.gpu_spatial_code().is_some();
+                // A COVERAGE-FEATHERING kind (the blur family + Bloom) produces a
+                // NEW version of the below-composite with FEATHERED alpha (it ran
+                // premultiplied, so the coverage spread outward). Its combine must
+                // therefore adopt the adjusted alpha (a blur of a transparent layer
+                // softens its silhouette; Bloom haloes outward), unlike a per-pixel
+                // or tonal adjustment (incl. Shadows/Highlights), which keeps the
+                // base coverage. Lock-step with the GPU pass-graph combine.
+                let is_spatial = adj.kind.feathers_coverage();
                 for ly in 0..rh {
                     for lx in 0..rw {
                         let i = (ly * rw + lx) as usize;

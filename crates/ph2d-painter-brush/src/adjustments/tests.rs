@@ -1967,6 +1967,134 @@ fn chroma_slider_is_bipolar_centered() {
     );
 }
 
+// ── W4 close — Bloom + Shadows/Highlights ─────────────────────────────────────
+
+#[test]
+fn bloom_neutral_is_identity_and_glow_haloes_into_transparency() {
+    // intensity 0 → identity (no glow).
+    let n = 9;
+    let base = flat_window(n, [0.9, 0.9, 0.9, 1.0]);
+    let mut acc = base.clone();
+    apply_bloom(
+        &BloomParams {
+            threshold: 0.5,
+            intensity: 0.0,
+            radius: 3.0,
+            falloff: 0.1,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    assert_eq!(acc, base, "intensity 0 is a no-op");
+
+    // A bright opaque dot on transparency: bloom haloes coverage outward.
+    let mut acc = flat_window(n, [0.0, 0.0, 0.0, 0.0]);
+    let centre = (4 * n + 4) as usize;
+    acc[centre] = [1.0, 1.0, 1.0, 1.0];
+    apply_bloom(
+        &BloomParams {
+            threshold: 0.3,
+            intensity: 1.5,
+            radius: 3.0,
+            falloff: 0.1,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    let neighbour = (4 * n + 6) as usize; // two px away, was transparent
+    assert!(
+        acc[neighbour][3] > 0.0,
+        "bloom glow haloes coverage into transparency: {}",
+        acc[neighbour][3]
+    );
+}
+
+#[test]
+fn shadows_highlights_neutral_identity_and_lifts_shadows() {
+    let n = 6;
+    // All-amounts-zero → identity (even with seeded widths/radii).
+    let base = flat_window(n, [0.1, 0.1, 0.1, 1.0]);
+    let mut acc = base.clone();
+    apply_shadows_highlights(
+        &ShadowsHighlightsParams::default(),
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    for (p, b) in acc.iter().zip(base.iter()) {
+        for c in 0..3 {
+            assert!(
+                (p[c] - b[c]).abs() < 1e-5,
+                "neutral S/H is identity: {p:?} vs {b:?}"
+            );
+        }
+    }
+
+    // Lifting shadows brightens a dark field; coverage preserved.
+    let mut acc = flat_window(n, [0.08, 0.08, 0.08, 0.7]);
+    apply_shadows_highlights(
+        &ShadowsHighlightsParams {
+            shadows_amount: 0.4,
+            shadows_tonal_width: 0.6,
+            shadows_radius: 0.0, // global tone (no blur) keeps the test deterministic
+            ..ShadowsHighlightsParams::default()
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    assert!(
+        acc[0][0] > 0.08,
+        "shadows lifted the dark field: {}",
+        acc[0][0]
+    );
+    assert_eq!(acc[0][3], 0.7, "Shadows/Highlights preserves coverage");
+}
+
+#[test]
+fn bloom_and_shadows_highlights_slider_round_trip() {
+    for kind in [AdjustmentKind::Bloom, AdjustmentKind::ShadowsHighlights] {
+        let mut params = AdjustmentParams::neutral_for(kind);
+        let n = adjustment_slider_params(&params).len();
+        assert!(n >= 4, "{kind:?} exposes a slider rack ({n} slots)");
+        for slot in 0..n {
+            set_adjustment_slider_param(&mut params, slot, 0.6);
+        }
+        for (slot, got) in adjustment_slider_params(&params).iter().enumerate() {
+            assert!(
+                (got.1 - 0.6).abs() < 1e-6,
+                "{kind:?} slot {slot} round-trip: {} vs 0.6",
+                got.1
+            );
+        }
+    }
+    assert_eq!(
+        adjustment_slider_params(&AdjustmentParams::ShadowsHighlights(
+            ShadowsHighlightsParams::default()
+        ))
+        .len(),
+        8,
+        "Shadows/Highlights fills the 8-slot rack"
+    );
+}
+
+#[test]
+fn feathers_coverage_set_is_blur_family_plus_bloom() {
+    use AdjustmentKind::*;
+    for k in [GaussianBlur, Sharpen, MotionBlur, ChromaticAberration, Bloom] {
+        assert!(k.feathers_coverage(), "{k:?} feathers coverage");
+    }
+    // Tonal / per-pixel kinds keep coverage — incl. ShadowsHighlights (internal
+    // luma blur only) and the coordinate kinds.
+    for k in [
+        ShadowsHighlights,
+        Noise,
+        Halftone,
+        HueSaturationBrightness,
+        ColorLookupLut,
+    ] {
+        assert!(!k.feathers_coverage(), "{k:?} preserves coverage");
+    }
+}
+
 // ── W4 close — Color Lookup (built-in looks) ──────────────────────────────────
 
 #[test]

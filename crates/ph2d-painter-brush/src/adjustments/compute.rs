@@ -75,6 +75,10 @@ pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &
         (AdjustmentKind::SelectiveColor, AdjustmentParams::SelectiveColor(p)) => {
             apply_selective_color(p, acc)
         }
+        // W4 close — Color Lookup (built-in cinematic look, per-pixel grade).
+        (AdjustmentKind::ColorLookupLut, AdjustmentParams::ColorLookupLut(p)) => {
+            super::lut::apply_color_lookup(p, acc)
+        }
         _ => {}
     }
 }
@@ -1210,8 +1214,30 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
             ),
             ("Angle", angle_to_slider(p.angle)),
         ],
+        // Color Lookup: scrub the built-in look (handle = preset index, quantized
+        // on the preset grid) + the intensity. A named popover is a UI follow-up.
+        AdjustmentParams::ColorLookupLut(p) => vec![
+            ("Look", preset_to_slider(p.lut_3d.0)),
+            ("Amount", p.intensity.clamp(0.0, 1.0)),
+        ],
         _ => Vec::new(),
     }
+}
+
+/// Built-in Color Lookup preset index → `0..1` slider (quantized on the preset
+/// grid; index 0 = None at the far left).
+#[inline]
+fn preset_to_slider(handle: u64) -> f32 {
+    let last = (super::lut::LUT_PRESET_COUNT - 1).max(1) as f32;
+    (handle.min(super::lut::LUT_PRESET_COUNT as u64 - 1) as f32 / last).clamp(0.0, 1.0)
+}
+
+/// `0..1` slider → built-in Color Lookup preset index (inverse of
+/// [`preset_to_slider`]; snaps to the nearest preset).
+#[inline]
+fn slider_to_preset(v: f32) -> u64 {
+    let last = (super::lut::LUT_PRESET_COUNT - 1) as f32;
+    (v.clamp(0.0, 1.0) * last).round() as u64
 }
 
 // ── W4 spatial/coordinate slider ranges (UI ↔ param mapping, single source) ──
@@ -1350,6 +1376,11 @@ pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, v
         AdjustmentParams::Halftone(p) => match slot {
             0 => p.dot_size = 1.0 + v * (HALFTONE_DOT_MAX - 1.0),
             1 => p.angle = slider_to_angle(v),
+            _ => {}
+        },
+        AdjustmentParams::ColorLookupLut(p) => match slot {
+            0 => p.lut_3d = LutHandle(slider_to_preset(v)),
+            1 => p.intensity = v,
             _ => {}
         },
         // Gradient Map has a bespoke editor (its stop colors go through

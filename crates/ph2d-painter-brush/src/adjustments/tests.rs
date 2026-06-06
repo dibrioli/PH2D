@@ -1939,6 +1939,92 @@ fn chroma_slider_is_bipolar_centered() {
     );
 }
 
+// ── W4 close — Color Lookup (built-in looks) ──────────────────────────────────
+
+#[test]
+fn color_lookup_none_is_identity_but_a_look_grades() {
+    // Handle 0 (None) is a pass-through at any intensity.
+    let px = [0.3, 0.5, 0.7, 0.8];
+    let mut acc = [px];
+    apply_color_lookup(
+        &ColorLookupLutParams {
+            lut_3d: LutHandle(0),
+            intensity: 1.0,
+            profile: LutProfile::Srgb,
+        },
+        &mut acc,
+    );
+    assert_eq!(acc[0], px, "None preset is identity");
+
+    // The "Warm" look lifts red and eases blue → R rises, B falls; alpha kept.
+    let warm = LUT_PRESETS
+        .iter()
+        .position(|(name, _)| *name == "Warm")
+        .expect("Warm preset exists") as u64;
+    let mut acc = [[0.4, 0.4, 0.4, 0.5]];
+    apply_color_lookup(
+        &ColorLookupLutParams {
+            lut_3d: LutHandle(warm),
+            intensity: 1.0,
+            profile: LutProfile::Srgb,
+        },
+        &mut acc,
+    );
+    assert!(acc[0][0] > 0.4, "warm lifts red: {}", acc[0][0]);
+    assert!(acc[0][2] < 0.4, "warm eases blue: {}", acc[0][2]);
+    assert_eq!(acc[0][3], 0.5, "coverage preserved by a colour grade");
+}
+
+#[test]
+fn color_lookup_intensity_blends_toward_the_look() {
+    // intensity 0 → identity; 0.5 → halfway to the full look.
+    let base = [0.4, 0.4, 0.4, 1.0];
+    let warm = LUT_PRESETS.iter().position(|(n, _)| *n == "Warm").unwrap() as u64;
+    let graded = |amt: f32| {
+        let mut a = [base];
+        apply_color_lookup(
+            &ColorLookupLutParams {
+                lut_3d: LutHandle(warm),
+                intensity: amt,
+                profile: LutProfile::Srgb,
+            },
+            &mut a,
+        );
+        a[0]
+    };
+    assert_eq!(graded(0.0), base, "zero intensity is identity");
+    let half = graded(0.5)[0];
+    let full = graded(1.0)[0];
+    assert!(
+        half > base[0] && half < full,
+        "intensity 0.5 sits between identity and the full look: {half} in ({}, {full})",
+        base[0]
+    );
+}
+
+#[test]
+fn color_lookup_look_slider_round_trips_every_preset() {
+    // The "Look" slider (slot 0) snaps to each preset index and reads back; slot 1
+    // is the intensity. The panel relies on a stable thumb per preset.
+    for idx in 0..LUT_PRESET_COUNT as u64 {
+        let mut p = AdjustmentParams::ColorLookupLut(ColorLookupLutParams {
+            lut_3d: LutHandle(idx),
+            intensity: 1.0,
+            profile: LutProfile::Srgb,
+        });
+        let look01 = adjustment_slider_params(&p)[0].1;
+        // Round-trip through the setter restores the same preset index.
+        set_adjustment_slider_param(&mut p, 0, look01);
+        let AdjustmentParams::ColorLookupLut(cp) = &p else {
+            unreachable!()
+        };
+        assert_eq!(cp.lut_3d.0, idx, "preset {idx} round-trips via the Look slider");
+    }
+    // Two slots exposed: Look + Amount.
+    let p = AdjustmentParams::ColorLookupLut(ColorLookupLutParams::default());
+    assert_eq!(adjustment_slider_params(&p).len(), 2);
+}
+
 #[test]
 fn noise_and_halftone_segments_and_toggle_round_trip() {
     // Noise: distribution segment (Gaussian/Uniform) + monochrome toggle.

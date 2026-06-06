@@ -211,11 +211,26 @@ pub struct VibranceParams {
     pub saturation: f32,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ColorLookupLutParams {
     pub lut_3d: LutHandle,
     pub intensity: f32,
     pub profile: LutProfile,
+}
+
+impl Default for ColorLookupLutParams {
+    /// Neutral on creation — handle `0` (`None`) is a pass-through regardless of
+    /// intensity, so the layer is an identity until the user scrubs the "Look".
+    /// `intensity` seeds at full (`1.0`) so picking a look is immediately visible;
+    /// the user then dials "Amount" back to taste. (A derived all-zero default
+    /// would leave intensity at 0 → a picked look would show nothing.)
+    fn default() -> Self {
+        Self {
+            lut_3d: LutHandle(0),
+            intensity: 1.0,
+            profile: LutProfile::Srgb,
+        }
+    }
 }
 
 /// Color-management profile a LUT is authored in.
@@ -800,6 +815,7 @@ impl AdjustmentKind {
 
 // ── Submodules (god-module split, 2026-06-04; pure move) ──
 mod compute;
+mod lut;
 mod spatial;
 #[cfg(test)]
 mod tests;
@@ -812,6 +828,9 @@ pub use compute::{
     set_adjustment_slider_param, set_adjustment_toggle_param, set_channel_mixer_param,
     set_gradient_stop_color_param, set_selective_color_param,
 };
+// Color Lookup — built-in cinematic looks (per-pixel grade; `.cube` load is a
+// shell follow-up).
+pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
 // Window-/coordinate-aware kernels (spatial blurs + Noise/Halftone) and the
 // canonical spatial math the GPU pass-graph reconciles against (W4 spatial mesh).
 pub use spatial::{

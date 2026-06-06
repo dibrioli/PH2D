@@ -15,12 +15,14 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
-    // Top-level row → open the API-key popover beside it.
+    // Top-level row → open the API-key popover. Position is irrelevant here:
+    // `paint_api_key_submenu` centers this dialog-style popover in the viewport
+    // (Settings sits at the far-right edge, where a cascade anchor goes
+    // off-screen).
     if id == ids::CTX_MENU_SETTINGS_API_KEY {
-        let (x, y) = super::cascade_anchor(hero, id);
         hero.store.open_context_menu(ContextMenuRequest {
-            x,
-            y,
+            x: 0.0,
+            y: 0.0,
             kind: ContextMenuKind::SettingsApiKeySubmenu,
         });
         return true;

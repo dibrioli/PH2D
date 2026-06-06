@@ -347,7 +347,7 @@ pub fn paint_context_menu_overlay(
         return;
     }
     if matches!(req.kind, ContextMenuKind::SettingsApiKeySubmenu) {
-        paint_api_key_submenu(req, scene, text_system, theme, hit_index, store, viewport);
+        paint_api_key_submenu(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
@@ -596,7 +596,6 @@ fn paint_scene_list(
 /// the menu-close guard in `dispatch::pointer` keeps the popover open while the
 /// user types into the field.
 fn paint_api_key_submenu(
-    req: crate::interaction::ContextMenuRequest,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -623,7 +622,11 @@ fn paint_api_key_submenu(
     };
 
     let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + save_h + gap * 3.0;
-    let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
+    // Dialog-style: center in the viewport. Settings sits at the far-right edge,
+    // so a cascade-right anchor would land off-screen — center it instead.
+    let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
+    let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
+    let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
 
     // Floating panel surface.
     let radius = Radius::Md.px();

@@ -542,10 +542,42 @@ impl StampScheduler {
         s.flow = brush.rendering.flow.clamp(0.0, 1.0);
         s.wet_amount = 0.0; // T-wet-mix W7+
         s.shape_layer = shape_layer;
-        s.grain_layer = u32::MAX; // sem grain ainda — T-grain W5+
-        s.grain_offset_uv = [0.0, 0.0];
-        s.grain_scale = 1.0;
         s.flags = flags;
+        // Procedural grain (T-grain W5): pack the generator type (low byte) + depth
+        // (next byte) into `grain_layer`, the spatial scale into `grain_scale`, and
+        // set FLAG_GRAIN_PROCEDURAL. None / Bitmap / Imported → no procedural flag
+        // and the `grain_layer = MAX` sentinel. Mirror of `stamp.wgsl`.
+        match &brush.grain.grain_source {
+            crate::grain::GrainSource::Procedural(pg) => {
+                let gtype = match pg {
+                    crate::procedural::ProceduralGrain::SimplexNoise { .. } => {
+                        crate::grain_noise::GRAIN_SIMPLEX
+                    }
+                    crate::procedural::ProceduralGrain::GaborNoise { .. } => {
+                        crate::grain_noise::GRAIN_GABOR
+                    }
+                    crate::procedural::ProceduralGrain::PaperWeave { .. } => {
+                        crate::grain_noise::GRAIN_PAPER_WEAVE
+                    }
+                    crate::procedural::ProceduralGrain::SprayDot { .. } => {
+                        crate::grain_noise::GRAIN_SPRAY_DOT
+                    }
+                };
+                let depth_q = (brush.grain.grain_depth.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+                s.grain_layer = (gtype & 0xFF) | ((depth_q & 0xFF) << 8);
+                s.grain_scale = brush.grain.grain_scale.max(0.01);
+                s.grain_offset_uv = [0.0, 0.0];
+                s.flags |= crate::stamp::FLAG_GRAIN_PROCEDURAL;
+                if brush.grain.grain_behavior == crate::grain::GrainBehavior::Moving {
+                    s.flags |= crate::stamp::FLAG_GRAIN_BEHAVIOR_MOVING;
+                }
+            }
+            _ => {
+                s.grain_layer = u32::MAX; // None / Bitmap / Imported — no procedural grain
+                s.grain_offset_uv = [0.0, 0.0];
+                s.grain_scale = 1.0;
+            }
+        }
         s.rendering_mode = brush.rendering.rendering_mode as u32;
         s.pigment_mode = brush.rendering.pigment_mode as u32;
         self.pool.push(s);

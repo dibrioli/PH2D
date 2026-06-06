@@ -134,6 +134,38 @@ pub fn apply_stamps_with_options(
     }
 }
 
+/// Base spatial frequency for procedural grain — world pixels → noise space.
+const GRAIN_BASE_FREQ: f32 = 0.35;
+/// Fixed grain seed (per-brush variation rides in `grain_offset_uv`; v1 = 0).
+const GRAIN_SEED: u32 = 0x9e37_79b9;
+
+/// Procedural-grain coverage multiplier ∈ [0,1] for one sample. `1.0` (no-op) when
+/// the stamp carries no procedural grain. Texturized = world-space static paper;
+/// Moving = stamp-relative (grain smears with the stroke). Multiply blend with
+/// `depth`. Mirror of `stamp.wgsl::grain_factor`.
+#[inline]
+fn grain_factor(stamp: &Stamp, world_x: f32, world_y: f32, u: f32, v: f32) -> f32 {
+    if (stamp.flags & crate::stamp::FLAG_GRAIN_PROCEDURAL) == 0 {
+        return 1.0;
+    }
+    let gtype = stamp.grain_layer & 0xFF;
+    let depth = (((stamp.grain_layer >> 8) & 0xFF) as f32) / 255.0;
+    let (sx, sy) = if (stamp.flags & crate::stamp::FLAG_GRAIN_BEHAVIOR_MOVING) != 0 {
+        let mf = 32.0 / stamp.grain_scale.max(0.01);
+        (u * mf, v * mf) // stamp-relative (u,v ∈ [0,1]) — grain follows the stroke
+    } else {
+        let f = GRAIN_BASE_FREQ / stamp.grain_scale.max(0.01);
+        (world_x * f, world_y * f) // static paper texture
+    };
+    let n = crate::grain_noise::grain_value(
+        gtype,
+        sx + stamp.grain_offset_uv[0],
+        sy + stamp.grain_offset_uv[1],
+        GRAIN_SEED,
+    );
+    1.0 - depth * (1.0 - n)
+}
+
 fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, alpha_lock: bool) {
     // Paridade com shader: filtra degenerate sizes antes de qualquer
     // arithmetic. Mantém canvas inalterado para inputs lixo. NaN é
@@ -229,7 +261,7 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
             if shape_alpha < (1.0 / 255.0) {
                 continue;
             }
-            let combined_alpha = (color_alpha * opacity * flow * shape_alpha).clamp(0.0, 1.0);
+            let mut combined_alpha = (color_alpha * opacity * flow * shape_alpha).clamp(0.0, 1.0);
             if combined_alpha < (1.0 / 255.0) {
                 continue;
             }
@@ -241,6 +273,8 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
             if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
                 continue;
             }
+            // Procedural grain modulates coverage by the paper/fibre texture.
+            combined_alpha *= grain_factor(stamp, world_x_f, world_y_f, u, v);
             let idx = (world_y as usize * width as usize + world_x as usize) * 4;
             // Decode dst RGBA8 → straight LINEAR. The canvas is sRGB-encoded
             // (the sprite it mirrors uploads as `Rgba8UnormSrgb`), so
@@ -462,7 +496,7 @@ fn apply_one_stamp_wash(
                 continue;
             }
             // Per-dab deposit RATE (no opacity — opacity is the cap below).
-            let rate = (color_alpha * flow * shape_alpha).clamp(0.0, 1.0);
+            let mut rate = (color_alpha * flow * shape_alpha).clamp(0.0, 1.0);
             if rate < (1.0 / 255.0) {
                 continue;
             }
@@ -473,6 +507,8 @@ fn apply_one_stamp_wash(
             if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
                 continue;
             }
+            // Procedural grain modulates the per-dab coverage rate.
+            rate *= grain_factor(stamp, world_x_f, world_y_f, u, v);
             let pix = world_y as usize * width as usize + world_x as usize;
             let idx = pix * 4;
             // Monotonic coverage build-up (Porter-Duff "over" of dab onto the

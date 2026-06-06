@@ -73,6 +73,55 @@ fn mixbox_pigment_paints_blue_plus_yellow_as_green_in_the_live_path() {
 }
 
 #[test]
+fn procedural_grain_varies_coverage_vs_plain() {
+    // A grainy brush paints PAPER TEXTURE: coverage varies across the footprint
+    // (some pixels less inked → paper shows through), and grain only ever REMOVES
+    // coverage vs the plain stamp (Multiply blend). The default brush (no grain)
+    // is unaffected — proven by the rest of the suite staying green.
+    let (w, h) = (40u32, 40u32);
+    let mk = |grain: bool| {
+        let mut canvas = vec![0u8; (w * h * 4) as usize];
+        let mut s = Stamp::zeroed();
+        s.position_world = [19.5, 19.5];
+        s.size_px = 36.0;
+        s.color_oklab = [0.7, 0.0, 0.0, 1.0];
+        s.opacity = 1.0;
+        s.flow = 1.0;
+        s.rendering_mode = RenderingMode::UniformGlaze as u32;
+        if grain {
+            s.flags |= crate::stamp::FLAG_GRAIN_PROCEDURAL;
+            s.grain_layer = crate::grain_noise::GRAIN_SIMPLEX | (255u32 << 8); // full depth
+            s.grain_scale = 0.5; // finer grain → more variation within the footprint
+        } else {
+            s.grain_layer = u32::MAX;
+        }
+        apply_stamps(&mut canvas, w, h, &[s]);
+        canvas
+    };
+    let plain = mk(false);
+    let grainy = mk(true);
+    let alpha = |c: &[u8], x: u32, y: u32| c[((y * w + x) * 4 + 3) as usize];
+    let (mut gmin, mut gmax) = (255u8, 0u8);
+    let mut grain_never_exceeds_plain = true;
+    for y in 14..26 {
+        for x in 14..26 {
+            let p = alpha(&plain, x, y);
+            let g = alpha(&grainy, x, y);
+            gmin = gmin.min(g);
+            gmax = gmax.max(g);
+            if g > p.saturating_add(1) {
+                grain_never_exceeds_plain = false;
+            }
+        }
+    }
+    assert!(grain_never_exceeds_plain, "grain only removes coverage (grainy ≤ plain)");
+    assert!(
+        (gmax as i32 - gmin as i32) > 40,
+        "grain produces visible texture variation across the footprint: {gmin}..{gmax}"
+    );
+}
+
+#[test]
 fn alpha_lock_skips_transparent_and_locks_alpha() {
     // T3.7 §2.10: with alpha_lock, paint lands only where the canvas already
     // has alpha, and the alpha is held constant everywhere (only color blends).

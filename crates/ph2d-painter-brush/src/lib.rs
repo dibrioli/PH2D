@@ -70,6 +70,7 @@ pub mod color_dynamics;
 pub mod cpu_render;
 pub mod dynamics;
 pub mod grain;
+pub mod grain_noise;
 pub mod library;
 pub mod pencil;
 pub mod pigment;

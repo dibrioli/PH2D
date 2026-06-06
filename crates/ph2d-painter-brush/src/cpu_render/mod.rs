@@ -358,6 +358,7 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
 /// owned by the stroke. Opacity must NOT be pre-baked into the stamp colour
 /// alpha on this path (the tool skips that bake for pigment strokes) — it is
 /// applied once, here, as the cap.
+#[allow(clippy::too_many_arguments)]
 pub fn apply_stamps_wash(
     canvas: &mut [u8],
     backdrop: &[u8],

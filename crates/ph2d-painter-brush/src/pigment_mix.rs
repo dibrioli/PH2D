@@ -179,8 +179,8 @@ fn to_reflectance(rgb: [f32; 3]) -> [f32; NB] {
     let mut refl = [0.0f32; NB];
     for (i, r) in refl.iter_mut().enumerate() {
         let mut v = 0.0f32;
-        for k in 0..7 {
-            v += wt[k] * b.base[k][i];
+        for (w, base) in wt.iter().zip(b.base.iter()) {
+            v += w * base[i];
         }
         *r = v.clamp(REFL_FLOOR, 1.0);
     }

@@ -31,12 +31,14 @@
 //! ## W6 scope (handoff §2.X frontier)
 //!
 //! The 17-node enum is **frozen** (ADR-0060 §2.7). W6 implements the 12
-//! pure-procedural generators/combinators with real WGSL codegen + CPU eval;
-//! the 5 resource-bound nodes ([`FillNode::MeshGradient`], [`FillNode::Pattern`],
-//! [`FillNode::ProceduralShader`], [`FillNode::Image`], [`FillNode::ImageSample`])
-//! exist in the enum but codegen/eval return
-//! [`FillCodegenError::NotYetImplemented`] — they need the W7 diffusion solver /
-//! W8 brush bridge / texture-binding infra that is out of this foundation's scope.
+//! pure-procedural generators/combinators with real WGSL codegen + CPU eval.
+//! [`FillNode::MeshGradient`] is wired on the CPU in W7 step 2 — it samples a
+//! solved [`ColorField`] (see [`poisson_cpu`] / [`eval::eval_color_with_fields`]);
+//! its WGSL codegen still returns [`FillCodegenError::NotYetImplemented`] pending
+//! the renderer's texture binding (step 3). The other 4 resource-bound nodes
+//! ([`FillNode::Pattern`], [`FillNode::ProceduralShader`], [`FillNode::Image`],
+//! [`FillNode::ImageSample`]) still return `NotYetImplemented` from both codegen
+//! and eval — they need the W8 brush bridge / texture-binding infra.
 
 use glam::Vec2;
 use ph2d_color::OklchColor;
@@ -51,7 +53,10 @@ pub mod wgsl_codegen;
 
 pub use cache::CompileCache;
 pub use diffusion_curve::{ColorStop, DiffusionCurve, DiffusionCurveSet};
-pub use poisson_cpu::{solve_color_field, ColorField, Resolution};
+pub use eval::{eval_color, eval_color_with_fields};
+pub use poisson_cpu::{
+    solve_color_field, ColorField, FieldResolver, FieldStore, NoFields, Resolution,
+};
 pub use wgsl_codegen::{CompiledFill, TopologyHash};
 
 /// Inline node capacity / hard cap on graph size (ADR-0060 §2.7 — adding nodes
@@ -244,7 +249,9 @@ pub enum FillNode {
         center: Vec2,
         radius: f32,
     },
-    /// Diffusion-curve mesh gradient — **W7 stub** (codegen → `NotYetImplemented`).
+    /// Diffusion-curve mesh gradient. CPU eval samples the solved [`ColorField`]
+    /// (W7 step 2, [`crate::eval::eval_color_with_fields`]); WGSL codegen is
+    /// still pending its GPU texture binding (renderer wiring, W7 step 3).
     MeshGradient { gradient_id: u64 },
     /// Painter brush pattern — **W8 stub** (the `ph2d-brush-traits` bridge).
     Pattern { pattern_ref: u64 },
@@ -350,12 +357,32 @@ impl FillNode {
         }
     }
 
-    /// `true` for the 5 resource-bound nodes that W6 leaves as stubs.
+    /// `true` for the 5 nodes the **WGSL codegen** cannot emit yet. Four are
+    /// pure resource stubs (brush `Pattern`, recursive `ProceduralShader`, the
+    /// two texture nodes); `MeshGradient` is here only because its WGSL form
+    /// needs a GPU texture binding for its solved field (renderer wiring, W7
+    /// step 3) — on the CPU it is already evaluable ([`Self::lacks_cpu_eval`]
+    /// excludes it).
     pub fn is_stub(&self) -> bool {
         matches!(
             self,
             FillNode::MeshGradient { .. }
                 | FillNode::Pattern { .. }
+                | FillNode::ProceduralShader { .. }
+                | FillNode::Image { .. }
+                | FillNode::ImageSample { .. }
+        )
+    }
+
+    /// `true` for the resource-bound nodes the **CPU reference evaluator** still
+    /// cannot reproduce: the Painter-brush `Pattern`, the recursive
+    /// `ProceduralShader`, and the two texture nodes. `MeshGradient` is *not*
+    /// among them — W7 step 2 makes it evaluable by sampling a solved
+    /// [`ColorField`] ([`crate::eval::eval_color_with_fields`]).
+    pub fn lacks_cpu_eval(&self) -> bool {
+        matches!(
+            self,
+            FillNode::Pattern { .. }
                 | FillNode::ProceduralShader { .. }
                 | FillNode::Image { .. }
                 | FillNode::ImageSample { .. }

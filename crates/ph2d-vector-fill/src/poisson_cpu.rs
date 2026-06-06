@@ -135,6 +135,65 @@ impl ColorField {
     }
 }
 
+/// Resolves a [`crate::FillNode::MeshGradient`]'s `gradient_id` to its solved
+/// [`ColorField`]. The id→field map is owned by the host (the renderer / the doc
+/// store the Coordenador wires); the CPU evaluator only needs read access at
+/// sample time. [`solve_color_field`] produces the fields the host stores here.
+pub trait FieldResolver {
+    /// The solved field for `gradient_id`, or `None` if it isn't available
+    /// (unsolved / unknown id) — in which case the evaluator renders that
+    /// gradient transparent rather than failing the whole graph.
+    fn resolve(&self, gradient_id: u64) -> Option<&ColorField>;
+}
+
+/// A [`FieldResolver`] that knows no fields — every `MeshGradient` resolves to
+/// `None` (renders transparent). The default the bare
+/// [`crate::eval::eval_color`] uses for graphs with no diffusion gradients.
+pub struct NoFields;
+
+impl FieldResolver for NoFields {
+    #[inline]
+    fn resolve(&self, _gradient_id: u64) -> Option<&ColorField> {
+        None
+    }
+}
+
+/// A concrete `gradient_id → ColorField` store — the simple host/testing
+/// implementation of [`FieldResolver`]. Keyed in a [`BTreeMap`] for
+/// deterministic iteration (HR-5 / ADR-0022 — no `std` `HashMap` in sim crates).
+///
+/// [`BTreeMap`]: std::collections::BTreeMap
+#[derive(Clone, Debug, Default)]
+pub struct FieldStore {
+    fields: std::collections::BTreeMap<u64, ColorField>,
+}
+
+impl FieldStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert (or replace) the solved field for `gradient_id`.
+    pub fn insert(&mut self, gradient_id: u64, field: ColorField) {
+        self.fields.insert(gradient_id, field);
+    }
+
+    pub fn len(&self) -> usize {
+        self.fields.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+}
+
+impl FieldResolver for FieldStore {
+    #[inline]
+    fn resolve(&self, gradient_id: u64) -> Option<&ColorField> {
+        self.fields.get(&gradient_id)
+    }
+}
+
 /// Solve a [`DiffusionCurveSet`] into a [`ColorField`] at `res`, using
 /// [`DEFAULT_VCYCLES`] V-cycles. Empty input → a transparent field.
 pub fn solve_color_field(set: &DiffusionCurveSet, res: Resolution) -> ColorField {

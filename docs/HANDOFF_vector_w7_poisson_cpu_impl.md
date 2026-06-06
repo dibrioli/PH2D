@@ -4,10 +4,10 @@ Autor: Implementador Vector (jornada 2026-06-05) · base: HANDOFF_vector_eval_an
 ═══════════════════════════════════════════════════════════════════
 
 ## §0 — TL;DR
-1. **W7 step 1 do teu sequenciamento (`poisson_cpu.rs` reference, prototype-first) está FECHADO e validado.**
-   O solver CPU multigrid de Poisson para diffusion curves vive, é determinista, e **17/17 testes verdes**
-   (clippy `--all-targets` zero warnings). A math está provada **antes de uma linha de WGSL** — exatamente
-   o de-risco que tu pediu.
+1. **W7 steps 1 E 2 FECHADOS e validados** (`903d5ce` + step-2 commit). Step 1 = solver CPU multigrid de
+   Poisson (determinista, math provada antes de uma linha de WGSL). Step 2 (tu liberaste: "não precisa do
+   meu contrato") = o node **`MeshGradient` agora avalia no CPU** samplenado o `ColorField`. **20/20 testes
+   verdes**, clippy `--all-targets` zero warnings. Falta só o step 3 (GPU WoS + texture binding).
 2. **PING (tu disseste "me pinga quando teu skeleton CPU landar"):** landou. Pronto p/ tu scaffoldar a
    **infra de golden/smoke-test** (§4). O solver determinista é a *referência golden* contra a qual o WoS
    GPU estocástico (step 3) vai ser validado.
@@ -64,13 +64,19 @@ Autor: Implementador Vector (jornada 2026-06-05) · base: HANDOFF_vector_eval_an
   `ph2d-vector-doc`, ADR-0056-amendment). Meu solver consome `&DiffusionCurveSet` direto — sem dep no doc.
   Quando tu materializar o store, eu plugo o sample no eval/codegen (step 2 abaixo).
 
-**Eu (sigo em paralelo, na minha posse):**
-- **Step 2 — materializar o node `MeshGradient`**: trocar o stub em `eval.rs`/`wgsl_codegen.rs` por um
-  **sample do `ColorField`** (CPU eval: bilinear no campo; WGSL: bind de textura + `textureSample`). NÃO
-  bumpa o cap de 17 (já é node existente). Gated no teu store de `gradient_id` p/ o wiring final, mas o
-  eval CPU contra um `ColorField` em memória eu fecho já.
-- **Step 3 — GPU port** (`shaders/diffusion.wgsl` WoS + `bilateral_upsample.wgsl` JBU 2-pass + tier matrix)
-  validado contra este golden CPU. Só depois do step 2.
+**Eu (na minha posse):**
+- **Step 2 — node `MeshGradient` no CPU: ✅ FECHADO.** `eval.rs` ganhou `eval_color_with_fields(graph,
+  coord, ubo, &dyn FieldResolver)` — o `MeshGradient` resolve `gradient_id → &ColorField` e samplea
+  bilinear no `coord`; id não-resolvido → transparente (recurso ausente não derruba o grafo). Predicados
+  separados: `lacks_cpu_eval()` (4 stubs, SEM MeshGradient) gateia o eval; `is_stub()` (5) continua o gate
+  do **WGSL codegen** — que ainda rejeita `MeshGradient` (precisa do texture binding, step 3). Store
+  determinista `FieldStore` (BTreeMap, HR-5). Cap de 17 intacto (node já existia). 3 testes novos:
+  `mesh_gradient_samples_solved_field`, `mesh_gradient_unresolved_is_transparent`,
+  `codegen_still_rejects_mesh_gradient`.
+  - **O que ainda é teu p/ smoke-able no produto:** resolução `gradient_id → ColorField` (quem solva e
+    popula o `FieldStore` no host) + Region→FillGraph. Meu eval consome o resolver via trait; é só plugar.
+- **Step 3 — GPU port** (`shaders/diffusion.wgsl` WoS + `bilateral_upsample.wgsl` JBU 2-pass + tier matrix +
+  texture binding p/ destravar o WGSL codegen do `MeshGradient`) validado contra este golden CPU. Próximo.
 
 ## §5 — GIT / POSSE
 - Commit local scoped: `crates/ph2d-vector-fill/src/{diffusion_curve,poisson_cpu,lib}.rs` + este handoff.

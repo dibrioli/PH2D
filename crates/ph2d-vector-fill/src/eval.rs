@@ -14,6 +14,7 @@
 
 use glam::{Vec2, Vec3};
 
+use crate::poisson_cpu::{FieldResolver, NoFields};
 use crate::ubo::FillParamsUbo;
 use crate::{FillCodegenError, FillGraph, FillNode, FillType, MAX_GRADIENT_STOPS, NodeId};
 
@@ -55,25 +56,41 @@ impl FillValue {
 
 /// Evaluate the graph at `coord`, returning the output node's colour (linear
 /// RGBA). `ubo` carries the params (use [`FillParamsUbo::from_graph`] for the
-/// authored state, or an animated snapshot). Errors only if a stub node is
-/// reachable (mirrors codegen).
+/// authored state, or an animated snapshot). Convenience wrapper over
+/// [`eval_color_with_fields`] with **no** diffusion fields: a reachable
+/// `MeshGradient` therefore renders transparent (use the `_with_fields` form to
+/// supply solved [`crate::ColorField`]s). Errors only if a CPU-unevaluable node
+/// ([`FillNode::lacks_cpu_eval`]) is reachable.
 pub fn eval_color(
     graph: &FillGraph,
     coord: Vec2,
     ubo: &FillParamsUbo,
+) -> Result<[f32; 4], FillCodegenError> {
+    eval_color_with_fields(graph, coord, ubo, &NoFields)
+}
+
+/// As [`eval_color`], but `fields` resolves each reachable
+/// [`FillNode::MeshGradient`]'s `gradient_id` to a solved
+/// [`crate::ColorField`], which the node samples bilinearly at `coord` (W7
+/// step 2). An unresolved gradient renders transparent.
+pub fn eval_color_with_fields(
+    graph: &FillGraph,
+    coord: Vec2,
+    ubo: &FillParamsUbo,
+    fields: &dyn FieldResolver,
 ) -> Result<[f32; 4], FillCodegenError> {
     let order = graph.dependency_order()?;
     let mut values: Vec<Option<FillValue>> = vec![None; graph.nodes.len()];
 
     for id in &order {
         let node = graph.node(*id);
-        if node.is_stub() {
+        if node.lacks_cpu_eval() {
             return Err(FillCodegenError::NotYetImplemented {
                 node: id.0,
                 kind: node.topology_tag(),
             });
         }
-        let v = eval_node(graph, *id, node, coord, ubo, &values);
+        let v = eval_node(graph, *id, node, coord, ubo, &values, fields);
         values[id.0 as usize] = Some(v);
     }
 
@@ -89,6 +106,7 @@ fn eval_node(
     coord: Vec2,
     ubo: &FillParamsUbo,
     values: &[Option<FillValue>],
+    fields: &dyn FieldResolver,
 ) -> FillValue {
     let i = id.0 as usize;
     // Input lookup with per-type defaults (mirrors `node_expr` in codegen).
@@ -145,9 +163,15 @@ fn eval_node(
             input(0, FillType::Vec2).as_vec2(),
             ubo.ucontrol[i][0],
         )),
-        // Stubs are rejected before this point.
-        FillNode::MeshGradient { .. }
-        | FillNode::Pattern { .. }
+        // Mesh gradient: sample the host-supplied solved field at `coord`
+        // (W7 step 2). Unresolved id → transparent (the field isn't ready yet).
+        FillNode::MeshGradient { gradient_id } => FillValue::Color(
+            fields
+                .resolve(*gradient_id)
+                .map_or([0.0, 0.0, 0.0, 0.0], |field| field.sample(coord)),
+        ),
+        // The remaining 4 resource stubs are rejected before this point.
+        FillNode::Pattern { .. }
         | FillNode::ProceduralShader { .. }
         | FillNode::Image { .. }
         | FillNode::ImageSample { .. } => FillValue::Color([0.0, 0.0, 0.0, 0.0]),
@@ -497,5 +521,68 @@ mod tests {
         let c = eval_color(&g, Vec2::ZERO, &ubo).unwrap();
         // Ramp with empty palette → grayscale of the fract result (0.75).
         assert!((c[0] - 0.75).abs() < 1e-6, "got {}", c[0]);
+    }
+
+    #[test]
+    fn mesh_gradient_samples_solved_field() {
+        // W7 step 2: a MeshGradient node evaluates by sampling its solved
+        // ColorField at `coord` — eval must equal a direct `field.sample`.
+        use crate::diffusion_curve::{DiffusionCurve, DiffusionCurveSet};
+        use crate::poisson_cpu::{solve_color_field, FieldStore, Resolution};
+
+        let red = OklchColor::opaque(0.63, 0.26, 29.0);
+        let blue = OklchColor::opaque(0.45, 0.31, 264.0);
+        let set = DiffusionCurveSet::from_curves([DiffusionCurve::straight(
+            Vec2::new(0.5, 0.0),
+            Vec2::new(0.5, 1.0),
+            red,
+            blue,
+        )]);
+        let field = solve_color_field(&set, Resolution::square(65).unwrap());
+        let mut store = FieldStore::new();
+        store.insert(7, field.clone());
+
+        let g = FillGraph {
+            nodes: smallvec![FillNode::MeshGradient { gradient_id: 7 }],
+            connections: smallvec![],
+            output_node_id: NodeId(0),
+        };
+        g.validate().unwrap();
+        let ubo = FillParamsUbo::from_graph(&g);
+
+        let coord = Vec2::new(0.1, 0.5); // far-left of the red/blue split
+        let got = eval_color_with_fields(&g, coord, &ubo, &store).unwrap();
+        assert_eq!(got, field.sample(coord), "MeshGradient must sample its field");
+        assert!(got[0] > got[2], "far-left should lean red (R>B): {got:?}");
+    }
+
+    #[test]
+    fn mesh_gradient_unresolved_is_transparent() {
+        // Bare eval_color supplies no fields → an unresolved gradient renders
+        // transparent (a missing resource must not fail the whole graph).
+        let g = FillGraph {
+            nodes: smallvec![FillNode::MeshGradient { gradient_id: 99 }],
+            connections: smallvec![],
+            output_node_id: NodeId(0),
+        };
+        let ubo = FillParamsUbo::from_graph(&g);
+        let c = eval_color(&g, Vec2::new(0.5, 0.5), &ubo).unwrap();
+        assert_eq!(c, [0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn codegen_still_rejects_mesh_gradient() {
+        // CPU eval handles MeshGradient (step 2), but WGSL codegen still cannot:
+        // it needs the GPU texture binding (renderer wiring, step 3).
+        let g = FillGraph {
+            nodes: smallvec![FillNode::MeshGradient { gradient_id: 1 }],
+            connections: smallvec![],
+            output_node_id: NodeId(0),
+        };
+        let err = crate::wgsl_codegen::codegen(&g).unwrap_err();
+        assert!(
+            matches!(err, FillCodegenError::NotYetImplemented { .. }),
+            "codegen should defer MeshGradient, got {err:?}"
+        );
     }
 }

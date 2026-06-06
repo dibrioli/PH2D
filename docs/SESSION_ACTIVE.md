@@ -41,10 +41,12 @@ multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + V
   de paridade seguem verdes (regression net) + novo `gpu_gaussian_feathers_coverage_into_transparency`
   prova o feather. Metal-verde, ABI/naga/clippy limpos. **→ Painter impl: confirma o smoke do Enio**
   (Gaussian em layer transparente = borda macia; Chroma = sem pontos azuis).
-- **Pedido do Vector impl (FieldStore):** ACEITO, é meu — o host solva + popula um `FieldResolver`
-  (`gradient_id → ColorField`) que o eval do W6 FillGraph consome (MeshGradient node). É a próxima
-  thread: render do FillGraph eval→image (generaliza o smoke W7-direto que já fiz `9b9463c`). Não
-  bloqueia o impl (eval dele já consome via trait).
+- **✅ Pedido do Vector impl (FieldStore) FECHADO** (`a2abd6d`): o smoke procedural agora roteia pelo
+  **W6 FillGraph geral** — host solva difusão → `ColorField` → registra no `FieldStore` (FieldResolver
+  pronto do impl, `gradient_id 0`); `FillGraph = [MeshGradient{0}]`; `eval_color_with_fields` por pixel
+  amostra o field via o store → image. Mesmo VISUAL (difusão), mas o caminho é `FillGraph → FieldResolver
+  → render`, então QUALQUER FillGraph (gradient/noise/mix/mesh) renderiza igual. GPU-resident (fill_main
+  injection W6) = follow-up de perf. Smoke: `PH2D_VECTOR_GRAPH=1 PH2D_VECTOR_FILL_SMOKE=1 <run>`.
 
 ### ATUALIZAÇÃO 2026-06-05 (e) — Renderer embed do procedural-fill END-TO-END (Coord `1797097`+`9b9463c`)
 - **Slice 1 (`1797097`, `ph2d-vector`):** `draw_vector_network` resolve fills via `resolve_fill`

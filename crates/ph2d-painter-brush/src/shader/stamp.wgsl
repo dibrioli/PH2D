@@ -398,11 +398,11 @@ fn intense_blending(src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
 }
 
 fn apply_rendering_mode(mode: u32, src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
-    // `pigment_mode` is a Stamp ABI slot (ADR-0044 §2.5) reserved for
-    // the Mixbox path; T1.4 W1-unified shader ignores the variant and
-    // always uses Linear pigment (lerp in OKLab-derived linear sRGB).
-    // Mixbox compute lands in T1.X+ — gated by `--features det-painter`
-    // exclusion per ADR-0044 §2.5.1.
+    // `pigment_mode` (Stamp ABI slot, ADR-0044 §2.5) is handled in `cs_stamp`
+    // BEFORE this dispatch: `PigmentMode::Mixbox` replaces the alpha-over colour
+    // with a subtractive spectral mix; `Linear` (default) feeds the rendering
+    // modes below unchanged. Mixbox is forced to Linear under `--features
+    // det-painter` (ADR-0044 §2.5.1 — `exp`/`pow` aren't bit-identical cross-OS).
     switch mode {
         case 0u: { return light_glaze(src, dst); }
         case 1u: { return uniform_glaze(src, dst); }
@@ -412,6 +412,68 @@ fn apply_rendering_mode(mode: u32, src: vec4<f32>, dst: vec4<f32>, wet: f32) -> 
         case 5u: { return intense_blending(src, dst, wet); }
         default: { return uniform_glaze(src, dst); }
     }
+}
+
+// ── Mixbox — clean-room SPECTRAL subtractive pigment mixing (W5) ──────────────
+//
+// EXACT mirror of `crate::mixbox` (CPU): reconstruct a reflectance spectrum over a
+// broad/overlapping Gaussian channel basis (asymmetric widths so blue+yellow → a
+// clean green, not teal), mix by the WEIGHTED GEOMETRIC MEAN of the reflectances
+// (the subtractive operator), integrate back, re-anchor the round-trip per colour
+// (self-mix = identity), and keep the endpoints exact via a `4t(1-t)` blend with
+// the linear lerp. The basis is recomputed per-invocation (`exp` is cheap on the
+// GPU; Mixbox is an opt-in per-brush mode) so there are NO magic constants or
+// extra bindings — only the same `MB_CENTERS`/`MB_SIGMAS` as the CPU. Working
+// space = straight LINEAR sRGB (the canonical Mixbox space).
+const MB_NB: u32 = 24u;
+const MB_FLOOR: f32 = 1.0e-4;
+// R, G, B (band 0 = short λ) — mirror of `mixbox::{CENTERS, SIGMAS}`.
+fn mb_center(c: u32) -> f32 { return array<f32, 3>(19.0, 12.0, 4.0)[c]; }
+fn mb_sigma(c: u32) -> f32 { return array<f32, 3>(5.0, 3.4, 7.0)[c]; }
+
+/// Subtractive spectral mix of two straight-linear-sRGB colours at ratio `t`,
+/// round-trip re-anchored (self-mix is the identity).
+fn mb_spectral_mix(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
+    // Channel responses (peak-1) + their sums (for the normalised integration).
+    var wr: array<f32, 24>;
+    var wg: array<f32, 24>;
+    var wb: array<f32, 24>;
+    var sr = 0.0;
+    var sg = 0.0;
+    var sb = 0.0;
+    for (var i = 0u; i < MB_NB; i = i + 1u) {
+        let fi = f32(i);
+        let dr = (fi - mb_center(0u)) / mb_sigma(0u);
+        let dg = (fi - mb_center(1u)) / mb_sigma(1u);
+        let db = (fi - mb_center(2u)) / mb_sigma(2u);
+        wr[i] = exp(-dr * dr); sr = sr + wr[i];
+        wg[i] = exp(-dg * dg); sg = sg + wg[i];
+        wb[i] = exp(-db * db); sb = sb + wb[i];
+    }
+    // WGM of the reconstructed reflectances, integrated back; plus each colour's
+    // own round-trip for the re-anchor correction.
+    var mixed = vec3<f32>(0.0);
+    var rta = vec3<f32>(0.0);
+    var rtb = vec3<f32>(0.0);
+    for (var i = 0u; i < MB_NB; i = i + 1u) {
+        let ra = clamp(wr[i] * a.r + wg[i] * a.g + wb[i] * a.b, MB_FLOOR, 1.0);
+        let rb = clamp(wr[i] * b.r + wg[i] * b.g + wb[i] * b.b, MB_FLOOR, 1.0);
+        let rm = pow(ra, 1.0 - t) * pow(rb, t);
+        let mvec = vec3<f32>(wr[i] / sr, wg[i] / sg, wb[i] / sb);
+        mixed = mixed + mvec * rm;
+        rta = rta + mvec * ra;
+        rtb = rtb + mvec * rb;
+    }
+    let ea = a - rta;
+    let eb = b - rtb;
+    return max(mixed + ea * (1.0 - t) + eb * t, vec3<f32>(0.0));
+}
+
+/// Endpoint-exact pigment lerp: linear at the ends, full subtractive at 50/50.
+fn mb_lerp(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
+    let tt = clamp(t, 0.0, 1.0);
+    let spec = mb_spectral_mix(a, b, tt);
+    return mix(mix(a, b, tt), spec, 4.0 * tt * (1.0 - tt));
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -586,7 +648,23 @@ fn cs_stamp(
     // linear light (mirror of cpu_render.rs's decode-on-read).
     let dst = premul_srgb_to_premul_linear(textureLoad(canvas_in, coord, 0));
 
-    let result = apply_rendering_mode(stamp.rendering_mode, src_premul, dst, stamp.wet_amount);
+    var result: vec4<f32>;
+    if stamp.pigment_mode == 1u {
+        // Mixbox: the deposited pigment MIXES subtractively with the wet backdrop.
+        // The new canvas colour = `mb_lerp(backdrop, brush, deposit_fraction)`; the
+        // coverage accumulates as a normal alpha-over. `deposit_fraction` is the
+        // share of the final pigment that is NEW (1 over a blank canvas → pure
+        // brush; 0.5 over opaque paint → an even mix → blue+yellow = green). This
+        // replaces the linear colour blend the rendering modes would do; the wet
+        // glaze/blend accumulation × pigment is a documented follow-up.
+        let out_a = combined_alpha + dst.a * (1.0 - combined_alpha);
+        let dst_straight = dst.rgb / max(dst.a, 1e-4);
+        let deposit = combined_alpha / max(out_a, 1e-4);
+        let mixed = mb_lerp(dst_straight, rgb_clamped, deposit);
+        result = vec4<f32>(mixed * out_a, out_a);
+    } else {
+        result = apply_rendering_mode(stamp.rendering_mode, src_premul, dst, stamp.wet_amount);
+    }
     // NaN guard: WGSL `clamp(NaN, lo, hi)` is implementation-defined
     // (Metal returns low, SPIR-V can propagate NaN). `result == result`
     // is `false` only for NaN — replace NaN components with 0 before

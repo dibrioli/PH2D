@@ -2058,6 +2058,22 @@ fn bloom_neutral_is_identity_and_glow_haloes_into_transparency() {
 }
 
 #[test]
+fn bloom_downsample_factor_matches_the_gpu_mirror() {
+    // GOLDEN: must stay bit-identical to `ph2d_render::bloom_downsample_factor`
+    // (radius-independent GPU Bloom). Drift on either side diverges the CPU
+    // fallback from the GPU glow — `BLOOM_MAX_LOW_RADIUS = 16`, power-of-two factor.
+    use super::spatial::bloom_downsample_factor as f;
+    assert_eq!(f(0.0), 1);
+    assert_eq!(f(16.0), 1, "≤16 → no downsample");
+    assert_eq!(f(17.0), 2, "ceil(17/16)=2 → pow2 2");
+    assert_eq!(f(32.0), 2);
+    assert_eq!(f(33.0), 4, "ceil(33/16)=3 → pow2 4");
+    assert_eq!(f(100.0), 8, "ceil(100/16)=7 → pow2 8");
+    assert_eq!(f(256.0), 16, "ceil(256/16)=16 → pow2 16");
+    assert_eq!(f(1000.0), 32, "clamped to 32");
+}
+
+#[test]
 fn bloom_downsampled_path_glows_on_a_large_canvas() {
     // A canvas ≥512 px picks a downsample factor > 1 (the FPS-fix path). Verify
     // the bright-pass → downsample → blur → bilinear-upsample chain still produces

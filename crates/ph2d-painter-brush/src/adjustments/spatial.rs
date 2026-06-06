@@ -50,6 +50,26 @@ use super::*;
 /// blur is already far past any interactive use).
 pub const MAX_BLUR_HALF: u32 = 256;
 
+/// Cap on the LOW-res bloom blur radius (`radius / factor`). The downsample factor
+/// is chosen so the actual kernel never exceeds this → cost is radius-independent.
+/// **Mirrors `ph2d_render::layer_compositor::BLOOM_MAX_LOW_RADIUS`.**
+const BLOOM_MAX_LOW_RADIUS: f32 = 16.0;
+
+/// Bloom downsample factor for `radius` — a **power-of-two** chosen so the low-res
+/// blur (`radius / factor`) is ≤ [`BLOOM_MAX_LOW_RADIUS`]; `1` (no downsample)
+/// below that. **Mirrors `ph2d_render::layer_compositor::bloom_downsample_factor`
+/// EXACTLY** (kept in lock-step like [`gaussian_weights`]) so the CPU fallback and
+/// the GPU pass-graph produce the same glow at every radius — the Coord's
+/// reconciliation (commit `e5eb54c`: radius-independent GPU Bloom).
+pub(super) fn bloom_downsample_factor(radius: f32) -> u32 {
+    if radius <= BLOOM_MAX_LOW_RADIUS {
+        return 1;
+    }
+    ((radius / BLOOM_MAX_LOW_RADIUS).ceil() as u32)
+        .next_power_of_two()
+        .clamp(1, 32)
+}
+
 /// Geometry of the compositor window an adjustment is applied to: `acc` is a
 /// `width × height` row-major slice anchored at canvas `(origin_x, origin_y)`.
 /// Per-pixel kinds ignore it; spatial/coordinate kinds need it (the 2-D layout
@@ -663,7 +683,9 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     // the add. Large canvases pick a bigger factor; small ones stay full-res so the
     // glow shape is unchanged. This is what fixes the slider-drag FPS on the CPU
     // fallback path (the GPU pass-graph is the Coord's follow-up).
-    let factor = (w.min(h) / 256).clamp(1, 4);
+    // RADIUS-based factor (mirror of the GPU) → the low-res blur is bounded, so the
+    // cost is radius-independent AND the CPU fallback matches the GPU at every radius.
+    let factor = bloom_downsample_factor(p.radius) as i32;
     let glow = if factor == 1 {
         let mut g = bright;
         separable_blur_premul(p.radius, &mut g, win);
@@ -671,7 +693,11 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     } else {
         let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
         let mut small = downsample_box(&bright, w, h, sw, sh, factor);
-        separable_blur_premul(p.radius / factor as f32, &mut small, AdjustWindow::full(sw as u32, sh as u32));
+        separable_blur_premul(
+            p.radius / factor as f32,
+            &mut small,
+            AdjustWindow::full(sw as u32, sh as u32),
+        );
         small // upsampled on read below
     };
     // Add the glow onto the premultiplied base, then back to straight (parallel).
@@ -690,12 +716,15 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
         });
     } else {
         let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
-        let inv = 1.0 / factor as f32;
+        // Centre-aligned map full → small using the actual dim ratio (sw/w, not
+        // 1/factor) — matches the GPU `cs_bloom_up` exactly when w isn't a clean
+        // multiple of `factor`.
+        let inv_x = sw as f32 / w as f32;
+        let inv_y = sh as f32 / h as f32;
         par_rows(acc, wu, hu, |y, out_row| {
-            let fy = (y as f32 + 0.5) * inv - 0.5;
+            let fy = (y as f32 + 0.5) * inv_y - 0.5;
             for (x, o) in out_row.iter_mut().enumerate() {
-                // Centre-aligned map from full → small space.
-                let fx = (x as f32 + 0.5) * inv - 0.5;
+                let fx = (x as f32 + 0.5) * inv_x - 0.5;
                 let g = bilinear(glow, sw, sh, fx, fy);
                 o[0] += intensity * g[0];
                 o[1] += intensity * g[1];
@@ -710,7 +739,14 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
 /// Box-downsample a `w×h` premultiplied buffer to `dw×dh` by averaging each
 /// `factor×factor` source block (clamped at the edges). Premultiplied RGBA is
 /// linear-combinable, so a plain average is correct.
-fn downsample_box(src: &[[f32; 4]], w: i32, h: i32, dw: i32, dh: i32, factor: i32) -> Vec<[f32; 4]> {
+fn downsample_box(
+    src: &[[f32; 4]],
+    w: i32,
+    h: i32,
+    dw: i32,
+    dh: i32,
+    factor: i32,
+) -> Vec<[f32; 4]> {
     let mut dst = vec![[0.0f32; 4]; (dw * dh) as usize];
     for dy in 0..dh {
         for dx in 0..dw {

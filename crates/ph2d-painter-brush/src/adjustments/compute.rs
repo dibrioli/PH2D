@@ -1224,7 +1224,10 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
         // soft-knee falloff.
         AdjustmentParams::Bloom(p) => vec![
             ("Threshold", p.threshold.clamp(0.0, 1.0)),
-            ("Intensity", (p.intensity / BLOOM_INTENSITY_MAX).clamp(0.0, 1.0)),
+            (
+                "Intensity",
+                (p.intensity / BLOOM_INTENSITY_MAX).clamp(0.0, 1.0),
+            ),
             ("Radius", (p.radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
             ("Falloff", p.falloff.clamp(0.0, 1.0)),
         ],
@@ -1234,12 +1237,21 @@ pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str,
         AdjustmentParams::ShadowsHighlights(p) => vec![
             ("Shad Amt", p.shadows_amount.clamp(0.0, 1.0)),
             ("Shad Wid", p.shadows_tonal_width.clamp(0.0, 1.0)),
-            ("Shad Rad", (p.shadows_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            (
+                "Shad Rad",
+                (p.shadows_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0),
+            ),
             ("High Amt", p.highlights_amount.clamp(0.0, 1.0)),
             ("High Wid", p.highlights_tonal_width.clamp(0.0, 1.0)),
-            ("High Rad", (p.highlights_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
+            (
+                "High Rad",
+                (p.highlights_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0),
+            ),
             ("Color", (p.color_correction.clamp(-1.0, 1.0) + 1.0) * 0.5),
-            ("Contrast", (p.midtone_contrast.clamp(-1.0, 1.0) + 1.0) * 0.5),
+            (
+                "Contrast",
+                (p.midtone_contrast.clamp(-1.0, 1.0) + 1.0) * 0.5,
+            ),
         ],
         _ => Vec::new(),
     }

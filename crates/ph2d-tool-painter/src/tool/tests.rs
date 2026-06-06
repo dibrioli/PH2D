@@ -496,6 +496,89 @@ fn full_flow_mixbox_yellow_over_blue_is_green() {
 }
 
 #[test]
+fn repro_two_strokes_blue_then_yellow_same_layer_scan_for_green() {
+    // EXACT live repro: transparent canvas, paint a BLUE stroke, end it, then paint
+    // a YELLOW stroke crossing it on the SAME layer at ~50% opacity. Scan the whole
+    // preview: SOMEWHERE in the overlap the Mixbox mix must be green-dominant. If no
+    // pixel is green, the two-stroke same-layer path is NOT mixing (the live bug).
+    let (w, h) = (32u32, 32u32);
+    let mut t = PainterTool::default(); // Mixbox by default
+    t.params.size_px = 14.0;
+    t.set_source(flat_source(w, h, [0, 0, 0, 0]), w, h); // transparent
+
+    // Stroke 1: opaque BLUE, vertical line down the middle.
+    t.params.opacity = 1.0;
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([0, 0, 255, 255]);
+    t.begin_stroke(1);
+    for y in 4..28 {
+        t.queue_pointer(PointerSample {
+            position: [16.0, y as f32],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+
+    // Stroke 2: YELLOW at 50%, horizontal line crossing the blue.
+    t.params.opacity = 0.5;
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([255, 255, 0, 255]);
+    t.begin_stroke(2);
+    for x in 4..28 {
+        t.queue_pointer(PointerSample {
+            position: [x as f32, 16.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+
+    let (px, pw, ph) = t.current_preview().expect("painted preview");
+    // Find the greenest pixel and report the overlap region.
+    let mut best = (0i32, 0i32, 0i32, 0usize);
+    let mut green_dominant = 0;
+    for i in 0..(pw * ph) as usize {
+        let (r, g, b, a) = (
+            px[i * 4] as i32,
+            px[i * 4 + 1] as i32,
+            px[i * 4 + 2] as i32,
+            px[i * 4 + 3] as i32,
+        );
+        if a < 40 {
+            continue;
+        }
+        if g - r.max(b) > best.1 - best.0.max(best.2) {
+            best = (r, g, b, i);
+        }
+        if g > r + 12 && g > b + 12 {
+            green_dominant += 1;
+        }
+    }
+    // Sample the exact crossing pixel too.
+    let c = ((16 * pw + 16) * 4) as usize;
+    let cross = (px[c] as i32, px[c + 1] as i32, px[c + 2] as i32, px[c + 3] as i32);
+    eprintln!(
+        "REPRO greenest=({},{},{}) @idx{} | crossing(16,16)={:?} | green_dominant_px={}",
+        best.0, best.1, best.2, best.3, cross, green_dominant
+    );
+    // The CROSSING pixel itself — where the opaque blue core meets the yellow
+    // core — must be green-dominant. Pre-wash this was pure yellow (254,254,0)
+    // because overlapping dabs built the deposit up to ~1.0; the wash model caps
+    // it at the 50% opacity → a stable 50/50 mix → green.
+    assert!(
+        cross.1 > cross.0 + 12 && cross.1 > cross.2 + 12,
+        "two-stroke crossing must be GREEN (wash caps deposit at opacity), got {:?} \
+         (greenest seen=({},{},{}), green_dominant_px={})",
+        cross, best.0, best.1, best.2, green_dominant
+    );
+    assert!(
+        green_dominant > 50,
+        "the whole overlap band must be green, not a thin fringe: only {} green px \
+         (crossing={:?})",
+        green_dominant, cross
+    );
+}
+
+#[test]
 fn preview_upload_bbox_tracks_partial_vs_full() {
     // B.1: the bridge uploads a partial GPU sub-rect ONLY when
     // `take_preview_arc` took the dirty-rect fast lane. Pin the contract the

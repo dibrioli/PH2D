@@ -512,6 +512,20 @@ pub struct PainterTool {
     /// cold `composite`. Honoured only when no stroke also dirtied the frame;
     /// taken on consume.
     adjustment_cache_pending: bool,
+    /// **W5 Mixbox wash — per-pixel stroke coverage.** Allocated (zeroed) at
+    /// `begin_stroke` ONLY for pigment (Mixbox) brushes; `None` for the normal
+    /// per-dab path. Each entry ∈[0,1] is the fraction of THIS stroke's pigment
+    /// deposited at that pixel, built monotonically from `flow`×shape. The wash
+    /// render ([`ph2d_painter_brush::apply_stamps_wash`]) composites the pixel
+    /// from the pre-stroke backdrop (`pending_pre_stroke`) at `opacity·coverage`,
+    /// so overlapping dabs inside one stroke stay a *stable mix* (yellow over
+    /// blue = green) instead of building up to pure brush colour. Cleared at
+    /// `end_stroke` / reset.
+    wash_coverage: Option<Vec<f32>>,
+    /// Opacity cap for the active wash stroke, snapshotted from `params.opacity`
+    /// at `begin_stroke` so a mid-stroke UI change can't destabilise coverage.
+    /// Meaningful only while `wash_coverage` is `Some`.
+    wash_opacity_cap: f32,
 }
 
 impl Default for PainterTool {
@@ -566,6 +580,8 @@ impl Default for PainterTool {
             selection: std::collections::BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,
+            wash_coverage: None,
+            wash_opacity_cap: 1.0,
         }
     }
 }

@@ -53,7 +53,28 @@ impl PainterTool {
         // opacity"). Aplicamos `params.opacity` como pre-multiply no
         // alpha do color (STRAIGHT alpha → shader premultiplies). Per-
         // stamp opacity dynamics (taper) vem em W5+ Brush Studio.
-        self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
+        //
+        // **W5 Mixbox wash exception:** pigment strokes route through
+        // `apply_stamps_wash`, where opacity is the per-STROKE *cap* on
+        // coverage — NOT a per-dab multiply (that re-introduces the
+        // build-up-to-yellow bug). So for Mixbox we keep the colour alpha
+        // at the UI value and hand `params.opacity` to the wash path as the
+        // cap; coverage is a fresh zeroed per-pixel buffer over the source.
+        let wash = self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Mixbox;
+        if wash {
+            self.wash_opacity_cap = self.params.opacity.clamp(0.0, 1.0);
+            let (w, h) = self.source_size;
+            let n = (w as usize) * (h as usize);
+            // Reuse the existing buffer (same source size) to avoid a per-stroke
+            // realloc; otherwise allocate a fresh zeroed coverage map.
+            match self.wash_coverage.as_mut() {
+                Some(buf) if buf.len() == n => buf.iter_mut().for_each(|c| *c = 0.0),
+                _ => self.wash_coverage = Some(vec![0.0; n]),
+            }
+        } else {
+            self.wash_coverage = None;
+            self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
+        }
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //
@@ -214,14 +235,24 @@ impl PainterTool {
             // (16 MB once per preview drain cycle, NOT per pointer event).
             // Explicit `Vec<u8>` annotation prevents the compiler from
             // coercing through `Arc<[u8]>::make_mut` (different impl).
+            let (w, h) = self.source_size;
+            let opacity_cap = self.wash_opacity_cap;
             let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
-            apply_stamps_with_options(
-                canvas_vec,
-                self.source_size.0,
-                self.source_size.1,
-                stamps,
-                alpha_lock,
-            );
+            // **W5 Mixbox wash path:** when a pigment stroke is active AND we have
+            // the pre-stroke backdrop snapshot, composite each dab against the
+            // backdrop with opacity-capped coverage (stable green). Otherwise the
+            // normal per-dab build-up path. The two fields are disjoint from
+            // `canvas_rgba`, so the borrow checker permits all three at once.
+            match (self.wash_coverage.as_mut(), self.pending_pre_stroke.as_deref()) {
+                (Some(coverage), Some(backdrop)) if backdrop.len() == canvas_vec.len() => {
+                    ph2d_painter_brush::apply_stamps_wash(
+                        canvas_vec, backdrop, coverage, w, h, stamps, opacity_cap, alpha_lock,
+                    );
+                }
+                _ => {
+                    apply_stamps_with_options(canvas_vec, w, h, stamps, alpha_lock);
+                }
+            }
             self.preview_dirty = true;
             self.has_painted_since_source = true;
             // GPU preview: the active layer's pixels just changed → bump its

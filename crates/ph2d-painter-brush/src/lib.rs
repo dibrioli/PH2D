@@ -92,7 +92,7 @@ pub use blend::{BlendMode, MAX_BLEND_MODES, apply as apply_blend};
 pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;
-pub use cpu_render::{apply_stamps, apply_stamps_with_options};
+pub use cpu_render::{apply_stamps, apply_stamps_wash, apply_stamps_with_options};
 pub use dynamics::DynamicsParams;
 pub use grain::{
     GrainBehavior, GrainBlendMode, GrainFiltering, GrainParams, GrainSource, GrainZoom,

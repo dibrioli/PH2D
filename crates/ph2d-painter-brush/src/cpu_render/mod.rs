@@ -330,6 +330,174 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
     }
 }
 
+/// **W5 Mixbox wash model** — composite a whole pigment stroke against a
+/// fixed `backdrop` snapshot, capping coverage at `opacity_cap`.
+///
+/// ## Why this exists (the green bug)
+///
+/// The per-dab [`apply_stamps_with_options`] path composites each stamp over
+/// the *live* canvas. Within one stroke, overlapping dabs therefore build up:
+/// yellow over (yellow over (yellow over blue)) → the deposit `t` climbs to ~1
+/// and the Mixbox mix converges to **pure brush colour** (yellow). The green
+/// only survives in the thin feathered fringe where a single dab lands at
+/// `t≈0.5`. That is exactly the "paint yellow over blue → still yellow/grey,
+/// no green" report.
+///
+/// Real media don't behave that way: one pass of a 50%-loaded brush deposits
+/// *half* its pigment and stops — the result is a stable 50/50 mix (green),
+/// no matter how many dabs overlap inside that single stroke. That is the
+/// **wash** model (Photoshop/Krita "build-up off"): `flow`×shape accumulates a
+/// per-pixel **coverage** ∈[0,1], and `opacity` is the **cap** on how much of
+/// the stroke's pigment reaches the canvas. Each dab re-composites the pixel
+/// from the *pre-stroke backdrop* (never the accumulating result), so coverage
+/// is monotonic and the mix is stable: `mix(backdrop, brush, opacity·coverage)`.
+///
+/// `backdrop` is the canvas as it was at `begin_stroke` (the tool already keeps
+/// this snapshot for undo — `pending_pre_stroke`, reused here at zero extra
+/// cost). `coverage` is a per-pixel `f32` buffer, zeroed at `begin_stroke`,
+/// owned by the stroke. Opacity must NOT be pre-baked into the stamp colour
+/// alpha on this path (the tool skips that bake for pigment strokes) — it is
+/// applied once, here, as the cap.
+pub fn apply_stamps_wash(
+    canvas: &mut [u8],
+    backdrop: &[u8],
+    coverage: &mut [f32],
+    width: u32,
+    height: u32,
+    stamps: &[Stamp],
+    opacity_cap: f32,
+    alpha_lock: bool,
+) {
+    let n = (width as usize) * (height as usize);
+    assert_eq!(canvas.len(), n * 4, "canvas size must match width*height*4");
+    assert_eq!(backdrop.len(), n * 4, "backdrop size must match width*height*4");
+    assert_eq!(coverage.len(), n, "coverage size must match width*height");
+    let cap = opacity_cap.clamp(0.0, 1.0);
+    for stamp in stamps {
+        apply_one_stamp_wash(canvas, backdrop, coverage, width, height, stamp, cap, alpha_lock);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_one_stamp_wash(
+    canvas: &mut [u8],
+    backdrop: &[u8],
+    coverage: &mut [f32],
+    width: u32,
+    height: u32,
+    stamp: &Stamp,
+    opacity_cap: f32,
+    alpha_lock: bool,
+) {
+    if !stamp.size_px.is_finite()
+        || stamp.size_px <= 0.0
+        || !stamp.position_world[0].is_finite()
+        || !stamp.position_world[1].is_finite()
+    {
+        return;
+    }
+    let footprint = (stamp.size_px.ceil() as u32).min(crate::stamp::MAX_STAMP_SIZE_PX);
+    if footprint == 0 {
+        return;
+    }
+    if (stamp.flags & (crate::stamp::FLAG_HOVER_PREVIEW | crate::stamp::FLAG_PREDICTED_SAMPLE)) != 0 {
+        return;
+    }
+    let footprint_f = footprint as f32;
+    let center_offset = (footprint_f - 1.0) * 0.5;
+    let [l, a, b, color_alpha] = stamp.color_oklab;
+    let rgb_linear = oklab_to_linear_srgb(l, a, b);
+    let rgb_clamped = [
+        rgb_linear[0].clamp(0.0, 1.0),
+        rgb_linear[1].clamp(0.0, 1.0),
+        rgb_linear[2].clamp(0.0, 1.0),
+    ];
+    let flow = stamp.flow.clamp(0.0, 1.0);
+    let shape_slot = stamp.shape_layer;
+    // Pigment prepared once per stamp (constant across the footprint; varies
+    // stamp-to-stamp only under hue jitter, which we honour by re-preparing).
+    let prep = crate::mixbox::prepare_pigment(rgb_clamped);
+
+    let cos_r = stamp.rotation_rad.cos();
+    let sin_r = -stamp.rotation_rad.sin();
+    let flip_x_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_X) != 0 { -1.0 } else { 1.0 };
+    let flip_y_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_Y) != 0 { -1.0 } else { 1.0 };
+    let canvas_w = width as i32;
+    let canvas_h = height as i32;
+
+    for py in 0..footprint {
+        for px in 0..footprint {
+            let u_axis = (px as f32 + 0.5) / footprint_f;
+            let v_axis = (py as f32 + 0.5) / footprint_f;
+            let mut uc = u_axis - 0.5;
+            let mut vc = v_axis - 0.5;
+            uc *= flip_x_sign;
+            vc *= flip_y_sign;
+            let ur = uc * cos_r - vc * sin_r;
+            let vr = uc * sin_r + vc * cos_r;
+            let u = ur + 0.5;
+            let v = vr + 0.5;
+            let shape_alpha = crate::library::shape_alpha_for_slot(shape_slot, u, v);
+            if shape_alpha < (1.0 / 255.0) {
+                continue;
+            }
+            // Per-dab deposit RATE (no opacity — opacity is the cap below).
+            let rate = (color_alpha * flow * shape_alpha).clamp(0.0, 1.0);
+            if rate < (1.0 / 255.0) {
+                continue;
+            }
+            let world_x_f = stamp.position_world[0] + (px as f32) - center_offset;
+            let world_y_f = stamp.position_world[1] + (py as f32) - center_offset;
+            let world_x = (world_x_f + 0.5).floor() as i32;
+            let world_y = (world_y_f + 0.5).floor() as i32;
+            if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
+                continue;
+            }
+            let pix = world_y as usize * width as usize + world_x as usize;
+            let idx = pix * 4;
+            // Monotonic coverage build-up (Porter-Duff "over" of dab onto the
+            // stroke's own coverage). Capped implicitly at 1.0.
+            let cov = coverage[pix];
+            let new_cov = cov + rate * (1.0 - cov);
+            coverage[pix] = new_cov;
+            // Decode the PRE-STROKE backdrop (straight linear) — NOT the live
+            // canvas. This is what makes overlapping dabs stable instead of
+            // building toward pure brush colour.
+            let back = [
+                srgb_to_linear_byte(backdrop[idx]),
+                srgb_to_linear_byte(backdrop[idx + 1]),
+                srgb_to_linear_byte(backdrop[idx + 2]),
+                backdrop[idx + 3] as f32 / 255.0,
+            ];
+            let back_a = back[3];
+            if alpha_lock && back_a <= 0.0 {
+                continue;
+            }
+            // Stroke pigment that reaches the canvas = coverage capped by opacity.
+            let eff = (opacity_cap * new_cov).clamp(0.0, 1.0);
+            let out_a = eff + back_a * (1.0 - eff);
+            if out_a <= 1e-6 {
+                canvas[idx] = 0;
+                canvas[idx + 1] = 0;
+                canvas[idx + 2] = 0;
+                if !alpha_lock {
+                    canvas[idx + 3] = 0;
+                }
+                continue;
+            }
+            // Subtractive mix: how much of the FINAL pigment is the new brush.
+            let t = (eff / out_a).clamp(0.0, 1.0);
+            let mixed = crate::mixbox::mix_prepared(&prep, [back[0], back[1], back[2]], t);
+            canvas[idx] = linear_to_srgb_byte(mixed[0].clamp(0.0, 1.0));
+            canvas[idx + 1] = linear_to_srgb_byte(mixed[1].clamp(0.0, 1.0));
+            canvas[idx + 2] = linear_to_srgb_byte(mixed[2].clamp(0.0, 1.0));
+            if !alpha_lock {
+                canvas[idx + 3] = (out_a.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            }
+        }
+    }
+}
+
 /// OKLab → linear sRGB (D65). **Coefficients idênticos ao shader** —
 /// gate `shader_oklab_coefficients_bit_identical_with_rust` em
 /// `stamp_pipeline.rs` prova zero ULP drift.

@@ -547,6 +547,11 @@ impl AdjustmentKind {
             // compositor's binding-6 `adj_luts` (Curves = 3×256, Levels = 1×256).
             Self::Curves => 7,
             Self::Levels => 8,
+            // Coordinate-dependent per-pixel kinds (read the absolute canvas pixel
+            // in `apply_adjustment`) — dirty-rect exact.
+            Self::Noise => 9,
+            Self::Halftone => 10,
+            Self::ColorLookupLut => 11,
             // Not yet ported to the per-pixel GPU shader. Spatial kinds run on
             // the multi-pass pass-graph instead — see `gpu_spatial_code`.
             _ => return None,
@@ -576,6 +581,8 @@ impl AdjustmentKind {
             Self::Sharpen => 1,             // SPATIAL_SHARPEN
             Self::MotionBlur => 2,          // SPATIAL_MOTION
             Self::ChromaticAberration => 3, // SPATIAL_CHROMA
+            Self::Bloom => 4,               // SPATIAL_BLOOM (bright-pass→blur→add)
+            Self::ShadowsHighlights => 5,   // SPATIAL_SHADOWS_HIGHLIGHTS (luma blur + tonal)
             _ => return None,
         })
     }
@@ -708,30 +715,70 @@ impl AdjustmentParams {
                 p.density,
                 if p.preserve_luminosity { 1.0 } else { 0.0 },
             ],
+            // Coordinate-dependent per-pixel kinds (ADJ_NOISE/HALFTONE/COLOR_LOOKUP).
+            // Enum discriminants cast directly (the WGSL switches on the same order).
+            Self::Noise(p) => [
+                p.amount,
+                p.kind as u8 as f32,
+                if p.monochromatic { 1.0 } else { 0.0 },
+            ],
+            Self::Halftone(p) => [p.dot_size, p.angle, p.shape as u8 as f32],
+            Self::ColorLookupLut(p) => [p.lut_3d.0 as f32, p.intensity, 0.0],
             _ => [0.0, 0.0, 0.0],
         }
     }
 
-    /// The 4 scalars the spatial pass-graph reads (`LayerOp::SpatialAdjustment`
-    /// `params: [f32; 4]`), or `None` for a non-spatial kind. Packing mirrors
+    /// The scalars the spatial pass-graph reads (`LayerOp::SpatialAdjustment`
+    /// `params: [f32; 8]`), or `None` for a non-spatial kind. Packing mirrors
     /// `ph2d_render::layer_compositor::SPATIAL_*` (validated by the spatial parity
-    /// gates), in lock-step with [`AdjustmentKind::gpu_spatial_code`]:
-    /// - `GaussianBlur` → `[radius, 0, 0, 0]`
-    /// - `Sharpen` → `[amount, radius, 0, 0]` (unsharp: `base + amount·(base−blur)`)
-    /// - `MotionBlur` → `[distance, angle_rad, 0, 0]`
-    /// - `ChromaticAberration` → `[red_shift, green_shift, blue_shift, falloff_center]`
+    /// gates), in lock-step with [`AdjustmentKind::gpu_spatial_code`]. The tail is
+    /// zero for the ≤4-param kinds; only `ShadowsHighlights` uses all 8:
+    /// - `GaussianBlur` → `[radius, 0, …]`
+    /// - `Sharpen` → `[amount, radius, 0, …]` (unsharp: `base + amount·(base−blur)`)
+    /// - `MotionBlur` → `[distance, angle_rad, 0, …]`
+    /// - `ChromaticAberration` → `[red_shift, green_shift, blue_shift, falloff_center, 0, …]`
+    /// - `Bloom` → `[threshold, intensity, radius, falloff, 0, …]`
+    /// - `ShadowsHighlights` → `[shad_amount, shad_tonal_width, shad_radius,
+    ///   high_amount, high_tonal_width, high_radius, color_correction, midtone_contrast]`
     ///
     /// The painter flatten passes this verbatim into the op so the GPU and the CPU
-    /// reference (`apply_*` in `compute.rs`) read identical numbers.
+    /// reference (`apply_*` in `compute.rs`/`spatial.rs`) read identical numbers.
     #[must_use]
-    pub fn spatial_params(&self) -> Option<[f32; 4]> {
+    pub fn spatial_params(&self) -> Option<[f32; 8]> {
         Some(match self {
-            Self::GaussianBlur(p) => [p.radius, 0.0, 0.0, 0.0],
-            Self::Sharpen(p) => [p.amount, p.radius, 0.0, 0.0],
-            Self::MotionBlur(p) => [p.distance, p.angle, 0.0, 0.0],
-            Self::ChromaticAberration(p) => {
-                [p.red_shift, p.green_shift, p.blue_shift, p.falloff_center]
-            }
+            Self::GaussianBlur(p) => [p.radius, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            Self::Sharpen(p) => [p.amount, p.radius, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            Self::MotionBlur(p) => [p.distance, p.angle, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            Self::ChromaticAberration(p) => [
+                p.red_shift,
+                p.green_shift,
+                p.blue_shift,
+                p.falloff_center,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            Self::Bloom(p) => [
+                p.threshold,
+                p.intensity,
+                p.radius,
+                p.falloff,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            Self::ShadowsHighlights(p) => [
+                p.shadows_amount,
+                p.shadows_tonal_width,
+                p.shadows_radius,
+                p.highlights_amount,
+                p.highlights_tonal_width,
+                p.highlights_radius,
+                p.color_correction,
+                p.midtone_contrast,
+            ],
             _ => return None,
         })
     }
@@ -891,7 +938,7 @@ pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
 // Window-/coordinate-aware kernels (spatial blurs + Noise/Halftone) and the
 // canonical spatial math the GPU pass-graph reconciles against (W4 spatial mesh).
 pub use spatial::{
-    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_bloom, apply_chromatic_aberration,
-    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_shadows_highlights,
-    apply_sharpen, gaussian_weights, motion_weights,
+    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_bloom,
+    apply_chromatic_aberration, apply_gaussian, apply_halftone, apply_motion_blur, apply_noise,
+    apply_shadows_highlights, apply_sharpen, gaussian_weights, motion_weights,
 };

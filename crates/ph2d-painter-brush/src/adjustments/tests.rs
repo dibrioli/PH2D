@@ -50,9 +50,10 @@ fn psd_mapping_is_canonical() {
 
 #[test]
 fn gpu_code_and_params_contract() {
-    // The 9 GPU-implemented kinds map to codes 0..=8 (0..=6 scalar, 7/8 the W4
-    // display-space transfer LUTs); the rest are None (CPU-only). Codes must
-    // match the WGSL `ADJ_*` consts.
+    // The per-pixel GPU kinds map to codes 0..=11 (0..=6 scalar, 7/8 the W4
+    // display-space transfer LUTs, 9/10/11 the coordinate-dependent Noise/Halftone/
+    // ColorLookup); spatial kinds use `gpu_spatial_code` instead. Codes must match
+    // the WGSL `ADJ_*` consts.
     assert_eq!(AdjustmentKind::HueSaturationBrightness.gpu_code(), Some(0));
     assert_eq!(AdjustmentKind::BrightnessContrast.gpu_code(), Some(1));
     assert_eq!(AdjustmentKind::Invert.gpu_code(), Some(2));
@@ -62,6 +63,10 @@ fn gpu_code_and_params_contract() {
     assert_eq!(AdjustmentKind::Vibrance.gpu_code(), Some(6));
     assert_eq!(AdjustmentKind::Curves.gpu_code(), Some(7));
     assert_eq!(AdjustmentKind::Levels.gpu_code(), Some(8));
+    assert_eq!(AdjustmentKind::Noise.gpu_code(), Some(9));
+    assert_eq!(AdjustmentKind::Halftone.gpu_code(), Some(10));
+    assert_eq!(AdjustmentKind::ColorLookupLut.gpu_code(), Some(11));
+    // GaussianBlur is spatial → no per-pixel code (uses gpu_spatial_code).
     assert_eq!(AdjustmentKind::GaussianBlur.gpu_code(), None);
     // params order matches the WGSL apply_adjustment reading.
     let hsb = AdjustmentParams::HueSaturationBrightness(HsbParams {
@@ -1512,13 +1517,15 @@ fn selective_color_slider_and_segment_round_trip() {
 // ── W4 spatial mesh — kernel contract + window/coordinate kernels ──────────────
 
 #[test]
-fn gpu_spatial_code_maps_only_the_four_spatial_kinds() {
+fn gpu_spatial_code_maps_only_the_spatial_kinds() {
     use AdjustmentKind::*;
     // SPATIAL_* codes, in lock-step with `ph2d_render::layer_compositor`.
     assert_eq!(GaussianBlur.gpu_spatial_code(), Some(0));
     assert_eq!(Sharpen.gpu_spatial_code(), Some(1));
     assert_eq!(MotionBlur.gpu_spatial_code(), Some(2));
     assert_eq!(ChromaticAberration.gpu_spatial_code(), Some(3));
+    assert_eq!(Bloom.gpu_spatial_code(), Some(4));
+    assert_eq!(ShadowsHighlights.gpu_spatial_code(), Some(5));
     // Everything else is per-pixel or not-yet-ported — no spatial code, and the
     // two paths are mutually exclusive (a kind is never both per-pixel & spatial).
     for &k in ALL_KINDS {
@@ -1528,7 +1535,10 @@ fn gpu_spatial_code_maps_only_the_four_spatial_kinds() {
             !(spatial.is_some() && perpixel.is_some()),
             "{k:?} must not have BOTH a per-pixel and a spatial GPU code"
         );
-        if !matches!(k, GaussianBlur | Sharpen | MotionBlur | ChromaticAberration) {
+        if !matches!(
+            k,
+            GaussianBlur | Sharpen | MotionBlur | ChromaticAberration | Bloom | ShadowsHighlights
+        ) {
             assert_eq!(spatial, None, "{k:?} is not a ported spatial kind");
         }
     }
@@ -1537,25 +1547,63 @@ fn gpu_spatial_code_maps_only_the_four_spatial_kinds() {
 #[test]
 fn spatial_params_pack_mirrors_the_kernel_contract() {
     let g = AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 4.0 });
-    assert_eq!(g.spatial_params(), Some([4.0, 0.0, 0.0, 0.0]));
+    assert_eq!(
+        g.spatial_params(),
+        Some([4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    );
     let s = AdjustmentParams::Sharpen(SharpenParams {
         amount: 0.7,
         radius: 2.0,
         mask_edges: false,
     });
-    assert_eq!(s.spatial_params(), Some([0.7, 2.0, 0.0, 0.0]));
+    assert_eq!(
+        s.spatial_params(),
+        Some([0.7, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    );
     let m = AdjustmentParams::MotionBlur(MotionBlurParams {
         distance: 12.0,
         angle: 1.5,
     });
-    assert_eq!(m.spatial_params(), Some([12.0, 1.5, 0.0, 0.0]));
+    assert_eq!(
+        m.spatial_params(),
+        Some([12.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    );
     let c = AdjustmentParams::ChromaticAberration(ChromaticAberrationParams {
         red_shift: 3.0,
         green_shift: 0.0,
         blue_shift: -3.0,
         falloff_center: 0.5,
     });
-    assert_eq!(c.spatial_params(), Some([3.0, 0.0, -3.0, 0.5]));
+    assert_eq!(
+        c.spatial_params(),
+        Some([3.0, 0.0, -3.0, 0.5, 0.0, 0.0, 0.0, 0.0])
+    );
+    // Bloom uses 4; Shadows/Highlights uses all 8 — the render S/H arm reads
+    // params[0..8] in this exact order (compositor.rs SPATIAL_SHADOWS_HIGHLIGHTS).
+    let b = AdjustmentParams::Bloom(BloomParams {
+        threshold: 0.4,
+        intensity: 0.8,
+        radius: 20.0,
+        falloff: 0.15,
+    });
+    assert_eq!(
+        b.spatial_params(),
+        Some([0.4, 0.8, 20.0, 0.15, 0.0, 0.0, 0.0, 0.0])
+    );
+    let sh = AdjustmentParams::ShadowsHighlights(ShadowsHighlightsParams {
+        shadows_amount: 0.3,
+        shadows_tonal_width: 0.5,
+        shadows_radius: 30.0,
+        highlights_amount: 0.2,
+        highlights_tonal_width: 0.4,
+        highlights_radius: 25.0,
+        color_correction: 0.1,
+        midtone_contrast: 0.05,
+    });
+    assert_eq!(
+        sh.spatial_params(),
+        Some([0.3, 0.5, 30.0, 0.2, 0.4, 25.0, 0.1, 0.05])
+    );
     // Per-pixel kind → no spatial pack.
     assert_eq!(
         AdjustmentParams::Invert(InvertParams {}).spatial_params(),
@@ -2035,7 +2083,11 @@ fn bloom_downsampled_path_glows_on_a_large_canvas() {
     // A pixel outside the block but within the glow radius (block edge at 261,
     // radius 24 → glow reaches ~285) now has spread coverage.
     let far = (256 * n + 272) as usize;
-    assert!(acc[far][3] > 0.0, "downsampled bloom haloes out: {}", acc[far][3]);
+    assert!(
+        acc[far][3] > 0.0,
+        "downsampled bloom haloes out: {}",
+        acc[far][3]
+    );
     assert!(
         acc.iter().all(|p| p.iter().all(|v| v.is_finite())),
         "downsample/upsample stays finite"
@@ -2154,7 +2206,13 @@ fn parallel_kernels_are_deterministic_and_coord_correct_at_scale() {
 #[test]
 fn feathers_coverage_set_is_blur_family_plus_bloom() {
     use AdjustmentKind::*;
-    for k in [GaussianBlur, Sharpen, MotionBlur, ChromaticAberration, Bloom] {
+    for k in [
+        GaussianBlur,
+        Sharpen,
+        MotionBlur,
+        ChromaticAberration,
+        Bloom,
+    ] {
         assert!(k.feathers_coverage(), "{k:?} feathers coverage");
     }
     // Tonal / per-pixel kinds keep coverage — incl. ShadowsHighlights (internal

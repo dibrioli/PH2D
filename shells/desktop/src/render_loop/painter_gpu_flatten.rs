@@ -79,15 +79,14 @@ fn flatten_ids(
                     return None;
                 }
                 // Spatial (neighbourhood) kinds run on the pass-graph as a
-                // `SpatialAdjustment` (Gaussian/Sharpen/Motion/Chroma). `kernel`
-                // is the `SPATIAL_*` code; `params` the kernel's scalars (zero-
-                // padded into the 8-wide op — only S/H uses the tail) — kept in
-                // lock-step with `ph2d-render` by the spatial parity gates.
+                // `SpatialAdjustment` (Gaussian/Sharpen/Motion/Chroma/Bloom/S-H).
+                // `kernel` is the `SPATIAL_*` code; `params` the kernel's 8 scalars
+                // (the tail is zero except S/H) — kept in lock-step with `ph2d-render`
+                // by the spatial parity gates.
                 if let Some(kernel) = adj.kind.gpu_spatial_code() {
-                    let p = adj.params.spatial_params().unwrap_or([0.0; 4]);
                     ops.push(LayerOp::SpatialAdjustment {
                         kernel,
-                        params: [p[0], p[1], p[2], p[3], 0.0, 0.0, 0.0, 0.0],
+                        params: adj.params.spatial_params().unwrap_or([0.0; 8]),
                         blend_mode: BlendMode::to_u8(adj.blend_mode),
                         opacity: adj.opacity.clamp(0.0, 1.0),
                     });
@@ -205,9 +204,9 @@ mod tests {
     fn non_ported_adjustment_falls_back_to_cpu() {
         let mut s = LayerStack::new();
         let _base = s.add_raster("base", 4, 4).unwrap();
-        // Bloom has neither a per-pixel `gpu_code()` nor a `gpu_spatial_code()`
-        // (it needs mip-pyramid infra that has not landed) → not representable.
-        let _adj = s.add_adjustment(AdjustmentKind::Bloom).unwrap();
+        // PhotoFilter has neither a per-pixel `gpu_code()` nor a `gpu_spatial_code()`
+        // (its WGSL case hasn't landed) → not representable, forces the CPU path.
+        let _adj = s.add_adjustment(AdjustmentKind::PhotoFilter).unwrap();
         assert!(
             flatten_for_gpu(&s).is_none(),
             "a non-ported adjustment kind must force the CPU fallback"
@@ -216,20 +215,26 @@ mod tests {
 
     #[test]
     fn spatial_adjustment_emits_pass_graph_op() {
-        // GaussianBlur is a spatial kind → emits `SpatialAdjustment` (the GPU
-        // pass-graph), NOT a CPU fallback. `params[0]` carries the radius.
-        let mut s = LayerStack::new();
-        let _base = s.add_raster("base", 4, 4).unwrap();
-        let _adj = s.add_adjustment(AdjustmentKind::GaussianBlur).unwrap();
-        let (ops, _luts) =
-            flatten_for_gpu(&s).expect("base + GaussianBlur is GPU-representable (pass-graph)");
-        assert!(
-            ops.iter().any(|o| matches!(
-                o,
-                LayerOp::SpatialAdjustment { kernel, .. } if *kernel == 0 // SPATIAL_GAUSSIAN
-            )),
-            "GaussianBlur must flatten to a SpatialAdjustment(SPATIAL_GAUSSIAN): {ops:?}"
-        );
+        // Spatial kinds emit `SpatialAdjustment` (the GPU pass-graph), NOT a CPU
+        // fallback — Gaussian (kernel 0) and Bloom (kernel 4), the latter the 5
+        // GPU-accel kinds the W4 escalation closed.
+        for (kind, want_kernel) in [
+            (AdjustmentKind::GaussianBlur, 0u8),
+            (AdjustmentKind::Bloom, 4u8),
+        ] {
+            let mut s = LayerStack::new();
+            let _base = s.add_raster("base", 4, 4).unwrap();
+            let _adj = s.add_adjustment(kind).unwrap();
+            let (ops, _luts) =
+                flatten_for_gpu(&s).unwrap_or_else(|| panic!("{kind:?} must be GPU-representable"));
+            assert!(
+                ops.iter().any(|o| matches!(
+                    o,
+                    LayerOp::SpatialAdjustment { kernel, .. } if *kernel == want_kernel
+                )),
+                "{kind:?} must flatten to a SpatialAdjustment(kernel {want_kernel}): {ops:?}"
+            );
+        }
     }
 
     #[test]

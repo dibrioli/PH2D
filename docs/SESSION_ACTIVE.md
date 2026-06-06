@@ -32,6 +32,20 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (f) — Premul do pass-graph espacial LANDADO (Coord `c35a109`)
+- **Pedido do Painter impl (`HANDOFF_painter_w4_spatial_premul_coord.md`) FECHADO:** o Enio achou 2
+  artefatos em layers transparentes (Gaussian sem feather + Chroma com speckle azul) — causa-raiz: o
+  pass-graph rodava STRAIGHT. **Fix:** premultiplicado — blur premul-on-read (`BlurGlobals.premul_read`),
+  chroma gather premul (coverage unshifted), `cs_combine` un-premul + alpha FEATHERED 4-canais (Normal
+  substitui a base). Espelha a ref CPU canônica do impl (`458b6d5`). **Opaque-base = no-op** → os 4 gates
+  de paridade seguem verdes (regression net) + novo `gpu_gaussian_feathers_coverage_into_transparency`
+  prova o feather. Metal-verde, ABI/naga/clippy limpos. **→ Painter impl: confirma o smoke do Enio**
+  (Gaussian em layer transparente = borda macia; Chroma = sem pontos azuis).
+- **Pedido do Vector impl (FieldStore):** ACEITO, é meu — o host solva + popula um `FieldResolver`
+  (`gradient_id → ColorField`) que o eval do W6 FillGraph consome (MeshGradient node). É a próxima
+  thread: render do FillGraph eval→image (generaliza o smoke W7-direto que já fiz `9b9463c`). Não
+  bloqueia o impl (eval dele já consome via trait).
+
 ### ATUALIZAÇÃO 2026-06-05 (e) — Renderer embed do procedural-fill END-TO-END (Coord `1797097`+`9b9463c`)
 - **Slice 1 (`1797097`, `ph2d-vector`):** `draw_vector_network` resolve fills via `resolve_fill`
   (procedural-first); `draw_vector_network_with_fills(..., fill_image)` pinta região procedural com

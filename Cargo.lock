@@ -5001,6 +5001,7 @@ dependencies = [
  "ph2d-node-vector-mirror",
  "ph2d-node-vector-offset",
  "ph2d-node-vector-outline-stroke",
+ "ph2d-node-vector-pattern-along-path",
  "ph2d-node-vector-recolor",
  "ph2d-node-vector-roughen",
  "ph2d-node-vector-scatter",
@@ -5092,6 +5093,17 @@ dependencies = [
  "ph2d-vector-doc",
  "ph2d-vector-graph",
  "ph2d-vector-kurbo",
+]
+
+[[package]]
+name = "ph2d-node-vector-pattern-along-path"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-vector-doc",
+ "ph2d-vector-graph",
 ]
 
 [[package]]

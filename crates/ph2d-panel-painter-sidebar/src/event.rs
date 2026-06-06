@@ -44,6 +44,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // Pigment toggle (W5) — forward to the tool, which flips Linear ↔
+        // Subtractive via `PainterUiEdit::TogglePigment` in `handle_panel_event`.
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Slider drag — read freshly-dispatched value, forward normalizado.
         // PainterTool::handle_panel_event mapeia 0..1 back to size_px /
         // opacity full scale conforme `PainterUiEdit` semântica.

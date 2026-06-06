@@ -496,6 +496,34 @@ fn full_flow_mixbox_yellow_over_blue_is_green() {
 }
 
 #[test]
+fn toggle_pigment_flips_brush_mode_and_snapshot() {
+    use ph2d_painter_brush::PigmentMode;
+    let mut t = PainterTool::default(); // smoke brush defaults to Subtractive
+    assert!(t.ui_snapshot().pigment_enabled, "default shows pigment ON");
+    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Subtractive);
+    // Toggle → Linear.
+    t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment);
+    assert!(!t.ui_snapshot().pigment_enabled, "toggled OFF");
+    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Linear);
+    // Toggle back → Subtractive.
+    t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment);
+    assert!(t.ui_snapshot().pigment_enabled, "toggled back ON");
+    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Subtractive);
+}
+
+#[test]
+fn pigment_toggle_via_panel_event_click() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::PigmentMode;
+    let mut t = PainterTool::default();
+    // The sidebar button routes Click(PIGMENT_TOGGLE) → handle_panel_event.
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE,
+    ));
+    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Linear);
+}
+
+#[test]
 fn repro_two_strokes_blue_then_yellow_same_layer_scan_for_green() {
     // EXACT live repro: transparent canvas, paint a BLUE stroke, end it, then paint
     // a YELLOW stroke crossing it on the SAME layer at ~50% opacity. Scan the whole

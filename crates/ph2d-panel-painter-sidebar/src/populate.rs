@@ -62,6 +62,15 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
+    // Pigment toggle (W5) — painted in `paint`, routed via `event::apply_event`
+    // → `ToolPanelEvent::Click` → `handle_panel_event` → `TogglePigment`.
+    store.register(
+        ids::PIGMENT_TOGGLE,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
     // Sliders + chips. Seed do snapshot default (SSOT), chip display em
     // unidade natural (px / %) via os helpers de conversão.
     let seed = PainterUiSnapshot::default();

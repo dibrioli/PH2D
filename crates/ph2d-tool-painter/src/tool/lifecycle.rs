@@ -528,6 +528,8 @@ impl PainterTool {
             takeover_active: self.params.takeover_active,
             active_layer_name: String::new(),
             active_layer_locked: false,
+            pigment_enabled: self.brush.rendering.pigment_mode
+                == ph2d_painter_brush::PigmentMode::Subtractive,
         }
     }
 
@@ -626,6 +628,18 @@ impl PainterTool {
                     None => Some(crate::params::SymmetryAxis::Vertical),
                     Some(_) => None,
                 };
+            }
+            crate::params::PainterUiEdit::TogglePigment => {
+                // Flip the active brush's pigment mode (Linear ↔ Subtractive).
+                // Brush param changed → invalidate the cached hash (R-5), same as
+                // `set_brush`. A live stroke keeps its baked mode until end_stroke
+                // (the wash buffer is set up at begin_stroke from this field).
+                use ph2d_painter_brush::PigmentMode;
+                self.brush.rendering.pigment_mode = match self.brush.rendering.pigment_mode {
+                    PigmentMode::Linear => PigmentMode::Subtractive,
+                    _ => PigmentMode::Linear,
+                };
+                self.cached_brush_hash = None;
             }
             // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são
             // affordances visuais geridas shell-side (não mutam tool state).

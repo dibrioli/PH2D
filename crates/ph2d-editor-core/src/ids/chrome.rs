@@ -280,6 +280,8 @@ pub const PAINTER_SIDEBAR_UNDO_BUTTON: NodeId = hash_node_id("painter_sidebar.un
 pub const PAINTER_SIDEBAR_REDO_BUTTON: NodeId = hash_node_id("painter_sidebar.redo_button");
 /// Modifier square (centro da sidebar) — W2 default eyedropper-while-held.
 pub const PAINTER_SIDEBAR_MODIFIER_SQUARE: NodeId = hash_node_id("painter_sidebar.modifier_square");
+/// Pigment toggle (W5) — flips the active brush Linear ↔ Subtractive (pigment).
+pub const PAINTER_SIDEBAR_PIGMENT_TOGGLE: NodeId = hash_node_id("painter_sidebar.pigment_toggle");
 /// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
 pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");

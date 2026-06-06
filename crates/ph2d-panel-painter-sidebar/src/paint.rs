@@ -265,6 +265,14 @@ fn paint_color_row(
         eye_w,
         ROW_H_PX,
     );
+    // Pigment toggle (W5) — square chip left of the eyedropper. Pressed = the
+    // active brush is in Subtractive (pigment) mode.
+    let pigment_rect = Rect::new(
+        eye_rect.x - Spacing::Sm.px() - eye_w,
+        color_rect.y,
+        eye_w,
+        ROW_H_PX,
+    );
     // Eyedropper armed visual: Pressed (AccentSoft chip) while a pick is
     // pending (the picker's `eyedropper_pending`, shared with the picker's
     // own eyedropper button — one mechanism), else the dispatcher-tracked
@@ -303,9 +311,25 @@ fn paint_color_row(
         .state(eye_state);
     paint_button(&eye, eye_rect, ctx.scene, ctx.text_system, theme);
 
+    // Pigment toggle: Pressed (AccentSoft) while the brush is in Subtractive
+    // (pigment) mode, else the dispatcher-tracked hover/press state.
+    let pigment_state = if snapshot.pigment_enabled {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let pigment = Button::new(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, "Pigment")
+        .icon_only(IconId::Palette)
+        .state(pigment_state);
+    paint_button(&pigment, pigment_rect, ctx.scene, ctx.text_system, theme);
+
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(core_ids::PAINTER_COLOR_THUMB, swatch_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_MODIFIER_SQUARE, eye_rect);
+    hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pigment_rect);
     // The brush-color swatch opens the Blender picker on Down via the generic
     // `is_picker_swatch` dispatch (pointer.rs) — register it each paint
     // (idempotent). Replaces the former per-id `PAINTER_COLOR_THUMB` special-case.

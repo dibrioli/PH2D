@@ -114,8 +114,44 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     // fn under the panel-fn LOC cap.
     y = paint_color_row(ctx, rect, y, &snapshot, theme, row_pad);
 
-    // Pigment + Accumulate checkboxes (W5) — two orthogonal brush-mixing toggles.
+    // Pigment / Accumulate / Grain toggles (W5).
     y = paint_pigment_row(ctx, rect, y, &snapshot, theme, row_pad);
+
+    // Grain depth slider — only while grain is active (the value lives in the
+    // widget store, seeded full; no snapshot field, so we read it from the store).
+    if snapshot.grain_type != 0 {
+        let gd_val = ctx
+            .host
+            .store()
+            .slider(core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER)
+            .map(|(_, v)| v)
+            .unwrap_or(1.0);
+        let gd_display = format!("{:.0}%", gd_val * 100.0);
+        let gd_rect = Rect::new(
+            rect.x + PANEL_HEAD_PAD,
+            y,
+            rect.w - PANEL_HEAD_PAD * 2.0,
+            ROW_H_PX,
+        );
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        let gd_h = paint_slider_with_chip_layout_adaptive(
+            gd_rect,
+            "Grain",
+            gd_val,
+            (gd_val * 100.0) as f64,
+            Some(&gd_display),
+            core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER,
+            core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP,
+            SLIDER_LABEL_W,
+            SLIDER_CHIP_W,
+            store,
+            hit_index,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        y += gd_h + row_pad;
+    }
 
     // Size slider — size_px display via display_override + SSOT map.
     // Adaptive layout (audit W-4): demotes the label to its own row when

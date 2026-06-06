@@ -552,6 +552,16 @@ fn grain_cycles_through_all_four_types_and_back_to_off() {
 }
 
 #[test]
+fn set_grain_depth_updates_brush() {
+    let mut t = PainterTool::default();
+    t.apply_ui_edit(crate::params::PainterUiEdit::SetGrainDepth(0.4));
+    assert!((t.active_brush().grain.grain_depth - 0.4).abs() < 1e-6);
+    // clamps to [0,1].
+    t.apply_ui_edit(crate::params::PainterUiEdit::SetGrainDepth(1.5));
+    assert_eq!(t.active_brush().grain.grain_depth, 1.0);
+}
+
+#[test]
 fn pigment_and_accumulate_are_independent() {
     // The two toggles are orthogonal — flipping one must not move the other.
     let mut t = PainterTool::default(); // pigment ON, accumulate OFF

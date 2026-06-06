@@ -104,5 +104,5 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
 
 #[inline]
 fn is_painter_sidebar_slider(id: NodeId) -> bool {
-    id == ids::SIZE_SLIDER || id == ids::OPACITY_SLIDER
+    id == ids::SIZE_SLIDER || id == ids::OPACITY_SLIDER || id == ids::GRAIN_DEPTH_SLIDER
 }

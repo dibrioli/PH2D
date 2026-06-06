@@ -74,6 +74,9 @@ impl Tool for PainterTool {
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_OPACITY_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::Opacity(v as f32));
             }
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER => {
+                self.apply_ui_edit(PainterUiEdit::SetGrainDepth(v as f32));
+            }
             // ── Dock toggle (mode C) — either panel's header button ────────
             PanelEvent::Click(id)
                 if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK

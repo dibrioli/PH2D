@@ -709,6 +709,10 @@ impl PainterTool {
                 };
                 self.cached_brush_hash = None;
             }
+            crate::params::PainterUiEdit::SetGrainDepth(v) => {
+                self.brush.grain.grain_depth = v.clamp(0.0, 1.0);
+                self.cached_brush_hash = None;
+            }
             // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são
             // affordances visuais geridas shell-side (não mutam tool state).
             _ => {}

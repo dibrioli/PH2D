@@ -190,7 +190,9 @@ pub enum PainterUiEdit {
     // W5 procedural grain — flip GrainSource None ↔ Procedural(Simplex). User-facing
     // label: "Grain".
     ToggleGrain,
-    // === 5 slots de headroom (W9+W11+W14+residual) ===
+    // W5 procedural grain intensity (0..=1). Sidebar slider; shown while grain on.
+    SetGrainDepth(f32),
+    // === 4 slots de headroom (W9+W11+W14+residual) ===
     // Reserved para waves futuras:
     //   SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32) — W9
     //   ToggleOnionSkin, SetAnimFps(f32) — W11

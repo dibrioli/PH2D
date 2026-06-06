@@ -289,6 +289,12 @@ pub const PAINTER_SIDEBAR_ACCUMULATE_TOGGLE: NodeId =
 /// Grain toggle (W5) — flips the active brush GrainSource None ↔ Procedural
 /// (Simplex paper grain).
 pub const PAINTER_SIDEBAR_GRAIN_TOGGLE: NodeId = hash_node_id("painter_sidebar.grain_toggle");
+/// Grain depth slider + chip (W5) — procedural grain intensity (0..100%). Shown
+/// only while grain is active.
+pub const PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER: NodeId =
+    hash_node_id("painter_sidebar.grain_depth_slider");
+pub const PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP: NodeId =
+    hash_node_id("painter_sidebar.grain_depth_chip");
 /// Close (X) button do Painter sidebar — routes pra `CancelActiveTool`
 /// (canon BgRemoval/Padding). Deactivates Painter tool quando clicado.
 pub const PAINTER_SIDEBAR_CLOSE: NodeId = hash_node_id("painter_sidebar.close");

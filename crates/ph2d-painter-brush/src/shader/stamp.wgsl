@@ -525,6 +525,102 @@ fn mb_lerp(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
     return mix(mix(a, b, tt), spec, 4.0 * tt * (1.0 - tt));
 }
 
+// ── Procedural grain (T-grain W5) — bit-for-bit mirror of `grain_noise.rs` ────
+const GRAIN_BASE_FREQ: f32 = 0.35;
+const GRAIN_SEED: u32 = 0x9e3779b9u;
+const GRAIN_TAU: f32 = 6.28318530718;
+
+fn g_hash2(x: i32, y: i32, seed: u32) -> f32 {
+    var h: u32 = (u32(x) * 0x165667b1u) ^ (u32(y) * 0x27876a13u) ^ (seed * 0x85ebca77u);
+    h = h ^ (h >> 15u);
+    h = h * 0x2c1b3c6du;
+    h = h ^ (h >> 12u);
+    h = h * 0x297a2d39u;
+    h = h ^ (h >> 15u);
+    return f32(h) * (1.0 / 4294967296.0);
+}
+fn g_smooth(t: f32) -> f32 { return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); }
+fn g_grad(x: i32, y: i32, seed: u32) -> vec2<f32> {
+    let a = g_hash2(x, y, seed) * GRAIN_TAU;
+    return vec2<f32>(cos(a), sin(a));
+}
+fn g_perlin2(x: f32, y: f32, seed: u32) -> f32 {
+    let xi = floor(x);
+    let yi = floor(y);
+    let xa = i32(xi);
+    let ya = i32(yi);
+    let xf = x - xi;
+    let yf = y - yi;
+    let u = g_smooth(xf);
+    let v = g_smooth(yf);
+    let n00 = dot(g_grad(xa, ya, seed), vec2<f32>(xf, yf));
+    let n10 = dot(g_grad(xa + 1, ya, seed), vec2<f32>(xf - 1.0, yf));
+    let n01 = dot(g_grad(xa, ya + 1, seed), vec2<f32>(xf, yf - 1.0));
+    let n11 = dot(g_grad(xa + 1, ya + 1, seed), vec2<f32>(xf - 1.0, yf - 1.0));
+    let nx0 = n00 + u * (n10 - n00);
+    let nx1 = n01 + u * (n11 - n01);
+    let n = nx0 + v * (nx1 - nx0);
+    return clamp(n * 0.7143 + 0.5, 0.0, 1.0);
+}
+fn g_fbm(x: f32, y: f32, seed: u32) -> f32 {
+    var total = 0.0;
+    var amp = 1.0;
+    var freq = 1.0;
+    var norm = 0.0;
+    for (var o = 0u; o < 4u; o = o + 1u) {
+        total = total + g_perlin2(x * freq, y * freq, seed + o) * amp;
+        norm = norm + amp;
+        amp = amp * 0.5;
+        freq = freq * 2.0;
+    }
+    return clamp(total / norm, 0.0, 1.0);
+}
+fn grain_value(gtype: u32, sx: f32, sy: f32, seed: u32) -> f32 {
+    if (gtype == 1u) { // Gabor
+        let dir = sx * cos(0.4) + sy * sin(0.4);
+        let jitter = g_perlin2(sx * 0.5, sy * 0.5, seed) * 2.0;
+        return clamp(0.5 + 0.5 * sin(dir * GRAIN_TAU + jitter), 0.0, 1.0);
+    } else if (gtype == 2u) { // PaperWeave
+        let warp = 0.5 + 0.5 * sin(sx * GRAIN_TAU);
+        let weft = 0.5 + 0.5 * sin(sy * GRAIN_TAU);
+        let n = g_perlin2(sx, sy, seed) * 0.25;
+        return clamp(max(warp, weft) * 0.85 + 0.15 + n - 0.125, 0.0, 1.0);
+    } else if (gtype == 3u) { // SprayDot
+        let cx = floor(sx);
+        let cy = floor(sy);
+        let present = g_hash2(i32(cx), i32(cy), seed);
+        let jx = g_hash2(i32(cx), i32(cy), seed ^ 0x9e37u) - 0.5;
+        let jy = g_hash2(i32(cx), i32(cy), seed ^ 0x79b9u) - 0.5;
+        let dx = sx - cx - 0.5 - jx;
+        let dy = sy - cy - 0.5 - jy;
+        let d = sqrt(dx * dx + dy * dy);
+        let dotv = clamp(1.0 - d / 0.35, 0.0, 1.0);
+        return clamp(dotv * present, 0.0, 1.0);
+    }
+    return g_fbm(sx, sy, seed); // Simplex (default)
+}
+/// Coverage multiplier ∈ [0,1] for the stamp's procedural grain. `1.0` when none.
+fn grain_factor(stamp: Stamp, world_x: f32, world_y: f32, uv: vec2<f32>) -> f32 {
+    if ((stamp.flags & FLAG_GRAIN_PROCEDURAL) == 0u) {
+        return 1.0;
+    }
+    let gtype = stamp.grain_layer & 0xFFu;
+    let depth = f32((stamp.grain_layer >> 8u) & 0xFFu) / 255.0;
+    var sx: f32;
+    var sy: f32;
+    if ((stamp.flags & FLAG_GRAIN_BEHAVIOR_MOVING) != 0u) {
+        let mf = 32.0 / max(stamp.grain_scale, 0.01);
+        sx = uv.x * mf;
+        sy = uv.y * mf;
+    } else {
+        let f = GRAIN_BASE_FREQ / max(stamp.grain_scale, 0.01);
+        sx = world_x * f;
+        sy = world_y * f;
+    }
+    let n = grain_value(gtype, sx + stamp.grain_offset_u, sy + stamp.grain_offset_v, GRAIN_SEED);
+    return 1.0 - depth * (1.0 - n);
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_stamp(
     @builtin(workgroup_id) wg: vec3<u32>,
@@ -668,12 +764,13 @@ fn cs_stamp(
     // chroma-reduction gamut map at the boundary. Audit 2026-05-26
     // D-3.H8+M8 / D-2.F2.
     let rgb_clamped = clamp(rgb_linear, vec3<f32>(0.0), vec3<f32>(1.0));
-    // Combined alpha = stamp color alpha · brush opacity · flow · shape α.
+    // Combined alpha = stamp color alpha · brush opacity · flow · shape α, then
+    // modulated by the procedural grain texture at the world position.
     let combined_alpha = clamp(
         stamp.color_oklab_alpha * stamp.opacity * stamp.flow * shape_alpha,
         0.0,
         1.0,
-    );
+    ) * grain_factor(stamp, world_x_f, world_y_f, uv);
     let src_premul = vec4<f32>(rgb_clamped * combined_alpha, combined_alpha);
 
     // T1.5 ping-pong: `dst` is the previous canvas state at this pixel

@@ -75,6 +75,12 @@ compense = "compense"
 # Technical terms that show up in shaders / numerics.
 texel = "texel"
 mipmap = "mipmap"
+# OpenType font-domain terms in ph2d-vector-font (ADR-0066): `OT` = OpenType
+# (abbreviated throughout the axis/glyph comments) and `wdth` = the OpenType
+# *width* variation-axis tag (a literal 4-byte format signature, `b"wdth"`),
+# not a misspelling of "width".
+OT = "OT"
+wdth = "wdth"
 # AccessibilityNode etc.
 a11y = "a11y"
 # Level of Detail — standard graphics acronym; typos-cli wants "LOAD".

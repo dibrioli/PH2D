@@ -71,6 +71,16 @@ name = "error-code"
 allow = ["BSL-1.0"]
 name = "clipboard-win"
 
+[[licenses.exceptions]]
+# webpki-roots embeds Mozilla's CA-certificate bundle under CDLA-Permissive-2.0
+# (Community Data License Agreement — the permissive *data* license for the cert
+# list; no copyleft, no source obligations). Pulled transitively by `ureq`
+# (rustls TLS roots) → `ph2d-vector-llm-client` for the Anthropic HTTPS call.
+# Both the 0.26.x and 1.0.x versions are present in the graph; the exception is
+# by crate name, so it covers all versions. Audited 2026-06-06.
+allow = ["CDLA-Permissive-2.0"]
+name = "webpki-roots"
+
 # Grant clarification for crates whose embedded LICENSE files don't match
 # their Cargo.toml `license` field exactly.
 [[licenses.clarify]]

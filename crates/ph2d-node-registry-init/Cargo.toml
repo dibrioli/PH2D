@@ -27,6 +27,7 @@ ph2d-node-vector-hatch = { path = "../ph2d-node-vector-hatch" }
 ph2d-node-vector-mirror = { path = "../ph2d-node-vector-mirror" }
 ph2d-node-vector-offset = { path = "../ph2d-node-vector-offset" }
 ph2d-node-vector-outline-stroke = { path = "../ph2d-node-vector-outline-stroke" }
+ph2d-node-vector-pattern-along-path = { path = "../ph2d-node-vector-pattern-along-path" }
 ph2d-node-vector-recolor = { path = "../ph2d-node-vector-recolor" }
 ph2d-node-vector-roughen = { path = "../ph2d-node-vector-roughen" }
 ph2d-node-vector-scatter = { path = "../ph2d-node-vector-scatter" }

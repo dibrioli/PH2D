@@ -546,10 +546,16 @@ impl PainterTool {
             pigment_enabled: self.brush.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,
             accumulate_enabled: self.brush.rendering.accumulate,
-            grain_enabled: matches!(
-                self.brush.grain.grain_source,
-                ph2d_painter_brush::GrainSource::Procedural(_)
-            ),
+            grain_type: {
+                use ph2d_painter_brush::{GrainSource, ProceduralGrain};
+                match &self.brush.grain.grain_source {
+                    GrainSource::Procedural(ProceduralGrain::SimplexNoise { .. }) => 1,
+                    GrainSource::Procedural(ProceduralGrain::GaborNoise { .. }) => 2,
+                    GrainSource::Procedural(ProceduralGrain::PaperWeave { .. }) => 3,
+                    GrainSource::Procedural(ProceduralGrain::SprayDot { .. }) => 4,
+                    _ => 0, // None / Bitmap / Imported
+                }
+            },
         }
     }
 
@@ -668,12 +674,37 @@ impl PainterTool {
                 self.cached_brush_hash = None;
             }
             crate::params::PainterUiEdit::ToggleGrain => {
-                // Flip procedural grain on/off (None ↔ Simplex paper grain). The
-                // scheduler bakes the source into each stamp; the render textures
-                // the footprint. Type/params dials come with the Brush Studio.
+                // Cycle the procedural grain generator: Off → Simplex → Gabor →
+                // PaperWeave → SprayDot → Off. The scheduler bakes the type into
+                // each stamp; the render textures the footprint. Per-type param
+                // dials (scale/depth/seed) graduate into the Brush Studio.
                 use ph2d_painter_brush::{GrainSource, ProceduralGrain};
-                self.brush.grain.grain_source = match self.brush.grain.grain_source {
-                    GrainSource::Procedural(_) => GrainSource::None,
+                self.brush.grain.grain_source = match &self.brush.grain.grain_source {
+                    GrainSource::Procedural(ProceduralGrain::SimplexNoise { .. }) => {
+                        GrainSource::Procedural(ProceduralGrain::GaborNoise {
+                            frequency: 1.0,
+                            orientation: 0.4,
+                            anisotropy: 0.5,
+                            seed: 0,
+                        })
+                    }
+                    GrainSource::Procedural(ProceduralGrain::GaborNoise { .. }) => {
+                        GrainSource::Procedural(ProceduralGrain::PaperWeave {
+                            fiber_density: 1.0,
+                            fiber_anisotropy: 0.5,
+                            crossweave: true,
+                            seed: 0,
+                        })
+                    }
+                    GrainSource::Procedural(ProceduralGrain::PaperWeave { .. }) => {
+                        GrainSource::Procedural(ProceduralGrain::SprayDot {
+                            dot_density: 1.0,
+                            dot_size: 0.35,
+                            dot_jitter: 0.5,
+                            seed: 0,
+                        })
+                    }
+                    GrainSource::Procedural(ProceduralGrain::SprayDot { .. }) => GrainSource::None,
                     _ => GrainSource::Procedural(ProceduralGrain::default_simplex()),
                 };
                 self.cached_brush_hash = None;

@@ -371,21 +371,25 @@ fn paint_pigment_row(
         .value(acc_val);
     paint_checkbox(&acc, acc_rect, ctx.scene, ctx.text_system, theme);
 
-    let grn_state = ctx
-        .host
-        .store()
-        .checkbox(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE)
-        .map(|(s, _)| s)
-        .unwrap_or(CheckboxState::Normal);
-    let grn_val = if snapshot.grain_enabled {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
+    // Grain is a CYCLING button (Off → Simplex → Gabor → Weave → Spray → Off) —
+    // the label shows the current type; Pressed while any grain is active.
+    let grn_label = match snapshot.grain_type {
+        1 => "Grain: Simplex",
+        2 => "Grain: Gabor",
+        3 => "Grain: Weave",
+        4 => "Grain: Spray",
+        _ => "Grain: Off",
     };
-    let grn = Checkbox::new(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, "Grain")
-        .state(grn_state)
-        .value(grn_val);
-    paint_checkbox(&grn, grn_rect, ctx.scene, ctx.text_system, theme);
+    let grn_state = if snapshot.grain_type != 0 {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE)
+            .unwrap_or(ButtonState::Normal)
+    };
+    let grn = Button::new(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, grn_label).state(grn_state);
+    paint_button(&grn, grn_rect, ctx.scene, ctx.text_system, theme);
 
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pig_rect);

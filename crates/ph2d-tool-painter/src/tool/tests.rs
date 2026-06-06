@@ -537,26 +537,18 @@ fn toggle_accumulate_flips_brush_flag_and_snapshot() {
 }
 
 #[test]
-fn toggle_grain_flips_brush_source_and_snapshot() {
+fn grain_cycles_through_all_four_types_and_back_to_off() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
-    use ph2d_painter_brush::GrainSource;
-    let mut t = PainterTool::default(); // grain OFF (None) by default
-    assert!(!t.ui_snapshot().grain_enabled, "default no grain");
-    assert!(matches!(t.active_brush().grain.grain_source, GrainSource::None));
-    t.apply_ui_edit(crate::params::PainterUiEdit::ToggleGrain);
-    assert!(t.ui_snapshot().grain_enabled, "grain on");
-    assert!(matches!(
-        t.active_brush().grain.grain_source,
-        GrainSource::Procedural(_)
-    ));
-    // via the sidebar checkbox route.
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_SIDEBAR_GRAIN_TOGGLE,
-    ));
-    assert!(
-        matches!(t.active_brush().grain.grain_source, GrainSource::None),
-        "grain off"
-    );
+    let mut t = PainterTool::default(); // grain OFF by default
+    assert_eq!(t.ui_snapshot().grain_type, 0, "default off");
+    // Off → Simplex → Gabor → PaperWeave → SprayDot → Off (5 clicks).
+    let expect = [1u8, 2, 3, 4, 0];
+    for (i, want) in expect.iter().enumerate() {
+        t.handle_panel_event(PanelEvent::Click(
+            ph2d_editor_core::ids::PAINTER_SIDEBAR_GRAIN_TOGGLE,
+        ));
+        assert_eq!(t.ui_snapshot().grain_type, *want, "click {} → type {}", i + 1, want);
+    }
 }
 
 #[test]

@@ -238,8 +238,9 @@ pub struct PainterUiSnapshot {
     pub pigment_enabled: bool,
     // W5 accumulate toggle display state: true = build-up, false = wash (capped).
     pub accumulate_enabled: bool,
-    // W5 grain toggle display state: true = Procedural grain, false = None.
-    pub grain_enabled: bool,
+    // W5 grain display state: 0 = None (off), 1 = Simplex, 2 = Gabor,
+    // 3 = PaperWeave, 4 = SprayDot. The sidebar cycles + labels it.
+    pub grain_type: u8,
     // 18 fields v1 — at cap ≤ 18 (ADR-0043 §2.3)
 }
 
@@ -295,7 +296,7 @@ impl Default for PainterUiSnapshot {
             // snapshot doesn't flicker the toggle off before the real push.
             pigment_enabled: true,
             accumulate_enabled: false, // wash by default
-            grain_enabled: false,      // no grain by default
+            grain_type: 0,             // no grain by default
         }
     }
 }

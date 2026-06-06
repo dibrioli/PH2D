@@ -83,11 +83,11 @@ pub fn populate(store: &mut WidgetStore) {
             value: CheckboxValue::Unchecked,
         },
     );
+    // Grain is a cycling button (Off → 4 types → Off), not a binary checkbox.
     store.register(
         ids::GRAIN_TOGGLE,
-        InteractiveState::Checkbox {
-            state: CheckboxState::Normal,
-            value: CheckboxValue::Unchecked,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
         },
     );
 

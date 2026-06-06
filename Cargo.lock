@@ -5488,6 +5488,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-system-fonts"
+version = "0.0.0"
+dependencies = [
+ "fontique",
+ "ph2d-vector-font",
+]
+
+[[package]]
 name = "ph2d-telemetry"
 version = "0.0.0"
 

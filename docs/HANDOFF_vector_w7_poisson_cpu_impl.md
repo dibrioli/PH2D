@@ -4,10 +4,12 @@ Autor: Implementador Vector (jornada 2026-06-05) · base: HANDOFF_vector_eval_an
 ═══════════════════════════════════════════════════════════════════
 
 ## §0 — TL;DR
-1. **W7 steps 1 E 2 FECHADOS e validados** (`903d5ce` + step-2 commit). Step 1 = solver CPU multigrid de
-   Poisson (determinista, math provada antes de uma linha de WGSL). Step 2 (tu liberaste: "não precisa do
-   meu contrato") = o node **`MeshGradient` agora avalia no CPU** samplenado o `ColorField`. **20/20 testes
-   verdes**, clippy `--all-targets` zero warnings. Falta só o step 3 (GPU WoS + texture binding).
+1. **W7 steps 1, 2 E 3 (parte CPU-validável) FECHADOS** (`903d5ce` + step-2 + step-3 commits). Step 1 =
+   solver CPU multigrid de Poisson (determinista). Step 2 = node **`MeshGradient` avalia no CPU** samplenado
+   o `ColorField`. Step 3 = **path GPU WoS**: shaders `diffusion.wgsl`+`bilateral_upsample.wgsl`
+   (naga-validados), packing+`DiffusionParams` Pod, tier matrix §2.5, e uma **referência CPU do WoS provada
+   a convergir pro golden multigrid** — o algoritmo GPU validado sem GPU. **29/29 testes verdes**, clippy
+   zero warnings. Falta só o **dispatch wgpu real + bench de budget** (renderer = TEU, §4).
 2. **PING (tu disseste "me pinga quando teu skeleton CPU landar"):** landou. Pronto p/ tu scaffoldar a
    **infra de golden/smoke-test** (§4). O solver determinista é a *referência golden* contra a qual o WoS
    GPU estocástico (step 3) vai ser validado.
@@ -75,8 +77,22 @@ Autor: Implementador Vector (jornada 2026-06-05) · base: HANDOFF_vector_eval_an
   `codegen_still_rejects_mesh_gradient`.
   - **O que ainda é teu p/ smoke-able no produto:** resolução `gradient_id → ColorField` (quem solva e
     popula o `FieldStore` no host) + Region→FillGraph. Meu eval consome o resolver via trait; é só plugar.
-- **Step 3 — GPU port** (`shaders/diffusion.wgsl` WoS + `bilateral_upsample.wgsl` JBU 2-pass + tier matrix +
-  texture binding p/ destravar o WGSL codegen do `MeshGradient`) validado contra este golden CPU. Próximo.
+- **Step 3 — GPU WoS: ✅ FECHADO (tudo que valida sem GPU).** `diffusion_gpu.rs`:
+  - **`diffusion.wgsl`** (WoS compute, storage-buffer out — zero caps de textura no naga; espelha a ref CPU
+    linha-a-linha; OKLab→linear bit-idêntico ao `ph2d_color`) + **`bilateral_upsample.wgsl`** (JBU 2-pass).
+    Ambos **naga parse+validate** em teste (`Capabilities::empty()`, igual ao `cache::compile_fill`).
+  - **Referência CPU do WoS** (`walk_on_spheres_field`/`wos_estimate_point`) usando RNG `ph2d_noise1`
+    (bit-idêntico CPU↔GPU → habilita o modo determinista §2.6). Teste `wos_converges_to_multigrid`:
+    o estimador Monte-Carlo converge pro golden multigrid no centro do canal (prova o algoritmo GPU **sem
+    GPU**). + `wos_is_bit_deterministic`.
+  - **Dispatch data**: `pack_curves → Vec<GpuSegment>` (48B, Pod) + `DiffusionParams` (32B, Pod std140) +
+    **tier matrix** `DiffusionTier::plan()` exatamente da tabela §2.5 (Heavy 64spp/5ms … MobileCore→multigrid).
+  - **O QUE É TEU (renderer, não dá pra eu fazer/benchar aqui):** (1) o **dispatch wgpu** do `diffusion.wgsl`
+    (criar pipeline/bind groups/buffers, copiar o storage buffer → textura do fill), (2) **bench de budget**
+    (gate `vector_diffusion_curve_tier_budget`: Heavy ≤5ms etc.) na CI matrix + cross-OS bit-identity
+    (`procedural_fill_cross_os`), (3) o **texture binding** que destrava o WGSL codegen do `MeshGradient`
+    no fragment do fill (compartilha o bind group do fill = contrato teu). Os shaders + layouts (`@group(0)`
+    bindings 0/1/2) e os structs Pod estão prontos p/ tu plugar.
 
 ## §5 — GIT / POSSE
 - Commit local scoped: `crates/ph2d-vector-fill/src/{diffusion_curve,poisson_cpu,lib}.rs` + este handoff.

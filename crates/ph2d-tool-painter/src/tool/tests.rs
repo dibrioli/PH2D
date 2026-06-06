@@ -468,6 +468,34 @@ fn out_of_window_pointer_sample_is_dropped() {
 }
 
 #[test]
+fn full_flow_mixbox_yellow_over_blue_is_green() {
+    // Reproduce the LIVE app path end-to-end: the default brush is Mixbox, paint a
+    // YELLOW stamp over a BLUE canvas at ~50% (deposit ≈ 0.5 → an even pigment mix).
+    // The painted centre must be GREEN-dominant. If this is grey, the bug is in the
+    // brush→scheduler→cpu_render flow (not just cpu_render in isolation).
+    let (w, h) = (16u32, 16u32);
+    let mut t = PainterTool::default(); // Mixbox by default now
+    t.params.size_px = 24.0;
+    t.params.opacity = 0.5;
+    t.set_source(flat_source(w, h, [0, 0, 255, 255]), w, h); // opaque blue
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([255, 255, 0, 255]); // yellow
+    t.begin_stroke(1);
+    t.queue_pointer(PointerSample {
+        position: [8.0, 8.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let (px, _, _) = t.current_preview().expect("painted preview");
+    let c = ((8 * w + 8) * 4) as usize;
+    let (r, g, b) = (px[c] as i32, px[c + 1] as i32, px[c + 2] as i32);
+    assert!(
+        g > r + 12 && g > b + 12,
+        "live-flow Mixbox centre is green-dominant, not grey: rgb=({r},{g},{b})"
+    );
+}
+
+#[test]
 fn preview_upload_bbox_tracks_partial_vs_full() {
     // B.1: the bridge uploads a partial GPU sub-rect ONLY when
     // `take_preview_arc` took the dirty-rect fast lane. Pin the contract the

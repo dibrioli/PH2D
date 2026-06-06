@@ -518,6 +518,11 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TEXT_DEFAULT,
         ids::CTX_MENU_TEXT_CRISP_HEAVY,
         ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
+        // P4 (ADR-0061): the API-key submenu's open row + its Save row. Without
+        // this `Plain` registration the rows paint + hit-register but never emit
+        // a Click — the chrome handler would never fire (the populate gotcha).
+        ids::CTX_MENU_SETTINGS_API_KEY,
+        ids::CTX_MENU_API_KEY_SAVE,
         ids::CTX_MENU_HIER_RENAME,
         ids::CTX_MENU_HIER_DUPLICATE,
         ids::CTX_MENU_HIER_ADD_CHILD,
@@ -539,6 +544,18 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     ] {
         store.register(id, InteractiveState::Plain);
     }
+    // The API-key submenu's input field (P4, ADR-0061) needs persistent
+    // TextInput state so it can be focused + typed/pasted — same as
+    // CTX_SCENE_SEARCH (registered in topbar::populate).
+    store.register(
+        ids::CTX_MENU_API_KEY_INPUT,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
 }
 
 fn populate_scrollbars(store: &mut WidgetStore) {

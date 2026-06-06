@@ -35,6 +35,8 @@
 //!   on the GPU (`ph2d_vector_sdf::gpu::GpuSdf`, pipeline cached); the `min/max`
 //!   combine + marching-squares stay on the CPU.
 
+use ph2d_color::OklchColor;
+use ph2d_color::srgb::linear_to_srgb_byte;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_node_registry::NodeRegistry;
@@ -43,13 +45,15 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_panel_vector_graph::VectorGraphParams;
 use ph2d_render::Camera2d;
 use ph2d_vector::{
-    Affine, BezPath, Brush, Color, Point, Scene, Stroke, VectorScene, draw_vector_network,
+    Affine, BezPath, Brush, Color, Point, ProceduralFillImage, Scene, Stroke, VectorScene,
+    draw_vector_network, draw_vector_network_with_fills,
 };
-use ph2d_vector_doc::{FillSolid, StyleTable, VectorNetwork};
+use ph2d_vector_doc::{FillSolid, ProceduralFill, StyleTable, VectorNetwork};
+use ph2d_vector_fill::{DiffusionCurve, DiffusionCurveSet, Resolution, solve_color_field};
 use ph2d_vector_sdf::gpu::GpuSdf;
 use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour};
 use std::cell::RefCell;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 /// Multiplier on the result's bounding box for the auto-framing camera height —
 /// 1.5 = 50% headroom so the shape sits comfortably inside the viewport.
@@ -78,6 +82,12 @@ thread_local! {
     /// draft frame and reused (pipeline creation is cheap but not free). Single
     /// render thread -> thread-local. Holds wgpu handles (Arc-backed).
     static GPU_SDF: RefCell<Option<GpuSdf>> = const { RefCell::new(None) };
+
+    /// W7 diffusion-mesh-gradient smoke image (`PH2D_VECTOR_FILL_SMOKE=1`):
+    /// the canonical diffusion scene solved + encoded to straight-sRGB8 once.
+    /// `(rgba, width, height)`.
+    static DIFFUSION_SMOKE: RefCell<Option<(Arc<Vec<u8>>, u32, u32)>> =
+        const { RefCell::new(None) };
 }
 
 /// Is the geometry-graph smoke enabled? Read once from `PH2D_VECTOR_GRAPH=1`.
@@ -159,13 +169,85 @@ pub(super) fn dispatch(
 /// StyleTable — there's no asset in the smoke, so a default fill makes the
 /// silhouette visible (styling is a follow-up). Open results (no region) draw
 /// nothing. Shared by the boolean + transform smoke paths.
+///
+/// `PH2D_VECTOR_FILL_SMOKE=1` swaps the flat fill for the W7 diffusion-curve mesh
+/// gradient (ADR-0056-amendment-3): the region resolves to a `ProceduralFill`,
+/// the diffusion field is solved + rendered as an image clipped to the region.
 fn render_filled(net: &mut VectorNetwork, to_screen: Affine, scene: &mut Scene) {
+    if procedural_fill_smoke_enabled() {
+        render_filled_diffusion(net, to_screen, scene);
+        return;
+    }
     let mut styles = StyleTable::default();
     let fref = styles.insert_fill(FillSolid::default());
     for region in &mut net.regions {
         region.fill = Some(fref);
     }
     draw_vector_network(scene, net, &styles, to_screen);
+}
+
+/// `true` if the W7 diffusion-fill smoke is enabled (`PH2D_VECTOR_FILL_SMOKE=1`).
+fn procedural_fill_smoke_enabled() -> bool {
+    std::env::var("PH2D_VECTOR_FILL_SMOKE").is_ok_and(|v| v == "1")
+}
+
+/// Fill every region with the W7 diffusion mesh gradient (procedural fill path):
+/// resolves through `StyleTable::procedural` → renders the solved `ColorField` as
+/// an image clipped to the region. Proves the contract → resolve → render chain.
+fn render_filled_diffusion(net: &mut VectorNetwork, to_screen: Affine, scene: &mut Scene) {
+    let mut styles = StyleTable::default();
+    // Fallback (no-GPU / unresolved) is a neutral grey; the image is the real fill.
+    let fref = styles.insert_procedural(ProceduralFill::diffusion(
+        0,
+        OklchColor::opaque(0.5, 0.0, 0.0),
+    ));
+    for region in &mut net.regions {
+        region.fill = Some(fref);
+    }
+    let (rgba, width, height) = diffusion_smoke_rgba();
+    draw_vector_network_with_fills(scene, net, &styles, to_screen, move |fr| {
+        (fr == fref).then(|| ProceduralFillImage {
+            rgba: rgba.clone(),
+            width,
+            height,
+        })
+    });
+}
+
+/// The diffusion smoke image, solved + encoded once (cached thread-local).
+fn diffusion_smoke_rgba() -> (Arc<Vec<u8>>, u32, u32) {
+    DIFFUSION_SMOKE.with(|cell| {
+        cell.borrow_mut()
+            .get_or_insert_with(build_diffusion_smoke)
+            .clone()
+    })
+}
+
+/// Solve the canonical diffusion scene (red↔blue wall + green band + amber
+/// diagonal @ 129²) and encode it to a straight-sRGB8 OPAQUE image — the region
+/// clip provides coverage, so the field is rendered fully opaque.
+fn build_diffusion_smoke() -> (Arc<Vec<u8>>, u32, u32) {
+    use glam::Vec2;
+    let red = OklchColor::opaque(0.63, 0.26, 29.0);
+    let blue = OklchColor::opaque(0.45, 0.31, 264.0);
+    let green = OklchColor::opaque(0.70, 0.20, 142.0);
+    let amber = OklchColor::opaque(0.82, 0.16, 75.0);
+    let set = DiffusionCurveSet::from_curves([
+        DiffusionCurve::straight(Vec2::new(0.5, 0.0), Vec2::new(0.5, 1.0), red, blue),
+        DiffusionCurve::straight(Vec2::new(0.1, 0.22), Vec2::new(0.9, 0.22), green, green),
+        DiffusionCurve::straight(Vec2::new(0.55, 0.95), Vec2::new(0.95, 0.55), amber, amber),
+    ]);
+    let res = Resolution::square(129).expect("129 = 2^7 + 1");
+    let field = solve_color_field(&set, res);
+    let (w, h) = (field.w as u32, field.h as u32);
+    let mut rgba = Vec::with_capacity((w as usize) * (h as usize) * 4);
+    for px in &field.texel {
+        rgba.push(linear_to_srgb_byte(px[0]));
+        rgba.push(linear_to_srgb_byte(px[1]));
+        rgba.push(linear_to_srgb_byte(px[2]));
+        rgba.push(255); // opaque; the region path provides coverage via the clip
+    }
+    (Arc::new(rgba), w, h)
 }
 
 /// Has the `(params, op)` key changed since the previous frame? Records `key`

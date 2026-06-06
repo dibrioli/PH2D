@@ -197,6 +197,11 @@ ph2d-vector = { path = "../../crates/ph2d-vector" }
 # ADR-0065 Phase 3: the geometry-graph smoke bridge draws the SDF *draft*
 # (silhouette contour) during a slider drag, before the exact reconcile.
 ph2d-vector-sdf = { path = "../../crates/ph2d-vector-sdf" }
+# ADR-0056-amendment-3 / W7: the geometry-graph smoke can fill the cooked region
+# with a diffusion-curve mesh gradient (PH2D_VECTOR_FILL_SMOKE=1) — solved here +
+# rendered via the procedural-fill image path. `glam::Vec2` authors the curves.
+ph2d-vector-fill = { path = "../../crates/ph2d-vector-fill" }
+glam = "0.30"
 ph2d-text = { path = "../../crates/ph2d-text" }
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the

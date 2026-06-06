@@ -537,6 +537,29 @@ fn toggle_accumulate_flips_brush_flag_and_snapshot() {
 }
 
 #[test]
+fn toggle_grain_flips_brush_source_and_snapshot() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::GrainSource;
+    let mut t = PainterTool::default(); // grain OFF (None) by default
+    assert!(!t.ui_snapshot().grain_enabled, "default no grain");
+    assert!(matches!(t.active_brush().grain.grain_source, GrainSource::None));
+    t.apply_ui_edit(crate::params::PainterUiEdit::ToggleGrain);
+    assert!(t.ui_snapshot().grain_enabled, "grain on");
+    assert!(matches!(
+        t.active_brush().grain.grain_source,
+        GrainSource::Procedural(_)
+    ));
+    // via the sidebar checkbox route.
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_GRAIN_TOGGLE,
+    ));
+    assert!(
+        matches!(t.active_brush().grain.grain_source, GrainSource::None),
+        "grain off"
+    );
+}
+
+#[test]
 fn pigment_and_accumulate_are_independent() {
     // The two toggles are orthogonal — flipping one must not move the other.
     let mut t = PainterTool::default(); // pigment ON, accumulate OFF

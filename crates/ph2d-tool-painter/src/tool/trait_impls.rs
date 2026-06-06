@@ -88,6 +88,9 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE => {
                 self.apply_ui_edit(PainterUiEdit::ToggleAccumulate);
             }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE => {
+                self.apply_ui_edit(PainterUiEdit::ToggleGrain);
+            }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
                 let name = format!("Layer {}", self.layers.len() + 1);

@@ -333,9 +333,10 @@ fn paint_pigment_row(
 ) -> f32 {
     let row_x = rect.x + PANEL_HEAD_PAD;
     let row_w = rect.w - PANEL_HEAD_PAD * 2.0;
-    let half = row_w * 0.5;
-    let pig_rect = Rect::new(row_x, y, half, ROW_H_PX);
-    let acc_rect = Rect::new(row_x + half, y, half, ROW_H_PX);
+    let third = row_w / 3.0;
+    let pig_rect = Rect::new(row_x, y, third, ROW_H_PX);
+    let acc_rect = Rect::new(row_x + third, y, third, ROW_H_PX);
+    let grn_rect = Rect::new(row_x + third * 2.0, y, third, ROW_H_PX);
 
     let pig_state = ctx
         .host
@@ -369,9 +370,26 @@ fn paint_pigment_row(
         .value(acc_val);
     paint_checkbox(&acc, acc_rect, ctx.scene, ctx.text_system, theme);
 
+    let grn_state = ctx
+        .host
+        .store()
+        .checkbox(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE)
+        .map(|(s, _)| s)
+        .unwrap_or(CheckboxState::Normal);
+    let grn_val = if snapshot.grain_enabled {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    let grn = Checkbox::new(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, "Grain")
+        .state(grn_state)
+        .value(grn_val);
+    paint_checkbox(&grn, grn_rect, ctx.scene, ctx.text_system, theme);
+
     let hit_index = ctx.host.hit_index_mut();
     hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pig_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, acc_rect);
+    hit_index.register(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, grn_rect);
     y + ROW_H_PX + row_pad
 }
 

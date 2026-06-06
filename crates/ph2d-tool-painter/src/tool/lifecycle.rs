@@ -546,6 +546,10 @@ impl PainterTool {
             pigment_enabled: self.brush.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,
             accumulate_enabled: self.brush.rendering.accumulate,
+            grain_enabled: matches!(
+                self.brush.grain.grain_source,
+                ph2d_painter_brush::GrainSource::Procedural(_)
+            ),
         }
     }
 
@@ -661,6 +665,17 @@ impl PainterTool {
                 // Flip wash ↔ build-up (orthogonal to pigment). Takes effect at the
                 // next begin_stroke (which reads this to set up the wash buffer).
                 self.brush.rendering.accumulate = !self.brush.rendering.accumulate;
+                self.cached_brush_hash = None;
+            }
+            crate::params::PainterUiEdit::ToggleGrain => {
+                // Flip procedural grain on/off (None ↔ Simplex paper grain). The
+                // scheduler bakes the source into each stamp; the render textures
+                // the footprint. Type/params dials come with the Brush Studio.
+                use ph2d_painter_brush::{GrainSource, ProceduralGrain};
+                self.brush.grain.grain_source = match self.brush.grain.grain_source {
+                    GrainSource::Procedural(_) => GrainSource::None,
+                    _ => GrainSource::Procedural(ProceduralGrain::default_simplex()),
+                };
                 self.cached_brush_hash = None;
             }
             // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são

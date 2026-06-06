@@ -49,7 +49,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // in `handle_panel_event`.
         WidgetEvent::Toggled(id)
             if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE
-                || id == ph2d_editor_core::ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE =>
+                || id == ph2d_editor_core::ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE
+                || id == ph2d_editor_core::ids::PAINTER_SIDEBAR_GRAIN_TOGGLE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

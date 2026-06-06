@@ -187,7 +187,10 @@ pub enum PainterUiEdit {
     // W5 stroke accumulation — flip wash (opacity-capped) ↔ build-up. Orthogonal
     // to pigment. User-facing label: "Accumulate".
     ToggleAccumulate,
-    // === 6 slots de headroom (W9+W11+W14+residual) ===
+    // W5 procedural grain — flip GrainSource None ↔ Procedural(Simplex). User-facing
+    // label: "Grain".
+    ToggleGrain,
+    // === 5 slots de headroom (W9+W11+W14+residual) ===
     // Reserved para waves futuras:
     //   SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32) — W9
     //   ToggleOnionSkin, SetAnimFps(f32) — W11
@@ -235,7 +238,9 @@ pub struct PainterUiSnapshot {
     pub pigment_enabled: bool,
     // W5 accumulate toggle display state: true = build-up, false = wash (capped).
     pub accumulate_enabled: bool,
-    // 17 fields v1 — 1 slot de headroom
+    // W5 grain toggle display state: true = Procedural grain, false = None.
+    pub grain_enabled: bool,
+    // 18 fields v1 — at cap ≤ 18 (ADR-0043 §2.3)
 }
 
 impl PainterUiSnapshot {
@@ -290,6 +295,7 @@ impl Default for PainterUiSnapshot {
             // snapshot doesn't flicker the toggle off before the real push.
             pigment_enabled: true,
             accumulate_enabled: false, // wash by default
+            grain_enabled: false,      // no grain by default
         }
     }
 }

@@ -83,6 +83,13 @@ pub fn populate(store: &mut WidgetStore) {
             value: CheckboxValue::Unchecked,
         },
     );
+    store.register(
+        ids::GRAIN_TOGGLE,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
 
     // Sliders + chips. Seed do snapshot default (SSOT), chip display em
     // unidade natural (px / %) via os helpers de conversão.

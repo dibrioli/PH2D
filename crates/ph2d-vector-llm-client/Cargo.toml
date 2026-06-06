@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-vector-llm-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# W13 Coord (Inovação P4, ADR-0061): the I/O half of LLM-as-graph-node. The impl
+# shipped the PURE core in `ph2d-vector-llm` (parse→sanitize→lower + ResultCache +
+# governance); this crate adds the network I/O: a `LlmTransport` (the real one is
+# Anthropic over HTTPS, claude-opus-4-8) behind a 15 s timeout, with a graceful
+# fallback to the ResultCache. Sync (the engine + ph2d-mcp are sync) — the host
+# backgrounds the call on a worker thread; the transport trait keeps it swappable.
+[lib]
+
+[dependencies]
+# The pure core this drives: build_from_json / tokens_to_network / ResultCache.
+ph2d-vector-llm = { path = "../ph2d-vector-llm" }
+# VectorNetwork (the build result) — frozen contract, read-only.
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+# Lightweight SYNC HTTPS client with a built-in per-call timeout (rustls — pure
+# Rust TLS, no system OpenSSL, CI-safe). The 15 s LLM-call timeout is its timeout.
+ureq = "2"
+serde_json = "1"
+
+[dev-dependencies]
+# Deterministic gates use a MockTransport — no network, no key required.

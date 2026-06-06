@@ -34,7 +34,7 @@
 //! which is also physically sensible.
 //!
 //! Working space = **linear sRGB D65** ([`ph2d_color::mixbox_space`]). The API
-//! ([`mixbox_lerp_linear`] / [`mixbox_lerp_srgb8`]) is frozen since T1.3 — this
+//! ([`pigment_lerp_linear`] / [`pigment_lerp_srgb8`]) is frozen since T1.3 — this
 //! swaps the internals from the placeholder lerp to the real mix with no caller
 //! change. **Still forced to Linear in `--features det-painter`** (ADR-0044
 //! §2.5.1): `powf` is not bit-identical cross-OS; a Q-fixed-point port is the
@@ -350,13 +350,13 @@ pub fn mix_prepared(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
 /// are exact; the subtractive (geometric-mean) behaviour peaks at an even mix. For
 /// a brush stroke (constant brush colour) prefer [`prepare_pigment`] +
 /// [`mix_prepared`] to amortise the brush-side cost.
-pub fn mixbox_lerp_linear(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+pub fn pigment_lerp_linear(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
     mix_prepared(&prepare_pigment(b), a, t)
 }
 
 /// Subtractive pigment mix of two **sRGB-8** colours — the spectral mix runs in
 /// linear light (Mixbox's only legal space), so this decodes → mixes → re-encodes.
-pub fn mixbox_lerp_srgb8(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
+pub fn pigment_lerp_srgb8(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     let dec = |c: [u8; 3]| {
         [
             srgb8_to_linear(c[0]),
@@ -364,7 +364,7 @@ pub fn mixbox_lerp_srgb8(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
             srgb8_to_linear(c[2]),
         ]
     };
-    let out = mixbox_lerp_linear(dec(a), dec(b), t);
+    let out = pigment_lerp_linear(dec(a), dec(b), t);
     [
         linear_to_srgb8(out[0]),
         linear_to_srgb8(out[1]),
@@ -405,22 +405,22 @@ mod tests {
 
     #[test]
     fn lerp_at_t0_returns_a() {
-        assert_eq!(mixbox_lerp_srgb8([10, 20, 30], [200, 100, 50], 0.0), [10, 20, 30]);
+        assert_eq!(pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 0.0), [10, 20, 30]);
     }
 
     #[test]
     fn lerp_at_t1_returns_b() {
-        assert_eq!(mixbox_lerp_srgb8([10, 20, 30], [200, 100, 50], 1.0), [200, 100, 50]);
+        assert_eq!(pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 1.0), [200, 100, 50]);
     }
 
     #[test]
     fn linear_endpoints_are_exact_and_t_clamps() {
         let a = [0.1, 0.4, 0.8];
         let b = [0.9, 0.2, 0.3];
-        assert!(approx(mixbox_lerp_linear(a, b, 0.0), a, 1e-6));
-        assert!(approx(mixbox_lerp_linear(a, b, 1.0), b, 1e-6));
-        assert!(approx(mixbox_lerp_linear(a, b, 2.0), b, 1e-6), "t>1 clamps to b");
-        assert!(approx(mixbox_lerp_linear(a, b, -1.0), a, 1e-6), "t<0 clamps to a");
+        assert!(approx(pigment_lerp_linear(a, b, 0.0), a, 1e-6));
+        assert!(approx(pigment_lerp_linear(a, b, 1.0), b, 1e-6));
+        assert!(approx(pigment_lerp_linear(a, b, 2.0), b, 1e-6), "t>1 clamps to b");
+        assert!(approx(pigment_lerp_linear(a, b, -1.0), a, 1e-6), "t<0 clamps to a");
     }
 
     #[test]
@@ -432,9 +432,9 @@ mod tests {
         for c in [[0.8, 0.1, 0.1], [0.1, 0.6, 0.2], [0.2, 0.3, 0.9], [0.5, 0.5, 0.5]] {
             for &t in &[0.25, 0.5, 0.75] {
                 assert!(
-                    approx(mixbox_lerp_linear(c, c, t), c, 1e-2),
+                    approx(pigment_lerp_linear(c, c, t), c, 1e-2),
                     "self-mix {c:?} @ {t} drifted: {:?}",
-                    mixbox_lerp_linear(c, c, t)
+                    pigment_lerp_linear(c, c, t)
                 );
             }
         }
@@ -443,7 +443,7 @@ mod tests {
     #[test]
     fn white_plus_white_is_white() {
         let w = [1.0, 1.0, 1.0];
-        assert!(approx(mixbox_lerp_linear(w, w, 0.5), w, 3e-3));
+        assert!(approx(pigment_lerp_linear(w, w, 0.5), w, 3e-3));
     }
 
     #[test]
@@ -453,7 +453,7 @@ mod tests {
         // suppressed — not the muddy grey a linear lerp ((0.5,0.5,0.5)) produces.
         let blue = [0.0, 0.0, 1.0];
         let yellow = [1.0, 1.0, 0.0];
-        let mix = mixbox_lerp_linear(blue, yellow, 0.5);
+        let mix = pigment_lerp_linear(blue, yellow, 0.5);
         assert!(
             mix[1] > mix[0] && mix[1] > mix[2],
             "green is the dominant channel: {mix:?}"
@@ -475,7 +475,7 @@ mod tests {
         // The 7-curve basis fix: pure blue + pure red = a REAL violet (blue clearly
         // present), not the dark red maroon the old 3-channel basis gave (which
         // killed the blue). Blue must lead — or at least strongly survive — vs red.
-        let mix = mixbox_lerp_linear([0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 0.5);
+        let mix = pigment_lerp_linear([0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 0.5);
         assert!(mix[2] > mix[0], "violet keeps blue dominant over red (not maroon): {mix:?}");
         assert!(mix[2] > mix[1] + 0.1, "blue clearly above green (a violet, not a mud): {mix:?}");
     }
@@ -484,7 +484,7 @@ mod tests {
     fn complementary_cyan_plus_red_neutralises() {
         // Complementaries should desaturate toward neutral grey (chroma collapses),
         // not stay a saturated hue — the hallmark of physically-plausible mixing.
-        let mix = mixbox_lerp_linear([0.0, 1.0, 1.0], [1.0, 0.0, 0.0], 0.5);
+        let mix = pigment_lerp_linear([0.0, 1.0, 1.0], [1.0, 0.0, 0.0], 0.5);
         let chroma = mix.iter().cloned().fold(0.0, f32::max)
             - mix.iter().cloned().fold(1.0, f32::min);
         assert!(chroma < 0.12, "cyan+red neutralises toward grey: {mix:?} chroma {chroma}");
@@ -495,7 +495,7 @@ mod tests {
         // The subtractive mix should not collapse to the dull linear average.
         let blue = [0.0, 0.0, 1.0];
         let yellow = [1.0, 1.0, 0.0];
-        let mix = mixbox_lerp_linear(blue, yellow, 0.5);
+        let mix = pigment_lerp_linear(blue, yellow, 0.5);
         let chroma = mix.iter().cloned().fold(0.0, f32::max)
             - mix.iter().cloned().fold(1.0, f32::min);
         assert!(chroma > 0.17, "mix keeps chroma (not grey): {mix:?} chroma {chroma}");

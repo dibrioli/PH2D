@@ -64,7 +64,7 @@ pub struct Stamp {
     pub grain_scale: f32,          // 76..80  scale da grain
     pub flags: u32,                // 80..84  bitmask (vide FLAG_* consts abaixo)
     pub rendering_mode: u32,       // 84..88  0..=5 conforme `RenderingMode` enum
-    pub pigment_mode: u32,         // 88..92  0=Linear, 1=Mixbox (ADR-0044 §2.5)
+    pub pigment_mode: u32,         // 88..92  0=Linear, 1=Subtractive (ADR-0044 §2.5)
     _pad: u32,                     // 92..96  reservado; mantido 0 em det-mode (audit D-F7)
 }
 
@@ -236,7 +236,7 @@ mod tests {
         s.size_px = 3.0;
         s.color_oklab = [10.0, 20.0, 30.0, 40.0];
         s.shape_layer = 0x12345678;
-        s.pigment_mode = 1; // Mixbox
+        s.pigment_mode = 1; // Subtractive
 
         let bytes = bytemuck::bytes_of(&s);
 

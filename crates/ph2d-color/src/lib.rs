@@ -18,7 +18,7 @@
 //! | [`Premultiplied<T>`]| wraps `T`       | alpha-premultiplied       | Marker — required for `wgpu` blend modes       |
 //! | [`OklchColor`]      | `f32 × 4`       | OKLCH (L,C,H,A) polar     | Design tokens, hue-stable interpolation        |
 //! | [`OklabColor`]      | `f32 × 4` Pod   | OKLab (L,a,b,α) cartesian | Brush stamp wire format (ADR-0044 §2.3)        |
-//! | [`MixboxLinearSrgb`]| alias `LinearRgba` | linear-light, [0..1]   | Mixbox pigment mixing working space (ADR-0044 §2.5) |
+//! | [`PigmentLinearSrgb`]| alias `LinearRgba` | linear-light, [0..1]   | Mixbox pigment mixing working space (ADR-0044 §2.5) |
 //!
 //! ## Conversion rules
 //!
@@ -40,14 +40,14 @@
 #![forbid(unsafe_code)]
 
 pub mod linear;
-pub mod mixbox_space;
+pub mod pigment_space;
 pub mod oklab;
 pub mod oklch;
 pub mod premultiplied;
 pub mod srgb;
 
 pub use linear::LinearRgba;
-pub use mixbox_space::MixboxLinearSrgb;
+pub use pigment_space::PigmentLinearSrgb;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;
 pub use premultiplied::Premultiplied;

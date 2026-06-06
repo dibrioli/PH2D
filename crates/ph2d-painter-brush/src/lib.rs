@@ -71,7 +71,7 @@ pub mod cpu_render;
 pub mod dynamics;
 pub mod grain;
 pub mod library;
-pub mod mixbox;
+pub mod pigment_mix;
 pub mod pencil;
 pub mod pigment;
 pub mod procedural;

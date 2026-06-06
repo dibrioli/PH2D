@@ -60,7 +60,7 @@ impl PainterTool {
         // build-up-to-yellow bug). So for Mixbox we keep the colour alpha
         // at the UI value and hand `params.opacity` to the wash path as the
         // cap; coverage is a fresh zeroed per-pixel buffer over the source.
-        let wash = self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Mixbox;
+        let wash = self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Subtractive;
         if wash {
             self.wash_opacity_cap = self.params.opacity.clamp(0.0, 1.0);
             let (w, h) = self.source_size;

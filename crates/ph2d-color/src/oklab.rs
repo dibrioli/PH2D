@@ -9,7 +9,7 @@
 //!
 //! OKLab is also the canonical working space for the design system's
 //! hue-stable interpolation (4 themes × N tokens), and the entry point
-//! for Mixbox pigment mixing (ADR-0044 §2.5 + [`crate::MixboxLinearSrgb`]):
+//! for Mixbox pigment mixing (ADR-0044 §2.5 + [`crate::PigmentLinearSrgb`]):
 //! Mixbox itself runs in linear sRGB, but the brush input arrives in
 //! OKLab via `Stamp`, so the boundary conversion lives here.
 //!

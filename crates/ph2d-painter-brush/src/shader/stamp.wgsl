@@ -399,7 +399,7 @@ fn intense_blending(src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
 
 fn apply_rendering_mode(mode: u32, src: vec4<f32>, dst: vec4<f32>, wet: f32) -> vec4<f32> {
     // `pigment_mode` (Stamp ABI slot, ADR-0044 §2.5) is handled in `cs_stamp`
-    // BEFORE this dispatch: `PigmentMode::Mixbox` replaces the alpha-over colour
+    // BEFORE this dispatch: `PigmentMode::Subtractive` replaces the alpha-over colour
     // with a subtractive spectral mix; `Linear` (default) feeds the rendering
     // modes below unchanged. Mixbox is forced to Linear under `--features
     // det-painter` (ADR-0044 §2.5.1 — `exp`/`pow` aren't bit-identical cross-OS).

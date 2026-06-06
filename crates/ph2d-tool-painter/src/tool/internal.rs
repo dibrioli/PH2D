@@ -144,7 +144,7 @@ pub(crate) fn build_smoke_brush_from_env() -> Brush {
         Ok(s) if matches!(s.trim_matches(|c| c == '\'' || c == '"').trim(), "linear" | "Linear") => {
             ph2d_painter_brush::PigmentMode::Linear
         }
-        _ => ph2d_painter_brush::PigmentMode::Mixbox,
+        _ => ph2d_painter_brush::PigmentMode::Subtractive,
     };
 
     brush

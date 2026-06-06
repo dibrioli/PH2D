@@ -173,9 +173,22 @@ pub struct StyleTable {
     /// Stroke styles indexed by [`StyleRef`].
     pub strokes: BTreeMap<StyleRef, StrokeStyle>,
 
-    /// Fill styles indexed by [`FillRef`]. W1 stores only solid colors;
-    /// gradient / pattern / procedural fills arrive W2-W6.
+    /// Solid fill styles indexed by [`FillRef`].
     pub fills: BTreeMap<FillRef, FillSolid>,
+
+    /// Procedural fills (W6 shader graph / W7 diffusion-curve mesh gradient),
+    /// keyed in the **same [`FillRef`] namespace** as [`Self::fills`]: a region's
+    /// `fill` ref resolves here FIRST (procedural), else falls back to a solid
+    /// (see [`Self::resolve_fill`]). The doc holds only an opaque registry id +
+    /// kind + a solid fallback — the actual graph/curve-set lives render-side
+    /// (`ph2d-vector-fill`), so this crate stays decoupled from it.
+    ///
+    /// Appended `#[serde(default)]` → additive over the v1 wire (empty map for
+    /// assets without procedural fills), mirroring the [`StrokeStyle::width_profile`]
+    /// / `dormant_fractures` precedent. ADR-0056-amendment-3. Bounded on decode by
+    /// `AssetBounds::max_style_procedural`.
+    #[serde(default)]
+    pub procedural: BTreeMap<FillRef, ProceduralFill>,
 }
 
 impl StyleTable {
@@ -190,15 +203,55 @@ impl StyleTable {
         id
     }
 
-    /// Insert `fill` and return the auto-allocated [`FillRef`].
-    ///
-    /// **W1 ergonomic helper** (R4 audit Lens-G HIGH-G2) — same
-    /// allocation semantics as [`Self::insert_stroke`].
+    /// Insert a solid `fill` and return the auto-allocated [`FillRef`]. The id is
+    /// the max over BOTH fill maps + 1, so solid and procedural fills share one
+    /// [`FillRef`] namespace and never collide.
     pub fn insert_fill(&mut self, fill: FillSolid) -> FillRef {
-        let id = self.fills.keys().next_back().map_or(0, |m| m + 1);
+        let id = self.next_fill_id();
         self.fills.insert(id, fill);
         id
     }
+
+    /// Insert a [`ProceduralFill`] and return the auto-allocated [`FillRef`]
+    /// (shared namespace with [`Self::insert_fill`]). ADR-0056-amendment-3.
+    pub fn insert_procedural(&mut self, fill: ProceduralFill) -> FillRef {
+        let id = self.next_fill_id();
+        self.procedural.insert(id, fill);
+        id
+    }
+
+    /// The next free [`FillRef`] across BOTH the solid and procedural maps
+    /// (max existing key + 1, or 0 when both are empty). O(log N).
+    fn next_fill_id(&self) -> FillRef {
+        let solid = self.fills.keys().next_back().copied();
+        let proc = self.procedural.keys().next_back().copied();
+        match (solid, proc) {
+            (Some(a), Some(b)) => a.max(b) + 1,
+            (Some(a), None) | (None, Some(a)) => a + 1,
+            (None, None) => 0,
+        }
+    }
+
+    /// Resolve a [`FillRef`] to its fill. **Procedural takes precedence** over a
+    /// solid in the shared namespace (a ref present in both — which `insert_*`
+    /// never produces — prefers the procedural). `None` = a dangling ref (neither
+    /// map has it; the region paints stroke-only).
+    #[must_use]
+    pub fn resolve_fill(&self, fill: FillRef) -> Option<ResolvedFill<'_>> {
+        if let Some(p) = self.procedural.get(&fill) {
+            return Some(ResolvedFill::Procedural(p));
+        }
+        self.fills.get(&fill).map(ResolvedFill::Solid)
+    }
+}
+
+/// What a [`FillRef`] resolves to in a [`StyleTable`] ([`StyleTable::resolve_fill`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ResolvedFill<'a> {
+    /// A procedural fill (W6 shader graph / W7 diffusion) — checked first.
+    Procedural(&'a ProceduralFill),
+    /// A solid color fill.
+    Solid(&'a FillSolid),
 }
 
 /// Solid color fill — W1 minimal. Gradient / pattern / procedural arrive
@@ -213,6 +266,67 @@ impl Default for FillSolid {
     fn default() -> Self {
         Self {
             color: ph2d_color::OklchColor::opaque(0.5, 0.0, 0.0),
+        }
+    }
+}
+
+/// Which render-side procedural pipeline a [`ProceduralFill`]'s `id` indexes.
+///
+/// **Cap (ADR-0056-amendment-3):** ≤ 4 variants (gate
+/// `architecture_vector_contract_surface`) — room for the resource-bound fills
+/// (pattern/image) to grow without unbounded surface. Currently 2.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ProceduralFillKind {
+    /// W6 procedural shader graph (`ph2d_vector_fill::FillGraph`) — the `id`
+    /// indexes the render-side fill-graph registry.
+    ShaderGraph,
+    /// W7 diffusion-curve mesh gradient (`DiffusionCurveSet`) — the `id` indexes
+    /// the render-side diffusion registry.
+    Diffusion,
+}
+
+/// A procedural fill a region's [`FillRef`] can resolve to (alongside the solid
+/// [`FillSolid`]). The data model holds ONLY a `kind` + an opaque registry `id` +
+/// a solid `fallback`, keeping `ph2d-vector-doc` decoupled from the render-side
+/// graph/curve-set crate (`ph2d-vector-fill`) — the renderer (or a tier without
+/// the procedural pipeline) resolves `id` against its registry, or paints
+/// `fallback` when it cannot. W6/W7, ADR-0056-amendment-3.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ProceduralFill {
+    /// Which render-side pipeline resolves `id`.
+    pub kind: ProceduralFillKind,
+
+    /// Opaque id into the render-side registry for `kind`. Stable within a
+    /// document; the registry (and the kind→registry mapping) lives render-side.
+    pub id: u32,
+
+    /// Solid OKLCH fallback — painted for preview, on a tier without the
+    /// procedural pipeline, or when `id` is unresolved (graceful degradation per
+    /// the tier policy, ADR-0053/0068).
+    pub fallback: ph2d_color::OklchColor,
+}
+
+impl ProceduralFill {
+    /// A shader-graph (W6) procedural fill with the given registry `id` and
+    /// solid `fallback`.
+    #[must_use]
+    pub fn shader_graph(id: u32, fallback: ph2d_color::OklchColor) -> Self {
+        Self {
+            kind: ProceduralFillKind::ShaderGraph,
+            id,
+            fallback,
+        }
+    }
+
+    /// A diffusion-curve mesh-gradient (W7) procedural fill with the given
+    /// registry `id` and solid `fallback`.
+    #[must_use]
+    pub fn diffusion(id: u32, fallback: ph2d_color::OklchColor) -> Self {
+        Self {
+            kind: ProceduralFillKind::Diffusion,
+            id,
+            fallback,
         }
     }
 }
@@ -255,5 +369,47 @@ mod tests {
     #[test]
     fn stroke_style_default_is_constant_width() {
         assert!(StrokeStyle::default().width_profile.is_none());
+    }
+
+    #[test]
+    fn fill_refs_share_one_namespace_across_solid_and_procedural() {
+        let mut t = StyleTable::default();
+        let a = t.insert_fill(FillSolid::default());
+        let b = t.insert_procedural(ProceduralFill::shader_graph(7, FillSolid::default().color));
+        let c = t.insert_fill(FillSolid::default());
+        // Ids never collide across the two maps (max-of-both + 1).
+        assert_eq!((a, b, c), (0, 1, 2));
+        assert!(
+            t.fills.contains_key(&a) && t.procedural.contains_key(&b) && t.fills.contains_key(&c)
+        );
+    }
+
+    #[test]
+    fn resolve_fill_prefers_procedural_then_solid_then_none() {
+        let mut t = StyleTable::default();
+        let solid = t.insert_fill(FillSolid::default());
+        let proc = t.insert_procedural(ProceduralFill::diffusion(3, FillSolid::default().color));
+        assert!(matches!(
+            t.resolve_fill(solid),
+            Some(ResolvedFill::Solid(_))
+        ));
+        assert!(matches!(
+            t.resolve_fill(proc),
+            Some(ResolvedFill::Procedural(p)) if p.kind == ProceduralFillKind::Diffusion && p.id == 3
+        ));
+        assert!(t.resolve_fill(999).is_none());
+    }
+
+    #[test]
+    fn style_table_with_procedural_round_trips_postcard() {
+        let mut t = StyleTable::default();
+        t.insert_fill(FillSolid::default());
+        t.insert_procedural(ProceduralFill::shader_graph(
+            42,
+            ph2d_color::OklchColor::opaque(0.6, 0.1, 200.0),
+        ));
+        let bytes = postcard::to_allocvec(&t).expect("serialize");
+        let back: StyleTable = postcard::from_bytes(&bytes).expect("deserialize");
+        assert_eq!(t, back);
     }
 }

@@ -216,6 +216,10 @@ pub struct AssetBounds {
     pub max_style_strokes: usize,
     /// Maximum entries in [`StyleTable::fills`].
     pub max_style_fills: usize,
+    /// Maximum entries in [`StyleTable::procedural`] (ADR-0056-amendment-3) —
+    /// the W6/W7 procedural-fill map is an attacker-controllable `BTreeMap` on
+    /// the asset surface, so it gets the same per-field cap as `fills`.
+    pub max_style_procedural: usize,
     /// Maximum segments referenced by a single [`crate::Region`]
     /// (R2 audit Lens-F MED-F1).
     pub max_region_segments: usize,
@@ -238,6 +242,7 @@ impl Default for AssetBounds {
             max_peer_clocks: 1024,
             max_style_strokes: 4096,
             max_style_fills: 4096,
+            max_style_procedural: 4096,
             max_region_segments: 10_000,
             max_snapshots: 1000,
         }
@@ -412,6 +417,11 @@ fn check_asset_bounds(
         "styles.fills",
         asset.styles.fills.len(),
         bounds.max_style_fills,
+    )?;
+    check_bound(
+        "styles.procedural",
+        asset.styles.procedural.len(),
+        bounds.max_style_procedural,
     )?;
     // R2 audit Lens-F MED-F1: inner cap so a 1-region asset can't
     // smuggle 1M segrefs past the global `max_regions` count.

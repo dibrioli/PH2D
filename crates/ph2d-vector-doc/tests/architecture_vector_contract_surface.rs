@@ -235,6 +235,18 @@ fn winding_rule_is_frozen_at_2_variants() {
     );
 }
 
+#[test]
+fn procedural_fill_kind_is_capped_at_4_variants() {
+    // ADR-0056-amendment-3: the doc-side procedural-fill DISPATCH enum (which
+    // render pipeline resolves the opaque id). Capped (not frozen) — room for the
+    // resource-bound fills (pattern/image) without unbounded surface. Currently 2.
+    assert_capped_strict(
+        count_enum_variants(CRATE, "ProceduralFillKind"),
+        4,
+        "ProceduralFillKind (ADR-0056-amendment-3)",
+    );
+}
+
 // ----------------------------------------------------------------------------
 // ADR-0067 §2.6 — BrushEngine trait method cap + StampSpec field cap +
 // total dep count cap. Counted textually from the brush-traits crate

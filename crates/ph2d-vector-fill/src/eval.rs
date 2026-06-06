@@ -528,7 +528,7 @@ mod tests {
         // W7 step 2: a MeshGradient node evaluates by sampling its solved
         // ColorField at `coord` — eval must equal a direct `field.sample`.
         use crate::diffusion_curve::{DiffusionCurve, DiffusionCurveSet};
-        use crate::poisson_cpu::{solve_color_field, FieldStore, Resolution};
+        use crate::poisson_cpu::{FieldStore, Resolution, solve_color_field};
 
         let red = OklchColor::opaque(0.63, 0.26, 29.0);
         let blue = OklchColor::opaque(0.45, 0.31, 264.0);
@@ -552,7 +552,11 @@ mod tests {
 
         let coord = Vec2::new(0.1, 0.5); // far-left of the red/blue split
         let got = eval_color_with_fields(&g, coord, &ubo, &store).unwrap();
-        assert_eq!(got, field.sample(coord), "MeshGradient must sample its field");
+        assert_eq!(
+            got,
+            field.sample(coord),
+            "MeshGradient must sample its field"
+        );
         assert!(got[0] > got[2], "far-left should lean red (R>B): {got:?}");
     }
 

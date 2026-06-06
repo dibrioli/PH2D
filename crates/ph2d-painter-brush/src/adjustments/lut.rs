@@ -81,7 +81,11 @@ fn look_noir(c: [f32; 3]) -> [f32; 3] {
 /// Sepia — warm monochrome (toned print).
 fn look_sepia(c: [f32; 3]) -> [f32; 3] {
     let l = luma(c);
-    [clamp01(l * 1.07 + 0.04), clamp01(l * 0.92), clamp01(l * 0.72)]
+    [
+        clamp01(l * 1.07 + 0.04),
+        clamp01(l * 0.92),
+        clamp01(l * 0.72),
+    ]
 }
 
 /// Vivid — push every channel away from its luma (saturation boost).
@@ -94,10 +98,13 @@ fn look_vivid(c: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+/// A built-in look transform: linear-RGB triple → linear-RGB triple.
+pub type LookFn = fn([f32; 3]) -> [f32; 3];
+
 /// The built-in looks the "Look" control scrubs through. Index 0 is the neutral
 /// pass-through; the [`LutHandle`](super::LutHandle) stores this index. Labels are
 /// English ([[feedback-app-ui-english-only]]) and feed a future named dropdown.
-pub const LUT_PRESETS: &[(&str, fn([f32; 3]) -> [f32; 3])] = &[
+pub const LUT_PRESETS: &[(&str, LookFn)] = &[
     ("None", look_none),
     ("Warm", look_warm),
     ("Cool", look_cool),

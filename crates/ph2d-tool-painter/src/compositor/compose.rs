@@ -347,8 +347,7 @@ fn composite_into(
                             // Per-pixel colour adjustment: blend the adjusted color
                             // (carrying the base's coverage) over the base, lerp by
                             // t; coverage is KEPT (adjustments don't change alpha).
-                            let src_px =
-                                [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
+                            let src_px = [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
                             let blended = apply_blend(adj_mode, base, src_px);
                             acc[i] = [
                                 base[0] + (blended[0] - base[0]) * t,

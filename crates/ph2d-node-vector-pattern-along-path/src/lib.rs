@@ -18,17 +18,17 @@
 
 mod engine;
 
-pub use engine::{pattern_along_path, MAX_COUNT};
+pub use engine::{MAX_COUNT, pattern_along_path};
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    param_as_count, LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
+    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, param_as_count,
 };
 use ph2d_nodegraph::port::Clock;
 use ph2d_vector_doc::VectorNetwork;
-use ph2d_vector_graph::{VectorEvalExt, VECTOR_PORT};
+use ph2d_vector_graph::{VECTOR_PORT, VectorEvalExt};
 
 /// The static contract of this node type (ADR-0031 / ADR-0058 §2.2).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -96,7 +96,7 @@ mod tests {
     use super::*;
     use ph2d_nodegraph::cook::{Cook, OpResolver};
     use ph2d_nodegraph::graph::{Edge, Graph};
-    use ph2d_vector_doc::{primitives, Segment, Vertex};
+    use ph2d_vector_doc::{Segment, Vertex, primitives};
 
     fn shape_src() -> VectorNetwork {
         let mut net = primitives::rect(glam::Vec2::new(-1.0, -1.0), glam::Vec2::new(1.0, 1.0));
@@ -106,8 +106,10 @@ mod tests {
 
     fn path_src() -> VectorNetwork {
         let mut net = VectorNetwork::empty();
-        net.vertices.push(Vertex::auto(0, glam::Vec2::new(0.0, 0.0)));
-        net.vertices.push(Vertex::auto(1, glam::Vec2::new(120.0, 0.0)));
+        net.vertices
+            .push(Vertex::auto(0, glam::Vec2::new(0.0, 0.0)));
+        net.vertices
+            .push(Vertex::auto(1, glam::Vec2::new(120.0, 0.0)));
         net.segments.push(Segment::straight(0, 0, 1));
         net.deterministic = true;
         net

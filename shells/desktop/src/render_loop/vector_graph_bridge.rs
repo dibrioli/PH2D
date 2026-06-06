@@ -76,6 +76,9 @@ const DRAFT_STROKE_WORLD: f64 = 1.5;
 const DRAFT_RGB: (u8, u8, u8) = (79, 195, 247);
 const DRAFT_ALPHA: u8 = 230;
 
+/// A rasterized procedural-fill smoke image: `(straight-sRGB8 rgba, width, height)`.
+type SmokeImage = (Arc<Vec<u8>>, u32, u32);
+
 thread_local! {
     /// Last `(params, op)` `dispatch` saw, so it can tell an active slider drag
     /// (params changing frame-to-frame) from a settled state. The render loop is
@@ -90,8 +93,7 @@ thread_local! {
     /// W7 diffusion-mesh-gradient smoke image (`PH2D_VECTOR_FILL_SMOKE=1`):
     /// the canonical diffusion scene solved + encoded to straight-sRGB8 once.
     /// `(rgba, width, height)`.
-    static DIFFUSION_SMOKE: RefCell<Option<(Arc<Vec<u8>>, u32, u32)>> =
-        const { RefCell::new(None) };
+    static DIFFUSION_SMOKE: RefCell<Option<SmokeImage>> = const { RefCell::new(None) };
 }
 
 /// Is the geometry-graph smoke enabled? Read once from `PH2D_VECTOR_GRAPH=1`.
@@ -219,7 +221,7 @@ fn render_filled_diffusion(net: &mut VectorNetwork, to_screen: Affine, scene: &m
 }
 
 /// The diffusion smoke image, solved + encoded once (cached thread-local).
-fn diffusion_smoke_rgba() -> (Arc<Vec<u8>>, u32, u32) {
+fn diffusion_smoke_rgba() -> SmokeImage {
     DIFFUSION_SMOKE.with(|cell| {
         cell.borrow_mut()
             .get_or_insert_with(build_diffusion_smoke)
@@ -235,7 +237,7 @@ fn diffusion_smoke_rgba() -> (Arc<Vec<u8>>, u32, u32) {
 /// straight-sRGB8 OPAQUE (the region clip provides coverage). The visual is the
 /// diffusion gradient; the *path* is now `FillGraph → FieldResolver → render`, so
 /// any FillGraph (gradient/noise/mix/mesh) renders the same way.
-fn build_diffusion_smoke() -> (Arc<Vec<u8>>, u32, u32) {
+fn build_diffusion_smoke() -> SmokeImage {
     use glam::Vec2;
     let red = OklchColor::opaque(0.63, 0.26, 29.0);
     let blue = OklchColor::opaque(0.45, 0.31, 264.0);

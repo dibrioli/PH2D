@@ -43,6 +43,14 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          invalidation is the caller's job (the painter tool's dirty model), not \
          the setter's.",
     ),
+    (
+        "set_coord_mode",
+        "FillParamsUbo single `ucontrol`-lane write (W6 procedural fill). The \
+         recompile-free design (gate `procedural_fill_no_recompile_on_animate`) \
+         makes an enum-mode change JUST a UBO field write the GPU reads fresh \
+         next frame — no pipeline recompile and no derived CPU state keyed on it. \
+         Same pattern as the unflagged `set_math_op`/`set_blend_mode` UBO setters.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

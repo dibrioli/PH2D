@@ -41,8 +41,8 @@
 //!   Coord). The GPU pass-graph must premultiply the materialised below-composite
 //!   to match (the visible path — handoff to Coord).
 
-use super::*;
 use super::compute::{linear_to_srgb_f32, srgb_to_linear_f32};
+use super::*;
 
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + per-pixel tap count. **Mirrors
@@ -341,7 +341,11 @@ pub fn apply_chromatic_aberration(
     let cy = (h as f32 - 1.0) * 0.5;
     let corner = (cx * cx + cy * cy).sqrt().max(1e-3);
     let scale = |shift: f32| 1.0 + shift / corner;
-    let (sr, sg, sb) = (scale(p.red_shift), scale(p.green_shift), scale(p.blue_shift));
+    let (sr, sg, sb) = (
+        scale(p.red_shift),
+        scale(p.green_shift),
+        scale(p.blue_shift),
+    );
     let src = acc.to_vec(); // premultiplied
     let gather = |dx: f32, dy: f32, s: f32, ch: usize| -> f32 {
         let sx = (cx + dx * s).round() as i32;

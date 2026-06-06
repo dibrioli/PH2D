@@ -835,6 +835,6 @@ pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
 // canonical spatial math the GPU pass-graph reconciles against (W4 spatial mesh).
 pub use spatial::{
     AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_chromatic_aberration,
-    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_sharpen, gaussian_weights,
-    motion_weights,
+    apply_gaussian, apply_halftone, apply_motion_blur, apply_noise, apply_sharpen,
+    gaussian_weights, motion_weights,
 };

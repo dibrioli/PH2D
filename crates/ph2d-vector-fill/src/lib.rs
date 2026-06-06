@@ -55,12 +55,12 @@ pub mod wgsl_codegen;
 pub use cache::CompileCache;
 pub use diffusion_curve::{ColorStop, DiffusionCurve, DiffusionCurveSet};
 pub use diffusion_gpu::{
-    pack_curves, walk_on_spheres_field, wos_estimate_point, DiffusionAlgorithm, DiffusionParams,
-    DiffusionPlan, DiffusionTier, GpuSegment, WosConfig,
+    DiffusionAlgorithm, DiffusionParams, DiffusionPlan, DiffusionTier, GpuSegment, WosConfig,
+    pack_curves, walk_on_spheres_field, wos_estimate_point,
 };
 pub use eval::{eval_color, eval_color_with_fields};
 pub use poisson_cpu::{
-    solve_color_field, ColorField, FieldResolver, FieldStore, NoFields, Resolution,
+    ColorField, FieldResolver, FieldStore, NoFields, Resolution, solve_color_field,
 };
 pub use wgsl_codegen::{CompiledFill, TopologyHash};
 

@@ -1570,7 +1570,10 @@ fn gaussian_weights_sum_to_one() {
         assert_eq!(w.len(), half as usize + 1);
         // Full kernel = centre + 2·flanks.
         let sum = w[0] + 2.0 * w[1..].iter().sum::<f32>();
-        assert!((sum - 1.0).abs() < 1e-5, "radius {r}: kernel sum {sum} != 1");
+        assert!(
+            (sum - 1.0).abs() < 1e-5,
+            "radius {r}: kernel sum {sum} != 1"
+        );
         assert!(w[0] >= w[w.len() - 1], "centre tap is the heaviest");
     }
 }
@@ -1591,10 +1594,16 @@ fn gaussian_blur_of_a_flat_field_is_identity() {
         AdjustWindow::full(n, n),
     );
     for p in &acc {
-        assert!((p[0] - 0.5).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5 && (p[2] - 0.75).abs() < 1e-5);
+        assert!(
+            (p[0] - 0.5).abs() < 1e-5 && (p[1] - 0.25).abs() < 1e-5 && (p[2] - 0.75).abs() < 1e-5
+        );
         // Alpha is blurred now (premultiplied), but a flat OPAQUE field's coverage
         // stays ~1 (the kernel is normalised; interior pixels see all-opaque taps).
-        assert!((p[3] - 1.0).abs() < 1e-5, "interior coverage stays ~opaque: {}", p[3]);
+        assert!(
+            (p[3] - 1.0).abs() < 1e-5,
+            "interior coverage stays ~opaque: {}",
+            p[3]
+        );
     }
 }
 
@@ -1659,7 +1668,11 @@ fn gaussian_feathers_coverage_into_transparency() {
         &mut acc,
         AdjustWindow::full(n, n),
     );
-    assert!(acc[centre][3] < 1.0, "centre coverage softened: {}", acc[centre][3]);
+    assert!(
+        acc[centre][3] < 1.0,
+        "centre coverage softened: {}",
+        acc[centre][3]
+    );
     let neighbour = (4 * n + 5) as usize;
     assert!(
         acc[neighbour][3] > 0.0,
@@ -1704,7 +1717,11 @@ fn chroma_does_not_speckle_transparent_regions() {
     let n = 8;
     let mut acc = flat_window(n, [0.0, 0.0, 1.0, 0.0]); // transparent blue garbage
     // a small opaque patch so the gather has SOMETHING to move
-    for &i in &[(3 * n + 3) as usize, (3 * n + 4) as usize, (4 * n + 3) as usize] {
+    for &i in &[
+        (3 * n + 3) as usize,
+        (3 * n + 4) as usize,
+        (4 * n + 3) as usize,
+    ] {
         acc[i] = [1.0, 0.2, 0.2, 1.0];
     }
     apply_chromatic_aberration(
@@ -1720,7 +1737,8 @@ fn chroma_does_not_speckle_transparent_regions() {
     for p in &acc {
         if p[3] <= 1e-4 {
             assert_eq!(
-                *p, [0.0, 0.0, 0.0, 0.0],
+                *p,
+                [0.0, 0.0, 0.0, 0.0],
                 "a transparent output pixel must be clean transparent black, not speckle"
             );
         }
@@ -1824,7 +1842,10 @@ fn halftone_outputs_only_black_or_white_ink() {
             (p[0] - p[1]).abs() < 1e-6 && (p[1] - p[2]).abs() < 1e-6,
             "halftone is achromatic"
         );
-        assert!(p[0] < 1e-3 || p[0] > 1.0 - 1e-3, "pixel is ink or paper: {p:?}");
+        assert!(
+            p[0] < 1e-3 || p[0] > 1.0 - 1e-3,
+            "pixel is ink or paper: {p:?}"
+        );
         assert_eq!(p[3], 0.6, "alpha preserved");
         saw_ink |= p[0] < 1e-3;
         saw_paper |= p[0] > 1.0 - 1e-3;
@@ -1857,7 +1878,10 @@ fn windowed_dispatch_delegates_per_pixel_kinds() {
     apply_adjustment_windowed(&kind, &params, &mut a, AdjustWindow::full(1, 1));
     let mut b = [px];
     apply_adjustment(&kind, &params, &mut b);
-    assert_eq!(a, b, "windowed dispatch matches the flat path for per-pixel kinds");
+    assert_eq!(
+        a, b,
+        "windowed dispatch matches the flat path for per-pixel kinds"
+    );
 }
 
 // ── W4 spatial/coord kinds expose editable UI (the integration gap fix) ────────
@@ -1921,7 +1945,11 @@ fn spatial_slider_round_trips_and_moves_the_param() {
     let AdjustmentParams::GaussianBlur(gp) = &g else {
         unreachable!()
     };
-    assert!((gp.radius - 50.0).abs() < 1e-3, "radius 0.5 → 50px: {}", gp.radius);
+    assert!(
+        (gp.radius - 50.0).abs() < 1e-3,
+        "radius 0.5 → 50px: {}",
+        gp.radius
+    );
 }
 
 #[test]
@@ -2018,7 +2046,10 @@ fn color_lookup_look_slider_round_trips_every_preset() {
         let AdjustmentParams::ColorLookupLut(cp) = &p else {
             unreachable!()
         };
-        assert_eq!(cp.lut_3d.0, idx, "preset {idx} round-trips via the Look slider");
+        assert_eq!(
+            cp.lut_3d.0, idx,
+            "preset {idx} round-trips via the Look slider"
+        );
     }
     // Two slots exposed: Look + Amount.
     let p = AdjustmentParams::ColorLookupLut(ColorLookupLutParams::default());
@@ -2033,10 +2064,20 @@ fn noise_and_halftone_segments_and_toggle_round_trip() {
     assert_eq!(opts, vec!["Gaussian", "Uniform"]);
     assert_eq!(sel, 0, "default distribution is Gaussian");
     set_adjustment_segment_param(&mut noise, 1);
-    assert_eq!(adjustment_segment_params(&noise).unwrap().1, 1, "Uniform selected");
-    assert_eq!(adjustment_toggle_params(&noise), vec![("Monochrome", false)]);
+    assert_eq!(
+        adjustment_segment_params(&noise).unwrap().1,
+        1,
+        "Uniform selected"
+    );
+    assert_eq!(
+        adjustment_toggle_params(&noise),
+        vec![("Monochrome", false)]
+    );
     set_adjustment_toggle_param(&mut noise, 0, true);
-    assert!(adjustment_toggle_params(&noise)[0].1, "monochrome toggled on");
+    assert!(
+        adjustment_toggle_params(&noise)[0].1,
+        "monochrome toggled on"
+    );
 
     // Halftone: cell-shape segment (Dot/Line/Circle).
     let mut ht = AdjustmentParams::Halftone(HalftoneParams::default());
@@ -2044,5 +2085,9 @@ fn noise_and_halftone_segments_and_toggle_round_trip() {
     assert_eq!(shapes, vec!["Dot", "Line", "Circle"]);
     assert_eq!(s0, 0, "default shape is Dot");
     set_adjustment_segment_param(&mut ht, 2);
-    assert_eq!(adjustment_segment_params(&ht).unwrap().1, 2, "Circle selected");
+    assert_eq!(
+        adjustment_segment_params(&ht).unwrap().1,
+        2,
+        "Circle selected"
+    );
 }

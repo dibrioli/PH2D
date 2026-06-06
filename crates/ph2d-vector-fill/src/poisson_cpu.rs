@@ -379,7 +379,15 @@ fn vcycle(u: &mut [f32], f: &[f32], fixed: &[bool], w: usize, h: usize, h2: f32)
 /// `u = (Σneighbours + h²·f)/4`. Fixed vertices are never written. Red-black
 /// ordering (update `(x+y)` even, then odd) is deterministic *and* the natural
 /// shape the GPU WoS/Jacobi path mirrors.
-fn smooth_redblack(u: &mut [f32], f: &[f32], fixed: &[bool], w: usize, h: usize, h2: f32, sweeps: usize) {
+fn smooth_redblack(
+    u: &mut [f32],
+    f: &[f32],
+    fixed: &[bool],
+    w: usize,
+    h: usize,
+    h2: f32,
+    sweeps: usize,
+) {
     for _ in 0..sweeps {
         for parity in 0..2 {
             for y in 0..h {
@@ -576,7 +584,11 @@ mod tests {
         let g = |x: f32, _y: f32| x;
         let (fixed, init) = border_problem(w, h, g);
         let u = solve_channel(&fixed, &init, w, h, 30);
-        assert!(max_err(&u, w, h, g) < 1e-3, "err = {}", max_err(&u, w, h, g));
+        assert!(
+            max_err(&u, w, h, g) < 1e-3,
+            "err = {}",
+            max_err(&u, w, h, g)
+        );
     }
 
     #[test]
@@ -587,7 +599,11 @@ mod tests {
         let g = |x: f32, y: f32| x * y;
         let (fixed, init) = border_problem(w, h, g);
         let u = solve_channel(&fixed, &init, w, h, 40);
-        assert!(max_err(&u, w, h, g) < 1e-3, "err = {}", max_err(&u, w, h, g));
+        assert!(
+            max_err(&u, w, h, g) < 1e-3,
+            "err = {}",
+            max_err(&u, w, h, g)
+        );
     }
 
     #[test]
@@ -634,7 +650,10 @@ mod tests {
                 break;
             }
             if prev > floor {
-                assert!(max_r < prev, "cycle {cycle}: residual {max_r} !< {prev} (above floor)");
+                assert!(
+                    max_r < prev,
+                    "cycle {cycle}: residual {max_r} !< {prev} (above floor)"
+                );
             }
             prev = max_r;
         }
@@ -711,15 +730,29 @@ mod tests {
 
         // Far-left ≈ red, far-right ≈ blue (linear-light, generous tol for the
         // diffusion seam / corner leakage).
-        let close = |a: [f32; 4], b: [f32; 4], tol: f32| {
-            (0..3).all(|k| (a[k] - b[k]).abs() < tol)
-        };
-        assert!(close(left, red_lin, 0.03), "left {left:?} != red {red_lin:?}");
-        assert!(close(right, blue_lin, 0.03), "right {right:?} != blue {blue_lin:?}");
+        let close = |a: [f32; 4], b: [f32; 4], tol: f32| (0..3).all(|k| (a[k] - b[k]).abs() < tol);
+        assert!(
+            close(left, red_lin, 0.03),
+            "left {left:?} != red {red_lin:?}"
+        );
+        assert!(
+            close(right, blue_lin, 0.03),
+            "right {right:?} != blue {blue_lin:?}"
+        );
 
         // The red (R) channel must decrease left→right; blue (B) must increase.
-        assert!(left[0] > right[0], "R should fall L→R: {} vs {}", left[0], right[0]);
-        assert!(left[2] < right[2], "B should rise L→R: {} vs {}", left[2], right[2]);
+        assert!(
+            left[0] > right[0],
+            "R should fall L→R: {} vs {}",
+            left[0],
+            right[0]
+        );
+        assert!(
+            left[2] < right[2],
+            "B should rise L→R: {} vs {}",
+            left[2],
+            right[2]
+        );
     }
 
     #[test]

@@ -95,10 +95,7 @@ impl DiffusionCurve {
     /// The total Euclidean length of the polyline (fill-space units). Used to
     /// arc-length–parameterize the colour stops during rasterization.
     pub fn arc_length(&self) -> f32 {
-        self.points
-            .windows(2)
-            .map(|w| (w[1] - w[0]).length())
-            .sum()
+        self.points.windows(2).map(|w| (w[1] - w[0]).length()).sum()
     }
 
     /// The `+normal`-side colour at arc-length parameter `t ∈ [0,1]`, resolved

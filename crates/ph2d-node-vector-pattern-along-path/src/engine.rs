@@ -56,7 +56,11 @@ pub fn pattern_along_path(
 
     let mut b = Builder::new();
     for f in &frames {
-        let (cos, sin) = if align { (f.dir.x, f.dir.y) } else { (1.0, 0.0) };
+        let (cos, sin) = if align {
+            (f.dir.x, f.dir.y)
+        } else {
+            (1.0, 0.0)
+        };
         b.append(
             shape,
             Xform {
@@ -240,7 +244,10 @@ impl Xform {
     /// Transform a free vector (a tangent handle): rotate+scale, no translation.
     fn vector(&self, p: Vec2) -> Vec2 {
         let s = p * self.scale;
-        Vec2::new(s.x * self.cos - s.y * self.sin, s.x * self.sin + s.y * self.cos)
+        Vec2::new(
+            s.x * self.cos - s.y * self.sin,
+            s.x * self.sin + s.y * self.cos,
+        )
     }
 }
 
@@ -270,7 +277,9 @@ impl Builder {
             let nid = self.next_v;
             self.next_v += 1;
             vmap.insert(v.id, nid);
-            self.net.vertices.push(Vertex::new(nid, xf.point(v.pos), v.kind));
+            self.net
+                .vertices
+                .push(Vertex::new(nid, xf.point(v.pos), v.kind));
         }
         let mut smap: BTreeMap<SegmentId, SegmentId> = BTreeMap::new();
         for s in &src.segments {
@@ -373,7 +382,10 @@ mod tests {
         // the ±4 x-extent maps onto the y-axis → wide in y, thin in x.
         let span_x = span(&out, |v| v.pos.x);
         let span_y = span(&out, |v| v.pos.y);
-        assert!(span_y > span_x + 4.0, "expected rotation: span_y {span_y} vs span_x {span_x}");
+        assert!(
+            span_y > span_x + 4.0,
+            "expected rotation: span_y {span_y} vs span_x {span_x}"
+        );
     }
 
     #[test]
@@ -394,16 +406,28 @@ mod tests {
 
     #[test]
     fn zero_count_or_empty_inputs_are_empty() {
-        assert!(pattern_along_path(&shape(), &straight_path(100.0), 0, false, 1.0)
+        assert!(
+            pattern_along_path(&shape(), &straight_path(100.0), 0, false, 1.0)
+                .regions
+                .is_empty()
+        );
+        assert!(
+            pattern_along_path(
+                &VectorNetwork::empty(),
+                &straight_path(100.0),
+                5,
+                false,
+                1.0
+            )
             .regions
-            .is_empty());
-        assert!(pattern_along_path(&VectorNetwork::empty(), &straight_path(100.0), 5, false, 1.0)
-            .regions
-            .is_empty());
+            .is_empty()
+        );
         // Path with no segments → no frames → empty.
-        assert!(pattern_along_path(&shape(), &VectorNetwork::empty(), 5, false, 1.0)
-            .regions
-            .is_empty());
+        assert!(
+            pattern_along_path(&shape(), &VectorNetwork::empty(), 5, false, 1.0)
+                .regions
+                .is_empty()
+        );
     }
 
     #[test]

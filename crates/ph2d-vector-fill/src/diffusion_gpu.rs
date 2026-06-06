@@ -377,7 +377,7 @@ fn rand01(px: u32, py: u32, s: u32, step: u32, seed: u32) -> f32 {
 mod tests {
     use super::*;
     use crate::diffusion_curve::DiffusionCurve;
-    use crate::poisson_cpu::{solve_color_field_cycles, Resolution};
+    use crate::poisson_cpu::{Resolution, solve_color_field_cycles};
     use ph2d_color::OklchColor;
 
     /// Two full-height walls (a channel): the field between them is a smooth
@@ -427,7 +427,9 @@ mod tests {
         let left = wos_estimate_point(&set, Vec2::new(0.30, 0.5), cfg, 30, 64);
         let right = wos_estimate_point(&set, Vec2::new(0.70, 0.5), cfg, 70, 64);
         // The two ends differ markedly in at least one linear channel.
-        let spread: f32 = (0..3).map(|k| (left[k] - right[k]).abs()).fold(0.0, f32::max);
+        let spread: f32 = (0..3)
+            .map(|k| (left[k] - right[k]).abs())
+            .fold(0.0, f32::max);
         assert!(spread > 0.05, "expected a visible ramp, spread = {spread}");
     }
 
@@ -437,7 +439,10 @@ mod tests {
         let cfg = WosConfig::new(16, 64, 1.0 / 16.0, 7);
         let a = walk_on_spheres_field(&set, 17, 17, cfg);
         let b = walk_on_spheres_field(&set, 17, 17, cfg);
-        assert_eq!(a.texel, b.texel, "WoS must be bit-identical for a fixed seed");
+        assert_eq!(
+            a.texel, b.texel,
+            "WoS must be bit-identical for a fixed seed"
+        );
     }
 
     #[test]
@@ -499,13 +504,19 @@ mod tests {
     #[test]
     fn bilateral_upsample_wgsl_validates() {
         let src = BILATERAL_UPSAMPLE_WGSL;
-        let module = naga::front::wgsl::parse_str(src)
-            .unwrap_or_else(|e| panic!("bilateral_upsample.wgsl parse:\n{}", e.emit_to_string(src)));
+        let module = naga::front::wgsl::parse_str(src).unwrap_or_else(|e| {
+            panic!("bilateral_upsample.wgsl parse:\n{}", e.emit_to_string(src))
+        });
         naga::valid::Validator::new(
             naga::valid::ValidationFlags::all(),
             naga::valid::Capabilities::empty(),
         )
         .validate(&module)
-        .unwrap_or_else(|e| panic!("bilateral_upsample.wgsl validate:\n{}", e.emit_to_string(src)));
+        .unwrap_or_else(|e| {
+            panic!(
+                "bilateral_upsample.wgsl validate:\n{}",
+                e.emit_to_string(src)
+            )
+        });
     }
 }

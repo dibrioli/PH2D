@@ -49,7 +49,11 @@ use ph2d_vector::{
     draw_vector_network, draw_vector_network_with_fills,
 };
 use ph2d_vector_doc::{FillSolid, ProceduralFill, StyleTable, VectorNetwork};
-use ph2d_vector_fill::{DiffusionCurve, DiffusionCurveSet, Resolution, solve_color_field};
+use ph2d_vector_fill::ubo::FillParamsUbo;
+use ph2d_vector_fill::{
+    DiffusionCurve, DiffusionCurveSet, FieldStore, FillGraph, FillNode, NodeId as FillNodeId,
+    Resolution, eval_color_with_fields, solve_color_field,
+};
 use ph2d_vector_sdf::gpu::GpuSdf;
 use ph2d_vector_sdf::{Bounds, SdfOp, boolean_sdf, marching_contour};
 use std::cell::RefCell;
@@ -223,9 +227,14 @@ fn diffusion_smoke_rgba() -> (Arc<Vec<u8>>, u32, u32) {
     })
 }
 
-/// Solve the canonical diffusion scene (red↔blue wall + green band + amber
-/// diagonal @ 129²) and encode it to a straight-sRGB8 OPAQUE image — the region
-/// clip provides coverage, so the field is rendered fully opaque.
+/// Build the smoke image through the **W6 procedural-fill graph** (the general
+/// path the Vector impl asked the host to wire): solve the canonical diffusion
+/// scene into a `ColorField`, register it in a [`FieldStore`] (the host's
+/// `FieldResolver`), then eval a `FillGraph` = `[MeshGradient { gradient_id: 0 }]`
+/// per pixel — `eval_color_with_fields` samples the field via the store. Encodes
+/// straight-sRGB8 OPAQUE (the region clip provides coverage). The visual is the
+/// diffusion gradient; the *path* is now `FillGraph → FieldResolver → render`, so
+/// any FillGraph (gradient/noise/mix/mesh) renders the same way.
 fn build_diffusion_smoke() -> (Arc<Vec<u8>>, u32, u32) {
     use glam::Vec2;
     let red = OklchColor::opaque(0.63, 0.26, 29.0);
@@ -237,15 +246,33 @@ fn build_diffusion_smoke() -> (Arc<Vec<u8>>, u32, u32) {
         DiffusionCurve::straight(Vec2::new(0.1, 0.22), Vec2::new(0.9, 0.22), green, green),
         DiffusionCurve::straight(Vec2::new(0.55, 0.95), Vec2::new(0.95, 0.55), amber, amber),
     ]);
-    let res = Resolution::square(129).expect("129 = 2^7 + 1");
-    let field = solve_color_field(&set, res);
-    let (w, h) = (field.w as u32, field.h as u32);
+    let field = solve_color_field(&set, Resolution::square(129).expect("129 = 2^7 + 1"));
+
+    // Host-side FieldResolver: gradient_id 0 → the solved field.
+    let mut store = FieldStore::new();
+    store.insert(0, field);
+
+    // The minimal W6 graph: a single MeshGradient sampling gradient_id 0.
+    let graph = FillGraph {
+        nodes: vec![FillNode::MeshGradient { gradient_id: 0 }].into(),
+        connections: Vec::new().into(),
+        output_node_id: FillNodeId(0),
+    };
+    let params = FillParamsUbo::from_graph(&graph);
+
+    // Eval the graph per pixel over a 129² grid (uv ∈ [0,1]²) → straight sRGB8.
+    let (w, h) = (129u32, 129u32);
     let mut rgba = Vec::with_capacity((w as usize) * (h as usize) * 4);
-    for px in &field.texel {
-        rgba.push(linear_to_srgb_byte(px[0]));
-        rgba.push(linear_to_srgb_byte(px[1]));
-        rgba.push(linear_to_srgb_byte(px[2]));
-        rgba.push(255); // opaque; the region path provides coverage via the clip
+    for y in 0..h {
+        for x in 0..w {
+            let uv = Vec2::new(x as f32 / (w - 1) as f32, y as f32 / (h - 1) as f32);
+            let c =
+                eval_color_with_fields(&graph, uv, &params, &store).unwrap_or([0.0, 0.0, 0.0, 0.0]);
+            rgba.push(linear_to_srgb_byte(c[0]));
+            rgba.push(linear_to_srgb_byte(c[1]));
+            rgba.push(linear_to_srgb_byte(c[2]));
+            rgba.push(255); // opaque; the region path provides coverage via the clip
+        }
     }
     (Arc::new(rgba), w, h)
 }

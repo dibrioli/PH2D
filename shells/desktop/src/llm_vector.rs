@@ -22,6 +22,7 @@
 //! surfaced as a toast, never materialised. A transport failure (timeout /
 //! network) degrades gracefully to the cached shape for that `(prompt, seed)`.
 
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 
@@ -44,15 +45,16 @@ pub(crate) enum LlmJobOutcome {
     /// The fetch failed with no cached fallback, or the blob was rejected by the
     /// sanitizer. Carries a human-readable reason for the toast.
     Failed(String),
-    /// `ANTHROPIC_API_KEY` was not set when the editor started.
+    /// No API key was found (neither env var nor config file) at request time.
     NoKey,
 }
 
 /// The editor's LLM-vector subsystem: at most one in-flight background
-/// generation, a persistent fallback cache, and the API key read once from the
-/// environment. Lives on [`App`]; constructed key-less + empty.
+/// generation + a persistent fallback cache. The API key is resolved **lazily**
+/// per request (env var or config file — see [`resolve_api_key`]), so a key
+/// dropped in while the editor is running is picked up on the next generation.
+/// Lives on [`App`]; constructed empty.
 pub(crate) struct LlmVectorEngine {
-    api_key: Option<String>,
     cache: Arc<Mutex<ResultCache>>,
     pending: Option<Receiver<LlmJobOutcome>>,
     /// Monotonic per-generation seed (also the cache key axis).
@@ -62,7 +64,6 @@ pub(crate) struct LlmVectorEngine {
 impl LlmVectorEngine {
     pub(crate) fn new() -> Self {
         Self {
-            api_key: std::env::var("ANTHROPIC_API_KEY").ok(),
             cache: Arc::new(Mutex::new(ResultCache::new(CACHE_CAP))),
             pending: None,
             next_seed: 0,
@@ -70,8 +71,10 @@ impl LlmVectorEngine {
     }
 
     /// Kick off a background generation for `prompt`. Returns `false` (no-op) if
-    /// a generation is already in flight. The blocking ≤15 s client runs on a
-    /// worker thread; [`Self::poll`] collects the result.
+    /// a generation is already in flight. Resolves the API key first (env or
+    /// config file); with no key it reports [`LlmJobOutcome::NoKey`] without
+    /// spawning a thread. Otherwise the blocking ≤15 s client runs on a worker
+    /// thread and [`Self::poll`] collects the result.
     pub(crate) fn submit(&mut self, prompt: String) -> bool {
         if self.pending.is_some() {
             return false;
@@ -79,29 +82,31 @@ impl LlmVectorEngine {
         let seed = self.next_seed;
         self.next_seed += 1;
         let (tx, rx) = std::sync::mpsc::channel();
-        // The worker captures only `Send` data (an `Arc` clone + owned strings) —
-        // never `self` — so the thread is `'static`.
-        let cache = Arc::clone(&self.cache);
-        let key = self.api_key.clone();
-        std::thread::spawn(move || {
-            let outcome = match key {
-                None => LlmJobOutcome::NoKey,
-                Some(k) => {
-                    let client = LlmClient::new(AnthropicTransport::with_key(k));
-                    // Single in-flight job ⇒ holding the lock across the ≤15 s call
-                    // is contention-free, and `generate_shape` needs `&mut cache`
-                    // for both the fallback read and the success write.
-                    match cache.lock() {
+        match resolve_api_key() {
+            // No key → no network, no thread: report immediately for the toast.
+            None => {
+                let _ = tx.send(LlmJobOutcome::NoKey);
+            }
+            Some(key) => {
+                // The worker captures only `Send` data (an `Arc` clone + owned
+                // strings) — never `self` — so the thread is `'static`.
+                let cache = Arc::clone(&self.cache);
+                std::thread::spawn(move || {
+                    let client = LlmClient::new(AnthropicTransport::with_key(key));
+                    // Single in-flight job ⇒ holding the lock across the ≤15 s
+                    // call is contention-free, and `generate_shape` needs
+                    // `&mut cache` for both the fallback read and success write.
+                    let outcome = match cache.lock() {
                         Ok(mut guard) => match client.generate_shape(&prompt, seed, &mut guard) {
                             Ok(net) => LlmJobOutcome::Ready(Box::new(net)),
                             Err(e) => LlmJobOutcome::Failed(e.to_string()),
                         },
                         Err(_) => LlmJobOutcome::Failed("cache lock poisoned".to_string()),
-                    }
-                }
-            };
-            let _ = tx.send(outcome);
-        });
+                    };
+                    let _ = tx.send(outcome);
+                });
+            }
+        }
         self.pending = Some(rx);
         true
     }
@@ -120,6 +125,58 @@ impl LlmVectorEngine {
                 None
             }
         }
+    }
+}
+
+/// Resolve the Anthropic API key, lazily, at request time. Order:
+/// 1. the `ANTHROPIC_API_KEY` environment variable (works when the editor was
+///    launched from a shell that exported it);
+/// 2. a key file — the means for a GUI launch that does **not** inherit the
+///    shell env. Its path is [`api_key_file_path`]; the file holds just the key
+///    (surrounding whitespace trimmed).
+///
+/// Never hardcoded, never logged. `None` if neither yields a non-empty key.
+fn resolve_api_key() -> Option<String> {
+    if let Ok(k) = std::env::var("ANTHROPIC_API_KEY") {
+        let k = k.trim().to_string();
+        if !k.is_empty() {
+            return Some(k);
+        }
+    }
+    let path = api_key_file_path()?;
+    let k = std::fs::read_to_string(&path).ok()?.trim().to_string();
+    (!k.is_empty()).then_some(k)
+}
+
+/// Where [`resolve_api_key`] looks for a key file. Overridable via
+/// `ANTHROPIC_API_KEY_FILE`; otherwise the platform config dir +
+/// `ph2d/anthropic_api_key` (`$XDG_CONFIG_HOME` or `~/.config` on unix,
+/// `%APPDATA%` on Windows).
+fn api_key_file_path() -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("ANTHROPIC_API_KEY_FILE")
+        && !p.is_empty()
+    {
+        return Some(PathBuf::from(p));
+    }
+    let base = if cfg!(windows) {
+        std::env::var_os("APPDATA").map(PathBuf::from)
+    } else {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
+    }?;
+    Some(base.join("ph2d").join("anthropic_api_key"))
+}
+
+/// The toast shown when no key is found — names the two ways to set it, with the
+/// exact file path so it is actionable.
+fn api_key_hint() -> String {
+    match api_key_file_path() {
+        Some(p) => format!(
+            "No Anthropic API key. Set ANTHROPIC_API_KEY, or write your key to {}, then try again.",
+            p.display()
+        ),
+        None => "No Anthropic API key. Set ANTHROPIC_API_KEY, then try again.".to_string(),
     }
 }
 
@@ -176,9 +233,7 @@ impl App {
                 format!("Vector shape added ({n} vertices) — editable + undoable.")
             }
             LlmJobOutcome::Failed(reason) => format!("Vector generation failed: {reason}"),
-            LlmJobOutcome::NoKey => {
-                "Set ANTHROPIC_API_KEY to generate vector shapes from prompts.".to_string()
-            }
+            LlmJobOutcome::NoKey => api_key_hint(),
         };
         if let Some(gfx) = self.gfx.as_mut() {
             gfx.toasts.push(Toast::info(msg));

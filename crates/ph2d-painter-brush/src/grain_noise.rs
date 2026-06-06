@@ -97,12 +97,12 @@ pub fn grain_value(gtype: u32, sx: f32, sy: f32, seed: u32) -> f32 {
             let ang = 0.4_f32; // ~23° fibre orientation
             let dir = sx * ang.cos() + sy * ang.sin();
             let jitter = perlin2(sx * 0.5, sy * 0.5, seed) * 2.0;
-            (0.5 + 0.5 * (dir * 6.2831 + jitter).sin()).clamp(0.0, 1.0)
+            (0.5 + 0.5 * (dir * std::f32::consts::TAU + jitter).sin()).clamp(0.0, 1.0)
         }
         GRAIN_PAPER_WEAVE => {
             // Canvas weave: two perpendicular fibre sets, multiplied → cross-hatch.
-            let warp = 0.5 + 0.5 * (sx * 6.2831).sin();
-            let weft = 0.5 + 0.5 * (sy * 6.2831).sin();
+            let warp = 0.5 + 0.5 * (sx * std::f32::consts::TAU).sin();
+            let weft = 0.5 + 0.5 * (sy * std::f32::consts::TAU).sin();
             let n = perlin2(sx, sy, seed) * 0.25;
             ((warp.max(weft) * 0.85 + 0.15) + n - 0.125).clamp(0.0, 1.0)
         }

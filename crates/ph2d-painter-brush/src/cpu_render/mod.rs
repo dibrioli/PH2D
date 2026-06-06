@@ -173,6 +173,9 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
     let mode = RenderingMode::from_u32(stamp.rendering_mode);
     let wet = stamp.wet_amount;
     let shape_slot = stamp.shape_layer;
+    // Mixbox: precompute the brush pigment ONCE per stamp (constant across the
+    // footprint) — the per-pixel `mix_prepared` then skips the brush-side solve.
+    let pigment = (stamp.pigment_mode == 1).then(|| crate::mixbox::prepare_pigment(rgb_clamped));
 
     // T1.6 stamp-space transform: precompute rotation cos/sin + flip
     // signs once per stamp (constant across all per-pixel iterations of
@@ -271,12 +274,12 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
             // alpha-over; `deposit` = share of the final pigment that is NEW (1 over
             // blank → pure brush; <1 over paint → an even mix → yellow over blue =
             // green). Bypasses the linear rendering-mode colour blend.
-            let result = if stamp.pigment_mode == 1 {
+            let result = if let Some(ref prep) = pigment {
                 let out_a = combined_alpha + dst_alpha * (1.0 - combined_alpha);
                 let deposit = combined_alpha / out_a.max(1e-4);
-                let mixed = crate::mixbox::mixbox_lerp_linear(
+                let mixed = crate::mixbox::mix_prepared(
+                    prep,
                     [dst_straight[0], dst_straight[1], dst_straight[2]],
-                    rgb_clamped,
                     deposit,
                 );
                 [mixed[0] * out_a, mixed[1] * out_a, mixed[2] * out_a, out_a]

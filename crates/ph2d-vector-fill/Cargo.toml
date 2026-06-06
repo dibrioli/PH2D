@@ -36,3 +36,10 @@ bytemuck = { version = "1", features = ["derive"] }
 # same WGSL frontend wgpu uses) before it enters the compile cache, so an
 # invalid topology fails at codegen time, not at GPU pipeline creation.
 naga = { version = "28", features = ["wgsl-in"] }
+
+# Golden/smoke integration test (`tests/diffusion_golden.rs`, W7): authors
+# Vec2/OklchColor diffusion scenes through the public API, so it needs the same
+# `glam` + `ph2d-color` the lib uses (Cargo dedups — same versions, no lock churn).
+[dev-dependencies]
+glam = "0.30"
+ph2d-color = { path = "../ph2d-color" }

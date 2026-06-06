@@ -135,16 +135,44 @@ impl<T: LlmTransport> LlmClient<T> {
         seed: u64,
         cache: &mut ResultCache,
     ) -> Result<VectorNetwork, GenError> {
+        self.generate_shape_with_blob(prompt, seed, cache)
+            .map(|(network, _blob)| network)
+    }
+
+    /// As [`generate_shape`](Self::generate_shape), but also surfaces the **raw
+    /// LLM4SVG JSON blob** the model produced.
+    ///
+    /// This is the seam for the `vector.llm-shape` graph node (ADR-0061 §2.1,
+    /// the "path A" of `HANDOFF_vector_w13_host_wiring_spec_impl.md`): a host
+    /// driving that node populates its `seed → raw_json`
+    /// [`LlmResponseSource`](https://docs.rs/ph2d-node-vector-llm-shape) from the
+    /// returned blob, and the node re-runs `build_network_from_json` so it stays
+    /// `Effect::Pure` + self-contained — **without** a second API round-trip or a
+    /// tokens→JSON re-serializer. The blob is `Some` on a live fetch and `None` on
+    /// a cache-fallback (the [`ResultCache`] holds sanitized *tokens*, not the
+    /// original text); on `None` the host keeps the seed's previously-stored blob.
+    ///
+    /// Hosts that inject the [`VectorNetwork`] straight into the document
+    /// ("path B", the MVP) can keep calling [`generate_shape`](Self::generate_shape)
+    /// and ignore the blob.
+    pub fn generate_shape_with_blob(
+        &self,
+        prompt: &str,
+        seed: u64,
+        cache: &mut ResultCache,
+    ) -> Result<(VectorNetwork, Option<String>), GenError> {
         let key = CacheKey::new(prompt, seed);
         match self.transport.complete(&self.system, prompt, &self.schema) {
             Ok(json) => {
                 let (tokens, network) = build_from_json(&json).map_err(GenError::Build)?;
                 cache.insert(key, tokens); // refresh the fallback for next time
-                Ok(network)
+                Ok((network, Some(json)))
             }
             Err(fetch_err) => match cache.get(&key) {
-                // Cached tokens are already sanitized → lowering is safe.
-                Some(tokens) => Ok(tokens_to_network(tokens)),
+                // Cached tokens are already sanitized → lowering is safe. No raw
+                // blob survives the cache (it stores tokens), so the node keeps
+                // whatever blob it last held for this seed.
+                Some(tokens) => Ok((tokens_to_network(tokens), None)),
                 None => Err(GenError::Fetch(fetch_err)),
             },
         }
@@ -344,6 +372,32 @@ mod tests {
             .expect("built");
         assert!(net.validate().is_ok(), "the built network is valid");
         assert_eq!(cache.len(), 1, "the success is cached for fallback");
+    }
+
+    #[test]
+    fn generate_shape_with_blob_surfaces_raw_json_then_none_on_fallback() {
+        // Path A (graph node): a live fetch returns the raw blob verbatim, so the
+        // host can populate the node's seed→raw_json source without re-fetching.
+        let mut cache = ResultCache::new(8);
+        let live = LlmClient::new(MockTransport::ok(HEXAGON));
+        let (net, blob) = live
+            .generate_shape_with_blob("a hexagon", 3, &mut cache)
+            .expect("built");
+        assert!(net.validate().is_ok());
+        assert_eq!(
+            blob.as_deref(),
+            Some(HEXAGON),
+            "live fetch surfaces the blob"
+        );
+
+        // A cache-fallback yields no raw blob (the cache holds tokens) → None, and
+        // the host keeps the seed's prior blob.
+        let down = LlmClient::new(MockTransport::err(FetchError::Timeout));
+        let (net, blob) = down
+            .generate_shape_with_blob("a hexagon", 3, &mut cache)
+            .expect("fallback");
+        assert!(net.validate().is_ok(), "fallback network is valid");
+        assert!(blob.is_none(), "fallback has no raw blob to surface");
     }
 
     /// THE gate (`vector_llm_timeout_graceful`): a timed-out fetch with a cached

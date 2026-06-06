@@ -2010,6 +2010,39 @@ fn bloom_neutral_is_identity_and_glow_haloes_into_transparency() {
 }
 
 #[test]
+fn bloom_downsampled_path_glows_on_a_large_canvas() {
+    // A canvas ≥512 px picks a downsample factor > 1 (the FPS-fix path). Verify
+    // the bright-pass → downsample → blur → bilinear-upsample chain still produces
+    // a glow that spreads beyond a bright patch, and stays finite.
+    let n = 512u32;
+    let mut acc = vec![[0.0f32, 0.0, 0.0, 0.0]; (n * n) as usize];
+    // A bright opaque block in the centre.
+    for y in 250..262u32 {
+        for x in 250..262u32 {
+            acc[(y * n + x) as usize] = [1.0, 1.0, 1.0, 1.0];
+        }
+    }
+    apply_bloom(
+        &BloomParams {
+            threshold: 0.3,
+            intensity: 1.5,
+            radius: 24.0,
+            falloff: 0.1,
+        },
+        &mut acc,
+        AdjustWindow::full(n, n),
+    );
+    // A pixel outside the block but within the glow radius (block edge at 261,
+    // radius 24 → glow reaches ~285) now has spread coverage.
+    let far = (256 * n + 272) as usize;
+    assert!(acc[far][3] > 0.0, "downsampled bloom haloes out: {}", acc[far][3]);
+    assert!(
+        acc.iter().all(|p| p.iter().all(|v| v.is_finite())),
+        "downsample/upsample stays finite"
+    );
+}
+
+#[test]
 fn shadows_highlights_neutral_identity_and_lifts_shadows() {
     let n = 6;
     // All-amounts-zero → identity (even with seeded widths/radii).

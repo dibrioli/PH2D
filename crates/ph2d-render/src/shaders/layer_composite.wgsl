@@ -73,6 +73,13 @@ const ADJ_VIBRANCE: u32 = 6u;
 // reused as the base float index of this op's table block in `adj_luts`.
 const ADJ_CURVES: u32 = 7u;
 const ADJ_LEVELS: u32 = 8u;
+// Coordinate-DEPENDENT per-pixel kinds: they read the absolute canvas (gx, gy)
+// passed to apply_adjustment, so they are dirty-rect exact (deterministic per
+// coordinate). Noise: p0=amount, p1=kind(0=Gaussian,1=Uniform — NoiseKind
+// discriminant), p2=monochromatic(0/1). Halftone: p0=dot_size, p1=angle(rad),
+// p2=shape(0=Dot,1=Line,2=Circle — HalftoneShape discriminant).
+const ADJ_NOISE: u32 = 9u;
+const ADJ_HALFTONE: u32 = 10u;
 
 // One flattened compositor op. 16 bytes; `layer_slot` is the texture-array
 // slice for OP_LAYER, ignored otherwise; `blend_mode` + `opacity` apply to
@@ -150,6 +157,41 @@ fn display_luma(rgb: vec3<f32>) -> f32 {
     let g = linear_to_srgb(rgb.g);
     let b = linear_to_srgb(rgb.b);
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// ── Deterministic integer hash (Noise) — bit-identical to the Rust reference ──
+// `ph2d_painter_brush::adjustments::spatial::{hash_u32, rand01, noise_value}`.
+// WGSL u32 `*`/`+` wrap mod 2^32 (defined) and `>>` is logical, exactly like
+// Rust's `wrapping_mul`/`wrapping_add`/`>>` — so these are BIT-identical across
+// CPU/GPU (no transcendental, no ULP). The only divergence Noise carries is the
+// sRGB transfer `pow` in the display-space add (≤ a couple bytes).
+fn hash_u32(x_in: u32) -> u32 {
+    var x = x_in;
+    x = x ^ (x >> 16u);
+    x = x * 0x7feb352du;
+    x = x ^ (x >> 15u);
+    x = x * 0x846ca68bu;
+    x = x ^ (x >> 16u);
+    return x;
+}
+// Deterministic 0..=1 from an absolute canvas coordinate + a per-channel salt.
+// `f32(0xffffffffu)` is `u32::MAX as f32` (rounds to 2^32 in both languages).
+fn rand01(x: u32, y: u32, salt: u32) -> f32 {
+    let h = hash_u32(x ^ hash_u32(y ^ hash_u32(salt + 0x9E3779B9u)));
+    return f32(h) / f32(0xffffffffu);
+}
+// One noise sample in [-1, 1]: Uniform = one hash; Gaussian = Irwin–Hall(4).
+// `kind` mirrors the `NoiseKind` discriminant: 0 = Gaussian (the default), 1 =
+// Uniform — so the impl's gpu_params can cast `kind as u32` directly.
+fn noise_value(x: u32, y: u32, channel: u32, kind: u32) -> f32 {
+    if kind == 1u { // Uniform
+        return 2.0 * rand01(x, y, channel) - 1.0;
+    }
+    // Gaussian — Irwin–Hall(4), centred & scaled to [-1, 1].
+    let base = channel * 4u;
+    let sum = rand01(x, y, base) + rand01(x, y, base + 1u)
+        + rand01(x, y, base + 2u) + rand01(x, y, base + 3u);
+    return (sum - 2.0) * 0.5;
 }
 
 // Decode one straight sRGB8 texel of layer slice `slot` at canvas `coord` to
@@ -447,8 +489,10 @@ fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
 }
 
 // Apply an adjustment kind to a straight-linear rgb triple (RGB transform only;
-// the caller preserves alpha = coverage). Unknown kind → identity.
-fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>) -> vec3<f32> {
+// the caller preserves alpha = coverage). `coord` is the absolute canvas pixel —
+// used ONLY by the coordinate-dependent kinds (Noise/Halftone), ignored by the
+// rest. Unknown kind → identity.
+fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32> {
     switch ap.kind {
         case 0u: { // ADJ_HSB — p0=hue(turns), p1=sat(-1..1), p2=bright(-1..1)
             let hue_rad = ap.p0 * 6.2831853072;
@@ -534,6 +578,63 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>) -> vec3<f32> {
             let ob = adj_luts[base + u32(sb * 255.0 + 0.5)];
             return vec3<f32>(srgb_to_linear_f32(or_), srgb_to_linear_f32(og), srgb_to_linear_f32(ob));
         }
+        case 9u: { // ADJ_NOISE — p0=amount, p1=kind(0/1), p2=monochromatic(0/1)
+            // Display-space film grain, deterministic per absolute canvas coord.
+            let gx = u32(coord.x);
+            let gy = u32(coord.y);
+            let kind = u32(ap.p1);
+            let n0 = noise_value(gx, gy, 0u, kind);
+            var n1 = n0;
+            var n2 = n0;
+            if ap.p2 < 0.5 { // not monochromatic → independent per channel
+                n1 = noise_value(gx, gy, 1u, kind);
+                n2 = noise_value(gx, gy, 2u, kind);
+            }
+            let ns = vec3<f32>(n0, n1, n2);
+            // NOISE_SCALE = 0.5 (display amplitude of amount = 1).
+            let d = vec3<f32>(
+                clamp(linear_to_srgb(rgb.r) + ap.p0 * ns.r * 0.5, 0.0, 1.0),
+                clamp(linear_to_srgb(rgb.g) + ap.p0 * ns.g * 0.5, 0.0, 1.0),
+                clamp(linear_to_srgb(rgb.b) + ap.p0 * ns.b * 0.5, 0.0, 1.0),
+            );
+            return vec3<f32>(
+                srgb_to_linear_f32(d.r),
+                srgb_to_linear_f32(d.g),
+                srgb_to_linear_f32(d.b),
+            );
+        }
+        case 10u: { // ADJ_HALFTONE — p0=dot_size, p1=angle(rad), p2=shape(0/1/2)
+            // Black-on-white ink screen whose dot size encodes luma, on a rotated
+            // grid. Deterministic per absolute coord. HARD threshold + rotation →
+            // boundary pixels can flip vs the CPU (sin/cos + fract ULP); the parity
+            // gate is fraction-based (see gpu_halftone_matches_cpu_reference).
+            let cell = max(ap.p0, 1.0);
+            let l = display_luma(rgb);
+            let coverage = 1.0 - l;
+            if coverage * cell < 0.5 {
+                return vec3<f32>(1.0, 1.0, 1.0); // clean paper (linear white = 1)
+            }
+            let ang = ap.p1;
+            let cs = cos(ang);
+            let sn = sin(ang);
+            let gx = f32(coord.x);
+            let gy = f32(coord.y);
+            let u = gx * cs + gy * sn;
+            let v = -gx * sn + gy * cs;
+            let fu = fract(u / cell) - 0.5;
+            let fv = fract(v / cell) - 0.5;
+            var ink = false;
+            let shape = u32(ap.p2);
+            if shape == 0u { // Dot — disc from cell centre (corner reach 0.5·√2)
+                ink = sqrt(fu * fu + fv * fv) < coverage * 0.5 * 1.4142135;
+            } else if shape == 1u { // Line — bars thicken with darkness
+                ink = abs(fu) < coverage * 0.5;
+            } else { // Circle — concentric rings
+                ink = fract(2.0 * sqrt(fu * fu + fv * fv)) < coverage;
+            }
+            let g = select(1.0, 0.0, ink); // ink → black (0), else white (1)
+            return vec3<f32>(g, g, g);
+        }
         default: { return rgb; }
     }
 }
@@ -542,9 +643,9 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>) -> vec3<f32> {
 // of the CPU arm: transform acc.rgb by the kind, blend the result back over acc
 // in the adjustment's mode, then lerp by the adjustment's opacity; coverage
 // (acc.a) is preserved.
-fn apply_adjustment_op(op: Op, acc: vec4<f32>) -> vec4<f32> {
+fn apply_adjustment_op(op: Op, acc: vec4<f32>, coord: vec2<i32>) -> vec4<f32> {
     let ap = adj_params[op.layer_slot];
-    let adj_rgb = apply_adjustment(ap, acc.rgb);
+    let adj_rgb = apply_adjustment(ap, acc.rgb, coord);
     let src_px = vec4<f32>(adj_rgb, acc.a);
     let blended = apply_blend(op.blend_mode, acc, src_px);
     let t = clamp(op.opacity, 0.0, 1.0);
@@ -588,7 +689,7 @@ fn cs_flat(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var i: u32 = 0u; i < g.op_count; i = i + 1u) {
         let op = ops[i];
         if op.kind == OP_ADJUSTMENT {
-            acc = apply_adjustment_op(op, acc);
+            acc = apply_adjustment_op(op, acc, coord);
         } else if op.kind == OP_LAYER {
             var s = decode_layer(op.layer_slot, coord);
             s.a = s.a * op.opacity;
@@ -650,10 +751,10 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
             }
             case 3u: { // OP_ADJUSTMENT — transform the current-depth accumulator
                 if sp == 0u {
-                    acc0 = apply_adjustment_op(op, acc0);
+                    acc0 = apply_adjustment_op(op, acc0, coord);
                 } else {
                     let d = sp - 1u;
-                    stack[d] = apply_adjustment_op(op, stack[d]);
+                    stack[d] = apply_adjustment_op(op, stack[d], coord);
                 }
             }
             default: {}
@@ -767,10 +868,10 @@ fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
             }
             case 3u: { // OP_ADJUSTMENT (per-pixel)
                 if sp == 0u {
-                    acc0 = apply_adjustment_op(op, acc0);
+                    acc0 = apply_adjustment_op(op, acc0, coord);
                 } else {
                     let d = sp - 1u;
-                    stack[d] = apply_adjustment_op(op, stack[d]);
+                    stack[d] = apply_adjustment_op(op, stack[d], coord);
                 }
             }
             default: {} // OP_SPATIAL placeholder / unknown — no-op

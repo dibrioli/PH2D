@@ -13,8 +13,9 @@
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::adjustments::{
-    AdjustWindow, BloomParams, LevelsParams, ShadowsHighlightsParams, apply_bloom,
-    apply_shadows_highlights, levels_display_lut,
+    AdjustWindow, BloomParams, HalftoneParams, HalftoneShape, LevelsParams, NoiseKind, NoiseParams,
+    ShadowsHighlightsParams, apply_bloom, apply_halftone, apply_noise, apply_shadows_highlights,
+    levels_display_lut,
 };
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
@@ -1735,5 +1736,194 @@ fn gpu_shadows_highlights_matches_cpu_reference() {
     assert!(
         d_sub <= 4,
         "S/H sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COORDINATE-DEPENDENT per-pixel kinds (Painter W4) — Noise + Halftone
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// NOT spatial (no neighbour reads) but COORDINATE-dependent: they read the
+// absolute canvas (gx, gy), so they ride the per-pixel cs_flat path (apply_adjustment
+// now takes `coord`), NOT the segmented pass-graph. Deterministic per coordinate
+// ⇒ dirty-rect exact. Noise's integer hash is BIT-identical CPU↔GPU (only the sRGB
+// `pow` diverges); Halftone is a HARD threshold on a rotated coordinate field, so
+// boundary pixels can flip (sin/cos + fract ULP) — its gate is fraction-based.
+
+/// GPU Noise vs the canonical `apply_noise`, both Uniform-mono and Gaussian-RGB,
+/// full + dirty-rect. The hash (`hash_u32`/`rand01`/`noise_value`) is bit-identical
+/// (wrapping u32 ops), so the only divergence is the display-space sRGB round-trip
+/// → ±4 like the other display-space kinds.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_noise_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 13);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+
+    let cases = [
+        NoiseParams {
+            amount: 0.5,
+            kind: NoiseKind::Uniform,
+            monochromatic: true,
+        },
+        NoiseParams {
+            amount: 0.4,
+            kind: NoiseKind::Gaussian,
+            monochromatic: false,
+        },
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+    for np in cases {
+        // gpu_params packing the impl will mirror: kind → discriminant float,
+        // monochromatic → 0/1.
+        let kind_f = match np.kind {
+            NoiseKind::Gaussian => 0.0,
+            NoiseKind::Uniform => 1.0,
+        };
+        let mono_f = if np.monochromatic { 1.0 } else { 0.0 };
+        let ops = vec![
+            below[0],
+            LayerOp::Adjustment {
+                kind: 9, // ADJ_NOISE
+                params: [np.amount, kind_f, mono_f],
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+        ];
+        let mat = cpu_seg_linear(&below, &prov, w, h, None);
+        let mut noised = mat.clone();
+        apply_noise(&np, &mut noised, AdjustWindow::full(w, h));
+        let want_full = cpu_encode_full(&noised);
+
+        comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+            .expect("composite full");
+        let got_full = comp.read_output(&gpu).expect("readback full");
+        let d_full = max_byte_diff(&got_full, &want_full);
+        eprintln!(
+            "[noise {:?} mono={}] full max byte diff {d_full}",
+            np.kind, np.monochromatic
+        );
+        assert!(d_full <= 4, "noise full parity diff {d_full}");
+
+        // Dirty-rect: noise is per absolute coord ⇒ sub-region == full cropped.
+        let sub = Region {
+            x: 17,
+            y: 21,
+            w: 23,
+            h: 19,
+        };
+        comp.composite(&gpu, &ops, &prov, w, h, sub)
+            .expect("composite sub");
+        let got_sub = comp.read_output(&gpu).expect("readback sub");
+        let want_sub = cpu_crop(&want_full, w, sub);
+        let d_sub = max_byte_diff(&got_sub, &want_sub);
+        assert!(d_sub <= 4, "noise sub-region parity diff {d_sub}");
+    }
+}
+
+/// GPU Halftone vs the canonical `apply_halftone`. The ink screen is a HARD
+/// black/white threshold on a rotated, cell-folded coordinate, so a handful of
+/// boundary pixels can flip vs the CPU (GPU `sin`/`cos` + `fract` ULP shift the
+/// threshold by ~1e-6) — a 255-byte disagreement at those pixels. So the gate is
+/// FRACTION-based (the screen reproduces except a sub-1% boundary band), plus a
+/// sanity check that the effect actually rendered (both ink and paper present).
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_halftone_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (96u32, 96u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 17);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+
+    let hp = HalftoneParams {
+        dot_size: 6.0,
+        angle: 0.4, // rotated → exercises sin/cos
+        shape: HalftoneShape::Dot,
+    };
+    let shape_f = match hp.shape {
+        HalftoneShape::Dot => 0.0,
+        HalftoneShape::Line => 1.0,
+        HalftoneShape::Circle => 2.0,
+    };
+    let ops = vec![
+        below[0],
+        LayerOp::Adjustment {
+            kind: 10, // ADJ_HALFTONE
+            params: [hp.dot_size, hp.angle, shape_f],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mut halftoned = mat.clone();
+    apply_halftone(&hp, &mut halftoned, AdjustWindow::full(w, h));
+    let want = cpu_encode_full(&halftoned);
+
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+
+    // Fraction of pixels that disagree (any RGB channel by > 1 byte = a flip).
+    let n = (w * h) as usize;
+    let mut flips = 0usize;
+    let mut ink = 0usize;
+    let mut paper = 0usize;
+    for p in 0..n {
+        let i = p * 4;
+        let diff = (0..3)
+            .map(|c| (got[i + c] as i32 - want[i + c] as i32).unsigned_abs())
+            .max()
+            .unwrap();
+        if diff > 1 {
+            flips += 1;
+        }
+        if want[i] < 8 {
+            ink += 1;
+        } else if want[i] > 247 {
+            paper += 1;
+        }
+    }
+    let frac = flips as f64 / n as f64;
+    eprintln!(
+        "[halftone] {flips}/{n} px flipped ({:.3}%); ink={ink} paper={paper}",
+        frac * 100.0
+    );
+    // The screen actually rendered (both ink dots and clean paper present).
+    assert!(
+        ink > 0 && paper > 0,
+        "halftone produced no screen (ink={ink} paper={paper})"
+    );
+    // The GPU reproduces it except a sub-1% boundary band (hard-threshold ULP).
+    assert!(
+        frac < 0.01,
+        "halftone boundary flips {:.3}% exceed 1% — likely a real divergence, not ULP",
+        frac * 100.0
     );
 }

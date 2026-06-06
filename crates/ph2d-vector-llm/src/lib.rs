@@ -41,9 +41,9 @@ pub mod to_network;
 use ph2d_vector_doc::VectorNetwork;
 
 pub use cache::{CacheKey, ResultCache};
-pub use governance::{tool_kind, Governance, GovernanceError, ToolKind};
-pub use sanitizer::{sanitize, SanitizerError, MAX_COORD};
-pub use semantic_tokens::{parse, FillMode, ParseError, SemanticTokens, Shape, StyleTokens};
+pub use governance::{Governance, GovernanceError, ToolKind, tool_kind};
+pub use sanitizer::{MAX_COORD, SanitizerError, sanitize};
+pub use semantic_tokens::{FillMode, ParseError, SemanticTokens, Shape, StyleTokens, parse};
 pub use to_network::tokens_to_network;
 
 /// Pre-parse byte cap on an LLM response (ADR-0061 §2.4 defense-in-depth). A

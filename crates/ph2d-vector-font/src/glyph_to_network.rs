@@ -21,7 +21,7 @@
 //! `out_at_start`/`in_at_end` tangent vectors).
 
 use glam::Vec2;
-use ph2d_vector_doc::{Region, SegmentId, Segment, VectorNetwork, Vertex, VertexId, WindingRule};
+use ph2d_vector_doc::{Region, Segment, SegmentId, VectorNetwork, Vertex, VertexId, WindingRule};
 
 /// One command of a glyph outline, in font design units (y-up). Mirrors a font
 /// outliner's pen calls.
@@ -154,7 +154,13 @@ impl Builder {
         self.new_vertex(to)
     }
 
-    fn push_segment(&mut self, end_vid: VertexId, end_pos: Vec2, out_at_start: Vec2, in_at_end: Vec2) {
+    fn push_segment(
+        &mut self,
+        end_vid: VertexId,
+        end_pos: Vec2,
+        out_at_start: Vec2,
+        in_at_end: Vec2,
+    ) {
         let Some(start_vid) = self.contour.as_ref().map(|c| c.cur_vid) else {
             return; // a draw command with no MoveTo — ignore (malformed)
         };
@@ -255,7 +261,11 @@ mod tests {
         ]));
         assert!(net.validate().is_ok());
         assert_eq!(net.regions.len(), 1);
-        assert_eq!(net.vertices.len(), 3, "closing fused the loop, no 4th vertex");
+        assert_eq!(
+            net.vertices.len(),
+            3,
+            "closing fused the loop, no 4th vertex"
+        );
         assert_eq!(net.segments.len(), 3);
         assert_eq!(net.regions[0].winding, WindingRule::NonZero);
     }
@@ -314,7 +324,11 @@ mod tests {
         assert!(net.validate().is_ok());
         assert_eq!(net.regions.len(), 2, "outer + hole");
         assert_eq!(net.vertices.len(), 8);
-        assert!(net.regions.iter().all(|r| r.winding == WindingRule::NonZero));
+        assert!(
+            net.regions
+                .iter()
+                .all(|r| r.winding == WindingRule::NonZero)
+        );
     }
 
     #[test]

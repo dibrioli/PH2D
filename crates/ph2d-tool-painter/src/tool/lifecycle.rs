@@ -247,10 +247,20 @@ impl PainterTool {
             // `accumulate ON` clears `wash_coverage` at begin_stroke → falls to the
             // per-dab build-up path. The fields are disjoint from `canvas_rgba`, so
             // the borrow checker permits all three at once.
-            match (self.wash_coverage.as_mut(), self.pending_pre_stroke.as_deref()) {
+            match (
+                self.wash_coverage.as_mut(),
+                self.pending_pre_stroke.as_deref(),
+            ) {
                 (Some(coverage), Some(backdrop)) if backdrop.len() == canvas_vec.len() => {
                     ph2d_painter_brush::apply_stamps_wash(
-                        canvas_vec, backdrop, coverage, w, h, stamps, opacity_cap, pigment,
+                        canvas_vec,
+                        backdrop,
+                        coverage,
+                        w,
+                        h,
+                        stamps,
+                        opacity_cap,
+                        pigment,
                         alpha_lock,
                     );
                 }

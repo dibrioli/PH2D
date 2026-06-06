@@ -50,7 +50,11 @@ fn mixbox_pigment_paints_blue_plus_yellow_as_green_in_the_live_path() {
     s.pigment_mode = 1;
     apply_stamps(&mut mix, w, h, &[s]);
 
-    let (mr, mg, mb) = (mix[center] as i32, mix[center + 1] as i32, mix[center + 2] as i32);
+    let (mr, mg, mb) = (
+        mix[center] as i32,
+        mix[center + 1] as i32,
+        mix[center + 2] as i32,
+    );
     let (lr, lg, lb) = (
         linear[center] as i32,
         linear[center + 1] as i32,

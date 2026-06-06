@@ -40,7 +40,7 @@ use ph2d_vector_doc::VectorNetwork;
 pub use axis::{AxisOutOfRangeError, AxisTag, FontAxis, VariableFontAxis};
 pub use axis_animation::VariableFontAxisCurve;
 pub use fallback_chain::{FontFamily, Locale, PlatformHost, resolve_glyph_font};
-pub use glyph_to_network::{outline_to_network, outline_to_network_em, GlyphOutline, PathCommand};
+pub use glyph_to_network::{GlyphOutline, PathCommand, outline_to_network, outline_to_network_em};
 pub use skrifa_bridge::{FontFaceError, VariableFont};
 
 /// Max axes carried inline before spilling to the heap (ADR-0066 §2.7 cap).

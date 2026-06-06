@@ -500,7 +500,10 @@ fn toggle_pigment_flips_brush_mode_and_snapshot() {
     use ph2d_painter_brush::PigmentMode;
     let mut t = PainterTool::default(); // smoke brush defaults to Subtractive
     assert!(t.ui_snapshot().pigment_enabled, "default shows pigment ON");
-    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Subtractive);
+    assert_eq!(
+        t.active_brush().rendering.pigment_mode,
+        PigmentMode::Subtractive
+    );
     // Toggle → Linear.
     t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment);
     assert!(!t.ui_snapshot().pigment_enabled, "toggled OFF");
@@ -508,14 +511,20 @@ fn toggle_pigment_flips_brush_mode_and_snapshot() {
     // Toggle back → Subtractive.
     t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment);
     assert!(t.ui_snapshot().pigment_enabled, "toggled back ON");
-    assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Subtractive);
+    assert_eq!(
+        t.active_brush().rendering.pigment_mode,
+        PigmentMode::Subtractive
+    );
 }
 
 #[test]
 fn toggle_accumulate_flips_brush_flag_and_snapshot() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = PainterTool::default(); // accumulate OFF (wash) by default
-    assert!(!t.ui_snapshot().accumulate_enabled, "default wash (accumulate OFF)");
+    assert!(
+        !t.ui_snapshot().accumulate_enabled,
+        "default wash (accumulate OFF)"
+    );
     assert!(!t.active_brush().rendering.accumulate);
     t.apply_ui_edit(crate::params::PainterUiEdit::ToggleAccumulate);
     assert!(t.ui_snapshot().accumulate_enabled, "toggled to build-up");
@@ -532,11 +541,17 @@ fn pigment_and_accumulate_are_independent() {
     // The two toggles are orthogonal — flipping one must not move the other.
     let mut t = PainterTool::default(); // pigment ON, accumulate OFF
     t.apply_ui_edit(crate::params::PainterUiEdit::ToggleAccumulate); // accumulate ON
-    assert!(t.ui_snapshot().pigment_enabled, "pigment untouched by accumulate toggle");
+    assert!(
+        t.ui_snapshot().pigment_enabled,
+        "pigment untouched by accumulate toggle"
+    );
     assert!(t.ui_snapshot().accumulate_enabled);
     t.apply_ui_edit(crate::params::PainterUiEdit::TogglePigment); // pigment OFF
     assert!(!t.ui_snapshot().pigment_enabled);
-    assert!(t.ui_snapshot().accumulate_enabled, "accumulate untouched by pigment toggle");
+    assert!(
+        t.ui_snapshot().accumulate_enabled,
+        "accumulate untouched by pigment toggle"
+    );
 }
 
 #[test]
@@ -611,7 +626,12 @@ fn repro_two_strokes_blue_then_yellow_same_layer_scan_for_green() {
     }
     // Sample the exact crossing pixel too.
     let c = ((16 * pw + 16) * 4) as usize;
-    let cross = (px[c] as i32, px[c + 1] as i32, px[c + 2] as i32, px[c + 3] as i32);
+    let cross = (
+        px[c] as i32,
+        px[c + 1] as i32,
+        px[c + 2] as i32,
+        px[c + 3] as i32,
+    );
     eprintln!(
         "REPRO greenest=({},{},{}) @idx{} | crossing(16,16)={:?} | green_dominant_px={}",
         best.0, best.1, best.2, best.3, cross, green_dominant
@@ -624,13 +644,18 @@ fn repro_two_strokes_blue_then_yellow_same_layer_scan_for_green() {
         cross.1 > cross.0 + 12 && cross.1 > cross.2 + 12,
         "two-stroke crossing must be GREEN (wash caps deposit at opacity), got {:?} \
          (greenest seen=({},{},{}), green_dominant_px={})",
-        cross, best.0, best.1, best.2, green_dominant
+        cross,
+        best.0,
+        best.1,
+        best.2,
+        green_dominant
     );
     assert!(
         green_dominant > 50,
         "the whole overlap band must be green, not a thin fringe: only {} green px \
          (crossing={:?})",
-        green_dominant, cross
+        green_dominant,
+        cross
     );
 }
 

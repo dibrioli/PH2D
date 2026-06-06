@@ -235,7 +235,10 @@ static LUT: LazyLock<PigmentLut> = LazyLock::new(|| {
             }
         }
     }
-    PigmentLut { refl: refl_grid, roundtrip }
+    PigmentLut {
+        refl: refl_grid,
+        roundtrip,
+    }
 });
 
 /// Trilinear sample of `(reflectance, round-trip)` for a linear-sRGB `[0,1]³`.
@@ -405,12 +408,18 @@ mod tests {
 
     #[test]
     fn lerp_at_t0_returns_a() {
-        assert_eq!(pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 0.0), [10, 20, 30]);
+        assert_eq!(
+            pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 0.0),
+            [10, 20, 30]
+        );
     }
 
     #[test]
     fn lerp_at_t1_returns_b() {
-        assert_eq!(pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 1.0), [200, 100, 50]);
+        assert_eq!(
+            pigment_lerp_srgb8([10, 20, 30], [200, 100, 50], 1.0),
+            [200, 100, 50]
+        );
     }
 
     #[test]
@@ -419,8 +428,14 @@ mod tests {
         let b = [0.9, 0.2, 0.3];
         assert!(approx(pigment_lerp_linear(a, b, 0.0), a, 1e-6));
         assert!(approx(pigment_lerp_linear(a, b, 1.0), b, 1e-6));
-        assert!(approx(pigment_lerp_linear(a, b, 2.0), b, 1e-6), "t>1 clamps to b");
-        assert!(approx(pigment_lerp_linear(a, b, -1.0), a, 1e-6), "t<0 clamps to a");
+        assert!(
+            approx(pigment_lerp_linear(a, b, 2.0), b, 1e-6),
+            "t>1 clamps to b"
+        );
+        assert!(
+            approx(pigment_lerp_linear(a, b, -1.0), a, 1e-6),
+            "t<0 clamps to a"
+        );
     }
 
     #[test]
@@ -429,7 +444,12 @@ mod tests {
         // re-anchored). The fast-path LUT (`ln(refl)` interpolated vs the round-trip
         // interpolated) leaves a sub-1% residual between grid points — imperceptible
         // for "paint a colour over itself", and the cost of the 2× per-pixel speedup.
-        for c in [[0.8, 0.1, 0.1], [0.1, 0.6, 0.2], [0.2, 0.3, 0.9], [0.5, 0.5, 0.5]] {
+        for c in [
+            [0.8, 0.1, 0.1],
+            [0.1, 0.6, 0.2],
+            [0.2, 0.3, 0.9],
+            [0.5, 0.5, 0.5],
+        ] {
             for &t in &[0.25, 0.5, 0.75] {
                 assert!(
                     approx(pigment_lerp_linear(c, c, t), c, 1e-2),
@@ -458,12 +478,21 @@ mod tests {
             mix[1] > mix[0] && mix[1] > mix[2],
             "green is the dominant channel: {mix:?}"
         );
-        assert!(mix[1] > 0.22, "green is a real mid green, not dark: {mix:?}");
+        assert!(
+            mix[1] > 0.22,
+            "green is a real mid green, not dark: {mix:?}"
+        );
         // Clearly GREEN, not a teal (green over blue) and not grey (green over red).
         // The 7-curve full-gamut basis suppresses residual red AND blue HARD: both
         // are ~0.06 vs green ~0.25 — a clean grass green, no teal, no olive.
-        assert!(mix[1] > mix[2] + 0.15, "green clearly leads blue (not teal): {mix:?}");
-        assert!(mix[0] < 0.12 && mix[2] < 0.12, "red AND blue both suppressed: {mix:?}");
+        assert!(
+            mix[1] > mix[2] + 0.15,
+            "green clearly leads blue (not teal): {mix:?}"
+        );
+        assert!(
+            mix[0] < 0.12 && mix[2] < 0.12,
+            "red AND blue both suppressed: {mix:?}"
+        );
         assert!(
             mix[1] - mix[0].max(mix[2]) > 0.05,
             "green clearly dominates (vs the linear grey midpoint 0.5,0.5,0.5): {mix:?}"
@@ -476,8 +505,14 @@ mod tests {
         // present), not the dark red maroon the old 3-channel basis gave (which
         // killed the blue). Blue must lead — or at least strongly survive — vs red.
         let mix = pigment_lerp_linear([0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 0.5);
-        assert!(mix[2] > mix[0], "violet keeps blue dominant over red (not maroon): {mix:?}");
-        assert!(mix[2] > mix[1] + 0.1, "blue clearly above green (a violet, not a mud): {mix:?}");
+        assert!(
+            mix[2] > mix[0],
+            "violet keeps blue dominant over red (not maroon): {mix:?}"
+        );
+        assert!(
+            mix[2] > mix[1] + 0.1,
+            "blue clearly above green (a violet, not a mud): {mix:?}"
+        );
     }
 
     #[test]
@@ -485,9 +520,12 @@ mod tests {
         // Complementaries should desaturate toward neutral grey (chroma collapses),
         // not stay a saturated hue — the hallmark of physically-plausible mixing.
         let mix = pigment_lerp_linear([0.0, 1.0, 1.0], [1.0, 0.0, 0.0], 0.5);
-        let chroma = mix.iter().cloned().fold(0.0, f32::max)
-            - mix.iter().cloned().fold(1.0, f32::min);
-        assert!(chroma < 0.12, "cyan+red neutralises toward grey: {mix:?} chroma {chroma}");
+        let chroma =
+            mix.iter().cloned().fold(0.0, f32::max) - mix.iter().cloned().fold(1.0, f32::min);
+        assert!(
+            chroma < 0.12,
+            "cyan+red neutralises toward grey: {mix:?} chroma {chroma}"
+        );
     }
 
     #[test]
@@ -496,8 +534,11 @@ mod tests {
         let blue = [0.0, 0.0, 1.0];
         let yellow = [1.0, 1.0, 0.0];
         let mix = pigment_lerp_linear(blue, yellow, 0.5);
-        let chroma = mix.iter().cloned().fold(0.0, f32::max)
-            - mix.iter().cloned().fold(1.0, f32::min);
-        assert!(chroma > 0.17, "mix keeps chroma (not grey): {mix:?} chroma {chroma}");
+        let chroma =
+            mix.iter().cloned().fold(0.0, f32::max) - mix.iter().cloned().fold(1.0, f32::min);
+        assert!(
+            chroma > 0.17,
+            "mix keeps chroma (not grey): {mix:?} chroma {chroma}"
+        );
     }
 }

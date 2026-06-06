@@ -103,7 +103,10 @@ pub enum ParseError {
     /// `shape_type` is missing or not a recognized shape.
     UnknownShape(String),
     /// A parameter was present but of the wrong JSON type.
-    BadParam { key: &'static str, reason: &'static str },
+    BadParam {
+        key: &'static str,
+        reason: &'static str,
+    },
 }
 
 impl core::fmt::Display for ParseError {
@@ -297,7 +300,10 @@ mod tests {
     #[test]
     fn malformed_param_rejected() {
         let json = r#"{ "shape_type": "polygon", "params": { "sides": "lots" } }"#;
-        assert!(matches!(parse(json), Err(ParseError::BadParam { key: "sides", .. })));
+        assert!(matches!(
+            parse(json),
+            Err(ParseError::BadParam { key: "sides", .. })
+        ));
     }
 
     #[test]
@@ -315,6 +321,8 @@ mod tests {
     fn path_vertices_parse() {
         let json = r#"{ "shape_type": "path", "params": { "vertices": [[0,0],[10,0],[5,8]], "closed": true } }"#;
         let t = parse(json).unwrap();
-        assert!(matches!(t.shape, Shape::Path { ref vertices, closed: true } if vertices.len() == 3));
+        assert!(
+            matches!(t.shape, Shape::Path { ref vertices, closed: true } if vertices.len() == 3)
+        );
     }
 }

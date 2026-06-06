@@ -175,7 +175,8 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
     let shape_slot = stamp.shape_layer;
     // Mixbox: precompute the brush pigment ONCE per stamp (constant across the
     // footprint) — the per-pixel `mix_prepared` then skips the brush-side solve.
-    let pigment = (stamp.pigment_mode == 1).then(|| crate::pigment_mix::prepare_pigment(rgb_clamped));
+    let pigment =
+        (stamp.pigment_mode == 1).then(|| crate::pigment_mix::prepare_pigment(rgb_clamped));
 
     // T1.6 stamp-space transform: precompute rotation cos/sin + flip
     // signs once per stamp (constant across all per-pixel iterations of
@@ -372,7 +373,11 @@ pub fn apply_stamps_wash(
 ) {
     let n = (width as usize) * (height as usize);
     assert_eq!(canvas.len(), n * 4, "canvas size must match width*height*4");
-    assert_eq!(backdrop.len(), n * 4, "backdrop size must match width*height*4");
+    assert_eq!(
+        backdrop.len(),
+        n * 4,
+        "backdrop size must match width*height*4"
+    );
     assert_eq!(coverage.len(), n, "coverage size must match width*height");
     let cap = opacity_cap.clamp(0.0, 1.0);
     for stamp in stamps {
@@ -405,7 +410,8 @@ fn apply_one_stamp_wash(
     if footprint == 0 {
         return;
     }
-    if (stamp.flags & (crate::stamp::FLAG_HOVER_PREVIEW | crate::stamp::FLAG_PREDICTED_SAMPLE)) != 0 {
+    if (stamp.flags & (crate::stamp::FLAG_HOVER_PREVIEW | crate::stamp::FLAG_PREDICTED_SAMPLE)) != 0
+    {
         return;
     }
     let footprint_f = footprint as f32;
@@ -426,8 +432,16 @@ fn apply_one_stamp_wash(
 
     let cos_r = stamp.rotation_rad.cos();
     let sin_r = -stamp.rotation_rad.sin();
-    let flip_x_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_X) != 0 { -1.0 } else { 1.0 };
-    let flip_y_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_Y) != 0 { -1.0 } else { 1.0 };
+    let flip_x_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_X) != 0 {
+        -1.0
+    } else {
+        1.0
+    };
+    let flip_y_sign: f32 = if (stamp.flags & crate::stamp::FLAG_SHAPE_FLIP_Y) != 0 {
+        -1.0
+    } else {
+        1.0
+    };
     let canvas_w = width as i32;
     let canvas_h = height as i32;
 

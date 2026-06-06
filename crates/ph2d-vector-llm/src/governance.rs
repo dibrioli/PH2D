@@ -106,7 +106,10 @@ impl Governance {
             return Ok(());
         }
         let token = token.ok_or(GovernanceError::ConfirmationRequired)?;
-        let issued_at = *self.issued.get(token).ok_or(GovernanceError::InvalidToken)?;
+        let issued_at = *self
+            .issued
+            .get(token)
+            .ok_or(GovernanceError::InvalidToken)?;
         if now.saturating_sub(issued_at) > TOKEN_TTL_SECS {
             self.issued.remove(token); // expired tokens never become valid again
             return Err(GovernanceError::ExpiredToken);

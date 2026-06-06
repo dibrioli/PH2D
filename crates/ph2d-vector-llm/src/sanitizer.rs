@@ -43,7 +43,10 @@ impl core::fmt::Display for SanitizerError {
                 write!(f, "param {param:?} = {got} exceeds cap {limit}")
             }
             SanitizerError::CoordOutOfBounds { param, x, y } => {
-                write!(f, "coord {param:?} = ({x}, {y}) out of bounds (±{MAX_COORD})")
+                write!(
+                    f,
+                    "coord {param:?} = ({x}, {y}) out of bounds (±{MAX_COORD})"
+                )
             }
             SanitizerError::NonFinite { param } => write!(f, "param {param:?} is not finite"),
             SanitizerError::TooManyVertices { estimated, limit } => {
@@ -80,7 +83,10 @@ pub fn sanitize(tokens: &SemanticTokens) -> Result<(), SanitizerError> {
                 });
             }
             // est = turns·samples_per_turn + 1 (f64 — no overflow on huge spt).
-            let est = (*turns as f64 * f64::from(*samples_per_turn)).ceil().max(0.0) as u64 + 1;
+            let est = (*turns as f64 * f64::from(*samples_per_turn))
+                .ceil()
+                .max(0.0) as u64
+                + 1;
             cap_vertices(est)?;
         }
         Shape::Polygon {
@@ -142,7 +148,11 @@ fn finite(param: &'static str, v: f32) -> Result<(), SanitizerError> {
 fn scalar_in_range(param: &'static str, v: f32) -> Result<(), SanitizerError> {
     finite(param, v)?;
     if v.abs() > MAX_COORD {
-        return Err(SanitizerError::CoordOutOfBounds { param, x: v, y: 0.0 });
+        return Err(SanitizerError::CoordOutOfBounds {
+            param,
+            x: v,
+            y: 0.0,
+        });
     }
     Ok(())
 }
@@ -180,7 +190,7 @@ fn cap_vertices(estimated: u64) -> Result<(), SanitizerError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::semantic_tokens::{parse, StyleTokens};
+    use crate::semantic_tokens::{StyleTokens, parse};
 
     fn toks(shape: Shape) -> SemanticTokens {
         SemanticTokens {
@@ -191,22 +201,26 @@ mod tests {
 
     #[test]
     fn benign_shapes_pass() {
-        assert!(sanitize(&toks(Shape::Polygon {
-            center: Vec2::ZERO,
-            radius: 100.0,
-            sides: 6,
-            rotation: 0.0,
-        }))
-        .is_ok());
-        assert!(sanitize(&toks(Shape::Spiral {
-            center: Vec2::ZERO,
-            inner_radius: 0.0,
-            outer_radius: 100.0,
-            turns: 8.0,
-            samples_per_turn: 32,
-            rotation: 0.0,
-        }))
-        .is_ok());
+        assert!(
+            sanitize(&toks(Shape::Polygon {
+                center: Vec2::ZERO,
+                radius: 100.0,
+                sides: 6,
+                rotation: 0.0,
+            }))
+            .is_ok()
+        );
+        assert!(
+            sanitize(&toks(Shape::Spiral {
+                center: Vec2::ZERO,
+                inner_radius: 0.0,
+                outer_radius: 100.0,
+                turns: 8.0,
+                samples_per_turn: 32,
+                rotation: 0.0,
+            }))
+            .is_ok()
+        );
     }
 
     #[test]
@@ -220,7 +234,10 @@ mod tests {
             rotation: 0.0,
         }))
         .unwrap_err();
-        assert!(matches!(e, SanitizerError::ExceedsBound { param: "turns", .. }));
+        assert!(matches!(
+            e,
+            SanitizerError::ExceedsBound { param: "turns", .. }
+        ));
     }
 
     #[test]
@@ -290,7 +307,10 @@ mod tests {
             rotation: 0.0,
         }))
         .unwrap_err();
-        assert!(matches!(e, SanitizerError::ExceedsBound { param: "sides", .. }));
+        assert!(matches!(
+            e,
+            SanitizerError::ExceedsBound { param: "sides", .. }
+        ));
     }
 
     /// Fuzz-shaped property: parse+sanitize never panics, for any input.

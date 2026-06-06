@@ -141,7 +141,12 @@ pub(crate) fn build_smoke_brush_from_env() -> Brush {
     // eyedropper) flips it to Linear at runtime per brush; `PAINTER_SMOKE_PIGMENT=
     // linear` forces the Linear default for A/B testing against the linear blend.
     brush.rendering.pigment_mode = match std::env::var("PAINTER_SMOKE_PIGMENT") {
-        Ok(s) if matches!(s.trim_matches(|c| c == '\'' || c == '"').trim(), "linear" | "Linear") => {
+        Ok(s)
+            if matches!(
+                s.trim_matches(|c| c == '\'' || c == '"').trim(),
+                "linear" | "Linear"
+            ) =>
+        {
             ph2d_painter_brush::PigmentMode::Linear
         }
         _ => ph2d_painter_brush::PigmentMode::Subtractive,

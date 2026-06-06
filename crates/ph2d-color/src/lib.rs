@@ -40,15 +40,15 @@
 #![forbid(unsafe_code)]
 
 pub mod linear;
-pub mod pigment_space;
 pub mod oklab;
 pub mod oklch;
+pub mod pigment_space;
 pub mod premultiplied;
 pub mod srgb;
 
 pub use linear::LinearRgba;
-pub use pigment_space::PigmentLinearSrgb;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;
+pub use pigment_space::PigmentLinearSrgb;
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;

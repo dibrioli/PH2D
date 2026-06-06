@@ -103,7 +103,10 @@ mod tests {
     fn seed_is_part_of_the_key() {
         let mut c = ResultCache::new(8);
         c.insert(CacheKey::new("p", 1), toks(6));
-        assert!(c.get(&CacheKey::new("p", 2)).is_none(), "different seed misses");
+        assert!(
+            c.get(&CacheKey::new("p", 2)).is_none(),
+            "different seed misses"
+        );
     }
 
     #[test]

@@ -57,10 +57,7 @@ impl VariableFont {
                 .map(|h| h.units_per_em())
                 .map_err(|e| FontFaceError::Parse(e.to_string()))?
         };
-        Ok(Self {
-            data,
-            units_per_em,
-        })
+        Ok(Self { data, units_per_em })
     }
 
     fn font(&self) -> FontRef<'_> {

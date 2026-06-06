@@ -8,7 +8,7 @@
 //! sanitizer bypass still cannot allocate unbounded geometry.
 
 use glam::Vec2;
-use ph2d_vector_doc::{primitives, Region, Segment, VectorNetwork, Vertex, WindingRule};
+use ph2d_vector_doc::{Region, Segment, VectorNetwork, Vertex, WindingRule, primitives};
 
 use crate::semantic_tokens::{SemanticTokens, Shape};
 
@@ -75,7 +75,7 @@ fn path_network(vertices: &[Vec2], closed: bool) -> VectorNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::semantic_tokens::{StyleTokens, SemanticTokens};
+    use crate::semantic_tokens::{SemanticTokens, StyleTokens};
 
     fn toks(shape: Shape) -> SemanticTokens {
         SemanticTokens {

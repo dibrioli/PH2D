@@ -508,6 +508,38 @@ struct BloomGlobals {
     falloff: f32,
 }
 
+/// Globals for `cs_bloom_down`/`cs_bloom_up` (32 bytes; mirrors WGSL
+/// `BloomMipGlobals`). The radius-independent Bloom blur: downsample the glow by
+/// `factor`, blur at low res, bilinear-upsample back.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct BloomMipGlobals {
+    src_w: u32,
+    src_h: u32,
+    dst_w: u32,
+    dst_h: u32,
+    factor: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
+/// Bloom downsamples until its low-res blur radius is ≤ this — bounding the kernel
+/// so Bloom costs ~the same at any radius (the dual-filter idea, one level).
+const BLOOM_MAX_LOW_RADIUS: f32 = 16.0;
+
+/// The power-of-two downsample factor for a Bloom `radius`: the smallest so the
+/// low-res blur radius (`radius / factor`) is ≤ [`BLOOM_MAX_LOW_RADIUS`]. `1` (no
+/// downsample) for small radii, where the direct blur is already cheap.
+fn bloom_downsample_factor(radius: f32) -> u32 {
+    if radius <= BLOOM_MAX_LOW_RADIUS {
+        return 1;
+    }
+    ((radius / BLOOM_MAX_LOW_RADIUS).ceil() as u32)
+        .next_power_of_two()
+        .clamp(1, 32)
+}
+
 /// Globals for `cs_sh_luma` + `cs_combine_sh` (48 bytes; mirrors WGSL `ShGlobals`).
 /// The luma pass reads only `width`/`height`; the combine reads the 6 tonal scalars
 /// plus the adjustment's own `blend_mode`/`opacity`. The two radii drive the blurs
@@ -597,9 +629,12 @@ pub struct LayerCompositor {
     pipeline_blur_dir: wgpu::ComputePipeline,
     /// Chromatic-aberration gather — per-channel radial shift (single pass).
     pipeline_chroma: wgpu::ComputePipeline,
-    /// Bloom bright-pass — extract the premultiplied bright-excess glow (the only
-    /// Bloom-specific pass; the blur + additive combine reuse the shared machinery).
+    /// Bloom bright-pass — extract the premultiplied bright-excess glow.
     pipeline_bloom_bright: wgpu::ComputePipeline,
+    /// Bloom radius-independent blur: box-downsample + bilinear-upsample around a
+    /// bounded low-res separable blur (O(1) regardless of radius).
+    pipeline_bloom_down: wgpu::ComputePipeline,
+    pipeline_bloom_up: wgpu::ComputePipeline,
     /// Shadows/Highlights luma extract — display luma → `.r` for the two scalar blurs.
     pipeline_sh_luma: wgpu::ComputePipeline,
     /// Shadows/Highlights tonal combine — local correction from base + 2 luma maps.
@@ -615,6 +650,7 @@ pub struct LayerCompositor {
     bgl_encode: wgpu::BindGroupLayout,
     bgl_chroma: wgpu::BindGroupLayout,
     bgl_bloom: wgpu::BindGroupLayout,
+    bgl_bloom_mip: wgpu::BindGroupLayout,
     bgl_sh_luma: wgpu::BindGroupLayout,
     bgl_sh_combine: wgpu::BindGroupLayout,
     /// Per-pass uniform buffers (rewritten + submitted per pass; queue ordering
@@ -625,6 +661,7 @@ pub struct LayerCompositor {
     encode_globals_buffer: wgpu::Buffer,
     chroma_globals_buffer: wgpu::Buffer,
     bloom_globals_buffer: wgpu::Buffer,
+    bloom_mip_globals_buffer: wgpu::Buffer,
     sh_globals_buffer: wgpu::Buffer,
     /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
     blur_weights_buffer: Option<(wgpu::Buffer, u64)>,

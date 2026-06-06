@@ -1218,6 +1218,82 @@ fn cs_bloom_bright(@builtin(global_invocation_id) gid: vec3<u32>) {
     textureStore(bloom_glow, p, vec4<f32>(base.rgb * k, k));
 }
 
+// ── Bloom mip down/up — radius-independent (O(1)) blur ────────────────────────
+// The direct separable blur is O(radius); at large radius / large canvas it drops
+// frames. Instead, downsample the premultiplied glow by `factor` (a box average),
+// blur it at LOW resolution with a small bounded kernel (radius/factor ≤ ~16), then
+// bilinear-UPsample back. The full-res passes are per-pixel; the only kernel work is
+// the bounded low-res blur → Bloom costs ~the same at any radius. Both passes carry
+// the premultiplied glow (box-average + bilinear are linear → premul-preserving).
+// `factor = src_w / dst_w` (down) or `dst_w / src_w` (up); the parity gate reconciles
+// against the identical CPU down/blur/up mirror.
+struct BloomMipGlobals {
+    src_w: u32,
+    src_h: u32,
+    dst_w: u32,
+    dst_h: u32,
+    factor: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+@group(0) @binding(27) var<uniform> mip_g: BloomMipGlobals;
+@group(0) @binding(28) var mip_src: texture_2d<f32>;
+@group(0) @binding(29) var mip_dst: texture_storage_2d<rgba32float, write>;
+
+// Downsample: each dst texel is the box average of the `factor × factor` source
+// block at (x·factor, y·factor), clamped to the source rect.
+@compute @workgroup_size(8, 8, 1)
+fn cs_bloom_down(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= mip_g.dst_w || y >= mip_g.dst_h {
+        return;
+    }
+    let hi = vec2<i32>(i32(mip_g.src_w) - 1, i32(mip_g.src_h) - 1);
+    var acc = vec4<f32>(0.0);
+    var n = 0.0;
+    for (var dy: u32 = 0u; dy < mip_g.factor; dy = dy + 1u) {
+        for (var dx: u32 = 0u; dx < mip_g.factor; dx = dx + 1u) {
+            let s = clamp(
+                vec2<i32>(i32(x * mip_g.factor + dx), i32(y * mip_g.factor + dy)),
+                vec2<i32>(0, 0),
+                hi,
+            );
+            acc = acc + textureLoad(mip_src, s, 0);
+            n = n + 1.0;
+        }
+    }
+    textureStore(mip_dst, vec2<i32>(i32(x), i32(y)), acc / max(n, 1.0));
+}
+
+// Bilinear upsample: reconstruct the low-res blurred glow at the high-res grid.
+@compute @workgroup_size(8, 8, 1)
+fn cs_bloom_up(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= mip_g.dst_w || y >= mip_g.dst_h {
+        return;
+    }
+    // dst centre → src space (the src is the low-res blurred glow).
+    let sx = (f32(x) + 0.5) * f32(mip_g.src_w) / f32(mip_g.dst_w) - 0.5;
+    let sy = (f32(y) + 0.5) * f32(mip_g.src_h) / f32(mip_g.dst_h) - 0.5;
+    let x0 = floor(sx);
+    let y0 = floor(sy);
+    let fx = sx - x0;
+    let fy = sy - y0;
+    let lo = vec2<i32>(0, 0);
+    let hi = vec2<i32>(i32(mip_g.src_w) - 1, i32(mip_g.src_h) - 1);
+    let i0 = vec2<i32>(i32(x0), i32(y0));
+    let c00 = textureLoad(mip_src, clamp(i0, lo, hi), 0);
+    let c10 = textureLoad(mip_src, clamp(i0 + vec2<i32>(1, 0), lo, hi), 0);
+    let c01 = textureLoad(mip_src, clamp(i0 + vec2<i32>(0, 1), lo, hi), 0);
+    let c11 = textureLoad(mip_src, clamp(i0 + vec2<i32>(1, 1), lo, hi), 0);
+    let top = mix(c00, c10, fx);
+    let bot = mix(c01, c11, fx);
+    textureStore(mip_dst, vec2<i32>(i32(x), i32(y)), mix(top, bot, fy));
+}
+
 // ── Shadows/Highlights — LOCAL tonal correction (cs_sh_luma + cs_combine_sh) ──
 // Mirror of `apply_shadows_highlights`: blur the DISPLAY luma into two local-
 // average tone maps (separate radii for shadows / highlights), then lift shadows

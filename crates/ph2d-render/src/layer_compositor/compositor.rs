@@ -250,6 +250,16 @@ impl LayerCompositor {
                     storage_tex(26, f32_lin),                    // glow (premultiplied)
                 ],
             });
+        let bgl_bloom_mip = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite bloom mip bgl"),
+                entries: &[
+                    uniform(27, core::mem::size_of::<BloomMipGlobals>() as u64),
+                    sampled(28, wgpu::TextureViewDimension::D2), // src
+                    storage_tex(29, f32_lin),                    // dst
+                ],
+            });
         let sh_sz = core::mem::size_of::<ShGlobals>() as u64;
         let bgl_sh_luma = gpu
             .device
@@ -326,6 +336,16 @@ impl LayerCompositor {
             "cs_bloom_bright",
             "ph2d-render layer_composite bloom_bright",
         );
+        let pipeline_bloom_down = make_pipeline_for(
+            &bgl_bloom_mip,
+            "cs_bloom_down",
+            "ph2d-render layer_composite bloom_down",
+        );
+        let pipeline_bloom_up = make_pipeline_for(
+            &bgl_bloom_mip,
+            "cs_bloom_up",
+            "ph2d-render layer_composite bloom_up",
+        );
         let pipeline_sh_luma = make_pipeline_for(
             &bgl_sh_luma,
             "cs_sh_luma",
@@ -368,6 +388,10 @@ impl LayerCompositor {
         let bloom_globals_buffer = make_uniform_buf(
             core::mem::size_of::<BloomGlobals>() as u64,
             "ph2d-render layer_composite bloom globals",
+        );
+        let bloom_mip_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<BloomMipGlobals>() as u64,
+            "ph2d-render layer_composite bloom mip globals",
         );
         let sh_globals_buffer = make_uniform_buf(
             core::mem::size_of::<ShGlobals>() as u64,
@@ -429,6 +453,8 @@ impl LayerCompositor {
             pipeline_blur_dir,
             pipeline_chroma,
             pipeline_bloom_bright,
+            pipeline_bloom_down,
+            pipeline_bloom_up,
             pipeline_sh_luma,
             pipeline_sh_combine,
             pipeline_combine,
@@ -439,6 +465,7 @@ impl LayerCompositor {
             bgl_encode,
             bgl_chroma,
             bgl_bloom,
+            bgl_bloom_mip,
             bgl_sh_luma,
             bgl_sh_combine,
             seg_globals_buffer,
@@ -447,6 +474,7 @@ impl LayerCompositor {
             encode_globals_buffer,
             chroma_globals_buffer,
             bloom_globals_buffer,
+            bloom_mip_globals_buffer,
             sh_globals_buffer,
             blur_weights_buffer: None,
             seg_base_dummy,
@@ -992,9 +1020,15 @@ impl LayerCompositor {
             /// (px at the canvas corner). No weights.
             Chroma([f32; 3]),
             /// Bloom: `cs_bloom_bright` (threshold, falloff) extracts the premultiplied
-            /// glow, then the separable blur (`weights`/`half`, `premul_read = 0`)
-            /// spreads it; `COMBINE_BLOOM` adds `intensity·glow` back.
-            Bloom { threshold: f32, falloff: f32 },
+            /// glow; it is downsampled by `factor`, blurred at LOW res (`weights`/
+            /// `low_half`, the bounded kernel), then bilinear-upsampled — so the blur
+            /// is radius-independent (O(1)). `COMBINE_BLOOM` adds `intensity·glow` back.
+            Bloom {
+                threshold: f32,
+                falloff: f32,
+                factor: u32,
+                low_half: u32,
+            },
             /// Shadows/Highlights: `cs_sh_luma` extracts the display luma, two scalar
             /// blurs (shadows / highlights radii) build local tone maps, and
             /// `cs_combine_sh` applies the tonal correction (its OWN combine — the
@@ -1086,15 +1120,24 @@ impl LayerCompositor {
                     })
                 }
                 k if k == SPATIAL_BLOOM => {
-                    // params: [threshold, intensity, radius, falloff]. The glow blur
-                    // reuses the separable Gaussian; intensity rides the combine.
-                    let (weights, half) = gaussian_weights(params[2]);
+                    // params: [threshold, intensity, radius, falloff]. Radius-
+                    // independent blur: downsample by `factor`, blur at LOW res with
+                    // the bounded `low_radius = radius/factor` kernel, upsample. The
+                    // halo is still the FULL radius (the glow spreads that far); the
+                    // weights/half are the LOW-res kernel.
+                    let radius = params[2];
+                    let factor = bloom_downsample_factor(radius);
+                    let low_radius = radius / factor as f32;
+                    let (low_weights, low_half) = gaussian_weights(low_radius);
+                    let halo = (radius.ceil() as u32).clamp(1, MAX_BLUR_HALF);
                     Some(KernelPlan {
-                        weights,
-                        half,
+                        weights: low_weights,
+                        half: halo,
                         stage: BlurStage::Bloom {
                             threshold: params[0],
                             falloff: params[3],
+                            factor,
+                            low_half,
                         },
                         combine_mode: COMBINE_BLOOM,
                         amount: params[1], // intensity
@@ -1229,9 +1272,14 @@ impl LayerCompositor {
                     self.run_chroma(gpu, cur, *shifts, work, canvas_w, canvas_h);
                     true
                 }
-                BlurStage::Bloom { threshold, falloff } => {
-                    self.upload_blur_weights(gpu, &b.weights);
-                    self.run_bloom(gpu, cur, *threshold, *falloff, b.half, work);
+                BlurStage::Bloom {
+                    threshold,
+                    falloff,
+                    factor,
+                    low_half,
+                } => {
+                    self.upload_blur_weights(gpu, &b.weights); // the low-res kernel
+                    self.run_bloom(gpu, cur, *threshold, *falloff, *factor, *low_half, work);
                     true
                 }
                 BlurStage::Sh {
@@ -1654,27 +1702,34 @@ impl LayerCompositor {
         );
     }
 
-    /// Bloom bright-pass + premultiplied blur of the glow, leaving the blurred
-    /// glow in `blur[1]` for `run_combine`'s `COMBINE_BLOOM` (additive) step.
-    /// (1) `cs_bloom_bright`: `base[base_idx]` (straight) → `blur[1]` (premultiplied
-    ///     bright-excess glow). (2) separable blur `blur[1]→blur[0]→blur[1]` with
-    ///     `premul_read = 0` (the bright-pass output is ALREADY premultiplied — re-
-    ///     premultiplying would square the alpha). Weights already uploaded by the
-    ///     caller. Mirror of `apply_bloom`'s bright-pass + `separable_blur_premul`.
+    /// Bloom — RADIUS-INDEPENDENT (O(1)) glow, leaving the result in `blur[1]` for
+    /// `run_combine`'s `COMBINE_BLOOM` (additive) step. All premultiplied. The passes:
+    /// `cs_bloom_bright` (`base[base_idx]` → `blur[1]`, full-res glow); `cs_bloom_down`
+    /// (box-downsample `blur[1]` full → `blur[0]` low = work/factor); a separable blur
+    /// of the LOW-res glow (`low_half`, premul_read 0: `blur[0]` → `blur[1]` H →
+    /// `blur[0]` V, at the low dims); then `cs_bloom_up` (bilinear-upsample `blur[0]`
+    /// low → `blur[1]` full). The only kernel work is the bounded low-res blur, so the
+    /// cost is ~constant at any radius. For `factor == 1` the down/up are 1:1 (the
+    /// direct blur for small radii — the parity gate's degenerate case).
+    #[allow(clippy::too_many_arguments)]
     fn run_bloom(
         &self,
         gpu: &GpuContext,
         base_idx: usize,
         threshold: f32,
         falloff: f32,
-        half: u32,
+        factor: u32,
+        low_half: u32,
         work: Region,
     ) {
         let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
         else {
             return;
         };
-        // (1) bright-pass → blur[1] (premultiplied glow).
+        let low_w = work.w.div_ceil(factor);
+        let low_h = work.h.div_ceil(factor);
+
+        // (1) bright-pass → blur[1] (full-res premultiplied glow).
         let g = BloomGlobals {
             width: work.w,
             height: work.h,
@@ -1709,12 +1764,59 @@ impl LayerCompositor {
             work.h,
             "ph2d-render layer_composite bloom bright pass",
         );
-        // (2) separable blur of the already-premultiplied glow (premul_read = 0 on
-        // BOTH passes): blur[1] → blur[0] (H) → blur[1] (V).
+
+        // (2) box-downsample blur[1] (full) → blur[0] (low).
+        let mip_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
+            gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite bloom mip bg"),
+                layout: &self.bgl_bloom_mip,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 27,
+                        resource: self.bloom_mip_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 28,
+                        resource: wgpu::BindingResource::TextureView(src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 29,
+                        resource: wgpu::BindingResource::TextureView(dst),
+                    },
+                ],
+            })
+        };
+        let write_mip_globals = |src_w: u32, src_h: u32, dst_w: u32, dst_h: u32| {
+            let g = BloomMipGlobals {
+                src_w,
+                src_h,
+                dst_w,
+                dst_h,
+                factor,
+                _pad0: 0,
+                _pad1: 0,
+                _pad2: 0,
+            };
+            gpu.queue
+                .write_buffer(&self.bloom_mip_globals_buffer, 0, bytemuck::bytes_of(&g));
+        };
+        write_mip_globals(work.w, work.h, low_w, low_h);
+        let down_bg = mip_bg(&work_tex.blur[1].view, &work_tex.blur[0].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_bloom_down,
+            &down_bg,
+            low_w,
+            low_h,
+            "ph2d-render layer_composite bloom down pass",
+        );
+
+        // (3) separable blur the LOW-res glow (premul_read = 0): blur[0] → blur[1] (H)
+        //     → blur[0] (V), at the low dims.
         let bg_blur = BlurGlobals {
-            width: work.w,
-            height: work.h,
-            half,
+            width: low_w,
+            height: low_h,
+            half: low_half,
             _pad0: 0,
             dir_x: 0.0,
             dir_y: 0.0,
@@ -1747,23 +1849,35 @@ impl LayerCompositor {
                 ],
             })
         };
-        let bg_h = blur_bg(&work_tex.blur[1].view, &work_tex.blur[0].view);
+        let bg_h = blur_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
         self.dispatch_pass(
             gpu,
             &self.pipeline_blur_h,
             &bg_h,
-            work.w,
-            work.h,
-            "ph2d-render layer_composite bloom blur_h pass",
+            low_w,
+            low_h,
+            "ph2d-render layer_composite bloom low blur_h pass",
         );
-        let bg_v = blur_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
+        let bg_v = blur_bg(&work_tex.blur[1].view, &work_tex.blur[0].view);
         self.dispatch_pass(
             gpu,
             &self.pipeline_blur_v,
             &bg_v,
+            low_w,
+            low_h,
+            "ph2d-render layer_composite bloom low blur_v pass",
+        );
+
+        // (4) bilinear-upsample blur[0] (low) → blur[1] (full).
+        write_mip_globals(low_w, low_h, work.w, work.h);
+        let up_bg = mip_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_bloom_up,
+            &up_bg,
             work.w,
             work.h,
-            "ph2d-render layer_composite bloom blur_v pass",
+            "ph2d-render layer_composite bloom up pass",
         );
     }
 

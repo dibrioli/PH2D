@@ -1987,3 +1987,104 @@ fn gpu_color_lookup_matches_cpu_reference() {
         );
     }
 }
+
+/// Bloom slider-drag perf — the user-reported hot path. A full-canvas Bloom
+/// recomposite (the slider dirties the whole canvas) at the default radius vs a
+/// large radius, to show (a) the GPU pass-graph is ms-class (vs the CPU fallback's
+/// tens of ms — the FPS fix) and (b) where the direct separable blur's O(radius)
+/// cost starts to bite (the Kawase-pyramid case). Run with --release.
+#[test]
+#[ignore = "needs a GPU device; measure with --release"]
+fn gpu_bloom_drag_perf() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    for &(w, h) in &[(1024u32, 1024u32), (2048u32, 2048u32)] {
+        let mut prov = MapProvider::default();
+        prov.insert(1, 1, varied_canvas(w, h, 3));
+        for &radius in &[20.0f32, 100.0] {
+            let ops = vec![
+                LayerOp::Layer {
+                    key: 1,
+                    blend_mode: 0,
+                    opacity: 1.0,
+                },
+                LayerOp::SpatialAdjustment {
+                    kernel: SPATIAL_BLOOM,
+                    params: [0.4, 0.8, radius, 0.15, 0.0, 0.0, 0.0, 0.0],
+                    blend_mode: 0,
+                    opacity: 1.0,
+                },
+            ];
+            let median =
+                measure_composite(&gpu, &mut comp, &ops, &prov, w, h, Region::full(w, h), 16);
+            let fps = 1000.0 / median.max(0.001);
+            eprintln!("[bloom] {w}×{h} radius {radius:.0}: median {median:.2} ms (~{fps:.0} fps)");
+        }
+    }
+}
+
+/// Large-radius Bloom takes the PYRAMID path (factor > 1: downsample → low-res blur
+/// → upsample), a radius-independent glow. Structural proof (a different, valid
+/// algorithm from the direct Gaussian — its correctness is a WIDE, SMOOTH halo,
+/// not a byte-match to the Gaussian): a bright square spreads a soft glow far past
+/// its edge, the centre stays bright, the far field stays clear, and the falloff is
+/// monotonic (no blocky downsample artefacts surviving the bilinear upsample).
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_bloom_large_radius_pyramid_haloes_wide() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (128u32, 128u32);
+    // Bright white square [54,74)² (20 px), transparent elsewhere.
+    let mut base = vec![0u8; (w * h * 4) as usize];
+    for y in 54..74u32 {
+        for x in 54..74u32 {
+            let i = ((y * w + x) * 4) as usize;
+            base[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+        }
+    }
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, base);
+    let radius = 32.0f32; // > 16 → factor 2, low_radius 16 (the pyramid path)
+    let ops = vec![
+        LayerOp::Layer {
+            key: 0,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_BLOOM,
+            params: [0.3, 1.4, radius, 0.2, 0.0, 0.0, 0.0, 0.0],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("composite");
+    let out = comp.read_output(&gpu).expect("readback");
+    let alpha = |x: u32, y: u32| out[((y * w + x) * 4 + 3) as usize] as i32;
+
+    assert!(alpha(64, 64) >= 250, "square centre stays opaque");
+    // Wide halo: coverage spread ~20 px past the square's [54,74) left edge.
+    let near = alpha(48, 64); // 6 px outside
+    let far = alpha(34, 64); // 20 px outside — only the pyramid's wide glow reaches
+    assert!(near > 20, "near halo {near} should be lit");
+    assert!(
+        far > 4,
+        "wide halo {far} should reach far (radius-{radius} glow)"
+    );
+    // Monotonic falloff (smooth, no blocky downsample step): centre ≥ near ≥ far ≥ edge.
+    let edge = alpha(20, 64);
+    assert!(
+        alpha(64, 64) >= near && near >= far && far >= edge,
+        "falloff must be monotonic: c{} n{near} f{far} e{edge}",
+        alpha(64, 64)
+    );
+    // The far corner stays clear.
+    assert!(alpha(2, 2) <= 8, "far corner clear, alpha {}", alpha(2, 2));
+}

@@ -43,3 +43,10 @@ naga = { version = "28", features = ["wgsl-in"] }
 [dev-dependencies]
 glam = "0.30"
 ph2d-color = { path = "../ph2d-color" }
+# GPU WoS parity + tier-budget gate (`tests/diffusion_gpu_parity.rs`, W7 — Coord):
+# dispatches `diffusion.wgsl` and validates GPU↔CPU against `walk_on_spheres_field`.
+# wgpu/ph2d-gpu are DEV-only — the lib stays compute-pipeline-free (impl's design).
+ph2d-gpu = { path = "../ph2d-gpu" }
+wgpu = "28"
+bytemuck = { version = "1", features = ["derive"] }
+ph2d-expr = { path = "../ph2d-expr" }

@@ -5815,7 +5815,9 @@ dependencies = [
  "naga",
  "ph2d-color",
  "ph2d-expr",
+ "ph2d-gpu",
  "smallvec",
+ "wgpu",
 ]
 
 [[package]]

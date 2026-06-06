@@ -197,12 +197,21 @@ pub const SPATIAL_MOTION: u8 = 2;
 /// The per-channel scales + centre are precomputed CPU-side so the gather does no
 /// per-pixel sqrt (parity-robust, like motion); combine is the passthrough.
 pub const SPATIAL_CHROMA: u8 = 3;
+/// Bloom — bright-pass → separable Gaussian blur of the bright EXCESS → additive
+/// glow. `params[0]` = threshold, `params[1]` = intensity, `params[2]` = radius,
+/// `params[3]` = falloff. Adds the bright-pass `cs_bloom_bright` BEFORE the
+/// (premultiplied) separable blur, then the additive `COMBINE_BLOOM` step. The
+/// glow feathers coverage (haloes outward), so the combine adopts its alpha.
+/// Mirror of `ph2d_painter_brush::adjustments::spatial::apply_bloom`.
+pub const SPATIAL_BLOOM: u8 = 4;
 
 /// Combine-step mode (the post-blur math in `cs_combine`) — mirrors the WGSL
 /// `combine_mode`. `GAUSSIAN` passes the blurred value through; `SHARPEN`
-/// computes the unsharp mask from base + blurred. Both then blend over the base.
+/// computes the unsharp mask from base + blurred; `BLOOM` adds `intensity·glow`
+/// onto the premultiplied base. All then blend over the base.
 const COMBINE_GAUSSIAN: u32 = 0;
 const COMBINE_SHARPEN: u32 = 1;
+const COMBINE_BLOOM: u32 = 2;
 
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + the per-pixel tap count + the dirty-rect halo.
@@ -476,6 +485,18 @@ struct ChromaGlobals {
     _pad: f32,
 }
 
+/// Globals for `cs_bloom_bright` (16 bytes; mirrors WGSL `BloomGlobals`). The
+/// bright-pass extracts `color·α·smoothstep(threshold, threshold+falloff, luma)`
+/// as a premultiplied glow over the `width × height` work region.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct BloomGlobals {
+    width: u32,
+    height: u32,
+    threshold: f32,
+    falloff: f32,
+}
+
 /// A cached layer's place in the texture array + dirty tracking.
 struct CachedSlice {
     slice: u32,
@@ -544,6 +565,9 @@ pub struct LayerCompositor {
     pipeline_blur_dir: wgpu::ComputePipeline,
     /// Chromatic-aberration gather — per-channel radial shift (single pass).
     pipeline_chroma: wgpu::ComputePipeline,
+    /// Bloom bright-pass — extract the premultiplied bright-excess glow (the only
+    /// Bloom-specific pass; the blur + additive combine reuse the shared machinery).
+    pipeline_bloom_bright: wgpu::ComputePipeline,
     /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
     pipeline_combine: wgpu::ComputePipeline,
     /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to
@@ -554,6 +578,7 @@ pub struct LayerCompositor {
     bgl_combine: wgpu::BindGroupLayout,
     bgl_encode: wgpu::BindGroupLayout,
     bgl_chroma: wgpu::BindGroupLayout,
+    bgl_bloom: wgpu::BindGroupLayout,
     /// Per-pass uniform buffers (rewritten + submitted per pass; queue ordering
     /// makes single shared buffers safe). Created once.
     seg_globals_buffer: wgpu::Buffer,
@@ -561,6 +586,7 @@ pub struct LayerCompositor {
     combine_globals_buffer: wgpu::Buffer,
     encode_globals_buffer: wgpu::Buffer,
     chroma_globals_buffer: wgpu::Buffer,
+    bloom_globals_buffer: wgpu::Buffer,
     /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
     blur_weights_buffer: Option<(wgpu::Buffer, u64)>,
     /// 1×1 linear dummy bound as `base_in` for the first segment (start-from-zero).

@@ -227,6 +227,16 @@ impl LayerCompositor {
                     storage_tex(23, f32_lin),                    // dst (linear)
                 ],
             });
+        let bgl_bloom = gpu
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("ph2d-render layer_composite bloom bgl"),
+                entries: &[
+                    uniform(24, core::mem::size_of::<BloomGlobals>() as u64),
+                    sampled(25, wgpu::TextureViewDimension::D2), // base (linear)
+                    storage_tex(26, f32_lin),                    // glow (premultiplied)
+                ],
+            });
 
         let make_pipeline_for = |bgl: &wgpu::BindGroupLayout, entry: &str, label: &str| {
             let layout = gpu
@@ -275,6 +285,11 @@ impl LayerCompositor {
             "cs_chroma",
             "ph2d-render layer_composite chroma",
         );
+        let pipeline_bloom_bright = make_pipeline_for(
+            &bgl_bloom,
+            "cs_bloom_bright",
+            "ph2d-render layer_composite bloom_bright",
+        );
 
         let make_uniform_buf = |size: u64, label: &str| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
@@ -303,6 +318,10 @@ impl LayerCompositor {
         let chroma_globals_buffer = make_uniform_buf(
             core::mem::size_of::<ChromaGlobals>() as u64,
             "ph2d-render layer_composite chroma globals",
+        );
+        let bloom_globals_buffer = make_uniform_buf(
+            core::mem::size_of::<BloomGlobals>() as u64,
+            "ph2d-render layer_composite bloom globals",
         );
 
         // 1×1 linear dummy bound as base_in for the first (start-from-zero) segment.
@@ -359,6 +378,7 @@ impl LayerCompositor {
             pipeline_blur_v,
             pipeline_blur_dir,
             pipeline_chroma,
+            pipeline_bloom_bright,
             pipeline_combine,
             pipeline_encode,
             bgl_segment,
@@ -366,11 +386,13 @@ impl LayerCompositor {
             bgl_combine,
             bgl_encode,
             bgl_chroma,
+            bgl_bloom,
             seg_globals_buffer,
             blur_globals_buffer,
             combine_globals_buffer,
             encode_globals_buffer,
             chroma_globals_buffer,
+            bloom_globals_buffer,
             blur_weights_buffer: None,
             seg_base_dummy,
             work: None,
@@ -914,6 +936,10 @@ impl LayerCompositor {
             /// Chromatic-aberration gather: `cs_chroma`, per-channel shift `[r,g,b]`
             /// (px at the canvas corner). No weights.
             Chroma([f32; 3]),
+            /// Bloom: `cs_bloom_bright` (threshold, falloff) extracts the premultiplied
+            /// glow, then the separable blur (`weights`/`half`, `premul_read = 0`)
+            /// spreads it; `COMBINE_BLOOM` adds `intensity·glow` back.
+            Bloom { threshold: f32, falloff: f32 },
         }
 
         /// One root-level spatial pass break: where it sits in the op-list, its
@@ -990,6 +1016,21 @@ impl LayerCompositor {
                         stage: BlurStage::Chroma(shifts),
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
+                    })
+                }
+                k if k == SPATIAL_BLOOM => {
+                    // params: [threshold, intensity, radius, falloff]. The glow blur
+                    // reuses the separable Gaussian; intensity rides the combine.
+                    let (weights, half) = gaussian_weights(params[2]);
+                    Some(KernelPlan {
+                        weights,
+                        half,
+                        stage: BlurStage::Bloom {
+                            threshold: params[0],
+                            falloff: params[3],
+                        },
+                        combine_mode: COMBINE_BLOOM,
+                        amount: params[1], // intensity
                     })
                 }
                 _ => None,
@@ -1089,6 +1130,10 @@ impl LayerCompositor {
                 }
                 BlurStage::Chroma(shifts) => {
                     self.run_chroma(gpu, cur, *shifts, work, canvas_w, canvas_h);
+                }
+                BlurStage::Bloom { threshold, falloff } => {
+                    self.upload_blur_weights(gpu, &b.weights);
+                    self.run_bloom(gpu, cur, *threshold, *falloff, b.half, work);
                 }
             }
             self.run_combine(
@@ -1479,6 +1524,119 @@ impl LayerCompositor {
             work.w,
             work.h,
             "ph2d-render layer_composite chroma pass",
+        );
+    }
+
+    /// Bloom bright-pass + premultiplied blur of the glow, leaving the blurred
+    /// glow in `blur[1]` for `run_combine`'s `COMBINE_BLOOM` (additive) step.
+    /// (1) `cs_bloom_bright`: `base[base_idx]` (straight) → `blur[1]` (premultiplied
+    ///     bright-excess glow). (2) separable blur `blur[1]→blur[0]→blur[1]` with
+    ///     `premul_read = 0` (the bright-pass output is ALREADY premultiplied — re-
+    ///     premultiplying would square the alpha). Weights already uploaded by the
+    ///     caller. Mirror of `apply_bloom`'s bright-pass + `separable_blur_premul`.
+    fn run_bloom(
+        &self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        threshold: f32,
+        falloff: f32,
+        half: u32,
+        work: Region,
+    ) {
+        let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
+        else {
+            return;
+        };
+        // (1) bright-pass → blur[1] (premultiplied glow).
+        let g = BloomGlobals {
+            width: work.w,
+            height: work.h,
+            threshold,
+            falloff,
+        };
+        gpu.queue
+            .write_buffer(&self.bloom_globals_buffer, 0, bytemuck::bytes_of(&g));
+        let bright_bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-render layer_composite bloom bright bg"),
+            layout: &self.bgl_bloom,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 24,
+                    resource: self.bloom_globals_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 25,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.base[base_idx].view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 26,
+                    resource: wgpu::BindingResource::TextureView(&work_tex.blur[1].view),
+                },
+            ],
+        });
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_bloom_bright,
+            &bright_bg,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite bloom bright pass",
+        );
+        // (2) separable blur of the already-premultiplied glow (premul_read = 0 on
+        // BOTH passes): blur[1] → blur[0] (H) → blur[1] (V).
+        let bg_blur = BlurGlobals {
+            width: work.w,
+            height: work.h,
+            half,
+            _pad0: 0,
+            dir_x: 0.0,
+            dir_y: 0.0,
+            premul_read: 0.0,
+            _pad2: 0.0,
+        };
+        gpu.queue
+            .write_buffer(&self.blur_globals_buffer, 0, bytemuck::bytes_of(&bg_blur));
+        let blur_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
+            gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render layer_composite bloom blur bg"),
+                layout: &self.bgl_blur,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 10,
+                        resource: self.blur_globals_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 11,
+                        resource: wgpu::BindingResource::TextureView(src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 12,
+                        resource: wgpu::BindingResource::TextureView(dst),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 13,
+                        resource: weights_buffer.as_entire_binding(),
+                    },
+                ],
+            })
+        };
+        let bg_h = blur_bg(&work_tex.blur[1].view, &work_tex.blur[0].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_h,
+            &bg_h,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite bloom blur_h pass",
+        );
+        let bg_v = blur_bg(&work_tex.blur[0].view, &work_tex.blur[1].view);
+        self.dispatch_pass(
+            gpu,
+            &self.pipeline_blur_v,
+            &bg_v,
+            work.w,
+            work.h,
+            "ph2d-render layer_composite bloom blur_v pass",
         );
     }
 

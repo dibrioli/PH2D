@@ -12,12 +12,14 @@
 
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::adjustments::{LevelsParams, levels_display_lut};
+use ph2d_painter_brush::adjustments::{
+    AdjustWindow, BloomParams, LevelsParams, apply_bloom, levels_display_lut,
+};
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
-    SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN, gaussian_weights,
-    motion_weights,
+    SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHARPEN,
+    gaussian_weights, motion_weights,
 };
 use std::collections::BTreeMap;
 
@@ -1431,4 +1433,170 @@ fn gpu_gaussian_feathers_coverage_into_transparency() {
         "far alpha {} should stay clear",
         alpha(2, 32)
     );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPATIAL PASS-GRAPH (Painter W4) — Bloom (bright-pass → blur → additive glow)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Bloom adds ONE bespoke pass (`cs_bloom_bright`) before the SHARED separable
+// blur, then an additive combine (`COMBINE_BLOOM`). These reconcile the GPU
+// pass-graph DIRECTLY against the impl's canonical `apply_bloom` (not a hand-
+// rolled mirror): materialise the below-composite, run `apply_bloom` on it
+// (Normal blend + opacity 1 ⇒ the combine output equals `apply_bloom`'s), then
+// composite the above layer — exactly what the GPU does.
+
+/// GPU Bloom vs `apply_bloom` over an OPAQUE varied base + an above layer.
+/// Proves the bright-pass + premultiplied glow blur + additive combine reproduce
+/// the canonical kernel (full + dirty-rect ⊕ halo). Opaque base ⇒ the output
+/// coverage stays 1, so this isolates the RGB glow path; the transparent-halo
+/// (coverage-feather) case is the next gate. ±5 bytes: Bloom stacks a smoothstep
+/// + premul/unpremul + add atop the blur's `pow`/reassoc ULP.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_bloom_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 5);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    prov.insert(1, 1, varied_canvas(w, h, 9));
+
+    let bp = BloomParams {
+        threshold: 0.4,
+        intensity: 0.8,
+        radius: 4.0,
+        falloff: 0.2,
+    };
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let above = [LayerOp::Layer {
+        key: 1,
+        blend_mode: 0,
+        opacity: 0.6,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_BLOOM,
+            params: [bp.threshold, bp.intensity, bp.radius, bp.falloff],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        above[0],
+    ];
+
+    // CPU full-canvas reference: materialise → apply_bloom → above.
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mut bloomed = mat.clone();
+    apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
+    let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&bloomed));
+    let want_full = cpu_encode_full(&above_lin);
+
+    let mut comp = LayerCompositor::new(&gpu);
+
+    let full = Region::full(w, h);
+    comp.composite(&gpu, &ops, &prov, w, h, full)
+        .expect("composite full");
+    let got_full = comp.read_output(&gpu).expect("readback full");
+    let d_full = max_byte_diff(&got_full, &want_full);
+    assert!(d_full <= 5, "bloom full-region GPU vs CPU max byte diff {d_full}");
+
+    let sub = Region {
+        x: 20,
+        y: 18,
+        w: 24,
+        h: 22,
+    };
+    comp.composite(&gpu, &ops, &prov, w, h, sub)
+        .expect("composite sub");
+    let got_sub = comp.read_output(&gpu).expect("readback sub");
+    let want_sub = cpu_crop(&want_full, w, sub);
+    let d_sub = max_byte_diff(&got_sub, &want_sub);
+    assert!(
+        d_sub <= 5,
+        "bloom sub-region (dirty-rect ⊕ halo) GPU vs CPU max byte diff {d_sub}"
+    );
+}
+
+/// Bloom HALOES into transparency: a bright opaque square on a transparent field
+/// must spread a soft glow (raised coverage + brightness) OUTSIDE the square —
+/// the premultiplied bright-pass + blow carries alpha past the source. Reconciles
+/// against `apply_bloom` (which does the same premultiplied add), AND asserts the
+/// halo is actually non-trivial (so the parity isn't passing on an all-clear or
+/// all-opaque field). This is Bloom's coverage-feather counterpart to the
+/// Gaussian feather gate, and the proof `feathers_coverage()` holds for Bloom.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_bloom_haloes_into_transparency() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    // Opaque white square [22,42)², transparent (a=0) elsewhere.
+    let mut base = vec![0u8; (w * h * 4) as usize];
+    for y in 22..42u32 {
+        for x in 22..42u32 {
+            let i = ((y * w + x) * 4) as usize;
+            base[i] = 255;
+            base[i + 1] = 255;
+            base[i + 2] = 255;
+            base[i + 3] = 255;
+        }
+    }
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, base);
+
+    let bp = BloomParams {
+        threshold: 0.3,
+        intensity: 1.2,
+        radius: 6.0,
+        falloff: 0.2,
+    };
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+    let ops = vec![
+        below[0],
+        LayerOp::SpatialAdjustment {
+            kernel: SPATIAL_BLOOM,
+            params: [bp.threshold, bp.intensity, bp.radius, bp.falloff],
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+    ];
+
+    let mat = cpu_seg_linear(&below, &prov, w, h, None);
+    let mut bloomed = mat.clone();
+    apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
+    let want = cpu_encode_full(&bloomed);
+
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("composite");
+    let got = comp.read_output(&gpu).expect("readback");
+    let d = max_byte_diff(&got, &want);
+    assert!(d <= 5, "bloom-halo GPU vs apply_bloom max byte diff {d}");
+
+    // The halo is real: 2 px outside the square edge has coverage spread from 0.
+    let alpha = |x: u32, y: u32| got[((y * w + x) * 4 + 3) as usize];
+    let halo = alpha(20, 32); // 2 px left of the square's [22,42) edge
+    assert!(
+        halo > 10,
+        "bloom should halo coverage past the source: edge alpha {halo} ~ 0 (no glow)"
+    );
+    assert!(alpha(32, 32) >= 250, "square centre stays opaque");
+    assert!(alpha(2, 32) <= 8, "far field stays clear, alpha {}", alpha(2, 32));
 }

@@ -140,6 +140,18 @@ fn linear_to_srgb(v: f32) -> f32 {
     return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
 }
 
+// Rec.709 display luma of a straight-linear pixel — the perceptual brightness in
+// DISPLAY (sRGB-encoded) space, mirror of `ph2d_painter_brush::adjustments::
+// spatial::display_luma` (used by Bloom's bright-pass + Shadows/Highlights' tone
+// maps). The channels go through the sRGB encode first (so the weighting is
+// perceptual), then the standard luma coefficients.
+fn display_luma(rgb: vec3<f32>) -> f32 {
+    let r = linear_to_srgb(rgb.r);
+    let g = linear_to_srgb(rgb.g);
+    let b = linear_to_srgb(rgb.b);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 // Decode one straight sRGB8 texel of layer slice `slot` at canvas `coord` to
 // straight linear RGBA via the LUT. Alpha is linear coverage (no transfer),
 // per the CPU `compositor::decode`. `raw.{r,g,b}` are `byte/255` (unorm), so
@@ -868,9 +880,9 @@ struct CombineGlobals {
     width: u32,
     height: u32,
     blend_mode: u32,
-    combine_mode: u32, // 0 = Gaussian (passthrough blurred); 1 = Sharpen (unsharp)
+    combine_mode: u32, // 0 = Gaussian (passthrough); 1 = Sharpen (unsharp); 2 = Bloom (additive glow)
     opacity: f32,
-    amount: f32, // unsharp amount (combine_mode == 1)
+    amount: f32, // unsharp amount (mode 1) / bloom intensity (mode 2)
     _pad2: f32,
     _pad3: f32,
 }
@@ -888,11 +900,14 @@ fn unpremultiply(c: vec4<f32>) -> vec4<f32> {
 }
 
 // Spatial mirror of apply_adjustment_op, PREMULTIPLY-aware (the kernel ran in
-// premultiplied space). The blurred input is premultiplied; un-premultiply it to
-// recover straight RGBA with the kernel's FEATHERED alpha (soft coverage into
-// transparency). Then:
-//   - GAUSSIAN/MOTION/CHROMA: adjusted = blurred (the kernel result).
-//   - SHARPEN: adjusted = base + amount·(base − blurred) (unsharp, 4 channels).
+// premultiplied space). Then, by `combine_mode`:
+//   - GAUSSIAN/MOTION/CHROMA (0): adjusted = unpremultiply(blurred) — the kernel
+//     result with its FEATHERED alpha (soft coverage into transparency).
+//   - SHARPEN (1): adjusted = base + amount·(base − blurred) (unsharp, 4 channels).
+//   - BLOOM (2): the second input is the blurred bright-pass GLOW (premultiplied,
+//     NOT un-premultiplied); add `intensity·glow` onto the premultiplied base and
+//     un-premultiply → the glow haloes outward into transparency. Mirror of
+//     `apply_bloom`'s additive step. `intensity` rides `amount`.
 //   - result = (Normal) ? adjusted : blend(base, adjusted) — Normal REPLACES the
 //     base so the feathered edge fades to transparent (not composited over it).
 //   - out = lerp(base, result, opacity) on ALL 4 channels (coverage is feathered).
@@ -908,14 +923,25 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let p = vec2<i32>(i32(x), i32(y));
     let acc = textureLoad(comb_base, p, 0); // straight base (materialise output)
-    let blurred = unpremultiply(textureLoad(comb_blurred, p, 0));
-    var adj = blurred;
-    if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask (4 channels)
-        adj = clamp(
-            acc + comb_g.amount * (acc - blurred),
-            vec4<f32>(0.0),
-            vec4<f32>(1.0),
+    var adj: vec4<f32>;
+    if comb_g.combine_mode == 2u { // COMBINE_BLOOM — additive premultiplied glow
+        let glow_pm = textureLoad(comb_blurred, p, 0); // blurred bright-pass (premul)
+        let base_pm = vec4<f32>(acc.rgb * acc.a, acc.a);
+        let bloomed_pm = vec4<f32>(
+            base_pm.rgb + comb_g.amount * glow_pm.rgb,
+            clamp(base_pm.a + comb_g.amount * glow_pm.a, 0.0, 1.0),
         );
+        adj = unpremultiply(bloomed_pm);
+    } else {
+        let blurred = unpremultiply(textureLoad(comb_blurred, p, 0));
+        adj = blurred;
+        if comb_g.combine_mode == 1u { // COMBINE_SHARPEN — unsharp mask (4 channels)
+            adj = clamp(
+                acc + comb_g.amount * (acc - blurred),
+                vec4<f32>(0.0),
+                vec4<f32>(1.0),
+            );
+        }
     }
     var result = adj;
     if comb_g.blend_mode != 0u { // not Normal → blend the adjusted over the base
@@ -995,4 +1021,37 @@ fn cs_chroma(@builtin(global_invocation_id) gid: vec3<u32>) {
     let tb = textureLoad(chroma_src, sb, 0);
     let a = textureLoad(chroma_src, p, 0).a; // coverage from the unshifted centre
     textureStore(chroma_dst, p, vec4<f32>(tr.r * tr.a, tg.g * tg.a, tb.b * tb.a, a));
+}
+
+// ── cs_bloom_bright — Bloom's bright-pass (the only Bloom-specific pass) ──────
+// Extract the bright EXCESS as a PREMULTIPLIED glow: a pixel whose display luma
+// is above `threshold` (softened by the `falloff` knee) contributes `color·α·w`
+// with coverage `α·w`. Transparent texels → 0 (premultiplied), so the glow that
+// the separable blur then spreads carries coverage and haloes outward past the
+// source into transparency. Mirror of `apply_bloom`'s bright-pass. The blurred
+// glow is consumed by `cs_combine`'s COMBINE_BLOOM (additive) step — the blur
+// runs with `premul_read = 0` (this output is already premultiplied).
+struct BloomGlobals {
+    width: u32,
+    height: u32,
+    threshold: f32,
+    falloff: f32,
+}
+@group(0) @binding(24) var<uniform> bloom_g: BloomGlobals;
+@group(0) @binding(25) var bloom_base: texture_2d<f32>;
+@group(0) @binding(26) var bloom_glow: texture_storage_2d<rgba32float, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn cs_bloom_bright(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if x >= bloom_g.width || y >= bloom_g.height {
+        return;
+    }
+    let p = vec2<i32>(i32(x), i32(y));
+    let base = textureLoad(bloom_base, p, 0); // straight linear RGBA
+    let knee = max(bloom_g.falloff, 1e-3);
+    let w_bright = smoothstep(bloom_g.threshold, bloom_g.threshold + knee, display_luma(base.rgb));
+    let k = clamp(base.a, 0.0, 1.0) * w_bright;
+    textureStore(bloom_glow, p, vec4<f32>(base.rgb * k, k));
 }

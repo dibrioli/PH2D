@@ -9,16 +9,24 @@
 //! external data, det-mode-portable): the same physics that makes real pigments
 //! mix subtractively.
 //!
-//! 1. **Reconstruct a reflectance spectrum** from the linear-sRGB colour. A
-//!    `3 × NB` integration matrix `M` (normalised Gaussian channel responses)
-//!    maps a reflectance curve → RGB; its Moore–Penrose **pseudo-inverse** `M⁺`
-//!    maps RGB → the minimum-norm reflectance that integrates back EXACTLY
-//!    (`M · M⁺ = I`), so a colour mixed with itself is unchanged.
-//! 2. **Mix two spectra by the WEIGHTED GEOMETRIC MEAN** `R(λ) = Ra(λ)^(1−t) ·
-//!    Rb(λ)^t` — the subtractive operator (each pigment *absorbs*, so reflectances
-//!    multiply). This is what turns blue (reflects short λ) + yellow (reflects
-//!    long λ) into green (both pass the middle).
-//! 3. **Integrate back to RGB** with `M`.
+//! 1. **Reconstruct a reflectance spectrum** from the linear-sRGB colour, additive
+//!    over a broad Gaussian channel basis `w` (reconstruction), then **integrate
+//!    back** through a separate, SHARPER response `m` (integration). Decoupling the
+//!    two roles is deliberate: a broad reconstruction keeps "blue" reflecting into
+//!    the green band (so the mix yields green, not mud), while a sharp integration
+//!    stops that same green-band energy from bleeding into the *blue output channel*
+//!    (the artefact that turned the secondary into a pale teal). The per-colour
+//!    round-trip error is re-anchored in [`mix_prepared`], so endpoints + self-mix
+//!    stay EXACT despite the leaky basis.
+//! 2. **Mix two spectra by KUBELKA–MUNK** — the textbook model for opaque pigment
+//!    mixing (what spectral.js and measured-pigment engines use). Each band's
+//!    reflectance `R` maps to absorption/scattering `K/S = (1−R)²/2R`; the `K/S`
+//!    values blend LINEARLY by concentration `t`, then invert back to reflectance
+//!    `R = 1 + K/S − √((K/S)² + 2·K/S)`. This is the physics that turns blue
+//!    (reflects short λ) + yellow (reflects long λ) into a saturated green — a
+//!    truer pigment green than the geometric-mean (transparent-glaze) operator it
+//!    replaced.
+//! 3. **Integrate back to RGB** with `m`.
 //!
 //! Endpoints are kept EXACT (`t=0 → a`, `t=1 → b`) by blending the spectral mix
 //! with the plain linear lerp by `4·t·(1−t)` (0 at the ends, 1 at 50/50) — the
@@ -40,28 +48,33 @@ use std::sync::LazyLock;
 /// secondaries; small enough that the per-pixel cost stays modest.
 const NB: usize = 24;
 
-/// Per-channel Gaussian response centres (band index) + width. The R/G/B sensors
-/// peak at long/mid/short wavelengths and OVERLAP (the overlap in the green band
-/// is what lets blue and yellow both reflect there → green on mixing).
-const CENTERS: [f32; 3] = [19.0, 12.0, 4.0]; // R, G, B (band 0 = short λ)
-/// Per-channel response widths — ASYMMETRIC on purpose: a BROAD blue (so "blue"
-/// reflects into the green band → green survives the mix) but a NARROW green/red
-/// (so "yellow" absorbs blue hard → blue is suppressed). Symmetric widths give a
-/// teal (blue ≈ green); this tips it to a clean green.
-const SIGMAS: [f32; 3] = [5.0, 3.4, 7.0];
+/// Per-channel Gaussian response centres (band index). R/G/B peak at
+/// long/mid/short wavelengths and OVERLAP (the green-band overlap is what lets
+/// blue and yellow both reflect there → green on mixing).
+const CENTERS: [f32; 3] = [20.0, 12.0, 3.0]; // R, G, B (band 0 = short λ)
+/// **Reconstruction** widths (basis `w`). BROAD — especially blue (7.5) — so
+/// "blue" reflects into the green band and green survives the subtractive mix.
+const SIGMAS_RECON: [f32; 3] = [5.0, 3.0, 7.5];
+/// **Integration** widths (matrix `m`), SHARPER + decoupled from reconstruction.
+/// A narrow blue integration stops the strong green-band reflectance of a mix
+/// from bleeding into the blue OUTPUT channel — that bleed was what desaturated
+/// the secondary into a pale teal (b≈128). Sharpening it drops residual blue to
+/// ~55–60 → a clean, saturated green. Endpoints stay exact via the per-colour
+/// round-trip re-anchor in [`mix_prepared`], so the decoupling costs no fidelity.
+const SIGMAS_INTEG: [f32; 3] = [3.5, 2.6, 3.2];
 
-/// Reflectances are clamped to `[REFL_FLOOR, 1]` before the geometric mean (a
-/// zero would annihilate a whole band and `0^0` is undefined).
+/// Reflectances are clamped to `[REFL_FLOOR, 1]` before the Kubelka–Munk map (a
+/// zero band would send `K/S → ∞`).
 const REFL_FLOOR: f32 = 1.0e-4;
 
 struct SpectralBasis {
-    /// `w[c][i]` — the raw (peak-1) channel responses, used as the reflectance
-    /// BASIS: a pigment of colour `rgb` reconstructs to `Σ_c rgb[c]·w[c]`. Broad &
-    /// overlapping, so "blue" keeps green content (the overlap is what makes the
-    /// subtractive mix yield green rather than mud).
+    /// `w[c][i]` — the raw (peak-1) RECONSTRUCTION responses: a pigment of colour
+    /// `rgb` reconstructs to `Σ_c rgb[c]·w[c]`. Broad & overlapping, so "blue"
+    /// keeps green content (the overlap is what makes the mix yield green not mud).
     w: [[f32; NB]; 3],
-    /// `m[c][i]` — the integration matrix (each `w[c]` normalised to sum 1, so a
-    /// flat unit reflectance integrates to white).
+    /// `m[c][i]` — the INTEGRATION matrix (sharper Gaussians on `SIGMAS_INTEG`,
+    /// each normalised to sum 1 so a flat unit reflectance integrates to white).
+    /// Decoupled from `w` to keep output channels clean (no green→blue bleed).
     m: [[f32; NB]; 3],
 }
 
@@ -69,23 +82,42 @@ static BASIS: LazyLock<SpectralBasis> = LazyLock::new(|| {
     let mut w = [[0.0f32; NB]; 3];
     let mut m = [[0.0f32; NB]; 3];
     for c in 0..3 {
-        let mut sum = 0.0f32;
         for (i, wi) in w[c].iter_mut().enumerate() {
-            let d = (i as f32 - CENTERS[c]) / SIGMAS[c];
+            let d = (i as f32 - CENTERS[c]) / SIGMAS_RECON[c];
             *wi = (-d * d).exp();
-            sum += *wi;
+        }
+        let mut sum = 0.0f32;
+        let mut mw = [0.0f32; NB];
+        for (i, mwi) in mw.iter_mut().enumerate() {
+            let d = (i as f32 - CENTERS[c]) / SIGMAS_INTEG[c];
+            *mwi = (-d * d).exp();
+            sum += *mwi;
         }
         for (i, mi) in m[c].iter_mut().enumerate() {
-            *mi = w[c][i] / sum;
+            *mi = mw[i] / sum;
         }
     }
     SpectralBasis { w, m }
 });
 
-/// Linear-sRGB → reflectance spectrum (additive over the broad channel basis),
-/// clamped to `[REFL_FLOOR, 1]` for the geometric mean. NOT round-trip exact — the
-/// reconstruction is deliberately broad/leaky so the spectral mix gives vivid
-/// secondaries; [`spectral_mix`] re-anchors the round-trip exactly per colour so a
+/// Kubelka–Munk forward map: reflectance → absorption/scattering ratio `K/S`.
+#[inline]
+fn refl_to_ks(r: f32) -> f32 {
+    let r = r.clamp(REFL_FLOOR, 1.0);
+    (1.0 - r) * (1.0 - r) / (2.0 * r)
+}
+
+/// Kubelka–Munk inverse map: `K/S` → reflectance.
+#[inline]
+fn ks_to_refl(k: f32) -> f32 {
+    let k = k.max(0.0);
+    (1.0 + k - (k * k + 2.0 * k).sqrt()).clamp(0.0, 1.0)
+}
+
+/// Linear-sRGB → reflectance spectrum (additive over the broad reconstruction
+/// basis `w`), clamped to `[REFL_FLOOR, 1]`. NOT round-trip exact — the
+/// reconstruction is deliberately broad/leaky so the K–M mix gives saturated
+/// secondaries; [`mix_prepared`] re-anchors the round-trip exactly per colour so a
 /// self-mix is still the identity.
 fn to_reflectance(rgb: [f32; 3]) -> [f32; NB] {
     let b = &*BASIS;
@@ -112,26 +144,27 @@ fn sub3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
-// ── precomputed RGB → (ln reflectance, round-trip) LUT — the per-pixel fast path ──
+// ── precomputed RGB → (reflectance, round-trip) LUT — the per-pixel fast path ──
 //
-// The per-pixel cost is the geometric mean `Ra(λ)^(1−t)·Rb(λ)^t` over NB bands.
-// Storing ln(reflectance) turns it into `exp((1−t)·lnRa + t·lnRb)` — ONE `exp`/band
-// instead of TWO `pow`/band — and a trilinear LUT replaces the per-pixel
-// reconstruction + per-band `ln` (the backdrop varies per pixel; the brush is
-// prepared ONCE per stamp). Built once at init (~5k tiny solves).
+// The per-pixel cost is reconstructing the BACKDROP's reflectance spectrum (the
+// backdrop varies per pixel; the brush is prepared ONCE per stamp). A trilinear
+// LUT over a 17³ RGB grid replaces that reconstruction. We store the reflectance
+// itself (bounded `[REFL_FLOOR,1]`, smooth under interpolation — unlike `K/S`,
+// which spikes toward ∞ on dark bands and interpolates badly) plus the leaky
+// round-trip; the K–M map is applied per band at mix time. Built once at init.
 const LUT_N: usize = 17;
 
 struct PigmentLut {
-    /// `ln(reflectance)` per band, and `integrate(reflectance)` (the leaky
-    /// round-trip), at each `LUT_N³` RGB grid point (`idx=(bi*N+gi)*N+ri`).
-    ln_refl: Vec<[f32; NB]>,
+    /// Reflectance per band, and `integrate(reflectance)` (the leaky round-trip),
+    /// at each `LUT_N³` RGB grid point (`idx=(bi*N+gi)*N+ri`).
+    refl: Vec<[f32; NB]>,
     roundtrip: Vec<[f32; 3]>,
 }
 
 static LUT: LazyLock<PigmentLut> = LazyLock::new(|| {
     let n = LUT_N;
     let denom = (n - 1) as f32;
-    let mut ln_refl = vec![[0.0f32; NB]; n * n * n];
+    let mut refl_grid = vec![[0.0f32; NB]; n * n * n];
     let mut roundtrip = vec![[0.0f32; 3]; n * n * n];
     for bi in 0..n {
         for gi in 0..n {
@@ -139,17 +172,15 @@ static LUT: LazyLock<PigmentLut> = LazyLock::new(|| {
                 let rgb = [ri as f32 / denom, gi as f32 / denom, bi as f32 / denom];
                 let refl = to_reflectance(rgb);
                 let idx = (bi * n + gi) * n + ri;
-                for (k, &r) in refl.iter().enumerate() {
-                    ln_refl[idx][k] = r.ln();
-                }
+                refl_grid[idx] = refl;
                 roundtrip[idx] = reflectance_to_rgb(&refl);
             }
         }
     }
-    PigmentLut { ln_refl, roundtrip }
+    PigmentLut { refl: refl_grid, roundtrip }
 });
 
-/// Trilinear sample of `(ln reflectance, round-trip)` for a linear-sRGB `[0,1]³`.
+/// Trilinear sample of `(reflectance, round-trip)` for a linear-sRGB `[0,1]³`.
 fn lut_sample(rgb: [f32; 3]) -> ([f32; NB], [f32; 3]) {
     let n = LUT_N;
     let denom = (n - 1) as f32;
@@ -162,7 +193,7 @@ fn lut_sample(rgb: [f32; 3]) -> ([f32; NB], [f32; 3]) {
         i0[c] = lo;
         fr[c] = f - lo as f32;
     }
-    let mut ln = [0.0f32; NB];
+    let mut refl = [0.0f32; NB];
     let mut rt = [0.0f32; 3];
     for corner in 0..8usize {
         let (dr, dg, db) = (corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
@@ -173,26 +204,29 @@ fn lut_sample(rgb: [f32; 3]) -> ([f32; NB], [f32; 3]) {
             continue;
         }
         let idx = ((i0[2] + db) * n + (i0[1] + dg)) * n + (i0[0] + dr);
-        let lr = &lut.ln_refl[idx];
-        for (k, l) in ln.iter_mut().enumerate() {
-            *l += lr[k] * weight;
+        let lr = &lut.refl[idx];
+        for (k, r) in refl.iter_mut().enumerate() {
+            *r += lr[k] * weight;
         }
         let r = lut.roundtrip[idx];
         rt[0] += r[0] * weight;
         rt[1] += r[1] * weight;
         rt[2] += r[2] * weight;
     }
-    (ln, rt)
+    (refl, rt)
 }
 
 // ──────────────────────────── public API ────────────────────────────────
 
-/// A brush colour with its `ln(reflectance)` + round-trip error precomputed —
-/// built ONCE per stamp (the brush colour is constant across the footprint), so
-/// the per-pixel [`mix_prepared`] skips the brush-side reconstruction.
+/// A brush colour with its per-band `K/S` + round-trip error precomputed — built
+/// ONCE per stamp (the brush colour is constant across the footprint), so the
+/// per-pixel [`mix_prepared`] only reconstructs the BACKDROP and does the linear
+/// `K/S` blend. The brush side is reconstructed EXACTLY (not via the LUT) since
+/// it is amortised across the whole footprint.
 pub struct PreparedPigment {
     color: [f32; 3],
-    ln_refl: [f32; NB],
+    /// Kubelka–Munk `K/S` per band for the brush reflectance.
+    ks: [f32; NB],
     /// `color − integrate(reflectance)` — the re-anchor correction term.
     err: [f32; 3],
 }
@@ -200,20 +234,26 @@ pub struct PreparedPigment {
 /// Precompute a brush colour for repeated [`mix_prepared`] calls over a stamp.
 #[must_use]
 pub fn prepare_pigment(color: [f32; 3]) -> PreparedPigment {
-    let (ln_refl, rt) = lut_sample(color);
+    let refl = to_reflectance(color);
+    let rt = reflectance_to_rgb(&refl);
+    let mut ks = [0.0f32; NB];
+    for (i, k) in ks.iter_mut().enumerate() {
+        *k = refl_to_ks(refl[i]);
+    }
     PreparedPigment {
         color,
-        ln_refl,
+        ks,
         err: sub3(color, rt),
     }
 }
 
-/// Endpoint-exact subtractive mix of a backdrop `a` toward the prepared `brush` at
-/// ratio `t`. The geometric mean runs in log space (one `exp`/band) with the
-/// backdrop's `ln(reflectance)` from the LUT; the round-trip is re-anchored
-/// per-colour (self-mix is the EXACT identity — the LUT errors cancel). Skips the
-/// spectral solve where the endpoint blend weight `4t(1−t)` is ~0 (stamp edges /
-/// near-opaque), where the linear lerp is the answer anyway.
+/// Endpoint-exact subtractive (Kubelka–Munk) mix of a backdrop `a` toward the
+/// prepared `brush` at concentration `t`. Per band: blend the two `K/S` values
+/// linearly and invert back to reflectance; the round-trip is re-anchored
+/// per-colour so self-mix + endpoints are the EXACT identity (the leaky-basis
+/// errors cancel). Skips the spectral solve where the endpoint blend weight
+/// `4t(1−t)` is ~0 (stamp edges / near-opaque), where the linear lerp is the
+/// answer anyway.
 #[must_use]
 pub fn mix_prepared(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
     let t = t.clamp(0.0, 1.0);
@@ -227,10 +267,11 @@ pub fn mix_prepared(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
     if w < 0.02 {
         return lin;
     }
-    let (ln_a, rt_a) = lut_sample(a);
+    let (refl_a, rt_a) = lut_sample(a);
     let mut rm = [0.0f32; NB];
     for (i, r) in rm.iter_mut().enumerate() {
-        *r = ((1.0 - t) * ln_a[i] + t * brush.ln_refl[i]).exp();
+        let ks_mix = (1.0 - t) * refl_to_ks(refl_a[i]) + t * brush.ks[i];
+        *r = ks_to_refl(ks_mix);
     }
     let mixed = reflectance_to_rgb(&rm);
     let ea = sub3(a, rt_a);
@@ -359,9 +400,10 @@ mod tests {
             mix[1] > mix[0] && mix[1] > mix[2],
             "green is the dominant channel: {mix:?}"
         );
-        assert!(mix[1] > 0.3, "green is vivid, not dark: {mix:?}");
+        assert!(mix[1] > 0.25, "green is a real mid green, not dark: {mix:?}");
         // Clearly GREEN, not a teal (green over blue) and not grey (green over red).
-        assert!(mix[1] > mix[2] + 0.05, "green leads blue (not teal): {mix:?}");
+        // Kubelka–Munk + decoupled basis suppresses residual blue HARD (no teal).
+        assert!(mix[1] > mix[2] + 0.15, "green clearly leads blue (not teal): {mix:?}");
         assert!(
             mix[1] - mix[0].max(mix[2]) > 0.05,
             "green clearly dominates (vs the linear grey midpoint 0.5,0.5,0.5): {mix:?}"

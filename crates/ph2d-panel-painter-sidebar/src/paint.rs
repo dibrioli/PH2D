@@ -318,11 +318,12 @@ fn paint_color_row(
     y + ROW_H_PX + row_pad
 }
 
-/// Pigment + Accumulate checkboxes (W5) — two orthogonal mixing toggles, side by
-/// side. **Pigment** = subtractive Kubelka-Munk pigment vs Linear OKLab lerp.
-/// **Accumulate** = build-up (dabs stack unbounded) vs wash (opacity-capped). The
-/// checked state mirrors the brush model (snapshot); a click emits `Toggled`,
-/// routed to `handle_panel_event` → the matching brush-flag flip.
+/// Pigment / Accumulate / Grain checkboxes (W5) — three orthogonal brush toggles,
+/// one per row (stacked, full width). **Pigment** = subtractive Kubelka-Munk vs
+/// Linear OKLab lerp. **Accumulate** = build-up (dabs stack unbounded) vs wash
+/// (opacity-capped). **Grain** = procedural paper texture on/off. Each checked
+/// state mirrors the brush model (snapshot); a click emits `Toggled`, routed to
+/// `handle_panel_event` → the matching brush-flag flip.
 fn paint_pigment_row(
     ctx: &mut PaintCtx,
     rect: Rect,
@@ -333,10 +334,10 @@ fn paint_pigment_row(
 ) -> f32 {
     let row_x = rect.x + PANEL_HEAD_PAD;
     let row_w = rect.w - PANEL_HEAD_PAD * 2.0;
-    let third = row_w / 3.0;
-    let pig_rect = Rect::new(row_x, y, third, ROW_H_PX);
-    let acc_rect = Rect::new(row_x + third, y, third, ROW_H_PX);
-    let grn_rect = Rect::new(row_x + third * 2.0, y, third, ROW_H_PX);
+    // One checkbox per row (3 stacked, full width) — labels breathe.
+    let pig_rect = Rect::new(row_x, y, row_w, ROW_H_PX);
+    let acc_rect = Rect::new(row_x, y + ROW_H_PX, row_w, ROW_H_PX);
+    let grn_rect = Rect::new(row_x, y + ROW_H_PX * 2.0, row_w, ROW_H_PX);
 
     let pig_state = ctx
         .host
@@ -390,7 +391,7 @@ fn paint_pigment_row(
     hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pig_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, acc_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, grn_rect);
-    y + ROW_H_PX + row_pad
+    y + ROW_H_PX * 3.0 + row_pad
 }
 
 /// Header dock-toggle ("Layers") — swaps the shared dock slot to the layers

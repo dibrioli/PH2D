@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-brush-along-path"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Satellite bridge crate (NOT a node — the `ph2d-node-` prefix would make
+# node-sync auto-discover it and codegen a missing `::register`, breaking
+# registry-init; see memory `feedback_node_sync_glob_prefix_gotcha`). It only
+# READS the two frozen contracts it bridges — `ph2d_vector_doc::VectorNetwork`
+# (the path) and `ph2d_painter_brush::Stamp` (the brush dab) — and modifies
+# neither crate. The W8 brush half of pattern-along-path: stamp a brush along a
+# vector path. Reusable by a future raster graph-node OR a Painter stroke op.
+[lib]
+
+[dependencies]
+# The path geometry to walk (frozen: VectorOp≤16 / Vertex / Segment, ADR-0056..68).
+ph2d-vector-doc = { path = "../ph2d-vector-doc" }
+# The brush dab + its CPU rasterizer (frozen: Stamp = 96B align(16), ADR-0044 §2.3).
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# glam::Vec2 — the geometry both contracts carry.
+glam = "0.30"

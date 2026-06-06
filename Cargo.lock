@@ -4536,6 +4536,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-brush-along-path"
+version = "0.0.0"
+dependencies = [
+ "glam 0.30.10",
+ "ph2d-painter-brush",
+ "ph2d-vector-doc",
+]
+
+[[package]]
 name = "ph2d-brush-traits"
 version = "0.0.0"
 dependencies = [

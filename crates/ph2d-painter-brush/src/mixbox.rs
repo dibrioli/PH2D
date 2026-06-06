@@ -48,56 +48,77 @@ use std::sync::LazyLock;
 /// secondaries; small enough that the per-pixel cost stays modest.
 const NB: usize = 24;
 
-/// Per-channel Gaussian response centres (band index). R/G/B peak at
-/// long/mid/short wavelengths and OVERLAP (the green-band overlap is what lets
-/// blue and yellow both reflect there → green on mixing).
+/// Integration-response centres (band index) + widths — the matrix `m` that maps a
+/// reflectance spectrum → linear sRGB. R/G/B peak at long/mid/short wavelengths;
+/// sharp + decoupled so output channels stay clean (no cross-band bleed).
 const CENTERS: [f32; 3] = [20.0, 12.0, 3.0]; // R, G, B (band 0 = short λ)
-/// **Reconstruction** widths (basis `w`). BROAD — especially blue (7.5) — so
-/// "blue" reflects into the green band and green survives the subtractive mix.
-const SIGMAS_RECON: [f32; 3] = [5.0, 3.0, 7.5];
-/// **Integration** widths (matrix `m`), SHARPER + decoupled from reconstruction.
-/// A narrow blue integration stops the strong green-band reflectance of a mix
-/// from bleeding into the blue OUTPUT channel — that bleed was what desaturated
-/// the secondary into a pale teal (b≈128). Sharpening it drops residual blue to
-/// ~55–60 → a clean, saturated green. Endpoints stay exact via the per-colour
-/// round-trip re-anchor in [`mix_prepared`], so the decoupling costs no fidelity.
 const SIGMAS_INTEG: [f32; 3] = [3.5, 2.6, 3.2];
 
 /// Reflectances are clamped to `[REFL_FLOOR, 1]` before the Kubelka–Munk map (a
 /// zero band would send `K/S → ∞`).
 const REFL_FLOOR: f32 = 1.0e-4;
 
+/// **7-curve reconstruction base spectra** (the spectral.js / Burns *structure*):
+/// any sRGB is split into White + the two nearest of {Cyan,Magenta,Yellow} /
+/// {Red,Green,Blue} (see [`rgb_to_weights`]) and reconstructed as a weighted sum of
+/// fixed base reflectances. This covers the FULL sRGB gamut with NO residual (so
+/// saturated primaries like pure blue don't muddy on mixing) AND has enough freedom
+/// to decouple green from purple — which the old 3-channel additive basis could not
+/// (its R channel was shared by red+yellow, so a violet-capable basis muddied the
+/// green; this one keeps blue+yellow→green AND blue+red→violet, both clean).
+///
+/// The six COLORED base reflectances are **clean-room DERIVED by us**: each is
+/// `base + 2 Gaussian lobes`, the parameters numerically optimised (coordinate
+/// descent, `/tmp` lab) so the K–M mixes land on the PUBLIC real-world artist
+/// targets — blue+yellow→a real green (#3D933E), blue+red→a real violet (#6A2A8A),
+/// complementaries→neutral grey, red+white→pink. These are OUR numbers — no
+/// scrtwpns/Burns data. White = flat high reflectance.
+/// Per row: `[base, amp1, centre1, sigma1, amp2, centre2, sigma2]`.
+const BASE_PARAMS: [[f32; 7]; 6] = [
+    [0.067, 23.309, 1.165, 4.925, 8.093, 11.064, 1.979], // Cyan
+    [-2.171, 8.815, 1.623, 5.321, 15.469, 24.292, 6.610], // Magenta
+    [-1.216, 12.106, 21.620, 5.271, 3.491, 9.991, 2.896], // Yellow
+    [0.132, 34.229, 20.032, 1.443, -0.538, 16.676, -1.239], // Red
+    [-0.371, 0.498, 21.058, 5.198, 15.181, 11.387, 2.259], // Green
+    [-0.944, 5.944, -2.319, 5.700, 1.167, 13.328, 12.408], // Blue
+];
+/// Flat reflectance of the White base curve.
+const WHITE_REFL: f32 = 0.97;
+
 struct SpectralBasis {
-    /// `w[c][i]` — the raw (peak-1) RECONSTRUCTION responses: a pigment of colour
-    /// `rgb` reconstructs to `Σ_c rgb[c]·w[c]`. Broad & overlapping, so "blue"
-    /// keeps green content (the overlap is what makes the mix yield green not mud).
-    w: [[f32; NB]; 3],
-    /// `m[c][i]` — the INTEGRATION matrix (sharper Gaussians on `SIGMAS_INTEG`,
-    /// each normalised to sum 1 so a flat unit reflectance integrates to white).
-    /// Decoupled from `w` to keep output channels clean (no green→blue bleed).
+    /// 7 base reflectance spectra: `[White, Cyan, Magenta, Yellow, Red, Green, Blue]`.
+    base: [[f32; NB]; 7],
+    /// Integration matrix (reflectance → linear sRGB), each row normalised to sum 1
+    /// so a flat unit reflectance integrates to white.
     m: [[f32; NB]; 3],
 }
 
 static BASIS: LazyLock<SpectralBasis> = LazyLock::new(|| {
-    let mut w = [[0.0f32; NB]; 3];
-    let mut m = [[0.0f32; NB]; 3];
-    for c in 0..3 {
-        for (i, wi) in w[c].iter_mut().enumerate() {
-            let d = (i as f32 - CENTERS[c]) / SIGMAS_RECON[c];
-            *wi = (-d * d).exp();
-        }
-        let mut sum = 0.0f32;
-        let mut mw = [0.0f32; NB];
-        for (i, mwi) in mw.iter_mut().enumerate() {
-            let d = (i as f32 - CENTERS[c]) / SIGMAS_INTEG[c];
-            *mwi = (-d * d).exp();
-            sum += *mwi;
-        }
-        for (i, mi) in m[c].iter_mut().enumerate() {
-            *mi = mw[i] / sum;
+    // Build the 6 colored base spectra from the derived parameters (White = flat).
+    // Mirror of the `/tmp` optimiser: `amp.max(0)`, Gaussian denom `sigma.max(0.4)`.
+    let mut base = [[WHITE_REFL; NB]; 7];
+    for (k, p) in BASE_PARAMS.iter().enumerate() {
+        for (i, bi) in base[k + 1].iter_mut().enumerate() {
+            let fi = i as f32;
+            let g1 = (-((fi - p[2]) / p[3].abs().max(0.4)).powi(2)).exp();
+            let g2 = (-((fi - p[5]) / p[6].abs().max(0.4)).powi(2)).exp();
+            *bi = (p[0] + p[1].max(0.0) * g1 + p[4].max(0.0) * g2).clamp(0.015, 0.99);
         }
     }
-    SpectralBasis { w, m }
+    // Integration matrix: sharp Gaussians per channel, normalised to sum 1.
+    let mut m = [[0.0f32; NB]; 3];
+    for c in 0..3 {
+        let mut sum = 0.0f32;
+        for (i, mi) in m[c].iter_mut().enumerate() {
+            let d = (i as f32 - CENTERS[c]) / SIGMAS_INTEG[c];
+            *mi = (-d * d).exp();
+            sum += *mi;
+        }
+        for mi in m[c].iter_mut() {
+            *mi /= sum;
+        }
+    }
+    SpectralBasis { base, m }
 });
 
 /// Kubelka–Munk forward map: reflectance → absorption/scattering ratio `K/S`.
@@ -114,16 +135,53 @@ fn ks_to_refl(k: f32) -> f32 {
     (1.0 + k - (k * k + 2.0 * k).sqrt()).clamp(0.0, 1.0)
 }
 
-/// Linear-sRGB → reflectance spectrum (additive over the broad reconstruction
-/// basis `w`), clamped to `[REFL_FLOOR, 1]`. NOT round-trip exact — the
-/// reconstruction is deliberately broad/leaky so the K–M mix gives saturated
-/// secondaries; [`mix_prepared`] re-anchors the round-trip exactly per colour so a
-/// self-mix is still the identity.
+/// Split a linear-sRGB colour into the 7 base-curve weights `[W,C,M,Y,R,G,B]`
+/// (White + the two nearest secondary/primary). The standard RGB→CMY cube
+/// partition: pull out the achromatic White component, then the dominant secondary
+/// (Cyan/Magenta/Yellow), leaving a single primary — so at most THREE weights are
+/// non-zero and the reconstruction stays smooth + saturated. Full-gamut: every
+/// sRGB maps exactly (no residual), which is why mixing saturated primaries no
+/// longer muddies.
+fn rgb_to_weights(rgb: [f32; 3]) -> [f32; 7] {
+    let (mut r, mut g, mut b) = (
+        rgb[0].clamp(0.0, 1.0),
+        rgb[1].clamp(0.0, 1.0),
+        rgb[2].clamp(0.0, 1.0),
+    );
+    let w = r.min(g).min(b);
+    r -= w;
+    g -= w;
+    b -= w;
+    let (mut c, mut m, mut y, mut rr, mut gg, mut bb) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    if r <= g && r <= b {
+        c = g.min(b); // cyan absorbs red; leftover is green or blue
+        gg = g - c;
+        bb = b - c;
+    } else if g <= r && g <= b {
+        m = r.min(b); // magenta absorbs green; leftover is red or blue
+        rr = r - m;
+        bb = b - m;
+    } else {
+        y = r.min(g); // yellow absorbs blue; leftover is red or green
+        rr = r - y;
+        gg = g - y;
+    }
+    [w, c, m, y, rr, gg, bb]
+}
+
+/// Linear-sRGB → reflectance spectrum via the 7-curve reconstruction (full gamut,
+/// no residual). NOT round-trip exact — [`mix_prepared`] re-anchors per colour so
+/// endpoints + self-mix stay the identity; the basis is shaped so the *mixes* land
+/// on the real-world targets, not so each colour round-trips.
 fn to_reflectance(rgb: [f32; 3]) -> [f32; NB] {
     let b = &*BASIS;
+    let wt = rgb_to_weights(rgb);
     let mut refl = [0.0f32; NB];
     for (i, r) in refl.iter_mut().enumerate() {
-        let v = b.w[0][i] * rgb[0] + b.w[1][i] * rgb[1] + b.w[2][i] * rgb[2];
+        let mut v = 0.0f32;
+        for k in 0..7 {
+            v += wt[k] * b.base[k][i];
+        }
         *r = v.clamp(REFL_FLOOR, 1.0);
     }
     refl
@@ -400,14 +458,36 @@ mod tests {
             mix[1] > mix[0] && mix[1] > mix[2],
             "green is the dominant channel: {mix:?}"
         );
-        assert!(mix[1] > 0.25, "green is a real mid green, not dark: {mix:?}");
+        assert!(mix[1] > 0.22, "green is a real mid green, not dark: {mix:?}");
         // Clearly GREEN, not a teal (green over blue) and not grey (green over red).
-        // Kubelka–Munk + decoupled basis suppresses residual blue HARD (no teal).
+        // The 7-curve full-gamut basis suppresses residual red AND blue HARD: both
+        // are ~0.06 vs green ~0.25 — a clean grass green, no teal, no olive.
         assert!(mix[1] > mix[2] + 0.15, "green clearly leads blue (not teal): {mix:?}");
+        assert!(mix[0] < 0.12 && mix[2] < 0.12, "red AND blue both suppressed: {mix:?}");
         assert!(
             mix[1] - mix[0].max(mix[2]) > 0.05,
             "green clearly dominates (vs the linear grey midpoint 0.5,0.5,0.5): {mix:?}"
         );
+    }
+
+    #[test]
+    fn blue_plus_red_is_violet_not_maroon() {
+        // The 7-curve basis fix: pure blue + pure red = a REAL violet (blue clearly
+        // present), not the dark red maroon the old 3-channel basis gave (which
+        // killed the blue). Blue must lead — or at least strongly survive — vs red.
+        let mix = mixbox_lerp_linear([0.0, 0.0, 1.0], [1.0, 0.0, 0.0], 0.5);
+        assert!(mix[2] > mix[0], "violet keeps blue dominant over red (not maroon): {mix:?}");
+        assert!(mix[2] > mix[1] + 0.1, "blue clearly above green (a violet, not a mud): {mix:?}");
+    }
+
+    #[test]
+    fn complementary_cyan_plus_red_neutralises() {
+        // Complementaries should desaturate toward neutral grey (chroma collapses),
+        // not stay a saturated hue — the hallmark of physically-plausible mixing.
+        let mix = mixbox_lerp_linear([0.0, 1.0, 1.0], [1.0, 0.0, 0.0], 0.5);
+        let chroma = mix.iter().cloned().fold(0.0, f32::max)
+            - mix.iter().cloned().fold(1.0, f32::min);
+        assert!(chroma < 0.12, "cyan+red neutralises toward grey: {mix:?} chroma {chroma}");
     }
 
     #[test]

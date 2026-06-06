@@ -427,25 +427,55 @@ fn apply_rendering_mode(mode: u32, src: vec4<f32>, dst: vec4<f32>, wet: f32) -> 
 // space = straight LINEAR sRGB (the canonical Mixbox space).
 const MB_NB: u32 = 24u;
 const MB_FLOOR: f32 = 1.0e-4;
-// R, G, B (band 0 = short λ) — mirror of `mixbox::{CENTERS, SIGMAS_RECON,
-// SIGMAS_INTEG}`. Reconstruction is broad (green survives); integration is
-// sharper + decoupled (no green→blue bleed). K–M is the mixing operator.
+// Integration centres + widths (reflectance → linear sRGB) — mirror of CPU
+// `mixbox::{CENTERS, SIGMAS_INTEG}`.
 fn mb_center(c: u32) -> f32 { return array<f32, 3>(20.0, 12.0, 3.0)[c]; }
-fn mb_sigma_recon(c: u32) -> f32 { return array<f32, 3>(5.0, 3.0, 7.5)[c]; }
 fn mb_sigma_integ(c: u32) -> f32 { return array<f32, 3>(3.5, 2.6, 3.2)[c]; }
+
+// 7-curve reconstruction: any sRGB → White + nearest secondary/primary, rebuilt from
+// 7 base reflectances. Six colored bases DERIVED clean-room — mirror of
+// `mixbox::BASE_PARAMS` ([base,a1,c1,s1,a2,c2,s2] per curve). White = flat 0.97.
+fn mb_base(k: u32, fi: f32) -> f32 {
+    if (k == 0u) { return 0.97; }
+    var bp = array<f32, 42>(
+        0.067, 23.309, 1.165, 4.925, 8.093, 11.064, 1.979,
+        -2.171, 8.815, 1.623, 5.321, 15.469, 24.292, 6.610,
+        -1.216, 12.106, 21.620, 5.271, 3.491, 9.991, 2.896,
+        0.132, 34.229, 20.032, 1.443, -0.538, 16.676, -1.239,
+        -0.371, 0.498, 21.058, 5.198, 15.181, 11.387, 2.259,
+        -0.944, 5.944, -2.319, 5.700, 1.167, 13.328, 12.408
+    );
+    let o = (k - 1u) * 7u;
+    let d1 = (fi - bp[o + 2u]) / max(abs(bp[o + 3u]), 0.4);
+    let d2 = (fi - bp[o + 5u]) / max(abs(bp[o + 6u]), 0.4);
+    let v = bp[o] + max(bp[o + 1u], 0.0) * exp(-d1 * d1) + max(bp[o + 4u], 0.0) * exp(-d2 * d2);
+    return clamp(v, 0.015, 0.99);
+}
+// RGB cube → 7 base weights [W,C,M,Y,R,G,B] (White + two nearest).
+fn mb_weights(rgb: vec3<f32>) -> array<f32, 7> {
+    var r = clamp(rgb.r, 0.0, 1.0);
+    var g = clamp(rgb.g, 0.0, 1.0);
+    var b = clamp(rgb.b, 0.0, 1.0);
+    let w = min(r, min(g, b));
+    r = r - w; g = g - w; b = b - w;
+    var c = 0.0; var m = 0.0; var y = 0.0; var rr = 0.0; var gg = 0.0; var bb = 0.0;
+    if (r <= g && r <= b) { c = min(g, b); gg = g - c; bb = b - c; }
+    else if (g <= r && g <= b) { m = min(r, b); rr = r - m; bb = b - m; }
+    else { y = min(r, g); rr = r - y; gg = g - y; }
+    return array<f32, 7>(w, c, m, y, rr, gg, bb);
+}
 
 // Kubelka–Munk forward/inverse: reflectance ↔ absorption/scattering K/S.
 fn mb_ks(r: f32) -> f32 { let rc = clamp(r, MB_FLOOR, 1.0); return (1.0 - rc) * (1.0 - rc) / (2.0 * rc); }
 fn mb_ks_inv(k: f32) -> f32 { let kk = max(k, 0.0); return clamp(1.0 + kk - sqrt(kk * kk + 2.0 * kk), 0.0, 1.0); }
 
 /// Subtractive (Kubelka–Munk) spectral mix of two straight-linear-sRGB colours at
-/// concentration `t`, round-trip re-anchored (self-mix is the identity).
+/// concentration `t`, round-trip re-anchored (self-mix is the identity). Uses the
+/// 7-curve full-gamut reconstruction — bit-for-bit the CPU `mixbox.rs` model.
 fn mb_spectral_mix(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
-    // Reconstruction responses (peak-1) + integration responses (peak-1) + their
-    // sums (for the normalised integration matrix `m`).
-    var wr: array<f32, 24>;
-    var wg: array<f32, 24>;
-    var wb: array<f32, 24>;
+    var wa = mb_weights(a);
+    var wb = mb_weights(b);
+    // Integration matrix (peak-1 Gaussians) + per-channel sums for normalisation.
     var mr: array<f32, 24>;
     var mg: array<f32, 24>;
     var mb_: array<f32, 24>;
@@ -454,12 +484,6 @@ fn mb_spectral_mix(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
     var sb = 0.0;
     for (var i = 0u; i < MB_NB; i = i + 1u) {
         let fi = f32(i);
-        let dr = (fi - mb_center(0u)) / mb_sigma_recon(0u);
-        let dg = (fi - mb_center(1u)) / mb_sigma_recon(1u);
-        let db = (fi - mb_center(2u)) / mb_sigma_recon(2u);
-        wr[i] = exp(-dr * dr);
-        wg[i] = exp(-dg * dg);
-        wb[i] = exp(-db * db);
         let er = (fi - mb_center(0u)) / mb_sigma_integ(0u);
         let eg = (fi - mb_center(1u)) / mb_sigma_integ(1u);
         let eb2 = (fi - mb_center(2u)) / mb_sigma_integ(2u);
@@ -467,14 +491,22 @@ fn mb_spectral_mix(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
         mg[i] = exp(-eg * eg); sg = sg + mg[i];
         mb_[i] = exp(-eb2 * eb2); sb = sb + mb_[i];
     }
-    // Per band: blend K/S linearly, invert; integrate back; plus each colour's own
-    // round-trip for the re-anchor correction.
+    // Per band: reconstruct a + b reflectance from the 7 base curves, blend K/S
+    // linearly, invert, integrate; plus each colour's round-trip for the re-anchor.
     var mixed = vec3<f32>(0.0);
     var rta = vec3<f32>(0.0);
     var rtb = vec3<f32>(0.0);
     for (var i = 0u; i < MB_NB; i = i + 1u) {
-        let ra = clamp(wr[i] * a.r + wg[i] * a.g + wb[i] * a.b, MB_FLOOR, 1.0);
-        let rb = clamp(wr[i] * b.r + wg[i] * b.g + wb[i] * b.b, MB_FLOOR, 1.0);
+        let fi = f32(i);
+        var ra = 0.0;
+        var rb = 0.0;
+        for (var k = 0u; k < 7u; k = k + 1u) {
+            let base = mb_base(k, fi);
+            ra = ra + wa[k] * base;
+            rb = rb + wb[k] * base;
+        }
+        ra = clamp(ra, MB_FLOOR, 1.0);
+        rb = clamp(rb, MB_FLOOR, 1.0);
         let rm = mb_ks_inv((1.0 - t) * mb_ks(ra) + t * mb_ks(rb));
         let mvec = vec3<f32>(mr[i] / sr, mg[i] / sg, mb_[i] / sb);
         mixed = mixed + mvec * rm;

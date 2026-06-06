@@ -32,6 +32,17 @@ ring-outlines (LITERAL-PX-OK temporário em `paint_adjust.rs`) + split `paint_ad
 OVERAGE) + `event.rs::apply_event_impl` (299) em sibling files. **Próximo:** Painter spatial GPU
 multipass infra (Coord, aceito) + Painter Noise/Halftone+Gaussian-ref (impl) + Vector W6 (quando liberar).
 
+### ATUALIZAÇÃO 2026-06-05 (d) — Contrato Region→procedural-fill LANDADO (Coord `d598f78`, ADR-0056-amend-3)
+- **Foundational mine fechado:** `StyleTable` agora resolve um `FillRef` pra fill PROCEDURAL (W6 shader
+  graph / W7 diffusion), não só sólido. Aditivo + desacoplado + version-safe: `ProceduralFill{kind,id,fallback}`
+  (doc guarda só id opaco da registry render-side), `StyleTable.procedural` `#[serde(default)]` na mesma
+  namespace de `FillRef`, `resolve_fill()` procedural-first, cap de segurança `max_style_procedural`. Sem
+  tocar `Region` (cap 5). Gate pina `ProceduralFillKind≤4`. ADR-0056-amendment-3. 75 lib + 13 gate verdes.
+- **Impl Vector landou W7 step 2 em paralelo** (`9a73665`: MeshGradient CPU eval amostra o ColorField) —
+  exatamente o que desbloqueei. Impl Painter landou mais W4 (`0ae1748`).
+- **PRÓXIMA thread Coord:** renderer embed — resolver `ProceduralFill.id` → injetar `fill_main` (W6) /
+  amostrar `ColorField` (W7) no fragment (`vector_graph_bridge`/`ph2d-vector`) = o **smoke live do Enio**.
+
 ### ATUALIZAÇÃO 2026-06-05 (c) — Vector W7 step 1 (impl `903d5ce`) + golden/smoke (Coord `e058b84`)
 - **Vector impl arrancou W7 (diffusion curve) prototype-first** (Opção A do meu handoff): `poisson_cpu.rs`
   multigrid V-cycle CPU + `diffusion_curve.rs` (Orzan→OKLab) em `ph2d-vector-fill`. 17 tests (ground-truth

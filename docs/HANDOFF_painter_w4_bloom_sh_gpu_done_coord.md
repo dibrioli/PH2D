@@ -67,12 +67,25 @@ me avisa qual rota escolheste (decisão tua — é a tua API).
 **`feathers_coverage()`**: nada a fazer no GPU — o render já espelha por construção
 (Bloom feathera no `cs_combine`; S/H preserva base.a no `cs_combine_sh`).
 
-## §4 — POSSE / fora de escopo nesta fatia
+## §3.5 — Noise + Halftone GPU (commit 84f559e) — TAMBÉM PRONTOS
+Não são spatial (sem vizinhança) mas lêem a coord ABSOLUTA (gx,gy) → vão no caminho
+per-pixel `cs_flat` (o `apply_adjustment` agora recebe `coord`, threaded em
+cs_flat/cs_grouped/cs_segment; kinds coord-independentes ignoram). Sem pipeline novo.
+- **`ADJ_NOISE=9`** `[amount, kind(0=Gaussian,1=Uniform), monochromatic(0/1)]`. O hash
+  (`hash_u32`/`rand01`/`noise_value`) é **bit-idêntico** CPU↔GPU (u32 wrapping, zero
+  transcendental); só o sRGB `pow` diverge. Gate: **diff 0** no Metal (≤4).
+- **`ADJ_HALFTONE=10`** `[dot_size, angle, shape(0=Dot,1=Line,2=Circle)]`. Threshold
+  duro + rotação → gate por FRAÇÃO (sin/cos+fract ULP podem flipar boundary); observei
+  **0/9216 flips** no Metal (<1% + ink&paper presentes).
+- **Wiring (tua crate):** `gpu_code(Noise)→Some(9)`, `gpu_code(Halftone)→Some(10)` +
+  `gpu_params` devolver `[amount, kind as u8 as f32, mono as f32]` / `[dot_size, angle,
+  shape as u8 as f32]` (a ORDEM dos enums `NoiseKind`/`HalftoneShape` já bate). Sem isso,
+  uma layer Noise/Halftone força o preview INTEIRO pro CPU; com, fica no compositor GPU.
+
+## §4 — POSSE / smoke
 - Mexi só em `ph2d-render` (+ o flatten do shell, Coord) + o teste do render. Sem push.
-- **Noise/Halftone GPU-accel** (também citados no teu handoff): NÃO entraram — são
-  per-pixel coordenada-dependentes (caminho `gpu_code`/`cs_flat`, não o spatial
-  pass-graph). Follow-up futuro, não-bloqueante.
-- Smoke do Enio: depois do §3, Bloom numa layer transparente → halo de luz;
-  S/H → levanta sombra / recupera highlight sem achatar contraste local (agora na GPU,
-  ~sub-ms vs o CPU fallback).
+  Commits: `ff70ad2` Bloom, `37a06d4` S/H, `84f559e` Noise+Halftone.
+- Smoke do Enio: depois do wiring (§3 + §3.5), Bloom numa layer transparente → halo de
+  luz; S/H → levanta sombra / recupera highlight sem achatar contraste local; Noise →
+  grão; Halftone → trama de pontos — tudo agora na GPU (~sub-ms vs o CPU fallback).
 ═══════════════════════════════════════════════════════════════════

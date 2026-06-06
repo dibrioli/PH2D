@@ -80,6 +80,11 @@ const ADJ_LEVELS: u32 = 8u;
 // p2=shape(0=Dot,1=Line,2=Circle — HalftoneShape discriminant).
 const ADJ_NOISE: u32 = 9u;
 const ADJ_HALFTONE: u32 = 10u;
+// Color Lookup — a display-space colour grade through one of 8 built-in "looks"
+// (index 0 = None pass-through), blended by intensity. p0 = look index (1..7),
+// p1 = intensity. Coordinate-INDEPENDENT (a per-pixel grade); mirror of
+// `ph2d_painter_brush::adjustments::lut::apply_color_lookup`.
+const ADJ_COLOR_LOOKUP: u32 = 11u;
 
 // One flattened compositor op. 16 bytes; `layer_slot` is the texture-array
 // slice for OP_LAYER, ignored otherwise; `blend_mode` + `opacity` apply to
@@ -488,6 +493,42 @@ fn oklab_to_linear(lab: vec3<f32>) -> vec3<f32> {
     );
 }
 
+// ── Color Lookup "looks" — mirror of ph2d_painter_brush::adjustments::lut ────
+// Each look maps a DISPLAY-space (sRGB) triple → display-space triple. The CPU
+// clamps some channels INSIDE the look + clamps the whole result before the
+// intensity blend; here the look returns the raw transform and the caller applies
+// one `clamp(.., 0, 1)` (idempotent with the per-channel clamps it subsumes).
+fn lut_luma(c: vec3<f32>) -> f32 {
+    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+}
+fn apply_look(idx: u32, c: vec3<f32>) -> vec3<f32> {
+    switch idx {
+        case 1u: { return vec3<f32>(c.r * 1.05 + 0.03, c.g, c.b * 0.92); } // Warm
+        case 2u: { return vec3<f32>(c.r * 0.92, c.g, c.b * 1.05 + 0.03); } // Cool
+        case 3u: { // Teal & Orange — split-tone pivoting on luma
+            let t = lut_luma(c) - 0.5;
+            return vec3<f32>(c.r + t * 0.18, c.g + t * 0.04, c.b - t * 0.18);
+        }
+        case 4u: { // Vintage — fade(v) = v·0.82 + 0.09, warm wash
+            let f = c * 0.82 + vec3<f32>(0.09);
+            return vec3<f32>(f.r + 0.02, f.g, f.b - 0.02);
+        }
+        case 5u: { // Noir — high-contrast B&W
+            let l = (lut_luma(c) - 0.5) * 1.45 + 0.5;
+            return vec3<f32>(l, l, l);
+        }
+        case 6u: { // Sepia — warm monochrome
+            let l = lut_luma(c);
+            return vec3<f32>(l * 1.07 + 0.04, l * 0.92, l * 0.72);
+        }
+        case 7u: { // Vivid — push each channel away from luma
+            let m = lut_luma(c);
+            return m + (c - m) * 1.35;
+        }
+        default: { return c; }
+    }
+}
+
 // Apply an adjustment kind to a straight-linear rgb triple (RGB transform only;
 // the caller preserves alpha = coverage). `coord` is the absolute canvas pixel —
 // used ONLY by the coordinate-dependent kinds (Noise/Halftone), ignored by the
@@ -634,6 +675,26 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32
             }
             let g = select(1.0, 0.0, ink); // ink → black (0), else white (1)
             return vec3<f32>(g, g, g);
+        }
+        case 11u: { // ADJ_COLOR_LOOKUP — p0=look idx(1..7), p1=intensity
+            let idx = u32(ap.p0);
+            let amount = clamp(ap.p1, 0.0, 1.0);
+            if idx == 0u || idx > 7u || amount <= 0.0 {
+                return rgb; // None / out-of-range / zero intensity → identity
+            }
+            // Grade in DISPLAY (sRGB) space, then blend toward it by intensity.
+            let d = vec3<f32>(
+                linear_to_srgb(rgb.r),
+                linear_to_srgb(rgb.g),
+                linear_to_srgb(rgb.b),
+            );
+            let graded = clamp(apply_look(idx, d), vec3<f32>(0.0), vec3<f32>(1.0));
+            let out_d = mix(d, graded, amount);
+            return vec3<f32>(
+                srgb_to_linear_f32(out_d.r),
+                srgb_to_linear_f32(out_d.g),
+                srgb_to_linear_f32(out_d.b),
+            );
         }
         default: { return rgb; }
     }

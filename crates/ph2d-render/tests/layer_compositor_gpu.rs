@@ -13,9 +13,9 @@
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::adjustments::{
-    AdjustWindow, BloomParams, HalftoneParams, HalftoneShape, LevelsParams, NoiseKind, NoiseParams,
-    ShadowsHighlightsParams, apply_bloom, apply_halftone, apply_noise, apply_shadows_highlights,
-    levels_display_lut,
+    AdjustWindow, BloomParams, ColorLookupLutParams, HalftoneParams, HalftoneShape, LevelsParams,
+    LutHandle, LutProfile, NoiseKind, NoiseParams, ShadowsHighlightsParams, apply_bloom,
+    apply_color_lookup, apply_halftone, apply_noise, apply_shadows_highlights, levels_display_lut,
 };
 use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, apply_blend};
 use ph2d_render::{
@@ -1926,4 +1926,64 @@ fn gpu_halftone_matches_cpu_reference() {
         "halftone boundary flips {:.3}% exceed 1% — likely a real divergence, not ULP",
         frac * 100.0
     );
+}
+
+/// GPU Color Lookup vs the canonical `apply_color_lookup`, across all 7 non-None
+/// looks at a partial intensity (so the grade + the intensity blend are both
+/// exercised). Coordinate-INDEPENDENT (a display-space grade), so it rides the
+/// per-pixel `apply_adjustment` switch like Vibrance. ±4: the look math is exact
+/// f32 but the display sRGB round-trip (`pow`) is ULP-bounded.
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_color_lookup_matches_cpu_reference() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let mut prov = MapProvider::default();
+    let mut base = varied_canvas(w, h, 21);
+    for px in base.chunks_mut(4) {
+        px[3] = 255;
+    }
+    prov.insert(0, 1, base);
+    let below = [LayerOp::Layer {
+        key: 0,
+        blend_mode: 0,
+        opacity: 1.0,
+    }];
+
+    let intensity = 0.8f32;
+    let mut comp = LayerCompositor::new(&gpu);
+    // Looks 1..=7 (0 = None is a no-op the shader short-circuits identically).
+    for idx in 1u8..=7 {
+        let ops = vec![
+            below[0],
+            LayerOp::Adjustment {
+                kind: 11, // ADJ_COLOR_LOOKUP
+                params: [f32::from(idx), intensity, 0.0],
+                blend_mode: 0,
+                opacity: 1.0,
+            },
+        ];
+        let clp = ColorLookupLutParams {
+            lut_3d: LutHandle(u64::from(idx)),
+            intensity,
+            profile: LutProfile::Srgb,
+        };
+        let mat = cpu_seg_linear(&below, &prov, w, h, None);
+        let mut graded = mat.clone();
+        apply_color_lookup(&clp, &mut graded);
+        let want = cpu_encode_full(&graded);
+
+        comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+            .expect("composite");
+        let got = comp.read_output(&gpu).expect("readback");
+        let d = max_byte_diff(&got, &want);
+        eprintln!("[color-lookup look {idx}] max byte diff {d}");
+        assert!(
+            d <= 4,
+            "color lookup look {idx} GPU vs CPU max byte diff {d}"
+        );
+    }
 }

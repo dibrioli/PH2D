@@ -24,8 +24,8 @@ use super::*;
 /// - `PAINTER_SMOKE_SPACING` — `f32` 0.01..=1.0;
 ///   sets `brush.stroke_path.spacing` (audit C1-2; needed to make
 ///   `shape_count > 1` clusters visually distinct rather than overlapping).
-/// - `PAINTER_SMOKE_PIGMENT` — `"mixbox"` / `"linear"` (default); sets
-///   `brush.rendering.pigment_mode` (W5 Mixbox smoke: blue+yellow→green).
+/// - `PAINTER_SMOKE_PIGMENT` — `"linear"` to force the legacy linear blend;
+///   anything else (incl. unset) = `Mixbox` (the W5 default: blue+yellow→green).
 ///
 /// Unparsable values fall back to default + emit `eprintln!` warning.
 /// Strips ASCII quotes from `PAINTER_SMOKE_BRUSH` to handle shell-quoting
@@ -135,22 +135,17 @@ pub(crate) fn build_smoke_brush_from_env() -> Brush {
     {
         brush.stroke_path.spacing = f.clamp(0.01, 1.0);
     }
-    // W5 Mixbox smoke: `PAINTER_SMOKE_PIGMENT=mixbox` turns on subtractive pigment
-    // mixing for the active brush (paint yellow over blue at <100% opacity → green,
-    // not grey). Temporary surface — mirror of the other smoke vars — until the
-    // sidebar / Brush Studio per-brush pigment toggle lands.
-    if let Ok(s) = std::env::var("PAINTER_SMOKE_PIGMENT") {
-        match s.trim_matches(|c| c == '\'' || c == '"').trim() {
-            "mixbox" | "Mixbox" => {
-                brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Mixbox;
-            }
-            "linear" | "Linear" | "" => {}
-            other => eprintln!(
-                "[painter] PAINTER_SMOKE_PIGMENT={other:?} unknown; keeping Linear. \
-                 Valid: mixbox / linear."
-            ),
+    // W5 Mixbox smoke: subtractive pigment mixing is the DEFAULT here so a plain
+    // double-click of `play.command` (no env vars) shows it — paint yellow over
+    // blue at <100% opacity → green, not grey. Set `PAINTER_SMOKE_PIGMENT=linear`
+    // to A/B against the muddy linear blend. **Temporary** default — flips back to
+    // Linear once the sidebar / Brush Studio per-brush pigment toggle lands.
+    brush.rendering.pigment_mode = match std::env::var("PAINTER_SMOKE_PIGMENT") {
+        Ok(s) if matches!(s.trim_matches(|c| c == '\'' || c == '"').trim(), "linear" | "Linear") => {
+            ph2d_painter_brush::PigmentMode::Linear
         }
-    }
+        _ => ph2d_painter_brush::PigmentMode::Mixbox,
+    };
 
     brush
 }

@@ -137,7 +137,9 @@ impl Tool for PainterTool {
             // New bool checkboxes — read the live brush, set the opposite (the
             // store-less event can't carry the new value; `&mut self` reads it).
             PanelEvent::Click(id) if brush_studio_bool_param(id).is_some() => {
-                if let Some((param, cur)) = brush_studio_bool_param(id).map(|p| (p, self.brush_bool(p))) {
+                if let Some((param, cur)) =
+                    brush_studio_bool_param(id).map(|p| (p, self.brush_bool(p)))
+                {
                     let next = if cur { 0.0 } else { 1.0 };
                     self.apply_ui_edit(PainterUiEdit::SetBrushParam(param, next));
                 }
@@ -403,6 +405,13 @@ impl Tool for PainterTool {
         }
     }
 
+    /// **W15 (ADR-0040-amendment-2):** per-frame heartbeat — advances the live
+    /// watercolor wet-on-wet diffusion (ADR-0049 / ADR-0077 D11) so the wash keeps
+    /// blooming + drying after pen-up. A cheap early-out when no wet field exists.
+    fn on_tick(&mut self, _dt_ms: f32) {
+        self.on_tick_diffusion();
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -433,6 +442,7 @@ impl PainterTool {
             P::ShapeFlipY => self.brush.shape.shape_flip_y,
             P::WetEdges => self.brush.rendering.wet_edges,
             P::BurntEdges => self.brush.rendering.burnt_edges,
+            P::Fluid => self.brush.rendering.fluid_enabled,
             _ => false,
         }
     }
@@ -452,10 +462,22 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
         Some(P::JitterLateral)
     } else if id == core_ids::PAINTER_STUDIO_FALLOFF_SLIDER {
         Some(P::Falloff)
+    } else if id == core_ids::PAINTER_STUDIO_TAPER_SLIDER {
+        Some(P::TaperLength)
     } else if id == core_ids::PAINTER_STUDIO_STREAMLINE_SLIDER {
         Some(P::StreamlineAmount)
     } else if id == core_ids::PAINTER_STUDIO_STABILIZATION_SLIDER {
         Some(P::Stabilization)
+    } else if id == core_ids::PAINTER_STUDIO_MOTION_FILTER_SLIDER {
+        Some(P::MotionFiltering)
+    } else if id == core_ids::PAINTER_STUDIO_MOTION_EXPR_SLIDER {
+        Some(P::MotionExpression)
+    } else if id == core_ids::PAINTER_STUDIO_SPEED_SIZE_SLIDER {
+        Some(P::SpeedSize)
+    } else if id == core_ids::PAINTER_STUDIO_SPEED_OPACITY_SLIDER {
+        Some(P::SpeedOpacity)
+    } else if id == core_ids::PAINTER_STUDIO_SPEED_SPACING_SLIDER {
+        Some(P::SpeedSpacing)
     } else if id == core_ids::PAINTER_STUDIO_SHAPE_SCATTER_SLIDER {
         Some(P::ShapeScatter)
     } else if id == core_ids::PAINTER_STUDIO_SHAPE_COUNT_SLIDER {
@@ -468,6 +490,10 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
         Some(P::Flow)
     } else if id == core_ids::PAINTER_STUDIO_ALPHA_THRESHOLD_SLIDER {
         Some(P::AlphaThreshold)
+    } else if id == core_ids::PAINTER_STUDIO_EDGE_INTENSITY_SLIDER {
+        Some(P::EdgeIntensity)
+    } else if id == core_ids::PAINTER_STUDIO_PAPER_SLIDER {
+        Some(P::Paper)
     } else if id == core_ids::PAINTER_STUDIO_GRAIN_SCALE_SLIDER {
         Some(P::GrainScale)
     } else if id == core_ids::PAINTER_STUDIO_HUE_JITTER_SLIDER {
@@ -504,6 +530,8 @@ fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::Brush
         Some(P::WetEdges)
     } else if id == core_ids::PAINTER_STUDIO_BURNT_EDGES {
         Some(P::BurntEdges)
+    } else if id == core_ids::PAINTER_STUDIO_FLUID {
+        Some(P::Fluid)
     } else {
         None
     }
@@ -562,6 +590,13 @@ impl RasterEditTool for PainterTool {
         self.undo.clear();
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
+        // **W15 fluid:** the wet field is sized + indexed to the OLD source. A new
+        // canvas makes it meaningless (and `composite_wet_field` would splat the
+        // stale grid onto the wrong pixels) — drop it. `end_stroke` above keeps it
+        // for a normal pen-up bloom; only a source swap invalidates it outright.
+        self.wet_field = None;
+        self.wet_backdrop = None;
+        self.wet_composite_bbox = None;
     }
 
     /// Devolve referência ao composite atual iff houve update desde a última

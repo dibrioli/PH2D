@@ -49,7 +49,18 @@ pub struct RenderingParams {
     /// (wash) — the conventional Photoshop-brush behaviour.
     #[serde(default)]
     pub accumulate: bool,
-    // 11 fields v1, 3 slots de headroom (cap 14).
+    /// Intensity of the `wet_edges` / `burnt_edges` settle (0..1). Scales the
+    /// edge-darkening strength so the artist can dial a subtle bloom or a heavy
+    /// rim. Default 0.6. `#[serde(default)]` keeps pre-field brush files loading
+    /// (they fall back to [`default_edge_intensity`]).
+    #[serde(default = "default_edge_intensity")]
+    pub edge_intensity: f32,
+    // 12 fields v1, 2 slots de headroom (cap 14).
+}
+
+/// Default `edge_intensity` (also the serde fallback for old brush files).
+fn default_edge_intensity() -> f32 {
+    0.6
 }
 
 impl Default for RenderingParams {
@@ -66,6 +77,7 @@ impl Default for RenderingParams {
             stroke_blend_mode_index: 0, // Normal (layer blend mode index in spec §2.2)
             fluid_enabled: false,
             accumulate: false, // wash (opacity-capped) by default
+            edge_intensity: default_edge_intensity(),
         }
     }
 }

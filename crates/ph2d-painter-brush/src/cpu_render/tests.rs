@@ -114,7 +114,10 @@ fn procedural_grain_varies_coverage_vs_plain() {
             }
         }
     }
-    assert!(grain_never_exceeds_plain, "grain only removes coverage (grainy ≤ plain)");
+    assert!(
+        grain_never_exceeds_plain,
+        "grain only removes coverage (grainy ≤ plain)"
+    );
     assert!(
         (gmax as i32 - gmin as i32) > 40,
         "grain produces visible texture variation across the footprint: {gmin}..{gmax}"
@@ -589,7 +592,8 @@ fn cpu_shader_shape_kernels_textual_parity() {
     let norm = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
     let shader_norm = norm(shader);
 
-    // round_hard — full body. dx/dy scalar form (NOT WGSL `length()`).
+    // round_hard — pixel-relative analytic coverage (clamp of the signed
+    // distance / aa). dx/dy scalar form (NOT WGSL `length()`).
     assert!(
         shader_norm.contains("let dx = uv.x - 0.5;"),
         "shader round_hard dx scalar drifted"
@@ -599,23 +603,15 @@ fn cpu_shader_shape_kernels_textual_parity() {
         "shader round_hard dy scalar drifted"
     );
     assert!(
-        shader_norm.contains("let d = sqrt(dx * dx + dy * dy) / 0.5;"),
+        shader_norm.contains("let r = sqrt(dx * dx + dy * dy);"),
         "shader round_hard scalar sqrt-distance drifted (O-3 regression)"
     );
     assert!(
-        shader_norm.contains("let edge_t = clamp((d - 0.85) / 0.15, 0.0, 1.0);"),
-        "shader round_hard smoothstep band drifted"
-    );
-    assert!(
-        shader_norm.contains("let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);"),
-        "shader round_hard Hermite smoothstep drifted (O-1 extension)"
-    );
-    assert!(
-        shader_norm.contains("return 1.0 - smooth_t;"),
-        "shader round_hard return-formula drifted (O-1 extension)"
+        shader_norm.contains("return clamp((0.5 - r) / aa + 0.5, 0.0, 1.0);"),
+        "shader round_hard pixel-relative coverage drifted"
     );
 
-    // round_soft — full body with explicit d² >= 1 early-out.
+    // round_soft — full body with explicit d² >= 1 early-out (unchanged profile).
     assert!(
         shader_norm.contains("let d_sq = (dx * dx + dy * dy) / 0.25;"),
         "shader round_soft d² normalization drifted"
@@ -633,58 +629,58 @@ fn cpu_shader_shape_kernels_textual_parity() {
         "shader round_soft (1-d²)² return drifted"
     );
 
-    // square_hard — full body. Chebyshev distance + Hermite smoothstep.
+    // square_hard — Chebyshev distance + pixel-relative coverage.
     assert!(
-        shader_norm.contains("let d = max(dx, dy) / 0.5;"),
+        shader_norm.contains("let d = max(dx, dy);"),
         "shader square_hard Chebyshev distance drifted"
     );
     assert!(
-        shader_norm.contains("let edge_t = clamp((d - 0.90) / 0.10, 0.0, 1.0);"),
-        "shader square_hard smoothstep band drifted"
-    );
-    assert!(
-        shader_norm.contains("let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);"),
-        "shader square_hard Hermite smoothstep drifted (O-1 extension)"
-    );
-    assert!(
-        shader_norm.contains("return 1.0 - smooth_t;"),
-        "shader square_hard return-formula drifted (O-1 extension)"
+        shader_norm.contains("return clamp((0.5 - d) / aa + 0.5, 0.0, 1.0);"),
+        "shader square_hard pixel-relative coverage drifted"
     );
 
-    // oval_hard — full body. Stretched radial (2:1 oblong).
+    // oval_hard — Van Verth gradient-normalized coverage (2:1 oblong).
     assert!(
-        shader_norm.contains("let dx = (uv.x - 0.5) / 0.5;"),
-        "shader oval_hard dx stretched drifted (V-2 R4 addition)"
+        shader_norm.contains("let ex = (uv.x - 0.5) / 0.5;"),
+        "shader oval_hard ex stretched drifted"
     );
     assert!(
-        shader_norm.contains("let dy = (uv.y - 0.5) / 0.25;"),
-        "shader oval_hard dy stretched drifted (V-2 R4 addition)"
+        shader_norm.contains("let ey = (uv.y - 0.5) / 0.25;"),
+        "shader oval_hard ey stretched drifted"
     );
     assert!(
-        shader_norm.contains("let d = sqrt(dx * dx + dy * dy);"),
-        "shader oval_hard radial sqrt drifted (V-2 R4 addition)"
+        shader_norm.contains("let f = ex * ex + ey * ey - 1.0;"),
+        "shader oval_hard implicit field drifted"
+    );
+    assert!(
+        shader_norm.contains("let grad = max(sqrt(gx * gx + gy * gy), 1e-6);"),
+        "shader oval_hard gradient magnitude drifted"
+    );
+    assert!(
+        shader_norm.contains("return clamp(0.5 - dist / aa, 0.0, 1.0);"),
+        "shader oval_hard gradient-normalized coverage drifted"
     );
 
-    // shape_alpha_for_slot dispatch + 0 → round_hard / 1 → round_soft /
-    // 2 → square_hard / 3 → oval_hard / default → round_hard fallback.
+    // shape_alpha_for_slot dispatch (now threads `aa`) + 0 → round_hard /
+    // 1 → round_soft / 2 → square_hard / 3 → oval_hard / default → round_hard.
     assert!(
-        shader_norm.contains("case 0u: { return round_hard_shape(uv); }"),
+        shader_norm.contains("case 0u: { return round_hard_shape(uv, aa); }"),
         "shader shape dispatch slot 0 drifted"
     );
     assert!(
-        shader_norm.contains("case 1u: { return round_soft_shape(uv); }"),
+        shader_norm.contains("case 1u: { return round_soft_shape(uv, aa); }"),
         "shader shape dispatch slot 1 drifted"
     );
     assert!(
-        shader_norm.contains("case 2u: { return square_hard_shape(uv); }"),
+        shader_norm.contains("case 2u: { return square_hard_shape(uv, aa); }"),
         "shader shape dispatch slot 2 drifted"
     );
     assert!(
-        shader_norm.contains("case 3u: { return oval_hard_shape(uv); }"),
+        shader_norm.contains("case 3u: { return oval_hard_shape(uv, aa); }"),
         "shader shape dispatch slot 3 drifted (V-2 R4 addition)"
     );
     assert!(
-        shader_norm.contains("default: { return round_hard_shape(uv); }"),
+        shader_norm.contains("default: { return round_hard_shape(uv, aa); }"),
         "shader shape dispatch fallback drifted"
     );
 }
@@ -699,10 +695,23 @@ fn cpu_shader_rotation_pipeline_textual_parity() {
     let norm = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
     let shader_norm = norm(shader);
 
-    // Center to [-0.5, +0.5].
+    // Sub-pixel dab: aa + uv scale derive from `1/size_px` (NOT `footprint`),
+    // bit-identical to `cpu_render::apply_one_stamp`.
     assert!(
-        shader_norm.contains("var uv_centered = uv_axis - vec2<f32>(0.5);"),
-        "shader uv centering drifted"
+        shader_norm.contains("let inv_size = 1.0 / stamp.size_px;"),
+        "shader inv_size (sub-pixel scale) drifted"
+    );
+    assert!(
+        shader_norm.contains("let aa = SHAPE_AA_PX * inv_size;"),
+        "shader aa must derive from size_px (sub-pixel parity), not footprint"
+    );
+    // Centered uv = each pixel centre's offset to the dab's TRUE fractional
+    // centre (sub-pixel anti-wobble) — NOT a `(i+0.5)/footprint` grid.
+    assert!(
+        shader_norm.contains(
+            "var uv_centered = vec2<f32>( (f32(world_x) - stamp.position_world_x) * inv_size,"
+        ),
+        "shader sub-pixel uv centering drifted"
     );
     // Flip bits applied BEFORE rotation (audit T1.6).
     assert!(
@@ -859,10 +868,22 @@ fn flip_preserves_output_for_symmetric_shapes() {
             s1.flags |= crate::stamp::FLAG_SHAPE_FLIP_X | crate::stamp::FLAG_SHAPE_FLIP_Y;
             apply_stamps(&mut a, w, h, &[s0]);
             apply_stamps(&mut b, w, h, &[s1]);
-            assert_eq!(
-                a, b,
-                "slot {slot} + rotation {rotation} must be invariant under \
-                     flip_x|flip_y (T1.6 shapes are doubly-symmetric)"
+            // Flip of a doubly-symmetric shape is VISUALLY invariant. Post sub-pixel
+            // sampling (the dab is centred on its true position, not the footprint
+            // centre — more correct), an integer position with an even footprint
+            // samples a slightly asymmetric uv, so under rotation the AA edge can
+            // quantize ±1 between the flipped/unflipped pass. Allow ≤1/255 per
+            // channel (imperceptible) instead of bit-exact equality.
+            let max_diff = a
+                .iter()
+                .zip(b.iter())
+                .map(|(x, y)| (*x as i32 - *y as i32).unsigned_abs())
+                .max()
+                .unwrap_or(0);
+            assert!(
+                max_diff <= 1,
+                "slot {slot} + rotation {rotation} must be flip_x|flip_y invariant \
+                 (≤1/255); got max diff {max_diff}"
             );
         }
     }
@@ -941,6 +962,7 @@ fn falloff_taper_fades_the_wash_stroke() {
     let mut canvas = empty_canvas(w, h);
     let backdrop = empty_canvas(w, h); // transparent pre-stroke backdrop
     let mut coverage = vec![0.0f32; (w * h) as usize];
+    let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
 
     // Two isolated dabs: full opacity (left) vs heavily tapered (right).
     let mut full = red_stamp(10.0, 8.0, 8.0);
@@ -952,12 +974,14 @@ fn falloff_taper_fades_the_wash_stroke() {
         &mut canvas,
         &backdrop,
         &mut coverage,
+        &mut wc,
         w,
         h,
         &[full, tapered],
         1.0,   // opacity_cap (brush opacity)
         false, // pigment
         false, // alpha_lock
+        0.0,   // paper_grain (off in this test)
     );
 
     let (mut left_max, mut right_max) = (0u8, 0u8);
@@ -976,5 +1000,114 @@ fn falloff_taper_fades_the_wash_stroke() {
         right_max < left_max,
         "falloff taper must fade the wash stroke: tapered max alpha {right_max} \
          should be below the full dab's {left_max}"
+    );
+}
+#[test]
+fn wash_color_accumulation_blends_overlapping_dab_colors() {
+    // Color Dynamics smoothness: when an earlier dab has only PARTIALLY covered a
+    // pixel (its feather, or partial flow — the real moving-stroke case), a later
+    // dab of a DIFFERENT colour must BLEND with it (coverage-weighted average),
+    // not overwrite it (the old "discrete coloured discs" / last-wins behaviour).
+    // Partial flow (0.5) keeps each dab sub-full so the colours can mix.
+    let (w, h) = (40u32, 40u32);
+    let backdrop = vec![0u8; (w * h * 4) as usize];
+    let paint = |stamps: &[Stamp]| {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        apply_stamps_wash(&mut canvas, &backdrop, &mut cov, &mut wc, w, h, stamps, 1.0, false, false, 0.0);
+        canvas
+    };
+    let mut a = red_stamp(20.0, 20.0, 24.0);
+    a.color_oklab = [0.6, 0.22, 0.13, 1.0]; // reddish
+    a.flow = 0.5;
+    let mut b = red_stamp(20.0, 20.0, 24.0);
+    b.color_oklab = [0.7, -0.18, 0.12, 1.0]; // greenish
+    b.flow = 0.5;
+    let i = ((20 * w + 20) * 4) as usize;
+    let rgb = |c: &[u8]| (c[i], c[i + 1], c[i + 2]);
+    let both = rgb(&paint(&[a, b]));
+    let b_only = rgb(&paint(&[b]));
+    // Under last-wins the earlier (red) dab would leave no trace → both == b_only.
+    // Under the blend the red persists → the centre colour differs from b alone.
+    assert_ne!(
+        both, b_only,
+        "the earlier dab's colour must persist in the blend, not be overwritten (last-wins)"
+    );
+    // And the blend keeps red present (the reddish dab contributed).
+    assert!(
+        both.0 > b_only.0,
+        "blended centre must be redder than b-alone: blend={both:?} b_only={b_only:?}"
+    );
+}
+
+#[test]
+fn wash_later_opaque_dab_is_on_top_not_inverted_z() {
+    // Z-ORDER: two FULLY opaque overlapping dabs in one stroke — red THEN blue —
+    // at the same spot must read BLUE (the later dab on top). The old coverage-
+    // weighted average let the EARLIER (red) dab dominate as coverage saturated
+    // (in fact the later dab became invisible once the earlier one fully covered),
+    // so the earlier-painted colour appeared on top — inverted z.
+    let (w, h) = (40u32, 40u32);
+    let backdrop = vec![255u8; (w * h * 4) as usize]; // white paper
+    let mut canvas = backdrop.clone();
+    let mut cov = vec![0.0f32; (w * h) as usize];
+    let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+    let a = red_stamp(20.0, 20.0, 24.0); // reddish, full flow + opacity
+    let mut b = red_stamp(20.0, 20.0, 24.0);
+    b.color_oklab = [0.45, -0.03, -0.31, 1.0]; // bluish
+    apply_stamps_wash(
+        &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[a, b], 1.0, false, false, 0.0,
+    );
+    let i = ((20 * w + 20) * 4) as usize;
+    let (r, g, bl) = (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32);
+    assert!(
+        bl > r + 20,
+        "later (blue) dab must be on top, not the earlier red: rgb=({r},{g},{bl})"
+    );
+}
+
+#[test]
+fn wash_honors_rendering_mode_option_a() {
+    // Option (a): the wash now composites via the brush's rendering mode. Two
+    // different modes on the same wash stroke must produce DIFFERENT output, in
+    // BOTH the Linear (full mode) and Pigment (glaze coverage curve) paths.
+    let (w, h) = (8u32, 8u32);
+    let backdrop = vec![200u8; (w * h * 4) as usize]; // light grey
+    let paint = |mode: u32, pigment: bool| -> (u8, u8, u8) {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut s = red_stamp(4.0, 4.0, 8.0);
+        s.flow = 0.5; // semi-transparent so the modes' attenuation shows
+        s.rendering_mode = mode;
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[s], 0.6, pigment, false, 0.0,
+        );
+        let i = ((4 * w + 4) * 4) as usize;
+        (canvas[i], canvas[i + 1], canvas[i + 2])
+    };
+    // Linear: glaze modes are fully distinct via apply_rendering_mode.
+    assert_ne!(
+        paint(0, false),
+        paint(1, false),
+        "Linear wash: LightGlaze must differ from UniformGlaze"
+    );
+    assert_ne!(
+        paint(3, false),
+        paint(1, false),
+        "Linear wash: HeavyGlaze must differ from UniformGlaze"
+    );
+    // Pigment: the glaze coverage curve makes Light/Heavy differ from Uniform
+    // (UniformGlaze stays the K-M identity → no regression).
+    assert_ne!(
+        paint(0, true),
+        paint(1, true),
+        "Pigment wash: LightGlaze must differ from UniformGlaze"
+    );
+    assert_ne!(
+        paint(3, true),
+        paint(1, true),
+        "Pigment wash: HeavyGlaze must differ from UniformGlaze"
     );
 }

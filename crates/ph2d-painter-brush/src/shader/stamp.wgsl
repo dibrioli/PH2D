@@ -212,29 +212,22 @@ fn premul_linear_to_premul_srgb(p: vec4<f32>) -> vec4<f32> {
 //
 // `smooth_t` (not `smooth`) — `smooth` is a reserved WGSL keyword (sampler
 // interpolation qualifier in fragment inputs).
-fn round_hard_shape(uv: vec2<f32>) -> f32 {
-    // Audit T1.6 O-3 + U-1: WGSL `length()` is an intrinsic whose lowering
-    // on Metal / Vulkan / DX12 is implementation-defined (may use fused
-    // reciprocal-sqrt + multiply, or `sqrt(dot(v,v))`, or a backend-
-    // specific path). Cross-backend ULP equality is NOT mandated. The
-    // CPU side uses scalar `(dx*dx + dy*dy).sqrt()` — to keep the gate
-    // `cpu_shader_shape_kernels_textual_parity` honest (and to give CPU
-    // and GPU the same numerical SOURCE pipeline), the shader uses the
-    // same scalar form, not `length()`. **Note:** writing the same
-    // formula in WGSL and Rust does NOT guarantee bit-identical
-    // runtime results — `sqrt`, `cos`, `sin` are ULP-bounded across
-    // backends (typically ≤1-4 ULP). HR-5 strict bit-identical requires
-    // the `det-painter` feature path (declared in Cargo.toml; wiring
-    // progressive — see ph2d-painter-brush::lib.rs Status section).
+// **Pixel-relative analytic coverage** (mirror of `library::shape_round_hard`):
+// the signed distance to the circle edge (radius 0.5 in uv) faded over `aa` (the
+// AA width in uv units, `SHAPE_AA_PX / footprint`) → a clean ~1.5px edge at every
+// brush size (Van Verth, GDC 2015). Replaces the old radius-relative `[0.85R, R]`
+// band that aliased on small dabs and blurred on large ones. The scalar
+// `sqrt(dx*dx+dy*dy)` (not `length()`) keeps the textual parity with the CPU.
+fn round_hard_shape(uv: vec2<f32>, aa: f32) -> f32 {
     let dx = uv.x - 0.5;
     let dy = uv.y - 0.5;
-    let d = sqrt(dx * dx + dy * dy) / 0.5;
-    let edge_t = clamp((d - 0.85) / 0.15, 0.0, 1.0);
-    let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    return 1.0 - smooth_t;
+    let r = sqrt(dx * dx + dy * dy);
+    return clamp((0.5 - r) / aa + 0.5, 0.0, 1.0);
 }
 
-fn round_soft_shape(uv: vec2<f32>) -> f32 {
+// Soft brush: its `(1-d²)²` falloff IS its antialiasing, so it keeps the size-
+// relative profile and ignores `aa` (present only for a uniform dispatch).
+fn round_soft_shape(uv: vec2<f32>, aa: f32) -> f32 {
     let dx = uv.x - 0.5;
     let dy = uv.y - 0.5;
     let d_sq = (dx * dx + dy * dy) / 0.25; // normalize over radius 0.5
@@ -245,39 +238,43 @@ fn round_soft_shape(uv: vec2<f32>) -> f32 {
     return one_minus_d_sq * one_minus_d_sq;
 }
 
-fn square_hard_shape(uv: vec2<f32>) -> f32 {
+fn square_hard_shape(uv: vec2<f32>, aa: f32) -> f32 {
     let dx = abs(uv.x - 0.5);
     let dy = abs(uv.y - 0.5);
-    let d = max(dx, dy) / 0.5;
-    let edge_t = clamp((d - 0.90) / 0.10, 0.0, 1.0);
-    let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    return 1.0 - smooth_t;
+    let d = max(dx, dy);
+    return clamp((0.5 - d) / aa + 0.5, 0.0, 1.0);
 }
 
-// `oval_hard` (slot 3, audit T1.6 V-2) — 2:1 oblong via stretched
-// radial distance. Pairs with `shape_rotation_follow=true` to render a
-// calligraphic pen-nib that aligns its long axis to the stroke direction.
-fn oval_hard_shape(uv: vec2<f32>) -> f32 {
-    let dx = (uv.x - 0.5) / 0.5;
-    let dy = (uv.y - 0.5) / 0.25;
-    let d = sqrt(dx * dx + dy * dy);
-    let edge_t = clamp((d - 0.85) / 0.15, 0.0, 1.0);
-    let smooth_t = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    return 1.0 - smooth_t;
+// `oval_hard` (slot 3) — 2:1 oblong with Van Verth gradient-normalized coverage
+// (`f / ‖∇f‖` ≈ signed distance), so a rotated/stretched oval gets a uniform
+// ~`aa`px edge instead of the blurry-along-one-axis artifact a naive field gives.
+fn oval_hard_shape(uv: vec2<f32>, aa: f32) -> f32 {
+    let ex = (uv.x - 0.5) / 0.5;
+    let ey = (uv.y - 0.5) / 0.25;
+    let f = ex * ex + ey * ey - 1.0;
+    let gx = 2.0 * ex / 0.5;
+    let gy = 2.0 * ey / 0.25;
+    let grad = max(sqrt(gx * gx + gy * gy), 1e-6);
+    let dist = f / grad;
+    return clamp(0.5 - dist / aa, 0.0, 1.0);
 }
 
 // Dispatch a procedural shape by `shape_layer` slot. Out-of-range slots
 // fall back to `round_hard` (safer-degrade — same behavior as
 // `library::shape_alpha_for_slot`).
-fn shape_alpha_for_slot(slot: u32, uv: vec2<f32>) -> f32 {
+fn shape_alpha_for_slot(slot: u32, uv: vec2<f32>, aa: f32) -> f32 {
     switch slot {
-        case 0u: { return round_hard_shape(uv); }
-        case 1u: { return round_soft_shape(uv); }
-        case 2u: { return square_hard_shape(uv); }
-        case 3u: { return oval_hard_shape(uv); }
-        default: { return round_hard_shape(uv); }
+        case 0u: { return round_hard_shape(uv, aa); }
+        case 1u: { return round_soft_shape(uv, aa); }
+        case 2u: { return square_hard_shape(uv, aa); }
+        case 3u: { return oval_hard_shape(uv, aa); }
+        default: { return round_hard_shape(uv, aa); }
     }
 }
+
+// AA transition width of a hard dab in canvas pixels (mirror of
+// `library::SHAPE_AA_PX`). `aa = SHAPE_AA_PX / footprint` is the width in uv units.
+const SHAPE_AA_PX: f32 = 1.5;
 
 // ── Six rendering modes (ADR-0044 §2.4 + spec §1.5.2) ──
 //
@@ -660,33 +657,57 @@ fn cs_stamp(
         return;
     }
 
-    // uv_axis ∈ [0,1]² across the footprint using **pixel-center convention**
-    // (pixel `i` lives at `uv = (i+0.5)/footprint`). Mirrors the
-    // texture-sample convention (audit 2026-05-26 D-1.M1).
+    // **Sub-pixel dab pipeline** (T1.6 transform + anti-wobble). Mirrors
+    // `cpu_render::apply_one_stamp` EXACTLY (textual gate
+    // `cpu_shader_rotation_pipeline_textual_parity`):
+    //   1. world write coord FIRST — the footprint grid maps
+    //      `pixel_local → world` CONSECUTIVELY (`floor(a + i + 0.5)` steps
+    //      by exactly 1), so no gaps / double-writes.
+    //   2. centred uv = each pixel CENTRE's offset to the dab's TRUE
+    //      fractional centre (`(world - position) / size_px`) — NOT a
+    //      regular `(i+0.5)/footprint` grid. A slow diagonal stroke then
+    //      shifts coverage smoothly instead of snapping a whole pixel
+    //      (the "serrilhado" wobble).
+    //   3. flip — invert axis components per FLAG_SHAPE_FLIP_{X,Y}
+    //      (BEFORE rotation, so flip composes in shape-local space).
+    //   4. rotate — apply `-rotation_rad` rotation matrix.
+    //   5. un-center → uv ∈ `[-Δ, 1+Δ]²`; outside `[0,1]²` the kernel
+    //      returns 0. Dispatch shape by `stamp.shape_layer` slot.
     //
-    // **T1.6 stamp-space transform pipeline** (apply in order):
-    //   1. axis-aligned uv → centered `[-0.5, +0.5]²`
-    //   2. flip — invert axis components per FLAG_SHAPE_FLIP_{X,Y}
-    //   3. rotate — apply `rotation_rad` rotation matrix
-    //   4. un-center → uv ∈ `[-Δ, 1+Δ]²` (Δ depends on rotation; outside
-    //      `[0, 1]²` → shape kernel returns 0)
-    //   5. dispatch shape by `stamp.shape_layer` slot
-    //
-    // The world-space write coordinate uses the original axis-aligned
-    // `(pixel_local_x, pixel_local_y) - center_offset` offset — only the
-    // **shape sample uv** rotates. The footprint stays axis-aligned (the
-    // bounding box). For non-radial shapes (`square_hard`) the
+    // The footprint stays axis-aligned (the bounding box); only the shape
+    // sample uv rotates. For non-radial shapes (`square_hard`) the
     // `StampScheduler` enlarges `size_px` by √2 when `rotation_rad != 0`
     // so the rotated shape stays inside the bounding box (see
     // `library::rotated_footprint_scale`).
     let footprint_f = f32(footprint);
     let center_offset = (footprint_f - 1.0) * 0.5;
-    let uv_axis = (vec2<f32>(f32(pixel_local_x), f32(pixel_local_y)) + vec2<f32>(0.5)) / footprint_f;
+    let inv_size = 1.0 / stamp.size_px;
+    let aa = SHAPE_AA_PX * inv_size;
 
-    // 1. Center to `[-0.5, +0.5]`.
-    var uv_centered = uv_axis - vec2<f32>(0.5);
+    // 1. World-space write target. Centering uses `f32` so odd footprints
+    // don't drift half a pixel (audit 2026-05-26 D-1.M1); sub-pixel
+    // `position_world` snaps to nearest integer via `floor(x + 0.5)` —
+    // IEEE 754 well-defined round-half-up, identical across Metal /
+    // Vulkan / D3D12 (audit 2026-05-26 D-2.F3 — WGSL `round()` halfway is
+    // impl-defined, `floor(x + 0.5)` is not).
+    let world_x_f = stamp.position_world_x + f32(pixel_local_x) - center_offset;
+    let world_y_f = stamp.position_world_y + f32(pixel_local_y) - center_offset;
+    let world_x = i32(floor(world_x_f + 0.5));
+    let world_y = i32(floor(world_y_f + 0.5));
+    if world_x < 0
+       || world_y < 0
+       || world_x >= i32(globals.canvas_width)
+       || world_y >= i32(globals.canvas_height) {
+        return;
+    }
 
-    // 2. Flip axes per flag bits. Done BEFORE rotation so flip+rotation
+    // 2. Sub-pixel centred uv from the dab's TRUE fractional centre.
+    var uv_centered = vec2<f32>(
+        (f32(world_x) - stamp.position_world_x) * inv_size,
+        (f32(world_y) - stamp.position_world_y) * inv_size,
+    );
+
+    // 3. Flip axes per flag bits. Done BEFORE rotation so flip+rotation
     // composes as the user expects (flip is in shape-local space).
     if (stamp.flags & FLAG_SHAPE_FLIP_X) != 0u {
         uv_centered.x = -uv_centered.x;
@@ -695,7 +716,7 @@ fn cs_stamp(
         uv_centered.y = -uv_centered.y;
     }
 
-    // 3. Rotate the sample direction. We rotate by `-rotation_rad` here
+    // 4. Rotate the sample direction. We rotate by `-rotation_rad` here
     // because we're transforming the **sample coordinate** into the
     // shape's reference frame (inverse of the rotation we'd apply to the
     // shape itself). Use trig identity `cos(-x) = cos(x)` and
@@ -720,35 +741,16 @@ fn cs_stamp(
         uv_centered.x * sin_r + uv_centered.y * cos_r,
     );
 
-    // 4. Un-center back to `[0, 1]` shape sample space. Outside `[0, 1]²`
+    // 5. Un-center back to `[0, 1]` shape sample space. Outside `[0, 1]²`
     // the shape kernel returns 0 — handled inside `shape_alpha_for_slot`
     // (round_soft has explicit d_sq guard; round_hard/square_hard clamp
-    // edge_t to 1.0 → alpha 0).
+    // edge_t to 1.0 → alpha 0). Dispatch to per-slot shape kernel.
     let uv = uv_rotated + vec2<f32>(0.5);
-
-    // 5. Dispatch to per-slot shape kernel.
-    let shape_alpha = shape_alpha_for_slot(stamp.shape_layer, uv);
+    let shape_alpha = shape_alpha_for_slot(stamp.shape_layer, uv, aa);
     if shape_alpha < (1.0 / 255.0) {
         return;
     }
 
-    // World-space pixel coords — axis-aligned write target (footprint is
-    // the bounding box; only the shape sample rotates). Centering uses
-    // `f32` so odd footprints don't drift half a pixel (audit 2026-05-26
-    // D-1.M1); sub-pixel `position_world` snaps to nearest integer via
-    // `floor(x + 0.5)` — IEEE 754 well-defined round-half-up, identical
-    // across Metal / Vulkan / D3D12 backends (audit 2026-05-26 D-2.F3 —
-    // WGSL `round()` halfway is impl-defined, `floor(x + 0.5)` is not).
-    let world_x_f = stamp.position_world_x + f32(pixel_local_x) - center_offset;
-    let world_y_f = stamp.position_world_y + f32(pixel_local_y) - center_offset;
-    let world_x = i32(floor(world_x_f + 0.5));
-    let world_y = i32(floor(world_y_f + 0.5));
-    if world_x < 0
-       || world_y < 0
-       || world_x >= i32(globals.canvas_width)
-       || world_y >= i32(globals.canvas_height) {
-        return;
-    }
     let coord = vec2<i32>(world_x, world_y);
 
     let rgb_linear = oklab_to_linear_srgb(

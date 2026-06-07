@@ -530,10 +530,43 @@ pub struct PainterTool {
     /// blue = green) instead of building up to pure brush colour. Cleared at
     /// `end_stroke` / reset.
     wash_coverage: Option<Vec<f32>>,
+    /// **W5 wash colour accumulation (Color Dynamics smoothness).** Per-pixel
+    /// coverage-weighted average of the dab COLOURS deposited at that pixel this
+    /// stroke (straight linear RGB). Parallel to `wash_coverage`. With Color
+    /// Dynamics jitter, consecutive dabs carry different colours; mixing only the
+    /// LAST dab's colour against the backdrop made overlapping dabs read as
+    /// discrete coloured discs ("resolution drop" report). Averaging the colours
+    /// here lets the jittered dabs blend into a smooth gradient. For a single-
+    /// colour brush every entry equals that colour, so the render is byte-
+    /// identical (the wash uses the exact stamp colour when the two agree).
+    wash_color: Option<Vec<[f32; 3]>>,
     /// Opacity cap for the active wash stroke, snapshotted from `params.opacity`
     /// at `begin_stroke` so a mid-stroke UI change can't destabilise coverage.
     /// Meaningful only while `wash_coverage` is `Some`.
     wash_opacity_cap: f32,
+    /// **W15 — live watercolor wet-on-wet field (ADR-0049 / ADR-0077 D11).** A
+    /// low-resolution [`ph2d_painter_brush::diffusion::DiffusionGrid`], allocated at
+    /// `begin_stroke` only when `brush.rendering.fluid_enabled`. Stamps splat into
+    /// it (re-wet + pigment); `on_tick` steps the diffusion every frame and
+    /// composites it over `pending_pre_stroke` into the canvas, so the wash keeps
+    /// blooming + drying AFTER pen-up. Dropped when the field dries out (water → 0).
+    /// `None` for every non-fluid brush ⇒ zero behaviour change + zero cost.
+    wet_field: Option<ph2d_painter_brush::diffusion::DiffusionGrid>,
+    /// **W15 — backdrop the live wet field composites OVER.** Snapshot of the
+    /// canvas as it was when the fluid stroke began (the pre-stroke pixels). Kept
+    /// SEPARATE from `pending_pre_stroke`: that one is consumed by the undo stack
+    /// at `end_stroke` (`take()`), but the wash keeps blooming for many frames
+    /// AFTER pen-up, so `composite_wet_field` needs a backdrop that outlives the
+    /// stroke. Allocated with `wet_field` at `begin_stroke`; dropped in lock-step
+    /// whenever the field is (dry-out / undo / redo / source swap). `None` ⇒ no
+    /// live wash, so the composite no-ops.
+    wet_backdrop: Option<Vec<u8>>,
+    /// **W15 — last frame's wet bbox (grid cells, inclusive).** The composite runs
+    /// only over the union of the current + previous wet region, so it touches the
+    /// wash neighbourhood instead of the whole canvas (the 16-tap bicubic + K–M is
+    /// the dominant cost). The *previous* frame is unioned in so cells that just
+    /// dried get their canvas pixel reset to the backdrop. Reset with the field.
+    wet_composite_bbox: Option<(u32, u32, u32, u32)>,
 }
 
 impl Default for PainterTool {
@@ -590,7 +623,11 @@ impl Default for PainterTool {
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,
             wash_coverage: None,
+            wash_color: None,
             wash_opacity_cap: 1.0,
+            wet_field: None,
+            wet_backdrop: None,
+            wet_composite_bbox: None,
         }
     }
 }

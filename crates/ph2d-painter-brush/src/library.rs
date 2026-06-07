@@ -251,30 +251,42 @@ pub fn brush_from_handle(handle: BrushHandle) -> Option<Brush> {
 /// Dimensão lateral da Shape texture builtin (per ADR-0044 §1.8.1).
 pub const SHAPE_TILE_PX: u32 = 256;
 
+/// Antialiasing transition width of a hard-edged dab, **in canvas pixels**. The
+/// hard kernels (`round_hard` / `square_hard` / `oval_hard`) fade over this many
+/// pixels centred on the geometric edge, regardless of brush size — the gold-
+/// standard pixel-relative coverage (`coverage = clamp(0.5 − signed_dist_px)`;
+/// Van Verth, GDC 2015). The old radius-relative band (`[0.85R, R]`) was
+/// sub-pixel on small dabs (aliased — the "serrilhado") and over-soft on large
+/// dabs; this keeps a clean ~1.5px edge at every size. The caller passes
+/// `aa = SHAPE_AA_PX / size_px` (the width in normalized uv units).
+pub const SHAPE_AA_PX: f32 = 1.5;
+
 // ─── Procedural shape kernels (atlas-equivalent, analytic) ───────────────────
 
-/// Procedural `round_hard` (slot 0) — Hermite smoothstep on `[0.85, 1.0]`
-/// of normalized radial distance. **Identical analytic form** to the
-/// shader's `round_hard_shape` (gate-protected by
-/// `cpu_shader_textual_parity_all_six_modes` indirectly via the rendering
-/// mode parity test + a dedicated shape-parity assertion in T1.6 tests).
+/// Procedural `round_hard` (slot 0) — **pixel-relative analytic coverage**: the
+/// signed distance to the circle edge (radius 0.5 in uv), faded over `aa` (the
+/// AA width in uv units, `SHAPE_AA_PX / size_px`). Gives a clean ~1.5px edge at
+/// every brush size (vs the old radius-relative `[0.85R, R]` band that aliased on
+/// small dabs and blurred on large ones). Mirror of the shader's
+/// `round_hard_shape` (gate `cpu_shader_shape_kernels_textual_parity`).
 ///
-/// `u, v ∈ [0, 1]` (pixel-center convention). Returns alpha ∈ `[0, 1]`.
+/// `u, v ∈ [0, 1]` (centre at 0.5). Returns coverage ∈ `[0, 1]`.
 #[inline]
-pub fn shape_round_hard(u: f32, v: f32) -> f32 {
+pub fn shape_round_hard(u: f32, v: f32, aa: f32) -> f32 {
     let dx = u - 0.5;
     let dy = v - 0.5;
-    let d = (dx * dx + dy * dy).sqrt() / 0.5;
-    let edge_t = ((d - 0.85) / 0.15).clamp(0.0, 1.0);
-    let smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    1.0 - smooth
+    let r = (dx * dx + dy * dy).sqrt();
+    ((0.5 - r) / aa + 0.5).clamp(0.0, 1.0)
 }
 
 /// Procedural `round_soft` (slot 1) — quadratic radial falloff
 /// `alpha = (1 - d²)²` clamped to `d ∈ [0, 1]`. **Gaussian-equivalent**
 /// shape with a smooth analytic derivative (good build-up under LightGlaze).
+/// `aa` is unused — a soft brush's whole profile is its antialiasing (the gentle
+/// `(1-d²)²` gradient never aliases), so it keeps the size-relative falloff. The
+/// parameter exists only for a uniform [`shape_alpha_for_slot`] dispatch.
 #[inline]
-pub fn shape_round_soft(u: f32, v: f32) -> f32 {
+pub fn shape_round_soft(u: f32, v: f32, _aa: f32) -> f32 {
     let dx = u - 0.5;
     let dy = v - 0.5;
     let d_sq = (dx * dx + dy * dy) / 0.25; // normalize to [0, 1] over radius 0.5
@@ -294,13 +306,11 @@ pub fn shape_round_soft(u: f32, v: f32) -> f32 {
 /// to the stroke direction, simulating a chisel tip. Without rotation,
 /// `shape_count > 1 + shape_scatter > 0` produces tiled patterns.
 #[inline]
-pub fn shape_square_hard(u: f32, v: f32) -> f32 {
+pub fn shape_square_hard(u: f32, v: f32, aa: f32) -> f32 {
     let dx = (u - 0.5).abs();
     let dy = (v - 0.5).abs();
-    let d = dx.max(dy) / 0.5; // 1.0 at any edge of the square
-    let edge_t = ((d - 0.90) / 0.10).clamp(0.0, 1.0);
-    let smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    1.0 - smooth
+    let d = dx.max(dy); // Chebyshev distance, edge at 0.5
+    ((0.5 - d) / aa + 0.5).clamp(0.0, 1.0)
 }
 
 /// Procedural `oval_hard` (slot 3) — 2:1 oblong via stretched radial
@@ -363,26 +373,33 @@ pub fn shape_square_hard(u: f32, v: f32) -> f32 {
 /// Audit T1.6 R8 Q1-7 wording fix: prior draft said "circle-like with
 /// elliptical gradient" which is geometrically self-contradictory.
 #[inline]
-pub fn shape_oval_hard(u: f32, v: f32) -> f32 {
-    let dx = (u - 0.5) / 0.5; // ±1 at horizontal edges
-    let dy = (v - 0.5) / 0.25; // ±1 at quarter-height (oval is 2:1)
-    let d = (dx * dx + dy * dy).sqrt();
-    let edge_t = ((d - 0.85) / 0.15).clamp(0.0, 1.0);
-    let smooth = edge_t * edge_t * (3.0 - 2.0 * edge_t);
-    1.0 - smooth
+pub fn shape_oval_hard(u: f32, v: f32, aa: f32) -> f32 {
+    // Van Verth gradient-normalized coverage (GDC 2015, what Skia uses): the
+    // implicit ellipse field divided by its gradient magnitude is the signed
+    // distance to within ~1px of the edge — the band where AA matters — so a
+    // rotated/stretched oval gets a uniform ~`aa`px edge instead of the blurry-
+    // along-one-axis / razor-along-the-other artifact a naive field gives.
+    let ex = (u - 0.5) / 0.5; // ±1 at horizontal edges
+    let ey = (v - 0.5) / 0.25; // ±1 at quarter-height (oval is 2:1)
+    let f = ex * ex + ey * ey - 1.0; // implicit field: <0 inside, 0 at boundary
+    let gx = 2.0 * ex / 0.5;
+    let gy = 2.0 * ey / 0.25;
+    let grad = (gx * gx + gy * gy).sqrt().max(1e-6);
+    let dist = f / grad; // ~signed distance to the ellipse edge, in uv units
+    (0.5 - dist / aa).clamp(0.0, 1.0)
 }
 
 /// Dispatch a procedural shape function by `shape_layer` slot. Out-of-range
 /// slots fall back to `round_hard` (slot 0) — same safer-degrade behavior
 /// as the shader's `default:` arm. Documented behavior, not bug.
 #[inline]
-pub fn shape_alpha_for_slot(slot: u32, u: f32, v: f32) -> f32 {
+pub fn shape_alpha_for_slot(slot: u32, u: f32, v: f32, aa: f32) -> f32 {
     match slot {
-        ROUND_HARD_SLOT => shape_round_hard(u, v),
-        ROUND_SOFT_SLOT => shape_round_soft(u, v),
-        SQUARE_HARD_SLOT => shape_square_hard(u, v),
-        OVAL_HARD_SLOT => shape_oval_hard(u, v),
-        _ => shape_round_hard(u, v),
+        ROUND_HARD_SLOT => shape_round_hard(u, v, aa),
+        ROUND_SOFT_SLOT => shape_round_soft(u, v, aa),
+        SQUARE_HARD_SLOT => shape_square_hard(u, v, aa),
+        OVAL_HARD_SLOT => shape_oval_hard(u, v, aa),
+        _ => shape_round_hard(u, v, aa),
     }
 }
 
@@ -477,17 +494,19 @@ pub fn round_hard_shape() -> Vec<u8> {
 /// Rasterize an arbitrary procedural shape kernel to the canonical
 /// 256² R8 atlas slot layout. Shared helper for `round_hard_shape`,
 /// `round_soft_shape`, `square_hard_shape` rasterizers.
-fn rasterize_shape_to_atlas(kernel: fn(f32, f32) -> f32) -> Vec<u8> {
+fn rasterize_shape_to_atlas(kernel: fn(f32, f32, f32) -> f32) -> Vec<u8> {
     let size = SHAPE_TILE_PX as usize;
     let mut out = vec![0u8; size * size];
     let inv_size = 1.0 / (size as f32);
+    // AA width in uv units for a `size`-px tile (the atlas is a 256px reference).
+    let aa = SHAPE_AA_PX * inv_size;
     for y in 0..size {
         for x in 0..size {
             // Pixel-center convention — matches the GPU sample grid
             // (audit 2026-05-26 D-1.M1).
             let u = (x as f32 + 0.5) * inv_size;
             let v = (y as f32 + 0.5) * inv_size;
-            let alpha = (kernel(u, v) * 255.0).clamp(0.0, 255.0) as u8;
+            let alpha = (kernel(u, v, aa) * 255.0).clamp(0.0, 255.0) as u8;
             out[y * size + x] = alpha;
         }
     }
@@ -538,6 +557,10 @@ pub fn oval_hard_shape() -> Vec<u8> {
 mod library_shape_tests {
     use super::*;
 
+    /// A representative AA width (uv units) for direct kernel tests — coarse
+    /// enough that "inside" and "outside" are clearly separated.
+    const AA: f32 = 0.05;
+
     #[test]
     fn round_hard_shape_has_correct_size() {
         let s = round_hard_shape();
@@ -561,65 +584,53 @@ mod library_shape_tests {
 
     #[test]
     fn round_hard_shape_has_smooth_edge() {
+        // Pixel-relative AA makes the edge a thin ~1.5px band at the geometric
+        // radius (r ≈ 0.5 → atlas column ~255), so the very-edge pixel is partial.
         let s = round_hard_shape();
-        // Pick a point on the edge ring (radius ~ 0.92 of half-width).
-        // distance from center 128 = 128*0.92 ≈ 117 → x=128+117=245, y=128.
-        let edge_idx = 128 * 256 + 245;
+        let edge_idx = 128 * 256 + 255; // far +x, r ≈ 0.498 (just inside the edge)
         let alpha = s[edge_idx];
-        // Should be partial alpha (not 0, not 255) — smoothstep transition.
         assert!(
             alpha > 0 && alpha < 255,
-            "edge ring should have partial alpha; got {}",
-            alpha
+            "edge pixel should be partial alpha; got {alpha}"
         );
     }
 
-    // ─── round_soft kernel + atlas ──────────────────────────────────────────
+    #[test]
+    fn round_hard_kernel_edge_midpoint_is_half() {
+        // At the exact geometric edge (r = 0.5) coverage is the 0.5 AA midpoint,
+        // independent of `aa`. (u=1.0 → dx=0.5, dy=0 → r=0.5.)
+        assert!((shape_round_hard(1.0, 0.5, AA) - 0.5).abs() < 1e-5);
+        assert!((shape_round_hard(1.0, 0.5, 0.2) - 0.5).abs() < 1e-5);
+    }
+
+    // ─── round_soft kernel + atlas (soft profile unchanged; aa ignored) ─────
 
     #[test]
     fn round_soft_kernel_center_is_one() {
-        // (1 - 0)² = 1.0 at center (d=0).
-        let alpha = shape_round_soft(0.5, 0.5);
-        assert!(
-            (alpha - 1.0).abs() < 1e-6,
-            "center alpha must be 1.0; got {}",
-            alpha
-        );
+        assert!((shape_round_soft(0.5, 0.5, AA) - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn round_soft_kernel_edge_is_zero() {
-        // d=1 (corner) → (1 - 1)² = 0.0.
-        assert_eq!(shape_round_soft(0.0, 0.5), 0.0); // left edge of bbox
-        assert_eq!(shape_round_soft(1.0, 0.5), 0.0);
-        assert_eq!(shape_round_soft(0.5, 0.0), 0.0);
-        assert_eq!(shape_round_soft(0.5, 1.0), 0.0);
+        assert_eq!(shape_round_soft(0.0, 0.5, AA), 0.0);
+        assert_eq!(shape_round_soft(1.0, 0.5, AA), 0.0);
+        assert_eq!(shape_round_soft(0.5, 0.0, AA), 0.0);
+        assert_eq!(shape_round_soft(0.5, 1.0, AA), 0.0);
     }
 
     #[test]
     fn round_soft_kernel_corners_are_zero() {
-        // Audit T1.6 W-15: 4 corners (0,0), (0,1), (1,0), (1,1) are
-        // OUTSIDE the inscribed circle (d > 1) → alpha = 0 via the
-        // explicit `d_sq >= 1.0` early-out. Completes the 9-point
-        // canonical grid for kernel testing.
-        assert_eq!(shape_round_soft(0.0, 0.0), 0.0, "corner (0,0)");
-        assert_eq!(shape_round_soft(1.0, 0.0), 0.0, "corner (1,0)");
-        assert_eq!(shape_round_soft(0.0, 1.0), 0.0, "corner (0,1)");
-        assert_eq!(shape_round_soft(1.0, 1.0), 0.0, "corner (1,1)");
+        assert_eq!(shape_round_soft(0.0, 0.0, AA), 0.0, "corner (0,0)");
+        assert_eq!(shape_round_soft(1.0, 0.0, AA), 0.0, "corner (1,0)");
+        assert_eq!(shape_round_soft(0.0, 1.0, AA), 0.0, "corner (0,1)");
+        assert_eq!(shape_round_soft(1.0, 1.0, AA), 0.0, "corner (1,1)");
     }
 
     #[test]
     fn round_soft_kernel_mid_radius_is_partial() {
-        // At d² = 0.5 → (1 - 0.5)² = 0.25.
-        // dx² + dy² = 0.5 * 0.25 = 0.125 → dx = dy = sqrt(0.0625) = 0.25.
-        let alpha = shape_round_soft(0.5 + 0.25, 0.5 + 0.25);
-        let expected = 0.25_f32;
-        assert!(
-            (alpha - expected).abs() < 1e-5,
-            "mid-radius alpha drift: got {}, expected {}",
-            alpha,
-            expected
-        );
+        // At d² = 0.5 → (1 - 0.5)² = 0.25. dx = dy = 0.25.
+        let alpha = shape_round_soft(0.5 + 0.25, 0.5 + 0.25, AA);
+        assert!((alpha - 0.25).abs() < 1e-5, "mid-radius drift: got {alpha}");
     }
 
     #[test]
@@ -631,26 +642,19 @@ mod library_shape_tests {
 
     #[test]
     fn square_hard_kernel_center_is_opaque() {
-        assert!((shape_square_hard(0.5, 0.5) - 1.0).abs() < 1e-6);
+        assert!((shape_square_hard(0.5, 0.5, AA) - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn square_hard_kernel_inside_band_is_opaque() {
-        // d = max(|dx|, |dy|) / 0.5. At (0.7, 0.5) → dx=0.2, dy=0; d = 0.4.
-        // Below edge band [0.90, 1.0] → alpha = 1.0.
-        assert!((shape_square_hard(0.7, 0.5) - 1.0).abs() < 1e-6);
+        // d = max(|dx|, |dy|) = 0.2 at (0.7, 0.5), well inside the 0.5 edge.
+        assert!((shape_square_hard(0.7, 0.5, AA) - 1.0).abs() < 1e-6);
     }
 
     #[test]
-    fn square_hard_kernel_at_edge_band_partial() {
-        // d = 0.95 (halfway through smoothstep band) → partial alpha.
-        // (0.5 + 0.475, 0.5) → dx = 0.475, d = 0.95.
-        let alpha = shape_square_hard(0.975, 0.5);
-        assert!(
-            alpha > 0.0 && alpha < 1.0,
-            "edge band must be partial alpha; got {}",
-            alpha
-        );
+    fn square_hard_kernel_at_edge_is_half() {
+        // At the exact square edge (d = 0.5) coverage is the 0.5 AA midpoint.
+        assert!((shape_square_hard(1.0, 0.5, AA) - 0.5).abs() < 1e-5);
     }
 
     #[test]
@@ -660,26 +664,15 @@ mod library_shape_tests {
 
     #[test]
     fn square_hard_atlas_core_is_opaque_corner_is_partial() {
-        // Square shape: pixel-center convention puts the corner sample at
-        // u ≈ 0.5/256 ≈ 0.00195, so the Chebyshev `d = max(|dx|, |dy|) /
-        // 0.5 ≈ 0.996` — inside the smoothstep edge band `[0.90, 1.00]`,
-        // hence PARTIAL alpha (not full). The CORE (≥ 16 px in from each
-        // edge) is fully opaque.
+        // The CORE is fully opaque; the corner (d ≈ 0.498) sits in the thin edge
+        // band → partial.
         let s = square_hard_shape();
-        // Core sample at (128, 128) — center of canvas, well inside d < 0.90.
         assert_eq!(s[128 * 256 + 128], 255, "core must be full alpha");
-        // Core sample at (32, 32) — d = (128-32)/128 = 0.75, still < 0.90 → opaque.
-        assert_eq!(
-            s[32 * 256 + 32],
-            255,
-            "(32,32) is inside the d<0.90 core → opaque"
-        );
-        // Corner (0,0) is in the edge band → partial alpha.
+        assert_eq!(s[32 * 256 + 32], 255, "(32,32) is inside the core → opaque");
         let corner = s[0];
         assert!(
             corner > 0 && corner < 255,
-            "corner (0,0) must be partial alpha (in smoothstep band); got {}",
-            corner
+            "corner (0,0) must be partial alpha (in the edge band); got {corner}"
         );
     }
 
@@ -687,27 +680,30 @@ mod library_shape_tests {
 
     #[test]
     fn shape_dispatch_returns_correct_kernel_per_slot() {
-        // Verify the dispatch wires each slot to the right kernel.
-        let (u, v) = (0.5_f32, 0.5_f32);
+        // Off-centre point where the kernels differ — verifies the dispatch wires
+        // each slot to the right kernel (threading `aa` identically).
+        let (u, v) = (0.7_f32, 0.55_f32);
         assert!(
-            (shape_alpha_for_slot(ROUND_HARD_SLOT, u, v) - shape_round_hard(u, v)).abs() < 1e-9
+            (shape_alpha_for_slot(ROUND_HARD_SLOT, u, v, AA) - shape_round_hard(u, v, AA)).abs()
+                < 1e-9
         );
         assert!(
-            (shape_alpha_for_slot(ROUND_SOFT_SLOT, u, v) - shape_round_soft(u, v)).abs() < 1e-9
+            (shape_alpha_for_slot(ROUND_SOFT_SLOT, u, v, AA) - shape_round_soft(u, v, AA)).abs()
+                < 1e-9
         );
         assert!(
-            (shape_alpha_for_slot(SQUARE_HARD_SLOT, u, v) - shape_square_hard(u, v)).abs() < 1e-9
+            (shape_alpha_for_slot(SQUARE_HARD_SLOT, u, v, AA) - shape_square_hard(u, v, AA)).abs()
+                < 1e-9
         );
     }
 
     #[test]
     fn shape_dispatch_unknown_slot_falls_back_to_round_hard() {
-        // Forward-compat — slot 99 (not yet defined) falls back to round_hard,
-        // matching the shader's `default:` arm. Documented behavior.
-        let (u, v) = (0.5_f32, 0.5_f32);
+        // Forward-compat — slot 99 falls back to round_hard (shader `default:` arm).
+        let (u, v) = (0.7_f32, 0.55_f32);
         assert_eq!(
-            shape_alpha_for_slot(99, u, v),
-            shape_alpha_for_slot(ROUND_HARD_SLOT, u, v),
+            shape_alpha_for_slot(99, u, v, AA),
+            shape_alpha_for_slot(ROUND_HARD_SLOT, u, v, AA),
             "unknown slot must fall back to round_hard"
         );
     }
@@ -810,33 +806,36 @@ mod tests {
 
     #[test]
     fn oval_hard_kernel_center_is_opaque() {
-        assert!((shape_oval_hard(0.5, 0.5) - 1.0).abs() < 1e-6);
+        assert!((shape_oval_hard(0.5, 0.5, 0.05) - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn oval_hard_kernel_horizontal_axis_reaches_full_width() {
-        // At (1.0, 0.5) on horizontal axis: dx=1, dy=0, d=1 → edge band.
-        let alpha = shape_oval_hard(1.0, 0.5);
+        // The 2:1 oval reaches full width at u=1.0 (the bbox edge); the gradient-
+        // normalized coverage there is the 0.5 AA midpoint, and just inside is
+        // opaque.
         assert!(
-            alpha < 0.05,
-            "horizontal edge (1.0, 0.5) should be near-zero (d=1 → edge); got {alpha}"
+            (shape_oval_hard(1.0, 0.5, 0.05) - 0.5).abs() < 0.05,
+            "horizontal edge (1.0, 0.5) is the 0.5 AA midpoint"
+        );
+        assert!(
+            shape_oval_hard(0.9, 0.5, 0.05) > 0.95,
+            "inside the oval (0.9, 0.5) is opaque"
         );
     }
 
     #[test]
     fn oval_hard_kernel_vertical_axis_stops_at_quarter_height() {
-        // The 2:1 oblong has semi-axes (0.5, 0.25). At (0.5, 0.75):
-        // dy = (0.75 - 0.5) / 0.25 = 1.0 → d = 1.0 → edge band.
-        let alpha = shape_oval_hard(0.5, 0.75);
+        // Semi-axis 0.25: the edge is at v=0.75 (cov ≈ 0.5 midpoint); beyond it
+        // (v=0.85) coverage is 0.
         assert!(
-            alpha < 0.05,
-            "vertical at quarter-height (0.5, 0.75) should be near-zero; got {alpha}"
+            (shape_oval_hard(0.5, 0.75, 0.05) - 0.5).abs() < 0.05,
+            "vertical edge (0.5, 0.75) is the 0.5 AA midpoint"
         );
-        // Just above the vertical edge: (0.5, 0.8) → dy = 1.2 → d > 1 → 0.
         assert_eq!(
-            shape_oval_hard(0.5, 0.8),
+            shape_oval_hard(0.5, 0.85, 0.05),
             0.0,
-            "outside oval vertically must be 0"
+            "well outside the oval vertically must be 0"
         );
     }
 
@@ -853,7 +852,10 @@ mod tests {
     #[test]
     fn oval_hard_dispatch_routes_correctly() {
         // shape_alpha_for_slot dispatches OVAL_HARD_SLOT to shape_oval_hard.
-        let (u, v) = (0.5_f32, 0.5_f32);
-        assert!((shape_alpha_for_slot(OVAL_HARD_SLOT, u, v) - shape_oval_hard(u, v)).abs() < 1e-9);
+        let (u, v) = (0.6_f32, 0.6_f32);
+        assert!(
+            (shape_alpha_for_slot(OVAL_HARD_SLOT, u, v, 0.05) - shape_oval_hard(u, v, 0.05)).abs()
+                < 1e-9
+        );
     }
 }

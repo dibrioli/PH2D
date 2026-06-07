@@ -23,8 +23,7 @@ pub const GRAIN_SPRAY_DOT: u32 = 3;
 /// on every platform (pure integer ops, no float transcendentals).
 #[inline]
 fn hash2(x: i32, y: i32, seed: u32) -> f32 {
-    let mut h = (x as u32)
-        .wrapping_mul(0x1656_67b1)
+    let mut h = (x as u32).wrapping_mul(0x1656_67b1)
         ^ (y as u32).wrapping_mul(0x2787_6a13)
         ^ seed.wrapping_mul(0x85eb_ca77);
     h ^= h >> 15;
@@ -132,7 +131,12 @@ mod tests {
 
     #[test]
     fn deterministic_same_input_same_output() {
-        for gt in [GRAIN_SIMPLEX, GRAIN_GABOR, GRAIN_PAPER_WEAVE, GRAIN_SPRAY_DOT] {
+        for gt in [
+            GRAIN_SIMPLEX,
+            GRAIN_GABOR,
+            GRAIN_PAPER_WEAVE,
+            GRAIN_SPRAY_DOT,
+        ] {
             let a = grain_value(gt, 3.25, 7.5, 42);
             let b = grain_value(gt, 3.25, 7.5, 42);
             assert_eq!(a, b, "grain {gt} must be deterministic");
@@ -141,12 +145,20 @@ mod tests {
 
     #[test]
     fn output_in_unit_range() {
-        for gt in [GRAIN_SIMPLEX, GRAIN_GABOR, GRAIN_PAPER_WEAVE, GRAIN_SPRAY_DOT] {
+        for gt in [
+            GRAIN_SIMPLEX,
+            GRAIN_GABOR,
+            GRAIN_PAPER_WEAVE,
+            GRAIN_SPRAY_DOT,
+        ] {
             for i in 0..200 {
                 let x = (i as f32) * 0.37;
                 let y = (i as f32) * 0.91 + 1.3;
                 let v = grain_value(gt, x, y, 7);
-                assert!((0.0..=1.0).contains(&v), "grain {gt} out of [0,1]: {v} at ({x},{y})");
+                assert!(
+                    (0.0..=1.0).contains(&v),
+                    "grain {gt} out of [0,1]: {v} at ({x},{y})"
+                );
             }
         }
     }
@@ -163,6 +175,9 @@ mod tests {
             min = min.min(v);
             max = max.max(v);
         }
-        assert!(max - min > 0.3, "simplex grain must vary across space: range {min}..{max}");
+        assert!(
+            max - min > 0.3,
+            "simplex grain must vary across space: range {min}..{max}"
+        );
     }
 }

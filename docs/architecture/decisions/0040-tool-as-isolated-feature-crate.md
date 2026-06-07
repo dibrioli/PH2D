@@ -190,3 +190,7 @@ locais (não-pushados; ship é do Enio):
 - Arch-gates ativos pós-FREEZE: 4 em `architecture_cycle_prevention` + 3 em `architecture_tool_contract_surface` + 3 staleness em `ph2d-tool-registry-init`.
 
 **Auditorias adversariais** (≥2 agentes paralelos com lentes distintas — paridade comportamental + arquitetura/cycles — em TG-B, TG-C). Achados Médio/Alto remediados pré-commit. Follow-ups documentados (gate de panel auto-discover) endereçados no próprio TG-E. Stutter de mouse VSync = trade-off documentado em `docs/perf/mouse-stutter.md` (não-regressão).
+
+## 8. Amendment 2 — `Tool::on_tick` (2026-06-07, Coord)
+
+**Mudança de contrato congelado (Coord-only):** `Tool` cap **10 → 11** — adicionado `fn on_tick(&mut self, _dt_ms: f32) {}` (default no-op). Driver: ADR-0049 (fluid live tick) realizado via [ADR-0077 §D11](0077-brush-engine-physics-overhaul.md) — a aquarela wet-on-wet ao vivo precisa de um heartbeat por-frame que avance a difusão **enquanto idle** (a tinta "fica molhada" e seca depois do pen-up; sem o tick, o solver só roda em eventos de pointer). O shell chama `active_tool.on_tick(dt_ms)` 1×/frame **apenas na tool ativa** (tool inativa custa zero). Por ser default no-op, **nenhuma das 8 tools satélite precisa mudar** — o ripple-de-fan-out que o freeze protege é zero. Gate `architecture_tool_contract_surface::tool_contract_is_capped` atualizado (10→11) + CLAUDE.md §6 (`Tool=11`). `RasterEditTool=5` e `PanelEvent=4` permanecem.

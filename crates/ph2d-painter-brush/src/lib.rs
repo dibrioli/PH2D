@@ -68,6 +68,7 @@ pub mod brush;
 pub mod brush_handle;
 pub mod color_dynamics;
 pub mod cpu_render;
+pub mod diffusion;
 pub mod dynamics;
 pub mod grain;
 pub mod grain_noise;
@@ -93,7 +94,10 @@ pub use blend::{BlendMode, MAX_BLEND_MODES, apply as apply_blend};
 pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;
-pub use cpu_render::{apply_stamps, apply_stamps_wash, apply_stamps_with_options};
+pub use cpu_render::{
+    EdgeStyle, apply_stamps, apply_stamps_buildup, apply_stamps_wash, apply_stamps_with_options,
+    apply_wash_settle, coverage_bbox,
+};
 pub use dynamics::DynamicsParams;
 pub use grain::{
     GrainBehavior, GrainBlendMode, GrainFiltering, GrainParams, GrainSource, GrainZoom,

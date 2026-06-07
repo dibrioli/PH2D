@@ -86,6 +86,25 @@ const MAX_SHAPE_COUNT: u32 = 16;
 /// `stabilization ∈ [0,1]`. Sizes the fixed input-history ring (T1.7).
 const STAB_WINDOW_MAX: usize = 17;
 
+/// One-Euro motion-filter min-cutoff range (per-sample units). `motion_filtering_
+/// amount` lerps `MAX → MIN`: a low cutoff at full amount means heavy smoothing of
+/// slow (tremor) motion; the speed term raises it back up for fast strokes.
+const MF_MIN_CUTOFF: f32 = 0.22;
+const MF_MAX_CUTOFF: f32 = 3.0;
+/// One-Euro β at `motion_filtering_expression = 1` — how fast the cutoff climbs
+/// with speed (more = crisper fast strokes, less lag).
+const MF_BETA_MAX: f32 = 0.35;
+
+/// Velocity-dynamics speed normalisation: `speed_ema / SPEED_REF_PX` saturated to
+/// `[0,1]` is the `vfactor` that scales `dynamics.speed_*`. ~24 px/sample reads as
+/// a "fast" stroke at typical sampling.
+const SPEED_REF_PX: f32 = 24.0;
+/// EMA factor for the smoothed stroke speed (higher = snappier, lower = steadier).
+const SPEED_EMA_ALPHA: f32 = 0.35;
+/// Max fractional swing of size / opacity / spacing at `vfactor = 1`, full
+/// `speed_*` (±this). Keeps velocity dynamics expressive but bounded.
+const SPEED_DYN_SWING: f32 = 0.6;
+
 /// Falloff fade length at `falloff = 1`, in brush diameters: at full falloff the
 /// stroke opacity ramps linearly from full to **zero** over this many diameters
 /// of travel. Lower falloff stretches the same ramp over a proportionally LONGER
@@ -93,6 +112,43 @@ const STAB_WINDOW_MAX: usize = 17;
 /// always runs out — higher falloff just runs out sooner. Size-relative so the
 /// feel is independent of brush size.
 const FALLOFF_LENGTH_DIAMETERS: f32 = 8.0;
+
+/// Length of the start taper at `taper_length_start = 0.5` (the max), in brush
+/// diameters. The taper ramps size + opacity up over `taper_length_start *
+/// TAPER_MAX_DIAMETERS * diameter` of arc length from pen-down.
+const TAPER_MAX_DIAMETERS: f32 = 12.0;
+
+/// **Live start taper** (T1.7+). Ramps the dab size + opacity UP over the first
+/// `L_start` of arc length from pen-down, so a stroke enters from a clean point
+/// (Procreate Taper). `taper_size_start` / `taper_opacity_start` are the tip
+/// fractions at distance 0 (0 = a true point / fully transparent); both reach 1.0
+/// (full brush) by `L_start = taper_length_start · TAPER_MAX_DIAMETERS · diameter`.
+/// Returns `(size_factor, opacity_factor)`. `taper_length_start == 0` → `(1, 1)`
+/// (no taper — the default brush, exact passthrough). Pure arithmetic + one
+/// smoothstep → HR-5 cross-OS (no transcendentals). **End taper** is NOT here —
+/// it needs the stroke end, i.e. a pen-up re-render (ADR-0077 D5 follow-up); live,
+/// only the start is knowable.
+#[inline]
+#[must_use]
+pub(crate) fn start_taper_factors(
+    taper: &crate::taper::TaperParams,
+    stroke_distance: f32,
+    diameter: f32,
+) -> (f32, f32) {
+    let len_frac = taper.taper_length_start.clamp(0.0, 0.5);
+    if len_frac <= 0.0 {
+        return (1.0, 1.0);
+    }
+    let l_start = (len_frac * TAPER_MAX_DIAMETERS * diameter).max(1.0);
+    let t = (stroke_distance / l_start).clamp(0.0, 1.0);
+    let gain = t * t * (3.0 - 2.0 * t); // smoothstep
+    let size_tip = taper.taper_size_start.clamp(0.0, 1.0);
+    let op_tip = taper.taper_opacity_start.clamp(0.0, 1.0);
+    (
+        size_tip + (1.0 - size_tip) * gain,
+        op_tip + (1.0 - op_tip) * gain,
+    )
+}
 
 /// Deterministic falloff opacity multiplier for a stamp at `stroke_distance`
 /// (px) into the stroke — the live "ink depletion" model (T1.7, Procreate-style).
@@ -218,6 +274,19 @@ pub struct StampScheduler {
     /// **survives `break_segment`** (the gap isn't measured, but the ink already
     /// spent persists across a sprite-boundary re-entry within the same stroke).
     stroke_dist: f32,
+    /// **One-Euro motion-filtering state** (Casiez/Roussel/Fekete 2012). Adaptive
+    /// low-pass on the input position driven by `stabilization.motion_filtering_
+    /// amount` (→ min cutoff) + `motion_filtering_expression` (→ β speed
+    /// adaptation): low speed → low cutoff (kills tremor), high speed → high cutoff
+    /// (no lag, preserves expressive fast strokes). `oe_pos` is the filtered
+    /// position, `oe_dpos` the smoothed per-axis derivative. `None` until the first
+    /// `advance`; reset on every stroke boundary. dt is the per-sample step (1).
+    oe_pos: Option<[f32; 2]>,
+    oe_dpos: [f32; 2],
+    /// **Velocity dynamics — smoothed stroke speed (px/sample).** EMA of the
+    /// per-advance segment length; drives `dynamics.speed_{size,opacity,spacing}`.
+    /// Reset on every stroke boundary so a new segment starts from rest.
+    speed_ema: f32,
 }
 
 impl Default for StampScheduler {

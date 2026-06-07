@@ -237,6 +237,60 @@ fn panel_event_opacity_setvalue_sets_layer_opacity() {
 }
 
 #[test]
+fn paper_slider_routes_to_params_paper_grain() {
+    // The Brush Studio "Paper" slider drives `PainterParams::paper_grain` (a
+    // substrate property, NOT a brush field) and the studio snapshot mirrors it.
+    use ph2d_editor_core::ids::PAINTER_STUDIO_PAPER_SLIDER;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = PainterTool::default();
+    // Default is off (the user opts in — fixes "grain when grain-source off").
+    assert_eq!(t.params.paper_grain, 0.0);
+    assert_eq!(t.brush_studio_snapshot().paper_grain, 0.0);
+    t.handle_panel_event(PanelEvent::SetValue(PAINTER_STUDIO_PAPER_SLIDER, 0.7));
+    assert!((t.params.paper_grain - 0.7).abs() < 1e-6);
+    assert!((t.brush_studio_snapshot().paper_grain - 0.7).abs() < 1e-6);
+    // Out-of-range clamps to [0,1].
+    t.handle_panel_event(PanelEvent::SetValue(PAINTER_STUDIO_PAPER_SLIDER, 1.5));
+    assert_eq!(t.params.paper_grain, 1.0);
+}
+
+#[test]
+fn motion_filter_and_speed_sliders_route_to_brush() {
+    // Motion filtering (unipolar 0..1) + velocity dynamics (bipolar: slider 0..1 →
+    // speed_* −1..1, 0.5 = neutral) wire to the Brush sub-structs (ADR-0077 D10).
+    use ph2d_editor_core::ids::{
+        PAINTER_STUDIO_MOTION_FILTER_SLIDER, PAINTER_STUDIO_SPEED_SIZE_SLIDER,
+    };
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = PainterTool::default();
+    t.handle_panel_event(PanelEvent::SetValue(
+        PAINTER_STUDIO_MOTION_FILTER_SLIDER,
+        0.6,
+    ));
+    assert!((t.brush.stabilization.motion_filtering_amount - 0.6).abs() < 1e-6);
+    // Bipolar: 0.5 → 0 (off), 1.0 → +1, 0.0 → −1.
+    t.handle_panel_event(PanelEvent::SetValue(PAINTER_STUDIO_SPEED_SIZE_SLIDER, 0.5));
+    assert!(
+        t.brush.dynamics.speed_size.abs() < 1e-6,
+        "0.5 slider = neutral"
+    );
+    t.handle_panel_event(PanelEvent::SetValue(PAINTER_STUDIO_SPEED_SIZE_SLIDER, 1.0));
+    assert!(
+        (t.brush.dynamics.speed_size - 1.0).abs() < 1e-6,
+        "1.0 slider = +1"
+    );
+    t.handle_panel_event(PanelEvent::SetValue(PAINTER_STUDIO_SPEED_SIZE_SLIDER, 0.0));
+    assert!(
+        (t.brush.dynamics.speed_size + 1.0).abs() < 1e-6,
+        "0.0 slider = −1"
+    );
+    assert!(
+        (t.brush_studio_snapshot().speed_size + 1.0).abs() < 1e-6,
+        "snapshot mirrors it"
+    );
+}
+
+#[test]
 fn panel_event_blend_selectoption_sets_mode() {
     use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
     use ph2d_editor_core::tool::PanelEvent;
@@ -547,7 +601,13 @@ fn grain_cycles_through_all_four_types_and_back_to_off() {
         t.handle_panel_event(PanelEvent::Click(
             ph2d_editor_core::ids::PAINTER_SIDEBAR_GRAIN_TOGGLE,
         ));
-        assert_eq!(t.ui_snapshot().grain_type, *want, "click {} → type {}", i + 1, want);
+        assert_eq!(
+            t.ui_snapshot().grain_type,
+            *want,
+            "click {} → type {}",
+            i + 1,
+            want
+        );
     }
 }
 
@@ -589,6 +649,33 @@ fn pigment_toggle_via_panel_event_click() {
         ph2d_editor_core::ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE,
     ));
     assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Linear);
+}
+
+#[test]
+fn fluid_toggle_via_brush_studio_checkbox() {
+    // Brush Studio "Fluid" checkbox routes Click(PAINTER_STUDIO_FLUID) →
+    // handle_panel_event → SetBrushParam(Fluid) (bool via the uncapped param,
+    // mirroring Wet/Burnt Edges — no new frozen PainterUiEdit slot). The studio
+    // snapshot mirrors `brush.rendering.fluid_enabled` both ways.
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+    assert!(
+        !t.brush_studio_snapshot().fluid_enabled,
+        "fluid off by default"
+    );
+    assert!(!t.active_brush().rendering.fluid_enabled);
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
+    ));
+    assert!(t.active_brush().rendering.fluid_enabled, "click → fluid on");
+    assert!(t.brush_studio_snapshot().fluid_enabled, "snapshot mirrors it");
+    t.handle_panel_event(PanelEvent::Click(
+        ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
+    ));
+    assert!(
+        !t.active_brush().rendering.fluid_enabled,
+        "second click → fluid off"
+    );
 }
 
 #[test]
@@ -2556,5 +2643,1213 @@ fn add_adjustment_via_kind_menu_select_creates_that_kind() {
         kind,
         AdjustmentKind::BrightnessContrast,
         "the picked kind is the one created"
+    );
+}
+
+#[test]
+fn wet_edges_darken_the_stroke_rim_on_pen_up() {
+    // End-to-end watercolor wet-edge check: paint a wash stroke with `wet_edges`
+    // ON, then verify the stroke comes out DARKER on its rim (the inner edge
+    // shoulder = the receding water boundary) than at its fill centre. This is
+    // pigment-transport edge darkening, not a silhouette outline — proven by the
+    // rim sitting *inside* the stroke, darker than the fill, with the fill centre
+    // essentially the flat brush colour.
+    let (w, h) = (48u32, 48u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 18.0;
+    // Transparent wash (opacity < 1): the K–M rim concentrates pigment toward the
+    // masstone, so edge darkening is bounded by it — it shows only where the fill is
+    // a GLAZE (lighter than the masstone), the physical watercolor case. At opacity
+    // 1.0 the fill is the masstone itself, so the rim correctly can't go darker.
+    t.params.opacity = 0.5;
+    // Wash mode (default accumulate=false) + wet_edges ON + a plain linear blend.
+    t.brush.rendering.wet_edges = true;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h); // white paper
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]); // blue
+    t.begin_stroke(5);
+    for x in (6..42).step_by(2) {
+        t.queue_pointer(PointerSample {
+            position: [x as f32, 24.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    let (px, _, _) = t.current_preview().expect("painted preview");
+    let luma = |x: u32, y: u32| {
+        let i = ((y * w + x) * 4) as usize;
+        px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
+    };
+    let center = luma(24, 24); // middle of the horizontal band = fill
+    // Darkest covered pixel along a vertical slice through the band = the rim.
+    let mut min_band = f32::INFINITY;
+    for y in 14..35 {
+        let l = luma(24, y);
+        if l < 245.0 {
+            // ignore the white paper / soft AA fringe
+            min_band = min_band.min(l);
+        }
+    }
+    assert!(
+        min_band < center - 6.0,
+        "wet-edge rim must be darker than the fill centre: rim {min_band} vs fill {center}"
+    );
+}
+
+#[test]
+fn wet_edges_off_leaves_a_flat_wash() {
+    // Control: the SAME stroke with wet_edges OFF has no rim — the band is flat
+    // (rim ≈ centre). Guards against the settle pass firing unconditionally.
+    let (w, h) = (48u32, 48u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 18.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.wet_edges = false;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]);
+    t.begin_stroke(5);
+    for x in (6..42).step_by(2) {
+        t.queue_pointer(PointerSample {
+            position: [x as f32, 24.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    let (px, _, _) = t.current_preview().expect("painted preview");
+    let luma = |x: u32, y: u32| {
+        let i = ((y * w + x) * 4) as usize;
+        px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
+    };
+    let center = luma(24, 24);
+    let mut min_band = f32::INFINITY;
+    for y in 18..31 {
+        let l = luma(24, y);
+        if l < 245.0 {
+            min_band = min_band.min(l);
+        }
+    }
+    assert!(
+        (min_band - center).abs() < 5.0,
+        "wet_edges OFF → flat band, no rim: min {min_band} vs centre {center}"
+    );
+}
+
+// ── Visual smoke (gated by PAINTER_VISUAL_SMOKE=1) — dumps PPM strokes ────────
+// Run: PAINTER_VISUAL_SMOKE=1 cargo test -p ph2d-tool-painter visual_smoke -- --nocapture
+
+#[cfg(test)]
+fn dump_ppm(path: &str, px: &[u8], w: u32, h: u32) {
+    use std::io::Write;
+    let mut buf = format!("P6\n{w} {h}\n255\n").into_bytes();
+    for i in 0..(w as usize * h as usize) {
+        buf.push(px[i * 4]);
+        buf.push(px[i * 4 + 1]);
+        buf.push(px[i * 4 + 2]);
+    }
+    std::fs::File::create(path)
+        .unwrap()
+        .write_all(&buf)
+        .unwrap();
+}
+
+#[cfg(test)]
+fn paint_arc(t: &mut PainterTool, samples: &[(f32, f32, f32)]) {
+    t.begin_stroke(42);
+    for &(x, y, pr) in samples {
+        t.queue_pointer(PointerSample {
+            position: [x, y],
+            pressure: pr,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+}
+
+#[test]
+fn visual_smoke_dump_strokes() {
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return; // opt-in only
+    }
+    let (w, h) = (320u32, 200u32);
+    // A wavy arc across the canvas.
+    let arc: Vec<(f32, f32, f32)> = (0..60)
+        .map(|i| {
+            let t = i as f32 / 59.0;
+            let x = 24.0 + t * 272.0;
+            let y = 100.0 + (t * std::f32::consts::PI * 1.5).sin() * 45.0;
+            (x, y, 1.0)
+        })
+        .collect();
+
+    // 1) Wet edges — watercolor blue on white.
+    {
+        let mut t = PainterTool::default();
+        t.params.size_px = 34.0;
+        t.params.opacity = 0.85;
+        t.brush.rendering.wet_edges = true;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Subtractive;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([35, 80, 170, 255]);
+        paint_arc(&mut t, &arc);
+        let (px, _, _) = t.current_preview().unwrap();
+        dump_ppm("/tmp/painter_smoke_wet.ppm", px, w, h);
+    }
+    // 2) Burnt edges — charcoal black on white.
+    {
+        let mut t = PainterTool::default();
+        t.params.size_px = 34.0;
+        t.params.opacity = 0.9;
+        t.brush.rendering.burnt_edges = true;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 28, 26, 255]);
+        paint_arc(&mut t, &arc);
+        let (px, _, _) = t.current_preview().unwrap();
+        dump_ppm("/tmp/painter_smoke_burnt.ppm", px, w, h);
+    }
+    // 3) Pressure ramp — a straight stroke whose pressure falls 1.0 → 0.05
+    //    (size + opacity should taper: thick/dark → thin/faint).
+    {
+        let mut t = PainterTool::default();
+        t.params.size_px = 40.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([20, 20, 30, 255]);
+        let ramp: Vec<(f32, f32, f32)> = (0..70)
+            .map(|i| {
+                let s = i as f32 / 69.0;
+                (24.0 + s * 272.0, 100.0, (1.0 - s).max(0.04))
+            })
+            .collect();
+        paint_arc(&mut t, &ramp);
+        let (px, _, _) = t.current_preview().unwrap();
+        dump_ppm("/tmp/painter_smoke_pressure.ppm", px, w, h);
+    }
+    // 4) AA stress — a SMALL canvas + thin diagonal/curved strokes of a small
+    //    hard brush, so viewing the (small) image magnified shows per-pixel edge
+    //    quality (the "serrilhado" check). round_hard at a few px.
+    {
+        let (sw, sh) = (90u32, 70u32);
+        let mut t = PainterTool::default();
+        t.params.size_px = 7.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        t.brush.rendering.accumulate = true; // crisp build-up, no wash softening
+        t.set_source(flat_source(sw, sh, [255, 255, 255, 255]), sw, sh);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([20, 20, 30, 255]);
+        // A slow shallow diagonal (the classic stair-step case) + a steeper one.
+        let diag: Vec<(f32, f32, f32)> = (0..80)
+            .map(|i| {
+                let s = i as f32 / 79.0;
+                (8.0 + s * 74.0, 14.0 + s * 8.0, 1.0)
+            })
+            .collect();
+        paint_arc(&mut t, &diag);
+        let curve: Vec<(f32, f32, f32)> = (0..80)
+            .map(|i| {
+                let s = i as f32 / 79.0;
+                (
+                    8.0 + s * 74.0,
+                    50.0 + (s * std::f32::consts::PI).sin() * -16.0,
+                    1.0,
+                )
+            })
+            .collect();
+        paint_arc(&mut t, &curve);
+        let (px, _, _) = t.current_preview().unwrap();
+        dump_ppm("/tmp/painter_smoke_aa.ppm", px, sw, sh);
+    }
+    // 5) Start taper — CONSTANT pressure (1.0) but taper_length set, so the entry
+    //    is a clean point ramping to full width (independent of pressure), end blunt.
+    {
+        let mut t = PainterTool::default();
+        t.params.size_px = 34.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        t.brush.rendering.accumulate = true;
+        t.brush.taper.taper_length_start = 0.5; // long taper
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([20, 20, 30, 255]);
+        let line: Vec<(f32, f32, f32)> = (0..70)
+            .map(|i| (24.0 + (i as f32 / 69.0) * 272.0, 100.0, 1.0))
+            .collect();
+        paint_arc(&mut t, &line);
+        let (px, _, _) = t.current_preview().unwrap();
+        dump_ppm("/tmp/painter_smoke_taper.ppm", px, w, h);
+    }
+    eprintln!("[visual smoke] wrote /tmp/painter_smoke_{{wet,burnt,pressure,aa,taper}}.ppm");
+}
+
+#[test]
+fn wet_edges_work_in_accumulate_buildup_mode() {
+    // Regression: wet/burnt edges must fire in build-up (`accumulate`) mode too,
+    // not only wash. The coverage buffer is now a side output of the build-up
+    // render, so the pen-up settle has the stroke extent to darken its rim.
+    let (w, h) = (48u32, 48u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 18.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.accumulate = true; // BUILD-UP, not wash
+    t.brush.rendering.wet_edges = true;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]);
+    t.begin_stroke(5);
+    for x in (6..42).step_by(2) {
+        t.queue_pointer(PointerSample {
+            position: [x as f32, 24.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    let (px, _, _) = t.current_preview().expect("painted preview");
+    let luma = |x: u32, y: u32| {
+        let i = ((y * w + x) * 4) as usize;
+        px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
+    };
+    let center = luma(24, 24);
+    let mut min_band = f32::INFINITY;
+    for y in 14..35 {
+        let l = luma(24, y);
+        if l < 245.0 {
+            min_band = min_band.min(l);
+        }
+    }
+    assert!(
+        min_band < center - 6.0,
+        "wet-edge rim must darken in build-up mode too: rim {min_band} vs fill {center}"
+    );
+}
+
+#[test]
+fn edge_intensity_scales_the_rim_darkness() {
+    // The Edge Intensity slider (brush.rendering.edge_intensity) must scale the
+    // settle strength: a higher value → a darker rim. Proves the field flows
+    // through end_stroke into apply_wash_settle.
+    let rim_luma = |intensity: f32| -> f32 {
+        let (w, h) = (48u32, 48u32);
+        let mut t = PainterTool::default();
+        t.params.size_px = 18.0;
+        // Transparent wash so the K–M rim has glaze headroom toward the masstone
+        // (see `wet_edges_darken_the_stroke_rim_on_pen_up`).
+        t.params.opacity = 0.5;
+        t.brush.rendering.wet_edges = true;
+        t.brush.rendering.edge_intensity = intensity;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]);
+        t.begin_stroke(5);
+        for x in (6..42).step_by(2) {
+            t.queue_pointer(PointerSample {
+                position: [x as f32, 24.0],
+                pressure: 1.0,
+                tilt: 0.0,
+            });
+        }
+        t.end_stroke();
+        let (px, _, _) = t.current_preview().unwrap();
+        let luma = |x: u32, y: u32| {
+            let i = ((y * w + x) * 4) as usize;
+            px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
+        };
+        let mut min_band = f32::INFINITY;
+        for y in 14..35 {
+            let l = luma(24, y);
+            if l < 245.0 {
+                min_band = min_band.min(l);
+            }
+        }
+        min_band
+    };
+    let rim_lo = rim_luma(0.2);
+    let rim_hi = rim_luma(1.0);
+    assert!(
+        rim_hi < rim_lo - 5.0,
+        "higher edge intensity must darken the rim more: hi {rim_hi} vs lo {rim_lo}"
+    );
+}
+
+#[test]
+fn visual_smoke_rendering_modes() {
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (300u32, 210u32);
+    // Background: left half light grey, right half dark blue — so a semi-transparent
+    // stroke reveals how much each mode lets the layer below show through.
+    let mut bg = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let i = ((y * w + x) * 4) as usize;
+            let (r, g, b) = if x < w / 2 {
+                (220, 220, 220)
+            } else {
+                (28, 40, 120)
+            };
+            bg[i] = r;
+            bg[i + 1] = g;
+            bg[i + 2] = b;
+            bg[i + 3] = 255;
+        }
+    }
+    let names = [
+        "LightGlaze",
+        "UniformGlaze",
+        "IntenseGlaze",
+        "HeavyGlaze",
+        "UniformBlending",
+        "IntenseBlending",
+    ];
+    let mut t = PainterTool::default();
+    t.params.size_px = 22.0;
+    t.params.opacity = 0.6; // semi-transparent so modes differ
+    t.brush.rendering.accumulate = false; // WASH (the default) — option (a) makes modes work here
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear; // not mixbox
+    t.set_source(bg, w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([220, 40, 40, 255]); // red
+    for (m, _name) in names.iter().enumerate() {
+        t.brush.rendering.rendering_mode = ph2d_painter_brush::RenderingMode::from_u32(m as u32);
+        let y = 22.0 + m as f32 * 30.0;
+        let line: Vec<(f32, f32, f32)> = (0..50)
+            .map(|i| (20.0 + (i as f32 / 49.0) * 260.0, y, 1.0))
+            .collect();
+        paint_arc(&mut t, &line);
+    }
+    let (px, _, _) = t.current_preview().unwrap();
+    dump_ppm("/tmp/painter_smoke_modes.ppm", px, w, h);
+    eprintln!(
+        "[modes] LightGlaze, UniformGlaze, IntenseGlaze, HeavyGlaze, UniformBlending, IntenseBlending (top→bottom)"
+    );
+}
+
+#[test]
+fn visual_smoke_texture_critique() {
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    use ph2d_painter_brush::{GrainSource, ProceduralGrain};
+    let (w, h) = (320u32, 240u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 30.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.accumulate = true;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [250, 248, 244, 255]), w, h); // warm paper
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([35, 30, 28, 255]);
+    let strokes: &[(&str, GrainSource, f32, f32)] = &[
+        ("flat (default)", GrainSource::None, 1.0, 0.0),
+        (
+            "simplex fine",
+            GrainSource::Procedural(ProceduralGrain::SimplexNoise {
+                scale: 1.0,
+                octaves: 4,
+                persistence: 0.5,
+                seed: 1,
+            }),
+            1.0,
+            1.0,
+        ),
+        (
+            "simplex coarse",
+            GrainSource::Procedural(ProceduralGrain::SimplexNoise {
+                scale: 2.2,
+                octaves: 5,
+                persistence: 0.6,
+                seed: 2,
+            }),
+            2.2,
+            1.0,
+        ),
+        (
+            "paper weave",
+            GrainSource::Procedural(ProceduralGrain::PaperWeave {
+                fiber_density: 1.0,
+                fiber_anisotropy: 0.5,
+                crossweave: true,
+                seed: 3,
+            }),
+            1.6,
+            1.0,
+        ),
+    ];
+    for (i, (_name, src, scale, depth)) in strokes.iter().enumerate() {
+        t.brush.grain.grain_source = src.clone();
+        t.brush.grain.grain_scale = *scale;
+        t.brush.grain.grain_depth = *depth;
+        let y = 30.0 + i as f32 * 55.0;
+        let line: Vec<(f32, f32, f32)> = (0..60)
+            .map(|k| {
+                let s = k as f32 / 59.0;
+                (
+                    24.0 + s * 272.0,
+                    y + (s * std::f32::consts::TAU).sin() * 10.0,
+                    (0.4 + 0.6 * s).min(1.0),
+                )
+            })
+            .collect();
+        paint_arc(&mut t, &line);
+    }
+    let (px, _, _) = t.current_preview().unwrap();
+    dump_ppm("/tmp/painter_smoke_texture.ppm", px, w, h);
+    eprintln!("[texture] flat / simplex-fine / simplex-coarse / paper-weave (top→bottom)");
+}
+
+#[test]
+fn visual_smoke_paper_tooth() {
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (320u32, 200u32);
+    // Same default brush (NO per-brush grain) — only the global paper tooth varies,
+    // across three pressure-ramped bands on ONE canvas.
+    let mut t = PainterTool::default();
+    t.params.size_px = 30.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.accumulate = true;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [250, 248, 244, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([35, 30, 28, 255]);
+    for (i, pg) in [0.0f32, 0.4, 0.7].iter().enumerate() {
+        t.params.paper_grain = *pg;
+        let y = 36.0 + i as f32 * 62.0;
+        let line: Vec<(f32, f32, f32)> = (0..60)
+            .map(|k| {
+                let s = k as f32 / 59.0;
+                (
+                    24.0 + s * 272.0,
+                    y + (s * std::f32::consts::TAU).sin() * 9.0,
+                    (0.35 + 0.65 * s).min(1.0),
+                )
+            })
+            .collect();
+        paint_arc(&mut t, &line);
+    }
+    let (px, _, _) = t.current_preview().unwrap();
+    dump_ppm("/tmp/painter_smoke_paper.ppm", px, w, h);
+    eprintln!("[paper tooth] paper_grain 0.0 (flat) / 0.4 (default) / 0.7 (strong), top→bottom");
+}
+
+#[test]
+fn visual_smoke_watercolor_v15() {
+    // Watercolor v1.5 dry-down: a TRANSPARENT pigment wash (opacity 0.5) with
+    // wet_edges ON. Three bands, top→bottom, vary the Paper (= granulation) amount:
+    //   0.0  → K–M edge darkening only (dark rim concentrating toward the masstone)
+    //   0.5  → edge darkening + moderate granular sediment in the paper valleys
+    //   0.9  → strong granulation mottle + edge darkening
+    // Pen-up settle gives the rim + mottle; the body stays a luminous glaze.
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (320u32, 210u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 34.0;
+    t.params.opacity = 0.5; // transparent wash — the watercolor case
+    t.brush.rendering.wet_edges = true;
+    t.brush.rendering.edge_intensity = 0.7;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Subtractive;
+    t.set_source(flat_source(w, h, [252, 250, 246, 255]), w, h); // warm paper
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 70, 165, 255]); // ultramarine
+    for (i, pg) in [0.0f32, 0.5, 0.9].iter().enumerate() {
+        t.params.paper_grain = *pg;
+        let y = 40.0 + i as f32 * 64.0;
+        let line: Vec<(f32, f32, f32)> = (0..56)
+            .map(|k| {
+                let s = k as f32 / 55.0;
+                (
+                    26.0 + s * 268.0,
+                    y + (s * std::f32::consts::TAU).sin() * 10.0,
+                    1.0,
+                )
+            })
+            .collect();
+        paint_arc(&mut t, &line);
+    }
+    let (px, _, _) = t.current_preview().unwrap();
+    dump_ppm("/tmp/painter_smoke_watercolor.ppm", px, w, h);
+    eprintln!(
+        "[watercolor v1.5] ultramarine wash, granulation 0.0 / 0.5 / 0.9 top→bottom; \
+         K-M edge darkening + paper-valley sediment"
+    );
+}
+
+#[test]
+fn fluid_brush_blooms_live_and_dries_on_tick() {
+    // W15.2: a fluid brush splats into the live wet field (not the canvas
+    // directly); `queue_pointer` + `on_tick` step the diffusion and composite it
+    // out. After a dab, pigment shows at the centre; the field stays wet, then dries
+    // + is dropped after enough idle ticks ("the paint stays wet, then sets").
+    let (w, h) = (64u32, 48u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 14.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]); // blue
+    t.begin_stroke(7);
+    assert!(
+        t.wet_field.is_some(),
+        "fluid begin_stroke allocates the wet field"
+    );
+    t.queue_pointer(PointerSample {
+        position: [32.0, 24.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    let center = {
+        let (px, _, _) = t.current_preview().unwrap();
+        let i = ((24 * w + 32) * 4) as usize;
+        [px[i], px[i + 1], px[i + 2]]
+    };
+    eprintln!("center = {center:?}");
+    assert!(
+        center[2] as i32 > center[0] as i32 + 8,
+        "fluid dab deposits blue-ish pigment at the centre: {center:?}"
+    );
+    assert!(t.wet_field.is_some(), "still wet right after the dab");
+    t.end_stroke();
+    // Idle ticks keep evolving while wet, then dry + drop the field.
+    let mut dried_at = None;
+    for k in 0..600 {
+        t.on_tick_diffusion();
+        if t.wet_field.is_none() {
+            dried_at = Some(k);
+            break;
+        }
+    }
+    assert!(
+        dried_at.is_some(),
+        "the wet field dries + is dropped after enough ticks"
+    );
+    assert!(
+        dried_at.unwrap() > 5,
+        "it should stay wet for a while first: {dried_at:?}"
+    );
+}
+
+#[test]
+fn visual_smoke_watercolor_v2_live() {
+    // W15.2 END-TO-END: a fluid brush stroke through the real tool, then idle ticks
+    // (as the shell's `on_tick` would drive). Three bands top→bottom = the canvas
+    // right after painting / +18 ticks / +45 ticks: the wash blooms wet-on-wet AND
+    // keeps evolving + drying after the stroke ("the paint stays wet").
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (240u32, 70u32);
+    let snapshot = |t: &mut PainterTool| -> Vec<u8> {
+        t.preview_dirty = true;
+        t.current_preview().unwrap().0.to_vec()
+    };
+    let mut t = PainterTool::default();
+    t.params.size_px = 16.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [252, 250, 246, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 70, 165, 255]); // ultramarine
+    t.begin_stroke(7);
+    for k in 0..50 {
+        let s = k as f32 / 49.0;
+        t.queue_pointer(PointerSample {
+            position: [
+                18.0 + s * 204.0,
+                35.0 + (s * std::f32::consts::TAU).sin() * 9.0,
+            ],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    let band0 = snapshot(&mut t);
+    t.end_stroke();
+    for _ in 0..18 {
+        t.on_tick_diffusion();
+    }
+    let band1 = snapshot(&mut t);
+    for _ in 0..27 {
+        t.on_tick_diffusion();
+    }
+    let band2 = snapshot(&mut t);
+
+    let gap = 8u32;
+    let ch = h * 3 + gap * 2;
+    let mut canvas = vec![255u8; (w * ch * 4) as usize];
+    for (band, src) in [band0, band1, band2].iter().enumerate() {
+        let y0 = band as u32 * (h + gap);
+        for y in 0..h {
+            let dst = (((y0 + y) * w) * 4) as usize;
+            let s = ((y * w) * 4) as usize;
+            canvas[dst..dst + (w * 4) as usize].copy_from_slice(&src[s..s + (w * 4) as usize]);
+        }
+    }
+    dump_ppm("/tmp/painter_smoke_live.ppm", &canvas, w, ch);
+    eprintln!(
+        "[watercolor v2 LIVE] fluid stroke through the tool; canvas at +0 / +18 / +45 \
+         on_ticks top→bottom — blooms wet-on-wet + keeps evolving/drying after pen-up"
+    );
+}
+
+#[test]
+fn non_fluid_brush_allocates_no_wet_field() {
+    // The default (fluid_enabled = false) brush never allocates a wet field → the
+    // normal render path is byte-for-byte unchanged.
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(8, 8, [255; 4]), 8, 8);
+    t.begin_stroke(1);
+    assert!(t.wet_field.is_none(), "non-fluid brush has no wet field");
+}
+
+#[test]
+fn fluid_wet_field_dropped_on_undo_and_set_source() {
+    // Now that "Fluid" is a user toggle, the v1 edge cases are reachable: a wash
+    // still blooming post-pen-up must NOT re-composite onto a canvas whose stroke
+    // was undone or whose source was swapped out from under it. Both drop the field.
+    let (w, h) = (32u32, 24u32);
+    let make_fluid_stroke = || {
+        let mut t = PainterTool::default();
+        t.params.size_px = 12.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.fluid_enabled = true;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.begin_stroke(3);
+        t.queue_pointer(PointerSample {
+            position: [16.0, 12.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        t.end_stroke();
+        t
+    };
+    // Undo backs out the stroke → the still-wet field must go with it.
+    let mut t = make_fluid_stroke();
+    assert!(t.wet_field.is_some(), "field still wet right after pen-up");
+    assert!(t.undo_last_stroke(), "the committed fluid stroke undoes");
+    assert!(t.wet_field.is_none(), "undo drops the blooming field");
+    // A fresh source (sized differently) → the old grid is meaningless; drop it.
+    let mut t2 = make_fluid_stroke();
+    assert!(t2.wet_field.is_some());
+    t2.set_source(flat_source(40, 40, [255; 4]), 40, 40);
+    assert!(t2.wet_field.is_none(), "set_source drops the stale field");
+}
+
+#[test]
+fn fluid_coverage_is_color_independent() {
+    // Enio report: yellow/magenta washes came out fully opaque and covered other
+    // colours, while blue/red stayed a proper translucent wash. Cause: coverage
+    // used the linear-RGB SUM, which is luminance-weighted (yellow ≈ 2.6× blue).
+    // Fix normalises by the stroke colour's linear sum, so the SAME pigment load
+    // gives the SAME opacity regardless of hue. Paint identical strokes in several
+    // hues on a transparent layer; their centre alphas must now be close.
+    let (w, h) = (40u32, 40u32);
+    let alpha_for = |rgb: [u8; 4]| -> u8 {
+        let mut t = PainterTool::default();
+        t.params.size_px = 16.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.fluid_enabled = true;
+        t.set_source(vec![0u8; (w * h * 4) as usize], w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch(rgb);
+        t.begin_stroke(5);
+        t.queue_pointer(PointerSample {
+            position: [20.0, 20.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        let (px, _, _) = t.current_preview().unwrap();
+        px[((20 * w + 20) * 4 + 3) as usize] // centre alpha
+    };
+    let blue = alpha_for([40, 60, 230, 255]);
+    let red = alpha_for([230, 50, 40, 255]);
+    let yellow = alpha_for([235, 220, 30, 255]);
+    let magenta = alpha_for([230, 40, 220, 255]);
+    eprintln!("centre alphas — blue {blue} red {red} yellow {yellow} magenta {magenta}");
+    let spread = [blue, red, yellow, magenta];
+    let max = *spread.iter().max().unwrap() as i32;
+    let min = *spread.iter().min().unwrap() as i32;
+    assert!(
+        max - min < 45,
+        "fluid coverage must be ~color-independent; got blue {blue} red {red} yellow {yellow} magenta {magenta}"
+    );
+}
+
+#[test]
+fn fluid_no_dark_fringe_on_transparent_layer() {
+    // Repro of Enio's report: painting a fluid stroke on a NEW TOP LAYER (fully
+    // transparent) leaves dark borders. Cause: the composite blends the pigment
+    // over the backdrop RGB, and a transparent backdrop is (0,0,0,0) — so partial-
+    // coverage edge pixels mix toward BLACK. The fix must produce straight alpha:
+    // edge RGB = pigment colour, darkening only over actually-opaque paint.
+    let (w, h) = (40u32, 40u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 16.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(vec![0u8; (w * h * 4) as usize], w, h); // transparent layer
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([230, 110, 85, 255]); // coral
+    t.begin_stroke(5);
+    t.queue_pointer(PointerSample {
+        position: [20.0, 20.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    let (px, _, _) = t.current_preview().unwrap();
+    // Scan for the partial-alpha edge ring; the darkest edge pixel must still read
+    // as coral (R the dominant channel), NOT a black-mixed fringe.
+    let mut worst: Option<(u8, [u8; 4])> = None;
+    for i in 0..(w * h) as usize {
+        let p = [px[i * 4], px[i * 4 + 1], px[i * 4 + 2], px[i * 4 + 3]];
+        if p[3] > 10 && p[3] < 230 {
+            // luminance of the straight RGB
+            let lum = p[0] / 3 + p[1] / 3 + p[2] / 3;
+            if worst.is_none() || lum < worst.unwrap().0 {
+                worst = Some((lum, p));
+            }
+        }
+    }
+    if let Some((_, p)) = worst {
+        eprintln!("darkest edge pixel = {p:?}");
+        assert!(
+            p[0] as i32 > p[1] as i32 && p[0] as i32 > p[2] as i32,
+            "edge pixel must stay coral (R dominant), not a black fringe: {p:?}"
+        );
+        // A coral edge: R clearly above a neutral grey of the same alpha would imply
+        // straight colour. Guard the specific failure — near-black RGB at partial alpha.
+        assert!(
+            p[0] as i32 > 60,
+            "edge red too dark — black fringe from compositing over transparent: {p:?}"
+        );
+    }
+}
+
+#[test]
+fn visual_smoke_fluid_color_swatches() {
+    // Enio repro: several hues + an overlap. After the coverage fix, yellow/magenta
+    // must read as translucent washes like blue/red (not flat opaque), and a hue
+    // crossing another should blend, not bury it.
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (360u32, 200u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 22.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [235, 225, 200, 255]), w, h); // paper
+    let cols: [[u8; 4]; 5] = [
+        [40, 60, 230, 255],   // blue
+        [60, 200, 70, 255],   // green
+        [235, 220, 30, 255],  // yellow
+        [230, 50, 40, 255],   // red
+        [230, 40, 220, 255],  // magenta
+    ];
+    let vstroke = |t: &mut PainterTool, x: f32, rgb: [u8; 4], seed: u64| {
+        t.params.active_color = crate::color::srgb8_to_painter_oklch(rgb);
+        t.begin_stroke(seed);
+        for k in 0..30 {
+            let s = k as f32 / 29.0;
+            t.queue_pointer(PointerSample {
+                position: [x, 20.0 + s * 160.0],
+                pressure: 1.0,
+                tilt: 0.0,
+            });
+        }
+        t.end_stroke();
+        for _ in 0..6 {
+            t.on_tick_diffusion();
+        }
+    };
+    for (i, c) in cols.iter().enumerate() {
+        vstroke(&mut t, 35.0 + i as f32 * 50.0, *c, 10 + i as u64);
+    }
+    // Overlap: yellow crossing blue at the right.
+    vstroke(&mut t, 300.0, [40, 60, 230, 255], 100);
+    vstroke(&mut t, 312.0, [235, 220, 30, 255], 101);
+    t.preview_dirty = true;
+    let px = t.current_preview().unwrap().0.to_vec();
+    dump_ppm("/tmp/painter_smoke_fluid_colors.ppm", &px, w, h);
+    eprintln!("[fluid colors] hues + overlap → /tmp/painter_smoke_fluid_colors.ppm");
+}
+
+#[test]
+fn visual_smoke_fluid_on_transparent_layer() {
+    // Enio's scenario: a fluid stroke on a NEW TOP LAYER, then composited over the
+    // layer below (here a grey/white split). Pre-fix this showed dark borders; now
+    // the straight-alpha glaze must blend cleanly over both halves.
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (200u32, 300u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 30.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(vec![0u8; (w * h * 4) as usize], w, h); // transparent layer
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([230, 110, 85, 255]);
+    t.begin_stroke(7);
+    for k in 0..60 {
+        let s = k as f32 / 59.0;
+        t.queue_pointer(PointerSample {
+            position: [
+                100.0 + (s * std::f32::consts::TAU * 1.5).sin() * 28.0,
+                20.0 + s * 260.0,
+            ],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    for _ in 0..8 {
+        t.on_tick_diffusion();
+    }
+    t.preview_dirty = true;
+    let layer = t.current_preview().unwrap().0.to_vec();
+    // Composite the (straight-alpha) layer over a grey|white split background.
+    let mut out = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h as usize {
+        for x in 0..w as usize {
+            let i = (y * w as usize + x) * 4;
+            let bg = if x < w as usize / 2 { 150u8 } else { 245u8 };
+            let a = layer[i + 3] as f32 / 255.0;
+            for k in 0..3 {
+                out[i + k] = (bg as f32 * (1.0 - a) + layer[i + k] as f32 * a).round() as u8;
+            }
+            out[i + 3] = 255;
+        }
+    }
+    dump_ppm("/tmp/painter_smoke_fluid_transp.ppm", &out, w, h);
+    eprintln!("[fluid transp] coral on transparent layer over grey|white → check edges");
+}
+
+#[test]
+fn visual_smoke_fluid_edge_quality() {
+    // Repro of Enio's report (coral fluid stroke on tan paper, blocky edges). The
+    // bicubic upsample (ADR-0077 D12) should give a smooth wash falloff, not the
+    // 1/WET_FIELD_SCALE-quantised facets bilinear left. Eyeball the dumped PNG.
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (200u32, 300u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 30.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [228, 214, 184, 255]), w, h); // tan paper
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([230, 110, 85, 255]); // coral
+    t.begin_stroke(7);
+    for k in 0..60 {
+        let s = k as f32 / 59.0;
+        t.queue_pointer(PointerSample {
+            position: [
+                100.0 + (s * std::f32::consts::TAU * 1.5).sin() * 28.0,
+                20.0 + s * 260.0,
+            ],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    for _ in 0..10 {
+        t.on_tick_diffusion();
+    }
+    t.preview_dirty = true;
+    let px = t.current_preview().unwrap().0.to_vec();
+    dump_ppm("/tmp/painter_smoke_fluid_edge.ppm", &px, w, h);
+    eprintln!("[fluid edge] coral fluid stroke on tan paper → /tmp/painter_smoke_fluid_edge.ppm");
+}
+
+#[test]
+fn fluid_composite_mixes_subtractively_km() {
+    // A yellow wash glazed over a BLUE backdrop must go GREEN (Kubelka–Munk
+    // subtractive), not the muddy mid-tone a linear "over" gives. This guards the
+    // ADR-0077 D12 K–M composite swap. Probe the wettest pixel (stroke centre).
+    let (w, h) = (48u32, 36u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 18.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    // Saturated blue paper, yellow brush.
+    t.set_source(flat_source(w, h, [20, 40, 200, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([235, 210, 20, 255]);
+    t.begin_stroke(11);
+    t.queue_pointer(PointerSample {
+        position: [24.0, 18.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    let (px, _, _) = t.current_preview().unwrap();
+    let i = ((18 * w + 24) * 4) as usize;
+    let (r, g, b) = (px[i] as i32, px[i + 1] as i32, px[i + 2] as i32);
+    eprintln!("yellow-over-blue centre = [{r}, {g}, {b}]");
+    // The subtractive signature: green is the dominant channel (linear over would
+    // leave R≈G, never green-dominant — yellow's red survives the average).
+    assert!(
+        g > r && g > b,
+        "K–M wash should be green-dominant over blue: [{r}, {g}, {b}]"
+    );
+}
+
+#[test]
+fn fluid_wash_keeps_blooming_after_pen_up() {
+    // REGRESSION (W15.2 dead-feature trap): the wash MUST keep evolving on the
+    // canvas after pen-up — that is the whole point of the live field. A prior
+    // build froze it: `end_stroke` consumed the composite backdrop
+    // (`pending_pre_stroke`, taken by the undo stack), so the post-pen-up
+    // `on_tick`s no-op'd and `visual_smoke_watercolor_v2_live` (which has no
+    // assertion) couldn't catch it — its three bands were byte-identical. The
+    // dedicated `wet_backdrop` survives the stroke; assert the canvas changes.
+    let (w, h) = (64u32, 48u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 16.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]);
+    t.begin_stroke(7);
+    for k in 0..20 {
+        let s = k as f32 / 19.0;
+        t.queue_pointer(PointerSample {
+            position: [10.0 + s * 44.0, 24.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+    }
+    t.end_stroke();
+    let snapshot = |t: &mut PainterTool| -> Vec<u8> {
+        t.preview_dirty = true;
+        t.current_preview().unwrap().0.to_vec()
+    };
+    let after_penup = snapshot(&mut t);
+    assert!(t.wet_field.is_some(), "field still wet at pen-up");
+    for _ in 0..15 {
+        t.on_tick_diffusion();
+    }
+    let after_ticks = snapshot(&mut t);
+    let changed: u64 = after_penup
+        .iter()
+        .zip(after_ticks.iter())
+        .map(|(a, b)| (i32::from(*a) - i32::from(*b)).unsigned_abs() as u64)
+        .sum();
+    assert!(
+        changed > 0,
+        "the wash must keep blooming after pen-up (canvas frozen → dead feature)"
+    );
+}
+
+#[test]
+fn visual_smoke_watercolor_v2_diffusion() {
+    // Watercolor v2 — the LIVE wet-on-wet diffusion solver. One pigment stroke is
+    // laid across the grid; the LEFT half of the paper is dry, the RIGHT half is a
+    // wet pool. After stepping the solver, the left stays crisp (gate closed on dry
+    // paper) while the right BLOOMS into the wet pool (wet-on-wet bleed). A clean
+    // water drop punched into the stroke makes a backrun ring. Three bands top→
+    // bottom show the SAME sim at step 0 / 14 / 40 (just-painted → blooming → bled).
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
+    let (gw, gh) = (220u32, 64u32);
+    let mut grid = DiffusionGrid::new(gw, gh, 1.0);
+    // Right half = a wet pool; a clean-water drop at x≈150 for a backrun.
+    for y in 0..gh {
+        for x in 0..gw {
+            if x > gw / 2 {
+                grid.splat(x as f32, y as f32, 0.6, 0.9, [0.0; 3]);
+            }
+        }
+    }
+    // A horizontal ultramarine stroke across the whole width (carries some water).
+    let pigment = [0.05f32, 0.07, 0.5];
+    for x in 8..gw - 8 {
+        grid.splat(x as f32, gh as f32 * 0.5, 6.0, 0.35, pigment);
+    }
+    grid.splat(150.0, gh as f32 * 0.5, 7.0, 1.0, [0.0; 3]); // clean-water backrun drop
+
+    let params = DiffusionParams::default();
+    // Render the three snapshots into vertical bands of a 2× upsampled canvas.
+    let scale = 2u32;
+    let (cw, ch) = (gw * scale, gh * scale * 3 + 16);
+    let mut canvas = vec![0u8; (cw * ch * 4) as usize];
+    let paper = [252u8, 250, 246];
+    let snapshots = [0u32, 14, 40];
+    let mut stepped = 0u32;
+    for (band, &target) in snapshots.iter().enumerate() {
+        while stepped < target {
+            grid.step(&params);
+            stepped += 1;
+        }
+        let pig = grid.pigment();
+        let band_y0 = band as u32 * (gh * scale + 8);
+        for gy in 0..gh {
+            for gx in 0..gw {
+                let p = pig[(gy * gw + gx) as usize];
+                let dens = (p[0] + p[1] + p[2]).max(0.0);
+                let a = (1.0 - (-dens * 1.6).exp()).clamp(0.0, 0.97);
+                let col = if dens > 1e-5 {
+                    [
+                        (p[0] / dens * 3.0).min(1.0),
+                        (p[1] / dens * 3.0).min(1.0),
+                        (p[2] / dens * 3.0).min(1.0),
+                    ]
+                } else {
+                    [0.0, 0.0, 0.0]
+                };
+                let px = [
+                    (paper[0] as f32 / 255.0 * (1.0 - a) + col[0] * a).clamp(0.0, 1.0),
+                    (paper[1] as f32 / 255.0 * (1.0 - a) + col[1] * a).clamp(0.0, 1.0),
+                    (paper[2] as f32 / 255.0 * (1.0 - a) + col[2] * a).clamp(0.0, 1.0),
+                ];
+                for sy in 0..scale {
+                    for sx in 0..scale {
+                        let cx = gx * scale + sx;
+                        let cy = band_y0 + gy * scale + sy;
+                        let i = ((cy * cw + cx) * 4) as usize;
+                        canvas[i] = (px[0] * 255.0) as u8;
+                        canvas[i + 1] = (px[1] * 255.0) as u8;
+                        canvas[i + 2] = (px[2] * 255.0) as u8;
+                        canvas[i + 3] = 255;
+                    }
+                }
+            }
+        }
+    }
+    dump_ppm("/tmp/painter_smoke_diffusion.ppm", &canvas, cw, ch);
+    eprintln!(
+        "[watercolor v2] wet-on-wet diffusion: step 0/14/40 top→bottom; left half dry \
+         (crisp), right half wet pool (blooms), water drop @150 → backrun ring"
+    );
+}
+
+#[test]
+fn visual_smoke_velocity_and_smoothing() {
+    // Velocity dynamics + One-Euro motion filtering. Three bands, top→bottom:
+    //   1. Calligraphy: an ACCELERATING stroke with speed_size = −0.85 (fast → thin)
+    //      → a brush that swells slow and tapers as it speeds up.
+    //   2. A jittery ±6px hand-tremor path, motion filtering OFF → jagged.
+    //   3. The SAME path, motion filtering ON (One-Euro) → a clean smooth line.
+    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
+        return;
+    }
+    let (w, h) = (320u32, 210u32);
+    let mut t = PainterTool::default();
+    t.params.opacity = 1.0;
+    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+    t.set_source(flat_source(w, h, [252, 250, 246, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([25, 25, 30, 255]); // ink
+
+    // ── Band 1: velocity → size (calligraphic taper). Accelerating x. ──
+    t.params.size_px = 24.0;
+    t.brush.dynamics.speed_size = -0.85;
+    let mut band1 = Vec::new();
+    let mut x = 22.0f32;
+    for k in 0..56 {
+        band1.push((x, 44.0, 1.0));
+        x += 1.5 + k as f32 * 0.62; // gap grows → stroke accelerates (gentle)
+    }
+    paint_arc(&mut t, &band1);
+    t.brush.dynamics.speed_size = 0.0;
+
+    // The shared shaky path: a slow intended gesture (`sin 0.18`) plus higher-
+    // frequency hand tremor (`sin 1.1` + `sin 2.3`). One-Euro should strip the
+    // tremor while keeping the gesture — what a fixed average can't do without
+    // also flattening the gesture.
+    let tremor: Vec<(f32, f32, f32)> = (0..80)
+        .map(|k| {
+            let s = k as f32;
+            let jit = 9.0 * (s * 0.18).sin() + 4.5 * (s * 1.1).sin() + 3.0 * (s * 2.3).sin();
+            (20.0 + s * 3.5, jit, 1.0)
+        })
+        .collect();
+
+    // ── Band 2: tremor, motion filtering OFF (jagged). ──
+    t.params.size_px = 7.0;
+    let band2: Vec<_> = tremor.iter().map(|&(x, y, p)| (x, 120.0 + y, p)).collect();
+    paint_arc(&mut t, &band2);
+
+    // ── Band 3: same tremor, One-Euro motion filtering ON (smooth). ──
+    // expression 0 = uniform smoothing (this synthetic ±6 jitter is per-sample
+    // "fast", so a high expression would PRESERVE it — One-Euro's whole point).
+    t.brush.stabilization.motion_filtering_amount = 1.0;
+    t.brush.stabilization.motion_filtering_expression = 0.0;
+    let band3: Vec<_> = tremor.iter().map(|&(x, y, p)| (x, 180.0 + y, p)).collect();
+    paint_arc(&mut t, &band3);
+
+    let (px, _, _) = t.current_preview().unwrap();
+    dump_ppm("/tmp/painter_smoke_velocity.ppm", px, w, h);
+    eprintln!(
+        "[velocity+smoothing] band1 = calligraphic velocity taper (fast→thin); \
+         band2 = raw tremor (jagged); band3 = One-Euro motion filtering (smooth)"
+    );
+}
+
+#[test]
+fn paper_tooth_textures_stroke_and_modulates_by_pressure() {
+    // paper_grain ON → the stroke body VARIES (paper texture, not a flat fill), and
+    // a light-pressure pass shows MORE tooth (higher variance — paper showing) than
+    // a firm pass that fills the valleys.
+    let (w, h) = (64u32, 30u32);
+    let paint = |pg: f32, pressure: f32| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.params.size_px = 16.0;
+        t.params.opacity = 1.0;
+        t.params.paper_grain = pg;
+        t.brush.rendering.accumulate = true;
+        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
+        // Isolate the tooth: pressure must NOT also shrink/fade the stroke here.
+        t.brush.pencil.pressure_targets = 0;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([10, 10, 10, 255]);
+        t.begin_stroke(1);
+        for x in 6..58 {
+            t.queue_pointer(PointerSample {
+                position: [x as f32, 15.0],
+                pressure,
+                tilt: 0.0,
+            });
+        }
+        t.end_stroke();
+        t.current_preview().unwrap().0.to_vec()
+    };
+    let variance = |px: &[u8]| {
+        let mut vals = Vec::new();
+        for y in 11..19u32 {
+            for x in 12..52u32 {
+                let i = ((y * w + x) * 4) as usize;
+                vals.push(px[i] as f32);
+            }
+        }
+        let m = vals.iter().sum::<f32>() / vals.len() as f32;
+        vals.iter().map(|v| (v - m).powi(2)).sum::<f32>() / vals.len() as f32
+    };
+    let mean = |px: &[u8]| {
+        let mut sum = 0.0f32;
+        let mut n = 0;
+        for y in 11..19u32 {
+            for x in 12..52u32 {
+                let i = ((y * w + x) * 4) as usize;
+                sum += px[i] as f32;
+                n += 1;
+            }
+        }
+        sum / n as f32
+    };
+    // The tooth shows at a light/medium touch (a firm pass fills the valleys), so
+    // compare at 0.35 pressure where the paper grain is visible.
+    let flat = variance(&paint(0.0, 0.35));
+    let textured = variance(&paint(0.6, 0.35));
+    // Grain-off is now a perfectly uniform interior (sub-pixel sampling), so `flat`
+    // ≈ 0 — the tooth signal (textured ≈ 25) is unmistakable above it.
+    assert!(
+        textured > flat + 15.0,
+        "paper tooth adds texture variation: textured {textured} vs flat {flat}"
+    );
+    // Pressure threshold: a light touch deposits less (the paper tooth shows
+    // through → brighter mean) than a firm pass that fills the valleys.
+    let light = mean(&paint(0.6, 0.3));
+    let firm = mean(&paint(0.6, 1.0));
+    assert!(
+        light > firm + 15.0,
+        "light pressure leaves more paper (brighter) than firm: light {light} vs firm {firm}"
     );
 }

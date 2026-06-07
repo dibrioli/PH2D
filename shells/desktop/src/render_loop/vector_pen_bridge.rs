@@ -55,7 +55,7 @@ const RUBBER_BAND_MIN_WORLD: f32 = 0.001;
 /// Audit H7 (destructive-deactivate warn): the shell calls this BEFORE a
 /// Pen-pill toggle-off / tool switch runs `Tool::on_deactivate →
 /// reset_path`, which silently discards the in-progress vertices. Mirror
-/// of [`super::painter_bridge::painter_has_unflushed_strokes`]. The
+/// of [`super::painter_bridge_queries::painter_has_unflushed_strokes`]. The
 /// tool-concrete downcast lives here in the allowlisted bridge so the
 /// central dispatch stays downcast-free per the
 /// `architecture_no_downcast_to_concrete_tool_in_shell` gate.

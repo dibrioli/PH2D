@@ -60,12 +60,20 @@ fn is_studio_slider(id: NodeId) -> bool {
         || id == ids::SPACING_JITTER_SLIDER
         || id == ids::JITTER_LATERAL_SLIDER
         || id == ids::FALLOFF_SLIDER
+        || id == ids::TAPER_SLIDER
         || id == ids::STREAMLINE_SLIDER
         || id == ids::STABILIZATION_SLIDER
+        || id == ids::MOTION_FILTER_SLIDER
+        || id == ids::MOTION_EXPR_SLIDER
+        || id == ids::SPEED_SIZE_SLIDER
+        || id == ids::SPEED_OPACITY_SLIDER
+        || id == ids::SPEED_SPACING_SLIDER
         || id == ids::SHAPE_SCATTER_SLIDER
         || id == ids::SHAPE_COUNT_SLIDER
         || id == ids::SHAPE_COUNT_JITTER_SLIDER
         || id == ids::FLOW_SLIDER
+        || id == ids::EDGE_INTENSITY_SLIDER
+        || id == ids::PAPER_SLIDER
         || id == ids::GRAIN_SCALE_SLIDER
         || id == ids::GRAIN_DEPTH_SLIDER
         || id == ids::HUE_JITTER_SLIDER
@@ -78,14 +86,15 @@ fn is_studio_slider(id: NodeId) -> bool {
 
 #[inline]
 fn is_studio_checkbox(id: NodeId) -> bool {
-    // Wet/Burnt Edges deferred — a correct stroke-silhouette edge effect needs a
-    // coverage-mask pass, not a per-dab one (the per-dab version was wrong).
     id == ids::SHAPE_ROTATION_FOLLOW
         || id == ids::SHAPE_RANDOMIZED
         || id == ids::SHAPE_FLIP_X
         || id == ids::SHAPE_FLIP_Y
         || id == ids::PIGMENT
         || id == ids::ACCUMULATE
+        || id == ids::WET_EDGES
+        || id == ids::BURNT_EDGES
+        || id == ids::FLUID
 }
 
 #[inline]

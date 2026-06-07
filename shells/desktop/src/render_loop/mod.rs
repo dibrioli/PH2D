@@ -27,10 +27,11 @@ mod inspector_ordering;
 mod inspector_visibility;
 mod motion_smoke;
 mod padding_bridge;
+pub(crate) mod painter_bridge;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
-// bridge instead of downcasting in central dispatch.
-pub(crate) mod painter_bridge;
+// bridge-queries module instead of downcasting in central dispatch.
+pub(crate) mod painter_bridge_queries;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 mod present;
@@ -224,6 +225,13 @@ impl crate::App {
         let frame_ms_now = (wall_dt * 1000.0) as f32;
         const ALPHA: f32 = 0.1;
         self.frame_ms_ewma = ALPHA * frame_ms_now + (1.0 - ALPHA) * self.frame_ms_ewma;
+        // **W15.1 (ADR-0040-amendment-2):** per-frame heartbeat on the ACTIVE tool,
+        // with the real frame delta. Drives the watercolor live wet-on-wet diffusion
+        // (ADR-0049 / ADR-0077 D11) so the wash keeps blooming + drying after pen-up;
+        // a no-op default for every other tool, so this costs nothing elsewhere.
+        if let Some(t) = tools.active_mut() {
+            t.on_tick(frame_ms_now);
+        }
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -908,7 +916,8 @@ impl crate::App {
                     // Tool-concrete downcast lives in the allowlisted
                     // painter_bridge (this central dispatch stays downcast-free
                     // per the arch-gate).
-                    let lost_painting = painter_bridge::painter_has_unflushed_strokes(tools);
+                    let lost_painting =
+                        painter_bridge_queries::painter_has_unflushed_strokes(tools);
                     if lost_painting {
                         toasts.push(Toast::warning(
                             "Painter: unflushed strokes were discarded when \

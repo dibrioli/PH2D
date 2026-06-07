@@ -39,14 +39,16 @@ fn tool_contract_is_capped() {
     let src = include_str!("../src/tool.rs");
     let n = trait_method_count(src, "pub trait Tool");
     assert!(
-        n <= 10,
-        "Tool has {n} methods; cap is 10. FROZEN at ADR-0040 TG-E to the \
+        n <= 11,
+        "Tool has {n} methods; cap is 11. FROZEN at ADR-0040 TG-E to the \
          current surface (id / label / icon_slug / build_panel / on_activate / \
-         on_deactivate / handle_panel_event / as_any_mut / as_raster_edit_mut / \
-         is_default) — every `ph2d-tool-*` crate implements this, so any \
-         growth ripples the whole fan-out. Adding a method is a \
-         Coordenador-only contract change: bump the cap here + write the ADR-0040 \
-         amendment."
+         on_deactivate / handle_panel_event / on_tick / as_any_mut / \
+         as_raster_edit_mut / is_default) — every `ph2d-tool-*` crate implements \
+         this, so any growth ripples the whole fan-out. Adding a method is a \
+         Coordenador-only contract change: bump the cap here + write the ADR \
+         amendment. Cap 10→11 at ADR-0040-amendment-2 (2026-06-07): `on_tick` \
+         per-frame heartbeat for the ADR-0049 watercolor live diffusion (a \
+         default no-op, so existing tool impls are unaffected)."
     );
 }
 

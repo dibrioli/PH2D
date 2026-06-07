@@ -3,6 +3,51 @@
 
 use serde::{Deserialize, Serialize};
 
+/// `pressure_targets` / `tilt_targets` / `barrel_targets` bitmask — which brush
+/// attributes the input axis modulates (spec §1.3.10). The `Size` + `Opacity`
+/// bits are the canonical Procreate pressure response (default
+/// `pressure_targets = SIZE | OPACITY`).
+pub const PRESSURE_TARGET_SIZE: u32 = 1;
+/// Pressure modulates per-stamp opacity (deposit rate). See [`PRESSURE_TARGET_SIZE`].
+pub const PRESSURE_TARGET_OPACITY: u32 = 2;
+/// Pressure modulates per-stamp flow.
+pub const PRESSURE_TARGET_FLOW: u32 = 4;
+/// Pressure modulates wet-mix bleed (reserved, wet-mix subsystem).
+pub const PRESSURE_TARGET_BLEED: u32 = 8;
+
+/// Evaluate an 8-control-point response curve (piecewise-linear) at `x ∈ [0,1]`.
+///
+/// Control points are `(input, output)` pairs with **ascending** `input`
+/// (the default identity curve is `(t, t)` for `t = i/7`). `x` is clamped to
+/// `[0,1]`; below the first / above the last control point the curve holds the
+/// endpoint value. Output is clamped to `[0,1]`.
+///
+/// **HR-5 determinism:** pure IEEE arithmetic (`+`, `-`, `*`, `/`) — no
+/// transcendentals, no clock, no PRNG — so it is bit-identical cross-OS and
+/// replay-stable. This is the canonical Apple-Pencil / tablet pressure (and
+/// tilt / barrel) response evaluator used by the [`StampScheduler`](crate::StampScheduler).
+#[must_use]
+pub fn eval_curve8(curve: &[(f32, f32); 8], x: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    if x <= curve[0].0 {
+        return curve[0].1.clamp(0.0, 1.0);
+    }
+    for w in curve.windows(2) {
+        let (x0, y0) = w[0];
+        let (x1, y1) = w[1];
+        if x <= x1 {
+            let span = x1 - x0;
+            let t = if span.abs() < 1e-9 {
+                0.0
+            } else {
+                (x - x0) / span
+            };
+            return (y0 + (y1 - y0) * t).clamp(0.0, 1.0);
+        }
+    }
+    curve[7].1.clamp(0.0, 1.0)
+}
+
 /// Estilo do cursor durante painting.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum CursorOutline {

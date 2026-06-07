@@ -65,7 +65,7 @@ Sub-handoffs vivos dos implementadores: `docs/HANDOFF_*_impl.md`. Históricos: [
 ## §6 — Contratos congelados (mexer = Coord-only + ADR; DIRETRIZ §4)
 
 - **Nodes** ([ADR-0039](docs/architecture/decisions/0039-nodegraph-contract-freeze-w2t4.md)): `NodeOp=2`/`OpResolver=1`/`NodeManifest=8` — gate `architecture_contract_surface`.
-- **Tools** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)+[0041](docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md)): `Tool=10`/`RasterEditTool=5`/`PanelEvent=4` — gate `architecture_tool_contract_surface`.
+- **Tools** ([ADR-0040](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md)+[0041](docs/architecture/decisions/0041-rasteredit-rename-and-deactivate.md)): `Tool=11`/`RasterEditTool=5`/`PanelEvent=4` — gate `architecture_tool_contract_surface`. (`Tool` 10→11 em [ADR-0040-amendment-2](docs/architecture/decisions/0040-tool-as-isolated-feature-crate.md): `on_tick` heartbeat p/ aquarela live, ADR-0049/0077-D11.)
 - **Painter** ([ADR-0043..0053](docs/architecture/decisions/)): `PainterUiEdit≤24`/`Brush≤168`/`Stamp=96B align(16)`/`RenderingMode=6`/`AdjustmentKind≤32`/`ColorProfile=8`/`DeviceTier=5` — gate `architecture_painter_contract_surface`.
 - **Vector** ([ADR-0056..0068](docs/architecture/decisions/)): `VectorOp≤16`/`Vertex`SmallVec32/`Segment`64/`Region.segments`16/`AnimValue` enum/`sample(t:f64)`/18 nodes/`MAX_SPIRAL_TURNS=64`/`MAX_POLYGON_SIDES=128`/`MAX_VERTICES_PER_LLM_GEN=1000` — gate `architecture_vector_contract_surface`. Gate `vello_kurbo_only_in_ph2d_vector` é **W2-deferred (não existe ainda)**.
 

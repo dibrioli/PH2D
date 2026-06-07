@@ -27,6 +27,7 @@
 mod event;
 pub mod ids;
 mod paint;
+mod sections;
 mod populate;
 pub mod state;
 

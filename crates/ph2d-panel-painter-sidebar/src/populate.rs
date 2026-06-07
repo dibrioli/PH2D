@@ -136,8 +136,19 @@ pub fn populate(store: &mut WidgetStore) {
 
     // Grain depth (W5) — intensity 0..1 → 0..100%. Seeded full (the default).
     // Registered always; the sidebar only PAINTS the row when grain is active.
-    register_slider_chip_pair(store, ids::GRAIN_DEPTH_SLIDER, ids::GRAIN_DEPTH_CHIP, 1.0, 100.0);
-    store.link_slider_number_mapped_integer(ids::GRAIN_DEPTH_SLIDER, ids::GRAIN_DEPTH_CHIP, 100.0, 0.0);
+    register_slider_chip_pair(
+        store,
+        ids::GRAIN_DEPTH_SLIDER,
+        ids::GRAIN_DEPTH_CHIP,
+        1.0,
+        100.0,
+    );
+    store.link_slider_number_mapped_integer(
+        ids::GRAIN_DEPTH_SLIDER,
+        ids::GRAIN_DEPTH_CHIP,
+        100.0,
+        0.0,
+    );
 }
 
 fn register_slider_chip_pair(

@@ -395,6 +395,8 @@ pub const PAINTER_STUDIO_JITTER_LATERAL_CHIP: NodeId =
     hash_node_id("painter_studio.jitter_lateral_chip");
 pub const PAINTER_STUDIO_FALLOFF_SLIDER: NodeId = hash_node_id("painter_studio.falloff_slider");
 pub const PAINTER_STUDIO_FALLOFF_CHIP: NodeId = hash_node_id("painter_studio.falloff_chip");
+pub const PAINTER_STUDIO_TAPER_SLIDER: NodeId = hash_node_id("painter_studio.taper_slider");
+pub const PAINTER_STUDIO_TAPER_CHIP: NodeId = hash_node_id("painter_studio.taper_chip");
 pub const PAINTER_STUDIO_STREAMLINE_SLIDER: NodeId =
     hash_node_id("painter_studio.streamline_slider");
 pub const PAINTER_STUDIO_STREAMLINE_CHIP: NodeId = hash_node_id("painter_studio.streamline_chip");
@@ -402,6 +404,28 @@ pub const PAINTER_STUDIO_STABILIZATION_SLIDER: NodeId =
     hash_node_id("painter_studio.stabilization_slider");
 pub const PAINTER_STUDIO_STABILIZATION_CHIP: NodeId =
     hash_node_id("painter_studio.stabilization_chip");
+/// One-Euro motion filtering (ADR-0077 D10): adaptive low-pass amount + the
+/// speed-responsiveness ("expression") that keeps fast strokes lag-free.
+pub const PAINTER_STUDIO_MOTION_FILTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.motion_filter_slider");
+pub const PAINTER_STUDIO_MOTION_FILTER_CHIP: NodeId =
+    hash_node_id("painter_studio.motion_filter_chip");
+pub const PAINTER_STUDIO_MOTION_EXPR_SLIDER: NodeId =
+    hash_node_id("painter_studio.motion_expr_slider");
+pub const PAINTER_STUDIO_MOTION_EXPR_CHIP: NodeId = hash_node_id("painter_studio.motion_expr_chip");
+/// Velocity dynamics (ADR-0077 D10): stroke speed → size / opacity / spacing.
+/// Bipolar (−1..1): −1 = fast→less, +1 = fast→more.
+pub const PAINTER_STUDIO_SPEED_SIZE_SLIDER: NodeId =
+    hash_node_id("painter_studio.speed_size_slider");
+pub const PAINTER_STUDIO_SPEED_SIZE_CHIP: NodeId = hash_node_id("painter_studio.speed_size_chip");
+pub const PAINTER_STUDIO_SPEED_OPACITY_SLIDER: NodeId =
+    hash_node_id("painter_studio.speed_opacity_slider");
+pub const PAINTER_STUDIO_SPEED_OPACITY_CHIP: NodeId =
+    hash_node_id("painter_studio.speed_opacity_chip");
+pub const PAINTER_STUDIO_SPEED_SPACING_SLIDER: NodeId =
+    hash_node_id("painter_studio.speed_spacing_slider");
+pub const PAINTER_STUDIO_SPEED_SPACING_CHIP: NodeId =
+    hash_node_id("painter_studio.speed_spacing_chip");
 
 // ── Shape section — sliders + checkboxes ─────────────────────────────────────
 pub const PAINTER_STUDIO_SHAPE_SCATTER_SLIDER: NodeId =
@@ -442,6 +466,18 @@ pub const PAINTER_STUDIO_PIGMENT: NodeId = hash_node_id("painter_studio.pigment"
 pub const PAINTER_STUDIO_ACCUMULATE: NodeId = hash_node_id("painter_studio.accumulate");
 pub const PAINTER_STUDIO_WET_EDGES: NodeId = hash_node_id("painter_studio.wet_edges");
 pub const PAINTER_STUDIO_BURNT_EDGES: NodeId = hash_node_id("painter_studio.burnt_edges");
+/// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Toggles
+/// `brush.rendering.fluid_enabled`: stamps splat into a per-stroke
+/// `DiffusionGrid` advected by `Tool::on_tick` instead of stamping the canvas.
+pub const PAINTER_STUDIO_FLUID: NodeId = hash_node_id("painter_studio.fluid");
+pub const PAINTER_STUDIO_EDGE_INTENSITY_SLIDER: NodeId =
+    hash_node_id("painter_studio.edge_intensity_slider");
+pub const PAINTER_STUDIO_EDGE_INTENSITY_CHIP: NodeId =
+    hash_node_id("painter_studio.edge_intensity_chip");
+/// Paper tooth strength (0 = crisp ink, 1 = heavy paper) — world-space
+/// substrate texture, independent of the brush grain source.
+pub const PAINTER_STUDIO_PAPER_SLIDER: NodeId = hash_node_id("painter_studio.paper_slider");
+pub const PAINTER_STUDIO_PAPER_CHIP: NodeId = hash_node_id("painter_studio.paper_chip");
 /// Grain type cycler (Off → Simplex → Gabor → Weave → Spray → Off).
 pub const PAINTER_STUDIO_GRAIN_TYPE: NodeId = hash_node_id("painter_studio.grain_type");
 /// Rendering mode cycler (LightGlaze → … → IntenseBlending, 6 modes).

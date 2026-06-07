@@ -222,9 +222,14 @@ pub enum BrushParam {
     SpacingJitter,
     JitterLateral,
     Falloff,
+    // Taper (TaperParams)
+    TaperLength,
     // Stabilization (StabilizationParams)
     StreamlineAmount,
     Stabilization,
+    /// One-Euro motion filtering (ADR-0077 D10): amount + speed "expression".
+    MotionFiltering,
+    MotionExpression,
     // Shape (ShapeParams)
     ShapeScatter,
     ShapeCount,
@@ -239,7 +244,16 @@ pub enum BrushParam {
     AlphaThreshold,
     WetEdges,
     BurntEdges,
+    /// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Bool routed
+    /// through the uncapped `BrushParam` (NOT a new `PainterUiEdit` variant —
+    /// that surface is frozen at ≤24, ADR-0043 §2.3), exactly like Wet/Burnt
+    /// Edges. Writes `brush.rendering.fluid_enabled`.
+    Fluid,
+    EdgeIntensity,
     RenderingMode,
+    /// World-space paper tooth strength (`PainterParams::paper_grain`, 0..1) —
+    /// a substrate property, so it lives on the tool params, NOT the brush.
+    Paper,
     // Grain (GrainParams)
     GrainScale,
     // Color Dynamics (ColorDynamicsParams) — per-stamp OKLab jitter
@@ -250,6 +264,11 @@ pub enum BrushParam {
     // Dynamics (DynamicsParams) — per-stamp size/opacity jitter
     SizeJitter,
     OpacityJitter,
+    /// Velocity dynamics (ADR-0077 D10), bipolar −1..1: stroke speed → size /
+    /// opacity / spacing (the slider sends 0..1; the handler maps `v·2−1`).
+    SpeedSize,
+    SpeedOpacity,
+    SpeedSpacing,
 }
 
 // ----------------------------------------------------------------------------
@@ -376,9 +395,15 @@ pub struct BrushStudioSnapshot {
     pub spacing_jitter: f32,
     pub jitter_lateral: f32,
     pub falloff: f32,
+    /// Start-taper amount, 0..1 (maps to `taper_length_start` 0..0.5).
+    pub taper_length: f32,
     // Stabilization
     pub streamline_amount: f32,
     pub stabilization: f32,
+    /// One-Euro motion filtering (ADR-0077 D10): adaptive low-pass amount +
+    /// speed-responsiveness ("expression").
+    pub motion_filtering_amount: f32,
+    pub motion_filtering_expression: f32,
     // Shape
     pub shape_scatter: f32,
     pub shape_count: u32,
@@ -393,6 +418,9 @@ pub struct BrushStudioSnapshot {
     pub alpha_threshold: f32,
     pub wet_edges: bool,
     pub burnt_edges: bool,
+    /// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11) display state.
+    pub fluid_enabled: bool,
+    pub edge_intensity: f32,
     pub pigment_enabled: bool,
     pub accumulate_enabled: bool,
     /// 0 = LightGlaze .. 5 = IntenseBlending (`RenderingMode` discriminant).
@@ -402,6 +430,9 @@ pub struct BrushStudioSnapshot {
     pub grain_type: u8,
     pub grain_scale: f32,
     pub grain_depth: f32,
+    /// World-space paper tooth strength (0 = crisp ink, 1 = heavy paper). A
+    /// substrate property mirrored from `PainterParams::paper_grain`.
+    pub paper_grain: f32,
     // Color Dynamics — per-stamp OKLab jitter (all 0..1).
     pub stamp_hue_jitter: f32,
     pub stamp_saturation_jitter: f32,
@@ -410,6 +441,11 @@ pub struct BrushStudioSnapshot {
     // Dynamics — per-stamp size/opacity jitter (0..1).
     pub jitter_size: f32,
     pub jitter_opacity: f32,
+    /// Velocity dynamics (ADR-0077 D10): stroke speed → size / opacity / spacing.
+    /// Bipolar −1..1 (−1 = fast→less, +1 = fast→more).
+    pub speed_size: f32,
+    pub speed_opacity: f32,
+    pub speed_spacing: f32,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -423,8 +459,11 @@ impl Default for BrushStudioSnapshot {
             spacing_jitter: b.stroke_path.spacing_jitter,
             jitter_lateral: b.stroke_path.jitter_lateral,
             falloff: b.stroke_path.falloff,
+            taper_length: b.taper.taper_length_start * 2.0,
             streamline_amount: b.stabilization.streamline_amount,
             stabilization: b.stabilization.stabilization,
+            motion_filtering_amount: b.stabilization.motion_filtering_amount,
+            motion_filtering_expression: b.stabilization.motion_filtering_expression,
             shape_scatter: b.shape.shape_scatter,
             shape_count: b.shape.shape_count,
             shape_count_jitter: b.shape.shape_count_jitter,
@@ -437,6 +476,8 @@ impl Default for BrushStudioSnapshot {
             alpha_threshold: b.rendering.alpha_threshold,
             wet_edges: b.rendering.wet_edges,
             burnt_edges: b.rendering.burnt_edges,
+            fluid_enabled: b.rendering.fluid_enabled,
+            edge_intensity: b.rendering.edge_intensity,
             pigment_enabled: b.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,
             accumulate_enabled: b.rendering.accumulate,
@@ -444,12 +485,16 @@ impl Default for BrushStudioSnapshot {
             grain_type: 0,
             grain_scale: b.grain.grain_scale,
             grain_depth: b.grain.grain_depth,
+            paper_grain: default_paper_grain(),
             stamp_hue_jitter: b.color_dynamics.stamp_hue_jitter,
             stamp_saturation_jitter: b.color_dynamics.stamp_saturation_jitter,
             stamp_lightness_jitter: b.color_dynamics.stamp_lightness_jitter,
             stamp_darkness_jitter: b.color_dynamics.stamp_darkness_jitter,
             jitter_size: b.dynamics.jitter_size,
             jitter_opacity: b.dynamics.jitter_opacity,
+            speed_size: b.dynamics.speed_size,
+            speed_opacity: b.dynamics.speed_opacity,
+            speed_spacing: b.dynamics.speed_spacing,
             brush_name: String::new(),
         }
     }
@@ -459,6 +504,14 @@ impl Default for BrushStudioSnapshot {
 // PainterParams — ADR-0043 §2.3 (cap ≤ 12)
 // ----------------------------------------------------------------------------
 
+/// Default global paper-tooth strength — **OFF** so "no grain" reads as a clean
+/// flat stroke (the user opts into paper texture via the sidebar "Paper" slider).
+/// The texture engine + the pressure-aware tooth (`cpu_render::paper_tooth_factor`)
+/// are the #1 "digital vs pro" differentiator when turned up.
+fn default_paper_grain() -> f32 {
+    0.0
+}
+
 /// Estado serializável do Painter sidebar (não inclui Brush struct nem
 /// stroke history — esses vivem em crates dedicados via `BrushHandle` +
 /// `StrokeHistoryRef`).
@@ -466,6 +519,12 @@ impl Default for BrushStudioSnapshot {
 pub struct PainterParams {
     pub size_px: f32,
     pub opacity: f32,
+    /// **Global canvas paper tooth** strength (0..1) — the texture every stroke
+    /// interacts with (Procreate Grain / Photoshop canvas texture). 0 = flat
+    /// (clean digital edge); ~0.4 = a tasteful paper grain that reads as real
+    /// media. `#[serde(default)]` keeps pre-field projects loading.
+    #[serde(default = "default_paper_grain")]
+    pub paper_grain: f32,
     pub active_color: OklchColor,
     pub secondary_color: OklchColor,
     pub active_brush: BrushHandle,
@@ -492,6 +551,7 @@ impl Default for PainterParams {
         Self {
             size_px: 32.0,
             opacity: 1.0,
+            paper_grain: default_paper_grain(),
             active_color: OklchColor {
                 l: 0.70,
                 c: 0.18,

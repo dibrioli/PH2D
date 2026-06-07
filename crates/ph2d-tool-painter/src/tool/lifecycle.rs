@@ -3,6 +3,98 @@
 
 use super::*;
 
+/// Wet-edge rim width as a fraction of the brush diameter (the settle blur
+/// radius). ~15% of the diameter matches the soft, size-relative rim of a real
+/// wash; clamped to a sane pixel range at the call site.
+const WET_EDGE_RIM_FRACTION: f32 = 0.15;
+
+/// **W15 live-diffusion tuning.** The wet field runs at 1/`WET_FIELD_SCALE` of the
+/// canvas (the budget-feasible low-res sim grid; GPU/full-res is W15.3). Per-dab
+/// water + pigment deposit, the diffusion sub-steps run while painting vs idle, the
+/// dryness threshold (per cell) below which the field is dropped, and the
+/// density→alpha exponent for the composite.
+const WET_FIELD_SCALE: u32 = 2;
+const WET_WATER_DEPOSIT: f32 = 0.55;
+const WET_PIGMENT_DEPOSIT: f32 = 0.5;
+const WET_SUBSTEPS_PAINTING: u32 = 1;
+const WET_SUBSTEPS_IDLE: u32 = 2;
+const WET_DRY_THRESHOLD: f32 = 0.045;
+/// Coverage rate: `alpha = 1 − exp(−amount · K)`, where `amount` is the
+/// COLOUR-INDEPENDENT pigment load. The grid stores colour×amount, so the raw
+/// channel sum is `amount · Σcolour` — luminance-weighted, which made bright
+/// pigments (yellow/magenta) read as fully opaque while blue/red stayed a proper
+/// translucent wash. Normalising by the stroke colour's linear sum recovers
+/// `amount`; `K` is anchored to the (already-correct) blue/red look — their
+/// `Σcolour ≈ 0.53`, so `K = old 2.0 × 0.53 ≈ 1.06` keeps them unchanged.
+const WET_COVERAGE_K: f32 = 1.06;
+
+/// Catmull-Rom cubic weights for the four taps around a fractional position
+/// `t ∈ [0,1)` (taps at offsets −1, 0, +1, +2). Sum to 1; interpolating (passes
+/// through the samples at t=0/1) and C1, so upsampling a coarse field reads
+/// smooth instead of faceted.
+#[inline]
+fn catmull_rom_weights(t: f32) -> [f32; 4] {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    [
+        -0.5 * t3 + t2 - 0.5 * t,
+        1.5 * t3 - 2.5 * t2 + 1.0,
+        -1.5 * t3 + 2.0 * t2 + 0.5 * t,
+        0.5 * t3 - 0.5 * t2,
+    ]
+}
+
+/// Inclusive grid-cell bbox of cells carrying compositable pigment (total mass
+/// ≥ the composite floor `1e-4`). `None` if the grid is bare. A cheap O(cells)
+/// scan that scopes the composite (16-tap bicubic + per-pixel K–M) to the wet
+/// region instead of the full canvas — the dominant cost at 4K.
+fn wet_pigment_bbox(pig: &[[f32; 3]], gw: u32, gh: u32) -> Option<(u32, u32, u32, u32)> {
+    let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+    let mut any = false;
+    for gy in 0..gh {
+        let row = (gy * gw) as usize;
+        for gx in 0..gw {
+            let p = pig[row + gx as usize];
+            if p[0] + p[1] + p[2] >= 1.0e-4 {
+                any = true;
+                x0 = x0.min(gx);
+                y0 = y0.min(gy);
+                x1 = x1.max(gx);
+                y1 = y1.max(gy);
+            }
+        }
+    }
+    any.then_some((x0, y0, x1, y1))
+}
+
+/// Bicubic (Catmull-Rom) sample of the low-res pigment field at fractional grid
+/// coords `(fx, fy)`, edges clamped. Replaces the bilinear readout so the wash
+/// edge is a smooth falloff, not 1/`WET_FIELD_SCALE`-quantised blocks. The cubic
+/// can overshoot, so pigment mass is floored at 0 (negative mass is unphysical).
+fn sample_pigment_bicubic(pig: &[[f32; 3]], gw: u32, gh: u32, fx: f32, fy: f32) -> [f32; 3] {
+    let x0 = fx.floor() as i32;
+    let y0 = fy.floor() as i32;
+    let wx = catmull_rom_weights(fx - x0 as f32);
+    let wy = catmull_rom_weights(fy - y0 as f32);
+    let cx = |x: i32| x.clamp(0, gw as i32 - 1) as u32;
+    let cy = |y: i32| y.clamp(0, gh as i32 - 1) as u32;
+    let mut out = [0.0f32; 3];
+    for (j, &wyj) in wy.iter().enumerate() {
+        let gy = cy(y0 - 1 + j as i32);
+        let mut row = [0.0f32; 3];
+        for (i, &wxi) in wx.iter().enumerate() {
+            let p = pig[(gy * gw + cx(x0 - 1 + i as i32)) as usize];
+            row[0] += p[0] * wxi;
+            row[1] += p[1] * wxi;
+            row[2] += p[2] * wxi;
+        }
+        out[0] += row[0] * wyj;
+        out[1] += row[1] * wyj;
+        out[2] += row[2] * wyj;
+    }
+    [out[0].max(0.0), out[1].max(0.0), out[2].max(0.0)]
+}
+
 impl PainterTool {
     /// Inicia um novo stroke. Caller deriva `seed` de inputs determinísticos
     /// (e.g., `pointer_down_time_ms ^ entity_bits ^ brush_hash`).
@@ -62,10 +154,19 @@ impl PainterTool {
         // zeroed per-pixel buffer over the source. `accumulate=true` falls through
         // to the normal per-dab build-up path (opacity baked into the alpha).
         let wash = !self.brush.rendering.accumulate;
-        if wash {
-            self.wash_opacity_cap = self.params.opacity.clamp(0.0, 1.0);
-            let (w, h) = self.source_size;
-            let n = (w as usize) * (h as usize);
+        // The coverage buffer feeds the wash composite AND the wet/burnt edge
+        // settle. So it is needed whenever EITHER is active — including build-up
+        // (`accumulate=true`) strokes with edges on, where it is a pure side
+        // output (the build-up render is byte-identical; it just also records the
+        // stroke's coverage for the pen-up settle). Without this, edges only
+        // worked in wash mode.
+        let edges_on = self.brush.rendering.wet_edges || self.brush.rendering.burnt_edges;
+        // Build-up also needs the coverage buffer when the global paper tooth is on
+        // (it routes through `apply_stamps_buildup`, which carries the tooth).
+        let paper_on = self.params.paper_grain > 0.0;
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        if wash || edges_on || paper_on {
             // Reuse the existing buffer (same source size) to avoid a per-stroke
             // realloc; otherwise allocate a fresh zeroed coverage map.
             match self.wash_coverage.as_mut() {
@@ -74,8 +175,44 @@ impl PainterTool {
             }
         } else {
             self.wash_coverage = None;
+        }
+        if wash {
+            self.wash_opacity_cap = self.params.opacity.clamp(0.0, 1.0);
+            // Parallel per-pixel accumulated brush colour (Color Dynamics blend) —
+            // only the wash composite uses this; build-up bakes the colour live.
+            match self.wash_color.as_mut() {
+                Some(buf) if buf.len() == n => buf.iter_mut().for_each(|c| *c = [0.0; 3]),
+                _ => self.wash_color = Some(vec![[0.0; 3]; n]),
+            }
+        } else {
+            self.wash_color = None;
             self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
         }
+
+        // **W15 fluid:** (re)allocate the live wet-on-wet diffusion field when the
+        // brush opts in. A fresh field per stroke (v1 — cross-stroke wet-on-wet is a
+        // W15.3 refinement); the previous stroke's wash was already composited into
+        // the canvas, so resetting just "sets" it. `None` for non-fluid brushes.
+        if self.brush.rendering.fluid_enabled {
+            let (sw, sh) = self.source_size;
+            let gw = (sw / WET_FIELD_SCALE).max(1);
+            let gh = (sh / WET_FIELD_SCALE).max(1);
+            self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::new(
+                gw,
+                gh,
+                WET_FIELD_SCALE as f32,
+            ));
+            // The wash composites over the pre-stroke canvas for the WHOLE life of
+            // the field — including the many frames it keeps blooming after pen-up.
+            // `pending_pre_stroke` can't serve this (it's consumed by the undo stack
+            // at `end_stroke`), so snapshot a dedicated backdrop here.
+            self.wet_backdrop = Some(self.canvas_rgba.as_ref().clone());
+        } else {
+            self.wet_field = None;
+            self.wet_backdrop = None;
+        }
+        // Fresh stroke ⇒ no previous wet region to union against.
+        self.wet_composite_bbox = None;
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //
@@ -178,6 +315,183 @@ impl PainterTool {
     /// the missed `begin_stroke` immediately in dev/test builds without
     /// changing release behavior. Pair with the toast-wording follow-up
     /// in `drain_painter` (separate dispatch site) for the full UX fix.
+    /// **W15 idle tick** (driven by `Tool::on_tick` each frame). Advances the live
+    /// wet field while it stays wet — the wash keeps blooming + drying after pen-up
+    /// ("the paint stays wet"). No-op once the field has dried + been dropped.
+    pub(crate) fn on_tick_diffusion(&mut self) {
+        if self.wet_field.is_none() {
+            return;
+        }
+        self.tick_wet_field(WET_SUBSTEPS_IDLE);
+        self.preview_dirty = true;
+        self.dirty_rect = None;
+    }
+
+    /// Step the live wet field `substeps` times + composite it into the canvas.
+    /// Drops the field once it dries (mean water < `WET_DRY_THRESHOLD`), the final
+    /// pigment already baked into the canvas. Shared by the painting splat and the
+    /// idle tick.
+    fn tick_wet_field(&mut self, substeps: u32) {
+        let params = ph2d_painter_brush::diffusion::DiffusionParams::default();
+        let dry = match self.wet_field.as_mut() {
+            Some(grid) => {
+                for _ in 0..substeps {
+                    grid.step(&params);
+                }
+                // Dry only when the WETTEST cell is below the gate threshold — a
+                // mean would read "dry" instantly (most of the grid is bare paper).
+                let max_w = grid.water().iter().copied().fold(0.0f32, f32::max);
+                max_w < WET_DRY_THRESHOLD
+            }
+            None => return,
+        };
+        self.composite_wet_field();
+        if dry {
+            // Field dried: the final pigment is baked into the canvas (the composite
+            // above ran first). Drop the field + its backdrop + bbox in lock-step.
+            self.wet_field = None;
+            self.wet_backdrop = None;
+            self.wet_composite_bbox = None;
+        }
+    }
+
+    /// Composite the low-res wet field over the pre-stroke backdrop into the canvas
+    /// (bilinear upsample + **Kubelka–Munk subtractive glaze**). Full-canvas in v1 —
+    /// the GPU port + bbox-scoped upload land in W15.3; bare-paper pixels short-circuit
+    /// to the backdrop (skipping both the `exp` and the per-pixel spectral solve), so
+    /// the expensive work already tracks the wet region.
+    fn composite_wet_field(&mut self) {
+        use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+        use ph2d_painter_brush::pigment_mix::{mix_prepared, prepare_pigment};
+        let (cw, ch) = self.source_size;
+        let n4 = (cw as usize) * (ch as usize) * 4;
+        // The dedicated fluid backdrop — outlives the stroke, unlike
+        // `pending_pre_stroke` (consumed by the undo stack at `end_stroke`).
+        let Some(backdrop) = self.wet_backdrop.as_ref() else {
+            return;
+        };
+        let Some(grid) = self.wet_field.as_ref() else {
+            return;
+        };
+        if backdrop.len() != n4 {
+            return;
+        }
+        let (gw, gh) = grid.dims();
+        let pig = grid.pigment();
+        let inv = 1.0 / WET_FIELD_SCALE as f32;
+        // Wet bbox (grid cells), unioned with last frame's so cells that just DRIED
+        // get their canvas pixel reset to the backdrop. Scopes the whole composite to
+        // the wash neighbourhood — the 16-tap bicubic runs BEFORE the dens short-circuit,
+        // so a full-canvas loop paid it on every dry pixel (measured: the dominant cost).
+        let cur_bbox = wet_pigment_bbox(pig, gw, gh);
+        let region = match (cur_bbox, self.wet_composite_bbox) {
+            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))),
+            (Some(a), None) | (None, Some(a)) => Some(a),
+            (None, None) => None,
+        };
+        self.wet_composite_bbox = cur_bbox;
+        let Some((gx0, gy0, gx1, gy1)) = region else {
+            return;
+        };
+        // **Amortised K–M brush prep.** A fluid stroke is ONE colour, so the pigment
+        // chromaticity is constant across the field (the grid stores colour×amount).
+        // The per-pixel `prepare_pigment` (a spectral reflectance reconstruction) was
+        // half the composite cost — and the wash colour is exactly the kind of
+        // footprint-constant value `prepare_pigment` is built to hoist. Derive it ONCE
+        // from the total pigment mass; the per-pixel work is then just `mix_prepared`
+        // (which itself short-circuits near coverage 0/1). Multi-colour cross-stroke
+        // wet-on-wet (future) needs the K/S-grid representation anyway — revisit there.
+        let mut tot = [0.0f32; 3];
+        for c in pig {
+            tot[0] += c[0];
+            tot[1] += c[1];
+            tot[2] += c[2];
+        }
+        let tsum = (tot[0] + tot[1] + tot[2]).max(1.0e-6);
+        let pcol = [
+            (tot[0] / tsum * 3.0).min(1.0),
+            (tot[1] / tsum * 3.0).min(1.0),
+            (tot[2] / tsum * 3.0).min(1.0),
+        ];
+        let prepared = prepare_pigment(pcol);
+        // **Colour-independent coverage normaliser.** The grid pigment is
+        // colour×amount, so the channel sum is `amount · Σcolour`; dividing by the
+        // stroke colour's linear sum recovers `amount`, so a bright pigment (yellow)
+        // and a dark one (blue) of the SAME load get the SAME opacity — instead of
+        // yellow saturating opaque. Single colour per stroke ⇒ one factor for the field.
+        let scol = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+            self.stroke_color_oklab[0],
+            self.stroke_color_oklab[1],
+            self.stroke_color_oklab[2],
+        );
+        let color_sum = (scol[0] + scol[1] + scol[2]).max(0.08);
+        let canvas = Arc::make_mut(&mut self.canvas_rgba);
+        if canvas.len() != n4 {
+            return;
+        }
+        // Grid bbox → canvas pixels, padded one cell each side for the bicubic
+        // footprint. Pixels outside this region are untouched — they already hold the
+        // backdrop (the canvas starts as the backdrop at begin_stroke, and the union
+        // above revisits any pixel ever painted), so the invariant holds inductively.
+        let scale = WET_FIELD_SCALE;
+        let px_lo = gx0.saturating_sub(1) * scale;
+        let py_lo = gy0.saturating_sub(1) * scale;
+        let px_hi = ((gx1 + 2) * scale).min(cw);
+        let py_hi = ((gy1 + 2) * scale).min(ch);
+        for cy in py_lo..py_hi {
+            let fy = ((cy as f32 + 0.5) * inv - 0.5).clamp(0.0, gh as f32 - 1.0);
+            for cx in px_lo..px_hi {
+                let i = ((cy * cw + cx) * 4) as usize;
+                let fx = ((cx as f32 + 0.5) * inv - 0.5).clamp(0.0, gw as f32 - 1.0);
+                // **Bicubic (Catmull-Rom) upsample** of the 1/`WET_FIELD_SCALE` field.
+                // Bilinear left the soft wash edge visibly faceted at grid resolution
+                // ("low resolution at the edges"): the linear ramps meet at grid-aligned
+                // creases. The C1 cubic interpolant dissolves the 4 px blocks into a
+                // continuous falloff — the sim stays low-res (it is a smooth field), only
+                // the readout is smooth. Scoped to wet pixels by the `dens` short-circuit.
+                let p = sample_pigment_bicubic(pig, gw, gh, fx, fy);
+                let dens = (p[0] + p[1] + p[2]).max(0.0);
+                if dens < 1.0e-4 {
+                    canvas[i..i + 4].copy_from_slice(&backdrop[i..i + 4]);
+                    continue;
+                }
+                // Coverage from the colour-independent pigment load (dens / Σcolour),
+                // so opacity tracks how much pigment is here, not how bright it is.
+                let amount = dens / color_sum;
+                let alpha = 1.0 - (-amount * WET_COVERAGE_K).exp();
+                let back_a = backdrop[i + 3] as f32 / 255.0;
+                let back = [
+                    srgb_to_linear_byte(backdrop[i]),
+                    srgb_to_linear_byte(backdrop[i + 1]),
+                    srgb_to_linear_byte(backdrop[i + 2]),
+                ];
+                // **Straight-alpha glaze over a possibly-transparent backdrop.** Painting
+                // on a NEW top layer means the backdrop is (0,0,0,0): blending the pigment
+                // toward that black left a dark fringe at the partial-coverage edge ring
+                // (Enio's "bordas escuras"). Kubelka–Munk subtractive mixing is physical
+                // only where the backdrop is opaque PAINT, so:
+                //   • `km`       = K-M mix over the backdrop colour (ADR-0077 D12) — the
+                //                  yellow-over-blue→green glaze, valid at full backdrop alpha;
+                //   • `straight` = porter-duff "over" of the pigment (colour `pcol`,
+                //                  coverage `alpha`) — pigment colour at the edge, NO black;
+                // and we lerp between them by the backdrop's OWN alpha. Transparent edge →
+                // pure pigment (no fringe); opaque paint → full subtractive mix.
+                let out_a = alpha + back_a * (1.0 - alpha);
+                let km = mix_prepared(&prepared, back, alpha);
+                let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
+                let mut rgb = [0.0f32; 3];
+                for k in 0..3 {
+                    let straight = (pcol[k] * alpha + back[k] * back_a * (1.0 - alpha)) * inv_a;
+                    rgb[k] = (straight + (km[k] - straight) * back_a).clamp(0.0, 1.0);
+                }
+                canvas[i] = linear_to_srgb_byte(rgb[0]);
+                canvas[i + 1] = linear_to_srgb_byte(rgb[1]);
+                canvas[i + 2] = linear_to_srgb_byte(rgb[2]);
+                canvas[i + 3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
     pub fn queue_pointer(&mut self, sample: PointerSample) {
         debug_assert!(
             self.stroke_active || self.canvas_rgba.is_empty(),
@@ -231,49 +545,103 @@ impl PainterTool {
                     None => bbox,
                 });
             }
-            // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
-            // (zero alloc), clone-once when bridge cached the prior Arc
-            // (16 MB once per preview drain cycle, NOT per pointer event).
-            // Explicit `Vec<u8>` annotation prevents the compiler from
-            // coercing through `Arc<[u8]>::make_mut` (different impl).
-            let (w, h) = self.source_size;
-            let opacity_cap = self.wash_opacity_cap;
-            let pigment =
-                self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Subtractive;
-            let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
-            // **W5 wash path (accumulate OFF):** composite each dab against the
-            // pre-stroke backdrop with opacity-capped coverage — stable, no build-up.
-            // `pigment` selects subtractive K-M vs a plain linear lerp (orthogonal).
-            // `accumulate ON` clears `wash_coverage` at begin_stroke → falls to the
-            // per-dab build-up path. The fields are disjoint from `canvas_rgba`, so
-            // the borrow checker permits all three at once.
-            match (
-                self.wash_coverage.as_mut(),
-                self.pending_pre_stroke.as_deref(),
-            ) {
-                (Some(coverage), Some(backdrop)) if backdrop.len() == canvas_vec.len() => {
-                    ph2d_painter_brush::apply_stamps_wash(
-                        canvas_vec,
-                        backdrop,
-                        coverage,
-                        w,
-                        h,
-                        stamps,
-                        opacity_cap,
-                        pigment,
-                        alpha_lock,
-                    );
+            // **W15 fluid (ADR-0049 / ADR-0077 D11):** when the brush opts into the
+            // live wet-on-wet field, the dabs splat into the diffusion grid instead
+            // of the canvas; this call (+ `on_tick`) steps the diffusion + composites
+            // it out, so the wash blooms wet-on-wet AS you paint and keeps evolving
+            // after pen-up. `stamps` borrows `self.scheduler`; `self.wet_field` is a
+            // disjoint field, so the splat coexists with that borrow.
+            if self.wet_field.is_some() {
+                {
+                    let scale = WET_FIELD_SCALE as f32;
+                    let grid = self.wet_field.as_mut().expect("wet_field present");
+                    for stamp in stamps {
+                        let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+                            stamp.color_oklab[0],
+                            stamp.color_oklab[1],
+                            stamp.color_oklab[2],
+                        );
+                        let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
+                        grid.splat(
+                            stamp.position_world[0] / scale,
+                            stamp.position_world[1] / scale,
+                            (stamp.size_px * 0.5 / scale).max(0.5),
+                            WET_WATER_DEPOSIT,
+                            [rgb[0] * dep, rgb[1] * dep, rgb[2] * dep],
+                        );
+                    }
                 }
-                _ => {
-                    apply_stamps_with_options(canvas_vec, w, h, stamps, alpha_lock);
+                self.tick_wet_field(WET_SUBSTEPS_PAINTING);
+                self.preview_dirty = true;
+                self.dirty_rect = None;
+                self.has_painted_since_source = true;
+                let active = self.layers.active();
+                self.bump_layer_pixels(active);
+            } else {
+                // R4-LG-1: `Arc::make_mut` ⇒ unique-borrow path when refcount==1
+                // (zero alloc), clone-once when bridge cached the prior Arc
+                // (16 MB once per preview drain cycle, NOT per pointer event).
+                // Explicit `Vec<u8>` annotation prevents the compiler from
+                // coercing through `Arc<[u8]>::make_mut` (different impl).
+                let (w, h) = self.source_size;
+                let opacity_cap = self.wash_opacity_cap;
+                let pigment = self.brush.rendering.pigment_mode
+                    == ph2d_painter_brush::PigmentMode::Subtractive;
+                let paper_grain = self.params.paper_grain.clamp(0.0, 1.0);
+                let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
+                // **W5 wash path (accumulate OFF):** composite each dab against the
+                // pre-stroke backdrop with opacity-capped coverage — stable, no build-up.
+                // `pigment` selects subtractive K-M vs a plain linear lerp (orthogonal).
+                // `accumulate ON` clears `wash_coverage` at begin_stroke → falls to the
+                // per-dab build-up path. The fields are disjoint from `canvas_rgba`, so
+                // the borrow checker permits all three at once.
+                match (
+                    self.wash_coverage.as_mut(),
+                    self.wash_color.as_mut(),
+                    self.pending_pre_stroke.as_deref(),
+                ) {
+                    (Some(coverage), Some(color), Some(backdrop))
+                        if backdrop.len() == canvas_vec.len() =>
+                    {
+                        ph2d_painter_brush::apply_stamps_wash(
+                            canvas_vec,
+                            backdrop,
+                            coverage,
+                            color,
+                            w,
+                            h,
+                            stamps,
+                            opacity_cap,
+                            pigment,
+                            alpha_lock,
+                            paper_grain,
+                        );
+                    }
+                    // Build-up (`accumulate`) WITH coverage allocated (edges on OR paper
+                    // tooth on): render build-up while recording coverage (for the pen-up
+                    // edge settle) and applying the global paper tooth.
+                    (Some(coverage), None, _) => {
+                        ph2d_painter_brush::apply_stamps_buildup(
+                            canvas_vec,
+                            coverage,
+                            w,
+                            h,
+                            stamps,
+                            alpha_lock,
+                            paper_grain,
+                        );
+                    }
+                    _ => {
+                        apply_stamps_with_options(canvas_vec, w, h, stamps, alpha_lock);
+                    }
                 }
+                self.preview_dirty = true;
+                self.has_painted_since_source = true;
+                // GPU preview: the active layer's pixels just changed → bump its
+                // content version so the compositor re-uploads only its slice.
+                let active = self.layers.active();
+                self.bump_layer_pixels(active);
             }
-            self.preview_dirty = true;
-            self.has_painted_since_source = true;
-            // GPU preview: the active layer's pixels just changed → bump its
-            // content version so the compositor re-uploads only its slice.
-            let active = self.layers.active();
-            self.bump_layer_pixels(active);
         }
 
         // T1.9: persist sample em history vetorial (in-memory) + journal.
@@ -382,6 +750,66 @@ impl PainterTool {
             // mirrors the V-1 phantom-record gate above) — W2.T2.2.
             self.pending_pre_stroke = None;
             return;
+        }
+        // **Wet edges (watercolor) — Phase-B settle / pen-up "dry-down".** The
+        // live stroke showed honest wet paint (interior only); now that the stroke
+        // is finished, its wet-region boundary is known, so the edge-darkening rim
+        // settles in once — pigment transported to the receding water front
+        // (`cpu_render::apply_wash_settle`; Curtis et al. SIGGRAPH 1997). This is
+        // the Procreate / DiVerdi grow-then-bake lifecycle: a one-frame rim
+        // appearing on pen-up, NOT a per-stamp contour filter. Wash-mode only — the
+        // coverage buffer IS the wet-region field; build-up brushes have none.
+        // Wet (watercolor) takes precedence if both are somehow on; burnt is the
+        // dry-media (charcoal / sumi-e) variant of the same transport band.
+        let edge_style = if self.brush.rendering.wet_edges {
+            Some(ph2d_painter_brush::EdgeStyle::Wet)
+        } else if self.brush.rendering.burnt_edges {
+            Some(ph2d_painter_brush::EdgeStyle::Burnt)
+        } else {
+            None
+        };
+        let mut wet_settled = false;
+        if let Some(style) = edge_style
+            && let Some(coverage) = self.wash_coverage.as_ref()
+        {
+            let (w, h) = self.source_size;
+            if let Some(bbox) = ph2d_painter_brush::coverage_bbox(coverage, w, h) {
+                let rim_px = (self.params.size_px * WET_EDGE_RIM_FRACTION).clamp(2.0, 32.0) as u32;
+                let seed = partial.rng_seed as u32;
+                let strength = self.brush.rendering.edge_intensity.clamp(0.0, 1.0);
+                // Granulation strength rides the Paper slider — granulation IS pigment
+                // sedimenting into the paper tooth, so its depth tracks the tooth depth
+                // (v1.5; Curtis §4.5). The masstone (`wash_color`) + pre-stroke backdrop
+                // enable the physically-grounded K–M dry-down; build-up (no wash_color)
+                // falls back to the gamma rim inside `apply_wash_settle`.
+                let granulation = self.params.paper_grain.clamp(0.0, 1.0);
+                let backdrop = self.pending_pre_stroke.as_deref();
+                let wash_color = self.wash_color.as_deref();
+                let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
+                ph2d_painter_brush::apply_wash_settle(
+                    canvas_vec,
+                    backdrop,
+                    coverage,
+                    wash_color,
+                    w,
+                    h,
+                    bbox,
+                    strength,
+                    rim_px,
+                    granulation,
+                    seed,
+                    style,
+                );
+                wet_settled = true;
+            }
+        }
+        if wet_settled {
+            // The rim repainted a sub-rect; force a full recompose on the next
+            // preview drain (pen-up, not the hot path) so it shows everywhere.
+            self.preview_dirty = true;
+            self.dirty_rect = None;
+            let active = self.layers.active();
+            self.bump_layer_pixels(active);
         }
         partial.samples_count_in_journal = samples.len() as u32;
         // Journal commit primeiro (preserva ordering "wrote to WAL before
@@ -743,14 +1171,21 @@ impl PainterTool {
             P::SpacingJitter => b.stroke_path.spacing_jitter = v.clamp(0.0, 1.0),
             P::JitterLateral => b.stroke_path.jitter_lateral = v.clamp(0.0, 1.0),
             P::Falloff => b.stroke_path.falloff = v.clamp(0.0, 1.0),
+            // Slider 0..1 → taper_length_start 0..0.5 (the spec range); the tip
+            // defaults (size/opacity start = 0) make it a clean pointed entry.
+            P::TaperLength => b.taper.taper_length_start = v.clamp(0.0, 1.0) * 0.5,
             P::StreamlineAmount => b.stabilization.streamline_amount = v.clamp(0.0, 1.0),
             P::Stabilization => b.stabilization.stabilization = v.clamp(0.0, 1.0),
+            P::MotionFiltering => b.stabilization.motion_filtering_amount = v.clamp(0.0, 1.0),
+            P::MotionExpression => b.stabilization.motion_filtering_expression = v.clamp(0.0, 1.0),
+            // Bipolar: slider 0..1 → speed_* −1..1 (0.5 = neutral / off).
+            P::SpeedSize => b.dynamics.speed_size = (v * 2.0 - 1.0).clamp(-1.0, 1.0),
+            P::SpeedOpacity => b.dynamics.speed_opacity = (v * 2.0 - 1.0).clamp(-1.0, 1.0),
+            P::SpeedSpacing => b.dynamics.speed_spacing = (v * 2.0 - 1.0).clamp(-1.0, 1.0),
             P::ShapeScatter => b.shape.shape_scatter = v.clamp(0.0, 1.0),
             // Sliders always emit 0..1; map to the field's natural range here
             // (the panel inverts it for display) — same split as `size01_to_px`.
-            P::ShapeCount => {
-                b.shape.shape_count = (1.0 + v.clamp(0.0, 1.0) * 15.0).round() as u32
-            }
+            P::ShapeCount => b.shape.shape_count = (1.0 + v.clamp(0.0, 1.0) * 15.0).round() as u32,
             P::ShapeCountJitter => b.shape.shape_count_jitter = v.clamp(0.0, 1.0),
             P::ShapeRoundness => b.shape.shape_roundness = v.clamp(0.0, 1.0),
             P::ShapeRotationFollow => b.shape.shape_rotation_follow = v >= 0.5,
@@ -761,6 +1196,13 @@ impl PainterTool {
             P::AlphaThreshold => b.rendering.alpha_threshold = v.clamp(0.0, 1.0),
             P::WetEdges => b.rendering.wet_edges = v >= 0.5,
             P::BurntEdges => b.rendering.burnt_edges = v >= 0.5,
+            // Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Takes
+            // effect at the next begin_stroke, which allocates `wet_field` when
+            // this is set (the live stroke keeps its baked mode until end_stroke).
+            P::Fluid => b.rendering.fluid_enabled = v >= 0.5,
+            P::EdgeIntensity => b.rendering.edge_intensity = v.clamp(0.0, 1.0),
+            // Substrate property → tool params (disjoint field from `b`).
+            P::Paper => self.params.paper_grain = v.clamp(0.0, 1.0),
             P::RenderingMode => {
                 b.rendering.rendering_mode =
                     ph2d_painter_brush::RenderingMode::from_u32(v.round().max(0.0) as u32);
@@ -789,8 +1231,11 @@ impl PainterTool {
             spacing_jitter: b.stroke_path.spacing_jitter,
             jitter_lateral: b.stroke_path.jitter_lateral,
             falloff: b.stroke_path.falloff,
+            taper_length: b.taper.taper_length_start * 2.0,
             streamline_amount: b.stabilization.streamline_amount,
             stabilization: b.stabilization.stabilization,
+            motion_filtering_amount: b.stabilization.motion_filtering_amount,
+            motion_filtering_expression: b.stabilization.motion_filtering_expression,
             shape_scatter: b.shape.shape_scatter,
             shape_count: b.shape.shape_count,
             shape_count_jitter: b.shape.shape_count_jitter,
@@ -803,6 +1248,8 @@ impl PainterTool {
             alpha_threshold: b.rendering.alpha_threshold,
             wet_edges: b.rendering.wet_edges,
             burnt_edges: b.rendering.burnt_edges,
+            fluid_enabled: b.rendering.fluid_enabled,
+            edge_intensity: b.rendering.edge_intensity,
             pigment_enabled: b.rendering.pigment_mode == PigmentMode::Subtractive,
             accumulate_enabled: b.rendering.accumulate,
             rendering_mode: b.rendering.rendering_mode as u8,
@@ -815,12 +1262,17 @@ impl PainterTool {
             },
             grain_scale: b.grain.grain_scale,
             grain_depth: b.grain.grain_depth,
+            // Paper tooth is a substrate property → tool params, not the brush.
+            paper_grain: self.params.paper_grain,
             stamp_hue_jitter: b.color_dynamics.stamp_hue_jitter,
             stamp_saturation_jitter: b.color_dynamics.stamp_saturation_jitter,
             stamp_lightness_jitter: b.color_dynamics.stamp_lightness_jitter,
             stamp_darkness_jitter: b.color_dynamics.stamp_darkness_jitter,
             jitter_size: b.dynamics.jitter_size,
             jitter_opacity: b.dynamics.jitter_opacity,
+            speed_size: b.dynamics.speed_size,
+            speed_opacity: b.dynamics.speed_opacity,
+            speed_spacing: b.dynamics.speed_spacing,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }
@@ -858,6 +1310,13 @@ impl PainterTool {
         // Restore pixels in place; keep the Arc allocation when uniquely owned.
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
         *canvas = pixels;
+        // **W15 fluid:** a live wash keeps blooming over `pending_pre_stroke`
+        // after pen-up (`on_tick`). Undo backs the stroke out, so the bloom must
+        // stop — otherwise it re-composites the wash onto the restored pre-image.
+        // Dropping the field neutralises the composite (it no-ops without one).
+        self.wet_field = None;
+        self.wet_backdrop = None;
+        self.wet_composite_bbox = None;
         // Keep the semantic canon in lock-step: pop the record the undo backed
         // out of, holding it so `redo` can re-insert it (StrokeHistory::redo
         // needs the popped record — the gap this task closed).
@@ -886,6 +1345,12 @@ impl PainterTool {
         };
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
         *canvas = pixels;
+        // **W15 fluid:** redo restores a frozen post-stroke image; any field that
+        // was still blooming belongs to a different timeline. Drop it so it can't
+        // re-composite over the restored pixels (symmetric with `undo_last_stroke`).
+        self.wet_field = None;
+        self.wet_backdrop = None;
+        self.wet_composite_bbox = None;
         // Re-insert the semantic record we held back during the matching undo.
         if let Some(rec) = self.undo_redo_records.pop() {
             self.stroke_history.redo(rec);

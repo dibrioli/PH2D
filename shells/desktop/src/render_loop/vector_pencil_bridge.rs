@@ -47,7 +47,7 @@ const OVERLAY_LINE_WIDTH_PX: f64 = 1.5;
 /// Pencil-pill toggle-off / tool switch runs `Tool::on_deactivate →
 /// reset`, which silently discards the recorded samples (mirror of
 /// `super::vector_pen_bridge::pen_has_in_progress_path` /
-/// `painter_bridge::painter_has_unflushed_strokes`). The tool-concrete
+/// `painter_bridge_queries::painter_has_unflushed_strokes`). The tool-concrete
 /// downcast lives in this allowlisted bridge so central dispatch stays
 /// downcast-free (`architecture_no_downcast_to_concrete_tool_in_shell`).
 #[must_use]

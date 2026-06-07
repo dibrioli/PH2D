@@ -50,14 +50,53 @@ pub fn populate(store: &mut WidgetStore) {
 
     // ── Stroke Path — percent sliders (0..1 → 0..100%) ──────────────────────
     pct(store, ids::SPACING_SLIDER, ids::SPACING_CHIP, s.spacing);
-    pct(store, ids::SPACING_JITTER_SLIDER, ids::SPACING_JITTER_CHIP, s.spacing_jitter);
-    pct(store, ids::JITTER_LATERAL_SLIDER, ids::JITTER_LATERAL_CHIP, s.jitter_lateral);
+    pct(
+        store,
+        ids::SPACING_JITTER_SLIDER,
+        ids::SPACING_JITTER_CHIP,
+        s.spacing_jitter,
+    );
+    pct(
+        store,
+        ids::JITTER_LATERAL_SLIDER,
+        ids::JITTER_LATERAL_CHIP,
+        s.jitter_lateral,
+    );
     pct(store, ids::FALLOFF_SLIDER, ids::FALLOFF_CHIP, s.falloff);
-    pct(store, ids::STREAMLINE_SLIDER, ids::STREAMLINE_CHIP, s.streamline_amount);
-    pct(store, ids::STABILIZATION_SLIDER, ids::STABILIZATION_CHIP, s.stabilization);
+    pct(store, ids::TAPER_SLIDER, ids::TAPER_CHIP, s.taper_length);
+    pct(
+        store,
+        ids::STREAMLINE_SLIDER,
+        ids::STREAMLINE_CHIP,
+        s.streamline_amount,
+    );
+    pct(
+        store,
+        ids::STABILIZATION_SLIDER,
+        ids::STABILIZATION_CHIP,
+        s.stabilization,
+    );
+    // One-Euro motion filtering (ADR-0077 D10) — unipolar 0..1.
+    pct(
+        store,
+        ids::MOTION_FILTER_SLIDER,
+        ids::MOTION_FILTER_CHIP,
+        s.motion_filtering_amount,
+    );
+    pct(
+        store,
+        ids::MOTION_EXPR_SLIDER,
+        ids::MOTION_EXPR_CHIP,
+        s.motion_filtering_expression,
+    );
 
     // ── Shape — percent sliders + count + checkboxes ────────────────────────
-    pct(store, ids::SHAPE_SCATTER_SLIDER, ids::SHAPE_SCATTER_CHIP, s.shape_scatter);
+    pct(
+        store,
+        ids::SHAPE_SCATTER_SLIDER,
+        ids::SHAPE_SCATTER_CHIP,
+        s.shape_scatter,
+    );
     // shape_count: integer 1..16.
     slider_chip(
         store,
@@ -68,7 +107,12 @@ pub fn populate(store: &mut WidgetStore) {
         1.0,
         true,
     );
-    pct(store, ids::SHAPE_COUNT_JITTER_SLIDER, ids::SHAPE_COUNT_JITTER_CHIP, s.shape_count_jitter);
+    pct(
+        store,
+        ids::SHAPE_COUNT_JITTER_SLIDER,
+        ids::SHAPE_COUNT_JITTER_CHIP,
+        s.shape_count_jitter,
+    );
     checkbox(store, ids::SHAPE_ROTATION_FOLLOW, s.shape_rotation_follow);
     checkbox(store, ids::SHAPE_RANDOMIZED, s.shape_randomized);
     checkbox(store, ids::SHAPE_FLIP_X, s.shape_flip_x);
@@ -86,26 +130,109 @@ pub fn populate(store: &mut WidgetStore) {
         0.1,
         false,
     );
-    pct(store, ids::GRAIN_DEPTH_SLIDER, ids::GRAIN_DEPTH_CHIP, s.grain_depth);
+    pct(
+        store,
+        ids::GRAIN_DEPTH_SLIDER,
+        ids::GRAIN_DEPTH_CHIP,
+        s.grain_depth,
+    );
     checkbox(store, ids::PIGMENT, s.pigment_enabled);
     checkbox(store, ids::ACCUMULATE, s.accumulate_enabled);
+    checkbox(store, ids::WET_EDGES, s.wet_edges);
+    checkbox(store, ids::BURNT_EDGES, s.burnt_edges);
+    checkbox(store, ids::FLUID, s.fluid_enabled);
+    // Register the interactive slider state UNCONDITIONALLY (same pattern as the
+    // grain sliders) — `paint` shows it only when an edge mode is on, but the
+    // `SliderState` must exist in the store regardless so a drag is accepted the
+    // moment it appears (a conditional register here leaves it un-draggable).
+    pct(
+        store,
+        ids::EDGE_INTENSITY_SLIDER,
+        ids::EDGE_INTENSITY_CHIP,
+        s.edge_intensity,
+    );
+    // Paper tooth — always visible, so register straight (no conditional).
+    pct(store, ids::PAPER_SLIDER, ids::PAPER_CHIP, s.paper_grain);
     button(store, ids::GRAIN_TYPE);
     button(store, ids::RENDERING_MODE);
 
     // ── Color Dynamics — per-stamp OKLab jitter (engine-wired) ──────────────
-    pct(store, ids::HUE_JITTER_SLIDER, ids::HUE_JITTER_CHIP, s.stamp_hue_jitter);
-    pct(store, ids::SAT_JITTER_SLIDER, ids::SAT_JITTER_CHIP, s.stamp_saturation_jitter);
-    pct(store, ids::LIGHT_JITTER_SLIDER, ids::LIGHT_JITTER_CHIP, s.stamp_lightness_jitter);
-    pct(store, ids::DARK_JITTER_SLIDER, ids::DARK_JITTER_CHIP, s.stamp_darkness_jitter);
+    pct(
+        store,
+        ids::HUE_JITTER_SLIDER,
+        ids::HUE_JITTER_CHIP,
+        s.stamp_hue_jitter,
+    );
+    pct(
+        store,
+        ids::SAT_JITTER_SLIDER,
+        ids::SAT_JITTER_CHIP,
+        s.stamp_saturation_jitter,
+    );
+    pct(
+        store,
+        ids::LIGHT_JITTER_SLIDER,
+        ids::LIGHT_JITTER_CHIP,
+        s.stamp_lightness_jitter,
+    );
+    pct(
+        store,
+        ids::DARK_JITTER_SLIDER,
+        ids::DARK_JITTER_CHIP,
+        s.stamp_darkness_jitter,
+    );
 
     // ── Dynamics — per-stamp size/opacity jitter (engine-wired T1.7) ────────
-    pct(store, ids::SIZE_JITTER_SLIDER, ids::SIZE_JITTER_CHIP, s.jitter_size);
-    pct(store, ids::OPACITY_JITTER_SLIDER, ids::OPACITY_JITTER_CHIP, s.jitter_opacity);
+    pct(
+        store,
+        ids::SIZE_JITTER_SLIDER,
+        ids::SIZE_JITTER_CHIP,
+        s.jitter_size,
+    );
+    pct(
+        store,
+        ids::OPACITY_JITTER_SLIDER,
+        ids::OPACITY_JITTER_CHIP,
+        s.jitter_opacity,
+    );
+    // Velocity dynamics (ADR-0077 D10) — bipolar −1..1 (centre = off).
+    bipolar(
+        store,
+        ids::SPEED_SIZE_SLIDER,
+        ids::SPEED_SIZE_CHIP,
+        s.speed_size,
+    );
+    bipolar(
+        store,
+        ids::SPEED_OPACITY_SLIDER,
+        ids::SPEED_OPACITY_CHIP,
+        s.speed_opacity,
+    );
+    bipolar(
+        store,
+        ids::SPEED_SPACING_SLIDER,
+        ids::SPEED_SPACING_CHIP,
+        s.speed_spacing,
+    );
 }
 
 /// Register a percent slider+chip pair (0..1 → 0..100%, integer display).
 fn pct(store: &mut WidgetStore, slider_id: NodeId, chip_id: NodeId, value01: f32) {
     slider_chip(store, slider_id, chip_id, value01, 100.0, 0.0, true);
+}
+
+/// Register a bipolar slider+chip pair (−1..1 → −100..+100%, integer display).
+/// The slider stores `(value + 1)/2 ∈ [0,1]`; the chip shows the signed percent.
+fn bipolar(store: &mut WidgetStore, slider_id: NodeId, chip_id: NodeId, value: f32) {
+    slider_chip(
+        store,
+        slider_id,
+        chip_id,
+        (value + 1.0) * 0.5,
+        200.0,
+        -100.0,
+        true,
+    );
 }
 
 /// Register a slider + editable chip with an affine display map
@@ -227,8 +354,14 @@ mod tests {
         // panel→tool→snapshot loop must echo the value back verbatim. The
         // scheduler then honors it (proven in ph2d-painter-brush tests).
         let mut tool = PainterTool::default();
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::StreamlineAmount, 0.5));
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::Stabilization, 0.75));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::StreamlineAmount,
+            0.5,
+        ));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::Stabilization,
+            0.75,
+        ));
         let s = tool.brush_studio_snapshot();
         assert!((s.streamline_amount - 0.5).abs() < 1e-6);
         assert!((s.stabilization - 0.75).abs() < 1e-6);
@@ -240,9 +373,18 @@ mod tests {
         // jitter); the panel→tool→snapshot loop must echo each value back.
         let mut tool = PainterTool::default();
         tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::HueJitter, 0.4));
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::SaturationJitter, 0.6));
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::LightnessJitter, 0.3));
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::DarknessJitter, 0.8));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::SaturationJitter,
+            0.6,
+        ));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::LightnessJitter,
+            0.3,
+        ));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::DarknessJitter,
+            0.8,
+        ));
         let s = tool.brush_studio_snapshot();
         assert!((s.stamp_hue_jitter - 0.4).abs() < 1e-6);
         assert!((s.stamp_saturation_jitter - 0.6).abs() < 1e-6);
@@ -256,7 +398,10 @@ mod tests {
         // 0xD1/0xD2); the panel→tool→snapshot loop must echo the values.
         let mut tool = PainterTool::default();
         tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::SizeJitter, 0.45));
-        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(BrushParam::OpacityJitter, 0.65));
+        tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+            BrushParam::OpacityJitter,
+            0.65,
+        ));
         let s = tool.brush_studio_snapshot();
         assert!((s.jitter_size - 0.45).abs() < 1e-6);
         assert!((s.jitter_opacity - 0.65).abs() < 1e-6);

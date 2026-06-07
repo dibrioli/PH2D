@@ -2,9 +2,14 @@ use super::*;
 use crate::library::round_hard;
 
 fn p(x: f32, y: f32) -> PointerSample {
+    // Full pressure (1.0): the identity pressure curve maps this to full size +
+    // opacity, so the spacing / count / rotation tests below see the slider size
+    // unchanged. Pressure-specific behaviour is covered by the dedicated
+    // `p_press` tests at the bottom of this file. (Pre-pressure-dynamics this
+    // helper used 0.5, which was inert because pressure didn't modulate size.)
     PointerSample {
         position: [x, y],
-        pressure: 0.5,
+        pressure: 1.0,
         tilt: 0.0,
     }
 }
@@ -1717,10 +1722,11 @@ fn det_random_axis_tags_match_registry() {
 
     // The registered production tags (matches the rustdoc table
     // above `pub(crate) fn det_random`).
-    let expected: std::collections::BTreeSet<u32> =
-        [0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE, 0xD1, 0xD2, 0xD3, 0xD4]
-            .into_iter()
-            .collect();
+    let expected: std::collections::BTreeSet<u32> = [
+        0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE, 0xD1, 0xD2, 0xD3, 0xD4,
+    ]
+    .into_iter()
+    .collect();
 
     assert_eq!(
         found, expected,
@@ -1841,7 +1847,111 @@ fn break_segment_resets_input_smoothing() {
     assert_eq!(stamps[0].position_world, [200.0, 0.0]);
 }
 
-// ── T1.7 falloff (ink-depletion opacity taper) ──────────────────────────────
+// ── Motion filtering (One-Euro) + velocity dynamics ─────────────────────────
+
+#[test]
+fn motion_filtering_damps_slow_tremor() {
+    // One-Euro at full amount (uniform, expression 0) damps a slow ±2px hand
+    // tremor (low speed → low cutoff). Compare painted y-spread ON vs OFF.
+    let run = |mf: f32| -> f32 {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(7);
+        let mut b = round_hard();
+        b.stabilization.motion_filtering_amount = mf;
+        let mut max_y = 0.0f32;
+        for i in 0..24 {
+            let y = if i % 2 == 0 { 2.0 } else { -2.0 };
+            let stamps = s.advance(&b, p(i as f32 * 3.0, y), 24.0, [0.0; 4]);
+            // Skip the warm-up: the One-Euro filter passes the first sample raw
+            // (init), so only measure once it has settled.
+            if i >= 8 {
+                if let Some(st) = stamps.last() {
+                    max_y = max_y.max(st.position_world[1].abs());
+                }
+            }
+        }
+        max_y
+    };
+    let off = run(0.0);
+    let on = run(1.0);
+    assert!(on < off * 0.7, "motion filtering damps slow tremor: on {on} vs off {off}");
+}
+
+#[test]
+fn motion_filtering_expression_keeps_fast_strokes_responsive() {
+    // The One-Euro β term: at the SAME (full) filtering amount, high expression
+    // raises the cutoff with speed → a fast straight stroke lags LESS (reaches a
+    // larger x) than uniform (expression 0) smoothing. This is the One-Euro
+    // advantage a fixed EMA/MA cannot give.
+    let run = |expr: f32| -> f32 {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(11);
+        let mut b = round_hard();
+        b.stabilization.motion_filtering_amount = 1.0;
+        b.stabilization.motion_filtering_expression = expr;
+        let mut last_x = 0.0;
+        for i in 0..11 {
+            let stamps = s.advance(&b, p(i as f32 * 30.0, 0.0), 24.0, [0.0; 4]);
+            if let Some(st) = stamps.last() {
+                last_x = st.position_world[0];
+            }
+        }
+        last_x
+    };
+    let uniform = run(0.0);
+    let responsive = run(1.0);
+    assert!(
+        responsive > uniform + 5.0,
+        "expression keeps fast strokes responsive (less lag): expr1 {responsive} vs expr0 {uniform}"
+    );
+}
+
+#[test]
+fn motion_filtering_is_deterministic() {
+    // HR-5: One-Euro is pure arithmetic (no transcendentals/RNG/clock).
+    let mut b = round_hard();
+    b.stabilization.motion_filtering_amount = 0.8;
+    b.stabilization.motion_filtering_expression = 0.5;
+    let samples = [p(0.0, 0.0), p(10.0, 4.0), p(22.0, -3.0), p(31.0, 6.0), p(45.0, -1.0)];
+    let run = || {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(99);
+        let mut out: Vec<[f32; 2]> = Vec::new();
+        for sm in samples {
+            out.extend(s.advance(&b, sm, 24.0, [0.0; 4]).iter().map(|st| st.position_world));
+        }
+        out
+    };
+    assert_eq!(run(), run(), "One-Euro motion filtering must be deterministic (HR-5)");
+}
+
+#[test]
+fn speed_size_grows_the_dab_on_fast_strokes() {
+    // `dynamics.speed_size = +1` → a fast stroke deposits LARGER dabs than a slow
+    // one (velocity dynamics); the default (speed_size = 0) is speed-invariant.
+    let run = |step: f32, speed_size: f32| -> f32 {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(3);
+        let mut b = round_hard();
+        b.dynamics.speed_size = speed_size;
+        let mut last = 0.0;
+        for i in 0..14 {
+            let stamps = s.advance(&b, p(i as f32 * step, 0.0), 20.0, [0.0; 4]);
+            if let Some(st) = stamps.last() {
+                last = st.size_px;
+            }
+        }
+        last
+    };
+    let slow = run(2.0, 1.0);
+    let fast = run(40.0, 1.0);
+    assert!(fast > slow + 4.0, "speed_size grows the fast-stroke dab: fast {fast} vs slow {slow}");
+    // Default (speed_size = 0) is speed-invariant.
+    assert!(
+        (run(2.0, 0.0) - run(40.0, 0.0)).abs() < 1e-3,
+        "speed_size = 0 → dab size independent of velocity"
+    );
+}
 
 #[test]
 fn falloff_zero_keeps_full_opacity() {
@@ -1870,12 +1980,18 @@ fn falloff_tapers_opacity_along_the_stroke() {
     // Draw past the depletion length (L = 8 * 32 = 256 px at falloff=1 → zero).
     let stamps = s.advance(&brush, p(400.0, 0.0), 32.0, [0.0; 4]);
     let last = stamps.last().unwrap().opacity;
-    assert!((first - 1.0).abs() < 1e-6, "stroke start must be full opacity");
+    assert!(
+        (first - 1.0).abs() < 1e-6,
+        "stroke start must be full opacity"
+    );
     assert!(
         last < first,
         "falloff must taper: last opacity {last} should be below the start {first}"
     );
-    assert!(last <= 0.05, "by ~400px (>L) at falloff=1 the stroke is ~spent; got {last}");
+    assert!(
+        last <= 0.05,
+        "by ~400px (>L) at falloff=1 the stroke is ~spent; got {last}"
+    );
 }
 
 #[test]
@@ -1968,7 +2084,10 @@ fn dynamics_opacity_jitter_varies_and_is_deterministic() {
             .collect::<Vec<_>>()
     };
     let a = run();
-    assert!(a.iter().any(|&o| o < 0.99), "opacity jitter must reduce some stamps");
+    assert!(
+        a.iter().any(|&o| o < 0.99),
+        "opacity jitter must reduce some stamps"
+    );
     assert_eq!(a, run(), "dynamics jitter must be deterministic (HR-5)");
 }
 
@@ -2007,4 +2126,163 @@ fn shape_scatter_spreads_stamp_positions() {
         max_off > 1.0,
         "scatter=0.8 must offset dabs by a visible amount; max {max_off}"
     );
+}
+
+// ── Pressure dynamics (Apple-Pencil / tablet pen) ────────────────────────────
+
+/// Build a pointer sample at an explicit pressure (the shared `p()` helper
+/// hard-codes 0.5).
+fn p_press(x: f32, y: f32, pressure: f32) -> PointerSample {
+    PointerSample {
+        position: [x, y],
+        pressure,
+        tilt: 0.0,
+    }
+}
+
+/// Emit a short straight stroke and return the (size_px, opacity) of the last
+/// stamp — the steady-state dab once the segment is established.
+fn last_dab_size_opacity(pressure: f32) -> (f32, f32) {
+    let mut s = StampScheduler::new();
+    s.begin_stroke(7);
+    let brush = round_hard(); // pressure_targets default = Size | Opacity, identity curve
+    let _ = s.advance(&brush, p_press(0.0, 0.0, pressure), 64.0, [0.5, 0.0, 0.0, 1.0]);
+    let stamps = s.advance(&brush, p_press(40.0, 0.0, pressure), 64.0, [0.5, 0.0, 0.0, 1.0]);
+    let last = stamps.last().expect("segment must emit at least one dab");
+    (last.size_px, last.opacity)
+}
+
+#[test]
+fn pressure_modulates_size_and_opacity_monotonically() {
+    // The physics: pen pressure drives BOTH the dab diameter and the per-dab
+    // deposit (opacity) up monotonically under the default Size|Opacity targets.
+    let (s_lo, o_lo) = last_dab_size_opacity(0.25);
+    let (s_mid, o_mid) = last_dab_size_opacity(0.5);
+    let (s_hi, o_hi) = last_dab_size_opacity(1.0);
+    assert!(
+        s_lo < s_mid && s_mid < s_hi,
+        "size must grow with pressure: {s_lo} < {s_mid} < {s_hi}"
+    );
+    assert!(
+        o_lo < o_mid && o_mid < o_hi,
+        "opacity must grow with pressure: {o_lo} < {o_mid} < {o_hi}"
+    );
+    // Identity curve → size scales ~linearly: 0.5 pressure ≈ half the full size.
+    assert!(
+        (s_mid - 0.5 * s_hi).abs() < 0.05 * s_hi,
+        "0.5 pressure ≈ half full size; got {s_mid} vs full {s_hi}"
+    );
+    // Full pressure with a 64px brush ≈ 64px dab.
+    assert!(
+        (s_hi - 64.0).abs() < 1.0,
+        "full pressure reaches the slider size (64px); got {s_hi}"
+    );
+}
+
+#[test]
+fn mouse_full_pressure_is_full_size_no_regression() {
+    // Mouse / touch report constant pressure 1.0; the identity pressure curve
+    // maps that to 1.0, so a 64px brush stays 64px and full opacity — the
+    // pre-pressure behaviour, byte-for-byte unchanged for pressure-less devices.
+    let (size, opacity) = last_dab_size_opacity(1.0);
+    assert!((size - 64.0).abs() < 1.0, "mouse → full 64px dab; got {size}");
+    assert!(
+        (opacity - 1.0).abs() < 1e-4,
+        "mouse → full opacity; got {opacity}"
+    );
+}
+
+#[test]
+fn pressure_targets_gate_size_and_opacity_independently() {
+    // With pressure routed to Opacity ONLY, size must stay at the slider value
+    // regardless of pressure (and vice-versa) — the `pressure_targets` bitmask
+    // is honoured per-channel.
+    let mut brush = round_hard();
+    brush.pencil.pressure_targets = crate::pencil::PRESSURE_TARGET_OPACITY; // size NOT targeted
+    let mut s = StampScheduler::new();
+    s.begin_stroke(3);
+    let _ = s.advance(&brush, p_press(0.0, 0.0, 0.2), 50.0, [0.5, 0.0, 0.0, 1.0]);
+    let stamps = s.advance(&brush, p_press(40.0, 0.0, 0.2), 50.0, [0.5, 0.0, 0.0, 1.0]);
+    let last = stamps.last().unwrap();
+    assert!(
+        (last.size_px - 50.0).abs() < 1.0,
+        "size untargeted → stays at slider 50px even at low pressure; got {}",
+        last.size_px
+    );
+    assert!(
+        last.opacity < 0.3,
+        "opacity targeted → drops at 0.2 pressure; got {}",
+        last.opacity
+    );
+}
+
+#[test]
+fn low_pressure_tail_keeps_dabs_dense_no_dotted_line() {
+    // Regression guard for the "dotted thin line" failure: when pressure shrinks
+    // the dab, spacing must shrink with it (spacing is a fraction of the DYNAMIC
+    // diameter), so a low-pressure pass still lays overlapping dabs, not gaps.
+    let mut s = StampScheduler::new();
+    s.begin_stroke(11);
+    let brush = round_hard(); // spacing 0.10
+    let _ = s.advance(&brush, p_press(0.0, 0.0, 0.1), 100.0, [0.5, 0.0, 0.0, 1.0]);
+    let stamps = s.advance(&brush, p_press(50.0, 0.0, 0.1), 100.0, [0.5, 0.0, 0.0, 1.0]);
+    // At 0.1 pressure the 100px brush is ~10px; spacing 0.10 → ~1px steps, so a
+    // 50px segment lays many dabs. The pre-fix code spaced at 0.10*100 = 10px →
+    // only ~5 dabs of a 10px brush = a dotted line.
+    assert!(
+        stamps.len() >= 20,
+        "low-pressure thin dabs must stay dense (spacing tracks dynamic radius); got {}",
+        stamps.len()
+    );
+}
+
+// ── Start taper (ADR-0077 D5) ────────────────────────────────────────────────
+
+#[test]
+fn start_taper_grows_size_and_opacity_from_the_tip() {
+    // A brush with a start taper enters from a clean point: the early dabs are
+    // small + faint, growing to the full brush size/opacity past `L_start`.
+    let mut brush = round_hard();
+    brush.taper.taper_length_start = 0.3; // taper over ~0.3·12·40 = 144px
+    brush.taper.taper_size_start = 0.0; // pointed tip
+    brush.taper.taper_opacity_start = 0.0; // faint tip
+    let mut s = StampScheduler::new();
+    s.begin_stroke(7);
+    let _ = s.advance(&brush, p_press(0.0, 0.0, 1.0), 40.0, [0.5, 0.0, 0.0, 1.0]);
+    let mut early: Option<(f32, f32)> = None;
+    let mut late: Option<(f32, f32)> = None;
+    for x in (8..520).step_by(8) {
+        let stamps = s.advance(&brush, p_press(x as f32, 0.0, 1.0), 40.0, [0.5, 0.0, 0.0, 1.0]);
+        if let Some(st) = stamps.first() {
+            if early.is_none() {
+                early = Some((st.size_px, st.opacity));
+            }
+            late = Some((st.size_px, st.opacity));
+        }
+    }
+    let (e_size, e_op) = early.expect("early stamp");
+    let (l_size, l_op) = late.expect("late stamp");
+    assert!(
+        e_size < l_size * 0.6,
+        "tip size must be smaller than full: {e_size} vs {l_size}"
+    );
+    assert!(e_op < l_op, "tip opacity must be fainter: {e_op} vs {l_op}");
+    assert!(
+        (l_size - 40.0).abs() < 2.0,
+        "size reaches the full 40px past the taper; got {l_size}"
+    );
+}
+
+#[test]
+fn no_taper_is_exact_passthrough() {
+    // Default taper (length 0) must not touch size or opacity — the early dab is
+    // already full size, byte-identical to the pre-taper behaviour.
+    let brush = round_hard(); // taper_length_start == 0
+    let mut s = StampScheduler::new();
+    s.begin_stroke(7);
+    let _ = s.advance(&brush, p_press(0.0, 0.0, 1.0), 40.0, [0.5, 0.0, 0.0, 1.0]);
+    let stamps = s.advance(&brush, p_press(20.0, 0.0, 1.0), 40.0, [0.5, 0.0, 0.0, 1.0]);
+    let st = stamps.first().expect("a stamp");
+    assert!((st.size_px - 40.0).abs() < 1e-3, "no taper → full size");
+    assert!((st.opacity - 1.0).abs() < 1e-4, "no taper → full opacity");
 }

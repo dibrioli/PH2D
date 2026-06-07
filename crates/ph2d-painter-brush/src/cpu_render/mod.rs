@@ -121,6 +121,40 @@ pub fn apply_stamps_with_options(
     stamps: &[Stamp],
     alpha_lock: bool,
 ) {
+    apply_stamps_buildup_inner(canvas, None, width, height, stamps, alpha_lock, 0.0);
+}
+
+/// Like [`apply_stamps_with_options`] (build-up / `accumulate`), but ALSO
+/// accumulates each dab's per-pixel coverage into `coverage` (`cov ← cov +
+/// α·(1−cov)`). The build-up render itself is byte-identical to
+/// [`apply_stamps_with_options`]; the coverage buffer is a side output the
+/// **edge settle** ([`apply_wash_settle`]) needs to locate the stroke — so
+/// wet/burnt edges work in build-up mode too, not only in the wash path.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_stamps_buildup(
+    canvas: &mut [u8],
+    coverage: &mut [f32],
+    width: u32,
+    height: u32,
+    stamps: &[Stamp],
+    alpha_lock: bool,
+    paper_grain: f32,
+) {
+    let n = (width as usize) * (height as usize);
+    assert_eq!(coverage.len(), n, "coverage size must match width*height");
+    apply_stamps_buildup_inner(canvas, Some(coverage), width, height, stamps, alpha_lock, paper_grain);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn apply_stamps_buildup_inner(
+    canvas: &mut [u8],
+    mut coverage: Option<&mut [f32]>,
+    width: u32,
+    height: u32,
+    stamps: &[Stamp],
+    alpha_lock: bool,
+    paper_grain: f32,
+) {
     // Audit T1.5 round 1 A-L4 — production-grade length guard so a
     // mismatch panics on the spot instead of reading/writing past the
     // canvas in release builds.
@@ -130,7 +164,15 @@ pub fn apply_stamps_with_options(
         "canvas buffer size must match width*height*4 RGBA8"
     );
     for stamp in stamps {
-        apply_one_stamp(canvas, width, height, stamp, alpha_lock);
+        apply_one_stamp(
+            canvas,
+            coverage.as_deref_mut(),
+            width,
+            height,
+            stamp,
+            alpha_lock,
+            paper_grain,
+        );
     }
 }
 
@@ -138,6 +180,54 @@ pub fn apply_stamps_with_options(
 const GRAIN_BASE_FREQ: f32 = 0.35;
 /// Fixed grain seed (per-brush variation rides in `grain_offset_uv`; v1 = 0).
 const GRAIN_SEED: u32 = 0x9e37_79b9;
+
+/// **Global canvas paper tooth** (the #1 "real media vs digital" differentiator —
+/// Procreate Grain / Photoshop Texture Depth, and watercolor granulation). A static
+/// paper-height field in WORLD space (so it is consistent across strokes and does
+/// NOT crawl with the brush), with a **pressure-aware tooth threshold**: a light
+/// touch only deposits on the paper's crests (the valleys show through), firmer
+/// pressure fills the valleys (Photoshop Depth/Min-Depth; USPTO 10217253). Returns a
+/// coverage multiplier ∈[0,1]. `strength` 0 = off (flat); ~0.45 = a tasteful tooth.
+const PAPER_TOOTH_FREQ: f32 = 0.22; // ~4.5px wavelength paper grain
+const PAPER_TOOTH_SEED: u32 = 0x70a9_e2c5;
+/// Even at full pressure the valleys are only this fraction filled, so the tooth
+/// never fully vanishes (a flat fill would read digital again) — Photoshop Min-Depth.
+const PAPER_TOOTH_MAX_FILL: f32 = 0.7;
+/// Smoothstep softness of the tooth threshold.
+const PAPER_TOOTH_SOFT: f32 = 0.24;
+
+/// Raw paper-tooth height at a world pixel ∈[0,1] (1 = crest, 0 = valley) — the
+/// SAME world-space field [`paper_tooth_factor`] thresholds. Exposed so the pen-up
+/// settle ([`settle`]) reads the identical paper surface for granulation (pigment
+/// sediments into the valleys), keeping the live tooth and the dry-down grain
+/// spatially coherent.
+#[inline]
+pub(crate) fn paper_tooth_height(world_x: f32, world_y: f32) -> f32 {
+    crate::grain_noise::grain_value(
+        crate::grain_noise::GRAIN_SIMPLEX,
+        world_x * PAPER_TOOTH_FREQ,
+        world_y * PAPER_TOOTH_FREQ,
+        PAPER_TOOTH_SEED,
+    )
+}
+
+#[inline]
+fn paper_tooth_factor(world_x: f32, world_y: f32, pressure: f32, strength: f32) -> f32 {
+    if strength <= 0.0 {
+        return 1.0;
+    }
+    // Multi-octave paper height in world space ∈[0,1] (1 = crest, 0 = valley).
+    let tooth = paper_tooth_height(world_x, world_y);
+    // Pressure raises the deposit threshold's "fill" — high pressure fills valleys.
+    let fill = pressure.clamp(0.0, 1.0) * PAPER_TOOTH_MAX_FILL;
+    let thr = 1.0 - fill; // crests (tooth > thr) deposit; valleys (tooth < thr) show paper
+    let lo = thr - PAPER_TOOTH_SOFT;
+    let hi = thr + PAPER_TOOTH_SOFT;
+    let t = ((tooth - lo) / (hi - lo).max(1e-4)).clamp(0.0, 1.0);
+    let cov = t * t * (3.0 - 2.0 * t); // smoothstep
+    // Blend toward full coverage by (1−strength) so `strength` dials the tooth depth.
+    1.0 - strength * (1.0 - cov)
+}
 
 /// Procedural-grain coverage multiplier ∈ [0,1] for one sample. `1.0` (no-op) when
 /// the stamp carries no procedural grain. Texturized = world-space static paper;
@@ -166,7 +256,16 @@ fn grain_factor(stamp: &Stamp, world_x: f32, world_y: f32, u: f32, v: f32) -> f3
     1.0 - depth * (1.0 - n)
 }
 
-fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, alpha_lock: bool) {
+#[allow(clippy::too_many_arguments)]
+fn apply_one_stamp(
+    canvas: &mut [u8],
+    mut coverage: Option<&mut [f32]>,
+    width: u32,
+    height: u32,
+    stamp: &Stamp,
+    alpha_lock: bool,
+    paper_grain: f32,
+) {
     // Paridade com shader: filtra degenerate sizes antes de qualquer
     // arithmetic. Mantém canvas inalterado para inputs lixo. NaN é
     // caught pelo `is_finite()` (não-finito); ≤ 0 captura zero/negativo.
@@ -189,6 +288,10 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
 
     let footprint_f = footprint as f32;
     let center_offset = (footprint_f - 1.0) * 0.5;
+    // Use the TRUE (fractional) diameter for the shape normalization + AA so the
+    // sub-pixel sampling is accurate (footprint is its integer ceil).
+    let inv_size = 1.0 / stamp.size_px;
+    let aa = crate::library::SHAPE_AA_PX * inv_size;
 
     // OKLab → linear sRGB (mesmos coefficients do shader, gate-protected).
     let [l, a, b, color_alpha] = stamp.color_oklab;
@@ -240,24 +343,31 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
 
     for py in 0..footprint {
         for px in 0..footprint {
-            // T1.6 shape-sample transform pipeline (mirror of shader):
-            //   1. axis-aligned uv (pixel-center convention, D-1.M1)
-            //   2. center to [-0.5, +0.5]
-            //   3. flip per FLAG_SHAPE_FLIP_{X,Y}
-            //   4. rotate by `-rotation_rad`
-            //   5. un-center back to [0, 1] (outside [0,1]² → shape α=0)
-            //   6. dispatch shape kernel by `stamp.shape_layer`
-            let u_axis = (px as f32 + 0.5) / footprint_f;
-            let v_axis = (py as f32 + 0.5) / footprint_f;
-            let mut uc = u_axis - 0.5;
-            let mut vc = v_axis - 0.5;
+            // Round half-up positioning (paridade D-2.F3). The footprint grid maps
+            // `px → world_x` CONSECUTIVELY (`floor(a + px)` steps by exactly 1), so
+            // there are no gaps or double-writes — same pixels as before.
+            let world_x =
+                (stamp.position_world[0] + (px as f32) - center_offset + 0.5).floor() as i32;
+            let world_y =
+                (stamp.position_world[1] + (py as f32) - center_offset + 0.5).floor() as i32;
+            if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
+                continue;
+            }
+            // **Sub-pixel shape sample (anti-wobble).** Sample the shape at this
+            // pixel CENTRE's offset from the dab's TRUE fractional centre — NOT a
+            // regular footprint grid — so a slow diagonal stroke shifts coverage
+            // smoothly instead of snapping a whole pixel (the "serrilhado" on
+            // diagonals). Then flip + rotate into shape space (mirror of shader):
+            //   1. centred uv from fractional centre, 2. flip, 3. rotate, 4. un-centre.
+            let mut uc = ((world_x as f32) - stamp.position_world[0]) * inv_size;
+            let mut vc = ((world_y as f32) - stamp.position_world[1]) * inv_size;
             uc *= flip_x_sign;
             vc *= flip_y_sign;
             let ur = uc * cos_r - vc * sin_r;
             let vr = uc * sin_r + vc * cos_r;
             let u = ur + 0.5;
             let v = vr + 0.5;
-            let shape_alpha = crate::library::shape_alpha_for_slot(shape_slot, u, v);
+            let shape_alpha = crate::library::shape_alpha_for_slot(shape_slot, u, v, aa);
             if shape_alpha < (1.0 / 255.0) {
                 continue;
             }
@@ -265,17 +375,22 @@ fn apply_one_stamp(canvas: &mut [u8], width: u32, height: u32, stamp: &Stamp, al
             if combined_alpha < (1.0 / 255.0) {
                 continue;
             }
-            // Round half-up (paridade D-2.F3).
-            let world_x_f = stamp.position_world[0] + (px as f32) - center_offset;
-            let world_y_f = stamp.position_world[1] + (py as f32) - center_offset;
-            let world_x = (world_x_f + 0.5).floor() as i32;
-            let world_y = (world_y_f + 0.5).floor() as i32;
-            if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
-                continue;
-            }
+            let world_cx = world_x as f32 + 0.5;
+            let world_cy = world_y as f32 + 0.5;
             // Procedural grain modulates coverage by the paper/fibre texture.
-            combined_alpha *= grain_factor(stamp, world_x_f, world_y_f, u, v);
-            let idx = (world_y as usize * width as usize + world_x as usize) * 4;
+            combined_alpha *= grain_factor(stamp, world_cx, world_cy, u, v);
+            // Global canvas paper tooth (world-space, pressure-aware) — the texture
+            // that reads as "real media" on every stroke.
+            combined_alpha *= paper_tooth_factor(world_cx, world_cy, stamp.pressure, paper_grain);
+            let pix = world_y as usize * width as usize + world_x as usize;
+            // Stroke-coverage side output (build-up + edges): accumulate this dab's
+            // per-pixel deposit so the edge settle can locate the stroke even when
+            // there is no wash composite. Monotonic Porter-Duff "over" of coverage.
+            if let Some(cov) = coverage.as_deref_mut() {
+                let c = cov[pix];
+                cov[pix] = c + combined_alpha * (1.0 - c);
+            }
+            let idx = pix * 4;
             // Decode dst RGBA8 → straight LINEAR. The canvas is sRGB-encoded
             // (the sprite it mirrors uploads as `Rgba8UnormSrgb`), so
             // alpha-over compositing must run in LINEAR light — decode RGB
@@ -398,12 +513,14 @@ pub fn apply_stamps_wash(
     canvas: &mut [u8],
     backdrop: &[u8],
     coverage: &mut [f32],
+    wash_color: &mut [[f32; 3]],
     width: u32,
     height: u32,
     stamps: &[Stamp],
     opacity_cap: f32,
     pigment: bool,
     alpha_lock: bool,
+    paper_grain: f32,
 ) {
     let n = (width as usize) * (height as usize);
     assert_eq!(canvas.len(), n * 4, "canvas size must match width*height*4");
@@ -413,10 +530,12 @@ pub fn apply_stamps_wash(
         "backdrop size must match width*height*4"
     );
     assert_eq!(coverage.len(), n, "coverage size must match width*height");
+    assert_eq!(wash_color.len(), n, "wash_color size must match width*height");
     let cap = opacity_cap.clamp(0.0, 1.0);
     for stamp in stamps {
         apply_one_stamp_wash(
-            canvas, backdrop, coverage, width, height, stamp, cap, pigment, alpha_lock,
+            canvas, backdrop, coverage, wash_color, width, height, stamp, cap, pigment, alpha_lock,
+            paper_grain,
         );
     }
 }
@@ -426,12 +545,14 @@ fn apply_one_stamp_wash(
     canvas: &mut [u8],
     backdrop: &[u8],
     coverage: &mut [f32],
+    wash_color: &mut [[f32; 3]],
     width: u32,
     height: u32,
     stamp: &Stamp,
     opacity_cap: f32,
     pigment: bool,
     alpha_lock: bool,
+    paper_grain: f32,
 ) {
     if !stamp.size_px.is_finite()
         || stamp.size_px <= 0.0
@@ -450,6 +571,8 @@ fn apply_one_stamp_wash(
     }
     let footprint_f = footprint as f32;
     let center_offset = (footprint_f - 1.0) * 0.5;
+    let inv_size = 1.0 / stamp.size_px;
+    let aa = crate::library::SHAPE_AA_PX * inv_size;
     let [l, a, b, color_alpha] = stamp.color_oklab;
     let rgb_linear = oklab_to_linear_srgb(l, a, b);
     let rgb_clamped = [
@@ -459,6 +582,14 @@ fn apply_one_stamp_wash(
     ];
     let flow = stamp.flow.clamp(0.0, 1.0);
     let shape_slot = stamp.shape_layer;
+    // **Rendering mode in the wash (option a).** Linear wash composites the brush
+    // over the backdrop with the full per-mode formula (`apply_rendering_mode`) —
+    // `UniformGlaze` reproduces the old over-lerp exactly (no regression), the
+    // others vary the glaze/blend character. Pigment wash keeps its K-M colour but
+    // applies a per-mode coverage curve (`wash_glaze_coverage`) so the glaze modes
+    // still vary the wash transparency. Constant per stamp.
+    let mode = RenderingMode::from_u32(stamp.rendering_mode);
+    let wet = stamp.wet_amount;
     // Pigment prepared once per stamp (constant across the footprint; varies
     // stamp-to-stamp only under hue jitter, which we honour by re-preparing).
     // `None` when the brush is in linear (non-pigment) wash mode.
@@ -481,17 +612,26 @@ fn apply_one_stamp_wash(
 
     for py in 0..footprint {
         for px in 0..footprint {
-            let u_axis = (px as f32 + 0.5) / footprint_f;
-            let v_axis = (py as f32 + 0.5) / footprint_f;
-            let mut uc = u_axis - 0.5;
-            let mut vc = v_axis - 0.5;
+            // World pixel (round half-up; consecutive over the footprint grid).
+            let world_x =
+                (stamp.position_world[0] + (px as f32) - center_offset + 0.5).floor() as i32;
+            let world_y =
+                (stamp.position_world[1] + (py as f32) - center_offset + 0.5).floor() as i32;
+            if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
+                continue;
+            }
+            // **Sub-pixel shape sample (anti-wobble)** — sample at this pixel
+            // centre's offset from the dab's TRUE fractional centre, then flip +
+            // rotate into shape space (mirror of `apply_one_stamp`).
+            let mut uc = ((world_x as f32) - stamp.position_world[0]) * inv_size;
+            let mut vc = ((world_y as f32) - stamp.position_world[1]) * inv_size;
             uc *= flip_x_sign;
             vc *= flip_y_sign;
             let ur = uc * cos_r - vc * sin_r;
             let vr = uc * sin_r + vc * cos_r;
             let u = ur + 0.5;
             let v = vr + 0.5;
-            let shape_alpha = crate::library::shape_alpha_for_slot(shape_slot, u, v);
+            let shape_alpha = crate::library::shape_alpha_for_slot(shape_slot, u, v, aa);
             if shape_alpha < (1.0 / 255.0) {
                 continue;
             }
@@ -506,15 +646,13 @@ fn apply_one_stamp_wash(
             if rate < (1.0 / 255.0) {
                 continue;
             }
-            let world_x_f = stamp.position_world[0] + (px as f32) - center_offset;
-            let world_y_f = stamp.position_world[1] + (py as f32) - center_offset;
-            let world_x = (world_x_f + 0.5).floor() as i32;
-            let world_y = (world_y_f + 0.5).floor() as i32;
-            if world_x < 0 || world_y < 0 || world_x >= canvas_w || world_y >= canvas_h {
-                continue;
-            }
+            let world_cx = world_x as f32 + 0.5;
+            let world_cy = world_y as f32 + 0.5;
             // Procedural grain modulates the per-dab coverage rate.
-            rate *= grain_factor(stamp, world_x_f, world_y_f, u, v);
+            rate *= grain_factor(stamp, world_cx, world_cy, u, v);
+            // Global canvas paper tooth (world-space, pressure-aware) — the texture
+            // that reads as "real media" on every wash stroke.
+            rate *= paper_tooth_factor(world_cx, world_cy, stamp.pressure, paper_grain);
             let pix = world_y as usize * width as usize + world_x as usize;
             let idx = pix * 4;
             // Monotonic coverage build-up (Porter-Duff "over" of dab onto the
@@ -522,6 +660,31 @@ fn apply_one_stamp_wash(
             let cov = coverage[pix];
             let new_cov = cov + rate * (1.0 - cov);
             coverage[pix] = new_cov;
+            // Color Dynamics blend with correct Z-ORDER: the new dab paints "over"
+            // the existing stroke colour proportional to its OWN per-dab coverage
+            // `rate`, so within one stroke later dabs sit on top of earlier ones
+            // (`wash_color ← lerp(wash_color, dab, rate)`). The previous coverage-
+            // weighted average (`(wash_color·cov + dab·dcov)/new_cov`) weighted
+            // EARLIER dabs by the accumulated coverage — which dominates as coverage
+            // saturates — so the earlier-painted colour appeared ON TOP (inverted z,
+            // user-visible with Color Dynamics / varying pressure). First touch
+            // (cov≈0) seeds the colour. A single-colour stroke stays byte-identical
+            // (`lerp(c, c, rate) = c`), so jittered dabs still blend smoothly (no
+            // discrete discs) while keeping later-over-earlier ordering.
+            let acc = if cov <= 1e-6 {
+                rgb_clamped
+            } else {
+                [
+                    wash_color[pix][0] + (rgb_clamped[0] - wash_color[pix][0]) * rate,
+                    wash_color[pix][1] + (rgb_clamped[1] - wash_color[pix][1]) * rate,
+                    wash_color[pix][2] + (rgb_clamped[2] - wash_color[pix][2]) * rate,
+                ]
+            };
+            wash_color[pix] = acc;
+            let color_varies = (acc[0] - rgb_clamped[0]).abs() > 1e-4
+                || (acc[1] - rgb_clamped[1]).abs() > 1e-4
+                || (acc[2] - rgb_clamped[2]).abs() > 1e-4;
+            let brush_color = if color_varies { acc } else { rgb_clamped };
             // Decode the PRE-STROKE backdrop (straight linear) — NOT the live
             // canvas. This is what makes overlapping dabs stable instead of
             // building toward pure brush colour.
@@ -537,7 +700,47 @@ fn apply_one_stamp_wash(
             }
             // Stroke pigment that reaches the canvas = coverage capped by opacity.
             let eff = (opacity_cap * new_cov).clamp(0.0, 1.0);
-            let out_a = eff + back_a * (1.0 - eff);
+            // Composite via the brush's RENDERING MODE (option a — the wash now
+            // honours the Mode cycler). PIGMENT keeps the subtractive K-M colour but
+            // applies a per-mode coverage curve (glaze transparency); LINEAR runs
+            // the full `apply_rendering_mode` over the backdrop. `UniformGlaze`
+            // reproduces the old wash exactly in BOTH paths (no regression).
+            let (mixed, out_a) = if let Some(ref prep) = prep {
+                let eff_m = wash_glaze_coverage(mode, eff);
+                let out_a = eff_m + back_a * (1.0 - eff_m);
+                let t = (eff_m / out_a.max(1e-4)).clamp(0.0, 1.0);
+                // Pigment: cached per-stamp prep on the fast path; re-prepare from
+                // the blended colour only when Color Dynamics actually varied it.
+                let m = if color_varies {
+                    let prep_acc = crate::pigment_mix::prepare_pigment(brush_color);
+                    crate::pigment_mix::mix_prepared(&prep_acc, [back[0], back[1], back[2]], t)
+                } else {
+                    crate::pigment_mix::mix_prepared(prep, [back[0], back[1], back[2]], t)
+                };
+                (m, out_a)
+            } else {
+                // Linear: full per-mode composite of the brush (premul at `eff`) over
+                // the backdrop. UniformGlaze == the old over-lerp byte-for-byte.
+                let src = [
+                    brush_color[0] * eff,
+                    brush_color[1] * eff,
+                    brush_color[2] * eff,
+                    eff,
+                ];
+                let dst = [back[0] * back_a, back[1] * back_a, back[2] * back_a, back_a];
+                let out = apply_rendering_mode(mode, src, dst, wet);
+                let oa = out[3].clamp(0.0, 1.0);
+                let m = if oa > 1e-6 {
+                    [
+                        (out[0] / oa).clamp(0.0, 1.0),
+                        (out[1] / oa).clamp(0.0, 1.0),
+                        (out[2] / oa).clamp(0.0, 1.0),
+                    ]
+                } else {
+                    [0.0, 0.0, 0.0]
+                };
+                (m, oa)
+            };
             if out_a <= 1e-6 {
                 canvas[idx] = 0;
                 canvas[idx + 1] = 0;
@@ -547,19 +750,6 @@ fn apply_one_stamp_wash(
                 }
                 continue;
             }
-            // How much of the FINAL colour is the new brush. Pigment → subtractive
-            // K-M mix; else a plain linear lerp toward the brush colour (still
-            // opacity-capped — that's the wash, independent of pigment).
-            let t = (eff / out_a).clamp(0.0, 1.0);
-            let mixed = if let Some(ref prep) = prep {
-                crate::pigment_mix::mix_prepared(prep, [back[0], back[1], back[2]], t)
-            } else {
-                [
-                    back[0] + (rgb_clamped[0] - back[0]) * t,
-                    back[1] + (rgb_clamped[1] - back[1]) * t,
-                    back[2] + (rgb_clamped[2] - back[2]) * t,
-                ]
-            };
             canvas[idx] = linear_to_srgb_byte(mixed[0].clamp(0.0, 1.0));
             canvas[idx + 1] = linear_to_srgb_byte(mixed[1].clamp(0.0, 1.0));
             canvas[idx + 2] = linear_to_srgb_byte(mixed[2].clamp(0.0, 1.0));
@@ -570,11 +760,30 @@ fn apply_one_stamp_wash(
     }
 }
 
+/// Per-mode coverage curve for the **pigment** wash so the glaze modes vary the
+/// stroke's transparency while the subtractive K-M colour mix is unchanged.
+/// `UniformGlaze` is the identity (the default — no regression). Glaze modes shift
+/// opacity: Light = thinner, Intense/Heavy = progressively more solid. The two
+/// Blending modes keep the coverage — their distinction is colour mixing, which the
+/// K-M wash already does. (The Linear wash uses the full `apply_rendering_mode`, so
+/// all six modes are fully distinct there.)
+#[inline]
+fn wash_glaze_coverage(mode: RenderingMode, eff: f32) -> f32 {
+    let e = eff.clamp(0.0, 1.0);
+    match mode {
+        RenderingMode::LightGlaze => e.powf(1.6),   // thinner, more transparent glaze
+        RenderingMode::IntenseGlaze => e.powf(0.6), // covers faster
+        RenderingMode::HeavyGlaze => e.powf(0.4),   // most solid
+        _ => e,                                     // Uniform Glaze / Blending = identity
+    }
+}
+
 /// OKLab → linear sRGB (D65). **Coefficients idênticos ao shader** —
 /// gate `shader_oklab_coefficients_bit_identical_with_rust` em
-/// `stamp_pipeline.rs` prova zero ULP drift.
+/// `stamp_pipeline.rs` prova zero ULP drift. Exposto p/ o splat da difusão
+/// (W15) usar a MESMA conversão do renderer.
 #[inline]
-fn oklab_to_linear_srgb(l: f32, a: f32, b: f32) -> [f32; 3] {
+pub fn oklab_to_linear_srgb(l: f32, a: f32, b: f32) -> [f32; 3] {
     let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
     let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
     let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
@@ -591,5 +800,7 @@ fn oklab_to_linear_srgb(l: f32, a: f32, b: f32) -> [f32; 3] {
 // ── Submodules (god-module split, 2026-06-04; pure move) ──
 mod blends;
 use blends::*;
+mod settle;
+pub use settle::{EdgeStyle, apply_wash_settle, coverage_bbox};
 #[cfg(test)]
 mod tests;

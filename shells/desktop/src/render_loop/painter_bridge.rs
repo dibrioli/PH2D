@@ -62,47 +62,8 @@ use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-/// Whether the active Painter tool has unflushed strokes since its last
-/// source push — painting that would be LOST on a mode toggle.
-///
-/// `PainterTool` is a stroke/vector tool with no `RasterEditTool` impl,
-/// so this query needs the concrete-type downcast. It lives in this
-/// (allowlisted) bridge file rather than inline in `render_loop/mod.rs`
-/// — the central dispatch must stay free of tool-concrete downcasts per
-/// the `architecture_no_downcast_to_concrete_tool_in_shell` gate.
-#[must_use]
-pub(crate) fn painter_has_unflushed_strokes(tools: &mut ToolRegistry) -> bool {
-    tools
-        .active_mut()
-        .and_then(|t| {
-            t.as_any_mut()
-                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                .map(|p| p.has_painted_since_source())
-        })
-        .unwrap_or(false)
-}
-
-/// Apply a Painter layers drag-reparent (W3 T3.8) emitted by the dispatch on
-/// Up of an active layer-row drag. The active `PainterTool` reverses
-/// `NodeId`→`LayerId` and applies `move_into_group` / reorder.
-///
-/// Lives here (an allowlisted bridge file) rather than inline in
-/// `input_dispatch` so the central dispatch stays free of tool-concrete
-/// downcasts, per the `architecture_no_downcast_to_concrete_tool_in_shell`
-/// gate. Mirror of [`painter_has_unflushed_strokes`]. No-op if the active tool
-/// is not the Painter.
-pub(crate) fn apply_layer_reparent(
-    tools: &mut ToolRegistry,
-    dragged: ph2d_editor::NodeId,
-    drop: ph2d_editor::interaction::PainterLayerDrop,
-) {
-    if let Some(painter) = tools.active_mut().and_then(|t| {
-        t.as_any_mut()
-            .downcast_mut::<ph2d_tool_painter::PainterTool>()
-    }) {
-        painter.handle_layer_reparent(dragged, drop);
-    }
-}
+// `painter_has_unflushed_strokes` + `apply_layer_reparent` (tool-concrete downcast
+// queries) moved to `painter_bridge_queries.rs` (HR-18 file-LOC cap).
 
 /// Returns `true` iff an Apply committed this frame (caller tears the
 /// tool down — deactivate + restore Inspector — so the on-canvas overlay

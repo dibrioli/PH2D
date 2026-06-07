@@ -83,6 +83,15 @@ pub trait Tool: std::any::Any {
     /// slider's float value back into the tool's stored model field).
     fn handle_panel_event(&mut self, _event: PanelEvent) {}
 
+    /// Per-frame heartbeat (`dt_ms` = real frame delta), called every render
+    /// frame on the ACTIVE tool regardless of pointer input. Default no-op;
+    /// override for time-evolving state that must advance while idle — e.g. the
+    /// watercolor wet-on-wet diffusion that keeps blooming + drying after pen-up
+    /// (ADR-0049 fluid live tick; ADR-0077 D11). The shell only ticks the active
+    /// tool, so an idle non-active tool costs nothing. Implementors that do real
+    /// work should return early when there is nothing to advance.
+    fn on_tick(&mut self, _dt_ms: f32) {}
+
     /// Mutable `Any` view for downcasting in the host (e.g. snapshot
     /// push into `BgRemovalTool`). Implementors override with
     /// `fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }`.

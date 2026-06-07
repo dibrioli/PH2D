@@ -373,7 +373,11 @@ impl App {
         if let Some((dragged, drop)) = forward_to_hero(self.gfx.as_mut(), evt)
             && let Some(gfx) = self.gfx.as_mut()
         {
-            crate::render_loop::painter_bridge::apply_layer_reparent(&mut gfx.tools, dragged, drop);
+            crate::render_loop::painter_bridge_queries::apply_layer_reparent(
+                &mut gfx.tools,
+                dragged,
+                drop,
+            );
         }
 
         // BgRemoval eyedropper (SHELL-only). A Secondary Down on an

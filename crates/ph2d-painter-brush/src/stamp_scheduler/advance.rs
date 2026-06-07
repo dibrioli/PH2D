@@ -23,6 +23,9 @@ impl StampScheduler {
             stab_head: 0,
             stab_count: 0,
             stroke_dist: 0.0,
+            oe_pos: None,
+            oe_dpos: [0.0; 2],
+            speed_ema: 0.0,
         }
     }
 
@@ -114,22 +117,72 @@ impl StampScheduler {
         self.streamline_pos = None;
         self.stab_head = 0;
         self.stab_count = 0;
+        self.oe_pos = None;
+        self.oe_dpos = [0.0; 2];
+        self.speed_ema = 0.0;
     }
 
-    /// **T1.7 input smoothing.** Stabilize then streamline the raw input
-    /// position. Stabilization averages the last `N = 1 + round(stabilization *
-    /// 16)` raw samples (jitter rejection); streamline then EMA-lags toward that
-    /// average (lazy mouse). Pure arithmetic of the input sequence + brush
-    /// params → deterministic cross-OS (HR-5). Exact passthrough when both
-    /// params are 0 (the default brush), so default strokes are unchanged.
+    /// **One-Euro filter** (Casiez, Roussel, Fekete, CHI 2012) on the input
+    /// position — the state-of-the-art adaptive low-pass for pen/cursor input.
+    /// Per axis with a fixed per-sample step (`dt = 1`, no timestamps): smooth the
+    /// derivative at a fixed `D_CUTOFF`, raise the position cutoff with the
+    /// resulting speed (`cutoff = min_cutoff + β·|ẋ|`), then exponentially smooth
+    /// the position at that cutoff. Low speed → low cutoff (kills hand tremor),
+    /// high speed → high cutoff (no lag — keeps expressive fast strokes crisp),
+    /// which a fixed EMA / moving-average cannot do. `min_cutoff` falls with the
+    /// `motion_filtering_amount` (more smoothing), `beta` rises with the
+    /// `motion_filtering_expression` (more speed-responsiveness — "reinjects
+    /// expression after filtering", the field's documented intent). Pure
+    /// arithmetic of the input sequence → HR-5 deterministic.
+    fn one_euro(&mut self, raw: [f32; 2], min_cutoff: f32, beta: f32) -> [f32; 2] {
+        // `alpha(cutoff)` for dt = 1: τ = 1/(2π·cutoff), α = 1/(1 + τ).
+        let alpha = |cutoff: f32| {
+            let tau = 1.0 / (core::f32::consts::TAU * cutoff.max(1e-4));
+            1.0 / (1.0 + tau)
+        };
+        const D_CUTOFF: f32 = 1.0; // derivative low-pass cutoff (Casiez default)
+        match self.oe_pos {
+            None => {
+                self.oe_pos = Some(raw);
+                self.oe_dpos = [0.0; 2];
+                raw
+            }
+            Some(prev) => {
+                let a_d = alpha(D_CUTOFF);
+                let mut out = [0.0f32; 2];
+                for i in 0..2 {
+                    let dx = raw[i] - prev[i]; // dt = 1
+                    let edx = a_d * dx + (1.0 - a_d) * self.oe_dpos[i];
+                    self.oe_dpos[i] = edx;
+                    let cutoff = min_cutoff + beta * edx.abs();
+                    let a = alpha(cutoff);
+                    out[i] = a * raw[i] + (1.0 - a) * prev[i];
+                }
+                self.oe_pos = Some(out);
+                out
+            }
+        }
+    }
+
+    /// **T1.7 input smoothing.** Three stages, all identity at their param = 0 so
+    /// the default brush is byte-identical to the pre-T1.7 behaviour:
+    ///   1. **Stabilization** (moving average of the last `N = 1 + round(
+    ///      stabilization·16)` raw samples) — broadband jitter rejection.
+    ///   2. **Motion filtering** ([`Self::one_euro`]) — adaptive low-pass that kills
+    ///      tremor at low speed but stays crisp at high speed (`motion_filtering_
+    ///      amount` → cutoff, `motion_filtering_expression` → speed-responsiveness).
+    ///   3. **Streamline** (EMA lag toward the result) — deliberate "lazy mouse".
+    ///
+    /// Pure arithmetic of the input sequence + brush params → HR-5 deterministic.
     fn smooth_input_position(&mut self, brush: &Brush, raw: [f32; 2]) -> [f32; 2] {
         let stab = brush.stabilization.stabilization.clamp(0.0, 1.0);
         let streamline = brush.stabilization.streamline_amount.clamp(0.0, 1.0);
-        // Default brush (both 0) → byte-identical to the pre-T1.7 behaviour.
-        if stab == 0.0 && streamline == 0.0 {
+        let mf = brush.stabilization.motion_filtering_amount.clamp(0.0, 1.0);
+        // Default brush (all off) → byte-identical to the pre-T1.7 behaviour.
+        if stab == 0.0 && streamline == 0.0 && mf == 0.0 {
             return raw;
         }
-        // Stabilization: push into the ring + average the last `window` samples.
+        // 1. Stabilization moving average (identity at stab = 0 → window 1 = raw).
         self.stab_ring[self.stab_head] = raw;
         self.stab_head = (self.stab_head + 1) % STAB_WINDOW_MAX;
         self.stab_count = (self.stab_count + 1).min(STAB_WINDOW_MAX);
@@ -142,13 +195,23 @@ impl StampScheduler {
         }
         let inv = 1.0 / window as f32;
         let avg = [sum[0] * inv, sum[1] * inv];
-        // Streamline: EMA lag toward the stabilized point (factor 1.0 = no lag).
+        // 2. One-Euro motion filtering (skipped at mf = 0).
+        let filtered = if mf > 0.0 {
+            // `amount` lowers the min cutoff (more smoothing); `expression` raises β
+            // (more speed-responsiveness — keeps fast strokes lag-free).
+            let mf_expr = brush.stabilization.motion_filtering_expression.clamp(0.0, 1.0);
+            let min_cutoff = MF_MIN_CUTOFF + (1.0 - mf) * (MF_MAX_CUTOFF - MF_MIN_CUTOFF);
+            self.one_euro(avg, min_cutoff, mf_expr * MF_BETA_MAX)
+        } else {
+            avg
+        };
+        // 3. Streamline: EMA lag toward the filtered point (factor 1.0 = no lag).
         let follow = 1.0 - streamline;
         let smoothed = match self.streamline_pos {
-            None => avg,
+            None => filtered,
             Some(prev) => [
-                prev[0] + (avg[0] - prev[0]) * follow,
-                prev[1] + (avg[1] - prev[1]) * follow,
+                prev[0] + (filtered[0] - prev[0]) * follow,
+                prev[1] + (filtered[1] - prev[1]) * follow,
             ],
         };
         self.streamline_pos = Some(smoothed);
@@ -216,15 +279,69 @@ impl StampScheduler {
             ..sample
         };
 
-        // Diameter efetivo clampado ao limite ABI do Stamp. Caller passou
-        // tamanho derivado de slider+pressure; aqui só impomos o teto.
-        let diameter = size_px.clamp(1.0, MAX_STAMP_SIZE_PX as f32);
+        // **Velocity dynamics.** Smoothed stroke speed (px/sample) → `vfactor`
+        // ∈[0,1] (0 = at rest, 1 = fast), driving `dynamics.speed_{size,opacity,
+        // spacing}` (∈[-1,1]: +1 = fast→more, −1 = fast→less). Computed from
+        // consecutive smoothed positions; `last_point` still holds the PREVIOUS
+        // advance's position here (it is updated below). 0 on the first sample.
+        // Pure arithmetic → HR-5; all three multipliers are 1.0 at `speed_* = 0`
+        // (default brush), so default strokes are unchanged.
+        let speed = match self.last_point {
+            Some(prev) => {
+                let d = [sample.position[0] - prev[0], sample.position[1] - prev[1]];
+                (d[0] * d[0] + d[1] * d[1]).sqrt()
+            }
+            None => 0.0,
+        };
+        if self.last_point.is_some() {
+            self.speed_ema += (speed - self.speed_ema) * SPEED_EMA_ALPHA;
+        }
+        let vfactor = (self.speed_ema / SPEED_REF_PX).min(1.0);
+        let size_speed_mult =
+            (1.0 + brush.dynamics.speed_size.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING).max(0.05);
+        let opacity_speed_mult = 1.0
+            + brush.dynamics.speed_opacity.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING;
+        let spacing_speed_mult =
+            (1.0 + brush.dynamics.speed_spacing.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING).max(0.1);
+
+        // **Pressure dynamics (Apple-Pencil / tablet pen).** The raw pressure is
+        // shaped by `brush.pencil.pressure_curve` and routed to size and/or
+        // opacity per `pressure_targets` (default `Size | Opacity`, the canonical
+        // Procreate response). Mouse / touch report constant pressure 1.0, which
+        // the identity curve maps to 1.0 → no change (zero regression for
+        // pressure-less devices). Curve eval is pure arithmetic → HR-5 cross-OS.
+        //
+        // Pressure scales the **effective diameter** BEFORE spacing is derived, so
+        // a thinning (low-pressure) tail also tightens its dab spacing instead of
+        // leaving a dotted line — the dab count tracks the dynamic radius, the
+        // gold-standard "dabs per actual radius" behaviour (MyPaint). The 1.0px
+        // floor below keeps a near-zero-pressure dab from vanishing entirely.
+        let raw_pressure = sample.pressure.clamp(0.0, 1.0);
+        let curved_pressure = crate::pencil::eval_curve8(&brush.pencil.pressure_curve, raw_pressure);
+        let p_targets = brush.pencil.pressure_targets;
+        let pressure_size = if p_targets & crate::pencil::PRESSURE_TARGET_SIZE != 0 {
+            curved_pressure
+        } else {
+            1.0
+        };
+        let pressure_opacity = if p_targets & crate::pencil::PRESSURE_TARGET_OPACITY != 0 {
+            curved_pressure
+        } else {
+            1.0
+        };
+        // Velocity dynamics modulate opacity on top of pressure (clamped to [0,1]).
+        let pressure_opacity = (pressure_opacity * opacity_speed_mult).clamp(0.0, 1.0);
+
+        // Diameter efetivo clampado ao limite ABI do Stamp. Caller passou o tamanho
+        // do slider; aqui aplicamos pressão × velocity-size e impomos o teto/piso.
+        let diameter =
+            (size_px * pressure_size * size_speed_mult).clamp(1.0, MAX_STAMP_SIZE_PX as f32);
         let spacing_frac = brush.stroke_path.spacing.clamp(0.01, 1.0);
         // `spacing_px` = `spacing_frac * diameter`. Lower bound 1.0 evita
         // divisão por zero em strokes de stamp tamanho mínimo + spacing < 1
         // (audit-edge: spacing 0.01 * diameter 1.0 = 0.01 → infinite loop
         // without lower bound).
-        let spacing_px = (spacing_frac * diameter).max(1.0);
+        let spacing_px = (spacing_frac * diameter * spacing_speed_mult).max(1.0);
 
         // **R4-LG-5 fix:** hoist brush-param clamps ABOVE the while-loop.
         // `brush: &Brush` is read-only for the duration of this advance;
@@ -256,6 +373,7 @@ impl StampScheduler {
                     color_oklab,
                     [1.0, 0.0],
                     self.stroke_dist,
+                    pressure_opacity,
                 );
                 self.last_point = Some(sample.position);
                 self.residual_dist = 0.0;
@@ -348,6 +466,7 @@ impl StampScheduler {
                         color_oklab,
                         stroke_dir,
                         self.stroke_dist + t_along,
+                        pressure_opacity,
                     );
 
                     cursor += spacing_px;
@@ -398,10 +517,25 @@ impl StampScheduler {
         color_oklab: [f32; 4],
         stroke_dir: [f32; 2],
         stroke_distance: f32,
+        pressure_opacity: f32,
     ) {
         // T1.7 falloff: per-group opacity taper (constant across the group's
         // stamps; they share a world position). 1.0 for the default brush.
-        let group_opacity = falloff_opacity(brush.stroke_path.falloff, stroke_distance, diameter);
+        // `pressure_opacity` (Apple-Pencil / tablet) folds in here — lighter
+        // pressure deposits less ink per dab (and, in wash mode, a lighter wash).
+        // **Start taper** (ADR-0077 D5): ramp size + opacity up over the first
+        // `L_start` of arc length so the stroke enters from a clean point. Default
+        // (`taper_length_start == 0`) → `(1, 1)`, exact passthrough. Shadows
+        // `diameter` so the tapered size also drives `size_px` + scatter below.
+        let (taper_size, taper_op) =
+            start_taper_factors(&brush.taper, stroke_distance, diameter);
+        // `.max(1.0)` keeps a pointed tip (`taper_size_start = 0`) at a 1px dab
+        // rather than a degenerate zero-size stamp (same floor as the nominal
+        // diameter in `advance`).
+        let diameter = (diameter * taper_size).max(1.0);
+        let group_opacity = falloff_opacity(brush.stroke_path.falloff, stroke_distance, diameter)
+            * pressure_opacity
+            * taper_op;
         // Hoist per-group brush params.
         let shape_layer = match &brush.shape.shape_source {
             crate::shape::ShapeSource::Builtin { atlas_layer, .. } => *atlas_layer,
@@ -538,7 +672,9 @@ impl StampScheduler {
             // (`scatter01 = 1` → up to ±180°). Independent per stamp via the
             // stamp_index advance.
             let scatter_offset = if scatter01 > 0.0 {
-                (self.det_random(self.stamp_index, 0xCD) * 2.0 - 1.0) * scatter01 * std::f32::consts::PI
+                (self.det_random(self.stamp_index, 0xCD) * 2.0 - 1.0)
+                    * scatter01
+                    * std::f32::consts::PI
             } else {
                 0.0
             };

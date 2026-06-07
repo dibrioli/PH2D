@@ -269,28 +269,43 @@ pub(crate) fn inject_generated_vector(
     redo: &mut Vec<Vec<Ph2dVectorAsset>>,
     committed: &mut Vec<Ph2dVectorAsset>,
     mut net: VectorNetwork,
+    pixels_per_meter: f32,
 ) {
     crate::input_dispatch::vector_undo::checkpoint(undo, redo, committed);
-    // Recenter the shape on the origin: the model picks arbitrary "canvas pixel"
-    // coords (e.g. center [200, 200]) that can land off the camera view, and the
-    // origin is where the default camera looks. Subtract the vertex centroid.
-    if !net.vertices.is_empty() {
-        let n = net.vertices.len() as f32;
-        let cx = net.vertices.iter().map(|v| v.pos.x).sum::<f32>() / n;
-        let cy = net.vertices.iter().map(|v| v.pos.y).sum::<f32>() / n;
+    // The model picks arbitrary "canvas pixel" coords (e.g. center [200,200],
+    // radius 150) which the renderer treats as WORLD units and scales to screen
+    // by ~`pixels_per_meter` — so the raw shape lands huge and off-center.
+    // Recenter on the origin (where the default camera looks) and normalize the
+    // bounding box to ~`TARGET_PX` on screen (÷ ppm → world units).
+    let ppm = pixels_per_meter.max(1.0e-3);
+    if net.vertices.len() >= 2 {
+        let mut min = [f32::INFINITY; 2];
+        let mut max = [f32::NEG_INFINITY; 2];
+        for v in &net.vertices {
+            min[0] = min[0].min(v.pos.x);
+            min[1] = min[1].min(v.pos.y);
+            max[0] = max[0].max(v.pos.x);
+            max[1] = max[1].max(v.pos.y);
+        }
+        let cx = (min[0] + max[0]) * 0.5;
+        let cy = (min[1] + max[1]) * 0.5;
+        let extent = (max[0] - min[0]).max(max[1] - min[1]).max(1.0e-3);
+        const TARGET_PX: f32 = 300.0; // on-screen extent of a generated shape
+        let scale = (TARGET_PX / ppm) / extent;
         for v in &mut net.vertices {
-            v.pos.x -= cx;
-            v.pos.y -= cy;
+            v.pos.x = (v.pos.x - cx) * scale;
+            v.pos.y = (v.pos.y - cy) * scale;
         }
     }
     // `tokens_to_network` builds geometry but NO style, and `draw_vector_network`
     // renders nothing for a segment with no `style_ref` / a region with no
     // `fill` — so the shape would land in the scene invisibly. Seed one visible
     // stroke and point every segment at it: that strokes the outline of any shape
-    // (open or closed), matching the LLM4SVG `fill: none` intent.
+    // (open or closed), matching the LLM4SVG `fill: none` intent. Width is set in
+    // world units that resolve to ~3 screen px.
     let mut styles = StyleTable::default();
     let mut stroke = StrokeStyle::default();
-    stroke.width = 2.0; // LITERAL-PX-OK: generated-shape outline width (network-local px)
+    stroke.width = 3.0 / ppm; // ~3 screen px
     stroke.color = ph2d_color::OklchColor::opaque(0.82, 0.15, 250.0); // bright, visible on dark/light
     let stroke_ref = styles.insert_stroke(stroke);
     for seg in &mut net.segments {
@@ -322,6 +337,13 @@ impl App {
         let Some(outcome) = self.llm_vector.poll() else {
             return;
         };
+        // Read the scale BEFORE the disjoint-field injection below (the value is
+        // copied out, so the `gfx` borrow ends). Default 100 px/m if no project.
+        let ppm = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(100.0, |h| h.project.pixels_per_meter);
         let msg = match outcome {
             LlmJobOutcome::Ready(net, blob) => {
                 let n = net.vertices.len();
@@ -330,6 +352,7 @@ impl App {
                     &mut self.vector_redo_stack,
                     &mut self.committed_vector_pen_paths,
                     *net,
+                    ppm,
                 );
                 match blob {
                     Some(b) => {
@@ -389,7 +412,7 @@ mod tests {
         )
         .expect("valid blob lowers");
 
-        inject_generated_vector(&mut undo, &mut redo, &mut committed, net);
+        inject_generated_vector(&mut undo, &mut redo, &mut committed, net, 100.0);
 
         assert_eq!(
             committed.len(),

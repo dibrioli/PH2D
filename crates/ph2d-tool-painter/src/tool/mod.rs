@@ -567,6 +567,12 @@ pub struct PainterTool {
     /// the dominant cost). The *previous* frame is unioned in so cells that just
     /// dried get their canvas pixel reset to the backdrop. Reset with the field.
     wet_composite_bbox: Option<(u32, u32, u32, u32)>,
+    /// **W15.3 GPU drive (ADR-0049).** When the shell is stepping the wet field on
+    /// the GPU (`ph2d-painter-fluid` eligible), it sets this so the tool SKIPS its
+    /// CPU diffusion in `on_tick`/`queue_pointer` — the dabs still splat into the
+    /// grid, but the step + composite are driven shell-side via `fluid_grid_mut` +
+    /// `composite_and_settle_fluid`. Default false ⇒ the CPU path is unchanged.
+    gpu_fluid_driven: bool,
 }
 
 impl Default for PainterTool {
@@ -628,6 +634,7 @@ impl Default for PainterTool {
             wet_field: None,
             wet_backdrop: None,
             wet_composite_bbox: None,
+            gpu_fluid_driven: false,
         }
     }
 }

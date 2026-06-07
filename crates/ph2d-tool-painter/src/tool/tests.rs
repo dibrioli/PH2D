@@ -3591,6 +3591,36 @@ fn fluid_composite_mixes_subtractively_km() {
 }
 
 #[test]
+fn gpu_fluid_driven_skips_cpu_diffusion() {
+    // W15.3: when the shell drives the field on the GPU, the tool must NOT CPU-step
+    // it (dabs still splat; the shell's step_grid + composite_and_settle do the
+    // rest). Verify on_tick + queue_pointer leave the grid untouched when the flag
+    // is set, and composite_and_settle_fluid runs without a CPU step.
+    let (w, h) = (40u32, 32u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 14.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
+    t.set_gpu_fluid_driven(true);
+    t.begin_stroke(3);
+    t.queue_pointer(PointerSample {
+        position: [20.0, 16.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    assert!(t.has_wet_field(), "fluid field allocated + dab splatted");
+    let snap: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
+    t.on_tick_diffusion(); // GPU-driven → must NOT CPU-step
+    let after: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
+    assert_eq!(snap, after, "on_tick must not CPU-step the grid when GPU-driven");
+    // The shell-facing composite still works (no CPU step happened).
+    t.composite_and_settle_fluid();
+    assert!(t.has_wet_field(), "field still wet (no steps ran to dry it)");
+}
+
+#[test]
 fn fluid_wash_keeps_blooming_after_pen_up() {
     // REGRESSION (W15.2 dead-feature trap): the wash MUST keep evolving on the
     // canvas after pen-up — that is the whole point of the live field. A prior

@@ -319,7 +319,8 @@ impl PainterTool {
     /// wet field while it stays wet — the wash keeps blooming + drying after pen-up
     /// ("the paint stays wet"). No-op once the field has dried + been dropped.
     pub(crate) fn on_tick_diffusion(&mut self) {
-        if self.wet_field.is_none() {
+        // GPU-driven: the shell steps + composites the field (skip the CPU path).
+        if self.gpu_fluid_driven || self.wet_field.is_none() {
             return;
         }
         self.tick_wet_field(WET_SUBSTEPS_IDLE);
@@ -327,32 +328,68 @@ impl PainterTool {
         self.dirty_rect = None;
     }
 
-    /// Step the live wet field `substeps` times + composite it into the canvas.
-    /// Drops the field once it dries (mean water < `WET_DRY_THRESHOLD`), the final
-    /// pigment already baked into the canvas. Shared by the painting splat and the
-    /// idle tick.
+    /// Step the live wet field `substeps` times (CPU) + composite + settle. Shared
+    /// by the painting splat and the idle tick.
     fn tick_wet_field(&mut self, substeps: u32) {
         let params = ph2d_painter_brush::diffusion::DiffusionParams::default();
-        let dry = match self.wet_field.as_mut() {
+        match self.wet_field.as_mut() {
             Some(grid) => {
                 for _ in 0..substeps {
                     grid.step(&params);
                 }
-                // Dry only when the WETTEST cell is below the gate threshold — a
-                // mean would read "dry" instantly (most of the grid is bare paper).
-                let max_w = grid.water().iter().copied().fold(0.0f32, f32::max);
-                max_w < WET_DRY_THRESHOLD
             }
+            None => return,
+        }
+        self.composite_and_settle_fluid();
+    }
+
+    /// Composite the (already-stepped) wet field into the canvas + drop it once it
+    /// dries (wettest cell < `WET_DRY_THRESHOLD`). The **step-agnostic** half of the
+    /// live tick: the CPU path calls it right after a CPU `step`; the shell GPU path
+    /// (W15.3) calls it after [`ph2d_painter_fluid::FluidSolver::step_grid`] has
+    /// written the GPU-evolved grid back (`fluid_grid_mut`). Sets `preview_dirty`.
+    pub fn composite_and_settle_fluid(&mut self) {
+        let dry = match self.wet_field.as_ref() {
+            // Dry only when the WETTEST cell is below the gate — a mean reads "dry"
+            // instantly (the grid is mostly bare paper).
+            Some(grid) => grid.water().iter().copied().fold(0.0f32, f32::max) < WET_DRY_THRESHOLD,
             None => return,
         };
         self.composite_wet_field();
+        self.preview_dirty = true;
         if dry {
-            // Field dried: the final pigment is baked into the canvas (the composite
-            // above ran first). Drop the field + its backdrop + bbox in lock-step.
+            // Final pigment is baked into the canvas (the composite above ran first).
             self.wet_field = None;
             self.wet_backdrop = None;
             self.wet_composite_bbox = None;
         }
+    }
+
+    /// W15.3 shell GPU drive: set by the shell when it is stepping the wet field on
+    /// the GPU, so the tool skips its CPU diffusion (`on_tick`/`queue_pointer`).
+    pub fn set_gpu_fluid_driven(&mut self, v: bool) {
+        self.gpu_fluid_driven = v;
+    }
+
+    /// Mutable access to the live wet field so the shell GPU stepper can advance it
+    /// in place; `None` when there is no live field (dry / non-fluid brush).
+    pub fn fluid_grid_mut(
+        &mut self,
+    ) -> Option<&mut ph2d_painter_brush::diffusion::DiffusionGrid> {
+        self.wet_field.as_mut()
+    }
+
+    /// `true` when a live wet field exists (the shell checks before driving the GPU).
+    #[must_use]
+    pub fn has_wet_field(&self) -> bool {
+        self.wet_field.is_some()
+    }
+
+    /// Idle diffusion sub-steps per frame — the count the shell passes to the GPU
+    /// stepper so it matches the CPU idle cadence.
+    #[must_use]
+    pub fn fluid_idle_substeps(&self) -> u32 {
+        WET_SUBSTEPS_IDLE
     }
 
     /// Composite the low-res wet field over the pre-stroke backdrop into the canvas
@@ -571,7 +608,11 @@ impl PainterTool {
                         );
                     }
                 }
-                self.tick_wet_field(WET_SUBSTEPS_PAINTING);
+                // GPU-driven (W15.3): only splat here; the shell's per-frame GPU
+                // stepper advances + composites the field. CPU path steps inline.
+                if !self.gpu_fluid_driven {
+                    self.tick_wet_field(WET_SUBSTEPS_PAINTING);
+                }
                 self.preview_dirty = true;
                 self.dirty_rect = None;
                 self.has_painted_since_source = true;

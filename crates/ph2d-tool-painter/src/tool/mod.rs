@@ -261,6 +261,23 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
+/// Per-frame inputs the shell GPU fluid drive (W15.3) pulls from the tool to step
+/// the resident solver + composite, without reading the GPU pigment back. The
+/// `deposit` is THIS frame's dabs (the grid pigment, then cleared); `water` is the
+/// CPU water mirror (uploaded for the gate/flow, evaporated CPU-side afterwards);
+/// `region` is the wet grid-cell bbox (union with the previous frame) scoping the
+/// composite; `dims` is the grid size.
+pub struct FluidFrameInputs {
+    /// This frame's dab pigment (low-res `gw*gh`, xyz mass, w=0) — added to `pig_a`.
+    pub deposit: Vec<[f32; 4]>,
+    /// The CPU water mirror (low-res `gw*gh`) — uploaded for the GPU gate/flow.
+    pub water: Vec<f32>,
+    /// Wet grid-cell bbox (inclusive) ∪ last frame's — the composite region.
+    pub region: (u32, u32, u32, u32),
+    /// Grid (low-res) dimensions `(gw, gh)`.
+    pub dims: (u32, u32),
+}
+
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -573,6 +590,12 @@ pub struct PainterTool {
     /// grid, but the step + composite are driven shell-side via `fluid_grid_mut` +
     /// `composite_and_settle_fluid`. Default false ⇒ the CPU path is unchanged.
     gpu_fluid_driven: bool,
+    /// **W15.3 GPU resident path.** Bumped each time a fresh fluid `wet_field` is
+    /// allocated (`begin_stroke`). The shell watches it: on change it resets the
+    /// GPU-resident pigment (`pig_a`) + re-uploads the static paper, so a reused
+    /// solver (same grid size, new stroke) starts from a bare field instead of the
+    /// previous stroke's bloom. Monotonic for the tool's lifetime.
+    fluid_stroke_epoch: u64,
 }
 
 impl Default for PainterTool {
@@ -635,6 +658,7 @@ impl Default for PainterTool {
             wet_backdrop: None,
             wet_composite_bbox: None,
             gpu_fluid_driven: false,
+            fluid_stroke_epoch: 0,
         }
     }
 }

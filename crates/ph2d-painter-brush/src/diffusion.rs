@@ -327,6 +327,56 @@ impl DiffusionGrid {
         self.water.copy_from_slice(w);
     }
 
+    /// Zero the pigment field — the W15.3 GPU resident path uses the grid pigment as
+    /// the per-frame **dab deposit**: the shell uploads it (added to the GPU-resident
+    /// `pig_a`), then clears it so next frame holds only the next frame's dabs. The
+    /// bloomed pigment lives on the GPU, not here.
+    pub fn clear_pigment(&mut self) {
+        for p in &mut self.pigment {
+            *p = [0.0; 3];
+        }
+    }
+
+    /// Evaporate the water field by `amount` (clamped at 0). The W15.3 resident path
+    /// keeps water CPU-side (the GPU reads it for the gate/flow but never writes it),
+    /// so the CPU owns evaporation + the dry-check — no water readback (ADR-0049 §0).
+    pub fn evaporate(&mut self, amount: f32) {
+        for w in &mut self.water {
+            *w = (*w - amount).max(0.0);
+        }
+    }
+
+    /// The wettest cell (max water) — the W15.3 CPU dry-check (`< threshold` ⇒ drop
+    /// the field), computed on the CPU water mirror so no GPU readback is needed.
+    #[must_use]
+    pub fn max_water(&self) -> f32 {
+        self.water.iter().copied().fold(0.0f32, f32::max)
+    }
+
+    /// Inclusive grid-cell bbox of cells wetter than `threshold` (`None` if dry). The
+    /// W15.3 composite region: the wet area ⊇ the pigment area (pigment only spreads
+    /// where the gate is open), so compositing this (padded) covers all pigment, and
+    /// the per-pixel `dens < 1e-4` short-circuit handles the slack. Avoids reading the
+    /// GPU pigment back to find the wet bbox.
+    #[must_use]
+    pub fn water_bbox(&self, threshold: f32) -> Option<(u32, u32, u32, u32)> {
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        let mut any = false;
+        for gy in 0..self.height {
+            let row = (gy * self.width) as usize;
+            for gx in 0..self.width {
+                if self.water[row + gx as usize] > threshold {
+                    any = true;
+                    x0 = x0.min(gx);
+                    y0 = y0.min(gy);
+                    x1 = x1.max(gx);
+                    y1 = y1.max(gy);
+                }
+            }
+        }
+        any.then_some((x0, y0, x1, y1))
+    }
+
     /// Total pigment per channel — a conserved quantity under pure diffusion +
     /// advection (no evaporation removes pigment), the invariant the tests check.
     #[must_use]

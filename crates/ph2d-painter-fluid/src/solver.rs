@@ -68,6 +68,8 @@ pub struct FluidSolver {
     diffuse: wgpu::ComputePipeline,
     advect: wgpu::ComputePipeline,
     evaporate: wgpu::ComputePipeline,
+    /// W15.3 resident path: `pig_a += deposit` (the dabs splatted this frame).
+    deposit_pipe: wgpu::ComputePipeline,
     params_buf: wgpu::Buffer,
     // All field buffers are owned so they outlive the bind groups that reference
     // them (the readback reads `pig_a`; `upload` writes water/paper/pig_a).
@@ -78,9 +80,13 @@ pub struct FluidSolver {
     /// (`bg_diffuse` writes it, `bg_advect` reads it); never touched directly.
     #[allow(dead_code)]
     pig_b: wgpu::Buffer,
+    /// W15.3 resident path: the per-frame dab deposit (uploaded, added to `pig_a`).
+    deposit: wgpu::Buffer,
     bg_diffuse: wgpu::BindGroup,
     bg_advect: wgpu::BindGroup,
     bg_evaporate: wgpu::BindGroup,
+    /// Deposit add: `pig_in = deposit`, `pig_out = pig_a` (read_write, in-place).
+    bg_deposit: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -156,6 +162,7 @@ impl FluidSolver {
         let paper = buf("fluid paper", f32n, wgpu::BufferUsages::empty());
         let pig_a = buf("fluid pig_a", vec4n, wgpu::BufferUsages::COPY_SRC);
         let pig_b = buf("fluid pig_b", vec4n, wgpu::BufferUsages::empty());
+        let deposit = buf("fluid deposit", vec4n, wgpu::BufferUsages::empty());
         // bind group: (params, water, paper, pig_in, pig_out).
         let bg = |label: &str, pin: &wgpu::Buffer, pout: &wgpu::Buffer| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -173,20 +180,25 @@ impl FluidSolver {
         let bg_diffuse = bg("fluid bg diffuse", &pig_a, &pig_b); // A→B
         let bg_advect = bg("fluid bg advect", &pig_b, &pig_a); // B→A
         let bg_evaporate = bg("fluid bg evaporate", &pig_a, &pig_b); // pig unused
+        // Deposit add: pig_in = deposit (read), pig_out = pig_a (read_write) → in-place.
+        let bg_deposit = bg("fluid bg deposit", &deposit, &pig_a);
         Self {
             width,
             height,
             diffuse: pipe("cs_diffuse"),
             advect: pipe("cs_advect"),
             evaporate: pipe("cs_evaporate"),
+            deposit_pipe: pipe("cs_deposit"),
             params_buf,
             water,
             paper,
             pig_a,
             pig_b,
+            deposit,
             bg_diffuse,
             bg_advect,
             bg_evaporate,
+            bg_deposit,
         }
     }
 
@@ -263,6 +275,62 @@ impl FluidSolver {
     #[must_use]
     pub fn dims(&self) -> (u32, u32) {
         (self.width, self.height)
+    }
+
+    /// Upload the static paper-height field (W15.3 resident path — call ONCE per
+    /// stroke; the tooth doesn't change while painting).
+    pub fn upload_paper(&self, queue: &wgpu::Queue, paper: &[f32]) {
+        queue.write_buffer(&self.paper, 0, bytemuck::cast_slice(paper));
+    }
+
+    /// Zero the resident pigment (`pig_a`) — call at stroke begin so a reused solver
+    /// (same grid size, new stroke) starts from a bare field (W15.3 resident path).
+    pub fn clear_resident_pigment(&self, queue: &wgpu::Queue) {
+        let zeros = vec![[0.0f32; 4]; (self.width as usize) * (self.height as usize)];
+        queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(&zeros));
+    }
+
+    /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment
+    /// GPU-resident in `pig_a`: uploads the CPU water mirror (the CPU owns water +
+    /// evaporation + the dry-check) and this frame's dab `deposit`, adds the deposit
+    /// to `pig_a`, then runs `substeps` of diffuse+advect (NO GPU evaporate — water
+    /// came pre-evaporated from the CPU). One submit, no `device.poll` wait, no
+    /// pigment readback — the composite reads `pig_a` directly afterwards (its own
+    /// readback, or a GPU→GPU copy, syncs the queue). `water`/`deposit` lengths must
+    /// equal `width*height`.
+    pub fn step_resident(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        water: &[f32],
+        deposit: &[[f32; 4]],
+        substeps: u32,
+    ) {
+        queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
+        queue.write_buffer(&self.deposit, 0, bytemuck::cast_slice(deposit));
+        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid step resident"),
+        });
+        // pig_a += deposit (the dabs this frame), then diffuse+advect ×substeps.
+        let mut pass_seq: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
+            vec![(&self.deposit_pipe, &self.bg_deposit)];
+        for _ in 0..substeps {
+            pass_seq.push((&self.diffuse, &self.bg_diffuse)); // A→B
+            pass_seq.push((&self.advect, &self.bg_advect)); // B→A
+        }
+        for (pipe, bg) in pass_seq {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid resident pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(pipe);
+            pass.set_bind_group(0, bg, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        }
+        queue.submit([enc.finish()]);
+        // No poll: pigment stays GPU-resident in `pig_a`; the next queue submit (the
+        // compositor) is ordered after this one and its readback (if any) syncs.
     }
 
     /// Map the current pigment field (`pig_a`) back to the CPU.

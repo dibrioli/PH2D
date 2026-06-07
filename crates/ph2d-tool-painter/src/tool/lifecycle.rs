@@ -135,6 +135,10 @@ impl PainterTool {
                 gh,
                 WET_FIELD_SCALE as f32,
             ));
+            // W15.3: signal the shell GPU drive that a FRESH field began, so it
+            // resets the resident pigment (a reused solver must not inherit the
+            // previous stroke's bloom).
+            self.fluid_stroke_epoch = self.fluid_stroke_epoch.wrapping_add(1);
             // The wash composites over the pre-stroke canvas for the WHOLE life of
             // the field — including the many frames it keeps blooming after pen-up.
             // `pending_pre_stroke` can't serve this (it's consumed by the undo stack
@@ -323,6 +327,145 @@ impl PainterTool {
     #[must_use]
     pub fn fluid_idle_substeps(&self) -> u32 {
         WET_SUBSTEPS_IDLE
+    }
+
+    // ───────────────── W15.3 GPU resident-composite hooks (shell-facing) ─────────────────
+
+    /// Bumps each `begin_stroke` that allocates a fresh fluid field — the shell
+    /// resets the GPU-resident pigment + re-uploads paper on change. See
+    /// [`Self::fluid_stroke_epoch`] field doc.
+    #[must_use]
+    pub fn fluid_stroke_epoch(&self) -> u64 {
+        self.fluid_stroke_epoch
+    }
+
+    /// Canvas/grid ratio (the field runs at 1/scale of the canvas).
+    #[must_use]
+    pub fn fluid_field_scale(&self) -> u32 {
+        WET_FIELD_SCALE
+    }
+
+    /// Density→alpha coverage rate for the composite (`WET_COVERAGE_K`).
+    #[must_use]
+    pub fn fluid_coverage_k(&self) -> f32 {
+        WET_COVERAGE_K
+    }
+
+    /// Per-step evaporation (the shell evaporates the CPU water mirror by
+    /// `this × substeps` per frame — the GPU never touches water in the resident path).
+    #[must_use]
+    pub fn fluid_evaporation(&self) -> f32 {
+        ph2d_painter_brush::diffusion::DiffusionParams::default().evaporation
+    }
+
+    /// The static paper-height field of the live grid (clone) — the shell uploads it
+    /// ONCE per stroke (on an epoch change) to the resident solver. `None` if no field.
+    #[must_use]
+    pub fn fluid_paper(&self) -> Option<Vec<f32>> {
+        self.wet_field.as_ref().map(|g| g.paper().to_vec())
+    }
+
+    /// Grid (low-res) dimensions of the live field, or `None`.
+    #[must_use]
+    pub fn fluid_grid_dims(&self) -> Option<(u32, u32)> {
+        self.wet_field.as_ref().map(|g| g.dims())
+    }
+
+    /// The stroke colour in linear sRGB — the composite derives `pcol` + the coverage
+    /// normaliser from it (the resident path's grid holds only the per-frame deposit,
+    /// so the chromaticity comes from the stroke, not a grid total; they're equal).
+    #[must_use]
+    pub fn fluid_stroke_color_linear(&self) -> [f32; 3] {
+        ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+            self.stroke_color_oklab[0],
+            self.stroke_color_oklab[1],
+            self.stroke_color_oklab[2],
+        )
+    }
+
+    /// The pre-stroke backdrop the wash composites over (canvas-res RGBA8), or `None`.
+    #[must_use]
+    pub fn fluid_backdrop(&self) -> Option<&[u8]> {
+        self.wet_backdrop.as_deref()
+    }
+
+    /// Pull this frame's GPU-drive inputs: the dab `deposit` (the grid pigment, then
+    /// CLEARED), the `water` mirror (then EVAPORATED by `evap_per_frame`), the wet
+    /// `region` (water bbox ∪ last frame, stored), and the grid `dims`. `None` when
+    /// the field is dry / absent (the shell then drops it). The water is captured
+    /// PRE-evaporation (the GPU gate/flow read it), then evaporated for next frame +
+    /// the dry-check.
+    #[must_use]
+    pub fn fluid_frame_step_inputs(
+        &mut self,
+        evap_per_frame: f32,
+    ) -> Option<crate::tool::FluidFrameInputs> {
+        let prev_bbox = self.wet_composite_bbox;
+        let grid = self.wet_field.as_mut()?;
+        let (gw, gh) = grid.dims();
+        // Any wetness ⇒ the gate may have spread pigment there; a small threshold so
+        // the region is a superset of the pigment (the composite short-circuits dry
+        // pixels anyway).
+        let cur = grid.water_bbox(1.0e-3);
+        let region = match (cur, prev_bbox) {
+            (Some(a), Some(b)) => (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3)),
+            (Some(a), None) => a,
+            (None, Some(b)) => b,
+            (None, None) => {
+                // Bare field — nothing wet. Let the shell drop it via the dry-check.
+                self.wet_composite_bbox = None;
+                return None;
+            }
+        };
+        self.wet_composite_bbox = cur;
+        let deposit: Vec<[f32; 4]> = grid.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+        let water = grid.water().to_vec();
+        grid.clear_pigment();
+        grid.evaporate(evap_per_frame);
+        Some(crate::tool::FluidFrameInputs {
+            deposit,
+            water,
+            region,
+            dims: (gw, gh),
+        })
+    }
+
+    /// Blit a GPU-composited canvas-width **row band** (`rows` = `(py_hi-py_lo)*cw*4`
+    /// RGBA8) over `canvas_rgba` rows `[py_lo, py_hi)` — the resident path's apply
+    /// (the GPU composited; the shell read back only this band). Marks the preview
+    /// dirty + bumps the active layer so the existing preview upload re-blits it.
+    pub fn fluid_apply_gpu_composite_rows(&mut self, rows: &[u8], py_lo: u32, py_hi: u32) {
+        let (cw, _ch) = self.source_size;
+        let row_bytes = (cw * 4) as usize;
+        let start = py_lo as usize * row_bytes;
+        let end = py_hi as usize * row_bytes;
+        let n4 = self.canvas_rgba.len();
+        if cw == 0 || end <= start || end > n4 || rows.len() < end - start {
+            return;
+        }
+        let canvas = Arc::make_mut(&mut self.canvas_rgba);
+        canvas[start..end].copy_from_slice(&rows[..end - start]);
+        self.preview_dirty = true;
+        self.dirty_rect = None;
+        let active = self.layers.active();
+        self.bump_layer_pixels(active);
+    }
+
+    /// Dry-check on the CPU water mirror: if the wettest cell is below the dry
+    /// threshold, drop the field (its final pigment was already composited this
+    /// frame). Returns `true` when it dropped. The GPU-resident twin of the dry half
+    /// of [`Self::composite_and_settle_fluid`].
+    pub fn fluid_dry_check_and_drop(&mut self) -> bool {
+        let dry = match self.wet_field.as_ref() {
+            Some(grid) => grid.max_water() < WET_DRY_THRESHOLD,
+            None => return false,
+        };
+        if dry {
+            self.wet_field = None;
+            self.wet_backdrop = None;
+            self.wet_composite_bbox = None;
+        }
+        dry
     }
 
     /// Composite the low-res wet field over the pre-stroke backdrop into the canvas

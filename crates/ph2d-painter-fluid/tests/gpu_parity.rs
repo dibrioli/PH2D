@@ -126,6 +126,48 @@ fn step_grid_matches_cpu_step_in_place() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn step_resident_matches_classic_step_with_deposit() {
+    // W15.3 resident path: depositing the seed pigment into a zeroed `pig_a` then
+    // running diffuse+advect must equal the classic `step` (uploaded pigment +
+    // diffuse+advect). Evaporation OFF isolates the deposit/residency equivalence
+    // (the resident path moves evaporation to the CPU water mirror). `pig_a += 0`
+    // for a fresh buffer is exact, so this should be bit-identical.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (40u32, 36u32);
+    let steps = 10u32;
+    let params = FluidParams { evaporation: 0.0, ..FluidParams::default() };
+    let seed = seeded_grid(w, h);
+    let pig4: Vec<[f32; 4]> = seed.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+
+    // Path A — classic step (uploaded pigment).
+    let a = FluidSolver::new(&gpu.device, w, h);
+    a.set_params(&gpu.queue, &params);
+    a.upload(&gpu.queue, seed.water(), seed.paper(), &pig4);
+    a.step(&gpu.device, &gpu.queue, steps);
+    let pa = a.read_pigment(&gpu.device, &gpu.queue);
+
+    // Path B — resident: deposit the seed into a zeroed pig_a, same water, no evap.
+    let b = FluidSolver::new(&gpu.device, w, h);
+    b.set_params(&gpu.queue, &params);
+    b.upload_paper(&gpu.queue, seed.paper());
+    b.clear_resident_pigment(&gpu.queue);
+    b.step_resident(&gpu.device, &gpu.queue, seed.water(), &pig4, steps);
+    let pb = b.read_pigment(&gpu.device, &gpu.queue);
+
+    let worst = pa
+        .iter()
+        .zip(&pb)
+        .flat_map(|(x, y)| (0..3).map(move |k| (x[k] - y[k]).abs()))
+        .fold(0.0f32, f32::max);
+    eprintln!("resident vs classic (evap off): worst pigment |Δ| = {worst:.8}");
+    assert!(worst < 1.0e-6, "resident deposit+step must match classic step: {worst}");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_solver_conserves_then_dries() {
     // Without evaporation the diffuse+advect passes conserve pigment mass (the CPU
     // invariant). With evaporation the field eventually stops evolving (dries).

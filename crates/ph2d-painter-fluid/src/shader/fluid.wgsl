@@ -150,3 +150,20 @@ fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = idx(x, y);
     water[i] = max(water[i] - P.evaporation, 0.0);
 }
+
+// Additive dab deposit (W15.3 resident path): `pig_a += deposit`. The bloomed
+// pigment stays GPU-resident in `pig_a` across frames (no per-frame readback);
+// new dabs the CPU splatted this frame arrive via `pig_in` (the deposit buffer)
+// and are ADDED here. `pig_out` is bound to `pig_a` (read_write) so the add is
+// in place. Water is uploaded fresh from the CPU mirror each frame (the CPU owns
+// evaporation + the dry-check), so this pass never touches it.
+@compute @workgroup_size(8, 8, 1)
+fn cs_deposit(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if (x >= P.width || y >= P.height) {
+        return;
+    }
+    let i = idx(x, y);
+    pig_out[i] = pig_out[i] + pig_in[i];
+}

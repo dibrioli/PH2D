@@ -1,34 +1,50 @@
 //! W15.3 GPU fluid drive (ADR-0049, feature `fluid`) — steps the painter's live
-//! wet field on the GPU each frame, then runs the tool's composite.
+//! wet field on the GPU AND composites the Kubelka–Munk glaze on the GPU each
+//! frame, removing the per-frame pigment readback + the CPU composite (the stalls
+//! that capped large-canvas perf).
 //!
-//! Feature-gated: the default build excludes this module entirely (and the
-//! `ph2d-painter-fluid` crate), so the painter runs the CPU diffusion path. When
-//! `--features fluid` is set, the render loop calls [`drive_fluid_gpu`] right after
-//! the active tool's `on_tick`.
+//! Feature-gated: the default build excludes this module (and `ph2d-painter-fluid`),
+//! so the painter runs the CPU diffusion+composite path. With `--features fluid`
+//! the render loop calls [`drive_fluid_gpu`] right after the active tool's `on_tick`.
+//!
+//! ## The resident-composite flow (per frame, no pigment readback)
+//! 1. The pigment stays GPU-resident in the solver's `pig_a`; this frame's dabs
+//!    (the tool grid's pigment) are uploaded as an additive `deposit` and the field
+//!    diffuses/advects ON the GPU. Water is the CPU mirror (uploaded for the gate;
+//!    the CPU owns evaporation + the dry-check) — so no water readback either.
+//! 2. The GPU compositor reads `pig_a` directly + the pre-stroke backdrop → the
+//!    canvas RGBA, and we read back ONLY the wet row band into `canvas_rgba` (the
+//!    canonical layer the existing preview upload + Apply/undo consume).
 //!
 //! Downcasts to the concrete `PainterTool` (allowlisted bridge, same exception
-//! class as `painter_bridge.rs`): the GPU drive needs the concrete wet-field hooks
-//! (`has_wet_field` / `fluid_grid_mut` / `composite_and_settle_fluid`).
+//! class as `painter_bridge.rs`): the GPU drive needs the concrete fluid hooks.
 
 use ph2d_editor::ToolRegistry;
 use ph2d_gpu::GpuContext;
-use ph2d_painter_fluid::{FluidParams, FluidSolver};
+use ph2d_painter_brush::wet_composite::prepare_wet_composite_from_stroke;
+use ph2d_painter_fluid::{FluidCompositor, FluidParams, FluidSolver};
 use std::cell::RefCell;
 
-thread_local! {
-    /// The persistent GPU solver for the active wet field, keyed by its grid size.
-    /// Rebuilt when the field resizes (a new canvas); dropped when no live field
-    /// (the wash dried or no fluid stroke). Thread-local because the render loop is
-    /// single-threaded (the established painter-bridge pattern for per-tool state).
-    static SESSION: RefCell<Option<(FluidSolver, (u32, u32))>> = const { RefCell::new(None) };
+/// Per-session GPU state for the live wet field: the resident solver, the K–M
+/// compositor, the field size, and the stroke epoch it was last reset for.
+struct FluidSession {
+    solver: FluidSolver,
+    compositor: FluidCompositor,
+    dims: (u32, u32),
+    epoch: u64,
 }
 
-/// Drive the live wet field on the GPU, called each frame after the active tool's
-/// `on_tick`. When the painter has a live field: marks the tool GPU-driven (so its
-/// `on_tick`/`queue_pointer` skip the CPU diffusion), steps the field on the GPU
-/// ([`FluidSolver::step_grid`], parity-proven against the CPU reference), and runs
-/// the tool's composite ([`PainterTool::composite_and_settle_fluid`]). No-op
-/// without an active painter or a live field (and it then releases the solver).
+thread_local! {
+    /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
+    /// + paper re-uploaded) on a new stroke epoch; dropped when no live field.
+    /// Thread-local because the render loop is single-threaded (the established
+    /// painter-bridge pattern for per-tool GPU state).
+    static SESSION: RefCell<Option<FluidSession>> = const { RefCell::new(None) };
+}
+
+/// Drive + composite the live wet field on the GPU, called each frame after the
+/// active tool's `on_tick`. No-op without an active painter or a live field (and it
+/// then releases the session + hands the field back to the CPU path).
 pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     let Some(painter) = tools
         .active_mut()
@@ -36,12 +52,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     else {
         return;
     };
-    // **Graceful degrade (ADR-0049 §2.8/§2.9).** Only a software/CPU adapter is
-    // ruled incapable; every real GPU (discrete / integrated incl. Apple Silicon /
-    // virtual / other-Metal) stays eligible. VRAM-free probing isn't portable in
-    // wgpu, so the 32 MB floor is assumed met on any real GPU (the 1/2-res textures
-    // are tens of MB) — refine with real telemetry. When incapable, the field falls
-    // back to the CPU path (the tool's on_tick) — identity preserved.
+    // **Graceful degrade (ADR-0049 §2.8/§2.9).** Only a software/CPU adapter is ruled
+    // incapable; every real GPU stays eligible. VRAM-free probing isn't portable in
+    // wgpu, so the floor is assumed met on any real GPU (refine with telemetry). When
+    // incapable, the field falls back to the CPU path (the tool's on_tick).
     let tier = match gpu.adapter.get_info().device_type {
         wgpu::DeviceType::Cpu => ph2d_host::MemoryTier::Low,
         wgpu::DeviceType::IntegratedGpu | wgpu::DeviceType::VirtualGpu => ph2d_host::MemoryTier::Mid,
@@ -56,18 +70,79 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         return;
     }
     painter.set_gpu_fluid_driven(true);
-    let Some(dims) = painter.fluid_grid_mut().map(|g| g.dims()) else {
+
+    let Some(dims) = painter.fluid_grid_dims() else {
         return;
     };
     let substeps = painter.fluid_idle_substeps();
+    let epoch = painter.fluid_stroke_epoch();
+    let scale = painter.fluid_field_scale();
+    let coverage_k = painter.fluid_coverage_k();
+    let evap_per_frame = painter.fluid_evaporation() * substeps as f32;
+    let (cw, ch) = painter.source_size();
+    if cw == 0 || ch == 0 {
+        return;
+    }
+
     SESSION.with(|cell| {
-        let mut sess = cell.borrow_mut();
-        if sess.as_ref().map(|(_, d)| *d) != Some(dims) {
-            *sess = Some((FluidSolver::new(&gpu.device, dims.0, dims.1), dims));
+        let mut slot = cell.borrow_mut();
+        // (Re)build the session on a size change; force a reset by mismatching epoch.
+        if slot.as_ref().map(|s| s.dims) != Some(dims) {
+            *slot = Some(FluidSession {
+                solver: FluidSolver::new(&gpu.device, dims.0, dims.1),
+                compositor: FluidCompositor::new(&gpu.device),
+                dims,
+                epoch: u64::MAX,
+            });
         }
-        if let (Some((solver, _)), Some(grid)) = (sess.as_ref(), painter.fluid_grid_mut()) {
-            solver.step_grid(&gpu.device, &gpu.queue, grid, &FluidParams::default(), substeps);
+        let Some(sess) = slot.as_mut() else {
+            return;
+        };
+        sess.solver.set_params(&gpu.queue, &FluidParams::default());
+        // New stroke (or new session) → reset the resident pigment + upload paper.
+        if sess.epoch != epoch {
+            sess.solver.clear_resident_pigment(&gpu.queue);
+            if let Some(paper) = painter.fluid_paper() {
+                sess.solver.upload_paper(&gpu.queue, &paper);
+            }
+            sess.epoch = epoch;
         }
+
+        // This frame's dabs + water mirror (clears the grid pigment, evaporates water).
+        let Some(inp) = painter.fluid_frame_step_inputs(evap_per_frame) else {
+            // Bare field — let the dry-check drop it.
+            painter.fluid_dry_check_and_drop();
+            return;
+        };
+        sess.solver
+            .step_resident(&gpu.device, &gpu.queue, &inp.water, &inp.deposit, substeps);
+
+        // Composite reading the resident pigment → the wet row band → canvas_rgba.
+        let composited = painter.fluid_backdrop().map(|backdrop| {
+            let brush = prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
+            sess.compositor.composite_buffer_rows(
+                &gpu.device,
+                &gpu.queue,
+                dims.0,
+                dims.1,
+                cw,
+                ch,
+                scale,
+                coverage_k,
+                sess.solver.pigment_buffer(),
+                backdrop,
+                &brush,
+                inp.region,
+            )
+        });
+        if let Some((rows, py_lo, py_hi)) = composited
+            && !rows.is_empty()
+        {
+            painter.fluid_apply_gpu_composite_rows(&rows, py_lo, py_hi);
+        }
+
+        // Dry-check on the CPU water mirror; drop the field when it dries (its final
+        // pigment was just composited).
+        painter.fluid_dry_check_and_drop();
     });
-    painter.composite_and_settle_fluid();
 }

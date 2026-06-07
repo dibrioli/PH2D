@@ -128,6 +128,42 @@ fn gpu_composite_matches_cpu_reference() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn composite_rows_matches_full_band() {
+    // The shell per-frame path reads back only the wet row band; it must equal the
+    // corresponding rows of the full-canvas composite (guards the offset/slicing).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let stroke_linear = [0.8f32, 0.6, 0.02];
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+    let brush = prepare_wet_composite(pig, stroke_linear);
+    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    // `composite_to_rgba` uploads `pig4` itself; for the rows path stash the same
+    // pigment in a solver buffer (no step) and bind it — both composite the SAME field.
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+    let compositor = FluidCompositor::new(&gpu.device);
+    let full = compositor.composite_to_rgba(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, &pig4, &backdrop, &brush, region,
+    );
+    let (rows, py_lo, py_hi) = compositor.composite_buffer_rows(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, solver.pigment_buffer(),
+        &backdrop, &brush, region,
+    );
+    let lo = (py_lo * cw * 4) as usize;
+    let hi = (py_hi * cw * 4) as usize;
+    assert_eq!(rows.len(), hi - lo, "row band length");
+    assert_eq!(rows, full[lo..hi], "row band must equal the full composite's band");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_step_then_composite_resident_matches_cpu() {
     // The END-TO-END stall-removing seam: step the field on the GPU, then composite
     // reading the RESIDENT `pig_a` buffer directly (no pigment readback between) —

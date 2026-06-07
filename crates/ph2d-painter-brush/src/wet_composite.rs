@@ -134,6 +134,31 @@ pub fn prepare_wet_composite(pigment: &[[f32; 3]], stroke_color_linear: [f32; 3]
     }
 }
 
+/// Derive the composite brush from ONLY the stroke colour (linear sRGB) — for the
+/// GPU resident path, where the bloomed pigment lives on the GPU and the CPU grid
+/// holds just this frame's deposit. A fluid stroke is one colour, and the grid
+/// pigment is `stroke_colour × amount` per cell (splat + the linear, per-channel
+/// diffuse/advect keep the chromaticity uniform), so the chromaticity `pcol` the
+/// grid-total derivation in [`prepare_wet_composite`] computes is exactly
+/// `normalize(stroke_colour)` — the `Σamount` cancels. This computes the identical
+/// `pcol`/`color_sum` without needing the pigment field.
+#[must_use]
+pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCompositeBrush {
+    let ssum = (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(1.0e-6);
+    let pcol = [
+        (stroke_color_linear[0] / ssum * 3.0).min(1.0),
+        (stroke_color_linear[1] / ssum * 3.0).min(1.0),
+        (stroke_color_linear[2] / ssum * 3.0).min(1.0),
+    ];
+    let prepared = prepare_pigment(pcol);
+    let color_sum = (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
+    WetCompositeBrush {
+        prepared,
+        pcol,
+        color_sum,
+    }
+}
+
 /// Canvas-pixel bbox `(px_lo, py_lo, px_hi, py_hi)` (exclusive hi) covered by a
 /// grid region at `scale`, padded one grid cell each side for the bicubic
 /// footprint and clamped to the canvas. The dispatch/loop bounds for the
@@ -214,6 +239,31 @@ pub fn composite_wet_field_cpu(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The stroke-derived brush (GPU resident path) computes the SAME `pcol` +
+    /// `color_sum` as the grid-total derivation, for a uniform-chromaticity field.
+    #[test]
+    fn stroke_derived_brush_matches_grid_derived() {
+        let scol = [0.8f32, 0.6, 0.02];
+        // A field of `scol × amount` (varying amount), the single-stroke invariant.
+        let pig: Vec<[f32; 3]> = (0..64)
+            .map(|i| {
+                let a = (i as f32 + 1.0) * 0.01;
+                [scol[0] * a, scol[1] * a, scol[2] * a]
+            })
+            .collect();
+        let grid = prepare_wet_composite(&pig, scol);
+        let stroke = prepare_wet_composite_from_stroke(scol);
+        for k in 0..3 {
+            assert!(
+                (grid.pcol[k] - stroke.pcol[k]).abs() < 1e-5,
+                "pcol[{k}] mismatch: {} vs {}",
+                grid.pcol[k],
+                stroke.pcol[k]
+            );
+        }
+        assert!((grid.color_sum - stroke.color_sum).abs() < 1e-5);
+    }
 
     /// Yellow wash over an opaque BLUE backdrop must go GREEN-dominant — the
     /// Kubelka–Munk signature (a linear "over" leaves R≈G). The discriminant the

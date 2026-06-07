@@ -195,71 +195,11 @@ impl FluidCompositor {
         let npix = (cw as usize) * (ch as usize);
         let canvas_bytes = (npix * 4) as u64;
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
-
-        let uni = GpuU {
-            cw,
-            ch,
-            gw,
-            gh,
-            inv: 1.0 / scale as f32,
-            color_sum: brush.color_sum,
-            coverage_k,
-            _pad0: 0.0,
-            origin_x: px_lo,
-            origin_y: py_lo,
-            end_x: px_hi,
-            end_y: py_hi,
-            pcol: [brush.pcol[0], brush.pcol[1], brush.pcol[2], 0.0],
-        };
-        let coeffs = GpuCoeffs::build(brush);
-
-        let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite params"),
-            size: core::mem::size_of::<GpuU>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&params_buf, 0, bytemuck::bytes_of(&uni));
-
-        let coeffs_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite coeffs"),
-            size: core::mem::size_of::<GpuCoeffs>() as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&coeffs_buf, 0, bytemuck::bytes_of(&coeffs));
-
-        let backdrop_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite backdrop"),
-            size: canvas_bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&backdrop_buf, 0, backdrop_rgba);
-
-        let out_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite out"),
-            size: canvas_bytes,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-        // Seed the output with the backdrop so pixels outside the dispatched bbox
-        // match the CPU (whose canvas keeps the backdrop where the loop never runs).
-        queue.write_buffer(&out_buf, 0, backdrop_rgba);
-
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("composite bg"),
-            layout: &self.bgl,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: coeffs_buf.as_entire_binding() },
-            ],
-        });
+        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) = self.build_buffers(
+            device, queue, gw, gh, cw, ch, scale, coverage_k, pigment_buf, backdrop_rgba, brush,
+            grid_region,
+        );
+        let _keep = (params_buf, coeffs_buf, backdrop_buf);
 
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
         let mut enc = device
@@ -293,5 +233,157 @@ impl FluidCompositor {
         drop(mapped);
         staging.unmap();
         out
+    }
+
+    /// Like [`Self::composite_buffer`] but reads back ONLY the contiguous wet
+    /// **row band** `[py_lo, py_hi)` (full width) — the per-frame shell path. Returns
+    /// `(rows, py_lo, py_hi)` where `rows` is `(py_hi-py_lo)*cw*4` RGBA8 bytes (the
+    /// caller blits them over `canvas_rgba` rows `py_lo..py_hi`). A single
+    /// `copy_buffer_to_buffer` of the contiguous band — far less than the full canvas
+    /// for a typical stroke. Returns `(vec![], 0, 0)` when the region is empty.
+    #[allow(clippy::too_many_arguments)]
+    #[must_use]
+    pub fn composite_buffer_rows(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        gw: u32,
+        gh: u32,
+        cw: u32,
+        ch: u32,
+        scale: u32,
+        coverage_k: f32,
+        pigment_buf: &wgpu::Buffer,
+        backdrop_rgba: &[u8],
+        brush: &WetCompositeBrush,
+        grid_region: (u32, u32, u32, u32),
+    ) -> (Vec<u8>, u32, u32) {
+        let (_, py_lo, _, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
+        if py_hi <= py_lo || cw == 0 {
+            return (Vec::new(), 0, 0);
+        }
+        let row_bytes = (cw * 4) as u64;
+        let band_off = u64::from(py_lo) * row_bytes;
+        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
+
+        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) =
+            self.build_buffers(device, queue, gw, gh, cw, ch, scale, coverage_k, pigment_buf, backdrop_rgba, brush, grid_region);
+        let (px_lo, _, px_hi, _) = composite_canvas_region(grid_region, scale, cw, ch);
+        let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
+
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite rows enc"),
+        });
+        if rw > 0 && rh > 0 {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite rows pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+        }
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite rows readback"),
+            size: band_bytes,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        enc.copy_buffer_to_buffer(&out_buf, band_off, &staging, 0, band_bytes);
+        queue.submit([enc.finish()]);
+        // Keep the per-composite buffers alive until the GPU finishes (they back the
+        // dispatch + the copy). `_keep` drops after the readback poll below.
+        let _keep = (params_buf, coeffs_buf, backdrop_buf, out_buf);
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let rows = mapped.to_vec();
+        drop(mapped);
+        staging.unmap();
+        (rows, py_lo, py_hi)
+    }
+
+    /// Build the per-composite buffers + bind group (shared by the readback paths).
+    #[allow(clippy::too_many_arguments)]
+    fn build_buffers(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        gw: u32,
+        gh: u32,
+        cw: u32,
+        ch: u32,
+        scale: u32,
+        coverage_k: f32,
+        pigment_buf: &wgpu::Buffer,
+        backdrop_rgba: &[u8],
+        brush: &WetCompositeBrush,
+        grid_region: (u32, u32, u32, u32),
+    ) -> (wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup) {
+        let canvas_bytes = (cw as usize * ch as usize * 4) as u64;
+        let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
+        let uni = GpuU {
+            cw,
+            ch,
+            gw,
+            gh,
+            inv: 1.0 / scale as f32,
+            color_sum: brush.color_sum,
+            coverage_k,
+            _pad0: 0.0,
+            origin_x: px_lo,
+            origin_y: py_lo,
+            end_x: px_hi,
+            end_y: py_hi,
+            pcol: [brush.pcol[0], brush.pcol[1], brush.pcol[2], 0.0],
+        };
+        let coeffs = GpuCoeffs::build(brush);
+        let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite params"),
+            size: core::mem::size_of::<GpuU>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&params_buf, 0, bytemuck::bytes_of(&uni));
+        let coeffs_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite coeffs"),
+            size: core::mem::size_of::<GpuCoeffs>() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&coeffs_buf, 0, bytemuck::bytes_of(&coeffs));
+        let backdrop_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite backdrop"),
+            size: canvas_bytes,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&backdrop_buf, 0, backdrop_rgba);
+        let out_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite out"),
+            size: canvas_bytes,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&out_buf, 0, backdrop_rgba);
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("composite bg"),
+            layout: &self.bgl,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: coeffs_buf.as_entire_binding() },
+            ],
+        });
+        (params_buf, coeffs_buf, backdrop_buf, out_buf, bind)
     }
 }

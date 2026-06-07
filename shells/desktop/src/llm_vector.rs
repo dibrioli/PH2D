@@ -87,11 +87,9 @@ impl LlmVectorEngine {
         match resolve_api_key() {
             // No key → no network, no thread: report immediately for the toast.
             None => {
-                eprintln!("[ph2d] llm: no API key resolved (env/config file)");
                 let _ = tx.send(LlmJobOutcome::NoKey);
             }
             Some(key) => {
-                eprintln!("[ph2d] llm: key found, spawning generation (seed {seed})");
                 // The worker captures only `Send` data (an `Arc` clone + owned
                 // strings) — never `self` — so the thread is `'static`.
                 let cache = Arc::clone(&self.cache);
@@ -104,15 +102,11 @@ impl LlmVectorEngine {
                         Ok(mut guard) => {
                             match client.generate_shape_with_blob(&prompt, seed, &mut guard) {
                                 Ok((net, blob)) => LlmJobOutcome::Ready(Box::new(net), blob),
-                                Err(e) => {
-                                    eprintln!("[ph2d] llm worker error: {e}");
-                                    LlmJobOutcome::Failed(e.to_string())
-                                }
+                                Err(e) => LlmJobOutcome::Failed(e.to_string()),
                             }
                         }
                         Err(_) => LlmJobOutcome::Failed("cache lock poisoned".to_string()),
                     };
-                    eprintln!("[ph2d] llm worker done, sending outcome");
                     let _ = tx.send(outcome);
                 });
             }
@@ -290,14 +284,6 @@ impl App {
         let Some(outcome) = self.llm_vector.poll() else {
             return;
         };
-        eprintln!(
-            "[ph2d] llm poll: outcome = {}",
-            match &outcome {
-                LlmJobOutcome::Ready(net, _) => format!("Ready ({} vertices)", net.vertices.len()),
-                LlmJobOutcome::Failed(r) => format!("Failed: {r}"),
-                LlmJobOutcome::NoKey => "NoKey".to_string(),
-            }
-        );
         let msg = match outcome {
             LlmJobOutcome::Ready(net, blob) => {
                 let n = net.vertices.len();

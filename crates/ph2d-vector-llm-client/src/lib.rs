@@ -199,7 +199,9 @@ pub fn llm4svg_system_prompt() -> String {
      Keep shapes within reasonable bounds (the editor clamps unsafe values). \
      Param keys by shape: spiral{center,inner_radius,outer_radius,turns,samples_per_turn,rotation}; \
      polygon{center,radius,sides,rotation}; star{center,outer_radius,inner_radius,points,rotation}; \
-     ellipse{center,radii}; rect{corner_a,corner_b}; path{vertices,closed}."
+     ellipse{center,radii}; rect{corner_a,corner_b}; path{vertices,closed}. \
+     Respond with ONLY the JSON object — no prose, no explanation, no markdown \
+     code fences."
         .to_string()
 }
 
@@ -281,7 +283,14 @@ impl LlmTransport for AnthropicTransport {
         &self,
         system: &str,
         user: &str,
-        schema: &serde_json::Value,
+        // The JSON Schema is **not** sent as `output_config.format`: structured
+        // output with this 14-property `params` union + `additionalProperties:
+        // false` makes the constrained-decode hang for tens of seconds (probed
+        // 2026-06-06). The format is driven by the system prompt instead (the
+        // model returns clean JSON reliably), and `build_from_json`'s sanitizer
+        // validates + bounds it all the same. Kept on the trait for a future
+        // transport that can afford structured output.
+        _schema: &serde_json::Value,
     ) -> Result<String, FetchError> {
         let body = serde_json::json!({
             "model": MODEL,
@@ -289,11 +298,8 @@ impl LlmTransport for AnthropicTransport {
             "system": system,
             // No thinking: lowering one prompt to a tiny `{shape_type, params,
             // style}` object is a trivial mapping, and disabling it keeps the
-            // interactive round-trip to a few seconds (the response is
-            // schema-constrained, so there's no stray reasoning to leak).
+            // round-trip to a couple of seconds.
             "thinking": { "type": "disabled" },
-            // Structured output → the response IS the LLM4SVG JSON (no prose).
-            "output_config": { "format": { "type": "json_schema", "schema": schema } },
             "messages": [{ "role": "user", "content": user }],
         });
         let resp = self
@@ -325,8 +331,9 @@ impl LlmTransport for AnthropicTransport {
                 });
             }
         };
-        // Extract the first text content block — with output_config.format it is
-        // the validated LLM4SVG JSON.
+        // Extract the first text content block, then slice it down to the JSON
+        // object (defensive against a stray ```json fence or prose around it —
+        // the prompt forbids them, but the model isn't schema-constrained now).
         let v: serde_json::Value =
             serde_json::from_str(&text).map_err(|e| FetchError::Network(e.to_string()))?;
         v.get("content")
@@ -338,8 +345,19 @@ impl LlmTransport for AnthropicTransport {
             })
             .and_then(|b| b.get("text"))
             .and_then(|t| t.as_str())
-            .map(str::to_string)
+            .map(|t| strip_to_json(t).to_string())
             .ok_or(FetchError::NoContent)
+    }
+}
+
+/// Slice a model reply down to the JSON object: from the first `{` to the last
+/// `}`. Strips a stray ```json fence / leading prose if the model adds any
+/// (the system prompt forbids them, but we no longer constrain output). Falls
+/// back to the trimmed text when there's no brace pair.
+fn strip_to_json(text: &str) -> &str {
+    match (text.find('{'), text.rfind('}')) {
+        (Some(s), Some(e)) if e >= s => &text[s..=e],
+        _ => text.trim(),
     }
 }
 
@@ -457,5 +475,20 @@ mod tests {
             "out-of-bounds blob rejected"
         );
         assert_eq!(cache.len(), 0, "rejected blob is never cached");
+    }
+
+    #[test]
+    fn strip_to_json_slices_out_the_object() {
+        assert_eq!(
+            strip_to_json(r#"{"shape_type":"star"}"#),
+            r#"{"shape_type":"star"}"#
+        );
+        // Strips a markdown fence + prose around it.
+        assert_eq!(
+            strip_to_json("Here you go:\n```json\n{\"shape_type\":\"star\"}\n```"),
+            r#"{"shape_type":"star"}"#
+        );
+        // No braces → trimmed fallback (parse will then surface the error).
+        assert_eq!(strip_to_json("  nope  "), "nope");
     }
 }

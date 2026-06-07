@@ -314,6 +314,19 @@ impl DiffusionGrid {
         &self.paper
     }
 
+    /// Overwrite the pigment field — used to write a GPU-stepped result back into
+    /// the grid (the GPU is the accelerator; this grid stays the CPU source of
+    /// truth + the composite input). Panics on a length mismatch (caller sizes it).
+    pub fn set_pigment_from(&mut self, p: &[[f32; 3]]) {
+        self.pigment.copy_from_slice(p);
+    }
+
+    /// Overwrite the wetness field — companion to [`Self::set_pigment_from`] so the
+    /// GPU's evaporated water replaces the grid's (else a re-upload would re-wet it).
+    pub fn set_water_from(&mut self, w: &[f32]) {
+        self.water.copy_from_slice(w);
+    }
+
     /// Total pigment per channel — a conserved quantity under pure diffusion +
     /// advection (no evaporation removes pigment), the invariant the tests check.
     #[must_use]

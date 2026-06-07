@@ -92,6 +92,40 @@ fn gpu_solver_matches_cpu_reference() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn step_grid_matches_cpu_step_in_place() {
+    // The drop-in accelerator: `FluidSolver::step_grid` (upload → GPU step → write
+    // pigment + water back into the grid) must leave the grid in the same state as
+    // `step_cpu_reference`. This is what the shell calls to GPU-accelerate the
+    // tool's CPU diffusion while the grid stays the composite source of truth.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (40u32, 36u32);
+    let params = FluidParams::default();
+    let mut cpu = seeded_grid(w, h);
+    let mut gpu_grid = seeded_grid(w, h);
+    step_cpu_reference(&mut cpu, &params, 10);
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.step_grid(&gpu.device, &gpu.queue, &mut gpu_grid, &params, 10);
+    let mut worst_p = 0.0f32;
+    for (a, b) in gpu_grid.pigment().iter().zip(cpu.pigment().iter()) {
+        for k in 0..3 {
+            worst_p = worst_p.max((a[k] - b[k]).abs());
+        }
+    }
+    let worst_w = gpu_grid
+        .water()
+        .iter()
+        .zip(cpu.water().iter())
+        .fold(0.0f32, |m, (a, b)| m.max((a - b).abs()));
+    eprintln!("step_grid vs CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}");
+    assert!(worst_p < 2.0e-2, "step_grid pigment diverged from CPU: {worst_p}");
+    assert!(worst_w < 2.0e-2, "step_grid water diverged from CPU: {worst_w}");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_solver_conserves_then_dries() {
     // Without evaporation the diffuse+advect passes conserve pigment mass (the CPU
     // invariant). With evaporation the field eventually stops evolving (dries).

@@ -152,7 +152,7 @@ impl FluidSolver {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let water = buf("fluid water", f32n, wgpu::BufferUsages::empty());
+        let water = buf("fluid water", f32n, wgpu::BufferUsages::COPY_SRC);
         let paper = buf("fluid paper", f32n, wgpu::BufferUsages::empty());
         let pig_a = buf("fluid pig_a", vec4n, wgpu::BufferUsages::COPY_SRC);
         let pig_b = buf("fluid pig_b", vec4n, wgpu::BufferUsages::empty());
@@ -274,5 +274,64 @@ impl FluidSolver {
         drop(mapped);
         staging.unmap();
         out
+    }
+
+    /// Map the current wetness field back (companion to [`Self::read_pigment`] —
+    /// needed so the drying that happened on the GPU is reflected in the grid).
+    #[must_use]
+    pub fn read_water(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<f32> {
+        let n = (self.width as usize) * (self.height as usize);
+        let size = (n * 4) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fluid water readback"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("fluid water rb") });
+        enc.copy_buffer_to_buffer(&self.water, 0, &staging, 0, size);
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let out = bytemuck::cast_slice::<u8, f32>(&mapped).to_vec();
+        drop(mapped);
+        staging.unmap();
+        out
+    }
+
+    /// **Drop-in GPU accelerator for the CPU `DiffusionGrid::step` loop.** Uploads
+    /// the grid, runs `substeps` on the GPU, and writes the evolved pigment + water
+    /// back into the grid — so the grid stays the CPU source of truth (the composite
+    /// reads it, the det fallback uses it) while the heavy diffuse/advect/evaporate
+    /// run on the GPU. Equivalent to `step_cpu_reference(grid, params, substeps)`
+    /// but on the GPU (proven by the parity gate). Paper is re-uploaded each call
+    /// (static + cheap); a persistent-state fast path is a later optimization.
+    pub fn step_grid(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        grid: &mut DiffusionGrid,
+        params: &FluidParams,
+        substeps: u32,
+    ) {
+        let pig4: Vec<[f32; 4]> = grid
+            .pigment()
+            .iter()
+            .map(|p| [p[0], p[1], p[2], 0.0])
+            .collect();
+        self.set_params(queue, params);
+        self.upload(queue, grid.water(), grid.paper(), &pig4);
+        self.step(device, queue, substeps);
+        let pig = self.read_pigment(device, queue);
+        let water = self.read_water(device, queue);
+        let pig3: Vec<[f32; 3]> = pig.iter().map(|p| [p[0], p[1], p[2]]).collect();
+        grid.set_pigment_from(&pig3);
+        grid.set_water_from(&water);
     }
 }

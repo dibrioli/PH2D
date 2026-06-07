@@ -155,6 +155,11 @@ pub enum ContextMenuKind {
     /// `TextInput` (`CTX_MENU_API_KEY_INPUT`) + a Save row
     /// (`CTX_MENU_API_KEY_SAVE`); painted by its own branch, like [`Self::SceneList`].
     SettingsApiKeySubmenu,
+    /// LLM vector authoring (P4, ADR-0061): a centered prompt dialog with a
+    /// `TextInput` (`CTX_MENU_VECTOR_PROMPT_INPUT`) + a Generate button
+    /// (`CTX_MENU_VECTOR_PROMPT_GENERATE`). Opened by the shell (Cmd/Ctrl+Shift+G);
+    /// Generate raises `EditorAction::GenerateVectorFromPrompt`.
+    VectorPromptDialog,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

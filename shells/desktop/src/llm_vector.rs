@@ -216,21 +216,18 @@ pub(crate) fn inject_generated_vector(
 }
 
 impl App {
-    /// Smoke trigger (Cmd/Ctrl+Shift+G): fire a background LLM generation of a
-    /// demo shape into the live document, so the whole pipeline — fetch →
-    /// sanitize → inject → render → undo — is verifiable end-to-end now. The
-    /// user-facing prompt modal that replaces this fixed prompt is the next
-    /// increment. Needs `ANTHROPIC_API_KEY` in the environment.
-    pub(crate) fn submit_llm_vector_smoke(&mut self) {
-        const DEMO_PROMPT: &str = "a crisp six-pointed star centred at the origin";
-        let started = self.llm_vector.submit(DEMO_PROMPT.to_string());
-        if let Some(gfx) = self.gfx.as_mut() {
-            let msg = if started {
-                "Generating a vector shape from a prompt…"
-            } else {
-                "A vector generation is already in progress."
-            };
-            gfx.toasts.push(Toast::info(msg.to_string()));
+    /// Open the centered LLM prompt dialog (Cmd/Ctrl+Shift+G). The user types a
+    /// shape description and clicks Generate, which raises
+    /// `EditorAction::GenerateVectorFromPrompt` — drained into
+    /// [`submit_vector_prompt`](Self::submit_vector_prompt).
+    pub(crate) fn open_vector_prompt_dialog(&mut self) {
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.store
+                .open_context_menu(ph2d_editor::ContextMenuRequest {
+                    x: 0.0,
+                    y: 0.0,
+                    kind: ph2d_editor::ContextMenuKind::VectorPromptDialog,
+                });
         }
     }
 

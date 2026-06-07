@@ -71,6 +71,7 @@ mod theme;
 mod vector_direct_toggle;
 mod vector_pen_toggle;
 mod vector_pencil_toggle;
+mod vector_prompt;
 mod vector_select_toggle;
 mod vector_shape_toggle;
 mod view_toggles;
@@ -92,6 +93,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_present::apply(hero, event)
         || settings_text::apply(hero, event)
         || settings_api_key::apply(hero, event)
+        || vector_prompt::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

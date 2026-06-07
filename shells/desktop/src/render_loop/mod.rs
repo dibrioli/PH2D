@@ -777,6 +777,20 @@ impl crate::App {
                             }
                         }
                     }
+                    EditorAction::GenerateVectorFromPrompt(prompt) => {
+                        // P4 (ADR-0061): run the LLM generation off-thread; the
+                        // per-frame poll_llm_vector commits the result. `llm_vector`
+                        // is a disjoint App field (not gfx) so it's reachable here.
+                        let started = self.llm_vector.submit(prompt);
+                        toasts.push(Toast::info(
+                            if started {
+                                "Generating a vector shape…"
+                            } else {
+                                "A vector generation is already in progress."
+                            }
+                            .to_string(),
+                        ));
+                    }
                     // (Bgremoval bake leftover handled inside the
                     // `OneShotImageOp` arm above — defers to the
                     // image_edit drain site so `bgremoval_active` is

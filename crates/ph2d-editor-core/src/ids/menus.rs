@@ -103,6 +103,11 @@ pub const CTX_MENU_API_KEY_INPUT: NodeId = hash_node_id("ctx_menu_api_key_input"
 /// The "Save" row inside the submenu — commits the field's buffer.
 pub const CTX_MENU_API_KEY_SAVE: NodeId = hash_node_id("ctx_menu_api_key_save");
 
+/// LLM vector authoring (P4, ADR-0061): the prompt-dialog `TextInput` (the
+/// natural-language shape description) + its Generate button.
+pub const CTX_MENU_VECTOR_PROMPT_INPUT: NodeId = hash_node_id("ctx_menu_vector_prompt_input");
+pub const CTX_MENU_VECTOR_PROMPT_GENERATE: NodeId = hash_node_id("ctx_menu_vector_prompt_generate");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

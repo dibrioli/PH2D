@@ -106,8 +106,8 @@ pub use gizmo::{
 pub use grid::{GridConfig, GridLineCounts, GridView, count_visible_lines, paint_grid};
 pub use icons::{IconCmd, IconId, cmd_to_path};
 pub use interaction::{
-    HitIndex, InteractiveState, WidgetEvent, WidgetStore, dispatch_key, dispatch_pointer,
-    dispatch_text_input, dispatch_tick,
+    ContextMenuKind, ContextMenuRequest, HitIndex, InteractiveState, WidgetEvent, WidgetStore,
+    dispatch_key, dispatch_pointer, dispatch_text_input, dispatch_tick,
 };
 pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,

@@ -15,7 +15,7 @@ use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{ContextMenuKind, HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect};
-use crate::widget::{TextInput, paint_text_input_with_buffer};
+use crate::widget::{Button, ButtonState, TextInput, paint_button, paint_text_input_with_buffer};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -314,9 +314,10 @@ pub fn paint_context_menu_overlay(
         // below — `items` stays empty so the simple-row loop is
         // skipped.
         ContextMenuKind::SceneList => &[],
-        // Likewise the API-key submenu paints a TextInput + Save row in its own
-        // branch (P4, ADR-0061); the simple-row loop is skipped.
+        // Likewise the API-key submenu + the vector-prompt dialog paint a
+        // TextInput + button in their own branches (P4, ADR-0061).
         ContextMenuKind::SettingsApiKeySubmenu => &[],
+        ContextMenuKind::VectorPromptDialog => &[],
         // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
         // the Unity / Godot / Blender convention: Rename first (the
         // most common edit), then additive ops (Duplicate, Add
@@ -348,6 +349,10 @@ pub fn paint_context_menu_overlay(
     }
     if matches!(req.kind, ContextMenuKind::SettingsApiKeySubmenu) {
         paint_api_key_submenu(scene, text_system, theme, hit_index, store, viewport);
+        return;
+    }
+    if matches!(req.kind, ContextMenuKind::VectorPromptDialog) {
+        paint_vector_prompt_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
@@ -590,11 +595,7 @@ fn paint_scene_list(
     }
 }
 
-/// Paint the Settings → Anthropic API-key submenu (P4, ADR-0061): a `TextInput`
-/// for the key plus a Save row. Mirrors [`paint_scene_list`]'s in-menu
-/// `TextInput`; focus + keyboard + paste use the standard widget dispatch, and
-/// the menu-close guard in `dispatch::pointer` keeps the popover open while the
-/// user types into the field.
+/// Paint the Settings → Anthropic API-key popover (P4, ADR-0061).
 fn paint_api_key_submenu(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -603,15 +604,85 @@ fn paint_api_key_submenu(
     store: &WidgetStore,
     viewport: Rect,
 ) {
-    let menu_w = 320.0_f32; // LITERAL-PX-OK: API-key popover width (long key string)
-    let field_h = 30.0_f32; // LITERAL-PX-OK: API-key field height (matches scene-list search)
+    paint_centered_input_dialog(
+        CenteredInputDialog {
+            title: "Anthropic API Key",
+            hint: "Paste your key (sk-ant-\u{2026}), then Save.",
+            input_id: ids::CTX_MENU_API_KEY_INPUT,
+            placeholder: "sk-ant-\u{2026}",
+            button_id: ids::CTX_MENU_API_KEY_SAVE,
+            button_label: "Save",
+        },
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        viewport,
+    );
+}
+
+/// Paint the LLM vector prompt dialog (P4, ADR-0061).
+fn paint_vector_prompt_dialog(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    paint_centered_input_dialog(
+        CenteredInputDialog {
+            title: "Generate Vector Shape",
+            hint: "Describe a shape, then Generate (e.g. a six-pointed star).",
+            input_id: ids::CTX_MENU_VECTOR_PROMPT_INPUT,
+            placeholder: "a six-pointed star\u{2026}",
+            button_id: ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
+            button_label: "Generate",
+        },
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        viewport,
+    );
+}
+
+/// The text/ids that distinguish one centered input dialog from another.
+struct CenteredInputDialog {
+    title: &'static str,
+    hint: &'static str,
+    input_id: NodeId,
+    placeholder: &'static str,
+    button_id: NodeId,
+    button_label: &'static str,
+}
+
+/// Paint a centered, dialog-style popover: a title + a hint + a single
+/// `TextInput` + one accent CTA button. Shared by the API-key and the
+/// vector-prompt popovers. Centered (not anchored) because the openers sit at
+/// the far-right edge; focus + keyboard + paste use the standard widget
+/// dispatch, and `dispatch::pointer`'s menu-close guard keeps it open while the
+/// user types into the field.
+fn paint_centered_input_dialog(
+    d: CenteredInputDialog,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    let menu_w = 320.0_f32; // LITERAL-PX-OK: dialog width (long key / prompt string)
+    let field_h = 30.0_f32; // LITERAL-PX-OK: input height (matches scene-list search)
     let title_h = ROW_H;
     let hint_h = ROW_H;
-    let save_h = ROW_H;
+    let button_h = ROW_H;
     let gap = Spacing::Xs.px();
 
     // Current field buffer + caret/selection from the TextInput state.
-    let (key, caret, anchor, ti_state) = match store.get(ids::CTX_MENU_API_KEY_INPUT) {
+    let (buffer, caret, anchor, ti_state) = match store.get(d.input_id) {
         Some(InteractiveState::TextInput {
             text,
             caret,
@@ -621,9 +692,7 @@ fn paint_api_key_submenu(
         _ => ("", 0, None, crate::widget::TextInputState::Normal),
     };
 
-    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + save_h + gap * 3.0;
-    // Dialog-style: center in the viewport. Settings sits at the far-right edge,
-    // so a cascade-right anchor would land off-screen — center it instead.
+    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + button_h + gap * 3.0;
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
@@ -643,7 +712,7 @@ fn paint_api_key_submenu(
     paint_text(
         text_system,
         scene,
-        "Anthropic API Key",
+        d.title,
         inner_x + pad_x,
         y + (title_h - font) * 0.5,
         font,
@@ -656,7 +725,7 @@ fn paint_api_key_submenu(
     paint_text(
         text_system,
         scene,
-        "Paste your key (sk-ant-\u{2026}), then Save.",
+        d.hint,
         inner_x + pad_x,
         y + (hint_h - font) * 0.5,
         font,
@@ -665,15 +734,15 @@ fn paint_api_key_submenu(
     );
     y += hint_h + gap;
 
-    // The key field.
+    // The input field.
     let field_rect = Rect::new(inner_x, y, inner_w, field_h);
-    hit_index.register(ids::CTX_MENU_API_KEY_INPUT, field_rect);
-    let ti = TextInput::new(ids::CTX_MENU_API_KEY_INPUT, "")
-        .placeholder("sk-ant-\u{2026}")
+    hit_index.register(d.input_id, field_rect);
+    let ti = TextInput::new(d.input_id, "")
+        .placeholder(d.placeholder)
         .state(ti_state);
     paint_text_input_with_buffer(
         &ti,
-        Some(key),
+        Some(buffer),
         Some(caret),
         anchor,
         field_rect,
@@ -683,25 +752,23 @@ fn paint_api_key_submenu(
     );
     y += field_h + gap;
 
-    // Save row — hover highlight + hit, like a menu row.
-    let save_rect = Rect::new(inner_x, y, inner_w, save_h);
-    hit_index.register(ids::CTX_MENU_API_KEY_SAVE, save_rect);
-    if Some(ids::CTX_MENU_API_KEY_SAVE) == store.hot_id() {
-        fill_rounded_rect(
-            scene,
-            save_rect,
-            Radius::Sm.px(),
-            resolve(ColorToken::Bg2, theme),
-        );
+    // The accent CTA via the canonical `paint_button` (token-styled, matches the app).
+    let button_rect = Rect::new(inner_x, y, inner_w, button_h);
+    hit_index.register(d.button_id, button_rect);
+    let btn = Button::new(d.button_id, d.button_label)
+        .accent()
+        .state(button_state(store, d.button_id));
+    paint_button(&btn, button_rect, scene, text_system, theme);
+}
+
+/// Hover/press [`ButtonState`] for a menu-row-id painted as a [`Button`], from
+/// the store's hot/active tracking.
+fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
+    if store.active_id() == Some(id) {
+        ButtonState::Pressed
+    } else if store.hot_id() == Some(id) {
+        ButtonState::Hovered
+    } else {
+        ButtonState::Normal
     }
-    paint_text(
-        text_system,
-        scene,
-        "Save",
-        save_rect.x + pad_x,
-        save_rect.y + (save_h - font) * 0.5,
-        font,
-        save_rect.w - pad_x * 2.0,
-        resolve(ColorToken::Accent, theme),
-    );
 }

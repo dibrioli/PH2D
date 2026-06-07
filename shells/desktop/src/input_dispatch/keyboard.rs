@@ -85,19 +85,16 @@ impl App {
             return;
         }
 
-        // LLM vector authoring (P4, ADR-0061) — smoke trigger. Cmd/Ctrl+Shift+G
-        // fires a background LLM generation of a demo shape into the live vector
-        // document, so the end-to-end pipeline (fetch → sanitize → inject →
-        // render → undo) is verifiable now. The user-facing prompt modal that
-        // replaces this fixed prompt is the next increment. Needs
-        // ANTHROPIC_API_KEY in the environment.
+        // LLM vector authoring (P4, ADR-0061): Cmd/Ctrl+Shift+G opens the prompt
+        // dialog — the user types a shape description and clicks Generate. Needs
+        // an Anthropic API key (Settings → Anthropic API Key…, or ANTHROPIC_API_KEY).
         if state == ElementState::Pressed
             && !repeat
             && (self.modifiers.super_key() || self.modifiers.control_key())
             && self.modifiers.shift_key()
             && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyG))
         {
-            self.submit_llm_vector_smoke();
+            self.open_vector_prompt_dialog();
             return;
         }
 

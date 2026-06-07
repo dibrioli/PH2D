@@ -523,6 +523,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         // a Click — the chrome handler would never fire (the populate gotcha).
         ids::CTX_MENU_SETTINGS_API_KEY,
         ids::CTX_MENU_API_KEY_SAVE,
+        // P4 (ADR-0061): the LLM prompt-dialog Generate button.
+        ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
         ids::CTX_MENU_HIER_RENAME,
         ids::CTX_MENU_HIER_DUPLICATE,
         ids::CTX_MENU_HIER_ADD_CHILD,
@@ -549,6 +551,16 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     // CTX_SCENE_SEARCH (registered in topbar::populate).
     store.register(
         ids::CTX_MENU_API_KEY_INPUT,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    // The LLM prompt-dialog input (P4, ADR-0061) — same persistent TextInput.
+    store.register(
+        ids::CTX_MENU_VECTOR_PROMPT_INPUT,
         InteractiveState::TextInput {
             state: TextInputState::Normal,
             text: String::new(),

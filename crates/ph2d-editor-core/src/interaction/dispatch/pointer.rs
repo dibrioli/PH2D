@@ -573,7 +573,16 @@ pub fn dispatch_pointer_with_text<'frame>(
                     Some(id) if id == crate::ids::CTX_MENU_API_KEY_INPUT
                         || id == crate::ids::CTX_MENU_API_KEY_SAVE
                 );
-                if !inside_scene_list && !inside_api_key {
+                // And the LLM vector-prompt dialog (P4): its input + Generate button.
+                let inside_prompt = matches!(
+                    store.context_menu().map(|r| r.kind),
+                    Some(ContextMenuKind::VectorPromptDialog)
+                ) && matches!(
+                    hit_id,
+                    Some(id) if id == crate::ids::CTX_MENU_VECTOR_PROMPT_INPUT
+                        || id == crate::ids::CTX_MENU_VECTOR_PROMPT_GENERATE
+                );
+                if !inside_scene_list && !inside_api_key && !inside_prompt {
                     store.close_context_menu();
                 }
             }

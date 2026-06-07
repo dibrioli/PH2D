@@ -77,13 +77,22 @@ Verde: `ph2d-tool-painter` **210** · `ph2d-panel-brush-studio` 7 · gates `arch
   o `diffusion.rs` exatamente → CPU é fallback real + o scatter→gather do advect está correto. Testes
   `gpu_solver_matches_cpu_reference` + `gpu_solver_conserves_then_dries` (`#[ignore]`, rodar com `--ignored`).
 
-**Phase 2 — RESTANTE (integração):**
-1. `fluid_capable()`/`MemoryTier` no `ph2d-host` (§2.9) + `fluid_headroom_ms` (§2.10); compor com `fluid_pass_eligible`.
-2. Composite GPU + **upload por bbox** (reusa `wet_pigment_bbox` do tool). `Stamp.wet_amount` (dormente) +
-   `FLAG_FLUID_SAMPLE` (bit 7) = hooks per-stamp.
-3. Wiring feature-gated em `ph2d-tool-painter` (`fluid = ["ph2d-painter-fluid/fluid"]`): elegível → solver no GPU
-   substitui o `wet_field` CPU; senão cai no caminho CPU de hoje (já é referência+fallback).
-4. **Det-fallback** 256² pro replay HR-5 (§2.11) + arch-gate `architecture_painter_contract_surface::fluid` (§2.14).
+**Phase 2 — integração LANDED ✅ (2026-06-07):**
+- **Host tiering** (`ph2d-host/budget.rs`): `MemoryTier`/`MemoryBudget::fluid_capable()` + `PerfBudget::fluid_headroom_ms()` (2 testes).
+- **GPU step drive** (`FluidSolver::step_grid`): upload grid → GPU step → escreve pigment+water de volta; **paridade bit-idêntica** ao CPU (`step_grid_matches_cpu_step_in_place`). `DiffusionGrid` ganhou `set_pigment_from`/`set_water_from`.
+- **Tool hooks** (`PainterTool`): `set_gpu_fluid_driven`/`fluid_grid_mut`/`has_wet_field`/`composite_and_settle_fluid`;
+  `on_tick`+`queue_pointer` pulam o CPU step quando GPU-driven. Default false ⇒ caminho CPU intacto (211 testes).
+- **Shell wiring**: feature `fluid` no `ph2d-host-desktop` + `render_loop/painter_fluid_bridge.rs` (downcast allowlisted)
+  chama `drive_fluid_gpu(tools, surface.gpu())` por frame após `on_tick`. **Default build inalterado**; `--features fluid`
+  compila; gates downcast + LOC verdes.
+
+**Phase 2 — RESTANTE:**
+1. **TESTE LIVE NO APP** (`cargo run --features fluid`, só o Enio — não dá pra verificar headless o app windowed Metal):
+   pintar com Fluid ligado e confirmar que o GPU desenha igual ao CPU.
+2. **Composite GPU** (hoje o STEP é GPU, mas o composite ainda é CPU via readback/frame). Próxima otimização de perf:
+   composite GPU + estado persistente no GPU (sem upload/readback por frame) + bbox upload.
+3. Det-fallback res 256² (§2.11 — `step_cpu_reference` já é o fallback de paridade) + arch-gate homestead (§2.14;
+   caps já enforced no crate fluid).
 
 ### B. Refinamentos da v2 live (CPU, baratos, alto valor visual)
 - **Toggle "Fluid" no Brush Studio** (clone do toggle Pigment/Accumulate → `brush.rendering.fluid_enabled`).

@@ -32,6 +32,9 @@ pub(crate) mod painter_bridge;
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
 pub(crate) mod painter_bridge_queries;
+// W15.3 GPU fluid drive (ADR-0049). Feature-gated — default build excludes it.
+#[cfg(feature = "fluid")]
+pub(crate) mod painter_fluid_bridge;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 mod present;
@@ -232,6 +235,11 @@ impl crate::App {
         if let Some(t) = tools.active_mut() {
             t.on_tick(frame_ms_now);
         }
+        // **W15.3 (ADR-0049, feature `fluid`):** drive the painter's live wet field
+        // on the GPU (else the CPU `on_tick` above already stepped it). No-op
+        // without an active fluid stroke; absent in the default build.
+        #[cfg(feature = "fluid")]
+        painter_fluid_bridge::drive_fluid_gpu(tools, surface.gpu());
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(

@@ -67,6 +67,10 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // reparent` split out of painter_bridge.rs (HR-18 LOC cap); same downcast
     // exception class as painter_bridge.rs.
     "src/render_loop/painter_bridge_queries.rs",
+    // Painter fluid bridge: W15.3 GPU wet-field drive (feature `fluid`). Downcasts
+    // to PainterTool for the concrete wet-field hooks (step on GPU + composite);
+    // same exception class as painter_bridge.rs. (Coord decision, 2026-06-07.)
+    "src/render_loop/painter_fluid_bridge.rs",
     // image_edit drain: per-tool bake dispatch. Some downcasts retire
     // in later Etapas as OneShotImageOp routes via Registry kind.
     "src/render_loop/image_edit.rs",

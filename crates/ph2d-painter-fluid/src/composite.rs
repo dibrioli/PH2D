@@ -236,11 +236,13 @@ impl FluidCompositor {
     }
 
     /// Like [`Self::composite_buffer`] but reads back ONLY the contiguous wet
-    /// **row band** `[py_lo, py_hi)` (full width) — the per-frame shell path. Returns
-    /// `(rows, py_lo, py_hi)` where `rows` is `(py_hi-py_lo)*cw*4` RGBA8 bytes (the
-    /// caller blits them over `canvas_rgba` rows `py_lo..py_hi`). A single
-    /// `copy_buffer_to_buffer` of the contiguous band — far less than the full canvas
-    /// for a typical stroke. Returns `(vec![], 0, 0)` when the region is empty.
+    /// **row band** `[py_lo, py_hi)` (full width, a single contiguous copy) — the
+    /// per-frame shell path. Returns `(band, (px_lo, py_lo, px_hi, py_hi))`: the
+    /// full-width band bytes `(py_hi-py_lo)*cw*4` plus the composited canvas **rect**.
+    /// The caller blits ONLY the rect's columns `[px_lo, px_hi)` of each band row
+    /// over `canvas_rgba` — outside the rect the pigment is frozen and MUST be left
+    /// untouched (a full-width blit would erase parts of the stroke that share rows
+    /// with the active wet front). Returns `(vec![], (0,0,0,0))` when empty.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn composite_buffer_rows(
@@ -257,10 +259,10 @@ impl FluidCompositor {
         backdrop_rgba: &[u8],
         brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
-    ) -> (Vec<u8>, u32, u32) {
-        let (_, py_lo, _, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
-        if py_hi <= py_lo || cw == 0 {
-            return (Vec::new(), 0, 0);
+    ) -> (Vec<u8>, (u32, u32, u32, u32)) {
+        let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
+        if py_hi <= py_lo || px_hi <= px_lo || cw == 0 {
+            return (Vec::new(), (0, 0, 0, 0));
         }
         let row_bytes = (cw * 4) as u64;
         let band_off = u64::from(py_lo) * row_bytes;
@@ -268,7 +270,6 @@ impl FluidCompositor {
 
         let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) =
             self.build_buffers(device, queue, gw, gh, cw, ch, scale, coverage_k, pigment_buf, backdrop_rgba, brush, grid_region);
-        let (px_lo, _, px_hi, _) = composite_canvas_region(grid_region, scale, cw, ch);
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
 
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -305,7 +306,7 @@ impl FluidCompositor {
         let rows = mapped.to_vec();
         drop(mapped);
         staging.unmap();
-        (rows, py_lo, py_hi)
+        (rows, (px_lo, py_lo, px_hi, py_hi))
     }
 
     /// Build the per-composite buffers + bind group (shared by the readback paths).

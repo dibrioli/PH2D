@@ -152,14 +152,17 @@ fn composite_rows_matches_full_band() {
     let full = compositor.composite_to_rgba(
         &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, &pig4, &backdrop, &brush, region,
     );
-    let (rows, py_lo, py_hi) = compositor.composite_buffer_rows(
+    let (band, (px_lo, py_lo, px_hi, py_hi)) = compositor.composite_buffer_rows(
         &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, solver.pigment_buffer(),
         &backdrop, &brush, region,
     );
+    // The band is full-width, so it equals the full composite's row band; the rect's
+    // columns are what the shell actually blits (the sub-rect that avoids erasure).
     let lo = (py_lo * cw * 4) as usize;
     let hi = (py_hi * cw * 4) as usize;
-    assert_eq!(rows.len(), hi - lo, "row band length");
-    assert_eq!(rows, full[lo..hi], "row band must equal the full composite's band");
+    assert_eq!(band.len(), hi - lo, "row band length");
+    assert_eq!(band, full[lo..hi], "row band must equal the full composite's band");
+    assert!(px_hi > px_lo && px_hi <= cw, "rect cols in range: {px_lo}..{px_hi}");
 }
 
 #[test]

@@ -430,21 +430,38 @@ impl PainterTool {
         })
     }
 
-    /// Blit a GPU-composited canvas-width **row band** (`rows` = `(py_hi-py_lo)*cw*4`
-    /// RGBA8) over `canvas_rgba` rows `[py_lo, py_hi)` — the resident path's apply
-    /// (the GPU composited; the shell read back only this band). Marks the preview
-    /// dirty + bumps the active layer so the existing preview upload re-blits it.
-    pub fn fluid_apply_gpu_composite_rows(&mut self, rows: &[u8], py_lo: u32, py_hi: u32) {
+    /// Blit a GPU-composited **row band** over `canvas_rgba`, but ONLY the bbox
+    /// columns `[px_lo, px_hi)` of `rect = (px_lo, py_lo, px_hi, py_hi)`. `band` is the
+    /// full-width readback `(py_hi-py_lo)*cw*4` RGBA8; we copy just the rect's columns
+    /// per row — pigment OUTSIDE the active bbox is frozen and must be left untouched
+    /// (a full-width blit would erase parts of the stroke that share rows with the
+    /// current wet front — the rectangular-cut bug). Marks the preview dirty + bumps
+    /// the active layer so the existing preview upload re-blits it.
+    pub fn fluid_apply_gpu_composite_rows(&mut self, band: &[u8], rect: (u32, u32, u32, u32)) {
+        let (px_lo, py_lo, px_hi, py_hi) = rect;
         let (cw, _ch) = self.source_size;
         let row_bytes = (cw * 4) as usize;
-        let start = py_lo as usize * row_bytes;
-        let end = py_hi as usize * row_bytes;
         let n4 = self.canvas_rgba.len();
-        if cw == 0 || end <= start || end > n4 || rows.len() < end - start {
+        let col_lo = px_lo as usize * 4;
+        let col_hi = px_hi as usize * 4;
+        let band_rows = (py_hi.saturating_sub(py_lo)) as usize;
+        if cw == 0
+            || px_hi <= px_lo
+            || py_hi <= py_lo
+            || col_hi > row_bytes
+            || py_hi as usize * row_bytes > n4
+            || band.len() < band_rows * row_bytes
+        {
             return;
         }
+        let copy_len = col_hi - col_lo;
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
-        canvas[start..end].copy_from_slice(&rows[..end - start]);
+        for ry in 0..band_rows {
+            let band_off = ry * row_bytes + col_lo;
+            let canvas_off = (py_lo as usize + ry) * row_bytes + col_lo;
+            canvas[canvas_off..canvas_off + copy_len]
+                .copy_from_slice(&band[band_off..band_off + copy_len]);
+        }
         self.preview_dirty = true;
         self.dirty_rect = None;
         let active = self.layers.active();

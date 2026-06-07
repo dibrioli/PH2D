@@ -135,10 +135,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 inp.region,
             )
         });
-        if let Some((rows, py_lo, py_hi)) = composited
-            && !rows.is_empty()
+        if let Some((band, rect)) = composited
+            && !band.is_empty()
         {
-            painter.fluid_apply_gpu_composite_rows(&rows, py_lo, py_hi);
+            painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
 
         // Dry-check on the CPU water mirror; drop the field when it dries (its final

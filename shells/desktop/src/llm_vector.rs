@@ -39,9 +39,11 @@ const CACHE_CAP: usize = 32;
 
 /// What a finished background generation reports back to the UI thread.
 pub(crate) enum LlmJobOutcome {
-    /// A validated, editable network ready to commit. Boxed because a
-    /// `VectorNetwork` (inline SmallVec budgets) dwarfs the other two variants.
-    Ready(Box<VectorNetwork>),
+    /// A validated, editable network ready to commit, plus the **raw LLM4SVG
+    /// blob the model returned** (so the UI can show what the model decided);
+    /// the blob is `None` on a cache-fallback (no live response). Boxed because a
+    /// `VectorNetwork` (inline SmallVec budgets) dwarfs the other variants.
+    Ready(Box<VectorNetwork>, Option<String>),
     /// The fetch failed with no cached fallback, or the blob was rejected by the
     /// sanitizer. Carries a human-readable reason for the toast.
     Failed(String),
@@ -97,10 +99,12 @@ impl LlmVectorEngine {
                     // call is contention-free, and `generate_shape` needs
                     // `&mut cache` for both the fallback read and success write.
                     let outcome = match cache.lock() {
-                        Ok(mut guard) => match client.generate_shape(&prompt, seed, &mut guard) {
-                            Ok(net) => LlmJobOutcome::Ready(Box::new(net)),
-                            Err(e) => LlmJobOutcome::Failed(e.to_string()),
-                        },
+                        Ok(mut guard) => {
+                            match client.generate_shape_with_blob(&prompt, seed, &mut guard) {
+                                Ok((net, blob)) => LlmJobOutcome::Ready(Box::new(net), blob),
+                                Err(e) => LlmJobOutcome::Failed(e.to_string()),
+                            }
+                        }
                         Err(_) => LlmJobOutcome::Failed("cache lock poisoned".to_string()),
                     };
                     let _ = tx.send(outcome);
@@ -214,6 +218,20 @@ fn extract_api_key(raw: &str) -> String {
     raw.trim().to_string()
 }
 
+/// Collapse the raw LLM4SVG blob to one capped line for a toast — whitespace
+/// flattened, capped so a long spec doesn't sprawl. The full blob still goes to
+/// the terminal log.
+fn summarize_blob(blob: &str) -> String {
+    let oneline = blob.split_whitespace().collect::<Vec<_>>().join(" ");
+    let max = 200;
+    if oneline.chars().count() > max {
+        let head: String = oneline.chars().take(max - 1).collect();
+        format!("{head}\u{2026}")
+    } else {
+        oneline
+    }
+}
+
 /// Clamp an error string to one short line for a toast — drops multi-line detail
 /// (e.g. a transport error that echoes the whole request) so it neither sprawls
 /// across the canvas nor leaks a pasted secret.
@@ -267,7 +285,7 @@ impl App {
             return;
         };
         let msg = match outcome {
-            LlmJobOutcome::Ready(net) => {
+            LlmJobOutcome::Ready(net, blob) => {
                 let n = net.vertices.len();
                 inject_generated_vector(
                     &mut self.vector_undo_stack,
@@ -275,7 +293,15 @@ impl App {
                     &mut self.committed_vector_pen_paths,
                     *net,
                 );
-                format!("Vector shape added ({n} vertices) — editable + undoable.")
+                match blob {
+                    Some(b) => {
+                        // The model's response — full to the terminal (a persistent
+                        // log), summarized in the toast.
+                        println!("[ph2d] LLM4SVG response ({n} vertices): {b}");
+                        format!("Added {n} vertices — model: {}", summarize_blob(&b))
+                    }
+                    None => format!("Added {n} vertices (from cache) — editable + undoable."),
+                }
             }
             LlmJobOutcome::Failed(reason) => {
                 format!("Vector generation failed: {}", truncate_for_toast(&reason))

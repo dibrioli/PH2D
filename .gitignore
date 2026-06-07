@@ -1,6 +1,10 @@
 # Rust
 target/
 
+# Secrets — the dev/test Anthropic API key (P4, ADR-0061). Read in debug builds
+# by ph2d-host-desktop; MUST NEVER be committed.
+docs/_api-claude.md
+
 # macOS
 .DS_Store
 

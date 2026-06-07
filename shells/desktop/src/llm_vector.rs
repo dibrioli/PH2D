@@ -139,12 +139,25 @@ impl LlmVectorEngine {
 ///    shell env. Its path is [`api_key_file_path`]; the file holds just the key
 ///    (surrounding whitespace trimmed).
 ///
-/// Never hardcoded, never logged. `None` if neither yields a non-empty key.
+/// Never hardcoded, never logged. `None` if nothing yields a non-empty key.
 fn resolve_api_key() -> Option<String> {
     if let Ok(k) = std::env::var("ANTHROPIC_API_KEY") {
         let k = k.trim().to_string();
         if !k.is_empty() {
             return Some(k);
+        }
+    }
+    // Dev/test default (DEBUG BUILDS ONLY — never compiled into a release
+    // binary): a key file at the repo root so the feature works without per-run
+    // setup. `docs/_api-claude.md` is gitignored so the secret never enters the
+    // repo; whatever is in it (key / pasted curl) is reduced to the sk-ant token.
+    #[cfg(debug_assertions)]
+    {
+        if let Ok(raw) = std::fs::read_to_string("docs/_api-claude.md") {
+            let k = extract_api_key(&raw);
+            if !k.is_empty() {
+                return Some(k);
+            }
         }
     }
     let path = api_key_file_path()?;

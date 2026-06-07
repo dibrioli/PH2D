@@ -27,6 +27,8 @@
 #[cfg(feature = "fluid")]
 mod budget;
 #[cfg(feature = "fluid")]
+mod composite;
+#[cfg(feature = "fluid")]
 mod params;
 #[cfg(feature = "fluid")]
 mod sim;
@@ -35,6 +37,8 @@ mod solver;
 
 #[cfg(feature = "fluid")]
 pub use budget::fluid_pass_eligible;
+#[cfg(feature = "fluid")]
+pub use composite::{COMPOSITE_WGSL, FluidCompositor};
 #[cfg(feature = "fluid")]
 pub use params::FluidParams;
 #[cfg(feature = "fluid")]

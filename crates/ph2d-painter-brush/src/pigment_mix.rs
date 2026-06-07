@@ -48,6 +48,10 @@ use std::sync::LazyLock;
 /// secondaries; small enough that the per-pixel cost stays modest.
 const NB: usize = 24;
 
+/// `NB` exposed for GPU mirrors of the spectral mix (the WGSL composite port
+/// loops over this many bands). Pinned equal to `NB` so the two never drift.
+pub const SPECTRAL_BANDS: usize = NB;
+
 /// Integration-response centres (band index) + widths — the matrix `m` that maps a
 /// reflectance spectrum → linear sRGB. R/G/B peak at long/mid/short wavelengths;
 /// sharp + decoupled so output channels stay clean (no cross-band bleed).
@@ -120,6 +124,18 @@ static BASIS: LazyLock<SpectralBasis> = LazyLock::new(|| {
     }
     SpectralBasis { base, m }
 });
+
+/// The constant spectral basis — reconstruction `base[7][NB]` (White + 6 colored
+/// curves) + integration `m[3][NB]` (reflectance → linear sRGB). Exposed so a GPU
+/// port uploads it ONCE and runs [`to_reflectance`]/[`reflectance_to_rgb`] inline
+/// (the per-pixel LUT is a CPU-only perf cache — the GPU's parallel ALUs don't
+/// need it). Reads the same `LazyLock` the CPU mix uses, so the numbers are
+/// bit-identical to the shipped path.
+#[must_use]
+pub fn spectral_basis() -> ([[f32; NB]; 7], [[f32; NB]; 3]) {
+    let b = &*BASIS;
+    (b.base, b.m)
+}
 
 /// Kubelka–Munk forward map: reflectance → absorption/scattering ratio `K/S`.
 #[inline]
@@ -292,6 +308,24 @@ pub struct PreparedPigment {
     err: [f32; 3],
 }
 
+impl PreparedPigment {
+    /// Brush colour (linear sRGB) — the mix endpoint at `t=1` (`mix_prepared`'s `b`).
+    #[must_use]
+    pub fn color(&self) -> [f32; 3] {
+        self.color
+    }
+    /// Per-band Kubelka–Munk `K/S` of the brush reflectance (the amortised brush side).
+    #[must_use]
+    pub fn ks(&self) -> [f32; NB] {
+        self.ks
+    }
+    /// Round-trip re-anchor `color − integrate(reflectance)` (keeps endpoints exact).
+    #[must_use]
+    pub fn err(&self) -> [f32; 3] {
+        self.err
+    }
+}
+
 /// Precompute a brush colour for repeated [`mix_prepared`] calls over a stamp.
 #[must_use]
 pub fn prepare_pigment(color: [f32; 3]) -> PreparedPigment {
@@ -329,6 +363,47 @@ pub fn mix_prepared(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
         return lin;
     }
     let (refl_a, rt_a) = lut_sample(a);
+    let mut rm = [0.0f32; NB];
+    for (i, r) in rm.iter_mut().enumerate() {
+        let ks_mix = (1.0 - t) * refl_to_ks(refl_a[i]) + t * brush.ks[i];
+        *r = ks_to_refl(ks_mix);
+    }
+    let mixed = reflectance_to_rgb(&rm);
+    let ea = sub3(a, rt_a);
+    let spec = [
+        (mixed[0] + ea[0] * (1.0 - t) + brush.err[0] * t).max(0.0),
+        (mixed[1] + ea[1] * (1.0 - t) + brush.err[1] * t).max(0.0),
+        (mixed[2] + ea[2] * (1.0 - t) + brush.err[2] * t).max(0.0),
+    ];
+    [
+        lin[0] + (spec[0] - lin[0]) * w,
+        lin[1] + (spec[1] - lin[1]) * w,
+        lin[2] + (spec[2] - lin[2]) * w,
+    ]
+}
+
+/// Exact (no-LUT) twin of [`mix_prepared`]: reconstructs the backdrop reflectance
+/// directly with [`to_reflectance`] instead of the trilinear LUT cache. Bit-for-bit
+/// the same algorithm; only the backdrop-side fast path differs. The wet-field
+/// composite ([`crate::wet_composite`]) uses THIS variant so its GPU port — which
+/// has no LUT (ADR-0049 §2; the GPU runs the spectral solve inline) — agrees with
+/// the CPU to float precision, and the CPU fallback is the true parity reference.
+/// The LUT [`mix_prepared`] stays the per-dab hot-path version.
+#[must_use]
+pub fn mix_prepared_exact(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
+    let t = t.clamp(0.0, 1.0);
+    let b = brush.color;
+    let lin = [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ];
+    let w = 4.0 * t * (1.0 - t);
+    if w < 0.02 {
+        return lin;
+    }
+    let refl_a = to_reflectance(a);
+    let rt_a = reflectance_to_rgb(&refl_a);
     let mut rm = [0.0f32; NB];
     for (i, r) in rm.iter_mut().enumerate() {
         let ks_mix = (1.0 - t) * refl_to_ks(refl_a[i]) + t * brush.ks[i];
@@ -455,6 +530,30 @@ mod tests {
                     approx(pigment_lerp_linear(c, c, t), c, 1e-2),
                     "self-mix {c:?} @ {t} drifted: {:?}",
                     pigment_lerp_linear(c, c, t)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn exact_matches_lut_within_residual_and_endpoints_are_exact() {
+        // `mix_prepared_exact` is the LUT-free twin: endpoints stay the identity and
+        // it tracks the LUT path to within the LUT's own sub-grid residual (~1%), so
+        // it is a faithful (more accurate) reference for the GPU composite port.
+        for (a, b) in [
+            ([0.1, 0.4, 0.8], [0.9, 0.2, 0.3]),
+            ([0.0, 0.0, 1.0], [1.0, 1.0, 0.0]),
+            ([0.2, 0.6, 0.1], [0.7, 0.1, 0.5]),
+        ] {
+            let prep = prepare_pigment(b);
+            assert!(approx(mix_prepared_exact(&prep, a, 0.0), a, 1e-6), "t=0 → a");
+            assert!(approx(mix_prepared_exact(&prep, a, 1.0), b, 1e-6), "t=1 → b");
+            for &t in &[0.2, 0.5, 0.8] {
+                let lut = mix_prepared(&prep, a, t);
+                let exact = mix_prepared_exact(&prep, a, t);
+                assert!(
+                    approx(lut, exact, 1.5e-2),
+                    "exact vs LUT drift {a:?}->{b:?}@{t}: {exact:?} vs {lut:?}"
                 );
             }
         }

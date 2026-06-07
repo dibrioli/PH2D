@@ -121,3 +121,18 @@ fn fluid_wgsl_parses_and_validates_via_naga() {
         .validate(&module)
         .expect("fluid.wgsl must validate via naga");
 }
+
+#[test]
+fn composite_wgsl_parses_and_validates_via_naga() {
+    // The K–M glaze composite (the project's largest shader) must pass the same
+    // frontend wgpu uses, so an invalid port fails at test time, not GPU init.
+    let module = naga::front::wgsl::parse_str(ph2d_painter_fluid::COMPOSITE_WGSL)
+        .expect("composite.wgsl must parse via naga");
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    validator
+        .validate(&module)
+        .expect("composite.wgsl must validate via naga");
+}

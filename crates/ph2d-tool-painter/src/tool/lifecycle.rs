@@ -28,73 +28,6 @@ const WET_DRY_THRESHOLD: f32 = 0.045;
 /// `Σcolour ≈ 0.53`, so `K = old 2.0 × 0.53 ≈ 1.06` keeps them unchanged.
 const WET_COVERAGE_K: f32 = 1.06;
 
-/// Catmull-Rom cubic weights for the four taps around a fractional position
-/// `t ∈ [0,1)` (taps at offsets −1, 0, +1, +2). Sum to 1; interpolating (passes
-/// through the samples at t=0/1) and C1, so upsampling a coarse field reads
-/// smooth instead of faceted.
-#[inline]
-fn catmull_rom_weights(t: f32) -> [f32; 4] {
-    let t2 = t * t;
-    let t3 = t2 * t;
-    [
-        -0.5 * t3 + t2 - 0.5 * t,
-        1.5 * t3 - 2.5 * t2 + 1.0,
-        -1.5 * t3 + 2.0 * t2 + 0.5 * t,
-        0.5 * t3 - 0.5 * t2,
-    ]
-}
-
-/// Inclusive grid-cell bbox of cells carrying compositable pigment (total mass
-/// ≥ the composite floor `1e-4`). `None` if the grid is bare. A cheap O(cells)
-/// scan that scopes the composite (16-tap bicubic + per-pixel K–M) to the wet
-/// region instead of the full canvas — the dominant cost at 4K.
-fn wet_pigment_bbox(pig: &[[f32; 3]], gw: u32, gh: u32) -> Option<(u32, u32, u32, u32)> {
-    let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-    let mut any = false;
-    for gy in 0..gh {
-        let row = (gy * gw) as usize;
-        for gx in 0..gw {
-            let p = pig[row + gx as usize];
-            if p[0] + p[1] + p[2] >= 1.0e-4 {
-                any = true;
-                x0 = x0.min(gx);
-                y0 = y0.min(gy);
-                x1 = x1.max(gx);
-                y1 = y1.max(gy);
-            }
-        }
-    }
-    any.then_some((x0, y0, x1, y1))
-}
-
-/// Bicubic (Catmull-Rom) sample of the low-res pigment field at fractional grid
-/// coords `(fx, fy)`, edges clamped. Replaces the bilinear readout so the wash
-/// edge is a smooth falloff, not 1/`WET_FIELD_SCALE`-quantised blocks. The cubic
-/// can overshoot, so pigment mass is floored at 0 (negative mass is unphysical).
-fn sample_pigment_bicubic(pig: &[[f32; 3]], gw: u32, gh: u32, fx: f32, fy: f32) -> [f32; 3] {
-    let x0 = fx.floor() as i32;
-    let y0 = fy.floor() as i32;
-    let wx = catmull_rom_weights(fx - x0 as f32);
-    let wy = catmull_rom_weights(fy - y0 as f32);
-    let cx = |x: i32| x.clamp(0, gw as i32 - 1) as u32;
-    let cy = |y: i32| y.clamp(0, gh as i32 - 1) as u32;
-    let mut out = [0.0f32; 3];
-    for (j, &wyj) in wy.iter().enumerate() {
-        let gy = cy(y0 - 1 + j as i32);
-        let mut row = [0.0f32; 3];
-        for (i, &wxi) in wx.iter().enumerate() {
-            let p = pig[(gy * gw + cx(x0 - 1 + i as i32)) as usize];
-            row[0] += p[0] * wxi;
-            row[1] += p[1] * wxi;
-            row[2] += p[2] * wxi;
-        }
-        out[0] += row[0] * wyj;
-        out[1] += row[1] * wyj;
-        out[2] += row[2] * wyj;
-    }
-    [out[0].max(0.0), out[1].max(0.0), out[2].max(0.0)]
-}
-
 impl PainterTool {
     /// Inicia um novo stroke. Caller deriva `seed` de inputs determinísticos
     /// (e.g., `pointer_down_time_ms ^ entity_bits ^ brush_hash`).
@@ -393,13 +326,17 @@ impl PainterTool {
     }
 
     /// Composite the low-res wet field over the pre-stroke backdrop into the canvas
-    /// (bilinear upsample + **Kubelka–Munk subtractive glaze**). Full-canvas in v1 —
-    /// the GPU port + bbox-scoped upload land in W15.3; bare-paper pixels short-circuit
-    /// to the backdrop (skipping both the `exp` and the per-pixel spectral solve), so
-    /// the expensive work already tracks the wet region.
+    /// (**bicubic upsample + Kubelka–Munk subtractive glaze**, scoped to the wet
+    /// bbox). The per-pixel math is the shared CPU reference
+    /// ([`ph2d_painter_brush::wet_composite::composite_wet_field_cpu`]) — ONE
+    /// definition the GPU port mirrors band-for-band (W15.3 parity gate). This is
+    /// the CPU fallback; the shell drives the GPU compositor when a real device is
+    /// available (ADR-0049). Bare-paper pixels short-circuit to the backdrop, so the
+    /// spectral solve already tracks the wet region.
     fn composite_wet_field(&mut self) {
-        use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
-        use ph2d_painter_brush::pigment_mix::{mix_prepared, prepare_pigment};
+        use ph2d_painter_brush::wet_composite::{
+            composite_wet_field_cpu, prepare_wet_composite, wet_pigment_bbox,
+        };
         let (cw, ch) = self.source_size;
         let n4 = (cw as usize) * (ch as usize) * 4;
         // The dedicated fluid backdrop — outlives the stroke, unlike
@@ -415,11 +352,9 @@ impl PainterTool {
         }
         let (gw, gh) = grid.dims();
         let pig = grid.pigment();
-        let inv = 1.0 / WET_FIELD_SCALE as f32;
         // Wet bbox (grid cells), unioned with last frame's so cells that just DRIED
         // get their canvas pixel reset to the backdrop. Scopes the whole composite to
-        // the wash neighbourhood — the 16-tap bicubic runs BEFORE the dens short-circuit,
-        // so a full-canvas loop paid it on every dry pixel (measured: the dominant cost).
+        // the wash neighbourhood.
         let cur_bbox = wet_pigment_bbox(pig, gw, gh);
         let region = match (cur_bbox, self.wet_composite_bbox) {
             (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))),
@@ -427,106 +362,35 @@ impl PainterTool {
             (None, None) => None,
         };
         self.wet_composite_bbox = cur_bbox;
-        let Some((gx0, gy0, gx1, gy1)) = region else {
+        let Some(region) = region else {
             return;
         };
-        // **Amortised K–M brush prep.** A fluid stroke is ONE colour, so the pigment
-        // chromaticity is constant across the field (the grid stores colour×amount).
-        // The per-pixel `prepare_pigment` (a spectral reflectance reconstruction) was
-        // half the composite cost — and the wash colour is exactly the kind of
-        // footprint-constant value `prepare_pigment` is built to hoist. Derive it ONCE
-        // from the total pigment mass; the per-pixel work is then just `mix_prepared`
-        // (which itself short-circuits near coverage 0/1). Multi-colour cross-stroke
-        // wet-on-wet (future) needs the K/S-grid representation anyway — revisit there.
-        let mut tot = [0.0f32; 3];
-        for c in pig {
-            tot[0] += c[0];
-            tot[1] += c[1];
-            tot[2] += c[2];
-        }
-        let tsum = (tot[0] + tot[1] + tot[2]).max(1.0e-6);
-        let pcol = [
-            (tot[0] / tsum * 3.0).min(1.0),
-            (tot[1] / tsum * 3.0).min(1.0),
-            (tot[2] / tsum * 3.0).min(1.0),
-        ];
-        let prepared = prepare_pigment(pcol);
-        // **Colour-independent coverage normaliser.** The grid pigment is
-        // colour×amount, so the channel sum is `amount · Σcolour`; dividing by the
-        // stroke colour's linear sum recovers `amount`, so a bright pigment (yellow)
-        // and a dark one (blue) of the SAME load get the SAME opacity — instead of
-        // yellow saturating opaque. Single colour per stroke ⇒ one factor for the field.
+        // Amortised K–M brush prep (a fluid stroke is one colour): chromaticity from
+        // the total pigment mass + the colour-independent coverage normaliser from
+        // the stroke colour — derived ONCE per composite.
         let scol = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
             self.stroke_color_oklab[0],
             self.stroke_color_oklab[1],
             self.stroke_color_oklab[2],
         );
-        let color_sum = (scol[0] + scol[1] + scol[2]).max(0.08);
+        let brush = prepare_wet_composite(pig, scol);
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
         if canvas.len() != n4 {
             return;
         }
-        // Grid bbox → canvas pixels, padded one cell each side for the bicubic
-        // footprint. Pixels outside this region are untouched — they already hold the
-        // backdrop (the canvas starts as the backdrop at begin_stroke, and the union
-        // above revisits any pixel ever painted), so the invariant holds inductively.
-        let scale = WET_FIELD_SCALE;
-        let px_lo = gx0.saturating_sub(1) * scale;
-        let py_lo = gy0.saturating_sub(1) * scale;
-        let px_hi = ((gx1 + 2) * scale).min(cw);
-        let py_hi = ((gy1 + 2) * scale).min(ch);
-        for cy in py_lo..py_hi {
-            let fy = ((cy as f32 + 0.5) * inv - 0.5).clamp(0.0, gh as f32 - 1.0);
-            for cx in px_lo..px_hi {
-                let i = ((cy * cw + cx) * 4) as usize;
-                let fx = ((cx as f32 + 0.5) * inv - 0.5).clamp(0.0, gw as f32 - 1.0);
-                // **Bicubic (Catmull-Rom) upsample** of the 1/`WET_FIELD_SCALE` field.
-                // Bilinear left the soft wash edge visibly faceted at grid resolution
-                // ("low resolution at the edges"): the linear ramps meet at grid-aligned
-                // creases. The C1 cubic interpolant dissolves the 4 px blocks into a
-                // continuous falloff — the sim stays low-res (it is a smooth field), only
-                // the readout is smooth. Scoped to wet pixels by the `dens` short-circuit.
-                let p = sample_pigment_bicubic(pig, gw, gh, fx, fy);
-                let dens = (p[0] + p[1] + p[2]).max(0.0);
-                if dens < 1.0e-4 {
-                    canvas[i..i + 4].copy_from_slice(&backdrop[i..i + 4]);
-                    continue;
-                }
-                // Coverage from the colour-independent pigment load (dens / Σcolour),
-                // so opacity tracks how much pigment is here, not how bright it is.
-                let amount = dens / color_sum;
-                let alpha = 1.0 - (-amount * WET_COVERAGE_K).exp();
-                let back_a = backdrop[i + 3] as f32 / 255.0;
-                let back = [
-                    srgb_to_linear_byte(backdrop[i]),
-                    srgb_to_linear_byte(backdrop[i + 1]),
-                    srgb_to_linear_byte(backdrop[i + 2]),
-                ];
-                // **Straight-alpha glaze over a possibly-transparent backdrop.** Painting
-                // on a NEW top layer means the backdrop is (0,0,0,0): blending the pigment
-                // toward that black left a dark fringe at the partial-coverage edge ring
-                // (Enio's "bordas escuras"). Kubelka–Munk subtractive mixing is physical
-                // only where the backdrop is opaque PAINT, so:
-                //   • `km`       = K-M mix over the backdrop colour (ADR-0077 D12) — the
-                //                  yellow-over-blue→green glaze, valid at full backdrop alpha;
-                //   • `straight` = porter-duff "over" of the pigment (colour `pcol`,
-                //                  coverage `alpha`) — pigment colour at the edge, NO black;
-                // and we lerp between them by the backdrop's OWN alpha. Transparent edge →
-                // pure pigment (no fringe); opaque paint → full subtractive mix.
-                let out_a = alpha + back_a * (1.0 - alpha);
-                let km = mix_prepared(&prepared, back, alpha);
-                let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
-                let mut rgb = [0.0f32; 3];
-                for k in 0..3 {
-                    let straight = (pcol[k] * alpha + back[k] * back_a * (1.0 - alpha)) * inv_a;
-                    rgb[k] = (straight + (km[k] - straight) * back_a).clamp(0.0, 1.0);
-                }
-                canvas[i] = linear_to_srgb_byte(rgb[0]);
-                canvas[i + 1] = linear_to_srgb_byte(rgb[1]);
-                canvas[i + 2] = linear_to_srgb_byte(rgb[2]);
-                canvas[i + 3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
-            }
-        }
+        composite_wet_field_cpu(
+            canvas,
+            backdrop,
+            pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            WET_FIELD_SCALE,
+            WET_COVERAGE_K,
+            &brush,
+            region,
+        );
     }
 
     pub fn queue_pointer(&mut self, sample: PointerSample) {

@@ -87,6 +87,7 @@ pub mod stamp_pipeline;
 pub mod stamp_scheduler;
 pub mod stroke_path;
 pub mod taper;
+pub mod wet_composite;
 pub mod wet_mix;
 
 pub use about::AboutParams;

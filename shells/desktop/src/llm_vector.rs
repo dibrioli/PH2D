@@ -27,7 +27,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 
 use ph2d_editor::toast::Toast;
-use ph2d_vector::{Ph2dVectorAsset, StyleTable, VectorNetwork};
+use ph2d_vector::{Ph2dVectorAsset, StrokeStyle, StyleTable, VectorNetwork};
 use ph2d_vector_llm::ResultCache;
 use ph2d_vector_llm_client::{AnthropicTransport, LlmClient};
 
@@ -268,10 +268,35 @@ pub(crate) fn inject_generated_vector(
     undo: &mut Vec<Vec<Ph2dVectorAsset>>,
     redo: &mut Vec<Vec<Ph2dVectorAsset>>,
     committed: &mut Vec<Ph2dVectorAsset>,
-    net: VectorNetwork,
+    mut net: VectorNetwork,
 ) {
     crate::input_dispatch::vector_undo::checkpoint(undo, redo, committed);
-    committed.push(Ph2dVectorAsset::from_network(net, StyleTable::default()));
+    // Recenter the shape on the origin: the model picks arbitrary "canvas pixel"
+    // coords (e.g. center [200, 200]) that can land off the camera view, and the
+    // origin is where the default camera looks. Subtract the vertex centroid.
+    if !net.vertices.is_empty() {
+        let n = net.vertices.len() as f32;
+        let cx = net.vertices.iter().map(|v| v.pos.x).sum::<f32>() / n;
+        let cy = net.vertices.iter().map(|v| v.pos.y).sum::<f32>() / n;
+        for v in &mut net.vertices {
+            v.pos.x -= cx;
+            v.pos.y -= cy;
+        }
+    }
+    // `tokens_to_network` builds geometry but NO style, and `draw_vector_network`
+    // renders nothing for a segment with no `style_ref` / a region with no
+    // `fill` — so the shape would land in the scene invisibly. Seed one visible
+    // stroke and point every segment at it: that strokes the outline of any shape
+    // (open or closed), matching the LLM4SVG `fill: none` intent.
+    let mut styles = StyleTable::default();
+    let mut stroke = StrokeStyle::default();
+    stroke.width = 2.0; // LITERAL-PX-OK: generated-shape outline width (network-local px)
+    stroke.color = ph2d_color::OklchColor::opaque(0.82, 0.15, 250.0); // bright, visible on dark/light
+    let stroke_ref = styles.insert_stroke(stroke);
+    for seg in &mut net.segments {
+        seg.style_ref = Some(stroke_ref);
+    }
+    committed.push(Ph2dVectorAsset::from_network(net, styles));
 }
 
 impl App {

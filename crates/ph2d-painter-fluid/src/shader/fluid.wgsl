@@ -30,8 +30,11 @@ struct Params {
     _pad1: f32,
 }
 
+// `water` is read_write so `cs_evaporate` can dry it; `cs_diffuse`/`cs_advect`
+// only read it (the gate + flow are computed from the pre-evaporation water,
+// then `cs_evaporate` runs last each step — matching the CPU `step` order).
 @group(0) @binding(0) var<uniform> P: Params;
-@group(0) @binding(1) var<storage, read> water: array<f32>;
+@group(0) @binding(1) var<storage, read_write> water: array<f32>;
 @group(0) @binding(2) var<storage, read> paper: array<f32>;
 @group(0) @binding(3) var<storage, read> pig_in: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> pig_out: array<vec4<f32>>;
@@ -132,4 +135,18 @@ fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u)].xyz; }
     }
     pig_out[c] = vec4<f32>(out, pig_in[c].w);
+}
+
+// Drying: water lost per step. As it falls below `w_lo` the gate closes and the
+// pigment freezes (the bloom ends). Runs LAST each step (after diffuse+advect
+// read the pre-evaporation water), mirroring the CPU `step`.
+@compute @workgroup_size(8, 8, 1)
+fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = gid.x;
+    let y = gid.y;
+    if (x >= P.width || y >= P.height) {
+        return;
+    }
+    let i = idx(x, y);
+    water[i] = max(water[i] - P.evaporation, 0.0);
 }

@@ -70,16 +70,20 @@ Verde: `ph2d-tool-painter` **210** · `ph2d-panel-brush-studio` 7 · gates `arch
 - 6 testes verdes (caps×3 compile-enforced + truth-table + paridade-CPU↔diffusion + naga-WGSL). clippy limpo.
 - **Decisão chave:** solver = difusão-advecção (mirror do que o Enio aprovou), NÃO Shallow-Water §2.7. ADR-0049-amд-1.
 
-**Phase 2 — PENDENTE (o trabalho GPU de verdade):**
-1. Pipeline **wgpu** real: storage textures (water/paper/pigment ping-pong) + bind groups + UBO `Params` +
-   dispatch dos 2 passes. `GpuContext` do `ph2d-gpu`.
-2. **Teste de paridade CPU↔GPU** headless (Metal no Mac): rodar N steps no GPU + no `diffusion` CPU, comparar
-   (tolerância f32 — GPU não é bit-idêntico). É o gate de correção do solver.
-3. `fluid_capable()`/`MemoryTier` no `ph2d-host` (§2.9) + `fluid_headroom_ms` (§2.10); compor com `fluid_pass_eligible`.
-4. Composite GPU + **upload por bbox**. `Stamp.wet_amount` (dormente) + `FLAG_FLUID_SAMPLE` (bit 7) = hooks per-stamp.
-5. Wiring feature-gated em `ph2d-tool-painter` (`fluid = ["ph2d-painter-fluid/fluid"]`): quando elegível, o tool
-   roda o solver no GPU; senão cai no `wet_field` CPU de hoje (já é a referência+fallback).
-6. **Det-fallback** CPU 256² pro replay HR-5 (§2.11) + arch-gate `architecture_painter_contract_surface::fluid` (§2.14).
+**Phase 2 — solver GPU + paridade LANDED ✅ (2026-06-07):**
+- **`FluidSolver`** (`solver.rs`): pipeline wgpu real — 3 compute pipelines (`cs_diffuse`/`cs_advect`/`cs_evaporate`),
+  storage buffers ping-pong A/B + water + paper, UBO `GpuParams`, dispatch 8×8, `upload`/`set_params`/`step`/`read_pigment`.
+- **Paridade CPU↔GPU (Metal headless) = BIT-IDÊNTICA**: `mean |Δ| = 0.0`, massa conservada exata. O WGSL reproduz
+  o `diffusion.rs` exatamente → CPU é fallback real + o scatter→gather do advect está correto. Testes
+  `gpu_solver_matches_cpu_reference` + `gpu_solver_conserves_then_dries` (`#[ignore]`, rodar com `--ignored`).
+
+**Phase 2 — RESTANTE (integração):**
+1. `fluid_capable()`/`MemoryTier` no `ph2d-host` (§2.9) + `fluid_headroom_ms` (§2.10); compor com `fluid_pass_eligible`.
+2. Composite GPU + **upload por bbox** (reusa `wet_pigment_bbox` do tool). `Stamp.wet_amount` (dormente) +
+   `FLAG_FLUID_SAMPLE` (bit 7) = hooks per-stamp.
+3. Wiring feature-gated em `ph2d-tool-painter` (`fluid = ["ph2d-painter-fluid/fluid"]`): elegível → solver no GPU
+   substitui o `wet_field` CPU; senão cai no caminho CPU de hoje (já é referência+fallback).
+4. **Det-fallback** 256² pro replay HR-5 (§2.11) + arch-gate `architecture_painter_contract_surface::fluid` (§2.14).
 
 ### B. Refinamentos da v2 live (CPU, baratos, alto valor visual)
 - **Toggle "Fluid" no Brush Studio** (clone do toggle Pigment/Accumulate → `brush.rendering.fluid_enabled`).

@@ -40,7 +40,7 @@ pub use params::FluidParams;
 #[cfg(feature = "fluid")]
 pub use sim::{FluidSim, GravitySource};
 #[cfg(feature = "fluid")]
-pub use solver::{FLUID_WGSL, step_cpu_reference};
+pub use solver::{FLUID_WGSL, FluidSolver, step_cpu_reference};
 
 /// No-op surface compiled when the `fluid` feature is OFF (ADR-0049 §2.1). A
 /// consumer can name these symbols unconditionally; they do nothing and the

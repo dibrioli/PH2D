@@ -135,11 +135,11 @@ impl FluidCompositor {
         Self { pipeline, bgl }
     }
 
-    /// One-shot composite to an RGBA8 byte buffer (the readback / first-milestone
-    /// path + the parity test). `pigment` is the low-res field (`gw*gh`, xyz mass);
-    /// `backdrop_rgba` is canvas-res (`cw*ch*4`); `grid_region` scopes the work.
-    /// Returns the full canvas RGBA8 (pixels outside the padded region equal the
-    /// backdrop, matching the CPU reference's untouched-pixel invariant).
+    /// One-shot composite to an RGBA8 byte buffer, uploading a CPU pigment field
+    /// (the unit-test / CPU-fallback convenience). For the per-frame GPU path use
+    /// [`Self::composite_buffer`] with the solver's resident pigment buffer (no
+    /// upload, no readback of pigment). `pigment` is the low-res field (`gw*gh`, xyz
+    /// mass); `backdrop_rgba` is canvas-res (`cw*ch*4`); `grid_region` scopes work.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn composite_to_rgba(
@@ -153,6 +153,41 @@ impl FluidCompositor {
         scale: u32,
         coverage_k: f32,
         pigment: &[[f32; 4]],
+        backdrop_rgba: &[u8],
+        brush: &WetCompositeBrush,
+        grid_region: (u32, u32, u32, u32),
+    ) -> Vec<u8> {
+        let pig_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite pig_in (upload)"),
+            size: (pigment.len() * 16) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(pigment));
+        self.composite_buffer(
+            device, queue, gw, gh, cw, ch, scale, coverage_k, &pig_buf, backdrop_rgba, brush,
+            grid_region,
+        )
+    }
+
+    /// Composite reading an EXTERNAL pigment buffer (`array<vec4<f32>>`, `gw*gh`) —
+    /// bind the solver's [`crate::FluidSolver::pigment_buffer`] here to composite the
+    /// GPU-resident bloomed pigment with NO pigment readback (the W15.3 stall fix).
+    /// Returns the full canvas RGBA8 (pixels outside the padded region equal the
+    /// backdrop, matching the CPU reference's untouched-pixel invariant).
+    #[allow(clippy::too_many_arguments)]
+    #[must_use]
+    pub fn composite_buffer(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        gw: u32,
+        gh: u32,
+        cw: u32,
+        ch: u32,
+        scale: u32,
+        coverage_k: f32,
+        pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
         brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
@@ -194,14 +229,6 @@ impl FluidCompositor {
         });
         queue.write_buffer(&coeffs_buf, 0, bytemuck::bytes_of(&coeffs));
 
-        let pig_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite pig_in"),
-            size: (pigment.len() * 16) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(pigment));
-
         let backdrop_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("composite backdrop"),
             size: canvas_bytes,
@@ -227,7 +254,7 @@ impl FluidCompositor {
             layout: &self.bgl,
             entries: &[
                 wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: pig_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 4, resource: coeffs_buf.as_entire_binding() },

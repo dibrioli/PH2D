@@ -17,7 +17,7 @@
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
 use ph2d_painter_brush::wet_composite::{composite_wet_field_cpu, prepare_wet_composite};
-use ph2d_painter_fluid::FluidCompositor;
+use ph2d_painter_fluid::{FluidCompositor, FluidParams, FluidSolver, step_cpu_reference};
 
 const SCALE: u32 = 2;
 const COVERAGE_K: f32 = 1.06;
@@ -124,6 +124,80 @@ fn gpu_composite_matches_cpu_reference() {
         "GPU↔CPU mean |Δ| {mean} too high — the WGSL diverges from the composite reference"
     );
     assert!(worst_n < 1.5e-2, "GPU↔CPU worst |Δ| {worst_n} ({worst} LSB) too high");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_step_then_composite_resident_matches_cpu() {
+    // The END-TO-END stall-removing seam: step the field on the GPU, then composite
+    // reading the RESIDENT `pig_a` buffer directly (no pigment readback between) —
+    // must match the CPU `step_cpu_reference` + `composite_wet_field_cpu`. This is
+    // the per-frame flow the shell will drive (ADR-0049 §0/§4).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let steps = 6u32;
+    let params = FluidParams::default();
+    let stroke_linear = [0.8f32, 0.6, 0.02];
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+
+    // CPU reference: step the grid on the CPU, then composite.
+    let mut cpu_grid = DiffusionGrid::new(gw, gh, SCALE as f32);
+    cpu_grid.splat(gw as f32 * 0.5, gh as f32 * 0.5, gw as f32 * 0.4, 0.7, [0.0, 0.0, 0.0]);
+    cpu_grid.splat(gw as f32 * 0.5, gh as f32 * 0.5, 7.0, 0.8, [0.55, 0.42, 0.02]);
+    step_cpu_reference(&mut cpu_grid, &params, steps);
+    let cpu_brush = prepare_wet_composite(cpu_grid.pigment(), stroke_linear);
+    let mut cpu_canvas = backdrop.clone();
+    composite_wet_field_cpu(
+        &mut cpu_canvas, &backdrop, cpu_grid.pigment(), gw, gh, cw, ch, SCALE, COVERAGE_K,
+        &cpu_brush, region,
+    );
+
+    // GPU: seed the SAME field, step on the GPU (pigment ends in pig_a), then
+    // composite reading pig_a directly — NO pigment readback in between.
+    let mut seed = DiffusionGrid::new(gw, gh, SCALE as f32);
+    seed.splat(gw as f32 * 0.5, gh as f32 * 0.5, gw as f32 * 0.4, 0.7, [0.0, 0.0, 0.0]);
+    seed.splat(gw as f32 * 0.5, gh as f32 * 0.5, 7.0, 0.8, [0.55, 0.42, 0.02]);
+    let pig4: Vec<[f32; 4]> = seed.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.set_params(&gpu.queue, &params);
+    solver.upload(&gpu.queue, seed.water(), seed.paper(), &pig4);
+    solver.step(&gpu.device, &gpu.queue, steps);
+
+    // The brush prep needs the pigment chromaticity; read it back ONCE here only to
+    // build the (amortised) brush — in the shell this comes from the CPU grid's
+    // splat colour, not a per-frame readback. Parity of the composite is the point.
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_pig3: Vec<[f32; 3]> = gpu_pig.iter().map(|p| [p[0], p[1], p[2]]).collect();
+    let gpu_brush = prepare_wet_composite(&gpu_pig3, stroke_linear);
+
+    let compositor = FluidCompositor::new(&gpu.device);
+    let gpu_canvas = compositor.composite_buffer(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K,
+        solver.pigment_buffer(), &backdrop, &gpu_brush, region,
+    );
+
+    // Mean + worst |Δ| over the RGBA8 output (GPU step + GPU composite vs CPU+CPU).
+    // Looser than the composite-only gate: GPU diffuse/advect lower differently per
+    // backend, so the pigment field itself drifts ~1e-3 before the composite runs.
+    let mut sum = 0.0f64;
+    let mut worst = 0u8;
+    for (a, b) in cpu_canvas.iter().zip(gpu_canvas.iter()) {
+        let d = a.abs_diff(*b);
+        sum += f64::from(d);
+        worst = worst.max(d);
+    }
+    let mean = (sum / cpu_canvas.len() as f64) / 255.0;
+    let worst_n = f32::from(worst) / 255.0;
+    eprintln!(
+        "step+composite GPU↔CPU: mean |Δ| = {mean:.6}, worst = {worst_n:.6} ({worst} LSB)"
+    );
+    assert!(mean < 4.0e-3, "end-to-end mean |Δ| {mean} too high");
+    assert!(worst_n < 6.0e-2, "end-to-end worst |Δ| {worst_n} ({worst} LSB) too high");
 }
 
 #[test]

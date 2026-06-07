@@ -248,6 +248,23 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
     }
 
+    /// The GPU-resident pigment buffer (`pig_a`, `array<vec4<f32>>`) after [`Self::step`].
+    /// Exposed so the GPU compositor binds it DIRECTLY (W15.3) — the per-frame
+    /// composite reads the bloomed pigment in place, removing the pigment readback
+    /// that was the remaining stall (ADR-0049 §0). Bind-compatible with the
+    /// compositor's `pig_in` binding (same `vec4` layout, same device).
+    #[must_use]
+    pub fn pigment_buffer(&self) -> &wgpu::Buffer {
+        &self.pig_a
+    }
+
+    /// Field dimensions (`width`, `height`) — the pigment buffer holds `width*height`
+    /// `vec4<f32>` cells, the layout the compositor's `gw`/`gh` describe.
+    #[must_use]
+    pub fn dims(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
     /// Map the current pigment field (`pig_a`) back to the CPU.
     #[must_use]
     pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {

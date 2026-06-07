@@ -5236,6 +5236,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-painter-fluid"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "ph2d-gpu",
+ "ph2d-painter-brush",
+ "serde",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-painter-stroke"
 version = "0.0.0"
 dependencies = [

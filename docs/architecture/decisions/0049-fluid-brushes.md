@@ -417,3 +417,26 @@ Esta ADR transita `Proposed → Accepted` no mesmo evento T0.9. Como é última 
 - Spec normativa: [§14.6 (Proposta 4)](../../Painter_projeto/14_inovacoes_extraordinarias.md) + [§8.2.2 budget](../../Painter_projeto/08_performance_memory.md).
 - Risk policy: §2.12 desta ADR + [§14.6.9](../../Painter_projeto/14_inovacoes_extraordinarias.md).
 - Próxima ação na cascata W0: **T0.9 — Aprovação Enio dos 7 ADRs**.
+
+---
+
+## 7. Amendment 1 — solver = gated diffusion-advection (W15.3, 2026-06-07)
+
+**Decisor:** Enio + Claude (Coord solo, sessão brush-overhaul continuation). **Status:** Accepted.
+
+A §2.7 esboçou o solver como **Shallow Water** (Stam stable fluids + projeção + gravidade/giroscópio). Na prática, o que **shipou e foi ratificado visualmente** (ADR-0077 D11/D12, W15.2 live) é o modelo de **difusão-advecção gated** (Curtis 1997) em [`ph2d_painter_brush::diffusion`]. O `ph2d-painter-fluid` GPU **espelha esse modelo**, não o Shallow Water. Razões:
+
+1. **Paridade com o que o usuário aprovou.** O GPU reproduz a estética já validada; trocar pra Shallow Water seria um look novo, não testado.
+2. **Fallback de paridade real (HR-5).** O CPU `diffusion.rs` vira a referência bit-near + o det-fallback (§2.11) — só é fallback honesto se o GPU mirror o MESMO algoritmo.
+3. **"Spec era aspiracional — construa contra o substrato real."**
+
+### Deltas de contrato (vs §2.4–2.8)
+- **`FluidParams` (§2.5)** espelha `DiffusionParams` (diffusivity / evaporation / downhill / flow_outward / w_lo / w_hi / perm_valley / perm_crest + version) — **não** os campos Shallow-Water (viscosity / gravity_strength / Jacobi iterations). Cap ≤ 12 **mantido** (9 campos). `to_diffusion()` é o ponto único de conversão.
+- **`GravitySource` (§2.6)** fica (capada ≤ 6) mas **dormente em v1** — o modelo de difusão não tem termo de gravidade (advecta por ∇papel + ∇água). É forward-compat pra uma extensão Shallow-Water/tilt futura.
+- **`FluidSim` (§2.4)** é um **descriptor** (id/size/params/gravity/steps/active/version, 7 campos ≤ 12); as texturas GPU vivem no solver (não-capado), não na struct serializável.
+- **`fluid_pass_eligible` (§2.8)** recebe valores puros (`fluid_enabled`, `fluid_capable`, `headroom_ms`) em vez dos tipos `MemoryBudget`/`PerfBudget` — mantém o crate folha desacoplado do `ph2d-host` e a truth-table trivialmente testável. `fluid_capable()`/`fluid_headroom_ms()` (§2.9/§2.10) seguem no host como antes; o caller compõe.
+- O algoritmo do solver (§2.7 pipeline Shallow-Water de 8 passos) é **substituído** por 2 passes gather: `cs_diffuse` (Laplaciano gated conservativo) + `cs_advect` (upwind ao longo de `−β·∇h − λ·∇w`, scatter→gather sem atomics). Gyroscope/§2.2 PlatformHost extension **adiada** (dormente até a extensão de gravidade).
+
+### Status de implementação (W15.3)
+- **Phase 1 (LANDED, este commit):** crate `ph2d-painter-fluid` (feature `fluid` + stub no-op), structs capadas, `step_cpu_reference` (REUSO do `diffusion` shipado = det-fallback + referência), WGSL `fluid.wgsl` (diffuse + advect, validado via naga), `fluid_pass_eligible`. 6 testes verdes (caps×3 compile-enforced + truth-table + paridade-CPU + naga-WGSL).
+- **Phase 2 (pendente):** pipeline wgpu (storage textures + bind groups + dispatch + bbox upload), teste de paridade CPU↔GPU headless, `fluid_capable`/tier no host, wiring feature-gated em `ph2d-tool-painter` (o tool drena o grid no GPU quando elegível, senão cai no caminho CPU de hoje), arch-gate `architecture_painter_contract_surface::fluid` (§2.14) no homestead de contracts.

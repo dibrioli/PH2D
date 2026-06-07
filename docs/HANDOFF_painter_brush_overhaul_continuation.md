@@ -59,16 +59,27 @@ Verde: `ph2d-tool-painter` **210** · `ph2d-panel-brush-studio` 7 · gates `arch
 ## §2 — O QUE FALTA (priorizado)
 
 ### A. **W15.3 — GPU + tiers + det-fallback** (o item grande, ADR-0049 `ph2d-painter-fluid`)
-O composite full-canvas em CPU (`composite_wet_field`) é o gargalo a 4K. Plano:
-1. Crate `crates/ph2d-painter-fluid/` (ADR-0049 §2.1, **feature `fluid`**): WGSL compute solver (mirror do
-   `diffusion.rs` — gated diffusion-advection), `FluidSim`/`FluidParams`/`GravitySource` structs (caps no ADR-0049).
-2. `fluid_capable()` gating (device tier ≥ Mid, VRAM ≥ 32MB) → senão **fallback** pro caminho CPU de hoje
-   (que já existe + é a referência).
-3. Composite GPU + **upload por bbox** (não full-canvas). `Stamp.wet_amount` (dormente, =0) + `FLAG_FLUID_SAMPLE`
-   (bit 7, reservado) são os hooks per-stamp.
-4. **Det-fallback** CPU 256² pro replay HR-5 (GPU é não-det; ADR-0049 §2.11).
-**Pesquisa já feita** (use): o relatório de algoritmo está sintetizado no ADR-0077 D11 + no
-`diffusion.rs` docstring (Curtis 1997 + Van Laerhoven CAVW 2005 + MoXi; CFL `D·dt≤0.25`; low-res+upsample).
+
+**Phase 1 — LANDED (2026-06-07, ADR-0049-amendment-1).** Crate `crates/ph2d-painter-fluid/` criada:
+- feature `fluid` (+ `stub` no-op sem ela); `FluidParams` (espelha `DiffusionParams`, cap ≤12), `FluidSim`
+  (descriptor, ≤12), `GravitySource` (≤6, dormente v1).
+- `step_cpu_reference` = **REUSO** do `ph2d_painter_brush::diffusion` shipado (det-fallback + referência de paridade).
+- **`src/shader/fluid.wgsl`** — compute solver mirror do `diffusion.rs`: `cs_diffuse` (Laplaciano gated, gather) +
+  `cs_advect` (scatter→**gather** reformulado, sem atomics). **Validado via naga.**
+- `fluid_pass_eligible(enabled, capable, headroom_ms)` (truth-table §2.8, pura).
+- 6 testes verdes (caps×3 compile-enforced + truth-table + paridade-CPU↔diffusion + naga-WGSL). clippy limpo.
+- **Decisão chave:** solver = difusão-advecção (mirror do que o Enio aprovou), NÃO Shallow-Water §2.7. ADR-0049-amд-1.
+
+**Phase 2 — PENDENTE (o trabalho GPU de verdade):**
+1. Pipeline **wgpu** real: storage textures (water/paper/pigment ping-pong) + bind groups + UBO `Params` +
+   dispatch dos 2 passes. `GpuContext` do `ph2d-gpu`.
+2. **Teste de paridade CPU↔GPU** headless (Metal no Mac): rodar N steps no GPU + no `diffusion` CPU, comparar
+   (tolerância f32 — GPU não é bit-idêntico). É o gate de correção do solver.
+3. `fluid_capable()`/`MemoryTier` no `ph2d-host` (§2.9) + `fluid_headroom_ms` (§2.10); compor com `fluid_pass_eligible`.
+4. Composite GPU + **upload por bbox**. `Stamp.wet_amount` (dormente) + `FLAG_FLUID_SAMPLE` (bit 7) = hooks per-stamp.
+5. Wiring feature-gated em `ph2d-tool-painter` (`fluid = ["ph2d-painter-fluid/fluid"]`): quando elegível, o tool
+   roda o solver no GPU; senão cai no `wet_field` CPU de hoje (já é a referência+fallback).
+6. **Det-fallback** CPU 256² pro replay HR-5 (§2.11) + arch-gate `architecture_painter_contract_surface::fluid` (§2.14).
 
 ### B. Refinamentos da v2 live (CPU, baratos, alto valor visual)
 - **Toggle "Fluid" no Brush Studio** (clone do toggle Pigment/Accumulate → `brush.rendering.fluid_enabled`).

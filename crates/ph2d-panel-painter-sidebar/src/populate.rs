@@ -54,6 +54,14 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
+    // "Brush Studio" — opens the full brush-parameter editor (W5).
+    store.register(
+        ph2d_editor_core::ids::PAINTER_SIDEBAR_BRUSH_STUDIO,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+
     // Modifier square (T2.4) — eyedropper-while-held affordance. Painted in
     // `paint::paint_modifier_square`, so registering it here is live (not
     // dead routing). Dispatcher tracks hover/press + emits its `Click`.

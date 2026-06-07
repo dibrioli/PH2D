@@ -44,6 +44,13 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // "Brush Studio" → forward as Click; the tool flips `show_brush_studio`
+        // (PainterUiEdit::OpenBrushStudio) and the bridge swaps the dock slot.
+        WidgetEvent::Click(id) if id == ph2d_editor_core::ids::PAINTER_SIDEBAR_BRUSH_STUDIO => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
         // Pigment / Accumulate checkboxes (W5) — `Toggled` forwards to the tool,
         // which flips the corresponding brush flag (TogglePigment / ToggleAccumulate)
         // in `handle_panel_event`.

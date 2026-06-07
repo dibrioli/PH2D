@@ -13,6 +13,7 @@ authors.workspace = true
 ph2d-editor-core               = { path = "../ph2d-editor-core" }
 # <ph2d-panel-sync:deps:begin>
 ph2d-panel-bgremoval = { path = "../ph2d-panel-bgremoval", optional = true }
+ph2d-panel-brush-studio = { path = "../ph2d-panel-brush-studio", optional = true }
 ph2d-panel-color-equalization = { path = "../ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../ph2d-panel-equalize-sizes", optional = true }
 ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
@@ -39,6 +40,7 @@ default = [
 # do NOT edit between the markers by hand.
 # <ph2d-panel-sync:features:begin>
 panel-bgremoval = ["dep:ph2d-panel-bgremoval"]
+panel-brush-studio = ["dep:ph2d-panel-brush-studio"]
 panel-color-equalization = ["dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["dep:ph2d-panel-equalize-sizes"]
 panel-grid-snap = ["dep:ph2d-panel-grid-snap"]

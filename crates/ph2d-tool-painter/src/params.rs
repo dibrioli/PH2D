@@ -192,11 +192,64 @@ pub enum PainterUiEdit {
     ToggleGrain,
     // W5 procedural grain intensity (0..=1). Sidebar slider; shown while grain on.
     SetGrainDepth(f32),
-    // === 4 slots de headroom (W9+W11+W14+residual) ===
+    /// **W5 Brush Studio — generic brush-parameter setter.** Carries a
+    /// [`BrushParam`] selector + an `f32` value so the whole Brush Studio (≈20
+    /// dials across Stroke Path / Shape / Rendering) routes through ONE variant
+    /// instead of one variant per param (which would blow the ADR-0043 §2.3 cap
+    /// of 24). The handler in `apply_ui_edit` writes the matching `brush.*` field
+    /// — clamped per field, bools via `>= 0.5`, `shape_count` rounded, enum dials
+    /// (rendering_mode) decoded by index — and invalidates `cached_brush_hash`.
+    /// Serializable like every other edit, so MCP/replay can drive the studio.
+    SetBrushParam(BrushParam, f32),
+    // === 3 slots de headroom (W9+W11+W14 residual) ===
     // Reserved para waves futuras:
     //   SetSymmetryAxis(SymmetryAxis), SetRadialN(u8), SetMirrorOffset(f32) — W9
     //   ToggleOnionSkin, SetAnimFps(f32) — W11
     //   OpenInspector — W14
+}
+
+/// Selector for [`PainterUiEdit::SetBrushParam`] — identifies which scalar
+/// `Brush` field the Brush Studio is editing (W5). **Uncapped** (not a frozen
+/// contract surface): it grows freely as the studio exposes more dials, while
+/// `PainterUiEdit` itself stays at one variant. Float fields map directly;
+/// bool fields read `value >= 0.5`; `ShapeCount` rounds to `u32` (min 1);
+/// `RenderingMode` decodes `value as u32` via `RenderingMode::from_u32`.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum BrushParam {
+    // Stroke Path (StrokePathParams)
+    Spacing,
+    SpacingJitter,
+    JitterLateral,
+    Falloff,
+    // Stabilization (StabilizationParams)
+    StreamlineAmount,
+    Stabilization,
+    // Shape (ShapeParams)
+    ShapeScatter,
+    ShapeCount,
+    ShapeCountJitter,
+    ShapeRoundness,
+    ShapeRotationFollow,
+    ShapeRandomized,
+    ShapeFlipX,
+    ShapeFlipY,
+    // Rendering (RenderingParams)
+    Flow,
+    AlphaThreshold,
+    WetEdges,
+    BurntEdges,
+    RenderingMode,
+    // Grain (GrainParams)
+    GrainScale,
+    // Color Dynamics (ColorDynamicsParams) — per-stamp OKLab jitter
+    HueJitter,
+    SaturationJitter,
+    LightnessJitter,
+    DarknessJitter,
+    // Dynamics (DynamicsParams) — per-stamp size/opacity jitter
+    SizeJitter,
+    OpacityJitter,
 }
 
 // ----------------------------------------------------------------------------
@@ -299,6 +352,105 @@ impl Default for PainterUiSnapshot {
             pigment_enabled: true,
             accumulate_enabled: false, // wash by default
             grain_type: 0,             // no grain by default
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// BrushStudioSnapshot — W5 Brush Studio (NOT contract-capped)
+// ----------------------------------------------------------------------------
+
+/// Read-only projection of the active [`ph2d_painter_brush::Brush`] that the
+/// `ph2d-panel-brush-studio` panel paints each frame (W5). Companion to
+/// [`PainterUiSnapshot`] but **uncapped** — it is the Brush Studio's private
+/// snapshot, deliberately separate so the studio can expose the full brush
+/// surface without touching the frozen 18-field `PainterUiSnapshot` cap (that
+/// is exactly why the studio is a separate panel — handoff §2 gotcha 2).
+///
+/// `Default` mirrors `Brush::default()` (Round Hard) so the panel paints sane
+/// values on the first frame before the shell publishes the live snapshot.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BrushStudioSnapshot {
+    // Stroke Path
+    pub spacing: f32,
+    pub spacing_jitter: f32,
+    pub jitter_lateral: f32,
+    pub falloff: f32,
+    // Stabilization
+    pub streamline_amount: f32,
+    pub stabilization: f32,
+    // Shape
+    pub shape_scatter: f32,
+    pub shape_count: u32,
+    pub shape_count_jitter: f32,
+    pub shape_roundness: f32,
+    pub shape_rotation_follow: bool,
+    pub shape_randomized: bool,
+    pub shape_flip_x: bool,
+    pub shape_flip_y: bool,
+    // Rendering
+    pub flow: f32,
+    pub alpha_threshold: f32,
+    pub wet_edges: bool,
+    pub burnt_edges: bool,
+    pub pigment_enabled: bool,
+    pub accumulate_enabled: bool,
+    /// 0 = LightGlaze .. 5 = IntenseBlending (`RenderingMode` discriminant).
+    pub rendering_mode: u8,
+    // Grain
+    /// 0 = None, 1 = Simplex, 2 = Gabor, 3 = PaperWeave, 4 = SprayDot.
+    pub grain_type: u8,
+    pub grain_scale: f32,
+    pub grain_depth: f32,
+    // Color Dynamics — per-stamp OKLab jitter (all 0..1).
+    pub stamp_hue_jitter: f32,
+    pub stamp_saturation_jitter: f32,
+    pub stamp_lightness_jitter: f32,
+    pub stamp_darkness_jitter: f32,
+    // Dynamics — per-stamp size/opacity jitter (0..1).
+    pub jitter_size: f32,
+    pub jitter_opacity: f32,
+    /// Display name of the active brush.
+    pub brush_name: String,
+}
+
+impl Default for BrushStudioSnapshot {
+    fn default() -> Self {
+        use ph2d_painter_brush::Brush;
+        let b = Brush::default();
+        Self {
+            spacing: b.stroke_path.spacing,
+            spacing_jitter: b.stroke_path.spacing_jitter,
+            jitter_lateral: b.stroke_path.jitter_lateral,
+            falloff: b.stroke_path.falloff,
+            streamline_amount: b.stabilization.streamline_amount,
+            stabilization: b.stabilization.stabilization,
+            shape_scatter: b.shape.shape_scatter,
+            shape_count: b.shape.shape_count,
+            shape_count_jitter: b.shape.shape_count_jitter,
+            shape_roundness: b.shape.shape_roundness,
+            shape_rotation_follow: b.shape.shape_rotation_follow,
+            shape_randomized: b.shape.shape_randomized,
+            shape_flip_x: b.shape.shape_flip_x,
+            shape_flip_y: b.shape.shape_flip_y,
+            flow: b.rendering.flow,
+            alpha_threshold: b.rendering.alpha_threshold,
+            wet_edges: b.rendering.wet_edges,
+            burnt_edges: b.rendering.burnt_edges,
+            pigment_enabled: b.rendering.pigment_mode
+                == ph2d_painter_brush::PigmentMode::Subtractive,
+            accumulate_enabled: b.rendering.accumulate,
+            rendering_mode: b.rendering.rendering_mode as u8,
+            grain_type: 0,
+            grain_scale: b.grain.grain_scale,
+            grain_depth: b.grain.grain_depth,
+            stamp_hue_jitter: b.color_dynamics.stamp_hue_jitter,
+            stamp_saturation_jitter: b.color_dynamics.stamp_saturation_jitter,
+            stamp_lightness_jitter: b.color_dynamics.stamp_lightness_jitter,
+            stamp_darkness_jitter: b.color_dynamics.stamp_darkness_jitter,
+            jitter_size: b.dynamics.jitter_size,
+            jitter_opacity: b.dynamics.jitter_opacity,
+            brush_name: String::new(),
         }
     }
 }

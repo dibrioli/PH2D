@@ -77,6 +77,16 @@ impl Tool for PainterTool {
             PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER => {
                 self.apply_ui_edit(PainterUiEdit::SetGrainDepth(v as f32));
             }
+            // ── Brush Studio (W5): grain depth reuses the dedicated edit ────
+            PanelEvent::SetValue(id, v) if id == core_ids::PAINTER_STUDIO_GRAIN_DEPTH_SLIDER => {
+                self.apply_ui_edit(PainterUiEdit::SetGrainDepth(v as f32));
+            }
+            // ── Brush Studio (W5): per-param sliders → generic SetBrushParam ─
+            PanelEvent::SetValue(id, v) if brush_studio_param_for_slider(id).is_some() => {
+                if let Some(param) = brush_studio_param_for_slider(id) {
+                    self.apply_ui_edit(PainterUiEdit::SetBrushParam(param, v as f32));
+                }
+            }
             // ── Dock toggle (mode C) — either panel's header button ────────
             PanelEvent::Click(id)
                 if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK
@@ -93,6 +103,44 @@ impl Tool for PainterTool {
             }
             PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE => {
                 self.apply_ui_edit(PainterUiEdit::ToggleGrain);
+            }
+            // ── Brush Studio (W5): open / close + non-slider controls ───────
+            // Open from the sidebar header; close from the panel X. The flag is
+            // tool state (`show_brush_studio`); the bridge drives visibility.
+            PanelEvent::Click(id) if id == core_ids::PAINTER_SIDEBAR_BRUSH_STUDIO => {
+                self.apply_ui_edit(PainterUiEdit::OpenBrushStudio);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_CLOSE => {
+                self.close_brush_studio();
+            }
+            // Pigment / Accumulate reuse the existing toggles (same brush flags
+            // the sidebar drives). Grain type reuses the cycler.
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_PIGMENT => {
+                self.apply_ui_edit(PainterUiEdit::TogglePigment);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_ACCUMULATE => {
+                self.apply_ui_edit(PainterUiEdit::ToggleAccumulate);
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_GRAIN_TYPE => {
+                self.apply_ui_edit(PainterUiEdit::ToggleGrain);
+            }
+            // Rendering mode cycles all 6 modes (narrow-dock-friendly, mirror of
+            // the grain cycler). Compute next from the live brush, then set it.
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_RENDERING_MODE => {
+                let next = (self.brush.rendering.rendering_mode as u32 + 1)
+                    % ph2d_painter_brush::MAX_RENDERING_MODES as u32;
+                self.apply_ui_edit(PainterUiEdit::SetBrushParam(
+                    crate::params::BrushParam::RenderingMode,
+                    next as f32,
+                ));
+            }
+            // New bool checkboxes — read the live brush, set the opposite (the
+            // store-less event can't carry the new value; `&mut self` reads it).
+            PanelEvent::Click(id) if brush_studio_bool_param(id).is_some() => {
+                if let Some((param, cur)) = brush_studio_bool_param(id).map(|p| (p, self.brush_bool(p))) {
+                    let next = if cur { 0.0 } else { 1.0 };
+                    self.apply_ui_edit(PainterUiEdit::SetBrushParam(param, next));
+                }
             }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
@@ -368,6 +416,96 @@ impl Tool for PainterTool {
         // Painter substituir o proto (T1.X close W1), is_default() flipa
         // para true e brush proto é deletado.
         false
+    }
+}
+
+impl PainterTool {
+    /// Read a Brush Studio bool param off the live brush (W5). Used by
+    /// `handle_panel_event` to compute the toggled value for a checkbox click —
+    /// the store-less `PanelEvent` can't carry the new state, but `&mut self`
+    /// reads the current one. Non-bool params return `false` (never reached).
+    fn brush_bool(&self, p: crate::params::BrushParam) -> bool {
+        use crate::params::BrushParam as P;
+        match p {
+            P::ShapeRotationFollow => self.brush.shape.shape_rotation_follow,
+            P::ShapeRandomized => self.brush.shape.shape_randomized,
+            P::ShapeFlipX => self.brush.shape.shape_flip_x,
+            P::ShapeFlipY => self.brush.shape.shape_flip_y,
+            P::WetEdges => self.brush.rendering.wet_edges,
+            P::BurntEdges => self.brush.rendering.burnt_edges,
+            _ => false,
+        }
+    }
+}
+
+/// Map a Brush Studio float-slider [`NodeId`] to its [`crate::params::BrushParam`]
+/// (W5). `None` for any non-studio-slider id. Grain depth is excluded — it routes
+/// through the dedicated `SetGrainDepth` edit (shared with the sidebar slider).
+fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params::BrushParam> {
+    use crate::params::BrushParam as P;
+    use ph2d_editor_core::ids as core_ids;
+    if id == core_ids::PAINTER_STUDIO_SPACING_SLIDER {
+        Some(P::Spacing)
+    } else if id == core_ids::PAINTER_STUDIO_SPACING_JITTER_SLIDER {
+        Some(P::SpacingJitter)
+    } else if id == core_ids::PAINTER_STUDIO_JITTER_LATERAL_SLIDER {
+        Some(P::JitterLateral)
+    } else if id == core_ids::PAINTER_STUDIO_FALLOFF_SLIDER {
+        Some(P::Falloff)
+    } else if id == core_ids::PAINTER_STUDIO_STREAMLINE_SLIDER {
+        Some(P::StreamlineAmount)
+    } else if id == core_ids::PAINTER_STUDIO_STABILIZATION_SLIDER {
+        Some(P::Stabilization)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_SCATTER_SLIDER {
+        Some(P::ShapeScatter)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_COUNT_SLIDER {
+        Some(P::ShapeCount)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_COUNT_JITTER_SLIDER {
+        Some(P::ShapeCountJitter)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_ROUNDNESS_SLIDER {
+        Some(P::ShapeRoundness)
+    } else if id == core_ids::PAINTER_STUDIO_FLOW_SLIDER {
+        Some(P::Flow)
+    } else if id == core_ids::PAINTER_STUDIO_ALPHA_THRESHOLD_SLIDER {
+        Some(P::AlphaThreshold)
+    } else if id == core_ids::PAINTER_STUDIO_GRAIN_SCALE_SLIDER {
+        Some(P::GrainScale)
+    } else if id == core_ids::PAINTER_STUDIO_HUE_JITTER_SLIDER {
+        Some(P::HueJitter)
+    } else if id == core_ids::PAINTER_STUDIO_SAT_JITTER_SLIDER {
+        Some(P::SaturationJitter)
+    } else if id == core_ids::PAINTER_STUDIO_LIGHT_JITTER_SLIDER {
+        Some(P::LightnessJitter)
+    } else if id == core_ids::PAINTER_STUDIO_DARK_JITTER_SLIDER {
+        Some(P::DarknessJitter)
+    } else if id == core_ids::PAINTER_STUDIO_SIZE_JITTER_SLIDER {
+        Some(P::SizeJitter)
+    } else if id == core_ids::PAINTER_STUDIO_OPACITY_JITTER_SLIDER {
+        Some(P::OpacityJitter)
+    } else {
+        None
+    }
+}
+
+/// Map a Brush Studio bool-checkbox [`NodeId`] to its [`crate::params::BrushParam`]
+/// (W5). Pigment / Accumulate are excluded — they reuse the existing Toggle edits.
+fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::BrushParam> {
+    use crate::params::BrushParam as P;
+    use ph2d_editor_core::ids as core_ids;
+    if id == core_ids::PAINTER_STUDIO_SHAPE_ROTATION_FOLLOW {
+        Some(P::ShapeRotationFollow)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_RANDOMIZED {
+        Some(P::ShapeRandomized)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_FLIP_X {
+        Some(P::ShapeFlipX)
+    } else if id == core_ids::PAINTER_STUDIO_SHAPE_FLIP_Y {
+        Some(P::ShapeFlipY)
+    } else if id == core_ids::PAINTER_STUDIO_WET_EDGES {
+        Some(P::WetEdges)
+    } else if id == core_ids::PAINTER_STUDIO_BURNT_EDGES {
+        Some(P::BurntEdges)
+    } else {
+        None
     }
 }
 

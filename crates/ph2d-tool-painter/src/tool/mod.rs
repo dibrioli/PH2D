@@ -482,6 +482,14 @@ pub struct PainterTool {
     /// tool (not a panel) so both panels + the shell agree without a
     /// panel→panel dependency (`architecture_cycle_prevention` forbids it).
     dock_shows_layers: bool,
+    /// **W5 Brush Studio (mode C, third dock state):** when `true` the shared
+    /// right-dock slot shows the Brush Studio (`ph2d-panel-brush-studio`) instead
+    /// of the brush sidebar / layers panel. Flipped via `PainterUiEdit::
+    /// OpenBrushStudio` (sidebar header button) / `close_brush_studio` (panel X).
+    /// Read by the shell `painter_bridge` (downcast) to drive `panel_visibility`;
+    /// lives on the tool (not a panel) so all three panels + the shell agree
+    /// without a panel→panel dependency (mirror of [`Self::dock_shows_layers`]).
+    show_brush_studio: bool,
     /// **W3 perf — dirty-rect preview.** Accumulated bbox (canvas px) of stamps
     /// deposited since the last preview drain. When set AND a full composite is
     /// cached (`composited`), `take_preview_arc` recomposites ONLY this region
@@ -576,6 +584,7 @@ impl Default for PainterTool {
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
             dock_shows_layers: false,
+            show_brush_studio: false,
             dirty_rect: None,
             selection: std::collections::BTreeSet::new(),
             compositor_cache: CompositorCache::new(),

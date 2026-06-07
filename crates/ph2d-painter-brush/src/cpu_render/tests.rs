@@ -930,3 +930,51 @@ fn unknown_shape_slot_falls_back_to_round_hard() {
     apply_stamps(&mut b, w, h, &[s_round]);
     assert_eq!(a, b, "unknown slot must fall back to round_hard");
 }
+
+#[test]
+fn falloff_taper_fades_the_wash_stroke() {
+    // The wash path (the DEFAULT brush) must honor the per-stamp falloff taper
+    // (`stamp.opacity`): a tapered dab deposits less coverage than a full dab, so
+    // the painted alpha where the stroke has faded is lower. Regression guard —
+    // the wash path previously dropped `stamp.opacity`, so falloff did nothing.
+    let (w, h) = (64u32, 16u32);
+    let mut canvas = empty_canvas(w, h);
+    let backdrop = empty_canvas(w, h); // transparent pre-stroke backdrop
+    let mut coverage = vec![0.0f32; (w * h) as usize];
+
+    // Two isolated dabs: full opacity (left) vs heavily tapered (right).
+    let mut full = red_stamp(10.0, 8.0, 8.0);
+    full.opacity = 1.0;
+    let mut tapered = red_stamp(50.0, 8.0, 8.0);
+    tapered.opacity = 0.2;
+
+    apply_stamps_wash(
+        &mut canvas,
+        &backdrop,
+        &mut coverage,
+        w,
+        h,
+        &[full, tapered],
+        1.0,   // opacity_cap (brush opacity)
+        false, // pigment
+        false, // alpha_lock
+    );
+
+    let (mut left_max, mut right_max) = (0u8, 0u8);
+    for y in 0..h {
+        for x in 0..w {
+            let a = canvas[((y * w + x) * 4 + 3) as usize];
+            if x < 32 {
+                left_max = left_max.max(a);
+            } else {
+                right_max = right_max.max(a);
+            }
+        }
+    }
+    assert!(left_max > 0, "the full dab must paint visible coverage");
+    assert!(
+        right_max < left_max,
+        "falloff taper must fade the wash stroke: tapered max alpha {right_max} \
+         should be below the full dab's {left_max}"
+    );
+}

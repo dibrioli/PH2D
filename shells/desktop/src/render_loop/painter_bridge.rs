@@ -155,21 +155,33 @@ pub(super) fn dispatch(
     // header). Lê o flag via downcast (o estado vive no tool, não num painel —
     // evita dep panel→panel). Edge-triggered inspector hide pra não stompar
     // toggle manual do rail (Wave 10 Etapa 4 fix).
-    let painter_shows_layers = painter_is_active
-        && tools
+    // W5: the shared dock slot now has THREE states — brush sidebar / layers /
+    // Brush Studio. The Studio takes priority when open; else the layers toggle
+    // decides sidebar-vs-layers (mode C). One downcast reads both flags.
+    let (painter_shows_layers, painter_shows_studio) = if painter_is_active {
+        tools
             .active_mut()
             .and_then(|t| {
                 t.as_any_mut()
                     .downcast_mut::<ph2d_tool_painter::PainterTool>()
             })
-            .map(|p| p.dock_shows_layers())
-            .unwrap_or(false);
+            .map(|p| (p.dock_shows_layers(), p.show_brush_studio()))
+            .unwrap_or((false, false))
+    } else {
+        (false, false)
+    };
+    hero.panel_visibility.insert(
+        "painter_brush_studio",
+        painter_is_active && painter_shows_studio,
+    );
+    hero.panel_visibility.insert(
+        "painter_layers",
+        painter_is_active && painter_shows_layers && !painter_shows_studio,
+    );
     hero.panel_visibility.insert(
         "painter_sidebar",
-        painter_is_active && !painter_shows_layers,
+        painter_is_active && !painter_shows_layers && !painter_shows_studio,
     );
-    hero.panel_visibility
-        .insert("painter_layers", painter_is_active && painter_shows_layers);
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -189,6 +201,12 @@ pub(super) fn dispatch(
             if painter_is_active {
                 hero.store
                     .bump_panel_z(ph2d_editor::ids::PAINTER_LAYERS_PANEL);
+                // W5: same rationale for the Brush Studio — it shares the dock
+                // slot but isn't in the editor-core z_order fallback list, so it
+                // must enter the paint walk explicitly or it never renders when
+                // its visibility flips true (mode toggle → sidebar hides).
+                hero.store
+                    .bump_panel_z(ph2d_editor::ids::PAINTER_BRUSH_STUDIO_PANEL);
             }
         }
     }
@@ -349,6 +367,17 @@ pub(super) fn dispatch(
         #[cfg(feature = "panel-painter-sidebar")]
         ph2d_panel_painter_sidebar::set_current_painter_snapshot(if painter_is_active {
             Some(painter.ui_snapshot())
+        } else {
+            None
+        });
+
+        // (W5) Brush Studio snapshot publish — the panel paints the full brush
+        // surface off this clone each frame (its own uncapped snapshot, separate
+        // from `ui_snapshot`). Published whenever Painter is active; the panel
+        // only renders when `show_brush_studio` drives its visibility.
+        #[cfg(feature = "panel-brush-studio")]
+        ph2d_panel_brush_studio::set_current_brush_studio_snapshot(if painter_is_active {
+            Some(painter.brush_studio_snapshot())
         } else {
             None
         });

@@ -20,6 +20,28 @@ impl PainterTool {
         self.dock_shows_layers = !self.dock_shows_layers;
     }
 
+    // ── W5 Brush Studio (mode C, third dock state) ──────────────────────────
+
+    /// Whether the Brush Studio occupies the shared right-dock slot. The shell
+    /// `painter_bridge` reads this (downcast) to drive `panel_visibility`; it
+    /// takes priority over [`Self::dock_shows_layers`].
+    #[must_use]
+    pub fn show_brush_studio(&self) -> bool {
+        self.show_brush_studio
+    }
+
+    /// Open the Brush Studio (sidebar header "Brush Studio" button →
+    /// `PainterUiEdit::OpenBrushStudio`).
+    pub fn open_brush_studio(&mut self) {
+        self.show_brush_studio = true;
+    }
+
+    /// Close the Brush Studio, returning the dock slot to the brush sidebar
+    /// (Brush Studio panel X button).
+    pub fn close_brush_studio(&mut self) {
+        self.show_brush_studio = false;
+    }
+
     /// Decode a per-row layers-panel widget [`NodeId`] back to its
     /// `(layer, kind)` by recomputing [`painter_layer_widget_id`] for every
     /// current layer × kind and matching. `None` if `id` isn't a per-row

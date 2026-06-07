@@ -40,6 +40,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     // <ph2d-panel-sync:begin>
     #[cfg(feature = "panel-bgremoval")]
     reg.push(ErasedPanel::new::<ph2d_panel_bgremoval::BgRemovalPanel>());
+    #[cfg(feature = "panel-brush-studio")]
+    reg.push(ErasedPanel::new::<ph2d_panel_brush_studio::BrushStudioPanel>());
     #[cfg(feature = "panel-color-equalization")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_color_equalization::ColorEqualizationPanel,
@@ -114,6 +116,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-painter-layers")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-brush-studio")]
         {
             n += 1;
         }

@@ -143,7 +143,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         BGR_PANEL, CEQ_PANEL, EQS_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
-        PAINTER_LAYERS_PANEL, PAINTER_SIDEBAR_PANEL, UPS_PANEL,
+        PAINTER_BRUSH_STUDIO_PANEL, PAINTER_LAYERS_PANEL, PAINTER_SIDEBAR_PANEL, UPS_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -176,6 +176,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // the layers panel paint a stroke on the sprite behind it (W3.T3.4
         // smoke). Mirror of the sidebar line above.
         || inside(PAINTER_LAYERS_PANEL)
+        // Brush Studio (W5) — third state of the same right-dock slot. Without
+        // it a Down/wheel over the studio falls through to the canvas: clicks
+        // paint a stroke behind the panel and sliders never capture the drag
+        // (the painter grabs pointer-move instead). Mirror of the two above.
+        || inside(PAINTER_BRUSH_STUDIO_PANEL)
 }
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live

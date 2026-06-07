@@ -520,14 +520,14 @@ fn shape_rotation_follow_sets_atan2_on_direction() {
 
 #[test]
 fn shape_scatter_produces_per_stamp_rotation_variance() {
-    // With scatter=180° and shape_count=4, the four stamps at a single
-    // pointer step should have distinct rotation_rad values within
-    // ±π (180° in radians).
+    // With scatter=1.0 (max) and shape_count=4, the four stamps at a single
+    // pointer step should have distinct rotation_rad values within ±π
+    // (scatter 1.0 → up to ±180° of rotation).
     let mut s = StampScheduler::new();
     s.begin_stroke(42);
     let mut brush = round_hard();
     brush.shape.shape_count = 4;
-    brush.shape.shape_scatter = 180.0;
+    brush.shape.shape_scatter = 1.0;
     let stamps = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
     assert_eq!(stamps.len(), 4);
     let mut rotations: Vec<f32> = stamps.iter().map(|st| st.rotation_rad).collect();
@@ -923,7 +923,7 @@ fn scatter_produces_distinct_bit_patterns() {
     s.begin_stroke(42);
     let mut brush = round_hard();
     brush.shape.shape_count = 16;
-    brush.shape.shape_scatter = 180.0;
+    brush.shape.shape_scatter = 1.0;
     let stamps = s.advance(&brush, p(0.0, 0.0), 16.0, [0.0; 4]);
     assert_eq!(stamps.len(), 16);
     let bit_patterns: std::collections::BTreeSet<u32> =
@@ -1718,7 +1718,7 @@ fn det_random_axis_tags_match_registry() {
     // The registered production tags (matches the rustdoc table
     // above `pub(crate) fn det_random`).
     let expected: std::collections::BTreeSet<u32> =
-        [0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE]
+        [0xA1, 0xB2, 0xC1, 0xC2, 0xC3, 0xC4, 0xCC, 0xCD, 0xCE, 0xD1, 0xD2, 0xD3, 0xD4]
             .into_iter()
             .collect();
 
@@ -1728,5 +1728,283 @@ fn det_random_axis_tags_match_registry() {
              Found in source: {found:#X?}. Registered: {expected:#X?}. \
              Update the registry above `pub(crate) fn det_random` AND \
              this expected set together when adding a new channel."
+    );
+}
+
+// ── T1.7 input smoothing (streamline + stabilization) ───────────────────────
+
+fn brush_with_smoothing(streamline: f32, stabilization: f32) -> Brush {
+    let mut b = round_hard();
+    b.stabilization.streamline_amount = streamline;
+    b.stabilization.stabilization = stabilization;
+    b
+}
+
+#[test]
+fn streamline_lags_the_painting_point_behind_the_cursor() {
+    // streamline = lazy-mouse EMA. After initializing at (0,0), a jump to
+    // (100,0) only pulls the painted point to the EMA midpoint (~50 at 0.5), so
+    // no stamp reaches the raw cursor — the brush trails behind.
+    let mut s = StampScheduler::new();
+    s.begin_stroke(1);
+    let brush = brush_with_smoothing(0.5, 0.0);
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let stamps = s.advance(&brush, p(100.0, 0.0), 32.0, [0.0; 4]);
+    let last_x = stamps.last().unwrap().position_world[0];
+    assert!(
+        last_x > 0.0 && last_x <= 51.0,
+        "streamline(0.5) must lag the cursor: painted x={last_x} should trail \
+         toward the ~50 EMA midpoint, not reach 100"
+    );
+}
+
+#[test]
+fn streamline_zero_reaches_the_cursor() {
+    // streamline = 0 → EMA factor 1.0 → passthrough: the painted path reaches
+    // the cursor region (last stamp within one spacing step of 100), in clear
+    // contrast with the lagged ≤51 of the streamline(0.5) case above.
+    let mut s = StampScheduler::new();
+    s.begin_stroke(1);
+    let brush = brush_with_smoothing(0.0, 0.0);
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let stamps = s.advance(&brush, p(100.0, 0.0), 32.0, [0.0; 4]);
+    let last_x = stamps.last().unwrap().position_world[0];
+    assert!(
+        last_x > 96.0,
+        "streamline(0) is passthrough: painted x={last_x} should reach the \
+         cursor region (>96), not lag"
+    );
+}
+
+#[test]
+fn stabilization_damps_zigzag_jitter() {
+    // Heavy stabilization (window 17) averages a ±10 y-zigzag toward its mean
+    // (~0): the final painted point sits well inside the raw extremes.
+    let mut s = StampScheduler::new();
+    s.begin_stroke(5);
+    let brush = brush_with_smoothing(0.0, 1.0);
+    let xs = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0];
+    let mut last_y = f32::NAN;
+    for (i, &x) in xs.iter().enumerate() {
+        let y = if i % 2 == 0 { 10.0 } else { -10.0 };
+        let stamps = s.advance(&brush, p(x, y), 32.0, [0.0; 4]);
+        if let Some(st) = stamps.last() {
+            last_y = st.position_world[1];
+        }
+    }
+    assert!(
+        last_y.abs() < 5.0,
+        "stabilization should pull the ±10 zigzag toward its mean (~0); \
+         last |y|={}",
+        last_y.abs()
+    );
+}
+
+#[test]
+fn input_smoothing_is_deterministic() {
+    // HR-5: identical input sequence + brush → bit-identical stamp positions,
+    // run-to-run (no RNG / wall-clock in the smoother).
+    let brush = brush_with_smoothing(0.3, 0.7);
+    let samples = [
+        p(0.0, 0.0),
+        p(10.0, 5.0),
+        p(20.0, -5.0),
+        p(30.0, 8.0),
+        p(40.0, -2.0),
+    ];
+    let run = || {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(123);
+        let mut out: Vec<[f32; 2]> = Vec::new();
+        for sm in samples {
+            let stamps = s.advance(&brush, sm, 32.0, [0.0; 4]);
+            out.extend(stamps.iter().map(|st| st.position_world));
+        }
+        out
+    };
+    assert_eq!(run(), run(), "input smoothing must be deterministic (HR-5)");
+}
+
+#[test]
+fn break_segment_resets_input_smoothing() {
+    // After a break (cursor crossed a gap), the EMA must restart at the new
+    // point — not lag from the pre-break position (which would smear the jump).
+    let mut s = StampScheduler::new();
+    s.begin_stroke(9);
+    let brush = brush_with_smoothing(0.8, 0.0);
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let _ = s.advance(&brush, p(20.0, 0.0), 32.0, [0.0; 4]);
+    s.break_segment();
+    // First sample after the break initializes the EMA at the raw point, so the
+    // single emitted stamp lands exactly there (no lag toward the old position).
+    let stamps = s.advance(&brush, p(200.0, 0.0), 32.0, [0.0; 4]);
+    assert_eq!(stamps[0].position_world, [200.0, 0.0]);
+}
+
+// ── T1.7 falloff (ink-depletion opacity taper) ──────────────────────────────
+
+#[test]
+fn falloff_zero_keeps_full_opacity() {
+    // Default brush (falloff=0) → every stamp at full opacity (exact passthrough).
+    let mut s = StampScheduler::new();
+    s.begin_stroke(1);
+    let mut brush = round_hard();
+    brush.stroke_path.falloff = 0.0;
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let stamps = s.advance(&brush, p(400.0, 0.0), 32.0, [0.0; 4]);
+    assert!(
+        stamps.iter().all(|st| st.opacity == 1.0),
+        "falloff=0 must leave every stamp at opacity 1.0"
+    );
+}
+
+#[test]
+fn falloff_tapers_opacity_along_the_stroke() {
+    // falloff > 0 → opacity decreases monotonically with stroke distance, so a
+    // late stamp is fainter than an early one (ink depletion).
+    let mut s = StampScheduler::new();
+    s.begin_stroke(2);
+    let mut brush = round_hard();
+    brush.stroke_path.falloff = 1.0;
+    let first = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4])[0].opacity;
+    // Draw past the depletion length (L = 8 * 32 = 256 px at falloff=1 → zero).
+    let stamps = s.advance(&brush, p(400.0, 0.0), 32.0, [0.0; 4]);
+    let last = stamps.last().unwrap().opacity;
+    assert!((first - 1.0).abs() < 1e-6, "stroke start must be full opacity");
+    assert!(
+        last < first,
+        "falloff must taper: last opacity {last} should be below the start {first}"
+    );
+    assert!(last <= 0.05, "by ~400px (>L) at falloff=1 the stroke is ~spent; got {last}");
+}
+
+#[test]
+fn falloff_below_full_still_runs_the_stroke_out() {
+    // Reference behavior (Procreate ink depletion): falloff < 1 must STILL fade
+    // the stroke to ZERO — just over a longer distance than falloff = 1. falloff
+    // is the RATE, not a plateau level. Regression for the old "<100% never ends"
+    // report. 32px brush → length-to-empty = 8*32 / falloff.
+    assert!((falloff_opacity(0.5, 0.0, 32.0) - 1.0).abs() < 1e-6);
+    // falloff=0.5 → L = 512: halfway (~0.5) at 256, zero by 512.
+    assert!((falloff_opacity(0.5, 256.0, 32.0) - 0.5).abs() < 0.02);
+    assert_eq!(
+        falloff_opacity(0.5, 512.0, 32.0),
+        0.0,
+        "falloff 0.5 must still reach zero (no plateau)"
+    );
+    // A lower falloff fades SLOWER (brighter at the same distance) than a higher one.
+    assert!(
+        falloff_opacity(0.3, 400.0, 32.0) > falloff_opacity(0.8, 400.0, 32.0),
+        "lower falloff must fade slower than higher falloff at a given distance"
+    );
+}
+
+#[test]
+fn falloff_survives_break_segment() {
+    // The ink already spent persists across a sprite-gap re-entry (same stroke):
+    // a stamp after the break is still tapered, not reset to full.
+    let mut s = StampScheduler::new();
+    s.begin_stroke(3);
+    let mut brush = round_hard();
+    brush.stroke_path.falloff = 1.0;
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let _ = s.advance(&brush, p(200.0, 0.0), 32.0, [0.0; 4]); // spend ~200px
+    s.break_segment();
+    let stamps = s.advance(&brush, p(220.0, 0.0), 32.0, [0.0; 4]);
+    let op = stamps[0].opacity;
+    assert!(
+        op < 1.0,
+        "falloff must persist across break_segment (same stroke); got full {op}"
+    );
+}
+
+// ── T1.7 Dynamics (per-stamp size + opacity jitter) ─────────────────────────
+
+#[test]
+fn dynamics_jitter_zero_is_passthrough() {
+    // Default brush (jitter_size=0, jitter_opacity=0) → no PRNG draw, stamps
+    // keep full size + the falloff/base opacity (byte-identical pre-T1.7).
+    let mut s = StampScheduler::new();
+    s.begin_stroke(1);
+    let brush = round_hard();
+    let stamps = s.advance(&brush, p(10.0, 0.0), 32.0, [0.0; 4]);
+    assert!(stamps.iter().all(|st| st.opacity == 1.0));
+    assert!(stamps.iter().all(|st| (st.size_px - 32.0).abs() < 1e-3));
+}
+
+#[test]
+fn dynamics_size_jitter_varies_stamp_size() {
+    // jitter_size > 0 → consecutive stamps get different sizes (around the base).
+    let mut s = StampScheduler::new();
+    s.begin_stroke(7);
+    let mut brush = round_hard();
+    brush.dynamics.jitter_size = 0.6;
+    let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+    let sizes: Vec<f32> = s
+        .advance(&brush, p(120.0, 0.0), 32.0, [0.0; 4])
+        .iter()
+        .map(|st| st.size_px)
+        .collect();
+    assert!(sizes.len() >= 3, "need several stamps to compare");
+    let any_below = sizes.iter().any(|&z| z < 31.0);
+    let any_above = sizes.iter().any(|&z| z > 33.0);
+    assert!(
+        any_below && any_above,
+        "size jitter must spread stamp sizes around the base; got {sizes:?}"
+    );
+}
+
+#[test]
+fn dynamics_opacity_jitter_varies_and_is_deterministic() {
+    let mut brush = round_hard();
+    brush.dynamics.jitter_opacity = 0.7;
+    let run = || {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(42);
+        let _ = s.advance(&brush, p(0.0, 0.0), 32.0, [0.0; 4]);
+        s.advance(&brush, p(120.0, 0.0), 32.0, [0.0; 4])
+            .iter()
+            .map(|st| st.opacity)
+            .collect::<Vec<_>>()
+    };
+    let a = run();
+    assert!(a.iter().any(|&o| o < 0.99), "opacity jitter must reduce some stamps");
+    assert_eq!(a, run(), "dynamics jitter must be deterministic (HR-5)");
+}
+
+#[test]
+fn shape_scatter_spreads_stamp_positions() {
+    // Procreate-faithful scatter: a POSITIONAL offset around the path (the part
+    // visible on a round brush, and what makes shape_count a spray). scatter=0 →
+    // every count stamp at the exact pointer position; scatter>0 → spread out.
+    let step = |scatter: f32| {
+        let mut s = StampScheduler::new();
+        s.begin_stroke(1);
+        let mut brush = round_hard();
+        brush.shape.shape_count = 6;
+        brush.shape.shape_scatter = scatter;
+        s.advance(&brush, p(100.0, 100.0), 32.0, [0.0; 4])
+            .iter()
+            .map(|st| st.position_world)
+            .collect::<Vec<_>>()
+    };
+    let none = step(0.0);
+    assert_eq!(none.len(), 6);
+    assert!(
+        none.iter().all(|&pos| pos == [100.0, 100.0]),
+        "scatter=0 must keep all count stamps at the pointer position; got {none:?}"
+    );
+    let spread = step(0.8);
+    assert!(
+        spread.iter().any(|&pos| pos != [100.0, 100.0]),
+        "scatter>0 must offset stamp positions around the path"
+    );
+    let max_off = spread
+        .iter()
+        .map(|&[x, y]| ((x - 100.0).powi(2) + (y - 100.0).powi(2)).sqrt())
+        .fold(0.0f32, f32::max);
+    assert!(
+        max_off > 1.0,
+        "scatter=0.8 must offset dabs by a visible amount; max {max_off}"
     );
 }

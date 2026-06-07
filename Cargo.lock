@@ -4696,6 +4696,7 @@ dependencies = [
  "ph2d-nodegraph",
  "ph2d-painter-brush",
  "ph2d-panel-bgremoval",
+ "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-hierarchy",
@@ -5264,6 +5265,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-brush-studio"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-tokens",
+ "ph2d-tool-painter",
+]
+
+[[package]]
 name = "ph2d-panel-color-equalization"
 version = "0.0.0"
 dependencies = [
@@ -5368,6 +5380,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
  "ph2d-panel-bgremoval",
+ "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-grid-snap",

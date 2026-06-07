@@ -358,6 +358,121 @@ pub const PAINTER_SIDEBAR_TOGGLE_DOCK: NodeId = hash_node_id("painter_sidebar.to
 /// Without it the only way to commit was the invisible Cmd/Ctrl+Enter shortcut.
 pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
 
+// ── Brush Studio (W5) — widget ids for `ph2d-panel-brush-studio` ──────────────
+//
+// The Brush Studio is the full brush-parameter editor (the sidebar carries only
+// the live painting essentials). It shares the right-dock geometry slot. Live
+// here in editor-core (single source of truth) so `PainterTool::handle_panel_event`
+// can reference them without a tool→panel cycle (mirror of the sidebar ids).
+//
+// Float params are slider+chip pairs; bool params are checkboxes; enum params
+// (grain type, rendering mode) are cycling buttons (the narrow-dock-friendly
+// pattern Enio accepted for the sidebar grain control). All route through the
+// generic `PainterUiEdit::SetBrushParam(BrushParam, f32)` so the cap stays low.
+
+/// "Open Brush Studio" button in the brush sidebar header — flips the shared
+/// right-dock slot to the Brush Studio (`PainterUiEdit::OpenBrushStudio`).
+pub const PAINTER_SIDEBAR_BRUSH_STUDIO: NodeId = hash_node_id("painter_sidebar.brush_studio");
+/// Close (X) button of the Brush Studio panel — returns the dock slot to the
+/// brush sidebar (`PainterTool::close_brush_studio`).
+pub const PAINTER_STUDIO_CLOSE: NodeId = hash_node_id("painter_studio.close");
+
+// Section headers (collapsible).
+pub const PAINTER_STUDIO_SEC_STROKE: NodeId = hash_node_id("painter_studio.sec_stroke");
+pub const PAINTER_STUDIO_SEC_SHAPE: NodeId = hash_node_id("painter_studio.sec_shape");
+pub const PAINTER_STUDIO_SEC_RENDERING: NodeId = hash_node_id("painter_studio.sec_rendering");
+
+// ── Stroke Path section — float sliders (slider + editable chip) ──────────────
+pub const PAINTER_STUDIO_SPACING_SLIDER: NodeId = hash_node_id("painter_studio.spacing_slider");
+pub const PAINTER_STUDIO_SPACING_CHIP: NodeId = hash_node_id("painter_studio.spacing_chip");
+pub const PAINTER_STUDIO_SPACING_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.spacing_jitter_slider");
+pub const PAINTER_STUDIO_SPACING_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.spacing_jitter_chip");
+pub const PAINTER_STUDIO_JITTER_LATERAL_SLIDER: NodeId =
+    hash_node_id("painter_studio.jitter_lateral_slider");
+pub const PAINTER_STUDIO_JITTER_LATERAL_CHIP: NodeId =
+    hash_node_id("painter_studio.jitter_lateral_chip");
+pub const PAINTER_STUDIO_FALLOFF_SLIDER: NodeId = hash_node_id("painter_studio.falloff_slider");
+pub const PAINTER_STUDIO_FALLOFF_CHIP: NodeId = hash_node_id("painter_studio.falloff_chip");
+pub const PAINTER_STUDIO_STREAMLINE_SLIDER: NodeId =
+    hash_node_id("painter_studio.streamline_slider");
+pub const PAINTER_STUDIO_STREAMLINE_CHIP: NodeId = hash_node_id("painter_studio.streamline_chip");
+pub const PAINTER_STUDIO_STABILIZATION_SLIDER: NodeId =
+    hash_node_id("painter_studio.stabilization_slider");
+pub const PAINTER_STUDIO_STABILIZATION_CHIP: NodeId =
+    hash_node_id("painter_studio.stabilization_chip");
+
+// ── Shape section — sliders + checkboxes ─────────────────────────────────────
+pub const PAINTER_STUDIO_SHAPE_SCATTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_scatter_slider");
+pub const PAINTER_STUDIO_SHAPE_SCATTER_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_scatter_chip");
+pub const PAINTER_STUDIO_SHAPE_COUNT_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_count_slider");
+pub const PAINTER_STUDIO_SHAPE_COUNT_CHIP: NodeId = hash_node_id("painter_studio.shape_count_chip");
+pub const PAINTER_STUDIO_SHAPE_COUNT_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_count_jitter_slider");
+pub const PAINTER_STUDIO_SHAPE_COUNT_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_count_jitter_chip");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_roundness_slider");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_roundness_chip");
+pub const PAINTER_STUDIO_SHAPE_ROTATION_FOLLOW: NodeId =
+    hash_node_id("painter_studio.shape_rotation_follow");
+pub const PAINTER_STUDIO_SHAPE_RANDOMIZED: NodeId = hash_node_id("painter_studio.shape_randomized");
+pub const PAINTER_STUDIO_SHAPE_FLIP_X: NodeId = hash_node_id("painter_studio.shape_flip_x");
+pub const PAINTER_STUDIO_SHAPE_FLIP_Y: NodeId = hash_node_id("painter_studio.shape_flip_y");
+
+// ── Rendering section — sliders + checkboxes + cyclers ────────────────────────
+pub const PAINTER_STUDIO_FLOW_SLIDER: NodeId = hash_node_id("painter_studio.flow_slider");
+pub const PAINTER_STUDIO_FLOW_CHIP: NodeId = hash_node_id("painter_studio.flow_chip");
+pub const PAINTER_STUDIO_ALPHA_THRESHOLD_SLIDER: NodeId =
+    hash_node_id("painter_studio.alpha_threshold_slider");
+pub const PAINTER_STUDIO_ALPHA_THRESHOLD_CHIP: NodeId =
+    hash_node_id("painter_studio.alpha_threshold_chip");
+pub const PAINTER_STUDIO_GRAIN_SCALE_SLIDER: NodeId =
+    hash_node_id("painter_studio.grain_scale_slider");
+pub const PAINTER_STUDIO_GRAIN_SCALE_CHIP: NodeId = hash_node_id("painter_studio.grain_scale_chip");
+pub const PAINTER_STUDIO_GRAIN_DEPTH_SLIDER: NodeId =
+    hash_node_id("painter_studio.grain_depth_slider");
+pub const PAINTER_STUDIO_GRAIN_DEPTH_CHIP: NodeId = hash_node_id("painter_studio.grain_depth_chip");
+pub const PAINTER_STUDIO_PIGMENT: NodeId = hash_node_id("painter_studio.pigment");
+pub const PAINTER_STUDIO_ACCUMULATE: NodeId = hash_node_id("painter_studio.accumulate");
+pub const PAINTER_STUDIO_WET_EDGES: NodeId = hash_node_id("painter_studio.wet_edges");
+pub const PAINTER_STUDIO_BURNT_EDGES: NodeId = hash_node_id("painter_studio.burnt_edges");
+/// Grain type cycler (Off → Simplex → Gabor → Weave → Spray → Off).
+pub const PAINTER_STUDIO_GRAIN_TYPE: NodeId = hash_node_id("painter_studio.grain_type");
+/// Rendering mode cycler (LightGlaze → … → IntenseBlending, 6 modes).
+pub const PAINTER_STUDIO_RENDERING_MODE: NodeId = hash_node_id("painter_studio.rendering_mode");
+
+// ── Color Dynamics section — per-stamp OKLab jitter (engine-wired) ────────────
+pub const PAINTER_STUDIO_SEC_COLOR: NodeId = hash_node_id("painter_studio.sec_color");
+pub const PAINTER_STUDIO_HUE_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.hue_jitter_slider");
+pub const PAINTER_STUDIO_HUE_JITTER_CHIP: NodeId = hash_node_id("painter_studio.hue_jitter_chip");
+pub const PAINTER_STUDIO_SAT_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.sat_jitter_slider");
+pub const PAINTER_STUDIO_SAT_JITTER_CHIP: NodeId = hash_node_id("painter_studio.sat_jitter_chip");
+pub const PAINTER_STUDIO_LIGHT_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.light_jitter_slider");
+pub const PAINTER_STUDIO_LIGHT_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.light_jitter_chip");
+pub const PAINTER_STUDIO_DARK_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.dark_jitter_slider");
+pub const PAINTER_STUDIO_DARK_JITTER_CHIP: NodeId = hash_node_id("painter_studio.dark_jitter_chip");
+
+// ── Dynamics section — per-stamp size/opacity jitter (engine-wired T1.7) ──────
+pub const PAINTER_STUDIO_SEC_DYNAMICS: NodeId = hash_node_id("painter_studio.sec_dynamics");
+pub const PAINTER_STUDIO_SIZE_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.size_jitter_slider");
+pub const PAINTER_STUDIO_SIZE_JITTER_CHIP: NodeId = hash_node_id("painter_studio.size_jitter_chip");
+pub const PAINTER_STUDIO_OPACITY_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.opacity_jitter_slider");
+pub const PAINTER_STUDIO_OPACITY_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.opacity_jitter_chip");
+
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via
 /// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's

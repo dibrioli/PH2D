@@ -18,6 +18,11 @@ impl StampScheduler {
             stamp_index: 0,
             stroke_rotation_base: None,
             last_follow_angle: None,
+            streamline_pos: None,
+            stab_ring: [[0.0; 2]; STAB_WINDOW_MAX],
+            stab_head: 0,
+            stab_count: 0,
+            stroke_dist: 0.0,
         }
     }
 
@@ -46,6 +51,8 @@ impl StampScheduler {
         self.stamp_index = 0;
         self.stroke_rotation_base = None;
         self.last_follow_angle = None;
+        self.reset_input_smoothing();
+        self.stroke_dist = 0.0;
     }
 
     /// Finaliza o stroke atual. Limpa estado de continuação mas mantém
@@ -56,6 +63,8 @@ impl StampScheduler {
         self.residual_dist = 0.0;
         self.stroke_rotation_base = None;
         self.last_follow_angle = None;
+        self.reset_input_smoothing();
+        self.stroke_dist = 0.0;
     }
 
     /// "Brush lifted" — interrompe o segmento atual SEM encerrar o stroke
@@ -75,6 +84,9 @@ impl StampScheduler {
         // espaçamento; a próxima chamada começa fresca como se fosse a
         // primeira do stroke.
         self.residual_dist = 0.0;
+        // Input smoothing restarts on re-entry (the cursor teleported across a
+        // gap; lagging/averaging toward the new point would smear the jump).
+        self.reset_input_smoothing();
         // `stroke_rotation_base` SURVIVES break_segment — same stroke
         // (pointer never lifted in the user-model sense; cursor merely
         // crossed the sprite footprint boundary). Re-entry produces
@@ -94,6 +106,53 @@ impl StampScheduler {
     #[must_use]
     pub fn is_in_stroke(&self) -> bool {
         self.last_point.is_some()
+    }
+
+    /// Clear the T1.7 input-smoothing state (streamline EMA + stabilization
+    /// ring). Called on every stroke boundary so a new segment starts fresh.
+    fn reset_input_smoothing(&mut self) {
+        self.streamline_pos = None;
+        self.stab_head = 0;
+        self.stab_count = 0;
+    }
+
+    /// **T1.7 input smoothing.** Stabilize then streamline the raw input
+    /// position. Stabilization averages the last `N = 1 + round(stabilization *
+    /// 16)` raw samples (jitter rejection); streamline then EMA-lags toward that
+    /// average (lazy mouse). Pure arithmetic of the input sequence + brush
+    /// params → deterministic cross-OS (HR-5). Exact passthrough when both
+    /// params are 0 (the default brush), so default strokes are unchanged.
+    fn smooth_input_position(&mut self, brush: &Brush, raw: [f32; 2]) -> [f32; 2] {
+        let stab = brush.stabilization.stabilization.clamp(0.0, 1.0);
+        let streamline = brush.stabilization.streamline_amount.clamp(0.0, 1.0);
+        // Default brush (both 0) → byte-identical to the pre-T1.7 behaviour.
+        if stab == 0.0 && streamline == 0.0 {
+            return raw;
+        }
+        // Stabilization: push into the ring + average the last `window` samples.
+        self.stab_ring[self.stab_head] = raw;
+        self.stab_head = (self.stab_head + 1) % STAB_WINDOW_MAX;
+        self.stab_count = (self.stab_count + 1).min(STAB_WINDOW_MAX);
+        let window = (1 + (stab * 16.0).round() as usize).min(self.stab_count);
+        let mut sum = [0.0f32, 0.0f32];
+        for k in 0..window {
+            let idx = (self.stab_head + STAB_WINDOW_MAX - 1 - k) % STAB_WINDOW_MAX;
+            sum[0] += self.stab_ring[idx][0];
+            sum[1] += self.stab_ring[idx][1];
+        }
+        let inv = 1.0 / window as f32;
+        let avg = [sum[0] * inv, sum[1] * inv];
+        // Streamline: EMA lag toward the stabilized point (factor 1.0 = no lag).
+        let follow = 1.0 - streamline;
+        let smoothed = match self.streamline_pos {
+            None => avg,
+            Some(prev) => [
+                prev[0] + (avg[0] - prev[0]) * follow,
+                prev[1] + (avg[1] - prev[1]) * follow,
+            ],
+        };
+        self.streamline_pos = Some(smoothed);
+        smoothed
     }
 
     /// Avança o stroke até `sample`, emitindo todos os stamps que cabem no
@@ -145,6 +204,18 @@ impl StampScheduler {
             return &self.pool;
         }
 
+        // **T1.7 input smoothing.** Stabilize (moving average) + streamline
+        // (lazy-mouse EMA) the raw input BEFORE any geometry. Deterministic
+        // (pure arithmetic of the input sequence + brush params — HR-5) so
+        // replay over the recorded raw samples reproduces the same path. A
+        // no-op when both params are 0 (the default brush), so existing
+        // stamping/tests are byte-identical. Pressure/tilt stay raw; only the
+        // position is smoothed — so the painted point can lag the cursor.
+        let sample = PointerSample {
+            position: self.smooth_input_position(brush, sample.position),
+            ..sample
+        };
+
         // Diameter efetivo clampado ao limite ABI do Stamp. Caller passou
         // tamanho derivado de slider+pressure; aqui só impomos o teto.
         let diameter = size_px.clamp(1.0, MAX_STAMP_SIZE_PX as f32);
@@ -178,7 +249,14 @@ impl StampScheduler {
                 // posição (sem stroke direction ainda → rotation_follow
                 // contribui 0 nesse step). Single-pointer click = single
                 // group emit.
-                self.push_stamp_group(brush, sample, diameter, color_oklab, [1.0, 0.0]);
+                self.push_stamp_group(
+                    brush,
+                    sample,
+                    diameter,
+                    color_oklab,
+                    [1.0, 0.0],
+                    self.stroke_dist,
+                );
                 self.last_point = Some(sample.position);
                 self.residual_dist = 0.0;
                 return &self.pool;
@@ -263,7 +341,14 @@ impl StampScheduler {
                         pressure: sample.pressure,
                         tilt: sample.tilt,
                     };
-                    self.push_stamp_group(brush, interp_sample, diameter, color_oklab, stroke_dir);
+                    self.push_stamp_group(
+                        brush,
+                        interp_sample,
+                        diameter,
+                        color_oklab,
+                        stroke_dir,
+                        self.stroke_dist + t_along,
+                    );
 
                     cursor += spacing_px;
                 }
@@ -284,6 +369,9 @@ impl StampScheduler {
                 let consumed = cursor - spacing_px;
                 let raw_residual = segment_len - consumed;
                 self.residual_dist = raw_residual.rem_euclid(spacing_px);
+                // T1.7 falloff: accumulate the segment length so the next
+                // segment's stamps taper from where this one left off.
+                self.stroke_dist += segment_len;
                 self.last_point = Some(sample.position);
             }
         }
@@ -301,6 +389,7 @@ impl StampScheduler {
     /// when `shape_rotation_follow=true`. For the very first stamp of a
     /// stroke (no direction yet), pass `[1.0, 0.0]` — that's the canonical
     /// "no direction" sentinel matching `atan2(0, 1) = 0`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn push_stamp_group(
         &mut self,
         brush: &Brush,
@@ -308,7 +397,11 @@ impl StampScheduler {
         diameter: f32,
         color_oklab: [f32; 4],
         stroke_dir: [f32; 2],
+        stroke_distance: f32,
     ) {
+        // T1.7 falloff: per-group opacity taper (constant across the group's
+        // stamps; they share a world position). 1.0 for the default brush.
+        let group_opacity = falloff_opacity(brush.stroke_path.falloff, stroke_distance, diameter);
         // Hoist per-group brush params.
         let shape_layer = match &brush.shape.shape_source {
             crate::shape::ShapeSource::Builtin { atlas_layer, .. } => *atlas_layer,
@@ -321,7 +414,15 @@ impl StampScheduler {
         // Saves ~7 cycles × `effective_count` for the radial-default
         // brushes (most common case).
         let is_radial = crate::library::shape_is_radial_symmetric(shape_layer);
-        let scatter_rad = brush.shape.shape_scatter.clamp(0.0, 360.0).to_radians();
+        // **Scatter (Procreate-faithful, normalized 0..1).** The panel sends
+        // `shape_scatter ∈ [0,1]`. Scatter does TWO things (Procreate Handbook):
+        // (1) POSITIONAL — offsets each stamp around the path (roughens the edge
+        // at low values, sprays the shape around at high values) — the part that
+        // is VISIBLE on a round brush and makes `shape_count` useful; (2)
+        // ROTATIONAL — randomizes each stamp's rotation (visible on shaped
+        // brushes). The previous code treated the value as DEGREES
+        // (`.to_radians()`), so the panel's 0..1 produced ≤1° — effectively dead.
+        let scatter01 = brush.shape.shape_scatter.clamp(0.0, 1.0);
         // **Audit T1.6 R7 K1-10 — continuous-angle unwrap.** `atan2`
         // returns values in `(-π, π]`; a stroke that crosses the ±π
         // discontinuity (any path crossing the negative x-axis, or a
@@ -433,14 +534,34 @@ impl StampScheduler {
             if self.pool.len() >= MAX_STAMPS_PER_DISPATCH {
                 return;
             }
-            // Per-stamp rotation: stroke base + follow angle + scatter
-            // jitter (independent per stamp via stamp_index advance).
-            let scatter_offset = if scatter_rad > 0.0 {
-                (self.det_random(self.stamp_index, 0xCD) * 2.0 - 1.0) * scatter_rad
+            // Per-stamp rotation: stroke base + follow angle + scatter rotation
+            // (`scatter01 = 1` → up to ±180°). Independent per stamp via the
+            // stamp_index advance.
+            let scatter_offset = if scatter01 > 0.0 {
+                (self.det_random(self.stamp_index, 0xCD) * 2.0 - 1.0) * scatter01 * std::f32::consts::PI
             } else {
                 0.0
             };
             let rotation_rad = base_rotation + follow_angle + scatter_offset;
+
+            // Per-stamp POSITIONAL scatter (the visible part): offset the dab
+            // around the path by a random vector whose radius scales with
+            // `scatter01 * diameter` (at 1.0, up to ±1 diameter). Polar draw —
+            // axis 0xD3 = angle, 0xD4 = radius (registered). This is what makes
+            // Scatter show on a round brush and `shape_count` produce a spray.
+            let scattered = if scatter01 > 0.0 {
+                let ang = self.det_random(self.stamp_index, 0xD3) * std::f32::consts::TAU;
+                let rad = self.det_random(self.stamp_index, 0xD4) * scatter01 * diameter;
+                PointerSample {
+                    position: [
+                        sample.position[0] + rad * ang.cos(),
+                        sample.position[1] + rad * ang.sin(),
+                    ],
+                    ..sample
+                }
+            } else {
+                sample
+            };
 
             // **Audit T1.6 Q-8 — NaN guard.** All three components above
             // are constructed from finite inputs (atan2 of unit vector is
@@ -487,12 +608,13 @@ impl StampScheduler {
 
             self.push_one_stamp(
                 brush,
-                sample,
+                scattered,
                 size_px,
                 rotation_rad,
                 color,
                 shape_layer,
                 flags,
+                group_opacity,
             );
         }
     }
@@ -513,6 +635,7 @@ impl StampScheduler {
         color_oklab: [f32; 4],
         shape_layer: u32,
         flags: u32,
+        opacity: f32,
     ) {
         // **Audit T1.6 U-10:** defense-in-depth — size_px must be
         // positive finite at the push boundary. `advance` clamps
@@ -529,16 +652,38 @@ impl StampScheduler {
             "push_one_stamp size_px must be positive finite; got {size_px}"
         );
         let len_before = self.pool.len();
+        // **T1.7 Dynamics — per-stamp size + opacity jitter.** Deterministic
+        // (det_random on this stamp's index; axes 0xD1 size / 0xD2 opacity —
+        // registered in the `det_random` table). The `> 0.0` guards skip the
+        // PRNG draw entirely when the param is 0, so a default brush is
+        // byte-identical (and other axes' streams are untouched — independent
+        // by axis_tag). Mirror of the color-jitter pattern (0xC1..0xC4).
+        let size_jit = {
+            let j = brush.dynamics.jitter_size.clamp(0.0, 1.0);
+            if j > 0.0 {
+                (1.0 + j * (self.det_random(self.stamp_index, 0xD1) * 2.0 - 1.0)).max(0.05)
+            } else {
+                1.0
+            }
+        };
+        let opacity_jit = {
+            let j = brush.dynamics.jitter_opacity.clamp(0.0, 1.0);
+            if j > 0.0 {
+                (1.0 + j * (self.det_random(self.stamp_index, 0xD2) * 2.0 - 1.0)).clamp(0.0, 1.0)
+            } else {
+                1.0
+            }
+        };
         let mut s = Stamp::zeroed();
         s.position_world = sample.position;
-        s.size_px = size_px;
+        s.size_px = (size_px * size_jit).clamp(1.0, MAX_STAMP_SIZE_PX as f32);
         s.rotation_rad = rotation_rad;
         s.pressure = sample.pressure.clamp(0.0, 1.0);
         s.tilt = sample.tilt.clamp(0.0, std::f32::consts::FRAC_PI_2);
         s.azimuth = 0.0; // T-input (ADR-0050)
         s.barrel_roll = 0.0; // T-input (ADR-0050)
         s.color_oklab = color_oklab; // STRAIGHT alpha (shader premultiplies)
-        s.opacity = 1.0; // T1.7 — taper opacity + stroke-level opacity
+        s.opacity = (opacity * opacity_jit).clamp(0.0, 1.0); // T1.7 falloff taper × dynamics jitter
         s.flow = brush.rendering.flow.clamp(0.0, 1.0);
         s.wet_amount = 0.0; // T-wet-mix W7+
         s.shape_layer = shape_layer;

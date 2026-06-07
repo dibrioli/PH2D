@@ -153,6 +153,11 @@ pub const EQUALIZE_SIZES_SCROLLBAR_ID: NodeId = NodeId(828);
 /// the panel registers this id on its `scrollbar_thumb_rect` to enable
 /// thumb-DRAG (Painter W3 audit item 4).
 pub const PAINTER_LAYERS_SCROLLBAR_ID: NodeId = NodeId(829);
+/// Brush Studio floating panel scrollbar (W5) — the brush-parameter editor's
+/// three sections (Stroke Path / Shape / Rendering) overflow the dock height.
+/// Independent thumb id so dispatch routes drag-scroll without aliasing the
+/// sidebar / layers panels that share the same dock slot.
+pub const PAINTER_BRUSH_STUDIO_SCROLLBAR_ID: NodeId = NodeId(830);
 
 #[cfg(test)]
 mod tests {

@@ -117,40 +117,10 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     // Pigment / Accumulate / Grain toggles (W5).
     y = paint_pigment_row(ctx, rect, y, &snapshot, theme, row_pad);
 
-    // Grain depth slider — only while grain is active (the value lives in the
-    // widget store, seeded full; no snapshot field, so we read it from the store).
+    // Grain depth slider — only while grain is active (helper keeps `paint`
+    // under the panel-fn LOC cap).
     if snapshot.grain_type != 0 {
-        let gd_val = ctx
-            .host
-            .store()
-            .slider(core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER)
-            .map(|(_, v)| v)
-            .unwrap_or(1.0);
-        let gd_display = format!("{:.0}%", gd_val * 100.0);
-        let gd_rect = Rect::new(
-            rect.x + PANEL_HEAD_PAD,
-            y,
-            rect.w - PANEL_HEAD_PAD * 2.0,
-            ROW_H_PX,
-        );
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        let gd_h = paint_slider_with_chip_layout_adaptive(
-            gd_rect,
-            "Grain",
-            gd_val,
-            (gd_val * 100.0) as f64,
-            Some(&gd_display),
-            core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER,
-            core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP,
-            SLIDER_LABEL_W,
-            SLIDER_CHIP_W,
-            store,
-            hit_index,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-        );
-        y += gd_h + row_pad;
+        y = paint_grain_depth_row(ctx, rect, y, theme, row_pad);
     }
 
     // Size slider — size_px display via display_override + SSOT map.
@@ -212,28 +182,9 @@ pub(crate) fn paint(_state: &mut PainterSidebarPanelState, ctx: &mut PaintCtx) {
     );
     y += opacity_h + row_pad;
 
-    // Apply CTA — commit the painting into the active sprite (accent, full
-    // width). The only discoverable commit; Cmd/Ctrl+Enter is the hidden
-    // shortcut. Shared id + tool routing with the layers panel.
-    let apply_rect = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        y,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        ROW_H_PX,
-    );
-    let apply_st = ctx
-        .host
-        .store()
-        .button_state(core_ids::PAINTER_APPLY)
-        .unwrap_or(ButtonState::Normal);
-    let apply_btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
-        .accent()
-        .state(apply_st);
-    paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_APPLY, apply_rect);
-    y += ROW_H_PX + row_pad;
+    // "Brush Studio" (opens the editor) + Apply CTA (commits) — full-width
+    // action buttons. Helper keeps `paint` under the panel-fn LOC cap.
+    y = paint_sidebar_actions(ctx, rect, y, theme, row_pad);
 
     let content_h = (y - body_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
@@ -432,6 +383,99 @@ fn paint_pigment_row(
     hit_index.register(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, acc_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, grn_rect);
     y + ROW_H_PX * 3.0 + row_pad
+}
+
+/// Grain depth slider row (W5) — shown only while grain is active. The value
+/// lives in the widget store (seeded full; no snapshot field — `PainterUiSnapshot`
+/// is at its 18-field cap), so it's read from the store. Returns the advanced `y`.
+fn paint_grain_depth_row(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    y: f32,
+    theme: ph2d_tokens::Theme,
+    row_pad: f32,
+) -> f32 {
+    let gd_val = ctx
+        .host
+        .store()
+        .slider(core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER)
+        .map(|(_, v)| v)
+        .unwrap_or(1.0);
+    let gd_display = format!("{:.0}%", gd_val * 100.0);
+    let gd_rect = Rect::new(
+        rect.x + PANEL_HEAD_PAD,
+        y,
+        rect.w - PANEL_HEAD_PAD * 2.0,
+        ROW_H_PX,
+    );
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let gd_h = paint_slider_with_chip_layout_adaptive(
+        gd_rect,
+        "Grain",
+        gd_val,
+        (gd_val * 100.0) as f64,
+        Some(&gd_display),
+        core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER,
+        core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP,
+        SLIDER_LABEL_W,
+        SLIDER_CHIP_W,
+        store,
+        hit_index,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    y + gd_h + row_pad
+}
+
+/// Bottom action buttons — "Brush Studio" (opens the full brush-parameter editor
+/// via `PainterUiEdit::OpenBrushStudio`; the bridge swaps the dock slot) then the
+/// accent "Apply" CTA (commits the painting; shared id + routing with the layers
+/// panel). Helper keeps `paint` under the panel-fn LOC cap. Returns advanced `y`.
+fn paint_sidebar_actions(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    mut y: f32,
+    theme: ph2d_tokens::Theme,
+    row_pad: f32,
+) -> f32 {
+    let btn_rect = |y: f32| {
+        Rect::new(
+            rect.x + PANEL_HEAD_PAD,
+            y,
+            rect.w - PANEL_HEAD_PAD * 2.0,
+            ROW_H_PX,
+        )
+    };
+
+    let studio_rect = btn_rect(y);
+    let studio_st = ctx
+        .host
+        .store()
+        .button_state(core_ids::PAINTER_SIDEBAR_BRUSH_STUDIO)
+        .unwrap_or(ButtonState::Normal);
+    let studio_btn =
+        Button::new(core_ids::PAINTER_SIDEBAR_BRUSH_STUDIO, "Brush Studio").state(studio_st);
+    paint_button(&studio_btn, studio_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_SIDEBAR_BRUSH_STUDIO, studio_rect);
+    y += ROW_H_PX + row_pad;
+
+    let apply_rect = btn_rect(y);
+    let apply_st = ctx
+        .host
+        .store()
+        .button_state(core_ids::PAINTER_APPLY)
+        .unwrap_or(ButtonState::Normal);
+    let apply_btn = Button::new(core_ids::PAINTER_APPLY, "Apply")
+        .accent()
+        .state(apply_st);
+    paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_APPLY, apply_rect);
+    y + ROW_H_PX + row_pad
 }
 
 /// Header dock-toggle ("Layers") — swaps the shared dock slot to the layers

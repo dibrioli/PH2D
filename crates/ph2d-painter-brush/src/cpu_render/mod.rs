@@ -495,8 +495,14 @@ fn apply_one_stamp_wash(
             if shape_alpha < (1.0 / 255.0) {
                 continue;
             }
-            // Per-dab deposit RATE (no opacity — opacity is the cap below).
-            let mut rate = (color_alpha * flow * shape_alpha).clamp(0.0, 1.0);
+            // Per-dab deposit RATE. The BRUSH opacity is the cap below
+            // (`opacity_cap`); `stamp.opacity` here is the PER-STAMP falloff
+            // taper (T1.7) — 1.0 for a non-fading brush, decaying along the
+            // stroke when `stroke_path.falloff > 0`, so later dabs deposit less
+            // coverage and the stroke fades. Without this the wash path (the
+            // default brush) ignored falloff entirely.
+            let taper = stamp.opacity.clamp(0.0, 1.0);
+            let mut rate = (color_alpha * flow * shape_alpha * taper).clamp(0.0, 1.0);
             if rate < (1.0 / 255.0) {
                 continue;
             }

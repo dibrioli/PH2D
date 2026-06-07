@@ -82,6 +82,45 @@ use crate::stamp::{
 /// beyond a known bound. Mirrors the spec range exactly.
 const MAX_SHAPE_COUNT: u32 = 16;
 
+/// Max stabilization moving-average window (`1 + round(stabilization * 16)`),
+/// `stabilization ∈ [0,1]`. Sizes the fixed input-history ring (T1.7).
+const STAB_WINDOW_MAX: usize = 17;
+
+/// Falloff fade length at `falloff = 1`, in brush diameters: at full falloff the
+/// stroke opacity ramps linearly from full to **zero** over this many diameters
+/// of travel. Lower falloff stretches the same ramp over a proportionally LONGER
+/// distance (`L = FALLOFF_LENGTH_DIAMETERS * diameter / falloff`), so the stroke
+/// always runs out — higher falloff just runs out sooner. Size-relative so the
+/// feel is independent of brush size.
+const FALLOFF_LENGTH_DIAMETERS: f32 = 8.0;
+
+/// Deterministic falloff opacity multiplier for a stamp at `stroke_distance`
+/// (px) into the stroke — the live "ink depletion" model (T1.7, Procreate-style).
+///
+/// The opacity ramps linearly to **zero** over a distance `L = K·diameter /
+/// falloff`; `falloff` controls the RATE (length-to-empty), NOT the final level.
+/// So every `falloff > 0` eventually fades the stroke to nothing — a higher
+/// falloff reaches zero sooner, a lower one over a longer stroke. (The previous
+/// model coupled falloff to the final level, so values < 1 plateaued and never
+/// ended, and 1 looked abrupt by contrast.) `falloff = 0` → constant 1.0 (the
+/// default brush, exact passthrough).
+///
+/// Linear (only `-`, `*`, `/`, `max` — no transcendentals → bit-stable cross-OS
+/// for the HR-5 replay hash). **Live approximation:** the ramp uses a falloff-
+/// derived fixed length, NOT the unknown total stroke length (the incremental
+/// live path can't see the stroke's end).
+#[inline]
+#[must_use]
+pub(crate) fn falloff_opacity(falloff: f32, stroke_distance: f32, diameter: f32) -> f32 {
+    let falloff = falloff.clamp(0.0, 1.0);
+    if falloff <= 0.0 {
+        return 1.0;
+    }
+    // Distance over which the stroke depletes to zero — shrinks as falloff rises.
+    let length_to_empty = (FALLOFF_LENGTH_DIAMETERS * diameter / falloff).max(1.0);
+    (1.0 - stroke_distance / length_to_empty).max(0.0)
+}
+
 /// Pointer sample input — uma amostra do dispositivo (mouse / Pencil / tablet).
 ///
 /// Para T1.5 MVP esses 4 campos bastam. Curves (pressure_curve / tilt_curve /
@@ -158,6 +197,27 @@ pub struct StampScheduler {
     /// the same stroke's pointer crossed a sprite gap, the rotation
     /// pattern should still be continuous on re-entry.
     last_follow_angle: Option<f32>,
+    /// **T1.7 input smoothing — streamline (lazy-mouse) lag.** EMA of the
+    /// stabilized input position; the painting point trails the real cursor by
+    /// `brush.stabilization.streamline_amount`. `None` until the first
+    /// `advance` of the stroke; reset on `begin_stroke` / `end_stroke` /
+    /// `break_segment`. With `streamline_amount == 0` the EMA factor is 1.0 →
+    /// the smoothed point equals its input (exact passthrough).
+    streamline_pos: Option<[f32; 2]>,
+    /// **T1.7 input smoothing — stabilization (moving average) ring.** Holds the
+    /// last raw input positions; the average over the last `N = 1 + round(
+    /// stabilization * 16)` (1..=17) reduces hand jitter. Fixed array (no alloc,
+    /// HR-3). `stab_head` is the next write slot; `stab_count` saturates at the
+    /// window cap. Reset (count/head → 0) on stroke boundaries.
+    stab_ring: [[f32; 2]; STAB_WINDOW_MAX],
+    stab_head: usize,
+    stab_count: usize,
+    /// **T1.7 falloff — accumulated stroke distance (px).** Sum of segment
+    /// lengths painted so far this stroke; drives the `stroke_path.falloff`
+    /// opacity taper (ink depletion). Reset on `begin_stroke` / `end_stroke`;
+    /// **survives `break_segment`** (the gap isn't measured, but the ink already
+    /// spent persists across a sprite-boundary re-entry within the same stroke).
+    stroke_dist: f32,
 }
 
 impl Default for StampScheduler {
@@ -205,6 +265,10 @@ impl Default for StampScheduler {
 /// | `0xCE` | `shape_count_jitter` (group size perturbation)          |
 /// | `0xCF` | RESERVED — future per-stamp randomized flip (Q-11)      |
 /// | `0xD0` | RESERVED — future per-stamp randomized flip (Q-11)      |
+/// | `0xD1` | `dynamics.jitter_size` (per-stamp size variation, T1.7)  |
+/// | `0xD2` | `dynamics.jitter_opacity` (per-stamp opacity variation)  |
+/// | `0xD3` | `shape_scatter` positional offset — angle                |
+/// | `0xD4` | `shape_scatter` positional offset — radius               |
 ///
 /// **Audit T1.6 R8 N1-6 / Q1-2:** R7 shipped this table with only
 /// 6 of 9 active tags listed; `0xA1` / `0xB2` / `0xCC` were
@@ -213,7 +277,7 @@ impl Default for StampScheduler {
 /// `det_random_axis_tags_match_registry` (in `mod tests`) now
 /// enumerates EVERY `det_random` call site in the crate's source
 /// and asserts the set of literal `axis_tag` arguments equals the
-/// registered set `{0xA1, 0xB2, 0xC1..0xC4, 0xCC, 0xCD, 0xCE}`
+/// registered set `{0xA1, 0xB2, 0xC1..0xC4, 0xCC, 0xCD, 0xCE, 0xD1..0xD4}`
 /// (reserved `0xCF`/`0xD0` are NOT yet in use so they don't appear).
 /// Any new call site collides at test-time and forces a registry
 /// update — no more silent collision risk.

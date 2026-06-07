@@ -713,9 +713,115 @@ impl PainterTool {
                 self.brush.grain.grain_depth = v.clamp(0.0, 1.0);
                 self.cached_brush_hash = None;
             }
-            // OpenLayersPopover / OpenColorPopover / OpenBrushStudio são
-            // affordances visuais geridas shell-side (não mutam tool state).
+            crate::params::PainterUiEdit::OpenBrushStudio => {
+                // W5: unlike OpenLayersPopover/OpenColorPopover (pure shell
+                // affordances), the Brush Studio's visibility is tool state
+                // (`show_brush_studio`, mirror of `dock_shows_layers`) so all
+                // three dock panels + the shell agree without a panel→panel dep.
+                self.open_brush_studio();
+            }
+            crate::params::PainterUiEdit::SetBrushParam(param, v) => {
+                self.set_brush_param(param, v);
+            }
+            // OpenLayersPopover / OpenColorPopover são affordances visuais
+            // geridas shell-side (não mutam tool state).
             _ => {}
+        }
+    }
+
+    /// Write a single scalar Brush field from the Brush Studio (W5). Routed via
+    /// [`crate::params::PainterUiEdit::SetBrushParam`]; clamps per field (bools
+    /// via `>= 0.5`, `shape_count` rounded, `rendering_mode` decoded by index)
+    /// and invalidates `cached_brush_hash` so the next `begin_stroke` re-bakes.
+    /// A live stroke keeps its baked params until `end_stroke` (the stamp
+    /// scheduler reads these at `begin_stroke`), matching the Toggle* contract.
+    fn set_brush_param(&mut self, param: crate::params::BrushParam, v: f32) {
+        use crate::params::BrushParam as P;
+        let b = &mut self.brush;
+        match param {
+            P::Spacing => b.stroke_path.spacing = v.clamp(0.01, 1.0),
+            P::SpacingJitter => b.stroke_path.spacing_jitter = v.clamp(0.0, 1.0),
+            P::JitterLateral => b.stroke_path.jitter_lateral = v.clamp(0.0, 1.0),
+            P::Falloff => b.stroke_path.falloff = v.clamp(0.0, 1.0),
+            P::StreamlineAmount => b.stabilization.streamline_amount = v.clamp(0.0, 1.0),
+            P::Stabilization => b.stabilization.stabilization = v.clamp(0.0, 1.0),
+            P::ShapeScatter => b.shape.shape_scatter = v.clamp(0.0, 1.0),
+            // Sliders always emit 0..1; map to the field's natural range here
+            // (the panel inverts it for display) — same split as `size01_to_px`.
+            P::ShapeCount => {
+                b.shape.shape_count = (1.0 + v.clamp(0.0, 1.0) * 15.0).round() as u32
+            }
+            P::ShapeCountJitter => b.shape.shape_count_jitter = v.clamp(0.0, 1.0),
+            P::ShapeRoundness => b.shape.shape_roundness = v.clamp(0.0, 1.0),
+            P::ShapeRotationFollow => b.shape.shape_rotation_follow = v >= 0.5,
+            P::ShapeRandomized => b.shape.shape_randomized = v >= 0.5,
+            P::ShapeFlipX => b.shape.shape_flip_x = v >= 0.5,
+            P::ShapeFlipY => b.shape.shape_flip_y = v >= 0.5,
+            P::Flow => b.rendering.flow = v.clamp(0.0, 1.0),
+            P::AlphaThreshold => b.rendering.alpha_threshold = v.clamp(0.0, 1.0),
+            P::WetEdges => b.rendering.wet_edges = v >= 0.5,
+            P::BurntEdges => b.rendering.burnt_edges = v >= 0.5,
+            P::RenderingMode => {
+                b.rendering.rendering_mode =
+                    ph2d_painter_brush::RenderingMode::from_u32(v.round().max(0.0) as u32);
+            }
+            P::GrainScale => b.grain.grain_scale = 0.1 + v.clamp(0.0, 1.0) * 3.9,
+            P::HueJitter => b.color_dynamics.stamp_hue_jitter = v.clamp(0.0, 1.0),
+            P::SaturationJitter => b.color_dynamics.stamp_saturation_jitter = v.clamp(0.0, 1.0),
+            P::LightnessJitter => b.color_dynamics.stamp_lightness_jitter = v.clamp(0.0, 1.0),
+            P::DarknessJitter => b.color_dynamics.stamp_darkness_jitter = v.clamp(0.0, 1.0),
+            P::SizeJitter => b.dynamics.jitter_size = v.clamp(0.0, 1.0),
+            P::OpacityJitter => b.dynamics.jitter_opacity = v.clamp(0.0, 1.0),
+        }
+        self.cached_brush_hash = None;
+    }
+
+    /// Build the [`crate::params::BrushStudioSnapshot`] the shell publishes to
+    /// the `ph2d-panel-brush-studio` panel each frame (W5). Read-only projection
+    /// of the active [`ph2d_painter_brush::Brush`] — the studio's uncapped
+    /// companion to [`Self::ui_snapshot`].
+    #[must_use]
+    pub fn brush_studio_snapshot(&self) -> crate::params::BrushStudioSnapshot {
+        use ph2d_painter_brush::{GrainSource, PigmentMode, ProceduralGrain};
+        let b = &self.brush;
+        crate::params::BrushStudioSnapshot {
+            spacing: b.stroke_path.spacing,
+            spacing_jitter: b.stroke_path.spacing_jitter,
+            jitter_lateral: b.stroke_path.jitter_lateral,
+            falloff: b.stroke_path.falloff,
+            streamline_amount: b.stabilization.streamline_amount,
+            stabilization: b.stabilization.stabilization,
+            shape_scatter: b.shape.shape_scatter,
+            shape_count: b.shape.shape_count,
+            shape_count_jitter: b.shape.shape_count_jitter,
+            shape_roundness: b.shape.shape_roundness,
+            shape_rotation_follow: b.shape.shape_rotation_follow,
+            shape_randomized: b.shape.shape_randomized,
+            shape_flip_x: b.shape.shape_flip_x,
+            shape_flip_y: b.shape.shape_flip_y,
+            flow: b.rendering.flow,
+            alpha_threshold: b.rendering.alpha_threshold,
+            wet_edges: b.rendering.wet_edges,
+            burnt_edges: b.rendering.burnt_edges,
+            pigment_enabled: b.rendering.pigment_mode == PigmentMode::Subtractive,
+            accumulate_enabled: b.rendering.accumulate,
+            rendering_mode: b.rendering.rendering_mode as u8,
+            grain_type: match &b.grain.grain_source {
+                GrainSource::Procedural(ProceduralGrain::SimplexNoise { .. }) => 1,
+                GrainSource::Procedural(ProceduralGrain::GaborNoise { .. }) => 2,
+                GrainSource::Procedural(ProceduralGrain::PaperWeave { .. }) => 3,
+                GrainSource::Procedural(ProceduralGrain::SprayDot { .. }) => 4,
+                _ => 0,
+            },
+            grain_scale: b.grain.grain_scale,
+            grain_depth: b.grain.grain_depth,
+            stamp_hue_jitter: b.color_dynamics.stamp_hue_jitter,
+            stamp_saturation_jitter: b.color_dynamics.stamp_saturation_jitter,
+            stamp_lightness_jitter: b.color_dynamics.stamp_lightness_jitter,
+            stamp_darkness_jitter: b.color_dynamics.stamp_darkness_jitter,
+            jitter_size: b.dynamics.jitter_size,
+            jitter_opacity: b.dynamics.jitter_opacity,
+            brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }
 

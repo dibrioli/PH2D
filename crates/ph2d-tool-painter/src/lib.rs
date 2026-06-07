@@ -43,8 +43,8 @@ pub use layers::{
 // Re-export so callers of `set_layer_blend_mode` / the layers panel can name
 // the blend mode without a direct `ph2d-painter-brush` import.
 pub use params::{
-    PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot, opacity_chip_mapping,
-    opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
+    BrushParam, BrushStudioSnapshot, PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot,
+    opacity_chip_mapping, opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
 };
 pub use ph2d_painter_brush::adjustments::{
     AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams, SELCOLOR_BUCKETS,

@@ -43,6 +43,8 @@ pub enum Shape {
     Rect {
         corner_a: Vec2,
         corner_b: Vec2,
+        /// Corner radius; `0` = sharp. Clamped to half the shorter side on lower.
+        corner_radius: f32,
     },
     /// A free polyline of explicit vertices — the case the vertex cap guards.
     Path {
@@ -164,6 +166,7 @@ pub fn parse(json: &str) -> Result<SemanticTokens, ParseError> {
         "rect" => Shape::Rect {
             corner_a: vec2(p, "corner_a", Vec2::splat(-50.0))?,
             corner_b: vec2(p, "corner_b", Vec2::splat(50.0))?,
+            corner_radius: num(p, "corner_radius", 0.0)?,
         },
         "path" => Shape::Path {
             vertices: vec2_list(p, "vertices")?,

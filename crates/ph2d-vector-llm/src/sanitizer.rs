@@ -120,10 +120,16 @@ pub fn sanitize(tokens: &SemanticTokens) -> Result<(), SanitizerError> {
             coord("radii", *radii)?;
             cap_vertices(4)?;
         }
-        Shape::Rect { corner_a, corner_b } => {
+        Shape::Rect {
+            corner_a,
+            corner_b,
+            corner_radius,
+        } => {
             coord("corner_a", *corner_a)?;
             coord("corner_b", *corner_b)?;
-            cap_vertices(4)?;
+            scalar_in_range("corner_radius", *corner_radius)?;
+            // Rounded corners split each corner in two → up to 8 vertices.
+            cap_vertices(8)?;
         }
         Shape::Path { vertices, .. } => {
             // Check the count BEFORE iterating coords (the count is the OOM lever).
@@ -282,6 +288,7 @@ mod tests {
         let e = sanitize(&toks(Shape::Rect {
             corner_a: Vec2::ZERO,
             corner_b: Vec2::splat(1.0e9),
+            corner_radius: 0.0,
         }))
         .unwrap_err();
         assert!(matches!(e, SanitizerError::CoordOutOfBounds { .. }));

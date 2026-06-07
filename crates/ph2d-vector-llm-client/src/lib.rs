@@ -199,7 +199,9 @@ pub fn llm4svg_system_prompt() -> String {
      Keep shapes within reasonable bounds (the editor clamps unsafe values). \
      Param keys by shape: spiral{center,inner_radius,outer_radius,turns,samples_per_turn,rotation}; \
      polygon{center,radius,sides,rotation}; star{center,outer_radius,inner_radius,points,rotation}; \
-     ellipse{center,radii}; rect{corner_a,corner_b}; path{vertices,closed}. \
+     ellipse{center,radii}; rect{corner_a,corner_b,corner_radius}; path{vertices,closed}. \
+     For a rounded rectangle use rect with corner_radius > 0 (it lowers to real \
+     curved corners) — do NOT approximate rounded corners with a path. \
      Respond with ONLY the JSON object — no prose, no explanation, no markdown \
      code fences."
         .to_string()
@@ -229,8 +231,8 @@ pub fn llm4svg_schema() -> serde_json::Value {
                     "center": arr, "radius": num, "radii": arr, "sides": int,
                     "points": int, "turns": num, "inner_radius": num,
                     "outer_radius": num, "rotation": num, "samples_per_turn": int,
-                    "corner_a": arr, "corner_b": arr, "vertices": arr,
-                    "closed": { "type": "boolean" },
+                    "corner_a": arr, "corner_b": arr, "corner_radius": num,
+                    "vertices": arr, "closed": { "type": "boolean" },
                 },
                 "additionalProperties": false,
             },

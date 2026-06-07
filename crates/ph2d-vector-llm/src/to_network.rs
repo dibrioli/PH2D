@@ -44,7 +44,11 @@ pub fn tokens_to_network(tokens: &SemanticTokens) -> VectorNetwork {
             rotation,
         } => primitives::star(*center, *outer_radius, *inner_radius, *points, *rotation),
         Shape::Ellipse { center, radii } => primitives::ellipse(*center, *radii),
-        Shape::Rect { corner_a, corner_b } => primitives::rect(*corner_a, *corner_b),
+        Shape::Rect {
+            corner_a,
+            corner_b,
+            corner_radius,
+        } => primitives::rounded_rect(*corner_a, *corner_b, *corner_radius),
         Shape::Path { vertices, closed } => path_network(vertices, *closed),
     }
 }
@@ -121,6 +125,31 @@ mod tests {
         assert!(net.validate().is_ok());
         assert_eq!(net.segments.len(), 3, "2 edges + closing");
         assert_eq!(net.regions.len(), 1);
+    }
+
+    #[test]
+    fn rounded_rect_lowers_to_eight_vertex_region() {
+        let net = tokens_to_network(&toks(Shape::Rect {
+            corner_a: Vec2::new(-50.0, -30.0),
+            corner_b: Vec2::new(50.0, 30.0),
+            corner_radius: 12.0,
+        }));
+        assert!(net.validate().is_ok());
+        assert_eq!(net.vertices.len(), 8, "two vertices per rounded corner");
+        assert_eq!(net.regions.len(), 1);
+        // The corner arcs are real cubics, not chamfers.
+        assert!(net.segments.iter().any(|s| s.out_at_start.length() > 1e-3));
+    }
+
+    #[test]
+    fn sharp_rect_lowers_to_four_vertices() {
+        let net = tokens_to_network(&toks(Shape::Rect {
+            corner_a: Vec2::splat(-50.0),
+            corner_b: Vec2::splat(50.0),
+            corner_radius: 0.0,
+        }));
+        assert!(net.validate().is_ok());
+        assert_eq!(net.vertices.len(), 4, "radius 0 → sharp corners");
     }
 
     #[test]

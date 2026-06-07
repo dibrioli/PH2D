@@ -73,6 +73,74 @@ pub fn rect(corner_a: Vec2, corner_b: Vec2) -> VectorNetwork {
     closed_polyline(&corners)
 }
 
+/// Axis-aligned rectangle with rounded corners, from two opposite corners
+/// (order-independent). Four straight edges joined by four cubic quarter-arc
+/// corners (the same kappa approximation as [`ellipse`]); one NonZero region.
+/// `radius` clamps to `[0, min(width, height)/2]` so the arcs never cross; a
+/// near-zero radius falls back to a sharp [`rect`] (4 corners, no curve).
+#[must_use]
+pub fn rounded_rect(corner_a: Vec2, corner_b: Vec2, radius: f32) -> VectorNetwork {
+    let x0 = corner_a.x.min(corner_b.x);
+    let x1 = corner_a.x.max(corner_b.x);
+    let y0 = corner_a.y.min(corner_b.y);
+    let y1 = corner_a.y.max(corner_b.y);
+    // Clamp to half the shorter side; a degenerate radius is a sharp rect.
+    let r = radius.max(0.0).min((x1 - x0).min(y1 - y0) * 0.5);
+    if r <= f32::EPSILON {
+        return rect(corner_a, corner_b);
+    }
+    let k = (f64::from(r) * KAPPA) as f32; // cubic control-arm length
+
+    // Eight vertices clockwise (y-down screen space), two per corner — each
+    // rounded corner begins where the adjacent straight edge ends:
+    //   v0 ─top→ v1 ╮         v0=(x0+r,y0)  v1=(x1-r,y0)
+    //   ↑TL        ↓TR        v2=(x1,y0+r)  v3=(x1,y1-r)
+    //   v7         v2         v4=(x1-r,y1)  v5=(x0+r,y1)
+    //   ╰BL ←bot─ ╯BR         v6=(x0,y1-r)  v7=(x0,y0+r)
+    let pts = [
+        Vec2::new(x0 + r, y0),
+        Vec2::new(x1 - r, y0),
+        Vec2::new(x1, y0 + r),
+        Vec2::new(x1, y1 - r),
+        Vec2::new(x1 - r, y1),
+        Vec2::new(x0 + r, y1),
+        Vec2::new(x0, y1 - r),
+        Vec2::new(x0, y0 + r),
+    ];
+    let mut net = VectorNetwork::empty();
+    for (i, &p) in pts.iter().enumerate() {
+        net.vertices.push(Vertex::auto(i as u32, p));
+    }
+    // (out_at_start, in_at_end) per segment: straight edges have zero tangents;
+    // each corner arc uses kappa tangents (c1 = start + out, c2 = end + in),
+    // turning clockwise — `out` along the travel direction at the arc start,
+    // `in` back along it at the arc end (cf. `ellipse`).
+    let z = Vec2::ZERO;
+    let tangents = [
+        (z, z),                                   // s0 v0→v1 top edge
+        (Vec2::new(k, 0.0), Vec2::new(0.0, -k)),  // s1 v1→v2 TR arc
+        (z, z),                                   // s2 v2→v3 right edge
+        (Vec2::new(0.0, k), Vec2::new(k, 0.0)),   // s3 v3→v4 BR arc
+        (z, z),                                   // s4 v4→v5 bottom edge
+        (Vec2::new(-k, 0.0), Vec2::new(0.0, k)),  // s5 v5→v6 BL arc
+        (z, z),                                   // s6 v6→v7 left edge
+        (Vec2::new(0.0, -k), Vec2::new(-k, 0.0)), // s7 v7→v0 TL arc
+    ];
+    let n = pts.len() as u32;
+    for (i, (out_at_start, in_at_end)) in tangents.into_iter().enumerate() {
+        net.segments.push(Segment {
+            id: i as u32,
+            start: i as u32,
+            end: (i as u32 + 1) % n,
+            out_at_start,
+            in_at_end,
+            style_ref: None,
+        });
+    }
+    push_region_over_all_segments(&mut net);
+    net
+}
+
 /// Ellipse inscribed in the box `center ± radii`. Four cubic quarter-arcs
 /// (kappa approximation), one NonZero region. A near-zero radius collapses
 /// to a degenerate-but-finite network.
@@ -268,6 +336,44 @@ mod tests {
         let b = rect(Vec2::new(10.0, 20.0), Vec2::new(110.0, 70.0));
         assert_eq!(a.vertices[0].pos, b.vertices[0].pos);
         assert_eq!(a.vertices[2].pos, b.vertices[2].pos);
+    }
+
+    #[test]
+    fn rounded_rect_has_eight_verts_and_four_cubic_corners() {
+        let net = rounded_rect(Vec2::new(0.0, 0.0), Vec2::new(100.0, 60.0), 20.0);
+        assert_eq!(net.vertices.len(), 8);
+        assert_eq!(net.segments.len(), 8, "4 edges + 4 corner arcs");
+        assert_eq!(net.regions.len(), 1);
+        assert!(net.validate().is_ok());
+        // Odd segments are the curved corners; even segments are straight edges.
+        for i in [1usize, 3, 5, 7] {
+            assert!(
+                net.segments[i].out_at_start.length() > 1e-3,
+                "corner {i} should be curved"
+            );
+        }
+        for i in [0usize, 2, 4, 6] {
+            assert_eq!(net.segments[i].out_at_start, Vec2::ZERO, "edge {i} curved");
+            assert_eq!(net.segments[i].in_at_end, Vec2::ZERO, "edge {i} curved");
+        }
+        // The TR arc (segment 1) midpoint lies ~r from the corner centre.
+        let centre = Vec2::new(100.0 - 20.0, 20.0);
+        let m = eval_cubic_seg(&net, 1, 0.5);
+        assert!(
+            ((m - centre).length() - 20.0).abs() < 0.2,
+            "TR arc midpoint off the radius"
+        );
+    }
+
+    #[test]
+    fn rounded_rect_clamps_radius_and_degenerates_to_sharp() {
+        // A radius past half the short side clamps so the arcs never cross.
+        let big = rounded_rect(Vec2::ZERO, Vec2::new(100.0, 40.0), 999.0);
+        assert!(big.validate().is_ok());
+        // Zero radius is exactly the sharp rect: four corners, no curve.
+        let sharp = rounded_rect(Vec2::ZERO, Vec2::splat(50.0), 0.0);
+        assert_eq!(sharp.vertices.len(), 4);
+        assert!(sharp.segments.iter().all(|s| s.out_at_start == Vec2::ZERO));
     }
 
     #[test]

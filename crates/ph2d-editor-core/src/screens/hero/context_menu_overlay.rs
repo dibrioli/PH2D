@@ -734,12 +734,20 @@ fn paint_centered_input_dialog(
     );
     y += hint_h + gap;
 
-    // The input field.
+    // The input field. Clip its content to the field rect so a long key (or a
+    // mistakenly-pasted multi-line blob) can't spill past the field bounds.
     let field_rect = Rect::new(inner_x, y, inner_w, field_h);
     hit_index.register(d.input_id, field_rect);
     let ti = TextInput::new(d.input_id, "")
         .placeholder(d.placeholder)
         .state(ti_state);
+    let field_clip = ph2d_vector::Rect::new(
+        field_rect.x as f64,
+        field_rect.y as f64,
+        (field_rect.x + field_rect.w) as f64,
+        (field_rect.y + field_rect.h) as f64,
+    );
+    scene.push_clip(&field_clip);
     paint_text_input_with_buffer(
         &ti,
         Some(buffer),
@@ -750,6 +758,7 @@ fn paint_centered_input_dialog(
         text_system,
         theme,
     );
+    scene.pop_layer();
     y += field_h + gap;
 
     // The accent CTA via the canonical `paint_button` (token-styled, matches the app).

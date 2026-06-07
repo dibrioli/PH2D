@@ -191,13 +191,41 @@ pub(crate) fn save_api_key(key: &str) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(&path, key.trim())?;
+    std::fs::write(&path, extract_api_key(key))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
     }
     Ok(())
+}
+
+/// Pull the Anthropic key out of whatever the user pasted. If an `sk-ant-…`
+/// token is present (they pasted a whole curl command, a `--header` line, or the
+/// key with stray quotes/newlines) extract just that token; otherwise use the
+/// trimmed input. Guards against a multi-line / quoted value producing an
+/// invalid `x-api-key` header.
+fn extract_api_key(raw: &str) -> String {
+    for tok in raw.split(|c: char| c.is_whitespace() || c == '"' || c == '\'') {
+        if tok.starts_with("sk-ant-") {
+            return tok.to_string();
+        }
+    }
+    raw.trim().to_string()
+}
+
+/// Clamp an error string to one short line for a toast — drops multi-line detail
+/// (e.g. a transport error that echoes the whole request) so it neither sprawls
+/// across the canvas nor leaks a pasted secret.
+fn truncate_for_toast(s: &str) -> String {
+    let line = s.lines().next().unwrap_or(s).trim();
+    let max = 100;
+    if line.chars().count() > max {
+        let head: String = line.chars().take(max - 1).collect();
+        format!("{head}\u{2026}")
+    } else {
+        line.to_string()
+    }
 }
 
 /// Append a freshly-generated network to the live vector document as a new
@@ -249,7 +277,9 @@ impl App {
                 );
                 format!("Vector shape added ({n} vertices) — editable + undoable.")
             }
-            LlmJobOutcome::Failed(reason) => format!("Vector generation failed: {reason}"),
+            LlmJobOutcome::Failed(reason) => {
+                format!("Vector generation failed: {}", truncate_for_toast(&reason))
+            }
             LlmJobOutcome::NoKey => api_key_hint(),
         };
         if let Some(gfx) = self.gfx.as_mut() {
@@ -261,6 +291,29 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extract_api_key_pulls_token_from_pasted_curl() {
+        let curl = "curl https://api.anthropic.com/v1/messages \\\n  --header \"x-api-key: sk-ant-api03-AbC123_def\"\n  --data ...";
+        assert_eq!(extract_api_key(curl), "sk-ant-api03-AbC123_def");
+        // A plain key round-trips (trimmed); non-key input falls back to trimmed.
+        assert_eq!(extract_api_key("  sk-ant-xyz  "), "sk-ant-xyz");
+        assert_eq!(extract_api_key("  no key here  "), "no key here");
+        assert_eq!(extract_api_key("   "), "");
+    }
+
+    #[test]
+    fn truncate_for_toast_takes_one_short_line() {
+        let multi = "LLM network error: bad header\nx-api-key: sk-ant-secret\ncurl ...";
+        let out = truncate_for_toast(multi);
+        assert_eq!(out, "LLM network error: bad header");
+        assert!(
+            !out.contains("sk-ant-"),
+            "later lines (the secret) are dropped"
+        );
+        let long = "x".repeat(250);
+        assert!(truncate_for_toast(&long).chars().count() <= 100);
+    }
 
     #[test]
     fn inject_appends_editable_asset_and_checkpoints() {

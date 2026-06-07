@@ -28,8 +28,11 @@ use ph2d_vector_doc::VectorNetwork;
 use ph2d_vector_llm::{CacheKey, LlmError, ResultCache, build_from_json, tokens_to_network};
 
 /// The LLM call's hard wall-clock budget. A response that takes longer is
-/// abandoned and the client falls back to the cache (Inovação P4 §2.6).
-pub const LLM_TIMEOUT_SECS: u64 = 15;
+/// abandoned and the client falls back to the cache (Inovação P4 §2.6). 45 s
+/// (was 15) leaves margin for an Opus structured-output round-trip under load;
+/// the request disables thinking (a trivial shape spec needs none) so the call
+/// is normally a few seconds.
+pub const LLM_TIMEOUT_SECS: u64 = 45;
 
 /// The model the shape generator targets — the latest, most capable Claude
 /// (the project default; see CLAUDE.md / claude-api skill).
@@ -282,6 +285,11 @@ impl LlmTransport for AnthropicTransport {
             "model": MODEL,
             "max_tokens": 4096,
             "system": system,
+            // No thinking: lowering one prompt to a tiny `{shape_type, params,
+            // style}` object is a trivial mapping, and disabling it keeps the
+            // interactive round-trip to a few seconds (the response is
+            // schema-constrained, so there's no stray reasoning to leak).
+            "thinking": { "type": "disabled" },
             // Structured output → the response IS the LLM4SVG JSON (no prose).
             "output_config": { "format": { "type": "json_schema", "schema": schema } },
             "messages": [{ "role": "user", "content": user }],

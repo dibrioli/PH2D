@@ -692,7 +692,7 @@ fn paint_centered_input_dialog(
         _ => ("", 0, None, crate::widget::TextInputState::Normal),
     };
 
-    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + button_h + gap * 3.0;
+    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + button_h + gap * 3.0; // LITERAL-PX-OK: 3 inter-row gaps between the 4 stacked dialog rows
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);

@@ -85,7 +85,7 @@ impl LlmVectorEngine {
         self.next_seed += 1;
         let (tx, rx) = std::sync::mpsc::channel();
         match resolve_api_key() {
-            // No key → no network, no thread: report immediately for the toast.
+            // No key -> no network, no thread: report immediately for the toast.
             None => {
                 let _ = tx.send(LlmJobOutcome::NoKey);
             }
@@ -199,7 +199,7 @@ fn api_key_hint() -> String {
 
 /// Persist `key` to the config file ([`api_key_file_path`]), creating the parent
 /// dir. The next generation resolves it via [`resolve_api_key`]. An empty/blank
-/// `key` clears the stored key (writes an empty file → `resolve` returns `None`).
+/// `key` clears the stored key (writes an empty file -> `resolve` returns `None`).
 /// On unix the file is `chmod 600` (owner-only) since it holds a secret.
 pub(crate) fn save_api_key(key: &str) -> std::io::Result<()> {
     let path = api_key_file_path().ok_or_else(|| {
@@ -276,7 +276,7 @@ pub(crate) fn inject_generated_vector(
     // radius 150) which the renderer treats as WORLD units and scales to screen
     // by ~`pixels_per_meter` — so the raw shape lands huge and off-center.
     // Recenter on the origin (where the default camera looks) and normalize the
-    // bounding box to ~`TARGET_PX` on screen (÷ ppm → world units).
+    // bounding box to ~`TARGET_PX` on screen (÷ ppm -> world units).
     let ppm = pixels_per_meter.max(1.0e-3);
     if net.vertices.len() >= 2 {
         let mut min = [f32::INFINITY; 2];
@@ -431,7 +431,7 @@ mod tests {
         assert_eq!(
             undo.len(),
             1,
-            "one snapshot pushed → one Ctrl+Z reverts the whole add"
+            "one snapshot pushed -> one Ctrl+Z reverts the whole add"
         );
         assert!(redo.is_empty(), "a new action clears the redo stack");
     }

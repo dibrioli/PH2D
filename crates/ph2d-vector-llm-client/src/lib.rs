@@ -34,9 +34,11 @@ use ph2d_vector_llm::{CacheKey, LlmError, ResultCache, build_from_json, tokens_t
 /// is normally a few seconds.
 pub const LLM_TIMEOUT_SECS: u64 = 45;
 
-/// The model the shape generator targets — the latest, most capable Claude
-/// (the project default; see CLAUDE.md / claude-api skill).
-pub const MODEL: &str = "claude-opus-4-8";
+/// The model the shape generator targets. Sonnet 4.6 (Enio's call, 2026-06-06):
+/// fast + capable, ideal for the trivial LLM4SVG structured-output mapping — a
+/// snappier interactive round-trip than Opus, with no loss of quality on a tiny
+/// `{shape_type, params, style}` spec.
+pub const MODEL: &str = "claude-sonnet-4-6";
 
 /// Why a single LLM fetch did not return a usable LLM4SVG blob. Every variant
 /// triggers the cache fallback in [`LlmClient::generate_shape`].

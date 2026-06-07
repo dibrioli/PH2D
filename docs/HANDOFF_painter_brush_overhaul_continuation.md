@@ -86,9 +86,11 @@ Verde: `ph2d-tool-painter` **210** · `ph2d-panel-brush-studio` 7 · gates `arch
   chama `drive_fluid_gpu(tools, surface.gpu())` por frame após `on_tick`. **Default build inalterado**; `--features fluid`
   compila; gates downcast + LOC verdes.
 
+- **Graceful degrade (§2.8/§2.9) LANDED:** `drive_fluid_gpu` gateia por `MemoryBudget::fluid_capable()` (tier do
+  `adapter.device_type`; só adapter software/CPU degrada → cai no caminho CPU). **Smoke OK confirmado pelo Enio (2026-06-07).**
+
 **Phase 2 — RESTANTE:**
-1. **TESTE LIVE NO APP** (`cargo run --features fluid`, só o Enio — não dá pra verificar headless o app windowed Metal):
-   pintar com Fluid ligado e confirmar que o GPU desenha igual ao CPU.
+1. ~~TESTE LIVE~~ ✅ smoke OK (Enio).
 2. **Composite GPU** (hoje o STEP é GPU, mas o composite ainda é CPU via readback/frame). Próxima otimização de perf:
    composite GPU + estado persistente no GPU (sem upload/readback por frame) + bbox upload.
 3. Det-fallback res 256² (§2.11 — `step_cpu_reference` já é o fallback de paridade) + arch-gate homestead (§2.14;

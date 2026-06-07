@@ -36,7 +36,21 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     else {
         return;
     };
-    if !painter.has_wet_field() {
+    // **Graceful degrade (ADR-0049 §2.8/§2.9).** Only a software/CPU adapter is
+    // ruled incapable; every real GPU (discrete / integrated incl. Apple Silicon /
+    // virtual / other-Metal) stays eligible. VRAM-free probing isn't portable in
+    // wgpu, so the 32 MB floor is assumed met on any real GPU (the 1/2-res textures
+    // are tens of MB) — refine with real telemetry. When incapable, the field falls
+    // back to the CPU path (the tool's on_tick) — identity preserved.
+    let tier = match gpu.adapter.get_info().device_type {
+        wgpu::DeviceType::Cpu => ph2d_host::MemoryTier::Low,
+        wgpu::DeviceType::IntegratedGpu | wgpu::DeviceType::VirtualGpu => ph2d_host::MemoryTier::Mid,
+        _ => ph2d_host::MemoryTier::High,
+    };
+    let capable = ph2d_host::MemoryBudget { vram_free_mb: 256, tier }.fluid_capable();
+    if !painter.has_wet_field()
+        || !ph2d_painter_fluid::fluid_pass_eligible(true, capable, f32::INFINITY)
+    {
         painter.set_gpu_fluid_driven(false);
         SESSION.with(|s| *s.borrow_mut() = None);
         return;

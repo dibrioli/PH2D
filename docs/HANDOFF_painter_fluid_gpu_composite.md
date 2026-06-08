@@ -177,8 +177,13 @@ referência CPU vira det-fallback. Estágios S0..S5.
   flowing+deposited = 0.000000): buffer `deposited` + pass region-scoped + `set_deposition`/`read_deposited`/
   `deposited_buffer`/`clear_resident_deposited_gpu`; `GpuParams` 64→80B (interno, `FluidParams` intacto).
   Dormante em produção (composite ainda lê só flowing). 9/9 gates GPU verdes.
-- **S3c** composite lê flowing+deposited + emenda `FluidParams` (3 headroom, arch-gate) + plumbing brush/tool
-  → **edge-darkening/granulação VISÍVEIS** (precisa validação visual — contexto fresco por ADR).
+- **S3c** ✅ commit `d253b8f` — **deposição VISÍVEL**. Decisão de design: NÃO mexer no composite (parity-gated)
+  nem no `FluidParams` (≤12 congelado) — um passo `cs_combine` escreve `total = flowing + deposited` e o
+  compositor liga `total` (uma ligação, como antes) via `total_buffer()`. Deposição liga por **constantes**
+  do solver (`WATERCOLOR_DEPOSITION_BASE/_DRY/_GRANULATION`), não amendment. Bridge: epoch limpa deposited +
+  `set_deposition(consts)` + liga `total_buffer`. Deposited assa no `canvas_rgba` (persiste após secar).
+  CPU fallback = difusão pura (degrade). 10/10 gates GPU verdes. **PENDENTE: validação visual** (anel escuro
+  na borda + granulado no papel). Tuning nas 3 constantes.
 - **S3d** campo de velocidade shallow-water (MoveWater + pressure relax) → fluxo direcional + blooms fortes.
 - **S4** multi-pigmento K–M + multi-camada @4K. **S5** BFECC + supersampling adaptativo + capilar LBM (MoXi) + 120Hz.
 

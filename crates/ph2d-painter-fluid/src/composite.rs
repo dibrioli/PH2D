@@ -12,7 +12,9 @@
 //! shell integration, a preview texture (zero readback).
 
 use ph2d_painter_brush::pigment_mix::{SPECTRAL_BANDS, spectral_basis};
-use ph2d_painter_brush::wet_composite::{WET_COMPOSITE_SS, WetCompositeBrush, composite_canvas_region};
+use ph2d_painter_brush::wet_composite::{
+    WET_COMPOSITE_SS, WetCompositeBrush, composite_canvas_region,
+};
 
 /// The GPU composite shader source (mirror of the CPU `wet_composite`). Embedded so
 /// a dev-test validates it through naga before any GPU init.
@@ -54,7 +56,10 @@ impl GpuCoeffs {
     /// Pack the constant basis + the amortised brush coeffs for the shader.
     fn build(brush: &WetCompositeBrush) -> Self {
         // Pinned: the shader hard-codes NB=24 (and the flatten strides below).
-        assert_eq!(SPECTRAL_BANDS, 24, "composite.wgsl assumes 24 spectral bands");
+        assert_eq!(
+            SPECTRAL_BANDS, 24,
+            "composite.wgsl assumes 24 spectral bands"
+        );
         let (base, m) = spectral_basis();
         let mut out = Self {
             base: [0.0; 168],
@@ -157,7 +162,11 @@ impl FluidCompositor {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
-        Self { pipeline, bgl, state: None }
+        Self {
+            pipeline,
+            bgl,
+            state: None,
+        }
     }
 
     /// **Fast-path stroke setup (call once per stroke / when the backdrop or brush
@@ -221,17 +230,44 @@ impl FluidCompositor {
                 label: Some("composite bg (persistent)"),
                 layout: &self.bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: params.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: backdrop.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: out.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: coeffs.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: pigment_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: backdrop.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: out.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: coeffs.as_entire_binding(),
+                    },
                 ],
             });
             self.state = Some(CompositeState {
-                cw, ch, gw, gh, scale, coverage_k, ss,
-                pcol: brush.pcol, color_sum: brush.color_sum,
-                params, coeffs, out, backdrop, staging, bind,
+                cw,
+                ch,
+                gw,
+                gh,
+                scale,
+                coverage_k,
+                ss,
+                pcol: brush.pcol,
+                color_sum: brush.color_sum,
+                params,
+                coeffs,
+                out,
+                backdrop,
+                staging,
+                bind,
             });
         }
         // SAFETY of unwrap: `state` is Some after the resize branch (or already was).
@@ -253,11 +289,26 @@ impl FluidCompositor {
                 label: Some("composite bg (persistent)"),
                 layout: &self.bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: st.params.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: st.backdrop.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: st.out.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: st.coeffs.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: st.params.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: pigment_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: st.backdrop.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: st.out.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: st.coeffs.as_entire_binding(),
+                    },
                 ],
             });
         }
@@ -304,8 +355,9 @@ impl FluidCompositor {
         let band_off = u64::from(py_lo) * row_bytes;
         let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
         let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("composite frame") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite frame"),
+        });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame pass"),
@@ -319,9 +371,11 @@ impl FluidCompositor {
         queue.submit([enc.finish()]);
 
         let (tx, rx) = std::sync::mpsc::channel();
-        st.staging.slice(0..band_bytes).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
+        st.staging
+            .slice(0..band_bytes)
+            .map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let rows = st.staging.slice(0..band_bytes).get_mapped_range().to_vec();
@@ -365,7 +419,17 @@ impl FluidCompositor {
         });
         queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(pigment));
         self.composite_buffer(
-            device, queue, gw, gh, cw, ch, scale, coverage_k, &pig_buf, backdrop_rgba, brush,
+            device,
+            queue,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            coverage_k,
+            &pig_buf,
+            backdrop_rgba,
+            brush,
             grid_region,
         )
     }
@@ -396,14 +460,25 @@ impl FluidCompositor {
         let canvas_bytes = (npix * 4) as u64;
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
         let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) = self.build_buffers(
-            device, queue, gw, gh, cw, ch, scale, coverage_k, pigment_buf, backdrop_rgba, brush,
+            device,
+            queue,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            coverage_k,
+            pigment_buf,
+            backdrop_rgba,
+            brush,
             grid_region,
         );
         let _keep = (params_buf, coeffs_buf, backdrop_buf);
 
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("composite enc") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite enc"),
+        });
         if rw > 0 && rh > 0 {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite pass"),
@@ -468,8 +543,20 @@ impl FluidCompositor {
         let band_off = u64::from(py_lo) * row_bytes;
         let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
 
-        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) =
-            self.build_buffers(device, queue, gw, gh, cw, ch, scale, coverage_k, pigment_buf, backdrop_rgba, brush, grid_region);
+        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) = self.build_buffers(
+            device,
+            queue,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            coverage_k,
+            pigment_buf,
+            backdrop_rgba,
+            brush,
+            grid_region,
+        );
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
 
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -525,7 +612,13 @@ impl FluidCompositor {
         backdrop_rgba: &[u8],
         brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
-    ) -> (wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup) {
+    ) -> (
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::BindGroup,
+    ) {
         let canvas_bytes = (cw as usize * ch as usize * 4) as u64;
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
         let uni = GpuU {
@@ -578,11 +671,26 @@ impl FluidCompositor {
             label: Some("composite bg"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: out_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 4, resource: coeffs_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: pigment_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: backdrop_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: out_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: coeffs_buf.as_entire_binding(),
+                },
             ],
         });
         (params_buf, coeffs_buf, backdrop_buf, out_buf, bind)

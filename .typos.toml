@@ -18,6 +18,10 @@ extend-ignore-identifiers-re = [
     # mirror of the `ab` = A∘B forward) in `ph2d-node-vector-boolean`. A
     # deliberate short identifier, not a typo of `by`/`be`. Anchored (2026-06-04).
     "^ba$",
+    # `pn` — "pigment of the neighbour cell" in the diffusion solver
+    # (`ph2d-painter-brush::diffusion`), paired with `pc` (pigment-centre). A
+    # deliberate short identifier, not a typo of `on`. Anchored (2026-06-08).
+    "^pn$",
 ]
 
 [default.extend-words]

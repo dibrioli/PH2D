@@ -244,7 +244,10 @@ fn outward_bleed(
             // Domain-warp the front into fingers (IQ warp: offset by an fBM vector).
             let qx = fbm2(xf * ns, yf * ns, seed);
             let qy = fbm2(xf * ns + 5.2, yf * ns + 1.3, seed);
-            let front = sample(xf + warp_amp * (2.0 * qx - 1.0), yf + warp_amp * (2.0 * qy - 1.0));
+            let front = sample(
+                xf + warp_amp * (2.0 * qx - 1.0),
+                yf + warp_amp * (2.0 * qy - 1.0),
+            );
             let wet = smoothstep(BLEED_FRONT_LO, BLEED_FRONT_HI, front);
             if wet <= 1.0e-3 {
                 continue;
@@ -569,7 +572,8 @@ pub fn apply_wash_settle(
     // front carries pigment beyond the painted edge into irregular tendrils. Wash
     // mode only (needs the masstone + a substrate to bloom onto); driven by the same
     // wet-edge `strength`.
-    if km && strength > 0.0
+    if km
+        && strength > 0.0
         && let Some(backdrop) = backdrop
         && let Some(wash_color) = wash_color
         && let Some(mean_pigment) = mean_body_pigment(coverage, wash_color, width, region)
@@ -664,11 +668,25 @@ mod tests {
         let rim_x = 40u32;
         let rim_y = 40 - 26; // 14
         let rim_before = luma(&canvas, w, rim_x, rim_y);
-        assert!((centre_before - rim_before).abs() < 1e-6, "uniform before settle");
+        assert!(
+            (centre_before - rim_before).abs() < 1e-6,
+            "uniform before settle"
+        );
 
         // No wash_color ⇒ the gamma fallback path (this test validates that).
         apply_wash_settle(
-            &mut canvas, None, &cov, None, w, h, (0, 0, w, h), 0.8, 5, 0.0, 12345, EdgeStyle::Wet,
+            &mut canvas,
+            None,
+            &cov,
+            None,
+            w,
+            h,
+            (0, 0, w, h),
+            0.8,
+            5,
+            0.0,
+            12345,
+            EdgeStyle::Wet,
         );
 
         let centre_after = luma(&canvas, w, 40, 40);
@@ -704,7 +722,18 @@ mod tests {
         let (mut canvas, cov) = disc_canvas(w, h, [90, 130, 200], 14.0);
         let before = canvas.clone();
         apply_wash_settle(
-            &mut canvas, None, &cov, None, w, h, (0, 0, w, h), 0.0, 5, 0.0, 1, EdgeStyle::Wet,
+            &mut canvas,
+            None,
+            &cov,
+            None,
+            w,
+            h,
+            (0, 0, w, h),
+            0.0,
+            5,
+            0.0,
+            1,
+            EdgeStyle::Wet,
         );
         assert_eq!(canvas, before, "strength 0 must not touch the canvas");
     }
@@ -717,12 +746,37 @@ mod tests {
         let masstone = vec![[0.3f32, 0.1, 0.1]; (w * h) as usize];
         let wc = Some(masstone.as_slice());
         apply_wash_settle(
-            &mut a, None, &cov, wc, w, h, (0, 0, w, h), 0.7, 4, 0.8, 999, EdgeStyle::Wet,
+            &mut a,
+            None,
+            &cov,
+            wc,
+            w,
+            h,
+            (0, 0, w, h),
+            0.7,
+            4,
+            0.8,
+            999,
+            EdgeStyle::Wet,
         );
         apply_wash_settle(
-            &mut b, None, &cov, wc, w, h, (0, 0, w, h), 0.7, 4, 0.8, 999, EdgeStyle::Wet,
+            &mut b,
+            None,
+            &cov,
+            wc,
+            w,
+            h,
+            (0, 0, w, h),
+            0.7,
+            4,
+            0.8,
+            999,
+            EdgeStyle::Wet,
         );
-        assert_eq!(a, b, "settle must be deterministic for the same seed (HR-5)");
+        assert_eq!(
+            a, b,
+            "settle must be deterministic for the same seed (HR-5)"
+        );
     }
 
     #[test]
@@ -752,10 +806,32 @@ mod tests {
         let mut burnt = wet.clone();
         // Both gamma-path (no wash_color): compares the wet smooth rim vs burnt speckle.
         apply_wash_settle(
-            &mut wet, None, &cov, None, w, h, (0, 0, w, h), 0.8, 5, 0.0, 7, EdgeStyle::Wet,
+            &mut wet,
+            None,
+            &cov,
+            None,
+            w,
+            h,
+            (0, 0, w, h),
+            0.8,
+            5,
+            0.0,
+            7,
+            EdgeStyle::Wet,
         );
         apply_wash_settle(
-            &mut burnt, None, &cov, None, w, h, (0, 0, w, h), 0.8, 5, 0.0, 7, EdgeStyle::Burnt,
+            &mut burnt,
+            None,
+            &cov,
+            None,
+            w,
+            h,
+            (0, 0, w, h),
+            0.8,
+            5,
+            0.0,
+            7,
+            EdgeStyle::Burnt,
         );
         let hp_wet = highpass(&wet);
         let hp_burnt = highpass(&burnt);
@@ -770,17 +846,29 @@ mod tests {
         // Finite-thickness K–M: t=0 ⇒ backdrop; t→∞ ⇒ masstone (R∞); strictly
         // between for finite t (more pigment = closer to the masstone).
         let (masstone, rg) = (0.1f32, 0.8f32); // dark pigment over a light glaze
-        assert!((km_deposit(masstone, rg, 0.0) - rg).abs() < 1e-6, "t=0 is the backdrop");
+        assert!(
+            (km_deposit(masstone, rg, 0.0) - rg).abs() < 1e-6,
+            "t=0 is the backdrop"
+        );
         let big = km_deposit(masstone, rg, 80.0);
-        assert!((big - masstone).abs() < 0.02, "large t converges to the masstone: {big}");
+        assert!(
+            (big - masstone).abs() < 0.02,
+            "large t converges to the masstone: {big}"
+        );
         let (a, b, c) = (
             km_deposit(masstone, rg, 0.2),
             km_deposit(masstone, rg, 0.6),
             km_deposit(masstone, rg, 1.5),
         );
-        assert!(rg > a && a > b && b > c && c > masstone, "monotone rg→masstone: {a} {b} {c}");
+        assert!(
+            rg > a && a > b && b > c && c > masstone,
+            "monotone rg→masstone: {a} {b} {c}"
+        );
         // White/clear pigment (no absorption) is a no-op at any depth.
-        assert!((km_deposit(1.0, rg, 3.0) - rg).abs() < 1e-6, "clear pigment deposits nothing");
+        assert!(
+            (km_deposit(1.0, rg, 3.0) - rg).abs() < 1e-6,
+            "clear pigment deposits nothing"
+        );
     }
 
     #[test]
@@ -831,7 +919,10 @@ mod tests {
             max_chroma_gain = max_chroma_gain.max(chroma(&canvas, 40, yy) - chroma_before);
         }
         assert!(max_dark > 0.02, "K–M rim darkens the shoulder: {max_dark}");
-        assert!(max_chroma_gain > 0.03, "K–M rim adds saturation (hue shift): {max_chroma_gain}");
+        assert!(
+            max_chroma_gain > 0.03,
+            "K–M rim adds saturation (hue shift): {max_chroma_gain}"
+        );
     }
 
     #[test]
@@ -850,7 +941,9 @@ mod tests {
         let masstone = vec![[0.02f32, 0.02, 0.40]; n]; // saturated dark-blue pigment
         let backdrop = vec![255u8; n * 4]; // white paper
         let variance = |c: &[u8]| {
-            let vals: Vec<f32> = (0..n).map(|p| luma(c, w, (p as u32) % w, (p as u32) / w)).collect();
+            let vals: Vec<f32> = (0..n)
+                .map(|p| luma(c, w, (p as u32) % w, (p as u32) / w))
+                .collect();
             let m = vals.iter().sum::<f32>() / n as f32;
             vals.iter().map(|v| (v - m).powi(2)).sum::<f32>() / n as f32
         };
@@ -935,8 +1028,14 @@ mod tests {
                 }
             }
         }
-        assert!(bloomed > 25, "outward bleed deposits a fringe past the disc: {bloomed} px");
-        assert_eq!(far_tinted, 0, "the fringe tapers — nothing blooms far out: {far_tinted}");
+        assert!(
+            bloomed > 25,
+            "outward bleed deposits a fringe past the disc: {bloomed} px"
+        );
+        assert_eq!(
+            far_tinted, 0,
+            "the fringe tapers — nothing blooms far out: {far_tinted}"
+        );
     }
 
     #[test]

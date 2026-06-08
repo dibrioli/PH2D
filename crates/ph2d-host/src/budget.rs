@@ -64,17 +64,49 @@ mod tests {
 
     #[test]
     fn fluid_capable_requires_vram_and_tier() {
-        assert!(MemoryBudget { vram_free_mb: 64, tier: MemoryTier::High }.fluid_capable());
-        assert!(MemoryBudget { vram_free_mb: 32, tier: MemoryTier::Mid }.fluid_capable());
-        assert!(!MemoryBudget { vram_free_mb: 31, tier: MemoryTier::High }.fluid_capable(), "below VRAM floor");
-        assert!(!MemoryBudget { vram_free_mb: 999, tier: MemoryTier::Low }.fluid_capable(), "below tier floor");
+        assert!(
+            MemoryBudget {
+                vram_free_mb: 64,
+                tier: MemoryTier::High
+            }
+            .fluid_capable()
+        );
+        assert!(
+            MemoryBudget {
+                vram_free_mb: 32,
+                tier: MemoryTier::Mid
+            }
+            .fluid_capable()
+        );
+        assert!(
+            !MemoryBudget {
+                vram_free_mb: 31,
+                tier: MemoryTier::High
+            }
+            .fluid_capable(),
+            "below VRAM floor"
+        );
+        assert!(
+            !MemoryBudget {
+                vram_free_mb: 999,
+                tier: MemoryTier::Low
+            }
+            .fluid_capable(),
+            "below tier floor"
+        );
     }
 
     #[test]
     fn headroom_is_clamped_non_negative() {
-        let b = PerfBudget { painter_budget_ms: 4.5, last_frame_painter_ms: 1.0 };
+        let b = PerfBudget {
+            painter_budget_ms: 4.5,
+            last_frame_painter_ms: 1.0,
+        };
         assert!((b.fluid_headroom_ms() - 3.5).abs() < 1e-6);
-        let over = PerfBudget { painter_budget_ms: 4.5, last_frame_painter_ms: 9.0 };
+        let over = PerfBudget {
+            painter_budget_ms: 4.5,
+            last_frame_painter_ms: 9.0,
+        };
         assert_eq!(over.fluid_headroom_ms(), 0.0, "over-budget clamps to 0");
     }
 }

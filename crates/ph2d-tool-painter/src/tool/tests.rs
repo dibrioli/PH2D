@@ -668,7 +668,10 @@ fn fluid_toggle_via_brush_studio_checkbox() {
         ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
     ));
     assert!(t.active_brush().rendering.fluid_enabled, "click → fluid on");
-    assert!(t.brush_studio_snapshot().fluid_enabled, "snapshot mirrors it");
+    assert!(
+        t.brush_studio_snapshot().fluid_enabled,
+        "snapshot mirrors it"
+    );
     t.handle_panel_event(PanelEvent::Click(
         ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
     ));
@@ -3438,11 +3441,11 @@ fn visual_smoke_fluid_color_swatches() {
     t.brush.rendering.fluid_enabled = true;
     t.set_source(flat_source(w, h, [235, 225, 200, 255]), w, h); // paper
     let cols: [[u8; 4]; 5] = [
-        [40, 60, 230, 255],   // blue
-        [60, 200, 70, 255],   // green
-        [235, 220, 30, 255],  // yellow
-        [230, 50, 40, 255],   // red
-        [230, 40, 220, 255],  // magenta
+        [40, 60, 230, 255],  // blue
+        [60, 200, 70, 255],  // green
+        [235, 220, 30, 255], // yellow
+        [230, 50, 40, 255],  // red
+        [230, 40, 220, 255], // magenta
     ];
     let vstroke = |t: &mut PainterTool, x: f32, rgb: [u8; 4], seed: u64| {
         t.params.active_color = crate::color::srgb8_to_painter_oklch(rgb);
@@ -3614,10 +3617,16 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
     let snap: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
     t.on_tick_diffusion(); // GPU-driven → must NOT CPU-step
     let after: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
-    assert_eq!(snap, after, "on_tick must not CPU-step the grid when GPU-driven");
+    assert_eq!(
+        snap, after,
+        "on_tick must not CPU-step the grid when GPU-driven"
+    );
     // The shell-facing composite still works (no CPU step happened).
     t.composite_and_settle_fluid();
-    assert!(t.has_wet_field(), "field still wet (no steps ran to dry it)");
+    assert!(
+        t.has_wet_field(),
+        "field still wet (no steps ran to dry it)"
+    );
 }
 
 #[test]
@@ -3634,7 +3643,11 @@ fn fluid_field_survives_mid_stroke_dry_pause() {
     t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
     t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
     t.begin_stroke(5);
-    t.queue_pointer(PointerSample { position: [24.0, 18.0], pressure: 1.0, tilt: 0.0 });
+    t.queue_pointer(PointerSample {
+        position: [24.0, 18.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
     assert!(t.has_wet_field(), "field allocated after first dab");
     // Long mid-stroke pause: idle ticks until the field would fully dry.
     for _ in 0..300 {
@@ -3645,7 +3658,11 @@ fn fluid_field_survives_mid_stroke_dry_pause() {
         "field MUST survive a mid-stroke dry pause (resume stays fluid)"
     );
     // Resuming the drag re-wets the kept field — still the fluid path.
-    t.queue_pointer(PointerSample { position: [32.0, 18.0], pressure: 1.0, tilt: 0.0 });
+    t.queue_pointer(PointerSample {
+        position: [32.0, 18.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
     assert!(t.has_wet_field(), "field re-wet on resume");
     // After pen-up, idle ticks dry it out and DROP it.
     t.end_stroke();
@@ -3672,7 +3689,11 @@ fn fluid_gpu_envelope_never_recedes_under_evaporation() {
     t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]);
     t.set_gpu_fluid_driven(true); // GPU path: queue_pointer only splats (no CPU step)
     t.begin_stroke(9);
-    t.queue_pointer(PointerSample { position: [32.0, 32.0], pressure: 1.0, tilt: 0.0 });
+    t.queue_pointer(PointerSample {
+        position: [32.0, 32.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
     let evap = t.fluid_evaporation() * t.fluid_idle_substeps() as f32;
     let r0 = t
         .fluid_frame_step_inputs(evap)

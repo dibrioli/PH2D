@@ -1864,17 +1864,20 @@ fn motion_filtering_damps_slow_tremor() {
             let stamps = s.advance(&b, p(i as f32 * 3.0, y), 24.0, [0.0; 4]);
             // Skip the warm-up: the One-Euro filter passes the first sample raw
             // (init), so only measure once it has settled.
-            if i >= 8 {
-                if let Some(st) = stamps.last() {
-                    max_y = max_y.max(st.position_world[1].abs());
-                }
+            if i >= 8
+                && let Some(st) = stamps.last()
+            {
+                max_y = max_y.max(st.position_world[1].abs());
             }
         }
         max_y
     };
     let off = run(0.0);
     let on = run(1.0);
-    assert!(on < off * 0.7, "motion filtering damps slow tremor: on {on} vs off {off}");
+    assert!(
+        on < off * 0.7,
+        "motion filtering damps slow tremor: on {on} vs off {off}"
+    );
 }
 
 #[test]
@@ -1912,17 +1915,31 @@ fn motion_filtering_is_deterministic() {
     let mut b = round_hard();
     b.stabilization.motion_filtering_amount = 0.8;
     b.stabilization.motion_filtering_expression = 0.5;
-    let samples = [p(0.0, 0.0), p(10.0, 4.0), p(22.0, -3.0), p(31.0, 6.0), p(45.0, -1.0)];
+    let samples = [
+        p(0.0, 0.0),
+        p(10.0, 4.0),
+        p(22.0, -3.0),
+        p(31.0, 6.0),
+        p(45.0, -1.0),
+    ];
     let run = || {
         let mut s = StampScheduler::new();
         s.begin_stroke(99);
         let mut out: Vec<[f32; 2]> = Vec::new();
         for sm in samples {
-            out.extend(s.advance(&b, sm, 24.0, [0.0; 4]).iter().map(|st| st.position_world));
+            out.extend(
+                s.advance(&b, sm, 24.0, [0.0; 4])
+                    .iter()
+                    .map(|st| st.position_world),
+            );
         }
         out
     };
-    assert_eq!(run(), run(), "One-Euro motion filtering must be deterministic (HR-5)");
+    assert_eq!(
+        run(),
+        run(),
+        "One-Euro motion filtering must be deterministic (HR-5)"
+    );
 }
 
 #[test]
@@ -1945,7 +1962,10 @@ fn speed_size_grows_the_dab_on_fast_strokes() {
     };
     let slow = run(2.0, 1.0);
     let fast = run(40.0, 1.0);
-    assert!(fast > slow + 4.0, "speed_size grows the fast-stroke dab: fast {fast} vs slow {slow}");
+    assert!(
+        fast > slow + 4.0,
+        "speed_size grows the fast-stroke dab: fast {fast} vs slow {slow}"
+    );
     // Default (speed_size = 0) is speed-invariant.
     assert!(
         (run(2.0, 0.0) - run(40.0, 0.0)).abs() < 1e-3,
@@ -2146,8 +2166,18 @@ fn last_dab_size_opacity(pressure: f32) -> (f32, f32) {
     let mut s = StampScheduler::new();
     s.begin_stroke(7);
     let brush = round_hard(); // pressure_targets default = Size | Opacity, identity curve
-    let _ = s.advance(&brush, p_press(0.0, 0.0, pressure), 64.0, [0.5, 0.0, 0.0, 1.0]);
-    let stamps = s.advance(&brush, p_press(40.0, 0.0, pressure), 64.0, [0.5, 0.0, 0.0, 1.0]);
+    let _ = s.advance(
+        &brush,
+        p_press(0.0, 0.0, pressure),
+        64.0,
+        [0.5, 0.0, 0.0, 1.0],
+    );
+    let stamps = s.advance(
+        &brush,
+        p_press(40.0, 0.0, pressure),
+        64.0,
+        [0.5, 0.0, 0.0, 1.0],
+    );
     let last = stamps.last().expect("segment must emit at least one dab");
     (last.size_px, last.opacity)
 }
@@ -2185,7 +2215,10 @@ fn mouse_full_pressure_is_full_size_no_regression() {
     // maps that to 1.0, so a 64px brush stays 64px and full opacity — the
     // pre-pressure behaviour, byte-for-byte unchanged for pressure-less devices.
     let (size, opacity) = last_dab_size_opacity(1.0);
-    assert!((size - 64.0).abs() < 1.0, "mouse → full 64px dab; got {size}");
+    assert!(
+        (size - 64.0).abs() < 1.0,
+        "mouse → full 64px dab; got {size}"
+    );
     assert!(
         (opacity - 1.0).abs() < 1e-4,
         "mouse → full opacity; got {opacity}"
@@ -2252,7 +2285,12 @@ fn start_taper_grows_size_and_opacity_from_the_tip() {
     let mut early: Option<(f32, f32)> = None;
     let mut late: Option<(f32, f32)> = None;
     for x in (8..520).step_by(8) {
-        let stamps = s.advance(&brush, p_press(x as f32, 0.0, 1.0), 40.0, [0.5, 0.0, 0.0, 1.0]);
+        let stamps = s.advance(
+            &brush,
+            p_press(x as f32, 0.0, 1.0),
+            40.0,
+            [0.5, 0.0, 0.0, 1.0],
+        );
         if let Some(st) = stamps.first() {
             if early.is_none() {
                 early = Some((st.size_px, st.opacity));

@@ -16,6 +16,10 @@ pub const FLUID_HEADROOM_FLOOR_MS: f32 = 3.0;
 /// `false`, the caller falls back to the math wet-mix — the brush identity is
 /// preserved, only the physical "wow" is dropped (ADR-0049 §2.8).
 #[must_use]
-pub fn fluid_pass_eligible(fluid_enabled: bool, fluid_capable: bool, painter_headroom_ms: f32) -> bool {
+pub fn fluid_pass_eligible(
+    fluid_enabled: bool,
+    fluid_capable: bool,
+    painter_headroom_ms: f32,
+) -> bool {
     fluid_enabled && fluid_capable && painter_headroom_ms > FLUID_HEADROOM_FLOOR_MS
 }

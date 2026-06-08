@@ -199,7 +199,10 @@ impl StampScheduler {
         let filtered = if mf > 0.0 {
             // `amount` lowers the min cutoff (more smoothing); `expression` raises β
             // (more speed-responsiveness — keeps fast strokes lag-free).
-            let mf_expr = brush.stabilization.motion_filtering_expression.clamp(0.0, 1.0);
+            let mf_expr = brush
+                .stabilization
+                .motion_filtering_expression
+                .clamp(0.0, 1.0);
             let min_cutoff = MF_MIN_CUTOFF + (1.0 - mf) * (MF_MAX_CUTOFF - MF_MIN_CUTOFF);
             self.one_euro(avg, min_cutoff, mf_expr * MF_BETA_MAX)
         } else {
@@ -297,12 +300,14 @@ impl StampScheduler {
             self.speed_ema += (speed - self.speed_ema) * SPEED_EMA_ALPHA;
         }
         let vfactor = (self.speed_ema / SPEED_REF_PX).min(1.0);
-        let size_speed_mult =
-            (1.0 + brush.dynamics.speed_size.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING).max(0.05);
-        let opacity_speed_mult = 1.0
-            + brush.dynamics.speed_opacity.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING;
-        let spacing_speed_mult =
-            (1.0 + brush.dynamics.speed_spacing.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING).max(0.1);
+        let size_speed_mult = (1.0
+            + brush.dynamics.speed_size.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING)
+            .max(0.05);
+        let opacity_speed_mult =
+            1.0 + brush.dynamics.speed_opacity.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING;
+        let spacing_speed_mult = (1.0
+            + brush.dynamics.speed_spacing.clamp(-1.0, 1.0) * vfactor * SPEED_DYN_SWING)
+            .max(0.1);
 
         // **Pressure dynamics (Apple-Pencil / tablet pen).** The raw pressure is
         // shaped by `brush.pencil.pressure_curve` and routed to size and/or
@@ -317,7 +322,8 @@ impl StampScheduler {
         // gold-standard "dabs per actual radius" behaviour (MyPaint). The 1.0px
         // floor below keeps a near-zero-pressure dab from vanishing entirely.
         let raw_pressure = sample.pressure.clamp(0.0, 1.0);
-        let curved_pressure = crate::pencil::eval_curve8(&brush.pencil.pressure_curve, raw_pressure);
+        let curved_pressure =
+            crate::pencil::eval_curve8(&brush.pencil.pressure_curve, raw_pressure);
         let p_targets = brush.pencil.pressure_targets;
         let pressure_size = if p_targets & crate::pencil::PRESSURE_TARGET_SIZE != 0 {
             curved_pressure
@@ -527,8 +533,7 @@ impl StampScheduler {
         // `L_start` of arc length so the stroke enters from a clean point. Default
         // (`taper_length_start == 0`) → `(1, 1)`, exact passthrough. Shadows
         // `diameter` so the tapered size also drives `size_px` + scatter below.
-        let (taper_size, taper_op) =
-            start_taper_factors(&brush.taper, stroke_distance, diameter);
+        let (taper_size, taper_op) = start_taper_factors(&brush.taper, stroke_distance, diameter);
         // `.max(1.0)` keeps a pointed tip (`taper_size_start = 0`) at a 1px dab
         // rather than a degenerate zero-size stamp (same floor as the nominal
         // diameter in `advance`).

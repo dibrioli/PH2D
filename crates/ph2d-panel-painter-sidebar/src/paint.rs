@@ -382,7 +382,7 @@ fn paint_pigment_row(
     hit_index.register(core_ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE, pig_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_ACCUMULATE_TOGGLE, acc_rect);
     hit_index.register(core_ids::PAINTER_SIDEBAR_GRAIN_TOGGLE, grn_rect);
-    y + ROW_H_PX * 3.0 + row_pad
+    y + ROW_H_PX * 3.0 + row_pad // LITERAL-PX-OK: 3-row block count, not px (ROW_H_PX is the token)
 }
 
 /// Grain depth slider row (W5) — shown only while grain is active. The value
@@ -401,7 +401,7 @@ fn paint_grain_depth_row(
         .slider(core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER)
         .map(|(_, v)| v)
         .unwrap_or(1.0);
-    let gd_display = format!("{:.0}%", gd_val * 100.0);
+    let gd_display = format!("{:.0}%", gd_val * 100.0); // LITERAL-PX-OK: percent display scale (x100), not a px dimension
     let gd_rect = Rect::new(
         rect.x + PANEL_HEAD_PAD,
         y,
@@ -413,7 +413,7 @@ fn paint_grain_depth_row(
         gd_rect,
         "Grain",
         gd_val,
-        (gd_val * 100.0) as f64,
+        (gd_val * 100.0) as f64, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
         Some(&gd_display),
         core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_SLIDER,
         core_ids::PAINTER_SIDEBAR_GRAIN_DEPTH_CHIP,

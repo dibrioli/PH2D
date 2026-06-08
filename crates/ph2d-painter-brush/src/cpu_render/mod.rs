@@ -142,7 +142,15 @@ pub fn apply_stamps_buildup(
 ) {
     let n = (width as usize) * (height as usize);
     assert_eq!(coverage.len(), n, "coverage size must match width*height");
-    apply_stamps_buildup_inner(canvas, Some(coverage), width, height, stamps, alpha_lock, paper_grain);
+    apply_stamps_buildup_inner(
+        canvas,
+        Some(coverage),
+        width,
+        height,
+        stamps,
+        alpha_lock,
+        paper_grain,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -530,11 +538,24 @@ pub fn apply_stamps_wash(
         "backdrop size must match width*height*4"
     );
     assert_eq!(coverage.len(), n, "coverage size must match width*height");
-    assert_eq!(wash_color.len(), n, "wash_color size must match width*height");
+    assert_eq!(
+        wash_color.len(),
+        n,
+        "wash_color size must match width*height"
+    );
     let cap = opacity_cap.clamp(0.0, 1.0);
     for stamp in stamps {
         apply_one_stamp_wash(
-            canvas, backdrop, coverage, wash_color, width, height, stamp, cap, pigment, alpha_lock,
+            canvas,
+            backdrop,
+            coverage,
+            wash_color,
+            width,
+            height,
+            stamp,
+            cap,
+            pigment,
+            alpha_lock,
             paper_grain,
         );
     }
@@ -771,10 +792,10 @@ fn apply_one_stamp_wash(
 fn wash_glaze_coverage(mode: RenderingMode, eff: f32) -> f32 {
     let e = eff.clamp(0.0, 1.0);
     match mode {
-        RenderingMode::LightGlaze => e.powf(1.6),   // thinner, more transparent glaze
+        RenderingMode::LightGlaze => e.powf(1.6), // thinner, more transparent glaze
         RenderingMode::IntenseGlaze => e.powf(0.6), // covers faster
-        RenderingMode::HeavyGlaze => e.powf(0.4),   // most solid
-        _ => e,                                     // Uniform Glaze / Blending = identity
+        RenderingMode::HeavyGlaze => e.powf(0.4), // most solid
+        _ => e,                                   // Uniform Glaze / Blending = identity
     }
 }
 

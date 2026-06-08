@@ -112,7 +112,10 @@ pub struct WetCompositeBrush {
 /// coverage normaliser comes from the stroke colour (ADR-0077 D12 fix — bright
 /// pigments no longer read fully opaque).
 #[must_use]
-pub fn prepare_wet_composite(pigment: &[[f32; 3]], stroke_color_linear: [f32; 3]) -> WetCompositeBrush {
+pub fn prepare_wet_composite(
+    pigment: &[[f32; 3]],
+    stroke_color_linear: [f32; 3],
+) -> WetCompositeBrush {
     let mut tot = [0.0f32; 3];
     for c in pigment {
         tot[0] += c[0];
@@ -126,7 +129,8 @@ pub fn prepare_wet_composite(pigment: &[[f32; 3]], stroke_color_linear: [f32; 3]
         (tot[2] / tsum * 3.0).min(1.0),
     ];
     let prepared = prepare_pigment(pcol);
-    let color_sum = (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
+    let color_sum =
+        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
     WetCompositeBrush {
         prepared,
         pcol,
@@ -144,14 +148,16 @@ pub fn prepare_wet_composite(pigment: &[[f32; 3]], stroke_color_linear: [f32; 3]
 /// `pcol`/`color_sum` without needing the pigment field.
 #[must_use]
 pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCompositeBrush {
-    let ssum = (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(1.0e-6);
+    let ssum =
+        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(1.0e-6);
     let pcol = [
         (stroke_color_linear[0] / ssum * 3.0).min(1.0),
         (stroke_color_linear[1] / ssum * 3.0).min(1.0),
         (stroke_color_linear[2] / ssum * 3.0).min(1.0),
     ];
     let prepared = prepare_pigment(pcol);
-    let color_sum = (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
+    let color_sum =
+        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
     WetCompositeBrush {
         prepared,
         pcol,
@@ -338,7 +344,17 @@ mod tests {
         // Ground truth: composite over the FULL grid.
         let mut full = backdrop.clone();
         composite_wet_field_cpu(
-            &mut full, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, (0, 0, gw - 1, gh - 1),
+            &mut full,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            &brush,
+            (0, 0, gw - 1, gh - 1),
         );
 
         // The true pigment bbox (+ pad) must reproduce the full composite EXACTLY.
@@ -347,15 +363,36 @@ mod tests {
         composite_wet_field_cpu(
             &mut tight, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, pbb,
         );
-        assert_eq!(tight, full, "pigment-bbox region must reproduce the full composite (no clip)");
+        assert_eq!(
+            tight, full,
+            "pigment-bbox region must reproduce the full composite (no clip)"
+        );
 
         // Sensitivity: a deliberately TOO-SMALL region MUST clip (differ from full).
-        let small = (pbb.0 + 5, pbb.1 + 5, pbb.2.saturating_sub(5), pbb.3.saturating_sub(5));
+        let small = (
+            pbb.0 + 5,
+            pbb.1 + 5,
+            pbb.2.saturating_sub(5),
+            pbb.3.saturating_sub(5),
+        );
         let mut clipped = backdrop.clone();
         composite_wet_field_cpu(
-            &mut clipped, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, small,
+            &mut clipped,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            &brush,
+            small,
         );
-        assert_ne!(clipped, full, "a too-small region MUST clip the dab (test sensitivity)");
+        assert_ne!(
+            clipped, full,
+            "a too-small region MUST clip the dab (test sensitivity)"
+        );
     }
 
     /// Yellow wash over an opaque BLUE backdrop must go GREEN-dominant — the
@@ -375,12 +412,24 @@ mod tests {
         // Stroke colour ~ yellow (linear).
         let brush = prepare_wet_composite(&pig, [0.8, 0.6, 0.02]);
         composite_wet_field_cpu(
-            &mut canvas, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush,
+            &mut canvas,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            &brush,
             (0, 0, gw - 1, gh - 1),
         );
         let i = ((ch / 2 * cw + cw / 2) * 4) as usize;
         let (r, g, b) = (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32);
-        assert!(g > r && g > b, "K–M wash green-dominant over blue: [{r},{g},{b}]");
+        assert!(
+            g > r && g > b,
+            "K–M wash green-dominant over blue: [{r},{g},{b}]"
+        );
     }
 
     /// A wash over a fully TRANSPARENT backdrop must read as the pigment colour with
@@ -402,7 +451,16 @@ mod tests {
         let mut canvas = backdrop.clone();
         let brush = prepare_wet_composite(&pig, [0.8, 0.36, 0.32]);
         composite_wet_field_cpu(
-            &mut canvas, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush,
+            &mut canvas,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            &brush,
             (0, 0, gw - 1, gh - 1),
         );
         // Every painted (alpha>0) pixel must keep a warm coral hue — red leads, and

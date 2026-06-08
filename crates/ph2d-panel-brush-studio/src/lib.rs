@@ -27,8 +27,8 @@
 mod event;
 pub mod ids;
 mod paint;
-mod sections;
 mod populate;
+mod sections;
 pub mod state;
 
 pub use state::{

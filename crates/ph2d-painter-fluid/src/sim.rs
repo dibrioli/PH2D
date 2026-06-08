@@ -22,7 +22,11 @@ pub enum GravitySource {
     #[default]
     None,
     /// A fixed vector configured in Painter Preferences (normalized dir + magnitude).
-    Fixed { dir_x: f32, dir_y: f32, magnitude: f32 },
+    Fixed {
+        dir_x: f32,
+        dir_y: f32,
+        magnitude: f32,
+    },
     /// Read per-frame from `PlatformHost::gyroscope()`; `None` from the host ⇒
     /// treated as [`GravitySource::None`].
     DeviceGyroscope,

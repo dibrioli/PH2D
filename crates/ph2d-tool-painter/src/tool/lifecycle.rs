@@ -324,9 +324,7 @@ impl PainterTool {
 
     /// Mutable access to the live wet field so the shell GPU stepper can advance it
     /// in place; `None` when there is no live field (dry / non-fluid brush).
-    pub fn fluid_grid_mut(
-        &mut self,
-    ) -> Option<&mut ph2d_painter_brush::diffusion::DiffusionGrid> {
+    pub fn fluid_grid_mut(&mut self) -> Option<&mut ph2d_painter_brush::diffusion::DiffusionGrid> {
         self.wet_field.as_mut()
     }
 
@@ -465,7 +463,11 @@ impl PainterTool {
             // Never been wet — nothing to composite. Shell drops via the dry-check.
             return None;
         };
-        let deposit: Vec<[f32; 4]> = grid.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+        let deposit: Vec<[f32; 4]> = grid
+            .pigment()
+            .iter()
+            .map(|p| [p[0], p[1], p[2], 0.0])
+            .collect();
         let water = grid.water().to_vec();
         grid.clear_pigment();
         grid.evaporate(evap_per_frame);

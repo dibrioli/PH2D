@@ -19,12 +19,12 @@ use ph2d_tool_painter::BrushStudioSnapshot;
 
 /// Inverse map: `shape_count` (1..16) → normalized slider `0..1`.
 pub(crate) fn count_to_slider01(count: u32) -> f32 {
-    ((count.clamp(1, 16) as f32 - 1.0) / 15.0).clamp(0.0, 1.0)
+    ((count.clamp(1, 16) as f32 - 1.0) / 15.0).clamp(0.0, 1.0) // LITERAL-PX-OK: shape_count range (1..16), not px
 }
 
 /// Inverse map: `grain_scale` (0.1..4.0) → normalized slider `0..1`.
 pub(crate) fn grain_scale_to_slider01(scale: f32) -> f32 {
-    ((scale.clamp(0.1, 4.0) - 0.1) / 3.9).clamp(0.0, 1.0)
+    ((scale.clamp(0.1, 4.0) - 0.1) / 3.9).clamp(0.0, 1.0) // LITERAL-PX-OK: grain_scale range (0.1..4.0), not px
 }
 
 pub fn populate(store: &mut WidgetStore) {
@@ -103,7 +103,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SHAPE_COUNT_SLIDER,
         ids::SHAPE_COUNT_CHIP,
         count_to_slider01(s.shape_count),
-        15.0,
+        15.0, // LITERAL-PX-OK: shape_count chip display scale (1..16), not px
         1.0,
         true,
     );
@@ -126,8 +126,8 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GRAIN_SCALE_SLIDER,
         ids::GRAIN_SCALE_CHIP,
         grain_scale_to_slider01(s.grain_scale),
-        3.9,
-        0.1,
+        3.9, // LITERAL-PX-OK: grain_scale chip display span (0.1..4.0), not px
+        0.1, // LITERAL-PX-OK: grain_scale chip display floor, not px
         false,
     );
     pct(
@@ -218,7 +218,7 @@ pub fn populate(store: &mut WidgetStore) {
 
 /// Register a percent slider+chip pair (0..1 → 0..100%, integer display).
 fn pct(store: &mut WidgetStore, slider_id: NodeId, chip_id: NodeId, value01: f32) {
-    slider_chip(store, slider_id, chip_id, value01, 100.0, 0.0, true);
+    slider_chip(store, slider_id, chip_id, value01, 100.0, 0.0, true); // LITERAL-PX-OK: percent display scale (0..100%), not px
 }
 
 /// Register a bipolar slider+chip pair (−1..1 → −100..+100%, integer display).
@@ -229,8 +229,8 @@ fn bipolar(store: &mut WidgetStore, slider_id: NodeId, chip_id: NodeId, value: f
         slider_id,
         chip_id,
         (value + 1.0) * 0.5,
-        200.0,
-        -100.0,
+        200.0,  // LITERAL-PX-OK: bipolar percent display span (−100..+100%), not px
+        -100.0, // LITERAL-PX-OK: bipolar percent display floor, not px
         true,
     );
 }
@@ -327,7 +327,7 @@ mod tests {
             assert_eq!(
                 tool.brush_studio_snapshot().shape_count,
                 count,
-                "shape_count {count} must round-trip panel↔tool"
+                "shape_count {count} must round-trip panel<->tool"
             );
         }
     }
@@ -343,7 +343,7 @@ mod tests {
             let got = tool.brush_studio_snapshot().grain_scale;
             assert!(
                 (got - scale).abs() < 1e-3,
-                "grain_scale {scale} must round-trip panel↔tool (got {got})"
+                "grain_scale {scale} must round-trip panel<->tool (got {got})"
             );
         }
     }

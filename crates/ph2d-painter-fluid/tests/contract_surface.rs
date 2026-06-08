@@ -66,7 +66,11 @@ fn gravity_source_variant_count_is_capped() {
     // Exhaustive match (no `_` arm) forces every variant to be listed.
     let variants = [
         GravitySource::None,
-        GravitySource::Fixed { dir_x: 0.0, dir_y: 1.0, magnitude: 1.0 },
+        GravitySource::Fixed {
+            dir_x: 0.0,
+            dir_y: 1.0,
+            magnitude: 1.0,
+        },
         GravitySource::DeviceGyroscope,
     ];
     for g in variants {
@@ -87,7 +91,10 @@ fn fluid_pass_activates_only_when_eligible() {
     assert!(!fluid_pass_eligible(false, true, 3.5), "brush opt-out");
     assert!(!fluid_pass_eligible(true, false, 3.5), "device incapable");
     assert!(!fluid_pass_eligible(true, true, 2.9), "no headroom");
-    assert!(!fluid_pass_eligible(true, true, 3.0), "headroom is strict >");
+    assert!(
+        !fluid_pass_eligible(true, true, 3.0),
+        "headroom is strict >"
+    );
 }
 
 #[test]
@@ -106,7 +113,11 @@ fn cpu_reference_matches_diffusion_with_default_params() {
     for _ in 0..8 {
         b.step(&dp);
     }
-    assert_eq!(a.pigment(), b.pigment(), "FluidParams::default must map 1:1");
+    assert_eq!(
+        a.pigment(),
+        b.pigment(),
+        "FluidParams::default must map 1:1"
+    );
 }
 
 #[test]

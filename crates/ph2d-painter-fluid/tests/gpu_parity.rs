@@ -32,7 +32,13 @@ fn seeded_grid(w: u32, h: u32) -> DiffusionGrid {
     let mut g = DiffusionGrid::new(w, h, 2.0);
     // Wet the whole field a bit so the gate is open + gradients exist, then a
     // concentrated pigment dab off-centre (asymmetry catches advection-direction bugs).
-    g.splat(w as f32 * 0.5, h as f32 * 0.5, w as f32 * 0.45, 0.5, [0.0, 0.0, 0.0]);
+    g.splat(
+        w as f32 * 0.5,
+        h as f32 * 0.5,
+        w as f32 * 0.45,
+        0.5,
+        [0.0, 0.0, 0.0],
+    );
     g.splat(w as f32 * 0.42, h as f32 * 0.5, 6.0, 0.6, [0.1, 0.2, 0.7]);
     g
 }
@@ -81,8 +87,13 @@ fn gpu_solver_matches_cpu_reference() {
     // Sanity: the field is non-trivial (a wrong "all zero" GPU would pass a Δ test
     // against a bug; assert there IS pigment so parity is meaningful).
     let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
-    eprintln!("fluid GPU↔CPU: mean |Δ| = {mean:.6}, worst = {worst:.6}, total pigment = {total:.3} ({w}×{h}, {steps} steps)");
-    assert!(total > 0.01, "GPU produced no pigment — solver is dead, parity meaningless");
+    eprintln!(
+        "fluid GPU↔CPU: mean |Δ| = {mean:.6}, worst = {worst:.6}, total pigment = {total:.3} ({w}×{h}, {steps} steps)"
+    );
+    assert!(
+        total > 0.01,
+        "GPU produced no pigment — solver is dead, parity meaningless"
+    );
     assert!(
         mean < 1.0e-3,
         "GPU↔CPU mean |Δ| {mean} too high — the WGSL diverges from the diffusion reference"
@@ -120,8 +131,14 @@ fn step_grid_matches_cpu_step_in_place() {
         .zip(cpu.water().iter())
         .fold(0.0f32, |m, (a, b)| m.max((a - b).abs()));
     eprintln!("step_grid vs CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}");
-    assert!(worst_p < 2.0e-2, "step_grid pigment diverged from CPU: {worst_p}");
-    assert!(worst_w < 2.0e-2, "step_grid water diverged from CPU: {worst_w}");
+    assert!(
+        worst_p < 2.0e-2,
+        "step_grid pigment diverged from CPU: {worst_p}"
+    );
+    assert!(
+        worst_w < 2.0e-2,
+        "step_grid water diverged from CPU: {worst_w}"
+    );
 }
 
 #[test]
@@ -138,9 +155,16 @@ fn step_resident_matches_classic_step_with_deposit() {
     };
     let (w, h) = (40u32, 36u32);
     let steps = 10u32;
-    let params = FluidParams { evaporation: 0.0, ..FluidParams::default() };
+    let params = FluidParams {
+        evaporation: 0.0,
+        ..FluidParams::default()
+    };
     let seed = seeded_grid(w, h);
-    let pig4: Vec<[f32; 4]> = seed.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    let pig4: Vec<[f32; 4]> = seed
+        .pigment()
+        .iter()
+        .map(|p| [p[0], p[1], p[2], 0.0])
+        .collect();
 
     // Path A — classic step (uploaded pigment).
     let a = FluidSolver::new(&gpu.device, w, h);
@@ -163,7 +187,10 @@ fn step_resident_matches_classic_step_with_deposit() {
         .flat_map(|(x, y)| (0..3).map(move |k| (x[k] - y[k]).abs()))
         .fold(0.0f32, f32::max);
     eprintln!("resident vs classic (evap off): worst pigment |Δ| = {worst:.8}");
-    assert!(worst < 1.0e-6, "resident deposit+step must match classic step: {worst}");
+    assert!(
+        worst < 1.0e-6,
+        "resident deposit+step must match classic step: {worst}"
+    );
 }
 
 #[test]

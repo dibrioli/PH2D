@@ -46,10 +46,10 @@ thread_local! {
 /// active tool's `on_tick`. No-op without an active painter or a live field (and it
 /// then releases the session + hands the field back to the CPU path).
 pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
-    let Some(painter) = tools
-        .active_mut()
-        .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_tool_painter::PainterTool>())
-    else {
+    let Some(painter) = tools.active_mut().and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+    }) else {
         return;
     };
     // **Graceful degrade (ADR-0049 §2.8/§2.9).** Only a software/CPU adapter is ruled
@@ -58,10 +58,16 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     // incapable, the field falls back to the CPU path (the tool's on_tick).
     let tier = match gpu.adapter.get_info().device_type {
         wgpu::DeviceType::Cpu => ph2d_host::MemoryTier::Low,
-        wgpu::DeviceType::IntegratedGpu | wgpu::DeviceType::VirtualGpu => ph2d_host::MemoryTier::Mid,
+        wgpu::DeviceType::IntegratedGpu | wgpu::DeviceType::VirtualGpu => {
+            ph2d_host::MemoryTier::Mid
+        }
         _ => ph2d_host::MemoryTier::High,
     };
-    let capable = ph2d_host::MemoryBudget { vram_free_mb: 256, tier }.fluid_capable();
+    let capable = ph2d_host::MemoryBudget {
+        vram_free_mb: 256,
+        tier,
+    }
+    .fluid_capable();
     // W15.3 full-res: a capable GPU runs the NEXT fluid field at full canvas
     // resolution. Set every frame (even with no live field) so it's in effect before
     // the next `begin_stroke`.
@@ -127,14 +133,14 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         };
         // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
         if sess.epoch != epoch {
-            sess.solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+            sess.solver
+                .clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }
             if let Some(backdrop) = painter.fluid_backdrop() {
-                let brush =
-                    prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
+                let brush = prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
                 // Coverage supersampling: 1 at full-res (edge already 1px-fine — saves
                 // 4× the K–M cost), 2 at half-res to antialias the steeper edge.
                 let ss = if scale <= 1 { 1 } else { 2 };
@@ -163,7 +169,9 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         };
         sess.solver
             .step_resident(&gpu.device, &gpu.queue, &inp.water, &inp.deposit, substeps);
-        let (band, rect) = sess.compositor.composite_frame(&gpu.device, &gpu.queue, inp.region);
+        let (band, rect) = sess
+            .compositor
+            .composite_frame(&gpu.device, &gpu.queue, inp.region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }

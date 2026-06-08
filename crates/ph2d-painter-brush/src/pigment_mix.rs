@@ -546,8 +546,14 @@ mod tests {
             ([0.2, 0.6, 0.1], [0.7, 0.1, 0.5]),
         ] {
             let prep = prepare_pigment(b);
-            assert!(approx(mix_prepared_exact(&prep, a, 0.0), a, 1e-6), "t=0 → a");
-            assert!(approx(mix_prepared_exact(&prep, a, 1.0), b, 1e-6), "t=1 → b");
+            assert!(
+                approx(mix_prepared_exact(&prep, a, 0.0), a, 1e-6),
+                "t=0 → a"
+            );
+            assert!(
+                approx(mix_prepared_exact(&prep, a, 1.0), b, 1e-6),
+                "t=1 → b"
+            );
             for &t in &[0.2, 0.5, 0.8] {
                 let lut = mix_prepared(&prep, a, t);
                 let exact = mix_prepared_exact(&prep, a, t);

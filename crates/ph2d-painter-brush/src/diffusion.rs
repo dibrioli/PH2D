@@ -482,7 +482,10 @@ mod tests {
         let wet = spread(0.9);
         let dry = spread(0.0);
         assert!(wet > 0.05, "wet pigment must bloom outward: ring {wet}");
-        assert!(dry < wet * 0.1, "dry pigment must NOT spread: dry {dry} vs wet {wet}");
+        assert!(
+            dry < wet * 0.1,
+            "dry pigment must NOT spread: dry {dry} vs wet {wet}"
+        );
     }
 
     /// Stability: many steps never produce NaN / Inf / runaway values.
@@ -497,7 +500,10 @@ mod tests {
         }
         for px in g.pigment() {
             for &c in px {
-                assert!(c.is_finite() && (0.0..10.0).contains(&c), "unstable value {c}");
+                assert!(
+                    c.is_finite() && (0.0..10.0).contains(&c),
+                    "unstable value {c}"
+                );
             }
         }
     }
@@ -521,6 +527,9 @@ mod tests {
         for (a, b) in dried.iter().zip(g.pigment().iter()) {
             max_move = max_move.max((a[0] - b[0]).abs());
         }
-        assert!(max_move < 1e-3, "dried pigment must stay frozen: moved {max_move}");
+        assert!(
+            max_move < 1e-3,
+            "dried pigment must stay frozen: moved {max_move}"
+        );
     }
 }

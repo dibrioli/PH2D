@@ -141,12 +141,12 @@ pub fn populate(store: &mut WidgetStore) {
         ids::GRAIN_DEPTH_SLIDER,
         ids::GRAIN_DEPTH_CHIP,
         1.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
     );
     store.link_slider_number_mapped_integer(
         ids::GRAIN_DEPTH_SLIDER,
         ids::GRAIN_DEPTH_CHIP,
-        100.0,
+        100.0, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
         0.0,
     );
 }

@@ -169,11 +169,26 @@ impl FluidSolver {
                 label: Some(label),
                 layout: &bgl,
                 entries: &[
-                    wgpu::BindGroupEntry { binding: 0, resource: params_buf.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 1, resource: water.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 2, resource: paper.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 3, resource: pin.as_entire_binding() },
-                    wgpu::BindGroupEntry { binding: 4, resource: pout.as_entire_binding() },
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: water.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: paper.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: pin.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: pout.as_entire_binding(),
+                    },
                 ],
             })
         };
@@ -204,13 +219,7 @@ impl FluidSolver {
 
     /// Upload the initial field. `pigment` is the linear-RGB mass (xyz; w ignored).
     /// Lengths must equal `width * height`.
-    pub fn upload(
-        &self,
-        queue: &wgpu::Queue,
-        water: &[f32],
-        paper: &[f32],
-        pigment: &[[f32; 4]],
-    ) {
+    pub fn upload(&self, queue: &wgpu::Queue, water: &[f32], paper: &[f32], pigment: &[[f32; 4]]) {
         queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
         queue.write_buffer(&self.paper, 0, bytemuck::cast_slice(paper));
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
@@ -239,8 +248,9 @@ impl FluidSolver {
     /// submit). After this, the pigment is in `pig_a`; read it with [`Self::read_pigment`].
     pub fn step(&self, device: &wgpu::Device, queue: &wgpu::Queue, substeps: u32) {
         let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
-        let mut enc =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("fluid step") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid step"),
+        });
         for _ in 0..substeps {
             for (pipe, bg) in [
                 (&self.diffuse, &self.bg_diffuse),
@@ -355,8 +365,9 @@ impl FluidSolver {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("fluid rb") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid rb"),
+        });
         enc.copy_buffer_to_buffer(&self.pig_a, 0, &staging, 0, size);
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
@@ -384,8 +395,9 @@ impl FluidSolver {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("fluid water rb") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid water rb"),
+        });
         enc.copy_buffer_to_buffer(&self.water, 0, &staging, 0, size);
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();

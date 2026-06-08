@@ -376,25 +376,25 @@ fn paint_dynamics_section(
     }
     for (label, v, sld, chip) in [
         (
-            "Speed→Size",
+            "Speed->Size",
             s.speed_size,
             ids::SPEED_SIZE_SLIDER,
             ids::SPEED_SIZE_CHIP,
         ),
         (
-            "Speed→Opac",
+            "Speed->Opac",
             s.speed_opacity,
             ids::SPEED_OPACITY_SLIDER,
             ids::SPEED_OPACITY_CHIP,
         ),
         (
-            "Speed→Space",
+            "Speed->Space",
             s.speed_spacing,
             ids::SPEED_SPACING_SLIDER,
             ids::SPEED_SPACING_CHIP,
         ),
     ] {
-        let disp = format!("{:+.0}%", v * 100.0);
+        let disp = format!("{:+.0}%", v * 100.0); // LITERAL-PX-OK: percent display scale (x100), not a px dimension
         y = mapped_row(
             ctx,
             x,
@@ -402,7 +402,7 @@ fn paint_dynamics_section(
             y,
             label,
             (v + 1.0) * 0.5,
-            (v * 100.0) as f64,
+            (v * 100.0) as f64, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
             &disp,
             sld,
             chip,
@@ -448,7 +448,7 @@ fn pct_row(
     chip_id: NodeId,
     theme: Theme,
 ) -> f32 {
-    let display = format!("{:.0}%", value01 * 100.0);
+    let display = format!("{:.0}%", value01 * 100.0); // LITERAL-PX-OK: percent display scale (x100), not a px dimension
     mapped_row(
         ctx,
         x,
@@ -456,7 +456,7 @@ fn pct_row(
         y,
         label,
         value01,
-        (value01 * 100.0) as f64,
+        (value01 * 100.0) as f64, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
         &display,
         slider_id,
         chip_id,

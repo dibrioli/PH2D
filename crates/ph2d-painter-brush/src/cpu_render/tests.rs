@@ -1015,7 +1015,19 @@ fn wash_color_accumulation_blends_overlapping_dab_colors() {
         let mut canvas = backdrop.clone();
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        apply_stamps_wash(&mut canvas, &backdrop, &mut cov, &mut wc, w, h, stamps, 1.0, false, false, 0.0);
+        apply_stamps_wash(
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            stamps,
+            1.0,
+            false,
+            false,
+            0.0,
+        );
         canvas
     };
     let mut a = red_stamp(20.0, 20.0, 24.0);
@@ -1057,7 +1069,17 @@ fn wash_later_opaque_dab_is_on_top_not_inverted_z() {
     let mut b = red_stamp(20.0, 20.0, 24.0);
     b.color_oklab = [0.45, -0.03, -0.31, 1.0]; // bluish
     apply_stamps_wash(
-        &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[a, b], 1.0, false, false, 0.0,
+        &mut canvas,
+        &backdrop,
+        &mut cov,
+        &mut wc,
+        w,
+        h,
+        &[a, b],
+        1.0,
+        false,
+        false,
+        0.0,
     );
     let i = ((20 * w + 20) * 4) as usize;
     let (r, g, bl) = (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32);
@@ -1082,7 +1104,17 @@ fn wash_honors_rendering_mode_option_a() {
         s.flow = 0.5; // semi-transparent so the modes' attenuation shows
         s.rendering_mode = mode;
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[s], 0.6, pigment, false, 0.0,
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &[s],
+            0.6,
+            pigment,
+            false,
+            0.0,
         );
         let i = ((4 * w + 4) * 4) as usize;
         (canvas[i], canvas[i + 1], canvas[i + 2])

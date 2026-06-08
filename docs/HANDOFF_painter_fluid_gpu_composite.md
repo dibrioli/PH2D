@@ -1,96 +1,75 @@
-# HANDOFF — W15.3 GPU composite (próximo agente, START HERE)
+# HANDOFF — W15.3 GPU watercolor composite (DONE, smoke OK 2026-06-07)
 
-> **W15.3 GPU composite está IMPLEMENTADO end-to-end** ([ADR-0049](architecture/decisions/0049-fluid-brushes.md)
-> + amendment-1). O shader K–M foi provado bit-a-bit no GPU, o CPU virou single-source, e o shell
-> agora roda o composite no GPU lendo o pigmento residente (sem readback de pigmento, sem composite
-> CPU). **Falta:** validação VISUAL do Enio no app (`--features fluid`) + 1 otimização opcional
-> (preview-texture fully-async). Leia `CLAUDE.md`. Você atua como **Coordenador sozinho**.
+> **W15.3 está FECHADO** ([ADR-0049](architecture/decisions/0049-fluid-brushes.md) + amendment-1):
+> a aquarela wet-on-wet roda inteira no GPU (solver + composite K–M), sem o stall de readback de
+> pigmento, e foi **ratificada visualmente pelo Enio** ("smoke ok. Corrigiu!"). Este doc é o registro
+> do que ficou + os **aprendizados** (leia §3 — o mais caro). Tudo commitado local, sem push.
 
 ---
 
-## §0 — STATUS
+## §1 — O QUE FICOU (pipeline final, `--features fluid`)
 
-**Tudo commitado local, sem push** (fast mode). Quatro commits desta linha:
-
-| Commit | Conteúdo | Prova |
-|---|---|---|
-| `2d0f5d3` | Shader composite (K–M WGSL) + gate + CPU single-source (`wet_composite.rs`) | `composite_parity` GPU↔CPU = **0 LSB** |
-| `5e535d5` | `composite_buffer` lê `pig_a` residente (seam) | `gpu_step_then_composite_resident_matches_cpu` = **0 LSB** |
-| `2cbc823` | **Shell resident-composite drive** (remove readback de pigmento + composite CPU) | tool fluid 12/12; clippy clean |
-
-### ✅ Como roda agora (caminho GPU, `--features fluid`)
-`drive_fluid_gpu` (`shells/desktop/src/render_loop/painter_fluid_bridge.rs`), por frame:
-1. pigmento **GPU-residente** em `solver.pig_a`; os dabs deste frame (grid pigment) sobem como
-   `deposit` aditivo (`cs_deposit`) + diffuse/advect no GPU (sem `cs_evaporate`, sem readback).
+Por frame, `drive_fluid_gpu` (`shells/desktop/src/render_loop/painter_fluid_bridge.rs`):
+1. pigmento **GPU-residente** em `solver.pig_a`; os dabs do frame sobem como **deposit aditivo**
+   (`cs_deposit`) + diffuse/advect no GPU (sem evaporate GPU, **sem readback de pigmento**).
 2. **água = espelho CPU** (sobe pro gate; a CPU evapora + faz o dry-check → sem readback de água).
-3. compositor lê `pig_a` + backdrop → **só a faixa de linhas molhada** volta pra `canvas_rgba`
-   (a camada canônica que o upload de preview existente + Apply/undo consomem).
+3. **composite GPU** (`composite.wgsl`, K–M espectral + **2×2 supersample AA**) lê `pig_a` + backdrop
+   sobre o **envelope molhado monotônico**; só a faixa de linhas molhada volta pra `canvas_rgba`.
+4. dry-check (drop só **após pen-up**), epoch reset, full-res (`scale=1`) em GPU capaz.
 
-### ✅ Testado (headless / Metal)
-- `cargo test -p ph2d-painter-fluid --features fluid -- --ignored` → **7/7** (gpu_parity 4 +
-  composite_parity 3... na verdade 4 cada agora): composite-only 0 LSB; step+composite residente
-  0 LSB; resident-vs-classic 0 Δ; rows==full-band; discriminantes K–M no GPU.
-- `cargo test -p ph2d-tool-painter --lib -- fluid` → 12/12 (inclui `gpu_fluid_driven_skips_cpu`).
-- naga valida `composite.wgsl` + `fluid.wgsl`; caps intactos; clippy limpo (tool + shell).
-- `cargo check -p ph2d-host-desktop --features fluid` ✓.
+Paridade GPU↔CPU **0 LSB** (testes `composite_parity` + `gpu_parity`, `--ignored`, Metal). CPU path
+(`composite_wet_field`) é o fallback bit-near. `play.command` roda com `--features fluid`.
 
-### ▶︎ COMO O ENIO TESTA (importante — `run-shell.sh` NÃO liga fluid)
-```
-cargo run -p ph2d-host-desktop --release --features fluid
-```
-(Pinte com um brush fluid — Brush Studio → fluid enabled. O wash deve bloomar/secar igual ao CPU,
-amarelo-sobre-azul→verde, sem franja preta. Em `--release` pra sentir a perf; dev é opt0.)
+## §2 — BUGS ENCONTRADOS + CORRIGIDOS (a jornada)
 
-## §1 — O QUE FALTA
+| Sintoma (Enio) | Causa-raiz | Fix | Commit |
+|---|---|---|---|
+| (gate) | — | shader K–M provado bit-exato | `2d0f5d3` |
+| (seam) | — | composite lê `pig_a` residente | `5e535d5` |
+| (integração) | — | resident drive (deposit + composite + row readback) | `2cbc823` |
+| Recortes retangulares no traço curvo | apply escrevia a faixa **full-width** → apagava colunas fora da bbox | apply só as colunas `[px_lo,px_hi)` | `807d30c` |
+| Bordas serrilhadas | cobertura amostrada 1×/pixel (borda íngreme em traço opaco) | **2×2 coverage supersampling** (AA), espelhado CPU+WGSL | `dbd49ab` |
+| — | half-res era budget de CPU | full-res `scale=1` GPU-condicional | `4e3c2ee` |
+| Fluid morria no fim do traço após pausar | pausa seca o campo em ~0.3s → drop no meio do traço | drop só `dry && !stroke_active` | `eb184cf` |
+| **"Quinas retangulares"** (mesmo em full-res) | composite usava a **bbox da ÁGUA**, que **recua** na evaporação enquanto o pigmento (conservado) fica espalhado → mancha redonda cortada num retângulo | composite sobre o **envelope monotônico** (união de todas as bboxes molhadas; nunca recua) + pad 1→2 células | `2b1b0a0` |
+| **"Baixa resolução nas bordas"** | **o canvas é 64×64** (sprite de demo, `ATLAS_SPRITE_PX`); aquarela "full-res" de 64px é minúscula com zoom de ~12× | **não é o pipeline** — pintar em canvas maior (ver §3) | — |
 
-### (A) Validação visual do Enio — BLOQUEADOR de "fechar"
-A paridade é 0 LSB no headless, mas o caminho do app (deposit/residência/dry-check/faixa de linhas)
-só foi exercido por testes, não na tela. Rode o comando acima e confira o wash ao vivo.
-**Possíveis pontos de atenção** (se algo parecer errado):
-- **Transient do frame 1:** `gpu_fluid_driven` só liga no `drive_fluid_gpu` (após o `on_tick`), então
-  o 1º frame pós-pointer-down pode rodar 1 CPU-tick + 1 GPU-step (duplo processa 1 frame). Imperceptível,
-  mas se houver um flash, é aqui (pré-existente no fluxo antigo também).
-- **Região = water_bbox(1e-3) ∪ anterior:** se o bloom passar da bbox da água, apareceria corte. O
-  composite curto-circuita pixel seco, então deveria cobrir; se cortar, aumente o pad / baixe o threshold.
+Auditoria multiagêntica (39 agentes) achou o `2b1b0a0` (envelope). 2 itens low-sev deferidos (§4).
 
-### (B) Otimização opcional — preview-texture fully-async (tira o ÚLTIMO readback)
-Hoje sobra **1 readback da faixa de linhas** por frame (pequeno, mas é um `device.poll`). Pra zerar:
-composite → **textura de preview GPU** (não buffer) → premul → copy pro slot `PainterPreviewGpu`
-(GPU→GPU, sem readback); readback RGBA só no pen-up pra bakear `canvas_rgba`.
-- Blocker estrutural: `drive_fluid_gpu` (render_loop `mod.rs` L242) só tem `tools`+`gpu`; o slot de
-  preview vive no `painter_bridge::dispatch` (L1059, com `renderer`). Precisa passar o renderer/slot
-  pro drive (ou mover o drive pro contexto do bridge). Estude `painter_gpu_preview.rs` (`PreviewPremul`
-  + `copy_texture_into_individual`) — é o padrão a espelhar.
-- Adicione `FluidCompositor::composite_to_texture` (saída storage texture `rgba8unorm` em vez de
-  `array<u32>`), e no pen-up um `composite_buffer_rows` (já existe) pra bakear `canvas_rgba`.
-- **Só vale se a faixa-de-linhas mostrar stall real** (meça em `--release` com wash grande). Pode não
-  valer a complexidade — decida no padrão-ouro com número na mão.
+## §3 — APRENDIZADOS (o caro — leia antes de mexer em aquarela/render)
 
-## §2 — MAPA DOS ARQUIVOS (o que cada peça faz)
-- `ph2d-painter-brush/src/pigment_mix.rs` — `spectral_basis()`, `PreparedPigment::{color,ks,err}`,
-  `mix_prepared_exact` (sem LUT, o ground-truth da paridade).
-- `ph2d-painter-brush/src/wet_composite.rs` — CPU reference (single source) + bicúbico/bbox +
-  `prepare_wet_composite[_from_stroke]`. O tool `composite_wet_field` delega pra cá (fallback CPU).
-- `ph2d-painter-brush/src/diffusion.rs` — `clear_pigment`/`evaporate`/`max_water`/`water_bbox` (resident).
-- `ph2d-painter-fluid/src/shader/{fluid,composite}.wgsl` — solver (+`cs_deposit`) + K–M composite.
-- `ph2d-painter-fluid/src/solver.rs` — `pigment_buffer()`, `step_resident`, `upload_paper`,
-  `clear_resident_pigment` (residência, sem readback de pigmento).
-- `ph2d-painter-fluid/src/composite.rs` — `FluidCompositor`: `composite_buffer` (lê buffer externo) +
-  `composite_buffer_rows` (faixa) + `composite_to_rgba` (upload CPU, conveniência).
-- `ph2d-tool-painter/src/tool/{mod,lifecycle}.rs` — `FluidFrameInputs`, `fluid_stroke_epoch`, e os
-  hooks `fluid_frame_step_inputs` / `fluid_apply_gpu_composite_rows` / `fluid_dry_check_and_drop` etc.
-- `shells/desktop/src/render_loop/painter_fluid_bridge.rs` — o `drive_fluid_gpu` resident-composite.
+1. **"Baixa resolução" pode ser o tamanho do CANVAS, não o sim/shader.** O painter edita o sprite na
+   resolução **nativa** (`read_sprite_source` usa `img.width/height`, sem upscale). Os sprites de demo
+   são **64×64** (`ATLAS_SPRITE_PX=64`, `shells/desktop/src/integration.rs`). Render de borda macia
+   (aquarela) em 64px, exibido a ~800px (~12× zoom), VIRA borrão — independente de `scale=1`/`2` (64 vs
+   32, ambos minúsculos). Brush duro parece nítido (borda seca → blocos com transição seca); aquarela
+   macia → mush. **Antes de caçar escala de sim/shader, cheque a resolução real do canvas/source.**
+   Pra testar alta-res: **arraste um PNG grande** (importa via `DroppedFile` → `import_image_at_camera`
+   na res nativa). Gap em aberto: o painter ("sucessor do Procreate") só edita os sprites pequenos do
+   atlas — não há "novo canvas" grande dedicado (§4).
+2. **`water_bbox ≠ extensão do pigmento` sob evaporação.** Água só evapora (bbox recua); pigmento é
+   conservado e difusão/advecção até empurram pigmento 1 célula PRA FORA do gate. Compositar sobre a
+   bbox da água corta a mancha. Use o **envelope molhado all-time** (limite superior real) ou a bbox de
+   pigmento. O comentário "wet ⊇ pigment" em `diffusion.rs` era falso (corrigido) — foi a cerca de
+   Chesterton que plantou o bug.
+3. **Paridade-verde ≠ caminho-real-exercido.** Todos os `composite_parity` passavam `region=
+   (0,0,gw-1,gh-1)` → `composite_canvas_region` clampa pro canvas inteiro → o caminho de **bbox
+   apertada** (onde mora o clip) NUNCA era testado. "0 LSB" era verdade e irrelevante. Os 2 testes de
+   regressão novos (`fluid_gpu_envelope_never_recedes_under_evaporation`,
+   `composite_region_must_cover_pigment_or_it_clips`) cobrem o caminho real.
+4. **Verifique hipótese plausível, não descarte por raciocínio de poltrona.** Levantei "water vs
+   pigment bbox" cedo e **descartei errado** (assumi `water⊇pigment`), custando rounds. Um teste de
+   região-apertada teria provado/refutado na hora.
 
-## §3 — GOTCHAS / INVARIANTES
-- **Paridade 0 LSB** no Metal — o shader está certo. Não mexa no shader; só no wiring/perf.
-- **pcol vem da COR DO STROKE** (`prepare_wet_composite_from_stroke`) no caminho GPU — é igual ao
-  total do grid pra stroke de 1 cor (o `Σamount` cancela; tem teste).
-- **NÃO re-suba pigmento por frame** (resetaria o bloom) — só o `deposit` aditivo. Água SIM (espelho CPU).
-- **`composite_wet_field` (CPU) continua o fallback** — quando `--features fluid` está OFF ou device
-  incapaz. Não o quebre.
-- **`run-shell.sh` não liga fluid** — use `--features fluid` no `cargo run` (acima). Considere adicionar
-  um arg `fluid` no script (mexe em `scripts/`, coordene).
-- **Det/§2.11**: composite é frame-driven, fora do replay HR-5. O solver det fallback é o CPU `diffusion`.
-- **NÃO pusha** (fast mode — Enio valida visual antes).
+## §4 — EM ABERTO (deferidos, não-bloqueantes)
 
-— deixado por Claude (sessão brush-overhaul + W15.3 GPU composite — gate + integração, 2026-06-07).
+- **Canvas de pintura grande** (o gap real pra aquarela brilhar): hoje só edita sprites 64×64 do atlas
+  ou imagens importadas. Decisão do Enio: "novo canvas" 1024²/2048², ou subir `ATLAS_SPRITE_PX` (muda o
+  atlas — `integration.rs`, regenera fixtures), ou sempre pintar em imagens importadas.
+- **preview-texture fully-async** (tira o ÚLTIMO readback da faixa de linhas → GPU roda à frente):
+  precisa de plumbing no render-loop (o drive em `mod.rs:242` não tem o renderer/slot; o slot vive no
+  `painter_bridge::dispatch`). Só vale se a faixa-de-linhas mostrar stall real (medir em `--release`).
+- **gate de perf-headroom** (`fluid_pass_eligible(.., f32::INFINITY)` é no-op) — auditoria low-sev.
+- **AA de splat em raio minúsculo** (`r.max(0.5)` + cutoff `d>=1.0` quebra brushes <3px) — low-sev.
+
+— deixado por Claude (sessão brush-overhaul + W15.3 GPU composite — FECHADO, smoke OK, 2026-06-07).

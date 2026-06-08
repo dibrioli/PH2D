@@ -194,6 +194,14 @@ referência CPU vira det-fallback. Estágios S0..S5.
   síncrono** (aparece na hora; hitch único de ~2.6ms só no clique). **stats** virou a maior fase (0.41ms,
   o `poll(wait)` do dry-check) → `DRY_CHECK_EVERY` 6→20. **Pendências:** stats async (matar o último hitch
   periódico); textura-alvo S2 puro (zero-readback de banda, escala 4K); investigar warn "dropped sim time".
+> **✅ MOTOR VALIDADO + DELAY RESOLVIDO (2026-06-08).** Enio: "sim, funcionou! tudo correto!" — aquarela
+> física (edge-darkening + granulação), sem delay, ~240 FPS. **Causa-raiz do delay: NÃO era frame — era
+> ~⅓s de `grain_noise` O(grid) na CPU regerando o papel TODO traço no `begin_stroke`** (commit `0cd7802`:
+> cache do papel + pré-geração no hover). O composite voltou pro **pipelined** (`d975520`, ~240 FPS) — o
+> frame-extra do pipelined sempre foi imperceptível; o ⅓s do papel é que mascarava. **Continuação (S3d+) →
+> [HANDOFF_painter_fluid_continuation.md](HANDOFF_painter_fluid_continuation.md).** A seção abaixo é o
+> registro da investigação (a auditoria acertou a causa-frame mas errou a ESCALA — ver §3 da continuação).
+
 - **DELAY clique→traço — auditoria multiagêntica (7 agentes, 2026-06-08) + interim.** Causa-raiz: o preview
   do painter é produzido dentro de `painter_bridge::dispatch` ([mod.rs:1059](../../shells/desktop/src/render_loop/mod.rs#L1059)),
   que roda **DEPOIS** do `sim_extract` ([:329](../../shells/desktop/src/render_loop/mod.rs#L329)) — frame N

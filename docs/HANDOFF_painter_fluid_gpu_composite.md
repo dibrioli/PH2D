@@ -194,6 +194,21 @@ referência CPU vira det-fallback. Estágios S0..S5.
   síncrono** (aparece na hora; hitch único de ~2.6ms só no clique). **stats** virou a maior fase (0.41ms,
   o `poll(wait)` do dry-check) → `DRY_CHECK_EVERY` 6→20. **Pendências:** stats async (matar o último hitch
   periódico); textura-alvo S2 puro (zero-readback de banda, escala 4K); investigar warn "dropped sim time".
+- **DELAY clique→traço — auditoria multiagêntica (7 agentes, 2026-06-08) + interim.** Causa-raiz: o preview
+  do painter é produzido dentro de `painter_bridge::dispatch` ([mod.rs:1059](../../shells/desktop/src/render_loop/mod.rs#L1059)),
+  que roda **DEPOIS** do `sim_extract` ([:329](../../shells/desktop/src/render_loop/mod.rs#L329)) — frame N
+  só é amostrado em N+1 (**+1 frame estrutural**, pré-existente, imperceptível sozinho — sem queixa em
+  S0–S3c). O readback **pipelined** (commit `7dea61f`) somou +1 + o priming/drain somaram `poll(wait)` no
+  frame do clique → ficou perceptível. **Interim (commit `acfc98c`):** composite voltou pro **síncrono**
+  (estado S3c validado sem delay; ~140 FPS, 1 `poll(wait)`/frame). Priming + instrumentação stroke-start
+  removidos; `composite_frame_pipelined` + profiler MANTIDOS pro fix definitivo.
+  **DEFINITIVO 250 + zero-delay (próximo passo focado):** produzir o preview do painter **ANTES** do
+  `sim_extract` — *drive-owns-slot reorder*: o `drive_fluid_gpu` recebe `renderer` + `painter_preview_gpu`
+  + entity, faz o upload do band pro slot via `replace_individual_pixels_region` (API ph2d-render JÁ
+  existente — sem mudança foundational) logo após o composite; o `dispatch` pula o upload do fluid (flag
+  tipo `gpu_owns_preview`). Colapsa o frame estrutural; com o pipelined readback (250 FPS) o líquido fica
+  net +1 = nível-S3c (imperceptível). **Toca o caminho validado Apply/preview/bgremoval** → passo focado +
+  testado + validação visual do Enio (não fazer no fim de sessão longa). Plano detalhado no commit `acfc98c`.
 - **S3d** campo de velocidade shallow-water (MoveWater + pressure relax) → fluxo direcional + blooms fortes.
 - **S4** multi-pigmento K–M + multi-camada @4K. **S5** BFECC + supersampling adaptativo + capilar LBM (MoXi) + 120Hz.
 

@@ -158,6 +158,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     // first dab — no hitch when the stroke starts. Keep the session warm.
     if !painter.has_wet_field() {
         painter.set_gpu_fluid_driven(false);
+        // Pre-generate + cache the paper-tooth field NOW (hovering) so the first
+        // `begin_stroke` (the click) doesn't pay the O(grid) `grain_noise` (the ~⅓ s
+        // click→stroke delay at 4K). Off the click path.
+        painter.fluid_prewarm_paper();
         if let Some(dims) = painter.fluid_prewarm_dims() {
             SESSION.with(|cell| {
                 let mut slot = cell.borrow_mut();

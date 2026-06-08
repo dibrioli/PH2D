@@ -137,6 +137,16 @@ impl DiffusionGrid {
     /// with the live paper tooth (use 1.0 for a self-contained grid).
     #[must_use]
     pub fn new(width: u32, height: u32, scale: f32) -> Self {
+        Self::with_paper(width, height, Self::generate_paper(width, height, scale))
+    }
+
+    /// Generate the deterministic paper-tooth height field for a `width × height` grid
+    /// at world `scale` — the EXPENSIVE part of [`Self::new`] (`grain_noise` per cell,
+    /// O(grid) on the CPU). It depends only on `(width, height, scale)`, so a caller
+    /// painting many strokes on one canvas can compute it ONCE and reuse it via
+    /// [`Self::with_paper`] instead of paying it per stroke (a ~⅓ s hitch at 4K).
+    #[must_use]
+    pub fn generate_paper(width: u32, height: u32, scale: f32) -> Vec<f32> {
         let n = (width as usize) * (height as usize);
         let mut paper = vec![0.0f32; n];
         for y in 0..height {
@@ -149,6 +159,17 @@ impl DiffusionGrid {
                 );
             }
         }
+        paper
+    }
+
+    /// Build a grid from a PRE-COMPUTED paper field (companion to [`Self::generate_paper`]
+    /// for caching). `paper.len()` must equal `width * height`. The water/pigment/scratch
+    /// buffers are fresh zeroed allocations (lazy-zeroed pages — ~free until touched, and
+    /// the GPU-resident path never touches them).
+    #[must_use]
+    pub fn with_paper(width: u32, height: u32, paper: Vec<f32>) -> Self {
+        let n = (width as usize) * (height as usize);
+        debug_assert_eq!(paper.len(), n, "paper length must match width*height");
         Self {
             width,
             height,

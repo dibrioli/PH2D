@@ -28,6 +28,46 @@ const WET_DRY_THRESHOLD: f32 = 0.045;
 /// `Σcolour ≈ 0.53`, so `K = old 2.0 × 0.53 ≈ 1.06` keeps them unchanged.
 const WET_COVERAGE_K: f32 = 1.06;
 
+thread_local! {
+    /// **Cached paper-tooth field (perf fix 2026-06-08).** `DiffusionGrid::new`
+    /// generates the paper via `grain_noise` PER CELL — O(grid) on the CPU, ~⅓ s on a
+    /// large/4K canvas. It's deterministic in `(gw, gh, scale)`, so a fresh field per
+    /// stroke regenerated it needlessly (the "delay entre o clique e o início do
+    /// traço"). Cache it keyed by those, so begin_stroke only pays a cheap clone after
+    /// the first stroke on a canvas. Thread-local (the tool runs single-threaded).
+    static PAPER_CACHE: std::cell::RefCell<Option<(u32, u32, u32, std::sync::Arc<Vec<f32>>)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Get-or-generate the cached paper-tooth field for `(gw, gh, scale)` (the O(grid)
+/// `grain_noise` that was the per-stroke ~⅓ s hitch). Generated at most once per
+/// canvas/scale; the one-time generation cost is logged. Pre-warm calls this during
+/// hover so the first stroke is cheap too.
+fn cached_fluid_paper(gw: u32, gh: u32, scale: u32) -> std::sync::Arc<Vec<f32>> {
+    PAPER_CACHE.with(|cell| {
+        let mut c = cell.borrow_mut();
+        if let Some((cw, ch, cs, p)) = c.as_ref()
+            && *cw == gw
+            && *ch == gh
+            && *cs == scale
+        {
+            return std::sync::Arc::clone(p);
+        }
+        let t = std::time::Instant::now();
+        let p = std::sync::Arc::new(ph2d_painter_brush::diffusion::DiffusionGrid::generate_paper(
+            gw,
+            gh,
+            scale as f32,
+        ));
+        eprintln!(
+            "[fluid] paper generated {gw}x{gh} (scale {scale}) in {:.1}ms — cached for reuse",
+            t.elapsed().as_secs_f64() * 1000.0
+        );
+        *c = Some((gw, gh, scale, std::sync::Arc::clone(&p)));
+        p
+    })
+}
+
 impl PainterTool {
     /// Inicia um novo stroke. Caller deriva `seed` de inputs determinísticos
     /// (e.g., `pointer_down_time_ms ^ entity_bits ^ brush_hash`).
@@ -136,10 +176,15 @@ impl PainterTool {
             let (sw, sh) = self.source_size;
             let gw = (sw / scale).max(1);
             let gh = (sh / scale).max(1);
-            self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::new(
+            // **Perf (2026-06-08):** reuse the cached deterministic paper field instead
+            // of regenerating `grain_noise` per cell every stroke (O(grid), ~⅓ s at 4K —
+            // the click→stroke delay). Pre-warm (hover) usually populated the cache, so
+            // this is a cheap clone off the click path.
+            let paper = cached_fluid_paper(gw, gh, scale);
+            self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::with_paper(
                 gw,
                 gh,
-                scale as f32,
+                (*paper).clone(),
             ));
             // W15.3: signal the shell GPU drive that a FRESH field began, so it
             // resets the resident pigment (a reused solver must not inherit the
@@ -387,6 +432,25 @@ impl PainterTool {
         }
         let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
         Some(((sw / scale).max(1), (sh / scale).max(1)))
+    }
+
+    /// Pre-generate + cache the paper-tooth field for the next stroke's dims/scale, so
+    /// `begin_stroke` (the click) pays only a cheap clone instead of the O(grid)
+    /// `grain_noise` (the ~⅓ s click→stroke delay). The shell calls this from the
+    /// GPU-drive PRE-WARM (while hovering, before the first dab), moving the one-time
+    /// cost off the click path. No-op for non-fluid brushes / no source.
+    pub fn fluid_prewarm_paper(&self) {
+        if !self.brush.rendering.fluid_enabled {
+            return;
+        }
+        let (sw, sh) = self.source_size;
+        if sw == 0 || sh == 0 {
+            return;
+        }
+        let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+        let gw = (sw / scale).max(1);
+        let gh = (sh / scale).max(1);
+        let _ = cached_fluid_paper(gw, gh, scale);
     }
 
     /// Density→alpha coverage rate for the composite (`WET_COVERAGE_K`).

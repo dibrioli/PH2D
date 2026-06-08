@@ -294,7 +294,12 @@ impl PainterTool {
         };
         self.composite_wet_field();
         self.preview_dirty = true;
-        if dry {
+        // Drop the field only AFTER pen-up. While the stroke is still active the user
+        // may have just PAUSED (button held, no dabs) — the water evaporates in ~0.3s,
+        // but dropping mid-stroke means a resumed drag finds no field and falls to the
+        // non-fluid path (Enio: "paro o traço sem soltar, continuo, fluid não funciona
+        // no fim"). A resumed dab re-wets the kept field and it blooms again.
+        if dry && !self.stroke_active {
             // Final pigment is baked into the canvas (the composite above ran first).
             self.wet_field = None;
             self.wet_backdrop = None;
@@ -469,20 +474,25 @@ impl PainterTool {
     }
 
     /// Dry-check on the CPU water mirror: if the wettest cell is below the dry
-    /// threshold, drop the field (its final pigment was already composited this
-    /// frame). Returns `true` when it dropped. The GPU-resident twin of the dry half
-    /// of [`Self::composite_and_settle_fluid`].
+    /// threshold AND the stroke has ENDED, drop the field (its final pigment was
+    /// already composited). Returns `true` when it dropped. The GPU-resident twin of
+    /// the dry half of [`Self::composite_and_settle_fluid`].
+    ///
+    /// **Gated on `!stroke_active`:** a mid-stroke PAUSE (button held, no dabs) dries
+    /// the field in ~0.3s; dropping it then would make a resumed drag find no field
+    /// and paint non-fluid (Enio's pause bug). Keeping it lets a resumed dab re-wet it.
     pub fn fluid_dry_check_and_drop(&mut self) -> bool {
         let dry = match self.wet_field.as_ref() {
             Some(grid) => grid.max_water() < WET_DRY_THRESHOLD,
             None => return false,
         };
-        if dry {
+        if dry && !self.stroke_active {
             self.wet_field = None;
             self.wet_backdrop = None;
             self.wet_composite_bbox = None;
+            return true;
         }
-        dry
+        false
     }
 
     /// Composite the low-res wet field over the pre-stroke backdrop into the canvas

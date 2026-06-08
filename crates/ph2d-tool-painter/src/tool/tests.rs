@@ -3621,6 +3621,41 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
 }
 
 #[test]
+fn fluid_field_survives_mid_stroke_dry_pause() {
+    // REGRESSION (Enio pause bug, 2026-06-07): pausing mid-stroke (button held, no
+    // dabs) dries the wet field in ~0.3s, but it must NOT be dropped while the stroke
+    // is ACTIVE — else resuming the drag finds no field and paints NON-fluid (the
+    // solid blob at the stroke's end). Drop only after pen-up.
+    let (w, h) = (48u32, 36u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 14.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
+    t.begin_stroke(5);
+    t.queue_pointer(PointerSample { position: [24.0, 18.0], pressure: 1.0, tilt: 0.0 });
+    assert!(t.has_wet_field(), "field allocated after first dab");
+    // Long mid-stroke pause: idle ticks until the field would fully dry.
+    for _ in 0..300 {
+        t.on_tick_diffusion();
+    }
+    assert!(
+        t.has_wet_field(),
+        "field MUST survive a mid-stroke dry pause (resume stays fluid)"
+    );
+    // Resuming the drag re-wets the kept field — still the fluid path.
+    t.queue_pointer(PointerSample { position: [32.0, 18.0], pressure: 1.0, tilt: 0.0 });
+    assert!(t.has_wet_field(), "field re-wet on resume");
+    // After pen-up, idle ticks dry it out and DROP it.
+    t.end_stroke();
+    for _ in 0..400 {
+        t.on_tick_diffusion();
+    }
+    assert!(!t.has_wet_field(), "field drops after pen-up dry-out");
+}
+
+#[test]
 fn fluid_wash_keeps_blooming_after_pen_up() {
     // REGRESSION (W15.2 dead-feature trap): the wash MUST keep evolving on the
     // canvas after pen-up — that is the whole point of the live field. A prior

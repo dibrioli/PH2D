@@ -3656,6 +3656,47 @@ fn fluid_field_survives_mid_stroke_dry_pause() {
 }
 
 #[test]
+fn fluid_gpu_envelope_never_recedes_under_evaporation() {
+    // REGRESSION (Enio "bordas cheias de quinas retangulares", 2026-06-07): the GPU
+    // composite region must be the MONOTONIC wet envelope, not the current water
+    // bbox. Water only evaporates (its bbox marches inward) while the conserved
+    // pigment lingers outside it — compositing over a RECEDING rect hard-cut the
+    // round dab into an axis-aligned rectangle. The envelope never shrinks for the
+    // life of the field. (The OLD `cur ∪ prev` region receded → this would fail.)
+    let (w, h) = (64u32, 64u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 18.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]);
+    t.set_gpu_fluid_driven(true); // GPU path: queue_pointer only splats (no CPU step)
+    t.begin_stroke(9);
+    t.queue_pointer(PointerSample { position: [32.0, 32.0], pressure: 1.0, tilt: 0.0 });
+    let evap = t.fluid_evaporation() * t.fluid_idle_substeps() as f32;
+    let r0 = t
+        .fluid_frame_step_inputs(evap)
+        .expect("wet field after a dab")
+        .region;
+    // Many idle frames: water evaporates + its bbox recedes; the envelope must NOT.
+    let mut prev = r0;
+    for _ in 0..50 {
+        if let Some(inp) = t.fluid_frame_step_inputs(evap) {
+            let r = inp.region;
+            assert!(
+                r.0 <= prev.0 && r.1 <= prev.1 && r.2 >= prev.2 && r.3 >= prev.3,
+                "composite envelope RECEDED {prev:?} -> {r:?} (the rectangular-clip bug)"
+            );
+            prev = r;
+        }
+    }
+    assert!(
+        prev.0 <= r0.0 && prev.1 <= r0.1 && prev.2 >= r0.2 && prev.3 >= r0.3,
+        "final envelope {prev:?} must still contain the initial wet region {r0:?}"
+    );
+}
+
+#[test]
 fn fluid_wash_keeps_blooming_after_pen_up() {
     // REGRESSION (W15.2 dead-feature trap): the wash MUST keep evolving on the
     // canvas after pen-up — that is the whole point of the live field. A prior

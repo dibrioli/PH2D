@@ -353,11 +353,18 @@ impl DiffusionGrid {
         self.water.iter().copied().fold(0.0f32, f32::max)
     }
 
-    /// Inclusive grid-cell bbox of cells wetter than `threshold` (`None` if dry). The
-    /// W15.3 composite region: the wet area ⊇ the pigment area (pigment only spreads
-    /// where the gate is open), so compositing this (padded) covers all pigment, and
-    /// the per-pixel `dens < 1e-4` short-circuit handles the slack. Avoids reading the
-    /// GPU pigment back to find the wet bbox.
+    /// Inclusive grid-cell bbox of cells **currently** wetter than `threshold`
+    /// (`None` if dry).
+    ///
+    /// **NOT a superset of the resident pigment** — do not composite over this alone.
+    /// Water only evaporates (its bbox marches INWARD each step), while pigment is
+    /// conserved AND `diffuse`/`advect` push it up to a cell PAST the wet gate. So a
+    /// drying wash has pigment OUTSIDE the current water bbox; compositing over this
+    /// rect hard-cuts the round dab into an axis-aligned rectangle (the W15.3
+    /// "quinas retangulares" bug). The GPU path must composite over the **all-time
+    /// wet envelope** (the monotonic union of these bboxes — a true upper bound on
+    /// where pigment can ever be, since the gate only opens for `water > w_lo ≫
+    /// threshold`); the CPU path uses the exact pigment bbox. This stays readback-free.
     #[must_use]
     pub fn water_bbox(&self, threshold: f32) -> Option<(u32, u32, u32, u32)> {
         let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);

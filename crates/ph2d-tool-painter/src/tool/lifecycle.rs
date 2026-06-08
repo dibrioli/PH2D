@@ -154,8 +154,11 @@ impl PainterTool {
             self.wet_field = None;
             self.wet_backdrop = None;
         }
-        // Fresh stroke ⇒ no previous wet region to union against.
+        // Fresh stroke ⇒ no previous wet region to union against, and the GPU
+        // composite envelope restarts empty (it's only read while a field exists, and
+        // a field is only ever created here, so this is the one reset that matters).
         self.wet_composite_bbox = None;
+        self.wet_pigment_envelope = None;
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //
@@ -407,34 +410,40 @@ impl PainterTool {
     }
 
     /// Pull this frame's GPU-drive inputs: the dab `deposit` (the grid pigment, then
-    /// CLEARED), the `water` mirror (then EVAPORATED by `evap_per_frame`), the wet
-    /// `region` (water bbox ∪ last frame, stored), and the grid `dims`. `None` when
-    /// the field is dry / absent (the shell then drops it). The water is captured
+    /// CLEARED), the `water` mirror (then EVAPORATED by `evap_per_frame`), the
+    /// composite `region`, and the grid `dims`. `None` when the field has never been
+    /// wet (the shell then drops it via the dry-check). Water is captured
     /// PRE-evaporation (the GPU gate/flow read it), then evaporated for next frame +
     /// the dry-check.
+    ///
+    /// **`region` = the MONOTONIC wet envelope, NOT the current water bbox.** Water
+    /// evaporates so its bbox marches inward, but the conserved pigment lingers (and
+    /// diffusion/advection even push it ONE cell past the gate). Compositing over the
+    /// receding water bbox hard-cut the round dab into an axis-aligned rectangle
+    /// (Enio's "quinas retangulares"). The all-time union of wet bboxes is a hard
+    /// upper bound on where pigment can ever be (the gate only opens for `water >
+    /// w_lo ≫ 1e-3`), so it never under-covers. Readback-free (the bound is computed
+    /// from the CPU water mirror), preserving W15.3's no-stall design.
     #[must_use]
     pub fn fluid_frame_step_inputs(
         &mut self,
         evap_per_frame: f32,
     ) -> Option<crate::tool::FluidFrameInputs> {
-        let prev_bbox = self.wet_composite_bbox;
+        let prev_env = self.wet_pigment_envelope;
         let grid = self.wet_field.as_mut()?;
         let (gw, gh) = grid.dims();
-        // Any wetness ⇒ the gate may have spread pigment there; a small threshold so
-        // the region is a superset of the pigment (the composite short-circuits dry
-        // pixels anyway).
         let cur = grid.water_bbox(1.0e-3);
-        let region = match (cur, prev_bbox) {
-            (Some(a), Some(b)) => (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3)),
-            (Some(a), None) => a,
-            (None, Some(b)) => b,
-            (None, None) => {
-                // Bare field — nothing wet. Let the shell drop it via the dry-check.
-                self.wet_composite_bbox = None;
-                return None;
-            }
+        // Grow the envelope; it never recedes for the life of the field.
+        let envelope = match (cur, prev_env) {
+            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))),
+            (Some(a), None) => Some(a),
+            (None, e) => e,
         };
-        self.wet_composite_bbox = cur;
+        self.wet_pigment_envelope = envelope;
+        let Some(region) = envelope else {
+            // Never been wet — nothing to composite. Shell drops via the dry-check.
+            return None;
+        };
         let deposit: Vec<[f32; 4]> = grid.pigment().iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
         let water = grid.water().to_vec();
         grid.clear_pigment();

@@ -160,10 +160,16 @@ pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCo
 }
 
 /// Canvas-pixel bbox `(px_lo, py_lo, px_hi, py_hi)` (exclusive hi) covered by a
-/// grid region at `scale`, padded one grid cell each side for the bicubic
-/// footprint and clamped to the canvas. The dispatch/loop bounds for the
-/// composite — shared by the CPU loop and the GPU dispatch so they cover the same
-/// pixels.
+/// grid region at `scale`, padded **2 grid cells each side** and clamped to the
+/// canvas. The dispatch/loop bounds for the composite — shared by the CPU loop and
+/// the GPU dispatch so they cover the same pixels.
+///
+/// **Pad = 2 cells (not 1):** the Catmull-Rom bicubic reads ±1.5 cells, the 2×2
+/// coverage supersample adds a ±0.25-px sub-position offset, and the gated diffusion
+/// leaks pigment ~1 cell past the wet gate (`diffuse`'s face-conductance). A 1-cell
+/// pad under-covered the soft falloff → the round dab was hard-cut to the rectangle
+/// (Enio's "quinas retangulares"). Caller MUST also feed a region that already
+/// contains all pigment (the all-time wet envelope, not the receding water bbox).
 #[must_use]
 pub fn composite_canvas_region(
     grid_region: (u32, u32, u32, u32),
@@ -172,10 +178,10 @@ pub fn composite_canvas_region(
     ch: u32,
 ) -> (u32, u32, u32, u32) {
     let (gx0, gy0, gx1, gy1) = grid_region;
-    let px_lo = gx0.saturating_sub(1) * scale;
-    let py_lo = gy0.saturating_sub(1) * scale;
-    let px_hi = ((gx1 + 2) * scale).min(cw);
-    let py_hi = ((gy1 + 2) * scale).min(ch);
+    let px_lo = gx0.saturating_sub(2) * scale;
+    let py_lo = gy0.saturating_sub(2) * scale;
+    let px_hi = ((gx1 + 3) * scale).min(cw);
+    let py_hi = ((gy1 + 3) * scale).min(ch);
     (px_lo, py_lo, px_hi, py_hi)
 }
 
@@ -308,6 +314,48 @@ mod tests {
             );
         }
         assert!((grid.color_sum - stroke.color_sum).abs() < 1e-5);
+    }
+
+    /// The composite region MUST cover all pigment, or it clips the round dab into a
+    /// rectangle (Enio's "quinas retangulares"). The true pigment bbox (+ the 2-cell
+    /// pad) reproduces the full-canvas composite EXACTLY; a too-small region clips.
+    /// The GPU path's monotonic wet envelope is a superset of this pigment bbox.
+    #[test]
+    fn composite_region_must_cover_pigment_or_it_clips() {
+        use crate::diffusion::{DiffusionGrid, DiffusionParams};
+        let (gw, gh, scale) = (48u32, 48u32, 1u32);
+        let (cw, ch) = (gw, gh);
+        let mut grid = DiffusionGrid::new(gw, gh, scale as f32);
+        grid.splat(24.0, 24.0, 12.0, 0.7, [0.3, 0.15, 0.05]);
+        let p = DiffusionParams::default();
+        for _ in 0..8 {
+            grid.step(&p);
+        }
+        let pig = grid.pigment().to_vec();
+        let brush = prepare_wet_composite(&pig, [0.3, 0.15, 0.05]);
+        let backdrop = vec![0u8; (cw * ch * 4) as usize];
+
+        // Ground truth: composite over the FULL grid.
+        let mut full = backdrop.clone();
+        composite_wet_field_cpu(
+            &mut full, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, (0, 0, gw - 1, gh - 1),
+        );
+
+        // The true pigment bbox (+ pad) must reproduce the full composite EXACTLY.
+        let pbb = wet_pigment_bbox(&pig, gw, gh).expect("pigment present");
+        let mut tight = backdrop.clone();
+        composite_wet_field_cpu(
+            &mut tight, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, pbb,
+        );
+        assert_eq!(tight, full, "pigment-bbox region must reproduce the full composite (no clip)");
+
+        // Sensitivity: a deliberately TOO-SMALL region MUST clip (differ from full).
+        let small = (pbb.0 + 5, pbb.1 + 5, pbb.2.saturating_sub(5), pbb.3.saturating_sub(5));
+        let mut clipped = backdrop.clone();
+        composite_wet_field_cpu(
+            &mut clipped, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, small,
+        );
+        assert_ne!(clipped, full, "a too-small region MUST clip the dab (test sensitivity)");
     }
 
     /// Yellow wash over an opaque BLUE backdrop must go GREEN-dominant — the

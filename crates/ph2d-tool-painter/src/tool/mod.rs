@@ -606,6 +606,14 @@ pub struct PainterTool {
     /// splat, composite + the shell drive, so a mid-stroke flag flip can't desync the
     /// field's actual resolution.
     wet_field_scale: u32,
+    /// **W15.3 GPU composite envelope.** The MONOTONIC (never-receding) union of the
+    /// wet bboxes over the field's life — a hard upper bound on where the conserved
+    /// pigment can ever be. The GPU path composites over THIS, not the current water
+    /// bbox: water evaporates (its bbox marches inward) but pigment is conserved +
+    /// even leaks one cell past the gate, so a receding water rect hard-cut the round
+    /// dab into an axis-aligned rectangle (Enio's "quinas retangulares"). Reset to
+    /// `None` with the field. CPU path keeps using the true pigment bbox.
+    wet_pigment_envelope: Option<(u32, u32, u32, u32)>,
 }
 
 impl Default for PainterTool {
@@ -671,6 +679,7 @@ impl Default for PainterTool {
             fluid_stroke_epoch: 0,
             fluid_hires: false,
             wet_field_scale: lifecycle::WET_FIELD_SCALE,
+            wet_pigment_envelope: None,
         }
     }
 }

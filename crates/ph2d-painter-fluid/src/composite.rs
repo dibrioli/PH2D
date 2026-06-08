@@ -12,7 +12,7 @@
 //! shell integration, a preview texture (zero readback).
 
 use ph2d_painter_brush::pigment_mix::{SPECTRAL_BANDS, spectral_basis};
-use ph2d_painter_brush::wet_composite::{WetCompositeBrush, composite_canvas_region};
+use ph2d_painter_brush::wet_composite::{WET_COMPOSITE_SS, WetCompositeBrush, composite_canvas_region};
 
 /// The GPU composite shader source (mirror of the CPU `wet_composite`). Embedded so
 /// a dev-test validates it through naga before any GPU init.
@@ -53,8 +53,9 @@ struct GpuCoeffs {
 impl GpuCoeffs {
     /// Pack the constant basis + the amortised brush coeffs for the shader.
     fn build(brush: &WetCompositeBrush) -> Self {
-        // Pinned: the shader hard-codes NB=24 (and the flatten strides below).
+        // Pinned: the shader hard-codes NB=24 (and the flatten strides below) + SS=2.
         assert_eq!(SPECTRAL_BANDS, 24, "composite.wgsl assumes 24 spectral bands");
+        assert_eq!(WET_COMPOSITE_SS, 2, "composite.wgsl hard-codes SS=2u (supersampling)");
         let (base, m) = spectral_basis();
         let mut out = Self {
             base: [0.0; 168],

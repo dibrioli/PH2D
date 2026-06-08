@@ -179,11 +179,20 @@ pub fn composite_canvas_region(
     (px_lo, py_lo, px_hi, py_hi)
 }
 
+/// Composite supersampling factor — `N×N` coverage samples per canvas pixel,
+/// premultiplied-averaged. The antialiasing that smooths an OPAQUE stroke's
+/// silhouette: the pigment field is bicubic-smooth, but a steep coverage edge is
+/// under-sampled at pixel centers → jaggies ("baixa resolução nas bordas"). The GPU
+/// `composite.wgsl` mirrors this `N` exactly (parity). `N=1` ⇒ the original
+/// single-sample composite (no AA), bit-identical to pre-W15.3.
+pub const WET_COMPOSITE_SS: u32 = 2;
+
 /// CPU reference for the wet-field composite (the parity ground truth the GPU port
 /// mirrors). Composites `pig` (low-res `gw×gh`) over `backdrop` into `canvas` (both
-/// canvas-res `cw×ch` RGBA8), scoped to `grid_region`. `coverage_k` is the
-/// density→alpha rate; `scale` = canvas/grid ratio. Pixels outside the padded
-/// region are untouched (the caller's invariant: they already hold the backdrop).
+/// canvas-res `cw×ch` RGBA8), scoped to `grid_region`, with `WET_COMPOSITE_SS²`
+/// coverage supersampling (premultiplied average) to antialias the edge.
+/// `coverage_k` is the density→alpha rate; `scale` = canvas/grid ratio. Pixels
+/// outside the padded region are untouched (the caller's backdrop invariant).
 #[allow(clippy::too_many_arguments)]
 pub fn composite_wet_field_cpu(
     canvas: &mut [u8],
@@ -201,37 +210,73 @@ pub fn composite_wet_field_cpu(
     let inv = 1.0 / scale as f32;
     let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
     let pcol = brush.pcol;
+    let n = WET_COMPOSITE_SS.max(1);
+    let inv_n = 1.0 / n as f32;
+    // One glaze sub-sample over the (already-linear) backdrop. `None` ⇒ dry (backdrop).
+    let glaze = |fx: f32, fy: f32, back: &[f32; 3], back_a: f32| -> Option<([f32; 3], f32)> {
+        let p = sample_pigment_bicubic(pig, gw, gh, fx, fy);
+        let dens = (p[0] + p[1] + p[2]).max(0.0);
+        if dens < 1.0e-4 {
+            return None;
+        }
+        let amount = dens / brush.color_sum;
+        let alpha = 1.0 - (-amount * coverage_k).exp();
+        let out_a = alpha + back_a * (1.0 - alpha);
+        let km = mix_prepared_exact(&brush.prepared, *back, alpha);
+        let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
+        let mut rgb = [0.0f32; 3];
+        for k in 0..3 {
+            let straight = (pcol[k] * alpha + back[k] * back_a * (1.0 - alpha)) * inv_a;
+            rgb[k] = (straight + (km[k] - straight) * back_a).clamp(0.0, 1.0);
+        }
+        Some((rgb, out_a))
+    };
     for cy in py_lo..py_hi {
-        let fy = ((cy as f32 + 0.5) * inv - 0.5).clamp(0.0, gh as f32 - 1.0);
         for cx in px_lo..px_hi {
             let i = ((cy * cw + cx) * 4) as usize;
-            let fx = ((cx as f32 + 0.5) * inv - 0.5).clamp(0.0, gw as f32 - 1.0);
-            let p = sample_pigment_bicubic(pig, gw, gh, fx, fy);
-            let dens = (p[0] + p[1] + p[2]).max(0.0);
-            if dens < 1.0e-4 {
-                canvas[i..i + 4].copy_from_slice(&backdrop[i..i + 4]);
-                continue;
-            }
-            let amount = dens / brush.color_sum;
-            let alpha = 1.0 - (-amount * coverage_k).exp();
             let back_a = backdrop[i + 3] as f32 / 255.0;
             let back = [
                 srgb_to_linear_byte(backdrop[i]),
                 srgb_to_linear_byte(backdrop[i + 1]),
                 srgb_to_linear_byte(backdrop[i + 2]),
             ];
-            let out_a = alpha + back_a * (1.0 - alpha);
-            let km = mix_prepared_exact(&brush.prepared, back, alpha);
-            let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
-            let mut rgb = [0.0f32; 3];
-            for k in 0..3 {
-                let straight = (pcol[k] * alpha + back[k] * back_a * (1.0 - alpha)) * inv_a;
-                rgb[k] = (straight + (km[k] - straight) * back_a).clamp(0.0, 1.0);
+            // Premultiplied average of N×N coverage sub-samples (dry → backdrop).
+            let mut acc_rgb = [0.0f32; 3];
+            let mut acc_a = 0.0f32;
+            let mut any_wet = false;
+            for sy in 0..n {
+                let fy = ((cy as f32 + (sy as f32 + 0.5) * inv_n) * inv - 0.5)
+                    .clamp(0.0, gh as f32 - 1.0);
+                for sx in 0..n {
+                    let fx = ((cx as f32 + (sx as f32 + 0.5) * inv_n) * inv - 0.5)
+                        .clamp(0.0, gw as f32 - 1.0);
+                    let (rgb_sub, a_sub) = match glaze(fx, fy, &back, back_a) {
+                        Some(s) => {
+                            any_wet = true;
+                            s
+                        }
+                        None => (back, back_a),
+                    };
+                    acc_rgb[0] += rgb_sub[0] * a_sub;
+                    acc_rgb[1] += rgb_sub[1] * a_sub;
+                    acc_rgb[2] += rgb_sub[2] * a_sub;
+                    acc_a += a_sub;
+                }
             }
+            if !any_wet {
+                canvas[i..i + 4].copy_from_slice(&backdrop[i..i + 4]);
+                continue;
+            }
+            let final_a = acc_a * inv_n * inv_n;
+            let rgb = if acc_a > 1.0e-6 {
+                [acc_rgb[0] / acc_a, acc_rgb[1] / acc_a, acc_rgb[2] / acc_a]
+            } else {
+                [0.0; 3]
+            };
             canvas[i] = linear_to_srgb_byte(rgb[0]);
             canvas[i + 1] = linear_to_srgb_byte(rgb[1]);
             canvas[i + 2] = linear_to_srgb_byte(rgb[2]);
-            canvas[i + 3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
+            canvas[i + 3] = (final_a * 255.0).round().clamp(0.0, 255.0) as u8;
         }
     }
 }

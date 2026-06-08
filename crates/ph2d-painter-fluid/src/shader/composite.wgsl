@@ -179,6 +179,35 @@ fn mix_prepared_exact(a: vec3<f32>, t_in: f32) -> vec3<f32> {
     return lin + (spec - lin) * w;
 }
 
+// Coverage supersampling factor (N×N) — MUST equal `wet_composite::WET_COMPOSITE_SS`
+// (asserted host-side). Antialiases the opaque-stroke silhouette ("baixa resolução
+// nas bordas"): the pigment field is bicubic-smooth, but a steep coverage edge is
+// under-sampled at the pixel centre.
+const SS: u32 = 2u;
+
+// One glaze sub-sample at grid coords (fx,fy) over the linear backdrop. `dry` is set
+// when the cell is bare (`dens < 1e-4`); the caller treats that as a backdrop sample.
+struct Sub { rgb: vec3<f32>, a: f32, dry: bool }
+fn glaze_sample(fx: f32, fy: f32, back: vec3<f32>, back_a: f32) -> Sub {
+    let p = sample_pigment_bicubic(fx, fy);
+    let dens = max(p.x + p.y + p.z, 0.0);
+    if (dens < 1.0e-4) {
+        return Sub(back, back_a, true);
+    }
+    let amount = dens / P.color_sum;
+    let alpha = 1.0 - exp(-amount * P.coverage_k);
+    let out_a = alpha + back_a * (1.0 - alpha);
+    let km = mix_prepared_exact(back, alpha);
+    var inv_a = 0.0;
+    if (out_a > 1.0e-4) {
+        inv_a = 1.0 / out_a;
+    }
+    let pcol = P.pcol.xyz;
+    let straight = (pcol * alpha + back * back_a * (1.0 - alpha)) * inv_a;
+    let rgb = clamp(straight + (km - straight) * back_a, vec3<f32>(0.0), vec3<f32>(1.0));
+    return Sub(rgb, out_a, false);
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cx = P.origin_x + gid.x;
@@ -189,16 +218,6 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let pix = cy * P.cw + cx;
-    let fx = clamp((f32(cx) + 0.5) * P.inv - 0.5, 0.0, f32(P.gw) - 1.0);
-    let fy = clamp((f32(cy) + 0.5) * P.inv - 0.5, 0.0, f32(P.gh) - 1.0);
-    let p = sample_pigment_bicubic(fx, fy);
-    let dens = max(p.x + p.y + p.z, 0.0);
-    if (dens < 1.0e-4) {
-        out_buf[pix] = backdrop[pix]; // byte-exact backdrop copy (bare paper)
-        return;
-    }
-    let amount = dens / P.color_sum;
-    let alpha = 1.0 - exp(-amount * P.coverage_k);
     let back_rgba = unpack4x8unorm(backdrop[pix]); // (r,g,b,a) in [0,1]
     let back_a = back_rgba.w;
     let back = vec3<f32>(
@@ -206,15 +225,31 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
         srgb_to_linear(back_rgba.y),
         srgb_to_linear(back_rgba.z),
     );
-    let out_a = alpha + back_a * (1.0 - alpha);
-    let km = mix_prepared_exact(back, alpha);
-    var inv_a = 0.0;
-    if (out_a > 1.0e-4) {
-        inv_a = 1.0 / out_a;
+    let inv_n = 1.0 / f32(SS);
+    var acc_rgb = vec3<f32>(0.0);
+    var acc_a = 0.0;
+    var any_wet = false;
+    for (var sy = 0u; sy < SS; sy = sy + 1u) {
+        let fy = clamp((f32(cy) + (f32(sy) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gh) - 1.0);
+        for (var sx = 0u; sx < SS; sx = sx + 1u) {
+            let fx = clamp((f32(cx) + (f32(sx) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gw) - 1.0);
+            let s = glaze_sample(fx, fy, back, back_a);
+            if (!s.dry) {
+                any_wet = true;
+            }
+            acc_rgb = acc_rgb + s.rgb * s.a;
+            acc_a = acc_a + s.a;
+        }
     }
-    let pcol = P.pcol.xyz;
-    let straight = (pcol * alpha + back * back_a * (1.0 - alpha)) * inv_a;
-    let rgb = clamp(straight + (km - straight) * back_a, vec3<f32>(0.0), vec3<f32>(1.0));
+    if (!any_wet) {
+        out_buf[pix] = backdrop[pix]; // byte-exact backdrop copy (bare paper)
+        return;
+    }
+    let final_a = acc_a * inv_n * inv_n;
+    var rgb = vec3<f32>(0.0);
+    if (acc_a > 1.0e-6) {
+        rgb = acc_rgb / acc_a;
+    }
     let enc = vec3<f32>(linear_to_srgb(rgb.x), linear_to_srgb(rgb.y), linear_to_srgb(rgb.z));
-    out_buf[pix] = pack4x8unorm(vec4<f32>(enc, out_a));
+    out_buf[pix] = pack4x8unorm(vec4<f32>(enc, final_a));
 }

@@ -24,6 +24,65 @@ use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::wet_composite::prepare_wet_composite_from_stroke;
 use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidParams, FluidSolver};
 use std::cell::RefCell;
+use std::time::Instant;
+
+/// Opt-in per-phase profiler for the fluid drive (`PH2D_FLUID_PROFILE=1`). Confirms
+/// where the per-frame wall-clock goes — sim step vs the composite (whose `device.poll`
+/// readback is the suspected sync stall) vs the sporadic stats readback — before any
+/// structural change. Prints averaged ms to stderr every `WINDOW` active frames.
+struct FluidProfile {
+    on: Option<bool>,
+    frames: u32,
+    step_us: u64,
+    comp_us: u64,
+    stats_us: u64,
+}
+
+impl FluidProfile {
+    const WINDOW: u32 = 120;
+    const fn new() -> Self {
+        Self {
+            on: None,
+            frames: 0,
+            step_us: 0,
+            comp_us: 0,
+            stats_us: 0,
+        }
+    }
+    fn enabled(&mut self) -> bool {
+        if self.on.is_none() {
+            self.on = Some(std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"));
+        }
+        self.on == Some(true)
+    }
+    fn record(&mut self, step_us: u64, comp_us: u64, stats_us: u64) {
+        self.frames += 1;
+        self.step_us += step_us;
+        self.comp_us += comp_us;
+        self.stats_us += stats_us;
+        if self.frames >= Self::WINDOW {
+            let f = f64::from(self.frames);
+            let (s, c, st) = (
+                self.step_us as f64 / f / 1000.0,
+                self.comp_us as f64 / f / 1000.0,
+                self.stats_us as f64 / f / 1000.0,
+            );
+            eprintln!(
+                "[fluid] per-frame avg over {} frames: step={s:.3}ms composite(+readback)={c:.3}ms stats={st:.3}ms total={:.3}ms",
+                self.frames,
+                s + c + st
+            );
+            self.frames = 0;
+            self.step_us = 0;
+            self.comp_us = 0;
+            self.stats_us = 0;
+        }
+    }
+}
+
+thread_local! {
+    static PROFILE: RefCell<FluidProfile> = const { RefCell::new(FluidProfile::new()) };
+}
 
 /// How often (in frames) the resident path reads the GPU field stats back for the
 /// dry-check. Drying takes ~0.3 s (≈ 18 frames @ 60 Hz), so a few frames of latency
@@ -203,23 +262,35 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.rgb))
             .collect();
+        let profile = PROFILE.with(|p| p.borrow_mut().enabled());
+        let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is
         // O(wet frontier), not O(grid) — the dominant 4K cost (per the perf bench).
         sess.solver
             .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
+        let t1 = profile.then(Instant::now);
         let (band, rect) = sess
             .compositor
             .composite_frame(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
+        let t2 = profile.then(Instant::now);
         // Sporadic dry-check: the GPU reduces max-water (no CPU O(grid) scan); when
         // it's below the dry threshold AND the stroke has ended, the field drops.
         sess.frame = sess.frame.wrapping_add(1);
+        let mut stats_us = 0u64;
         if sess.frame % DRY_CHECK_EVERY == 0 {
+            let ts = profile.then(Instant::now);
             let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
+            stats_us = ts.map_or(0, |t| t.elapsed().as_micros() as u64);
+        }
+        if profile {
+            let step_us = t1.unwrap().duration_since(t0.unwrap()).as_micros() as u64;
+            let comp_us = t2.unwrap().duration_since(t1.unwrap()).as_micros() as u64;
+            PROFILE.with(|p| p.borrow_mut().record(step_us, comp_us, stats_us));
         }
     });
 }

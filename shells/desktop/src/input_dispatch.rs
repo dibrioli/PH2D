@@ -446,8 +446,15 @@ impl App {
             // Consumes the event so it doesn't pick/move the sprite.
             // Suppressed while the color picker is open (W2.T2.4 eyedropper):
             // that click is the picker's (sample / dismiss), never a stroke.
+            // ADR-0076 (extended to Painter, Enio 2026-06-08): a click on a transform-gizmo
+            // handle (rotate / scale corner / edge) must reach the gizmo path even while the
+            // Painter is active — so the artist can rotate/scale the selected sprite without
+            // leaving paint mode. `on_gizmo_handle` is only the discrete handles (the sprite
+            // BODY isn't a handle), so body clicks still paint; the handles fall through.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !picker_open_at_press && self.try_painter_paint_down(evt.x, evt.y) =>
+                if !picker_open_at_press
+                    && !on_gizmo_handle
+                    && self.try_painter_paint_down(evt.x, evt.y) =>
             {
                 return;
             }
@@ -535,6 +542,7 @@ impl App {
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
+                    && !on_gizmo_handle
                     && self.painter_active_consume_canvas_click() =>
             {
                 return;

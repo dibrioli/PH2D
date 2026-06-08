@@ -149,8 +149,13 @@ pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCo
         stroke_color_linear[2].clamp(0.0, 1.0),
     ];
     let prepared = prepare_pigment(pcol);
-    let color_sum =
-        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
+    // **ADR-0079:** the deposited pigment is now a colour-INDEPENDENT gray coverage mass
+    // (the lifecycle splat deposits `[dep/3; 3]`, channel-sum = `dep`), so the normaliser is
+    // the constant `1` — `amount = Σdens = Σdep` (coverage) for EVERY colour, so black/dark
+    // deposit real coverage (else `(0,0,0)` gave `amount = 0` → black painted nothing). For
+    // non-black colours this matches the old `Σ(stroke)` normaliser's coverage exactly (the
+    // old colour-scaled deposit cancelled to `Σdep` too).
+    let color_sum = 1.0;
     WetCompositeBrush {
         prepared,
         pcol,

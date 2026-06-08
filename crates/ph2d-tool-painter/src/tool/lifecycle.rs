@@ -802,11 +802,6 @@ impl PainterTool {
                     // superset of the old water bbox, padded by the compositor).
                     let (gw, gh) = self.wet_field.as_ref().expect("wet_field present").dims();
                     for stamp in stamps {
-                        let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
-                            stamp.color_oklab[0],
-                            stamp.color_oklab[1],
-                            stamp.color_oklab[2],
-                        );
                         let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
                         let cx = stamp.position_world[0] / scale;
                         let cy = stamp.position_world[1] / scale;
@@ -816,7 +811,15 @@ impl PainterTool {
                             cy,
                             r,
                             water: WET_WATER_DEPOSIT,
-                            rgb: [rgb[0] * dep, rgb[1] * dep, rgb[2] * dep],
+                            // **ADR-0079:** a COLOUR-INDEPENDENT coverage mass (gray, channel
+                            // sum = `dep`). The composite reads the pigment SUM as coverage
+                            // and the colour from `pcol` (the stroke colour), so a dark/black
+                            // colour must still deposit mass — else `(0,0,0)` deposited nothing
+                            // and black painted nothing (Enio 2026-06-08). Sum = `dep` keeps the
+                            // coverage IDENTICAL to the old colour-scaled deposit for non-black
+                            // colours (which cancelled to `dep` too); one pcol per stroke ⇒ the
+                            // per-stamp colour never reached the fluid composite anyway.
+                            rgb: [dep / 3.0, dep / 3.0, dep / 3.0],
                         });
                         let x0 = ((cx - r).floor().max(0.0) as u32).min(gw - 1);
                         let y0 = ((cy - r).floor().max(0.0) as u32).min(gh - 1);
@@ -831,18 +834,15 @@ impl PainterTool {
                     // CPU fallback: splat into the grid + step it inline (unchanged).
                     let grid = self.wet_field.as_mut().expect("wet_field present");
                     for stamp in stamps {
-                        let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
-                            stamp.color_oklab[0],
-                            stamp.color_oklab[1],
-                            stamp.color_oklab[2],
-                        );
                         let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
+                        // ADR-0079: colour-independent coverage mass (gray, sum = dep) — see
+                        // the GPU path.
                         grid.splat(
                             stamp.position_world[0] / scale,
                             stamp.position_world[1] / scale,
                             (stamp.size_px * 0.5 / scale).max(0.5),
                             WET_WATER_DEPOSIT,
-                            [rgb[0] * dep, rgb[1] * dep, rgb[2] * dep],
+                            [dep / 3.0, dep / 3.0, dep / 3.0],
                         );
                     }
                     self.tick_wet_field(WET_SUBSTEPS_PAINTING);

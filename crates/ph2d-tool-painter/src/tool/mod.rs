@@ -596,6 +596,16 @@ pub struct PainterTool {
     /// solver (same grid size, new stroke) starts from a bare field instead of the
     /// previous stroke's bloom. Monotonic for the tool's lifetime.
     fluid_stroke_epoch: u64,
+    /// **W15.3 full-res GPU watercolor.** When the shell confirms a capable GPU it
+    /// sets this, so a NEW fluid field runs at FULL canvas resolution (`scale=1`)
+    /// instead of the CPU-budget half-res (`WET_FIELD_SCALE=2`) — finer bleeds + sharp
+    /// edges (Enio: "bordas finas"). The CPU fallback / default build keeps half-res.
+    fluid_hires: bool,
+    /// The canvas/grid ratio of the LIVE field — `1` (hires GPU) or `WET_FIELD_SCALE`
+    /// (half-res). Captured at `begin_stroke` from [`Self::fluid_hires`] + used by the
+    /// splat, composite + the shell drive, so a mid-stroke flag flip can't desync the
+    /// field's actual resolution.
+    wet_field_scale: u32,
 }
 
 impl Default for PainterTool {
@@ -659,6 +669,8 @@ impl Default for PainterTool {
             wet_composite_bbox: None,
             gpu_fluid_driven: false,
             fluid_stroke_epoch: 0,
+            fluid_hires: false,
+            wet_field_scale: lifecycle::WET_FIELD_SCALE,
         }
     }
 }

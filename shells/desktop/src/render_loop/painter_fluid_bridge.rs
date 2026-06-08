@@ -62,6 +62,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         _ => ph2d_host::MemoryTier::High,
     };
     let capable = ph2d_host::MemoryBudget { vram_free_mb: 256, tier }.fluid_capable();
+    // W15.3 full-res: a capable GPU runs the NEXT fluid field at full canvas
+    // resolution (sharp edges / fine bleeds). Set every frame (even with no live
+    // field) so it's in effect before the next `begin_stroke`.
+    painter.set_fluid_hires(capable);
     if !painter.has_wet_field()
         || !ph2d_painter_fluid::fluid_pass_eligible(true, capable, f32::INFINITY)
     {

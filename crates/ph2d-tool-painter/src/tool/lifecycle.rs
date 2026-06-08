@@ -13,7 +13,7 @@ const WET_EDGE_RIM_FRACTION: f32 = 0.15;
 /// water + pigment deposit, the diffusion sub-steps run while painting vs idle, the
 /// dryness threshold (per cell) below which the field is dropped, and the
 /// density→alpha exponent for the composite.
-const WET_FIELD_SCALE: u32 = 2;
+pub(super) const WET_FIELD_SCALE: u32 = 2;
 const WET_WATER_DEPOSIT: f32 = 0.55;
 const WET_PIGMENT_DEPOSIT: f32 = 0.5;
 const WET_SUBSTEPS_PAINTING: u32 = 1;
@@ -127,13 +127,19 @@ impl PainterTool {
         // W15.3 refinement); the previous stroke's wash was already composited into
         // the canvas, so resetting just "sets" it. `None` for non-fluid brushes.
         if self.brush.rendering.fluid_enabled {
+            // **W15.3 full-res on a capable GPU.** A hires field runs at full canvas
+            // resolution (`scale=1`) for fine bleeds + sharp edges; otherwise the
+            // CPU-budget half-res (`WET_FIELD_SCALE`). Captured per field so a
+            // mid-stroke flag flip can't change the live field's resolution.
+            self.wet_field_scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+            let scale = self.wet_field_scale;
             let (sw, sh) = self.source_size;
-            let gw = (sw / WET_FIELD_SCALE).max(1);
-            let gh = (sh / WET_FIELD_SCALE).max(1);
+            let gw = (sw / scale).max(1);
+            let gh = (sh / scale).max(1);
             self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::new(
                 gw,
                 gh,
-                WET_FIELD_SCALE as f32,
+                scale as f32,
             ));
             // W15.3: signal the shell GPU drive that a FRESH field began, so it
             // resets the resident pigment (a reused solver must not inherit the
@@ -344,10 +350,16 @@ impl PainterTool {
         self.fluid_stroke_epoch
     }
 
-    /// Canvas/grid ratio (the field runs at 1/scale of the canvas).
+    /// Canvas/grid ratio of the LIVE field (`1` hires GPU, else `WET_FIELD_SCALE`).
     #[must_use]
     pub fn fluid_field_scale(&self) -> u32 {
-        WET_FIELD_SCALE
+        self.wet_field_scale
+    }
+
+    /// Set by the shell when a capable GPU is present, so the NEXT fluid stroke runs
+    /// at full canvas resolution (`scale=1`). No effect on the current field.
+    pub fn set_fluid_hires(&mut self, v: bool) {
+        self.fluid_hires = v;
     }
 
     /// Density→alpha coverage rate for the composite (`WET_COVERAGE_K`).
@@ -556,7 +568,7 @@ impl PainterTool {
             gh,
             cw,
             ch,
-            WET_FIELD_SCALE,
+            self.wet_field_scale,
             WET_COVERAGE_K,
             &brush,
             region,
@@ -624,7 +636,7 @@ impl PainterTool {
             // disjoint field, so the splat coexists with that borrow.
             if self.wet_field.is_some() {
                 {
-                    let scale = WET_FIELD_SCALE as f32;
+                    let scale = self.wet_field_scale as f32;
                     let grid = self.wet_field.as_mut().expect("wet_field present");
                     for stamp in stamps {
                         let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(

@@ -169,7 +169,14 @@ referência CPU vira det-fallback. Estágios S0..S5.
   (muda o caminho vivo — risco classe-§2 apesar do teste bit-exato).
 - **S1b** active-tile set + indirect dispatch (regiões disjuntas) + dropar grid CPU + paper-gen GPU.
 - **S2** composite como nó do compositor + zero readback por-frame (foundational `ph2d-render`) + bake no pen-up.
-- **S3** física shallow-water de 3 camadas (a alma: backruns/edge-darkening/granulação) — agora cabe no budget.
+- **S3a** ✅ commit `734c30e` — **referência CPU da camada de deposição** (Curtis `TransferPigment`):
+  `deposited` layer + `transfer_pigment` (edge-darkening via `deposition_dry·(1−gate)` + granulação via
+  `granulation·(1−paper)`), conservativa, **dormante por default** (0 = look atual, 8/8 gates GPU verdes).
+  Tuning em `DiffusionParams` (não-capado); `FluidParams` (≤12 frozen) intacto. 4 testes invariantes verdes.
+- **S3b** GPU `cs_transfer` (espelho, parity gate) + `deposition` no `GpuParams` (interno).
+- **S3c** composite lê flowing+deposited + emenda `FluidParams` (3 headroom, arch-gate) + plumbing brush/tool
+  → **edge-darkening/granulação VISÍVEIS** (precisa validação visual — contexto fresco por ADR).
+- **S3d** campo de velocidade shallow-water (MoveWater + pressure relax) → fluxo direcional + blooms fortes.
 - **S4** multi-pigmento K–M + multi-camada @4K. **S5** BFECC + supersampling adaptativo + capilar LBM (MoXi) + 120Hz.
 
 ## §5 — EM ABERTO (deferidos menores, não-bloqueantes)

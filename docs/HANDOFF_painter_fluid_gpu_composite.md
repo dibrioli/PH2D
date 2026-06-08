@@ -61,15 +61,63 @@ Auditoria multiagêntica (39 agentes) achou o `2b1b0a0` (envelope). 2 itens low-
    pigment bbox" cedo e **descartei errado** (assumi `water⊇pigment`), custando rounds. Um teste de
    região-apertada teria provado/refutado na hora.
 
-## §4 — EM ABERTO (deferidos, não-bloqueantes)
+## §4 — PERF: arquitetura real-time 4K + multi-camada (PRÓXIMO BLOCO — fundacional)
+
+> Pedido do Enio: pintar em imagens **até 4K**, **pinturas animadas grandes em múltiplas camadas**,
+> **tudo em tempo real** — "o melhor do mundo, melhor que o Procreate". Os fixes de W15.3 (SS=1 full-res,
+> buffers persistentes, pre-warm, GPU-clear) deram **~10%**. Isso NÃO escala pra 4K porque o gargalo é
+> **estrutural** (custo por-frame `O(grid)` em CPU + transferências CPU↔GPU), não micro-otimização.
+
+### Medido (Metal, M-series, canvas **1408×768**, brush 32px, `--release`)
+| etapa por-frame | ~ms @1408 | natureza | @4K (×~16 área) |
+|---|---|---|---|
+| `fluid_frame_step_inputs` | ~2.0 | CPU `O(grid)`: **alloc** Vec água+depósito + **scan** wet-bbox + evaporate + clear | ~32ms |
+| `step_resident` (upload+GPU) | ~2.0 | **upload** água+depósito full-grid (transfer `O(grid)`) + diffuse/advect GPU | ~32ms |
+| `composite_frame` | ~1.5 | composite GPU (já SS=1) + **`device.poll(wait)`** readback da faixa | ~6–24ms |
+
+→ a soma em 4K estoura o orçamento de 16ms (60Hz) **só com a água+pigmento de UMA camada**. Multi-camada
+multiplica. Root cause: **a água e o pigmento NÃO são GPU-residentes** — todo frame a CPU aloca/varre o
+grid inteiro e faz upload full-grid; o composite ainda faz **um readback síncrono** que serializa GPU↔CPU.
+
+### Alvo arquitetural (mata os 3 custos `O(grid)` de uma vez)
+1. **Sim GPU-residente (água + pigmento + paper):** já existe `pig_a` residente + `step_resident`; estender
+   pra **água residente** (sobe 1× no `begin_stroke`, nunca mais) → **elimina o upload de água por-frame**.
+2. **Splat GPU por lista-de-dabs (`cs_splat`):** a tool empurra uma `Vec<DabGpu>{cx,cy,r,water,rgb}`
+   (pequena, `O(dabs)` ~dezenas) em vez do depósito full-grid; `cs_splat` soma na água+pigmento residentes
+   → **elimina o upload de depósito + o alloc/clear `O(grid)` da CPU**. ⚠️ **paridade de forma**: o
+   `cs_splat` tem que reproduzir o splat da CPU (`r.max(0.5)`, cutoff, perfil) **bit-a-bit** ou o traço
+   muda de cara — testar headless contra o splat CPU + validar visual.
+3. **Evaporate GPU no `step_resident`:** `cs_evaporate` já existe no `fluid.wgsl`; rodar sobre a água
+   residente → **elimina o evaporate `O(grid)` da CPU**. ⚠️ **sinal de dry-check** sem o grid de água CPU:
+   ou (a) redução GPU max-água → readback **esporádico** (a cada N frames), ou (b) a CPU rastreia uma
+   **massa escalar** de água (splat soma, evaporate subtrai `k`) — (b) é `O(1)`, preferível.
+4. **Wet-bbox por redução GPU:** o envelope molhado (pra compositar só a região ativa) sai de uma redução
+   min/max GPU em vez do **scan `O(grid)` da CPU** → readback de 4 u32 (esporádico, com folga de pad).
+5. **Composite → textura de preview, SEM readback por-frame:** o composite escreve direto numa textura que
+   o renderer amostra; o `device.poll(wait)` por-frame some (GPU pipeline à frente da CPU). Readback **1×
+   no pen-up** pra assar `canvas_rgba` (a camada canônica do Apply/undo). ⚠️ plumbing: o drive
+   (`mod.rs:242`) não tem o renderer/slot — o slot vive no `painter_bridge::dispatch`; passar o alvo.
+6. **Multi-camada:** com cada camada GPU-residente, o compositor de camadas (já GPU, ADR-0048) encadeia
+   sem voltar pra CPU; o custo vira `O(Σ dabs)` + composites GPU, não `O(Σ grids)` em CPU.
+
+### Plano em estágios (cada um valida sozinho — visual + perf na tela; commit local, push só após Enio OK)
+- **E1** água residente + evaporate GPU + massa-escalar dry-check → tira upload-de-água + evaporate-CPU.
+- **E2** `cs_splat` + lista-de-dabs (paridade headless vs splat CPU) → tira upload-de-depósito + alloc CPU.
+- **E3** wet-bbox por redução GPU → tira o scan CPU; readback esporádico de 4 u32.
+- **E4** textura de preview sem readback por-frame; readback 1× no pen-up.
+- **E5** medir @1408 e @4K; encadear multi-camada.
+
+→ depois de E1–E4 o custo por-frame vira `O(dabs)` + passes GPU; o `O(grid)` da CPU **desaparece** do hot
+loop. Esse é o caminho pra 4K/multi-camada em tempo real. **Recomendação:** executar em **contexto fresco
+e focado** (reescrita fundacional do hot-path solver/tool/render-loop, validação visual estágio-a-estágio).
+
+## §5 — EM ABERTO (deferidos menores, não-bloqueantes)
 
 - **Canvas de pintura grande** (o gap real pra aquarela brilhar): hoje só edita sprites 64×64 do atlas
   ou imagens importadas. Decisão do Enio: "novo canvas" 1024²/2048², ou subir `ATLAS_SPRITE_PX` (muda o
   atlas — `integration.rs`, regenera fixtures), ou sempre pintar em imagens importadas.
-- **preview-texture fully-async** (tira o ÚLTIMO readback da faixa de linhas → GPU roda à frente):
-  precisa de plumbing no render-loop (o drive em `mod.rs:242` não tem o renderer/slot; o slot vive no
-  `painter_bridge::dispatch`). Só vale se a faixa-de-linhas mostrar stall real (medir em `--release`).
 - **gate de perf-headroom** (`fluid_pass_eligible(.., f32::INFINITY)` é no-op) — auditoria low-sev.
 - **AA de splat em raio minúsculo** (`r.max(0.5)` + cutoff `d>=1.0` quebra brushes <3px) — low-sev.
 
-— deixado por Claude (sessão brush-overhaul + W15.3 GPU composite — FECHADO, smoke OK, 2026-06-07).
+— deixado por Claude (sessão brush-overhaul + W15.3 GPU composite — FECHADO, smoke OK, 2026-06-07;
+  arquitetura perf 4K em §4, pronta pra executar — 2026-06-08).

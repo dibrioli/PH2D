@@ -89,17 +89,23 @@ thread_local! {
 /// on the drop is invisible — and the readback is the only per-frame sync we still
 /// want sporadic (4K real-time arch §4 / E3). The composite envelope does NOT use
 /// it (it's grown from the dab list), so cadence only affects when a dry field drops.
-const DRY_CHECK_EVERY: u64 = 6;
+/// At 20: drying (~18 frames after pen-up) still drops the field promptly, but the
+/// per-frame avg of the stats `device.poll(wait)` (a queue-drain, ~2.5 ms when it
+/// fires) is ~3× lower than at 6 — it was the largest per-frame phase post-pipeline.
+const DRY_CHECK_EVERY: u64 = 20;
 
 /// Per-session GPU state for the live wet field: the resident solver, the K–M
-/// compositor, the field size, the stroke epoch it was last reset for, and a frame
-/// counter pacing the sporadic dry-check readback.
+/// compositor, the field size, the stroke epoch it was last reset for, a frame
+/// counter pacing the sporadic dry-check readback, and whether the first composite of
+/// the stroke has been primed (synchronously) to avoid the pipeline's start-of-stroke
+/// 1-frame latency (the "click→stroke" delay).
 struct FluidSession {
     solver: FluidSolver,
     compositor: FluidCompositor,
     dims: (u32, u32),
     epoch: u64,
     frame: u64,
+    primed: bool,
 }
 
 thread_local! {
@@ -165,6 +171,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                         dims,
                         epoch: u64::MAX,
                         frame: 0,
+                        primed: false,
                     });
                 }
             });
@@ -195,6 +202,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 dims,
                 epoch: u64::MAX,
                 frame: 0,
+                primed: false,
             });
         }
         let Some(sess) = slot.as_mut() else {
@@ -211,6 +219,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.solver
                 .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
+            sess.primed = false;
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
             // ADR-0078 S3c: enable the watercolor deposition layer (edge-darkening +
             // granulation) for the live stroke. `cs_combine` then feeds the compositor
@@ -270,11 +279,19 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         sess.solver
             .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         let t1 = profile.then(Instant::now);
-        // Pipelined (ADR-0078 S2): async readback, no per-frame device.poll(wait) stall.
-        // Returns the PREVIOUS frame's band (1-frame-late preview, imperceptible).
-        let (band, rect) = sess
-            .compositor
-            .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
+        // Composite. The FIRST frame of a stroke is primed SYNCHRONOUSLY so the stroke
+        // appears immediately (no pipeline start-of-stroke 1-frame delay — the
+        // "click→stroke" lag); a one-time ~2.6ms hitch at the click only. Every frame
+        // after is pipelined (async readback, no per-frame device.poll(wait) stall) —
+        // returns the PREVIOUS frame's band (1-frame-late, imperceptible mid-stroke).
+        let (band, rect) = if sess.primed {
+            sess.compositor
+                .composite_frame_pipelined(&gpu.device, &gpu.queue, region)
+        } else {
+            sess.primed = true;
+            sess.compositor
+                .composite_frame(&gpu.device, &gpu.queue, region)
+        };
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }

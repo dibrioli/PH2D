@@ -204,6 +204,15 @@ impl FluidCompositor {
         backdrop_rgba: &[u8],
         brush: &WetCompositeBrush,
     ) {
+        // Drain any in-flight pipelined readback from a PRIOR stroke (its map may still
+        // hold `staging`): complete + unmap it before this stroke reuses the buffer, so
+        // the primed (sync) first frame can map it cleanly. Discard the stale band.
+        if self.pending.take().is_some() {
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            if let Some(st) = self.state.as_ref() {
+                st.staging.unmap();
+            }
+        }
         let canvas_bytes = (cw as usize * ch as usize * 4) as u64;
         // (Re)create the canvas-sized buffers only when the size changes.
         let resized = self.state.as_ref().map(|s| (s.cw, s.ch)) != Some((cw, ch));

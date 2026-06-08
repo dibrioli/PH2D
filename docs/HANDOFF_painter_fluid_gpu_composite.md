@@ -173,7 +173,10 @@ referência CPU vira det-fallback. Estágios S0..S5.
   `deposited` layer + `transfer_pigment` (edge-darkening via `deposition_dry·(1−gate)` + granulação via
   `granulation·(1−paper)`), conservativa, **dormante por default** (0 = look atual, 8/8 gates GPU verdes).
   Tuning em `DiffusionParams` (não-capado); `FluidParams` (≤12 frozen) intacto. 4 testes invariantes verdes.
-- **S3b** GPU `cs_transfer` (espelho, parity gate) + `deposition` no `GpuParams` (interno).
+- **S3b** ✅ commit `bbe4446` — GPU `cs_transfer` (espelho da deposição), **parity-exato** (worst |Δ|
+  flowing+deposited = 0.000000): buffer `deposited` + pass region-scoped + `set_deposition`/`read_deposited`/
+  `deposited_buffer`/`clear_resident_deposited_gpu`; `GpuParams` 64→80B (interno, `FluidParams` intacto).
+  Dormante em produção (composite ainda lê só flowing). 9/9 gates GPU verdes.
 - **S3c** composite lê flowing+deposited + emenda `FluidParams` (3 headroom, arch-gate) + plumbing brush/tool
   → **edge-darkening/granulação VISÍVEIS** (precisa validação visual — contexto fresco por ADR).
 - **S3d** campo de velocidade shallow-water (MoveWater + pressure relax) → fluxo direcional + blooms fortes.

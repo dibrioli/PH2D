@@ -17,7 +17,7 @@
 //! Day-7 smoke valida só "primeira pintura visível", commit fica pro
 //! refinement de sidebar W2.
 
-use crate::{App, Transform};
+use crate::App;
 use ph2d_painter_brush::PointerSample;
 use ph2d_tool_painter::PainterTool;
 
@@ -135,50 +135,18 @@ impl App {
             .unwrap_or(false)
     }
 
-    /// Pure-fn helper: screen px → (u, v) ∈ [0, 1) iff `(px, py)` is
-    /// inside the AABB `[lo_x, hi_x) × [lo_y, hi_y)`. None caso contrário.
-    /// Extracted from `painter_pointer_uv` so the bounds + B-C1 anchor +
-    /// B-H3 exclusive-high-bound logic is unit-testable without an
-    /// `AppState` orchestration (audit T1.5 round 2 F2 MISSING-GATE-
-    /// PAINTER-E2E mitigation).
-    #[must_use]
-    #[doc(hidden)]
-    pub(crate) fn uv_from_bounds(
-        px: f32,
-        py: f32,
-        lo_x: f32,
-        hi_x: f32,
-        lo_y: f32,
-        hi_y: f32,
-    ) -> Option<(f32, f32)> {
-        if hi_x <= lo_x || hi_y <= lo_y {
-            return None;
-        }
-        if px < lo_x || px >= hi_x || py < lo_y || py >= hi_y {
-            return None;
-        }
-        let u = (px - lo_x) / (hi_x - lo_x);
-        let v = (py - lo_y) / (hi_y - lo_y);
-        Some((u, v))
-    }
-
     /// Resolve cursor screen-px → (u, v normalizado em [0,1) do sprite,
     /// source_w, source_h) iff Painter ativo + selection + dentro do
     /// footprint. None caso contrário.
     ///
-    /// **Convenções (audit T1.5 round 1):**
-    /// - Footprint corner uses `tr.translation + sprite.anchor` — mesma
-    ///   convenção do `painter_bridge` overlay (B-C1). Sem anchor,
-    ///   click e overlay desalinham quando `sprite.anchor != [0, 0]`.
-    /// - Bounds são **exclusive no high side** (`px < hi_x`): `u = 1.0`
-    ///   mapearia para `src_w` (1 pixel além do último válido). Audit
-    ///   B-H3.
-    /// - **T1.5 MVP requer sprite axis-aligned** (Transform.rotation = 0,
-    ///   scale = 1). Sprites rotacionados/escalonados produzem
-    ///   AABB-fit que NÃO bate com o quad visível; clicks dentro do AABB
-    ///   mas fora do quad rotado caem num UV inválido. Audit B-H1 —
-    ///   suporte completo de rotação é W2 quando o sidebar Painter
-    ///   adicionar gesto rotate-aware.
+    /// **Mapeamento:** ponteiro screen-px → world (inverse camera) → UV do sprite via
+    /// [`ph2d_render::sprite_world_to_uv`], que inverte o `RenderInstance.basis` (a mesma
+    /// matriz que `pick_sprite_at_world` usa) → **honra translation + rotation + scale +
+    /// skew + anchor**, então o pincel pinta exatamente sob o cursor independente da
+    /// transform da sprite. (Antes: AABB-fit só por translation → rotacionar/escalonar
+    /// quebrava a referência de posição — a antiga limitação "T1.5 axis-aligned", B-H1.)
+    /// - Bounds **exclusive no high side** (`u`/`v` ∈ `[0, 1)`): `u = 1.0` mapearia 1 texel
+    ///   além do último válido (B-H3). Click fora do quad ⇒ `None` (gateia o traço).
     fn painter_pointer_uv(&mut self, px: f32, py: f32) -> Option<(f32, f32, u32, u32)> {
         // Don't paint THROUGH docked chrome. The Painter sidebar is a
         // right-dock takeover that overlaps the sprite footprint, so a
@@ -202,40 +170,39 @@ impl App {
         if !painter_active {
             return None;
         }
-        let hero = gfx.hero_screen.as_ref()?;
-        let bits = hero.gizmo.selection?;
-        let entity = ph2d_ecs::Entity::from_bits(bits);
-        let tr = gfx.sim.world().get::<Transform>(entity)?;
-        let sprite = gfx.sim.world().get::<ph2d_render::Sprite>(entity)?;
-        // Audit B-C1: usar `translation + anchor` (paridade com
-        // `painter_bridge.rs:149-151` + `bgremoval_preview.rs:247-248`).
-        let cx = tr.translation.x + sprite.anchor[0];
-        let cy = tr.translation.y + sprite.anchor[1];
-        let (sw, sh) = (sprite.size[0], sprite.size[1]);
+        // Selection bits (Copy) — read + drop the hero borrow before the `&mut present` below.
+        let bits = gfx.hero_screen.as_ref()?.gizmo.selection?;
         let window_size = gfx.surface.size();
-        let (x0, y0) = gfx
-            .camera
-            .world_to_screen([cx - sw * 0.5, cy + sh * 0.5], window_size);
-        let (x1, y1) = gfx
-            .camera
-            .world_to_screen([cx + sw * 0.5, cy - sh * 0.5], window_size);
-        let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
-        let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
-        // Audit B-H3 + round-2 F2: bounds + UV via pure-fn helper
-        // (exclusive high side; testable in isolation).
-        let (u, v) = Self::uv_from_bounds(px, py, lo_x, hi_x, lo_y, hi_y)?;
-        // Read source dim from PainterTool's canvas (já set_source-pushed
-        // pelo bridge). Fallback p/ sprite.size se ainda não populado.
+        // Pointer screen px → world (inverse camera), then world → the selected sprite's
+        // texture UV honouring its FULL transform (translation + rotation + scale + skew)
+        // via the renderer's `RenderInstance.basis` — the SAME inversion `pick_sprite_at_world`
+        // uses, so a moved/rotated/scaled sprite paints exactly under the cursor. (The old path
+        // fit an axis-aligned AABB from translation only, so any rotation/scale mis-mapped —
+        // the painter "lost the real position"; ex-B-H1 "T1.5 axis-aligned" limitation.) `None`
+        // when the click is off the sprite quad — gates the stroke like the old bounds check.
+        let world = gfx.camera.screen_to_world((px, py), window_size);
+        let (u, v) = ph2d_render::sprite_world_to_uv(gfx.present.world_mut(), bits, world)?;
+        // Source dim from PainterTool's canvas (set_source-pushed by the bridge); fallback to
+        // the sprite size if the canvas isn't populated yet.
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let sprite_size = gfx
+            .sim
+            .world()
+            .get::<ph2d_render::Sprite>(entity)
+            .map(|s| (s.size[0] as u32, s.size[1] as u32));
         let (src_w, src_h) = gfx
             .tools
             .active_mut()
             .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
             .map(|p| {
-                let (w, h) = (sw as u32, sh as u32);
                 let (cw, ch) = p.canvas_size();
-                if cw > 0 && ch > 0 { (cw, ch) } else { (w, h) }
+                if cw > 0 && ch > 0 {
+                    (cw, ch)
+                } else {
+                    sprite_size.unwrap_or((0, 0))
+                }
             })
-            .unwrap_or((sw as u32, sh as u32));
+            .or(sprite_size)?;
         Some((u, v, src_w, src_h))
     }
 }
@@ -256,51 +223,11 @@ mod tests {
     use super::*;
 
     // ──────────────────────────────────────────────────────────────────────
-    // Audit T1.5 round 2 F2 (MISSING-GATE-PAINTER-E2E) mitigation: the
-    // hit-test + UV math is testable through `App::uv_from_bounds` —
-    // a pure fn that takes precomputed AABB bounds. The wrapping
-    // `painter_pointer_uv` integrates `world_to_screen` + `gizmo.
-    // selection` + downcast — those are end-to-end (App), but the
-    // mathematical core is gated here.
+    // The screen→world→UV hit-test now lives in `ph2d_render::sprite_world_to_uv`
+    // (honours the full sprite basis: translation + rotation + scale + skew), gated
+    // by its own unit tests in `ph2d-render::picking`. The wrapping `painter_pointer_uv`
+    // integrates `screen_to_world` + `gizmo.selection` + present-world lookup — end-to-end.
     // ──────────────────────────────────────────────────────────────────────
-
-    #[test]
-    fn uv_from_bounds_interior_point() {
-        let r = App::uv_from_bounds(5.0, 10.0, 0.0, 10.0, 0.0, 20.0).unwrap();
-        assert!((r.0 - 0.5).abs() < 1e-6);
-        assert!((r.1 - 0.5).abs() < 1e-6);
-    }
-
-    #[test]
-    fn uv_from_bounds_lo_edge_inclusive() {
-        // px == lo_x is allowed → u = 0.0.
-        let r = App::uv_from_bounds(0.0, 0.0, 0.0, 10.0, 0.0, 20.0).unwrap();
-        assert_eq!(r.0, 0.0);
-        assert_eq!(r.1, 0.0);
-    }
-
-    #[test]
-    fn uv_from_bounds_hi_edge_exclusive() {
-        // Audit B-H3 regression — px == hi_x rejects (no UV=1.0 stamp).
-        assert!(App::uv_from_bounds(10.0, 5.0, 0.0, 10.0, 0.0, 20.0).is_none());
-        assert!(App::uv_from_bounds(5.0, 20.0, 0.0, 10.0, 0.0, 20.0).is_none());
-    }
-
-    #[test]
-    fn uv_from_bounds_outside_rejects() {
-        assert!(App::uv_from_bounds(-1.0, 5.0, 0.0, 10.0, 0.0, 20.0).is_none());
-        assert!(App::uv_from_bounds(5.0, -1.0, 0.0, 10.0, 0.0, 20.0).is_none());
-        assert!(App::uv_from_bounds(15.0, 5.0, 0.0, 10.0, 0.0, 20.0).is_none());
-    }
-
-    #[test]
-    fn uv_from_bounds_degenerate_rect_rejects() {
-        // Zero-width or zero-height AABB → no valid UV.
-        assert!(App::uv_from_bounds(0.0, 0.0, 5.0, 5.0, 0.0, 10.0).is_none());
-        assert!(App::uv_from_bounds(0.0, 0.0, 0.0, 10.0, 5.0, 5.0).is_none());
-        // Inverted (hi < lo) — caught by `hi_x <= lo_x` guard.
-        assert!(App::uv_from_bounds(0.0, 0.0, 10.0, 5.0, 0.0, 20.0).is_none());
-    }
 
     #[test]
     fn uv_to_sample_maps_canvas_pixels() {

@@ -219,6 +219,50 @@ pub fn pick_sprite_at_world(present: &mut World, world_pos: [f32; 2]) -> Option<
     best
 }
 
+/// Map a WORLD-space point to the selected sprite's texture **UV** (`0..1`), honouring
+/// the full `RenderInstance.basis` (rotation + scale + skew) + `anchor` — so a click on a
+/// MOVED / ROTATED / SCALED sprite lands on the texel that visually sits under the cursor
+/// (the same inversion `pick_sprite_at_world` uses, so input and render agree exactly).
+///
+/// `None` when the entity is absent, the basis is degenerate, the size is non-positive, OR
+/// the point is outside the quad (`u`/`v` ∉ `[0, 1)` — exclusive high side, matching the
+/// painter's texel grid: `u = 1.0` would map one texel past the last column). UV (0,0) is
+/// the top-left of the texture (world +Y up ⇒ `v` grows downward), matching the renderer's
+/// texture orientation. `world_pos` is the cursor mapped through
+/// [`Camera2d::screen_to_world`](crate::camera::Camera2d::screen_to_world).
+pub fn sprite_world_to_uv(
+    present: &mut World,
+    sim_entity_bits: u64,
+    world_pos: [f32; 2],
+) -> Option<(f32, f32)> {
+    let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
+    for (sim_ref, gt, ri) in q.iter(present) {
+        if sim_ref.0.to_bits() != sim_entity_bits {
+            continue;
+        }
+        let pos = gt.translation();
+        // Invert the 2×2 basis to bring the world cursor into the sprite's LOCAL frame —
+        // this is what makes rotation / scale / skew correct (vs the old translation-only
+        // AABB). Degenerate basis (det≈0) ⇒ unpaintable.
+        let (local_dx, local_dy) =
+            world_delta_to_local(ri.basis, world_pos[0] - pos.x, world_pos[1] - pos.y)?;
+        let (sw, sh) = (ri.size[0], ri.size[1]);
+        if sw <= 0.0 || sh <= 0.0 {
+            return None;
+        }
+        // The quad center sits at `anchor` in the local frame. `u` grows with local +X
+        // (right edge), `v` with local −Y (so the top edge = `v=0`, matching the texture +
+        // the old axis-aligned mapping for an un-rotated sprite).
+        let u = (local_dx - ri.anchor[0]) / sw + 0.5;
+        let v = 0.5 - (local_dy - ri.anchor[1]) / sh;
+        if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) {
+            return Some((u, v));
+        }
+        return None; // matched the entity, but the cursor is off its quad
+    }
+    None
+}
+
 /// Look up the world-space bbox of the sprite currently selected by
 /// the editor. Returns `None` when the entity no longer exists in
 /// PresentWorld (e.g. it was despawned this frame) — callers treat
@@ -450,6 +494,66 @@ mod tests {
         let missing = fresh_sim_entity(&mut sim);
         let b = selection_bbox_world(present.world_mut(), missing.to_bits());
         assert!(b.is_none());
+    }
+
+    /// Spawn a sprite with an explicit 2×2 `basis` (rotation/scale/skew) at the origin.
+    fn spawn_with_basis(present: &mut PresentWorld, sim_entity: Entity, size: [f32; 2], basis: [f32; 4]) -> u64 {
+        let gt = GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(0.0, 0.0)));
+        let mut ri = RenderInstance {
+            world_pos: [0.0, 0.0],
+            size,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0, 1.0, 1.0, 1.0],
+            basis,
+            texture_id: 0,
+            premultiplied: 0.0,
+            anchor: [0.0, 0.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
+            z_order: 0,
+            sampling: 0,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            clip_group: RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
+        };
+        ri.world_pos = [0.0, 0.0];
+        present.world_mut().spawn((SimRef(sim_entity), gt, ri));
+        sim_entity.to_bits()
+    }
+
+    #[test]
+    fn sprite_world_to_uv_identity_maps_center_and_corners() {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut present = PresentWorld::new();
+        let e = fresh_sim_entity(&mut sim);
+        let bits = spawn_at(&mut present, e, 0.0, 0.0, [2.0, 2.0]); // identity basis
+        // Centre → (0.5, 0.5).
+        let (u, v) = sprite_world_to_uv(present.world_mut(), bits, [0.0, 0.0]).unwrap();
+        assert!((u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5, "centre: {u},{v}");
+        // World +X (right) → u>0.5; world +Y (UP) → v<0.5 (texture TOP).
+        let (u, v) = sprite_world_to_uv(present.world_mut(), bits, [0.5, 0.5]).unwrap();
+        assert!((u - 0.75).abs() < 1e-5, "u={u}");
+        assert!((v - 0.25).abs() < 1e-5, "v={v}");
+        // Outside the quad → None (gates the click).
+        assert!(sprite_world_to_uv(present.world_mut(), bits, [2.0, 0.0]).is_none());
+    }
+
+    #[test]
+    fn sprite_world_to_uv_honours_rotation() {
+        // 90° CCW basis [0,1,-1,0]: the texture's local +X (right edge, u→1) now points to
+        // world +Y (up). So a click ABOVE the centre must land on the texture's RIGHT edge —
+        // which the old translation-only AABB mapping could never do.
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut present = PresentWorld::new();
+        let e = fresh_sim_entity(&mut sim);
+        let bits = spawn_with_basis(&mut present, e, [2.0, 2.0], [0.0, 1.0, -1.0, 0.0]);
+        let (u, v) = sprite_world_to_uv(present.world_mut(), bits, [0.0, 0.9]).unwrap();
+        assert!(u > 0.9, "world-up maps to the texture right edge: u={u}");
+        assert!((v - 0.5).abs() < 1e-5, "v centred: {v}");
+        // World +X (right) → texture BOTTOM (local −Y) → v>0.5.
+        let (_, v2) = sprite_world_to_uv(present.world_mut(), bits, [0.9, 0.0]).unwrap();
+        assert!(v2 > 0.9, "world-right maps to the texture bottom: v={v2}");
     }
 
     #[test]

@@ -85,7 +85,7 @@ pub use layer_compositor::{
 };
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
-    selection_bbox_world,
+    selection_bbox_world, sprite_world_to_uv,
 };
 pub use pipeline::SpritePipeline;
 pub use premul::{

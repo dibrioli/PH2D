@@ -69,6 +69,12 @@ impl FluidParams {
             w_hi: self.w_hi,
             perm_valley: self.perm_valley,
             perm_crest: self.perm_crest,
+            // Deposition layer (ADR-0078 S3) stays OFF on the GPU-mirrored path until
+            // the GPU `cs_transfer` + the FluidParams amendment land (S3b) — keeps the
+            // CPU reference bit-parity with the current GPU solver.
+            deposition: 0.0,
+            deposition_dry: 0.0,
+            granulation: 0.0,
         }
     }
 }

@@ -65,6 +65,19 @@ pub struct DiffusionParams {
     /// pigment pools in the low spots (granulation-coherent).
     pub perm_valley: f32,
     pub perm_crest: f32,
+    /// **Pigment-deposition layer (ADR-0078 S3, Curtis 1997 `TransferPigment`).**
+    /// Base fraction of FLOWING pigment frozen into the DEPOSITED layer each step.
+    /// Deposited pigment no longer diffuses/advects — it's stained into the paper.
+    /// `0` ⇒ the layer is dormant (the shipped gated-diffusion look, bit-identical).
+    pub deposition: f32,
+    /// Extra deposition as a cell DRIES (scaled by `1 − gate`): the rim of a wash
+    /// (lower water from the splat falloff) dries first, so its pigment freezes first
+    /// → the dark perimeter ring (**edge-darkening**), watercolor's signature mark.
+    pub deposition_dry: f32,
+    /// Granulation bias: deposition scales by `1 + granulation·(1 − paper)`, so pigment
+    /// settles more in the tooth VALLEYS than the crests — the grainy, mottled
+    /// **granulation** of pigments like ultramarine / cerulean.
+    pub granulation: f32,
 }
 
 impl Default for DiffusionParams {
@@ -78,6 +91,11 @@ impl Default for DiffusionParams {
             w_hi: 0.4,
             perm_valley: 1.0,
             perm_crest: 0.55,
+            // Deposition layer OFF by default → no change to the shipped look until a
+            // brush opts in (ADR-0078 S3 ramps these for the watercolor signatures).
+            deposition: 0.0,
+            deposition_dry: 0.0,
+            granulation: 0.0,
         }
     }
 }
@@ -103,6 +121,10 @@ pub struct DiffusionGrid {
     water: Vec<f32>,
     /// Pigment (linear RGB) per cell — mass-conserving under diffusion/advection.
     pigment: Vec<[f32; 3]>,
+    /// **Deposited pigment** (linear RGB) per cell — frozen into the paper by
+    /// `TransferPigment` (ADR-0078 S3); does NOT diffuse/advect. The composited colour
+    /// is `pigment + deposited`. All-zero while the deposition params are off.
+    deposited: Vec<[f32; 3]>,
     /// Static paper-tooth height ∈ [0,1] per cell (1 = crest, 0 = valley).
     paper: Vec<f32>,
     scratch: Vec<[f32; 3]>,
@@ -132,6 +154,7 @@ impl DiffusionGrid {
             height,
             water: vec![0.0; n],
             pigment: vec![[0.0; 3]; n],
+            deposited: vec![[0.0; 3]; n],
             paper,
             scratch: vec![[0.0; 3]; n],
             scratch_w: vec![0.0; n],
@@ -188,6 +211,11 @@ impl DiffusionGrid {
         self.diffuse(p, &gates);
         self.advect(p, &gates);
         self.scratch_w = gates;
+        // Curtis TransferPigment (ADR-0078 S3): freeze a fraction of flowing pigment
+        // into the deposited layer (edge-darkening + granulation). After advect so it
+        // sees the just-transported pigment, before evaporate so `deposition_dry` reads
+        // this step's water. No-op while the deposition params are off.
+        self.transfer_pigment(p);
         // Evaporate (in place) — drying closes the gate and freezes pigment.
         for w in &mut self.water {
             *w = (*w - p.evaporation).max(0.0);
@@ -290,6 +318,35 @@ impl DiffusionGrid {
         std::mem::swap(&mut self.pigment, &mut self.scratch);
     }
 
+    /// Pass 3 — **`TransferPigment`** (Curtis 1997 §4.2 / ADR-0078 S3): freeze a
+    /// fraction of the FLOWING pigment into the DEPOSITED layer. Mass-conserving (every
+    /// gram leaving `pigment` lands in `deposited`); deposited pigment is staticstained
+    /// into the paper (no more diffuse/advect). The rate rises as a cell dries
+    /// (`deposition_dry · (1 − gate)`) → the rim freezes first → **edge-darkening**;
+    /// and in the tooth valleys (`granulation · (1 − paper)`) → **granulation**. A
+    /// no-op while all deposition params are 0 (the shipped look is untouched).
+    fn transfer_pigment(&mut self, p: &DiffusionParams) {
+        if p.deposition <= 0.0 && p.deposition_dry <= 0.0 {
+            return;
+        }
+        let n = (self.width as usize) * (self.height as usize);
+        for i in 0..n {
+            // `dry` ∈ [0,1]: 0 where wet (gate open), 1 where dry (gate shut). Same
+            // smoothstep band as the gate so deposition kicks in exactly as flow stops.
+            let dry = 1.0 - smoothstep(p.w_lo, p.w_hi, self.water[i]);
+            let gran = 1.0 + p.granulation * (1.0 - self.paper[i]);
+            let rate = ((p.deposition + p.deposition_dry * dry) * gran).clamp(0.0, 1.0);
+            if rate <= 0.0 {
+                continue;
+            }
+            for k in 0..3 {
+                let moved = rate * self.pigment[i][k];
+                self.pigment[i][k] -= moved;
+                self.deposited[i][k] += moved;
+            }
+        }
+    }
+
     /// Grid dimensions.
     #[must_use]
     pub fn dims(&self) -> (u32, u32) {
@@ -384,12 +441,34 @@ impl DiffusionGrid {
         any.then_some((x0, y0, x1, y1))
     }
 
-    /// Total pigment per channel — a conserved quantity under pure diffusion +
-    /// advection (no evaporation removes pigment), the invariant the tests check.
+    /// Total FLOWING pigment per channel — conserved under pure diffusion + advection
+    /// (no evaporation removes pigment). With the deposition layer on, flowing pigment
+    /// migrates into [`Self::deposited`]; `total_pigment + total_deposited` is the
+    /// conserved sum (the invariant the deposition tests check).
     #[must_use]
     pub fn total_pigment(&self) -> [f64; 3] {
         let mut s = [0.0f64; 3];
         for px in &self.pigment {
+            s[0] += px[0] as f64;
+            s[1] += px[1] as f64;
+            s[2] += px[2] as f64;
+        }
+        s
+    }
+
+    /// The deposited (frozen-into-paper) pigment field (ADR-0078 S3). The composited
+    /// colour is `pigment + deposited`; all-zero while the deposition params are off.
+    #[must_use]
+    pub fn deposited(&self) -> &[[f32; 3]] {
+        &self.deposited
+    }
+
+    /// Total deposited pigment per channel (companion to [`Self::total_pigment`] for
+    /// the mass-conservation invariant `flowing + deposited == splatted`).
+    #[must_use]
+    pub fn total_deposited(&self) -> [f64; 3] {
+        let mut s = [0.0f64; 3];
+        for px in &self.deposited {
             s[0] += px[0] as f64;
             s[1] += px[1] as f64;
             s[2] += px[2] as f64;
@@ -530,6 +609,149 @@ mod tests {
         assert!(
             max_move < 1e-3,
             "dried pigment must stay frozen: moved {max_move}"
+        );
+    }
+
+    // ───────────────── ADR-0078 S3 — pigment-deposition layer ─────────────────
+
+    /// DORMANT by default: with the deposition params at 0 nothing is ever deposited,
+    /// so the shipped gated-diffusion look is untouched (the rest of the test suite,
+    /// run with `Default`, also implicitly proves `transfer_pigment` is a no-op).
+    #[test]
+    fn deposition_off_is_dormant() {
+        let mut g = DiffusionGrid::new(40, 40, 1.0);
+        g.splat(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
+        let p = DiffusionParams::default();
+        for _ in 0..50 {
+            g.step(&p);
+        }
+        let dep = g.total_deposited();
+        assert_eq!(dep, [0.0, 0.0, 0.0], "deposition must be dormant at rate 0");
+    }
+
+    /// Mass-conserving: `TransferPigment` MOVES pigment flowing→deposited, never
+    /// creates/destroys it. `total_pigment + total_deposited` equals the splatted mass
+    /// (evaporation removes only water, not pigment).
+    #[test]
+    fn deposition_conserves_total_pigment() {
+        let mut g = DiffusionGrid::new(48, 48, 1.0);
+        for w in g.water.iter_mut() {
+            *w = 1.0;
+        }
+        g.splat(24.0, 24.0, 8.0, 0.0, [0.6, 0.2, 0.1]);
+        let before = g.total_pigment();
+        let p = DiffusionParams {
+            evaporation: 0.0, // isolate conservation (no drying)
+            deposition: 0.03,
+            deposition_dry: 0.05,
+            granulation: 1.5,
+            ..Default::default()
+        };
+        for _ in 0..40 {
+            g.step(&p);
+        }
+        let flow = g.total_pigment();
+        let dep = g.total_deposited();
+        assert!(dep[0] > 0.01, "deposition must actually occur (dep {dep:?})");
+        for k in 0..3 {
+            let total = flow[k] + dep[k];
+            assert!(
+                (before[k] - total).abs() < 1e-3 * (before[k].abs() + 1.0),
+                "channel {k}: flowing+deposited {total} != splatted {}",
+                before[k]
+            );
+        }
+    }
+
+    /// EDGE-DARKENING: a wash's rim (lower water from the splat falloff) dries first,
+    /// so `deposition_dry` freezes its pigment first → the rim ends up a HIGHER
+    /// deposited fraction than the still-wet centre (watercolor's dark perimeter).
+    #[test]
+    fn dry_deposition_darkens_the_rim() {
+        let (w, h) = (80u32, 80u32);
+        let (cx, cy, r) = (40.0f32, 40.0, 16.0);
+        let mut g = DiffusionGrid::new(w, h, 1.0);
+        g.splat(cx, cy, r, 0.9, [0.5, 0.3, 0.2]);
+        let p = DiffusionParams {
+            deposition: 0.0,
+            deposition_dry: 0.4, // pure dry-driven deposition isolates edge-darkening
+            granulation: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..30 {
+            g.step(&p);
+        }
+        // Mean deposited FRACTION (deposited / total) over a rim annulus vs a centre
+        // disc — the fraction normalises out the splat's radial pigment falloff.
+        let frac = |lo: f32, hi: f32| -> f32 {
+            let (mut dep, mut tot) = (0.0f32, 0.0f32);
+            for y in 0..h {
+                for x in 0..w {
+                    let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+                    if d >= lo && d < hi {
+                        let i = (y * w + x) as usize;
+                        dep += g.deposited()[i][0];
+                        tot += g.deposited()[i][0] + g.pigment()[i][0];
+                    }
+                }
+            }
+            if tot > 1e-6 { dep / tot } else { 0.0 }
+        };
+        let rim = frac(12.0, 15.0);
+        let center = frac(0.0, 4.0);
+        assert!(
+            rim > center + 0.1,
+            "edge-darkening: rim deposited fraction {rim} must exceed centre {center}"
+        );
+    }
+
+    /// GRANULATION: with `granulation > 0`, pigment settles more in the tooth VALLEYS
+    /// (low paper height) than the crests — the deposited fraction is higher in valleys.
+    #[test]
+    fn granulation_favors_paper_valleys() {
+        let (w, h) = (64u32, 64u32);
+        let mut g = DiffusionGrid::new(w, h, 4.0); // scale 4 → paper varies across grid
+        for wv in g.water.iter_mut() {
+            *wv = 0.6;
+        }
+        // Broad pigment coverage so most cells carry pigment to settle.
+        g.splat(32.0, 32.0, 28.0, 0.0, [0.5, 0.4, 0.3]);
+        // Small base + few steps keeps the deposited fraction MID-range (not saturated
+        // near 1, where the valley/crest gap would be compressed), so the granulation
+        // rate difference is visible.
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            deposition: 0.01,
+            deposition_dry: 0.0,
+            granulation: 4.0,
+            ..Default::default()
+        };
+        for _ in 0..18 {
+            g.step(&p);
+        }
+        // Median paper height splits valleys vs crests; compare deposited fraction.
+        let mut sorted: Vec<f32> = g.paper.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let median = sorted[sorted.len() / 2];
+        let (mut v_dep, mut v_tot, mut c_dep, mut c_tot) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
+        for i in 0..(w * h) as usize {
+            let tot = g.deposited()[i][0] + g.pigment()[i][0];
+            if tot < 1e-4 {
+                continue;
+            }
+            if g.paper[i] < median {
+                v_dep += g.deposited()[i][0];
+                v_tot += tot;
+            } else {
+                c_dep += g.deposited()[i][0];
+                c_tot += tot;
+            }
+        }
+        let valley = if v_tot > 1e-6 { v_dep / v_tot } else { 0.0 };
+        let crest = if c_tot > 1e-6 { c_dep / c_tot } else { 0.0 };
+        assert!(
+            valley > crest + 0.02,
+            "granulation: valley deposited fraction {valley} must exceed crest {crest}"
         );
     }
 }

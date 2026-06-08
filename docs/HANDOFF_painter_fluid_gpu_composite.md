@@ -111,6 +111,41 @@ grid inteiro e faz upload full-grid; o composite ainda faz **um readback síncro
 loop. Esse é o caminho pra 4K/multi-camada em tempo real. **Recomendação:** executar em **contexto fresco
 e focado** (reescrita fundacional do hot-path solver/tool/render-loop, validação visual estágio-a-estágio).
 
+### ⏳ EM EXECUÇÃO (2026-06-08) — núcleo GPU-residente landado (E1+E2+E3 fundidos), aguarda smoke do Enio
+> **Descoberta de design:** E1/E2/E3 NÃO são separáveis como o plano sugeria — o espelho de água da CPU
+> alimentava 3 consumidores (bbox-scan E3, evaporate E1, dry-check E1) e a entrada de dab alimentava água
+> (E1) + pigmento (E2). No instante em que a entrada vira GPU-only (`cs_splat`), a CPU perde a água e
+> bbox+evaporate+dry-check quebram **juntos**. Então E1+E2+E3 viram **um** núcleo coerente "sim residente".
+>
+> **Landado (3 commits locais, sem push):**
+> - `693b6f3` **cs_splat** (WGSL + `DabGpu`/`splat_dabs`) — lista-de-dabs → splat direto na água+pig
+>   residentes; dispatch único na union-bbox, cada célula varre a lista NA MESMA ORDEM da CPU →
+>   forma exata (só FMA ~8e-8). Gate `cs_splat_matches_cpu_splat` (<1e-6, medido 8e-8).
+> - `1d31dc5` **step_resident_splat** (splat + diffuse/advect/**evaporate** residentes, sem upload/readback;
+>   bate <1e-6 vs CPU splat+step) + **`cs_reduce`/`read_field_stats`** (max-water + wet-bbox por 1 pass
+>   atômico + readback de 5 u32, esporádico) substituindo os scans `O(grid)` `max_water`/`water_bbox`.
+>   max-water bit-idêntico (bits IEEE monotônicos p/ water≥0); bbox exato. Gates verdes.
+> - `8772132` **wiring live**: o drive por-frame troca o caminho-depósito (upload full-grid + alloc/scan/
+>   evaporate CPU `O(grid)`) pelo caminho dab-list residente. `queue_pointer` captura dabs numa lista
+>   (`FluidDab`) + cresce o envelope monotônico das bboxes-de-dab (superset do water-bbox → nunca corta);
+>   `fluid_take_dabs`/`fluid_dry_check_and_drop_gpu`. **Gate em `fluid_hires`** (≠ `gpu_fluid_driven`,
+>   que só é setado após o drive do frame) p/ não perder os PRIMEIROS dabs do traço. 214 testes lib verdes
+>   + novo `gpu_resident_path_captures_dabs_to_list_not_grid`; ambos os crates `check` com `--features fluid`.
+>
+> **Mata, por-frame:** alloc do Vec depósito, clone do mirror de água, **upload full-grid água+depósito**,
+> evaporate CPU, scans CPU `max_water`+`water_bbox` — toda a linha "fluid_frame_step_inputs ~2ms +
+> step_resident upload ~2ms" da tabela §4. **Resta:** o composite + seu readback de faixa por-frame (= **E4**).
+>
+> **Caminho-depósito MANTIDO** como rede de segurança (`fluid_frame_step_inputs`, solver `step_resident`,
+> `cs_deposit`) + seus gates até o Enio validar visualmente; removível depois.
+>
+> **PENDENTE (Enio):** smoke visual e2e — `./play.command` (release, `--features fluid`), pintar um traço de
+> aquarela e confirmar que continua igual (forma/bloom/secagem) e mais fluido. *Unit-verde ≠ vivo no produto.*
+>
+> **FOLLOW-UP 4K-memory (E5, NÃO feito):** o `DiffusionGrid` da CPU ainda é alocado por-traço só p/
+> paper+dims+existência (`O(grid)` **1×/traço**, não por-frame). 4K real quer **paper-gen no GPU** + dropar
+> o grid CPU. O custo por-frame já é `O(dabs)`+passes GPU; o `O(grid)`/traço de alloc+paper continua.
+
 ## §5 — EM ABERTO (deferidos menores, não-bloqueantes)
 
 - **Canvas de pintura grande** (o gap real pra aquarela brilhar): hoje só edita sprites 64×64 do atlas

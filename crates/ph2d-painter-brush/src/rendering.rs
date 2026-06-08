@@ -55,7 +55,13 @@ pub struct RenderingParams {
     /// (they fall back to [`default_edge_intensity`]).
     #[serde(default = "default_edge_intensity")]
     pub edge_intensity: f32,
-    // 12 fields v1, 2 slots de headroom (cap 14).
+    /// **ADR-0079 — per-brush watercolor controls.** The 15 fluid-solver knobs (diffusion +
+    /// deposition + shallow-water flow) the artist drives via the Brush Studio "Watercolor"
+    /// subsection. Only consumed when `fluid_enabled` (and the device is fluid-capable);
+    /// `#[serde(default)]` (= the validated preset) keeps pre-field brush files loading.
+    #[serde(default)]
+    pub watercolor: crate::watercolor::WatercolorParams,
+    // 13 fields v1, 1 slot de headroom (cap 14).
 }
 
 /// Default `edge_intensity` (also the serde fallback for old brush files).
@@ -78,6 +84,7 @@ impl Default for RenderingParams {
             fluid_enabled: false,
             accumulate: false, // wash (opacity-capped) by default
             edge_intensity: default_edge_intensity(),
+            watercolor: crate::watercolor::WatercolorParams::default(),
         }
     }
 }

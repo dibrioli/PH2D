@@ -509,6 +509,13 @@ pub const PAINTER_STUDIO_OPACITY_JITTER_SLIDER: NodeId =
 pub const PAINTER_STUDIO_OPACITY_JITTER_CHIP: NodeId =
     hash_node_id("painter_studio.opacity_jitter_chip");
 
+// ── Watercolor section — per-brush fluid-solver controls (ADR-0079) ───────────
+// The 15 controls share two index-derived id helpers ([`painter_studio_watercolor_slider_id`]
+// / `_chip_id`) instead of 30 hand-written consts: the panel paints by iterating
+// `0..WatercolorParams::COUNT` and the tool decodes by recomputing + matching (the
+// layers-panel pattern). Only the section header is a fixed const.
+pub const PAINTER_STUDIO_SEC_WATERCOLOR: NodeId = hash_node_id("painter_studio.sec_watercolor");
+
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via
 /// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's
@@ -663,6 +670,23 @@ fn fnv_node_id_runtime(s: &str) -> NodeId {
 #[must_use]
 pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeId {
     fnv_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
+}
+
+/// Derive the stable [`NodeId`] for the `index`-th watercolor control's SLIDER in the
+/// Brush Studio "Watercolor" section (ADR-0079). `index` is the position in
+/// `ph2d_painter_brush::WatercolorParams::CONTROLS` (the contract index the panel paints
+/// + the tool decodes). FNV-hashed; the Brush Studio is not a hot path (the existing
+/// per-row sliders format "NN%" per frame the same way).
+#[must_use]
+pub fn painter_studio_watercolor_slider_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_studio.watercolor.{index}.slider"))
+}
+
+/// Derive the stable [`NodeId`] for the `index`-th watercolor control's numeric CHIP
+/// (companion to [`painter_studio_watercolor_slider_id`], ADR-0079).
+#[must_use]
+pub fn painter_studio_watercolor_chip_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_studio.watercolor.{index}.chip"))
 }
 
 /// Derive the stable [`NodeId`] for blend-mode option `mode` (the

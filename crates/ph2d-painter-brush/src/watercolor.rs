@@ -1,0 +1,239 @@
+//! [`WatercolorParams`] — the per-brush watercolor tuning exposed to the artist
+//! (ADR-0079). The serializable brush-facing DTO for the 15 solver controls
+//! (8 gated diffusion-advection + 3 deposition + 4 shallow-water), kept SEPARATE from
+//! the solver-internal [`crate::diffusion::DiffusionParams`] so the brush-file contract
+//! is insulated from solver churn — [`WatercolorParams::to_diffusion`] maps 1:1.
+//!
+//! [`WatercolorParams::CONTROLS`] is the single source of truth for the UI: label +
+//! physical `[min,max]` range per control, indexed `0..15`. The Brush Studio panel
+//! iterates it to lay out the "Watercolor" subsection; the tool maps a slider's
+//! NodeId → index and writes via [`WatercolorParams::set_normalized`]. Keeping it here
+//! (not duplicated in the panel + tool) means one place defines what a control is.
+
+use crate::diffusion::DiffusionParams;
+use serde::{Deserialize, Serialize};
+
+/// A single watercolor control's display label + physical value range (the slider maps
+/// `0..1` ↔ `[min, max]`). The order of [`WatercolorParams::CONTROLS`] is the contract
+/// index used by the panel + tool — APPEND only.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WatercolorControl {
+    pub label: &'static str,
+    pub min: f32,
+    pub max: f32,
+}
+
+/// Per-brush watercolor tuning (ADR-0079) — the 15 solver controls the artist drives via
+/// the Brush Studio "Watercolor" subsection. Serializable like every other brush param so
+/// the brush-file/MCP/replay carry it. [`Self::to_diffusion`] projects onto the solver's
+/// [`DiffusionParams`]. Cap ≤ 16 (15 used, 1 headroom) — gate
+/// `architecture_painter_contract_surface`.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub struct WatercolorParams {
+    // ── Gated diffusion-advection (the base wash) ──
+    pub diffusivity: f32,
+    pub evaporation: f32,
+    pub downhill: f32,
+    pub flow_outward: f32,
+    pub w_lo: f32,
+    pub w_hi: f32,
+    pub perm_valley: f32,
+    pub perm_crest: f32,
+    // ── Pigment deposition (ADR-0078 S3) ──
+    pub deposition: f32,
+    pub deposition_dry: f32,
+    pub granulation: f32,
+    // ── Shallow-water velocity layer (ADR-0078 S3d) ──
+    pub velocity: f32,
+    pub viscosity: f32,
+    pub drag: f32,
+    pub pressure: f32,
+    // === 1 slot of headroom (cap ≤ 16) ===
+}
+
+impl Default for WatercolorParams {
+    /// The **validated watercolor preset** — deposition + shallow-water ON with the tuned
+    /// values (the live look the Enio ratified), NOT the all-off `DiffusionParams::default`.
+    /// So flipping `fluid_enabled` on gives a good wash immediately; the sliders start here.
+    /// Mirrors `ph2d_painter_fluid::WATERCOLOR_*` (kept in sync; that crate can't be a dep
+    /// here, so the numbers are duplicated with this note).
+    fn default() -> Self {
+        let d = DiffusionParams::default(); // the 8 base values (deposition/velocity = 0)
+        Self {
+            diffusivity: d.diffusivity,
+            evaporation: d.evaporation,
+            downhill: d.downhill,
+            flow_outward: d.flow_outward,
+            w_lo: d.w_lo,
+            w_hi: d.w_hi,
+            perm_valley: d.perm_valley,
+            perm_crest: d.perm_crest,
+            // Deposition preset (ADR-0078 S3c WATERCOLOR_DEPOSITION_*).
+            deposition: 0.012,
+            deposition_dry: 0.10,
+            granulation: 1.4,
+            // Shallow-water preset (ADR-0078 S3d WATERCOLOR_* after the 2026-06-08 tuning).
+            velocity: 1.3,
+            viscosity: 0.18,
+            drag: 0.1,
+            pressure: 0.3,
+        }
+    }
+}
+
+impl WatercolorParams {
+    /// The control descriptors (label + range), indexed `0..15` — the single source the
+    /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
+    /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
+    /// the preset defaults all fall inside them.
+    pub const CONTROLS: [WatercolorControl; 15] = [
+        WatercolorControl { label: "Diffusivity", min: 0.0, max: 0.24 },
+        WatercolorControl { label: "Evaporation", min: 0.0, max: 0.05 },
+        WatercolorControl { label: "Downhill", min: 0.0, max: 0.5 },
+        WatercolorControl { label: "Bleed", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Wet Gate Lo", min: 0.0, max: 0.5 },
+        WatercolorControl { label: "Wet Gate Hi", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Perm Valley", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Perm Crest", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Deposition", min: 0.0, max: 0.1 },
+        WatercolorControl { label: "Edge Darkening", min: 0.0, max: 0.4 },
+        WatercolorControl { label: "Granulation", min: 0.0, max: 4.0 },
+        WatercolorControl { label: "Flow Velocity", min: 0.0, max: 2.0 },
+        WatercolorControl { label: "Viscosity", min: 0.0, max: 0.24 },
+        WatercolorControl { label: "Drag", min: 0.0, max: 0.5 },
+        WatercolorControl { label: "Backrun", min: 0.0, max: 1.0 },
+    ];
+
+    /// Number of artist-facing controls (= `CONTROLS.len()`).
+    pub const COUNT: usize = Self::CONTROLS.len();
+
+    /// Read control `i`'s raw physical value (panics if `i >= COUNT`).
+    #[must_use]
+    pub fn get(&self, i: usize) -> f32 {
+        match i {
+            0 => self.diffusivity,
+            1 => self.evaporation,
+            2 => self.downhill,
+            3 => self.flow_outward,
+            4 => self.w_lo,
+            5 => self.w_hi,
+            6 => self.perm_valley,
+            7 => self.perm_crest,
+            8 => self.deposition,
+            9 => self.deposition_dry,
+            10 => self.granulation,
+            11 => self.velocity,
+            12 => self.viscosity,
+            13 => self.drag,
+            14 => self.pressure,
+            _ => panic!("watercolor control index {i} out of range"),
+        }
+    }
+
+    /// Write control `i`'s raw physical value (clamped to its range; panics if out of range).
+    pub fn set(&mut self, i: usize, v: f32) {
+        let c = &Self::CONTROLS[i];
+        let v = v.clamp(c.min, c.max);
+        match i {
+            0 => self.diffusivity = v,
+            1 => self.evaporation = v,
+            2 => self.downhill = v,
+            3 => self.flow_outward = v,
+            4 => self.w_lo = v,
+            5 => self.w_hi = v,
+            6 => self.perm_valley = v,
+            7 => self.perm_crest = v,
+            8 => self.deposition = v,
+            9 => self.deposition_dry = v,
+            10 => self.granulation = v,
+            11 => self.velocity = v,
+            12 => self.viscosity = v,
+            13 => self.drag = v,
+            14 => self.pressure = v,
+            _ => panic!("watercolor control index {i} out of range"),
+        }
+    }
+
+    /// Control `i`'s value normalized to `0..1` over its `[min, max]` range (for the slider
+    /// position).
+    #[must_use]
+    pub fn normalized(&self, i: usize) -> f32 {
+        let c = &Self::CONTROLS[i];
+        ((self.get(i) - c.min) / (c.max - c.min)).clamp(0.0, 1.0)
+    }
+
+    /// Set control `i` from a normalized `0..1` slider value (mapped onto `[min, max]`).
+    pub fn set_normalized(&mut self, i: usize, v01: f32) {
+        let c = &Self::CONTROLS[i];
+        self.set(i, c.min + v01.clamp(0.0, 1.0) * (c.max - c.min));
+    }
+
+    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 15 controls) —
+    /// the single conversion point the live path uses to drive the solver.
+    #[must_use]
+    pub fn to_diffusion(&self) -> DiffusionParams {
+        DiffusionParams {
+            diffusivity: self.diffusivity,
+            evaporation: self.evaporation,
+            downhill: self.downhill,
+            flow_outward: self.flow_outward,
+            w_lo: self.w_lo,
+            w_hi: self.w_hi,
+            perm_valley: self.perm_valley,
+            perm_crest: self.perm_crest,
+            deposition: self.deposition,
+            deposition_dry: self.deposition_dry,
+            granulation: self.granulation,
+            velocity: self.velocity,
+            viscosity: self.viscosity,
+            drag: self.drag,
+            pressure: self.pressure,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preset_defaults_lie_inside_their_ranges() {
+        let p = WatercolorParams::default();
+        for i in 0..WatercolorParams::COUNT {
+            let n = p.normalized(i);
+            assert!(
+                (0.0..=1.0).contains(&n),
+                "control {} ({}) preset out of range: {}",
+                i,
+                WatercolorParams::CONTROLS[i].label,
+                p.get(i)
+            );
+        }
+    }
+
+    #[test]
+    fn normalized_set_roundtrips() {
+        let mut p = WatercolorParams::default();
+        for i in 0..WatercolorParams::COUNT {
+            p.set_normalized(i, 0.5);
+            let c = &WatercolorParams::CONTROLS[i];
+            let expect = c.min + 0.5 * (c.max - c.min);
+            assert!((p.get(i) - expect).abs() < 1e-6, "control {i} roundtrip");
+            assert!((p.normalized(i) - 0.5).abs() < 1e-6, "control {i} normalize");
+        }
+    }
+
+    #[test]
+    fn to_diffusion_preserves_all_controls() {
+        let p = WatercolorParams {
+            diffusivity: 0.1,
+            granulation: 2.0,
+            pressure: 0.7,
+            ..Default::default()
+        };
+        let d = p.to_diffusion();
+        assert_eq!(d.diffusivity, 0.1);
+        assert_eq!(d.granulation, 2.0);
+        assert_eq!(d.pressure, 0.7);
+    }
+}

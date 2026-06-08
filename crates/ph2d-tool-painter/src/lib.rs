@@ -54,7 +54,7 @@ pub use ph2d_painter_brush::adjustments::{
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
 };
-pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
+pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES, WatercolorControl, WatercolorParams};
 pub use tool::{FluidDab, FluidFrameInputs, PainterTool, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

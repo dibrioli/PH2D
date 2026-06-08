@@ -374,6 +374,18 @@ mod brush_engine {
     }
 
     #[test]
+    fn watercolor_params_field_count_is_capped() {
+        // ADR-0079 — the per-brush watercolor controls DTO (a RenderingParams field).
+        // 15 used, cap ≤ 16 (1 headroom). Insulates the brush-file contract from the
+        // solver-internal DiffusionParams (which we extend freely).
+        assert_capped(
+            count_struct_fields(CRATE, "WatercolorParams"),
+            16,
+            "WatercolorParams (ADR-0079 §3)",
+        );
+    }
+
+    #[test]
     fn brush_no_sub_sub_structs() {
         // ADR-0044 §2.2 — sub-structs são folha. Esta checagem é frouxa em texto
         // (uma sub-struct pode listar `Option<NewField>` legítimo) mas

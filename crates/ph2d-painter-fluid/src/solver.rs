@@ -18,7 +18,7 @@
 //! phase 2 against a headless `GpuContext`, with a CPU↔GPU parity test.
 
 use crate::params::FluidParams;
-use ph2d_painter_brush::diffusion::{DiffusionGrid, RELAX_ITERS};
+use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, RELAX_ITERS};
 
 /// The GPU compute shader (mirror of the CPU diffusion-advection). Embedded so a
 /// dev-test can validate it through naga before any GPU init, and phase 2 can
@@ -1008,6 +1008,44 @@ impl FluidSolver {
         gp.viscosity = viscosity;
         gp.drag = drag;
         gp.pressure = pressure;
+        self.params_cache.set(gp);
+        queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
+    }
+
+    /// **Upload ALL 15 solver controls from a [`DiffusionParams`] at once (ADR-0079).** The
+    /// consolidated per-brush entry the live bridge calls each stroke: the artist's
+    /// `WatercolorParams` (projected to `DiffusionParams`) drives the GPU solver directly,
+    /// replacing the old `set_params(default)` + `set_deposition(const)` +
+    /// `set_shallow_water(const)` trio. Resets the dispatch region to the full grid (the
+    /// per-frame `step_resident_splat` re-scopes it). Those three methods stay for the
+    /// parity tests; this is the one the live path uses.
+    pub fn set_from_diffusion(&self, queue: &wgpu::Queue, dp: &DiffusionParams) {
+        let gp = GpuParams {
+            width: self.width,
+            height: self.height,
+            diffusivity: dp.diffusivity,
+            evaporation: dp.evaporation,
+            downhill: dp.downhill,
+            flow_outward: dp.flow_outward,
+            w_lo: dp.w_lo,
+            w_hi: dp.w_hi,
+            perm_valley: dp.perm_valley,
+            perm_crest: dp.perm_crest,
+            region_ox: 0,
+            region_oy: 0,
+            region_w: self.width,
+            region_h: self.height,
+            deposition: dp.deposition,
+            deposition_dry: dp.deposition_dry,
+            granulation: dp.granulation,
+            velocity: dp.velocity,
+            viscosity: dp.viscosity,
+            drag: dp.drag,
+            pressure: dp.pressure,
+            _pad0: 0.0,
+            _pad1: 0.0,
+            _pad2: 0.0,
+        };
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
     }

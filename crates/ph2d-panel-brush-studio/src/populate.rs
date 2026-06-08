@@ -45,6 +45,7 @@ pub fn populate(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::SEC_RENDERING);
     store.mark_collapsible_section(ids::SEC_COLOR);
     store.mark_collapsible_section(ids::SEC_DYNAMICS);
+    store.mark_collapsible_section(ids::SEC_WATERCOLOR);
 
     let s = BrushStudioSnapshot::default();
 
@@ -214,6 +215,26 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SPEED_SPACING_CHIP,
         s.speed_spacing,
     );
+
+    // ── Watercolor — all 15 fluid-solver controls (ADR-0079) ────────────────
+    // The slider stores the normalized 0..1; the chip's affine map (scale = max−min,
+    // offset = min) shows the physical value — the SAME mapping the paint + the tool's
+    // `set_normalized` use. Index-derived ids (no per-control const), iterating the
+    // single CONTROLS source.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_tool_painter::WatercolorParams;
+    for i in 0..WatercolorParams::COUNT {
+        let c = &WatercolorParams::CONTROLS[i];
+        slider_chip(
+            store,
+            core_ids::painter_studio_watercolor_slider_id(i),
+            core_ids::painter_studio_watercolor_chip_id(i),
+            s.watercolor[i],
+            c.max - c.min,
+            c.min,
+            false,
+        );
+    }
 }
 
 /// Register a percent slider+chip pair (0..1 → 0..100%, integer display).
@@ -405,6 +426,28 @@ mod tests {
         let s = tool.brush_studio_snapshot();
         assert!((s.jitter_size - 0.45).abs() < 1e-6);
         assert!((s.jitter_opacity - 0.65).abs() < 1e-6);
+    }
+
+    #[test]
+    fn watercolor_controls_round_trip_through_tool() {
+        // ADR-0079: each of the 15 watercolor sliders drives `Watercolor(i)` → the tool's
+        // `set_normalized(i, v)` → the brush's WatercolorParams → `brush_studio_snapshot`'s
+        // normalized value must echo the slider position back. Proves the whole panel↔tool
+        // loop (index-derived id → payload variant → per-control range map).
+        use ph2d_tool_painter::WatercolorParams;
+        for i in 0..WatercolorParams::COUNT {
+            let mut tool = PainterTool::default();
+            tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
+                BrushParam::Watercolor(i as u8),
+                0.3,
+            ));
+            let got = tool.brush_studio_snapshot().watercolor[i];
+            assert!(
+                (got - 0.3).abs() < 1e-6,
+                "watercolor control {i} ({}) must round-trip panel<->tool (got {got})",
+                WatercolorParams::CONTROLS[i].label
+            );
+        }
     }
 
     #[test]

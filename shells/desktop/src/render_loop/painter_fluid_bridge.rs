@@ -22,7 +22,7 @@
 use ph2d_editor::ToolRegistry;
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::wet_composite::prepare_wet_composite_from_stroke;
-use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidParams, FluidSolver};
+use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidSolver};
 use std::cell::RefCell;
 use std::time::Instant;
 
@@ -223,26 +223,15 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.solver
                 .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
-            sess.solver.set_params(&gpu.queue, &FluidParams::default());
-            // ADR-0078 S3c: enable the watercolor deposition layer (edge-darkening +
-            // granulation) for the live stroke. `cs_combine` then feeds the compositor
-            // `flowing + deposited` via `total_buffer()`.
-            sess.solver.set_deposition(
-                &gpu.queue,
-                ph2d_painter_fluid::WATERCOLOR_DEPOSITION_BASE,
-                ph2d_painter_fluid::WATERCOLOR_DEPOSITION_DRY,
-                ph2d_painter_fluid::WATERCOLOR_GRANULATION,
-            );
-            // ADR-0078 S3d: enable the shallow-water velocity layer — pigment now advects
-            // along the momentum-carrying flow `(u,v)` (MoveWater + pressure projection)
-            // instead of the static gradient, giving directional flow + backruns/cauliflower.
-            sess.solver.set_shallow_water(
-                &gpu.queue,
-                ph2d_painter_fluid::WATERCOLOR_VELOCITY,
-                ph2d_painter_fluid::WATERCOLOR_VISCOSITY,
-                ph2d_painter_fluid::WATERCOLOR_DRAG,
-                ph2d_painter_fluid::WATERCOLOR_PRESSURE,
-            );
+            // ADR-0079: drive ALL 15 solver controls (base diffusion + deposition +
+            // shallow-water flow) from the ACTIVE BRUSH's per-brush `WatercolorParams`
+            // (projected to `DiffusionParams`), replacing the old `FluidParams::default()`
+            // + global `WATERCOLOR_*` consts. The artist's Brush Studio "Watercolor"
+            // sliders now drive the live wash. `cs_combine` still feeds the compositor
+            // `flowing + deposited` via `total_buffer()`; the velocity layer is dormant if
+            // the brush sets `velocity = 0`.
+            sess.solver
+                .set_from_diffusion(&gpu.queue, &painter.fluid_diffusion_params());
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }

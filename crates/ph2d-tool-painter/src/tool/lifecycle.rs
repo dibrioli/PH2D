@@ -461,9 +461,20 @@ impl PainterTool {
 
     /// Per-step evaporation (the shell evaporates the CPU water mirror by
     /// `this × substeps` per frame — the GPU never touches water in the resident path).
+    /// Per-brush (ADR-0079): reads the active brush's watercolor `evaporation` so the CPU
+    /// water mirror dries at the same rate the artist set for the GPU solver.
     #[must_use]
     pub fn fluid_evaporation(&self) -> f32 {
-        ph2d_painter_brush::diffusion::DiffusionParams::default().evaporation
+        self.brush.rendering.watercolor.evaporation
+    }
+
+    /// The active brush's full watercolor tuning projected onto the solver's
+    /// [`DiffusionParams`] (ADR-0079) — the bridge uploads ALL 15 controls (diffusion +
+    /// deposition + shallow-water flow) to the GPU solver per stroke via
+    /// `FluidSolver::set_from_diffusion`, replacing the old global `WATERCOLOR_*` consts.
+    #[must_use]
+    pub fn fluid_diffusion_params(&self) -> ph2d_painter_brush::diffusion::DiffusionParams {
+        self.brush.rendering.watercolor.to_diffusion()
     }
 
     /// The static paper-height field of the live grid (clone) — the shell uploads it
@@ -1478,6 +1489,10 @@ impl PainterTool {
             P::DarknessJitter => b.color_dynamics.stamp_darkness_jitter = v.clamp(0.0, 1.0),
             P::SizeJitter => b.dynamics.jitter_size = v.clamp(0.0, 1.0),
             P::OpacityJitter => b.dynamics.jitter_opacity = v.clamp(0.0, 1.0),
+            // Watercolor control `i` (ADR-0079): the slider's normalized 0..1 maps onto the
+            // control's physical range. Takes effect at the next begin_stroke (the bridge
+            // reads `watercolor` then), like the other fluid params.
+            P::Watercolor(i) => b.rendering.watercolor.set_normalized(i as usize, v),
         }
         self.cached_brush_hash = None;
     }
@@ -1537,6 +1552,7 @@ impl PainterTool {
             speed_size: b.dynamics.speed_size,
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
+            watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

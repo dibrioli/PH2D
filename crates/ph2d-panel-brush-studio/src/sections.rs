@@ -37,6 +37,8 @@ pub(crate) fn paint_sections(
     y = paint_color_dynamics_section(ctx, x, w, y, snapshot, theme);
     y = paint_section_separator(ctx.scene, theme, x, w, y);
     y = paint_dynamics_section(ctx, x, w, y, snapshot, theme);
+    y = paint_section_separator(ctx.scene, theme, x, w, y);
+    y = paint_watercolor_section(ctx, x, w, y, snapshot, theme);
     y
 }
 
@@ -406,6 +408,49 @@ fn paint_dynamics_section(
             &disp,
             sld,
             chip,
+            theme,
+        );
+    }
+    y
+}
+
+/// **Watercolor section (ADR-0079)** — all 15 fluid-solver controls, driven from the
+/// active brush's `WatercolorParams`. Each row is a slider storing the normalized `0..1`
+/// (mapped onto the control's physical `[min,max]` range) with a chip showing the physical
+/// value. Iterates `WatercolorParams::CONTROLS` (the single source of labels + ranges) and
+/// the index-derived NodeId helpers, so adding/reordering a control needs no panel edit
+/// here. Only consumed when the brush's `Fluid` toggle (Rendering section) is on.
+fn paint_watercolor_section(
+    ctx: &mut PaintCtx,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    s: &BrushStudioSnapshot,
+    theme: Theme,
+) -> f32 {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_tool_painter::WatercolorParams;
+    let (hy, collapsed) = section_header(ctx, ids::SEC_WATERCOLOR, "Watercolor", x, w, y, theme);
+    y = hy;
+    if collapsed {
+        return y;
+    }
+    for i in 0..WatercolorParams::COUNT {
+        let c = &WatercolorParams::CONTROLS[i];
+        let v01 = s.watercolor[i];
+        let phys = c.min + v01 * (c.max - c.min);
+        let disp = format!("{phys:.3}"); // LITERAL-PX-OK: solver param value, not a px dimension
+        y = mapped_row(
+            ctx,
+            x,
+            w,
+            y,
+            c.label,
+            v01,
+            f64::from(phys),
+            &disp,
+            core_ids::painter_studio_watercolor_slider_id(i),
+            core_ids::painter_studio_watercolor_chip_id(i),
             theme,
         );
     }

@@ -55,10 +55,16 @@ camada ligada; validar FPS + visual (anel de backrun) com o Enio antes de qualqu
    tuning, os 4 consts estão em `solver.rs`. **Commits locais, não pushados** (§0.3).
 1. ~~**S3d — campo de velocidade shallow-water**~~ **FEITO** (S3d-a/b/c, ver §1). MoveWater (add_forces +
    Jacobi project) + advect-por-`(u,v)`; dormant→look antigo; paridade GPU 0 ULP. A física da alma chegou.
-2. **S4 — multi-pigmento K–M + multi-camada @4K**: granulação/staining por-pigmento; encadear campos
-   residentes no compositor de camadas (ADR-0048). Aqui entra a **emenda do `FluidParams`** (3 slots de
-   headroom → `deposition/deposition_dry/granulation` per-brush, sob ADR-0078) + atualizar o gate
-   `architecture_painter_contract_surface`.
+2. ~~**Controles de aquarela per-brush (a "emenda" do S4)**~~ **FEITO** ([ADR-0079](architecture/decisions/0079-watercolor-params-per-brush-exposure.md)).
+   Os **15 controles** do solver (8 difusão + 3 deposição + 4 shallow-water) viraram per-brush + expostos
+   ao artista numa subseção **"Watercolor"** do Brush Studio (sliders 0..1 mapeados por range). Modelo:
+   `WatercolorParams` (DTO de brush capado ≤16, em `ph2d-painter-brush`, separado do `DiffusionParams`
+   interno) em `RenderingParams.watercolor`; o bridge dirige o solver via `FluidSolver::set_from_diffusion`
+   (substitui os consts globais). **NÃO** foi a emenda do `FluidParams` (mantido intacto) — um DTO dedicado
+   isola o contrato de brush-file do churn do solver. Gate `WatercolorParams ≤ 16` adicionado; round-trip
+   panel↔tool verde. ⚠️ **Visual pendente (Enio):** abrir Brush Studio → seção Watercolor → mexer sliders.
+   **Resta do S4:** multi-pigmento K–M + multi-camada @4K (granulação/staining por-pigmento; encadear
+   campos residentes no compositor de camadas, ADR-0048).
 3. **S5 — refinamento**: advecção BFECC (transporte nítido), supersampling adaptativo, capilar LBM
    (MoXi) p/ percolação realista, tune 120Hz.
 

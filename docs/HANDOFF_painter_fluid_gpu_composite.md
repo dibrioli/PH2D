@@ -146,6 +146,32 @@ e focado** (reescrita fundacional do hot-path solver/tool/render-loop, validaç�
 > paper+dims+existência (`O(grid)` **1×/traço**, não por-frame). 4K real quer **paper-gen no GPU** + dropar
 > o grid CPU. O custo por-frame já é `O(dabs)`+passes GPU; o `O(grid)`/traço de alloc+paper continua.
 
+### 🎯 NORTE: ADR-0078 — padrão-ouro definitivo (ratificado pelo Enio 2026-06-08)
+[ADR-0078](architecture/decisions/0078-watercolor-gold-standard-resident-tiled-shallow-water.md): aquarela
+física **Curtis 1997 de 3 camadas** (shallow-water velocidade + deposição/granulação + capilar
+backruns/edge-darkening) + Kubelka–Munk multi-pigmento, a **4K, multi-camada, 60–120Hz**, via engine
+**GPU-residente tiled-sparse** (`O(frente molhada)`) integrada como **nó do compositor**. Supera Procreate/
+Fresco (aproximação) e Rebelle (não é 4K-multicamada-real-time). A difusão de ADR-0049 vira graceful-degrade;
+referência CPU vira det-fallback. Estágios S0..S5.
+
+**Medido (Metal `--release`) — bench headless `perf_resident`:**
+| canvas | step+composite (traço típico) | nota |
+|---|---|---|
+| 1408×768 | **1.8ms** | era 3.4ms pré-S1 |
+| 2048×2048 | **4.8ms** | era 8.2ms |
+| 3840×2160 (4K) | **6.5ms** | era 13.1ms — ~10ms de folga sob 60Hz |
+(wash de canvas cheio fica ~21ms — região = grid inteiro, o pior caso real.)
+
+**Estágios:**
+- **S0** núcleo GPU-residente (dab-list) — ✅ smoke OK (693b6f3, 1d31dc5, 8772132).
+- **S1a** passes do solver **region-scoped** (`O(frente)`, bit-exato dentro da região; invariante
+  solver⊇composite) — ✅ commit `0ec2978`, 2× em 4K típico. **PENDENTE: re-validação visual do Enio**
+  (muda o caminho vivo — risco classe-§2 apesar do teste bit-exato).
+- **S1b** active-tile set + indirect dispatch (regiões disjuntas) + dropar grid CPU + paper-gen GPU.
+- **S2** composite como nó do compositor + zero readback por-frame (foundational `ph2d-render`) + bake no pen-up.
+- **S3** física shallow-water de 3 camadas (a alma: backruns/edge-darkening/granulação) — agora cabe no budget.
+- **S4** multi-pigmento K–M + multi-camada @4K. **S5** BFECC + supersampling adaptativo + capilar LBM (MoXi) + 120Hz.
+
 ## §5 — EM ABERTO (deferidos menores, não-bloqueantes)
 
 - **Canvas de pintura grande** (o gap real pra aquarela brilhar): hoje só edita sprites 64×64 do atlas

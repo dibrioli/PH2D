@@ -167,6 +167,44 @@ fn composite_rows_matches_full_band() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn composite_frame_fast_path_matches_one_shot() {
+    // The persistent-buffer hot path (begin_stroke + composite_frame) must produce
+    // the SAME band + rect as the per-call one-shot (composite_buffer_rows) — proves
+    // the perf rewrite didn't change pixels.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let brush = prepare_wet_composite(pig, [0.8, 0.6, 0.02]);
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+    let mut compositor = FluidCompositor::new(&gpu.device);
+
+    // Fast path.
+    compositor.begin_stroke(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, solver.pigment_buffer(),
+        &backdrop, &brush,
+    );
+    let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+
+    // One-shot (the tested path).
+    let (band_one, rect_one) = compositor.composite_buffer_rows(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, solver.pigment_buffer(),
+        &backdrop, &brush, region,
+    );
+    assert_eq!(rect_fast, rect_one, "fast-path rect must match one-shot");
+    assert_eq!(band_fast, band_one, "fast-path band must match one-shot (byte-exact)");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_step_then_composite_resident_matches_cpu() {
     // The END-TO-END stall-removing seam: step the field on the GPU, then composite
     // reading the RESIDENT `pig_a` buffer directly (no pigment readback between) —

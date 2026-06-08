@@ -75,12 +75,36 @@ impl GpuCoeffs {
     }
 }
 
-/// The live GPU compositor: one compute pipeline + its bind-group layout, built
-/// once per device. Buffers are created per composite call (sized to the canvas);
-/// a persistent-buffer fast path is a later optimization.
+/// Persistent per-stroke GPU state for the fast path — buffers + bind group reused
+/// across frames so the hot loop NEVER allocates or re-uploads the canvas. The
+/// backdrop + coeffs are constant for a stroke (uploaded once in
+/// [`FluidCompositor::begin_stroke`]); only the 64-byte `params` (the region) is
+/// written per frame.
+struct CompositeState {
+    cw: u32,
+    ch: u32,
+    gw: u32,
+    gh: u32,
+    scale: u32,
+    coverage_k: f32,
+    pcol: [f32; 3],
+    color_sum: f32,
+    params: wgpu::Buffer,
+    coeffs: wgpu::Buffer,
+    out: wgpu::Buffer,
+    backdrop: wgpu::Buffer,
+    staging: wgpu::Buffer,
+    bind: wgpu::BindGroup,
+}
+
+/// The live GPU compositor: one compute pipeline + bind-group layout (built once per
+/// device) + persistent per-stroke buffers ([`CompositeState`]) for the hot loop.
+/// The one-shot `composite_*` methods (per-call buffers) are the unit-test / CPU
+/// convenience; the shell drives [`Self::begin_stroke`] + [`Self::composite_frame`].
 pub struct FluidCompositor {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
+    state: Option<CompositeState>,
 }
 
 impl FluidCompositor {
@@ -133,7 +157,180 @@ impl FluidCompositor {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
-        Self { pipeline, bgl }
+        Self { pipeline, bgl, state: None }
+    }
+
+    /// **Fast-path stroke setup (call once per stroke / when the backdrop or brush
+    /// changes).** (Re)allocates the persistent canvas buffers only on a size change,
+    /// uploads the backdrop + the amortised brush coeffs ONCE, and rebuilds the bind
+    /// group against the solver's resident `pigment_buf`. After this, [`Self::composite_frame`]
+    /// runs each frame writing only the 64-byte region uniform — no per-frame
+    /// allocation, no canvas re-upload (the W15.3 hot-loop perf fix).
+    #[allow(clippy::too_many_arguments)]
+    pub fn begin_stroke(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        gw: u32,
+        gh: u32,
+        cw: u32,
+        ch: u32,
+        scale: u32,
+        coverage_k: f32,
+        pigment_buf: &wgpu::Buffer,
+        backdrop_rgba: &[u8],
+        brush: &WetCompositeBrush,
+    ) {
+        let canvas_bytes = (cw as usize * ch as usize * 4) as u64;
+        // (Re)create the canvas-sized buffers only when the size changes.
+        let resized = self.state.as_ref().map(|s| (s.cw, s.ch)) != Some((cw, ch));
+        if resized {
+            let params = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite params (persistent)"),
+                size: core::mem::size_of::<GpuU>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let coeffs = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite coeffs (persistent)"),
+                size: core::mem::size_of::<GpuCoeffs>() as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let backdrop = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite backdrop (persistent)"),
+                size: canvas_bytes,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let out = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite out (persistent)"),
+                size: canvas_bytes,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            let staging = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite readback (persistent)"),
+                size: canvas_bytes,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            // Placeholder bind; rebuilt below (needs pigment_buf).
+            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("composite bg (persistent)"),
+                layout: &self.bgl,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: params.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: backdrop.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: out.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 4, resource: coeffs.as_entire_binding() },
+                ],
+            });
+            self.state = Some(CompositeState {
+                cw, ch, gw, gh, scale, coverage_k,
+                pcol: brush.pcol, color_sum: brush.color_sum,
+                params, coeffs, out, backdrop, staging, bind,
+            });
+        }
+        // SAFETY of unwrap: `state` is Some after the resize branch (or already was).
+        let st = self.state.as_mut().expect("composite state set");
+        st.gw = gw;
+        st.gh = gh;
+        st.scale = scale;
+        st.coverage_k = coverage_k;
+        st.pcol = brush.pcol;
+        st.color_sum = brush.color_sum;
+        // Backdrop + coeffs are constant for the stroke → upload once here.
+        queue.write_buffer(&st.backdrop, 0, backdrop_rgba);
+        queue.write_buffer(&st.coeffs, 0, bytemuck::bytes_of(&GpuCoeffs::build(brush)));
+        // Rebuild the bind group each stroke so it tracks the current resident pig_a
+        // (cheap — just resource references; the canvas buffers are reused).
+        if !resized {
+            st.bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("composite bg (persistent)"),
+                layout: &self.bgl,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: st.params.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 1, resource: pigment_buf.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 2, resource: st.backdrop.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 3, resource: st.out.as_entire_binding() },
+                    wgpu::BindGroupEntry { binding: 4, resource: st.coeffs.as_entire_binding() },
+                ],
+            });
+        }
+    }
+
+    /// **Fast-path per-frame composite (after [`Self::begin_stroke`]).** Writes only
+    /// the 64-byte region uniform, dispatches over the bbox, and reads back the wet
+    /// row band. Reuses the persistent buffers/bind — zero per-frame allocation, zero
+    /// canvas re-upload. Returns `(band, rect)` like [`Self::composite_buffer_rows`];
+    /// `(vec![], (0,0,0,0))` when the region is empty.
+    #[must_use]
+    pub fn composite_frame(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        grid_region: (u32, u32, u32, u32),
+    ) -> (Vec<u8>, (u32, u32, u32, u32)) {
+        let Some(st) = self.state.as_ref() else {
+            return (Vec::new(), (0, 0, 0, 0));
+        };
+        let (px_lo, py_lo, px_hi, py_hi) =
+            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
+        if py_hi <= py_lo || px_hi <= px_lo {
+            return (Vec::new(), (0, 0, 0, 0));
+        }
+        let uni = GpuU {
+            cw: st.cw,
+            ch: st.ch,
+            gw: st.gw,
+            gh: st.gh,
+            inv: 1.0 / st.scale as f32,
+            color_sum: st.color_sum,
+            coverage_k: st.coverage_k,
+            _pad0: 0.0,
+            origin_x: px_lo,
+            origin_y: py_lo,
+            end_x: px_hi,
+            end_y: py_hi,
+            pcol: [st.pcol[0], st.pcol[1], st.pcol[2], 0.0],
+        };
+        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
+
+        let row_bytes = u64::from(st.cw) * 4;
+        let band_off = u64::from(py_lo) * row_bytes;
+        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
+        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
+        let mut enc = device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("composite frame") });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite frame pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &st.bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+        }
+        enc.copy_buffer_to_buffer(&st.out, band_off, &st.staging, 0, band_bytes);
+        queue.submit([enc.finish()]);
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        st.staging.slice(0..band_bytes).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let rows = st.staging.slice(0..band_bytes).get_mapped_range().to_vec();
+        st.staging.unmap();
+        (rows, (px_lo, py_lo, px_hi, py_hi))
+    }
+
+    /// Drop the persistent stroke state (frees the canvas buffers) — call when the
+    /// field is gone so VRAM isn't held between strokes.
+    pub fn end_stroke(&mut self) {
+        self.state = None;
     }
 
     /// One-shot composite to an RGBA8 byte buffer, uploading a CPU pigment field

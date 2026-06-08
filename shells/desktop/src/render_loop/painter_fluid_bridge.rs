@@ -63,18 +63,41 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     };
     let capable = ph2d_host::MemoryBudget { vram_free_mb: 256, tier }.fluid_capable();
     // W15.3 full-res: a capable GPU runs the NEXT fluid field at full canvas
-    // resolution (sharp edges / fine bleeds). Set every frame (even with no live
-    // field) so it's in effect before the next `begin_stroke`.
+    // resolution. Set every frame (even with no live field) so it's in effect before
+    // the next `begin_stroke`.
     painter.set_fluid_hires(capable);
-    if !painter.has_wet_field()
-        || !ph2d_painter_fluid::fluid_pass_eligible(true, capable, f32::INFINITY)
-    {
+
+    let eligible = ph2d_painter_fluid::fluid_pass_eligible(true, capable, f32::INFINITY);
+    if !eligible || !painter.fluid_brush_enabled() {
+        // Not a GPU-fluid scenario → hand back to the CPU path + free the session.
         painter.set_gpu_fluid_driven(false);
         SESSION.with(|s| *s.borrow_mut() = None);
         return;
     }
-    painter.set_gpu_fluid_driven(true);
 
+    // ── PRE-WARM ──────────────────────────────────────────────────────────────
+    // Fluid brush selected but no live field yet (hovering / between strokes): build
+    // the solver + compositor NOW so the big composite shader compiles BEFORE the
+    // first dab — no hitch when the stroke starts. Keep the session warm.
+    if !painter.has_wet_field() {
+        painter.set_gpu_fluid_driven(false);
+        if let Some(dims) = painter.fluid_prewarm_dims() {
+            SESSION.with(|cell| {
+                let mut slot = cell.borrow_mut();
+                if slot.as_ref().map(|s| s.dims) != Some(dims) {
+                    *slot = Some(FluidSession {
+                        solver: FluidSolver::new(&gpu.device, dims.0, dims.1),
+                        compositor: FluidCompositor::new(&gpu.device),
+                        dims,
+                        epoch: u64::MAX,
+                    });
+                }
+            });
+        }
+        return;
+    }
+
+    painter.set_gpu_fluid_driven(true);
     let Some(dims) = painter.fluid_grid_dims() else {
         return;
     };
@@ -90,7 +113,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
 
     SESSION.with(|cell| {
         let mut slot = cell.borrow_mut();
-        // (Re)build the session on a size change; force a reset by mismatching epoch.
+        // (Re)build the session on a grid-size change (pre-warm usually already did).
         if slot.as_ref().map(|s| s.dims) != Some(dims) {
             *slot = Some(FluidSession {
                 solver: FluidSolver::new(&gpu.device, dims.0, dims.1),
@@ -102,51 +125,47 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         let Some(sess) = slot.as_mut() else {
             return;
         };
-        sess.solver.set_params(&gpu.queue, &FluidParams::default());
-        // New stroke (or new session) → reset the resident pigment + upload paper.
+        // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
+        // GPU-clear the resident pigment (no zero-upload), push solver params + the
+        // static paper, and prime the compositor with the constant backdrop + brush
+        // coeffs. After this, the per-frame path uploads only a 64-byte region.
         if sess.epoch != epoch {
-            sess.solver.clear_resident_pigment(&gpu.queue);
+            sess.solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+            sess.solver.set_params(&gpu.queue, &FluidParams::default());
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
+            }
+            if let Some(backdrop) = painter.fluid_backdrop() {
+                let brush =
+                    prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
+                sess.compositor.begin_stroke(
+                    &gpu.device,
+                    &gpu.queue,
+                    dims.0,
+                    dims.1,
+                    cw,
+                    ch,
+                    scale,
+                    coverage_k,
+                    sess.solver.pigment_buffer(),
+                    backdrop,
+                    &brush,
+                );
             }
             sess.epoch = epoch;
         }
 
-        // This frame's dabs + water mirror (clears the grid pigment, evaporates water).
+        // ── Per-frame hot loop (no allocation, no canvas upload) ──
         let Some(inp) = painter.fluid_frame_step_inputs(evap_per_frame) else {
-            // Bare field — let the dry-check drop it.
             painter.fluid_dry_check_and_drop();
             return;
         };
         sess.solver
             .step_resident(&gpu.device, &gpu.queue, &inp.water, &inp.deposit, substeps);
-
-        // Composite reading the resident pigment → the wet row band → canvas_rgba.
-        let composited = painter.fluid_backdrop().map(|backdrop| {
-            let brush = prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
-            sess.compositor.composite_buffer_rows(
-                &gpu.device,
-                &gpu.queue,
-                dims.0,
-                dims.1,
-                cw,
-                ch,
-                scale,
-                coverage_k,
-                sess.solver.pigment_buffer(),
-                backdrop,
-                &brush,
-                inp.region,
-            )
-        });
-        if let Some((band, rect)) = composited
-            && !band.is_empty()
-        {
+        let (band, rect) = sess.compositor.composite_frame(&gpu.device, &gpu.queue, inp.region);
+        if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
-
-        // Dry-check on the CPU water mirror; drop the field when it dries (its final
-        // pigment was just composited).
         painter.fluid_dry_check_and_drop();
     });
 }

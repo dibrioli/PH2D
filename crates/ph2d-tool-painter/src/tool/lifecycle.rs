@@ -365,6 +365,27 @@ impl PainterTool {
         self.fluid_hires = v;
     }
 
+    /// `true` when the active brush opts into the live wet field — the shell uses this
+    /// to PRE-WARM the GPU solver+compositor (compile the big composite shader) before
+    /// the first dab, so the stroke doesn't hitch on first use.
+    #[must_use]
+    pub fn fluid_brush_enabled(&self) -> bool {
+        self.brush.rendering.fluid_enabled
+    }
+
+    /// The grid dims a fresh field WOULD use right now (`source_size / scale`, scale
+    /// from the current hires flag) — for the shell to pre-warm the solver at the
+    /// right size before `begin_stroke`. `None` if there's no source yet.
+    #[must_use]
+    pub fn fluid_prewarm_dims(&self) -> Option<(u32, u32)> {
+        let (sw, sh) = self.source_size;
+        if sw == 0 || sh == 0 {
+            return None;
+        }
+        let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+        Some(((sw / scale).max(1), (sh / scale).max(1)))
+    }
+
     /// Density→alpha coverage rate for the composite (`WET_COVERAGE_K`).
     #[must_use]
     pub fn fluid_coverage_k(&self) -> f32 {

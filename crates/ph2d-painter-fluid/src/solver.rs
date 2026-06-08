@@ -290,6 +290,17 @@ impl FluidSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(&zeros));
     }
 
+    /// Zero the resident pigment ON the GPU (`clear_buffer`, no CPU upload) — the
+    /// fast stroke-begin reset. Avoids the per-stroke megabyte upload of a zero buffer
+    /// that `clear_resident_pigment` does (a hitch on large canvases).
+    pub fn clear_resident_pigment_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid clear pig_a"),
+        });
+        enc.clear_buffer(&self.pig_a, 0, None);
+        queue.submit([enc.finish()]);
+    }
+
     /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment
     /// GPU-resident in `pig_a`: uploads the CPU water mirror (the CPU owns water +
     /// evaporation + the dry-check) and this frame's dab `deposit`, adds the deposit

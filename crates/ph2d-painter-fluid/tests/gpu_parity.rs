@@ -420,6 +420,52 @@ fn gpu_transfer_matches_cpu_deposition() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn gpu_combine_equals_flowing_plus_deposited() {
+    // ADR-0078 S3c: cs_combine writes `total = flowing + deposited` (the buffer the
+    // compositor reads, so deposited pigment is visible). After a deposition step the
+    // total must equal flowing + deposited cell-by-cell, inside the stepped region.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (40u32, 36u32);
+    let base = FluidParams::default();
+    let dabs: Vec<DabGpu> = [
+        (20.0f32, 18.0, 8.0, 0.8, [0.2f32, 0.3, 0.6]),
+        (24.0, 20.0, 5.0, 0.6, [0.4, 0.1, 0.1]),
+    ]
+    .iter()
+    .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+    .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.set_deposition(&gpu.queue, 0.03, 0.06, 1.5);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 12, (0, 0, w - 1, h - 1));
+    let flowing = solver.read_pigment(&gpu.device, &gpu.queue);
+    let deposited = solver.read_deposited(&gpu.device, &gpu.queue);
+    let total = solver.read_total(&gpu.device, &gpu.queue);
+
+    let mut worst = 0.0f32;
+    let mut total_sum = 0.0f32;
+    for i in 0..(w * h) as usize {
+        for k in 0..3 {
+            worst = worst.max((total[i][k] - (flowing[i][k] + deposited[i][k])).abs());
+            total_sum += total[i][k];
+        }
+    }
+    eprintln!("cs_combine: worst |total − (flowing+deposited)| = {worst:.9}, total mass = {total_sum:.3}");
+    assert!(total_sum > 0.05, "combine produced an empty total — pass is dead");
+    assert!(
+        worst < 1.0e-6,
+        "cs_combine must equal flowing + deposited (worst |Δ| = {worst})"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn region_scoped_step_matches_full_grid_inside_region() {
     // ADR-0078 S1: scoping the diffuse/advect/evaporate dispatch to the wet envelope
     // must NOT change the result inside the region. A cell's value depends only on its

@@ -143,14 +143,25 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         };
         // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
         if sess.epoch != epoch {
-            // Resident path: BOTH pigment + water start each stroke empty (water is
-            // GPU-resident now — `cs_splat` adds it, `cs_evaporate` dries it).
+            // Resident path: pigment + water + deposited start each stroke empty (water
+            // is GPU-resident now — `cs_splat` adds it, `cs_evaporate` dries it).
             sess.solver
                 .clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
             sess.solver
                 .clear_resident_water_gpu(&gpu.device, &gpu.queue);
+            sess.solver
+                .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
+            // ADR-0078 S3c: enable the watercolor deposition layer (edge-darkening +
+            // granulation) for the live stroke. `cs_combine` then feeds the compositor
+            // `flowing + deposited` via `total_buffer()`.
+            sess.solver.set_deposition(
+                &gpu.queue,
+                ph2d_painter_fluid::WATERCOLOR_DEPOSITION_BASE,
+                ph2d_painter_fluid::WATERCOLOR_DEPOSITION_DRY,
+                ph2d_painter_fluid::WATERCOLOR_GRANULATION,
+            );
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }
@@ -169,7 +180,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                     scale,
                     coverage_k,
                     ss,
-                    sess.solver.pigment_buffer(),
+                    // Composite the TOTAL (flowing + deposited) so edge-darkening +
+                    // granulation are visible (ADR-0078 S3c); equals flowing when
+                    // nothing is deposited, so non-deposition strokes are unchanged.
+                    sess.solver.total_buffer(),
                     backdrop,
                     &brush,
                 );

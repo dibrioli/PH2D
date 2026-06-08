@@ -45,8 +45,9 @@ pub use params::FluidParams;
 pub use sim::{FluidSim, GravitySource};
 #[cfg(feature = "fluid")]
 pub use solver::{
-    DabGpu, FLUID_WGSL, FieldStats, FluidSolver, MAX_DABS_PER_DISPATCH, REDUCE_WGSL, SPLAT_WGSL,
-    TRANSFER_WGSL, step_cpu_reference,
+    COMBINE_WGSL, DabGpu, FLUID_WGSL, FieldStats, FluidSolver, MAX_DABS_PER_DISPATCH, REDUCE_WGSL,
+    SPLAT_WGSL, TRANSFER_WGSL, WATERCOLOR_DEPOSITION_BASE, WATERCOLOR_DEPOSITION_DRY,
+    WATERCOLOR_GRANULATION, step_cpu_reference,
 };
 
 /// No-op surface compiled when the `fluid` feature is OFF (ADR-0049 §2.1). A

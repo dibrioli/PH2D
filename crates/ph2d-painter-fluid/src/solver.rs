@@ -40,6 +40,18 @@ pub const REDUCE_WGSL: &str = include_str!("shader/reduce.wgsl");
 /// deposited layer (edge-darkening + granulation). Dormant while deposition params 0.
 pub const TRANSFER_WGSL: &str = include_str!("shader/transfer.wgsl");
 
+/// The GPU combine shader (`cs_combine`, ADR-0078 S3c) — writes `total = flowing +
+/// deposited` so the compositor reads the whole pigment (wash + frozen layer).
+pub const COMBINE_WGSL: &str = include_str!("shader/combine.wgsl");
+
+/// Tasteful default watercolor deposition (ADR-0078 S3c) — applied to every live fluid
+/// stroke via [`FluidSolver::set_deposition`]. Tuned for a visible-but-natural dark
+/// perimeter (`_DRY`) + paper granulation (`_GRAN`) without muddying the wash (`_BASE`
+/// kept low). A later FluidParams amendment can make these per-brush.
+pub const WATERCOLOR_DEPOSITION_BASE: f32 = 0.012;
+pub const WATERCOLOR_DEPOSITION_DRY: f32 = 0.10;
+pub const WATERCOLOR_GRANULATION: f32 = 1.4;
+
 /// Result of [`FluidSolver::read_field_stats`]: the max wetness anywhere (the
 /// dry-check signal) + the wet bounding box (`None` when the field is bone-dry).
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -230,6 +242,11 @@ pub struct FluidSolver {
     transfer: wgpu::ComputePipeline,
     deposited: wgpu::Buffer,
     bg_transfer: wgpu::BindGroup,
+    /// Combine pass (`cs_combine`, ADR-0078 S3c): `total = flowing + deposited`, the
+    /// buffer the compositor reads (so deposited pigment is visible).
+    combine: wgpu::ComputePipeline,
+    total: wgpu::Buffer,
+    bg_combine: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -308,6 +325,8 @@ impl FluidSolver {
         let deposit = buf("fluid deposit", vec4n, wgpu::BufferUsages::empty());
         // Resident deposited-pigment layer (ADR-0078 S3); COPY_SRC for the parity readback.
         let deposited = buf("fluid deposited", vec4n, wgpu::BufferUsages::COPY_SRC);
+        // total = flowing + deposited (ADR-0078 S3c) — the buffer the compositor reads.
+        let total = buf("fluid total", vec4n, wgpu::BufferUsages::COPY_SRC);
         // bind group: (params, water, paper, pig_in, pig_out).
         let bg = |label: &str, pin: &wgpu::Buffer, pout: &wgpu::Buffer| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -545,6 +564,65 @@ impl FluidSolver {
                 },
             ],
         });
+
+        // ── Combine pass (`cs_combine`: total = flowing + deposited) ──
+        let combine_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-painter-fluid combine"),
+            source: wgpu::ShaderSource::Wgsl(COMBINE_WGSL.into()),
+        });
+        let combine_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-painter-fluid combine bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                storage(1, true),  // flowing = pig_a (read)
+                storage(2, true),  // deposited (read)
+                storage(3, false), // total (read_write)
+            ],
+        });
+        let combine_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ph2d-painter-fluid combine layout"),
+            bind_group_layouts: &[&combine_bgl],
+            immediate_size: 0,
+        });
+        let combine = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("ph2d-painter-fluid combine pipeline"),
+            layout: Some(&combine_layout),
+            module: &combine_module,
+            entry_point: Some("cs_combine"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+        let bg_combine = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-painter-fluid bg combine"),
+            layout: &combine_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: pig_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: deposited.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: total.as_entire_binding(),
+                },
+            ],
+        });
         Self {
             width,
             height,
@@ -596,6 +674,9 @@ impl FluidSolver {
             transfer,
             deposited,
             bg_transfer,
+            combine,
+            total,
+            bg_combine,
         }
     }
 
@@ -727,6 +808,15 @@ impl FluidSolver {
     #[must_use]
     pub fn deposited_buffer(&self) -> &wgpu::Buffer {
         &self.deposited
+    }
+
+    /// The combined-pigment buffer (`total = flowing + deposited`, ADR-0078 S3c) —
+    /// **bind THIS to the compositor** (not `pigment_buffer`) so the deposited layer
+    /// (edge-darkening + granulation) is visible. Refreshed each `step_resident_splat`
+    /// by `cs_combine`; equals `flowing` when nothing is deposited (look unchanged).
+    #[must_use]
+    pub fn total_buffer(&self) -> &wgpu::Buffer {
+        &self.total
     }
 
     /// Field dimensions (`width`, `height`) — the pigment buffer holds `width*height`
@@ -909,6 +999,18 @@ impl FluidSolver {
                 pass.dispatch_workgroups(gx, gy, 1);
             }
         }
+        // Combine once per frame (region-scoped, after the substeps): total = flowing +
+        // deposited — the buffer the compositor reads (ADR-0078 S3c). Params still hold
+        // the padded region, so `total` is fresh wherever the composite samples it.
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid combine pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.combine);
+            pass.set_bind_group(0, &self.bg_combine, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        }
         queue.submit([enc.finish()]);
         // No poll: the field stays GPU-resident; the compositor's readback (or a
         // sporadic `read_field_stats`) is the only sync point.
@@ -1067,6 +1169,36 @@ impl FluidSolver {
             label: Some("fluid deposited rb"),
         });
         enc.copy_buffer_to_buffer(&self.deposited, 0, &staging, 0, size);
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let out = bytemuck::cast_slice::<u8, [f32; 4]>(&mapped).to_vec();
+        drop(mapped);
+        staging.unmap();
+        out
+    }
+
+    /// Map the combined-pigment field (`total`, ADR-0078 S3c) back — the buffer the
+    /// compositor reads. For the `cs_combine` gate + the pen-up bake.
+    #[must_use]
+    pub fn read_total(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
+        let n = (self.width as usize) * (self.height as usize);
+        let size = (n * 16) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fluid total readback"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid total rb"),
+        });
+        enc.copy_buffer_to_buffer(&self.total, 0, &staging, 0, size);
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
         staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {

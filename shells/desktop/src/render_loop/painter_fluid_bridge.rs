@@ -95,17 +95,14 @@ thread_local! {
 const DRY_CHECK_EVERY: u64 = 20;
 
 /// Per-session GPU state for the live wet field: the resident solver, the K–M
-/// compositor, the field size, the stroke epoch it was last reset for, a frame
-/// counter pacing the sporadic dry-check readback, and whether the first composite of
-/// the stroke has been primed (synchronously) to avoid the pipeline's start-of-stroke
-/// 1-frame latency (the "click→stroke" delay).
+/// compositor, the field size, the stroke epoch it was last reset for, and a frame
+/// counter pacing the sporadic dry-check readback.
 struct FluidSession {
     solver: FluidSolver,
     compositor: FluidCompositor,
     dims: (u32, u32),
     epoch: u64,
     frame: u64,
-    primed: bool,
 }
 
 thread_local! {
@@ -171,7 +168,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                         dims,
                         epoch: u64::MAX,
                         frame: 0,
-                        primed: false,
                     });
                 }
             });
@@ -192,6 +188,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         return;
     }
 
+    let profile = PROFILE.with(|p| p.borrow_mut().enabled());
     SESSION.with(|cell| {
         let mut slot = cell.borrow_mut();
         // (Re)build the session on a grid-size change (pre-warm usually already did).
@@ -202,7 +199,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 dims,
                 epoch: u64::MAX,
                 frame: 0,
-                primed: false,
             });
         }
         let Some(sess) = slot.as_mut() else {
@@ -219,7 +215,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.solver
                 .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
-            sess.primed = false;
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
             // ADR-0078 S3c: enable the watercolor deposition layer (edge-darkening +
             // granulation) for the live stroke. `cs_combine` then feeds the compositor
@@ -271,7 +266,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.rgb))
             .collect();
-        let profile = PROFILE.with(|p| p.borrow_mut().enabled());
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is
@@ -279,19 +273,17 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         sess.solver
             .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         let t1 = profile.then(Instant::now);
-        // Composite. The FIRST frame of a stroke is primed SYNCHRONOUSLY so the stroke
-        // appears immediately (no pipeline start-of-stroke 1-frame delay — the
-        // "click→stroke" lag); a one-time ~2.6ms hitch at the click only. Every frame
-        // after is pipelined (async readback, no per-frame device.poll(wait) stall) —
-        // returns the PREVIOUS frame's band (1-frame-late, imperceptible mid-stroke).
-        let (band, rect) = if sess.primed {
-            sess.compositor
-                .composite_frame_pipelined(&gpu.device, &gpu.queue, region)
-        } else {
-            sess.primed = true;
-            sess.compositor
-                .composite_frame(&gpu.device, &gpu.queue, region)
-        };
+        // Composite SYNCHRONOUSLY (the validated S3c no-delay path): the stroke appears
+        // the same frame it's painted. This costs a per-frame device.poll(wait) (~140
+        // FPS) but has NO perceptible click→stroke delay. The pipelined async path
+        // (composite_frame_pipelined) trades that poll for 250 FPS but adds a frame of
+        // latency that — stacked on the structural "preview produced after sim_extract"
+        // frame — became perceptible. The definitive 250 + zero-delay fix is to produce
+        // the painter preview BEFORE sim_extract (drive-owns-slot reorder), a careful
+        // foundational pass; until then, no-delay wins over the extra FPS.
+        let (band, rect) = sess
+            .compositor
+            .composite_frame(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }

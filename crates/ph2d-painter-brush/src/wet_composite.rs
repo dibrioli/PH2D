@@ -113,29 +113,16 @@ pub struct WetCompositeBrush {
 /// pigments no longer read fully opaque).
 #[must_use]
 pub fn prepare_wet_composite(
-    pigment: &[[f32; 3]],
+    _pigment: &[[f32; 3]],
     stroke_color_linear: [f32; 3],
 ) -> WetCompositeBrush {
-    let mut tot = [0.0f32; 3];
-    for c in pigment {
-        tot[0] += c[0];
-        tot[1] += c[1];
-        tot[2] += c[2];
-    }
-    let tsum = (tot[0] + tot[1] + tot[2]).max(1.0e-6);
-    let pcol = [
-        (tot[0] / tsum * 3.0).min(1.0),
-        (tot[1] / tsum * 3.0).min(1.0),
-        (tot[2] / tsum * 3.0).min(1.0),
-    ];
-    let prepared = prepare_pigment(pcol);
-    let color_sum =
-        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(0.08);
-    WetCompositeBrush {
-        prepared,
-        pcol,
-        color_sum,
-    }
+    // **ADR-0079:** `pcol` now preserves the picked colour's VALUE (see
+    // [`prepare_wet_composite_from_stroke`]). A fluid stroke is one colour, so the grid
+    // pigment's chromaticity equals the stroke's — the grid is no longer needed to derive
+    // the brush, and deriving `pcol` from the grid total (chromaticity-only) would DROP the
+    // value, diverging from the live GPU path. So this delegates: both paths produce the
+    // identical value-preserving brush (`stroke_derived_brush_matches_grid_derived`).
+    prepare_wet_composite_from_stroke(stroke_color_linear)
 }
 
 /// Derive the composite brush from ONLY the stroke colour (linear sRGB) — for the
@@ -148,12 +135,18 @@ pub fn prepare_wet_composite(
 /// `pcol`/`color_sum` without needing the pigment field.
 #[must_use]
 pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCompositeBrush {
-    let ssum =
-        (stroke_color_linear[0] + stroke_color_linear[1] + stroke_color_linear[2]).max(1.0e-6);
+    // **ADR-0079 — preserve the picked colour's VALUE.** `pcol` is now the picked colour
+    // itself (linear, clamped to the K–M reflectance range), NOT just its chromaticity, so a
+    // dark red and a light red yield DIFFERENT washes (the wash converges to the picked
+    // colour at full coverage). Opacity stays COVERAGE-driven — `color_sum` still normalises
+    // the value out of the shader's `amount` (the ADR-0077 D12 fix: brightness must not read
+    // as opacity), so only the pigment *colour* gains value, not the build-up rate. Earlier
+    // this normalised the chromaticity (`/ssum·3`), discarding value (Enio 2026-06-08:
+    // "tanto faz vermelho claro ou escuro").
     let pcol = [
-        (stroke_color_linear[0] / ssum * 3.0).min(1.0),
-        (stroke_color_linear[1] / ssum * 3.0).min(1.0),
-        (stroke_color_linear[2] / ssum * 3.0).min(1.0),
+        stroke_color_linear[0].clamp(0.0, 1.0),
+        stroke_color_linear[1].clamp(0.0, 1.0),
+        stroke_color_linear[2].clamp(0.0, 1.0),
     ];
     let prepared = prepare_pigment(pcol);
     let color_sum =

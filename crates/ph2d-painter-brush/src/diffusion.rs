@@ -442,13 +442,14 @@ impl DiffusionGrid {
     /// new one written to scratch, then swapped. Dry cells (outside the wet mask) hold zero
     /// velocity (Curtis's `M`).
     ///
-    /// **The paper-slope `−β·∇h` force is deliberately NOT here** (ADR-0078 S3d tuning,
-    /// 2026-06-08): channelling FLOWING pigment into the tooth valleys *and* settling
-    /// DEPOSITED pigment there (`granulation`) double-counts the paper tooth — accumulated by
-    /// the velocity's momentum it produced visible large-scale mottling ("ruído grande").
-    /// Paper texture now enters once, via the deposition/granulation layer; the velocity
-    /// carries the flow + backruns. Edges stay natural because the flow isn't re-imprinting
-    /// the tooth. (`downhill` is unchanged for the static gradient-flow path.)
+    /// **The paper-slope `−β·∇h` (`downhill`) force is here but OFF in the preset** (ADR-0079,
+    /// 2026-06-08). It channels flowing pigment into the tooth valleys; accumulated by the
+    /// velocity's momentum it imprints the paper grain as visible mottling ("ruído grande" —
+    /// the original S3d complaint). So the **preset sets `downhill = 0`** (clean default —
+    /// paper texture enters once, via the deposition/granulation layer) but the artist can
+    /// dial it up via the "Downhill" slider for deliberate granular paper-flow. It was briefly
+    /// removed entirely, which left the slider a no-op (Enio 2026-06-08: "Downhill — nenhuma
+    /// mudança"); restoring it here makes the control live again.
     fn add_forces(&mut self, p: &DiffusionParams) {
         let (w, h) = (self.width, self.height);
         let n = (w as usize) * (h as usize);
@@ -470,6 +471,8 @@ impl DiffusionGrid {
                 }
                 let (xm, xp) = (x.saturating_sub(1), (x + 1).min(w - 1));
                 let (ym, yp) = (y.saturating_sub(1), (y + 1).min(h - 1));
+                let dhx = self.paper[li(xp, y)] - self.paper[li(xm, y)];
+                let dhy = self.paper[li(x, yp)] - self.paper[li(x, ym)];
                 let dwx = self.water[li(xp, y)] - self.water[li(xm, y)];
                 let dwy = self.water[li(x, yp)] - self.water[li(x, ym)];
                 // Neumann velocity Laplacian (border neighbour = self via the clamp).
@@ -479,8 +482,14 @@ impl DiffusionGrid {
                 let lap_v = self.vel_v[li(xm, y)] + self.vel_v[li(xp, y)] + self.vel_v[li(x, ym)]
                     + self.vel_v[li(x, yp)]
                     - 4.0 * self.vel_v[c];
-                let mut u = self.vel_u[c] - p.flow_outward * 0.5 * dwx + p.viscosity * lap_u;
-                let mut v = self.vel_v[c] - p.flow_outward * 0.5 * dwy + p.viscosity * lap_v;
+                let mut u = self.vel_u[c]
+                    - p.downhill * 0.5 * dhx
+                    - p.flow_outward * 0.5 * dwx
+                    + p.viscosity * lap_u;
+                let mut v = self.vel_v[c]
+                    - p.downhill * 0.5 * dhy
+                    - p.flow_outward * 0.5 * dwy
+                    + p.viscosity * lap_v;
                 u *= 1.0 - p.drag;
                 v *= 1.0 - p.drag;
                 nu[c] = (u * wet).clamp(-0.5, 0.5);
@@ -1176,6 +1185,7 @@ mod tests {
                 viscosity: 0.1,
                 drag: 0.08,
                 pressure: 0.4,
+                downhill: 0.0, // isolate the FlowOutward backrun (not paper channeling)
                 ..Default::default()
             };
             for _ in 0..40 {

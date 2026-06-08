@@ -109,16 +109,20 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let n = nb(x, y);
-    // Driven by the water-surface FlowOutward push only (the paper-slope −β·∇h force is
-    // deliberately excluded — see the CPU `add_forces` doc; it double-counted the tooth →
-    // large-scale mottling). Paper texture enters via the deposition/granulation layer.
+    // Driven by the FlowOutward push (−λ·∇w) + paper-slope channeling (−β·∇h, the `downhill`
+    // control). `downhill` is OFF in the preset (it imprints the paper grain as mottling —
+    // see the CPU `add_forces` doc) but live for the artist's "Downhill" slider.
+    let dhx = paper[idx(n.y, y)] - paper[idx(n.x, y)];
+    let dhy = paper[idx(x, n.w)] - paper[idx(x, n.z)];
     let dwx = water[idx(n.y, y)] - water[idx(n.x, y)];
     let dwy = water[idx(x, n.w)] - water[idx(x, n.z)];
     let vc = vel_in[i];
     // Neumann velocity Laplacian (border neighbour = self via the clamp).
     let lap = vel_in[idx(n.x, y)] + vel_in[idx(n.y, y)] + vel_in[idx(x, n.z)]
         + vel_in[idx(x, n.w)] - 4.0 * vc;
-    var uv = vc - vec2<f32>(P.flow_outward * 0.5 * dwx, P.flow_outward * 0.5 * dwy)
+    var uv = vc
+        - vec2<f32>(P.downhill * 0.5 * dhx, P.downhill * 0.5 * dhy)
+        - vec2<f32>(P.flow_outward * 0.5 * dwx, P.flow_outward * 0.5 * dwy)
         + P.viscosity * lap;
     uv = uv * (1.0 - P.drag);
     vel_out[i] = clamp(uv * wet, vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5));

@@ -62,7 +62,9 @@ impl Default for WatercolorParams {
         Self {
             diffusivity: d.diffusivity,
             evaporation: d.evaporation,
-            downhill: d.downhill,
+            // Downhill (paper-slope channeling) is OFF in the preset — it imprints the paper
+            // grain as mottling (ADR-0079); the artist opts in via the "Downhill" slider.
+            downhill: 0.0,
             flow_outward: d.flow_outward,
             w_lo: d.w_lo,
             w_hi: d.w_hi,
@@ -87,21 +89,23 @@ impl WatercolorParams {
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
     pub const CONTROLS: [WatercolorControl; 15] = [
+        // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
+        // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl { label: "Diffusivity", min: 0.0, max: 0.24 },
-        WatercolorControl { label: "Evaporation", min: 0.0, max: 0.05 },
-        WatercolorControl { label: "Downhill", min: 0.0, max: 0.5 },
-        WatercolorControl { label: "Bleed", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Evaporation", min: 0.0, max: 0.08 },
+        WatercolorControl { label: "Downhill", min: 0.0, max: 0.3 },
+        WatercolorControl { label: "Bleed", min: 0.0, max: 2.0 },
         WatercolorControl { label: "Wet Gate Lo", min: 0.0, max: 0.5 },
         WatercolorControl { label: "Wet Gate Hi", min: 0.0, max: 1.0 },
         WatercolorControl { label: "Perm Valley", min: 0.0, max: 1.0 },
         WatercolorControl { label: "Perm Crest", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Deposition", min: 0.0, max: 0.1 },
-        WatercolorControl { label: "Edge Darkening", min: 0.0, max: 0.4 },
-        WatercolorControl { label: "Granulation", min: 0.0, max: 4.0 },
-        WatercolorControl { label: "Flow Velocity", min: 0.0, max: 2.0 },
+        WatercolorControl { label: "Deposition", min: 0.0, max: 0.3 },
+        WatercolorControl { label: "Edge Darkening", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Granulation", min: 0.0, max: 8.0 },
+        WatercolorControl { label: "Flow Velocity", min: 0.0, max: 3.0 },
         WatercolorControl { label: "Viscosity", min: 0.0, max: 0.24 },
-        WatercolorControl { label: "Drag", min: 0.0, max: 0.5 },
-        WatercolorControl { label: "Backrun", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Drag", min: 0.0, max: 1.0 },
+        WatercolorControl { label: "Backrun", min: 0.0, max: 2.0 },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).

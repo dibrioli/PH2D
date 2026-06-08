@@ -184,6 +184,16 @@ referência CPU vira det-fallback. Estágios S0..S5.
   `set_deposition(consts)` + liga `total_buffer`. Deposited assa no `canvas_rgba` (persiste após secar).
   CPU fallback = difusão pura (degrade). 10/10 gates GPU verdes. **PENDENTE: validação visual** (anel escuro
   na borda + granulado no papel). Tuning nas 3 constantes.
+- **S2 (perf)** ✅ commits `7dea61f` + `c7d4d9f` — **readback pipelined**. Profiler (Metal, 32px, demo 64²)
+  apontou: step 0.27ms / **composite+readback 2.6ms** / stats 0.25ms = 3.2ms (RAW 250→140). O 2.6ms era
+  puro sync: `composite_frame`'s `device.poll(wait)` drenava a fila GPU **inteira** (incl. render da UI)
+  todo frame; a transferência em si é 0.03ms. Fix: `composite_frame_pipelined` — `poll(Poll)` não-bloqueante
+  + lê o band do frame **anterior** (1 frame atrasado, imperceptível); byte-idêntico ao síncrono (gate
+  `composite_frame_pipelined_matches_sync`). Pós-fix: composite **2.6→0.14ms**, total **3.2→0.82ms**, RAW
+  não cai mais. **Delay clique→traço** (o 1º composite vinha vazio): 1º frame do traço é **primado
+  síncrono** (aparece na hora; hitch único de ~2.6ms só no clique). **stats** virou a maior fase (0.41ms,
+  o `poll(wait)` do dry-check) → `DRY_CHECK_EVERY` 6→20. **Pendências:** stats async (matar o último hitch
+  periódico); textura-alvo S2 puro (zero-readback de banda, escala 4K); investigar warn "dropped sim time".
 - **S3d** campo de velocidade shallow-water (MoveWater + pressure relax) → fluxo direcional + blooms fortes.
 - **S4** multi-pigmento K–M + multi-camada @4K. **S5** BFECC + supersampling adaptativo + capilar LBM (MoXi) + 120Hz.
 

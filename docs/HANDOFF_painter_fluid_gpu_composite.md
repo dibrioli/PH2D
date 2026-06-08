@@ -111,7 +111,7 @@ grid inteiro e faz upload full-grid; o composite ainda faz **um readback síncro
 loop. Esse é o caminho pra 4K/multi-camada em tempo real. **Recomendação:** executar em **contexto fresco
 e focado** (reescrita fundacional do hot-path solver/tool/render-loop, validação visual estágio-a-estágio).
 
-### ⏳ EM EXECUÇÃO (2026-06-08) — núcleo GPU-residente landado (E1+E2+E3 fundidos), aguarda smoke do Enio
+### ⏳ EM EXECUÇÃO (2026-06-08) — núcleo GPU-residente landado (E1+E2+E3 fundidos) — SMOKE OK ✓ (Enio), E4 em andamento
 > **Descoberta de design:** E1/E2/E3 NÃO são separáveis como o plano sugeria — o espelho de água da CPU
 > alimentava 3 consumidores (bbox-scan E3, evaporate E1, dry-check E1) e a entrada de dab alimentava água
 > (E1) + pigmento (E2). No instante em que a entrada vira GPU-only (`cs_splat`), a CPU perde a água e

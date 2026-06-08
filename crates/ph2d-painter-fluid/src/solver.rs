@@ -31,6 +31,22 @@ pub const FLUID_WGSL: &str = include_str!("shader/fluid.wgsl");
 /// (same covered cells + falloff; ~1e-7 FMA-noise — `cs_splat_matches_cpu_splat`).
 pub const SPLAT_WGSL: &str = include_str!("shader/splat.wgsl");
 
+/// The GPU field-reduction shader (max-water + wet bbox), so the CPU never scans
+/// the O(grid) water mirror (4K real-time arch §4). Read back sporadically.
+pub const REDUCE_WGSL: &str = include_str!("shader/reduce.wgsl");
+
+/// Result of [`FluidSolver::read_field_stats`]: the max wetness anywhere (the
+/// dry-check signal) + the wet bounding box (`None` when the field is bone-dry).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FieldStats {
+    /// Largest `water` value in the field — the field is "dry" when this falls below
+    /// the tool's dry threshold.
+    pub max_water: f32,
+    /// `(x0, y0, x1, y1)` inclusive bbox of cells wetter than the query threshold,
+    /// or `None` if no cell is wet.
+    pub bbox: Option<(u32, u32, u32, u32)>,
+}
+
 /// Upper bound on dabs splatted in ONE `cs_splat` dispatch. A frame's dab count is
 /// tens; the persistent `dabs` storage buffer is sized to this (`× 32 B` = 128 KiB)
 /// so the bind group is fixed. A frame exceeding it is processed in sequential
@@ -92,6 +108,16 @@ struct GpuSplatParams {
     _p0: u32,
     _p1: u32,
     _p2: u32,
+}
+
+/// The `cs_reduce` uniform: grid size + the wet-bbox threshold. 16 B Pod.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuReduceParams {
+    width: u32,
+    height: u32,
+    threshold: f32,
+    _pad: u32,
 }
 
 /// Run the CPU reference solver `steps` times in place. The det-mode path AND the
@@ -165,6 +191,12 @@ pub struct FluidSolver {
     dabs_buf: wgpu::Buffer,
     /// `cs_splat` bind group: (splat_params, water rw, pig_a rw, dabs read).
     bg_splat: wgpu::BindGroup,
+    /// GPU field reduction (max-water + wet bbox) so the dry-check + envelope need no
+    /// CPU O(grid) scan (4K real-time arch §4). `stats_buf` holds 5 u32 atomics.
+    reduce: wgpu::ComputePipeline,
+    reduce_params_buf: wgpu::Buffer,
+    stats_buf: wgpu::Buffer,
+    bg_reduce: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -346,6 +378,74 @@ impl FluidSolver {
                 },
             ],
         });
+
+        // ── GPU field reduction (`cs_reduce`, its own bind-group layout) ──
+        let reduce_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-painter-fluid reduce"),
+            source: wgpu::ShaderSource::Wgsl(REDUCE_WGSL.into()),
+        });
+        let reduce_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-painter-fluid reduce bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                storage(1, true),  // water (read)
+                storage(2, false), // stats (atomic read_write)
+            ],
+        });
+        let reduce_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ph2d-painter-fluid reduce layout"),
+            bind_group_layouts: &[&reduce_bgl],
+            immediate_size: 0,
+        });
+        let reduce = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("ph2d-painter-fluid reduce pipeline"),
+            layout: Some(&reduce_layout),
+            module: &reduce_module,
+            entry_point: Some("cs_reduce"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+        let reduce_params_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-painter-fluid reduce params"),
+            size: core::mem::size_of::<GpuReduceParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let stats_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-painter-fluid stats"),
+            size: (5 * core::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let bg_reduce = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-painter-fluid bg reduce"),
+            layout: &reduce_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: reduce_params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: water.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: stats_buf.as_entire_binding(),
+                },
+            ],
+        });
         Self {
             width,
             height,
@@ -367,6 +467,10 @@ impl FluidSolver {
             splat_params_buf,
             dabs_buf,
             bg_splat,
+            reduce,
+            reduce_params_buf,
+            stats_buf,
+            bg_reduce,
         }
     }
 
@@ -536,6 +640,119 @@ impl FluidSolver {
             }
             queue.submit([enc.finish()]);
         }
+    }
+
+    /// **Fully GPU-resident per-frame step (4K real-time arch §4 — no upload, no
+    /// readback).** The hot loop the 4K rewrite targets: this frame's `dabs` are
+    /// splatted onto the resident water + pigment by `cs_splat` (no full-grid deposit
+    /// upload), then `substeps` of diffuse → advect → **evaporate** run on the GPU
+    /// (water is resident now, so evaporation moves OFF the CPU). Nothing comes back
+    /// to the CPU — the field stays in `water`/`pig_a` across frames; the compositor
+    /// reads `pig_a` directly and the dry-check/bbox come from [`Self::read_field_stats`]
+    /// (sporadic). Equivalent to the CPU `splat`-then-`step×substeps` reference (the
+    /// `step_resident_splat_matches_cpu` gate), so the live look is unchanged.
+    ///
+    /// `set_params` + `clear_resident_{water,pigment}_gpu` + `upload_paper` are the
+    /// driver's once-per-stroke setup (epoch change); this is the per-frame call.
+    pub fn step_resident_splat(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        dabs: &[DabGpu],
+        substeps: u32,
+    ) {
+        // Splat submit (resident water + pig_a updated); ordered before the step submit
+        // on the queue timeline, so diffuse reads the just-splatted field.
+        self.splat_dabs(device, queue, dabs);
+        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid resident splat step"),
+        });
+        for _ in 0..substeps {
+            // Per substep: diffuse A→B, advect B→A, evaporate water — the CPU `step`
+            // order (pigment ends back in pig_a; evaporate touches only water).
+            for (pipe, bg) in [
+                (&self.diffuse, &self.bg_diffuse),
+                (&self.advect, &self.bg_advect),
+                (&self.evaporate, &self.bg_evaporate),
+            ] {
+                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("fluid resident splat pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(pipe);
+                pass.set_bind_group(0, bg, &[]);
+                pass.dispatch_workgroups(gx, gy, 1);
+            }
+        }
+        queue.submit([enc.finish()]);
+        // No poll: the field stays GPU-resident; the compositor's readback (or a
+        // sporadic `read_field_stats`) is the only sync point.
+    }
+
+    /// **Reduce the resident water field to its max + wet bbox ON the GPU** (4K
+    /// real-time arch §4), so the dry-check + composite envelope need no CPU O(grid)
+    /// scan. One atomic pass + a tiny 5-u32 readback (this DOES sync the queue, so
+    /// call it SPORADICALLY — drying is slow, a few frames of latency is invisible).
+    /// `threshold` selects which cells count as wet for the bbox (the tool's
+    /// `water_bbox` threshold). The reported `max_water` is over the WHOLE field.
+    #[must_use]
+    pub fn read_field_stats(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        threshold: f32,
+    ) -> FieldStats {
+        // Seed the atomics: max=0, min_x/min_y=U32_MAX, max_x/max_y=0.
+        let init: [u32; 5] = [0, u32::MAX, u32::MAX, 0, 0];
+        queue.write_buffer(&self.stats_buf, 0, bytemuck::cast_slice(&init));
+        let rp = GpuReduceParams {
+            width: self.width,
+            height: self.height,
+            threshold,
+            _pad: 0,
+        };
+        queue.write_buffer(&self.reduce_params_buf, 0, bytemuck::bytes_of(&rp));
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fluid stats readback"),
+            size: (5 * core::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid reduce"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid reduce pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.reduce);
+            pass.set_bind_group(0, &self.bg_reduce, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        }
+        enc.copy_buffer_to_buffer(&self.stats_buf, 0, &staging, 0, staging.size());
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let s: [u32; 5] = bytemuck::cast_slice::<u8, u32>(&mapped)[..5]
+            .try_into()
+            .expect("5 u32 stats");
+        drop(mapped);
+        staging.unmap();
+        let max_water = f32::from_bits(s[0]);
+        let bbox = if s[1] == u32::MAX {
+            None // no cell crossed the threshold → bone-dry
+        } else {
+            Some((s[1], s[2], s[3], s[4]))
+        };
+        FieldStats { max_water, bbox }
     }
 
     /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment

@@ -272,6 +272,125 @@ fn cs_splat_matches_cpu_splat_bit_exact() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn step_resident_splat_matches_cpu_splat_then_step() {
+    // The fully GPU-resident hot loop (`splat_dabs` + diffuse/advect/evaporate, no
+    // upload, no readback) must equal the CPU reference: the same dabs splatted into
+    // a `DiffusionGrid`, then `step×substeps`. This is what makes switching the live
+    // drive over to the resident path a no-op on the look (within the diffuse/advect
+    // FMA tolerance the other GPU gates use).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (44u32, 38u32);
+    let substeps = 12u32;
+    let params = FluidParams::default();
+    let raw = [
+        (22.0f32, 19.0, 8.0, 0.6, [0.10f32, 0.20, 0.70]),
+        (18.0, 22.0, 6.0, 0.7, [0.30, 0.05, 0.05]),
+        (28.0, 16.0, 5.0, 0.8, [0.00, 0.40, 0.10]),
+    ];
+
+    // CPU reference: splat the dabs into a fresh grid, then step.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+    step_cpu_reference(&mut cpu, &params, substeps);
+
+    // GPU resident: clear, set params, splat the dabs + step on the GPU.
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &params);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    // Paper must match the CPU grid's paper for the gate/flow to agree.
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps);
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let mut worst_p = 0.0f32;
+    let mut worst_w = 0.0f32;
+    let (cpu_pig, cpu_water) = (cpu.pigment(), cpu.water());
+    for i in 0..n {
+        for k in 0..3 {
+            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
+        }
+        worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
+    }
+    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    eprintln!(
+        "step_resident_splat vs CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}, total = {total:.3}"
+    );
+    assert!(total > 0.01, "resident splat+step produced no pigment");
+    assert!(
+        worst_p < 2.0e-2,
+        "resident splat+step pigment diverged from CPU: {worst_p}"
+    );
+    assert!(
+        worst_w < 2.0e-2,
+        "resident splat+step water diverged from CPU: {worst_w}"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn read_field_stats_matches_cpu_max_water_and_bbox() {
+    // The GPU reduction (max-water + wet bbox) must agree with the CPU
+    // `max_water` / `water_bbox` it replaces (4K real-time arch §4) — otherwise the
+    // dry-check fires at the wrong time or the composite envelope clips.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (50u32, 40u32);
+    let threshold = 1.0e-3f32;
+    let raw = [
+        (25.0f32, 20.0, 7.0, 0.6, [0.2f32, 0.2, 0.2]),
+        (12.0, 30.0, 5.0, 0.9, [0.1, 0.1, 0.1]),
+        (40.0, 10.0, 4.0, 0.5, [0.3, 0.0, 0.0]),
+    ];
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+    let cpu_max = cpu.max_water();
+    let cpu_bbox = cpu.water_bbox(threshold);
+
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.splat_dabs(&gpu.device, &gpu.queue, &dabs);
+    let stats = solver.read_field_stats(&gpu.device, &gpu.queue, threshold);
+
+    eprintln!(
+        "field stats: GPU max={:.6} bbox={:?} | CPU max={:.6} bbox={:?}",
+        stats.max_water, stats.bbox, cpu_max, cpu_bbox
+    );
+    // max-water is just an atomicMax over the same f32 values → bit-identical.
+    assert_eq!(
+        stats.max_water, cpu_max,
+        "GPU max-water must equal CPU max_water"
+    );
+    // The wet-cell set is identical (water came from the bit-exact-shape splat), so
+    // the inclusive bbox must match exactly.
+    assert_eq!(
+        stats.bbox, cpu_bbox,
+        "GPU wet bbox must equal CPU water_bbox"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_solver_conserves_then_dries() {
     // Without evaporation the diffuse+advect passes conserve pigment mass (the CPU
     // invariant). With evaporation the field eventually stops evolving (dries).

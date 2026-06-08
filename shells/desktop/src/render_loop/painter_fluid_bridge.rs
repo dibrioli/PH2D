@@ -270,9 +270,11 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         sess.solver
             .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         let t1 = profile.then(Instant::now);
+        // Pipelined (ADR-0078 S2): async readback, no per-frame device.poll(wait) stall.
+        // Returns the PREVIOUS frame's band (1-frame-late preview, imperceptible).
         let (band, rect) = sess
             .compositor
-            .composite_frame(&gpu.device, &gpu.queue, region);
+            .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }

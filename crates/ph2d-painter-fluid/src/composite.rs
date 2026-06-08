@@ -102,14 +102,26 @@ struct CompositeState {
     bind: wgpu::BindGroup,
 }
 
+/// An in-flight async readback (ADR-0078 S2 — pipelined composite). The band copy is
+/// submitted + `map_async`'d WITHOUT a per-frame `device.poll(wait)` (which drained the
+/// whole GPU queue, ~2.6 ms/frame — the measured 250→140 FPS stall); the result is
+/// read the NEXT frame once a non-blocking `poll(Poll)` has fired its callback.
+struct PendingReadback {
+    rx: std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>,
+    band_bytes: u64,
+    rect: (u32, u32, u32, u32),
+}
+
 /// The live GPU compositor: one compute pipeline + bind-group layout (built once per
 /// device) + persistent per-stroke buffers ([`CompositeState`]) for the hot loop.
 /// The one-shot `composite_*` methods (per-call buffers) are the unit-test / CPU
-/// convenience; the shell drives [`Self::begin_stroke`] + [`Self::composite_frame`].
+/// convenience; the shell drives [`Self::begin_stroke`] + [`Self::composite_frame_pipelined`].
 pub struct FluidCompositor {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
     state: Option<CompositeState>,
+    /// The previous frame's readback, awaiting a non-blocking poll (pipelined path).
+    pending: Option<PendingReadback>,
 }
 
 impl FluidCompositor {
@@ -166,6 +178,7 @@ impl FluidCompositor {
             pipeline,
             bgl,
             state: None,
+            pending: None,
         }
     }
 
@@ -383,10 +396,111 @@ impl FluidCompositor {
         (rows, (px_lo, py_lo, px_hi, py_hi))
     }
 
+    /// **Pipelined per-frame composite (ADR-0078 S2 — no per-frame `device.poll(wait)`).**
+    /// Like [`Self::composite_frame`] but the band readback is ASYNC: this frame's
+    /// composite + copy are submitted and `map_async`'d without blocking, and the band
+    /// RETURNED is the PREVIOUS frame's (read after a non-blocking `poll(Poll)` fired
+    /// its callback). That removes the ~2.6 ms/frame stall where the synchronous poll
+    /// drained the entire GPU queue (incl. the main UI render) — the measured 250→140
+    /// FPS regression. The preview lags one frame (≈4 ms at 250 FPS, imperceptible);
+    /// the field is frozen for several frames before it dries + drops, so the final
+    /// state is always blitted before the drop (no pen-up special-case needed).
+    /// Returns `(vec![], (0,0,0,0))` on the first frame / when the prior map isn't ready.
+    #[must_use]
+    pub fn composite_frame_pipelined(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        grid_region: (u32, u32, u32, u32),
+    ) -> (Vec<u8>, (u32, u32, u32, u32)) {
+        // Fire any completed map callbacks WITHOUT blocking (the key vs the old path).
+        let _ = device.poll(wgpu::PollType::Poll);
+        // Read the prior frame's band if its map has completed (1-frame-late).
+        let mut result = (Vec::new(), (0, 0, 0, 0));
+        if let Some(p) = self.pending.take() {
+            match p.rx.try_recv() {
+                Ok(Ok(())) => {
+                    if let Some(st) = self.state.as_ref() {
+                        let rows = st.staging.slice(0..p.band_bytes).get_mapped_range().to_vec();
+                        st.staging.unmap();
+                        result = (rows, p.rect);
+                    }
+                }
+                Ok(Err(_)) => {
+                    // Map failed — unmap defensively; staging is free to reuse.
+                    if let Some(st) = self.state.as_ref() {
+                        st.staging.unmap();
+                    }
+                }
+                Err(_) => {
+                    // GPU not done yet (rare) — keep waiting, don't reuse staging.
+                    self.pending = Some(p);
+                    return result;
+                }
+            }
+        }
+        // Submit THIS frame's composite + copy + async map (staging is free now).
+        let Some(st) = self.state.as_ref() else {
+            return result;
+        };
+        let (px_lo, py_lo, px_hi, py_hi) =
+            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
+        if py_hi <= py_lo || px_hi <= px_lo {
+            return result;
+        }
+        let uni = GpuU {
+            cw: st.cw,
+            ch: st.ch,
+            gw: st.gw,
+            gh: st.gh,
+            inv: 1.0 / st.scale as f32,
+            color_sum: st.color_sum,
+            coverage_k: st.coverage_k,
+            ss: st.ss,
+            origin_x: px_lo,
+            origin_y: py_lo,
+            end_x: px_hi,
+            end_y: py_hi,
+            pcol: [st.pcol[0], st.pcol[1], st.pcol[2], 0.0],
+        };
+        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
+        let row_bytes = u64::from(st.cw) * 4;
+        let band_off = u64::from(py_lo) * row_bytes;
+        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
+        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite frame (pipelined)"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite frame pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &st.bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+        }
+        enc.copy_buffer_to_buffer(&st.out, band_off, &st.staging, 0, band_bytes);
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        st.staging
+            .slice(0..band_bytes)
+            .map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
+        self.pending = Some(PendingReadback {
+            rx,
+            band_bytes,
+            rect: (px_lo, py_lo, px_hi, py_hi),
+        });
+        result
+    }
+
     /// Drop the persistent stroke state (frees the canvas buffers) — call when the
     /// field is gone so VRAM isn't held between strokes.
     pub fn end_stroke(&mut self) {
         self.state = None;
+        self.pending = None;
     }
 
     /// One-shot composite to an RGBA8 byte buffer, uploading a CPU pigment field

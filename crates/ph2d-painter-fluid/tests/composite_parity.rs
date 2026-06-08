@@ -328,6 +328,58 @@ fn composite_frame_fast_path_matches_one_shot() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn composite_frame_pipelined_matches_sync() {
+    // ADR-0078 S2: the pipelined (async, 1-frame-late) composite must produce the SAME
+    // pixels as the synchronous composite_frame — only the read timing differs (no
+    // per-frame device.poll(wait) stall). Frame 1 returns empty (its band maps async);
+    // frame 2 returns frame 1's band, which must equal the sync band for the same field.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let brush = prepare_wet_composite(pig, [0.8, 0.6, 0.02]);
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+
+    let begin = |c: &mut FluidCompositor| {
+        c.begin_stroke(
+            &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, 1,
+            solver.pigment_buffer(), &backdrop, &brush,
+        );
+    };
+
+    // Sync reference.
+    let mut sync = FluidCompositor::new(&gpu.device);
+    begin(&mut sync);
+    let (band_sync, rect_sync) = sync.composite_frame(&gpu.device, &gpu.queue, region);
+
+    // Pipelined: same field, two frames; the 2nd call returns the 1st's band.
+    let mut pipe = FluidCompositor::new(&gpu.device);
+    begin(&mut pipe);
+    let (band0, _) = pipe.composite_frame_pipelined(&gpu.device, &gpu.queue, region);
+    assert!(band0.is_empty(), "first pipelined frame returns no band yet");
+    // Simulate the inter-frame gap: live, the GPU finishes the tiny copy within the
+    // ~4 ms frame + the next frame's non-blocking poll collects it. Back-to-back in a
+    // test there's no gap, so force completion here.
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let (band1, rect1) = pipe.composite_frame_pipelined(&gpu.device, &gpu.queue, region);
+
+    assert_eq!(rect1, rect_sync, "pipelined rect (1-late) must match sync");
+    assert_eq!(
+        band1, band_sync,
+        "pipelined band (1-late) must be byte-identical to the sync composite"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn gpu_step_then_composite_resident_matches_cpu() {
     // The END-TO-END stall-removing seam: step the field on the GPU, then composite
     // reading the RESIDENT `pig_a` buffer directly (no pigment readback between) —

@@ -75,6 +75,15 @@ impl FluidParams {
             deposition: 0.0,
             deposition_dry: 0.0,
             granulation: 0.0,
+            // Shallow-water velocity layer (ADR-0078 S3d) likewise OFF on this mapped path
+            // until the GPU shallow-water passes + the FluidParams amendment land — the
+            // live solver enables it via `FluidSolver::set_shallow_water` (S4d consts),
+            // not through `FluidParams`. Keeps `to_diffusion(default) == default` (the
+            // `cpu_reference_matches_diffusion_with_default_params` gate) bit-exact.
+            velocity: 0.0,
+            viscosity: 0.0,
+            drag: 0.0,
+            pressure: 0.0,
         }
     }
 }

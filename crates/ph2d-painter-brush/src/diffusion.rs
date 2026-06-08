@@ -78,6 +78,26 @@ pub struct DiffusionParams {
     /// settles more in the tooth VALLEYS than the crests — the grainy, mottled
     /// **granulation** of pigments like ultramarine / cerulean.
     pub granulation: f32,
+    /// **Shallow-water velocity layer (ADR-0078 S3d, Curtis 1997 §3).** Master scale on
+    /// the momentum-carrying velocity field `(u, v)`'s contribution to pigment advection.
+    /// `0` ⇒ the layer is **dormant**: [`DiffusionGrid::move_water`] is skipped and pigment
+    /// advects by the static gradient flow `−β·∇h − λ·∇w` (the shipped look, bit-identical).
+    /// `>0` ⇒ pigment advects by `velocity·(u, v)` instead → **directional flow +
+    /// backruns/cauliflower**, the watercolor signatures gated diffusion can't make.
+    pub velocity: f32,
+    /// `μ` — momentum viscosity: per-step Laplacian smoothing of the velocity field
+    /// (coherent flow, damps the collocated-grid checkerboard). Keep ≤ 0.24 (the same
+    /// explicit-Euler bound as `diffusivity`). Only read while the velocity layer is on.
+    pub viscosity: f32,
+    /// `κ` — velocity drag ∈ [0,1): per-step damping `(u, v) *= (1 − drag)` so the flow
+    /// decays as the wash settles (stability + the wash coming to rest). Layer-on only.
+    pub drag: f32,
+    /// Pressure-projection strength (Curtis *FlowOutward* / incompressibility relaxation):
+    /// the fraction of the divergence-removing pressure gradient subtracted from the
+    /// velocity each `move_water`. Turns the local body forces into *directional* flow and
+    /// builds the pressure fronts that pile pigment into the **backrun ring**. `0` ⇒ no
+    /// projection (compressible advected forces — flow, but no backruns). Layer-on only.
+    pub pressure: f32,
 }
 
 impl Default for DiffusionParams {
@@ -96,6 +116,13 @@ impl Default for DiffusionParams {
             deposition: 0.0,
             deposition_dry: 0.0,
             granulation: 0.0,
+            // Shallow-water velocity layer OFF by default (ADR-0078 S3d) → `move_water` is
+            // skipped and the static gradient-flow advect runs, so the shipped look is
+            // bit-identical until a brush opts in.
+            velocity: 0.0,
+            viscosity: 0.0,
+            drag: 0.0,
+            pressure: 0.0,
         }
     }
 }
@@ -104,6 +131,18 @@ impl Default for DiffusionParams {
 /// cell) — coarse enough that valleys span a few cells so pigment can pool.
 const HEIGHT_FREQ: f32 = 0.13;
 const HEIGHT_SEED: u32 = 0x70a9_e2c5; // shared with cpu_render paper tooth
+
+/// Fixed Jacobi-iteration count for the shallow-water pressure projection
+/// ([`DiffusionGrid::project`], ADR-0078 S3d). A *fixed* count (not a convergence
+/// threshold) keeps the solve deterministic + bounded (HR-5) and makes the GPU mirror
+/// trivially bit-parity (both run the same loop). A handful of iterations is enough
+/// to turn the local body forces into directional flow at watercolor's visual budget;
+/// the pressure field is re-seeded to 0 each `move_water` (no warm-start state).
+///
+/// **Public** so the GPU mirror (`ph2d-painter-fluid`) runs the exact same sweep count —
+/// the parity gate depends on it. **Keep even** (the GPU Jacobi ping-pong lands the result
+/// in a fixed buffer when the count is even).
+pub const RELAX_ITERS: u32 = 6;
 
 #[inline]
 fn smoothstep(lo: f32, hi: f32, x: f32) -> f32 {
@@ -127,8 +166,25 @@ pub struct DiffusionGrid {
     deposited: Vec<[f32; 3]>,
     /// Static paper-tooth height ∈ [0,1] per cell (1 = crest, 0 = valley).
     paper: Vec<f32>,
+    /// **Shallow-water velocity field (ADR-0078 S3d)** — `(vel_u, vel_v)` per cell, the
+    /// momentum that transports pigment when the velocity layer is active. Resident state
+    /// (persists across steps → momentum), damped by `drag`. All-zero while dormant
+    /// (the gradient-flow path); lazy-zeroed, so it's free until the layer runs.
+    vel_u: Vec<f32>,
+    vel_v: Vec<f32>,
+    /// Pressure field for the incompressibility projection — re-seeded to 0 and re-solved
+    /// each [`Self::move_water`] (Jacobi, [`RELAX_ITERS`]); kept here only to avoid a
+    /// per-step alloc.
+    pressure: Vec<f32>,
     scratch: Vec<[f32; 3]>,
     scratch_w: Vec<f32>,
+    /// Velocity ping-pong scratch (the `add_forces` write target) + the divergence and
+    /// pressure-Jacobi ping-pong buffers. Allocated lazily with the rest; untouched (and
+    /// near-free) while the velocity layer is dormant.
+    scratch_u: Vec<f32>,
+    scratch_v: Vec<f32>,
+    divergence: Vec<f32>,
+    pressure_b: Vec<f32>,
 }
 
 impl DiffusionGrid {
@@ -177,8 +233,15 @@ impl DiffusionGrid {
             pigment: vec![[0.0; 3]; n],
             deposited: vec![[0.0; 3]; n],
             paper,
+            vel_u: vec![0.0; n],
+            vel_v: vec![0.0; n],
+            pressure: vec![0.0; n],
             scratch: vec![[0.0; 3]; n],
             scratch_w: vec![0.0; n],
+            scratch_u: vec![0.0; n],
+            scratch_v: vec![0.0; n],
+            divergence: vec![0.0; n],
+            pressure_b: vec![0.0; n],
         }
     }
 
@@ -228,6 +291,13 @@ impl DiffusionGrid {
         for i in 0..n {
             let perm = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[i];
             gates.push(smoothstep(p.w_lo, p.w_hi, self.water[i]) * perm);
+        }
+        // Shallow-water MoveWater (ADR-0078 S3d): evolve the velocity field BEFORE the
+        // pigment transport so `advect` carries pigment along the just-updated `(u,v)`.
+        // Reads the pre-evaporation water (same as diffuse/advect). Dormant (skipped)
+        // unless the velocity layer is on → the shipped gradient-flow path is untouched.
+        if p.velocity > 0.0 {
+            self.move_water(p);
         }
         self.diffuse(p, &gates);
         self.advect(p, &gates);
@@ -295,17 +365,31 @@ impl DiffusionGrid {
                 if g <= 1e-4 {
                     continue;
                 }
-                // Central-difference gradients (clamped at the border).
-                let (xm, xp) = (x.saturating_sub(1), (x + 1).min(w - 1));
-                let (ym, yp) = (y.saturating_sub(1), (y + 1).min(h - 1));
-                let dhx = sample(&self.paper, xp, y) - sample(&self.paper, xm, y);
-                let dhy = sample(&self.paper, x, yp) - sample(&self.paper, x, ym);
-                let dwx = sample(&self.water, xp, y) - sample(&self.water, xm, y);
-                let dwy = sample(&self.water, x, yp) - sample(&self.water, x, ym);
-                let fx =
-                    (g * (-p.downhill * 0.5 * dhx - p.flow_outward * 0.5 * dwx)).clamp(-0.5, 0.5);
-                let fy =
-                    (g * (-p.downhill * 0.5 * dhy - p.flow_outward * 0.5 * dwy)).clamp(-0.5, 0.5);
+                // Flow vector for the upwind transport. Two modes (ADR-0078 S3d):
+                //   • velocity ON  → the momentum-carrying shallow-water field `(u, v)`,
+                //     scaled by the master `velocity` and CFL-clamped (the real flow).
+                //   • velocity OFF → the static gradient flow `−β·∇h − λ·∇w` (the shipped
+                //     path; `move_water` never ran so `vel_*` is all-zero anyway).
+                let (fx, fy) = if p.velocity > 0.0 {
+                    (
+                        (p.velocity * self.vel_u[c]).clamp(-0.5, 0.5),
+                        (p.velocity * self.vel_v[c]).clamp(-0.5, 0.5),
+                    )
+                } else {
+                    // Central-difference gradients (clamped at the border).
+                    let (xm, xp) = (x.saturating_sub(1), (x + 1).min(w - 1));
+                    let (ym, yp) = (y.saturating_sub(1), (y + 1).min(h - 1));
+                    let dhx = sample(&self.paper, xp, y) - sample(&self.paper, xm, y);
+                    let dhy = sample(&self.paper, x, yp) - sample(&self.paper, x, ym);
+                    let dwx = sample(&self.water, xp, y) - sample(&self.water, xm, y);
+                    let dwy = sample(&self.water, x, yp) - sample(&self.water, x, ym);
+                    (
+                        (g * (-p.downhill * 0.5 * dhx - p.flow_outward * 0.5 * dwx))
+                            .clamp(-0.5, 0.5),
+                        (g * (-p.downhill * 0.5 * dhy - p.flow_outward * 0.5 * dwy))
+                            .clamp(-0.5, 0.5),
+                    )
+                };
                 let pc = self.pigment[c];
                 // Upwind: push |f|·p of pigment to the downstream neighbour.
                 let (nx, amx) = if fx > 0.0 && x + 1 < w {
@@ -337,6 +421,142 @@ impl DiffusionGrid {
             }
         }
         std::mem::swap(&mut self.pigment, &mut self.scratch);
+    }
+
+    /// **MoveWater (ADR-0078 S3d / Curtis 1997 §3)** — advance the shallow-water velocity
+    /// field one tick: accelerate `(u, v)` by the body forces + viscosity + drag
+    /// ([`Self::add_forces`]), then make it (near-)divergence-free by the pressure
+    /// projection ([`Self::project`]). The result is the momentum-carrying flow that
+    /// [`Self::advect`] transports pigment along. Called from [`Self::step`] only while the
+    /// velocity layer is on (`params.velocity > 0`); the velocity is resident state, so
+    /// momentum accumulates across ticks (drag bleeds it off as the wash settles).
+    fn move_water(&mut self, p: &DiffusionParams) {
+        self.add_forces(p);
+        self.project(p);
+    }
+
+    /// MoveWater step 1 — accelerate the velocity field. Each WET cell's velocity gains
+    /// the same driving accelerations as the static flow (`−β·∇h` downhill into the tooth,
+    /// `−λ·∇w` FlowOutward wet→dry), is smoothed by viscosity (`μ·∇²(u,v)`), damped by
+    /// drag (`×(1−κ)`), faded by the wetness mask, and CFL-clamped to ±0.5 cell/step. The
+    /// previous velocity is read in place (momentum), the new one written to scratch, then
+    /// swapped. Dry cells (outside the wet mask) hold zero velocity (Curtis's `M`).
+    fn add_forces(&mut self, p: &DiffusionParams) {
+        let (w, h) = (self.width, self.height);
+        let n = (w as usize) * (h as usize);
+        let li = |x: u32, y: u32| (y * w + x) as usize;
+        let mut nu = std::mem::take(&mut self.scratch_u);
+        let mut nv = std::mem::take(&mut self.scratch_v);
+        nu.clear();
+        nu.resize(n, 0.0);
+        nv.clear();
+        nv.resize(n, 0.0);
+        for y in 0..h {
+            for x in 0..w {
+                let c = li(x, y);
+                // Pure wetness mask (NOT the perm-weighted pigment gate): velocity exists
+                // only where there is water, fading to 0 as the cell dries.
+                let wet = smoothstep(p.w_lo, p.w_hi, self.water[c]);
+                if wet <= 1e-4 {
+                    continue; // nu[c] = nv[c] = 0 already
+                }
+                let (xm, xp) = (x.saturating_sub(1), (x + 1).min(w - 1));
+                let (ym, yp) = (y.saturating_sub(1), (y + 1).min(h - 1));
+                let dhx = self.paper[li(xp, y)] - self.paper[li(xm, y)];
+                let dhy = self.paper[li(x, yp)] - self.paper[li(x, ym)];
+                let dwx = self.water[li(xp, y)] - self.water[li(xm, y)];
+                let dwy = self.water[li(x, yp)] - self.water[li(x, ym)];
+                // Neumann velocity Laplacian (border neighbour = self via the clamp).
+                let lap_u = self.vel_u[li(xm, y)] + self.vel_u[li(xp, y)] + self.vel_u[li(x, ym)]
+                    + self.vel_u[li(x, yp)]
+                    - 4.0 * self.vel_u[c];
+                let lap_v = self.vel_v[li(xm, y)] + self.vel_v[li(xp, y)] + self.vel_v[li(x, ym)]
+                    + self.vel_v[li(x, yp)]
+                    - 4.0 * self.vel_v[c];
+                let mut u = self.vel_u[c]
+                    - p.downhill * 0.5 * dhx
+                    - p.flow_outward * 0.5 * dwx
+                    + p.viscosity * lap_u;
+                let mut v = self.vel_v[c]
+                    - p.downhill * 0.5 * dhy
+                    - p.flow_outward * 0.5 * dwy
+                    + p.viscosity * lap_v;
+                u *= 1.0 - p.drag;
+                v *= 1.0 - p.drag;
+                nu[c] = (u * wet).clamp(-0.5, 0.5);
+                nv[c] = (v * wet).clamp(-0.5, 0.5);
+            }
+        }
+        self.scratch_u = std::mem::replace(&mut self.vel_u, nu);
+        self.scratch_v = std::mem::replace(&mut self.vel_v, nv);
+    }
+
+    /// MoveWater step 2 — **pressure projection** (incompressibility / Curtis FlowOutward
+    /// relaxation). Removing the divergence of `(u,v)` is what turns the local body forces
+    /// into *directional* flow and builds the pressure fronts at the wet boundary that
+    /// pile pigment into the **backrun ring**. Computes `∇·(u,v)`, solves
+    /// `∇²pressure = divergence` by [`RELAX_ITERS`] **Jacobi** sweeps (order-independent →
+    /// GPU-parity-safe; pressure re-seeded to 0 each call → deterministic, no warm-start),
+    /// then subtracts `pressure·∇(solved pressure)` from the velocity. A no-op when
+    /// `params.pressure` is 0 (the forces still advect, but compressibly — no backruns).
+    fn project(&mut self, p: &DiffusionParams) {
+        if p.pressure <= 0.0 {
+            return;
+        }
+        let (w, h) = (self.width, self.height);
+        let n = (w as usize) * (h as usize);
+        let li = |x: u32, y: u32| (y * w + x) as usize;
+        let nbrs = |x: u32, y: u32| {
+            (
+                x.saturating_sub(1),
+                (x + 1).min(w - 1),
+                y.saturating_sub(1),
+                (y + 1).min(h - 1),
+            )
+        };
+        // ∇·(u,v) (central differences, Neumann at the border).
+        let mut div = std::mem::take(&mut self.divergence);
+        div.clear();
+        div.resize(n, 0.0);
+        for y in 0..h {
+            for x in 0..w {
+                let (xm, xp, ym, yp) = nbrs(x, y);
+                div[li(x, y)] = 0.5
+                    * ((self.vel_u[li(xp, y)] - self.vel_u[li(xm, y)])
+                        + (self.vel_v[li(x, yp)] - self.vel_v[li(x, ym)]));
+            }
+        }
+        // Jacobi solve of ∇²pressure = divergence, seeded at 0 (ping-pong pr ↔ prb).
+        let mut pr = std::mem::take(&mut self.pressure);
+        pr.clear();
+        pr.resize(n, 0.0);
+        let mut prb = std::mem::take(&mut self.pressure_b);
+        prb.clear();
+        prb.resize(n, 0.0);
+        for _ in 0..RELAX_ITERS {
+            for y in 0..h {
+                for x in 0..w {
+                    let (xm, xp, ym, yp) = nbrs(x, y);
+                    prb[li(x, y)] = 0.25
+                        * (pr[li(xm, y)] + pr[li(xp, y)] + pr[li(x, ym)] + pr[li(x, yp)]
+                            - div[li(x, y)]);
+                }
+            }
+            std::mem::swap(&mut pr, &mut prb);
+        }
+        // Subtract the pressure gradient (scaled by the projection strength) → the
+        // (near-)divergence-free velocity.
+        for y in 0..h {
+            for x in 0..w {
+                let (xm, xp, ym, yp) = nbrs(x, y);
+                let c = li(x, y);
+                self.vel_u[c] -= p.pressure * 0.5 * (pr[li(xp, y)] - pr[li(xm, y)]);
+                self.vel_v[c] -= p.pressure * 0.5 * (pr[li(x, yp)] - pr[li(x, ym)]);
+            }
+        }
+        self.pressure = pr;
+        self.pressure_b = prb;
+        self.divergence = div;
     }
 
     /// Pass 3 — **`TransferPigment`** (Curtis 1997 §4.2 / ADR-0078 S3): freeze a
@@ -390,6 +610,22 @@ impl DiffusionGrid {
     #[must_use]
     pub fn paper(&self) -> &[f32] {
         &self.paper
+    }
+
+    /// Shallow-water velocity field `(vel_u, vel_v)` per cell (ADR-0078 S3d) — exposed for
+    /// the GPU parity gate + the resident-path writeback. All-zero while the velocity layer
+    /// is dormant.
+    #[must_use]
+    pub fn velocity(&self) -> (&[f32], &[f32]) {
+        (&self.vel_u, &self.vel_v)
+    }
+
+    /// Overwrite the velocity field — companion to [`Self::set_pigment_from`] so a
+    /// GPU-stepped `(u,v)` can replace the grid's (the GPU is the accelerator; the grid
+    /// stays the CPU source of truth). Panics on a length mismatch (caller sizes it).
+    pub fn set_velocity_from(&mut self, u: &[f32], v: &[f32]) {
+        self.vel_u.copy_from_slice(u);
+        self.vel_v.copy_from_slice(v);
     }
 
     /// Overwrite the pigment field — used to write a GPU-stepped result back into
@@ -773,6 +1009,196 @@ mod tests {
         assert!(
             valley > crest + 0.02,
             "granulation: valley deposited fraction {valley} must exceed crest {crest}"
+        );
+    }
+
+    // ─────────────── ADR-0078 S3d — shallow-water velocity layer ───────────────
+
+    /// DORMANT by default: with `velocity = 0` (the default) `move_water` never runs, so
+    /// the velocity field stays all-zero and pigment advects by the static gradient flow
+    /// (the shipped look). The rest of the suite, run with `Default`, also implicitly
+    /// proves the velocity path is bit-untouched.
+    #[test]
+    fn velocity_layer_off_is_dormant() {
+        let mut g = DiffusionGrid::new(40, 40, 1.0);
+        g.splat(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
+        let p = DiffusionParams::default();
+        for _ in 0..40 {
+            g.step(&p);
+        }
+        let (u, v) = g.velocity();
+        assert!(
+            u.iter().chain(v).all(|&c| c == 0.0),
+            "velocity must stay zero while the layer is dormant"
+        );
+    }
+
+    /// DETERMINISTIC with the velocity layer ON — same inputs → bit-identical field (HR-5).
+    /// The fixed-iteration Jacobi projection + pure arithmetic keep it replayable.
+    #[test]
+    fn velocity_layer_is_deterministic() {
+        let run = || {
+            let mut g = DiffusionGrid::new(40, 36, 1.0);
+            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            let p = DiffusionParams {
+                velocity: 1.4,
+                viscosity: 0.1,
+                drag: 0.06,
+                pressure: 1.0,
+                ..Default::default()
+            };
+            for _ in 0..25 {
+                g.step(&p);
+            }
+            let (u, v) = g.velocity();
+            (g.pigment().to_vec(), u.to_vec(), v.to_vec())
+        };
+        assert_eq!(run(), run(), "velocity solver must be deterministic (HR-5)");
+    }
+
+    /// STABLE: the velocity layer never produces NaN/Inf or runaway pigment/velocity over
+    /// many steps (the CFL clamp + drag + viscosity + bounded projection keep it tame).
+    #[test]
+    fn velocity_layer_is_stable_over_many_steps() {
+        let mut g = DiffusionGrid::new(48, 48, 2.0);
+        g.splat(24.0, 24.0, 12.0, 1.0, [0.9, 0.8, 0.2]);
+        g.splat(12.0, 30.0, 5.0, 0.7, [0.1, 0.2, 0.9]);
+        let p = DiffusionParams {
+            velocity: 1.6,
+            viscosity: 0.12,
+            drag: 0.05,
+            pressure: 1.0,
+            ..Default::default()
+        };
+        for _ in 0..200 {
+            g.step(&p);
+        }
+        for px in g.pigment() {
+            for &c in px {
+                assert!(c.is_finite() && (0.0..10.0).contains(&c), "unstable pigment {c}");
+            }
+        }
+        let (u, v) = g.velocity();
+        for &c in u.iter().chain(v) {
+            assert!(c.is_finite() && c.abs() <= 0.5, "unstable velocity {c}");
+        }
+    }
+
+    /// The velocity field TRANSPORTS pigment along `(u,v)` — the defining S3d behavior.
+    /// On a flat, uniformly-wet field (no body forces) a seeded rightward velocity carries
+    /// the pigment blob's centre-of-mass `+x`; with the layer OFF the same seeded velocity
+    /// is ignored (static flow is zero on flat fields) and the blob stays put.
+    #[test]
+    fn velocity_field_transports_pigment() {
+        let (w, h) = (72u32, 48u32);
+        let com_x = |g: &DiffusionGrid| -> f32 {
+            let (mut num, mut den) = (0.0f32, 0.0f32);
+            for y in 0..h {
+                for x in 0..w {
+                    let m = g.pigment()[(y * w + x) as usize][0];
+                    num += m * x as f32;
+                    den += m;
+                }
+            }
+            num / den.max(1e-6)
+        };
+        let run = |velocity: f32| -> (f32, f32) {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            // Flat paper + uniform wetness → zero body forces, so only a seeded velocity
+            // can move pigment (isolates pure velocity advection).
+            for pv in g.paper.iter_mut() {
+                *pv = 0.5;
+            }
+            for wv in g.water.iter_mut() {
+                *wv = 0.9;
+            }
+            for uu in g.vel_u.iter_mut() {
+                *uu = 0.25; // uniform rightward momentum (divergence-free → no projection needed)
+            }
+            g.splat(20.0, 24.0, 5.0, 0.0, [0.6, 0.2, 0.1]);
+            let before = com_x(&g);
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                diffusivity: 0.0, // isolate advection (no symmetric bloom)
+                downhill: 0.0,
+                flow_outward: 0.0,
+                viscosity: 0.0,
+                drag: 0.0,    // no decay → clean translation
+                pressure: 0.0, // uniform velocity is already divergence-free
+                velocity,
+                ..Default::default()
+            };
+            for _ in 0..10 {
+                g.step(&p);
+            }
+            (before, com_x(&g))
+        };
+        let (b_on, a_on) = run(1.0);
+        let (b_off, a_off) = run(0.0);
+        eprintln!("COM_x  velocity-on: {b_on:.2}->{a_on:.2}   velocity-off: {b_off:.2}->{a_off:.2}");
+        assert!(
+            a_on > b_on + 2.0,
+            "velocity layer must carry pigment +x: {b_on:.2} -> {a_on:.2}"
+        );
+        assert!(
+            (a_off - b_off).abs() < 0.25,
+            "velocity OFF: pigment must not move on flat fields ({b_off:.2} -> {a_off:.2})"
+        );
+    }
+
+    /// BACKRUN / cauliflower: with the velocity layer + pressure projection on, the
+    /// FlowOutward push (`−λ·∇w`) drives flowing pigment to the wet boundary where the
+    /// converging, projected flow piles it into a RING — the rim carries MORE pigment than
+    /// the mid-radius, and the ring is more pronounced than on the static gradient path.
+    /// (Deposition is OFF so this isolates FLOW-driven piling, not drying-deposition.)
+    #[test]
+    fn velocity_pressure_builds_a_backrun_ring() {
+        let (w, h) = (96u32, 96u32);
+        let (cx, cy) = (48.0f32, 48.0);
+        let ann_mean = |g: &DiffusionGrid, lo: f32, hi: f32| -> f32 {
+            let (mut s, mut n) = (0.0f32, 0.0f32);
+            for y in 0..h {
+                for x in 0..w {
+                    let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+                    if d >= lo && d < hi {
+                        s += g.pigment()[(y * w + x) as usize][0];
+                        n += 1.0;
+                    }
+                }
+            }
+            s / n.max(1.0)
+        };
+        let run = |velocity: f32| -> (f32, f32) {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat(cx, cy, 20.0, 0.9, [0.5, 0.25, 0.15]);
+            let p = DiffusionParams {
+                velocity,
+                viscosity: 0.1,
+                drag: 0.08,
+                pressure: 0.4,
+                ..Default::default()
+            };
+            for _ in 0..40 {
+                g.step(&p);
+            }
+            (ann_mean(&g, 0.0, 4.0), ann_mean(&g, 8.0, 12.0)) // (centre, ring radius)
+        };
+        let (centre_v, ring_v) = run(1.6);
+        let (centre_s, ring_s) = run(0.0);
+        eprintln!(
+            "backrun  velocity: centre={centre_v:.4} ring={ring_v:.4} | static: centre={centre_s:.4} ring={ring_s:.4}"
+        );
+        // Velocity path: pigment fled the centre and piled into an off-centre RING (the
+        // backrun/cauliflower — a radial profile with a local max away from the centre).
+        assert!(
+            ring_v > 2.0 * centre_v,
+            "velocity must pile an off-centre backrun ring (ring {ring_v:.4} ≫ centre {centre_v:.4})"
+        );
+        // Static gradient path: a plain centre-peaked blob — the centre is the maximum,
+        // no ring. This is the qualitative difference the velocity layer introduces.
+        assert!(
+            centre_s > ring_s,
+            "static flow must stay centre-peaked, no ring (centre {centre_s:.4} > ring {ring_s:.4})"
         );
     }
 }

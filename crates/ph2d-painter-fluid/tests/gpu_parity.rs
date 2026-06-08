@@ -616,3 +616,91 @@ fn gpu_solver_conserves_then_dries() {
         "GPU diffuse+advect must conserve pigment mass (no evaporation): {before} → {after}"
     );
 }
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_shallow_water_matches_cpu_move_water() {
+    // ADR-0078 S3d: the GPU shallow-water passes (`cs_add_forces` / `cs_divergence` /
+    // `cs_clear_pressure` / `cs_jacobi` / `cs_project` / `cs_advect_velocity`) must
+    // reproduce the CPU reference `DiffusionGrid::move_water` (+ velocity-mode advect) —
+    // BOTH the evolved velocity field AND the pigment it transports. Same splats + step
+    // count + shallow-water params on each side; agree to the diffuse/advect FMA band
+    // (the result threads add_forces → 6 Jacobi sweeps → project → upwind advect, so the
+    // tolerance is the looser end of the GPU gates, but a wrong port diverges by ≥1e-1).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 40u32);
+    let substeps = 16u32;
+    let (vel, visc, drag, pressure) = (1.4f32, 0.1f32, 0.08f32, 0.4f32);
+    let base = FluidParams::default();
+    // Off-centre, overlapping dabs into a wet pool → an asymmetric flow + a ring.
+    let raw = [
+        (24.0f32, 20.0, 11.0, 0.9, [0.10f32, 0.20, 0.70]),
+        (20.0, 22.0, 6.0, 0.7, [0.30, 0.05, 0.05]),
+        (28.0, 18.0, 5.0, 0.6, [0.00, 0.40, 0.10]),
+    ];
+
+    // CPU reference: same splats, velocity layer ON, then step.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+    let mut dp = base.to_diffusion();
+    dp.velocity = vel;
+    dp.viscosity = visc;
+    dp.drag = drag;
+    dp.pressure = pressure;
+    for _ in 0..substeps {
+        cpu.step(&dp);
+    }
+
+    // GPU: same field, shallow-water enabled via set_shallow_water (full-grid region).
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.set_shallow_water(&gpu.queue, vel, visc, drag, pressure);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_vel = solver.read_velocity(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let cpu_pig = cpu.pigment();
+    let (cpu_u, cpu_v) = cpu.velocity();
+    let mut worst_pig = 0.0f32;
+    let mut worst_vel = 0.0f32;
+    let mut vel_mag = 0.0f32;
+    for i in 0..n {
+        for k in 0..3 {
+            worst_pig = worst_pig.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
+        }
+        worst_vel = worst_vel.max((gpu_vel[i][0] - cpu_u[i]).abs());
+        worst_vel = worst_vel.max((gpu_vel[i][1] - cpu_v[i]).abs());
+        vel_mag = vel_mag.max(gpu_vel[i][0].abs()).max(gpu_vel[i][1].abs());
+    }
+    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    eprintln!(
+        "shallow-water GPU↔CPU: worst pigment |Δ| = {worst_pig:.6}, worst velocity |Δ| = {worst_vel:.6}, max |vel| = {vel_mag:.4}, total pigment = {total:.3}"
+    );
+    assert!(total > 0.01, "no pigment — the velocity advect is dead, parity meaningless");
+    assert!(
+        vel_mag > 1.0e-3,
+        "GPU velocity field is ~zero — move_water is dead, parity meaningless"
+    );
+    assert!(
+        worst_vel < 2.0e-2,
+        "GPU velocity diverged from the CPU move_water: {worst_vel}"
+    );
+    assert!(
+        worst_pig < 2.0e-2,
+        "GPU velocity-advected pigment diverged from CPU: {worst_pig}"
+    );
+}

@@ -18,7 +18,7 @@
 //! phase 2 against a headless `GpuContext`, with a CPU↔GPU parity test.
 
 use crate::params::FluidParams;
-use ph2d_painter_brush::diffusion::DiffusionGrid;
+use ph2d_painter_brush::diffusion::{DiffusionGrid, RELAX_ITERS};
 
 /// The GPU compute shader (mirror of the CPU diffusion-advection). Embedded so a
 /// dev-test can validate it through naga before any GPU init, and phase 2 can
@@ -44,6 +44,13 @@ pub const TRANSFER_WGSL: &str = include_str!("shader/transfer.wgsl");
 /// deposited` so the compositor reads the whole pigment (wash + frozen layer).
 pub const COMBINE_WGSL: &str = include_str!("shader/combine.wgsl");
 
+/// The GPU shallow-water shader (`cs_add_forces` / `cs_divergence` / `cs_clear_pressure` /
+/// `cs_jacobi` / `cs_project` / `cs_advect_velocity`, ADR-0078 S3d) — the GPU mirror of the
+/// CPU `DiffusionGrid::move_water` (+ velocity-mode advect): a momentum-carrying velocity
+/// field `(u,v)` + pressure projection → directional flow + backruns. Dormant while the
+/// velocity master scale is 0.
+pub const SHALLOW_WGSL: &str = include_str!("shader/shallow.wgsl");
+
 /// Tasteful default watercolor deposition (ADR-0078 S3c) — applied to every live fluid
 /// stroke via [`FluidSolver::set_deposition`]. Tuned for a visible-but-natural dark
 /// perimeter (`_DRY`) + paper granulation (`_GRAN`) without muddying the wash (`_BASE`
@@ -51,6 +58,18 @@ pub const COMBINE_WGSL: &str = include_str!("shader/combine.wgsl");
 pub const WATERCOLOR_DEPOSITION_BASE: f32 = 0.012;
 pub const WATERCOLOR_DEPOSITION_DRY: f32 = 0.10;
 pub const WATERCOLOR_GRANULATION: f32 = 1.4;
+
+/// Tasteful default shallow-water velocity tuning (ADR-0078 S3d) — applied to every live
+/// fluid stroke via [`FluidSolver::set_shallow_water`]. `_VELOCITY` is the master scale on
+/// the velocity field's pigment transport (0 ⇒ dormant, the gated-diffusion look);
+/// `_VISCOSITY`/`_DRAG` keep the flow coherent + settling; `_PRESSURE` is the projection
+/// strength that builds the directional flow + backrun rings. Tuned (in the CPU reference,
+/// `velocity_pressure_builds_a_backrun_ring`) for a visible off-centre ring without a
+/// runaway wash. A later FluidParams amendment (S4) can make these per-brush.
+pub const WATERCOLOR_VELOCITY: f32 = 1.4;
+pub const WATERCOLOR_VISCOSITY: f32 = 0.1;
+pub const WATERCOLOR_DRAG: f32 = 0.08;
+pub const WATERCOLOR_PRESSURE: f32 = 0.4;
 
 /// Result of [`FluidSolver::read_field_stats`]: the max wetness anywhere (the
 /// dry-check signal) + the wet bounding box (`None` when the field is bone-dry).
@@ -170,6 +189,13 @@ struct GpuParams {
     deposition: f32,
     deposition_dry: f32,
     granulation: f32,
+    // ── ADR-0078 S3d shallow-water layer ── these occupy the bytes (offsets 68..84) the
+    // diffuse/advect/transfer/combine shaders treat as padding, so those shaders keep a
+    // valid 80-B view of this 96-B UBO; only `shallow.wgsl` reads these fields.
+    velocity: f32,
+    viscosity: f32,
+    drag: f32,
+    pressure: f32,
     _pad0: f32,
     _pad1: f32,
     _pad2: f32,
@@ -247,6 +273,32 @@ pub struct FluidSolver {
     combine: wgpu::ComputePipeline,
     total: wgpu::Buffer,
     bg_combine: wgpu::BindGroup,
+    // ── Shallow-water velocity layer (ADR-0078 S3d) ──
+    add_forces: wgpu::ComputePipeline,
+    divergence_pipe: wgpu::ComputePipeline,
+    clear_pressure: wgpu::ComputePipeline,
+    jacobi: wgpu::ComputePipeline,
+    project: wgpu::ComputePipeline,
+    advect_velocity: wgpu::ComputePipeline,
+    /// Velocity ping-pong (`vec4`? no — `vec2<f32>` per cell): `vel_a` is canonical
+    /// (advect + readback read it), `vel_b` the `add_forces`/`project` scratch.
+    vel_a: wgpu::Buffer,
+    vel_b: wgpu::Buffer,
+    /// Pressure Jacobi ping-pong + the divergence (the Jacobi RHS).
+    pressure_a: wgpu::Buffer,
+    pressure_b: wgpu::Buffer,
+    /// Owned only to keep the GPU buffer alive for the divergence/jacobi bind groups
+    /// (recomputed each frame by `cs_divergence`, never cleared/read directly).
+    #[allow(dead_code)]
+    sw_divergence: wgpu::Buffer,
+    bg_add_forces: wgpu::BindGroup,
+    bg_divergence: wgpu::BindGroup,
+    bg_clear_pa: wgpu::BindGroup,
+    bg_clear_pb: wgpu::BindGroup,
+    bg_jacobi_ab: wgpu::BindGroup,
+    bg_jacobi_ba: wgpu::BindGroup,
+    bg_project: wgpu::BindGroup,
+    bg_advect_velocity: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -623,6 +675,191 @@ impl FluidSolver {
                 },
             ],
         });
+
+        // ── Shallow-water velocity layer (`shallow.wgsl`, ADR-0078 S3d) ──
+        // One module, focused per-pass bind-group layouts (the ping-pong pattern). The 4
+        // S3d UBO fields share `params_buf` (they sit in this 96-B struct's bytes the other
+        // shaders read as padding). Velocity is `vec2<f32>` (8 B/cell); pressure/divergence
+        // are `f32`.
+        let shallow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-painter-fluid shallow"),
+            source: wgpu::ShaderSource::Wgsl(SHALLOW_WGSL.into()),
+        });
+        let uniform_entry = |binding: u32| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let sw_layout = |bgl: &wgpu::BindGroupLayout| {
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("ph2d-painter-fluid shallow layout"),
+                bind_group_layouts: &[bgl],
+                immediate_size: 0,
+            })
+        };
+        let sw_pipe = |entry: &str, layout: &wgpu::PipelineLayout| {
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ph2d-painter-fluid shallow pipeline"),
+                layout: Some(layout),
+                module: &shallow_module,
+                entry_point: Some(entry),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            })
+        };
+        let vec2n = (n * 8) as u64;
+        let vel_a = buf("fluid vel_a", vec2n, wgpu::BufferUsages::COPY_SRC);
+        let vel_b = buf("fluid vel_b", vec2n, wgpu::BufferUsages::empty());
+        let pressure_a = buf("fluid pressure_a", f32n, wgpu::BufferUsages::empty());
+        let pressure_b = buf("fluid pressure_b", f32n, wgpu::BufferUsages::empty());
+        let sw_divergence = buf("fluid sw divergence", f32n, wgpu::BufferUsages::empty());
+        fn entry(binding: u32, b: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
+            wgpu::BindGroupEntry {
+                binding,
+                resource: b.as_entire_binding(),
+            }
+        }
+
+        // add_forces: (params, water r, paper r, vel_in r=vel_a, vel_out rw=vel_b).
+        let bgl_af = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw add_forces bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(1, true),
+                storage(2, true),
+                storage(3, true),
+                storage(4, false),
+            ],
+        });
+        let add_forces = sw_pipe("cs_add_forces", &sw_layout(&bgl_af));
+        let bg_add_forces = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg add_forces"),
+            layout: &bgl_af,
+            entries: &[
+                entry(0, &params_buf),
+                entry(1, &water),
+                entry(2, &paper),
+                entry(3, &vel_a),
+                entry(4, &vel_b),
+            ],
+        });
+
+        // divergence: (params, vel_in r=vel_b, divergence rw).
+        let bgl_div = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw divergence bgl"),
+            entries: &[uniform_entry(0), storage(3, true), storage(7, false)],
+        });
+        let divergence_pipe = sw_pipe("cs_divergence", &sw_layout(&bgl_div));
+        let bg_divergence = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg divergence"),
+            layout: &bgl_div,
+            entries: &[entry(0, &params_buf), entry(3, &vel_b), entry(7, &sw_divergence)],
+        });
+
+        // clear_pressure: (params, pressure_out rw). Two bind groups (seed a, seed b).
+        let bgl_clear = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw clear bgl"),
+            entries: &[uniform_entry(0), storage(6, false)],
+        });
+        let clear_pressure = sw_pipe("cs_clear_pressure", &sw_layout(&bgl_clear));
+        let bg_clear_pa = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg clear pa"),
+            layout: &bgl_clear,
+            entries: &[entry(0, &params_buf), entry(6, &pressure_a)],
+        });
+        let bg_clear_pb = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg clear pb"),
+            layout: &bgl_clear,
+            entries: &[entry(0, &params_buf), entry(6, &pressure_b)],
+        });
+
+        // jacobi: (params, pressure_in r, divergence rw, pressure_out rw). Two bind groups
+        // ping-pong a→b / b→a; RELAX_ITERS even → result lands in pressure_a.
+        let bgl_jac = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw jacobi bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(5, true),
+                storage(7, false),
+                storage(6, false),
+            ],
+        });
+        let jacobi = sw_pipe("cs_jacobi", &sw_layout(&bgl_jac));
+        let bg_jacobi_ab = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg jacobi ab"),
+            layout: &bgl_jac,
+            entries: &[
+                entry(0, &params_buf),
+                entry(5, &pressure_a),
+                entry(7, &sw_divergence),
+                entry(6, &pressure_b),
+            ],
+        });
+        let bg_jacobi_ba = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg jacobi ba"),
+            layout: &bgl_jac,
+            entries: &[
+                entry(0, &params_buf),
+                entry(5, &pressure_b),
+                entry(7, &sw_divergence),
+                entry(6, &pressure_a),
+            ],
+        });
+
+        // project: (params, vel_in r=vel_b, pressure_in r=pressure_a, vel_out rw=vel_a).
+        let bgl_proj = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw project bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(3, true),
+                storage(5, true),
+                storage(4, false),
+            ],
+        });
+        let project = sw_pipe("cs_project", &sw_layout(&bgl_proj));
+        let bg_project = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg project"),
+            layout: &bgl_proj,
+            entries: &[
+                entry(0, &params_buf),
+                entry(3, &vel_b),
+                entry(5, &pressure_a),
+                entry(4, &vel_a),
+            ],
+        });
+
+        // advect_velocity: (params, water r, paper r, vel_in r=vel_a, pig_in r=pig_b,
+        // pig_out rw=pig_a) — the velocity-mode pigment transport (B→A, like cs_advect).
+        let bgl_av = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw advect_velocity bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(1, true),
+                storage(2, true),
+                storage(3, true),
+                storage(8, true),
+                storage(9, false),
+            ],
+        });
+        let advect_velocity = sw_pipe("cs_advect_velocity", &sw_layout(&bgl_av));
+        let bg_advect_velocity = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg advect_velocity"),
+            layout: &bgl_av,
+            entries: &[
+                entry(0, &params_buf),
+                entry(1, &water),
+                entry(2, &paper),
+                entry(3, &vel_a),
+                entry(8, &pig_b),
+                entry(9, &pig_a),
+            ],
+        });
+
         Self {
             width,
             height,
@@ -650,6 +887,10 @@ impl FluidSolver {
                 deposition: 0.0,
                 deposition_dry: 0.0,
                 granulation: 0.0,
+                velocity: 0.0,
+                viscosity: 0.0,
+                drag: 0.0,
+                pressure: 0.0,
                 _pad0: 0.0,
                 _pad1: 0.0,
                 _pad2: 0.0,
@@ -677,6 +918,25 @@ impl FluidSolver {
             combine,
             total,
             bg_combine,
+            add_forces,
+            divergence_pipe,
+            clear_pressure,
+            jacobi,
+            project,
+            advect_velocity,
+            vel_a,
+            vel_b,
+            pressure_a,
+            pressure_b,
+            sw_divergence,
+            bg_add_forces,
+            bg_divergence,
+            bg_clear_pa,
+            bg_clear_pb,
+            bg_jacobi_ab,
+            bg_jacobi_ba,
+            bg_project,
+            bg_advect_velocity,
         }
     }
 
@@ -712,10 +972,39 @@ impl FluidSolver {
             deposition: 0.0,
             deposition_dry: 0.0,
             granulation: 0.0,
+            // Shallow-water velocity layer (ADR-0078 S3d) off until `set_shallow_water`.
+            velocity: 0.0,
+            viscosity: 0.0,
+            drag: 0.0,
+            pressure: 0.0,
             _pad0: 0.0,
             _pad1: 0.0,
             _pad2: 0.0,
         };
+        self.params_cache.set(gp);
+        queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
+    }
+
+    /// Enable the **shallow-water velocity layer** (ADR-0078 S3d) on the GPU: mirrors the
+    /// CPU `DiffusionParams::{velocity, viscosity, drag, pressure}`. Updates the cached
+    /// params (the per-frame region writer carries them forward) and uploads immediately
+    /// so a subsequent `step_resident_splat` runs the `move_water` passes + the
+    /// velocity-mode advect. `velocity = 0` (the `set_params` default) leaves the layer
+    /// dormant — `step_resident_splat` then runs the static gradient-flow advect, so the
+    /// existing parity gates are untouched.
+    pub fn set_shallow_water(
+        &self,
+        queue: &wgpu::Queue,
+        velocity: f32,
+        viscosity: f32,
+        drag: f32,
+        pressure: f32,
+    ) {
+        let mut gp = self.params_cache.get();
+        gp.velocity = velocity;
+        gp.viscosity = viscosity;
+        gp.drag = drag;
+        gp.pressure = pressure;
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
     }
@@ -871,6 +1160,20 @@ impl FluidSolver {
         queue.submit([enc.finish()]);
     }
 
+    /// Zero the resident shallow-water state ON the GPU (ADR-0078 S3d) — the stroke-begin
+    /// reset for the velocity + pressure buffers, alongside the pigment/water/deposited
+    /// clears, so a reused solver starts a new stroke with no leftover momentum.
+    pub fn clear_resident_velocity_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid clear velocity"),
+        });
+        enc.clear_buffer(&self.vel_a, 0, None);
+        enc.clear_buffer(&self.vel_b, 0, None);
+        enc.clear_buffer(&self.pressure_a, 0, None);
+        enc.clear_buffer(&self.pressure_b, 0, None);
+        queue.submit([enc.finish()]);
+    }
+
     /// **Splat a dab list onto the resident water + pigment (`cs_splat`).** The
     /// resident-sim input pass (4K real-time arch §4): the tool pushes the dabs it
     /// emitted this frame (O(dabs) ~ tens) and they are added DIRECTLY to the GPU
@@ -979,25 +1282,51 @@ impl FluidSolver {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("fluid resident splat step"),
         });
+        // One compute pass per pipeline (wgpu inserts the RAW barrier between passes).
+        let run = |enc: &mut wgpu::CommandEncoder,
+                   pipe: &wgpu::ComputePipeline,
+                   bg: &wgpu::BindGroup| {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid resident splat pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(pipe);
+            pass.set_bind_group(0, bg, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        };
+        // Shallow-water velocity layer on? (ADR-0078 S3d — `set_shallow_water` set it.)
+        let shallow = self.params_cache.get().velocity > 0.0;
         for _ in 0..substeps {
-            // Per substep: diffuse A→B, advect B→A, TRANSFER (flowing→deposited),
-            // evaporate water — the CPU `step` order (pigment ends back in pig_a;
-            // transfer freezes from pig_a; evaporate touches only water). `cs_transfer`
-            // is a no-op while the deposition params are 0 (the GPU parity default).
-            for (pipe, bg) in [
-                (&self.diffuse, &self.bg_diffuse),
-                (&self.advect, &self.bg_advect),
-                (&self.transfer, &self.bg_transfer),
-                (&self.evaporate, &self.bg_evaporate),
-            ] {
-                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("fluid resident splat pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(pipe);
-                pass.set_bind_group(0, bg, &[]);
-                pass.dispatch_workgroups(gx, gy, 1);
+            // MoveWater (ADR-0078 S3d): accelerate `(u,v)` (a→b), make it divergence-free
+            // (divergence → seed pressure → RELAX_ITERS Jacobi sweeps → subtract gradient,
+            // b→a) BEFORE the pigment transport. Skipped while the layer is dormant.
+            if shallow {
+                run(&mut enc, &self.add_forces, &self.bg_add_forces);
+                run(&mut enc, &self.divergence_pipe, &self.bg_divergence);
+                run(&mut enc, &self.clear_pressure, &self.bg_clear_pa);
+                run(&mut enc, &self.clear_pressure, &self.bg_clear_pb);
+                for it in 0..RELAX_ITERS {
+                    // ping-pong a→b / b→a; even count lands the result in pressure_a.
+                    let bg = if it % 2 == 0 {
+                        &self.bg_jacobi_ab
+                    } else {
+                        &self.bg_jacobi_ba
+                    };
+                    run(&mut enc, &self.jacobi, bg);
+                }
+                run(&mut enc, &self.project, &self.bg_project);
             }
+            // Then the CPU `step` order: diffuse A→B, advect B→A (velocity-mode when the
+            // layer is on, else the static gradient flow), TRANSFER (flowing→deposited),
+            // evaporate water. `cs_transfer` is a no-op while deposition params are 0.
+            run(&mut enc, &self.diffuse, &self.bg_diffuse);
+            if shallow {
+                run(&mut enc, &self.advect_velocity, &self.bg_advect_velocity);
+            } else {
+                run(&mut enc, &self.advect, &self.bg_advect);
+            }
+            run(&mut enc, &self.transfer, &self.bg_transfer);
+            run(&mut enc, &self.evaporate, &self.bg_evaporate);
         }
         // Combine once per frame (region-scoped, after the substeps): total = flowing +
         // deposited — the buffer the compositor reads (ADR-0078 S3c). Params still hold
@@ -1208,6 +1537,37 @@ impl FluidSolver {
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
         let out = bytemuck::cast_slice::<u8, [f32; 4]>(&mapped).to_vec();
+        drop(mapped);
+        staging.unmap();
+        out
+    }
+
+    /// Map the resident velocity field (`vel_a`, `array<vec2<f32>>`) back to the CPU
+    /// (ADR-0078 S3d) — for the GPU shallow-water parity gate + the pen-up bake. Returns
+    /// `(u, v)` per cell, matching the CPU `DiffusionGrid::velocity()` layout.
+    #[must_use]
+    pub fn read_velocity(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 2]> {
+        let n = (self.width as usize) * (self.height as usize);
+        let size = (n * 8) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fluid velocity readback"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid velocity rb"),
+        });
+        enc.copy_buffer_to_buffer(&self.vel_a, 0, &staging, 0, size);
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let out = bytemuck::cast_slice::<u8, [f32; 2]>(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
         out

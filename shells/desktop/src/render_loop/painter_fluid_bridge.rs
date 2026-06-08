@@ -218,6 +218,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 .clear_resident_water_gpu(&gpu.device, &gpu.queue);
             sess.solver
                 .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+            // ADR-0078 S3d: the shallow-water velocity + pressure start each stroke at rest
+            // (no leftover momentum).
+            sess.solver
+                .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
             // ADR-0078 S3c: enable the watercolor deposition layer (edge-darkening +
@@ -228,6 +232,16 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 ph2d_painter_fluid::WATERCOLOR_DEPOSITION_BASE,
                 ph2d_painter_fluid::WATERCOLOR_DEPOSITION_DRY,
                 ph2d_painter_fluid::WATERCOLOR_GRANULATION,
+            );
+            // ADR-0078 S3d: enable the shallow-water velocity layer — pigment now advects
+            // along the momentum-carrying flow `(u,v)` (MoveWater + pressure projection)
+            // instead of the static gradient, giving directional flow + backruns/cauliflower.
+            sess.solver.set_shallow_water(
+                &gpu.queue,
+                ph2d_painter_fluid::WATERCOLOR_VELOCITY,
+                ph2d_painter_fluid::WATERCOLOR_VISCOSITY,
+                ph2d_painter_fluid::WATERCOLOR_DRAG,
+                ph2d_painter_fluid::WATERCOLOR_PRESSURE,
             );
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);

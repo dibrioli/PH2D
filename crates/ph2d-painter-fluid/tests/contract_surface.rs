@@ -134,6 +134,21 @@ fn fluid_wgsl_parses_and_validates_via_naga() {
 }
 
 #[test]
+fn shallow_wgsl_parses_and_validates_via_naga() {
+    // The S3d shallow-water module (6 entry points sharing the solver UBO) must pass the
+    // same frontend wgpu uses, so a bad port fails at test time, not GPU init.
+    let module = naga::front::wgsl::parse_str(ph2d_painter_fluid::SHALLOW_WGSL)
+        .expect("shallow.wgsl must parse via naga");
+    let mut validator = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    );
+    validator
+        .validate(&module)
+        .expect("shallow.wgsl must validate via naga");
+}
+
+#[test]
 fn composite_wgsl_parses_and_validates_via_naga() {
     // The K–M glaze composite (the project's largest shader) must pass the same
     // frontend wgpu uses, so an invalid port fails at test time, not GPU init.

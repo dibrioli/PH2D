@@ -33,17 +33,27 @@
 | **S3c** deposição **VISÍVEL** | `cs_combine` (`total=flowing+deposited`) + `total_buffer()` (composite lê o total) + consts `WATERCOLOR_DEPOSITION_*` ligadas no bridge | `d253b8f` | `gpu_combine_equals_flowing_plus_deposited` ✓ **smoke OK (Enio "funciona!")** |
 | **perf** composite pipelined | `composite_frame_pipelined` (readback assíncrono 1-frame-late, sem `poll(wait)` por-frame) → ~240 FPS | `7dea61f`,`d975520` | `composite_frame_pipelined_matches_sync` (byte-exato) ✓ |
 | **perf** DELAY clique→traço | **cache do papel** (gerado 1×/canvas, pré-gerado no hover) — era o ~⅓s | `0cd7802` | testes diffusion/fluid verdes ✓ **smoke OK (Enio "delay sumiu")** |
+| **S3d-a** shallow-water (ref CPU) | `DiffusionGrid` + `vel_u/vel_v/pressure`; `move_water` = `add_forces` (`−β∇h −λ∇w −drag·u +μ∇²u`, wet-gated, CFL) → `project` (Jacobi incompressibilidade, `RELAX_ITERS=6`, seed-0 determinístico); pigmento advecta por `(u,v)` (dormant quando `velocity=0` → look antigo bit-idêntico) | local (pré-commit) | 5 gates CPU (dormant, det, estável, transporta `+x`, **anel de backrun** 6× centro) ✓ + 340 lib verdes |
+| **S3d-b** shallow-water (espelho GPU) | `shallow.wgsl` (`cs_add_forces`/`cs_divergence`/`cs_clear_pressure`/`cs_jacobi`/`cs_project`/`cs_advect_velocity`) + `FluidSolver` (buffers vel/pressure, 6 pipelines, bind-groups ping-pong, `set_shallow_water`, `read_velocity`) + integração em `step_resident_splat` | local | `gpu_shallow_water_matches_cpu_move_water` (**0.000000 vel+pig, bit-exato em Metal**) ✓ + naga ✓ + 17 gates GPU existentes intactos (todos 0 ULP) |
+| **S3d-c** shallow-water VISÍVEL | `set_shallow_water` ligado no bridge (`WATERCOLOR_VELOCITY=1.4`/`_VISCOSITY=.1`/`_DRAG=.08`/`_PRESSURE=.4`) + clear de velocidade no epoch | local | compila (`-p ph2d-host-desktop --features fluid`) ⚠️ **SMOKE/visual pendente (Enio)** |
 
 **Medido (Metal `--release`, bench `perf_resident`):** traço típico step+composite — 1408: 1.8ms · 2048: 4.8ms ·
-**4K: 6.5ms** (region-scoped). Pós-fixes: sem delay, ~240 FPS.
+**4K: 6.5ms** (region-scoped). Pós-fixes: sem delay, ~240 FPS. **⚠️ S3d adiciona ~11 passes/substep
+(add_forces + divergence + 2 clear + 6 jacobi + project) — perf do traço live AINDA NÃO medida com a
+camada ligada; validar FPS + visual (anel de backrun) com o Enio antes de qualquer push.**
 
 ## §2 — O que FALTA (priorizado)
 
-1. **S3d — campo de velocidade shallow-water** (a última grande física, a alma que falta): `MoveWater`
-   (velocidade `(u,v)` de `−∇p` + viscosidade + drag) + `FlowOutward` (relaxação de pressão) →
-   **fluxo direcional + backruns/cauliflower** (Curtis 1997 §3). Pigmento advecta por `(u,v)` em vez do
-   gradiente-de-água atual. **Faça igual S3a→S3b**: referência CPU primeiro (estende `DiffusionGrid` com
-   `h,u,v,p`), gate de paridade, depois o espelho GPU. Contexto fresco e focado (é fundacional).
+0. **S3d — VALIDAÇÃO VISUAL + perf do traço live (Enio).** O motor shallow-water está **completo +
+   paridade bit-exata** (CPU ref + espelho GPU + ligado no bridge), mas só foi validado por **gates
+   headless** — falta o Enio ver o **anel de backrun/cauliflower** num traço real e confirmar que o FPS
+   aguenta os ~11 passes/substep extras. **Rode `./play.command`, traço grande de aquarela, observe o anel
+   off-center + fluxo direcional.** Se o FPS cair: (a) reduzir `RELAX_ITERS` (6→4), (b) rodar move_water
+   1×/frame em vez de por-substep, (c) pular divergence/jacobi quando `pressure==0`. Se o look pedir tuning:
+   ajustar os `WATERCOLOR_VELOCITY/_VISCOSITY/_DRAG/_PRESSURE` (consts em `solver.rs`). **`./scripts/ship.sh`
+   + os 22+ commits desta saga ainda não pushados** (§0.3).
+1. ~~**S3d — campo de velocidade shallow-water**~~ **FEITO** (S3d-a/b/c, ver §1). MoveWater (add_forces +
+   Jacobi project) + advect-por-`(u,v)`; dormant→look antigo; paridade GPU 0 ULP. A física da alma chegou.
 2. **S4 — multi-pigmento K–M + multi-camada @4K**: granulação/staining por-pigmento; encadear campos
    residentes no compositor de camadas (ADR-0048). Aqui entra a **emenda do `FluidParams`** (3 slots de
    headroom → `deposition/deposition_dry/granulation` per-brush, sob ADR-0078) + atualizar o gate
@@ -80,12 +90,15 @@
 ## §4 — Arquivos-chave
 
 - **Solver GPU:** `crates/ph2d-painter-fluid/src/solver.rs` (`FluidSolver`: `cs_splat`/`step_resident_splat`/
-  `cs_reduce`/`cs_transfer`/`cs_combine`, `set_deposition`, `total_buffer`, consts `WATERCOLOR_*`) +
-  `src/shader/{fluid,splat,reduce,transfer,combine}.wgsl`.
+  `cs_reduce`/`cs_transfer`/`cs_combine` + **shallow-water** `set_shallow_water`/`read_velocity`/
+  `clear_resident_velocity_gpu`, `total_buffer`, consts `WATERCOLOR_*`) +
+  `src/shader/{fluid,splat,reduce,transfer,combine,shallow}.wgsl`. **`GpuParams` cresceu 80→96 B** (os 4
+  campos S3d ocupam os bytes que os outros shaders liam como padding → byte-compatíveis, não mexidos).
 - **Composite GPU:** `src/composite.rs` (`FluidCompositor`: `begin_stroke`, `composite_frame` [sync, p/ test],
   `composite_frame_pipelined` [vivo], `PendingReadback`) + `src/shader/composite.wgsl`.
 - **Referência CPU (paridade + física):** `crates/ph2d-painter-brush/src/diffusion.rs` (`DiffusionGrid`:
-  `step`=diffuse/advect/**transfer**/evaporate, `generate_paper`/`with_paper` [cache], `deposited`).
+  `step`=**move_water**/diffuse/advect/**transfer**/evaporate, `move_water`=`add_forces`+`project`,
+  `velocity()`/`set_velocity_from`, `generate_paper`/`with_paper` [cache], `deposited`; `pub RELAX_ITERS`).
 - **Hooks do tool:** `crates/ph2d-tool-painter/src/tool/lifecycle.rs` (`begin_stroke` [cache do papel +
   `cached_fluid_paper`], `fluid_take_dabs`, `fluid_dry_check_and_drop_gpu`, `fluid_prewarm_paper`) +
   `tool/mod.rs` (`FluidDab`, `fluid_dabs`).
@@ -123,3 +136,10 @@ granulado nos vales do papel; sem delay no clique; RAW ~240 no traço.
 
 — deixado por Claude (sessão 2026-06-08: motor de aquarela GPU físico completo S0–S3c + perf, validado).
   Próximo: **S3d (shallow-water velocity → backruns)**, em contexto fresco.
+
+— atualizado por Claude (sessão 2026-06-08, cont.): **S3d COMPLETO** — shallow-water velocity layer
+  (CPU ref `move_water`=add_forces+Jacobi-project + advect-por-`(u,v)`, 5 gates físicos incl. anel de
+  backrun; espelho GPU `shallow.wgsl` 6 passes, **paridade bit-exata 0 ULP em Metal**; ligado no bridge).
+  Tudo dormant quando `velocity=0` → look antigo intacto, 17 gates GPU existentes 0 ULP. **Commits locais
+  (`--no-verify`), não pushados.** Próximo: **validação visual do Enio (anel de backrun + FPS do traço
+  live)** — vide §2.0; depois **S4 (multi-pigmento K–M + emenda `FluidParams`)**.

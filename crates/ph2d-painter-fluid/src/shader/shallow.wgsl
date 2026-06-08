@@ -109,9 +109,11 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let n = nb(x, y);
-    // Driven by the FlowOutward push (−λ·∇w) + paper-slope channeling (−β·∇h, the `downhill`
-    // control). `downhill` is OFF in the preset (it imprints the paper grain as mottling —
-    // see the CPU `add_forces` doc) but live for the artist's "Downhill" slider.
+    // Permeability gates the body forces — FlowOutward (−λ·∇w) + paper-slope channeling
+    // (−β·∇h, `downhill`). A less permeable patch generates less flow, so the Perm controls
+    // visibly modulate the velocity (not just the diffusion gate), and the paper-textured
+    // velocity is what `viscosity` then smooths (ADR-0079 — see the CPU `add_forces` doc).
+    let perm = P.perm_valley + (P.perm_crest - P.perm_valley) * paper[i];
     let dhx = paper[idx(n.y, y)] - paper[idx(n.x, y)];
     let dhy = paper[idx(x, n.w)] - paper[idx(x, n.z)];
     let dwx = water[idx(n.y, y)] - water[idx(n.x, y)];
@@ -120,10 +122,11 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Neumann velocity Laplacian (border neighbour = self via the clamp).
     let lap = vel_in[idx(n.x, y)] + vel_in[idx(n.y, y)] + vel_in[idx(x, n.z)]
         + vel_in[idx(x, n.w)] - 4.0 * vc;
-    var uv = vc
-        - vec2<f32>(P.downhill * 0.5 * dhx, P.downhill * 0.5 * dhy)
-        - vec2<f32>(P.flow_outward * 0.5 * dwx, P.flow_outward * 0.5 * dwy)
-        + P.viscosity * lap;
+    let force = vec2<f32>(
+        P.downhill * 0.5 * dhx + P.flow_outward * 0.5 * dwx,
+        P.downhill * 0.5 * dhy + P.flow_outward * 0.5 * dwy,
+    );
+    var uv = vc - perm * force + P.viscosity * lap;
     uv = uv * (1.0 - P.drag);
     vel_out[i] = clamp(uv * wet, vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5));
 }

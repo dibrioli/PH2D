@@ -469,6 +469,14 @@ impl DiffusionGrid {
                 if wet <= 1e-4 {
                     continue; // nu[c] = nv[c] = 0 already
                 }
+                // **Permeability GATES the body forces** (ADR-0079, 2026-06-08): a less
+                // permeable patch (crest) generates LESS flow, so the "Perm Valley/Crest"
+                // controls visibly modulate the velocity (not just the diffusion gate — that
+                // was masked by the perm-independent velocity transport). The resulting
+                // paper-textured velocity is also what `viscosity` then smooths, so both
+                // controls read. Gating the FORCE (not the resident velocity) avoids
+                // compounding-decay of the momentum.
+                let perm = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[c];
                 let (xm, xp) = (x.saturating_sub(1), (x + 1).min(w - 1));
                 let (ym, yp) = (y.saturating_sub(1), (y + 1).min(h - 1));
                 let dhx = self.paper[li(xp, y)] - self.paper[li(xm, y)];
@@ -483,12 +491,10 @@ impl DiffusionGrid {
                     + self.vel_v[li(x, yp)]
                     - 4.0 * self.vel_v[c];
                 let mut u = self.vel_u[c]
-                    - p.downhill * 0.5 * dhx
-                    - p.flow_outward * 0.5 * dwx
+                    - perm * (p.downhill * 0.5 * dhx + p.flow_outward * 0.5 * dwx)
                     + p.viscosity * lap_u;
                 let mut v = self.vel_v[c]
-                    - p.downhill * 0.5 * dhy
-                    - p.flow_outward * 0.5 * dwy
+                    - perm * (p.downhill * 0.5 * dhy + p.flow_outward * 0.5 * dwy)
                     + p.viscosity * lap_v;
                 u *= 1.0 - p.drag;
                 v *= 1.0 - p.drag;

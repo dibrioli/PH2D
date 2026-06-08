@@ -149,13 +149,21 @@ pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCo
         stroke_color_linear[2].clamp(0.0, 1.0),
     ];
     let prepared = prepare_pigment(pcol);
-    // **ADR-0079:** the deposited pigment is now a colour-INDEPENDENT gray coverage mass
-    // (the lifecycle splat deposits `[dep/3; 3]`, channel-sum = `dep`), so the normaliser is
-    // the constant `1` — `amount = Σdens = Σdep` (coverage) for EVERY colour, so black/dark
-    // deposit real coverage (else `(0,0,0)` gave `amount = 0` → black painted nothing). For
-    // non-black colours this matches the old `Σ(stroke)` normaliser's coverage exactly (the
-    // old colour-scaled deposit cancelled to `Σdep` too).
-    let color_sum = 1.0;
+    // **ADR-0079 — opacity scales with the pigment's VALUE (watercolor concentration).**
+    // The deposited pigment is a colour-INDEPENDENT gray coverage mass (`[dep/3; 3]` per dab,
+    // channel-sum = `dep`); `amount = Σdens / color_sum`. A DARK/deep colour is a *denser*
+    // pigment → it must COVER the bright paper (read as the picked colour) instead of washing
+    // out / over-darkening through the K–M (the "burnt" look — Enio 2026-06-08; the research
+    // confirms K–M is unreliable for dark/low-reflectance pigments). So a darker pick gets a
+    // SMALLER normaliser → higher `amount` → more opaque; bright/pale colours keep `~1`, i.e.
+    // translucent (ADR-0077 D12: bright ≠ fully opaque). `value` = HSV value (max channel),
+    // the picker's vertical axis — so it separates a bright saturated blue (opaque) from a
+    // dark navy (more opaque), which luminance would conflate. Black (value 0) → 0.3 (opaque).
+    let value = stroke_color_linear[0]
+        .max(stroke_color_linear[1])
+        .max(stroke_color_linear[2])
+        .clamp(0.0, 1.0);
+    let color_sum = 0.3 + 0.7 * value;
     WetCompositeBrush {
         prepared,
         pcol,

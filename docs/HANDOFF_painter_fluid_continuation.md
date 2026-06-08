@@ -44,14 +44,15 @@ camada ligada; validar FPS + visual (anel de backrun) com o Enio antes de qualqu
 
 ## §2 — O que FALTA (priorizado)
 
-0. **S3d — VALIDAÇÃO VISUAL + perf do traço live (Enio).** O motor shallow-water está **completo +
-   paridade bit-exata** (CPU ref + espelho GPU + ligado no bridge), mas só foi validado por **gates
-   headless** — falta o Enio ver o **anel de backrun/cauliflower** num traço real e confirmar que o FPS
-   aguenta os ~11 passes/substep extras. **Rode `./play.command`, traço grande de aquarela, observe o anel
-   off-center + fluxo direcional.** Se o FPS cair: (a) reduzir `RELAX_ITERS` (6→4), (b) rodar move_water
-   1×/frame em vez de por-substep, (c) pular divergence/jacobi quando `pressure==0`. Se o look pedir tuning:
-   ajustar os `WATERCOLOR_VELOCITY/_VISCOSITY/_DRAG/_PRESSURE` (consts em `solver.rs`). **`./scripts/ship.sh`
-   + os 22+ commits desta saga ainda não pushados** (§0.3).
+0. **S3d — RE-VALIDAÇÃO VISUAL (Enio), round 2.** Round 1 (consts iniciais): **funcionou + FPS OK**, mas
+   Enio reportou **"ruído grande" + bordas menos naturais**. Causa: o termo de declive-do-papel `−β·∇h` no
+   `add_forces` **duplicava** a textura do tooth (velocidade canaliza pros vales + `granulation` deposita
+   nos mesmos vales → mosqueado grande amplificado pelo momento). **Fix aplicado:** removido o `−β·∇h` do
+   `add_forces` (CPU+GPU, paridade segue 0 ULP) → a velocidade é dirigida só pela água (FlowOutward +
+   pressão); o papel entra uma vez, via deposição. Consts suavizados (`_VISCOSITY` 0.1→0.18, `_PRESSURE`
+   0.4→0.3, `_VELOCITY` 1.4→1.3, `_DRAG` 0.08→0.1) p/ bordas naturais. **Rode `./play.command` de novo:**
+   o ruído grande deve sumir + bordas macias + ainda com fluxo direcional/backrun sutil. Se ainda pedir
+   tuning, os 4 consts estão em `solver.rs`. **Commits locais, não pushados** (§0.3).
 1. ~~**S3d — campo de velocidade shallow-water**~~ **FEITO** (S3d-a/b/c, ver §1). MoveWater (add_forces +
    Jacobi project) + advect-por-`(u,v)`; dormant→look antigo; paridade GPU 0 ULP. A física da alma chegou.
 2. **S4 — multi-pigmento K–M + multi-camada @4K**: granulação/staining por-pigmento; encadear campos

@@ -63,13 +63,16 @@ pub const WATERCOLOR_GRANULATION: f32 = 1.4;
 /// fluid stroke via [`FluidSolver::set_shallow_water`]. `_VELOCITY` is the master scale on
 /// the velocity field's pigment transport (0 ⇒ dormant, the gated-diffusion look);
 /// `_VISCOSITY`/`_DRAG` keep the flow coherent + settling; `_PRESSURE` is the projection
-/// strength that builds the directional flow + backrun rings. Tuned (in the CPU reference,
-/// `velocity_pressure_builds_a_backrun_ring`) for a visible off-centre ring without a
-/// runaway wash. A later FluidParams amendment (S4) can make these per-brush.
-pub const WATERCOLOR_VELOCITY: f32 = 1.4;
-pub const WATERCOLOR_VISCOSITY: f32 = 0.1;
-pub const WATERCOLOR_DRAG: f32 = 0.08;
-pub const WATERCOLOR_PRESSURE: f32 = 0.4;
+/// strength that builds the directional flow + backrun rings. Tuned for a natural wash
+/// (2026-06-08 Enio feedback: the first pass read as excess large-scale noise + hard edges):
+/// higher `_VISCOSITY` smooths the velocity field (kills any collocated-grid checkerboard +
+/// softens), lower `_PRESSURE` keeps the backrun ring present but gentle (natural edges). The
+/// paper-tooth mottling was fixed separately — the `−β·∇h` force is gone from `add_forces`
+/// (see `diffusion.rs`). A later FluidParams amendment (S4) can make these per-brush.
+pub const WATERCOLOR_VELOCITY: f32 = 1.3;
+pub const WATERCOLOR_VISCOSITY: f32 = 0.18;
+pub const WATERCOLOR_DRAG: f32 = 0.1;
+pub const WATERCOLOR_PRESSURE: f32 = 0.3;
 
 /// Result of [`FluidSolver::read_field_stats`]: the max wetness anywhere (the
 /// dry-check signal) + the wet bounding box (`None` when the field is bone-dry).

@@ -36,8 +36,14 @@ struct Params {
     region_oy: u32,
     region_w: u32,
     region_h: u32,
+    // Pigment-deposition layer (ADR-0078 S3) — read by `cs_transfer` (separate
+    // module, same UBO layout); the diffuse/advect/evaporate kernels ignore them.
+    deposition: f32,
+    deposition_dry: f32,
+    granulation: f32,
     _pad0: f32,
     _pad1: f32,
+    _pad2: f32,
 }
 
 // Map a region-local invocation to an absolute cell; returns false (skip) when the

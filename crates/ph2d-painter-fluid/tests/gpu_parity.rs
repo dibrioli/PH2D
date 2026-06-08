@@ -341,6 +341,85 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
 
 #[test]
 #[ignore = "needs a GPU device"]
+fn gpu_transfer_matches_cpu_deposition() {
+    // ADR-0078 S3b: the GPU `cs_transfer` pass must reproduce the CPU
+    // `DiffusionGrid::transfer_pigment` — BOTH the flowing pigment left behind AND the
+    // deposited layer it builds (edge-darkening + granulation). Same splat + step
+    // count + deposition params on each side; agree to the diffuse/advect FMA band.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (44u32, 38u32);
+    let substeps = 14u32;
+    let (dep, dep_dry, gran) = (0.03f32, 0.06f32, 1.5f32);
+    let base = FluidParams::default();
+    let raw = [
+        (22.0f32, 19.0, 9.0, 0.85, [0.10f32, 0.20, 0.70]),
+        (26.0, 22.0, 6.0, 0.7, [0.30, 0.05, 0.05]),
+        (16.0, 17.0, 5.0, 0.6, [0.00, 0.40, 0.10]),
+    ];
+
+    // CPU reference: same splats, deposition ON, then step.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+    let mut dp = base.to_diffusion();
+    dp.deposition = dep;
+    dp.deposition_dry = dep_dry;
+    dp.granulation = gran;
+    for _ in 0..substeps {
+        cpu.step(&dp);
+    }
+
+    // GPU: same field, deposition enabled via set_deposition (full-grid region).
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.set_deposition(&gpu.queue, dep, dep_dry, gran);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_dep = solver.read_deposited(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let (cpu_flow, cpu_dep) = (cpu.pigment(), cpu.deposited());
+    let mut worst_flow = 0.0f32;
+    let mut worst_dep = 0.0f32;
+    let mut total_dep = 0.0f32;
+    for i in 0..n {
+        for k in 0..3 {
+            worst_flow = worst_flow.max((gpu_flow[i][k] - cpu_flow[i][k]).abs());
+            worst_dep = worst_dep.max((gpu_dep[i][k] - cpu_dep[i][k]).abs());
+        }
+        total_dep += gpu_dep[i][0] + gpu_dep[i][1] + gpu_dep[i][2];
+    }
+    eprintln!(
+        "cs_transfer vs CPU: worst flowing |Δ| = {worst_flow:.6}, worst deposited |Δ| = {worst_dep:.6}, GPU deposited total = {total_dep:.3}"
+    );
+    assert!(
+        total_dep > 0.05,
+        "GPU deposited nothing — cs_transfer is dead, parity meaningless"
+    );
+    assert!(
+        worst_flow < 2.0e-2,
+        "cs_transfer flowing diverged from CPU: {worst_flow}"
+    );
+    assert!(
+        worst_dep < 2.0e-2,
+        "cs_transfer deposited diverged from CPU: {worst_dep}"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
 fn region_scoped_step_matches_full_grid_inside_region() {
     // ADR-0078 S1: scoping the diffuse/advect/evaporate dispatch to the wet envelope
     // must NOT change the result inside the region. A cell's value depends only on its

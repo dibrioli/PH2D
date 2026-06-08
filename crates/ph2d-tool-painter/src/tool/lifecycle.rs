@@ -159,6 +159,7 @@ impl PainterTool {
         // a field is only ever created here, so this is the one reset that matters).
         self.wet_composite_bbox = None;
         self.wet_pigment_envelope = None;
+        self.fluid_dabs.clear();
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //
@@ -266,7 +267,11 @@ impl PainterTool {
     /// ("the paint stays wet"). No-op once the field has dried + been dropped.
     pub(crate) fn on_tick_diffusion(&mut self) {
         // GPU-driven: the shell steps + composites the field (skip the CPU path).
-        if self.gpu_fluid_driven || self.wet_field.is_none() {
+        // `fluid_hires` (= GPU-capable) gates the FIRST frame too — the shell sets it
+        // before `begin_stroke`, whereas `gpu_fluid_driven` is only set after the
+        // frame's drive runs, so frame 1 must also skip the CPU tick here (the dabs
+        // went to the GPU dab list, not the grid).
+        if self.gpu_fluid_driven || self.fluid_hires || self.wet_field.is_none() {
             return;
         }
         self.tick_wet_field(WET_SUBSTEPS_IDLE);
@@ -479,6 +484,23 @@ impl PainterTool {
         })
     }
 
+    /// **GPU-resident path (4K real-time arch §4): drain this frame's dab list +
+    /// return the composite region.** Replaces [`Self::fluid_frame_step_inputs`] (no
+    /// O(grid) deposit/water alloc, no CPU evaporate/scan): `cs_splat` consumes the
+    /// dabs onto the resident field; the compositor uses the region. The region is the
+    /// MONOTONIC envelope (grown from the dab bboxes in `queue_pointer`), so it never
+    /// recedes and never clips the conserved pigment (§2 lesson). `None` when the
+    /// field has never been wet (the shell drops it). On idle frames after pen-up the
+    /// dab list is empty but the region persists, so the field keeps blooming +
+    /// compositing until the GPU dry-check drops it.
+    #[must_use]
+    pub fn fluid_take_dabs(
+        &mut self,
+    ) -> Option<(Vec<crate::tool::FluidDab>, (u32, u32, u32, u32))> {
+        let region = self.wet_pigment_envelope?;
+        Some((std::mem::take(&mut self.fluid_dabs), region))
+    }
+
     /// Blit a GPU-composited **row band** over `canvas_rgba`, but ONLY the bbox
     /// columns `[px_lo, px_hi)` of `rect = (px_lo, py_lo, px_hi, py_hi)`. `band` is the
     /// full-width readback `(py_hi-py_lo)*cw*4` RGBA8; we copy just the rect's columns
@@ -534,6 +556,28 @@ impl PainterTool {
             self.wet_field = None;
             self.wet_backdrop = None;
             self.wet_composite_bbox = None;
+            return true;
+        }
+        false
+    }
+
+    /// **GPU-resident dry-check (4K real-time arch §4).** Drop the field when the
+    /// GPU-reduced `max_water` ([`ph2d_painter_fluid::FluidSolver::read_field_stats`])
+    /// is below the dry threshold AND the stroke has ended — the same gate as
+    /// [`Self::fluid_dry_check_and_drop`], but the wetness comes from the GPU instead
+    /// of a CPU O(grid) `max_water` scan (the field's water is GPU-resident now). The
+    /// shell reads the stats SPORADICALLY (drying is slow), so this is only called on
+    /// those frames. Returns `true` when it dropped.
+    pub fn fluid_dry_check_and_drop_gpu(&mut self, max_water: f32) -> bool {
+        if self.wet_field.is_none() {
+            return false;
+        }
+        if max_water < WET_DRY_THRESHOLD && !self.stroke_active {
+            self.wet_field = None;
+            self.wet_backdrop = None;
+            self.wet_composite_bbox = None;
+            self.wet_pigment_envelope = None;
+            self.fluid_dabs.clear();
             return true;
         }
         false
@@ -667,8 +711,49 @@ impl PainterTool {
             // after pen-up. `stamps` borrows `self.scheduler`; `self.wet_field` is a
             // disjoint field, so the splat coexists with that borrow.
             if self.wet_field.is_some() {
-                {
-                    let scale = self.wet_field_scale as f32;
+                let scale = self.wet_field_scale as f32;
+                // `fluid_hires` (= GPU-capable) decides the path, not `gpu_fluid_driven`:
+                // the shell sets `fluid_hires` before `begin_stroke`, but only sets
+                // `gpu_fluid_driven` after the frame's drive — so gating on the latter
+                // would route the stroke's FIRST dabs to the CPU grid and lose them
+                // (the GPU resident field starts empty). They match for every later
+                // frame (both ⟺ a capable GPU on a fluid brush).
+                if self.fluid_hires {
+                    // **GPU-resident path (4K real-time arch §4):** capture the dabs as
+                    // a small list — `cs_splat` adds them to the resident water/pigment
+                    // on the shell's per-frame drive, so the CPU never splats into (or
+                    // scans) the O(grid) field. Grow the MONOTONIC composite envelope
+                    // from each dab's cell bbox (the §2 lesson: never recede; this is a
+                    // superset of the old water bbox, padded by the compositor).
+                    let (gw, gh) = self.wet_field.as_ref().expect("wet_field present").dims();
+                    for stamp in stamps {
+                        let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+                            stamp.color_oklab[0],
+                            stamp.color_oklab[1],
+                            stamp.color_oklab[2],
+                        );
+                        let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
+                        let cx = stamp.position_world[0] / scale;
+                        let cy = stamp.position_world[1] / scale;
+                        let r = (stamp.size_px * 0.5 / scale).max(0.5);
+                        self.fluid_dabs.push(crate::tool::FluidDab {
+                            cx,
+                            cy,
+                            r,
+                            water: WET_WATER_DEPOSIT,
+                            rgb: [rgb[0] * dep, rgb[1] * dep, rgb[2] * dep],
+                        });
+                        let x0 = ((cx - r).floor().max(0.0) as u32).min(gw - 1);
+                        let y0 = ((cy - r).floor().max(0.0) as u32).min(gh - 1);
+                        let x1 = ((cx + r).ceil().max(0.0) as u32).min(gw - 1);
+                        let y1 = ((cy + r).ceil().max(0.0) as u32).min(gh - 1);
+                        self.wet_pigment_envelope = Some(match self.wet_pigment_envelope {
+                            Some((a, b, c, d)) => (a.min(x0), b.min(y0), c.max(x1), d.max(y1)),
+                            None => (x0, y0, x1, y1),
+                        });
+                    }
+                } else {
+                    // CPU fallback: splat into the grid + step it inline (unchanged).
                     let grid = self.wet_field.as_mut().expect("wet_field present");
                     for stamp in stamps {
                         let rgb = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
@@ -685,10 +770,6 @@ impl PainterTool {
                             [rgb[0] * dep, rgb[1] * dep, rgb[2] * dep],
                         );
                     }
-                }
-                // GPU-driven (W15.3): only splat here; the shell's per-frame GPU
-                // stepper advances + composites the field. CPU path steps inline.
-                if !self.gpu_fluid_driven {
                     self.tick_wet_field(WET_SUBSTEPS_PAINTING);
                 }
                 self.preview_dirty = true;

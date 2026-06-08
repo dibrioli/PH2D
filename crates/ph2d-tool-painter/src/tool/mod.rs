@@ -278,6 +278,27 @@ pub struct FluidFrameInputs {
     pub dims: (u32, u32),
 }
 
+/// One brush dab for the GPU-resident fluid path (4K real-time arch §4): grid-space
+/// centre + radius, the per-touch water, and the (opacity-weighted) linear-RGB
+/// pigment — exactly the arguments the tool used to pass to `DiffusionGrid::splat`.
+/// Plain POD (no GPU dep): the shell maps it to `ph2d_painter_fluid::DabGpu` and
+/// `cs_splat` adds it to the resident water + pigment, so the per-frame CPU never
+/// allocates/scans an O(grid) deposit buffer. Drained each frame by
+/// [`PainterTool::fluid_take_dabs`].
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FluidDab {
+    /// Grid-space dab centre x (`world_x / wet_field_scale`).
+    pub cx: f32,
+    /// Grid-space dab centre y (`world_y / wet_field_scale`).
+    pub cy: f32,
+    /// Grid-space radius (`size_px * 0.5 / scale`, floored to 0.5 like the CPU splat).
+    pub r: f32,
+    /// Wetness this touch deposits (`WET_WATER_DEPOSIT`).
+    pub water: f32,
+    /// Linear-RGB pigment mass (already weighted by `WET_PIGMENT_DEPOSIT × opacity`).
+    pub rgb: [f32; 3],
+}
+
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -614,6 +635,12 @@ pub struct PainterTool {
     /// dab into an axis-aligned rectangle (Enio's "quinas retangulares"). Reset to
     /// `None` with the field. CPU path keeps using the true pigment bbox.
     wet_pigment_envelope: Option<(u32, u32, u32, u32)>,
+    /// **GPU-resident fluid path (4K real-time arch §4).** This frame's dabs, captured
+    /// as a small list (`O(dabs)`) instead of splatted into the CPU grid; the shell
+    /// drains them via [`Self::fluid_take_dabs`] and `cs_splat` adds them to the
+    /// resident water + pigment — no per-frame O(grid) deposit alloc/upload. Cleared
+    /// each `begin_stroke` + each drain. Unused on the CPU-fallback path.
+    fluid_dabs: Vec<FluidDab>,
 }
 
 impl Default for PainterTool {
@@ -680,6 +707,7 @@ impl Default for PainterTool {
             fluid_hires: false,
             wet_field_scale: lifecycle::WET_FIELD_SCALE,
             wet_pigment_envelope: None,
+            fluid_dabs: Vec::new(),
         }
     }
 }

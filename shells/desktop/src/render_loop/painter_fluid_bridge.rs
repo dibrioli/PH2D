@@ -22,16 +22,25 @@
 use ph2d_editor::ToolRegistry;
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::wet_composite::prepare_wet_composite_from_stroke;
-use ph2d_painter_fluid::{FluidCompositor, FluidParams, FluidSolver};
+use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidParams, FluidSolver};
 use std::cell::RefCell;
 
+/// How often (in frames) the resident path reads the GPU field stats back for the
+/// dry-check. Drying takes ~0.3 s (≈ 18 frames @ 60 Hz), so a few frames of latency
+/// on the drop is invisible — and the readback is the only per-frame sync we still
+/// want sporadic (4K real-time arch §4 / E3). The composite envelope does NOT use
+/// it (it's grown from the dab list), so cadence only affects when a dry field drops.
+const DRY_CHECK_EVERY: u64 = 6;
+
 /// Per-session GPU state for the live wet field: the resident solver, the K–M
-/// compositor, the field size, and the stroke epoch it was last reset for.
+/// compositor, the field size, the stroke epoch it was last reset for, and a frame
+/// counter pacing the sporadic dry-check readback.
 struct FluidSession {
     solver: FluidSolver,
     compositor: FluidCompositor,
     dims: (u32, u32),
     epoch: u64,
+    frame: u64,
 }
 
 thread_local! {
@@ -96,6 +105,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                         compositor: FluidCompositor::new(&gpu.device),
                         dims,
                         epoch: u64::MAX,
+                        frame: 0,
                     });
                 }
             });
@@ -111,7 +121,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
     let epoch = painter.fluid_stroke_epoch();
     let scale = painter.fluid_field_scale();
     let coverage_k = painter.fluid_coverage_k();
-    let evap_per_frame = painter.fluid_evaporation() * substeps as f32;
     let (cw, ch) = painter.source_size();
     if cw == 0 || ch == 0 {
         return;
@@ -126,6 +135,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 compositor: FluidCompositor::new(&gpu.device),
                 dims,
                 epoch: u64::MAX,
+                frame: 0,
             });
         }
         let Some(sess) = slot.as_mut() else {
@@ -133,8 +143,13 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         };
         // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
         if sess.epoch != epoch {
+            // Resident path: BOTH pigment + water start each stroke empty (water is
+            // GPU-resident now — `cs_splat` adds it, `cs_evaporate` dries it).
             sess.solver
                 .clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+            sess.solver
+                .clear_resident_water_gpu(&gpu.device, &gpu.queue);
+            sess.frame = 0;
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
@@ -162,19 +177,32 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.epoch = epoch;
         }
 
-        // ── Per-frame hot loop ──
-        let Some(inp) = painter.fluid_frame_step_inputs(evap_per_frame) else {
-            painter.fluid_dry_check_and_drop();
+        // ── Per-frame hot loop (resident, no O(grid) CPU work, no upload) ──
+        // Drain this frame's dabs + the monotonic envelope; `None` ⇒ never wet.
+        let Some((dabs, region)) = painter.fluid_take_dabs() else {
             return;
         };
+        // Map the tool's plain dabs → GPU dabs (the `r.max(0.5)` / radius>0 guard lives
+        // in `DabGpu::new`, mirroring the CPU splat). `cs_splat` adds them to the
+        // resident water + pigment; then diffuse/advect/evaporate run on the GPU.
+        let gpu_dabs: Vec<DabGpu> = dabs
+            .iter()
+            .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.rgb))
+            .collect();
         sess.solver
-            .step_resident(&gpu.device, &gpu.queue, &inp.water, &inp.deposit, substeps);
+            .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps);
         let (band, rect) = sess
             .compositor
-            .composite_frame(&gpu.device, &gpu.queue, inp.region);
+            .composite_frame(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
-        painter.fluid_dry_check_and_drop();
+        // Sporadic dry-check: the GPU reduces max-water (no CPU O(grid) scan); when
+        // it's below the dry threshold AND the stroke has ended, the field drops.
+        sess.frame = sess.frame.wrapping_add(1);
+        if sess.frame % DRY_CHECK_EVERY == 0 {
+            let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
+            painter.fluid_dry_check_and_drop_gpu(stats.max_water);
+        }
     });
 }

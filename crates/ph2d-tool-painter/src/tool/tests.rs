@@ -3630,6 +3630,56 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
 }
 
 #[test]
+fn gpu_resident_path_captures_dabs_to_list_not_grid() {
+    // 4K real-time arch §4: on a capable GPU (`fluid_hires` = true, set by the shell
+    // BEFORE begin_stroke) the tool captures dabs as a small list for `cs_splat` — it
+    // must NOT splat into the CPU grid (the field is GPU-resident) and must grow the
+    // monotonic composite envelope. `fluid_hires` (not `gpu_fluid_driven`) gates this
+    // so the stroke's FIRST frame is captured too.
+    let (w, h) = (40u32, 32u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 14.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
+    t.set_fluid_hires(true); // capable GPU → the resident dab path
+    t.begin_stroke(7);
+    t.queue_pointer(PointerSample {
+        position: [20.0, 16.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    assert!(t.has_wet_field(), "fluid field allocated");
+    // The CPU grid stays empty — the dabs went to the GPU list, not `DiffusionGrid`.
+    let grid_pig: f32 = t
+        .fluid_grid_mut()
+        .unwrap()
+        .pigment()
+        .iter()
+        .map(|p| p[0] + p[1] + p[2])
+        .sum();
+    assert_eq!(
+        grid_pig, 0.0,
+        "GPU-resident path must NOT splat into the CPU grid"
+    );
+    // Draining returns the dabs + a monotonic in-grid envelope covering the dab.
+    let (dabs, region) = t.fluid_take_dabs().expect("envelope set after a dab");
+    assert!(!dabs.is_empty(), "dabs captured for cs_splat");
+    let (gw, gh) = t.fluid_grid_dims().unwrap();
+    let (x0, y0, x1, y1) = region;
+    assert!(
+        x1 >= x0 && y1 >= y0 && x1 < gw && y1 < gh,
+        "valid in-grid composite region {region:?} for {gw}x{gh}"
+    );
+    // After draining, the list is empty but the envelope persists (so the field keeps
+    // compositing while it blooms out after pen-up).
+    let (dabs2, region2) = t.fluid_take_dabs().expect("envelope persists after drain");
+    assert!(dabs2.is_empty(), "dab list drained");
+    assert_eq!(region2, region, "monotonic envelope persists across drains");
+}
+
+#[test]
 fn fluid_field_survives_mid_stroke_dry_pause() {
     // REGRESSION (Enio pause bug, 2026-06-07): pausing mid-stroke (button held, no
     // dabs) dries the wet field in ~0.3s, but it must NOT be dropped while the stroke

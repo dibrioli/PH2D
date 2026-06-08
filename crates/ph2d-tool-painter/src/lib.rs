@@ -55,7 +55,7 @@ pub use ph2d_painter_brush::adjustments::{
     set_channel_mixer_param, set_selective_color_param,
 };
 pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
-pub use tool::{FluidFrameInputs, PainterTool, set_pending_select_mods};
+pub use tool::{FluidDab, FluidFrameInputs, PainterTool, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;

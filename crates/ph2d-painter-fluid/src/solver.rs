@@ -25,6 +25,75 @@ use ph2d_painter_brush::diffusion::DiffusionGrid;
 /// `create_shader_module` it directly.
 pub const FLUID_WGSL: &str = include_str!("shader/fluid.wgsl");
 
+/// The GPU dab-splat shader (the resident-sim input pass — 4K real-time arch §4).
+/// Splats a tiny `array<Dab>` directly onto the resident water + pigment, replacing
+/// the per-frame full-grid `deposit` upload. Mirrors the CPU `DiffusionGrid::splat`
+/// (same covered cells + falloff; ~1e-7 FMA-noise — `cs_splat_matches_cpu_splat`).
+pub const SPLAT_WGSL: &str = include_str!("shader/splat.wgsl");
+
+/// Upper bound on dabs splatted in ONE `cs_splat` dispatch. A frame's dab count is
+/// tens; the persistent `dabs` storage buffer is sized to this (`× 32 B` = 128 KiB)
+/// so the bind group is fixed. A frame exceeding it is processed in sequential
+/// chunks (each its own pass → wgpu inserts the RAW barrier, so the accumulation
+/// order — and thus the bit-exact parity — is preserved across chunks).
+pub const MAX_DABS_PER_DISPATCH: usize = 4096;
+
+/// A single brush dab for [`FluidSolver::splat_dabs`]: centre, effective radius,
+/// per-touch water, and the (pre-weighted) linear-RGB pigment. `#[repr(C)]` Pod so
+/// the dab list is a zero-copy `write_buffer` into the `array<Dab>` storage binding
+/// (32 B std430 stride — `rgb` is vec3-aligned at offset 16, matching `splat.wgsl`).
+///
+/// Build with [`DabGpu::new`] so the `radius <= 0` early-return and the `r.max(0.5)`
+/// floor exactly mirror the CPU `DiffusionGrid::splat` (a raw `r <= 0` would make the
+/// shader's `1.0 / r` non-finite).
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct DabGpu {
+    cx: f32,
+    cy: f32,
+    r: f32,
+    water_add: f32,
+    rgb: [f32; 3],
+    _pad: f32,
+}
+
+impl DabGpu {
+    /// A dab at `(cx, cy)` with brush `radius`, raising wetness by `water_add` and
+    /// depositing linear-RGB `rgb` (already weighted by opacity/deposit, as the CPU
+    /// splat receives it). Returns `None` for `radius <= 0` (the CPU splat's
+    /// early-return — such a touch contributes nothing); otherwise the radius is
+    /// floored to `0.5` (the CPU `radius.max(0.5)`).
+    #[must_use]
+    pub fn new(cx: f32, cy: f32, radius: f32, water_add: f32, rgb: [f32; 3]) -> Option<Self> {
+        if radius <= 0.0 {
+            return None;
+        }
+        Some(Self {
+            cx,
+            cy,
+            r: radius.max(0.5),
+            water_add,
+            rgb,
+            _pad: 0.0,
+        })
+    }
+}
+
+/// The `cs_splat` uniform: grid size + the dispatch's union-bbox origin + the live
+/// dab count. 32 B (`#[repr(C)]` Pod), padded to a 16-B multiple for the UBO.
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct GpuSplatParams {
+    width: u32,
+    height: u32,
+    origin_x: u32,
+    origin_y: u32,
+    n_dabs: u32,
+    _p0: u32,
+    _p1: u32,
+    _p2: u32,
+}
+
 /// Run the CPU reference solver `steps` times in place. The det-mode path AND the
 /// parity reference for the GPU pass — both go through the one shipped solver.
 pub fn step_cpu_reference(grid: &mut DiffusionGrid, params: &FluidParams, steps: u32) {
@@ -87,6 +156,15 @@ pub struct FluidSolver {
     bg_evaporate: wgpu::BindGroup,
     /// Deposit add: `pig_in = deposit`, `pig_out = pig_a` (read_write, in-place).
     bg_deposit: wgpu::BindGroup,
+    /// Resident-sim input pass: `cs_splat` adds a dab list to `water` + `pig_a`
+    /// directly (replaces the full-grid `deposit` upload — 4K real-time arch §4).
+    splat: wgpu::ComputePipeline,
+    splat_params_buf: wgpu::Buffer,
+    /// Persistent `array<Dab>` storage (sized to [`MAX_DABS_PER_DISPATCH`]); the
+    /// live dabs are written to its front each call.
+    dabs_buf: wgpu::Buffer,
+    /// `cs_splat` bind group: (splat_params, water rw, pig_a rw, dabs read).
+    bg_splat: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -197,6 +275,77 @@ impl FluidSolver {
         let bg_evaporate = bg("fluid bg evaporate", &pig_a, &pig_b); // pig unused
         // Deposit add: pig_in = deposit (read), pig_out = pig_a (read_write) → in-place.
         let bg_deposit = bg("fluid bg deposit", &deposit, &pig_a);
+
+        // ── Resident-sim input pass (`cs_splat`, its own bind-group layout) ──
+        let splat_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-painter-fluid splat"),
+            source: wgpu::ShaderSource::Wgsl(SPLAT_WGSL.into()),
+        });
+        let splat_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-painter-fluid splat bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                storage(1, false), // water (read_write)
+                storage(2, false), // pig_a (read_write)
+                storage(3, true),  // dabs (read)
+            ],
+        });
+        let splat_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ph2d-painter-fluid splat layout"),
+            bind_group_layouts: &[&splat_bgl],
+            immediate_size: 0,
+        });
+        let splat = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("ph2d-painter-fluid splat pipeline"),
+            layout: Some(&splat_layout),
+            module: &splat_module,
+            entry_point: Some("cs_splat"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+        let splat_params_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-painter-fluid splat params"),
+            size: core::mem::size_of::<GpuSplatParams>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let dabs_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-painter-fluid dabs"),
+            size: (MAX_DABS_PER_DISPATCH * core::mem::size_of::<DabGpu>()) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let bg_splat = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-painter-fluid bg splat"),
+            layout: &splat_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: splat_params_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: water.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: pig_a.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: dabs_buf.as_entire_binding(),
+                },
+            ],
+        });
         Self {
             width,
             height,
@@ -214,6 +363,10 @@ impl FluidSolver {
             bg_advect,
             bg_evaporate,
             bg_deposit,
+            splat,
+            splat_params_buf,
+            dabs_buf,
+            bg_splat,
         }
     }
 
@@ -309,6 +462,80 @@ impl FluidSolver {
         });
         enc.clear_buffer(&self.pig_a, 0, None);
         queue.submit([enc.finish()]);
+    }
+
+    /// Zero the resident water ON the GPU (companion to
+    /// [`Self::clear_resident_pigment_gpu`]) — the resident-sim stroke-begin reset so
+    /// a reused solver starts from a dry field before the first `cs_splat`.
+    pub fn clear_resident_water_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid clear water"),
+        });
+        enc.clear_buffer(&self.water, 0, None);
+        queue.submit([enc.finish()]);
+    }
+
+    /// **Splat a dab list onto the resident water + pigment (`cs_splat`).** The
+    /// resident-sim input pass (4K real-time arch §4): the tool pushes the dabs it
+    /// emitted this frame (O(dabs) ~ tens) and they are added DIRECTLY to the GPU
+    /// buffers — no full-grid `deposit` upload, no CPU alloc/scan. Mirrors the CPU
+    /// `DiffusionGrid::splat` (same shape; ~1e-7 FMA-noise — `cs_splat_matches_cpu_splat`),
+    /// so the live look is unchanged. One submit, no readback (the field stays
+    /// GPU-resident); a frame
+    /// with more than [`MAX_DABS_PER_DISPATCH`] dabs is split into sequential chunks
+    /// (separate passes → ordered, so the accumulation stays bit-exact). No-op for an
+    /// empty list.
+    pub fn splat_dabs(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[DabGpu]) {
+        if dabs.is_empty() {
+            return;
+        }
+        // One submit per chunk: the chunk's dabs are `write_buffer`d into the shared
+        // `dabs_buf` then consumed by that submit, so a later chunk can't clobber the
+        // buffer before an earlier chunk's pass runs (single-chunk = one submit).
+        for chunk in dabs.chunks(MAX_DABS_PER_DISPATCH) {
+            // Union bbox of the chunk (clamped to the grid) bounds the dispatch; the
+            // shader's `dist < 1` cutoff then rejects corners exactly as the CPU does.
+            let (mut x0, mut y0, mut x1, mut y1) = (self.width - 1, self.height - 1, 0u32, 0u32);
+            for d in chunk {
+                let lo_x = ((d.cx - d.r).floor().max(0.0) as u32).min(self.width - 1);
+                let lo_y = ((d.cy - d.r).floor().max(0.0) as u32).min(self.height - 1);
+                let hi_x = ((d.cx + d.r).ceil().max(0.0) as u32).min(self.width - 1);
+                let hi_y = ((d.cy + d.r).ceil().max(0.0) as u32).min(self.height - 1);
+                x0 = x0.min(lo_x);
+                y0 = y0.min(lo_y);
+                x1 = x1.max(hi_x);
+                y1 = y1.max(hi_y);
+            }
+            if x1 < x0 || y1 < y0 {
+                continue;
+            }
+            queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(chunk));
+            let sp = GpuSplatParams {
+                width: self.width,
+                height: self.height,
+                origin_x: x0,
+                origin_y: y0,
+                n_dabs: chunk.len() as u32,
+                _p0: 0,
+                _p1: 0,
+                _p2: 0,
+            };
+            queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
+            let (gx, gy) = ((x1 - x0 + 1).div_ceil(8), (y1 - y0 + 1).div_ceil(8));
+            let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("fluid splat"),
+            });
+            {
+                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("fluid splat pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.splat);
+                pass.set_bind_group(0, &self.bg_splat, &[]);
+                pass.dispatch_workgroups(gx, gy, 1);
+            }
+            queue.submit([enc.finish()]);
+        }
     }
 
     /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment

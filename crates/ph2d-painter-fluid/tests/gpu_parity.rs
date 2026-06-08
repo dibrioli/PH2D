@@ -16,7 +16,7 @@
 
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::diffusion::DiffusionGrid;
-use ph2d_painter_fluid::{FluidParams, FluidSolver, step_cpu_reference};
+use ph2d_painter_fluid::{DabGpu, FluidParams, FluidSolver, step_cpu_reference};
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -190,6 +190,83 @@ fn step_resident_matches_classic_step_with_deposit() {
     assert!(
         worst < 1.0e-6,
         "resident deposit+step must match classic step: {worst}"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn cs_splat_matches_cpu_splat_bit_exact() {
+    // Resident-sim input pass (4K real-time arch §4): `cs_splat` must reproduce the
+    // CPU `DiffusionGrid::splat` — SAME covered cells, SAME falloff. It loops the dab
+    // list per cell in the SAME order with the same per-dab water clamp, so the only
+    // divergence from the CPU is FMA contraction (Metal fuses `a*b+c`), worth ~1e-7 —
+    // far below the diffuse/advect gather passes' ~1e-4 and invisible after the
+    // composite's u8 quantization. The tight bound proves the SHAPE is exact (a wrong
+    // radius / falloff / coverage-set would diverge by ≥1e-2, changing the stroke).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (53u32, 47u32); // non-multiple-of-8 → exercises the dispatch tail
+    // A spread of dabs: overlapping (accumulation + per-dab water clamp), near the
+    // borders (bbox clamp), a sub-pixel radius (the `r.max(0.5)` floor), and one off
+    // the edge (centre outside the grid, partial coverage).
+    let raw = [
+        (26.0f32, 23.0, 9.0, 0.5, [0.10f32, 0.20, 0.70]),
+        (24.0, 24.0, 7.0, 0.6, [0.30, 0.05, 0.05]),
+        (30.0, 20.0, 5.0, 0.7, [0.00, 0.40, 0.10]),
+        (2.0, 3.0, 6.0, 0.8, [0.20, 0.20, 0.20]),
+        (50.0, 44.0, 8.0, 0.9, [0.50, 0.10, 0.30]),
+        (10.0, 40.0, 0.3, 1.0, [0.90, 0.90, 0.10]), // sub-pixel → r.max(0.5)
+        (-3.0, 12.0, 7.0, 0.4, [0.10, 0.60, 0.60]), // centre off-grid
+    ];
+
+    // CPU reference: the same `splat` calls the tool makes into the live grid.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+
+    // GPU: the same dabs through `cs_splat` onto a zeroed resident field.
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.splat_dabs(&gpu.device, &gpu.queue, &dabs);
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let mut worst_p = 0.0f32;
+    let mut worst_w = 0.0f32;
+    let cpu_pig = cpu.pigment();
+    let cpu_water = cpu.water();
+    for i in 0..n {
+        for k in 0..3 {
+            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
+        }
+        worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
+    }
+    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    eprintln!(
+        "cs_splat vs CPU splat: worst pigment |Δ| = {worst_p:.9}, worst water |Δ| = {worst_w:.9}, total pigment = {total:.3}"
+    );
+    assert!(
+        total > 0.01,
+        "cs_splat deposited no pigment — the dab path is dead, parity meaningless"
+    );
+    // Tight bound: the only legitimate divergence is FMA rounding (~1e-7). A coverage
+    // / radius / falloff bug diverges by ≥1e-2.
+    assert!(
+        worst_p < 1.0e-6,
+        "cs_splat pigment diverged from the CPU splat (worst |Δ| = {worst_p}) — shape mismatch, not FMA noise"
+    );
+    assert!(
+        worst_w < 1.0e-6,
+        "cs_splat water diverged from the CPU splat (worst |Δ| = {worst_w}) — shape mismatch, not FMA noise"
     );
 }
 

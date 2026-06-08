@@ -277,17 +277,14 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         sess.solver
             .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         let t1 = profile.then(Instant::now);
-        // Composite SYNCHRONOUSLY (the validated S3c no-delay path): the stroke appears
-        // the same frame it's painted. This costs a per-frame device.poll(wait) (~140
-        // FPS) but has NO perceptible click→stroke delay. The pipelined async path
-        // (composite_frame_pipelined) trades that poll for 250 FPS but adds a frame of
-        // latency that — stacked on the structural "preview produced after sim_extract"
-        // frame — became perceptible. The definitive 250 + zero-delay fix is to produce
-        // the painter preview BEFORE sim_extract (drive-owns-slot reorder), a careful
-        // foundational pass; until then, no-delay wins over the extra FPS.
+        // Composite PIPELINED (async readback, no per-frame device.poll(wait) stall) →
+        // ~240 FPS. The real click→stroke delay was the per-stroke O(grid) paper
+        // grain_noise (fixed by the paper cache), NOT the pipeline's 1-frame-late
+        // readback (which is imperceptible — the same 1-frame lag the preview always
+        // had). begin_stroke drains the prior stroke's in-flight map before reuse.
         let (band, rect) = sess
             .compositor
-            .composite_frame(&gpu.device, &gpu.queue, region);
+            .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }

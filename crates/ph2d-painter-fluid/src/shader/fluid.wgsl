@@ -26,8 +26,27 @@ struct Params {
     w_hi: f32,
     perm_valley: f32,
     perm_crest: f32,
+    // Region-scoped dispatch (4K real-time arch / ADR-0078 S1): the diffuse/advect/
+    // evaporate kernels only WRITE cells in [region_ox, region_ox+region_w) ×
+    // [region_oy, region_oy+region_h) — the wet envelope padded so it always ⊇ the
+    // composite region (so the visible field is fully stepped; cells beyond are never
+    // composited). Full-grid = (0, 0, width, height) reproduces the un-scoped pass.
+    // Neighbour reads stay ABSOLUTE (the buffer is full-size), so the gather is exact.
+    region_ox: u32,
+    region_oy: u32,
+    region_w: u32,
+    region_h: u32,
     _pad0: f32,
     _pad1: f32,
+}
+
+// Map a region-local invocation to an absolute cell; returns false (skip) when the
+// invocation is past the region extent or the grid edge.
+fn region_cell(gid: vec2<u32>) -> vec2<u32> {
+    return vec2<u32>(P.region_ox + gid.x, P.region_oy + gid.y);
+}
+fn in_region(gid: vec2<u32>, x: u32, y: u32) -> bool {
+    return gid.x < P.region_w && gid.y < P.region_h && x < P.width && y < P.height;
 }
 
 // `water` is read_write so `cs_evaporate` can dry it; `cs_diffuse`/`cs_advect`
@@ -73,9 +92,10 @@ fn flow(x: u32, y: u32) -> vec2<f32> {
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_diffuse(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let x = gid.x;
-    let y = gid.y;
-    if (x >= P.width || y >= P.height) {
+    let cell = region_cell(gid.xy);
+    let x = cell.x;
+    let y = cell.y;
+    if (!in_region(gid.xy, x, y)) {
         return;
     }
     let c = idx(x, y);
@@ -103,9 +123,10 @@ fn cs_diffuse(@builtin(global_invocation_id) gid: vec3<u32>) {
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let x = gid.x;
-    let y = gid.y;
-    if (x >= P.width || y >= P.height) {
+    let cell = region_cell(gid.xy);
+    let x = cell.x;
+    let y = cell.y;
+    if (!in_region(gid.xy, x, y)) {
         return;
     }
     let c = idx(x, y);
@@ -142,9 +163,10 @@ fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
 // read the pre-evaporation water), mirroring the CPU `step`.
 @compute @workgroup_size(8, 8, 1)
 fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let x = gid.x;
-    let y = gid.y;
-    if (x >= P.width || y >= P.height) {
+    let cell = region_cell(gid.xy);
+    let x = cell.x;
+    let y = cell.y;
+    if (!in_region(gid.xy, x, y)) {
         return;
     }
     let i = idx(x, y);

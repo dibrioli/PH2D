@@ -95,21 +95,22 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
     };
     let warm = 5u32;
 
-    // ── step only (splat + diffuse/advect/evaporate), polled via read_field_stats ──
+    // ── step only (splat + diffuse/advect/evaporate), region-scoped to the band,
+    //    polled via read_field_stats ──
     for _ in 0..warm {
-        solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 1);
+        solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 1, band_region);
         let _ = solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
     }
     let t = Instant::now();
     for _ in 0..iters {
-        solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 1);
+        solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 1, band_region);
         let _ = solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
     }
     let step_ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
 
-    // ── step + composite (band) — the real per-frame hot loop ──
+    // ── step + composite (band) — the real per-frame hot loop (sim scoped to band) ──
     let band_ms = time_loop(gpu, &solver, &mut comp, &dabs, band_region, warm, iters);
-    // ── step + composite (full canvas) — worst-case wash ──
+    // ── step + composite (full canvas) — worst-case wash (sim full grid) ──
     let full_ms = time_loop(gpu, &solver, &mut comp, &dabs, full_region, warm, iters);
 
     let band_h = band_hi - band_lo;
@@ -131,12 +132,12 @@ fn time_loop(
     iters: u32,
 ) -> f64 {
     for _ in 0..warm {
-        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1);
+        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1, region);
         let _ = comp.composite_frame(&gpu.device, &gpu.queue, region);
     }
     let t = Instant::now();
     for _ in 0..iters {
-        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1);
+        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1, region);
         let _ = comp.composite_frame(&gpu.device, &gpu.queue, region);
     }
     t.elapsed().as_secs_f64() * 1000.0 / iters as f64

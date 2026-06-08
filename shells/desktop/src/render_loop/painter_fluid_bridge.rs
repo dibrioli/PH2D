@@ -189,8 +189,11 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.rgb))
             .collect();
+        // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
+        // inside the solver to ⊇ the composite region), so the per-frame cost is
+        // O(wet frontier), not O(grid) — the dominant 4K cost (per the perf bench).
         sess.solver
-            .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps);
+            .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         let (band, rect) = sess
             .compositor
             .composite_frame(&gpu.device, &gpu.queue, region);

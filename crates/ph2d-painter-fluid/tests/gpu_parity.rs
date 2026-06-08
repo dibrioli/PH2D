@@ -309,7 +309,8 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     // Paper must match the CPU grid's paper for the gate/flow to agree.
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps);
+    // Full-grid region → the un-scoped pass (matches the CPU full-grid step).
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
     let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
 
@@ -335,6 +336,70 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     assert!(
         worst_w < 2.0e-2,
         "resident splat+step water diverged from CPU: {worst_w}"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn region_scoped_step_matches_full_grid_inside_region() {
+    // ADR-0078 S1: scoping the diffuse/advect/evaporate dispatch to the wet envelope
+    // must NOT change the result inside the region. A cell's value depends only on its
+    // N-substep dependency cone; cells well inside the padded region have their whole
+    // cone updated identically to the full-grid pass → BIT-EXACT. (Cells near the
+    // region edge differ because their cone reaches stale outside-region neighbours —
+    // but those are never composited, hence the SOLVER_REGION_PAD invariant.)
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 48u32);
+    let substeps = 8u32;
+    let params = FluidParams::default();
+    // One localized dab at the centre → pigment stays well inside the grid.
+    let raw = (32.0f32, 24.0, 6.0, 0.7, [0.2f32, 0.3, 0.6]);
+    let dabs: Vec<DabGpu> = DabGpu::new(raw.0, raw.1, raw.2, raw.3, raw.4)
+        .into_iter()
+        .collect();
+    let paper = DiffusionGrid::new(w, h, 1.0).paper().to_vec();
+
+    // Full-grid reference.
+    let full = FluidSolver::new(&gpu.device, w, h);
+    full.set_params(&gpu.queue, &params);
+    full.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    full.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    full.upload_paper(&gpu.queue, &paper);
+    full.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let full_pig = full.read_pigment(&gpu.device, &gpu.queue);
+
+    // Scoped: a region around the dab; the solver pads it by SOLVER_REGION_PAD.
+    let scoped_region = (20u32, 12u32, 44u32, 36u32);
+    let scoped = FluidSolver::new(&gpu.device, w, h);
+    scoped.set_params(&gpu.queue, &params);
+    scoped.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    scoped.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    scoped.upload_paper(&gpu.queue, &paper);
+    scoped.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, scoped_region);
+    let scoped_pig = scoped.read_pigment(&gpu.device, &gpu.queue);
+
+    // Core box (well inside the padded region, > substeps from its boundary) must be
+    // bit-exact; the dab pigment lives here.
+    let core = (26u32, 18u32, 38u32, 30u32);
+    let mut worst_core = 0.0f32;
+    let mut core_total = 0.0f32;
+    for y in core.1..=core.3 {
+        for x in core.0..=core.2 {
+            let i = (y * w + x) as usize;
+            for k in 0..3 {
+                worst_core = worst_core.max((full_pig[i][k] - scoped_pig[i][k]).abs());
+            }
+            core_total += scoped_pig[i].iter().take(3).sum::<f32>();
+        }
+    }
+    eprintln!("region-scoped vs full inside core: worst |Δ| = {worst_core:.9}, core pigment = {core_total:.3}");
+    assert!(core_total > 0.01, "no pigment in the core — test is vacuous");
+    assert!(
+        worst_core < 1.0e-6,
+        "region-scoped step diverged from full-grid INSIDE the region ({worst_core}) — scoping changed the visible field"
     );
 }
 

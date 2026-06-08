@@ -129,8 +129,10 @@ pub fn step_cpu_reference(grid: &mut DiffusionGrid, params: &FluidParams, steps:
     }
 }
 
-/// The WGSL `Params` UBO, byte-for-byte (12 × 4 = 48 B). `#[repr(C)]` Pod so a
+/// The WGSL `Params` UBO, byte-for-byte (16 × 4 = 64 B). `#[repr(C)]` Pod so a
 /// per-frame update is a zero-copy `write_buffer` of `bytemuck::bytes_of` (HR-3).
+/// The `region_*` fields scope the diffuse/advect/evaporate dispatch to the wet
+/// envelope (ADR-0078 S1) — full-grid `(0, 0, width, height)` is the un-scoped pass.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuParams {
@@ -144,9 +146,20 @@ struct GpuParams {
     w_hi: f32,
     perm_valley: f32,
     perm_crest: f32,
+    region_ox: u32,
+    region_oy: u32,
+    region_w: u32,
+    region_h: u32,
     _pad0: f32,
     _pad1: f32,
 }
+
+/// Pad (cells) added around the composite envelope for the region-scoped solver
+/// dispatch (ADR-0078 S1). Must keep the solver region ⊇ the composite read region
+/// so the visible field is always fully stepped (no frozen-pigment clip — the §2
+/// lesson). `composite_canvas_region` reads `env − 2 .. env + 3` grid cells (+ ~1
+/// for the bicubic tap); 6 covers it with margin. Cells beyond are never composited.
+const SOLVER_REGION_PAD: u32 = 6;
 
 /// The live GPU solver: the three compute pipelines + the ping-pong storage
 /// buffers for one fluid field. Built once per field size; `step` dispatches the
@@ -166,6 +179,11 @@ pub struct FluidSolver {
     /// W15.3 resident path: `pig_a += deposit` (the dabs splatted this frame).
     deposit_pipe: wgpu::ComputePipeline,
     params_buf: wgpu::Buffer,
+    /// CPU mirror of the params UBO (the per-stroke coeffs from `set_params`). The
+    /// region fields are overwritten per dispatch (`write_params_with_region`) so the
+    /// solver can scope diffuse/advect/evaporate to the wet envelope (ADR-0078 S1)
+    /// without re-deriving the coeffs each frame. `Cell` keeps the step methods `&self`.
+    params_cache: std::cell::Cell<GpuParams>,
     // All field buffers are owned so they outlive the bind groups that reference
     // them (the readback reads `pig_a`; `upload` writes water/paper/pig_a).
     water: wgpu::Buffer,
@@ -454,6 +472,25 @@ impl FluidSolver {
             evaporate: pipe("cs_evaporate"),
             deposit_pipe: pipe("cs_deposit"),
             params_buf,
+            // Coeffs filled by `set_params`; region defaults to the full grid.
+            params_cache: std::cell::Cell::new(GpuParams {
+                width,
+                height,
+                diffusivity: 0.0,
+                evaporation: 0.0,
+                downhill: 0.0,
+                flow_outward: 0.0,
+                w_lo: 0.0,
+                w_hi: 0.0,
+                perm_valley: 0.0,
+                perm_crest: 0.0,
+                region_ox: 0,
+                region_oy: 0,
+                region_w: width,
+                region_h: height,
+                _pad0: 0.0,
+                _pad1: 0.0,
+            }),
             water,
             paper,
             pig_a,
@@ -482,7 +519,9 @@ impl FluidSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
     }
 
-    /// Push the solver coefficients (mirrors the CPU `DiffusionParams`).
+    /// Push the solver coefficients (mirrors the CPU `DiffusionParams`). Caches them
+    /// CPU-side (with a full-grid region) so the per-frame region-scoped writer can
+    /// reuse them; uploads with the full-grid region (the un-scoped default).
     pub fn set_params(&self, queue: &wgpu::Queue, params: &FluidParams) {
         let gp = GpuParams {
             width: self.width,
@@ -495,16 +534,47 @@ impl FluidSolver {
             w_hi: params.w_hi,
             perm_valley: params.perm_valley,
             perm_crest: params.perm_crest,
+            region_ox: 0,
+            region_oy: 0,
+            region_w: self.width,
+            region_h: self.height,
             _pad0: 0.0,
             _pad1: 0.0,
         };
+        self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
+    }
+
+    /// Write the cached coeffs with a specific dispatch region (ADR-0078 S1) + return
+    /// the workgroup counts to dispatch. `region = (x0, y0, x1, y1)` inclusive, in
+    /// grid cells; clamped to the grid. The diffuse/advect/evaporate kernels only
+    /// write cells inside it (full grid = the un-scoped pass).
+    fn write_params_with_region(
+        &self,
+        queue: &wgpu::Queue,
+        region: (u32, u32, u32, u32),
+    ) -> (u32, u32) {
+        let (x0, y0, x1, y1) = region;
+        let x0 = x0.min(self.width - 1);
+        let y0 = y0.min(self.height - 1);
+        let x1 = x1.min(self.width - 1).max(x0);
+        let y1 = y1.min(self.height - 1).max(y0);
+        let (rw, rh) = (x1 - x0 + 1, y1 - y0 + 1);
+        let mut gp = self.params_cache.get();
+        gp.region_ox = x0;
+        gp.region_oy = y0;
+        gp.region_w = rw;
+        gp.region_h = rh;
+        queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
+        (rw.div_ceil(8), rh.div_ceil(8))
     }
 
     /// Run `substeps` diffusion-advection-evaporation steps on the GPU (one
     /// submit). After this, the pigment is in `pig_a`; read it with [`Self::read_pigment`].
     pub fn step(&self, device: &wgpu::Device, queue: &wgpu::Queue, substeps: u32) {
-        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        // Full-grid region (resets any prior scoped dispatch on a reused solver).
+        let (gx, gy) =
+            self.write_params_with_region(queue, (0, 0, self.width - 1, self.height - 1));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("fluid step"),
         });
@@ -654,17 +724,36 @@ impl FluidSolver {
     ///
     /// `set_params` + `clear_resident_{water,pigment}_gpu` + `upload_paper` are the
     /// driver's once-per-stroke setup (epoch change); this is the per-frame call.
+    ///
+    /// **Region-scoped (ADR-0078 S1):** `region = (x0, y0, x1, y1)` is the wet
+    /// envelope (inclusive grid cells); the diffuse/advect/evaporate dispatch is
+    /// scoped to `region` padded by [`SOLVER_REGION_PAD`] (clamped to the grid) — the
+    /// per-frame cost becomes `O(wet frontier)`, not `O(grid)`. The pad keeps the
+    /// solver region ⊇ the composite read region, so the visible field is always fully
+    /// stepped (no frozen-pigment clip). Pass the full grid `(0,0,w-1,h-1)` for the
+    /// un-scoped pass (e.g. parity tests). `cs_splat` is already scoped to its own dab
+    /// union bbox; water only ever exists inside the envelope, so scoped evaporate
+    /// still dries every wet cell.
     pub fn step_resident_splat(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         dabs: &[DabGpu],
         substeps: u32,
+        region: (u32, u32, u32, u32),
     ) {
         // Splat submit (resident water + pig_a updated); ordered before the step submit
         // on the queue timeline, so diffuse reads the just-splatted field.
         self.splat_dabs(device, queue, dabs);
-        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        // Pad the envelope so the solver region ⊇ what the compositor reads.
+        let p = SOLVER_REGION_PAD;
+        let padded = (
+            region.0.saturating_sub(p),
+            region.1.saturating_sub(p),
+            region.2.saturating_add(p),
+            region.3.saturating_add(p),
+        );
+        let (gx, gy) = self.write_params_with_region(queue, padded);
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("fluid resident splat step"),
         });

@@ -46,6 +46,17 @@ pub(crate) fn drain_reparent(
     } else {
         None
     };
+    // World-transform preservation (Enio 2026-06-08): a sprite that is
+    // rotated / displaced must NOT jump when it gains or loses a parent —
+    // its GLOBAL position + rotation must be kept. We capture the dragged
+    // entity's current world transform HERE (under its OLD parent chain),
+    // and after the `ChildOf` change re-solve its LOCAL transform so the
+    // world transform round-trips. Without this, only `ChildOf` changes and
+    // `parent_world_transform` then composes a different chain → the sprite
+    // visibly snaps to a new pose.
+    let old_local = sim.world().get::<Transform>(dragged).copied();
+    let old_world = old_local
+        .map(|l| Transform::compose(ph2d_ecs::parent_world_transform(sim.world(), dragged), l));
     let sim_w = sim.world_mut();
     let would_cycle = new_parent_entity.is_some_and(|np| {
         let mut current = Some(np);
@@ -159,6 +170,43 @@ pub(crate) fn drain_reparent(
                 entry.remove::<ph2d_ecs::ChildOf>();
                 entry.insert(ph2d_ecs::ChildOf(parent));
             }
+        }
+    }
+    // Re-solve the dragged entity's LOCAL transform so its captured world
+    // transform survives the parent change. The new parent chain is now in
+    // place, so `parent_world_transform` reflects the FINAL parent.
+    // `new_local = parent_world⁻¹ ∘ old_world`: translation via the canonical
+    // world→local inverse, rotation/scale/skew by subtraction/division
+    // (mirrors the additive skew cascade in `Transform::compose`). The
+    // translation inverse drops parent skew — matching every other gizmo
+    // helper; sprites carry skew only on leaves, never on rig ancestors.
+    if let Some(old_world) = old_world {
+        let new_parent = ph2d_ecs::parent_world_transform(sim_w, dragged);
+        let np = ph2d_editor::TransformSnapshot {
+            translation: [new_parent.translation.x, new_parent.translation.y],
+            rotation: new_parent.rotation,
+            scale: [new_parent.scale.x, new_parent.scale.y],
+        };
+        let local_t = ph2d_editor::world_translation_to_local(
+            np,
+            [old_world.translation.x, old_world.translation.y],
+        );
+        let psx = if new_parent.scale.x.abs() > 1e-6 {
+            new_parent.scale.x
+        } else {
+            1.0
+        };
+        let psy = if new_parent.scale.y.abs() > 1e-6 {
+            new_parent.scale.y
+        } else {
+            1.0
+        };
+        if let Some(mut t) = sim_w.get_mut::<Transform>(dragged) {
+            t.translation = ph2d_core::Vec2::new(local_t[0], local_t[1]);
+            t.rotation = old_world.rotation - new_parent.rotation;
+            t.scale = ph2d_core::Vec2::new(old_world.scale.x / psx, old_world.scale.y / psy);
+            t.skew_x = old_world.skew_x - new_parent.skew_x;
+            t.skew_y = old_world.skew_y - new_parent.skew_y;
         }
     }
     false

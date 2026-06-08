@@ -311,137 +311,219 @@ impl App {
                 } else {
                     1.0
                 };
-                let delta_rot_outer = new_t.rotation - drag.start_transform.rotation;
-                let in_local_multi = !self.group_drag_starts.is_empty()
-                    && !matches!(drag.target, ph2d_editor::GizmoTarget::Global)
-                    && !matches!(
-                        drag.kind,
-                        ph2d_editor::GizmoDragKind::Translate
-                            | ph2d_editor::GizmoDragKind::MovePivot
-                    );
-                let in_global_xform = matches!(drag.target, ph2d_editor::GizmoTarget::Global)
-                    && !matches!(
-                        drag.kind,
-                        ph2d_editor::GizmoDragKind::Translate
-                            | ph2d_editor::GizmoDragKind::MovePivot
-                    );
-                let primary_translation = if in_local_multi {
-                    drag.start_transform.translation
-                } else if in_global_xform {
-                    let pivot = drag.pivot_world;
-                    let st = drag.start_transform;
-                    let rel_x = st.translation[0] - pivot[0];
-                    let rel_y = st.translation[1] - pivot[1];
-                    let scaled_x = rel_x * factor_x;
-                    let scaled_y = rel_y * factor_y;
-                    // T1.3.5 cross-OS bit-identical.
-                    let (sin_d, cos_d) = libm::sincosf(delta_rot_outer);
-                    let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
-                    let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
-                    [pivot[0] + rotated_x, pivot[1] + rotated_y]
+                // Continuous rotation across the atan2 ±π seam (Enio
+                // 2026-06-08). `compute_gizmo_transform` derives the angle from
+                // a single `atan2(now) - atan2(start)`, which is confined to
+                // (−2π, 2π] and JUMPS by 2π whenever the cursor crosses the −X
+                // axis from the pivot — so full-turn rotation was impossible
+                // and the sprite snapped backward at the seam. It bit WIDE
+                // rectangles hardest: their corner handles start near ±π, so
+                // the very first drag crossed the seam ("retângulos giram menos
+                // e de forma inconsistente, sem dar voltas"); square handles
+                // sit at ±45°/±135°, far from the seam, so they felt fine.
+                // Unwrap the new rotation onto the 2π branch nearest the dragged
+                // sprite's CURRENT rotation (last frame's written value) — the
+                // per-frame cursor delta is small, so this accumulates smoothly
+                // across unlimited turns. Applies to single- AND multi-select,
+                // local AND global (delta_rot below flows from here).
+                let new_t = if matches!(drag.kind, ph2d_editor::GizmoDragKind::Rotate) {
+                    let current = gfx
+                        .sim
+                        .world()
+                        .get::<Transform>(entity)
+                        .map(|t| t.rotation)
+                        .unwrap_or(new_t.rotation);
+                    let mut r = new_t.rotation;
+                    while r - current > std::f32::consts::PI {
+                        r -= std::f32::consts::TAU;
+                    }
+                    while r - current < -std::f32::consts::PI {
+                        r += std::f32::consts::TAU;
+                    }
+                    ph2d_editor::TransformSnapshot {
+                        rotation: r,
+                        ..new_t
+                    }
                 } else {
-                    new_t.translation
+                    new_t
                 };
-                if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
-                    t.translation =
-                        ph2d_core::Vec2::new(primary_translation[0], primary_translation[1]);
-                    t.rotation = new_t.rotation;
-                    t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
-                }
-                // Onda 1 + 2C.4: propagate the drag to the rest of the
-                // multi-selection. Three families:
+                let delta_rot = new_t.rotation - drag.start_transform.rotation;
+                let is_rot_or_scale = matches!(
+                    drag.kind,
+                    ph2d_editor::GizmoDragKind::Rotate
+                        | ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                        | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+                );
+                // ─── Multi-selection rotate / scale: ONE flat world-space
+                // group transform for the dragged sprite AND every extra
+                // (Onda 3, Enio 2026-06-08). Replaces the old primary-vs-
+                // extras split, which had two defects:
                 //
-                // - Translate (any target): add the primary's world
-                //   delta to every extra's start translation.
-                // - Scale / Rotate with `PrimaryIndividual` /
-                //   `ExtraIndividual` target (LOCAL pivot — each
-                //   sprite transforms around its OWN anchor, position
-                //   stays put): scale.x *= factor.x; rotation +=
-                //   delta_angle; translation unchanged.
-                // - Scale / Rotate with `Global` target (group pivot
-                //   = global bbox center, stored on
-                //   `drag.pivot_world`): each sprite scales / rotates
-                //   AROUND that shared pivot, so its translation
-                //   shifts too.
+                //  (1) The PRIMARY's global orbit used its LOCAL translation
+                //      (`drag.start_transform.translation`) against the WORLD
+                //      pivot, while the extras used their WORLD position
+                //      (`compose_snapshot`). A parented primary therefore
+                //      orbited from the wrong point → "alguns gizmos ficam
+                //      inconsistentes".
+                //  (2) Every sprite's LOCAL rotation got `+= delta`, so a
+                //      selected child of a selected parent ALSO inherited the
+                //      parent's `+delta` → it rotated 2·delta ("a rotação dos
+                //      filhos é incrementada pelo parentesco").
                 //
-                // MovePivot stays primary-only (drag.kind ==
-                // MovePivot branch above writes Sprite.anchor; group
-                // semantics aren't defined for pivot relocation).
-                if !self.group_drag_starts.is_empty()
-                    && !matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot)
-                {
-                    let dx = new_t.translation[0] - drag.start_transform.translation[0];
-                    let dy = new_t.translation[1] - drag.start_transform.translation[1];
-                    let start_scale = drag.start_transform.scale;
-                    let new_scale = new_t.scale;
-                    let factor_x = if start_scale[0].abs() > f32::EPSILON {
-                        new_scale[0] / start_scale[0]
-                    } else {
-                        1.0
-                    };
-                    let factor_y = if start_scale[1].abs() > f32::EPSILON {
-                        new_scale[1] / start_scale[1]
-                    } else {
-                        1.0
-                    };
-                    let delta_rot = new_t.rotation - drag.start_transform.rotation;
-                    let is_translate = matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate);
+                // Fix: compute each sprite's TARGET WORLD transform from its
+                // OWN start world transform (rotate/scale by the group delta
+                // around the global pivot, or in place for local-pivot mode),
+                // then convert that target back to LOCAL against the parent's
+                // CURRENT world transform. Writing ancestors before
+                // descendants (depth-sorted) means a selected child reads its
+                // selected parent's already-updated world this frame, so the
+                // parent's rotation flows through inheritance exactly once —
+                // the group transforms "como se não tivessem pais".
+                if !self.group_drag_starts.is_empty() && is_rot_or_scale {
                     let is_global = matches!(drag.target, ph2d_editor::GizmoTarget::Global);
                     let pivot = drag.pivot_world;
                     // T1.3.5 cross-OS bit-identical.
                     let (sin_d, cos_d) = libm::sincosf(delta_rot);
-                    for snap in self.group_drag_starts.iter().copied() {
-                        let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
-                        let st = snap.start_transform;
-                        let new_translation;
-                        let new_rotation;
-                        let new_scale_extra;
-                        if is_translate {
-                            // Translate: rigid body shift em WORLD.
-                            // Convert WORLD delta → extra's LOCAL frame
-                            // via inverse-parent (Enio 2026-05-26 fix:
-                            // child de pai rotacionado no grupo movia
-                            // ao longo do eixo local, não world).
-                            let [dx_l, dy_l] =
-                                ph2d_editor::world_delta_to_local(snap.parent_world, dx, dy);
-                            new_translation = [st.translation[0] + dx_l, st.translation[1] + dy_l];
-                            new_rotation = st.rotation;
-                            new_scale_extra = st.scale;
-                        } else if is_global {
-                            // Group scale/rotate around the shared
-                            // global pivot. Compute new position em
-                            // WORLD (via st.translation projetada pra
-                            // world), depois converte de volta pra
-                            // LOCAL via inverse-parent.
-                            let st_world = ph2d_editor::compose_snapshot(snap.parent_world, st);
-                            let rel_x = st_world.translation[0] - pivot[0];
-                            let rel_y = st_world.translation[1] - pivot[1];
+                    // (bits, depth, start_local, start_parent_world) for the
+                    // dragged primary + every extra. Depth = ChildOf chain
+                    // length; sort ascending (tie-break on bits for HR-5
+                    // determinism) so ancestors are written before descendants.
+                    let depth_of = |bits: u64| -> u32 {
+                        let mut d = 0u32;
+                        let mut cur = gfx
+                            .sim
+                            .world()
+                            .get::<ph2d_ecs::ChildOf>(ph2d_ecs::Entity::from_bits(bits))
+                            .map(|c| c.parent());
+                        while let Some(p) = cur {
+                            d += 1;
+                            cur = gfx
+                                .sim
+                                .world()
+                                .get::<ph2d_ecs::ChildOf>(p)
+                                .map(|c| c.parent());
+                        }
+                        d
+                    };
+                    let mut members: Vec<(
+                        u64,
+                        u32,
+                        ph2d_editor::TransformSnapshot,
+                        ph2d_editor::TransformSnapshot,
+                    )> = Vec::with_capacity(self.group_drag_starts.len() + 1);
+                    members.push((
+                        drag.entity_bits,
+                        depth_of(drag.entity_bits),
+                        drag.start_transform,
+                        drag.parent_world,
+                    ));
+                    for snap in self.group_drag_starts.iter() {
+                        members.push((
+                            snap.entity_bits,
+                            depth_of(snap.entity_bits),
+                            snap.start_transform,
+                            snap.parent_world,
+                        ));
+                    }
+                    members.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+                    for (bits, _depth, start_local, start_parent) in members {
+                        let member = ph2d_ecs::Entity::from_bits(bits);
+                        // START world = start_parent ∘ start_local.
+                        let start_world = ph2d_editor::compose_snapshot(start_parent, start_local);
+                        let target_rotation = start_world.rotation + delta_rot;
+                        let target_scale = [
+                            start_world.scale[0] * factor_x,
+                            start_world.scale[1] * factor_y,
+                        ];
+                        let target_translation = if is_global {
+                            // Orbit (+ scale) the world position around the
+                            // shared global pivot.
+                            let rel_x = start_world.translation[0] - pivot[0];
+                            let rel_y = start_world.translation[1] - pivot[1];
                             let scaled_x = rel_x * factor_x;
                             let scaled_y = rel_y * factor_y;
-                            let rotated_x = scaled_x * cos_d - scaled_y * sin_d;
-                            let rotated_y = scaled_x * sin_d + scaled_y * cos_d;
-                            let world_new = [pivot[0] + rotated_x, pivot[1] + rotated_y];
-                            new_translation = ph2d_editor::world_translation_to_local(
-                                snap.parent_world,
-                                world_new,
-                            );
-                            new_rotation = st.rotation + delta_rot;
-                            new_scale_extra = [st.scale[0] * factor_x, st.scale[1] * factor_y];
+                            [
+                                pivot[0] + scaled_x * cos_d - scaled_y * sin_d,
+                                pivot[1] + scaled_x * sin_d + scaled_y * cos_d,
+                            ]
                         } else {
-                            // Local scale/rotate: each sprite
-                            // transforms around its own anchor →
-                            // translation stays put; only scale /
-                            // rotation change.
-                            new_translation = st.translation;
-                            new_rotation = st.rotation + delta_rot;
-                            new_scale_extra = [st.scale[0] * factor_x, st.scale[1] * factor_y];
-                        }
-                        if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
-                        {
+                            // Local pivot: each sprite turns about its own
+                            // center → its world position is unchanged.
+                            start_world.translation
+                        };
+                        // Convert the target WORLD transform back to LOCAL
+                        // against the parent's CURRENT world (reflects any
+                        // selected ancestor already written this frame).
+                        let live_parent = ph2d_ecs::parent_world_transform(gfx.sim.world(), member);
+                        let live_parent = ph2d_editor::TransformSnapshot {
+                            translation: [live_parent.translation.x, live_parent.translation.y],
+                            rotation: live_parent.rotation,
+                            scale: [live_parent.scale.x, live_parent.scale.y],
+                        };
+                        let new_translation = ph2d_editor::world_translation_to_local(
+                            live_parent,
+                            target_translation,
+                        );
+                        let new_rotation = target_rotation - live_parent.rotation;
+                        let psx = if live_parent.scale[0].abs() > 1e-6 {
+                            live_parent.scale[0]
+                        } else {
+                            1.0
+                        };
+                        let psy = if live_parent.scale[1].abs() > 1e-6 {
+                            live_parent.scale[1]
+                        } else {
+                            1.0
+                        };
+                        let new_scale = [target_scale[0] / psx, target_scale[1] / psy];
+                        if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(member) {
                             t.translation =
                                 ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
                             t.rotation = new_rotation;
-                            t.scale = ph2d_core::Vec2::new(new_scale_extra[0], new_scale_extra[1]);
+                            t.scale = ph2d_core::Vec2::new(new_scale[0], new_scale[1]);
+                        }
+                    }
+                } else {
+                    // Single-selection (any kind) + multi-selection TRANSLATE.
+                    // Multi rotate/scale goes through the unified branch above,
+                    // so the primary's translation here is always
+                    // `new_t.translation` (the old in_local_multi /
+                    // in_global_xform cases only ever fired for multi
+                    // rotate/scale, now handled above).
+                    if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
+                        t.translation =
+                            ph2d_core::Vec2::new(new_t.translation[0], new_t.translation[1]);
+                        t.rotation = new_t.rotation;
+                        t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
+                    }
+                    // Multi-selection TRANSLATE: rigid-body shift — add the
+                    // dragged primary's world delta to every extra's start
+                    // translation, converted into each extra's LOCAL frame via
+                    // inverse-parent (Enio 2026-05-26: child of a rotated
+                    // parent in the group moved along the local axis, not
+                    // world). Rotate/scale never reach here (handled by the
+                    // unified branch above); MovePivot stays primary-only (its
+                    // own branch writes Sprite.anchor).
+                    if !self.group_drag_starts.is_empty()
+                        && matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+                    {
+                        let dx = new_t.translation[0] - drag.start_transform.translation[0];
+                        let dy = new_t.translation[1] - drag.start_transform.translation[1];
+                        for snap in self.group_drag_starts.iter().copied() {
+                            let extra_entity = ph2d_ecs::Entity::from_bits(snap.entity_bits);
+                            let st = snap.start_transform;
+                            let [dx_l, dy_l] =
+                                ph2d_editor::world_delta_to_local(snap.parent_world, dx, dy);
+                            if let Some(mut t) =
+                                gfx.sim.world_mut().get_mut::<Transform>(extra_entity)
+                            {
+                                t.translation = ph2d_core::Vec2::new(
+                                    st.translation[0] + dx_l,
+                                    st.translation[1] + dy_l,
+                                );
+                                t.rotation = st.rotation;
+                                t.scale = ph2d_core::Vec2::new(st.scale[0], st.scale[1]);
+                            }
                         }
                     }
                 }

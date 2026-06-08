@@ -7,7 +7,7 @@
 
 use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
-use crate::image_import::import_image_at_camera;
+use crate::image_import::{ImportItemResult, import_images_grid};
 use ph2d_editor::interaction::InteractiveState;
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{PanelControl, PanelEvent, Toast};
@@ -58,8 +58,17 @@ impl App {
         } else {
             drop_world_raw
         };
+        // Filter to image files up front (warning toast per skip), then
+        // hand the survivors to the batch importer, which lays them out
+        // in a near-square grid anchored at the drop point (`drop_world`
+        // = first cell's center; the grid grows right + down). This
+        // replaces the old per-file `camera.center` shuffle — the
+        // importer takes the world anchor directly.
+        let mut valid_paths: Vec<std::path::PathBuf> = Vec::new();
         for path in paths {
-            if !ph2d_asset::is_supported_image_extension(path) {
+            if ph2d_asset::is_supported_image_extension(path) {
+                valid_paths.push(path.clone());
+            } else {
                 let name = path
                     .file_name()
                     .and_then(|s| s.to_str())
@@ -67,37 +76,46 @@ impl App {
                 gfx.toasts
                     .push(Toast::warning(format!("Skipped non-image: {name}")));
                 self.title_dirty = true;
-                continue;
             }
-            // The import helper currently anchors the spawn at
-            // `camera.center`. Temporarily move the camera so the
-            // sprite Transform lands at the cursor world point;
-            // restore afterward so pan/zoom state is preserved.
-            // Cleaner alternative: `import_image_at_world(pos, ...)`
-            // — defer to M14.5 when the import path is touched.
-            let saved_center = gfx.camera.center;
-            gfx.camera.center = drop_world;
-            let next_key = gfx.next_import_cell;
-            let result = import_image_at_camera(
-                &mut gfx.sim,
-                &mut gfx.renderer,
-                &gfx.asset_db,
-                &gfx.camera,
-                next_key,
-                path,
-                pixels_per_meter,
-                &mut gfx.atlas_asset_map,
-            );
-            gfx.camera.center = saved_center;
-            match result {
-                Ok(label) => {
-                    gfx.next_import_cell = gfx.next_import_cell.saturating_add(1);
+        }
+        if valid_paths.is_empty() {
+            return;
+        }
+        let results = import_images_grid(
+            &mut gfx.sim,
+            &mut gfx.renderer,
+            &gfx.asset_db,
+            drop_world,
+            &mut gfx.next_import_cell,
+            &valid_paths,
+            pixels_per_meter,
+            &mut gfx.atlas_asset_map,
+        );
+        // Seat the selection: the first imported sprite replaces the
+        // selection, the rest join it as extras so a multi-file drop
+        // ends up fully selected (same shape as Shift-clicking each on
+        // the canvas). The per-frame snapshot sync
+        // (render_loop/snapshots.rs) derives both the canvas gizmo view
+        // and the Hierarchy row highlight from `hero.gizmo`, so this one
+        // write covers both surfaces.
+        let mut selected_any = false;
+        for r in results {
+            match r {
+                ImportItemResult::Ok { label, bits } => {
+                    if let Some(hero) = gfx.hero_screen.as_mut() {
+                        if selected_any {
+                            hero.gizmo.add_to_selection(bits);
+                        } else {
+                            hero.gizmo.replace_selection(Some(bits));
+                            selected_any = true;
+                        }
+                    }
                     gfx.toasts.push(Toast::success(format!("Imported {label}")));
                     self.title_dirty = true;
                 }
-                Err(e) => {
-                    eprintln!("M14.4e drop failed: {e}");
-                    gfx.toasts.push(Toast::error(format!("Drop failed: {e}")));
+                ImportItemResult::Err { name, error } => {
+                    eprintln!("M14.4e drop failed ({name}): {error}");
+                    gfx.toasts.push(Toast::error(format!("Drop failed: {error}")));
                     self.title_dirty = true;
                 }
             }

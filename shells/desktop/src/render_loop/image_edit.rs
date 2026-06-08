@@ -18,7 +18,7 @@
 
 use crate::{
     ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents,
-    image_import::import_image_at_camera,
+    image_import::{ImportItemResult, import_images_grid},
 };
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
@@ -458,9 +458,11 @@ pub(super) fn dispatch(
     // Publish whether a snapshot is currently stored so the UI
     // can dim the TOOL_UNDO chip when there's nothing to undo.
     hero.image_edit.has_undoable = image_edit_undo.is_some();
-    // M14.4c: drain pending import request → open native
-    // file picker, import every selected image (PNG/WEBP/
-    // JPEG), spawn a sprite per image at the camera center.
+    // M14.4c: drain pending import request → open native file picker,
+    // import every selected image (PNG/WEBP/JPEG). The batch importer
+    // lays them out in a near-square grid anchored at the camera center
+    // (first cell's center = `camera.center`; grid grows right + down)
+    // instead of stacking every sprite on one point.
     if hero.import_requested {
         hero.import_requested = false;
         let picked = rfd::FileDialog::new()
@@ -468,29 +470,37 @@ pub(super) fn dispatch(
             .pick_files();
         let pixels_per_meter = hero.project.pixels_per_meter;
         if let Some(paths) = picked {
-            for path in paths {
-                match import_image_at_camera(
-                    sim,
-                    &mut *renderer,
-                    asset_db,
-                    camera,
-                    *next_import_cell,
-                    &path,
-                    pixels_per_meter,
-                    atlas_asset_map,
-                ) {
-                    Ok(spawned_label) => {
-                        // Monotonic increment — the Skyline atlas
-                        // grows up to 4096²; no slot reuse cycle
-                        // (the old `% 8 + 8` math was for the
-                        // M5 grid placeholder).
-                        *next_import_cell = next_import_cell.saturating_add(1);
-                        toasts.push(Toast::success(format!("Imported {spawned_label}")));
+            let results = import_images_grid(
+                sim,
+                &mut *renderer,
+                asset_db,
+                camera.center,
+                next_import_cell,
+                &paths,
+                pixels_per_meter,
+                atlas_asset_map,
+            );
+            // First imported sprite replaces the selection; the rest
+            // join it as extras so a multi-pick import ends up fully
+            // selected (mirrors the drag-drop path). The per-frame
+            // snapshot sync turns this into both the canvas gizmo and
+            // the Hierarchy highlight.
+            let mut selected_any = false;
+            for r in results {
+                match r {
+                    ImportItemResult::Ok { label, bits } => {
+                        if selected_any {
+                            hero.gizmo.add_to_selection(bits);
+                        } else {
+                            hero.gizmo.replace_selection(Some(bits));
+                            selected_any = true;
+                        }
+                        toasts.push(Toast::success(format!("Imported {label}")));
                         title_dirty = true;
                     }
-                    Err(e) => {
-                        eprintln!("M14.4c import failed: {e}");
-                        toasts.push(Toast::error(format!("Import failed: {e}")));
+                    ImportItemResult::Err { name, error } => {
+                        eprintln!("M14.4c import failed ({name}): {error}");
+                        toasts.push(Toast::error(format!("Import failed: {error}")));
                         title_dirty = true;
                     }
                 }

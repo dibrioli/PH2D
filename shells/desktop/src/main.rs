@@ -59,7 +59,7 @@ pub(crate) use app_state::{
 };
 
 // forwarding::* moved to input_dispatch.rs (PR 9b).
-// cursor_pos::live_cursor_in_window + image_import::import_image_at_camera
+// cursor_pos::live_cursor_in_window + image_import::import_images_grid
 // moved to input_handlers.rs (Wave 3.2 stage B).
 use input_log::log_input_event;
 // keymap::winit_to_editor_keycode moved to input_dispatch.rs (PR 9b).

@@ -126,9 +126,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             return;
         };
         // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
-        // GPU-clear the resident pigment (no zero-upload), push solver params + the
-        // static paper, and prime the compositor with the constant backdrop + brush
-        // coeffs. After this, the per-frame path uploads only a 64-byte region.
         if sess.epoch != epoch {
             sess.solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
             sess.solver.set_params(&gpu.queue, &FluidParams::default());
@@ -138,6 +135,9 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             if let Some(backdrop) = painter.fluid_backdrop() {
                 let brush =
                     prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
+                // Coverage supersampling: 1 at full-res (edge already 1px-fine — saves
+                // 4× the K–M cost), 2 at half-res to antialias the steeper edge.
+                let ss = if scale <= 1 { 1 } else { 2 };
                 sess.compositor.begin_stroke(
                     &gpu.device,
                     &gpu.queue,
@@ -147,6 +147,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                     ch,
                     scale,
                     coverage_k,
+                    ss,
                     sess.solver.pigment_buffer(),
                     backdrop,
                     &brush,
@@ -155,7 +156,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.epoch = epoch;
         }
 
-        // ── Per-frame hot loop (no allocation, no canvas upload) ──
+        // ── Per-frame hot loop ──
         let Some(inp) = painter.fluid_frame_step_inputs(evap_per_frame) else {
             painter.fluid_dry_check_and_drop();
             return;

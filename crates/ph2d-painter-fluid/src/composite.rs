@@ -30,7 +30,7 @@ struct GpuU {
     inv: f32,
     color_sum: f32,
     coverage_k: f32,
-    _pad0: f32,
+    ss: u32,
     origin_x: u32,
     origin_y: u32,
     end_x: u32,
@@ -53,9 +53,8 @@ struct GpuCoeffs {
 impl GpuCoeffs {
     /// Pack the constant basis + the amortised brush coeffs for the shader.
     fn build(brush: &WetCompositeBrush) -> Self {
-        // Pinned: the shader hard-codes NB=24 (and the flatten strides below) + SS=2.
+        // Pinned: the shader hard-codes NB=24 (and the flatten strides below).
         assert_eq!(SPECTRAL_BANDS, 24, "composite.wgsl assumes 24 spectral bands");
-        assert_eq!(WET_COMPOSITE_SS, 2, "composite.wgsl hard-codes SS=2u (supersampling)");
         let (base, m) = spectral_basis();
         let mut out = Self {
             base: [0.0; 168],
@@ -87,6 +86,7 @@ struct CompositeState {
     gh: u32,
     scale: u32,
     coverage_k: f32,
+    ss: u32,
     pcol: [f32; 3],
     color_sum: f32,
     params: wgpu::Buffer,
@@ -177,6 +177,7 @@ impl FluidCompositor {
         ch: u32,
         scale: u32,
         coverage_k: f32,
+        ss: u32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
         brush: &WetCompositeBrush,
@@ -228,7 +229,7 @@ impl FluidCompositor {
                 ],
             });
             self.state = Some(CompositeState {
-                cw, ch, gw, gh, scale, coverage_k,
+                cw, ch, gw, gh, scale, coverage_k, ss,
                 pcol: brush.pcol, color_sum: brush.color_sum,
                 params, coeffs, out, backdrop, staging, bind,
             });
@@ -239,6 +240,7 @@ impl FluidCompositor {
         st.gh = gh;
         st.scale = scale;
         st.coverage_k = coverage_k;
+        st.ss = ss;
         st.pcol = brush.pcol;
         st.color_sum = brush.color_sum;
         // Backdrop + coeffs are constant for the stroke → upload once here.
@@ -289,7 +291,7 @@ impl FluidCompositor {
             inv: 1.0 / st.scale as f32,
             color_sum: st.color_sum,
             coverage_k: st.coverage_k,
-            _pad0: 0.0,
+            ss: st.ss,
             origin_x: px_lo,
             origin_y: py_lo,
             end_x: px_hi,
@@ -534,7 +536,7 @@ impl FluidCompositor {
             inv: 1.0 / scale as f32,
             color_sum: brush.color_sum,
             coverage_k,
-            _pad0: 0.0,
+            ss: WET_COMPOSITE_SS,
             origin_x: px_lo,
             origin_y: py_lo,
             end_x: px_hi,

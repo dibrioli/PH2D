@@ -25,7 +25,7 @@ struct U {
     inv: f32,         // 1 / scale
     color_sum: f32,   // coverage normaliser
     coverage_k: f32,  // density→alpha rate (WET_COVERAGE_K)
-    _pad0: f32,
+    ss: u32,          // coverage supersampling factor N (N×N); 1 at full-res
     origin_x: u32,    // dispatch origin in canvas px (bbox top-left)
     origin_y: u32,
     end_x: u32,       // exclusive bbox right/bottom (= CPU loop bound px_hi/py_hi)
@@ -179,11 +179,9 @@ fn mix_prepared_exact(a: vec3<f32>, t_in: f32) -> vec3<f32> {
     return lin + (spec - lin) * w;
 }
 
-// Coverage supersampling factor (N×N) — MUST equal `wet_composite::WET_COMPOSITE_SS`
-// (asserted host-side). Antialiases the opaque-stroke silhouette ("baixa resolução
-// nas bordas"): the pigment field is bicubic-smooth, but a steep coverage edge is
-// under-sampled at the pixel centre.
-const SS: u32 = 2u;
+// Coverage supersampling factor `N` comes from `P.ss` (N×N samples) — 1 at full-res
+// (the edge is already 1px-fine; supersampling is 4× the K–M cost for nothing), 2 at
+// half-res to antialias the steeper edge. Adaptive: the perf win on big canvases.
 
 // One glaze sub-sample at grid coords (fx,fy) over the linear backdrop. `dry` is set
 // when the cell is bare (`dens < 1e-4`); the caller treats that as a backdrop sample.
@@ -225,13 +223,14 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
         srgb_to_linear(back_rgba.y),
         srgb_to_linear(back_rgba.z),
     );
-    let inv_n = 1.0 / f32(SS);
+    let ss = max(P.ss, 1u);
+    let inv_n = 1.0 / f32(ss);
     var acc_rgb = vec3<f32>(0.0);
     var acc_a = 0.0;
     var any_wet = false;
-    for (var sy = 0u; sy < SS; sy = sy + 1u) {
+    for (var sy = 0u; sy < ss; sy = sy + 1u) {
         let fy = clamp((f32(cy) + (f32(sy) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gh) - 1.0);
-        for (var sx = 0u; sx < SS; sx = sx + 1u) {
+        for (var sx = 0u; sx < ss; sx = sx + 1u) {
             let fx = clamp((f32(cx) + (f32(sx) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gw) - 1.0);
             let s = glaze_sample(fx, fy, back, back_a);
             if (!s.dry) {

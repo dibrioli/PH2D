@@ -187,9 +187,9 @@ fn composite_frame_fast_path_matches_one_shot() {
     solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
     let mut compositor = FluidCompositor::new(&gpu.device);
 
-    // Fast path.
+    // Fast path (ss=2 to match the one-shot's WET_COMPOSITE_SS).
     compositor.begin_stroke(
-        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, solver.pigment_buffer(),
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, 2, solver.pigment_buffer(),
         &backdrop, &brush,
     );
     let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -201,6 +201,22 @@ fn composite_frame_fast_path_matches_one_shot() {
     );
     assert_eq!(rect_fast, rect_one, "fast-path rect must match one-shot");
     assert_eq!(band_fast, band_one, "fast-path band must match one-shot (byte-exact)");
+
+    // ss=1 (the full-res hot path) must also composite correctly: a wet opaque-blue
+    // pixel still goes K–M green-dominant (single-sample, no supersampling).
+    compositor.begin_stroke(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, 1, solver.pigment_buffer(),
+        &backdrop, &brush,
+    );
+    let (band_ss1, (px_lo, py_lo, px_hi, _)) =
+        compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    assert!(!band_ss1.is_empty(), "ss=1 composite must produce output");
+    // Probe a wet pixel in the opaque-blue (left) half, inside the band.
+    let cyr = ch / 2;
+    let cxr = (cw / 2).saturating_sub(3).max(px_lo + 1).min(px_hi - 1);
+    let i = ((cyr - py_lo) * cw + cxr) as usize * 4;
+    let (r, g, b) = (band_ss1[i] as i32, band_ss1[i + 1] as i32, band_ss1[i + 2] as i32);
+    assert!(g >= r && g >= b, "ss=1 K–M still green-dominant over blue: [{r},{g},{b}]");
 }
 
 #[test]

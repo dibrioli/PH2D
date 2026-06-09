@@ -11,17 +11,17 @@
 //! — to a storage buffer (the readback / first-milestone path here) or, in the
 //! shell integration, a preview texture (zero readback).
 
+use ph2d_painter_brush::diffusion::{PIG_CH, WetCell};
 use ph2d_painter_brush::pigment_mix::{SPECTRAL_BANDS, spectral_basis};
-use ph2d_painter_brush::wet_composite::{
-    WET_COMPOSITE_SS, WetCompositeBrush, composite_canvas_region,
-};
+use ph2d_painter_brush::wet_composite::{WET_COMPOSITE_SS, composite_canvas_region};
 
 /// The GPU composite shader source (mirror of the CPU `wet_composite`). Embedded so
 /// a dev-test validates it through naga before any GPU init.
 pub const COMPOSITE_WGSL: &str = include_str!("shader/composite.wgsl");
 
-/// The WGSL `U` uniform, byte-for-byte (64 B). `#[repr(C)]` Pod for a zero-copy
-/// `write_buffer` (HR-3). std140-compatible: `pcol` (vec4) lands at offset 48.
+/// The WGSL `U` uniform, byte-for-byte (48 B). `#[repr(C)]` Pod for a zero-copy
+/// `write_buffer` (HR-3). ADR-0080: pigment colour/opacity are now PER-PIXEL (reduced
+/// from the field), so the per-stroke `pcol`/`color_sum` uniforms are gone.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuU {
@@ -30,31 +30,28 @@ struct GpuU {
     gw: u32,
     gh: u32,
     inv: f32,
-    color_sum: f32,
     coverage_k: f32,
     ss: u32,
     origin_x: u32,
     origin_y: u32,
     end_x: u32,
     end_y: u32,
-    pcol: [f32; 4],
+    _pad: u32,
 }
 
-/// The WGSL `Coeffs` storage struct, byte-for-byte (1072 B). Flattened spectral
-/// basis (`base[7][24]` + `m[3][24]`) + prepared brush side (`ks[24]` + `err`).
-/// std430: `err` (vec4) lands 16-aligned at offset 1056.
+/// The WGSL `Coeffs` storage struct, byte-for-byte (960 B). The flattened constant
+/// spectral basis (`base[7][24]` + `m[3][24]`); the brush `ks`/`err` are now per-pixel
+/// (ADR-0080), reduced from the field in the shader, so they're no longer uploaded.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuCoeffs {
     base: [f32; 168], // 7 * 24
     m: [f32; 72],     // 3 * 24
-    ks: [f32; 24],
-    err: [f32; 4], // xyz used
 }
 
 impl GpuCoeffs {
-    /// Pack the constant basis + the amortised brush coeffs for the shader.
-    fn build(brush: &WetCompositeBrush) -> Self {
+    /// Pack the constant spectral basis for the shader (constant per device).
+    fn build() -> Self {
         // Pinned: the shader hard-codes NB=24 (and the flatten strides below).
         assert_eq!(
             SPECTRAL_BANDS, 24,
@@ -64,8 +61,6 @@ impl GpuCoeffs {
         let mut out = Self {
             base: [0.0; 168],
             m: [0.0; 72],
-            ks: brush.prepared.ks(),
-            err: [0.0; 4],
         };
         for (k, row) in base.iter().enumerate() {
             out.base[k * 24..k * 24 + 24].copy_from_slice(row);
@@ -73,8 +68,6 @@ impl GpuCoeffs {
         for (c, row) in m.iter().enumerate() {
             out.m[c * 24..c * 24 + 24].copy_from_slice(row);
         }
-        let e = brush.prepared.err();
-        out.err = [e[0], e[1], e[2], 0.0];
         out
     }
 }
@@ -92,8 +85,6 @@ struct CompositeState {
     scale: u32,
     coverage_k: f32,
     ss: u32,
-    pcol: [f32; 3],
-    color_sum: f32,
     params: wgpu::Buffer,
     coeffs: wgpu::Buffer,
     out: wgpu::Buffer,
@@ -202,7 +193,6 @@ impl FluidCompositor {
         ss: u32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
-        brush: &WetCompositeBrush,
     ) {
         // Drain any in-flight pipelined readback from a PRIOR stroke (its map may still
         // hold `staging`): complete + unmap it before this stroke reuses the buffer, so
@@ -282,8 +272,6 @@ impl FluidCompositor {
                 scale,
                 coverage_k,
                 ss,
-                pcol: brush.pcol,
-                color_sum: brush.color_sum,
                 params,
                 coeffs,
                 out,
@@ -299,11 +287,9 @@ impl FluidCompositor {
         st.scale = scale;
         st.coverage_k = coverage_k;
         st.ss = ss;
-        st.pcol = brush.pcol;
-        st.color_sum = brush.color_sum;
         // Backdrop + coeffs are constant for the stroke → upload once here.
         queue.write_buffer(&st.backdrop, 0, backdrop_rgba);
-        queue.write_buffer(&st.coeffs, 0, bytemuck::bytes_of(&GpuCoeffs::build(brush)));
+        queue.write_buffer(&st.coeffs, 0, bytemuck::bytes_of(&GpuCoeffs::build()));
         // Rebuild the bind group each stroke so it tracks the current resident pig_a
         // (cheap — just resource references; the canvas buffers are reused).
         if !resized {
@@ -362,14 +348,13 @@ impl FluidCompositor {
             gw: st.gw,
             gh: st.gh,
             inv: 1.0 / st.scale as f32,
-            color_sum: st.color_sum,
             coverage_k: st.coverage_k,
             ss: st.ss,
             origin_x: px_lo,
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            pcol: [st.pcol[0], st.pcol[1], st.pcol[2], 0.0],
+            _pad: 0,
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
 
@@ -463,14 +448,13 @@ impl FluidCompositor {
             gw: st.gw,
             gh: st.gh,
             inv: 1.0 / st.scale as f32,
-            color_sum: st.color_sum,
             coverage_k: st.coverage_k,
             ss: st.ss,
             origin_x: px_lo,
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            pcol: [st.pcol[0], st.pcol[1], st.pcol[2], 0.0],
+            _pad: 0,
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let row_bytes = u64::from(st.cw) * 4;
@@ -529,14 +513,13 @@ impl FluidCompositor {
         ch: u32,
         scale: u32,
         coverage_k: f32,
-        pigment: &[[f32; 4]],
+        pigment: &[WetCell],
         backdrop_rgba: &[u8],
-        brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
     ) -> Vec<u8> {
         let pig_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("composite pig_in (upload)"),
-            size: (pigment.len() * 16) as u64,
+            size: (pigment.len() * PIG_CH * 4) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -552,7 +535,6 @@ impl FluidCompositor {
             coverage_k,
             &pig_buf,
             backdrop_rgba,
-            brush,
             grid_region,
         )
     }
@@ -576,7 +558,6 @@ impl FluidCompositor {
         coverage_k: f32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
-        brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
     ) -> Vec<u8> {
         let npix = (cw as usize) * (ch as usize);
@@ -593,7 +574,6 @@ impl FluidCompositor {
             coverage_k,
             pigment_buf,
             backdrop_rgba,
-            brush,
             grid_region,
         );
         let _keep = (params_buf, coeffs_buf, backdrop_buf);
@@ -655,7 +635,6 @@ impl FluidCompositor {
         coverage_k: f32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
-        brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
     ) -> (Vec<u8>, (u32, u32, u32, u32)) {
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
@@ -677,7 +656,6 @@ impl FluidCompositor {
             coverage_k,
             pigment_buf,
             backdrop_rgba,
-            brush,
             grid_region,
         );
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
@@ -733,7 +711,6 @@ impl FluidCompositor {
         coverage_k: f32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
-        brush: &WetCompositeBrush,
         grid_region: (u32, u32, u32, u32),
     ) -> (
         wgpu::Buffer,
@@ -750,16 +727,15 @@ impl FluidCompositor {
             gw,
             gh,
             inv: 1.0 / scale as f32,
-            color_sum: brush.color_sum,
             coverage_k,
             ss: WET_COMPOSITE_SS,
             origin_x: px_lo,
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            pcol: [brush.pcol[0], brush.pcol[1], brush.pcol[2], 0.0],
+            _pad: 0,
         };
-        let coeffs = GpuCoeffs::build(brush);
+        let coeffs = GpuCoeffs::build();
         let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("composite params"),
             size: core::mem::size_of::<GpuU>() as u64,

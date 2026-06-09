@@ -12,8 +12,13 @@
 // f_n·p_n from any neighbour whose flow points at c. Same mass transfer,
 // parallel-safe.
 //
-// Pigment is `vec4<f32>` (xyz = linear-RGB mass, w unused) to avoid the std430
-// vec3 stride trap. Water/paper are `f32` arrays. Index = y*width + x.
+// **Pigment = PV (=7) `vec4<f32>` per cell = 28 channels** (ADR-0080): 24 spectral
+// K/S bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)). Every pass loops the PV
+// vec4 doing the SAME per-component arithmetic the CPU `[f32;28]` loop does, so the
+// multi-pigment mix transports linearly and the parity stays bit-exact lane-for-lane.
+// Water/paper are `f32` arrays. Cell index = y*width + x; channels at `c*PV + v`.
+
+const PV: u32 = 7u;
 
 struct Params {
     width: u32,
@@ -46,8 +51,6 @@ struct Params {
     _pad2: f32,
 }
 
-// Map a region-local invocation to an absolute cell; returns false (skip) when the
-// invocation is past the region extent or the grid edge.
 fn region_cell(gid: vec2<u32>) -> vec2<u32> {
     return vec2<u32>(P.region_ox + gid.x, P.region_oy + gid.y);
 }
@@ -106,25 +109,26 @@ fn cs_diffuse(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     let gc = gate(x, y);
-    let pc = pig_in[c].xyz;
-    var acc = vec3<f32>(0.0, 0.0, 0.0);
-    if (x > 0u) {
-        let n = idx(x - 1u, y);
-        acc += 0.5 * (gc + gate(x - 1u, y)) * (pig_in[n].xyz - pc);
+    // Per-cell face conductances + neighbour cell indices (shared by all PV channels).
+    let has_l = x > 0u;
+    let has_r = x + 1u < P.width;
+    let has_u = y > 0u;
+    let has_d = y + 1u < P.height;
+    var nl = 0u; var nr = 0u; var nu = 0u; var nd = 0u;
+    var cl = 0.0; var cr = 0.0; var cu = 0.0; var cd = 0.0;
+    if (has_l) { nl = idx(x - 1u, y); cl = 0.5 * (gc + gate(x - 1u, y)); }
+    if (has_r) { nr = idx(x + 1u, y); cr = 0.5 * (gc + gate(x + 1u, y)); }
+    if (has_u) { nu = idx(x, y - 1u); cu = 0.5 * (gc + gate(x, y - 1u)); }
+    if (has_d) { nd = idx(x, y + 1u); cd = 0.5 * (gc + gate(x, y + 1u)); }
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let pc = pig_in[c * PV + v];
+        var acc = vec4<f32>(0.0);
+        if (has_l) { acc += cl * (pig_in[nl * PV + v] - pc); }
+        if (has_r) { acc += cr * (pig_in[nr * PV + v] - pc); }
+        if (has_u) { acc += cu * (pig_in[nu * PV + v] - pc); }
+        if (has_d) { acc += cd * (pig_in[nd * PV + v] - pc); }
+        pig_out[c * PV + v] = pc + P.diffusivity * acc;
     }
-    if (x + 1u < P.width) {
-        let n = idx(x + 1u, y);
-        acc += 0.5 * (gc + gate(x + 1u, y)) * (pig_in[n].xyz - pc);
-    }
-    if (y > 0u) {
-        let n = idx(x, y - 1u);
-        acc += 0.5 * (gc + gate(x, y - 1u)) * (pig_in[n].xyz - pc);
-    }
-    if (y + 1u < P.height) {
-        let n = idx(x, y + 1u);
-        acc += 0.5 * (gc + gate(x, y + 1u)) * (pig_in[n].xyz - pc);
-    }
-    pig_out[c] = vec4<f32>(pc + P.diffusivity * acc, pig_in[c].w);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -136,32 +140,33 @@ fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let c = idx(x, y);
-    let pc = pig_in[c].xyz;
     let fc = flow(x, y);
-    var out = pc;
-    // Outflow from c into existing downstream neighbours (the CPU "push").
-    if (fc.x > 0.0 && x + 1u < P.width) { out -= fc.x * pc; }
-    if (fc.x < 0.0 && x > 0u) { out -= (-fc.x) * pc; }
-    if (fc.y > 0.0 && y + 1u < P.height) { out -= fc.y * pc; }
-    if (fc.y < 0.0 && y > 0u) { out -= (-fc.y) * pc; }
-    // Inflow: any neighbour whose flow points AT c contributes its push.
-    if (x > 0u) {
-        let fl = flow(x - 1u, y);
-        if (fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y)].xyz; }
+    // Neighbour flows (gathered inflow), computed once for all PV channels.
+    let has_l = x > 0u;
+    let has_r = x + 1u < P.width;
+    let has_u = y > 0u;
+    let has_d = y + 1u < P.height;
+    var fl = vec2<f32>(0.0); var fr = vec2<f32>(0.0);
+    var fu = vec2<f32>(0.0); var fd = vec2<f32>(0.0);
+    if (has_l) { fl = flow(x - 1u, y); }
+    if (has_r) { fr = flow(x + 1u, y); }
+    if (has_u) { fu = flow(x, y - 1u); }
+    if (has_d) { fd = flow(x, y + 1u); }
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let pc = pig_in[c * PV + v];
+        var out = pc;
+        // Outflow from c into existing downstream neighbours (the CPU "push").
+        if (fc.x > 0.0 && has_r) { out -= fc.x * pc; }
+        if (fc.x < 0.0 && has_l) { out -= (-fc.x) * pc; }
+        if (fc.y > 0.0 && has_d) { out -= fc.y * pc; }
+        if (fc.y < 0.0 && has_u) { out -= (-fc.y) * pc; }
+        // Inflow: any neighbour whose flow points AT c contributes its push.
+        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y) * PV + v]; }
+        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y) * PV + v]; }
+        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u) * PV + v]; }
+        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u) * PV + v]; }
+        pig_out[c * PV + v] = out;
     }
-    if (x + 1u < P.width) {
-        let fr = flow(x + 1u, y);
-        if (fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y)].xyz; }
-    }
-    if (y > 0u) {
-        let fu = flow(x, y - 1u);
-        if (fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u)].xyz; }
-    }
-    if (y + 1u < P.height) {
-        let fd = flow(x, y + 1u);
-        if (fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u)].xyz; }
-    }
-    pig_out[c] = vec4<f32>(out, pig_in[c].w);
 }
 
 // Drying: water lost per step. As it falls below `w_lo` the gate closes and the
@@ -179,12 +184,7 @@ fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
     water[i] = max(water[i] - P.evaporation, 0.0);
 }
 
-// Additive dab deposit (W15.3 resident path): `pig_a += deposit`. The bloomed
-// pigment stays GPU-resident in `pig_a` across frames (no per-frame readback);
-// new dabs the CPU splatted this frame arrive via `pig_in` (the deposit buffer)
-// and are ADDED here. `pig_out` is bound to `pig_a` (read_write) so the add is
-// in place. Water is uploaded fresh from the CPU mirror each frame (the CPU owns
-// evaporation + the dry-check), so this pass never touches it.
+// Additive dab deposit (W15.3 resident path): `pig_a += deposit` over all PV channels.
 @compute @workgroup_size(8, 8, 1)
 fn cs_deposit(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = gid.x;
@@ -192,6 +192,8 @@ fn cs_deposit(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (x >= P.width || y >= P.height) {
         return;
     }
-    let i = idx(x, y);
-    pig_out[i] = pig_out[i] + pig_in[i];
+    let c = idx(x, y);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        pig_out[c * PV + v] = pig_out[c * PV + v] + pig_in[c * PV + v];
+    }
 }

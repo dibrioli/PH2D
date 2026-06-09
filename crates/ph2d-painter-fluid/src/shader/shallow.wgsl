@@ -18,6 +18,11 @@
 // Velocity is `vec2<f32>` (std430 stride 8). All passes are region-scoped (ADR-0078 S1)
 // and share the solver `Params` UBO (the 4 trailing S3d fields live in the bytes the
 // diffuse/advect/transfer/combine shaders treat as padding, so those stay byte-compatible).
+//
+// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); the velocity gather + the
+// MacCormack clamp run per vec4 (the flow scalar + the local extrema are per-channel).
+
+const PV: u32 = 7u;
 
 struct Params {
     width: u32,
@@ -201,35 +206,35 @@ fn flow_v(x: u32, y: u32) -> vec2<f32> {
     return clamp(v, vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5));
 }
 
-// Gather-form velocity advection of pig_in at cell (x,y). `sign` = +1 forward, −1 reverse
-// (the MacCormack backward pass negates the flow — matches the CPU `advect(reverse)`). Mirrors
-// the CPU upwind scatter: every gram c pushes downstream is gathered as the neighbours' inflow.
-fn av_gather(x: u32, y: u32, sign: f32) -> vec3<f32> {
-    let c = idx(x, y);
-    let pc = pig_in[c].xyz;
+// Gather-form velocity advection of pig_in at cell (x,y), written to pig_out across all PV
+// channels. `sign` = +1 forward, −1 reverse (the MacCormack backward pass negates the flow —
+// matches the CPU `advect(reverse)`). The flow scalars are per-cell (shared by all channels);
+// the gather mirrors the CPU upwind scatter as the neighbours' inflow.
+fn av_write(x: u32, y: u32, c: u32, sign: f32) {
+    let has_l = x > 0u;
+    let has_r = x + 1u < P.width;
+    let has_u = y > 0u;
+    let has_d = y + 1u < P.height;
     let fc = flow_v(x, y) * sign;
-    var out = pc;
-    if (fc.x > 0.0 && x + 1u < P.width) { out -= fc.x * pc; }
-    if (fc.x < 0.0 && x > 0u) { out -= (-fc.x) * pc; }
-    if (fc.y > 0.0 && y + 1u < P.height) { out -= fc.y * pc; }
-    if (fc.y < 0.0 && y > 0u) { out -= (-fc.y) * pc; }
-    if (x > 0u) {
-        let fl = flow_v(x - 1u, y) * sign;
-        if (fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y)].xyz; }
+    var fl = vec2<f32>(0.0); var fr = vec2<f32>(0.0);
+    var fu = vec2<f32>(0.0); var fd = vec2<f32>(0.0);
+    if (has_l) { fl = flow_v(x - 1u, y) * sign; }
+    if (has_r) { fr = flow_v(x + 1u, y) * sign; }
+    if (has_u) { fu = flow_v(x, y - 1u) * sign; }
+    if (has_d) { fd = flow_v(x, y + 1u) * sign; }
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let pc = pig_in[c * PV + v];
+        var out = pc;
+        if (fc.x > 0.0 && has_r) { out -= fc.x * pc; }
+        if (fc.x < 0.0 && has_l) { out -= (-fc.x) * pc; }
+        if (fc.y > 0.0 && has_d) { out -= fc.y * pc; }
+        if (fc.y < 0.0 && has_u) { out -= (-fc.y) * pc; }
+        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y) * PV + v]; }
+        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y) * PV + v]; }
+        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u) * PV + v]; }
+        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u) * PV + v]; }
+        pig_out[c * PV + v] = out;
     }
-    if (x + 1u < P.width) {
-        let fr = flow_v(x + 1u, y) * sign;
-        if (fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y)].xyz; }
-    }
-    if (y > 0u) {
-        let fu = flow_v(x, y - 1u) * sign;
-        if (fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u)].xyz; }
-    }
-    if (y + 1u < P.height) {
-        let fd = flow_v(x, y + 1u) * sign;
-        if (fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u)].xyz; }
-    }
-    return out;
 }
 
 // ── Pigment transport along the velocity field (forward; pig_in b → pig_out a = φ̂) ──
@@ -241,8 +246,7 @@ fn cs_advect_velocity(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (!in_region(gid.xy, x, y)) {
         return;
     }
-    let c = idx(x, y);
-    pig_out[c] = vec4<f32>(av_gather(x, y, 1.0), pig_in[c].w);
+    av_write(x, y, idx(x, y), 1.0);
 }
 
 // ── MacCormack backward pass (ADR-0078 S5c): reverse-advect φ̂ → φ̄ (pig_in a → pig_out c) ──
@@ -254,8 +258,7 @@ fn cs_advect_velocity_rev(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (!in_region(gid.xy, x, y)) {
         return;
     }
-    let c = idx(x, y);
-    pig_out[c] = vec4<f32>(av_gather(x, y, -1.0), pig_in[c].w);
+    av_write(x, y, idx(x, y), -1.0);
 }
 
 // ── MacCormack correction (ADR-0078 S5c): φ_new = clamp(φ̂ + sharpness·½(φ − φ̄), localExtrema(φ)).
@@ -270,17 +273,20 @@ fn cs_advect_correct(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     let n = nb(x, y);
-    // Local extrema of φ over the 5-point stencil (the unconditionally-stable limiter).
-    // Border neighbour = self via the clamp ⇒ a no-op on min/max (matches the CPU skip).
-    let phic = pig_in[c].xyz;
-    var lo = phic;
-    var hi = phic;
-    let pl = pig_in[idx(n.x, y)].xyz; lo = min(lo, pl); hi = max(hi, pl);
-    let pr = pig_in[idx(n.y, y)].xyz; lo = min(lo, pr); hi = max(hi, pr);
-    let pu = pig_in[idx(x, n.z)].xyz; lo = min(lo, pu); hi = max(hi, pu);
-    let pd = pig_in[idx(x, n.w)].xyz; lo = min(lo, pd); hi = max(hi, pd);
-    let phat = pig_out[c].xyz;        // φ̂ (forward result, in place)
-    let pbar = pig_phibar[c].xyz;     // φ̄ (reverse result)
-    let corrected = phat + P.sharpness * 0.5 * (phic - pbar);
-    pig_out[c] = vec4<f32>(clamp(corrected, lo, hi), pig_out[c].w);
+    let il = idx(n.x, y); let ir = idx(n.y, y); let iu = idx(x, n.z); let id_ = idx(x, n.w);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        // Local extrema of φ over the 5-point stencil (the unconditionally-stable limiter).
+        // Border neighbour = self via the clamp ⇒ a no-op on min/max (matches the CPU skip).
+        let phic = pig_in[c * PV + v];
+        var lo = phic;
+        var hi = phic;
+        let pl = pig_in[il * PV + v]; lo = min(lo, pl); hi = max(hi, pl);
+        let pr = pig_in[ir * PV + v]; lo = min(lo, pr); hi = max(hi, pr);
+        let pu = pig_in[iu * PV + v]; lo = min(lo, pu); hi = max(hi, pu);
+        let pd = pig_in[id_ * PV + v]; lo = min(lo, pd); hi = max(hi, pd);
+        let phat = pig_out[c * PV + v];     // φ̂ (forward result, in place)
+        let pbar = pig_phibar[c * PV + v];  // φ̄ (reverse result)
+        let corrected = phat + P.sharpness * 0.5 * (phic - pbar);
+        pig_out[c * PV + v] = clamp(corrected, lo, hi);
+    }
 }

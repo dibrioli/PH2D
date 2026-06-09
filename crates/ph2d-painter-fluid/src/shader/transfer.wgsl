@@ -13,6 +13,11 @@
 // Own bind group (flowing + deposited both read_write) — distinct from the solver's
 // ping-pong layout, so it's a separate module sharing only the `Params` UBO.
 // Region-scoped (ADR-0078 S1) exactly like the diffuse/advect/evaporate kernels.
+//
+// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); the same scalar `rate`
+// moves every channel flowing→deposited (mass + K/S + err all proportional).
+
+const PV: u32 = 7u;
 
 struct Params {
     width: u32,
@@ -63,7 +68,9 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (rate <= 0.0) {
         return;
     }
-    let moved = rate * flowing[i].xyz;
-    flowing[i] = vec4<f32>(flowing[i].xyz - moved, flowing[i].w);
-    deposited[i] = vec4<f32>(deposited[i].xyz + moved, deposited[i].w);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let moved = rate * flowing[i * PV + v];
+        flowing[i * PV + v] = flowing[i * PV + v] - moved;
+        deposited[i * PV + v] = deposited[i * PV + v] + moved;
+    }
 }

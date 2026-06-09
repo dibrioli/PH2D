@@ -11,15 +11,15 @@
 // reproduces the CPU's update sequence — same covered cells, same falloff, same
 // order — so the SHAPE is exact; the only divergence is FMA contraction (Metal
 // fuses `a*b+c`), worth ~1e-7, far below the ~1e-4 the diffuse/advect gather passes
-// settle for and invisible after the composite's u8 quantization. A cell a dab
-// doesn't cover (`dist >= 1`) is skipped, exactly as the CPU's `d >= 1.0` cutoff
-// inside the per-dab integer bbox (every `dist < 1` cell lies inside that bbox, so
-// the two acceptance sets are identical).
+// settle for and invisible after the composite's u8 quantization.
 //
-// Pigment is `vec4<f32>` (xyz = linear-RGB mass, w preserved) to match the solver's
-// `pig_a` layout; water is `f32`. Index = y*width + x. One dispatch covers the
-// UNION bbox of all dabs (origin = `S.origin`); cells outside every dab's reach
-// loop the list and skip all of it (cheap — the list is tiny).
+// **Pigment = PV (=7) `vec4<f32>` per cell = 28 channels** (ADR-0080): the dab
+// carries the per-cell pigment of its colour already weighted by the peak deposit
+// mass (`cell_from_color_mass(colour, pigment_mass)` on the CPU side), so a cell
+// adds `dab.pig[v] * fall` per vec4 — the mass-weighted K/S accumulation that mixes
+// subtractively. Water is `f32`. Cell index = y*width + x; channels at `c*PV + v`.
+
+const PV: u32 = 7u;
 
 struct SplatParams {
     width: u32,
@@ -32,15 +32,14 @@ struct SplatParams {
     _p2: u32,
 }
 
-// std430: cx,cy,r,water_add pack the first 16 B; rgb (vec3, 16-aligned) + pad the
-// next 16 B → 32 B stride, matching the `#[repr(C)] DabGpu` on the Rust side.
+// std430: cx,cy,r,water_add pack the first 16 B (vec4-aligned); `pig` is 7 vec4
+// (112 B) → 128 B stride, matching the `#[repr(C)] DabGpu` on the Rust side.
 struct Dab {
     cx: f32,
     cy: f32,
     r: f32,
     water_add: f32,
-    rgb: vec3<f32>,
-    _pad: f32,
+    pig: array<vec4<f32>, 7>,
 }
 
 @group(0) @binding(0) var<uniform> S: SplatParams;
@@ -57,7 +56,10 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let i = gy * S.width + gx;
     var w = water[i];
-    var p = pig[i].xyz;
+    var p: array<vec4<f32>, 7>;
+    for (var v = 0u; v < PV; v = v + 1u) {
+        p[v] = pig[i * PV + v];
+    }
     let fx = f32(gx);
     let fy = f32(gy);
     for (var d: u32 = 0u; d < S.n_dabs; d = d + 1u) {
@@ -70,8 +72,12 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         let fall = 1.0 - dist * dist * (3.0 - 2.0 * dist); // 1 at centre → 0 at rim
         w = min(w + db.water_add * fall, 1.0);
-        p = p + db.rgb * fall;
+        for (var v = 0u; v < PV; v = v + 1u) {
+            p[v] = p[v] + db.pig[v] * fall;
+        }
     }
     water[i] = w;
-    pig[i] = vec4<f32>(p, pig[i].w);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        pig[i * PV + v] = p[v];
+    }
 }

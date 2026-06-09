@@ -18,7 +18,7 @@
 //! phase 2 against a headless `GpuContext`, with a CPU↔GPU parity test.
 
 use crate::params::FluidParams;
-use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, RELAX_ITERS};
+use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, PIG_CH, RELAX_ITERS, WetCell};
 
 /// The GPU compute shader (mirror of the CPU diffusion-advection). Embedded so a
 /// dev-test can validate it through naga before any GPU init, and phase 2 can
@@ -102,7 +102,8 @@ pub const MAX_DABS_PER_DISPATCH: usize = 4096;
 /// A single brush dab for [`FluidSolver::splat_dabs`]: centre, effective radius,
 /// per-touch water, and the (pre-weighted) linear-RGB pigment. `#[repr(C)]` Pod so
 /// the dab list is a zero-copy `write_buffer` into the `array<Dab>` storage binding
-/// (32 B std430 stride — `rgb` is vec3-aligned at offset 16, matching `splat.wgsl`).
+/// (128 B std430 stride — the leading 4 f32 fill the first 16 B, then `pig` is 7 vec4
+/// (the 28-channel pigment, ADR-0080) at offset 16, matching `splat.wgsl`).
 ///
 /// Build with [`DabGpu::new`] so the `radius <= 0` early-return and the `r.max(0.5)`
 /// floor exactly mirror the CPU `DiffusionGrid::splat` (a raw `r <= 0` would make the
@@ -114,18 +115,27 @@ pub struct DabGpu {
     cy: f32,
     r: f32,
     water_add: f32,
-    rgb: [f32; 3],
-    _pad: f32,
+    /// The dab's per-cell pigment channels (mass-weighted K/S + err + mass), already scaled
+    /// by the peak deposit mass — `cs_splat` adds `pig * fall`. (ADR-0080; was a gray RGB.)
+    pig: [f32; PIG_CH],
 }
 
 impl DabGpu {
-    /// A dab at `(cx, cy)` with brush `radius`, raising wetness by `water_add` and
-    /// depositing linear-RGB `rgb` (already weighted by opacity/deposit, as the CPU
-    /// splat receives it). Returns `None` for `radius <= 0` (the CPU splat's
-    /// early-return — such a touch contributes nothing); otherwise the radius is
-    /// floored to `0.5` (the CPU `radius.max(0.5)`).
+    /// A dab at `(cx, cy)` with brush `radius`, raising wetness by `water_add` and depositing
+    /// a pigment of `color` (linear sRGB) at peak coverage `pigment_mass` — the GPU mirror of
+    /// the CPU `DiffusionGrid::splat(cx, cy, r, water_add, color, pigment_mass)`. The pigment
+    /// channels are built once via the same `cell_from_color_mass` (ADR-0080), so a cell adds
+    /// `pig·fall`. Returns `None` for `radius <= 0` (the CPU splat's early-return); else the
+    /// radius is floored to `0.5` (the CPU `radius.max(0.5)`).
     #[must_use]
-    pub fn new(cx: f32, cy: f32, radius: f32, water_add: f32, rgb: [f32; 3]) -> Option<Self> {
+    pub fn new(
+        cx: f32,
+        cy: f32,
+        radius: f32,
+        water_add: f32,
+        color: [f32; 3],
+        pigment_mass: f32,
+    ) -> Option<Self> {
         if radius <= 0.0 {
             return None;
         }
@@ -134,8 +144,7 @@ impl DabGpu {
             cy,
             r: radius.max(0.5),
             water_add,
-            rgb,
-            _pad: 0.0,
+            pig: DiffusionGrid::cell_from_color_mass(color, pigment_mass),
         })
     }
 }
@@ -395,7 +404,9 @@ impl FluidSolver {
             })
         };
         let f32n = (n * 4) as u64;
-        let vec4n = (n * 16) as u64;
+        // Pigment buffers carry PIG_CH (=28) channels per cell = 7 vec4 (ADR-0080):
+        // size = n · 28 · 4 bytes. (Was n · 16 when pigment was one vec4.)
+        let vec4n = (n * PIG_CH * 4) as u64;
         let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-painter-fluid params"),
             size: core::mem::size_of::<GpuParams>() as u64,
@@ -1095,7 +1106,7 @@ impl FluidSolver {
 
     /// Upload the initial field. `pigment` is the linear-RGB mass (xyz; w ignored).
     /// Lengths must equal `width * height`.
-    pub fn upload(&self, queue: &wgpu::Queue, water: &[f32], paper: &[f32], pigment: &[[f32; 4]]) {
+    pub fn upload(&self, queue: &wgpu::Queue, water: &[f32], paper: &[f32], pigment: &[WetCell]) {
         queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
         queue.write_buffer(&self.paper, 0, bytemuck::cast_slice(paper));
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
@@ -1316,7 +1327,7 @@ impl FluidSolver {
     /// Zero the resident pigment (`pig_a`) — call at stroke begin so a reused solver
     /// (same grid size, new stroke) starts from a bare field (W15.3 resident path).
     pub fn clear_resident_pigment(&self, queue: &wgpu::Queue) {
-        let zeros = vec![[0.0f32; 4]; (self.width as usize) * (self.height as usize)];
+        let zeros = vec![[0.0f32; PIG_CH]; (self.width as usize) * (self.height as usize)];
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(&zeros));
     }
 
@@ -1635,7 +1646,7 @@ impl FluidSolver {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         water: &[f32],
-        deposit: &[[f32; 4]],
+        deposit: &[WetCell],
         substeps: u32,
     ) {
         queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
@@ -1667,9 +1678,9 @@ impl FluidSolver {
 
     /// Map the current pigment field (`pig_a`) back to the CPU.
     #[must_use]
-    pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
+    pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
         let n = (self.width as usize) * (self.height as usize);
-        let size = (n * 16) as u64;
+        let size = (n * PIG_CH * 4) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("fluid readback"),
             size,
@@ -1688,7 +1699,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, [f32; 4]>(&mapped).to_vec();
+        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
         out
@@ -1697,9 +1708,9 @@ impl FluidSolver {
     /// Map the current deposited-pigment field back (ADR-0078 S3 — companion to
     /// [`Self::read_pigment`], for the `cs_transfer` parity gate + the pen-up bake).
     #[must_use]
-    pub fn read_deposited(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
+    pub fn read_deposited(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
         let n = (self.width as usize) * (self.height as usize);
-        let size = (n * 16) as u64;
+        let size = (n * PIG_CH * 4) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("fluid deposited readback"),
             size,
@@ -1718,7 +1729,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, [f32; 4]>(&mapped).to_vec();
+        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
         out
@@ -1727,9 +1738,9 @@ impl FluidSolver {
     /// Map the combined-pigment field (`total`, ADR-0078 S3c) back — the buffer the
     /// compositor reads. For the `cs_combine` gate + the pen-up bake.
     #[must_use]
-    pub fn read_total(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
+    pub fn read_total(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
         let n = (self.width as usize) * (self.height as usize);
-        let size = (n * 16) as u64;
+        let size = (n * PIG_CH * 4) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("fluid total readback"),
             size,
@@ -1748,7 +1759,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, [f32; 4]>(&mapped).to_vec();
+        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
         out
@@ -1830,18 +1841,13 @@ impl FluidSolver {
         params: &FluidParams,
         substeps: u32,
     ) {
-        let pig4: Vec<[f32; 4]> = grid
-            .pigment()
-            .iter()
-            .map(|p| [p[0], p[1], p[2], 0.0])
-            .collect();
         self.set_params(queue, params);
-        self.upload(queue, grid.water(), grid.paper(), &pig4);
+        // The grid pigment IS the PIG_CH-channel field (ADR-0080) — upload/read it directly.
+        self.upload(queue, grid.water(), grid.paper(), grid.pigment());
         self.step(device, queue, substeps);
         let pig = self.read_pigment(device, queue);
         let water = self.read_water(device, queue);
-        let pig3: Vec<[f32; 3]> = pig.iter().map(|p| [p[0], p[1], p[2]]).collect();
-        grid.set_pigment_from(&pig3);
+        grid.set_pigment_from(&pig);
         grid.set_water_from(&water);
     }
 }

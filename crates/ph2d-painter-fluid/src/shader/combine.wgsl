@@ -8,6 +8,11 @@
 // Region-scoped (ADR-0078 S1) exactly like the sim passes; the compositor only ever
 // reads cells inside the composite region ⊆ the solver region, so `total` is fresh
 // wherever it's sampled. Shares the solver `Params` UBO (uses width + the region).
+//
+// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); total = flowing + deposited
+// per channel.
+
+const PV: u32 = 7u;
 
 struct Params {
     width: u32,
@@ -45,5 +50,7 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let i = y * P.width + x;
-    total[i] = vec4<f32>(flowing[i].xyz + deposited[i].xyz, flowing[i].w);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        total[i * PV + v] = flowing[i * PV + v] + deposited[i * PV + v];
+    }
 }

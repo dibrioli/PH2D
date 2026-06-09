@@ -24,6 +24,11 @@
 //
 // Shares the solver `Params` UBO; `capillary` sits in the byte the diffuse/advect/transfer/
 // combine shaders treat as padding (offset 84), so they keep a valid view.
+//
+// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); each face's water flux + the
+// pigment co-advect fraction are per-cell scalars, applied to every channel in a loop.
+
+const PV: u32 = 7u;
 
 struct Params {
     width: u32,
@@ -84,24 +89,38 @@ fn perm_at(i: u32) -> f32 {
     return P.perm_valley + (P.perm_crest - P.perm_valley) * paper[i];
 }
 
-// One face's (Δwater, Δpigment) contribution, matching the CPU `face` closure exactly.
-// Border neighbour = self ⇒ wn == wc ⇒ both contributions are 0. The pigment fraction is
-// scaled by `mob` (capillary_mobility) — the paper filters the pigment so the water wicks
-// ahead (chromatographic separation → transparent outer halo).
-fn face(ni: u32, wc: f32, pc: vec3<f32>, permc: f32, cap: f32, mob: f32, dpig: ptr<function, vec3<f32>>) -> f32 {
+// One face's per-cell scalars (matching the CPU `face` closure): water flux `dw`, the pigment
+// co-advect fraction `frac` (mobility-scaled), and `kind` (0 none, 1 = c donates → −frac·pc,
+// 2 = neighbour donates → +frac·pig[ni]). Border neighbour = self ⇒ wn == wc ⇒ kind 0, dw 0.
+struct FaceInfo {
+    dw: f32,
+    frac: f32,
+    kind: u32,
+    ni: u32,
+}
+fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32) -> FaceInfo {
     let permn = perm_at(ni);
     let cond = 0.5 * (permc + permn);
     let wn = water_in[ni];
+    var frac = 0.0;
+    var kind = 0u;
     if (wc > wn) {
-        // c donates pigment to the drier neighbour: mobility · (water fraction leaving).
-        let frac = mob * cap * cond * (wc - wn) / wc;
-        *dpig = *dpig - frac * pc;
+        frac = mob * cap * cond * (wc - wn) / wc;
+        kind = 1u;
     } else if (wn > wc) {
-        // the wetter neighbour donates to c at its concentration (also mobility-scaled).
-        let frac = mob * cap * cond * (wn - wc) / wn;
-        *dpig = *dpig + frac * pig_in[ni].xyz;
+        frac = mob * cap * cond * (wn - wc) / wn;
+        kind = 2u;
     }
-    return cond * (wn - wc);
+    return FaceInfo(cond * (wn - wc), frac, kind, ni);
+}
+// Apply one face's pigment contribution to channel `v` (pc_v = c's original pigment there).
+fn apply_face(pn: vec4<f32>, f: FaceInfo, pc_v: vec4<f32>, v: u32) -> vec4<f32> {
+    if (f.kind == 1u) {
+        return pn - f.frac * pc_v;
+    } else if (f.kind == 2u) {
+        return pn + f.frac * pig_in[f.ni * PV + v];
+    }
+    return pn;
 }
 
 // ── Capillary water diffusion + pigment co-advection (a → b) ──
@@ -115,20 +134,25 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     let wc = water_in[c];
-    let pc = pig_in[c].xyz;
     let permc = perm_at(c);
     let cap = P.capillary;
     let mob = P.capillary_mobility;
     let n = nb(x, y);
-    // Gather left → right → up → down (the CPU order). pn starts at c's pigment.
-    var pn = pc;
-    var acc_w = 0.0;
-    acc_w += face(idx(n.x, y), wc, pc, permc, cap, mob, &pn);
-    acc_w += face(idx(n.y, y), wc, pc, permc, cap, mob, &pn);
-    acc_w += face(idx(x, n.z), wc, pc, permc, cap, mob, &pn);
-    acc_w += face(idx(x, n.w), wc, pc, permc, cap, mob, &pn);
-    water_out[c] = wc + cap * acc_w;
-    pig_out[c] = vec4<f32>(pn, pig_in[c].w);
+    // Faces left → right → up → down (the CPU order), each a per-cell scalar set.
+    let fL = face_info(idx(n.x, y), wc, permc, cap, mob);
+    let fR = face_info(idx(n.y, y), wc, permc, cap, mob);
+    let fU = face_info(idx(x, n.z), wc, permc, cap, mob);
+    let fD = face_info(idx(x, n.w), wc, permc, cap, mob);
+    water_out[c] = wc + cap * (fL.dw + fR.dw + fU.dw + fD.dw);
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let pc_v = pig_in[c * PV + v];
+        var pn = pc_v;
+        pn = apply_face(pn, fL, pc_v, v);
+        pn = apply_face(pn, fR, pc_v, v);
+        pn = apply_face(pn, fU, pc_v, v);
+        pn = apply_face(pn, fD, pc_v, v);
+        pig_out[c * PV + v] = pn;
+    }
 }
 
 // ── Land the wicked fields back in the canonical buffers (b → a) ──
@@ -142,5 +166,7 @@ fn cs_copy_fields(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     water_out[c] = water_in[c];
-    pig_out[c] = pig_in[c];
+    for (var v = 0u; v < PV; v = v + 1u) {
+        pig_out[c * PV + v] = pig_in[c * PV + v];
+    }
 }

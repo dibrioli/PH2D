@@ -1,20 +1,26 @@
 // Wet-field GPU composite — the band-for-band mirror of
 // `ph2d_painter_brush::wet_composite::composite_wet_field_cpu` (the parity ground
 // truth). Composites the low-res live diffusion pigment over a backdrop into the
-// canvas with a Kubelka–Munk subtractive glaze (ADR-0049 / ADR-0077 D12), so the
-// per-frame composite runs on the GPU with NO pigment readback (the prior stall).
+// canvas with a Kubelka–Munk subtractive glaze (ADR-0049 / ADR-0077 D12 / ADR-0080),
+// so the per-frame composite runs on the GPU with NO pigment readback.
 //
-// One thread per canvas pixel (dispatched over the wet bbox via `origin`). Pigment
-// is `vec4<f32>` (xyz mass, std430 vec3-stride trap avoided). Backdrop + output are
-// packed RGBA8 (`array<u32>`, unpack/pack4x8unorm), matching the CPU byte path.
+// One thread per canvas pixel (dispatched over the wet bbox via `origin`).
 //
-// ## Exact (no-LUT) spectral mix
-// The CPU LUT is a per-pixel cache the GPU's parallel ALUs don't need — here
-// `to_reflectance`/`reflectance_to_rgb` run inline, mirroring `mix_prepared_exact`.
-// The constant basis (`base[7][24]` + `m[3][24]`) and the amortised brush coeffs
-// (`ks[24]` + `err`) are uploaded once per composite as a storage buffer.
+// ## ADR-0080 multi-pigment field
+// Pigment is **PV (=7) `vec4<f32>` per cell = 28 channels**: 24 mass-weighted K/S
+// bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)). Per pixel the bicubic-sampled
+// field is REDUCED to a mixed pigment — `ks_mix = ks_acc/mass`, `err_mix = err_acc/mass`,
+// `colour = reflectance_to_rgb(ks_to_refl(ks_mix)) + err_mix` — so overlapping pigments
+// mix subtractively (blue+yellow→green). The brush side of the glaze is therefore
+// PER-PIXEL (no per-stroke `pcol`/`color_sum`/`ks`/`err` uniform); value-opacity
+// (ADR-0079) reads the mixed colour's value. A single pigment reduces to exactly its
+// own `prepare_pigment`, so single-colour matches the pre-ADR-0080 path to float precision.
+//
+// Backdrop + output are packed RGBA8 (`array<u32>`, unpack/pack4x8unorm). The constant
+// spectral basis (`base[7][24]` + `m[3][24]`) is uploaded once as a storage buffer.
 
 const NB: u32 = 24u;
+const PV: u32 = 7u;
 const REFL_FLOOR: f32 = 1.0e-4;
 
 struct U {
@@ -23,24 +29,20 @@ struct U {
     gw: u32,          // grid (low-res) width
     gh: u32,          // grid (low-res) height
     inv: f32,         // 1 / scale
-    color_sum: f32,   // coverage normaliser
     coverage_k: f32,  // density→alpha rate (WET_COVERAGE_K)
     ss: u32,          // coverage supersampling factor N (N×N); 1 at full-res
     origin_x: u32,    // dispatch origin in canvas px (bbox top-left)
     origin_y: u32,
     end_x: u32,       // exclusive bbox right/bottom (= CPU loop bound px_hi/py_hi)
     end_y: u32,
-    pcol: vec4<f32>,  // xyz = pigment chromaticity = brush colour (mix endpoint)
+    _pad: u32,
 };
 
-// Amortised, constant-per-composite coefficients. `base`/`m` are the spectral basis
-// (constant); `ks`/`err` are the prepared brush side. Flattened: base[k*NB+i],
-// m[c*NB+i]. std430 array<f32> is tightly packed (stride 4).
+// The constant spectral basis. Flattened: base[k*NB+i], m[c*NB+i]. std430 array<f32>
+// is tightly packed (stride 4).
 struct Coeffs {
     base: array<f32, 168>, // 7 * 24
     m: array<f32, 72>,     // 3 * 24
-    ks: array<f32, 24>,
-    err: vec4<f32>,        // xyz used
 };
 
 @group(0) @binding(0) var<uniform> P: U;
@@ -64,7 +66,7 @@ fn linear_to_srgb(linear: f32) -> f32 {
     return 1.055 * pow(v, 1.0 / 2.4) - 0.055;
 }
 
-// ─── Catmull-Rom bicubic upsample of the low-res pigment ───
+// ─── Catmull-Rom bicubic upsample of the low-res pigment field (all PV channels) ───
 fn catmull_rom(t: f32) -> vec4<f32> {
     let t2 = t * t;
     let t3 = t2 * t;
@@ -75,28 +77,45 @@ fn catmull_rom(t: f32) -> vec4<f32> {
         0.5 * t3 - 0.5 * t2,
     );
 }
-fn sample_pigment_bicubic(fx: f32, fy: f32) -> vec3<f32> {
+// Returns the PV bicubic-sampled vec4 (extensive K/S + err + mass), floored: K/S bands
+// (vec4[0..5]) + mass (vec4[6].w) ≥ 0; err (vec4[6].xyz) stays signed. Mirrors the CPU
+// `sample_pigment_bicubic`.
+fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 7> {
     let x0 = floor(fx);
     let y0 = floor(fy);
     let wx = catmull_rom(fx - x0);
     let wy = catmull_rom(fy - y0);
     let gwi = i32(P.gw);
     let ghi = i32(P.gh);
-    var out = vec3<f32>(0.0);
+    var out: array<vec4<f32>, 7>;
+    for (var v = 0u; v < PV; v = v + 1u) {
+        out[v] = vec4<f32>(0.0);
+    }
     for (var j = 0; j < 4; j = j + 1) {
         let gy = clamp(i32(y0) - 1 + j, 0, ghi - 1);
-        var row = vec3<f32>(0.0);
+        var row: array<vec4<f32>, 7>;
+        for (var v = 0u; v < PV; v = v + 1u) {
+            row[v] = vec4<f32>(0.0);
+        }
         for (var i = 0; i < 4; i = i + 1) {
             let gx = clamp(i32(x0) - 1 + i, 0, gwi - 1);
-            let p = pig_in[u32(gy) * P.gw + u32(gx)].xyz;
-            row = row + p * wx[i];
+            let base = (u32(gy) * P.gw + u32(gx)) * PV;
+            for (var v = 0u; v < PV; v = v + 1u) {
+                row[v] = row[v] + pig_in[base + v] * wx[i];
+            }
         }
-        out = out + row * wy[j];
+        for (var v = 0u; v < PV; v = v + 1u) {
+            out[v] = out[v] + row[v] * wy[j];
+        }
     }
-    return max(out, vec3<f32>(0.0));
+    for (var v = 0u; v < 6u; v = v + 1u) {
+        out[v] = max(out[v], vec4<f32>(0.0)); // K/S bands ≥ 0
+    }
+    out[6] = vec4<f32>(out[6].xyz, max(out[6].w, 0.0)); // err signed, mass ≥ 0
+    return out;
 }
 
-// ─── Kubelka–Munk spectral mix (mirror of pigment_mix::mix_prepared_exact) ───
+// ─── Kubelka–Munk spectral basis (mirror of pigment_mix) ───
 fn rgb_to_weights(rgb: vec3<f32>) -> array<f32, 7> {
     var r = clamp(rgb.x, 0.0, 1.0);
     var g = clamp(rgb.y, 0.0, 1.0);
@@ -156,12 +175,12 @@ fn ks_to_refl(k_in: f32) -> f32 {
     let k = max(k_in, 0.0);
     return clamp(1.0 + k - sqrt(k * k + 2.0 * k), 0.0, 1.0);
 }
-// K–M mix of backdrop `a` toward the prepared brush (`P.pcol` + `C.ks` + `C.err`)
-// at concentration `t` — exact (LUT-free) twin of `mix_prepared_exact`.
-fn mix_prepared_exact(a: vec3<f32>, t_in: f32) -> vec3<f32> {
+// K–M mix of backdrop `a` toward the (per-pixel) prepared brush at concentration `t` —
+// exact (LUT-free) twin of `mix_prepared_exact`. `b_color`/`b_ks`/`b_err` are the mixed
+// pigment reduced from the field (ADR-0080), the brush side of the glaze.
+fn mix_prepared_exact(a: vec3<f32>, t_in: f32, b_color: vec3<f32>, b_ks: array<f32, 24>, b_err: vec3<f32>) -> vec3<f32> {
     let t = clamp(t_in, 0.0, 1.0);
-    let b = P.pcol.xyz;
-    let lin = a + (b - a) * t;
+    let lin = a + (b_color - a) * t;
     let w = 4.0 * t * (1.0 - t);
     if (w < 0.02) {
         return lin;
@@ -170,37 +189,51 @@ fn mix_prepared_exact(a: vec3<f32>, t_in: f32) -> vec3<f32> {
     let rt_a = reflectance_to_rgb(refl_a);
     var rm: array<f32, 24>;
     for (var i = 0u; i < NB; i = i + 1u) {
-        let ks_mix = (1.0 - t) * refl_to_ks(refl_a[i]) + t * C.ks[i];
+        let ks_mix = (1.0 - t) * refl_to_ks(refl_a[i]) + t * b_ks[i];
         rm[i] = ks_to_refl(ks_mix);
     }
     let mixed = reflectance_to_rgb(rm);
     let ea = a - rt_a;
-    let spec = max(mixed + ea * (1.0 - t) + C.err.xyz * t, vec3<f32>(0.0));
+    let spec = max(mixed + ea * (1.0 - t) + b_err * t, vec3<f32>(0.0));
     return lin + (spec - lin) * w;
 }
 
-// Coverage supersampling factor `N` comes from `P.ss` (N×N samples) — 1 at full-res
-// (the edge is already 1px-fine; supersampling is 4× the K–M cost for nothing), 2 at
-// half-res to antialias the steeper edge. Adaptive: the perf win on big canvases.
-
 // One glaze sub-sample at grid coords (fx,fy) over the linear backdrop. `dry` is set
-// when the cell is bare (`dens < 1e-4`); the caller treats that as a backdrop sample.
+// when the cell is bare (`mass < 1e-4`); the caller treats that as a backdrop sample.
 struct Sub { rgb: vec3<f32>, a: f32, dry: bool }
 fn glaze_sample(fx: f32, fy: f32, back: vec3<f32>, back_a: f32) -> Sub {
-    let p = sample_pigment_bicubic(fx, fy);
-    let dens = max(p.x + p.y + p.z, 0.0);
-    if (dens < 1.0e-4) {
+    let cell = sample_field_bicubic(fx, fy);
+    let mass = cell[6].w;
+    if (mass < 1.0e-4) {
         return Sub(back, back_a, true);
     }
-    let amount = dens / P.color_sum;
+    // Reduce the field cell to the mixed pigment (ADR-0080): ks_mix = ks_acc/mass etc.
+    let inv = 1.0 / mass;
+    var ks_mix: array<f32, 24>;
+    for (var b = 0u; b < 6u; b = b + 1u) {
+        let vv = cell[b] * inv;
+        ks_mix[b * 4u + 0u] = vv.x;
+        ks_mix[b * 4u + 1u] = vv.y;
+        ks_mix[b * 4u + 2u] = vv.z;
+        ks_mix[b * 4u + 3u] = vv.w;
+    }
+    var refl: array<f32, 24>;
+    for (var i = 0u; i < NB; i = i + 1u) {
+        refl[i] = ks_to_refl(ks_mix[i]);
+    }
+    let err_mix = cell[6].xyz * inv;
+    let pcol = max(reflectance_to_rgb(refl) + err_mix, vec3<f32>(0.0));
+    // ADR-0079 value-opacity from the MIXED colour's value.
+    let value = clamp(max(pcol.x, max(pcol.y, pcol.z)), 0.0, 1.0);
+    let color_sum = 0.3 + 0.7 * value;
+    let amount = mass / color_sum;
     let alpha = 1.0 - exp(-amount * P.coverage_k);
     let out_a = alpha + back_a * (1.0 - alpha);
-    let km = mix_prepared_exact(back, alpha);
+    let km = mix_prepared_exact(back, alpha, pcol, ks_mix, err_mix);
     var inv_a = 0.0;
     if (out_a > 1.0e-4) {
         inv_a = 1.0 / out_a;
     }
-    let pcol = P.pcol.xyz;
     let straight = (pcol * alpha + back * back_a * (1.0 - alpha)) * inv_a;
     let rgb = clamp(straight + (km - straight) * back_a, vec3<f32>(0.0), vec3<f32>(1.0));
     return Sub(rgb, out_a, false);
@@ -210,8 +243,6 @@ fn glaze_sample(fx: f32, fy: f32, back: vec3<f32>, back_a: f32) -> Sub {
 fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cx = P.origin_x + gid.x;
     let cy = P.origin_y + gid.y;
-    // Guard the bbox extent (end_x/end_y ≤ cw/ch), so a padded dispatch never
-    // composites a pixel the CPU loop (px_lo..px_hi) leaves as the backdrop.
     if (cx >= P.end_x || cy >= P.end_y) {
         return;
     }

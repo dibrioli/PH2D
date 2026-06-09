@@ -106,8 +106,8 @@ fn cpu_reference_matches_diffusion_with_default_params() {
     let (w, h) = (24u32, 24u32);
     let mut a = DiffusionGrid::new(w, h, 2.0);
     let mut b = DiffusionGrid::new(w, h, 2.0);
-    a.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5]);
-    b.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5]);
+    a.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5], 0.2 + 0.1 + 0.5);
+    b.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5], 0.2 + 0.1 + 0.5);
     ph2d_painter_fluid::step_cpu_reference(&mut a, &FluidParams::default(), 8);
     let dp = DiffusionParams::default();
     for _ in 0..8 {

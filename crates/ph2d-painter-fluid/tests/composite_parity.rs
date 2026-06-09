@@ -16,7 +16,7 @@
 
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
-use ph2d_painter_brush::wet_composite::{composite_wet_field_cpu, prepare_wet_composite};
+use ph2d_painter_brush::wet_composite::composite_wet_field_cpu;
 use ph2d_painter_fluid::{FluidCompositor, FluidParams, FluidSolver, step_cpu_reference};
 
 const SCALE: u32 = 2;
@@ -42,6 +42,7 @@ fn seeded_field(gw: u32, gh: u32) -> DiffusionGrid {
         gw as f32 * 0.4,
         0.7,
         [0.0, 0.0, 0.0],
+        0.0 + 0.0 + 0.0,
     );
     g.splat(
         gw as f32 * 0.5,
@@ -49,6 +50,7 @@ fn seeded_field(gw: u32, gh: u32) -> DiffusionGrid {
         7.0,
         0.8,
         [0.55, 0.42, 0.02],
+        0.55 + 0.42 + 0.02,
     );
     let p = DiffusionParams::default();
     for _ in 0..6 {
@@ -83,12 +85,10 @@ fn gpu_composite_matches_cpu_reference() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let grid = seeded_field(gw, gh);
     let pig = grid.pigment();
-    let stroke_linear = [0.8f32, 0.6, 0.02]; // yellow, as the tool derives from OKLab
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
 
     // CPU reference (the parity ground truth).
-    let brush = prepare_wet_composite(pig, stroke_linear);
     let mut cpu_canvas = backdrop.clone();
     composite_wet_field_cpu(
         &mut cpu_canvas,
@@ -100,12 +100,10 @@ fn gpu_composite_matches_cpu_reference() {
         ch,
         SCALE,
         COVERAGE_K,
-        &brush,
         region,
     );
 
-    // GPU: same inputs.
-    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
+    // GPU: same inputs (the 28-channel pigment field reads its own colour, ADR-0080).
     let compositor = FluidCompositor::new(&gpu.device);
     let gpu_canvas = compositor.composite_to_rgba(
         &gpu.device,
@@ -116,9 +114,8 @@ fn gpu_composite_matches_cpu_reference() {
         ch,
         SCALE,
         COVERAGE_K,
-        &pig4,
+        pig,
         &backdrop,
-        &brush,
         region,
     );
 
@@ -178,15 +175,12 @@ fn composite_rows_matches_full_band() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let grid = seeded_field(gw, gh);
     let pig = grid.pigment();
-    let stroke_linear = [0.8f32, 0.6, 0.02];
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
-    let brush = prepare_wet_composite(pig, stroke_linear);
-    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
-    // `composite_to_rgba` uploads `pig4` itself; for the rows path stash the same
+    // `composite_to_rgba` uploads `pig` itself; for the rows path stash the same
     // pigment in a solver buffer (no step) and bind it — both composite the SAME field.
     let solver = FluidSolver::new(&gpu.device, gw, gh);
-    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
     let compositor = FluidCompositor::new(&gpu.device);
     let full = compositor.composite_to_rgba(
         &gpu.device,
@@ -197,9 +191,8 @@ fn composite_rows_matches_full_band() {
         ch,
         SCALE,
         COVERAGE_K,
-        &pig4,
+        pig,
         &backdrop,
-        &brush,
         region,
     );
     let (band, (px_lo, py_lo, px_hi, py_hi)) = compositor.composite_buffer_rows(
@@ -213,7 +206,6 @@ fn composite_rows_matches_full_band() {
         COVERAGE_K,
         solver.pigment_buffer(),
         &backdrop,
-        &brush,
         region,
     );
     // The band is full-width, so it equals the full composite's row band; the rect's
@@ -246,12 +238,10 @@ fn composite_frame_fast_path_matches_one_shot() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let grid = seeded_field(gw, gh);
     let pig = grid.pigment();
-    let brush = prepare_wet_composite(pig, [0.8, 0.6, 0.02]);
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
-    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
     let solver = FluidSolver::new(&gpu.device, gw, gh);
-    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
     let mut compositor = FluidCompositor::new(&gpu.device);
 
     // Fast path (ss=2 to match the one-shot's WET_COMPOSITE_SS).
@@ -267,7 +257,6 @@ fn composite_frame_fast_path_matches_one_shot() {
         2,
         solver.pigment_buffer(),
         &backdrop,
-        &brush,
     );
     let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
 
@@ -283,7 +272,6 @@ fn composite_frame_fast_path_matches_one_shot() {
         COVERAGE_K,
         solver.pigment_buffer(),
         &backdrop,
-        &brush,
         region,
     );
     assert_eq!(rect_fast, rect_one, "fast-path rect must match one-shot");
@@ -306,7 +294,6 @@ fn composite_frame_fast_path_matches_one_shot() {
         1,
         solver.pigment_buffer(),
         &backdrop,
-        &brush,
     );
     let (band_ss1, (px_lo, py_lo, px_hi, _)) =
         compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -341,17 +328,15 @@ fn composite_frame_pipelined_matches_sync() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let grid = seeded_field(gw, gh);
     let pig = grid.pigment();
-    let brush = prepare_wet_composite(pig, [0.8, 0.6, 0.02]);
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
-    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
     let solver = FluidSolver::new(&gpu.device, gw, gh);
-    solver.upload(&gpu.queue, grid.water(), grid.paper(), &pig4);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
 
     let begin = |c: &mut FluidCompositor| {
         c.begin_stroke(
             &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, 1,
-            solver.pigment_buffer(), &backdrop, &brush,
+            solver.pigment_buffer(), &backdrop,
         );
     };
 
@@ -393,7 +378,6 @@ fn gpu_step_then_composite_resident_matches_cpu() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let steps = 6u32;
     let params = FluidParams::default();
-    let stroke_linear = [0.8f32, 0.6, 0.02];
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
 
@@ -405,6 +389,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         gw as f32 * 0.4,
         0.7,
         [0.0, 0.0, 0.0],
+        0.0 + 0.0 + 0.0,
     );
     cpu_grid.splat(
         gw as f32 * 0.5,
@@ -412,9 +397,9 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         7.0,
         0.8,
         [0.55, 0.42, 0.02],
+        0.55 + 0.42 + 0.02,
     );
     step_cpu_reference(&mut cpu_grid, &params, steps);
-    let cpu_brush = prepare_wet_composite(cpu_grid.pigment(), stroke_linear);
     let mut cpu_canvas = backdrop.clone();
     composite_wet_field_cpu(
         &mut cpu_canvas,
@@ -426,7 +411,6 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         ch,
         SCALE,
         COVERAGE_K,
-        &cpu_brush,
         region,
     );
 
@@ -439,6 +423,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         gw as f32 * 0.4,
         0.7,
         [0.0, 0.0, 0.0],
+        0.0 + 0.0 + 0.0,
     );
     seed.splat(
         gw as f32 * 0.5,
@@ -446,24 +431,15 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         7.0,
         0.8,
         [0.55, 0.42, 0.02],
+        0.55 + 0.42 + 0.02,
     );
-    let pig4: Vec<[f32; 4]> = seed
-        .pigment()
-        .iter()
-        .map(|p| [p[0], p[1], p[2], 0.0])
-        .collect();
     let solver = FluidSolver::new(&gpu.device, gw, gh);
     solver.set_params(&gpu.queue, &params);
-    solver.upload(&gpu.queue, seed.water(), seed.paper(), &pig4);
+    solver.upload(&gpu.queue, seed.water(), seed.paper(), seed.pigment());
     solver.step(&gpu.device, &gpu.queue, steps);
 
-    // The brush prep needs the pigment chromaticity; read it back ONCE here only to
-    // build the (amortised) brush — in the shell this comes from the CPU grid's
-    // splat colour, not a per-frame readback. Parity of the composite is the point.
-    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
-    let gpu_pig3: Vec<[f32; 3]> = gpu_pig.iter().map(|p| [p[0], p[1], p[2]]).collect();
-    let gpu_brush = prepare_wet_composite(&gpu_pig3, stroke_linear);
-
+    // The 28-channel pigment field carries its own colour now (ADR-0080), so the
+    // composite reads `pig_a` directly — no brush prep, no chromaticity readback.
     let compositor = FluidCompositor::new(&gpu.device);
     let gpu_canvas = compositor.composite_buffer(
         &gpu.device,
@@ -476,7 +452,6 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         COVERAGE_K,
         solver.pigment_buffer(),
         &backdrop,
-        &gpu_brush,
         region,
     );
 
@@ -514,11 +489,8 @@ fn gpu_composite_km_signature_and_no_fringe() {
     let (cw, ch) = (gw * SCALE, gh * SCALE);
     let grid = seeded_field(gw, gh);
     let pig = grid.pigment();
-    let stroke_linear = [0.8f32, 0.6, 0.02];
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let backdrop = split_backdrop(cw, ch);
-    let brush = prepare_wet_composite(pig, stroke_linear);
-    let pig4: Vec<[f32; 4]> = pig.iter().map(|p| [p[0], p[1], p[2], 0.0]).collect();
     let compositor = FluidCompositor::new(&gpu.device);
     let out = compositor.composite_to_rgba(
         &gpu.device,
@@ -529,9 +501,8 @@ fn gpu_composite_km_signature_and_no_fringe() {
         ch,
         SCALE,
         COVERAGE_K,
-        &pig4,
+        pig,
         &backdrop,
-        &brush,
         region,
     );
 
@@ -565,4 +536,75 @@ fn gpu_composite_km_signature_and_no_fringe() {
             }
         }
     }
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
+    // ADR-0080: with the 28-channel wet field, overlapping pigments mix SUBTRACTIVELY in
+    // the composite — a blue dab + an overlapping yellow dab composite to GREEN at the
+    // overlap (an additive RGB average would be grey). The GPU composite reading the
+    // multi-channel field must reproduce the CPU `composite_wet_field_cpu` bytes AND read
+    // green-dominant at the overlap on a transparent backdrop (straight-alpha "over", so
+    // the canvas colour IS the pigment colour — no backdrop tint to confound the check).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    // Fully transparent backdrop → the composited colour is the pigment colour itself.
+    let backdrop = vec![0u8; (cw * ch * 4) as usize];
+
+    // Overlapping blue + yellow dabs at the field centre, then a short diffusion run.
+    let mut grid = DiffusionGrid::new(gw, gh, SCALE as f32);
+    let blue = [0.05f32, 0.10, 0.85];
+    let yellow = [0.85f32, 0.80, 0.05];
+    let (ovx, ovy) = (gw as f32 * 0.5, gh as f32 * 0.5);
+    grid.splat(ovx - 2.0, ovy, 7.0, 0.8, blue, blue[0] + blue[1] + blue[2]);
+    grid.splat(ovx + 2.0, ovy, 7.0, 0.8, yellow, yellow[0] + yellow[1] + yellow[2]);
+    let p = DiffusionParams::default();
+    for _ in 0..6 {
+        grid.step(&p);
+    }
+    let pig = grid.pigment();
+
+    // CPU reference.
+    let mut cpu_canvas = backdrop.clone();
+    composite_wet_field_cpu(
+        &mut cpu_canvas, &backdrop, pig, gw, gh, cw, ch, SCALE, COVERAGE_K, region,
+    );
+
+    // GPU.
+    let compositor = FluidCompositor::new(&gpu.device);
+    let gpu_canvas = compositor.composite_to_rgba(
+        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, pig, &backdrop, region,
+    );
+
+    assert_eq!(cpu_canvas.len(), gpu_canvas.len());
+    let mut worst = 0u8;
+    for (a, b) in cpu_canvas.iter().zip(gpu_canvas.iter()) {
+        worst = worst.max(a.abs_diff(*b));
+    }
+
+    // The overlap canvas pixel must read green-dominant on the GPU output (subtractive mix).
+    let oi = (((ovy * SCALE as f32) as u32) * cw + ((ovx * SCALE as f32) as u32)) as usize * 4;
+    let (r, g, b) = (
+        gpu_canvas[oi] as i32,
+        gpu_canvas[oi + 1] as i32,
+        gpu_canvas[oi + 2] as i32,
+    );
+    eprintln!(
+        "GPU multi-pigment composite overlap = [{r},{g},{b}], worst |Δ| vs CPU = {} LSB",
+        worst
+    );
+    assert!(
+        g > r && g > b,
+        "GPU blue⊗yellow composite overlap must be green-dominant: [{r},{g},{b}]"
+    );
+    assert!(
+        worst <= 4,
+        "GPU multi-pigment composite diverged from CPU reference: {worst} LSB"
+    );
 }

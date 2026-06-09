@@ -15,8 +15,23 @@
 #![cfg(feature = "fluid")]
 
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
+use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, PIG_MASS, WetCell};
 use ph2d_painter_fluid::{DabGpu, FluidParams, FluidSolver, step_cpu_reference};
+
+/// Worst |Δ| over the REDUCED colour (linear-sRGB) + the mass channel of two wet
+/// cells. ADR-0080: the raw K/S spectral bands span thousands for dark colours, so an
+/// absolute per-channel bound is meaningless — compare the bounded, perceptual output
+/// (`cell_color`) and the bounded mass instead. Both are O(1), so the gates' `2e-2`
+/// tolerance stays correct.
+fn cell_color_mass_delta(a: &WetCell, b: &WetCell) -> f32 {
+    let ca = DiffusionGrid::cell_color(a);
+    let cb = DiffusionGrid::cell_color(b);
+    let mut worst = 0.0f32;
+    for k in 0..3 {
+        worst = worst.max((ca[k] - cb[k]).abs());
+    }
+    worst.max((a[PIG_MASS] - b[PIG_MASS]).abs())
+}
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -38,8 +53,16 @@ fn seeded_grid(w: u32, h: u32) -> DiffusionGrid {
         w as f32 * 0.45,
         0.5,
         [0.0, 0.0, 0.0],
+        0.0 + 0.0 + 0.0,
     );
-    g.splat(w as f32 * 0.42, h as f32 * 0.5, 6.0, 0.6, [0.1, 0.2, 0.7]);
+    g.splat(
+        w as f32 * 0.42,
+        h as f32 * 0.5,
+        6.0,
+        0.6,
+        [0.1, 0.2, 0.7],
+        0.1 + 0.2 + 0.7,
+    );
     g
 }
 
@@ -61,32 +84,32 @@ fn gpu_solver_matches_cpu_reference() {
 
     // GPU: seed from the SAME initial field, step the same count.
     let init = seeded_grid(w, h);
-    let pig4: Vec<[f32; 4]> = init
-        .pigment()
-        .iter()
-        .map(|p| [p[0], p[1], p[2], 0.0])
-        .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &params);
-    solver.upload(&gpu.queue, init.water(), init.paper(), &pig4);
+    solver.upload(&gpu.queue, init.water(), init.paper(), init.pigment());
     solver.step(&gpu.device, &gpu.queue, steps);
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
 
-    // Mean + worst |Δ| over the pigment field (xyz).
+    // Mean + worst |Δ| over the reduced colour + mass (ADR-0080: bounded channels).
     let n = (w * h) as usize;
     let mut sum = 0.0f64;
     let mut worst = 0.0f32;
     for i in 0..n {
+        let gc = DiffusionGrid::cell_color(&gpu_pig[i]);
+        let cc = DiffusionGrid::cell_color(&cpu_pig[i]);
         for k in 0..3 {
-            let d = (gpu_pig[i][k] - cpu_pig[i][k]).abs();
+            let d = (gc[k] - cc[k]).abs();
             sum += f64::from(d);
             worst = worst.max(d);
         }
+        let dm = (gpu_pig[i][PIG_MASS] - cpu_pig[i][PIG_MASS]).abs();
+        sum += f64::from(dm);
+        worst = worst.max(dm);
     }
-    let mean = (sum / (n * 3) as f64) as f32;
+    let mean = (sum / (n * 4) as f64) as f32;
     // Sanity: the field is non-trivial (a wrong "all zero" GPU would pass a Δ test
     // against a bug; assert there IS pigment so parity is meaningful).
-    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!(
         "fluid GPU↔CPU: mean |Δ| = {mean:.6}, worst = {worst:.6}, total pigment = {total:.3} ({w}×{h}, {steps} steps)"
     );
@@ -121,9 +144,7 @@ fn step_grid_matches_cpu_step_in_place() {
     solver.step_grid(&gpu.device, &gpu.queue, &mut gpu_grid, &params, 10);
     let mut worst_p = 0.0f32;
     for (a, b) in gpu_grid.pigment().iter().zip(cpu.pigment().iter()) {
-        for k in 0..3 {
-            worst_p = worst_p.max((a[k] - b[k]).abs());
-        }
+        worst_p = worst_p.max(cell_color_mass_delta(a, b));
     }
     let worst_w = gpu_grid
         .water()
@@ -160,16 +181,11 @@ fn step_resident_matches_classic_step_with_deposit() {
         ..FluidParams::default()
     };
     let seed = seeded_grid(w, h);
-    let pig4: Vec<[f32; 4]> = seed
-        .pigment()
-        .iter()
-        .map(|p| [p[0], p[1], p[2], 0.0])
-        .collect();
 
     // Path A — classic step (uploaded pigment).
     let a = FluidSolver::new(&gpu.device, w, h);
     a.set_params(&gpu.queue, &params);
-    a.upload(&gpu.queue, seed.water(), seed.paper(), &pig4);
+    a.upload(&gpu.queue, seed.water(), seed.paper(), seed.pigment());
     a.step(&gpu.device, &gpu.queue, steps);
     let pa = a.read_pigment(&gpu.device, &gpu.queue);
 
@@ -178,13 +194,16 @@ fn step_resident_matches_classic_step_with_deposit() {
     b.set_params(&gpu.queue, &params);
     b.upload_paper(&gpu.queue, seed.paper());
     b.clear_resident_pigment(&gpu.queue);
-    b.step_resident(&gpu.device, &gpu.queue, seed.water(), &pig4, steps);
+    b.step_resident(&gpu.device, &gpu.queue, seed.water(), seed.pigment(), steps);
     let pb = b.read_pigment(&gpu.device, &gpu.queue);
 
+    // This exact test just checks deposit+step == classic step; the robust low-dynamic-
+    // range channel is the mass (ADR-0080), so compare it directly at the tight bound
+    // (cell_color would add a spectral round-trip not under test here).
     let worst = pa
         .iter()
         .zip(&pb)
-        .flat_map(|(x, y)| (0..3).map(move |k| (x[k] - y[k]).abs()))
+        .map(|(x, y)| (x[PIG_MASS] - y[PIG_MASS]).abs())
         .fold(0.0f32, f32::max);
     eprintln!("resident vs classic (evap off): worst pigment |Δ| = {worst:.8}");
     assert!(
@@ -224,13 +243,15 @@ fn cs_splat_matches_cpu_splat_bit_exact() {
     // CPU reference: the same `splat` calls the tool makes into the live grid.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
 
     // GPU: the same dabs through `cs_splat` onto a zeroed resident field.
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
@@ -245,12 +266,13 @@ fn cs_splat_matches_cpu_splat_bit_exact() {
     let cpu_pig = cpu.pigment();
     let cpu_water = cpu.water();
     for i in 0..n {
-        for k in 0..3 {
-            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
-        }
+        // cs_splat builds the cell via the same `cell_from_color_mass`, so the robust
+        // bit-exact channel is the deposited mass (ADR-0080); FMA contraction is the
+        // only legitimate divergence.
+        worst_p = worst_p.max((gpu_pig[i][PIG_MASS] - cpu_pig[i][PIG_MASS]).abs());
         worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
     }
-    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!(
         "cs_splat vs CPU splat: worst pigment |Δ| = {worst_p:.9}, worst water |Δ| = {worst_w:.9}, total pigment = {total:.3}"
     );
@@ -294,14 +316,16 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     // CPU reference: splat the dabs into a fresh grid, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     step_cpu_reference(&mut cpu, &params, substeps);
 
     // GPU resident: clear, set params, splat the dabs + step on the GPU.
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &params);
@@ -319,12 +343,10 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     let mut worst_w = 0.0f32;
     let (cpu_pig, cpu_water) = (cpu.pigment(), cpu.water());
     for i in 0..n {
-        for k in 0..3 {
-            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
-        }
+        worst_p = worst_p.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
         worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
     }
-    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!(
         "step_resident_splat vs CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}, total = {total:.3}"
     );
@@ -363,7 +385,7 @@ fn gpu_transfer_matches_cpu_deposition() {
     // CPU reference: same splats, deposition ON, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     let mut dp = base.to_diffusion();
     dp.deposition = dep;
@@ -376,7 +398,9 @@ fn gpu_transfer_matches_cpu_deposition() {
     // GPU: same field, deposition enabled via set_deposition (full-grid region).
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &base);
@@ -395,11 +419,9 @@ fn gpu_transfer_matches_cpu_deposition() {
     let mut worst_dep = 0.0f32;
     let mut total_dep = 0.0f32;
     for i in 0..n {
-        for k in 0..3 {
-            worst_flow = worst_flow.max((gpu_flow[i][k] - cpu_flow[i][k]).abs());
-            worst_dep = worst_dep.max((gpu_dep[i][k] - cpu_dep[i][k]).abs());
-        }
-        total_dep += gpu_dep[i][0] + gpu_dep[i][1] + gpu_dep[i][2];
+        worst_flow = worst_flow.max(cell_color_mass_delta(&gpu_flow[i], &cpu_flow[i]));
+        worst_dep = worst_dep.max(cell_color_mass_delta(&gpu_dep[i], &cpu_dep[i]));
+        total_dep += gpu_dep[i][PIG_MASS];
     }
     eprintln!(
         "cs_transfer vs CPU: worst flowing |Δ| = {worst_flow:.6}, worst deposited |Δ| = {worst_dep:.6}, GPU deposited total = {total_dep:.3}"
@@ -435,7 +457,7 @@ fn gpu_combine_equals_flowing_plus_deposited() {
         (24.0, 20.0, 5.0, 0.6, [0.4, 0.1, 0.1]),
     ]
     .iter()
-    .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+    .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]))
     .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &base);
@@ -448,13 +470,15 @@ fn gpu_combine_equals_flowing_plus_deposited() {
     let deposited = solver.read_deposited(&gpu.device, &gpu.queue);
     let total = solver.read_total(&gpu.device, &gpu.queue);
 
+    // `total = flowing + deposited` is a pure per-channel addition (no dynamic-range
+    // problem), so check the identity on EVERY raw channel of the wet cell (ADR-0080).
     let mut worst = 0.0f32;
     let mut total_sum = 0.0f32;
     for i in 0..(w * h) as usize {
-        for k in 0..3 {
+        for k in 0..ph2d_painter_brush::diffusion::PIG_CH {
             worst = worst.max((total[i][k] - (flowing[i][k] + deposited[i][k])).abs());
-            total_sum += total[i][k];
         }
+        total_sum += total[i][PIG_MASS];
     }
     eprintln!("cs_combine: worst |total − (flowing+deposited)| = {worst:.9}, total mass = {total_sum:.3}");
     assert!(total_sum > 0.05, "combine produced an empty total — pass is dead");
@@ -482,9 +506,10 @@ fn region_scoped_step_matches_full_grid_inside_region() {
     let params = FluidParams::default();
     // One localized dab at the centre → pigment stays well inside the grid.
     let raw = (32.0f32, 24.0, 6.0, 0.7, [0.2f32, 0.3, 0.6]);
-    let dabs: Vec<DabGpu> = DabGpu::new(raw.0, raw.1, raw.2, raw.3, raw.4)
-        .into_iter()
-        .collect();
+    let dabs: Vec<DabGpu> =
+        DabGpu::new(raw.0, raw.1, raw.2, raw.3, raw.4, raw.4[0] + raw.4[1] + raw.4[2])
+            .into_iter()
+            .collect();
     let paper = DiffusionGrid::new(w, h, 1.0).paper().to_vec();
 
     // Full-grid reference.
@@ -514,10 +539,12 @@ fn region_scoped_step_matches_full_grid_inside_region() {
     for y in core.1..=core.3 {
         for x in core.0..=core.2 {
             let i = (y * w + x) as usize;
-            for k in 0..3 {
+            // GPU full vs GPU scoped run the identical resident path → every raw wet
+            // channel must be bit-exact inside the padded core (ADR-0080).
+            for k in 0..ph2d_painter_brush::diffusion::PIG_CH {
                 worst_core = worst_core.max((full_pig[i][k] - scoped_pig[i][k]).abs());
             }
-            core_total += scoped_pig[i].iter().take(3).sum::<f32>();
+            core_total += scoped_pig[i][PIG_MASS];
         }
     }
     eprintln!("region-scoped vs full inside core: worst |Δ| = {worst_core:.9}, core pigment = {core_total:.3}");
@@ -547,14 +574,16 @@ fn read_field_stats_matches_cpu_max_water_and_bbox() {
     ];
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     let cpu_max = cpu.max_water();
     let cpu_bbox = cpu.water_bbox(threshold);
 
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
@@ -595,20 +624,15 @@ fn gpu_solver_conserves_then_dries() {
         ..FluidParams::default()
     };
     let init = seeded_grid(w, h);
-    let before: f32 = init.pigment().iter().map(|p| p[0] + p[1] + p[2]).sum();
-    let pig4: Vec<[f32; 4]> = init
-        .pigment()
-        .iter()
-        .map(|p| [p[0], p[1], p[2], 0.0])
-        .collect();
+    let before: f32 = init.pigment().iter().map(|p| p[PIG_MASS]).sum();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &params);
-    solver.upload(&gpu.queue, init.water(), init.paper(), &pig4);
+    solver.upload(&gpu.queue, init.water(), init.paper(), init.pigment());
     solver.step(&gpu.device, &gpu.queue, 16);
     let after: f32 = solver
         .read_pigment(&gpu.device, &gpu.queue)
         .iter()
-        .map(|p| p[0] + p[1] + p[2])
+        .map(|p| p[PIG_MASS])
         .sum();
     eprintln!("fluid GPU mass: before = {before:.4}, after = {after:.4}");
     assert!(
@@ -645,7 +669,7 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     // CPU reference: same splats, velocity layer ON, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     let mut dp = base.to_diffusion();
     dp.velocity = vel;
@@ -659,7 +683,9 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     // GPU: same field, shallow-water enabled via set_shallow_water (full-grid region).
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &base);
@@ -679,14 +705,12 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     let mut worst_vel = 0.0f32;
     let mut vel_mag = 0.0f32;
     for i in 0..n {
-        for k in 0..3 {
-            worst_pig = worst_pig.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
-        }
+        worst_pig = worst_pig.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
         worst_vel = worst_vel.max((gpu_vel[i][0] - cpu_u[i]).abs());
         worst_vel = worst_vel.max((gpu_vel[i][1] - cpu_v[i]).abs());
         vel_mag = vel_mag.max(gpu_vel[i][0].abs()).max(gpu_vel[i][1].abs());
     }
-    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!(
         "shallow-water GPU↔CPU: worst pigment |Δ| = {worst_pig:.6}, worst velocity |Δ| = {worst_vel:.6}, max |vel| = {vel_mag:.4}, total pigment = {total:.3}"
     );
@@ -732,7 +756,7 @@ fn gpu_capillary_matches_cpu_capillary() {
     // CPU reference: splat on dry paper, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(sx, sy, r, wa, rgb) in &raw {
-        cpu.splat(sx, sy, r, wa, rgb);
+        cpu.splat(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     for _ in 0..substeps {
         cpu.step(&dp);
@@ -741,7 +765,9 @@ fn gpu_capillary_matches_cpu_capillary() {
     // GPU resident: capillary enabled via the live `set_from_diffusion` entry.
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(sx, sy, r, wa, rgb)| DabGpu::new(sx, sy, r, wa, rgb))
+        .filter_map(|&(sx, sy, r, wa, rgb)| {
+            DabGpu::new(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_from_diffusion(&gpu.queue, &dp);
@@ -757,9 +783,7 @@ fn gpu_capillary_matches_cpu_capillary() {
     let mut worst_p = 0.0f32;
     let mut worst_w = 0.0f32;
     for i in 0..n {
-        for k in 0..3 {
-            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
-        }
+        worst_p = worst_p.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
         worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
     }
     // The fringe must actually have wicked OUT past the r=9 splat — else the pass is dead and
@@ -817,7 +841,7 @@ fn gpu_maccormack_matches_cpu_sharpness() {
 
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
     }
     for _ in 0..substeps {
         cpu.step(&dp);
@@ -825,7 +849,9 @@ fn gpu_maccormack_matches_cpu_sharpness() {
 
     let dabs: Vec<DabGpu> = raw
         .iter()
-        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_from_diffusion(&gpu.queue, &dp);
@@ -840,12 +866,87 @@ fn gpu_maccormack_matches_cpu_sharpness() {
     let cpu_pig = cpu.pigment();
     let mut worst = 0.0f32;
     for i in 0..n {
-        for k in 0..3 {
-            worst = worst.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
-        }
+        worst = worst.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
     }
-    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!("maccormack GPU↔CPU: worst pigment |Δ| = {worst:.6}, total pigment = {total:.3}");
     assert!(total > 0.01, "no pigment — the sharpened advect is dead, parity meaningless");
     assert!(worst < 2.0e-2, "GPU MacCormack diverged from CPU reference: {worst}");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_multi_pigment_subtractive_mix_matches_cpu() {
+    // ADR-0080: the wet field carries 28-channel Kubelka–Munk pigment per cell, so two
+    // overlapping dabs of DIFFERENT pigment mix SUBTRACTIVELY (not the old additive RGB
+    // average). A blue dab + an overlapping yellow dab must read GREEN at the overlap —
+    // and the GPU resident splat+step must reproduce the CPU `DiffusionGrid` field's
+    // reduced colour there bit-for-bit (within the diffuse/advect FMA band). This is the
+    // whole point of the multi-channel rewrite: subtractive mixing is bit-parity on GPU.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 40u32);
+    let substeps = 8u32;
+    let params = FluidParams::default();
+    // Two overlapping dabs at the centre: a saturated blue and a saturated yellow.
+    let blue = [0.05f32, 0.10, 0.85];
+    let yellow = [0.85f32, 0.80, 0.05];
+    let (ovx, ovy) = (24.0f32, 20.0);
+    let raw = [
+        (ovx - 3.0, ovy, 8.0, 0.7, blue),
+        (ovx + 3.0, ovy, 8.0, 0.7, yellow),
+    ];
+
+    // CPU reference: splat both dabs into a fresh grid, then step.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+    }
+    step_cpu_reference(&mut cpu, &params, substeps);
+
+    // GPU resident: the SAME two dabs through the resident splat+step path.
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+        })
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &params);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+
+    // Parity over the reduced colour + mass everywhere (ADR-0080 bounded channels).
+    let n = (w * h) as usize;
+    let cpu_pig = cpu.pigment();
+    let mut worst = 0.0f32;
+    for i in 0..n {
+        worst = worst.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
+    }
+
+    // The overlap cell must read GREEN-dominant on BOTH sides — the subtractive blue⊗yellow
+    // mix the multi-channel field exists to produce (an additive average would be grey).
+    let oi = (ovy as u32 * w + ovx as u32) as usize;
+    let gc = DiffusionGrid::cell_color(&gpu_pig[oi]);
+    let cc = DiffusionGrid::cell_color(&cpu_pig[oi]);
+    eprintln!(
+        "multi-pigment overlap: GPU colour = {gc:?}, CPU colour = {cc:?}, worst field |Δ| = {worst:.6}"
+    );
+    assert!(
+        gc[1] > gc[0] && gc[1] > gc[2],
+        "GPU blue⊗yellow overlap must be green-dominant (subtractive mix): {gc:?}"
+    );
+    assert!(
+        cc[1] > cc[0] && cc[1] > cc[2],
+        "CPU blue⊗yellow overlap must be green-dominant (subtractive mix): {cc:?}"
+    );
+    assert!(
+        worst < 2.0e-2,
+        "GPU multi-pigment field diverged from CPU reduced colour: {worst}"
+    );
 }

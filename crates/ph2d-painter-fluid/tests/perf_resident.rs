@@ -20,7 +20,7 @@
 #![cfg(feature = "fluid")]
 
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::wet_composite::prepare_wet_composite;
+use ph2d_painter_brush::diffusion::PIG_CH;
 use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidParams, FluidSolver};
 use std::time::Instant;
 
@@ -39,7 +39,7 @@ fn frame_dabs(gw: u32, band_lo: u32, band_hi: u32) -> Vec<DabGpu> {
     (0..n)
         .filter_map(|i| {
             let cx = (gw as f32) * (i as f32 + 0.5) / n as f32;
-            DabGpu::new(cx, cy, 16.0, 0.55, [0.25, 0.12, 0.02])
+            DabGpu::new(cx, cy, 16.0, 0.55, [0.25, 0.12, 0.02], 0.25 + 0.12 + 0.02)
         })
         .collect()
 }
@@ -59,8 +59,6 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
     solver.upload_paper(&gpu.queue, &paper);
 
     let backdrop = vec![0u8; (cw * ch * 4) as usize];
-    let pig0 = vec![[0.0f32; 3]; (gw * gh) as usize];
-    let brush = prepare_wet_composite(&pig0, [0.6, 0.3, 0.05]);
     let mut comp = FluidCompositor::new(&gpu.device);
     comp.begin_stroke(
         &gpu.device,
@@ -74,7 +72,6 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
         1, // ss = 1 at full-res (the resident-path default)
         solver.pigment_buffer(),
         &backdrop,
-        &brush,
     );
 
     // Two regions: a representative stroke band (~20% height) + the full canvas.
@@ -151,12 +148,28 @@ fn per_frame_cost_by_canvas_size() {
         return;
     };
     eprintln!("--- GPU-resident fluid per-frame cost (post E1+E2+E3) ---");
+    // ADR-0080: the wet-field carries PIG_CH (=28) channels per cell, so a full-res grid
+    // pigment buffer is `cw·ch·28·4` bytes — at ≥2048² that exceeds the default
+    // `max_storage_buffer_binding_size` (256 MB). The PRODUCTION path uses a LOW-RES grid
+    // (canvas/4), so this never hits in practice; the benchmark forces grid = canvas to
+    // measure the worst case, so it skips sizes the device can't allocate (no silent cap —
+    // it logs the skip). The 4K-resident path is a separate GPU-residency follow-up.
+    let max_buf = u64::from(gpu.device.limits().max_storage_buffer_binding_size);
     for &(cw, ch) in &[
         (64u32, 64u32),
         (1408, 768),
         (2048, 2048),
         (3840, 2160),
     ] {
+        let pig_bytes = u64::from(cw) * u64::from(ch) * PIG_CH as u64 * 4;
+        if pig_bytes > max_buf {
+            eprintln!(
+                "{cw}x{ch}: SKIP — pigment buffer {:.0}MB > device max storage buffer {:.0}MB (PIG_CH={PIG_CH}; production uses a low-res grid)",
+                pig_bytes as f64 / 1e6,
+                max_buf as f64 / 1e6,
+            );
+            continue;
+        }
         time_size(&gpu, cw, ch);
     }
 }

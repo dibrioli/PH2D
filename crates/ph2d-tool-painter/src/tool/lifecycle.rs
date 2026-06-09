@@ -795,6 +795,13 @@ impl PainterTool {
             // disjoint field, so the splat coexists with that borrow.
             if self.wet_field.is_some() {
                 let scale = self.wet_field_scale as f32;
+                // **Brush opacity = pigment DILUTION for the fluid path (2026-06-08).** The wash/
+                // build-up paths apply `params.opacity` (lines above), but the fluid dab used the
+                // scheduler's hardcoded `stamp.opacity` (1.0), so the Opacity slider did nothing
+                // to a fluid stroke. Scale the pigment deposit by it — the WATER deposit stays
+                // fixed, so lower opacity = the same wetness with LESS pigment = a more dilute,
+                // transparent wash (watercolor "aguado"). 1.0 ⇒ unchanged (the validated look).
+                let brush_opacity = self.params.opacity.clamp(0.0, 1.0);
                 // `fluid_hires` (= GPU-capable) decides the path, not `gpu_fluid_driven`:
                 // the shell sets `fluid_hires` before `begin_stroke`, but only sets
                 // `gpu_fluid_driven` after the frame's drive — so gating on the latter
@@ -810,7 +817,8 @@ impl PainterTool {
                     // superset of the old water bbox, padded by the compositor).
                     let (gw, gh) = self.wet_field.as_ref().expect("wet_field present").dims();
                     for stamp in stamps {
-                        let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
+                        let dep =
+                            WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0) * brush_opacity;
                         let cx = stamp.position_world[0] / scale;
                         let cy = stamp.position_world[1] / scale;
                         let r = (stamp.size_px * 0.5 / scale).max(0.5);
@@ -842,7 +850,8 @@ impl PainterTool {
                     // CPU fallback: splat into the grid + step it inline (unchanged).
                     let grid = self.wet_field.as_mut().expect("wet_field present");
                     for stamp in stamps {
-                        let dep = WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0);
+                        let dep =
+                            WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0) * brush_opacity;
                         // ADR-0079: colour-independent coverage mass (gray, sum = dep) — see
                         // the GPU path.
                         grid.splat(

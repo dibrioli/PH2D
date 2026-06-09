@@ -122,9 +122,11 @@ impl WatercolorParams {
         // sets how far the soft fringe creeps past the painted area (ADR-0078 S5).
         WatercolorControl { label: "Capillary", min: 0.0, max: 0.24 },
         // BFECC/MacCormack 2nd-order advection (ADR-0078 S5c): 0 = soft first-order upwind
-        // (smeary), 1 = sharp error-compensated transport (crisp flow + backruns). 0 = the
-        // shipped look bit-for-bit; higher = less numerical diffusion.
-        WatercolorControl { label: "Sharpness", min: 0.0, max: 1.0 },
+        // (smeary), 1 = sharp error-compensated transport (crisp flow + backruns). >1 OVER-
+        // corrects (more aggressive anti-diffusion) — stable because the limiter clamps each
+        // cell to its local extrema, so 0..3 just dials the sharpening harder for a visible
+        // effect. 0 = the shipped look bit-for-bit; higher = less numerical diffusion.
+        WatercolorControl { label: "Sharpness", min: 0.0, max: 3.0 },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).

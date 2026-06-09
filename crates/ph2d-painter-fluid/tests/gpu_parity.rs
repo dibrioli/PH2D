@@ -788,3 +788,64 @@ fn gpu_capillary_matches_cpu_capillary() {
     assert!(worst_w < 2.0e-2, "GPU capillary water diverged from CPU: {worst_w}");
     assert!(worst_p < 2.0e-2, "GPU capillary-fringe pigment diverged from CPU: {worst_p}");
 }
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_maccormack_matches_cpu_sharpness() {
+    // ADR-0078 S5c: the GPU MacCormack passes (`cs_advect_velocity_rev` + `cs_advect_correct`)
+    // must reproduce the CPU reference `DiffusionGrid::advect_maccormack` — the sharpened,
+    // error-compensated velocity advection (forward φ̂, reverse φ̄, correct `φ̂+s·½(φ−φ̄)` clamped
+    // to local extrema). Same splats + velocity + sharpness on each side; agree to the advect
+    // FMA band (a wrong port — wrong reverse flow, bad clamp, wrong φ̄ buffer — diverges by ≥1e-1).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 40u32);
+    let substeps = 16u32;
+    let raw = [
+        (24.0f32, 20.0, 11.0, 0.9, [0.10f32, 0.20, 0.70]),
+        (20.0, 22.0, 6.0, 0.7, [0.30, 0.05, 0.05]),
+        (28.0, 18.0, 5.0, 0.6, [0.00, 0.40, 0.10]),
+    ];
+    let mut dp = FluidParams::default().to_diffusion();
+    dp.velocity = 1.4;
+    dp.viscosity = 0.1;
+    dp.drag = 0.08;
+    dp.pressure = 0.4;
+    dp.sharpness = 1.0; // full MacCormack
+
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb);
+    }
+    for _ in 0..substeps {
+        cpu.step(&dp);
+    }
+
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_from_diffusion(&gpu.queue, &dp);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let cpu_pig = cpu.pigment();
+    let mut worst = 0.0f32;
+    for i in 0..n {
+        for k in 0..3 {
+            worst = worst.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
+        }
+    }
+    let total: f32 = gpu_pig.iter().map(|p| p[0] + p[1] + p[2]).sum();
+    eprintln!("maccormack GPU↔CPU: worst pigment |Δ| = {worst:.6}, total pigment = {total:.3}");
+    assert!(total > 0.01, "no pigment — the sharpened advect is dead, parity meaningless");
+    assert!(worst < 2.0e-2, "GPU MacCormack diverged from CPU reference: {worst}");
+}

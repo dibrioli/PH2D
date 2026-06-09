@@ -44,7 +44,7 @@ struct Params {
     pressure: f32,
     capillary: f32,          // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     capillary_mobility: f32, // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
-    _pad2: f32,
+    sharpness: f32,          // ADR-0078 S5c — BFECC/MacCormack correction blend (cs_advect_correct)
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -57,6 +57,8 @@ struct Params {
 @group(0) @binding(7) var<storage, read_write> divergence: array<f32>;
 @group(0) @binding(8) var<storage, read> pig_in: array<vec4<f32>>;
 @group(0) @binding(9) var<storage, read_write> pig_out: array<vec4<f32>>;
+// ADR-0078 S5c — the MacCormack reverse-advected field φ̄ (read by cs_advect_correct only).
+@group(0) @binding(10) var<storage, read> pig_phibar: array<vec4<f32>>;
 
 fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
@@ -199,7 +201,38 @@ fn flow_v(x: u32, y: u32) -> vec2<f32> {
     return clamp(v, vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, 0.5));
 }
 
-// ── Pigment transport along the velocity field (GATHER form; pig_in b → pig_out a) ──
+// Gather-form velocity advection of pig_in at cell (x,y). `sign` = +1 forward, −1 reverse
+// (the MacCormack backward pass negates the flow — matches the CPU `advect(reverse)`). Mirrors
+// the CPU upwind scatter: every gram c pushes downstream is gathered as the neighbours' inflow.
+fn av_gather(x: u32, y: u32, sign: f32) -> vec3<f32> {
+    let c = idx(x, y);
+    let pc = pig_in[c].xyz;
+    let fc = flow_v(x, y) * sign;
+    var out = pc;
+    if (fc.x > 0.0 && x + 1u < P.width) { out -= fc.x * pc; }
+    if (fc.x < 0.0 && x > 0u) { out -= (-fc.x) * pc; }
+    if (fc.y > 0.0 && y + 1u < P.height) { out -= fc.y * pc; }
+    if (fc.y < 0.0 && y > 0u) { out -= (-fc.y) * pc; }
+    if (x > 0u) {
+        let fl = flow_v(x - 1u, y) * sign;
+        if (fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y)].xyz; }
+    }
+    if (x + 1u < P.width) {
+        let fr = flow_v(x + 1u, y) * sign;
+        if (fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y)].xyz; }
+    }
+    if (y > 0u) {
+        let fu = flow_v(x, y - 1u) * sign;
+        if (fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u)].xyz; }
+    }
+    if (y + 1u < P.height) {
+        let fd = flow_v(x, y + 1u) * sign;
+        if (fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u)].xyz; }
+    }
+    return out;
+}
+
+// ── Pigment transport along the velocity field (forward; pig_in b → pig_out a = φ̂) ──
 @compute @workgroup_size(8, 8, 1)
 fn cs_advect_velocity(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cell = region_cell(gid.xy);
@@ -209,30 +242,45 @@ fn cs_advect_velocity(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let c = idx(x, y);
-    let pc = pig_in[c].xyz;
-    let fc = flow_v(x, y);
-    var out = pc;
-    // Outflow from c into existing downstream neighbours (the CPU "push").
-    if (fc.x > 0.0 && x + 1u < P.width) { out -= fc.x * pc; }
-    if (fc.x < 0.0 && x > 0u) { out -= (-fc.x) * pc; }
-    if (fc.y > 0.0 && y + 1u < P.height) { out -= fc.y * pc; }
-    if (fc.y < 0.0 && y > 0u) { out -= (-fc.y) * pc; }
-    // Inflow: any neighbour whose flow points AT c contributes its push.
-    if (x > 0u) {
-        let fl = flow_v(x - 1u, y);
-        if (fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y)].xyz; }
+    pig_out[c] = vec4<f32>(av_gather(x, y, 1.0), pig_in[c].w);
+}
+
+// ── MacCormack backward pass (ADR-0078 S5c): reverse-advect φ̂ → φ̄ (pig_in a → pig_out c) ──
+@compute @workgroup_size(8, 8, 1)
+fn cs_advect_velocity_rev(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cell = region_cell(gid.xy);
+    let x = cell.x;
+    let y = cell.y;
+    if (!in_region(gid.xy, x, y)) {
+        return;
     }
-    if (x + 1u < P.width) {
-        let fr = flow_v(x + 1u, y);
-        if (fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y)].xyz; }
+    let c = idx(x, y);
+    pig_out[c] = vec4<f32>(av_gather(x, y, -1.0), pig_in[c].w);
+}
+
+// ── MacCormack correction (ADR-0078 S5c): φ_new = clamp(φ̂ + sharpness·½(φ − φ̄), localExtrema(φ)).
+//    pig_in = φ (pig_b), pig_out = φ̂ (pig_a, read+write in place), pig_phibar = φ̄ (pig_c). ──
+@compute @workgroup_size(8, 8, 1)
+fn cs_advect_correct(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cell = region_cell(gid.xy);
+    let x = cell.x;
+    let y = cell.y;
+    if (!in_region(gid.xy, x, y)) {
+        return;
     }
-    if (y > 0u) {
-        let fu = flow_v(x, y - 1u);
-        if (fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u)].xyz; }
-    }
-    if (y + 1u < P.height) {
-        let fd = flow_v(x, y + 1u);
-        if (fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u)].xyz; }
-    }
-    pig_out[c] = vec4<f32>(out, pig_in[c].w);
+    let c = idx(x, y);
+    let n = nb(x, y);
+    // Local extrema of φ over the 5-point stencil (the unconditionally-stable limiter).
+    // Border neighbour = self via the clamp ⇒ a no-op on min/max (matches the CPU skip).
+    let phic = pig_in[c].xyz;
+    var lo = phic;
+    var hi = phic;
+    let pl = pig_in[idx(n.x, y)].xyz; lo = min(lo, pl); hi = max(hi, pl);
+    let pr = pig_in[idx(n.y, y)].xyz; lo = min(lo, pr); hi = max(hi, pr);
+    let pu = pig_in[idx(x, n.z)].xyz; lo = min(lo, pu); hi = max(hi, pu);
+    let pd = pig_in[idx(x, n.w)].xyz; lo = min(lo, pd); hi = max(hi, pd);
+    let phat = pig_out[c].xyz;        // φ̂ (forward result, in place)
+    let pbar = pig_phibar[c].xyz;     // φ̄ (reverse result)
+    let corrected = phat + P.sharpness * 0.5 * (phic - pbar);
+    pig_out[c] = vec4<f32>(clamp(corrected, lo, hi), pig_out[c].w);
 }

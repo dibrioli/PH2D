@@ -210,7 +210,8 @@ struct GpuParams {
     // chromatographic pigment-filtering factor (water wicks ahead of the lagging pigment).
     capillary: f32,
     capillary_mobility: f32,
-    _pad2: f32,
+    // ADR-0078 S5c — BFECC/MacCormack advection sharpness (read by `cs_advect_correct`).
+    sharpness: f32,
 }
 
 /// Pad (cells) added around the composite envelope for the region-scoped solver
@@ -311,6 +312,15 @@ pub struct FluidSolver {
     bg_jacobi_ba: wgpu::BindGroup,
     bg_project: wgpu::BindGroup,
     bg_advect_velocity: wgpu::BindGroup,
+    // ── BFECC/MacCormack advection sharpness (ADR-0078 S5c) ──
+    advect_velocity_rev: wgpu::ComputePipeline,
+    advect_correct: wgpu::ComputePipeline,
+    /// MacCormack reverse-advected field φ̄ (the round-trip-error estimate). Owned only to keep
+    /// the GPU buffer alive for the rev/correct bind groups; only touched when `sharpness > 0`.
+    #[allow(dead_code)]
+    pig_c: wgpu::Buffer,
+    bg_advect_velocity_rev: wgpu::BindGroup,
+    bg_advect_correct: wgpu::BindGroup,
     // ── Capillary fringe (ADR-0078 S5) ──
     capillary_pipe: wgpu::ComputePipeline,
     copy_fields_pipe: wgpu::ComputePipeline,
@@ -882,6 +892,46 @@ impl FluidSolver {
             ],
         });
 
+        // ── BFECC/MacCormack advection sharpness (`shallow.wgsl`, ADR-0078 S5c) ──
+        // The backward pass `cs_advect_velocity_rev` reverse-advects φ̂ (pig_a) → φ̄ (pig_c) with
+        // the SAME `bgl_av` layout (negated flow lives in the shader, not a uniform); the
+        // `cs_advect_correct` pass forms `φ̂ + sharpness·½(φ−φ̄)` clamped to φ's extrema, reading
+        // φ=pig_b (8), φ̄=pig_c (10), φ̂=pig_a (9 rw, in place). Region-scoped like every sw pass.
+        let pig_c = buf("fluid pig_c", vec4n, wgpu::BufferUsages::empty());
+        let advect_velocity_rev = sw_pipe("cs_advect_velocity_rev", &sw_layout(&bgl_av));
+        let bg_advect_velocity_rev = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg advect_velocity_rev"),
+            layout: &bgl_av,
+            entries: &[
+                entry(0, &params_buf),
+                entry(1, &water),
+                entry(2, &paper),
+                entry(3, &vel_a),
+                entry(8, &pig_a), // φ̂ in
+                entry(9, &pig_c), // φ̄ out
+            ],
+        });
+        let bgl_correct = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid sw advect_correct bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(8, true),  // φ (pig_b)
+                storage(9, false), // φ̂ in place → φ_new (pig_a)
+                storage(10, true), // φ̄ (pig_c)
+            ],
+        });
+        let advect_correct = sw_pipe("cs_advect_correct", &sw_layout(&bgl_correct));
+        let bg_advect_correct = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid sw bg advect_correct"),
+            layout: &bgl_correct,
+            entries: &[
+                entry(0, &params_buf),
+                entry(8, &pig_b),
+                entry(9, &pig_a),
+                entry(10, &pig_c),
+            ],
+        });
+
         // ── Capillary fringe (`capillary.wgsl`, ADR-0078 S5) ──
         // Two region-scoped passes around a `water_b` ping-pong scratch: `cs_capillary` wicks
         // water a→b, `cs_copy_water` lands it back b→a (the canonical buffer every other pass
@@ -986,7 +1036,7 @@ impl FluidSolver {
                 pressure: 0.0,
                 capillary: 0.0,
                 capillary_mobility: 0.0,
-                _pad2: 0.0,
+                sharpness: 0.0,
             }),
             water,
             paper,
@@ -1030,6 +1080,11 @@ impl FluidSolver {
             bg_jacobi_ba,
             bg_project,
             bg_advect_velocity,
+            advect_velocity_rev,
+            advect_correct,
+            pig_c,
+            bg_advect_velocity_rev,
+            bg_advect_correct,
             capillary_pipe,
             copy_fields_pipe,
             water_b,
@@ -1078,7 +1133,7 @@ impl FluidSolver {
             // Capillary fringe (ADR-0078 S5) off until `set_from_diffusion` drives it per-brush.
             capillary: 0.0,
             capillary_mobility: 0.0,
-            _pad2: 0.0,
+            sharpness: 0.0,
         };
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
@@ -1140,7 +1195,7 @@ impl FluidSolver {
             pressure: dp.pressure,
             capillary: dp.capillary,
             capillary_mobility: dp.capillary_mobility,
-            _pad2: 0.0,
+            sharpness: dp.sharpness,
         };
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
@@ -1435,6 +1490,8 @@ impl FluidSolver {
         let shallow = self.params_cache.get().velocity > 0.0;
         // Capillary fringe on? (ADR-0078 S5 — `set_from_diffusion` set it.)
         let capillary = self.params_cache.get().capillary > 0.0;
+        // BFECC/MacCormack sharpening of the velocity advect? (ADR-0078 S5c — velocity-mode only.)
+        let sharpen = shallow && self.params_cache.get().sharpness > 0.0;
         for _ in 0..substeps {
             // MoveWater (ADR-0078 S3d): accelerate `(u,v)` (a→b), make it divergence-free
             // (divergence → seed pressure → RELAX_ITERS Jacobi sweeps → subtract gradient,
@@ -1460,7 +1517,13 @@ impl FluidSolver {
             // evaporate water. `cs_transfer` is a no-op while deposition params are 0.
             run(&mut enc, &self.diffuse, &self.bg_diffuse);
             if shallow {
+                // Forward advect φ → φ̂ (B→A). With sharpening (ADR-0078 S5c) add the MacCormack
+                // backward pass φ̂ → φ̄ (A→C) + the correction φ̂ + s·½(φ−φ̄) clamped (B,A,C→A).
                 run(&mut enc, &self.advect_velocity, &self.bg_advect_velocity);
+                if sharpen {
+                    run(&mut enc, &self.advect_velocity_rev, &self.bg_advect_velocity_rev);
+                    run(&mut enc, &self.advect_correct, &self.bg_advect_correct);
+                }
             } else {
                 run(&mut enc, &self.advect, &self.bg_advect);
             }

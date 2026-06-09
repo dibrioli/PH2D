@@ -686,11 +686,11 @@ mod tests {
         let mut mass = 0.0f32;
         for &(c, m) in pigments {
             let p = prepare_pigment(c);
-            for i in 0..NB {
-                ks_acc[i] += m * p.ks[i];
+            for (a, &k) in ks_acc.iter_mut().zip(p.ks.iter()) {
+                *a += m * k;
             }
-            for k in 0..3 {
-                err_acc[k] += m * p.err[k];
+            for (e, &pe) in err_acc.iter_mut().zip(p.err.iter()) {
+                *e += m * pe;
             }
             mass += m;
         }

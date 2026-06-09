@@ -24,7 +24,8 @@
 //!   4. straight-alpha glaze: K–M mix over opaque backdrop, porter-duff "over" at a
 //!      transparent edge, lerped by the backdrop's own alpha (no black fringe).
 
-use crate::pigment_mix::{PreparedPigment, mix_prepared_exact, prepare_pigment};
+use crate::diffusion::{PIG_BANDS, PIG_ERR0, PIG_CH, PIG_MASS, WetCell};
+use crate::pigment_mix::{PreparedPigment, mix_prepared_exact, prepare_pigment, prepared_from_field};
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 
 /// Catmull-Rom cubic weights for the four taps around a fractional position
@@ -43,47 +44,55 @@ pub fn catmull_rom_weights(t: f32) -> [f32; 4] {
     ]
 }
 
-/// Bicubic (Catmull-Rom) sample of the low-res pigment field at fractional grid
-/// coords `(fx, fy)`, edges clamped. The cubic can overshoot, so pigment mass is
-/// floored at 0 (negative mass is unphysical).
+/// Bicubic (Catmull-Rom) sample of the low-res wet-field at fractional grid coords `(fx, fy)`,
+/// edges clamped — over the raw [`PIG_CH`] channels (ADR-0080). The field channels are all
+/// EXTENSIVE (mass-weighted K/S + err + mass), so bicubic over them is the correct
+/// premultiplied interpolation; the per-pixel reduction ([`prepared_from_field`]) divides by
+/// the interpolated mass afterwards. The cubic can overshoot, so the K/S bands + mass (which
+/// are physically ≥0) are floored at 0; the signed `err` re-anchor passes through. The GPU
+/// `composite.wgsl` mirrors this band-for-band.
 #[inline]
 #[must_use]
-pub fn sample_pigment_bicubic(pig: &[[f32; 3]], gw: u32, gh: u32, fx: f32, fy: f32) -> [f32; 3] {
+pub fn sample_pigment_bicubic(pig: &[WetCell], gw: u32, gh: u32, fx: f32, fy: f32) -> WetCell {
     let x0 = fx.floor() as i32;
     let y0 = fy.floor() as i32;
     let wx = catmull_rom_weights(fx - x0 as f32);
     let wy = catmull_rom_weights(fy - y0 as f32);
     let cx = |x: i32| x.clamp(0, gw as i32 - 1) as u32;
     let cy = |y: i32| y.clamp(0, gh as i32 - 1) as u32;
-    let mut out = [0.0f32; 3];
+    let mut out = [0.0f32; PIG_CH];
     for (j, &wyj) in wy.iter().enumerate() {
         let gy = cy(y0 - 1 + j as i32);
-        let mut row = [0.0f32; 3];
+        let mut row = [0.0f32; PIG_CH];
         for (i, &wxi) in wx.iter().enumerate() {
-            let p = pig[(gy * gw + cx(x0 - 1 + i as i32)) as usize];
-            row[0] += p[0] * wxi;
-            row[1] += p[1] * wxi;
-            row[2] += p[2] * wxi;
+            let p = &pig[(gy * gw + cx(x0 - 1 + i as i32)) as usize];
+            for k in 0..PIG_CH {
+                row[k] += p[k] * wxi;
+            }
         }
-        out[0] += row[0] * wyj;
-        out[1] += row[1] * wyj;
-        out[2] += row[2] * wyj;
+        for k in 0..PIG_CH {
+            out[k] += row[k] * wyj;
+        }
     }
-    [out[0].max(0.0), out[1].max(0.0), out[2].max(0.0)]
+    // Floor the physically-nonneg channels (K/S bands + mass); keep err signed.
+    for v in &mut out[0..PIG_BANDS] {
+        *v = v.max(0.0);
+    }
+    out[PIG_MASS] = out[PIG_MASS].max(0.0);
+    out
 }
 
-/// Inclusive grid-cell bbox of cells carrying compositable pigment (total mass
+/// Inclusive grid-cell bbox of cells carrying compositable pigment (coverage `mass`
 /// ≥ the composite floor `1e-4`). `None` if the grid is bare. A cheap O(cells)
 /// scan that scopes the composite to the wet region.
 #[must_use]
-pub fn wet_pigment_bbox(pig: &[[f32; 3]], gw: u32, gh: u32) -> Option<(u32, u32, u32, u32)> {
+pub fn wet_pigment_bbox(pig: &[WetCell], gw: u32, gh: u32) -> Option<(u32, u32, u32, u32)> {
     let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
     let mut any = false;
     for gy in 0..gh {
         let row = (gy * gw) as usize;
         for gx in 0..gw {
-            let p = pig[row + gx as usize];
-            if p[0] + p[1] + p[2] >= 1.0e-4 {
+            if pig[row + gx as usize][PIG_MASS] >= 1.0e-4 {
                 any = true;
                 x0 = x0.min(gx);
                 y0 = y0.min(gy);
@@ -113,7 +122,7 @@ pub struct WetCompositeBrush {
 /// pigments no longer read fully opaque).
 #[must_use]
 pub fn prepare_wet_composite(
-    _pigment: &[[f32; 3]],
+    _pigment: &[WetCell],
     stroke_color_linear: [f32; 3],
 ) -> WetCompositeBrush {
     // **ADR-0079:** `pcol` now preserves the picked colour's VALUE (see
@@ -205,42 +214,60 @@ pub fn composite_canvas_region(
 /// single-sample composite (no AA), bit-identical to pre-W15.3.
 pub const WET_COMPOSITE_SS: u32 = 2;
 
+/// Reduce a bicubic-sampled wet-field cell to its mixed [`PreparedPigment`] + coverage `mass`
+/// (ADR-0080) — the per-pixel composite reduction. The K/S bands are `Σ mass·ks` (premult), so
+/// `prepared_from_field` divides by the interpolated mass to get the mixed pigment; `mass` is
+/// the coverage. A single pigment yields exactly its own `prepare_pigment`, so the single-colour
+/// composite reproduces the pre-ADR-0080 path to float precision.
+#[inline]
+#[must_use]
+fn reduce_sampled_cell(cell: &WetCell) -> (PreparedPigment, f32) {
+    let mass = cell[PIG_MASS];
+    let ks: [f32; PIG_BANDS] = std::array::from_fn(|i| cell[i]);
+    let err = [cell[PIG_ERR0], cell[PIG_ERR0 + 1], cell[PIG_ERR0 + 2]];
+    (prepared_from_field(&ks, err, mass), mass)
+}
+
 /// CPU reference for the wet-field composite (the parity ground truth the GPU port
-/// mirrors). Composites `pig` (low-res `gw×gh`) over `backdrop` into `canvas` (both
-/// canvas-res `cw×ch` RGBA8), scoped to `grid_region`, with `WET_COMPOSITE_SS²`
-/// coverage supersampling (premultiplied average) to antialias the edge.
-/// `coverage_k` is the density→alpha rate; `scale` = canvas/grid ratio. Pixels
-/// outside the padded region are untouched (the caller's backdrop invariant).
+/// mirrors). Composites `pig` (low-res `gw×gh`, [`PIG_CH`] channels) over `backdrop` into
+/// `canvas` (both canvas-res `cw×ch` RGBA8), scoped to `grid_region`, with `WET_COMPOSITE_SS²`
+/// coverage supersampling (premultiplied average) to antialias the edge. Per pixel the field
+/// reduces to a mixed pigment (ADR-0080: blue+yellow→green), value-opacity per ADR-0079, then
+/// a Kubelka–Munk glaze over the backdrop. `coverage_k` is the mass→alpha rate; `scale` =
+/// canvas/grid ratio. Pixels outside the padded region are untouched.
 #[allow(clippy::too_many_arguments)]
 pub fn composite_wet_field_cpu(
     canvas: &mut [u8],
     backdrop: &[u8],
-    pig: &[[f32; 3]],
+    pig: &[WetCell],
     gw: u32,
     gh: u32,
     cw: u32,
     ch: u32,
     scale: u32,
     coverage_k: f32,
-    brush: &WetCompositeBrush,
     grid_region: (u32, u32, u32, u32),
 ) {
     let inv = 1.0 / scale as f32;
     let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
-    let pcol = brush.pcol;
     let n = WET_COMPOSITE_SS.max(1);
     let inv_n = 1.0 / n as f32;
     // One glaze sub-sample over the (already-linear) backdrop. `None` ⇒ dry (backdrop).
     let glaze = |fx: f32, fy: f32, back: &[f32; 3], back_a: f32| -> Option<([f32; 3], f32)> {
-        let p = sample_pigment_bicubic(pig, gw, gh, fx, fy);
-        let dens = (p[0] + p[1] + p[2]).max(0.0);
-        if dens < 1.0e-4 {
+        let cell = sample_pigment_bicubic(pig, gw, gh, fx, fy);
+        let (prepared, mass) = reduce_sampled_cell(&cell);
+        if mass < 1.0e-4 {
             return None;
         }
-        let amount = dens / brush.color_sum;
+        let pcol = prepared.color();
+        // ADR-0079 value-opacity: a deeper (lower-value) MIXED pigment covers more. `value` is
+        // the mixed colour's max channel, so the subtractive mix's value drives the build-up.
+        let value = pcol[0].max(pcol[1]).max(pcol[2]).clamp(0.0, 1.0);
+        let color_sum = 0.3 + 0.7 * value;
+        let amount = mass / color_sum;
         let alpha = 1.0 - (-amount * coverage_k).exp();
         let out_a = alpha + back_a * (1.0 - alpha);
-        let km = mix_prepared_exact(&brush.prepared, *back, alpha);
+        let km = mix_prepared_exact(&prepared, *back, alpha);
         let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
         let mut rgb = [0.0f32; 3];
         for k in 0..3 {
@@ -302,49 +329,246 @@ pub fn composite_wet_field_cpu(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diffusion::DiffusionGrid;
 
-    /// The stroke-derived brush (GPU resident path) computes the SAME `pcol` +
-    /// `color_sum` as the grid-total derivation, for a uniform-chromaticity field.
+    /// Build a low-res wet-field of a single `color` with per-cell coverage `mass` (the
+    /// single-stroke invariant) — the K/S accumulation each cell carries (ADR-0080).
+    fn field_of(color: [f32; 3], mass: &[f32]) -> Vec<WetCell> {
+        mass.iter()
+            .map(|&m| DiffusionGrid::cell_from_color_mass(color, m))
+            .collect()
+    }
+
+    /// Element-wise sum of two cells (two pigments co-present → they mix at the reduction).
+    fn add_cells(a: WetCell, b: &WetCell) -> WetCell {
+        let mut c = a;
+        for k in 0..PIG_CH {
+            c[k] += b[k];
+        }
+        c
+    }
+
+    /// The **legacy (pre-ADR-0080) single-colour composite**, recomputed inline: gray coverage
+    /// `mass` bicubic-upsampled = `dens`, uniform `pcol = colour`, value-opacity
+    /// `color_sum = 0.3+0.7·value`, K–M glaze via `prepare_pigment(colour)`. The parity target
+    /// for [`single_color_composite_matches_legacy_formula`].
+    #[allow(clippy::too_many_arguments)]
+    fn legacy_single_color_composite(
+        canvas: &mut [u8],
+        backdrop: &[u8],
+        mass: &[f32],
+        col: [f32; 3],
+        gw: u32,
+        gh: u32,
+        cw: u32,
+        ch: u32,
+        scale: u32,
+        coverage_k: f32,
+    ) {
+        let prepared = prepare_pigment(col);
+        let value = col[0].max(col[1]).max(col[2]).clamp(0.0, 1.0);
+        let color_sum = 0.3 + 0.7 * value;
+        let inv = 1.0 / scale as f32;
+        let n = WET_COMPOSITE_SS.max(1);
+        let inv_n = 1.0 / n as f32;
+        let (px_lo, py_lo, px_hi, py_hi) =
+            composite_canvas_region((0, 0, gw - 1, gh - 1), scale, cw, ch);
+        // Bicubic of the scalar mass field (= the legacy `dens`, since old gray pigment summed
+        // to the coverage and bicubic is linear).
+        let sample_mass = |fx: f32, fy: f32| -> f32 {
+            let x0 = fx.floor() as i32;
+            let y0 = fy.floor() as i32;
+            let wx = catmull_rom_weights(fx - x0 as f32);
+            let wy = catmull_rom_weights(fy - y0 as f32);
+            let cx = |x: i32| x.clamp(0, gw as i32 - 1) as u32;
+            let cy = |y: i32| y.clamp(0, gh as i32 - 1) as u32;
+            let mut out = 0.0f32;
+            for (j, &wyj) in wy.iter().enumerate() {
+                let gy = cy(y0 - 1 + j as i32);
+                let mut row = 0.0f32;
+                for (i, &wxi) in wx.iter().enumerate() {
+                    row += mass[(gy * gw + cx(x0 - 1 + i as i32)) as usize] * wxi;
+                }
+                out += row * wyj;
+            }
+            out.max(0.0)
+        };
+        for cyp in py_lo..py_hi {
+            for cxp in px_lo..px_hi {
+                let i = ((cyp * cw + cxp) * 4) as usize;
+                let back_a = backdrop[i + 3] as f32 / 255.0;
+                let back = [
+                    srgb_to_linear_byte(backdrop[i]),
+                    srgb_to_linear_byte(backdrop[i + 1]),
+                    srgb_to_linear_byte(backdrop[i + 2]),
+                ];
+                let mut acc_rgb = [0.0f32; 3];
+                let mut acc_a = 0.0f32;
+                let mut any_wet = false;
+                for sy in 0..n {
+                    let fy = ((cyp as f32 + (sy as f32 + 0.5) * inv_n) * inv - 0.5)
+                        .clamp(0.0, gh as f32 - 1.0);
+                    for sx in 0..n {
+                        let fx = ((cxp as f32 + (sx as f32 + 0.5) * inv_n) * inv - 0.5)
+                            .clamp(0.0, gw as f32 - 1.0);
+                        let dens = sample_mass(fx, fy);
+                        let (rgb_sub, a_sub) = if dens < 1.0e-4 {
+                            (back, back_a)
+                        } else {
+                            any_wet = true;
+                            let amount = dens / color_sum;
+                            let alpha = 1.0 - (-amount * coverage_k).exp();
+                            let out_a = alpha + back_a * (1.0 - alpha);
+                            let km = mix_prepared_exact(&prepared, back, alpha);
+                            let inv_a = if out_a > 1.0e-4 { 1.0 / out_a } else { 0.0 };
+                            let mut rgb = [0.0f32; 3];
+                            for k in 0..3 {
+                                let straight =
+                                    (col[k] * alpha + back[k] * back_a * (1.0 - alpha)) * inv_a;
+                                rgb[k] = (straight + (km[k] - straight) * back_a).clamp(0.0, 1.0);
+                            }
+                            (rgb, out_a)
+                        };
+                        acc_rgb[0] += rgb_sub[0] * a_sub;
+                        acc_rgb[1] += rgb_sub[1] * a_sub;
+                        acc_rgb[2] += rgb_sub[2] * a_sub;
+                        acc_a += a_sub;
+                    }
+                }
+                if !any_wet {
+                    canvas[i..i + 4].copy_from_slice(&backdrop[i..i + 4]);
+                    continue;
+                }
+                let final_a = acc_a * inv_n * inv_n;
+                let rgb = if acc_a > 1.0e-6 {
+                    [acc_rgb[0] / acc_a, acc_rgb[1] / acc_a, acc_rgb[2] / acc_a]
+                } else {
+                    [0.0; 3]
+                };
+                canvas[i] = linear_to_srgb_byte(rgb[0]);
+                canvas[i + 1] = linear_to_srgb_byte(rgb[1]);
+                canvas[i + 2] = linear_to_srgb_byte(rgb[2]);
+                canvas[i + 3] = (final_a * 255.0).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
+    /// **THE P2 single-colour parity gate (ADR-0080 §2.3):** a single-colour wash composites to
+    /// within ≤1 LSB (RGBA8) of the pre-ADR-0080 formula — the ADR-0080 reduction (`ks_acc/mass`)
+    /// differs from `prepare_pigment(colour)` only by ~1e-6 float reassociation, which the u8
+    /// quantisation absorbs. This guards the validated single-colour look (value-opacity,
+    /// edge-darkening, K–M glaze). Tested over BOTH an opaque + a transparent backdrop.
     #[test]
-    fn stroke_derived_brush_matches_grid_derived() {
-        let scol = [0.8f32, 0.6, 0.02];
-        // A field of `scol × amount` (varying amount), the single-stroke invariant.
-        let pig: Vec<[f32; 3]> = (0..64)
-            .map(|i| {
-                let a = (i as f32 + 1.0) * 0.01;
-                [scol[0] * a, scol[1] * a, scol[2] * a]
+    fn single_color_composite_matches_legacy_formula() {
+        let (gw, gh, scale) = (8u32, 8u32, 2u32);
+        let (cw, ch) = (gw * scale, gh * scale);
+        let col = [0.2f32, 0.45, 0.85];
+        // A soft radial mass field (varying coverage including partial edges).
+        let mass: Vec<f32> = (0..gw * gh)
+            .map(|idx| {
+                let (gx, gy) = ((idx % gw) as f32, (idx / gw) as f32);
+                let d = (((gx - 3.5).powi(2) + (gy - 3.5).powi(2)).sqrt()) / 3.5;
+                (1.0 - d).max(0.0) * 0.8
             })
             .collect();
-        let grid = prepare_wet_composite(&pig, scol);
-        let stroke = prepare_wet_composite_from_stroke(scol);
-        for k in 0..3 {
+        let pig = field_of(col, &mass);
+        for backdrop_px in [[90u8, 110, 130, 255], [0, 0, 0, 0]] {
+            let mut backdrop = vec![0u8; (cw * ch * 4) as usize];
+            for px in backdrop.chunks_exact_mut(4) {
+                px.copy_from_slice(&backdrop_px);
+            }
+            let mut new_canvas = backdrop.clone();
+            composite_wet_field_cpu(
+                &mut new_canvas,
+                &backdrop,
+                &pig,
+                gw,
+                gh,
+                cw,
+                ch,
+                scale,
+                1.06,
+                (0, 0, gw - 1, gh - 1),
+            );
+            let mut old_canvas = backdrop.clone();
+            legacy_single_color_composite(
+                &mut old_canvas,
+                &backdrop,
+                &mass,
+                col,
+                gw,
+                gh,
+                cw,
+                ch,
+                scale,
+                1.06,
+            );
+            let max_d = new_canvas
+                .iter()
+                .zip(&old_canvas)
+                .map(|(&a, &b)| (a as i32 - b as i32).abs())
+                .max()
+                .unwrap_or(0);
             assert!(
-                (grid.pcol[k] - stroke.pcol[k]).abs() < 1e-5,
-                "pcol[{k}] mismatch: {} vs {}",
-                grid.pcol[k],
-                stroke.pcol[k]
+                max_d <= 1,
+                "single-colour composite must match the legacy formula within ≤1 LSB (got {max_d}, backdrop {backdrop_px:?})"
             );
         }
-        assert!((grid.color_sum - stroke.color_sum).abs() < 1e-5);
+    }
+
+    /// **THE P2 mix composite gate (ADR-0080):** a wet field carrying BOTH blue + yellow pigment
+    /// composites to a GREEN-dominant pixel over a white backdrop — the subtractive wet-on-wet
+    /// mix, end to end through the composite (not the muddy grey a coverage average gives).
+    #[test]
+    fn composite_mixes_blue_and_yellow_to_green() {
+        let (gw, gh, scale) = (8u32, 8u32, 2u32);
+        let (cw, ch) = (gw * scale, gh * scale);
+        // Every cell carries equal blue + yellow pigment → reduces to green.
+        let blue = DiffusionGrid::cell_from_color_mass([0.0, 0.0, 1.0], 1.0);
+        let yellow = DiffusionGrid::cell_from_color_mass([1.0, 1.0, 0.0], 1.0);
+        let cell = add_cells(blue, &yellow);
+        let pig = vec![cell; (gw * gh) as usize];
+        // Opaque white backdrop (so the wash reads as the pigment colour, not a backdrop tint).
+        let mut backdrop = vec![0u8; (cw * ch * 4) as usize];
+        for px in backdrop.chunks_exact_mut(4) {
+            px.copy_from_slice(&[255, 255, 255, 255]);
+        }
+        let mut canvas = backdrop.clone();
+        composite_wet_field_cpu(
+            &mut canvas,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            (0, 0, gw - 1, gh - 1),
+        );
+        let i = ((ch / 2 * cw + cw / 2) * 4) as usize;
+        let (r, g, b) = (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32);
+        assert!(
+            g > r && g > b,
+            "blue+yellow field composites green-dominant (not mud): [{r},{g},{b}]"
+        );
     }
 
     /// The composite region MUST cover all pigment, or it clips the round dab into a
     /// rectangle (Enio's "quinas retangulares"). The true pigment bbox (+ the 2-cell
     /// pad) reproduces the full-canvas composite EXACTLY; a too-small region clips.
-    /// The GPU path's monotonic wet envelope is a superset of this pigment bbox.
     #[test]
     fn composite_region_must_cover_pigment_or_it_clips() {
-        use crate::diffusion::{DiffusionGrid, DiffusionParams};
+        use crate::diffusion::DiffusionParams;
         let (gw, gh, scale) = (48u32, 48u32, 1u32);
         let (cw, ch) = (gw, gh);
         let mut grid = DiffusionGrid::new(gw, gh, scale as f32);
-        grid.splat(24.0, 24.0, 12.0, 0.7, [0.3, 0.15, 0.05]);
+        grid.splat(24.0, 24.0, 12.0, 0.7, [0.3, 0.15, 0.05], 0.5);
         let p = DiffusionParams::default();
         for _ in 0..8 {
             grid.step(&p);
         }
         let pig = grid.pigment().to_vec();
-        let brush = prepare_wet_composite(&pig, [0.3, 0.15, 0.05]);
         let backdrop = vec![0u8; (cw * ch * 4) as usize];
 
         // Ground truth: composite over the FULL grid.
@@ -359,7 +583,6 @@ mod tests {
             ch,
             scale,
             1.06,
-            &brush,
             (0, 0, gw - 1, gh - 1),
         );
 
@@ -367,7 +590,7 @@ mod tests {
         let pbb = wet_pigment_bbox(&pig, gw, gh).expect("pigment present");
         let mut tight = backdrop.clone();
         composite_wet_field_cpu(
-            &mut tight, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, &brush, pbb,
+            &mut tight, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, pbb,
         );
         assert_eq!(
             tight, full,
@@ -383,17 +606,7 @@ mod tests {
         );
         let mut clipped = backdrop.clone();
         composite_wet_field_cpu(
-            &mut clipped,
-            &backdrop,
-            &pig,
-            gw,
-            gh,
-            cw,
-            ch,
-            scale,
-            1.06,
-            &brush,
-            small,
+            &mut clipped, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, small,
         );
         assert_ne!(
             clipped, full,
@@ -401,22 +614,19 @@ mod tests {
         );
     }
 
-    /// Yellow wash over an opaque BLUE backdrop must go GREEN-dominant — the
-    /// Kubelka–Munk signature (a linear "over" leaves R≈G). The discriminant the
-    /// GPU parity test reuses.
+    /// Yellow wash over an opaque BLUE backdrop must go GREEN-dominant — the Kubelka–Munk glaze
+    /// signature (a linear "over" leaves R≈G). The discriminant the GPU parity test reuses.
     #[test]
     fn yellow_over_blue_is_green() {
         let (gw, gh, scale) = (8u32, 8u32, 2u32);
         let (cw, ch) = (gw * scale, gh * scale);
         // Uniform yellow pigment field, opaque blue backdrop.
-        let pig = vec![[0.6f32, 0.6, 0.0]; (gw * gh) as usize];
+        let pig = field_of([0.8, 0.6, 0.02], &vec![0.6f32; (gw * gh) as usize]);
         let mut backdrop = vec![0u8; (cw * ch * 4) as usize];
         for px in backdrop.chunks_exact_mut(4) {
             px.copy_from_slice(&[20, 40, 200, 255]);
         }
         let mut canvas = backdrop.clone();
-        // Stroke colour ~ yellow (linear).
-        let brush = prepare_wet_composite(&pig, [0.8, 0.6, 0.02]);
         composite_wet_field_cpu(
             &mut canvas,
             &backdrop,
@@ -427,7 +637,6 @@ mod tests {
             ch,
             scale,
             1.06,
-            &brush,
             (0, 0, gw - 1, gh - 1),
         );
         let i = ((ch / 2 * cw + cw / 2) * 4) as usize;
@@ -445,17 +654,16 @@ mod tests {
         let (gw, gh, scale) = (8u32, 8u32, 2u32);
         let (cw, ch) = (gw * scale, gh * scale);
         // A soft coral dab, low mass at the rim → partial coverage there.
-        let mut pig = vec![[0.0f32; 3]; (gw * gh) as usize];
-        for gy in 0..gh {
-            for gx in 0..gw {
-                let d = (((gx as f32 - 3.5).powi(2) + (gy as f32 - 3.5).powi(2)).sqrt()) / 3.5;
-                let m = (1.0 - d).max(0.0) * 0.5;
-                pig[(gy * gw + gx) as usize] = [m, m * 0.45, m * 0.4];
-            }
-        }
+        let mass: Vec<f32> = (0..gw * gh)
+            .map(|idx| {
+                let (gx, gy) = ((idx % gw) as f32, (idx / gw) as f32);
+                let d = (((gx - 3.5).powi(2) + (gy - 3.5).powi(2)).sqrt()) / 3.5;
+                (1.0 - d).max(0.0) * 0.5
+            })
+            .collect();
+        let pig = field_of([0.8, 0.36, 0.32], &mass);
         let backdrop = vec![0u8; (cw * ch * 4) as usize]; // transparent
         let mut canvas = backdrop.clone();
-        let brush = prepare_wet_composite(&pig, [0.8, 0.36, 0.32]);
         composite_wet_field_cpu(
             &mut canvas,
             &backdrop,
@@ -466,7 +674,6 @@ mod tests {
             ch,
             scale,
             1.06,
-            &brush,
             (0, 0, gw - 1, gh - 1),
         );
         // Every painted (alpha>0) pixel must keep a warm coral hue — red leads, and

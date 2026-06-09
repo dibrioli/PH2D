@@ -44,6 +44,26 @@
 //! **core**; the live per-frame driver + GPU port + canvas upsample are the
 //! ADR-0049 (`ph2d-painter-fluid`, W15) integration layer.
 
+use crate::pigment_mix::{SPECTRAL_BANDS, ks_field_color, prepare_pigment};
+
+/// Spectral K/S bands carried per wet-field cell (ADR-0080) — pinned to the optical
+/// model's [`SPECTRAL_BANDS`] (24); the field and its GPU mirror loop over this many.
+pub const PIG_BANDS: usize = SPECTRAL_BANDS;
+/// Index of the first `err` channel (the round-trip re-anchor `err[3]`, ADR-0080).
+pub const PIG_ERR0: usize = PIG_BANDS;
+/// Index of the coverage `mass` channel.
+pub const PIG_MASS: usize = PIG_BANDS + 3;
+/// Channels per wet-field cell (ADR-0080): `ks[24]` (mass-weighted Kubelka–Munk per band),
+/// `err[3]` (round-trip re-anchor) and `mass` (coverage) — 28 = 7·4 (clean std430 vec4
+/// packing for the GPU mirror). All transport LINEARLY and identically under diffuse/advect/
+/// transfer/capillary, so the subtractive multi-pigment mix emerges from the transport
+/// itself: blue+yellow meet, their `ks`/`err`/`mass` sum, and the per-cell reduction
+/// ([`DiffusionGrid::cell_color`]) yields green. A single pigment reduces to exactly its own
+/// colour, so the single-colour look matches the pre-ADR-0080 path to float precision.
+pub const PIG_CH: usize = PIG_BANDS + 4;
+/// One wet-field cell's pigment channels (ADR-0080).
+pub type WetCell = [f32; PIG_CH];
+
 /// Tunable solver coefficients. `diffusivity` already folds the time step
 /// (`D·dt`), so keep it ≤ `0.24` (the explicit-Euler CFL bound for the 5-point
 /// Laplacian is `D·dt ≤ 1/4`; the gate ∈[0,1] only lowers the effective rate).
@@ -204,12 +224,14 @@ pub struct DiffusionGrid {
     height: u32,
     /// Wetness ∈ [0,1] per cell.
     water: Vec<f32>,
-    /// Pigment (linear RGB) per cell — mass-conserving under diffusion/advection.
-    pigment: Vec<[f32; 3]>,
-    /// **Deposited pigment** (linear RGB) per cell — frozen into the paper by
-    /// `TransferPigment` (ADR-0078 S3); does NOT diffuse/advect. The composited colour
+    /// Pigment per cell — the [`PIG_CH`]-channel mass-weighted K/S accumulation (ADR-0080):
+    /// `ks[24]` + `err[3]` + `mass`. Mass-conserving under diffusion/advection (every channel
+    /// transports linearly), and the multi-pigment mix emerges from the transport.
+    pigment: Vec<WetCell>,
+    /// **Deposited pigment** ([`PIG_CH`] channels) per cell — frozen into the paper by
+    /// `TransferPigment` (ADR-0078 S3); does NOT diffuse/advect. The composited pigment
     /// is `pigment + deposited`. All-zero while the deposition params are off.
-    deposited: Vec<[f32; 3]>,
+    deposited: Vec<WetCell>,
     /// Static paper-tooth height ∈ [0,1] per cell (1 = crest, 0 = valley).
     paper: Vec<f32>,
     /// **Shallow-water velocity field (ADR-0078 S3d)** — `(vel_u, vel_v)` per cell, the
@@ -222,7 +244,7 @@ pub struct DiffusionGrid {
     /// each [`Self::move_water`] (Jacobi, [`RELAX_ITERS`]); kept here only to avoid a
     /// per-step alloc.
     pressure: Vec<f32>,
-    scratch: Vec<[f32; 3]>,
+    scratch: Vec<WetCell>,
     scratch_w: Vec<f32>,
     /// Velocity ping-pong scratch (the `add_forces` write target) + the divergence and
     /// pressure-Jacobi ping-pong buffers. Allocated lazily with the rest; untouched (and
@@ -280,13 +302,13 @@ impl DiffusionGrid {
             width,
             height,
             water: vec![0.0; n],
-            pigment: vec![[0.0; 3]; n],
-            deposited: vec![[0.0; 3]; n],
+            pigment: vec![[0.0; PIG_CH]; n],
+            deposited: vec![[0.0; PIG_CH]; n],
             paper,
             vel_u: vec![0.0; n],
             vel_v: vec![0.0; n],
             pressure: vec![0.0; n],
-            scratch: vec![[0.0; 3]; n],
+            scratch: vec![[0.0; PIG_CH]; n],
             scratch_w: vec![0.0; n],
             scratch_u: vec![0.0; n],
             scratch_v: vec![0.0; n],
@@ -301,14 +323,64 @@ impl DiffusionGrid {
         (y * self.width + x) as usize
     }
 
+    /// Build a wet-field cell's [`PIG_CH`] channels for a pigment of `color` (linear sRGB) at
+    /// coverage `mass` (ADR-0080): the mass-weighted Kubelka–Munk `ks` + round-trip `err` of
+    /// `color`, and the `mass` itself. Two of these added together mix subtractively (the K/S
+    /// blends by mass at the per-cell reduction); a single one reduces to exactly `color`.
+    #[must_use]
+    pub fn cell_from_color_mass(color: [f32; 3], mass: f32) -> WetCell {
+        let p = prepare_pigment(color);
+        let mut c = [0.0f32; PIG_CH];
+        let ks = p.ks();
+        for k in 0..PIG_BANDS {
+            c[k] = ks[k] * mass;
+        }
+        let e = p.err();
+        c[PIG_ERR0] = e[0] * mass;
+        c[PIG_ERR0 + 1] = e[1] * mass;
+        c[PIG_ERR0 + 2] = e[2] * mass;
+        c[PIG_MASS] = mass;
+        c
+    }
+
+    /// Coverage `mass` of a wet-field cell (the `dens` analogue of the pre-ADR-0080 gray field).
+    #[inline]
+    #[must_use]
+    pub fn cell_mass(c: &WetCell) -> f32 {
+        c[PIG_MASS]
+    }
+
+    /// The mixed linear-sRGB colour of a wet-field cell — the K–M reduction of its mass-weighted
+    /// K/S accumulation (ADR-0080). A single pigment yields exactly its picked colour.
+    #[inline]
+    #[must_use]
+    pub fn cell_color(c: &WetCell) -> [f32; 3] {
+        let ks: [f32; PIG_BANDS] = std::array::from_fn(|i| c[i]);
+        let err = [c[PIG_ERR0], c[PIG_ERR0 + 1], c[PIG_ERR0 + 2]];
+        ks_field_color(&ks, err, c[PIG_MASS])
+    }
+
     /// Deposit pigment + water in a soft disc — a brush touch wetting the paper.
     /// Re-wetting a dried area re-opens its gate so the old pigment blooms again.
-    /// `water_add` raises wetness (clamped to 1); `color` (linear RGB) is added,
-    /// weighted by the disc falloff.
-    pub fn splat(&mut self, cx: f32, cy: f32, radius: f32, water_add: f32, color: [f32; 3]) {
+    /// `water_add` raises wetness (clamped to 1); a pigment of `color` (linear sRGB) at peak
+    /// coverage `pigment_mass` is added, weighted by the disc falloff. The pigment is the
+    /// mass-weighted K/S accumulation (ADR-0080), so overlapping splats of different colours
+    /// mix subtractively in the field.
+    pub fn splat(
+        &mut self,
+        cx: f32,
+        cy: f32,
+        radius: f32,
+        water_add: f32,
+        color: [f32; 3],
+        pigment_mass: f32,
+    ) {
         if radius <= 0.0 {
             return;
         }
+        // The per-unit-mass pigment channels of `color`, built ONCE (the dab is one colour);
+        // each cell adds `pigment_mass·fall ×` this — linear in mass, so `dab[PIG_MASS]·m = m`.
+        let dab = Self::cell_from_color_mass(color, 1.0);
         let r = radius.max(0.5);
         let x0 = ((cx - r).floor() as i32).max(0);
         let y0 = ((cy - r).floor() as i32).max(0);
@@ -324,9 +396,11 @@ impl DiffusionGrid {
                 let fall = 1.0 - d * d * (3.0 - 2.0 * d); // 1 at centre → 0 at rim
                 let i = self.idx(x as u32, y as u32);
                 self.water[i] = (self.water[i] + water_add * fall).min(1.0);
-                self.pigment[i][0] += color[0] * fall;
-                self.pigment[i][1] += color[1] * fall;
-                self.pigment[i][2] += color[2] * fall;
+                let m = pigment_mass * fall;
+                let cell = &mut self.pigment[i];
+                for k in 0..PIG_CH {
+                    cell[k] += dab[k] * m;
+                }
             }
         }
     }
@@ -388,13 +462,13 @@ impl DiffusionGrid {
                 let c = self.idx(x, y);
                 let gc = gates[c];
                 let pc = self.pigment[c];
-                let mut acc = [0.0f32; 3];
-                let add = |nidx: usize, acc: &mut [f32; 3]| {
+                let mut acc = [0.0f32; PIG_CH];
+                let add = |nidx: usize, acc: &mut [f32; PIG_CH]| {
                     let cond = 0.5 * (gc + gates[nidx]);
-                    let pn = self.pigment[nidx];
-                    acc[0] += cond * (pn[0] - pc[0]);
-                    acc[1] += cond * (pn[1] - pc[1]);
-                    acc[2] += cond * (pn[2] - pc[2]);
+                    let pn = &self.pigment[nidx];
+                    for k in 0..PIG_CH {
+                        acc[k] += cond * (pn[k] - pc[k]);
+                    }
                 };
                 if x > 0 {
                     add(self.idx(x - 1, y), &mut acc);
@@ -408,7 +482,11 @@ impl DiffusionGrid {
                 if y + 1 < h {
                     add(self.idx(x, y + 1), &mut acc);
                 }
-                self.scratch[c] = [pc[0] + d * acc[0], pc[1] + d * acc[1], pc[2] + d * acc[2]];
+                let mut out = pc;
+                for k in 0..PIG_CH {
+                    out[k] = pc[k] + d * acc[k];
+                }
+                self.scratch[c] = out;
             }
         }
         std::mem::swap(&mut self.pigment, &mut self.scratch);
@@ -533,13 +611,13 @@ impl DiffusionGrid {
                 let mut hi = phi[c];
                 for &ni in &nbrs[..cnt] {
                     let v = phi[ni];
-                    for k in 0..3 {
+                    for k in 0..PIG_CH {
                         lo[k] = lo[k].min(v[k]);
                         hi[k] = hi[k].max(v[k]);
                     }
                 }
                 let pbar = self.pigment[c]; // φ̄
-                for k in 0..3 {
+                for k in 0..PIG_CH {
                     let corrected = phi_hat[c][k] + s * 0.5 * (phi[c][k] - pbar[k]);
                     self.scratch[c][k] = corrected.clamp(lo[k], hi[k]);
                 }
@@ -720,7 +798,7 @@ impl DiffusionGrid {
             if rate <= 0.0 {
                 continue;
             }
-            for k in 0..3 {
+            for k in 0..PIG_CH {
                 let moved = rate * self.pigment[i][k];
                 self.pigment[i][k] -= moved;
                 self.deposited[i][k] += moved;
@@ -763,7 +841,7 @@ impl DiffusionGrid {
         water_out.resize(n, 0.0);
         let mut pig_out = std::mem::take(&mut self.scratch);
         pig_out.clear();
-        pig_out.resize(n, [0.0; 3]);
+        pig_out.resize(n, [0.0; PIG_CH]);
         for y in 0..h {
             for x in 0..w {
                 let c = self.idx(x, y);
@@ -778,23 +856,26 @@ impl DiffusionGrid {
                 // filters the pigment so the water wicks AHEAD (chromatographic separation), so
                 // the outer fringe is water-only (transparent) and the colour lags behind it.
                 let mob = p.capillary_mobility;
-                let face = |nidx: usize| -> (f32, [f32; 3]) {
+                let face = |nidx: usize| -> (f32, [f32; PIG_CH]) {
                     let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
                     let cond = 0.5 * (permc + permn);
                     let wn = self.water[nidx];
                     let dw = cond * (wn - wc);
-                    let dp = if wc > wn {
+                    let mut dp = [0.0f32; PIG_CH];
+                    if wc > wn {
                         // c donates: pigment fraction = mobility · (water fraction leaving to n).
                         let frac = mob * cap * cond * (wc - wn) / wc;
-                        [-frac * pc[0], -frac * pc[1], -frac * pc[2]]
+                        for k in 0..PIG_CH {
+                            dp[k] = -frac * pc[k];
+                        }
                     } else if wn > wc {
                         // n donates to c at n's concentration (also mobility-scaled).
                         let frac = mob * cap * cond * (wn - wc) / wn;
-                        let pn = self.pigment[nidx];
-                        [frac * pn[0], frac * pn[1], frac * pn[2]]
-                    } else {
-                        [0.0; 3]
-                    };
+                        let pnb = &self.pigment[nidx];
+                        for k in 0..PIG_CH {
+                            dp[k] = frac * pnb[k];
+                        }
+                    }
                     (dw, dp)
                 };
                 // In-bounds neighbours in the canonical order (left, right, up, down) — the
@@ -823,9 +904,9 @@ impl DiffusionGrid {
                 for &nidx in &nbrs[..count] {
                     let (dw, dp) = face(nidx);
                     acc_w += dw;
-                    pn[0] += dp[0];
-                    pn[1] += dp[1];
-                    pn[2] += dp[2];
+                    for k in 0..PIG_CH {
+                        pn[k] += dp[k];
+                    }
                 }
                 water_out[c] = wc + cap * acc_w;
                 pig_out[c] = pn;
@@ -841,10 +922,26 @@ impl DiffusionGrid {
         (self.width, self.height)
     }
 
-    /// Pigment field (linear RGB per cell).
+    /// Pigment field — the raw [`PIG_CH`]-channel mass-weighted K/S accumulation per cell
+    /// (ADR-0080). For the per-cell colour / coverage use [`Self::pigment_color`] /
+    /// [`Self::pigment_mass`]; this raw view feeds the GPU upload + parity gates.
     #[must_use]
-    pub fn pigment(&self) -> &[[f32; 3]] {
+    pub fn pigment(&self) -> &[WetCell] {
         &self.pigment
+    }
+
+    /// Coverage `mass` of flowing pigment at cell `i` (the `dens` analogue of the old gray field).
+    #[inline]
+    #[must_use]
+    pub fn pigment_mass(&self, i: usize) -> f32 {
+        self.pigment[i][PIG_MASS]
+    }
+
+    /// Mixed linear-sRGB colour of flowing pigment at cell `i` (K–M reduction, ADR-0080).
+    #[inline]
+    #[must_use]
+    pub fn pigment_color(&self, i: usize) -> [f32; 3] {
+        Self::cell_color(&self.pigment[i])
     }
 
     /// Wetness field ∈ [0,1] per cell.
@@ -878,7 +975,7 @@ impl DiffusionGrid {
     /// Overwrite the pigment field — used to write a GPU-stepped result back into
     /// the grid (the GPU is the accelerator; this grid stays the CPU source of
     /// truth + the composite input). Panics on a length mismatch (caller sizes it).
-    pub fn set_pigment_from(&mut self, p: &[[f32; 3]]) {
+    pub fn set_pigment_from(&mut self, p: &[WetCell]) {
         self.pigment.copy_from_slice(p);
     }
 
@@ -894,7 +991,7 @@ impl DiffusionGrid {
     /// bloomed pigment lives on the GPU, not here.
     pub fn clear_pigment(&mut self) {
         for p in &mut self.pigment {
-            *p = [0.0; 3];
+            *p = [0.0; PIG_CH];
         }
     }
 
@@ -945,39 +1042,50 @@ impl DiffusionGrid {
         any.then_some((x0, y0, x1, y1))
     }
 
-    /// Total FLOWING pigment per channel — conserved under pure diffusion + advection
-    /// (no evaporation removes pigment). With the deposition layer on, flowing pigment
-    /// migrates into [`Self::deposited`]; `total_pigment + total_deposited` is the
-    /// conserved sum (the invariant the deposition tests check).
+    /// Total FLOWING pigment **mass** — conserved under pure diffusion + advection (no
+    /// evaporation removes pigment). With the deposition layer on, flowing pigment migrates
+    /// into [`Self::deposited`]; `total_pigment + total_deposited` is the conserved sum (the
+    /// invariant the deposition tests check). (ADR-0080: was per-RGB-channel; now the scalar
+    /// coverage mass — use [`Self::total_channels`] for the per-band conservation check.)
     #[must_use]
-    pub fn total_pigment(&self) -> [f64; 3] {
-        let mut s = [0.0f64; 3];
+    pub fn total_pigment(&self) -> f64 {
+        self.pigment.iter().map(|c| c[PIG_MASS] as f64).sum()
+    }
+
+    /// Per-channel total of the flowing field (all [`PIG_CH`] channels: K/S + err + mass) —
+    /// EACH is conserved under pure diffusion/advection (the strongest conservation gate,
+    /// ADR-0080). Returned as `f64` for accumulation precision.
+    #[must_use]
+    pub fn total_channels(&self) -> [f64; PIG_CH] {
+        let mut s = [0.0f64; PIG_CH];
         for px in &self.pigment {
-            s[0] += px[0] as f64;
-            s[1] += px[1] as f64;
-            s[2] += px[2] as f64;
+            for k in 0..PIG_CH {
+                s[k] += px[k] as f64;
+            }
         }
         s
     }
 
-    /// The deposited (frozen-into-paper) pigment field (ADR-0078 S3). The composited
-    /// colour is `pigment + deposited`; all-zero while the deposition params are off.
+    /// The deposited (frozen-into-paper) pigment field — raw [`PIG_CH`] channels per cell
+    /// (ADR-0078 S3 / ADR-0080). The composited pigment is `pigment + deposited`; all-zero
+    /// while the deposition params are off.
     #[must_use]
-    pub fn deposited(&self) -> &[[f32; 3]] {
+    pub fn deposited(&self) -> &[WetCell] {
         &self.deposited
     }
 
-    /// Total deposited pigment per channel (companion to [`Self::total_pigment`] for
-    /// the mass-conservation invariant `flowing + deposited == splatted`).
+    /// Coverage `mass` of deposited pigment at cell `i`.
+    #[inline]
     #[must_use]
-    pub fn total_deposited(&self) -> [f64; 3] {
-        let mut s = [0.0f64; 3];
-        for px in &self.deposited {
-            s[0] += px[0] as f64;
-            s[1] += px[1] as f64;
-            s[2] += px[2] as f64;
-        }
-        s
+    pub fn deposited_mass(&self, i: usize) -> f32 {
+        self.deposited[i][PIG_MASS]
+    }
+
+    /// Total deposited pigment **mass** (companion to [`Self::total_pigment`] for the
+    /// mass-conservation invariant `flowing + deposited == splatted`).
+    #[must_use]
+    pub fn total_deposited(&self) -> f64 {
+        self.deposited.iter().map(|c| c[PIG_MASS] as f64).sum()
     }
 }
 
@@ -985,8 +1093,34 @@ impl DiffusionGrid {
 mod tests {
     use super::*;
 
-    /// Pigment mass is conserved by diffusion + advection (no evaporation): the
-    /// per-channel total is invariant to ~1e-3 over many steps.
+    /// Test adapter: the pre-ADR-0080 5-arg splat (deposit a `color` with mass = its channel
+    /// sum, the old `dens`) + scalar coverage probes, so the physics tests below read the same
+    /// (mass transports identically to the old gray pigment). `pmass`/`dmass` = flowing/deposited
+    /// coverage at a cell; `pcolor` = the mixed colour (for the new multi-pigment mix tests).
+    trait TestField {
+        fn splat5(&mut self, cx: f32, cy: f32, r: f32, water: f32, color: [f32; 3]);
+        fn pmass(&self, i: usize) -> f32;
+        fn dmass(&self, i: usize) -> f32;
+        fn pcolor(&self, i: usize) -> [f32; 3];
+    }
+    impl TestField for DiffusionGrid {
+        fn splat5(&mut self, cx: f32, cy: f32, r: f32, water: f32, color: [f32; 3]) {
+            self.splat(cx, cy, r, water, color, color[0] + color[1] + color[2]);
+        }
+        fn pmass(&self, i: usize) -> f32 {
+            self.pigment_mass(i)
+        }
+        fn dmass(&self, i: usize) -> f32 {
+            self.deposited_mass(i)
+        }
+        fn pcolor(&self, i: usize) -> [f32; 3] {
+            self.pigment_color(i)
+        }
+    }
+
+    /// Pigment is conserved by diffusion + advection (no evaporation): EVERY one of the
+    /// [`PIG_CH`] channels (mass-weighted K/S + err + mass) is invariant to ~1e-3 over many
+    /// steps (ADR-0080 — the linear transport conserves each accumulator independently).
     #[test]
     fn pigment_mass_is_conserved() {
         let mut g = DiffusionGrid::new(48, 48, 1.0);
@@ -994,8 +1128,8 @@ mod tests {
         for w in g.water.iter_mut() {
             *w = 1.0;
         }
-        g.splat(24.0, 24.0, 8.0, 0.0, [0.6, 0.2, 0.1]);
-        let before = g.total_pigment();
+        g.splat5(24.0, 24.0, 8.0, 0.0, [0.6, 0.2, 0.1]);
+        let before = g.total_channels();
         let p = DiffusionParams {
             evaporation: 0.0, // isolate conservation
             ..Default::default()
@@ -1003,11 +1137,11 @@ mod tests {
         for _ in 0..40 {
             g.step(&p);
         }
-        let after = g.total_pigment();
-        for k in 0..3 {
+        let after = g.total_channels();
+        for k in 0..PIG_CH {
             assert!(
                 (before[k] - after[k]).abs() < 1e-3 * (before[k].abs() + 1.0),
-                "channel {k} mass drifted: {} -> {}",
+                "channel {k} drifted: {} -> {}",
                 before[k],
                 after[k]
             );
@@ -1022,7 +1156,7 @@ mod tests {
             for w in g.water.iter_mut() {
                 *w = 0.8;
             }
-            g.splat(16.0, 16.0, 5.0, 0.3, [0.5, 0.3, 0.7]);
+            g.splat5(16.0, 16.0, 5.0, 0.3, [0.5, 0.3, 0.7]);
             let p = DiffusionParams::default();
             for _ in 0..25 {
                 g.step(&p);
@@ -1041,7 +1175,7 @@ mod tests {
             for w in g.water.iter_mut() {
                 *w = wet;
             }
-            g.splat(24.0, 24.0, 3.0, 0.0, [0.7, 0.2, 0.1]);
+            g.splat5(24.0, 24.0, 3.0, 0.0, [0.7, 0.2, 0.1]);
             let p = DiffusionParams {
                 evaporation: 0.0,
                 ..Default::default()
@@ -1056,7 +1190,7 @@ mod tests {
                 for x in 0..48u32 {
                     let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
                     if (7.0..9.0).contains(&d) {
-                        ring += g.pigment()[(y * 48 + x) as usize][0];
+                        ring += g.pmass((y * 48 + x) as usize);
                     }
                 }
             }
@@ -1075,18 +1209,17 @@ mod tests {
     #[test]
     fn solver_is_stable_over_many_steps() {
         let mut g = DiffusionGrid::new(40, 40, 1.0);
-        g.splat(20.0, 20.0, 10.0, 1.0, [0.9, 0.8, 0.2]);
-        g.splat(10.0, 10.0, 4.0, 0.6, [0.1, 0.2, 0.9]);
+        g.splat5(20.0, 20.0, 10.0, 1.0, [0.9, 0.8, 0.2]);
+        g.splat5(10.0, 10.0, 4.0, 0.6, [0.1, 0.2, 0.9]);
         let p = DiffusionParams::default();
         for _ in 0..200 {
             g.step(&p);
         }
         for px in g.pigment() {
             for &c in px {
-                assert!(
-                    c.is_finite() && (0.0..10.0).contains(&c),
-                    "unstable value {c}"
-                );
+                // ADR-0080: err channels are signed (a re-anchor correction), so bound the
+                // magnitude rather than requiring ≥0 (ks + mass stay ≥0 via the convex passes).
+                assert!(c.is_finite() && c.abs() < 10.0, "unstable value {c}");
             }
         }
     }
@@ -1096,7 +1229,7 @@ mod tests {
     #[test]
     fn drying_freezes_the_pigment() {
         let mut g = DiffusionGrid::new(48, 48, 1.0);
-        g.splat(24.0, 24.0, 4.0, 0.5, [0.6, 0.2, 0.1]);
+        g.splat5(24.0, 24.0, 4.0, 0.5, [0.6, 0.2, 0.1]);
         let p = DiffusionParams::default();
         // Run until dry (water starts at ≤0.5, evap 0.012 → ~42 steps to 0).
         for _ in 0..60 {
@@ -1124,13 +1257,13 @@ mod tests {
     #[test]
     fn deposition_off_is_dormant() {
         let mut g = DiffusionGrid::new(40, 40, 1.0);
-        g.splat(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
+        g.splat5(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
         let p = DiffusionParams::default();
         for _ in 0..50 {
             g.step(&p);
         }
         let dep = g.total_deposited();
-        assert_eq!(dep, [0.0, 0.0, 0.0], "deposition must be dormant at rate 0");
+        assert_eq!(dep, 0.0, "deposition must be dormant at rate 0");
     }
 
     /// Mass-conserving: `TransferPigment` MOVES pigment flowing→deposited, never
@@ -1142,7 +1275,7 @@ mod tests {
         for w in g.water.iter_mut() {
             *w = 1.0;
         }
-        g.splat(24.0, 24.0, 8.0, 0.0, [0.6, 0.2, 0.1]);
+        g.splat5(24.0, 24.0, 8.0, 0.0, [0.6, 0.2, 0.1]);
         let before = g.total_pigment();
         let p = DiffusionParams {
             evaporation: 0.0, // isolate conservation (no drying)
@@ -1156,15 +1289,12 @@ mod tests {
         }
         let flow = g.total_pigment();
         let dep = g.total_deposited();
-        assert!(dep[0] > 0.01, "deposition must actually occur (dep {dep:?})");
-        for k in 0..3 {
-            let total = flow[k] + dep[k];
-            assert!(
-                (before[k] - total).abs() < 1e-3 * (before[k].abs() + 1.0),
-                "channel {k}: flowing+deposited {total} != splatted {}",
-                before[k]
-            );
-        }
+        assert!(dep > 0.01, "deposition must actually occur (dep {dep})");
+        let total = flow + dep;
+        assert!(
+            (before - total).abs() < 1e-3 * (before.abs() + 1.0),
+            "flowing+deposited mass {total} != splatted {before}"
+        );
     }
 
     /// EDGE-DARKENING: a wash's rim (lower water from the splat falloff) dries first,
@@ -1175,7 +1305,7 @@ mod tests {
         let (w, h) = (80u32, 80u32);
         let (cx, cy, r) = (40.0f32, 40.0, 16.0);
         let mut g = DiffusionGrid::new(w, h, 1.0);
-        g.splat(cx, cy, r, 0.9, [0.5, 0.3, 0.2]);
+        g.splat5(cx, cy, r, 0.9, [0.5, 0.3, 0.2]);
         let p = DiffusionParams {
             deposition: 0.0,
             deposition_dry: 0.4, // pure dry-driven deposition isolates edge-darkening
@@ -1194,8 +1324,8 @@ mod tests {
                     let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
                     if d >= lo && d < hi {
                         let i = (y * w + x) as usize;
-                        dep += g.deposited()[i][0];
-                        tot += g.deposited()[i][0] + g.pigment()[i][0];
+                        dep += g.dmass(i);
+                        tot += g.dmass(i) + g.pmass(i);
                     }
                 }
             }
@@ -1219,7 +1349,7 @@ mod tests {
             *wv = 0.6;
         }
         // Broad pigment coverage so most cells carry pigment to settle.
-        g.splat(32.0, 32.0, 28.0, 0.0, [0.5, 0.4, 0.3]);
+        g.splat5(32.0, 32.0, 28.0, 0.0, [0.5, 0.4, 0.3]);
         // Small base + few steps keeps the deposited fraction MID-range (not saturated
         // near 1, where the valley/crest gap would be compressed), so the granulation
         // rate difference is visible.
@@ -1239,15 +1369,15 @@ mod tests {
         let median = sorted[sorted.len() / 2];
         let (mut v_dep, mut v_tot, mut c_dep, mut c_tot) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
         for i in 0..(w * h) as usize {
-            let tot = g.deposited()[i][0] + g.pigment()[i][0];
+            let tot = g.dmass(i) + g.pmass(i);
             if tot < 1e-4 {
                 continue;
             }
             if g.paper[i] < median {
-                v_dep += g.deposited()[i][0];
+                v_dep += g.dmass(i);
                 v_tot += tot;
             } else {
-                c_dep += g.deposited()[i][0];
+                c_dep += g.dmass(i);
                 c_tot += tot;
             }
         }
@@ -1268,7 +1398,7 @@ mod tests {
     #[test]
     fn velocity_layer_off_is_dormant() {
         let mut g = DiffusionGrid::new(40, 40, 1.0);
-        g.splat(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
+        g.splat5(20.0, 20.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
         let p = DiffusionParams::default();
         for _ in 0..40 {
             g.step(&p);
@@ -1286,7 +1416,7 @@ mod tests {
     fn velocity_layer_is_deterministic() {
         let run = || {
             let mut g = DiffusionGrid::new(40, 36, 1.0);
-            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            g.splat5(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
             let p = DiffusionParams {
                 velocity: 1.4,
                 viscosity: 0.1,
@@ -1308,8 +1438,8 @@ mod tests {
     #[test]
     fn velocity_layer_is_stable_over_many_steps() {
         let mut g = DiffusionGrid::new(48, 48, 2.0);
-        g.splat(24.0, 24.0, 12.0, 1.0, [0.9, 0.8, 0.2]);
-        g.splat(12.0, 30.0, 5.0, 0.7, [0.1, 0.2, 0.9]);
+        g.splat5(24.0, 24.0, 12.0, 1.0, [0.9, 0.8, 0.2]);
+        g.splat5(12.0, 30.0, 5.0, 0.7, [0.1, 0.2, 0.9]);
         let p = DiffusionParams {
             velocity: 1.6,
             viscosity: 0.12,
@@ -1322,7 +1452,8 @@ mod tests {
         }
         for px in g.pigment() {
             for &c in px {
-                assert!(c.is_finite() && (0.0..10.0).contains(&c), "unstable pigment {c}");
+                // ADR-0080: err channels are signed; bound magnitude (ks + mass stay ≥0).
+                assert!(c.is_finite() && c.abs() < 10.0, "unstable pigment {c}");
             }
         }
         let (u, v) = g.velocity();
@@ -1342,7 +1473,7 @@ mod tests {
             let (mut num, mut den) = (0.0f32, 0.0f32);
             for y in 0..h {
                 for x in 0..w {
-                    let m = g.pigment()[(y * w + x) as usize][0];
+                    let m = g.pmass((y * w + x) as usize);
                     num += m * x as f32;
                     den += m;
                 }
@@ -1362,7 +1493,7 @@ mod tests {
             for uu in g.vel_u.iter_mut() {
                 *uu = 0.25; // uniform rightward momentum (divergence-free → no projection needed)
             }
-            g.splat(20.0, 24.0, 5.0, 0.0, [0.6, 0.2, 0.1]);
+            g.splat5(20.0, 24.0, 5.0, 0.0, [0.6, 0.2, 0.1]);
             let before = com_x(&g);
             let p = DiffusionParams {
                 evaporation: 0.0,
@@ -1408,7 +1539,7 @@ mod tests {
                 for x in 0..w {
                     let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
                     if d >= lo && d < hi {
-                        s += g.pigment()[(y * w + x) as usize][0];
+                        s += g.pmass((y * w + x) as usize);
                         n += 1.0;
                     }
                 }
@@ -1417,7 +1548,7 @@ mod tests {
         };
         let run = |velocity: f32| -> (f32, f32) {
             let mut g = DiffusionGrid::new(w, h, 1.0);
-            g.splat(cx, cy, 20.0, 0.9, [0.5, 0.25, 0.15]);
+            g.splat5(cx, cy, 20.0, 0.9, [0.5, 0.25, 0.15]);
             let p = DiffusionParams {
                 velocity,
                 viscosity: 0.1,
@@ -1477,7 +1608,7 @@ mod tests {
         let (w, h) = (64u32, 64u32);
         let (cx, cy) = (32.0f32, 32.0);
         let mut g = DiffusionGrid::new(w, h, 1.0);
-        g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+        g.splat5(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
         let p = DiffusionParams { evaporation: 0.0, capillary: 0.0, ..Default::default() };
         for _ in 0..50 {
             g.step(&p);
@@ -1496,7 +1627,7 @@ mod tests {
         let (cx, cy) = (32.0f32, 32.0);
         let run = |capillary: f32| -> DiffusionGrid {
             let mut g = DiffusionGrid::new(w, h, 1.0);
-            g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+            g.splat5(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
             let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
             for _ in 0..50 {
                 g.step(&p);
@@ -1525,7 +1656,7 @@ mod tests {
     fn capillary_conserves_water_and_pigment() {
         let (w, h) = (48u32, 48u32);
         let mut g = DiffusionGrid::new(w, h, 1.0);
-        g.splat(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]); // peak ≤ 0.9 → no splat saturation
+        g.splat5(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]); // peak ≤ 0.9 → no splat saturation
         let water_before: f64 = g.water().iter().map(|&x| x as f64).sum();
         let pig_before = g.total_pigment();
         let p = DiffusionParams { evaporation: 0.0, capillary: 0.2, ..Default::default() };
@@ -1538,14 +1669,10 @@ mod tests {
             (water_before - water_after).abs() < 1e-3 * (water_before.abs() + 1.0),
             "capillary must conserve water: {water_before} -> {water_after}"
         );
-        for k in 0..3 {
-            assert!(
-                (pig_before[k] - pig_after[k]).abs() < 1e-3 * (pig_before[k].abs() + 1.0),
-                "capillary must conserve pigment ch{k}: {} -> {}",
-                pig_before[k],
-                pig_after[k]
-            );
-        }
+        assert!(
+            (pig_before - pig_after).abs() < 1e-3 * (pig_before.abs() + 1.0),
+            "capillary must conserve pigment mass: {pig_before} -> {pig_after}"
+        );
     }
 
     /// DETERMINISTIC (HR-5): pure arithmetic → same inputs give a bit-identical field.
@@ -1553,7 +1680,7 @@ mod tests {
     fn capillary_is_deterministic() {
         let run = || {
             let mut g = DiffusionGrid::new(40, 36, 1.0);
-            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            g.splat5(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
             let p = DiffusionParams { capillary: 0.2, ..Default::default() };
             for _ in 0..25 {
                 g.step(&p);
@@ -1577,7 +1704,7 @@ mod tests {
                 for x in 0..w {
                     let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
                     if d >= lo && d < hi {
-                        s += g.pigment()[(y * w + x) as usize][0];
+                        s += g.pmass((y * w + x) as usize);
                         n += 1.0;
                     }
                 }
@@ -1586,7 +1713,7 @@ mod tests {
         };
         let run = |capillary: f32| -> f32 {
             let mut g = DiffusionGrid::new(w, h, 1.0);
-            g.splat(cx, cy, 8.0, 1.0, [0.6, 0.2, 0.1]);
+            g.splat5(cx, cy, 8.0, 1.0, [0.6, 0.2, 0.1]);
             let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
             for _ in 0..80 {
                 g.step(&p);
@@ -1620,7 +1747,7 @@ mod tests {
         // Furthest radius reached by water (> 1e-3) and by pigment (> 1e-4).
         let run = |mobility: f32| -> (u32, u32) {
             let mut g = DiffusionGrid::new(w, h, 1.0);
-            g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+            g.splat5(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
             let p = DiffusionParams {
                 capillary: 0.22,
                 capillary_mobility: mobility,
@@ -1638,7 +1765,7 @@ mod tests {
                     if g.water()[i] > 1.0e-3 {
                         wr = wr.max(d);
                     }
-                    if g.pigment()[i][0] > 1.0e-4 {
+                    if g.pmass(i) > 1.0e-4 {
                         pr = pr.max(d);
                     }
                 }
@@ -1670,12 +1797,13 @@ mod tests {
     /// whole fringe. Also proves capillary GROWS that envelope vs off (the fringe is real).
     #[test]
     fn capillary_fringe_pigment_stays_inside_the_wet_bbox() {
+        type Bbox = (u32, u32, u32, u32);
         let (w, h) = (72u32, 64u32);
-        let pig_bbox = |g: &DiffusionGrid| -> (u32, u32, u32, u32) {
+        let pig_bbox = |g: &DiffusionGrid| -> Bbox {
             let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
             for y in 0..h {
                 for x in 0..w {
-                    if g.pigment()[(y * w + x) as usize][0] > 1.0e-4 {
+                    if g.pmass((y * w + x) as usize) > 1.0e-4 {
                         x0 = x0.min(x);
                         y0 = y0.min(y);
                         x1 = x1.max(x);
@@ -1685,9 +1813,9 @@ mod tests {
             }
             (x0, y0, x1, y1)
         };
-        let run = |capillary: f32| -> ((u32, u32, u32, u32), (u32, u32, u32, u32)) {
+        let run = |capillary: f32| -> (Bbox, Bbox) {
             let mut g = DiffusionGrid::new(w, h, 1.0);
-            g.splat(36.0, 32.0, 9.0, 1.0, [0.5, 0.3, 0.2]);
+            g.splat5(36.0, 32.0, 9.0, 1.0, [0.5, 0.3, 0.2]);
             // No evaporation: keep the field wet so the fringe is fully developed (aggressive
             // capillary + drying would dry the thin film to nothing — a separate concern).
             let p = DiffusionParams { capillary, evaporation: 0.0, ..Default::default() };
@@ -1739,7 +1867,7 @@ mod tests {
             for uu in g.vel_u.iter_mut() {
                 *uu = 0.3; // uniform rightward momentum (divergence-free → no projection)
             }
-            g.splat(18.0, 20.0, 4.0, 0.0, [0.8, 0.4, 0.2]);
+            g.splat5(18.0, 20.0, 4.0, 0.0, [0.8, 0.4, 0.2]);
             let p = DiffusionParams {
                 evaporation: 0.0,
                 diffusivity: 0.0, // isolate advection (no symmetric bloom)
@@ -1755,7 +1883,7 @@ mod tests {
             for _ in 0..15 {
                 g.step(&p);
             }
-            g.pigment().iter().map(|px| px[0]).fold(0.0f32, f32::max) // peak
+            g.pigment().iter().map(|c| c[PIG_MASS]).fold(0.0f32, f32::max) // peak (mass)
         };
         let peak_sharp = run(1.0);
         let peak_soft = run(0.0);
@@ -1774,7 +1902,7 @@ mod tests {
     fn sharpness_is_deterministic() {
         let run = || {
             let mut g = DiffusionGrid::new(40, 36, 1.0);
-            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            g.splat5(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
             let p = DiffusionParams { velocity: 1.4, pressure: 1.0, sharpness: 1.0, ..Default::default() };
             for _ in 0..25 {
                 g.step(&p);
@@ -1782,5 +1910,70 @@ mod tests {
             g.pigment().to_vec()
         };
         assert_eq!(run(), run(), "sharpened advection must be deterministic (HR-5)");
+    }
+
+    // ───────────────── ADR-0080 — multi-pigment wet-field mixing ─────────────────
+
+    /// **THE P1 mixing gate (ADR-0080):** two overlapping wet blobs of DIFFERENT colours mix
+    /// SUBTRACTIVELY in the field — blue (left) + yellow (right) → a green-dominant colour in
+    /// the overlap, NOT the muddy grey a linear/coverage average gives. This is the wet-on-wet
+    /// "magic" the whole ADR exists for, proven at the field level (composite gate is separate).
+    #[test]
+    fn field_mixes_blue_and_yellow_to_green() {
+        let (w, h) = (64u32, 48u32);
+        let mut g = DiffusionGrid::new(w, h, 1.0);
+        for wv in g.water.iter_mut() {
+            *wv = 0.9; // flood wet so both blobs bloom + overlap at the centre
+        }
+        // Two equal discs meeting at the centre column (x=32, equidistant from both centres).
+        g.splat(26.0, 24.0, 12.0, 0.0, [0.0, 0.0, 1.0], 1.0);
+        g.splat(38.0, 24.0, 12.0, 0.0, [1.0, 1.0, 0.0], 1.0);
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..30 {
+            g.step(&p);
+        }
+        let i = (24 * w + 32) as usize;
+        assert!(g.pmass(i) > 1e-3, "overlap must carry pigment: mass {}", g.pmass(i));
+        let c = g.pcolor(i);
+        assert!(
+            c[1] > c[0] && c[1] > c[2],
+            "overlap mixes to green-dominant (not mud): {c:?}"
+        );
+        assert!(c[1] > 0.12, "overlap is a real green, not dark mud: {c:?}");
+    }
+
+    /// **THE P1 single-pigment gate (ADR-0080 §2.3):** a single-colour wash reduces to EXACTLY
+    /// its picked colour at every cell that carries pigment, at any coverage — this is what
+    /// preserves the validated single-colour look (the composite of one colour is unchanged).
+    #[test]
+    fn field_single_color_reduces_to_picked_color() {
+        let (w, h) = (48u32, 48u32);
+        let col = [0.15, 0.35, 0.8];
+        let mut g = DiffusionGrid::new(w, h, 1.0);
+        for wv in g.water.iter_mut() {
+            *wv = 0.9;
+        }
+        g.splat(24.0, 24.0, 10.0, 0.0, col, 0.8);
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            g.step(&p);
+        }
+        for i in 0..(w * h) as usize {
+            if g.pmass(i) > 1e-4 {
+                let c = g.pcolor(i);
+                for k in 0..3 {
+                    assert!(
+                        (c[k] - col[k]).abs() < 2e-3,
+                        "cell {i} colour {c:?} != picked {col:?}"
+                    );
+                }
+            }
+        }
     }
 }

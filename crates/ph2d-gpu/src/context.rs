@@ -74,10 +74,28 @@ impl GpuContext {
         // caps storage texture bindings and workgroup sizes too low
         // for Vello to even compile its shaders. iPad/web shells will
         // need to revisit if/when they pick a downlevel adapter.
+        //
+        // **ADR-0083 — 4K full-res watercolor residency.** The 32-channel wet-field
+        // (`ph2d_painter_brush` `PIG_CH`, ADR-0080/0081) is 128 B/cell, so a full-res 4K grid
+        // pigment buffer is ~1.06 GB — past the desktop-default `max_storage_buffer_binding_size`
+        // (128 MiB). Raise the storage-buffer + total buffer-size caps to the ADAPTER's advertised
+        // max (always ≥ the default → a safe superset; `request_device` can't fail on it and
+        // nothing that worked breaks — it only ALLOWS bigger buffers). The resident field then
+        // allocates at full-res 4K where the hardware has the VRAM (Apple Silicon unified memory,
+        // modern dGPUs). Smaller devices advertise less → the field stays low-res grid (canvas/4,
+        // the production default) + the perf bench skips oversized configs (no silent cap).
+        let adapter_limits = adapter.limits();
+        let mut required_limits = wgpu::Limits::default();
+        required_limits.max_storage_buffer_binding_size = required_limits
+            .max_storage_buffer_binding_size
+            .max(adapter_limits.max_storage_buffer_binding_size);
+        required_limits.max_buffer_size = required_limits
+            .max_buffer_size
+            .max(adapter_limits.max_buffer_size);
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
             required_features: compression_features,
-            required_limits: wgpu::Limits::default(),
+            required_limits,
             experimental_features: wgpu::ExperimentalFeatures::default(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,

@@ -148,12 +148,13 @@ fn per_frame_cost_by_canvas_size() {
         return;
     };
     eprintln!("--- GPU-resident fluid per-frame cost (post E1+E2+E3) ---");
-    // ADR-0080: the wet-field carries PIG_CH (=28) channels per cell, so a full-res grid
-    // pigment buffer is `cw·ch·28·4` bytes — at ≥2048² that exceeds the default
-    // `max_storage_buffer_binding_size` (256 MB). The PRODUCTION path uses a LOW-RES grid
-    // (canvas/4), so this never hits in practice; the benchmark forces grid = canvas to
-    // measure the worst case, so it skips sizes the device can't allocate (no silent cap —
-    // it logs the skip). The 4K-resident path is a separate GPU-residency follow-up.
+    // The wet-field carries PIG_CH (=32) channels/cell (ADR-0080/0081), so a full-res grid
+    // pigment buffer is `cw·ch·32·4` bytes (~1.06 GB at 4K). **ADR-0083** raised the device's
+    // `max_storage_buffer_binding_size` to the adapter's max, so full-res 4K now allocates +
+    // runs where the hardware has the VRAM (Apple Silicon, modern dGPUs). The PRODUCTION path
+    // uses a LOW-RES grid (canvas/4) regardless; this bench forces grid = canvas to measure the
+    // full-res worst case, and still skips any size beyond the device's (now adapter-max) cap on
+    // smaller GPUs (no silent cap — it logs the skip).
     let max_buf = u64::from(gpu.device.limits().max_storage_buffer_binding_size);
     for &(cw, ch) in &[(64u32, 64u32), (1408, 768), (2048, 2048), (3840, 2160)] {
         let pig_bytes = u64::from(cw) * u64::from(ch) * PIG_CH as u64 * 4;

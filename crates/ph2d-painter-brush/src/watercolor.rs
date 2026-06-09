@@ -52,7 +52,9 @@ pub struct WatercolorParams {
     pub capillary: f32,
     // ── Advection sharpness (ADR-0078 S5c — BFECC/MacCormack) ──
     pub sharpness: f32,
-    // === 17/18 used (cap ≤ 18, ADR-0079-amendment-1) — 1 slot of headroom ===
+    // ── Lift (ADR-0081) — re-wetting re-mobilizes non-staining deposited pigment ──
+    pub lift: f32,
+    // === 18/18 used (cap ≤ 18, ADR-0079-amendment-1 + ADR-0081 `lift`) — cap full ===
 }
 
 impl Default for WatercolorParams {
@@ -91,16 +93,19 @@ impl Default for WatercolorParams {
             // Sharpness preset (ADR-0078 S5c) — a moderate MacCormack correction ON by default so
             // velocity flow + backruns read crisp, not smeared. 0 = soft first-order; 1 = max.
             sharpness: 0.5,
+            // Lift OFF by default (ADR-0081) — the lift pass is dormant; the artist opts in via
+            // the "Lift" slider (re-wetting then reactivates dried non-staining pigment).
+            lift: 0.0,
         }
     }
 }
 
 impl WatercolorParams {
-    /// The control descriptors (label + range), indexed `0..17` — the single source the
+    /// The control descriptors (label + range), indexed `0..18` — the single source the
     /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
-    pub const CONTROLS: [WatercolorControl; 17] = [
+    pub const CONTROLS: [WatercolorControl; 18] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl {
@@ -195,6 +200,14 @@ impl WatercolorParams {
             min: 0.0,
             max: 2.5,
         },
+        // Lift (ADR-0081): re-wetting re-mobilizes non-staining dried pigment. 0 = off (deposited
+        // stays frozen — the validated look bit-for-bit); higher = wet areas reactivate dried
+        // paint (sedimentary pigments lift, staining ones resist). Capped at 1 (full re-mobilize).
+        WatercolorControl {
+            label: "Lift",
+            min: 0.0,
+            max: 1.0,
+        },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -221,6 +234,7 @@ impl WatercolorParams {
             14 => self.pressure,
             15 => self.capillary,
             16 => self.sharpness,
+            17 => self.lift,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -247,6 +261,7 @@ impl WatercolorParams {
             14 => self.pressure = v,
             15 => self.capillary = v,
             16 => self.sharpness = v,
+            17 => self.lift = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -289,6 +304,7 @@ impl WatercolorParams {
             // Pigment mobility is a physical constant (paper filtering), not a brush control.
             capillary_mobility: crate::diffusion::CAPILLARY_PIGMENT_MOBILITY,
             sharpness: self.sharpness,
+            lift: self.lift,
         }
     }
 }

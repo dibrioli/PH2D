@@ -53,15 +53,20 @@ pub const PIG_BANDS: usize = SPECTRAL_BANDS;
 pub const PIG_ERR0: usize = PIG_BANDS;
 /// Index of the coverage `mass` channel.
 pub const PIG_MASS: usize = PIG_BANDS + 3;
-/// Channels per wet-field cell (ADR-0080): `ks[24]` (mass-weighted Kubelka–Munk per band),
-/// `err[3]` (round-trip re-anchor) and `mass` (coverage) — 28 = 7·4 (clean std430 vec4
-/// packing for the GPU mirror). All transport LINEARLY and identically under diffuse/advect/
-/// transfer/capillary, so the subtractive multi-pigment mix emerges from the transport
-/// itself: blue+yellow meet, their `ks`/`err`/`mass` sum, and the per-cell reduction
-/// ([`DiffusionGrid::cell_color`]) yields green. A single pigment reduces to exactly its own
-/// colour, so the single-colour look matches the pre-ADR-0080 path to float precision.
-pub const PIG_CH: usize = PIG_BANDS + 4;
-/// One wet-field cell's pigment channels (ADR-0080).
+/// Index of the mass-weighted **staining** accumulator (ADR-0081): `stain_acc = Σ mass_i·stain_i`,
+/// `stain_acc/mass` = the staining of the pigment in the cell ∈ [0,1] (1 = permanent stain that
+/// resists lifting, 0 = liftable). Transports linearly like `ks`/`err` (survives mixing); read
+/// by the opt-in lift pass. 0 for raw colours (no pigment selected) → lift dormant.
+pub const PIG_STAIN: usize = PIG_BANDS + 4;
+/// Channels per wet-field cell: `ks[24]` (mass-weighted Kubelka–Munk per band, ADR-0080),
+/// `err[3]` (round-trip re-anchor), `mass` (coverage), `stain` (ADR-0081), and 3 reserved/pad —
+/// **32 = 8·4** (clean std430 vec4 packing for the GPU mirror). All transport LINEARLY and
+/// identically under diffuse/advect/transfer/capillary, so the subtractive multi-pigment mix +
+/// per-pigment staining emerge from the transport itself; the per-cell reduction
+/// ([`DiffusionGrid::cell_color`]) ignores `stain`/pad (they're behaviour, not colour), so the
+/// composited colour is unchanged. A single pigment reduces to exactly its own colour.
+pub const PIG_CH: usize = PIG_BANDS + 8;
+/// One wet-field cell's pigment channels (ADR-0080/0081).
 pub type WetCell = [f32; PIG_CH];
 
 /// Tunable solver coefficients. `diffusivity` already folds the time step
@@ -150,6 +155,11 @@ pub struct DiffusionParams {
     /// look, mass-conserving); `>0` ⇒ progressively sharper (the clamp keeps it stable but is no
     /// longer strictly mass-conserving). Range `[0,1]`.
     pub sharpness: f32,
+    /// **Lift (ADR-0081)** ∈ [0,1] — rate at which WET cells re-mobilize NON-staining deposited
+    /// pigment back into the flowing layer (re-wetting "lifts" dried paint; staining pigments
+    /// resist). `0` ⇒ the lift pass is dormant (deposited stays frozen — the pre-ADR-0081 path is
+    /// bit-identical). Read by [`DiffusionGrid::lift_pigment`].
+    pub lift: f32,
 }
 
 /// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
@@ -189,6 +199,8 @@ impl Default for DiffusionParams {
             capillary_mobility: CAPILLARY_PIGMENT_MOBILITY,
             // First-order advection by default (ADR-0078 S5c) → bit-identical shipped look.
             sharpness: 0.0,
+            // Lift OFF by default (ADR-0081) → the lift pass is dormant, deposited stays frozen.
+            lift: 0.0,
         }
     }
 }
@@ -363,9 +375,11 @@ impl DiffusionGrid {
     /// Deposit pigment + water in a soft disc — a brush touch wetting the paper.
     /// Re-wetting a dried area re-opens its gate so the old pigment blooms again.
     /// `water_add` raises wetness (clamped to 1); a pigment of `color` (linear sRGB) at peak
-    /// coverage `pigment_mass` is added, weighted by the disc falloff. The pigment is the
-    /// mass-weighted K/S accumulation (ADR-0080), so overlapping splats of different colours
-    /// mix subtractively in the field.
+    /// coverage `pigment_mass` is added, weighted by the disc falloff. `staining` ∈ [0,1]
+    /// (ADR-0081) rides along mass-weighted (1 = permanent stain, resists lifting; 0 = liftable
+    /// / raw colour). The pigment is the mass-weighted K/S accumulation (ADR-0080), so
+    /// overlapping splats of different colours mix subtractively in the field.
+    #[allow(clippy::too_many_arguments)] // a brush dab is genuinely (pos, r, water, colour, mass, stain)
     pub fn splat(
         &mut self,
         cx: f32,
@@ -374,6 +388,7 @@ impl DiffusionGrid {
         water_add: f32,
         color: [f32; 3],
         pigment_mass: f32,
+        staining: f32,
     ) {
         if radius <= 0.0 {
             return;
@@ -381,6 +396,7 @@ impl DiffusionGrid {
         // The per-unit-mass pigment channels of `color`, built ONCE (the dab is one colour);
         // each cell adds `pigment_mass·fall ×` this — linear in mass, so `dab[PIG_MASS]·m = m`.
         let dab = Self::cell_from_color_mass(color, 1.0);
+        let stain = staining.clamp(0.0, 1.0);
         let r = radius.max(0.5);
         let x0 = ((cx - r).floor() as i32).max(0);
         let y0 = ((cy - r).floor() as i32).max(0);
@@ -401,6 +417,8 @@ impl DiffusionGrid {
                 for k in 0..PIG_CH {
                     cell[k] += dab[k] * m;
                 }
+                // Staining rides along mass-weighted (dab carries 0 here); ADR-0081.
+                cell[PIG_STAIN] += stain * m;
             }
         }
     }
@@ -423,6 +441,13 @@ impl DiffusionGrid {
         // unless the velocity layer is on → the shipped gradient-flow path is untouched.
         if p.velocity > 0.0 {
             self.move_water(p);
+        }
+        // Lift (ADR-0081): in wet areas, re-mobilize NON-staining deposited pigment back into the
+        // flowing layer so it blooms/moves again — re-wetting "lifts" dried paint; staining
+        // pigments resist. Runs BEFORE diffuse so the lifted pigment participates this step. A
+        // no-op while `lift == 0` (deposited stays frozen — the pre-ADR-0081 path is bit-identical).
+        if p.lift > 0.0 {
+            self.lift_pigment(p);
         }
         self.diffuse(p, &gates);
         // Advection: first-order upwind by default; MacCormack (sharp) when `sharpness > 0`
@@ -810,6 +835,38 @@ impl DiffusionGrid {
         }
     }
 
+    /// **Lift (ADR-0081)** — the inverse of `transfer_pigment`: in WET cells, re-mobilize a
+    /// fraction of the DEPOSITED (dried) pigment back into the FLOWING layer, so re-wetting dried
+    /// paint reactivates it (it blooms/moves again). The rate is `lift · smoothstep(w_lo,w_hi,
+    /// water) · (1 − staining)` where `staining` is the DEPOSITED pigment's own (per-cell
+    /// `stain_acc/mass`) — so a staining pigment (Phthalo, Quinacridone) resists lifting while a
+    /// sedimentary one (Ultramarine, Raw Sienna) lifts. Mass-conserving (every gram leaving
+    /// `deposited` lands in `pigment`). A no-op while `lift == 0` (deposited stays frozen — the
+    /// pre-ADR-0081 path is bit-identical).
+    fn lift_pigment(&mut self, p: &DiffusionParams) {
+        if p.lift <= 0.0 {
+            return;
+        }
+        let n = (self.width as usize) * (self.height as usize);
+        for i in 0..n {
+            let dep_mass = self.deposited[i][PIG_MASS];
+            if dep_mass <= 1.0e-6 {
+                continue;
+            }
+            let stain = (self.deposited[i][PIG_STAIN] / dep_mass).clamp(0.0, 1.0);
+            let wet = smoothstep(p.w_lo, p.w_hi, self.water[i]);
+            let rate = (p.lift * wet * (1.0 - stain)).clamp(0.0, 1.0);
+            if rate <= 0.0 {
+                continue;
+            }
+            for k in 0..PIG_CH {
+                let moved = rate * self.deposited[i][k];
+                self.deposited[i][k] -= moved;
+                self.pigment[i][k] += moved;
+            }
+        }
+    }
+
     /// Pass 6 — **capillary flow** (ADR-0078 S5 / Curtis 1997 capillary layer): the water
     /// wicks from wet cells into the drier paper *around* the painted area, **carrying a thread
     /// of pigment with it**, so a soft, feathery, *coloured* fringe grows past the painted edge
@@ -1109,7 +1166,7 @@ mod tests {
     }
     impl TestField for DiffusionGrid {
         fn splat5(&mut self, cx: f32, cy: f32, r: f32, water: f32, color: [f32; 3]) {
-            self.splat(cx, cy, r, water, color, color[0] + color[1] + color[2]);
+            self.splat(cx, cy, r, water, color, color[0] + color[1] + color[2], 0.0);
         }
         fn pmass(&self, i: usize) -> f32 {
             self.pigment_mass(i)
@@ -1988,8 +2045,8 @@ mod tests {
             *wv = 0.9; // flood wet so both blobs bloom + overlap at the centre
         }
         // Two equal discs meeting at the centre column (x=32, equidistant from both centres).
-        g.splat(26.0, 24.0, 12.0, 0.0, [0.0, 0.0, 1.0], 1.0);
-        g.splat(38.0, 24.0, 12.0, 0.0, [1.0, 1.0, 0.0], 1.0);
+        g.splat(26.0, 24.0, 12.0, 0.0, [0.0, 0.0, 1.0], 1.0, 0.0);
+        g.splat(38.0, 24.0, 12.0, 0.0, [1.0, 1.0, 0.0], 1.0, 0.0);
         let p = DiffusionParams {
             evaporation: 0.0,
             ..Default::default()
@@ -2022,7 +2079,7 @@ mod tests {
         for wv in g.water.iter_mut() {
             *wv = 0.9;
         }
-        g.splat(24.0, 24.0, 10.0, 0.0, col, 0.8);
+        g.splat(24.0, 24.0, 10.0, 0.0, col, 0.8, 0.0);
         let p = DiffusionParams {
             evaporation: 0.0,
             ..Default::default()
@@ -2041,5 +2098,154 @@ mod tests {
                 }
             }
         }
+    }
+
+    // ───────────────── ADR-0081 — pigment staining + lift ─────────────────
+
+    /// Dry a freshly-splatted pigment down into the deposited layer (deposition ON), then return
+    /// the grid + the deposited mass — the setup for the lift tests.
+    fn deposit_then(staining: f32) -> (DiffusionGrid, f64) {
+        let mut g = DiffusionGrid::new(48, 48, 1.0);
+        g.splat(24.0, 24.0, 8.0, 0.5, [0.35, 0.2, 0.55], 0.8, staining);
+        let dep = DiffusionParams {
+            deposition: 0.2,
+            deposition_dry: 0.3,
+            ..Default::default()
+        };
+        for _ in 0..80 {
+            g.step(&dep); // dries (evaporation) → most pigment frozen into `deposited`
+        }
+        let dep_mass = g.total_deposited();
+        (g, dep_mass)
+    }
+
+    /// **THE F1 lift gate (ADR-0081):** re-wetting dried NON-staining pigment re-mobilizes it back
+    /// into the flowing layer (deposited↓, flowing↑), and the total mass is conserved.
+    #[test]
+    fn lift_re_mobilizes_non_staining_deposited_pigment() {
+        let (mut g, dep_before) = deposit_then(0.0); // staining 0 = liftable
+        let flow_before = g.total_pigment();
+        assert!(
+            dep_before > flow_before,
+            "most pigment dried into deposited"
+        );
+        // Re-wet the whole field + step WITH lift on (no deposition/evaporation: isolate lift).
+        for w in g.water.iter_mut() {
+            *w = 0.9;
+        }
+        let lift = DiffusionParams {
+            evaporation: 0.0,
+            lift: 0.6,
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            g.step(&lift);
+        }
+        let dep_after = g.total_deposited();
+        let flow_after = g.total_pigment();
+        assert!(
+            dep_after < dep_before * 0.5,
+            "lift re-mobilized the deposited pigment: {dep_before} -> {dep_after}"
+        );
+        assert!(
+            flow_after > flow_before,
+            "the lifted pigment is back in the flowing layer"
+        );
+        let (tot_b, tot_a) = (dep_before + flow_before, dep_after + flow_after);
+        assert!(
+            (tot_b - tot_a).abs() < 1e-3 * (tot_b.abs() + 1.0),
+            "lift conserves total mass: {tot_b} -> {tot_a}"
+        );
+    }
+
+    /// **THE F1 staining gate (ADR-0081):** a STAINING pigment (stain=1) resists lifting — far
+    /// more of it stays deposited than a liftable one, under the SAME lift.
+    #[test]
+    fn staining_resists_lift() {
+        let remaining = |staining: f32| -> f64 {
+            let (mut g, dep_before) = deposit_then(staining);
+            for w in g.water.iter_mut() {
+                *w = 0.9;
+            }
+            let lift = DiffusionParams {
+                evaporation: 0.0,
+                lift: 0.6,
+                ..Default::default()
+            };
+            for _ in 0..20 {
+                g.step(&lift);
+            }
+            g.total_deposited() / dep_before.max(1e-9) // fraction still deposited
+        };
+        let liftable = remaining(0.0);
+        let staining = remaining(1.0);
+        eprintln!("lift remaining: liftable={liftable:.3} staining={staining:.3}");
+        assert!(
+            staining > liftable + 0.4,
+            "staining must resist lift (remaining {staining:.3} ≫ liftable {liftable:.3})"
+        );
+    }
+
+    /// **Non-destructive (ADR-0081):** `lift = 0` ⇒ the deposited layer stays FROZEN on re-wet,
+    /// bit-identical to the pre-ADR-0081 path (the lift pass is dormant).
+    #[test]
+    fn lift_off_keeps_deposited_frozen() {
+        let (mut g, _) = deposit_then(0.0);
+        let snapshot = g.deposited().to_vec();
+        for w in g.water.iter_mut() {
+            *w = 0.9;
+        }
+        let no_lift = DiffusionParams {
+            evaporation: 0.0,
+            lift: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            g.step(&no_lift);
+        }
+        let mut maxd = 0.0f32;
+        for (a, b) in snapshot.iter().zip(g.deposited().iter()) {
+            for k in 0..PIG_CH {
+                maxd = maxd.max((a[k] - b[k]).abs());
+            }
+        }
+        assert!(
+            maxd < 1e-6,
+            "lift=0 must keep deposited frozen (max Δ {maxd})"
+        );
+    }
+
+    /// The staining channel transports + conserves like `ks`/`mass` (survives mixing): under pure
+    /// diffusion/advection (no deposition) the flowing `stain_acc` is conserved, and a single
+    /// pigment's cells carry its staining ratio.
+    #[test]
+    fn staining_transports_mass_weighted() {
+        let mut g = DiffusionGrid::new(48, 48, 1.0);
+        for w in g.water.iter_mut() {
+            *w = 1.0;
+        }
+        g.splat(24.0, 24.0, 8.0, 0.0, [0.3, 0.3, 0.6], 1.0, 0.9); // staining 0.9
+        let before = g.total_channels()[PIG_STAIN];
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..30 {
+            g.step(&p);
+        }
+        let after = g.total_channels()[PIG_STAIN];
+        assert!(
+            (before - after).abs() < 1e-3 * (before.abs() + 1.0),
+            "stain_acc conserved under transport: {before} -> {after}"
+        );
+        // A pigmented cell carries the pigment's staining ratio (mass-weighted, single pigment).
+        let i = (24 * 48 + 24) as usize;
+        let cell = &g.pigment()[i];
+        assert!(cell[PIG_MASS] > 1e-4, "centre still has pigment");
+        let ratio = cell[PIG_STAIN] / cell[PIG_MASS];
+        assert!(
+            (ratio - 0.9).abs() < 1e-3,
+            "staining ratio preserved: {ratio}"
+        );
     }
 }

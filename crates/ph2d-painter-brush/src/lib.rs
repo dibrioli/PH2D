@@ -76,6 +76,7 @@ pub mod library;
 pub mod pencil;
 pub mod pigment;
 pub mod pigment_mix;
+pub mod pigment_palette;
 pub mod procedural;
 pub mod properties;
 pub mod rendering;
@@ -124,6 +125,7 @@ pub use library::{
 };
 pub use pencil::{CursorOutline, PencilParams};
 pub use pigment::PigmentMode;
+pub use pigment_palette::{PALETTE, PIGMENT_GRANULATION_MAX, Pigment, pigment_by_name};
 pub use procedural::ProceduralGrain;
 pub use properties::PropertiesParams;
 pub use rendering::{BurntEdgesMode, RenderingParams};

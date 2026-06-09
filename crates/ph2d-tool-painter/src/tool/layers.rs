@@ -128,6 +128,12 @@ impl PainterTool {
         self.undo.clear();
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
+        // ADR-0084 (paper-reveal lift): the freshly-activated edit target's content IS the
+        // "paper" the lift brush reveals — paint added while editing it is what's liftable.
+        // Arc clone = zero-copy (commits CoW `canvas_rgba` via `Arc::make_mut`, leaving this
+        // snapshot pointing at the pre-paint content). Every layer-switch site assigns
+        // `canvas_rgba` immediately before calling this, so this hook is the single source.
+        self.paper_base = self.canvas_rgba.clone();
     }
 
     /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.

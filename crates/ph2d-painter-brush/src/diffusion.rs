@@ -259,21 +259,29 @@ fn smoothstep(lo: f32, hi: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// **ADR-0084 — downsample a canvas-res RGBA8 backdrop into a `gw·gh` grid of K–M donor cells.**
-/// Each grid cell box-averages the canvas pixels in its footprint (linear-light colour +
-/// straight alpha) and stores it as [`PIG_CH`]-channel pigment with `mass = avg_alpha` (opaque
-/// paint → full mass, bare paper → none). The single seed used by BOTH the CPU
+/// **ADR-0084 (paper-reveal model) — downsample the PAINT on a canvas into `gw·gh` K–M donor
+/// cells.** "Paint" = how the current `backdrop` deviates from the session's original `paper`
+/// canvas (the Curtis-1997 semantics: lift *desorbs deposited pigment*, revealing the substrate —
+/// it must never treat the substrate itself as liftable pigment). Per pixel, the paintedness is
+/// `max(|Δr|,|Δg|,|Δb|,|Δa|)` (linear light + straight alpha) — 0 on untouched pixels (bare paper
+/// contributes NOTHING: no beige-mud lifting, no lift on unpainted areas), rising with how much
+/// pigment the pixel visibly carries. Each grid cell paintedness-weights the backdrop colour
+/// (so bare pixels in a half-painted cell don't dilute the paint hue) and gets
+/// `mass = avg paintedness`. The single seed used by BOTH the CPU
 /// [`DiffusionGrid::seed_lift_source_from_backdrop`] and the GPU upload path, so the backdrop-lift
-/// donor is bit-identical CPU↔GPU (HR-5). `backdrop.len()` must be `cw·ch·4`.
+/// donor is bit-identical CPU↔GPU (HR-5). `backdrop.len() == paper.len() == cw·ch·4`;
+/// `paper == backdrop` ⇒ all-zero donor (lift inert).
 #[must_use]
 pub fn backdrop_to_lift_source(
     backdrop: &[u8],
+    paper: &[u8],
     cw: u32,
     ch: u32,
     gw: u32,
     gh: u32,
 ) -> Vec<WetCell> {
     debug_assert_eq!(backdrop.len(), (cw as usize) * (ch as usize) * 4);
+    debug_assert_eq!(paper.len(), backdrop.len());
     let mut out = vec![[0.0f32; PIG_CH]; (gw as usize) * (gh as usize)];
     for gy in 0..gh {
         // Inclusive pixel span of this grid row (box footprint), clamped to the canvas.
@@ -282,23 +290,39 @@ pub fn backdrop_to_lift_source(
         for gx in 0..gw {
             let px0 = (gx * cw / gw).min(cw.saturating_sub(1));
             let px1 = (((gx + 1) * cw).div_ceil(gw)).clamp(px0 + 1, cw);
-            let (mut sr, mut sg, mut sb, mut sa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+            let (mut sr, mut sg, mut sb) = (0.0f64, 0.0f64, 0.0f64);
+            let mut swt = 0.0f64;
             let mut cnt = 0.0f64;
             for py in py0..py1 {
                 for px in px0..px1 {
                     let o = ((py * cw + px) * 4) as usize;
-                    sr += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o]));
-                    sg += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o + 1]));
-                    sb += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o + 2]));
-                    sa += f64::from(backdrop[o + 3]) / 255.0;
+                    let br = crate::pigment_mix::srgb8_to_linear(backdrop[o]);
+                    let bg = crate::pigment_mix::srgb8_to_linear(backdrop[o + 1]);
+                    let bb = crate::pigment_mix::srgb8_to_linear(backdrop[o + 2]);
+                    let ba = f32::from(backdrop[o + 3]) / 255.0;
+                    let pr = crate::pigment_mix::srgb8_to_linear(paper[o]);
+                    let pg = crate::pigment_mix::srgb8_to_linear(paper[o + 1]);
+                    let pb = crate::pigment_mix::srgb8_to_linear(paper[o + 2]);
+                    let pa = f32::from(paper[o + 3]) / 255.0;
+                    let painted = (br - pr)
+                        .abs()
+                        .max((bg - pg).abs())
+                        .max((bb - pb).abs())
+                        .max((ba - pa).abs());
+                    let wt = f64::from(painted);
+                    sr += f64::from(br) * wt;
+                    sg += f64::from(bg) * wt;
+                    sb += f64::from(bb) * wt;
+                    swt += wt;
                     cnt += 1.0;
                 }
             }
-            let inv = if cnt > 0.0 { 1.0 / cnt } else { 0.0 };
-            let avg = [(sr * inv) as f32, (sg * inv) as f32, (sb * inv) as f32];
-            let mass = (sa * inv) as f32;
-            if mass > 1.0e-6 {
-                out[(gy * gw + gx) as usize] = DiffusionGrid::cell_from_color_mass(avg, mass);
+            if swt > 1.0e-9 && cnt > 0.0 {
+                let avg = [(sr / swt) as f32, (sg / swt) as f32, (sb / swt) as f32];
+                let mass = (swt / cnt) as f32;
+                if mass > 1.0e-6 {
+                    out[(gy * gw + gx) as usize] = DiffusionGrid::cell_from_color_mass(avg, mass);
+                }
             }
         }
     }
@@ -997,12 +1021,21 @@ impl DiffusionGrid {
     }
 
     /// **Seed the ADR-0084 backdrop-lift donor** from a canvas-res RGBA8 `backdrop` (`cw·ch·4`
-    /// bytes, straight-alpha sRGB — the same buffer the compositor glazes over). Call ONCE at
-    /// stroke start when `lift > 0`; resets `lifted_frac` to 0. Leaving it unseeded (the default)
-    /// keeps the backdrop-lift branch dormant. The downsample is [`backdrop_to_lift_source`], a
-    /// free fn the GPU path reuses verbatim so the seed is bit-identical CPU↔GPU (HR-5).
-    pub fn seed_lift_source_from_backdrop(&mut self, backdrop: &[u8], cw: u32, ch: u32) {
-        self.lift_source = backdrop_to_lift_source(backdrop, cw, ch, self.width, self.height);
+    /// bytes, straight-alpha sRGB — the same buffer the compositor glazes over) and the session's
+    /// original `paper` canvas (same dims): only the PAINT — the backdrop's deviation from the
+    /// paper — is liftable (paper-reveal model). Call ONCE at stroke start when `lift > 0`; resets
+    /// `lifted_frac` to 0. Leaving it unseeded (the default) keeps the backdrop-lift branch
+    /// dormant. The downsample is [`backdrop_to_lift_source`], a free fn the GPU path reuses
+    /// verbatim so the seed is bit-identical CPU↔GPU (HR-5).
+    pub fn seed_lift_source_from_backdrop(
+        &mut self,
+        backdrop: &[u8],
+        paper: &[u8],
+        cw: u32,
+        ch: u32,
+    ) {
+        self.lift_source =
+            backdrop_to_lift_source(backdrop, paper, cw, ch, self.width, self.height);
         self.lifted_frac.iter_mut().for_each(|f| *f = 0.0);
     }
 
@@ -2521,7 +2554,9 @@ mod tests {
     fn backdrop_lift_remobilizes_dry_paint() {
         let (gw, gh) = (32u32, 32u32);
         let mut g = DiffusionGrid::new(gw, gh, 1.0);
-        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [40, 50, 200]), 64, 64);
+        // Paper = fully transparent (a blank sprite) → the solid paint is 100% "painted".
+        let blank = vec![0u8; 64 * 64 * 4];
+        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [40, 50, 200]), &blank, 64, 64);
         let src_before: f64 = g.lift_source().iter().map(|c| f64::from(c[PIG_MASS])).sum();
         let flow_before = g.total_pigment();
         assert!(src_before > 1.0, "donor seeded from the backdrop");
@@ -2575,7 +2610,8 @@ mod tests {
     fn backdrop_lift_off_is_inert() {
         let (gw, gh) = (32u32, 32u32);
         let mut g = DiffusionGrid::new(gw, gh, 1.0);
-        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [200, 30, 30]), 64, 64);
+        let blank = vec![0u8; 64 * 64 * 4];
+        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [200, 30, 30]), &blank, 64, 64);
         for w in g.water.iter_mut() {
             *w = 0.9;
         }
@@ -2595,6 +2631,65 @@ mod tests {
         assert!(
             max_frac < 1e-9,
             "lift=0 must leave lifted_frac at 0 (compositor unchanged)"
+        );
+    }
+
+    /// **Paper-reveal model (ADR-0084 amendment / Enio smoke 2026-06-09):** an UNPAINTED canvas
+    /// (backdrop == the session's original paper — e.g. the opaque-beige demo base) seeds an
+    /// EMPTY donor: a wet lift brush over bare paper lifts NOTHING (no beige-mud bleeding into the
+    /// wash, no `lifted_frac` punching alpha holes that revealed the dark editor background). Only
+    /// the painted deviation lifts: with a red square painted onto the beige paper, the donor has
+    /// mass ONLY under the square.
+    #[test]
+    fn backdrop_lift_only_lifts_paint_not_paper() {
+        let (gw, gh) = (32u32, 32u32);
+        // Opaque beige "paper" canvas (the demo case that produced the dark-mud smoke).
+        let paper = solid_backdrop(64, 64, [228, 214, 184]);
+        // Case 1 — untouched canvas: backdrop == paper ⇒ donor empty ⇒ lift fully inert.
+        let mut g = DiffusionGrid::new(gw, gh, 1.0);
+        g.seed_lift_source_from_backdrop(&paper, &paper, 64, 64);
+        let donor_mass: f64 = g.lift_source().iter().map(|c| f64::from(c[PIG_MASS])).sum();
+        assert!(
+            donor_mass < 1e-9,
+            "bare paper must seed an EMPTY donor (got mass {donor_mass})"
+        );
+        for w in g.water.iter_mut() {
+            *w = 0.9;
+        }
+        let lift = DiffusionParams {
+            evaporation: 0.0,
+            lift: 1.0,
+            ..Default::default()
+        };
+        for _ in 0..10 {
+            g.step(&lift);
+        }
+        assert!(
+            g.total_pigment() < 1e-6 && g.lifted_frac().iter().all(|&f| f < 1e-9),
+            "lifting bare paper must be a no-op (nothing bleeds, nothing lightens)"
+        );
+        // Case 2 — a red square painted on the beige paper: ONLY the square is liftable.
+        let mut painted = paper.clone();
+        for py in 16..48u32 {
+            for px in 16..48u32 {
+                let o = ((py * 64 + px) * 4) as usize;
+                painted[o] = 200;
+                painted[o + 1] = 30;
+                painted[o + 2] = 30;
+            }
+        }
+        let mut g2 = DiffusionGrid::new(gw, gh, 1.0);
+        g2.seed_lift_source_from_backdrop(&painted, &paper, 64, 64);
+        let src = g2.lift_source();
+        let inside = src[(16 * gw + 16) as usize][PIG_MASS]; // grid cell under the square
+        let outside = src[(2 * gw + 2) as usize][PIG_MASS]; // bare-beige corner
+        assert!(
+            inside > 0.1,
+            "the painted square must be liftable (donor mass {inside})"
+        );
+        assert!(
+            outside < 1e-6,
+            "bare paper around the square must NOT be liftable (donor mass {outside})"
         );
     }
 

@@ -80,3 +80,34 @@ intacto (lift também o aplica, como antes). Gate: `lift=0` parity vs pré-ADR-0
 O `Lift` passa a fazer o que o artista espera: pincel molhado por cima de tinta seca a re-mobiliza
 (clareia + sangra). Default 0 preserva o look validado bit-a-bit. Follow-up de fidelidade: lift
 canvas-res (sem o downsample low-res) se o Enio quiser borda de lift mais nítida.
+
+---
+
+## 5. Amendment 1 (2026-06-09) — modelo paper-reveal (os 2 smokes escuros do Enio)
+
+**Smoke 1 (escureceu):** o lift original CONSERVAVA o pigmento — movia a massa inteira da tinta
+seca pro wash; o glaze K–M de uma camada de massa combinada lê mais escuro que a sobreposição fina
+original. Fix: **modelo de remoção** — só `LIFT_BLEED_KEEP = 0.25` do levantado sangra pro wash; o
+resto é removido (o pincel leva).
+
+**Smoke 2 (AINDA escuro):** auditoria + pesquisa acharam DOIS erros do design original:
+1. **Alpha-drop era a mecânica errada.** `eff_back_a = back_a·(1−lf)` fura transparência num canvas
+   OPACO (o demo é base beige opaca) e revela o **fundo escuro do editor** (0.047) atrás do sprite →
+   o "clareamento" escurecia. Curtis 1997 (desorção) e Rebelle revelam o **PAPEL**, nunca
+   transparência.
+2. **O donor levantava "pigmento de papel".** Massa = avg alpha ⇒ massa ≈ 1 em toda parte num canvas
+   opaco — até área NUNCA pintada era "liftável" (K–M do beige denso = lama cinza no wash).
+
+**Modelo corrigido (paper-reveal):** o painter snapshota o **papel** = conteúdo do alvo de edição
+quando ele virou o alvo (`set_source` / troca de layer; Arc clone zero-copy — commits fazem CoW).
+- **Seed:** `backdrop_to_lift_source(backdrop, paper, …)` — paintedness por pixel =
+  `max(|Δr|,|Δg|,|Δb|,|Δa|)` vs papel; massa = média de paintedness; cor ponderada por paintedness.
+  Papel intocado ⇒ donor vazio ⇒ lift inerte (gate `backdrop_lift_only_lifts_paint_not_paper`).
+- **Compositor:** lerp pro papel — `eff_back = mix(back, paper, lf)` (linear) +
+  `eff_back_a = mix(back_a, paper_a, lf)`; binding novo `paper_canvas` (6). Sprite transparente ⇒
+  papel com alpha 0 ⇒ degenera exatamente no alpha-drop (unificado). Gate Metal
+  `composite_lift_reveals_paper_not_transparency`: quadrado levantado volta pro beige com
+  **alpha = 255 exato** (0 LSB), fora byte-idêntico.
+- **Fallback seguro:** `fluid_paper_base()` ausente/mismatch ⇒ paper = backdrop ⇒ no-op.
+- Semântica: liftável = o que foi pintado desde que o layer virou alvo de edição; base por-layer
+  persistente fica como follow-up se o Enio quiser lift de tinta de sessões antigas.

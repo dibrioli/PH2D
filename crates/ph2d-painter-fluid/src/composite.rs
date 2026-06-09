@@ -89,6 +89,9 @@ struct CompositeState {
     coeffs: wgpu::Buffer,
     out: wgpu::Buffer,
     backdrop: wgpu::Buffer,
+    /// ADR-0084 paper-reveal — the session's original canvas content (canvas-res RGBA8, like
+    /// `backdrop`); the shader lerps lifted pixels back toward it (never toward transparency).
+    paper: wgpu::Buffer,
     staging: wgpu::Buffer,
     /// Owned all-zero `lifted_frac` (ADR-0084) bound at binding 5 when `begin_stroke` is called
     /// without a live lift buffer — kept here so it outlives the `bind` it backs. Sized to `gw·gh`.
@@ -154,6 +157,7 @@ impl FluidCompositor {
                 storage(3, false), // out_buf (read_write)
                 storage(4, true),  // coeffs (read)
                 storage(5, true),  // lifted_frac (read — ADR-0084)
+                storage(6, true),  // paper_canvas (read — ADR-0084 paper-reveal)
             ],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -209,7 +213,11 @@ impl FluidCompositor {
         ss: u32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
-        // ADR-0084 — the solver's `lifted_frac_buffer()` so the compositor drops the backdrop alpha
+        // ADR-0084 paper-reveal — the session's original canvas content (`cw·ch·4` RGBA8, same
+        // layout as `backdrop_rgba`); the shader lerps lifted pixels back toward it. Callers that
+        // don't lift pass the BACKDROP slice (`mix(b, b, lf) = b` ⇒ exact no-op regardless of `lf`).
+        paper_rgba: &[u8],
+        // ADR-0084 — the solver's `lifted_frac_buffer()` so the compositor reveals the paper
         // where dry paint was lifted. `None` ⇒ bind the owned all-zero dormant buffer (the
         // backdrop-lift branch is inert ⇒ byte-identical to the pre-ADR-0084 output).
         lifted_frac_buf: Option<&wgpu::Buffer>,
@@ -241,6 +249,12 @@ impl FluidCompositor {
             });
             let backdrop = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("composite backdrop (persistent)"),
+                size: canvas_bytes,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let paper = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("composite paper (persistent, ADR-0084)"),
                 size: canvas_bytes,
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
@@ -291,6 +305,10 @@ impl FluidCompositor {
                         binding: 5,
                         resource: lifted_res,
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: paper.as_entire_binding(),
+                    },
                 ],
             });
             self.state = Some(CompositeState {
@@ -305,6 +323,7 @@ impl FluidCompositor {
                 coeffs,
                 out,
                 backdrop,
+                paper,
                 staging,
                 dormant_lifted,
                 bind,
@@ -317,8 +336,9 @@ impl FluidCompositor {
         st.scale = scale;
         st.coverage_k = coverage_k;
         st.ss = ss;
-        // Backdrop + coeffs are constant for the stroke → upload once here.
+        // Backdrop + paper + coeffs are constant for the stroke → upload once here.
         queue.write_buffer(&st.backdrop, 0, backdrop_rgba);
+        queue.write_buffer(&st.paper, 0, paper_rgba);
         queue.write_buffer(&st.coeffs, 0, bytemuck::bytes_of(&GpuCoeffs::build()));
         // Rebuild the bind group each stroke so it tracks the current resident pig_a
         // (cheap — just resource references; the canvas buffers are reused).
@@ -358,6 +378,10 @@ impl FluidCompositor {
                     wgpu::BindGroupEntry {
                         binding: 5,
                         resource: lifted_res,
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: st.paper.as_entire_binding(),
                     },
                 ],
             });
@@ -609,7 +633,7 @@ impl FluidCompositor {
         let npix = (cw as usize) * (ch as usize);
         let canvas_bytes = (npix * 4) as u64;
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
-        let (params_buf, coeffs_buf, backdrop_buf, dormant_lifted, out_buf, bind) = self
+        let (params_buf, coeffs_buf, backdrop_buf, paper_buf, dormant_lifted, out_buf, bind) = self
             .build_buffers(
                 device,
                 queue,
@@ -621,10 +645,19 @@ impl FluidCompositor {
                 coverage_k,
                 pigment_buf,
                 backdrop_rgba,
+                // ADR-0084 paper-reveal: the one-shot path binds the backdrop as the paper —
+                // `mix(b, b, lf) = b`, an exact no-op regardless of `lf`.
+                backdrop_rgba,
                 grid_region,
                 None,
             );
-        let _keep = (params_buf, coeffs_buf, backdrop_buf, dormant_lifted);
+        let _keep = (
+            params_buf,
+            coeffs_buf,
+            backdrop_buf,
+            paper_buf,
+            dormant_lifted,
+        );
 
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -693,7 +726,7 @@ impl FluidCompositor {
         let band_off = u64::from(py_lo) * row_bytes;
         let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
 
-        let (params_buf, coeffs_buf, backdrop_buf, dormant_lifted, out_buf, bind) = self
+        let (params_buf, coeffs_buf, backdrop_buf, paper_buf, dormant_lifted, out_buf, bind) = self
             .build_buffers(
                 device,
                 queue,
@@ -704,6 +737,9 @@ impl FluidCompositor {
                 scale,
                 coverage_k,
                 pigment_buf,
+                backdrop_rgba,
+                // ADR-0084 paper-reveal: the one-shot path binds the backdrop as the paper —
+                // `mix(b, b, lf) = b`, an exact no-op regardless of `lf`.
                 backdrop_rgba,
                 grid_region,
                 None,
@@ -736,6 +772,7 @@ impl FluidCompositor {
             params_buf,
             coeffs_buf,
             backdrop_buf,
+            paper_buf,
             dormant_lifted,
             out_buf,
         );
@@ -755,7 +792,9 @@ impl FluidCompositor {
 
     /// Build the per-composite buffers + bind group (shared by the readback paths). `lifted_frac_buf`
     /// (ADR-0084) is the live lift accumulator, or `None` for the dormant all-zero buffer (returned
-    /// in the tuple so the caller keeps it alive alongside the bind group it backs).
+    /// in the tuple so the caller keeps it alive alongside the bind group it backs). `paper_rgba`
+    /// (ADR-0084 paper-reveal) is the session's original canvas content; the one-shot callers pass
+    /// the backdrop (`mix(b, b, lf) = b` ⇒ exact no-op regardless of `lf`).
     #[allow(clippy::too_many_arguments)]
     fn build_buffers(
         &self,
@@ -769,9 +808,11 @@ impl FluidCompositor {
         coverage_k: f32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
+        paper_rgba: &[u8],
         grid_region: (u32, u32, u32, u32),
         lifted_frac_buf: Option<&wgpu::Buffer>,
     ) -> (
+        wgpu::Buffer,
         wgpu::Buffer,
         wgpu::Buffer,
         wgpu::Buffer,
@@ -817,6 +858,13 @@ impl FluidCompositor {
             mapped_at_creation: false,
         });
         queue.write_buffer(&backdrop_buf, 0, backdrop_rgba);
+        let paper_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite paper (ADR-0084)"),
+            size: canvas_bytes,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&paper_buf, 0, paper_rgba);
         let out_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("composite out"),
             size: canvas_bytes,
@@ -860,12 +908,17 @@ impl FluidCompositor {
                     binding: 5,
                     resource: lifted_res,
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: paper_buf.as_entire_binding(),
+                },
             ],
         });
         (
             params_buf,
             coeffs_buf,
             backdrop_buf,
+            paper_buf,
             dormant_lifted,
             out_buf,
             bind,

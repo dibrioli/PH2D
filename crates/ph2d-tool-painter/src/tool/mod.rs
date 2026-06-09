@@ -356,6 +356,12 @@ pub struct PainterTool {
     /// amortized to one canvas-clone per "preview frame cycle" rather
     /// than per pointer event.
     canvas_rgba: Arc<Vec<u8>>,
+    /// **ADR-0084 paper-reveal lift — the "paper" snapshot.** The active edit target's content
+    /// at the moment it BECAME the edit target (`set_source` / layer switch): the substrate the
+    /// lift brush reveals. Paint added since = the liftable deviation. Arc clone of
+    /// `canvas_rgba` at snapshot time = zero-copy (commits CoW the canvas via `Arc::make_mut`,
+    /// so this keeps pointing at the pre-paint pixels).
+    paper_base: Arc<Vec<u8>>,
     /// **W3.T3.1/T3.2 — layer model (runtime canon, ADR-0046-amд-1 Option A).**
     /// The `LayerStack` is the source of truth for layer structure + per-layer
     /// blend/opacity/visibility/flags. The ACTIVE layer's working pixels live
@@ -657,6 +663,7 @@ impl Default for PainterTool {
         Self {
             params,
             canvas_rgba: Arc::new(Vec::new()),
+            paper_base: Arc::new(Vec::new()),
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             composited: None,

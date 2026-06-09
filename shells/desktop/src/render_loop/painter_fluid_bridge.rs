@@ -269,15 +269,18 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }
             // ADR-0084 backdrop lift: when the brush's `lift > 0`, seed the donor (`lift_source`)
-            // from the current canvas backdrop (downsampled to the grid by the SAME free fn the CPU
-            // seed uses → bit-identical CPU↔GPU, HR-5) and zero `lifted_frac`; the wet brush then
-            // re-mobilizes that dry paint into the wash (+ the compositor drops the lifted alpha).
+            // from the current canvas backdrop vs the session's original PAPER (downsampled to the
+            // grid by the SAME free fn the CPU seed uses → bit-identical CPU↔GPU, HR-5) and zero
+            // `lifted_frac`; the wet brush then re-mobilizes that dry PAINT into the wash (+ the
+            // compositor reveals the paper under the lifted pixels — never transparency). When no
+            // paper snapshot exists, `paper == backdrop` ⇒ empty donor ⇒ inert (the safe fallback).
             // On the non-lift path zero BOTH so a fresh stroke with `lift = 0` has an inert donor +
             // `lifted_frac ≡ 0` → the compositor is byte-identical (the non-destructive default).
             if dp.lift > 0.0 {
                 if let Some(backdrop) = painter.fluid_backdrop() {
+                    let paper = painter.fluid_paper_base().unwrap_or(backdrop);
                     let cells = ph2d_painter_brush::diffusion::backdrop_to_lift_source(
-                        backdrop, cw, ch, dims.0, dims.1,
+                        backdrop, paper, cw, ch, dims.0, dims.1,
                     );
                     sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
                     sess.solver.upload_lift_source(&gpu.queue, &cells);
@@ -308,8 +311,12 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                     // nothing is deposited, so non-deposition strokes are unchanged.
                     sess.solver.total_buffer(),
                     backdrop,
-                    // ADR-0084: bind the lift accumulator so the compositor drops the backdrop
-                    // alpha where dry paint was lifted. All-zero (cleared above) when `lift = 0`
+                    // ADR-0084 paper-reveal: the session's original canvas content — lifted
+                    // pixels lerp back toward it (never toward transparency). Falls back to the
+                    // backdrop itself (`mix(b, b, lf) = b` ⇒ exact no-op) when no snapshot exists.
+                    painter.fluid_paper_base().unwrap_or(backdrop),
+                    // ADR-0084: bind the lift accumulator so the compositor reveals the paper
+                    // where dry paint was lifted. All-zero (cleared above) when `lift = 0`
                     // ⇒ byte-identical output.
                     Some(sess.solver.lifted_frac_buffer()),
                 );

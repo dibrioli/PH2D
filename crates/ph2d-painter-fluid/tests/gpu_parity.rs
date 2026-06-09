@@ -1604,11 +1604,15 @@ fn gpu_cpu_parity_backdrop_lift() {
     ];
 
     // ── CPU reference ───────────────────────────────────────────────────────────────────────
+    // ADR-0084 paper-reveal: a fully-transparent paper keeps every opaque backdrop pixel maximally
+    // "painted" (the donor model the test was built on); BOTH sides seed against the same paper.
+    let blank = vec![0u8; backdrop.len()];
+
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa) in &raw {
         cpu.splat(cx, cy, r, wa, [0.0, 0.0, 0.0], 0.0, 0.0); // water only (mass 0)
     }
-    cpu.seed_lift_source_from_backdrop(&backdrop, cw, ch);
+    cpu.seed_lift_source_from_backdrop(&backdrop, &blank, cw, ch);
     for _ in 0..lift_steps {
         cpu.step(&lift_only_params(lift_rate));
     }
@@ -1626,7 +1630,8 @@ fn gpu_cpu_parity_backdrop_lift() {
     solver.clear_lift_gpu(&gpu.device, &gpu.queue); // zero lift_source + lifted_frac
     solver.upload_paper(&gpu.queue, cpu.paper());
     // Seed the donor from the SAME bytes via the SAME free fn (bit-identical to the CPU seed).
-    let cells = ph2d_painter_brush::diffusion::backdrop_to_lift_source(&backdrop, cw, ch, w, h);
+    let cells =
+        ph2d_painter_brush::diffusion::backdrop_to_lift_source(&backdrop, &blank, cw, ch, w, h);
     solver.upload_lift_source(&gpu.queue, &cells);
     // Wet the field (water-only splat), no step yet.
     solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 0, (0, 0, w - 1, h - 1));

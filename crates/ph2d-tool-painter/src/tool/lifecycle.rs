@@ -554,6 +554,18 @@ impl PainterTool {
         self.wet_backdrop.as_deref()
     }
 
+    /// **ADR-0084 paper-reveal lift — the "paper" canvas** (canvas-res RGBA8): the active edit
+    /// target's content when it became the edit target. The lift donor seeds from
+    /// `backdrop − paper` (only PAINT lifts) and the compositor lerps lifted pixels back toward
+    /// this (revealing the substrate, never punching alpha holes). `None` when the snapshot
+    /// doesn't match the canvas size (defensive) — callers treat that as paper == backdrop
+    /// (lift inert).
+    #[must_use]
+    pub fn fluid_paper_base(&self) -> Option<&[u8]> {
+        let n = (self.source_size.0 as usize) * (self.source_size.1 as usize) * 4;
+        (self.paper_base.len() == n).then(|| self.paper_base.as_slice())
+    }
+
     /// **GPU-resident path (4K real-time arch §4): drain this frame's dab list +
     /// return the composite region.** Replaces [`Self::fluid_frame_step_inputs`] (no
     /// O(grid) deposit/water alloc, no CPU evaporate/scan): `cs_splat` consumes the

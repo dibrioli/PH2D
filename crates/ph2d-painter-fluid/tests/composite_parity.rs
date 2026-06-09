@@ -259,7 +259,8 @@ fn composite_frame_fast_path_matches_one_shot() {
         2,
         solver.pigment_buffer(),
         &backdrop,
-        None, // ADR-0084: dormant backdrop-lift (no lift buffer)
+        &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
+        None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
     );
     let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
 
@@ -297,7 +298,8 @@ fn composite_frame_fast_path_matches_one_shot() {
         1,
         solver.pigment_buffer(),
         &backdrop,
-        None, // ADR-0084: dormant backdrop-lift (no lift buffer)
+        &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
+        None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
     );
     let (band_ss1, (px_lo, py_lo, px_hi, _)) =
         compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -350,7 +352,8 @@ fn composite_frame_pipelined_matches_sync() {
             1,
             solver.pigment_buffer(),
             &backdrop,
-            None, // ADR-0084: dormant backdrop-lift (no lift buffer)
+            &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
+            None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
         );
     };
 
@@ -662,5 +665,127 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
     assert!(
         worst <= 4,
         "GPU multi-pigment composite diverged from CPU reference: {worst} LSB"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn composite_lift_reveals_paper_not_transparency() {
+    // ADR-0084 paper-reveal: lifting returns the pixel toward the session's ORIGINAL paper
+    // content (Curtis desorption / Rebelle) — NEVER toward transparency. The old model dropped
+    // the backdrop ALPHA (`eff_back_a = back_a·(1−lf)`), which over an OPAQUE canvas punched
+    // holes revealing the dark editor background behind the sprite (the dark-blur smoke).
+    // Setup: opaque beige backdrop = paper everywhere, a red square PAINTED into the backdrop
+    // (backdrop ≠ paper only there), `lifted_frac = 1` over the square, NO wet pigment.
+    // The square must come back ~beige with alpha STAYING 255; outside the square the output
+    // must be byte-identical to the backdrop (`lf = 0` ⇒ the byte-exact bare-paper copy).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (32u32, 32u32);
+    let scale = 1u32; // grid cell == canvas pixel, so the lf mask maps 1:1
+    let (cw, ch) = (gw, gh);
+    let beige = [228u8, 214, 184, 255];
+    let red = [200u8, 30, 30, 255];
+    let in_square = |x: u32, y: u32| (8..24).contains(&x) && (8..24).contains(&y);
+
+    // Paper = solid opaque beige; backdrop = paper + the painted red square.
+    let mut paper = vec![0u8; (cw * ch * 4) as usize];
+    for px in paper.chunks_exact_mut(4) {
+        px.copy_from_slice(&beige);
+    }
+    let mut backdrop = paper.clone();
+    for y in 0..ch {
+        for x in 0..cw {
+            if in_square(x, y) {
+                let i = ((y * cw + x) * 4) as usize;
+                backdrop[i..i + 4].copy_from_slice(&red);
+            }
+        }
+    }
+
+    // lifted_frac: 1.0 over the square cells, 0 elsewhere.
+    let mut lf = vec![0.0f32; (gw * gh) as usize];
+    for gy in 0..gh {
+        for gx in 0..gw {
+            if in_square(gx, gy) {
+                lf[(gy * gw + gx) as usize] = 1.0;
+            }
+        }
+    }
+    let lf_buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("test lifted_frac (lf=1 over square)"),
+        size: (lf.len() * 4) as u64,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    gpu.queue
+        .write_buffer(&lf_buf, 0, bytemuck::cast_slice(&lf));
+
+    // NO wet pigment: a fresh (zero) field buffer — every glaze sample is dry.
+    use ph2d_painter_brush::diffusion::PIG_CH;
+    let pig_buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("test zero pigment field"),
+        size: ((gw * gh) as usize * PIG_CH * 4) as u64,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    });
+
+    let mut compositor = FluidCompositor::new(&gpu.device);
+    compositor.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        scale,
+        COVERAGE_K,
+        1,
+        &pig_buf,
+        &backdrop,
+        &paper,
+        Some(&lf_buf),
+    );
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let (band, (_, py_lo, _, py_hi)) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    assert_eq!(py_lo, 0, "full-canvas region starts at row 0");
+    assert_eq!(py_hi, ch, "full-canvas region covers every row");
+    assert_eq!(band.len(), (cw * ch * 4) as usize, "full-canvas band");
+
+    let mut worst_rgb = 0u8; // worst lifted-pixel |Δ| vs the paper, RGB only
+    for y in 0..ch {
+        for x in 0..cw {
+            let i = ((y * cw + x) * 4) as usize;
+            let px = &band[i..i + 4];
+            if in_square(x, y) {
+                // (a) Lifted: the red paint came back ~beige (sRGB→linear→sRGB roundtrip ⇒ a
+                // few-LSB tolerance) and the ALPHA STAYED 255 — the key regression: lifting an
+                // opaque canvas must NOT punch an alpha hole.
+                for c in 0..3 {
+                    worst_rgb = worst_rgb.max(px[c].abs_diff(beige[c]));
+                    assert!(
+                        px[c].abs_diff(beige[c]) <= 2,
+                        "lifted pixel must return to the paper @({x},{y}) ch{c}: {px:?} vs {beige:?}"
+                    );
+                }
+                assert_eq!(
+                    px[3], 255,
+                    "lifted pixel alpha must STAY opaque @({x},{y}): {px:?}"
+                );
+            } else {
+                // (b) lf = 0 ⇒ the byte-exact backdrop copy (non-destructive invariant).
+                assert_eq!(
+                    px,
+                    &backdrop[i..i + 4],
+                    "untouched pixel must be byte-identical to the backdrop @({x},{y})"
+                );
+            }
+        }
+    }
+    eprintln!(
+        "paper-reveal: lifted square back to paper, worst RGB |Δ| = {worst_rgb} LSB, alpha = 255 \
+         everywhere; outside byte-identical"
     );
 }

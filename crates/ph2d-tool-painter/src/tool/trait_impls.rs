@@ -570,6 +570,8 @@ impl RasterEditTool for PainterTool {
             "set_source rgba length must equal width*height*4"
         );
         self.canvas_rgba = Arc::new(rgba);
+        // ADR-0084 paper-reveal lift: a fresh source IS the paper (zero-copy Arc clone).
+        self.paper_base = self.canvas_rgba.clone();
         self.source_size = (width, height);
         self.preview_dirty = true;
         // **W3 (ADR-0046-amд-1 Option A):** a fresh source = a fresh single-

@@ -4,10 +4,10 @@
 //! ground truth; the gate proves they agree on a real device).
 //!
 //! The compositor is built once per device. Inputs each composite: the GPU-resident
-//! low-res pigment (`vec4` mass), the canvas-res backdrop (RGBA8), and the amortised
-//! brush coeffs (computed once on the CPU via
-//! [`ph2d_painter_brush::wet_composite::prepare_wet_composite`] +
-//! [`ph2d_painter_brush::pigment_mix::spectral_basis`]). Output is canvas-res RGBA8
+//! low-res [`PIG_CH`]-channel pigment field (ADR-0080: mass-weighted K/S + err + mass),
+//! the canvas-res backdrop (RGBA8), and the constant spectral basis (uploaded once via
+//! [`ph2d_painter_brush::pigment_mix::spectral_basis`]). The pigment colour/opacity are
+//! reduced PER-PIXEL from the field in the shader (no per-stroke brush). Output is canvas-res RGBA8
 //! — to a storage buffer (the readback / first-milestone path here) or, in the
 //! shell integration, a preview texture (zero readback).
 

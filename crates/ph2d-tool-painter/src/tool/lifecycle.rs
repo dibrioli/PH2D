@@ -515,73 +515,10 @@ impl PainterTool {
         self.wet_field.as_ref().map(|g| g.dims())
     }
 
-    /// The stroke colour in linear sRGB — the composite derives `pcol` + the coverage
-    /// normaliser from it (the resident path's grid holds only the per-frame deposit,
-    /// so the chromaticity comes from the stroke, not a grid total; they're equal).
-    #[must_use]
-    pub fn fluid_stroke_color_linear(&self) -> [f32; 3] {
-        ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
-            self.stroke_color_oklab[0],
-            self.stroke_color_oklab[1],
-            self.stroke_color_oklab[2],
-        )
-    }
-
     /// The pre-stroke backdrop the wash composites over (canvas-res RGBA8), or `None`.
     #[must_use]
     pub fn fluid_backdrop(&self) -> Option<&[u8]> {
         self.wet_backdrop.as_deref()
-    }
-
-    /// Pull this frame's GPU-drive inputs: the dab `deposit` (the grid pigment, then
-    /// CLEARED), the `water` mirror (then EVAPORATED by `evap_per_frame`), the
-    /// composite `region`, and the grid `dims`. `None` when the field has never been
-    /// wet (the shell then drops it via the dry-check). Water is captured
-    /// PRE-evaporation (the GPU gate/flow read it), then evaporated for next frame +
-    /// the dry-check.
-    ///
-    /// **`region` = the MONOTONIC wet envelope, NOT the current water bbox.** Water
-    /// evaporates so its bbox marches inward, but the conserved pigment lingers (and
-    /// diffusion/advection even push it ONE cell past the gate). Compositing over the
-    /// receding water bbox hard-cut the round dab into an axis-aligned rectangle
-    /// (Enio's "quinas retangulares"). The all-time union of wet bboxes is a hard
-    /// upper bound on where pigment can ever be (the gate only opens for `water >
-    /// w_lo ≫ 1e-3`), so it never under-covers. Readback-free (the bound is computed
-    /// from the CPU water mirror), preserving W15.3's no-stall design.
-    #[must_use]
-    pub fn fluid_frame_step_inputs(
-        &mut self,
-        evap_per_frame: f32,
-    ) -> Option<crate::tool::FluidFrameInputs> {
-        let prev_env = self.wet_pigment_envelope;
-        let grid = self.wet_field.as_mut()?;
-        let (gw, gh) = grid.dims();
-        let cur = grid.water_bbox(1.0e-3);
-        // Grow the envelope; it never recedes for the life of the field.
-        let envelope = match (cur, prev_env) {
-            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))),
-            (Some(a), None) => Some(a),
-            (None, e) => e,
-        };
-        self.wet_pigment_envelope = envelope;
-        let Some(region) = envelope else {
-            // Never been wet — nothing to composite. Shell drops via the dry-check.
-            return None;
-        };
-        let deposit: Vec<[f32; 4]> = grid
-            .pigment()
-            .iter()
-            .map(|p| [p[0], p[1], p[2], 0.0])
-            .collect();
-        let water = grid.water().to_vec();
-        grid.clear_pigment();
-        grid.evaporate(evap_per_frame);
-        Some(crate::tool::FluidFrameInputs {
-            deposit,
-            water,
-            region,
-            dims: (gw, gh),
-        })
     }
 
     /// **GPU-resident path (4K real-time arch §4): drain this frame's dab list +

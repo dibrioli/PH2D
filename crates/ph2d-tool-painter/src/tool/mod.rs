@@ -261,23 +261,6 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
-/// Per-frame inputs the shell GPU fluid drive (W15.3) pulls from the tool to step
-/// the resident solver + composite, without reading the GPU pigment back. The
-/// `deposit` is THIS frame's dabs (the grid pigment, then cleared); `water` is the
-/// CPU water mirror (uploaded for the gate/flow, evaporated CPU-side afterwards);
-/// `region` is the wet grid-cell bbox (union with the previous frame) scoping the
-/// composite; `dims` is the grid size.
-pub struct FluidFrameInputs {
-    /// This frame's dab pigment (low-res `gw*gh`, xyz mass, w=0) — added to `pig_a`.
-    pub deposit: Vec<[f32; 4]>,
-    /// The CPU water mirror (low-res `gw*gh`) — uploaded for the GPU gate/flow.
-    pub water: Vec<f32>,
-    /// Wet grid-cell bbox (inclusive) ∪ last frame's — the composite region.
-    pub region: (u32, u32, u32, u32),
-    /// Grid (low-res) dimensions `(gw, gh)`.
-    pub dims: (u32, u32),
-}
-
 /// One brush dab for the GPU-resident fluid path (4K real-time arch §4): grid-space
 /// centre + radius, the per-touch water, and the (opacity-weighted) linear-RGB
 /// pigment — exactly the arguments the tool used to pass to `DiffusionGrid::splat`.

@@ -3792,22 +3792,27 @@ fn fluid_gpu_envelope_never_recedes_under_evaporation() {
     t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
     t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]);
     t.set_gpu_fluid_driven(true); // GPU path: queue_pointer only splats (no CPU step)
+    t.set_fluid_hires(true); // GPU-resident dab path: grows wet_pigment_envelope (fluid_take_dabs)
     t.begin_stroke(9);
     t.queue_pointer(PointerSample {
         position: [32.0, 32.0],
         pressure: 1.0,
         tilt: 0.0,
     });
-    let evap = t.fluid_evaporation() * t.fluid_idle_substeps() as f32;
-    let r0 = t
-        .fluid_frame_step_inputs(evap)
-        .expect("wet field after a dab")
-        .region;
-    // Many idle frames: water evaporates + its bbox recedes; the envelope must NOT.
+    // The composite region is the MONOTONIC wet envelope (`wet_pigment_envelope`), returned by
+    // the live `fluid_take_dabs`. It only ever GROWS (queue_pointer unions each dab's bbox; reset
+    // only at a fresh stroke), so across frames it never recedes — even as the GPU water field
+    // evaporates underneath it.
+    let r0 = t.fluid_take_dabs().expect("wet field after a dab").1;
     let mut prev = r0;
-    for _ in 0..50 {
-        if let Some(inp) = t.fluid_frame_step_inputs(evap) {
-            let r = inp.region;
+    // March the pointer outward over many frames; the envelope must grow + never recede.
+    for k in 1..40u32 {
+        t.queue_pointer(PointerSample {
+            position: [32.0 + k as f32, 32.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        if let Some((_dabs, r)) = t.fluid_take_dabs() {
             assert!(
                 r.0 <= prev.0 && r.1 <= prev.1 && r.2 >= prev.2 && r.3 >= prev.3,
                 "composite envelope RECEDED {prev:?} -> {r:?} (the rectangular-clip bug)"
@@ -3816,8 +3821,8 @@ fn fluid_gpu_envelope_never_recedes_under_evaporation() {
         }
     }
     assert!(
-        prev.0 <= r0.0 && prev.1 <= r0.1 && prev.2 >= r0.2 && prev.3 >= r0.3,
-        "final envelope {prev:?} must still contain the initial wet region {r0:?}"
+        prev.2 > r0.2,
+        "the envelope must have GROWN rightward as the stroke marched out: {r0:?} -> {prev:?}"
     );
 }
 

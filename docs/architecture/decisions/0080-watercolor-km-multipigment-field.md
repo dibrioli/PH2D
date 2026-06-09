@@ -76,8 +76,10 @@ Para **UM** pigmento de cor `c` e massa `m`: `ks_acc = m·ks_c`, `err_acc = m·e
 `prepare_pigment(c)`** (o `err` re-ancora o round-trip da base leaky, então a cor volta a `c`, não ao
 round-trip `rt_c`). O composite então roda **o mesmo `mix_prepared_exact` + glaze straight-alpha de
 hoje**, com `alpha = f(mass)` no lugar de `f(dens)` (`mass ≡ dens`) e a **value-opacity ADR-0079
-preservada** (`color_sum = 0.3 + 0.7·value(color_mix)`). ⇒ traço de uma cor = **byte-idêntico** ao
-caminho pré-ADR-0080. Gate de paridade single-color guarda isso (P2).
+preservada** (`color_sum = 0.3 + 0.7·value(color_mix)`). ⇒ traço de uma cor reproduz o caminho
+pré-ADR-0080 **à precisão de float**: a redução por-célula é exata (`|Δ| ≤ 1e-6`) e o composite bate
+**≤1 LSB** (a reassociação `ks_acc/mass` vs `prepare_pigment(c)` é absorvida pela quantização u8).
+Gate de paridade single-color guarda isso (`single_color_composite_matches_legacy_formula`, P2).
 
 **Equivalência provada (P0 gate):** a acumulação a massa igual é **exatamente
 `mix_prepared_exact(brush, a, 0.5)`** (`field_mix_equals_mix_prepared_at_5050`) — o campo não é um
@@ -131,15 +133,16 @@ futura (≥2 consumidores), não bloqueiam o "azul+amarelo=verde".
 - **`WatercolorParams ≤ 18`** (ADR-0079-amendment-1): **intacto** (17/18; v1 não adiciona controle).
 - **`Brush`/`RenderingParams`/`Stamp`/`PainterUiEdit`:** intactos.
 - **`SPECTRAL_BANDS = 24`:** pinado (campo e GPU dependem dele = `NB`); já `pub const`.
-- **HR-5 (determinismo):** acumulação + transporte são aritmética pura; o single-pigmento é
-  byte-idêntico; gates GPU 0-ULP mantidos.
+- **HR-5 (determinismo):** acumulação + transporte são aritmética pura; o single-pigmento reproduz
+  o look à precisão de float (redução exata, composite ≤1 LSB); gates GPU sim 0-ULP mantidos.
 
 ## 4. Consequências
 
 Azul + amarelo molhados se misturam num **verde subtrativo real**, no campo e entre traços
 (wet-on-wet), reusando o motor K–M espectral validado — sem assets, determinístico, cross-OS. O
 single-pigmento reproduz o look ratificado (value-opacity, edge-darkening, capilaridade, sharpness)
-byte-a-byte. Custo: 28 canais no campo (CPU+GPU) — trivial em memória low-res, mecânico em shader.
+à precisão de float (≤1 LSB). Custo: 28 canais no campo (CPU+GPU) — trivial em memória low-res,
+mecânico em shader.
 
 **Trade-off vs maior fidelidade (avaliado, não adotado em v1):**
 - **K–M de 2 constantes** (`K` e `S` separados, 6+ floats): mais fiel para pigmentos opacos/staining,

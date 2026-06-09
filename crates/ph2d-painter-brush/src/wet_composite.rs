@@ -17,15 +17,18 @@
 //! reference and the GPU port agree to float precision, so the parity gate is tight
 //! (the LUT's ~1% sub-grid residual would otherwise swamp it).
 //!
-//! The algorithm, per canvas pixel (scoped to the wet bbox by the caller):
-//!   1. bicubic (Catmull-Rom) upsample of the low-res pigment → `p`;
-//!   2. `dens = Σp`; bare paper (`< 1e-4`) writes the backdrop and skips;
-//!   3. colour-independent coverage `alpha = 1 − exp(−(dens/color_sum)·K)`;
-//!   4. straight-alpha glaze: K–M mix over opaque backdrop, porter-duff "over" at a
-//!      transparent edge, lerped by the backdrop's own alpha (no black fringe).
+//! The algorithm, per canvas pixel (scoped to the wet bbox by the caller), ADR-0080:
+//!   1. bicubic (Catmull-Rom) upsample of the low-res [`PIG_CH`]-channel field → cell;
+//!   2. REDUCE the cell to the mixed pigment ([`prepared_from_field`]): `ks_mix = ks_acc/mass`,
+//!      `colour = reflectance_to_rgb(ks_to_refl(ks_mix)) + err_acc/mass`; bare paper
+//!      (`mass < 1e-4`) writes the backdrop and skips;
+//!   3. value-opacity (ADR-0079) from the MIXED colour: `alpha = 1 − exp(−(mass/color_sum)·K)`,
+//!      `color_sum = 0.3 + 0.7·value`;
+//!   4. straight-alpha glaze: K–M mix ([`mix_prepared_exact`]) over opaque backdrop, porter-duff
+//!      "over" at a transparent edge, lerped by the backdrop's own alpha (no black fringe).
 
 use crate::diffusion::{PIG_BANDS, PIG_ERR0, PIG_CH, PIG_MASS, WetCell};
-use crate::pigment_mix::{PreparedPigment, mix_prepared_exact, prepare_pigment, prepared_from_field};
+use crate::pigment_mix::{PreparedPigment, mix_prepared_exact, prepared_from_field};
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 
 /// Catmull-Rom cubic weights for the four taps around a fractional position
@@ -104,81 +107,6 @@ pub fn wet_pigment_bbox(pig: &[WetCell], gw: u32, gh: u32) -> Option<(u32, u32, 
     any.then_some((x0, y0, x1, y1))
 }
 
-/// The amortised composite brush — computed ONCE per composite (a fluid stroke is
-/// one colour). Ships straight to the GPU as a uniform.
-pub struct WetCompositeBrush {
-    /// K–M brush side (`color` + per-band `ks` + round-trip `err`).
-    pub prepared: PreparedPigment,
-    /// Pigment chromaticity = brush colour (linear sRGB). Equals `prepared.color()`.
-    pub pcol: [f32; 3],
-    /// Coverage normaliser = Σ(stroke colour linear), floored — recovers the
-    /// colour-independent pigment `amount` from the grid's colour×amount mass.
-    pub color_sum: f32,
-}
-
-/// Derive the amortised composite brush from the grid pigment + the stroke colour
-/// (linear sRGB). The chromaticity comes from the grid's total pigment mass; the
-/// coverage normaliser comes from the stroke colour (ADR-0077 D12 fix — bright
-/// pigments no longer read fully opaque).
-#[must_use]
-pub fn prepare_wet_composite(
-    _pigment: &[WetCell],
-    stroke_color_linear: [f32; 3],
-) -> WetCompositeBrush {
-    // **ADR-0079:** `pcol` now preserves the picked colour's VALUE (see
-    // [`prepare_wet_composite_from_stroke`]). A fluid stroke is one colour, so the grid
-    // pigment's chromaticity equals the stroke's — the grid is no longer needed to derive
-    // the brush, and deriving `pcol` from the grid total (chromaticity-only) would DROP the
-    // value, diverging from the live GPU path. So this delegates: both paths produce the
-    // identical value-preserving brush (`stroke_derived_brush_matches_grid_derived`).
-    prepare_wet_composite_from_stroke(stroke_color_linear)
-}
-
-/// Derive the composite brush from ONLY the stroke colour (linear sRGB) — for the
-/// GPU resident path, where the bloomed pigment lives on the GPU and the CPU grid
-/// holds just this frame's deposit. A fluid stroke is one colour, and the grid
-/// pigment is `stroke_colour × amount` per cell (splat + the linear, per-channel
-/// diffuse/advect keep the chromaticity uniform), so the chromaticity `pcol` the
-/// grid-total derivation in [`prepare_wet_composite`] computes is exactly
-/// `normalize(stroke_colour)` — the `Σamount` cancels. This computes the identical
-/// `pcol`/`color_sum` without needing the pigment field.
-#[must_use]
-pub fn prepare_wet_composite_from_stroke(stroke_color_linear: [f32; 3]) -> WetCompositeBrush {
-    // **ADR-0079 — preserve the picked colour's VALUE.** `pcol` is now the picked colour
-    // itself (linear, clamped to the K–M reflectance range), NOT just its chromaticity, so a
-    // dark red and a light red yield DIFFERENT washes (the wash converges to the picked
-    // colour at full coverage). Opacity stays COVERAGE-driven — `color_sum` still normalises
-    // the value out of the shader's `amount` (the ADR-0077 D12 fix: brightness must not read
-    // as opacity), so only the pigment *colour* gains value, not the build-up rate. Earlier
-    // this normalised the chromaticity (`/ssum·3`), discarding value (Enio 2026-06-08:
-    // "tanto faz vermelho claro ou escuro").
-    let pcol = [
-        stroke_color_linear[0].clamp(0.0, 1.0),
-        stroke_color_linear[1].clamp(0.0, 1.0),
-        stroke_color_linear[2].clamp(0.0, 1.0),
-    ];
-    let prepared = prepare_pigment(pcol);
-    // **ADR-0079 — opacity scales with the pigment's VALUE (watercolor concentration).**
-    // The deposited pigment is a colour-INDEPENDENT gray coverage mass (`[dep/3; 3]` per dab,
-    // channel-sum = `dep`); `amount = Σdens / color_sum`. A DARK/deep colour is a *denser*
-    // pigment → it must COVER the bright paper (read as the picked colour) instead of washing
-    // out / over-darkening through the K–M (the "burnt" look — Enio 2026-06-08; the research
-    // confirms K–M is unreliable for dark/low-reflectance pigments). So a darker pick gets a
-    // SMALLER normaliser → higher `amount` → more opaque; bright/pale colours keep `~1`, i.e.
-    // translucent (ADR-0077 D12: bright ≠ fully opaque). `value` = HSV value (max channel),
-    // the picker's vertical axis — so it separates a bright saturated blue (opaque) from a
-    // dark navy (more opaque), which luminance would conflate. Black (value 0) → 0.3 (opaque).
-    let value = stroke_color_linear[0]
-        .max(stroke_color_linear[1])
-        .max(stroke_color_linear[2])
-        .clamp(0.0, 1.0);
-    let color_sum = 0.3 + 0.7 * value;
-    WetCompositeBrush {
-        prepared,
-        pcol,
-        color_sum,
-    }
-}
 
 /// Canvas-pixel bbox `(px_lo, py_lo, px_hi, py_hi)` (exclusive hi) covered by a
 /// grid region at `scale`, padded **2 grid cells each side** and clamped to the
@@ -330,6 +258,7 @@ pub fn composite_wet_field_cpu(
 mod tests {
     use super::*;
     use crate::diffusion::DiffusionGrid;
+    use crate::pigment_mix::prepare_pigment; // legacy-formula parity helper
 
     /// Build a low-res wet-field of a single `color` with per-cell coverage `mass` (the
     /// single-stroke invariant) — the K/S accumulation each cell carries (ADR-0080).

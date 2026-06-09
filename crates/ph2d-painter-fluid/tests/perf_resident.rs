@@ -119,14 +119,48 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
     let band_ms = time_loop(gpu, &solver, &mut comp, &dabs, band_region, warm, iters);
     // ── step + composite (full canvas) — worst-case wash (sim full grid) ──
     let full_ms = time_loop(gpu, &solver, &mut comp, &dabs, full_region, warm, iters);
+    // ── E4 (ADR-0078 S2): step + composite-to-TEXTURE (zero readback) — the mid-stroke
+    //    live-preview path. The gap vs the readback loops above is what E4 buys per frame. ──
+    let tex_band_ms = time_loop_tex(gpu, &solver, &mut comp, &dabs, band_region, warm, iters);
+    let tex_full_ms = time_loop_tex(gpu, &solver, &mut comp, &dabs, full_region, warm, iters);
 
     let band_h = band_hi - band_lo;
     eprintln!(
-        "{cw}x{ch} (grid {gw}x{gh}, {:.1}M cells): step={step_ms:.3}ms | step+composite band({band_h}px)={band_ms:.3}ms | full={full_ms:.3}ms | composite-readback portion ≈ band {:.3}ms / full {:.3}ms",
+        "{cw}x{ch} (grid {gw}x{gh}, {:.1}M cells): step={step_ms:.3}ms | step+composite band({band_h}px)={band_ms:.3}ms / full={full_ms:.3}ms | E4 to-TEXTURE band={tex_band_ms:.3}ms / full={tex_full_ms:.3}ms | readback tax band {:.3}ms / full {:.3}ms",
         cells as f64 / 1e6,
-        band_ms - step_ms,
-        full_ms - step_ms,
+        band_ms - tex_band_ms,
+        full_ms - tex_full_ms,
     );
+}
+
+/// E4 hot loop: step + `composite_frame_to_texture` (no staging copy, no map, no poll).
+/// A trailing sporadic `read_field_stats` poll every few iters keeps the GPU honest
+/// (otherwise we'd time only encoder submission, not the actual GPU work).
+fn time_loop_tex(
+    gpu: &GpuContext,
+    solver: &FluidSolver,
+    comp: &mut FluidCompositor,
+    dabs: &[DabGpu],
+    region: (u32, u32, u32, u32),
+    warm: u32,
+    iters: u32,
+) -> f64 {
+    for _ in 0..warm {
+        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1, region);
+        let _ = comp.composite_frame_to_texture(&gpu.device, &gpu.queue, region);
+    }
+    let _ = solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
+    let t = Instant::now();
+    for i in 0..iters {
+        solver.step_resident_splat(&gpu.device, &gpu.queue, dabs, 1, region);
+        let _ = comp.composite_frame_to_texture(&gpu.device, &gpu.queue, region);
+        if i % 8 == 7 {
+            let _ = solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
+        }
+    }
+    // Final sync so the timed window includes all submitted GPU work.
+    let _ = solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
+    t.elapsed().as_secs_f64() * 1000.0 / iters as f64
 }
 
 fn time_loop(

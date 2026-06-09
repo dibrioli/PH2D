@@ -324,3 +324,62 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let enc = vec3<f32>(linear_to_srgb(rgb.x), linear_to_srgb(rgb.y), linear_to_srgb(rgb.z));
     out_buf[pix] = pack4x8unorm(vec4<f32>(enc, final_a));
 }
+
+// ─── E4: premultiplied preview-texture output (ADR-0078 S2 / fluid-GPU plan §4 E4) ───
+//
+// Kills the live-preview round-trip (GPU composite → staging readback → CPU premultiply
+// → texture re-upload): after `cs_composite` writes the straight-alpha sRGB8 glaze into
+// `out_buf`, `cs_premul_tex` premultiplies the SAME region straight into a storage
+// texture the sprite renderer samples directly. The texture lives in group(1) (its own
+// tiny bind-group layout) so the long-lived group(0) buffer layout — and every existing
+// readback path that binds it — is untouched.
+@group(1) @binding(0) var preview_tex: texture_storage_2d<rgba8unorm, write>;
+
+// Premultiply one packed RGBA8 word with the EXACT byte semantics of the CPU path the
+// shell uses (`shells/desktop/.../painter_bridge.rs` → `ph2d_render::premultiply_rgba8`):
+//   rgb' = (rgb · a + 127) / 255   — integer round-to-nearest on the sRGB-ENCODED bytes
+//                                    (NO linearisation), alpha unchanged.
+// Done in u32 integer math so the GPU texel is byte-identical to the CPU result: the
+// quotient `p ∈ [0,255]` is exact; `f32(p)/255` is within 1 ulp of the true ratio, so
+// the rgba8unorm `textureStore` conversion (round(clamp(v)·255)) lands back on `p` for
+// every input — proven byte-for-byte by `gpu_preview_texture_matches_cpu_premultiply`.
+fn premul_word(word: u32) -> vec4<f32> {
+    let r = word & 0xffu;
+    let g = (word >> 8u) & 0xffu;
+    let b = (word >> 16u) & 0xffu;
+    let a = (word >> 24u) & 0xffu;
+    return vec4<f32>(
+        f32((r * a + 127u) / 255u),
+        f32((g * a + 127u) / 255u),
+        f32((b * a + 127u) / 255u),
+        f32(a),
+    ) / 255.0;
+}
+
+// Region-scoped like `cs_composite` (same origin/end uniforms, dispatched right after it
+// in the same pass — WebGPU's implicit inter-dispatch sync makes the fresh `out_buf`
+// bytes visible). Pixels outside the per-frame region keep whatever the texture holds
+// (the premultiplied backdrop from `cs_premul_init`, or earlier frames of the stroke).
+@compute @workgroup_size(8, 8, 1)
+fn cs_premul_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cx = P.origin_x + gid.x;
+    let cy = P.origin_y + gid.y;
+    if (cx >= P.end_x || cy >= P.end_y) {
+        return;
+    }
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), premul_word(out_buf[cy * P.cw + cx]));
+}
+
+// Stroke-start texture init: fill the region (the full canvas — `begin_stroke` sets
+// origin = 0, end = cw/ch) with the PREMULTIPLIED backdrop, entirely on the GPU. The
+// per-frame regions only cover the wet band, so pixels never composited must already
+// show the backdrop when the renderer samples the texture.
+@compute @workgroup_size(8, 8, 1)
+fn cs_premul_init(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cx = P.origin_x + gid.x;
+    let cy = P.origin_y + gid.y;
+    if (cx >= P.end_x || cy >= P.end_y) {
+        return;
+    }
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), premul_word(backdrop[cy * P.cw + cx]));
+}

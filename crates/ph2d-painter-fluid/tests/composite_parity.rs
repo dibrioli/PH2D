@@ -789,3 +789,227 @@ fn composite_lift_reveals_paper_not_transparency() {
          everywhere; outside byte-identical"
     );
 }
+
+// ─── E4: premultiplied preview-texture output ────────────────────────────────
+
+/// LOCAL mirror of the CPU premultiply the shell applies before uploading the live
+/// preview (`shells/desktop/src/render_loop/painter_bridge.rs` calls
+/// `ph2d_render::premultiply_rgba8`): `rgb' = (rgb·a + 127) / 255` — integer
+/// round-to-nearest on the sRGB-ENCODED bytes (no linearisation), alpha unchanged.
+/// MUST stay byte-identical to that fn; the gates below prove the GPU
+/// `cs_premul_tex`/`cs_premul_init` match it byte-for-byte, which is what makes the
+/// E4 texture path a drop-in replacement for readback + CPU premultiply + re-upload.
+fn premultiply_rgba8_local(rgba: &mut [u8]) {
+    for px in rgba.chunks_exact_mut(4) {
+        let a = px[3] as u32;
+        for c in &mut px[..3] {
+            *c = ((*c as u32 * a + 127) / 255) as u8;
+        }
+    }
+}
+
+/// Read the canvas-res rgba8 preview texture back to tightly-packed bytes.
+/// `copy_texture_to_buffer` requires `bytes_per_row` aligned to 256 — copy padded,
+/// then strip the padding per row.
+fn read_texture_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, cw: u32, ch: u32) -> Vec<u8> {
+    let padded_bpr =
+        (cw * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("test preview-tex readback"),
+        size: u64::from(padded_bpr) * u64::from(ch),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("test preview-tex copy"),
+        });
+    enc.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture: tex,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &staging,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(padded_bpr),
+                rows_per_image: Some(ch),
+            },
+        },
+        wgpu::Extent3d {
+            width: cw,
+            height: ch,
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([enc.finish()]);
+    let (tx, rx) = std::sync::mpsc::channel();
+    staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv().expect("map channel").expect("mapped");
+    let mapped = staging.slice(..).get_mapped_range();
+    let mut out = Vec::with_capacity((cw * ch * 4) as usize);
+    for y in 0..ch {
+        let off = (y * padded_bpr) as usize;
+        out.extend_from_slice(&mapped[off..off + (cw * 4) as usize]);
+    }
+    drop(mapped);
+    staging.unmap();
+    out
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_preview_texture_matches_cpu_premultiply() {
+    // E4 parity gate: the GPU texture path (cs_composite → cs_premul_tex → storage
+    // texture, NO readback) must equal "readback the straight composite + CPU
+    // premultiply" byte-for-byte — the texture the renderer samples is byte-identical
+    // to the bytes the old round-trip uploaded. Pixels outside the composited rect
+    // must hold the premultiplied BACKDROP (the begin_stroke init).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    // split_backdrop covers a=255 and a=0; the composited band adds the full range of
+    // fractional alphas (wet coverage), so the premul rounding is exercised broadly.
+    let backdrop = split_backdrop(cw, ch);
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
+    let mut compositor = FluidCompositor::new(&gpu.device);
+    compositor.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        1,
+        solver.pigment_buffer(),
+        &backdrop,
+        &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
+        None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+    );
+
+    // Ground truth: the existing sync readback (straight sRGB8 band) + the LOCAL CPU
+    // premultiply, blitted over the premultiplied backdrop exactly like the shell did.
+    let (band, rect) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    let (px_lo, py_lo, px_hi, py_hi) = rect;
+    assert!(!band.is_empty(), "sync composite produced a band");
+    let mut expected = backdrop.clone();
+    premultiply_rgba8_local(&mut expected);
+    for y in py_lo..py_hi {
+        for x in px_lo..px_hi {
+            let bi = (((y - py_lo) * cw + x) * 4) as usize;
+            let mut px = [band[bi], band[bi + 1], band[bi + 2], band[bi + 3]];
+            premultiply_rgba8_local(&mut px);
+            expected[((y * cw + x) * 4) as usize..][..4].copy_from_slice(&px);
+        }
+    }
+
+    // Texture path: same field, same region — then read the texture back.
+    let rect_tex = compositor
+        .composite_frame_to_texture(&gpu.device, &gpu.queue, region)
+        .expect("non-empty region composites");
+    assert_eq!(rect_tex, rect, "texture path rect must match the sync rect");
+    let tex = compositor.preview_texture().expect("stroke state live");
+    let got = read_texture_rgba8(&gpu, tex, cw, ch);
+
+    assert_eq!(expected.len(), got.len());
+    let mut worst = 0u8;
+    let mut worst_at = 0usize;
+    for (k, (e, g)) in expected.iter().zip(got.iter()).enumerate() {
+        let d = e.abs_diff(*g);
+        if d > worst {
+            worst = d;
+            worst_at = k;
+        }
+    }
+    eprintln!(
+        "preview texture ↔ CPU premultiply: worst |Δ| = {worst} LSB @byte {worst_at} \
+         ({cw}×{ch}, rect {rect:?})"
+    );
+    // Integer premul on both sides (u32 on CPU, u32 in WGSL + an exact-integer unorm
+    // store) ⇒ byte-exact, not just rounding-bound.
+    assert_eq!(
+        worst, 0,
+        "GPU premul texel diverged from the CPU premultiply at byte {worst_at} \
+         (expected {} got {})",
+        expected[worst_at], got[worst_at]
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn preview_texture_initialized_to_backdrop() {
+    // E4: after begin_stroke ONLY (no composite frames), the texture must equal the
+    // PREMULTIPLIED backdrop everywhere — the per-frame regions only cover the wet
+    // band, so never-composited pixels must already show the backdrop. Use a backdrop
+    // sweeping rgb AND fractional alphas so the integer premul rounding is exercised
+    // across the range (split_backdrop only has a ∈ {0, 255}).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let mut backdrop = vec![0u8; (cw * ch * 4) as usize];
+    for y in 0..ch {
+        for x in 0..cw {
+            let i = ((y * cw + x) * 4) as usize;
+            backdrop[i] = (x * 7 + y) as u8;
+            backdrop[i + 1] = (y * 5 + 3 * x) as u8;
+            backdrop[i + 2] = (x ^ y) as u8;
+            backdrop[i + 3] = (x * 13 + y * 29) as u8; // fractional alphas incl. 0
+        }
+    }
+    // Zero pigment field — the stroke hasn't composited anything yet.
+    use ph2d_painter_brush::diffusion::PIG_CH;
+    let pig_buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("test zero pigment field (E4 init)"),
+        size: ((gw * gh) as usize * PIG_CH * 4) as u64,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+    });
+    let mut compositor = FluidCompositor::new(&gpu.device);
+    compositor.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        1,
+        &pig_buf,
+        &backdrop,
+        &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
+        None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+    );
+    let tex = compositor.preview_texture().expect("stroke state live");
+    let got = read_texture_rgba8(&gpu, tex, cw, ch);
+    let mut expected = backdrop;
+    premultiply_rgba8_local(&mut expected);
+    let mut worst = 0u8;
+    for (e, g) in expected.iter().zip(got.iter()) {
+        worst = worst.max(e.abs_diff(*g));
+    }
+    eprintln!("preview texture init ↔ CPU premultiplied backdrop: worst |Δ| = {worst} LSB");
+    assert_eq!(
+        expected, got,
+        "begin_stroke must initialize the texture to the premultiplied backdrop"
+    );
+}

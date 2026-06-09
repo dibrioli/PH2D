@@ -554,6 +554,17 @@ impl PainterTool {
         self.wet_backdrop.as_deref()
     }
 
+    /// **E4 (ADR-0078 S2) — is the layer stack trivial?** `true` when the composite is
+    /// byte-identical to `canvas_rgba` (single visible opaque Normal raster, no mask/clip).
+    /// The fluid bridge's zero-readback texture path shows the FLUID composite (active layer
+    /// over its backdrop) as the whole preview — only valid when the stack IS that one layer;
+    /// a non-trivial stack must keep the readback path so the CPU layer compositor flattens
+    /// the full stack each frame.
+    #[must_use]
+    pub fn preview_is_trivial_stack(&self) -> bool {
+        self.is_trivial_stack()
+    }
+
     /// **ADR-0084 paper-reveal lift — the "paper" canvas** (canvas-res RGBA8): the active edit
     /// target's content when it became the edit target. The lift donor seeds from
     /// `backdrop − paper` (only PAINT lifts) and the compositor lerps lifted pixels back toward

@@ -97,6 +97,14 @@ struct CompositeState {
     /// without a live lift buffer — kept here so it outlives the `bind` it backs. Sized to `gw·gh`.
     dormant_lifted: wgpu::Buffer,
     bind: wgpu::BindGroup,
+    /// E4 — the PREMULTIPLIED live-preview texture (canvas-res rgba8unorm). `cs_premul_init`
+    /// fills it with the premultiplied backdrop at `begin_stroke`; `cs_premul_tex` overwrites the
+    /// composited region each [`FluidCompositor::composite_frame_to_texture`]. The sprite renderer
+    /// samples it directly (`TEXTURE_BINDING`) — no staging readback, no CPU premultiply,
+    /// no re-upload. Recreated on canvas resize like the other canvas-res resources.
+    preview_tex: wgpu::Texture,
+    /// The group(1) bind for the premul passes (just the storage view of `preview_tex`).
+    preview_bind: wgpu::BindGroup,
 }
 
 /// An in-flight async readback (ADR-0078 S2 — pipelined composite). The band copy is
@@ -116,6 +124,12 @@ struct PendingReadback {
 pub struct FluidCompositor {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
+    /// E4 — group(1) layout (the write-only preview storage texture) for the premul passes.
+    tex_bgl: wgpu::BindGroupLayout,
+    /// E4 — `cs_premul_tex`: out_buf region → premultiplied preview texture.
+    premul_tex_pipeline: wgpu::ComputePipeline,
+    /// E4 — `cs_premul_init`: backdrop → premultiplied preview texture (stroke start).
+    premul_init_pipeline: wgpu::ComputePipeline,
     state: Option<CompositeState>,
     /// The previous frame's readback, awaiting a non-blocking poll (pipelined path).
     pending: Option<PendingReadback>,
@@ -173,9 +187,46 @@ impl FluidCompositor {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
+        // E4 — the premul-to-texture passes live in the SAME module but bind the preview
+        // storage texture as group(1), so the long-lived group(0) buffer layout (and every
+        // existing bind group built against it) is untouched; the premul pipelines reuse
+        // the per-stroke group(0) bind as-is.
+        let tex_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-painter-fluid composite preview-tex bgl"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::StorageTexture {
+                    access: wgpu::StorageTextureAccess::WriteOnly,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                },
+                count: None,
+            }],
+        });
+        let premul_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ph2d-painter-fluid composite premul layout"),
+            bind_group_layouts: &[&bgl, &tex_bgl],
+            immediate_size: 0,
+        });
+        let premul_pipeline = |entry: &str| {
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry),
+                layout: Some(&premul_layout),
+                module: &module,
+                entry_point: Some(entry),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            })
+        };
+        let premul_tex_pipeline = premul_pipeline("cs_premul_tex");
+        let premul_init_pipeline = premul_pipeline("cs_premul_init");
         Self {
             pipeline,
             bgl,
+            tex_bgl,
+            premul_tex_pipeline,
+            premul_init_pipeline,
             state: None,
             pending: None,
         }
@@ -271,6 +322,37 @@ impl FluidCompositor {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                 mapped_at_creation: false,
             });
+            // E4 — the premultiplied preview texture (canvas-res). STORAGE_BINDING for the
+            // premul passes, TEXTURE_BINDING so the sprite renderer samples it directly
+            // (step 2 wiring), COPY_SRC for the parity-test readback, COPY_DST kept so the
+            // shell can patch it from CPU bytes if it ever needs to (cheap to grant now).
+            let preview_tex = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("composite preview texture (premultiplied, E4)"),
+                size: wgpu::Extent3d {
+                    width: cw,
+                    height: ch,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::STORAGE_BINDING
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            let preview_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("composite preview-tex bg (E4)"),
+                layout: &self.tex_bgl,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(
+                        &preview_tex.create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                }],
+            });
             // Owned dormant lifted_frac (ADR-0084) — used when no live lift buffer is bound below.
             let dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
             let lifted_res = lifted_frac_buf
@@ -327,6 +409,8 @@ impl FluidCompositor {
                 staging,
                 dormant_lifted,
                 bind,
+                preview_tex,
+                preview_bind,
             });
         }
         // SAFETY of unwrap: `state` is Some after the resize branch (or already was).
@@ -386,6 +470,41 @@ impl FluidCompositor {
                 ],
             });
         }
+        // E4 — seed the preview texture with the PREMULTIPLIED backdrop, entirely on the
+        // GPU: one full-canvas `cs_premul_init` dispatch per stroke (origin 0 → end cw/ch,
+        // reading the `backdrop` buffer just uploaded above). The per-frame composite
+        // regions only cover the wet band, so pixels never composited must already show
+        // the backdrop when the renderer samples the texture. Clobbering the region
+        // uniform here is safe — every `composite_frame*` call rewrites it first.
+        let uni = GpuU {
+            cw,
+            ch,
+            gw,
+            gh,
+            inv: 1.0 / scale as f32,
+            coverage_k,
+            ss,
+            origin_x: 0,
+            origin_y: 0,
+            end_x: cw,
+            end_y: ch,
+            _pad: 0,
+        };
+        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite preview init (E4)"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite preview init pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.premul_init_pipeline);
+            pass.set_bind_group(0, &st.bind, &[]);
+            pass.set_bind_group(1, &st.preview_bind, &[]);
+            pass.dispatch_workgroups(cw.div_ceil(8), ch.div_ceil(8), 1);
+        }
+        queue.submit([enc.finish()]);
     }
 
     /// **Fast-path per-frame composite (after [`Self::begin_stroke`]).** Writes only
@@ -557,6 +676,74 @@ impl FluidCompositor {
             rect: (px_lo, py_lo, px_hi, py_hi),
         });
         result
+    }
+
+    /// **E4 — per-frame composite straight into the premultiplied preview texture
+    /// (after [`Self::begin_stroke`]).** Same region dispatch as
+    /// [`Self::composite_frame_pipelined`] (`cs_composite` over the wet bbox) but with
+    /// NO staging copy, NO `map_async`, NO readback: a second dispatch
+    /// (`cs_premul_tex`, same region, same pass — WebGPU's implicit inter-dispatch
+    /// sync) premultiplies the fresh straight-sRGB8 `out_buf` bytes into
+    /// [`Self::preview_texture`] with the EXACT byte semantics of the shell's CPU
+    /// `premultiply_rgba8` (`rgb' = (rgb·a + 127)/255` on the sRGB-encoded bytes).
+    /// The sprite renderer samples the texture directly — the GPU→CPU→GPU round-trip
+    /// is gone; CPU readback remains only for the pen-up bake (the untouched
+    /// readback entry points). Returns the composited canvas rect
+    /// `(px_lo, py_lo, px_hi, py_hi)`, or `None` when there's no stroke state / the
+    /// region is empty (nothing was dispatched).
+    pub fn composite_frame_to_texture(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        grid_region: (u32, u32, u32, u32),
+    ) -> Option<(u32, u32, u32, u32)> {
+        let st = self.state.as_ref()?;
+        let (px_lo, py_lo, px_hi, py_hi) =
+            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
+        if py_hi <= py_lo || px_hi <= px_lo {
+            return None;
+        }
+        let uni = GpuU {
+            cw: st.cw,
+            ch: st.ch,
+            gw: st.gw,
+            gh: st.gh,
+            inv: 1.0 / st.scale as f32,
+            coverage_k: st.coverage_k,
+            ss: st.ss,
+            origin_x: px_lo,
+            origin_y: py_lo,
+            end_x: px_hi,
+            end_y: py_hi,
+            _pad: 0,
+        };
+        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
+        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite frame (to texture, E4)"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite frame to-texture pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &st.bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+            pass.set_pipeline(&self.premul_tex_pipeline);
+            pass.set_bind_group(1, &st.preview_bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+        }
+        queue.submit([enc.finish()]);
+        Some((px_lo, py_lo, px_hi, py_hi))
+    }
+
+    /// E4 — the premultiplied live-preview texture (canvas-res `Rgba8Unorm`,
+    /// `TEXTURE_BINDING` for direct sampling), or `None` before [`Self::begin_stroke`] /
+    /// after [`Self::end_stroke`]. Holds the premultiplied backdrop where no frame
+    /// region ever composited.
+    pub fn preview_texture(&self) -> Option<&wgpu::Texture> {
+        self.state.as_ref().map(|st| &st.preview_tex)
     }
 
     /// Drop the persistent stroke state (frees the canvas buffers) — call when the

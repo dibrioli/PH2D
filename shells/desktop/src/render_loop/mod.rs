@@ -238,8 +238,21 @@ impl crate::App {
         // **W15.3 (ADR-0049, feature `fluid`):** drive the painter's live wet field
         // on the GPU (else the CPU `on_tick` above already stepped it). No-op
         // without an active fluid stroke; absent in the default build.
+        // E4 (ADR-0078 S2): mid-stroke the drive composites into a GPU preview
+        // TEXTURE (zero readback) and returns a `PreviewOverride` pointing at the
+        // fluid's `IndividualTextureStore` slot — it takes precedence over the
+        // CPU-uploaded painter preview in the `.or` chain below (same frame, so
+        // the wet wash has ZERO preview lag). `None` = readback path owns the
+        // frame (drying / no fluid stroke).
         #[cfg(feature = "fluid")]
-        painter_fluid_bridge::drive_fluid_gpu(tools, surface.gpu());
+        let fluid_preview_override = painter_fluid_bridge::drive_fluid_gpu(
+            tools,
+            surface.gpu(),
+            renderer,
+            self.last_painter_pushed_entity,
+        );
+        #[cfg(not(feature = "fluid"))]
+        let fluid_preview_override: Option<sim_extract::PreviewOverride> = None;
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -295,7 +308,13 @@ impl crate::App {
                 texture_id: gpu.texture_id,
                 premultiplied: true,
             });
-        let preview_override = painter_preview_override.or(bgremoval_preview_override);
+        // E4 precedence: a fluid texture-mode frame wins over the CPU-uploaded
+        // painter preview (whose slot is 1 frame behind and, mid-stroke,
+        // pre-stroke-stale by design) — the fluid drive only returns `Some` on
+        // frames where its slot holds the freshest composite.
+        let preview_override = fluid_preview_override
+            .or(painter_preview_override)
+            .or(bgremoval_preview_override);
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
         // canvas this frame — cook grid→transform→clone and publish its
         // RenderInstances instead of the M5 demo sim. Debug-only; off by default.

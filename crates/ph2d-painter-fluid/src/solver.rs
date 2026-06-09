@@ -196,7 +196,8 @@ pub fn step_cpu_reference(grid: &mut DiffusionGrid, params: &FluidParams, steps:
 /// per-frame update is a zero-copy `write_buffer` of `bytemuck::bytes_of` (HR-3). Each shader
 /// declares its own smaller `Params` view of this one buffer (a uniform binding only requires
 /// `shader struct ≤ buffer`), reading only the fields it needs; only `transfer.wgsl`'s `cs_lift`
-/// reads `lift` (offset 24). The `region_*` fields scope the diffuse/advect/evaporate dispatch to
+/// reads `lift` (offset 24) and only `capillary.wgsl` reads `capillary_branching` (offset 25,
+/// ADR-0082). The `region_*` fields scope the diffuse/advect/evaporate dispatch to
 /// the wet envelope (ADR-0078 S1) — full-grid `(0, 0, width, height)` is the un-scoped pass.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -233,10 +234,13 @@ struct GpuParams {
     // ADR-0078 S5c — BFECC/MacCormack advection sharpness (read by `cs_advect_correct`).
     sharpness: f32,
     // ── ADR-0081 lift ── re-mobilizes NON-staining deposited pigment back into the flowing
-    // layer in wet cells (read by `cs_lift`). The 3 trailing pads round the struct to 28 f32
-    // = 112 B (16-aligned — required for the uniform buffer). 0 ⇒ the lift pass is dormant.
+    // layer in wet cells (read by `cs_lift`, offset 24). 0 ⇒ the lift pass is dormant.
     lift: f32,
-    _pad_lift0: f32,
+    // ── ADR-0082 branched capillary fringe ── fiber-channeled suppression of the capillary
+    // per-face conductance (read by `capillary.wgsl` at offset 25, the slot a `lift` pad held).
+    // The 2 trailing pads round the struct to 28 f32 = 112 B (16-aligned — required for the
+    // uniform buffer). 0 ⇒ the isotropic capillary is bit-identical (opt-in, ADR-0082).
+    capillary_branching: f32,
     _pad_lift1: f32,
     _pad_lift2: f32,
 }
@@ -1084,7 +1088,7 @@ impl FluidSolver {
                 capillary_mobility: 0.0,
                 sharpness: 0.0,
                 lift: 0.0,
-                _pad_lift0: 0.0,
+                capillary_branching: 0.0,
                 _pad_lift1: 0.0,
                 _pad_lift2: 0.0,
             }),
@@ -1187,7 +1191,8 @@ impl FluidSolver {
             sharpness: 0.0,
             // Lift (ADR-0081) off until `set_from_diffusion` drives it per-brush.
             lift: 0.0,
-            _pad_lift0: 0.0,
+            // Branched capillary (ADR-0082) off until `set_from_diffusion` drives it per-brush.
+            capillary_branching: 0.0,
             _pad_lift1: 0.0,
             _pad_lift2: 0.0,
         };
@@ -1253,7 +1258,7 @@ impl FluidSolver {
             capillary_mobility: dp.capillary_mobility,
             sharpness: dp.sharpness,
             lift: dp.lift,
-            _pad_lift0: 0.0,
+            capillary_branching: dp.capillary_branching,
             _pad_lift1: 0.0,
             _pad_lift2: 0.0,
         };

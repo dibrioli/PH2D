@@ -1,11 +1,12 @@
 //! [`WatercolorParams`] — the per-brush watercolor tuning exposed to the artist
-//! (ADR-0079). The serializable brush-facing DTO for the 17 solver controls
-//! (8 gated diffusion-advection + 3 deposition + 4 shallow-water + 1 capillary + 1 sharpness),
-//! kept SEPARATE from the solver-internal [`crate::diffusion::DiffusionParams`] so the brush-file
-//! contract is insulated from solver churn — [`WatercolorParams::to_diffusion`] maps 1:1.
+//! (ADR-0079). The serializable brush-facing DTO for the 19 solver controls (8 gated
+//! diffusion-advection, 3 deposition, 4 shallow-water, 1 capillary, 1 sharpness, 1 lift,
+//! 1 capillary-branching), kept SEPARATE from the solver-internal
+//! [`crate::diffusion::DiffusionParams`] so the brush-file contract is insulated from solver
+//! churn — [`WatercolorParams::to_diffusion`] maps 1:1.
 //!
 //! [`WatercolorParams::CONTROLS`] is the single source of truth for the UI: label +
-//! physical `[min,max]` range per control, indexed `0..17`. The Brush Studio panel
+//! physical `[min,max]` range per control, indexed `0..19`. The Brush Studio panel
 //! iterates it to lay out the "Watercolor" subsection; the tool maps a slider's
 //! NodeId → index and writes via [`WatercolorParams::set_normalized`]. Keeping it here
 //! (not duplicated in the panel + tool) means one place defines what a control is.
@@ -23,11 +24,11 @@ pub struct WatercolorControl {
     pub max: f32,
 }
 
-/// Per-brush watercolor tuning (ADR-0079) — the 17 solver controls the artist drives via
+/// Per-brush watercolor tuning (ADR-0079) — the 19 solver controls the artist drives via
 /// the Brush Studio "Watercolor" subsection. Serializable like every other brush param so
 /// the brush-file/MCP/replay carry it. [`Self::to_diffusion`] projects onto the solver's
-/// [`DiffusionParams`]. Cap ≤ 18 (17 used — +`capillary` ADR-0078 S5, +`sharpness` ADR-0078
-/// S5c; ADR-0079-amendment-1) — gate `architecture_painter_contract_surface`.
+/// [`DiffusionParams`]. Cap ≤ 20 (19 used — +`lift` ADR-0081, +`capillary_branching` ADR-0082;
+/// ADR-0079-amendment-1) — gate `architecture_painter_contract_surface`.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WatercolorParams {
     // ── Gated diffusion-advection (the base wash) ──
@@ -54,7 +55,9 @@ pub struct WatercolorParams {
     pub sharpness: f32,
     // ── Lift (ADR-0081) — re-wetting re-mobilizes non-staining deposited pigment ──
     pub lift: f32,
-    // === 18/18 used (cap ≤ 18, ADR-0079-amendment-1 + ADR-0081 `lift`) — cap full ===
+    // ── Branched capillary fringe (ADR-0082) — fiber-channeled conductance suppression ──
+    pub capillary_branching: f32,
+    // === 19/20 used (cap ≤ 20, ADR-0082 `capillary_branching`) — 1 slot headroom ===
 }
 
 impl Default for WatercolorParams {
@@ -96,16 +99,19 @@ impl Default for WatercolorParams {
             // Lift OFF by default (ADR-0081) — the lift pass is dormant; the artist opts in via
             // the "Lift" slider (re-wetting then reactivates dried non-staining pigment).
             lift: 0.0,
+            // Branched capillary OFF by default (ADR-0082) — opt-in; 0 = the smooth isotropic
+            // fringe bit-for-bit. The artist raises "Branching" for the lobed/dendritic fringe.
+            capillary_branching: 0.0,
         }
     }
 }
 
 impl WatercolorParams {
-    /// The control descriptors (label + range), indexed `0..18` — the single source the
+    /// The control descriptors (label + range), indexed `0..19` — the single source the
     /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
-    pub const CONTROLS: [WatercolorControl; 18] = [
+    pub const CONTROLS: [WatercolorControl; 19] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl {
@@ -208,6 +214,14 @@ impl WatercolorParams {
             min: 0.0,
             max: 1.0,
         },
+        // Branched capillary fringe (ADR-0082): fiber-channeled suppression of the capillary
+        // conductance → a lobed/dendritic fringe instead of the smooth ring. 0 = off (the
+        // isotropic capillary bit-for-bit); 1 = max suppression in the paper valleys. Opt-in.
+        WatercolorControl {
+            label: "Branching",
+            min: 0.0,
+            max: 1.0,
+        },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -235,6 +249,7 @@ impl WatercolorParams {
             15 => self.capillary,
             16 => self.sharpness,
             17 => self.lift,
+            18 => self.capillary_branching,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -262,6 +277,7 @@ impl WatercolorParams {
             15 => self.capillary = v,
             16 => self.sharpness = v,
             17 => self.lift = v,
+            18 => self.capillary_branching = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -280,7 +296,7 @@ impl WatercolorParams {
         self.set(i, c.min + v01.clamp(0.0, 1.0) * (c.max - c.min));
     }
 
-    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 17 controls) —
+    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 19 controls) —
     /// the single conversion point the live path uses to drive the solver.
     #[must_use]
     pub fn to_diffusion(&self) -> DiffusionParams {
@@ -305,6 +321,7 @@ impl WatercolorParams {
             capillary_mobility: crate::diffusion::CAPILLARY_PIGMENT_MOBILITY,
             sharpness: self.sharpness,
             lift: self.lift,
+            capillary_branching: self.capillary_branching,
         }
     }
 }

@@ -160,6 +160,15 @@ pub struct DiffusionParams {
     /// resist). `0` ⇒ the lift pass is dormant (deposited stays frozen — the pre-ADR-0081 path is
     /// bit-identical). Read by [`DiffusionGrid::lift_pigment`].
     pub lift: f32,
+    /// **Branched (fiber-channeled) capillary fringe (ADR-0082)** ∈ [0,1] — opt-in, non-destructive.
+    /// Suppresses the capillary per-face conductance by the paper FIBRE on that face
+    /// (`fiber_factor = 1 − branching·(1 − paper_face) ∈ [1−branching, 1]`), so the wick advances
+    /// LESS in the low-paper valleys and ~full on the high-paper crests → the fringe goes
+    /// lobed/dendritic (ramified) instead of a smooth ring, the watercolor fibre-to-fibre look.
+    /// Suppression-only (≤ 1, never a boost) preserves the convex-average stability + conservation
+    /// of [`DiffusionGrid::capillary_flow`]. `0` ⇒ `fiber_factor = 1` ⇒ the isotropic capillary is
+    /// **bit-identical** to today (opt-in). Only read while the capillary layer is active.
+    pub capillary_branching: f32,
 }
 
 /// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
@@ -201,6 +210,9 @@ impl Default for DiffusionParams {
             sharpness: 0.0,
             // Lift OFF by default (ADR-0081) → the lift pass is dormant, deposited stays frozen.
             lift: 0.0,
+            // Branched capillary OFF by default (ADR-0082) → opt-in; 0 = isotropic capillary
+            // bit-identical (fiber_factor = 1, the smooth ring).
+            capillary_branching: 0.0,
         }
     }
 }
@@ -920,18 +932,25 @@ impl DiffusionGrid {
                 let face = |nidx: usize| -> (f32, [f32; PIG_CH]) {
                     let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
                     let cond = 0.5 * (permc + permn);
+                    // Branched (fiber-channeled) capillary (ADR-0082): suppress the face
+                    // conductance by the paper FIBRE on the face. `fiber_factor ∈ [1−branching, 1]`
+                    // (suppression-only ⇒ the convex-average stability + conservation hold);
+                    // `capillary_branching = 0 ⇒ fcond == cond` (bit-identical to the isotropic
+                    // capillary). Used for BOTH the water flux `dw` and the pigment co-advect.
+                    let paper_face = 0.5 * (self.paper[c] + self.paper[nidx]);
+                    let fcond = cond * (1.0 - p.capillary_branching * (1.0 - paper_face));
                     let wn = self.water[nidx];
-                    let dw = cond * (wn - wc);
+                    let dw = fcond * (wn - wc);
                     let mut dp = [0.0f32; PIG_CH];
                     if wc > wn {
                         // c donates: pigment fraction = mobility · (water fraction leaving to n).
-                        let frac = mob * cap * cond * (wc - wn) / wc;
+                        let frac = mob * cap * fcond * (wc - wn) / wc;
                         for k in 0..PIG_CH {
                             dp[k] = -frac * pc[k];
                         }
                     } else if wn > wc {
                         // n donates to c at n's concentration (also mobility-scaled).
-                        let frac = mob * cap * cond * (wn - wc) / wn;
+                        let frac = mob * cap * fcond * (wn - wc) / wn;
                         let pnb = &self.pigment[nidx];
                         for k in 0..PIG_CH {
                             dp[k] = frac * pnb[k];
@@ -1758,6 +1777,128 @@ mod tests {
         assert!(
             (pig_before - pig_after).abs() < 1e-3 * (pig_before.abs() + 1.0),
             "capillary must conserve pigment mass: {pig_before} -> {pig_after}"
+        );
+    }
+
+    // ───────────────── ADR-0082 — branched (fiber-channeled) capillary fringe ─────────────────
+
+    /// NON-DESTRUCTIVE (ADR-0082 §2.1): `capillary_branching = 0` is BIT-IDENTICAL to today's
+    /// isotropic capillary (`fiber_factor = 1`). Run the capillary layer on the SAME splatted
+    /// blob with branching explicitly 0 vs the `Default` (also 0) — every water + pigment field
+    /// value must match bit-for-bit, proving the opt-in parameter never touches the shipped path.
+    #[test]
+    fn branching_off_is_bit_identical() {
+        let (w, h) = (48u32, 48u32);
+        let run = |branching: f32| -> DiffusionGrid {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat5(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]);
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                capillary: 0.2,
+                capillary_branching: branching,
+                ..Default::default()
+            };
+            for _ in 0..30 {
+                g.step(&p);
+            }
+            g
+        };
+        let zero = run(0.0); // explicit 0
+        let default = run(DiffusionParams::default().capillary_branching); // the Default (also 0)
+        assert_eq!(
+            zero.water(),
+            default.water(),
+            "capillary_branching = 0 must leave the water field bit-identical to the default"
+        );
+        // Pigment is `[f32; PIG_CH]` per cell → compare the raw channel arrays exactly.
+        assert_eq!(
+            zero.pigment(),
+            default.pigment(),
+            "capillary_branching = 0 must leave the pigment field bit-identical to the default"
+        );
+    }
+
+    /// The defining ADR-0082 behaviour: with `capillary_branching > 0` the fringe goes
+    /// LOBED/dendritic (the wick is suppressed in the low-paper valleys, ~full on the crests)
+    /// instead of a smooth ring. Branching is suppression-only, so it lowers the OVERALL wicked
+    /// water (smaller absolute values) — the lobing shows as a higher *relative* unevenness, i.e.
+    /// a higher squared coefficient of variation `var / mean²` of the fringe water (some angular
+    /// sectors wick far on the crests, others barely in the valleys), vs the near-uniform smooth
+    /// ring. A `scale = 4` paper makes the tooth fine enough that the fringe lobes within the
+    /// probe annulus. Capillary CONSERVES water + pigment regardless of branching (suppression-only
+    /// keeps the convex-average mass-conservation), checked here too.
+    #[test]
+    fn branching_makes_fringe_uneven() {
+        let (w, h) = (64u32, 64u32);
+        let (cx, cy) = (32.0f32, 32.0);
+        // Squared coefficient of variation `var / mean²` of the water over the fringe annulus
+        // `[lo, hi)` — the magnitude-independent lobing probe (a smooth ring → ~0; lobes → high).
+        let fringe_cv2 = |g: &DiffusionGrid, lo: f32, hi: f32| -> f64 {
+            let (gw, gh) = g.dims();
+            let (mut sum, mut sumsq, mut n) = (0.0f64, 0.0f64, 0.0f64);
+            for y in 0..gh {
+                for x in 0..gw {
+                    let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+                    if d >= lo && d < hi {
+                        let v = g.water()[(y * gw + x) as usize] as f64;
+                        sum += v;
+                        sumsq += v * v;
+                        n += 1.0;
+                    }
+                }
+            }
+            let mean = sum / n.max(1.0);
+            let var = (sumsq / n.max(1.0) - mean * mean).max(0.0);
+            var / (mean * mean).max(1e-12)
+        };
+        let run = |branching: f32| -> DiffusionGrid {
+            // scale = 4 → a finer paper tooth (lobes within the annulus).
+            let mut g = DiffusionGrid::new(w, h, 4.0);
+            g.splat5(cx, cy, 8.0, 1.0, [0.10, 0.20, 0.70]);
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                capillary: 0.24,
+                capillary_branching: branching,
+                ..Default::default()
+            };
+            for _ in 0..50 {
+                g.step(&p);
+            }
+            g
+        };
+        let smooth = run(0.0);
+        let lobed = run(0.9);
+        let cv2_smooth = fringe_cv2(&smooth, 9.0, 13.0);
+        let cv2_lobed = fringe_cv2(&lobed, 9.0, 13.0);
+        eprintln!("branching fringe cv²: smooth = {cv2_smooth:.6e}, lobed = {cv2_lobed:.6e}");
+        assert!(
+            cv2_lobed > cv2_smooth * 1.1,
+            "branched capillary fringe must be MORE uneven (lobed) than the smooth ring: lobed cv² {cv2_lobed:.6e} vs smooth cv² {cv2_smooth:.6e}"
+        );
+        // Conservation still holds with branching ON (suppression-only ⇒ convex average) — a
+        // separate unsaturated splat (peak ≤ 0.9) so there's no splat saturation, no evaporation.
+        let mut g = DiffusionGrid::new(48, 48, 4.0);
+        g.splat5(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]); // peak ≤ 0.9 → no splat saturation
+        let wb: f64 = g.water().iter().map(|&x| x as f64).sum();
+        let pb = g.total_pigment();
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            capillary: 0.2,
+            capillary_branching: 0.9,
+            ..Default::default()
+        };
+        for _ in 0..40 {
+            g.step(&p);
+        }
+        let wa: f64 = g.water().iter().map(|&x| x as f64).sum();
+        let pa = g.total_pigment();
+        assert!(
+            (wb - wa).abs() < 1e-3 * (wb.abs() + 1.0),
+            "branched capillary must still conserve water: {wb} -> {wa}"
+        );
+        assert!(
+            (pb - pa).abs() < 1e-3 * (pb.abs() + 1.0),
+            "branched capillary must still conserve pigment mass: {pb} -> {pa}"
         );
     }
 

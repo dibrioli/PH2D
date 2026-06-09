@@ -22,8 +22,9 @@
 // pigment flux for that face are 0 (and `acc + 0.0 == acc`), so the clamped 4-face GPU sum is
 // bit-identical to the CPU's guarded 3/4-face sum.
 //
-// Shares the solver `Params` UBO; `capillary` sits in the byte the diffuse/advect/transfer/
-// combine shaders treat as padding (offset 84), so they keep a valid view.
+// Shares the solver `Params` UBO; `capillary` + `capillary_branching` (ADR-0082, offset 25) sit
+// in the bytes the diffuse/advect/transfer/combine shaders treat as padding, so they keep a valid
+// view. Only this shader reads `capillary_branching` (the fiber-channeled fringe modulation).
 //
 // Pigment = PV (=8) vec4 per cell = 32 channels (+ stain, ADR-0080/0081); each face's water flux
 // + the pigment co-advect fraction are per-cell scalars, applied to every channel in a loop.
@@ -55,7 +56,11 @@ struct Params {
     // ── ADR-0078 S5 capillary layer ──
     capillary: f32,
     capillary_mobility: f32, // pigment co-advects at this fraction of the water wick (filtering)
-    _pad2: f32,
+    sharpness: f32,          // (offset 23) read by cs_advect_correct; declared here to reach 25
+    _lift: f32,              // (offset 24) read by cs_lift; declared here to reach offset 25
+    // ── ADR-0082 branched capillary fringe ── fiber-channeled suppression of the face
+    // conductance (offset 25 in the shared solver UBO; only this shader reads it).
+    capillary_branching: f32,
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -98,9 +103,15 @@ struct FaceInfo {
     kind: u32,
     ni: u32,
 }
-fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32) -> FaceInfo {
+fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
     let permn = perm_at(ni);
-    let cond = 0.5 * (permc + permn);
+    var cond = 0.5 * (permc + permn);
+    // Branched (fiber-channeled) capillary (ADR-0082): suppress the face conductance by the
+    // paper FIBRE averaged on the face. `fiber_factor ∈ [1−branching, 1]` (suppression-only ⇒
+    // convex-average stability + conservation hold); `capillary_branching = 0 ⇒ cond unchanged`
+    // (bit-identical to the isotropic capillary). Mirrors the CPU `capillary_flow` `face` closure.
+    let paper_face = 0.5 * (paper_c + paper[ni]);
+    cond = cond * (1.0 - P.capillary_branching * (1.0 - paper_face));
     let wn = water_in[ni];
     var frac = 0.0;
     var kind = 0u;
@@ -135,14 +146,15 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     let c = idx(x, y);
     let wc = water_in[c];
     let permc = perm_at(c);
+    let paper_c = paper[c]; // c's own paper height (for the ADR-0082 face-averaged fibre factor)
     let cap = P.capillary;
     let mob = P.capillary_mobility;
     let n = nb(x, y);
     // Faces left → right → up → down (the CPU order), each a per-cell scalar set.
-    let fL = face_info(idx(n.x, y), wc, permc, cap, mob);
-    let fR = face_info(idx(n.y, y), wc, permc, cap, mob);
-    let fU = face_info(idx(x, n.z), wc, permc, cap, mob);
-    let fD = face_info(idx(x, n.w), wc, permc, cap, mob);
+    let fL = face_info(idx(n.x, y), wc, permc, cap, mob, paper_c);
+    let fR = face_info(idx(n.y, y), wc, permc, cap, mob, paper_c);
+    let fU = face_info(idx(x, n.z), wc, permc, cap, mob, paper_c);
+    let fD = face_info(idx(x, n.w), wc, permc, cap, mob, paper_c);
     water_out[c] = wc + cap * (fL.dw + fR.dw + fU.dw + fD.dw);
     for (var v = 0u; v < PV; v = v + 1u) {
         let pc_v = pig_in[c * PV + v];

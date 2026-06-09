@@ -95,6 +95,10 @@ impl FluidParams {
             // drives it per-brush via `set_from_diffusion`, not `FluidParams`) → keeps
             // `to_diffusion(default) == default` bit-exact for the parity gate.
             lift: 0.0,
+            // Branched capillary (ADR-0082) is likewise OFF on this `FluidParams`-mapped path
+            // (the live solver drives it per-brush via `set_from_diffusion`) → keeps
+            // `to_diffusion(default) == default` bit-exact for the parity gate.
+            capillary_branching: 0.0,
         }
     }
 }

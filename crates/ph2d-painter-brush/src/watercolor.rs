@@ -206,13 +206,16 @@ impl WatercolorParams {
             min: 0.0,
             max: 2.5,
         },
-        // Lift (ADR-0081): re-wetting re-mobilizes non-staining dried pigment. 0 = off (deposited
-        // stays frozen — the validated look bit-for-bit); higher = wet areas reactivate dried
-        // paint (sedimentary pigments lift, staining ones resist). Capped at 1 (full re-mobilize).
+        // Lift (ADR-0081/0084): re-wetting re-mobilizes dried/backdrop pigment (paper-reveal).
+        // 0 = off (the validated look bit-for-bit). The rate applies PER SUBSTEP and saturates
+        // geometrically (`lifted_frac += rate·(1−lifted_frac)` over many substeps per stroke), so
+        // the perceptual range is tiny: Enio's smoke (2026-06-09) found 0.025 already gives the
+        // FULL effect — the slider maps onto exactly that usable band instead of wasting 97.5%
+        // of its travel past saturation.
         WatercolorControl {
             label: "Lift",
             min: 0.0,
-            max: 1.0,
+            max: 0.025,
         },
         // Branched capillary fringe (ADR-0082): fiber-channeled suppression of the capillary
         // conductance → a lobed/dendritic fringe instead of the smooth ring. 0 = off (the

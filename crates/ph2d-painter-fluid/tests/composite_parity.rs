@@ -580,7 +580,15 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
     let blue = [0.05f32, 0.10, 0.85];
     let yellow = [0.85f32, 0.80, 0.05];
     let (ovx, ovy) = (gw as f32 * 0.5, gh as f32 * 0.5);
-    grid.splat(ovx - 2.0, ovy, 7.0, 0.8, blue, blue[0] + blue[1] + blue[2], 0.0);
+    grid.splat(
+        ovx - 2.0,
+        ovy,
+        7.0,
+        0.8,
+        blue,
+        blue[0] + blue[1] + blue[2],
+        0.0,
+    );
     grid.splat(
         ovx + 2.0,
         ovy,

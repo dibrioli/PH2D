@@ -123,10 +123,10 @@ impl WatercolorParams {
         WatercolorControl { label: "Capillary", min: 0.0, max: 0.24 },
         // BFECC/MacCormack 2nd-order advection (ADR-0078 S5c): 0 = soft first-order upwind
         // (smeary), 1 = sharp error-compensated transport (crisp flow + backruns). >1 OVER-
-        // corrects (more aggressive anti-diffusion) — stable because the limiter clamps each
-        // cell to its local extrema, so 0..3 just dials the sharpening harder for a visible
-        // effect. 0 = the shipped look bit-for-bit; higher = less numerical diffusion.
-        WatercolorControl { label: "Sharpness", min: 0.0, max: 3.0 },
+        // corrects (more aggressive anti-diffusion). Capped at 2.5 — beyond that the
+        // over-correction starts to posterize into artefacts (Enio 2026-06-09); the limiter
+        // keeps it stable, but 2.5 is the usable ceiling. 0 = the shipped look bit-for-bit.
+        WatercolorControl { label: "Sharpness", min: 0.0, max: 2.5 },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).

@@ -295,8 +295,13 @@ pub struct FluidDab {
     pub r: f32,
     /// Wetness this touch deposits (`WET_WATER_DEPOSIT`).
     pub water: f32,
-    /// Linear-RGB pigment mass (already weighted by `WET_PIGMENT_DEPOSIT × opacity`).
-    pub rgb: [f32; 3],
+    /// The dab's pigment colour (linear sRGB) — the per-stamp colour (with Color Dynamics
+    /// jitter). The wet-field carries it as mass-weighted K/S (ADR-0080), so overlapping dabs
+    /// of different colours mix subtractively. (Was a gray coverage `rgb`; the colour now lives
+    /// in the field, not a per-stroke composite uniform.)
+    pub color: [f32; 3],
+    /// Coverage mass this dab deposits (`WET_PIGMENT_DEPOSIT × opacity × brush_opacity`).
+    pub mass: f32,
 }
 
 /// Painter — sucessor do Procreate. Stateful workhorse tool.

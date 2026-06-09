@@ -3594,6 +3594,60 @@ fn fluid_composite_mixes_subtractively_km() {
 }
 
 #[test]
+fn fluid_cross_stroke_wet_on_wet_mixes() {
+    // **ADR-0080 cross-stroke gate.** A still-WET field persists across strokes: paint BLUE,
+    // then (a NEW stroke) paint YELLOW over the same wet spot before it dries → the field mixes
+    // them SUBTRACTIVELY (green), the headline wet-on-wet "magic". The dry-drop only clears the
+    // field once dry, so `begin_stroke` reuses it here instead of starting fresh.
+    let (w, h) = (48u32, 36u32);
+    let mut t = PainterTool::default();
+    t.params.size_px = 22.0;
+    t.params.opacity = 1.0;
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h); // white paper
+    // Stroke 1 — blue, at the centre.
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([20, 40, 235, 255]);
+    t.begin_stroke(1);
+    t.queue_pointer(PointerSample {
+        position: [24.0, 18.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    assert!(t.has_wet_field(), "stroke 1 allocated the wet field");
+    t.end_stroke();
+    assert!(
+        t.has_wet_field(),
+        "the wet field must persist (still wet) after stroke 1 ends — cross-stroke wet-on-wet"
+    );
+    // Stroke 2 — yellow, over the SAME wet spot. begin_stroke must REUSE the wet field.
+    t.params.active_color = crate::color::srgb8_to_painter_oklch([235, 210, 20, 255]);
+    t.begin_stroke(2);
+    t.queue_pointer(PointerSample {
+        position: [24.0, 18.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    // The wettest cell carries BOTH pigments → it reduces to a green-dominant colour.
+    let grid = t.fluid_grid_mut().expect("wet field present");
+    let (gw, gh) = grid.dims();
+    let (mut best_i, mut best_m) = (0usize, 0.0f32);
+    for i in 0..(gw * gh) as usize {
+        let m = grid.pigment_mass(i);
+        if m > best_m {
+            best_m = m;
+            best_i = i;
+        }
+    }
+    let c = grid.pigment_color(best_i);
+    eprintln!("cross-stroke overlap colour = {c:?} (mass {best_m})");
+    assert!(best_m > 1.0e-4, "overlap must carry pigment (mass {best_m})");
+    assert!(
+        c[1] > c[0] && c[1] > c[2],
+        "cross-stroke blue→yellow must mix green-dominant (not mud): {c:?}"
+    );
+}
+
+#[test]
 fn gpu_fluid_driven_skips_cpu_diffusion() {
     // W15.3: when the shell drives the field on the GPU, the tool must NOT CPU-step
     // it (dabs still splat; the shell's step_grid + composite_and_settle do the
@@ -3614,9 +3668,9 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
         tilt: 0.0,
     });
     assert!(t.has_wet_field(), "fluid field allocated + dab splatted");
-    let snap: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
+    let snap = t.fluid_grid_mut().unwrap().pigment().to_vec();
     t.on_tick_diffusion(); // GPU-driven → must NOT CPU-step
-    let after: Vec<[f32; 3]> = t.fluid_grid_mut().unwrap().pigment().to_vec();
+    let after = t.fluid_grid_mut().unwrap().pigment().to_vec();
     assert_eq!(
         snap, after,
         "on_tick must not CPU-step the grid when GPU-driven"
@@ -3832,16 +3886,17 @@ fn visual_smoke_watercolor_v2_diffusion() {
     for y in 0..gh {
         for x in 0..gw {
             if x > gw / 2 {
-                grid.splat(x as f32, y as f32, 0.6, 0.9, [0.0; 3]);
+                grid.splat(x as f32, y as f32, 0.6, 0.9, [0.0; 3], 0.0);
             }
         }
     }
     // A horizontal ultramarine stroke across the whole width (carries some water).
     let pigment = [0.05f32, 0.07, 0.5];
+    let pmass = pigment[0] + pigment[1] + pigment[2];
     for x in 8..gw - 8 {
-        grid.splat(x as f32, gh as f32 * 0.5, 6.0, 0.35, pigment);
+        grid.splat(x as f32, gh as f32 * 0.5, 6.0, 0.35, pigment, pmass);
     }
-    grid.splat(150.0, gh as f32 * 0.5, 7.0, 1.0, [0.0; 3]); // clean-water backrun drop
+    grid.splat(150.0, gh as f32 * 0.5, 7.0, 1.0, [0.0; 3], 0.0); // clean-water backrun drop
 
     let params = DiffusionParams::default();
     // Render the three snapshots into vertical bands of a 2× upsampled canvas.
@@ -3860,15 +3915,11 @@ fn visual_smoke_watercolor_v2_diffusion() {
         let band_y0 = band as u32 * (gh * scale + 8);
         for gy in 0..gh {
             for gx in 0..gw {
-                let p = pig[(gy * gw + gx) as usize];
-                let dens = (p[0] + p[1] + p[2]).max(0.0);
+                let cell = &pig[(gy * gw + gx) as usize];
+                let dens = ph2d_painter_brush::diffusion::DiffusionGrid::cell_mass(cell).max(0.0);
                 let a = (1.0 - (-dens * 1.6).exp()).clamp(0.0, 0.97);
                 let col = if dens > 1e-5 {
-                    [
-                        (p[0] / dens * 3.0).min(1.0),
-                        (p[1] / dens * 3.0).min(1.0),
-                        (p[2] / dens * 3.0).min(1.0),
-                    ]
+                    ph2d_painter_brush::diffusion::DiffusionGrid::cell_color(cell)
                 } else {
                     [0.0, 0.0, 0.0]
                 };

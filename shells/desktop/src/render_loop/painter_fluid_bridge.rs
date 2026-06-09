@@ -21,7 +21,6 @@
 
 use ph2d_editor::ToolRegistry;
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::wet_composite::prepare_wet_composite_from_stroke;
 use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidSolver};
 use std::cell::RefCell;
 use std::time::Instant;
@@ -270,7 +269,8 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }
             if let Some(backdrop) = painter.fluid_backdrop() {
-                let brush = prepare_wet_composite_from_stroke(painter.fluid_stroke_color_linear());
+                // ADR-0080: pigment colour is per-pixel (reduced from the field), so no
+                // per-stroke brush — `begin_stroke` just binds the field + backdrop.
                 // Coverage supersampling: 1 at full-res (edge already 1px-fine — saves
                 // 4× the K–M cost), 2 at half-res to antialias the steeper edge.
                 let ss = if scale <= 1 { 1 } else { 2 };
@@ -289,7 +289,6 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                     // nothing is deposited, so non-deposition strokes are unchanged.
                     sess.solver.total_buffer(),
                     backdrop,
-                    &brush,
                 );
             }
             sess.epoch = epoch;
@@ -322,7 +321,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         // resident water + pigment; then diffuse/advect/evaporate run on the GPU.
         let gpu_dabs: Vec<DabGpu> = dabs
             .iter()
-            .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.rgb))
+            .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass))
             .collect();
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded

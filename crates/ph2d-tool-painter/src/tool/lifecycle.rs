@@ -28,6 +28,13 @@ const WET_DRY_THRESHOLD: f32 = 0.045;
 /// `Σcolour ≈ 0.53`, so `K = old 2.0 × 0.53 ≈ 1.06` keeps them unchanged.
 const WET_COVERAGE_K: f32 = 1.06;
 
+/// Cached paper-tooth field entry: `(gw, gh, scale, paper)` — the key `(gw,gh,scale)` plus the
+/// shared field (see [`PAPER_CACHE`]).
+type PaperCacheEntry = (u32, u32, u32, std::sync::Arc<Vec<f32>>);
+
+/// This frame's fluid dabs + the composite envelope `(x0,y0,x1,y1)` (see [`PainterTool::fluid_take_dabs`]).
+type FluidDabBatch = (Vec<crate::tool::FluidDab>, (u32, u32, u32, u32));
+
 thread_local! {
     /// **Cached paper-tooth field (perf fix 2026-06-08).** `DiffusionGrid::new`
     /// generates the paper via `grain_noise` PER CELL — O(grid) on the CPU, ~⅓ s on a
@@ -35,7 +42,7 @@ thread_local! {
     /// stroke regenerated it needlessly (the "delay entre o clique e o início do
     /// traço"). Cache it keyed by those, so begin_stroke only pays a cheap clone after
     /// the first stroke on a canvas. Thread-local (the tool runs single-threaded).
-    static PAPER_CACHE: std::cell::RefCell<Option<(u32, u32, u32, std::sync::Arc<Vec<f32>>)>> =
+    static PAPER_CACHE: std::cell::RefCell<Option<PaperCacheEntry>> =
         const { std::cell::RefCell::new(None) };
 }
 
@@ -162,48 +169,58 @@ impl PainterTool {
             self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
         }
 
-        // **W15 fluid:** (re)allocate the live wet-on-wet diffusion field when the
-        // brush opts in. A fresh field per stroke (v1 — cross-stroke wet-on-wet is a
-        // W15.3 refinement); the previous stroke's wash was already composited into
-        // the canvas, so resetting just "sets" it. `None` for non-fluid brushes.
+        // **W15 fluid (ADR-0080 cross-stroke wet-on-wet):** the live wet-on-wet diffusion
+        // field persists ACROSS strokes while it is still WET. A new stroke deposits its dabs
+        // into the surviving wet pigment, so colours mix subtractively across strokes (pinte
+        // azul, pinte amarelo molhado por cima → verde). The dry-drop
+        // ([`Self::fluid_dry_check_and_drop`]/`_gpu`) clears the field (`wet_field = None`) ONCE
+        // it has dried + the stroke ended, so a surviving `Some` here means "still wet → reuse".
+        // Only a missing field (dry/baked) or a resolution change builds a FRESH field — which
+        // snapshots the backdrop + bumps the GPU-reset epoch (the bridge clears the resident
+        // pigment) + restarts the composite envelope. `None` for non-fluid brushes.
+        let mut wet_field_reused = false;
         if self.brush.rendering.fluid_enabled {
             // **W15.3 full-res on a capable GPU.** A hires field runs at full canvas
             // resolution (`scale=1`) for fine bleeds + sharp edges; otherwise the
-            // CPU-budget half-res (`WET_FIELD_SCALE`). Captured per field so a
-            // mid-stroke flag flip can't change the live field's resolution.
-            self.wet_field_scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
-            let scale = self.wet_field_scale;
+            // CPU-budget half-res (`WET_FIELD_SCALE`).
+            let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
             let (sw, sh) = self.source_size;
             let gw = (sw / scale).max(1);
             let gh = (sh / scale).max(1);
-            // **Perf (2026-06-08):** reuse the cached deterministic paper field instead
-            // of regenerating `grain_noise` per cell every stroke (O(grid), ~⅓ s at 4K —
-            // the click→stroke delay). Pre-warm (hover) usually populated the cache, so
-            // this is a cheap clone off the click path.
-            let paper = cached_fluid_paper(gw, gh, scale);
-            self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::with_paper(
-                gw,
-                gh,
-                (*paper).clone(),
-            ));
-            // W15.3: signal the shell GPU drive that a FRESH field began, so it
-            // resets the resident pigment (a reused solver must not inherit the
-            // previous stroke's bloom).
-            self.fluid_stroke_epoch = self.fluid_stroke_epoch.wrapping_add(1);
-            // The wash composites over the pre-stroke canvas for the WHOLE life of
-            // the field — including the many frames it keeps blooming after pen-up.
-            // `pending_pre_stroke` can't serve this (it's consumed by the undo stack
-            // at `end_stroke`), so snapshot a dedicated backdrop here.
-            self.wet_backdrop = Some(self.canvas_rgba.as_ref().clone());
+            // Reuse iff a still-wet field of the SAME resolution survived the previous stroke.
+            wet_field_reused = self.wet_field_scale == scale
+                && self.wet_field.as_ref().map(|g| g.dims()) == Some((gw, gh));
+            if !wet_field_reused {
+                self.wet_field_scale = scale;
+                // **Perf (2026-06-08):** reuse the cached deterministic paper field instead
+                // of regenerating `grain_noise` per cell every stroke (O(grid), ~⅓ s at 4K —
+                // the click→stroke delay). Pre-warm (hover) usually populated the cache.
+                let paper = cached_fluid_paper(gw, gh, scale);
+                self.wet_field = Some(ph2d_painter_brush::diffusion::DiffusionGrid::with_paper(
+                    gw,
+                    gh,
+                    (*paper).clone(),
+                ));
+                // Signal the shell GPU drive that a FRESH field began, so it resets the
+                // resident pigment (a reused solver must not inherit a dried bloom). NOT bumped
+                // on reuse → the resident field persists for cross-stroke mixing.
+                self.fluid_stroke_epoch = self.fluid_stroke_epoch.wrapping_add(1);
+                // The wash composites over the pre-stroke canvas for the WHOLE life of the
+                // field. `pending_pre_stroke` can't serve this (consumed by undo at `end_stroke`),
+                // so snapshot a dedicated backdrop here — and KEEP it across a reused stroke (the
+                // wet field still holds the prior stroke's pigment over the same backdrop).
+                self.wet_backdrop = Some(self.canvas_rgba.as_ref().clone());
+            }
         } else {
             self.wet_field = None;
             self.wet_backdrop = None;
         }
-        // Fresh stroke ⇒ no previous wet region to union against, and the GPU
-        // composite envelope restarts empty (it's only read while a field exists, and
-        // a field is only ever created here, so this is the one reset that matters).
-        self.wet_composite_bbox = None;
-        self.wet_pigment_envelope = None;
+        // Fresh stroke ⇒ reset the composite envelope; a REUSED (still-wet) field keeps its
+        // envelope so the surviving pigment stays composited (don't clip it to the new dabs).
+        if !wet_field_reused {
+            self.wet_composite_bbox = None;
+            self.wet_pigment_envelope = None;
+        }
         self.fluid_dabs.clear();
 
         // T1.9: construir PartialStroke + wire journal se ativo.
@@ -577,9 +594,7 @@ impl PainterTool {
     /// dab list is empty but the region persists, so the field keeps blooming +
     /// compositing until the GPU dry-check drops it.
     #[must_use]
-    pub fn fluid_take_dabs(
-        &mut self,
-    ) -> Option<(Vec<crate::tool::FluidDab>, (u32, u32, u32, u32))> {
+    pub fn fluid_take_dabs(&mut self) -> Option<FluidDabBatch> {
         let region = self.wet_pigment_envelope?;
         Some((std::mem::take(&mut self.fluid_dabs), region))
     }
@@ -675,9 +690,7 @@ impl PainterTool {
     /// available (ADR-0049). Bare-paper pixels short-circuit to the backdrop, so the
     /// spectral solve already tracks the wet region.
     fn composite_wet_field(&mut self) {
-        use ph2d_painter_brush::wet_composite::{
-            composite_wet_field_cpu, prepare_wet_composite, wet_pigment_bbox,
-        };
+        use ph2d_painter_brush::wet_composite::{composite_wet_field_cpu, wet_pigment_bbox};
         let (cw, ch) = self.source_size;
         let n4 = (cw as usize) * (ch as usize) * 4;
         // The dedicated fluid backdrop — outlives the stroke, unlike
@@ -706,15 +719,9 @@ impl PainterTool {
         let Some(region) = region else {
             return;
         };
-        // Amortised K–M brush prep (a fluid stroke is one colour): chromaticity from
-        // the total pigment mass + the colour-independent coverage normaliser from
-        // the stroke colour — derived ONCE per composite.
-        let scol = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
-            self.stroke_color_oklab[0],
-            self.stroke_color_oklab[1],
-            self.stroke_color_oklab[2],
-        );
-        let brush = prepare_wet_composite(pig, scol);
+        // ADR-0080: the wet-field carries the mixed pigment per cell, so the composite reduces
+        // it per-pixel (no per-stroke brush colour). A fluid stroke's colour now lives in the
+        // field (deposited per-dab), so cross-colour / cross-stroke mixing emerges in the wash.
         let canvas = Arc::make_mut(&mut self.canvas_rgba);
         if canvas.len() != n4 {
             return;
@@ -729,7 +736,6 @@ impl PainterTool {
             ch,
             self.wet_field_scale,
             WET_COVERAGE_K,
-            &brush,
             region,
         );
     }
@@ -822,20 +828,24 @@ impl PainterTool {
                         let cx = stamp.position_world[0] / scale;
                         let cy = stamp.position_world[1] / scale;
                         let r = (stamp.size_px * 0.5 / scale).max(0.5);
+                        // **ADR-0080:** the dab carries the per-stamp COLOUR (with Color Dynamics
+                        // jitter) + a colour-independent coverage `mass = dep`. The field stores
+                        // it as mass-weighted K/S, so dabs of different colours mix subtractively
+                        // (blue+yellow→green) — both within a stroke and across strokes (the wet
+                        // field persists). `mass = dep` keeps coverage value-driven (ADR-0079); a
+                        // dark/black colour still deposits mass (so black paints).
+                        let color = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+                            stamp.color_oklab[0],
+                            stamp.color_oklab[1],
+                            stamp.color_oklab[2],
+                        );
                         self.fluid_dabs.push(crate::tool::FluidDab {
                             cx,
                             cy,
                             r,
                             water: WET_WATER_DEPOSIT,
-                            // **ADR-0079:** a COLOUR-INDEPENDENT coverage mass (gray, channel
-                            // sum = `dep`). The composite reads the pigment SUM as coverage
-                            // and the colour from `pcol` (the stroke colour), so a dark/black
-                            // colour must still deposit mass — else `(0,0,0)` deposited nothing
-                            // and black painted nothing (Enio 2026-06-08). Sum = `dep` keeps the
-                            // coverage IDENTICAL to the old colour-scaled deposit for non-black
-                            // colours (which cancelled to `dep` too); one pcol per stroke ⇒ the
-                            // per-stamp colour never reached the fluid composite anyway.
-                            rgb: [dep / 3.0, dep / 3.0, dep / 3.0],
+                            color,
+                            mass: dep,
                         });
                         let x0 = ((cx - r).floor().max(0.0) as u32).min(gw - 1);
                         let y0 = ((cy - r).floor().max(0.0) as u32).min(gh - 1);
@@ -852,14 +862,20 @@ impl PainterTool {
                     for stamp in stamps {
                         let dep =
                             WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0) * brush_opacity;
-                        // ADR-0079: colour-independent coverage mass (gray, sum = dep) — see
-                        // the GPU path.
+                        // ADR-0080: deposit the per-stamp COLOUR + coverage mass = dep (see the
+                        // GPU path) — the field mixes overlapping colours subtractively.
+                        let color = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
+                            stamp.color_oklab[0],
+                            stamp.color_oklab[1],
+                            stamp.color_oklab[2],
+                        );
                         grid.splat(
                             stamp.position_world[0] / scale,
                             stamp.position_world[1] / scale,
                             (stamp.size_px * 0.5 / scale).max(0.5),
                             WET_WATER_DEPOSIT,
-                            [dep / 3.0, dep / 3.0, dep / 3.0],
+                            color,
+                            dep,
                         );
                     }
                     self.tick_wet_field(WET_SUBSTEPS_PAINTING);

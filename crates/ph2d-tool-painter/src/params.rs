@@ -269,7 +269,7 @@ pub enum BrushParam {
     SpeedSize,
     SpeedOpacity,
     SpeedSpacing,
-    /// **Watercolor control `index` (ADR-0079).** One payload-carrying variant for all 15
+    /// **Watercolor control `index` (ADR-0079).** One payload-carrying variant for all 16
     /// `WatercolorParams` controls (the index is the position in
     /// `WatercolorParams::CONTROLS`). The slider sends a normalized `0..1`; the handler maps
     /// it onto the control's physical range via `WatercolorParams::set_normalized`. Writes
@@ -452,7 +452,7 @@ pub struct BrushStudioSnapshot {
     pub speed_size: f32,
     pub speed_opacity: f32,
     pub speed_spacing: f32,
-    /// **Watercolor controls (ADR-0079)** — the 15 `WatercolorParams` values NORMALIZED to
+    /// **Watercolor controls (ADR-0079)** — the 16 `WatercolorParams` values NORMALIZED to
     /// `0..1` (each over its own `[min,max]` range), indexed by `WatercolorParams::CONTROLS`.
     /// The Brush Studio "Watercolor" section reads these to position its sliders.
     pub watercolor: [f32; ph2d_painter_brush::WatercolorParams::COUNT],

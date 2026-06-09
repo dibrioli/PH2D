@@ -84,6 +84,10 @@ impl FluidParams {
             viscosity: 0.0,
             drag: 0.0,
             pressure: 0.0,
+            // Capillary fringe (ADR-0078 S5) is likewise OFF on this `FluidParams`-mapped path
+            // (the live solver drives it per-brush via `set_from_diffusion`, not `FluidParams`)
+            // → keeps `to_diffusion(default) == default` bit-exact for the parity gate.
+            capillary: 0.0,
         }
     }
 }

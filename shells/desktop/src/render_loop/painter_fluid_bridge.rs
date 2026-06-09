@@ -94,15 +94,45 @@ thread_local! {
 /// fires) is ~3× lower than at 6 — it was the largest per-frame phase post-pipeline.
 const DRY_CHECK_EVERY: u64 = 20;
 
+/// Grid-cell pad added around the composite envelope for the capillary fringe (ADR-0078 S5).
+/// The water wicks OUTWARD past the dab bboxes, so the dab-union envelope alone would clip the
+/// fringe into a rectangle (the §2.2 bug). Growing the envelope by this pad (only when the
+/// brush's capillary layer is on) keeps the soft fringe inside both the composite read region
+/// and the solver dispatch (which adds its own `SOLVER_REGION_PAD` on top, preserving the
+/// solver ⊇ composite invariant). It covers the fringe growth between the sporadic wet-bbox
+/// reads; the monotonic `wet_bbox` union then tracks larger (extreme-param) fringes exactly.
+const CAPILLARY_FRINGE_PAD: u32 = 8;
+
+/// Inclusive union of two grid-cell bboxes `(x0, y0, x1, y1)`.
+fn union_bbox(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
+    (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
+}
+
+/// Grow an inclusive grid-cell bbox by `pad` cells on each side, clamped to `dims`.
+fn grow_bbox(b: (u32, u32, u32, u32), pad: u32, dims: (u32, u32)) -> (u32, u32, u32, u32) {
+    (
+        b.0.saturating_sub(pad),
+        b.1.saturating_sub(pad),
+        (b.2 + pad).min(dims.0.saturating_sub(1)),
+        (b.3 + pad).min(dims.1.saturating_sub(1)),
+    )
+}
+
 /// Per-session GPU state for the live wet field: the resident solver, the K–M
-/// compositor, the field size, the stroke epoch it was last reset for, and a frame
-/// counter pacing the sporadic dry-check readback.
+/// compositor, the field size, the stroke epoch it was last reset for, a frame
+/// counter pacing the sporadic dry-check readback, and the monotonic wet-bbox the
+/// capillary envelope grows from (ADR-0078 S5).
 struct FluidSession {
     solver: FluidSolver,
     compositor: FluidCompositor,
     dims: (u32, u32),
     epoch: u64,
     frame: u64,
+    /// **All-time wet bbox of this stroke** (union of the sporadic `read_field_stats` bboxes,
+    /// reset on a new epoch). The capillary fringe wicks the wet region OUTWARD past the dab
+    /// bboxes; the water bbox also recedes as the wash dries, so a SUPERSET-correct envelope
+    /// must take the monotonic union (the §3.4 / §2.2 lesson). `None` until the first read.
+    wet_bbox: Option<(u32, u32, u32, u32)>,
 }
 
 thread_local! {
@@ -172,6 +202,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                         dims,
                         epoch: u64::MAX,
                         frame: 0,
+                        wet_bbox: None,
                     });
                 }
             });
@@ -203,6 +234,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                 dims,
                 epoch: u64::MAX,
                 frame: 0,
+                wet_bbox: None,
             });
         }
         let Some(sess) = slot.as_mut() else {
@@ -223,6 +255,8 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             sess.solver
                 .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
             sess.frame = 0;
+            // New stroke → forget the previous stroke's wet envelope (ADR-0078 S5).
+            sess.wet_bbox = None;
             // ADR-0079: drive ALL 15 solver controls (base diffusion + deposition +
             // shallow-water flow) from the ACTIVE BRUSH's per-brush `WatercolorParams`
             // (projected to `DiffusionParams`), replacing the old `FluidParams::default()`
@@ -262,9 +296,26 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         }
 
         // ── Per-frame hot loop (resident, no O(grid) CPU work, no upload) ──
-        // Drain this frame's dabs + the monotonic envelope; `None` ⇒ never wet.
-        let Some((dabs, region)) = painter.fluid_take_dabs() else {
+        // Drain this frame's dabs + the monotonic dab-bbox envelope; `None` ⇒ never wet.
+        let capillary_active = painter.fluid_capillary_active();
+        let Some((dabs, dab_region)) = painter.fluid_take_dabs() else {
             return;
+        };
+        // Capillary fringe (ADR-0078 S5 §2.2): the water wicks OUTWARD past the dab bboxes, so
+        // the composite must follow it or it clips the soft fringe into a rectangle. Grow the
+        // envelope = union(dab bboxes, all-time wet bbox) + a fringe pad. The wet-bbox union
+        // (from the sporadic stats) tracks the real fringe extent (incl. extreme params); the
+        // pad covers its read-to-read lag. A non-capillary brush keeps the bare dab envelope
+        // (zero change to the validated look). The solver pads this by SOLVER_REGION_PAD on
+        // top, so solver ⊇ composite still holds.
+        let region = if capillary_active {
+            let env = match sess.wet_bbox {
+                Some(wb) => union_bbox(dab_region, wb),
+                None => dab_region,
+            };
+            grow_bbox(env, CAPILLARY_FRINGE_PAD, dims)
+        } else {
+            dab_region
         };
         // Map the tool's plain dabs → GPU dabs (the `r.max(0.5)` / radius>0 guard lives
         // in `DabGpu::new`, mirroring the CPU splat). `cs_splat` adds them to the
@@ -300,6 +351,12 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             let ts = profile.then(Instant::now);
             let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
+            // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
+            // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps
+            // covering the fringe. Only consumed while the brush's capillary layer is on.
+            if let Some(b) = stats.bbox {
+                sess.wet_bbox = Some(sess.wet_bbox.map_or(b, |prev| union_bbox(prev, b)));
+            }
             stats_us = ts.map_or(0, |t| t.elapsed().as_micros() as u64);
         }
         if profile {

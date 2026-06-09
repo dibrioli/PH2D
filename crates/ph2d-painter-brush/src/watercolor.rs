@@ -1,11 +1,11 @@
 //! [`WatercolorParams`] — the per-brush watercolor tuning exposed to the artist
-//! (ADR-0079). The serializable brush-facing DTO for the 15 solver controls
-//! (8 gated diffusion-advection + 3 deposition + 4 shallow-water), kept SEPARATE from
+//! (ADR-0079). The serializable brush-facing DTO for the 16 solver controls
+//! (8 gated diffusion-advection + 3 deposition + 4 shallow-water + 1 capillary), kept SEPARATE from
 //! the solver-internal [`crate::diffusion::DiffusionParams`] so the brush-file contract
 //! is insulated from solver churn — [`WatercolorParams::to_diffusion`] maps 1:1.
 //!
 //! [`WatercolorParams::CONTROLS`] is the single source of truth for the UI: label +
-//! physical `[min,max]` range per control, indexed `0..15`. The Brush Studio panel
+//! physical `[min,max]` range per control, indexed `0..16`. The Brush Studio panel
 //! iterates it to lay out the "Watercolor" subsection; the tool maps a slider's
 //! NodeId → index and writes via [`WatercolorParams::set_normalized`]. Keeping it here
 //! (not duplicated in the panel + tool) means one place defines what a control is.
@@ -23,11 +23,11 @@ pub struct WatercolorControl {
     pub max: f32,
 }
 
-/// Per-brush watercolor tuning (ADR-0079) — the 15 solver controls the artist drives via
+/// Per-brush watercolor tuning (ADR-0079) — the 16 solver controls the artist drives via
 /// the Brush Studio "Watercolor" subsection. Serializable like every other brush param so
 /// the brush-file/MCP/replay carry it. [`Self::to_diffusion`] projects onto the solver's
-/// [`DiffusionParams`]. Cap ≤ 16 (15 used, 1 headroom) — gate
-/// `architecture_painter_contract_surface`.
+/// [`DiffusionParams`]. Cap ≤ 16 (16 used — the headroom was spent on `capillary`,
+/// ADR-0078 S5) — gate `architecture_painter_contract_surface`.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WatercolorParams {
     // ── Gated diffusion-advection (the base wash) ──
@@ -48,7 +48,9 @@ pub struct WatercolorParams {
     pub viscosity: f32,
     pub drag: f32,
     pub pressure: f32,
-    // === 1 slot of headroom (cap ≤ 16) ===
+    // ── Capillary fringe (ADR-0078 S5) ──
+    pub capillary: f32,
+    // === cap reached (16/16 used) — a 17th control needs an ADR-0079 amendment + cap bump ===
 }
 
 impl Default for WatercolorParams {
@@ -79,16 +81,20 @@ impl Default for WatercolorParams {
             viscosity: 0.18,
             drag: 0.1,
             pressure: 0.3,
+            // Capillary fringe preset (ADR-0078 S5) — a tasteful soft wet-edge ON by default so
+            // the watercolor brush shows the signature feathery fringe out of the box; the
+            // artist tunes it 0..0.24 via the "Capillary" slider (0 = the harder wet-gate edge).
+            capillary: 0.1,
         }
     }
 }
 
 impl WatercolorParams {
-    /// The control descriptors (label + range), indexed `0..15` — the single source the
+    /// The control descriptors (label + range), indexed `0..16` — the single source the
     /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
-    pub const CONTROLS: [WatercolorControl; 15] = [
+    pub const CONTROLS: [WatercolorControl; 16] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl { label: "Diffusivity", min: 0.0, max: 0.24 },
@@ -106,6 +112,9 @@ impl WatercolorParams {
         WatercolorControl { label: "Viscosity", min: 0.0, max: 0.24 },
         WatercolorControl { label: "Drag", min: 0.0, max: 1.0 },
         WatercolorControl { label: "Backrun", min: 0.0, max: 2.0 },
+        // CFL-bounded (≤ 0.24, like Diffusivity/Viscosity) — the outward water-wick rate that
+        // sets how far the soft fringe creeps past the painted area (ADR-0078 S5).
+        WatercolorControl { label: "Capillary", min: 0.0, max: 0.24 },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -130,6 +139,7 @@ impl WatercolorParams {
             12 => self.viscosity,
             13 => self.drag,
             14 => self.pressure,
+            15 => self.capillary,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -154,6 +164,7 @@ impl WatercolorParams {
             12 => self.viscosity = v,
             13 => self.drag = v,
             14 => self.pressure = v,
+            15 => self.capillary = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -172,7 +183,7 @@ impl WatercolorParams {
         self.set(i, c.min + v01.clamp(0.0, 1.0) * (c.max - c.min));
     }
 
-    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 15 controls) —
+    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 16 controls) —
     /// the single conversion point the live path uses to drive the solver.
     #[must_use]
     pub fn to_diffusion(&self) -> DiffusionParams {
@@ -192,6 +203,7 @@ impl WatercolorParams {
             viscosity: self.viscosity,
             drag: self.drag,
             pressure: self.pressure,
+            capillary: self.capillary,
         }
     }
 }

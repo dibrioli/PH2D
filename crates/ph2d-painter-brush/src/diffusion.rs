@@ -98,6 +98,18 @@ pub struct DiffusionParams {
     /// builds the pressure fronts that pile pigment into the **backrun ring**. `0` ⇒ no
     /// projection (compressible advected forces — flow, but no backruns). Layer-on only.
     pub pressure: f32,
+    /// **Capillary fringe (ADR-0078 S5, Curtis 1997 capillary layer).** Per-step rate of the
+    /// outward wicking of WATER from wet cells into the drier paper *beyond* the painted area
+    /// ([`DiffusionGrid::capillary_flow`]) — the soft, feathery wet-edge that defines the
+    /// watercolor look. A conservative, permeability-weighted diffusion of the water field
+    /// (`water += capillary·Σ_face ½(perm_c+perm_n)(water_n − water_c)`); because diffusion only
+    /// acts where there is a water gradient, the saturated pool interior is untouched and only
+    /// the wet→dry boundary creeps out, carrying the wet gate (so the existing pigment then
+    /// bleeds into the fringe). CFL-bounded: keep ≤ `0.24` (perm ≤ 1 ⇒ `capillary·Σ_face cond ≤
+    /// 1`, so water stays in `[0,1]` and mass is conserved without a clamp). `0` ⇒ the layer is
+    /// **dormant**: [`DiffusionGrid::capillary_flow`] is skipped and the water field is
+    /// bit-identical to the shipped (harder wet-gate) edge.
+    pub capillary: f32,
 }
 
 impl Default for DiffusionParams {
@@ -123,6 +135,9 @@ impl Default for DiffusionParams {
             viscosity: 0.0,
             drag: 0.0,
             pressure: 0.0,
+            // Capillary fringe OFF by default (ADR-0078 S5) → `capillary_flow` is skipped and
+            // the shipped (wet-gate) edge is bit-identical until a brush opts in.
+            capillary: 0.0,
         }
     }
 }
@@ -185,6 +200,10 @@ pub struct DiffusionGrid {
     scratch_v: Vec<f32>,
     divergence: Vec<f32>,
     pressure_b: Vec<f32>,
+    /// Water ping-pong scratch — the [`Self::capillary_flow`] write target (the capillary
+    /// diffusion reads the old water + writes the new field here, then swaps). Allocated
+    /// lazily with the rest; untouched (near-free) while the capillary layer is dormant.
+    scratch_w2: Vec<f32>,
 }
 
 impl DiffusionGrid {
@@ -242,6 +261,7 @@ impl DiffusionGrid {
             scratch_v: vec![0.0; n],
             divergence: vec![0.0; n],
             pressure_b: vec![0.0; n],
+            scratch_w2: vec![0.0; n],
         }
     }
 
@@ -310,6 +330,13 @@ impl DiffusionGrid {
         // Evaporate (in place) — drying closes the gate and freezes pigment.
         for w in &mut self.water {
             *w = (*w - p.evaporation).max(0.0);
+        }
+        // Capillary fringe (ADR-0078 S5): wick water outward into the drier paper so the wet
+        // gate (and then the pigment) creeps past the painted area into a soft fringe. Last,
+        // after evaporate, so it sees this step's dried water; the spread is picked up by the
+        // NEXT step's gate. No-op while `capillary` is 0 (the shipped edge is bit-identical).
+        if p.capillary > 0.0 {
+            self.capillary_flow(p);
         }
     }
 
@@ -601,6 +628,58 @@ impl DiffusionGrid {
                 self.deposited[i][k] += moved;
             }
         }
+    }
+
+    /// Pass 6 — **capillary flow** (ADR-0078 S5 / Curtis 1997 capillary layer): the water
+    /// wicks from wet cells into the drier paper *around* the painted area, carrying the wet
+    /// gate outward so the existing pigment then bleeds into the soft, feathery fringe — the
+    /// watercolor edge the harder wet-gate boundary can't make.
+    ///
+    /// A **conservative, permeability-weighted diffusion of the WATER field**, structured
+    /// exactly like [`Self::diffuse`] (the pigment bloom) but with the face conductance set by
+    /// the paper permeability (`0.5·(perm_c+perm_n)`, valleys wick faster) instead of the wet
+    /// gate — wetness-gating would forbid the wick into the *dry* fringe, which is the whole
+    /// point. Pure diffusion only moves mass down a gradient, so the saturated pool interior
+    /// (no gradient) is untouched and only the wet→dry boundary creeps out. Mass-conserving
+    /// (divergence form; out-of-bounds faces carry no flux ⇒ Neumann); CFL-bounded by
+    /// `capillary ≤ 0.24` (with `perm ≤ 1` the per-cell update is a convex average of the cell
+    /// and its neighbours ⇒ water stays in `[0,1]`, so no clamp — exact conservation). The
+    /// fringe is self-limiting: each wicked cell holds only a thin film (conservation spreads
+    /// the same water over more area) and evaporation dries it, so the wick halts. Writes
+    /// `scratch_w2`, then swaps. Mirrored bit-for-bit by the GPU `cs_capillary`.
+    fn capillary_flow(&mut self, p: &DiffusionParams) {
+        let (w, h) = (self.width, self.height);
+        let cap = p.capillary;
+        let mut out = std::mem::take(&mut self.scratch_w2);
+        out.clear();
+        out.resize((w as usize) * (h as usize), 0.0);
+        for y in 0..h {
+            for x in 0..w {
+                let c = self.idx(x, y);
+                let wc = self.water[c];
+                let permc = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[c];
+                let mut acc = 0.0f32;
+                let add = |nidx: usize, acc: &mut f32| {
+                    let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
+                    let cond = 0.5 * (permc + permn);
+                    *acc += cond * (self.water[nidx] - wc);
+                };
+                if x > 0 {
+                    add(self.idx(x - 1, y), &mut acc);
+                }
+                if x + 1 < w {
+                    add(self.idx(x + 1, y), &mut acc);
+                }
+                if y > 0 {
+                    add(self.idx(x, y - 1), &mut acc);
+                }
+                if y + 1 < h {
+                    add(self.idx(x, y + 1), &mut acc);
+                }
+                out[c] = wc + cap * acc;
+            }
+        }
+        self.scratch_w2 = std::mem::replace(&mut self.water, out);
     }
 
     /// Grid dimensions.
@@ -1215,6 +1294,202 @@ mod tests {
         assert!(
             centre_s > ring_s,
             "static flow must stay centre-peaked, no ring (centre {centre_s:.4} > ring {ring_s:.4})"
+        );
+    }
+
+    // ───────────────── ADR-0078 S5 — capillary fringe ─────────────────
+
+    /// Mean water over a centred annulus `[lo, hi)` — the test probe for the wet fringe.
+    fn ring_water(g: &DiffusionGrid, cx: f32, cy: f32, lo: f32, hi: f32) -> f32 {
+        let (w, h) = g.dims();
+        let (mut s, mut n) = (0.0f32, 0.0f32);
+        for y in 0..h {
+            for x in 0..w {
+                let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+                if d >= lo && d < hi {
+                    s += g.water()[(y * w + x) as usize];
+                    n += 1.0;
+                }
+            }
+        }
+        s / n.max(1.0)
+    }
+
+    /// DORMANT by default: with `capillary = 0` the water never wicks past the painted area,
+    /// so a ring OUTSIDE the splat radius stays bone-dry (no water mechanism moves water
+    /// outward — diffuse/advect/transfer touch only pigment; evaporate only shrinks water).
+    /// The rest of the suite, run with `Default`, also implicitly proves the path is untouched.
+    #[test]
+    fn capillary_off_keeps_fringe_dry() {
+        let (w, h) = (64u32, 64u32);
+        let (cx, cy) = (32.0f32, 32.0);
+        let mut g = DiffusionGrid::new(w, h, 1.0);
+        g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+        let p = DiffusionParams { evaporation: 0.0, capillary: 0.0, ..Default::default() };
+        for _ in 0..50 {
+            g.step(&p);
+        }
+        let fringe = ring_water(&g, cx, cy, 10.0, 13.0);
+        assert_eq!(fringe, 0.0, "capillary OFF must leave the fringe dry (got {fringe})");
+    }
+
+    /// The defining S5 behaviour: with `capillary > 0` the water WICKS outward into the dry
+    /// paper, wetting a soft fringe BEYOND the splat radius — and it stays BOUNDED (the thin
+    /// film + conservation self-limit it; it does not flood the whole grid). Off vs on on the
+    /// SAME dry-paper blob isolates the wick.
+    #[test]
+    fn capillary_wicks_a_bounded_fringe() {
+        let (w, h) = (64u32, 64u32);
+        let (cx, cy) = (32.0f32, 32.0);
+        let run = |capillary: f32| -> DiffusionGrid {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+            let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
+            for _ in 0..50 {
+                g.step(&p);
+            }
+            g
+        };
+        let on = run(0.24);
+        let off = run(0.0);
+        let fringe_on = ring_water(&on, cx, cy, 10.0, 13.0);
+        let fringe_off = ring_water(&off, cx, cy, 10.0, 13.0);
+        let far = ring_water(&on, cx, cy, 24.0, 28.0);
+        let max_w = on.max_water();
+        eprintln!("capillary fringe on={fringe_on:.4} off={fringe_off:.4} far={far:.4} max={max_w:.4}");
+        assert!(
+            fringe_on > 0.01 && fringe_on > fringe_off + 0.01,
+            "capillary must wet a fringe past the splat (on {fringe_on:.4} ≫ off {fringe_off:.4})"
+        );
+        assert!(far < 0.01, "fringe must stay bounded, not flood the grid (far ring {far:.4})");
+        assert!(max_w <= 1.0001, "water must stay ≤ 1 (convex average, no runaway): {max_w}");
+    }
+
+    /// Mass-conserving: capillary flow is a conservative diffusion of WATER — with no
+    /// evaporation the total water is invariant (only redistributed into the fringe).
+    #[test]
+    fn capillary_conserves_water() {
+        let (w, h) = (48u32, 48u32);
+        let mut g = DiffusionGrid::new(w, h, 1.0);
+        g.splat(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]); // peak ≤ 0.9 → no splat saturation
+        let before: f64 = g.water().iter().map(|&x| x as f64).sum();
+        let p = DiffusionParams { evaporation: 0.0, capillary: 0.2, ..Default::default() };
+        for _ in 0..40 {
+            g.step(&p);
+        }
+        let after: f64 = g.water().iter().map(|&x| x as f64).sum();
+        assert!(
+            (before - after).abs() < 1e-3 * (before.abs() + 1.0),
+            "capillary must conserve water: {before} -> {after}"
+        );
+    }
+
+    /// DETERMINISTIC (HR-5): pure arithmetic → same inputs give a bit-identical field.
+    #[test]
+    fn capillary_is_deterministic() {
+        let run = || {
+            let mut g = DiffusionGrid::new(40, 36, 1.0);
+            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            let p = DiffusionParams { capillary: 0.2, ..Default::default() };
+            for _ in 0..25 {
+                g.step(&p);
+            }
+            (g.water().to_vec(), g.pigment().to_vec())
+        };
+        assert_eq!(run(), run(), "capillary solver must be deterministic (HR-5)");
+    }
+
+    /// The fringe BLEEDS pigment: as the capillary wick opens the wet gate past the painted
+    /// area, the existing pigment diffuses into the freshly-wetted fringe — so an outer
+    /// annulus carries pigment with capillary ON but is ~clean with it OFF (no water there ⇒
+    /// gate shut ⇒ the bloom can't reach it). This is the visible soft watercolor edge.
+    #[test]
+    fn capillary_bleeds_pigment_into_the_fringe() {
+        let (w, h) = (64u32, 64u32);
+        let (cx, cy) = (32.0f32, 32.0);
+        let ann_pig = |g: &DiffusionGrid, lo: f32, hi: f32| -> f32 {
+            let (mut s, mut n) = (0.0f32, 0.0f32);
+            for y in 0..h {
+                for x in 0..w {
+                    let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+                    if d >= lo && d < hi {
+                        s += g.pigment()[(y * w + x) as usize][0];
+                        n += 1.0;
+                    }
+                }
+            }
+            s / n.max(1.0)
+        };
+        let run = |capillary: f32| -> f32 {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat(cx, cy, 8.0, 1.0, [0.6, 0.2, 0.1]);
+            let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
+            for _ in 0..80 {
+                g.step(&p);
+            }
+            // Just outside the r=8 splat — the near fringe, where the thin wicked film still
+            // gives the wet gate enough to let the bloom carry visible pigment.
+            ann_pig(&g, 9.0, 11.0)
+        };
+        let on = run(0.2);
+        let off = run(0.0);
+        eprintln!("capillary pigment-bleed fringe on={on:.6} off={off:.6}");
+        // off is bone-dry past the splat ⇒ exactly 0 (gate shut). The wick brings a real,
+        // deterministic (not fp-noise) tint to the fringe; small in absolute mass because
+        // conservation spreads the same pigment over a growing area — the live stroke
+        // re-wets continuously, so it reads much stronger on screen than this static probe.
+        assert!(
+            on > 1e-4 && on > off + 1e-4,
+            "pigment must bleed into the capillary fringe (on {on:.6} ≫ off {off:.6})"
+        );
+    }
+
+    /// §2.2 ENVELOPE INVARIANT (the composite must not clip the fringe): the wet bbox
+    /// (`water_bbox(1e-3)`) is a SUPERSET of the pigment bbox even with the capillary fringe —
+    /// because pigment needs an open gate (`water > w_lo = 0.05 ≫ 1e-3`), it can never sit
+    /// outside the wet bbox. This is what makes the driver correct in growing the composite
+    /// envelope from the GPU wet-bbox: scoping the composite to the wet envelope covers the
+    /// whole fringe. Also proves capillary GROWS that envelope vs off (the fringe is real).
+    #[test]
+    fn capillary_fringe_pigment_stays_inside_the_wet_bbox() {
+        let (w, h) = (72u32, 64u32);
+        let pig_bbox = |g: &DiffusionGrid| -> (u32, u32, u32, u32) {
+            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+            for y in 0..h {
+                for x in 0..w {
+                    if g.pigment()[(y * w + x) as usize][0] > 1.0e-4 {
+                        x0 = x0.min(x);
+                        y0 = y0.min(y);
+                        x1 = x1.max(x);
+                        y1 = y1.max(y);
+                    }
+                }
+            }
+            (x0, y0, x1, y1)
+        };
+        let run = |capillary: f32| -> ((u32, u32, u32, u32), (u32, u32, u32, u32)) {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat(36.0, 32.0, 9.0, 1.0, [0.5, 0.3, 0.2]);
+            // No evaporation: keep the field wet so the fringe is fully developed (aggressive
+            // capillary + drying would dry the thin film to nothing — a separate concern).
+            let p = DiffusionParams { capillary, evaporation: 0.0, ..Default::default() };
+            for _ in 0..60 {
+                g.step(&p);
+            }
+            (g.water_bbox(1.0e-3).expect("still wet"), pig_bbox(&g))
+        };
+        let (wet_on, pig_on) = run(0.24);
+        let (wet_off, _) = run(0.0);
+        eprintln!("envelope: wet_on={wet_on:?} pig_on={pig_on:?} wet_off={wet_off:?}");
+        // The pigment (incl. the fringe) lies entirely inside the wet bbox → no composite clip.
+        assert!(
+            pig_on.0 >= wet_on.0 && pig_on.1 >= wet_on.1 && pig_on.2 <= wet_on.2 && pig_on.3 <= wet_on.3,
+            "pigment bbox {pig_on:?} must lie inside the wet bbox {wet_on:?} (else the composite clips the fringe)"
+        );
+        // Capillary GREW the wet envelope beyond the no-capillary case (the fringe is real).
+        assert!(
+            wet_on.0 < wet_off.0 && wet_on.1 < wet_off.1 && wet_on.2 > wet_off.2 && wet_on.3 > wet_off.3,
+            "capillary must grow the wet envelope past the no-capillary case (on {wet_on:?} vs off {wet_off:?})"
         );
     }
 }

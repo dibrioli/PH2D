@@ -15,7 +15,7 @@
 #![cfg(feature = "fluid")]
 
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::diffusion::DiffusionGrid;
+use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
 use ph2d_painter_fluid::{DabGpu, FluidParams, FluidSolver, step_cpu_reference};
 
 fn try_headless_gpu() -> Option<GpuContext> {
@@ -703,4 +703,88 @@ fn gpu_shallow_water_matches_cpu_move_water() {
         worst_pig < 2.0e-2,
         "GPU velocity-advected pigment diverged from CPU: {worst_pig}"
     );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_capillary_matches_cpu_capillary() {
+    // ADR-0078 S5: the GPU capillary passes (`cs_capillary` + `cs_copy_water`) must reproduce
+    // the CPU reference `DiffusionGrid::capillary_flow` — BOTH the water wicked outward into
+    // the dry-paper fringe AND the pigment that bleeds into it once the gate opens there. A
+    // wet, pigmented blob on DRY paper (so there IS a dry fringe to wick into); capillary ON,
+    // the velocity/deposition layers OFF (Default) to isolate the new pass. Same splats +
+    // step count + params on each side; agree to the diffuse/advect FMA band (a wrong port —
+    // wrong face order, missing copy-back, bad region — diverges by ≥1e-1).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (56u32, 48u32);
+    let substeps = 20u32;
+    let (cx, cy) = (28.0f32, 24.0);
+    let raw = [
+        (cx, cy, 9.0, 1.0, [0.10f32, 0.20, 0.70]),
+        (24.0, 26.0, 5.0, 0.8, [0.30, 0.05, 0.05]),
+    ];
+    // Capillary on; no evaporation so the wick is clean; velocity/deposition off (Default).
+    let dp = DiffusionParams { capillary: 0.2, evaporation: 0.0, ..Default::default() };
+
+    // CPU reference: splat on dry paper, then step.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(sx, sy, r, wa, rgb) in &raw {
+        cpu.splat(sx, sy, r, wa, rgb);
+    }
+    for _ in 0..substeps {
+        cpu.step(&dp);
+    }
+
+    // GPU resident: capillary enabled via the live `set_from_diffusion` entry.
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(sx, sy, r, wa, rgb)| DabGpu::new(sx, sy, r, wa, rgb))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_from_diffusion(&gpu.queue, &dp);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
+
+    let n = (w * h) as usize;
+    let (cpu_pig, cpu_water) = (cpu.pigment(), cpu.water());
+    let mut worst_p = 0.0f32;
+    let mut worst_w = 0.0f32;
+    for i in 0..n {
+        for k in 0..3 {
+            worst_p = worst_p.max((gpu_pig[i][k] - cpu_pig[i][k]).abs());
+        }
+        worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
+    }
+    // The fringe must actually have wicked OUT past the r=9 splat — else the pass is dead and
+    // bit-parity is trivially satisfied by "both did nothing".
+    let mut fringe = 0.0f32;
+    let mut fringe_n = 0.0f32;
+    for y in 0..h {
+        for x in 0..w {
+            let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+            // Just past the r=9 splat (which deposits ZERO water at d ≥ 9), so all water here
+            // is wicked — the near fringe, where the diffusion fills first and strongest.
+            if (9.5..11.5).contains(&d) {
+                fringe += gpu_water[(y * w + x) as usize];
+                fringe_n += 1.0;
+            }
+        }
+    }
+    let fringe = fringe / fringe_n.max(1.0);
+    eprintln!(
+        "capillary GPU↔CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}, gpu fringe water = {fringe:.4}"
+    );
+    assert!(
+        fringe > 0.01,
+        "GPU capillary didn't wick a fringe — the pass is dead, parity meaningless"
+    );
+    assert!(worst_w < 2.0e-2, "GPU capillary water diverged from CPU: {worst_w}");
+    assert!(worst_p < 2.0e-2, "GPU capillary-fringe pigment diverged from CPU: {worst_p}");
 }

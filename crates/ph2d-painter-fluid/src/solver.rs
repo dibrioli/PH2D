@@ -51,6 +51,12 @@ pub const COMBINE_WGSL: &str = include_str!("shader/combine.wgsl");
 /// velocity master scale is 0.
 pub const SHALLOW_WGSL: &str = include_str!("shader/shallow.wgsl");
 
+/// The GPU capillary-fringe shader (`cs_capillary` + `cs_copy_water`, ADR-0078 S5) — the GPU
+/// mirror of the CPU `DiffusionGrid::capillary_flow`: wicks water outward into the dry paper
+/// so the wet gate (then the pigment) creeps into the soft fringe. Two region-scoped passes
+/// around the `water_b` ping-pong scratch. Dormant while the capillary rate is 0.
+pub const CAPILLARY_WGSL: &str = include_str!("shader/capillary.wgsl");
+
 /// Tasteful default watercolor deposition (ADR-0078 S3c) — applied to every live fluid
 /// stroke via [`FluidSolver::set_deposition`]. Tuned for a visible-but-natural dark
 /// perimeter (`_DRY`) + paper granulation (`_GRAN`) without muddying the wash (`_BASE`
@@ -199,7 +205,9 @@ struct GpuParams {
     viscosity: f32,
     drag: f32,
     pressure: f32,
-    _pad0: f32,
+    // ── ADR-0078 S5 capillary layer ── occupies offset 84 (the byte the diffuse/advect/
+    // transfer/combine shaders read as padding); only `capillary.wgsl` reads it.
+    capillary: f32,
     _pad1: f32,
     _pad2: f32,
 }
@@ -302,6 +310,16 @@ pub struct FluidSolver {
     bg_jacobi_ba: wgpu::BindGroup,
     bg_project: wgpu::BindGroup,
     bg_advect_velocity: wgpu::BindGroup,
+    // ── Capillary fringe (ADR-0078 S5) ──
+    capillary_pipe: wgpu::ComputePipeline,
+    copy_water_pipe: wgpu::ComputePipeline,
+    /// Water ping-pong scratch — `cs_capillary` writes the wicked field here, `cs_copy_water`
+    /// lands it back in `water` (region-scoped, so only the fringe region is touched). Owned
+    /// only to keep the GPU buffer alive for the two bind groups that reference it.
+    #[allow(dead_code)]
+    water_b: wgpu::Buffer,
+    bg_capillary: wgpu::BindGroup,
+    bg_copy_water: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -863,6 +881,54 @@ impl FluidSolver {
             ],
         });
 
+        // ── Capillary fringe (`capillary.wgsl`, ADR-0078 S5) ──
+        // Two region-scoped passes around a `water_b` ping-pong scratch: `cs_capillary` wicks
+        // water a→b, `cs_copy_water` lands it back b→a (the canonical buffer every other pass
+        // reads next frame). Shares `params_buf` (`capillary` sits in the bytes the other
+        // shaders read as padding). Own per-pass bind-group layouts (the ping-pong idiom).
+        let capillary_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-painter-fluid capillary"),
+            source: wgpu::ShaderSource::Wgsl(CAPILLARY_WGSL.into()),
+        });
+        let cap_pipe = |entry_point: &str, layout: &wgpu::PipelineLayout| {
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("ph2d-painter-fluid capillary pipeline"),
+                layout: Some(layout),
+                module: &capillary_module,
+                entry_point: Some(entry_point),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            })
+        };
+        let water_b = buf("fluid water_b", f32n, wgpu::BufferUsages::empty());
+        // cs_capillary: (params, water_in r=water, paper r, water_out rw=water_b).
+        let bgl_cap = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid capillary bgl"),
+            entries: &[uniform_entry(0), storage(1, true), storage(2, true), storage(3, false)],
+        });
+        let capillary_pipe = cap_pipe("cs_capillary", &sw_layout(&bgl_cap));
+        let bg_capillary = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid bg capillary"),
+            layout: &bgl_cap,
+            entries: &[
+                entry(0, &params_buf),
+                entry(1, &water),
+                entry(2, &paper),
+                entry(3, &water_b),
+            ],
+        });
+        // cs_copy_water: (params, water_in r=water_b, water_out rw=water).
+        let bgl_copy = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("fluid copy_water bgl"),
+            entries: &[uniform_entry(0), storage(1, true), storage(3, false)],
+        });
+        let copy_water_pipe = cap_pipe("cs_copy_water", &sw_layout(&bgl_copy));
+        let bg_copy_water = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid bg copy_water"),
+            layout: &bgl_copy,
+            entries: &[entry(0, &params_buf), entry(1, &water_b), entry(3, &water)],
+        });
+
         Self {
             width,
             height,
@@ -894,7 +960,7 @@ impl FluidSolver {
                 viscosity: 0.0,
                 drag: 0.0,
                 pressure: 0.0,
-                _pad0: 0.0,
+                capillary: 0.0,
                 _pad1: 0.0,
                 _pad2: 0.0,
             }),
@@ -940,6 +1006,11 @@ impl FluidSolver {
             bg_jacobi_ba,
             bg_project,
             bg_advect_velocity,
+            capillary_pipe,
+            copy_water_pipe,
+            water_b,
+            bg_capillary,
+            bg_copy_water,
         }
     }
 
@@ -980,7 +1051,8 @@ impl FluidSolver {
             viscosity: 0.0,
             drag: 0.0,
             pressure: 0.0,
-            _pad0: 0.0,
+            // Capillary fringe (ADR-0078 S5) off until `set_from_diffusion` drives it per-brush.
+            capillary: 0.0,
             _pad1: 0.0,
             _pad2: 0.0,
         };
@@ -1042,7 +1114,7 @@ impl FluidSolver {
             viscosity: dp.viscosity,
             drag: dp.drag,
             pressure: dp.pressure,
-            _pad0: 0.0,
+            capillary: dp.capillary,
             _pad1: 0.0,
             _pad2: 0.0,
         };
@@ -1337,6 +1409,8 @@ impl FluidSolver {
         };
         // Shallow-water velocity layer on? (ADR-0078 S3d — `set_shallow_water` set it.)
         let shallow = self.params_cache.get().velocity > 0.0;
+        // Capillary fringe on? (ADR-0078 S5 — `set_from_diffusion` set it.)
+        let capillary = self.params_cache.get().capillary > 0.0;
         for _ in 0..substeps {
             // MoveWater (ADR-0078 S3d): accelerate `(u,v)` (a→b), make it divergence-free
             // (divergence → seed pressure → RELAX_ITERS Jacobi sweeps → subtract gradient,
@@ -1368,6 +1442,15 @@ impl FluidSolver {
             }
             run(&mut enc, &self.transfer, &self.bg_transfer);
             run(&mut enc, &self.evaporate, &self.bg_evaporate);
+            // Capillary fringe (ADR-0078 S5): wick water outward into the dry paper, then land
+            // it back in the canonical buffer. After evaporate (the CPU `step` order), so the
+            // wick sees this substep's dried water and the next substep's gate picks up the
+            // spread. Skipped while dormant. The grown envelope (driver) keeps the fringe in
+            // the composited region; the region pad must cover the wick (SOLVER_REGION_PAD).
+            if capillary {
+                run(&mut enc, &self.capillary_pipe, &self.bg_capillary);
+                run(&mut enc, &self.copy_water_pipe, &self.bg_copy_water);
+            }
         }
         // Combine once per frame (region-scoped, after the substeps): total = flowing +
         // deposited — the buffer the compositor reads (ADR-0078 S3c). Params still hold

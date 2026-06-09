@@ -477,6 +477,14 @@ impl PainterTool {
         self.brush.rendering.watercolor.to_diffusion()
     }
 
+    /// Whether the active brush's capillary fringe (ADR-0078 S5) is on. The drive grows the
+    /// composite envelope to follow the outward water-wick only when this is true, so a
+    /// non-capillary brush keeps the (cheaper) dab-bbox envelope bit-for-bit unchanged.
+    #[must_use]
+    pub fn fluid_capillary_active(&self) -> bool {
+        self.brush.rendering.watercolor.capillary > 0.0
+    }
+
     /// The static paper-height field of the live grid (clone) — the shell uploads it
     /// ONCE per stroke (on an epoch change) to the resident solver. `None` if no field.
     #[must_use]

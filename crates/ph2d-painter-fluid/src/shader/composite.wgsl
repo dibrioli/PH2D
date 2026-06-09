@@ -51,6 +51,11 @@ struct Coeffs {
 @group(0) @binding(2) var<storage, read> backdrop: array<u32>;
 @group(0) @binding(3) var<storage, read_write> out_buf: array<u32>;
 @group(0) @binding(4) var<storage, read> C: Coeffs;
+// ADR-0084 backdrop-lift accumulator (low-res `gw·gh`, one f32 per grid cell). Where a wet brush
+// lifted dry paint out of the backdrop, the backdrop is LESS opaque → drop its alpha by `lf`. The
+// solver's `cs_lift` writes it; when the lift is dormant it's all-zero ⇒ `lf = 0` ⇒ `eff_back_a =
+// back_a` ⇒ byte-identical output (the non-destructive `lift = 0` path, ADR-0084 §2.4).
+@group(0) @binding(5) var<storage, read> lifted_frac: array<f32>;
 
 // ─── sRGB transfer (IEC 61966) — float twins of ph2d_color::srgb byte fns ───
 fn srgb_to_linear(v: f32) -> f32 {
@@ -249,12 +254,18 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let pix = cy * P.cw + cx;
     let back_rgba = unpack4x8unorm(backdrop[pix]); // (r,g,b,a) in [0,1]
-    let back_a = back_rgba.w;
     let back = vec3<f32>(
         srgb_to_linear(back_rgba.x),
         srgb_to_linear(back_rgba.y),
         srgb_to_linear(back_rgba.z),
     );
+    // ADR-0084 — the backdrop is less opaque where a wet brush lifted dry paint out of it. Sample
+    // `lifted_frac` at the grid cell under the pixel centre (nearest, same low-res mapping the glaze
+    // uses) and drop the backdrop alpha by it. `lf = 0` (dormant) ⇒ `eff_back_a = back_a` (no-op).
+    let lf_x = u32(clamp(round((f32(cx) + 0.5) * P.inv - 0.5), 0.0, f32(P.gw) - 1.0));
+    let lf_y = u32(clamp(round((f32(cy) + 0.5) * P.inv - 0.5), 0.0, f32(P.gh) - 1.0));
+    let lf = clamp(lifted_frac[lf_y * P.gw + lf_x], 0.0, 1.0);
+    let eff_back_a = back_rgba.w * (1.0 - lf);
     let ss = max(P.ss, 1u);
     let inv_n = 1.0 / f32(ss);
     var acc_rgb = vec3<f32>(0.0);
@@ -264,7 +275,7 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
         let fy = clamp((f32(cy) + (f32(sy) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gh) - 1.0);
         for (var sx = 0u; sx < ss; sx = sx + 1u) {
             let fx = clamp((f32(cx) + (f32(sx) + 0.5) * inv_n) * P.inv - 0.5, 0.0, f32(P.gw) - 1.0);
-            let s = glaze_sample(fx, fy, back, back_a);
+            let s = glaze_sample(fx, fy, back, eff_back_a);
             if (!s.dry) {
                 any_wet = true;
             }
@@ -273,7 +284,14 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
     if (!any_wet) {
-        out_buf[pix] = backdrop[pix]; // byte-exact backdrop copy (bare paper)
+        // Bare paper. The byte-exact backdrop copy must NOT fire when the backdrop was lifted here
+        // (else the lightening is ignored) — guard it with `lf <= 1e-6` (ADR-0084 §2.3). When
+        // `lf > 0` but no wet field, emit the alpha-reduced backdrop (rgb unchanged, re-encoded).
+        if (lf <= 1.0e-6) {
+            out_buf[pix] = backdrop[pix]; // byte-exact backdrop copy (bare paper)
+        } else {
+            out_buf[pix] = pack4x8unorm(vec4<f32>(back_rgba.xyz, eff_back_a));
+        }
         return;
     }
     let final_a = acc_a * inv_n * inv_n;

@@ -34,12 +34,20 @@ não o sim). Painel **Brush Studio**:
 1. **Paleta de pigmentos** — cicle o botão de pigmento (cycler). Cada um seta a granulação própria.
    Pinte traços sobrepostos de pigmentos diferentes (ex.: amarelo + azul) **molhado-sobre-molhado** →
    a mistura deve dar **verde subtrativo** real (K–M de 24 bandas), **não cinza/lama**.
-2. **Lift** (slider novo, default 0) — pinte um traço, deixe secar parcialmente, suba o **Lift** e
-   passe água/pincel por cima de uma área molhada → o pigmento depositado **re-mobiliza** (volta a
-   fluir). Pigmentos **staining** (ex.: ftalo) resistem mais ao lift que os **granulando/lift-fáceis**.
+2. **Lift** (slider novo, default 0) — **REFORMULADO p/ backdrop-lift ([ADR-0084](architecture/decisions/0084-watercolor-backdrop-lift.md))**:
+   pinte uma área e deixe secar (commit do traço). Suba o **Lift**, escolha um pincel molhado e
+   passe POR CIMA da tinta seca → o pincel molhado **levanta** aquela tinta: ela **clareia** ali (o
+   papel reaparece) e o pigmento **sangra** pro wash novo. É o lift de aquarela real (pincel molhado
+   re-mobiliza tinta seca da tela). Em 0 nada muda (default não-destrutivo, byte-idêntico).
+   > Nota: o lift de ADR-0081 (re-mobilizar o `deposited` do traço atual) estava ligado correto mas
+   > **inerte na prática** (medido |Δ|=0: a deposição default é lenta + o buffer é limpo por traço),
+   > então o efeito que o artista espera era impossível. ADR-0084 conserta lendo o backdrop.
 3. **Branching** (slider novo, default 0) — com Branching em 0, a franja molhada é o **anel liso** de
    hoje. Suba o **Branching** → a frente capilar fica **lobada/ramificada** seguindo o tooth do papel
-   (wicka menos nos vales, ~full nas cristas). Em 0 nada muda (confirme a preservação).
+   (wicka nas cristas, **seca os vales**). Agora com **ganho ×2 ([ADR-0082](architecture/decisions/0082-watercolor-branched-capillary-fringe.md) tune)** pra
+   ler como dendrítico numa tela normal (o efeito era medível mas sutil demais antes). Em 0 nada muda.
+   ⚠️ A franja só existe se **Capillary > 0** (default 0.15 ✓); numa tela pequena (demo 64px) a franja
+   tem poucos px — use uma tela maior pra ver os lobos bem.
 4. **4K full-res** — o campo de 32 canais agora aloca em full-res 4K onde há VRAM (seu Apple Silicon).
    Produção usa grid low-res (canvas/4) por default; isto destrava detalhe fino quando o usuário quer.
 

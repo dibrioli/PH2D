@@ -259,6 +259,7 @@ fn composite_frame_fast_path_matches_one_shot() {
         2,
         solver.pigment_buffer(),
         &backdrop,
+        None, // ADR-0084: dormant backdrop-lift (no lift buffer)
     );
     let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
 
@@ -296,6 +297,7 @@ fn composite_frame_fast_path_matches_one_shot() {
         1,
         solver.pigment_buffer(),
         &backdrop,
+        None, // ADR-0084: dormant backdrop-lift (no lift buffer)
     );
     let (band_ss1, (px_lo, py_lo, px_hi, _)) =
         compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -348,6 +350,7 @@ fn composite_frame_pipelined_matches_sync() {
             1,
             solver.pigment_buffer(),
             &backdrop,
+            None, // ADR-0084: dormant backdrop-lift (no lift buffer)
         );
     };
 

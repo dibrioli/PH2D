@@ -263,10 +263,29 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             // sliders now drive the live wash. `cs_combine` still feeds the compositor
             // `flowing + deposited` via `total_buffer()`; the velocity layer is dormant if
             // the brush sets `velocity = 0`.
-            sess.solver
-                .set_from_diffusion(&gpu.queue, &painter.fluid_diffusion_params());
+            let dp = painter.fluid_diffusion_params();
+            sess.solver.set_from_diffusion(&gpu.queue, &dp);
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
+            }
+            // ADR-0084 backdrop lift: when the brush's `lift > 0`, seed the donor (`lift_source`)
+            // from the current canvas backdrop (downsampled to the grid by the SAME free fn the CPU
+            // seed uses → bit-identical CPU↔GPU, HR-5) and zero `lifted_frac`; the wet brush then
+            // re-mobilizes that dry paint into the wash (+ the compositor drops the lifted alpha).
+            // On the non-lift path zero BOTH so a fresh stroke with `lift = 0` has an inert donor +
+            // `lifted_frac ≡ 0` → the compositor is byte-identical (the non-destructive default).
+            if dp.lift > 0.0 {
+                if let Some(backdrop) = painter.fluid_backdrop() {
+                    let cells = ph2d_painter_brush::diffusion::backdrop_to_lift_source(
+                        backdrop, cw, ch, dims.0, dims.1,
+                    );
+                    sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
+                    sess.solver.upload_lift_source(&gpu.queue, &cells);
+                } else {
+                    sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
+                }
+            } else {
+                sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
             }
             if let Some(backdrop) = painter.fluid_backdrop() {
                 // ADR-0080: pigment colour is per-pixel (reduced from the field), so no
@@ -289,6 +308,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
                     // nothing is deposited, so non-deposition strokes are unchanged.
                     sess.solver.total_buffer(),
                     backdrop,
+                    // ADR-0084: bind the lift accumulator so the compositor drops the backdrop
+                    // alpha where dry paint was lifted. All-zero (cleared above) when `lift = 0`
+                    // ⇒ byte-identical output.
+                    Some(sess.solver.lifted_frac_buffer()),
                 );
             }
             sess.epoch = epoch;

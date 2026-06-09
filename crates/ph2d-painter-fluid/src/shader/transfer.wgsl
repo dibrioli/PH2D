@@ -55,6 +55,14 @@ struct Params {
 @group(0) @binding(2) var<storage, read> paper: array<f32>;
 @group(0) @binding(3) var<storage, read_write> flowing: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> deposited: array<vec4<f32>>;
+// ADR-0084 backdrop-lift donor + accumulator (read by `cs_lift` only; `cs_transfer` ignores
+// them — it shares the layout but never touches bindings 5/6). `lift_source` is the
+// downsampled canvas backdrop ("dry paint available to lift", same 32-ch K–M layout as
+// `flowing`/`deposited`), depleted into `flowing` in wet cells; `lifted_frac` accumulates the
+// fraction removed per cell (the compositor drops the backdrop alpha by it). All-zero while the
+// lift is off / unseeded → the backdrop branch is a no-op (pre-ADR-0084 bit-identical).
+@group(0) @binding(5) var<storage, read_write> lift_source: array<vec4<f32>>;
+@group(0) @binding(6) var<storage, read_write> lifted_frac: array<f32>;
 
 // Same smoothstep as `ph2d_painter_brush` (matches the CPU `dry` factor).
 fn smoothstep_gate(lo: f32, hi: f32, x: f32) -> f32 {
@@ -95,6 +103,12 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
 // on it solver-side) or the cell has no deposited mass. Same bindings as `cs_transfer` (flowing =
 // pig_a, deposited both read_write); runs BEFORE diffuse (the CPU `step` order), so the lifted
 // pigment participates this substep.
+//
+// ADR-0084 — this kernel ALSO runs the backdrop-lift branch (`lift_source → flowing`) in the SAME
+// dispatch. The two branches are INDEPENDENT non-returning blocks, mirroring the CPU `lift_pigment`
+// (deposited loop) then `lift_from_backdrop`: an early `return` on the deposited branch would skip
+// the backdrop branch (and vice versa). Identical rate law; the backdrop branch additionally
+// accumulates `lifted_frac` (the compositor reads it). Both are no-ops on an unseeded / zero cell.
 @compute @workgroup_size(8, 8, 1)
 fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = P.region_ox + gid.x;
@@ -103,19 +117,34 @@ fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let i = y * P.width + x;
-    let dep_mass = deposited[i * PV + 6u].w;       // PIG_MASS=27 → vec4[6].w
-    if (dep_mass <= 1.0e-6) {
-        return;
-    }
-    let stain = clamp(deposited[i * PV + 7u].x / dep_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
     let wet = smoothstep_gate(P.w_lo, P.w_hi, water[i]);
-    let rate = clamp(P.lift * wet * (1.0 - stain), 0.0, 1.0);
-    if (rate <= 0.0) {
-        return;
+    // Branch 1 — deposited lift (ADR-0081): re-mobilize this stroke's frozen pigment.
+    let dep_mass = deposited[i * PV + 6u].w;       // PIG_MASS=27 → vec4[6].w
+    if (dep_mass > 1.0e-6) {
+        let stain = clamp(deposited[i * PV + 7u].x / dep_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
+        let rate = clamp(P.lift * wet * (1.0 - stain), 0.0, 1.0);
+        if (rate > 0.0) {
+            for (var v = 0u; v < PV; v = v + 1u) {
+                let moved = rate * deposited[i * PV + v];
+                deposited[i * PV + v] = deposited[i * PV + v] - moved;
+                flowing[i * PV + v] = flowing[i * PV + v] + moved;
+            }
+        }
     }
-    for (var v = 0u; v < PV; v = v + 1u) {
-        let moved = rate * deposited[i * PV + v];
-        deposited[i * PV + v] = deposited[i * PV + v] - moved;
-        flowing[i * PV + v] = flowing[i * PV + v] + moved;
+    // Branch 2 — backdrop lift (ADR-0084): re-mobilize the dry-paint reservoir (downsampled
+    // backdrop) into the flowing layer + accumulate the cumulative lifted fraction. Same rate law;
+    // `lift_source`'s own staining ratio resists (0 for a backdrop seed → dry paint lifts freely).
+    let src_mass = lift_source[i * PV + 6u].w;     // PIG_MASS=27 → vec4[6].w
+    if (src_mass > 1.0e-6) {
+        let stain_src = clamp(lift_source[i * PV + 7u].x / src_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
+        let rate = clamp(P.lift * wet * (1.0 - stain_src), 0.0, 1.0);
+        if (rate > 0.0) {
+            for (var v = 0u; v < PV; v = v + 1u) {
+                let moved = rate * lift_source[i * PV + v];
+                lift_source[i * PV + v] = lift_source[i * PV + v] - moved;
+                flowing[i * PV + v] = flowing[i * PV + v] + moved;
+            }
+            lifted_frac[i] = lifted_frac[i] + rate * (1.0 - lifted_frac[i]);
+        }
     }
 }

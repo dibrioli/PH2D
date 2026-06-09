@@ -80,6 +80,7 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
         1, // ss = 1 at full-res (the resident-path default)
         solver.pigment_buffer(),
         &backdrop,
+        None, // ADR-0084: dormant backdrop-lift (no lift buffer)
     );
 
     // Two regions: a representative stroke band (~20% height) + the full canvas.

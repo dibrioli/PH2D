@@ -312,10 +312,21 @@ pub struct FluidSolver {
     transfer: wgpu::ComputePipeline,
     deposited: wgpu::Buffer,
     bg_transfer: wgpu::BindGroup,
-    /// Lift pass (`cs_lift`, ADR-0081): the inverse of `cs_transfer` — re-mobilizes NON-staining
-    /// `deposited` pigment back into `pig_a` in wet cells. Shares the `transfer_bgl` layout +
-    /// `bg_transfer` bind group (same flowing/deposited/water bindings). Dormant while `lift` is 0.
+    /// Lift pass (`cs_lift`, ADR-0081 + ADR-0084): the inverse of `cs_transfer` — re-mobilizes
+    /// NON-staining `deposited` pigment back into `pig_a` in wet cells, AND (ADR-0084) re-mobilizes
+    /// the backdrop-lift donor (`lift_source`) into `pig_a` while accumulating `lifted_frac`. Shares
+    /// the `transfer_bgl` layout + `bg_transfer` bind group (flowing/deposited/water + the new
+    /// lift_source/lifted_frac bindings). Dormant while `lift` is 0 (the dispatch is gated on it).
     lift: wgpu::ComputePipeline,
+    /// **Backdrop-lift donor (ADR-0084)** — `array<vec4<f32>>` (8 vec4/cell = PIG_CH=32), the
+    /// downsampled canvas backdrop ("dry paint available to lift"). Seeded once per stroke
+    /// ([`Self::upload_lift_source`]) when `lift > 0`, depleted into `pig_a` by `cs_lift`. COPY_SRC
+    /// for the parity readback. All-zero while dormant → the backdrop branch is a no-op.
+    lift_source: wgpu::Buffer,
+    /// **Lifted fraction ∈ [0,1] per cell (ADR-0084)** — `array<f32>`, how much of the backdrop
+    /// pigment `cs_lift` re-mobilized out of the paper. Resident (accumulates across substeps); read
+    /// by the compositor to drop the backdrop alpha. COPY_SRC for parity readback. ≡ 0 while dormant.
+    lifted_frac: wgpu::Buffer,
     /// Combine pass (`cs_combine`, ADR-0078 S3c): `total = flowing + deposited`, the
     /// buffer the compositor reads (so deposited pigment is visible).
     combine: wgpu::ComputePipeline,
@@ -448,6 +459,10 @@ impl FluidSolver {
         let deposited = buf("fluid deposited", vec4n, wgpu::BufferUsages::COPY_SRC);
         // total = flowing + deposited (ADR-0078 S3c) — the buffer the compositor reads.
         let total = buf("fluid total", vec4n, wgpu::BufferUsages::COPY_SRC);
+        // ADR-0084 backdrop-lift donor (8 vec4/cell) + lifted-fraction accumulator (f32/cell);
+        // COPY_SRC for the parity readback. All-zero (dormant) until a `lift > 0` stroke seeds them.
+        let lift_source = buf("fluid lift_source", vec4n, wgpu::BufferUsages::COPY_SRC);
+        let lifted_frac = buf("fluid lifted_frac", f32n, wgpu::BufferUsages::COPY_SRC);
         // bind group: (params, water, paper, pig_in, pig_out).
         let bg = |label: &str, pin: &wgpu::Buffer, pout: &wgpu::Buffer| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -644,6 +659,8 @@ impl FluidSolver {
                 storage(2, true),  // paper (read)
                 storage(3, false), // flowing = pig_a (read_write)
                 storage(4, false), // deposited (read_write)
+                storage(5, false), // lift_source (read_write — ADR-0084, depleted by cs_lift)
+                storage(6, false), // lifted_frac (read_write — ADR-0084, accumulated by cs_lift)
             ],
         });
         let transfer_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -691,6 +708,14 @@ impl FluidSolver {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: deposited.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: lift_source.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: lifted_frac.as_entire_binding(),
                 },
             ],
         });
@@ -1113,6 +1138,8 @@ impl FluidSolver {
             deposited,
             bg_transfer,
             lift,
+            lift_source,
+            lifted_frac,
             combine,
             total,
             bg_combine,
@@ -1415,6 +1442,45 @@ impl FluidSolver {
         });
         enc.clear_buffer(&self.deposited, 0, None);
         queue.submit([enc.finish()]);
+    }
+
+    /// **Seed the ADR-0084 backdrop-lift donor.** Upload the `width*height` K–M donor cells
+    /// (each [`WetCell`] = 32 f32 = 8 vec4, matching the GPU `array<vec4<f32>>` layout) straight
+    /// into `lift_source` — the GPU mirror of the CPU `DiffusionGrid::seed_lift_source_from_backdrop`.
+    /// Build `cells` with `ph2d_painter_brush::diffusion::backdrop_to_lift_source` (the SAME free fn
+    /// the CPU seed uses) so the donor is bit-identical CPU↔GPU (HR-5). Call ONCE at stroke begin
+    /// when `lift > 0`; pair with [`Self::clear_lift_gpu`] (to also zero `lifted_frac`) or re-seed.
+    pub fn upload_lift_source(&self, queue: &wgpu::Queue, cells: &[WetCell]) {
+        queue.write_buffer(&self.lift_source, 0, bytemuck::cast_slice(cells));
+    }
+
+    /// Zero BOTH the backdrop-lift donor (`lift_source`) AND the lifted-fraction accumulator
+    /// (`lifted_frac`) ON the GPU (ADR-0084) — the stroke-begin reset for the backdrop-lift branch,
+    /// alongside the pigment/water/deposited clears. Mirrors [`Self::clear_resident_deposited_gpu`].
+    /// Leaving both zero keeps the `cs_lift` backdrop branch a no-op + the compositor byte-identical
+    /// (the non-destructive `lift = 0` path).
+    pub fn clear_lift_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid clear lift"),
+        });
+        enc.clear_buffer(&self.lift_source, 0, None);
+        enc.clear_buffer(&self.lifted_frac, 0, None);
+        queue.submit([enc.finish()]);
+    }
+
+    /// The lifted-fraction buffer (`array<f32>`, ADR-0084) — bound by the compositor to drop the
+    /// backdrop alpha where paint was lifted, and read back by the parity test. All-zero (so the
+    /// compositor output is byte-identical) until a `lift > 0` stroke seeds + runs the backdrop lift.
+    #[must_use]
+    pub fn lifted_frac_buffer(&self) -> &wgpu::Buffer {
+        &self.lifted_frac
+    }
+
+    /// The backdrop-lift donor buffer (`array<vec4<f32>>`, ADR-0084) — for the parity readback /
+    /// inspection. Depleted in place by `cs_lift`; all-zero while dormant.
+    #[must_use]
+    pub fn lift_source_buffer(&self) -> &wgpu::Buffer {
+        &self.lift_source
     }
 
     /// Zero the resident shallow-water state ON the GPU (ADR-0078 S3d) — the stroke-begin

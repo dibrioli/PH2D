@@ -222,6 +222,16 @@ impl Default for DiffusionParams {
 const HEIGHT_FREQ: f32 = 0.13;
 const HEIGHT_SEED: u32 = 0x70a9_e2c5; // shared with cpu_render paper tooth
 
+/// **Branching visibility gain (ADR-0082, tuned 2026-06-09).** The fiber-channeled capillary
+/// suppression is `fiber_factor = clamp(1 − branching·BRANCH_GAIN·(1 − paper_face), 0, 1)`. The
+/// gain (> 1) makes the artist-facing "Branching" slider carve the paper valleys HARD enough to
+/// read as lobed/dendritic on a normal canvas (the raw linear suppression was measurable but too
+/// subtle on a small/low-res grid — the fringe is only a few cells). Still **suppression-only**
+/// (`fiber_factor ≤ 1`, clamped) ⇒ `capillary·cond ≤ 0.24` stays ⇒ the convex-average CFL bound +
+/// mass conservation hold (the ADR-0082 §2.2 proof is unchanged). `branching = 0 ⇒ fiber_factor = 1`
+/// bit-identical to the isotropic ring, so the contract gate + the non-destructive default hold.
+const BRANCH_GAIN: f32 = 2.0;
+
 /// Fixed Jacobi-iteration count for the shallow-water pressure projection
 /// ([`DiffusionGrid::project`], ADR-0078 S3d). A *fixed* count (not a convergence
 /// threshold) keeps the solve deterministic + bounded (HR-5) and makes the GPU mirror
@@ -238,6 +248,52 @@ pub const RELAX_ITERS: u32 = 6;
 fn smoothstep(lo: f32, hi: f32, x: f32) -> f32 {
     let t = ((x - lo) / (hi - lo).max(1e-6)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
+}
+
+/// **ADR-0084 — downsample a canvas-res RGBA8 backdrop into a `gw·gh` grid of K–M donor cells.**
+/// Each grid cell box-averages the canvas pixels in its footprint (linear-light colour +
+/// straight alpha) and stores it as [`PIG_CH`]-channel pigment with `mass = avg_alpha` (opaque
+/// paint → full mass, bare paper → none). The single seed used by BOTH the CPU
+/// [`DiffusionGrid::seed_lift_source_from_backdrop`] and the GPU upload path, so the backdrop-lift
+/// donor is bit-identical CPU↔GPU (HR-5). `backdrop.len()` must be `cw·ch·4`.
+#[must_use]
+pub fn backdrop_to_lift_source(
+    backdrop: &[u8],
+    cw: u32,
+    ch: u32,
+    gw: u32,
+    gh: u32,
+) -> Vec<WetCell> {
+    debug_assert_eq!(backdrop.len(), (cw as usize) * (ch as usize) * 4);
+    let mut out = vec![[0.0f32; PIG_CH]; (gw as usize) * (gh as usize)];
+    for gy in 0..gh {
+        // Inclusive pixel span of this grid row (box footprint), clamped to the canvas.
+        let py0 = (gy * ch / gh).min(ch.saturating_sub(1));
+        let py1 = (((gy + 1) * ch).div_ceil(gh)).clamp(py0 + 1, ch);
+        for gx in 0..gw {
+            let px0 = (gx * cw / gw).min(cw.saturating_sub(1));
+            let px1 = (((gx + 1) * cw).div_ceil(gw)).clamp(px0 + 1, cw);
+            let (mut sr, mut sg, mut sb, mut sa) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+            let mut cnt = 0.0f64;
+            for py in py0..py1 {
+                for px in px0..px1 {
+                    let o = ((py * cw + px) * 4) as usize;
+                    sr += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o]));
+                    sg += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o + 1]));
+                    sb += f64::from(crate::pigment_mix::srgb8_to_linear(backdrop[o + 2]));
+                    sa += f64::from(backdrop[o + 3]) / 255.0;
+                    cnt += 1.0;
+                }
+            }
+            let inv = if cnt > 0.0 { 1.0 / cnt } else { 0.0 };
+            let avg = [(sr * inv) as f32, (sg * inv) as f32, (sb * inv) as f32];
+            let mass = (sa * inv) as f32;
+            if mass > 1.0e-6 {
+                out[(gy * gw + gx) as usize] = DiffusionGrid::cell_from_color_mass(avg, mass);
+            }
+        }
+    }
+    out
 }
 
 /// A low-resolution wet-on-wet diffusion field. Holds water + pigment + a static
@@ -281,6 +337,18 @@ pub struct DiffusionGrid {
     /// diffusion reads the old water + writes the new field here, then swaps). Allocated
     /// lazily with the rest; untouched (near-free) while the capillary layer is dormant.
     scratch_w2: Vec<f32>,
+    /// **Backdrop-lift donor field (ADR-0084)** — [`PIG_CH`]-channel "dry paint available to
+    /// lift", seeded once per stroke from the canvas backdrop (downsampled) by
+    /// [`Self::seed_lift_source_from_backdrop`] when `lift > 0`. A *static* donor (does NOT
+    /// diffuse/advect, like `deposited`); [`Self::lift_pigment`] re-mobilizes a fraction into
+    /// the flowing `pigment` layer in wet cells, depleting it. All-zero while the lift is off /
+    /// unseeded → the backdrop-lift branch is a no-op (pre-ADR-0084 bit-identical).
+    lift_source: Vec<WetCell>,
+    /// **Lifted fraction ∈ [0,1] per cell (ADR-0084)** — how much of the backdrop pigment has
+    /// been re-mobilized out of the paper. The compositor reads it to drop the backdrop alpha
+    /// (lifted paint = less opaque). Resident across steps (accumulates); `≡ 0` while lift is
+    /// off → the compositor is byte-identical.
+    lifted_frac: Vec<f32>,
 }
 
 impl DiffusionGrid {
@@ -339,6 +407,9 @@ impl DiffusionGrid {
             divergence: vec![0.0; n],
             pressure_b: vec![0.0; n],
             scratch_w2: vec![0.0; n],
+            // ADR-0084 backdrop-lift — dormant (empty) until a stroke with `lift > 0` seeds them.
+            lift_source: vec![[0.0; PIG_CH]; n],
+            lifted_frac: vec![0.0; n],
         }
     }
 
@@ -877,6 +948,63 @@ impl DiffusionGrid {
                 self.pigment[i][k] += moved;
             }
         }
+        // ADR-0084 backdrop lift — re-mobilize the DRY paint reservoir (`lift_source`, the
+        // downsampled canvas backdrop) into the flowing layer in wet cells, so a wet brush over
+        // already-dry paint lifts it (it lightens + bleeds via the flowing layer's diffusion).
+        // Same rate law as above; `lift_source`'s own staining ratio resists (0 for a backdrop
+        // seed → dry paint lifts freely). Geometric depletion (`lift_source *= 1−rate`) makes
+        // `lifted_frac` track the cumulative fraction removed → the compositor drops the backdrop
+        // alpha by it. A no-op while `lift_source` is unseeded (all-zero) — the pre-ADR-0084 path.
+        self.lift_from_backdrop(p);
+    }
+
+    /// ADR-0084 backdrop-lift inner loop (see [`Self::lift_pigment`]). Split out so the
+    /// deposited-lift (ADR-0081) stays a tight, unchanged loop.
+    fn lift_from_backdrop(&mut self, p: &DiffusionParams) {
+        let n = (self.width as usize) * (self.height as usize);
+        for i in 0..n {
+            let src_mass = self.lift_source[i][PIG_MASS];
+            if src_mass <= 1.0e-6 {
+                continue;
+            }
+            let stain = (self.lift_source[i][PIG_STAIN] / src_mass).clamp(0.0, 1.0);
+            let wet = smoothstep(p.w_lo, p.w_hi, self.water[i]);
+            let rate = (p.lift * wet * (1.0 - stain)).clamp(0.0, 1.0);
+            if rate <= 0.0 {
+                continue;
+            }
+            for k in 0..PIG_CH {
+                let moved = rate * self.lift_source[i][k];
+                self.lift_source[i][k] -= moved;
+                self.pigment[i][k] += moved;
+            }
+            // Cumulative fraction lifted (the donor depletes geometrically by `1−rate`, so this
+            // "remaining" accumulation stays consistent with `1 − src_mass/initial_mass`).
+            self.lifted_frac[i] += rate * (1.0 - self.lifted_frac[i]);
+        }
+    }
+
+    /// **Seed the ADR-0084 backdrop-lift donor** from a canvas-res RGBA8 `backdrop` (`cw·ch·4`
+    /// bytes, straight-alpha sRGB — the same buffer the compositor glazes over). Call ONCE at
+    /// stroke start when `lift > 0`; resets `lifted_frac` to 0. Leaving it unseeded (the default)
+    /// keeps the backdrop-lift branch dormant. The downsample is [`backdrop_to_lift_source`], a
+    /// free fn the GPU path reuses verbatim so the seed is bit-identical CPU↔GPU (HR-5).
+    pub fn seed_lift_source_from_backdrop(&mut self, backdrop: &[u8], cw: u32, ch: u32) {
+        self.lift_source = backdrop_to_lift_source(backdrop, cw, ch, self.width, self.height);
+        self.lifted_frac.iter_mut().for_each(|f| *f = 0.0);
+    }
+
+    /// ADR-0084 — the per-cell lifted fraction ∈ [0,1] (the compositor drops the backdrop alpha
+    /// by this). All-zero unless a stroke with `lift > 0` seeded + ran the backdrop lift.
+    #[must_use]
+    pub fn lifted_frac(&self) -> &[f32] {
+        &self.lifted_frac
+    }
+
+    /// ADR-0084 — the backdrop-lift donor field (for parity tests / inspection).
+    #[must_use]
+    pub fn lift_source(&self) -> &[WetCell] {
+        &self.lift_source
     }
 
     /// Pass 6 — **capillary flow** (ADR-0078 S5 / Curtis 1997 capillary layer): the water
@@ -938,7 +1066,10 @@ impl DiffusionGrid {
                     // `capillary_branching = 0 ⇒ fcond == cond` (bit-identical to the isotropic
                     // capillary). Used for BOTH the water flux `dw` and the pigment co-advect.
                     let paper_face = 0.5 * (self.paper[c] + self.paper[nidx]);
-                    let fcond = cond * (1.0 - p.capillary_branching * (1.0 - paper_face));
+                    let fiber_factor = (1.0
+                        - p.capillary_branching * BRANCH_GAIN * (1.0 - paper_face))
+                        .clamp(0.0, 1.0);
+                    let fcond = cond * fiber_factor;
                     let wn = self.water[nidx];
                     let dw = fcond * (wn - wc);
                     let mut dp = [0.0f32; PIG_CH];
@@ -2353,6 +2484,101 @@ mod tests {
         assert!(
             maxd < 1e-6,
             "lift=0 must keep deposited frozen (max Δ {maxd})"
+        );
+    }
+
+    // ───────────────── ADR-0084 — backdrop lift (wet brush re-mobilizes dry paint) ─────────────────
+
+    /// A solid-colour canvas-res backdrop (RGBA8, opaque) — the "dry paint" a wet brush lifts.
+    fn solid_backdrop(cw: u32, ch: u32, rgb: [u8; 3]) -> Vec<u8> {
+        let mut b = vec![0u8; (cw * ch * 4) as usize];
+        for px in b.chunks_exact_mut(4) {
+            px[0] = rgb[0];
+            px[1] = rgb[1];
+            px[2] = rgb[2];
+            px[3] = 255;
+        }
+        b
+    }
+
+    /// **THE ADR-0084 gate:** seeding the donor from a backdrop + a WET field + `lift > 0`
+    /// re-mobilizes the dry paint into the flowing layer (`lift_source`↓, flowing↑) and raises
+    /// `lifted_frac`, conserving mass (every gram leaving the donor lands in flowing).
+    #[test]
+    fn backdrop_lift_remobilizes_dry_paint() {
+        let (gw, gh) = (32u32, 32u32);
+        let mut g = DiffusionGrid::new(gw, gh, 1.0);
+        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [40, 50, 200]), 64, 64);
+        let src_before: f64 = g.lift_source().iter().map(|c| f64::from(c[PIG_MASS])).sum();
+        let flow_before = g.total_pigment();
+        assert!(src_before > 1.0, "donor seeded from the backdrop");
+        assert!(flow_before < 1e-6, "nothing flowing yet");
+        // Wet the whole field (a wash laid over the dry paint) + lift on, no deposition/evaporation.
+        for w in g.water.iter_mut() {
+            *w = 0.9;
+        }
+        let lift = DiffusionParams {
+            evaporation: 0.0,
+            lift: 0.7,
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            g.step(&lift);
+        }
+        let src_after: f64 = g.lift_source().iter().map(|c| f64::from(c[PIG_MASS])).sum();
+        let flow_after = g.total_pigment();
+        let max_frac = g.lifted_frac().iter().cloned().fold(0.0f32, f32::max);
+        eprintln!(
+            "backdrop lift: donor {src_before:.2}->{src_after:.2}, flowing {flow_before:.2}->{flow_after:.2}, max lifted_frac={max_frac:.3}"
+        );
+        assert!(
+            src_after < src_before * 0.5,
+            "the donor depleted into the wash"
+        );
+        assert!(
+            flow_after > flow_before + 1.0,
+            "the lifted paint is now flowing"
+        );
+        assert!(
+            max_frac > 0.5,
+            "lifted_frac records the re-mobilization (compositor lightens)"
+        );
+        // Conservation: donor loss == flowing gain (lift only MOVES pigment).
+        let loss = src_before - src_after;
+        let gain = flow_after - flow_before;
+        assert!(
+            (loss - gain).abs() < 1e-2 * (loss.abs() + 1.0),
+            "backdrop lift conserves mass: donor lost {loss:.3}, flowing gained {gain:.3}"
+        );
+    }
+
+    /// **Non-destructive (ADR-0084):** with `lift = 0`, seeding the donor changes NOTHING — the
+    /// donor is never consumed, `lifted_frac ≡ 0`, and the flowing/deposited fields are untouched
+    /// (the compositor stays byte-identical). The opt-in guarantee Enio demanded.
+    #[test]
+    fn backdrop_lift_off_is_inert() {
+        let (gw, gh) = (32u32, 32u32);
+        let mut g = DiffusionGrid::new(gw, gh, 1.0);
+        g.seed_lift_source_from_backdrop(&solid_backdrop(64, 64, [200, 30, 30]), 64, 64);
+        for w in g.water.iter_mut() {
+            *w = 0.9;
+        }
+        let no_lift = DiffusionParams {
+            evaporation: 0.0,
+            lift: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            g.step(&no_lift);
+        }
+        assert!(
+            g.total_pigment() < 1e-6,
+            "lift=0 must NOT re-mobilize the donor (flowing stays empty)"
+        );
+        let max_frac = g.lifted_frac().iter().cloned().fold(0.0f32, f32::max);
+        assert!(
+            max_frac < 1e-9,
+            "lift=0 must leave lifted_frac at 0 (compositor unchanged)"
         );
     }
 

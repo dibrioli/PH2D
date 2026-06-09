@@ -944,26 +944,32 @@ fn gpu_capillary_branching_matches_cpu() {
         worst_p = worst_p.max(cell_color_mass_delta(&gpu_pig[i], &cpu_pig[i]));
         worst_w = worst_w.max((gpu_water[i] - cpu_water[i]).abs());
     }
-    // The fringe must still have wicked OUT past the r=9 splat (branching SUPPRESSES, never kills,
-    // the wick) — else the pass is dead and parity is trivially satisfied by "both did nothing".
-    let mut fringe = 0.0f32;
+    // The fringe must still have wicked OUT past the r=9 splat SOMEWHERE — else the pass is dead and
+    // parity is trivially satisfied by "both did nothing". With the ADR-0082 visibility gain the
+    // branched fringe is strongly LOBED: water channels along the paper crests + (near-)dries the
+    // valleys, so the annulus MEAN is low by design — `max` over the annulus is the honest liveness
+    // probe (the wick is alive on the crests), not the mean (which the lobing legitimately suppresses).
+    let mut fringe_max = 0.0f32;
+    let mut fringe_sum = 0.0f32;
     let mut fringe_n = 0.0f32;
     for y in 0..h {
         for x in 0..w {
             let d = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
             if (9.5..11.5).contains(&d) {
-                fringe += gpu_water[(y * w + x) as usize];
+                let wv = gpu_water[(y * w + x) as usize];
+                fringe_max = fringe_max.max(wv);
+                fringe_sum += wv;
                 fringe_n += 1.0;
             }
         }
     }
-    let fringe = fringe / fringe_n.max(1.0);
+    let fringe_mean = fringe_sum / fringe_n.max(1.0);
     eprintln!(
-        "branched capillary GPU↔CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}, gpu fringe water = {fringe:.4}"
+        "branched capillary GPU↔CPU: worst pigment |Δ| = {worst_p:.6}, worst water |Δ| = {worst_w:.6}, gpu fringe water max = {fringe_max:.4} (mean {fringe_mean:.4}, lobed)"
     );
     assert!(
-        fringe > 0.01,
-        "branched GPU capillary didn't wick a fringe — the pass is dead, parity meaningless"
+        fringe_max > 0.01,
+        "branched GPU capillary didn't wick a fringe anywhere — the pass is dead, parity meaningless"
     );
     assert!(
         worst_w < 2.0e-2,
@@ -1496,5 +1502,274 @@ fn gpu_cpu_parity_lift_branching_staining_combined() {
     assert!(
         worst_water < 2.0e-2,
         "lift×branching×staining water diverged from CPU: {worst_water}"
+    );
+}
+
+/// Read back a low-res `array<f32>` GPU buffer (`gw·gh` cells) — the `lifted_frac` accumulator
+/// (ADR-0084). A small copy + sync map (the same idiom as the solver's `read_water`).
+fn read_f32_buffer(gpu: &GpuContext, b: &wgpu::Buffer, n: usize) -> Vec<f32> {
+    let size = (n * 4) as u64;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("lifted_frac readback"),
+        size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    enc.copy_buffer_to_buffer(b, 0, &staging, 0, size);
+    gpu.queue.submit([enc.finish()]);
+    let (tx, rx) = std::sync::mpsc::channel();
+    staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv().expect("map channel").expect("mapped");
+    let mapped = staging.slice(..).get_mapped_range();
+    let out = bytemuck::cast_slice::<u8, f32>(&mapped).to_vec();
+    drop(mapped);
+    staging.unmap();
+    out
+}
+
+/// Read back a low-res `array<vec4<f32>>` GPU buffer as `WetCell`s (`gw·gh` cells, PIG_CH chans) —
+/// the `lift_source` donor (ADR-0084). Same idiom as the solver's `read_pigment`/`read_deposited`.
+fn read_wetcell_buffer(gpu: &GpuContext, b: &wgpu::Buffer, n: usize) -> Vec<WetCell> {
+    use ph2d_painter_brush::diffusion::PIG_CH;
+    let size = (n * PIG_CH * 4) as u64;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("lift_source readback"),
+        size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    enc.copy_buffer_to_buffer(b, 0, &staging, 0, size);
+    gpu.queue.submit([enc.finish()]);
+    let (tx, rx) = std::sync::mpsc::channel();
+    staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    rx.recv().expect("map channel").expect("mapped");
+    let mapped = staging.slice(..).get_mapped_range();
+    let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
+    drop(mapped);
+    staging.unmap();
+    out
+}
+
+/// Build a `cw·ch·4` straight-alpha sRGB RGBA8 backdrop: a fully-opaque solid colour fill — the
+/// "dry paint" a wet brush will lift. A uniform fill keeps the downsampled donor uniform across the
+/// grid so every wet cell has mass to lift (liveness), independent of the box-footprint boundaries.
+fn solid_backdrop(cw: u32, ch: u32, rgba: [u8; 4]) -> Vec<u8> {
+    let mut out = vec![0u8; (cw as usize) * (ch as usize) * 4];
+    for px in out.chunks_exact_mut(4) {
+        px.copy_from_slice(&rgba);
+    }
+    out
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_cpu_parity_backdrop_lift() {
+    // ADR-0084: the GPU `cs_lift` backdrop branch must reproduce the CPU `lift_from_backdrop` — a
+    // wet brush over already-dry paint (the canvas backdrop) re-mobilizes that pigment into the
+    // flowing wash. BOTH sides seed the donor (`lift_source`) from the SAME backdrop bytes (via the
+    // shared `backdrop_to_lift_source` free fn → bit-identical), wet the field (water-only dabs, so
+    // the ONLY flowing pigment is what the lift moves), then run N isolated lift steps. We assert
+    // per-channel parity over the donor (`lift_source`), the accumulator (`lifted_frac`), AND the
+    // flowing pigment, plus liveness (the donor actually fed the wash + `lifted_frac > 0`).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (40u32, 34u32);
+    // Canvas-res backdrop a few × the grid (so the box-downsample averages a real footprint), solid
+    // opaque colour — the dry paint to lift.
+    let (cw, ch) = (w * 3, h * 3);
+    let backdrop = solid_backdrop(cw, ch, [60, 120, 200, 255]);
+    let lift_steps = 6u32;
+    let lift_rate = 0.7f32;
+    let base = FluidParams::default();
+    // Water-only dabs (pigment_mass = 0): wet a broad pool so the wet gate opens over most of the
+    // grid → most donor cells lift. The colour is ignored at mass 0.
+    let raw = [
+        (20.0f32, 17.0, 16.0, 0.95),
+        (24.0, 20.0, 10.0, 0.9),
+        (14.0, 14.0, 8.0, 0.85),
+    ];
+
+    // ── CPU reference ───────────────────────────────────────────────────────────────────────
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa) in &raw {
+        cpu.splat(cx, cy, r, wa, [0.0, 0.0, 0.0], 0.0, 0.0); // water only (mass 0)
+    }
+    cpu.seed_lift_source_from_backdrop(&backdrop, cw, ch);
+    for _ in 0..lift_steps {
+        cpu.step(&lift_only_params(lift_rate));
+    }
+
+    // ── GPU ─────────────────────────────────────────────────────────────────────────────────
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa)| DabGpu::new(cx, cy, r, wa, [0.0, 0.0, 0.0], 0.0, 0.0))
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.clear_lift_gpu(&gpu.device, &gpu.queue); // zero lift_source + lifted_frac
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    // Seed the donor from the SAME bytes via the SAME free fn (bit-identical to the CPU seed).
+    let cells = ph2d_painter_brush::diffusion::backdrop_to_lift_source(&backdrop, cw, ch, w, h);
+    solver.upload_lift_source(&gpu.queue, &cells);
+    // Wet the field (water-only splat), no step yet.
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 0, (0, 0, w - 1, h - 1));
+    // Isolated lift phase: lift ON, everything else off (no new dabs).
+    solver.set_from_diffusion(&gpu.queue, &lift_only_params(lift_rate));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &[],
+        lift_steps,
+        (0, 0, w - 1, h - 1),
+    );
+    let n = (w * h) as usize;
+    let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_src = read_wetcell_buffer(&gpu, solver.lift_source_buffer(), n);
+    let gpu_lifted = read_f32_buffer(&gpu, solver.lifted_frac_buffer(), n);
+
+    // ── Parity: donor (lift_source) + accumulator (lifted_frac) + flowing pigment ─────────────
+    let (cpu_flow, cpu_src, cpu_lifted) = (cpu.pigment(), cpu.lift_source(), cpu.lifted_frac());
+    let mut worst_flow = 0.0f32;
+    let mut worst_src = 0.0f32;
+    let mut worst_lifted = 0.0f32;
+    let mut total_flow = 0.0f32; // GPU flowing mass — the lift must have fed it
+    let mut max_lifted = 0.0f32; // GPU lifted_frac — must rise above 0
+    for i in 0..n {
+        worst_flow = worst_flow.max(cell_color_mass_delta(&gpu_flow[i], &cpu_flow[i]));
+        worst_src = worst_src.max(cell_color_mass_delta(&gpu_src[i], &cpu_src[i]));
+        worst_lifted = worst_lifted.max((gpu_lifted[i] - cpu_lifted[i]).abs());
+        total_flow += gpu_flow[i][PIG_MASS];
+        max_lifted = max_lifted.max(gpu_lifted[i]);
+    }
+    eprintln!(
+        "cs_lift backdrop vs CPU: worst flowing |Δ| = {worst_flow:.6}, worst lift_source |Δ| = {worst_src:.6}, worst lifted_frac |Δ| = {worst_lifted:.6}, GPU flowing total = {total_flow:.3}, max lifted_frac = {max_lifted:.3}"
+    );
+    assert!(
+        total_flow > 0.01,
+        "GPU backdrop lift fed nothing into the wash — cs_lift backdrop branch is dead, parity meaningless"
+    );
+    assert!(
+        max_lifted > 0.0,
+        "GPU lifted_frac never rose — the accumulator is dead"
+    );
+    assert!(
+        worst_flow < 2.0e-2,
+        "cs_lift backdrop flowing diverged from CPU: {worst_flow}"
+    );
+    assert!(
+        worst_src < 2.0e-2,
+        "cs_lift backdrop lift_source diverged from CPU: {worst_src}"
+    );
+    assert!(
+        worst_lifted < 2.0e-2,
+        "cs_lift backdrop lifted_frac diverged from CPU: {worst_lifted}"
+    );
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_backdrop_lift_off_is_byte_identical_composite() {
+    // ADR-0084 §2.4 non-destructive: with `lift = 0` the donor is never seeded (cleared) and
+    // `lifted_frac ≡ 0`, so the backdrop-lift branch is fully inert. (1) Assert the solver's
+    // `lifted_frac` stays all-zero after a full wet stroke with lift off, and (2) the GPU compositor
+    // output over a frozen wet field with the dormant (all-zero) lifted_frac is byte-for-byte the
+    // same as compositing the same field through the existing path — proving the new binding 5 +
+    // the alpha-drop are no-ops when dormant. The dormant path binds an owned all-zero buffer, so
+    // `lf = 0` ⇒ `eff_back_a = back_a` ⇒ identical bytes.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (32u32, 28u32);
+    let base = FluidParams::default();
+    let raw = [(16.0f32, 14.0, 10.0, 0.9, [0.20f32, 0.40, 0.80])];
+
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
+    }
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
+        })
+        .collect();
+    // A NON-lift brush: lift stays 0, so the bridge would `clear_lift_gpu` (never seed).
+    let mut off = base.to_diffusion();
+    off.lift = 0.0;
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.clear_lift_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    solver.set_from_diffusion(&gpu.queue, &off);
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 8, (0, 0, w - 1, h - 1));
+
+    // (1) lifted_frac must be all-zero (the dispatch ran cs_lift only if lift>0 — here it didn't).
+    let n = (w * h) as usize;
+    let lifted = read_f32_buffer(&gpu, solver.lifted_frac_buffer(), n);
+    let max_lifted = lifted.iter().copied().fold(0.0f32, f32::max);
+    eprintln!("lift=0: max lifted_frac = {max_lifted:.6}");
+    assert!(
+        max_lifted == 0.0,
+        "lift=0 left a non-zero lifted_frac (should be inert): {max_lifted}"
+    );
+
+    // (2) Compositing the resident pigment over a backdrop with the dormant (all-zero) lifted_frac
+    // must be byte-identical run-to-run (the alpha-drop is a pure no-op). `composite_to_rgba` binds
+    // the dormant zero buffer (None path), so two identical composites must match exactly.
+    let (cw, ch) = (w, h);
+    let coverage_k = 1.06f32; // the composite tests' WET_COVERAGE_K analogue
+    let backdrop = solid_backdrop(cw, ch, [200, 180, 150, 255]);
+    let compositor = ph2d_painter_fluid::FluidCompositor::new(&gpu.device);
+    let pig = solver.read_pigment(&gpu.device, &gpu.queue);
+    let a = compositor.composite_to_rgba(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        cw,
+        ch,
+        1,
+        coverage_k,
+        &pig,
+        &backdrop,
+        (0, 0, w - 1, h - 1),
+    );
+    let b = compositor.composite_to_rgba(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        cw,
+        ch,
+        1,
+        coverage_k,
+        &pig,
+        &backdrop,
+        (0, 0, w - 1, h - 1),
+    );
+    assert_eq!(
+        a, b,
+        "dormant backdrop-lift composite is not byte-identical run-to-run — the alpha-drop leaked"
     );
 }

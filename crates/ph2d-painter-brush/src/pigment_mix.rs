@@ -497,7 +497,7 @@ pub fn pigment_lerp_srgb8(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
 
 /// sRGB-8 → linear-light `[0,1]` (IEC 61966).
 #[inline]
-fn srgb8_to_linear(v: u8) -> f32 {
+pub(crate) fn srgb8_to_linear(v: u8) -> f32 {
     let s = v as f32 / 255.0;
     if s <= 0.040_45 {
         s / 12.92

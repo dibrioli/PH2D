@@ -107,11 +107,14 @@ fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> 
     let permn = perm_at(ni);
     var cond = 0.5 * (permc + permn);
     // Branched (fiber-channeled) capillary (ADR-0082): suppress the face conductance by the
-    // paper FIBRE averaged on the face. `fiber_factor ∈ [1−branching, 1]` (suppression-only ⇒
-    // convex-average stability + conservation hold); `capillary_branching = 0 ⇒ cond unchanged`
-    // (bit-identical to the isotropic capillary). Mirrors the CPU `capillary_flow` `face` closure.
+    // paper FIBRE averaged on the face. `fiber_factor = clamp(1 − branching·BRANCH_GAIN·(1−paper),
+    // 0, 1)` — the gain (2.0) carves the valleys hard enough to read as lobed (ADR-0082 visibility
+    // tune 2026-06-09); still suppression-only (≤ 1, clamped) ⇒ convex-average stability +
+    // conservation hold; `capillary_branching = 0 ⇒ cond unchanged` (bit-identical to the isotropic
+    // capillary). Mirrors the CPU `capillary_flow` `face` closure (`BRANCH_GAIN` in `diffusion.rs`).
     let paper_face = 0.5 * (paper_c + paper[ni]);
-    cond = cond * (1.0 - P.capillary_branching * (1.0 - paper_face));
+    let fiber_factor = clamp(1.0 - P.capillary_branching * 2.0 * (1.0 - paper_face), 0.0, 1.0);
+    cond = cond * fiber_factor;
     let wn = water_in[ni];
     var frac = 0.0;
     var kind = 0u;

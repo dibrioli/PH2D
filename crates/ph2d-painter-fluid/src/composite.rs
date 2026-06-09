@@ -90,6 +90,9 @@ struct CompositeState {
     out: wgpu::Buffer,
     backdrop: wgpu::Buffer,
     staging: wgpu::Buffer,
+    /// Owned all-zero `lifted_frac` (ADR-0084) bound at binding 5 when `begin_stroke` is called
+    /// without a live lift buffer — kept here so it outlives the `bind` it backs. Sized to `gw·gh`.
+    dormant_lifted: wgpu::Buffer,
     bind: wgpu::BindGroup,
 }
 
@@ -150,6 +153,7 @@ impl FluidCompositor {
                 storage(2, true),  // backdrop (read)
                 storage(3, false), // out_buf (read_write)
                 storage(4, true),  // coeffs (read)
+                storage(5, true),  // lifted_frac (read — ADR-0084)
             ],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -173,6 +177,18 @@ impl FluidCompositor {
         }
     }
 
+    /// Create an all-zero `array<f32>` buffer sized to `gw·gh` for the dormant backdrop-lift path
+    /// (ADR-0084): a fresh STORAGE buffer reads as zero ⇒ `lf = 0` everywhere ⇒ byte-identical
+    /// output. Returned owned so the caller keeps it alive alongside the bind group it backs.
+    fn make_dormant_lifted(device: &wgpu::Device, gw: u32, gh: u32) -> wgpu::Buffer {
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("composite dormant lifted_frac (ADR-0084)"),
+            size: ((gw as u64) * (gh as u64) * 4).max(4),
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        })
+    }
+
     /// **Fast-path stroke setup (call once per stroke / when the backdrop or brush
     /// changes).** (Re)allocates the persistent canvas buffers only on a size change,
     /// uploads the backdrop + the amortised brush coeffs ONCE, and rebuilds the bind
@@ -193,6 +209,10 @@ impl FluidCompositor {
         ss: u32,
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
+        // ADR-0084 — the solver's `lifted_frac_buffer()` so the compositor drops the backdrop alpha
+        // where dry paint was lifted. `None` ⇒ bind the owned all-zero dormant buffer (the
+        // backdrop-lift branch is inert ⇒ byte-identical to the pre-ADR-0084 output).
+        lifted_frac_buf: Option<&wgpu::Buffer>,
     ) {
         // Drain any in-flight pipelined readback from a PRIOR stroke (its map may still
         // hold `staging`): complete + unmap it before this stroke reuses the buffer, so
@@ -237,6 +257,11 @@ impl FluidCompositor {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                 mapped_at_creation: false,
             });
+            // Owned dormant lifted_frac (ADR-0084) — used when no live lift buffer is bound below.
+            let dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+            let lifted_res = lifted_frac_buf
+                .unwrap_or(&dormant_lifted)
+                .as_entire_binding();
             // Placeholder bind; rebuilt below (needs pigment_buf).
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("composite bg (persistent)"),
@@ -262,6 +287,10 @@ impl FluidCompositor {
                         binding: 4,
                         resource: coeffs.as_entire_binding(),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: lifted_res,
+                    },
                 ],
             });
             self.state = Some(CompositeState {
@@ -277,6 +306,7 @@ impl FluidCompositor {
                 out,
                 backdrop,
                 staging,
+                dormant_lifted,
                 bind,
             });
         }
@@ -293,6 +323,14 @@ impl FluidCompositor {
         // Rebuild the bind group each stroke so it tracks the current resident pig_a
         // (cheap — just resource references; the canvas buffers are reused).
         if !resized {
+            // The grid dims can change without a canvas resize (the dormant lifted_frac is sized to
+            // `gw·gh`), so re-create it when the size no longer matches before binding it.
+            if st.dormant_lifted.size() != ((gw as u64) * (gh as u64) * 4).max(4) {
+                st.dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+            }
+            let lifted_res = lifted_frac_buf
+                .unwrap_or(&st.dormant_lifted)
+                .as_entire_binding();
             st.bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("composite bg (persistent)"),
                 layout: &self.bgl,
@@ -316,6 +354,10 @@ impl FluidCompositor {
                     wgpu::BindGroupEntry {
                         binding: 4,
                         resource: st.coeffs.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: lifted_res,
                     },
                 ],
             });
@@ -567,20 +609,22 @@ impl FluidCompositor {
         let npix = (cw as usize) * (ch as usize);
         let canvas_bytes = (npix * 4) as u64;
         let (px_lo, py_lo, px_hi, py_hi) = composite_canvas_region(grid_region, scale, cw, ch);
-        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) = self.build_buffers(
-            device,
-            queue,
-            gw,
-            gh,
-            cw,
-            ch,
-            scale,
-            coverage_k,
-            pigment_buf,
-            backdrop_rgba,
-            grid_region,
-        );
-        let _keep = (params_buf, coeffs_buf, backdrop_buf);
+        let (params_buf, coeffs_buf, backdrop_buf, dormant_lifted, out_buf, bind) = self
+            .build_buffers(
+                device,
+                queue,
+                gw,
+                gh,
+                cw,
+                ch,
+                scale,
+                coverage_k,
+                pigment_buf,
+                backdrop_rgba,
+                grid_region,
+                None,
+            );
+        let _keep = (params_buf, coeffs_buf, backdrop_buf, dormant_lifted);
 
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -649,19 +693,21 @@ impl FluidCompositor {
         let band_off = u64::from(py_lo) * row_bytes;
         let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
 
-        let (params_buf, coeffs_buf, backdrop_buf, out_buf, bind) = self.build_buffers(
-            device,
-            queue,
-            gw,
-            gh,
-            cw,
-            ch,
-            scale,
-            coverage_k,
-            pigment_buf,
-            backdrop_rgba,
-            grid_region,
-        );
+        let (params_buf, coeffs_buf, backdrop_buf, dormant_lifted, out_buf, bind) = self
+            .build_buffers(
+                device,
+                queue,
+                gw,
+                gh,
+                cw,
+                ch,
+                scale,
+                coverage_k,
+                pigment_buf,
+                backdrop_rgba,
+                grid_region,
+                None,
+            );
         let (rw, rh) = (px_hi.saturating_sub(px_lo), py_hi.saturating_sub(py_lo));
 
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -686,7 +732,13 @@ impl FluidCompositor {
         queue.submit([enc.finish()]);
         // Keep the per-composite buffers alive until the GPU finishes (they back the
         // dispatch + the copy). `_keep` drops after the readback poll below.
-        let _keep = (params_buf, coeffs_buf, backdrop_buf, out_buf);
+        let _keep = (
+            params_buf,
+            coeffs_buf,
+            backdrop_buf,
+            dormant_lifted,
+            out_buf,
+        );
 
         let (tx, rx) = std::sync::mpsc::channel();
         staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -701,7 +753,9 @@ impl FluidCompositor {
         (rows, (px_lo, py_lo, px_hi, py_hi))
     }
 
-    /// Build the per-composite buffers + bind group (shared by the readback paths).
+    /// Build the per-composite buffers + bind group (shared by the readback paths). `lifted_frac_buf`
+    /// (ADR-0084) is the live lift accumulator, or `None` for the dormant all-zero buffer (returned
+    /// in the tuple so the caller keeps it alive alongside the bind group it backs).
     #[allow(clippy::too_many_arguments)]
     fn build_buffers(
         &self,
@@ -716,7 +770,9 @@ impl FluidCompositor {
         pigment_buf: &wgpu::Buffer,
         backdrop_rgba: &[u8],
         grid_region: (u32, u32, u32, u32),
+        lifted_frac_buf: Option<&wgpu::Buffer>,
     ) -> (
+        wgpu::Buffer,
         wgpu::Buffer,
         wgpu::Buffer,
         wgpu::Buffer,
@@ -770,6 +826,12 @@ impl FluidCompositor {
             mapped_at_creation: false,
         });
         queue.write_buffer(&out_buf, 0, backdrop_rgba);
+        // ADR-0084 — the live lift accumulator, or an owned all-zero dormant buffer (returned so it
+        // outlives the bind group). A fresh STORAGE buffer reads as zero ⇒ `lf = 0` ⇒ no-op.
+        let dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+        let lifted_res = lifted_frac_buf
+            .unwrap_or(&dormant_lifted)
+            .as_entire_binding();
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("composite bg"),
             layout: &self.bgl,
@@ -794,8 +856,19 @@ impl FluidCompositor {
                     binding: 4,
                     resource: coeffs_buf.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: lifted_res,
+                },
             ],
         });
-        (params_buf, coeffs_buf, backdrop_buf, out_buf, bind)
+        (
+            params_buf,
+            coeffs_buf,
+            backdrop_buf,
+            dormant_lifted,
+            out_buf,
+            bind,
+        )
     }
 }

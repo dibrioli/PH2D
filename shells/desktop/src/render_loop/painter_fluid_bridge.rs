@@ -293,9 +293,14 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             if let Some(backdrop) = painter.fluid_backdrop() {
                 // ADR-0080: pigment colour is per-pixel (reduced from the field), so no
                 // per-stroke brush — `begin_stroke` just binds the field + backdrop.
-                // Coverage supersampling: 1 at full-res (edge already 1px-fine — saves
-                // 4× the K–M cost), 2 at half-res to antialias the steeper edge.
-                let ss = if scale <= 1 { 1 } else { 2 };
+                // Coverage supersampling: 2 at EVERY scale (matches the CPU reference's
+                // `WET_COMPOSITE_SS = 2`). The old "1 at full-res (edge already 1px-fine)"
+                // assumption is wrong for DARK pigments (ADR-0079 re-tune 2026-06-09): their
+                // steep coverage curve compresses the visible edge below a cell, so at scale 1
+                // the per-cell rim texture rendered with ZERO filtering = pixel teeth. ss=2
+                // averages sub-cell coverage (measured: dark contour residual −33..42%) for 4×
+                // the K-M ALU, which the region-scoped composite absorbs.
+                let ss = 2;
                 sess.compositor.begin_stroke(
                     &gpu.device,
                     &gpu.queue,

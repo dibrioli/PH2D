@@ -1042,12 +1042,23 @@ mod tests {
             let mut j = StrokeJournal::open(path.clone(), FlushPolicy::EveryNSamples(100)).unwrap();
             j.begin_stroke(sample_partial(0)).unwrap();
         }
-        // Tamper byte 25 (no meio do payload do Begin).
+        // Tamper byte 25 (no meio do payload do Begin, DENTRO do UUID v4 aleatório do stroke).
+        // FLIP o byte existente (XOR 0xFF) em vez de escrever um valor fixo: o UUID é aleatório,
+        // então escrever `0xFF` coincidia com o byte original ~1/256 das vezes → o "tamper" virava
+        // no-op → CRC permanecia válido → teste flaky (visto num ship.sh 2026-06-09). Flipar garante
+        // que o byte SEMPRE muda → CRC sempre inválido → detecção determinística.
         {
-            use std::io::Seek;
-            let mut f = OpenOptions::new().write(true).open(&path).unwrap();
+            use std::io::{Read, Seek};
+            let mut f = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&path)
+                .unwrap();
             f.seek(SeekFrom::Start(25)).unwrap();
-            f.write_all(&[0xFFu8]).unwrap();
+            let mut b = [0u8; 1];
+            f.read_exact(&mut b).unwrap();
+            f.seek(SeekFrom::Start(25)).unwrap();
+            f.write_all(&[b[0] ^ 0xFFu8]).unwrap();
             f.sync_all().unwrap();
         }
         let (entries, corrupted) = read_journal(&path).expect("read");

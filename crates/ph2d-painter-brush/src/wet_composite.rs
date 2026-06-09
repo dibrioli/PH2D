@@ -23,7 +23,7 @@
 //!      `colour = reflectance_to_rgb(ks_to_refl(ks_mix)) + err_acc/mass`; bare paper
 //!      (`mass < 1e-4`) writes the backdrop and skips;
 //!   3. value-opacity (ADR-0079) from the MIXED colour: `alpha = 1 − exp(−(mass/color_sum)·K)`,
-//!      `color_sum = 0.3 + 0.7·value`;
+//!      `color_sum = VALUE_OPACITY_FLOOR + (1−FLOOR)·value`;
 //!   4. straight-alpha glaze: K–M mix ([`mix_prepared_exact`]) over opaque backdrop, porter-duff
 //!      "over" at a transparent edge, lerped by the backdrop's own alpha (no black fringe).
 
@@ -141,6 +141,17 @@ pub fn composite_canvas_region(
 /// single-sample composite (no AA), bit-identical to pre-W15.3.
 pub const WET_COMPOSITE_SS: u32 = 2;
 
+/// **Value-opacity floor (ADR-0079, re-tuned 2026-06-09).** The coverage divisor is
+/// `color_sum = FLOOR + (1−FLOOR)·value`, so a deeper (lower-value) mixed pigment builds
+/// coverage faster (the ADR-0079 intent). The original floor 0.3 gave dark pigments a 3.3×
+/// mass-efficiency, which made their visible lum(mass) curve near-BINARY: the stroke rim's
+/// per-cell texture (granulation, gate, deposition — continuous mass variation) rendered as
+/// hard on/off pixel teeth ("borda pixelada", Enio 2026-06-09; light pigments render the SAME
+/// texture as soft grading). Measured on a roughened-rim probe: intermediate-lum fraction for
+/// dark went 0.04 (binary teeth) → 0.14 with floor 0.55 (≈ the 0.19 of a light pigment), while
+/// keeping a 1.8× max dark-coverage boost. The GPU `composite.wgsl` mirrors the literal.
+pub const VALUE_OPACITY_FLOOR: f32 = 0.55;
+
 /// Reduce a bicubic-sampled wet-field cell to its mixed [`PreparedPigment`] + coverage `mass`
 /// (ADR-0080) — the per-pixel composite reduction. The K/S bands are `Σ mass·ks` (premult), so
 /// `prepared_from_field` divides by the interpolated mass to get the mixed pigment; `mass` is
@@ -190,7 +201,7 @@ pub fn composite_wet_field_cpu(
         // ADR-0079 value-opacity: a deeper (lower-value) MIXED pigment covers more. `value` is
         // the mixed colour's max channel, so the subtractive mix's value drives the build-up.
         let value = pcol[0].max(pcol[1]).max(pcol[2]).clamp(0.0, 1.0);
-        let color_sum = 0.3 + 0.7 * value;
+        let color_sum = VALUE_OPACITY_FLOOR + (1.0 - VALUE_OPACITY_FLOOR) * value;
         let amount = mass / color_sum;
         let alpha = 1.0 - (-amount * coverage_k).exp();
         let out_a = alpha + back_a * (1.0 - alpha);
@@ -278,7 +289,7 @@ mod tests {
 
     /// The **legacy (pre-ADR-0080) single-colour composite**, recomputed inline: gray coverage
     /// `mass` bicubic-upsampled = `dens`, uniform `pcol = colour`, value-opacity
-    /// `color_sum = 0.3+0.7·value`, K–M glaze via `prepare_pigment(colour)`. The parity target
+    /// `color_sum = FLOOR+(1−FLOOR)·value` (`VALUE_OPACITY_FLOOR`), K–M glaze via `prepare_pigment(colour)`. The parity target
     /// for [`single_color_composite_matches_legacy_formula`].
     #[allow(clippy::too_many_arguments)]
     fn legacy_single_color_composite(
@@ -295,7 +306,7 @@ mod tests {
     ) {
         let prepared = prepare_pigment(col);
         let value = col[0].max(col[1]).max(col[2]).clamp(0.0, 1.0);
-        let color_sum = 0.3 + 0.7 * value;
+        let color_sum = VALUE_OPACITY_FLOOR + (1.0 - VALUE_OPACITY_FLOOR) * value;
         let inv = 1.0 / scale as f32;
         let n = WET_COMPOSITE_SS.max(1);
         let inv_n = 1.0 / n as f32;

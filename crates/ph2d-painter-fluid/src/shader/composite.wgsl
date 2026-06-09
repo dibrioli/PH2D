@@ -234,9 +234,11 @@ fn glaze_sample(fx: f32, fy: f32, back: vec3<f32>, back_a: f32) -> Sub {
     }
     let err_mix = cell[6].xyz * inv;
     let pcol = max(reflectance_to_rgb(refl) + err_mix, vec3<f32>(0.0));
-    // ADR-0079 value-opacity from the MIXED colour's value.
+    // ADR-0079 value-opacity from the MIXED colour's value. Floor 0.55 (re-tune 2026-06-09):
+    // the old 0.3 made dark pigments' lum(mass) near-binary, rendering the rim's per-cell
+    // texture as hard pixel teeth — mirrors `VALUE_OPACITY_FLOOR` in `wet_composite.rs`.
     let value = clamp(max(pcol.x, max(pcol.y, pcol.z)), 0.0, 1.0);
-    let color_sum = 0.3 + 0.7 * value;
+    let color_sum = 0.55 + 0.45 * value;
     let amount = mass / color_sum;
     let alpha = 1.0 - exp(-amount * P.coverage_k);
     let out_a = alpha + back_a * (1.0 - alpha);

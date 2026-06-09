@@ -161,10 +161,11 @@ pub struct DiffusionParams {
     /// bit-identical). Read by [`DiffusionGrid::lift_pigment`].
     pub lift: f32,
     /// **Branched (fiber-channeled) capillary fringe (ADR-0082)** ∈ [0,1] — opt-in, non-destructive.
-    /// Suppresses the capillary per-face conductance by the paper FIBRE on that face
-    /// (`fiber_factor = 1 − branching·(1 − paper_face) ∈ [1−branching, 1]`), so the wick advances
-    /// LESS in the low-paper valleys and ~full on the high-paper crests → the fringe goes
-    /// lobed/dendritic (ramified) instead of a smooth ring, the watercolor fibre-to-fibre look.
+    /// CREST-GATES the capillary per-face conductance by the paper FIBRE on that face
+    /// (`fiber_factor = 1 − branching·(1 − smoothstep(BRANCH_GATE_LO, BRANCH_GATE_HI, paper_face))`):
+    /// crest faces keep FULL conductance while valley faces close completely at `branching = 1`,
+    /// so the wick percolates along the crest network → the fringe goes lobed/dendritic (ramified)
+    /// instead of a smooth ring, the watercolor fibre-to-fibre look.
     /// Suppression-only (≤ 1, never a boost) preserves the convex-average stability + conservation
     /// of [`DiffusionGrid::capillary_flow`]. `0` ⇒ `fiber_factor = 1` ⇒ the isotropic capillary is
     /// **bit-identical** to today (opt-in). Only read while the capillary layer is active.
@@ -222,15 +223,21 @@ impl Default for DiffusionParams {
 const HEIGHT_FREQ: f32 = 0.13;
 const HEIGHT_SEED: u32 = 0x70a9_e2c5; // shared with cpu_render paper tooth
 
-/// **Branching visibility gain (ADR-0082, tuned 2026-06-09).** The fiber-channeled capillary
-/// suppression is `fiber_factor = clamp(1 − branching·BRANCH_GAIN·(1 − paper_face), 0, 1)`. The
-/// gain (> 1) makes the artist-facing "Branching" slider carve the paper valleys HARD enough to
-/// read as lobed/dendritic on a normal canvas (the raw linear suppression was measurable but too
-/// subtle on a small/low-res grid — the fringe is only a few cells). Still **suppression-only**
-/// (`fiber_factor ≤ 1`, clamped) ⇒ `capillary·cond ≤ 0.24` stays ⇒ the convex-average CFL bound +
-/// mass conservation hold (the ADR-0082 §2.2 proof is unchanged). `branching = 0 ⇒ fiber_factor = 1`
-/// bit-identical to the isotropic ring, so the contract gate + the non-destructive default hold.
-const BRANCH_GAIN: f32 = 2.0;
+/// **Branching crest-gate band (ADR-0082, re-tuned 2026-06-09 after Enio's A/B smoke).** The
+/// fiber-channeled capillary suppression is
+/// `fiber_factor = 1 − branching·(1 − smoothstep(LO, HI, paper_face))`.
+/// The earlier linear gain (`1 − b·2·(1−paper_face)`) suppressed EVERYTHING — at max branching
+/// even the crests lost ~40% conductance, so the whole fringe just shrank slightly + waved
+/// (Enio: "a diferença é muito discreta"). A THRESHOLD gate maximizes the contrast that makes
+/// fingers: faces on crests (`paper_face ≥ HI`) keep **full** conductance (the fingers grow at
+/// full wick speed) while valley faces (`≤ LO`) close **completely** at branching = 1 — a
+/// percolation-style channel network instead of a uniform slowdown. Still **suppression-only**
+/// (`gate ∈ [0,1] ⇒ fiber_factor ∈ [1−b, 1] ⊆ [0,1]`) ⇒ the convex-average CFL bound + mass
+/// conservation hold (ADR-0082 §2.2 proof unchanged). `branching = 0 ⇒ fiber_factor = 1`
+/// bit-identical to the isotropic ring. The band brackets the paper-tooth median (~0.5); its
+/// tight width (0.2) is what makes the channels sharp.
+const BRANCH_GATE_LO: f32 = 0.40;
+const BRANCH_GATE_HI: f32 = 0.60;
 
 /// **Backdrop-lift bleed-keep fraction (ADR-0084, tuned 2026-06-09).** Of the dry paint a wet brush
 /// lifts off the canvas, only this fraction bleeds into the active wash — the rest is REMOVED (the
@@ -1105,15 +1112,15 @@ impl DiffusionGrid {
                 let face = |nidx: usize| -> (f32, [f32; PIG_CH]) {
                     let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
                     let cond = 0.5 * (permc + permn);
-                    // Branched (fiber-channeled) capillary (ADR-0082): suppress the face
-                    // conductance by the paper FIBRE on the face. `fiber_factor ∈ [1−branching, 1]`
-                    // (suppression-only ⇒ the convex-average stability + conservation hold);
-                    // `capillary_branching = 0 ⇒ fcond == cond` (bit-identical to the isotropic
-                    // capillary). Used for BOTH the water flux `dw` and the pigment co-advect.
+                    // Branched (fiber-channeled) capillary (ADR-0082): CREST-GATE the face
+                    // conductance by the paper fibre — crests keep FULL conductance (fingers
+                    // grow at full wick speed), valleys close completely at branching = 1
+                    // (see `BRANCH_GATE_*`). Suppression-only ⇒ the convex-average stability +
+                    // conservation hold; `capillary_branching = 0 ⇒ fcond == cond` (bit-identical
+                    // isotropic). Used for BOTH the water flux `dw` and the pigment co-advect.
                     let paper_face = 0.5 * (self.paper[c] + self.paper[nidx]);
-                    let fiber_factor = (1.0
-                        - p.capillary_branching * BRANCH_GAIN * (1.0 - paper_face))
-                        .clamp(0.0, 1.0);
+                    let gate = smoothstep(BRANCH_GATE_LO, BRANCH_GATE_HI, paper_face);
+                    let fiber_factor = 1.0 - p.capillary_branching * (1.0 - gate);
                     let fcond = cond * fiber_factor;
                     let wn = self.water[nidx];
                     let dw = fcond * (wn - wc);

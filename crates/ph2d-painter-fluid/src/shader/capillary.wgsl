@@ -106,14 +106,18 @@ struct FaceInfo {
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
     let permn = perm_at(ni);
     var cond = 0.5 * (permc + permn);
-    // Branched (fiber-channeled) capillary (ADR-0082): suppress the face conductance by the
-    // paper FIBRE averaged on the face. `fiber_factor = clamp(1 − branching·BRANCH_GAIN·(1−paper),
-    // 0, 1)` — the gain (2.0) carves the valleys hard enough to read as lobed (ADR-0082 visibility
-    // tune 2026-06-09); still suppression-only (≤ 1, clamped) ⇒ convex-average stability +
-    // conservation hold; `capillary_branching = 0 ⇒ cond unchanged` (bit-identical to the isotropic
-    // capillary). Mirrors the CPU `capillary_flow` `face` closure (`BRANCH_GAIN` in `diffusion.rs`).
+    // Branched (fiber-channeled) capillary (ADR-0082, crest-gate re-tune 2026-06-09): the face
+    // conductance is GATED by the paper fibre — crests (paper_face ≥ 0.60) keep FULL conductance
+    // (fingers grow at full wick speed), valleys (≤ 0.40) close completely at branching = 1; the
+    // tight smoothstep band is what makes the channels sharp (the earlier linear ×2 gain
+    // suppressed crests too → the whole fringe just shrank, "muito discreta"). Suppression-only
+    // (gate ∈ [0,1]) ⇒ convex-average stability + conservation hold; `capillary_branching = 0 ⇒
+    // cond unchanged` (bit-identical isotropic). Mirrors the CPU `capillary_flow` `face` closure
+    // (`BRANCH_GATE_LO/HI` in `diffusion.rs`); same Hermite smoothstep as the CPU helper.
     let paper_face = 0.5 * (paper_c + paper[ni]);
-    let fiber_factor = clamp(1.0 - P.capillary_branching * 2.0 * (1.0 - paper_face), 0.0, 1.0);
+    let gt = clamp((paper_face - 0.40) / max(0.60 - 0.40, 1.0e-6), 0.0, 1.0);
+    let gate = gt * gt * (3.0 - 2.0 * gt);
+    let fiber_factor = 1.0 - P.capillary_branching * (1.0 - gate);
     cond = cond * fiber_factor;
     let wn = water_in[ni];
     var frac = 0.0;

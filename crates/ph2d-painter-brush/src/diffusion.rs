@@ -120,6 +120,16 @@ pub struct DiffusionParams {
     /// colour feather); `0.0` ⇒ Curtis's water-only capillary (pigment reaches the fringe only
     /// via the weak gated bloom). Only read while the capillary layer is active.
     pub capillary_mobility: f32,
+    /// **Advection sharpness (ADR-0078 S5c — BFECC / MacCormack second-order transport, Selle
+    /// et al. 2008).** Blends the first-order upwind [`DiffusionGrid::advect`] (`0`, smearing/
+    /// diffusive) toward the **MacCormack** error-compensated advection (`1`, sharp): a forward
+    /// advect, a reverse advect of that, and a corrected re-step `φ̂ + s·½(φ − φ̄)`, clamped to
+    /// the local extrema (the unconditionally-stable limiter). It cancels the numerical
+    /// diffusion of the plain upwind step, so velocity-driven flow + backruns/cauliflower stay
+    /// CRISP instead of blurring out. `0` ⇒ exactly the first-order path (bit-identical shipped
+    /// look, mass-conserving); `>0` ⇒ progressively sharper (the clamp keeps it stable but is no
+    /// longer strictly mass-conserving). Range `[0,1]`.
+    pub sharpness: f32,
 }
 
 /// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
@@ -157,6 +167,8 @@ impl Default for DiffusionParams {
             capillary: 0.0,
             // The physical pigment-filtering constant (only read when the capillary layer is on).
             capillary_mobility: CAPILLARY_PIGMENT_MOBILITY,
+            // First-order advection by default (ADR-0078 S5c) → bit-identical shipped look.
+            sharpness: 0.0,
         }
     }
 }
@@ -339,7 +351,13 @@ impl DiffusionGrid {
             self.move_water(p);
         }
         self.diffuse(p, &gates);
-        self.advect(p, &gates);
+        // Advection: first-order upwind by default; MacCormack (sharp) when `sharpness > 0`
+        // (ADR-0078 S5c). The `sharpness = 0` branch is the bit-identical conservative path.
+        if p.sharpness > 0.0 {
+            self.advect_maccormack(p, &gates);
+        } else {
+            self.advect(p, &gates, false);
+        }
         self.scratch_w = gates;
         // Curtis TransferPigment (ADR-0078 S3): freeze a fraction of flowing pigment
         // into the deposited layer (edge-darkening + granulation). After advect so it
@@ -399,8 +417,9 @@ impl DiffusionGrid {
     /// Pass 2 — gated upwind advection along `flow = −β·∇h − λ·∇w`. Mass-conserving
     /// (every gram removed from a cell is added to its downstream neighbour);
     /// CFL-clamped to ≤ 0.5 cell/step. Writes `scratch` (seeded with the current
-    /// field, then net transfers applied), then swaps.
-    fn advect(&mut self, p: &DiffusionParams, gates: &[f32]) {
+    /// field, then net transfers applied), then swaps. `reverse` negates the flow
+    /// (the backward pass of the MacCormack scheme, [`Self::advect_maccormack`]).
+    fn advect(&mut self, p: &DiffusionParams, gates: &[f32], reverse: bool) {
         let (w, h) = (self.width, self.height);
         self.scratch.copy_from_slice(&self.pigment);
         let sample = |v: &[f32], x: u32, y: u32| v[(y * w + x) as usize];
@@ -436,6 +455,8 @@ impl DiffusionGrid {
                             .clamp(-0.5, 0.5),
                     )
                 };
+                // Backward pass (MacCormack): negate the flow to advect the field back.
+                let (fx, fy) = if reverse { (-fx, -fy) } else { (fx, fy) };
                 let pc = self.pigment[c];
                 // Upwind: push |f|·p of pigment to the downstream neighbour.
                 let (nx, amx) = if fx > 0.0 && x + 1 < w {
@@ -463,6 +484,64 @@ impl DiffusionGrid {
                         self.scratch[c][k] -= q;
                         self.scratch[n][k] += q;
                     }
+                }
+            }
+        }
+        std::mem::swap(&mut self.pigment, &mut self.scratch);
+    }
+
+    /// Pass 2 (sharp) — **MacCormack / BFECC second-order advection** (ADR-0078 S5c, Selle et
+    /// al. 2008): cancels the numerical diffusion of the first-order upwind [`Self::advect`] so
+    /// velocity-driven flow + backruns/cauliflower stay CRISP instead of smearing out. Forward-
+    /// advect `φ → φ̂`, reverse-advect `φ̂ → φ̄` (an estimate of the round-trip error), then re-form
+    /// `φ̂ + sharpness·½(φ − φ̄)` and CLAMP each cell to the local extrema of `φ` (the
+    /// unconditionally-stable limiter — admits no new under/overshoot, so no ringing or negative
+    /// pigment). `sharpness → 0` reduces to the first-order result (the clamp is a no-op on the
+    /// monotone upwind `φ̂`); `→ 1` is full MacCormack. The clamp makes it non-strictly
+    /// mass-conserving, so it's opt-in — the default `sharpness = 0` keeps the plain conservative
+    /// path. Bit-mirrored by the GPU `cs_advect_correct`.
+    fn advect_maccormack(&mut self, p: &DiffusionParams, gates: &[f32]) {
+        let phi = self.pigment.clone(); // φ
+        self.advect(p, gates, false); // pigment = φ̂ (forward)
+        let phi_hat = self.pigment.clone(); // φ̂ (kept for the combine)
+        self.advect(p, gates, true); // pigment = φ̄ (reverse of φ̂)
+        let s = p.sharpness;
+        let (w, h) = (self.width, self.height);
+        for y in 0..h {
+            for x in 0..w {
+                let c = self.idx(x, y);
+                // Local extrema of φ over the 5-point stencil = the MacCormack clamp range.
+                let mut nbrs = [0usize; 4];
+                let mut cnt = 0usize;
+                if x > 0 {
+                    nbrs[cnt] = self.idx(x - 1, y);
+                    cnt += 1;
+                }
+                if x + 1 < w {
+                    nbrs[cnt] = self.idx(x + 1, y);
+                    cnt += 1;
+                }
+                if y > 0 {
+                    nbrs[cnt] = self.idx(x, y - 1);
+                    cnt += 1;
+                }
+                if y + 1 < h {
+                    nbrs[cnt] = self.idx(x, y + 1);
+                    cnt += 1;
+                }
+                let mut lo = phi[c];
+                let mut hi = phi[c];
+                for &ni in &nbrs[..cnt] {
+                    let v = phi[ni];
+                    for k in 0..3 {
+                        lo[k] = lo[k].min(v[k]);
+                        hi[k] = hi[k].max(v[k]);
+                    }
+                }
+                let pbar = self.pigment[c]; // φ̄
+                for k in 0..3 {
+                    let corrected = phi_hat[c][k] + s * 0.5 * (phi[c][k] - pbar[k]);
+                    self.scratch[c][k] = corrected.clamp(lo[k], hi[k]);
                 }
             }
         }
@@ -1638,5 +1717,70 @@ mod tests {
             wet_on.0 < wet_off.0 && wet_on.1 < wet_off.1 && wet_on.2 > wet_off.2 && wet_on.3 > wet_off.3,
             "capillary must grow the wet envelope past the no-capillary case (on {wet_on:?} vs off {wet_off:?})"
         );
+    }
+
+    // ───────────────── ADR-0078 S5c — BFECC/MacCormack advection sharpness ─────────────────
+
+    /// SHARPNESS reduces numerical diffusion: MacCormack (`sharpness = 1`) advects a pigment
+    /// blob along a uniform velocity while preserving its PEAK far better than the first-order
+    /// upwind (`sharpness = 0`), which smears it out. Pure advection (no diffusion/forces) on a
+    /// flat, uniformly-wet field isolates the transport accuracy.
+    #[test]
+    fn sharpness_reduces_advection_diffusion() {
+        let (w, h) = (72u32, 40u32);
+        let run = |sharpness: f32| -> f32 {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            for pv in g.paper.iter_mut() {
+                *pv = 0.5;
+            }
+            for wv in g.water.iter_mut() {
+                *wv = 0.9;
+            }
+            for uu in g.vel_u.iter_mut() {
+                *uu = 0.3; // uniform rightward momentum (divergence-free → no projection)
+            }
+            g.splat(18.0, 20.0, 4.0, 0.0, [0.8, 0.4, 0.2]);
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                diffusivity: 0.0, // isolate advection (no symmetric bloom)
+                downhill: 0.0,
+                flow_outward: 0.0,
+                viscosity: 0.0,
+                drag: 0.0,
+                pressure: 0.0, // uniform velocity already divergence-free
+                velocity: 1.0,
+                sharpness,
+                ..Default::default()
+            };
+            for _ in 0..15 {
+                g.step(&p);
+            }
+            g.pigment().iter().map(|px| px[0]).fold(0.0f32, f32::max) // peak
+        };
+        let peak_sharp = run(1.0);
+        let peak_soft = run(0.0);
+        eprintln!("sharpness: peak sharp(1.0)={peak_sharp:.4} soft(0.0)={peak_soft:.4}");
+        assert!(
+            peak_sharp > peak_soft * 1.1,
+            "MacCormack must preserve the peak vs first-order (sharp {peak_sharp:.4} vs soft {peak_soft:.4})"
+        );
+        // The limiter keeps it bounded — no overshoot/ringing/negative pigment.
+        let p1 = run(1.0);
+        assert!(p1.is_finite() && p1 < 2.0, "sharpened advection must stay bounded: {p1}");
+    }
+
+    /// DETERMINISTIC with sharpness on (HR-5): the MacCormack passes are pure arithmetic.
+    #[test]
+    fn sharpness_is_deterministic() {
+        let run = || {
+            let mut g = DiffusionGrid::new(40, 36, 1.0);
+            g.splat(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
+            let p = DiffusionParams { velocity: 1.4, pressure: 1.0, sharpness: 1.0, ..Default::default() };
+            for _ in 0..25 {
+                g.step(&p);
+            }
+            g.pigment().to_vec()
+        };
+        assert_eq!(run(), run(), "sharpened advection must be deterministic (HR-5)");
     }
 }

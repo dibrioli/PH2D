@@ -89,6 +89,8 @@ impl FluidParams {
             // → keeps `to_diffusion(default) == default` bit-exact for the parity gate.
             capillary: 0.0,
             capillary_mobility: ph2d_painter_brush::diffusion::CAPILLARY_PIGMENT_MOBILITY,
+            // First-order advection on this mapped path → `to_diffusion(default) == default`.
+            sharpness: 0.0,
         }
     }
 }

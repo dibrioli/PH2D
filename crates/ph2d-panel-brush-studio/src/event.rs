@@ -85,7 +85,7 @@ fn is_studio_slider(id: NodeId) -> bool {
         || is_studio_watercolor_slider(id)
 }
 
-/// The 16 watercolor sliders (ADR-0079 + ADR-0078 S5) use index-derived ids (no consts), so they're
+/// The 17 watercolor sliders (ADR-0079 + ADR-0078 S5/S5c) use index-derived ids (no consts), so they're
 /// recognized by recomputing each — without this they paint + drag visually but their
 /// `ValueChanged` is never forwarded to the tool (the slider "can't be manipulated").
 #[inline]

@@ -509,7 +509,7 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
     } else if id == core_ids::PAINTER_STUDIO_OPACITY_JITTER_SLIDER {
         Some(P::OpacityJitter)
     } else {
-        // Watercolor controls (ADR-0079): the 16 index-derived slider ids. Decode by
+        // Watercolor controls (ADR-0079): the 17 index-derived slider ids. Decode by
         // recomputing each (the layers-panel pattern) — no per-control const/match arm.
         (0..ph2d_painter_brush::WatercolorParams::COUNT)
             .find(|&i| id == core_ids::painter_studio_watercolor_slider_id(i))

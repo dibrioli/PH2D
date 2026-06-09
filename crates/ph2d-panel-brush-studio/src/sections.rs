@@ -414,7 +414,7 @@ fn paint_dynamics_section(
     y
 }
 
-/// **Watercolor section (ADR-0079)** — all 16 fluid-solver controls, driven from the
+/// **Watercolor section (ADR-0079)** — all 17 fluid-solver controls, driven from the
 /// active brush's `WatercolorParams`. Each row is a slider storing the normalized `0..1`
 /// (mapped onto the control's physical `[min,max]` range) with a chip showing the physical
 /// value. Iterates `WatercolorParams::CONTROLS` (the single source of labels + ranges) and

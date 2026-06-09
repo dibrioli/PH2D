@@ -452,7 +452,7 @@ pub struct BrushStudioSnapshot {
     pub speed_size: f32,
     pub speed_opacity: f32,
     pub speed_spacing: f32,
-    /// **Watercolor controls (ADR-0079)** — the 16 `WatercolorParams` values NORMALIZED to
+    /// **Watercolor controls (ADR-0079)** — the 17 `WatercolorParams` values NORMALIZED to
     /// `0..1` (each over its own `[min,max]` range), indexed by `WatercolorParams::CONTROLS`.
     /// The Brush Studio "Watercolor" section reads these to position its sliders.
     pub watercolor: [f32; ph2d_painter_brush::WatercolorParams::COUNT],

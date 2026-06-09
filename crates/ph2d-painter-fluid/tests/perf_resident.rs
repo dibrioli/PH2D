@@ -155,12 +155,7 @@ fn per_frame_cost_by_canvas_size() {
     // measure the worst case, so it skips sizes the device can't allocate (no silent cap —
     // it logs the skip). The 4K-resident path is a separate GPU-residency follow-up.
     let max_buf = u64::from(gpu.device.limits().max_storage_buffer_binding_size);
-    for &(cw, ch) in &[
-        (64u32, 64u32),
-        (1408, 768),
-        (2048, 2048),
-        (3840, 2160),
-    ] {
+    for &(cw, ch) in &[(64u32, 64u32), (1408, 768), (2048, 2048), (3840, 2160)] {
         let pig_bytes = u64::from(cw) * u64::from(ch) * PIG_CH as u64 * 4;
         if pig_bytes > max_buf {
             eprintln!(

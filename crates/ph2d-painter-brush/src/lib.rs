@@ -134,6 +134,6 @@ pub use stamp::{MAX_STAMP_SIZE_PX, MAX_STAMPS_PER_DISPATCH, Stamp};
 pub use stamp_pipeline::{StampGlobals, StampPipeline};
 pub use stamp_scheduler::{PointerSample, StampScheduler};
 pub use stroke_path::StrokePathParams;
-pub use watercolor::{WatercolorControl, WatercolorParams};
 pub use taper::TaperParams;
+pub use watercolor::{WatercolorControl, WatercolorParams};
 pub use wet_mix::WetMixParams;

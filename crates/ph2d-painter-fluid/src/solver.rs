@@ -801,7 +801,11 @@ impl FluidSolver {
         let bg_divergence = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("fluid sw bg divergence"),
             layout: &bgl_div,
-            entries: &[entry(0, &params_buf), entry(3, &vel_b), entry(7, &sw_divergence)],
+            entries: &[
+                entry(0, &params_buf),
+                entry(3, &vel_b),
+                entry(7, &sw_divergence),
+            ],
         });
 
         // clear_pressure: (params, pressure_out rw). Two bind groups (seed a, seed b).
@@ -1486,17 +1490,16 @@ impl FluidSolver {
             label: Some("fluid resident splat step"),
         });
         // One compute pass per pipeline (wgpu inserts the RAW barrier between passes).
-        let run = |enc: &mut wgpu::CommandEncoder,
-                   pipe: &wgpu::ComputePipeline,
-                   bg: &wgpu::BindGroup| {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("fluid resident splat pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(pipe);
-            pass.set_bind_group(0, bg, &[]);
-            pass.dispatch_workgroups(gx, gy, 1);
-        };
+        let run =
+            |enc: &mut wgpu::CommandEncoder, pipe: &wgpu::ComputePipeline, bg: &wgpu::BindGroup| {
+                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("fluid resident splat pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(pipe);
+                pass.set_bind_group(0, bg, &[]);
+                pass.dispatch_workgroups(gx, gy, 1);
+            };
         // Shallow-water velocity layer on? (ADR-0078 S3d — `set_shallow_water` set it.)
         let shallow = self.params_cache.get().velocity > 0.0;
         // Capillary fringe on? (ADR-0078 S5 — `set_from_diffusion` set it.)
@@ -1532,7 +1535,11 @@ impl FluidSolver {
                 // backward pass φ̂ → φ̄ (A→C) + the correction φ̂ + s·½(φ−φ̄) clamped (B,A,C→A).
                 run(&mut enc, &self.advect_velocity, &self.bg_advect_velocity);
                 if sharpen {
-                    run(&mut enc, &self.advect_velocity_rev, &self.bg_advect_velocity_rev);
+                    run(
+                        &mut enc,
+                        &self.advect_velocity_rev,
+                        &self.bg_advect_velocity_rev,
+                    );
                     run(&mut enc, &self.advect_correct, &self.bg_advect_correct);
                 }
             } else {

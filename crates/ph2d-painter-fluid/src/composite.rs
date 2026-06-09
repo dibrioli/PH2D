@@ -415,7 +415,11 @@ impl FluidCompositor {
             match p.rx.try_recv() {
                 Ok(Ok(())) => {
                     if let Some(st) = self.state.as_ref() {
-                        let rows = st.staging.slice(0..p.band_bytes).get_mapped_range().to_vec();
+                        let rows = st
+                            .staging
+                            .slice(0..p.band_bytes)
+                            .get_mapped_range()
+                            .to_vec();
                         st.staging.unmap();
                         result = (rows, p.rect);
                     }

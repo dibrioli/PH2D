@@ -335,8 +335,17 @@ fn composite_frame_pipelined_matches_sync() {
 
     let begin = |c: &mut FluidCompositor| {
         c.begin_stroke(
-            &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, 1,
-            solver.pigment_buffer(), &backdrop,
+            &gpu.device,
+            &gpu.queue,
+            gw,
+            gh,
+            cw,
+            ch,
+            SCALE,
+            COVERAGE_K,
+            1,
+            solver.pigment_buffer(),
+            &backdrop,
         );
     };
 
@@ -349,7 +358,10 @@ fn composite_frame_pipelined_matches_sync() {
     let mut pipe = FluidCompositor::new(&gpu.device);
     begin(&mut pipe);
     let (band0, _) = pipe.composite_frame_pipelined(&gpu.device, &gpu.queue, region);
-    assert!(band0.is_empty(), "first pipelined frame returns no band yet");
+    assert!(
+        band0.is_empty(),
+        "first pipelined frame returns no band yet"
+    );
     // Simulate the inter-frame gap: live, the GPU finishes the tiny copy within the
     // ~4 ms frame + the next frame's non-blocking poll collects it. Back-to-back in a
     // test there's no gap, so force completion here.
@@ -563,7 +575,14 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
     let yellow = [0.85f32, 0.80, 0.05];
     let (ovx, ovy) = (gw as f32 * 0.5, gh as f32 * 0.5);
     grid.splat(ovx - 2.0, ovy, 7.0, 0.8, blue, blue[0] + blue[1] + blue[2]);
-    grid.splat(ovx + 2.0, ovy, 7.0, 0.8, yellow, yellow[0] + yellow[1] + yellow[2]);
+    grid.splat(
+        ovx + 2.0,
+        ovy,
+        7.0,
+        0.8,
+        yellow,
+        yellow[0] + yellow[1] + yellow[2],
+    );
     let p = DiffusionParams::default();
     for _ in 0..6 {
         grid.step(&p);
@@ -573,13 +592,32 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
     // CPU reference.
     let mut cpu_canvas = backdrop.clone();
     composite_wet_field_cpu(
-        &mut cpu_canvas, &backdrop, pig, gw, gh, cw, ch, SCALE, COVERAGE_K, region,
+        &mut cpu_canvas,
+        &backdrop,
+        pig,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        region,
     );
 
     // GPU.
     let compositor = FluidCompositor::new(&gpu.device);
     let gpu_canvas = compositor.composite_to_rgba(
-        &gpu.device, &gpu.queue, gw, gh, cw, ch, SCALE, COVERAGE_K, pig, &backdrop, region,
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        pig,
+        &backdrop,
+        region,
     );
 
     assert_eq!(cpu_canvas.len(), gpu_canvas.len());

@@ -61,11 +61,9 @@ fn cached_fluid_paper(gw: u32, gh: u32, scale: u32) -> std::sync::Arc<Vec<f32>> 
             return std::sync::Arc::clone(p);
         }
         let t = std::time::Instant::now();
-        let p = std::sync::Arc::new(ph2d_painter_brush::diffusion::DiffusionGrid::generate_paper(
-            gw,
-            gh,
-            scale as f32,
-        ));
+        let p = std::sync::Arc::new(
+            ph2d_painter_brush::diffusion::DiffusionGrid::generate_paper(gw, gh, scale as f32),
+        );
         eprintln!(
             "[fluid] paper generated {gw}x{gh} (scale {scale}) in {:.1}ms — cached for reuse",
             t.elapsed().as_secs_f64() * 1000.0

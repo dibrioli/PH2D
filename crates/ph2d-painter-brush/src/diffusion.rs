@@ -687,10 +687,14 @@ impl DiffusionGrid {
                 let dwx = self.water[li(xp, y)] - self.water[li(xm, y)];
                 let dwy = self.water[li(x, yp)] - self.water[li(x, ym)];
                 // Neumann velocity Laplacian (border neighbour = self via the clamp).
-                let lap_u = self.vel_u[li(xm, y)] + self.vel_u[li(xp, y)] + self.vel_u[li(x, ym)]
+                let lap_u = self.vel_u[li(xm, y)]
+                    + self.vel_u[li(xp, y)]
+                    + self.vel_u[li(x, ym)]
                     + self.vel_u[li(x, yp)]
                     - 4.0 * self.vel_u[c];
-                let lap_v = self.vel_v[li(xm, y)] + self.vel_v[li(xp, y)] + self.vel_v[li(x, ym)]
+                let lap_v = self.vel_v[li(xm, y)]
+                    + self.vel_v[li(xp, y)]
+                    + self.vel_v[li(x, ym)]
                     + self.vel_v[li(x, yp)]
                     - 4.0 * self.vel_v[c];
                 let mut u = self.vel_u[c]
@@ -1501,7 +1505,7 @@ mod tests {
                 downhill: 0.0,
                 flow_outward: 0.0,
                 viscosity: 0.0,
-                drag: 0.0,    // no decay → clean translation
+                drag: 0.0,     // no decay → clean translation
                 pressure: 0.0, // uniform velocity is already divergence-free
                 velocity,
                 ..Default::default()
@@ -1513,7 +1517,9 @@ mod tests {
         };
         let (b_on, a_on) = run(1.0);
         let (b_off, a_off) = run(0.0);
-        eprintln!("COM_x  velocity-on: {b_on:.2}->{a_on:.2}   velocity-off: {b_off:.2}->{a_off:.2}");
+        eprintln!(
+            "COM_x  velocity-on: {b_on:.2}->{a_on:.2}   velocity-off: {b_off:.2}->{a_off:.2}"
+        );
         assert!(
             a_on > b_on + 2.0,
             "velocity layer must carry pigment +x: {b_on:.2} -> {a_on:.2}"
@@ -1609,12 +1615,19 @@ mod tests {
         let (cx, cy) = (32.0f32, 32.0);
         let mut g = DiffusionGrid::new(w, h, 1.0);
         g.splat5(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
-        let p = DiffusionParams { evaporation: 0.0, capillary: 0.0, ..Default::default() };
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            capillary: 0.0,
+            ..Default::default()
+        };
         for _ in 0..50 {
             g.step(&p);
         }
         let fringe = ring_water(&g, cx, cy, 10.0, 13.0);
-        assert_eq!(fringe, 0.0, "capillary OFF must leave the fringe dry (got {fringe})");
+        assert_eq!(
+            fringe, 0.0,
+            "capillary OFF must leave the fringe dry (got {fringe})"
+        );
     }
 
     /// The defining S5 behaviour: with `capillary > 0` the water WICKS outward into the dry
@@ -1628,7 +1641,11 @@ mod tests {
         let run = |capillary: f32| -> DiffusionGrid {
             let mut g = DiffusionGrid::new(w, h, 1.0);
             g.splat5(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
-            let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                capillary,
+                ..Default::default()
+            };
             for _ in 0..50 {
                 g.step(&p);
             }
@@ -1640,13 +1657,21 @@ mod tests {
         let fringe_off = ring_water(&off, cx, cy, 10.0, 13.0);
         let far = ring_water(&on, cx, cy, 24.0, 28.0);
         let max_w = on.max_water();
-        eprintln!("capillary fringe on={fringe_on:.4} off={fringe_off:.4} far={far:.4} max={max_w:.4}");
+        eprintln!(
+            "capillary fringe on={fringe_on:.4} off={fringe_off:.4} far={far:.4} max={max_w:.4}"
+        );
         assert!(
             fringe_on > 0.01 && fringe_on > fringe_off + 0.01,
             "capillary must wet a fringe past the splat (on {fringe_on:.4} ≫ off {fringe_off:.4})"
         );
-        assert!(far < 0.01, "fringe must stay bounded, not flood the grid (far ring {far:.4})");
-        assert!(max_w <= 1.0001, "water must stay ≤ 1 (convex average, no runaway): {max_w}");
+        assert!(
+            far < 0.01,
+            "fringe must stay bounded, not flood the grid (far ring {far:.4})"
+        );
+        assert!(
+            max_w <= 1.0001,
+            "water must stay ≤ 1 (convex average, no runaway): {max_w}"
+        );
     }
 
     /// Mass-conserving: capillary flow conserves BOTH water (its diffusion) AND pigment (its
@@ -1659,7 +1684,11 @@ mod tests {
         g.splat5(24.0, 24.0, 8.0, 0.9, [0.6, 0.2, 0.1]); // peak ≤ 0.9 → no splat saturation
         let water_before: f64 = g.water().iter().map(|&x| x as f64).sum();
         let pig_before = g.total_pigment();
-        let p = DiffusionParams { evaporation: 0.0, capillary: 0.2, ..Default::default() };
+        let p = DiffusionParams {
+            evaporation: 0.0,
+            capillary: 0.2,
+            ..Default::default()
+        };
         for _ in 0..40 {
             g.step(&p);
         }
@@ -1681,13 +1710,20 @@ mod tests {
         let run = || {
             let mut g = DiffusionGrid::new(40, 36, 1.0);
             g.splat5(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
-            let p = DiffusionParams { capillary: 0.2, ..Default::default() };
+            let p = DiffusionParams {
+                capillary: 0.2,
+                ..Default::default()
+            };
             for _ in 0..25 {
                 g.step(&p);
             }
             (g.water().to_vec(), g.pigment().to_vec())
         };
-        assert_eq!(run(), run(), "capillary solver must be deterministic (HR-5)");
+        assert_eq!(
+            run(),
+            run(),
+            "capillary solver must be deterministic (HR-5)"
+        );
     }
 
     /// The fringe BLEEDS pigment: as the capillary wick opens the wet gate past the painted
@@ -1714,7 +1750,11 @@ mod tests {
         let run = |capillary: f32| -> f32 {
             let mut g = DiffusionGrid::new(w, h, 1.0);
             g.splat5(cx, cy, 8.0, 1.0, [0.6, 0.2, 0.1]);
-            let p = DiffusionParams { evaporation: 0.0, capillary, ..Default::default() };
+            let p = DiffusionParams {
+                evaporation: 0.0,
+                capillary,
+                ..Default::default()
+            };
             for _ in 0..80 {
                 g.step(&p);
             }
@@ -1818,7 +1858,11 @@ mod tests {
             g.splat5(36.0, 32.0, 9.0, 1.0, [0.5, 0.3, 0.2]);
             // No evaporation: keep the field wet so the fringe is fully developed (aggressive
             // capillary + drying would dry the thin film to nothing — a separate concern).
-            let p = DiffusionParams { capillary, evaporation: 0.0, ..Default::default() };
+            let p = DiffusionParams {
+                capillary,
+                evaporation: 0.0,
+                ..Default::default()
+            };
             for _ in 0..60 {
                 g.step(&p);
             }
@@ -1842,7 +1886,10 @@ mod tests {
         );
         // Capillary GREW the wet envelope beyond the no-capillary case (the fringe is real).
         assert!(
-            wet_on.0 < wet_off.0 && wet_on.1 < wet_off.1 && wet_on.2 > wet_off.2 && wet_on.3 > wet_off.3,
+            wet_on.0 < wet_off.0
+                && wet_on.1 < wet_off.1
+                && wet_on.2 > wet_off.2
+                && wet_on.3 > wet_off.3,
             "capillary must grow the wet envelope past the no-capillary case (on {wet_on:?} vs off {wet_off:?})"
         );
     }
@@ -1883,7 +1930,10 @@ mod tests {
             for _ in 0..15 {
                 g.step(&p);
             }
-            g.pigment().iter().map(|c| c[PIG_MASS]).fold(0.0f32, f32::max) // peak (mass)
+            g.pigment()
+                .iter()
+                .map(|c| c[PIG_MASS])
+                .fold(0.0f32, f32::max) // peak (mass)
         };
         let peak_sharp = run(1.0);
         let peak_soft = run(0.0);
@@ -1894,7 +1944,10 @@ mod tests {
         );
         // The limiter keeps it bounded — no overshoot/ringing/negative pigment.
         let p1 = run(1.0);
-        assert!(p1.is_finite() && p1 < 2.0, "sharpened advection must stay bounded: {p1}");
+        assert!(
+            p1.is_finite() && p1 < 2.0,
+            "sharpened advection must stay bounded: {p1}"
+        );
     }
 
     /// DETERMINISTIC with sharpness on (HR-5): the MacCormack passes are pure arithmetic.
@@ -1903,13 +1956,22 @@ mod tests {
         let run = || {
             let mut g = DiffusionGrid::new(40, 36, 1.0);
             g.splat5(20.0, 18.0, 7.0, 0.9, [0.5, 0.3, 0.7]);
-            let p = DiffusionParams { velocity: 1.4, pressure: 1.0, sharpness: 1.0, ..Default::default() };
+            let p = DiffusionParams {
+                velocity: 1.4,
+                pressure: 1.0,
+                sharpness: 1.0,
+                ..Default::default()
+            };
             for _ in 0..25 {
                 g.step(&p);
             }
             g.pigment().to_vec()
         };
-        assert_eq!(run(), run(), "sharpened advection must be deterministic (HR-5)");
+        assert_eq!(
+            run(),
+            run(),
+            "sharpened advection must be deterministic (HR-5)"
+        );
     }
 
     // ───────────────── ADR-0080 — multi-pigment wet-field mixing ─────────────────
@@ -1936,7 +1998,11 @@ mod tests {
             g.step(&p);
         }
         let i = (24 * w + 32) as usize;
-        assert!(g.pmass(i) > 1e-3, "overlap must carry pigment: mass {}", g.pmass(i));
+        assert!(
+            g.pmass(i) > 1e-3,
+            "overlap must carry pigment: mass {}",
+            g.pmass(i)
+        );
         let c = g.pcolor(i);
         assert!(
             c[1] > c[0] && c[1] > c[2],

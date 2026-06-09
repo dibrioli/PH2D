@@ -27,7 +27,7 @@
 //!   4. straight-alpha glaze: K–M mix ([`mix_prepared_exact`]) over opaque backdrop, porter-duff
 //!      "over" at a transparent edge, lerped by the backdrop's own alpha (no black fringe).
 
-use crate::diffusion::{PIG_BANDS, PIG_ERR0, PIG_CH, PIG_MASS, WetCell};
+use crate::diffusion::{PIG_BANDS, PIG_CH, PIG_ERR0, PIG_MASS, WetCell};
 use crate::pigment_mix::{PreparedPigment, mix_prepared_exact, prepared_from_field};
 use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 
@@ -106,7 +106,6 @@ pub fn wet_pigment_bbox(pig: &[WetCell], gw: u32, gh: u32) -> Option<(u32, u32, 
     }
     any.then_some((x0, y0, x1, y1))
 }
-
 
 /// Canvas-pixel bbox `(px_lo, py_lo, px_hi, py_hi)` (exclusive hi) covered by a
 /// grid region at `scale`, padded **2 grid cells each side** and clamped to the
@@ -535,7 +534,16 @@ mod tests {
         );
         let mut clipped = backdrop.clone();
         composite_wet_field_cpu(
-            &mut clipped, &backdrop, &pig, gw, gh, cw, ch, scale, 1.06, small,
+            &mut clipped,
+            &backdrop,
+            &pig,
+            gw,
+            gh,
+            cw,
+            ch,
+            scale,
+            1.06,
+            small,
         );
         assert_ne!(
             clipped, full,

@@ -115,7 +115,8 @@ impl App {
                 }
                 ImportItemResult::Err { name, error } => {
                     eprintln!("M14.4e drop failed ({name}): {error}");
-                    gfx.toasts.push(Toast::error(format!("Drop failed: {error}")));
+                    gfx.toasts
+                        .push(Toast::error(format!("Drop failed: {error}")));
                     self.title_dirty = true;
                 }
             }

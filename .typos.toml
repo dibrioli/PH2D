@@ -48,6 +48,11 @@ postcard = "postcard"
 linesweeper = "linesweeper"
 bumpalo = "bumpalo"
 puffin = "puffin"
+# Code identifiers, not English: `nd` = neighbour-down index in the watercolor solver
+# shaders (alongside nl/nr/nu); `ba` = the Jacobi ping-pong direction "b→a" in
+# `bg_jacobi_ba` (alongside `bg_jacobi_ab`). ADR-0078/0080.
+nd = "nd"
+ba = "ba"
 # Brazilian Portuguese tokens that look like typos to en-US dictionaries.
 "nao" = "nao"
 "sim" = "sim"

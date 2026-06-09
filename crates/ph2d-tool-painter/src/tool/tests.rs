@@ -3640,7 +3640,10 @@ fn fluid_cross_stroke_wet_on_wet_mixes() {
     }
     let c = grid.pigment_color(best_i);
     eprintln!("cross-stroke overlap colour = {c:?} (mass {best_m})");
-    assert!(best_m > 1.0e-4, "overlap must carry pigment (mass {best_m})");
+    assert!(
+        best_m > 1.0e-4,
+        "overlap must carry pigment (mass {best_m})"
+    );
     assert!(
         c[1] > c[0] && c[1] > c[2],
         "cross-stroke blue→yellow must mix green-dominant (not mud): {c:?}"

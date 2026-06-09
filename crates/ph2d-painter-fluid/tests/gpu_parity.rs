@@ -334,7 +334,13 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     // Paper must match the CPU grid's paper for the gate/flow to agree.
     solver.upload_paper(&gpu.queue, cpu.paper());
     // Full-grid region → the un-scoped pass (matches the CPU full-grid step).
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
     let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
 
@@ -409,7 +415,13 @@ fn gpu_transfer_matches_cpu_deposition() {
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
     let gpu_dep = solver.read_deposited(&gpu.device, &gpu.queue);
 
@@ -480,8 +492,13 @@ fn gpu_combine_equals_flowing_plus_deposited() {
         }
         total_sum += total[i][PIG_MASS];
     }
-    eprintln!("cs_combine: worst |total − (flowing+deposited)| = {worst:.9}, total mass = {total_sum:.3}");
-    assert!(total_sum > 0.05, "combine produced an empty total — pass is dead");
+    eprintln!(
+        "cs_combine: worst |total − (flowing+deposited)| = {worst:.9}, total mass = {total_sum:.3}"
+    );
+    assert!(
+        total_sum > 0.05,
+        "combine produced an empty total — pass is dead"
+    );
     assert!(
         worst < 1.0e-6,
         "cs_combine must equal flowing + deposited (worst |Δ| = {worst})"
@@ -506,10 +523,16 @@ fn region_scoped_step_matches_full_grid_inside_region() {
     let params = FluidParams::default();
     // One localized dab at the centre → pigment stays well inside the grid.
     let raw = (32.0f32, 24.0, 6.0, 0.7, [0.2f32, 0.3, 0.6]);
-    let dabs: Vec<DabGpu> =
-        DabGpu::new(raw.0, raw.1, raw.2, raw.3, raw.4, raw.4[0] + raw.4[1] + raw.4[2])
-            .into_iter()
-            .collect();
+    let dabs: Vec<DabGpu> = DabGpu::new(
+        raw.0,
+        raw.1,
+        raw.2,
+        raw.3,
+        raw.4,
+        raw.4[0] + raw.4[1] + raw.4[2],
+    )
+    .into_iter()
+    .collect();
     let paper = DiffusionGrid::new(w, h, 1.0).paper().to_vec();
 
     // Full-grid reference.
@@ -518,7 +541,13 @@ fn region_scoped_step_matches_full_grid_inside_region() {
     full.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
     full.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     full.upload_paper(&gpu.queue, &paper);
-    full.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    full.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let full_pig = full.read_pigment(&gpu.device, &gpu.queue);
 
     // Scoped: a region around the dab; the solver pads it by SOLVER_REGION_PAD.
@@ -547,8 +576,13 @@ fn region_scoped_step_matches_full_grid_inside_region() {
             core_total += scoped_pig[i][PIG_MASS];
         }
     }
-    eprintln!("region-scoped vs full inside core: worst |Δ| = {worst_core:.9}, core pigment = {core_total:.3}");
-    assert!(core_total > 0.01, "no pigment in the core — test is vacuous");
+    eprintln!(
+        "region-scoped vs full inside core: worst |Δ| = {worst_core:.9}, core pigment = {core_total:.3}"
+    );
+    assert!(
+        core_total > 0.01,
+        "no pigment in the core — test is vacuous"
+    );
     assert!(
         worst_core < 1.0e-6,
         "region-scoped step diverged from full-grid INSIDE the region ({worst_core}) — scoping changed the visible field"
@@ -694,7 +728,13 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     solver.clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
     let gpu_vel = solver.read_velocity(&gpu.device, &gpu.queue);
 
@@ -714,7 +754,10 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     eprintln!(
         "shallow-water GPU↔CPU: worst pigment |Δ| = {worst_pig:.6}, worst velocity |Δ| = {worst_vel:.6}, max |vel| = {vel_mag:.4}, total pigment = {total:.3}"
     );
-    assert!(total > 0.01, "no pigment — the velocity advect is dead, parity meaningless");
+    assert!(
+        total > 0.01,
+        "no pigment — the velocity advect is dead, parity meaningless"
+    );
     assert!(
         vel_mag > 1.0e-3,
         "GPU velocity field is ~zero — move_water is dead, parity meaningless"
@@ -751,7 +794,11 @@ fn gpu_capillary_matches_cpu_capillary() {
         (24.0, 26.0, 5.0, 0.8, [0.30, 0.05, 0.05]),
     ];
     // Capillary on; no evaporation so the wick is clean; velocity/deposition off (Default).
-    let dp = DiffusionParams { capillary: 0.2, evaporation: 0.0, ..Default::default() };
+    let dp = DiffusionParams {
+        capillary: 0.2,
+        evaporation: 0.0,
+        ..Default::default()
+    };
 
     // CPU reference: splat on dry paper, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
@@ -774,7 +821,13 @@ fn gpu_capillary_matches_cpu_capillary() {
     solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
     let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
 
@@ -809,8 +862,14 @@ fn gpu_capillary_matches_cpu_capillary() {
         fringe > 0.01,
         "GPU capillary didn't wick a fringe — the pass is dead, parity meaningless"
     );
-    assert!(worst_w < 2.0e-2, "GPU capillary water diverged from CPU: {worst_w}");
-    assert!(worst_p < 2.0e-2, "GPU capillary-fringe pigment diverged from CPU: {worst_p}");
+    assert!(
+        worst_w < 2.0e-2,
+        "GPU capillary water diverged from CPU: {worst_w}"
+    );
+    assert!(
+        worst_p < 2.0e-2,
+        "GPU capillary-fringe pigment diverged from CPU: {worst_p}"
+    );
 }
 
 #[test]
@@ -859,7 +918,13 @@ fn gpu_maccormack_matches_cpu_sharpness() {
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     solver.clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
 
     let n = (w * h) as usize;
@@ -870,8 +935,14 @@ fn gpu_maccormack_matches_cpu_sharpness() {
     }
     let total: f32 = gpu_pig.iter().map(|p| p[PIG_MASS]).sum();
     eprintln!("maccormack GPU↔CPU: worst pigment |Δ| = {worst:.6}, total pigment = {total:.3}");
-    assert!(total > 0.01, "no pigment — the sharpened advect is dead, parity meaningless");
-    assert!(worst < 2.0e-2, "GPU MacCormack diverged from CPU reference: {worst}");
+    assert!(
+        total > 0.01,
+        "no pigment — the sharpened advect is dead, parity meaningless"
+    );
+    assert!(
+        worst < 2.0e-2,
+        "GPU MacCormack diverged from CPU reference: {worst}"
+    );
 }
 
 #[test]
@@ -918,7 +989,13 @@ fn gpu_multi_pigment_subtractive_mix_matches_cpu() {
     solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
     solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
     solver.upload_paper(&gpu.queue, cpu.paper());
-    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, substeps, (0, 0, w - 1, h - 1));
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        substeps,
+        (0, 0, w - 1, h - 1),
+    );
     let gpu_pig = solver.read_pigment(&gpu.device, &gpu.queue);
 
     // Parity over the reduced colour + mass everywhere (ADR-0080 bounded channels).

@@ -709,7 +709,10 @@ mod tests {
             mix[1] > mix[0] && mix[1] > mix[2],
             "green is the dominant channel: {mix:?}"
         );
-        assert!(mix[1] > 0.22, "green is a real mid green, not dark: {mix:?}");
+        assert!(
+            mix[1] > 0.22,
+            "green is a real mid green, not dark: {mix:?}"
+        );
         assert!(
             mix[0] < 0.12 && mix[2] < 0.12,
             "red AND blue both suppressed (not mud, not teal): {mix:?}"
@@ -764,7 +767,10 @@ mod tests {
         let mix = ks_field_color(&ks, err, m);
         let chroma =
             mix.iter().cloned().fold(0.0, f32::max) - mix.iter().cloned().fold(1.0, f32::min);
-        assert!(chroma > 0.17, "field mix keeps chroma: {mix:?} chroma {chroma}");
+        assert!(
+            chroma > 0.17,
+            "field mix keeps chroma: {mix:?} chroma {chroma}"
+        );
     }
 
     #[test]

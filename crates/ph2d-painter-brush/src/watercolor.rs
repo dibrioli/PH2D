@@ -103,30 +103,98 @@ impl WatercolorParams {
     pub const CONTROLS: [WatercolorControl; 17] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
-        WatercolorControl { label: "Diffusivity", min: 0.0, max: 0.24 },
-        WatercolorControl { label: "Evaporation", min: 0.0, max: 0.08 },
-        WatercolorControl { label: "Downhill", min: 0.0, max: 0.3 },
-        WatercolorControl { label: "Bleed", min: 0.0, max: 2.0 },
-        WatercolorControl { label: "Wet Gate Lo", min: 0.0, max: 0.5 },
-        WatercolorControl { label: "Wet Gate Hi", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Perm Valley", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Perm Crest", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Deposition", min: 0.0, max: 0.3 },
-        WatercolorControl { label: "Edge Darkening", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Granulation", min: 0.0, max: 8.0 },
-        WatercolorControl { label: "Flow Velocity", min: 0.0, max: 3.0 },
-        WatercolorControl { label: "Viscosity", min: 0.0, max: 0.24 },
-        WatercolorControl { label: "Drag", min: 0.0, max: 1.0 },
-        WatercolorControl { label: "Backrun", min: 0.0, max: 2.0 },
+        WatercolorControl {
+            label: "Diffusivity",
+            min: 0.0,
+            max: 0.24,
+        },
+        WatercolorControl {
+            label: "Evaporation",
+            min: 0.0,
+            max: 0.08,
+        },
+        WatercolorControl {
+            label: "Downhill",
+            min: 0.0,
+            max: 0.3,
+        },
+        WatercolorControl {
+            label: "Bleed",
+            min: 0.0,
+            max: 2.0,
+        },
+        WatercolorControl {
+            label: "Wet Gate Lo",
+            min: 0.0,
+            max: 0.5,
+        },
+        WatercolorControl {
+            label: "Wet Gate Hi",
+            min: 0.0,
+            max: 1.0,
+        },
+        WatercolorControl {
+            label: "Perm Valley",
+            min: 0.0,
+            max: 1.0,
+        },
+        WatercolorControl {
+            label: "Perm Crest",
+            min: 0.0,
+            max: 1.0,
+        },
+        WatercolorControl {
+            label: "Deposition",
+            min: 0.0,
+            max: 0.3,
+        },
+        WatercolorControl {
+            label: "Edge Darkening",
+            min: 0.0,
+            max: 1.0,
+        },
+        WatercolorControl {
+            label: "Granulation",
+            min: 0.0,
+            max: 8.0,
+        },
+        WatercolorControl {
+            label: "Flow Velocity",
+            min: 0.0,
+            max: 3.0,
+        },
+        WatercolorControl {
+            label: "Viscosity",
+            min: 0.0,
+            max: 0.24,
+        },
+        WatercolorControl {
+            label: "Drag",
+            min: 0.0,
+            max: 1.0,
+        },
+        WatercolorControl {
+            label: "Backrun",
+            min: 0.0,
+            max: 2.0,
+        },
         // CFL-bounded (≤ 0.24, like Diffusivity/Viscosity) — the outward water-wick rate that
         // sets how far the soft fringe creeps past the painted area (ADR-0078 S5).
-        WatercolorControl { label: "Capillary", min: 0.0, max: 0.24 },
+        WatercolorControl {
+            label: "Capillary",
+            min: 0.0,
+            max: 0.24,
+        },
         // BFECC/MacCormack 2nd-order advection (ADR-0078 S5c): 0 = soft first-order upwind
         // (smeary), 1 = sharp error-compensated transport (crisp flow + backruns). >1 OVER-
         // corrects (more aggressive anti-diffusion). Capped at 2.5 — beyond that the
         // over-correction starts to posterize into artefacts (Enio 2026-06-09); the limiter
         // keeps it stable, but 2.5 is the usable ceiling. 0 = the shipped look bit-for-bit.
-        WatercolorControl { label: "Sharpness", min: 0.0, max: 2.5 },
+        WatercolorControl {
+            label: "Sharpness",
+            min: 0.0,
+            max: 2.5,
+        },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -252,7 +320,10 @@ mod tests {
             let c = &WatercolorParams::CONTROLS[i];
             let expect = c.min + 0.5 * (c.max - c.min);
             assert!((p.get(i) - expect).abs() < 1e-6, "control {i} roundtrip");
-            assert!((p.normalized(i) - 0.5).abs() < 1e-6, "control {i} normalize");
+            assert!(
+                (p.normalized(i) - 0.5).abs() < 1e-6,
+                "control {i} normalize"
+            );
         }
     }
 

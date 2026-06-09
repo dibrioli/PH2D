@@ -497,8 +497,15 @@ mod tests {
     }
 
     /// Spawn a sprite with an explicit 2×2 `basis` (rotation/scale/skew) at the origin.
-    fn spawn_with_basis(present: &mut PresentWorld, sim_entity: Entity, size: [f32; 2], basis: [f32; 4]) -> u64 {
-        let gt = GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(0.0, 0.0)));
+    fn spawn_with_basis(
+        present: &mut PresentWorld,
+        sim_entity: Entity,
+        size: [f32; 2],
+        basis: [f32; 4],
+    ) -> u64 {
+        let gt = GlobalTransform::from_transform(ph2d_ecs::Transform::from_translation(Vec2::new(
+            0.0, 0.0,
+        )));
         let mut ri = RenderInstance {
             world_pos: [0.0, 0.0],
             size,
@@ -530,7 +537,10 @@ mod tests {
         let bits = spawn_at(&mut present, e, 0.0, 0.0, [2.0, 2.0]); // identity basis
         // Centre → (0.5, 0.5).
         let (u, v) = sprite_world_to_uv(present.world_mut(), bits, [0.0, 0.0]).unwrap();
-        assert!((u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5, "centre: {u},{v}");
+        assert!(
+            (u - 0.5).abs() < 1e-5 && (v - 0.5).abs() < 1e-5,
+            "centre: {u},{v}"
+        );
         // World +X (right) → u>0.5; world +Y (UP) → v<0.5 (texture TOP).
         let (u, v) = sprite_world_to_uv(present.world_mut(), bits, [0.5, 0.5]).unwrap();
         assert!((u - 0.75).abs() < 1e-5, "u={u}");

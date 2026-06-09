@@ -674,8 +674,8 @@ pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeI
 
 /// Derive the stable [`NodeId`] for the `index`-th watercolor control's SLIDER in the
 /// Brush Studio "Watercolor" section (ADR-0079). `index` is the position in
-/// `ph2d_painter_brush::WatercolorParams::CONTROLS` (the contract index the panel paints
-/// + the tool decodes). FNV-hashed; the Brush Studio is not a hot path (the existing
+/// `ph2d_painter_brush::WatercolorParams::CONTROLS` (the contract index the panel paints and
+/// the tool decodes). FNV-hashed; the Brush Studio is not a hot path (the existing
 /// per-row sliders format "NN%" per frame the same way).
 #[must_use]
 pub fn painter_studio_watercolor_slider_id(index: usize) -> NodeId {

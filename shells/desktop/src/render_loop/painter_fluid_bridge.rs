@@ -335,9 +335,9 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         // grain_noise (fixed by the paper cache), NOT the pipeline's 1-frame-late
         // readback (which is imperceptible — the same 1-frame lag the preview always
         // had). begin_stroke drains the prior stroke's in-flight map before reuse.
-        let (band, rect) = sess
-            .compositor
-            .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
+        let (band, rect) =
+            sess.compositor
+                .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
@@ -351,7 +351,9 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
             // Threshold 1e-4 (not 1e-3) so the wet bbox tracks the THIN capillary fringe film
             // where the wick carries pigment — keeps the grown envelope covering it. `max_water`
             // (the dry-check) is threshold-independent (whole-field max), so the drop is unaffected.
-            let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-4);
+            let stats = sess
+                .solver
+                .read_field_stats(&gpu.device, &gpu.queue, 1.0e-4);
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
             // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
             // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps

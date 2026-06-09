@@ -1320,3 +1320,181 @@ fn gpu_lift_matches_cpu_lift() {
         "GPU staining-resist deposited diverged from CPU: {worst_s_parity}"
     );
 }
+
+/// Worst per-channel |Δ| over the **staining accumulator** of two wet cells (ADR-0081 `PIG_STAIN`).
+/// `stain_acc = Σ mass_i·stain_i` is mass-weighted, so it's O(mass) ∈ O(1) (bounded, same dynamic
+/// range as the mass channel) — the `2e-2` tolerance the lift/capillary gates use applies directly.
+/// It transports LINEARLY (like `ks`/`err`/`mass`), so a parity bug that drops stain during the
+/// capillary wick of lifted pigment shows up here while `cell_color_mass_delta` (colour+mass) would
+/// miss it: stain is BEHAVIOUR, not colour, so the K–M reduction ignores it.
+fn stain_delta(a: &WetCell, b: &WetCell) -> f32 {
+    (a[PIG_STAIN] - b[PIG_STAIN]).abs()
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_cpu_parity_lift_branching_staining_combined() {
+    // ADR-0081 (lift + staining) × ADR-0082 (branched capillary): the COMBINED interaction the
+    // isolated `gpu_lift_matches_cpu_lift` / `gpu_capillary_branching_matches_cpu` gates can't see.
+    // With lift + branched-capillary BOTH live on a stained, deposited field, three couplings have
+    // to line up cell-for-cell on the GPU and CPU at once:
+    //   • op-order — `step()` runs lift (re-mobilize deposited → flowing) BEFORE diffuse, and the
+    //     branched capillary LAST; a swapped order strands lifted pigment in the wrong layer;
+    //   • staining survives the capillary wick of LIFTED pigment — `PIG_STAIN` transports linearly
+    //     with `ks`/`mass`, so the lifted (liftable) pigment's stain must ride the wick out into the
+    //     branched fringe, and the stain-fast deposit must stay put (lift-resist) — a dropped or
+    //     mis-weighted stain during the wick diverges only when lift feeds the capillary;
+    //   • branching modulates the FLOWING layer (incl. the just-lifted pigment), never the deposited
+    //     one — the fiber-factor must suppress the wick of lifted pigment exactly as it does a fresh
+    //     splat's, on a tooth-varied paper so the suppression actually bites.
+    // A bug in any of these slips past the isolated tests (each runs only one pass live). Parity is
+    // the SAME bounded comparison the siblings use — `cell_color_mass_delta` (reduced colour + mass,
+    // ADR-0080) over flowing AND deposited — plus an explicit `PIG_STAIN` channel check (bounded
+    // O(mass), so the same `2e-2` band holds), so a lost-stain interaction can't hide behind colour.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (56u32, 48u32);
+    let deposit_steps = 12u32;
+    let combined_steps = 4u32; // a few steps with all three live → interaction accumulates
+    let (dep, dep_dry, gran) = (0.05f32, 0.04f32, 1.2f32);
+    let base = FluidParams::default();
+    // Two adjacent patches, water-rich (so the capillary wicks + the wet gate opens the lift):
+    //   • a STAIN-FAST patch (staining = 1.0) → must lift-resist, deposited stays put;
+    //   • a LIFTABLE patch (staining = 0.0) → lifts into the flowing layer, then the branched
+    //     capillary wicks it (carrying its stain ≈ 0) outward into the tooth-varied fringe.
+    // Off-centre + overlapping so the wick + the subtractive mix are asymmetric (catches a
+    // direction/order bug), with r ≥ the wet pool so there's a dry fringe to wick into.
+    let raw: [(f32, f32, f32, f32, [f32; 3], f32); 3] = [
+        (24.0, 24.0, 9.0, 1.0, [0.10, 0.20, 0.70], 1.0), // stain-fast (blue)
+        (34.0, 24.0, 8.0, 0.95, [0.85, 0.10, 0.05], 0.0), // liftable (red)
+        (29.0, 28.0, 5.0, 0.9, [0.00, 0.40, 0.10], 0.0), // liftable (green), into the overlap
+    ];
+    // Lift ON + branched capillary ON together, on the default wet band. No evaporation so the
+    // wet gate is identical on both sides (the lift rate + wick depend on it); deposition stays on
+    // through the combined phase so freeze ⇄ lift both fight over the deposited layer.
+    let mut combined = base.to_diffusion();
+    combined.evaporation = 0.0;
+    combined.deposition = dep;
+    combined.deposition_dry = dep_dry;
+    combined.granulation = gran;
+    combined.lift = 0.6;
+    combined.capillary = 0.2;
+    combined.capillary_branching = 0.8;
+
+    // ── CPU reference ───────────────────────────────────────────────────────────────────────
+    // Deposit phase: splat (mixed staining), deposition ON, step → builds the stained deposited
+    // layer. Then the combined phase: lift + branched capillary + deposition all live.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb, st) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], st);
+    }
+    let mut dep_dp = base.to_diffusion();
+    dep_dp.deposition = dep;
+    dep_dp.deposition_dry = dep_dry;
+    dep_dp.granulation = gran;
+    for _ in 0..deposit_steps {
+        cpu.step(&dep_dp);
+    }
+    for _ in 0..combined_steps {
+        cpu.step(&combined);
+    }
+
+    // ── GPU ─────────────────────────────────────────────────────────────────────────────────
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb, st)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], st)
+        })
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.set_deposition(&gpu.queue, dep, dep_dry, gran);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    // Deposit phase (same splats + step count + deposition params as the CPU).
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        deposit_steps,
+        (0, 0, w - 1, h - 1),
+    );
+    // Combined phase: push the full DiffusionParams (lift + capillary + branching all live), no new
+    // dabs, full-grid region (matches the CPU full-grid step).
+    solver.set_from_diffusion(&gpu.queue, &combined);
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &[],
+        combined_steps,
+        (0, 0, w - 1, h - 1),
+    );
+    let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_dep = solver.read_deposited(&gpu.device, &gpu.queue);
+    let gpu_water = solver.read_water(&gpu.device, &gpu.queue);
+
+    // ── Parity over BOTH layers (reduced colour + mass) + the staining channel ────────────────
+    let n = (w * h) as usize;
+    let (cpu_flow, cpu_dep, cpu_water) = (cpu.pigment(), cpu.deposited(), cpu.water());
+    let mut worst_flow = 0.0f32;
+    let mut worst_dep = 0.0f32;
+    let mut worst_stain = 0.0f32; // PIG_STAIN across flowing AND deposited
+    let mut worst_water = 0.0f32;
+    let mut total_flow = 0.0f32; // GPU flowing mass after the combined phase (lift must have fed it)
+    for i in 0..n {
+        worst_flow = worst_flow.max(cell_color_mass_delta(&gpu_flow[i], &cpu_flow[i]));
+        worst_dep = worst_dep.max(cell_color_mass_delta(&gpu_dep[i], &cpu_dep[i]));
+        worst_stain = worst_stain
+            .max(stain_delta(&gpu_flow[i], &cpu_flow[i]))
+            .max(stain_delta(&gpu_dep[i], &cpu_dep[i]));
+        worst_water = worst_water.max((gpu_water[i] - cpu_water[i]).abs());
+        total_flow += gpu_flow[i][PIG_MASS];
+    }
+    // The interaction must actually be LIVE: (a) lift fed the flowing layer (else the lift pass is
+    // dead and the capillary has nothing extra to wick), and (b) the branched wick spread water past
+    // the painted patches (else the capillary is dead) — otherwise parity is trivially "both idle".
+    let mut fringe = 0.0f32;
+    let mut fringe_n = 0.0f32;
+    let (fcx, fcy) = (24.0f32, 24.0); // the stain-fast patch centre (r = 9)
+    for y in 0..h {
+        for x in 0..w {
+            let d = ((x as f32 - fcx).powi(2) + (y as f32 - fcy).powi(2)).sqrt();
+            if (9.5..11.5).contains(&d) {
+                fringe += gpu_water[(y * w + x) as usize];
+                fringe_n += 1.0;
+            }
+        }
+    }
+    let fringe = fringe / fringe_n.max(1.0);
+    eprintln!(
+        "lift×branching×staining GPU↔CPU: worst flowing |Δ| = {worst_flow:.6}, worst deposited |Δ| = {worst_dep:.6}, worst PIG_STAIN |Δ| = {worst_stain:.6}, worst water |Δ| = {worst_water:.6}, GPU flowing total = {total_flow:.3}, gpu fringe water = {fringe:.4}"
+    );
+    assert!(
+        total_flow > 0.01,
+        "GPU flowing layer is empty after the combined phase — lift never fed it, the interaction is dead"
+    );
+    assert!(
+        fringe > 0.01,
+        "branched GPU capillary didn't wick a fringe — the capillary pass is dead, parity meaningless"
+    );
+    assert!(
+        worst_flow < 2.0e-2,
+        "lift×branching×staining flowing diverged from CPU: {worst_flow}"
+    );
+    assert!(
+        worst_dep < 2.0e-2,
+        "lift×branching×staining deposited diverged from CPU: {worst_dep}"
+    );
+    assert!(
+        worst_stain < 2.0e-2,
+        "PIG_STAIN diverged GPU↔CPU under lift+capillary — staining lost/mis-weighted during the wick of lifted pigment: {worst_stain}"
+    );
+    assert!(
+        worst_water < 2.0e-2,
+        "lift×branching×staining water diverged from CPU: {worst_water}"
+    );
+}

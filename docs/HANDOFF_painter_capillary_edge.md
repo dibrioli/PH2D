@@ -1,15 +1,19 @@
 # HANDOFF — Painter Watercolor: **Capillary Soft Edge (S5)** — para a próxima LLM (2026-06-08)
 
-> **Estado: motor de aquarela COMPLETO + validado pelo Enio.** Física de 3 camadas
-> (gated-diffusion + deposição + shallow-water/backruns), GPU-residente, region-scoped,
-> 15 controles per-brush expostos no Brush Studio, fidelidade de cor/Value corrigida,
-> input transform-aware + gizmo de rotação no modo pintura. Norte: [ADR-0078](architecture/decisions/0078-watercolor-gold-standard-resident-tiled-shallow-water.md)
+> **Estado: S5 (borda capilar) IMPLEMENTADO + gated — ⚠️ pendente validação VISUAL do Enio.**
+> O motor de aquarela tem agora as **4 camadas físicas**: gated-diffusion + deposição +
+> shallow-water/backruns + **capilaridade (a franja macia/penugenta)**. GPU-residente,
+> region-scoped, **16 controles** per-brush no Brush Studio, fidelidade de cor/Value, input
+> transform-aware. Norte: [ADR-0078](architecture/decisions/0078-watercolor-gold-standard-resident-tiled-shallow-water.md)
 > + [ADR-0079](architecture/decisions/0079-watercolor-params-per-brush-exposure.md).
 > Histórico do motor: [HANDOFF_painter_fluid_continuation.md](HANDOFF_painter_fluid_continuation.md)
 > (S0–S3d) + [HANDOFF_painter_fluid_gpu_composite.md](HANDOFF_painter_fluid_gpu_composite.md) (W15.3).
-> **Próximo: a BORDA CAPILAR (§2)** — a franja macia/penugenta que molha o papel seco além
-> da área pintada. É a assinatura de aquarela mais reconhecível que ainda falta. **Muitos
-> commits locais, NÃO pushados** (fast-mode `--no-verify`). Leia §0 + §3 antes de tocar.
+>
+> **S5 ENTREGUE nesta sessão (commit local `dd1fee3`, `--no-verify`, NÃO pushado):** ver §1
+> (linha S5) + §2 (o que foi feito + o que VALIDAR). **Próximo após o smoke do Enio:** tuning
+> dos consts S5 se preciso, depois **S4 resto** (multi-pigmento K–M + multi-camada @4K) e
+> as 5 propostas extraordinárias do [avaliacao_e_melhorias.md](Painter_projeto/avaliacao_e_melhorias.md).
+> Leia §0 + §3 antes de tocar.
 
 ---
 
@@ -39,13 +43,34 @@
 | **fix cor** | **Value preservado** (`pcol` = cor escolhida, não cromaticidade) + **preto/escuro pintam** (depósito = cobertura cinza independente de cor) + **opacidade ∝ Value** (`color_sum = 0.3 + 0.7·value`) | `185d4fc`,`07b918c`,`a2ecef4` | brush 343 + 17 GPU parity ✓ **Enio validou** |
 | **fix params** | **Downhill** religado (preset 0); **Perm Valley/Crest + Viscosity** agora visíveis (perm gateia as forças do `add_forces`, CPU+GPU 0 ULP); ranges alargados | `185d4fc`,`979f22f` | 15 diffusion + parity ✓ **Enio validou** |
 | **fix UX** | Pintura **transform-aware** (`ph2d_render::sprite_world_to_uv` inverte o `RenderInstance.basis` → pinta no texel certo com sprite movida/rotada/escalada) + **gizmo de ROTAÇÃO liberado no modo pintura** (só rotate cai pro gizmo; corpo pinta) | `9985bd3`,`f7741ad` | picking + painter_input ✓ **Enio validou** |
+| **S5** | **Borda capilar (a franja macia).** `DiffusionGrid::capillary_flow` = difusão conservativa da ÁGUA (forma-divergência, condutância = `½(perm_c+perm_n)`, CFL ≤ 0.24, após evaporar) → a água molha o papel seco além da pintura, o gate abre lá, o pigmento sangra na franja. GPU `capillary.wgsl` (`cs_capillary`+`cs_copy_water`, ping-pong `water_b`). **Envelope cresce** (§2.2): `união(dab-bbox, wet-bbox de `read_field_stats`)+pad` no bridge, só com capilar on. 16º controle `Capillary` (folga do ADR-0079, cap ≤16). Dormant a 0. | local `dd1fee3` | `gpu_capillary_matches_cpu` **0 ULP** + 6 gates CPU (dormant/bounded/conserva/det/sangria/**invariante envelope** pig⊆wet-bbox) + 82 contract + 9 painel ✓ **⚠️ visual pendente (Enio)** |
 
-## §2 — PRÓXIMO: Borda capilar macia (S5) — o plano
+## §2 — Borda capilar macia (S5) — ✅ FEITO (commit `dd1fee3`), ⚠️ visual pendente
 
 **Objetivo (Curtis 1997, camada capilar):** a água **molha o papel seco ALÉM da área pintada**,
-carregando um fio de pigmento → a **franja macia/penugenta** que define o look de aquarela. Hoje a
-borda é a do `wet-gate` (mais dura). Esta é a etapa de maior impacto visual por esforço, **isolada**,
-e que **não toca o modelo de cor** (§0.4).
+carregando um fio de pigmento → a **franja macia/penugenta** que define o look de aquarela. A borda
+antiga era a do `wet-gate` (mais dura). Foi a etapa de maior impacto visual por esforço, **isolada**,
+e que **não tocou o modelo de cor** (§0.4).
+
+> **✅ O QUE FOI ENTREGUE (esta sessão):** os 4 passos do plano abaixo (§2.1 modelo CPU,
+> §2.2 envelope, §2.3 GPU+param) estão **implementados + gated**. A paridade GPU↔CPU é
+> **bit-exata (0 ULP em Metal)**. O envelope cresce pela união com a wet-bbox real. O 16º
+> controle `Capillary` (preset **0.1** — franja ON por padrão) está no Brush Studio.
+>
+> **⚠️ O QUE VALIDAR (Enio) — `./play.command`, pincel de aquarela, traço grande NUM CANVAS
+> GRANDE (arraste um PNG; no demo 64² a franja some — §3.5):**
+> 1. A **franja macia/penugenta** sangra no papel seco ao redor do traço (a borda deixou de
+>    ser dura). **Sem corte retangular** nas quinas (o envelope cresceu — era o bug §2.2).
+> 2. O **slider "Capillary"** (Brush Studio → seção Watercolor, último): 0 = borda dura antiga;
+>    subindo até 0.24 = franja mais larga/molhada. Tune o preset se 0.1 estiver fraco/forte.
+> 3. **FPS:** o capilar adiciona 2 passes region-scoped/substep — confira que o traço live
+>    segue fluido (`PH2D_FLUID_PROFILE=1 ./play.command` p/ o log por-frame). Se cair, o pad
+>    do envelope (`CAPILLARY_FRINGE_PAD=8` em `painter_fluid_bridge.rs`) é o primeiro suspeito.
+> 4. **Não-regressão:** um pincel com `Capillary=0` deve pintar **idêntico** ao S3d validado
+>    (o caminho é dormant + o envelope não cresce).
+>
+> Consts a tunar (se pedir): preset `capillary: 0.1` em `watercolor.rs` (`WatercolorParams::default`);
+> range em `CONTROLS` (`Capillary 0..0.24`); `CAPILLARY_FRINGE_PAD` no bridge.
 
 ### §2.1 — Modelo (determinístico, espelhável na GPU, HR-5)
 
@@ -182,3 +207,15 @@ papel; perm crisp↔fluindo; rotação via gizmo no modo pintura.
   de cor/Value + perm/viscosity + input transform-aware + gizmo-rotate no modo pintura — tudo validado
   pelo Enio). **Próximo: borda capilar (S5, §2)**, em contexto fresco. O envelope que cresce (§2.2) é o
   trabalho de verdade; o modelo de cor (§0.4/§3.1) NÃO se desfaz.
+
+— atualizado por Claude (sessão 2026-06-08, cont. — coordenador+implementador solo): **S5 (borda
+  capilar) COMPLETO** — commit local `dd1fee3` (`--no-verify`, NÃO pushado). CPU ref
+  `capillary_flow` (difusão conservativa da água, forma-divergência, CFL ≤ 0.24, após evaporar) +
+  espelho GPU `capillary.wgsl` (`cs_capillary`+`cs_copy_water`, ping-pong `water_b`) com **paridade
+  bit-exata 0 ULP em Metal** + **crescimento do envelope** (§2.2: união dab-bbox + wet-bbox monotônica
+  do `read_field_stats` + `CAPILLARY_FRINGE_PAD`, só com capilar on) + 16º controle `Capillary` (preset
+  0.1, folga do ADR-0079, cap ≤16 intacto). Gates: 349 brush lib (6 capilar + invariante envelope) · 12
+  GPU parity · 82 contract · 9 painel. **⚠️ Pendente: validação VISUAL do Enio** (§2, a caixa "O QUE
+  VALIDAR"). Nota anti-colisão: `shells/desktop/src/input_dispatch/gizmo_drag.rs` tem WIP TEMP do Enio
+  (`PH2D_GIZMO_DEBUG`) NÃO commitado — fora do meu escopo, deixado intacto. **Próximo após o smoke:**
+  tuning S5 se preciso → S4 resto (K–M multi-pigmento + multi-camada @4K).

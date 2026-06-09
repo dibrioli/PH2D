@@ -423,6 +423,51 @@ pub fn mix_prepared_exact(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32;
     ]
 }
 
+// ───────────────────── wet-field multi-pigment mix (ADR-0080) ─────────────────────
+//
+// The wet diffusion field (`crate::diffusion`, + its GPU mirror) carries, per cell, the
+// MASS-WEIGHTED ACCUMULATION of a [`PreparedPigment`]: `ks_acc = Σ_i mass_i·ks_i` (per
+// band), `err_acc = Σ_i mass_i·err_i` (the round-trip re-anchor), and `mass = Σ_i mass_i`
+// (coverage). Because K/S blends LINEARLY by concentration (the K–M law [`mix_prepared`]
+// uses), these accumulators TRANSPORT linearly (diffuse/advect/capillary — exactly as the
+// old `[f32;3]` pigment did) and the subtractive mix emerges for free: where two pigments
+// meet, their `ks_acc`/`err_acc`/`mass` sum, and the per-cell reduction below yields the
+// mixed colour — blue+yellow → green, NOT the mud a per-channel-RGB K/S (or a reflectance
+// average) gives, because this is the SAME 24-band spectral model as [`mix_prepared`]. A
+// single pigment reduces to exactly [`prepare_pigment`]`(colour)`, so the single-pigment
+// composite is byte-identical to the pre-ADR-0080 path.
+
+/// Reduce a wet-field cell's mass-weighted K/S accumulation to a [`PreparedPigment`] — the
+/// per-cell brush the composite glazes over the backdrop (ADR-0080). `ks_acc` = `Σ mass_i·ks_i`,
+/// `err_acc` = `Σ mass_i·err_i`, `mass` = `Σ mass_i`. Yields the mixed pigment's `K/S`
+/// (`ks_acc/mass`), its re-anchored colour, and `err`; for a single pigment this is exactly
+/// `prepare_pigment(colour)`. `mass ≈ 0` ⇒ a black/zero pigment (the caller skips bare cells).
+#[must_use]
+pub fn prepared_from_field(ks_acc: &[f32; NB], err_acc: [f32; 3], mass: f32) -> PreparedPigment {
+    let inv = if mass > 1.0e-12 { 1.0 / mass } else { 0.0 };
+    let mut ks = [0.0f32; NB];
+    let mut refl = [0.0f32; NB];
+    for i in 0..NB {
+        ks[i] = ks_acc[i] * inv;
+        refl[i] = ks_to_refl(ks[i]);
+    }
+    let rt = reflectance_to_rgb(&refl);
+    let err = [err_acc[0] * inv, err_acc[1] * inv, err_acc[2] * inv];
+    let color = [
+        (rt[0] + err[0]).max(0.0),
+        (rt[1] + err[1]).max(0.0),
+        (rt[2] + err[2]).max(0.0),
+    ];
+    PreparedPigment { color, ks, err }
+}
+
+/// The mixed linear-sRGB colour of a wet-field cell (the `color()` of [`prepared_from_field`])
+/// — the convenience reduction for the field's per-cell colour + the parity tests.
+#[must_use]
+pub fn ks_field_color(ks_acc: &[f32; NB], err_acc: [f32; 3], mass: f32) -> [f32; 3] {
+    prepared_from_field(ks_acc, err_acc, mass).color()
+}
+
 /// Subtractive pigment mix of two **linear-sRGB** colours (the canonical Mixbox
 /// working space, ADR-0051 §2.4). `t ∈ [0,1]` is the ratio toward `b`. Endpoints
 /// are exact; the subtractive (geometric-mean) behaviour peaks at an even mix. For
@@ -631,6 +676,95 @@ mod tests {
             chroma < 0.12,
             "cyan+red neutralises toward grey: {mix:?} chroma {chroma}"
         );
+    }
+
+    /// Accumulate `n` pigments' mass-weighted K/S + err into `(ks_acc, err_acc, mass)` — the
+    /// wet-field deposit path (ADR-0080), as a test helper.
+    fn accumulate(pigments: &[([f32; 3], f32)]) -> ([f32; NB], [f32; 3], f32) {
+        let mut ks_acc = [0.0f32; NB];
+        let mut err_acc = [0.0f32; 3];
+        let mut mass = 0.0f32;
+        for &(c, m) in pigments {
+            let p = prepare_pigment(c);
+            for i in 0..NB {
+                ks_acc[i] += m * p.ks[i];
+            }
+            for k in 0..3 {
+                err_acc[k] += m * p.err[k];
+            }
+            mass += m;
+        }
+        (ks_acc, err_acc, mass)
+    }
+
+    #[test]
+    fn field_mix_blue_plus_yellow_is_green() {
+        // **THE P0 gate (ADR-0080).** The wet-field accumulation path (mass-weighted K/S) mixes
+        // blue + yellow to a GREEN-dominant colour — the same subtractive result the validated
+        // 2-colour `mix_prepared` gives, NOT the mud a per-channel-RGB K/S (∞ on dark bands →
+        // black) or a reflectance average produces.
+        let (ks, err, m) = accumulate(&[([0.0, 0.0, 1.0], 1.0), ([1.0, 1.0, 0.0], 1.0)]);
+        let mix = ks_field_color(&ks, err, m);
+        assert!(
+            mix[1] > mix[0] && mix[1] > mix[2],
+            "green is the dominant channel: {mix:?}"
+        );
+        assert!(mix[1] > 0.22, "green is a real mid green, not dark: {mix:?}");
+        assert!(
+            mix[0] < 0.12 && mix[2] < 0.12,
+            "red AND blue both suppressed (not mud, not teal): {mix:?}"
+        );
+    }
+
+    #[test]
+    fn field_mix_equals_mix_prepared_at_5050() {
+        // The field accumulation at EQUAL mass is exactly `mix_prepared_exact(brush_b, a, 0.5)`
+        // — proof the field reuses the validated K–M (the N-pigment generalisation), not a new
+        // model. (The `4t(1-t)` linear blend is glaze-only; the field mix is the pure K/S blend,
+        // which `mix_prepared` at t=0.5 reduces to since w = 4·0.5·0.5 = 1.)
+        for (a, b) in [
+            ([0.0, 0.0, 1.0], [1.0, 1.0, 0.0]),
+            ([0.1, 0.4, 0.8], [0.9, 0.2, 0.3]),
+            ([0.2, 0.6, 0.1], [0.7, 0.1, 0.5]),
+        ] {
+            let (ks, err, m) = accumulate(&[(a, 1.0), (b, 1.0)]);
+            let field = ks_field_color(&ks, err, m);
+            let glaze = mix_prepared_exact(&prepare_pigment(b), a, 0.5);
+            assert!(
+                approx(field, glaze, 1e-5),
+                "field {field:?} vs mix_prepared {glaze:?} for {a:?}+{b:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn field_single_pigment_is_endpoint_exact() {
+        // §2.3: a SINGLE pigment at any mass reduces to its own colour (the `err` re-anchor
+        // undoes the leaky-basis round-trip) — this is what makes the single-colour composite
+        // byte-identical to the pre-ADR-0080 path.
+        for c in [
+            [0.8, 0.1, 0.1],
+            [0.1, 0.6, 0.2],
+            [0.2, 0.3, 0.9],
+            [0.05, 0.05, 0.05],
+            [0.0, 0.0, 0.0],
+        ] {
+            for &m in &[0.3f32, 1.0, 5.0] {
+                let (ks, err, mass) = accumulate(&[(c, m)]);
+                let out = ks_field_color(&ks, err, mass);
+                assert!(approx(out, c, 1e-5), "single pigment {c:?}@{m} -> {out:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn field_mix_is_more_saturated_than_a_grey_lerp() {
+        // The field mix keeps chroma (not the dull linear average) — the subtractive signature.
+        let (ks, err, m) = accumulate(&[([0.0, 0.0, 1.0], 1.0), ([1.0, 1.0, 0.0], 1.0)]);
+        let mix = ks_field_color(&ks, err, m);
+        let chroma =
+            mix.iter().cloned().fold(0.0, f32::max) - mix.iter().cloned().fold(1.0, f32::min);
+        assert!(chroma > 0.17, "field mix keeps chroma: {mix:?} chroma {chroma}");
     }
 
     #[test]

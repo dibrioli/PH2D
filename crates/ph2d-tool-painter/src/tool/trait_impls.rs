@@ -134,6 +134,19 @@ impl Tool for PainterTool {
                     next as f32,
                 ));
             }
+            // Real-pigment palette cycler (ADR-0081): step None → 0 → 1 → … →
+            // PALETTE.len()-1 → None. Picks the pigment's masstone + granulation;
+            // its staining rides each dab. Mirror of the rendering-mode cycler
+            // (read the live state, compute next, apply).
+            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_PIGMENT_PICK => {
+                let n = ph2d_painter_brush::PALETTE.len() as u32;
+                let next = match self.active_pigment() {
+                    None => Some(0u8),
+                    Some(i) if (u32::from(i) + 1) < n => Some(i + 1),
+                    Some(_) => None, // wrap past the last pigment → raw colour
+                };
+                self.set_active_pigment(next);
+            }
             // New bool checkboxes — read the live brush, set the opposite (the
             // store-less event can't carry the new value; `&mut self` reads it).
             PanelEvent::Click(id) if brush_studio_bool_param(id).is_some() => {

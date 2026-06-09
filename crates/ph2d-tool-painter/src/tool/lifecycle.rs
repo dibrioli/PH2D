@@ -428,6 +428,41 @@ impl PainterTool {
         self.fluid_hires = v;
     }
 
+    /// **Real-pigment palette (ADR-0081).** Pick a curated artist pigment by PALETTE index, or
+    /// clear back to raw colour with `None`.
+    ///
+    /// `Some(i)` (with `i < PALETTE.len()`): loads the pigment's **masstone** into the brush
+    /// colour (`params.active_color`), folds its **granulation** into the brush watercolor slider
+    /// (`apply_granulation`), and records the index so each dab carries the pigment's **staining**
+    /// (see [`Self::active_staining`]). `None` (or an out-of-range index) clears the active pigment
+    /// and leaves the colour + params exactly as they are (the bit-identical raw-colour path).
+    pub fn set_active_pigment(&mut self, idx: Option<u8>) {
+        match idx {
+            Some(i) if (i as usize) < ph2d_painter_brush::PALETTE.len() => {
+                let p = &ph2d_painter_brush::PALETTE[i as usize];
+                let [r, g, b] = p.srgb;
+                self.params.active_color = crate::color::srgb8_to_painter_oklch([r, g, b, 255]);
+                p.apply_granulation(&mut self.brush.rendering.watercolor);
+                self.active_pigment = Some(i);
+            }
+            _ => self.active_pigment = None,
+        }
+    }
+
+    /// The active real pigment's PALETTE index, or `None` for raw colour (ADR-0081).
+    #[must_use]
+    pub fn active_pigment(&self) -> Option<u8> {
+        self.active_pigment
+    }
+
+    /// The active pigment's staining ∈ [0,1] (ADR-0081) — `0.0` when no pigment is selected. Rides
+    /// every fluid dab so the pigment keeps staining/lifting per its real-world character.
+    pub(crate) fn active_staining(&self) -> f32 {
+        self.active_pigment
+            .and_then(|i| ph2d_painter_brush::PALETTE.get(i as usize))
+            .map_or(0.0, |p| p.staining)
+    }
+
     /// `true` when the active brush opts into the live wet field — the shell uses this
     /// to PRE-WARM the GPU solver+compositor (compile the big composite shader) before
     /// the first dab, so the stroke doesn't hitch on first use.
@@ -712,6 +747,10 @@ impl PainterTool {
         // whole-`self` method can't coexist with that partial mutable borrow).
         let alpha_lock = self.active_alpha_locked();
         let size_px = self.effective_size_px();
+        // **ADR-0081:** the active pigment's staining rides every fluid dab (0 for raw colour).
+        // Captured here — before the scheduler `&mut` borrow that `stamps` extends — so the
+        // per-stamp loops below can use it without a whole-`self` re-borrow.
+        let staining = self.active_staining();
         let stamps = self
             .scheduler
             .advance(&self.brush, sample, size_px, self.stroke_color_oklab);
@@ -781,6 +820,7 @@ impl PainterTool {
                             water: WET_WATER_DEPOSIT,
                             color,
                             mass: dep,
+                            staining,
                         });
                         let x0 = ((cx - r).floor().max(0.0) as u32).min(gw - 1);
                         let y0 = ((cy - r).floor().max(0.0) as u32).min(gh - 1);
@@ -811,6 +851,7 @@ impl PainterTool {
                             WET_WATER_DEPOSIT,
                             color,
                             dep,
+                            staining,
                         );
                     }
                     self.tick_wet_field(WET_SUBSTEPS_PAINTING);
@@ -1521,6 +1562,7 @@ impl PainterTool {
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
             watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
+            active_pigment: self.active_pigment,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

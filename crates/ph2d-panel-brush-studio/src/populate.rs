@@ -156,6 +156,8 @@ pub fn populate(store: &mut WidgetStore) {
     pct(store, ids::PAPER_SLIDER, ids::PAPER_CHIP, s.paper_grain);
     button(store, ids::GRAIN_TYPE);
     button(store, ids::RENDERING_MODE);
+    // Real-pigment palette cycler (ADR-0081) — painted in the Watercolor section.
+    button(store, ids::PIGMENT_PICK);
 
     // ── Color Dynamics — per-stamp OKLab jitter (engine-wired) ──────────────
     pct(
@@ -453,6 +455,53 @@ mod tests {
                 WatercolorParams::CONTROLS[i].label
             );
         }
+    }
+
+    #[test]
+    fn pigment_cycler_round_trips_through_tool() {
+        // ADR-0081: the panel's PIGMENT_PICK Click → `handle_panel_event` steps the tool's
+        // active pigment None → 0 → … → len-1 → None, loading each pigment's masstone +
+        // granulation. The published snapshot index must follow the cycle the panel labels.
+        use ph2d_editor_core::ids::PAINTER_STUDIO_PIGMENT_PICK;
+        use ph2d_editor_core::tool::{PanelEvent, Tool};
+        use ph2d_tool_painter::PALETTE;
+
+        let mut tool = PainterTool::default();
+        assert_eq!(tool.brush_studio_snapshot().active_pigment, None);
+
+        // First click → pigment 0; each subsequent click → next index.
+        for (i, pigment) in PALETTE.iter().enumerate() {
+            tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_PIGMENT_PICK));
+            assert_eq!(
+                tool.brush_studio_snapshot().active_pigment,
+                Some(i as u8),
+                "click {i} must select pigment {i} ({})",
+                pigment.name
+            );
+            // Picking a pigment must load its granulation into the brush slider: the snapshot's
+            // NORMALIZED value, mapped back onto the control's physical range, must equal the
+            // pigment's `granulation_param()`.
+            use ph2d_tool_painter::WatercolorParams;
+            let gi = granulation_control_index();
+            let c = &WatercolorParams::CONTROLS[gi];
+            let phys = c.min + tool.brush_studio_snapshot().watercolor[gi] * (c.max - c.min);
+            assert!(
+                (phys - pigment.granulation_param()).abs() < 1e-3,
+                "pigment {i} granulation must reach the brush watercolor slider (got {phys})"
+            );
+        }
+        // One more click past the last pigment wraps back to None (raw colour).
+        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_PIGMENT_PICK));
+        assert_eq!(tool.brush_studio_snapshot().active_pigment, None);
+    }
+
+    /// The `WatercolorParams::CONTROLS` index of the "Granulation" control (the one a
+    /// pigment pick writes), found by label so a reorder can't silently break the test.
+    fn granulation_control_index() -> usize {
+        use ph2d_tool_painter::WatercolorParams;
+        (0..WatercolorParams::COUNT)
+            .find(|&i| WatercolorParams::CONTROLS[i].label == "Granulation")
+            .expect("a Granulation watercolor control")
     }
 
     #[test]

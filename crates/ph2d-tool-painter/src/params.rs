@@ -456,6 +456,9 @@ pub struct BrushStudioSnapshot {
     /// `0..1` (each over its own `[min,max]` range), indexed by `WatercolorParams::CONTROLS`.
     /// The Brush Studio "Watercolor" section reads these to position its sliders.
     pub watercolor: [f32; ph2d_painter_brush::WatercolorParams::COUNT],
+    /// **Real-pigment palette (ADR-0081).** The active pigment's `PALETTE` index, or `None` for
+    /// raw colour. The Brush Studio "Watercolor" section reads it to label its Pigment cycler.
+    pub active_pigment: Option<u8>,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -506,6 +509,7 @@ impl Default for BrushStudioSnapshot {
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
             watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
+            active_pigment: None,
             brush_name: String::new(),
         }
     }

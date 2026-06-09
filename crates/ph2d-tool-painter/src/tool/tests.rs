@@ -3894,7 +3894,7 @@ fn visual_smoke_watercolor_v2_diffusion() {
     for y in 0..gh {
         for x in 0..gw {
             if x > gw / 2 {
-                grid.splat(x as f32, y as f32, 0.6, 0.9, [0.0; 3], 0.0);
+                grid.splat(x as f32, y as f32, 0.6, 0.9, [0.0; 3], 0.0, 0.0);
             }
         }
     }
@@ -3902,9 +3902,9 @@ fn visual_smoke_watercolor_v2_diffusion() {
     let pigment = [0.05f32, 0.07, 0.5];
     let pmass = pigment[0] + pigment[1] + pigment[2];
     for x in 8..gw - 8 {
-        grid.splat(x as f32, gh as f32 * 0.5, 6.0, 0.35, pigment, pmass);
+        grid.splat(x as f32, gh as f32 * 0.5, 6.0, 0.35, pigment, pmass, 0.15);
     }
-    grid.splat(150.0, gh as f32 * 0.5, 7.0, 1.0, [0.0; 3], 0.0); // clean-water backrun drop
+    grid.splat(150.0, gh as f32 * 0.5, 7.0, 1.0, [0.0; 3], 0.0, 0.0); // clean-water backrun drop
 
     let params = DiffusionParams::default();
     // Render the three snapshots into vertical bands of a 2× upsampled canvas.
@@ -4088,4 +4088,58 @@ fn paper_tooth_textures_stroke_and_modulates_by_pressure() {
         light > firm + 15.0,
         "light pressure leaves more paper (brighter) than firm: light {light} vs firm {firm}"
     );
+}
+
+#[test]
+fn pigment_pick_sets_colour_granulation_and_staining() {
+    // ADR-0081: picking a real pigment loads its masstone colour + granulation into the brush
+    // and makes its staining ride each dab; clearing it restores the raw-colour (staining 0) path.
+    use ph2d_painter_brush::PALETTE;
+    let ultra_idx = PALETTE
+        .iter()
+        .position(|p| p.name == "French Ultramarine")
+        .expect("French Ultramarine in the palette") as u8;
+    let ultra = &PALETTE[ultra_idx as usize];
+
+    let mut t = PainterTool::default();
+    t.set_active_pigment(Some(ultra_idx));
+    assert_eq!(t.active_pigment(), Some(ultra_idx));
+
+    // Colour == the pigment's masstone (the exact value set_active_pigment writes).
+    let [r, g, b] = ultra.srgb;
+    let expected = crate::color::srgb8_to_painter_oklch([r, g, b, 255]);
+    let got = t.params.active_color;
+    assert!(
+        (got.l - expected.l).abs() < 1e-6
+            && (got.c - expected.c).abs() < 1e-6
+            && (got.h - expected.h).abs() < 1e-6,
+        "brush colour must match ultramarine masstone: got {got:?} vs {expected:?}"
+    );
+
+    // Granulation folded into the brush watercolor slider.
+    assert!(
+        (t.brush.rendering.watercolor.granulation - ultra.granulation_param()).abs() < 1e-6,
+        "brush granulation must equal the pigment's granulation_param"
+    );
+
+    // The active pigment's staining rides each dab — equals the pigment's staining.
+    assert!(
+        ultra.staining > 0.0,
+        "ultramarine has a real staining value"
+    );
+    assert!(
+        (t.active_staining() - ultra.staining).abs() < 1e-6,
+        "active_staining must equal the picked pigment's staining"
+    );
+    // Also visible through the published snapshot index.
+    assert_eq!(t.brush_studio_snapshot().active_pigment, Some(ultra_idx));
+
+    // Clearing → raw colour: no active pigment ⇒ staining 0 (colour/params left as-is).
+    let colour_before_clear = t.params.active_color;
+    t.set_active_pigment(None);
+    assert_eq!(t.active_pigment(), None);
+    assert_eq!(t.active_staining(), 0.0, "no pigment ⇒ zero staining");
+    assert_eq!(t.brush_studio_snapshot().active_pigment, None);
+    // Colour is NOT reset on clear (raw-colour path leaves the brush as-is).
+    assert_eq!(t.params.active_color, colour_before_clear);
 }

@@ -321,7 +321,7 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         // resident water + pigment; then diffuse/advect/evaporate run on the GPU.
         let gpu_dabs: Vec<DabGpu> = dabs
             .iter()
-            .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass))
+            .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass, d.staining))
             .collect();
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded

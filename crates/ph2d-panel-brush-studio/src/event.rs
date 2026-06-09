@@ -110,7 +110,10 @@ fn is_studio_checkbox(id: NodeId) -> bool {
 
 #[inline]
 fn is_studio_button(id: NodeId) -> bool {
-    id == ids::CLOSE || id == ids::GRAIN_TYPE || id == ids::RENDERING_MODE
+    id == ids::CLOSE
+        || id == ids::GRAIN_TYPE
+        || id == ids::RENDERING_MODE
+        || id == ids::PIGMENT_PICK
 }
 
 #[cfg(test)]

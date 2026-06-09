@@ -285,6 +285,11 @@ pub struct FluidDab {
     pub color: [f32; 3],
     /// Coverage mass this dab deposits (`WET_PIGMENT_DEPOSIT × opacity × brush_opacity`).
     pub mass: f32,
+    /// The active pigment's staining ∈ [0,1] (ADR-0081): 1 = permanent stain that resists
+    /// lifting, 0 = liftable/sedimentary (the default for raw-colour dabs). Rides the dab into
+    /// the wet field's per-cell behaviour (`DiffusionGrid::splat` / `DabGpu::new` trailing arg),
+    /// so the pigment keeps staining even after it mixes with another.
+    pub staining: f32,
 }
 
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
@@ -629,6 +634,12 @@ pub struct PainterTool {
     /// resident water + pigment — no per-frame O(grid) deposit alloc/upload. Cleared
     /// each `begin_stroke` + each drain. Unused on the CPU-fallback path.
     fluid_dabs: Vec<FluidDab>,
+    /// **Real-pigment palette (ADR-0081).** The active pigment's PALETTE index, or `None` for
+    /// raw colour (the validated bit-identical path). Set via [`Self::set_active_pigment`]: picking
+    /// a pigment loads its masstone into `params.active_color` + its granulation into the brush
+    /// watercolor slider; the pigment's `staining` rides each dab (see [`Self::active_staining`]).
+    /// `None` = no pigment selected ⇒ `staining = 0` (liftable) + colour/params left as-is.
+    active_pigment: Option<u8>,
 }
 
 impl Default for PainterTool {
@@ -696,6 +707,7 @@ impl Default for PainterTool {
             wet_field_scale: lifecycle::WET_FIELD_SCALE,
             wet_pigment_envelope: None,
             fluid_dabs: Vec::new(),
+            active_pigment: None,
         }
     }
 }

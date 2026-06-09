@@ -435,6 +435,20 @@ fn paint_watercolor_section(
     if collapsed {
         return y;
     }
+    // **Real-pigment palette cycler (ADR-0081).** Steps None → each PALETTE pigment → None.
+    // Picking a pigment loads its masstone colour + granulation; its staining rides each dab.
+    // A text cycler (the swatch needs a per-row colour-chip widget the panel doesn't carry yet).
+    let pigment_label = pigment_cycler_label(s.active_pigment);
+    y = cycler_row(
+        ctx,
+        x,
+        w,
+        y,
+        &pigment_label,
+        s.active_pigment.is_some(),
+        ids::PIGMENT_PICK,
+        theme,
+    );
     for i in 0..WatercolorParams::COUNT {
         let c = &WatercolorParams::CONTROLS[i];
         let v01 = s.watercolor[i];
@@ -612,6 +626,16 @@ fn rendering_mode_label(mode: u8) -> &'static str {
         4 => "Uniform Blend",
         5 => "Intense Blend",
         _ => "Light Glaze",
+    }
+}
+
+/// Label for the real-pigment cycler (ADR-0081): `Pigment: None` for raw colour, else
+/// `Pigment: <name>` (English — HR-15) read straight from the `PALETTE`. An out-of-range
+/// index degrades to `None` (defensive — the tool only ever publishes valid indices).
+fn pigment_cycler_label(active: Option<u8>) -> String {
+    match active.and_then(|i| ph2d_tool_painter::PALETTE.get(i as usize)) {
+        Some(p) => format!("Pigment: {}", p.name),
+        None => "Pigment: None".to_string(),
     }
 }
 

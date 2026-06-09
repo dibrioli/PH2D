@@ -482,6 +482,9 @@ pub const PAINTER_STUDIO_PAPER_CHIP: NodeId = hash_node_id("painter_studio.paper
 pub const PAINTER_STUDIO_GRAIN_TYPE: NodeId = hash_node_id("painter_studio.grain_type");
 /// Rendering mode cycler (LightGlaze → … → IntenseBlending, 6 modes).
 pub const PAINTER_STUDIO_RENDERING_MODE: NodeId = hash_node_id("painter_studio.rendering_mode");
+/// Real-pigment palette cycler (ADR-0081): None → each `PALETTE` pigment → wrap to None. Picks
+/// the pigment's masstone colour + granulation; its staining rides each dab.
+pub const PAINTER_STUDIO_PIGMENT_PICK: NodeId = hash_node_id("painter_studio.pigment_pick");
 
 // ── Color Dynamics section — per-stamp OKLab jitter (engine-wired) ────────────
 pub const PAINTER_STUDIO_SEC_COLOR: NodeId = hash_node_id("painter_studio.sec_color");

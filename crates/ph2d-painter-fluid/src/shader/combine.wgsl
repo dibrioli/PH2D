@@ -9,10 +9,10 @@
 // reads cells inside the composite region ⊆ the solver region, so `total` is fresh
 // wherever it's sampled. Shares the solver `Params` UBO (uses width + the region).
 //
-// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); total = flowing + deposited
-// per channel.
+// Pigment = PV (=8) vec4 per cell = 32 channels (+ stain, ADR-0080/0081); total = flowing +
+// deposited per channel.
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct Params {
     width: u32,

@@ -7,8 +7,9 @@
 // One thread per canvas pixel (dispatched over the wet bbox via `origin`).
 //
 // ## ADR-0080 multi-pigment field
-// Pigment is **PV (=7) `vec4<f32>` per cell = 28 channels**: 24 mass-weighted K/S
-// bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)). Per pixel the bicubic-sampled
+// Pigment is **PV (=8) `vec4<f32>` per cell = 32 channels (+ stain)**: 24 mass-weighted K/S
+// bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)) + 1 stain (vec4[7].x) + 3 pad; the
+// reduction ignores stain/pad (they're behaviour, not colour). Per pixel the bicubic-sampled
 // field is REDUCED to a mixed pigment — `ks_mix = ks_acc/mass`, `err_mix = err_acc/mass`,
 // `colour = reflectance_to_rgb(ks_to_refl(ks_mix)) + err_mix` — so overlapping pigments
 // mix subtractively (blue+yellow→green). The brush side of the glaze is therefore
@@ -20,7 +21,7 @@
 // spectral basis (`base[7][24]` + `m[3][24]`) is uploaded once as a storage buffer.
 
 const NB: u32 = 24u;
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 const REFL_FLOOR: f32 = 1.0e-4;
 
 struct U {
@@ -80,20 +81,20 @@ fn catmull_rom(t: f32) -> vec4<f32> {
 // Returns the PV bicubic-sampled vec4 (extensive K/S + err + mass), floored: K/S bands
 // (vec4[0..5]) + mass (vec4[6].w) ≥ 0; err (vec4[6].xyz) stays signed. Mirrors the CPU
 // `sample_pigment_bicubic`.
-fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 7> {
+fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 8> {
     let x0 = floor(fx);
     let y0 = floor(fy);
     let wx = catmull_rom(fx - x0);
     let wy = catmull_rom(fy - y0);
     let gwi = i32(P.gw);
     let ghi = i32(P.gh);
-    var out: array<vec4<f32>, 7>;
+    var out: array<vec4<f32>, 8>;
     for (var v = 0u; v < PV; v = v + 1u) {
         out[v] = vec4<f32>(0.0);
     }
     for (var j = 0; j < 4; j = j + 1) {
         let gy = clamp(i32(y0) - 1 + j, 0, ghi - 1);
-        var row: array<vec4<f32>, 7>;
+        var row: array<vec4<f32>, 8>;
         for (var v = 0u; v < PV; v = v + 1u) {
             row[v] = vec4<f32>(0.0);
         }

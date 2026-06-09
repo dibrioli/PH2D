@@ -25,10 +25,10 @@
 // Shares the solver `Params` UBO; `capillary` sits in the byte the diffuse/advect/transfer/
 // combine shaders treat as padding (offset 84), so they keep a valid view.
 //
-// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); each face's water flux + the
-// pigment co-advect fraction are per-cell scalars, applied to every channel in a loop.
+// Pigment = PV (=8) vec4 per cell = 32 channels (+ stain, ADR-0080/0081); each face's water flux
+// + the pigment co-advect fraction are per-cell scalars, applied to every channel in a loop.
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct Params {
     width: u32,

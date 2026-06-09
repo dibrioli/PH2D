@@ -14,10 +14,10 @@
 // ping-pong layout, so it's a separate module sharing only the `Params` UBO.
 // Region-scoped (ADR-0078 S1) exactly like the diffuse/advect/evaporate kernels.
 //
-// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); the same scalar `rate`
-// moves every channel flowing→deposited (mass + K/S + err all proportional).
+// Pigment = PV (=8) vec4 per cell = 32 channels (+ stain, ADR-0080/0081); the same
+// scalar `rate` moves every channel flowing→deposited (mass + K/S + err all proportional).
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct Params {
     width: u32,
@@ -37,9 +37,17 @@ struct Params {
     deposition: f32,
     deposition_dry: f32,
     granulation: f32,
-    _pad0: f32,
-    _pad1: f32,
-    _pad2: f32,
+    // Offsets 17..23 in the shared solver UBO are velocity/viscosity/drag/pressure/
+    // capillary/capillary_mobility/sharpness — this module reads none of them, so they're
+    // padding here. `lift` (offset 24, ADR-0081) is read by `cs_lift` below.
+    _p17: f32,
+    _p18: f32,
+    _p19: f32,
+    _p20: f32,
+    _p21: f32,
+    _p22: f32,
+    _p23: f32,
+    lift: f32,
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -72,5 +80,42 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
         let moved = rate * flowing[i * PV + v];
         flowing[i * PV + v] = flowing[i * PV + v] - moved;
         deposited[i * PV + v] = deposited[i * PV + v] + moved;
+    }
+}
+
+// GPU lift pass — `cs_lift`, the GPU mirror of the CPU reference
+// `ph2d_painter_brush::diffusion::DiffusionGrid::lift_pigment` (ADR-0081). The inverse of
+// `cs_transfer`: in WET cells, re-mobilizes a fraction of the DEPOSITED (dried) pigment back
+// into the FLOWING layer, so re-wetting dried paint reactivates it (it blooms/moves again):
+//   stain = clamp(deposited[PIG_STAIN] / deposited[PIG_MASS], 0, 1)   (the deposited pigment's own)
+//   rate  = clamp(lift · smoothstep(w_lo,w_hi,water) · (1 − stain), 0, 1)
+//   flowing += rate·deposited; deposited -= rate·deposited
+// A staining pigment (stain→1) resists; a sedimentary one (stain→0) lifts. Mass-conserving (the
+// gram leaves `deposited`, lands in `flowing`). A no-op while `lift == 0` (the dispatch is gated
+// on it solver-side) or the cell has no deposited mass. Same bindings as `cs_transfer` (flowing =
+// pig_a, deposited both read_write); runs BEFORE diffuse (the CPU `step` order), so the lifted
+// pigment participates this substep.
+@compute @workgroup_size(8, 8, 1)
+fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let x = P.region_ox + gid.x;
+    let y = P.region_oy + gid.y;
+    if (gid.x >= P.region_w || gid.y >= P.region_h || x >= P.width || y >= P.height) {
+        return;
+    }
+    let i = y * P.width + x;
+    let dep_mass = deposited[i * PV + 6u].w;       // PIG_MASS=27 → vec4[6].w
+    if (dep_mass <= 1.0e-6) {
+        return;
+    }
+    let stain = clamp(deposited[i * PV + 7u].x / dep_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
+    let wet = smoothstep_gate(P.w_lo, P.w_hi, water[i]);
+    let rate = clamp(P.lift * wet * (1.0 - stain), 0.0, 1.0);
+    if (rate <= 0.0) {
+        return;
+    }
+    for (var v = 0u; v < PV; v = v + 1u) {
+        let moved = rate * deposited[i * PV + v];
+        deposited[i * PV + v] = deposited[i * PV + v] - moved;
+        flowing[i * PV + v] = flowing[i * PV + v] + moved;
     }
 }

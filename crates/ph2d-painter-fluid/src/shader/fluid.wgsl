@@ -12,13 +12,14 @@
 // f_n·p_n from any neighbour whose flow points at c. Same mass transfer,
 // parallel-safe.
 //
-// **Pigment = PV (=7) `vec4<f32>` per cell = 28 channels** (ADR-0080): 24 spectral
-// K/S bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)). Every pass loops the PV
-// vec4 doing the SAME per-component arithmetic the CPU `[f32;28]` loop does, so the
+// **Pigment = PV (=8) `vec4<f32>` per cell = 32 channels (+ stain)** (ADR-0080/0081): 24
+// spectral K/S bands + 3 err + 1 mass (vec4[6] = (err.xyz, mass)) + 1 stain (vec4[7].x) + 3
+// pad. Every pass loops the PV vec4 doing the SAME per-component arithmetic the CPU `[f32;32]`
+// loop does (stain transports linearly with the rest), so the
 // multi-pigment mix transports linearly and the parity stays bit-exact lane-for-lane.
 // Water/paper are `f32` arrays. Cell index = y*width + x; channels at `c*PV + v`.
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct Params {
     width: u32,

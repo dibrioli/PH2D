@@ -491,7 +491,7 @@ mod tests {
         let (gw, gh, scale) = (48u32, 48u32, 1u32);
         let (cw, ch) = (gw, gh);
         let mut grid = DiffusionGrid::new(gw, gh, scale as f32);
-        grid.splat(24.0, 24.0, 12.0, 0.7, [0.3, 0.15, 0.05], 0.5);
+        grid.splat(24.0, 24.0, 12.0, 0.7, [0.3, 0.15, 0.05], 0.5, 0.0);
         let p = DiffusionParams::default();
         for _ in 0..8 {
             grid.step(&p);

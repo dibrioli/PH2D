@@ -43,6 +43,7 @@ fn seeded_field(gw: u32, gh: u32) -> DiffusionGrid {
         0.7,
         [0.0, 0.0, 0.0],
         0.0 + 0.0 + 0.0,
+        0.0,
     );
     g.splat(
         gw as f32 * 0.5,
@@ -51,6 +52,7 @@ fn seeded_field(gw: u32, gh: u32) -> DiffusionGrid {
         0.8,
         [0.55, 0.42, 0.02],
         0.55 + 0.42 + 0.02,
+        0.0,
     );
     let p = DiffusionParams::default();
     for _ in 0..6 {
@@ -402,6 +404,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         0.7,
         [0.0, 0.0, 0.0],
         0.0 + 0.0 + 0.0,
+        0.0,
     );
     cpu_grid.splat(
         gw as f32 * 0.5,
@@ -410,6 +413,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         0.8,
         [0.55, 0.42, 0.02],
         0.55 + 0.42 + 0.02,
+        0.0,
     );
     step_cpu_reference(&mut cpu_grid, &params, steps);
     let mut cpu_canvas = backdrop.clone();
@@ -436,6 +440,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         0.7,
         [0.0, 0.0, 0.0],
         0.0 + 0.0 + 0.0,
+        0.0,
     );
     seed.splat(
         gw as f32 * 0.5,
@@ -444,6 +449,7 @@ fn gpu_step_then_composite_resident_matches_cpu() {
         0.8,
         [0.55, 0.42, 0.02],
         0.55 + 0.42 + 0.02,
+        0.0,
     );
     let solver = FluidSolver::new(&gpu.device, gw, gh);
     solver.set_params(&gpu.queue, &params);
@@ -574,7 +580,7 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
     let blue = [0.05f32, 0.10, 0.85];
     let yellow = [0.85f32, 0.80, 0.05];
     let (ovx, ovy) = (gw as f32 * 0.5, gh as f32 * 0.5);
-    grid.splat(ovx - 2.0, ovy, 7.0, 0.8, blue, blue[0] + blue[1] + blue[2]);
+    grid.splat(ovx - 2.0, ovy, 7.0, 0.8, blue, blue[0] + blue[1] + blue[2], 0.0);
     grid.splat(
         ovx + 2.0,
         ovy,
@@ -582,6 +588,7 @@ fn gpu_composite_multi_pigment_subtractive_mix_matches_cpu() {
         0.8,
         yellow,
         yellow[0] + yellow[1] + yellow[2],
+        0.0,
     );
     let p = DiffusionParams::default();
     for _ in 0..6 {

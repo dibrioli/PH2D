@@ -91,6 +91,10 @@ impl FluidParams {
             capillary_mobility: ph2d_painter_brush::diffusion::CAPILLARY_PIGMENT_MOBILITY,
             // First-order advection on this mapped path → `to_diffusion(default) == default`.
             sharpness: 0.0,
+            // Lift (ADR-0081) is likewise OFF on this `FluidParams`-mapped path (the live solver
+            // drives it per-brush via `set_from_diffusion`, not `FluidParams`) → keeps
+            // `to_diffusion(default) == default` bit-exact for the parity gate.
+            lift: 0.0,
         }
     }
 }

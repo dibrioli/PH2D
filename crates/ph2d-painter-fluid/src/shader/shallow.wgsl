@@ -19,10 +19,10 @@
 // and share the solver `Params` UBO (the 4 trailing S3d fields live in the bytes the
 // diffuse/advect/transfer/combine shaders treat as padding, so those stay byte-compatible).
 //
-// Pigment = PV (=7) vec4 per cell = 28 channels (ADR-0080); the velocity gather + the
-// MacCormack clamp run per vec4 (the flow scalar + the local extrema are per-channel).
+// Pigment = PV (=8) vec4 per cell = 32 channels (+ stain, ADR-0080/0081); the velocity gather +
+// the MacCormack clamp run per vec4 (the flow scalar + the local extrema are per-channel).
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct Params {
     width: u32,

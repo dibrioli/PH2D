@@ -39,7 +39,7 @@ fn frame_dabs(gw: u32, band_lo: u32, band_hi: u32) -> Vec<DabGpu> {
     (0..n)
         .filter_map(|i| {
             let cx = (gw as f32) * (i as f32 + 0.5) / n as f32;
-            DabGpu::new(cx, cy, 16.0, 0.55, [0.25, 0.12, 0.02], 0.25 + 0.12 + 0.02)
+            DabGpu::new(cx, cy, 16.0, 0.55, [0.25, 0.12, 0.02], 0.25 + 0.12 + 0.02, 0.0)
         })
         .collect()
 }

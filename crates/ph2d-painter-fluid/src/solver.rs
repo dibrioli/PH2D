@@ -102,8 +102,8 @@ pub const MAX_DABS_PER_DISPATCH: usize = 4096;
 /// A single brush dab for [`FluidSolver::splat_dabs`]: centre, effective radius,
 /// per-touch water, and the (pre-weighted) linear-RGB pigment. `#[repr(C)]` Pod so
 /// the dab list is a zero-copy `write_buffer` into the `array<Dab>` storage binding
-/// (128 B std430 stride — the leading 4 f32 fill the first 16 B, then `pig` is 7 vec4
-/// (the 28-channel pigment, ADR-0080) at offset 16, matching `splat.wgsl`).
+/// (144 B std430 stride — the leading 4 f32 fill the first 16 B, then `pig` is 8 vec4
+/// (the 32-channel pigment incl. stain, ADR-0080/0081) at offset 16, matching `splat.wgsl`).
 ///
 /// Build with [`DabGpu::new`] so the `radius <= 0` early-return and the `r.max(0.5)`
 /// floor exactly mirror the CPU `DiffusionGrid::splat` (a raw `r <= 0` would make the
@@ -115,18 +115,21 @@ pub struct DabGpu {
     cy: f32,
     r: f32,
     water_add: f32,
-    /// The dab's per-cell pigment channels (mass-weighted K/S + err + mass), already scaled
-    /// by the peak deposit mass — `cs_splat` adds `pig * fall`. (ADR-0080; was a gray RGB.)
+    /// The dab's per-cell pigment channels (mass-weighted K/S + err + mass + stain), already
+    /// scaled by the peak deposit mass — `cs_splat` adds `pig * fall`. (ADR-0080 K/S; ADR-0081
+    /// stain in the `PIG_STAIN` channel; was a gray RGB.)
     pig: [f32; PIG_CH],
 }
 
 impl DabGpu {
     /// A dab at `(cx, cy)` with brush `radius`, raising wetness by `water_add` and depositing
-    /// a pigment of `color` (linear sRGB) at peak coverage `pigment_mass` — the GPU mirror of
-    /// the CPU `DiffusionGrid::splat(cx, cy, r, water_add, color, pigment_mass)`. The pigment
-    /// channels are built once via the same `cell_from_color_mass` (ADR-0080), so a cell adds
-    /// `pig·fall`. Returns `None` for `radius <= 0` (the CPU splat's early-return); else the
-    /// radius is floored to `0.5` (the CPU `radius.max(0.5)`).
+    /// a pigment of `color` (linear sRGB) at peak coverage `pigment_mass` with `staining` ∈ [0,1]
+    /// (ADR-0081) — the GPU mirror of the CPU `DiffusionGrid::splat(cx, cy, r, water_add, color,
+    /// pigment_mass, staining)`. The pigment channels are built once via the same
+    /// `cell_from_color_mass` (ADR-0080), then the mass-weighted staining is laid into the
+    /// `PIG_STAIN` channel (matching the CPU splat's `cell[PIG_STAIN] += staining·mass`), so a
+    /// cell adds `pig·fall`. Returns `None` for `radius <= 0` (the CPU splat's early-return);
+    /// else the radius is floored to `0.5` (the CPU `radius.max(0.5)`).
     #[must_use]
     pub fn new(
         cx: f32,
@@ -135,16 +138,22 @@ impl DabGpu {
         water_add: f32,
         color: [f32; 3],
         pigment_mass: f32,
+        staining: f32,
     ) -> Option<Self> {
         if radius <= 0.0 {
             return None;
         }
+        // Mass-weighted K/S + err + mass channels of the dab (ADR-0080), then the staining
+        // accumulator rides along mass-weighted (ADR-0081), exactly like the CPU splat — both
+        // scale by `fall` per cell in `cs_splat`, so `stain·mass·fall` lands per touched cell.
+        let mut pig = DiffusionGrid::cell_from_color_mass(color, pigment_mass);
+        pig[ph2d_painter_brush::diffusion::PIG_STAIN] += staining * pigment_mass;
         Some(Self {
             cx,
             cy,
             r: radius.max(0.5),
             water_add,
-            pig: DiffusionGrid::cell_from_color_mass(color, pigment_mass),
+            pig,
         })
     }
 }
@@ -183,10 +192,12 @@ pub fn step_cpu_reference(grid: &mut DiffusionGrid, params: &FluidParams, steps:
     }
 }
 
-/// The WGSL `Params` UBO, byte-for-byte (16 × 4 = 64 B). `#[repr(C)]` Pod so a
-/// per-frame update is a zero-copy `write_buffer` of `bytemuck::bytes_of` (HR-3).
-/// The `region_*` fields scope the diffuse/advect/evaporate dispatch to the wet
-/// envelope (ADR-0078 S1) — full-grid `(0, 0, width, height)` is the un-scoped pass.
+/// The WGSL `Params` UBO, byte-for-byte (28 × 4 = 112 B, 16-aligned). `#[repr(C)]` Pod so a
+/// per-frame update is a zero-copy `write_buffer` of `bytemuck::bytes_of` (HR-3). Each shader
+/// declares its own smaller `Params` view of this one buffer (a uniform binding only requires
+/// `shader struct ≤ buffer`), reading only the fields it needs; only `transfer.wgsl`'s `cs_lift`
+/// reads `lift` (offset 24). The `region_*` fields scope the diffuse/advect/evaporate dispatch to
+/// the wet envelope (ADR-0078 S1) — full-grid `(0, 0, width, height)` is the un-scoped pass.
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuParams {
@@ -221,6 +232,13 @@ struct GpuParams {
     capillary_mobility: f32,
     // ADR-0078 S5c — BFECC/MacCormack advection sharpness (read by `cs_advect_correct`).
     sharpness: f32,
+    // ── ADR-0081 lift ── re-mobilizes NON-staining deposited pigment back into the flowing
+    // layer in wet cells (read by `cs_lift`). The 3 trailing pads round the struct to 28 f32
+    // = 112 B (16-aligned — required for the uniform buffer). 0 ⇒ the lift pass is dormant.
+    lift: f32,
+    _pad_lift0: f32,
+    _pad_lift1: f32,
+    _pad_lift2: f32,
 }
 
 /// Pad (cells) added around the composite envelope for the region-scoped solver
@@ -290,6 +308,10 @@ pub struct FluidSolver {
     transfer: wgpu::ComputePipeline,
     deposited: wgpu::Buffer,
     bg_transfer: wgpu::BindGroup,
+    /// Lift pass (`cs_lift`, ADR-0081): the inverse of `cs_transfer` — re-mobilizes NON-staining
+    /// `deposited` pigment back into `pig_a` in wet cells. Shares the `transfer_bgl` layout +
+    /// `bg_transfer` bind group (same flowing/deposited/water bindings). Dormant while `lift` is 0.
+    lift: wgpu::ComputePipeline,
     /// Combine pass (`cs_combine`, ADR-0078 S3c): `total = flowing + deposited`, the
     /// buffer the compositor reads (so deposited pigment is visible).
     combine: wgpu::ComputePipeline,
@@ -404,8 +426,8 @@ impl FluidSolver {
             })
         };
         let f32n = (n * 4) as u64;
-        // Pigment buffers carry PIG_CH (=28) channels per cell = 7 vec4 (ADR-0080):
-        // size = n · 28 · 4 bytes. (Was n · 16 when pigment was one vec4.)
+        // Pigment buffers carry PIG_CH (=32) channels per cell = 8 vec4 (ADR-0080/0081):
+        // size = n · 32 · 4 bytes. (Was n · 16 when pigment was one vec4.)
         let vec4n = (n * PIG_CH * 4) as u64;
         let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-painter-fluid params"),
@@ -630,6 +652,15 @@ impl FluidSolver {
             layout: Some(&transfer_layout),
             module: &transfer_module,
             entry_point: Some("cs_transfer"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+        // Lift pass (`cs_lift`, ADR-0081) — same module, layout + bind group as transfer.
+        let lift = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("ph2d-painter-fluid lift pipeline"),
+            layout: Some(&transfer_layout),
+            module: &transfer_module,
+            entry_point: Some("cs_lift"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         });
@@ -1052,6 +1083,10 @@ impl FluidSolver {
                 capillary: 0.0,
                 capillary_mobility: 0.0,
                 sharpness: 0.0,
+                lift: 0.0,
+                _pad_lift0: 0.0,
+                _pad_lift1: 0.0,
+                _pad_lift2: 0.0,
             }),
             water,
             paper,
@@ -1073,6 +1108,7 @@ impl FluidSolver {
             transfer,
             deposited,
             bg_transfer,
+            lift,
             combine,
             total,
             bg_combine,
@@ -1149,6 +1185,11 @@ impl FluidSolver {
             capillary: 0.0,
             capillary_mobility: 0.0,
             sharpness: 0.0,
+            // Lift (ADR-0081) off until `set_from_diffusion` drives it per-brush.
+            lift: 0.0,
+            _pad_lift0: 0.0,
+            _pad_lift1: 0.0,
+            _pad_lift2: 0.0,
         };
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
@@ -1211,6 +1252,10 @@ impl FluidSolver {
             capillary: dp.capillary,
             capillary_mobility: dp.capillary_mobility,
             sharpness: dp.sharpness,
+            lift: dp.lift,
+            _pad_lift0: 0.0,
+            _pad_lift1: 0.0,
+            _pad_lift2: 0.0,
         };
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
@@ -1506,6 +1551,8 @@ impl FluidSolver {
         let capillary = self.params_cache.get().capillary > 0.0;
         // BFECC/MacCormack sharpening of the velocity advect? (ADR-0078 S5c — velocity-mode only.)
         let sharpen = shallow && self.params_cache.get().sharpness > 0.0;
+        // Lift on? (ADR-0081 — `set_from_diffusion` set it.) Re-mobilizes deposited pigment.
+        let lift = self.params_cache.get().lift > 0.0;
         for _ in 0..substeps {
             // MoveWater (ADR-0078 S3d): accelerate `(u,v)` (a→b), make it divergence-free
             // (divergence → seed pressure → RELAX_ITERS Jacobi sweeps → subtract gradient,
@@ -1525,6 +1572,13 @@ impl FluidSolver {
                     run(&mut enc, &self.jacobi, bg);
                 }
                 run(&mut enc, &self.project, &self.bg_project);
+            }
+            // Lift (ADR-0081): re-mobilize NON-staining deposited pigment back into flowing in
+            // wet cells, BEFORE diffuse (the CPU `step` order — after move_water, before diffuse)
+            // so the lifted pigment blooms/moves this substep. Shares `bg_transfer` (same
+            // flowing/deposited/water bindings). Skipped while the lift rate is 0.
+            if lift {
+                run(&mut enc, &self.lift, &self.bg_transfer);
             }
             // Then the CPU `step` order: diffuse A→B, advect B→A (velocity-mode when the
             // layer is on, else the static gradient flow), TRANSFER (flowing→deposited),

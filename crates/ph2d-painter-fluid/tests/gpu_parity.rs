@@ -15,7 +15,7 @@
 #![cfg(feature = "fluid")]
 
 use ph2d_gpu::GpuContext;
-use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, PIG_MASS, WetCell};
+use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, PIG_MASS, PIG_STAIN, WetCell};
 use ph2d_painter_fluid::{DabGpu, FluidParams, FluidSolver, step_cpu_reference};
 
 /// Worst |Δ| over the REDUCED colour (linear-sRGB) + the mass channel of two wet
@@ -54,6 +54,7 @@ fn seeded_grid(w: u32, h: u32) -> DiffusionGrid {
         0.5,
         [0.0, 0.0, 0.0],
         0.0 + 0.0 + 0.0,
+        0.0,
     );
     g.splat(
         w as f32 * 0.42,
@@ -62,6 +63,7 @@ fn seeded_grid(w: u32, h: u32) -> DiffusionGrid {
         0.6,
         [0.1, 0.2, 0.7],
         0.1 + 0.2 + 0.7,
+        0.0,
     );
     g
 }
@@ -243,14 +245,14 @@ fn cs_splat_matches_cpu_splat_bit_exact() {
     // CPU reference: the same `splat` calls the tool makes into the live grid.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
 
     // GPU: the same dabs through `cs_splat` onto a zeroed resident field.
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -316,7 +318,7 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     // CPU reference: splat the dabs into a fresh grid, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     step_cpu_reference(&mut cpu, &params, substeps);
 
@@ -324,7 +326,7 @@ fn step_resident_splat_matches_cpu_splat_then_step() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -391,7 +393,7 @@ fn gpu_transfer_matches_cpu_deposition() {
     // CPU reference: same splats, deposition ON, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     let mut dp = base.to_diffusion();
     dp.deposition = dep;
@@ -405,7 +407,7 @@ fn gpu_transfer_matches_cpu_deposition() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -469,7 +471,7 @@ fn gpu_combine_equals_flowing_plus_deposited() {
         (24.0, 20.0, 5.0, 0.6, [0.4, 0.1, 0.1]),
     ]
     .iter()
-    .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]))
+    .filter_map(|&(cx, cy, r, wa, rgb)| DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0))
     .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
     solver.set_params(&gpu.queue, &base);
@@ -530,6 +532,7 @@ fn region_scoped_step_matches_full_grid_inside_region() {
         raw.3,
         raw.4,
         raw.4[0] + raw.4[1] + raw.4[2],
+        0.0,
     )
     .into_iter()
     .collect();
@@ -608,7 +611,7 @@ fn read_field_stats_matches_cpu_max_water_and_bbox() {
     ];
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     let cpu_max = cpu.max_water();
     let cpu_bbox = cpu.water_bbox(threshold);
@@ -616,7 +619,7 @@ fn read_field_stats_matches_cpu_max_water_and_bbox() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -703,7 +706,7 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     // CPU reference: same splats, velocity layer ON, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     let mut dp = base.to_diffusion();
     dp.velocity = vel;
@@ -718,7 +721,7 @@ fn gpu_shallow_water_matches_cpu_move_water() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -803,7 +806,7 @@ fn gpu_capillary_matches_cpu_capillary() {
     // CPU reference: splat on dry paper, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(sx, sy, r, wa, rgb) in &raw {
-        cpu.splat(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     for _ in 0..substeps {
         cpu.step(&dp);
@@ -813,7 +816,7 @@ fn gpu_capillary_matches_cpu_capillary() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(sx, sy, r, wa, rgb)| {
-            DabGpu::new(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(sx, sy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -900,7 +903,7 @@ fn gpu_maccormack_matches_cpu_sharpness() {
 
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     for _ in 0..substeps {
         cpu.step(&dp);
@@ -909,7 +912,7 @@ fn gpu_maccormack_matches_cpu_sharpness() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -973,7 +976,7 @@ fn gpu_multi_pigment_subtractive_mix_matches_cpu() {
     // CPU reference: splat both dabs into a fresh grid, then step.
     let mut cpu = DiffusionGrid::new(w, h, 1.0);
     for &(cx, cy, r, wa, rgb) in &raw {
-        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2]);
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
     }
     step_cpu_reference(&mut cpu, &params, substeps);
 
@@ -981,7 +984,7 @@ fn gpu_multi_pigment_subtractive_mix_matches_cpu() {
     let dabs: Vec<DabGpu> = raw
         .iter()
         .filter_map(|&(cx, cy, r, wa, rgb)| {
-            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2])
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
         })
         .collect();
     let solver = FluidSolver::new(&gpu.device, w, h);
@@ -1025,5 +1028,195 @@ fn gpu_multi_pigment_subtractive_mix_matches_cpu() {
     assert!(
         worst < 2.0e-2,
         "GPU multi-pigment field diverged from CPU reduced colour: {worst}"
+    );
+}
+
+/// Build the `DiffusionParams` for an ISOLATED lift step (ADR-0081): only the lift pass does
+/// anything. `diffusivity = 0` makes `cs_diffuse` / CPU `diffuse` a no-op; `downhill =
+/// flow_outward = 0` (and velocity off) make the advect flow `(0,0)` → no transport; `deposition
+/// = deposition_dry = 0` keeps `cs_transfer` dormant; `evaporation = 0` freezes the water so the
+/// wet gate is identical on both sides. The default wet band / permeability so the gate matches
+/// the deposit-phase field. Only `lift` is live → the GPU `cs_lift` vs the CPU `lift_pigment`.
+fn lift_only_params(lift: f32) -> DiffusionParams {
+    DiffusionParams {
+        diffusivity: 0.0,
+        evaporation: 0.0,
+        downhill: 0.0,
+        flow_outward: 0.0,
+        deposition: 0.0,
+        deposition_dry: 0.0,
+        granulation: 0.0,
+        velocity: 0.0,
+        viscosity: 0.0,
+        drag: 0.0,
+        pressure: 0.0,
+        capillary: 0.0,
+        sharpness: 0.0,
+        lift,
+        ..DiffusionParams::default()
+    }
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn gpu_lift_matches_cpu_lift() {
+    // ADR-0081: the GPU `cs_lift` pass must reproduce the CPU `DiffusionGrid::lift_pigment` —
+    // the inverse of deposition. After dabbing a NON-staining pigment (staining = 0) into a wet
+    // field and freezing it into the DEPOSITED layer (deposition ON, several steps), ONE lift
+    // step must re-mobilize the same fraction of deposited pigment back into the FLOWING layer
+    // on BOTH sides. We assert parity over the reduced colour + mass of BOTH layers (flowing AND
+    // deposited), then add a staining-resist check (a staining = 1 deposit must NOT lift).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (44u32, 38u32);
+    let deposit_steps = 12u32;
+    let (dep, dep_dry, gran) = (0.05f32, 0.04f32, 1.2f32);
+    let lift_rate = 0.6f32;
+    let base = FluidParams::default();
+    // Non-staining pigment dabs (staining = 0 → fully liftable) into a wet pool.
+    let raw = [
+        (22.0f32, 19.0, 9.0, 0.9, [0.10f32, 0.20, 0.70]),
+        (26.0, 22.0, 6.0, 0.85, [0.30, 0.05, 0.05]),
+        (16.0, 17.0, 5.0, 0.8, [0.00, 0.40, 0.10]),
+    ];
+
+    // ── CPU reference ───────────────────────────────────────────────────────────────────────
+    // Deposit phase: splat (staining 0), deposition ON, step → builds the deposited layer.
+    let mut cpu = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0);
+    }
+    let mut dep_dp = base.to_diffusion();
+    dep_dp.deposition = dep;
+    dep_dp.deposition_dry = dep_dry;
+    dep_dp.granulation = gran;
+    for _ in 0..deposit_steps {
+        cpu.step(&dep_dp);
+    }
+    // One isolated lift step.
+    cpu.step(&lift_only_params(lift_rate));
+
+    // ── GPU ─────────────────────────────────────────────────────────────────────────────────
+    let dabs: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 0.0)
+        })
+        .collect();
+    let solver = FluidSolver::new(&gpu.device, w, h);
+    solver.set_params(&gpu.queue, &base);
+    solver.set_deposition(&gpu.queue, dep, dep_dry, gran);
+    solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver.upload_paper(&gpu.queue, cpu.paper());
+    // Deposit phase (same splats + step count + deposition params as the CPU).
+    solver.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs,
+        deposit_steps,
+        (0, 0, w - 1, h - 1),
+    );
+    // One isolated lift step: lift ON, everything else off (no new dabs). `set_from_diffusion`
+    // pushes the full DiffusionParams (incl. `lift`); `cs_lift` runs before the no-op diffuse.
+    solver.set_from_diffusion(&gpu.queue, &lift_only_params(lift_rate));
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &[], 1, (0, 0, w - 1, h - 1));
+    let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
+    let gpu_dep = solver.read_deposited(&gpu.device, &gpu.queue);
+
+    // ── Parity over BOTH layers (reduced colour + mass) ───────────────────────────────────────
+    let n = (w * h) as usize;
+    let (cpu_flow, cpu_dep) = (cpu.pigment(), cpu.deposited());
+    let mut worst_flow = 0.0f32;
+    let mut worst_dep = 0.0f32;
+    let mut total_lifted = 0.0f32; // GPU flowing mass after the lift (must be > 0)
+    for i in 0..n {
+        worst_flow = worst_flow.max(cell_color_mass_delta(&gpu_flow[i], &cpu_flow[i]));
+        worst_dep = worst_dep.max(cell_color_mass_delta(&gpu_dep[i], &cpu_dep[i]));
+        total_lifted += gpu_flow[i][PIG_MASS];
+    }
+    eprintln!(
+        "cs_lift vs CPU: worst flowing |Δ| = {worst_flow:.6}, worst deposited |Δ| = {worst_dep:.6}, GPU flowing total after lift = {total_lifted:.3}"
+    );
+    assert!(
+        total_lifted > 0.01,
+        "GPU lifted nothing — cs_lift is dead, parity meaningless"
+    );
+    assert!(
+        worst_flow < 2.0e-2,
+        "cs_lift flowing diverged from CPU: {worst_flow}"
+    );
+    assert!(
+        worst_dep < 2.0e-2,
+        "cs_lift deposited diverged from CPU: {worst_dep}"
+    );
+
+    // ── Staining-resist check (ADR-0081): a STAINING pigment (staining = 1) must NOT lift ─────
+    // Same field, but the dabs are fully staining → the per-cell `stain = stain_acc/mass → 1`,
+    // so `rate = lift·wet·(1 − stain) = 0`. The deposited layer is unchanged by the lift step;
+    // the GPU must reproduce that resist exactly (the WHOLE point of the staining accumulator).
+    let mut cpu_s = DiffusionGrid::new(w, h, 1.0);
+    for &(cx, cy, r, wa, rgb) in &raw {
+        cpu_s.splat(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 1.0);
+    }
+    for _ in 0..deposit_steps {
+        cpu_s.step(&dep_dp);
+    }
+    let dabs_s: Vec<DabGpu> = raw
+        .iter()
+        .filter_map(|&(cx, cy, r, wa, rgb)| {
+            DabGpu::new(cx, cy, r, wa, rgb, rgb[0] + rgb[1] + rgb[2], 1.0)
+        })
+        .collect();
+    let solver_s = FluidSolver::new(&gpu.device, w, h);
+    solver_s.set_params(&gpu.queue, &base);
+    solver_s.set_deposition(&gpu.queue, dep, dep_dry, gran);
+    solver_s.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    solver_s.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    solver_s.clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
+    solver_s.upload_paper(&gpu.queue, cpu_s.paper());
+    solver_s.step_resident_splat(
+        &gpu.device,
+        &gpu.queue,
+        &dabs_s,
+        deposit_steps,
+        (0, 0, w - 1, h - 1),
+    );
+    let dep_before: Vec<WetCell> = solver_s.read_deposited(&gpu.device, &gpu.queue);
+    solver_s.set_from_diffusion(&gpu.queue, &lift_only_params(lift_rate));
+    solver_s.step_resident_splat(&gpu.device, &gpu.queue, &[], 1, (0, 0, w - 1, h - 1));
+    let dep_after: Vec<WetCell> = solver_s.read_deposited(&gpu.device, &gpu.queue);
+
+    // The staining deposit must (a) carry stain ≈ mass (stain_acc/mass → 1) and (b) be
+    // unchanged by the lift, on BOTH the GPU (before vs after) and vs the CPU.
+    let cpu_s_dep = cpu_s.deposited();
+    let mut worst_resist = 0.0f32; // GPU before vs after the lift (must stay put)
+    let mut worst_s_parity = 0.0f32; // GPU after vs CPU after
+    let mut max_stain_ratio = 0.0f32;
+    for i in 0..n {
+        worst_resist = worst_resist.max(cell_color_mass_delta(&dep_before[i], &dep_after[i]));
+        worst_s_parity = worst_s_parity.max(cell_color_mass_delta(&dep_after[i], &cpu_s_dep[i]));
+        let m = dep_after[i][PIG_MASS];
+        if m > 1e-3 {
+            max_stain_ratio = max_stain_ratio.max(dep_after[i][PIG_STAIN] / m);
+        }
+    }
+    eprintln!(
+        "cs_lift staining resist: GPU deposited before↔after |Δ| = {worst_resist:.6}, GPU↔CPU after |Δ| = {worst_s_parity:.6}, max stain ratio = {max_stain_ratio:.3}"
+    );
+    assert!(
+        max_stain_ratio > 0.9,
+        "staining deposit should carry stain ≈ 1 (got {max_stain_ratio}) — the accumulator is broken"
+    );
+    assert!(
+        worst_resist < 2.0e-2,
+        "staining pigment LIFTED on the GPU (should resist): {worst_resist}"
+    );
+    assert!(
+        worst_s_parity < 2.0e-2,
+        "GPU staining-resist deposited diverged from CPU: {worst_s_parity}"
     );
 }

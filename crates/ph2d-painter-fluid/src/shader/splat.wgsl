@@ -13,13 +13,13 @@
 // fuses `a*b+c`), worth ~1e-7, far below the ~1e-4 the diffuse/advect gather passes
 // settle for and invisible after the composite's u8 quantization.
 //
-// **Pigment = PV (=7) `vec4<f32>` per cell = 28 channels** (ADR-0080): the dab
+// **Pigment = PV (=8) `vec4<f32>` per cell = 32 channels (+ stain)** (ADR-0080/0081): the dab
 // carries the per-cell pigment of its colour already weighted by the peak deposit
 // mass (`cell_from_color_mass(colour, pigment_mass)` on the CPU side), so a cell
 // adds `dab.pig[v] * fall` per vec4 — the mass-weighted K/S accumulation that mixes
 // subtractively. Water is `f32`. Cell index = y*width + x; channels at `c*PV + v`.
 
-const PV: u32 = 7u;
+const PV: u32 = 8u;
 
 struct SplatParams {
     width: u32,
@@ -32,14 +32,15 @@ struct SplatParams {
     _p2: u32,
 }
 
-// std430: cx,cy,r,water_add pack the first 16 B (vec4-aligned); `pig` is 7 vec4
-// (112 B) → 128 B stride, matching the `#[repr(C)] DabGpu` on the Rust side.
+// std430: cx,cy,r,water_add pack the first 16 B (vec4-aligned); `pig` is 8 vec4
+// (128 B, the 32-channel pigment incl. stain) → 144 B stride, matching the
+// `#[repr(C)] DabGpu` on the Rust side.
 struct Dab {
     cx: f32,
     cy: f32,
     r: f32,
     water_add: f32,
-    pig: array<vec4<f32>, 7>,
+    pig: array<vec4<f32>, 8>,
 }
 
 @group(0) @binding(0) var<uniform> S: SplatParams;
@@ -56,7 +57,7 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let i = gy * S.width + gx;
     var w = water[i];
-    var p: array<vec4<f32>, 7>;
+    var p: array<vec4<f32>, 8>;
     for (var v = 0u; v < PV; v = v + 1u) {
         p[v] = pig[i * PV + v];
     }

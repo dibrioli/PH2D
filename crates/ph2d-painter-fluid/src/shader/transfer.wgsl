@@ -139,10 +139,14 @@ fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
         let stain_src = clamp(lift_source[i * PV + 7u].x / src_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
         let rate = clamp(P.lift * wet * (1.0 - stain_src), 0.0, 1.0);
         if (rate > 0.0) {
+            // Only LIFT_BLEED_KEEP (0.25, ADR-0084 `diffusion.rs`) of the lifted dry paint bleeds
+            // into the wash; the rest is REMOVED (carried off the brush) so the spot LIGHTENS rather
+            // than concentrating into a dark merged-mass glaze. `lifted_frac` drives the compositor
+            // backdrop-alpha drop (the paper pigment lightens by the FULL lifted amount).
             for (var v = 0u; v < PV; v = v + 1u) {
                 let moved = rate * lift_source[i * PV + v];
                 lift_source[i * PV + v] = lift_source[i * PV + v] - moved;
-                flowing[i * PV + v] = flowing[i * PV + v] + moved;
+                flowing[i * PV + v] = flowing[i * PV + v] + moved * 0.25;
             }
             lifted_frac[i] = lifted_frac[i] + rate * (1.0 - lifted_frac[i]);
         }

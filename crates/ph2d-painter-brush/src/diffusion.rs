@@ -232,6 +232,15 @@ const HEIGHT_SEED: u32 = 0x70a9_e2c5; // shared with cpu_render paper tooth
 /// bit-identical to the isotropic ring, so the contract gate + the non-destructive default hold.
 const BRANCH_GAIN: f32 = 2.0;
 
+/// **Backdrop-lift bleed-keep fraction (ADR-0084, tuned 2026-06-09).** Of the dry paint a wet brush
+/// lifts off the canvas, only this fraction bleeds into the active wash — the rest is REMOVED (the
+/// brush carries it away). Lifting must dilute/lighten the spot, but merging the dry paint's FULL
+/// mass into the wash made the K-M glaze of one combined-mass layer read DARKER/denser than the
+/// original thin layering (Enio's smoke 2026-06-09: the lifted stroke went dark/muddy instead of
+/// lightening). Keeping only a fraction (+ the `lifted_frac` backdrop-alpha drop that removes the
+/// paper pigment) makes the area genuinely lighten, with a little colour bleeding into the wash.
+const LIFT_BLEED_KEEP: f32 = 0.25;
+
 /// Fixed Jacobi-iteration count for the shallow-water pressure projection
 /// ([`DiffusionGrid::project`], ADR-0078 S3d). A *fixed* count (not a convergence
 /// threshold) keeps the solve deterministic + bounded (HR-5) and makes the GPU mirror
@@ -976,10 +985,13 @@ impl DiffusionGrid {
             for k in 0..PIG_CH {
                 let moved = rate * self.lift_source[i][k];
                 self.lift_source[i][k] -= moved;
-                self.pigment[i][k] += moved;
+                // Only a FRACTION bleeds into the wash; the rest is removed (carried off the brush)
+                // so the spot lightens instead of concentrating into a dark merged-mass glaze.
+                self.pigment[i][k] += moved * LIFT_BLEED_KEEP;
             }
             // Cumulative fraction lifted (the donor depletes geometrically by `1−rate`, so this
-            // "remaining" accumulation stays consistent with `1 − src_mass/initial_mass`).
+            // "remaining" accumulation stays consistent with `1 − src_mass/initial_mass`). Drives
+            // the compositor backdrop-alpha drop → the dry paint lightens by the FULL lifted amount.
             self.lifted_frac[i] += rate * (1.0 - self.lifted_frac[i]);
         }
     }
@@ -2502,8 +2514,9 @@ mod tests {
     }
 
     /// **THE ADR-0084 gate:** seeding the donor from a backdrop + a WET field + `lift > 0`
-    /// re-mobilizes the dry paint into the flowing layer (`lift_source`↓, flowing↑) and raises
-    /// `lifted_frac`, conserving mass (every gram leaving the donor lands in flowing).
+    /// re-mobilizes the dry paint off the donor (`lift_source`↓), raises `lifted_frac` (→ the
+    /// compositor lightens the backdrop), and bleeds only `LIFT_BLEED_KEEP` of the lifted mass into
+    /// the flowing wash (the rest is removed — carried off the brush — so the spot lightens, not darkens).
     #[test]
     fn backdrop_lift_remobilizes_dry_paint() {
         let (gw, gh) = (32u32, 32u32);
@@ -2537,18 +2550,21 @@ mod tests {
         );
         assert!(
             flow_after > flow_before + 1.0,
-            "the lifted paint is now flowing"
+            "some lifted paint bleeds into the wash"
         );
         assert!(
             max_frac > 0.5,
-            "lifted_frac records the re-mobilization (compositor lightens)"
+            "lifted_frac records the re-mobilization (compositor lightens the backdrop)"
         );
-        // Conservation: donor loss == flowing gain (lift only MOVES pigment).
+        // Removal model (ADR-0084): the donor depletes fully, but only LIFT_BLEED_KEEP of the lifted
+        // mass lands in the wash (the rest is removed — carried off the brush) so the spot lightens
+        // instead of concentrating into a dark merged-mass glaze. flowing gain ≈ 0.25·donor loss.
         let loss = src_before - src_after;
         let gain = flow_after - flow_before;
         assert!(
-            (loss - gain).abs() < 1e-2 * (loss.abs() + 1.0),
-            "backdrop lift conserves mass: donor lost {loss:.3}, flowing gained {gain:.3}"
+            (gain - 0.25 * loss).abs() < 0.05 * (loss.abs() + 1.0),
+            "backdrop lift bleeds ~0.25 of the lifted mass into the wash: donor lost {loss:.3}, flowing gained {gain:.3} (expected ~{:.3})",
+            0.25 * loss
         );
     }
 

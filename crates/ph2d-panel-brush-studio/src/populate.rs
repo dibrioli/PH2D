@@ -217,10 +217,15 @@ pub fn populate(store: &mut WidgetStore) {
     );
 
     // ── Watercolor — all 15 fluid-solver controls (ADR-0079) ────────────────
-    // The slider stores the normalized 0..1; the chip's affine map (scale = max−min,
-    // offset = min) shows the physical value — the SAME mapping the paint + the tool's
-    // `set_normalized` use. Index-derived ids (no per-control const), iterating the
-    // single CONTROLS source.
+    populate_watercolor(store, &s);
+}
+
+/// Register the Watercolor section's fluid-solver control slider+chip pairs (ADR-0079) —
+/// split out of [`populate`] to keep it under the panel fn LOC cap. The slider stores the
+/// normalized 0..1; the chip's affine map (scale = max−min, offset = min) shows the physical
+/// value, the SAME mapping the paint + the tool's `set_normalized` use. Index-derived ids
+/// (no per-control const) iterate the single CONTROLS source.
+fn populate_watercolor(store: &mut WidgetStore, s: &BrushStudioSnapshot) {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_tool_painter::WatercolorParams;
     for i in 0..WatercolorParams::COUNT {

@@ -333,7 +333,7 @@ pub(super) fn publish(
     let mut alive_extras: Vec<u64> = Vec::with_capacity(hero.gizmo.extra_selection.len());
     for bits in hero.gizmo.extra_selection.clone() {
         if let Some(v) = build_view(bits, sim, present) {
-            hero.gizmo.extra_views.push(v);
+            hero.gizmo.extra_views.push((bits, v));
             alive_extras.push(bits);
         }
     }
@@ -348,7 +348,16 @@ pub(super) fn publish(
         // Primary disappeared. Promote oldest extra if any; else clear.
         hero.gizmo.selection = if !hero.gizmo.extra_selection.is_empty() {
             let promoted = hero.gizmo.extra_selection.remove(0);
-            // The promoted entity already had a view in extra_views;
+            // Keep extra_views in lockstep with extra_selection: the promoted
+            // entity becomes the primary (painted via `hero.gizmo.view`), so
+            // its view must leave `extra_views` too. Without this, every
+            // remaining extra is painted with the PREVIOUS extra's view (the
+            // bits/view zip in paint drifts off-by-one) — the gizmo handle is
+            // registered at the wrong sprite's position and the click grabs
+            // the wrong sprite (Enio 2026-06-08: "a 2ª e 3ª sprites não giram").
+            if !hero.gizmo.extra_views.is_empty() {
+                hero.gizmo.extra_views.remove(0);
+            }
             // re-point hero.gizmo.view to it.
             hero.gizmo.view = build_view(promoted, sim, present);
             Some(promoted)
@@ -433,7 +442,9 @@ pub(super) fn publish(
         Some(v)
     } else if hero.gizmo.selected_len() > 1 {
         let primary = hero.gizmo.view.as_ref();
-        let mut iter = primary.into_iter().chain(hero.gizmo.extra_views.iter());
+        let mut iter = primary
+            .into_iter()
+            .chain(hero.gizmo.extra_views.iter().map(|(_, v)| v));
         iter.next().map(|first| {
             let mut min_x = first.bbox_min_world[0];
             let mut min_y = first.bbox_min_world[1];

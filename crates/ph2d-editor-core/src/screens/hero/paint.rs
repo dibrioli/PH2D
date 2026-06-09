@@ -161,15 +161,11 @@ pub fn paint_hero_screen(
     // used to paint in the shell AFTER `paint_hero_screen` returned, which
     // put them visually on top of panels AND registered their hit rects
     // after the panel barriers (so handles were clickable through chrome).
-    // Snapshot `(bits, view)` first so `hero.gizmo` isn't borrowed while
-    // `&mut hero.hit_index` + `&mut hero.gizmo.gizmo_hit_map` are held.
-    let extras_snapshot: Vec<(u64, crate::gizmo::GizmoView)> = hero
-        .gizmo
-        .extra_selection
-        .iter()
-        .copied()
-        .zip(hero.gizmo.extra_views.iter().copied())
-        .collect();
+    // Snapshot the `(bits, view)` pairs first so `hero.gizmo` isn't borrowed
+    // while `&mut hero.hit_index` + `&mut hero.gizmo.gizmo_hit_map` are held.
+    // Each pair carries its own bits, so a handle can never be registered
+    // under a different sprite's identity (no zip against `extra_selection`).
+    let extras_snapshot: Vec<(u64, crate::gizmo::GizmoView)> = hero.gizmo.extra_views.clone();
     for (bits, v) in extras_snapshot {
         crate::gizmo::paint_sprite_gizmo_keyed(
             scene,

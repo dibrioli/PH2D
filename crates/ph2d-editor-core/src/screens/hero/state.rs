@@ -111,7 +111,14 @@ pub struct GizmoStateGroup {
     /// handles) for each — visual confirmation that those sprites are
     /// part of the active selection. Empty when `extra_selection` is
     /// empty or no sprites resolved.
-    pub extra_views: Vec<crate::gizmo::GizmoView>,
+    /// `(entity bits, view)` pairs — the bits travel WITH the view so the
+    /// gizmo painter registers each handle under the correct sprite's
+    /// identity. Previously this was a bare `Vec<GizmoView>` zipped against
+    /// `extra_selection` at paint time; any drift between the two parallel
+    /// lists (e.g. primary promotion trimming one but not the other) made a
+    /// sprite's handles register under a *different* sprite's bits, so
+    /// grabbing it rotated around the wrong sprite (Enio 2026-06-08).
+    pub extra_views: Vec<(u64, crate::gizmo::GizmoView)>,
     /// Onda 2: per-frame "global" view covering every selected sprite
     /// — the union of all individual bboxes, no rotation. `Some` only
     /// when `selected_len() > 1`. The painter draws a distinctive

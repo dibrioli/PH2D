@@ -23,9 +23,19 @@ pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> Node
     match target {
         GizmoTarget::PrimaryIndividual => canonical_id,
         GizmoTarget::ExtraIndividual(bits) => {
-            // Golden-ratio scrambler so a sprite with `bits` close to
-            // a canonical-id integer can't collide by accident.
-            let h = bits ^ 0x_9E37_79B9_7F4A_7C15;
+            // MULTIPLY (not XOR) the bits by the golden constant. The old
+            // `canonical ^ bits ^ GOLDEN` is LINEAR — GOLDEN cancels when two
+            // ids are compared, so two handles collide whenever
+            // `canonical_a ^ canonical_b == bits_a ^ bits_b`. With CONSECUTIVE
+            // rotate-corner ids (960..963) and CONSECUTIVE entity bits, that
+            // condition is met constantly (e.g. sprite589.TL, sprite588.TR,
+            // sprite591.BL, sprite590.BR all hashed to the same id), so
+            // `gizmo_hit_map.insert` overwrote and a click on one sprite's
+            // handle resolved to whichever sprite painted last — the "2nd/3rd
+            // gizmo pivots on the 4th sprite" bug (Enio 2026-06-08).
+            // `bits * GOLDEN` is non-linear: consecutive bits map far apart, so
+            // the difference can never equal the tiny `canonical ^ canonical`.
+            let h = bits.wrapping_mul(0x_9E37_79B9_7F4A_7C15);
             NodeId(canonical_id.0 ^ h)
         }
         GizmoTarget::Global => NodeId(canonical_id.0 ^ 0x_91A0_5B12_4FE9_3A8D),

@@ -349,7 +349,10 @@ pub(crate) fn drive_fluid_gpu(tools: &mut ToolRegistry, gpu: &GpuContext) {
         let mut stats_us = 0u64;
         if sess.frame % DRY_CHECK_EVERY == 0 {
             let ts = profile.then(Instant::now);
-            let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-3);
+            // Threshold 1e-4 (not 1e-3) so the wet bbox tracks the THIN capillary fringe film
+            // where the wick carries pigment — keeps the grown envelope covering it. `max_water`
+            // (the dry-check) is threshold-independent (whole-field max), so the drop is unaffected.
+            let stats = sess.solver.read_field_stats(&gpu.device, &gpu.queue, 1.0e-4);
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
             // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
             // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps

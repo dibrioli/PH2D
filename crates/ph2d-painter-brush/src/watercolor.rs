@@ -81,10 +81,11 @@ impl Default for WatercolorParams {
             viscosity: 0.18,
             drag: 0.1,
             pressure: 0.3,
-            // Capillary fringe preset (ADR-0078 S5) — a tasteful soft wet-edge ON by default so
-            // the watercolor brush shows the signature feathery fringe out of the box; the
-            // artist tunes it 0..0.24 via the "Capillary" slider (0 = the harder wet-gate edge).
-            capillary: 0.1,
+            // Capillary fringe preset (ADR-0078 S5) — a clearly visible soft wet-edge ON by
+            // default so the watercolor brush shows the signature *coloured* feathery fringe out
+            // of the box (the water wick carries a thread of pigment). The artist tunes it
+            // 0..0.24 via the "Capillary" slider (0 = the harder wet-gate edge).
+            capillary: 0.15,
         }
     }
 }

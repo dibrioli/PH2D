@@ -312,14 +312,14 @@ pub struct FluidSolver {
     bg_advect_velocity: wgpu::BindGroup,
     // ── Capillary fringe (ADR-0078 S5) ──
     capillary_pipe: wgpu::ComputePipeline,
-    copy_water_pipe: wgpu::ComputePipeline,
-    /// Water ping-pong scratch — `cs_capillary` writes the wicked field here, `cs_copy_water`
-    /// lands it back in `water` (region-scoped, so only the fringe region is touched). Owned
-    /// only to keep the GPU buffer alive for the two bind groups that reference it.
+    copy_fields_pipe: wgpu::ComputePipeline,
+    /// Water ping-pong scratch — `cs_capillary` writes the wicked water field here, `cs_copy_fields`
+    /// lands it back in `water` (region-scoped). Owned only to keep the GPU buffer alive for the
+    /// two bind groups that reference it (the pigment scratch reuses the existing `pig_b`).
     #[allow(dead_code)]
     water_b: wgpu::Buffer,
     bg_capillary: wgpu::BindGroup,
-    bg_copy_water: wgpu::BindGroup,
+    bg_copy_fields: wgpu::BindGroup,
 }
 
 impl FluidSolver {
@@ -901,10 +901,18 @@ impl FluidSolver {
             })
         };
         let water_b = buf("fluid water_b", f32n, wgpu::BufferUsages::empty());
-        // cs_capillary: (params, water_in r=water, paper r, water_out rw=water_b).
+        // cs_capillary: (params, water_in r=water, paper r, water_out rw=water_b,
+        //                pig_in r=pig_a, pig_out rw=pig_b). Wicks water + co-advects pigment.
         let bgl_cap = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("fluid capillary bgl"),
-            entries: &[uniform_entry(0), storage(1, true), storage(2, true), storage(3, false)],
+            entries: &[
+                uniform_entry(0),
+                storage(1, true),
+                storage(2, true),
+                storage(3, false),
+                storage(4, true),
+                storage(5, false),
+            ],
         });
         let capillary_pipe = cap_pipe("cs_capillary", &sw_layout(&bgl_cap));
         let bg_capillary = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -915,18 +923,33 @@ impl FluidSolver {
                 entry(1, &water),
                 entry(2, &paper),
                 entry(3, &water_b),
+                entry(4, &pig_a),
+                entry(5, &pig_b),
             ],
         });
-        // cs_copy_water: (params, water_in r=water_b, water_out rw=water).
+        // cs_copy_fields: (params, water_in r=water_b, water_out rw=water, pig_in r=pig_b,
+        //                  pig_out rw=pig_a) — land both wicked fields back in the canonical buffers.
         let bgl_copy = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("fluid copy_water bgl"),
-            entries: &[uniform_entry(0), storage(1, true), storage(3, false)],
+            label: Some("fluid copy_fields bgl"),
+            entries: &[
+                uniform_entry(0),
+                storage(1, true),
+                storage(3, false),
+                storage(4, true),
+                storage(5, false),
+            ],
         });
-        let copy_water_pipe = cap_pipe("cs_copy_water", &sw_layout(&bgl_copy));
-        let bg_copy_water = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("fluid bg copy_water"),
+        let copy_fields_pipe = cap_pipe("cs_copy_fields", &sw_layout(&bgl_copy));
+        let bg_copy_fields = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("fluid bg copy_fields"),
             layout: &bgl_copy,
-            entries: &[entry(0, &params_buf), entry(1, &water_b), entry(3, &water)],
+            entries: &[
+                entry(0, &params_buf),
+                entry(1, &water_b),
+                entry(3, &water),
+                entry(4, &pig_b),
+                entry(5, &pig_a),
+            ],
         });
 
         Self {
@@ -1007,10 +1030,10 @@ impl FluidSolver {
             bg_project,
             bg_advect_velocity,
             capillary_pipe,
-            copy_water_pipe,
+            copy_fields_pipe,
             water_b,
             bg_capillary,
-            bg_copy_water,
+            bg_copy_fields,
         }
     }
 
@@ -1442,14 +1465,15 @@ impl FluidSolver {
             }
             run(&mut enc, &self.transfer, &self.bg_transfer);
             run(&mut enc, &self.evaporate, &self.bg_evaporate);
-            // Capillary fringe (ADR-0078 S5): wick water outward into the dry paper, then land
-            // it back in the canonical buffer. After evaporate (the CPU `step` order), so the
-            // wick sees this substep's dried water and the next substep's gate picks up the
-            // spread. Skipped while dormant. The grown envelope (driver) keeps the fringe in
-            // the composited region; the region pad must cover the wick (SOLVER_REGION_PAD).
+            // Capillary fringe (ADR-0078 S5): wick water outward into the dry paper + co-advect
+            // a thread of pigment with it, then land both fields back in the canonical buffers.
+            // After evaporate (the CPU `step` order), so the wick sees this substep's dried
+            // water and the next substep's gate picks up the spread. Skipped while dormant. The
+            // grown envelope (driver) keeps the fringe in the composited region; the region pad
+            // must cover the wick (SOLVER_REGION_PAD).
             if capillary {
                 run(&mut enc, &self.capillary_pipe, &self.bg_capillary);
-                run(&mut enc, &self.copy_water_pipe, &self.bg_copy_water);
+                run(&mut enc, &self.copy_fields_pipe, &self.bg_copy_fields);
             }
         }
         // Combine once per frame (region-scoped, after the substeps): total = flowing +

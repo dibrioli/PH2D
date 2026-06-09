@@ -1,24 +1,29 @@
 // GPU capillary fringe (ADR-0078 S5 / Curtis 1997 capillary layer) — the GPU mirror of the
 // CPU reference `ph2d_painter_brush::diffusion::DiffusionGrid::capillary_flow`. Wicks WATER
-// outward from wet cells into the drier paper *beyond* the painted area, so the wet gate (and
-// then the pigment) creeps into a soft, feathery fringe — the watercolor edge the harder
-// wet-gate boundary can't make.
+// outward into the drier paper *beyond* the painted area AND carries a thread of pigment with
+// it, so a soft, feathery, *coloured* fringe grows past the painted edge — the watercolor
+// signature the harder wet-gate boundary can't make.
 //
-// A conservative, permeability-weighted diffusion of the water field (divergence form). The
-// resident `water` buffer is read-only inside any one pass, so this is two region-scoped
-// passes around a ping-pong scratch (`water_b`):
-//   cs_capillary  — water (a) → water_b (b): `water_b = water + capillary·Σ_face cond·(Δwater)`.
-//   cs_copy_water  — water_b (b) → water (a): land the result back in the canonical buffer the
-//                    gate/diffuse/advect/move_water passes read next frame.
+// Two coupled transports, both keyed on the same per-face capillary water flux:
+//   • water — conservative permeability-weighted diffusion (divergence form).
+//   • pigment — dissolved-pigment co-advection: the fraction of a cell's pigment that follows
+//     the water to a drier neighbour equals the fraction of its water that leaves (flux/water);
+//     GATHERED (each cell sums losses to drier neighbours + gains from wetter ones), so it's
+//     mass-conserving and bit-parity-safe with the CPU.
 //
-// Bit-parity with the CPU: the face flux is accumulated in the SAME order (left, right, up,
-// down). Border neighbour = self via the Neumann clamp ⇒ `(water_self − water_self) = 0`
-// contribution = the CPU's skipped out-of-bounds face (and `acc + 0.0 == acc`), so the
-// clamped 4-face GPU sum is bit-identical to the CPU's guarded 3/4-face sum.
+// The resident `water`/`pig_a` buffers are read-only inside any one pass, so this is two
+// region-scoped passes around the `water_b`/`pig_b` ping-pong scratch:
+//   cs_capillary   — water (a)+pig (a) → water_b (b)+pig_b (b).
+//   cs_copy_fields — water_b (b)+pig_b (b) → water (a)+pig_a (a): land both back in the
+//                    canonical buffers the gate/diffuse/advect/move_water passes read next frame.
+//
+// Bit-parity with the CPU: every face is gathered in the SAME order (left, right, up, down).
+// Border neighbour = self via the Neumann clamp ⇒ Δwater = 0 ⇒ both the water flux and the
+// pigment flux for that face are 0 (and `acc + 0.0 == acc`), so the clamped 4-face GPU sum is
+// bit-identical to the CPU's guarded 3/4-face sum.
 //
 // Shares the solver `Params` UBO; `capillary` sits in the byte the diffuse/advect/transfer/
-// combine shaders treat as padding (offset 84), so they keep a valid view — only this shader
-// (and the matching CPU field) read it.
+// combine shaders treat as padding (offset 84), so they keep a valid view.
 
 struct Params {
     width: u32,
@@ -52,6 +57,8 @@ struct Params {
 @group(0) @binding(1) var<storage, read> water_in: array<f32>;
 @group(0) @binding(2) var<storage, read> paper: array<f32>;
 @group(0) @binding(3) var<storage, read_write> water_out: array<f32>;
+@group(0) @binding(4) var<storage, read> pig_in: array<vec4<f32>>;
+@group(0) @binding(5) var<storage, read_write> pig_out: array<vec4<f32>>;
 
 fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
@@ -77,7 +84,25 @@ fn perm_at(i: u32) -> f32 {
     return P.perm_valley + (P.perm_crest - P.perm_valley) * paper[i];
 }
 
-// ── Capillary diffusion of the water field (water a → water_b b) ──
+// One face's (Δwater, Δpigment) contribution, matching the CPU `face` closure exactly.
+// Border neighbour = self ⇒ wn == wc ⇒ both contributions are 0.
+fn face(ni: u32, wc: f32, pc: vec3<f32>, permc: f32, cap: f32, dpig: ptr<function, vec3<f32>>) -> f32 {
+    let permn = perm_at(ni);
+    let cond = 0.5 * (permc + permn);
+    let wn = water_in[ni];
+    if (wc > wn) {
+        // c donates pigment to the drier neighbour at c's concentration.
+        let frac = cap * cond * (wc - wn) / wc;
+        *dpig = *dpig - frac * pc;
+    } else if (wn > wc) {
+        // the wetter neighbour donates to c at its concentration.
+        let frac = cap * cond * (wn - wc) / wn;
+        *dpig = *dpig + frac * pig_in[ni].xyz;
+    }
+    return cond * (wn - wc);
+}
+
+// ── Capillary water diffusion + pigment co-advection (a → b) ──
 @compute @workgroup_size(8, 8, 1)
 fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cell = region_cell(gid.xy);
@@ -88,24 +113,24 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     let wc = water_in[c];
+    let pc = pig_in[c].xyz;
     let permc = perm_at(c);
+    let cap = P.capillary;
     let n = nb(x, y);
-    // Per-face conductive flux, accumulated left → right → up → down (the CPU order).
-    let il = idx(n.x, y);
-    let ir = idx(n.y, y);
-    let iu = idx(x, n.z);
-    let id = idx(x, n.w);
-    var acc = 0.0;
-    acc += 0.5 * (permc + perm_at(il)) * (water_in[il] - wc);
-    acc += 0.5 * (permc + perm_at(ir)) * (water_in[ir] - wc);
-    acc += 0.5 * (permc + perm_at(iu)) * (water_in[iu] - wc);
-    acc += 0.5 * (permc + perm_at(id)) * (water_in[id] - wc);
-    water_out[c] = wc + P.capillary * acc;
+    // Gather left → right → up → down (the CPU order). pn starts at c's pigment.
+    var pn = pc;
+    var acc_w = 0.0;
+    acc_w += face(idx(n.x, y), wc, pc, permc, cap, &pn);
+    acc_w += face(idx(n.y, y), wc, pc, permc, cap, &pn);
+    acc_w += face(idx(x, n.z), wc, pc, permc, cap, &pn);
+    acc_w += face(idx(x, n.w), wc, pc, permc, cap, &pn);
+    water_out[c] = wc + cap * acc_w;
+    pig_out[c] = vec4<f32>(pn, pig_in[c].w);
 }
 
-// ── Land the wicked field back in the canonical water buffer (water_b b → water a) ──
+// ── Land the wicked fields back in the canonical buffers (b → a) ──
 @compute @workgroup_size(8, 8, 1)
-fn cs_copy_water(@builtin(global_invocation_id) gid: vec3<u32>) {
+fn cs_copy_fields(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cell = region_cell(gid.xy);
     let x = cell.x;
     let y = cell.y;
@@ -114,4 +139,5 @@ fn cs_copy_water(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     water_out[c] = water_in[c];
+    pig_out[c] = pig_in[c];
 }

@@ -205,10 +205,11 @@ struct GpuParams {
     viscosity: f32,
     drag: f32,
     pressure: f32,
-    // ── ADR-0078 S5 capillary layer ── occupies offset 84 (the byte the diffuse/advect/
-    // transfer/combine shaders read as padding); only `capillary.wgsl` reads it.
+    // ── ADR-0078 S5 capillary layer ── occupy the bytes the diffuse/advect/transfer/combine
+    // shaders read as padding; only `capillary.wgsl` reads them. `capillary_mobility` = the
+    // chromatographic pigment-filtering factor (water wicks ahead of the lagging pigment).
     capillary: f32,
-    _pad1: f32,
+    capillary_mobility: f32,
     _pad2: f32,
 }
 
@@ -984,7 +985,7 @@ impl FluidSolver {
                 drag: 0.0,
                 pressure: 0.0,
                 capillary: 0.0,
-                _pad1: 0.0,
+                capillary_mobility: 0.0,
                 _pad2: 0.0,
             }),
             water,
@@ -1076,7 +1077,7 @@ impl FluidSolver {
             pressure: 0.0,
             // Capillary fringe (ADR-0078 S5) off until `set_from_diffusion` drives it per-brush.
             capillary: 0.0,
-            _pad1: 0.0,
+            capillary_mobility: 0.0,
             _pad2: 0.0,
         };
         self.params_cache.set(gp);
@@ -1138,7 +1139,7 @@ impl FluidSolver {
             drag: dp.drag,
             pressure: dp.pressure,
             capillary: dp.capillary,
-            _pad1: 0.0,
+            capillary_mobility: dp.capillary_mobility,
             _pad2: 0.0,
         };
         self.params_cache.set(gp);

@@ -205,6 +205,8 @@ impl WatercolorParams {
             drag: self.drag,
             pressure: self.pressure,
             capillary: self.capillary,
+            // Pigment mobility is a physical constant (paper filtering), not a brush control.
+            capillary_mobility: crate::diffusion::CAPILLARY_PIGMENT_MOBILITY,
         }
     }
 }

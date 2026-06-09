@@ -88,6 +88,7 @@ impl FluidParams {
             // (the live solver drives it per-brush via `set_from_diffusion`, not `FluidParams`)
             // → keeps `to_diffusion(default) == default` bit-exact for the parity gate.
             capillary: 0.0,
+            capillary_mobility: ph2d_painter_brush::diffusion::CAPILLARY_PIGMENT_MOBILITY,
         }
     }
 }

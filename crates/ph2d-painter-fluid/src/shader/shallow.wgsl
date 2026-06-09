@@ -42,8 +42,8 @@ struct Params {
     viscosity: f32,
     drag: f32,
     pressure: f32,
-    capillary: f32, // ADR-0078 S5 — read by capillary.wgsl, not here (kept for layout parity)
-    _pad1: f32,
+    capillary: f32,          // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
+    capillary_mobility: f32, // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     _pad2: f32,
 }
 

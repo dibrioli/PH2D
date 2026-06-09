@@ -110,7 +110,24 @@ pub struct DiffusionParams {
     /// **dormant**: [`DiffusionGrid::capillary_flow`] is skipped and the water field is
     /// bit-identical to the shipped (harder wet-gate) edge.
     pub capillary: f32,
+    /// **Capillary pigment mobility (ADR-0078 S5 — chromatographic filtering).** The fraction
+    /// of the capillary WATER transport that the PIGMENT follows. In real watercolor the paper
+    /// fibres filter the (larger) pigment particles while the water wicks ahead, so the wet
+    /// front outruns the pigment: the outermost fringe is water-only (transparent) and the
+    /// pigment lags behind, feathering out — *this* is why a watercolor edge fades to
+    /// transparent. `1.0` ⇒ pigment co-moves 1:1 with the water (a uniformly-coloured, opaque
+    /// fringe — physically wrong); `< 1.0` ⇒ pigment lags (the transparent outer halo + soft
+    /// colour feather); `0.0` ⇒ Curtis's water-only capillary (pigment reaches the fringe only
+    /// via the weak gated bloom). Only read while the capillary layer is active.
+    pub capillary_mobility: f32,
 }
+
+/// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
+/// capillary rate, so the water front clearly outruns it → a transparent outer halo with the
+/// colour feathering behind it (the chromatographic filtering that gives watercolor its soft
+/// transparent edge). A physical constant of the paper↔pigment interaction, not an artist knob;
+/// the artist controls how *far* the water wicks via the per-brush `Capillary` slider.
+pub const CAPILLARY_PIGMENT_MOBILITY: f32 = 0.35;
 
 impl Default for DiffusionParams {
     fn default() -> Self {
@@ -138,6 +155,8 @@ impl Default for DiffusionParams {
             // Capillary fringe OFF by default (ADR-0078 S5) → `capillary_flow` is skipped and
             // the shipped (wet-gate) edge is bit-identical until a brush opts in.
             capillary: 0.0,
+            // The physical pigment-filtering constant (only read when the capillary layer is on).
+            capillary_mobility: CAPILLARY_PIGMENT_MOBILITY,
         }
     }
 }
@@ -676,18 +695,22 @@ impl DiffusionGrid {
                 // carries (loss to a drier neighbour at c's concentration, gain from a wetter
                 // one at ITS concentration). Returns `(d_water, d_pigment)` so there's no `&mut`
                 // capture and the borrow is plain-immutable (same shape as `diffuse`).
+                // Pigment co-advects at `mobility ×` the water's transport fraction — the paper
+                // filters the pigment so the water wicks AHEAD (chromatographic separation), so
+                // the outer fringe is water-only (transparent) and the colour lags behind it.
+                let mob = p.capillary_mobility;
                 let face = |nidx: usize| -> (f32, [f32; 3]) {
                     let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
                     let cond = 0.5 * (permc + permn);
                     let wn = self.water[nidx];
                     let dw = cond * (wn - wc);
                     let dp = if wc > wn {
-                        // c donates: fraction of c's water leaving to n = capillary·cond·(wc−wn)/wc.
-                        let frac = cap * cond * (wc - wn) / wc;
+                        // c donates: pigment fraction = mobility · (water fraction leaving to n).
+                        let frac = mob * cap * cond * (wc - wn) / wc;
                         [-frac * pc[0], -frac * pc[1], -frac * pc[2]]
                     } else if wn > wc {
-                        // n donates to c at n's concentration.
-                        let frac = cap * cond * (wn - wc) / wn;
+                        // n donates to c at n's concentration (also mobility-scaled).
+                        let frac = mob * cap * cond * (wn - wc) / wn;
                         let pn = self.pigment[nidx];
                         [frac * pn[0], frac * pn[1], frac * pn[2]]
                     } else {
@@ -1501,7 +1524,62 @@ mod tests {
         // damp halo a water-only wick would leave.
         assert!(
             on > 0.01 && on > off + 0.01,
-            "pigment must bleed strongly into the capillary fringe (on {on:.6} ≫ off {off:.6})"
+            "pigment must bleed into the capillary fringe (on {on:.6} ≫ off {off:.6})"
+        );
+    }
+
+    /// CHROMATOGRAPHIC FILTERING — the transparent edge (ADR-0078 S5): with `capillary_mobility
+    /// < 1` the paper filters the pigment, so the WATER front wicks AHEAD of the pigment. The
+    /// wet front therefore extends well beyond the pigment front → a transparent water-only
+    /// halo at the outer edge, with the colour feathering behind it. With mobility = 1 (pigment
+    /// co-moving) the two fronts coincide (a uniformly-coloured, opaque fringe — the contrast).
+    /// This is the physical mechanism behind watercolor's soft transparent edge.
+    #[test]
+    fn capillary_water_wicks_ahead_of_pigment() {
+        let (w, h) = (72u32, 64u32);
+        let (cx, cy) = (36.0f32, 32.0);
+        // Furthest radius reached by water (> 1e-3) and by pigment (> 1e-4).
+        let run = |mobility: f32| -> (u32, u32) {
+            let mut g = DiffusionGrid::new(w, h, 1.0);
+            g.splat(cx, cy, 8.0, 1.0, [0.5, 0.3, 0.2]);
+            let p = DiffusionParams {
+                capillary: 0.22,
+                capillary_mobility: mobility,
+                evaporation: 0.0,
+                ..Default::default()
+            };
+            for _ in 0..70 {
+                g.step(&p);
+            }
+            let (mut wr, mut pr) = (0u32, 0u32);
+            for y in 0..h {
+                for x in 0..w {
+                    let d = (((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt()) as u32;
+                    let i = (y * w + x) as usize;
+                    if g.water()[i] > 1.0e-3 {
+                        wr = wr.max(d);
+                    }
+                    if g.pigment()[i][0] > 1.0e-4 {
+                        pr = pr.max(d);
+                    }
+                }
+            }
+            (wr, pr)
+        };
+        let (wr_filt, pr_filt) = run(0.35);
+        let (wr_co, pr_co) = run(1.0);
+        eprintln!(
+            "water-ahead: filtered(mob .35) water={wr_filt} pig={pr_filt} | co-moving(mob 1) water={wr_co} pig={pr_co}"
+        );
+        // Filtering: the water front is well beyond the pigment front → a transparent outer halo.
+        assert!(
+            wr_filt > pr_filt + 2,
+            "filtered capillary: water must wick ahead of pigment (water {wr_filt} vs pig {pr_filt})"
+        );
+        // Co-moving (mobility 1): the pigment keeps up with the water — no transparent halo.
+        assert!(
+            pr_co >= wr_co.saturating_sub(1),
+            "co-moving pigment should reach ~the water front (water {wr_co} vs pig {pr_co})"
         );
     }
 

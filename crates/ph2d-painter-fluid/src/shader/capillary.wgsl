@@ -49,7 +49,7 @@ struct Params {
     pressure: f32,
     // ── ADR-0078 S5 capillary layer ──
     capillary: f32,
-    _pad1: f32,
+    capillary_mobility: f32, // pigment co-advects at this fraction of the water wick (filtering)
     _pad2: f32,
 }
 
@@ -85,18 +85,20 @@ fn perm_at(i: u32) -> f32 {
 }
 
 // One face's (Δwater, Δpigment) contribution, matching the CPU `face` closure exactly.
-// Border neighbour = self ⇒ wn == wc ⇒ both contributions are 0.
-fn face(ni: u32, wc: f32, pc: vec3<f32>, permc: f32, cap: f32, dpig: ptr<function, vec3<f32>>) -> f32 {
+// Border neighbour = self ⇒ wn == wc ⇒ both contributions are 0. The pigment fraction is
+// scaled by `mob` (capillary_mobility) — the paper filters the pigment so the water wicks
+// ahead (chromatographic separation → transparent outer halo).
+fn face(ni: u32, wc: f32, pc: vec3<f32>, permc: f32, cap: f32, mob: f32, dpig: ptr<function, vec3<f32>>) -> f32 {
     let permn = perm_at(ni);
     let cond = 0.5 * (permc + permn);
     let wn = water_in[ni];
     if (wc > wn) {
-        // c donates pigment to the drier neighbour at c's concentration.
-        let frac = cap * cond * (wc - wn) / wc;
+        // c donates pigment to the drier neighbour: mobility · (water fraction leaving).
+        let frac = mob * cap * cond * (wc - wn) / wc;
         *dpig = *dpig - frac * pc;
     } else if (wn > wc) {
-        // the wetter neighbour donates to c at its concentration.
-        let frac = cap * cond * (wn - wc) / wn;
+        // the wetter neighbour donates to c at its concentration (also mobility-scaled).
+        let frac = mob * cap * cond * (wn - wc) / wn;
         *dpig = *dpig + frac * pig_in[ni].xyz;
     }
     return cond * (wn - wc);
@@ -116,14 +118,15 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     let pc = pig_in[c].xyz;
     let permc = perm_at(c);
     let cap = P.capillary;
+    let mob = P.capillary_mobility;
     let n = nb(x, y);
     // Gather left → right → up → down (the CPU order). pn starts at c's pigment.
     var pn = pc;
     var acc_w = 0.0;
-    acc_w += face(idx(n.x, y), wc, pc, permc, cap, &pn);
-    acc_w += face(idx(n.y, y), wc, pc, permc, cap, &pn);
-    acc_w += face(idx(x, n.z), wc, pc, permc, cap, &pn);
-    acc_w += face(idx(x, n.w), wc, pc, permc, cap, &pn);
+    acc_w += face(idx(n.x, y), wc, pc, permc, cap, mob, &pn);
+    acc_w += face(idx(n.y, y), wc, pc, permc, cap, mob, &pn);
+    acc_w += face(idx(x, n.z), wc, pc, permc, cap, mob, &pn);
+    acc_w += face(idx(x, n.w), wc, pc, permc, cap, mob, &pn);
     water_out[c] = wc + cap * acc_w;
     pig_out[c] = vec4<f32>(pn, pig_in[c].w);
 }

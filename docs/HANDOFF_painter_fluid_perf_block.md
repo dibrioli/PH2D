@@ -96,19 +96,50 @@ fixo que roda todo frame quando um campo de fluido está vivo** — bug muito ma
 ¹ `gpu_composite_50_layers_dirty_rect_under_5ms` é borderline (mediana 4.81ms vs cap 5ms): falha no run
 cheio sob carga da máquina, passa isolado. Pré-existente, não-relacionado (profiler OFF nos testes).
 
-**→ PRÓXIMO (Enio):** `PH2D_FLUID_PROFILE=1 ./play.command`, pincel água, Keep Wet ON, UMA mancha
-pequena, esperar ~2 relatórios `[gpu]` e colar a saída (junto com `[fluid-ctx]` + `[frame]`). O label
-gordo OU o gap (`gpu-busy` ≫ Σ) aponta a causa dos 131ms.
+## §4b — VEREDITO DA MEDIÇÃO (Enio, 2026-06-10, Metal, 1408×768, scale=1, Keep Wet ON)
 
-**Passo 2 (corrigir a causa):** depende do passo 1. Se for o copy full-canvas → copiar só o sub-rect
-(como já fiz no slot-copy do E5: `copy_texture_region_into_individual`). Se for o shallow-water → revisar
-custo/convergência ou escopo. Etc.
+Quatro relatórios `[gpu]`+`[fluid-ctx]` durante/pós strokes de água. Três conclusões:
 
-**Passo 3 (o objetivo maior, depois do custo-fixo):** sim+composite escopados à **frente molhada ativa**
-(não ao envelope all-time) — tiling/sparse GPU-residente (ADR-0078 S1b / ADR-0083). Respeitar a cerca de
-Chesterton do envelope monotônico (foi o fix das "quinas retangulares"): o envelope monotônico só
-dimensiona/semeia a textura persistente; o trabalho POR FRAME escopa ao ativo. Validação visual estágio-
-a-estágio com o Enio (blooms, edge-darkening, granulação, sheen intactos).
+**1. NÃO é custo fixo — é O(envelope), e o ENVELOPE é um runaway monotônico.** A prova está no
+`[fluid-ctx]` entre relatórios: `region` foi `(873,3)-(1407,641)` → `(833,0)` → `(819,0)` → `(810,0)-
+(1407,655)` — **crescendo ~10 células/janela MESMO IDLE com `dabs=0`/`stroke_active=false`**, já
+encostado nas bordas do canvas (y=0, x=1407), cobrindo ~390k células (~36% do canvas). Mecanismo
+(positive feedback): o solver pada a região (`SOLVER_REGION_PAD=6`), diffuse/capillary empurram um
+FILME numérico de água pro pad, o `read_field_stats(threshold=1e-4)` captura, `wet_bbox` (união
+monotônica) cresce, o pad anda, repete. Keep Wet zera a evaporação ⇒ o filme nunca morre ⇒ cresce até
+o canvas inteiro e FICA — exatamente os sintomas do §1/§2 ("mancha pequena já trava"; "baixo mesmo
+parado"). O custo parece "fixo" porque o envelope satura na escala do canvas independente da mancha.
+
+**2. Onde o tempo de GPU vai (passes compute, confiáveis):** `fluid.comp_tex≈36-39ms` (composite ss=2
+sobre o envelope, TODO frame — incl. idle via sheen/`comp_pipe`) + step somado ≈30ms (`advect_v` 10-11
+×6, `capillary` 6.5 ×4, `transfer` 5 ×2, `diffuse` 4 ×2, `combine` 2.2, `lift` 1.3, jacobi/etc <1)
+≈ **65-70ms de GPU/frame ≈ o frame de 65-86ms medido (12-15fps)**. Bate com o modelo de BANDWIDTH:
+campo 32-canais = 128B/célula, stencil 5-pontos ≈ 768B/célula/pass × 392k células × ~20 passes ≈
+~5GB/frame ÷ ~70GB/s ≈ 70ms — **bandwidth-bound**, como o ADR-0083 previa pra 4K. Não há "um pass
+bugado": é o produto envelope × canais × passes.
+
+**3. Artefatos de medição (não persiga):** `render.sprite/tonemap/vello/copy.slot` mostrando 36-66ms
+são WALL-SPAN inflado (TBDR separa vertex/fragment; encoders sobrepõem) — um tonemap fullscreen não
+custa 60ms reais. `gpu-busy(span)` 190-620ms ≫ frame = fila multi-frame profunda (backpressure),
+consistente. Os suspeitos #1 (copy full-canvas) e #5/#6 (submits/map_async) estão DESCARTADOS como
+causa primária; #2 (shallow-water) é só uma fatia proporcional do O(envelope).
+
+**Passo 2 (corrigir — na ordem):**
+- **2a. Matar o runaway do envelope** (o bug específico): (i) **epsilon-clamp da água** — célula com
+  `water < EPS` (~1e-3?) vai a 0 no evaporate/capillary para o filme numérico não se propagar (sob
+  keep-wet o clamp é o ÚNICO freio); (ii) reavaliar o threshold do bbox (1e-4 captura névoa invisível;
+  o comentário diz que é pra fringe THIN — calibrar contra o fringe REAL visível). ⚠️ Paridade: o CPU
+  reference (`ph2d-painter-brush::diffusion`) tem que receber o MESMO clamp (gates `*_matches_cpu`),
+  e validação visual com o Enio (fringe/blooms intactos) — é mexer no motor validado.
+- **2b. Idle ≠ stroke:** com pointer up o sim+composite rodam full-cadência sobre o envelope inteiro
+  (sheen recomposita todo frame). Depois do 2a o envelope idle encolhe ao molhado REAL; se ainda
+  pesar, baixar a cadência idle (step/composite a cada 2-3 frames) é aceitável-a-validar.
+- **2c (= Passo 3, o objetivo maior): frente molhada ativa / tiling esparso** (ADR-0078 S1b /
+  ADR-0083): o trabalho POR FRAME escopa ao bbox ATUAL de água (das stats GPU, com pad), não à união
+  all-time; a união monotônica continua dimensionando/semeando a TEXTURA persistente (cerca de
+  Chesterton das "quinas retangulares" — ela existe pra cobertura do composite de áreas que SECARAM,
+  que precisam de UM composite final e depois ficam estáticas). Validação visual estágio-a-estágio
+  com o Enio (blooms, edge-darkening, granulação, sheen).
 
 ## §5 — COMO RODAR / MEDIR
 ```bash
@@ -122,5 +153,7 @@ cargo test -p ph2d-render --test layer_compositor_gpu -- --ignored   # inclui o 
 
 — sessão 2026-06-10: bugs de input/undo/crash/stats fechados; FPS isolado como GPU-execution-bound de
 **custo fixo por frame** (§2).
-— sessão 2026-06-10b: **Passo 1 implementado e provado** (profiler de GPU-timestamp por pass, §4);
-gates de paridade re-rodados verdes. Próximo: Enio mede 1× → o label/gap aponta → Passo 2 (corrigir).
+— sessão 2026-06-10b: **Passo 1 implementado, provado E MEDIDO** (§4b): a hipótese "custo fixo" do §2
+caiu — é O(envelope) bandwidth-bound, com o envelope em runaway monotônico (cresce idle, satura no
+canvas, permanente sob Keep Wet). Próximo: **Passo 2a** (epsilon-clamp da água + threshold do bbox,
+CPU+GPU em paridade, validação visual) → 2b/2c.

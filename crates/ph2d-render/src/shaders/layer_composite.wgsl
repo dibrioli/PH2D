@@ -116,7 +116,10 @@ struct Globals {
     region_w: u32,
     region_h: u32,
     op_count: u32,
-    _pad: u32,
+    // 0 = store at region-local coords (region-sized out); 1 = store at canvas
+    // coords (canvas-sized persistent out) so a region dispatch refreshes only the
+    // dirty rect (E5 live-stroke region recomposite).
+    out_canvas_coords: u32,
 }
 
 @group(0) @binding(0) var<storage, read> ops: array<Op>;
@@ -729,7 +732,13 @@ fn resolve_pixel(gid: vec3<u32>, out_local: ptr<function, vec2<i32>>, coord: ptr
     if gx >= g.canvas_width || gy >= g.canvas_height {
         return false;
     }
-    *out_local = vec2<i32>(i32(lx), i32(ly));
+    // Output coord: region-local (region-sized out) OR canvas (canvas-sized out
+    // refreshed in-place). Sampling always uses the canvas coord `coord`.
+    if g.out_canvas_coords != 0u {
+        *out_local = vec2<i32>(i32(gx), i32(gy));
+    } else {
+        *out_local = vec2<i32>(i32(lx), i32(ly));
+    }
     *coord = vec2<i32>(i32(gx), i32(gy));
     return true;
 }

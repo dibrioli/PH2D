@@ -39,6 +39,13 @@ pub(crate) struct PainterGpuPreview {
     gpu: GpuContext,
     compositor: LayerCompositor,
     premul: PreviewPremul,
+    /// The fluid stroke epoch whose preview slot has already been SEEDED with a
+    /// full-canvas composite. The E5 region path refreshes only the wet envelope
+    /// per frame, so the slot must hold a valid full backdrop first: the first
+    /// frame of each epoch composites + copies the WHOLE canvas (seed); later
+    /// frames region-scope. `None` = nothing seeded yet (the next frame seeds).
+    #[cfg(feature = "fluid")]
+    seeded_epoch: Option<u64>,
 }
 
 impl PainterGpuPreview {
@@ -47,6 +54,8 @@ impl PainterGpuPreview {
             gpu: gpu.clone(),
             compositor: LayerCompositor::new(gpu),
             premul: PreviewPremul::new(gpu),
+            #[cfg(feature = "fluid")]
+            seeded_epoch: None,
         }
     }
 }
@@ -104,6 +113,9 @@ pub(super) fn try_drive(
     };
     if painter.take_preview_dirty() {
         let (w, h) = painter.source_size();
+        // CPU/hover path: a full recomposite (no live wet envelope) — seed the whole
+        // canvas (`seed_full = true`, full slot copy), byte-identical to the old
+        // `Region::full` composite.
         drive(
             session_slot,
             renderer,
@@ -113,6 +125,8 @@ pub(super) fn try_drive(
             adj_luts,
             w,
             h,
+            (0, 0, w, h),
+            true,
             painter_preview_gpu,
             toasts,
         );
@@ -159,21 +173,29 @@ pub(super) fn drive_fluid_chain(
     grid_region: (u32, u32, u32, u32),
     width: u32,
     height: u32,
+    epoch: u64,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ToastQueue,
 ) -> bool {
     let Some((ops, adj_luts)) = gpu_eligible(painter) else {
         return false;
     };
-    if fluid
-        .composite_frame_to_straight_texture(&gpu.device, &gpu.queue, grid_region)
-        .is_none()
-    {
+    // The fluid straight composite returns the canvas RECT it refreshed (the wet
+    // envelope mapped to canvas pixels). We region-scope the whole downstream layer
+    // chain to that rect — only the dirty area recomposites per frame.
+    let Some((px_lo, py_lo, px_hi, py_hi)) =
+        fluid.composite_frame_to_straight_texture(&gpu.device, &gpu.queue, grid_region)
+    else {
         return false;
-    }
+    };
     let Some(tex) = fluid.straight_texture() else {
         return false;
     };
+    let rect = (px_lo, py_lo, px_hi - px_lo, py_hi - py_lo);
+    // Seed a FULL composite on the first frame of this stroke so the persistent
+    // preview slot holds a valid full backdrop; later frames refresh only `rect`.
+    let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
+    let seed_full = session.seeded_epoch != Some(epoch);
     if !drive_injected(
         session_slot,
         renderer,
@@ -184,10 +206,16 @@ pub(super) fn drive_fluid_chain(
         tex,
         width,
         height,
+        rect,
+        seed_full,
         painter_preview_gpu,
         toasts,
     ) {
         return false;
+    }
+    // Mark seeded only AFTER a successful drive (a failed seed frame must retry).
+    if let Some(s) = session_slot.as_mut() {
+        s.seeded_epoch = Some(epoch);
     }
     let _ = painter.take_preview_dirty();
     let _ = painter.take_preview_upload_bbox();
@@ -224,6 +252,8 @@ fn drive_injected(
     straight_tex: &wgpu::Texture,
     width: u32,
     height: u32,
+    rect: (u32, u32, u32, u32),
+    seed_full: bool,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ToastQueue,
 ) -> bool {
@@ -245,6 +275,9 @@ fn drive_injected(
         return false;
     };
     let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
+    // Inject only the wet envelope rect: `straight_tex` outside it holds the
+    // straight backdrop (= the slice's pre-stroke base) and the envelope is
+    // monotonic, so a rect copy is exact and skips a full-canvas GPU copy/frame.
     if let Err(e) = session.compositor.inject_slice_from_texture(
         &session.gpu,
         &ops,
@@ -252,6 +285,7 @@ fn drive_injected(
         straight_tex,
         width,
         height,
+        rect,
         version,
     ) {
         toasts.push(Toast::error(format!(
@@ -268,6 +302,8 @@ fn drive_injected(
         adj_luts,
         width,
         height,
+        rect,
+        seed_full,
         painter_preview_gpu,
         toasts,
     )
@@ -288,6 +324,8 @@ pub(super) fn drive(
     adj_luts: Vec<f32>,
     width: u32,
     height: u32,
+    rect: (u32, u32, u32, u32),
+    seed_full: bool,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ToastQueue,
 ) -> bool {
@@ -296,16 +334,31 @@ pub(super) fn drive(
     }
     let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
 
-    // 1) GPU composite over the flattened op-list (slices cached by version).
+    // The composite region: the WHOLE canvas on a seed frame (so the persistent
+    // `out` + the slot hold a valid full backdrop), else just the wet envelope.
+    let region = if seed_full {
+        Region::full(width, height)
+    } else {
+        Region {
+            x: rect.0,
+            y: rect.1,
+            w: rect.2,
+            h: rect.3,
+        }
+    };
+
+    // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
+    //    coords — a region dispatch refreshes only `region`, leaving the rest from
+    //    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
     let provider = PainterLayerProvider { tool };
-    if let Err(e) = session.compositor.composite_with_luts(
+    if let Err(e) = session.compositor.composite_region_into_canvas(
         &session.gpu,
         &ops,
         &adj_luts,
         &provider,
         width,
         height,
-        Region::full(width, height),
+        region,
     ) {
         toasts.push(Toast::error(format!(
             "Painter: GPU preview composite falhou ({e}). Caindo no caminho CPU."
@@ -316,6 +369,8 @@ pub(super) fn drive(
 
     // 2) Premultiply the straight `rgba8unorm` output into a COPY_SRC texture
     //    (the sprite preview slot samples PREMULTIPLIED — see `ph2d_render::premul`).
+    //    Full-canvas: a single cheap pass; out-of-region texels are the unchanged
+    //    (still-valid) prior composite, so re-premultiplying them is a no-op.
     {
         let Some(comp_out) = session.compositor.output_texture() else {
             return false;
@@ -330,12 +385,21 @@ pub(super) fn drive(
     }
 
     // 3) Ensure a preview slot of the right size, then COPY the premultiplied
-    //    result into it (rgba8unorm → Rgba8UnormSrgb is copy-compatible).
+    //    result into it (rgba8unorm → Rgba8UnormSrgb is copy-compatible). The slot
+    //    persists across the stroke, so a seed frame copies the WHOLE canvas and
+    //    later frames copy only the wet envelope rect on top of it.
     let slot = ensure_slot(renderer, painter_preview_gpu, entity_bits, width, height);
     let Some(premul_tex) = session.premul.output_texture() else {
         return false;
     };
-    if let Err(e) = renderer.copy_texture_into_individual(slot, premul_tex, width, height) {
+    let copy = if seed_full {
+        renderer.copy_texture_into_individual(slot, premul_tex, width, height)
+    } else {
+        renderer.copy_texture_region_into_individual(
+            slot, premul_tex, rect.0, rect.1, rect.0, rect.1, rect.2, rect.3,
+        )
+    };
+    if let Err(e) = copy {
         toasts.push(Toast::error(format!(
             "Painter: GPU preview copy falhou ({e}). Caindo no caminho CPU."
         )));

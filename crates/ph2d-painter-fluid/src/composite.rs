@@ -590,6 +590,17 @@ impl FluidCompositor {
         queue: &wgpu::Queue,
         grid_region: (u32, u32, u32, u32),
     ) -> (Vec<u8>, (u32, u32, u32, u32)) {
+        // Drain any in-flight PIPELINED readback first: it left `staging` mapped, and
+        // this sync path re-maps `staging` below — re-mapping an already-mapped buffer
+        // is a wgpu validation error that ABORTS the process (the crash when a sync
+        // bake — e.g. the undo flush — followed pipelined drying frames). Complete +
+        // unmap it before reuse; the stale band is superseded by this composite.
+        if self.pending.take().is_some() {
+            let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            if let Some(st) = self.state.as_ref() {
+                st.staging.unmap();
+            }
+        }
         let Some(st) = self.state.as_ref() else {
             return (Vec::new(), (0, 0, 0, 0));
         };

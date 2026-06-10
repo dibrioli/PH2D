@@ -335,6 +335,28 @@ impl SpriteRenderer {
             .copy_from_texture(&self.gpu, texture_id, src, width, height)
     }
 
+    /// Copy a SUB-RECT of a GPU source texture into the same sub-rect of an
+    /// individual slot (no CPU readback). Dirty-rect sibling of
+    /// [`Self::copy_texture_into_individual`] — the Painter E5 live stroke
+    /// refreshes only the wet envelope of the preview slot per frame. Wrapper over
+    /// [`IndividualTextureStore::copy_region_from_texture`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn copy_texture_region_into_individual(
+        &mut self,
+        texture_id: u32,
+        src: &wgpu::Texture,
+        src_x: u32,
+        src_y: u32,
+        dst_x: u32,
+        dst_y: u32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        self.individual.copy_region_from_texture(
+            &self.gpu, texture_id, src, src_x, src_y, dst_x, dst_y, width, height,
+        )
+    }
+
     /// Convenience for the image-edit path: copy an individual
     /// texture's GPU contents back to a `Vec<u8>` (RGBA8, tightly
     /// packed). Used by Trim Transparency / Background Removal when

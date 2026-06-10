@@ -56,12 +56,23 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
+        // Cheap Arc-backed clone — drops the `gfx` borrow before `tools` is taken
+        // mutably below (the fluid catch-up flush needs both the GPU and the tool).
+        #[cfg(feature = "fluid")]
+        let gpu = gfx.surface.gpu().clone();
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
         let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
             return false;
         };
+        // Undo correctness: bake any deferred GPU wet-field catch-up of the PREVIOUS
+        // stroke into `canvas_rgba` BEFORE `begin_stroke` snapshots it, so each
+        // stroke's undo pre-image brackets exactly one stroke (else a fast second
+        // stroke would snapshot a stale canvas → one undo reverts both). See
+        // `painter_fluid_bridge::flush_pending_bake`.
+        #[cfg(feature = "fluid")]
+        crate::render_loop::painter_fluid_bridge::flush_pending_bake(&gpu, painter);
         painter.begin_stroke(seed);
         painter.queue_pointer(sample);
         true
@@ -135,9 +146,11 @@ impl App {
             .unwrap_or(false)
     }
 
-    /// Resolve cursor screen-px → (u, v normalizado em [0,1) do sprite,
-    /// source_w, source_h) iff Painter ativo + selection + dentro do
-    /// footprint. None caso contrário.
+    /// Resolve cursor screen-px → (u, v do sprite — NÃO clampado a [0,1),
+    /// source_w, source_h) iff Painter ativo + selection. None só quando falta
+    /// Painter/selection ou o cursor está sobre a chrome dockada — a sprite
+    /// inteira fica paintável (dentro ou fora do quad), pra que um traço na
+    /// borda / fora da viewport não derrube o segmento e estanque a simulação.
     ///
     /// **Mapeamento:** ponteiro screen-px → world (inverse camera) → UV do sprite via
     /// [`ph2d_render::sprite_world_to_uv`], que inverte o `RenderInstance.basis` (a mesma
@@ -145,8 +158,9 @@ impl App {
     /// skew + anchor**, então o pincel pinta exatamente sob o cursor independente da
     /// transform da sprite. (Antes: AABB-fit só por translation → rotacionar/escalonar
     /// quebrava a referência de posição — a antiga limitação "T1.5 axis-aligned", B-H1.)
-    /// - Bounds **exclusive no high side** (`u`/`v` ∈ `[0, 1)`): `u = 1.0` mapearia 1 texel
-    ///   além do último válido (B-H3). Click fora do quad ⇒ `None` (gateia o traço).
+    /// - UV **não clampado**: pode ser negativo ou `≥ 1` fora do quad. O clamp ao grid
+    ///   acontece a jusante (envelope de dab + cutoff de raio do splat), então a sprite
+    ///   inteira fica paintável sem que a borda do quad estanque o traço (B-H3 antigo).
     fn painter_pointer_uv(&mut self, px: f32, py: f32) -> Option<(f32, f32, u32, u32)> {
         // Don't paint THROUGH docked chrome. The Painter sidebar is a
         // right-dock takeover that overlaps the sprite footprint, so a
@@ -181,7 +195,15 @@ impl App {
         // the painter "lost the real position"; ex-B-H1 "T1.5 axis-aligned" limitation.) `None`
         // when the click is off the sprite quad — gates the stroke like the old bounds check.
         let world = gfx.camera.screen_to_world((px, py), window_size);
-        let (u, v) = ph2d_render::sprite_world_to_uv(gfx.present.world_mut(), bits, world)?;
+        // UNCLAMPED on purpose: the whole sprite must stay paintable even when the
+        // cursor grazes / crosses the quad edge (e.g. the sprite extends past the
+        // viewport). The old `[0,1)`-gated `sprite_world_to_uv` returned `None`
+        // off-quad → `painter_drag_move` broke the segment → the live wet field
+        // stalled ("stops simulating in the invisible areas"). Out-of-quad UV is
+        // safe: the dab envelope clamps to the canvas grid and the splat's radius
+        // cutoff drops a dab whose footprint misses every cell. The hero-panel gate
+        // above still suppresses painting behind docked chrome.
+        let (u, v) = ph2d_render::sprite_world_to_uv_unclamped(gfx.present.world_mut(), bits, world)?;
         // Source dim from PainterTool's canvas (set_source-pushed by the bridge); fallback to
         // the sprite size if the canvas isn't populated yet.
         let entity = ph2d_ecs::Entity::from_bits(bits);

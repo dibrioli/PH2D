@@ -235,6 +235,31 @@ pub fn sprite_world_to_uv(
     sim_entity_bits: u64,
     world_pos: [f32; 2],
 ) -> Option<(f32, f32)> {
+    let (u, v) = sprite_world_to_uv_unclamped(present, sim_entity_bits, world_pos)?;
+    if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) {
+        Some((u, v))
+    } else {
+        None // matched the entity, but the cursor is off its quad
+    }
+}
+
+/// Like [`sprite_world_to_uv`] but WITHOUT the `[0, 1)` quad-containment gate:
+/// returns the UV even when the cursor sits OFF the sprite quad (`u`/`v` may be
+/// negative or `≥ 1`). Still `None` on an absent entity, a degenerate basis, or a
+/// non-positive size.
+///
+/// The Painter uses this so the WHOLE sprite stays active for painting regardless
+/// of where the quad edge falls relative to the viewport: a stroke that reaches /
+/// crosses the edge keeps the wash simulating instead of dropping the segment
+/// (the old `[0,1)` gate made an edge-grazing or off-screen drag `None`, which
+/// broke the stroke and stalled the live wet field). Out-of-quad samples deposit
+/// nothing harmful downstream — the dab envelope clamps to the canvas grid and
+/// the splat's radius cutoff rejects a dab whose footprint misses every cell.
+pub fn sprite_world_to_uv_unclamped(
+    present: &mut World,
+    sim_entity_bits: u64,
+    world_pos: [f32; 2],
+) -> Option<(f32, f32)> {
     let mut q = present.query::<(&SimRef, &GlobalTransform, &RenderInstance)>();
     for (sim_ref, gt, ri) in q.iter(present) {
         if sim_ref.0.to_bits() != sim_entity_bits {
@@ -255,10 +280,7 @@ pub fn sprite_world_to_uv(
         // the old axis-aligned mapping for an un-rotated sprite).
         let u = (local_dx - ri.anchor[0]) / sw + 0.5;
         let v = 0.5 - (local_dy - ri.anchor[1]) / sh;
-        if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) {
-            return Some((u, v));
-        }
-        return None; // matched the entity, but the cursor is off its quad
+        return Some((u, v));
     }
     None
 }
@@ -564,6 +586,33 @@ mod tests {
         // World +X (right) → texture BOTTOM (local −Y) → v>0.5.
         let (_, v2) = sprite_world_to_uv(present.world_mut(), bits, [0.9, 0.0]).unwrap();
         assert!(v2 > 0.9, "world-right maps to the texture bottom: v={v2}");
+    }
+
+    #[test]
+    fn sprite_world_to_uv_unclamped_returns_off_quad_uv() {
+        // The clamped wrapper gates a click off the quad to `None`; the unclamped
+        // variant the Painter uses must instead return the (out-of-range) UV so the
+        // whole sprite stays paintable past the edge. A 2×2 sprite at origin: world
+        // x=2 maps to u=1.5 (one full sprite-width right of centre).
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut present = PresentWorld::new();
+        let e = fresh_sim_entity(&mut sim);
+        let bits = spawn_with_basis(&mut present, e, [2.0, 2.0], [1.0, 0.0, 0.0, 1.0]);
+        assert!(
+            sprite_world_to_uv(present.world_mut(), bits, [2.0, 0.0]).is_none(),
+            "clamped wrapper still gates off-quad"
+        );
+        let (u, v) =
+            sprite_world_to_uv_unclamped(present.world_mut(), bits, [2.0, 0.0]).unwrap();
+        assert!((u - 1.5).abs() < 1e-5, "off-quad u not clamped: {u}");
+        assert!((v - 0.5).abs() < 1e-5, "v centred: {v}");
+        // A degenerate basis is still unpaintable (None) on the unclamped path.
+        let de = fresh_sim_entity(&mut sim);
+        let dbits = spawn_with_basis(&mut present, de, [2.0, 2.0], [0.0, 0.0, 0.0, 0.0]);
+        assert!(
+            sprite_world_to_uv_unclamped(present.world_mut(), dbits, [0.0, 0.0]).is_none(),
+            "degenerate basis stays None"
+        );
     }
 
     #[test]

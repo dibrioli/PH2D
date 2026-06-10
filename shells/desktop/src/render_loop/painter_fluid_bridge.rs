@@ -36,12 +36,12 @@ use std::time::Instant;
 
 /// How often (in frames) the resident path reads the GPU field stats back for the
 /// dry-check. Drying takes ~0.3 s (≈ 18 frames @ 60 Hz), so a few frames of latency
-/// on the drop is invisible — and the readback is the only per-frame sync we still
-/// want sporadic (4K real-time arch §4 / E3). The composite envelope does NOT use
-/// it (it's grown from the dab list), so cadence only affects when a dry field drops.
-/// At 20: drying (~18 frames after pen-up) still drops the field promptly, but the
-/// per-frame avg of the stats `device.poll(wait)` (a queue-drain, ~2.5 ms when it
-/// fires) is ~3× lower than at 6 — it was the largest per-frame phase post-pipeline.
+/// on the drop is invisible — and now that the stats readback is PIPELINED
+/// (`read_field_stats_pipelined`, async — returns the prior fire's stats with no
+/// `poll(wait)`), this cadence no longer gates any blocking queue-drain. It only
+/// sets how often the dry-check / wet-bbox refresh; the composite envelope is grown
+/// from the dab list, not from this. (Before pipelining, the blocking `poll(wait)`
+/// here was a multi-ms queue-drain that *grew* into a runaway FPS collapse.)
 const DRY_CHECK_EVERY: u64 = 20;
 
 /// Grid-cell pad added around the composite envelope for the capillary fringe (ADR-0078 S5).
@@ -59,6 +59,42 @@ thread_local! {
     /// Thread-local because the render loop is single-threaded (the established
     /// painter-bridge pattern for per-tool GPU state).
     static SESSION: RefCell<Option<FluidSession>> = const { RefCell::new(None) };
+}
+
+/// **Undo correctness (deferred-bake flush).** With the GPU texture lanes (E4/E5)
+/// `canvas_rgba` is baked LATE — the per-frame catch-up readback only lands the wet
+/// band a few frames AFTER pen-up. If a NEW stroke begins before that bake finishes,
+/// the next stroke's undo pre-image (`begin_stroke` clones `canvas_rgba`) would
+/// snapshot a STALE document missing the previous stroke's paint, so one undo could
+/// revert several strokes. Call this in the pointer-down handler BEFORE
+/// `PainterTool::begin_stroke`: it composites the whole pending catch-up union
+/// SYNCHRONOUSLY into `canvas_rgba`, so each stroke's snapshot brackets exactly one
+/// stroke. The per-frame deferral exists only to avoid a MID-stroke stall; one sync
+/// pass at stroke-start (~0.14 ms) is invisible. No-op when no field / no pending
+/// bake (the common case — single strokes already drained by the drying frames).
+#[cfg(feature = "fluid")]
+pub(crate) fn flush_pending_bake(gpu: &GpuContext, painter: &mut ph2d_tool_painter::PainterTool) {
+    SESSION.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        let Some(sess) = slot.as_mut() else {
+            return;
+        };
+        let Some(region) = sess.texture_mode_dirty.take() else {
+            return;
+        };
+        // `composite_frame` is the SYNCHRONOUS variant (composites + reads back the
+        // band in one submission); one pass over the union covers everything the
+        // texture lane skipped. Needs the compositor's stroke state alive — true
+        // exactly in the case that matters (a new stroke starting while the prior
+        // field is still wet; a dried field's catch-up already completed).
+        let (band, rect) = sess
+            .compositor
+            .composite_frame(&gpu.device, &gpu.queue, region);
+        if !band.is_empty() {
+            painter.fluid_apply_gpu_composite_rows(&band, rect);
+        }
+        sess.catchup_bands = 0;
+    });
 }
 
 /// Drive + composite the live wet field on the GPU, called each frame after the
@@ -410,6 +446,7 @@ pub(crate) fn drive_fluid_gpu(
                 region,
                 cw,
                 ch,
+                epoch,
                 painter_preview_gpu,
                 toasts,
             )
@@ -508,6 +545,7 @@ pub(crate) fn drive_fluid_gpu(
                     region,
                     cw,
                     ch,
+                    epoch,
                     painter_gpu_preview_session,
                     painter_preview_gpu,
                     toasts,
@@ -528,7 +566,7 @@ pub(crate) fn drive_fluid_gpu(
             // (the dry-check) is threshold-independent (whole-field max), so the drop is unaffected.
             let stats = sess
                 .solver
-                .read_field_stats(&gpu.device, &gpu.queue, 1.0e-4);
+                .read_field_stats_pipelined(&gpu.device, &gpu.queue, 1.0e-4);
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
             // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
             // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps

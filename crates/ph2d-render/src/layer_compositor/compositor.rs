@@ -587,7 +587,92 @@ impl LayerCompositor {
             return self.composite_segmented(gpu, ops, canvas_w, canvas_h, region);
         }
 
-        self.write_globals(gpu, canvas_w, canvas_h, region);
+        self.write_globals(gpu, canvas_w, canvas_h, region, false);
+        let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
+        self.dispatch(gpu, region, has_groups);
+        Ok(())
+    }
+
+    /// **E5 (ADR-0078 S2 perf): region-scoped live-stroke recomposite into a
+    /// CANVAS-SIZED, PERSISTENT output.** Same composite as [`Self::composite_with_luts`]
+    /// but writes at CANVAS coords (not region-local), so a dispatch over `region`
+    /// refreshes ONLY that dirty rect and leaves the rest of `out` intact from the
+    /// prior frame. This converts the per-frame cost of a watercolor stroke's layer
+    /// recomposite from `O(canvas × layers)` to `O(wet-envelope × layers)` — the 4K
+    /// multi-layer FPS fix — while the full-canvas `out` stays valid for a
+    /// full-canvas premul + a region slot copy.
+    ///
+    /// **Contract the caller MUST honour:** seed a FULL composite (`region ==
+    /// Region::full`) on the FIRST frame of a stroke so the persistent `out` holds a
+    /// valid backdrop everywhere; pass the growing (monotonic) wet envelope on the
+    /// following frames. Because `out` persists across calls, out-of-region texels
+    /// are whatever the last call wrote there — correct only under that monotonic
+    /// discipline. A root spatial adjustment falls back to a full composite (the
+    /// segmented pass-graph has no region-into-canvas mode).
+    #[allow(clippy::too_many_arguments)] // gpu+ops+luts+src+dims+region are all intrinsic
+    pub fn composite_region_into_canvas(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        adj_luts: &[f32],
+        src: &impl LayerPixelProvider,
+        canvas_w: u32,
+        canvas_h: u32,
+        region: Region,
+    ) -> Result<(), LayerCompositeError> {
+        // Spatial stacks: the segmented pass-graph isn't region-into-canvas, but a
+        // full composite over the whole canvas writes the (canvas-sized) `out` at
+        // canvas coords anyway (region origin 0 ⇒ region-local == canvas). Correct,
+        // just not region-scoped — spatial adjustments mid-stroke are uncommon.
+        if has_spatial(ops) {
+            return self.composite_with_luts(
+                gpu,
+                ops,
+                adj_luts,
+                src,
+                canvas_w,
+                canvas_h,
+                Region::full(canvas_w, canvas_h),
+            );
+        }
+        if canvas_w == 0
+            || canvas_h == 0
+            || canvas_w > gpu.device.limits().max_texture_dimension_2d
+            || canvas_h > gpu.device.limits().max_texture_dimension_2d
+        {
+            return Err(LayerCompositeError::InvalidCanvas {
+                width: canvas_w,
+                height: canvas_h,
+            });
+        }
+        validate_op_list(ops)?;
+
+        self.clock += 1;
+        let epoch = self.clock;
+        let cap = self.cache_cap(canvas_w, canvas_h).max(1);
+        self.ensure_array(gpu, canvas_w, canvas_h, ops, cap)?;
+        for op in ops {
+            if let LayerOp::Layer { key, .. } = op {
+                self.ensure_slice(gpu, *key, src, canvas_w, canvas_h, epoch, cap)?;
+            }
+        }
+        let cache = &self.cache;
+        flatten_layer_ops(
+            ops,
+            |k| cache.get(&k).map_or(0, |c| c.slice),
+            &mut self.scratch_ops,
+        );
+
+        let region = region.clamped(canvas_w, canvas_h);
+        if region.w == 0 || region.h == 0 {
+            return Ok(()); // nothing to recomposite
+        }
+        // PERSISTENT full-canvas out (no per-frame resize churn as the envelope grows).
+        self.ensure_out(gpu, canvas_w, canvas_h);
+        self.upload_op_buffer(gpu);
+        self.upload_adj_buffer(gpu);
+        self.upload_adj_luts_buffer(gpu, adj_luts);
+        self.write_globals(gpu, canvas_w, canvas_h, region, true);
         let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
         self.dispatch(gpu, region, has_groups);
         Ok(())
@@ -617,7 +702,13 @@ impl LayerCompositor {
     ///   bands bumps the version) makes the provider version differ → the CPU
     ///   upload wins, retiring the injected content exactly when `canvas_rgba`
     ///   has caught up.
-    #[allow(clippy::too_many_arguments)] // gpu+ops+key+src+dims+version are all intrinsic
+    /// `region` (`x, y, w, h`, canvas coords) scopes the GPU→GPU copy to the wet
+    /// envelope: only that sub-rect of `src` is copied into the slice (at the same
+    /// canvas offset), leaving the rest of the slice from the previous frame /
+    /// `ensure_slice` upload intact. Pass the FULL canvas rect to copy everything.
+    /// Because the wet envelope grows monotonically and `src` outside it holds the
+    /// straight backdrop (= the slice's pre-stroke base), a rect copy is exact.
+    #[allow(clippy::too_many_arguments)] // gpu+ops+key+src+dims+region+version are all intrinsic
     pub fn inject_slice_from_texture(
         &mut self,
         gpu: &GpuContext,
@@ -626,6 +717,7 @@ impl LayerCompositor {
         src: &wgpu::Texture,
         width: u32,
         height: u32,
+        region: (u32, u32, u32, u32),
         version: u64,
     ) -> Result<(), LayerCompositeError> {
         if width == 0
@@ -636,6 +728,18 @@ impl LayerCompositor {
             return Err(LayerCompositeError::InvalidCanvas { width, height });
         }
         validate_op_list(ops)?;
+        // Clamp the copy rect to the canvas (defensive — a stale envelope must not
+        // read/write past the textures); an empty rect after clamping is a no-op.
+        let (rx, ry, rx_hi, ry_hi) = (
+            region.0.min(width),
+            region.1.min(height),
+            (region.0 + region.2).min(width),
+            (region.1 + region.3).min(height),
+        );
+        if rx_hi <= rx || ry_hi <= ry {
+            return Ok(());
+        }
+        let (rw, rh) = (rx_hi - rx, ry_hi - ry);
         // Copy-compatibility: `copy_texture_to_texture` requires the same format
         // modulo the sRGB suffix (the trick `individual.rs` relies on), and the
         // source must cover the canvas.
@@ -685,22 +789,26 @@ impl LayerCompositor {
             wgpu::TexelCopyTextureInfo {
                 texture: src,
                 mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
+                origin: wgpu::Origin3d {
+                    x: rx,
+                    y: ry,
+                    z: 0,
+                },
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::TexelCopyTextureInfo {
                 texture: &array.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
-                    x: 0,
-                    y: 0,
+                    x: rx,
+                    y: ry,
                     z: slice,
                 },
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::Extent3d {
-                width,
-                height,
+                width: rw,
+                height: rh,
                 depth_or_array_layers: 1,
             },
         );
@@ -1010,7 +1118,14 @@ impl LayerCompositor {
         }
     }
 
-    fn write_globals(&self, gpu: &GpuContext, canvas_w: u32, canvas_h: u32, region: Region) {
+    fn write_globals(
+        &self,
+        gpu: &GpuContext,
+        canvas_w: u32,
+        canvas_h: u32,
+        region: Region,
+        out_canvas_coords: bool,
+    ) {
         let g = GpuGlobals {
             canvas_width: canvas_w,
             canvas_height: canvas_h,
@@ -1019,7 +1134,7 @@ impl LayerCompositor {
             region_w: region.w,
             region_h: region.h,
             op_count: self.scratch_ops.len() as u32,
-            _pad: 0,
+            out_canvas_coords: u32::from(out_canvas_coords),
         };
         gpu.queue
             .write_buffer(&self.globals_buffer, 0, bytemuck::bytes_of(&g));
@@ -1327,7 +1442,7 @@ impl LayerCompositor {
         // skipped rather than corrupting the composite (documented limitation:
         // spatial-inside-group is a follow-up).
         if breaks.is_empty() {
-            self.write_globals(gpu, canvas_w, canvas_h, region);
+            self.write_globals(gpu, canvas_w, canvas_h, region, false);
             let has_groups = ops.iter().any(|o| matches!(o, LayerOp::PushGroup));
             self.dispatch(gpu, region, has_groups);
             return Ok(());

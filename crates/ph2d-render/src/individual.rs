@@ -328,6 +328,77 @@ impl IndividualTextureStore {
         Ok(())
     }
 
+    /// GPU→GPU copy of a SUB-RECT of `src` into the same sub-rect of slot `id`,
+    /// leaving the rest of the slot untouched. `src_origin` is where the rect
+    /// starts in `src`; `dst_x`/`dst_y` where it lands in the slot; `w`/`h` its
+    /// size. The dirty-rect sibling of [`Self::copy_from_texture`] — the Painter
+    /// E5 live stroke refreshes only the wet envelope of the preview slot instead
+    /// of re-copying the whole canvas every frame. The rect must lie within both
+    /// textures (caller clamps); an empty rect is a no-op.
+    #[allow(clippy::too_many_arguments)]
+    pub fn copy_region_from_texture(
+        &self,
+        gpu: &GpuContext,
+        id: u32,
+        src: &wgpu::Texture,
+        src_x: u32,
+        src_y: u32,
+        dst_x: u32,
+        dst_y: u32,
+        w: u32,
+        h: u32,
+    ) -> Result<(), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        if dst_x + w > entry.width || dst_y + h > entry.height {
+            return Err(IndividualTextureError::CopySizeMismatch {
+                width: dst_x + w,
+                height: dst_y + h,
+                tex_width: entry.width,
+                tex_height: entry.height,
+            });
+        }
+        if w == 0 || h == 0 {
+            return Ok(());
+        }
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render individual copy_region_from_texture encoder"),
+            });
+        encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: src,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: src_x,
+                    y: src_y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &entry.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: dst_x,
+                    y: dst_y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([encoder.finish()]);
+        Ok(())
+    }
+
     /// Increment the refcount for an existing entry. The renderer
     /// uses this when a sprite is duplicated via the M14.6 F context
     /// menu so the source texture survives even if the original

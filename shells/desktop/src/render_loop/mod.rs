@@ -59,6 +59,27 @@ use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_editor::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_hero_screen};
 use std::time::Instant;
 
+thread_local! {
+    /// Frame-phase profiler (shares the `PH2D_FLUID_PROFILE` env so no new flag):
+    /// `-1` = unread, else cached on/off. Splits the frame into CPU-encode (raw)
+    /// vs the present/acquire stall, plus the painter bridge dispatch (CPU preview)
+    /// — to pin a slowdown the `[fluid]` profiler proves is OUTSIDE the fluid drive.
+    static FRAME_PROF_ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
+    static FRAME_PROF_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_DISPATCH_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+fn frame_prof_on() -> bool {
+    FRAME_PROF_ON.with(|c| {
+        if c.get() < 0 {
+            c.set(i8::from(
+                std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"),
+            ));
+        }
+        c.get() > 0
+    })
+}
+
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
         // M14.7 polish (10.1): tag the start of CPU work for the
@@ -1084,6 +1105,7 @@ impl crate::App {
             // current_preview drain + pending_commit capture; on-canvas
             // overlay paints the canvas RGBA over the sprite footprint.
             // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
+            let _painter_dispatch_t0 = frame_prof_on().then(Instant::now);
             let painter_apply_committed = painter_bridge::dispatch(
                 hero,
                 tools,
@@ -1103,6 +1125,9 @@ impl crate::App {
                 &mut self.painter_redo_requested,
                 toasts,
             );
+            if let Some(t) = _painter_dispatch_t0 {
+                FRAME_PROF_DISPATCH_US.with(|c| c.set(t.elapsed().as_micros() as u64));
+            }
             // Vector Pen tool ⟷ shell bridge. Per-frame world-space
             // render of committed scene paths + in-progress overlay. The
             // network IS the asset (ADR-0056 §1.1); world coords come from
@@ -1600,5 +1625,28 @@ impl crate::App {
         // method (Wave 3.2 stage A). Re-acquires self.gfx + self.host
         // refs inside; values needed are passed explicitly.
         self.run_present_phase(cpu_start, r, g, b);
+
+        // Frame-phase profiler (PH2D_FLUID_PROFILE): the `[fluid]` line proves the
+        // fluid drive is ~2 ms, so a 6-fps stall lives elsewhere. This splits the
+        // frame: total vs CPU-encode (raw) → the gap is the present/GPU acquire
+        // stall; plus the painter dispatch (CPU preview produce + upload).
+        if frame_prof_on() {
+            let n = FRAME_PROF_N.with(|c| {
+                let n = c.get().wrapping_add(1);
+                c.set(n);
+                n
+            });
+            if n % 120 == 0 {
+                let total = self.frame_ms_ewma;
+                let encode = self.frame_cpu_ms_ewma;
+                let dispatch_ms = FRAME_PROF_DISPATCH_US.with(|c| c.get()) as f64 / 1000.0;
+                eprintln!(
+                    "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
+                     | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms",
+                    1000.0 / f64::from(total).max(0.001),
+                    (f64::from(total) - f64::from(encode)).max(0.0),
+                );
+            }
+        }
     }
 }

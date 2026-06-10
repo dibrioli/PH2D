@@ -396,7 +396,12 @@ struct GpuGlobals {
     region_w: u32,
     region_h: u32,
     op_count: u32,
-    _pad: u32,
+    /// `0` ⇒ write the output at REGION-LOCAL coords into a region-sized `out`
+    /// (the dirty-rect readback path). `1` ⇒ write at CANVAS coords into a
+    /// canvas-sized, persistent `out` so a region dispatch only refreshes the
+    /// dirty rect and leaves the rest intact (E5 live-stroke region recomposite,
+    /// ADR-0078 S2 perf). Occupies the former `_pad` slot — size stays 32 B.
+    out_canvas_coords: u32,
 }
 
 // ── Segmented (spatial pass-graph) GPU mirrors ───────────────────────────────

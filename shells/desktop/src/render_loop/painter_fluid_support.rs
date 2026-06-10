@@ -147,6 +147,7 @@ pub(super) fn publish_wet_sheen_between_strokes(
     region: (u32, u32, u32, u32),
     cw: u32,
     ch: u32,
+    epoch: u64,
     painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
     toasts: &mut ToastQueue,
@@ -174,6 +175,7 @@ pub(super) fn publish_wet_sheen_between_strokes(
             region,
             cw,
             ch,
+            epoch,
             painter_preview_gpu,
             toasts,
         );

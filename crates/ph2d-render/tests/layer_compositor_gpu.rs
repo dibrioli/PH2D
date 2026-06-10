@@ -2176,7 +2176,7 @@ fn injected_slice_wins_until_provider_version_bumps() {
     );
 
     // Inject at the provider's CURRENT version (1 — NOT bumped: the invariant).
-    comp.inject_slice_from_texture(&gpu, &ops, 1, &src, w, h, 1)
+    comp.inject_slice_from_texture(&gpu, &ops, 1, &src, w, h, (0, 0, w, h), 1)
         .expect("inject");
 
     // SAME-version provider pass right after: the injected pixels must appear
@@ -2244,20 +2244,99 @@ fn inject_rejects_incompatible_source_texture() {
     // Wrong format family.
     let bad_fmt = make(wgpu::TextureFormat::Bgra8Unorm, w, h);
     assert_eq!(
-        comp.inject_slice_from_texture(&gpu, &ops, 7, &bad_fmt, w, h, 1),
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &bad_fmt, w, h, (0, 0, w, h), 1),
         Err(LayerCompositeError::MissingOrMalformedLayer { key: 7 })
     );
     // Too small to cover the canvas.
     let too_small = make(wgpu::TextureFormat::Rgba8Unorm, w / 2, h);
     assert_eq!(
-        comp.inject_slice_from_texture(&gpu, &ops, 7, &too_small, w, h, 1),
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &too_small, w, h, (0, 0, w, h), 1),
         Err(LayerCompositeError::MissingOrMalformedLayer { key: 7 })
     );
     // The sRGB-suffixed sibling IS copy-compatible (the individual.rs trick).
     let srgb_ok = make(wgpu::TextureFormat::Rgba8UnormSrgb, w, h);
     assert!(
-        comp.inject_slice_from_texture(&gpu, &ops, 7, &srgb_ok, w, h, 1)
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &srgb_ok, w, h, (0, 0, w, h), 1)
             .is_ok(),
         "Rgba8UnormSrgb → Rgba8Unorm copy is format-compatible"
     );
+}
+
+/// E5 perf (ADR-0078 S2): `composite_region_into_canvas` writes at canvas coords
+/// into a PERSISTENT canvas-sized `out`. A seed (full) frame then a region frame
+/// must (a) match a full CPU composite INSIDE the region and (b) leave every texel
+/// OUTSIDE the region byte-identical to the seed — that invariant is what lets the
+/// live stroke refresh only the wet envelope per frame instead of O(canvas×layers).
+#[test]
+#[ignore = "needs a GPU device"]
+fn composite_region_into_canvas_refreshes_region_and_preserves_outside() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (32u32, 32u32);
+    let solid = |r: u8, g: u8, b: u8| {
+        let mut v = vec![0u8; (w * h * 4) as usize];
+        for px in v.chunks_exact_mut(4) {
+            px.copy_from_slice(&[r, g, b, 255]);
+        }
+        v
+    };
+    let ops = vec![
+        LayerOp::Layer {
+            key: 0,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 0.5,
+        },
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+
+    // Seed: a FULL composite into the canvas-sized out (red base + half blue).
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, varied_canvas(w, h, 1));
+    prov.insert(1, 1, solid(30, 30, 200));
+    comp.composite_region_into_canvas(&gpu, &ops, &[], &prov, w, h, Region::full(w, h))
+        .expect("seed full");
+    let seeded = comp.read_output(&gpu).expect("seed readback");
+
+    // Change layer 1 (version bump → green) but recomposite ONLY a sub-region.
+    let mut prov2 = MapProvider::default();
+    prov2.insert(0, 1, varied_canvas(w, h, 1));
+    prov2.insert(1, 2, solid(30, 200, 30));
+    let region = Region {
+        x: 8,
+        y: 9,
+        w: 11,
+        h: 7,
+    };
+    comp.composite_region_into_canvas(&gpu, &ops, &[], &prov2, w, h, region)
+        .expect("region composite");
+    let got = comp.read_output(&gpu).expect("region readback");
+
+    // Reference: a FULL composite of the NEW (prov2) stack.
+    let want_full = cpu_composite(&ops, &prov2, w, h, Region::full(w, h));
+    for y in 0..h {
+        for x in 0..w {
+            let i = ((y * w + x) * 4) as usize;
+            let inside =
+                x >= region.x && x < region.x + region.w && y >= region.y && y < region.y + region.h;
+            if inside {
+                assert!(
+                    max_byte_diff(&got[i..i + 4], &want_full[i..i + 4]) <= 1,
+                    "inside region must match the full composite at ({x},{y})"
+                );
+            } else {
+                assert_eq!(
+                    &got[i..i + 4],
+                    &seeded[i..i + 4],
+                    "outside region must stay byte-identical to the seed at ({x},{y})"
+                );
+            }
+        }
+    }
 }

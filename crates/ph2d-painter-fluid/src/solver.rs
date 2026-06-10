@@ -306,6 +306,16 @@ pub struct FluidSolver {
     reduce_params_buf: wgpu::Buffer,
     stats_buf: wgpu::Buffer,
     bg_reduce: wgpu::BindGroup,
+    /// Persistent readback staging for the PIPELINED dry-check
+    /// ([`Self::read_field_stats_pipelined`]) + its in-flight map. The blocking
+    /// sync [`Self::read_field_stats`] (parity tests) allocates its own local
+    /// staging; the live drive uses this async pair so the dry-check never does a
+    /// per-fire `poll(wait)` queue-drain (the FPS-collapse feedback loop).
+    stats_staging: wgpu::Buffer,
+    pending_stats: Option<std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>>,
+    /// Last stat read back (returned while the next fire's map is in flight). Seeded
+    /// "wet, no bbox" so the first fires never spuriously drop the field.
+    last_stats: FieldStats,
     /// Pigment-deposition pass (`cs_transfer`, ADR-0078 S3): freezes flowing pigment
     /// (`pig_a`) into the resident `deposited` layer (edge-darkening + granulation).
     /// Own bind-group layout — both pigment buffers are read_write.
@@ -616,6 +626,12 @@ impl FluidSolver {
             usage: wgpu::BufferUsages::STORAGE
                 | wgpu::BufferUsages::COPY_DST
                 | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let stats_staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-painter-fluid stats staging (pipelined)"),
+            size: (5 * core::mem::size_of::<u32>()) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
         let bg_reduce = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -1134,6 +1150,12 @@ impl FluidSolver {
             reduce_params_buf,
             stats_buf,
             bg_reduce,
+            stats_staging,
+            pending_stats: None,
+            last_stats: FieldStats {
+                max_water: 1.0,
+                bbox: None,
+            },
             transfer,
             deposited,
             bg_transfer,
@@ -1772,6 +1794,94 @@ impl FluidSolver {
             Some((s[1], s[2], s[3], s[4]))
         };
         FieldStats { max_water, bbox }
+    }
+
+    /// **Pipelined dry-check (ADR-0078 S2 — no per-frame/per-fire `poll(wait)`).**
+    /// The live sibling of [`Self::read_field_stats`]: submits the reduction +
+    /// `map_async` WITHOUT a blocking poll, and returns the PREVIOUS fire's stats
+    /// (read after a non-blocking `poll(Poll)` fired its callback). The blocking
+    /// `poll(wait_indefinitely)` of the sync path drains the ENTIRE GPU queue
+    /// (including the UI render) — at ~⅓ s cadence that is a multi-ms stall that
+    /// *grows* into a runaway (the stall lengthens the frame → the sim falls behind
+    /// → more substeps queued → a deeper queue → a longer drain), which is exactly
+    /// the single-layer FPS collapse the profiler pinned to `stats` (0.5 → 6 ms).
+    ///
+    /// The dry-check tolerates one fire of latency (drying takes ~18 frames; the
+    /// drop merely frees the field ~one cadence later — invisible, it is already
+    /// dry). Seeded "wet" so the first fires never drop the field prematurely.
+    /// Uses the PERSISTENT `stats_staging` (no per-call alloc); the prior map must
+    /// be drained before re-submission, like the composite's pipelined readback.
+    pub fn read_field_stats_pipelined(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        threshold: f32,
+    ) -> FieldStats {
+        // Fire any completed map callback WITHOUT blocking (the key vs the sync path).
+        let _ = device.poll(wgpu::PollType::Poll);
+        if let Some(rx) = self.pending_stats.take() {
+            match rx.try_recv() {
+                Ok(Ok(())) => {
+                    let mapped = self.stats_staging.slice(..).get_mapped_range();
+                    let s: [u32; 5] = bytemuck::cast_slice::<u8, u32>(&mapped)[..5]
+                        .try_into()
+                        .expect("5 u32 stats");
+                    drop(mapped);
+                    self.stats_staging.unmap();
+                    self.last_stats = FieldStats {
+                        max_water: f32::from_bits(s[0]),
+                        bbox: if s[1] == u32::MAX {
+                            None
+                        } else {
+                            Some((s[1], s[2], s[3], s[4]))
+                        },
+                    };
+                }
+                Ok(Err(_)) => {
+                    // Map failed — unmap defensively; staging is free to reuse.
+                    self.stats_staging.unmap();
+                }
+                Err(_) => {
+                    // GPU not done yet — keep waiting, do NOT re-map the staging
+                    // (re-mapping a mapped buffer aborts the process), return the last.
+                    self.pending_stats = Some(rx);
+                    return self.last_stats;
+                }
+            }
+        }
+        // Submit a fresh reduction + async map (staging is free now).
+        let init: [u32; 5] = [0, u32::MAX, u32::MAX, 0, 0];
+        queue.write_buffer(&self.stats_buf, 0, bytemuck::cast_slice(&init));
+        let rp = GpuReduceParams {
+            width: self.width,
+            height: self.height,
+            threshold,
+            _pad: 0,
+        };
+        queue.write_buffer(&self.reduce_params_buf, 0, bytemuck::bytes_of(&rp));
+        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid reduce (pipelined)"),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid reduce pass (pipelined)"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.reduce);
+            pass.set_bind_group(0, &self.bg_reduce, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        }
+        enc.copy_buffer_to_buffer(&self.stats_buf, 0, &self.stats_staging, 0, self.stats_staging.size());
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.stats_staging
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |r| {
+                let _ = tx.send(r);
+            });
+        self.pending_stats = Some(rx);
+        self.last_stats
     }
 
     /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment

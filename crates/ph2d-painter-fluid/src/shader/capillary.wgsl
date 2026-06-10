@@ -103,7 +103,17 @@ struct FaceInfo {
     kind: u32,
     ni: u32,
 }
+// Curtis δ_s donor gate — MUST equal the CPU canonical
+// `ph2d_painter_brush::diffusion::CAPILLARY_MIN_SATURATION` (see its doc): a face whose
+// wetter side is at/below this floor carries no flux ("the wick exhausts"), so the fringe
+// equilibrium is bounded and the Keep Wet envelope can't run away. Symmetric in (wc, wn)
+// ⇒ anti-symmetric flux ⇒ conservation + CPU bit-parity hold.
+const CAPILLARY_MIN_SAT: f32 = 0.005;
+
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
+    if (max(water_in[ni], wc) <= CAPILLARY_MIN_SAT) {
+        return FaceInfo(0.0, 0.0, 0u, ni);
+    }
     let permn = perm_at(ni);
     var cond = 0.5 * (permc + permn);
     // Branched (fiber-channeled) capillary (ADR-0082, crest-gate re-tune 2026-06-09): the face

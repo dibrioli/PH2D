@@ -124,6 +124,114 @@ pub(super) fn copy_preview_into_slot(
     }
 }
 
+/// **Readback lane** — any frame the zero-readback texture paths (E4/E5) didn't run:
+/// composite PIPELINED (async readback, no per-frame `device.poll(wait)` stall; the band
+/// returned is the PRIOR frame's — imperceptible, the same lag the preview always had;
+/// `begin_stroke` drains the in-flight map before reuse) and keep `canvas_rgba` current.
+///
+/// E4 catch-up: the FIRST readback frames after the texture→readback switch must
+/// composite the FULL union the texture path covered (`texture_mode_dirty`), so
+/// `canvas_rgba` catches up on everything it skipped. Because the band returned NOW is
+/// from the PRIOR submission, the union keeps being fed until 2 CONSECUTIVE bands
+/// returned while feeding it — the 2nd is necessarily from a submission that included it.
+///
+/// Transition hand-off: while `texture_published`, the (one-frame-stale) fluid texture
+/// override is re-emitted so the stroke never flickers back to the pre-catch-up CPU
+/// preview; the flag drops on the first applied band. Finally, with the pointer up and
+/// Show Wet on, the view-only wet sheen is recomposited + republished
+/// ([`publish_wet_sheen_between_strokes`]).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn run_readback_lane(
+    sess: &mut FluidSession,
+    renderer: &mut SpriteRenderer,
+    gpu: &GpuContext,
+    painter: &mut ph2d_tool_painter::PainterTool,
+    override_entity: Option<u64>,
+    region: (u32, u32, u32, u32),
+    stroke_active: bool,
+    cw: u32,
+    ch: u32,
+    epoch: u64,
+    painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
+) -> Option<PreviewOverride> {
+    let mut override_out = None;
+    let rb_region = match sess.texture_mode_dirty {
+        Some(d) => union_bbox(region, d),
+        None => region,
+    };
+    let (band, rect) = sess
+        .compositor
+        .composite_frame_pipelined(&gpu.device, &gpu.queue, rb_region);
+    if !band.is_empty() {
+        painter.fluid_apply_gpu_composite_rows(&band, rect);
+        if sess.texture_mode_dirty.is_some() {
+            sess.catchup_bands += 1;
+            if sess.catchup_bands >= 2 {
+                sess.texture_mode_dirty = None;
+                sess.catchup_bands = 0;
+            }
+        }
+        // canvas_rgba just caught up, but the CPU upload happens LATER this frame and
+        // sim_extract samples the CPU slot with a 1-frame lag — keep the fluid texture
+        // override for THIS frame only, then hand the preview back to the CPU slot.
+        if sess.texture_published {
+            sess.texture_published = false;
+            if let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity) {
+                override_out = Some(PreviewOverride {
+                    entity_bits,
+                    texture_id: id,
+                    premultiplied: true,
+                });
+            }
+        }
+    } else {
+        // "2 consecutive" discipline: an empty band resets the count.
+        sess.catchup_bands = 0;
+        // No band yet (first readback frame after the switch — nothing was pending):
+        // the CPU preview is still pre-catch-up, so keep showing the fluid texture
+        // to avoid a stroke-disappears flicker.
+        if sess.texture_published
+            && let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity)
+        {
+            override_out = Some(PreviewOverride {
+                entity_bits,
+                texture_id: id,
+                premultiplied: true,
+            });
+        }
+    }
+    // Wet-sheen between strokes: `canvas_rgba` is kept current (sheen-free, the bake)
+    // by the readback above; the sheen is view-only, so ALSO composite into the preview
+    // texture + publish the fluid override this frame. One extra region-scoped composite
+    // per drying frame; no `texture_mode_dirty` feeding (the readback lane runs in
+    // parallel).
+    if !stroke_active
+        && painter.fluid_show_wet()
+        && let Some(entity_bits) = override_entity
+        && let Some(ov) = publish_wet_sheen_between_strokes(
+            renderer,
+            gpu,
+            painter,
+            entity_bits,
+            &mut sess.compositor,
+            &mut sess.preview_slot,
+            &mut sess.texture_published,
+            region,
+            cw,
+            ch,
+            epoch,
+            painter_gpu_preview_session,
+            painter_preview_gpu,
+            toasts,
+        )
+    {
+        override_out = Some(ov);
+    }
+    override_out
+}
+
 /// **Wet-sheen between strokes (drying / keep-wet).** While the field stays wet with
 /// the pointer UP, the readback lane keeps `canvas_rgba` current exactly as before —
 /// but `canvas_rgba` is sheen-free by design (the sheen is view-only), so the wet look
@@ -227,6 +335,12 @@ pub(super) struct FluidSession {
     /// `fluid_diffusion_params()` (the chokepoint that zeroes evaporation) so the
     /// toggle takes effect immediately on the live wash.
     pub(super) keep_wet: bool,
+    /// Consecutive frames with the pointer up AND no dabs (perf block 2b). Paces the
+    /// idle decimation: with a live field but nothing being painted, the sim step +
+    /// composite/sheen run only every `IDLE_STEP_EVERY` frames (the field barely moves
+    /// idle; recompositing the whole envelope per frame was the dominant idle GPU cost,
+    /// §4b). Reset to 0 by any dab or active stroke.
+    pub(super) idle_frames: u64,
 }
 
 impl FluidSession {
@@ -243,6 +357,7 @@ impl FluidSession {
             catchup_bands: 0,
             texture_published: false,
             keep_wet: false,
+            idle_frames: 0,
         }
     }
 

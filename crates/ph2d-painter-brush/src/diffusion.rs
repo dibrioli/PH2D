@@ -278,6 +278,22 @@ pub const WATER_EPS: f32 = 1.0e-4;
 /// and fed the envelope runaway.
 pub const WET_BBOX_WATER_THRESHOLD: f32 = 1.0e-3;
 
+/// **Capillary minimum saturation (Curtis 1997 δ_s — perf block 2a, 2026-06-10).** A face
+/// carries capillary flux only while its DONOR cell (the wetter side) holds more water than
+/// this floor — in Curtis's capillary layer, water transfers between cells only above a
+/// minimum saturation ("the wick exhausts"). Without it our diffusion-form wick never
+/// terminates: under Keep Wet (evaporation = 0) the wash keeps creeping outward forever —
+/// the §4b envelope runaway was REAL water spreading, not just numeric mist (the
+/// [`WATER_EPS`] clamp alone only slowed it). The gate is on the SOURCE; the wick into dry
+/// receiver cells stays fully open (the `capillary_flow` doc's "NOT the wet gate" fence is
+/// about the receiver — both rules coexist). Gated symmetrically by `max(wc, wn)` so both
+/// cells of a face compute the identical (anti-symmetric) flux: conservation + GPU bit-parity
+/// hold. Equilibrium becomes BOUNDED: the front stalls where the boundary dilutes below δ_s,
+/// so the wet envelope ≲ total_water / δ_s cells. The transparent halo + branching fingers
+/// live well above this floor (fringe contour 1e-3, plateau ~δ_s; probes in the
+/// `capillary_*` tests stay green). GPU mirror literal in `capillary.wgsl::face_info`.
+pub const CAPILLARY_MIN_SATURATION: f32 = 0.005;
+
 /// Fixed Jacobi-iteration count for the shallow-water pressure projection
 /// ([`DiffusionGrid::project`], ADR-0078 S3d). A *fixed* count (not a convergence
 /// threshold) keeps the solve deterministic + bounded (HR-5) and makes the GPU mirror
@@ -1145,6 +1161,13 @@ impl DiffusionGrid {
                 // the outer fringe is water-only (transparent) and the colour lags behind it.
                 let mob = p.capillary_mobility;
                 let face = |nidx: usize| -> (f32, [f32; PIG_CH]) {
+                    // Curtis δ_s donor gate (see CAPILLARY_MIN_SATURATION): a face whose
+                    // wetter side is at/below the floor carries nothing — the wick exhausts,
+                    // the fringe equilibrium is bounded (the Keep Wet envelope-runaway brake).
+                    // Symmetric in (wc, wn) ⇒ anti-symmetric flux ⇒ conservation holds.
+                    if self.water[nidx].max(wc) <= CAPILLARY_MIN_SATURATION {
+                        return (0.0, [0.0; PIG_CH]);
+                    }
                     let permn = p.perm_valley + (p.perm_crest - p.perm_valley) * self.paper[nidx];
                     let cond = 0.5 * (permc + permn);
                     // Branched (fiber-channeled) capillary (ADR-0082): CREST-GATE the face

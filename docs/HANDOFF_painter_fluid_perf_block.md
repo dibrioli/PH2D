@@ -178,3 +178,30 @@ CPU+GPU em paridade, validação visual) → 2b/2c.
     deve recuperar pós-stroke; (c) visual: halo transparente/blooms/edge-darkening/granulação/
     fingers do branching intactos. Se ainda pesar idle → 2b (cadência idle) e o objetivo maior
     2c (frente ativa / tiling esparso, bbox ATUAL vs união all-time).
+— sessão 2026-06-10d (medição do Enio sobre 2a: "sem melhoras" — envelope AINDA crescia idle,
+  114k→128k células com dabs=0): o clamp 1e-4 freou a névoa numérica mas o crescimento restante
+  era **água REAL** — capillary é difusão pura sem terminação; sob Keep Wet (evaporação 0) a
+  física espalha pra sempre. Dois fixes (validação visual pendente):
+  - **Gate de saturação Curtis δ_s (`CAPILLARY_MIN_SATURATION = 0.005`)**: face capilar só flui
+    enquanto o DOADOR (lado mais molhado, `max(wc,wn)`) excede o piso — "o pavio esgota"
+    (camada capilar do Curtis 1997 canônico: transferência só acima de saturação mínima).
+    Simétrico na face ⇒ fluxo anti-simétrico ⇒ conservação + bit-parity. Equilíbrio LIMITADO:
+    a frente para onde a borda dilui < δ_s (envelope ≲ água_total/δ_s). Gate na FONTE — a
+    cerca "NOT the wet gate" do doc do `capillary_flow` é sobre o RECEPTOR (wick pra célula
+    seca segue aberto). Calibração: 0.02 e 0.01 REJEITADOS (halo cromatográfico caiu a 1-2
+    células; teste exige ≥3); 0.005 → halo 3 ✓ todos os capillary_* verdes. CPU `face` closure
+    + espelho `capillary.wgsl::face_info`.
+  - **2b cadência idle (`IDLE_STEP_EVERY = 3` no bridge)**: pointer up + 0 dabs ⇒ step +
+    composite/sheen/readback só a cada 3 frames; frames pulados republicam a textura
+    persistente do slot (campo estático, nada a recompor). Segurado enquanto
+    `texture_mode_dirty` pendente (latência do bake pós pen-up inalterada); frames pintando
+    nunca decimam. Custo idle esperado ≈ ⅓ (comp_tex 12.6ms + comp_pipe 4.9ms + step ~10ms
+    eram TODO frame). Dinâmica idle evolui a ⅓ do wall-clock (aceitável-a-validar do plano).
+  - **Refactor HR-18**: braço de readback extraído pra `run_readback_lane` em
+    `painter_fluid_support.rs` (bridge tinha passado de 600 LOC).
+  - **Verde**: 371 painter-brush + Metal gpu_parity 19✓ + composite_parity 13✓ + host-desktop
+    88✓ (incl. LOC cap) + check default e `--features fluid`.
+  - **Validação (Enio)**: igual à 2a acima; agora o esperado é o `region` PARAR de crescer
+    (não só desacelerar) e o stall idle cair ~3×. Se o fringe ficou curto demais no visual,
+    δ_s desce (0.003/0.002 — re-rodar `cargo test -p ph2d-painter-brush capillary`); se o
+    envelope ainda incomodar em wash grande, é o 2c (frente ativa / tiling esparso).

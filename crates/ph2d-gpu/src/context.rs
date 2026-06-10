@@ -63,11 +63,15 @@ impl GpuContext {
         // on them (BC on desktop D3D12/Vulkan/Intel-Metal, ASTC/ETC2 on Apple
         // Silicon + mobile, none on a bare WebGPU adapter → RGBA8 floor).
         // Mirrors `CompressionFeatureSet::relevant_mask`.
+        // TIMESTAMP_QUERY rides along when the adapter has it (it always does on
+        // Metal/Vulkan/D3D12 desktops): the `pass_profiler` (PH2D_FLUID_PROFILE)
+        // needs it to time GPU pass execution; granted-but-unused it costs nothing.
         let compression_features = adapter.features()
             & (wgpu::Features::TEXTURE_COMPRESSION_BC
                 | wgpu::Features::TEXTURE_COMPRESSION_ASTC
                 | wgpu::Features::TEXTURE_COMPRESSION_ETC2
-                | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM);
+                | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
+                | wgpu::Features::TIMESTAMP_QUERY);
 
         // Limits::default() (desktop tier) is required by Vello's
         // compute pipelines (M11 widget paint) — downlevel_defaults

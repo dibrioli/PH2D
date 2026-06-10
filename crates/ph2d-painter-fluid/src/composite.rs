@@ -568,7 +568,7 @@ impl FluidCompositor {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite preview init pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_init"),
             });
             pass.set_pipeline(&self.premul_init_pipeline);
             pass.set_bind_group(0, &st.bind, &[]);
@@ -635,7 +635,7 @@ impl FluidCompositor {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_sync"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &st.bind, &[]);
@@ -738,7 +738,7 @@ impl FluidCompositor {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_pipe"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &st.bind, &[]);
@@ -807,7 +807,7 @@ impl FluidCompositor {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame to-texture pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_tex"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &st.bind, &[]);
@@ -902,7 +902,7 @@ impl FluidCompositor {
             {
                 let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("composite straight init pass"),
-                    timestamp_writes: None,
+                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_init"),
                 });
                 pass.set_pipeline(&self.straight_init_pipeline);
                 pass.set_bind_group(0, &st.bind, &[]);
@@ -935,7 +935,7 @@ impl FluidCompositor {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame to-straight-texture pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_straight"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &st.bind, &[]);
@@ -1065,7 +1065,7 @@ impl FluidCompositor {
         if rw > 0 && rh > 0 {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_buffer"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind, &[]);
@@ -1151,7 +1151,7 @@ impl FluidCompositor {
         if rw > 0 && rh > 0 {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite rows pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_rows"),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind, &[]);

@@ -67,11 +67,38 @@ fixo que roda todo frame quando um campo de fluido está vivo** — bug muito ma
 
 ## §4 — PLANO
 
-**Passo 1 (medir — NÃO pular):** GPU-timestamp profiling. Adicionar um `wgpu::QuerySet` (timestamp) com
-`timestamp_writes` em cada compute/render pass do fluido (step/composite/copy/stats) **e** dos 4 passes
-principais (sprite/tonemap/vello/compositor); `resolve_query_set` → readback → deltas em ms. Pintar UMA
-mancha pequena e ver **qual pass come os 131ms**. (O `[frame]` de CPU já provou que NÃO é CPU; agora é
-achar o pass de GPU.) Suspeito #1 = `copy_preview_into_slot` full-canvas.
+**Passo 1 (medir — NÃO pular): ✅ IMPLEMENTADO (sessão 2026-06-10b).** GPU-timestamp profiler landado:
+
+- **`ph2d-gpu/src/pass_profiler.rs`** (novo): `QuerySet` TIMESTAMP global (512 queries/frame), API
+  `compute_writes(label)`/`render_writes(label)` (attach no descriptor do pass), spans p/ copies
+  (`copy_span_begin/end` — marker passes vazios no mesmo encoder) e p/ submits estrangeiros
+  (`span_begin/end` — Vello). `end_frame` (chamado no `present.rs` após o compositor) resolve + readback
+  PIPELINADO (ring de 3, zero poll blocking) e imprime a cada 120 frames AMOSTRADOS:
+  `[gpu] avg ...: gpu-busy(span)=Xms passes/frame=N` + tabela `label=ms(×passes)` ordenada desc.
+  Inerte sem `PH2D_FLUID_PROFILE=1` (todas as fns viram no-op; `timestamp_writes: None`).
+- **Feature `TIMESTAMP_QUERY`** pedida em `context.rs` (interseção com o adapter — não falha nunca).
+- **Instrumentado:** solver per-kernel (`fluid.splat/forces/divergence/clear_p/jacobi/project/lift/
+  diffuse/advect_v/advect/transfer/evaporate/capillary/combine/stats`), composite por entrada
+  (`fluid.comp_sync/comp_pipe/comp_tex/comp_straight/comp_init/comp_buffer/comp_rows`), copies
+  (`copy.slot`/`copy.region` em `individual.rs`), os 4 passes principais (`render.sprite/tonemap/
+  compositor` + bracket `render.vello`), `render.clip/premul/layer_comp`. Linha `[fluid-ctx]`
+  (bridge, a cada 120 frames) dá grid/região/substeps/dabs — distingue custo-fixo de O(área).
+- **PROVADO no Metal:** gate `ph2d-gpu/tests/pass_profiler_gpu.rs` (`--ignored`) — kernel ocupado de
+  1M threads mede 4-5ms reais, zero validation errors, report imprime. Paridade intacta
+  (gpu_parity 13✓ + composite_parity 19✓ + layer_compositor_gpu 25✓¹).
+- ⚠️ **Caveat Metal:** spans de marker (copy/vello) podem SUB-medir se o trabalho bracketed não tem
+  hazard com os markers (Metal sobrepõe encoders independentes). No app real há hazards (vello escreve
+  a intermediate que o compositor lê; o copy escreve o slot que o sprite pass sampleia), então a ordem
+  é forçada — mas leia esses dois labels como piso, não teto. Os passes REAIS (timestamps próprios)
+  são exatos. Se `gpu-busy(span) >> Σ labels` → o custo está ENTRE passes (overhead de
+  scheduling/encoder boundaries — ~40 passes/frame no fluido) ou em submits não-instrumentados.
+
+¹ `gpu_composite_50_layers_dirty_rect_under_5ms` é borderline (mediana 4.81ms vs cap 5ms): falha no run
+cheio sob carga da máquina, passa isolado. Pré-existente, não-relacionado (profiler OFF nos testes).
+
+**→ PRÓXIMO (Enio):** `PH2D_FLUID_PROFILE=1 ./play.command`, pincel água, Keep Wet ON, UMA mancha
+pequena, esperar ~2 relatórios `[gpu]` e colar a saída (junto com `[fluid-ctx]` + `[frame]`). O label
+gordo OU o gap (`gpu-busy` ≫ Σ) aponta a causa dos 131ms.
 
 **Passo 2 (corrigir a causa):** depende do passo 1. Se for o copy full-canvas → copiar só o sub-rect
 (como já fiz no slot-copy do E5: `copy_texture_region_into_individual`). Se for o shallow-water → revisar
@@ -85,11 +112,15 @@ a-estágio com o Enio (blooms, edge-darkening, granulação, sheen intactos).
 
 ## §5 — COMO RODAR / MEDIR
 ```bash
-PH2D_FLUID_PROFILE=1 ./play.command   # imprime [fluid] (drive) + [frame] (total/raw/stall/dispatch)
+PH2D_FLUID_PROFILE=1 ./play.command   # [fluid] (drive CPU) + [frame] (total/raw/stall) + [gpu] (passes GPU) + [fluid-ctx]
 # Repro: pincel água, Keep Wet ON, UMA mancha pequena → já cai pra ~7fps (custo fixo, §2).
+# O [gpu] imprime a cada 120 frames AMOSTRADOS (sob 7fps ≈ 20-40s; aguarde 2 relatórios).
+cargo test -p ph2d-gpu --test pass_profiler_gpu -- --ignored        # round-trip do profiler no Metal
 cargo test -p ph2d-painter-fluid --features fluid --test gpu_parity --test composite_parity -- --ignored
 cargo test -p ph2d-render --test layer_compositor_gpu -- --ignored   # inclui o novo gate region-into-canvas
 ```
 
-— deixado por Claude (sessão 2026-06-10): bugs de input/undo/crash/stats fechados; FPS isolado como
-GPU-execution-bound de **custo fixo por frame** (§2). Próximo: GPU-timestamp → achar o pass → corrigir.
+— sessão 2026-06-10: bugs de input/undo/crash/stats fechados; FPS isolado como GPU-execution-bound de
+**custo fixo por frame** (§2).
+— sessão 2026-06-10b: **Passo 1 implementado e provado** (profiler de GPU-timestamp por pass, §4);
+gates de paridade re-rodados verdes. Próximo: Enio mede 1× → o label/gap aponta → Passo 2 (corrigir).

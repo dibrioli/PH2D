@@ -96,6 +96,13 @@ impl crate::App {
                 // (smoother glyph edges; CrispHeavyPlus) or its
                 // default Area analytical coverage (Default + CrispHeavy).
                 let prefer_msaa = ph2d_editor::paint::text_rendering().params().prefer_msaa;
+                // GPU pass profiler: Vello submits internally (its passes are out of
+                // reach), so bracket the whole call with marker submits — queue order
+                // makes `end − begin` cover everything Vello enqueued. No-op when off.
+                let vello_span = {
+                    let g = surface.gpu();
+                    ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.vello")
+                };
                 if let Err(e) = vello_pass.render_to_intermediate(
                     surface.gpu(),
                     vector_scene.inner(),
@@ -105,10 +112,22 @@ impl crate::App {
                 ) {
                     eprintln!("M14.5 vello_pass.render_to_intermediate error: {e}");
                 }
+                if let Some(t) = vello_span {
+                    let g = surface.gpu();
+                    ph2d_gpu::pass_profiler::span_end(&g.device, &g.queue, t);
+                }
                 // Pass 4: compositor
                 //   reads: tonemap output + vello intermediate
                 //   target: swap chain
                 compositor.run(surface.gpu(), frame.view());
+                // GPU pass profiler frame tail: resolve this frame's timestamp
+                // queries + kick the pipelined readback (prints every 120 frames).
+                // After the LAST instrumented submit; the resolve submit ordering
+                // vs the present is irrelevant (same queue). No-op when off.
+                {
+                    let g = surface.gpu();
+                    ph2d_gpu::pass_profiler::end_frame(&g.device, &g.queue);
+                }
                 // FrameTarget presents on Drop.
                 let work_after_acquire = after_acquire.elapsed();
                 let cpu_total = work_before_acquire + work_after_acquire;

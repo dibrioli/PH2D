@@ -580,6 +580,24 @@ pub(crate) fn drive_fluid_gpu(
             let step_us = t1.unwrap().duration_since(t0.unwrap()).as_micros() as u64;
             let comp_us = t2.unwrap().duration_since(t1.unwrap()).as_micros() as u64;
             PROFILE.with(|p| p.borrow_mut().record(step_us, comp_us, stats_us));
+            // Context line for the `[gpu]` pass table: how much WORK was asked of the
+            // GPU this frame (region cells × substeps), so a fixed-cost pass (cells
+            // small, time large) is distinguishable from an O(area) one.
+            if sess.frame % 120 == 1 {
+                let cells = u64::from(region.2 - region.0 + 1) * u64::from(region.3 - region.1 + 1);
+                eprintln!(
+                    "[fluid-ctx] grid={}x{} scale={scale} region=({},{})-({},{}) ({cells} \
+                     cells) substeps={substeps} dabs={} stroke_active={stroke_active} \
+                     texture_frame={texture_frame}",
+                    dims.0,
+                    dims.1,
+                    region.0,
+                    region.1,
+                    region.2,
+                    region.3,
+                    gpu_dabs.len(),
+                );
+            }
         }
         override_out
     })

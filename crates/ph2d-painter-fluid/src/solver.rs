@@ -1581,7 +1581,7 @@ impl FluidSolver {
             {
                 let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("fluid splat pass"),
-                    timestamp_writes: None,
+                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.splat"),
                 });
                 pass.set_pipeline(&self.splat);
                 pass.set_bind_group(0, &self.bg_splat, &[]);
@@ -1637,16 +1637,20 @@ impl FluidSolver {
             label: Some("fluid resident splat step"),
         });
         // One compute pass per pipeline (wgpu inserts the RAW barrier between passes).
-        let run =
-            |enc: &mut wgpu::CommandEncoder, pipe: &wgpu::ComputePipeline, bg: &wgpu::BindGroup| {
-                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("fluid resident splat pass"),
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(pipe);
-                pass.set_bind_group(0, bg, &[]);
-                pass.dispatch_workgroups(gx, gy, 1);
-            };
+        // The per-kernel label feeds the GPU pass profiler (PH2D_FLUID_PROFILE) —
+        // `compute_writes` is None (free) when profiling is off.
+        let run = |enc: &mut wgpu::CommandEncoder,
+                   pipe: &wgpu::ComputePipeline,
+                   bg: &wgpu::BindGroup,
+                   label: &'static str| {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("fluid resident splat pass"),
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes(label),
+            });
+            pass.set_pipeline(pipe);
+            pass.set_bind_group(0, bg, &[]);
+            pass.dispatch_workgroups(gx, gy, 1);
+        };
         // Shallow-water velocity layer on? (ADR-0078 S3d — `set_shallow_water` set it.)
         let shallow = self.params_cache.get().velocity > 0.0;
         // Capillary fringe on? (ADR-0078 S5 — `set_from_diffusion` set it.)
@@ -1660,10 +1664,30 @@ impl FluidSolver {
             // (divergence → seed pressure → RELAX_ITERS Jacobi sweeps → subtract gradient,
             // b→a) BEFORE the pigment transport. Skipped while the layer is dormant.
             if shallow {
-                run(&mut enc, &self.add_forces, &self.bg_add_forces);
-                run(&mut enc, &self.divergence_pipe, &self.bg_divergence);
-                run(&mut enc, &self.clear_pressure, &self.bg_clear_pa);
-                run(&mut enc, &self.clear_pressure, &self.bg_clear_pb);
+                run(
+                    &mut enc,
+                    &self.add_forces,
+                    &self.bg_add_forces,
+                    "fluid.forces",
+                );
+                run(
+                    &mut enc,
+                    &self.divergence_pipe,
+                    &self.bg_divergence,
+                    "fluid.divergence",
+                );
+                run(
+                    &mut enc,
+                    &self.clear_pressure,
+                    &self.bg_clear_pa,
+                    "fluid.clear_p",
+                );
+                run(
+                    &mut enc,
+                    &self.clear_pressure,
+                    &self.bg_clear_pb,
+                    "fluid.clear_p",
+                );
                 for it in 0..RELAX_ITERS {
                     // ping-pong a→b / b→a; even count lands the result in pressure_a.
                     let bg = if it % 2 == 0 {
@@ -1671,38 +1695,59 @@ impl FluidSolver {
                     } else {
                         &self.bg_jacobi_ba
                     };
-                    run(&mut enc, &self.jacobi, bg);
+                    run(&mut enc, &self.jacobi, bg, "fluid.jacobi");
                 }
-                run(&mut enc, &self.project, &self.bg_project);
+                run(&mut enc, &self.project, &self.bg_project, "fluid.project");
             }
             // Lift (ADR-0081): re-mobilize NON-staining deposited pigment back into flowing in
             // wet cells, BEFORE diffuse (the CPU `step` order — after move_water, before diffuse)
             // so the lifted pigment blooms/moves this substep. Shares `bg_transfer` (same
             // flowing/deposited/water bindings). Skipped while the lift rate is 0.
             if lift {
-                run(&mut enc, &self.lift, &self.bg_transfer);
+                run(&mut enc, &self.lift, &self.bg_transfer, "fluid.lift");
             }
             // Then the CPU `step` order: diffuse A→B, advect B→A (velocity-mode when the
             // layer is on, else the static gradient flow), TRANSFER (flowing→deposited),
             // evaporate water. `cs_transfer` is a no-op while deposition params are 0.
-            run(&mut enc, &self.diffuse, &self.bg_diffuse);
+            run(&mut enc, &self.diffuse, &self.bg_diffuse, "fluid.diffuse");
             if shallow {
                 // Forward advect φ → φ̂ (B→A). With sharpening (ADR-0078 S5c) add the MacCormack
                 // backward pass φ̂ → φ̄ (A→C) + the correction φ̂ + s·½(φ−φ̄) clamped (B,A,C→A).
-                run(&mut enc, &self.advect_velocity, &self.bg_advect_velocity);
+                run(
+                    &mut enc,
+                    &self.advect_velocity,
+                    &self.bg_advect_velocity,
+                    "fluid.advect_v",
+                );
                 if sharpen {
                     run(
                         &mut enc,
                         &self.advect_velocity_rev,
                         &self.bg_advect_velocity_rev,
+                        "fluid.advect_v",
                     );
-                    run(&mut enc, &self.advect_correct, &self.bg_advect_correct);
+                    run(
+                        &mut enc,
+                        &self.advect_correct,
+                        &self.bg_advect_correct,
+                        "fluid.advect_v",
+                    );
                 }
             } else {
-                run(&mut enc, &self.advect, &self.bg_advect);
+                run(&mut enc, &self.advect, &self.bg_advect, "fluid.advect");
             }
-            run(&mut enc, &self.transfer, &self.bg_transfer);
-            run(&mut enc, &self.evaporate, &self.bg_evaporate);
+            run(
+                &mut enc,
+                &self.transfer,
+                &self.bg_transfer,
+                "fluid.transfer",
+            );
+            run(
+                &mut enc,
+                &self.evaporate,
+                &self.bg_evaporate,
+                "fluid.evaporate",
+            );
             // Capillary fringe (ADR-0078 S5): wick water outward into the dry paper + co-advect
             // a thread of pigment with it, then land both fields back in the canonical buffers.
             // After evaporate (the CPU `step` order), so the wick sees this substep's dried
@@ -1710,8 +1755,18 @@ impl FluidSolver {
             // grown envelope (driver) keeps the fringe in the composited region; the region pad
             // must cover the wick (SOLVER_REGION_PAD).
             if capillary {
-                run(&mut enc, &self.capillary_pipe, &self.bg_capillary);
-                run(&mut enc, &self.copy_fields_pipe, &self.bg_copy_fields);
+                run(
+                    &mut enc,
+                    &self.capillary_pipe,
+                    &self.bg_capillary,
+                    "fluid.capillary",
+                );
+                run(
+                    &mut enc,
+                    &self.copy_fields_pipe,
+                    &self.bg_copy_fields,
+                    "fluid.capillary",
+                );
             }
         }
         // Combine once per frame (region-scoped, after the substeps): total = flowing +
@@ -1720,7 +1775,7 @@ impl FluidSolver {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("fluid combine pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.combine"),
             });
             pass.set_pipeline(&self.combine);
             pass.set_bind_group(0, &self.bg_combine, &[]);
@@ -1866,13 +1921,19 @@ impl FluidSolver {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("fluid reduce pass (pipelined)"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.stats"),
             });
             pass.set_pipeline(&self.reduce);
             pass.set_bind_group(0, &self.bg_reduce, &[]);
             pass.dispatch_workgroups(gx, gy, 1);
         }
-        enc.copy_buffer_to_buffer(&self.stats_buf, 0, &self.stats_staging, 0, self.stats_staging.size());
+        enc.copy_buffer_to_buffer(
+            &self.stats_buf,
+            0,
+            &self.stats_staging,
+            0,
+            self.stats_staging.size(),
+        );
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
         self.stats_staging

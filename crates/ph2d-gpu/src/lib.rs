@@ -21,6 +21,7 @@
 
 pub mod context;
 pub mod frame;
+pub mod pass_profiler;
 pub mod surface;
 pub mod transient;
 

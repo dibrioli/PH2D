@@ -738,7 +738,7 @@ impl SpriteRenderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.sprite"),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });

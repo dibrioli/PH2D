@@ -702,6 +702,7 @@ impl LayerCompositor {
     ///   bands bumps the version) makes the provider version differ → the CPU
     ///   upload wins, retiring the injected content exactly when `canvas_rgba`
     ///   has caught up.
+    ///
     /// `region` (`x, y, w, h`, canvas coords) scopes the GPU→GPU copy to the wet
     /// envelope: only that sub-rect of `src` is copied into the slice (at the same
     /// canvas offset), leaving the rest of the slice from the previous frame /
@@ -789,11 +790,7 @@ impl LayerCompositor {
             wgpu::TexelCopyTextureInfo {
                 texture: src,
                 mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: rx,
-                    y: ry,
-                    z: 0,
-                },
+                origin: wgpu::Origin3d { x: rx, y: ry, z: 0 },
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::TexelCopyTextureInfo {
@@ -1204,7 +1201,7 @@ impl LayerCompositor {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-render layer_composite pass"),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.layer_comp"),
             });
             pass.set_pipeline(pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
@@ -1661,7 +1658,7 @@ impl LayerCompositor {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some(label),
-                timestamp_writes: None,
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.layer_comp"),
             });
             pass.set_pipeline(pipeline);
             pass.set_bind_group(0, bind_group, &[]);

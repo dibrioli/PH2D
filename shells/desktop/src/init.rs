@@ -71,6 +71,10 @@ pub(crate) fn build_initial_state(
         .create_surface(window.clone())
         .expect("create_surface");
     let gpu = GpuContext::new(instance, Some(&raw_surface)).expect("GpuContext::new");
+    // GPU pass profiler (PH2D_FLUID_PROFILE=1): per-pass GPU EXECUTION timings —
+    // the `[fluid]`/`[frame]` CPU timers can't see where the GPU itself spends
+    // the frame. Inert without the env var / TIMESTAMP_QUERY.
+    ph2d_gpu::pass_profiler::init(&gpu.device, &gpu.queue);
     let surface = SurfaceContext::new(gpu, raw_surface, size).expect("SurfaceContext::new");
 
     // M6: try to compose the atlas from real PNG files on disk.

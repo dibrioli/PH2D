@@ -305,6 +305,9 @@ impl IndividualTextureStore {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-render individual copy_from_texture encoder"),
             });
+        // GPU pass profiler (PH2D_FLUID_PROFILE): copies can't carry pass
+        // timestamps on Metal, so bracket with empty marker passes. No-op off.
+        let prof_span = ph2d_gpu::pass_profiler::copy_span_begin(&mut encoder, "copy.slot");
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: src,
@@ -324,6 +327,9 @@ impl IndividualTextureStore {
                 depth_or_array_layers: 1,
             },
         );
+        if let Some(t) = prof_span {
+            ph2d_gpu::pass_profiler::copy_span_end(&mut encoder, t);
+        }
         gpu.queue.submit([encoder.finish()]);
         Ok(())
     }
@@ -368,6 +374,7 @@ impl IndividualTextureStore {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-render individual copy_region_from_texture encoder"),
             });
+        let prof_span = ph2d_gpu::pass_profiler::copy_span_begin(&mut encoder, "copy.region");
         encoder.copy_texture_to_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: src,
@@ -395,6 +402,9 @@ impl IndividualTextureStore {
                 depth_or_array_layers: 1,
             },
         );
+        if let Some(t) = prof_span {
+            ph2d_gpu::pass_profiler::copy_span_end(&mut encoder, t);
+        }
         gpu.queue.submit([encoder.finish()]);
         Ok(())
     }

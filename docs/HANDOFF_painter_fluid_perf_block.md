@@ -205,3 +205,25 @@ CPU+GPU em paridade, validação visual) → 2b/2c.
     (não só desacelerar) e o stall idle cair ~3×. Se o fringe ficou curto demais no visual,
     δ_s desce (0.003/0.002 — re-rodar `cargo test -p ph2d-painter-brush capillary`); se o
     envelope ainda incomodar em wash grande, é o 2c (frente ativa / tiling esparso).
+— sessão 2026-06-10e (medição do Enio sobre 2a-bis+2b: passes fluid em multiplicidade CHEIA
+  todo frame idle + creep na MESMA taxa pré-δ_s):
+  - **Bug: decimação nunca engatou.** O skip exigia `texture_mode_dirty == None`, mas sob
+    backpressure (~16fps) o readback pipelinado retorna bands intercalados com vazios → o
+    contador "2 consecutivos" reseta sempre → dirty NUNCA limpa → gate permanentemente
+    desligado (o `comp_pipe ×0.1-0.3` no [gpu] foi a prova). Fix: condição removida; em vez
+    dela um warmup full-cadence de 6 frames pós pen-up (`IDLE_WARMUP_FRAMES`); a correção do
+    bake continua sendo o `flush_pending_bake` no pointer-down (qualquer "espere o catch-up"
+    pode estolar pra sempre sob backpressure — lição).
+  - **Creep idle ≠ capillary.** A taxa não mudou com o δ_s ⇒ quem espalha no app vivo é a
+    **shallow-water** (`WATERCOLOR_VELOCITY=1.3` sempre-on): com evaporação 0 é física de
+    poça — espalha pra sempre. O δ_s fica (termina a cauda capilar), mas o freio do Keep Wet
+    é semântico: **settle-freeze** (`KEEP_WET_SETTLE_FRAMES = 180`): após ~180 frames idle
+    sob Keep Wet o campo CONGELA inteiro (zero step/composite/creep; a textura úmida
+    publicada é só republicada). Dab/stroke descongela (`idle_frames = 0`) e pinta no wash
+    ainda-molhado como antes. Keep Wet = "tinta trabalhável", não "wash invade o canvas".
+    Secagem normal (Keep Wet off) nunca congela.
+  - **Esperado na próxima medição**: idle pós-settle → fluid passes ZERO no [gpu], region
+    estático, FPS ≈ baseline sem fluido; entre pen-up e settle → passes a ⅓. **Pintando**
+    continua ~19fps com envelope grande (comp_tex ~30ms + step ~20ms sobre 280k células TODO
+    frame de stroke) — esse é o **2c** (ADR-0083: step+composite escopados à região ATIVA,
+    não ao envelope inteiro; contexto fresco recomendado).

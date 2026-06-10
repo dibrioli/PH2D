@@ -62,6 +62,26 @@ const CAPILLARY_FRINGE_PAD: u32 = 8;
 /// "aceitável-a-validar"). Painting frames (dabs or stroke) are NEVER decimated.
 const IDLE_STEP_EVERY: u64 = 3;
 
+/// First idle frames after pen-up that always run at full cadence (no decimation), so the
+/// pipelined readback gets immediate shots at landing the E4/E5 catch-up bake into
+/// `canvas_rgba`. NOT a correctness gate — `flush_pending_bake` (pointer-down) is the
+/// correctness backstop; under GPU backpressure the pipelined bands return erratically
+/// (empty/non-empty interleave), so any "wait until caught up" condition can stall forever
+/// (the 2026-06-10d bug: decimation gated on `texture_mode_dirty == None` never engaged).
+const IDLE_WARMUP_FRAMES: u64 = 6;
+
+/// **Keep-Wet settle-freeze (perf block 2b, 2026-06-10d).** Under Keep Wet (evaporation 0)
+/// the wash never settles by physics: the always-on shallow-water layer keeps spreading the
+/// puddle outward forever (the residual ~2 cells/window idle envelope creep measured AFTER
+/// the capillary δ_s gate — puddle physics, not the wick), and the sim+composite keep
+/// burning O(envelope) GPU every frame for motion nobody is watching. Semantically Keep Wet
+/// means "the wash stays WORKABLE", not "the wash floods the canvas": after this many
+/// consecutive idle frames the field FREEZES whole (no step, no composite, no creep — the
+/// published wet-sheen texture is simply republished). Any dab / active stroke unfreezes it
+/// (`idle_frames = 0`) and painting into the still-wet field blends exactly as before.
+/// Plain drying (Keep Wet off) is never frozen — evaporation must run to completion.
+const KEEP_WET_SETTLE_FRAMES: u64 = 180;
+
 thread_local! {
     /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
     /// + paper re-uploaded) on a new stroke epoch; dropped when no live field.
@@ -369,19 +389,22 @@ pub(crate) fn drive_fluid_gpu(
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass, d.staining))
             .collect();
-        // Idle decimation (perf block 2b): pointer up + no dabs ⇒ step/composite only
-        // every IDLE_STEP_EVERY frames. Held off while the E4/E5 catch-up union is
-        // pending (`texture_mode_dirty`) so the canvas_rgba bake latency after pen-up
-        // is unchanged; painting frames always reset the counter and run everything.
+        // Idle decimation + Keep-Wet settle-freeze (perf block 2b): pointer up + no dabs
+        // ⇒ after a short full-cadence warmup (bake catch-up gets immediate shots),
+        // step/composite run only every IDLE_STEP_EVERY frames; once a Keep-Wet wash has
+        // had KEEP_WET_SETTLE_FRAMES to settle, the field freezes whole (the shallow-water
+        // puddle never settles by physics with evaporation 0 — see the consts). Painting
+        // frames always reset the counter and run everything.
         let stroke_active = painter.is_stroke_active();
         if stroke_active || !gpu_dabs.is_empty() {
             sess.idle_frames = 0;
         } else {
             sess.idle_frames = sess.idle_frames.saturating_add(1);
         }
-        let idle_skip = sess.idle_frames > 0
-            && sess.texture_mode_dirty.is_none()
-            && sess.idle_frames % IDLE_STEP_EVERY != 0;
+        let settled = keep_wet && sess.idle_frames > KEEP_WET_SETTLE_FRAMES;
+        let idle_skip = settled
+            || (sess.idle_frames > IDLE_WARMUP_FRAMES
+                && sess.idle_frames % IDLE_STEP_EVERY != 0);
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is

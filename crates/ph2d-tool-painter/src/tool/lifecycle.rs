@@ -805,6 +805,12 @@ impl PainterTool {
                 // fixed, so lower opacity = the same wetness with LESS pigment = a more dilute,
                 // transparent wash (watercolor "aguado"). 1.0 ⇒ unchanged (the validated look).
                 let brush_opacity = self.params.opacity.clamp(0.0, 1.0);
+                // **Water brush / rewetting (ADR-0079 control 19, 2026-06-09).** `Water` scales
+                // the PIGMENT deposit by `1 − water` while the WATER deposit stays full: 1 = a
+                // pure-water brush (pre-wet the paper, soften/bloom existing wet paint, and —
+                // with Lift — lift dry paint without laying colour); 0 = the validated paint
+                // look bit-for-bit. Continuous (0.5 = half-load dilute wash).
+                let pigment_load = 1.0 - self.brush.rendering.watercolor.water.clamp(0.0, 1.0);
                 // `fluid_hires` (= GPU-capable) decides the path, not `gpu_fluid_driven`:
                 // the shell sets `fluid_hires` before `begin_stroke`, but only sets
                 // `gpu_fluid_driven` after the frame's drive — so gating on the latter
@@ -820,8 +826,10 @@ impl PainterTool {
                     // superset of the old water bbox, padded by the compositor).
                     let (gw, gh) = self.wet_field.as_ref().expect("wet_field present").dims();
                     for stamp in stamps {
-                        let dep =
-                            WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0) * brush_opacity;
+                        let dep = WET_PIGMENT_DEPOSIT
+                            * stamp.opacity.clamp(0.0, 1.0)
+                            * brush_opacity
+                            * pigment_load;
                         let cx = stamp.position_world[0] / scale;
                         let cy = stamp.position_world[1] / scale;
                         let r = (stamp.size_px * 0.5 / scale).max(0.5);
@@ -858,8 +866,10 @@ impl PainterTool {
                     // CPU fallback: splat into the grid + step it inline (unchanged).
                     let grid = self.wet_field.as_mut().expect("wet_field present");
                     for stamp in stamps {
-                        let dep =
-                            WET_PIGMENT_DEPOSIT * stamp.opacity.clamp(0.0, 1.0) * brush_opacity;
+                        let dep = WET_PIGMENT_DEPOSIT
+                            * stamp.opacity.clamp(0.0, 1.0)
+                            * brush_opacity
+                            * pigment_load;
                         // ADR-0080: deposit the per-stamp COLOUR + coverage mass = dep (see the
                         // GPU path) — the field mixes overlapping colours subtractively.
                         let color = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(

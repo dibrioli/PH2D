@@ -3737,6 +3737,49 @@ fn gpu_resident_path_captures_dabs_to_list_not_grid() {
 }
 
 #[test]
+fn water_brush_emits_waterful_pigmentless_dabs() {
+    // Water brush / rewetting (ADR-0079 control 19, 2026-06-09): `watercolor.water = 1`
+    // scales each dab's PIGMENT to zero while the WATER deposit stays full — the wet-on-wet
+    // staple (pre-wet paper, soften wet edges, lift without laying colour). 0 = the validated
+    // paint look (full pigment). Continuous: 0.5 = half-load.
+    let (w, h) = (40u32, 32u32);
+    let dab_for_water = |water: f32| {
+        let mut t = PainterTool::default();
+        t.params.size_px = 14.0;
+        t.params.opacity = 1.0;
+        t.brush.rendering.fluid_enabled = true;
+        t.brush.rendering.watercolor.water = water;
+        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+        t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
+        t.set_fluid_hires(true);
+        t.begin_stroke(7);
+        t.queue_pointer(PointerSample {
+            position: [20.0, 16.0],
+            pressure: 1.0,
+            tilt: 0.0,
+        });
+        let (dabs, _) = t.fluid_take_dabs().expect("dab captured");
+        assert!(!dabs.is_empty(), "stroke still emits dabs at water={water}");
+        dabs[0]
+    };
+    let paint = dab_for_water(0.0);
+    let damp = dab_for_water(0.5);
+    let pure = dab_for_water(1.0);
+    assert!(paint.mass > 0.0, "paint brush deposits pigment");
+    assert!(
+        (damp.mass - paint.mass * 0.5).abs() < 1e-6,
+        "damp brush deposits half the pigment load ({} vs {}/2)",
+        damp.mass,
+        paint.mass
+    );
+    assert_eq!(pure.mass, 0.0, "pure water deposits ZERO pigment");
+    assert_eq!(
+        pure.water, paint.water,
+        "the WATER deposit is untouched by the Water control"
+    );
+}
+
+#[test]
 fn fluid_field_survives_mid_stroke_dry_pause() {
     // REGRESSION (Enio pause bug, 2026-06-07): pausing mid-stroke (button held, no
     // dabs) dries the wet field in ~0.3s, but it must NOT be dropped while the stroke

@@ -27,7 +27,8 @@ pub struct WatercolorControl {
 /// Per-brush watercolor tuning (ADR-0079) — the 19 solver controls the artist drives via
 /// the Brush Studio "Watercolor" subsection. Serializable like every other brush param so
 /// the brush-file/MCP/replay carry it. [`Self::to_diffusion`] projects onto the solver's
-/// [`DiffusionParams`]. Cap ≤ 20 (19 used — +`lift` ADR-0081, +`capillary_branching` ADR-0082;
+/// [`DiffusionParams`]. Cap ≤ 20 (20 used — +`lift` ADR-0081, +`capillary_branching` ADR-0082,
+/// +`water` water-brush/rewetting;
 /// ADR-0079-amendment-1) — gate `architecture_painter_contract_surface`.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WatercolorParams {
@@ -57,7 +58,12 @@ pub struct WatercolorParams {
     pub lift: f32,
     // ── Branched capillary fringe (ADR-0082) — fiber-channeled conductance suppression ──
     pub capillary_branching: f32,
-    // === 19/20 used (cap ≤ 20, ADR-0082 `capillary_branching`) — 1 slot headroom ===
+    /// **Water brush / rewetting** ∈ [0,1] — scales each dab's PIGMENT deposit by `1 − water`
+    /// (water deposit stays full). 1 = pure water: pre-wet, soften, bloom, lift — without
+    /// depositing colour. Tool-side (dab emission), no [`DiffusionParams`] twin. Default 0
+    /// = the validated paint look bit-for-bit.
+    pub water: f32,
+    // === 20/20 used (cap ≤ 20) — raise needs an ADR ===
 }
 
 impl Default for WatercolorParams {
@@ -102,6 +108,8 @@ impl Default for WatercolorParams {
             // Branched capillary OFF by default (ADR-0082) — opt-in; 0 = the smooth isotropic
             // fringe bit-for-bit. The artist raises "Branching" for the lobed/dendritic fringe.
             capillary_branching: 0.0,
+            // Water brush OFF by default — a paint brush deposits its full pigment load.
+            water: 0.0,
         }
     }
 }
@@ -111,7 +119,7 @@ impl WatercolorParams {
     /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
-    pub const CONTROLS: [WatercolorControl; 19] = [
+    pub const CONTROLS: [WatercolorControl; 20] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl {
@@ -225,6 +233,17 @@ impl WatercolorParams {
             min: 0.0,
             max: 1.0,
         },
+        // Water brush / rewetting (the wet-on-wet workflow staple): scales the PIGMENT each dab
+        // deposits by `1 − water` while the WATER deposit stays full. 0 = normal paint (the
+        // validated look bit-for-bit); 1 = PURE WATER — pre-wet the paper for soft wet-on-wet
+        // blooms, soften/bleed existing wet edges, and (with Lift > 0) lift dry paint without
+        // depositing any colour. Continuous: a damp 0.5 brush paints a half-load dilute wash.
+        // Acts at dab emission (the tool), NOT in the solver — no DiffusionParams twin.
+        WatercolorControl {
+            label: "Water",
+            min: 0.0,
+            max: 1.0,
+        },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -253,6 +272,7 @@ impl WatercolorParams {
             16 => self.sharpness,
             17 => self.lift,
             18 => self.capillary_branching,
+            19 => self.water,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -281,6 +301,7 @@ impl WatercolorParams {
             16 => self.sharpness = v,
             17 => self.lift = v,
             18 => self.capillary_branching = v,
+            19 => self.water = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }

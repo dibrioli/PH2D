@@ -114,6 +114,8 @@ fn is_studio_button(id: NodeId) -> bool {
         || id == ids::GRAIN_TYPE
         || id == ids::RENDERING_MODE
         || id == ids::PIGMENT_PICK
+        || id == ids::KEEP_WET
+        || id == ids::SHOW_WET
 }
 
 #[cfg(test)]

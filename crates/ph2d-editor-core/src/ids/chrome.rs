@@ -485,6 +485,12 @@ pub const PAINTER_STUDIO_RENDERING_MODE: NodeId = hash_node_id("painter_studio.r
 /// Real-pigment palette cycler (ADR-0081): None → each `PALETTE` pigment → wrap to None. Picks
 /// the pigment's masstone colour + granulation; its staining rides each dab.
 pub const PAINTER_STUDIO_PIGMENT_PICK: NodeId = hash_node_id("painter_studio.pigment_pick");
+/// Keep-wet toggle pill (watercolor UX): pause evaporation indefinitely — the live
+/// wash stays wet + re-workable until toggled off. Tool-level bool (`BrushParam::KeepWet`).
+pub const PAINTER_STUDIO_KEEP_WET: NodeId = hash_node_id("painter_studio.keep_wet");
+/// Show-wet toggle pill (watercolor UX): the wet-paper sheen (darker wet regions + a
+/// bright meniscus at the wet boundary), view-only in the live preview. Default ON.
+pub const PAINTER_STUDIO_SHOW_WET: NodeId = hash_node_id("painter_studio.show_wet");
 
 // ── Color Dynamics section — per-stamp OKLab jitter (engine-wired) ────────────
 pub const PAINTER_STUDIO_SEC_COLOR: NodeId = hash_node_id("painter_studio.sec_color");

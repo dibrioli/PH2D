@@ -342,7 +342,13 @@ impl PainterTool {
     /// Step the live wet field `substeps` times (CPU) + composite + settle. Shared
     /// by the painting splat and the idle tick.
     fn tick_wet_field(&mut self, substeps: u32) {
-        let params = ph2d_painter_brush::diffusion::DiffusionParams::default();
+        let mut params = ph2d_painter_brush::diffusion::DiffusionParams::default();
+        // Keep-wet: the CPU fallback path doesn't route through `fluid_diffusion_params`
+        // (it steps with the default params), so the evaporation override is applied
+        // here too — the field never dries while the toggle is on.
+        if self.keep_wet {
+            params.evaporation = 0.0;
+        }
         match self.wet_field.as_mut() {
             Some(grid) => {
                 for _ in 0..substeps {
@@ -515,6 +521,9 @@ impl PainterTool {
     /// water mirror dries at the same rate the artist set for the GPU solver.
     #[must_use]
     pub fn fluid_evaporation(&self) -> f32 {
+        if self.keep_wet {
+            return 0.0; // keep-wet: the water mirror must not dry either
+        }
         self.brush.rendering.watercolor.evaporation
     }
 
@@ -522,9 +531,34 @@ impl PainterTool {
     /// [`DiffusionParams`] (ADR-0079) — the bridge uploads ALL 15 controls (diffusion +
     /// deposition + shallow-water flow) to the GPU solver per stroke via
     /// `FluidSolver::set_from_diffusion`, replacing the old global `WATERCOLOR_*` consts.
+    ///
+    /// **Keep-wet override:** while [`Self::fluid_keep_wet`] is on, `evaporation` is
+    /// forced to `0.0` — the single chokepoint for the GPU solver upload, so the field
+    /// never dries (the dry-check threshold is never crossed and the field never
+    /// drops). Capillary wicking keeps slowly spreading while wet (physical).
     #[must_use]
     pub fn fluid_diffusion_params(&self) -> ph2d_painter_brush::diffusion::DiffusionParams {
-        self.brush.rendering.watercolor.to_diffusion()
+        let mut dp = self.brush.rendering.watercolor.to_diffusion();
+        if self.keep_wet {
+            dp.evaporation = 0.0;
+        }
+        dp
+    }
+
+    /// Keep-wet toggle (watercolor UX): `true` = evaporation paused indefinitely — the
+    /// live wash stays wet + re-workable until toggled off (or the canvas changes).
+    #[must_use]
+    pub fn fluid_keep_wet(&self) -> bool {
+        self.keep_wet
+    }
+
+    /// Show-wet toggle (watercolor UX): `true` = the wet-paper sheen (subtle darkening
+    /// of wet regions + bright meniscus at the wet boundary) renders in the live
+    /// preview. VIEW-ONLY — the bridge feeds it to the compositor's preview-texture
+    /// flag each frame; the baked composite never sees it. Default ON.
+    #[must_use]
+    pub fn fluid_show_wet(&self) -> bool {
+        self.show_wet
     }
 
     /// Whether the active brush's capillary fringe (ADR-0078 S5) is on. The drive grows the
@@ -1535,6 +1569,11 @@ impl PainterTool {
             // control's physical range. Takes effect at the next begin_stroke (the bridge
             // reads `watercolor` then), like the other fluid params.
             P::Watercolor(i) => b.rendering.watercolor.set_normalized(i as usize, v),
+            // Watercolor UX toggles — TOOL-level state (like `Paper`), not brush fields.
+            // KeepWet takes effect immediately (the bridge re-uploads the solver params
+            // when it flips); ShowWet is read by the bridge per frame (view-only sheen).
+            P::KeepWet => self.keep_wet = v >= 0.5,
+            P::ShowWet => self.show_wet = v >= 0.5,
         }
         self.cached_brush_hash = None;
     }
@@ -1596,6 +1635,8 @@ impl PainterTool {
             speed_spacing: b.dynamics.speed_spacing,
             watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
             active_pigment: self.active_pigment,
+            keep_wet: self.keep_wet,
+            show_wet: self.show_wet,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

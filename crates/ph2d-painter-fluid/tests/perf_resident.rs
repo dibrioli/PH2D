@@ -82,6 +82,7 @@ fn time_size(gpu: &GpuContext, cw: u32, ch: u32) {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
 
     // Two regions: a representative stroke band (~20% height) + the full canvas.

@@ -158,6 +158,10 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::RENDERING_MODE);
     // Real-pigment palette cycler (ADR-0081) — painted in the Watercolor section.
     button(store, ids::PIGMENT_PICK);
+    // Watercolor UX toggle pills (Keep Wet / Show Wet) — painted in the Watercolor
+    // section; buttons with pressed = on (the cycler-pill pattern), not checkboxes.
+    button(store, ids::KEEP_WET);
+    button(store, ids::SHOW_WET);
 
     // ── Color Dynamics — per-stamp OKLab jitter (engine-wired) ──────────────
     pct(
@@ -519,5 +523,42 @@ mod tests {
         assert!(tool.show_brush_studio());
         tool.close_brush_studio();
         assert!(!tool.show_brush_studio());
+    }
+
+    #[test]
+    fn keep_wet_and_show_wet_pills_round_trip_through_tool() {
+        // Watercolor UX pills: a KEEP_WET / SHOW_WET Click (forwarded by the panel as a
+        // button, mirroring PIGMENT_PICK) must flip the tool's bool and the published
+        // snapshot must show the new state (the pill paints pressed = on). Keep-wet must
+        // also zero the evaporation the bridge uploads to the solver — that IS the
+        // feature (the field never crosses the dry threshold, so it never drops).
+        use ph2d_editor_core::ids::{PAINTER_STUDIO_KEEP_WET, PAINTER_STUDIO_SHOW_WET};
+        use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+        let mut tool = PainterTool::default();
+        let snap = tool.brush_studio_snapshot();
+        assert!(!snap.keep_wet, "keep-wet defaults OFF");
+        assert!(snap.show_wet, "show-wet defaults ON (the wet-paper look)");
+        assert!(
+            tool.fluid_diffusion_params().evaporation > 0.0,
+            "without keep-wet the wash must dry"
+        );
+
+        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
+        assert!(tool.brush_studio_snapshot().keep_wet);
+        assert_eq!(
+            tool.fluid_diffusion_params().evaporation,
+            0.0,
+            "keep-wet must pause evaporation (GPU upload chokepoint)"
+        );
+        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
+        assert!(!tool.brush_studio_snapshot().keep_wet);
+        assert!(tool.fluid_diffusion_params().evaporation > 0.0);
+
+        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_SHOW_WET));
+        assert!(!tool.brush_studio_snapshot().show_wet);
+        assert!(!tool.fluid_show_wet());
+        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_SHOW_WET));
+        assert!(tool.fluid_show_wet());
     }
 }

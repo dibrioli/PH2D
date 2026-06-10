@@ -19,14 +19,17 @@
 //! Downcasts to the concrete `PainterTool` (allowlisted bridge, same exception
 //! class as `painter_bridge.rs`): the GPU drive needs the concrete fluid hooks.
 
-use super::painter_fluid_support::{PROFILE, copy_preview_into_slot, grow_bbox, union_bbox};
+use super::painter_fluid_support::{
+    FluidSession, PROFILE, copy_preview_into_slot, grow_bbox, publish_wet_sheen_between_strokes,
+    union_bbox,
+};
 use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
 use crate::app_state::PainterPreviewGpu;
 use ph2d_editor::ToolRegistry;
 use ph2d_editor::toast::ToastQueue;
 use ph2d_gpu::GpuContext;
-use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidSolver};
+use ph2d_painter_fluid::DabGpu;
 use ph2d_render::SpriteRenderer;
 use std::cell::RefCell;
 use std::time::Instant;
@@ -49,73 +52,6 @@ const DRY_CHECK_EVERY: u64 = 20;
 /// solver ⊇ composite invariant). It covers the fringe growth between the sporadic wet-bbox
 /// reads; the monotonic `wet_bbox` union then tracks larger (extreme-param) fringes exactly.
 const CAPILLARY_FRINGE_PAD: u32 = 8;
-
-/// Per-session GPU state for the live wet field: the resident solver, the K–M
-/// compositor, the field size, the stroke epoch it was last reset for, a frame
-/// counter pacing the sporadic dry-check readback, and the monotonic wet-bbox the
-/// capillary envelope grows from (ADR-0078 S5).
-struct FluidSession {
-    solver: FluidSolver,
-    compositor: FluidCompositor,
-    dims: (u32, u32),
-    epoch: u64,
-    frame: u64,
-    /// **All-time wet bbox of this stroke** (union of the sporadic `read_field_stats` bboxes,
-    /// reset on a new epoch). The capillary fringe wicks the wet region OUTWARD past the dab
-    /// bboxes; the water bbox also recedes as the wash dries, so a SUPERSET-correct envelope
-    /// must take the monotonic union (the §3.4 / §2.2 lesson). `None` until the first read.
-    wet_bbox: Option<(u32, u32, u32, u32)>,
-    /// **E4 (ADR-0078 S2): the `IndividualTextureStore` slot** the mid-stroke texture path
-    /// GPU-copies the compositor's premultiplied preview into — `(texture_id, w, h)` so a
-    /// canvas-size change releases + re-acquires. `None` until the first texture-mode frame
-    /// (lazy, mirroring `painter_gpu_preview::ensure_slot`). MUST be released via
-    /// [`Self::release_preview_slot`] before the session is dropped or rebuilt.
-    preview_slot: Option<(u32, u32, u32)>,
-    /// **E4 catch-up accumulator**: union of every GRID region the zero-readback texture
-    /// path composited (canvas_rgba is intentionally stale over it mid-stroke). The first
-    /// readback frames after the texture→readback switch feed this union into
-    /// `composite_frame_pipelined` so `canvas_rgba` catches up on EVERYTHING the texture
-    /// path skipped; cleared only once the (1-frame-late) pipelined path has returned 2
-    /// consecutive bands while the union was being fed (the 2nd is necessarily from a
-    /// submission that included it).
-    texture_mode_dirty: Option<(u32, u32, u32, u32)>,
-    /// Consecutive non-empty pipelined bands applied while `texture_mode_dirty` was being
-    /// fed (reset by an empty band and by every texture-mode frame). At 2 the union is
-    /// provably applied → cleared.
-    catchup_bands: u8,
-    /// `true` while the fluid preview SLOT holds the freshest composite (texture mode ran,
-    /// and the readback path hasn't yet handed the preview back to the CPU slot). Keeps the
-    /// PreviewOverride on the fluid slot across the texture→readback transition so the
-    /// stroke never flickers back to the pre-stroke CPU preview.
-    texture_published: bool,
-}
-
-impl FluidSession {
-    fn new(device: &wgpu::Device, dims: (u32, u32)) -> Self {
-        Self {
-            solver: FluidSolver::new(device, dims.0, dims.1),
-            compositor: FluidCompositor::new(device),
-            dims,
-            epoch: u64::MAX,
-            frame: 0,
-            wet_bbox: None,
-            preview_slot: None,
-            texture_mode_dirty: None,
-            catchup_bands: 0,
-            texture_published: false,
-        }
-    }
-
-    /// Release the E4 preview slot (if any) back to the `IndividualTextureStore`.
-    /// MUST run before the session is dropped or rebuilt (grid-size change) —
-    /// the slot id is refcounted and would otherwise leak its canvas-res texture.
-    fn release_preview_slot(&mut self, renderer: &mut SpriteRenderer) {
-        if let Some((id, _, _)) = self.preview_slot.take() {
-            renderer.individual_mut().release(id);
-        }
-        self.texture_published = false;
-    }
-}
 
 thread_local! {
     /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
@@ -276,6 +212,9 @@ pub(crate) fn drive_fluid_gpu(
             // the brush sets `velocity = 0`.
             let dp = painter.fluid_diffusion_params();
             sess.solver.set_from_diffusion(&gpu.queue, &dp);
+            // Keep-wet rides `dp` (evaporation forced to 0 in `fluid_diffusion_params`);
+            // remember what was uploaded so a mid-field toggle re-uploads below.
+            sess.keep_wet = painter.fluid_keep_wet();
             if let Some(paper) = painter.fluid_paper() {
                 sess.solver.upload_paper(&gpu.queue, &paper);
             }
@@ -335,10 +274,28 @@ pub(crate) fn drive_fluid_gpu(
                     // where dry paint was lifted. All-zero (cleared above) when `lift = 0`
                     // ⇒ byte-identical output.
                     Some(sess.solver.lifted_frac_buffer()),
+                    // Wet-paper sheen: bind the resident water so the preview-texture
+                    // passes can darken wet regions + brighten the meniscus (view-only;
+                    // the flag is driven per frame via `set_wet_sheen` below).
+                    Some(sess.solver.water_buffer()),
                 );
             }
             sess.epoch = epoch;
         }
+
+        // Keep-wet (watercolor UX): re-upload the solver params when the pill flips
+        // MID-FIELD — `fluid_diffusion_params()` zeroes evaporation while it's on, so
+        // the live wash stops (or resumes) drying immediately, not at the next stroke.
+        let keep_wet = painter.fluid_keep_wet();
+        if sess.keep_wet != keep_wet {
+            sess.keep_wet = keep_wet;
+            sess.solver
+                .set_from_diffusion(&gpu.queue, &painter.fluid_diffusion_params());
+        }
+        // Wet-paper sheen (view-only): drive the preview-texture flag from the tool's
+        // Show Wet pill each frame. Only `cs_premul_tex`/`cs_straight_tex` consume it —
+        // `out_buf` (and so the canvas bake) stays sheen-free, so the wash dries lighter.
+        sess.compositor.set_wet_sheen(painter.fluid_show_wet());
 
         // ── Per-frame hot loop (resident, no O(grid) CPU work, no upload) ──
         // Drain this frame's dabs + the monotonic dab-bbox envelope; `None` ⇒ never wet.
@@ -528,6 +485,35 @@ pub(crate) fn drive_fluid_gpu(
                         premultiplied: true,
                     });
                 }
+            }
+            // Wet-sheen between strokes (drying / keep-wet): the readback above kept
+            // `canvas_rgba` current exactly as before (sheen-free — the bake), but the
+            // sheen is view-only, so ALSO composite into the preview texture (sheen
+            // flag set above) + publish the fluid override this frame. The wet look
+            // stays visible while the field is wet and vanishes when it dries — the
+            // wash literally "dries lighter". Cost: one extra region-scoped composite
+            // per drying frame. No `texture_mode_dirty` feeding: canvas_rgba is being
+            // kept current by the readback lane in parallel.
+            if !stroke_active
+                && painter.fluid_show_wet()
+                && let Some(entity_bits) = override_entity
+                && let Some(ov) = publish_wet_sheen_between_strokes(
+                    renderer,
+                    gpu,
+                    painter,
+                    entity_bits,
+                    &mut sess.compositor,
+                    &mut sess.preview_slot,
+                    &mut sess.texture_published,
+                    region,
+                    cw,
+                    ch,
+                    painter_gpu_preview_session,
+                    painter_preview_gpu,
+                    toasts,
+                )
+            {
+                override_out = Some(ov);
             }
         }
         let t2 = profile.then(Instant::now);

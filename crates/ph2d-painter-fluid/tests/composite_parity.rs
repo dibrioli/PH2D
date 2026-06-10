@@ -261,6 +261,7 @@ fn composite_frame_fast_path_matches_one_shot() {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
     let (band_fast, rect_fast) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
 
@@ -300,6 +301,7 @@ fn composite_frame_fast_path_matches_one_shot() {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
     let (band_ss1, (px_lo, py_lo, px_hi, _)) =
         compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -354,6 +356,7 @@ fn composite_frame_pipelined_matches_sync() {
             &backdrop,
             &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
             None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+            None,      // wet-sheen water: dormant (no live water buffer)
         );
     };
 
@@ -747,6 +750,7 @@ fn composite_lift_reveals_paper_not_transparency() {
         &backdrop,
         &paper,
         Some(&lf_buf),
+        None, // wet-sheen water: dormant
     );
     let region = (0u32, 0u32, gw - 1, gh - 1);
     let (band, (_, py_lo, _, py_hi)) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
@@ -901,6 +905,7 @@ fn gpu_preview_texture_matches_cpu_premultiply() {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
 
     // Ground truth: the existing sync readback (straight sRGB8 band) + the LOCAL CPU
@@ -998,6 +1003,7 @@ fn preview_texture_initialized_to_backdrop() {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
     let tex = compositor.preview_texture().expect("stroke state live");
     let got = read_texture_rgba8(&gpu, tex, cw, ch);
@@ -1051,6 +1057,7 @@ fn gpu_straight_texture_matches_out_buf_bytes() {
         &backdrop,
         &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
         None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
+        None,      // wet-sheen water: dormant (no live water buffer)
     );
     assert!(
         compositor.straight_texture().is_none(),
@@ -1119,9 +1126,225 @@ fn gpu_straight_texture_matches_out_buf_bytes() {
         &backdrop,
         &backdrop,
         None,
+        None,
     );
     assert!(
         compositor.straight_texture().is_none(),
         "begin_stroke must drop the straight texture"
+    );
+}
+
+// ─── Wet-paper sheen (view-only preview-texture effect) ──────────────────────
+
+/// f32 twins of the WGSL sRGB transfer fns (`srgb_to_linear`/`linear_to_srgb`).
+fn srgb_to_linear_f(v: f32) -> f32 {
+    if v <= 0.04045 {
+        v / 12.92
+    } else {
+        ((v + 0.055) / 1.055).powf(2.4)
+    }
+}
+fn linear_to_srgb_f(linear: f32) -> f32 {
+    let v = linear.clamp(0.0, 1.0);
+    if v <= 0.003_130_8 {
+        v * 12.92
+    } else {
+        1.055 * v.powf(1.0 / 2.4) - 0.055
+    }
+}
+fn smoothstep_f(e0: f32, e1: f32, x: f32) -> f32 {
+    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// CPU mirror of the WGSL `water_bilinear` (centre-coord mapping + clamped bilinear).
+fn water_bilinear_cpu(water: &[f32], gw: u32, gh: u32, inv: f32, cx: u32, cy: u32) -> f32 {
+    let fx = ((cx as f32 + 0.5) * inv - 0.5).clamp(0.0, gw as f32 - 1.0);
+    let fy = ((cy as f32 + 0.5) * inv - 0.5).clamp(0.0, gh as f32 - 1.0);
+    let x0 = fx.floor() as u32;
+    let y0 = fy.floor() as u32;
+    let x1 = (x0 + 1).min(gw - 1);
+    let y1 = (y0 + 1).min(gh - 1);
+    let (tx, ty) = (fx - x0 as f32, fy - y0 as f32);
+    let at = |x: u32, y: u32| water[(y * gw + x) as usize];
+    let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
+    let bot = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;
+    top + (bot - top) * ty
+}
+
+/// CPU mirror of the WGSL `sheen_word` applied to one straight-sRGB8 pixel in place
+/// (alpha untouched). `wet <= 0` ⇒ untouched (the shader's early-out).
+fn sheen_px_cpu(px: &mut [u8], wet: f32) {
+    if wet <= 0.0 {
+        return;
+    }
+    let band = 4.0 * wet * (1.0 - wet);
+    for c in &mut px[..3] {
+        let lin = srgb_to_linear_f(f32::from(*c) / 255.0);
+        let lin = (lin * (1.0 - 0.07 * wet) + 0.05 * band).clamp(0.0, 1.0);
+        *c = (linear_to_srgb_f(lin) * 255.0).round() as u8;
+    }
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn wet_sheen_off_is_byte_identical() {
+    // With the wet-sheen flag OFF (the default) the preview texture must be
+    // byte-identical to the CPU-premultiply reference EVEN WITH a live (non-zero)
+    // water buffer bound — the flag, not the binding, gates the effect. This pins
+    // the non-destructive default: enabling the plumbing changes zero pixels.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
+    let mut compositor = FluidCompositor::new(&gpu.device);
+    compositor.set_wet_sheen(false); // explicit (also the default)
+    compositor.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        1,
+        solver.pigment_buffer(),
+        &backdrop,
+        &backdrop,
+        None,
+        Some(solver.water_buffer()), // LIVE water bound — flag off must still be a no-op
+    );
+    let (band, rect) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    let (px_lo, py_lo, px_hi, py_hi) = rect;
+    assert!(!band.is_empty(), "sync composite produced a band");
+    let mut expected = backdrop.clone();
+    premultiply_rgba8_local(&mut expected);
+    for y in py_lo..py_hi {
+        for x in px_lo..px_hi {
+            let bi = (((y - py_lo) * cw + x) * 4) as usize;
+            let mut px = [band[bi], band[bi + 1], band[bi + 2], band[bi + 3]];
+            premultiply_rgba8_local(&mut px);
+            expected[((y * cw + x) * 4) as usize..][..4].copy_from_slice(&px);
+        }
+    }
+    let rect_tex = compositor
+        .composite_frame_to_texture(&gpu.device, &gpu.queue, region)
+        .expect("non-empty region composites");
+    assert_eq!(rect_tex, rect);
+    let tex = compositor.preview_texture().expect("stroke state live");
+    let got = read_texture_rgba8(&gpu, tex, cw, ch);
+    assert_eq!(
+        expected, got,
+        "wet_sheen OFF must be byte-identical to the CPU premultiply reference"
+    );
+    eprintln!("wet_sheen off: byte-identical over {cw}×{ch} (live water bound)");
+}
+
+#[test]
+#[ignore = "needs a GPU device"]
+fn wet_sheen_matches_cpu_reference() {
+    // Flag ON + a known water field: the GPU premul texture must equal the CPU
+    // reference (sync composite bytes → sRGB decode → sheen formula → encode →
+    // premultiply) within ≤ 1 LSB (GPU pow lowers differently per backend). Also
+    // proves the sheen NEVER touches out_buf: the sync band re-read after the
+    // texture pass must be unchanged (the bake stays sheen-free ⇒ dries lighter).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (gw, gh) = (40u32, 32u32);
+    let (cw, ch) = (gw * SCALE, gh * SCALE);
+    let grid = seeded_field(gw, gh);
+    let pig = grid.pigment();
+    let water = grid.water();
+    let region = (0u32, 0u32, gw - 1, gh - 1);
+    let backdrop = split_backdrop(cw, ch);
+    let solver = FluidSolver::new(&gpu.device, gw, gh);
+    solver.upload(&gpu.queue, water, grid.paper(), pig);
+    let mut compositor = FluidCompositor::new(&gpu.device);
+    compositor.set_wet_sheen(true);
+    compositor.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        gw,
+        gh,
+        cw,
+        ch,
+        SCALE,
+        COVERAGE_K,
+        1,
+        solver.pigment_buffer(),
+        &backdrop,
+        &backdrop,
+        None,
+        Some(solver.water_buffer()),
+    );
+    // Ground truth straight bytes (out_buf is sheen-free by design).
+    let (band, rect) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    let (px_lo, py_lo, px_hi, py_hi) = rect;
+    assert!(!band.is_empty(), "sync composite produced a band");
+    let inv = 1.0 / SCALE as f32;
+    let mut expected = backdrop.clone();
+    premultiply_rgba8_local(&mut expected); // out-of-rect: premul backdrop, NO sheen (init)
+    let mut sheened_px = 0usize;
+    for y in py_lo..py_hi {
+        for x in px_lo..px_hi {
+            let bi = (((y - py_lo) * cw + x) * 4) as usize;
+            let mut px = [band[bi], band[bi + 1], band[bi + 2], band[bi + 3]];
+            let wet = smoothstep_f(0.05, 0.45, water_bilinear_cpu(water, gw, gh, inv, x, y));
+            if wet > 0.0 {
+                sheened_px += 1;
+            }
+            sheen_px_cpu(&mut px, wet);
+            premultiply_rgba8_local(&mut px);
+            expected[((y * cw + x) * 4) as usize..][..4].copy_from_slice(&px);
+        }
+    }
+    assert!(
+        sheened_px > 200,
+        "test field too dry ({sheened_px} wet px) — the sheen path isn't exercised"
+    );
+    let rect_tex = compositor
+        .composite_frame_to_texture(&gpu.device, &gpu.queue, region)
+        .expect("non-empty region composites");
+    assert_eq!(rect_tex, rect);
+    let tex = compositor.preview_texture().expect("stroke state live");
+    let got = read_texture_rgba8(&gpu, tex, cw, ch);
+    let mut worst = 0u8;
+    let mut worst_at = 0usize;
+    for (k, (e, g)) in expected.iter().zip(got.iter()).enumerate() {
+        let d = e.abs_diff(*g);
+        if d > worst {
+            worst = d;
+            worst_at = k;
+        }
+    }
+    eprintln!(
+        "wet sheen ↔ CPU reference: worst |Δ| = {worst} LSB @byte {worst_at}; \
+         {sheened_px} sheened px ({cw}×{ch}, rect {rect:?})"
+    );
+    assert!(
+        worst <= 1,
+        "GPU sheen diverged from the CPU reference: {worst} LSB @byte {worst_at} \
+         (expected {} got {})",
+        expected[worst_at],
+        got[worst_at]
+    );
+    // The sheen is VIEW-ONLY: out_buf (the bake source) must be unchanged after
+    // the sheened texture pass — re-run the sync readback and compare.
+    let (band2, rect2) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
+    assert_eq!(rect2, rect);
+    assert_eq!(
+        band2, band,
+        "out_buf changed after the sheened texture pass — the sheen leaked into the bake"
     );
 }

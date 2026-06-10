@@ -456,6 +456,9 @@ impl PainterTool {
             P::WetEdges => self.brush.rendering.wet_edges,
             P::BurntEdges => self.brush.rendering.burnt_edges,
             P::Fluid => self.brush.rendering.fluid_enabled,
+            // Watercolor UX toggles — tool-level state (like `Paper`), not brush fields.
+            P::KeepWet => self.fluid_keep_wet(),
+            P::ShowWet => self.fluid_show_wet(),
             _ => false,
         }
     }
@@ -550,6 +553,11 @@ fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::Brush
         Some(P::BurntEdges)
     } else if id == core_ids::PAINTER_STUDIO_FLUID {
         Some(P::Fluid)
+    } else if id == core_ids::PAINTER_STUDIO_KEEP_WET {
+        // Watercolor UX pills (tool-level bools; the generic bool-click arm flips them).
+        Some(P::KeepWet)
+    } else if id == core_ids::PAINTER_STUDIO_SHOW_WET {
+        Some(P::ShowWet)
     } else {
         None
     }

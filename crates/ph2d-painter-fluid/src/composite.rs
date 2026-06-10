@@ -36,7 +36,10 @@ struct GpuU {
     origin_y: u32,
     end_x: u32,
     end_y: u32,
-    _pad: u32,
+    /// Wet-paper sheen flag (1 = ON) — consumed ONLY by the preview-texture
+    /// kernels (`cs_premul_tex`/`cs_straight_tex`); `cs_composite` ignores it,
+    /// so `out_buf` (the bake source) is never sheened. 0 ⇒ byte-identical.
+    wet_sheen: u32,
 }
 
 /// The WGSL `Coeffs` storage struct, byte-for-byte (960 B). The flattened constant
@@ -96,6 +99,10 @@ struct CompositeState {
     /// Owned all-zero `lifted_frac` (ADR-0084) bound at binding 5 when `begin_stroke` is called
     /// without a live lift buffer — kept here so it outlives the `bind` it backs. Sized to `gw·gh`.
     dormant_lifted: wgpu::Buffer,
+    /// Owned all-zero water bound at binding 7 when `begin_stroke` is called without a live
+    /// solver water buffer (same dormant-zero pattern as `dormant_lifted`): zero water ⇒
+    /// `wet = 0` ⇒ the wet-paper sheen is a no-op. Sized to `gw·gh`.
+    dormant_water: wgpu::Buffer,
     bind: wgpu::BindGroup,
     /// E4 — the PREMULTIPLIED live-preview texture (canvas-res rgba8unorm). `cs_premul_init`
     /// fills it with the premultiplied backdrop at `begin_stroke`; `cs_premul_tex` overwrites the
@@ -147,6 +154,10 @@ pub struct FluidCompositor {
     state: Option<CompositeState>,
     /// The previous frame's readback, awaiting a non-blocking poll (pipelined path).
     pending: Option<PendingReadback>,
+    /// Wet-paper sheen toggle for the preview-texture passes ([`Self::set_wet_sheen`]).
+    /// VIEW-ONLY: `cs_composite`/`out_buf` (the bake source) never see it. Default
+    /// `false` ⇒ byte-identical output (proven by `wet_sheen_off_is_byte_identical`).
+    wet_sheen: bool,
 }
 
 impl FluidCompositor {
@@ -186,6 +197,7 @@ impl FluidCompositor {
                 storage(4, true),  // coeffs (read)
                 storage(5, true),  // lifted_frac (read — ADR-0084)
                 storage(6, true),  // paper_canvas (read — ADR-0084 paper-reveal)
+                storage(7, true),  // water (read — wet-paper sheen, preview-tex passes only)
             ],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -249,15 +261,26 @@ impl FluidCompositor {
             straight_init_pipeline,
             state: None,
             pending: None,
+            wet_sheen: false,
         }
     }
 
-    /// Create an all-zero `array<f32>` buffer sized to `gw·gh` for the dormant backdrop-lift path
-    /// (ADR-0084): a fresh STORAGE buffer reads as zero ⇒ `lf = 0` everywhere ⇒ byte-identical
-    /// output. Returned owned so the caller keeps it alive alongside the bind group it backs.
-    fn make_dormant_lifted(device: &wgpu::Device, gw: u32, gh: u32) -> wgpu::Buffer {
+    /// Toggle the wet-paper sheen for the preview-texture passes (the bridge sets it
+    /// each frame from the tool's `show_wet`). VIEW-ONLY: only `cs_premul_tex` /
+    /// `cs_straight_tex` consume the flag — the canonical `out_buf` composite (and so
+    /// the readback bake into `canvas_rgba`) stays sheen-free, which is what makes the
+    /// wash "dry lighter" like real watercolor. `false` ⇒ byte-identical output.
+    pub fn set_wet_sheen(&mut self, on: bool) {
+        self.wet_sheen = on;
+    }
+
+    /// Create an all-zero `array<f32>` buffer sized to `gw·gh` for a dormant per-cell field —
+    /// the backdrop-lift accumulator (ADR-0084) or the wet-sheen water: a fresh STORAGE buffer
+    /// reads as zero ⇒ `lf = 0` / `wet = 0` everywhere ⇒ byte-identical output. Returned owned
+    /// so the caller keeps it alive alongside the bind group it backs.
+    fn make_dormant_field(device: &wgpu::Device, gw: u32, gh: u32, label: &str) -> wgpu::Buffer {
         device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("composite dormant lifted_frac (ADR-0084)"),
+            label: Some(label),
             size: ((gw as u64) * (gh as u64) * 4).max(4),
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
@@ -292,6 +315,10 @@ impl FluidCompositor {
         // where dry paint was lifted. `None` ⇒ bind the owned all-zero dormant buffer (the
         // backdrop-lift branch is inert ⇒ byte-identical to the pre-ADR-0084 output).
         lifted_frac_buf: Option<&wgpu::Buffer>,
+        // Wet-paper sheen — the solver's `water_buffer()` (`gw·gh` f32) so the preview-texture
+        // passes can darken wet regions + brighten the meniscus. `None` ⇒ owned all-zero dormant
+        // buffer ⇒ `wet = 0` ⇒ sheen no-op (same pattern as `lifted_frac_buf`).
+        water_buf: Option<&wgpu::Buffer>,
     ) {
         // Drain any in-flight pipelined readback from a PRIOR stroke (its map may still
         // hold `staging`): complete + unmap it before this stroke reuses the buffer, so
@@ -374,10 +401,14 @@ impl FluidCompositor {
                 }],
             });
             // Owned dormant lifted_frac (ADR-0084) — used when no live lift buffer is bound below.
-            let dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+            let dormant_lifted =
+                Self::make_dormant_field(device, gw, gh, "composite dormant lifted_frac");
             let lifted_res = lifted_frac_buf
                 .unwrap_or(&dormant_lifted)
                 .as_entire_binding();
+            // Owned dormant water (wet-paper sheen) — used when no live water buffer is bound.
+            let dormant_water = Self::make_dormant_field(device, gw, gh, "composite dormant water");
+            let water_res = water_buf.unwrap_or(&dormant_water).as_entire_binding();
             // Placeholder bind; rebuilt below (needs pigment_buf).
             let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("composite bg (persistent)"),
@@ -411,6 +442,10 @@ impl FluidCompositor {
                         binding: 6,
                         resource: paper.as_entire_binding(),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: water_res,
+                    },
                 ],
             });
             self.state = Some(CompositeState {
@@ -428,6 +463,7 @@ impl FluidCompositor {
                 paper,
                 staging,
                 dormant_lifted,
+                dormant_water,
                 bind,
                 preview_tex,
                 preview_bind,
@@ -452,14 +488,20 @@ impl FluidCompositor {
         // Rebuild the bind group each stroke so it tracks the current resident pig_a
         // (cheap — just resource references; the canvas buffers are reused).
         if !resized {
-            // The grid dims can change without a canvas resize (the dormant lifted_frac is sized to
-            // `gw·gh`), so re-create it when the size no longer matches before binding it.
+            // The grid dims can change without a canvas resize (the dormant fields are sized to
+            // `gw·gh`), so re-create them when the size no longer matches before binding.
             if st.dormant_lifted.size() != ((gw as u64) * (gh as u64) * 4).max(4) {
-                st.dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+                st.dormant_lifted =
+                    Self::make_dormant_field(device, gw, gh, "composite dormant lifted_frac");
+            }
+            if st.dormant_water.size() != ((gw as u64) * (gh as u64) * 4).max(4) {
+                st.dormant_water =
+                    Self::make_dormant_field(device, gw, gh, "composite dormant water");
             }
             let lifted_res = lifted_frac_buf
                 .unwrap_or(&st.dormant_lifted)
                 .as_entire_binding();
+            let water_res = water_buf.unwrap_or(&st.dormant_water).as_entire_binding();
             st.bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("composite bg (persistent)"),
                 layout: &self.bgl,
@@ -492,6 +534,10 @@ impl FluidCompositor {
                         binding: 6,
                         resource: st.paper.as_entire_binding(),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: water_res,
+                    },
                 ],
             });
         }
@@ -513,7 +559,7 @@ impl FluidCompositor {
             origin_y: 0,
             end_x: cw,
             end_y: ch,
-            _pad: 0,
+            wet_sheen: 0,
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -564,7 +610,7 @@ impl FluidCompositor {
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            _pad: 0,
+            wet_sheen: 0,
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
 
@@ -668,7 +714,7 @@ impl FluidCompositor {
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            _pad: 0,
+            wet_sheen: 0,
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let row_bytes = u64::from(st.cw) * 4;
@@ -740,7 +786,7 @@ impl FluidCompositor {
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            _pad: 0,
+            wet_sheen: u32::from(self.wet_sheen),
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
@@ -836,7 +882,7 @@ impl FluidCompositor {
                 origin_y: 0,
                 end_x: st.cw,
                 end_y: st.ch,
-                _pad: 0,
+                wet_sheen: 0,
             };
             queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
             let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -868,7 +914,7 @@ impl FluidCompositor {
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            _pad: 0,
+            wet_sheen: u32::from(self.wet_sheen),
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
@@ -1176,7 +1222,7 @@ impl FluidCompositor {
             origin_y: py_lo,
             end_x: px_hi,
             end_y: py_hi,
-            _pad: 0,
+            wet_sheen: 0,
         };
         let coeffs = GpuCoeffs::build();
         let params_buf = device.create_buffer(&wgpu::BufferDescriptor {
@@ -1218,10 +1264,15 @@ impl FluidCompositor {
         queue.write_buffer(&out_buf, 0, backdrop_rgba);
         // ADR-0084 — the live lift accumulator, or an owned all-zero dormant buffer (returned so it
         // outlives the bind group). A fresh STORAGE buffer reads as zero ⇒ `lf = 0` ⇒ no-op.
-        let dormant_lifted = Self::make_dormant_lifted(device, gw, gh);
+        let dormant_lifted =
+            Self::make_dormant_field(device, gw, gh, "composite dormant lifted_frac");
         let lifted_res = lifted_frac_buf
             .unwrap_or(&dormant_lifted)
             .as_entire_binding();
+        // Wet-sheen water (binding 7): the one-shot readback paths never dispatch the
+        // preview-texture kernels (the only readers), so the all-zero dormant field is
+        // re-bound here — legal (two read-only bindings of one buffer) and inert.
+        let water_res = dormant_lifted.as_entire_binding();
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("composite bg"),
             layout: &self.bgl,
@@ -1253,6 +1304,10 @@ impl FluidCompositor {
                 wgpu::BindGroupEntry {
                     binding: 6,
                     resource: paper_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: water_res,
                 },
             ],
         });

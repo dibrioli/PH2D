@@ -1483,6 +1483,15 @@ impl FluidSolver {
         &self.lift_source
     }
 
+    /// The GPU-resident water buffer (`array<f32>`, `width·height`) — bound by the
+    /// compositor's preview-texture passes for the wet-paper sheen (darken wet
+    /// regions, brighten the meniscus; display-only). Written by `cs_splat` /
+    /// `cs_evaporate`; zeroed each stroke begin via [`Self::clear_resident_water_gpu`].
+    #[must_use]
+    pub fn water_buffer(&self) -> &wgpu::Buffer {
+        &self.water
+    }
+
     /// Zero the resident shallow-water state ON the GPU (ADR-0078 S3d) — the stroke-begin
     /// reset for the velocity + pressure buffers, alongside the pigment/water/deposited
     /// clears, so a reused solver starts a new stroke with no leftover momentum.

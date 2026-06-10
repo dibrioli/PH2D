@@ -275,6 +275,15 @@ pub enum BrushParam {
     /// it onto the control's physical range via `WatercolorParams::set_normalized`. Writes
     /// `brush.rendering.watercolor.*`. One variant (not 15) keeps the studio's growth flat.
     Watercolor(u8),
+    /// **Keep-wet (watercolor UX).** Bool: pause evaporation indefinitely — the live
+    /// wash stays wet + re-workable until toggled off. TOOL-level state (like `Paper`):
+    /// `WatercolorParams` is at its 20-control cap and `PainterUiEdit` stays frozen at
+    /// 21/24, so it rides the uncapped `SetBrushParam` channel. Writes `tool.keep_wet`.
+    KeepWet,
+    /// **Show-wet (watercolor UX).** Bool: the wet-paper sheen (subtle darkening of wet
+    /// regions + bright meniscus at the wet boundary), VIEW-ONLY in the live preview.
+    /// TOOL-level like `KeepWet`; default ON. Writes `tool.show_wet`.
+    ShowWet,
 }
 
 // ----------------------------------------------------------------------------
@@ -459,6 +468,10 @@ pub struct BrushStudioSnapshot {
     /// **Real-pigment palette (ADR-0081).** The active pigment's `PALETTE` index, or `None` for
     /// raw colour. The Brush Studio "Watercolor" section reads it to label its Pigment cycler.
     pub active_pigment: Option<u8>,
+    /// Keep-wet pill display state (watercolor UX): `true` = evaporation paused.
+    pub keep_wet: bool,
+    /// Show-wet pill display state (watercolor UX): `true` = wet-paper sheen on (default).
+    pub show_wet: bool,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -510,6 +523,8 @@ impl Default for BrushStudioSnapshot {
             speed_spacing: b.dynamics.speed_spacing,
             watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
             active_pigment: None,
+            keep_wet: false,
+            show_wet: true, // mirror PainterTool::default — the wet-paper look is ON
             brush_name: String::new(),
         }
     }

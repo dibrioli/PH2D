@@ -646,6 +646,20 @@ pub struct PainterTool {
     /// watercolor slider; the pigment's `staining` rides each dab (see [`Self::active_staining`]).
     /// `None` = no pigment selected ⇒ `staining = 0` (liftable) + colour/params left as-is.
     active_pigment: Option<u8>,
+    /// **Keep-wet (watercolor UX).** While `true`, the live wet field never evaporates:
+    /// [`Self::fluid_diffusion_params`] (the GPU solver upload) and the CPU fallback tick
+    /// both override `evaporation = 0`, so the wash stays wet — and re-workable —
+    /// indefinitely (the dry-check threshold is never crossed, so the field never drops).
+    /// Capillary wicking keeps slowly spreading while wet (physical). TOOL-level (not in
+    /// `WatercolorParams` — that struct is at its 20-control cap); driven by the Brush
+    /// Studio "Keep Wet" pill via `BrushParam::KeepWet` (the uncapped channel).
+    keep_wet: bool,
+    /// **Show-wet (watercolor UX).** The wet-paper sheen flag: wet regions render subtly
+    /// darker with a subtly bright meniscus at the wet boundary — VIEW-ONLY (applied in
+    /// the fluid compositor's preview-texture kernels, never in the baked composite), so
+    /// the wash literally "dries lighter". The bridge reads [`Self::fluid_show_wet`] each
+    /// frame. Default ON (the canonical wet-paper look); Brush Studio "Show Wet" pill.
+    show_wet: bool,
 }
 
 impl Default for PainterTool {
@@ -715,6 +729,9 @@ impl Default for PainterTool {
             wet_pigment_envelope: None,
             fluid_dabs: Vec::new(),
             active_pigment: None,
+            keep_wet: false,
+            // Default ON — the wet-paper sheen IS the canonical wet look (view-only).
+            show_wet: true,
         }
     }
 }

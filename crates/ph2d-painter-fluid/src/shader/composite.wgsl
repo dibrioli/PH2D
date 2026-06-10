@@ -36,7 +36,7 @@ struct U {
     origin_y: u32,
     end_x: u32,       // exclusive bbox right/bottom (= CPU loop bound px_hi/py_hi)
     end_y: u32,
-    _pad: u32,
+    wet_sheen: u32,   // 1 = wet-paper sheen ON in the preview-texture passes (0 ⇒ byte-identical)
 };
 
 // The constant spectral basis. Flattened: base[k*NB+i], m[c*NB+i]. std430 array<f32>
@@ -61,6 +61,12 @@ struct Coeffs {
 // layout as `backdrop`). Lifting reveals the paper, never transparency; `paper == backdrop` ⇒
 // `mix(back, paper, lf) = back` ⇒ exact no-op regardless of `lf` (the dormant/one-shot binding).
 @group(0) @binding(6) var<storage, read> paper_canvas: array<u32>;
+// Wet-paper sheen — the solver's resident water field (low-res `gw·gh`, one f32 per cell).
+// Read ONLY by the preview-texture passes (`cs_premul_tex`/`cs_straight_tex`) to darken wet
+// regions + brighten the meniscus band at the wet boundary. VIEW-ONLY: never touches `out_buf`
+// (the canonical composite the bake reads back), so the wash literally "dries lighter".
+// Dormant all-zero when no live water buffer is bound ⇒ `wet = 0` ⇒ no-op.
+@group(0) @binding(7) var<storage, read> water: array<f32>;
 
 // ─── sRGB transfer (IEC 61966) — float twins of ph2d_color::srgb byte fns ───
 fn srgb_to_linear(v: f32) -> f32 {
@@ -356,10 +362,62 @@ fn premul_word(word: u32) -> vec4<f32> {
     ) / 255.0;
 }
 
+// ─── Wet-paper sheen (VIEW-ONLY — preview-texture passes only) ───────────────
+//
+// Subtle darkening of wet regions + a subtly bright meniscus band at the wet
+// boundary, so a live wash reads as physically WET (and "dries lighter" — the
+// bake reads `out_buf`, which the sheen NEVER touches, so keep-wet can hold the
+// field indefinitely without baking the darkening). Gated by `P.wet_sheen`
+// (0 ⇒ the word passes through untouched ⇒ byte-identical output).
+
+// Bilinear sample of the low-res water field at the canvas pixel's centre
+// (centre-coord mapping, same `(c + 0.5)·inv − 0.5` the glaze sampler uses).
+fn water_bilinear(cx: u32, cy: u32) -> f32 {
+    let fx = clamp((f32(cx) + 0.5) * P.inv - 0.5, 0.0, f32(P.gw) - 1.0);
+    let fy = clamp((f32(cy) + 0.5) * P.inv - 0.5, 0.0, f32(P.gh) - 1.0);
+    let x0 = u32(floor(fx));
+    let y0 = u32(floor(fy));
+    let x1 = min(x0 + 1u, P.gw - 1u);
+    let y1 = min(y0 + 1u, P.gh - 1u);
+    let tx = fx - f32(x0);
+    let ty = fy - f32(y0);
+    let top = mix(water[y0 * P.gw + x0], water[y0 * P.gw + x1], tx);
+    let bot = mix(water[y1 * P.gw + x0], water[y1 * P.gw + x1], tx);
+    return mix(top, bot, ty);
+}
+
+// Apply the sheen to one packed straight-sRGB8 word: decode sRGB → linear,
+// darken by the wetness + add the meniscus band, re-encode, round back to
+// bytes (alpha untouched). Dry pixels (`wet = 0`) return the word UNCHANGED
+// (no decode/encode round-trip), so the sheen only ever touches wet texels.
+fn sheen_word(word: u32, cx: u32, cy: u32) -> u32 {
+    if (P.wet_sheen == 0u) {
+        return word;
+    }
+    let wet = smoothstep(0.05, 0.45, water_bilinear(cx, cy));
+    if (wet <= 0.0) {
+        return word;
+    }
+    let band = 4.0 * wet * (1.0 - wet); // peaks at the wet boundary (the meniscus)
+    let c = unpack4x8unorm(word);
+    var lin = vec3<f32>(srgb_to_linear(c.x), srgb_to_linear(c.y), srgb_to_linear(c.z));
+    lin = clamp(
+        lin * (1.0 - 0.07 * wet) + vec3<f32>(0.05 * band),
+        vec3<f32>(0.0),
+        vec3<f32>(1.0),
+    );
+    let r = u32(round(linear_to_srgb(lin.x) * 255.0));
+    let g = u32(round(linear_to_srgb(lin.y) * 255.0));
+    let b = u32(round(linear_to_srgb(lin.z) * 255.0));
+    return (word & 0xff000000u) | (b << 16u) | (g << 8u) | r;
+}
+
 // Region-scoped like `cs_composite` (same origin/end uniforms, dispatched right after it
 // in the same pass — WebGPU's implicit inter-dispatch sync makes the fresh `out_buf`
 // bytes visible). Pixels outside the per-frame region keep whatever the texture holds
 // (the premultiplied backdrop from `cs_premul_init`, or earlier frames of the stroke).
+// The wet-paper sheen (display-only) is applied BEFORE the premultiply, on the
+// straight bytes — `out_buf` itself stays sheen-free (the bake path).
 @compute @workgroup_size(8, 8, 1)
 fn cs_premul_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cx = P.origin_x + gid.x;
@@ -367,7 +425,8 @@ fn cs_premul_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (cx >= P.end_x || cy >= P.end_y) {
         return;
     }
-    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), premul_word(out_buf[cy * P.cw + cx]));
+    let word = sheen_word(out_buf[cy * P.cw + cx], cx, cy);
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), premul_word(word));
 }
 
 // Stroke-start texture init: fill the region (the full canvas — `begin_stroke` sets
@@ -400,6 +459,8 @@ fn straight_word(word: u32) -> vec4<f32> {
 
 // Region-scoped like `cs_premul_tex`, dispatched right after `cs_composite` in
 // the same pass: copy the fresh straight-alpha `out_buf` region into the texture.
+// The wet-paper sheen (display-only) rides here too, so the E5 layer-chain
+// preview shows the same wet look — `out_buf` stays sheen-free either way.
 @compute @workgroup_size(8, 8, 1)
 fn cs_straight_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cx = P.origin_x + gid.x;
@@ -407,7 +468,8 @@ fn cs_straight_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (cx >= P.end_x || cy >= P.end_y) {
         return;
     }
-    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), straight_word(out_buf[cy * P.cw + cx]));
+    let word = sheen_word(out_buf[cy * P.cw + cx], cx, cy);
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), straight_word(word));
 }
 
 // Lazy init (first straight-texture frame of a stroke): fill the full canvas with

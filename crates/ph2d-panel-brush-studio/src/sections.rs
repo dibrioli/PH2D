@@ -449,6 +449,12 @@ fn paint_watercolor_section(
         ids::PIGMENT_PICK,
         theme,
     );
+    // Watercolor UX toggle pills (same pill chrome as the cyclers, pressed = on).
+    // "Keep Wet" pauses evaporation indefinitely (the wash stays re-workable);
+    // "Show Wet" renders the view-only wet-paper sheen (default ON) — the wash
+    // visibly "dries lighter" because the bake never carries the sheen.
+    y = cycler_row(ctx, x, w, y, "Keep Wet", s.keep_wet, ids::KEEP_WET, theme);
+    y = cycler_row(ctx, x, w, y, "Show Wet", s.show_wet, ids::SHOW_WET, theme);
     for i in 0..WatercolorParams::COUNT {
         let c = &WatercolorParams::CONTROLS[i];
         let v01 = s.watercolor[i];

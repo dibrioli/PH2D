@@ -248,6 +248,36 @@ const BRANCH_GATE_HI: f32 = 0.60;
 /// paper pigment) makes the area genuinely lighten, with a little colour bleeding into the wash.
 const LIFT_BLEED_KEEP: f32 = 0.25;
 
+/// **Water epsilon-clamp (perf block 2a, 2026-06-10).** After evaporation, any cell with
+/// `water < WATER_EPS` snaps to 0. Without it, `capillary_flow`/`move_water` push a
+/// sub-visible NUMERIC FILM of water outward each step; the film ACCUMULATES across steps,
+/// trips the wet-bbox reduction, the bbox (a monotonic union) grows, the solver pad follows,
+/// and the envelope runs away until it saturates the canvas — O(envelope) bandwidth cost
+/// forever, the §1/§2 FPS collapse of `HANDOFF_painter_fluid_perf_block.md`. Under Keep Wet
+/// (`evaporation = 0`) this clamp is the ONLY brake.
+///
+/// **Calibration (don't raise it to the visible contour):** the clamp kills only what a
+/// single step delivers BELOW it — a per-step inflow ≥ EPS survives and accumulates
+/// normally, so the real wick dynamics above EPS are intact. At 1e-3 the clamp ate the
+/// chromatographic halo (the `capillary_water_wicks_ahead_of_pigment` contract): the halo
+/// builds from per-step inflows in [1e-4, 1e-3) that legitimately accumulate past 1e-3.
+/// 1e-4 blocks only the sub-1e-4 trickle (the runaway mist), matching the existing flow-gate
+/// floor (`g ≤ 1e-4` ⇒ pigment frozen), so clamped cells never carry visible paint. The
+/// visible-fringe contour for the wet bbox is [`WET_BBOX_WATER_THRESHOLD`]. The GPU mirror
+/// is a literal in `fluid.wgsl` (`cs_evaporate`) — keep both in sync (gate:
+/// `gpu_solver_matches_cpu_reference`).
+pub const WATER_EPS: f32 = 1.0e-4;
+
+/// **Wet-bbox reduction threshold (perf block 2a).** Cells wetter than this vote in the
+/// `read_field_stats` bbox the driver grows the composite envelope from. Calibrated to the
+/// REAL visible fringe contour — the same 1e-3 the fringe tests probe — not to the damp
+/// band above [`WATER_EPS`] (water in [1e-4, 1e-3) is invisible: the pigment gate only
+/// opens at `w_lo = 0.05 ≫ 1e-3`, and pigment reaches only ~2 cells past the 1e-3 contour
+/// — covered by the driver's `CAPILLARY_FRINGE_PAD = 8`; the §2.2 envelope-invariant test
+/// proves pigment ⊆ `water_bbox(1e-3)`). The old 1e-4 threshold captured the numeric mist
+/// and fed the envelope runaway.
+pub const WET_BBOX_WATER_THRESHOLD: f32 = 1.0e-3;
+
 /// Fixed Jacobi-iteration count for the shallow-water pressure projection
 /// ([`DiffusionGrid::project`], ADR-0078 S3d). A *fixed* count (not a convergence
 /// threshold) keeps the solve deterministic + bounded (HR-5) and makes the GPU mirror
@@ -586,9 +616,14 @@ impl DiffusionGrid {
         // sees the just-transported pigment, before evaporate so `deposition_dry` reads
         // this step's water. No-op while the deposition params are off.
         self.transfer_pigment(p);
-        // Evaporate (in place) — drying closes the gate and freezes pigment.
+        // Evaporate (in place) — drying closes the gate and freezes pigment. The
+        // epsilon-clamp kills the sub-visible numeric film so the wet bbox can't run
+        // away (see WATER_EPS; it is the only brake while keep-wet zeroes evaporation).
         for w in &mut self.water {
             *w = (*w - p.evaporation).max(0.0);
+            if *w < WATER_EPS {
+                *w = 0.0;
+            }
         }
         // Capillary fringe (ADR-0078 S5): wick water outward into the drier paper so the wet
         // gate (and then the pigment) creeps past the painted area into a soft fringe. Last,
@@ -1261,9 +1296,13 @@ impl DiffusionGrid {
     /// Evaporate the water field by `amount` (clamped at 0). The W15.3 resident path
     /// keeps water CPU-side (the GPU reads it for the gate/flow but never writes it),
     /// so the CPU owns evaporation + the dry-check — no water readback (ADR-0049 §0).
+    /// Applies the same [`WATER_EPS`] clamp as [`Self::step`] (one evaporate semantic).
     pub fn evaporate(&mut self, amount: f32) {
         for w in &mut self.water {
             *w = (*w - amount).max(0.0);
+            if *w < WATER_EPS {
+                *w = 0.0;
+            }
         }
     }
 
@@ -1935,7 +1974,10 @@ mod tests {
 
     /// Mass-conserving: capillary flow conserves BOTH water (its diffusion) AND pigment (its
     /// co-advection is a gather-form upwind transport — every gram leaving a cell lands in a
-    /// neighbour). With no evaporation the totals are invariant (only redistributed).
+    /// neighbour). With no evaporation, pigment is invariant (only redistributed); water loses
+    /// ONLY the deliberate [`WATER_EPS`] front-mist leak (the perf-block 2a envelope brake):
+    /// each step the clamp destroys the sub-EPS trickle the wick pushed past the front, so the
+    /// total may only DECREASE, and by a small bounded fraction (~0.2%/40 steps here).
     #[test]
     fn capillary_conserves_water_and_pigment() {
         let (w, h) = (48u32, 48u32);
@@ -1953,9 +1995,12 @@ mod tests {
         }
         let water_after: f64 = g.water().iter().map(|&x| x as f64).sum();
         let pig_after = g.total_pigment();
+        // One-directional: the only non-conservative term is the WATER_EPS clamp (a loss);
+        // the FMA-band lower bound catches any spurious water CREATION.
+        let leak = water_before - water_after;
         assert!(
-            (water_before - water_after).abs() < 1e-3 * (water_before.abs() + 1.0),
-            "capillary must conserve water: {water_before} -> {water_after}"
+            leak > -1e-3 * (water_before.abs() + 1.0) && leak < 5e-3 * (water_before.abs() + 1.0),
+            "capillary water may only leak the EPS front mist: {water_before} -> {water_after}"
         );
         assert!(
             (pig_before - pig_after).abs() < 1e-3 * (pig_before.abs() + 1.0),
@@ -2008,8 +2053,9 @@ mod tests {
     /// a higher squared coefficient of variation `var / mean²` of the fringe water (some angular
     /// sectors wick far on the crests, others barely in the valleys), vs the near-uniform smooth
     /// ring. A `scale = 4` paper makes the tooth fine enough that the fringe lobes within the
-    /// probe annulus. Capillary CONSERVES water + pigment regardless of branching (suppression-only
-    /// keeps the convex-average mass-conservation), checked here too.
+    /// probe annulus. Capillary CONSERVES pigment regardless of branching (suppression-only
+    /// keeps the convex-average mass-conservation) and water up to the deliberate
+    /// [`WATER_EPS`] front-mist leak (perf block 2a), checked here too.
     #[test]
     fn branching_makes_fringe_uneven() {
         let (w, h) = (64u32, 64u32);
@@ -2075,9 +2121,12 @@ mod tests {
         }
         let wa: f64 = g.water().iter().map(|&x| x as f64).sum();
         let pa = g.total_pigment();
+        // Water: one-directional WATER_EPS front-mist leak only (perf block 2a), same
+        // contract as `capillary_conserves_water_and_pigment`.
+        let leak = wb - wa;
         assert!(
-            (wb - wa).abs() < 1e-3 * (wb.abs() + 1.0),
-            "branched capillary must still conserve water: {wb} -> {wa}"
+            leak > -1e-3 * (wb.abs() + 1.0) && leak < 5e-3 * (wb.abs() + 1.0),
+            "branched capillary water may only leak the EPS front mist: {wb} -> {wa}"
         );
         assert!(
             (pb - pa).abs() < 1e-3 * (pb.abs() + 1.0),

@@ -157,3 +157,24 @@ cargo test -p ph2d-render --test layer_compositor_gpu -- --ignored   # inclui o 
 caiu — é O(envelope) bandwidth-bound, com o envelope em runaway monotônico (cresce idle, satura no
 canvas, permanente sob Keep Wet). Próximo: **Passo 2a** (epsilon-clamp da água + threshold do bbox,
 CPU+GPU em paridade, validação visual) → 2b/2c.
+— sessão 2026-06-10c: **Passo 2a IMPLEMENTADO** (validação visual pendente — Enio):
+  - **Epsilon-clamp** `WATER_EPS = 1e-4` (canônico em `ph2d_painter_brush::diffusion`, espelho
+    literal em `fluid.wgsl::cs_evaporate`): pós-evaporação, célula `< EPS` vai a 0 — o trickle
+    sub-1e-4 nunca acumula, então a névoa numérica (o runaway) morre; inflow por-step ≥ EPS
+    acumula normal. ⚠️ **1e-3 foi testado e REJEITADO**: matava o halo cromatográfico (o teste
+    `capillary_water_wicks_ahead_of_pigment` caiu — o halo se constrói de inflows em [1e-4,1e-3)
+    que acumulam legitimamente). 1e-4 = o piso do flow-gate existente (`g ≤ 1e-4`).
+  - **Threshold do bbox** 1e-4 → `WET_BBOX_WATER_THRESHOLD = 1e-3` (o contorno do fringe REAL
+    visível — a constante dos próprios testes de fringe; pigmento ⊆ wet_bbox(1e-3) pelo
+    invariante §2.2 + `CAPILLARY_FRINGE_PAD = 8` cobre a margem de ~2 células).
+  - **Contrato de conservação re-codificado**: pigmento exato (inalterado); água agora tem leak
+    UNIDIRECIONAL limitado (a mist da frente que o clamp destrói, ~0,2%/40 steps — é o freio;
+    asserts `leak ∈ (−FMA, 0.5%)` nos 2 testes de conservação).
+  - **Verde**: 371 CPU (painter-brush) + 217 tool-painter + Metal `gpu_parity` 19✓ +
+    `composite_parity` 13✓ + `contract_surface` 8✓. Arquivos: `diffusion.rs`, `fluid.wgsl`,
+    `painter_fluid_bridge.rs`.
+  - **Validação (Enio)**: `PH2D_FLUID_PROFILE=1`, pincel água + Keep Wet ON, mancha pequena →
+    (a) `[fluid-ctx] region` deve ESTABILIZAR idle (não crescer ~10 células/janela); (b) FPS
+    deve recuperar pós-stroke; (c) visual: halo transparente/blooms/edge-darkening/granulação/
+    fingers do branching intactos. Se ainda pesar idle → 2b (cadência idle) e o objetivo maior
+    2c (frente ativa / tiling esparso, bbox ATUAL vs união all-time).

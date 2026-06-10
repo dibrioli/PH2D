@@ -21,6 +21,16 @@
 
 const PV: u32 = 8u;
 
+// Water epsilon-clamp (perf block 2a) — MUST equal the CPU canonical
+// `ph2d_painter_brush::diffusion::WATER_EPS` (see its doc for the calibration:
+// 1e-4 kills only the sub-trickle numeric mist; per-step inflows ≥ EPS still
+// accumulate, so the chromatographic halo is intact). Sub-EPS cells snap to 0 in
+// `cs_evaporate` so the capillary/shallow-water film can't trip the wet-bbox
+// reduction and run the envelope away (the §1/§2 FPS collapse of
+// HANDOFF_painter_fluid_perf_block.md). Under Keep Wet (evaporation = 0) this
+// clamp is the only brake. Parity gate: `gpu_solver_matches_cpu_reference`.
+const WATER_EPS: f32 = 1.0e-4;
+
 struct Params {
     width: u32,
     height: u32,
@@ -182,7 +192,9 @@ fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let i = idx(x, y);
-    water[i] = max(water[i] - P.evaporation, 0.0);
+    let w = max(water[i] - P.evaporation, 0.0);
+    // Epsilon-clamp (perf block 2a): mirrors the CPU step's WATER_EPS snap-to-zero.
+    water[i] = select(0.0, w, w >= WATER_EPS);
 }
 
 // Additive dab deposit (W15.3 resident path): `pig_a += deposit` over all PV channels.

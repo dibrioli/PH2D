@@ -561,12 +561,19 @@ pub(crate) fn drive_fluid_gpu(
         let mut stats_us = 0u64;
         if sess.frame % DRY_CHECK_EVERY == 0 {
             let ts = profile.then(Instant::now);
-            // Threshold 1e-4 (not 1e-3) so the wet bbox tracks the THIN capillary fringe film
-            // where the wick carries pigment — keeps the grown envelope covering it. `max_water`
-            // (the dry-check) is threshold-independent (whole-field max), so the drop is unaffected.
-            let stats = sess
-                .solver
-                .read_field_stats_pipelined(&gpu.device, &gpu.queue, 1.0e-4);
+            // Threshold = the visible-fringe contour (perf block 2a; was 1e-4 "to track the
+            // THIN fringe film"). That film WAS the envelope runaway: the monotonic union grew
+            // on accumulating numeric mist until it saturated the canvas (§4b of the perf-block
+            // handoff). The solver now epsilon-clamps sub-WATER_EPS water every substep (the
+            // hard brake) and the bbox tracks only water ≥ the real fringe contour; pigment
+            // reaches only ~2 cells past it (§2.2 envelope-invariant test) — covered by
+            // CAPILLARY_FRINGE_PAD = 8 ≫ that margin. `max_water` (the dry-check) is
+            // threshold-independent (whole-field max), so the drop is unaffected.
+            let stats = sess.solver.read_field_stats_pipelined(
+                &gpu.device,
+                &gpu.queue,
+                ph2d_painter_brush::diffusion::WET_BBOX_WATER_THRESHOLD,
+            );
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
             // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
             // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps

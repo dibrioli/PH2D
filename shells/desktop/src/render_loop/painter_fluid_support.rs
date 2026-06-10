@@ -110,7 +110,7 @@ pub(super) fn copy_preview_into_slot(
     match renderer.copy_texture_into_individual(id, tex, cw, ch) {
         Ok(()) => Some(id),
         Err(e) => {
-            eprintln!("warn: fluid preview texture→slot copy failed ({e}); using readback path");
+            eprintln!("warn: fluid preview texture->slot copy failed ({e}); using readback path");
             renderer.individual_mut().release(id);
             *slot = None;
             None

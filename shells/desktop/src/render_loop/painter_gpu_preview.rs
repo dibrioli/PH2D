@@ -433,7 +433,7 @@ mod tests {
         let active = t.layers().active().expect("set_source creates Layer 1");
         t.set_layer_opacity(active, 0.5);
         assert!(!t.preview_is_trivial_stack());
-        let (ops, _luts) = gpu_eligible(&t).expect("representable non-trivial stack → GPU");
+        let (ops, _luts) = gpu_eligible(&t).expect("representable non-trivial stack -> GPU");
         assert!(
             matches!(ops[..], [LayerOp::Layer { opacity, .. }] if (opacity - 0.5).abs() < 1e-6),
             "single half-opacity layer flattens to one Layer op: {ops:?}"

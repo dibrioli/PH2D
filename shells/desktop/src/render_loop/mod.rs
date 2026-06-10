@@ -35,6 +35,8 @@ pub(crate) mod painter_bridge_queries;
 // W15.3 GPU fluid drive (ADR-0049). Feature-gated — default build excludes it.
 #[cfg(feature = "fluid")]
 pub(crate) mod painter_fluid_bridge;
+#[cfg(feature = "fluid")]
+mod painter_fluid_support;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 mod present;
@@ -244,12 +246,19 @@ impl crate::App {
         // CPU-uploaded painter preview in the `.or` chain below (same frame, so
         // the wet wash has ZERO preview lag). `None` = readback path owns the
         // frame (drying / no fluid stroke).
+        // E5 (ADR-0078 S2): on a NON-trivial GPU-representable stack the drive
+        // instead injects the fluid composite into the `painter_gpu_preview`
+        // layer chain (single owner) and fills `painter_preview_gpu` — whose
+        // override the `.or` chain below already emits — returning `None`.
         #[cfg(feature = "fluid")]
         let fluid_preview_override = painter_fluid_bridge::drive_fluid_gpu(
             tools,
             surface.gpu(),
             renderer,
             self.last_painter_pushed_entity,
+            &mut self.painter_gpu_preview,
+            &mut self.painter_preview_gpu,
+            toasts,
         );
         #[cfg(not(feature = "fluid"))]
         let fluid_preview_override: Option<sim_extract::PreviewOverride> = None;

@@ -2088,3 +2088,176 @@ fn gpu_bloom_large_radius_pyramid_haloes_wide() {
     // The far corner stays clear.
     assert!(alpha(2, 2) <= 8, "far corner clear, alpha {}", alpha(2, 2));
 }
+
+/// E5 (ADR-0078 S2): `inject_slice_from_texture` feeds an externally-rendered
+/// straight-sRGB8 texture GPU→GPU into the cached slice for a layer key, and
+/// the version invariant holds in BOTH directions:
+/// - the composite right after the injection shows the INJECTED pixels, not
+///   the provider's (the GPU copy really landed in the slice);
+/// - a provider pass at the SAME version does NOT clobber the injection
+///   (mid-stroke: the CPU pixels are intentionally stale at that version);
+/// - a provider pass at a BUMPED version DOES re-upload (pointer-up readback:
+///   `canvas_rgba` caught up, the CPU content must win).
+#[test]
+#[ignore = "needs a GPU device"]
+fn injected_slice_wins_until_provider_version_bumps() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (32u32, 32u32);
+    let region = Region::full(w, h);
+    let solid = |r: u8, g: u8, b: u8| {
+        let mut v = vec![0u8; (w * h * 4) as usize];
+        for px in v.chunks_exact_mut(4) {
+            px.copy_from_slice(&[r, g, b, 255]);
+        }
+        v
+    };
+    let mut prov = MapProvider::default();
+    prov.insert(0, 1, solid(200, 30, 30)); // bottom: red
+    prov.insert(1, 1, solid(30, 200, 30)); // top (active): green
+    // Non-trivial 2-layer stack (top at half opacity so both layers matter).
+    let ops = vec![
+        LayerOp::Layer {
+            key: 0,
+            blend_mode: 0,
+            opacity: 1.0,
+        },
+        LayerOp::Layer {
+            key: 1,
+            blend_mode: 0,
+            opacity: 0.5,
+        },
+    ];
+    let mut comp = LayerCompositor::new(&gpu);
+
+    // Baseline: provider content everywhere.
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("baseline composite");
+    let baseline = comp.read_output(&gpu).expect("readback");
+    // ±1: the encode pow is ULP-bounded across backends (same bound as the mode gate).
+    assert!(max_byte_diff(&baseline, &cpu_composite(&ops, &prov, w, h, region)) <= 1);
+
+    // External straight texture: solid blue (what the fluid wash "rendered").
+    let blue = solid(30, 30, 200);
+    let src = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("test inject src"),
+        size: wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    gpu.queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &src,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &blue,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(w * 4),
+            rows_per_image: Some(h),
+        },
+        wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+    );
+
+    // Inject at the provider's CURRENT version (1 — NOT bumped: the invariant).
+    comp.inject_slice_from_texture(&gpu, &ops, 1, &src, w, h, 1)
+        .expect("inject");
+
+    // SAME-version provider pass right after: the injected pixels must appear
+    // (the slice cache must NOT re-upload the stale green over the blue).
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("post-inject composite");
+    let injected = comp.read_output(&gpu).expect("readback");
+    let mut prov_injected = MapProvider::default();
+    prov_injected.insert(0, 1, solid(200, 30, 30));
+    prov_injected.insert(1, 1, blue.clone());
+    let want_injected = cpu_composite(&ops, &prov_injected, w, h, region);
+    assert!(
+        max_byte_diff(&injected, &want_injected) <= 1,
+        "same-version provider pass must keep the injected slice"
+    );
+    // Blue vs green are >100 bytes apart, far past the ±1 tolerance.
+    assert!(
+        max_byte_diff(&injected, &baseline) > 16,
+        "injection must be visible"
+    );
+
+    // BUMPED provider version: the CPU upload wins (pointer-up catch-up).
+    prov.insert(1, 2, solid(30, 200, 30));
+    comp.composite(&gpu, &ops, &prov, w, h, region)
+        .expect("post-bump composite");
+    let bumped = comp.read_output(&gpu).expect("readback");
+    assert_eq!(
+        bumped, baseline,
+        "a higher provider version must re-upload over the injection"
+    );
+}
+
+/// E5: injection rejects an incompatible source (wrong format family / smaller
+/// than the canvas) instead of encoding an invalid copy.
+#[test]
+#[ignore = "needs a GPU device"]
+fn inject_rejects_incompatible_source_texture() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (16u32, 16u32);
+    let ops = vec![LayerOp::Layer {
+        key: 7,
+        blend_mode: 0,
+        opacity: 0.5,
+    }];
+    let mut comp = LayerCompositor::new(&gpu);
+    let make = |fmt: wgpu::TextureFormat, tw: u32, th: u32| {
+        gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("test inject bad src"),
+            size: wgpu::Extent3d {
+                width: tw,
+                height: th,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: fmt,
+            usage: wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        })
+    };
+    // Wrong format family.
+    let bad_fmt = make(wgpu::TextureFormat::Bgra8Unorm, w, h);
+    assert_eq!(
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &bad_fmt, w, h, 1),
+        Err(LayerCompositeError::MissingOrMalformedLayer { key: 7 })
+    );
+    // Too small to cover the canvas.
+    let too_small = make(wgpu::TextureFormat::Rgba8Unorm, w / 2, h);
+    assert_eq!(
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &too_small, w, h, 1),
+        Err(LayerCompositeError::MissingOrMalformedLayer { key: 7 })
+    );
+    // The sRGB-suffixed sibling IS copy-compatible (the individual.rs trick).
+    let srgb_ok = make(wgpu::TextureFormat::Rgba8UnormSrgb, w, h);
+    assert!(
+        comp.inject_slice_from_texture(&gpu, &ops, 7, &srgb_ok, w, h, 1)
+            .is_ok(),
+        "Rgba8UnormSrgb → Rgba8Unorm copy is format-compatible"
+    );
+}

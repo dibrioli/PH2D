@@ -19,71 +19,17 @@
 //! Downcasts to the concrete `PainterTool` (allowlisted bridge, same exception
 //! class as `painter_bridge.rs`): the GPU drive needs the concrete fluid hooks.
 
+use super::painter_fluid_support::{PROFILE, copy_preview_into_slot, grow_bbox, union_bbox};
+use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
+use crate::app_state::PainterPreviewGpu;
 use ph2d_editor::ToolRegistry;
+use ph2d_editor::toast::ToastQueue;
 use ph2d_gpu::GpuContext;
 use ph2d_painter_fluid::{DabGpu, FluidCompositor, FluidSolver};
 use ph2d_render::SpriteRenderer;
 use std::cell::RefCell;
 use std::time::Instant;
-
-/// Opt-in per-phase profiler for the fluid drive (`PH2D_FLUID_PROFILE=1`). Confirms
-/// where the per-frame wall-clock goes — sim step vs the composite (whose `device.poll`
-/// readback is the suspected sync stall) vs the sporadic stats readback — before any
-/// structural change. Prints averaged ms to stderr every `WINDOW` active frames.
-struct FluidProfile {
-    on: Option<bool>,
-    frames: u32,
-    step_us: u64,
-    comp_us: u64,
-    stats_us: u64,
-}
-
-impl FluidProfile {
-    const WINDOW: u32 = 120;
-    const fn new() -> Self {
-        Self {
-            on: None,
-            frames: 0,
-            step_us: 0,
-            comp_us: 0,
-            stats_us: 0,
-        }
-    }
-    fn enabled(&mut self) -> bool {
-        if self.on.is_none() {
-            self.on = Some(std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"));
-        }
-        self.on == Some(true)
-    }
-    fn record(&mut self, step_us: u64, comp_us: u64, stats_us: u64) {
-        self.frames += 1;
-        self.step_us += step_us;
-        self.comp_us += comp_us;
-        self.stats_us += stats_us;
-        if self.frames >= Self::WINDOW {
-            let f = f64::from(self.frames);
-            let (s, c, st) = (
-                self.step_us as f64 / f / 1000.0,
-                self.comp_us as f64 / f / 1000.0,
-                self.stats_us as f64 / f / 1000.0,
-            );
-            eprintln!(
-                "[fluid] per-frame avg over {} frames: step={s:.3}ms composite(+readback)={c:.3}ms stats={st:.3}ms total={:.3}ms",
-                self.frames,
-                s + c + st
-            );
-            self.frames = 0;
-            self.step_us = 0;
-            self.comp_us = 0;
-            self.stats_us = 0;
-        }
-    }
-}
-
-thread_local! {
-    static PROFILE: RefCell<FluidProfile> = const { RefCell::new(FluidProfile::new()) };
-}
 
 /// How often (in frames) the resident path reads the GPU field stats back for the
 /// dry-check. Drying takes ~0.3 s (≈ 18 frames @ 60 Hz), so a few frames of latency
@@ -103,21 +49,6 @@ const DRY_CHECK_EVERY: u64 = 20;
 /// solver ⊇ composite invariant). It covers the fringe growth between the sporadic wet-bbox
 /// reads; the monotonic `wet_bbox` union then tracks larger (extreme-param) fringes exactly.
 const CAPILLARY_FRINGE_PAD: u32 = 8;
-
-/// Inclusive union of two grid-cell bboxes `(x0, y0, x1, y1)`.
-fn union_bbox(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
-    (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
-}
-
-/// Grow an inclusive grid-cell bbox by `pad` cells on each side, clamped to `dims`.
-fn grow_bbox(b: (u32, u32, u32, u32), pad: u32, dims: (u32, u32)) -> (u32, u32, u32, u32) {
-    (
-        b.0.saturating_sub(pad),
-        b.1.saturating_sub(pad),
-        (b.2 + pad).min(dims.0.saturating_sub(1)),
-        (b.3 + pad).min(dims.1.saturating_sub(1)),
-    )
-}
 
 /// Per-session GPU state for the live wet field: the resident solver, the K–M
 /// compositor, the field size, the stroke epoch it was last reset for, a frame
@@ -186,42 +117,6 @@ impl FluidSession {
     }
 }
 
-/// E4: ensure the session's preview slot exists at `cw × ch` and GPU-copy the
-/// compositor's premultiplied preview texture into it (texture-to-texture, zero
-/// readback — `Rgba8Unorm → Rgba8UnormSrgb` is copy-compatible per
-/// `IndividualTextureStore::copy_from_texture`). Acquired EMPTY (the copy fills
-/// it this same frame, before it is ever sampled — the `acquire_empty` contract).
-/// Returns the slot id, or `None` on a copy error (slot released; the caller
-/// falls back to the readback path, which keeps the preview alive).
-fn copy_preview_into_slot(
-    renderer: &mut SpriteRenderer,
-    slot: &mut Option<(u32, u32, u32)>,
-    tex: &wgpu::Texture,
-    cw: u32,
-    ch: u32,
-) -> Option<u32> {
-    let id = match *slot {
-        Some((id, w, h)) if w == cw && h == ch => id,
-        _ => {
-            if let Some((old, _, _)) = slot.take() {
-                renderer.individual_mut().release(old);
-            }
-            let id = renderer.acquire_individual_empty(cw, ch);
-            *slot = Some((id, cw, ch));
-            id
-        }
-    };
-    match renderer.copy_texture_into_individual(id, tex, cw, ch) {
-        Ok(()) => Some(id),
-        Err(e) => {
-            eprintln!("warn: fluid preview texture→slot copy failed ({e}); using readback path");
-            renderer.individual_mut().release(id);
-            *slot = None;
-            None
-        }
-    }
-}
-
 thread_local! {
     /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
     /// + paper re-uploaded) on a new stroke epoch; dropped when no live field.
@@ -241,11 +136,24 @@ thread_local! {
 /// readback → `canvas_rgba` → CPU-preview path owns the frame.
 /// `override_entity` is the entity whose source the painter holds
 /// (`last_painter_pushed_entity`) — the sprite the override suppresses.
+///
+/// **E5 (ADR-0078 S2):** on a NON-trivial GPU-representable stack the mid-stroke
+/// frame instead feeds the fluid's STRAIGHT composite texture into the
+/// `painter_gpu_preview` driver (the single owner of the layer compositor + the
+/// `painter_preview_gpu` slot) — that fills `painter_preview_gpu`, whose
+/// override the render loop already emits, so this fn returns `None` on those
+/// frames. `painter_gpu_preview_session` / `painter_preview_gpu` / `toasts` are
+/// the SAME slots `painter_bridge::dispatch` hands to `try_drive` later in the
+/// frame (sequential borrows).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn drive_fluid_gpu(
     tools: &mut ToolRegistry,
     gpu: &GpuContext,
     renderer: &mut SpriteRenderer,
     override_entity: Option<u64>,
+    painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
 ) -> Option<PreviewOverride> {
     let painter = tools.active_mut().and_then(|t| {
         t.as_any_mut()
@@ -523,6 +431,40 @@ pub(crate) fn drive_fluid_gpu(
             }
             // On a copy failure we fall through to the readback path below
             // (canvas_rgba + the CPU preview keep the stroke alive, 1-frame lag).
+        }
+        // ── E5 (ADR-0078 S2): NON-trivial GPU-representable stack mid-stroke ──
+        // The fluid straight composite goes GPU→GPU into the LayerCompositor's
+        // cached slice for the ACTIVE layer and the stack recomposites into the
+        // `painter_preview_gpu` slot (whose override the render loop maps
+        // itself — `override_out` stays None). Mutually exclusive with the E4
+        // arm (`gpu_eligible` is None on trivial stacks); a non-representable
+        // stack falls through to today's readback lane (guard #5). Logic lives
+        // in `painter_gpu_preview` (the single owner of compositor + slot).
+        if !texture_frame
+            && stroke_active
+            && let Some(entity_bits) = override_entity
+            && painter_gpu_preview::drive_fluid_chain(
+                painter_gpu_preview_session,
+                renderer,
+                painter,
+                entity_bits,
+                &mut sess.compositor,
+                gpu,
+                region,
+                cw,
+                ch,
+                painter_preview_gpu,
+                toasts,
+            )
+        {
+            // canvas_rgba stays stale over the composited region (same E4
+            // catch-up: pointer-up readback frames replay the union into it).
+            sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
+                Some(d) => union_bbox(d, region),
+                None => region,
+            });
+            sess.catchup_bands = 0;
+            texture_frame = true;
         }
         if !texture_frame {
             // Composite PIPELINED (async readback, no per-frame device.poll(wait)

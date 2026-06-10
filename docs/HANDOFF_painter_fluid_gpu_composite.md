@@ -101,11 +101,27 @@ grid inteiro e faz upload full-grid; o composite ainda faz **um readback síncro
    sem voltar pra CPU; o custo vira `O(Σ dabs)` + composites GPU, não `O(Σ grids)` em CPU.
 
 ### Plano em estágios (cada um valida sozinho — visual + perf na tela; commit local, push só após Enio OK)
-- **E1** água residente + evaporate GPU + massa-escalar dry-check → tira upload-de-água + evaporate-CPU.
-- **E2** `cs_splat` + lista-de-dabs (paridade headless vs splat CPU) → tira upload-de-depósito + alloc CPU.
-- **E3** wet-bbox por redução GPU → tira o scan CPU; readback esporádico de 4 u32.
-- **E4** textura de preview sem readback por-frame; readback 1× no pen-up.
-- **E5** medir @1408 e @4K; encadear multi-camada.
+- **E1** ✅ água residente + evaporate GPU + massa-escalar dry-check → tira upload-de-água + evaporate-CPU.
+- **E2** ✅ `cs_splat` + lista-de-dabs (paridade headless vs splat CPU) → tira upload-de-depósito + alloc CPU.
+- **E3** ✅ wet-bbox por redução GPU → tira o scan CPU; readback esporádico de 4 u32.
+- **E4** ✅ (2026-06-09) textura de preview PREMULTIPLICADA sem readback por-frame (`cs_premul_tex`,
+  byte-exato vs `premultiply_rgba8`, Metal 0 LSB) → `IndividualTextureStore` slot → `PreviewOverride`
+  zero-lag; `canvas_rgba` stale mid-stroke com catch-up-union nos frames de readback pós pen-up
+  (em vez de "readback 1× no pen-up" — elimina o hazard de snapshot de backdrop stale). Gate de
+  stack trivial. Medido: imposto de readback removido ~1ms banda típica / 10ms full-wash 4K, MAIS
+  o premultiply CPU O(canvas) + re-upload de textura que o caminho antigo pagava por frame.
+- **E5** ✅ (2026-06-09) medições @1408/@4K no `perf_resident` (`time_loop_tex`); multi-camada
+  ENCADEADA: `cs_straight_tex` (straight, byte-exato vs `out_buf`) →
+  `LayerCompositor::inject_slice_from_texture` (GPU→GPU no slice da camada ativa; invariante de
+  versão: inject grava a versão corrente NÃO bumpada ⇒ provider stale não clobbera, e o bump real
+  do readback pós pen-up retira a injeção — testado nos 2 sentidos no Metal) → recomposite
+  full-stack → `PreviewPremul` → slot. Dono único: `painter_gpu_preview::drive_fluid_chain`.
+
+**W15 FECHADO (2026-06-09)** — E1–E5 completos; aquarela K–M multi-pigmento (ADR-0080..0084) landada.
+Follow-ups registrados (fora do W15): dirty-rect no recomposite E5 (hoje `Region::full` por frame de
+stroke multi-camada); LBM/MoXi dendrítico completo (ADR-0082 §2.3); tiling esparso 4K (ADR-0083 §4);
+`gpu_composite_full_4k_scales_linearly` borderline neste Mac 8GB (6.09× vs 6×, gate de perf do
+ph2d-render, pré-existente).
 
 → depois de E1–E4 o custo por-frame vira `O(dabs)` + passes GPU; o `O(grid)` da CPU **desaparece** do hot
 loop. Esse é o caminho pra 4K/multi-camada em tempo real. **Recomendação:** executar em **contexto fresco

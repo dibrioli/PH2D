@@ -383,3 +383,42 @@ fn cs_premul_init(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), premul_word(backdrop[cy * P.cw + cx]));
 }
+
+// ─── E5: STRAIGHT-alpha texture output (ADR-0078 S2, multi-layer chain) ───
+//
+// The GPU layer compositor (`ph2d_render::LayerCompositor`) consumes STRAIGHT
+// sRGB8 slices (premultiply happens once at the END of the layer chain, via
+// `PreviewPremul`). These two entries mirror `cs_premul_tex`/`cs_premul_init`
+// MINUS the premultiply — `unpack4x8unorm` → `textureStore` on rgba8unorm is an
+// exact byte round-trip (v/255 is representable; the store rounds back to v),
+// so the texel is byte-identical to the `out_buf`/`backdrop` word. They bind a
+// SECOND canvas-res storage texture through the same group(1) slot (a separate
+// bind group at dispatch), so the group(0) buffer layout is untouched.
+fn straight_word(word: u32) -> vec4<f32> {
+    return unpack4x8unorm(word);
+}
+
+// Region-scoped like `cs_premul_tex`, dispatched right after `cs_composite` in
+// the same pass: copy the fresh straight-alpha `out_buf` region into the texture.
+@compute @workgroup_size(8, 8, 1)
+fn cs_straight_tex(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cx = P.origin_x + gid.x;
+    let cy = P.origin_y + gid.y;
+    if (cx >= P.end_x || cy >= P.end_y) {
+        return;
+    }
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), straight_word(out_buf[cy * P.cw + cx]));
+}
+
+// Lazy init (first straight-texture frame of a stroke): fill the full canvas with
+// the STRAIGHT backdrop — the active layer's pre-stroke pixels — so never-composited
+// texels already hold the layer content the compositor slice must carry.
+@compute @workgroup_size(8, 8, 1)
+fn cs_straight_init(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let cx = P.origin_x + gid.x;
+    let cy = P.origin_y + gid.y;
+    if (cx >= P.end_x || cy >= P.end_y) {
+        return;
+    }
+    textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), straight_word(backdrop[cy * P.cw + cx]));
+}

@@ -593,6 +593,121 @@ impl LayerCompositor {
         Ok(())
     }
 
+    /// **Inject an externally-rendered STRAIGHT-sRGB8 texture into the cached
+    /// slice for layer `key` — GPU→GPU, zero CPU bytes** (Painter fluid E5,
+    /// ADR-0078 S2: the live wet-field composite feeds the layer chain
+    /// mid-stroke without the per-frame readback→re-upload round-trip).
+    ///
+    /// `ops` is the SAME op-list the subsequent [`Self::composite`] will use:
+    /// it sizes the texture array exactly like the composite (so the injection
+    /// never triggers a later capacity rebuild that would discard the slice).
+    /// `src` must be a `≥ width × height` texture whose format is copy-
+    /// compatible with the array's `Rgba8Unorm` (same format family modulo the
+    /// sRGB suffix) and carry `COPY_SRC`.
+    ///
+    /// ## Version invariant (inject vs CPU upload)
+    ///
+    /// The slice cache re-uploads from the [`LayerPixelProvider`] iff the
+    /// provider's version **differs** from the cached one, and the tool's pixel
+    /// versions are monotonic. Callers MUST pass `version` = the provider's
+    /// CURRENT version for `key` (NOT bumped):
+    /// - a provider pass while the CPU pixels are intentionally stale
+    ///   (mid-stroke — same version) does NOT clobber the injection;
+    /// - the first real pixel change (e.g. the pointer-up readback applying
+    ///   bands bumps the version) makes the provider version differ → the CPU
+    ///   upload wins, retiring the injected content exactly when `canvas_rgba`
+    ///   has caught up.
+    #[allow(clippy::too_many_arguments)] // gpu+ops+key+src+dims+version are all intrinsic
+    pub fn inject_slice_from_texture(
+        &mut self,
+        gpu: &GpuContext,
+        ops: &[LayerOp],
+        key: u64,
+        src: &wgpu::Texture,
+        width: u32,
+        height: u32,
+        version: u64,
+    ) -> Result<(), LayerCompositeError> {
+        if width == 0
+            || height == 0
+            || width > gpu.device.limits().max_texture_dimension_2d
+            || height > gpu.device.limits().max_texture_dimension_2d
+        {
+            return Err(LayerCompositeError::InvalidCanvas { width, height });
+        }
+        validate_op_list(ops)?;
+        // Copy-compatibility: `copy_texture_to_texture` requires the same format
+        // modulo the sRGB suffix (the trick `individual.rs` relies on), and the
+        // source must cover the canvas.
+        if src.format().remove_srgb_suffix() != wgpu::TextureFormat::Rgba8Unorm
+            || src.width() < width
+            || src.height() < height
+        {
+            return Err(LayerCompositeError::MissingOrMalformedLayer { key });
+        }
+        self.clock += 1;
+        let epoch = self.clock;
+        let cap = self.cache_cap(width, height).max(1);
+        // Size the array for the REAL op-list (not just this key) so the
+        // following composite never rebuilds (a rebuild clears the cache,
+        // including this injection).
+        self.ensure_array(gpu, width, height, ops, cap)?;
+        let slice = match self.cache.get_mut(&key) {
+            Some(existing) => {
+                existing.last_used = epoch;
+                existing.version = version;
+                existing.slice
+            }
+            None => {
+                let array_cap = self.array.as_ref().map_or(0, |a| a.capacity).min(cap);
+                let slice = self.alloc_slice(array_cap, epoch)?;
+                self.cache.insert(
+                    key,
+                    CachedSlice {
+                        slice,
+                        version,
+                        last_used: epoch,
+                    },
+                );
+                slice
+            }
+        };
+        let Some(array) = &self.array else {
+            // Unreachable after ensure_array, but fail honestly rather than panic.
+            return Err(LayerCompositeError::MissingOrMalformedLayer { key });
+        };
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-render layer_composite inject slice"),
+            });
+        enc.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: src,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &array.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: slice,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        gpu.queue.submit([enc.finish()]);
+        Ok(())
+    }
+
     /// Read the output texture back to a region-sized straight-sRGB8 `Vec<u8>`.
     /// Test/verification path only (blocks on `device.poll`); the shell blits
     /// the texture directly. Returns `None` before the first composite.

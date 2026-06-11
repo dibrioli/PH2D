@@ -2,8 +2,18 @@
 
 > Continuação de [`HANDOFF_watercolor_v2_refactor.md`](HANDOFF_watercolor_v2_refactor.md) (o mandato GPU-first).
 > Esta sessão: **perf-block resolvido** (R0-R2 + cortes) + **C2 robustez** + a **rede de invariantes** (Fase 2 passo 1).
-> Próxima sessão começa na **Fase 2 passo 2** (deletar a paridade + o twin CPU) — tudo mapeado abaixo por 5 investigadores.
 > ADR vigente: [`0085-watercolor-v2-gpu-first-realtime.md`](architecture/decisions/0085-watercolor-v2-gpu-first-realtime.md) (Accepted).
+
+> **✅ FASE 2 PASSO 2 FECHADA (sessão 2026-06-11, local — sem push).** Commits:
+> `9f898c0d` (test-side: deletada a paridade bit-a-bit; 4 gates GPU-only estruturais movidos pro
+> `physical_invariants.rs`; `gpu_parity.rs` deletado; `composite_parity.rs`→8 gates GPU-only;
+> twin-lock fora; `step_cpu_reference`/`step_grid` deletados), `2c848545` (source-side: **aposentado o
+> fallback CPU** — `wet_field` só aloca com GPU (`fluid_hires`); sem GPU = aquarela OFF→wash normal;
+> `diffusion.rs` 2808→536 LOC, twin CPU + test-mod + campos órfãos deletados; `composite_wet_field_cpu`
+> fora; 10 testes CPU/visual deletados, 4 GPU-path reworkados, +1 teste de degradação), `bc84b86e`
+> (clippy). **Verde:** brush 332 + tool 208 + 16/16 GPU gates no Metal; brush/fluid/tool/shell check+clippy
+> zero-warning. ⚠️ **Enio: validar visualmente a degradação sem-GPU (aquarela OFF) no app antes do push.**
+> **PRÓXIMO:** Fase 1 (C1 equilíbrio da água — precisa olho do Enio, §3) + Fase 3 (decomposição HR-18, §5).
 
 ---
 
@@ -107,6 +117,17 @@ Em `lifecycle.rs::fluid_diffusion_params` + `painter_fluid_bridge.rs`:
 ---
 
 ## §8 — Primeira ação da próxima sessão
-**Fase 2 passo 2** (§2.2 + §2.3): mover os 4 gates GPU-only pro `physical_invariants.rs`, deletar `gpu_parity.rs` + os CPU-mirror de `composite_parity.rs` + o twin-lock de `contract_surface.rs`, verificar (compila + invariantes + composite-restantes verdes no Metal); aí deletar `step_cpu_reference`/`step_grid` + aposentar o fallback CPU do `lifecycle.rs` + deletar o `step()`+passes do `diffusion.rs`. **Verificar cada corte.** Depois Fase 1 (C1, com olho do Enio) e Fase 3 (decompor).
+~~**Fase 2 passo 2**~~ ✅ **FEITA 2026-06-11** (ver nota no topo: commits `9f898c0d`/`2c848545`/`bc84b86e`,
+local). A paridade + o twin CPU foram-se; GPU é o único caminho vivo; sem-GPU = aquarela OFF.
+
+**Próxima sessão:**
+1. **Enio valida visualmente** a degradação sem-GPU + o look intacto no app (pré-push).
+2. **Fase 1 — C1** (§3): equilíbrio físico da água (creep/Keep-Wet). **Precisa olho do Enio onda a onda**
+   (toca o look). C3/C5/C6 são fixes pequenos que podem ir junto. Nota: o doc-stale C3 já foi parcialmente
+   limpo (o CPU dry-check saiu com o fallback); resta a física do C1.
+3. **Fase 3** (§5): decomposição HR-18 (`solver.rs`/`composite.rs`/`lifecycle.rs`/`tool/tests.rs`). `diffusion.rs`
+   já caiu pra 536 LOC (não precisa mais decompor). `tool/tests.rs` encolheu ~630 linhas (menos pressão).
+4. **§2.4 bridge** (torre de catch-up / E5 / KEEP_WET_SETTLE_FRAMES) — ainda aberto; o fallback CPU já saiu,
+   então a máquina de catch-up (C4) é o próximo alvo de simplificação do bridge.
 
 — Handoff aberto 2026-06-11. Tudo commitado local (`cef8e9ef`/`77be3ae5`/`1ad831c4`), sem push. Sistema funcional, mais robusto, com perf resolvido pro caso contido.

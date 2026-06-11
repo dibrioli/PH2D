@@ -579,10 +579,65 @@ impl FluidCompositor {
         queue.submit([enc.finish()]);
     }
 
+    /// Encode + submit the region-scoped composite (`cs_composite`) + the band copy into
+    /// `staging`, returning `(band_bytes, rect)` — or `None` when there's no stroke state / the
+    /// region is empty. The shared body of [`Self::composite_frame`] (sync readback) and
+    /// [`Self::composite_frame_pipelined`] (async); the CALLER owns the readback. `profile` is
+    /// the pass-profiler label (`comp_sync` vs `comp_pipe`).
+    fn encode_composite_band(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        grid_region: (u32, u32, u32, u32),
+        enc_label: &str,
+        profile: &'static str,
+    ) -> Option<(u64, (u32, u32, u32, u32))> {
+        let st = self.state.as_ref()?;
+        let (px_lo, py_lo, px_hi, py_hi) =
+            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
+        if py_hi <= py_lo || px_hi <= px_lo {
+            return None;
+        }
+        let uni = GpuU {
+            cw: st.cw,
+            ch: st.ch,
+            gw: st.gw,
+            gh: st.gh,
+            inv: 1.0 / st.scale as f32,
+            coverage_k: st.coverage_k,
+            ss: st.ss,
+            origin_x: px_lo,
+            origin_y: py_lo,
+            end_x: px_hi,
+            end_y: py_hi,
+            wet_sheen: 0,
+        };
+        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
+        let row_bytes = u64::from(st.cw) * 4;
+        let band_off = u64::from(py_lo) * row_bytes;
+        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
+        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some(enc_label),
+        });
+        {
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("composite frame pass"),
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes(profile),
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &st.bind, &[]);
+            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
+        }
+        enc.copy_buffer_to_buffer(&st.out, band_off, &st.staging, 0, band_bytes);
+        queue.submit([enc.finish()]);
+        Some((band_bytes, (px_lo, py_lo, px_hi, py_hi)))
+    }
+
     /// **Fast-path per-frame composite (after [`Self::begin_stroke`]).** Writes only
     /// the 64-byte region uniform, dispatches over the bbox, and reads back the wet
-    /// row band. Reuses the persistent buffers/bind — zero per-frame allocation, zero
-    /// canvas re-upload. Returns `(band, rect)` like [`Self::composite_buffer_rows`];
+    /// row band (SYNC). Reuses the persistent buffers/bind — zero per-frame allocation,
+    /// zero canvas re-upload. Returns `(band, rect)` like [`Self::composite_buffer_rows`];
     /// `(vec![], (0,0,0,0))` when the region is empty.
     #[must_use]
     pub fn composite_frame(
@@ -602,49 +657,18 @@ impl FluidCompositor {
                 st.staging.unmap();
             }
         }
+        let Some((band_bytes, rect)) = self.encode_composite_band(
+            device,
+            queue,
+            grid_region,
+            "composite frame",
+            "fluid.comp_sync",
+        ) else {
+            return (Vec::new(), (0, 0, 0, 0));
+        };
         let Some(st) = self.state.as_ref() else {
-            return (Vec::new(), (0, 0, 0, 0));
+            return (Vec::new(), rect);
         };
-        let (px_lo, py_lo, px_hi, py_hi) =
-            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
-        if py_hi <= py_lo || px_hi <= px_lo {
-            return (Vec::new(), (0, 0, 0, 0));
-        }
-        let uni = GpuU {
-            cw: st.cw,
-            ch: st.ch,
-            gw: st.gw,
-            gh: st.gh,
-            inv: 1.0 / st.scale as f32,
-            coverage_k: st.coverage_k,
-            ss: st.ss,
-            origin_x: px_lo,
-            origin_y: py_lo,
-            end_x: px_hi,
-            end_y: py_hi,
-            wet_sheen: 0,
-        };
-        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
-
-        let row_bytes = u64::from(st.cw) * 4;
-        let band_off = u64::from(py_lo) * row_bytes;
-        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
-        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("composite frame"),
-        });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("composite frame pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_sync"),
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &st.bind, &[]);
-            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
-        }
-        enc.copy_buffer_to_buffer(&st.out, band_off, &st.staging, 0, band_bytes);
-        queue.submit([enc.finish()]);
-
         let (tx, rx) = std::sync::mpsc::channel();
         st.staging
             .slice(0..band_bytes)
@@ -658,11 +682,11 @@ impl FluidCompositor {
         // gracefully — an empty band tells the caller to apply nothing this frame; the next
         // flush retries. (The async live path already handles its error; this hardens the sync one.)
         if !matches!(rx.recv(), Ok(Ok(()))) {
-            return (Vec::new(), (px_lo, py_lo, px_hi, py_hi));
+            return (Vec::new(), rect);
         }
         let rows = st.staging.slice(0..band_bytes).get_mapped_range().to_vec();
         st.staging.unmap();
-        (rows, (px_lo, py_lo, px_hi, py_hi))
+        (rows, rect)
     }
 
     /// **Pipelined per-frame composite (ADR-0078 S2 — no per-frame `device.poll(wait)`).**
@@ -712,48 +736,19 @@ impl FluidCompositor {
                 }
             }
         }
-        // Submit THIS frame's composite + copy + async map (staging is free now).
+        // Submit THIS frame's composite + copy (staging is free now), then async-map it.
+        let Some((band_bytes, rect)) = self.encode_composite_band(
+            device,
+            queue,
+            grid_region,
+            "composite frame (pipelined)",
+            "fluid.comp_pipe",
+        ) else {
+            return result;
+        };
         let Some(st) = self.state.as_ref() else {
             return result;
         };
-        let (px_lo, py_lo, px_hi, py_hi) =
-            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
-        if py_hi <= py_lo || px_hi <= px_lo {
-            return result;
-        }
-        let uni = GpuU {
-            cw: st.cw,
-            ch: st.ch,
-            gw: st.gw,
-            gh: st.gh,
-            inv: 1.0 / st.scale as f32,
-            coverage_k: st.coverage_k,
-            ss: st.ss,
-            origin_x: px_lo,
-            origin_y: py_lo,
-            end_x: px_hi,
-            end_y: py_hi,
-            wet_sheen: 0,
-        };
-        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
-        let row_bytes = u64::from(st.cw) * 4;
-        let band_off = u64::from(py_lo) * row_bytes;
-        let band_bytes = u64::from(py_hi - py_lo) * row_bytes;
-        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("composite frame (pipelined)"),
-        });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("composite frame pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_pipe"),
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &st.bind, &[]);
-            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
-        }
-        enc.copy_buffer_to_buffer(&st.out, band_off, &st.staging, 0, band_bytes);
-        queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
         st.staging
             .slice(0..band_bytes)
@@ -763,7 +758,7 @@ impl FluidCompositor {
         self.pending = Some(PendingReadback {
             rx,
             band_bytes,
-            rect: (px_lo, py_lo, px_hi, py_hi),
+            rect,
         });
         result
     }

@@ -1452,36 +1452,39 @@ impl FluidSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(&zeros));
     }
 
-    /// Zero the resident pigment ON the GPU (`clear_buffer`, no CPU upload) — the
-    /// fast stroke-begin reset. Avoids the per-stroke megabyte upload of a zero buffer
-    /// that `clear_resident_pigment` does (a hitch on large canvases).
-    pub fn clear_resident_pigment_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid clear pig_a"),
-        });
-        enc.clear_buffer(&self.pig_a, 0, None);
+    /// Zero one or more resident buffers ON the GPU (`clear_buffer`, no CPU upload) in a single
+    /// encoder/submit — the shared body of the stroke-begin resets. Avoids the per-stroke
+    /// megabyte upload of a zero buffer that the CPU `clear_resident_pigment` does.
+    fn clear_buffers_gpu(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        label: &str,
+        buffers: &[&wgpu::Buffer],
+    ) {
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some(label) });
+        for buf in buffers {
+            enc.clear_buffer(buf, 0, None);
+        }
         queue.submit([enc.finish()]);
     }
 
+    /// Zero the resident pigment ON the GPU — the fast stroke-begin reset (no CPU upload).
+    pub fn clear_resident_pigment_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        self.clear_buffers_gpu(device, queue, "fluid clear pig_a", &[&self.pig_a]);
+    }
+
     /// Zero the resident water ON the GPU (companion to
-    /// [`Self::clear_resident_pigment_gpu`]) — the resident-sim stroke-begin reset so
-    /// a reused solver starts from a dry field before the first `cs_splat`.
+    /// [`Self::clear_resident_pigment_gpu`]) — so a reused solver starts from a dry field.
     pub fn clear_resident_water_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid clear water"),
-        });
-        enc.clear_buffer(&self.water, 0, None);
-        queue.submit([enc.finish()]);
+        self.clear_buffers_gpu(device, queue, "fluid clear water", &[&self.water]);
     }
 
     /// Zero the resident deposited-pigment layer ON the GPU (ADR-0078 S3) — the
     /// stroke-begin reset for the `cs_transfer` output, alongside the pigment/water clears.
     pub fn clear_resident_deposited_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid clear deposited"),
-        });
-        enc.clear_buffer(&self.deposited, 0, None);
-        queue.submit([enc.finish()]);
+        self.clear_buffers_gpu(device, queue, "fluid clear deposited", &[&self.deposited]);
     }
 
     /// **Seed the ADR-0084 backdrop-lift donor.** Upload the `width*height` K–M donor cells
@@ -1500,12 +1503,12 @@ impl FluidSolver {
     /// Leaving both zero keeps the `cs_lift` backdrop branch a no-op + the compositor byte-identical
     /// (the non-destructive `lift = 0` path).
     pub fn clear_lift_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid clear lift"),
-        });
-        enc.clear_buffer(&self.lift_source, 0, None);
-        enc.clear_buffer(&self.lifted_frac, 0, None);
-        queue.submit([enc.finish()]);
+        self.clear_buffers_gpu(
+            device,
+            queue,
+            "fluid clear lift",
+            &[&self.lift_source, &self.lifted_frac],
+        );
     }
 
     /// The lifted-fraction buffer (`array<f32>`, ADR-0084) — bound by the compositor to drop the
@@ -1545,14 +1548,12 @@ impl FluidSolver {
     /// reset for the velocity + pressure buffers, alongside the pigment/water/deposited
     /// clears, so a reused solver starts a new stroke with no leftover momentum.
     pub fn clear_resident_velocity_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid clear velocity"),
-        });
-        enc.clear_buffer(&self.vel_a, 0, None);
-        enc.clear_buffer(&self.vel_b, 0, None);
-        enc.clear_buffer(&self.pressure_a, 0, None);
-        enc.clear_buffer(&self.pressure_b, 0, None);
-        queue.submit([enc.finish()]);
+        self.clear_buffers_gpu(
+            device,
+            queue,
+            "fluid clear velocity",
+            &[&self.vel_a, &self.vel_b, &self.pressure_a, &self.pressure_b],
+        );
     }
 
     /// **Splat a dab list onto the resident water + pigment (`cs_splat`).** The

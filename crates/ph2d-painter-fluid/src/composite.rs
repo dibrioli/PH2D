@@ -1,7 +1,8 @@
 //! GPU wet-field composite (ADR-0049 W15.3) — the per-frame K–M glaze on the GPU,
-//! removing the pigment readback stall. Band-for-band mirror of
-//! [`ph2d_painter_brush::wet_composite::composite_wet_field_cpu`] (the parity
-//! ground truth; the gate proves they agree on a real device).
+//! removing the pigment readback stall. ADR-0085: the GPU is the single source of
+//! truth (no CPU composite twin); the GPU-only composite gates in
+//! `tests/composite_parity.rs` assert the banded/pipelined/fast paths agree with the
+//! one-shot composite and that the glaze reads correctly on a real device.
 //!
 //! The compositor is built once per device. Inputs each composite: the GPU-resident
 //! low-res [`PIG_CH`]-channel pigment field (ADR-0080: mass-weighted K/S + err + mass),

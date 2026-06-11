@@ -98,29 +98,6 @@ fn fluid_pass_activates_only_when_eligible() {
 }
 
 #[test]
-fn cpu_reference_matches_diffusion_with_default_params() {
-    // step_cpu_reference IS the shipped solver; this pins that `to_diffusion()`
-    // maps FluidParams::default() onto DiffusionParams::default() (no drift), so
-    // the GPU's parity reference and the CPU live path are one tuning.
-    use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams};
-    let (w, h) = (24u32, 24u32);
-    let mut a = DiffusionGrid::new(w, h, 2.0);
-    let mut b = DiffusionGrid::new(w, h, 2.0);
-    a.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5], 0.2 + 0.1 + 0.5, 0.0);
-    b.splat(12.0, 12.0, 5.0, 0.6, [0.2, 0.1, 0.5], 0.2 + 0.1 + 0.5, 0.0);
-    ph2d_painter_fluid::step_cpu_reference(&mut a, &FluidParams::default(), 8);
-    let dp = DiffusionParams::default();
-    for _ in 0..8 {
-        b.step(&dp);
-    }
-    assert_eq!(
-        a.pigment(),
-        b.pigment(),
-        "FluidParams::default must map 1:1"
-    );
-}
-
-#[test]
 fn fluid_wgsl_parses_and_validates_via_naga() {
     let module = naga::front::wgsl::parse_str(ph2d_painter_fluid::FLUID_WGSL)
         .expect("fluid.wgsl must parse via naga");

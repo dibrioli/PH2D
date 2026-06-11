@@ -1,21 +1,17 @@
-//! The solver: CPU reference (REUSE of the shipped `diffusion`) + the GPU
-//! compute shader source. The live wgpu pipeline lands in W15.3 phase 2.
+//! The GPU watercolor solver (ADR-0085: the GPU is the single live source of truth —
+//! the CPU twin in `ph2d_painter_brush::diffusion` is no longer a runtime fallback).
+//! [`FluidSolver`] owns the resident pigment/water/deposited fields + the compute
+//! pipelines; the physics is validated by the GPU-only invariant gates
+//! (`tests/physical_invariants.rs`), not a bit-for-bit CPU reference.
 //!
-//! ## CPU reference = the parity truth + det fallback
-//! [`step_cpu_reference`] runs the exact gated diffusion-advection that shipped in
-//! W15.2 ([`ph2d_painter_brush::diffusion::DiffusionGrid`]). It is (a) the HR-5
-//! det-mode path (ADR-0049 §2.11 — GPU is non-deterministic), and (b) the
-//! bit-near reference the GPU pass is validated against (phase-2 parity gate).
-//!
-//! ## GPU pass (phase 2)
-//! [`FLUID_WGSL`] is the compute shader mirroring the CPU passes. The
+//! [`FLUID_WGSL`] is the compute shader for the gated diffusion-advection. The
 //! diffusion pass is a pure GATHER (each cell sums conductance·(neighbour−self)),
 //! which maps directly to a compute kernel. The advection pass is reformulated
-//! from the CPU's SCATTER (push to the downstream neighbour) into a GATHER (each
+//! from the original SCATTER (push to the downstream neighbour) into a GATHER (each
 //! cell pulls the net flux from its 4 neighbours) so it is atomics-free and
 //! order-independent — the adaptation that makes it correct on the GPU. The wgpu
-//! pipeline (storage textures, bind groups, dispatch, bbox upload) is wired in
-//! phase 2 against a headless `GpuContext`, with a CPU↔GPU parity test.
+//! pipeline (storage buffers, bind groups, dispatch, region upload) runs against a
+//! headless `GpuContext` in the invariant gates.
 
 use crate::params::FluidParams;
 use ph2d_painter_brush::diffusion::{DiffusionGrid, DiffusionParams, PIG_CH, RELAX_ITERS, WetCell};
@@ -212,15 +208,6 @@ struct GpuReduceParams {
     height: u32,
     threshold: f32,
     _pad: u32,
-}
-
-/// Run the CPU reference solver `steps` times in place. The det-mode path AND the
-/// parity reference for the GPU pass — both go through the one shipped solver.
-pub fn step_cpu_reference(grid: &mut DiffusionGrid, params: &FluidParams, steps: u32) {
-    let dp = params.to_diffusion();
-    for _ in 0..steps {
-        grid.step(&dp);
-    }
 }
 
 /// The WGSL `Params` UBO, byte-for-byte (28 × 4 = 112 B, 16-aligned). `#[repr(C)]` Pod so a
@@ -2234,30 +2221,5 @@ impl FluidSolver {
         drop(mapped);
         staging.unmap();
         out
-    }
-
-    /// **Drop-in GPU accelerator for the CPU `DiffusionGrid::step` loop.** Uploads
-    /// the grid, runs `substeps` on the GPU, and writes the evolved pigment + water
-    /// back into the grid — so the grid stays the CPU source of truth (the composite
-    /// reads it, the det fallback uses it) while the heavy diffuse/advect/evaporate
-    /// run on the GPU. Equivalent to `step_cpu_reference(grid, params, substeps)`
-    /// but on the GPU (proven by the parity gate). Paper is re-uploaded each call
-    /// (static + cheap); a persistent-state fast path is a later optimization.
-    pub fn step_grid(
-        &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        grid: &mut DiffusionGrid,
-        params: &FluidParams,
-        substeps: u32,
-    ) {
-        self.set_params(queue, params);
-        // The grid pigment IS the PIG_CH-channel field (ADR-0080) — upload/read it directly.
-        self.upload(queue, grid.water(), grid.paper(), grid.pigment());
-        self.step(device, queue, substeps);
-        let pig = self.read_pigment(device, queue);
-        let water = self.read_water(device, queue);
-        grid.set_pigment_from(&pig);
-        grid.set_water_from(&water);
     }
 }

@@ -3,8 +3,10 @@
 //! **Mirrors [`ph2d_painter_brush::diffusion::DiffusionParams`]** rather than the
 //! Shallow-Water fields ADR-0049 §2.5 originally listed (viscosity / gravity /
 //! Jacobi iterations), because the solver is the gated diffusion-advection model
-//! (ADR-0049-amendment-1). Keeping the field set 1:1 with the CPU reference is
-//! what makes [`crate::step_cpu_reference`] an exact parity fallback.
+//! (ADR-0049-amendment-1). The field set stays 1:1 with [`DiffusionParams`] so
+//! [`Self::to_diffusion`] is the one conversion point that keeps the serialized
+//! brush tuning and the GPU solver's `DiffusionParams` a single source of truth
+//! (ADR-0085: the GPU solver is now the only live path).
 
 use ph2d_painter_brush::diffusion::DiffusionParams;
 use serde::{Deserialize, Serialize};
@@ -69,35 +71,25 @@ impl FluidParams {
             w_hi: self.w_hi,
             perm_valley: self.perm_valley,
             perm_crest: self.perm_crest,
-            // Deposition layer (ADR-0078 S3) stays OFF on the GPU-mirrored path until
-            // the GPU `cs_transfer` + the FluidParams amendment land (S3b) — keeps the
-            // CPU reference bit-parity with the current GPU solver.
+            // The deposition / shallow-water / capillary / lift / branching layers are NOT
+            // carried by `FluidParams` — the live GPU solver drives each per-brush via
+            // `set_deposition` / `set_shallow_water` / `set_from_diffusion` (ADR-0078 S3-S5,
+            // ADR-0081/0082). `to_diffusion` therefore zeroes them so the serialized brush
+            // tuning maps cleanly onto the base diffusion-advection field; the live values
+            // are layered on top by the solver, not round-tripped through this struct.
             deposition: 0.0,
             deposition_dry: 0.0,
             granulation: 0.0,
-            // Shallow-water velocity layer (ADR-0078 S3d) likewise OFF on this mapped path
-            // until the GPU shallow-water passes + the FluidParams amendment land — the
-            // live solver enables it via `FluidSolver::set_shallow_water` (S4d consts),
-            // not through `FluidParams`. Keeps `to_diffusion(default) == default` (the
-            // `cpu_reference_matches_diffusion_with_default_params` gate) bit-exact.
             velocity: 0.0,
             viscosity: 0.0,
             drag: 0.0,
             pressure: 0.0,
-            // Capillary fringe (ADR-0078 S5) is likewise OFF on this `FluidParams`-mapped path
-            // (the live solver drives it per-brush via `set_from_diffusion`, not `FluidParams`)
-            // → keeps `to_diffusion(default) == default` bit-exact for the parity gate.
             capillary: 0.0,
             capillary_mobility: ph2d_painter_brush::diffusion::CAPILLARY_PIGMENT_MOBILITY,
-            // First-order advection on this mapped path → `to_diffusion(default) == default`.
+            // First-order advection on this mapped path; the live solver raises sharpness
+            // (MacCormack) per-brush via `set_from_diffusion`.
             sharpness: 0.0,
-            // Lift (ADR-0081) is likewise OFF on this `FluidParams`-mapped path (the live solver
-            // drives it per-brush via `set_from_diffusion`, not `FluidParams`) → keeps
-            // `to_diffusion(default) == default` bit-exact for the parity gate.
             lift: 0.0,
-            // Branched capillary (ADR-0082) is likewise OFF on this `FluidParams`-mapped path
-            // (the live solver drives it per-brush via `set_from_diffusion`) → keeps
-            // `to_diffusion(default) == default` bit-exact for the parity gate.
             capillary_branching: 0.0,
         }
     }

@@ -55,10 +55,12 @@ fn inv_pigment_mass_is_conserved() {
         return;
     };
     let (w, h) = (48u32, 40u32);
-    let mut dp = DiffusionParams::default();
-    dp.evaporation = 0.0;
-    dp.deposition = 0.0;
-    dp.deposition_dry = 0.0;
+    let dp = DiffusionParams {
+        evaporation: 0.0,
+        deposition: 0.0,
+        deposition_dry: 0.0,
+        ..DiffusionParams::default()
+    };
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
 
@@ -110,8 +112,8 @@ fn inv_water_bounded_finite_no_runaway() {
         );
     }
     for c in &pig {
-        for k in 0..PIG_CH {
-            assert!(c[k].is_finite(), "pigment channel {k} has NaN/Inf");
+        for (k, ch) in c.iter().enumerate() {
+            assert!(ch.is_finite(), "pigment channel {k} has NaN/Inf");
         }
     }
     let max1 = solver
@@ -143,8 +145,10 @@ fn inv_subtractive_mix_blue_yellow_is_green() {
         return;
     };
     let (w, h) = (40u32, 40u32);
-    let mut dp = DiffusionParams::default();
-    dp.evaporation = 0.0;
+    let dp = DiffusionParams {
+        evaporation: 0.0,
+        ..DiffusionParams::default()
+    };
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
     let cx = w as f32 * 0.5;
@@ -182,10 +186,12 @@ fn inv_deposition_accumulates_and_dries() {
         return;
     };
     let (w, h) = (40u32, 40u32);
-    let mut dp = DiffusionParams::default();
-    dp.deposition = 0.03;
-    dp.deposition_dry = 0.06;
-    dp.granulation = 1.5;
+    let dp = DiffusionParams {
+        deposition: 0.03,
+        deposition_dry: 0.06,
+        granulation: 1.5,
+        ..DiffusionParams::default()
+    };
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
     let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 9.0, 0.9, [0.2, 0.4, 0.1], 1.2)];

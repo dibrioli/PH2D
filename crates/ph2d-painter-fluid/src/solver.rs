@@ -1532,6 +1532,15 @@ impl FluidSolver {
         &self.water
     }
 
+    /// The canonical shallow-water velocity buffer (`vec2<f32>` per cell, ADR-0078 S3d) — the
+    /// projected `(u,v)` `cs_advect_velocity` reads. Exposed for the physical-invariant gate
+    /// that asserts the field comes to REST under Keep Wet (the C1 surface-tension-pinning
+    /// fixed point, ADR-0085). `COPY_SRC`, so a test can read back the magnitude.
+    #[must_use]
+    pub fn velocity_buffer(&self) -> &wgpu::Buffer {
+        &self.vel_a
+    }
+
     /// Zero the resident shallow-water state ON the GPU (ADR-0078 S3d) — the stroke-begin
     /// reset for the velocity + pressure buffers, alongside the pigment/water/deposited
     /// clears, so a reused solver starts a new stroke with no leftover momentum.

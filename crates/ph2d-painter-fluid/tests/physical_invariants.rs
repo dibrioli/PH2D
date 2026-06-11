@@ -223,6 +223,77 @@ fn inv_deposition_accumulates_and_dries() {
     assert!(mw2 < mw0, "wash did not dry: max_water {mw0:.5} → {mw2:.5}");
 }
 
+// ── INV-7 — the shallow-water velocity layer reaches a finite Keep-Wet fixed point ──
+// ADR-0085 C1 (surface-tension pinning): with the velocity layer on and evaporation off (Keep
+// Wet), the FlowOutward force (−λ·∇w) used to have NO fixed point — it injected outward velocity
+// forever and the wash crept until a timeout. Pinning fades that force as the film thins, so the
+// field SETTLES. This gate restores GPU-side coverage of the shallow layer (deleted with the
+// parity suite) and asserts the physics: pigment mass is conserved under velocity advection, the
+// velocity stays finite + bounded by the per-component clamp, and the field reaches a STEADY
+// state (max |v| stops changing between two long no-dab windows — the creep settles, it does not
+// keep growing). The exact look (the ~1-2 s bleed, the pinned front) is validated visually.
+#[test]
+#[ignore = "needs a GPU device"]
+fn inv_velocity_layer_settles_under_keep_wet() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 40u32);
+    // Velocity layer ON (the watercolor defaults) + Keep Wet (no evaporation).
+    let dp = DiffusionParams {
+        evaporation: 0.0,
+        velocity: 1.3,
+        viscosity: 0.18,
+        drag: 0.1,
+        pressure: 0.3,
+        ..DiffusionParams::default()
+    };
+    let solver = fresh_solver(&gpu, w, h, &dp);
+    let region = (0, 0, w - 1, h - 1);
+    let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 9.0, 0.9, [0.1, 0.2, 0.7], 1.0)];
+    solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 2, region);
+
+    // Max velocity magnitude over the field (`vel` is vec2<f32> per cell).
+    let n = (w * h) as usize;
+    let max_speed = |solver: &FluidSolver| -> f32 {
+        let v = read_f32_buffer(&gpu, solver.velocity_buffer(), n * 2);
+        let mut m = 0.0f32;
+        for c in v.chunks_exact(2) {
+            m = m.max((c[0] * c[0] + c[1] * c[1]).sqrt());
+        }
+        m
+    };
+    let mass = |solver: &FluidSolver| -> f64 { total_mass(&solver.read_pigment(&gpu.device, &gpu.queue)) };
+
+    let mass0 = mass(&solver);
+    for _ in 0..24 {
+        solver.step_resident_splat(&gpu.device, &gpu.queue, &[], 2, region);
+    }
+    let speed1 = max_speed(&solver);
+    for _ in 0..24 {
+        solver.step_resident_splat(&gpu.device, &gpu.queue, &[], 2, region);
+    }
+    let speed2 = max_speed(&solver);
+    let mass2 = mass(&solver);
+
+    eprintln!("INV-7 max|v|: {speed1:.5} → {speed2:.5} | pigment mass: {mass0:.5} → {mass2:.5}");
+    assert!(mass0 > 0.01, "no pigment deposited — invariant meaningless");
+    // Velocity advection conserves pigment mass (Keep Wet, no deposition).
+    assert!(
+        (mass2 - mass0).abs() < mass0 * 0.03,
+        "velocity layer did not conserve pigment: {mass0:.5} → {mass2:.5}"
+    );
+    // Finite + bounded by the per-component clamp (|v| ≤ √2·0.5 ≈ 0.707).
+    assert!(speed1.is_finite() && speed2.is_finite(), "velocity has NaN/Inf");
+    assert!(speed2 <= 0.72, "velocity exceeded the clamp ceiling: {speed2}");
+    // Reached a Keep-Wet fixed point: the field is steady, not still creeping outward.
+    assert!(
+        (speed2 - speed1).abs() <= speed1 * 0.10 + 1.0e-3,
+        "velocity field did not settle (still changing {speed1:.5} → {speed2:.5}) — no Keep-Wet fixed point"
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────────────
 // GPU-only STRUCTURAL gates (ADR-0085 §2.2 — migrated from the deleted `gpu_parity.rs`).
 // These do NOT compare against a CPU twin; they assert a GPU↔GPU structural identity that

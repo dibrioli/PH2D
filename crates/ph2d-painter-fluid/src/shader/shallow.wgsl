@@ -94,6 +94,21 @@ fn smoothstep_gate(lo: f32, hi: f32, x: f32) -> f32 {
     return t * t * (3.0 - 2.0 * t);
 }
 
+// ── Surface-tension contact-line pinning (ADR-0085 C1, the Keep-Wet equilibrium) ──
+// The Curtis FlowOutward force (−λ·∇w) drives the wet front outward; with evaporation off the
+// wet/dry boundary never recedes, so ∇w there is permanent ⇒ the force is injected forever and
+// `drag` only damps momentum to a nonzero terminal velocity ⇒ no fixed point ⇒ perpetual creep.
+// Physically a thinning film's contact line PINS: below a saturation the surface tension holds
+// the meniscus and the wash stops spreading. So the FlowOutward driving force ramps in over the
+// film thickness `water` and vanishes as the front thins — a true fixed point (the front pins
+// where it thins past FLOW_PIN_LO), WITHOUT killing the transient bleed (a fresh pool ≈0.9 is
+// well above FLOW_PIN_HI, so it spreads at full strength for ~1-2 s before thinning to rest).
+// The band sits above the wet-gate floor (w_lo≈0.05) and below a flowing film. The paper-slope
+// channeling (−β·∇h) is NOT pinned: ∇h is the static, mean-zero paper texture — it pools pigment
+// in the tooth valleys but carries no net-outward bias, so it never grows the envelope.
+const FLOW_PIN_LO: f32 = 0.15;
+const FLOW_PIN_HI: f32 = 0.35;
+
 // Perm-weighted pigment gate (the advect transport gate) = smoothstep(water)·perm(paper).
 fn gate(x: u32, y: u32) -> f32 {
     let i = idx(x, y);
@@ -131,9 +146,13 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Neumann velocity Laplacian (border neighbour = self via the clamp).
     let lap = vel_in[idx(n.x, y)] + vel_in[idx(n.y, y)] + vel_in[idx(x, n.z)]
         + vel_in[idx(x, n.w)] - 4.0 * vc;
+    // Surface-tension pinning: the FlowOutward (−λ·∇w) drive fades to 0 as this cell's film
+    // thins, so a receded/thinned front stops being pushed outward (the Keep-Wet fixed point).
+    // ∇h channeling is unpinned (static, mean-zero paper texture — no outward bias).
+    let pin = smoothstep_gate(FLOW_PIN_LO, FLOW_PIN_HI, water[i]);
     let force = vec2<f32>(
-        P.downhill * 0.5 * dhx + P.flow_outward * 0.5 * dwx,
-        P.downhill * 0.5 * dhy + P.flow_outward * 0.5 * dwy,
+        P.downhill * 0.5 * dhx + pin * P.flow_outward * 0.5 * dwx,
+        P.downhill * 0.5 * dhy + pin * P.flow_outward * 0.5 * dwy,
     );
     var uv = vc - perm * force + P.viscosity * lap;
     uv = uv * (1.0 - P.drag);

@@ -2057,21 +2057,29 @@ impl FluidSolver {
         // compositor) is ordered after this one and its readback (if any) syncs.
     }
 
-    /// Map the current pigment field (`pig_a`) back to the CPU.
-    #[must_use]
-    pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
+    /// Shared GPU→CPU readback for a planar [`PIG_CH`]-channel pigment buffer, unpacked to
+    /// cell-major [`WetCell`]s (the SoA→cell transpose, ADR-0085). The `WetCell` readers
+    /// (`read_pigment` / `read_deposited` / `read_lift_source` / `read_total`) differ ONLY in
+    /// the source buffer — they all delegate here. Blocking (`poll(wait)`) — a parity-gate /
+    /// pen-up-bake path, not the per-frame hot loop.
+    fn read_wetcell_buffer(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        buf: &wgpu::Buffer,
+        label: &str,
+    ) -> Vec<WetCell> {
         let n = (self.width as usize) * (self.height as usize);
         let size = (n * PIG_CH * 4) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid readback"),
+            label: Some(label),
             size,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.pig_a, 0, &staging, 0, size);
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some(label) });
+        enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
         staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -2084,84 +2092,61 @@ impl FluidSolver {
         drop(mapped);
         staging.unmap();
         out
+    }
+
+    /// Map the current pigment field (`pig_a`) back to the CPU.
+    #[must_use]
+    pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
+        self.read_wetcell_buffer(device, queue, &self.pig_a, "fluid pigment readback")
     }
 
     /// Map the current deposited-pigment field back (ADR-0078 S3 — companion to
     /// [`Self::read_pigment`], for the `cs_transfer` parity gate + the pen-up bake).
     #[must_use]
     pub fn read_deposited(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
-        let n = (self.width as usize) * (self.height as usize);
-        let size = (n * PIG_CH * 4) as u64;
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid deposited readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid deposited rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.deposited, 0, &staging, 0, size);
-        queue.submit([enc.finish()]);
-        let (tx, rx) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().expect("map channel").expect("mapped");
-        let mapped = staging.slice(..).get_mapped_range();
-        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
-        drop(mapped);
-        staging.unmap();
-        out
+        self.read_wetcell_buffer(device, queue, &self.deposited, "fluid deposited readback")
     }
 
     /// Map the backdrop-lift donor (`lift_source`, ADR-0084) back, unpacked to cell-major
     /// `WetCell`s (the planar→cell transpose, ADR-0085). For the `cs_lift` parity gate.
     #[must_use]
     pub fn read_lift_source(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
-        let n = (self.width as usize) * (self.height as usize);
-        let size = (n * PIG_CH * 4) as u64;
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid lift_source readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid lift_source rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.lift_source, 0, &staging, 0, size);
-        queue.submit([enc.finish()]);
-        let (tx, rx) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().expect("map channel").expect("mapped");
-        let mapped = staging.slice(..).get_mapped_range();
-        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
-        drop(mapped);
-        staging.unmap();
-        out
+        self.read_wetcell_buffer(
+            device,
+            queue,
+            &self.lift_source,
+            "fluid lift_source readback",
+        )
     }
 
     /// Map the combined-pigment field (`total`, ADR-0078 S3c) back — the buffer the
     /// compositor reads. For the `cs_combine` gate + the pen-up bake.
     #[must_use]
     pub fn read_total(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
+        self.read_wetcell_buffer(device, queue, &self.total, "fluid total readback")
+    }
+
+    /// Shared GPU→CPU readback for a flat `array<T>` buffer (no transpose) — the `f32`
+    /// (`read_water`) and `vec2<f32>` (`read_velocity`) readers differ only in `T` + the
+    /// source buffer. `T: Pod` so the byte size is `n · size_of::<T>()`. Blocking.
+    fn read_pod_buffer<T: bytemuck::Pod>(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        buf: &wgpu::Buffer,
+        label: &str,
+    ) -> Vec<T> {
         let n = (self.width as usize) * (self.height as usize);
-        let size = (n * PIG_CH * 4) as u64;
+        let size = (n * std::mem::size_of::<T>()) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid total readback"),
+            label: Some(label),
             size,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid total rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.total, 0, &staging, 0, size);
+        let mut enc =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some(label) });
+        enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
         queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel();
         staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -2170,7 +2155,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
+        let out = bytemuck::cast_slice::<u8, T>(&mapped).to_vec();
         drop(mapped);
         staging.unmap();
         out
@@ -2181,59 +2166,13 @@ impl FluidSolver {
     /// `(u, v)` per cell, matching the CPU `DiffusionGrid::velocity()` layout.
     #[must_use]
     pub fn read_velocity(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 2]> {
-        let n = (self.width as usize) * (self.height as usize);
-        let size = (n * 8) as u64;
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid velocity readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid velocity rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.vel_a, 0, &staging, 0, size);
-        queue.submit([enc.finish()]);
-        let (tx, rx) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().expect("map channel").expect("mapped");
-        let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, [f32; 2]>(&mapped).to_vec();
-        drop(mapped);
-        staging.unmap();
-        out
+        self.read_pod_buffer(device, queue, &self.vel_a, "fluid velocity readback")
     }
 
     /// Map the current wetness field back (companion to [`Self::read_pigment`] —
     /// needed so the drying that happened on the GPU is reflected in the grid).
     #[must_use]
     pub fn read_water(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<f32> {
-        let n = (self.width as usize) * (self.height as usize);
-        let size = (n * 4) as u64;
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("fluid water readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid water rb"),
-        });
-        enc.copy_buffer_to_buffer(&self.water, 0, &staging, 0, size);
-        queue.submit([enc.finish()]);
-        let (tx, rx) = std::sync::mpsc::channel();
-        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().expect("map channel").expect("mapped");
-        let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, f32>(&mapped).to_vec();
-        drop(mapped);
-        staging.unmap();
-        out
+        self.read_pod_buffer(device, queue, &self.water, "fluid water readback")
     }
 }

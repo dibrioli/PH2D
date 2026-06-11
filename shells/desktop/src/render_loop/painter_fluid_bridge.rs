@@ -72,17 +72,6 @@ const IDLE_STEP_EVERY: u64 = 3;
 /// (the 2026-06-10d bug: decimation gated on `texture_mode_dirty == None` never engaged).
 const IDLE_WARMUP_FRAMES: u64 = 6;
 
-/// **Keep-Wet settle-freeze (perf block 2b, 2026-06-10d).** Under Keep Wet (evaporation 0)
-/// the wash never settles by physics: the always-on shallow-water layer keeps spreading the
-/// puddle outward forever (the residual ~2 cells/window idle envelope creep measured AFTER
-/// the capillary δ_s gate — puddle physics, not the wick), and the sim+composite keep
-/// burning O(envelope) GPU every frame for motion nobody is watching. Semantically Keep Wet
-/// means "the wash stays WORKABLE", not "the wash floods the canvas": after this many
-/// consecutive idle frames the field FREEZES whole (no step, no composite, no creep — the
-/// published wet-sheen texture is simply republished). Any dab / active stroke unfreezes it
-/// (`idle_frames = 0`) and painting into the still-wet field blends exactly as before.
-/// Plain drying (Keep Wet off) is never frozen — evaporation must run to completion.
-const KEEP_WET_SETTLE_FRAMES: u64 = 180;
 
 thread_local! {
     /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
@@ -441,7 +430,12 @@ pub(crate) fn drive_fluid_gpu(
         let region = if capillary_active {
             match sess.active_history.iter().map(|(_, b)| *b).reduce(union_bbox) {
                 Some(active) => grow_bbox(active, pad, dims),
-                None => dab_region, // no recent dabs (settled) — idle_skip handles the cost
+                // No recent dabs: the wash is settling/drying. `dab_region` (the monotonic
+                // envelope) is the safe composite cover for the still-visible pigment; under
+                // Keep Wet the `settled` skip above means this region is never re-simulated
+                // (C6 — the monotonic envelope no longer drives idle cost), and when drying it
+                // is bounded by the stroke (the field drops once dry).
+                None => dab_region,
             }
         } else {
             dab_region
@@ -453,19 +447,23 @@ pub(crate) fn drive_fluid_gpu(
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass, d.staining))
             .collect();
-        // Idle decimation + Keep-Wet settle-freeze (perf block 2b): pointer up + no dabs
-        // ⇒ after a short full-cadence warmup (bake catch-up gets immediate shots),
-        // step/composite run only every IDLE_STEP_EVERY frames; once a Keep-Wet wash has
-        // had KEEP_WET_SETTLE_FRAMES to settle, the field freezes whole (the shallow-water
-        // puddle never settles by physics with evaporation 0 — see the consts). Painting
-        // frames always reset the counter and run everything.
+        // Idle decimation + Keep-Wet settle-freeze: pointer up + no dabs ⇒ after a short
+        // full-cadence warmup (bake catch-up gets immediate shots), step/composite run only
+        // every IDLE_STEP_EVERY frames. **ADR-0085 C1:** the Keep-Wet field now reaches a real
+        // equilibrium (the shallow-water FlowOutward force is surface-tension-PINNED, so the wash
+        // settles instead of creeping), so the freeze is driven by PHYSICS, not a frame timeout:
+        // once the active-region window has emptied (no dab landed for ACTIVE_WINDOW frames) and
+        // the pointer is up, the pinned field is at rest ⇒ freeze it whole (its composite
+        // persists in the preview texture; nothing left to recompute). Any dab / active stroke
+        // refills `active_history` and unfreezes it. This subsumes the old KEEP_WET_SETTLE_FRAMES
+        // timeout AND the monotonic-envelope idle cost (C6): a settled wash is never re-simulated.
         let stroke_active = painter.is_stroke_active();
         if stroke_active || !gpu_dabs.is_empty() {
             sess.idle_frames = 0;
         } else {
             sess.idle_frames = sess.idle_frames.saturating_add(1);
         }
-        let settled = keep_wet && sess.idle_frames > KEEP_WET_SETTLE_FRAMES;
+        let settled = keep_wet && !stroke_active && sess.active_history.is_empty();
         let idle_skip = settled
             || (sess.idle_frames > IDLE_WARMUP_FRAMES
                 && sess.idle_frames % IDLE_STEP_EVERY != 0);
@@ -583,8 +581,14 @@ pub(crate) fn drive_fluid_gpu(
                         premultiplied: true,
                     });
                 } else {
-                    // Copy failed → drop the seed; fall through to the readback path
-                    // (canvas_rgba + the CPU preview keep the stroke alive, 1-frame lag).
+                    // Copy failed (or no preview texture yet) → release the just-acquired slot
+                    // and drop the seed, mirroring `copy_preview_into_slot`'s failure path (C5:
+                    // else the unused canvas-res slot is held until teardown while the readback
+                    // lane runs). The readback path (canvas_rgba + the CPU preview) keeps the
+                    // stroke alive at a 1-frame lag; a recovered frame re-acquires + re-seeds.
+                    if let Some((old, _, _)) = sess.preview_slot.take() {
+                        renderer.individual_mut().release(old);
+                    }
                     sess.preview_slot_seeded = false;
                 }
             } else {

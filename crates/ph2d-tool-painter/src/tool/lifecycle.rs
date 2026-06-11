@@ -513,36 +513,18 @@ impl PainterTool {
     ///
     /// **Keep-wet override:** while [`Self::fluid_keep_wet`] is on, `evaporation` is
     /// forced to `0.0` — the single chokepoint for the GPU solver upload, so the field
-    /// never dries (the dry-check threshold is never crossed and the field never
-    /// drops). Capillary wicking keeps slowly spreading while wet (physical).
+    /// never dries (the dry-check threshold is never crossed and the field never drops).
+    /// The wash still reaches a STABLE wet extent (it does not creep forever): the
+    /// shallow-water FlowOutward force is surface-tension-PINNED (ADR-0085 C1,
+    /// `shallow.wgsl`), so the front stops where the film thins — equilibrium by physics,
+    /// not by evaporation.
     #[must_use]
     pub fn fluid_diffusion_params(&self) -> ph2d_painter_brush::diffusion::DiffusionParams {
         let mut dp = self.brush.rendering.watercolor.to_diffusion();
         if self.keep_wet {
-            // **Watercolor v2 (ADR-0085) — water containment.** `evaporation = 0` is why
-            // Keep Wet lets the puddle creep forever (real water is HELD by paper absorption
-            // + surface tension, not "spread until it fills the canvas"). A tiny non-zero
-            // evaporation lets the wash settle to a STABLE wet level and STOP spreading —
-            // staying workable — which both reads realistic AND shrinks the wet region (the
-            // dominant per-frame composite cost). `PH2D_FLUID_KEEPWET_EVAP` dials it live
-            // (unset/0 ⇒ the old never-stop behaviour).
-            dp.evaporation = env_f32("PH2D_FLUID_KEEPWET_EVAP").unwrap_or(0.0);
-        }
-        // Live containment knobs (ADR-0085 §6b): multipliers on the outward-spread terms so
-        // the puddle stays where the painter put it. 1.0 = unchanged; < 1 contains the wash.
-        if let Some(m) = env_f32("PH2D_FLUID_CAPILLARY") {
-            dp.capillary *= m;
-        }
-        if let Some(m) = env_f32("PH2D_FLUID_DIFFUSIVITY") {
-            dp.diffusivity *= m;
-        }
-        if let Some(m) = env_f32("PH2D_FLUID_FLOW") {
-            dp.flow_outward *= m;
-        }
-        // Shallow-water velocity (the puddle-spread "suspect #1", perf-block §10e): the master
-        // scale on the momentum flow that pushes the wash outward. < 1 settles it faster.
-        if let Some(m) = env_f32("PH2D_FLUID_VELOCITY") {
-            dp.velocity *= m;
+            // Keep Wet = never dry. The Keep-Wet equilibrium is handled by the surface-tension
+            // pinning in the solver (C1), not by a residual evaporation — so this stays 0.0.
+            dp.evaporation = 0.0;
         }
         // **Watercolor v2 (ADR-0085) — MacCormack sharpness (perf).** `sharpness > 0` runs the
         // BFECC/MacCormack correction (`cs_advect_velocity_rev` + `cs_advect_correct`), which

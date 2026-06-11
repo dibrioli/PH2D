@@ -651,7 +651,14 @@ impl FluidCompositor {
                 let _ = tx.send(r);
             });
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        rx.recv().expect("map channel").expect("mapped");
+        // **Watercolor v2 (ADR-0085) robustness:** this is the SYNC bake reachable from the
+        // pointer-down `flush_pending_bake`. A GPU map failure (device loss / OOM / TDR on an
+        // 8 GB integrated GPU under load) must NOT panic the app mid-stroke. Skip the bake
+        // gracefully — an empty band tells the caller to apply nothing this frame; the next
+        // flush retries. (The async live path already handles its error; this hardens the sync one.)
+        if !matches!(rx.recv(), Ok(Ok(()))) {
+            return (Vec::new(), (px_lo, py_lo, px_hi, py_hi));
+        }
         let rows = st.staging.slice(0..band_bytes).get_mapped_range().to_vec();
         st.staging.unmap();
         (rows, (px_lo, py_lo, px_hi, py_hi))

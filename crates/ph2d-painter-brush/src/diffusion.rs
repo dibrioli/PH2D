@@ -508,7 +508,6 @@ impl DiffusionGrid {
         }
     }
 
-
     /// Grid dimensions.
     #[must_use]
     pub fn dims(&self) -> (u32, u32) {

@@ -1587,7 +1587,12 @@ impl FluidSolver {
     /// submit, ADR-0085 §2.3-I1); MULTIPLE chunks still need a submit between them
     /// (the buffer would be clobbered) — [`Self::splat_dabs`] keeps that contract.
     /// Empty / zero-area chunks no-op.
-    fn encode_splat_chunk(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, chunk: &[DabGpu]) {
+    fn encode_splat_chunk(
+        &self,
+        queue: &wgpu::Queue,
+        enc: &mut wgpu::CommandEncoder,
+        chunk: &[DabGpu],
+    ) {
         if chunk.is_empty() {
             return;
         }

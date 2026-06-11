@@ -3211,7 +3211,10 @@ fn fluid_brush_without_gpu_allocates_no_wet_field() {
         pressure: 1.0,
         tilt: 0.0,
     });
-    assert!(t.has_painted_since_source, "the degraded fluid brush still paints");
+    assert!(
+        t.has_painted_since_source,
+        "the degraded fluid brush still paints"
+    );
 }
 
 #[test]
@@ -3294,8 +3297,13 @@ fn fluid_cross_stroke_wet_on_wet_mixes() {
         tilt: 0.0,
     });
     // Both strokes' dabs are captured into the same GPU dab list for `cs_splat`.
-    let (dabs, _) = t.fluid_take_dabs().expect("wet field present after stroke 2");
-    assert!(!dabs.is_empty(), "stroke 2 captured dabs into the reused field");
+    let (dabs, _) = t
+        .fluid_take_dabs()
+        .expect("wet field present after stroke 2");
+    assert!(
+        !dabs.is_empty(),
+        "stroke 2 captured dabs into the reused field"
+    );
 }
 
 #[test]
@@ -3318,7 +3326,10 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
         pressure: 1.0,
         tilt: 0.0,
     });
-    assert!(t.has_wet_field(), "fluid field allocated; dab captured to the GPU list");
+    assert!(
+        t.has_wet_field(),
+        "fluid field allocated; dab captured to the GPU list"
+    );
     let grid_mass = |t: &mut PainterTool| -> f32 {
         t.fluid_grid_mut()
             .unwrap()
@@ -3327,7 +3338,11 @@ fn gpu_fluid_driven_skips_cpu_diffusion() {
             .map(|p| p[0] + p[1] + p[2])
             .sum()
     };
-    assert_eq!(grid_mass(&mut t), 0.0, "the dab must NOT splat into the CPU grid");
+    assert_eq!(
+        grid_mass(&mut t),
+        0.0,
+        "the dab must NOT splat into the CPU grid"
+    );
     t.on_tick_diffusion(); // GPU-only → a no-op (shell drives the resident field)
     assert_eq!(grid_mass(&mut t), 0.0, "on_tick must not CPU-step the grid");
     assert!(t.has_wet_field(), "field still present (nothing dried it)");

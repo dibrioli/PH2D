@@ -43,7 +43,6 @@ use std::time::Instant;
 /// here was a multi-ms queue-drain that *grew* into a runaway FPS collapse.)
 const DRY_CHECK_EVERY: u64 = 20;
 
-
 /// **Watercolor v2 (ADR-0085) — active-region window.** A grid area stays in the per-frame
 /// WORK region (sim + composite) for this many frames after the last dab landed there, then
 /// freezes (its composite persists in the preview texture). ~1.5 s at 60 fps — long enough for
@@ -71,7 +70,6 @@ const IDLE_STEP_EVERY: u64 = 3;
 /// (empty/non-empty interleave), so any "wait until caught up" condition can stall forever
 /// (the 2026-06-10d bug: decimation gated on `texture_mode_dirty == None` never engaged).
 const IDLE_WARMUP_FRAMES: u64 = 6;
-
 
 thread_local! {
     /// Rebuilt when the field resizes (a new canvas); reset (resident pigment zeroed
@@ -312,7 +310,8 @@ pub(crate) fn drive_fluid_gpu(
                 x1 = x1.max(hi_x);
                 y1 = y1.max(hi_y);
             }
-            sess.active_history.push_back((sess.frame, (x0, y0, x1, y1)));
+            sess.active_history
+                .push_back((sess.frame, (x0, y0, x1, y1)));
         }
         let cur_frame = sess.frame;
         while sess
@@ -323,7 +322,12 @@ pub(crate) fn drive_fluid_gpu(
             sess.active_history.pop_front();
         }
         let region = if capillary_active {
-            match sess.active_history.iter().map(|(_, b)| *b).reduce(union_bbox) {
+            match sess
+                .active_history
+                .iter()
+                .map(|(_, b)| *b)
+                .reduce(union_bbox)
+            {
                 Some(active) => grow_bbox(active, pad, dims),
                 // No recent dabs: the wash is settling/drying. `dab_region` (the monotonic
                 // envelope) is the safe composite cover for the still-visible pigment; under
@@ -360,8 +364,7 @@ pub(crate) fn drive_fluid_gpu(
         }
         let settled = keep_wet && !stroke_active && sess.active_history.is_empty();
         let idle_skip = settled
-            || (sess.idle_frames > IDLE_WARMUP_FRAMES
-                && sess.idle_frames % IDLE_STEP_EVERY != 0);
+            || (sess.idle_frames > IDLE_WARMUP_FRAMES && sess.idle_frames % IDLE_STEP_EVERY != 0);
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is
@@ -406,13 +409,19 @@ pub(crate) fn drive_fluid_gpu(
         // layers (or opacity/blend/mask) the on-screen preview must be the FLATTENED stack,
         // which only the readback path (canvas_rgba → drain_preview re-composite) produces.
         // Multi-layer zero-readback = the E5 LayerCompositor chain (follow-up).
-        if trivial_hot
-            && let Some(entity_bits) = override_entity
-        {
+        if trivial_hot && let Some(entity_bits) = override_entity {
             // R1 single-submit hot path (extracted to `painter_fluid_drive` for HR-18): one
             // encoder / one submit for sim + to-texture composite + slot copy.
             let (o, tf) = super::painter_fluid_drive::encode_single_submit_frame(
-                sess, gpu, renderer, region, &gpu_dabs, substeps, entity_bits, cw, ch,
+                sess,
+                gpu,
+                renderer,
+                region,
+                &gpu_dabs,
+                substeps,
+                entity_bits,
+                cw,
+                ch,
             );
             override_out = o;
             texture_frame = tf;

@@ -781,7 +781,8 @@ impl PainterTool {
                             * pigment_load;
                         let cx = stamp.position_world[0] / scale;
                         let cy = stamp.position_world[1] / scale;
-                        let r = (stamp.size_px * 0.5 / scale).max(if scale > 1.0 { 1.5 } else { 0.5 });
+                        let r =
+                            (stamp.size_px * 0.5 / scale).max(if scale > 1.0 { 1.5 } else { 0.5 });
                         // **ADR-0080:** the dab carries the per-stamp COLOUR (with Color Dynamics
                         // jitter) + a colour-independent coverage `mass = dep`. The field stores
                         // it as mass-weighted K/S, so dabs of different colours mix subtractively

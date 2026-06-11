@@ -1019,7 +1019,11 @@ impl FluidCompositor {
         // Planar (SoA) upload to match the shader's `pidx` layout (ADR-0085) — the
         // production path reads the solver's already-planar `total`; this one-shot
         // test/convenience path transposes the cell-major `pigment` the same way.
-        queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(&crate::solver::pack_soa(pigment)));
+        queue.write_buffer(
+            &pig_buf,
+            0,
+            bytemuck::cast_slice(&crate::solver::pack_soa(pigment)),
+        );
         self.composite_buffer(
             device,
             queue,

@@ -65,7 +65,14 @@ fn inv_pigment_mass_is_conserved() {
     let region = (0, 0, w - 1, h - 1);
 
     // Deposit once (a wet blue pool), record the baseline mass, then step with NO new dabs.
-    let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 8.0, 0.7, [0.1, 0.2, 0.7], 1.0)];
+    let dabs = [dab(
+        w as f32 * 0.5,
+        h as f32 * 0.5,
+        8.0,
+        0.7,
+        [0.1, 0.2, 0.7],
+        1.0,
+    )];
     solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 2, region);
     let before = total_mass(&solver.read_pigment(&gpu.device, &gpu.queue));
     for _ in 0..16 {
@@ -73,8 +80,14 @@ fn inv_pigment_mass_is_conserved() {
     }
     let after = total_mass(&solver.read_pigment(&gpu.device, &gpu.queue));
 
-    eprintln!("INV-1 mass: before={before:.5} after={after:.5} Δ={:.5}", after - before);
-    assert!(before > 0.01, "no pigment deposited — invariant meaningless");
+    eprintln!(
+        "INV-1 mass: before={before:.5} after={after:.5} Δ={:.5}",
+        after - before
+    );
+    assert!(
+        before > 0.01,
+        "no pigment deposited — invariant meaningless"
+    );
     assert!(
         (after - before).abs() < before * 0.02,
         "pigment mass not conserved: {before:.5} → {after:.5} (>2%) — transport is leaking/creating mass"
@@ -95,7 +108,14 @@ fn inv_water_bounded_finite_no_runaway() {
     let dp = DiffusionParams::default(); // evaporation ON, velocity layer on
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
-    let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 10.0, 0.9, [0.6, 0.1, 0.1], 1.2)];
+    let dabs = [dab(
+        w as f32 * 0.5,
+        h as f32 * 0.5,
+        10.0,
+        0.9,
+        [0.6, 0.1, 0.1],
+        1.2,
+    )];
     solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 2, region);
 
     for _ in 0..16 {
@@ -165,12 +185,17 @@ fn inv_subtractive_mix_blue_yellow_is_green() {
     let pig = solver.read_pigment(&gpu.device, &gpu.queue);
     let center = (cy as u32 * w + cx as u32) as usize;
     let c = DiffusionGrid::cell_color(&pig[center]);
-    eprintln!("INV-4 overlap colour = [{:.3},{:.3},{:.3}] (green-dominant?)", c[0], c[1], c[2]);
+    eprintln!(
+        "INV-4 overlap colour = [{:.3},{:.3},{:.3}] (green-dominant?)",
+        c[0], c[1], c[2]
+    );
     assert!(pig[center][PIG_MASS] > 0.01, "no pigment at the overlap");
     assert!(
         c[1] > c[0] && c[1] > c[2],
         "blue+yellow did not mix to green: got [{:.3},{:.3},{:.3}] — subtractive mixing is broken",
-        c[0], c[1], c[2]
+        c[0],
+        c[1],
+        c[2]
     );
 }
 
@@ -194,7 +219,14 @@ fn inv_deposition_accumulates_and_dries() {
     };
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
-    let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 9.0, 0.9, [0.2, 0.4, 0.1], 1.2)];
+    let dabs = [dab(
+        w as f32 * 0.5,
+        h as f32 * 0.5,
+        9.0,
+        0.9,
+        [0.2, 0.4, 0.1],
+        1.2,
+    )];
     solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 2, region);
 
     let snapshot = |solver: &FluidSolver| -> (f64, f32) {
@@ -214,11 +246,22 @@ fn inv_deposition_accumulates_and_dries() {
     }
     let (dep2, mw2) = snapshot(&solver);
 
-    eprintln!("INV-6 deposited: {dep0:.5} → {dep1:.5} → {dep2:.5} | max_water: {mw0:.5} → {mw1:.5} → {mw2:.5}");
+    eprintln!(
+        "INV-6 deposited: {dep0:.5} → {dep1:.5} → {dep2:.5} | max_water: {mw0:.5} → {mw1:.5} → {mw2:.5}"
+    );
     // Deposition is monotone non-decreasing (1% slack for fp), and reaches a live amount.
-    assert!(dep1 >= dep0 - dep0.max(1.0) * 0.01, "deposited decreased {dep0:.5}→{dep1:.5}");
-    assert!(dep2 >= dep1 - dep1.max(1.0) * 0.01, "deposited decreased {dep1:.5}→{dep2:.5}");
-    assert!(dep2 > 0.02, "no deposition occurred — edge-darkening layer is dead");
+    assert!(
+        dep1 >= dep0 - dep0.max(1.0) * 0.01,
+        "deposited decreased {dep0:.5}→{dep1:.5}"
+    );
+    assert!(
+        dep2 >= dep1 - dep1.max(1.0) * 0.01,
+        "deposited decreased {dep1:.5}→{dep2:.5}"
+    );
+    assert!(
+        dep2 > 0.02,
+        "no deposition occurred — edge-darkening layer is dead"
+    );
     // The wash dries: max water strictly recedes over the run.
     assert!(mw2 < mw0, "wash did not dry: max_water {mw0:.5} → {mw2:.5}");
 }
@@ -251,7 +294,14 @@ fn inv_velocity_layer_settles_under_keep_wet() {
     };
     let solver = fresh_solver(&gpu, w, h, &dp);
     let region = (0, 0, w - 1, h - 1);
-    let dabs = [dab(w as f32 * 0.5, h as f32 * 0.5, 9.0, 0.9, [0.1, 0.2, 0.7], 1.0)];
+    let dabs = [dab(
+        w as f32 * 0.5,
+        h as f32 * 0.5,
+        9.0,
+        0.9,
+        [0.1, 0.2, 0.7],
+        1.0,
+    )];
     solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 2, region);
 
     // Max velocity magnitude over the field (`vel` is vec2<f32> per cell).
@@ -264,7 +314,8 @@ fn inv_velocity_layer_settles_under_keep_wet() {
         }
         m
     };
-    let mass = |solver: &FluidSolver| -> f64 { total_mass(&solver.read_pigment(&gpu.device, &gpu.queue)) };
+    let mass =
+        |solver: &FluidSolver| -> f64 { total_mass(&solver.read_pigment(&gpu.device, &gpu.queue)) };
 
     let mass0 = mass(&solver);
     for _ in 0..24 {
@@ -285,8 +336,14 @@ fn inv_velocity_layer_settles_under_keep_wet() {
         "velocity layer did not conserve pigment: {mass0:.5} → {mass2:.5}"
     );
     // Finite + bounded by the per-component clamp (|v| ≤ √2·0.5 ≈ 0.707).
-    assert!(speed1.is_finite() && speed2.is_finite(), "velocity has NaN/Inf");
-    assert!(speed2 <= 0.72, "velocity exceeded the clamp ceiling: {speed2}");
+    assert!(
+        speed1.is_finite() && speed2.is_finite(),
+        "velocity has NaN/Inf"
+    );
+    assert!(
+        speed2 <= 0.72,
+        "velocity exceeded the clamp ceiling: {speed2}"
+    );
     // Reached a Keep-Wet fixed point: the field is steady, not still creeping outward.
     assert!(
         (speed2 - speed1).abs() <= speed1 * 0.10 + 1.0e-3,

@@ -186,9 +186,9 @@ pub(super) fn run_readback_lane(
         Some(d) => union_bbox(region, d),
         None => region,
     };
-    let (band, rect) = sess
-        .compositor
-        .composite_frame_pipelined(&gpu.device, &gpu.queue, rb_region);
+    let (band, rect) =
+        sess.compositor
+            .composite_frame_pipelined(&gpu.device, &gpu.queue, rb_region);
     if !band.is_empty() {
         painter.fluid_apply_gpu_composite_rows(&band, rect);
         if sess.texture_mode_dirty.is_some() {

@@ -30,8 +30,10 @@ pub(super) fn maybe_begin_fluid_stroke(
     }
     // Resident path: pigment + water + deposited start each stroke empty (water
     // is GPU-resident now — `cs_splat` adds it, `cs_evaporate` dries it).
-    sess.solver.clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
-    sess.solver.clear_resident_water_gpu(&gpu.device, &gpu.queue);
+    sess.solver
+        .clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
+    sess.solver
+        .clear_resident_water_gpu(&gpu.device, &gpu.queue);
     sess.solver
         .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
     // ADR-0078 S3d: the shallow-water velocity + pressure start each stroke at rest
@@ -164,8 +166,9 @@ pub(super) fn encode_single_submit_frame(
     );
     // (2) To-texture composite over the wet region (SAME encoder). `None` ⇒
     // empty region: still submit the stepped field, fall through to readback.
-    if let Some((px_lo, py_lo, px_hi, py_hi)) =
-        sess.compositor.encode_frame_to_texture(&gpu.queue, &mut enc, region)
+    if let Some((px_lo, py_lo, px_hi, py_hi)) = sess
+        .compositor
+        .encode_frame_to_texture(&gpu.queue, &mut enc, region)
     {
         // (3) Acquire/resize the slot (no GPU work); a FRESH or never-seeded
         // slot gets the full backdrop seeded ONCE, then per-frame dirty-rect
@@ -180,7 +183,14 @@ pub(super) fn encode_single_submit_frame(
             } else {
                 renderer
                     .encode_copy_region_into_individual(
-                        &mut enc, id, tex, px_lo, py_lo, px_lo, py_lo, px_hi - px_lo,
+                        &mut enc,
+                        id,
+                        tex,
+                        px_lo,
+                        py_lo,
+                        px_lo,
+                        py_lo,
+                        px_hi - px_lo,
                         py_hi - py_lo,
                     )
                     .is_ok()

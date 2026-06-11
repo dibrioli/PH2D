@@ -203,7 +203,8 @@ impl App {
         // safe: the dab envelope clamps to the canvas grid and the splat's radius
         // cutoff drops a dab whose footprint misses every cell. The hero-panel gate
         // above still suppresses painting behind docked chrome.
-        let (u, v) = ph2d_render::sprite_world_to_uv_unclamped(gfx.present.world_mut(), bits, world)?;
+        let (u, v) =
+            ph2d_render::sprite_world_to_uv_unclamped(gfx.present.world_mut(), bits, world)?;
         // Source dim from PainterTool's canvas (set_source-pushed by the bridge); fallback to
         // the sprite size if the canvas isn't populated yet.
         let entity = ph2d_ecs::Entity::from_bits(bits);

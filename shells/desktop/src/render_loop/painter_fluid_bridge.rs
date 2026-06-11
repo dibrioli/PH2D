@@ -20,7 +20,7 @@
 //! class as `painter_bridge.rs`): the GPU drive needs the concrete fluid hooks.
 
 use super::painter_fluid_support::{
-    FluidSession, PROFILE, ensure_preview_slot, grow_bbox, run_readback_lane, union_bbox,
+    FluidSession, PROFILE, grow_bbox, run_readback_lane, union_bbox,
 };
 use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
@@ -252,116 +252,11 @@ pub(crate) fn drive_fluid_gpu(
         }
         let sess = slot.as_mut()?;
         // ── New stroke (epoch change): cheap per-stroke setup, ONCE ──
-        if sess.epoch != epoch {
-            // Resident path: pigment + water + deposited start each stroke empty (water
-            // is GPU-resident now — `cs_splat` adds it, `cs_evaporate` dries it).
-            sess.solver
-                .clear_resident_pigment_gpu(&gpu.device, &gpu.queue);
-            sess.solver
-                .clear_resident_water_gpu(&gpu.device, &gpu.queue);
-            sess.solver
-                .clear_resident_deposited_gpu(&gpu.device, &gpu.queue);
-            // ADR-0078 S3d: the shallow-water velocity + pressure start each stroke at rest
-            // (no leftover momentum).
-            sess.solver
-                .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
-            sess.frame = 0;
-            // New stroke → forget the previous stroke's wet envelope (ADR-0078 S5).
-            sess.wet_bbox = None;
-            sess.active_history.clear();
-            // E4: `begin_stroke` below recreates the compositor's preview texture
-            // (seeded with the new premultiplied backdrop), so nothing published yet
-            // this stroke. `texture_mode_dirty` is intentionally KEPT across epochs:
-            // if a new stroke begins before the previous catch-up completed, the
-            // union still names rows canvas_rgba never received — feeding the
-            // superset region stays correct (just slightly larger).
-            sess.texture_published = false;
-            sess.catchup_bands = 0;
-            // ADR-0079: drive ALL 15 solver controls (base diffusion + deposition +
-            // shallow-water flow) from the ACTIVE BRUSH's per-brush `WatercolorParams`
-            // (projected to `DiffusionParams`), replacing the old `FluidParams::default()`
-            // + global `WATERCOLOR_*` consts. The artist's Brush Studio "Watercolor"
-            // sliders now drive the live wash. `cs_combine` still feeds the compositor
-            // `flowing + deposited` via `total_buffer()`; the velocity layer is dormant if
-            // the brush sets `velocity = 0`.
-            let dp = painter.fluid_diffusion_params();
-            sess.solver.set_from_diffusion(&gpu.queue, &dp);
-            // Keep-wet rides `dp` (evaporation forced to 0 in `fluid_diffusion_params`);
-            // remember what was uploaded so a mid-field toggle re-uploads below.
-            sess.keep_wet = painter.fluid_keep_wet();
-            if let Some(paper) = painter.fluid_paper() {
-                sess.solver.upload_paper(&gpu.queue, &paper);
-            }
-            // ADR-0084 backdrop lift: when the brush's `lift > 0`, seed the donor (`lift_source`)
-            // from the current canvas backdrop vs the session's original PAPER (downsampled to the
-            // grid by the SAME free fn the CPU seed uses → bit-identical CPU↔GPU, HR-5) and zero
-            // `lifted_frac`; the wet brush then re-mobilizes that dry PAINT into the wash (+ the
-            // compositor reveals the paper under the lifted pixels — never transparency). When no
-            // paper snapshot exists, `paper == backdrop` ⇒ empty donor ⇒ inert (the safe fallback).
-            // On the non-lift path zero BOTH so a fresh stroke with `lift = 0` has an inert donor +
-            // `lifted_frac ≡ 0` → the compositor is byte-identical (the non-destructive default).
-            if dp.lift > 0.0 {
-                if let Some(backdrop) = painter.fluid_backdrop() {
-                    let paper = painter.fluid_paper_base().unwrap_or(backdrop);
-                    let cells = ph2d_painter_brush::diffusion::backdrop_to_lift_source(
-                        backdrop, paper, cw, ch, dims.0, dims.1,
-                    );
-                    sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
-                    sess.solver.upload_lift_source(&gpu.queue, &cells);
-                } else {
-                    sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
-                }
-            } else {
-                sess.solver.clear_lift_gpu(&gpu.device, &gpu.queue);
-            }
-            if let Some(backdrop) = painter.fluid_backdrop() {
-                // ADR-0080: pigment colour is per-pixel (reduced from the field), so no
-                // per-stroke brush — `begin_stroke` just binds the field + backdrop.
-                // Coverage supersampling: 2 at EVERY scale (matches the CPU reference's
-                // `WET_COMPOSITE_SS = 2`). The old "1 at full-res (edge already 1px-fine)"
-                // assumption is wrong for DARK pigments (ADR-0079 re-tune 2026-06-09): their
-                // steep coverage curve compresses the visible edge below a cell, so at scale 1
-                // the per-cell rim texture rendered with ZERO filtering = pixel teeth. ss=2
-                // averages sub-cell coverage (measured: dark contour residual −33..42%) for 4×
-                // the K-M ALU, which the region-scoped composite absorbs.
-                // Coverage supersampling (N×N glaze samples/pixel). Watercolor v2 (ADR-0085):
-                // at scale=1 the field IS canvas-res, so every sub-sample of a pixel reads the
-                // SAME centre cell → the 4 samples are byte-identical and average to themselves.
-                // ss=2 there is a 4× redundant K-M spectral evaluation per pixel — the dominant
-                // full-canvas composite cost. ss=1 at scale=1 is byte-identical + 4× cheaper;
-                // scale>1 (low-res grid) keeps ss=2 for real sub-cell coverage AA.
-                let ss = if scale == 1 { 1 } else { 2 };
-                sess.compositor.begin_stroke(
-                    &gpu.device,
-                    &gpu.queue,
-                    dims.0,
-                    dims.1,
-                    cw,
-                    ch,
-                    scale,
-                    coverage_k,
-                    ss,
-                    // Composite the TOTAL (flowing + deposited) so edge-darkening +
-                    // granulation are visible (ADR-0078 S3c); equals flowing when
-                    // nothing is deposited, so non-deposition strokes are unchanged.
-                    sess.solver.total_buffer(),
-                    backdrop,
-                    // ADR-0084 paper-reveal: the session's original canvas content — lifted
-                    // pixels lerp back toward it (never toward transparency). Falls back to the
-                    // backdrop itself (`mix(b, b, lf) = b` ⇒ exact no-op) when no snapshot exists.
-                    painter.fluid_paper_base().unwrap_or(backdrop),
-                    // ADR-0084: bind the lift accumulator so the compositor reveals the paper
-                    // where dry paint was lifted. All-zero (cleared above) when `lift = 0`
-                    // ⇒ byte-identical output.
-                    Some(sess.solver.lifted_frac_buffer()),
-                    // Wet-paper sheen: bind the resident water so the preview-texture
-                    // passes can darken wet regions + brighten the meniscus (view-only;
-                    // the flag is driven per frame via `set_wet_sheen` below).
-                    Some(sess.solver.water_buffer()),
-                );
-            }
-            sess.epoch = epoch;
-        }
+        // (Extracted to `painter_fluid_drive` for HR-18; clears the resident field, uploads the
+        // brush params/paper/lift donor + binds the compositor. No-op mid-stroke.)
+        super::painter_fluid_drive::maybe_begin_fluid_stroke(
+            sess, gpu, painter, epoch, dims, cw, ch, scale, coverage_k,
+        );
 
         // Keep-wet (watercolor UX): re-upload the solver params when the pill flips
         // MID-FIELD — `fluid_diffusion_params()` zeroes evaporation while it's on, so
@@ -514,86 +409,13 @@ pub(crate) fn drive_fluid_gpu(
         if trivial_hot
             && let Some(entity_bits) = override_entity
         {
-            let enc = gpu
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("fluid frame (R1 single submit)"),
-                });
-            // (1) Sim step (splat + substeps + combine) — encoded, not submitted.
-            let mut enc = sess.solver.encode_resident_splat_step(
-                &gpu.device,
-                &gpu.queue,
-                enc,
-                &gpu_dabs,
-                substeps,
-                region,
+            // R1 single-submit hot path (extracted to `painter_fluid_drive` for HR-18): one
+            // encoder / one submit for sim + to-texture composite + slot copy.
+            let (o, tf) = super::painter_fluid_drive::encode_single_submit_frame(
+                sess, gpu, renderer, region, &gpu_dabs, substeps, entity_bits, cw, ch,
             );
-            // (2) To-texture composite over the wet region (SAME encoder). `None` ⇒
-            // empty region: still submit the stepped field, fall through to readback.
-            if let Some((px_lo, py_lo, px_hi, py_hi)) = sess
-                .compositor
-                .encode_frame_to_texture(&gpu.queue, &mut enc, region)
-            {
-                // (3) Acquire/resize the slot (no GPU work); a FRESH or never-seeded
-                // slot gets the full backdrop seeded ONCE, then per-frame dirty-rect
-                // refreshes of only the wet rect (ADR-0085 §2.3-I2). All in `enc`.
-                let (id, fresh) = ensure_preview_slot(renderer, &mut sess.preview_slot, cw, ch);
-                let seed = fresh || !sess.preview_slot_seeded;
-                let copy_ok = if let Some(tex) = sess.compositor.preview_texture() {
-                    if seed {
-                        renderer
-                            .encode_copy_into_individual(&mut enc, id, tex, cw, ch)
-                            .is_ok()
-                    } else {
-                        renderer
-                            .encode_copy_region_into_individual(
-                                &mut enc,
-                                id,
-                                tex,
-                                px_lo,
-                                py_lo,
-                                px_lo,
-                                py_lo,
-                                px_hi - px_lo,
-                                py_hi - py_lo,
-                            )
-                            .is_ok()
-                    }
-                } else {
-                    false
-                };
-                gpu.queue.submit([enc.finish()]); // ← the SINGLE submit
-                if copy_ok {
-                    sess.preview_slot_seeded = true;
-                    // Catch-up accumulator: union every grid region the texture path
-                    // composited (canvas_rgba is stale over it until the readback
-                    // frames after pen-up replay the union — see the readback arm).
-                    sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
-                        Some(d) => union_bbox(d, region),
-                        None => region,
-                    });
-                    sess.catchup_bands = 0;
-                    sess.texture_published = true;
-                    texture_frame = true;
-                    override_out = Some(PreviewOverride {
-                        entity_bits,
-                        texture_id: id,
-                        premultiplied: true,
-                    });
-                } else {
-                    // Copy failed (or no preview texture yet) → release the just-acquired slot
-                    // and drop the seed, mirroring `copy_preview_into_slot`'s failure path (C5:
-                    // else the unused canvas-res slot is held until teardown while the readback
-                    // lane runs). The readback path (canvas_rgba + the CPU preview) keeps the
-                    // stroke alive at a 1-frame lag; a recovered frame re-acquires + re-seeds.
-                    if let Some((old, _, _)) = sess.preview_slot.take() {
-                        renderer.individual_mut().release(old);
-                    }
-                    sess.preview_slot_seeded = false;
-                }
-            } else {
-                gpu.queue.submit([enc.finish()]);
-            }
+            override_out = o;
+            texture_frame = tf;
         }
         // ── E5 (ADR-0078 S2): NON-trivial GPU-representable stack mid-stroke ──
         // The fluid straight composite goes GPU→GPU into the LayerCompositor's

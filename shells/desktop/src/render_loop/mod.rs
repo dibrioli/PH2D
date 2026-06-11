@@ -36,6 +36,8 @@ pub(crate) mod painter_bridge_queries;
 #[cfg(feature = "fluid")]
 pub(crate) mod painter_fluid_bridge;
 #[cfg(feature = "fluid")]
+mod painter_fluid_drive;
+#[cfg(feature = "fluid")]
 mod painter_fluid_support;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
@@ -1636,7 +1638,7 @@ impl crate::App {
                 c.set(n);
                 n
             });
-            if n % 120 == 0 {
+            if n.is_multiple_of(120) {
                 let total = self.frame_ms_ewma;
                 let encode = self.frame_cpu_ms_ewma;
                 let dispatch_ms = FRAME_PROF_DISPATCH_US.with(|c| c.get()) as f64 / 1000.0;

@@ -179,16 +179,20 @@ impl PainterTool {
         // field persists ACROSS strokes while it is still WET. A new stroke deposits its dabs
         // into the surviving wet pigment, so colours mix subtractively across strokes (pinte
         // azul, pinte amarelo molhado por cima → verde). The dry-drop
-        // ([`Self::fluid_dry_check_and_drop`]/`_gpu`) clears the field (`wet_field = None`) ONCE
+        // ([`Self::fluid_dry_check_and_drop_gpu`]) clears the field (`wet_field = None`) ONCE
         // it has dried + the stroke ended, so a surviving `Some` here means "still wet → reuse".
         // Only a missing field (dry/baked) or a resolution change builds a FRESH field — which
         // snapshots the backdrop + bumps the GPU-reset epoch (the bridge clears the resident
         // pigment) + restarts the composite envelope. `None` for non-fluid brushes.
+        //
+        // **ADR-0085 (GPU-first, GPU-only):** the live watercolor sim is GPU-resident — there is
+        // no CPU fallback. A wet field is only allocated on a GPU-capable device (`fluid_hires`,
+        // set by the shell before `begin_stroke`); without a GPU the fluid brush gracefully
+        // degrades to the normal wash path (watercolor OFF), so `wet_field` stays `None`.
         let mut wet_field_reused = false;
-        if self.brush.rendering.fluid_enabled {
-            // **W15.3 full-res on a capable GPU.** A hires field runs at full canvas
-            // resolution (`scale=1`) for fine bleeds + sharp edges; otherwise the
-            // CPU-budget half-res (`WET_FIELD_SCALE`).
+        if self.brush.rendering.fluid_enabled && self.fluid_hires {
+            // **W15.3 full-res on a capable GPU.** The field runs at full canvas
+            // resolution (`scale=1`) for fine bleeds + sharp edges.
             let scale = self.live_field_scale();
             let (sw, sh) = self.source_size;
             let gw = (sw / scale).max(1);
@@ -330,70 +334,11 @@ impl PainterTool {
     /// the missed `begin_stroke` immediately in dev/test builds without
     /// changing release behavior. Pair with the toast-wording follow-up
     /// in `drain_painter` (separate dispatch site) for the full UX fix.
-    /// **W15 idle tick** (driven by `Tool::on_tick` each frame). Advances the live
-    /// wet field while it stays wet — the wash keeps blooming + drying after pen-up
-    /// ("the paint stays wet"). No-op once the field has dried + been dropped.
-    pub(crate) fn on_tick_diffusion(&mut self) {
-        // GPU-driven: the shell steps + composites the field (skip the CPU path).
-        // `fluid_hires` (= GPU-capable) gates the FIRST frame too — the shell sets it
-        // before `begin_stroke`, whereas `gpu_fluid_driven` is only set after the
-        // frame's drive runs, so frame 1 must also skip the CPU tick here (the dabs
-        // went to the GPU dab list, not the grid).
-        if self.gpu_fluid_driven || self.fluid_hires || self.wet_field.is_none() {
-            return;
-        }
-        self.tick_wet_field(WET_SUBSTEPS_IDLE);
-        self.preview_dirty = true;
-        self.dirty_rect = None;
-    }
-
-    /// Step the live wet field `substeps` times (CPU) + composite + settle. Shared
-    /// by the painting splat and the idle tick.
-    fn tick_wet_field(&mut self, substeps: u32) {
-        let mut params = ph2d_painter_brush::diffusion::DiffusionParams::default();
-        // Keep-wet: the CPU fallback path doesn't route through `fluid_diffusion_params`
-        // (it steps with the default params), so the evaporation override is applied
-        // here too — the field never dries while the toggle is on.
-        if self.keep_wet {
-            params.evaporation = 0.0;
-        }
-        match self.wet_field.as_mut() {
-            Some(grid) => {
-                for _ in 0..substeps {
-                    grid.step(&params);
-                }
-            }
-            None => return,
-        }
-        self.composite_and_settle_fluid();
-    }
-
-    /// Composite the (already-stepped) wet field into the canvas + drop it once it
-    /// dries (wettest cell < `WET_DRY_THRESHOLD`). The **step-agnostic** half of the
-    /// live tick: the CPU path calls it right after a CPU `step`; the shell GPU path
-    /// (W15.3) calls it after [`ph2d_painter_fluid::FluidSolver::step_grid`] has
-    /// written the GPU-evolved grid back (`fluid_grid_mut`). Sets `preview_dirty`.
-    pub fn composite_and_settle_fluid(&mut self) {
-        let dry = match self.wet_field.as_ref() {
-            // Dry only when the WETTEST cell is below the gate — a mean reads "dry"
-            // instantly (the grid is mostly bare paper).
-            Some(grid) => grid.water().iter().copied().fold(0.0f32, f32::max) < WET_DRY_THRESHOLD,
-            None => return,
-        };
-        self.composite_wet_field();
-        self.preview_dirty = true;
-        // Drop the field only AFTER pen-up. While the stroke is still active the user
-        // may have just PAUSED (button held, no dabs) — the water evaporates in ~0.3s,
-        // but dropping mid-stroke means a resumed drag finds no field and falls to the
-        // non-fluid path (Enio: "paro o traço sem soltar, continuo, fluid não funciona
-        // no fim"). A resumed dab re-wets the kept field and it blooms again.
-        if dry && !self.stroke_active {
-            // Final pigment is baked into the canvas (the composite above ran first).
-            self.wet_field = None;
-            self.wet_backdrop = None;
-            self.wet_composite_bbox = None;
-        }
-    }
+    /// **W15 idle tick** (driven by `Tool::on_tick` each frame). ADR-0085: the live wet
+    /// field is GPU-resident and the shell steps + composites + dries it on its per-frame
+    /// drive, so the tool's heartbeat has nothing to do — a no-op. (Kept as the trait's
+    /// `on_tick` target so the heartbeat contract is unchanged.)
+    pub(crate) fn on_tick_diffusion(&mut self) {}
 
     /// W15.3 shell GPU drive: set by the shell when it is stepping the wet field on
     /// the GPU, so the tool skips its CPU diffusion (`on_tick`/`queue_pointer`).
@@ -420,10 +365,10 @@ impl PainterTool {
         WET_SUBSTEPS_IDLE
     }
 
-    /// **Painting** diffusion sub-steps per frame (Watercolor v2, ADR-0085). The CPU path
-    /// always used `WET_SUBSTEPS_PAINTING=1` while a stroke is live (`tick_wet_field`); the
-    /// GPU drive wrongly used the IDLE count (2) for both, doubling the whole per-frame pass
-    /// chain (~40 passes) while painting. Restoring the intended 1 halves the live sim cost.
+    /// **Painting** diffusion sub-steps per frame the shell runs on the GPU while a stroke is
+    /// live (Watercolor v2, ADR-0085). The GPU drive once used the IDLE count (2) for both,
+    /// doubling the whole per-frame pass chain (~40 passes) while painting; the intended 1
+    /// halves the live sim cost.
     #[must_use]
     pub fn fluid_painting_substeps(&self) -> u32 {
         WET_SUBSTEPS_PAINTING
@@ -730,35 +675,16 @@ impl PainterTool {
         self.bump_layer_pixels(active);
     }
 
-    /// Dry-check on the CPU water mirror: if the wettest cell is below the dry
-    /// threshold AND the stroke has ENDED, drop the field (its final pigment was
-    /// already composited). Returns `true` when it dropped. The GPU-resident twin of
-    /// the dry half of [`Self::composite_and_settle_fluid`].
+    /// **GPU-resident dry-check (4K real-time arch §4, ADR-0085).** Drop the field when
+    /// the GPU-reduced `max_water` ([`ph2d_painter_fluid::FluidSolver::read_field_stats`])
+    /// is below the dry threshold AND the stroke has ended — the field's water is
+    /// GPU-resident, so the wetness comes from the GPU reduction, not a CPU O(grid) scan.
+    /// The shell reads the stats SPORADICALLY (drying is slow), so this is only called on
+    /// those frames. Returns `true` when it dropped.
     ///
     /// **Gated on `!stroke_active`:** a mid-stroke PAUSE (button held, no dabs) dries
     /// the field in ~0.3s; dropping it then would make a resumed drag find no field
     /// and paint non-fluid (Enio's pause bug). Keeping it lets a resumed dab re-wet it.
-    pub fn fluid_dry_check_and_drop(&mut self) -> bool {
-        let dry = match self.wet_field.as_ref() {
-            Some(grid) => grid.max_water() < WET_DRY_THRESHOLD,
-            None => return false,
-        };
-        if dry && !self.stroke_active {
-            self.wet_field = None;
-            self.wet_backdrop = None;
-            self.wet_composite_bbox = None;
-            return true;
-        }
-        false
-    }
-
-    /// **GPU-resident dry-check (4K real-time arch §4).** Drop the field when the
-    /// GPU-reduced `max_water` ([`ph2d_painter_fluid::FluidSolver::read_field_stats`])
-    /// is below the dry threshold AND the stroke has ended — the same gate as
-    /// [`Self::fluid_dry_check_and_drop`], but the wetness comes from the GPU instead
-    /// of a CPU O(grid) `max_water` scan (the field's water is GPU-resident now). The
-    /// shell reads the stats SPORADICALLY (drying is slow), so this is only called on
-    /// those frames. Returns `true` when it dropped.
     pub fn fluid_dry_check_and_drop_gpu(&mut self, max_water: f32) -> bool {
         if self.wet_field.is_none() {
             return false;
@@ -772,65 +698,6 @@ impl PainterTool {
             return true;
         }
         false
-    }
-
-    /// Composite the low-res wet field over the pre-stroke backdrop into the canvas
-    /// (**bicubic upsample + Kubelka–Munk subtractive glaze**, scoped to the wet
-    /// bbox). The per-pixel math is the shared CPU reference
-    /// ([`ph2d_painter_brush::wet_composite::composite_wet_field_cpu`]) — ONE
-    /// definition the GPU port mirrors band-for-band (W15.3 parity gate). This is
-    /// the CPU fallback; the shell drives the GPU compositor when a real device is
-    /// available (ADR-0049). Bare-paper pixels short-circuit to the backdrop, so the
-    /// spectral solve already tracks the wet region.
-    fn composite_wet_field(&mut self) {
-        use ph2d_painter_brush::wet_composite::{composite_wet_field_cpu, wet_pigment_bbox};
-        let (cw, ch) = self.source_size;
-        let n4 = (cw as usize) * (ch as usize) * 4;
-        // The dedicated fluid backdrop — outlives the stroke, unlike
-        // `pending_pre_stroke` (consumed by the undo stack at `end_stroke`).
-        let Some(backdrop) = self.wet_backdrop.as_ref() else {
-            return;
-        };
-        let Some(grid) = self.wet_field.as_ref() else {
-            return;
-        };
-        if backdrop.len() != n4 {
-            return;
-        }
-        let (gw, gh) = grid.dims();
-        let pig = grid.pigment();
-        // Wet bbox (grid cells), unioned with last frame's so cells that just DRIED
-        // get their canvas pixel reset to the backdrop. Scopes the whole composite to
-        // the wash neighbourhood.
-        let cur_bbox = wet_pigment_bbox(pig, gw, gh);
-        let region = match (cur_bbox, self.wet_composite_bbox) {
-            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))),
-            (Some(a), None) | (None, Some(a)) => Some(a),
-            (None, None) => None,
-        };
-        self.wet_composite_bbox = cur_bbox;
-        let Some(region) = region else {
-            return;
-        };
-        // ADR-0080: the wet-field carries the mixed pigment per cell, so the composite reduces
-        // it per-pixel (no per-stroke brush colour). A fluid stroke's colour now lives in the
-        // field (deposited per-dab), so cross-colour / cross-stroke mixing emerges in the wash.
-        let canvas = Arc::make_mut(&mut self.canvas_rgba);
-        if canvas.len() != n4 {
-            return;
-        }
-        composite_wet_field_cpu(
-            canvas,
-            backdrop,
-            pig,
-            gw,
-            gh,
-            cw,
-            ch,
-            self.wet_field_scale,
-            WET_COVERAGE_K,
-            region,
-        );
     }
 
     pub fn queue_pointer(&mut self, sample: PointerSample) {
@@ -890,12 +757,13 @@ impl PainterTool {
                     None => bbox,
                 });
             }
-            // **W15 fluid (ADR-0049 / ADR-0077 D11):** when the brush opts into the
-            // live wet-on-wet field, the dabs splat into the diffusion grid instead
-            // of the canvas; this call (+ `on_tick`) steps the diffusion + composites
-            // it out, so the wash blooms wet-on-wet AS you paint and keeps evolving
-            // after pen-up. `stamps` borrows `self.scheduler`; `self.wet_field` is a
-            // disjoint field, so the splat coexists with that borrow.
+            // **W15 fluid (ADR-0049 / ADR-0077 D11, ADR-0085 GPU-only):** when the brush
+            // opts into the live wet-on-wet field on a GPU-capable device, the dabs are
+            // captured as a small list — `cs_splat` adds them to the GPU-resident field on
+            // the shell's per-frame drive, which also steps + composites it, so the wash
+            // blooms wet-on-wet AS you paint and keeps evolving after pen-up. `wet_field` is
+            // only `Some` on a GPU device (gated in `begin_stroke`), so this never touches
+            // the canvas. `stamps` borrows `self.scheduler`; `self.wet_field` is disjoint.
             if self.wet_field.is_some() {
                 let scale = self.wet_field_scale as f32;
                 // **Brush opacity = pigment DILUTION for the fluid path (2026-06-08).** The wash/
@@ -911,19 +779,18 @@ impl PainterTool {
                 // with Lift — lift dry paint without laying colour); 0 = the validated paint
                 // look bit-for-bit. Continuous (0.5 = half-load dilute wash).
                 let pigment_load = 1.0 - self.brush.rendering.watercolor.water.clamp(0.0, 1.0);
-                // `fluid_hires` (= GPU-capable) decides the path, not `gpu_fluid_driven`:
-                // the shell sets `fluid_hires` before `begin_stroke`, but only sets
-                // `gpu_fluid_driven` after the frame's drive — so gating on the latter
-                // would route the stroke's FIRST dabs to the CPU grid and lose them
-                // (the GPU resident field starts empty). They match for every later
-                // frame (both ⟺ a capable GPU on a fluid brush).
-                if self.fluid_hires {
-                    // **GPU-resident path (4K real-time arch §4):** capture the dabs as
-                    // a small list — `cs_splat` adds them to the resident water/pigment
-                    // on the shell's per-frame drive, so the CPU never splats into (or
-                    // scans) the O(grid) field. Grow the MONOTONIC composite envelope
-                    // from each dab's cell bbox (the §2 lesson: never recede; this is a
-                    // superset of the old water bbox, padded by the compositor).
+                // **GPU-resident path (4K real-time arch §4, ADR-0085):** capture the dabs as
+                // a small list — `cs_splat` adds them to the resident water/pigment on the
+                // shell's per-frame drive, so the CPU never splats into (or scans) the O(grid)
+                // field. Grow the MONOTONIC composite envelope from each dab's cell bbox (the
+                // §2 lesson: never recede; a superset of the old water bbox, padded by the
+                // compositor). `wet_field` is only allocated on a GPU device, so this is the
+                // only path — there is no CPU sim fallback.
+                debug_assert!(
+                    self.fluid_hires,
+                    "wet_field allocated without fluid_hires — begin_stroke gate violated"
+                );
+                {
                     let (gw, gh) = self.wet_field.as_ref().expect("wet_field present").dims();
                     for stamp in stamps {
                         let dep = WET_PIGMENT_DEPOSIT
@@ -962,32 +829,6 @@ impl PainterTool {
                             None => (x0, y0, x1, y1),
                         });
                     }
-                } else {
-                    // CPU fallback: splat into the grid + step it inline (unchanged).
-                    let grid = self.wet_field.as_mut().expect("wet_field present");
-                    for stamp in stamps {
-                        let dep = WET_PIGMENT_DEPOSIT
-                            * stamp.opacity.clamp(0.0, 1.0)
-                            * brush_opacity
-                            * pigment_load;
-                        // ADR-0080: deposit the per-stamp COLOUR + coverage mass = dep (see the
-                        // GPU path) — the field mixes overlapping colours subtractively.
-                        let color = ph2d_painter_brush::cpu_render::oklab_to_linear_srgb(
-                            stamp.color_oklab[0],
-                            stamp.color_oklab[1],
-                            stamp.color_oklab[2],
-                        );
-                        grid.splat(
-                            stamp.position_world[0] / scale,
-                            stamp.position_world[1] / scale,
-                            (stamp.size_px * 0.5 / scale).max(if scale > 1.0 { 1.5 } else { 0.5 }),
-                            WET_WATER_DEPOSIT,
-                            color,
-                            dep,
-                            staining,
-                        );
-                    }
-                    self.tick_wet_field(WET_SUBSTEPS_PAINTING);
                 }
                 self.preview_dirty = true;
                 self.dirty_rect = None;

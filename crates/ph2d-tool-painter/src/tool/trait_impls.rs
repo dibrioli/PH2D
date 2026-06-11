@@ -619,9 +619,9 @@ impl RasterEditTool for PainterTool {
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
         // **W15 fluid:** the wet field is sized + indexed to the OLD source. A new
-        // canvas makes it meaningless (and `composite_wet_field` would splat the
-        // stale grid onto the wrong pixels) — drop it. `end_stroke` above keeps it
-        // for a normal pen-up bloom; only a source swap invalidates it outright.
+        // canvas makes it meaningless (the GPU composite would map the stale field
+        // onto the wrong pixels) — drop it. `end_stroke` above keeps it for a normal
+        // pen-up bloom; only a source swap invalidates it outright.
         self.wet_field = None;
         self.wet_backdrop = None;
         self.wet_composite_bbox = None;

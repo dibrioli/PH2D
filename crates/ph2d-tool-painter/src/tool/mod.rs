@@ -581,22 +581,24 @@ pub struct PainterTool {
     /// at `begin_stroke` so a mid-stroke UI change can't destabilise coverage.
     /// Meaningful only while `wash_coverage` is `Some`.
     wash_opacity_cap: f32,
-    /// **W15 — live watercolor wet-on-wet field (ADR-0049 / ADR-0077 D11).** A
-    /// low-resolution [`ph2d_painter_brush::diffusion::DiffusionGrid`], allocated at
-    /// `begin_stroke` only when `brush.rendering.fluid_enabled`. Stamps splat into
-    /// it (re-wet + pigment); `on_tick` steps the diffusion every frame and
-    /// composites it over `pending_pre_stroke` into the canvas, so the wash keeps
-    /// blooming + drying AFTER pen-up. Dropped when the field dries out (water → 0).
-    /// `None` for every non-fluid brush ⇒ zero behaviour change + zero cost.
+    /// **W15 — live watercolor wet-on-wet field (ADR-0049 / ADR-0077 D11, ADR-0085).** A
+    /// [`ph2d_painter_brush::diffusion::DiffusionGrid`] used as the CPU-side container for
+    /// the paper tooth + the field's dims/identity, allocated at `begin_stroke` only when
+    /// `brush.rendering.fluid_enabled` AND a GPU is present (`fluid_hires`). The sim itself
+    /// is GPU-resident: dabs are captured into `fluid_dabs` and the shell's per-frame drive
+    /// runs `cs_splat` + the diffusion + the K–M composite + the dry-check, so the wash keeps
+    /// blooming + drying AFTER pen-up. Dropped when the GPU reports it has dried (water → 0).
+    /// `None` for every non-fluid brush AND on any device without a GPU (watercolor degrades
+    /// to the normal wash path) ⇒ zero behaviour change + zero cost there.
     wet_field: Option<ph2d_painter_brush::diffusion::DiffusionGrid>,
     /// **W15 — backdrop the live wet field composites OVER.** Snapshot of the
     /// canvas as it was when the fluid stroke began (the pre-stroke pixels). Kept
     /// SEPARATE from `pending_pre_stroke`: that one is consumed by the undo stack
     /// at `end_stroke` (`take()`), but the wash keeps blooming for many frames
-    /// AFTER pen-up, so `composite_wet_field` needs a backdrop that outlives the
+    /// AFTER pen-up, so the GPU compositor needs a backdrop that outlives the
     /// stroke. Allocated with `wet_field` at `begin_stroke`; dropped in lock-step
     /// whenever the field is (dry-out / undo / redo / source swap). `None` ⇒ no
-    /// live wash, so the composite no-ops.
+    /// live wash.
     wet_backdrop: Option<Vec<u8>>,
     /// **W15 — last frame's wet bbox (grid cells, inclusive).** The composite runs
     /// only over the union of the current + previous wet region, so it touches the
@@ -604,11 +606,10 @@ pub struct PainterTool {
     /// the dominant cost). The *previous* frame is unioned in so cells that just
     /// dried get their canvas pixel reset to the backdrop. Reset with the field.
     wet_composite_bbox: Option<(u32, u32, u32, u32)>,
-    /// **W15.3 GPU drive (ADR-0049).** When the shell is stepping the wet field on
-    /// the GPU (`ph2d-painter-fluid` eligible), it sets this so the tool SKIPS its
-    /// CPU diffusion in `on_tick`/`queue_pointer` — the dabs still splat into the
-    /// grid, but the step + composite are driven shell-side via `fluid_grid_mut` +
-    /// `composite_and_settle_fluid`. Default false ⇒ the CPU path is unchanged.
+    /// **W15.3 GPU drive (ADR-0049 / ADR-0085).** Set by the shell while it is driving the
+    /// GPU-resident wet field that frame. ADR-0085: the sim is GPU-only, so the tool never
+    /// CPU-diffuses regardless — this flag is now an informational marker of an in-progress
+    /// shell drive (the dab capture in `queue_pointer` is gated on `fluid_hires`, not this).
     gpu_fluid_driven: bool,
     /// **W15.3 GPU resident path.** Bumped each time a fresh fluid `wet_field` is
     /// allocated (`begin_stroke`). The shell watches it: on change it resets the

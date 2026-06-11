@@ -1876,7 +1876,18 @@ Cada brush é um preset de `Brush` struct com params específicos (vide [01 §1.
 
 ## §18. W15 — Fluid Brushes Extension
 
-**Objetivo:** crate `ph2d-painter-fluid` opt-in com Shallow Water sim + giroscópio + graceful degrade.
+> 🔄 **EM REFATORAÇÃO GPU-first (Watercolor v2, Enio 2026-06-10).** O conteúdo abaixo (T15.1+)
+> entregou o motor de aquarela funcional (ADR-0049 + 0078-0084: 3-camada shallow-water, K–M
+> multi-pigmento, franja capilar, granulação, lift, sheen — look ratificado visualmente). MAS:
+> (a) pintar derruba o FPS por **topologia de frame** (submit/copy-bound, não compute); (b) o
+> twin CPU bit-a-bit (`diffusion.rs` 2808 LOC + ~740 gates de paridade) virou imposto que trava
+> a reestruturação; (c) falta a borda de deposição realista; (d) a água tem bugs de equilíbrio.
+> A reescrita está no handoff dedicado **[`docs/HANDOFF_watercolor_v2_refactor.md`](../HANDOFF_watercolor_v2_refactor.md)**
+> (GPU-first, single-submit/direct-render/sparse, arquivos menores, revisão de parâmetros,
+> ADR-0085 supersede a paridade). Leia-o como a fonte da verdade do estado de aquarela; esta
+> §18 fica como o registro histórico do v1.
+
+**Objetivo (v1, entregue):** crate `ph2d-painter-fluid` opt-in com Shallow Water sim + giroscópio + graceful degrade.
 
 **Estimativa:** ~18-24 dias (research + tuning + cross-platform).
 

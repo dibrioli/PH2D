@@ -1,5 +1,11 @@
 # HANDOFF — Painter Fluid (Watercolor) — Continuação para nova LLM (2026-06-08)
 
+> 🔄 **Sucedido pela refatoração GPU-first** — ver
+> [`HANDOFF_watercolor_v2_refactor.md`](HANDOFF_watercolor_v2_refactor.md) (Enio 2026-06-10). O
+> look descrito aqui foi ratificado e **deve ser preservado**, mas a arquitetura (twin CPU
+> bit-a-bit + topologia de frame) está sendo reescrita por causa da queda de FPS ao pintar. Use
+> este doc como referência do LOOK-ALVO, não da arquitetura.
+>
 > **Estado: motor de aquarela GPU validado pelo Enio** ("sim, funcionou! tudo correto!"):
 > física real (edge-darkening + granulação), **GPU-residente**, **region-scoped**, **sem delay
 > clique→traço**, **~240 FPS**. Norte arquitetural: [ADR-0078](architecture/decisions/0078-watercolor-gold-standard-resident-tiled-shallow-water.md).

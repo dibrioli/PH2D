@@ -1,5 +1,15 @@
 # HANDOFF — Painter Fluid PERF block (A): the fixed per-frame GPU stall (2026-06-10)
 
+> ⛔ **SUPERSEDED por [`HANDOFF_watercolor_v2_refactor.md`](HANDOFF_watercolor_v2_refactor.md)
+> (2026-06-10).** Enio mandou abandonar a estratégia incremental: a causa da pintura-lenta NÃO é
+> "custo fixo" nem "envelope grande" (perseguidos aqui) — é a **topologia do frame**
+> (submit-bound + cópia full-canvas + readback no hot path), e o conserto limpo exige reescrita
+> GPU-first (largar o twin CPU bit-a-bit). Os fixes JÁ LANDADOS deste bloco **ficam e funcionam**
+> (crash water/water, undo multi-step, sprite-wide paint, stats pipelinado, epsilon-clamp
+> `WATER_EPS`, gate Curtis `CAPILLARY_MIN_SATURATION`, settle-freeze do Keep Wet, decimação idle —
+> o idle recupera a ~60fps). Leia este doc só como REGISTRO da investigação (a §1/§4b/§10e têm a
+> evidência que fundamenta o novo handoff). O trabalho ativo é o v2 refactor.
+>
 > **Bloco fundacional dedicado** (ADR-0083 tiling/sparse + `project_painter_fluid_4k_perf_architecture`).
 > Executar em **contexto fresco e focado** — toca o caminho vivo do motor de aquarela (4000+ gates de
 > paridade). Leia inteiro antes de mexer; a §2 (a pista) é a mais cara.

@@ -1,5 +1,11 @@
 # HANDOFF — W15.3 GPU watercolor composite (DONE, smoke OK 2026-06-07)
 
+> 🔄 **Arquitetura sucedida pelo Watercolor v2 GPU-first** —
+> [`HANDOFF_watercolor_v2_refactor.md`](HANDOFF_watercolor_v2_refactor.md) (Enio 2026-06-10). O
+> caminho de composite descrito aqui (composite→copy full-canvas→slot) é justamente um dos alvos
+> da reescrita (cópia full-canvas por frame = parte da queda de FPS). Registro histórico +
+> aprendizados (§3) continuam válidos.
+>
 > **W15.3 está FECHADO** ([ADR-0049](architecture/decisions/0049-fluid-brushes.md) + amendment-1):
 > a aquarela wet-on-wet roda inteira no GPU (solver + composite K–M), sem o stall de readback de
 > pigmento, e foi **ratificada visualmente pelo Enio** ("smoke ok. Corrigiu!"). Este doc é o registro

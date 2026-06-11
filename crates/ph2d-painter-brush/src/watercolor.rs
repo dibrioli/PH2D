@@ -99,9 +99,13 @@ impl Default for WatercolorParams {
             // of the box (the water wick carries a thread of pigment). The artist tunes it
             // 0..0.24 via the "Capillary" slider (0 = the harder wet-gate edge).
             capillary: 0.15,
-            // Sharpness preset (ADR-0078 S5c) — a moderate MacCormack correction ON by default so
-            // velocity flow + backruns read crisp, not smeared. 0 = soft first-order; 1 = max.
-            sharpness: 0.5,
+            // Sharpness preset (ADR-0078 S5c — BFECC/MacCormack correction). **Watercolor v2
+            // (ADR-0085): default OFF (0.0)** — `sharpness > 0` TRIPLES the most expensive sim
+            // pass (the 32-channel velocity advect: forward + reverse + correct), the dominant
+            // per-cell cost while painting, for only a modest crispness gain (validated visually
+            // 2026-06-11). The artist opts back in via the "Sharpness" slider. 0 = soft
+            // first-order advect; 1 = max MacCormack.
+            sharpness: 0.0,
             // Lift OFF by default (ADR-0081) — the lift pass is dormant; the artist opts in via
             // the "Lift" slider (re-wetting then reactivates dried non-staining pigment).
             lift: 0.0,

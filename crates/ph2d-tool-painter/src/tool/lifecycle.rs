@@ -14,6 +14,14 @@ const WET_EDGE_RIM_FRACTION: f32 = 0.15;
 /// dryness threshold (per cell) below which the field is dropped, and the
 /// density→alpha exponent for the composite.
 pub(super) const WET_FIELD_SCALE: u32 = 2;
+
+/// Read an `f32` from an env var (Watercolor v2 live-tuning knobs, ADR-0085). `None` if
+/// unset/unparseable — so a knob left unset keeps the shipped default. Read per stroke /
+/// per Keep-Wet toggle (not per frame), so live edits take effect on the next stroke.
+fn env_f32(name: &str) -> Option<f32> {
+    std::env::var(name).ok().and_then(|s| s.parse::<f32>().ok())
+}
+
 const WET_WATER_DEPOSIT: f32 = 0.55;
 const WET_PIGMENT_DEPOSIT: f32 = 0.5;
 const WET_SUBSTEPS_PAINTING: u32 = 1;
@@ -181,7 +189,7 @@ impl PainterTool {
             // **W15.3 full-res on a capable GPU.** A hires field runs at full canvas
             // resolution (`scale=1`) for fine bleeds + sharp edges; otherwise the
             // CPU-budget half-res (`WET_FIELD_SCALE`).
-            let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+            let scale = self.live_field_scale();
             let (sw, sh) = self.source_size;
             let gw = (sw / scale).max(1);
             let gh = (sh / scale).max(1);
@@ -412,6 +420,15 @@ impl PainterTool {
         WET_SUBSTEPS_IDLE
     }
 
+    /// **Painting** diffusion sub-steps per frame (Watercolor v2, ADR-0085). The CPU path
+    /// always used `WET_SUBSTEPS_PAINTING=1` while a stroke is live (`tick_wet_field`); the
+    /// GPU drive wrongly used the IDLE count (2) for both, doubling the whole per-frame pass
+    /// chain (~40 passes) while painting. Restoring the intended 1 halves the live sim cost.
+    #[must_use]
+    pub fn fluid_painting_substeps(&self) -> u32 {
+        WET_SUBSTEPS_PAINTING
+    }
+
     // ───────────────── W15.3 GPU resident-composite hooks (shell-facing) ─────────────────
 
     /// Bumps each `begin_stroke` that allocates a fresh fluid field — the shell
@@ -432,6 +449,23 @@ impl PainterTool {
     /// at full canvas resolution (`scale=1`). No effect on the current field.
     pub fn set_fluid_hires(&mut self, v: bool) {
         self.fluid_hires = v;
+    }
+
+    /// **Watercolor v2 (ADR-0085 §2.3-I4) — the canvas/grid ratio for the NEXT field.**
+    /// The sim is O(grid cells); the composite bicubic-upsamples (ADR-0080 §2.4), so the
+    /// field is meant to be COARSE. Full canvas-res (`fluid_hires` ⇒ scale 1) is 4-16× the
+    /// cells of the low-res field the architecture is built around — the dominant per-frame
+    /// cost (a 308k-cell wet region at scale 1 is ~19k at scale 4). `PH2D_FLUID_SCALE`
+    /// overrides for live perf bisection (e.g. `PH2D_FLUID_SCALE=4`); the upsample covers
+    /// the look. Clamped ≥ 1.
+    fn live_field_scale(&self) -> u32 {
+        if let Some(v) = std::env::var("PH2D_FLUID_SCALE")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok())
+        {
+            return v.max(1);
+        }
+        if self.fluid_hires { 1 } else { WET_FIELD_SCALE }
     }
 
     /// **Real-pigment palette (ADR-0081).** Pick a curated artist pigment by PALETTE index, or
@@ -486,7 +520,7 @@ impl PainterTool {
         if sw == 0 || sh == 0 {
             return None;
         }
-        let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+        let scale = self.live_field_scale();
         Some(((sw / scale).max(1), (sh / scale).max(1)))
     }
 
@@ -503,7 +537,7 @@ impl PainterTool {
         if sw == 0 || sh == 0 {
             return;
         }
-        let scale = if self.fluid_hires { 1 } else { WET_FIELD_SCALE };
+        let scale = self.live_field_scale();
         let gw = (sw / scale).max(1);
         let gh = (sh / scale).max(1);
         let _ = cached_fluid_paper(gw, gh, scale);
@@ -540,7 +574,39 @@ impl PainterTool {
     pub fn fluid_diffusion_params(&self) -> ph2d_painter_brush::diffusion::DiffusionParams {
         let mut dp = self.brush.rendering.watercolor.to_diffusion();
         if self.keep_wet {
-            dp.evaporation = 0.0;
+            // **Watercolor v2 (ADR-0085) — water containment.** `evaporation = 0` is why
+            // Keep Wet lets the puddle creep forever (real water is HELD by paper absorption
+            // + surface tension, not "spread until it fills the canvas"). A tiny non-zero
+            // evaporation lets the wash settle to a STABLE wet level and STOP spreading —
+            // staying workable — which both reads realistic AND shrinks the wet region (the
+            // dominant per-frame composite cost). `PH2D_FLUID_KEEPWET_EVAP` dials it live
+            // (unset/0 ⇒ the old never-stop behaviour).
+            dp.evaporation = env_f32("PH2D_FLUID_KEEPWET_EVAP").unwrap_or(0.0);
+        }
+        // Live containment knobs (ADR-0085 §6b): multipliers on the outward-spread terms so
+        // the puddle stays where the painter put it. 1.0 = unchanged; < 1 contains the wash.
+        if let Some(m) = env_f32("PH2D_FLUID_CAPILLARY") {
+            dp.capillary *= m;
+        }
+        if let Some(m) = env_f32("PH2D_FLUID_DIFFUSIVITY") {
+            dp.diffusivity *= m;
+        }
+        if let Some(m) = env_f32("PH2D_FLUID_FLOW") {
+            dp.flow_outward *= m;
+        }
+        // Shallow-water velocity (the puddle-spread "suspect #1", perf-block §10e): the master
+        // scale on the momentum flow that pushes the wash outward. < 1 settles it faster.
+        if let Some(m) = env_f32("PH2D_FLUID_VELOCITY") {
+            dp.velocity *= m;
+        }
+        // **Watercolor v2 (ADR-0085) — MacCormack sharpness (perf).** `sharpness > 0` runs the
+        // BFECC/MacCormack correction (`cs_advect_velocity_rev` + `cs_advect_correct`), which
+        // TRIPLES the most expensive sim pass (the 32-channel velocity advect). Setting it to 0
+        // drops the two extra passes → `advect_v ×1`, the biggest single sim cut. OVERRIDE (not
+        // a multiplier): `PH2D_FLUID_SHARPNESS=0` disables MacCormack; the look loses a bit of
+        // flow-edge/backrun crispness (Lens 8: modest). Unset ⇒ the brush's value.
+        if let Some(s) = env_f32("PH2D_FLUID_SHARPNESS") {
+            dp.sharpness = s;
         }
         dp
     }

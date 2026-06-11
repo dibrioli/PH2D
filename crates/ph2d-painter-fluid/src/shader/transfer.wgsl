@@ -64,6 +64,8 @@ struct Params {
 @group(0) @binding(5) var<storage, read_write> lift_source: array<vec4<f32>>;
 @group(0) @binding(6) var<storage, read_write> lifted_frac: array<f32>;
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.width * P.height) + cell; }
+
 // Same smoothstep as `ph2d_painter_brush` (matches the CPU `dry` factor).
 fn smoothstep_gate(lo: f32, hi: f32, x: f32) -> f32 {
     let t = clamp((x - lo) / max(hi - lo, 1.0e-6), 0.0, 1.0);
@@ -85,9 +87,9 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     for (var v = 0u; v < PV; v = v + 1u) {
-        let moved = rate * flowing[i * PV + v];
-        flowing[i * PV + v] = flowing[i * PV + v] - moved;
-        deposited[i * PV + v] = deposited[i * PV + v] + moved;
+        let moved = rate * flowing[pidx(i, v)];
+        flowing[pidx(i, v)] = flowing[pidx(i, v)] - moved;
+        deposited[pidx(i, v)] = deposited[pidx(i, v)] + moved;
     }
 }
 
@@ -119,24 +121,24 @@ fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = y * P.width + x;
     let wet = smoothstep_gate(P.w_lo, P.w_hi, water[i]);
     // Branch 1 — deposited lift (ADR-0081): re-mobilize this stroke's frozen pigment.
-    let dep_mass = deposited[i * PV + 6u].w;       // PIG_MASS=27 → vec4[6].w
+    let dep_mass = deposited[pidx(i, 6u)].w;       // PIG_MASS=27 → vec4[6].w
     if (dep_mass > 1.0e-6) {
-        let stain = clamp(deposited[i * PV + 7u].x / dep_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
+        let stain = clamp(deposited[pidx(i, 7u)].x / dep_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
         let rate = clamp(P.lift * wet * (1.0 - stain), 0.0, 1.0);
         if (rate > 0.0) {
             for (var v = 0u; v < PV; v = v + 1u) {
-                let moved = rate * deposited[i * PV + v];
-                deposited[i * PV + v] = deposited[i * PV + v] - moved;
-                flowing[i * PV + v] = flowing[i * PV + v] + moved;
+                let moved = rate * deposited[pidx(i, v)];
+                deposited[pidx(i, v)] = deposited[pidx(i, v)] - moved;
+                flowing[pidx(i, v)] = flowing[pidx(i, v)] + moved;
             }
         }
     }
     // Branch 2 — backdrop lift (ADR-0084): re-mobilize the dry-paint reservoir (downsampled
     // backdrop) into the flowing layer + accumulate the cumulative lifted fraction. Same rate law;
     // `lift_source`'s own staining ratio resists (0 for a backdrop seed → dry paint lifts freely).
-    let src_mass = lift_source[i * PV + 6u].w;     // PIG_MASS=27 → vec4[6].w
+    let src_mass = lift_source[pidx(i, 6u)].w;     // PIG_MASS=27 → vec4[6].w
     if (src_mass > 1.0e-6) {
-        let stain_src = clamp(lift_source[i * PV + 7u].x / src_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
+        let stain_src = clamp(lift_source[pidx(i, 7u)].x / src_mass, 0.0, 1.0); // PIG_STAIN=28 → vec4[7].x
         let rate = clamp(P.lift * wet * (1.0 - stain_src), 0.0, 1.0);
         if (rate > 0.0) {
             // Only LIFT_BLEED_KEEP (0.25, ADR-0084 `diffusion.rs`) of the lifted dry paint bleeds
@@ -144,9 +146,9 @@ fn cs_lift(@builtin(global_invocation_id) gid: vec3<u32>) {
             // than concentrating into a dark merged-mass glaze. `lifted_frac` drives the compositor
             // backdrop-alpha drop (the paper pigment lightens by the FULL lifted amount).
             for (var v = 0u; v < PV; v = v + 1u) {
-                let moved = rate * lift_source[i * PV + v];
-                lift_source[i * PV + v] = lift_source[i * PV + v] - moved;
-                flowing[i * PV + v] = flowing[i * PV + v] + moved * 0.25;
+                let moved = rate * lift_source[pidx(i, v)];
+                lift_source[pidx(i, v)] = lift_source[pidx(i, v)] - moved;
+                flowing[pidx(i, v)] = flowing[pidx(i, v)] + moved * 0.25;
             }
             lifted_frac[i] = lifted_frac[i] + rate * (1.0 - lifted_frac[i]);
         }

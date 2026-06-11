@@ -74,6 +74,8 @@ fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
 }
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.width * P.height) + cell; }
+
 fn region_cell(gid: vec2<u32>) -> vec2<u32> {
     return vec2<u32>(P.region_ox + gid.x, P.region_oy + gid.y);
 }
@@ -146,7 +148,7 @@ fn apply_face(pn: vec4<f32>, f: FaceInfo, pc_v: vec4<f32>, v: u32) -> vec4<f32> 
     if (f.kind == 1u) {
         return pn - f.frac * pc_v;
     } else if (f.kind == 2u) {
-        return pn + f.frac * pig_in[f.ni * PV + v];
+        return pn + f.frac * pig_in[pidx(f.ni, v)];
     }
     return pn;
 }
@@ -174,13 +176,13 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     let fD = face_info(idx(x, n.w), wc, permc, cap, mob, paper_c);
     water_out[c] = wc + cap * (fL.dw + fR.dw + fU.dw + fD.dw);
     for (var v = 0u; v < PV; v = v + 1u) {
-        let pc_v = pig_in[c * PV + v];
+        let pc_v = pig_in[pidx(c, v)];
         var pn = pc_v;
         pn = apply_face(pn, fL, pc_v, v);
         pn = apply_face(pn, fR, pc_v, v);
         pn = apply_face(pn, fU, pc_v, v);
         pn = apply_face(pn, fD, pc_v, v);
-        pig_out[c * PV + v] = pn;
+        pig_out[pidx(c, v)] = pn;
     }
 }
 
@@ -196,6 +198,6 @@ fn cs_copy_fields(@builtin(global_invocation_id) gid: vec3<u32>) {
     let c = idx(x, y);
     water_out[c] = water_in[c];
     for (var v = 0u; v < PV; v = v + 1u) {
-        pig_out[c * PV + v] = pig_in[c * PV + v];
+        pig_out[pidx(c, v)] = pig_in[pidx(c, v)];
     }
 }

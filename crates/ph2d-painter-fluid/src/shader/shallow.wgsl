@@ -69,6 +69,8 @@ fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
 }
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.width * P.height) + cell; }
+
 // Map a region-local invocation to an absolute cell (ADR-0078 S1).
 fn region_cell(gid: vec2<u32>) -> vec2<u32> {
     return vec2<u32>(P.region_ox + gid.x, P.region_oy + gid.y);
@@ -223,17 +225,17 @@ fn av_write(x: u32, y: u32, c: u32, sign: f32) {
     if (has_u) { fu = flow_v(x, y - 1u) * sign; }
     if (has_d) { fd = flow_v(x, y + 1u) * sign; }
     for (var v = 0u; v < PV; v = v + 1u) {
-        let pc = pig_in[c * PV + v];
+        let pc = pig_in[pidx(c, v)];
         var out = pc;
         if (fc.x > 0.0 && has_r) { out -= fc.x * pc; }
         if (fc.x < 0.0 && has_l) { out -= (-fc.x) * pc; }
         if (fc.y > 0.0 && has_d) { out -= fc.y * pc; }
         if (fc.y < 0.0 && has_u) { out -= (-fc.y) * pc; }
-        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y) * PV + v]; }
-        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y) * PV + v]; }
-        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u) * PV + v]; }
-        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u) * PV + v]; }
-        pig_out[c * PV + v] = out;
+        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[pidx(idx(x - 1u, y), v)]; }
+        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[pidx(idx(x + 1u, y), v)]; }
+        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[pidx(idx(x, y - 1u), v)]; }
+        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[pidx(idx(x, y + 1u), v)]; }
+        pig_out[pidx(c, v)] = out;
     }
 }
 
@@ -277,16 +279,16 @@ fn cs_advect_correct(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var v = 0u; v < PV; v = v + 1u) {
         // Local extrema of φ over the 5-point stencil (the unconditionally-stable limiter).
         // Border neighbour = self via the clamp ⇒ a no-op on min/max (matches the CPU skip).
-        let phic = pig_in[c * PV + v];
+        let phic = pig_in[pidx(c, v)];
         var lo = phic;
         var hi = phic;
-        let pl = pig_in[il * PV + v]; lo = min(lo, pl); hi = max(hi, pl);
-        let pr = pig_in[ir * PV + v]; lo = min(lo, pr); hi = max(hi, pr);
-        let pu = pig_in[iu * PV + v]; lo = min(lo, pu); hi = max(hi, pu);
-        let pd = pig_in[id_ * PV + v]; lo = min(lo, pd); hi = max(hi, pd);
-        let phat = pig_out[c * PV + v];     // φ̂ (forward result, in place)
-        let pbar = pig_phibar[c * PV + v];  // φ̄ (reverse result)
+        let pl = pig_in[pidx(il, v)]; lo = min(lo, pl); hi = max(hi, pl);
+        let pr = pig_in[pidx(ir, v)]; lo = min(lo, pr); hi = max(hi, pr);
+        let pu = pig_in[pidx(iu, v)]; lo = min(lo, pu); hi = max(hi, pu);
+        let pd = pig_in[pidx(id_, v)]; lo = min(lo, pd); hi = max(hi, pd);
+        let phat = pig_out[pidx(c, v)];     // φ̂ (forward result, in place)
+        let pbar = pig_phibar[pidx(c, v)];  // φ̄ (reverse result)
         let corrected = phat + P.sharpness * 0.5 * (phic - pbar);
-        pig_out[c * PV + v] = clamp(corrected, lo, hi);
+        pig_out[pidx(c, v)] = clamp(corrected, lo, hi);
     }
 }

@@ -42,6 +42,8 @@ struct Params {
 @group(0) @binding(2) var<storage, read> deposited: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read_write> total: array<vec4<f32>>;
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.width * P.height) + cell; }
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = P.region_ox + gid.x;
@@ -51,6 +53,6 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let i = y * P.width + x;
     for (var v = 0u; v < PV; v = v + 1u) {
-        total[i * PV + v] = flowing[i * PV + v] + deposited[i * PV + v];
+        total[pidx(i, v)] = flowing[pidx(i, v)] + deposited[pidx(i, v)];
     }
 }

@@ -1535,6 +1535,7 @@ fn read_f32_buffer(gpu: &GpuContext, b: &wgpu::Buffer, n: usize) -> Vec<f32> {
 
 /// Read back a low-res `array<vec4<f32>>` GPU buffer as `WetCell`s (`gw·gh` cells, PIG_CH chans) —
 /// the `lift_source` donor (ADR-0084). Same idiom as the solver's `read_pigment`/`read_deposited`.
+#[allow(dead_code)] // ADR-0085: lift_source now read via solver.read_lift_source (unpacks SoA)
 fn read_wetcell_buffer(gpu: &GpuContext, b: &wgpu::Buffer, n: usize) -> Vec<WetCell> {
     use ph2d_painter_brush::diffusion::PIG_CH;
     let size = (n * PIG_CH * 4) as u64;
@@ -1646,7 +1647,9 @@ fn gpu_cpu_parity_backdrop_lift() {
     );
     let n = (w * h) as usize;
     let gpu_flow = solver.read_pigment(&gpu.device, &gpu.queue);
-    let gpu_src = read_wetcell_buffer(&gpu, solver.lift_source_buffer(), n);
+    // ADR-0085: lift_source is planar (SoA) on the GPU; read it back via the unpacking
+    // solver method (the raw `read_wetcell_buffer` would read it cell-major → garbage).
+    let gpu_src = solver.read_lift_source(&gpu.device, &gpu.queue);
     let gpu_lifted = read_f32_buffer(&gpu, solver.lifted_frac_buffer(), n);
 
     // ── Parity: donor (lift_source) + accumulator (lifted_frac) + flowing pigment ─────────────

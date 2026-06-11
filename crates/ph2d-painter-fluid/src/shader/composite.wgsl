@@ -94,10 +94,35 @@ fn catmull_rom(t: f32) -> vec4<f32> {
         0.5 * t3 - 0.5 * t2,
     );
 }
+// Planar (struct-of-arrays) index into the low-res pigment field: channel-vec4 `v`
+// (PV=8 vec4/cell) of grid cell `cell` lives at `v * NC + cell`, where `NC = gw·gh`
+// (the GRID cell count — this shader's field IS the low-res grid).
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.gw * P.gh) + cell; }
+
 // Returns the PV bicubic-sampled vec4 (extensive K/S + err + mass), floored: K/S bands
 // (vec4[0..5]) + mass (vec4[6].w) ≥ 0; err (vec4[6].xyz) stays signed. Mirrors the CPU
 // `sample_pigment_bicubic`.
 fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 8> {
+    // **Watercolor v2 R2 (ADR-0085) — full-res fast path.** At scale 1 (`inv == 1`) the grid IS
+    // the canvas: every sample lands on an integer cell, where Catmull-Rom collapses to
+    // `[0,1,0,0]` (only the centre cell has weight). The 4×4 loop below would still READ all 16
+    // cells × 8 vec4 = 128 reads per pixel to reproduce ONE cell — a 16× wasted-bandwidth loop
+    // every pixel, every frame (the dominant `fluid.comp_tex` cost). Read the centre cell
+    // directly: byte-identical output, 16× fewer reads. (scale > 1 still bicubic-upsamples.)
+    if (P.inv == 1.0) {
+        let gx = u32(clamp(round(fx), 0.0, f32(P.gw) - 1.0));
+        let gy = u32(clamp(round(fy), 0.0, f32(P.gh) - 1.0));
+        let base = gy * P.gw + gx;
+        var nn: array<vec4<f32>, 8>;
+        for (var v = 0u; v < PV; v = v + 1u) {
+            nn[v] = pig_in[pidx(base, v)];
+        }
+        for (var v = 0u; v < 6u; v = v + 1u) {
+            nn[v] = max(nn[v], vec4<f32>(0.0)); // K/S bands ≥ 0 (matches the bicubic clamp)
+        }
+        nn[6] = vec4<f32>(nn[6].xyz, max(nn[6].w, 0.0)); // err signed, mass ≥ 0
+        return nn;
+    }
     let x0 = floor(fx);
     let y0 = floor(fy);
     let wx = catmull_rom(fx - x0);
@@ -116,9 +141,9 @@ fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 8> {
         }
         for (var i = 0; i < 4; i = i + 1) {
             let gx = clamp(i32(x0) - 1 + i, 0, gwi - 1);
-            let base = (u32(gy) * P.gw + u32(gx)) * PV;
+            let base = u32(gy) * P.gw + u32(gx);
             for (var v = 0u; v < PV; v = v + 1u) {
-                row[v] = row[v] + pig_in[base + v] * wx[i];
+                row[v] = row[v] + pig_in[pidx(base, v)] * wx[i];
             }
         }
         for (var v = 0u; v < PV; v = v + 1u) {

@@ -779,6 +779,26 @@ impl FluidCompositor {
         queue: &wgpu::Queue,
         grid_region: (u32, u32, u32, u32),
     ) -> Option<(u32, u32, u32, u32)> {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("composite frame (to texture, E4)"),
+        });
+        let rect = self.encode_frame_to_texture(queue, &mut enc, grid_region);
+        queue.submit([enc.finish()]);
+        rect
+    }
+
+    /// **Encode-only sibling of [`Self::composite_frame_to_texture`]** (Watercolor v2
+    /// R1, ADR-0085 §2.3-I1): the `cs_composite` + `cs_premul_tex` passes are encoded
+    /// into the caller's `enc` (NO submit), so the shell folds the sim, this composite
+    /// and the preview-slot copy into ONE `queue.submit`. Same byte semantics as the
+    /// wrapper. Returns the composited canvas rect, or `None` when there's no stroke
+    /// state / the region is empty (nothing encoded).
+    pub fn encode_frame_to_texture(
+        &mut self,
+        queue: &wgpu::Queue,
+        enc: &mut wgpu::CommandEncoder,
+        grid_region: (u32, u32, u32, u32),
+    ) -> Option<(u32, u32, u32, u32)> {
         let st = self.state.as_ref()?;
         let (px_lo, py_lo, px_hi, py_hi) =
             composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
@@ -801,9 +821,6 @@ impl FluidCompositor {
         };
         queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
         let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("composite frame (to texture, E4)"),
-        });
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("composite frame to-texture pass"),
@@ -816,7 +833,6 @@ impl FluidCompositor {
             pass.set_bind_group(1, &st.preview_bind, &[]);
             pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
         }
-        queue.submit([enc.finish()]);
         Some((px_lo, py_lo, px_hi, py_hi))
     }
 
@@ -992,7 +1008,10 @@ impl FluidCompositor {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(pigment));
+        // Planar (SoA) upload to match the shader's `pidx` layout (ADR-0085) — the
+        // production path reads the solver's already-planar `total`; this one-shot
+        // test/convenience path transposes the cell-major `pigment` the same way.
+        queue.write_buffer(&pig_buf, 0, bytemuck::cast_slice(&crate::solver::pack_soa(pigment)));
         self.composite_buffer(
             device,
             queue,

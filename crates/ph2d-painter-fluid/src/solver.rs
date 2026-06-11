@@ -99,6 +99,37 @@ pub struct FieldStats {
 /// order — and thus the bit-exact parity — is preserved across chunks).
 pub const MAX_DABS_PER_DISPATCH: usize = 4096;
 
+/// **Watercolor v2 (ADR-0085) — planar (struct-of-arrays) pigment layout.** The GPU field
+/// stores channel-vec4 `v` of cell `c` at `pidx(c,v) = v·n + c` (channel-major) so neighbour
+/// gathers coalesce. `WetCell` is `PIG_CH` floats **cell-major** (8 vec4 contiguous per cell);
+/// these two transpose at the CPU↔GPU boundary (uploads + parity readbacks). The live path is
+/// GPU-resident (`cs_splat` writes planar directly), so it never transposes — only the lift
+/// upload + the parity read/write paths do. Float `k` of channel-vec4 `v` of cell `c` lives at
+/// SoA float index `(v·n + c)·4 + k`, vs cell-major `c·PIG_CH + (v·4 + k)`.
+pub(crate) fn pack_soa(cells: &[WetCell]) -> Vec<f32> {
+    let n = cells.len();
+    let flat: &[f32] = bytemuck::cast_slice(cells); // n·PIG_CH floats, cell-major
+    let mut out = vec![0.0f32; n * PIG_CH];
+    for c in 0..n {
+        for ch in 0..PIG_CH {
+            // ch = v·4 + k  ⇒  SoA float index (v·n + c)·4 + k = (ch/4)·n·4 + c·4 + ch%4.
+            out[(ch / 4) * n * 4 + c * 4 + (ch % 4)] = flat[c * PIG_CH + ch];
+        }
+    }
+    out
+}
+
+/// Inverse of [`pack_soa`]: planar GPU floats → cell-major `WetCell`s (parity readbacks).
+fn unpack_soa(soa: &[f32], n: usize) -> Vec<WetCell> {
+    let mut flat = vec![0.0f32; n * PIG_CH];
+    for c in 0..n {
+        for ch in 0..PIG_CH {
+            flat[c * PIG_CH + ch] = soa[(ch / 4) * n * 4 + c * 4 + (ch % 4)];
+        }
+    }
+    bytemuck::cast_slice::<f32, WetCell>(&flat).to_vec()
+}
+
 /// A single brush dab for [`FluidSolver::splat_dabs`]: centre, effective radius,
 /// per-touch water, and the (pre-weighted) linear-RGB pigment. `#[repr(C)]` Pod so
 /// the dab list is a zero-copy `write_buffer` into the `array<Dab>` storage binding
@@ -1202,7 +1233,7 @@ impl FluidSolver {
     pub fn upload(&self, queue: &wgpu::Queue, water: &[f32], paper: &[f32], pigment: &[WetCell]) {
         queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
         queue.write_buffer(&self.paper, 0, bytemuck::cast_slice(paper));
-        queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
+        queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(&pack_soa(pigment)));
     }
 
     /// Push the solver coefficients (mirrors the CPU `DiffusionParams`). Caches them
@@ -1473,7 +1504,7 @@ impl FluidSolver {
     /// the CPU seed uses) so the donor is bit-identical CPU↔GPU (HR-5). Call ONCE at stroke begin
     /// when `lift > 0`; pair with [`Self::clear_lift_gpu`] (to also zero `lifted_frac`) or re-seed.
     pub fn upload_lift_source(&self, queue: &wgpu::Queue, cells: &[WetCell]) {
-        queue.write_buffer(&self.lift_source, 0, bytemuck::cast_slice(cells));
+        queue.write_buffer(&self.lift_source, 0, bytemuck::cast_slice(&pack_soa(cells)));
     }
 
     /// Zero BOTH the backdrop-lift donor (`lift_source`) AND the lifted-fraction accumulator
@@ -1546,49 +1577,60 @@ impl FluidSolver {
         // `dabs_buf` then consumed by that submit, so a later chunk can't clobber the
         // buffer before an earlier chunk's pass runs (single-chunk = one submit).
         for chunk in dabs.chunks(MAX_DABS_PER_DISPATCH) {
-            // Union bbox of the chunk (clamped to the grid) bounds the dispatch; the
-            // shader's `dist < 1` cutoff then rejects corners exactly as the CPU does.
-            let (mut x0, mut y0, mut x1, mut y1) = (self.width - 1, self.height - 1, 0u32, 0u32);
-            for d in chunk {
-                let lo_x = ((d.cx - d.r).floor().max(0.0) as u32).min(self.width - 1);
-                let lo_y = ((d.cy - d.r).floor().max(0.0) as u32).min(self.height - 1);
-                let hi_x = ((d.cx + d.r).ceil().max(0.0) as u32).min(self.width - 1);
-                let hi_y = ((d.cy + d.r).ceil().max(0.0) as u32).min(self.height - 1);
-                x0 = x0.min(lo_x);
-                y0 = y0.min(lo_y);
-                x1 = x1.max(hi_x);
-                y1 = y1.max(hi_y);
-            }
-            if x1 < x0 || y1 < y0 {
-                continue;
-            }
-            queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(chunk));
-            let sp = GpuSplatParams {
-                width: self.width,
-                height: self.height,
-                origin_x: x0,
-                origin_y: y0,
-                n_dabs: chunk.len() as u32,
-                _p0: 0,
-                _p1: 0,
-                _p2: 0,
-            };
-            queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
-            let (gx, gy) = ((x1 - x0 + 1).div_ceil(8), (y1 - y0 + 1).div_ceil(8));
             let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("fluid splat"),
             });
-            {
-                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("fluid splat pass"),
-                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.splat"),
-                });
-                pass.set_pipeline(&self.splat);
-                pass.set_bind_group(0, &self.bg_splat, &[]);
-                pass.dispatch_workgroups(gx, gy, 1);
-            }
+            self.encode_splat_chunk(queue, &mut enc, chunk);
             queue.submit([enc.finish()]);
         }
+    }
+
+    /// Encode ONE chunk's `cs_splat` pass into a caller-owned encoder (no submit).
+    /// The shared `dabs_buf`/`splat_params_buf` are `write_buffer`'d here, so a
+    /// single chunk is safe to fold into a larger encoder (Watercolor v2 R1 single
+    /// submit, ADR-0085 §2.3-I1); MULTIPLE chunks still need a submit between them
+    /// (the buffer would be clobbered) — [`Self::splat_dabs`] keeps that contract.
+    /// Empty / zero-area chunks no-op.
+    fn encode_splat_chunk(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, chunk: &[DabGpu]) {
+        if chunk.is_empty() {
+            return;
+        }
+        // Union bbox of the chunk (clamped to the grid) bounds the dispatch; the
+        // shader's `dist < 1` cutoff then rejects corners exactly as the CPU does.
+        let (mut x0, mut y0, mut x1, mut y1) = (self.width - 1, self.height - 1, 0u32, 0u32);
+        for d in chunk {
+            let lo_x = ((d.cx - d.r).floor().max(0.0) as u32).min(self.width - 1);
+            let lo_y = ((d.cy - d.r).floor().max(0.0) as u32).min(self.height - 1);
+            let hi_x = ((d.cx + d.r).ceil().max(0.0) as u32).min(self.width - 1);
+            let hi_y = ((d.cy + d.r).ceil().max(0.0) as u32).min(self.height - 1);
+            x0 = x0.min(lo_x);
+            y0 = y0.min(lo_y);
+            x1 = x1.max(hi_x);
+            y1 = y1.max(hi_y);
+        }
+        if x1 < x0 || y1 < y0 {
+            return;
+        }
+        queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(chunk));
+        let sp = GpuSplatParams {
+            width: self.width,
+            height: self.height,
+            origin_x: x0,
+            origin_y: y0,
+            n_dabs: chunk.len() as u32,
+            _p0: 0,
+            _p1: 0,
+            _p2: 0,
+        };
+        queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
+        let (gx, gy) = ((x1 - x0 + 1).div_ceil(8), (y1 - y0 + 1).div_ceil(8));
+        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("fluid splat pass"),
+            timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.splat"),
+        });
+        pass.set_pipeline(&self.splat);
+        pass.set_bind_group(0, &self.bg_splat, &[]);
+        pass.dispatch_workgroups(gx, gy, 1);
     }
 
     /// **Fully GPU-resident per-frame step (4K real-time arch §4 — no upload, no
@@ -1621,9 +1663,40 @@ impl FluidSolver {
         substeps: u32,
         region: (u32, u32, u32, u32),
     ) {
-        // Splat submit (resident water + pig_a updated); ordered before the step submit
-        // on the queue timeline, so diffuse reads the just-splatted field.
-        self.splat_dabs(device, queue, dabs);
+        let enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid resident splat step"),
+        });
+        let enc = self.encode_resident_splat_step(device, queue, enc, dabs, substeps, region);
+        queue.submit([enc.finish()]);
+        // No poll: the field stays GPU-resident; the compositor's readback (or a
+        // sporadic `read_field_stats`) is the only sync point.
+    }
+
+    /// **Encode-only sibling of [`Self::step_resident_splat`]** (Watercolor v2 R1,
+    /// ADR-0085 §2.3-I1 — single submit): splat + substeps + combine encoded into the
+    /// caller's `enc`, which is RETURNED (not submitted) so the shell folds the sim,
+    /// composite and preview copy into ONE `queue.submit`, collapsing the present-stall.
+    /// Pass order, params and math are byte-identical to the wrapper, so the parity
+    /// gates (which drive the wrapper) are unaffected.
+    #[must_use]
+    pub fn encode_resident_splat_step(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        mut enc: wgpu::CommandEncoder,
+        dabs: &[DabGpu],
+        substeps: u32,
+        region: (u32, u32, u32, u32),
+    ) -> wgpu::CommandEncoder {
+        // Splat (resident water + pig_a updated), ordered before the step in `enc` so
+        // diffuse reads the just-splatted field. A single chunk folds into `enc`; a
+        // (rare, non-hot-path) multi-chunk list pre-submits via `splat_dabs` so the
+        // shared dab buffer isn't clobbered mid-encoder.
+        if dabs.len() > MAX_DABS_PER_DISPATCH {
+            self.splat_dabs(device, queue, dabs);
+        } else {
+            self.encode_splat_chunk(queue, &mut enc, dabs);
+        }
         // Pad the envelope so the solver region ⊇ what the compositor reads.
         let p = SOLVER_REGION_PAD;
         let padded = (
@@ -1633,9 +1706,6 @@ impl FluidSolver {
             region.3.saturating_add(p),
         );
         let (gx, gy) = self.write_params_with_region(queue, padded);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid resident splat step"),
-        });
         // One compute pass per pipeline (wgpu inserts the RAW barrier between passes).
         // The per-kernel label feeds the GPU pass profiler (PH2D_FLUID_PROFILE) —
         // `compute_writes` is None (free) when profiling is off.
@@ -1781,9 +1851,7 @@ impl FluidSolver {
             pass.set_bind_group(0, &self.bg_combine, &[]);
             pass.dispatch_workgroups(gx, gy, 1);
         }
-        queue.submit([enc.finish()]);
-        // No poll: the field stays GPU-resident; the compositor's readback (or a
-        // sporadic `read_field_stats`) is the only sync point.
+        enc
     }
 
     /// **Reduce the resident water field to its max + wet bbox ON the GPU** (4K
@@ -1962,7 +2030,7 @@ impl FluidSolver {
         substeps: u32,
     ) {
         queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
-        queue.write_buffer(&self.deposit, 0, bytemuck::cast_slice(deposit));
+        queue.write_buffer(&self.deposit, 0, bytemuck::cast_slice(&pack_soa(deposit)));
         let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("fluid step resident"),
@@ -2011,7 +2079,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
+        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
         drop(mapped);
         staging.unmap();
         out
@@ -2041,7 +2109,37 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
+        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
+        drop(mapped);
+        staging.unmap();
+        out
+    }
+
+    /// Map the backdrop-lift donor (`lift_source`, ADR-0084) back, unpacked to cell-major
+    /// `WetCell`s (the planar→cell transpose, ADR-0085). For the `cs_lift` parity gate.
+    #[must_use]
+    pub fn read_lift_source(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<WetCell> {
+        let n = (self.width as usize) * (self.height as usize);
+        let size = (n * PIG_CH * 4) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fluid lift_source readback"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("fluid lift_source rb"),
+        });
+        enc.copy_buffer_to_buffer(&self.lift_source, 0, &staging, 0, size);
+        queue.submit([enc.finish()]);
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        rx.recv().expect("map channel").expect("mapped");
+        let mapped = staging.slice(..).get_mapped_range();
+        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
         drop(mapped);
         staging.unmap();
         out
@@ -2071,7 +2169,7 @@ impl FluidSolver {
         let _ = device.poll(wgpu::PollType::wait_indefinitely());
         rx.recv().expect("map channel").expect("mapped");
         let mapped = staging.slice(..).get_mapped_range();
-        let out = bytemuck::cast_slice::<u8, WetCell>(&mapped).to_vec();
+        let out = unpack_soa(bytemuck::cast_slice::<u8, f32>(&mapped), n);
         drop(mapped);
         staging.unmap();
         out

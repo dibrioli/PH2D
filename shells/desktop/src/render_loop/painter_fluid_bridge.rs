@@ -20,7 +20,7 @@
 //! class as `painter_bridge.rs`): the GPU drive needs the concrete fluid hooks.
 
 use super::painter_fluid_support::{
-    FluidSession, PROFILE, copy_preview_into_slot, grow_bbox, run_readback_lane, union_bbox,
+    FluidSession, PROFILE, ensure_preview_slot, grow_bbox, run_readback_lane, union_bbox,
 };
 use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
@@ -43,14 +43,16 @@ use std::time::Instant;
 /// here was a multi-ms queue-drain that *grew* into a runaway FPS collapse.)
 const DRY_CHECK_EVERY: u64 = 20;
 
-/// Grid-cell pad added around the composite envelope for the capillary fringe (ADR-0078 S5).
-/// The water wicks OUTWARD past the dab bboxes, so the dab-union envelope alone would clip the
-/// fringe into a rectangle (the §2.2 bug). Growing the envelope by this pad (only when the
-/// brush's capillary layer is on) keeps the soft fringe inside both the composite read region
-/// and the solver dispatch (which adds its own `SOLVER_REGION_PAD` on top, preserving the
-/// solver ⊇ composite invariant). It covers the fringe growth between the sporadic wet-bbox
-/// reads; the monotonic `wet_bbox` union then tracks larger (extreme-param) fringes exactly.
-const CAPILLARY_FRINGE_PAD: u32 = 8;
+
+/// **Watercolor v2 (ADR-0085) — active-region window.** A grid area stays in the per-frame
+/// WORK region (sim + composite) for this many frames after the last dab landed there, then
+/// freezes (its composite persists in the preview texture). ~1.5 s at 60 fps — long enough for
+/// the bloom to develop, short enough that a settled wash stops costing. `PH2D_FLUID_ACTIVE_WINDOW`
+/// overrides for live tuning.
+const ACTIVE_WINDOW_FRAMES: u64 = 90;
+/// Pad (grid cells) grown around the active-dab window to cover the capillary wick advancing
+/// outward from the recent dabs. `PH2D_FLUID_ACTIVE_PAD` overrides for live tuning.
+const ACTIVE_REGION_PAD: u32 = 48;
 
 /// **Idle decimation cadence (perf block 2b).** With a live field but the pointer up and
 /// no dabs, the sim step + composite/sheen run only every Nth frame — idle the field
@@ -222,7 +224,24 @@ pub(crate) fn drive_fluid_gpu(
 
     painter.set_gpu_fluid_driven(true);
     let dims = painter.fluid_grid_dims()?;
-    let substeps = painter.fluid_idle_substeps();
+    // Watercolor v2 bisection (ADR-0085): `PH2D_FLUID_SUBSTEPS` overrides the sub-step
+    // count — `0` runs splat+combine+composite but NONE of the diffuse/advect/transfer/
+    // capillary passes, isolating the per-frame SIM cost from the COMPOSITE cost without
+    // trusting the TBDR-inflated pass spans. (substeps=0 recovers FPS ⇒ the sim passes are
+    // the cost; still drops ⇒ it's the composite/copy/base path.)
+    let substeps = std::env::var("PH2D_FLUID_SUBSTEPS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or_else(|| {
+            // Watercolor v2 (ADR-0085): use the PAINTING sub-step count (1) while a stroke is
+            // live — the GPU drive was wrongly running the idle count (2) for both, doubling
+            // the ~40-pass chain every painting frame. Idle keeps 2 (it's decimated anyway).
+            if painter.is_stroke_active() {
+                painter.fluid_painting_substeps()
+            } else {
+                painter.fluid_idle_substeps()
+            }
+        });
     let epoch = painter.fluid_stroke_epoch();
     let scale = painter.fluid_field_scale();
     let coverage_k = painter.fluid_coverage_k();
@@ -260,6 +279,7 @@ pub(crate) fn drive_fluid_gpu(
             sess.frame = 0;
             // New stroke → forget the previous stroke's wet envelope (ADR-0078 S5).
             sess.wet_bbox = None;
+            sess.active_history.clear();
             // E4: `begin_stroke` below recreates the compositor's preview texture
             // (seeded with the new premultiplied backdrop), so nothing published yet
             // this stroke. `texture_mode_dirty` is intentionally KEPT across epochs:
@@ -315,7 +335,13 @@ pub(crate) fn drive_fluid_gpu(
                 // the per-cell rim texture rendered with ZERO filtering = pixel teeth. ss=2
                 // averages sub-cell coverage (measured: dark contour residual −33..42%) for 4×
                 // the K-M ALU, which the region-scoped composite absorbs.
-                let ss = 2;
+                // Coverage supersampling (N×N glaze samples/pixel). Watercolor v2 (ADR-0085):
+                // at scale=1 the field IS canvas-res, so every sub-sample of a pixel reads the
+                // SAME centre cell → the 4 samples are byte-identical and average to themselves.
+                // ss=2 there is a 4× redundant K-M spectral evaluation per pixel — the dominant
+                // full-canvas composite cost. ss=1 at scale=1 is byte-identical + 4× cheaper;
+                // scale>1 (low-res grid) keeps ss=2 for real sub-cell coverage AA.
+                let ss = if scale == 1 { 1 } else { 2 };
                 sess.compositor.begin_stroke(
                     &gpu.device,
                     &gpu.queue,
@@ -373,12 +399,50 @@ pub(crate) fn drive_fluid_gpu(
         // pad covers its read-to-read lag. A non-capillary brush keeps the bare dab envelope
         // (zero change to the validated look). The solver pads this by SOLVER_REGION_PAD on
         // top, so solver ⊇ composite still holds.
+        // ── Active-region window (ADR-0085) ──────────────────────────────────────
+        // The per-frame WORK region (sim + composite) follows the BRUSH: this frame's dab
+        // bbox is pushed and the last ACTIVE_WINDOW_FRAMES are unioned + a wick pad. This is
+        // the fix for "full-canvas wet drops FPS": the old region unioned the MONOTONIC
+        // `wet_bbox`, which under Keep Wet grows to the whole canvas → ~1M settled cells
+        // re-simulated every painting frame (the profiler's `region=(0,0)-(W,H)` with dabs=2).
+        // Settled areas (outside the window) freeze; their last composite persists in the
+        // preview texture. Env-tunable for the bloom-extent ↔ perf trade-off.
+        let win = std::env::var("PH2D_FLUID_ACTIVE_WINDOW")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(ACTIVE_WINDOW_FRAMES);
+        let pad = std::env::var("PH2D_FLUID_ACTIVE_PAD")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(ACTIVE_REGION_PAD);
+        if !dabs.is_empty() {
+            // THIS frame's dab bbox (grid coords) — NOT the monotonic envelope `dab_region`.
+            let (mut x0, mut y0, mut x1, mut y1) = (dims.0 - 1, dims.1 - 1, 0u32, 0u32);
+            for d in &dabs {
+                let lo_x = (d.cx - d.r).floor().clamp(0.0, (dims.0 - 1) as f32) as u32;
+                let lo_y = (d.cy - d.r).floor().clamp(0.0, (dims.1 - 1) as f32) as u32;
+                let hi_x = (d.cx + d.r).ceil().clamp(0.0, (dims.0 - 1) as f32) as u32;
+                let hi_y = (d.cy + d.r).ceil().clamp(0.0, (dims.1 - 1) as f32) as u32;
+                x0 = x0.min(lo_x);
+                y0 = y0.min(lo_y);
+                x1 = x1.max(hi_x);
+                y1 = y1.max(hi_y);
+            }
+            sess.active_history.push_back((sess.frame, (x0, y0, x1, y1)));
+        }
+        let cur_frame = sess.frame;
+        while sess
+            .active_history
+            .front()
+            .is_some_and(|&(f, _)| cur_frame.saturating_sub(f) > win)
+        {
+            sess.active_history.pop_front();
+        }
         let region = if capillary_active {
-            let env = match sess.wet_bbox {
-                Some(wb) => union_bbox(dab_region, wb),
-                None => dab_region,
-            };
-            grow_bbox(env, CAPILLARY_FRINGE_PAD, dims)
+            match sess.active_history.iter().map(|(_, b)| *b).reduce(union_bbox) {
+                Some(active) => grow_bbox(active, pad, dims),
+                None => dab_region, // no recent dabs (settled) — idle_skip handles the cost
+            }
         } else {
             dab_region
         };
@@ -409,7 +473,18 @@ pub(crate) fn drive_fluid_gpu(
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is
         // O(wet frontier), not O(grid) — the dominant 4K cost (per the perf bench).
-        if !idle_skip {
+        // ── R1 single-submit hot path (ADR-0085 §2.3-I1/I2) ──────────────────
+        // For the common case (pointer down, trivial layer stack — `trivial_hot`),
+        // the sim step, the to-texture composite AND the preview-slot copy fold into
+        // ONE encoder / ONE `queue.submit` (the merged block below), collapsing the
+        // ~4 per-frame fluid submits that backpressured `acquire_frame` (the 50 ms
+        // present-stall, perf §1) to 1, and the slot copy becomes a DIRTY-RECT (only
+        // the wet envelope) instead of the whole canvas. The math is byte-identical.
+        // The standalone `step_resident_splat` runs only when the merged path doesn't
+        // (idle skip / E5 non-trivial stack / readback lane).
+        let trivial_hot =
+            stroke_active && painter.preview_is_trivial_stack() && override_entity.is_some();
+        if !idle_skip && !trivial_hot {
             sess.solver
                 .step_resident_splat(&gpu.device, &gpu.queue, &gpu_dabs, substeps, region);
         }
@@ -438,38 +513,83 @@ pub(crate) fn drive_fluid_gpu(
         // layers (or opacity/blend/mask) the on-screen preview must be the FLATTENED stack,
         // which only the readback path (canvas_rgba → drain_preview re-composite) produces.
         // Multi-layer zero-readback = the E5 LayerCompositor chain (follow-up).
-        if stroke_active
-            && painter.preview_is_trivial_stack()
+        if trivial_hot
             && let Some(entity_bits) = override_entity
-            && sess
-                .compositor
-                .composite_frame_to_texture(&gpu.device, &gpu.queue, region)
-                .is_some()
         {
-            // Catch-up accumulator: union every grid region the texture path
-            // composited (canvas_rgba is stale over it until the readback
-            // frames after pen-up replay the union — see the readback arm).
-            sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
-                Some(d) => union_bbox(d, region),
-                None => region,
-            });
-            sess.catchup_bands = 0;
-            // Re-fetched every frame: `begin_stroke` recreates the compositor's
-            // preview texture on a canvas resize.
-            if let Some(tex) = sess.compositor.preview_texture()
-                && let Some(id) =
-                    copy_preview_into_slot(renderer, &mut sess.preview_slot, tex, cw, ch)
-            {
-                sess.texture_published = true;
-                texture_frame = true;
-                override_out = Some(PreviewOverride {
-                    entity_bits,
-                    texture_id: id,
-                    premultiplied: true,
+            let enc = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("fluid frame (R1 single submit)"),
                 });
+            // (1) Sim step (splat + substeps + combine) — encoded, not submitted.
+            let mut enc = sess.solver.encode_resident_splat_step(
+                &gpu.device,
+                &gpu.queue,
+                enc,
+                &gpu_dabs,
+                substeps,
+                region,
+            );
+            // (2) To-texture composite over the wet region (SAME encoder). `None` ⇒
+            // empty region: still submit the stepped field, fall through to readback.
+            if let Some((px_lo, py_lo, px_hi, py_hi)) = sess
+                .compositor
+                .encode_frame_to_texture(&gpu.queue, &mut enc, region)
+            {
+                // (3) Acquire/resize the slot (no GPU work); a FRESH or never-seeded
+                // slot gets the full backdrop seeded ONCE, then per-frame dirty-rect
+                // refreshes of only the wet rect (ADR-0085 §2.3-I2). All in `enc`.
+                let (id, fresh) = ensure_preview_slot(renderer, &mut sess.preview_slot, cw, ch);
+                let seed = fresh || !sess.preview_slot_seeded;
+                let copy_ok = if let Some(tex) = sess.compositor.preview_texture() {
+                    if seed {
+                        renderer
+                            .encode_copy_into_individual(&mut enc, id, tex, cw, ch)
+                            .is_ok()
+                    } else {
+                        renderer
+                            .encode_copy_region_into_individual(
+                                &mut enc,
+                                id,
+                                tex,
+                                px_lo,
+                                py_lo,
+                                px_lo,
+                                py_lo,
+                                px_hi - px_lo,
+                                py_hi - py_lo,
+                            )
+                            .is_ok()
+                    }
+                } else {
+                    false
+                };
+                gpu.queue.submit([enc.finish()]); // ← the SINGLE submit
+                if copy_ok {
+                    sess.preview_slot_seeded = true;
+                    // Catch-up accumulator: union every grid region the texture path
+                    // composited (canvas_rgba is stale over it until the readback
+                    // frames after pen-up replay the union — see the readback arm).
+                    sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
+                        Some(d) => union_bbox(d, region),
+                        None => region,
+                    });
+                    sess.catchup_bands = 0;
+                    sess.texture_published = true;
+                    texture_frame = true;
+                    override_out = Some(PreviewOverride {
+                        entity_bits,
+                        texture_id: id,
+                        premultiplied: true,
+                    });
+                } else {
+                    // Copy failed → drop the seed; fall through to the readback path
+                    // (canvas_rgba + the CPU preview keep the stroke alive, 1-frame lag).
+                    sess.preview_slot_seeded = false;
+                }
+            } else {
+                gpu.queue.submit([enc.finish()]);
             }
-            // On a copy failure we fall through to the readback path below
-            // (canvas_rgba + the CPU preview keep the stroke alive, 1-frame lag).
         }
         // ── E5 (ADR-0078 S2): NON-trivial GPU-representable stack mid-stroke ──
         // The fluid straight composite goes GPU→GPU into the LayerCompositor's

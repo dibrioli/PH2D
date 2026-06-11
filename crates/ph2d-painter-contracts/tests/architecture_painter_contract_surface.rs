@@ -23,6 +23,18 @@
 //! - `color_pipeline` — ADR-0051
 //! - `durability` — ADR-0052
 //! - `tier_policy` — ADR-0053
+//!
+//! ## Watercolor v2 (ADR-0085, 2026-06-10)
+//!
+//! [ADR-0085](../../../../docs/architecture/decisions/0085-watercolor-v2-gpu-first-realtime.md)
+//! supersede a **paridade bit-a-bit CPU↔GPU** (ex-ADR-0049-am1 / 0080 §2.5 / 0081 / 0082) por
+//! **invariantes físicos**, e retira a promessa de **sim CPU em tempo-real** (ADR-0049 §2.3/§2.11)
+//! ajustando a tier policy (ADR-0053: low-tier sem compute = aquarela off, não sim CPU). Isto
+//! **NÃO** toca a `mod fluid` abaixo: os caps de SUPERFÍCIE (`FluidSim ≤ 12` / `FluidParams ≤ 12`
+//! / `GravitySource ≤ 6`) ficam congelados — são ABI, não física. Os gates de paridade que saem
+//! vivem no crate `ph2d-painter-fluid` (`gpu_parity.rs` / `composite_parity.rs`) e são removidos
+//! na onda R3, não aqui. Os novos gates de PERF (single-submit / no full-canvas copy / no
+//! stroke-readback / O(bbox ativo)) entram quando o código de R1/R5 os tornar testáveis.
 
 use std::path::PathBuf;
 use walkdir::WalkDir;

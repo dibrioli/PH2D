@@ -89,6 +89,31 @@ pub(super) fn grow_bbox(
     )
 }
 
+/// **R1 (ADR-0085 §2.3-I1/I2): lazily acquire/resize the preview slot WITHOUT any
+/// GPU work**, so the single-submit hot path can encode the seed/refresh copy into
+/// its own shared encoder. Returns `(id, fresh)` — `fresh == true` when the slot
+/// was (re)created this call, meaning the caller must FULL-copy the backdrop once
+/// before switching to per-frame dirty-rect refreshes. Mirrors the acquire half of
+/// [`copy_preview_into_slot`] (which still owns the readback-lane / sheen path).
+pub(super) fn ensure_preview_slot(
+    renderer: &mut SpriteRenderer,
+    slot: &mut Option<(u32, u32, u32)>,
+    cw: u32,
+    ch: u32,
+) -> (u32, bool) {
+    match *slot {
+        Some((id, w, h)) if w == cw && h == ch => (id, false),
+        _ => {
+            if let Some((old, _, _)) = slot.take() {
+                renderer.individual_mut().release(old);
+            }
+            let id = renderer.acquire_individual_empty(cw, ch);
+            *slot = Some((id, cw, ch));
+            (id, true)
+        }
+    }
+}
+
 /// E4 (ADR-0078 S2): lazily acquire/resize the `IndividualTextureStore` slot and
 /// GPU-copy the fluid compositor's premultiplied preview texture into it (the
 /// rgba8unorm → Rgba8UnormSrgb copy is format-compatible; the renderer samples
@@ -312,6 +337,12 @@ pub(super) struct FluidSession {
     /// (lazy, mirroring `painter_gpu_preview::ensure_slot`). MUST be released via
     /// [`Self::release_preview_slot`] before the session is dropped or rebuilt.
     pub(super) preview_slot: Option<(u32, u32, u32)>,
+    /// **R1 dirty-rect seed flag** (ADR-0085 §2.3-I2): `true` once the preview slot
+    /// holds the FULL premultiplied backdrop, so the single-submit hot path can
+    /// refresh only the wet dirty-rect per frame (no full-canvas copy) instead of
+    /// re-copying the whole canvas. Reset whenever the slot is (re)acquired or
+    /// released; the next hot-path frame re-seeds with a one-time full copy.
+    pub(super) preview_slot_seeded: bool,
     /// **E4 catch-up accumulator**: union of every GRID region the zero-readback texture
     /// path composited (canvas_rgba is intentionally stale over it mid-stroke). The first
     /// readback frames after the texture→readback switch feed this union into
@@ -341,6 +372,13 @@ pub(super) struct FluidSession {
     /// idle; recompositing the whole envelope per frame was the dominant idle GPU cost,
     /// §4b). Reset to 0 by any dab or active stroke.
     pub(super) idle_frames: u64,
+    /// **Watercolor v2 (ADR-0085) — active-region window.** The per-frame work region (sim +
+    /// composite) follows the brush: `(frame, this-frame-dab-bbox)` for the last
+    /// `ACTIVE_WINDOW_FRAMES` frames, unioned. This bounds the sim to the actively-blooming
+    /// front instead of the monotonic all-time `wet_bbox` (which under Keep Wet grows to the
+    /// whole canvas → ~1M settled cells re-simulated every painting frame). Settled areas
+    /// freeze; their last composite stays in the preview texture. Reset on a new stroke.
+    pub(super) active_history: std::collections::VecDeque<(u64, (u32, u32, u32, u32))>,
 }
 
 impl FluidSession {
@@ -353,11 +391,13 @@ impl FluidSession {
             frame: 0,
             wet_bbox: None,
             preview_slot: None,
+            preview_slot_seeded: false,
             texture_mode_dirty: None,
             catchup_bands: 0,
             texture_published: false,
             keep_wet: false,
             idle_frames: 0,
+            active_history: std::collections::VecDeque::new(),
         }
     }
 
@@ -369,5 +409,6 @@ impl FluidSession {
             renderer.individual_mut().release(id);
         }
         self.texture_published = false;
+        self.preview_slot_seeded = false;
     }
 }

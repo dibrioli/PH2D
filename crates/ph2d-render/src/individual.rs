@@ -409,6 +409,128 @@ impl IndividualTextureStore {
         Ok(())
     }
 
+    /// **Encode-only sibling of [`Self::copy_from_texture`]** (Watercolor v2 R1,
+    /// ADR-0085 §2.3-I1): the full-canvas copy is encoded into the caller's `enc`
+    /// (NO submit), so the shell folds the fluid sim, composite and this seed copy
+    /// into ONE `queue.submit`. Used once to seed the preview slot's backdrop; the
+    /// per-frame refresh uses [`Self::encode_copy_region`]. Same validation as the
+    /// wrapper; a zero-area copy is a no-op.
+    pub fn encode_copy_from_texture(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        id: u32,
+        src: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        if entry.width != width || entry.height != height {
+            return Err(IndividualTextureError::CopySizeMismatch {
+                width,
+                height,
+                tex_width: entry.width,
+                tex_height: entry.height,
+            });
+        }
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
+        let prof_span = ph2d_gpu::pass_profiler::copy_span_begin(enc, "copy.slot");
+        enc.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: src,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &entry.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        if let Some(t) = prof_span {
+            ph2d_gpu::pass_profiler::copy_span_end(enc, t);
+        }
+        Ok(())
+    }
+
+    /// **Encode-only sibling of [`Self::copy_region_from_texture`]** (Watercolor v2 R1,
+    /// ADR-0085 §2.3-I1/I2): the dirty-rect copy is encoded into the caller's `enc`
+    /// (NO submit), so the per-frame preview refresh joins the single fluid submit AND
+    /// only touches the wet rect (no full-canvas bandwidth). The rect must lie within
+    /// both textures (caller clamps); an empty rect is a no-op.
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_copy_region(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        id: u32,
+        src: &wgpu::Texture,
+        src_x: u32,
+        src_y: u32,
+        dst_x: u32,
+        dst_y: u32,
+        w: u32,
+        h: u32,
+    ) -> Result<(), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        if dst_x + w > entry.width || dst_y + h > entry.height {
+            return Err(IndividualTextureError::CopySizeMismatch {
+                width: dst_x + w,
+                height: dst_y + h,
+                tex_width: entry.width,
+                tex_height: entry.height,
+            });
+        }
+        if w == 0 || h == 0 {
+            return Ok(());
+        }
+        let prof_span = ph2d_gpu::pass_profiler::copy_span_begin(enc, "copy.region");
+        enc.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: src,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: src_x,
+                    y: src_y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyTextureInfo {
+                texture: &entry.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: dst_x,
+                    y: dst_y,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
+        if let Some(t) = prof_span {
+            ph2d_gpu::pass_profiler::copy_span_end(enc, t);
+        }
+        Ok(())
+    }
+
     /// Increment the refcount for an existing entry. The renderer
     /// uses this when a sprite is duplicated via the M14.6 F context
     /// menu so the source texture survives even if the original

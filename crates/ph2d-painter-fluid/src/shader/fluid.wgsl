@@ -82,6 +82,8 @@ fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
 }
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (P.width * P.height) + cell; }
+
 // Wet gate g = smoothstep(w_lo, w_hi, water) · permeability(paper). 0 on dry
 // paper / crests ⇒ pigment freezes there (the bloom stops, the stroke "dries").
 fn gate(x: u32, y: u32) -> f32 {
@@ -132,13 +134,13 @@ fn cs_diffuse(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (has_u) { nu = idx(x, y - 1u); cu = 0.5 * (gc + gate(x, y - 1u)); }
     if (has_d) { nd = idx(x, y + 1u); cd = 0.5 * (gc + gate(x, y + 1u)); }
     for (var v = 0u; v < PV; v = v + 1u) {
-        let pc = pig_in[c * PV + v];
+        let pc = pig_in[pidx(c, v)];
         var acc = vec4<f32>(0.0);
-        if (has_l) { acc += cl * (pig_in[nl * PV + v] - pc); }
-        if (has_r) { acc += cr * (pig_in[nr * PV + v] - pc); }
-        if (has_u) { acc += cu * (pig_in[nu * PV + v] - pc); }
-        if (has_d) { acc += cd * (pig_in[nd * PV + v] - pc); }
-        pig_out[c * PV + v] = pc + P.diffusivity * acc;
+        if (has_l) { acc += cl * (pig_in[pidx(nl, v)] - pc); }
+        if (has_r) { acc += cr * (pig_in[pidx(nr, v)] - pc); }
+        if (has_u) { acc += cu * (pig_in[pidx(nu, v)] - pc); }
+        if (has_d) { acc += cd * (pig_in[pidx(nd, v)] - pc); }
+        pig_out[pidx(c, v)] = pc + P.diffusivity * acc;
     }
 }
 
@@ -164,7 +166,7 @@ fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (has_u) { fu = flow(x, y - 1u); }
     if (has_d) { fd = flow(x, y + 1u); }
     for (var v = 0u; v < PV; v = v + 1u) {
-        let pc = pig_in[c * PV + v];
+        let pc = pig_in[pidx(c, v)];
         var out = pc;
         // Outflow from c into existing downstream neighbours (the CPU "push").
         if (fc.x > 0.0 && has_r) { out -= fc.x * pc; }
@@ -172,11 +174,11 @@ fn cs_advect(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (fc.y > 0.0 && has_d) { out -= fc.y * pc; }
         if (fc.y < 0.0 && has_u) { out -= (-fc.y) * pc; }
         // Inflow: any neighbour whose flow points AT c contributes its push.
-        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[idx(x - 1u, y) * PV + v]; }
-        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[idx(x + 1u, y) * PV + v]; }
-        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[idx(x, y - 1u) * PV + v]; }
-        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[idx(x, y + 1u) * PV + v]; }
-        pig_out[c * PV + v] = out;
+        if (has_l && fl.x > 0.0) { out += fl.x * pig_in[pidx(idx(x - 1u, y), v)]; }
+        if (has_r && fr.x < 0.0) { out += (-fr.x) * pig_in[pidx(idx(x + 1u, y), v)]; }
+        if (has_u && fu.y > 0.0) { out += fu.y * pig_in[pidx(idx(x, y - 1u), v)]; }
+        if (has_d && fd.y < 0.0) { out += (-fd.y) * pig_in[pidx(idx(x, y + 1u), v)]; }
+        pig_out[pidx(c, v)] = out;
     }
 }
 
@@ -207,6 +209,6 @@ fn cs_deposit(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let c = idx(x, y);
     for (var v = 0u; v < PV; v = v + 1u) {
-        pig_out[c * PV + v] = pig_out[c * PV + v] + pig_in[c * PV + v];
+        pig_out[pidx(c, v)] = pig_out[pidx(c, v)] + pig_in[pidx(c, v)];
     }
 }

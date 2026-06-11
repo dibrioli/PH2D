@@ -48,6 +48,8 @@ struct Dab {
 @group(0) @binding(2) var<storage, read_write> pig: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> dabs: array<Dab>;
 
+fn pidx(cell: u32, v: u32) -> u32 { return v * (S.width * S.height) + cell; }
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     let gx = S.origin_x + gid.x;
@@ -59,7 +61,7 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     var w = water[i];
     var p: array<vec4<f32>, 8>;
     for (var v = 0u; v < PV; v = v + 1u) {
-        p[v] = pig[i * PV + v];
+        p[v] = pig[pidx(i, v)];
     }
     let fx = f32(gx);
     let fy = f32(gy);
@@ -79,6 +81,6 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     water[i] = w;
     for (var v = 0u; v < PV; v = v + 1u) {
-        pig[i * PV + v] = p[v];
+        pig[pidx(i, v)] = p[v];
     }
 }

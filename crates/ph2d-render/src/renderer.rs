@@ -357,6 +357,44 @@ impl SpriteRenderer {
         )
     }
 
+    /// Encode a full-canvas copy into an individual slot using a CALLER-OWNED
+    /// encoder (no submit). Watercolor v2 R1 (ADR-0085 §2.3-I1) seed path: the
+    /// shell folds the fluid sim + composite + this copy into one `queue.submit`.
+    /// Wrapper over [`IndividualTextureStore::encode_copy_from_texture`].
+    pub fn encode_copy_into_individual(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        texture_id: u32,
+        src: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        self.individual
+            .encode_copy_from_texture(enc, texture_id, src, width, height)
+    }
+
+    /// Encode a dirty-rect copy into an individual slot using a CALLER-OWNED
+    /// encoder (no submit). Watercolor v2 R1 (ADR-0085 §2.3-I1/I2) per-frame
+    /// refresh: joins the single fluid submit and touches only the wet rect.
+    /// Wrapper over [`IndividualTextureStore::encode_copy_region`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn encode_copy_region_into_individual(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        texture_id: u32,
+        src: &wgpu::Texture,
+        src_x: u32,
+        src_y: u32,
+        dst_x: u32,
+        dst_y: u32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), IndividualTextureError> {
+        self.individual.encode_copy_region(
+            enc, texture_id, src, src_x, src_y, dst_x, dst_y, width, height,
+        )
+    }
+
     /// Convenience for the image-edit path: copy an individual
     /// texture's GPU contents back to a `Vec<u8>` (RGBA8, tightly
     /// packed). Used by Trim Transparency / Background Removal when

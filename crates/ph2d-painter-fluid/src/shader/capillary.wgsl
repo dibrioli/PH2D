@@ -118,18 +118,31 @@ const CAPILLARY_MIN_SAT: f32 = 0.005;
 // the floor stays at `CAPILLARY_MIN_SAT` (the validated fringe, unchanged); raising it shortens the
 // fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
 const CAP_PIN_BASE: f32 = 0.35;
-const CAP_PIN_K: f32 = 3.0;
+const CAP_PIN_K: f32 = 1.5;
 
-fn capillary_floor() -> f32 {
-    return CAPILLARY_MIN_SAT + max(0.0, P.surface_tension - CAP_PIN_BASE) * CAP_PIN_K;
+// Where the surface-tension wick taper reaches FULL strength. Above `surface_tension = 0.35` this
+// rises, so the wick is progressively suppressed below it ⇒ a SHORTER fringe; the taper is a
+// smoothstep (not a hard cutoff), so the fringe stays SOFT (a gradient), which is what keeps the
+// Keep-Wet + high-surface-tension rim from hardening into a crisp dark outline.
+fn capillary_taper_hi() -> f32 {
+    return max(
+        CAPILLARY_MIN_SAT + max(0.0, P.surface_tension - CAP_PIN_BASE) * CAP_PIN_K,
+        CAPILLARY_MIN_SAT + 0.02,
+    );
 }
 
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
-    if (max(water_in[ni], wc) <= capillary_floor()) {
+    let wetter = max(water_in[ni], wc);
+    if (wetter <= CAPILLARY_MIN_SAT) {
         return FaceInfo(0.0, 0.0, 0u, ni);
     }
     let permn = perm_at(ni);
-    var cond = 0.5 * (permc + permn);
+    // SOFT surface-tension pin: ramp the wick conductance to 0 as the wetter side thins toward the
+    // pinned floor, instead of a hard cutoff (ADR-0079-amendment-1). A hard floor pinned the water
+    // in a step ⇒ a crisp dark rim under Keep Wet + high Surface Tension; the smoothstep keeps the
+    // bounded fringe soft. At `surface_tension ≤ 0.35` the band is ~[0.005, 0.025] (the validated
+    // fringe, ~unchanged); higher widens it ⇒ shorter but still-feathered fringe.
+    var cond = 0.5 * (permc + permn) * smoothstep(CAPILLARY_MIN_SAT, capillary_taper_hi(), wetter);
     // Branched (fiber-channeled) capillary (ADR-0082, crest-gate re-tune 2026-06-09): the face
     // conductance is GATED by the paper fibre — crests (paper_face ≥ 0.60) keep FULL conductance
     // (fingers grow at full wick speed), valleys (≤ 0.40) close completely at branching = 1; the

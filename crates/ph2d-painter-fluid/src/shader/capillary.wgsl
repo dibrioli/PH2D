@@ -118,18 +118,18 @@ const CAPILLARY_MIN_SAT: f32 = 0.005;
 // the floor stays at `CAPILLARY_MIN_SAT` (the validated fringe, unchanged); raising it shortens the
 // fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
 const CAP_PIN_BASE: f32 = 0.35;
-// Floor gain (3-agent audit 2026-06-12, REVISED): the floor must stay AT OR BELOW the wet gate
-// `w_hi` (0.4) — otherwise the pool plateaus ABOVE the gate and its boundary cliffs straight from
-// `floor` to 0, SKIPPING the 0.05..0.4 mass-grading band, so the rim is a 1-cell hard step that
-// magnifies into square pixels (the pixelated-rim bug). At the slider max (0.6) this gives
-// floor ≈ 0.005 + 0.25·1.5 = 0.38 ≲ w_hi, so the bounded fringe sits INSIDE the gate where the
-// minimal Keep-Wet evaporation (KEEP_WET_EVAP, `lifecycle.rs`) recedes the front through it and
-// grades the mass over several cells → the soft border Enio validated ("se há o mínimo de
-// evaporação, a borda fica boa"). Bounding is now SHARED with that evaporation (water leaves the
-// system) — the floor no longer has to be the sole stop, so it needn't reach pool saturation
-// (the pre-evap reason it was 3.5). Higher Surface Tension ⇒ higher floor ⇒ tighter fringe.
-const CAP_PIN_K: f32 = 1.5;
-const CAP_TAPER_BAND: f32 = 0.08; // soft ramp width ABOVE the pin floor (keeps the bounded fringe feathered)
+// Floor gain (contact-line-pinning rework 2026-06-12): the floor now gates ONLY the WETTING of a
+// DRY cell (dry→wet), NOT the conductance between two already-wet cells — see `face_info`. So a
+// high floor bounds the pool TIGHTLY (a saturated dab barely wets past the painted area) WITHOUT
+// pinning the wet edge into a 1-cell cliff: the edge water drains freely down to the residual
+// CAPILLARY_MIN_SAT, grading softly through the deposition band → a multi-cell soft rim. Bounding
+// and edge-sharpness — the two jobs the floor used to conflate — are now decoupled, so the floor
+// can be high again. At the slider max (0.6): floor ≈ 0.005 + 0.25·3.5 = 0.88 (tight pool).
+const CAP_PIN_K: f32 = 3.5;
+// Inter-wet conductance ramp width, measured ABOVE CAPILLARY_MIN_SAT. Widened to span the
+// deposition gate (w_lo..w_hi ≈ 0.05..0.4, `diffusion.rs`) so the wet edge grades softly THROUGH
+// that band — graded deposition over several cells instead of a 1-cell pile-up = un-pixelated rim.
+const CAP_TAPER_BAND: f32 = 0.35;
 
 // Surface-tension pin floor: BELOW this water level the wick is dead, so the fringe STOPS there ⇒
 // the Keep-Wet envelope is BOUNDED. Rises above `surface_tension = 0.35` ⇒ a shorter fringe; 0.35
@@ -139,18 +139,38 @@ fn capillary_floor() -> f32 {
 }
 
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
-    let wetter = max(water_in[ni], wc);
+    let wn = water_in[ni];
+    let wetter = max(wn, wc);
     if (wetter <= CAPILLARY_MIN_SAT) {
         return FaceInfo(0.0, 0.0, 0u, ni);
     }
-    let permn = perm_at(ni);
-    // Surface-tension pin (ADR-0079-amendment-1): the wick conductance is 0 BELOW the floor (the
-    // fringe stops there ⇒ the pool's expansion is bounded), ramping up over a soft band ABOVE it
-    // (smoothstep, not a hard step) so the bounded fringe stays FEATHERED — a hard cutoff pinned the
-    // water in a step ⇒ the crisp dark rim under Keep Wet + high Surface Tension. At
-    // `surface_tension ≤ 0.35` the floor is 0.005 ⇒ the validated full fringe (soft tail only).
+    // **Contact-line pinning / hysteresis (ADR-0079-amendment-1, rework 2026-06-12).** The
+    // surface-tension floor gates ONLY the WETTING of a DRY cell: a dry cell (≤ MIN_SAT) is
+    // wetted by a wet neighbour ONLY if that neighbour exceeds the floor — that pins the contact
+    // line and BOUNDS the pool (the fringe can't advance once the front thins below the floor).
+    // But two ALREADY-WET cells redistribute FREELY (gated only at the physical residual
+    // MIN_SAT), so the wet edge can drain to a soft multi-cell ramp instead of being pinned in a
+    // 1-cell step at the floor — the former conflation of "bound the pool" and "keep the edge
+    // sharp" in one threshold is what cliffed the rim into magnified square pixels at Keep Wet +
+    // high Surface Tension. Decoupling them: the floor still bounds (wetting gate); the edge stays
+    // feathered (conductance ramps from MIN_SAT through the deposition band). Gate depends only on
+    // the (wc, wn) pair ⇒ both face threads agree ⇒ conductance symmetric ⇒ water mass conserved.
     let floor = capillary_floor();
-    var cond = 0.5 * (permc + permn) * smoothstep(floor, floor + CAP_TAPER_BAND, wetter);
+    let c_wet = wc > CAPILLARY_MIN_SAT;
+    let n_wet = wn > CAPILLARY_MIN_SAT;
+    var allowed = true;
+    if (c_wet && !n_wet) {
+        allowed = wc > floor; // c wets dry n only above the floor
+    } else if (n_wet && !c_wet) {
+        allowed = wn > floor; // n wets dry c only above the floor
+    }
+    if (!allowed) {
+        return FaceInfo(0.0, 0.0, 0u, ni);
+    }
+    let permn = perm_at(ni);
+    // Conductance ramps from the residual MIN_SAT (not the floor) over CAP_TAPER_BAND, which spans
+    // the deposition gate so the bounded edge grades softly through it (un-pixelated rim).
+    var cond = 0.5 * (permc + permn) * smoothstep(CAPILLARY_MIN_SAT, CAPILLARY_MIN_SAT + CAP_TAPER_BAND, wetter);
     // Branched (fiber-channeled) capillary (ADR-0082, crest-gate re-tune 2026-06-09): the face
     // conductance is GATED by the paper fibre — crests (paper_face ≥ 0.60) keep FULL conductance
     // (fingers grow at full wick speed), valleys (≤ 0.40) close completely at branching = 1; the
@@ -164,7 +184,6 @@ fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> 
     let gate = gt * gt * (3.0 - 2.0 * gt);
     let fiber_factor = 1.0 - P.capillary_branching * (1.0 - gate);
     cond = cond * fiber_factor;
-    let wn = water_in[ni];
     var frac = 0.0;
     var kind = 0u;
     if (wc > wn) {

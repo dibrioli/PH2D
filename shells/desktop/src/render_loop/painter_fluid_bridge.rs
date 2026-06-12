@@ -258,15 +258,12 @@ pub(crate) fn drive_fluid_gpu(
 
         // ── Per-frame hot loop (resident, no O(grid) CPU work, no upload) ──
         // Drain this frame's dabs + the monotonic dab-bbox envelope; `None` ⇒ never wet.
-        let capillary_active = painter.fluid_capillary_active();
         let (dabs, dab_region) = painter.fluid_take_dabs()?;
-        // Capillary fringe (ADR-0078 S5 §2.2): the water wicks OUTWARD past the dab bboxes, so
-        // the composite must follow it or it clips the soft fringe into a rectangle. Grow the
-        // envelope = union(dab bboxes, all-time wet bbox) + a fringe pad. The wet-bbox union
-        // (from the sporadic stats) tracks the real fringe extent (incl. extreme params); the
-        // pad covers its read-to-read lag. A non-capillary brush keeps the bare dab envelope
-        // (zero change to the validated look). The solver pads this by SOLVER_REGION_PAD on
-        // top, so solver ⊇ composite still holds.
+        // The work region unions this frame's dabs, the recent-dab window AND the live wet front
+        // (`wet_bbox`) + a pad (below). The solver pads it by SOLVER_REGION_PAD on top, so
+        // solver ⊇ composite still holds. The wet-front term is what lets the diffusion blend the
+        // whole wet field (wet-on-wet) AND lets the capillary wick spread past the dab bboxes
+        // without the region's straight edge clipping the soft fringe into a rectangle.
         // ── Active-region window (ADR-0085) ──────────────────────────────────────
         // The per-frame WORK region (sim + composite) follows the BRUSH: this frame's dab
         // bbox is pushed and the last ACTIVE_WINDOW_FRAMES are unioned + a wick pad. This is
@@ -301,29 +298,32 @@ pub(crate) fn drive_fluid_gpu(
         {
             sess.active_history.pop_front();
         }
-        let region = if capillary_active {
-            // The work region (sim + composite) follows BOTH the recent dabs (the active-region
-            // window) AND the actual wet front (`wet_bbox`, the latest stats read), unioned + a
-            // pad. Without the wet-front term the capillary wick bleeds past the dab window and
-            // the region's straight edge clips it into a rectangle ("borda reta", ADR-0085). The
-            // wet bbox is non-monotonic (shrinks as it dries), so this stays bounded — no runaway.
-            let active = sess
-                .active_history
-                .iter()
-                .map(|(_, b)| *b)
-                .reduce(union_bbox);
-            let combined = match (active, sess.wet_bbox) {
-                (Some(a), Some(w)) => Some(union_bbox(a, w)),
-                (Some(b), None) | (None, Some(b)) => Some(b),
-                (None, None) => None,
-            };
-            match combined {
-                Some(b) => grow_bbox(b, pad, dims),
-                // Nothing recent + bone-dry: fall back to the dab envelope (still-visible pigment).
-                None => dab_region,
-            }
-        } else {
-            dab_region
+        // The work region (sim + composite) follows BOTH the recent dabs (the active-region
+        // window) AND the actual wet front (`wet_bbox`, NON-monotonic — the latest stats read),
+        // unioned + a pad. **Unconditional (ADR-0085 — the wet-on-wet "behaves like dry" fix):**
+        // the DIFFUSION is always on and blends the WHOLE wet field (wet marks dilute into each
+        // other), so the sim must cover ALL the wet pigment, not just this frame's dab — else
+        // prior strokes sit OUTSIDE the region, `cs_diffuse` skips them (`in_region` false), and
+        // they freeze into fixed marks (the concentric-ring artefact). The capillary wick has the
+        // same need (it bleeds past the dab window → the "borda reta" rectangle). Because
+        // `wet_bbox` is NON-monotonic (it shrinks as the field dries; C1 pinning bounds its
+        // growth), unioning it does NOT regrow to the whole canvas the way the OLD monotonic
+        // envelope did (the cost the active-region window was added to avoid) — it tracks the real
+        // wet extent, so a settled wash sims only its own pinned footprint.
+        let active = sess
+            .active_history
+            .iter()
+            .map(|(_, b)| *b)
+            .reduce(union_bbox);
+        let combined = match (active, sess.wet_bbox) {
+            (Some(a), Some(w)) => Some(union_bbox(a, w)),
+            (Some(b), None) | (None, Some(b)) => Some(b),
+            (None, None) => None,
+        };
+        let region = match combined {
+            Some(b) => grow_bbox(b, pad, dims),
+            // Nothing recent + bone-dry: fall back to the dab envelope (still-visible pigment).
+            None => dab_region,
         };
         // Map the tool's plain dabs → GPU dabs (the `r.max(0.5)` / radius>0 guard lives
         // in `DabGpu::new`, mirroring the CPU splat). `cs_splat` adds them to the

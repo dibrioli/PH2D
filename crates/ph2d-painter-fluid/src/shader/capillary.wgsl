@@ -119,16 +119,13 @@ const CAPILLARY_MIN_SAT: f32 = 0.005;
 // fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
 const CAP_PIN_BASE: f32 = 0.35;
 const CAP_PIN_K: f32 = 1.5;
+const CAP_TAPER_BAND: f32 = 0.08; // soft ramp width ABOVE the pin floor (keeps the bounded fringe feathered)
 
-// Where the surface-tension wick taper reaches FULL strength. Above `surface_tension = 0.35` this
-// rises, so the wick is progressively suppressed below it ⇒ a SHORTER fringe; the taper is a
-// smoothstep (not a hard cutoff), so the fringe stays SOFT (a gradient), which is what keeps the
-// Keep-Wet + high-surface-tension rim from hardening into a crisp dark outline.
-fn capillary_taper_hi() -> f32 {
-    return max(
-        CAPILLARY_MIN_SAT + max(0.0, P.surface_tension - CAP_PIN_BASE) * CAP_PIN_K,
-        CAPILLARY_MIN_SAT + 0.02,
-    );
+// Surface-tension pin floor: BELOW this water level the wick is dead, so the fringe STOPS there ⇒
+// the Keep-Wet envelope is BOUNDED. Rises above `surface_tension = 0.35` ⇒ a shorter fringe; 0.35
+// keeps the validated floor (0.005).
+fn capillary_floor() -> f32 {
+    return CAPILLARY_MIN_SAT + max(0.0, P.surface_tension - CAP_PIN_BASE) * CAP_PIN_K;
 }
 
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
@@ -137,12 +134,13 @@ fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> 
         return FaceInfo(0.0, 0.0, 0u, ni);
     }
     let permn = perm_at(ni);
-    // SOFT surface-tension pin: ramp the wick conductance to 0 as the wetter side thins toward the
-    // pinned floor, instead of a hard cutoff (ADR-0079-amendment-1). A hard floor pinned the water
-    // in a step ⇒ a crisp dark rim under Keep Wet + high Surface Tension; the smoothstep keeps the
-    // bounded fringe soft. At `surface_tension ≤ 0.35` the band is ~[0.005, 0.025] (the validated
-    // fringe, ~unchanged); higher widens it ⇒ shorter but still-feathered fringe.
-    var cond = 0.5 * (permc + permn) * smoothstep(CAPILLARY_MIN_SAT, capillary_taper_hi(), wetter);
+    // Surface-tension pin (ADR-0079-amendment-1): the wick conductance is 0 BELOW the floor (the
+    // fringe stops there ⇒ the pool's expansion is bounded), ramping up over a soft band ABOVE it
+    // (smoothstep, not a hard step) so the bounded fringe stays FEATHERED — a hard cutoff pinned the
+    // water in a step ⇒ the crisp dark rim under Keep Wet + high Surface Tension. At
+    // `surface_tension ≤ 0.35` the floor is 0.005 ⇒ the validated full fringe (soft tail only).
+    let floor = capillary_floor();
+    var cond = 0.5 * (permc + permn) * smoothstep(floor, floor + CAP_TAPER_BAND, wetter);
     // Branched (fiber-channeled) capillary (ADR-0082, crest-gate re-tune 2026-06-09): the face
     // conductance is GATED by the paper fibre — crests (paper_face ≥ 0.60) keep FULL conductance
     // (fingers grow at full wick speed), valleys (≤ 0.40) close completely at branching = 1; the

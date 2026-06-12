@@ -17,16 +17,17 @@ pub(super) const WET_FIELD_SCALE: u32 = 2;
 
 const WET_WATER_DEPOSIT: f32 = 0.55;
 const WET_PIGMENT_DEPOSIT: f32 = 0.5;
-// Diffusion sub-steps per frame. **Raised 1→6 / 2→6 (ADR-0085 — the wet-on-wet "behaves like
-// dry" fix).** The diffuse pass works + `Diffusivity` has a strong effect (proven:
-// `physical_invariants::diffusivity_actually_diffuses`, peak 1.0→0.43 in 40 steps), but at ONE
-// step/frame the per-dab pigment deposit (0.5 mass) dominates while painting and the bloom is too
-// slow to read — wet marks looked frozen ("the Diffusivity slider does nothing"). More sub-steps
+// Diffusion sub-steps per frame. **Raised 1→3 / 2→3 (ADR-0085 — wet-on-wet bloom).** The diffuse
+// pass works + `Diffusivity` has a strong effect (proven:
+// `physical_invariants::diffusivity_actually_diffuses`, peak 1.0→0.43 in 40 steps); more sub-steps
 // = more diffusion per frame, so freshly-laid pigment visibly blooms into the wet field as you
-// paint. The sim is region-scoped + single-submit, so the extra kernels are cheap (the cost was
-// always submit/copy, not compute — HANDOFF watercolor v2).
-const WET_SUBSTEPS_PAINTING: u32 = 6;
-const WET_SUBSTEPS_IDLE: u32 = 6;
+// paint. Kept MODEST (3, not 6): the sub-step loop ALSO runs deposition + evaporation, so a high
+// count would over-deposit/over-dry the ratified DRY look. The real wet-on-wet fix is suppressing
+// deposition while the field is wet (`fluid_diffusion_params`), which keeps the pigment mobile so
+// it actually diffuses instead of freezing into the `deposited` layer. Region-scoped +
+// single-submit, so the extra diffuse kernels are cheap (the cost was always submit/copy).
+const WET_SUBSTEPS_PAINTING: u32 = 3;
+const WET_SUBSTEPS_IDLE: u32 = 3;
 const WET_DRY_THRESHOLD: f32 = 0.045;
 /// Coverage rate: `alpha = 1 − exp(−amount · K)`, where `amount` is the
 /// COLOUR-INDEPENDENT pigment load. The grid stores colour×amount, so the raw
@@ -520,6 +521,18 @@ impl PainterTool {
             // Keep Wet = never dry. The Keep-Wet equilibrium is handled by the surface-tension
             // pinning in the solver (C1), not by a residual evaporation — so this stays 0.0.
             dp.evaporation = 0.0;
+        }
+        // **Deposition follows DRYING (ADR-0085 — the "marked edges don't dissolve when wet" fix).**
+        // Pigment strands on the paper as the water LEAVES; the base deposition (0.012/substep) +
+        // edge-darkening (`deposition_dry`·dry) otherwise freeze pigment into the non-diffusing
+        // `deposited` layer EVEN on a fully wet field — marking stroke edges that never re-dissolve
+        // and making wet-on-wet "behave like dry". With no evaporation (Keep Wet, or the Evaporation
+        // slider at 0) the wash stays wet, so the pigment must stay MOBILE: zero deposition, no
+        // frozen edges, wet-on-wet keeps blending. Evaporation > 0 (the ratified default look)
+        // restores deposition + edge-darkening as the wash dries.
+        if dp.evaporation <= 0.0 {
+            dp.deposition = 0.0;
+            dp.deposition_dry = 0.0;
         }
         dp
     }

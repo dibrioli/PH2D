@@ -3526,6 +3526,31 @@ fn keep_wet_field_never_drops_on_dry_check() {
 }
 
 #[test]
+fn no_evaporation_suppresses_deposition_for_wet_on_wet() {
+    // ADR-0085 ("as bordas são marcadas e não saem mesmo úmidas"): deposition (base settling +
+    // edge-darkening) physically follows DRYING. With no evaporation (Keep Wet, or the Evaporation
+    // slider at 0) the wash stays wet, so the pigment must stay MOBILE — zero deposition, no frozen
+    // edges — or it freezes into the non-diffusing `deposited` layer and wet-on-wet "behaves like
+    // dry". Evaporation > 0 (the ratified default) keeps deposition on so the wash dries with edges.
+    let mut t = PainterTool::default();
+    let dp = t.fluid_diffusion_params();
+    assert!(dp.evaporation > 0.0, "default wash dries (ratified look)");
+    assert!(
+        dp.deposition > 0.0 && dp.deposition_dry > 0.0,
+        "default look deposits + edge-darkens as it dries"
+    );
+    // Keep Wet → evaporation forced 0 → deposition + edge-darkening suppressed.
+    t.keep_wet = true;
+    let dp = t.fluid_diffusion_params();
+    assert_eq!(dp.evaporation, 0.0);
+    assert_eq!(dp.deposition, 0.0, "keep-wet must suppress base deposition");
+    assert_eq!(
+        dp.deposition_dry, 0.0,
+        "keep-wet must suppress edge-darkening (the marked edges)"
+    );
+}
+
+#[test]
 fn fluid_gpu_envelope_never_recedes_under_evaporation() {
     // REGRESSION (Enio "bordas cheias de quinas retangulares", 2026-06-07): the GPU
     // composite region must be the MONOTONIC wet envelope, not the current water

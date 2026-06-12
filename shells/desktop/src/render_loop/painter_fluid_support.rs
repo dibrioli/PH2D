@@ -326,11 +326,6 @@ pub(super) struct FluidSession {
     pub(super) dims: (u32, u32),
     pub(super) epoch: u64,
     pub(super) frame: u64,
-    /// **All-time wet bbox of this stroke** (union of the sporadic `read_field_stats` bboxes,
-    /// reset on a new epoch). The capillary fringe wicks the wet region OUTWARD past the dab
-    /// bboxes; the water bbox also recedes as the wash dries, so a SUPERSET-correct envelope
-    /// must take the monotonic union (the §3.4 / §2.2 lesson). `None` until the first read.
-    pub(super) wet_bbox: Option<(u32, u32, u32, u32)>,
     /// **E4 (ADR-0078 S2): the `IndividualTextureStore` slot** the mid-stroke texture path
     /// GPU-copies the compositor's premultiplied preview into — `(texture_id, w, h)` so a
     /// canvas-size change releases + re-acquires. `None` until the first texture-mode frame
@@ -389,7 +384,6 @@ impl FluidSession {
             dims,
             epoch: u64::MAX,
             frame: 0,
-            wet_bbox: None,
             preview_slot: None,
             preview_slot_seeded: false,
             texture_mode_dirty: None,

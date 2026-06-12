@@ -625,6 +625,12 @@ impl RasterEditTool for PainterTool {
         self.wet_field = None;
         self.wet_backdrop = None;
         self.wet_composite_bbox = None;
+        // Defense in depth (ADR-0085 stability): null the monotonic fluid envelope + the dab
+        // list too, so a document swap leaves NO stale fluid state that a later reused-field
+        // path could composite onto the wrong pixels. (Today a fresh field is rebuilt on the
+        // next stroke, which resets these — but the reset must not depend on that coupling.)
+        self.wet_pigment_envelope = None;
+        self.fluid_dabs.clear();
     }
 
     /// Devolve referência ao composite atual iff houve update desde a última

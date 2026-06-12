@@ -41,8 +41,6 @@ pub(super) fn maybe_begin_fluid_stroke(
     sess.solver
         .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
     sess.frame = 0;
-    // New stroke → forget the previous stroke's wet envelope (ADR-0078 S5).
-    sess.wet_bbox = None;
     sess.active_history.clear();
     // E4: `begin_stroke` below recreates the compositor's preview texture
     // (seeded with the new premultiplied backdrop), so nothing published yet

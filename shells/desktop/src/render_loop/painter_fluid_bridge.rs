@@ -46,11 +46,10 @@ const DRY_CHECK_EVERY: u64 = 20;
 /// **Watercolor v2 (ADR-0085) — active-region window.** A grid area stays in the per-frame
 /// WORK region (sim + composite) for this many frames after the last dab landed there, then
 /// freezes (its composite persists in the preview texture). ~1.5 s at 60 fps — long enough for
-/// the bloom to develop, short enough that a settled wash stops costing. `PH2D_FLUID_ACTIVE_WINDOW`
-/// overrides for live tuning.
+/// the bloom to develop, short enough that a settled wash stops costing.
 const ACTIVE_WINDOW_FRAMES: u64 = 90;
 /// Pad (grid cells) grown around the active-dab window to cover the capillary wick advancing
-/// outward from the recent dabs. `PH2D_FLUID_ACTIVE_PAD` overrides for live tuning.
+/// outward from the recent dabs.
 const ACTIVE_REGION_PAD: u32 = 48;
 
 /// **Idle decimation cadence (perf block 2b).** With a live field but the pointer up and
@@ -211,24 +210,14 @@ pub(crate) fn drive_fluid_gpu(
 
     painter.set_gpu_fluid_driven(true);
     let dims = painter.fluid_grid_dims()?;
-    // Watercolor v2 bisection (ADR-0085): `PH2D_FLUID_SUBSTEPS` overrides the sub-step
-    // count — `0` runs splat+combine+composite but NONE of the diffuse/advect/transfer/
-    // capillary passes, isolating the per-frame SIM cost from the COMPOSITE cost without
-    // trusting the TBDR-inflated pass spans. (substeps=0 recovers FPS ⇒ the sim passes are
-    // the cost; still drops ⇒ it's the composite/copy/base path.)
-    let substeps = std::env::var("PH2D_FLUID_SUBSTEPS")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or_else(|| {
-            // Watercolor v2 (ADR-0085): use the PAINTING sub-step count (1) while a stroke is
-            // live — the GPU drive was wrongly running the idle count (2) for both, doubling
-            // the ~40-pass chain every painting frame. Idle keeps 2 (it's decimated anyway).
-            if painter.is_stroke_active() {
-                painter.fluid_painting_substeps()
-            } else {
-                painter.fluid_idle_substeps()
-            }
-        });
+    // Watercolor v2 (ADR-0085): the PAINTING sub-step count (1) while a stroke is live — the
+    // GPU drive once ran the idle count (2) for both, doubling the ~40-pass chain every painting
+    // frame. Idle keeps 2 (it's decimated anyway).
+    let substeps = if painter.is_stroke_active() {
+        painter.fluid_painting_substeps()
+    } else {
+        painter.fluid_idle_substeps()
+    };
     let epoch = painter.fluid_stroke_epoch();
     let scale = painter.fluid_field_scale();
     let coverage_k = painter.fluid_coverage_k();
@@ -288,15 +277,9 @@ pub(crate) fn drive_fluid_gpu(
         // `wet_bbox`, which under Keep Wet grows to the whole canvas → ~1M settled cells
         // re-simulated every painting frame (the profiler's `region=(0,0)-(W,H)` with dabs=2).
         // Settled areas (outside the window) freeze; their last composite persists in the
-        // preview texture. Env-tunable for the bloom-extent ↔ perf trade-off.
-        let win = std::env::var("PH2D_FLUID_ACTIVE_WINDOW")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(ACTIVE_WINDOW_FRAMES);
-        let pad = std::env::var("PH2D_FLUID_ACTIVE_PAD")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(ACTIVE_REGION_PAD);
+        // preview texture.
+        let win = ACTIVE_WINDOW_FRAMES;
+        let pad = ACTIVE_REGION_PAD;
         if !dabs.is_empty() {
             // THIS frame's dab bbox (grid coords) — NOT the monotonic envelope `dab_region`.
             let (mut x0, mut y0, mut x1, mut y1) = (dims.0 - 1, dims.1 - 1, 0u32, 0u32);
@@ -516,12 +499,6 @@ pub(crate) fn drive_fluid_gpu(
                 ph2d_painter_brush::diffusion::WET_BBOX_WATER_THRESHOLD,
             );
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
-            // Grow the all-time wet envelope (ADR-0078 S5): the capillary fringe pushes the
-            // wet bbox out; union it (never shrink — drying recedes it) so the composite keeps
-            // covering the fringe. Only consumed while the brush's capillary layer is on.
-            if let Some(b) = stats.bbox {
-                sess.wet_bbox = Some(sess.wet_bbox.map_or(b, |prev| union_bbox(prev, b)));
-            }
             stats_us = ts.map_or(0, |t| t.elapsed().as_micros() as u64);
         }
         if profile {

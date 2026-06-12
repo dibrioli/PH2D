@@ -15,13 +15,6 @@ const WET_EDGE_RIM_FRACTION: f32 = 0.15;
 /// density→alpha exponent for the composite.
 pub(super) const WET_FIELD_SCALE: u32 = 2;
 
-/// Read an `f32` from an env var (Watercolor v2 live-tuning knobs, ADR-0085). `None` if
-/// unset/unparseable — so a knob left unset keeps the shipped default. Read per stroke /
-/// per Keep-Wet toggle (not per frame), so live edits take effect on the next stroke.
-fn env_f32(name: &str) -> Option<f32> {
-    std::env::var(name).ok().and_then(|s| s.parse::<f32>().ok())
-}
-
 const WET_WATER_DEPOSIT: f32 = 0.55;
 const WET_PIGMENT_DEPOSIT: f32 = 0.5;
 const WET_SUBSTEPS_PAINTING: u32 = 1;
@@ -404,12 +397,6 @@ impl PainterTool {
     /// overrides for live perf bisection (e.g. `PH2D_FLUID_SCALE=4`); the upsample covers
     /// the look. Clamped ≥ 1.
     fn live_field_scale(&self) -> u32 {
-        if let Some(v) = std::env::var("PH2D_FLUID_SCALE")
-            .ok()
-            .and_then(|s| s.parse::<u32>().ok())
-        {
-            return v.max(1);
-        }
         if self.fluid_hires { 1 } else { WET_FIELD_SCALE }
     }
 
@@ -525,15 +512,6 @@ impl PainterTool {
             // Keep Wet = never dry. The Keep-Wet equilibrium is handled by the surface-tension
             // pinning in the solver (C1), not by a residual evaporation — so this stays 0.0.
             dp.evaporation = 0.0;
-        }
-        // **Watercolor v2 (ADR-0085) — MacCormack sharpness (perf).** `sharpness > 0` runs the
-        // BFECC/MacCormack correction (`cs_advect_velocity_rev` + `cs_advect_correct`), which
-        // TRIPLES the most expensive sim pass (the 32-channel velocity advect). Setting it to 0
-        // drops the two extra passes → `advect_v ×1`, the biggest single sim cut. OVERRIDE (not
-        // a multiplier): `PH2D_FLUID_SHARPNESS=0` disables MacCormack; the look loses a bit of
-        // flow-edge/backrun crispness (Lens 8: modest). Unset ⇒ the brush's value.
-        if let Some(s) = env_f32("PH2D_FLUID_SHARPNESS") {
-            dp.sharpness = s;
         }
         dp
     }

@@ -285,8 +285,6 @@ pub struct FluidSolver {
     diffuse: wgpu::ComputePipeline,
     advect: wgpu::ComputePipeline,
     evaporate: wgpu::ComputePipeline,
-    /// W15.3 resident path: `pig_a += deposit` (the dabs splatted this frame).
-    deposit_pipe: wgpu::ComputePipeline,
     params_buf: wgpu::Buffer,
     /// CPU mirror of the params UBO (the per-stroke coeffs from `set_params`). The
     /// region fields are overwritten per dispatch (`write_params_with_region`) so the
@@ -302,13 +300,9 @@ pub struct FluidSolver {
     /// (`bg_diffuse` writes it, `bg_advect` reads it); never touched directly.
     #[allow(dead_code)]
     pig_b: wgpu::Buffer,
-    /// W15.3 resident path: the per-frame dab deposit (uploaded, added to `pig_a`).
-    deposit: wgpu::Buffer,
     bg_diffuse: wgpu::BindGroup,
     bg_advect: wgpu::BindGroup,
     bg_evaporate: wgpu::BindGroup,
-    /// Deposit add: `pig_in = deposit`, `pig_out = pig_a` (read_write, in-place).
-    bg_deposit: wgpu::BindGroup,
     /// Resident-sim input pass: `cs_splat` adds a dab list to `water` + `pig_a`
     /// directly (replaces the full-grid `deposit` upload — 4K real-time arch §4).
     splat: wgpu::ComputePipeline,
@@ -482,7 +476,6 @@ impl FluidSolver {
         let paper = buf("fluid paper", f32n, wgpu::BufferUsages::empty());
         let pig_a = buf("fluid pig_a", vec4n, wgpu::BufferUsages::COPY_SRC);
         let pig_b = buf("fluid pig_b", vec4n, wgpu::BufferUsages::empty());
-        let deposit = buf("fluid deposit", vec4n, wgpu::BufferUsages::empty());
         // Resident deposited-pigment layer (ADR-0078 S3); COPY_SRC for the parity readback.
         let deposited = buf("fluid deposited", vec4n, wgpu::BufferUsages::COPY_SRC);
         // total = flowing + deposited (ADR-0078 S3c) — the buffer the compositor reads.
@@ -524,7 +517,6 @@ impl FluidSolver {
         let bg_advect = bg("fluid bg advect", &pig_b, &pig_a); // B→A
         let bg_evaporate = bg("fluid bg evaporate", &pig_a, &pig_b); // pig unused
         // Deposit add: pig_in = deposit (read), pig_out = pig_a (read_write) → in-place.
-        let bg_deposit = bg("fluid bg deposit", &deposit, &pig_a);
 
         // ── Resident-sim input pass (`cs_splat`, its own bind-group layout) ──
         let splat_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -1118,7 +1110,6 @@ impl FluidSolver {
             diffuse: pipe("cs_diffuse"),
             advect: pipe("cs_advect"),
             evaporate: pipe("cs_evaporate"),
-            deposit_pipe: pipe("cs_deposit"),
             params_buf,
             // Coeffs filled by `set_params`; region defaults to the full grid.
             params_cache: std::cell::Cell::new(GpuParams {
@@ -1155,11 +1146,9 @@ impl FluidSolver {
             paper,
             pig_a,
             pig_b,
-            deposit,
             bg_diffuse,
             bg_advect,
             bg_evaporate,
-            bg_deposit,
             splat,
             splat_params_buf,
             dabs_buf,
@@ -1263,30 +1252,6 @@ impl FluidSolver {
             _pad_lift1: 0.0,
             _pad_lift2: 0.0,
         };
-        self.params_cache.set(gp);
-        queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
-    }
-
-    /// Enable the **shallow-water velocity layer** (ADR-0078 S3d) on the GPU: mirrors the
-    /// CPU `DiffusionParams::{velocity, viscosity, drag, pressure}`. Updates the cached
-    /// params (the per-frame region writer carries them forward) and uploads immediately
-    /// so a subsequent `step_resident_splat` runs the `move_water` passes + the
-    /// velocity-mode advect. `velocity = 0` (the `set_params` default) leaves the layer
-    /// dormant — `step_resident_splat` then runs the static gradient-flow advect, so the
-    /// existing parity gates are untouched.
-    pub fn set_shallow_water(
-        &self,
-        queue: &wgpu::Queue,
-        velocity: f32,
-        viscosity: f32,
-        drag: f32,
-        pressure: f32,
-    ) {
-        let mut gp = self.params_cache.get();
-        gp.velocity = velocity;
-        gp.viscosity = viscosity;
-        gp.drag = drag;
-        gp.pressure = pressure;
         self.params_cache.set(gp);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&gp));
     }
@@ -2013,49 +1978,6 @@ impl FluidSolver {
             });
         self.pending_stats = Some(rx);
         self.last_stats
-    }
-
-    /// **W15.3 resident per-frame step (no readback).** Keeps the bloomed pigment
-    /// GPU-resident in `pig_a`: uploads the CPU water mirror (the CPU owns water +
-    /// evaporation + the dry-check) and this frame's dab `deposit`, adds the deposit
-    /// to `pig_a`, then runs `substeps` of diffuse+advect (NO GPU evaporate — water
-    /// came pre-evaporated from the CPU). One submit, no `device.poll` wait, no
-    /// pigment readback — the composite reads `pig_a` directly afterwards (its own
-    /// readback, or a GPU→GPU copy, syncs the queue). `water`/`deposit` lengths must
-    /// equal `width*height`.
-    pub fn step_resident(
-        &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        water: &[f32],
-        deposit: &[WetCell],
-        substeps: u32,
-    ) {
-        queue.write_buffer(&self.water, 0, bytemuck::cast_slice(water));
-        queue.write_buffer(&self.deposit, 0, bytemuck::cast_slice(&pack_soa(deposit)));
-        let (gx, gy) = (self.width.div_ceil(8), self.height.div_ceil(8));
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("fluid step resident"),
-        });
-        // pig_a += deposit (the dabs this frame), then diffuse+advect ×substeps.
-        let mut pass_seq: Vec<(&wgpu::ComputePipeline, &wgpu::BindGroup)> =
-            vec![(&self.deposit_pipe, &self.bg_deposit)];
-        for _ in 0..substeps {
-            pass_seq.push((&self.diffuse, &self.bg_diffuse)); // A→B
-            pass_seq.push((&self.advect, &self.bg_advect)); // B→A
-        }
-        for (pipe, bg) in pass_seq {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("fluid resident pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(pipe);
-            pass.set_bind_group(0, bg, &[]);
-            pass.dispatch_workgroups(gx, gy, 1);
-        }
-        queue.submit([enc.finish()]);
-        // No poll: pigment stays GPU-resident in `pig_a`; the next queue submit (the
-        // compositor) is ordered after this one and its readback (if any) syncs.
     }
 
     /// Shared GPU→CPU readback for a planar [`PIG_CH`]-channel pigment buffer, unpacked to

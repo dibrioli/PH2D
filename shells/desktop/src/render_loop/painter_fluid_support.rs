@@ -72,6 +72,23 @@ pub(super) fn union_bbox(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u
     (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
 }
 
+/// The fluid preview-slot override for the render loop — `Some` iff a slot id AND an override
+/// entity both exist. The texture→readback hand-off (`run_readback_lane`) and the idle-skip
+/// republish (the bridge) both emit exactly this; one definition keeps them from drifting.
+pub(super) fn slot_override(
+    preview_slot: Option<(u32, u32, u32)>,
+    override_entity: Option<u64>,
+) -> Option<PreviewOverride> {
+    match (preview_slot, override_entity) {
+        (Some((id, _, _)), Some(entity_bits)) => Some(PreviewOverride {
+            entity_bits,
+            texture_id: id,
+            premultiplied: true,
+        }),
+        _ => None,
+    }
+}
+
 /// Grow an inclusive grid-cell bbox by `pad` cells on each side, clamped to `dims`.
 pub(super) fn grow_bbox(
     b: (u32, u32, u32, u32),
@@ -199,13 +216,7 @@ pub(super) fn run_readback_lane(
     // The sync transition bake above already made `canvas_rgba` current, so drop the flag now.
     if sess.texture_published {
         sess.texture_published = false;
-        if let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity) {
-            override_out = Some(PreviewOverride {
-                entity_bits,
-                texture_id: id,
-                premultiplied: true,
-            });
-        }
+        override_out = slot_override(sess.preview_slot, override_entity);
     }
     // Wet-sheen between strokes: `canvas_rgba` is kept current (sheen-free, the bake)
     // by the readback above; the sheen is view-only, so ALSO composite into the preview

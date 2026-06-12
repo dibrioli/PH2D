@@ -404,14 +404,9 @@ pub(crate) fn drive_fluid_gpu(
             // Idle-skipped frame (perf block 2b): the field didn't step, so there is
             // nothing new to composite or bake — keep showing the already-published
             // fluid preview texture (it persists in the slot across frames).
-            if sess.texture_published
-                && let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity)
-            {
-                override_out = Some(PreviewOverride {
-                    entity_bits,
-                    texture_id: id,
-                    premultiplied: true,
-                });
+            if sess.texture_published {
+                override_out =
+                    super::painter_fluid_support::slot_override(sess.preview_slot, override_entity);
             }
         } else if !texture_frame {
             // Readback lane (pipelined composite → canvas_rgba bake + E4 catch-up +

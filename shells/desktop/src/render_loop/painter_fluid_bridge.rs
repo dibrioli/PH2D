@@ -332,25 +332,22 @@ pub(crate) fn drive_fluid_gpu(
             .iter()
             .filter_map(|d| DabGpu::new(d.cx, d.cy, d.r, d.water, d.color, d.mass, d.staining))
             .collect();
-        // Idle decimation + Keep-Wet settle-freeze: pointer up + no dabs ⇒ after a short
-        // full-cadence warmup (bake catch-up gets immediate shots), step/composite run only
-        // every IDLE_STEP_EVERY frames. **ADR-0085 C1:** the Keep-Wet field now reaches a real
-        // equilibrium (the shallow-water FlowOutward force is surface-tension-PINNED, so the wash
-        // settles instead of creeping), so the freeze is driven by PHYSICS, not a frame timeout:
-        // once the active-region window has emptied (no dab landed for ACTIVE_WINDOW frames) and
-        // the pointer is up, the pinned field is at rest ⇒ freeze it whole (its composite
-        // persists in the preview texture; nothing left to recompute). Any dab / active stroke
-        // refills `active_history` and unfreezes it. This subsumes the old KEEP_WET_SETTLE_FRAMES
-        // timeout AND the monotonic-envelope idle cost (C6): a settled wash is never re-simulated.
+        // Idle decimation: pointer up + no dabs ⇒ after a short full-cadence warmup the sim +
+        // composite run only every IDLE_STEP_EVERY frames (the field changes slowly when idle).
+        // **The wet field is NEVER fully frozen** (ADR-0085 — the wet-paint-behaves-like-dry fix):
+        // the pigment must keep DIFFUSING so wet-on-wet marks keep blending into each other — a
+        // frozen wash left every stroke as a fixed mark (the concentric-ring artefact). The old
+        // Keep-Wet settle-freeze is GONE: C1's surface-tension pinning already bounds the wet
+        // extent (no creep), and the sim is scoped to the wet bbox, so the continued (decimated)
+        // idle diffusion is bounded. A field that isn't Keep-Wet dries + drops, ending the sim.
         let stroke_active = painter.is_stroke_active();
         if stroke_active || !gpu_dabs.is_empty() {
             sess.idle_frames = 0;
         } else {
             sess.idle_frames = sess.idle_frames.saturating_add(1);
         }
-        let settled = painter.fluid_keep_wet() && !stroke_active && sess.active_history.is_empty();
-        let idle_skip = settled
-            || (sess.idle_frames > IDLE_WARMUP_FRAMES && sess.idle_frames % IDLE_STEP_EVERY != 0);
+        let idle_skip =
+            sess.idle_frames > IDLE_WARMUP_FRAMES && sess.idle_frames % IDLE_STEP_EVERY != 0;
         let t0 = profile.then(Instant::now);
         // Region-scoped (ADR-0078 S1): the sim runs only over the wet envelope (padded
         // inside the solver to ⊇ the composite region), so the per-frame cost is

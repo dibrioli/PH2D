@@ -118,13 +118,17 @@ const CAPILLARY_MIN_SAT: f32 = 0.005;
 // the floor stays at `CAPILLARY_MIN_SAT` (the validated fringe, unchanged); raising it shortens the
 // fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
 const CAP_PIN_BASE: f32 = 0.35;
-// Floor gain (3-agent audit 2026-06-12): the wick is the ONLY pass that grows the WATER envelope,
-// and under Keep-Wet (conserved water) the pool spreads until it is UNIFORM at the floor (area =
-// total_water / floor). So the floor must reach near the pool's own saturation to actually STOP the
-// spread: at the slider max (0.6) this gives floor ≈ 0.005 + 0.25·3.5 = 0.88, so a saturated pool
-// stops after barely spreading (≈1.1× the painted area); a light wash (≤ floor) doesn't creep at
-// all. Lower Surface Tension ⇒ lower floor ⇒ a longer, softer fringe (the wick reaches further).
-const CAP_PIN_K: f32 = 3.5;
+// Floor gain (3-agent audit 2026-06-12, REVISED): the floor must stay AT OR BELOW the wet gate
+// `w_hi` (0.4) — otherwise the pool plateaus ABOVE the gate and its boundary cliffs straight from
+// `floor` to 0, SKIPPING the 0.05..0.4 mass-grading band, so the rim is a 1-cell hard step that
+// magnifies into square pixels (the pixelated-rim bug). At the slider max (0.6) this gives
+// floor ≈ 0.005 + 0.25·1.5 = 0.38 ≲ w_hi, so the bounded fringe sits INSIDE the gate where the
+// minimal Keep-Wet evaporation (KEEP_WET_EVAP, `lifecycle.rs`) recedes the front through it and
+// grades the mass over several cells → the soft border Enio validated ("se há o mínimo de
+// evaporação, a borda fica boa"). Bounding is now SHARED with that evaporation (water leaves the
+// system) — the floor no longer has to be the sole stop, so it needn't reach pool saturation
+// (the pre-evap reason it was 3.5). Higher Surface Tension ⇒ higher floor ⇒ tighter fringe.
+const CAP_PIN_K: f32 = 1.5;
 const CAP_TAPER_BAND: f32 = 0.08; // soft ramp width ABOVE the pin floor (keeps the bounded fringe feathered)
 
 // Surface-tension pin floor: BELOW this water level the wick is dead, so the fringe STOPS there ⇒

@@ -21,11 +21,6 @@
 // scalar `rate` moves every channel flowing→deposited (mass + K/S + err all proportional).
 
 const PV: u32 = 8u;
-// Max fraction of a fully-dried cell's pigment that FREEZES into the non-diffusing `deposited`
-// layer (ADR-0085). The remaining `1 − DEPOSIT_MAX` stays in `flowing` so it keeps diffusing while
-// wet → the dried edge spreads over several cells like the wet one, instead of concentrating into a
-// 1-cell pixelated rim. < 1 ⇒ softer, wider edge-darkening; 1 = the old (all-frozen) sharp rim.
-const DEPOSIT_MAX: f32 = 0.5;
 
 struct Params {
     width: u32,
@@ -103,19 +98,11 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (relax <= 0.0) {
         return;
     }
-    // **Cap the FROZEN fraction (ADR-0085 — the dried rim pixelating into 1-cell squares over
-    // time, Enio 2026-06-12).** The `deposited` layer does NOT diffuse, so as a stroke dries the
-    // FlowOutward-migrated pigment relaxing to `total·dry` froze ALL of it into the ~1-cell dry
-    // gate band → a high-frequency 1-cell rim, while a WET stroke's pigment (in the diffusing
-    // `flowing` layer) stays soft + multi-cell. Relaxing toward only `total·dry·DEPOSIT_MAX` leaves
-    // `(1−DEPOSIT_MAX)` of the pigment in `flowing`, which keeps diffusing while the cell is wet →
-    // it spreads the colour across several cells before the water leaves, so the dried edge stays
-    // as soft/wide as the wet one (no 1-cell concentration). Still mass-conserving + reversible.
     for (var v = 0u; v < PV; v = v + 1u) {
         let f = flowing[pidx(i, v)];
         let d = deposited[pidx(i, v)];
         let total = f + d;
-        let new_d = d + relax * (total * dry * DEPOSIT_MAX - d);
+        let new_d = d + relax * (total * dry - d);
         deposited[pidx(i, v)] = new_d;
         flowing[pidx(i, v)] = total - new_d;
     }

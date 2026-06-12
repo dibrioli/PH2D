@@ -1,14 +1,17 @@
 // GPU pigment-deposition pass — `cs_transfer`, the GPU mirror of the CPU reference
 // `ph2d_painter_brush::diffusion::DiffusionGrid::transfer_pigment` (ADR-0078 S3 /
 // Curtis 1997 §4.2). Freezes a fraction of the FLOWING pigment into the DEPOSITED
-// layer each substep — gated on local DRYNESS so a wet cell deposits nothing (ADR-0085):
-//   dry  = 1 − smoothstep(w_lo,w_hi,water)
-//   rate = (deposition + deposition_dry)·dry · (1 + granulation·(1 − paper))
-// clamped to [0,1]; `deposited += rate·flowing; flowing -= rate·flowing`. Mass is
-// conserved (the gram leaves `flowing`, lands in `deposited`); deposited pigment is
-// frozen (never diffuses/advects). `deposition_dry` drives EDGE-DARKENING (the rim
-// dries first → freezes first); `granulation` drives GRANULATION (more in the tooth
-// valleys). A no-op while the deposition params are 0 (the shipped look is untouched).
+// layer each substep. **REVERSIBLE (ADR-0085):** the deposited fraction relaxes toward its
+// wetness equilibrium `dry`, so re-wetting LIFTS a dried mark back into the mobile layer:
+//   dry   = 1 − smoothstep(w_lo,w_hi,water)
+//   relax = clamp((deposition + deposition_dry)·(1 + granulation·(1 − paper)), 0, 1)
+//   deposited += relax·((flowing+deposited)·dry − deposited);  flowing = total − deposited
+// Fully DRY (dry→1) freezes all pigment (deposited→total — edge-darkening + granulation as
+// before); WET (dry→0) re-dissolves it (deposited→0) so wet-on-wet blends instead of leaving a
+// frozen mark. Mass is conserved (flowing+deposited invariant); deposited pigment doesn't
+// diffuse/advect while it sits frozen. `deposition_dry` drives EDGE-DARKENING (the rim dries
+// first → freezes first); `granulation` drives GRANULATION (more in the tooth valleys). A no-op
+// while the deposition params are 0 (the shipped look is untouched).
 //
 // Own bind group (flowing + deposited both read_write) — distinct from the solver's
 // ping-pong layout, so it's a separate module sharing only the `Params` UBO.
@@ -82,20 +85,26 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = y * P.width + x;
     let dry = 1.0 - smoothstep_gate(P.w_lo, P.w_hi, water[i]);
     let gran = 1.0 + P.granulation * (1.0 - paper[i]);
-    // BOTH terms gate on `dry` (ADR-0085 — "low evaporation still doesn't blend on the wet"):
-    // pigment strands on the paper only as the water LEAVES, so a WET cell (dry≈0) deposits
-    // NOTHING — it stays mobile + diffuses (wet-on-wet blends). Previously the base `deposition`
-    // was UNCONDITIONAL, freezing pigment into the non-diffusing `deposited` layer even on a fully
-    // wet field at any nonzero evaporation. A cell that fully dries (dry→1) reaches the SAME total
-    // (deposition + deposition_dry) as before, so the dried look / edge-darkening is unchanged.
-    let rate = clamp((P.deposition + P.deposition_dry) * dry * gran, 0.0, 1.0);
-    if (rate <= 0.0) {
+    // **REVERSIBLE deposition — relax the deposited fraction toward its wetness equilibrium
+    // (ADR-0085 — "low evaporation, painting over the wet still doesn't blend").** A one-way
+    // flowing→deposited transfer left every dried mark FROZEN: re-wetting (a wet stroke on top)
+    // could never lift it back, so wet-on-wet "behaved like dry" the moment any pigment had set.
+    // Now the equilibrium deposited fraction is `dry`: a fully DRY cell (dry→1) freezes all its
+    // pigment (deposited→total — same dried look + edge-darkening as before), a WET cell (dry→0)
+    // RE-DISSOLVES it (deposited→0, back into the mobile/diffusing layer) — so painting water over
+    // a mark lifts it and it blends, exactly like real watercolor. Mass-conserving (flowing +
+    // deposited is invariant per channel); `relax` is the old deposition rate.
+    let relax = clamp((P.deposition + P.deposition_dry) * gran, 0.0, 1.0);
+    if (relax <= 0.0) {
         return;
     }
     for (var v = 0u; v < PV; v = v + 1u) {
-        let moved = rate * flowing[pidx(i, v)];
-        flowing[pidx(i, v)] = flowing[pidx(i, v)] - moved;
-        deposited[pidx(i, v)] = deposited[pidx(i, v)] + moved;
+        let f = flowing[pidx(i, v)];
+        let d = deposited[pidx(i, v)];
+        let total = f + d;
+        let new_d = d + relax * (total * dry - d);
+        deposited[pidx(i, v)] = new_d;
+        flowing[pidx(i, v)] = total - new_d;
     }
 }
 

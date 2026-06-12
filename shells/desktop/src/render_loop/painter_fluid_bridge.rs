@@ -107,7 +107,6 @@ pub(crate) fn flush_pending_bake(gpu: &GpuContext, painter: &mut ph2d_tool_paint
         if !band.is_empty() {
             painter.fluid_apply_gpu_composite_rows(&band, rect);
         }
-        sess.catchup_bands = 0;
     });
 }
 

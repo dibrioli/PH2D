@@ -42,14 +42,12 @@ pub(super) fn maybe_begin_fluid_stroke(
         .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
     sess.frame = 0;
     sess.active_history.clear();
-    // E4: `begin_stroke` below recreates the compositor's preview texture
-    // (seeded with the new premultiplied backdrop), so nothing published yet
-    // this stroke. `texture_mode_dirty` is intentionally KEPT across epochs:
-    // if a new stroke begins before the previous catch-up completed, the
-    // union still names rows canvas_rgba never received — feeding the
-    // superset region stays correct (just slightly larger).
+    // E4: `begin_stroke` below recreates the compositor's preview texture (seeded with the new
+    // premultiplied backdrop), so nothing is published yet this stroke. `texture_mode_dirty` is
+    // intentionally KEPT across epochs: if a new stroke begins before the previous transition
+    // bake ran, `flush_pending_bake` (pointer-down, BEFORE this) already drained it — and a
+    // surviving union still names rows canvas_rgba never received, so it stays correct.
     sess.texture_published = false;
-    sess.catchup_bands = 0;
     // ADR-0079: drive ALL 15 solver controls (base diffusion + deposition +
     // shallow-water flow) from the ACTIVE BRUSH's per-brush `WatercolorParams`
     // (projected to `DiffusionParams`), replacing the old `FluidParams::default()`
@@ -199,14 +197,13 @@ pub(super) fn encode_single_submit_frame(
         gpu.queue.submit([enc.finish()]); // ← the SINGLE submit
         if copy_ok {
             sess.preview_slot_seeded = true;
-            // Catch-up accumulator: union every grid region the texture path
-            // composited (canvas_rgba is stale over it until the readback
-            // frames after pen-up replay the union — see the readback arm).
+            // Catch-up accumulator: union every grid region the texture path composited
+            // (canvas_rgba is stale over it until the readback lane's single sync transition
+            // bake — or `flush_pending_bake` at pointer-down — catches it up).
             sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
                 Some(d) => union_bbox(d, region),
                 None => region,
             });
-            sess.catchup_bands = 0;
             sess.texture_published = true;
             texture_frame = true;
             override_out = Some(PreviewOverride {

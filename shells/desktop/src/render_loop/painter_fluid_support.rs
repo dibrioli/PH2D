@@ -146,22 +146,23 @@ pub(super) fn copy_preview_into_slot(
     }
 }
 
-/// **Readback lane** — any frame the zero-readback texture paths (E4/E5) didn't run:
-/// composite PIPELINED (async readback, no per-frame `device.poll(wait)` stall; the band
-/// returned is the PRIOR frame's — imperceptible, the same lag the preview always had;
-/// `begin_stroke` drains the in-flight map before reuse) and keep `canvas_rgba` current.
+/// **Readback lane** — any frame the zero-readback texture path (E4) didn't run: composite
+/// PIPELINED (async readback, no per-frame `device.poll(wait)` stall; the band returned is the
+/// PRIOR frame's — imperceptible, the same lag the preview always had; `begin_stroke` drains the
+/// in-flight map before reuse) and keep `canvas_rgba` current.
 ///
-/// E4 catch-up: the FIRST readback frames after the texture→readback switch must
-/// composite the FULL union the texture path covered (`texture_mode_dirty`), so
-/// `canvas_rgba` catches up on everything it skipped. Because the band returned NOW is
-/// from the PRIOR submission, the union keeps being fed until 2 CONSECUTIVE bands
-/// returned while feeding it — the 2nd is necessarily from a submission that included it.
+/// **Transition catch-up (ADR-0085, single sync bake):** the texture path leaves `canvas_rgba`
+/// stale over everything it composited (`texture_mode_dirty`). The FIRST readback frame after the
+/// texture path stops bakes that whole union ONCE, SYNCHRONOUSLY, then clears it — subsequent
+/// drying frames composite only their own `region`. This replaces the old per-frame union
+/// recomposite + the racy "2 consecutive bands" auto-clear (which never reliably engaged under
+/// GPU backpressure, so the union grew unbounded and was re-composited every frame). The
+/// `flush_pending_bake` at the next pointer-down stays as the cross-stroke backstop.
 ///
-/// Transition hand-off: while `texture_published`, the (one-frame-stale) fluid texture
-/// override is re-emitted so the stroke never flickers back to the pre-catch-up CPU
-/// preview; the flag drops on the first applied band. Finally, with the pointer up and
-/// Show Wet on, the view-only wet sheen is recomposited + republished
-/// ([`publish_wet_sheen_between_strokes`]).
+/// Transition hand-off: the same frame, the (one-frame-stale, but now-current-bytes) fluid
+/// texture override is re-emitted so the stroke doesn't flicker to the CPU preview while
+/// `sim_extract` catches up its 1-frame CPU-slot lag. Finally, with the pointer up and Show Wet
+/// on, the view-only wet sheen is recomposited + republished ([`publish_wet_sheen_between_strokes`]).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_readback_lane(
     sess: &mut FluidSession,
@@ -175,44 +176,30 @@ pub(super) fn run_readback_lane(
     ch: u32,
 ) -> Option<PreviewOverride> {
     let mut override_out = None;
-    let rb_region = match sess.texture_mode_dirty {
-        Some(d) => union_bbox(region, d),
-        None => region,
-    };
-    let (band, rect) =
-        sess.compositor
-            .composite_frame_pipelined(&gpu.device, &gpu.queue, rb_region);
+    // Transition catch-up: bake the texture path's whole skipped union into `canvas_rgba` ONCE,
+    // synchronously, on the first readback frame after the texture path stopped. (One-time
+    // ~0.14 ms poll(wait) at the transition, like `flush_pending_bake`; not per frame.)
+    if let Some(dirty) = sess.texture_mode_dirty.take() {
+        let (band, rect) = sess
+            .compositor
+            .composite_frame(&gpu.device, &gpu.queue, dirty);
+        if !band.is_empty() {
+            painter.fluid_apply_gpu_composite_rows(&band, rect);
+        }
+    }
+    // The normal drying readback: pipelined composite of THIS frame's region (1-frame-late).
+    let (band, rect) = sess
+        .compositor
+        .composite_frame_pipelined(&gpu.device, &gpu.queue, region);
     if !band.is_empty() {
         painter.fluid_apply_gpu_composite_rows(&band, rect);
-        if sess.texture_mode_dirty.is_some() {
-            sess.catchup_bands += 1;
-            if sess.catchup_bands >= 2 {
-                sess.texture_mode_dirty = None;
-                sess.catchup_bands = 0;
-            }
-        }
-        // canvas_rgba just caught up, but the CPU upload happens LATER this frame and
-        // sim_extract samples the CPU slot with a 1-frame lag — keep the fluid texture
-        // override for THIS frame only, then hand the preview back to the CPU slot.
-        if sess.texture_published {
-            sess.texture_published = false;
-            if let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity) {
-                override_out = Some(PreviewOverride {
-                    entity_bits,
-                    texture_id: id,
-                    premultiplied: true,
-                });
-            }
-        }
-    } else {
-        // "2 consecutive" discipline: an empty band resets the count.
-        sess.catchup_bands = 0;
-        // No band yet (first readback frame after the switch — nothing was pending):
-        // the CPU preview is still pre-catch-up, so keep showing the fluid texture
-        // to avoid a stroke-disappears flicker.
-        if sess.texture_published
-            && let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity)
-        {
+    }
+    // Texture→readback hand-off: re-emit the slot override for THIS frame (sim_extract samples
+    // the CPU slot with a 1-frame lag) so the stroke doesn't flicker to the pre-bake CPU preview.
+    // The sync transition bake above already made `canvas_rgba` current, so drop the flag now.
+    if sess.texture_published {
+        sess.texture_published = false;
+        if let (Some((id, _, _)), Some(entity_bits)) = (sess.preview_slot, override_entity) {
             override_out = Some(PreviewOverride {
                 entity_bits,
                 texture_id: id,
@@ -312,15 +299,10 @@ pub(super) struct FluidSession {
     /// **E4 catch-up accumulator**: union of every GRID region the zero-readback texture
     /// path composited (canvas_rgba is intentionally stale over it mid-stroke). The first
     /// readback frames after the texture→readback switch feed this union into
-    /// `composite_frame_pipelined` so `canvas_rgba` catches up on EVERYTHING the texture
-    /// path skipped; cleared only once the (1-frame-late) pipelined path has returned 2
-    /// consecutive bands while the union was being fed (the 2nd is necessarily from a
-    /// submission that included it).
+    /// path skipped; baked into `canvas_rgba` ONCE synchronously on the first readback frame
+    /// after the texture path stops (`run_readback_lane`), then cleared. Also drained by
+    /// `flush_pending_bake` at the next pointer-down (the cross-stroke undo bracket).
     pub(super) texture_mode_dirty: Option<(u32, u32, u32, u32)>,
-    /// Consecutive non-empty pipelined bands applied while `texture_mode_dirty` was being
-    /// fed (reset by an empty band and by every texture-mode frame). At 2 the union is
-    /// provably applied → cleared.
-    pub(super) catchup_bands: u8,
     /// `true` while the fluid preview SLOT holds the freshest composite (texture mode ran,
     /// and the readback path hasn't yet handed the preview back to the CPU slot). Keeps the
     /// PreviewOverride on the fluid slot across the texture→readback transition so the
@@ -358,7 +340,6 @@ impl FluidSession {
             preview_slot: None,
             preview_slot_seeded: false,
             texture_mode_dirty: None,
-            catchup_bands: 0,
             texture_published: false,
             keep_wet: false,
             idle_frames: 0,

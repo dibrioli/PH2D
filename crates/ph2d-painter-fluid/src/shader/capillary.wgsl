@@ -118,7 +118,13 @@ const CAPILLARY_MIN_SAT: f32 = 0.005;
 // the floor stays at `CAPILLARY_MIN_SAT` (the validated fringe, unchanged); raising it shortens the
 // fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
 const CAP_PIN_BASE: f32 = 0.35;
-const CAP_PIN_K: f32 = 1.5;
+// Floor gain (3-agent audit 2026-06-12): the wick is the ONLY pass that grows the WATER envelope,
+// and under Keep-Wet (conserved water) the pool spreads until it is UNIFORM at the floor (area =
+// total_water / floor). So the floor must reach near the pool's own saturation to actually STOP the
+// spread: at the slider max (0.6) this gives floor ≈ 0.005 + 0.25·3.5 = 0.88, so a saturated pool
+// stops after barely spreading (≈1.1× the painted area); a light wash (≤ floor) doesn't creep at
+// all. Lower Surface Tension ⇒ lower floor ⇒ a longer, softer fringe (the wick reaches further).
+const CAP_PIN_K: f32 = 3.5;
 const CAP_TAPER_BAND: f32 = 0.08; // soft ramp width ABOVE the pin floor (keeps the bounded fringe feathered)
 
 // Surface-tension pin floor: BELOW this water level the wick is dead, so the fringe STOPS there ⇒

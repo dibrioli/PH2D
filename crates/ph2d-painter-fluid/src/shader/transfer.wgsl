@@ -1,9 +1,9 @@
 // GPU pigment-deposition pass — `cs_transfer`, the GPU mirror of the CPU reference
 // `ph2d_painter_brush::diffusion::DiffusionGrid::transfer_pigment` (ADR-0078 S3 /
 // Curtis 1997 §4.2). Freezes a fraction of the FLOWING pigment into the DEPOSITED
-// layer each substep:
-//   rate = (deposition + deposition_dry·(1 − smoothstep(w_lo,w_hi,water))) ·
-//          (1 + granulation·(1 − paper))
+// layer each substep — gated on local DRYNESS so a wet cell deposits nothing (ADR-0085):
+//   dry  = 1 − smoothstep(w_lo,w_hi,water)
+//   rate = (deposition + deposition_dry)·dry · (1 + granulation·(1 − paper))
 // clamped to [0,1]; `deposited += rate·flowing; flowing -= rate·flowing`. Mass is
 // conserved (the gram leaves `flowing`, lands in `deposited`); deposited pigment is
 // frozen (never diffuses/advects). `deposition_dry` drives EDGE-DARKENING (the rim
@@ -82,7 +82,13 @@ fn cs_transfer(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = y * P.width + x;
     let dry = 1.0 - smoothstep_gate(P.w_lo, P.w_hi, water[i]);
     let gran = 1.0 + P.granulation * (1.0 - paper[i]);
-    let rate = clamp((P.deposition + P.deposition_dry * dry) * gran, 0.0, 1.0);
+    // BOTH terms gate on `dry` (ADR-0085 — "low evaporation still doesn't blend on the wet"):
+    // pigment strands on the paper only as the water LEAVES, so a WET cell (dry≈0) deposits
+    // NOTHING — it stays mobile + diffuses (wet-on-wet blends). Previously the base `deposition`
+    // was UNCONDITIONAL, freezing pigment into the non-diffusing `deposited` layer even on a fully
+    // wet field at any nonzero evaporation. A cell that fully dries (dry→1) reaches the SAME total
+    // (deposition + deposition_dry) as before, so the dried look / edge-darkening is unchanged.
+    let rate = clamp((P.deposition + P.deposition_dry) * dry * gran, 0.0, 1.0);
     if (rate <= 0.0) {
         return;
     }

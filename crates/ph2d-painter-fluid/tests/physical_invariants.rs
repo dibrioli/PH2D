@@ -153,6 +153,67 @@ fn inv_water_bounded_finite_no_runaway() {
     );
 }
 
+// ── INV-3b — the Diffusivity slider actually diffuses (wet-on-wet blends) ─────────────
+// Enio smoke (ADR-0085): "wet paint behaves like dry — concentric strokes leave fixed marks;
+// the Diffusivity slider does nothing." This isolates the diffuse pass: splat one wet dab, then
+// step with NO new dabs at diffusivity 0.2 vs 0.0 — EVERY other param identical (all transport
+// off) — so the only difference is the diffuse term. Diffusion REDISTRIBUTES pigment outward,
+// so the per-cell PEAK mass must DROP markedly at 0.2 and barely move at 0.0. Equal peaks ⇒ the
+// diffuse pass is dead or the slider never reaches the solver.
+#[test]
+#[ignore = "needs a GPU device"]
+fn diffusivity_actually_diffuses_and_has_slider_effect() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 40u32);
+    let region = (0, 0, w - 1, h - 1);
+    let (cx, cy) = (w as f32 * 0.5, h as f32 * 0.5);
+
+    // Peak per-cell pigment mass after splatting one wet dab + 40 dab-less steps. Keep-wet
+    // (evaporation 0 → gate open), deposition off (pigment stays in the FLOWING/diffusing layer),
+    // and ALL advective transport off (downhill/flow_outward/velocity/capillary 0) so the ONLY
+    // thing that can move pigment is the diffuse term — a clean isolation of `diffusivity`.
+    let peak_after = |diffusivity: f32| -> f64 {
+        let dp = DiffusionParams {
+            diffusivity,
+            evaporation: 0.0,
+            deposition: 0.0,
+            deposition_dry: 0.0,
+            downhill: 0.0,
+            flow_outward: 0.0,
+            velocity: 0.0,
+            capillary: 0.0,
+            ..DiffusionParams::default()
+        };
+        let solver = fresh_solver(&gpu, w, h, &dp);
+        let dabs = [dab(cx, cy, 6.0, 0.7, [0.1, 0.2, 0.7], 1.0)];
+        solver.step_resident_splat(&gpu.device, &gpu.queue, &dabs, 1, region);
+        for _ in 0..40 {
+            solver.step_resident_splat(&gpu.device, &gpu.queue, &[], 1, region);
+        }
+        solver
+            .read_pigment(&gpu.device, &gpu.queue)
+            .iter()
+            .map(|c| f64::from(c[PIG_MASS]))
+            .fold(0.0_f64, f64::max)
+    };
+
+    let peak_diffuse = peak_after(0.2);
+    let peak_frozen = peak_after(0.0);
+    eprintln!("INV-3b peak: diffuse(0.2)={peak_diffuse:.5}  frozen(0.0)={peak_frozen:.5}");
+    assert!(
+        peak_frozen > 0.01,
+        "no pigment deposited — test meaningless"
+    );
+    assert!(
+        peak_diffuse < peak_frozen * 0.8,
+        "Diffusivity has NO effect: peak diffuse(0.2)={peak_diffuse:.5} vs frozen(0.0)={peak_frozen:.5} \
+         — the diffuse pass is dead or the slider never reaches the solver"
+    );
+}
+
 // ── INV-4 — subtractive pigment mixing (blue ⊗ yellow → green) ───────────────────────
 // The whole point of the K–M spectral field (ADR-0080): overlapping blue + yellow must
 // reduce to a GREEN-dominant colour in the field, not a muddy grey. (Replaces the

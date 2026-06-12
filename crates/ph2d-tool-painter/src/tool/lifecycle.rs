@@ -17,8 +17,16 @@ pub(super) const WET_FIELD_SCALE: u32 = 2;
 
 const WET_WATER_DEPOSIT: f32 = 0.55;
 const WET_PIGMENT_DEPOSIT: f32 = 0.5;
-const WET_SUBSTEPS_PAINTING: u32 = 1;
-const WET_SUBSTEPS_IDLE: u32 = 2;
+// Diffusion sub-steps per frame. **Raised 1→6 / 2→6 (ADR-0085 — the wet-on-wet "behaves like
+// dry" fix).** The diffuse pass works + `Diffusivity` has a strong effect (proven:
+// `physical_invariants::diffusivity_actually_diffuses`, peak 1.0→0.43 in 40 steps), but at ONE
+// step/frame the per-dab pigment deposit (0.5 mass) dominates while painting and the bloom is too
+// slow to read — wet marks looked frozen ("the Diffusivity slider does nothing"). More sub-steps
+// = more diffusion per frame, so freshly-laid pigment visibly blooms into the wet field as you
+// paint. The sim is region-scoped + single-submit, so the extra kernels are cheap (the cost was
+// always submit/copy, not compute — HANDOFF watercolor v2).
+const WET_SUBSTEPS_PAINTING: u32 = 6;
+const WET_SUBSTEPS_IDLE: u32 = 6;
 const WET_DRY_THRESHOLD: f32 = 0.045;
 /// Coverage rate: `alpha = 1 − exp(−amount · K)`, where `amount` is the
 /// COLOUR-INDEPENDENT pigment load. The grid stores colour×amount, so the raw

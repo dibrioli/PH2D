@@ -103,19 +103,32 @@ fn pidx(cell: u32, v: u32) -> u32 { return v * (P.gw * P.gh) + cell; }
 // (vec4[0..5]) + mass (vec4[6].w) ≥ 0; err (vec4[6].xyz) stays signed. Mirrors the CPU
 // `sample_pigment_bicubic`.
 fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 8> {
-    // **Watercolor v2 R2 (ADR-0085) — full-res fast path.** At scale 1 (`inv == 1`) the grid IS
-    // the canvas: every sample lands on an integer cell, where Catmull-Rom collapses to
-    // `[0,1,0,0]` (only the centre cell has weight). The 4×4 loop below would still READ all 16
-    // cells × 8 vec4 = 128 reads per pixel to reproduce ONE cell — a 16× wasted-bandwidth loop
-    // every pixel, every frame (the dominant `fluid.comp_tex` cost). Read the centre cell
-    // directly: byte-identical output, 16× fewer reads. (scale > 1 still bicubic-upsamples.)
+    // **Watercolor v2 R2 (ADR-0085) — full-res path = BILINEAR.** At scale 1 (`inv == 1`) the grid
+    // IS the canvas, so the heavy 4×4 Catmull-Rom below is wasteful — but a NEAREST read (`round`)
+    // hard-steps the wash edge at the cell grid, which the supersample (ss>1, sub-pixel `fx`) then
+    // can't smooth → the pixelated rim Enio flagged (edge-darkening / surface-tension pin / any
+    // border-darkening param). Bilinear-interpolate the 4 surrounding cells instead: integer
+    // samples still read the centre cell exactly (no interior change), but the ss=2 sub-samples
+    // (`fx ± 0.25`) read INTERPOLATED edge values ⇒ the rim anti-aliases. 4 cells × 8 vec4 = 32
+    // reads/sample vs the 128 of the full bicubic. (scale > 1 still bicubic-upsamples.)
     if (P.inv == 1.0) {
-        let gx = u32(clamp(round(fx), 0.0, f32(P.gw) - 1.0));
-        let gy = u32(clamp(round(fy), 0.0, f32(P.gh) - 1.0));
-        let base = gy * P.gw + gx;
+        let x0f = floor(fx);
+        let y0f = floor(fy);
+        let tx = fx - x0f;
+        let ty = fy - y0f;
+        let x0 = u32(clamp(x0f, 0.0, f32(P.gw) - 1.0));
+        let x1 = u32(clamp(x0f + 1.0, 0.0, f32(P.gw) - 1.0));
+        let y0 = u32(clamp(y0f, 0.0, f32(P.gh) - 1.0));
+        let y1 = u32(clamp(y0f + 1.0, 0.0, f32(P.gh) - 1.0));
+        let i00 = y0 * P.gw + x0;
+        let i10 = y0 * P.gw + x1;
+        let i01 = y1 * P.gw + x0;
+        let i11 = y1 * P.gw + x1;
         var nn: array<vec4<f32>, 8>;
         for (var v = 0u; v < PV; v = v + 1u) {
-            nn[v] = pig_in[pidx(base, v)];
+            let a = mix(pig_in[pidx(i00, v)], pig_in[pidx(i10, v)], tx);
+            let b = mix(pig_in[pidx(i01, v)], pig_in[pidx(i11, v)], tx);
+            nn[v] = mix(a, b, ty);
         }
         for (var v = 0u; v < 6u; v = v + 1u) {
             nn[v] = max(nn[v], vec4<f32>(0.0)); // K/S bands ≥ 0 (matches the bicubic clamp)

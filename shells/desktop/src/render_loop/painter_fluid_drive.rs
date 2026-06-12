@@ -92,13 +92,13 @@ pub(super) fn maybe_begin_fluid_stroke(
     if let Some(backdrop) = painter.fluid_backdrop() {
         // ADR-0080: pigment colour is per-pixel (reduced from the field), so no
         // per-stroke brush — `begin_stroke` just binds the field + backdrop.
-        // Coverage supersampling (N×N glaze samples/pixel). Watercolor v2 (ADR-0085):
-        // at scale=1 the field IS canvas-res, so every sub-sample of a pixel reads the
-        // SAME centre cell → the 4 samples are byte-identical and average to themselves.
-        // ss=2 there is a 4× redundant K-M spectral evaluation per pixel — the dominant
-        // full-canvas composite cost. ss=1 at scale=1 is byte-identical + 4× cheaper;
-        // scale>1 (low-res grid) keeps ss=2 for real sub-cell coverage AA.
-        let ss = if scale == 1 { 1 } else { 2 };
+        // Coverage supersampling (N×N glaze samples/pixel). ss=2 EVERYWHERE (ADR-0085 + the
+        // pixelated-rim fix): the composite now BILINEAR-samples the field at scale=1 too
+        // (`sample_field_bicubic`), so the ss=2 sub-samples (`fx ± 0.25`) read interpolated edge
+        // values and the wash rim anti-aliases instead of hard-stepping at the cell grid. (The old
+        // scale=1 ss=1 fast path relied on a NEAREST read where sub-samples were redundant — that
+        // is what pixelated every border-darkening param.)
+        let ss = 2u32;
         sess.compositor.begin_stroke(
             &gpu.device,
             &gpu.queue,

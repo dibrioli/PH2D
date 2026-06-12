@@ -42,6 +42,7 @@ pub(super) fn maybe_begin_fluid_stroke(
         .clear_resident_velocity_gpu(&gpu.device, &gpu.queue);
     sess.frame = 0;
     sess.active_history.clear();
+    sess.wet_bbox = None;
     // E4: `begin_stroke` below recreates the compositor's preview texture (seeded with the new
     // premultiplied backdrop), so nothing is published yet this stroke. `texture_mode_dirty` is
     // intentionally KEPT across epochs: if a new stroke begins before the previous transition

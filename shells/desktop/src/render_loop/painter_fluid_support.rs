@@ -325,6 +325,14 @@ pub(super) struct FluidSession {
     /// `fluid_diffusion_params()` (the chokepoint that zeroes evaporation) so the
     /// toggle takes effect immediately on the live wash.
     pub(super) keep_wet: bool,
+    /// **Current wet bbox (ADR-0085 — the rectangular-artifact fix).** The latest GPU
+    /// `read_field_stats` water bbox (grid cells, ≥ the visible-fringe threshold), **non-
+    /// monotonic** — it tracks where the wash ACTUALLY is and SHRINKS as it dries (unlike the old
+    /// monotonic all-time union that ran away to the whole canvas). Unioned into the per-frame
+    /// work region so the sim + composite follow the CAPILLARY WICK, not just the recent dabs —
+    /// else the wick bleeds past the dab window and the region's straight edge clips it into a
+    /// rectangle ("borda reta"). `None` until the first stats read of a stroke.
+    pub(super) wet_bbox: Option<(u32, u32, u32, u32)>,
     /// Consecutive frames with the pointer up AND no dabs (perf block 2b). Paces the
     /// idle decimation: with a live field but nothing being painted, the sim step +
     /// composite/sheen run only every `IDLE_STEP_EVERY` frames (the field barely moves
@@ -353,6 +361,7 @@ impl FluidSession {
             texture_mode_dirty: None,
             texture_published: false,
             keep_wet: false,
+            wet_bbox: None,
             idle_frames: 0,
             active_history: std::collections::VecDeque::new(),
         }

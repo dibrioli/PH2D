@@ -86,6 +86,13 @@ thread_local! {
 /// stroke. The per-frame deferral exists only to avoid a MID-stroke stall; one sync
 /// pass at stroke-start (~0.14 ms) is invisible. No-op when no field / no pending
 /// bake (the common case — single strokes already drained by the drying frames).
+///
+/// **Undo-resurrection guard (ADR-0085):** the pending bake belongs to the PRIOR stroke's wet
+/// field. If that field was DROPPED — by an UNDO (the stroke was reverted) or because it dried —
+/// the bake is invalid: applying it would re-add the undone stroke's paint to a `canvas_rgba` the
+/// undo just reverted (Enio's "o retângulo volta"). So if there's no live wet field, DISCARD the
+/// pending bake (already taken) instead of applying it. A dried field already baked itself into
+/// `canvas_rgba` during the drying frames, so discarding is also correct there.
 #[cfg(feature = "fluid")]
 pub(crate) fn flush_pending_bake(gpu: &GpuContext, painter: &mut ph2d_tool_painter::PainterTool) {
     SESSION.with(|cell| {
@@ -96,11 +103,14 @@ pub(crate) fn flush_pending_bake(gpu: &GpuContext, painter: &mut ph2d_tool_paint
         let Some(region) = sess.texture_mode_dirty.take() else {
             return;
         };
+        // The prior field is gone (undone / dried) ⇒ the taken pending bake is invalid — discard
+        // it (NOT applying it is what prevents the undone stroke from reappearing).
+        if !painter.has_wet_field() {
+            return;
+        }
         // `composite_frame` is the SYNCHRONOUS variant (composites + reads back the
         // band in one submission); one pass over the union covers everything the
-        // texture lane skipped. Needs the compositor's stroke state alive — true
-        // exactly in the case that matters (a new stroke starting while the prior
-        // field is still wet; a dried field's catch-up already completed).
+        // texture lane skipped. The compositor's stroke state is alive (the field is wet).
         let (band, rect) = sess
             .compositor
             .composite_frame(&gpu.device, &gpu.queue, region);
@@ -292,18 +302,24 @@ pub(crate) fn drive_fluid_gpu(
             sess.active_history.pop_front();
         }
         let region = if capillary_active {
-            match sess
+            // The work region (sim + composite) follows BOTH the recent dabs (the active-region
+            // window) AND the actual wet front (`wet_bbox`, the latest stats read), unioned + a
+            // pad. Without the wet-front term the capillary wick bleeds past the dab window and
+            // the region's straight edge clips it into a rectangle ("borda reta", ADR-0085). The
+            // wet bbox is non-monotonic (shrinks as it dries), so this stays bounded — no runaway.
+            let active = sess
                 .active_history
                 .iter()
                 .map(|(_, b)| *b)
-                .reduce(union_bbox)
-            {
-                Some(active) => grow_bbox(active, pad, dims),
-                // No recent dabs: the wash is settling/drying. `dab_region` (the monotonic
-                // envelope) is the safe composite cover for the still-visible pigment; under
-                // Keep Wet the `settled` skip above means this region is never re-simulated
-                // (C6 — the monotonic envelope no longer drives idle cost), and when drying it
-                // is bounded by the stroke (the field drops once dry).
+                .reduce(union_bbox);
+            let combined = match (active, sess.wet_bbox) {
+                (Some(a), Some(w)) => Some(union_bbox(a, w)),
+                (Some(b), None) | (None, Some(b)) => Some(b),
+                (None, None) => None,
+            };
+            match combined {
+                Some(b) => grow_bbox(b, pad, dims),
+                // Nothing recent + bone-dry: fall back to the dab envelope (still-visible pigment).
                 None => dab_region,
             }
         } else {
@@ -426,11 +442,14 @@ pub(crate) fn drive_fluid_gpu(
             }
         }
         let t2 = profile.then(Instant::now);
-        // Sporadic dry-check: the GPU reduces max-water (no CPU O(grid) scan); when
-        // it's below the dry threshold AND the stroke has ended, the field drops.
+        // Dry-check + wet-front refresh: the GPU reduces max-water + the wet bbox (no CPU
+        // O(grid) scan). Read EVERY frame while the stroke is ACTIVE so `wet_bbox` tracks the
+        // advancing capillary wick live (the region must follow it — the rectangular-clip fix;
+        // the reduce is one pass vs the ~40-pass sim, ~negligible while painting). Idle, the wick
+        // barely moves, so the sporadic `DRY_CHECK_EVERY` cadence suffices.
         sess.frame = sess.frame.wrapping_add(1);
         let mut stats_us = 0u64;
-        if sess.frame % DRY_CHECK_EVERY == 0 {
+        if stroke_active || sess.frame % DRY_CHECK_EVERY == 0 {
             let ts = profile.then(Instant::now);
             // Threshold = the visible-fringe contour (perf block 2a; was 1e-4 "to track the
             // THIN fringe film"). That film WAS the envelope runaway: the monotonic union grew
@@ -446,6 +465,10 @@ pub(crate) fn drive_fluid_gpu(
                 ph2d_painter_brush::diffusion::WET_BBOX_WATER_THRESHOLD,
             );
             painter.fluid_dry_check_and_drop_gpu(stats.max_water);
+            // Track the CURRENT wet extent (non-monotonic — shrinks as it dries) so the work
+            // region follows the capillary WICK, not just the recent dabs (the rectangular-clip
+            // fix). `None` ⇒ bone-dry; the region falls back to the dab window.
+            sess.wet_bbox = stats.bbox;
             stats_us = ts.map_or(0, |t| t.elapsed().as_micros() as u64);
         }
         if profile {

@@ -2323,8 +2323,10 @@ fn composite_region_into_canvas_refreshes_region_and_preserves_outside() {
     for y in 0..h {
         for x in 0..w {
             let i = ((y * w + x) * 4) as usize;
-            let inside =
-                x >= region.x && x < region.x + region.w && y >= region.y && y < region.y + region.h;
+            let inside = x >= region.x
+                && x < region.x + region.w
+                && y >= region.y
+                && y < region.y + region.h;
             if inside {
                 assert!(
                     max_byte_diff(&got[i..i + 4], &want_full[i..i + 4]) <= 1,

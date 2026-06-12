@@ -602,8 +602,7 @@ mod tests {
             sprite_world_to_uv(present.world_mut(), bits, [2.0, 0.0]).is_none(),
             "clamped wrapper still gates off-quad"
         );
-        let (u, v) =
-            sprite_world_to_uv_unclamped(present.world_mut(), bits, [2.0, 0.0]).unwrap();
+        let (u, v) = sprite_world_to_uv_unclamped(present.world_mut(), bits, [2.0, 0.0]).unwrap();
         assert!((u - 1.5).abs() < 1e-5, "off-quad u not clamped: {u}");
         assert!((v - 0.5).abs() < 1e-5, "v centred: {v}");
         // A degenerate basis is still unpaintable (None) on the unclamped path.

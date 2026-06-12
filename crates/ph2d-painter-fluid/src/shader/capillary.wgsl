@@ -61,6 +61,7 @@ struct Params {
     // ── ADR-0082 branched capillary fringe ── fiber-channeled suppression of the face
     // conductance (offset 25 in the shared solver UBO; only this shader reads it).
     capillary_branching: f32,
+    surface_tension: f32,    // (offset 26, ADR-0079-amendment-1) raises the δ_s floor → tighter fringe
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -111,9 +112,20 @@ struct FaceInfo {
 // equilibrium is bounded and the Keep Wet envelope can't run away. Symmetric in (wc, wn)
 // ⇒ anti-symmetric flux ⇒ conservation + CPU bit-parity hold.
 const CAPILLARY_MIN_SAT: f32 = 0.005;
+// Surface-tension pin on the wick (ADR-0079-amendment-1): RAISE the δ_s floor above the default
+// `surface_tension` (0.35) so the capillary fringe also pins under Keep Wet — the FlowOutward pin
+// alone left the wick spreading the wash far past the painted area. At `surface_tension ≤ 0.35`
+// the floor stays at `CAPILLARY_MIN_SAT` (the validated fringe, unchanged); raising it shortens the
+// fringe (the wick exhausts at a higher water level), bounding the Keep-Wet envelope.
+const CAP_PIN_BASE: f32 = 0.35;
+const CAP_PIN_K: f32 = 3.0;
+
+fn capillary_floor() -> f32 {
+    return CAPILLARY_MIN_SAT + max(0.0, P.surface_tension - CAP_PIN_BASE) * CAP_PIN_K;
+}
 
 fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
-    if (max(water_in[ni], wc) <= CAPILLARY_MIN_SAT) {
+    if (max(water_in[ni], wc) <= capillary_floor()) {
         return FaceInfo(0.0, 0.0, 0u, ni);
     }
     let permn = perm_at(ni);

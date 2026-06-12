@@ -258,12 +258,13 @@ impl WatercolorParams {
         // level at which the FlowOutward force vanishes, so the wet front stops there. Under Keep
         // Wet / Evaporation 0 the film only thins by spreading, so this alone sets how far the pool
         // creeps past the painted area: HIGHER = the meniscus holds tighter = pins sooner = LESS
-        // bleed. 0.35 = the pre-amendment hard-coded look. Capped below the ~0.55 dab water so a
-        // fresh stroke still bleeds for a moment before pinning.
+        // bleed. Drives BOTH the FlowOutward pin AND the capillary wick floor (capillary.wgsl), so
+        // it bounds the whole Keep-Wet envelope. 0.35 = the pre-amendment look; toward 0.6 both the
+        // flow + wick pin near the ~0.55 dab water ⇒ almost no creep past the painted area.
         WatercolorControl {
             label: "Surface Tension",
             min: 0.05,
-            max: 0.5,
+            max: 0.6,
         },
     ];
 

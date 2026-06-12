@@ -94,6 +94,19 @@ fn catmull_rom(t: f32) -> vec4<f32> {
         0.5 * t3 - 0.5 * t2,
     );
 }
+// Cubic B-spline basis — the SMOOTHING (blurring) cubic: all-positive weights summing to 1, used
+// at scale 1 to soften the wash rim (Catmull-Rom would keep it crisp). It does NOT interpolate the
+// samples (a flat field stays flat since the weights sum to 1), it low-passes them ≈1-cell radius.
+fn b_spline(t: f32) -> vec4<f32> {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    return vec4<f32>(
+        (1.0 - 3.0 * t + 3.0 * t2 - t3) / 6.0,
+        (4.0 - 6.0 * t2 + 3.0 * t3) / 6.0,
+        (1.0 + 3.0 * t + 3.0 * t2 - 3.0 * t3) / 6.0,
+        t3 / 6.0,
+    );
+}
 // Planar (struct-of-arrays) index into the low-res pigment field: channel-vec4 `v`
 // (PV=8 vec4/cell) of grid cell `cell` lives at `v * NC + cell`, where `NC = gw·gh`
 // (the GRID cell count — this shader's field IS the low-res grid).
@@ -103,43 +116,18 @@ fn pidx(cell: u32, v: u32) -> u32 { return v * (P.gw * P.gh) + cell; }
 // (vec4[0..5]) + mass (vec4[6].w) ≥ 0; err (vec4[6].xyz) stays signed. Mirrors the CPU
 // `sample_pigment_bicubic`.
 fn sample_field_bicubic(fx: f32, fy: f32) -> array<vec4<f32>, 8> {
-    // **Watercolor v2 R2 (ADR-0085) — full-res path = BILINEAR.** At scale 1 (`inv == 1`) the grid
-    // IS the canvas, so the heavy 4×4 Catmull-Rom below is wasteful — but a NEAREST read (`round`)
-    // hard-steps the wash edge at the cell grid, which the supersample (ss>1, sub-pixel `fx`) then
-    // can't smooth → the pixelated rim Enio flagged (edge-darkening / surface-tension pin / any
-    // border-darkening param). Bilinear-interpolate the 4 surrounding cells instead: integer
-    // samples still read the centre cell exactly (no interior change), but the ss=2 sub-samples
-    // (`fx ± 0.25`) read INTERPOLATED edge values ⇒ the rim anti-aliases. 4 cells × 8 vec4 = 32
-    // reads/sample vs the 128 of the full bicubic. (scale > 1 still bicubic-upsamples.)
-    if (P.inv == 1.0) {
-        let x0f = floor(fx);
-        let y0f = floor(fy);
-        let tx = fx - x0f;
-        let ty = fy - y0f;
-        let x0 = u32(clamp(x0f, 0.0, f32(P.gw) - 1.0));
-        let x1 = u32(clamp(x0f + 1.0, 0.0, f32(P.gw) - 1.0));
-        let y0 = u32(clamp(y0f, 0.0, f32(P.gh) - 1.0));
-        let y1 = u32(clamp(y0f + 1.0, 0.0, f32(P.gh) - 1.0));
-        let i00 = y0 * P.gw + x0;
-        let i10 = y0 * P.gw + x1;
-        let i01 = y1 * P.gw + x0;
-        let i11 = y1 * P.gw + x1;
-        var nn: array<vec4<f32>, 8>;
-        for (var v = 0u; v < PV; v = v + 1u) {
-            let a = mix(pig_in[pidx(i00, v)], pig_in[pidx(i10, v)], tx);
-            let b = mix(pig_in[pidx(i01, v)], pig_in[pidx(i11, v)], tx);
-            nn[v] = mix(a, b, ty);
-        }
-        for (var v = 0u; v < 6u; v = v + 1u) {
-            nn[v] = max(nn[v], vec4<f32>(0.0)); // K/S bands ≥ 0 (matches the bicubic clamp)
-        }
-        nn[6] = vec4<f32>(nn[6].xyz, max(nn[6].w, 0.0)); // err signed, mass ≥ 0
-        return nn;
-    }
+    // **Watercolor v2 (ADR-0085) — edge smoothing.** One separable cubic over the 4×4 neighbourhood
+    // for ALL scales; only the WEIGHTS differ (no fast path — the old scale=1 NEAREST read hard-
+    // stepped the wash rim at the cell grid, the pixelation Enio flagged; bilinear only feathered
+    // ~1 cell, still too crisp). scale > 1 keeps Catmull-Rom (interpolating upsample). scale == 1
+    // uses a cubic B-SPLINE — an all-positive *smoothing* kernel that blurs the rim over ~2 cells
+    // (uniform interior is preserved, weights sum to 1) so any border-darkening param (edge-
+    // darkening / surface-tension pin) gets a soft watercolor edge instead of a hard outline.
     let x0 = floor(fx);
     let y0 = floor(fy);
-    let wx = catmull_rom(fx - x0);
-    let wy = catmull_rom(fy - y0);
+    let full_res = P.inv == 1.0;
+    let wx = select(catmull_rom(fx - x0), b_spline(fx - x0), full_res);
+    let wy = select(catmull_rom(fy - y0), b_spline(fy - y0), full_res);
     let gwi = i32(P.gw);
     let ghi = i32(P.gh);
     var out: array<vec4<f32>, 8>;

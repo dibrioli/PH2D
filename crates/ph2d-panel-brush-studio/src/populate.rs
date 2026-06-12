@@ -162,6 +162,18 @@ pub fn populate(store: &mut WidgetStore) {
     // section; buttons with pressed = on (the cycler-pill pattern), not checkboxes.
     button(store, ids::KEEP_WET);
     button(store, ids::SHOW_WET);
+    // Per-section "reset to default" buttons — one beside each subsection header (painted by
+    // `section_rows::section_header`; clicking resets that section's brush params to default).
+    for id in [
+        ids::RESET_STROKE,
+        ids::RESET_SHAPE,
+        ids::RESET_RENDERING,
+        ids::RESET_COLOR,
+        ids::RESET_DYNAMICS,
+        ids::RESET_WATERCOLOR,
+    ] {
+        button(store, id);
+    }
 
     // ── Color Dynamics — per-stamp OKLab jitter (engine-wired) ──────────────
     pct(

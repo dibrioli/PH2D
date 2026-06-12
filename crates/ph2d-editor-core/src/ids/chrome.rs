@@ -381,6 +381,13 @@ pub const PAINTER_STUDIO_CLOSE: NodeId = hash_node_id("painter_studio.close");
 pub const PAINTER_STUDIO_SEC_STROKE: NodeId = hash_node_id("painter_studio.sec_stroke");
 pub const PAINTER_STUDIO_SEC_SHAPE: NodeId = hash_node_id("painter_studio.sec_shape");
 pub const PAINTER_STUDIO_SEC_RENDERING: NodeId = hash_node_id("painter_studio.sec_rendering");
+// Per-section "reset to default" buttons (one beside each Brush Studio subsection header).
+pub const PAINTER_STUDIO_RESET_STROKE: NodeId = hash_node_id("painter_studio.reset_stroke");
+pub const PAINTER_STUDIO_RESET_SHAPE: NodeId = hash_node_id("painter_studio.reset_shape");
+pub const PAINTER_STUDIO_RESET_RENDERING: NodeId = hash_node_id("painter_studio.reset_rendering");
+pub const PAINTER_STUDIO_RESET_COLOR: NodeId = hash_node_id("painter_studio.reset_color");
+pub const PAINTER_STUDIO_RESET_DYNAMICS: NodeId = hash_node_id("painter_studio.reset_dynamics");
+pub const PAINTER_STUDIO_RESET_WATERCOLOR: NodeId = hash_node_id("painter_studio.reset_watercolor");
 
 // ── Stroke Path section — float sliders (slider + editable chip) ──────────────
 pub const PAINTER_STUDIO_SPACING_SLIDER: NodeId = hash_node_id("painter_studio.spacing_slider");

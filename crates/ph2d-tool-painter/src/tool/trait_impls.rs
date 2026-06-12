@@ -113,6 +113,18 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_CLOSE => {
                 self.close_brush_studio();
             }
+            // ── Per-section reset buttons (one beside each subsection header) — reset that
+            //    subsection's brush params to their defaults. ──
+            PanelEvent::Click(id)
+                if id == core_ids::PAINTER_STUDIO_RESET_STROKE
+                    || id == core_ids::PAINTER_STUDIO_RESET_SHAPE
+                    || id == core_ids::PAINTER_STUDIO_RESET_RENDERING
+                    || id == core_ids::PAINTER_STUDIO_RESET_COLOR
+                    || id == core_ids::PAINTER_STUDIO_RESET_DYNAMICS
+                    || id == core_ids::PAINTER_STUDIO_RESET_WATERCOLOR =>
+            {
+                self.reset_studio_section(id);
+            }
             // Pigment / Accumulate reuse the existing toggles (same brush flags
             // the sidebar drives). Grain type reuses the cycler.
             PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_PIGMENT => {

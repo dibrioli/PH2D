@@ -42,6 +42,38 @@ impl PainterTool {
         self.show_brush_studio = false;
     }
 
+    /// Reset one Brush Studio subsection's params to their defaults (the per-section reset button
+    /// beside each header). Maps the reset `NodeId` → the brush sub-struct(s) that section owns.
+    /// Rendering preserves `watercolor` (its own section/reset). Invalidates the brush-hash cache.
+    pub fn reset_studio_section(&mut self, id: ph2d_a11y::NodeId) {
+        use ph2d_editor_core::ids as cids;
+        use ph2d_painter_brush::{
+            ColorDynamicsParams, DynamicsParams, GrainParams, RenderingParams, ShapeParams,
+            StrokePathParams, WatercolorParams,
+        };
+        if id == cids::PAINTER_STUDIO_RESET_STROKE {
+            self.brush.stroke_path = StrokePathParams::default();
+        } else if id == cids::PAINTER_STUDIO_RESET_SHAPE {
+            self.brush.shape = ShapeParams::default();
+        } else if id == cids::PAINTER_STUDIO_RESET_RENDERING {
+            // Reset the render + grain + paper controls, but KEEP watercolor (its own section).
+            let watercolor = self.brush.rendering.watercolor;
+            self.brush.rendering = RenderingParams::default();
+            self.brush.rendering.watercolor = watercolor;
+            self.brush.grain = GrainParams::default();
+            self.params.paper_grain = crate::params::PainterParams::default().paper_grain;
+        } else if id == cids::PAINTER_STUDIO_RESET_COLOR {
+            self.brush.color_dynamics = ColorDynamicsParams::default();
+        } else if id == cids::PAINTER_STUDIO_RESET_DYNAMICS {
+            self.brush.dynamics = DynamicsParams::default();
+        } else if id == cids::PAINTER_STUDIO_RESET_WATERCOLOR {
+            self.brush.rendering.watercolor = WatercolorParams::default();
+        } else {
+            return;
+        }
+        self.cached_brush_hash = None;
+    }
+
     /// Decode a per-row layers-panel widget [`NodeId`] back to its
     /// `(layer, kind)` by recomputing [`painter_layer_widget_id`] for every
     /// current layer × kind and matching. `None` if `id` isn't a per-row

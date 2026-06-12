@@ -46,7 +46,16 @@ fn paint_stroke_section(
     s: &BrushStudioSnapshot,
     theme: Theme,
 ) -> f32 {
-    let (hy, collapsed) = section_header(ctx, ids::SEC_STROKE, "Stroke Path", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_STROKE,
+        ids::RESET_STROKE,
+        "Stroke Path",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;
@@ -112,7 +121,16 @@ fn paint_shape_section(
     theme: Theme,
 ) -> f32 {
     use crate::populate::count_to_slider01;
-    let (hy, collapsed) = section_header(ctx, ids::SEC_SHAPE, "Shape", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_SHAPE,
+        ids::RESET_SHAPE,
+        "Shape",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;
@@ -179,7 +197,16 @@ fn paint_rendering_section(
     theme: Theme,
 ) -> f32 {
     use crate::populate::grain_scale_to_slider01;
-    let (hy, collapsed) = section_header(ctx, ids::SEC_RENDERING, "Rendering", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_RENDERING,
+        ids::RESET_RENDERING,
+        "Rendering",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;
@@ -286,7 +313,16 @@ fn paint_color_dynamics_section(
     s: &BrushStudioSnapshot,
     theme: Theme,
 ) -> f32 {
-    let (hy, collapsed) = section_header(ctx, ids::SEC_COLOR, "Color Dynamics", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_COLOR,
+        ids::RESET_COLOR,
+        "Color Dynamics",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;
@@ -348,7 +384,16 @@ fn paint_dynamics_section(
     s: &BrushStudioSnapshot,
     theme: Theme,
 ) -> f32 {
-    let (hy, collapsed) = section_header(ctx, ids::SEC_DYNAMICS, "Dynamics", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_DYNAMICS,
+        ids::RESET_DYNAMICS,
+        "Dynamics",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;
@@ -426,7 +471,16 @@ fn paint_watercolor_section(
 ) -> f32 {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_tool_painter::WatercolorParams;
-    let (hy, collapsed) = section_header(ctx, ids::SEC_WATERCOLOR, "Watercolor", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_WATERCOLOR,
+        ids::RESET_WATERCOLOR,
+        "Watercolor",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;

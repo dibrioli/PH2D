@@ -116,6 +116,18 @@ fn is_studio_button(id: NodeId) -> bool {
         || id == ids::PIGMENT_PICK
         || id == ids::KEEP_WET
         || id == ids::SHOW_WET
+        || is_studio_reset_button(id)
+}
+
+/// The 6 per-section "reset to default" buttons (one beside each subsection header).
+#[inline]
+fn is_studio_reset_button(id: NodeId) -> bool {
+    id == ids::RESET_STROKE
+        || id == ids::RESET_SHAPE
+        || id == ids::RESET_RENDERING
+        || id == ids::RESET_COLOR
+        || id == ids::RESET_DYNAMICS
+        || id == ids::RESET_WATERCOLOR
 }
 
 #[cfg(test)]

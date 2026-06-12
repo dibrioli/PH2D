@@ -4,10 +4,12 @@
 //! these carry no orchestration). All `pub(crate)`, used only within this crate.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::IconId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, Checkbox, CheckboxState, CheckboxValue, SectionHeader, paint_button,
-    paint_checkbox, paint_section_header, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonState, Checkbox, CheckboxState, CheckboxValue, IconButtonStyle, IconGlyph,
+    SectionHeader, paint_button, paint_checkbox, paint_icon_button, paint_section_header,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
@@ -15,9 +17,11 @@ use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 const LABEL_W: f32 = 88.0; // LITERAL-PX-OK: studio slider label column width
 const CHIP_W: f32 = 56.0; // LITERAL-PX-OK: studio slider value-chip column width
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn section_header(
     ctx: &mut PaintCtx,
     id: NodeId,
+    reset_id: NodeId,
     label: &str,
     x: f32,
     w: f32,
@@ -30,6 +34,30 @@ pub(crate) fn section_header(
     let hrect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, hrect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(id, hrect);
+    // Per-section "reset to default" button at the header's right edge. Registered AFTER the header
+    // so the HitIndex (topmost-wins, `iter().rev()`) routes a click in this sub-rect to the reset,
+    // not to the header's collapse toggle.
+    let btn = (header_h * 0.7).clamp(12.0, 18.0); // LITERAL-PX-OK: mirrors the chevron icon sizing
+    let reset_rect = Rect::new(
+        x + w - btn - Spacing::Sm.px(),
+        y + (header_h - btn) * 0.5,
+        btn,
+        btn,
+    );
+    let st = ctx
+        .host
+        .store()
+        .button_state(reset_id)
+        .unwrap_or(ButtonState::Normal);
+    paint_icon_button(
+        reset_rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Plain,
+        st,
+        ctx.scene,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(reset_id, reset_rect);
     (y + header_h + Spacing::Xs.px(), collapsed)
 }
 

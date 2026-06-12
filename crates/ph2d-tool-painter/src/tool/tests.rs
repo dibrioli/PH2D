@@ -3526,27 +3526,45 @@ fn keep_wet_field_never_drops_on_dry_check() {
 }
 
 #[test]
-fn no_evaporation_suppresses_deposition_for_wet_on_wet() {
-    // ADR-0085 ("as bordas são marcadas e não saem mesmo úmidas"): deposition (base settling +
-    // edge-darkening) physically follows DRYING. With no evaporation (Keep Wet, or the Evaporation
-    // slider at 0) the wash stays wet, so the pigment must stay MOBILE — zero deposition, no frozen
-    // edges — or it freezes into the non-diffusing `deposited` layer and wet-on-wet "behaves like
-    // dry". Evaporation > 0 (the ratified default) keeps deposition on so the wash dries with edges.
+fn keep_wet_minimal_evaporation_soft_rim_and_slider_zero_suppresses_deposition() {
+    // ADR-0085 (Enio 2026-06-12 "se há o mínimo de evaporação, a borda fica boa"): Keep Wet no
+    // longer forces evaporation to a hard 0 (a static front pins into a crisp/pixelated rim) — it
+    // pauses it to a MINIMAL residual so the edge water recedes through the wet gate into a SOFT
+    // rim. With evaporation > 0 the DRY-gated deposition runs, so the wet interior stays mobile
+    // (wet-on-wet still blends) while only the drying edge gets the soft watercolor rim. The
+    // deposition suppression now fires ONLY for an explicit Evaporation-slider-0 (pure wet).
     let mut t = PainterTool::default();
     let dp = t.fluid_diffusion_params();
     assert!(dp.evaporation > 0.0, "default wash dries (ratified look)");
     assert!(
         dp.deposition > 0.0 && dp.deposition_dry > 0.0,
-        "default look deposits + edge-darkens as it dries"
+        "default look deposits + edge-darkens"
     );
-    // Keep Wet → evaporation forced 0 → deposition + edge-darkening suppressed.
+    // Keep Wet → a MINIMAL (non-zero) evaporation, BELOW the 0.012 preset; deposition is NOT
+    // forced off (the shader dry-gates it so only the edge deposits).
     t.keep_wet = true;
     let dp = t.fluid_diffusion_params();
+    assert!(
+        dp.evaporation > 0.0 && dp.evaporation < 0.012,
+        "keep-wet pauses evaporation to a minimal residual, not 0: {}",
+        dp.evaporation
+    );
+    assert!(
+        dp.deposition > 0.0,
+        "keep-wet no longer suppresses deposition — the shader dry-gates it for the soft rim"
+    );
+    // The Evaporation SLIDER at 0 (keep-wet OFF) DOES suppress deposition (pure wet, no rim).
+    t.keep_wet = false;
+    t.brush.rendering.watercolor.evaporation = 0.0;
+    let dp = t.fluid_diffusion_params();
     assert_eq!(dp.evaporation, 0.0);
-    assert_eq!(dp.deposition, 0.0, "keep-wet must suppress base deposition");
+    assert_eq!(
+        dp.deposition, 0.0,
+        "evaporation 0 suppresses base deposition"
+    );
     assert_eq!(
         dp.deposition_dry, 0.0,
-        "keep-wet must suppress edge-darkening (the marked edges)"
+        "evaporation 0 suppresses edge-darkening"
     );
 }
 

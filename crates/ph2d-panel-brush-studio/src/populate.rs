@@ -541,9 +541,10 @@ mod tests {
     fn keep_wet_and_show_wet_pills_round_trip_through_tool() {
         // Watercolor UX pills: a KEEP_WET / SHOW_WET Click (forwarded by the panel as a
         // button, mirroring PIGMENT_PICK) must flip the tool's bool and the published
-        // snapshot must show the new state (the pill paints pressed = on). Keep-wet must
-        // also zero the evaporation the bridge uploads to the solver — that IS the
-        // feature (the field never crosses the dry threshold, so it never drops).
+        // snapshot must show the new state (the pill paints pressed = on). Keep-wet
+        // reduces the evaporation the bridge uploads to a MINIMAL value (not 0): the field
+        // never crosses the dry threshold + drops, but the trace of evaporation softens the
+        // rim (Enio 2026-06-12) instead of pinning a hard step.
         use ph2d_editor_core::ids::{PAINTER_STUDIO_KEEP_WET, PAINTER_STUDIO_SHOW_WET};
         use ph2d_editor_core::tool::{PanelEvent, Tool};
 
@@ -551,21 +552,23 @@ mod tests {
         let snap = tool.brush_studio_snapshot();
         assert!(!snap.keep_wet, "keep-wet defaults OFF");
         assert!(snap.show_wet, "show-wet defaults ON (the wet-paper look)");
-        assert!(
-            tool.fluid_diffusion_params().evaporation > 0.0,
-            "without keep-wet the wash must dry"
-        );
+        let dry_evap = tool.fluid_diffusion_params().evaporation;
+        assert!(dry_evap > 0.0, "without keep-wet the wash must dry");
 
         tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
         assert!(tool.brush_studio_snapshot().keep_wet);
-        assert_eq!(
-            tool.fluid_diffusion_params().evaporation,
-            0.0,
-            "keep-wet must pause evaporation (GPU upload chokepoint)"
+        let wet_evap = tool.fluid_diffusion_params().evaporation;
+        assert!(
+            wet_evap > 0.0 && wet_evap < dry_evap,
+            "keep-wet pauses evaporation to a MINIMAL residual (soft rim), not 0: {wet_evap}"
         );
         tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
         assert!(!tool.brush_studio_snapshot().keep_wet);
-        assert!(tool.fluid_diffusion_params().evaporation > 0.0);
+        assert_eq!(
+            tool.fluid_diffusion_params().evaporation,
+            dry_evap,
+            "toggling keep-wet off restores the brush evaporation"
+        );
 
         tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_SHOW_WET));
         assert!(!tool.brush_studio_snapshot().show_wet);

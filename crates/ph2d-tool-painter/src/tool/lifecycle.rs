@@ -29,6 +29,11 @@ const WET_PIGMENT_DEPOSIT: f32 = 0.5;
 const WET_SUBSTEPS_PAINTING: u32 = 3;
 const WET_SUBSTEPS_IDLE: u32 = 3;
 const WET_DRY_THRESHOLD: f32 = 0.045;
+/// Minimal evaporation Keep Wet keeps (instead of a hard 0) so the wet edge recedes through the
+/// gate into a SOFT rim rather than pinning into a crisp/pixelated step (Enio 2026-06-12). Small
+/// enough that the wash stays workable (the drop-guard never lets it disappear); the slider raises
+/// it. ≈ ⅓ of the 0.012 preset, so the bulk dries far slower than a normal (non-keep-wet) wash.
+const KEEP_WET_EVAP: f32 = 0.004;
 /// Coverage rate: `alpha = 1 − exp(−amount · K)`, where `amount` is the
 /// COLOUR-INDEPENDENT pigment load. The grid stores colour×amount, so the raw
 /// channel sum is `amount · Σcolour` — luminance-weighted, which made bright
@@ -518,9 +523,16 @@ impl PainterTool {
     pub fn fluid_diffusion_params(&self) -> ph2d_painter_brush::diffusion::DiffusionParams {
         let mut dp = self.brush.rendering.watercolor.to_diffusion();
         if self.keep_wet {
-            // Keep Wet = never dry. The Keep-Wet equilibrium is handled by the surface-tension
-            // pinning in the solver (C1), not by a residual evaporation — so this stays 0.0.
-            dp.evaporation = 0.0;
+            // Keep Wet keeps a MINIMAL evaporation (NOT 0). A perfectly static (un-drying) front
+            // pins into a HARD water step ⇒ a crisp, pixelated rim; a trace of evaporation lets the
+            // thin edge water recede through the wet gate, so the rim becomes a soft gradient — a
+            // real watercolor edge (Enio: "se há o mínimo de evaporação, a borda fica boa"). The
+            // keep-wet drop-guard ([`Self::fluid_dry_check_and_drop_gpu`]) still keeps the field
+            // alive, and `evaporation > 0` lets the DRY-gated deposition run, so the edge gets the
+            // soft rim while the wet interior stays mobile (wet-on-wet still blends). Keep Wet
+            // OVERRIDES the brush's evaporation with this minimal value (the slider is inert while
+            // it's on — turn Keep Wet off to dry faster), like it forced 0 before.
+            dp.evaporation = KEEP_WET_EVAP;
         }
         // **Deposition follows DRYING (ADR-0085 — the "marked edges don't dissolve when wet" fix).**
         // Pigment strands on the paper as the water LEAVES; the base deposition (0.012/substep) +

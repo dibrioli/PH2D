@@ -3,19 +3,15 @@
 //! orchestrator (`paint::paint`) calls; everything else is module-private.
 
 use crate::ids;
+use crate::section_rows::{
+    checkbox_row, cycler_row, grain_type_label, mapped_row, pct_row, pigment_cycler_label,
+    rendering_mode_label, section_header,
+};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::widget::{
-    Button, ButtonState, Checkbox, CheckboxState, CheckboxValue, SectionHeader, paint_button,
-    paint_checkbox, paint_section_header, paint_slider_with_chip_layout_adaptive,
-};
-use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
+use ph2d_tokens::Theme;
 use ph2d_tool_painter::BrushStudioSnapshot;
-
-const LABEL_W: f32 = 88.0; // LITERAL-PX-OK: studio slider label column width
-const CHIP_W: f32 = 56.0; // LITERAL-PX-OK: studio slider value-chip column width
 
 /// Paint the five sections in order, separated by dividers. Returns the final
 /// `y` (content bottom). Split out of `paint` to keep it under the panel-fn LOC cap.
@@ -475,182 +471,4 @@ fn paint_watercolor_section(
         );
     }
     y
-}
-
-// ── Row helpers ──────────────────────────────────────────────────────────────
-
-/// Paint a collapsible section header + register its hit so a left-click folds
-/// it (generic `is_collapsible_section` dispatch — marked in `populate`). Returns
-/// `(y after the header, collapsed)`; the caller skips its body when collapsed.
-fn section_header(
-    ctx: &mut PaintCtx,
-    id: NodeId,
-    label: &str,
-    x: f32,
-    w: f32,
-    y: f32,
-    theme: Theme,
-) -> (f32, bool) {
-    let header_h = ROW_H_PX;
-    let collapsed = ctx.host.store().is_collapsed(id);
-    let header = SectionHeader::new(id, label).collapsible(!collapsed);
-    let hrect = Rect::new(x, y, w, header_h);
-    paint_section_header(&header, hrect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(id, hrect);
-    (y + header_h + Spacing::Xs.px(), collapsed)
-}
-
-/// Percent slider row (0..1 → 0..100%, integer display).
-#[allow(clippy::too_many_arguments)]
-fn pct_row(
-    ctx: &mut PaintCtx,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    value01: f32,
-    slider_id: NodeId,
-    chip_id: NodeId,
-    theme: Theme,
-) -> f32 {
-    let display = format!("{:.0}%", value01 * 100.0); // LITERAL-PX-OK: percent display scale (x100), not a px dimension
-    mapped_row(
-        ctx,
-        x,
-        w,
-        y,
-        label,
-        value01,
-        (value01 * 100.0) as f64, // LITERAL-PX-OK: percent display scale (x100), not a px dimension
-        &display,
-        slider_id,
-        chip_id,
-        theme,
-    )
-}
-
-/// Slider row with an explicit chip numeric + display string (for non-percent
-/// params — `shape_count`, `grain_scale`).
-#[allow(clippy::too_many_arguments)]
-fn mapped_row(
-    ctx: &mut PaintCtx,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    value01: f32,
-    chip_value: f64,
-    display: &str,
-    slider_id: NodeId,
-    chip_id: NodeId,
-    theme: Theme,
-) -> f32 {
-    let rect = Rect::new(x, y, w, ROW_H_PX);
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let h = paint_slider_with_chip_layout_adaptive(
-        rect,
-        label,
-        value01,
-        chip_value,
-        Some(display),
-        slider_id,
-        chip_id,
-        LABEL_W,
-        CHIP_W,
-        store,
-        hit_index,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    y + h + Spacing::Sm.px()
-}
-
-#[allow(clippy::too_many_arguments)]
-fn checkbox_row(
-    ctx: &mut PaintCtx,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    checked: bool,
-    id: NodeId,
-    theme: Theme,
-) -> f32 {
-    let rect = Rect::new(x, y, w, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .checkbox(id)
-        .map(|(st, _)| st)
-        .unwrap_or(CheckboxState::Normal);
-    let value = if checked {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    };
-    let cb = Checkbox::new(id, label).state(state).value(value);
-    paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
-}
-
-/// A full-width cycling button (grain type, rendering mode). `pressed` shows the
-/// active (non-default) state.
-#[allow(clippy::too_many_arguments)]
-fn cycler_row(
-    ctx: &mut PaintCtx,
-    x: f32,
-    w: f32,
-    y: f32,
-    label: &str,
-    pressed: bool,
-    id: NodeId,
-    theme: Theme,
-) -> f32 {
-    let rect = Rect::new(x, y, w, ROW_H_PX);
-    let state = if pressed {
-        ButtonState::Pressed
-    } else {
-        ctx.host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal)
-    };
-    let btn = Button::new(id, label).state(state);
-    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
-}
-
-fn rendering_mode_label(mode: u8) -> &'static str {
-    match mode {
-        0 => "Light Glaze",
-        1 => "Uniform Glaze",
-        2 => "Intense Glaze",
-        3 => "Heavy Glaze",
-        4 => "Uniform Blend",
-        5 => "Intense Blend",
-        _ => "Light Glaze",
-    }
-}
-
-/// Label for the real-pigment cycler (ADR-0081): `Pigment: None` for raw colour, else
-/// `Pigment: <name>` (English — HR-15) read straight from the `PALETTE`. An out-of-range
-/// index degrades to `None` (defensive — the tool only ever publishes valid indices).
-fn pigment_cycler_label(active: Option<u8>) -> String {
-    match active.and_then(|i| ph2d_tool_painter::PALETTE.get(i as usize)) {
-        Some(p) => format!("Pigment: {}", p.name),
-        None => "Pigment: None".to_string(),
-    }
-}
-
-fn grain_type_label(grain: u8) -> &'static str {
-    match grain {
-        1 => "Simplex",
-        2 => "Gabor",
-        3 => "Weave",
-        4 => "Spray",
-        _ => "Off",
-    }
 }

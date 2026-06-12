@@ -645,8 +645,15 @@ impl PainterTool {
     /// **Gated on `!stroke_active`:** a mid-stroke PAUSE (button held, no dabs) dries
     /// the field in ~0.3s; dropping it then would make a resumed drag find no field
     /// and paint non-fluid (Enio's pause bug). Keeping it lets a resumed dab re-wet it.
+    ///
+    /// **Gated on `!keep_wet` (ADR-0085 — the "Keep Wet stops working" fix):** Keep Wet means the
+    /// wash stays workable INDEFINITELY, so under it the field must NEVER drop. Forcing evaporation
+    /// to 0 (`fluid_diffusion_params`) was supposed to keep `max_water` above the threshold, but
+    /// the capillary layer REDISTRIBUTES water outward (thinning the pool) and a thin wash can sit
+    /// near the threshold — so `max_water` can dip below it even with evaporation off, dropping the
+    /// field despite Keep Wet. Guarding the drop on `keep_wet` makes the feature reliable.
     pub fn fluid_dry_check_and_drop_gpu(&mut self, max_water: f32) -> bool {
-        if self.wet_field.is_none() {
+        if self.wet_field.is_none() || self.keep_wet {
             return false;
         }
         if max_water < WET_DRY_THRESHOLD && !self.stroke_active {

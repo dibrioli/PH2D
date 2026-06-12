@@ -3491,6 +3491,41 @@ fn fluid_field_survives_mid_stroke_dry_pause() {
 }
 
 #[test]
+fn keep_wet_field_never_drops_on_dry_check() {
+    // ADR-0085 ("Keep Wet para de funcionar"): Keep Wet means the wash stays workable
+    // INDEFINITELY, so the dry-check must NEVER drop the field while it is on — even at a
+    // bone-dry `max_water` reading (the capillary layer thins the pool, a thin wash sits near
+    // the threshold). Forcing evaporation to 0 wasn't enough; the drop must be gated on keep_wet.
+    let (w, h) = (32u32, 24u32);
+    let mut t = PainterTool::default();
+    t.brush.rendering.fluid_enabled = true;
+    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
+    t.set_fluid_hires(true);
+    t.keep_wet = true;
+    t.begin_stroke(5);
+    t.queue_pointer(PointerSample {
+        position: [16.0, 12.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    assert!(t.has_wet_field(), "field allocated");
+    // Bone-dry + pointer up: WITHOUT keep-wet this drops; with keep-wet on it must NOT.
+    assert!(
+        !t.fluid_dry_check_and_drop_gpu(0.0),
+        "keep-wet must NOT drop the field, even bone-dry"
+    );
+    assert!(t.has_wet_field(), "field survives under keep-wet");
+    // Toggling keep-wet OFF lets the dry-check drop it again (the wash resumes drying).
+    t.keep_wet = false;
+    assert!(
+        t.fluid_dry_check_and_drop_gpu(0.0),
+        "without keep-wet a bone-dry field drops"
+    );
+    assert!(!t.has_wet_field(), "field drops once keep-wet is off");
+}
+
+#[test]
 fn fluid_gpu_envelope_never_recedes_under_evaporation() {
     // REGRESSION (Enio "bordas cheias de quinas retangulares", 2026-06-07): the GPU
     // composite region must be the MONOTONIC wet envelope, not the current water

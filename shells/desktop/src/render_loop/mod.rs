@@ -279,9 +279,6 @@ impl crate::App {
             surface.gpu(),
             renderer,
             self.last_painter_pushed_entity,
-            &mut self.painter_gpu_preview,
-            &mut self.painter_preview_gpu,
-            toasts,
         );
         #[cfg(not(feature = "fluid"))]
         let fluid_preview_override: Option<sim_extract::PreviewOverride> = None;

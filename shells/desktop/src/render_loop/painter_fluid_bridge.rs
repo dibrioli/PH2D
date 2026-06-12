@@ -22,11 +22,8 @@
 use super::painter_fluid_support::{
     FluidSession, PROFILE, grow_bbox, run_readback_lane, union_bbox,
 };
-use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
-use crate::app_state::PainterPreviewGpu;
 use ph2d_editor::ToolRegistry;
-use ph2d_editor::toast::ToastQueue;
 use ph2d_gpu::GpuContext;
 use ph2d_painter_fluid::DabGpu;
 use ph2d_render::SpriteRenderer;
@@ -126,23 +123,14 @@ pub(crate) fn flush_pending_bake(gpu: &GpuContext, painter: &mut ph2d_tool_paint
 /// `override_entity` is the entity whose source the painter holds
 /// (`last_painter_pushed_entity`) — the sprite the override suppresses.
 ///
-/// **E5 (ADR-0078 S2):** on a NON-trivial GPU-representable stack the mid-stroke
-/// frame instead feeds the fluid's STRAIGHT composite texture into the
-/// `painter_gpu_preview` driver (the single owner of the layer compositor + the
-/// `painter_preview_gpu` slot) — that fills `painter_preview_gpu`, whose
-/// override the render loop already emits, so this fn returns `None` on those
-/// frames. `painter_gpu_preview_session` / `painter_preview_gpu` / `toasts` are
-/// the SAME slots `painter_bridge::dispatch` hands to `try_drive` later in the
-/// frame (sequential borrows).
-#[allow(clippy::too_many_arguments)]
+/// ADR-0085: the E5 mid-stroke straight-texture lane is removed — a non-trivial
+/// GPU-representable stack falls to the readback lane (the layer-preview driver +
+/// `canvas_rgba`), so this fn no longer touches the `painter_gpu_preview` slots.
 pub(crate) fn drive_fluid_gpu(
     tools: &mut ToolRegistry,
     gpu: &GpuContext,
     renderer: &mut SpriteRenderer,
     override_entity: Option<u64>,
-    painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
 ) -> Option<PreviewOverride> {
     let painter = tools.active_mut().and_then(|t| {
         t.as_any_mut()
@@ -409,41 +397,10 @@ pub(crate) fn drive_fluid_gpu(
             override_out = o;
             texture_frame = tf;
         }
-        // ── E5 (ADR-0078 S2): NON-trivial GPU-representable stack mid-stroke ──
-        // The fluid straight composite goes GPU→GPU into the LayerCompositor's
-        // cached slice for the ACTIVE layer and the stack recomposites into the
-        // `painter_preview_gpu` slot (whose override the render loop maps
-        // itself — `override_out` stays None). Mutually exclusive with the E4
-        // arm (`gpu_eligible` is None on trivial stacks); a non-representable
-        // stack falls through to today's readback lane (guard #5). Logic lives
-        // in `painter_gpu_preview` (the single owner of compositor + slot).
-        if !texture_frame
-            && stroke_active
-            && let Some(entity_bits) = override_entity
-            && painter_gpu_preview::drive_fluid_chain(
-                painter_gpu_preview_session,
-                renderer,
-                painter,
-                entity_bits,
-                &mut sess.compositor,
-                gpu,
-                region,
-                cw,
-                ch,
-                epoch,
-                painter_preview_gpu,
-                toasts,
-            )
-        {
-            // canvas_rgba stays stale over the composited region (same E4
-            // catch-up: pointer-up readback frames replay the union into it).
-            sess.texture_mode_dirty = Some(match sess.texture_mode_dirty {
-                Some(d) => union_bbox(d, region),
-                None => region,
-            });
-            sess.catchup_bands = 0;
-            texture_frame = true;
-        }
+        // ADR-0085: the E5 mid-stroke straight-texture lane is removed. A non-trivial
+        // GPU-representable stack now falls straight through to the readback lane (below) — the
+        // same 1-frame-lag path it used on a non-representable stack — collapsing four preview
+        // lanes to two (single-submit texture for trivial stacks + pipelined readback otherwise).
         if !texture_frame && idle_skip {
             // Idle-skipped frame (perf block 2b): the field didn't step, so there is
             // nothing new to composite or bake — keep showing the already-published
@@ -470,10 +427,6 @@ pub(crate) fn drive_fluid_gpu(
                 stroke_active,
                 cw,
                 ch,
-                epoch,
-                painter_gpu_preview_session,
-                painter_preview_gpu,
-                toasts,
             ) {
                 override_out = Some(ov);
             }

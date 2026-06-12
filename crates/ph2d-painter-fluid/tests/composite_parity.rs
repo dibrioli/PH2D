@@ -4,9 +4,8 @@
 //! remains here are GPU-only structural gates: the per-frame banded/pipelined/fast-path
 //! composites must agree with the one-shot full-canvas composite (internal consistency),
 //! the K–M glaze must read green over a blue backdrop with no black fringe, lift must reveal
-//! paper not transparency, the straight-texture path must match the out-buffer bytes, and
-//! the wet-sheen-off path must be byte-identical. Each asserts a property of the GPU pipeline
-//! against itself — no CPU reference.
+//! paper not transparency, and the wet-sheen-off path must be byte-identical. Each asserts a
+//! property of the GPU pipeline against itself — no CPU reference.
 //!
 //! Not bit-equality across backends: GPU lowers `exp`/`pow`/`sqrt` differently, so where a
 //! tolerance is used it is a tight mean/worst |Δ| over the RGBA8 output (a correct shader
@@ -630,120 +629,6 @@ fn read_texture_rgba8(gpu: &GpuContext, tex: &wgpu::Texture, cw: u32, ch: u32) -
     drop(mapped);
     staging.unmap();
     out
-}
-
-#[test]
-#[ignore = "needs a GPU device"]
-fn gpu_straight_texture_matches_out_buf_bytes() {
-    // E5 parity gate: the straight-texture path (cs_composite → cs_straight_tex,
-    // NO premultiply) must hold EXACTLY the straight-sRGB8 `out_buf` bytes over
-    // the composited rect, and the STRAIGHT backdrop everywhere else (the lazy
-    // `cs_straight_init` seed) — this texture is what the shell injects into the
-    // GPU layer compositor's slice cache (its slices are straight; premul happens
-    // at the end of the layer chain). `unpack4x8unorm` → rgba8unorm store is an
-    // exact byte round-trip, so the gate is byte-exact, not rounding-bound.
-    let Some(gpu) = try_headless_gpu() else {
-        eprintln!("no GPU — skipping");
-        return;
-    };
-    let (gw, gh) = (40u32, 32u32);
-    let (cw, ch) = (gw * SCALE, gh * SCALE);
-    let grid = seeded_field(gw, gh);
-    let pig = grid.pigment();
-    let region = (0u32, 0u32, gw - 1, gh - 1);
-    let backdrop = split_backdrop(cw, ch);
-    let solver = FluidSolver::new(&gpu.device, gw, gh);
-    solver.upload(&gpu.queue, grid.water(), grid.paper(), pig);
-    let mut compositor = FluidCompositor::new(&gpu.device);
-    compositor.begin_stroke(
-        &gpu.device,
-        &gpu.queue,
-        gw,
-        gh,
-        cw,
-        ch,
-        SCALE,
-        COVERAGE_K,
-        1,
-        solver.pigment_buffer(),
-        &backdrop,
-        &backdrop, // ADR-0084 paper-reveal: paper == backdrop ⇒ exact no-op
-        None,      // ADR-0084: dormant backdrop-lift (no lift buffer)
-        None,      // wet-sheen water: dormant (no live water buffer)
-    );
-    assert!(
-        compositor.straight_texture().is_none(),
-        "the straight texture is LAZY — absent until the first straight frame"
-    );
-
-    // Ground truth: the sync readback (straight sRGB8 band) blitted over the
-    // STRAIGHT backdrop — no premultiply anywhere.
-    let (band, rect) = compositor.composite_frame(&gpu.device, &gpu.queue, region);
-    let (px_lo, py_lo, px_hi, py_hi) = rect;
-    assert!(!band.is_empty(), "sync composite produced a band");
-    let mut expected = backdrop.clone();
-    for y in py_lo..py_hi {
-        for x in px_lo..px_hi {
-            let bi = (((y - py_lo) * cw + x) * 4) as usize;
-            expected[((y * cw + x) * 4) as usize..][..4].copy_from_slice(&band[bi..bi + 4]);
-        }
-    }
-
-    // Straight-texture path: same field, same region — then read the texture back.
-    let rect_tex = compositor
-        .composite_frame_to_straight_texture(&gpu.device, &gpu.queue, region)
-        .expect("non-empty region composites");
-    assert_eq!(
-        rect_tex, rect,
-        "straight path rect must match the sync rect"
-    );
-    let tex = compositor
-        .straight_texture()
-        .expect("created on the first straight frame");
-    let got = read_texture_rgba8(&gpu, tex, cw, ch);
-
-    assert_eq!(expected.len(), got.len());
-    let mut worst = 0u8;
-    let mut worst_at = 0usize;
-    for (k, (e, g)) in expected.iter().zip(got.iter()).enumerate() {
-        let d = e.abs_diff(*g);
-        if d > worst {
-            worst = d;
-            worst_at = k;
-        }
-    }
-    eprintln!(
-        "straight texture ↔ out_buf bytes: worst |Δ| = {worst} LSB @byte {worst_at} \
-         ({cw}×{ch}, rect {rect:?})"
-    );
-    assert_eq!(
-        worst, 0,
-        "GPU straight texel diverged from the out_buf byte at {worst_at} \
-         (expected {} got {})",
-        expected[worst_at], got[worst_at]
-    );
-
-    // A new stroke drops the straight texture (its seed backdrop changed).
-    compositor.begin_stroke(
-        &gpu.device,
-        &gpu.queue,
-        gw,
-        gh,
-        cw,
-        ch,
-        SCALE,
-        COVERAGE_K,
-        1,
-        solver.pigment_buffer(),
-        &backdrop,
-        &backdrop,
-        None,
-        None,
-    );
-    assert!(
-        compositor.straight_texture().is_none(),
-        "begin_stroke must drop the straight texture"
-    );
 }
 
 // ─── Wet-paper sheen (view-only preview-texture effect) ──────────────────────

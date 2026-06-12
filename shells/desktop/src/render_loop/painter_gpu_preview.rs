@@ -39,13 +39,6 @@ pub(crate) struct PainterGpuPreview {
     gpu: GpuContext,
     compositor: LayerCompositor,
     premul: PreviewPremul,
-    /// The fluid stroke epoch whose preview slot has already been SEEDED with a
-    /// full-canvas composite. The E5 region path refreshes only the wet envelope
-    /// per frame, so the slot must hold a valid full backdrop first: the first
-    /// frame of each epoch composites + copies the WHOLE canvas (seed); later
-    /// frames region-scope. `None` = nothing seeded yet (the next frame seeds).
-    #[cfg(feature = "fluid")]
-    seeded_epoch: Option<u64>,
 }
 
 impl PainterGpuPreview {
@@ -54,8 +47,6 @@ impl PainterGpuPreview {
             gpu: gpu.clone(),
             compositor: LayerCompositor::new(gpu),
             premul: PreviewPremul::new(gpu),
-            #[cfg(feature = "fluid")]
-            seeded_epoch: None,
         }
     }
 }
@@ -138,175 +129,12 @@ pub(super) fn try_drive(
 /// The GPU-vs-CPU gate, pure half (headless-testable): `Some(ops, adj_luts)` iff
 /// this frame's preview should composite on the GPU. The trivial-stack check
 /// runs FIRST — `flatten_for_gpu` happily represents a single plain raster, but
-/// the CPU path is strictly better there (see [`try_drive`]). Also the gate of
-/// the E5 fluid chain ([`drive_fluid_chain`]), so the two drivers can never
-/// disagree about who owns a stack shape.
+/// the CPU path is strictly better there (see [`try_drive`]).
 fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.preview_is_trivial_stack() {
         return None;
     }
     super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
-}
-
-/// **E5 (ADR-0078 S2): the mid-stroke fluid→layer-chain frame for a NON-trivial
-/// GPU-representable stack — zero CPU bytes.** Orchestrates the whole chain:
-/// `gpu_eligible` (the SAME gate `try_drive` uses, so the two drivers can never
-/// disagree about who owns a stack shape) → fluid straight composite
-/// (`composite_frame_to_straight_texture` — covers the MONOTONIC dab envelope,
-/// `region` ⊇ all earlier frames of the stroke, so the slice is whole even if an
-/// early frame fell back to readback) → [`drive_injected`]. On success it drains
-/// the tool's preview-dirty flags (the layer producer just recomposited; a later
-/// `try_drive` would only redo identical work — harmless, the injected slice
-/// survives a same-version provider pass, just wasted GPU). Returns `true` iff
-/// the `painter_preview_gpu` slot now holds the recomposite; on `false` the
-/// caller falls through to the readback lane (canvas_rgba + the provider path
-/// keep the stroke alive with the CPU round-trip).
-#[cfg(feature = "fluid")]
-#[allow(clippy::too_many_arguments)]
-pub(super) fn drive_fluid_chain(
-    session_slot: &mut Option<PainterGpuPreview>,
-    renderer: &mut SpriteRenderer,
-    painter: &mut PainterTool,
-    entity_bits: u64,
-    fluid: &mut ph2d_painter_fluid::FluidCompositor,
-    gpu: &GpuContext,
-    grid_region: (u32, u32, u32, u32),
-    width: u32,
-    height: u32,
-    epoch: u64,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
-) -> bool {
-    let Some((ops, adj_luts)) = gpu_eligible(painter) else {
-        return false;
-    };
-    // The fluid straight composite returns the canvas RECT it refreshed (the wet
-    // envelope mapped to canvas pixels). We region-scope the whole downstream layer
-    // chain to that rect — only the dirty area recomposites per frame.
-    let Some((px_lo, py_lo, px_hi, py_hi)) =
-        fluid.composite_frame_to_straight_texture(&gpu.device, &gpu.queue, grid_region)
-    else {
-        return false;
-    };
-    let Some(tex) = fluid.straight_texture() else {
-        return false;
-    };
-    let rect = (px_lo, py_lo, px_hi - px_lo, py_hi - py_lo);
-    // Seed a FULL composite on the first frame of this stroke so the persistent
-    // preview slot holds a valid full backdrop; later frames refresh only `rect`.
-    let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
-    let seed_full = session.seeded_epoch != Some(epoch);
-    if !drive_injected(
-        session_slot,
-        renderer,
-        painter,
-        entity_bits,
-        ops,
-        adj_luts,
-        tex,
-        width,
-        height,
-        rect,
-        seed_full,
-        painter_preview_gpu,
-        toasts,
-    ) {
-        return false;
-    }
-    // Mark seeded only AFTER a successful drive (a failed seed frame must retry).
-    if let Some(s) = session_slot.as_mut() {
-        s.seeded_epoch = Some(epoch);
-    }
-    let _ = painter.take_preview_dirty();
-    let _ = painter.take_preview_upload_bbox();
-    true
-}
-
-/// **E5 (ADR-0078 S2): mid-stroke fluid drive for a NON-trivial GPU-representable
-/// stack — zero CPU bytes.** The fluid compositor hands its STRAIGHT-alpha live
-/// texture (the active layer's pre-stroke pixels + the wet wash) here; this
-/// injects it GPU→GPU into the layer compositor's cached slice for the ACTIVE
-/// layer ([`LayerCompositor::inject_slice_from_texture`]) and then runs the
-/// normal composite→premul→slot pipeline ([`drive`] — forced, NOT gated on
-/// `take_preview_dirty`: the wet field changed even though no CPU pixel did).
-///
-/// This module stays the SINGLE owner of the layer compositor + the preview
-/// slot: the fluid bridge never builds a second compositor, it only delivers
-/// the texture. The injection version is the active layer's CURRENT provider
-/// version (NOT bumped) — see the version invariant on
-/// `inject_slice_from_texture`: a same-version provider pass (stale mid-stroke
-/// `canvas_rgba`) keeps the injection; the pointer-up readback's version bump
-/// retires it exactly when `canvas_rgba` catches up.
-///
-/// Returns `true` iff the slot now holds the injected recomposite (the caller
-/// then skips the readback lane this frame and accumulates its catch-up union).
-#[cfg(feature = "fluid")]
-#[allow(clippy::too_many_arguments)]
-fn drive_injected(
-    session_slot: &mut Option<PainterGpuPreview>,
-    renderer: &mut SpriteRenderer,
-    painter: &PainterTool,
-    entity_bits: u64,
-    ops: Vec<LayerOp>,
-    adj_luts: Vec<f32>,
-    straight_tex: &wgpu::Texture,
-    width: u32,
-    height: u32,
-    rect: (u32, u32, u32, u32),
-    seed_full: bool,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
-) -> bool {
-    if width == 0 || height == 0 {
-        return false;
-    }
-    let Some(active_key) = painter.layers().active().map(|id| id.0) else {
-        return false;
-    };
-    // The injection targets the active layer's slice — if the flatten skipped it
-    // (hidden / zero-opacity), there is no slice to feed; readback lane instead.
-    if !ops
-        .iter()
-        .any(|o| matches!(o, LayerOp::Layer { key, .. } if *key == active_key))
-    {
-        return false;
-    }
-    let Some((version, _)) = painter.preview_layer_pixels(active_key) else {
-        return false;
-    };
-    let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
-    // Inject only the wet envelope rect: `straight_tex` outside it holds the
-    // straight backdrop (= the slice's pre-stroke base) and the envelope is
-    // monotonic, so a rect copy is exact and skips a full-canvas GPU copy/frame.
-    if let Err(e) = session.compositor.inject_slice_from_texture(
-        &session.gpu,
-        &ops,
-        active_key,
-        straight_tex,
-        width,
-        height,
-        rect,
-        version,
-    ) {
-        toasts.push(Toast::error(format!(
-            "Painter: fluid GPU slice inject falhou ({e}). Caindo no caminho readback."
-        )));
-        return false;
-    }
-    drive(
-        session_slot,
-        renderer,
-        painter,
-        entity_bits,
-        ops,
-        adj_luts,
-        width,
-        height,
-        rect,
-        seed_full,
-        painter_preview_gpu,
-        toasts,
-    )
 }
 
 /// Composite `ops` on the GPU, premultiply, and copy into the preview slot,

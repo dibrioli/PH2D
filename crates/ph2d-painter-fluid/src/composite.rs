@@ -113,15 +113,6 @@ struct CompositeState {
     preview_tex: wgpu::Texture,
     /// The group(1) bind for the premul passes (just the storage view of `preview_tex`).
     preview_bind: wgpu::BindGroup,
-    /// **E5 (ADR-0078 S2 multi-layer)** — the STRAIGHT-alpha live texture
-    /// (canvas-res `rgba8unorm`, `COPY_SRC`) the shell injects into the GPU
-    /// layer compositor's slice cache for the active layer (its slices are
-    /// straight; premul happens at the end of the layer chain). LAZY: only a
-    /// non-trivial GPU-representable stack pays the VRAM — created (+ seeded
-    /// with the straight backdrop via `cs_straight_init`) on the first
-    /// [`FluidCompositor::composite_frame_to_straight_texture`] of a stroke,
-    /// and dropped at every `begin_stroke` (the backdrop changed).
-    straight: Option<(wgpu::Texture, wgpu::BindGroup)>,
 }
 
 /// An in-flight async readback (ADR-0078 S2 — pipelined composite). The band copy is
@@ -147,11 +138,6 @@ pub struct FluidCompositor {
     premul_tex_pipeline: wgpu::ComputePipeline,
     /// E4 — `cs_premul_init`: backdrop → premultiplied preview texture (stroke start).
     premul_init_pipeline: wgpu::ComputePipeline,
-    /// E5 — `cs_straight_tex`: out_buf region → STRAIGHT-alpha texture (the layer-
-    /// compositor injection source; same group(1) layout, separate bind group).
-    straight_tex_pipeline: wgpu::ComputePipeline,
-    /// E5 — `cs_straight_init`: backdrop → straight texture (lazy first-frame seed).
-    straight_init_pipeline: wgpu::ComputePipeline,
     state: Option<CompositeState>,
     /// The previous frame's readback, awaiting a non-blocking poll (pipelined path).
     pending: Option<PendingReadback>,
@@ -248,18 +234,12 @@ impl FluidCompositor {
         };
         let premul_tex_pipeline = premul_pipeline("cs_premul_tex");
         let premul_init_pipeline = premul_pipeline("cs_premul_init");
-        // E5 — same group(0)+group(1) layouts (the straight texture binds the same
-        // group(1) storage-texture slot through its own bind group at dispatch).
-        let straight_tex_pipeline = premul_pipeline("cs_straight_tex");
-        let straight_init_pipeline = premul_pipeline("cs_straight_init");
         Self {
             pipeline,
             bgl,
             tex_bgl,
             premul_tex_pipeline,
             premul_init_pipeline,
-            straight_tex_pipeline,
-            straight_init_pipeline,
             state: None,
             pending: None,
             wet_sheen: false,
@@ -468,15 +448,10 @@ impl FluidCompositor {
                 bind,
                 preview_tex,
                 preview_bind,
-                straight: None,
             });
         }
         // SAFETY of unwrap: `state` is Some after the resize branch (or already was).
         let st = self.state.as_mut().expect("composite state set");
-        // E5 — the straight texture is seeded from the STROKE's backdrop, which is
-        // about to change: drop it so the next straight-texture frame (if any)
-        // lazily recreates + re-seeds it. Also frees the VRAM between strokes.
-        st.straight = None;
         st.gw = gw;
         st.gh = gh;
         st.scale = scale;
@@ -845,136 +820,6 @@ impl FluidCompositor {
     /// region ever composited.
     pub fn preview_texture(&self) -> Option<&wgpu::Texture> {
         self.state.as_ref().map(|st| &st.preview_tex)
-    }
-
-    /// **E5 — per-frame composite into the STRAIGHT-alpha texture (after
-    /// [`Self::begin_stroke`]).** Same shape as [`Self::composite_frame_to_texture`]
-    /// (one pass: `cs_composite` over the wet bbox, then a texture store of the SAME
-    /// region — WebGPU's implicit inter-dispatch sync) but the store is
-    /// `cs_straight_tex`: the raw straight-sRGB8 `out_buf` bytes, NO premultiply —
-    /// the GPU layer compositor consumes straight slices (premul happens once at the
-    /// end of the layer chain). The texture is created lazily on the first call of a
-    /// stroke and seeded full-canvas with the straight backdrop (`cs_straight_init`,
-    /// its own submit so the region uniform can differ), so out-of-region texels hold
-    /// the active layer's pre-stroke pixels. Returns the composited canvas rect, or
-    /// `None` when there's no stroke state / the region is empty.
-    pub fn composite_frame_to_straight_texture(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        grid_region: (u32, u32, u32, u32),
-    ) -> Option<(u32, u32, u32, u32)> {
-        // Disjoint field borrows: `state` is &mut, the pipelines are read-only.
-        let st = self.state.as_mut()?;
-        let (px_lo, py_lo, px_hi, py_hi) =
-            composite_canvas_region(grid_region, st.scale, st.cw, st.ch);
-        if py_hi <= py_lo || px_hi <= px_lo {
-            return None;
-        }
-        // Lazy create + full-canvas seed (first straight frame of the stroke).
-        if st.straight.is_none() {
-            let tex = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("composite straight texture (E5)"),
-                size: wgpu::Extent3d {
-                    width: st.cw,
-                    height: st.ch,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("composite straight-tex bg (E5)"),
-                layout: &self.tex_bgl,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(
-                        &tex.create_view(&wgpu::TextureViewDescriptor::default()),
-                    ),
-                }],
-            });
-            // Seed the FULL canvas with the straight backdrop. Separate submit: the
-            // region uniform must cover the whole canvas here but only the wet rect
-            // below, and `write_buffer` orders against subsequently submitted work.
-            let uni = GpuU {
-                cw: st.cw,
-                ch: st.ch,
-                gw: st.gw,
-                gh: st.gh,
-                inv: 1.0 / st.scale as f32,
-                coverage_k: st.coverage_k,
-                ss: st.ss,
-                origin_x: 0,
-                origin_y: 0,
-                end_x: st.cw,
-                end_y: st.ch,
-                wet_sheen: 0,
-            };
-            queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
-            let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("composite straight init (E5)"),
-            });
-            {
-                let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("composite straight init pass"),
-                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_init"),
-                });
-                pass.set_pipeline(&self.straight_init_pipeline);
-                pass.set_bind_group(0, &st.bind, &[]);
-                pass.set_bind_group(1, &bind, &[]);
-                pass.dispatch_workgroups(st.cw.div_ceil(8), st.ch.div_ceil(8), 1);
-            }
-            queue.submit([enc.finish()]);
-            st.straight = Some((tex, bind));
-        }
-        let (_, straight_bind) = st.straight.as_ref().expect("just ensured");
-        let uni = GpuU {
-            cw: st.cw,
-            ch: st.ch,
-            gw: st.gw,
-            gh: st.gh,
-            inv: 1.0 / st.scale as f32,
-            coverage_k: st.coverage_k,
-            ss: st.ss,
-            origin_x: px_lo,
-            origin_y: py_lo,
-            end_x: px_hi,
-            end_y: py_hi,
-            wet_sheen: u32::from(self.wet_sheen),
-        };
-        queue.write_buffer(&st.params, 0, bytemuck::bytes_of(&uni));
-        let (rw, rh) = (px_hi - px_lo, py_hi - py_lo);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("composite frame (to straight texture, E5)"),
-        });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("composite frame to-straight-texture pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.comp_straight"),
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &st.bind, &[]);
-            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
-            pass.set_pipeline(&self.straight_tex_pipeline);
-            pass.set_bind_group(1, straight_bind, &[]);
-            pass.dispatch_workgroups(rw.div_ceil(8), rh.div_ceil(8), 1);
-        }
-        queue.submit([enc.finish()]);
-        Some((px_lo, py_lo, px_hi, py_hi))
-    }
-
-    /// E5 — the straight-alpha live texture (canvas-res `Rgba8Unorm`, `COPY_SRC`
-    /// for the layer-compositor slice injection), or `None` before the first
-    /// [`Self::composite_frame_to_straight_texture`] of the current stroke.
-    pub fn straight_texture(&self) -> Option<&wgpu::Texture> {
-        self.state
-            .as_ref()
-            .and_then(|st| st.straight.as_ref())
-            .map(|(tex, _)| tex)
     }
 
     /// Drop the persistent stroke state (frees the canvas buffers) — call when the

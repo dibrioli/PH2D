@@ -3,10 +3,7 @@
 //! out of the bridge for HR-18 (≤600 LOC per shell file); the bridge keeps the
 //! per-frame drive logic, this module keeps the leaf utilities.
 
-use super::painter_gpu_preview::{self, PainterGpuPreview};
 use super::sim_extract::PreviewOverride;
-use crate::app_state::PainterPreviewGpu;
-use ph2d_editor::toast::ToastQueue;
 use ph2d_gpu::GpuContext;
 use ph2d_painter_fluid::{FluidCompositor, FluidSolver};
 use ph2d_render::SpriteRenderer;
@@ -176,10 +173,6 @@ pub(super) fn run_readback_lane(
     stroke_active: bool,
     cw: u32,
     ch: u32,
-    epoch: u64,
-    painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
 ) -> Option<PreviewOverride> {
     let mut override_out = None;
     let rb_region = match sess.texture_mode_dirty {
@@ -246,10 +239,6 @@ pub(super) fn run_readback_lane(
             region,
             cw,
             ch,
-            epoch,
-            painter_gpu_preview_session,
-            painter_preview_gpu,
-            toasts,
         )
     {
         override_out = Some(ov);
@@ -264,10 +253,9 @@ pub(super) fn run_readback_lane(
 /// frame: one extra region-scoped composite into the preview texture (the sheen flag
 /// rides the `cs_premul_tex`/`cs_straight_tex` passes) and a publish of the fluid
 /// override, so the wash visibly stays wet until it dries (or indefinitely under
-/// keep-wet) and then "dries lighter". Trivial stacks publish the premultiplied
-/// preview slot directly; a non-trivial GPU-representable stack mirrors the E5 lane
-/// via [`painter_gpu_preview::drive_fluid_chain`] (which fills `painter_preview_gpu`,
-/// whose override the render loop emits itself → returns `None` here).
+/// keep-wet) and then "dries lighter". Trivial stacks publish the premultiplied preview slot
+/// directly; ADR-0085: a non-trivial GPU-representable stack no longer gets the cosmetic sheen
+/// (the E5 lane is gone) — the readback lane keeps `canvas_rgba` current and this returns `None`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn publish_wet_sheen_between_strokes(
     renderer: &mut SpriteRenderer,
@@ -280,10 +268,6 @@ pub(super) fn publish_wet_sheen_between_strokes(
     region: (u32, u32, u32, u32),
     cw: u32,
     ch: u32,
-    epoch: u64,
-    painter_gpu_preview_session: &mut Option<PainterGpuPreview>,
-    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
-    toasts: &mut ToastQueue,
 ) -> Option<PreviewOverride> {
     if painter.preview_is_trivial_stack() {
         compositor.composite_frame_to_texture(&gpu.device, &gpu.queue, region)?;
@@ -296,22 +280,9 @@ pub(super) fn publish_wet_sheen_between_strokes(
             premultiplied: true,
         })
     } else {
-        // E5 mirror: the chain owns the layer compositor + the `painter_preview_gpu`
-        // slot; on failure the plain (sheen-free) CPU preview keeps the frame alive.
-        let _ = painter_gpu_preview::drive_fluid_chain(
-            painter_gpu_preview_session,
-            renderer,
-            painter,
-            entity_bits,
-            compositor,
-            gpu,
-            region,
-            cw,
-            ch,
-            epoch,
-            painter_preview_gpu,
-            toasts,
-        );
+        // ADR-0085 (E5 lane removed): a non-trivial GPU-representable stack no longer gets the
+        // view-only wet-sheen between strokes — the readback lane keeps `canvas_rgba` (the actual
+        // paint) current via the standard provider path; only the cosmetic sheen is dropped here.
         None
     }
 }

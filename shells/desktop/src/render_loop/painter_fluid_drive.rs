@@ -49,6 +49,12 @@ pub(super) fn maybe_begin_fluid_stroke(
     // bake ran, `flush_pending_bake` (pointer-down, BEFORE this) already drained it — and a
     // surviving union still names rows canvas_rgba never received, so it stays correct.
     sess.texture_published = false;
+    // **Re-seed the preview slot (ADR-0085 — the undo FLASH fix).** The slot is reused across a
+    // fresh stroke (same dims); if it stayed `seeded`, this stroke's single-submit would only
+    // dirty-rect its own region, leaving the PRIOR stroke's pixels visible in the rest of the slot
+    // for a frame — e.g. an UNDONE stroke flashing back when you repaint. Forcing `seeded = false`
+    // makes the first frame FULL-copy the (fresh, reverted) backdrop, so no stale pixels survive.
+    sess.preview_slot_seeded = false;
     // ADR-0079: drive ALL 15 solver controls (base diffusion + deposition +
     // shallow-water flow) from the ACTIVE BRUSH's per-brush `WatercolorParams`
     // (projected to `DiffusionParams`), replacing the old `FluidParams::default()`

@@ -388,7 +388,7 @@ mod brush_engine {
     #[test]
     fn watercolor_params_field_count_is_capped() {
         // ADR-0079 — the per-brush watercolor controls DTO (a RenderingParams field).
-        // 21 used, cap ≤ 21 FULL (ADR-0079-amendment-1 `surface_tension`; ADR-0082
+        // 21 used, cap ≤ 21 FULL (ADR-0079-amendment-1 slot, now `bleed_limit` per amendment-2; ADR-0082
         // `capillary_branching`; ADR-0081 `lift`; ADR-0078 S5/S5c `capillary`/`sharpness`;
         // 2026-06-09 `water` water-brush). Insulates the brush-file contract from the
         // solver-internal DiffusionParams (which we extend freely).

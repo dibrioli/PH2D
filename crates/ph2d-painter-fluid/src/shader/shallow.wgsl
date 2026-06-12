@@ -50,9 +50,9 @@ struct Params {
     capillary: f32,          // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     capillary_mobility: f32, // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     sharpness: f32,          // ADR-0078 S5c — BFECC/MacCormack correction blend (cs_advect_correct)
-    lift: f32,               // ADR-0081 — read by cs_lift, not here (layout parity to reach surface_tension)
+    lift: f32,               // ADR-0081 — read by cs_lift, not here (layout parity to reach bleed_limit)
     capillary_branching: f32,// ADR-0082 — read by capillary.wgsl, not here (layout parity)
-    surface_tension: f32,    // ADR-0079-amendment-1 — the contact-line pin threshold (read HERE)
+    bleed_limit: f32,        // (offset 26) front-absorption knob, read by fluid.wgsl (layout parity)
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -97,24 +97,6 @@ fn smoothstep_gate(lo: f32, hi: f32, x: f32) -> f32 {
     return t * t * (3.0 - 2.0 * t);
 }
 
-// ── Surface-tension contact-line pinning (ADR-0085 C1, the Keep-Wet equilibrium) ──
-// The Curtis FlowOutward force (−λ·∇w) drives the wet front outward; with evaporation off the
-// wet/dry boundary never recedes, so ∇w there is permanent ⇒ the force is injected forever and
-// `drag` only damps momentum to a nonzero terminal velocity ⇒ no fixed point ⇒ perpetual creep.
-// Physically a thinning film's contact line PINS: below a saturation the surface tension holds
-// the meniscus and the wash stops spreading. So the FlowOutward driving force ramps in over the
-// film thickness `water` and vanishes as the front thins — a true fixed point (the front pins
-// where it thins past FLOW_PIN_LO), WITHOUT killing the transient bleed (a fresh pool ≈0.9 is
-// well above FLOW_PIN_HI, so it spreads at full strength for ~1-2 s before thinning to rest).
-// The band sits above the wet-gate floor (w_lo≈0.05) and below a flowing film. The paper-slope
-// channeling (−β·∇h) is NOT pinned: ∇h is the static, mean-zero paper texture — it pools pigment
-// in the tooth valleys but carries no net-outward bias, so it never grows the envelope.
-// FLOW_PIN_HI is now the per-brush `surface_tension` control (ADR-0079-amendment-1) — the artist
-// raises it to pin the wet front sooner (less Keep-Wet bleed). FLOW_PIN_LO keeps the same
-// proportional band below it (0.15/0.35 = 0.4286), so `surface_tension = 0.35` reproduces the old
-// hard-coded 0.15..0.35 pin bit-for-bit.
-const FLOW_PIN_LO_RATIO: f32 = 0.4286;
-
 // Perm-weighted pigment gate (the advect transport gate) = smoothstep(water)·perm(paper).
 fn gate(x: u32, y: u32) -> f32 {
     let i = idx(x, y);
@@ -152,13 +134,13 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Neumann velocity Laplacian (border neighbour = self via the clamp).
     let lap = vel_in[idx(n.x, y)] + vel_in[idx(n.y, y)] + vel_in[idx(x, n.z)]
         + vel_in[idx(x, n.w)] - 4.0 * vc;
-    // Surface-tension pinning: the FlowOutward (−λ·∇w) drive fades to 0 as this cell's film
-    // thins, so a receded/thinned front stops being pushed outward (the Keep-Wet fixed point).
-    // ∇h channeling is unpinned (static, mean-zero paper texture — no outward bias).
-    let pin = smoothstep_gate(P.surface_tension * FLOW_PIN_LO_RATIO, P.surface_tension, water[i]);
+    // FlowOutward (−λ·∇w) is applied UNPINNED (the surface-tension contact-line pin was removed
+    // 2026-06-12 — it conflated bounding with edge-sharpness and pixelated the rim). The Keep-Wet
+    // fixed point is now set by the front-absorption sink in `cs_evaporate` (`bleed_limit`): as the
+    // thin front is absorbed into the paper its wet mask drops → `vel_out` zeroes → the front stops.
     let force = vec2<f32>(
-        P.downhill * 0.5 * dhx + pin * P.flow_outward * 0.5 * dwx,
-        P.downhill * 0.5 * dhy + pin * P.flow_outward * 0.5 * dwy,
+        P.downhill * 0.5 * dhx + P.flow_outward * 0.5 * dwx,
+        P.downhill * 0.5 * dhy + P.flow_outward * 0.5 * dwy,
     );
     var uv = vc - perm * force + P.viscosity * lap;
     uv = uv * (1.0 - P.drag);

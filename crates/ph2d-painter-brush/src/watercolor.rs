@@ -63,10 +63,11 @@ pub struct WatercolorParams {
     /// depositing colour. Tool-side (dab emission), no [`DiffusionParams`] twin. Default 0
     /// = the validated paint look bit-for-bit.
     pub water: f32,
-    // ── Surface tension (ADR-0079-amendment-1) — the contact-line pinning threshold that bounds
-    //    how far a Keep-Wet / evaporation-0 wash creeps past the painted area ──
-    pub surface_tension: f32,
-    // === 21/21 used (cap ≤ 21, raised from 20 by ADR-0079-amendment-1) ===
+    // ── Bleed Limit (ADR-0079-amendment-2) — front-absorption sink that bounds how far a
+    //    Keep-Wet / evaporation-0 wash spreads, WITHOUT a hard edge (replaces Surface Tension,
+    //    whose conductance pin pixelated the rim). 0 = unbounded creep … 1 = tight, soft edge ──
+    pub bleed_limit: f32,
+    // === 21/21 used (cap ≤ 21, raised from 20 by ADR-0079-amendment-1; slot reused by amend-2) ===
 }
 
 impl Default for WatercolorParams {
@@ -117,9 +118,9 @@ impl Default for WatercolorParams {
             capillary_branching: 0.0,
             // Water brush OFF by default — a paint brush deposits its full pigment load.
             water: 0.0,
-            // Surface tension (ADR-0079-amendment-1) — 0.35 reproduces the pre-amendment hard-coded
-            // `FLOW_PIN_HI` pinning bit-for-bit; the artist raises it to bound the Keep-Wet bleed.
-            surface_tension: 0.35,
+            // Bleed Limit (ADR-0079-amendment-2) — 0.3 gives a gently bounded wash by default
+            // (front-absorption); the artist raises it for a tighter wash, lowers it for free bleed.
+            bleed_limit: 0.3,
         }
     }
 }
@@ -254,17 +255,16 @@ impl WatercolorParams {
             min: 0.0,
             max: 1.0,
         },
-        // Surface tension (ADR-0079-amendment-1): the contact-line PINNING threshold — the water
-        // level at which the FlowOutward force vanishes, so the wet front stops there. Under Keep
-        // Wet / Evaporation 0 the film only thins by spreading, so this alone sets how far the pool
-        // creeps past the painted area: HIGHER = the meniscus holds tighter = pins sooner = LESS
-        // bleed. Drives BOTH the FlowOutward pin AND the capillary wick floor (capillary.wgsl), so
-        // it bounds the whole Keep-Wet envelope. 0.35 = the pre-amendment look; toward 0.6 both the
-        // flow + wick pin near the ~0.55 dab water ⇒ almost no creep past the painted area.
+        // Bleed Limit (ADR-0079-amendment-2): how far a Keep-Wet / Evaporation-0 wash spreads past
+        // the painted area, bounded by a FRONT-ABSORPTION sink (fluid.wgsl `cs_evaporate`) instead
+        // of the deleted Surface-Tension conductance pin (which cliffed the rim into pixels). The
+        // thin perimeter film is soaked into the paper faster than the thick core, so the front
+        // halts with a SOFT set edge while wet pools persist. HIGHER = more absorption = tighter
+        // wash, less bleed. 0 = unbounded creep (the raw wick). Soft edge at every value.
         WatercolorControl {
-            label: "Surface Tension",
-            min: 0.05,
-            max: 0.6,
+            label: "Bleed Limit",
+            min: 0.0,
+            max: 1.0,
         },
     ];
 
@@ -295,7 +295,7 @@ impl WatercolorParams {
             17 => self.lift,
             18 => self.capillary_branching,
             19 => self.water,
-            20 => self.surface_tension,
+            20 => self.bleed_limit,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -325,7 +325,7 @@ impl WatercolorParams {
             17 => self.lift = v,
             18 => self.capillary_branching = v,
             19 => self.water = v,
-            20 => self.surface_tension = v,
+            20 => self.bleed_limit = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -370,7 +370,7 @@ impl WatercolorParams {
             sharpness: self.sharpness,
             lift: self.lift,
             capillary_branching: self.capillary_branching,
-            surface_tension: self.surface_tension,
+            bleed_limit: self.bleed_limit,
         }
     }
 }

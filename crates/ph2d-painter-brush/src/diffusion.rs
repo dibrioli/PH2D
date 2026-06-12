@@ -173,15 +173,15 @@ pub struct DiffusionParams {
     /// of the GPU capillary pass. `0` ⇒ `fiber_factor = 1` ⇒ the isotropic capillary is
     /// **bit-identical** to today (opt-in). Only read while the capillary layer is active.
     pub capillary_branching: f32,
-    /// **Surface tension — the contact-line pinning threshold (ADR-0079-amendment-1 / ADR-0085 C1).**
-    /// The Curtis FlowOutward driving force (`−λ·∇w`) ramps OUT as the film thins below this water
-    /// level, so the wet front PINS where it thins past it — the fixed point that stops the wash
-    /// spreading. Under Keep Wet / `evaporation = 0` the film only thins by spreading (water is
-    /// conserved, not evaporated), so this threshold alone governs how far the pool creeps past the
-    /// painted area: HIGHER = the meniscus holds tighter = pins sooner = LESS bleed. Drives
-    /// `FLOW_PIN_HI` in `shallow.wgsl` (with `FLOW_PIN_LO` derived proportionally). Default `0.35`
-    /// reproduces the pre-amendment hard-coded look bit-for-bit.
-    pub surface_tension: f32,
+    /// **Bleed Limit — front-absorption sink (ADR-0079-amendment-2, 2026-06-12).** Replaces the
+    /// deleted Surface-Tension pin, which bounded the wash by zeroing the wick conductance at a
+    /// water floor — a fake bound that necessarily cliffed the wet edge into a 1-cell pixelated rim.
+    /// A mass-conserving diffusion cannot be bounded without a SINK; this is one. The thin perimeter
+    /// film (high surface-area-to-volume) is soaked into the paper faster than the thick pool, so
+    /// the front loses its fuel and HALTS with a SOFT set edge while wet pools persist. Drives the
+    /// absorption term in `fluid.wgsl::cs_evaporate` (active only in the `[w_lo, w_hi]` band).
+    /// `0` = unbounded creep (raw wick); HIGHER = more absorption = tighter wash. Soft at every value.
+    pub bleed_limit: f32,
 }
 
 /// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
@@ -226,9 +226,9 @@ impl Default for DiffusionParams {
             // Branched capillary OFF by default (ADR-0082) → opt-in; 0 = isotropic capillary
             // bit-identical (fiber_factor = 1, the smooth ring).
             capillary_branching: 0.0,
-            // Contact-line pinning threshold (ADR-0079-amendment-1) — 0.35 reproduces the
-            // pre-amendment hard-coded `FLOW_PIN_HI` bit-for-bit.
-            surface_tension: 0.35,
+            // Bleed-limit front-absorption (ADR-0079-amendment-2) — 0 at the raw-solver level (no
+            // absorption ⇒ the unbounded wick, unchanged); the brush default turns it on per-stroke.
+            bleed_limit: 0.0,
         }
     }
 }

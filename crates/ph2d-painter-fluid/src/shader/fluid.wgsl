@@ -30,6 +30,10 @@ const PV: u32 = 8u;
 // HANDOFF_painter_fluid_perf_block.md). Under Keep Wet (evaporation = 0) this
 // clamp is the only brake. Parity gate: `gpu_solver_matches_cpu_reference`.
 const WATER_EPS: f32 = 1.0e-4;
+// Per-substep scale of the front-absorption sink (ADR-0079-amendment-2). At `bleed_limit = 1` and
+// mid-film water, a cell loses ≈ this fraction per substep; small enough that the toe survives, big
+// enough that the advancing front halts within ~1 s. Tunable; the artist knob scales it 0..1.
+const ABSORB_RATE: f32 = 0.18;
 
 struct Params {
     width: u32,
@@ -57,9 +61,20 @@ struct Params {
     deposition: f32,
     deposition_dry: f32,
     granulation: f32,
-    _pad0: f32,
-    _pad1: f32,
-    _pad2: f32,
+    // Offsets 17..25 are the shallow-water / capillary / lift / branching fields read by the other
+    // modules; `cs_evaporate` only needs `bleed_limit` (offset 26), but the layout must be reached.
+    velocity: f32,
+    viscosity: f32,
+    drag: f32,
+    pressure: f32,
+    capillary: f32,
+    capillary_mobility: f32,
+    sharpness: f32,
+    lift: f32,
+    capillary_branching: f32,
+    // (offset 26) front-absorption knob — drives the bleed-limiting water sink in `cs_evaporate`.
+    bleed_limit: f32,
+    _pad27: f32,
 }
 
 fn region_cell(gid: vec2<u32>) -> vec2<u32> {
@@ -194,7 +209,22 @@ fn cs_evaporate(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let i = idx(x, y);
-    let w = max(water[i] - P.evaporation, 0.0);
+    let w0 = water[i];
+    // ── Front-localized absorption — the "Bleed Limit" method (ADR-0079-amendment-2, 2026-06-12) ──
+    // Original mechanism REPLACING the deleted Surface-Tension pin. A mass-conserving diffusion
+    // cannot be bounded without a SINK — a conductance floor is a fake bound that necessarily cliffs
+    // the wet edge into a 1-cell step (the pixelated rim). Physically, the THIN film at the wash
+    // perimeter has a high surface-area-to-volume ratio, so the paper soaks it up far faster than
+    // the thick pool — that is what actually limits a real wash's spread and sets a soft edge. Model
+    // it as a water sink acting ONLY in the deposition band [w_lo, w_hi] (the thin advancing front)
+    // and vanishing in the wet core (water > w_hi → Keep-Wet pools persist and stay liftable). It is
+    // proportional to the water present, so the faint outer toe (tiny water) loses almost nothing →
+    // the graded multi-cell edge SURVIVES (soft, un-pixelated), while the mid-film loses the most →
+    // the front loses its fuel and HALTS (bounded). `bleed_limit` (0 = unbounded creep … 1 = tight)
+    // is the artist knob. Pigment is untouched (conserved); it simply sets as its water recedes.
+    let front = 1.0 - smoothstep(P.w_lo, P.w_hi, w0); // 1 on the thin front, 0 in the wet core
+    let absorb = P.bleed_limit * ABSORB_RATE * front * w0;
+    let w = max(w0 - P.evaporation - absorb, 0.0);
     // Epsilon-clamp (perf block 2a): mirrors the CPU step's WATER_EPS snap-to-zero.
     water[i] = select(0.0, w, w >= WATER_EPS);
 }

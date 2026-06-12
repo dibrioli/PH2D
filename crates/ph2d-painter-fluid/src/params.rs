@@ -92,8 +92,9 @@ impl FluidParams {
             lift: 0.0,
             capillary_branching: 0.0,
             // Not carried by the serialized base `FluidParams`; the live solver layers the brush's
-            // value via `set_from_diffusion`. Default (0.35) keeps the pin active on this mapped path.
-            surface_tension: 0.35,
+            // value via `set_from_diffusion`. 0.0 = no front-absorption on this mapped path (the
+            // raw unbounded wick); the live painting brush turns Bleed Limit on per-stroke.
+            bleed_limit: 0.0,
         }
     }
 }

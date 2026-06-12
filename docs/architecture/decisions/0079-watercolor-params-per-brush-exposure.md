@@ -57,3 +57,21 @@ O artista ganha controle total e per-brush sobre a física da aquarela (difusão
 - Gate `watercolor_params_field_count_is_capped`: `20 → 21`.
 
 **Compat:** mesma situação das adições anteriores (`lift`/`capillary_branching`/`water`) — `#[serde(default)]` no campo `watercolor` cobre brush-files pré-feature; default 0.35 preserva o look validado. `physical_invariants` (Metal) 10/10, incl. **INV-7** (settle sob Keep-Wet) — o pin default é preservado.
+
+---
+
+## 6. Amendment-2 (2026-06-12) — "Surface Tension" REMOVIDO; substituído por "Bleed Limit" (sumidouro de absorção na frente)
+
+**Motivação (Enio, smoke 2026-06-12):** o controle "Surface Tension" (amendment-1) **nunca cumpriu o papel** sem efeito colateral. Diagnóstico de 1º-princípio (validado por 3 agentes + 2ª opinião externa): **uma difusão que conserva massa não pode ser limitada sem um SUMIDOURO.** O pinning por condutância/força era um *falso-limite* — zerar a condutância (capilar) ou a força (FlowOutward) num limiar de água `floor` necessariamente faz o perfil de água transicionar de `floor → 0` em **1 célula** (velocidade de propagação finita ⇒ degrau de 1 célula). Como o composite é resolução-de-canvas magnificado, esse degrau vira **pixels quadrados na borda**. Sintoma observado: até "Surface Tension" ≈ 0.30 (piso ≈ 0, sem pin) a borda fica boa mas a poça **espalha demais**; acima disso a poça para mas a borda **pixela**. Os dois lados do mesmo trade-off insolúvel. A "evaporação mínima dá borda boa" do Enio é a pista decisiva: evaporação é um **sink** que recua a frente suavemente.
+
+**Decisão:** **apagar completamente** a estratégia de Surface Tension (o pin capilar `capillary_floor`/`CAP_PIN_*` em `capillary.wgsl` e o pin FlowOutward `FLOW_PIN_*` em `shallow.wgsl`) e substituí-la por um **método original** — **"Bleed Limit"**: um **sumidouro de absorção localizado na frente**. Fisicamente o filme fino do perímetro da poça (alta razão área/volume) é absorvido pelo papel muito mais rápido que a poça grossa — é o que de fato limita o sangramento de uma aquarela real e deixa uma **borda macia assentada**. O 21º slot de controle é **reutilizado** (não há mudança de contagem de campos nem de UBO).
+
+**Implementação (sem mudança de tamanho de UBO nem de contagem de campos):**
+- `WatercolorParams.surface_tension → bleed_limit` (campo 21, slot reutilizado) + `CONTROLS[20]` (`Bleed Limit`, range **0.0..1.0**, default brush **0.3**) + `get/set(20)` + `to_diffusion`.
+- `DiffusionParams.surface_tension → bleed_limit` (default **0.0** no nível raw-solver — wick sem absorção; o brush liga por-stroke). `FluidParams::to_diffusion` mapeia 0.0.
+- `GpuParams.surface_tension → bleed_limit` (offset 26, mesmo slot) — UBO continua **112 B**.
+- `fluid.wgsl::cs_evaporate`: termo novo `absorb = bleed_limit · ABSORB_RATE · front · water`, onde `front = 1 − smoothstep(w_lo, w_hi, water)` (ativo só na banda de deposição — a frente fina; **zero** no núcleo molhado `> w_hi`, então poças Keep-Wet persistem e seguem "liftáveis"). Proporcional à água ⇒ o toe externo (água ínfima) quase não perde ⇒ o degradê multi-célula **sobrevive** (macio); o miolo-do-filme perde mais ⇒ a frente perde combustível e **PARA** (limitada). Pigmento intocado (conservado) — apenas assenta conforme a água recua. `ABSORB_RATE = 0.18` (por-substep, ajustável).
+- `capillary.wgsl`: `face_info` revertido ao wick isotrópico limpo (sem floor/histerese). `shallow.wgsl`: FlowOutward aplicado **sem pin**; o ponto-fixo Keep-Wet passa a ser dado pela absorção (a máscara molhada da frente cai ⇒ `vel_out` zera ⇒ a frente para).
+- Gate `watercolor_params_field_count_is_capped`: **inalterado** (21; conta campos, não nomes).
+
+**Compat:** `#[serde(default)]` em `watercolor` cobre brush-files pré-feature; brush-files antigos com `surface_tension` serializado caem no `#[serde(default)]` do campo renomeado (valor antigo ignorado — aceitável, era uma feature de 1 dia). `physical_invariants` (Metal) **10/10**, incl. INV "água limitada / sem runaway" e conservação de pigmento. **Supersede o amendment-1 e o pin C1 do ADR-0085** (FlowOutward + capilar). Validação visual final = smoke do Enio (ajuste de `ABSORB_RATE`/default se preciso).

@@ -40,3 +40,20 @@ Uma seção colapsável "Watercolor" em `ph2d-panel-brush-studio` com **15 slide
 ## 4. Consequências
 
 O artista ganha controle total e per-brush sobre a física da aquarela (difusão, deposição, fluxo) — cada pincel pode ter um comportamento de aquarela distinto, salvo/replay via o brush-file existente. O preset default preserva o look validado. O acoplamento brush-file ↔ solver fica isolado pelo `WatercolorParams`/`to_diffusion()`. Caminho CPU-fallback (`wet_field`) honra os mesmos params quando ligado (mesma fonte). Próximo natural (ADR-0078 S4 restante): multi-pigmento K–M.
+
+---
+
+## 5. Amendment-1 (2026-06-12) — controle "Surface Tension" (pinning da linha de contato)
+
+**Motivação (Enio, smoke 2026-06-12):** sob **Keep Wet / Evaporation 0** a poça se expande difundindo no papel muito além da área pintada. Causa: o pinning C1 por tensão superficial (ADR-0085 C1) — a força Curtis FlowOutward esvanece quando o filme afina abaixo de `FLOW_PIN_HI` — dependia do filme **afinar por evaporação**. Sem evaporação o filme só afina **espalhando** (água conservada), então o limiar `FLOW_PIN_HI` (até então **hard-coded** em `shallow.wgsl`, 0.35) é o único parâmetro que governa o alcance. Os sliders `Bleed`/`Capillary` afetam força/wick, não o **ponto de parada**.
+
+**Decisão:** expor esse limiar como o 21º controle watercolor, **"Surface Tension"** (mais alto = o menisco segura mais cedo = menos sangramento). Raise do cap `WatercolorParams` **20 → 21**.
+
+**Implementação (sem mudança de tamanho de UBO):**
+- `WatercolorParams.surface_tension` (campo 21) + `CONTROLS[20]` (`Surface Tension`, range 0.05..0.5, default 0.35) + `get/set(20)` + `to_diffusion`.
+- `DiffusionParams.surface_tension` (default 0.35) — propagado.
+- `GpuParams`: o campo **reutiliza um pad final** (`_pad_lift1` → `surface_tension`, offset 26) → o UBO continua **112 B** (1 pad restante). **Superfície do UBO inalterada.**
+- `shallow.wgsl`: o Params lê `surface_tension`; `FLOW_PIN_HI = P.surface_tension`, `FLOW_PIN_LO = surface_tension · 0.4286` (banda proporcional). `surface_tension = 0.35` reproduz o pin 0.15..0.35 **bit-for-bit**.
+- Gate `watercolor_params_field_count_is_capped`: `20 → 21`.
+
+**Compat:** mesma situação das adições anteriores (`lift`/`capillary_branching`/`water`) — `#[serde(default)]` no campo `watercolor` cobre brush-files pré-feature; default 0.35 preserva o look validado. `physical_invariants` (Metal) 10/10, incl. **INV-7** (settle sob Keep-Wet) — o pin default é preservado.

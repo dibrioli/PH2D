@@ -91,6 +91,9 @@ impl FluidParams {
             sharpness: 0.0,
             lift: 0.0,
             capillary_branching: 0.0,
+            // Not carried by the serialized base `FluidParams`; the live solver layers the brush's
+            // value via `set_from_diffusion`. Default (0.35) keeps the pin active on this mapped path.
+            surface_tension: 0.35,
         }
     }
 }

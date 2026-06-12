@@ -652,7 +652,7 @@ pub struct PainterTool {
     /// both override `evaporation = 0`, so the wash stays wet — and re-workable —
     /// indefinitely (the dry-check threshold is never crossed, so the field never drops).
     /// Capillary wicking keeps slowly spreading while wet (physical). TOOL-level (not in
-    /// `WatercolorParams` — that struct is at its 20-control cap); driven by the Brush
+    /// `WatercolorParams` — that struct is at its 21-control cap); driven by the Brush
     /// Studio "Keep Wet" pill via `BrushParam::KeepWet` (the uncapped channel).
     keep_wet: bool,
     /// **Show-wet (watercolor UX).** The wet-paper sheen flag: wet regions render subtly

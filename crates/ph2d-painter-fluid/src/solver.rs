@@ -259,7 +259,11 @@ struct GpuParams {
     // The 2 trailing pads round the struct to 28 f32 = 112 B (16-aligned — required for the
     // uniform buffer). 0 ⇒ the isotropic capillary is bit-identical (opt-in, ADR-0082).
     capillary_branching: f32,
-    _pad_lift1: f32,
+    // ── ADR-0079-amendment-1 surface tension ── the contact-line pinning threshold (offset 26,
+    // a former trailing pad). Read by `shallow.wgsl` to drive `FLOW_PIN_HI`: HIGHER = the wet
+    // front pins sooner = LESS Keep-Wet bleed. The 1 remaining trailing pad keeps the struct at
+    // 28 f32 = 112 B (16-aligned — required for the uniform buffer), so the UBO size is unchanged.
+    surface_tension: f32,
     _pad_lift2: f32,
 }
 
@@ -1139,7 +1143,7 @@ impl FluidSolver {
                 sharpness: 0.0,
                 lift: 0.0,
                 capillary_branching: 0.0,
-                _pad_lift1: 0.0,
+                surface_tension: 0.35,
                 _pad_lift2: 0.0,
             }),
             water,
@@ -1249,7 +1253,7 @@ impl FluidSolver {
             lift: 0.0,
             // Branched capillary (ADR-0082) off until `set_from_diffusion` drives it per-brush.
             capillary_branching: 0.0,
-            _pad_lift1: 0.0,
+            surface_tension: 0.35,
             _pad_lift2: 0.0,
         };
         self.params_cache.set(gp);
@@ -1291,7 +1295,7 @@ impl FluidSolver {
             sharpness: dp.sharpness,
             lift: dp.lift,
             capillary_branching: dp.capillary_branching,
-            _pad_lift1: 0.0,
+            surface_tension: dp.surface_tension,
             _pad_lift2: 0.0,
         };
         self.params_cache.set(gp);

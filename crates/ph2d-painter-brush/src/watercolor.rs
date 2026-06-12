@@ -1,12 +1,12 @@
 //! [`WatercolorParams`] — the per-brush watercolor tuning exposed to the artist
-//! (ADR-0079). The serializable brush-facing DTO for the 19 solver controls (8 gated
+//! (ADR-0079). The serializable brush-facing DTO for the 20 solver controls (8 gated
 //! diffusion-advection, 3 deposition, 4 shallow-water, 1 capillary, 1 sharpness, 1 lift,
 //! 1 capillary-branching), kept SEPARATE from the solver-internal
 //! [`crate::diffusion::DiffusionParams`] so the brush-file contract is insulated from solver
 //! churn — [`WatercolorParams::to_diffusion`] maps 1:1.
 //!
 //! [`WatercolorParams::CONTROLS`] is the single source of truth for the UI: label +
-//! physical `[min,max]` range per control, indexed `0..19`. The Brush Studio panel
+//! physical `[min,max]` range per control, indexed `0..20`. The Brush Studio panel
 //! iterates it to lay out the "Watercolor" subsection; the tool maps a slider's
 //! NodeId → index and writes via [`WatercolorParams::set_normalized`]. Keeping it here
 //! (not duplicated in the panel + tool) means one place defines what a control is.
@@ -24,10 +24,10 @@ pub struct WatercolorControl {
     pub max: f32,
 }
 
-/// Per-brush watercolor tuning (ADR-0079) — the 19 solver controls the artist drives via
+/// Per-brush watercolor tuning (ADR-0079) — the 20 solver controls the artist drives via
 /// the Brush Studio "Watercolor" subsection. Serializable like every other brush param so
 /// the brush-file/MCP/replay carry it. [`Self::to_diffusion`] projects onto the solver's
-/// [`DiffusionParams`]. Cap ≤ 20 (20 used — +`lift` ADR-0081, +`capillary_branching` ADR-0082,
+/// [`DiffusionParams`]. Cap ≤ 21 (21 used — +`lift` ADR-0081, +`capillary_branching` ADR-0082,
 /// +`water` water-brush/rewetting;
 /// ADR-0079-amendment-1) — gate `architecture_painter_contract_surface`.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -63,7 +63,10 @@ pub struct WatercolorParams {
     /// depositing colour. Tool-side (dab emission), no [`DiffusionParams`] twin. Default 0
     /// = the validated paint look bit-for-bit.
     pub water: f32,
-    // === 20/20 used (cap ≤ 20) — raise needs an ADR ===
+    // ── Surface tension (ADR-0079-amendment-1) — the contact-line pinning threshold that bounds
+    //    how far a Keep-Wet / evaporation-0 wash creeps past the painted area ──
+    pub surface_tension: f32,
+    // === 21/21 used (cap ≤ 21, raised from 20 by ADR-0079-amendment-1) ===
 }
 
 impl Default for WatercolorParams {
@@ -114,16 +117,19 @@ impl Default for WatercolorParams {
             capillary_branching: 0.0,
             // Water brush OFF by default — a paint brush deposits its full pigment load.
             water: 0.0,
+            // Surface tension (ADR-0079-amendment-1) — 0.35 reproduces the pre-amendment hard-coded
+            // `FLOW_PIN_HI` pinning bit-for-bit; the artist raises it to bound the Keep-Wet bleed.
+            surface_tension: 0.35,
         }
     }
 }
 
 impl WatercolorParams {
-    /// The control descriptors (label + range), indexed `0..19` — the single source the
+    /// The control descriptors (label + range), indexed `0..20` — the single source the
     /// Brush Studio panel + the tool's slider→param mapping both read. **APPEND only**
     /// (the index is the panel/tool contract). Ranges bound each slider's physical value;
     /// the preset defaults all fall inside them.
-    pub const CONTROLS: [WatercolorControl; 20] = [
+    pub const CONTROLS: [WatercolorControl; 21] = [
         // CFL-bounded (diffusivity/viscosity ≤ 0.24) keep their max; the rest were widened
         // (2026-06-08 Enio: several too subtle) so each slider has visible headroom.
         WatercolorControl {
@@ -248,6 +254,17 @@ impl WatercolorParams {
             min: 0.0,
             max: 1.0,
         },
+        // Surface tension (ADR-0079-amendment-1): the contact-line PINNING threshold — the water
+        // level at which the FlowOutward force vanishes, so the wet front stops there. Under Keep
+        // Wet / Evaporation 0 the film only thins by spreading, so this alone sets how far the pool
+        // creeps past the painted area: HIGHER = the meniscus holds tighter = pins sooner = LESS
+        // bleed. 0.35 = the pre-amendment hard-coded look. Capped below the ~0.55 dab water so a
+        // fresh stroke still bleeds for a moment before pinning.
+        WatercolorControl {
+            label: "Surface Tension",
+            min: 0.05,
+            max: 0.5,
+        },
     ];
 
     /// Number of artist-facing controls (= `CONTROLS.len()`).
@@ -277,6 +294,7 @@ impl WatercolorParams {
             17 => self.lift,
             18 => self.capillary_branching,
             19 => self.water,
+            20 => self.surface_tension,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -306,6 +324,7 @@ impl WatercolorParams {
             17 => self.lift = v,
             18 => self.capillary_branching = v,
             19 => self.water = v,
+            20 => self.surface_tension = v,
             _ => panic!("watercolor control index {i} out of range"),
         }
     }
@@ -324,7 +343,7 @@ impl WatercolorParams {
         self.set(i, c.min + v01.clamp(0.0, 1.0) * (c.max - c.min));
     }
 
-    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 19 controls) —
+    /// Project onto the solver-internal [`DiffusionParams`] (1:1 over the 20 solver controls) —
     /// the single conversion point the live path uses to drive the solver.
     #[must_use]
     pub fn to_diffusion(&self) -> DiffusionParams {
@@ -350,6 +369,7 @@ impl WatercolorParams {
             sharpness: self.sharpness,
             lift: self.lift,
             capillary_branching: self.capillary_branching,
+            surface_tension: self.surface_tension,
         }
     }
 }

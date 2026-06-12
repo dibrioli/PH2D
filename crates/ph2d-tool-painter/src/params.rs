@@ -277,7 +277,7 @@ pub enum BrushParam {
     Watercolor(u8),
     /// **Keep-wet (watercolor UX).** Bool: pause evaporation indefinitely — the live
     /// wash stays wet + re-workable until toggled off. TOOL-level state (like `Paper`):
-    /// `WatercolorParams` is at its 20-control cap and `PainterUiEdit` stays frozen at
+    /// `WatercolorParams` is at its 21-control cap and `PainterUiEdit` stays frozen at
     /// 21/24, so it rides the uncapped `SetBrushParam` channel. Writes `tool.keep_wet`.
     KeepWet,
     /// **Show-wet (watercolor UX).** Bool: the wet-paper sheen (subtle darkening of wet

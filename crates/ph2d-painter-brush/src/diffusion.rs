@@ -173,6 +173,15 @@ pub struct DiffusionParams {
     /// of the GPU capillary pass. `0` ⇒ `fiber_factor = 1` ⇒ the isotropic capillary is
     /// **bit-identical** to today (opt-in). Only read while the capillary layer is active.
     pub capillary_branching: f32,
+    /// **Surface tension — the contact-line pinning threshold (ADR-0079-amendment-1 / ADR-0085 C1).**
+    /// The Curtis FlowOutward driving force (`−λ·∇w`) ramps OUT as the film thins below this water
+    /// level, so the wet front PINS where it thins past it — the fixed point that stops the wash
+    /// spreading. Under Keep Wet / `evaporation = 0` the film only thins by spreading (water is
+    /// conserved, not evaporated), so this threshold alone governs how far the pool creeps past the
+    /// painted area: HIGHER = the meniscus holds tighter = pins sooner = LESS bleed. Drives
+    /// `FLOW_PIN_HI` in `shallow.wgsl` (with `FLOW_PIN_LO` derived proportionally). Default `0.35`
+    /// reproduces the pre-amendment hard-coded look bit-for-bit.
+    pub surface_tension: f32,
 }
 
 /// Default capillary pigment mobility (ADR-0078 S5): the pigment co-advects at ~⅓ the water's
@@ -217,6 +226,9 @@ impl Default for DiffusionParams {
             // Branched capillary OFF by default (ADR-0082) → opt-in; 0 = isotropic capillary
             // bit-identical (fiber_factor = 1, the smooth ring).
             capillary_branching: 0.0,
+            // Contact-line pinning threshold (ADR-0079-amendment-1) — 0.35 reproduces the
+            // pre-amendment hard-coded `FLOW_PIN_HI` bit-for-bit.
+            surface_tension: 0.35,
         }
     }
 }

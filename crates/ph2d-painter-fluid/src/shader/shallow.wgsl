@@ -50,6 +50,9 @@ struct Params {
     capillary: f32,          // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     capillary_mobility: f32, // ADR-0078 S5 — read by capillary.wgsl, not here (layout parity)
     sharpness: f32,          // ADR-0078 S5c — BFECC/MacCormack correction blend (cs_advect_correct)
+    lift: f32,               // ADR-0081 — read by cs_lift, not here (layout parity to reach surface_tension)
+    capillary_branching: f32,// ADR-0082 — read by capillary.wgsl, not here (layout parity)
+    surface_tension: f32,    // ADR-0079-amendment-1 — the contact-line pin threshold (read HERE)
 }
 
 @group(0) @binding(0) var<uniform> P: Params;
@@ -106,8 +109,11 @@ fn smoothstep_gate(lo: f32, hi: f32, x: f32) -> f32 {
 // The band sits above the wet-gate floor (w_lo≈0.05) and below a flowing film. The paper-slope
 // channeling (−β·∇h) is NOT pinned: ∇h is the static, mean-zero paper texture — it pools pigment
 // in the tooth valleys but carries no net-outward bias, so it never grows the envelope.
-const FLOW_PIN_LO: f32 = 0.15;
-const FLOW_PIN_HI: f32 = 0.35;
+// FLOW_PIN_HI is now the per-brush `surface_tension` control (ADR-0079-amendment-1) — the artist
+// raises it to pin the wet front sooner (less Keep-Wet bleed). FLOW_PIN_LO keeps the same
+// proportional band below it (0.15/0.35 = 0.4286), so `surface_tension = 0.35` reproduces the old
+// hard-coded 0.15..0.35 pin bit-for-bit.
+const FLOW_PIN_LO_RATIO: f32 = 0.4286;
 
 // Perm-weighted pigment gate (the advect transport gate) = smoothstep(water)·perm(paper).
 fn gate(x: u32, y: u32) -> f32 {
@@ -149,7 +155,7 @@ fn cs_add_forces(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Surface-tension pinning: the FlowOutward (−λ·∇w) drive fades to 0 as this cell's film
     // thins, so a receded/thinned front stops being pushed outward (the Keep-Wet fixed point).
     // ∇h channeling is unpinned (static, mean-zero paper texture — no outward bias).
-    let pin = smoothstep_gate(FLOW_PIN_LO, FLOW_PIN_HI, water[i]);
+    let pin = smoothstep_gate(P.surface_tension * FLOW_PIN_LO_RATIO, P.surface_tension, water[i]);
     let force = vec2<f32>(
         P.downhill * 0.5 * dhx + pin * P.flow_outward * 0.5 * dwx,
         P.downhill * 0.5 * dhy + pin * P.flow_outward * 0.5 * dwy,

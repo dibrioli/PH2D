@@ -388,13 +388,14 @@ mod brush_engine {
     #[test]
     fn watercolor_params_field_count_is_capped() {
         // ADR-0079 — the per-brush watercolor controls DTO (a RenderingParams field).
-        // 20 used, cap ≤ 20 FULL (ADR-0082 `capillary_branching`; ADR-0081 `lift`; ADR-0078
-        // S5/S5c `capillary`/`sharpness`; 2026-06-09 `water` water-brush). Insulates the brush-file
-        // contract from the solver-internal DiffusionParams (which we extend freely).
+        // 21 used, cap ≤ 21 FULL (ADR-0079-amendment-1 `surface_tension`; ADR-0082
+        // `capillary_branching`; ADR-0081 `lift`; ADR-0078 S5/S5c `capillary`/`sharpness`;
+        // 2026-06-09 `water` water-brush). Insulates the brush-file contract from the
+        // solver-internal DiffusionParams (which we extend freely).
         assert_capped(
             count_struct_fields(CRATE, "WatercolorParams"),
-            20,
-            "WatercolorParams (ADR-0079 §3 + ADR-0078 S5/S5c + ADR-0081 + ADR-0082)",
+            21,
+            "WatercolorParams (ADR-0079 §3 + amendment-1 + ADR-0078 S5/S5c + ADR-0081 + ADR-0082)",
         );
     }
 

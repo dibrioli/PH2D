@@ -64,9 +64,6 @@ pub(super) fn maybe_begin_fluid_stroke(
     // the brush sets `velocity = 0`.
     let dp = painter.fluid_diffusion_params();
     sess.solver.set_from_diffusion(&gpu.queue, &dp);
-    // Keep-wet rides `dp` (evaporation forced to 0 in `fluid_diffusion_params`);
-    // remember what was uploaded so a mid-field toggle re-uploads below.
-    sess.keep_wet = painter.fluid_keep_wet();
     if let Some(paper) = painter.fluid_paper() {
         sess.solver.upload_paper(&gpu.queue, &paper);
     }

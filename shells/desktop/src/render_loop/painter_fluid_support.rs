@@ -319,12 +319,6 @@ pub(super) struct FluidSession {
     /// PreviewOverride on the fluid slot across the texture→readback transition so the
     /// stroke never flickers back to the pre-stroke CPU preview.
     pub(super) texture_published: bool,
-    /// Last keep-wet value uploaded to the solver. The solver params normally upload
-    /// once per epoch (`set_from_diffusion` at stroke begin), but the Keep Wet pill can
-    /// flip MID-FIELD (between dabs / while drying) — on change the bridge re-uploads
-    /// `fluid_diffusion_params()` (the chokepoint that zeroes evaporation) so the
-    /// toggle takes effect immediately on the live wash.
-    pub(super) keep_wet: bool,
     /// **Current wet bbox (ADR-0085 — the rectangular-artifact fix).** The latest GPU
     /// `read_field_stats` water bbox (grid cells, ≥ the visible-fringe threshold), **non-
     /// monotonic** — it tracks where the wash ACTUALLY is and SHRINKS as it dries (unlike the old
@@ -360,7 +354,6 @@ impl FluidSession {
             preview_slot_seeded: false,
             texture_mode_dirty: None,
             texture_published: false,
-            keep_wet: false,
             wet_bbox: None,
             idle_frames: 0,
             active_history: std::collections::VecDeque::new(),

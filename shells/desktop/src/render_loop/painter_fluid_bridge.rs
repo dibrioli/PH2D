@@ -242,15 +242,15 @@ pub(crate) fn drive_fluid_gpu(
             sess, gpu, painter, epoch, dims, cw, ch, scale, coverage_k,
         );
 
-        // Keep-wet (watercolor UX): re-upload the solver params when the pill flips
-        // MID-FIELD — `fluid_diffusion_params()` zeroes evaporation while it's on, so
-        // the live wash stops (or resumes) drying immediately, not at the next stroke.
-        let keep_wet = painter.fluid_keep_wet();
-        if sess.keep_wet != keep_wet {
-            sess.keep_wet = keep_wet;
-            sess.solver
-                .set_from_diffusion(&gpu.queue, &painter.fluid_diffusion_params());
-        }
+        // **Live slider sync (ADR-0085).** Re-upload the solver params EVERY frame from the active
+        // brush so ANY Brush-Studio watercolor slider change — Evaporation, Diffusivity, Keep-Wet,
+        // … — takes effect on the LIVE wash immediately, not only at the next stroke. Previously
+        // only the Keep-Wet pill re-uploaded mid-field, so e.g. lowering Evaporation on a live
+        // field did nothing and the wash kept drying (or dried out → the preview stopped). The
+        // upload is a small UBO write (the per-frame `step_resident_splat` re-scopes the region it
+        // resets), negligible next to the ~40-pass sim.
+        sess.solver
+            .set_from_diffusion(&gpu.queue, &painter.fluid_diffusion_params());
         // Wet-paper sheen (view-only): drive the preview-texture flag from the tool's
         // Show Wet pill each frame. Only `cs_premul_tex`/`cs_straight_tex` consume it —
         // `out_buf` (and so the canvas bake) stays sheen-free, so the wash dries lighter.
@@ -348,7 +348,7 @@ pub(crate) fn drive_fluid_gpu(
         } else {
             sess.idle_frames = sess.idle_frames.saturating_add(1);
         }
-        let settled = keep_wet && !stroke_active && sess.active_history.is_empty();
+        let settled = painter.fluid_keep_wet() && !stroke_active && sess.active_history.is_empty();
         let idle_skip = settled
             || (sess.idle_frames > IDLE_WARMUP_FRAMES && sess.idle_frames % IDLE_STEP_EVERY != 0);
         let t0 = profile.then(Instant::now);

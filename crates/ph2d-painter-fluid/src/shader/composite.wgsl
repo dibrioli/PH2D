@@ -23,6 +23,10 @@
 const NB: u32 = 24u;
 const PV: u32 = 8u;
 const REFL_FLOOR: f32 = 1.0e-4;
+// Raw pigment mass below which the composite alpha ramps from 0 (the outer-fringe feather that lets
+// the B-spline mass-blur survive the saturating `1 − exp` coverage curve — anti-aliases the rim).
+// A single dab deposits ~0.5 mass, so a wash body sits at/above this and is untouched.
+const RIM_FEATHER_MASS: f32 = 0.5;
 
 struct U {
     cw: u32,          // canvas width
@@ -272,7 +276,14 @@ fn glaze_sample(fx: f32, fy: f32, back: vec3<f32>, back_a: f32) -> Sub {
     let value = clamp(max(pcol.x, max(pcol.y, pcol.z)), 0.0, 1.0);
     let color_sum = 0.55 + 0.45 * value;
     let amount = mass / color_sum;
-    let alpha = 1.0 - exp(-amount * P.coverage_k);
+    // **Rim feather (ADR-0085 — pixelated edge-darkening rim, 3-agent audit 2026-06-12).** The
+    // B-spline low-pass blurs the MASS over ~2 cells, but `alpha = 1 − exp(−amount·k)` SATURATES to
+    // ~1 once mass ≳ 1, so the saturating curve re-sharpens the blurred mass into a near-binary
+    // (stair-stepped) alpha at a high-mass deposited rim — defeating the anti-alias. Multiply the
+    // alpha by a smoothstep on the raw mass: the low-mass OUTER fringe (rim fading to paper) ramps
+    // softly so the mass-blur survives into the coverage, while the rim body + any wash with
+    // mass ≥ RIM_FEATHER_MASS is untouched (smoothstep → 1) — no interior lightening.
+    let alpha = (1.0 - exp(-amount * P.coverage_k)) * smoothstep(0.0, RIM_FEATHER_MASS, mass);
     let out_a = alpha + back_a * (1.0 - alpha);
     let km = mix_prepared_exact(back, alpha, pcol, ks_mix, err_mix);
     var inv_a = 0.0;

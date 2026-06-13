@@ -79,6 +79,12 @@ struct WashSession {
     /// Any pigment has been deposited (the field is worth showing / re-rendering on a model flip).
     has_pigment: bool,
     seeded: bool,
+    /// Latch: force the next PAINTING frame to a FULL composite+copy (seed), not a region update. Set
+    /// after a restore (undo/redo) — the first stroke that follows must establish a clean full slot
+    /// base, else its region-scoped composites leave the pre-restore slot showing OUTSIDE the new
+    /// envelope until the pen-up full composite reconciles it (the "rectangles on the first stroke
+    /// after undo, gone on mouse-up" report, Enio 2026-06-13). Cleared once that full paint frame runs.
+    force_full: bool,
     /// **ADR-0089 undo:** per-stroke field snapshots (pig+dye) — `committed[i]` is the SETTLED field
     /// after stroke `i+1`, captured SYNCHRONOUSLY when the stroke commits (no async window ⇒ no
     /// fast-stroke race). `applied` = how many the GPU field currently realises. The bridge polls the
@@ -113,6 +119,7 @@ impl WashSession {
             initialized: false,
             has_pigment: false,
             seeded: false,
+            force_full: false,
             committed: Vec::new(),
             applied: 0,
             settling: 0,
@@ -277,6 +284,7 @@ pub(crate) fn drive_wash_gpu(
             sess.applied = want;
             sess.has_pigment = want > 0;
             sess.seeded = false; // one full re-composite of the restored field
+            sess.force_full = true; // the first stroke after this must seed a clean full slot base
             sess.painted_since_commit = false; // a restored state carries no uncommitted paint
             sess.settling = 0; // cancel any in-progress settle (its stepping would drift the restore)
             // NB: a restore runs ZERO physics (see `step_n` below) — stepping would re-diffuse the
@@ -365,7 +373,9 @@ pub(crate) fn drive_wash_gpu(
                 (id, true)
             }
         };
-        let seed = fresh || full;
+        // `force_full` forces a full COMPOSITE+COPY (clean slot base after a restore) while leaving the
+        // STEP region-scoped — only the composite/copy must be full to reconcile the slot.
+        let seed = fresh || full || sess.force_full;
 
         // ── ONE encoder: step + composite + slot copy ──
         // Substep budget: a STEADY `substeps` per frame — while painting, AND through the post-release
@@ -401,6 +411,12 @@ pub(crate) fn drive_wash_gpu(
             return None;
         }
         sess.seeded = true;
+        // The first PAINTING frame after a restore has now seeded a clean full slot — drop the latch so
+        // the rest of the stroke can go back to cheap region updates. (A restore frame itself is not
+        // active, so the latch survives the idle gap until the user paints.)
+        if seed && active {
+            sess.force_full = false;
+        }
 
         // ── ADR-0089 finalise + gradual settle (display-only) ── on the pen-up frame, snapshot BOTH
         // colour channels and bake canvas_rgba ONCE (exactly the clean collapse's render path: a single

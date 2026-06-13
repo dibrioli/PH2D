@@ -3,6 +3,10 @@
 Tracker vivo do modo **Wash** (crate `ph2d-painter-wash` + bridge `painter_wash_bridge.rs`).
 Build: `cargo run -p ph2d-host-desktop --features wash` · toggle "Wash" no Brush Studio.
 
+> **Postmortem / solução de erros:** [`Painter_projeto/wash_solucao_de_erros.md`](Painter_projeto/wash_solucao_de_erros.md)
+> — catálogo dos bugs B1–B6, causas, fixes, e o checklist diagnóstico. **Leia antes de tocar em
+> qualquer artefato visual de aquarela** (borda "pixelada" tem ≥3 causas distintas).
+
 ## Estado (2026-06-13)
 - **Fases 1-3 DONE** (ADR-0087): crate (solver + WashCompositor) + seletor brush/tool + bridge no
   shell + toggle UI. Pintável, mutuamente exclusivo com Fluid v2 (que fica intacto).

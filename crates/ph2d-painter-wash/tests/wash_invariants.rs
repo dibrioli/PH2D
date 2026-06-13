@@ -256,3 +256,45 @@ fn wash_preview_texture_premul() {
     assert!(chan(centre, 0) < 153, "pigment must darken the backdrop");
     assert_eq!(chan(centre, 3), 255, "preview is opaque");
 }
+
+// ── INV-7 — paper saturation (B1 regression): overlapping the SAME spot far past the paper's
+//    capacity must converge to the pigment's masstone, NEVER to black. ─────────────────────
+#[test]
+#[ignore = "needs a GPU device"]
+fn inv_overlap_saturates_to_pigment_not_black() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let n = (w * h) as usize;
+    let s = WashSolver::new(&gpu.device, w, h);
+    s.set_params(&gpu.queue, WashParams::default());
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    // Hammer the centre with the SAME red dab 50× — mass piles to ~50, far over MASS_MAX=1.
+    // Pre-cap this drove absorb→∞ ⇒ exp(−absorb)→0 = pure black (the reported B1).
+    let red: [f32; 3] = [0.7, 0.1, 0.1];
+    let dab = Dab::from_color_mass(32.0, 32.0, 8.0, 0.0, red, 1.0);
+    for _ in 0..50 {
+        s.splat(&gpu.device, &gpu.queue, &[dab]);
+    }
+    let accumulated_mass = s.read_pigment(&gpu.device, &gpu.queue)[idx(32, 32, w)][3];
+    assert!(accumulated_mass > 10.0, "test must actually pile mass past the cap (got {accumulated_mass})");
+
+    let mut comp = WashCompositor::new(&gpu.device);
+    let backdrop = vec![0xffff_ffffu32; n]; // white
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
+    gpu.queue.submit([enc.finish()]);
+    let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
+    let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
+    let centre = out[(32 * w + 32) as usize];
+    let (cr, cg, cb) = (chan(centre, 0), chan(centre, 1), chan(centre, 2));
+    eprintln!("saturation: mass={accumulated_mass:.1} centre=({cr},{cg},{cb}) (cap → pigment masstone, c≈0.7,0.1,0.1)");
+    // The killer assertion: not black. The dominant (red) channel must stay bright.
+    assert!(cr > 150, "saturated overlap must stay the pigment colour, not go black (R={cr})");
+    // Still recognisably red (the masstone), not a grey mud.
+    assert!(cr > cg + 40 && cr > cb + 40, "masstone must keep its hue (R={cr} G={cg} B={cb})");
+    assert_eq!(chan(centre, 3), 255, "preview is opaque");
+}

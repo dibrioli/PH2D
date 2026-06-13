@@ -7,8 +7,20 @@
 // the backdrop and painted pixels are the backdrop glazed by the pigment. Premultiplied-by-1 ⇒
 // the stored texel is straight = premul (matches the v2 premultiplied-rgba8 contract).
 //
+// PAPER SATURATION (fixes B1 — overlap → black): the splat accumulates absorbance + mass with no
+// ceiling, so painting the same spot repeatedly drove `absorb → ∞` ⇒ `exp(−absorb) → 0` = black.
+// Real paper holds a finite amount of pigment. The pigment hue per unit mass is `absorb/mass`
+// (= −ln(c) for a colour c); we cap the EFFECTIVE mass at `MASS_MAX`, so a saturated cell glazes
+// to `exp(−(absorb/mass)·MASS_MAX) = c^MASS_MAX` — the pigment's full masstone — and never darker.
+// Edge-darkening survives: the rim concentrates more mass than the interior, so it still reads
+// darker, just bounded at the pigment colour instead of running away to black.
+//
 // Swapping in Kubelka–Munk / Mixbox later is a change to THIS kernel only — the transport never
 // moves.
+
+// Paper pigment-holding capacity, in dab-mass units. 1.0 ⇒ a saturated cell converges to the
+// chosen pigment colour `c` over white; lighter deposits glaze up toward it.
+const MASS_MAX: f32 = 1.0;
 
 struct Comp {
     cw: u32,        // canvas (output) dims
@@ -82,7 +94,12 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let back = unpack(backdrop[pix]);
     let fx = clamp((f32(cx) + 0.5) * C.inv - 0.5, 0.0, f32(C.gw) - 1.0);
     let fy = clamp((f32(cy) + 0.5) * C.inv - 0.5, 0.0, f32(C.gh) - 1.0);
-    let absorb = max(sample_pig(fx, fy).xyz, vec3<f32>(0.0));
+    let praw = sample_pig(fx, fy);
+    let absorb_raw = max(praw.xyz, vec3<f32>(0.0));
+    let mass = max(praw.w, 0.0);
+    // Cap the effective mass at MASS_MAX, preserving hue (absorb/mass): the glaze converges to the
+    // pigment masstone, never to black. Below the cap, absorb passes through unchanged.
+    let absorb = select(absorb_raw, absorb_raw * (MASS_MAX / mass), mass > MASS_MAX);
     let glaze = srgb_to_lin(back.xyz) * exp(-absorb);
     let rgb = lin_to_srgb(glaze);
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));

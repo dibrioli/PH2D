@@ -14,18 +14,17 @@ Build: `cargo run -p ph2d-host-desktop --features wash` · toggle "Wash" no Brus
 
 ## BUGS CONHECIDOS (a resolver)
 
-### B1 — pintar repetido no mesmo lugar → vira PRETO (Enio 2026-06-13)
-**Sintoma:** sobrepor traços no mesmo ponto escurece sem limite até o preto (screenshot).
-**Causa provável:** o pigmento é absorbância Beer–Lambert (`Dab::from_color_mass`: `a = −ln(c)·mass`)
-e cada dab **SOMA** absorbância no campo **sem teto**. Overlap acumula `a` → `exp(−a)` → 0 = preto.
-Difere do v2, cujo `coverage_k`/`alpha = 1−exp(−amount·k)` **satura** a cobertura por célula.
-**Direções de fix (quando voltarmos):**
-1. **Saturar a deposição/cobertura por célula** — limitar a massa/absorbância acumulada (ex.: a
-   absorbância tende a um teto por canal, ou `mass` satura como no v2) → overlap converge a uma cor
-   sólida, não a preto.
-2. Ou compor com cobertura saturante (alpha) em vez de multiplicação pura sobre fundo.
-3. Casa com a re-introdução de **K–M/Mixbox** (cor subtrativa real) — a saturação de pigmento é
-   parte do modelo K–M; resolver junto evita refazer o composite duas vezes.
+### B1 — pintar repetido no mesmo lugar → vira PRETO — **RESOLVIDO (2026-06-13)**
+**Sintoma:** sobrepor traços no mesmo ponto escurecia sem limite até o preto.
+**Causa:** o pigmento é absorbância Beer–Lambert (`a = −ln(c)·mass`) e o splat **SOMA** `(absorb,mass)`
+no campo **sem teto**. Overlap acumula `a` → `exp(−a)` → 0 = preto.
+**Fix:** **saturação de papel no composite** (`composite.wgsl`, `MASS_MAX=1.0`). O hue por unidade de
+massa é `absorb/mass` (= −ln(c)); capamos a massa efetiva em `MASS_MAX`, então uma célula saturada
+glaza para `exp(−(absorb/mass)·MASS_MAX) = c` — o masstone do pigmento — e nunca mais escuro. Física
+crua (conservativa) intacta; mudança de **um kernel só**. Edge-darkening sobrevive (a borda concentra
+mais massa que o interior, então ainda lê mais escura, só limitada na cor do pigmento).
+**Gate:** `inv_overlap_saturates_to_pigment_not_black` (50× overlap → masstone (218,89,89), não preto).
+Casa com K–M/Mixbox futuro (a saturação é parte do modelo) — quando entrar, é troca do mesmo kernel.
 
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).

@@ -1,7 +1,10 @@
-//! GPU solver for the minimal watercolor core (ADR-0086). See the crate docs for the
-//! model. Three pipelines (`cs_splat`, `cs_step`, `cs_composite`) over five field buffers
-//! (`water_a/b`, `pig_a/b`, `paper`). The canonical state always lives in the `*_a` buffers
-//! (`step` normalises back to `a` after an odd substep count), so reads are unambiguous.
+//! GPU solver for the minimal watercolor core (ADR-0086). Two pipelines — `cs_splat`
+//! (brush input) and `cs_step` (the whole physics) — over five field buffers
+//! (`water_a/b`, `pig_a/b`, `paper`). Compositing lives in [`crate::WashCompositor`]
+//! (it reads the solver's pigment buffer via [`WashSolver::pig_buffer`]).
+//!
+//! The canonical state always lives in the `*_a` buffers (`step`/`encode_step` normalise
+//! back to `a` after an odd substep count), so reads + composite are unambiguous.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -65,6 +68,18 @@ pub struct Dab {
     pub pig: [f32; 4],
 }
 
+impl Dab {
+    /// Build a dab from a linear-sRGB pigment colour + a deposit mass. The pigment is stored
+    /// as Beer–Lambert optical density: a colour (reflectance) `c` has absorbance `−ln(c)`, so
+    /// `exp(−absorb)` reproduces the colour over white; stacking adds absorbance (subtractive).
+    /// `absorb` is baked × `mass` (more mass ⇒ darker/denser), and `mass` rides the `.w` channel.
+    #[must_use]
+    pub fn from_color_mass(cx: f32, cy: f32, r: f32, water_add: f32, color: [f32; 3], mass: f32) -> Self {
+        let a = |c: f32| -> f32 { -c.clamp(0.02, 1.0).ln() * mass };
+        Self { cx, cy, r, water_add, pig: [a(color[0]), a(color[1]), a(color[2]), mass] }
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct SplatParams {
@@ -72,15 +87,6 @@ struct SplatParams {
     height: u32,
     n_dabs: u32,
     _pad: u32,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct CParams {
-    width: u32,
-    height: u32,
-    coverage_k: f32,
-    _pad: f32,
 }
 
 const WG: u32 = 8;
@@ -95,21 +101,17 @@ pub struct WashSolver {
     params: std::cell::Cell<WashParams>,
     params_buf: wgpu::Buffer,
     splat_params_buf: wgpu::Buffer,
-    cparams_buf: wgpu::Buffer,
     water_a: wgpu::Buffer,
     water_b: wgpu::Buffer,
     paper: wgpu::Buffer,
     pig_a: wgpu::Buffer,
     pig_b: wgpu::Buffer,
     dabs_buf: wgpu::Buffer,
-    out_buf: wgpu::Buffer,
     step_pipe: wgpu::ComputePipeline,
     splat_pipe: wgpu::ComputePipeline,
-    composite_pipe: wgpu::ComputePipeline,
     bg_step_ab: wgpu::BindGroup,
     bg_step_ba: wgpu::BindGroup,
     bg_splat: wgpu::BindGroup,
-    bg_composite: wgpu::BindGroup,
 }
 
 const MAX_DABS: u64 = 4096;
@@ -117,7 +119,7 @@ const MAX_DABS: u64 = 4096;
 impl WashSolver {
     /// Allocate a solver for a `width × height` field. All fields start zeroed.
     pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
-        let n = (width * height) as u64;
+        let n = u64::from(width) * u64::from(height);
         let f32n = n * 4;
         let vec4n = n * 16;
 
@@ -128,10 +130,6 @@ impl WashSolver {
         let splat_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("wash splat"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader/splat.wgsl").into()),
-        });
-        let composite_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("wash composite"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader/composite.wgsl").into()),
         });
 
         let uniform = |b: u32| wgpu::BindGroupLayoutEntry {
@@ -170,10 +168,6 @@ impl WashSolver {
             label: Some("wash splat bgl"),
             entries: &[uniform(0), storage(1, false), storage(2, false), storage(3, true)],
         });
-        let composite_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("wash composite bgl"),
-            entries: &[uniform(0), storage(1, true), storage(2, false)],
-        });
 
         let mk_pipe = |bgl: &wgpu::BindGroupLayout, m: &wgpu::ShaderModule, entry: &str| {
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -192,7 +186,6 @@ impl WashSolver {
         };
         let step_pipe = mk_pipe(&step_bgl, &module, "cs_step");
         let splat_pipe = mk_pipe(&splat_bgl, &splat_module, "cs_splat");
-        let composite_pipe = mk_pipe(&composite_bgl, &composite_module, "cs_composite");
 
         let storage_buf = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
@@ -209,7 +202,6 @@ impl WashSolver {
         let paper = storage_buf("wash paper", f32n);
         let pig_a = storage_buf("wash pig_a", vec4n);
         let pig_b = storage_buf("wash pig_b", vec4n);
-        let out_buf = storage_buf("wash out", f32n);
         let dabs_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("wash dabs"),
             size: MAX_DABS * core::mem::size_of::<Dab>() as u64,
@@ -226,7 +218,6 @@ impl WashSolver {
         };
         let params_buf = ubo("wash params", core::mem::size_of::<WashParams>() as u64);
         let splat_params_buf = ubo("wash splat params", core::mem::size_of::<SplatParams>() as u64);
-        let cparams_buf = ubo("wash cparams", core::mem::size_of::<CParams>() as u64);
 
         fn e(binding: u32, buf: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
             wgpu::BindGroupEntry { binding, resource: buf.as_entire_binding() }
@@ -234,41 +225,20 @@ impl WashSolver {
         let bg_step_ab = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step a→b"),
             layout: &step_bgl,
-            entries: &[
-                e(0, &params_buf),
-                e(1, &water_a),
-                e(2, &paper),
-                e(3, &pig_a),
-                e(4, &water_b),
-                e(5, &pig_b),
-            ],
+            entries: &[e(0, &params_buf), e(1, &water_a), e(2, &paper), e(3, &pig_a), e(4, &water_b), e(5, &pig_b)],
         });
         let bg_step_ba = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step b→a"),
             layout: &step_bgl,
-            entries: &[
-                e(0, &params_buf),
-                e(1, &water_b),
-                e(2, &paper),
-                e(3, &pig_b),
-                e(4, &water_a),
-                e(5, &pig_a),
-            ],
+            entries: &[e(0, &params_buf), e(1, &water_b), e(2, &paper), e(3, &pig_b), e(4, &water_a), e(5, &pig_a)],
         });
         let bg_splat = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg splat"),
             layout: &splat_bgl,
             entries: &[e(0, &splat_params_buf), e(1, &water_a), e(2, &pig_a), e(3, &dabs_buf)],
         });
-        let bg_composite = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("wash bg composite"),
-            layout: &composite_bgl,
-            entries: &[e(0, &cparams_buf), e(1, &pig_a), e(2, &out_buf)],
-        });
 
-        let mut params = WashParams { width, height, region_w: width, region_h: height, ..Default::default() };
-        params.region_ox = 0;
-        params.region_oy = 0;
+        let params = WashParams { width, height, region_w: width, region_h: height, ..Default::default() };
 
         Self {
             width,
@@ -276,33 +246,47 @@ impl WashSolver {
             params: std::cell::Cell::new(params),
             params_buf,
             splat_params_buf,
-            cparams_buf,
             water_a,
             water_b,
             paper,
             pig_a,
             pig_b,
             dabs_buf,
-            out_buf,
             step_pipe,
             splat_pipe,
-            composite_pipe,
             bg_step_ab,
             bg_step_ba,
             bg_splat,
-            bg_composite,
         }
     }
 
-    /// Set the physics coefficients. `width`/`height`/`region_*` are overwritten to the
-    /// full grid here (the live integration will scope the region per frame).
+    /// The canonical pigment buffer (`(absorb.rgb, mass)` per cell) — the compositor binds this.
+    #[must_use]
+    pub fn pig_buffer(&self) -> &wgpu::Buffer {
+        &self.pig_a
+    }
+    /// The canonical water field (for an optional wet-sheen view).
+    #[must_use]
+    pub fn water_buffer(&self) -> &wgpu::Buffer {
+        &self.water_a
+    }
+
+    /// Set the physics coefficients. The dispatch region defaults to the full grid; pass a
+    /// scoped region to [`WashSolver::encode_step`] to override per frame.
     pub fn set_params(&self, queue: &wgpu::Queue, mut p: WashParams) {
         p.width = self.width;
         p.height = self.height;
-        p.region_ox = 0;
-        p.region_oy = 0;
-        p.region_w = self.width;
-        p.region_h = self.height;
+        let cur = self.params.get();
+        p.region_ox = cur.region_ox;
+        p.region_oy = cur.region_oy;
+        p.region_w = cur.region_w.max(1).min(self.width);
+        p.region_h = cur.region_h.max(1).min(self.height);
+        if p.region_w == 0 {
+            p.region_w = self.width;
+        }
+        if p.region_h == 0 {
+            p.region_h = self.height;
+        }
         self.params.set(p);
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&p));
     }
@@ -314,98 +298,115 @@ impl WashSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
     }
 
-    /// Splat a dab list onto the canonical (`*_a`) fields.
+    /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
     pub fn splat(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[Dab]) {
-        assert!(dabs.len() as u64 <= MAX_DABS, "dab count exceeds MAX_DABS");
-        queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(dabs));
-        let sp = SplatParams { width: self.width, height: self.height, n_dabs: dabs.len() as u32, _pad: 0 };
-        queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash splat enc") });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash splat"), timestamp_writes: None });
-            pass.set_pipeline(&self.splat_pipe);
-            pass.set_bind_group(0, &self.bg_splat, &[]);
-            pass.dispatch_workgroups(groups(self.width), groups(self.height), 1);
-        }
+        self.encode_splat(queue, &mut enc, dabs);
         queue.submit([enc.finish()]);
     }
 
-    /// Run `substeps` of the physics. Normalises the result back into the `*_a` buffers.
+    /// Run `substeps` of the physics over the FULL grid (own submit; test/standalone path).
     pub fn step(&self, device: &wgpu::Device, queue: &wgpu::Queue, substeps: u32) {
         if substeps == 0 {
             return;
         }
+        let region = (0, 0, self.width, self.height);
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash step enc") });
-        // One compute pass per substep so wgpu inserts the read-after-write barrier between the
-        // ping-pong dispatches (the canonical, definitely-correct ordering).
+        self.encode_substeps(queue, &mut enc, substeps, region);
+        queue.submit([enc.finish()]);
+    }
+
+    /// Single-submit frame for the live path: splat the dabs then run `substeps` over `region`,
+    /// appending to `enc` and returning it (the caller adds the composite + one `submit`).
+    #[must_use]
+    pub fn encode_step(
+        &self,
+        queue: &wgpu::Queue,
+        mut enc: wgpu::CommandEncoder,
+        dabs: &[Dab],
+        substeps: u32,
+        region: (u32, u32, u32, u32),
+    ) -> wgpu::CommandEncoder {
+        if !dabs.is_empty() {
+            self.encode_splat(queue, &mut enc, dabs);
+        }
+        self.encode_substeps(queue, &mut enc, substeps, region);
+        enc
+    }
+
+    fn encode_splat(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, dabs: &[Dab]) {
+        assert!(dabs.len() as u64 <= MAX_DABS, "dab count exceeds MAX_DABS");
+        if dabs.is_empty() {
+            return;
+        }
+        queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(dabs));
+        let sp = SplatParams { width: self.width, height: self.height, n_dabs: dabs.len() as u32, _pad: 0 };
+        queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
+        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash splat"), timestamp_writes: None });
+        pass.set_pipeline(&self.splat_pipe);
+        pass.set_bind_group(0, &self.bg_splat, &[]);
+        pass.dispatch_workgroups(groups(self.width), groups(self.height), 1);
+    }
+
+    fn encode_substeps(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, substeps: u32, region: (u32, u32, u32, u32)) {
+        if substeps == 0 {
+            return;
+        }
+        // Write the region into the params UBO (physics coefficients are already cached).
+        let mut p = self.params.get();
+        p.region_ox = region.0;
+        p.region_oy = region.1;
+        p.region_w = region.2.clamp(1, self.width);
+        p.region_h = region.3.clamp(1, self.height);
+        self.params.set(p);
+        queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&p));
+        // One compute pass per substep ⇒ wgpu inserts the ping-pong read-after-write barrier.
         for k in 0..substeps {
             let bg = if k % 2 == 0 { &self.bg_step_ab } else { &self.bg_step_ba };
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash step"), timestamp_writes: None });
             pass.set_pipeline(&self.step_pipe);
             pass.set_bind_group(0, bg, &[]);
-            pass.dispatch_workgroups(groups(self.width), groups(self.height), 1);
+            pass.dispatch_workgroups(groups(p.region_w), groups(p.region_h), 1);
         }
-        // After an odd number of substeps the latest data is in `*_b`; copy it back so the
-        // canonical state is always in `*_a`.
+        // After an odd substep count the latest data is in `*_b`; copy it back to `*_a`.
         if substeps % 2 == 1 {
-            enc.copy_buffer_to_buffer(&self.water_b, 0, &self.water_a, 0, (self.width * self.height * 4) as u64);
-            enc.copy_buffer_to_buffer(&self.pig_b, 0, &self.pig_a, 0, (self.width * self.height * 16) as u64);
+            let bytes = u64::from(self.width) * u64::from(self.height);
+            enc.copy_buffer_to_buffer(&self.water_b, 0, &self.water_a, 0, bytes * 4);
+            enc.copy_buffer_to_buffer(&self.pig_b, 0, &self.pig_a, 0, bytes * 16);
         }
-        queue.submit([enc.finish()]);
-    }
-
-    /// Composite the field to packed RGBA8 (white backdrop, v1) and return it.
-    pub fn composite(&self, device: &wgpu::Device, queue: &wgpu::Queue, coverage_k: f32) -> Vec<u32> {
-        let cp = CParams { width: self.width, height: self.height, coverage_k, _pad: 0.0 };
-        queue.write_buffer(&self.cparams_buf, 0, bytemuck::bytes_of(&cp));
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash composite enc") });
-        {
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash composite"), timestamp_writes: None });
-            pass.set_pipeline(&self.composite_pipe);
-            pass.set_bind_group(0, &self.bg_composite, &[]);
-            pass.dispatch_workgroups(groups(self.width), groups(self.height), 1);
-        }
-        queue.submit([enc.finish()]);
-        self.read_u32(device, queue, &self.out_buf)
     }
 
     /// Read the canonical water field.
     pub fn read_water(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<f32> {
-        self.read_f32(device, queue, &self.water_a)
+        let size = u64::from(self.width) * u64::from(self.height) * 4;
+        bytemuck::cast_slice(&read_bytes(device, queue, &self.water_a, size)).to_vec()
     }
 
     /// Read the canonical pigment field as `(absorb.rgb, mass)` per cell.
     pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
-        let size = u64::from(self.width * self.height) * 16;
-        let bytes = self.read_bytes(device, queue, &self.pig_a, size);
+        let size = u64::from(self.width) * u64::from(self.height) * 16;
+        let bytes = read_bytes(device, queue, &self.pig_a, size);
         let flat: &[f32] = bytemuck::cast_slice(&bytes);
         flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
     }
+}
 
-    fn read_f32(&self, device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer) -> Vec<f32> {
-        let size = u64::from(self.width * self.height) * 4;
-        bytemuck::cast_slice(&self.read_bytes(device, queue, buf, size)).to_vec()
-    }
-    fn read_u32(&self, device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer) -> Vec<u32> {
-        let size = u64::from(self.width * self.height) * 4;
-        bytemuck::cast_slice(&self.read_bytes(device, queue, buf, size)).to_vec()
-    }
-    fn read_bytes(&self, device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer, size: u64) -> Vec<u8> {
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("wash readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash readback enc") });
-        enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
-        queue.submit([enc.finish()]);
-        staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
-        let data = staging.slice(..).get_mapped_range();
-        let out = data.to_vec();
-        drop(data);
-        staging.unmap();
-        out
-    }
+/// Blocking readback of a storage buffer (test / parity path).
+pub(crate) fn read_bytes(device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer, size: u64) -> Vec<u8> {
+    let staging = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("wash readback"),
+        size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash readback enc") });
+    enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
+    queue.submit([enc.finish()]);
+    staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    let _ = device.poll(wgpu::PollType::wait_indefinitely());
+    let data = staging.slice(..).get_mapped_range();
+    let out = data.to_vec();
+    drop(data);
+    staging.unmap();
+    out
 }

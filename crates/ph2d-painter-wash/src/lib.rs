@@ -19,7 +19,11 @@
 //! `--features gpu` compiles the real solver; without it the crate is empty.
 
 #[cfg(feature = "gpu")]
+mod composite;
+#[cfg(feature = "gpu")]
 mod solver;
+#[cfg(feature = "gpu")]
+pub use composite::WashCompositor;
 #[cfg(feature = "gpu")]
 pub use solver::{Dab, WashParams, WashSolver};
 

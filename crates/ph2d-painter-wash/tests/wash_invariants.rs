@@ -7,7 +7,7 @@
 #![cfg(feature = "gpu")]
 
 use ph2d_gpu::GpuContext;
-use ph2d_painter_wash::{WashParams, WashSolver};
+use ph2d_painter_wash::{Dab, WashCompositor, WashParams, WashSolver};
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -175,7 +175,8 @@ fn inv_stable_under_extreme_params() {
     assert!(after <= before * 1.001, "mass must not grow (no source term)");
 }
 
-// ── INV-5 — subtractive compositing: stacked absorbance darkens multiplicatively ────
+// ── INV-5 — subtractive compositing (WashCompositor → preview texture): stacked absorbance
+//    darkens multiplicatively over a white backdrop. ─────────────────────────────────
 #[test]
 #[ignore = "needs a GPU device"]
 fn inv_subtractive_compositing_darkens() {
@@ -183,7 +184,7 @@ fn inv_subtractive_compositing_darkens() {
         eprintln!("no GPU — skipping");
         return;
     };
-    let (w, h) = (8u32, 8u32);
+    let (w, h) = (64u32, 64u32); // 64 → bytes-per-row already 256-aligned
     let n = (w * h) as usize;
     let water = vec![0.0f32; n];
     let paper = vec![0.5f32; n];
@@ -194,11 +195,64 @@ fn inv_subtractive_compositing_darkens() {
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &water, &paper, &pig);
-    let out = s.composite(&gpu.device, &gpu.queue, 1.0);
-    let g = |px: u32| ((out[px as usize] >> 8) & 0xff) as i32; // green byte
-    let r = |px: u32| (out[px as usize] & 0xff) as i32;
+
+    let mut comp = WashCompositor::new(&gpu.device);
+    let backdrop = vec![0xffff_ffffu32; n]; // white, opaque
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
+    gpu.queue.submit([enc.finish()]);
+    let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
+    let g = |px: usize| ((out[px] >> 8) & 0xff) as i32;
+    let r = |px: usize| (out[px] & 0xff) as i32;
     eprintln!("composite: single G={} double G={} (R stays {})", g(0), g(1), r(0));
     assert_eq!(r(0), 255, "no red absorbance ⇒ red channel stays white");
-    assert!(g(0) < 200 && g(0) > 90, "single green glaze ≈ exp(-0.7)·255 ≈ 127");
-    assert!(g(1) < g(0), "stacking glazes must darken green further (subtractive)");
+    assert!((120..=235).contains(&g(0)), "single green glaze: exp(-0.7) in linear → sRGB ≈ 188");
+    assert!(g(1) < g(0) - 20, "stacking glazes must darken green further (subtractive)");
+}
+
+// ── INV-6 — preview texture: a coloured DAB glazes the real backdrop (Beer–Lambert), tints
+//    the painted area toward the pigment + darkens it; bare pixels stay the backdrop. ───
+#[test]
+#[ignore = "needs a GPU device"]
+fn wash_preview_texture_premul() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let n = (w * h) as usize;
+    let s = WashSolver::new(&gpu.device, w, h);
+    s.set_params(&gpu.queue, WashParams::default());
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    // A blue-ish pigment dab in the centre.
+    let dab = Dab::from_color_mass(32.0, 32.0, 10.0, 0.9, [0.2, 0.4, 0.9], 1.0);
+    s.splat(&gpu.device, &gpu.queue, &[dab]);
+
+    let mut comp = WashCompositor::new(&gpu.device);
+    let gray = 153u32; // sRGB ~0.6
+    let bd = gray | (gray << 8) | (gray << 16) | (0xff << 24);
+    let backdrop = vec![bd; n];
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
+    gpu.queue.submit([enc.finish()]);
+    let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
+
+    let px = |x: u32, y: u32| out[(y * w + x) as usize];
+    let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
+    let centre = px(32, 32);
+    let corner = px(0, 0);
+    eprintln!(
+        "preview centre=({},{},{}) corner=({},{},{})",
+        chan(centre, 0), chan(centre, 1), chan(centre, 2),
+        chan(corner, 0), chan(corner, 1), chan(corner, 2),
+    );
+    // Bare corner == backdrop, untouched.
+    assert_eq!((chan(corner, 0), chan(corner, 1), chan(corner, 2)), (153, 153, 153), "bare pixel = backdrop");
+    // Painted centre: blue-tinted (B > R, B > G) and darkened (R below the backdrop's 153).
+    assert!(chan(centre, 2) > chan(centre, 0), "blue pigment ⇒ B > R");
+    assert!(chan(centre, 2) > chan(centre, 1), "blue pigment ⇒ B > G");
+    assert!(chan(centre, 0) < 153, "pigment must darken the backdrop");
+    assert_eq!(chan(centre, 3), 255, "preview is opaque");
 }

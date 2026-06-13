@@ -76,6 +76,15 @@ e suave que o pigmento, então todo depósito cai numa margem molhada (gate aber
 borda seca em que encosta → o pigmento velho re-mobiliza e funde macio. Limitado ao raio do dab (sem
 espalhamento autônomo); a recessão de borda remove o halo depois.
 
+### B5 — acúmulo de pigmento "marca os pixels" (mosqueado) — **RESOLVIDO (2026-06-13)**
+**Sintoma:** onde o pigmento acumula (1º traço), os pixels ficam marcados num mosqueado.
+**Causa:** o `gate()` modulava o transporte por célula via `mix(perm_valley, perm_crest, paper)`, e o
+campo `paper` é ruído por-PIXEL → grava o grão no pigmento (exposto pelo cap de saturação quando a
+massa fica perto do teto).
+**Fix:** removida a permeabilidade do papel do gate (`wash.wgsl`) → transporte uniforme → mancha
+chapada. Granulação volta depois como feature v1.1 com campo de baixa frequência (não o tooth
+por-pixel); `pap`/`paper` ficam ligados pra esse uso futuro.
+
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
 2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).

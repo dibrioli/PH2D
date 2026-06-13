@@ -47,6 +47,10 @@ struct Dab {
 @group(0) @binding(1) var<storage, read_write> water: array<f32>;
 @group(0) @binding(2) var<storage, read_write> pig: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> dabs: array<Dab>;
+// Set timer / "gel" (ADR-0079-amendment-2, Bleed Limit) — fresh paint RE-MOBILIZES a set wash:
+// painting over a gelled cell drops its set timer in proportion to the dab coverage, so the wick
+// frees up again there and the artist can keep working / extending the wash (the rest stays bound).
+@group(0) @binding(4) var<storage, read_write> gel: array<f32>;
 
 fn pidx(cell: u32, v: u32) -> u32 { return v * (S.width * S.height) + cell; }
 
@@ -65,6 +69,7 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let fx = f32(gx);
     let fy = f32(gy);
+    var reset = 0.0; // strongest dab coverage here → how much to re-mobilize the set timer
     for (var d: u32 = 0u; d < S.n_dabs; d = d + 1u) {
         let db = dabs[d];
         let dx = fx - db.cx;
@@ -75,6 +80,7 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         let fall = 1.0 - dist * dist * (3.0 - 2.0 * dist); // 1 at centre → 0 at rim
         w = min(w + db.water_add * fall, 1.0);
+        reset = max(reset, fall);
         for (var v = 0u; v < PV; v = v + 1u) {
             p[v] = p[v] + db.pig[v] * fall;
         }
@@ -83,4 +89,6 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var v = 0u; v < PV; v = v + 1u) {
         pig[pidx(i, v)] = p[v];
     }
+    // Re-mobilize: fresh paint frees the wick under the dab (gel ← gel·(1 − coverage)).
+    gel[i] = gel[i] * (1.0 - reset);
 }

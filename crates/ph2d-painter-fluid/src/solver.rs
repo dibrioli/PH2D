@@ -259,9 +259,10 @@ struct GpuParams {
     // The 2 trailing pads round the struct to 28 f32 = 112 B (16-aligned — required for the
     // uniform buffer). 0 ⇒ the isotropic capillary is bit-identical (opt-in, ADR-0082).
     capillary_branching: f32,
-    // ── ADR-0079-amendment-2 bleed limit ── front-absorption sink strength (offset 26, reuses the
-    // former `surface_tension` slot). Read by `fluid.wgsl::cs_evaporate`: HIGHER = the thin wash
-    // front is soaked into the paper faster = a tighter, bounded wash with a soft set edge. The 1
+    // ── ADR-0079-amendment-2 bleed limit ── wick-freeze strength (offset 26, reuses the former
+    // `surface_tension` slot). Read by `capillary.wgsl`: HIGHER = a SET wash's wick freezes harder
+    // (cond → 0 as the per-cell `gel` set-timer rises), bounding the wash WITHOUT removing water —
+    // it doesn't dry, doesn't deposit, the sheen persists; fresh paint re-mobilizes it. The 1
     // remaining trailing pad keeps the struct at 28 f32 = 112 B (16-aligned), so the UBO is unchanged.
     bleed_limit: f32,
     _pad_lift2: f32,
@@ -401,6 +402,11 @@ pub struct FluidSolver {
     /// two bind groups that reference it (the pigment scratch reuses the existing `pig_b`).
     #[allow(dead_code)]
     water_b: wgpu::Buffer,
+    /// Per-cell set timer (ADR-0079-amendment-2 "Bleed Limit"): 0 = fresh film … 1 = set wash.
+    /// `cs_copy_fields` increments it, `cs_splat` resets it on fresh paint, `cs_capillary` reads it
+    /// to throttle the wick — bounding the wash WITHOUT removing water. Cleared with `water`.
+    #[allow(dead_code)]
+    gel: wgpu::Buffer,
     bg_capillary: wgpu::BindGroup,
     bg_copy_fields: wgpu::BindGroup,
 }
@@ -477,6 +483,8 @@ impl FluidSolver {
             mapped_at_creation: false,
         });
         let water = buf("fluid water", f32n, wgpu::BufferUsages::COPY_SRC);
+        // Per-cell set timer ("Bleed Limit", ADR-0079-amendment-2). COPY_SRC for an optional readback.
+        let gel = buf("fluid gel", f32n, wgpu::BufferUsages::COPY_SRC);
         let paper = buf("fluid paper", f32n, wgpu::BufferUsages::empty());
         let pig_a = buf("fluid pig_a", vec4n, wgpu::BufferUsages::COPY_SRC);
         let pig_b = buf("fluid pig_b", vec4n, wgpu::BufferUsages::empty());
@@ -543,6 +551,7 @@ impl FluidSolver {
                 storage(1, false), // water (read_write)
                 storage(2, false), // pig_a (read_write)
                 storage(3, true),  // dabs (read)
+                storage(4, false), // gel (read_write — fresh paint re-mobilizes the set timer)
             ],
         });
         let splat_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -589,6 +598,10 @@ impl FluidSolver {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: dabs_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: gel.as_entire_binding(),
                 },
             ],
         });
@@ -1068,6 +1081,7 @@ impl FluidSolver {
                 storage(3, false),
                 storage(4, true),
                 storage(5, false),
+                storage(6, false), // gel (read here — throttles the wick by set-ness)
             ],
         });
         let capillary_pipe = cap_pipe("cs_capillary", &sw_layout(&bgl_cap));
@@ -1081,6 +1095,7 @@ impl FluidSolver {
                 entry(3, &water_b),
                 entry(4, &pig_a),
                 entry(5, &pig_b),
+                entry(6, &gel),
             ],
         });
         // cs_copy_fields: (params, water_in r=water_b, water_out rw=water, pig_in r=pig_b,
@@ -1093,6 +1108,7 @@ impl FluidSolver {
                 storage(3, false),
                 storage(4, true),
                 storage(5, false),
+                storage(6, false), // gel (read_write — advance the set timer here)
             ],
         });
         let copy_fields_pipe = cap_pipe("cs_copy_fields", &sw_layout(&bgl_copy));
@@ -1105,6 +1121,7 @@ impl FluidSolver {
                 entry(3, &water),
                 entry(4, &pig_b),
                 entry(5, &pig_a),
+                entry(6, &gel),
             ],
         });
 
@@ -1203,6 +1220,7 @@ impl FluidSolver {
             capillary_pipe,
             copy_fields_pipe,
             water_b,
+            gel,
             bg_capillary,
             bg_copy_fields,
         }
@@ -1447,7 +1465,8 @@ impl FluidSolver {
     /// Zero the resident water ON the GPU (companion to
     /// [`Self::clear_resident_pigment_gpu`]) — so a reused solver starts from a dry field.
     pub fn clear_resident_water_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        self.clear_buffers_gpu(device, queue, "fluid clear water", &[&self.water]);
+        // Clear the set timer alongside the water (a fresh canvas starts fully un-set).
+        self.clear_buffers_gpu(device, queue, "fluid clear water", &[&self.water, &self.gel]);
     }
 
     /// Zero the resident deposited-pigment layer ON the GPU (ADR-0078 S3) — the

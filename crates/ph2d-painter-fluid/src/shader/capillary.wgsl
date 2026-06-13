@@ -70,6 +70,15 @@ struct Params {
 @group(0) @binding(3) var<storage, read_write> water_out: array<f32>;
 @group(0) @binding(4) var<storage, read> pig_in: array<vec4<f32>>;
 @group(0) @binding(5) var<storage, read_write> pig_out: array<vec4<f32>>;
+// ── Set timer / "gel" (ADR-0079-amendment-2, the Bleed Limit method) ── per-cell [0,1]: 0 = a
+// fresh wet film (wicks freely), 1 = a SET wash (the wick is frozen). `cs_copy_fields` increments
+// it each substep a cell stays wet; `cs_splat` resets it where fresh paint lands; `cs_capillary`
+// (here) reads it to THROTTLE the wick conductance. This bounds the wash WITHOUT removing water
+// (mass-conserving — no drying, no premature deposition, the wet sheen persists) — the wash spreads
+// while fresh, then freezes in place once set, and re-wetting (painting over) re-mobilizes it.
+@group(0) @binding(6) var<storage, read_write> gel: array<f32>;
+// Per-substep set rate: a continuously-wet cell gels over ~hundreds of substeps (≈1 s of painting).
+const GEL_RATE: f32 = 0.004;
 
 fn idx(x: u32, y: u32) -> u32 {
     return y * P.width + x;
@@ -113,7 +122,7 @@ struct FaceInfo {
 // ⇒ anti-symmetric flux ⇒ conservation + CPU bit-parity hold.
 const CAPILLARY_MIN_SAT: f32 = 0.005;
 
-fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> FaceInfo {
+fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32, gel_c: f32) -> FaceInfo {
     let wn = water_in[ni];
     let wetter = max(wn, wc);
     // A face whose wetter side is at/below the residual saturation carries no flux ("the wick
@@ -138,6 +147,12 @@ fn face_info(ni: u32, wc: f32, permc: f32, cap: f32, mob: f32, paper_c: f32) -> 
     let gate = gt * gt * (3.0 - 2.0 * gt);
     let fiber_factor = 1.0 - P.capillary_branching * (1.0 - gate);
     cond = cond * fiber_factor;
+    // Bleed Limit (ADR-0079-amendment-2): throttle the wick by how SET the face is. `gelf` is the
+    // set-ness of the more-set side (symmetric in c,n ⇒ both face threads agree ⇒ flux stays
+    // anti-symmetric ⇒ water mass conserved). A fully-set face at bleed_limit = 1 has cond → 0:
+    // the wick freezes in place (the wash stops creeping) WITHOUT any water being removed.
+    let gelf = max(gel_c, gel[ni]);
+    cond = cond * (1.0 - P.bleed_limit * gelf);
     var frac = 0.0;
     var kind = 0u;
     if (wc > wn) {
@@ -175,11 +190,12 @@ fn cs_capillary(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cap = P.capillary;
     let mob = P.capillary_mobility;
     let n = nb(x, y);
+    let gel_c = gel[c];
     // Faces left → right → up → down (the CPU order), each a per-cell scalar set.
-    let fL = face_info(idx(n.x, y), wc, permc, cap, mob, paper_c);
-    let fR = face_info(idx(n.y, y), wc, permc, cap, mob, paper_c);
-    let fU = face_info(idx(x, n.z), wc, permc, cap, mob, paper_c);
-    let fD = face_info(idx(x, n.w), wc, permc, cap, mob, paper_c);
+    let fL = face_info(idx(n.x, y), wc, permc, cap, mob, paper_c, gel_c);
+    let fR = face_info(idx(n.y, y), wc, permc, cap, mob, paper_c, gel_c);
+    let fU = face_info(idx(x, n.z), wc, permc, cap, mob, paper_c, gel_c);
+    let fD = face_info(idx(x, n.w), wc, permc, cap, mob, paper_c, gel_c);
     water_out[c] = wc + cap * (fL.dw + fR.dw + fU.dw + fD.dw);
     for (var v = 0u; v < PV; v = v + 1u) {
         let pc_v = pig_in[pidx(c, v)];
@@ -202,8 +218,13 @@ fn cs_copy_fields(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let c = idx(x, y);
-    water_out[c] = water_in[c];
+    let w = water_in[c];
+    water_out[c] = w;
     for (var v = 0u; v < PV; v = v + 1u) {
         pig_out[pidx(c, v)] = pig_in[pidx(c, v)];
     }
+    // Advance the set timer (Bleed Limit): a cell that stays wet GELS over time (the wick freezes,
+    // bounding the wash); a dry cell resets to fresh. Own-cell write only (no neighbour read) ⇒
+    // race-free. Read next substep by `cs_capillary` for the conductance throttle.
+    gel[c] = select(0.0, min(1.0, gel[c] + GEL_RATE), w > P.w_lo);
 }

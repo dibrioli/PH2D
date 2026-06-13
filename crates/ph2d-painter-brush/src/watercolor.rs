@@ -63,9 +63,11 @@ pub struct WatercolorParams {
     /// depositing colour. Tool-side (dab emission), no [`DiffusionParams`] twin. Default 0
     /// = the validated paint look bit-for-bit.
     pub water: f32,
-    // ── Bleed Limit (ADR-0079-amendment-2) — front-absorption sink that bounds how far a
-    //    Keep-Wet / evaporation-0 wash spreads, WITHOUT a hard edge (replaces Surface Tension,
-    //    whose conductance pin pixelated the rim). 0 = unbounded creep … 1 = tight, soft edge ──
+    // ── Bleed Limit (ADR-0079-amendment-2) — a per-cell SET timer freezes the capillary wick as a
+    //    wash sets, bounding how far it spreads WITHOUT removing water (replaces Surface Tension,
+    //    whose conductance pin pixelated the rim). Water is conserved: the wash doesn't dry, the
+    //    pigment doesn't deposit, the sheen persists, and fresh paint re-mobilizes it. 0 = the wick
+    //    never freezes (free bleed) … 1 = a set wash's wick fully freezes (tight, soft edge) ──
     pub bleed_limit: f32,
     // === 21/21 used (cap ≤ 21, raised from 20 by ADR-0079-amendment-1; slot reused by amend-2) ===
 }
@@ -118,8 +120,8 @@ impl Default for WatercolorParams {
             capillary_branching: 0.0,
             // Water brush OFF by default — a paint brush deposits its full pigment load.
             water: 0.0,
-            // Bleed Limit (ADR-0079-amendment-2) — 0.3 gives a gently bounded wash by default
-            // (front-absorption); the artist raises it for a tighter wash, lowers it for free bleed.
+            // Bleed Limit (ADR-0079-amendment-2) — 0.3 gives a gently bounded wash by default (the
+            // wick set-freezes); the artist raises it for a tighter wash, lowers it for free bleed.
             bleed_limit: 0.3,
         }
     }
@@ -256,11 +258,11 @@ impl WatercolorParams {
             max: 1.0,
         },
         // Bleed Limit (ADR-0079-amendment-2): how far a Keep-Wet / Evaporation-0 wash spreads past
-        // the painted area, bounded by a FRONT-ABSORPTION sink (fluid.wgsl `cs_evaporate`) instead
-        // of the deleted Surface-Tension conductance pin (which cliffed the rim into pixels). The
-        // thin perimeter film is soaked into the paper faster than the thick core, so the front
-        // halts with a SOFT set edge while wet pools persist. HIGHER = more absorption = tighter
-        // wash, less bleed. 0 = unbounded creep (the raw wick). Soft edge at every value.
+        // the painted area. A per-cell SET timer (`gel`) freezes the capillary wick (the sole
+        // water-mover) as the wash sets, so it stops creeping — WITHOUT removing water (no drying,
+        // no deposition, the sheen stays; fresh paint re-mobilizes it). Replaces the deleted
+        // Surface-Tension conductance pin, which cliffed the rim into pixels. HIGHER = the set wick
+        // freezes harder = tighter wash, less bleed. 0 = the wick never freezes (free bleed).
         WatercolorControl {
             label: "Bleed Limit",
             min: 0.0,

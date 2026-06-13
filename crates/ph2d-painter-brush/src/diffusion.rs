@@ -173,14 +173,14 @@ pub struct DiffusionParams {
     /// of the GPU capillary pass. `0` ⇒ `fiber_factor = 1` ⇒ the isotropic capillary is
     /// **bit-identical** to today (opt-in). Only read while the capillary layer is active.
     pub capillary_branching: f32,
-    /// **Bleed Limit — front-absorption sink (ADR-0079-amendment-2, 2026-06-12).** Replaces the
-    /// deleted Surface-Tension pin, which bounded the wash by zeroing the wick conductance at a
-    /// water floor — a fake bound that necessarily cliffed the wet edge into a 1-cell pixelated rim.
-    /// A mass-conserving diffusion cannot be bounded without a SINK; this is one. The thin perimeter
-    /// film (high surface-area-to-volume) is soaked into the paper faster than the thick pool, so
-    /// the front loses its fuel and HALTS with a SOFT set edge while wet pools persist. Drives the
-    /// absorption term in `fluid.wgsl::cs_evaporate` (active only in the `[w_lo, w_hi]` band).
-    /// `0` = unbounded creep (raw wick); HIGHER = more absorption = tighter wash. Soft at every value.
+    /// **Bleed Limit — wick set-freeze (ADR-0079-amendment-2, 2026-06-12).** Replaces the deleted
+    /// Surface-Tension pin, which bounded the wash by zeroing the wick conductance at a water floor
+    /// — a fake bound that cliffed the wet edge into a 1-cell pixelated rim, and any water-removing
+    /// sink dries the wash. Instead, a per-cell SET timer (`gel`, `capillary.wgsl`) rises while a
+    /// cell stays wet and THROTTLES the capillary wick (the sole water-mover) toward zero as the
+    /// wash sets — so it stops creeping WITHOUT removing water (no drying, no deposition, the sheen
+    /// persists; fresh paint resets the timer and re-mobilizes it). `0` = the wick never freezes
+    /// (free bleed); HIGHER = a set wash's wick freezes harder = tighter wash. Soft edge at every value.
     pub bleed_limit: f32,
 }
 

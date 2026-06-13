@@ -10,16 +10,21 @@
 // PAPER SATURATION (fixes B1 — overlap → black): the splat accumulates absorbance + mass with no
 // ceiling, so painting the same spot repeatedly drove `absorb → ∞` ⇒ `exp(−absorb) → 0` = black.
 // Real paper holds a finite amount of pigment. The pigment hue per unit mass is `absorb/mass`
-// (= −ln(c) for a colour c); we cap the EFFECTIVE mass at `MASS_MAX`, so a saturated cell glazes
-// to `exp(−(absorb/mass)·MASS_MAX) = c^MASS_MAX` — the pigment's full masstone — and never darker.
-// Edge-darkening survives: the rim concentrates more mass than the interior, so it still reads
-// darker, just bounded at the pigment colour instead of running away to black.
+// (= −ln(c) for a colour c); we saturate the EFFECTIVE mass toward `MASS_MAX`, so a heavily-loaded
+// cell glazes to ≈`exp(−(absorb/mass)·MASS_MAX) = c` — the pigment's full masstone — never darker.
+//
+// SMOOTH saturation (fixes the stepped core↔halo edge): a HARD cap `min(mass, MASS_MAX)` leaves a
+// flat saturated core and a separate gradient halo with a visible CONTOUR between them (the
+// mass=MASS_MAX iso-line, quantised per-pixel ⇒ a staircased edge). Instead the effective mass
+// rolls off ASYMPTOTICALLY — `eff = MASS_MAX·(1 − exp(−mass/MASS_MAX))` — which is ≈mass for thin
+// glazes (proportional darkening) and → MASS_MAX for thick ones, with NO discontinuity in value OR
+// slope. The whole stroke is one smooth proportional ramp from paper to the masstone.
 //
 // Swapping in Kubelka–Munk / Mixbox later is a change to THIS kernel only — the transport never
 // moves.
 
-// Paper pigment-holding capacity, in dab-mass units. 1.0 ⇒ a saturated cell converges to the
-// chosen pigment colour `c` over white; lighter deposits glaze up toward it.
+// Paper pigment-holding capacity, in dab-mass units. A heavily-loaded cell converges to the chosen
+// pigment colour `c` over white; lighter deposits glaze proportionally up toward it.
 const MASS_MAX: f32 = 1.0;
 
 struct Comp {
@@ -97,9 +102,11 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let praw = sample_pig(fx, fy);
     let absorb_raw = max(praw.xyz, vec3<f32>(0.0));
     let mass = max(praw.w, 0.0);
-    // Cap the effective mass at MASS_MAX, preserving hue (absorb/mass): the glaze converges to the
-    // pigment masstone, never to black. Below the cap, absorb passes through unchanged.
-    let absorb = select(absorb_raw, absorb_raw * (MASS_MAX / mass), mass > MASS_MAX);
+    // Smooth saturation of the effective mass (preserves hue = absorb/mass): proportional for thin
+    // glazes, asymptotic toward the masstone for thick ones, with NO stepped core↔halo contour.
+    let eff = MASS_MAX * (1.0 - exp(-mass / MASS_MAX));
+    let scale = select(0.0, eff / mass, mass > 1.0e-6);
+    let absorb = absorb_raw * scale;
     let glaze = srgb_to_lin(back.xyz) * exp(-absorb);
     let rgb = lin_to_srgb(glaze);
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));

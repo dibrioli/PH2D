@@ -66,6 +66,16 @@ e a borda do traço fica em escada (pixelada).
    molhado fica intacto (Keep Wet preservado), recessão pra dentro (não espalha). Borda suave mesmo
    em Evaporation 0.
 
+### B4 — mancha dura ao re-depositar sobre traço seco (wet-on-dry) — **RESOLVIDO (2026-06-13)**
+**Sintoma:** depositar mais tinta sobre um traço já pintado cria uma mancha dura interna; a borda
+externa (já suave) não atualiza. Enio: "a parte de fora está seca e a de dentro molhada".
+**Causa:** a recessão de borda (B3) seca/congela a borda do traço; pigmento novo (molhado) não funde
+no velho (congelado) — o gate fecha onde não há água → fronteira dura.
+**Fix:** **halo de água** no splat (`splat.wgsl`, `WATER_HALO=1.5`): a água molha um disco mais largo
+e suave que o pigmento, então todo depósito cai numa margem molhada (gate aberto) e **re-molha** uma
+borda seca em que encosta → o pigmento velho re-mobiliza e funde macio. Limitado ao raio do dab (sem
+espalhamento autônomo); a recessão de borda remove o halo depois.
+
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
 2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).

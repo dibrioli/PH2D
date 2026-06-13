@@ -1,6 +1,14 @@
 // cs_splat — brush input. Adds water + pigment (absorbance) from a dab list onto the
 // resident fields. Full-grid dispatch (the minimal core keeps the input path trivial);
 // each cell accumulates every dab whose disk covers it, with a smooth falloff.
+//
+// WATER HALO (wet-on-dry / wet-in-wet blending): the water wets a slightly WIDER, softer disk than
+// the pigment deposit, so every dab leaves a wet, gate-open margin around its colour. A new deposit
+// then feathers INTO that margin — and if it lands next to a dried/frozen rim (the edge-recession
+// freezes rims), the halo RE-WETS that rim so its pigment re-mobilises and the new paint blends
+// softly instead of butting a hard internal edge. Bounded by the dab radius (no autonomous spread);
+// the edge-biased recession in cs_step removes the halo again.
+const WATER_HALO: f32 = 1.5;
 
 struct Dab {
     cx: f32,
@@ -42,13 +50,20 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
         let db = dabs[d];
         let dx = fx - db.cx;
         let dy = fy - db.cy;
-        let dist = sqrt(dx * dx + dy * dy) / max(db.r, 1.0e-6);
-        if (dist >= 1.0) {
-            continue;
+        let dd = sqrt(dx * dx + dy * dy);
+        let rp = max(db.r, 1.0e-6);
+        // Water: a wider, softer halo (re-wets a dried rim the dab lands on so it can blend).
+        let distw = dd / (rp * WATER_HALO);
+        if (distw < 1.0) {
+            let fw = 1.0 - distw * distw * (3.0 - 2.0 * distw);
+            w = min(w + db.water_add * fw, 1.0);
         }
-        let fall = 1.0 - dist * dist * (3.0 - 2.0 * dist); // 1 at centre → 0 at rim
-        w = min(w + db.water_add * fall, 1.0);
-        p = p + db.pig * fall;
+        // Pigment: the tighter deposit disk (1 at centre → 0 at rim).
+        let distp = dd / rp;
+        if (distp < 1.0) {
+            let fp = 1.0 - distp * distp * (3.0 - 2.0 * distp);
+            p = p + db.pig * fp;
+        }
     }
     water[i] = w;
     pig[i] = max(p, vec4<f32>(0.0));

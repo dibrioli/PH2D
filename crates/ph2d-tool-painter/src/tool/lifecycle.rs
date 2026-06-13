@@ -485,7 +485,9 @@ impl PainterTool {
     /// GPU-drive PRE-WARM (while hovering, before the first dab), moving the one-time
     /// cost off the click path. No-op for non-fluid brushes / no source.
     pub fn fluid_prewarm_paper(&self) {
-        if !self.brush.rendering.fluid_enabled {
+        // ADR-0087: the wash brush shares the same paper-tooth cache + begin_stroke path, so it
+        // ALSO pre-warms here (else the O(grid) `grain_noise` runs on the first click → ~0.5 s delay).
+        if !(self.brush.rendering.fluid_enabled || self.brush.rendering.wash_enabled) {
             return;
         }
         let (sw, sh) = self.source_size;

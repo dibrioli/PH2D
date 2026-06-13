@@ -144,6 +144,9 @@ pub(crate) fn drive_wash_gpu(
     // the session NOW so the compute pipelines COMPILE off the click path (the first-stroke stutter
     // the profile showed as a dropped sim frame). Hires ⇒ scale 1 ⇒ field dims = source size.
     if !painter.has_wet_field() {
+        // Generate the paper-tooth field NOW (hovering) so the first begin_stroke doesn't pay the
+        // O(grid) `grain_noise` on the click path (the ~0.5 s first-stroke delay).
+        painter.fluid_prewarm_paper();
         let (cw, ch) = painter.source_size();
         if cw > 0 && ch > 0 {
             let dims = (cw, ch);

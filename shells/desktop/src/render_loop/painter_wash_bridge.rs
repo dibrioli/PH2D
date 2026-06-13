@@ -5,8 +5,10 @@
 //! - **ONE submit/frame**: `cs_splat` (region) + `cs_step`×substeps (region) + the to-texture
 //!   composite (region) + the preview-slot copy (full SEED once, then DIRTY-RECT) all in one encoder
 //!   → a `PreviewOverride` the renderer samples in place of the sprite. NO per-frame readback / poll.
-//! - **Active-region window**: the per-frame work follows the recent dabs (not the monotonic
-//!   envelope), so a long stroke / settled wash costs O(brush), not O(canvas).
+//! - **Region = the monotonic wet envelope** (everywhere painted this stroke). A moving window would
+//!   step cells an inconsistent number of times under Evaporation 0 (the field keeps diffusing) and
+//!   etch rectangular tonal seams; the envelope steps every wet cell uniformly. Bounded by the
+//!   painted footprint, released ACTIVE_WINDOW frames after pen-up (finalize).
 //! - **Backdrop built ONLY on stroke start** (not every frame — that full-canvas `Vec` copy was a
 //!   per-frame CPU stall).
 //! - **Finalize**: a short bloom window after pen-up, then ONE readback bakes `canvas_rgba` and the
@@ -22,7 +24,6 @@ use ph2d_gpu::GpuContext;
 use ph2d_painter_wash::{Dab, WashCompositor, WashParams, WashSolver};
 use ph2d_render::SpriteRenderer;
 use std::cell::RefCell;
-use std::collections::VecDeque;
 use std::time::Instant;
 
 /// Frames a dab's area stays in the per-frame work region after it lands (then it freezes — its
@@ -62,9 +63,6 @@ struct WashSession {
     epoch: u64,
     slot: Option<(u32, u32, u32)>,
     seeded: bool,
-    /// (frame, grid bbox) of recent dabs — the active-region window.
-    active_history: VecDeque<(u64, (u32, u32, u32, u32))>,
-    frame: u64,
     idle_frames: u32,
     finalized: bool,
 }
@@ -80,8 +78,6 @@ impl WashSession {
             epoch: u64::MAX,
             slot: None,
             seeded: false,
-            active_history: VecDeque::new(),
-            frame: 0,
             idle_frames: 0,
             finalized: false,
         }
@@ -91,10 +87,6 @@ impl WashSession {
             renderer.individual_mut().release(id);
         }
     }
-}
-
-fn union(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
-    (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
 }
 
 fn wash_params_from(dp: &ph2d_painter_brush::diffusion::DiffusionParams) -> WashParams {
@@ -198,7 +190,7 @@ pub(crate) fn drive_wash_gpu(
     } else {
         None
     };
-    let (dabs, _envelope) = painter.fluid_take_dabs()?;
+    let (dabs, envelope) = painter.fluid_take_dabs()?;
     let profile = PROFILE.with(|p| p.borrow_mut().enabled());
     let t0 = profile.then(Instant::now);
 
@@ -223,7 +215,6 @@ pub(crate) fn drive_wash_gpu(
             sess.seeded = false;
             sess.idle_frames = 0;
             sess.finalized = false;
-            sess.active_history.clear();
         }
         if active {
             sess.idle_frames = 0;
@@ -236,28 +227,10 @@ pub(crate) fn drive_wash_gpu(
             .map(|d| Dab::from_color_mass(d.cx, d.cy, d.r.max(0.5), d.water, d.color, d.mass))
             .collect();
 
-        // ── Active-region window: union of recent dab bboxes (NOT the monotonic envelope) ──
-        if !gpu_dabs.is_empty() {
-            let (mut x0, mut y0, mut x1, mut y1) = (dims.0 - 1, dims.1 - 1, 0u32, 0u32);
-            for d in &dabs {
-                x0 = x0.min((d.cx - d.r).floor().clamp(0.0, (dims.0 - 1) as f32) as u32);
-                y0 = y0.min((d.cy - d.r).floor().clamp(0.0, (dims.1 - 1) as f32) as u32);
-                x1 = x1.max((d.cx + d.r).ceil().clamp(0.0, (dims.0 - 1) as f32) as u32);
-                y1 = y1.max((d.cy + d.r).ceil().clamp(0.0, (dims.1 - 1) as f32) as u32);
-            }
-            sess.active_history.push_back((sess.frame, (x0, y0, x1, y1)));
-        }
-        let cur = sess.frame;
-        while sess.active_history.front().is_some_and(|&(f, _)| cur.saturating_sub(f) > ACTIVE_WINDOW) {
-            sess.active_history.pop_front();
-        }
-        sess.frame = sess.frame.wrapping_add(1);
-        let region = sess.active_history.iter().map(|(_, b)| *b).reduce(union);
-
-        // Finalize: pen up + nothing recent left to bloom ⇒ bake once + stop.
+        // Finalize: ACTIVE_WINDOW frames after pen-up ⇒ bake once + stop (free idle until next stroke).
         if !active {
             sess.idle_frames = sess.idle_frames.saturating_add(1);
-            if region.is_none() || sess.idle_frames > ACTIVE_WINDOW as u32 {
+            if sess.idle_frames > ACTIVE_WINDOW as u32 {
                 if let Some(words) = sess.compositor.read_preview(&gpu.device, &gpu.queue) {
                     let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
                     painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
@@ -267,11 +240,20 @@ pub(crate) fn drive_wash_gpu(
                 return None;
             }
         }
-        let (gx0, gy0, gx1, gy1) = region?;
-        let gx0 = gx0.saturating_sub(REGION_PAD);
-        let gy0 = gy0.saturating_sub(REGION_PAD);
-        let gx1 = (gx1 + REGION_PAD).min(dims.0 - 1);
-        let gy1 = (gy1 + REGION_PAD).min(dims.1 - 1);
+
+        // ── Region = the MONOTONIC wet envelope (everywhere painted this stroke), NOT a moving
+        // window. Under Evaporation 0 / Keep Wet the whole wet footprint keeps diffusing, so a
+        // moving window would step cells an INCONSISTENT number of times — the just-stepped cells
+        // diverge from their never-(re)stepped neighbours, etching rectangular tonal seams (the
+        // "marcas retangulares"). Stepping the full envelope every frame gives every wet cell the
+        // same evolution ⇒ seam-free. Bounded by the painted footprint; finalize releases it
+        // ACTIVE_WINDOW frames after pen-up. The composite + slot copy share this region so the
+        // displayed preview stays in sync with the still-evolving field (no stale strips at bake). ──
+        let (ex0, ey0, ex1, ey1) = envelope;
+        let gx0 = ex0.saturating_sub(REGION_PAD);
+        let gy0 = ey0.saturating_sub(REGION_PAD);
+        let gx1 = (ex1 + REGION_PAD).min(dims.0 - 1);
+        let gy1 = (ey1 + REGION_PAD).min(dims.1 - 1);
         let g_region = (gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1);
         let cx0 = (gx0 * scale).min(cw);
         let cy0 = (gy0 * scale).min(ch);

@@ -17,6 +17,10 @@
 
 const D_MAX: f32 = 0.20; // diffusion budget (≤ 0.25 heat CFL; leaves headroom for advection)
 const V_MAX: f32 = 0.03; // advective face-speed budget (the rest of the CFL budget)
+// Edge-biased recession floor: thin rim water recedes to feather the edge EVEN at Evaporation 0,
+// so a static front can't pin a hard pixelated rim (the v2 failure). Scaled by (1−w) ⇒ ~0 in the
+// wet interior (Keep Wet stays wet) and inward-only (no spreading).
+const EDGE_EVAP_FLOOR: f32 = 0.01;
 
 struct Params {
     width: u32,
@@ -96,6 +100,9 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     p_new = p_new + face(gc, wc, pc, gate(water_in[iD], paper[iD]), water_in[iD], pig_in[iD]);
 
     pig_out[i] = max(p_new, vec4<f32>(0.0));
-    let w = max(wc - P.evaporation, 0.0);
+    // Bulk drying (user Evaporation) + edge-biased recession (feathers the thin rim, ~0 in the wet
+    // interior). The latter passes rim cells through the wet-gate band before freezing ⇒ soft edge.
+    let edge_dry = EDGE_EVAP_FLOOR * (1.0 - clamp(wc, 0.0, 1.0));
+    let w = max(wc - P.evaporation - edge_dry, 0.0);
     water_out[i] = select(0.0, w, w >= 1.0e-4);
 }

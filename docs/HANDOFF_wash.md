@@ -46,6 +46,26 @@ matou o v2.
    → ~0 em keep-wet/evap-0 (mancha chapada estável; água não difunde → não cresce além do footprint),
    sobe até cheio na taxa de secagem default. Edge-darkening preservado pro caso seco (ratio 5.4×).
 
+### B3 — marcas retangulares + borda pixelada em Evaporation 0 — **RESOLVIDO (2026-06-13)**
+**Sintoma:** com Evaporation 0 / Keep Wet, aparecem retângulos tonais embossados pela área pintada,
+e a borda do traço fica em escada (pixelada).
+**Causas:**
+1. **Marcas retangulares = costura de região.** O `cs_step` rodava só dentro da *janela móvel* (union
+   dos bboxes dos últimos 30 frames). Com evap-0 o footprint inteiro continua difundindo, então
+   células que entraram/saíram da janela em frames diferentes acumulavam contagens de step
+   diferentes → degraus tonais nas bordas dos retângulos.
+2. **Borda pixelada = frente molhada estática.** Com evap=0 a água nunca recua → o gate trava numa
+   borda dura de 1 célula (lição do v2: "se há o mínimo de evaporação, a borda fica boa").
+**Fix:**
+1. **Região = envelope molhado monotônico** (`painter_wash_bridge.rs`): step + composite + copy sobre
+   tudo que foi pintado no traço → toda célula molhada evolui o mesmo nº de steps → sem costura.
+   Limitado ao footprint; finaliza ACTIVE_WINDOW frames após soltar a caneta. (Removida a máquina de
+   `active_history`/janela.)
+2. **Recessão de água viesada à borda** (`wash.wgsl`, `EDGE_EVAP_FLOOR=0.01`): piso de evaporação
+   escalado por `(1−água)` → só a borda fina recua (suaviza ao cruzar a banda do gate), o interior
+   molhado fica intacto (Keep Wet preservado), recessão pra dentro (não espalha). Borda suave mesmo
+   em Evaporation 0.
+
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
 2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).

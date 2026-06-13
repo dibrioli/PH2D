@@ -34,7 +34,14 @@ pub(crate) fn paint_sections(
     y = paint_section_separator(ctx.scene, theme, x, w, y);
     y = paint_dynamics_section(ctx, x, w, y, snapshot, theme);
     y = paint_section_separator(ctx.scene, theme, x, w, y);
-    y = paint_watercolor_section(ctx, x, w, y, snapshot, theme);
+    // ADR-0087: a wash brush gets a FOCUSED "Wash" section (the ~4 controls the minimal core
+    // uses); fluid / normal brushes keep the full 17-control "Watercolor" section. Mutually
+    // exclusive (never both visible), so they share the section/slider ids without conflict.
+    y = if snapshot.wash_enabled {
+        paint_wash_section(ctx, x, w, y, snapshot, theme)
+    } else {
+        paint_watercolor_section(ctx, x, w, y, snapshot, theme)
+    };
     y
 }
 
@@ -508,6 +515,54 @@ fn paint_watercolor_section(
     y = cycler_row(ctx, x, w, y, "Keep Wet", s.keep_wet, ids::KEEP_WET, theme);
     y = cycler_row(ctx, x, w, y, "Show Wet", s.show_wet, ids::SHOW_WET, theme);
     for i in 0..WatercolorParams::COUNT {
+        let c = &WatercolorParams::CONTROLS[i];
+        let v01 = s.watercolor[i];
+        let phys = c.min + v01 * (c.max - c.min);
+        let disp = format!("{phys:.3}"); // LITERAL-PX-OK: solver param value, not a px dimension
+        y = mapped_row(
+            ctx,
+            x,
+            w,
+            y,
+            c.label,
+            v01,
+            f64::from(phys),
+            &disp,
+            core_ids::painter_studio_watercolor_slider_id(i),
+            core_ids::painter_studio_watercolor_chip_id(i),
+            theme,
+        );
+    }
+    y
+}
+
+/// **Wash section (ADR-0086/0087)** — the FOCUSED control set for the minimal watercolor core.
+/// Shows only the `WatercolorParams` controls the `WashSolver` actually consumes (the other ~17
+/// are inert for the wash), reusing the same slider ids + edit path (so the underlying brush param
+/// is identical — the wash and full-watercolor sections are just two views, never both visible).
+fn paint_wash_section(
+    ctx: &mut PaintCtx,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    s: &BrushStudioSnapshot,
+    theme: Theme,
+) -> f32 {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_tool_painter::WatercolorParams;
+    // Reuse the Watercolor section's collapse + reset ids (mutually exclusive with it).
+    let (hy, collapsed) = section_header(ctx, ids::SEC_WATERCOLOR, ids::RESET_WATERCOLOR, "Wash", x, w, y, theme);
+    y = hy;
+    if collapsed {
+        return y;
+    }
+    // Keep Wet pauses drying (the wash stays workable). (Show Wet / pigment cycler are v2-only —
+    // the minimal core has no wet-sheen / K–M palette yet, so they're omitted here.)
+    y = cycler_row(ctx, x, w, y, "Keep Wet", s.keep_wet, ids::KEEP_WET, theme);
+    // Curated indices into `WatercolorParams::CONTROLS`: Diffusivity(0) = bloom, Bleed(3) =
+    // edge-darkening, Evaporation(1) = drying, Water(19) = pigment dilution.
+    const WASH_CONTROLS: [usize; 4] = [0, 3, 1, 19];
+    for &i in &WASH_CONTROLS {
         let c = &WatercolorParams::CONTROLS[i];
         let v01 = s.watercolor[i];
         let phys = c.min + v01 * (c.max - c.min);

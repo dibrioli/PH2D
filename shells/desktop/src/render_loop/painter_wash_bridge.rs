@@ -402,12 +402,14 @@ pub(crate) fn drive_wash_gpu(
         }
         sess.seeded = true;
 
-        // ── ADR-0089 finalise + gradual settle ── on the pen-up frame, snapshot BOTH colour channels
-        // IMMEDIATELY (a provisional, near-pen-up state) so undo works at once even mid-settle, then let
-        // the field keep stepping `substeps`/frame for `ACTIVE_WINDOW` frames (the smooth post-release
-        // diffusion). When the settle completes, REFRESH that snapshot to the fully-settled field. The
-        // readbacks see the current state because they submit + block after the step+composite above.
-        let mut settle_completed = false;
+        // ── ADR-0089 finalise + gradual settle (display-only) ── on the pen-up frame, snapshot BOTH
+        // colour channels and bake canvas_rgba ONCE (exactly the clean collapse's render path: a single
+        // `preview_dirty` kick of the painter's own preview pipeline per stroke). Then let the field keep
+        // stepping `substeps`/frame for `ACTIVE_WINDOW` frames — the smooth post-release diffusion — as a
+        // pure DISPLAY animation (slot composite + copy only; NO further bake, so the painter pipeline is
+        // never re-kicked mid-settle, which is what etched the rectangular seams). When the settle ends,
+        // refresh the snapshot to the settled field IN MEMORY (no bake/`preview_dirty`) so a later
+        // undo/redo restores what the user actually ended up seeing.
         if finalizing {
             sess.committed.truncate(sess.applied); // discard any redo branch first
             let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
@@ -419,24 +421,23 @@ pub(crate) fn drive_wash_gpu(
             sess.painted_since_commit = false; // this stroke is now committed/snapshotted
             sess.settling = ACTIVE_WINDOW as u32; // begin the gradual post-release diffusion
         } else if sess.settling > 0 {
-            // A settle frame already stepped above; count down. On completion refresh the snapshot to
-            // the settled field (so a later undo/redo restores what the user actually ended up seeing).
-            sess.settling -= 1;
+            sess.settling -= 1; // animate the display settle; stop (idle) when it reaches 0
             if sess.settling == 0 {
                 if let Some(last) = sess.applied.checked_sub(1) {
                     let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
                     let dye = sess.solver.read_dye(&gpu.device, &gpu.queue);
-                    sess.committed[last] = FieldSnap { pig, dye };
+                    sess.committed[last] = FieldSnap { pig, dye }; // settled snapshot for undo fidelity
                 }
-                settle_completed = true;
             }
         }
 
-        // Bake the composite into canvas_rgba — the flat canvas the painter's snapshot-undo, save and
-        // thumbnails read. At pen-up (provisional), at settle-completion (the settled state), and on a
-        // restore — the stroke boundaries — so canvas_rgba tracks the field there. The slot override
-        // keeps DISPLAYING the live wash regardless (ADR-0089 §2.3).
-        let do_bake = finalizing || settle_completed || restored_now;
+        // Bake the composite into canvas_rgba — the flat canvas the painter's snapshot-undo / save /
+        // thumbnails read. ONCE per stroke at pen-up (identical timing+count to the clean collapse), plus
+        // on a restore. NEVER during the settle (the settle is display-only above). The bake sets
+        // `preview_dirty`, kicking the painter's OWN preview pipeline; one kick per boundary keeps that
+        // pipeline from racing a partial bbox into a rectangular seam. The slot override DISPLAYS the
+        // live wash throughout regardless (ADR-0089 §2.3).
+        let do_bake = finalizing || restored_now;
         if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));

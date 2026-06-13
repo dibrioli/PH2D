@@ -40,11 +40,15 @@ struct Profile {
     on: Option<bool>,
     frames: u64,
     cpu_us: u64,
+    gpu_us: u64,
+    seed: u64,
+    dirty: u64,
+    errs: u64,
     last_region_cells: u64,
 }
 impl Profile {
     const fn new() -> Self {
-        Self { on: None, frames: 0, cpu_us: 0, last_region_cells: 0 }
+        Self { on: None, frames: 0, cpu_us: 0, gpu_us: 0, seed: 0, dirty: 0, errs: 0, last_region_cells: 0 }
     }
     fn enabled(&mut self) -> bool {
         *self.on.get_or_insert_with(|| std::env::var("PH2D_WASH_PROFILE").is_ok())
@@ -183,7 +187,8 @@ pub(crate) fn drive_wash_gpu(
         None
     };
     let (dabs, _envelope) = painter.fluid_take_dabs()?;
-    let t0 = PROFILE.with(|p| p.borrow_mut().enabled()).then(Instant::now);
+    let profile = PROFILE.with(|p| p.borrow_mut().enabled());
+    let t0 = profile.then(Instant::now);
 
     let out = WASH_SESSION.with(|cell| {
         let mut slot_cell = cell.borrow_mut();
@@ -297,6 +302,18 @@ pub(crate) fn drive_wash_gpu(
             })
         };
         gpu.queue.submit([enc.finish()]);
+        if profile {
+            // Profile-only: block on GPU completion to MEASURE the wash GPU time (this poll is NOT
+            // in the normal path). Over-estimates slightly (drains any in-flight work).
+            let tg = Instant::now();
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            PROFILE.with(|p| {
+                let mut p = p.borrow_mut();
+                p.gpu_us += tg.elapsed().as_micros() as u64;
+                if seed { p.seed += 1 } else { p.dirty += 1 }
+                if !copy_ok { p.errs += 1 }
+            });
+        }
 
         if copy_ok {
             sess.seeded = true;
@@ -315,13 +332,21 @@ pub(crate) fn drive_wash_gpu(
             p.cpu_us += t0.elapsed().as_micros() as u64;
             if p.frames % 120 == 0 {
                 eprintln!(
-                    "[wash] cpu {:.2} ms/frame  region {} cells  dims {}x{}",
+                    "[wash] cpu {:.2}ms gpu {:.2}ms/frame | seed {} dirty {} err {} | region {} cells dims {}x{}",
                     p.cpu_us as f64 / 120.0 / 1000.0,
+                    p.gpu_us as f64 / 120.0 / 1000.0,
+                    p.seed,
+                    p.dirty,
+                    p.errs,
                     p.last_region_cells,
                     dims.0,
                     dims.1,
                 );
                 p.cpu_us = 0;
+                p.gpu_us = 0;
+                p.seed = 0;
+                p.dirty = 0;
+                p.errs = 0;
             }
         });
     }

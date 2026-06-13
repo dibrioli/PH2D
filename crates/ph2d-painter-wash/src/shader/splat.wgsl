@@ -10,18 +10,18 @@
 // the edge-biased recession in cs_step removes the halo again.
 const WATER_HALO: f32 = 1.5;
 
-// Per-cell pigment cap (Σ concentration). Clamping HERE (and in cs_step) keeps the field total
-// bounded so the composite can read concentrations DIRECTLY with no down-scale — a down-scale shifts
-// the hue in the spectral compose (red→orange). Above the cap, heavy overlap saturates toward the
-// masstone (never black). Set ≈ a saturated colour's natural Σ so a full stroke shows the picked hue.
-const PIG_CAP: f32 = 2.5;
+// Per-cell field cap (Σ concentration / dye mass) — matches cs_step. A pure STABILITY bound now, not
+// a hue control: the composite normalises the concentration ratio to K_REF (ADR-0089 §2.2), so the cap
+// only governs how OPAQUE heavy overlap can get, never its colour.
+const FIELD_CAP: f32 = 8.0;
 
 struct Dab {
     cx: f32,
     cy: f32,
     r: f32,
     water_add: f32,
-    pig: vec4<f32>, // (absorb.rgb, mass) added at full falloff
+    pig: vec4<f32>, // 4 base-pigment concentrations (K–M), added × falloff
+    dye: vec4<f32>, // premul linear-RGB + mass (Linear), added × falloff (ADR-0089)
 }
 
 struct SplatParams {
@@ -39,6 +39,7 @@ struct SplatParams {
 @group(0) @binding(1) var<storage, read_write> water: array<f32>;
 @group(0) @binding(2) var<storage, read_write> pig: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> dabs: array<Dab>;
+@group(0) @binding(4) var<storage, read_write> dye: array<vec4<f32>>; // ADR-0089 faithful-RGB channel
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -52,11 +53,12 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     let fy = f32(y);
     var w = water[i];
     var p = pig[i];
+    var dy_acc = dye[i];
     for (var d: u32 = 0u; d < S.n_dabs; d = d + 1u) {
         let db = dabs[d];
         let dx = fx - db.cx;
-        let dy = fy - db.cy;
-        let dd = sqrt(dx * dx + dy * dy);
+        let dyy = fy - db.cy;
+        let dd = sqrt(dx * dx + dyy * dyy);
         let rp = max(db.r, 1.0e-6);
         // Water: a wider, softer halo (re-wets a dried rim the dab lands on so it can blend).
         let distw = dd / (rp * WATER_HALO);
@@ -64,20 +66,26 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
             let fw = 1.0 - distw * distw * (3.0 - 2.0 * distw);
             w = min(w + db.water_add * fw, 1.0);
         }
-        // Pigment: the tighter deposit disk (1 at centre → 0 at rim).
+        // Colour: the tighter deposit disk (1 at centre → 0 at rim). Both channels share the falloff.
         let distp = dd / rp;
         if (distp < 1.0) {
             let fp = 1.0 - distp * distp * (3.0 - 2.0 * distp);
             p = p + db.pig * fp;
+            dy_acc = dy_acc + db.dye * fp;
         }
     }
     water[i] = w;
-    // Clamp the cell's total pigment to PIG_CAP (preserving hue ratios) so the composite never
-    // down-scales (which would shift the hue). Heavy overlap saturates toward the masstone.
+    // Clamp each colour channel's magnitude to FIELD_CAP, preserving its ratio (so neither hue shifts):
+    // pig by Σ concentration, dye by its mass (.w). Cap is a stability bound only (ADR-0089).
     p = max(p, vec4<f32>(0.0));
     let tot = p.x + p.y + p.z + p.w;
-    if (tot > PIG_CAP) {
-        p = p * (PIG_CAP / tot);
+    if (tot > FIELD_CAP) {
+        p = p * (FIELD_CAP / tot);
     }
     pig[i] = p;
+    dy_acc = max(dy_acc, vec4<f32>(0.0));
+    if (dy_acc.w > FIELD_CAP) {
+        dy_acc = dy_acc * (FIELD_CAP / dy_acc.w);
+    }
+    dye[i] = dy_acc;
 }

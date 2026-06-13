@@ -56,7 +56,7 @@ impl Default for WashParams {
     }
 }
 
-/// One brush dab (the `cs_splat` storage input). 8 × 4 B = 32 B.
+/// One brush dab (the `cs_splat` storage input). 12 × 4 B = 48 B (ADR-0089 dual field).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Dab {
@@ -64,27 +64,30 @@ pub struct Dab {
     pub cy: f32,
     pub r: f32,
     pub water_add: f32,
-    /// `(absorb.rgb, mass)` deposited at full falloff.
+    /// 4 base-pigment concentrations (CMY+K, see [`crate::km`]) deposited at full falloff — feeds the
+    /// **K–M** spectral composite. Already scaled by the dab's mass.
     pub pig: [f32; 4],
+    /// Linear-sRGB **pre-multiplied** by mass (`rgb·mass`) + accumulated `mass` in `.w` — feeds the
+    /// **Linear/RGB** composite (ADR-0089 §2.1). Pre-multiplied ⇒ transports linearly and overlap
+    /// blends as a mass-weighted average (metameric). Zero for a K–M-only / transport dab.
+    pub dye: [f32; 4],
 }
 
 impl Dab {
-    /// Build a dab from a linear-sRGB pigment colour + a deposit mass. The pigment is stored
-    /// as Beer–Lambert optical density: a colour (reflectance) `c` has absorbance `−ln(c)`, so
-    /// `exp(−absorb)` reproduces the colour over white; stacking adds absorbance (subtractive).
-    /// `absorb` is baked × `mass` (more mass ⇒ darker/denser), and `mass` rides the `.w` channel.
-    #[must_use]
-    pub fn from_color_mass(cx: f32, cy: f32, r: f32, water_add: f32, color: [f32; 3], mass: f32) -> Self {
-        let a = |c: f32| -> f32 { -c.clamp(0.02, 1.0).ln() * mass };
-        Self { cx, cy, r, water_add, pig: [a(color[0]), a(color[1]), a(color[2]), mass] }
-    }
-
-    /// Build a dab for the spectral **Kubelka–Munk** colour mode: `pig` carries the 4 base-pigment
-    /// concentrations (see [`crate::km`]) instead of RGB absorbance. The composite reads them via the
-    /// K–M branch; the transport (a linear gather) is identical to the RGB path.
+    /// Build a dab carrying the 4 base-pigment **concentrations** (see [`crate::km`]) — the K–M
+    /// transport input. The `dye` channel is left zero; chain [`Dab::with_dye`] to also deposit the
+    /// faithful-RGB channel that the Linear mode reads.
     #[must_use]
     pub fn from_concentrations(cx: f32, cy: f32, r: f32, water_add: f32, conc: [f32; 4]) -> Self {
-        Self { cx, cy, r, water_add, pig: conc }
+        Self { cx, cy, r, water_add, pig: conc, dye: [0.0; 4] }
+    }
+
+    /// Attach the **dye** channel: `rgb·mass` (pre-multiplied) in `.xyz` + `mass` in `.w`. Both
+    /// channels deposit + transport together; the active colour model picks which one composites.
+    #[must_use]
+    pub fn with_dye(mut self, dye: [f32; 4]) -> Self {
+        self.dye = dye;
+        self
     }
 }
 
@@ -118,6 +121,9 @@ pub struct WashSolver {
     paper: wgpu::Buffer,
     pig_a: wgpu::Buffer,
     pig_b: wgpu::Buffer,
+    // ADR-0089 dual field: the faithful-RGB dye channel, transported alongside `pig`.
+    dye_a: wgpu::Buffer,
+    dye_b: wgpu::Buffer,
     dabs_buf: wgpu::Buffer,
     step_pipe: wgpu::ComputePipeline,
     splat_pipe: wgpu::ComputePipeline,
@@ -174,11 +180,14 @@ impl WashSolver {
                 storage(3, true),  // pig_in
                 storage(4, false), // water_out
                 storage(5, false), // pig_out
+                storage(6, true),  // dye_in  (ADR-0089)
+                storage(7, false), // dye_out (ADR-0089)
             ],
         });
         let splat_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("wash splat bgl"),
-            entries: &[uniform(0), storage(1, false), storage(2, false), storage(3, true)],
+            // 0 uniform, 1 water (rw), 2 pig (rw), 3 dabs (read), 4 dye (rw, ADR-0089)
+            entries: &[uniform(0), storage(1, false), storage(2, false), storage(3, true), storage(4, false)],
         });
 
         let mk_pipe = |bgl: &wgpu::BindGroupLayout, m: &wgpu::ShaderModule, entry: &str| {
@@ -214,6 +223,8 @@ impl WashSolver {
         let paper = storage_buf("wash paper", f32n);
         let pig_a = storage_buf("wash pig_a", vec4n);
         let pig_b = storage_buf("wash pig_b", vec4n);
+        let dye_a = storage_buf("wash dye_a", vec4n);
+        let dye_b = storage_buf("wash dye_b", vec4n);
         let dabs_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("wash dabs"),
             size: MAX_DABS * core::mem::size_of::<Dab>() as u64,
@@ -237,17 +248,23 @@ impl WashSolver {
         let bg_step_ab = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step a→b"),
             layout: &step_bgl,
-            entries: &[e(0, &params_buf), e(1, &water_a), e(2, &paper), e(3, &pig_a), e(4, &water_b), e(5, &pig_b)],
+            entries: &[
+                e(0, &params_buf), e(1, &water_a), e(2, &paper), e(3, &pig_a),
+                e(4, &water_b), e(5, &pig_b), e(6, &dye_a), e(7, &dye_b),
+            ],
         });
         let bg_step_ba = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step b→a"),
             layout: &step_bgl,
-            entries: &[e(0, &params_buf), e(1, &water_b), e(2, &paper), e(3, &pig_b), e(4, &water_a), e(5, &pig_a)],
+            entries: &[
+                e(0, &params_buf), e(1, &water_b), e(2, &paper), e(3, &pig_b),
+                e(4, &water_a), e(5, &pig_a), e(6, &dye_b), e(7, &dye_a),
+            ],
         });
         let bg_splat = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg splat"),
             layout: &splat_bgl,
-            entries: &[e(0, &splat_params_buf), e(1, &water_a), e(2, &pig_a), e(3, &dabs_buf)],
+            entries: &[e(0, &splat_params_buf), e(1, &water_a), e(2, &pig_a), e(3, &dabs_buf), e(4, &dye_a)],
         });
 
         let params = WashParams { width, height, region_w: width, region_h: height, ..Default::default() };
@@ -263,6 +280,8 @@ impl WashSolver {
             paper,
             pig_a,
             pig_b,
+            dye_a,
+            dye_b,
             dabs_buf,
             step_pipe,
             splat_pipe,
@@ -272,10 +291,16 @@ impl WashSolver {
         }
     }
 
-    /// The canonical pigment buffer (`(absorb.rgb, mass)` per cell) — the compositor binds this.
+    /// The canonical pigment buffer (4 concentrations per cell) — the K–M compositor binds this.
     #[must_use]
     pub fn pig_buffer(&self) -> &wgpu::Buffer {
         &self.pig_a
+    }
+    /// The canonical dye buffer (premul-RGB + mass per cell, ADR-0089) — the Linear compositor binds
+    /// this.
+    #[must_use]
+    pub fn dye_buffer(&self) -> &wgpu::Buffer {
+        &self.dye_a
     }
     /// The canonical water field (for an optional wet-sheen view).
     #[must_use]
@@ -303,10 +328,10 @@ impl WashSolver {
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&p));
     }
 
-    /// Zero all dynamic fields (per-stroke reset). Paper is static and kept.
+    /// Zero all dynamic fields (per-stroke reset / undo-to-empty). Paper is static and kept.
     pub fn clear(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash clear enc") });
-        for b in [&self.water_a, &self.water_b, &self.pig_a, &self.pig_b] {
+        for b in [&self.water_a, &self.water_b, &self.pig_a, &self.pig_b, &self.dye_a, &self.dye_b] {
             enc.clear_buffer(b, 0, None);
         }
         queue.submit([enc.finish()]);
@@ -323,6 +348,12 @@ impl WashSolver {
     /// per-stroke snapshot). Water is left as-is — a restore re-renders from the pigment alone.
     pub fn upload_pigment(&self, queue: &wgpu::Queue, pigment: &[[f32; 4]]) {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
+    }
+
+    /// Overwrite ONLY the canonical dye field (ADR-0089 undo-restore: pair with [`Self::upload_pigment`]
+    /// to re-instate a full per-stroke snapshot of BOTH colour channels).
+    pub fn upload_dye(&self, queue: &wgpu::Queue, dye: &[[f32; 4]]) {
+        queue.write_buffer(&self.dye_a, 0, bytemuck::cast_slice(dye));
     }
 
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
@@ -411,6 +442,7 @@ impl WashSolver {
             let bytes = u64::from(self.width) * u64::from(self.height);
             enc.copy_buffer_to_buffer(&self.water_b, 0, &self.water_a, 0, bytes * 4);
             enc.copy_buffer_to_buffer(&self.pig_b, 0, &self.pig_a, 0, bytes * 16);
+            enc.copy_buffer_to_buffer(&self.dye_b, 0, &self.dye_a, 0, bytes * 16);
         }
     }
 
@@ -420,10 +452,18 @@ impl WashSolver {
         bytemuck::cast_slice(&read_bytes(device, queue, &self.water_a, size)).to_vec()
     }
 
-    /// Read the canonical pigment field as `(absorb.rgb, mass)` per cell.
+    /// Read the canonical pigment field as 4 concentrations per cell (undo snapshot / parity).
     pub fn read_pigment(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
         let size = u64::from(self.width) * u64::from(self.height) * 16;
         let bytes = read_bytes(device, queue, &self.pig_a, size);
+        let flat: &[f32] = bytemuck::cast_slice(&bytes);
+        flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
+    }
+
+    /// Read the canonical dye field as `(premul-RGB, mass)` per cell (ADR-0089 undo snapshot / parity).
+    pub fn read_dye(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<[f32; 4]> {
+        let size = u64::from(self.width) * u64::from(self.height) * 16;
+        let bytes = read_bytes(device, queue, &self.dye_a, size);
         let flat: &[f32] = bytemuck::cast_slice(&bytes);
         flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
     }

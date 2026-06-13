@@ -139,6 +139,17 @@ impl WashCompositor {
                     },
                     count: None,
                 },
+                // binding 5 — dye field (premul-RGB + mass), the Linear/RGB channel (ADR-0089).
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -172,9 +183,10 @@ impl WashCompositor {
         Self { pipe, bgl, cparams_buf, km_buf, stroke: None }
     }
 
-    /// Bind a field (`pig_buf` from [`crate::WashSolver::pig_buffer`]) + canvas `backdrop`
-    /// (packed sRGB8 RGBA, `cw·ch` words) and allocate the preview texture. `gw/gh` = grid dims,
-    /// `cw/ch` = canvas dims (grid==canvas ⇒ no magnification).
+    /// Bind both colour fields (`pig_buf`/`dye_buf` from [`crate::WashSolver::pig_buffer`] /
+    /// [`crate::WashSolver::dye_buffer`]) + canvas `backdrop` (packed sRGB8 RGBA, `cw·ch` words) and
+    /// allocate the preview texture. `gw/gh` = grid dims, `cw/ch` = canvas dims (grid==canvas ⇒ no
+    /// magnification). The active `color_model` picks which field composites (ADR-0089).
     #[allow(clippy::too_many_arguments)]
     pub fn begin_stroke(
         &mut self,
@@ -188,6 +200,7 @@ impl WashCompositor {
         coverage_k: f32,
         color_model: u32,
         pig_buf: &wgpu::Buffer,
+        dye_buf: &wgpu::Buffer,
     ) {
         assert_eq!(backdrop.len() as u32, cw * ch, "backdrop must be cw·ch words");
         let tex = device.create_texture(&wgpu::TextureDescriptor {
@@ -226,6 +239,7 @@ impl WashCompositor {
                 wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&view) },
                 wgpu::BindGroupEntry { binding: 4, resource: self.km_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: dye_buf.as_entire_binding() },
             ],
         });
         self.stroke = Some(Stroke { cw, ch, gw, gh, coverage_k, color_model, tex, backdrop: backdrop_buf, bg });

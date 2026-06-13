@@ -29,6 +29,21 @@ pub const N: usize = 16;
 /// Number of base pigments (the vec4 the field carries in K–M mode).
 pub const PIGMENTS: usize = 4;
 
+/// Reference total concentration (Σc) at which a hue is reproduced (ADR-0089 §2.2). The unmix
+/// resolves concentrations summing to `K_REF`; the K–M display composite reads the field's
+/// concentration *ratio* re-scaled to `K_REF` for the HUE, and takes coverage (lightness vs the
+/// backdrop, incl. edge-darkening) from the *actual* total. So the painted hue equals the picked hue
+/// at ANY accumulated mass — the magnitude→hue drift (`exp(−c·a)` ⇒ `Tᶜ`) that turned red→orange is
+/// gone. Tuned (see `saturated_hues_reproduce_faithfully`) so saturated sRGB primaries land inside
+/// the 4-pigment gamut at this magnitude.
+pub const K_REF: f32 = 3.0;
+
+/// Default coverage softness `k` for the display composites: `cover = 1 − exp(−eff/k)` where the
+/// *effective mass* is `mass` (Linear) or `Σc / K_REF` (K–M) — so both modes build opacity at the
+/// same rate for the same stroke. The bridge passes the brush's `coverage_k`; this is the fallback /
+/// test default. Lower = more opaque per unit paint.
+pub const COVER_K: f32 = 0.6;
+
 const LAMBDA0: f32 = 400.0;
 const LAMBDA_STEP: f32 = 20.0;
 const EPS: f32 = 1.0e-4;
@@ -152,8 +167,12 @@ impl KmModel {
         m
     }
 
-    /// Linear-sRGB → 4 non-negative pigment concentrations (NNLS in absorbance space) that, at full
-    /// strength, reproduce `rgb` over white. Multiply by the dab's mass to deposit a glaze.
+    /// Linear-sRGB → 4 non-negative pigment concentrations **summing to [`K_REF`]** whose K–M
+    /// composite at that magnitude reproduces `rgb`'s hue (ADR-0089 §2.2). Deposit `× mass`; the
+    /// display composite re-normalises the accumulated field back to `K_REF` for the hue and takes
+    /// coverage from the total, so the painted hue matches the picked hue at ANY mass (no `Tᶜ`
+    /// drift). A saturated pick lands near the gamut boundary; a desaturated pick maps to the nearest
+    /// in-gamut hue at `K_REF` (its lightness comes from coverage, the watercolor way).
     #[must_use]
     pub fn rgb_to_concentrations(&self, rgb: [f32; 3]) -> [f32; PIGMENTS] {
         let s_t = upsample(&self.curves, rgb);
@@ -193,11 +212,24 @@ impl KmModel {
                 c[i] *= mta[i] / (denom + 1.0e-6);
             }
         }
-        // Refine in COLOUR space. The absorbance LSQ above weights wavelengths, not the final RGB, so
-        // saturated hues drift (pure red leans yellow ⇒ orange on screen). Gradient-descend the actual
-        // composite error `‖compose_over(white,c) − rgb‖²` so the painted colour matches the picked
-        // colour as closely as the 4-pigment gamut allows. `J[·][p] = to_rgb(−white·exp(−A)·apₚ)`.
-        for _ in 0..80 {
+        // Refine in COLOUR space, PROJECTED onto the `Σc = K_REF` simplex (ADR-0089 §2.2). The
+        // absorbance LSQ above weights wavelengths, not the final RGB, so saturated hues drift (pure
+        // red leans yellow ⇒ orange). Gradient-descend the actual composite error
+        // `‖compose_over(white,c) − rgb‖²` AT the fixed display magnitude `K_REF`, so the returned
+        // concentrations reproduce the hue the composite will actually show (which always re-scales
+        // the field's ratio to `K_REF`). Projecting each step keeps the optimisation on the magnitude
+        // the kernel reads — the piece the old free unmix missed (it solved at a magnitude the
+        // capped/accumulated field never matched). `J[·][p] = to_rgb(−white·exp(−A)·apₚ)`.
+        let project = |c: &mut [f32; PIGMENTS]| {
+            let s: f32 = c.iter().sum();
+            if s > 1.0e-6 {
+                for v in c.iter_mut() {
+                    *v *= K_REF / s;
+                }
+            }
+        };
+        for _ in 0..120 {
+            project(&mut c);
             let cur = self.compose_over([1.0, 1.0, 1.0], c);
             let res = [cur[0] - rgb[0], cur[1] - rgb[1], cur[2] - rgb[2]];
             let mut a = [0.0_f32; N];
@@ -218,7 +250,32 @@ impl KmModel {
                 c[p] = (c[p] - 0.6 * grad).max(0.0);
             }
         }
+        project(&mut c); // return on the K_REF simplex — the magnitude the composite reads
         c
+    }
+
+    /// **K–M display composite** (ADR-0089 §2.2) — the Rust mirror of the WGSL `km_compose`. Hue from
+    /// the concentration RATIO re-scaled to [`K_REF`] (mass-independent ⇒ faithful), coverage from the
+    /// actual total `Σconc` via `1 − exp(−(Σconc/K_REF)/cover_k)` (drives lightness AND edge-darkening
+    /// — a thicker rim reads as MORE OPAQUE of the same hue, never a shifted one). Alpha-mixed over the
+    /// linear-sRGB `backdrop`. `conc` zero ⇒ the bare backdrop.
+    #[must_use]
+    pub fn compose_km_display(&self, backdrop: [f32; 3], conc: [f32; PIGMENTS], cover_k: f32) -> [f32; 3] {
+        let total: f32 = conc.iter().sum();
+        if total < 1.0e-6 {
+            return backdrop;
+        }
+        let mut ratio = [0.0_f32; PIGMENTS];
+        for p in 0..PIGMENTS {
+            ratio[p] = conc[p] / total * K_REF;
+        }
+        let hue = self.compose_over([1.0, 1.0, 1.0], ratio);
+        let cover = 1.0 - (-(total / K_REF) / cover_k.max(1.0e-3)).exp();
+        [
+            backdrop[0] + (hue[0] - backdrop[0]) * cover,
+            backdrop[1] + (hue[1] - backdrop[1]) * cover,
+            backdrop[2] + (hue[2] - backdrop[2]) * cover,
+        ]
     }
 
     /// Composite 4 pigment concentrations over a linear-sRGB backdrop (the Rust mirror of the WGSL
@@ -260,6 +317,27 @@ impl KmModel {
         }
         rgb
     }
+}
+
+/// **Linear/RGB display composite** (ADR-0089 §2.2) — the Rust mirror of the WGSL `linear_compose`.
+/// The `dye` field carries the picked colour PRE-MULTIPLIED by mass (`rgb·mass`) + the accumulated
+/// `mass`; un-premultiplying (`rgb·mass / mass`) recovers the picked colour EXACTLY (faithful by
+/// construction), while wet-in-wet overlap of different colours blends as a mass-weighted RGB average
+/// = metameric (blue+yellow→grey), the deliberate contrast to K–M's spectral green. Coverage matches
+/// [`KmModel::compose_km_display`] (same `cover_k`, effective mass = `mass`). Alpha-mixed over the
+/// linear-sRGB `backdrop`; `mass` zero ⇒ the bare backdrop.
+#[must_use]
+pub fn compose_linear_display(backdrop: [f32; 3], dye_premul: [f32; 3], mass: f32, cover_k: f32) -> [f32; 3] {
+    if mass < 1.0e-6 {
+        return backdrop;
+    }
+    let color = [dye_premul[0] / mass, dye_premul[1] / mass, dye_premul[2] / mass];
+    let cover = 1.0 - (-mass / cover_k.max(1.0e-3)).exp();
+    [
+        backdrop[0] + (color[0] - backdrop[0]) * cover,
+        backdrop[1] + (color[1] - backdrop[1]) * cover,
+        backdrop[2] + (color[2] - backdrop[2]) * cover,
+    ]
 }
 
 /// `S(λ) = Σ_ch rgb_ch · C_ch(λ)` (clamped ≥ 0).
@@ -355,6 +433,95 @@ mod tests {
         let single = km.compose_over([1.0, 1.0, 1.0], c);
         let double = km.compose_over([1.0, 1.0, 1.0], [c[0] * 2.0, c[1] * 2.0, c[2] * 2.0, c[3] * 2.0]);
         let lum = |x: [f32; 3]| x[0] + x[1] + x[2];
-        assert!(lum(double) < lum(single), "stacking pigment must darken ({single:?} → {double:?})");
+        assert!(lum(double) < lum(single), "raw spectral glaze must darken with concentration ({single:?} → {double:?})");
+    }
+
+    // ── ADR-0089 §2.2 — colour fidelity (the BUG-C fix) ──────────────────────────────────────────
+
+    fn scale(c: [f32; PIGMENTS], k: f32) -> [f32; PIGMENTS] {
+        let mut o = c;
+        for v in &mut o {
+            *v *= k;
+        }
+        o
+    }
+
+    /// The reported bug: pure red painted ORANGE in K–M. Each saturated pick must reproduce with the
+    /// correct DOMINANT channel and clearly above the others, at the `K_REF` magnitude the K–M display
+    /// composite reads. (Prints the composed RGB so the gamut fit / `K_REF` can be eyeballed.)
+    #[test]
+    fn saturated_hues_reproduce_faithfully() {
+        let km = KmModel::new();
+        let cases: [(&str, [f32; 3], usize); 3] = [
+            ("red", [1.0, 0.0, 0.0], 0),
+            ("green", [0.0, 1.0, 0.0], 1),
+            ("blue", [0.0, 0.0, 1.0], 2),
+        ];
+        for (name, rgb, dom) in cases {
+            let c = km.rgb_to_concentrations(rgb);
+            let sum: f32 = c.iter().sum();
+            let out = km.compose_over([1.0, 1.0, 1.0], c); // hue at Σ = K_REF (full coverage)
+            eprintln!("{name}: pick {rgb:?} → Σc={sum:.2} conc={c:?} → composed {out:?}");
+            assert!((sum - K_REF).abs() < 0.05, "{name}: unmix must sum to K_REF (got {sum})");
+            assert_eq!(argmax(out), dom, "{name}: dominant channel must stay {name} (got {out:?})");
+            // The killer for red→orange: the dominant channel must lead the next by a clear margin
+            // (orange = G close to R; faithful red = G well below R).
+            let mut sorted = out;
+            sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
+            assert!(sorted[0] > sorted[1] + 0.12, "{name}: hue must be clearly saturated, not muddy ({out:?})");
+        }
+    }
+
+    /// Linear/RGB mode (the DEFAULT): a thick (opaque) dye stroke must return the picked colour
+    /// essentially bit-for-bit — the "sem pigment vermelho fica amarelo" fix.
+    #[test]
+    fn dye_reproduces_picked_colour_exactly() {
+        for rgb in [[1.0, 0.0, 0.0], [0.2, 0.7, 0.9], [0.5, 0.5, 0.5], [0.9, 0.6, 0.1]] {
+            let mass = 6.0; // thick ⇒ cover ≈ 1 ⇒ backdrop washed out
+            let dye = [rgb[0] * mass, rgb[1] * mass, rgb[2] * mass];
+            let out = compose_linear_display([1.0, 1.0, 1.0], dye, mass, COVER_K);
+            for ch in 0..3 {
+                assert!((out[ch] - rgb[ch]).abs() < 0.02, "dye must reproduce {rgb:?} faithfully (got {out:?})");
+            }
+        }
+    }
+
+    /// Linear wet-in-wet: blue + yellow dye average to a desaturated grey/brown (metameric) — the
+    /// deliberate contrast to K–M's spectral green, both read from the live field.
+    #[test]
+    fn dye_blue_plus_yellow_is_metameric_grey() {
+        let blue = [0.05, 0.05, 0.85];
+        let yellow = [0.90, 0.80, 0.05];
+        let m = 1.0;
+        // Overlap = premultiplied sum (what the field accumulates), un-premultiplied at composite.
+        let dye = [blue[0] * m + yellow[0] * m, blue[1] * m + yellow[1] * m, blue[2] * m + yellow[2] * m];
+        let out = compose_linear_display([1.0, 1.0, 1.0], dye, 2.0 * m, COVER_K);
+        eprintln!("Linear blue+yellow = {out:?}");
+        // NOT green-dominant (the whole point of Linear vs K–M): green must not stand out from grey.
+        let avg = (out[0] + out[1] + out[2]) / 3.0;
+        assert!(out[1] < avg + 0.08, "Linear mix must be metameric (grey), not green: {out:?}");
+    }
+
+    /// K–M hue is MASS-INDEPENDENT (ADR-0089 §2.2): the same ratio at a thin vs a thick total composes
+    /// to the same hue direction (only coverage/lightness differs) — the magnitude→hue drift is gone.
+    #[test]
+    fn km_hue_is_mass_independent() {
+        let km = KmModel::new();
+        let c = km.rgb_to_concentrations([1.0, 0.0, 0.0]); // red ratio, Σ = K_REF
+        let thin = km.compose_km_display([1.0, 1.0, 1.0], scale(c, 0.25), COVER_K);
+        let thick = km.compose_km_display([1.0, 1.0, 1.0], scale(c, 5.0), COVER_K);
+        eprintln!("K–M red thin={thin:?} thick={thick:?}");
+        // Coverage must rise with mass (thick is further from the white backdrop).
+        let dist = |x: [f32; 3]| (1.0 - x[0]).abs() + (1.0 - x[1]).abs() + (1.0 - x[2]).abs();
+        assert!(dist(thick) > dist(thin), "thicker paint must cover more");
+        // The HUE (direction of backdrop→colour) must match: normalise (white − out) and compare.
+        let dir = |x: [f32; 3]| {
+            let v = [1.0 - x[0], 1.0 - x[1], 1.0 - x[2]];
+            let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1.0e-6);
+            [v[0] / n, v[1] / n, v[2] / n]
+        };
+        let (a, b) = (dir(thin), dir(thick));
+        let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        assert!(dot > 0.995, "K–M hue must be mass-independent (thin·thick dir = {dot:.4})");
     }
 }

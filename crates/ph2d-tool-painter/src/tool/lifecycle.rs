@@ -1038,7 +1038,12 @@ impl PainterTool {
         // coverage buffer IS the wet-region field; build-up brushes have none.
         // Wet (watercolor) takes precedence if both are somehow on; burnt is the
         // dry-media (charcoal / sumi-e) variant of the same transport band.
-        let edge_style = if self.brush.rendering.wet_edges {
+        let edge_style = if self.brush.rendering.wash_enabled {
+            // The GPU wash (ADR-0089) owns edge-darkening (FlowOutward → coverage) and bakes
+            // `canvas_rgba` itself at the stroke boundary; skip the CPU settle so the two paths never
+            // both write the flat canvas (which would race the undo pre-image).
+            None
+        } else if self.brush.rendering.wet_edges {
             Some(ph2d_painter_brush::EdgeStyle::Wet)
         } else if self.brush.rendering.burnt_edges {
             Some(ph2d_painter_brush::EdgeStyle::Burnt)

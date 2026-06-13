@@ -21,10 +21,12 @@ const V_MAX: f32 = 0.03; // advective face-speed budget (the rest of the CFL bud
 // so a static front can't pin a hard pixelated rim (the v2 failure). Scaled by (1−w) ⇒ ~0 in the
 // wet interior (Keep Wet stays wet) and inward-only (no spreading).
 const EDGE_EVAP_FLOOR: f32 = 0.01;
-// Per-cell pigment cap (Σ concentration) — matches splat.wgsl. FlowOutward concentrates pigment at
-// drying rims; clamp so the field total stays bounded and the composite reads concentrations with no
-// hue-shifting down-scale.
-const PIG_CAP: f32 = 2.5;
+// Per-cell field cap (Σ concentration / dye mass) — matches splat.wgsl. Now a pure STABILITY bound
+// (no NaN / runaway), NOT a hue control: the composite normalises the concentration ratio to K_REF
+// for the hue (ADR-0089 §2.2), so the cap only governs how OPAQUE a heavy overlap / FlowOutward rim
+// can get — never its colour. Raised from 2.5 so thick paint + edge-darkening rims can reach full
+// coverage (kept < 10 for the INV-4 stability gate).
+const FIELD_CAP: f32 = 8.0;
 
 struct Params {
     width: u32,
@@ -51,6 +53,10 @@ struct Params {
 @group(0) @binding(3) var<storage, read> pig_in: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> water_out: array<f32>;
 @group(0) @binding(5) var<storage, read_write> pig_out: array<vec4<f32>>;
+// ADR-0089 dual field: the faithful-RGB dye channel (premul rgb + mass), transported by the SAME
+// water-driven gather as `pig` so the two colour encodings stay spatially identical.
+@group(0) @binding(6) var<storage, read> dye_in: array<vec4<f32>>;
+@group(0) @binding(7) var<storage, read_write> dye_out: array<vec4<f32>>;
 
 fn idx(x: u32, y: u32) -> u32 { return y * P.width + x; }
 
@@ -91,6 +97,7 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = idx(x, y);
     let wc = water_in[i];
     let pc = pig_in[i];
+    let dc = dye_in[i];
     let gc = gate(wc, paper[i]);
 
     let xl = max(x, 1u) - 1u;
@@ -102,18 +109,40 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     let iU = idx(x, yt);
     let iD = idx(x, yb);
 
+    // Per-neighbour water + gate, computed ONCE and applied to BOTH colour channels — the transport
+    // weights (diffusion D·gf, advection v) depend only on water/paper, so pig and dye move identically
+    // (only the upwind donor VALUE differs, handled inside `face`). This keeps the two encodings of the
+    // same stroke spatially coherent for the live Linear↔K–M toggle.
+    let wL = water_in[iL]; let gL = gate(wL, paper[iL]);
+    let wR = water_in[iR]; let gR = gate(wR, paper[iR]);
+    let wU = water_in[iU]; let gU = gate(wU, paper[iU]);
+    let wD = water_in[iD]; let gD = gate(wD, paper[iD]);
+
     var p_new = pc;
-    p_new = p_new + face(gc, wc, pc, gate(water_in[iL], paper[iL]), water_in[iL], pig_in[iL]);
-    p_new = p_new + face(gc, wc, pc, gate(water_in[iR], paper[iR]), water_in[iR], pig_in[iR]);
-    p_new = p_new + face(gc, wc, pc, gate(water_in[iU], paper[iU]), water_in[iU], pig_in[iU]);
-    p_new = p_new + face(gc, wc, pc, gate(water_in[iD], paper[iD]), water_in[iD], pig_in[iD]);
+    p_new = p_new + face(gc, wc, pc, gL, wL, pig_in[iL]);
+    p_new = p_new + face(gc, wc, pc, gR, wR, pig_in[iR]);
+    p_new = p_new + face(gc, wc, pc, gU, wU, pig_in[iU]);
+    p_new = p_new + face(gc, wc, pc, gD, wD, pig_in[iD]);
+
+    var d_new = dc;
+    d_new = d_new + face(gc, wc, dc, gL, wL, dye_in[iL]);
+    d_new = d_new + face(gc, wc, dc, gR, wR, dye_in[iR]);
+    d_new = d_new + face(gc, wc, dc, gU, wU, dye_in[iU]);
+    d_new = d_new + face(gc, wc, dc, gD, wD, dye_in[iD]);
 
     var po = max(p_new, vec4<f32>(0.0));
     let pt = po.x + po.y + po.z + po.w;
-    if (pt > PIG_CAP) {
-        po = po * (PIG_CAP / pt);
+    if (pt > FIELD_CAP) {
+        po = po * (FIELD_CAP / pt);
     }
     pig_out[i] = po;
+    // Dye: clamp ≥0 and cap the MASS (.w) preserving the premul ratio (so the un-premultiplied colour
+    // is unchanged — only opacity is bounded). The composite guards mass≈0 → backdrop.
+    var do_ = max(d_new, vec4<f32>(0.0));
+    if (do_.w > FIELD_CAP) {
+        do_ = do_ * (FIELD_CAP / do_.w);
+    }
+    dye_out[i] = do_;
     // Bulk drying (user Evaporation) + edge-biased recession (feathers the thin rim, ~0 in the wet
     // interior). The latter passes rim cells through the wet-gate band before freezing ⇒ soft edge.
     let edge_dry = EDGE_EVAP_FLOOR * (1.0 - clamp(wc, 0.0, 1.0));

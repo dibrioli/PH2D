@@ -187,26 +187,28 @@ fn inv_subtractive_compositing_darkens() {
     };
     let (w, h) = (64u32, 64u32); // 64 → bytes-per-row already 256-aligned
     let n = (w * h) as usize;
-    // The field carries 4 pigment concentrations. Block A = 1× a colour, block B = 2× (stacked).
-    let km = KmModel::new();
-    let c = km.rgb_to_concentrations([0.85, 0.25, 0.5]);
-    let c2 = [c[0] * 2.0, c[1] * 2.0, c[2] * 2.0, c[3] * 2.0];
-    let mut pig = vec![[0.0f32; 4]; n];
+    // ADR-0089 Linear mode reads the DYE field (premul-RGB + mass). Block A = 1× the colour,
+    // block B = 2× the mass (stacked) ⇒ same un-premultiplied colour, higher coverage ⇒ darker.
+    let rgb = [0.85f32, 0.25, 0.5];
+    let dye_a = [rgb[0], rgb[1], rgb[2], 1.0];
+    let dye_b = [rgb[0] * 2.0, rgb[1] * 2.0, rgb[2] * 2.0, 2.0];
+    let mut dye = vec![[0.0f32; 4]; n];
     let (ax, ay) = (16u32, 16u32);
     let (bx, by) = (48u32, 16u32);
     for dy in 0..7u32 {
         for dx in 0..7u32 {
-            pig[idx(ax - 3 + dx, ay - 3 + dy, w)] = c;
-            pig[idx(bx - 3 + dx, by - 3 + dy, w)] = c2;
+            dye[idx(ax - 3 + dx, ay - 3 + dy, w)] = dye_a;
+            dye[idx(bx - 3 + dx, by - 3 + dy, w)] = dye_b;
         }
     }
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
-    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &pig);
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    s.upload_dye(&gpu.queue, &dye);
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white, opaque
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer()); // Linear
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer(), s.dye_buffer()); // Linear
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -233,16 +235,19 @@ fn wash_preview_texture_premul() {
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
-    // A blue-ish pigment dab in the centre (concentration encoding).
+    // A blue-ish dab in the centre — both channels (K–M concentration + Linear dye) so either model
+    // composites it. This test reads Linear (dye): un-premultiplied colour = [0.2, 0.4, 0.9] (blue).
     let km = KmModel::new();
-    let dab = Dab::from_concentrations(32.0, 32.0, 10.0, 0.9, km.rgb_to_concentrations([0.2, 0.4, 0.9]));
+    let blue = [0.2f32, 0.4, 0.9];
+    let dab = Dab::from_concentrations(32.0, 32.0, 10.0, 0.9, km.rgb_to_concentrations(blue))
+        .with_dye([blue[0], blue[1], blue[2], 1.0]);
     s.splat(&gpu.device, &gpu.queue, &[dab]);
 
     let mut comp = WashCompositor::new(&gpu.device);
     let gray = 153u32; // sRGB ~0.6
     let bd = gray | (gray << 8) | (gray << 16) | (0xff << 24);
     let backdrop = vec![bd; n];
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer(), s.dye_buffer());
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -280,20 +285,22 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
-    // Hammer the centre with the SAME red dab 50× — concentration piles far past MASS_MAX=1.
-    // Pre-cap this drove the absorbance → ∞ ⇒ exp(−a) → 0 = pure black (the reported B1).
+    // Hammer the centre with the SAME red dab 50× — Σ concentration piles far past a single deposit.
+    // Pre-fix this drove absorbance → ∞ ⇒ exp(−a) → 0 = pure black (the reported B1). ADR-0089 K–M
+    // takes the hue from the normalised RATIO at K_REF, so heavy overlap only raises COVERAGE, never
+    // darkens past the masstone — tested through the real K–M (model 1) kernel.
     let km = KmModel::new();
     let dab = Dab::from_concentrations(32.0, 32.0, 8.0, 0.0, km.rgb_to_concentrations([0.7, 0.1, 0.1]));
     for _ in 0..50 {
         s.splat(&gpu.device, &gpu.queue, &[dab]);
     }
     let p = s.read_pigment(&gpu.device, &gpu.queue)[idx(32, 32, w)];
-    let accumulated_mass = p[0] + p[1] + p[2] + p[3]; // Σ concentrations (clamped at PIG_CAP)
+    let accumulated_mass = p[0] + p[1] + p[2] + p[3]; // Σ concentrations (clamped at FIELD_CAP=8)
     assert!(accumulated_mass > 2.0, "overlap must drive the cell to the saturation cap (got {accumulated_mass})");
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer(), s.dye_buffer()); // K–M
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -301,7 +308,7 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
     let centre = out[(32 * w + 32) as usize];
     let (cr, cg, cb) = (chan(centre, 0), chan(centre, 1), chan(centre, 2));
-    eprintln!("saturation: Σconc={accumulated_mass:.1} centre=({cr},{cg},{cb}) (cap → masstone, c≈0.7,0.1,0.1)");
+    eprintln!("saturation: Σconc={accumulated_mass:.1} centre=({cr},{cg},{cb}) (K–M hue stays red, not black)");
     // The killer assertion: not black. The dominant (red) channel must stay bright.
     assert!(cr > 110, "saturated overlap must stay the pigment colour, not go black (R={cr})");
     // Still recognisably red (the masstone), not a grey mud.
@@ -400,7 +407,7 @@ fn inv_km_composite_blue_plus_yellow_is_green() {
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer()); // color_model=1 (K–M)
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer(), s.dye_buffer()); // color_model=1 (K–M)
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -426,24 +433,32 @@ fn inv_km_visibly_greener_than_linear() {
     let (w, h) = (64u32, 64u32);
     let n = (w * h) as usize;
     let km = KmModel::new();
-    let cb = km.rgb_to_concentrations([0.05, 0.05, 0.85]);
-    let cy = km.rgb_to_concentrations([0.90, 0.80, 0.05]);
+    let blue = [0.05f32, 0.05, 0.85];
+    let yellow = [0.90f32, 0.80, 0.05];
+    let cb = km.rgb_to_concentrations(blue);
+    let cy = km.rgb_to_concentrations(yellow);
     let mix = [cb[0] + cy[0], cb[1] + cy[1], cb[2] + cy[2], cb[3] + cy[3]];
+    // Same region in BOTH encodings (the live-toggle re-render reads whichever the model picks).
+    // Dye = the two colours' premultiplied sum ⇒ un-premultiplied = their average = a metameric grey.
+    let dye_mix = [blue[0] + yellow[0], blue[1] + yellow[1], blue[2] + yellow[2], 2.0];
     let mut pig = vec![[0.0f32; 4]; n];
+    let mut dye = vec![[0.0f32; 4]; n];
     for dy in 0..14u32 {
         for dx in 0..14u32 {
             pig[idx(25 + dx, 25 + dy, w)] = mix;
+            dye[idx(25 + dx, 25 + dy, w)] = dye_mix;
         }
     }
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &pig);
+    s.upload_dye(&gpu.queue, &dye);
     let backdrop = vec![0xffff_ffffu32; n];
 
     // Same field, composited under each model (the live-toggle re-render).
     let g_excess = |color_model: u32| -> i32 {
         let mut comp = WashCompositor::new(&gpu.device);
-        comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, color_model, s.pig_buffer());
+        comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, color_model, s.pig_buffer(), s.dye_buffer());
         let mut enc = gpu.device.create_command_encoder(&Default::default());
         comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
         gpu.queue.submit([enc.finish()]);

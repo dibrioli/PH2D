@@ -56,6 +56,13 @@ impl Profile {
     }
 }
 
+/// A per-stroke snapshot of BOTH colour channels (ADR-0089) — restored together on undo/redo so the
+/// live Linear↔K–M toggle stays consistent across history.
+struct FieldSnap {
+    pig: Vec<[f32; 4]>,
+    dye: Vec<[f32; 4]>,
+}
+
 struct WashSession {
     solver: WashSolver,
     compositor: WashCompositor,
@@ -72,14 +79,17 @@ struct WashSession {
     /// Any pigment has been deposited (the field is worth showing / re-rendering on a model flip).
     has_pigment: bool,
     seeded: bool,
-    /// Frames since the last dab — the field keeps settling (bloom/edge recession) for a short
-    /// window, then stops costing GPU (the cached slot keeps displaying the persistent wash).
-    idle_frames: u32,
-    /// **ADR-0088 undo:** per-stroke pigment-field snapshots — `committed[i]` is the field after
-    /// `i+1` settled wash strokes. `applied` = how many the GPU field currently realises. The bridge
-    /// polls the tool's `wash_active_strokes()`; a mismatch (undo/redo) restores `committed[want-1]`.
-    committed: Vec<Vec<[f32; 4]>>,
+    /// **ADR-0089 undo:** per-stroke field snapshots (pig+dye) — `committed[i]` is the SETTLED field
+    /// after stroke `i+1`, captured SYNCHRONOUSLY when the stroke commits (no async window ⇒ no
+    /// fast-stroke race). `applied` = how many the GPU field currently realises. The bridge polls the
+    /// tool's `wash_active_strokes()`; a mismatch (undo/redo) restores `committed[want-1]`.
+    committed: Vec<FieldSnap>,
     applied: usize,
+    /// Whether the field has been PAINTED (dabs deposited) since the last committed snapshot. Lets the
+    /// bridge tell a NEW stroke (count up + painted ⇒ discard the redo branch) from a REDO (count up,
+    /// no paint ⇒ restore the snapshot) — counts alone are ambiguous after a partial redo. Reset on
+    /// finalise and on any restore.
+    painted_since_commit: bool,
     /// The tool reset generation this session was built for (mismatch ⇒ rebuild).
     reset_gen: u64,
 }
@@ -98,9 +108,9 @@ impl WashSession {
             initialized: false,
             has_pigment: false,
             seeded: false,
-            idle_frames: 0,
             committed: Vec::new(),
             applied: 0,
+            painted_since_commit: false,
             reset_gen: 0,
         }
     }
@@ -221,7 +231,7 @@ pub(crate) fn drive_wash_gpu(
             let bd = backdrop.as_deref()?; // no backdrop yet (pure hover) ⇒ wait for the first stroke
             sess.compositor.begin_stroke(
                 &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, bd, coverage_k, color_model,
-                sess.solver.pig_buffer(),
+                sess.solver.pig_buffer(), sess.solver.dye_buffer(),
             );
             sess.color_model = color_model;
             sess.initialized = true;
@@ -236,53 +246,65 @@ pub(crate) fn drive_wash_gpu(
             sess.seeded = false; // forces a full re-composite below
         }
 
-        // ── ADR-0088 undo/redo sync ── the tool's wash stroke count moved (undo lowered it, redo
-        // raised it back). Restore the GPU pigment field to the matching per-stroke snapshot. A count
-        // ABOVE `applied` with no matching snapshot yet is just the in-flight stroke settling (NOT a
-        // redo) — guarded by `committed.len() >= want`.
-        let is_redo = want > sess.applied && sess.committed.len() >= want;
+        // ── ADR-0089 undo/redo sync ── the tool's wash stroke count moved. Disambiguate via whether
+        // the field was PAINTED since the last commit (counts alone are ambiguous after a partial redo):
+        //  • count DOWN ⇒ undo: restore `committed[want-1]` (or clear at 0).
+        //  • count UP, no paint ⇒ redo: restore the existing snapshot.
+        //  • count UP + painted ⇒ a NEW stroke: discard the redo-ahead branch (mirrors the tool clearing
+        //    its wash redo flags) so a fresh stroke whose count collides with a stale snapshot is NOT
+        //    mis-read as a redo (which would resurrect discarded pigment). The finalise below snapshots.
+        let is_redo = want > sess.applied && sess.committed.len() >= want && !sess.painted_since_commit;
+        if want > sess.applied && sess.painted_since_commit && sess.committed.len() > sess.applied {
+            sess.committed.truncate(sess.applied);
+        }
         let mut restored_now = false;
         if want < sess.applied || is_redo {
             if want == 0 {
                 sess.solver.clear(&gpu.device, &gpu.queue);
             } else {
-                let snap = sess.committed[want - 1].clone();
-                sess.solver.upload_pigment(&gpu.queue, &snap);
+                // Restore BOTH channels (ADR-0089) so the live Linear↔K–M toggle is consistent.
+                let snap_pig = sess.committed[want - 1].pig.clone();
+                let snap_dye = sess.committed[want - 1].dye.clone();
+                sess.solver.upload_pigment(&gpu.queue, &snap_pig);
+                sess.solver.upload_dye(&gpu.queue, &snap_dye);
             }
             sess.applied = want;
             sess.has_pigment = want > 0;
             sess.seeded = false; // one full re-composite of the restored field
-            // Mark settled so NO physics runs on the restore: stepping would re-diffuse the restored
-            // pigment through the STALE water field (full at Evaporation 0 ⇒ the undo drifts/spreads —
-            // the reported evap-0 undo bug). The snapshot is already the settled state; just show it.
-            sess.idle_frames = ACTIVE_WINDOW as u32 + 1;
+            sess.painted_since_commit = false; // a restored state carries no uncommitted paint
+            // NB: a restore runs ZERO physics (see `step_n` below) — stepping would re-diffuse the
+            // restored pigment through the STALE water field (full at Evaporation 0 ⇒ the undo
+            // drifts/spreads — the reported evap-0 undo bug). The snapshot is already the settled state.
             restored_now = true;
         }
 
-        // Encode dabs — ALWAYS 4 pigment concentrations (both colour models read the same field).
+        // Encode dabs — deposit BOTH colour channels (ADR-0089): K–M concentrations (unmixed) AND the
+        // faithful-RGB dye (the picked linear colour pre-multiplied by mass). The active model picks
+        // which one composites; both transport together so the live toggle stays consistent.
         let dabs: &[ph2d_tool_painter::FluidDab] = dabs_envelope.as_ref().map_or(&[], |(d, _)| d.as_slice());
         let gpu_dabs: Vec<Dab> = dabs
             .iter()
             .map(|d| {
+                let m = d.mass;
                 let mut conc = sess.km.rgb_to_concentrations(d.color);
                 for c in &mut conc {
-                    *c *= d.mass;
+                    *c *= m;
                 }
-                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc)
+                let dye = [d.color[0] * m, d.color[1] * m, d.color[2] * m, m];
+                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc).with_dye(dye)
             })
             .collect();
         if !gpu_dabs.is_empty() {
             sess.has_pigment = true;
+            sess.painted_since_commit = true; // a count rise after this is a NEW stroke, not a redo
         }
 
-        // Idle bookkeeping: the field keeps settling (bloom/edge recession) a short window after the
-        // last dab, then stops costing GPU — the cached slot keeps displaying the persistent wash.
-        if active || !gpu_dabs.is_empty() {
-            sess.idle_frames = 0;
-        } else {
-            sess.idle_frames = sess.idle_frames.saturating_add(1);
-        }
-        let settling = sess.idle_frames <= ACTIVE_WINDOW as u32;
+        // ── ADR-0089 §2.3 finalise trigger ── a committed wash stroke (`want` ran past what the field
+        // realises) whose pen is UP and which we have NOT snapshotted yet. Gating on the COUNT (not a
+        // pen-up edge) makes it robust to whether the tool's `end_stroke` bumped `want` before or after
+        // this bridge call: it fires on the first frame all three hold, exactly once (the snapshot
+        // pushes `committed` up to `want`). This frame settles + snapshots + bakes SYNCHRONOUSLY.
+        let finalizing = !active && want > sess.applied && sess.committed.len() < want;
 
         // Nothing to draw yet.
         if !sess.has_pigment {
@@ -290,9 +312,10 @@ pub(crate) fn drive_wash_gpu(
         }
         let entity_bits = override_entity?;
 
-        // Touch the GPU only when something changed; otherwise return the cached slot (≈0 idle cost).
-        let full = !sess.seeded || model_flipped; // a fresh seed / a model flip re-renders everything
-        let need_gpu = full || !gpu_dabs.is_empty() || settling;
+        // Touch the GPU only when something changed; otherwise return the cached slot (≈0 idle cost). A
+        // finalise / model-flip / restore re-renders the WHOLE field; an active frame steps live.
+        let full = !sess.seeded || model_flipped || finalizing || restored_now;
+        let need_gpu = full || !gpu_dabs.is_empty() || active;
         if !need_gpu {
             return sess
                 .slot
@@ -332,8 +355,18 @@ pub(crate) fn drive_wash_gpu(
         let seed = fresh || full;
 
         // ── ONE encoder: step + composite + slot copy ──
-        // A restore re-renders the snapshot with ZERO physics (no re-diffusion through stale water).
-        let step_n = if restored_now { 0 } else { substeps };
+        // Substep budget: live `substeps` while painting; a SETTLE BURST when finalising — the post-lift
+        // bloom/edge-recession collapsed into ONE synchronous pass so the snapshot + bake below capture
+        // the SETTLED field (ADR-0089 §2.3; the visible bloom now lands at pen-up instead of animating);
+        // ZERO on a restore (the snapshot is already settled — stepping would re-diffuse it through the
+        // stale, still-full water field, the evap-0 undo drift).
+        let step_n = if restored_now {
+            0
+        } else if finalizing {
+            (ACTIVE_WINDOW as u32) * substeps.max(1)
+        } else {
+            substeps
+        };
         let enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
         let mut enc = sess.solver.encode_step(&gpu.queue, enc, &gpu_dabs, step_n, g_region);
         let tex_ok = if seed {
@@ -363,22 +396,27 @@ pub(crate) fn drive_wash_gpu(
         }
         sess.seeded = true;
 
-        // ── ADR-0088 undo snapshot ── the tool committed a stroke (its count ran past `applied`, and
-        // it's not a redo). Snapshot the field NOW (at pen-up, one per stroke ⇒ no fast-stroke
-        // collapse), discarding any redo branch first. `committed[i]` = field after stroke i+1.
-        if want > sess.applied && sess.committed.len() < want {
+        // ── ADR-0089 SYNCHRONOUS finalise ── the stroke just settled (above). Snapshot BOTH colour
+        // channels NOW — one snapshot per committed stroke, at this deterministic point — discarding any
+        // redo branch first. `committed[i]` = the settled field after stroke i+1. The readbacks see the
+        // settled state because they submit + block after the step+composite submit just above.
+        if finalizing {
             sess.committed.truncate(sess.applied);
-            let snap = sess.solver.read_pigment(&gpu.device, &gpu.queue);
+            let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
+            let dye = sess.solver.read_dye(&gpu.device, &gpu.queue);
             while sess.applied < want {
-                sess.committed.push(snap.clone());
+                sess.committed.push(FieldSnap { pig: pig.clone(), dye: dye.clone() });
                 sess.applied += 1;
             }
+            sess.painted_since_commit = false; // this stroke is now committed/snapshotted
         }
 
-        // Bake into canvas_rgba (for save / layer thumbnail / interop) once the wash settles, or on a
-        // restore. The slot override keeps DISPLAYING the live wash; this just keeps the flat canvas
-        // in sync (and lets the tool's snapshot-undo restore a coherent pre-image).
-        let do_bake = restored_now || (!active && sess.idle_frames == ACTIVE_WINDOW as u32);
+        // Bake the settled (pen-up) or restored (undo/redo) composite into canvas_rgba — the flat canvas
+        // the painter's snapshot-undo, save and thumbnails read. Happens EXACTLY at stroke boundaries,
+        // synchronously, so canvas_rgba is always a coherent projection of the field at every boundary
+        // (the invariant that keeps the painter's pre/post-images in lock-step with the field snapshots,
+        // ADR-0089 §2.3). The slot override keeps DISPLAYING the live wash regardless.
+        let do_bake = finalizing || restored_now;
         if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));

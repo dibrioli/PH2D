@@ -1,10 +1,29 @@
-# HANDOFF (BLOQUEADO) — Wash: undo quebrado + cores erradas
+# HANDOFF — Wash: undo + cores (RESOLVIDO via ADR-0089, aguardando sign-off visual do Enio)
 
-> **Status: 2 bugs CRÍTICOS não resolvidos.** O agente anterior tentou ~4 rodadas de fix em cada um
-> (commits abaixo) e o Enio confirmou que **NENHUM funcionou** ("vc não corrigiu nem um nem outro").
-> Pare de remendar incrementalmente — releia o §"Causa-raiz suspeita" e o §"Recomendação" antes de
-> tocar em código. Provavelmente o caminho certo é **reconsiderar a arquitetura** (ADR-0088), não
-> mais um patch.
+> **Status (2026-06-13): reescrito, não remendado.** O Enio escolheu a **Opção B+** (manter o
+> live-transform). Implementado em [`ADR-0089`](architecture/decisions/0089-wash-dual-field-faithful-color-and-synchronous-undo.md),
+> que **supersede o ADR-0088** §2.1+§2.3 (a causa-raiz dos 2 bugs). Build verde + 10/10 testes GPU
+> (Metal) + 8/8 testes de cor (puros). **Falta só o teste visual do Enio no app.** O texto BLOQUEADO
+> abaixo é histórico.
+>
+> **O que mudou (resumo):**
+> - **BUG-C (cor):** causa = um campo ÚNICO de concentrações lido por 2 funções diferentes não pode ser
+>   fiel nos 2 modos (provado, até p/ 1 cor pura). Fix = **campo DUPLO**: `pig` (concentrações → K–M
+>   espectral) + `dye` (RGB-linear premul → Linear, fiel por construção). K–M ganhou composite
+>   **normalizado** (matiz da razão a `K_REF` fixo → independente da massa; some o `Tᶜ` que fazia
+>   vermelho→laranja). Validado no GPU: vermelho=vermelho, azul+amarelo→verde (K–M) / cinza (Linear).
+> - **BUG-U (undo):** causa = bake assíncrono (~30 frames) brigando com o snapshot síncrono do undo +
+>   polling de contador. Fix = **finalize SÍNCRONO no pen-up** (settle+snapshot+bake num passo, antes do
+>   próximo traço) + desambiguação redo-vs-novo-traço via `painted_since_commit`. `canvas_rgba` vira
+>   projeção coerente do campo em TODA fronteira de traço → snapshot-undo e snapshot-de-campo em
+>   lock-step.
+>
+> **Como testar (Enio):** `cargo run -p ph2d-host-desktop --features wash` → Brush Studio: Wash on.
+> (1) vermelho puro pinta vermelho (com e sem Pigment); (2) Ctrl+Z/Ctrl+Y firmes, sem o estado antigo
+> voltar, **inclusive Evaporation 0** e traços rápidos. Tradeoffs p/ avaliar (esperados, ADR-0089 §3):
+> o bloom pós-pen-up agora **assenta na hora** (não anima 30 frames); no K–M empilhar a MESMA cor
+> **cobre mais** em vez de escurecer (matiz preservada). Se a saturação/opacidade não agradar, são 2
+> constantes (`K_REF`, `COVER_K` em `km.rs`+`composite.wgsl`) — me fala que eu ajusto.
 
 Contexto base: [`HANDOFF_wash.md`](HANDOFF_wash.md) + [`ADR-0088`](architecture/decisions/0088-wash-persistent-pigment-canvas-and-undo.md)
 + [`ADR-0086`](architecture/decisions/0086-watercolor-minimal-core-wash.md)/[`0087`](architecture/decisions/0087-wash-integration-parallel-watercolor-mode.md).

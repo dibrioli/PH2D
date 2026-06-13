@@ -106,6 +106,7 @@ fn is_studio_checkbox(id: NodeId) -> bool {
         || id == ids::WET_EDGES
         || id == ids::BURNT_EDGES
         || id == ids::FLUID
+        || id == ids::WASH
 }
 
 #[inline]

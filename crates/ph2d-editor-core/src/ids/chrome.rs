@@ -477,6 +477,9 @@ pub const PAINTER_STUDIO_BURNT_EDGES: NodeId = hash_node_id("painter_studio.burn
 /// `brush.rendering.fluid_enabled`: stamps splat into a per-stroke
 /// `DiffusionGrid` advected by `Tool::on_tick` instead of stamping the canvas.
 pub const PAINTER_STUDIO_FLUID: NodeId = hash_node_id("painter_studio.fluid");
+/// Minimal watercolor core (ADR-0086/0087) toggle — the simplified GPU "Wash" mode,
+/// parallel to + mutually exclusive with Fluid.
+pub const PAINTER_STUDIO_WASH: NodeId = hash_node_id("painter_studio.wash");
 pub const PAINTER_STUDIO_EDGE_INTENSITY_SLIDER: NodeId =
     hash_node_id("painter_studio.edge_intensity_slider");
 pub const PAINTER_STUDIO_EDGE_INTENSITY_CHIP: NodeId =

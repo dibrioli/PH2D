@@ -197,7 +197,10 @@ impl PainterTool {
         // set by the shell before `begin_stroke`); without a GPU the fluid brush gracefully
         // degrades to the normal wash path (watercolor OFF), so `wet_field` stays `None`.
         let mut wet_field_reused = false;
-        if self.brush.rendering.fluid_enabled && self.fluid_hires {
+        // ADR-0087: a `wash_enabled` brush reuses the SAME wet-field carrier lifecycle (dab list,
+        // backdrop snapshot, epoch, dims) — the shell's `drive_wash_gpu` drives the WashSolver
+        // over it instead of the FluidSolver. The two are mutually exclusive (the apply handler).
+        if (self.brush.rendering.fluid_enabled || self.brush.rendering.wash_enabled) && self.fluid_hires {
             // **W15.3 full-res on a capable GPU.** The field runs at full canvas
             // resolution (`scale=1`) for fine bleeds + sharp edges.
             let scale = self.live_field_scale();
@@ -1535,6 +1538,7 @@ impl PainterTool {
             wet_edges: b.rendering.wet_edges,
             burnt_edges: b.rendering.burnt_edges,
             fluid_enabled: b.rendering.fluid_enabled,
+            wash_enabled: b.rendering.wash_enabled,
             edge_intensity: b.rendering.edge_intensity,
             pigment_enabled: b.rendering.pigment_mode == PigmentMode::Subtractive,
             accumulate_enabled: b.rendering.accumulate,

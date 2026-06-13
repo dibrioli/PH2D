@@ -566,6 +566,8 @@ fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::Brush
         Some(P::BurntEdges)
     } else if id == core_ids::PAINTER_STUDIO_FLUID {
         Some(P::Fluid)
+    } else if id == core_ids::PAINTER_STUDIO_WASH {
+        Some(P::Wash)
     } else if id == core_ids::PAINTER_STUDIO_KEEP_WET {
         // Watercolor UX pills (tool-level bools; the generic bool-click arm flips them).
         Some(P::KeepWet)

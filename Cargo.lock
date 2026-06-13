@@ -4696,6 +4696,7 @@ dependencies = [
  "ph2d-nodegraph",
  "ph2d-painter-brush",
  "ph2d-painter-fluid",
+ "ph2d-painter-wash",
  "ph2d-panel-bgremoval",
  "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",

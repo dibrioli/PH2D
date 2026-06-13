@@ -142,6 +142,7 @@ pub fn populate(store: &mut WidgetStore) {
     checkbox(store, ids::WET_EDGES, s.wet_edges);
     checkbox(store, ids::BURNT_EDGES, s.burnt_edges);
     checkbox(store, ids::FLUID, s.fluid_enabled);
+    checkbox(store, ids::WASH, s.wash_enabled);
     // Register the interactive slider state UNCONDITIONALLY (same pattern as the
     // grain sliders) — `paint` shows it only when an edge mode is on, but the
     // `SliderState` must exist in the store regardless so a drag is accepted the

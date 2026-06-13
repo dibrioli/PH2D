@@ -39,6 +39,9 @@ pub(crate) mod painter_fluid_bridge;
 mod painter_fluid_drive;
 #[cfg(feature = "fluid")]
 mod painter_fluid_support;
+// ADR-0086/0087 minimal watercolor core — parallel to the fluid drive, own feature.
+#[cfg(feature = "wash")]
+mod painter_wash_bridge;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
 mod present;
@@ -282,6 +285,18 @@ impl crate::App {
         );
         #[cfg(not(feature = "fluid"))]
         let fluid_preview_override: Option<sim_extract::PreviewOverride> = None;
+        // ADR-0086/0087: drive the minimal watercolor core (parallel to fluid, mutually
+        // exclusive per the brush flag). v1 bakes into `canvas_rgba` and returns `None`
+        // (the normal painter preview shows it); the call is for the per-frame side effect.
+        #[cfg(feature = "wash")]
+        let wash_preview_override = painter_wash_bridge::drive_wash_gpu(
+            tools,
+            surface.gpu(),
+            renderer,
+            self.last_painter_pushed_entity,
+        );
+        #[cfg(not(feature = "wash"))]
+        let wash_preview_override: Option<sim_extract::PreviewOverride> = None;
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -342,6 +357,7 @@ impl crate::App {
         // pre-stroke-stale by design) — the fluid drive only returns `Some` on
         // frames where its slot holds the freshest composite.
         let preview_override = fluid_preview_override
+            .or(wash_preview_override)
             .or(painter_preview_override)
             .or(bgremoval_preview_override);
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the

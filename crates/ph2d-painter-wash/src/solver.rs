@@ -291,6 +291,15 @@ impl WashSolver {
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&p));
     }
 
+    /// Zero all dynamic fields (per-stroke reset). Paper is static and kept.
+    pub fn clear(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash clear enc") });
+        for b in [&self.water_a, &self.water_b, &self.pig_a, &self.pig_b] {
+            enc.clear_buffer(b, 0, None);
+        }
+        queue.submit([enc.finish()]);
+    }
+
     /// Upload initial fields directly (test/seed path). `pigment` is `(absorb.rgb, mass)`.
     pub fn upload(&self, queue: &wgpu::Queue, water: &[f32], paper: &[f32], pigment: &[[f32; 4]]) {
         queue.write_buffer(&self.water_a, 0, bytemuck::cast_slice(water));

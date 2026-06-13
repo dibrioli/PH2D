@@ -1,6 +1,9 @@
 # ADR-0087 — Integração do `ph2d-painter-wash` como modo de aquarela PARALELO (lado-a-lado com o v2)
 
-**Status:** PROPOSTO (aguarda ratificação do Enio antes de codar) · **Data:** 2026-06-13
+**Status:** IMPLEMENTADO v1 (Fases 1-3, 2026-06-13 — ratificado pelo Enio) · **Data:** 2026-06-13
+> **v1 nota:** o bridge usa *continuous-bake* (lê o composite e grava em `canvas_rgba` todo
+> frame, via `fluid_apply_gpu_composite_rows`) + o preview normal — **sem** override/slot/dirty-rect
+> (o fast-path de perf do v2 é follow-up). Toggle "Wash" no Brush Studio; build com `--features wash`.
 **Depende de:** [ADR-0086](0086-watercolor-minimal-core-wash.md) (o núcleo mínimo). **Não
 supersede nada** — o caminho fluid v2 (ADR-0078..0085) fica **100% intacto**.
 

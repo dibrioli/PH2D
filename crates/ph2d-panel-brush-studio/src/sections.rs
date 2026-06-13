@@ -239,6 +239,8 @@ fn paint_rendering_section(
     // Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11): stamps splat
     // into a per-stroke wet field advected each frame by `Tool::on_tick`.
     y = toggle(ctx, y, "Fluid", s.fluid_enabled, ids::FLUID);
+    // Minimal watercolor core (ADR-0086/0087): the simplified GPU wash, parallel to Fluid.
+    y = toggle(ctx, y, "Wash", s.wash_enabled, ids::WASH);
     // Edge Intensity scales the wet/burnt settle; shown only when an edge is on.
     if s.wet_edges || s.burnt_edges {
         y = pct_row(

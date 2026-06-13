@@ -439,6 +439,8 @@ pub struct BrushStudioSnapshot {
     pub burnt_edges: bool,
     /// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11) display state.
     pub fluid_enabled: bool,
+    /// Minimal watercolor core (ADR-0087) display state — the "Wash" toggle.
+    pub wash_enabled: bool,
     pub edge_intensity: f32,
     pub pigment_enabled: bool,
     pub accumulate_enabled: bool,
@@ -507,6 +509,7 @@ impl Default for BrushStudioSnapshot {
             wet_edges: b.rendering.wet_edges,
             burnt_edges: b.rendering.burnt_edges,
             fluid_enabled: b.rendering.fluid_enabled,
+            wash_enabled: b.rendering.wash_enabled,
             edge_intensity: b.rendering.edge_intensity,
             pigment_enabled: b.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,

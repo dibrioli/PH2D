@@ -74,6 +74,9 @@ ph2d-tool-painter = { path = "../../crates/ph2d-tool-painter" }
 # Fluid Brushes (ADR-0049 W15.3) — the GPU watercolor solver. Optional + behind
 # the `fluid` feature so the default build pays zero binary + zero VRAM.
 ph2d-painter-fluid = { path = "../../crates/ph2d-painter-fluid", optional = true, features = ["fluid"] }
+# Minimal watercolor core (ADR-0086/0087) — the simplified GPU wash, a PARALLEL mode
+# to fluid v2. Optional + behind the `wash` feature (zero binary/VRAM by default).
+ph2d-painter-wash = { path = "../../crates/ph2d-painter-wash", optional = true, features = ["gpu"] }
 # Brush engine — PointerSample shape consumed by painter_input.rs when
 # converting cursor screen-px → canvas-pixel coords for the StampScheduler.
 ph2d-painter-brush = { path = "../../crates/ph2d-painter-brush" }
@@ -310,3 +313,6 @@ panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # the default build excludes the solver crate entirely. When enabled, the render
 # loop drives the GPU `FluidSolver` for a fluid brush's wet field (CPU path else).
 fluid = ["dep:ph2d-painter-fluid"]
+# **wash** (ADR-0086/0087): the minimal watercolor core, a parallel mode to `fluid`.
+# Opt-in; when enabled the render loop drives the GPU `WashSolver` for a wash brush.
+wash = ["dep:ph2d-painter-wash"]

@@ -1118,12 +1118,27 @@ impl PainterTool {
         // rather than push a bogus slot.
         if let Some(pre) = self.pending_pre_stroke.take() {
             self.undo.record_pre_stroke(committed_seq, &pre);
+            // **ADR-0088:** tag this undo entry wash-or-not so undo/redo can keep the wash GPU
+            // pigment field in lock-step (a non-wash stroke must NOT shift the wash count).
+            let is_wash = self.brush.rendering.wash_enabled;
+            self.wash_undo_flags.push(is_wash);
+            if is_wash {
+                self.wash_active_strokes += 1;
+            }
+            // Stay aligned with the controller's (depth-thinned) stack: a stroke dropped off the
+            // FRONT is no longer undoable but is still applied, so drop the flag WITHOUT touching the
+            // count (undo can never reach back that far ⇒ the bridge never needs its snapshot).
+            let depth = self.undo.undo_depth();
+            while self.wash_undo_flags.len() > depth {
+                self.wash_undo_flags.remove(0);
+            }
         }
         // A NEW committed stroke invalidates the redo branch (standard linear
         // history). The texture redo stack is cleared inside `record_pre_stroke`;
         // clear the parallel semantic redo records here so a later redo can
         // never resurrect a stale record from a discarded branch.
         self.undo_redo_records.clear();
+        self.wash_redo_flags.clear(); // ADR-0088: new stroke discards the wash redo branch too
         // **S-5 WAL rotation:** após commit, checka se journal precisa
         // rotacionar (cap 500 MiB OR 100 commits). T1.9 ship: rotate só
         // depois de canon flush (caller W11 contract). Aqui apenas surface
@@ -1626,6 +1641,14 @@ impl PainterTool {
         if let Some(rec) = self.stroke_history.undo() {
             self.undo_redo_records.push(rec);
         }
+        // **ADR-0088:** move the wash flag from the undo side to the redo side; drop the wash count
+        // only if the undone entry was a wash stroke (the bridge restores its field snapshot).
+        if let Some(was_wash) = self.wash_undo_flags.pop() {
+            if was_wash {
+                self.wash_active_strokes = self.wash_active_strokes.saturating_sub(1);
+            }
+            self.wash_redo_flags.push(was_wash);
+        }
         self.preview_dirty = true;
         // GPU preview: the active layer's pixels were restored → bump version.
         let active = self.layers.active();
@@ -1658,11 +1681,26 @@ impl PainterTool {
         if let Some(rec) = self.undo_redo_records.pop() {
             self.stroke_history.redo(rec);
         }
+        // **ADR-0088:** symmetric to undo — move the wash flag back to the undo side, re-adding the
+        // wash count if the redone entry was a wash stroke (the bridge re-applies its snapshot).
+        if let Some(was_wash) = self.wash_redo_flags.pop() {
+            if was_wash {
+                self.wash_active_strokes += 1;
+            }
+            self.wash_undo_flags.push(was_wash);
+        }
         self.preview_dirty = true;
         // GPU preview: the active layer's pixels were restored → bump version.
         let active = self.layers.active();
         self.bump_layer_pixels(active);
         true
+    }
+
+    /// **ADR-0088:** committed-and-not-undone WASH stroke count — the shell's `drive_wash_gpu` polls
+    /// this to keep the GPU pigment field synced with undo/redo (restoring per-stroke snapshots).
+    #[must_use]
+    pub fn wash_active_strokes(&self) -> usize {
+        self.wash_active_strokes
     }
 
     /// `true` if there is at least one committed stroke to undo (drives the

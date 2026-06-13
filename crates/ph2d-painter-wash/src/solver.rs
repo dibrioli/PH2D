@@ -319,6 +319,12 @@ impl WashSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
     }
 
+    /// Overwrite ONLY the canonical pigment field (the undo-restore path: re-instate a recorded
+    /// per-stroke snapshot). Water is left as-is — a restore re-renders from the pigment alone.
+    pub fn upload_pigment(&self, queue: &wgpu::Queue, pigment: &[[f32; 4]]) {
+        queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
+    }
+
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
     pub fn splat(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[Dab]) {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash splat enc") });

@@ -511,6 +511,13 @@ pub struct PainterTool {
     /// `end_stroke`) so a later redo can never resurrect a record from a
     /// discarded branch. (See `new_stroke_after_undo_invalidates_redo`.)
     undo_redo_records: Vec<StrokeRecord>,
+    /// **ADR-0088 wash persistent canvas:** count of committed-and-not-undone WASH strokes. The
+    /// shell's `drive_wash_gpu` polls this to keep the GPU pigment field in lock-step with undo/redo
+    /// (restoring a per-stroke field snapshot). `wash_undo_flags`/`wash_redo_flags` mark which undo
+    /// stack entries were wash strokes, so undo/redo of a NON-wash stroke leaves the count untouched.
+    wash_active_strokes: usize,
+    wash_undo_flags: Vec<bool>,
+    wash_redo_flags: Vec<bool>,
     /// **W3.T3.4 dock toggle (mode C):** which painter panel occupies the
     /// shared right-dock slot — `false` = brush sidebar, `true` = layers panel.
     /// Toggled via `handle_panel_event` (either panel's header toggle button);
@@ -711,6 +718,9 @@ impl Default for PainterTool {
             undo: crate::undo::UndoController::default(),
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
+            wash_active_strokes: 0,
+            wash_undo_flags: Vec::new(),
+            wash_redo_flags: Vec::new(),
             dock_shows_layers: false,
             show_brush_studio: false,
             dirty_rect: None,

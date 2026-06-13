@@ -122,10 +122,17 @@ suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-
      acumula entre traços, re-compõe só quando há dabs/troca/assentamento (ocioso devolve o slot em
      cache ≈ custo zero), bake-on-settle pro `canvas_rgba` (save/thumb). `Dab::from_color_mass`
      aposentado do bridge (só `from_concentrations`).
-     **Limitações adiadas (precisam de integração de layer / ADR):** o campo de pigmento não é salvo
-     em disco (só o `canvas_rgba` assado); edições de OUTRAS ferramentas durante a sessão wash são
-     sobrescritas pelo composite (base fixa); reset do campo só em troca de dims (clear-canvas deixa
-     fantasma); 4K = full-recompose no toggle pode custar. Tudo isso = "wash como layer de pigmento
-     de verdade", um passo futuro.
+   - **Fase 5 DONE — undo/redo (ADR-0088).** Os dois modos ficavam quase iguais (CMY subtrativo dá
+     verde nos dois) → o modo **Linear virou ADITIVO** (média das masstones, azul+amarelo→cinza);
+     K–M continua espectral (verde). Gate `inv_km_visibly_greener_than_linear` (green-excess 23 vs 61).
+     **Undo:** o tool conta `wash_active_strokes` (flags por entrada do undo stack marcam quais são
+     wash); o bridge guarda snapshots do campo por traço (`committed[i]`) e re-sincroniza o campo GPU
+     ao count do tool (undo→restaura `committed[want-1]`, redo→re-aplica; trunca o branch de redo no
+     traço novo). `WashSolver::upload_pigment` faz o restore. Ver **[ADR-0088](architecture/decisions/0088-wash-persistent-pigment-canvas-and-undo.md)**.
+
+   **Limitações adiadas (precisam de "wash como LAYER de pigmento" real — ADR-0088 §3):** o campo não
+   é salvo em disco (só o `canvas_rgba` assado); edições de OUTRAS ferramentas no meio da sessão wash
+   são sobrescritas (base fixa); snapshot de undo = `cw·ch·16B`/traço (pesado em 4K; ok em demo);
+   readback por traço; traços-rápidos-colapsados num settle aproximam os intermediários.
 3. Franja capilar water-only (Curtis-faithful) — se faltar a borda suave além do traço.
 4. Perf residual: dobrar o wash no encoder do render principal (1 submit/frame).

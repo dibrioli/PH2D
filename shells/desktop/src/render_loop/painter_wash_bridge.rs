@@ -75,6 +75,11 @@ struct WashSession {
     /// Frames since the last dab — the field keeps settling (bloom/edge recession) for a short
     /// window, then stops costing GPU (the cached slot keeps displaying the persistent wash).
     idle_frames: u32,
+    /// **ADR-0088 undo:** per-stroke pigment-field snapshots — `committed[i]` is the field after
+    /// `i+1` settled wash strokes. `applied` = how many the GPU field currently realises. The bridge
+    /// polls the tool's `wash_active_strokes()`; a mismatch (undo/redo) restores `committed[want-1]`.
+    committed: Vec<Vec<[f32; 4]>>,
+    applied: usize,
 }
 
 impl WashSession {
@@ -92,6 +97,8 @@ impl WashSession {
             has_pigment: false,
             seeded: false,
             idle_frames: 0,
+            committed: Vec::new(),
+            applied: 0,
         }
     }
     fn release_slot(&mut self, renderer: &mut SpriteRenderer) {
@@ -182,6 +189,8 @@ pub(crate) fn drive_wash_gpu(
     } else {
         None
     };
+    // ADR-0088: committed-and-not-undone wash stroke count — drives the undo/redo field sync.
+    let want = painter.wash_active_strokes();
     // Dabs only when a live field is producing them (None when hovering / settled).
     let dabs_envelope = if has_field { painter.fluid_take_dabs() } else { None };
     let profile = PROFILE.with(|p| p.borrow_mut().enabled());
@@ -215,6 +224,24 @@ pub(crate) fn drive_wash_gpu(
             sess.compositor.set_color_model(color_model);
             sess.color_model = color_model;
             sess.seeded = false; // forces a full re-composite below
+        }
+
+        // ── ADR-0088 undo/redo sync ── the tool's wash stroke count moved (undo lowered it, redo
+        // raised it back). Restore the GPU pigment field to the matching per-stroke snapshot. A count
+        // ABOVE `applied` with no matching snapshot yet is just the in-flight stroke settling (NOT a
+        // redo) — guarded by `committed.len() >= want`.
+        let is_redo = want > sess.applied && sess.committed.len() >= want;
+        if want < sess.applied || is_redo {
+            if want == 0 {
+                sess.solver.clear(&gpu.device, &gpu.queue);
+            } else {
+                let snap = sess.committed[want - 1].clone();
+                sess.solver.upload_pigment(&gpu.queue, &snap);
+            }
+            sess.applied = want;
+            sess.has_pigment = want > 0;
+            sess.seeded = false; // full re-composite of the restored field
+            sess.idle_frames = 0; // re-settle ⇒ re-bake canvas_rgba in sync
         }
 
         // Encode dabs — ALWAYS 4 pigment concentrations (both colour models read the same field).
@@ -326,6 +353,17 @@ pub(crate) fn drive_wash_gpu(
         if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
+            // ADR-0088: a freshly-committed stroke (the tool's count ran ahead) ⇒ snapshot the settled
+            // pigment field for undo. Discard any redo branch first. (Fast strokes that collapse into
+            // one settle pad the missing intermediates with the current state — a rare approximation.)
+            if want > sess.applied {
+                sess.committed.truncate(sess.applied);
+                let snap = sess.solver.read_pigment(&gpu.device, &gpu.queue);
+                while sess.applied < want {
+                    sess.committed.push(snap.clone());
+                    sess.applied += 1;
+                }
+            }
         }
         Some(PreviewOverride { entity_bits, texture_id: id, premultiplied: true })
     });

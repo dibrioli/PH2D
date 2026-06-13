@@ -21,6 +21,10 @@ const V_MAX: f32 = 0.03; // advective face-speed budget (the rest of the CFL bud
 // so a static front can't pin a hard pixelated rim (the v2 failure). Scaled by (1−w) ⇒ ~0 in the
 // wet interior (Keep Wet stays wet) and inward-only (no spreading).
 const EDGE_EVAP_FLOOR: f32 = 0.01;
+// Per-cell pigment cap (Σ concentration) — matches splat.wgsl. FlowOutward concentrates pigment at
+// drying rims; clamp so the field total stays bounded and the composite reads concentrations with no
+// hue-shifting down-scale.
+const PIG_CAP: f32 = 2.5;
 
 struct Params {
     width: u32,
@@ -104,7 +108,12 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     p_new = p_new + face(gc, wc, pc, gate(water_in[iU], paper[iU]), water_in[iU], pig_in[iU]);
     p_new = p_new + face(gc, wc, pc, gate(water_in[iD], paper[iD]), water_in[iD], pig_in[iD]);
 
-    pig_out[i] = max(p_new, vec4<f32>(0.0));
+    var po = max(p_new, vec4<f32>(0.0));
+    let pt = po.x + po.y + po.z + po.w;
+    if (pt > PIG_CAP) {
+        po = po * (PIG_CAP / pt);
+    }
+    pig_out[i] = po;
     // Bulk drying (user Evaporation) + edge-biased recession (feathers the thin rim, ~0 in the wet
     // interior). The latter passes rim cells through the wet-gate band before freezing ⇒ soft edge.
     let edge_dry = EDGE_EVAP_FLOOR * (1.0 - clamp(wc, 0.0, 1.0));

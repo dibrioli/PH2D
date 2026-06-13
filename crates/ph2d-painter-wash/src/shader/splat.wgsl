@@ -10,6 +10,12 @@
 // the edge-biased recession in cs_step removes the halo again.
 const WATER_HALO: f32 = 1.5;
 
+// Per-cell pigment cap (Σ concentration). Clamping HERE (and in cs_step) keeps the field total
+// bounded so the composite can read concentrations DIRECTLY with no down-scale — a down-scale shifts
+// the hue in the spectral compose (red→orange). Above the cap, heavy overlap saturates toward the
+// masstone (never black). Set ≈ a saturated colour's natural Σ so a full stroke shows the picked hue.
+const PIG_CAP: f32 = 2.5;
+
 struct Dab {
     cx: f32,
     cy: f32,
@@ -66,5 +72,12 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
     water[i] = w;
-    pig[i] = max(p, vec4<f32>(0.0));
+    // Clamp the cell's total pigment to PIG_CAP (preserving hue ratios) so the composite never
+    // down-scales (which would shift the hue). Heavy overlap saturates toward the masstone.
+    p = max(p, vec4<f32>(0.0));
+    let tot = p.x + p.y + p.z + p.w;
+    if (tot > PIG_CAP) {
+        p = p * (PIG_CAP / tot);
+    }
+    pig[i] = p;
 }

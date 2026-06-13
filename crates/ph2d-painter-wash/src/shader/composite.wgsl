@@ -7,28 +7,10 @@
 // the backdrop and painted pixels are the backdrop glazed by the pigment. Premultiplied-by-1 ⇒
 // the stored texel is straight = premul (matches the v2 premultiplied-rgba8 contract).
 //
-// PAPER SATURATION (fixes B1 — overlap → black): the splat accumulates absorbance + mass with no
-// ceiling, so painting the same spot repeatedly drove `absorb → ∞` ⇒ `exp(−absorb) → 0` = black.
-// Real paper holds a finite amount of pigment. The pigment hue per unit mass is `absorb/mass`
-// (= −ln(c) for a colour c); we saturate the EFFECTIVE mass toward `MASS_MAX`, so a heavily-loaded
-// cell glazes to ≈`exp(−(absorb/mass)·MASS_MAX) = c` — the pigment's full masstone — never darker.
-//
-// SMOOTH saturation (fixes the stepped core↔halo edge): a HARD cap `min(mass, MASS_MAX)` leaves a
-// flat saturated core and a separate gradient halo with a visible CONTOUR between them (the
-// mass=MASS_MAX iso-line, quantised per-pixel ⇒ a staircased edge). Instead the effective mass
-// rolls off ASYMPTOTICALLY — `eff = MASS_MAX·(1 − exp(−mass/MASS_MAX))` — which is ≈mass for thin
-// glazes (proportional darkening) and → MASS_MAX for thick ones, with NO discontinuity in value OR
-// slope. The whole stroke is one smooth proportional ramp from paper to the masstone.
-//
-// Swapping in Kubelka–Munk / Mixbox later is a change to THIS kernel only — the transport never
-// moves.
-
-// Paper pigment-holding capacity (Σ concentration). A HARD cap: below it the concentrations pass
-// through unchanged (the painted colour stays hue-exact — a smooth down-scale would shift the hue in
-// the spectral compose, e.g. red→orange); above it the total is clamped so heavy overlap saturates
-// toward the masstone instead of running to black. Set well above a single colour's natural Σ (~1–2.5)
-// so normal strokes are pass-through; the edge blur softens the rare contour at the cap.
-const MASS_MAX: f32 = 3.0;
+// PIGMENT SATURATION: the per-cell Σ concentration is capped IN THE SOLVER (splat + cs_step,
+// `PIG_CAP`), so overlap saturates toward the masstone instead of running to black (the B1 fix), and
+// the composite here reads concentrations DIRECTLY — no down-scale, which would shift the hue in the
+// spectral compose (red→orange). Swapping the colour model is a change to THIS kernel only.
 
 struct Comp {
     cw: u32,        // canvas (output) dims
@@ -165,10 +147,9 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let back_lin = srgb_to_lin(back.xyz);
     var rgb: vec3<f32>;
     if (C.color_model == 1u) {
-        // Spectral K–M (vibrant subtractive: blue+yellow→GREEN). HARD-cap the total so single colours
-        // pass through hue-exact and only heavy overlap saturates (no hue-shifting down-scale).
-        let scale = select(1.0, MASS_MAX / total, total > MASS_MAX);
-        rgb = lin_to_srgb(km_compose(back_lin, conc_raw * scale));
+        // Spectral K–M (vibrant subtractive: blue+yellow→GREEN). Concentrations are read DIRECTLY —
+        // the field is already capped at the solver (splat + cs_step), so no hue-shifting down-scale.
+        rgb = lin_to_srgb(km_compose(back_lin, conc_raw));
     } else {
         // Additive masstone average (metameric: blue+yellow→dull GREY/BROWN). Smooth coverage alpha.
         let cover = 1.0 - exp(-total / 1.5);

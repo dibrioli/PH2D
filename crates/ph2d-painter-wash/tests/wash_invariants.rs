@@ -288,8 +288,8 @@ fn inv_overlap_saturates_to_pigment_not_black() {
         s.splat(&gpu.device, &gpu.queue, &[dab]);
     }
     let p = s.read_pigment(&gpu.device, &gpu.queue)[idx(32, 32, w)];
-    let accumulated_mass = p[0] + p[1] + p[2] + p[3]; // Σ concentrations
-    assert!(accumulated_mass > 10.0, "test must actually pile concentration past the cap (got {accumulated_mass})");
+    let accumulated_mass = p[0] + p[1] + p[2] + p[3]; // Σ concentrations (clamped at PIG_CAP)
+    assert!(accumulated_mass > 2.0, "overlap must drive the cell to the saturation cap (got {accumulated_mass})");
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white

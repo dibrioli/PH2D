@@ -193,6 +193,31 @@ impl KmModel {
                 c[i] *= mta[i] / (denom + 1.0e-6);
             }
         }
+        // Refine in COLOUR space. The absorbance LSQ above weights wavelengths, not the final RGB, so
+        // saturated hues drift (pure red leans yellow ⇒ orange on screen). Gradient-descend the actual
+        // composite error `‖compose_over(white,c) − rgb‖²` so the painted colour matches the picked
+        // colour as closely as the 4-pigment gamut allows. `J[·][p] = to_rgb(−white·exp(−A)·apₚ)`.
+        for _ in 0..80 {
+            let cur = self.compose_over([1.0, 1.0, 1.0], c);
+            let res = [cur[0] - rgb[0], cur[1] - rgb[1], cur[2] - rgb[2]];
+            let mut a = [0.0_f32; N];
+            for k in 0..N {
+                let mut s = 0.0;
+                for p in 0..PIGMENTS {
+                    s += c[p] * self.absorb[p][k];
+                }
+                a[k] = s;
+            }
+            for p in 0..PIGMENTS {
+                let mut dspec = [0.0_f32; N];
+                for k in 0..N {
+                    dspec[k] = -self.white[k] * (-a[k]).exp() * self.absorb[p][k];
+                }
+                let dcol = self.to_rgb_raw(&dspec);
+                let grad = dcol[0] * res[0] + dcol[1] * res[1] + dcol[2] * res[2];
+                c[p] = (c[p] - 0.6 * grad).max(0.0);
+            }
+        }
         c
     }
 
@@ -212,8 +237,15 @@ impl KmModel {
         self.to_rgb(&spec)
     }
 
-    /// Spectrum → linear sRGB via `G⁻¹·(C·S)`.
+    /// Spectrum → linear sRGB via `G⁻¹·(C·S)` (final colour ⇒ clamped ≥ 0).
     fn to_rgb(&self, spec: &[f32; N]) -> [f32; 3] {
+        let r = self.to_rgb_raw(spec);
+        [r[0].max(0.0), r[1].max(0.0), r[2].max(0.0)]
+    }
+
+    /// Spectrum → linear sRGB, UNclamped (used as a Jacobian column in the colour-space unmix, where
+    /// the derivative spectrum is signed).
+    fn to_rgb_raw(&self, spec: &[f32; N]) -> [f32; 3] {
         let mut cs = [0.0_f32; 3];
         for (i, csi) in cs.iter_mut().enumerate() {
             let mut s = 0.0;
@@ -224,7 +256,7 @@ impl KmModel {
         }
         let mut rgb = [0.0_f32; 3];
         for i in 0..3 {
-            rgb[i] = (self.g_inv[i][0] * cs[0] + self.g_inv[i][1] * cs[1] + self.g_inv[i][2] * cs[2]).max(0.0);
+            rgb[i] = self.g_inv[i][0] * cs[0] + self.g_inv[i][1] * cs[1] + self.g_inv[i][2] * cs[2];
         }
         rgb
     }

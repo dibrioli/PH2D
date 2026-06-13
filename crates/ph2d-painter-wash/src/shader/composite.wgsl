@@ -23,9 +23,12 @@
 // Swapping in Kubelka–Munk / Mixbox later is a change to THIS kernel only — the transport never
 // moves.
 
-// Paper pigment-holding capacity, in dab-mass units. A heavily-loaded cell converges to the chosen
-// pigment colour `c` over white; lighter deposits glaze proportionally up toward it.
-const MASS_MAX: f32 = 1.0;
+// Paper pigment-holding capacity (Σ concentration). A HARD cap: below it the concentrations pass
+// through unchanged (the painted colour stays hue-exact — a smooth down-scale would shift the hue in
+// the spectral compose, e.g. red→orange); above it the total is clamped so heavy overlap saturates
+// toward the masstone instead of running to black. Set well above a single colour's natural Σ (~1–2.5)
+// so normal strokes are pass-through; the edge blur softens the rare contour at the cap.
+const MASS_MAX: f32 = 3.0;
 
 struct Comp {
     cw: u32,        // canvas (output) dims
@@ -159,16 +162,17 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Smooth saturation of the concentration SUM (preserves the ratios = hue): proportional for thin
     // glazes, asymptotic toward the masstone for thick ones, no stepped core↔halo contour.
     let total = conc_raw.x + conc_raw.y + conc_raw.z + conc_raw.w;
-    let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX)); // smooth coverage / saturated amount
     let back_lin = srgb_to_lin(back.xyz);
     var rgb: vec3<f32>;
     if (C.color_model == 1u) {
-        // Spectral K–M (vibrant subtractive: blue+yellow→GREEN). Saturate the concentrations.
-        let conc = conc_raw * select(0.0, eff / total, total > 1.0e-6);
-        rgb = lin_to_srgb(km_compose(back_lin, conc));
+        // Spectral K–M (vibrant subtractive: blue+yellow→GREEN). HARD-cap the total so single colours
+        // pass through hue-exact and only heavy overlap saturates (no hue-shifting down-scale).
+        let scale = select(1.0, MASS_MAX / total, total > MASS_MAX);
+        rgb = lin_to_srgb(km_compose(back_lin, conc_raw * scale));
     } else {
-        // Additive masstone average (metameric: blue+yellow→dull GREY/BROWN).
-        rgb = lin_to_srgb(linear_compose(back_lin, conc_raw, total, eff));
+        // Additive masstone average (metameric: blue+yellow→dull GREY/BROWN). Smooth coverage alpha.
+        let cover = 1.0 - exp(-total / 1.5);
+        rgb = lin_to_srgb(linear_compose(back_lin, conc_raw, total, cover));
     }
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));
 }

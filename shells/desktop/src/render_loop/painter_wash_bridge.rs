@@ -231,6 +231,7 @@ pub(crate) fn drive_wash_gpu(
         // ABOVE `applied` with no matching snapshot yet is just the in-flight stroke settling (NOT a
         // redo) — guarded by `committed.len() >= want`.
         let is_redo = want > sess.applied && sess.committed.len() >= want;
+        let mut restored_now = false;
         if want < sess.applied || is_redo {
             if want == 0 {
                 sess.solver.clear(&gpu.device, &gpu.queue);
@@ -240,8 +241,12 @@ pub(crate) fn drive_wash_gpu(
             }
             sess.applied = want;
             sess.has_pigment = want > 0;
-            sess.seeded = false; // full re-composite of the restored field
-            sess.idle_frames = 0; // re-settle ⇒ re-bake canvas_rgba in sync
+            sess.seeded = false; // one full re-composite of the restored field
+            // Mark settled so NO physics runs on the restore: stepping would re-diffuse the restored
+            // pigment through the STALE water field (full at Evaporation 0 ⇒ the undo drifts/spreads —
+            // the reported evap-0 undo bug). The snapshot is already the settled state; just show it.
+            sess.idle_frames = ACTIVE_WINDOW as u32 + 1;
+            restored_now = true;
         }
 
         // Encode dabs — ALWAYS 4 pigment concentrations (both colour models read the same field).
@@ -317,8 +322,10 @@ pub(crate) fn drive_wash_gpu(
         let seed = fresh || full;
 
         // ── ONE encoder: step + composite + slot copy ──
+        // A restore re-renders the snapshot with ZERO physics (no re-diffusion through stale water).
+        let step_n = if restored_now { 0 } else { substeps };
         let enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
-        let mut enc = sess.solver.encode_step(&gpu.queue, enc, &gpu_dabs, substeps, g_region);
+        let mut enc = sess.solver.encode_step(&gpu.queue, enc, &gpu_dabs, step_n, g_region);
         let tex_ok = if seed {
             sess.compositor.encode_composite(&gpu.queue, &mut enc, (0, 0, cw, ch));
             sess.compositor.preview_texture().is_some_and(|t| renderer.encode_copy_into_individual(&mut enc, id, t, cw, ch).is_ok())
@@ -348,8 +355,9 @@ pub(crate) fn drive_wash_gpu(
 
         // Bake into canvas_rgba once the wash settles (for save / layer thumbnail / interop). The
         // slot override keeps DISPLAYING the live wash; this just keeps the flat canvas in sync.
-        // Bake-on-settle: keep canvas_rgba in sync (save / thumbnail) without dropping the override.
-        let do_bake = !active && sess.idle_frames == ACTIVE_WINDOW as u32;
+        // Bake-on-settle (or on a restore): keep canvas_rgba in sync (save / thumbnail / undo) without
+        // dropping the override.
+        let do_bake = restored_now || (!active && sess.idle_frames == ACTIVE_WINDOW as u32);
         if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));

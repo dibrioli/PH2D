@@ -58,17 +58,23 @@ fn km_curve(ch: u32, k: u32) -> f32 { return km[KM_OFF_CURVES + ch * KM_N + k]; 
 fn km_absorb(p: u32, k: u32) -> f32 { return km[KM_OFF_ABSORB + p * KM_N + k]; }
 fn km_torgb(i: u32, k: u32) -> f32 { return km[KM_OFF_TORGB + i * KM_N + k]; }
 fn km_rgbabs(p: u32, ch: u32) -> f32 { return km[KM_OFF_RGBABS + p * 3u + ch]; }
+// Pigment masstone (linear RGB) recovered from its RGB absorbance: masstone = exp(−absorb).
+fn km_masstone(p: u32) -> vec3<f32> {
+    return exp(-vec3<f32>(km_rgbabs(p, 0u), km_rgbabs(p, 1u), km_rgbabs(p, 2u)));
+}
 
-// Non-spectral "Linear" glaze of 4 concentrations: RGB Beer–Lambert from the pigments' masstone
-// absorbances (metameric ⇒ blue+yellow→grey). Reads the SAME concentration field as K–M, so a model
-// flip is a pure re-render. Backdrop is LINEAR sRGB.
-fn linear_compose(backdrop_lin: vec3<f32>, conc: vec4<f32>) -> vec3<f32> {
-    var absorb = vec3<f32>(0.0);
+// Non-spectral "Linear" mix: an ADDITIVE average of the pigment masstones weighted by concentration
+// (like an OKLab/RGB lerp — Photoshop "Normal"), alpha-blended over the backdrop by coverage. This
+// is METAMERIC the way painters mean it: blue+yellow average to a dull grey/brown, NOT green — the
+// deliberate contrast to K–M's spectral green. Reads the SAME concentration field, so a model flip
+// is a pure re-render. `total` = Σ concentration, `cover` = saturated coverage ∈ [0,1].
+fn linear_compose(backdrop_lin: vec3<f32>, conc: vec4<f32>, total: f32, cover: f32) -> vec3<f32> {
+    var num = vec3<f32>(0.0);
     for (var p: u32 = 0u; p < 4u; p = p + 1u) {
-        let cp = conc[p];
-        absorb = absorb + cp * vec3<f32>(km_rgbabs(p, 0u), km_rgbabs(p, 1u), km_rgbabs(p, 2u));
+        num = num + conc[p] * km_masstone(p);
     }
-    return backdrop_lin * exp(-absorb);
+    let avg = num / max(total, 1.0e-6);
+    return mix(backdrop_lin, avg, cover);
 }
 
 // Spectral subtractive glaze of 4 pigment concentrations over a LINEAR-sRGB backdrop (mirror of
@@ -153,14 +159,16 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Smooth saturation of the concentration SUM (preserves the ratios = hue): proportional for thin
     // glazes, asymptotic toward the masstone for thick ones, no stepped core↔halo contour.
     let total = conc_raw.x + conc_raw.y + conc_raw.z + conc_raw.w;
-    let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX));
-    let conc = conc_raw * select(0.0, eff / total, total > 1.0e-6);
+    let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX)); // smooth coverage / saturated amount
     let back_lin = srgb_to_lin(back.xyz);
     var rgb: vec3<f32>;
     if (C.color_model == 1u) {
-        rgb = lin_to_srgb(km_compose(back_lin, conc));      // spectral K–M (vibrant: blue+yellow→green)
+        // Spectral K–M (vibrant subtractive: blue+yellow→GREEN). Saturate the concentrations.
+        let conc = conc_raw * select(0.0, eff / total, total > 1.0e-6);
+        rgb = lin_to_srgb(km_compose(back_lin, conc));
     } else {
-        rgb = lin_to_srgb(linear_compose(back_lin, conc));  // RGB Beer–Lambert (metameric: →grey)
+        // Additive masstone average (metameric: blue+yellow→dull GREY/BROWN).
+        rgb = lin_to_srgb(linear_compose(back_lin, conc_raw, total, eff));
     }
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));
 }

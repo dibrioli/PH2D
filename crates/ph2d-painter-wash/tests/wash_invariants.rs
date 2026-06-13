@@ -413,3 +413,47 @@ fn inv_km_composite_blue_plus_yellow_is_green() {
     assert!(g > r && g > b, "blue+yellow must composite to GREEN (g dominant), got ({r},{g},{b})");
     assert!(g > (r + b) / 2 + 20, "green must stand clear of grey ({r},{g},{b})");
 }
+
+// ── INV-10 — the two colour models must look DIFFERENT on the SAME concentration field: K–M is
+//    clearly greener (spectral) than the additive Linear average (metameric) for blue+yellow. ─────
+#[test]
+#[ignore = "needs a GPU device"]
+fn inv_km_visibly_greener_than_linear() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let n = (w * h) as usize;
+    let km = KmModel::new();
+    let cb = km.rgb_to_concentrations([0.05, 0.05, 0.85]);
+    let cy = km.rgb_to_concentrations([0.90, 0.80, 0.05]);
+    let mix = [cb[0] + cy[0], cb[1] + cy[1], cb[2] + cy[2], cb[3] + cy[3]];
+    let mut pig = vec![[0.0f32; 4]; n];
+    for dy in 0..14u32 {
+        for dx in 0..14u32 {
+            pig[idx(25 + dx, 25 + dy, w)] = mix;
+        }
+    }
+    let s = WashSolver::new(&gpu.device, w, h);
+    s.set_params(&gpu.queue, WashParams::default());
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &pig);
+    let backdrop = vec![0xffff_ffffu32; n];
+
+    // Same field, composited under each model (the live-toggle re-render).
+    let g_excess = |color_model: u32| -> i32 {
+        let mut comp = WashCompositor::new(&gpu.device);
+        comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, color_model, s.pig_buffer());
+        let mut enc = gpu.device.create_command_encoder(&Default::default());
+        comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
+        gpu.queue.submit([enc.finish()]);
+        let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
+        let c = out[idx(32, 32, w)];
+        let ch = |i: u32| ((c >> (8 * i)) & 0xff) as i32;
+        ch(1) - (ch(0) + ch(2)) / 2 // how much green stands out from grey
+    };
+    let lin = g_excess(0);
+    let km_g = g_excess(1);
+    eprintln!("green-excess: Linear={lin}  K–M={km_g}");
+    assert!(km_g > lin + 25, "K–M must read visibly greener than the additive Linear mix (lin={lin} km={km_g})");
+}

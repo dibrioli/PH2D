@@ -18,6 +18,11 @@
 //!
 //! `--features gpu` compiles the real solver; without it the crate is empty.
 
+/// Optional spectral Kubelka–Munk pigment-mixing colour model (ADR-0086 §8.1). Pure Rust, always
+/// compiled (the GPU composite mirrors it); the RGB Beer–Lambert path stays the default — K–M is a
+/// per-brush CHOICE, not a replacement.
+pub mod km;
+
 #[cfg(feature = "gpu")]
 mod composite;
 #[cfg(feature = "gpu")]

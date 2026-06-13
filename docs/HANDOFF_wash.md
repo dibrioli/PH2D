@@ -100,7 +100,15 @@ suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-
 (células isoladas eram diluídas pelo blur).
 
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
-1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
-2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).
+1. **DONE:** seção "Wash" enxuta na UI.
+2. **Cor subtrativa K–M — EM ANDAMENTO (como OPÇÃO, NÃO substitui o RGB).** Enio 2026-06-13: os dois
+   sistemas de cor coexistem, escolha por brush. Fases:
+   - **Fase 1 DONE:** núcleo `km.rs` (puro-Rust, espectral N=16, 4 pigmentos CMYK, unmix NNLS,
+     `compose_over`). Prova `blue+yellow→green` (não cinza), masstones, empilhamento escurece. 4 testes.
+   - **Fase 2 (TODO):** branch `color_model` no `cs_composite` (RGB Beer–Lambert atual | K–M); tabelas
+     espectrais (`pigment_absorbance`/`upsample_basis`/`to_rgb_matrix`) num storage buffer; dab encoda
+     concentrações via `rgb_to_concentrations` em modo K–M.
+   - **Fase 3 (TODO):** seletor `km_enabled` plumbed (RenderingParams→BrushParam→snapshot→lifecycle→
+     populate→sections), toggle "Pigment mixing (K–M)" na seção Wash. Default OFF (RGB).
 3. Franja capilar water-only (Curtis-faithful) — se faltar a borda suave além do traço.
 4. Perf residual: dobrar o wash no encoder do render principal (1 submit/frame).

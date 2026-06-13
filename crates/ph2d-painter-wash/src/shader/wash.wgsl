@@ -4,9 +4,19 @@
 //   gated diffusion (bloom) + FlowOutward −λ∇w (edge-darkening) + evaporation
 //
 // Conservative gather (face quantities symmetric in the cell pair ⇒ pigment mass
-// conserved). Stable by construction: D ≤ 0.25 (2-D heat CFL) and the advective face
-// speed is clamped to ±0.25 (upwind CFL). Deposition is IMPLICIT — a drying cell's
-// wet-gate closes, freezing its pigment in place.
+// conserved). Deposition is IMPLICIT — a drying cell's wet-gate closes, freezing its
+// pigment in place.
+//
+// POSITIVITY (fixes the keep-wet/evap-0 checkerboard): diffusion and advection share ONE
+// CFL budget. A 5-point cell can shed at most `4·(D + |v|)·pc` per substep (all 4 faces
+// outgoing); if that exceeds `pc` the cell goes NEGATIVE and the `max(·,0)` clamp snaps it
+// to zero (white) while a neighbour keeps the mass (red) — the dithered checkerboard. The
+// old code clamped D≤0.25 and |v|≤0.25 *independently* (4·0.25 + 4·0.25 = 2.0 ≫ 1). We cap
+// the SUM: `4·(D_MAX + V_MAX) = 4·(0.20 + 0.03) = 0.92 < 1` ⇒ no cell can go negative ⇒ no
+// checkerboard, in every regime, by construction.
+
+const D_MAX: f32 = 0.20; // diffusion budget (≤ 0.25 heat CFL; leaves headroom for advection)
+const V_MAX: f32 = 0.03; // advective face-speed budget (the rest of the CFL budget)
 
 struct Params {
     width: u32,
@@ -50,11 +60,12 @@ fn gate(w: f32, pap: f32) -> f32 {
 // (when v is unclamped; the clamp only triggers at extreme λ and is mass-safe via max(0)).
 fn face(gc: f32, wc: f32, pc: vec4<f32>, gn: f32, wn: f32, pn: vec4<f32>) -> vec4<f32> {
     let gf = min(gc, gn);
-    let diff = gf * (pn - pc);
-    let v = clamp(P.flow_outward * (wc - wn), -0.25, 0.25);
+    let d = min(P.diffusivity, D_MAX);
+    let diff = d * gf * (pn - pc);
+    let v = clamp(P.flow_outward * (wc - wn), -V_MAX, V_MAX);
     let up = select(pn, pc, wc > wn);
     let flux = gf * v * up;
-    return P.diffusivity * diff - flux;
+    return diff - flux;
 }
 
 @compute @workgroup_size(8, 8, 1)

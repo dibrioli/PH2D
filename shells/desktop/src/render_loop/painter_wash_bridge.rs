@@ -98,10 +98,19 @@ fn union(a: (u32, u32, u32, u32), b: (u32, u32, u32, u32)) -> (u32, u32, u32, u3
 }
 
 fn wash_params_from(dp: &ph2d_painter_brush::diffusion::DiffusionParams) -> WashParams {
+    let evap = dp.evaporation.max(0.0);
+    // FlowOutward (edge-darkening) is a DRYING phenomenon — pigment strands on the paper as the
+    // water LEAVES, marking the receding rim. With no drying (Keep Wet, or the Evaporation slider
+    // at 0) there is no receding front, so lateral pumping is unphysical: left on, it bleeds the
+    // whole interior out to the rim FOREVER → a hollow/white centre + a pixelated over-concentrated
+    // edge (the v2 bug). Ramp edge-darkening in with the drying rate: ~0 at keep-wet's trace evap,
+    // full at the default drying rate. Keep-wet/evap-0 ⇒ a flat, stable stain (diffusion only, and
+    // since water never spreads here, it stays inside the stroke footprint — no growing puddle).
+    let dry_drive = (((evap - 0.004) / (0.012 - 0.004)).clamp(0.0, 1.0)).powi(2);
     WashParams {
-        diffusivity: dp.diffusivity.clamp(0.0, 0.25),
-        flow_outward: dp.flow_outward.max(0.0),
-        evaporation: dp.evaporation.max(0.0),
+        diffusivity: dp.diffusivity.clamp(0.0, 0.20),
+        flow_outward: dp.flow_outward.max(0.0) * dry_drive,
+        evaporation: evap,
         w_lo: dp.w_lo,
         w_hi: dp.w_hi,
         perm_valley: dp.perm_valley,

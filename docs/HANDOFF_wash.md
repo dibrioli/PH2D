@@ -26,6 +26,26 @@ mais massa que o interior, então ainda lê mais escura, só limitada na cor do 
 **Gate:** `inv_overlap_saturates_to_pigment_not_black` (50× overlap → masstone (218,89,89), não preto).
 Casa com K–M/Mixbox futuro (a saturação é parte do modelo) — quando entrar, é troca do mesmo kernel.
 
+### B2 — borda pixelada + partículas em keep-wet/evap-0 — **RESOLVIDO (2026-06-13)**
+**Sintoma:** em Keep Wet ou Evaporation 0, o interior dos traços muito pintados dithera num xadrez
+(buracos brancos entre células vermelhas) e o centro esvazia deixando um anel — o mesmo bug que
+matou o v2.
+**Causas (duas):**
+1. **CFL combinada.** O kernel clampava difusão (`D≤0.25`) e advecção (`v≤0.25`) **isoladamente**,
+   mas elas somam: `4·(0.2 + 0.25) ≫ 1` de outflux → célula fica negativa → `max(p_new,0)` corta
+   pra zero (branco) e o vizinho fica com a massa (vermelho) = xadrez.
+2. **FlowOutward eterno em keep-wet.** Edge-darkening é fenômeno de **secagem** (pigmento encalha na
+   borda que recua). Dirigido só pelo gradiente de água, em keep-wet/evap-0 bombeia o interior pra
+   borda pra sempre → centro oco + borda super-concentrada.
+**Fix:**
+1. **Gather positivo por construção** (`wash.wgsl`): difusão e advecção dividem **um** orçamento de
+   CFL — `D_MAX=0.20`, `V_MAX=0.03`, `4·(D_MAX+V_MAX)=0.92 < 1` → nenhuma célula vai a negativo →
+   sem xadrez, em qualquer regime. Gate `inv_no_checkerboard_under_extreme_flow` (0 buracos sob
+   D=0.25/flow=5/400 substeps).
+2. **FlowOutward acoplado à secagem** (`wash_params_from`): `flow *= ((evap-0.004)/(0.012-0.004))²`
+   → ~0 em keep-wet/evap-0 (mancha chapada estável; água não difunde → não cresce além do footprint),
+   sobe até cheio na taxa de secagem default. Edge-darkening preservado pro caso seco (ratio 5.4×).
+
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
 2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).

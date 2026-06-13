@@ -298,3 +298,65 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     assert!(cr > cg + 40 && cr > cb + 40, "masstone must keep its hue (R={cr} G={cg} B={cb})");
     assert_eq!(chan(centre, 3), 255, "preview is opaque");
 }
+
+// ── INV-8 — positivity / NO checkerboard (keep-wet/evap-0 regression): a heavy dab at a water
+//    peak with extreme diffusion+advection must NOT decouple into the odd-even dither. The old
+//    kernel clamped D and v independently (combined outflux > 1) ⇒ cells went negative ⇒ the
+//    max(·,0) clamp snapped them to white holes between red cells. The shared CFL budget forbids it.
+#[test]
+#[ignore = "needs a GPU device"]
+fn inv_no_checkerboard_under_extreme_flow() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (48u32, 48u32);
+    let (cx, cy) = (w as f32 / 2.0, h as f32 / 2.0);
+    let radius = 16.0f32;
+    let n = (w * h) as usize;
+    // A realistic dab: radial water bump (drives FlowOutward forever, the keep-wet case) with a
+    // uniform pigment disk. EXTREME params: max diffusion AND max advection at the same cells —
+    // the exact worst case for combined-CFL overshoot.
+    let mut water = vec![0.0f32; n];
+    let paper = vec![0.5f32; n];
+    let mut pig = vec![[0.0f32; 4]; n];
+    for y in 0..h {
+        for x in 0..w {
+            let r = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+            if r < radius {
+                water[idx(x, y, w)] = 0.2 + 0.8 * (1.0 - r / radius);
+                pig[idx(x, y, w)] = [0.20, 0.10, 0.05, 1.0];
+            }
+        }
+    }
+    let s = WashSolver::new(&gpu.device, w, h);
+    // Pathological: diffusivity ABOVE the cap + huge flow_outward, no evaporation (keep-wet).
+    s.set_params(&gpu.queue, WashParams { diffusivity: 0.25, flow_outward: 5.0, evaporation: 0.0, ..Default::default() });
+    s.upload(&gpu.queue, &water, &paper, &pig);
+    s.step(&gpu.device, &gpu.queue, 400);
+    let out = s.read_pigment(&gpu.device, &gpu.queue);
+
+    let m = |x: u32, y: u32| f64::from(out[idx(x, y, w)][3]);
+    // Checkerboard signature: an interior wet cell that collapsed to ~0 while its 4 neighbours
+    // hold pigment (a white hole between red cells). A positive scheme produces NONE.
+    let mut holes = 0;
+    let mut finite = true;
+    for y in 2..h - 2 {
+        for x in 2..w - 2 {
+            let r = ((x as f32 - cx).powi(2) + (y as f32 - cy).powi(2)).sqrt();
+            if r >= radius - 2.0 {
+                continue; // interior only
+            }
+            for v in &out[idx(x, y, w)] {
+                finite &= v.is_finite();
+            }
+            let nb = (m(x - 1, y) + m(x + 1, y) + m(x, y - 1) + m(x, y + 1)) / 4.0;
+            if nb > 0.02 && m(x, y) < 0.15 * nb {
+                holes += 1;
+            }
+        }
+    }
+    eprintln!("checkerboard: {holes} interior holes (want 0), finite={finite}");
+    assert!(finite, "field must stay finite");
+    assert_eq!(holes, 0, "positive scheme must not punch white holes (checkerboard) — found {holes}");
+}

@@ -66,6 +66,22 @@ struct WashSession {
 }
 
 impl WashSession {
+    /// Build a fresh session — this is where the compute pipelines COMPILE (the click-path stall
+    /// the pre-warm moves to hover) + the buffers allocate.
+    fn new(device: &wgpu::Device, dims: (u32, u32)) -> Self {
+        Self {
+            solver: WashSolver::new(device, dims.0, dims.1),
+            compositor: WashCompositor::new(device),
+            dims,
+            epoch: u64::MAX,
+            slot: None,
+            seeded: false,
+            active_history: VecDeque::new(),
+            frame: 0,
+            idle_frames: 0,
+            finalized: false,
+        }
+    }
     fn release_slot(&mut self, renderer: &mut SpriteRenderer) {
         if let Some((id, _, _)) = self.slot.take() {
             renderer.individual_mut().release(id);
@@ -116,8 +132,27 @@ pub(crate) fn drive_wash_gpu(
     }
     let capable = !matches!(gpu.adapter.get_info().device_type, wgpu::DeviceType::Cpu);
     painter.set_fluid_hires(capable);
-    if !capable || !painter.has_wet_field() {
+    if !capable {
         drop_session(renderer);
+        return None;
+    }
+    // ── PRE-WARM ── wash brush selected but no live field yet (hovering / between strokes): build
+    // the session NOW so the compute pipelines COMPILE off the click path (the first-stroke stutter
+    // the profile showed as a dropped sim frame). Hires ⇒ scale 1 ⇒ field dims = source size.
+    if !painter.has_wet_field() {
+        let (cw, ch) = painter.source_size();
+        if cw > 0 && ch > 0 {
+            let dims = (cw, ch);
+            WASH_SESSION.with(|c| {
+                let mut b = c.borrow_mut();
+                if b.as_ref().map(|s| s.dims) != Some(dims) {
+                    if let Some(old) = b.as_mut() {
+                        old.release_slot(renderer);
+                    }
+                    *b = Some(WashSession::new(&gpu.device, dims));
+                }
+            });
+        }
         return None;
     }
     let active = painter.is_stroke_active();
@@ -156,18 +191,7 @@ pub(crate) fn drive_wash_gpu(
             if let Some(old) = slot_cell.as_mut() {
                 old.release_slot(renderer);
             }
-            *slot_cell = Some(WashSession {
-                solver: WashSolver::new(&gpu.device, dims.0, dims.1),
-                compositor: WashCompositor::new(&gpu.device),
-                dims,
-                epoch: u64::MAX,
-                slot: None,
-                seeded: false,
-                active_history: VecDeque::new(),
-                frame: 0,
-                idle_frames: 0,
-                finalized: false,
-            });
+            *slot_cell = Some(WashSession::new(&gpu.device, dims));
         }
         let sess = slot_cell.as_mut()?;
 

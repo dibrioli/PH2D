@@ -25,14 +25,15 @@ struct CParams {
 }
 
 /// Packed K–M spectral tables for the composite (mirrors [`crate::km::KmModel`]): the layout the WGSL
-/// `km_*` accessors index — `[curves 3·N][absorb PIGMENTS·N][to_rgb 3·N]`.
+/// `km_*` accessors index — `[curves 3·N][absorb PIGMENTS·N][to_rgb 3·N][rgb_absorb PIGMENTS·3]`.
 fn pack_km() -> Vec<f32> {
     use crate::km::{KmModel, N, PIGMENTS};
     let km = KmModel::new();
     let curves = km.upsample_basis();
     let absorb = km.pigment_absorbance();
     let to_rgb = km.to_rgb_matrix();
-    let mut v = Vec::with_capacity(3 * N + PIGMENTS * N + 3 * N);
+    let rgb_absorb = km.pigment_rgb_absorbance();
+    let mut v = Vec::with_capacity(3 * N + PIGMENTS * N + 3 * N + PIGMENTS * 3);
     for row in curves {
         v.extend_from_slice(row);
     }
@@ -40,6 +41,9 @@ fn pack_km() -> Vec<f32> {
         v.extend_from_slice(row);
     }
     for row in &to_rgb {
+        v.extend_from_slice(row);
+    }
+    for row in &rgb_absorb {
         v.extend_from_slice(row);
     }
     v
@@ -245,6 +249,14 @@ impl WashCompositor {
         pass.set_pipeline(&self.pipe);
         pass.set_bind_group(0, &s.bg, &[]);
         pass.dispatch_workgroups(groups(rw), groups(rh), 1);
+    }
+
+    /// Flip the colour model on the LIVE stroke without re-seeding — the field is encoding-agnostic
+    /// (always pigment concentrations), so a model change is a pure re-render (live transform).
+    pub fn set_color_model(&mut self, color_model: u32) {
+        if let Some(s) = self.stroke.as_mut() {
+            s.color_model = color_model;
+        }
     }
 
     /// The preview texture the sprite renderer samples (premultiplied `Rgba8Unorm`, canvas-res).

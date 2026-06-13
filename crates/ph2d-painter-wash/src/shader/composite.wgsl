@@ -50,12 +50,26 @@ struct Comp {
 @group(0) @binding(4) var<storage, read> km: array<f32>;
 
 const KM_N: u32 = 16u;
-const KM_OFF_CURVES: u32 = 0u;   // 3·N
-const KM_OFF_ABSORB: u32 = 48u;  // PIGMENTS(4)·N
-const KM_OFF_TORGB: u32 = 112u;  // 3·N  (total 160)
+const KM_OFF_CURVES: u32 = 0u;    // 3·N
+const KM_OFF_ABSORB: u32 = 48u;   // PIGMENTS(4)·N
+const KM_OFF_TORGB: u32 = 112u;   // 3·N  (cumulative 160)
+const KM_OFF_RGBABS: u32 = 160u;  // PIGMENTS(4)·3 — per-pigment RGB absorbance (Linear mode)
 fn km_curve(ch: u32, k: u32) -> f32 { return km[KM_OFF_CURVES + ch * KM_N + k]; }
 fn km_absorb(p: u32, k: u32) -> f32 { return km[KM_OFF_ABSORB + p * KM_N + k]; }
 fn km_torgb(i: u32, k: u32) -> f32 { return km[KM_OFF_TORGB + i * KM_N + k]; }
+fn km_rgbabs(p: u32, ch: u32) -> f32 { return km[KM_OFF_RGBABS + p * 3u + ch]; }
+
+// Non-spectral "Linear" glaze of 4 concentrations: RGB Beer–Lambert from the pigments' masstone
+// absorbances (metameric ⇒ blue+yellow→grey). Reads the SAME concentration field as K–M, so a model
+// flip is a pure re-render. Backdrop is LINEAR sRGB.
+fn linear_compose(backdrop_lin: vec3<f32>, conc: vec4<f32>) -> vec3<f32> {
+    var absorb = vec3<f32>(0.0);
+    for (var p: u32 = 0u; p < 4u; p = p + 1u) {
+        let cp = conc[p];
+        absorb = absorb + cp * vec3<f32>(km_rgbabs(p, 0u), km_rgbabs(p, 1u), km_rgbabs(p, 2u));
+    }
+    return backdrop_lin * exp(-absorb);
+}
 
 // Spectral subtractive glaze of 4 pigment concentrations over a LINEAR-sRGB backdrop (mirror of
 // km.rs `compose_over`): upsample backdrop → ×exp(−Σ cᵢ apᵢ) per λ → integrate back to linear RGB.
@@ -133,25 +147,20 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let back = unpack(backdrop[pix]);
     let fx = clamp((f32(cx) + 0.5) * C.inv - 0.5, 0.0, f32(C.gw) - 1.0);
     let fy = clamp((f32(cy) + 0.5) * C.inv - 0.5, 0.0, f32(C.gh) - 1.0);
-    let praw = sample_pig(fx, fy);
+    // The field ALWAYS carries 4 pigment concentrations (encoding-agnostic). Both colour models read
+    // it; flipping the model is a pure re-render (the persistent-pigment "live transform").
+    let conc_raw = max(sample_pig(fx, fy), vec4<f32>(0.0));
+    // Smooth saturation of the concentration SUM (preserves the ratios = hue): proportional for thin
+    // glazes, asymptotic toward the masstone for thick ones, no stepped core↔halo contour.
+    let total = conc_raw.x + conc_raw.y + conc_raw.z + conc_raw.w;
+    let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX));
+    let conc = conc_raw * select(0.0, eff / total, total > 1.0e-6);
+    let back_lin = srgb_to_lin(back.xyz);
     var rgb: vec3<f32>;
     if (C.color_model == 1u) {
-        // ── Spectral Kubelka–Munk (optional): praw = 4 pigment concentrations. Saturate the SUM
-        //    (smooth, preserving the concentration RATIOS = hue), then glaze spectrally. ──
-        let conc_raw = max(praw, vec4<f32>(0.0));
-        let total = conc_raw.x + conc_raw.y + conc_raw.z + conc_raw.w;
-        let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX));
-        let scale = select(0.0, eff / total, total > 1.0e-6);
-        rgb = lin_to_srgb(km_compose(srgb_to_lin(back.xyz), conc_raw * scale));
+        rgb = lin_to_srgb(km_compose(back_lin, conc));      // spectral K–M (vibrant: blue+yellow→green)
     } else {
-        // ── RGB Beer–Lambert (default): praw = (absorb.rgb, mass). ──
-        let absorb_raw = max(praw.xyz, vec3<f32>(0.0));
-        let mass = max(praw.w, 0.0);
-        // Smooth saturation of the effective mass (preserves hue = absorb/mass): proportional for
-        // thin glazes, asymptotic toward the masstone for thick ones, no stepped core↔halo contour.
-        let eff = MASS_MAX * (1.0 - exp(-mass / MASS_MAX));
-        let scale = select(0.0, eff / mass, mass > 1.0e-6);
-        rgb = lin_to_srgb(srgb_to_lin(back.xyz) * exp(-absorb_raw * scale));
+        rgb = lin_to_srgb(linear_compose(back_lin, conc));  // RGB Beer–Lambert (metameric: →grey)
     }
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));
 }

@@ -114,5 +114,18 @@ suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-
      **"Pigment"** já existente (sections.rs:242, sempre visível ao lado de "Wash") faz
      Linear↔Subtractive. `PainterTool::wash_subtractive()` mapeia Subtractive→K–M. Sem campo em
      RenderingParams (cap 14 intacto), sem id novo. Default Linear (RGB).
+   - **Fase 4 DONE — canvas de pigmento PERSISTENTE + transformação ao vivo** (Enio 2026-06-13):
+     o campo agora é SEMPRE concentrações (os dois modos leem o mesmo campo; `linear_compose` faz o
+     look RGB metamérico, `km_compose` o espectral). Trocar "Pigment" = `set_color_model` + re-compõe
+     o canvas inteiro → **cinza↔verde ao vivo, sem repintar** (não limpa, não re-encoda). O bridge
+     virou: sessão persistente enquanto o brush wash está ativo, base backdrop capturado 1×, campo
+     acumula entre traços, re-compõe só quando há dabs/troca/assentamento (ocioso devolve o slot em
+     cache ≈ custo zero), bake-on-settle pro `canvas_rgba` (save/thumb). `Dab::from_color_mass`
+     aposentado do bridge (só `from_concentrations`).
+     **Limitações adiadas (precisam de integração de layer / ADR):** o campo de pigmento não é salvo
+     em disco (só o `canvas_rgba` assado); edições de OUTRAS ferramentas durante a sessão wash são
+     sobrescritas pelo composite (base fixa); reset do campo só em troca de dims (clear-canvas deixa
+     fantasma); 4K = full-recompose no toggle pode custar. Tudo isso = "wash como layer de pigmento
+     de verdade", um passo futuro.
 3. Franja capilar water-only (Curtis-faithful) — se faltar a borda suave além do traço.
 4. Perf residual: dobrar o wash no encoder do render principal (1 submit/frame).

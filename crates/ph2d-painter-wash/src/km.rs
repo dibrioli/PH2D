@@ -123,6 +123,21 @@ impl KmModel {
     pub fn pigment_absorbance(&self) -> &[[f32; N]; PIGMENTS] {
         &self.absorb
     }
+    /// Per-pigment **RGB** absorbance `−ln(masstoneᵢ)` (3 channels), for the non-spectral "Linear"
+    /// composite that reads the SAME concentration field as K–M (so a model flip is a pure
+    /// re-render — no re-encode). Mixing here is metameric (blue+yellow→grey), which is exactly the
+    /// "RGB look" the Linear mode is meant to show next to K–M's vibrant green.
+    #[must_use]
+    pub fn pigment_rgb_absorbance(&self) -> [[f32; 3]; PIGMENTS] {
+        let mut out = [[0.0_f32; 3]; PIGMENTS];
+        for p in 0..PIGMENTS {
+            for ch in 0..3 {
+                out[p][ch] = -PIGMENT_MASSTONE[p][ch].clamp(EPS, 1.0).ln();
+            }
+        }
+        out
+    }
+
     /// The spectrum→linear-RGB operator `G⁻¹·C`, returned as `[3][N]` (rgb = M·spectrum).
     #[must_use]
     pub fn to_rgb_matrix(&self) -> [[f32; N]; 3] {

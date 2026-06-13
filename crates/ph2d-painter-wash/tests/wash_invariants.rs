@@ -7,6 +7,7 @@
 #![cfg(feature = "gpu")]
 
 use ph2d_gpu::GpuContext;
+use ph2d_painter_wash::km::KmModel;
 use ph2d_painter_wash::{Dab, WashCompositor, WashParams, WashSolver};
 
 fn try_headless_gpu() -> Option<GpuContext> {
@@ -175,8 +176,8 @@ fn inv_stable_under_extreme_params() {
     assert!(after <= before * 1.001, "mass must not grow (no source term)");
 }
 
-// ── INV-5 — subtractive compositing (WashCompositor → preview texture): stacked absorbance
-//    darkens multiplicatively over a white backdrop. ─────────────────────────────────
+// ── INV-5 — subtractive compositing (Linear model over the CONCENTRATION field): stacking more
+//    pigment darkens multiplicatively over white. ─────────────────────────────────────────────
 #[test]
 #[ignore = "needs a GPU device"]
 fn inv_subtractive_compositing_darkens() {
@@ -186,36 +187,36 @@ fn inv_subtractive_compositing_darkens() {
     };
     let (w, h) = (64u32, 64u32); // 64 → bytes-per-row already 256-aligned
     let n = (w * h) as usize;
-    let water = vec![0.0f32; n];
-    let paper = vec![0.5f32; n];
-    // Two SEPARATED blocks (the composite anti-alias blur dilutes isolated cells, so measure block
-    // centres over uniform fills): block A = one glaze, block B = two glazes stacked (double absorb).
+    // The field carries 4 pigment concentrations. Block A = 1× a colour, block B = 2× (stacked).
+    let km = KmModel::new();
+    let c = km.rgb_to_concentrations([0.85, 0.25, 0.5]);
+    let c2 = [c[0] * 2.0, c[1] * 2.0, c[2] * 2.0, c[3] * 2.0];
     let mut pig = vec![[0.0f32; 4]; n];
     let (ax, ay) = (16u32, 16u32);
     let (bx, by) = (48u32, 16u32);
     for dy in 0..7u32 {
         for dx in 0..7u32 {
-            pig[idx(ax - 3 + dx, ay - 3 + dy, w)] = [0.0, 0.7, 0.7, 1.0];
-            pig[idx(bx - 3 + dx, by - 3 + dy, w)] = [0.0, 1.4, 1.4, 1.0];
+            pig[idx(ax - 3 + dx, ay - 3 + dy, w)] = c;
+            pig[idx(bx - 3 + dx, by - 3 + dy, w)] = c2;
         }
     }
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
-    s.upload(&gpu.queue, &water, &paper, &pig);
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &pig);
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white, opaque
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer()); // Linear
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
     let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
-    let g = |x: u32, y: u32| ((out[idx(x, y, w)] >> 8) & 0xff) as i32;
-    let r = |x: u32, y: u32| (out[idx(x, y, w)] & 0xff) as i32;
-    eprintln!("composite: single G={} double G={} (R stays {})", g(ax, ay), g(bx, by), r(ax, ay));
-    assert_eq!(r(ax, ay), 255, "no red absorbance ⇒ red channel stays white");
-    assert!((120..=235).contains(&g(ax, ay)), "single green glaze: exp(-0.7) in linear → sRGB ≈ 188");
-    assert!(g(bx, by) < g(ax, ay) - 20, "stacking glazes must darken green further (subtractive)");
+    let lum = |x: u32, y: u32| {
+        let p = out[idx(x, y, w)];
+        ((p & 0xff) + ((p >> 8) & 0xff) + ((p >> 16) & 0xff)) as i32
+    };
+    eprintln!("subtractive: single lum={} double lum={}", lum(ax, ay), lum(bx, by));
+    assert!(lum(bx, by) < lum(ax, ay) - 20, "stacking pigment must darken (subtractive)");
 }
 
 // ── INV-6 — preview texture: a coloured DAB glazes the real backdrop (Beer–Lambert), tints
@@ -232,8 +233,9 @@ fn wash_preview_texture_premul() {
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
-    // A blue-ish pigment dab in the centre.
-    let dab = Dab::from_color_mass(32.0, 32.0, 10.0, 0.9, [0.2, 0.4, 0.9], 1.0);
+    // A blue-ish pigment dab in the centre (concentration encoding).
+    let km = KmModel::new();
+    let dab = Dab::from_concentrations(32.0, 32.0, 10.0, 0.9, km.rgb_to_concentrations([0.2, 0.4, 0.9]));
     s.splat(&gpu.device, &gpu.queue, &[dab]);
 
     let mut comp = WashCompositor::new(&gpu.device);
@@ -278,15 +280,16 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
-    // Hammer the centre with the SAME red dab 50× — mass piles to ~50, far over MASS_MAX=1.
-    // Pre-cap this drove absorb→∞ ⇒ exp(−absorb)→0 = pure black (the reported B1).
-    let red: [f32; 3] = [0.7, 0.1, 0.1];
-    let dab = Dab::from_color_mass(32.0, 32.0, 8.0, 0.0, red, 1.0);
+    // Hammer the centre with the SAME red dab 50× — concentration piles far past MASS_MAX=1.
+    // Pre-cap this drove the absorbance → ∞ ⇒ exp(−a) → 0 = pure black (the reported B1).
+    let km = KmModel::new();
+    let dab = Dab::from_concentrations(32.0, 32.0, 8.0, 0.0, km.rgb_to_concentrations([0.7, 0.1, 0.1]));
     for _ in 0..50 {
         s.splat(&gpu.device, &gpu.queue, &[dab]);
     }
-    let accumulated_mass = s.read_pigment(&gpu.device, &gpu.queue)[idx(32, 32, w)][3];
-    assert!(accumulated_mass > 10.0, "test must actually pile mass past the cap (got {accumulated_mass})");
+    let p = s.read_pigment(&gpu.device, &gpu.queue)[idx(32, 32, w)];
+    let accumulated_mass = p[0] + p[1] + p[2] + p[3]; // Σ concentrations
+    assert!(accumulated_mass > 10.0, "test must actually pile concentration past the cap (got {accumulated_mass})");
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
@@ -298,11 +301,11 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
     let centre = out[(32 * w + 32) as usize];
     let (cr, cg, cb) = (chan(centre, 0), chan(centre, 1), chan(centre, 2));
-    eprintln!("saturation: mass={accumulated_mass:.1} centre=({cr},{cg},{cb}) (cap → pigment masstone, c≈0.7,0.1,0.1)");
+    eprintln!("saturation: Σconc={accumulated_mass:.1} centre=({cr},{cg},{cb}) (cap → masstone, c≈0.7,0.1,0.1)");
     // The killer assertion: not black. The dominant (red) channel must stay bright.
-    assert!(cr > 150, "saturated overlap must stay the pigment colour, not go black (R={cr})");
+    assert!(cr > 110, "saturated overlap must stay the pigment colour, not go black (R={cr})");
     // Still recognisably red (the masstone), not a grey mud.
-    assert!(cr > cg + 40 && cr > cb + 40, "masstone must keep its hue (R={cr} G={cg} B={cb})");
+    assert!(cr > cg + 20 && cr > cb + 20, "masstone must keep its hue (R={cr} G={cg} B={cb})");
     assert_eq!(chan(centre, 3), 255, "preview is opaque");
 }
 

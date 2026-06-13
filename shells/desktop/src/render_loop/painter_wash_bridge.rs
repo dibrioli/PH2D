@@ -60,15 +60,21 @@ struct WashSession {
     solver: WashSolver,
     compositor: WashCompositor,
     dims: (u32, u32),
-    epoch: u64,
-    /// Active colour model (0=RGB Beer–Lambert, 1=K–M). A change re-seeds (the field encoding differs).
+    /// Active colour model (0=RGB Beer–Lambert, 1=K–M). A change re-renders (the field is always
+    /// pigment concentrations, so it's a pure composite switch — the live transform).
     color_model: u32,
-    /// Spectral K–M model — drives the dab concentration encoding in subtractive mode.
+    /// Spectral K–M model — drives the dab concentration encoding (both modes encode concentrations).
     km: ph2d_painter_wash::km::KmModel,
     slot: Option<(u32, u32, u32)>,
+    /// Base backdrop captured + `begin_stroke` done — the PERSISTENT pigment field composites over a
+    /// single fixed base (the canvas before any wash), accumulating across strokes.
+    initialized: bool,
+    /// Any pigment has been deposited (the field is worth showing / re-rendering on a model flip).
+    has_pigment: bool,
     seeded: bool,
+    /// Frames since the last dab — the field keeps settling (bloom/edge recession) for a short
+    /// window, then stops costing GPU (the cached slot keeps displaying the persistent wash).
     idle_frames: u32,
-    finalized: bool,
 }
 
 impl WashSession {
@@ -79,13 +85,13 @@ impl WashSession {
             solver: WashSolver::new(device, dims.0, dims.1),
             compositor: WashCompositor::new(device),
             dims,
-            epoch: u64::MAX,
-            color_model: u32::MAX, // forces the first begin_stroke
+            color_model: 0,
             km: ph2d_painter_wash::km::KmModel::new(),
             slot: None,
+            initialized: false,
+            has_pigment: false,
             seeded: false,
             idle_frames: 0,
-            finalized: false,
         }
     }
     fn release_slot(&mut self, renderer: &mut SpriteRenderer) {
@@ -147,60 +153,37 @@ pub(crate) fn drive_wash_gpu(
         drop_session(renderer);
         return None;
     }
-    // ── PRE-WARM ── wash brush selected but no live field yet (hovering / between strokes): build
-    // the session NOW so the compute pipelines COMPILE off the click path (the first-stroke stutter
-    // the profile showed as a dropped sim frame). Hires ⇒ scale 1 ⇒ field dims = source size.
-    if !painter.has_wet_field() {
-        // Generate the paper-tooth field NOW (hovering) so the first begin_stroke doesn't pay the
-        // O(grid) `grain_noise` on the click path (the ~0.5 s first-stroke delay).
+    // ── PRE-WARM ── generate the paper-tooth field while hovering (off the click path) so the first
+    // stroke doesn't pay the O(grid) `grain_noise` (~0.5 s first-stroke delay). Cheap if cached.
+    let has_field = painter.has_wet_field();
+    if !has_field {
         painter.fluid_prewarm_paper();
-        let (cw, ch) = painter.source_size();
-        if cw > 0 && ch > 0 {
-            let dims = (cw, ch);
-            WASH_SESSION.with(|c| {
-                let mut b = c.borrow_mut();
-                if b.as_ref().map(|s| s.dims) != Some(dims) {
-                    if let Some(old) = b.as_mut() {
-                        old.release_slot(renderer);
-                    }
-                    *b = Some(WashSession::new(&gpu.device, dims));
-                }
-            });
-        }
-        return None;
     }
-    let active = painter.is_stroke_active();
-    if !active && WASH_SESSION.with(|c| c.borrow().as_ref().is_some_and(|s| s.finalized)) {
-        return None; // settled + baked ⇒ zero idle cost until the next stroke
-    }
-
-    let dims = painter.fluid_grid_dims()?;
     let (cw, ch) = painter.source_size();
     if cw == 0 || ch == 0 {
         return None;
     }
-    let epoch = painter.fluid_stroke_epoch();
-    let scale = painter.fluid_field_scale().max(1);
-    let coverage_k = painter.fluid_coverage_k();
-    let substeps = if active {
-        painter.fluid_painting_substeps()
-    } else {
-        painter.fluid_idle_substeps()
-    };
-    let wp = wash_params_from(&painter.fluid_diffusion_params());
-    // Colour model: 0 = RGB Beer–Lambert (default), 1 = spectral K–M ("Pigment" toggle). A change
-    // re-seeds (the field encoding differs between the two).
+    let dims = (cw, ch); // hires (scale 1) ⇒ grid == canvas
+    let scale = 1u32;
+    let active = painter.is_stroke_active();
+    // Colour model: 0 = RGB Beer–Lambert, 1 = spectral K–M ("Pigment" toggle). The PERSISTENT
+    // pigment field is encoding-agnostic (always concentrations), so a flip is a pure re-render.
     let color_model = u32::from(painter.wash_subtractive());
-    // **Backdrop ONLY on stroke start** (epoch/dims/model change) — building this full-canvas Vec
-    // every frame was a per-frame CPU stall.
-    let need_backdrop = WASH_SESSION
-        .with(|c| c.borrow().as_ref().map(|s| (s.dims, s.epoch, s.color_model)) != Some((dims, epoch, color_model)));
-    let backdrop: Option<Vec<u32>> = if need_backdrop {
-        Some(painter.fluid_backdrop()?.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect())
+    let coverage_k = painter.fluid_coverage_k();
+    let substeps = if active { painter.fluid_painting_substeps() } else { painter.fluid_idle_substeps() };
+    let wp = wash_params_from(&painter.fluid_diffusion_params());
+    // Base backdrop (the canvas BEFORE any wash pigment) is captured ONCE; the persistent field
+    // composites over it forever. Fetch lazily — only while a session still needs to initialise.
+    let need_init = WASH_SESSION.with(|c| c.borrow().as_ref().map(|s| s.initialized && s.dims == dims) != Some(true));
+    let backdrop: Option<Vec<u32>> = if need_init {
+        painter
+            .fluid_backdrop()
+            .map(|b| b.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect())
     } else {
         None
     };
-    let (dabs, envelope) = painter.fluid_take_dabs()?;
+    // Dabs only when a live field is producing them (None when hovering / settled).
+    let dabs_envelope = if has_field { painter.fluid_take_dabs() } else { None };
     let profile = PROFILE.with(|p| p.borrow_mut().enabled());
     let t0 = profile.then(Instant::now);
 
@@ -214,91 +197,85 @@ pub(crate) fn drive_wash_gpu(
         }
         let sess = slot_cell.as_mut()?;
 
-        if sess.epoch != epoch || sess.color_model != color_model {
-            // A pure colour-MODEL flip (same stroke/epoch) must PRESERVE what's already painted: the
-            // field encoding differs between RGB and K–M, so we can't reinterpret it in place — but
-            // we can bake the CURRENT composite into the new backdrop, then clear + switch encoding.
-            // Old strokes keep their old-model colours (a live re-render would need a persistent
-            // pigment canvas); new paint uses the new model over them. Without this the clear erases
-            // the unbaked work.
-            let model_flip = sess.epoch == epoch && sess.seeded;
-            let baked = if model_flip { sess.compositor.read_preview(&gpu.device, &gpu.queue) } else { None };
-            let bd: &[u32] = match baked.as_deref() {
-                Some(b) if b.len() as u32 == cw * ch => b,
-                _ => backdrop.as_deref()?, // fresh stroke (epoch change) ⇒ the pre-stroke snapshot
-            };
-            sess.solver.clear(&gpu.device, &gpu.queue);
+        // Initialise the persistent base backdrop + begin_stroke ONCE (needs a backdrop = 1st stroke).
+        if !sess.initialized {
+            let bd = backdrop.as_deref()?; // no backdrop yet (pure hover) ⇒ wait for the first stroke
             sess.compositor.begin_stroke(
                 &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, bd, coverage_k, color_model,
                 sess.solver.pig_buffer(),
             );
-            sess.epoch = epoch;
             sess.color_model = color_model;
+            sess.initialized = true;
             sess.seeded = false;
-            sess.idle_frames = 0;
-            sess.finalized = false;
         }
-        if active {
-            sess.idle_frames = 0;
-            sess.finalized = false;
+
+        // Colour-model flip ⇒ live re-render of the WHOLE persistent field (no clear, no re-encode).
+        let model_flipped = sess.color_model != color_model;
+        if model_flipped {
+            sess.compositor.set_color_model(color_model);
+            sess.color_model = color_model;
+            sess.seeded = false; // forces a full re-composite below
         }
+
+        // Encode dabs — ALWAYS 4 pigment concentrations (both colour models read the same field).
+        let dabs: &[ph2d_tool_painter::FluidDab] = dabs_envelope.as_ref().map_or(&[], |(d, _)| d.as_slice());
+        let gpu_dabs: Vec<Dab> = dabs
+            .iter()
+            .map(|d| {
+                let mut conc = sess.km.rgb_to_concentrations(d.color);
+                for c in &mut conc {
+                    *c *= d.mass;
+                }
+                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc)
+            })
+            .collect();
+        if !gpu_dabs.is_empty() {
+            sess.has_pigment = true;
+        }
+
+        // Idle bookkeeping: the field keeps settling (bloom/edge recession) a short window after the
+        // last dab, then stops costing GPU — the cached slot keeps displaying the persistent wash.
+        if active || !gpu_dabs.is_empty() {
+            sess.idle_frames = 0;
+        } else {
+            sess.idle_frames = sess.idle_frames.saturating_add(1);
+        }
+        let settling = sess.idle_frames <= ACTIVE_WINDOW as u32;
+
+        // Nothing to draw yet.
+        if !sess.has_pigment {
+            return None;
+        }
+        let entity_bits = override_entity?;
+
+        // Touch the GPU only when something changed; otherwise return the cached slot (≈0 idle cost).
+        let full = !sess.seeded || model_flipped; // a fresh seed / a model flip re-renders everything
+        let need_gpu = full || !gpu_dabs.is_empty() || settling;
+        if !need_gpu {
+            return sess
+                .slot
+                .map(|(id, _, _)| PreviewOverride { entity_bits, texture_id: id, premultiplied: true });
+        }
+
         sess.solver.set_params(&gpu.queue, wp);
 
-        // K–M mode encodes each dab as 4 base-pigment concentrations (× mass); RGB mode as Beer–
-        // Lambert absorbance. Both accumulate linearly in the field ⇒ same transport.
-        let gpu_dabs: Vec<Dab> = if color_model == 1 {
-            dabs.iter()
-                .map(|d| {
-                    let mut conc = sess.km.rgb_to_concentrations(d.color);
-                    for c in &mut conc {
-                        *c *= d.mass;
-                    }
-                    Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc)
-                })
-                .collect()
+        // Region: full canvas on a full re-render, else the painted envelope (padded).
+        let (g_region, cx0, cy0, cw_r, ch_r) = if full {
+            ((0, 0, dims.0, dims.1), 0, 0, cw, ch)
         } else {
-            dabs.iter()
-                .map(|d| Dab::from_color_mass(d.cx, d.cy, d.r.max(0.5), d.water, d.color, d.mass))
-                .collect()
+            let (ex0, ey0, ex1, ey1) = dabs_envelope.as_ref().map_or((0, 0, dims.0 - 1, dims.1 - 1), |(_, e)| *e);
+            let gx0 = ex0.saturating_sub(REGION_PAD);
+            let gy0 = ey0.saturating_sub(REGION_PAD);
+            let gx1 = (ex1 + REGION_PAD).min(dims.0 - 1);
+            let gy1 = (ey1 + REGION_PAD).min(dims.1 - 1);
+            let cx0 = (gx0 * scale).min(cw);
+            let cy0 = (gy0 * scale).min(ch);
+            let cx1 = ((gx1 + 1) * scale).min(cw);
+            let cy1 = ((gy1 + 1) * scale).min(ch);
+            ((gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1), cx0, cy0, cx1 - cx0, cy1 - cy0)
         };
+        PROFILE.with(|p| p.borrow_mut().last_region_cells = u64::from(cw_r) * u64::from(ch_r));
 
-        // Finalize: ACTIVE_WINDOW frames after pen-up ⇒ bake once + stop (free idle until next stroke).
-        if !active {
-            sess.idle_frames = sess.idle_frames.saturating_add(1);
-            if sess.idle_frames > ACTIVE_WINDOW as u32 {
-                if let Some(words) = sess.compositor.read_preview(&gpu.device, &gpu.queue) {
-                    let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
-                    painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
-                }
-                sess.finalized = true;
-                sess.release_slot(renderer);
-                return None;
-            }
-        }
-
-        // ── Region = the MONOTONIC wet envelope (everywhere painted this stroke), NOT a moving
-        // window. Under Evaporation 0 / Keep Wet the whole wet footprint keeps diffusing, so a
-        // moving window would step cells an INCONSISTENT number of times — the just-stepped cells
-        // diverge from their never-(re)stepped neighbours, etching rectangular tonal seams (the
-        // "marcas retangulares"). Stepping the full envelope every frame gives every wet cell the
-        // same evolution ⇒ seam-free. Bounded by the painted footprint; finalize releases it
-        // ACTIVE_WINDOW frames after pen-up. The composite + slot copy share this region so the
-        // displayed preview stays in sync with the still-evolving field (no stale strips at bake). ──
-        let (ex0, ey0, ex1, ey1) = envelope;
-        let gx0 = ex0.saturating_sub(REGION_PAD);
-        let gy0 = ey0.saturating_sub(REGION_PAD);
-        let gx1 = (ex1 + REGION_PAD).min(dims.0 - 1);
-        let gy1 = (ey1 + REGION_PAD).min(dims.1 - 1);
-        let g_region = (gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1);
-        let cx0 = (gx0 * scale).min(cw);
-        let cy0 = (gy0 * scale).min(ch);
-        let cx1 = ((gx1 + 1) * scale).min(cw);
-        let cy1 = ((gy1 + 1) * scale).min(ch);
-        PROFILE.with(|p| p.borrow_mut().last_region_cells = u64::from(cx1 - cx0) * u64::from(cy1 - cy0));
-
-        // Need the entity to override; without it skip this frame (rare).
-        let entity_bits = override_entity?;
-        // Acquire/resize the slot (no GPU work).
         let (id, fresh) = match sess.slot {
             Some((id, w, h)) if w == cw && h == ch => (id, false),
             _ => {
@@ -310,48 +287,47 @@ pub(crate) fn drive_wash_gpu(
                 (id, true)
             }
         };
-        let seed = fresh || !sess.seeded;
+        let seed = fresh || full;
 
         // ── ONE encoder: step + composite + slot copy ──
-        let enc = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
+        let enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
         let mut enc = sess.solver.encode_step(&gpu.queue, enc, &gpu_dabs, substeps, g_region);
-        let copy_ok = if seed {
-            // Seed: composite the FULL canvas (backdrop everywhere + the wash) + full slot copy.
+        let tex_ok = if seed {
             sess.compositor.encode_composite(&gpu.queue, &mut enc, (0, 0, cw, ch));
-            let tex = sess.compositor.preview_texture();
-            tex.is_some_and(|t| renderer.encode_copy_into_individual(&mut enc, id, t, cw, ch).is_ok())
+            sess.compositor.preview_texture().is_some_and(|t| renderer.encode_copy_into_individual(&mut enc, id, t, cw, ch).is_ok())
         } else {
-            // Dirty-rect: composite + copy only the active region.
-            sess.compositor.encode_composite(&gpu.queue, &mut enc, (cx0, cy0, cx1 - cx0, cy1 - cy0));
-            let tex = sess.compositor.preview_texture();
-            tex.is_some_and(|t| {
-                renderer.encode_copy_region_into_individual(&mut enc, id, t, cx0, cy0, cx0, cy0, cx1 - cx0, cy1 - cy0).is_ok()
-            })
+            sess.compositor.encode_composite(&gpu.queue, &mut enc, (cx0, cy0, cw_r, ch_r));
+            sess.compositor
+                .preview_texture()
+                .is_some_and(|t| renderer.encode_copy_region_into_individual(&mut enc, id, t, cx0, cy0, cx0, cy0, cw_r, ch_r).is_ok())
         };
         gpu.queue.submit([enc.finish()]);
         if profile {
-            // Profile-only: block on GPU completion to MEASURE the wash GPU time (this poll is NOT
-            // in the normal path). Over-estimates slightly (drains any in-flight work).
             let tg = Instant::now();
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
             PROFILE.with(|p| {
                 let mut p = p.borrow_mut();
                 p.gpu_us += tg.elapsed().as_micros() as u64;
                 if seed { p.seed += 1 } else { p.dirty += 1 }
-                if !copy_ok { p.errs += 1 }
+                if !tex_ok { p.errs += 1 }
             });
         }
-
-        if copy_ok {
-            sess.seeded = true;
-            Some(PreviewOverride { entity_bits, texture_id: id, premultiplied: true })
-        } else {
+        if !tex_ok {
             sess.release_slot(renderer);
             sess.seeded = false;
-            None
+            return None;
         }
+        sess.seeded = true;
+
+        // Bake into canvas_rgba once the wash settles (for save / layer thumbnail / interop). The
+        // slot override keeps DISPLAYING the live wash; this just keeps the flat canvas in sync.
+        // Bake-on-settle: keep canvas_rgba in sync (save / thumbnail) without dropping the override.
+        let do_bake = !active && sess.idle_frames == ACTIVE_WINDOW as u32;
+        if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
+            let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+            painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
+        }
+        Some(PreviewOverride { entity_bits, texture_id: id, premultiplied: true })
     });
 
     if let Some(t0) = t0 {

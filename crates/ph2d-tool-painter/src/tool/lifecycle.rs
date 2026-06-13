@@ -457,6 +457,12 @@ impl PainterTool {
         self.brush.rendering.fluid_enabled
     }
 
+    /// Whether the active brush selects the minimal watercolor core (ADR-0087). The shell's
+    /// `drive_wash_gpu` gates on this; mutually exclusive with [`Self::fluid_brush_enabled`].
+    pub fn wash_brush_enabled(&self) -> bool {
+        self.brush.rendering.wash_enabled
+    }
+
     /// The grid dims a fresh field WOULD use right now (`source_size / scale`, scale
     /// from the current hires flag) — for the shell to pre-warm the solver at the
     /// right size before `begin_stroke`. `None` if there's no source yet.
@@ -1458,7 +1464,19 @@ impl PainterTool {
             // Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Takes
             // effect at the next begin_stroke, which allocates `wet_field` when
             // this is set (the live stroke keeps its baked mode until end_stroke).
-            P::Fluid => b.rendering.fluid_enabled = v >= 0.5,
+            P::Fluid => {
+                b.rendering.fluid_enabled = v >= 0.5;
+                if b.rendering.fluid_enabled {
+                    b.rendering.wash_enabled = false; // mutually exclusive (ADR-0087)
+                }
+            }
+            // Minimal watercolor core (ADR-0087) — parallel to Fluid, mutually exclusive.
+            P::Wash => {
+                b.rendering.wash_enabled = v >= 0.5;
+                if b.rendering.wash_enabled {
+                    b.rendering.fluid_enabled = false;
+                }
+            }
             P::EdgeIntensity => b.rendering.edge_intensity = v.clamp(0.0, 1.0),
             // Substrate property → tool params (disjoint field from `b`).
             P::Paper => self.params.paper_grain = v.clamp(0.0, 1.0),

@@ -249,6 +249,10 @@ pub enum BrushParam {
     /// that surface is frozen at ≤24, ADR-0043 §2.3), exactly like Wet/Burnt
     /// Edges. Writes `brush.rendering.fluid_enabled`.
     Fluid,
+    /// Minimal watercolor core (`ph2d-painter-wash`, ADR-0087), opt-in per-brush.
+    /// Bool through the uncapped `BrushParam` (same rationale as `Fluid`). Writes
+    /// `brush.rendering.wash_enabled`; mutually exclusive with `Fluid`.
+    Wash,
     EdgeIntensity,
     RenderingMode,
     /// World-space paper tooth strength (`PainterParams::paper_grain`, 0..1) —

@@ -61,7 +61,13 @@ pub struct RenderingParams {
     /// `#[serde(default)]` (= the validated preset) keeps pre-field brush files loading.
     #[serde(default)]
     pub watercolor: crate::watercolor::WatercolorParams,
-    // 13 fields v1, 1 slot de headroom (cap 14).
+    /// **ADR-0087 — minimal watercolor core (`ph2d-painter-wash`), opt-in per-brush.**
+    /// `true` = the simplified GPU wash (gated diffusion + FlowOutward + Beer–Lambert),
+    /// selected as a PARALLEL mode to `fluid_enabled` (mutually exclusive — enabling one
+    /// disables the other). `false` = unaffected. `#[serde(default)]` loads pre-field brushes.
+    #[serde(default)]
+    pub wash_enabled: bool,
+    // 14 fields (cap 14 — FULL).
 }
 
 /// Default `edge_intensity` (also the serde fallback for old brush files).
@@ -85,6 +91,7 @@ impl Default for RenderingParams {
             accumulate: false, // wash (opacity-capped) by default
             edge_intensity: default_edge_intensity(),
             watercolor: crate::watercolor::WatercolorParams::default(),
+            wash_enabled: false,
         }
     }
 }

@@ -468,6 +468,7 @@ impl PainterTool {
             P::WetEdges => self.brush.rendering.wet_edges,
             P::BurntEdges => self.brush.rendering.burnt_edges,
             P::Fluid => self.brush.rendering.fluid_enabled,
+            P::Wash => self.brush.rendering.wash_enabled,
             // Watercolor UX toggles — tool-level state (like `Paper`), not brush fields.
             P::KeepWet => self.fluid_keep_wet(),
             P::ShowWet => self.fluid_show_wet(),

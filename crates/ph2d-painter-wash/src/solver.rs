@@ -86,6 +86,10 @@ struct SplatParams {
     width: u32,
     height: u32,
     n_dabs: u32,
+    region_ox: u32,
+    region_oy: u32,
+    region_w: u32,
+    region_h: u32,
     _pad: u32,
 }
 
@@ -310,7 +314,7 @@ impl WashSolver {
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
     pub fn splat(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[Dab]) {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash splat enc") });
-        self.encode_splat(queue, &mut enc, dabs);
+        self.encode_splat(queue, &mut enc, dabs, (0, 0, self.width, self.height));
         queue.submit([enc.finish()]);
     }
 
@@ -337,24 +341,35 @@ impl WashSolver {
         region: (u32, u32, u32, u32),
     ) -> wgpu::CommandEncoder {
         if !dabs.is_empty() {
-            self.encode_splat(queue, &mut enc, dabs);
+            self.encode_splat(queue, &mut enc, dabs, region);
         }
         self.encode_substeps(queue, &mut enc, substeps, region);
         enc
     }
 
-    fn encode_splat(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, dabs: &[Dab]) {
+    fn encode_splat(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, dabs: &[Dab], region: (u32, u32, u32, u32)) {
         assert!(dabs.len() as u64 <= MAX_DABS, "dab count exceeds MAX_DABS");
         if dabs.is_empty() {
             return;
         }
+        let rw = region.2.clamp(1, self.width);
+        let rh = region.3.clamp(1, self.height);
         queue.write_buffer(&self.dabs_buf, 0, bytemuck::cast_slice(dabs));
-        let sp = SplatParams { width: self.width, height: self.height, n_dabs: dabs.len() as u32, _pad: 0 };
+        let sp = SplatParams {
+            width: self.width,
+            height: self.height,
+            n_dabs: dabs.len() as u32,
+            region_ox: region.0,
+            region_oy: region.1,
+            region_w: rw,
+            region_h: rh,
+            _pad: 0,
+        };
         queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
         let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash splat"), timestamp_writes: None });
         pass.set_pipeline(&self.splat_pipe);
         pass.set_bind_group(0, &self.bg_splat, &[]);
-        pass.dispatch_workgroups(groups(self.width), groups(self.height), 1);
+        pass.dispatch_workgroups(groups(rw), groups(rh), 1);
     }
 
     fn encode_substeps(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, substeps: u32, region: (u32, u32, u32, u32)) {

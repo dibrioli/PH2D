@@ -14,6 +14,10 @@ struct SplatParams {
     width: u32,
     height: u32,
     n_dabs: u32,
+    region_ox: u32,
+    region_oy: u32,
+    region_w: u32,
+    region_h: u32,
     _pad: u32,
 }
 
@@ -24,9 +28,9 @@ struct SplatParams {
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let x = gid.x;
-    let y = gid.y;
-    if (x >= S.width || y >= S.height) {
+    let x = S.region_ox + gid.x;
+    let y = S.region_oy + gid.y;
+    if (gid.x >= S.region_w || gid.y >= S.region_h || x >= S.width || y >= S.height) {
         return;
     }
     let i = y * S.width + x;

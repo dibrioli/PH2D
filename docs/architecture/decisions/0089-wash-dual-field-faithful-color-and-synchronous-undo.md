@@ -52,24 +52,32 @@ são sempre mantidos, então o toggle re-renderiza a obra inteira nos dois modos
   que torcia a matiz) é removido** — a normalização cobre a saturação; FlowOutward concentra no rim →
   vira mais COBERTURA (o rim escuro desejado), não mudança de matiz.
 
-### 2.3 Undo SÍNCRONO (substitui o polling assíncrono do 0088 §2.3)
-**Invariante:** no início do `begin_stroke` do traço N+1, `canvas_rgba` reflete o resultado **assentado**
-dos traços 1..N. Garantida assim:
-- No **pen-up** o bridge **assenta o traço sincronamente** (colapsa a janela de bloom num burst), faz
-  **um** readback do campo (pig+dye) → `committed[N]`, e **um** bake do composite → `canvas_rgba`.
-  Tudo no mesmo ponto, antes que o próximo traço possa capturar o pre-image. Acaba a corrida de
-  traço-rápido.
-- `undo`/`redo` restauram o `committed[N]` (pig+dye) no solver e re-bakam `canvas_rgba` **na hora**;
-  como o `canvas_rgba` é sempre uma projeção do campo na fronteira de cada traço, o snapshot-undo do
-  painter e o snapshot-de-campo ficam em lock-step. O `PreviewOverride` mostra o campo re-composto →
-  nunca mascara um estado antigo. O contador `wash_active_strokes` continua, mas agora sobre estado
-  síncrono (não é mais heurística de corrida).
+### 2.3 Undo determinístico + settle GRADUAL (substitui o polling assíncrono do 0088 §2.3)
+**Invariante:** o snapshot de campo de um traço existe a partir do **pen-up** (não 30 frames depois), e
+o `canvas_rgba` reflete o traço já no pen-up — então o undo funciona na hora e o pre-image do próximo
+traço nunca perde o anterior. Mecânica:
+- No **pen-up** o bridge tira **um** snapshot do campo (pig+dye) → `committed[N]` (provisório, estado
+  ~pen-up) e baka o composite → `canvas_rgba`, **imediatamente** (undo já funciona, mesmo no meio do
+  assentamento). Daí **inicia o settle gradual**.
+- O **settle anima**: o campo dá `substeps`/frame por `ACTIVE_WINDOW` frames — a MESMA taxa da pintura,
+  então a difusão pós-soltar **entra suave, sem salto** (Enio 2026-06-13; o burst-num-frame da v1 dava
+  um pulo antinatural no Evaporation 0). Ao terminar, **refresca** `committed[N]` pro campo assentado +
+  re-baka. Um novo traço abandona o settle (mantém o snapshot provisional); um restore cancela o settle.
+- `undo`/`redo` restauram `committed[want-1]` (pig+dye) e re-bakam `canvas_rgba`, com **zero física** no
+  restore (senão re-difunde pelo campo de água estagnado = drift no evap-0). O `PreviewOverride` mostra
+  o campo re-composto → nunca mascara estado antigo.
+- **Redo vs traço-novo:** contagem sozinha é ambígua após um redo parcial (o traço novo colide com um
+  snapshot obsoleto). Desambiguado por `painted_since_commit` (pintou desde o último commit ⇒ traço
+  novo, descarta o branch de redo; não pintou ⇒ redo, restaura o snapshot).
 
 ## 3. Consequências
 - **Memória do campo ~2×** (dois canais vec4 + ping-pong). Aceito (escolha B+). Demo é 64² (trivial);
   4K continua dependendo da futura integração de layer real (limitação herdada do 0088 §3, não piora).
-- **Bloom pós-pen-up colapsa** pro instante do pen-up (assentamento síncrono). Diferença estética menor
-  (o estado final assentado é o mesmo); ganha-se correção de undo. Sujeito a sign-off visual do Enio.
+- **Bloom pós-pen-up anima gradualmente** (`substeps`/frame, ~`ACTIVE_WINDOW` frames) — suave, sem o
+  salto que o burst-num-frame causava no Evaporation 0. Custo: o campo continua dando GPU ~0.5 s após
+  soltar (depois ocioso = override em cache). 2 readbacks/traço (snapshot provisional no pen-up +
+  refresh no fim do settle). Undo de um traço ainda-assentando restaura o snapshot provisional
+  (levemente pré-bloom) — aceitável (raro: undo <0.5 s após soltar).
 - **Look K–M muda de "empilhar escurece" → "empilhar cobre mais"** (matiz preservada). É o preço da
   fidelidade; a mistura validada (ADR-0081/0082/0084: azul+amarelo→verde) **fica**. Sign-off visual.
 - Os 2 modos coexistem (invariante do Enio, 3×); o seletor reusa o toggle "Pigment" — **sem novo campo

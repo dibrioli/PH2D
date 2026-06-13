@@ -20,10 +20,10 @@
 >
 > **Como testar (Enio):** `cargo run -p ph2d-host-desktop --features wash` → Brush Studio: Wash on.
 > (1) vermelho puro pinta vermelho (com e sem Pigment); (2) Ctrl+Z/Ctrl+Y firmes, sem o estado antigo
-> voltar, **inclusive Evaporation 0** e traços rápidos. Tradeoffs p/ avaliar (esperados, ADR-0089 §3):
-> o bloom pós-pen-up agora **assenta na hora** (não anima 30 frames); no K–M empilhar a MESMA cor
-> **cobre mais** em vez de escurecer (matiz preservada). Se a saturação/opacidade não agradar, são 2
-> constantes (`K_REF`, `COVER_K` em `km.rs`+`composite.wgsl`) — me fala que eu ajusto.
+> voltar, **inclusive Evaporation 0** e traços rápidos; (3) ao soltar o mouse a difusão pós-traço
+> **entra suave** (sem o salto que tinha). No K–M, empilhar a MESMA cor **cobre mais** em vez de
+> escurecer (matiz preservada). Se a saturação/opacidade não agradar, são 2 constantes (`K_REF`,
+> `COVER_K` em `km.rs`+`composite.wgsl`); a duração do settle = `ACTIVE_WINDOW` no bridge — me fala.
 
 Contexto base: [`HANDOFF_wash.md`](HANDOFF_wash.md) + [`ADR-0088`](architecture/decisions/0088-wash-persistent-pigment-canvas-and-undo.md)
 + [`ADR-0086`](architecture/decisions/0086-watercolor-minimal-core-wash.md)/[`0087`](architecture/decisions/0087-wash-integration-parallel-watercolor-mode.md).

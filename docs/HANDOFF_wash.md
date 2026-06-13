@@ -85,6 +85,16 @@ massa fica perto do teto).
 chapada. Granulação volta depois como feature v1.1 com campo de baixa frequência (não o tooth
 por-pixel); `pap`/`paper` ficam ligados pra esse uso futuro.
 
+### B6 — borda seca em escada (staircase) ao dar zoom — **RESOLVIDO (2026-06-13)**
+**Sintoma:** o miolo vermelho tem borda dura em escada e só depois um halo fino; o gradiente "seco"
+não suaviza (a saturação suave do B5 corrige o *valor* núcleo↔halo, não o *contorno* quantizado).
+**Causa:** o campo de pigmento é 1:1 com o canvas; uma borda seca/congelada cai de cheio→0 em ~1
+célula → escada no zoom (o composite amostra nearest em inv=1).
+**Fix:** **anti-alias da borda no composite** (`composite.wgsl`): amostra o campo com um gaussiano
+(raio 2, σ≈1.2). Interior uniforme não muda (borrar constante = constante); só bordas/gradientes
+suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-5 passou a usar blocos
+(células isoladas eram diluídas pelo blur).
+
 ## PRÓXIMAS ETAPAS (roteiro, ADR-0086 §8)
 1. **EM ANDAMENTO:** seção "Wash" enxuta na UI (sliders relevantes vs os 17 da seção Watercolor).
 2. Cor subtrativa real (K–M / Mixbox) — fecha a limitação RGB **e** o B1 (saturação).

@@ -67,25 +67,32 @@ fn lin_to_srgb(c: vec3<f32>) -> vec3<f32> {
     return select(hi, lo, cc <= vec3<f32>(0.0031308));
 }
 
-// Bilinear sample of the pigment field at grid coords (fx,fy).
+// EDGE ANTI-ALIAS: the pigment field is 1:1 with the canvas, so a sharp (dried/frozen) stroke edge
+// that drops from full→0 over one cell staircases when zoomed in. A small Gaussian (radius 2,
+// σ≈1.2) over the field smooths that contour SUB-cell. A uniform interior is unchanged (blurring a
+// constant = the constant), so only edges + gradients soften — exactly the watercolor look. Wet AND
+// dry edges both anti-alias, since this is purely a display-side resample of the field.
+const BLUR_RADIUS: i32 = 2;
+const BLUR_SIGMA: f32 = 1.2;
+
 fn sample_pig(fx: f32, fy: f32) -> vec4<f32> {
     let gw = i32(C.gw);
     let gh = i32(C.gh);
-    let x0 = i32(floor(fx));
-    let y0 = i32(floor(fy));
-    let tx = fx - floor(fx);
-    let ty = fy - floor(fy);
-    let xa = clamp(x0, 0, gw - 1);
-    let xb = clamp(x0 + 1, 0, gw - 1);
-    let ya = clamp(y0, 0, gh - 1);
-    let yb = clamp(y0 + 1, 0, gh - 1);
-    let p00 = pig[u32(ya) * C.gw + u32(xa)];
-    let p10 = pig[u32(ya) * C.gw + u32(xb)];
-    let p01 = pig[u32(yb) * C.gw + u32(xa)];
-    let p11 = pig[u32(yb) * C.gw + u32(xb)];
-    let top = mix(p00, p10, tx);
-    let bot = mix(p01, p11, tx);
-    return mix(top, bot, ty);
+    let ix = i32(round(fx));
+    let iy = i32(round(fy));
+    let inv2s2 = 1.0 / (2.0 * BLUR_SIGMA * BLUR_SIGMA);
+    var acc = vec4<f32>(0.0);
+    var wsum = 0.0;
+    for (var dy = -BLUR_RADIUS; dy <= BLUR_RADIUS; dy = dy + 1) {
+        for (var dx = -BLUR_RADIUS; dx <= BLUR_RADIUS; dx = dx + 1) {
+            let x = clamp(ix + dx, 0, gw - 1);
+            let y = clamp(iy + dy, 0, gh - 1);
+            let wgt = exp(-f32(dx * dx + dy * dy) * inv2s2);
+            acc = acc + pig[u32(y) * C.gw + u32(x)] * wgt;
+            wsum = wsum + wgt;
+        }
+    }
+    return acc / wsum;
 }
 
 @compute @workgroup_size(8, 8, 1)

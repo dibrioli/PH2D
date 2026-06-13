@@ -188,10 +188,17 @@ fn inv_subtractive_compositing_darkens() {
     let n = (w * h) as usize;
     let water = vec![0.0f32; n];
     let paper = vec![0.5f32; n];
-    // cell 0: one glaze (absorb green+blue); cell 1: two glazes stacked (double absorbance).
+    // Two SEPARATED blocks (the composite anti-alias blur dilutes isolated cells, so measure block
+    // centres over uniform fills): block A = one glaze, block B = two glazes stacked (double absorb).
     let mut pig = vec![[0.0f32; 4]; n];
-    pig[0] = [0.0, 0.7, 0.7, 1.0];
-    pig[1] = [0.0, 1.4, 1.4, 1.0];
+    let (ax, ay) = (16u32, 16u32);
+    let (bx, by) = (48u32, 16u32);
+    for dy in 0..7u32 {
+        for dx in 0..7u32 {
+            pig[idx(ax - 3 + dx, ay - 3 + dy, w)] = [0.0, 0.7, 0.7, 1.0];
+            pig[idx(bx - 3 + dx, by - 3 + dy, w)] = [0.0, 1.4, 1.4, 1.0];
+        }
+    }
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
     s.upload(&gpu.queue, &water, &paper, &pig);
@@ -203,12 +210,12 @@ fn inv_subtractive_compositing_darkens() {
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
     let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
-    let g = |px: usize| ((out[px] >> 8) & 0xff) as i32;
-    let r = |px: usize| (out[px] & 0xff) as i32;
-    eprintln!("composite: single G={} double G={} (R stays {})", g(0), g(1), r(0));
-    assert_eq!(r(0), 255, "no red absorbance ⇒ red channel stays white");
-    assert!((120..=235).contains(&g(0)), "single green glaze: exp(-0.7) in linear → sRGB ≈ 188");
-    assert!(g(1) < g(0) - 20, "stacking glazes must darken green further (subtractive)");
+    let g = |x: u32, y: u32| ((out[idx(x, y, w)] >> 8) & 0xff) as i32;
+    let r = |x: u32, y: u32| (out[idx(x, y, w)] & 0xff) as i32;
+    eprintln!("composite: single G={} double G={} (R stays {})", g(ax, ay), g(bx, by), r(ax, ay));
+    assert_eq!(r(ax, ay), 255, "no red absorbance ⇒ red channel stays white");
+    assert!((120..=235).contains(&g(ax, ay)), "single green glaze: exp(-0.7) in linear → sRGB ≈ 188");
+    assert!(g(bx, by) < g(ax, ay) - 20, "stacking glazes must darken green further (subtractive)");
 }
 
 // ── INV-6 — preview texture: a coloured DAB glazes the real backdrop (Beer–Lambert), tints

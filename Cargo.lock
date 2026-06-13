@@ -5264,6 +5264,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-painter-wash"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "ph2d-gpu",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-panel-bgremoval"
 version = "0.0.0"
 dependencies = [

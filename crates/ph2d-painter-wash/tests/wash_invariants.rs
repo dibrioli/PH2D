@@ -205,7 +205,7 @@ fn inv_subtractive_compositing_darkens() {
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white, opaque
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -240,7 +240,7 @@ fn wash_preview_texture_premul() {
     let gray = 153u32; // sRGB ~0.6
     let bd = gray | (gray << 8) | (gray << 16) | (0xff << 24);
     let backdrop = vec![bd; n];
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -290,7 +290,7 @@ fn inv_overlap_saturates_to_pigment_not_black() {
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, s.pig_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer());
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -366,4 +366,47 @@ fn inv_no_checkerboard_under_extreme_flow() {
     eprintln!("checkerboard: {holes} interior holes (want 0), finite={finite}");
     assert!(finite, "field must stay finite");
     assert_eq!(holes, 0, "positive scheme must not punch white holes (checkerboard) — found {holes}");
+}
+
+// ── INV-9 — K–M composite branch (color_model=1): blue + yellow pigment mix to GREEN over white
+//    through the REAL WGSL kernel (RGB Beer–Lambert would give muddy grey). ─────────────────────
+#[test]
+#[ignore = "needs a GPU device"]
+fn inv_km_composite_blue_plus_yellow_is_green() {
+    use ph2d_painter_wash::km::KmModel;
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU — skipping");
+        return;
+    };
+    let (w, h) = (64u32, 64u32);
+    let n = (w * h) as usize;
+    let km = KmModel::new();
+    // Field carries 4 pigment concentrations (K–M mode). Fill a centred block with blue+yellow.
+    let cb = km.rgb_to_concentrations([0.05, 0.05, 0.85]);
+    let cy = km.rgb_to_concentrations([0.90, 0.80, 0.05]);
+    let mix = [cb[0] + cy[0], cb[1] + cy[1], cb[2] + cy[2], cb[3] + cy[3]];
+    let mut pig = vec![[0.0f32; 4]; n];
+    for dy in 0..14u32 {
+        for dx in 0..14u32 {
+            pig[idx(25 + dx, 25 + dy, w)] = mix;
+        }
+    }
+    let s = WashSolver::new(&gpu.device, w, h);
+    s.set_params(&gpu.queue, WashParams::default());
+    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &pig);
+
+    let mut comp = WashCompositor::new(&gpu.device);
+    let backdrop = vec![0xffff_ffffu32; n]; // white
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer()); // color_model=1 (K–M)
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
+    gpu.queue.submit([enc.finish()]);
+    let out = comp.read_preview(&gpu.device, &gpu.queue).unwrap();
+    let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
+    let c = out[idx(32, 32, w)];
+    let (r, g, b) = (chan(c, 0), chan(c, 1), chan(c, 2));
+    eprintln!("K–M blue+yellow composite centre = ({r},{g},{b})");
+    // The win vs RGB Beer–Lambert (muddy grey): green is the dominant channel, clearly above grey.
+    assert!(g > r && g > b, "blue+yellow must composite to GREEN (g dominant), got ({r},{g},{b})");
+    assert!(g > (r + b) / 2 + 20, "green must stand clear of grey ({r},{g},{b})");
 }

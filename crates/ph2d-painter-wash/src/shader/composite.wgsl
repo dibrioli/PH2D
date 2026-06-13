@@ -38,7 +38,7 @@ struct Comp {
     region_h: u32,
     inv: f32,       // grid-per-canvas (gw/cw) — maps a canvas pixel to a grid coord
     coverage_k: f32,// reserved (mass→alpha) — unused while output is opaque
-    _p0: f32,
+    color_model: u32,// 0 = RGB Beer–Lambert (default), 1 = spectral Kubelka–Munk
     _p1: f32,
 }
 
@@ -46,6 +46,33 @@ struct Comp {
 @group(0) @binding(1) var<storage, read> pig: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read> backdrop: array<u32>; // packed sRGB8 RGBA, canvas-res
 @group(0) @binding(3) var preview_tex: texture_storage_2d<rgba8unorm, write>;
+// K–M spectral tables (mirrors km.rs): [curves 3·N][absorb PIGMENTS·N][to_rgb 3·N], N=16.
+@group(0) @binding(4) var<storage, read> km: array<f32>;
+
+const KM_N: u32 = 16u;
+const KM_OFF_CURVES: u32 = 0u;   // 3·N
+const KM_OFF_ABSORB: u32 = 48u;  // PIGMENTS(4)·N
+const KM_OFF_TORGB: u32 = 112u;  // 3·N  (total 160)
+fn km_curve(ch: u32, k: u32) -> f32 { return km[KM_OFF_CURVES + ch * KM_N + k]; }
+fn km_absorb(p: u32, k: u32) -> f32 { return km[KM_OFF_ABSORB + p * KM_N + k]; }
+fn km_torgb(i: u32, k: u32) -> f32 { return km[KM_OFF_TORGB + i * KM_N + k]; }
+
+// Spectral subtractive glaze of 4 pigment concentrations over a LINEAR-sRGB backdrop (mirror of
+// km.rs `compose_over`): upsample backdrop → ×exp(−Σ cᵢ apᵢ) per λ → integrate back to linear RGB.
+fn km_compose(backdrop_lin: vec3<f32>, conc: vec4<f32>) -> vec3<f32> {
+    var rgb = vec3<f32>(0.0);
+    for (var k: u32 = 0u; k < KM_N; k = k + 1u) {
+        let cv = vec3<f32>(km_curve(0u, k), km_curve(1u, k), km_curve(2u, k));
+        let b = max(dot(backdrop_lin, cv), 0.0);
+        let a = conc.x * km_absorb(0u, k) + conc.y * km_absorb(1u, k)
+              + conc.z * km_absorb(2u, k) + conc.w * km_absorb(3u, k);
+        let spec = b * exp(-a);
+        rgb.x = rgb.x + km_torgb(0u, k) * spec;
+        rgb.y = rgb.y + km_torgb(1u, k) * spec;
+        rgb.z = rgb.z + km_torgb(2u, k) * spec;
+    }
+    return max(rgb, vec3<f32>(0.0));
+}
 
 fn unpack(w: u32) -> vec4<f32> {
     return vec4<f32>(
@@ -107,14 +134,24 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let fx = clamp((f32(cx) + 0.5) * C.inv - 0.5, 0.0, f32(C.gw) - 1.0);
     let fy = clamp((f32(cy) + 0.5) * C.inv - 0.5, 0.0, f32(C.gh) - 1.0);
     let praw = sample_pig(fx, fy);
-    let absorb_raw = max(praw.xyz, vec3<f32>(0.0));
-    let mass = max(praw.w, 0.0);
-    // Smooth saturation of the effective mass (preserves hue = absorb/mass): proportional for thin
-    // glazes, asymptotic toward the masstone for thick ones, with NO stepped core↔halo contour.
-    let eff = MASS_MAX * (1.0 - exp(-mass / MASS_MAX));
-    let scale = select(0.0, eff / mass, mass > 1.0e-6);
-    let absorb = absorb_raw * scale;
-    let glaze = srgb_to_lin(back.xyz) * exp(-absorb);
-    let rgb = lin_to_srgb(glaze);
+    var rgb: vec3<f32>;
+    if (C.color_model == 1u) {
+        // ── Spectral Kubelka–Munk (optional): praw = 4 pigment concentrations. Saturate the SUM
+        //    (smooth, preserving the concentration RATIOS = hue), then glaze spectrally. ──
+        let conc_raw = max(praw, vec4<f32>(0.0));
+        let total = conc_raw.x + conc_raw.y + conc_raw.z + conc_raw.w;
+        let eff = MASS_MAX * (1.0 - exp(-total / MASS_MAX));
+        let scale = select(0.0, eff / total, total > 1.0e-6);
+        rgb = lin_to_srgb(km_compose(srgb_to_lin(back.xyz), conc_raw * scale));
+    } else {
+        // ── RGB Beer–Lambert (default): praw = (absorb.rgb, mass). ──
+        let absorb_raw = max(praw.xyz, vec3<f32>(0.0));
+        let mass = max(praw.w, 0.0);
+        // Smooth saturation of the effective mass (preserves hue = absorb/mass): proportional for
+        // thin glazes, asymptotic toward the masstone for thick ones, no stepped core↔halo contour.
+        let eff = MASS_MAX * (1.0 - exp(-mass / MASS_MAX));
+        let scale = select(0.0, eff / mass, mass > 1.0e-6);
+        rgb = lin_to_srgb(srgb_to_lin(back.xyz) * exp(-absorb_raw * scale));
+    }
     textureStore(preview_tex, vec2<i32>(i32(cx), i32(cy)), vec4<f32>(rgb, 1.0));
 }

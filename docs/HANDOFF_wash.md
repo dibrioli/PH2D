@@ -105,10 +105,14 @@ suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-
    sistemas de cor coexistem, escolha por brush. Fases:
    - **Fase 1 DONE:** núcleo `km.rs` (puro-Rust, espectral N=16, 4 pigmentos CMYK, unmix NNLS,
      `compose_over`). Prova `blue+yellow→green` (não cinza), masstones, empilhamento escurece. 4 testes.
-   - **Fase 2 (TODO):** branch `color_model` no `cs_composite` (RGB Beer–Lambert atual | K–M); tabelas
-     espectrais (`pigment_absorbance`/`upsample_basis`/`to_rgb_matrix`) num storage buffer; dab encoda
-     concentrações via `rgb_to_concentrations` em modo K–M.
-   - **Fase 3 (TODO):** seletor `km_enabled` plumbed (RenderingParams→BrushParam→snapshot→lifecycle→
-     populate→sections), toggle "Pigment mixing (K–M)" na seção Wash. Default OFF (RGB).
+   - **Fase 2 DONE:** branch `color_model` no `cs_composite` (RGB Beer–Lambert | K–M); tabelas
+     espectrais empacotadas num storage buffer (binding 4) via `pack_km()`; `Dab::from_concentrations`;
+     o bridge encoda concentrações (`km.rgb_to_concentrations`×mass) em modo K–M e passa `color_model`
+     ao `begin_stroke` (re-seed quando o modo muda). Gate `inv_km_composite_blue_plus_yellow_is_green`
+     (WGSL real → (148,216,163) = verde).
+   - **Fase 3 DONE (zero campo novo):** o seletor REUSA `PigmentMode` (`pigment_mode`) — o toggle
+     **"Pigment"** já existente (sections.rs:242, sempre visível ao lado de "Wash") faz
+     Linear↔Subtractive. `PainterTool::wash_subtractive()` mapeia Subtractive→K–M. Sem campo em
+     RenderingParams (cap 14 intacto), sem id novo. Default Linear (RGB).
 3. Franja capilar water-only (Curtis-faithful) — se faltar a borda suave além do traço.
 4. Perf residual: dobrar o wash no encoder do render principal (1 submit/frame).

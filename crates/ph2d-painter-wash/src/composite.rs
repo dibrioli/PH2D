@@ -19,8 +19,30 @@ struct CParams {
     region_h: u32,
     inv: f32,
     coverage_k: f32,
-    _p0: f32,
+    /// 0 = RGB Beer–Lambert (default), 1 = spectral Kubelka–Munk (the optional pigment-mixing mode).
+    color_model: u32,
     _p1: f32,
+}
+
+/// Packed K–M spectral tables for the composite (mirrors [`crate::km::KmModel`]): the layout the WGSL
+/// `km_*` accessors index — `[curves 3·N][absorb PIGMENTS·N][to_rgb 3·N]`.
+fn pack_km() -> Vec<f32> {
+    use crate::km::{KmModel, N, PIGMENTS};
+    let km = KmModel::new();
+    let curves = km.upsample_basis();
+    let absorb = km.pigment_absorbance();
+    let to_rgb = km.to_rgb_matrix();
+    let mut v = Vec::with_capacity(3 * N + PIGMENTS * N + 3 * N);
+    for row in curves {
+        v.extend_from_slice(row);
+    }
+    for row in absorb {
+        v.extend_from_slice(row);
+    }
+    for row in &to_rgb {
+        v.extend_from_slice(row);
+    }
+    v
 }
 
 const WG: u32 = 8;
@@ -33,6 +55,8 @@ pub struct WashCompositor {
     pipe: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
     cparams_buf: wgpu::Buffer,
+    /// Static spectral K–M tables (binding 4) — built once from [`crate::km::KmModel`].
+    km_buf: wgpu::Buffer,
     stroke: Option<Stroke>,
 }
 
@@ -42,6 +66,7 @@ struct Stroke {
     gw: u32,
     gh: u32,
     coverage_k: f32,
+    color_model: u32,
     tex: wgpu::Texture,
     /// Owned only to keep the GPU buffer alive for `bg` (binding 2); never read directly.
     #[allow(dead_code)]
@@ -100,6 +125,16 @@ impl WashCompositor {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -121,7 +156,16 @@ impl WashCompositor {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        Self { pipe, bgl, cparams_buf, stroke: None }
+        let km = pack_km();
+        let km_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("wash km tables"),
+            size: (km.len() * 4) as u64,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: true,
+        });
+        km_buf.slice(..).get_mapped_range_mut().copy_from_slice(bytemuck::cast_slice(&km));
+        km_buf.unmap();
+        Self { pipe, bgl, cparams_buf, km_buf, stroke: None }
     }
 
     /// Bind a field (`pig_buf` from [`crate::WashSolver::pig_buffer`]) + canvas `backdrop`
@@ -138,6 +182,7 @@ impl WashCompositor {
         ch: u32,
         backdrop: &[u32],
         coverage_k: f32,
+        color_model: u32,
         pig_buf: &wgpu::Buffer,
     ) {
         assert_eq!(backdrop.len() as u32, cw * ch, "backdrop must be cw·ch words");
@@ -165,7 +210,7 @@ impl WashCompositor {
         let inv = gw as f32 / cw as f32;
         let cp = CParams {
             cw, ch, gw, gh, region_ox: 0, region_oy: 0, region_w: cw, region_h: ch,
-            inv, coverage_k, _p0: 0.0, _p1: 0.0,
+            inv, coverage_k, color_model, _p1: 0.0,
         };
         queue.write_buffer(&self.cparams_buf, 0, bytemuck::bytes_of(&cp));
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -176,9 +221,10 @@ impl WashCompositor {
                 wgpu::BindGroupEntry { binding: 1, resource: pig_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
                 wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&view) },
+                wgpu::BindGroupEntry { binding: 4, resource: self.km_buf.as_entire_binding() },
             ],
         });
-        self.stroke = Some(Stroke { cw, ch, gw, gh, coverage_k, tex, backdrop: backdrop_buf, bg });
+        self.stroke = Some(Stroke { cw, ch, gw, gh, coverage_k, color_model, tex, backdrop: backdrop_buf, bg });
     }
 
     /// Append the composite of `region` (canvas-space `(ox,oy,w,h)`) to `enc`.
@@ -192,7 +238,7 @@ impl WashCompositor {
             region_oy: region.1.min(s.ch - 1),
             region_w: rw, region_h: rh,
             inv: s.gw as f32 / s.cw as f32,
-            coverage_k: s.coverage_k, _p0: 0.0, _p1: 0.0,
+            coverage_k: s.coverage_k, color_model: s.color_model, _p1: 0.0,
         };
         queue.write_buffer(&self.cparams_buf, 0, bytemuck::bytes_of(&cp));
         let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash composite"), timestamp_writes: None });

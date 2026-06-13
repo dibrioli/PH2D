@@ -61,6 +61,10 @@ struct WashSession {
     compositor: WashCompositor,
     dims: (u32, u32),
     epoch: u64,
+    /// Active colour model (0=RGB Beer–Lambert, 1=K–M). A change re-seeds (the field encoding differs).
+    color_model: u32,
+    /// Spectral K–M model — drives the dab concentration encoding in subtractive mode.
+    km: ph2d_painter_wash::km::KmModel,
     slot: Option<(u32, u32, u32)>,
     seeded: bool,
     idle_frames: u32,
@@ -76,6 +80,8 @@ impl WashSession {
             compositor: WashCompositor::new(device),
             dims,
             epoch: u64::MAX,
+            color_model: u32::MAX, // forces the first begin_stroke
+            km: ph2d_painter_wash::km::KmModel::new(),
             slot: None,
             seeded: false,
             idle_frames: 0,
@@ -182,9 +188,13 @@ pub(crate) fn drive_wash_gpu(
         painter.fluid_idle_substeps()
     };
     let wp = wash_params_from(&painter.fluid_diffusion_params());
-    // **Backdrop ONLY on stroke start** (epoch/dims change) — building this full-canvas Vec every
-    // frame was a per-frame CPU stall.
-    let need_backdrop = WASH_SESSION.with(|c| c.borrow().as_ref().map(|s| (s.dims, s.epoch)) != Some((dims, epoch)));
+    // Colour model: 0 = RGB Beer–Lambert (default), 1 = spectral K–M ("Pigment" toggle). A change
+    // re-seeds (the field encoding differs between the two).
+    let color_model = u32::from(painter.wash_subtractive());
+    // **Backdrop ONLY on stroke start** (epoch/dims/model change) — building this full-canvas Vec
+    // every frame was a per-frame CPU stall.
+    let need_backdrop = WASH_SESSION
+        .with(|c| c.borrow().as_ref().map(|s| (s.dims, s.epoch, s.color_model)) != Some((dims, epoch, color_model)));
     let backdrop: Option<Vec<u32>> = if need_backdrop {
         Some(painter.fluid_backdrop()?.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect())
     } else {
@@ -204,14 +214,15 @@ pub(crate) fn drive_wash_gpu(
         }
         let sess = slot_cell.as_mut()?;
 
-        if sess.epoch != epoch {
-            let backdrop = backdrop.as_deref()?; // present iff need_backdrop (epoch changed)
+        if sess.epoch != epoch || sess.color_model != color_model {
+            let backdrop = backdrop.as_deref()?; // present iff need_backdrop (epoch/model changed)
             sess.solver.clear(&gpu.device, &gpu.queue);
             sess.compositor.begin_stroke(
-                &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, backdrop, coverage_k,
+                &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, backdrop, coverage_k, color_model,
                 sess.solver.pig_buffer(),
             );
             sess.epoch = epoch;
+            sess.color_model = color_model;
             sess.seeded = false;
             sess.idle_frames = 0;
             sess.finalized = false;
@@ -222,10 +233,23 @@ pub(crate) fn drive_wash_gpu(
         }
         sess.solver.set_params(&gpu.queue, wp);
 
-        let gpu_dabs: Vec<Dab> = dabs
-            .iter()
-            .map(|d| Dab::from_color_mass(d.cx, d.cy, d.r.max(0.5), d.water, d.color, d.mass))
-            .collect();
+        // K–M mode encodes each dab as 4 base-pigment concentrations (× mass); RGB mode as Beer–
+        // Lambert absorbance. Both accumulate linearly in the field ⇒ same transport.
+        let gpu_dabs: Vec<Dab> = if color_model == 1 {
+            dabs.iter()
+                .map(|d| {
+                    let mut conc = sess.km.rgb_to_concentrations(d.color);
+                    for c in &mut conc {
+                        *c *= d.mass;
+                    }
+                    Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc)
+                })
+                .collect()
+        } else {
+            dabs.iter()
+                .map(|d| Dab::from_color_mass(d.cx, d.cy, d.r.max(0.5), d.water, d.color, d.mass))
+                .collect()
+        };
 
         // Finalize: ACTIVE_WINDOW frames after pen-up ⇒ bake once + stop (free idle until next stroke).
         if !active {

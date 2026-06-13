@@ -466,6 +466,13 @@ impl PainterTool {
         self.brush.rendering.wash_enabled
     }
 
+    /// Whether the active brush selects the **spectral Kubelka–Munk** colour model (`PigmentMode::
+    /// Subtractive`, the "Pigment" toggle) vs. RGB Beer–Lambert (`Linear`). The wash composite reads
+    /// this to pick its colour path; the two are a per-brush CHOICE (ADR-0086 §8.1), not a swap.
+    pub fn wash_subtractive(&self) -> bool {
+        self.brush.rendering.pigment_mode == ph2d_painter_brush::PigmentMode::Subtractive
+    }
+
     /// The grid dims a fresh field WOULD use right now (`source_size / scale`, scale
     /// from the current hires flag) — for the shell to pre-warm the solver at the
     /// right size before `begin_stroke`. `None` if there's no source yet.

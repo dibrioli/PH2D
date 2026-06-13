@@ -78,6 +78,14 @@ impl Dab {
         let a = |c: f32| -> f32 { -c.clamp(0.02, 1.0).ln() * mass };
         Self { cx, cy, r, water_add, pig: [a(color[0]), a(color[1]), a(color[2]), mass] }
     }
+
+    /// Build a dab for the spectral **Kubelka–Munk** colour mode: `pig` carries the 4 base-pigment
+    /// concentrations (see [`crate::km`]) instead of RGB absorbance. The composite reads them via the
+    /// K–M branch; the transport (a linear gather) is identical to the RGB path.
+    #[must_use]
+    pub fn from_concentrations(cx: f32, cy: f32, r: f32, water_add: f32, conc: [f32; 4]) -> Self {
+        Self { cx, cy, r, water_add, pig: conc }
+    }
 }
 
 #[repr(C)]

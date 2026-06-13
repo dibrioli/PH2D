@@ -207,6 +207,52 @@ impl WashCompositor {
         self.stroke.as_ref().map(|s| &s.tex)
     }
 
+    /// Read a FULL-WIDTH row band `[y0, y1)` of the preview texture as packed RGBA8 (the
+    /// `(y1-y0)·cw` words `fluid_apply_gpu_composite_rows` expects). The live bake reads only the
+    /// wet band each frame (O(stroke), not O(canvas)) — the perf fix vs `read_preview`.
+    pub fn read_preview_band(&self, device: &wgpu::Device, queue: &wgpu::Queue, y0: u32, y1: u32) -> Option<Vec<u32>> {
+        let s = self.stroke.as_ref()?;
+        let y0 = y0.min(s.ch);
+        let y1 = y1.clamp(y0, s.ch);
+        let rows = y1 - y0;
+        if rows == 0 {
+            return Some(Vec::new());
+        }
+        let bpr = (s.cw * 4).div_ceil(256) * 256;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("wash preview band readback"),
+            size: u64::from(bpr) * u64::from(rows),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash band enc") });
+        enc.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &s.tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d { x: 0, y: y0, z: 0 },
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &staging,
+                layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(bpr), rows_per_image: Some(rows) },
+            },
+            wgpu::Extent3d { width: s.cw, height: rows, depth_or_array_layers: 1 },
+        );
+        queue.submit([enc.finish()]);
+        staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        let data = staging.slice(..).get_mapped_range();
+        let mut out = Vec::with_capacity((s.cw * rows) as usize);
+        for row in 0..rows {
+            let base = (row * bpr) as usize;
+            out.extend_from_slice(bytemuck::cast_slice(&data[base..base + (s.cw * 4) as usize]));
+        }
+        drop(data);
+        staging.unmap();
+        Some(out)
+    }
+
     /// Read the preview texture back as packed RGBA8 (`cw·ch` words) — test / parity path.
     pub fn read_preview(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Option<Vec<u32>> {
         let s = self.stroke.as_ref()?;

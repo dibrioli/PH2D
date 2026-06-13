@@ -83,6 +83,7 @@ pub(crate) fn drive_wash_gpu(
         return None;
     }
     let epoch = painter.fluid_stroke_epoch();
+    let scale = painter.fluid_field_scale().max(1);
     let coverage_k = painter.fluid_coverage_k();
     let substeps = if painter.is_stroke_active() {
         painter.fluid_painting_substeps()
@@ -96,7 +97,7 @@ pub(crate) fn drive_wash_gpu(
         .chunks_exact(4)
         .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
-    let (dabs, _region) = painter.fluid_take_dabs()?;
+    let (dabs, dab_region) = painter.fluid_take_dabs()?;
 
     WASH_SESSION.with(|cell| {
         let mut slot = cell.borrow_mut();
@@ -134,24 +135,39 @@ pub(crate) fn drive_wash_gpu(
             .iter()
             .map(|d| Dab::from_color_mass(d.cx, d.cy, d.r.max(0.5), d.water, d.color, d.mass))
             .collect();
-        let region = (0, 0, dims.0, dims.1); // full grid (v1; region-scoping is a perf follow-up)
 
-        // Single submit: splat + substeps + composite to the preview texture.
+        // **Region-scope (the perf fix).** Step + composite + bake only the wet envelope (the
+        // monotonic dab bbox) + a wick pad — O(stroke), not O(canvas). `dab_region` is a grid
+        // bbox `(x0,y0,x1,y1)` inclusive; map it to the grid step region (ox,oy,w,h) and the
+        // canvas rect (× scale).
+        let pad = 8u32;
+        let (gx0, gy0, gx1, gy1) = dab_region;
+        let gx0 = gx0.saturating_sub(pad);
+        let gy0 = gy0.saturating_sub(pad);
+        let gx1 = (gx1 + pad).min(dims.0 - 1);
+        let gy1 = (gy1 + pad).min(dims.1 - 1);
+        let g_region = (gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1);
+        let cx0 = (gx0 * scale).min(cw);
+        let cy0 = (gy0 * scale).min(ch);
+        let cx1 = ((gx1 + 1) * scale).min(cw);
+        let cy1 = ((gy1 + 1) * scale).min(ch);
+
+        // Single submit: splat + substeps + composite over the wet region.
         let enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
         let mut enc = sess
             .solver
-            .encode_step(&gpu.queue, enc, &gpu_dabs, substeps, region);
+            .encode_step(&gpu.queue, enc, &gpu_dabs, substeps, g_region);
         sess.compositor
-            .encode_composite(&gpu.queue, &mut enc, (0, 0, cw, ch));
+            .encode_composite(&gpu.queue, &mut enc, (cx0, cy0, cx1 - cx0, cy1 - cy0));
         gpu.queue.submit([enc.finish()]);
 
-        // Continuous bake: read the composite back and blit it into `canvas_rgba` so the normal
-        // painter preview (and Apply/undo) show the wash. Full-canvas each frame (v1, correct).
-        if let Some(words) = sess.compositor.read_preview(&gpu.device, &gpu.queue) {
+        // Bake just the wet BAND into `canvas_rgba` (the canonical layer the normal preview +
+        // Apply/undo consume) — full-width rows `[cy0, cy1)`, columns clipped to the rect.
+        if let Some(words) = sess.compositor.read_preview_band(&gpu.device, &gpu.queue, cy0, cy1) {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
-            painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
+            painter.fluid_apply_gpu_composite_rows(&band, (cx0, cy0, cx1, cy1));
         }
         None
     })

@@ -215,10 +215,21 @@ pub(crate) fn drive_wash_gpu(
         let sess = slot_cell.as_mut()?;
 
         if sess.epoch != epoch || sess.color_model != color_model {
-            let backdrop = backdrop.as_deref()?; // present iff need_backdrop (epoch/model changed)
+            // A pure colour-MODEL flip (same stroke/epoch) must PRESERVE what's already painted: the
+            // field encoding differs between RGB and K–M, so we can't reinterpret it in place — but
+            // we can bake the CURRENT composite into the new backdrop, then clear + switch encoding.
+            // Old strokes keep their old-model colours (a live re-render would need a persistent
+            // pigment canvas); new paint uses the new model over them. Without this the clear erases
+            // the unbaked work.
+            let model_flip = sess.epoch == epoch && sess.seeded;
+            let baked = if model_flip { sess.compositor.read_preview(&gpu.device, &gpu.queue) } else { None };
+            let bd: &[u32] = match baked.as_deref() {
+                Some(b) if b.len() as u32 == cw * ch => b,
+                _ => backdrop.as_deref()?, // fresh stroke (epoch change) ⇒ the pre-stroke snapshot
+            };
             sess.solver.clear(&gpu.device, &gpu.queue);
             sess.compositor.begin_stroke(
-                &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, backdrop, coverage_k, color_model,
+                &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, bd, coverage_k, color_model,
                 sess.solver.pig_buffer(),
             );
             sess.epoch = epoch;

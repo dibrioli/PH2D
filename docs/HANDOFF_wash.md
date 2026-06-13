@@ -130,9 +130,22 @@ suavizam — molhado E seco. Display-side, custo limitado à região. Teste INV-
      ao count do tool (undo→restaura `committed[want-1]`, redo→re-aplica; trunca o branch de redo no
      traço novo). `WashSolver::upload_pigment` faz o restore. Ver **[ADR-0088](architecture/decisions/0088-wash-persistent-pigment-canvas-and-undo.md)**.
 
+   - **Fase 6 — robustez undo + fidelidade de cor (2026-06-13).** Bugs reportados: undo "estado antigo
+     volta" + vermelho→laranja(K-M)/amarelo(Linear). Causas e fixes:
+     - **Cor (matiz):** o composite escalava as concentrações p/ baixo, e escalar **desloca a matiz** no
+       espectral. Movido o cap p/ o SOLVER (`splat`+`cs_step`, `PIG_CAP=2.5`); composite lê
+       concentrações **direto** → matiz exata. Unmix ganhou refinamento em espaço de cor (menos viés).
+       ⚠️ Cores **mutadas/escuras** ainda distorcem (gamut dos 4 pigmentos) — calibrável.
+     - **Undo "volta":** snapshot era no *settle* (30 frames pós pen-up) → traços rápidos colapsavam num
+       só → undo restaurava o combinado. Agora snapshot no **pen-up** (1 por traço, sem colapso).
+     - **Sessão persistente:** não cai mais ao trocar de brush (o `committed` do bridge e o count do tool
+       ficam em sync); reset via `wash_reset_generation` (new source / layer switch) dropa a sessão.
+     - **Undo em Evaporation 0:** o restore re-rodava física → re-difundia pela água velha (cheia em
+       evap-0) → drift. Restore agora roda **zero substeps**.
+
    **Limitações adiadas (precisam de "wash como LAYER de pigmento" real — ADR-0088 §3):** o campo não
    é salvo em disco (só o `canvas_rgba` assado); edições de OUTRAS ferramentas no meio da sessão wash
    são sobrescritas (base fixa); snapshot de undo = `cw·ch·16B`/traço (pesado em 4K; ok em demo);
-   readback por traço; traços-rápidos-colapsados num settle aproximam os intermediários.
+   readback por traço no pen-up; fidelidade de cor limitada pelo gamut dos 4 pigmentos.
 3. Franja capilar water-only (Curtis-faithful) — se faltar a borda suave além do traço.
 4. Perf residual: dobrar o wash no encoder do render principal (1 submit/frame).

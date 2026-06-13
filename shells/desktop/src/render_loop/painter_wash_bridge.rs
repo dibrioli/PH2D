@@ -80,6 +80,8 @@ struct WashSession {
     /// polls the tool's `wash_active_strokes()`; a mismatch (undo/redo) restores `committed[want-1]`.
     committed: Vec<Vec<[f32; 4]>>,
     applied: usize,
+    /// The tool reset generation this session was built for (mismatch ⇒ rebuild).
+    reset_gen: u64,
 }
 
 impl WashSession {
@@ -99,6 +101,7 @@ impl WashSession {
             idle_frames: 0,
             committed: Vec::new(),
             applied: 0,
+            reset_gen: 0,
         }
     }
     fn release_slot(&mut self, renderer: &mut SpriteRenderer) {
@@ -151,7 +154,8 @@ pub(crate) fn drive_wash_gpu(
         .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_tool_painter::PainterTool>())?;
 
     if !painter.wash_brush_enabled() {
-        drop_session(renderer);
+        // Keep the persistent session ALIVE (its undo snapshots + the tool's stroke count must stay
+        // in sync across a brush switch); just don't drive it this frame.
         return None;
     }
     let capable = !matches!(gpu.adapter.get_info().device_type, wgpu::DeviceType::Cpu);
@@ -160,6 +164,10 @@ pub(crate) fn drive_wash_gpu(
         drop_session(renderer);
         return None;
     }
+    // Drop + rebuild the session on a tool reset (new source / layer switch) so the base backdrop,
+    // pigment field and undo snapshots are rebuilt from the current canvas (kept in sync with the
+    // tool's reset of `wash_active_strokes`).
+    let reset_gen = painter.wash_reset_generation();
     // ── PRE-WARM ── generate the paper-tooth field while hovering (off the click path) so the first
     // stroke doesn't pay the O(grid) `grain_noise` (~0.5 s first-stroke delay). Cheap if cached.
     let has_field = painter.has_wet_field();
@@ -198,11 +206,13 @@ pub(crate) fn drive_wash_gpu(
 
     let out = WASH_SESSION.with(|cell| {
         let mut slot_cell = cell.borrow_mut();
-        if slot_cell.as_ref().map(|s| s.dims) != Some(dims) {
+        if slot_cell.as_ref().map(|s| (s.dims, s.reset_gen)) != Some((dims, reset_gen)) {
             if let Some(old) = slot_cell.as_mut() {
                 old.release_slot(renderer);
             }
-            *slot_cell = Some(WashSession::new(&gpu.device, dims));
+            let mut s = WashSession::new(&gpu.device, dims);
+            s.reset_gen = reset_gen;
+            *slot_cell = Some(s);
         }
         let sess = slot_cell.as_mut()?;
 
@@ -353,25 +363,25 @@ pub(crate) fn drive_wash_gpu(
         }
         sess.seeded = true;
 
-        // Bake into canvas_rgba once the wash settles (for save / layer thumbnail / interop). The
-        // slot override keeps DISPLAYING the live wash; this just keeps the flat canvas in sync.
-        // Bake-on-settle (or on a restore): keep canvas_rgba in sync (save / thumbnail / undo) without
-        // dropping the override.
+        // ── ADR-0088 undo snapshot ── the tool committed a stroke (its count ran past `applied`, and
+        // it's not a redo). Snapshot the field NOW (at pen-up, one per stroke ⇒ no fast-stroke
+        // collapse), discarding any redo branch first. `committed[i]` = field after stroke i+1.
+        if want > sess.applied && sess.committed.len() < want {
+            sess.committed.truncate(sess.applied);
+            let snap = sess.solver.read_pigment(&gpu.device, &gpu.queue);
+            while sess.applied < want {
+                sess.committed.push(snap.clone());
+                sess.applied += 1;
+            }
+        }
+
+        // Bake into canvas_rgba (for save / layer thumbnail / interop) once the wash settles, or on a
+        // restore. The slot override keeps DISPLAYING the live wash; this just keeps the flat canvas
+        // in sync (and lets the tool's snapshot-undo restore a coherent pre-image).
         let do_bake = restored_now || (!active && sess.idle_frames == ACTIVE_WINDOW as u32);
         if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
-            // ADR-0088: a freshly-committed stroke (the tool's count ran ahead) ⇒ snapshot the settled
-            // pigment field for undo. Discard any redo branch first. (Fast strokes that collapse into
-            // one settle pad the missing intermediates with the current state — a rare approximation.)
-            if want > sess.applied {
-                sess.committed.truncate(sess.applied);
-                let snap = sess.solver.read_pigment(&gpu.device, &gpu.queue);
-                while sess.applied < want {
-                    sess.committed.push(snap.clone());
-                    sess.applied += 1;
-                }
-            }
         }
         Some(PreviewOverride { entity_bits, texture_id: id, premultiplied: true })
     });

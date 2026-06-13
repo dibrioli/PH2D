@@ -636,6 +636,7 @@ impl RasterEditTool for PainterTool {
         self.wash_active_strokes = 0; // ADR-0088: new source ⇒ the wash field history is void too
         self.wash_undo_flags.clear();
         self.wash_redo_flags.clear();
+        self.wash_reset_generation = self.wash_reset_generation.wrapping_add(1);
         // **W15 fluid:** the wet field is sized + indexed to the OLD source. A new
         // canvas makes it meaningless (the GPU composite would map the stale field
         // onto the wrong pixels) — drop it. `end_stroke` above keeps it for a normal

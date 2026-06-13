@@ -518,6 +518,10 @@ pub struct PainterTool {
     wash_active_strokes: usize,
     wash_undo_flags: Vec<bool>,
     wash_redo_flags: Vec<bool>,
+    /// Bumps when the canvas base the wash composites over is invalidated (new source / layer switch /
+    /// undo-stack reset). The shell's `drive_wash_gpu` drops its persistent session on a change so the
+    /// pigment field + base backdrop + undo snapshots are rebuilt from the current canvas.
+    wash_reset_generation: u64,
     /// **W3.T3.4 dock toggle (mode C):** which painter panel occupies the
     /// shared right-dock slot — `false` = brush sidebar, `true` = layers panel.
     /// Toggled via `handle_panel_event` (either panel's header toggle button);
@@ -721,6 +725,7 @@ impl Default for PainterTool {
             wash_active_strokes: 0,
             wash_undo_flags: Vec::new(),
             wash_redo_flags: Vec::new(),
+            wash_reset_generation: 0,
             dock_shows_layers: false,
             show_brush_studio: false,
             dirty_rect: None,

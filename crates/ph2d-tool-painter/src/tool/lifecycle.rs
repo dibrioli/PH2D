@@ -1703,6 +1703,13 @@ impl PainterTool {
         self.wash_active_strokes
     }
 
+    /// Generation that bumps when the wash's canvas base is invalidated (new source / layer switch).
+    /// The shell drops + rebuilds its persistent wash session on a change.
+    #[must_use]
+    pub fn wash_reset_generation(&self) -> u64 {
+        self.wash_reset_generation
+    }
+
     /// `true` if there is at least one committed stroke to undo (drives the
     /// sidebar `undo_enabled` affordance).
     #[must_use]

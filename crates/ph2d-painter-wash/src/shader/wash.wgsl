@@ -50,11 +50,16 @@ struct Params {
 
 fn idx(x: u32, y: u32) -> u32 { return y * P.width + x; }
 
-// Wet-gate × paper permeability: transport happens only where the paper is wet.
+// Wet-gate: transport happens only where the cell is wet (water in the [w_lo, w_hi] band).
+// NOTE: the paper-permeability modulation (mix(perm_valley, perm_crest, paper)) is intentionally
+// REMOVED. The paper field is per-PIXEL noise, so modulating per-cell transport by it etched the
+// grain into the pigment as harsh per-pixel mottling (visible once the saturation cap exposes mass
+// variation near the cap). The minimal core keeps transport UNIFORM ⇒ a clean, flat stain.
+// Granulation returns later as a deliberate v1.1 feature driven by a smooth low-frequency field,
+// not this per-pixel tooth. `pap` is kept in the signature (and `paper` bound) for that future use.
 fn gate(w: f32, pap: f32) -> f32 {
-    let perm = mix(P.perm_valley, P.perm_crest, pap);
     let t = clamp((w - P.w_lo) / max(P.w_hi - P.w_lo, 1.0e-6), 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t) * perm;
+    return t * t * (3.0 - 2.0 * t);
 }
 
 // Net Δpigment for the centre cell `c` contributed by one face to neighbour `n`.

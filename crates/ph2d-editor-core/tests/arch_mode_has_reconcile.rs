@@ -51,6 +51,13 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          next frame — no pipeline recompile and no derived CPU state keyed on it. \
          Same pattern as the unflagged `set_math_op`/`set_blend_mode` UBO setters.",
     ),
+    (
+        "set_color_model",
+        "WashCompositor Linear↔K–M toggle (ADR-0089/0091): a single `s.color_model` \
+         field write. The re-render is driven by the bridge (sets `seeded=false` on a \
+         model flip), NOT this setter; the compositor holds no derived cache keyed on \
+         the model (the field is encoding-agnostic — both modes read the same buffers).",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather

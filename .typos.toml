@@ -50,9 +50,12 @@ bumpalo = "bumpalo"
 puffin = "puffin"
 # Code identifiers, not English: `nd` = neighbour-down index in the watercolor solver
 # shaders (alongside nl/nr/nu); `ba` = the Jacobi ping-pong direction "b→a" in
-# `bg_jacobi_ba` (alongside `bg_jacobi_ab`). ADR-0078/0080.
+# `bg_jacobi_ba` (alongside `bg_jacobi_ab`). ADR-0078/0080. `iy` = integer y-coord
+# (paired with `ix`) in the wash composite Gaussian samplers (`sample_pig/dye/res`,
+# ADR-0089/0091) — typos-cli reads it as a misspelt "it".
 nd = "nd"
 ba = "ba"
+iy = "iy"
 # Brazilian Portuguese tokens that look like typos to en-US dictionaries.
 "nao" = "nao"
 "sim" = "sim"
@@ -203,6 +206,10 @@ abd = "abd"
 extend-exclude = [
     "target/**",
     "Cargo.lock",
+    # `backups/` is a verbatim snapshot of crates+docs taken before the watercolor v2
+    # super-simplification (commit `30ecc096`) — NOT active source. Its pt-BR ADR docs
+    # (controle, conservativo, fiel, …) trip the en-US dictionary; never lint a backup.
+    "backups/**",
     # Snapshots are auto-generated; reviewing typos there is the snapshot's job.
     "**/snapshots/*.snap",
     # Spike fixtures may contain Luau intentionally

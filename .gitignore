@@ -1,6 +1,13 @@
 # Rust
 target/
 
+# `backups/` — verbatim snapshot of crates+docs before the watercolor v2
+# super-simplification (tracked since commit `30ecc096` as a refactor safety net).
+# It is NOT active source; gitignoring it makes the lint tools (cargo-machete,
+# typos — both honour .gitignore) skip its stale Cargo.toml deps + pt-BR docs,
+# which were reddening CI. The files stay tracked (already committed) for the user.
+backups/
+
 # Secrets — the dev/test Anthropic API key (P4, ADR-0061). Read in debug builds
 # by ph2d-host-desktop; MUST NEVER be committed.
 docs/_api-claude.md

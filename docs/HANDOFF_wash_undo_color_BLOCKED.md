@@ -1,23 +1,25 @@
-# HANDOFF — Wash: undo + cores (undo RECONSTRUÍDO do zero via ADR-0090; cor do 0089 mantida)
+# HANDOFF — Wash: undo + cores (RESOLVIDO ✅ — undo ADR-0090, cor ADR-0091; Enio aprovou)
 
-> **Status (2026-06-14): undo jogado fora e refeito.** O Enio decretou *"sem solução, desfaça e jogue
-> fora todo o sistema undo/redo… crie do zero um sistema simples e capaz"*. Feito em
-> [`ADR-0090`](architecture/decisions/0090-wash-event-driven-undo-rebuild.md): o undo agora é uma
-> **pilha-dupla dirigida por EVENTOS** (`WashUndoEvent` Commit/Undo/Redo) que espelha o `UndoController`
-> raster, com snapshots de campo **esparsos**. Sumiram a contagem `wash_active_strokes`, as flags
-> paralelas e a reconciliação por-frame da bridge (a causa irreparável). **A parte de COR do ADR-0089
-> fica** (campo duplo `pig`+`dye`, `K_REF`/`COVER_K`, live-transform — já aprovada). `cargo check` verde
-> nos 2 crates + 10/10 invariantes GPU + snapshot→restore byte-limpo (K–M=0/Linear=0) no Metal. **Falta
-> só o teste visual do Enio no app.**
+> **Status (2026-06-14): RESOLVIDO — Enio aprovou os dois.** "Funcionou!" (undo) + "Parece perfeito!" (cor).
 >
-> **Como testar (Enio):** `cargo run -p ph2d-host-desktop --features wash` → Brush Studio: Wash on.
-> Pinta vários traços, **Ctrl+Z / Ctrl+Y** repetidos — firmes, sem o estado antigo voltar, **inclusive
-> em Evaporation 0** e com traços rápidos; pinta um traço novo depois de um undo (não deve "refazer"
-> nada); o assentamento no pen-up continua suave. A cor (vermelho=vermelho, com e sem Pigment) é a do
-> 0089, intacta. Constantes: settle = `ACTIVE_WINDOW`, teto do histórico = `WASH_UNDO_BUDGET_BYTES`.
+> - **Undo** ([`ADR-0090`](architecture/decisions/0090-wash-event-driven-undo-rebuild.md)): reconstruído do
+>   zero — pilha-dupla por EVENTOS (`WashUndoEvent` Commit/Undo/Redo) espelhando o `UndoController` raster,
+>   snapshots de campo ESPARSOS (pig+dye+water+res). Sumiram a contagem/flags/reconciliação por-frame. O
+>   bug "mancha volta ao pintar" era do **SOLVER** (gêmeo ping-pong `pig_b`/`dye_b` stale no restore
+>   parcial, ressuscitado pelo copy-back full do step de região), NÃO do controle — fix: `upload_*` escreve
+>   os dois gêmeos. E o undo restaura TODO o estado dinâmico (pig+dye+water+res).
+> - **Cor (Pigment)** ([`ADR-0091`](architecture/decisions/0091-wash-mixbox-residual-faithful-pigment-color.md)):
+>   a "K–M ingênua" do 0089 (normalizar a `K_REF`) colapsava cores distintas (vermelho/laranja/amarelo→
+>   laranja, 2 azuis→1). Trocada pelo **residual Mixbox** (estado da arte, Rebelle): `c = unmix(rgb)` +
+>   `r = rgb − mix(c)`, decode `mix(c̄)+r̄` → cor sozinha EXATA, só a mistura wet-on-wet é espectral
+>   (azul+amarelo→verde). Novo canal `res` no campo. O `dye`/Linear do 0089 fica.
+> - **Verde:** 22 testes GPU+unit no Metal (vermelho→sRGB(218,89,89); green-excess 53 vs −6). Postmortem
+>   completo: [`Painter_projeto/wash_solucao_de_erros.md`](Painter_projeto/wash_solucao_de_erros.md)
+>   (§0.7-8 + B7/B8/B9). Commits `f0d2be02`→`6030156b`. Constantes: settle = `ACTIVE_WINDOW`, teto undo =
+>   `WASH_UNDO_BUDGET_BYTES`.
 >
-> **⚠️ Tudo abaixo (o banner ADR-0089 e o relato BLOQUEADO do 0088) é HISTÓRICO** — descreve a tentativa
-> anterior, cujo mecanismo de undo foi inteiramente removido.
+> **⚠️ Tudo abaixo é HISTÓRICO** — o banner ADR-0089 e o relato BLOQUEADO original do 0088, cujas
+> mecânicas (undo por contagem; cor por `K_REF`) foram substituídas.
 
 > **Status (2026-06-13): reescrito, não remendado.** O Enio escolheu a **Opção B+** (manter o
 > live-transform). Implementado em [`ADR-0089`](architecture/decisions/0089-wash-dual-field-faithful-color-and-synchronous-undo.md),

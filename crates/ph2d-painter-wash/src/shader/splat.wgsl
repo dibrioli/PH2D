@@ -22,6 +22,7 @@ struct Dab {
     water_add: f32,
     pig: vec4<f32>, // 4 base-pigment concentrations (K–M), added × falloff
     dye: vec4<f32>, // premul linear-RGB + mass (Linear), added × falloff (ADR-0089)
+    res: vec4<f32>, // premul signed-RGB residual (ADR-0091), added × falloff
 }
 
 struct SplatParams {
@@ -40,6 +41,7 @@ struct SplatParams {
 @group(0) @binding(2) var<storage, read_write> pig: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> dabs: array<Dab>;
 @group(0) @binding(4) var<storage, read_write> dye: array<vec4<f32>>; // ADR-0089 faithful-RGB channel
+@group(0) @binding(5) var<storage, read_write> res: array<vec4<f32>>; // ADR-0091 residual channel
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
@@ -54,6 +56,7 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
     var w = water[i];
     var p = pig[i];
     var dy_acc = dye[i];
+    var rs_acc = res[i];
     for (var d: u32 = 0u; d < S.n_dabs; d = d + 1u) {
         let db = dabs[d];
         let dx = fx - db.cx;
@@ -72,20 +75,23 @@ fn cs_splat(@builtin(global_invocation_id) gid: vec3<u32>) {
             let fp = 1.0 - distp * distp * (3.0 - 2.0 * distp);
             p = p + db.pig * fp;
             dy_acc = dy_acc + db.dye * fp;
+            rs_acc = rs_acc + db.res * fp;
         }
     }
     water[i] = w;
-    // Clamp each colour channel's magnitude to FIELD_CAP, preserving its ratio (so neither hue shifts):
-    // pig by Σ concentration, dye by its mass (.w). Cap is a stability bound only (ADR-0089).
+    // ADR-0091: cap ALL colour channels by the SAME factor (mass = dye.w), preserving their ratios so
+    // the decoded colour is unchanged (only opacity is bounded) — see cs_step. Pig/dye clamp ≥0; the
+    // residual is SIGNED (no clamp).
     p = max(p, vec4<f32>(0.0));
-    let tot = p.x + p.y + p.z + p.w;
-    if (tot > FIELD_CAP) {
-        p = p * (FIELD_CAP / tot);
+    dy_acc = max(dy_acc, vec4<f32>(0.0));
+    let mass = dy_acc.w;
+    if (mass > FIELD_CAP) {
+        let s = FIELD_CAP / mass;
+        p = p * s;
+        dy_acc = dy_acc * s;
+        rs_acc = rs_acc * s;
     }
     pig[i] = p;
-    dy_acc = max(dy_acc, vec4<f32>(0.0));
-    if (dy_acc.w > FIELD_CAP) {
-        dy_acc = dy_acc * (FIELD_CAP / dy_acc.w);
-    }
     dye[i] = dy_acc;
+    res[i] = rs_acc;
 }

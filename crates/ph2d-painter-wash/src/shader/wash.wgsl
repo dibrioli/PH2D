@@ -49,7 +49,9 @@ struct Params {
 
 @group(0) @binding(0) var<uniform> P: Params;
 @group(0) @binding(1) var<storage, read> water_in: array<f32>;
-@group(0) @binding(2) var<storage, read> paper: array<f32>;
+// NB: binding 2 (the `paper` field) was REMOVED — the gate no longer reads paper permeability (B5), so
+// binding it wasted one of the 8 storage-buffer slots that the ADR-0091 residual channel now needs.
+// `paper`/granulation return as a v1.1 feature (a low-frequency field), re-adding a binding then.
 @group(0) @binding(3) var<storage, read> pig_in: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> water_out: array<f32>;
 @group(0) @binding(5) var<storage, read_write> pig_out: array<vec4<f32>>;
@@ -57,6 +59,10 @@ struct Params {
 // water-driven gather as `pig` so the two colour encodings stay spatially identical.
 @group(0) @binding(6) var<storage, read> dye_in: array<vec4<f32>>;
 @group(0) @binding(7) var<storage, read_write> dye_out: array<vec4<f32>>;
+// ADR-0091 Mixbox residual channel (signed premul-RGB), transported by the SAME water-driven gather as
+// pig/dye so the three colour encodings of a stroke stay spatially identical.
+@group(0) @binding(8) var<storage, read> res_in: array<vec4<f32>>;
+@group(0) @binding(9) var<storage, read_write> res_out: array<vec4<f32>>;
 
 fn idx(x: u32, y: u32) -> u32 { return y * P.width + x; }
 
@@ -65,9 +71,9 @@ fn idx(x: u32, y: u32) -> u32 { return y * P.width + x; }
 // REMOVED. The paper field is per-PIXEL noise, so modulating per-cell transport by it etched the
 // grain into the pigment as harsh per-pixel mottling (visible once the saturation cap exposes mass
 // variation near the cap). The minimal core keeps transport UNIFORM ⇒ a clean, flat stain.
-// Granulation returns later as a deliberate v1.1 feature driven by a smooth low-frequency field,
-// not this per-pixel tooth. `pap` is kept in the signature (and `paper` bound) for that future use.
-fn gate(w: f32, pap: f32) -> f32 {
+// Granulation returns later as a deliberate v1.1 feature driven by a smooth low-frequency field, not
+// this per-pixel tooth (the `paper` binding was dropped — ADR-0091 needed the storage-buffer slot).
+fn gate(w: f32) -> f32 {
     let t = clamp((w - P.w_lo) / max(P.w_hi - P.w_lo, 1.0e-6), 0.0, 1.0);
     return t * t * (3.0 - 2.0 * t);
 }
@@ -98,7 +104,8 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     let wc = water_in[i];
     let pc = pig_in[i];
     let dc = dye_in[i];
-    let gc = gate(wc, paper[i]);
+    let rc = res_in[i];
+    let gc = gate(wc);
 
     let xl = max(x, 1u) - 1u;
     let xr = min(x + 1u, P.width - 1u);
@@ -113,10 +120,10 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     // weights (diffusion D·gf, advection v) depend only on water/paper, so pig and dye move identically
     // (only the upwind donor VALUE differs, handled inside `face`). This keeps the two encodings of the
     // same stroke spatially coherent for the live Linear↔K–M toggle.
-    let wL = water_in[iL]; let gL = gate(wL, paper[iL]);
-    let wR = water_in[iR]; let gR = gate(wR, paper[iR]);
-    let wU = water_in[iU]; let gU = gate(wU, paper[iU]);
-    let wD = water_in[iD]; let gD = gate(wD, paper[iD]);
+    let wL = water_in[iL]; let gL = gate(wL);
+    let wR = water_in[iR]; let gR = gate(wR);
+    let wU = water_in[iU]; let gU = gate(wU);
+    let wD = water_in[iD]; let gD = gate(wD);
 
     var p_new = pc;
     p_new = p_new + face(gc, wc, pc, gL, wL, pig_in[iL]);
@@ -130,19 +137,28 @@ fn cs_step(@builtin(global_invocation_id) gid: vec3<u32>) {
     d_new = d_new + face(gc, wc, dc, gU, wU, dye_in[iU]);
     d_new = d_new + face(gc, wc, dc, gD, wD, dye_in[iD]);
 
+    var r_new = rc;
+    r_new = r_new + face(gc, wc, rc, gL, wL, res_in[iL]);
+    r_new = r_new + face(gc, wc, rc, gR, wR, res_in[iR]);
+    r_new = r_new + face(gc, wc, rc, gU, wU, res_in[iU]);
+    r_new = r_new + face(gc, wc, rc, gD, wD, res_in[iD]);
+
+    // ADR-0091: cap ALL colour channels by the SAME factor (mass = dye.w) so the composite's
+    // c̄ = pig/mass and r̄ = res/mass stay consistent at heavy overlap — an independent per-field cap
+    // would distort the decoded colour. Pig/dye clamp ≥0 (mass, concentration); res is SIGNED (no clamp).
     var po = max(p_new, vec4<f32>(0.0));
-    let pt = po.x + po.y + po.z + po.w;
-    if (pt > FIELD_CAP) {
-        po = po * (FIELD_CAP / pt);
+    var do_ = max(d_new, vec4<f32>(0.0));
+    var ro = r_new;
+    let mass = do_.w;
+    if (mass > FIELD_CAP) {
+        let s = FIELD_CAP / mass;
+        po = po * s;
+        do_ = do_ * s;
+        ro = ro * s;
     }
     pig_out[i] = po;
-    // Dye: clamp ≥0 and cap the MASS (.w) preserving the premul ratio (so the un-premultiplied colour
-    // is unchanged — only opacity is bounded). The composite guards mass≈0 → backdrop.
-    var do_ = max(d_new, vec4<f32>(0.0));
-    if (do_.w > FIELD_CAP) {
-        do_ = do_ * (FIELD_CAP / do_.w);
-    }
     dye_out[i] = do_;
+    res_out[i] = ro;
     // Bulk drying (user Evaporation) + edge-biased recession (feathers the thin rim, ~0 in the wet
     // interior). The latter passes rim cells through the wet-gate band before freezing ⇒ soft edge.
     let edge_dry = EDGE_EVAP_FLOOR * (1.0 - clamp(wc, 0.0, 1.0));

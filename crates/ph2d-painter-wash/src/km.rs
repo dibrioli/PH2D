@@ -254,6 +254,107 @@ impl KmModel {
         c
     }
 
+    /// **Mixbox unmix** (ADR-0091) — linear-sRGB → 4 non-negative pigment concentrations whose K–M
+    /// composite best matches `rgb`, with **NO fixed-magnitude constraint** (unlike the legacy
+    /// [`Self::rgb_to_concentrations`], which forces `Σc = K_REF` and so discards the pick's value).
+    /// The remaining fit error is carried by the additive residual ([`Self::pigment_residual`]), so a
+    /// pick INSIDE the 4-pigment gamut resolves with ~zero residual and one OUTSIDE gets the nearest
+    /// pigment mix + a residual that restores exact fidelity at the composite. Minimises
+    /// `‖compose_over(white,c) − rgb‖²` in colour space (the absorbance NNLS only seeds it).
+    #[must_use]
+    pub fn unmix(&self, rgb: [f32; 3]) -> [f32; PIGMENTS] {
+        let s_t = upsample(&self.curves, rgb);
+        let mut a_target = [0.0_f32; N];
+        for k in 0..N {
+            a_target[k] = -(s_t[k] / self.white[k]).clamp(EPS, 1.0).ln();
+        }
+        let m = &self.absorb;
+        let mut mta = [0.0_f32; PIGMENTS];
+        for (p, v) in mta.iter_mut().enumerate() {
+            let mut s = 0.0;
+            for k in 0..N {
+                s += m[p][k] * a_target[k];
+            }
+            *v = s;
+        }
+        let mut mtm = [[0.0_f32; PIGMENTS]; PIGMENTS];
+        for i in 0..PIGMENTS {
+            for j in 0..PIGMENTS {
+                let mut s = 0.0;
+                for k in 0..N {
+                    s += m[i][k] * m[j][k];
+                }
+                mtm[i][j] = s;
+            }
+        }
+        let mut c = [0.25_f32; PIGMENTS];
+        for _ in 0..64 {
+            for i in 0..PIGMENTS {
+                let mut denom = 0.0;
+                for j in 0..PIGMENTS {
+                    denom += mtm[i][j] * c[j];
+                }
+                c[i] *= mta[i] / (denom + 1.0e-6);
+            }
+        }
+        // Refine in COLOUR space (minimise the actual composite error), c ≥ 0, NO magnitude projection
+        // — the residual mops up the rest, which is exactly what keeps a single picked colour faithful.
+        for _ in 0..120 {
+            let cur = self.compose_over([1.0, 1.0, 1.0], c);
+            let res = [cur[0] - rgb[0], cur[1] - rgb[1], cur[2] - rgb[2]];
+            let mut a = [0.0_f32; N];
+            for k in 0..N {
+                let mut s = 0.0;
+                for p in 0..PIGMENTS {
+                    s += c[p] * self.absorb[p][k];
+                }
+                a[k] = s;
+            }
+            for p in 0..PIGMENTS {
+                let mut dspec = [0.0_f32; N];
+                for k in 0..N {
+                    dspec[k] = -self.white[k] * (-a[k]).exp() * self.absorb[p][k];
+                }
+                let dcol = self.to_rgb_raw(&dspec);
+                let grad = dcol[0] * res[0] + dcol[1] * res[1] + dcol[2] * res[2];
+                c[p] = (c[p] - 0.6 * grad).max(0.0);
+            }
+        }
+        c
+    }
+
+    /// **Mixbox encode `F(rgb)`** (ADR-0091) — pigment concentrations + the additive RGB residual
+    /// `r = rgb − mix(c)`. Decoding `mix(c) + r` returns `rgb` EXACTLY ⇒ a single picked colour is
+    /// faithful; only MIXING two colours (averaging their latents) shows the spectral pigment behaviour
+    /// (blue+yellow→green). This is the identity-preserving latent the state-of-the-art uses (Sochorová
+    /// & Jamriška, *Practical Pigment Mixing*, SIGGRAPH Asia 2021 — the model Rebelle ships).
+    #[must_use]
+    pub fn pigment_residual(&self, rgb: [f32; 3]) -> ([f32; PIGMENTS], [f32; 3]) {
+        let c = self.unmix(rgb);
+        let mixc = self.compose_over([1.0, 1.0, 1.0], c);
+        (c, [rgb[0] - mixc[0], rgb[1] - mixc[1], rgb[2] - mixc[2]])
+    }
+
+    /// **Mixbox K–M display** (ADR-0091) — decode the accumulated latent `mix(c̄) + r̄` over `backdrop`,
+    /// coverage from `mass`. `c_avg`/`res_avg` are the MASS-WEIGHTED averages the field carries (the
+    /// caller divides the premultiplied sums by `mass`). A single colour decodes to itself (faithful);
+    /// a wet mix decodes to the spectral pigment result. Replaces the value-collapsing
+    /// [`Self::compose_km_display`] (which normalised every colour to `K_REF`).
+    #[must_use]
+    pub fn compose_km_mixbox(&self, backdrop: [f32; 3], c_avg: [f32; PIGMENTS], res_avg: [f32; 3], mass: f32, cover_k: f32) -> [f32; 3] {
+        if mass < 1.0e-6 {
+            return backdrop;
+        }
+        let pig = self.compose_over([1.0, 1.0, 1.0], c_avg);
+        let color = [pig[0] + res_avg[0], pig[1] + res_avg[1], pig[2] + res_avg[2]];
+        let cover = 1.0 - (-mass / cover_k.max(1.0e-3)).exp();
+        [
+            backdrop[0] + (color[0] - backdrop[0]) * cover,
+            backdrop[1] + (color[1] - backdrop[1]) * cover,
+            backdrop[2] + (color[2] - backdrop[2]) * cover,
+        ]
+    }
+
     /// **K–M display composite** (ADR-0089 §2.2) — the Rust mirror of the WGSL `km_compose`. Hue from
     /// the concentration RATIO re-scaled to [`K_REF`] (mass-independent ⇒ faithful), coverage from the
     /// actual total `Σconc` via `1 − exp(−(Σconc/K_REF)/cover_k)` (drives lightness AND edge-darkening
@@ -523,5 +624,55 @@ mod tests {
         let (a, b) = (dir(thin), dir(thick));
         let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         assert!(dot > 0.995, "K–M hue must be mass-independent (thin·thick dir = {dot:.4})");
+    }
+
+    // ── ADR-0091 — Mixbox residual: a single picked colour is FAITHFUL, mixing stays spectral ──────
+
+    /// The bug Enio caught: in Pigment mode red/orange/yellow all collapsed to orange and the two blues
+    /// to one blue, because the legacy composite normalised every colour to `K_REF` (discarding value).
+    /// The Mixbox decode `mix(c)+r` must reproduce EACH picked colour at full coverage ⇒ the colours
+    /// stay distinct.
+    #[test]
+    fn pigment_mode_reproduces_picked_colour() {
+        let km = KmModel::new();
+        let cases: [(&str, [f32; 3]); 7] = [
+            ("red", [0.85, 0.12, 0.12]),
+            ("orange", [0.90, 0.45, 0.05]),
+            ("yellow", [0.92, 0.85, 0.08]),
+            ("light blue", [0.45, 0.70, 0.92]),
+            ("dark blue", [0.08, 0.10, 0.55]),
+            ("green", [0.20, 0.65, 0.22]),
+            ("magenta", [0.85, 0.10, 0.70]),
+        ];
+        for (name, rgb) in cases {
+            let (c, r) = km.pigment_residual(rgb);
+            let out = km.compose_km_mixbox([1.0, 1.0, 1.0], c, r, 8.0, COVER_K);
+            eprintln!("{name}: pick {rgb:?} → pigment {out:?}  (residual {r:?})");
+            for ch in 0..3 {
+                assert!(
+                    (out[ch] - rgb[ch]).abs() < 0.04,
+                    "{name}: Pigment mode must reproduce the picked colour faithfully (got {out:?}, want {rgb:?})"
+                );
+            }
+        }
+    }
+
+    /// ...and the spectral win is preserved: mixing blue + yellow WET-ON-WET (mass-weighted average of
+    /// their latents) still composes to GREEN, not the metameric grey of RGB.
+    #[test]
+    fn pigment_mix_blue_plus_yellow_is_green() {
+        let km = KmModel::new();
+        let (cb, rb) = km.pigment_residual([0.05, 0.05, 0.85]); // blue
+        let (cy, ry) = km.pigment_residual([0.90, 0.80, 0.05]); // yellow
+        let mut c = [0.0_f32; PIGMENTS];
+        for p in 0..PIGMENTS {
+            c[p] = 0.5 * (cb[p] + cy[p]);
+        }
+        let r = [0.5 * (rb[0] + ry[0]), 0.5 * (rb[1] + ry[1]), 0.5 * (rb[2] + ry[2])];
+        let out = km.compose_km_mixbox([1.0, 1.0, 1.0], c, r, 8.0, COVER_K);
+        eprintln!("pigment blue+yellow = {out:?}");
+        assert!(out[1] > out[0] && out[1] > out[2], "blue+yellow must mix to GREEN (g dominant), got {out:?}");
+        let avg = (out[0] + out[1] + out[2]) / 3.0;
+        assert!(out[1] > avg * 1.10, "green must clearly stand out from grey (g={} avg={avg})", out[1]);
     }
 }

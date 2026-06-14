@@ -28,7 +28,7 @@ fn composite_full(gpu: &GpuContext, s: &WashSolver, w: u32, h: u32, model: u32) 
     let n = (w * h) as usize;
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, model, s.pig_buffer(), s.dye_buffer());
+    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, model, s.pig_buffer(), s.dye_buffer(), s.res_buffer());
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);

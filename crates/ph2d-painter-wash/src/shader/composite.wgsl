@@ -35,6 +35,7 @@ struct Comp {
 // K–M spectral tables (mirrors km.rs): [curves 3·N][absorb PIGMENTS·N][to_rgb 3·N], N=16.
 @group(0) @binding(4) var<storage, read> km: array<f32>;
 @group(0) @binding(5) var<storage, read> dye: array<vec4<f32>>;     // premul-RGB + mass (Linear, ADR-0089)
+@group(0) @binding(6) var<storage, read> res: array<vec4<f32>>;     // premul signed-RGB residual (ADR-0091)
 
 const KM_N: u32 = 16u;
 const KM_OFF_CURVES: u32 = 0u;    // 3·N
@@ -135,6 +136,25 @@ fn sample_dye(fx: f32, fy: f32) -> vec4<f32> {
     return acc / wsum;
 }
 
+// ADR-0091 residual (signed) — same Gaussian as pig/dye so the decoded `mix(c̄)+r̄` stays anti-aliased.
+fn sample_res(fx: f32, fy: f32) -> vec4<f32> {
+    let ix = i32(round(fx));
+    let iy = i32(round(fy));
+    let inv2s2 = 1.0 / (2.0 * BLUR_SIGMA * BLUR_SIGMA);
+    var acc = vec4<f32>(0.0);
+    var wsum = 0.0;
+    for (var dy = -BLUR_RADIUS; dy <= BLUR_RADIUS; dy = dy + 1) {
+        for (var dx = -BLUR_RADIUS; dx <= BLUR_RADIUS; dx = dx + 1) {
+            let x = clamp(ix + dx, 0, i32(C.gw) - 1);
+            let y = clamp(iy + dy, 0, i32(C.gh) - 1);
+            let wgt = exp(-f32(dx * dx + dy * dy) * inv2s2);
+            acc = acc + res[u32(y) * C.gw + u32(x)] * wgt;
+            wsum = wsum + wgt;
+        }
+    }
+    return acc / wsum;
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cx = C.region_ox + gid.x;
@@ -150,14 +170,19 @@ fn cs_composite(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     var rgb = back_lin;
     if (C.color_model == 1u) {
-        // Spectral K–M: hue from the concentration RATIO at K_REF (mass-independent), coverage from Σ.
-        let conc = max(sample_pig(fx, fy), vec4<f32>(0.0));
-        let total = conc.x + conc.y + conc.z + conc.w;
-        if (total > 1.0e-6) {
-            let ratio = conc / total * K_REF;
-            let hue = km_hue_over_white(ratio);
-            let cover = coverage(total / K_REF);
-            rgb = mix(back_lin, hue, cover);
+        // Spectral K–M (ADR-0091 Mixbox): decode the accumulated latent `mix(c̄) + r̄` over the backdrop.
+        // c̄ = pig/mass, r̄ = res/mass (mass = the dye field's .w — the three colour channels share the
+        // SAME accumulated mass). A single picked colour decodes to ITSELF (faithful, no value collapse);
+        // a wet mix of different colours decodes to the spectral pigment result (blue+yellow→green).
+        let dv = max(sample_dye(fx, fy), vec4<f32>(0.0));
+        let mass = dv.w;
+        if (mass > 1.0e-6) {
+            let c_avg = max(sample_pig(fx, fy), vec4<f32>(0.0)) / mass;
+            let r_avg = sample_res(fx, fy).xyz / mass;
+            let pigment = km_hue_over_white(c_avg);
+            let color = max(pigment + r_avg, vec3<f32>(0.0));
+            let cover = coverage(mass);
+            rgb = mix(back_lin, color, cover);
         }
     } else {
         // Linear/RGB: un-premultiply the dye for the exact picked colour, coverage from the mass.

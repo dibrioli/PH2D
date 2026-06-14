@@ -68,20 +68,21 @@ impl Profile {
 /// deep undo history without blowing the RAM budget. Both channels travel together so the live
 /// Linear↔K–M toggle stays faithful after a restore. An EMPTY snapshot == the wash-free base.
 struct FieldSnap {
-    /// `(cell_index, pigment, dye, water)` for every occupied cell. Water is snapshotted too so the
-    /// undo is COMPLETE — restoring colour alone leaves the undone stroke's wet area marked wet
-    /// (forever at Evaporation 0) and bleeding into later strokes (Enio 2026-06-14).
-    cells: Vec<(u32, [f32; 4], [f32; 4], f32)>,
+    /// `(cell_index, pigment, dye, water, residual)` for every occupied cell (ADR-0090 + ADR-0091).
+    /// ALL of the solver's dynamic state — pigment, dye, water AND the Mixbox residual — so the undo is
+    /// COMPLETE (restoring less leaves a partial, leaky undo: wrong colour, a wet area that never dries,
+    /// or a resurrected stroke). `paper` is static and excluded.
+    cells: Vec<(u32, [f32; 4], [f32; 4], f32, [f32; 3])>,
 }
 
 impl FieldSnap {
-    /// Capture the occupied cells of a dense field readback (all three channels, same length). A cell
-    /// counts as occupied if it carries pigment, dye, OR water (water can spread past the pigment).
-    fn capture(pig: &[[f32; 4]], dye: &[[f32; 4]], water: &[f32]) -> Self {
+    /// Capture the occupied cells of a dense field readback (all channels, same length). A cell counts
+    /// as occupied if it carries pigment, dye, water, OR residual.
+    fn capture(pig: &[[f32; 4]], dye: &[[f32; 4]], water: &[f32], res: &[[f32; 4]]) -> Self {
         let mut cells = Vec::new();
-        for (i, ((p, d), w)) in pig.iter().zip(dye).zip(water).enumerate() {
-            if *p != [0.0; 4] || *d != [0.0; 4] || *w != 0.0 {
-                cells.push((i as u32, *p, *d, *w));
+        for (i, (((p, d), w), r)) in pig.iter().zip(dye).zip(water).zip(res).enumerate() {
+            if *p != [0.0; 4] || *d != [0.0; 4] || *w != 0.0 || r[0] != 0.0 || r[1] != 0.0 || r[2] != 0.0 {
+                cells.push((i as u32, *p, *d, *w, [r[0], r[1], r[2]]));
             }
         }
         Self { cells }
@@ -89,20 +90,22 @@ impl FieldSnap {
 
     /// Approximate heap footprint — drives the [`WASH_UNDO_BUDGET_BYTES`] eviction.
     fn bytes(&self) -> usize {
-        self.cells.len() * std::mem::size_of::<(u32, [f32; 4], [f32; 4], f32)>()
+        self.cells.len() * std::mem::size_of::<(u32, [f32; 4], [f32; 4], f32, [f32; 3])>()
     }
 
-    /// Scatter back into dense, zero-initialised pigment + dye + water buffers ready for `upload_*`.
-    fn scatter(&self, n: usize) -> (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<f32>) {
+    /// Scatter back into dense, zero-initialised pigment + dye + water + residual buffers for `upload_*`.
+    fn scatter(&self, n: usize) -> (Vec<[f32; 4]>, Vec<[f32; 4]>, Vec<f32>, Vec<[f32; 4]>) {
         let mut pig = vec![[0.0f32; 4]; n];
         let mut dye = vec![[0.0f32; 4]; n];
         let mut water = vec![0.0f32; n];
-        for &(i, p, d, w) in &self.cells {
+        let mut res = vec![[0.0f32; 4]; n];
+        for &(i, p, d, w, r) in &self.cells {
             pig[i as usize] = p;
             dye[i as usize] = d;
             water[i as usize] = w;
+            res[i as usize] = [r[0], r[1], r[2], 0.0];
         }
-        (pig, dye, water)
+        (pig, dye, water, res)
     }
 }
 
@@ -171,10 +174,11 @@ impl WashSession {
         if snap.cells.is_empty() {
             self.solver.clear(&gpu.device, &gpu.queue);
         } else {
-            let (pig, dye, water) = snap.scatter(n);
+            let (pig, dye, water, res) = snap.scatter(n);
             self.solver.upload_pigment(&gpu.queue, &pig);
             self.solver.upload_dye(&gpu.queue, &dye);
             self.solver.upload_water(&gpu.queue, &water);
+            self.solver.upload_res(&gpu.queue, &res);
         }
     }
 
@@ -308,7 +312,7 @@ pub(crate) fn drive_wash_gpu(
             let bd = backdrop.as_deref()?; // no backdrop yet (pure hover) ⇒ wait for the first stroke
             sess.compositor.begin_stroke(
                 &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, bd, coverage_k, color_model,
-                sess.solver.pig_buffer(), sess.solver.dye_buffer(),
+                sess.solver.pig_buffer(), sess.solver.dye_buffer(), sess.solver.res_buffer(),
             );
             sess.color_model = color_model;
             sess.initialized = true;
@@ -343,8 +347,9 @@ pub(crate) fn drive_wash_gpu(
                     let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
                     let dye = sess.solver.read_dye(&gpu.device, &gpu.queue);
                     let water = sess.solver.read_water(&gpu.device, &gpu.queue);
+                    let res = sess.solver.read_res(&gpu.device, &gpu.queue);
                     sess.redo.clear(); // a new stroke discards the redo branch (linear history)
-                    sess.push_undo(FieldSnap::capture(&pig, &dye, &water));
+                    sess.push_undo(FieldSnap::capture(&pig, &dye, &water, &res));
                     finalizing = true;
                 }
                 WashUndoEvent::Undo => {
@@ -378,12 +383,15 @@ pub(crate) fn drive_wash_gpu(
             .iter()
             .map(|d| {
                 let m = d.mass;
-                let mut conc = sess.km.rgb_to_concentrations(d.color);
+                // ADR-0091 Mixbox encode: c = unmix(rgb), r = rgb − mix(c). Deposit all three premul by
+                // mass — the K–M composite decodes mix(c̄)+r̄ so the picked colour reproduces exactly.
+                let (mut conc, r) = sess.km.pigment_residual(d.color);
                 for c in &mut conc {
                     *c *= m;
                 }
                 let dye = [d.color[0] * m, d.color[1] * m, d.color[2] * m, m];
-                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc).with_dye(dye)
+                let res = [r[0] * m, r[1] * m, r[2] * m, 0.0];
+                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc).with_dye(dye).with_residual(res)
             })
             .collect();
         if !gpu_dabs.is_empty() {
@@ -501,8 +509,9 @@ pub(crate) fn drive_wash_gpu(
                 let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
                 let dye = sess.solver.read_dye(&gpu.device, &gpu.queue);
                 let water = sess.solver.read_water(&gpu.device, &gpu.queue);
+                let res = sess.solver.read_res(&gpu.device, &gpu.queue);
                 if let Some(top) = sess.undo.last_mut() {
-                    *top = FieldSnap::capture(&pig, &dye, &water);
+                    *top = FieldSnap::capture(&pig, &dye, &water, &res);
                 }
             }
         }

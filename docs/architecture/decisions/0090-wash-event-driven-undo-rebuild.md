@@ -1,6 +1,9 @@
 # ADR-0090 — Wash: undo/redo reconstruído (pilha-dupla por EVENTOS, snapshots esparsos)
 
-- **Status:** ACEITO (Enio 2026-06-14), implementado.
+- **Status:** ACEITO (Enio 2026-06-14), implementado. **NB:** o rebuild de controle abaixo era
+  necessário (o esquema de contagem era frágil), mas **não** era o que bloqueava o Enio — o bug
+  visível ("a mancha desfeita volta ao pintar") era do **solver** (buffer gêmeo stale no restore),
+  achado só DEPOIS do rebuild via instrumentação. Ver **§6** (a correção que de fato resolveu).
 - **Contexto:** [ADR-0086](0086-watercolor-minimal-core-wash.md)/[0087](0087-wash-integration-parallel-watercolor-mode.md)/[0088](0088-wash-persistent-pigment-canvas-and-undo.md)/[0089](0089-wash-dual-field-faithful-color-and-synchronous-undo.md). Enio: *"sem solução. Desfaça e jogue fora todo o sistema undo/redo do Painter… crie do zero um sistema simples e capaz."*
 - **Supersede:** o **mecanismo** de undo do [ADR-0088](0088-wash-persistent-pigment-canvas-and-undo.md) §2.3 (undo por *polling de contador*) e do [ADR-0089](0089-wash-dual-field-faithful-color-and-synchronous-undo.md) §2.3 (snapshot síncrono reconciliado por **contagem + flag de redo**). **Mantém intacto** todo o resto do 0089 — o campo DUPLO (`pig` K–M + `dye` RGB), `K_REF`/`COVER_K`, a cor fiel por construção e o live-transform Linear↔K–M (a parte de COR já estava aprovada). Só troca a peça que era irreparável: o controle do undo.
 
@@ -48,3 +51,31 @@ Cada `FieldSnap` guarda **só as células ocupadas** do campo (`pig` ou `dye` n�
 ## 5. Gates / superfície
 
 A máquina de undo do wash **não** é contrato congelado (não está nos gates `*_contract_surface` do CLAUDE.md §6 — os congelados são a física K–M e as ABIs do Painter, ambas intactas). `WashUndoEvent` é re-exportado de `ph2d-tool-painter`; o único consumidor é a bridge do shell.
+
+## 6. O bug que de fato bloqueava o Enio (solver, não controle)
+
+Após o rebuild acima, o Enio testou e disse **"nada mudou"** — a mancha desfeita **voltava ao pintar
+de novo** ("como se a pincelada disparasse o redo"). A instrumentação provou o controle **PERFEITO**:
+3 commits → `undo_depth` 1→2→3; undo → `undo=2 redo=1 restored=true`; pincelada nova → `[Commit]
+undo=3 redo=0`, **sem** evento `Redo`. Logo o bug nunca esteve no controle — nem no novo, nem no
+antigo (o "o campo restaura" do 0089 era verdade). Trocar a peça suspeita "óbvia" (o controle) sem
+isolar/reproduzir o sintoma custou um ciclo; foi o log de instrumentação que apontou o lugar certo.
+
+**Causa-raiz — `WashSolver` (`solver.rs`):** o solver tem buffers **gêmeos** `pig_a`/`pig_b` (idem
+`dye`). Um `encode_step` de **região** escreve `pig_b` só na região pintada e depois copia o `pig_b`
+**INTEIRO** de volta para `pig_a` (após substeps ímpares — o caso da pintura, `WET_SUBSTEPS=3`). Isso
+é correto enquanto vale a invariante `pig_a == pig_b`, que a pintura normal mantém (todo step copia de
+volta). **O undo-restore quebrava a invariante:** `upload_pigment` escrevia **só `pig_a`**, deixando
+`pig_b` com o campo PRÉ-undo (a mancha desfeita). A 1ª pincelada seguinte fazia um step de região cujo
+copy-back do `pig_b` inteiro **ressuscitava a mancha desfeita FORA da região pintada**. Por isso o bug
+sobreviveu a TODAS as reescritas de controle (0088→0089→0090) e ao teste — `wash_artifact_repro`
+testava restore→composite, **nunca** restore→**pintar**.
+
+**Fix:** `upload_pigment`/`upload_dye` escrevem **os dois** gêmeos (`_a` e `_b`), restaurando a
+invariante `_a == _b` que o copy-back assume. Regressão (Metal):
+`restore_then_paint_does_not_resurrect_undone_pigment` — a mancha desfeita = **0.000** após
+restore+pintar (era 108.6), a restaurada e a nova presentes.
+
+**Lição** ([[feedback_measure_perf_symptom_scale]] / reproduzir-o-sintoma-isolado): o controle por
+contagem era de fato frágil (vale o rebuild), mas o sintoma que o Enio via era do solver. Um teste
+restore→**paint**→assert teria pego o bug 3 ADRs antes.

@@ -344,16 +344,27 @@ impl WashSolver {
         queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
     }
 
-    /// Overwrite ONLY the canonical pigment field (the undo-restore path: re-instate a recorded
-    /// per-stroke snapshot). Water is left as-is — a restore re-renders from the pigment alone.
+    /// Overwrite the pigment field (the undo-restore path: re-instate a recorded per-stroke snapshot).
+    /// Water is left as-is — a restore re-renders from the pigment alone.
+    ///
+    /// **Writes BOTH ping-pong twins (`pig_a` AND `pig_b`).** A region-scoped [`Self::encode_step`]
+    /// copies the FULL `pig_b` back over `pig_a` after its (odd) substeps; that relies on the invariant
+    /// `pig_a == pig_b` (which normal stepping maintains). Writing only `pig_a` would leave `pig_b`
+    /// holding the PRE-restore field, so the very next paint stroke's full copy-back would resurrect it
+    /// OUTSIDE the stepped region — the "undone stroke comes back when you paint again" bug (ADR-0090).
     pub fn upload_pigment(&self, queue: &wgpu::Queue, pigment: &[[f32; 4]]) {
-        queue.write_buffer(&self.pig_a, 0, bytemuck::cast_slice(pigment));
+        let bytes = bytemuck::cast_slice(pigment);
+        queue.write_buffer(&self.pig_a, 0, bytes);
+        queue.write_buffer(&self.pig_b, 0, bytes);
     }
 
-    /// Overwrite ONLY the canonical dye field (ADR-0089 undo-restore: pair with [`Self::upload_pigment`]
-    /// to re-instate a full per-stroke snapshot of BOTH colour channels).
+    /// Overwrite the dye field (ADR-0089 undo-restore: pair with [`Self::upload_pigment`] to re-instate
+    /// a full per-stroke snapshot of BOTH colour channels). Writes BOTH twins — see
+    /// [`Self::upload_pigment`] for why (the region copy-back would otherwise resurrect the stale twin).
     pub fn upload_dye(&self, queue: &wgpu::Queue, dye: &[[f32; 4]]) {
-        queue.write_buffer(&self.dye_a, 0, bytemuck::cast_slice(dye));
+        let bytes = bytemuck::cast_slice(dye);
+        queue.write_buffer(&self.dye_a, 0, bytes);
+        queue.write_buffer(&self.dye_b, 0, bytes);
     }
 
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).

@@ -76,6 +76,13 @@ invariante `_a == _b` que o copy-back assume. Regressão (Metal):
 `restore_then_paint_does_not_resurrect_undone_pigment` — a mancha desfeita = **0.000** após
 restore+pintar (era 108.6), a restaurada e a nova presentes.
 
+**Bug 2 (mesma família, achado na confirmação):** o restore recolocava a COR mas não a **ÁGUA** — a
+área desfeita continuava molhada (e no Evaporation 0 nunca seca, e sangrava nas pinceladas seguintes),
+porque o snapshot guardava só `pig`+`dye`. Fix: o `FieldSnap` captura/restaura os **TRÊS** campos
+dinâmicos (`pig`, `dye`, **`water`**), cada um escrevendo os dois gêmeos (`upload_water` novo). Regra:
+**undo completo = restaurar TODO o estado dinâmico do solver, não só o canal visível** (o `paper` é
+estático, não entra). O teste de regressão também assere a água da mancha desfeita = 0.
+
 **Lição** ([[feedback_measure_perf_symptom_scale]] / reproduzir-o-sintoma-isolado): o controle por
 contagem era de fato frágil (vale o rebuild), mas o sintoma que o Enio via era do solver. Um teste
 restore→**paint**→assert teria pego o bug 3 ADRs antes.

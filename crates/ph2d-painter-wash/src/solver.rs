@@ -367,6 +367,17 @@ impl WashSolver {
         queue.write_buffer(&self.dye_b, 0, bytes);
     }
 
+    /// Overwrite the WATER field (undo-restore: re-instate the wet state of a snapshot). Without this a
+    /// restore re-instates the colour but leaves the undone stroke's WATER, so its area stays "wet"
+    /// (forever at Evaporation 0) and bleeds into later strokes — an incomplete undo (Enio 2026-06-14).
+    /// Writes BOTH twins — see [`Self::upload_pigment`] for why (the region copy-back resurrects a stale
+    /// twin otherwise).
+    pub fn upload_water(&self, queue: &wgpu::Queue, water: &[f32]) {
+        let bytes = bytemuck::cast_slice(water);
+        queue.write_buffer(&self.water_a, 0, bytes);
+        queue.write_buffer(&self.water_b, 0, bytes);
+    }
+
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
     pub fn splat(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[Dab]) {
         let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash splat enc") });

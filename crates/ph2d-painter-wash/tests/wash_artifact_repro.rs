@@ -141,6 +141,7 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     s.step(&gpu.device, &gpu.queue, 12);
     let snap_pig = s.read_pigment(&gpu.device, &gpu.queue);
     let snap_dye = s.read_dye(&gpu.device, &gpu.queue);
+    let snap_water = s.read_water(&gpu.device, &gpu.queue);
 
     // Stroke Y (bottom-right) → field = X + Y.
     s.splat(&gpu.device, &gpu.queue, &blob(72.0, 72.0));
@@ -148,9 +149,10 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     let y_before = region_mass(&s.read_pigment(&gpu.device, &gpu.queue), 60, 60, 84, 84);
     assert!(y_before > 0.01, "stroke Y must have laid pigment (got {y_before})");
 
-    // Undo Y: restore snapshot S (= X only) — writes both ping-pong twins.
+    // Undo Y: restore snapshot S (= X only) — colour AND water, writes both ping-pong twins.
     s.upload_pigment(&gpu.queue, &snap_pig);
     s.upload_dye(&gpu.queue, &snap_dye);
+    s.upload_water(&gpu.queue, &snap_water);
 
     // Paint stroke Z (bottom-left) with a REGION-scoped step (the bridge's painting path), region
     // disjoint from Y. The full copy-back must NOT bring Y back.
@@ -167,4 +169,15 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     assert!(y_after < 0.001, "UNDONE stroke Y resurrected after painting (Y mass {y_after}, was {y_before}) — stale twin buffer");
     assert!(x_mass > 0.01, "restored stroke X must remain (got {x_mass})");
     assert!(z_mass > 0.01, "new stroke Z must be present (got {z_mass})");
+
+    // ...and the undo must be COMPLETE: Y's WATER is gone too (else its area stays wet forever at
+    // Evaporation 0 and bleeds into later strokes — the incomplete-undo bug, Enio 2026-06-14).
+    let water = s.read_water(&gpu.device, &gpu.queue);
+    let mut y_water = 0.0f32;
+    for y in 60..84u32 {
+        for x in 60..84u32 {
+            y_water += water[(y * w + x) as usize];
+        }
+    }
+    assert!(y_water < 0.001, "UNDONE stroke Y's WATER persisted after restore+paint ({y_water}) — incomplete undo");
 }

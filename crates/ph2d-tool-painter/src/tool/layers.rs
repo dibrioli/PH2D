@@ -128,9 +128,7 @@ impl PainterTool {
         self.undo.clear();
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
-        self.wash_active_strokes = 0; // ADR-0088: undo reset ⇒ the wash field history is void too
-        self.wash_undo_flags.clear();
-        self.wash_redo_flags.clear();
+        self.wash_events.clear(); // ADR-0090: undo reset ⇒ the wash field history is void too
         self.wash_reset_generation = self.wash_reset_generation.wrapping_add(1);
         // ADR-0084 (paper-reveal lift): the freshly-activated edit target's content IS the
         // "paper" the lift brush reveals — paint added while editing it is what's liftable.

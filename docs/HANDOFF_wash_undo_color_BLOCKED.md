@@ -1,4 +1,23 @@
-# HANDOFF — Wash: undo + cores (RESOLVIDO via ADR-0089, aguardando sign-off visual do Enio)
+# HANDOFF — Wash: undo + cores (undo RECONSTRUÍDO do zero via ADR-0090; cor do 0089 mantida)
+
+> **Status (2026-06-14): undo jogado fora e refeito.** O Enio decretou *"sem solução, desfaça e jogue
+> fora todo o sistema undo/redo… crie do zero um sistema simples e capaz"*. Feito em
+> [`ADR-0090`](architecture/decisions/0090-wash-event-driven-undo-rebuild.md): o undo agora é uma
+> **pilha-dupla dirigida por EVENTOS** (`WashUndoEvent` Commit/Undo/Redo) que espelha o `UndoController`
+> raster, com snapshots de campo **esparsos**. Sumiram a contagem `wash_active_strokes`, as flags
+> paralelas e a reconciliação por-frame da bridge (a causa irreparável). **A parte de COR do ADR-0089
+> fica** (campo duplo `pig`+`dye`, `K_REF`/`COVER_K`, live-transform — já aprovada). `cargo check` verde
+> nos 2 crates + 10/10 invariantes GPU + snapshot→restore byte-limpo (K–M=0/Linear=0) no Metal. **Falta
+> só o teste visual do Enio no app.**
+>
+> **Como testar (Enio):** `cargo run -p ph2d-host-desktop --features wash` → Brush Studio: Wash on.
+> Pinta vários traços, **Ctrl+Z / Ctrl+Y** repetidos — firmes, sem o estado antigo voltar, **inclusive
+> em Evaporation 0** e com traços rápidos; pinta um traço novo depois de um undo (não deve "refazer"
+> nada); o assentamento no pen-up continua suave. A cor (vermelho=vermelho, com e sem Pigment) é a do
+> 0089, intacta. Constantes: settle = `ACTIVE_WINDOW`, teto do histórico = `WASH_UNDO_BUDGET_BYTES`.
+>
+> **⚠️ Tudo abaixo (o banner ADR-0089 e o relato BLOQUEADO do 0088) é HISTÓRICO** — descreve a tentativa
+> anterior, cujo mecanismo de undo foi inteiramente removido.
 
 > **Status (2026-06-13): reescrito, não remendado.** O Enio escolheu a **Opção B+** (manter o
 > live-transform). Implementado em [`ADR-0089`](architecture/decisions/0089-wash-dual-field-faithful-color-and-synchronous-undo.md),

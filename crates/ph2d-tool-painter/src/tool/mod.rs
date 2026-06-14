@@ -261,6 +261,26 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
+/// **ADR-0090 — wash undo/redo intent.** The tool emits one of these at each stroke-history boundary
+/// (`end_stroke` / `undo_last_stroke` / `redo_last_stroke`) and the shell's `drive_wash_gpu` drains
+/// them in order, replaying each onto its own GPU field-snapshot two-stack. They are *explicit facts*
+/// about what the user did — not a count the bridge has to interpret — which is the whole reason this
+/// design is correct where the old count+flag scheme (ADR-0088/0089) could not be: a `Redo` and a
+/// fresh `Commit` both used to raise the same counter, and no frame-timing heuristic could reliably
+/// tell them apart. Here they are simply different variants.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum WashUndoEvent {
+    /// A wash stroke just committed (pen-up). Bridge: snapshot the settled field onto the undo stack
+    /// and clear the redo branch (linear history).
+    Commit,
+    /// A wash stroke was undone. Bridge: move the undo top to the redo stack and restore the new undo
+    /// top (or clear the field to the wash-free base when the undo stack is empty).
+    Undo,
+    /// A previously-undone wash stroke was redone. Bridge: move the redo top back to the undo stack and
+    /// restore it.
+    Redo,
+}
+
 /// One brush dab for the GPU-resident fluid path (4K real-time arch §4): grid-space
 /// centre + radius, the per-touch water, and the (opacity-weighted) linear-RGB
 /// pigment — exactly the arguments the tool used to pass to `DiffusionGrid::splat`.
@@ -511,21 +531,16 @@ pub struct PainterTool {
     /// `end_stroke`) so a later redo can never resurrect a record from a
     /// discarded branch. (See `new_stroke_after_undo_invalidates_redo`.)
     undo_redo_records: Vec<StrokeRecord>,
-    /// **ADR-0088 wash persistent canvas:** count of committed-and-not-undone WASH strokes. The
-    /// shell's `drive_wash_gpu` polls this to keep the GPU pigment field in lock-step with undo/redo
-    /// (restoring a per-stroke field snapshot). `wash_undo_flags`/`wash_redo_flags` mark which undo
-    /// stack entries were wash strokes, so undo/redo of a NON-wash stroke leaves the count untouched.
-    wash_active_strokes: usize,
-    wash_undo_flags: Vec<bool>,
-    wash_redo_flags: Vec<bool>,
-    /// **ADR-0089:** `true` iff the most recent change to `wash_active_strokes` was a REDO (not a fresh
-    /// commit). Set atomically with the count in `end_stroke` (false) / `redo_last_stroke` (true), so
-    /// the shell can tell a new stroke from a redo without a frame-timing heuristic — a fast/single-
-    /// frame stroke after undo otherwise looked like a redo (the bridge hadn't seen its dabs yet).
-    wash_last_change_redo: bool,
+    /// **ADR-0090 wash undo/redo:** an ordered queue of explicit intents (commit / undo / redo) the
+    /// shell's `drive_wash_gpu` drains each frame ([`Self::take_wash_events`]) and replays onto its own
+    /// GPU field-snapshot two-stack. The tool owns *when* (it drives the raster undo stack + the wash
+    /// bit stored per-entry in [`crate::undo`]); the bridge owns the *field snapshots* and acts on each
+    /// intent. Explicit events — never an inferred count delta — so a redo can never be mistaken for a
+    /// fresh commit (the unfixable race that sank the ADR-0088/0089 count-based scheme).
+    wash_events: Vec<WashUndoEvent>,
     /// Bumps when the canvas base the wash composites over is invalidated (new source / layer switch /
-    /// undo-stack reset). The shell's `drive_wash_gpu` drops its persistent session on a change so the
-    /// pigment field + base backdrop + undo snapshots are rebuilt from the current canvas.
+    /// undo-stack reset). The shell's `drive_wash_gpu` drops + rebuilds its persistent session on a
+    /// change, so the pigment field + base backdrop + undo stacks are rebuilt from the current canvas.
     wash_reset_generation: u64,
     /// **W3.T3.4 dock toggle (mode C):** which painter panel occupies the
     /// shared right-dock slot — `false` = brush sidebar, `true` = layers panel.
@@ -727,10 +742,7 @@ impl Default for PainterTool {
             undo: crate::undo::UndoController::default(),
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
-            wash_active_strokes: 0,
-            wash_undo_flags: Vec::new(),
-            wash_redo_flags: Vec::new(),
-            wash_last_change_redo: false,
+            wash_events: Vec::new(),
             wash_reset_generation: 0,
             dock_shows_layers: false,
             show_brush_studio: false,

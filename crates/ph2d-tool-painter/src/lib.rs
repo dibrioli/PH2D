@@ -58,7 +58,7 @@ pub use ph2d_painter_brush::{
     BlendMode, MAX_BLEND_MODES, PALETTE, Pigment, WatercolorControl, WatercolorParams,
     pigment_by_name,
 };
-pub use tool::{FluidDab, PainterTool, set_pending_select_mods};
+pub use tool::{FluidDab, PainterTool, WashUndoEvent, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;

@@ -72,6 +72,12 @@ struct UndoEntry {
     /// canonical snapshot schema (ADR-0046 §2.6) are reused rather than
     /// re-invented.
     snapshot: LayerSnapshot,
+    /// **ADR-0090:** was the stroke that produced this entry a WASH (GPU watercolor) stroke? The tool
+    /// emits a wash undo/redo *intent* to the GPU bridge only for these entries, so undoing/redoing a
+    /// NON-wash stroke leaves the pigment field untouched (correct interleaving of mixed history). The
+    /// bit rides with the entry as it moves between the undo/redo stacks — a single source of truth, so
+    /// no parallel `Vec<bool>` to keep aligned (the desync surface that sank the old count-based scheme).
+    is_wash: bool,
 }
 
 /// Snapshot-based undo/redo for a single layer's raster texture.
@@ -121,9 +127,11 @@ impl UndoController {
         seq: u64,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas snapshot blob, cloned + re-blit wholesale.
         pre_stroke_pixels: &[u8],
+        // ADR-0090: tag whether this committed stroke was a wash stroke (routes the bridge intent).
+        is_wash: bool,
     ) {
         let snapshot = LayerSnapshot::new_in_memory(self.layer_id, seq, pre_stroke_pixels.to_vec());
-        self.undo.push(UndoEntry { seq, snapshot });
+        self.undo.push(UndoEntry { seq, snapshot, is_wash });
         // Any new edit invalidates the redo branch.
         self.redo.clear();
         self.cap();
@@ -142,17 +150,19 @@ impl UndoController {
         &mut self,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
         current_pixels: &[u8],
-    ) -> Option<Vec<u8>> {
+    ) -> Option<(Vec<u8>, bool)> {
         let mut entry = self.undo.pop()?;
         // Swap: hand back the stored pre-image, and stash the current
         // (post-stroke) pixels so redo can restore them. A single snapshot per
         // entry suffices because the entry alternates direction as it moves
         // between stacks.
         let restore = entry_pixels(&entry)?;
+        // ADR-0090: report whether this was a wash stroke so the caller can emit the bridge intent.
+        let is_wash = entry.is_wash;
         entry.snapshot =
             LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
         self.redo.push(entry);
-        Some(restore)
+        Some((restore, is_wash))
     }
 
     /// Redo the most recently undone stroke. `current_pixels` is the live layer
@@ -163,13 +173,15 @@ impl UndoController {
         &mut self,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
         current_pixels: &[u8],
-    ) -> Option<Vec<u8>> {
+    ) -> Option<(Vec<u8>, bool)> {
         let mut entry = self.redo.pop()?;
         let restore = entry_pixels(&entry)?;
+        // ADR-0090: report wash-ness so the caller can emit the symmetric redo intent to the bridge.
+        let is_wash = entry.is_wash;
         entry.snapshot =
             LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
         self.undo.push(entry);
-        Some(restore)
+        Some((restore, is_wash))
     }
 
     /// `true` if there is at least one stroke to undo (drives the sidebar
@@ -251,12 +263,12 @@ mod tests {
         }
         /// Commit a stroke that transitions `live` to `next`.
         fn paint(&mut self, seq: u64, next: Vec<u8>) {
-            self.c.record_pre_stroke(seq, &self.live);
+            self.c.record_pre_stroke(seq, &self.live, false);
             self.live = next;
         }
         fn undo(&mut self) -> bool {
             match self.c.undo(&self.live) {
-                Some(px) => {
+                Some((px, _is_wash)) => {
                     self.live = px;
                     true
                 }
@@ -265,7 +277,7 @@ mod tests {
         }
         fn redo(&mut self) -> bool {
             match self.c.redo(&self.live) {
-                Some(px) => {
+                Some((px, _is_wash)) => {
                     self.live = px;
                     true
                 }
@@ -351,6 +363,26 @@ mod tests {
         // The most recent stroke (9→10) must still undo exactly.
         assert!(s.undo());
         assert_eq!(s.live, solid(4, 9));
+    }
+
+    #[test]
+    fn is_wash_bit_rides_with_the_entry() {
+        // ADR-0090: undo/redo must report the wash-ness of the *specific* entry being moved, so the
+        // shell drives the GPU pigment field only for wash strokes (a raster undo between two washes
+        // must report `false` and leave the field alone).
+        let mut c = UndoController::new(LayerId(0), DEFAULT_MAX_DEPTH);
+        c.record_pre_stroke(0, &solid(4, 0), true); // wash
+        c.record_pre_stroke(1, &solid(4, 1), false); // raster
+        c.record_pre_stroke(2, &solid(4, 2), true); // wash
+        let live = solid(4, 3);
+        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "top is wash");
+        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(false), "middle is raster");
+        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "bottom is wash");
+        assert_eq!(c.undo(&live), None);
+        // Redo reports the same bit in reverse order as entries move back to the undo stack.
+        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(true));
+        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(false));
+        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(true));
     }
 
     #[test]

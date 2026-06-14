@@ -96,11 +96,6 @@ struct WashSession {
     /// over `ACTIVE_WINDOW` frames — a smooth diffusion, not a one-frame jump (Enio 2026-06-13). The
     /// snapshot is refreshed to the settled field when it reaches 0.
     settling: u32,
-    /// Whether the field has been PAINTED (dabs deposited) since the last committed snapshot. Lets the
-    /// bridge tell a NEW stroke (count up + painted ⇒ discard the redo branch) from a REDO (count up,
-    /// no paint ⇒ restore the snapshot) — counts alone are ambiguous after a partial redo. Reset on
-    /// finalise and on any restore.
-    painted_since_commit: bool,
     /// The tool reset generation this session was built for (mismatch ⇒ rebuild).
     reset_gen: u64,
 }
@@ -123,7 +118,6 @@ impl WashSession {
             committed: Vec::new(),
             applied: 0,
             settling: 0,
-            painted_since_commit: false,
             reset_gen: 0,
         }
     }
@@ -222,6 +216,10 @@ pub(crate) fn drive_wash_gpu(
     };
     // ADR-0088: committed-and-not-undone wash stroke count — drives the undo/redo field sync.
     let want = painter.wash_active_strokes();
+    // ADR-0089: did the tool's LAST count rise come from a redo (vs a fresh commit)? Authoritative —
+    // set atomically with the count in the tool, so a fast stroke after undo can't be mistaken for a
+    // redo (the old dab-seen heuristic raced the count).
+    let pending_is_redo = painter.wash_last_change_redo();
     // Dabs only when a live field is producing them (None when hovering / settled).
     let dabs_envelope = if has_field { painter.fluid_take_dabs() } else { None };
     let profile = PROFILE.with(|p| p.borrow_mut().enabled());
@@ -259,15 +257,15 @@ pub(crate) fn drive_wash_gpu(
             sess.seeded = false; // forces a full re-composite below
         }
 
-        // ── ADR-0089 undo/redo sync ── the tool's wash stroke count moved. Disambiguate via whether
-        // the field was PAINTED since the last commit (counts alone are ambiguous after a partial redo):
+        // ── ADR-0089 undo/redo sync ── the tool's wash stroke count moved. The tool says authoritatively
+        // (`pending_is_redo`) whether a RISE was a redo or a fresh commit — no frame-timing heuristic:
         //  • count DOWN ⇒ undo: restore `committed[want-1]` (or clear at 0).
-        //  • count UP, no paint ⇒ redo: restore the existing snapshot.
-        //  • count UP + painted ⇒ a NEW stroke: discard the redo-ahead branch (mirrors the tool clearing
-        //    its wash redo flags) so a fresh stroke whose count collides with a stale snapshot is NOT
-        //    mis-read as a redo (which would resurrect discarded pigment). The finalise below snapshots.
-        let is_redo = want > sess.applied && sess.committed.len() >= want && !sess.painted_since_commit;
-        if want > sess.applied && sess.painted_since_commit && sess.committed.len() > sess.applied {
+        //  • count UP + redo ⇒ restore the existing snapshot.
+        //  • count UP + fresh commit ⇒ a NEW stroke: discard the redo-ahead branch (mirrors the tool
+        //    clearing its wash redo flags) so a fresh stroke whose count collides with a stale snapshot
+        //    is NOT mis-read as a redo (which would resurrect discarded pigment). The finalise snapshots.
+        let is_redo = want > sess.applied && sess.committed.len() >= want && pending_is_redo;
+        if want > sess.applied && !pending_is_redo && sess.committed.len() > sess.applied {
             sess.committed.truncate(sess.applied);
         }
         let mut restored_now = false;
@@ -285,7 +283,6 @@ pub(crate) fn drive_wash_gpu(
             sess.has_pigment = want > 0;
             sess.seeded = false; // one full re-composite of the restored field
             sess.force_full = true; // the first stroke after this must seed a clean full slot base
-            sess.painted_since_commit = false; // a restored state carries no uncommitted paint
             sess.settling = 0; // cancel any in-progress settle (its stepping would drift the restore)
             // NB: a restore runs ZERO physics (see `step_n` below) — stepping would re-diffuse the
             // restored pigment through the STALE water field (full at Evaporation 0 ⇒ the undo
@@ -311,7 +308,6 @@ pub(crate) fn drive_wash_gpu(
             .collect();
         if !gpu_dabs.is_empty() {
             sess.has_pigment = true;
-            sess.painted_since_commit = true; // a count rise after this is a NEW stroke, not a redo
         }
 
         // ── ADR-0089 §2.3 finalise trigger ── a committed wash stroke (`want` ran past what the field
@@ -434,7 +430,6 @@ pub(crate) fn drive_wash_gpu(
                 sess.committed.push(FieldSnap { pig: pig.clone(), dye: dye.clone() });
                 sess.applied += 1;
             }
-            sess.painted_since_commit = false; // this stroke is now committed/snapshotted
             sess.settling = ACTIVE_WINDOW as u32; // begin the gradual post-release diffusion
         } else if sess.settling > 0 {
             sess.settling -= 1; // animate the display settle; stop (idle) when it reaches 0

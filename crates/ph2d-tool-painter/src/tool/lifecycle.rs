@@ -1129,6 +1129,7 @@ impl PainterTool {
             self.wash_undo_flags.push(is_wash);
             if is_wash {
                 self.wash_active_strokes += 1;
+                self.wash_last_change_redo = false; // a fresh commit, NOT a redo (ADR-0089)
             }
             // Stay aligned with the controller's (depth-thinned) stack: a stroke dropped off the
             // FRONT is no longer undoable but is still applied, so drop the flag WITHOUT touching the
@@ -1691,6 +1692,7 @@ impl PainterTool {
         if let Some(was_wash) = self.wash_redo_flags.pop() {
             if was_wash {
                 self.wash_active_strokes += 1;
+                self.wash_last_change_redo = true; // this count rise IS a redo (ADR-0089)
             }
             self.wash_undo_flags.push(was_wash);
         }
@@ -1706,6 +1708,14 @@ impl PainterTool {
     #[must_use]
     pub fn wash_active_strokes(&self) -> usize {
         self.wash_active_strokes
+    }
+
+    /// **ADR-0089:** `true` iff the most recent `wash_active_strokes` rise was a REDO (not a fresh
+    /// commit). Lets `drive_wash_gpu` distinguish a new stroke after undo from a redo without a
+    /// frame-timing heuristic (a fast stroke could bump the count before the bridge saw its dabs).
+    #[must_use]
+    pub fn wash_last_change_redo(&self) -> bool {
+        self.wash_last_change_redo
     }
 
     /// Generation that bumps when the wash's canvas base is invalidated (new source / layer switch).

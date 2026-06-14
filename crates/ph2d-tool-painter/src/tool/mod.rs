@@ -518,6 +518,11 @@ pub struct PainterTool {
     wash_active_strokes: usize,
     wash_undo_flags: Vec<bool>,
     wash_redo_flags: Vec<bool>,
+    /// **ADR-0089:** `true` iff the most recent change to `wash_active_strokes` was a REDO (not a fresh
+    /// commit). Set atomically with the count in `end_stroke` (false) / `redo_last_stroke` (true), so
+    /// the shell can tell a new stroke from a redo without a frame-timing heuristic — a fast/single-
+    /// frame stroke after undo otherwise looked like a redo (the bridge hadn't seen its dabs yet).
+    wash_last_change_redo: bool,
     /// Bumps when the canvas base the wash composites over is invalidated (new source / layer switch /
     /// undo-stack reset). The shell's `drive_wash_gpu` drops its persistent session on a change so the
     /// pigment field + base backdrop + undo snapshots are rebuilt from the current canvas.
@@ -725,6 +730,7 @@ impl Default for PainterTool {
             wash_active_strokes: 0,
             wash_undo_flags: Vec::new(),
             wash_redo_flags: Vec::new(),
+            wash_last_change_redo: false,
             wash_reset_generation: 0,
             dock_shows_layers: false,
             show_brush_studio: false,

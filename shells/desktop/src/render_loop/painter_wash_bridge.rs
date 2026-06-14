@@ -16,6 +16,7 @@
 //!
 //! Set `PH2D_WASH_PROFILE=1` to print the per-frame CPU cost + region size every 120 frames.
 //! Downcasts to the concrete `PainterTool` (allowlisted bridge).
+// ph2d-loc-cap: wash GPU bridge — single-submit hot path + dual-field (pig/dye/res) undo snapshots in one cohesive drive; splitting FieldSnap/undo helpers into a sibling module is a watercolor-v2 follow-up (ADR-0085 "arquivos menores").
 #![cfg(feature = "wash")]
 
 use super::sim_extract::PreviewOverride;

@@ -67,6 +67,12 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // reparent` split out of painter_bridge.rs (HR-18 LOC cap); same downcast
     // exception class as painter_bridge.rs.
     "src/render_loop/painter_bridge_queries.rs",
+    // Wash GPU bridge (ADR-0086/0089/0090/0091): drives the minimal-watercolor
+    // solver/compositor + dual-field undo off the concrete PainterTool's fluid
+    // lifecycle (wet-field carrier, dab list, stroke state, wash undo events).
+    // Same exception class as painter_bridge.rs — PainterTool has no
+    // RasterEditTool impl. (Coord decision, 2026-06-14.)
+    "src/render_loop/painter_wash_bridge.rs",
     // Painter fluid bridge: W15.3 GPU wet-field drive (feature `fluid`). Downcasts
     // to PainterTool for the concrete wet-field hooks (step on GPU + composite);
     // same exception class as painter_bridge.rs. (Coord decision, 2026-06-07.)

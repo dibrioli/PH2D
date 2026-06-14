@@ -11,7 +11,7 @@
 
 ---
 
-## §0 — As 7 lições que custaram caro (leia isto)
+## §0 — As 8 lições que custaram caro (leia isto)
 
 1. **Borda "pixelada" tem ≥3 causas DIFERENTES — não trate como uma só.** Foram, em ordem: violação
    de CFL (xadrez), frente molhada estática (rim duro), contorno do cap de saturação (degrau
@@ -63,6 +63,15 @@
      diverge ANTES de reescrever o suspeito.** E confirme QUAL sistema roda: há DOIS (wash e fluid,
      flags `wash_enabled`/`fluid_enabled` mutuamente exclusivas). Detalhe:
      [`ADR-0090`](../architecture/decisions/0090-wash-event-driven-undo-rebuild.md).
+
+8. **Cor de pigmento: use o estado da arte, não invente nem deixe "no gosto".** O modo Pigment
+   colapsava cores distintas (B9) porque a "K–M ingênua" normaliza tudo a uma magnitude de referência
+   fixa (`K_REF`), descartando o **VALOR** da cor. O padrão de mercado (Mixbox/Rebelle) representa cada
+   cor como pigmentos + **residual** (`r = rgb − mix(c)`) e decodifica `mix(c) + r`: uma cor SOZINHA sai
+   EXATA (identidade), só a MISTURA de cores diferentes mostra a física do pigmento (azul+amarelo→verde).
+   Antes de bolar um modelo de cor, **pesquise o estado da arte** — quando há resposta publicada certa,
+   não existe "escolha pessoal" entre fiel e bonito.
+   [`ADR-0091`](../architecture/decisions/0091-wash-mixbox-residual-faithful-pigment-color.md).
 
 ---
 
@@ -153,6 +162,19 @@
   `upload_water` novo (escreve os dois gêmeos, como pig/dye). `solver.rs` + `painter_wash_bridge.rs`.
 - **Gate:** o mesmo teste passou a asserir a água da mancha desfeita = 0. **Commit:** `0055238a`.
 
+### B9 — modo Pigment COLAPSA cores distintas (vermelho/laranja/amarelo→laranja; 2 azuis→1)
+- **Sintoma:** com Pigment ligado, cores distintas do picker viram a mesma cor (test strip do Enio).
+- **Causa:** a "K–M ingênua" do ADR-0089 §2.2 normalizava TODA cor para uma magnitude de referência
+  fixa (`K_REF`) e tirava a luminosidade só da cobertura → a dimensão **VALOR/saturação** da cor era
+  descartada. O estado-da-arte (Mixbox, Sochorová & Jamriška SIGGRAPH Asia 2021, usado no Rebelle)
+  identifica isso como impraticável: o requisito é nunca distorcer uma cor SOZINHA.
+- **Fix:** **residual Mixbox** — cada cor vira pigmentos `c = unmix(rgb)` + residual `r = rgb − mix(c)`;
+  o composite decodifica `mix(c̄) + r̄`. Cor sozinha reproduz EXATA (identidade); só a mistura wet-on-wet
+  mostra o pigmento espectral. Novo canal `res` no campo (solver+shaders+undo); o binding `paper`
+  (inerte) saiu do step p/ caber no limite de 8 storage-buffers. [`ADR-0091`](../architecture/decisions/0091-wash-mixbox-residual-faithful-pigment-color.md).
+- **Gate:** `km::pigment_mode_reproduces_picked_colour` + `pigment_mix_blue_plus_yellow_is_green` +
+  GPU INV-7/9/10 (vermelho→sRGB(218,89,89); green-excess 53 vs −6). **Commit:** `6030156b`.
+
 ---
 
 ## §2 — Mapa: que camada controla qual artefato
@@ -170,6 +192,7 @@
 | Marcas retangulares | bridge | região = envelope monotônico (não janela móvel) |
 | Undo "mancha volta ao pintar" | solver `solver.rs` | `upload_pigment`/`upload_dye` escrevem os DOIS gêmeos (`_a`+`_b`) |
 | Undo incompleto (área molhada) | solver + bridge | snapshot = `pig`+`dye`+`water` (todo estado dinâmico); `upload_water` |
+| Pigment colapsa cores distintas | composite + `km.rs` | residual Mixbox `mix(c̄)+r̄` (NÃO normalizar a `K_REF`); canal `res` |
 
 **Invariante de física (não quebrar):** o `cs_step` é um gather conservativo (massa conservada). Os
 fixes de B1/B5b/B6 são todos DISPLAY-side (composite) — não tocam a física. Os de B2/B3/B5 mexem no

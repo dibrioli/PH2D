@@ -264,9 +264,13 @@ pub(crate) fn drive_wash_gpu(
         //  • count UP + fresh commit ⇒ a NEW stroke: discard the redo-ahead branch (mirrors the tool
         //    clearing its wash redo flags) so a fresh stroke whose count collides with a stale snapshot
         //    is NOT mis-read as a redo (which would resurrect discarded pigment). The finalise snapshots.
+        let applied_in = sess.applied;
         let is_redo = want > sess.applied && sess.committed.len() >= want && pending_is_redo;
-        if want > sess.applied && !pending_is_redo && sess.committed.len() > sess.applied {
-            sess.committed.truncate(sess.applied);
+        if profile && (want != applied_in || is_redo) {
+            eprintln!(
+                "[wash-undo] want={want} applied_in={applied_in} pending_redo={pending_is_redo} is_redo={is_redo} committed={} active={active}",
+                sess.committed.len(),
+            );
         }
         let mut restored_now = false;
         if want < sess.applied || is_redo {
@@ -310,12 +314,12 @@ pub(crate) fn drive_wash_gpu(
             sess.has_pigment = true;
         }
 
-        // ── ADR-0089 §2.3 finalise trigger ── a committed wash stroke (`want` ran past what the field
-        // realises) whose pen is UP and which we have NOT snapshotted yet. Gating on the COUNT (not a
-        // pen-up edge) makes it robust to whether the tool's `end_stroke` bumped `want` before or after
-        // this bridge call: it fires on the first frame all three hold, exactly once. The pen-up frame
-        // snapshots immediately (undo works at once) and STARTS the gradual settle below.
-        let finalizing = !active && want > sess.applied && sess.committed.len() < want;
+        // ── ADR-0089 finalise trigger ── a FRESH commit (the tool's flag says it's not a redo) whose pen
+        // is UP and which the field hasn't realised yet. Gated on the FLAG, NOT on `committed.len() <
+        // want` — a stale redo-ahead branch (committed.len() ≥ want after a partial undo) must NOT block
+        // the snapshot, or the new stroke is never committed and a later redo resurrects the stale branch
+        // (Enio's "redo re-applies everything"). The finalise block below truncates that branch first.
+        let finalizing = !active && want > sess.applied && !pending_is_redo;
         // A new active stroke abandons any pending settle (it paints over the field; the previous
         // stroke kept its pen-up snapshot — a re-stroke that fast won't be watching the settle).
         if active {
@@ -423,12 +427,15 @@ pub(crate) fn drive_wash_gpu(
         // refresh the snapshot to the settled field IN MEMORY (no bake/`preview_dirty`) so a later
         // undo/redo restores what the user actually ended up seeing.
         if finalizing {
-            sess.committed.truncate(sess.applied); // discard any redo branch first
+            sess.committed.truncate(sess.applied); // discard any redo-ahead branch first
             let pig = sess.solver.read_pigment(&gpu.device, &gpu.queue);
             let dye = sess.solver.read_dye(&gpu.device, &gpu.queue);
             while sess.applied < want {
                 sess.committed.push(FieldSnap { pig: pig.clone(), dye: dye.clone() });
                 sess.applied += 1;
+            }
+            if profile {
+                eprintln!("[wash-undo] FINALIZE committed={} applied={}", sess.committed.len(), sess.applied);
             }
             sess.settling = ACTIVE_WINDOW as u32; // begin the gradual post-release diffusion
         } else if sess.settling > 0 {

@@ -79,12 +79,6 @@ struct WashSession {
     /// Any pigment has been deposited (the field is worth showing / re-rendering on a model flip).
     has_pigment: bool,
     seeded: bool,
-    /// Latch: force the next PAINTING frame to a FULL composite+copy (seed), not a region update. Set
-    /// after a restore (undo/redo) — the first stroke that follows must establish a clean full slot
-    /// base, else its region-scoped composites leave the pre-restore slot showing OUTSIDE the new
-    /// envelope until the pen-up full composite reconciles it (the "rectangles on the first stroke
-    /// after undo, gone on mouse-up" report, Enio 2026-06-13). Cleared once that full paint frame runs.
-    force_full: bool,
     /// **ADR-0089 undo:** per-stroke field snapshots (pig+dye) — `committed[i]` is the SETTLED field
     /// after stroke `i+1`, captured SYNCHRONOUSLY when the stroke commits (no async window ⇒ no
     /// fast-stroke race). `applied` = how many the GPU field currently realises. The bridge polls the
@@ -114,7 +108,6 @@ impl WashSession {
             initialized: false,
             has_pigment: false,
             seeded: false,
-            force_full: false,
             committed: Vec::new(),
             applied: 0,
             settling: 0,
@@ -276,17 +269,25 @@ pub(crate) fn drive_wash_gpu(
         if want < sess.applied || is_redo {
             if want == 0 {
                 sess.solver.clear(&gpu.device, &gpu.queue);
+                if profile {
+                    eprintln!("[wash-undo] RESTORE want=0 (clear)");
+                }
             } else {
                 // Restore BOTH channels (ADR-0089) so the live Linear↔K–M toggle is consistent.
                 let snap_pig = sess.committed[want - 1].pig.clone();
                 let snap_dye = sess.committed[want - 1].dye.clone();
+                if profile {
+                    let snap_mass: f32 = snap_pig.iter().map(|p| p[0] + p[1] + p[2] + p[3]).sum();
+                    let field = sess.solver.read_pigment(&gpu.device, &gpu.queue);
+                    let field_mass: f32 = field.iter().map(|p| p[0] + p[1] + p[2] + p[3]).sum();
+                    eprintln!("[wash-undo] RESTORE want={want} snapshot[{}]_mass={snap_mass:.0} field_mass_before={field_mass:.0}", want - 1);
+                }
                 sess.solver.upload_pigment(&gpu.queue, &snap_pig);
                 sess.solver.upload_dye(&gpu.queue, &snap_dye);
             }
             sess.applied = want;
             sess.has_pigment = want > 0;
             sess.seeded = false; // one full re-composite of the restored field
-            sess.force_full = true; // the first stroke after this must seed a clean full slot base
             sess.settling = 0; // cancel any in-progress settle (its stepping would drift the restore)
             // NB: a restore runs ZERO physics (see `step_n` below) — stepping would re-diffuse the
             // restored pigment through the STALE water field (full at Evaporation 0 ⇒ the undo
@@ -362,7 +363,7 @@ pub(crate) fn drive_wash_gpu(
         };
         PROFILE.with(|p| p.borrow_mut().last_region_cells = u64::from(cw_r) * u64::from(ch_r));
 
-        let (id, fresh) = match sess.slot {
+        let (id, _fresh) = match sess.slot {
             Some((id, w, h)) if w == cw && h == ch => (id, false),
             _ => {
                 if let Some((old, _, _)) = sess.slot.take() {
@@ -373,9 +374,12 @@ pub(crate) fn drive_wash_gpu(
                 (id, true)
             }
         };
-        // `force_full` forces a full COMPOSITE+COPY (clean slot base after a restore) while leaving the
-        // STEP region-scoped — only the composite/copy must be full to reconcile the slot.
-        let seed = fresh || full || sess.force_full;
+        // ALWAYS full composite + full copy (Enio 2026-06-13). Region-scoped copies left stale
+        // rectangular holes in the slot after undo (the displayed slot diverged from the restored
+        // field — only the new stroke's envelope got copied, the rest stayed pre-undo). The STEP stays
+        // region-scoped (cheap, correct); only the COMPOSITE+COPY reconcile the whole slot to the field
+        // every frame — ~0.2 ms at canvas res, so the region micro-opt isn't worth the artifact class.
+        let seed = true;
 
         // ── ONE encoder: step + composite + slot copy ──
         // Substep budget: a STEADY `substeps` per frame — while painting, AND through the post-release
@@ -411,12 +415,6 @@ pub(crate) fn drive_wash_gpu(
             return None;
         }
         sess.seeded = true;
-        // The first PAINTING frame after a restore has now seeded a clean full slot — drop the latch so
-        // the rest of the stroke can go back to cheap region updates. (A restore frame itself is not
-        // active, so the latch survives the idle gap until the user paints.)
-        if seed && active {
-            sess.force_full = false;
-        }
 
         // ── ADR-0089 finalise + gradual settle (display-only) ── on the pen-up frame, snapshot BOTH
         // colour channels and bake canvas_rgba ONCE (exactly the clean collapse's render path: a single

@@ -1466,7 +1466,12 @@ impl FluidSolver {
     /// [`Self::clear_resident_pigment_gpu`]) — so a reused solver starts from a dry field.
     pub fn clear_resident_water_gpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
         // Clear the set timer alongside the water (a fresh canvas starts fully un-set).
-        self.clear_buffers_gpu(device, queue, "fluid clear water", &[&self.water, &self.gel]);
+        self.clear_buffers_gpu(
+            device,
+            queue,
+            "fluid clear water",
+            &[&self.water, &self.gel],
+        );
     }
 
     /// Zero the resident deposited-pigment layer ON the GPU (ADR-0078 S3) — the

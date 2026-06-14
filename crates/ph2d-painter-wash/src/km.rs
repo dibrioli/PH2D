@@ -120,7 +120,12 @@ impl KmModel {
                 absorb[p][k] = -ratio.ln();
             }
         }
-        Self { curves, white, g_inv, absorb }
+        Self {
+            curves,
+            white,
+            g_inv,
+            absorb,
+        }
     }
 
     /// RGB→spectrum upsample basis (the channel curves), `[3][N]` — row per RGB channel.
@@ -341,12 +346,23 @@ impl KmModel {
     /// a wet mix decodes to the spectral pigment result. Replaces the value-collapsing
     /// [`Self::compose_km_display`] (which normalised every colour to `K_REF`).
     #[must_use]
-    pub fn compose_km_mixbox(&self, backdrop: [f32; 3], c_avg: [f32; PIGMENTS], res_avg: [f32; 3], mass: f32, cover_k: f32) -> [f32; 3] {
+    pub fn compose_km_mixbox(
+        &self,
+        backdrop: [f32; 3],
+        c_avg: [f32; PIGMENTS],
+        res_avg: [f32; 3],
+        mass: f32,
+        cover_k: f32,
+    ) -> [f32; 3] {
         if mass < 1.0e-6 {
             return backdrop;
         }
         let pig = self.compose_over([1.0, 1.0, 1.0], c_avg);
-        let color = [pig[0] + res_avg[0], pig[1] + res_avg[1], pig[2] + res_avg[2]];
+        let color = [
+            pig[0] + res_avg[0],
+            pig[1] + res_avg[1],
+            pig[2] + res_avg[2],
+        ];
         let cover = 1.0 - (-mass / cover_k.max(1.0e-3)).exp();
         [
             backdrop[0] + (color[0] - backdrop[0]) * cover,
@@ -361,7 +377,12 @@ impl KmModel {
     /// — a thicker rim reads as MORE OPAQUE of the same hue, never a shifted one). Alpha-mixed over the
     /// linear-sRGB `backdrop`. `conc` zero ⇒ the bare backdrop.
     #[must_use]
-    pub fn compose_km_display(&self, backdrop: [f32; 3], conc: [f32; PIGMENTS], cover_k: f32) -> [f32; 3] {
+    pub fn compose_km_display(
+        &self,
+        backdrop: [f32; 3],
+        conc: [f32; PIGMENTS],
+        cover_k: f32,
+    ) -> [f32; 3] {
         let total: f32 = conc.iter().sum();
         if total < 1.0e-6 {
             return backdrop;
@@ -428,11 +449,20 @@ impl KmModel {
 /// [`KmModel::compose_km_display`] (same `cover_k`, effective mass = `mass`). Alpha-mixed over the
 /// linear-sRGB `backdrop`; `mass` zero ⇒ the bare backdrop.
 #[must_use]
-pub fn compose_linear_display(backdrop: [f32; 3], dye_premul: [f32; 3], mass: f32, cover_k: f32) -> [f32; 3] {
+pub fn compose_linear_display(
+    backdrop: [f32; 3],
+    dye_premul: [f32; 3],
+    mass: f32,
+    cover_k: f32,
+) -> [f32; 3] {
     if mass < 1.0e-6 {
         return backdrop;
     }
-    let color = [dye_premul[0] / mass, dye_premul[1] / mass, dye_premul[2] / mass];
+    let color = [
+        dye_premul[0] / mass,
+        dye_premul[1] / mass,
+        dye_premul[2] / mass,
+    ];
     let cover = 1.0 - (-mass / cover_k.max(1.0e-3)).exp();
     [
         backdrop[0] + (color[0] - backdrop[0]) * cover,
@@ -464,9 +494,21 @@ fn invert3(m: &[[f32; 3]; 3]) -> [[f32; 3]; 3] {
     let det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
     let inv_det = 1.0 / det;
     [
-        [(e * i - f * h) * inv_det, (c * h - b * i) * inv_det, (b * f - c * e) * inv_det],
-        [(f * g - d * i) * inv_det, (a * i - c * g) * inv_det, (c * d - a * f) * inv_det],
-        [(d * h - e * g) * inv_det, (b * g - a * h) * inv_det, (a * e - b * d) * inv_det],
+        [
+            (e * i - f * h) * inv_det,
+            (c * h - b * i) * inv_det,
+            (b * f - c * e) * inv_det,
+        ],
+        [
+            (f * g - d * i) * inv_det,
+            (a * i - c * g) * inv_det,
+            (c * d - a * f) * inv_det,
+        ],
+        [
+            (d * h - e * g) * inv_det,
+            (b * g - a * h) * inv_det,
+            (a * e - b * d) * inv_det,
+        ],
     ]
 }
 
@@ -489,7 +531,10 @@ mod tests {
         let km = KmModel::new();
         let out = km.compose_over([1.0, 1.0, 1.0], [0.0; PIGMENTS]); // no pigment ⇒ backdrop
         for c in out {
-            assert!((c - 1.0).abs() < 0.02, "white must round-trip (got {out:?})");
+            assert!(
+                (c - 1.0).abs() < 0.02,
+                "white must round-trip (got {out:?})"
+            );
         }
     }
 
@@ -504,7 +549,11 @@ mod tests {
             let want = PIGMENT_MASSTONE[p];
             // Skip near-neutral black (argmax meaningless); check the chromatic primaries' dominant ch.
             if p < 3 {
-                assert_eq!(argmax(out), argmax(want), "pigment {p}: hue {out:?} vs masstone {want:?}");
+                assert_eq!(
+                    argmax(out),
+                    argmax(want),
+                    "pigment {p}: hue {out:?} vs masstone {want:?}"
+                );
             }
         }
     }
@@ -522,9 +571,17 @@ mod tests {
         eprintln!("blue+yellow K–M = {out:?}");
         // The win vs RGB Beer–Lambert (which gives grey): green is the dominant channel and clearly
         // above grey (not r≈g≈b).
-        assert_eq!(argmax(out), 1, "blue+yellow must mix to GREEN (g dominant), got {out:?}");
+        assert_eq!(
+            argmax(out),
+            1,
+            "blue+yellow must mix to GREEN (g dominant), got {out:?}"
+        );
         let avg = (out[0] + out[1] + out[2]) / 3.0;
-        assert!(out[1] > avg * 1.15, "green must stand out from grey (g={} avg={avg})", out[1]);
+        assert!(
+            out[1] > avg * 1.15,
+            "green must stand out from grey (g={} avg={avg})",
+            out[1]
+        );
     }
 
     #[test]
@@ -532,9 +589,15 @@ mod tests {
         let km = KmModel::new();
         let c = km.rgb_to_concentrations([0.8, 0.1, 0.1]); // red
         let single = km.compose_over([1.0, 1.0, 1.0], c);
-        let double = km.compose_over([1.0, 1.0, 1.0], [c[0] * 2.0, c[1] * 2.0, c[2] * 2.0, c[3] * 2.0]);
+        let double = km.compose_over(
+            [1.0, 1.0, 1.0],
+            [c[0] * 2.0, c[1] * 2.0, c[2] * 2.0, c[3] * 2.0],
+        );
         let lum = |x: [f32; 3]| x[0] + x[1] + x[2];
-        assert!(lum(double) < lum(single), "raw spectral glaze must darken with concentration ({single:?} → {double:?})");
+        assert!(
+            lum(double) < lum(single),
+            "raw spectral glaze must darken with concentration ({single:?} → {double:?})"
+        );
     }
 
     // ── ADR-0089 §2.2 — colour fidelity (the BUG-C fix) ──────────────────────────────────────────
@@ -563,13 +626,23 @@ mod tests {
             let sum: f32 = c.iter().sum();
             let out = km.compose_over([1.0, 1.0, 1.0], c); // hue at Σ = K_REF (full coverage)
             eprintln!("{name}: pick {rgb:?} → Σc={sum:.2} conc={c:?} → composed {out:?}");
-            assert!((sum - K_REF).abs() < 0.05, "{name}: unmix must sum to K_REF (got {sum})");
-            assert_eq!(argmax(out), dom, "{name}: dominant channel must stay {name} (got {out:?})");
+            assert!(
+                (sum - K_REF).abs() < 0.05,
+                "{name}: unmix must sum to K_REF (got {sum})"
+            );
+            assert_eq!(
+                argmax(out),
+                dom,
+                "{name}: dominant channel must stay {name} (got {out:?})"
+            );
             // The killer for red→orange: the dominant channel must lead the next by a clear margin
             // (orange = G close to R; faithful red = G well below R).
             let mut sorted = out;
             sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
-            assert!(sorted[0] > sorted[1] + 0.12, "{name}: hue must be clearly saturated, not muddy ({out:?})");
+            assert!(
+                sorted[0] > sorted[1] + 0.12,
+                "{name}: hue must be clearly saturated, not muddy ({out:?})"
+            );
         }
     }
 
@@ -577,12 +650,20 @@ mod tests {
     /// essentially bit-for-bit — the "sem pigment vermelho fica amarelo" fix.
     #[test]
     fn dye_reproduces_picked_colour_exactly() {
-        for rgb in [[1.0, 0.0, 0.0], [0.2, 0.7, 0.9], [0.5, 0.5, 0.5], [0.9, 0.6, 0.1]] {
+        for rgb in [
+            [1.0, 0.0, 0.0],
+            [0.2, 0.7, 0.9],
+            [0.5, 0.5, 0.5],
+            [0.9, 0.6, 0.1],
+        ] {
             let mass = 6.0; // thick ⇒ cover ≈ 1 ⇒ backdrop washed out
             let dye = [rgb[0] * mass, rgb[1] * mass, rgb[2] * mass];
             let out = compose_linear_display([1.0, 1.0, 1.0], dye, mass, COVER_K);
             for ch in 0..3 {
-                assert!((out[ch] - rgb[ch]).abs() < 0.02, "dye must reproduce {rgb:?} faithfully (got {out:?})");
+                assert!(
+                    (out[ch] - rgb[ch]).abs() < 0.02,
+                    "dye must reproduce {rgb:?} faithfully (got {out:?})"
+                );
             }
         }
     }
@@ -595,12 +676,19 @@ mod tests {
         let yellow = [0.90, 0.80, 0.05];
         let m = 1.0;
         // Overlap = premultiplied sum (what the field accumulates), un-premultiplied at composite.
-        let dye = [blue[0] * m + yellow[0] * m, blue[1] * m + yellow[1] * m, blue[2] * m + yellow[2] * m];
+        let dye = [
+            blue[0] * m + yellow[0] * m,
+            blue[1] * m + yellow[1] * m,
+            blue[2] * m + yellow[2] * m,
+        ];
         let out = compose_linear_display([1.0, 1.0, 1.0], dye, 2.0 * m, COVER_K);
         eprintln!("Linear blue+yellow = {out:?}");
         // NOT green-dominant (the whole point of Linear vs K–M): green must not stand out from grey.
         let avg = (out[0] + out[1] + out[2]) / 3.0;
-        assert!(out[1] < avg + 0.08, "Linear mix must be metameric (grey), not green: {out:?}");
+        assert!(
+            out[1] < avg + 0.08,
+            "Linear mix must be metameric (grey), not green: {out:?}"
+        );
     }
 
     /// K–M hue is MASS-INDEPENDENT (ADR-0089 §2.2): the same ratio at a thin vs a thick total composes
@@ -623,7 +711,10 @@ mod tests {
         };
         let (a, b) = (dir(thin), dir(thick));
         let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-        assert!(dot > 0.995, "K–M hue must be mass-independent (thin·thick dir = {dot:.4})");
+        assert!(
+            dot > 0.995,
+            "K–M hue must be mass-independent (thin·thick dir = {dot:.4})"
+        );
     }
 
     // ── ADR-0091 — Mixbox residual: a single picked colour is FAITHFUL, mixing stays spectral ──────
@@ -668,11 +759,22 @@ mod tests {
         for p in 0..PIGMENTS {
             c[p] = 0.5 * (cb[p] + cy[p]);
         }
-        let r = [0.5 * (rb[0] + ry[0]), 0.5 * (rb[1] + ry[1]), 0.5 * (rb[2] + ry[2])];
+        let r = [
+            0.5 * (rb[0] + ry[0]),
+            0.5 * (rb[1] + ry[1]),
+            0.5 * (rb[2] + ry[2]),
+        ];
         let out = km.compose_km_mixbox([1.0, 1.0, 1.0], c, r, 8.0, COVER_K);
         eprintln!("pigment blue+yellow = {out:?}");
-        assert!(out[1] > out[0] && out[1] > out[2], "blue+yellow must mix to GREEN (g dominant), got {out:?}");
+        assert!(
+            out[1] > out[0] && out[1] > out[2],
+            "blue+yellow must mix to GREEN (g dominant), got {out:?}"
+        );
         let avg = (out[0] + out[1] + out[2]) / 3.0;
-        assert!(out[1] > avg * 1.10, "green must clearly stand out from grey (g={} avg={avg})", out[1]);
+        assert!(
+            out[1] > avg * 1.10,
+            "green must clearly stand out from grey (g={} avg={avg})",
+            out[1]
+        );
     }
 }

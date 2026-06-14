@@ -551,7 +551,16 @@ fn paint_wash_section(
     use ph2d_editor_core::ids as core_ids;
     use ph2d_tool_painter::WatercolorParams;
     // Reuse the Watercolor section's collapse + reset ids (mutually exclusive with it).
-    let (hy, collapsed) = section_header(ctx, ids::SEC_WATERCOLOR, ids::RESET_WATERCOLOR, "Wash", x, w, y, theme);
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_WATERCOLOR,
+        ids::RESET_WATERCOLOR,
+        "Wash",
+        x,
+        w,
+        y,
+        theme,
+    );
     y = hy;
     if collapsed {
         return y;

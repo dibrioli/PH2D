@@ -40,10 +40,10 @@ mod painter_fluid_drive;
 #[cfg(feature = "fluid")]
 mod painter_fluid_support;
 // ADR-0086/0087 minimal watercolor core — parallel to the fluid drive, own feature.
-#[cfg(feature = "wash")]
-mod painter_wash_bridge;
 mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
+#[cfg(feature = "wash")]
+mod painter_wash_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;

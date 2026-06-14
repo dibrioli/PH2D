@@ -55,13 +55,24 @@ fn inv_mass_conserved_under_diffusion() {
     let (w, h) = (32u32, 32u32);
     let (water, paper, pig) = seed_blob(w, h, 0.9, 4);
     let s = WashSolver::new(&gpu.device, w, h);
-    s.set_params(&gpu.queue, WashParams { diffusivity: 0.22, flow_outward: 0.0, evaporation: 0.0, ..Default::default() });
+    s.set_params(
+        &gpu.queue,
+        WashParams {
+            diffusivity: 0.22,
+            flow_outward: 0.0,
+            evaporation: 0.0,
+            ..Default::default()
+        },
+    );
     s.upload(&gpu.queue, &water, &paper, &pig);
     let before = total_mass(&s.read_pigment(&gpu.device, &gpu.queue));
     s.step(&gpu.device, &gpu.queue, 128);
     let after = total_mass(&s.read_pigment(&gpu.device, &gpu.queue));
     eprintln!("mass: {before:.5} → {after:.5}");
-    assert!((after - before).abs() < before * 0.01, "diffusion must conserve pigment mass: {before} → {after}");
+    assert!(
+        (after - before).abs() < before * 0.01,
+        "diffusion must conserve pigment mass: {before} → {after}"
+    );
 }
 
 // ── INV-2 — the bloom: diffusion spreads pigment (centre drops, ring rises); D has effect ─
@@ -77,7 +88,15 @@ fn inv_diffusion_blooms_and_has_slider_effect() {
     let run = |d: f32| -> (f64, f64) {
         let (water, paper, pig) = seed_blob(w, h, 0.9, 3);
         let s = WashSolver::new(&gpu.device, w, h);
-        s.set_params(&gpu.queue, WashParams { diffusivity: d, flow_outward: 0.0, evaporation: 0.0, ..Default::default() });
+        s.set_params(
+            &gpu.queue,
+            WashParams {
+                diffusivity: d,
+                flow_outward: 0.0,
+                evaporation: 0.0,
+                ..Default::default()
+            },
+        );
         s.upload(&gpu.queue, &water, &paper, &pig);
         let c0 = f64::from(s.read_pigment(&gpu.device, &gpu.queue)[idx(cx, cy, w)][3]);
         s.step(&gpu.device, &gpu.queue, 64);
@@ -88,10 +107,18 @@ fn inv_diffusion_blooms_and_has_slider_effect() {
     };
     let (centre_lo, ring_lo) = run(0.05);
     let (centre_hi, ring_hi) = run(0.24);
-    eprintln!("D=0.05 centre%={centre_lo:.3} ring={ring_lo:.5} | D=0.24 centre%={centre_hi:.3} ring={ring_hi:.5}");
+    eprintln!(
+        "D=0.05 centre%={centre_lo:.3} ring={ring_lo:.5} | D=0.24 centre%={centre_hi:.3} ring={ring_hi:.5}"
+    );
     assert!(centre_hi < 0.9, "diffusion must lower the centre peak");
-    assert!(ring_hi > 1e-5, "diffusion must carry pigment outward (bloom)");
-    assert!(centre_hi < centre_lo, "higher D must spread MORE (lower centre)");
+    assert!(
+        ring_hi > 1e-5,
+        "diffusion must carry pigment outward (bloom)"
+    );
+    assert!(
+        centre_hi < centre_lo,
+        "higher D must spread MORE (lower centre)"
+    );
     assert!(ring_hi > ring_lo, "higher D must reach the ring MORE");
 }
 
@@ -125,7 +152,15 @@ fn inv_flow_outward_darkens_the_rim() {
     }
     let s = WashSolver::new(&gpu.device, w, h);
     // Strong outward drift, low diffusion (don't just symmetrise it back), gentle drying.
-    s.set_params(&gpu.queue, WashParams { diffusivity: 0.03, flow_outward: 2.0, evaporation: 0.008, ..Default::default() });
+    s.set_params(
+        &gpu.queue,
+        WashParams {
+            diffusivity: 0.03,
+            flow_outward: 2.0,
+            evaporation: 0.008,
+            ..Default::default()
+        },
+    );
     s.upload(&gpu.queue, &water, &paper, &pig);
     s.step(&gpu.device, &gpu.queue, 80);
     let pig = s.read_pigment(&gpu.device, &gpu.queue);
@@ -147,8 +182,14 @@ fn inv_flow_outward_darkens_the_rim() {
     };
     let centre = ring_mean(0.0, 3.0);
     let outer = ring_mean(9.0, 12.0); // interior ring, safely inside the wet disk
-    eprintln!("edge-darkening: centre mean={centre:.5}  outer-ring mean={outer:.5}  (outer/centre={:.2})", outer / centre.max(1e-9));
-    assert!(outer > centre * 1.15, "FlowOutward must migrate pigment outward (outer ring {outer} > centre {centre})");
+    eprintln!(
+        "edge-darkening: centre mean={centre:.5}  outer-ring mean={outer:.5}  (outer/centre={:.2})",
+        outer / centre.max(1e-9)
+    );
+    assert!(
+        outer > centre * 1.15,
+        "FlowOutward must migrate pigment outward (outer ring {outer} > centre {centre})"
+    );
 }
 
 // ── INV-4 — stability: extreme params, 1000 substeps, no NaN / no runaway ───────────
@@ -163,7 +204,15 @@ fn inv_stable_under_extreme_params() {
     let (water, paper, pig) = seed_blob(w, h, 0.95, 6);
     let before = total_mass(&pig);
     let s = WashSolver::new(&gpu.device, w, h);
-    s.set_params(&gpu.queue, WashParams { diffusivity: 0.25, flow_outward: 2.0, evaporation: 0.0005, ..Default::default() });
+    s.set_params(
+        &gpu.queue,
+        WashParams {
+            diffusivity: 0.25,
+            flow_outward: 2.0,
+            evaporation: 0.0005,
+            ..Default::default()
+        },
+    );
     s.upload(&gpu.queue, &water, &paper, &pig);
     s.step(&gpu.device, &gpu.queue, 1000);
     let pig = s.read_pigment(&gpu.device, &gpu.queue);
@@ -172,8 +221,14 @@ fn inv_stable_under_extreme_params() {
     let max_mass = pig.iter().map(|p| p[3]).fold(0.0f32, f32::max);
     eprintln!("stability: finite={finite} max_mass={max_mass:.4} mass {before:.3}→{after:.3}");
     assert!(finite, "field must stay finite (no NaN/Inf)");
-    assert!(max_mass < 10.0, "no runaway concentration (max mass {max_mass})");
-    assert!(after <= before * 1.001, "mass must not grow (no source term)");
+    assert!(
+        max_mass < 10.0,
+        "no runaway concentration (max mass {max_mass})"
+    );
+    assert!(
+        after <= before * 1.001,
+        "mass must not grow (no source term)"
+    );
 }
 
 // ── INV-5 — subtractive compositing (Linear model over the CONCENTRATION field): stacking more
@@ -203,12 +258,30 @@ fn inv_subtractive_compositing_darkens() {
     }
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
-    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    s.upload(
+        &gpu.queue,
+        &vec![0.0f32; n],
+        &vec![0.5f32; n],
+        &vec![[0.0f32; 4]; n],
+    );
     s.upload_dye(&gpu.queue, &dye);
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white, opaque
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer(), s.dye_buffer(), s.res_buffer()); // Linear
+    comp.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        w,
+        h,
+        &backdrop,
+        1.0,
+        0,
+        s.pig_buffer(),
+        s.dye_buffer(),
+        s.res_buffer(),
+    ); // Linear
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -217,8 +290,15 @@ fn inv_subtractive_compositing_darkens() {
         let p = out[idx(x, y, w)];
         ((p & 0xff) + ((p >> 8) & 0xff) + ((p >> 16) & 0xff)) as i32
     };
-    eprintln!("subtractive: single lum={} double lum={}", lum(ax, ay), lum(bx, by));
-    assert!(lum(bx, by) < lum(ax, ay) - 20, "stacking pigment must darken (subtractive)");
+    eprintln!(
+        "subtractive: single lum={} double lum={}",
+        lum(ax, ay),
+        lum(bx, by)
+    );
+    assert!(
+        lum(bx, by) < lum(ax, ay) - 20,
+        "stacking pigment must darken (subtractive)"
+    );
 }
 
 // ── INV-6 — preview texture: a coloured DAB glazes the real backdrop (Beer–Lambert), tints
@@ -234,7 +314,12 @@ fn wash_preview_texture_premul() {
     let n = (w * h) as usize;
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
-    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    s.upload(
+        &gpu.queue,
+        &vec![0.0f32; n],
+        &vec![0.5f32; n],
+        &vec![[0.0f32; 4]; n],
+    );
     // A blue-ish dab in the centre — both channels (K–M concentration + Linear dye) so either model
     // composites it. This test reads Linear (dye): un-premultiplied colour = [0.2, 0.4, 0.9] (blue).
     let km = KmModel::new();
@@ -247,7 +332,20 @@ fn wash_preview_texture_premul() {
     let gray = 153u32; // sRGB ~0.6
     let bd = gray | (gray << 8) | (gray << 16) | (0xff << 24);
     let backdrop = vec![bd; n];
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 0, s.pig_buffer(), s.dye_buffer(), s.res_buffer());
+    comp.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        w,
+        h,
+        &backdrop,
+        1.0,
+        0,
+        s.pig_buffer(),
+        s.dye_buffer(),
+        s.res_buffer(),
+    );
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -259,11 +357,19 @@ fn wash_preview_texture_premul() {
     let corner = px(0, 0);
     eprintln!(
         "preview centre=({},{},{}) corner=({},{},{})",
-        chan(centre, 0), chan(centre, 1), chan(centre, 2),
-        chan(corner, 0), chan(corner, 1), chan(corner, 2),
+        chan(centre, 0),
+        chan(centre, 1),
+        chan(centre, 2),
+        chan(corner, 0),
+        chan(corner, 1),
+        chan(corner, 2),
     );
     // Bare corner == backdrop, untouched.
-    assert_eq!((chan(corner, 0), chan(corner, 1), chan(corner, 2)), (153, 153, 153), "bare pixel = backdrop");
+    assert_eq!(
+        (chan(corner, 0), chan(corner, 1), chan(corner, 2)),
+        (153, 153, 153),
+        "bare pixel = backdrop"
+    );
     // Painted centre: blue-tinted (B > R, B > G) and darkened (R below the backdrop's 153).
     assert!(chan(centre, 2) > chan(centre, 0), "blue pigment ⇒ B > R");
     assert!(chan(centre, 2) > chan(centre, 1), "blue pigment ⇒ B > G");
@@ -284,7 +390,12 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let n = (w * h) as usize;
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, WashParams::default());
-    s.upload(&gpu.queue, &vec![0.0f32; n], &vec![0.5f32; n], &vec![[0.0f32; 4]; n]);
+    s.upload(
+        &gpu.queue,
+        &vec![0.0f32; n],
+        &vec![0.5f32; n],
+        &vec![[0.0f32; 4]; n],
+    );
     // Hammer the centre with the SAME red dab 50× — the accumulated mass piles far past a single
     // deposit. Pre-fix this drove absorbance → ∞ ⇒ exp(−a) → 0 = pure black (the reported B1). ADR-0091
     // Mixbox decodes mix(c̄)+r̄ at the picked colour with coverage from mass, so heavy overlap only
@@ -300,11 +411,27 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     }
     let dv = s.read_dye(&gpu.device, &gpu.queue)[idx(32, 32, w)];
     let accumulated_mass = dv[3]; // mass (clamped at FIELD_CAP=8)
-    assert!(accumulated_mass > 2.0, "overlap must drive the cell to the saturation cap (got {accumulated_mass})");
+    assert!(
+        accumulated_mass > 2.0,
+        "overlap must drive the cell to the saturation cap (got {accumulated_mass})"
+    );
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer(), s.dye_buffer(), s.res_buffer()); // K–M
+    comp.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        w,
+        h,
+        &backdrop,
+        1.0,
+        1,
+        s.pig_buffer(),
+        s.dye_buffer(),
+        s.res_buffer(),
+    ); // K–M
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -312,11 +439,19 @@ fn inv_overlap_saturates_to_pigment_not_black() {
     let chan = |word: u32, i: u32| ((word >> (8 * i)) & 0xff) as i32;
     let centre = out[(32 * w + 32) as usize];
     let (cr, cg, cb) = (chan(centre, 0), chan(centre, 1), chan(centre, 2));
-    eprintln!("saturation: Σconc={accumulated_mass:.1} centre=({cr},{cg},{cb}) (K–M hue stays red, not black)");
+    eprintln!(
+        "saturation: Σconc={accumulated_mass:.1} centre=({cr},{cg},{cb}) (K–M hue stays red, not black)"
+    );
     // The killer assertion: not black. The dominant (red) channel must stay bright.
-    assert!(cr > 110, "saturated overlap must stay the pigment colour, not go black (R={cr})");
+    assert!(
+        cr > 110,
+        "saturated overlap must stay the pigment colour, not go black (R={cr})"
+    );
     // Still recognisably red (the masstone), not a grey mud.
-    assert!(cr > cg + 20 && cr > cb + 20, "masstone must keep its hue (R={cr} G={cg} B={cb})");
+    assert!(
+        cr > cg + 20 && cr > cb + 20,
+        "masstone must keep its hue (R={cr} G={cg} B={cb})"
+    );
     assert_eq!(chan(centre, 3), 255, "preview is opaque");
 }
 
@@ -352,7 +487,15 @@ fn inv_no_checkerboard_under_extreme_flow() {
     }
     let s = WashSolver::new(&gpu.device, w, h);
     // Pathological: diffusivity ABOVE the cap + huge flow_outward, no evaporation (keep-wet).
-    s.set_params(&gpu.queue, WashParams { diffusivity: 0.25, flow_outward: 5.0, evaporation: 0.0, ..Default::default() });
+    s.set_params(
+        &gpu.queue,
+        WashParams {
+            diffusivity: 0.25,
+            flow_outward: 5.0,
+            evaporation: 0.0,
+            ..Default::default()
+        },
+    );
     s.upload(&gpu.queue, &water, &paper, &pig);
     s.step(&gpu.device, &gpu.queue, 400);
     let out = s.read_pigment(&gpu.device, &gpu.queue);
@@ -379,7 +522,10 @@ fn inv_no_checkerboard_under_extreme_flow() {
     }
     eprintln!("checkerboard: {holes} interior holes (want 0), finite={finite}");
     assert!(finite, "field must stay finite");
-    assert_eq!(holes, 0, "positive scheme must not punch white holes (checkerboard) — found {holes}");
+    assert_eq!(
+        holes, 0,
+        "positive scheme must not punch white holes (checkerboard) — found {holes}"
+    );
 }
 
 // ── INV-9 — K–M composite branch (color_model=1): blue + yellow pigment mix to GREEN over white
@@ -399,7 +545,12 @@ fn inv_km_composite_blue_plus_yellow_is_green() {
     // wet mix of blue + yellow (mass 1 each ⇒ mass 2 ⇒ averaged latent).
     let (cb, rb) = km.pigment_residual([0.05, 0.05, 0.85]);
     let (cyl, ryl) = km.pigment_residual([0.90, 0.80, 0.05]);
-    let mix_pig = [cb[0] + cyl[0], cb[1] + cyl[1], cb[2] + cyl[2], cb[3] + cyl[3]];
+    let mix_pig = [
+        cb[0] + cyl[0],
+        cb[1] + cyl[1],
+        cb[2] + cyl[2],
+        cb[3] + cyl[3],
+    ];
     let mix_dye = [0.05 + 0.90, 0.05 + 0.80, 0.85 + 0.05, 2.0];
     let mix_res = [rb[0] + ryl[0], rb[1] + ryl[1], rb[2] + ryl[2], 0.0];
     let mut pig = vec![[0.0f32; 4]; n];
@@ -420,7 +571,20 @@ fn inv_km_composite_blue_plus_yellow_is_green() {
 
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, 1, s.pig_buffer(), s.dye_buffer(), s.res_buffer()); // color_model=1 (K–M)
+    comp.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        w,
+        h,
+        &backdrop,
+        1.0,
+        1,
+        s.pig_buffer(),
+        s.dye_buffer(),
+        s.res_buffer(),
+    ); // color_model=1 (K–M)
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -430,8 +594,14 @@ fn inv_km_composite_blue_plus_yellow_is_green() {
     let (r, g, b) = (chan(c, 0), chan(c, 1), chan(c, 2));
     eprintln!("K–M blue+yellow composite centre = ({r},{g},{b})");
     // The win vs RGB Beer–Lambert (muddy grey): green is the dominant channel, clearly above grey.
-    assert!(g > r && g > b, "blue+yellow must composite to GREEN (g dominant), got ({r},{g},{b})");
-    assert!(g > (r + b) / 2 + 20, "green must stand clear of grey ({r},{g},{b})");
+    assert!(
+        g > r && g > b,
+        "blue+yellow must composite to GREEN (g dominant), got ({r},{g},{b})"
+    );
+    assert!(
+        g > (r + b) / 2 + 20,
+        "green must stand clear of grey ({r},{g},{b})"
+    );
 }
 
 // ── INV-10 — the two colour models must look DIFFERENT on the SAME concentration field: K–M is
@@ -450,10 +620,20 @@ fn inv_km_visibly_greener_than_linear() {
     let yellow = [0.90f32, 0.80, 0.05];
     let (cb, rb) = km.pigment_residual(blue);
     let (cyl, ryl) = km.pigment_residual(yellow);
-    let mix = [cb[0] + cyl[0], cb[1] + cyl[1], cb[2] + cyl[2], cb[3] + cyl[3]];
+    let mix = [
+        cb[0] + cyl[0],
+        cb[1] + cyl[1],
+        cb[2] + cyl[2],
+        cb[3] + cyl[3],
+    ];
     // Same region in BOTH encodings (the live-toggle re-render reads whichever the model picks).
     // Dye = the two colours' premultiplied sum ⇒ un-premultiplied = their average = a metameric grey.
-    let dye_mix = [blue[0] + yellow[0], blue[1] + yellow[1], blue[2] + yellow[2], 2.0];
+    let dye_mix = [
+        blue[0] + yellow[0],
+        blue[1] + yellow[1],
+        blue[2] + yellow[2],
+        2.0,
+    ];
     let res_mix = [rb[0] + ryl[0], rb[1] + ryl[1], rb[2] + ryl[2], 0.0];
     let mut pig = vec![[0.0f32; 4]; n];
     let mut dye = vec![[0.0f32; 4]; n];
@@ -475,7 +655,20 @@ fn inv_km_visibly_greener_than_linear() {
     // Same field, composited under each model (the live-toggle re-render).
     let g_excess = |color_model: u32| -> i32 {
         let mut comp = WashCompositor::new(&gpu.device);
-        comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, color_model, s.pig_buffer(), s.dye_buffer(), s.res_buffer());
+        comp.begin_stroke(
+            &gpu.device,
+            &gpu.queue,
+            w,
+            h,
+            w,
+            h,
+            &backdrop,
+            1.0,
+            color_model,
+            s.pig_buffer(),
+            s.dye_buffer(),
+            s.res_buffer(),
+        );
         let mut enc = gpu.device.create_command_encoder(&Default::default());
         comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
         gpu.queue.submit([enc.finish()]);
@@ -487,5 +680,8 @@ fn inv_km_visibly_greener_than_linear() {
     let lin = g_excess(0);
     let km_g = g_excess(1);
     eprintln!("green-excess: Linear={lin}  K–M={km_g}");
-    assert!(km_g > lin + 25, "K–M must read visibly greener than the additive Linear mix (lin={lin} km={km_g})");
+    assert!(
+        km_g > lin + 25,
+        "K–M must read visibly greener than the additive Linear mix (lin={lin} km={km_g})"
+    );
 }

@@ -55,10 +55,21 @@ struct Profile {
 }
 impl Profile {
     const fn new() -> Self {
-        Self { on: None, frames: 0, cpu_us: 0, gpu_us: 0, seed: 0, dirty: 0, errs: 0, last_region_cells: 0 }
+        Self {
+            on: None,
+            frames: 0,
+            cpu_us: 0,
+            gpu_us: 0,
+            seed: 0,
+            dirty: 0,
+            errs: 0,
+            last_region_cells: 0,
+        }
     }
     fn enabled(&mut self) -> bool {
-        *self.on.get_or_insert_with(|| std::env::var("PH2D_WASH_PROFILE").is_ok())
+        *self
+            .on
+            .get_or_insert_with(|| std::env::var("PH2D_WASH_PROFILE").is_ok())
     }
 }
 
@@ -81,7 +92,13 @@ impl FieldSnap {
     fn capture(pig: &[[f32; 4]], dye: &[[f32; 4]], water: &[f32], res: &[[f32; 4]]) -> Self {
         let mut cells = Vec::new();
         for (i, (((p, d), w), r)) in pig.iter().zip(dye).zip(water).zip(res).enumerate() {
-            if *p != [0.0; 4] || *d != [0.0; 4] || *w != 0.0 || r[0] != 0.0 || r[1] != 0.0 || r[2] != 0.0 {
+            if *p != [0.0; 4]
+                || *d != [0.0; 4]
+                || *w != 0.0
+                || r[0] != 0.0
+                || r[1] != 0.0
+                || r[2] != 0.0
+            {
                 cells.push((i as u32, *p, *d, *w, [r[0], r[1], r[2]]));
             }
         }
@@ -239,9 +256,10 @@ pub(crate) fn drive_wash_gpu(
     renderer: &mut SpriteRenderer,
     override_entity: Option<u64>,
 ) -> Option<PreviewOverride> {
-    let painter = tools
-        .active_mut()
-        .and_then(|t| t.as_any_mut().downcast_mut::<ph2d_tool_painter::PainterTool>())?;
+    let painter = tools.active_mut().and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+    })?;
 
     if !painter.wash_brush_enabled() {
         // Keep the persistent session ALIVE (its undo snapshots + the tool's stroke count must stay
@@ -275,15 +293,22 @@ pub(crate) fn drive_wash_gpu(
     // pigment field is encoding-agnostic (always concentrations), so a flip is a pure re-render.
     let color_model = u32::from(painter.wash_subtractive());
     let coverage_k = painter.fluid_coverage_k();
-    let substeps = if active { painter.fluid_painting_substeps() } else { painter.fluid_idle_substeps() };
+    let substeps = if active {
+        painter.fluid_painting_substeps()
+    } else {
+        painter.fluid_idle_substeps()
+    };
     let wp = wash_params_from(&painter.fluid_diffusion_params());
     // Base backdrop (the canvas BEFORE any wash pigment) is captured ONCE; the persistent field
     // composites over it forever. Fetch lazily — only while a session still needs to initialise.
-    let need_init = WASH_SESSION.with(|c| c.borrow().as_ref().map(|s| s.initialized && s.dims == dims) != Some(true));
+    let need_init = WASH_SESSION
+        .with(|c| c.borrow().as_ref().map(|s| s.initialized && s.dims == dims) != Some(true));
     let backdrop: Option<Vec<u32>> = if need_init {
-        painter
-            .fluid_backdrop()
-            .map(|b| b.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect())
+        painter.fluid_backdrop().map(|b| {
+            b.chunks_exact(4)
+                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect()
+        })
     } else {
         None
     };
@@ -291,7 +316,11 @@ pub(crate) fn drive_wash_gpu(
     // the session's own snapshot two-stack inside the closure below — no count, no redo-vs-commit guess.
     let wash_events = painter.take_wash_events();
     // Dabs only when a live field is producing them (None when hovering / settled).
-    let dabs_envelope = if has_field { painter.fluid_take_dabs() } else { None };
+    let dabs_envelope = if has_field {
+        painter.fluid_take_dabs()
+    } else {
+        None
+    };
     let profile = PROFILE.with(|p| p.borrow_mut().enabled());
     let t0 = profile.then(Instant::now);
 
@@ -311,8 +340,18 @@ pub(crate) fn drive_wash_gpu(
         if !sess.initialized {
             let bd = backdrop.as_deref()?; // no backdrop yet (pure hover) ⇒ wait for the first stroke
             sess.compositor.begin_stroke(
-                &gpu.device, &gpu.queue, dims.0, dims.1, cw, ch, bd, coverage_k, color_model,
-                sess.solver.pig_buffer(), sess.solver.dye_buffer(), sess.solver.res_buffer(),
+                &gpu.device,
+                &gpu.queue,
+                dims.0,
+                dims.1,
+                cw,
+                ch,
+                bd,
+                coverage_k,
+                color_model,
+                sess.solver.pig_buffer(),
+                sess.solver.dye_buffer(),
+                sess.solver.res_buffer(),
             );
             sess.color_model = color_model;
             sess.initialized = true;
@@ -378,7 +417,8 @@ pub(crate) fn drive_wash_gpu(
         // Encode dabs — deposit BOTH colour channels (ADR-0089): K–M concentrations (unmixed) AND the
         // faithful-RGB dye (the picked linear colour pre-multiplied by mass). The active model picks
         // which one composites; both transport together so the live toggle stays consistent.
-        let dabs: &[ph2d_tool_painter::FluidDab] = dabs_envelope.as_ref().map_or(&[], |(d, _)| d.as_slice());
+        let dabs: &[ph2d_tool_painter::FluidDab] =
+            dabs_envelope.as_ref().map_or(&[], |(d, _)| d.as_slice());
         let gpu_dabs: Vec<Dab> = dabs
             .iter()
             .map(|d| {
@@ -391,7 +431,9 @@ pub(crate) fn drive_wash_gpu(
                 }
                 let dye = [d.color[0] * m, d.color[1] * m, d.color[2] * m, m];
                 let res = [r[0] * m, r[1] * m, r[2] * m, 0.0];
-                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc).with_dye(dye).with_residual(res)
+                Dab::from_concentrations(d.cx, d.cy, d.r.max(0.5), d.water, conc)
+                    .with_dye(dye)
+                    .with_residual(res)
             })
             .collect();
         if !gpu_dabs.is_empty() {
@@ -416,9 +458,11 @@ pub(crate) fn drive_wash_gpu(
         let full = !sess.seeded || model_flipped || finalizing || restored_now || sess.settling > 0;
         let need_gpu = full || !gpu_dabs.is_empty() || active;
         if !need_gpu {
-            return sess
-                .slot
-                .map(|(id, _, _)| PreviewOverride { entity_bits, texture_id: id, premultiplied: true });
+            return sess.slot.map(|(id, _, _)| PreviewOverride {
+                entity_bits,
+                texture_id: id,
+                premultiplied: true,
+            });
         }
 
         sess.solver.set_params(&gpu.queue, wp);
@@ -427,7 +471,9 @@ pub(crate) fn drive_wash_gpu(
         let (g_region, cx0, cy0, cw_r, ch_r) = if full {
             ((0, 0, dims.0, dims.1), 0, 0, cw, ch)
         } else {
-            let (ex0, ey0, ex1, ey1) = dabs_envelope.as_ref().map_or((0, 0, dims.0 - 1, dims.1 - 1), |(_, e)| *e);
+            let (ex0, ey0, ex1, ey1) = dabs_envelope
+                .as_ref()
+                .map_or((0, 0, dims.0 - 1, dims.1 - 1), |(_, e)| *e);
             let gx0 = ex0.saturating_sub(REGION_PAD);
             let gy0 = ey0.saturating_sub(REGION_PAD);
             let gx1 = (ex1 + REGION_PAD).min(dims.0 - 1);
@@ -436,7 +482,13 @@ pub(crate) fn drive_wash_gpu(
             let cy0 = (gy0 * scale).min(ch);
             let cx1 = ((gx1 + 1) * scale).min(cw);
             let cy1 = ((gy1 + 1) * scale).min(ch);
-            ((gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1), cx0, cy0, cx1 - cx0, cy1 - cy0)
+            (
+                (gx0, gy0, gx1 - gx0 + 1, gy1 - gy0 + 1),
+                cx0,
+                cy0,
+                cx1 - cx0,
+                cy1 - cy0,
+            )
         };
         PROFILE.with(|p| p.borrow_mut().last_region_cells = u64::from(cw_r) * u64::from(ch_r));
 
@@ -464,16 +516,32 @@ pub(crate) fn drive_wash_gpu(
         // ZERO on a restore (the snapshot is already settled — stepping would re-diffuse it through the
         // stale, still-full water field, the evap-0 undo drift).
         let step_n = if restored_now { 0 } else { substeps };
-        let enc = gpu.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash frame") });
-        let mut enc = sess.solver.encode_step(&gpu.queue, enc, &gpu_dabs, step_n, g_region);
+        let enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("wash frame"),
+            });
+        let mut enc = sess
+            .solver
+            .encode_step(&gpu.queue, enc, &gpu_dabs, step_n, g_region);
         let tex_ok = if seed {
-            sess.compositor.encode_composite(&gpu.queue, &mut enc, (0, 0, cw, ch));
-            sess.compositor.preview_texture().is_some_and(|t| renderer.encode_copy_into_individual(&mut enc, id, t, cw, ch).is_ok())
-        } else {
-            sess.compositor.encode_composite(&gpu.queue, &mut enc, (cx0, cy0, cw_r, ch_r));
             sess.compositor
-                .preview_texture()
-                .is_some_and(|t| renderer.encode_copy_region_into_individual(&mut enc, id, t, cx0, cy0, cx0, cy0, cw_r, ch_r).is_ok())
+                .encode_composite(&gpu.queue, &mut enc, (0, 0, cw, ch));
+            sess.compositor.preview_texture().is_some_and(|t| {
+                renderer
+                    .encode_copy_into_individual(&mut enc, id, t, cw, ch)
+                    .is_ok()
+            })
+        } else {
+            sess.compositor
+                .encode_composite(&gpu.queue, &mut enc, (cx0, cy0, cw_r, ch_r));
+            sess.compositor.preview_texture().is_some_and(|t| {
+                renderer
+                    .encode_copy_region_into_individual(
+                        &mut enc, id, t, cx0, cy0, cx0, cy0, cw_r, ch_r,
+                    )
+                    .is_ok()
+            })
         };
         gpu.queue.submit([enc.finish()]);
         if profile {
@@ -482,8 +550,14 @@ pub(crate) fn drive_wash_gpu(
             PROFILE.with(|p| {
                 let mut p = p.borrow_mut();
                 p.gpu_us += tg.elapsed().as_micros() as u64;
-                if seed { p.seed += 1 } else { p.dirty += 1 }
-                if !tex_ok { p.errs += 1 }
+                if seed {
+                    p.seed += 1
+                } else {
+                    p.dirty += 1
+                }
+                if !tex_ok {
+                    p.errs += 1
+                }
             });
         }
         if !tex_ok {
@@ -523,11 +597,18 @@ pub(crate) fn drive_wash_gpu(
         // pipeline from racing a partial bbox into a rectangular seam. The slot override DISPLAYS the
         // live wash throughout regardless (ADR-0089 §2.3).
         let do_bake = finalizing || restored_now;
-        if let Some(words) = do_bake.then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue)).flatten() {
+        if let Some(words) = do_bake
+            .then(|| sess.compositor.read_preview(&gpu.device, &gpu.queue))
+            .flatten()
+        {
             let band: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
             painter.fluid_apply_gpu_composite_rows(&band, (0, 0, cw, ch));
         }
-        Some(PreviewOverride { entity_bits, texture_id: id, premultiplied: true })
+        Some(PreviewOverride {
+            entity_bits,
+            texture_id: id,
+            premultiplied: true,
+        })
     });
 
     if let Some(t0) = t0 {

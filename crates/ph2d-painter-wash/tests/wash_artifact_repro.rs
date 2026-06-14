@@ -18,7 +18,9 @@ fn try_gpu() -> Option<GpuContext> {
 fn max_diff(a: &[u32], b: &[u32]) -> i32 {
     a.iter()
         .zip(b)
-        .flat_map(|(&x, &y)| (0..4).map(move |s| ((x >> (8 * s)) & 0xff) as i32 - ((y >> (8 * s)) & 0xff) as i32))
+        .flat_map(|(&x, &y)| {
+            (0..4).map(move |s| ((x >> (8 * s)) & 0xff) as i32 - ((y >> (8 * s)) & 0xff) as i32)
+        })
         .map(i32::abs)
         .max()
         .unwrap_or(0)
@@ -28,7 +30,20 @@ fn composite_full(gpu: &GpuContext, s: &WashSolver, w: u32, h: u32, model: u32) 
     let n = (w * h) as usize;
     let mut comp = WashCompositor::new(&gpu.device);
     let backdrop = vec![0xffff_ffffu32; n]; // white
-    comp.begin_stroke(&gpu.device, &gpu.queue, w, h, w, h, &backdrop, 1.0, model, s.pig_buffer(), s.dye_buffer(), s.res_buffer());
+    comp.begin_stroke(
+        &gpu.device,
+        &gpu.queue,
+        w,
+        h,
+        w,
+        h,
+        &backdrop,
+        1.0,
+        model,
+        s.pig_buffer(),
+        s.dye_buffer(),
+        s.res_buffer(),
+    );
     let mut enc = gpu.device.create_command_encoder(&Default::default());
     comp.encode_composite(&gpu.queue, &mut enc, (0, 0, w, h));
     gpu.queue.submit([enc.finish()]);
@@ -62,7 +77,12 @@ fn snapshot_restore_is_byte_identical_and_region_step_has_no_seam() {
     let (w, h) = (96u32, 96u32);
     let km = KmModel::new();
     let dabs = red_stroke_dabs(&km);
-    let wp = WashParams { diffusivity: 0.14, flow_outward: 0.0, evaporation: 0.0, ..Default::default() };
+    let wp = WashParams {
+        diffusivity: 0.14,
+        flow_outward: 0.0,
+        evaporation: 0.0,
+        ..Default::default()
+    };
 
     // DIRECT: splat + full-grid settle. The reference look.
     let s = WashSolver::new(&gpu.device, w, h);
@@ -82,7 +102,10 @@ fn snapshot_restore_is_byte_identical_and_region_step_has_no_seam() {
     let d_km = max_diff(&direct_km, &composite_full(&gpu, &s2, w, h, 1));
     let d_lin = max_diff(&direct_lin, &composite_full(&gpu, &s2, w, h, 0));
     eprintln!("snapshot→restore max diff: K–M={d_km}  Linear={d_lin}  (want 0)");
-    assert!(d_km == 0 && d_lin == 0, "snapshot→restore must be byte-identical (K–M={d_km} Lin={d_lin})");
+    assert!(
+        d_km == 0 && d_lin == 0,
+        "snapshot→restore must be byte-identical (K–M={d_km} Lin={d_lin})"
+    );
 
     // (2) Region-scoped step (the bridge's painting path) vs full-grid: identical in the wet area.
     let region = (14u32, 6u32, 40u32, 84u32); // envelope-ish bbox around the stroke
@@ -92,8 +115,13 @@ fn snapshot_restore_is_byte_identical_and_region_step_has_no_seam() {
     let enc = sr.encode_step(&gpu.queue, enc, &dabs, 30 * 4, region); // splat + region-step
     gpu.queue.submit([enc.finish()]);
     let d_region = max_diff(&direct_km, &composite_full(&gpu, &sr, w, h, 1));
-    eprintln!("region-step vs full-step max diff: K–M={d_region}  (want ~0; a localized jump = a seam)");
-    assert!(d_region < 2, "region-scoped stepping must not seam vs full-grid (diff={d_region})");
+    eprintln!(
+        "region-step vs full-step max diff: K–M={d_region}  (want ~0; a localized jump = a seam)"
+    );
+    assert!(
+        d_region < 2,
+        "region-scoped stepping must not seam vs full-grid (diff={d_region})"
+    );
 }
 
 /// ADR-0090 regression (Enio 2026-06-14: "a mancha que apaguei com o undo volta"): restoring a
@@ -111,7 +139,12 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     };
     let (w, h) = (96u32, 96u32);
     let km = KmModel::new();
-    let wp = WashParams { diffusivity: 0.14, flow_outward: 0.0, evaporation: 0.0, ..Default::default() };
+    let wp = WashParams {
+        diffusivity: 0.14,
+        flow_outward: 0.0,
+        evaporation: 0.0,
+        ..Default::default()
+    };
     let s = WashSolver::new(&gpu.device, w, h);
     s.set_params(&gpu.queue, wp);
 
@@ -147,7 +180,10 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     s.splat(&gpu.device, &gpu.queue, &blob(72.0, 72.0));
     s.step(&gpu.device, &gpu.queue, 12);
     let y_before = region_mass(&s.read_pigment(&gpu.device, &gpu.queue), 60, 60, 84, 84);
-    assert!(y_before > 0.01, "stroke Y must have laid pigment (got {y_before})");
+    assert!(
+        y_before > 0.01,
+        "stroke Y must have laid pigment (got {y_before})"
+    );
 
     // Undo Y: restore snapshot S (= X only) — colour AND water, writes both ping-pong twins.
     s.upload_pigment(&gpu.queue, &snap_pig);
@@ -165,9 +201,17 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
     let y_after = region_mass(&field, 60, 60, 84, 84);
     let x_mass = region_mass(&field, 12, 12, 36, 36);
     let z_mass = region_mass(&field, 12, 60, 36, 84);
-    eprintln!("after restore+paint: X={x_mass:.3} Y={y_after:.3} (was {y_before:.3}) Z={z_mass:.3} — Y must be ~0");
-    assert!(y_after < 0.001, "UNDONE stroke Y resurrected after painting (Y mass {y_after}, was {y_before}) — stale twin buffer");
-    assert!(x_mass > 0.01, "restored stroke X must remain (got {x_mass})");
+    eprintln!(
+        "after restore+paint: X={x_mass:.3} Y={y_after:.3} (was {y_before:.3}) Z={z_mass:.3} — Y must be ~0"
+    );
+    assert!(
+        y_after < 0.001,
+        "UNDONE stroke Y resurrected after painting (Y mass {y_after}, was {y_before}) — stale twin buffer"
+    );
+    assert!(
+        x_mass > 0.01,
+        "restored stroke X must remain (got {x_mass})"
+    );
     assert!(z_mass > 0.01, "new stroke Z must be present (got {z_mass})");
 
     // ...and the undo must be COMPLETE: Y's WATER is gone too (else its area stays wet forever at
@@ -179,5 +223,8 @@ fn restore_then_paint_does_not_resurrect_undone_pigment() {
             y_water += water[(y * w + x) as usize];
         }
     }
-    assert!(y_water < 0.001, "UNDONE stroke Y's WATER persisted after restore+paint ({y_water}) — incomplete undo");
+    assert!(
+        y_water < 0.001,
+        "UNDONE stroke Y's WATER persisted after restore+paint ({y_water}) — incomplete undo"
+    );
 }

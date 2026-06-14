@@ -200,7 +200,9 @@ impl PainterTool {
         // ADR-0087: a `wash_enabled` brush reuses the SAME wet-field carrier lifecycle (dab list,
         // backdrop snapshot, epoch, dims) — the shell's `drive_wash_gpu` drives the WashSolver
         // over it instead of the FluidSolver. The two are mutually exclusive (the apply handler).
-        if (self.brush.rendering.fluid_enabled || self.brush.rendering.wash_enabled) && self.fluid_hires {
+        if (self.brush.rendering.fluid_enabled || self.brush.rendering.wash_enabled)
+            && self.fluid_hires
+        {
             // **W15.3 full-res on a capable GPU.** The field runs at full canvas
             // resolution (`scale=1`) for fine bleeds + sharp edges.
             let scale = self.live_field_scale();

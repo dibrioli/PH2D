@@ -83,7 +83,15 @@ impl Dab {
     /// faithful-RGB channel that the Linear mode reads.
     #[must_use]
     pub fn from_concentrations(cx: f32, cy: f32, r: f32, water_add: f32, conc: [f32; 4]) -> Self {
-        Self { cx, cy, r, water_add, pig: conc, dye: [0.0; 4], res: [0.0; 4] }
+        Self {
+            cx,
+            cy,
+            r,
+            water_add,
+            pig: conc,
+            dye: [0.0; 4],
+            res: [0.0; 4],
+        }
     }
 
     /// Attach the **dye** channel: `rgb·mass` (pre-multiplied) in `.xyz` + `mass` in `.w`. Both
@@ -192,7 +200,7 @@ impl WashSolver {
             label: Some("wash step bgl"),
             entries: &[
                 uniform(0),
-                storage(1, true),  // water_in
+                storage(1, true), // water_in
                 // binding 2 (paper) REMOVED — the gate ignores paper permeability (B5); the freed slot
                 // goes to the ADR-0091 residual channel (8 storage-buffer/stage limit). v1.1 re-adds it.
                 storage(3, true),  // pig_in
@@ -207,7 +215,14 @@ impl WashSolver {
         let splat_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("wash splat bgl"),
             // 0 uniform, 1 water (rw), 2 pig (rw), 3 dabs (read), 4 dye (rw, ADR-0089), 5 res (rw, ADR-0091)
-            entries: &[uniform(0), storage(1, false), storage(2, false), storage(3, true), storage(4, false), storage(5, false)],
+            entries: &[
+                uniform(0),
+                storage(1, false),
+                storage(2, false),
+                storage(3, true),
+                storage(4, false),
+                storage(5, false),
+            ],
         });
 
         let mk_pipe = |bgl: &wgpu::BindGroupLayout, m: &wgpu::ShaderModule, entry: &str| {
@@ -262,34 +277,67 @@ impl WashSolver {
             })
         };
         let params_buf = ubo("wash params", core::mem::size_of::<WashParams>() as u64);
-        let splat_params_buf = ubo("wash splat params", core::mem::size_of::<SplatParams>() as u64);
+        let splat_params_buf = ubo(
+            "wash splat params",
+            core::mem::size_of::<SplatParams>() as u64,
+        );
 
         fn e(binding: u32, buf: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-            wgpu::BindGroupEntry { binding, resource: buf.as_entire_binding() }
+            wgpu::BindGroupEntry {
+                binding,
+                resource: buf.as_entire_binding(),
+            }
         }
         let bg_step_ab = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step a→b"),
             layout: &step_bgl,
             entries: &[
-                e(0, &params_buf), e(1, &water_a), e(3, &pig_a),
-                e(4, &water_b), e(5, &pig_b), e(6, &dye_a), e(7, &dye_b), e(8, &res_a), e(9, &res_b),
+                e(0, &params_buf),
+                e(1, &water_a),
+                e(3, &pig_a),
+                e(4, &water_b),
+                e(5, &pig_b),
+                e(6, &dye_a),
+                e(7, &dye_b),
+                e(8, &res_a),
+                e(9, &res_b),
             ],
         });
         let bg_step_ba = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg step b→a"),
             layout: &step_bgl,
             entries: &[
-                e(0, &params_buf), e(1, &water_b), e(3, &pig_b),
-                e(4, &water_a), e(5, &pig_a), e(6, &dye_b), e(7, &dye_a), e(8, &res_b), e(9, &res_a),
+                e(0, &params_buf),
+                e(1, &water_b),
+                e(3, &pig_b),
+                e(4, &water_a),
+                e(5, &pig_a),
+                e(6, &dye_b),
+                e(7, &dye_a),
+                e(8, &res_b),
+                e(9, &res_a),
             ],
         });
         let bg_splat = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash bg splat"),
             layout: &splat_bgl,
-            entries: &[e(0, &splat_params_buf), e(1, &water_a), e(2, &pig_a), e(3, &dabs_buf), e(4, &dye_a), e(5, &res_a)],
+            entries: &[
+                e(0, &splat_params_buf),
+                e(1, &water_a),
+                e(2, &pig_a),
+                e(3, &dabs_buf),
+                e(4, &dye_a),
+                e(5, &res_a),
+            ],
         });
 
-        let params = WashParams { width, height, region_w: width, region_h: height, ..Default::default() };
+        let params = WashParams {
+            width,
+            height,
+            region_w: width,
+            region_h: height,
+            ..Default::default()
+        };
 
         Self {
             width,
@@ -360,8 +408,19 @@ impl WashSolver {
 
     /// Zero all dynamic fields (per-stroke reset / undo-to-empty). Paper is static and kept.
     pub fn clear(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash clear enc") });
-        for b in [&self.water_a, &self.water_b, &self.pig_a, &self.pig_b, &self.dye_a, &self.dye_b, &self.res_a, &self.res_b] {
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("wash clear enc"),
+        });
+        for b in [
+            &self.water_a,
+            &self.water_b,
+            &self.pig_a,
+            &self.pig_b,
+            &self.dye_a,
+            &self.dye_b,
+            &self.res_a,
+            &self.res_b,
+        ] {
             enc.clear_buffer(b, 0, None);
         }
         queue.submit([enc.finish()]);
@@ -419,7 +478,9 @@ impl WashSolver {
 
     /// Splat a dab list onto the canonical (`*_a`) fields (own submit; test/standalone path).
     pub fn splat(&self, device: &wgpu::Device, queue: &wgpu::Queue, dabs: &[Dab]) {
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash splat enc") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("wash splat enc"),
+        });
         self.encode_splat(queue, &mut enc, dabs, (0, 0, self.width, self.height));
         queue.submit([enc.finish()]);
     }
@@ -430,7 +491,9 @@ impl WashSolver {
             return;
         }
         let region = (0, 0, self.width, self.height);
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash step enc") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("wash step enc"),
+        });
         self.encode_substeps(queue, &mut enc, substeps, region);
         queue.submit([enc.finish()]);
     }
@@ -453,7 +516,13 @@ impl WashSolver {
         enc
     }
 
-    fn encode_splat(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, dabs: &[Dab], region: (u32, u32, u32, u32)) {
+    fn encode_splat(
+        &self,
+        queue: &wgpu::Queue,
+        enc: &mut wgpu::CommandEncoder,
+        dabs: &[Dab],
+        region: (u32, u32, u32, u32),
+    ) {
         assert!(dabs.len() as u64 <= MAX_DABS, "dab count exceeds MAX_DABS");
         if dabs.is_empty() {
             return;
@@ -472,13 +541,22 @@ impl WashSolver {
             _pad: 0,
         };
         queue.write_buffer(&self.splat_params_buf, 0, bytemuck::bytes_of(&sp));
-        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash splat"), timestamp_writes: None });
+        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("wash splat"),
+            timestamp_writes: None,
+        });
         pass.set_pipeline(&self.splat_pipe);
         pass.set_bind_group(0, &self.bg_splat, &[]);
         pass.dispatch_workgroups(groups(rw), groups(rh), 1);
     }
 
-    fn encode_substeps(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, substeps: u32, region: (u32, u32, u32, u32)) {
+    fn encode_substeps(
+        &self,
+        queue: &wgpu::Queue,
+        enc: &mut wgpu::CommandEncoder,
+        substeps: u32,
+        region: (u32, u32, u32, u32),
+    ) {
         if substeps == 0 {
             return;
         }
@@ -492,8 +570,15 @@ impl WashSolver {
         queue.write_buffer(&self.params_buf, 0, bytemuck::bytes_of(&p));
         // One compute pass per substep ⇒ wgpu inserts the ping-pong read-after-write barrier.
         for k in 0..substeps {
-            let bg = if k % 2 == 0 { &self.bg_step_ab } else { &self.bg_step_ba };
-            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash step"), timestamp_writes: None });
+            let bg = if k % 2 == 0 {
+                &self.bg_step_ab
+            } else {
+                &self.bg_step_ba
+            };
+            let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("wash step"),
+                timestamp_writes: None,
+            });
             pass.set_pipeline(&self.step_pipe);
             pass.set_bind_group(0, bg, &[]);
             pass.dispatch_workgroups(groups(p.region_w), groups(p.region_h), 1);
@@ -519,7 +604,9 @@ impl WashSolver {
         let size = u64::from(self.width) * u64::from(self.height) * 16;
         let bytes = read_bytes(device, queue, &self.pig_a, size);
         let flat: &[f32] = bytemuck::cast_slice(&bytes);
-        flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
+        flat.chunks_exact(4)
+            .map(|c| [c[0], c[1], c[2], c[3]])
+            .collect()
     }
 
     /// Read the canonical dye field as `(premul-RGB, mass)` per cell (ADR-0089 undo snapshot / parity).
@@ -527,7 +614,9 @@ impl WashSolver {
         let size = u64::from(self.width) * u64::from(self.height) * 16;
         let bytes = read_bytes(device, queue, &self.dye_a, size);
         let flat: &[f32] = bytemuck::cast_slice(&bytes);
-        flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
+        flat.chunks_exact(4)
+            .map(|c| [c[0], c[1], c[2], c[3]])
+            .collect()
     }
 
     /// Read the canonical residual field as `(premul signed-RGB, _)` per cell (ADR-0091 undo snapshot).
@@ -535,19 +624,28 @@ impl WashSolver {
         let size = u64::from(self.width) * u64::from(self.height) * 16;
         let bytes = read_bytes(device, queue, &self.res_a, size);
         let flat: &[f32] = bytemuck::cast_slice(&bytes);
-        flat.chunks_exact(4).map(|c| [c[0], c[1], c[2], c[3]]).collect()
+        flat.chunks_exact(4)
+            .map(|c| [c[0], c[1], c[2], c[3]])
+            .collect()
     }
 }
 
 /// Blocking readback of a storage buffer (test / parity path).
-pub(crate) fn read_bytes(device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer, size: u64) -> Vec<u8> {
+pub(crate) fn read_bytes(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    buf: &wgpu::Buffer,
+    size: u64,
+) -> Vec<u8> {
     let staging = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("wash readback"),
         size,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash readback enc") });
+    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("wash readback enc"),
+    });
     enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
     queue.submit([enc.finish()]);
     staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});

@@ -131,7 +131,11 @@ impl UndoController {
         is_wash: bool,
     ) {
         let snapshot = LayerSnapshot::new_in_memory(self.layer_id, seq, pre_stroke_pixels.to_vec());
-        self.undo.push(UndoEntry { seq, snapshot, is_wash });
+        self.undo.push(UndoEntry {
+            seq,
+            snapshot,
+            is_wash,
+        });
         // Any new edit invalidates the redo branch.
         self.redo.clear();
         self.cap();
@@ -376,7 +380,11 @@ mod tests {
         c.record_pre_stroke(2, &solid(4, 2), true); // wash
         let live = solid(4, 3);
         assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "top is wash");
-        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(false), "middle is raster");
+        assert_eq!(
+            c.undo(&live).map(|(_, w)| w),
+            Some(false),
+            "middle is raster"
+        );
         assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "bottom is wash");
         assert_eq!(c.undo(&live), None);
         // Redo reports the same bit in reverse order as entries move back to the undo stack.

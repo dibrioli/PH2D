@@ -189,9 +189,18 @@ impl WashCompositor {
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: true,
         });
-        km_buf.slice(..).get_mapped_range_mut().copy_from_slice(bytemuck::cast_slice(&km));
+        km_buf
+            .slice(..)
+            .get_mapped_range_mut()
+            .copy_from_slice(bytemuck::cast_slice(&km));
         km_buf.unmap();
-        Self { pipe, bgl, cparams_buf, km_buf, stroke: None }
+        Self {
+            pipe,
+            bgl,
+            cparams_buf,
+            km_buf,
+            stroke: None,
+        }
     }
 
     /// Bind both colour fields (`pig_buf`/`dye_buf` from [`crate::WashSolver::pig_buffer`] /
@@ -214,10 +223,18 @@ impl WashCompositor {
         dye_buf: &wgpu::Buffer,
         res_buf: &wgpu::Buffer,
     ) {
-        assert_eq!(backdrop.len() as u32, cw * ch, "backdrop must be cw·ch words");
+        assert_eq!(
+            backdrop.len() as u32,
+            cw * ch,
+            "backdrop must be cw·ch words"
+        );
         let tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("wash preview_tex"),
-            size: wgpu::Extent3d { width: cw, height: ch, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: cw,
+                height: ch,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -238,41 +255,96 @@ impl WashCompositor {
         queue.write_buffer(&backdrop_buf, 0, bytemuck::cast_slice(backdrop));
         let inv = gw as f32 / cw as f32;
         let cp = CParams {
-            cw, ch, gw, gh, region_ox: 0, region_oy: 0, region_w: cw, region_h: ch,
-            inv, coverage_k, color_model, _p1: 0.0,
+            cw,
+            ch,
+            gw,
+            gh,
+            region_ox: 0,
+            region_oy: 0,
+            region_w: cw,
+            region_h: ch,
+            inv,
+            coverage_k,
+            color_model,
+            _p1: 0.0,
         };
         queue.write_buffer(&self.cparams_buf, 0, bytemuck::bytes_of(&cp));
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("wash composite bg"),
             layout: &self.bgl,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: self.cparams_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: pig_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 2, resource: backdrop_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(&view) },
-                wgpu::BindGroupEntry { binding: 4, resource: self.km_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 5, resource: dye_buf.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 6, resource: res_buf.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.cparams_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: pig_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: backdrop_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.km_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: dye_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: res_buf.as_entire_binding(),
+                },
             ],
         });
-        self.stroke = Some(Stroke { cw, ch, gw, gh, coverage_k, color_model, tex, backdrop: backdrop_buf, bg });
+        self.stroke = Some(Stroke {
+            cw,
+            ch,
+            gw,
+            gh,
+            coverage_k,
+            color_model,
+            tex,
+            backdrop: backdrop_buf,
+            bg,
+        });
     }
 
     /// Append the composite of `region` (canvas-space `(ox,oy,w,h)`) to `enc`.
-    pub fn encode_composite(&self, queue: &wgpu::Queue, enc: &mut wgpu::CommandEncoder, region: (u32, u32, u32, u32)) {
+    pub fn encode_composite(
+        &self,
+        queue: &wgpu::Queue,
+        enc: &mut wgpu::CommandEncoder,
+        region: (u32, u32, u32, u32),
+    ) {
         let Some(s) = &self.stroke else { return };
         let rw = region.2.clamp(1, s.cw);
         let rh = region.3.clamp(1, s.ch);
         let cp = CParams {
-            cw: s.cw, ch: s.ch, gw: s.gw, gh: s.gh,
+            cw: s.cw,
+            ch: s.ch,
+            gw: s.gw,
+            gh: s.gh,
             region_ox: region.0.min(s.cw - 1),
             region_oy: region.1.min(s.ch - 1),
-            region_w: rw, region_h: rh,
+            region_w: rw,
+            region_h: rh,
             inv: s.gw as f32 / s.cw as f32,
-            coverage_k: s.coverage_k, color_model: s.color_model, _p1: 0.0,
+            coverage_k: s.coverage_k,
+            color_model: s.color_model,
+            _p1: 0.0,
         };
         queue.write_buffer(&self.cparams_buf, 0, bytemuck::bytes_of(&cp));
-        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("wash composite"), timestamp_writes: None });
+        let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("wash composite"),
+            timestamp_writes: None,
+        });
         pass.set_pipeline(&self.pipe);
         pass.set_bind_group(0, &s.bg, &[]);
         pass.dispatch_workgroups(groups(rw), groups(rh), 1);
@@ -304,14 +376,29 @@ impl WashCompositor {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
-        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("wash preview readback enc") });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("wash preview readback enc"),
+        });
         enc.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo { texture: &s.tex, mip_level: 0, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyTextureInfo {
+                texture: &s.tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
             wgpu::TexelCopyBufferInfo {
                 buffer: &staging,
-                layout: wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(bpr), rows_per_image: Some(s.ch) },
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bpr),
+                    rows_per_image: Some(s.ch),
+                },
             },
-            wgpu::Extent3d { width: s.cw, height: s.ch, depth_or_array_layers: 1 },
+            wgpu::Extent3d {
+                width: s.cw,
+                height: s.ch,
+                depth_or_array_layers: 1,
+            },
         );
         queue.submit([enc.finish()]);
         staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});

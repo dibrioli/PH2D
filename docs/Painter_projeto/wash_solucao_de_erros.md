@@ -6,12 +6,12 @@
 > qualquer artefato visual de aquarela.
 >
 > Código: solver `crates/ph2d-painter-wash/src/solver.rs` + shaders `src/shader/{splat,wash,composite}.wgsl`;
-> bridge `shells/desktop/src/render_loop/painter_wash_bridge.rs`. Gates: `tests/wash_invariants.rs`.
-> Tracker de status: [`../HANDOFF_wash.md`](../HANDOFF_wash.md).
+> bridge `shells/desktop/src/render_loop/painter_wash_bridge.rs`. Gates: `tests/wash_invariants.rs` +
+> `tests/wash_artifact_repro.rs` (undo/restore). Tracker de status: [`../HANDOFF_wash.md`](../HANDOFF_wash.md).
 
 ---
 
-## §0 — As 6 lições que custaram caro (leia isto)
+## §0 — As 7 lições que custaram caro (leia isto)
 
 1. **Borda "pixelada" tem ≥3 causas DIFERENTES — não trate como uma só.** Foram, em ordem: violação
    de CFL (xadrez), frente molhada estática (rim duro), contorno do cap de saturação (degrau
@@ -40,6 +40,29 @@
 6. **Campo 1:1 com o canvas = sem anti-alias grátis.** `inv=1` ⇒ o composite amostra *nearest*.
    Qualquer borda nítida no campo vira escada no zoom. Suavizar VALOR (saturação) não conserta
    CONTORNO; é preciso reamostrar (blur) no composite.
+
+7. **Undo do wash = ESTADO de solver, não controle — e o solver tem armadilhas de buffer.** O bug
+   "dei undo, pintei de novo e a mancha desfeita VOLTA" custou **>1 dia e 3 ADRs de reescrita do
+   CONTROLE de undo (0088→0089→0090)** porque o sintoma ("volta ao pintar") parecia redo/contagem.
+   Não era — o controle sempre esteve certo. Foram DUAS causas-raiz, ambas no `WashSolver`:
+   - **(a) Gêmeo ping-pong stale.** O solver tem buffers gêmeos `pig_a`/`pig_b` (idem `dye`, `water`).
+     Um `cs_step` de **região** escreve `_b` só na região pintada e depois copia o `_b` **INTEIRO** de
+     volta pro `_a`. Isso só é correto sob a invariante `_a == _b` (a pintura normal mantém — todo step
+     copia de volta). O undo-restore escrevia **só `_a`**, deixando `_b` com o campo PRÉ-undo; a 1ª
+     pincelada de região seguinte copiava o `_b` stale inteiro de volta → **ressuscitava a mancha
+     desfeita FORA da região pintada.** Regra dura: **todo overwrite PARCIAL de um buffer ping-pong com
+     copy-back full DEVE escrever os DOIS gêmeos.**
+   - **(b) Restaurar só o canal visível = undo incompleto.** Resolvido (a), a COR voltava certa mas a
+     ÁGUA não era restaurada → a área desfeita continuava molhada (evap-0 nunca seca, e sangra nas
+     pinceladas seguintes). Regra: **undo = restaurar TODO o estado dinâmico do solver
+     (`pig`+`dye`+`water`), não só o canal que aparece na tela** (`paper` é estático, fica fora).
+   - **Meta — a lição que mais custou:** troquei o suspeito "óbvio" (o controle) sem **reproduzir/isolar
+     o sintoma**. O Enio testou cada reescrita e dizia "nada mudou". Só um `eprintln` no caminho ATIVO
+     provou o controle PERFEITO (`undo=2 redo=1`; pincelada nova = `[Commit] redo=0`, SEM evento Redo) e
+     apontou pro solver — aí o fix foi de ~6 linhas. **Instrumente o caminho ativo e prove ONDE o estado
+     diverge ANTES de reescrever o suspeito.** E confirme QUAL sistema roda: há DOIS (wash e fluid,
+     flags `wash_enabled`/`fluid_enabled` mutuamente exclusivas). Detalhe:
+     [`ADR-0090`](../architecture/decisions/0090-wash-event-driven-undo-rebuild.md).
 
 ---
 
@@ -108,6 +131,28 @@
 - **Gate:** INV-5 (passou a usar blocos; células isoladas eram diluídas pelo blur). **Commit:**
   `97ea380c`.
 
+### B7 — undo: "a mancha que apaguei volta quando pinto de novo"
+- **Sintoma:** o undo remove a pincelada (visualmente correto), mas a 1ª pincelada SEGUINTE ressuscita
+  a mancha desfeita — parece um redo disparado pela pincelada. **Custou >1 dia + 3 ADRs (ver §0.7).**
+- **Causa:** gêmeo ping-pong `pig_b`/`dye_b` **stale**. O restore (`upload_pigment`/`upload_dye`)
+  escrevia só `_a`; o `cs_step` de região copia o `_b` **inteiro** de volta → ressuscita o campo
+  pré-undo FORA da região pintada. O CONTROLE de undo (eventos `WashUndoEvent`) estava 100% correto —
+  o bug era de buffer no solver, e por isso sobreviveu a 0088→0089→0090. Diagnóstico só fechou com
+  `eprintln` no caminho ativo provando a pilha correta (`undo=2 redo=1`, sem evento Redo).
+- **Fix:** `upload_pigment`/`upload_dye` escrevem **os dois** gêmeos (`_a` e `_b`). `solver.rs`.
+- **Gate:** `restore_then_paint_does_not_resurrect_undone_pigment` — mancha desfeita = 0.000 após
+  restore+PINTAR (o teste antigo `wash_artifact_repro` só fazia restore→composite, **nunca**
+  restore→pintar; por isso passava). **Commit:** `72a76e93`.
+
+### B8 — undo incompleto: a cor some mas a área fica MOLHADA
+- **Sintoma:** depois de B7, o undo tira a cor mas a área da pincelada desfeita continua "molhada" —
+  em evap-0 nunca seca, e volta a sangrar se pintar perto.
+- **Causa:** o snapshot guardava só `pig`+`dye`; a ÁGUA (`water`) nunca era restaurada → o undo era
+  parcial (ver §0.7b).
+- **Fix:** o `FieldSnap` captura/restaura os **TRÊS** campos dinâmicos (`pig`+`dye`+`water`);
+  `upload_water` novo (escreve os dois gêmeos, como pig/dye). `solver.rs` + `painter_wash_bridge.rs`.
+- **Gate:** o mesmo teste passou a asserir a água da mancha desfeita = 0. **Commit:** `0055238a`.
+
 ---
 
 ## §2 — Mapa: que camada controla qual artefato
@@ -123,10 +168,17 @@
 | Wet-on-dry não funde | kernel `splat.wgsl` | `WATER_HALO` (água > pigmento) |
 | Mosqueado por-pixel | kernel `wash.wgsl` | perm do papel REMOVIDA do `gate()` |
 | Marcas retangulares | bridge | região = envelope monotônico (não janela móvel) |
+| Undo "mancha volta ao pintar" | solver `solver.rs` | `upload_pigment`/`upload_dye` escrevem os DOIS gêmeos (`_a`+`_b`) |
+| Undo incompleto (área molhada) | solver + bridge | snapshot = `pig`+`dye`+`water` (todo estado dinâmico); `upload_water` |
 
 **Invariante de física (não quebrar):** o `cs_step` é um gather conservativo (massa conservada). Os
 fixes de B1/B5b/B6 são todos DISPLAY-side (composite) — não tocam a física. Os de B2/B3/B5 mexem no
 kernel mas preservam conservação (verificada por `inv_mass_conserved_under_diffusion`).
+
+**Invariante de undo (B7/B8):** o undo é ESTADO de solver, não controle. (1) Todo overwrite parcial de
+um buffer ping-pong (`upload_*`) escreve os DOIS gêmeos — senão o copy-back full do próximo step de
+região ressuscita o stale. (2) O snapshot do undo carrega TODO o estado dinâmico (`pig`+`dye`+`water`);
+`paper` é estático. Adicionar um campo dinâmico novo ao solver ⇒ adicione-o ao `FieldSnap` também.
 
 ---
 
@@ -145,6 +197,10 @@ kernel mas preservam conservação (verificada por `inv_mass_conserved_under_dif
    verde com sintoma vivo = o gate não cobre o caso → adicione um gate ANTES de seguir.
 7. **Construa o commit "claimed-green" e VEJA** — vários desses só foram resolvidos com screenshot do
    Enio; bench/teste verde ≠ vivo correto (ver [`feedback_tool_unit_green_integration_dead`]).
+8. **É de UNDO?** O controle (eventos/pilha) quase nunca é o culpado — **instrumente e prove a pilha
+   primeiro** (`undo_depth`/`redo_depth`, um `eprintln` no caminho ATIVO). O bug costuma ser ESTADO de
+   solver: gêmeo ping-pong stale (overwrite parcial → escreva os dois `_a`/`_b`) ou um campo dinâmico
+   não restaurado (água). E confirme QUAL sistema roda — wash vs fluid são mutuamente exclusivos.
 
 ---
 
@@ -159,6 +215,7 @@ kernel mas preservam conservação (verificada por `inv_mass_conserved_under_dif
 | `EDGE_EVAP_FLOOR` | 0.01 | wash.wgsl | recessão de borda; suaviza rim mesmo em evap 0 |
 | `WATER_HALO` | 1.5 | splat.wgsl | raio de água ÷ raio de pigmento; re-molha p/ fundir |
 | `KEEP_WET_EVAP` | 0.004 | tool/lifecycle.rs | evap mínima em keep-wet (limiar do acople flow) |
+| `WASH_UNDO_BUDGET_BYTES` | 384 MiB | painter_wash_bridge.rs | teto da pilha de undo (snapshots esparsos); cai o mais antigo ao passar |
 
 Calibração visual é esperada — esses são pontos de partida validados por olho, não constantes
 físicas (exceto a forma de Beer–Lambert e o orçamento de CFL, que são matemática dura).

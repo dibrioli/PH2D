@@ -215,6 +215,7 @@ pub fn populate(store: &mut WidgetStore) {
     );
 
     // ── Wet Mix — mixer-brush reservoir (W7, ADR-0097; 0..1 percent sliders) ──
+    checkbox(store, ids::WET_MIX_ENABLED, s.wet_mix_enabled);
     pct(store, ids::DILUTION_SLIDER, ids::DILUTION_CHIP, s.dilution);
     pct(store, ids::CHARGE_SLIDER, ids::CHARGE_CHIP, s.charge);
     pct(store, ids::ATTACK_SLIDER, ids::ATTACK_CHIP, s.attack);

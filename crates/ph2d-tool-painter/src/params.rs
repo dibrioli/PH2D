@@ -278,6 +278,9 @@ pub enum BrushParam {
     Blur,
     /// Per-dab randomisation of blur (W7 phase 2).
     BlurJitter,
+    /// Master enable for the Wet Mix reservoir (bool). Blending rendering modes
+    /// also auto-engage it; this lets any brush opt in.
+    WetMixEnabled,
 }
 
 // ----------------------------------------------------------------------------
@@ -459,6 +462,7 @@ pub struct BrushStudioSnapshot {
     pub grade: f32,
     pub blur: f32,
     pub blur_jitter: f32,
+    pub wet_mix_enabled: bool,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -512,6 +516,7 @@ impl Default for BrushStudioSnapshot {
             grade: b.wet_mix.grade,
             blur: b.wet_mix.blur,
             blur_jitter: b.wet_mix.blur_jitter,
+            wet_mix_enabled: b.wet_mix.wet_mix_enabled,
             brush_name: String::new(),
         }
     }

@@ -856,6 +856,7 @@ impl PainterTool {
             P::Grade => b.wet_mix.grade = v.clamp(0.0, 1.0),
             P::Blur => b.wet_mix.blur = v.clamp(0.0, 1.0),
             P::BlurJitter => b.wet_mix.blur_jitter = v.clamp(0.0, 1.0),
+            P::WetMixEnabled => b.wet_mix.wet_mix_enabled = v >= 0.5,
         }
         self.cached_brush_hash = None;
     }
@@ -919,6 +920,7 @@ impl PainterTool {
             grade: b.wet_mix.grade,
             blur: b.wet_mix.blur,
             blur_jitter: b.wet_mix.blur_jitter,
+            wet_mix_enabled: b.wet_mix.wet_mix_enabled,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

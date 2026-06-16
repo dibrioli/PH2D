@@ -63,6 +63,18 @@ fn paint_wet_mix_section(
     if collapsed {
         return y;
     }
+    // Master enable — the reservoir also auto-engages on Blending rendering modes,
+    // but this lets any brush opt in (and makes the sliders visibly "live").
+    y = checkbox_row(
+        ctx,
+        x,
+        w,
+        y,
+        "Wet Mix",
+        s.wet_mix_enabled,
+        ids::WET_MIX_ENABLED,
+        theme,
+    );
     for (label, val, sld, chip) in [
         ("Dilution", s.dilution, ids::DILUTION_SLIDER, ids::DILUTION_CHIP),
         ("Charge", s.charge, ids::CHARGE_SLIDER, ids::CHARGE_CHIP),

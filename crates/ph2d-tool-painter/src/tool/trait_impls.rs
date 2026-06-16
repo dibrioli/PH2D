@@ -449,6 +449,7 @@ impl PainterTool {
             P::ShapeRandomized => self.brush.shape.shape_randomized,
             P::ShapeFlipX => self.brush.shape.shape_flip_x,
             P::ShapeFlipY => self.brush.shape.shape_flip_y,
+            P::WetMixEnabled => self.brush.wet_mix.wet_mix_enabled,
             _ => false,
         }
     }
@@ -546,6 +547,8 @@ fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::Brush
         Some(P::ShapeFlipX)
     } else if id == core_ids::PAINTER_STUDIO_SHAPE_FLIP_Y {
         Some(P::ShapeFlipY)
+    } else if id == core_ids::PAINTER_STUDIO_WET_MIX_ENABLED {
+        Some(P::WetMixEnabled)
     } else {
         None
     }

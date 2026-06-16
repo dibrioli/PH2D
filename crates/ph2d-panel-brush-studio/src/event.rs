@@ -99,6 +99,7 @@ fn is_studio_checkbox(id: NodeId) -> bool {
         || id == ids::SHAPE_FLIP_Y
         || id == ids::PIGMENT
         || id == ids::ACCUMULATE
+        || id == ids::WET_MIX_ENABLED
 }
 
 #[inline]

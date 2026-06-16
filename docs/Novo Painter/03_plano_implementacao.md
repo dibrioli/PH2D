@@ -108,9 +108,13 @@ UI sempre em **inglês** (labels/toasts), via tokens (HR-15).
 - [ ] **W0.2 — Consolidar o dab scheduler.** Um único `evaluate_stroke` determinístico (substitui a lógica
   espalhada em `lifecycle.rs`). Resample por comprimento-de-arco; emite `Stamp` (96B). Testes de determinismo
   (HR-5, cross-OS).
-- [ ] **W0.3 — Estágio de cor (Mixbox).** Auditar `ph2d-color::pigment_space` (proveniência da LUT vs licença
-  CC BY-NC — ver [alerta](01_pesquisa_teorica_e_literatura.md#dois-insights-de-design-para-o-ph2d)). Garantir
-  `mix(a,b,t)` espectral + a ortogonalidade cobertura(linear)↔matiz(K-M). Wiring CPU+WGSL com paridade ULP.
+- [x] **W0.3 — Estágio de cor (Mixbox) — AUDITADO (2026-06-16, sem risco).** `pigment_mix.rs` é uma impl
+  **clean-room espectral** (24 bandas: reconstrução por base Gaussiana → mistura Kubelka–Munk `K/S=(1−R)²/2R`
+  → integração de volta a RGB; endpoints exatos via `4·t·(1−t)` + residual round-trip por-cor). **NÃO usa a
+  LUT do scrtwpns/mixbox** (a única referência a `scrtwpns` é um comentário/URL; a "LUT" interna é um cache de
+  perf 17³ RGB próprio). **Sem risco de licença CC BY-NC** — PH2D é dono da mistura, det-mode-portable (módulo
+  `powf` bit-identity, com follow-up Q-fixed-point já documentado). **Veredicto: usar `pigment_mix` como o
+  estágio de cor de W7/W8 sem mudança.** A ortogonalidade cobertura(linear)↔matiz(K-M) já é respeitada.
 - [ ] **W0.4 — Esqueleto da UI do Brush Studio.** Painel com as **14 seções** colapsáveis (espelha
   `ph2d-panel-inspector`/gallery, HR-15). Hoje existem 5 (`stroke/shape/rendering/color_dynamics/dynamics`);
   scaffold das 9 faltantes (stabilization, taper, grain, wet_mix, pencil, properties, preview, about, materials-stub).

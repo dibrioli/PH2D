@@ -86,6 +86,9 @@ fn is_studio_slider(id: NodeId) -> bool {
         || id == ids::ATTACK_SLIDER
         || id == ids::PULL_SLIDER
         || id == ids::WETNESS_JITTER_SLIDER
+        || id == ids::GRADE_SLIDER
+        || id == ids::BLUR_SLIDER
+        || id == ids::BLUR_JITTER_SLIDER
 }
 
 #[inline]

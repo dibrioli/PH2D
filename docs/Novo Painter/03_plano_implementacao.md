@@ -250,7 +250,11 @@ visível, Moving "rola" com o traço.
 > ativa o Wet Mix nos 2 modos Blending (ou toggle explícito) — paridade Procreate. **UI:** seção "Wet Mix" no
 > Brush Studio com 5 sliders (Dilution/Charge/Attack/Pull/Wetness Jit) + reset, wirada ponta-a-ponta
 > (ids → BrushParam → set_param → snapshot). 4 testes de paridade + suítes brush/tool/panel/contracts verdes +
-> shell compila. **Falta:** **W7.5 Grade / W7.6 Blur / W7.7 Blur Jitter** (fase 2 — blur precisa de pass de vizinhança).
+> shell compila.
+>
+> **✅ FASE 2 COMPLETA (2026-06-16)** — Grade (contraste de textura, pivota em 1.0), Blur (composição sobre
+> backdrop box-blurred, raio ≤3px) e Blur Jitter (raio randomizado por-dab) implementados no engine + 3 sliders
+> na UI (ponta-a-ponta) + 3 testes (helpers + wiring). **W7 INTEIRO FECHADO.** Pendente só o teste visual manual.
 
 - [x] **W7.0 — Reservatório por-pincelada.** Estado do brush: carga (`load`) depositada no início, esgota ao
   arrastar, recarrega ao levantar/retocar. Pickup (`r_pickup ∝ canvas`) + deposit (`r_deposit ∝ reservoir`)
@@ -259,9 +263,9 @@ visível, Moving "rola" com o traço.
 - [x] **W7.2 — Charge** `[M✅][E?][U❌]` — carga inicial / esgotamento.
 - [x] **W7.3 — Attack** `[M✅][E?][U❌]` — taxa de depósito.
 - [x] **W7.4 — Pull** `[M✅][E?][U❌]` — pickup/esfregaço do canvas.
-- [ ] **W7.5 — Grade** `[M✅][E?][U❌]` — chunkiness da textura.
-- [ ] **W7.6 — Blur** `[M✅][E?][U❌]`.
-- [ ] **W7.7 — Blur Jitter** `[M✅][E?][U❌]`.
+- [x] **W7.5 — Grade** `[M✅][E✅][U✅]` — contraste/chunkiness da textura (pivota em 1.0; 0.5=neutro).
+- [x] **W7.6 — Blur** `[M✅][E✅][U✅]` — espalhamento: compõe sobre backdrop box-blurred (raio ≤3px).
+- [x] **W7.7 — Blur Jitter** `[M✅][E✅][U✅]` — randomiza o raio do blur por-dab.
 - [x] **W7.8 — Wetness Jitter** `[M✅][E?][U❌]`.
 
 **Verificação W7:** parity headless do reservatório (esgotamento determinístico); manual: amarelo sobre azul →

@@ -511,6 +511,14 @@ pub const PAINTER_STUDIO_WETNESS_JITTER_SLIDER: NodeId =
     hash_node_id("painter_studio.wetness_jitter_slider");
 pub const PAINTER_STUDIO_WETNESS_JITTER_CHIP: NodeId =
     hash_node_id("painter_studio.wetness_jitter_chip");
+pub const PAINTER_STUDIO_GRADE_SLIDER: NodeId = hash_node_id("painter_studio.grade_slider");
+pub const PAINTER_STUDIO_GRADE_CHIP: NodeId = hash_node_id("painter_studio.grade_chip");
+pub const PAINTER_STUDIO_BLUR_SLIDER: NodeId = hash_node_id("painter_studio.blur_slider");
+pub const PAINTER_STUDIO_BLUR_CHIP: NodeId = hash_node_id("painter_studio.blur_chip");
+pub const PAINTER_STUDIO_BLUR_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.blur_jitter_slider");
+pub const PAINTER_STUDIO_BLUR_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.blur_jitter_chip");
 
 // ── Dynamics section — per-stamp size/opacity jitter (engine-wired T1.7) ──────
 pub const PAINTER_STUDIO_SEC_DYNAMICS: NodeId = hash_node_id("painter_studio.sec_dynamics");

@@ -1175,7 +1175,7 @@ fn wet_neutral_single_dab_equals_legacy() {
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
         let mut st = WetState { color: seed, load: 1.0 };
-        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
         let wetarg = if wet { Some((&mut st, cfg)) } else { None };
         apply_stamps_wash(
             &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[s], 1.0, false, false, 0.0, wetarg,
@@ -1202,7 +1202,7 @@ fn wet_charge_depletes_along_trail() {
         color: clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1)),
         load: 0.6,
     };
-    let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+    let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
     let stamps: Vec<Stamp> = (6..90).step_by(3).map(|x| red_stamp(x as f32, 4.0, 5.0)).collect();
     apply_stamps_wash(
         &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &stamps, 1.0, false, false, 0.0,
@@ -1235,7 +1235,7 @@ fn wet_pull_picks_up_backdrop_color() {
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
         let mut st = WetState { color: seed_blue, load: 1.0 };
-        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0 };
+        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
         apply_stamps_wash(
             &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[blue], 1.0, false, false, 0.0,
             Some((&mut st, cfg)),
@@ -1266,7 +1266,7 @@ fn wet_dilution_reduces_coverage() {
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
         let mut st = WetState { color: seed, load: 1.0 };
-        let cfg = WetMixConfig { dilution, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+        let cfg = WetMixConfig { dilution, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
         apply_stamps_wash(
             &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[red_stamp(12.0, 12.0, 10.0)], 1.0,
             false, false, 0.0, Some((&mut st, cfg)),
@@ -1279,4 +1279,78 @@ fn wet_dilution_reduces_coverage() {
         run(0.0),
         run(0.8)
     );
+}
+
+// ───────────────────── W7 Wet Mix phase 2 — Grade / Blur ────────────────────
+
+/// Grade reshapes texture *valleys*: identity at 0.5, pivots at full coverage
+/// (a textureless brush is never darkened), deepens above 0.5, fills below.
+#[test]
+fn wet_grade_pivots_at_full_and_is_identity_at_half() {
+    for t in [0.0f32, 0.25, 0.6, 1.0] {
+        assert!((apply_grade(t, 0.5) - t).abs() < 1e-6, "grade 0.5 is identity at {t}");
+    }
+    for g in [0.0f32, 0.3, 0.5, 0.9, 1.0] {
+        assert!((apply_grade(1.0, g) - 1.0).abs() < 1e-6, "grade pivots at full coverage (g={g})");
+    }
+    assert!(apply_grade(0.6, 0.9) < 0.6 - 1e-3, "grade>0.5 deepens the valley");
+    assert!(apply_grade(0.6, 0.1) > 0.6 + 1e-3, "grade<0.5 fills the valley toward full");
+}
+
+/// Blur averages the backdrop neighbourhood: at a hard black/white edge a
+/// radius>0 sample is intermediate; radius 0 returns the exact pixel.
+#[test]
+fn wet_blur_averages_backdrop_neighbourhood() {
+    let (w, h) = (8i32, 8i32);
+    let mut bd = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let v = if x < w / 2 { 0 } else { 255 };
+            let i = ((y * w + x) * 4) as usize;
+            bd[i..i + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+    }
+    // Pixel just right of the edge (x=4, white): radius 0 = white (1.0).
+    let sharp = blurred_backdrop_linear(&bd, 4, 4, 0, w, h);
+    assert!(sharp[0] > 0.99, "radius 0 returns the exact (white) pixel");
+    // radius 2 spans into the black half → intermediate grey.
+    let soft = blurred_backdrop_linear(&bd, 4, 4, 2, w, h);
+    assert!(soft[0] > 0.05 && soft[0] < 0.95, "blur pulls the edge toward grey: {}", soft[0]);
+}
+
+/// Grade and Blur are wired into the live wash loop (change the output when off
+/// their neutral defaults), and neutral (`grade=0.5`, `blur=0`) leaves the
+/// reservoir path unchanged.
+#[test]
+fn wet_grade_and_blur_are_wired() {
+    let (w, h) = (40u32, 40u32);
+    // Hard-edge backdrop so Blur has a seam to spread; opaque so it shows.
+    let mut backdrop = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let v = if x < w / 2 { 10 } else { 245 };
+            let i = ((y * w + x) * 4) as usize;
+            backdrop[i..i + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+    }
+    let seed = clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1));
+    let paint = |grade: f32, blur: f32, paper: f32, cap: f32| {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut st = WetState { color: seed, load: 1.0 };
+        let cfg = WetMixConfig {
+            dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0,
+            grade, blur, blur_jitter: 0.0,
+        };
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h,
+            &[red_stamp(20.0, 20.0, 30.0)], cap, false, false, paper, Some((&mut st, cfg)),
+        );
+        canvas
+    };
+    // Grade changes the painted result when there is paper texture to reshape.
+    assert_ne!(paint(0.9, 0.0, 0.9, 1.0), paint(0.5, 0.0, 0.9, 1.0), "grade is wired");
+    // Blur changes the painted result at partial coverage over the hard edge.
+    assert_ne!(paint(0.5, 1.0, 0.0, 0.4), paint(0.5, 0.0, 0.0, 0.4), "blur is wired");
 }

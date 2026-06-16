@@ -74,6 +74,14 @@ fn paint_wet_mix_section(
             ids::WETNESS_JITTER_SLIDER,
             ids::WETNESS_JITTER_CHIP,
         ),
+        ("Grade", s.grade, ids::GRADE_SLIDER, ids::GRADE_CHIP),
+        ("Blur", s.blur, ids::BLUR_SLIDER, ids::BLUR_CHIP),
+        (
+            "Blur Jit",
+            s.blur_jitter,
+            ids::BLUR_JITTER_SLIDER,
+            ids::BLUR_JITTER_CHIP,
+        ),
     ] {
         y = pct_row(ctx, x, w, y, label, val, sld, chip, theme);
     }

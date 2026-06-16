@@ -272,6 +272,12 @@ pub enum BrushParam {
     Pull,
     /// Per-dab randomisation of dilution.
     WetnessJitter,
+    /// Texture chunkiness/contrast (W7 phase 2; 0.5 = neutral).
+    Grade,
+    /// Spread/softening of the laid paint (W7 phase 2).
+    Blur,
+    /// Per-dab randomisation of blur (W7 phase 2).
+    BlurJitter,
 }
 
 // ----------------------------------------------------------------------------
@@ -450,6 +456,9 @@ pub struct BrushStudioSnapshot {
     pub attack: f32,
     pub pull: f32,
     pub wetness_jitter: f32,
+    pub grade: f32,
+    pub blur: f32,
+    pub blur_jitter: f32,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -500,6 +509,9 @@ impl Default for BrushStudioSnapshot {
             attack: b.wet_mix.attack,
             pull: b.wet_mix.pull,
             wetness_jitter: b.wet_mix.wetness_jitter,
+            grade: b.wet_mix.grade,
+            blur: b.wet_mix.blur,
+            blur_jitter: b.wet_mix.blur_jitter,
             brush_name: String::new(),
         }
     }

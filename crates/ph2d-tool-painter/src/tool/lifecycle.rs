@@ -279,6 +279,9 @@ impl PainterTool {
                     attack: self.brush.wet_mix.attack,
                     pull: self.brush.wet_mix.pull,
                     wetness_jitter: self.brush.wet_mix.wetness_jitter,
+                    grade: self.brush.wet_mix.grade,
+                    blur: self.brush.wet_mix.blur,
+                    blur_jitter: self.brush.wet_mix.blur_jitter,
                 };
                 let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
                 // **W5 wash path (accumulate OFF):** composite each dab against the
@@ -850,6 +853,9 @@ impl PainterTool {
             P::Attack => b.wet_mix.attack = v.clamp(0.0, 1.0),
             P::Pull => b.wet_mix.pull = v.clamp(0.0, 1.0),
             P::WetnessJitter => b.wet_mix.wetness_jitter = v.clamp(0.0, 1.0),
+            P::Grade => b.wet_mix.grade = v.clamp(0.0, 1.0),
+            P::Blur => b.wet_mix.blur = v.clamp(0.0, 1.0),
+            P::BlurJitter => b.wet_mix.blur_jitter = v.clamp(0.0, 1.0),
         }
         self.cached_brush_hash = None;
     }
@@ -910,6 +916,9 @@ impl PainterTool {
             attack: b.wet_mix.attack,
             pull: b.wet_mix.pull,
             wetness_jitter: b.wet_mix.wetness_jitter,
+            grade: b.wet_mix.grade,
+            blur: b.wet_mix.blur,
+            blur_jitter: b.wet_mix.blur_jitter,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

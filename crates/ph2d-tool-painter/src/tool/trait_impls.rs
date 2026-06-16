@@ -522,6 +522,12 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
         Some(P::Pull)
     } else if id == core_ids::PAINTER_STUDIO_WETNESS_JITTER_SLIDER {
         Some(P::WetnessJitter)
+    } else if id == core_ids::PAINTER_STUDIO_GRADE_SLIDER {
+        Some(P::Grade)
+    } else if id == core_ids::PAINTER_STUDIO_BLUR_SLIDER {
+        Some(P::Blur)
+    } else if id == core_ids::PAINTER_STUDIO_BLUR_JITTER_SLIDER {
+        Some(P::BlurJitter)
     } else {
         None
     }

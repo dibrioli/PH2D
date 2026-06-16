@@ -225,6 +225,14 @@ pub fn populate(store: &mut WidgetStore) {
         ids::WETNESS_JITTER_CHIP,
         s.wetness_jitter,
     );
+    pct(store, ids::GRADE_SLIDER, ids::GRADE_CHIP, s.grade);
+    pct(store, ids::BLUR_SLIDER, ids::BLUR_CHIP, s.blur);
+    pct(
+        store,
+        ids::BLUR_JITTER_SLIDER,
+        ids::BLUR_JITTER_CHIP,
+        s.blur_jitter,
+    );
 }
 
 /// Register a percent slider+chip pair (0..1 → 0..100%, integer display).

@@ -544,6 +544,12 @@ pub struct WetMixConfig {
     pub pull: f32,
     /// Per-dab randomisation of `dilution`. `[0,1]`.
     pub wetness_jitter: f32,
+    /// Texture chunkiness/contrast (W7 phase 2). `0.5` = neutral. `[0,1]`.
+    pub grade: f32,
+    /// Spread/softening of the laid paint vs the canvas underneath. `[0,1]`.
+    pub blur: f32,
+    /// Per-dab randomisation of `blur`. `[0,1]`.
+    pub blur_jitter: f32,
 }
 
 /// Charge depletion per unit of per-dab deposit intensity. Tuned so a full
@@ -560,6 +566,46 @@ fn dab_hash01(x: f32, y: f32) -> f32 {
     h = h.wrapping_mul(0x2C1B_3C6D);
     h ^= h >> 12;
     (h & 0x00FF_FFFF) as f32 / (0x0100_0000u32 as f32)
+}
+
+/// Max backdrop-blur radius (px) at `blur = 1` — bounds the per-dab cost. The
+/// wet "Blur" softens the seam between laid paint and the canvas underneath by
+/// compositing over a box-blurred backdrop (W7 phase 2).
+const MAX_WET_BLUR_RADIUS: i32 = 3;
+
+/// Grade contrast strength: at `grade = 1` the texture contrast is pushed to
+/// `1 + GRADE_K` around its 0.5 midpoint (chunkier); `grade = 0.5` is neutral.
+const WET_GRADE_K: f32 = 1.6;
+
+/// Wet Mix **Grade**: reshape the per-dab texture factor's contrast by scaling
+/// its *valleys* (the `1 − tex` depth below full coverage). `grade > 0.5`
+/// deepens the texture (chunkier); `grade < 0.5` fills it in (smoother). Pivots
+/// at `tex = 1`, so a textureless brush (`tex ≈ 1`) is unaffected at any grade,
+/// and `grade = 0.5` is the exact identity (default ⇒ no change to legacy).
+#[inline]
+fn apply_grade(tex: f32, grade: f32) -> f32 {
+    let k = 1.0 + (grade.clamp(0.0, 1.0) - 0.5) * 2.0 * WET_GRADE_K;
+    (1.0 - (1.0 - tex) * k).clamp(0.0, 1.0)
+}
+
+/// Box-average the PRE-STROKE backdrop (straight linear RGBA) over a square of
+/// `radius`, clamped to the canvas — the spread the wet **Blur** composites over.
+#[inline]
+fn blurred_backdrop_linear(backdrop: &[u8], cx: i32, cy: i32, radius: i32, w: i32, h: i32) -> [f32; 4] {
+    let (mut r, mut g, mut b, mut a, mut n) = (0.0f32, 0.0f32, 0.0f32, 0.0f32, 0.0f32);
+    for yy in (cy - radius)..=(cy + radius) {
+        let sy = yy.clamp(0, h - 1);
+        for xx in (cx - radius)..=(cx + radius) {
+            let sx = xx.clamp(0, w - 1);
+            let i = (sy as usize * w as usize + sx as usize) * 4;
+            r += srgb_to_linear_byte(backdrop[i]);
+            g += srgb_to_linear_byte(backdrop[i + 1]);
+            b += srgb_to_linear_byte(backdrop[i + 2]);
+            a += backdrop[i + 3] as f32 / 255.0;
+            n += 1.0;
+        }
+    }
+    [r / n, g / n, b / n, a / n]
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -671,7 +717,7 @@ fn apply_one_stamp_wash(
     // is scaled by `attack · load · (1 − dilution)`. `load` depletes after the
     // dab. `wet = None` ⇒ deposit the brush colour at full rate (legacy wash —
     // byte-for-byte identical, the default brush is unaffected).
-    let (rgb_clamped, deposit_scale) = match wet {
+    let (rgb_clamped, deposit_scale, wetcfg) = match wet {
         Some((ref mut st, cfg)) => {
             let cx = (stamp.position_world[0].round() as i32).clamp(0, width as i32 - 1);
             let cy = (stamp.position_world[1].round() as i32).clamp(0, height as i32 - 1);
@@ -692,10 +738,20 @@ fn apply_one_stamp_wash(
                 .clamp(0.0, 1.0);
             let ds = (cfg.attack.clamp(0.0, 1.0) * st.load.clamp(0.0, 1.0) * (1.0 - dil))
                 .clamp(0.0, 1.0);
-            (st.color, ds)
+            (st.color, ds, Some(cfg))
         }
-        None => (rgb_clamped, 1.0),
+        None => (rgb_clamped, 1.0, None),
     };
+    // Per-dab Wet Mix texture/blur params (W7 phase 2; constant across the
+    // footprint). `grade` reshapes the texture contrast; `blur_radius` is the
+    // backdrop box-blur the deposit composites over (jittered per dab).
+    let wet_grade = wetcfg.map(|c| c.grade);
+    let blur_radius = wetcfg.map_or(0, |c| {
+        let signed =
+            dab_hash01(stamp.position_world[0] + 1.7, stamp.position_world[1] + 3.1) * 2.0 - 1.0;
+        let b = (c.blur * (1.0 + c.blur_jitter.clamp(0.0, 1.0) * signed)).clamp(0.0, 1.0);
+        (b * MAX_WET_BLUR_RADIUS as f32).round() as i32
+    });
     // Pigment prepared once per stamp (constant across the footprint; varies
     // stamp-to-stamp only under hue jitter, which we honour by re-preparing).
     // `None` when the brush is in linear (non-pigment) wash mode.
@@ -756,11 +812,15 @@ fn apply_one_stamp_wash(
             }
             let world_cx = world_x as f32 + 0.5;
             let world_cy = world_y as f32 + 0.5;
-            // Procedural grain modulates the per-dab coverage rate.
-            rate *= grain_factor(stamp, world_cx, world_cy, u, v);
-            // Global canvas paper tooth (world-space, pressure-aware) — the texture
-            // that reads as "real media" on every wash stroke.
-            rate *= paper_tooth_factor(world_cx, world_cy, stamp.pressure, paper_grain);
+            // Procedural grain × global paper tooth = the per-dab texture factor.
+            let mut tex = grain_factor(stamp, world_cx, world_cy, u, v)
+                * paper_tooth_factor(world_cx, world_cy, stamp.pressure, paper_grain);
+            // Wet Mix Grade (W7 phase 2): push the texture contrast (chunkiness).
+            // `grade = 0.5` is the identity, so the default brush is unaffected.
+            if let Some(grade) = wet_grade {
+                tex = apply_grade(tex, grade);
+            }
+            rate *= tex;
             let pix = world_y as usize * width as usize + world_x as usize;
             let idx = pix * 4;
             // Monotonic coverage build-up (Porter-Duff "over" of dab onto the
@@ -795,13 +855,18 @@ fn apply_one_stamp_wash(
             let brush_color = if color_varies { acc } else { rgb_clamped };
             // Decode the PRE-STROKE backdrop (straight linear) — NOT the live
             // canvas. This is what makes overlapping dabs stable instead of
-            // building toward pure brush colour.
-            let back = [
-                srgb_to_linear_byte(backdrop[idx]),
-                srgb_to_linear_byte(backdrop[idx + 1]),
-                srgb_to_linear_byte(backdrop[idx + 2]),
-                backdrop[idx + 3] as f32 / 255.0,
-            ];
+            // building toward pure brush colour. Wet Mix **Blur** (W7 phase 2)
+            // composites over a box-blurred backdrop so the paint seam spreads.
+            let back = if blur_radius > 0 {
+                blurred_backdrop_linear(backdrop, world_x, world_y, blur_radius, canvas_w, canvas_h)
+            } else {
+                [
+                    srgb_to_linear_byte(backdrop[idx]),
+                    srgb_to_linear_byte(backdrop[idx + 1]),
+                    srgb_to_linear_byte(backdrop[idx + 2]),
+                    backdrop[idx + 3] as f32 / 255.0,
+                ]
+            };
             let back_a = back[3];
             if alpha_lock && back_a <= 0.0 {
                 continue;

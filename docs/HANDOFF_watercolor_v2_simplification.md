@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED por [ADR-0096](architecture/decisions/0096-remove-watercolor-fluid-pivot-mixer-brush.md) (Enio 2026-06-14):** toda a simulação de aquarela/fluido/wash foi **REMOVIDA** do código (crate `ph2d-painter-wash` deletada, canvas voltou a CPU-residente). Doc mantido só como histórico. Norte atual = **Brush Engine (mixer-brush)**, ver [`docs/Novo Painter/`](Novo%20Painter/). Backups em `backups/wash_2026-06-14`.
+
 # HANDOFF — Watercolor v2: perf landed + simplification/stabilization (continuar aqui)
 
 > Continuação de [`HANDOFF_watercolor_v2_refactor.md`](HANDOFF_watercolor_v2_refactor.md) (o mandato GPU-first).

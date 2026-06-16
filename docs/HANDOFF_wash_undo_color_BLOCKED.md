@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED por [ADR-0096](architecture/decisions/0096-remove-watercolor-fluid-pivot-mixer-brush.md) (Enio 2026-06-14):** toda a simulação de aquarela/fluido/wash foi **REMOVIDA** do código (crate `ph2d-painter-wash` deletada, canvas voltou a CPU-residente). Doc mantido só como histórico. Norte atual = **Brush Engine (mixer-brush)**, ver [`docs/Novo Painter/`](Novo%20Painter/). Backups em `backups/wash_2026-06-14`.
+
 # HANDOFF — Wash: undo + cores (RESOLVIDO ✅ — undo ADR-0090, cor ADR-0091; Enio aprovou)
 
 > **Status (2026-06-14): RESOLVIDO — Enio aprovou os dois.** "Funcionou!" (undo) + "Parece perfeito!" (cor).

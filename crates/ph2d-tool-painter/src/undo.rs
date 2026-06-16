@@ -50,6 +50,39 @@
 //! exact, so we pay the memory and bound it with `max_depth`.
 
 use ph2d_painter_stroke::{LayerId, LayerSnapshot};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use crate::compositor::LayerImage;
+use crate::layers::{LayerId as RtLayerId, LayerStack};
+
+/// A full snapshot of the editable layer model, for **transactional (structural)
+/// undo** — adding / deleting / duplicating a layer, creating a mask or
+/// adjustment, or switching the active layer. Unlike a stroke (which mutates only
+/// the active layer's pixels), a structural edit reshapes the whole model, so the
+/// undo entry stores the entire state to roll back to.
+///
+/// `canvas_rgba` is `Arc`-shared (cheap CoW clone — the tool already wraps the
+/// active layer's working buffer in an `Arc`); the active layer id lives INSIDE
+/// `layers` (`LayerStack` owns it), so restoring `layers` restores the paint
+/// target too. `images` is the per-layer pixel store for every NON-active layer.
+#[derive(Clone, Debug)]
+pub struct ModelSnapshot {
+    pub layers: LayerStack,
+    pub images: BTreeMap<RtLayerId, LayerImage>,
+    pub canvas_rgba: Arc<Vec<u8>>,
+    pub selection: BTreeSet<RtLayerId>,
+}
+
+/// What an [`UndoController::undo`] / [`UndoController::redo`] step restored — the
+/// caller applies whichever arm it gets. A stroke step hands back pixels to blit
+/// into `canvas_rgba`; a structural step hands back the whole model to install.
+pub enum Restore {
+    /// Blit these straight-sRGB8 pixels into the active layer (`canvas_rgba`).
+    Pixels(Vec<u8>),
+    /// Reinstall the whole editable model (a structural edit was reversed).
+    Model(Box<ModelSnapshot>),
+}
 
 /// Default cap on retained undo entries (ring depth). The caller can raise or
 /// lower it from its memory budget. Sized so the spec's "undo 250×" criterion
@@ -60,24 +93,25 @@ use ph2d_painter_stroke::{LayerId, LayerSnapshot};
 /// `StrokeHistory`).
 pub const DEFAULT_MAX_DEPTH: usize = 300;
 
-/// A single retained layer state plus the stroke `seq` it sits *before*.
+/// One retained history entry. Strokes and structural edits share a single
+/// chronological stack so undo/redo reverse the user's actions in exact order
+/// (a stroke, then an "add layer", then a stroke → undo peels them back the
+/// other way).
 #[derive(Clone, Debug)]
-struct UndoEntry {
-    /// `seq` of the committed stroke whose *pre-image* this texture is. Undoing
-    /// that stroke restores this texture; the value also drives checkpoint
-    /// thinning (keep entries whose seq is a checkpoint boundary).
-    seq: u64,
-    /// The layer pixels as they were *before* stroke `seq` was applied.
-    /// Wrapped in [`LayerSnapshot`] so the content-addressed blake3 + the
-    /// canonical snapshot schema (ADR-0046 §2.6) are reused rather than
-    /// re-invented.
-    snapshot: LayerSnapshot,
-    /// **ADR-0090:** was the stroke that produced this entry a WASH (GPU watercolor) stroke? The tool
-    /// emits a wash undo/redo *intent* to the GPU bridge only for these entries, so undoing/redoing a
-    /// NON-wash stroke leaves the pigment field untouched (correct interleaving of mixed history). The
-    /// bit rides with the entry as it moves between the undo/redo stacks — a single source of truth, so
-    /// no parallel `Vec<bool>` to keep aligned (the desync surface that sank the old count-based scheme).
-    is_wash: bool,
+enum UndoEntry {
+    /// A committed stroke's pre-image (the active layer pixels BEFORE stroke
+    /// `seq`). Lazy single-snapshot swap: on undo the entry stores the live
+    /// post-stroke pixels for the matching redo (so a stroke costs ONE texture,
+    /// not two). `snapshot` reuses the canonical schema (ADR-0046 §2.6).
+    Stroke { seq: u64, snapshot: LayerSnapshot },
+    /// A structural edit, stored as BOTH endpoints (the model `before` and
+    /// `after` the edit). Carrying both means the entry needs no live state to
+    /// swap directions; structural edits are user-paced (rare) so two model
+    /// snapshots is a fine trade for the simpler, allocation-stable swap.
+    Structural {
+        before: Box<ModelSnapshot>,
+        after: Box<ModelSnapshot>,
+    },
 }
 
 /// Snapshot-based undo/redo for a single layer's raster texture.
@@ -127,16 +161,23 @@ impl UndoController {
         seq: u64,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas snapshot blob, cloned + re-blit wholesale.
         pre_stroke_pixels: &[u8],
-        // ADR-0090: tag whether this committed stroke was a wash stroke (routes the bridge intent).
-        is_wash: bool,
     ) {
         let snapshot = LayerSnapshot::new_in_memory(self.layer_id, seq, pre_stroke_pixels.to_vec());
-        self.undo.push(UndoEntry {
-            seq,
-            snapshot,
-            is_wash,
-        });
+        self.undo.push(UndoEntry::Stroke { seq, snapshot });
         // Any new edit invalidates the redo branch.
+        self.redo.clear();
+        self.cap();
+    }
+
+    /// Record a STRUCTURAL transition (add/delete/duplicate layer, mask/adjustment
+    /// create, active-layer switch). `before` is the model to roll back to on undo;
+    /// `after` is the model to roll forward to on redo. Pushing it clears the redo
+    /// branch (standard linear-history semantics), exactly like a stroke.
+    pub fn record_structural(&mut self, before: ModelSnapshot, after: ModelSnapshot) {
+        self.undo.push(UndoEntry::Structural {
+            before: Box::new(before),
+            after: Box::new(after),
+        });
         self.redo.clear();
         self.cap();
     }
@@ -154,19 +195,33 @@ impl UndoController {
         &mut self,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
         current_pixels: &[u8],
-    ) -> Option<(Vec<u8>, bool)> {
-        let mut entry = self.undo.pop()?;
-        // Swap: hand back the stored pre-image, and stash the current
-        // (post-stroke) pixels so redo can restore them. A single snapshot per
-        // entry suffices because the entry alternates direction as it moves
-        // between stacks.
-        let restore = entry_pixels(&entry)?;
-        // ADR-0090: report whether this was a wash stroke so the caller can emit the bridge intent.
-        let is_wash = entry.is_wash;
-        entry.snapshot =
-            LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
-        self.redo.push(entry);
-        Some((restore, is_wash))
+    ) -> Option<Restore> {
+        match self.undo.pop()? {
+            UndoEntry::Stroke { seq, snapshot } => {
+                // Swap: hand back the stored pre-image, and stash the current
+                // (post-stroke) pixels so redo can restore them. A single snapshot
+                // per entry suffices because the entry alternates direction as it
+                // moves between stacks.
+                let restore = snapshot_pixels(&snapshot)?;
+                self.redo.push(UndoEntry::Stroke {
+                    seq,
+                    snapshot: LayerSnapshot::new_in_memory(
+                        self.layer_id,
+                        seq,
+                        current_pixels.to_vec(),
+                    ),
+                });
+                Some(Restore::Pixels(restore))
+            }
+            UndoEntry::Structural { before, after } => {
+                // Roll back to `before`; keep the entry (both endpoints) on the redo
+                // stack so redo can roll forward to `after`. The clone is one model
+                // copy on a rare, user-paced path (its `canvas_rgba` is Arc-shared).
+                let restore = before.clone();
+                self.redo.push(UndoEntry::Structural { before, after });
+                Some(Restore::Model(restore))
+            }
+        }
     }
 
     /// Redo the most recently undone stroke. `current_pixels` is the live layer
@@ -177,15 +232,28 @@ impl UndoController {
         &mut self,
         // COLOR-RAW-OK: opaque layer RGBA8 canvas blob (in + returned), re-blit wholesale.
         current_pixels: &[u8],
-    ) -> Option<(Vec<u8>, bool)> {
-        let mut entry = self.redo.pop()?;
-        let restore = entry_pixels(&entry)?;
-        // ADR-0090: report wash-ness so the caller can emit the symmetric redo intent to the bridge.
-        let is_wash = entry.is_wash;
-        entry.snapshot =
-            LayerSnapshot::new_in_memory(self.layer_id, entry.seq, current_pixels.to_vec());
-        self.undo.push(entry);
-        Some((restore, is_wash))
+    ) -> Option<Restore> {
+        match self.redo.pop()? {
+            UndoEntry::Stroke { seq, snapshot } => {
+                let restore = snapshot_pixels(&snapshot)?;
+                self.undo.push(UndoEntry::Stroke {
+                    seq,
+                    snapshot: LayerSnapshot::new_in_memory(
+                        self.layer_id,
+                        seq,
+                        current_pixels.to_vec(),
+                    ),
+                });
+                Some(Restore::Pixels(restore))
+            }
+            UndoEntry::Structural { before, after } => {
+                // Roll forward to `after`; keep the entry on the undo stack so a
+                // later undo can roll back to `before`.
+                let restore = after.clone();
+                self.undo.push(UndoEntry::Structural { before, after });
+                Some(Restore::Model(restore))
+            }
+        }
     }
 
     /// `true` if there is at least one stroke to undo (drives the sidebar
@@ -232,12 +300,12 @@ impl UndoController {
     }
 }
 
-/// Extract the RGBA8 pixels from an in-memory entry snapshot. Returns `None`
+/// Extract the RGBA8 pixels from an in-memory stroke snapshot. Returns `None`
 /// for an `OnDisk` snapshot (W11+ offload — the in-tool W2 path never produces
 /// those, but the controller fails closed rather than panicking if a future
 /// caller wires disk-offloaded entries without a loader).
-fn entry_pixels(entry: &UndoEntry) -> Option<Vec<u8>> {
-    match &entry.snapshot.texture_data {
+fn snapshot_pixels(snapshot: &LayerSnapshot) -> Option<Vec<u8>> {
+    match &snapshot.texture_data {
         ph2d_painter_stroke::SnapshotStorage::InMemory(bytes) => Some(bytes.clone()),
         ph2d_painter_stroke::SnapshotStorage::OnDisk(_) => None,
     }
@@ -267,24 +335,26 @@ mod tests {
         }
         /// Commit a stroke that transitions `live` to `next`.
         fn paint(&mut self, seq: u64, next: Vec<u8>) {
-            self.c.record_pre_stroke(seq, &self.live, false);
+            self.c.record_pre_stroke(seq, &self.live);
             self.live = next;
         }
         fn undo(&mut self) -> bool {
             match self.c.undo(&self.live) {
-                Some((px, _is_wash)) => {
+                Some(Restore::Pixels(px)) => {
                     self.live = px;
                     true
                 }
+                Some(Restore::Model(_)) => panic!("stroke-only Sim never records structural"),
                 None => false,
             }
         }
         fn redo(&mut self) -> bool {
             match self.c.redo(&self.live) {
-                Some((px, _is_wash)) => {
+                Some(Restore::Pixels(px)) => {
                     self.live = px;
                     true
                 }
+                Some(Restore::Model(_)) => panic!("stroke-only Sim never records structural"),
                 None => false,
             }
         }
@@ -367,30 +437,6 @@ mod tests {
         // The most recent stroke (9→10) must still undo exactly.
         assert!(s.undo());
         assert_eq!(s.live, solid(4, 9));
-    }
-
-    #[test]
-    fn is_wash_bit_rides_with_the_entry() {
-        // ADR-0090: undo/redo must report the wash-ness of the *specific* entry being moved, so the
-        // shell drives the GPU pigment field only for wash strokes (a raster undo between two washes
-        // must report `false` and leave the field alone).
-        let mut c = UndoController::new(LayerId(0), DEFAULT_MAX_DEPTH);
-        c.record_pre_stroke(0, &solid(4, 0), true); // wash
-        c.record_pre_stroke(1, &solid(4, 1), false); // raster
-        c.record_pre_stroke(2, &solid(4, 2), true); // wash
-        let live = solid(4, 3);
-        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "top is wash");
-        assert_eq!(
-            c.undo(&live).map(|(_, w)| w),
-            Some(false),
-            "middle is raster"
-        );
-        assert_eq!(c.undo(&live).map(|(_, w)| w), Some(true), "bottom is wash");
-        assert_eq!(c.undo(&live), None);
-        // Redo reports the same bit in reverse order as entries move back to the undo stack.
-        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(true));
-        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(false));
-        assert_eq!(c.redo(&live).map(|(_, w)| w), Some(true));
     }
 
     #[test]

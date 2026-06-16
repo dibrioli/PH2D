@@ -14,7 +14,6 @@
 //! - `ph2d-painter-stroke` — StrokeHistory + WAL + recovery (ADR-0046+0052)
 //! - `ph2d-painter-input` — PointerSource + curves + palm rejection (ADR-0050)
 //! - `ph2d-painter-mcp` — MCP streaming (ADR-0047)
-//! - `ph2d-painter-fluid` — Shallow Water sim opt-in (ADR-0049)
 //! - `ph2d-panel-painter-*` — sidebar / layers / brush-studio / inspector / color
 //!
 //! W1 T1.1 status: **skeleton stub.** `Tool` impl com painc-com-`todo!()`
@@ -54,11 +53,8 @@ pub use ph2d_painter_brush::adjustments::{
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
 };
-pub use ph2d_painter_brush::{
-    BlendMode, MAX_BLEND_MODES, PALETTE, Pigment, WatercolorControl, WatercolorParams,
-    pigment_by_name,
-};
-pub use tool::{FluidDab, PainterTool, WashUndoEvent, set_pending_select_mods};
+pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
+pub use tool::{PainterTool, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;

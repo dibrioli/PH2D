@@ -261,57 +261,6 @@ fn take_pending_select_mods(row_id: ph2d_a11y::NodeId) -> (bool, bool) {
     PENDING_SELECT_MODS.with(|m| m.borrow_mut().remove(&row_id).unwrap_or((false, false)))
 }
 
-/// **ADR-0090 — wash undo/redo intent.** The tool emits one of these at each stroke-history boundary
-/// (`end_stroke` / `undo_last_stroke` / `redo_last_stroke`) and the shell's `drive_wash_gpu` drains
-/// them in order, replaying each onto its own GPU field-snapshot two-stack. They are *explicit facts*
-/// about what the user did — not a count the bridge has to interpret — which is the whole reason this
-/// design is correct where the old count+flag scheme (ADR-0088/0089) could not be: a `Redo` and a
-/// fresh `Commit` both used to raise the same counter, and no frame-timing heuristic could reliably
-/// tell them apart. Here they are simply different variants.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum WashUndoEvent {
-    /// A wash stroke just committed (pen-up). Bridge: snapshot the settled field onto the undo stack
-    /// and clear the redo branch (linear history).
-    Commit,
-    /// A wash stroke was undone. Bridge: move the undo top to the redo stack and restore the new undo
-    /// top (or clear the field to the wash-free base when the undo stack is empty).
-    Undo,
-    /// A previously-undone wash stroke was redone. Bridge: move the redo top back to the undo stack and
-    /// restore it.
-    Redo,
-}
-
-/// One brush dab for the GPU-resident fluid path (4K real-time arch §4): grid-space
-/// centre + radius, the per-touch water, and the (opacity-weighted) linear-RGB
-/// pigment — exactly the arguments the tool used to pass to `DiffusionGrid::splat`.
-/// Plain POD (no GPU dep): the shell maps it to `ph2d_painter_fluid::DabGpu` and
-/// `cs_splat` adds it to the resident water + pigment, so the per-frame CPU never
-/// allocates/scans an O(grid) deposit buffer. Drained each frame by
-/// [`PainterTool::fluid_take_dabs`].
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct FluidDab {
-    /// Grid-space dab centre x (`world_x / wet_field_scale`).
-    pub cx: f32,
-    /// Grid-space dab centre y (`world_y / wet_field_scale`).
-    pub cy: f32,
-    /// Grid-space radius (`size_px * 0.5 / scale`, floored to 0.5 like the CPU splat).
-    pub r: f32,
-    /// Wetness this touch deposits (`WET_WATER_DEPOSIT`).
-    pub water: f32,
-    /// The dab's pigment colour (linear sRGB) — the per-stamp colour (with Color Dynamics
-    /// jitter). The wet-field carries it as mass-weighted K/S (ADR-0080), so overlapping dabs
-    /// of different colours mix subtractively. (Was a gray coverage `rgb`; the colour now lives
-    /// in the field, not a per-stroke composite uniform.)
-    pub color: [f32; 3],
-    /// Coverage mass this dab deposits (`WET_PIGMENT_DEPOSIT × opacity × brush_opacity`).
-    pub mass: f32,
-    /// The active pigment's staining ∈ [0,1] (ADR-0081): 1 = permanent stain that resists
-    /// lifting, 0 = liftable/sedimentary (the default for raw-colour dabs). Rides the dab into
-    /// the wet field's per-cell behaviour (`DiffusionGrid::splat` / `DabGpu::new` trailing arg),
-    /// so the pigment keeps staining even after it mixes with another.
-    pub staining: f32,
-}
-
 /// Painter — sucessor do Procreate. Stateful workhorse tool.
 ///
 /// Cascata W0 (ADR-0043..0053) congelou caps e contratos. T1.1 entregou
@@ -531,17 +480,6 @@ pub struct PainterTool {
     /// `end_stroke`) so a later redo can never resurrect a record from a
     /// discarded branch. (See `new_stroke_after_undo_invalidates_redo`.)
     undo_redo_records: Vec<StrokeRecord>,
-    /// **ADR-0090 wash undo/redo:** an ordered queue of explicit intents (commit / undo / redo) the
-    /// shell's `drive_wash_gpu` drains each frame ([`Self::take_wash_events`]) and replays onto its own
-    /// GPU field-snapshot two-stack. The tool owns *when* (it drives the raster undo stack + the wash
-    /// bit stored per-entry in [`crate::undo`]); the bridge owns the *field snapshots* and acts on each
-    /// intent. Explicit events — never an inferred count delta — so a redo can never be mistaken for a
-    /// fresh commit (the unfixable race that sank the ADR-0088/0089 count-based scheme).
-    wash_events: Vec<WashUndoEvent>,
-    /// Bumps when the canvas base the wash composites over is invalidated (new source / layer switch /
-    /// undo-stack reset). The shell's `drive_wash_gpu` drops + rebuilds its persistent session on a
-    /// change, so the pigment field + base backdrop + undo stacks are rebuilt from the current canvas.
-    wash_reset_generation: u64,
     /// **W3.T3.4 dock toggle (mode C):** which painter panel occupies the
     /// shared right-dock slot — `false` = brush sidebar, `true` = layers panel.
     /// Toggled via `handle_panel_event` (either panel's header toggle button);
@@ -612,86 +550,6 @@ pub struct PainterTool {
     /// at `begin_stroke` so a mid-stroke UI change can't destabilise coverage.
     /// Meaningful only while `wash_coverage` is `Some`.
     wash_opacity_cap: f32,
-    /// **W15 — live watercolor wet-on-wet field (ADR-0049 / ADR-0077 D11, ADR-0085).** A
-    /// [`ph2d_painter_brush::diffusion::DiffusionGrid`] used as the CPU-side container for
-    /// the paper tooth + the field's dims/identity, allocated at `begin_stroke` only when
-    /// `brush.rendering.fluid_enabled` AND a GPU is present (`fluid_hires`). The sim itself
-    /// is GPU-resident: dabs are captured into `fluid_dabs` and the shell's per-frame drive
-    /// runs `cs_splat` + the diffusion + the K–M composite + the dry-check, so the wash keeps
-    /// blooming + drying AFTER pen-up. Dropped when the GPU reports it has dried (water → 0).
-    /// `None` for every non-fluid brush AND on any device without a GPU (watercolor degrades
-    /// to the normal wash path) ⇒ zero behaviour change + zero cost there.
-    wet_field: Option<ph2d_painter_brush::diffusion::DiffusionGrid>,
-    /// **W15 — backdrop the live wet field composites OVER.** Snapshot of the
-    /// canvas as it was when the fluid stroke began (the pre-stroke pixels). Kept
-    /// SEPARATE from `pending_pre_stroke`: that one is consumed by the undo stack
-    /// at `end_stroke` (`take()`), but the wash keeps blooming for many frames
-    /// AFTER pen-up, so the GPU compositor needs a backdrop that outlives the
-    /// stroke. Allocated with `wet_field` at `begin_stroke`; dropped in lock-step
-    /// whenever the field is (dry-out / undo / redo / source swap). `None` ⇒ no
-    /// live wash.
-    wet_backdrop: Option<Vec<u8>>,
-    /// **W15 — last frame's wet bbox (grid cells, inclusive).** The composite runs
-    /// only over the union of the current + previous wet region, so it touches the
-    /// wash neighbourhood instead of the whole canvas (the 16-tap bicubic + K–M is
-    /// the dominant cost). The *previous* frame is unioned in so cells that just
-    /// dried get their canvas pixel reset to the backdrop. Reset with the field.
-    wet_composite_bbox: Option<(u32, u32, u32, u32)>,
-    /// **W15.3 GPU drive (ADR-0049 / ADR-0085).** Set by the shell while it is driving the
-    /// GPU-resident wet field that frame. ADR-0085: the sim is GPU-only, so the tool never
-    /// CPU-diffuses regardless — this flag is now an informational marker of an in-progress
-    /// shell drive (the dab capture in `queue_pointer` is gated on `fluid_hires`, not this).
-    gpu_fluid_driven: bool,
-    /// **W15.3 GPU resident path.** Bumped each time a fresh fluid `wet_field` is
-    /// allocated (`begin_stroke`). The shell watches it: on change it resets the
-    /// GPU-resident pigment (`pig_a`) + re-uploads the static paper, so a reused
-    /// solver (same grid size, new stroke) starts from a bare field instead of the
-    /// previous stroke's bloom. Monotonic for the tool's lifetime.
-    fluid_stroke_epoch: u64,
-    /// **W15.3 full-res GPU watercolor.** When the shell confirms a capable GPU it
-    /// sets this, so a NEW fluid field runs at FULL canvas resolution (`scale=1`)
-    /// instead of the CPU-budget half-res (`WET_FIELD_SCALE=2`) — finer bleeds + sharp
-    /// edges (Enio: "bordas finas"). The CPU fallback / default build keeps half-res.
-    fluid_hires: bool,
-    /// The canvas/grid ratio of the LIVE field — `1` (hires GPU) or `WET_FIELD_SCALE`
-    /// (half-res). Captured at `begin_stroke` from [`Self::fluid_hires`] + used by the
-    /// splat, composite + the shell drive, so a mid-stroke flag flip can't desync the
-    /// field's actual resolution.
-    wet_field_scale: u32,
-    /// **W15.3 GPU composite envelope.** The MONOTONIC (never-receding) union of the
-    /// wet bboxes over the field's life — a hard upper bound on where the conserved
-    /// pigment can ever be. The GPU path composites over THIS, not the current water
-    /// bbox: water evaporates (its bbox marches inward) but pigment is conserved +
-    /// even leaks one cell past the gate, so a receding water rect hard-cut the round
-    /// dab into an axis-aligned rectangle (Enio's "quinas retangulares"). Reset to
-    /// `None` with the field. CPU path keeps using the true pigment bbox.
-    wet_pigment_envelope: Option<(u32, u32, u32, u32)>,
-    /// **GPU-resident fluid path (4K real-time arch §4).** This frame's dabs, captured
-    /// as a small list (`O(dabs)`) instead of splatted into the CPU grid; the shell
-    /// drains them via [`Self::fluid_take_dabs`] and `cs_splat` adds them to the
-    /// resident water + pigment — no per-frame O(grid) deposit alloc/upload. Cleared
-    /// each `begin_stroke` + each drain. Unused on the CPU-fallback path.
-    fluid_dabs: Vec<FluidDab>,
-    /// **Real-pigment palette (ADR-0081).** The active pigment's PALETTE index, or `None` for
-    /// raw colour (the validated bit-identical path). Set via [`Self::set_active_pigment`]: picking
-    /// a pigment loads its masstone into `params.active_color` + its granulation into the brush
-    /// watercolor slider; the pigment's `staining` rides each dab (see [`Self::active_staining`]).
-    /// `None` = no pigment selected ⇒ `staining = 0` (liftable) + colour/params left as-is.
-    active_pigment: Option<u8>,
-    /// **Keep-wet (watercolor UX).** While `true`, the live wet field never evaporates:
-    /// [`Self::fluid_diffusion_params`] (the GPU solver upload) and the CPU fallback tick
-    /// both override `evaporation = 0`, so the wash stays wet — and re-workable —
-    /// indefinitely (the dry-check threshold is never crossed, so the field never drops).
-    /// Capillary wicking keeps slowly spreading while wet (physical). TOOL-level (not in
-    /// `WatercolorParams` — that struct is at its 21-control cap); driven by the Brush
-    /// Studio "Keep Wet" pill via `BrushParam::KeepWet` (the uncapped channel).
-    keep_wet: bool,
-    /// **Show-wet (watercolor UX).** The wet-paper sheen flag: wet regions render subtly
-    /// darker with a subtly bright meniscus at the wet boundary — VIEW-ONLY (applied in
-    /// the fluid compositor's preview-texture kernels, never in the baked composite), so
-    /// the wash literally "dries lighter". The bridge reads [`Self::fluid_show_wet`] each
-    /// frame. Default ON (the canonical wet-paper look); Brush Studio "Show Wet" pill.
-    show_wet: bool,
 }
 
 impl Default for PainterTool {
@@ -742,8 +600,6 @@ impl Default for PainterTool {
             undo: crate::undo::UndoController::default(),
             pending_pre_stroke: None,
             undo_redo_records: Vec::new(),
-            wash_events: Vec::new(),
-            wash_reset_generation: 0,
             dock_shows_layers: false,
             show_brush_studio: false,
             dirty_rect: None,
@@ -753,19 +609,6 @@ impl Default for PainterTool {
             wash_coverage: None,
             wash_color: None,
             wash_opacity_cap: 1.0,
-            wet_field: None,
-            wet_backdrop: None,
-            wet_composite_bbox: None,
-            gpu_fluid_driven: false,
-            fluid_stroke_epoch: 0,
-            fluid_hires: false,
-            wet_field_scale: lifecycle::WET_FIELD_SCALE,
-            wet_pigment_envelope: None,
-            fluid_dabs: Vec::new(),
-            active_pigment: None,
-            keep_wet: false,
-            // Default ON — the wet-paper sheen IS the canonical wet look (view-only).
-            show_wet: true,
         }
     }
 }

@@ -56,23 +56,12 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        // Cheap Arc-backed clone — drops the `gfx` borrow before `tools` is taken
-        // mutably below (the fluid catch-up flush needs both the GPU and the tool).
-        #[cfg(feature = "fluid")]
-        let gpu = gfx.surface.gpu().clone();
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
         let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
             return false;
         };
-        // Undo correctness: bake any deferred GPU wet-field catch-up of the PREVIOUS
-        // stroke into `canvas_rgba` BEFORE `begin_stroke` snapshots it, so each
-        // stroke's undo pre-image brackets exactly one stroke (else a fast second
-        // stroke would snapshot a stale canvas → one undo reverts both). See
-        // `painter_fluid_bridge::flush_pending_bake`.
-        #[cfg(feature = "fluid")]
-        crate::render_loop::painter_fluid_bridge::flush_pending_bake(&gpu, painter);
         painter.begin_stroke(seed);
         painter.queue_pointer(sample);
         true

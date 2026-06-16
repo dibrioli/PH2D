@@ -4640,10 +4640,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-fluids"
-version = "0.0.0"
-
-[[package]]
 name = "ph2d-gpu"
 version = "0.0.0"
 dependencies = [
@@ -4695,8 +4691,6 @@ dependencies = [
  "ph2d-node-vector-source",
  "ph2d-nodegraph",
  "ph2d-painter-brush",
- "ph2d-painter-fluid",
- "ph2d-painter-wash",
  "ph2d-panel-bgremoval",
  "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",
@@ -5238,18 +5232,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-painter-fluid"
-version = "0.0.0"
-dependencies = [
- "bytemuck",
- "naga",
- "ph2d-gpu",
- "ph2d-painter-brush",
- "serde",
- "wgpu",
-]
-
-[[package]]
 name = "ph2d-painter-stroke"
 version = "0.0.0"
 dependencies = [
@@ -5262,16 +5244,6 @@ dependencies = [
  "serde",
  "subtle",
  "uuid",
-]
-
-[[package]]
-name = "ph2d-painter-wash"
-version = "0.0.0"
-dependencies = [
- "bytemuck",
- "naga",
- "ph2d-gpu",
- "wgpu",
 ]
 
 [[package]]

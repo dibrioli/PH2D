@@ -24,17 +24,8 @@
 //! - `durability` — ADR-0052
 //! - `tier_policy` — ADR-0053
 //!
-//! ## Watercolor v2 (ADR-0085, 2026-06-10)
-//!
-//! [ADR-0085](../../../../docs/architecture/decisions/0085-watercolor-v2-gpu-first-realtime.md)
-//! supersede a **paridade bit-a-bit CPU↔GPU** (ex-ADR-0049-am1 / 0080 §2.5 / 0081 / 0082) por
-//! **invariantes físicos**, e retira a promessa de **sim CPU em tempo-real** (ADR-0049 §2.3/§2.11)
-//! ajustando a tier policy (ADR-0053: low-tier sem compute = aquarela off, não sim CPU). Isto
-//! **NÃO** toca a `mod fluid` abaixo: os caps de SUPERFÍCIE (`FluidSim ≤ 12` / `FluidParams ≤ 12`
-//! / `GravitySource ≤ 6`) ficam congelados — são ABI, não física. Os gates de paridade que saem
-//! vivem no crate `ph2d-painter-fluid` (`gpu_parity.rs` / `composite_parity.rs`) e são removidos
-//! na onda R3, não aqui. Os novos gates de PERF (single-submit / no full-canvas copy / no
-//! stroke-readback / O(bbox ativo)) entram quando o código de R1/R5 os tornar testáveis.
+//! Os subsistemas de aquarela (`fluid` / `wash`, ex-ADR-0049/0078-0092) foram removidos
+//! do módulo Painter; seus gates de superfície/paridade saíram junto.
 
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -383,20 +374,6 @@ mod brush_engine {
                 &format!("{} sub-cap (ADR-0044 §2.2.1)", name),
             );
         }
-    }
-
-    #[test]
-    fn watercolor_params_field_count_is_capped() {
-        // ADR-0079 — the per-brush watercolor controls DTO (a RenderingParams field).
-        // 21 used, cap ≤ 21 FULL (ADR-0079-amendment-1 slot, now `bleed_limit` per amendment-2; ADR-0082
-        // `capillary_branching`; ADR-0081 `lift`; ADR-0078 S5/S5c `capillary`/`sharpness`;
-        // 2026-06-09 `water` water-brush). Insulates the brush-file contract from the
-        // solver-internal DiffusionParams (which we extend freely).
-        assert_capped(
-            count_struct_fields(CRATE, "WatercolorParams"),
-            21,
-            "WatercolorParams (ADR-0079 §3 + amendment-1 + ADR-0078 S5/S5c + ADR-0081 + ADR-0082)",
-        );
     }
 
     #[test]
@@ -901,43 +878,6 @@ mod inspector {
             CRATE,
             "MAX_RETROACTIVE_MOD_WINDOW",
             "MAX_RETROACTIVE_MOD_WINDOW removed (ADR-0048 §2.6 rework regra perfeição)",
-        );
-    }
-}
-
-// ----------------------------------------------------------------------------
-// ADR-0049 — Fluid Brushes Extension
-// ----------------------------------------------------------------------------
-
-mod fluid {
-    use super::*;
-
-    const CRATE: &str = "ph2d-painter-fluid";
-
-    #[test]
-    fn fluid_sim_field_count_is_capped() {
-        assert_capped(
-            count_struct_fields(CRATE, "FluidSim"),
-            12,
-            "FluidSim (ADR-0049 §2.4)",
-        );
-    }
-
-    #[test]
-    fn fluid_params_field_count_is_capped() {
-        assert_capped(
-            count_struct_fields(CRATE, "FluidParams"),
-            12,
-            "FluidParams (ADR-0049 §2.5)",
-        );
-    }
-
-    #[test]
-    fn gravity_source_variant_count_is_capped() {
-        assert_capped(
-            count_enum_variants(CRATE, "GravitySource"),
-            6,
-            "GravitySource (ADR-0049 §2.6)",
         );
     }
 }

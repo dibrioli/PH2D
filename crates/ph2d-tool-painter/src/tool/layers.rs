@@ -35,6 +35,17 @@ impl PainterTool {
         }
     }
 
+    /// Bump the pixel-content version of EVERY current layer — used after a
+    /// structural undo/redo reinstalls a whole model snapshot, so the GPU
+    /// compositor's per-slice cache (keyed by content version) re-uploads each
+    /// layer rather than serving a stale slice from a prior identity.
+    pub(crate) fn bump_all_layer_pixels(&mut self) {
+        let ids: Vec<RtLayerId> = self.layers.all_ids().collect();
+        for id in ids {
+            self.bump_layer_pixels(Some(id));
+        }
+    }
+
     /// Borrow one layer's straight-sRGB8 pixels + its content version for the
     /// GPU preview compositor (the shell bridge adapts this to
     /// `ph2d_render::LayerPixelProvider`; the tool stays decoupled from the
@@ -117,19 +128,52 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
-    /// Drop undo/redo history at a layer switch. **Audit W3 (data-loss):**
-    /// the undo controller snapshots `canvas_rgba` = whatever layer is active
-    /// NOW; it is NOT yet layer-keyed. Without this reset, undo after switching
-    /// layers would blit one layer's pre-image onto a DIFFERENT layer's working
-    /// buffer. Clearing on switch makes undo not cross a layer change — safe
-    /// v1; per-layer (transactional) undo is the Coordinator's follow-up.
-    /// Mirror of the reset `set_source` does.
-    pub(crate) fn reset_undo_after_layer_switch(&mut self) {
-        self.undo.clear();
+    /// Capture the full editable model for transactional (structural) undo —
+    /// see [`crate::undo::ModelSnapshot`]. `canvas_rgba` is `Arc`-shared (cheap);
+    /// `images` deep-copies the non-active layers (a rare, user-paced cost).
+    pub(crate) fn snapshot_model(&self) -> crate::undo::ModelSnapshot {
+        crate::undo::ModelSnapshot {
+            layers: self.layers.clone(),
+            images: self.images.clone(),
+            canvas_rgba: Arc::clone(&self.canvas_rgba),
+            selection: self.selection.clone(),
+        }
+    }
+
+    /// Reinstall a model snapshot (a structural undo/redo). Restores the layer
+    /// tree (incl. the active target), the per-layer pixel store, the active
+    /// working buffer, and the panel selection, then refreshes every derived
+    /// cache so the composite + GPU preview rebuild.
+    pub(crate) fn restore_model(&mut self, m: crate::undo::ModelSnapshot) {
+        self.layers = m.layers;
+        self.images = m.images;
+        self.canvas_rgba = m.canvas_rgba;
+        self.selection = m.selection;
+        // Every layer's pixels may have changed identity → bump all content
+        // versions so the GPU compositor re-uploads each slice, and drop the CPU
+        // composite cache + bump the panel `layers_revision`.
+        self.bump_all_layer_pixels();
+        self.invalidate_composite();
+        // The restored active target is the new lift "paper" base (ADR-0084).
+        self.paper_base = self.canvas_rgba.clone();
+        self.pending_pre_stroke = None;
+        self.preview_dirty = true;
+    }
+
+    /// Record a STRUCTURAL transition from `before` (captured at the edit's start)
+    /// to the CURRENT model, making the edit undoable in chronological order with
+    /// strokes (transactional history — supersedes the v1 "clear undo on any layer
+    /// switch" limitation). Also refreshes the per-switch side state the lift brush
+    /// and in-flight-stroke guard depend on. Every structural site
+    /// (add/delete/duplicate layer, mask/adjustment create, active switch) calls
+    /// this with the model it snapshotted before mutating.
+    pub(crate) fn commit_structural_edit(&mut self, before: crate::undo::ModelSnapshot) {
+        let after = self.snapshot_model();
+        self.undo.record_structural(before, after);
+        // A new edit invalidates the stroke redo-record branch (mirror of the
+        // controller clearing its own redo stack).
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
-        self.wash_events.clear(); // ADR-0090: undo reset ⇒ the wash field history is void too
-        self.wash_reset_generation = self.wash_reset_generation.wrapping_add(1);
         // ADR-0084 (paper-reveal lift): the freshly-activated edit target's content IS the
         // "paper" the lift brush reveals — paint added while editing it is what's liftable.
         // Arc clone = zero-copy (commits CoW `canvas_rgba` via `Arc::make_mut`, leaving this
@@ -294,6 +338,7 @@ impl PainterTool {
         if self.layers.root().last() == Some(&id) {
             return false;
         }
+        let undo_before = self.snapshot_model();
         let was_active = self.layers.active() == Some(id);
         self.layers.remove(id); // drops subtree + mask, repoints active
         // Drop `images` entries for any layer that no longer exists.
@@ -312,7 +357,7 @@ impl PainterTool {
             self.canvas_rgba = Arc::new(buf);
         }
         self.prune_selection(); // drop the deleted subtree + mask from the highlight
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.invalidate_composite();
         true
     }
@@ -329,6 +374,7 @@ impl PainterTool {
         }
         // Ensure the source pixels live in `images` (flush the active), copy them,
         // duplicate the model, then make the copy the active edit target.
+        let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let (w, h) = self.source_size;
         let src_pixels = self
@@ -339,7 +385,7 @@ impl PainterTool {
         let new_id = self.layers.duplicate(id)?; // sets active = new_id
         self.images.remove(&new_id); // active lives in canvas_rgba
         self.canvas_rgba = Arc::new(src_pixels);
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_id);
         self.invalidate_composite();
         Some(new_id)
@@ -380,11 +426,12 @@ impl PainterTool {
         if self.layers.len() >= crate::layers::HARD_CAP_LAYERS {
             return None;
         }
+        let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]);
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
         self.invalidate_composite();
         Some(id)
@@ -403,6 +450,7 @@ impl PainterTool {
         if !matches!(self.layers.get(active)?.kind, LayerKind::Raster(_)) {
             return None; // only a raster takes a mask (not a group / another mask)
         }
+        let undo_before = self.snapshot_model();
         let mask = self.layers.add_mask(active)?;
         // The parent raster (still active) flushes to images; the mask becomes
         // the active edit target with a fresh opaque-WHITE buffer (full visible).
@@ -412,7 +460,7 @@ impl PainterTool {
         self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
         self.layers.set_active(mask);
         self.sync_mask_brush_color(); // entering a mask → black brush (hide)
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.reset_selection_to(mask);
         self.invalidate_composite();
         Some(mask)
@@ -459,6 +507,7 @@ impl PainterTool {
         };
         // Flush the live active buffer so BOTH parent + mask pixels are in
         // `images` regardless of which (if either) is currently active.
+        let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
@@ -501,7 +550,7 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; n * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.sync_mask_brush_color(); // leaving the mask → restore the real color
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_active);
         self.invalidate_composite();
         true
@@ -519,6 +568,7 @@ impl PainterTool {
         if self.stroke_active {
             return None;
         }
+        let undo_before = self.snapshot_model();
         let prev_active = self.layers.active();
         let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
         // Bespoke Curves editor: seed EVERY channel (master + R/G/B) with 5
@@ -549,6 +599,7 @@ impl PainterTool {
         }
         self.reset_selection_to(id); // highlight the new adjustment row
         self.invalidate_composite();
+        self.commit_structural_edit(undo_before);
         Some(id)
     }
 
@@ -1005,6 +1056,7 @@ impl PainterTool {
             return;
         }
         let id = target;
+        let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let (w, h) = self.source_size;
         let buf = self
@@ -1015,7 +1067,7 @@ impl PainterTool {
         self.canvas_rgba = Arc::new(buf);
         self.layers.set_active(id);
         self.sync_mask_brush_color(); // mask ↔ normal layer: swap to/from black
-        self.reset_undo_after_layer_switch();
+        self.commit_structural_edit(undo_before);
         self.invalidate_composite();
     }
 

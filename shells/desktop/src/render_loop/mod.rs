@@ -32,18 +32,8 @@ pub(crate) mod painter_bridge;
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
 pub(crate) mod painter_bridge_queries;
-// W15.3 GPU fluid drive (ADR-0049). Feature-gated — default build excludes it.
-#[cfg(feature = "fluid")]
-pub(crate) mod painter_fluid_bridge;
-#[cfg(feature = "fluid")]
-mod painter_fluid_drive;
-#[cfg(feature = "fluid")]
-mod painter_fluid_support;
-// ADR-0086/0087 minimal watercolor core — parallel to the fluid drive, own feature.
-mod painter_gpu_flatten;
+pub(crate) mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
-#[cfg(feature = "wash")]
-mod painter_wash_bridge;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -263,40 +253,6 @@ impl crate::App {
         if let Some(t) = tools.active_mut() {
             t.on_tick(frame_ms_now);
         }
-        // **W15.3 (ADR-0049, feature `fluid`):** drive the painter's live wet field
-        // on the GPU (else the CPU `on_tick` above already stepped it). No-op
-        // without an active fluid stroke; absent in the default build.
-        // E4 (ADR-0078 S2): mid-stroke the drive composites into a GPU preview
-        // TEXTURE (zero readback) and returns a `PreviewOverride` pointing at the
-        // fluid's `IndividualTextureStore` slot — it takes precedence over the
-        // CPU-uploaded painter preview in the `.or` chain below (same frame, so
-        // the wet wash has ZERO preview lag). `None` = readback path owns the
-        // frame (drying / no fluid stroke).
-        // E5 (ADR-0078 S2): on a NON-trivial GPU-representable stack the drive
-        // instead injects the fluid composite into the `painter_gpu_preview`
-        // layer chain (single owner) and fills `painter_preview_gpu` — whose
-        // override the `.or` chain below already emits — returning `None`.
-        #[cfg(feature = "fluid")]
-        let fluid_preview_override = painter_fluid_bridge::drive_fluid_gpu(
-            tools,
-            surface.gpu(),
-            renderer,
-            self.last_painter_pushed_entity,
-        );
-        #[cfg(not(feature = "fluid"))]
-        let fluid_preview_override: Option<sim_extract::PreviewOverride> = None;
-        // ADR-0086/0087: drive the minimal watercolor core (parallel to fluid, mutually
-        // exclusive per the brush flag). v1 bakes into `canvas_rgba` and returns `None`
-        // (the normal painter preview shows it); the call is for the per-frame side effect.
-        #[cfg(feature = "wash")]
-        let wash_preview_override = painter_wash_bridge::drive_wash_gpu(
-            tools,
-            surface.gpu(),
-            renderer,
-            self.last_painter_pushed_entity,
-        );
-        #[cfg(not(feature = "wash"))]
-        let wash_preview_override: Option<sim_extract::PreviewOverride> = None;
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             eprintln!(
@@ -352,14 +308,7 @@ impl crate::App {
                 texture_id: gpu.texture_id,
                 premultiplied: true,
             });
-        // E4 precedence: a fluid texture-mode frame wins over the CPU-uploaded
-        // painter preview (whose slot is 1 frame behind and, mid-stroke,
-        // pre-stroke-stale by design) — the fluid drive only returns `Some` on
-        // frames where its slot holds the freshest composite.
-        let preview_override = fluid_preview_override
-            .or(wash_preview_override)
-            .or(painter_preview_override)
-            .or(bgremoval_preview_override);
+        let preview_override = painter_preview_override.or(bgremoval_preview_override);
         // W2.T3 visual smoke (PH2D_MOTION_SMOKE=1): the Motion vertical owns the
         // canvas this frame — cook grid→transform→clone and publish its
         // RenderInstances instead of the M5 demo sim. Debug-only; off by default.

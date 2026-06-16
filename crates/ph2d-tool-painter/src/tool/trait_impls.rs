@@ -120,8 +120,7 @@ impl Tool for PainterTool {
                     || id == core_ids::PAINTER_STUDIO_RESET_SHAPE
                     || id == core_ids::PAINTER_STUDIO_RESET_RENDERING
                     || id == core_ids::PAINTER_STUDIO_RESET_COLOR
-                    || id == core_ids::PAINTER_STUDIO_RESET_DYNAMICS
-                    || id == core_ids::PAINTER_STUDIO_RESET_WATERCOLOR =>
+                    || id == core_ids::PAINTER_STUDIO_RESET_DYNAMICS =>
             {
                 self.reset_studio_section(id);
             }
@@ -145,19 +144,6 @@ impl Tool for PainterTool {
                     crate::params::BrushParam::RenderingMode,
                     next as f32,
                 ));
-            }
-            // Real-pigment palette cycler (ADR-0081): step None → 0 → 1 → … →
-            // PALETTE.len()-1 → None. Picks the pigment's masstone + granulation;
-            // its staining rides each dab. Mirror of the rendering-mode cycler
-            // (read the live state, compute next, apply).
-            PanelEvent::Click(id) if id == core_ids::PAINTER_STUDIO_PIGMENT_PICK => {
-                let n = ph2d_painter_brush::PALETTE.len() as u32;
-                let next = match self.active_pigment() {
-                    None => Some(0u8),
-                    Some(i) if (u32::from(i) + 1) < n => Some(i + 1),
-                    Some(_) => None, // wrap past the last pigment → raw colour
-                };
-                self.set_active_pigment(next);
             }
             // New bool checkboxes — read the live brush, set the opposite (the
             // store-less event can't carry the new value; `&mut self` reads it).
@@ -430,12 +416,9 @@ impl Tool for PainterTool {
         }
     }
 
-    /// **W15 (ADR-0040-amendment-2):** per-frame heartbeat — advances the live
-    /// watercolor wet-on-wet diffusion (ADR-0049 / ADR-0077 D11) so the wash keeps
-    /// blooming + drying after pen-up. A cheap early-out when no wet field exists.
-    fn on_tick(&mut self, _dt_ms: f32) {
-        self.on_tick_diffusion();
-    }
+    /// Per-frame heartbeat (ADR-0040-amendment-2). No-op for the painter — kept so
+    /// the `Tool::on_tick` contract is unchanged.
+    fn on_tick(&mut self, _dt_ms: f32) {}
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
@@ -465,13 +448,6 @@ impl PainterTool {
             P::ShapeRandomized => self.brush.shape.shape_randomized,
             P::ShapeFlipX => self.brush.shape.shape_flip_x,
             P::ShapeFlipY => self.brush.shape.shape_flip_y,
-            P::WetEdges => self.brush.rendering.wet_edges,
-            P::BurntEdges => self.brush.rendering.burnt_edges,
-            P::Fluid => self.brush.rendering.fluid_enabled,
-            P::Wash => self.brush.rendering.wash_enabled,
-            // Watercolor UX toggles — tool-level state (like `Paper`), not brush fields.
-            P::KeepWet => self.fluid_keep_wet(),
-            P::ShowWet => self.fluid_show_wet(),
             _ => false,
         }
     }
@@ -519,8 +495,6 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
         Some(P::Flow)
     } else if id == core_ids::PAINTER_STUDIO_ALPHA_THRESHOLD_SLIDER {
         Some(P::AlphaThreshold)
-    } else if id == core_ids::PAINTER_STUDIO_EDGE_INTENSITY_SLIDER {
-        Some(P::EdgeIntensity)
     } else if id == core_ids::PAINTER_STUDIO_PAPER_SLIDER {
         Some(P::Paper)
     } else if id == core_ids::PAINTER_STUDIO_GRAIN_SCALE_SLIDER {
@@ -538,12 +512,7 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
     } else if id == core_ids::PAINTER_STUDIO_OPACITY_JITTER_SLIDER {
         Some(P::OpacityJitter)
     } else {
-        // Watercolor controls (ADR-0079..0082): the `WatercolorParams::COUNT` index-derived
-        // slider ids. Decode by recomputing each (the layers-panel pattern) — no per-control
-        // const/match arm.
-        (0..ph2d_painter_brush::WatercolorParams::COUNT)
-            .find(|&i| id == core_ids::painter_studio_watercolor_slider_id(i))
-            .map(|i| P::Watercolor(i as u8))
+        None
     }
 }
 
@@ -560,19 +529,6 @@ fn brush_studio_bool_param(id: ph2d_a11y::NodeId) -> Option<crate::params::Brush
         Some(P::ShapeFlipX)
     } else if id == core_ids::PAINTER_STUDIO_SHAPE_FLIP_Y {
         Some(P::ShapeFlipY)
-    } else if id == core_ids::PAINTER_STUDIO_WET_EDGES {
-        Some(P::WetEdges)
-    } else if id == core_ids::PAINTER_STUDIO_BURNT_EDGES {
-        Some(P::BurntEdges)
-    } else if id == core_ids::PAINTER_STUDIO_FLUID {
-        Some(P::Fluid)
-    } else if id == core_ids::PAINTER_STUDIO_WASH {
-        Some(P::Wash)
-    } else if id == core_ids::PAINTER_STUDIO_KEEP_WET {
-        // Watercolor UX pills (tool-level bools; the generic bool-click arm flips them).
-        Some(P::KeepWet)
-    } else if id == core_ids::PAINTER_STUDIO_SHOW_WET {
-        Some(P::ShowWet)
     } else {
         None
     }
@@ -633,21 +589,6 @@ impl RasterEditTool for PainterTool {
         self.undo.clear();
         self.undo_redo_records.clear();
         self.pending_pre_stroke = None;
-        self.wash_events.clear(); // ADR-0090: new source ⇒ the wash field history is void too
-        self.wash_reset_generation = self.wash_reset_generation.wrapping_add(1);
-        // **W15 fluid:** the wet field is sized + indexed to the OLD source. A new
-        // canvas makes it meaningless (the GPU composite would map the stale field
-        // onto the wrong pixels) — drop it. `end_stroke` above keeps it for a normal
-        // pen-up bloom; only a source swap invalidates it outright.
-        self.wet_field = None;
-        self.wet_backdrop = None;
-        self.wet_composite_bbox = None;
-        // Defense in depth (ADR-0085 stability): null the monotonic fluid envelope + the dab
-        // list too, so a document swap leaves NO stale fluid state that a later reused-field
-        // path could composite onto the wrong pixels. (Today a fresh field is rebuilt on the
-        // next stroke, which resets these — but the reset must not depend on that coupling.)
-        self.wet_pigment_envelope = None;
-        self.fluid_dabs.clear();
     }
 
     /// Devolve referência ao composite atual iff houve update desde a última

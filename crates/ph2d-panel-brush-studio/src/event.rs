@@ -72,7 +72,6 @@ fn is_studio_slider(id: NodeId) -> bool {
         || id == ids::SHAPE_COUNT_SLIDER
         || id == ids::SHAPE_COUNT_JITTER_SLIDER
         || id == ids::FLOW_SLIDER
-        || id == ids::EDGE_INTENSITY_SLIDER
         || id == ids::PAPER_SLIDER
         || id == ids::GRAIN_SCALE_SLIDER
         || id == ids::GRAIN_DEPTH_SLIDER
@@ -82,17 +81,6 @@ fn is_studio_slider(id: NodeId) -> bool {
         || id == ids::DARK_JITTER_SLIDER
         || id == ids::SIZE_JITTER_SLIDER
         || id == ids::OPACITY_JITTER_SLIDER
-        || is_studio_watercolor_slider(id)
-}
-
-/// The 17 watercolor sliders (ADR-0079 + ADR-0078 S5/S5c) use index-derived ids (no consts), so they're
-/// recognized by recomputing each — without this they paint + drag visually but their
-/// `ValueChanged` is never forwarded to the tool (the slider "can't be manipulated").
-#[inline]
-fn is_studio_watercolor_slider(id: NodeId) -> bool {
-    use ph2d_editor_core::ids as core_ids;
-    (0..ph2d_tool_painter::WatercolorParams::COUNT)
-        .any(|i| id == core_ids::painter_studio_watercolor_slider_id(i))
 }
 
 #[inline]
@@ -103,10 +91,6 @@ fn is_studio_checkbox(id: NodeId) -> bool {
         || id == ids::SHAPE_FLIP_Y
         || id == ids::PIGMENT
         || id == ids::ACCUMULATE
-        || id == ids::WET_EDGES
-        || id == ids::BURNT_EDGES
-        || id == ids::FLUID
-        || id == ids::WASH
 }
 
 #[inline]
@@ -114,13 +98,10 @@ fn is_studio_button(id: NodeId) -> bool {
     id == ids::CLOSE
         || id == ids::GRAIN_TYPE
         || id == ids::RENDERING_MODE
-        || id == ids::PIGMENT_PICK
-        || id == ids::KEEP_WET
-        || id == ids::SHOW_WET
         || is_studio_reset_button(id)
 }
 
-/// The 6 per-section "reset to default" buttons (one beside each subsection header).
+/// The per-section "reset to default" buttons (one beside each subsection header).
 #[inline]
 fn is_studio_reset_button(id: NodeId) -> bool {
     id == ids::RESET_STROKE
@@ -128,26 +109,4 @@ fn is_studio_reset_button(id: NodeId) -> bool {
         || id == ids::RESET_RENDERING
         || id == ids::RESET_COLOR
         || id == ids::RESET_DYNAMICS
-        || id == ids::RESET_WATERCOLOR
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Every painted watercolor slider (ADR-0079) MUST be recognized by `is_studio_slider`,
-    /// else its drag `ValueChanged` is dropped: the thumb moves then snaps back next frame
-    /// when the unchanged snapshot re-syncs it ("can't be manipulated"). This gate pins the
-    /// index-derived ids to the forwarder.
-    #[test]
-    fn every_watercolor_slider_is_recognized() {
-        use ph2d_editor_core::ids as core_ids;
-        for i in 0..ph2d_tool_painter::WatercolorParams::COUNT {
-            assert!(
-                is_studio_slider(core_ids::painter_studio_watercolor_slider_id(i)),
-                "watercolor slider {i} ({}) not in is_studio_slider — its drag won't forward",
-                ph2d_tool_painter::WatercolorParams::CONTROLS[i].label
-            );
-        }
-    }
 }

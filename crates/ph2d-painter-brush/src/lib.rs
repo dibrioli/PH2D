@@ -68,7 +68,6 @@ pub mod brush;
 pub mod brush_handle;
 pub mod color_dynamics;
 pub mod cpu_render;
-pub mod diffusion;
 pub mod dynamics;
 pub mod grain;
 pub mod grain_noise;
@@ -76,7 +75,6 @@ pub mod library;
 pub mod pencil;
 pub mod pigment;
 pub mod pigment_mix;
-pub mod pigment_palette;
 pub mod procedural;
 pub mod properties;
 pub mod rendering;
@@ -88,8 +86,6 @@ pub mod stamp_pipeline;
 pub mod stamp_scheduler;
 pub mod stroke_path;
 pub mod taper;
-pub mod watercolor;
-pub mod wet_composite;
 pub mod wet_mix;
 
 pub use about::AboutParams;
@@ -98,8 +94,7 @@ pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;
 pub use cpu_render::{
-    EdgeStyle, apply_stamps, apply_stamps_buildup, apply_stamps_wash, apply_stamps_with_options,
-    apply_wash_settle, coverage_bbox,
+    apply_stamps, apply_stamps_buildup, apply_stamps_wash, apply_stamps_with_options,
 };
 pub use dynamics::DynamicsParams;
 pub use grain::{
@@ -125,7 +120,6 @@ pub use library::{
 };
 pub use pencil::{CursorOutline, PencilParams};
 pub use pigment::PigmentMode;
-pub use pigment_palette::{PALETTE, PIGMENT_GRANULATION_MAX, Pigment, pigment_by_name};
 pub use procedural::ProceduralGrain;
 pub use properties::PropertiesParams;
 pub use rendering::{BurntEdgesMode, RenderingParams};
@@ -137,5 +131,4 @@ pub use stamp_pipeline::{StampGlobals, StampPipeline};
 pub use stamp_scheduler::{PointerSample, StampScheduler};
 pub use stroke_path::StrokePathParams;
 pub use taper::TaperParams;
-pub use watercolor::{WatercolorControl, WatercolorParams};
 pub use wet_mix::WetMixParams;

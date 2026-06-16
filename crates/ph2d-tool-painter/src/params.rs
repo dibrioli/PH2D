@@ -242,18 +242,6 @@ pub enum BrushParam {
     // Rendering (RenderingParams)
     Flow,
     AlphaThreshold,
-    WetEdges,
-    BurntEdges,
-    /// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Bool routed
-    /// through the uncapped `BrushParam` (NOT a new `PainterUiEdit` variant —
-    /// that surface is frozen at ≤24, ADR-0043 §2.3), exactly like Wet/Burnt
-    /// Edges. Writes `brush.rendering.fluid_enabled`.
-    Fluid,
-    /// Minimal watercolor core (`ph2d-painter-wash`, ADR-0087), opt-in per-brush.
-    /// Bool through the uncapped `BrushParam` (same rationale as `Fluid`). Writes
-    /// `brush.rendering.wash_enabled`; mutually exclusive with `Fluid`.
-    Wash,
-    EdgeIntensity,
     RenderingMode,
     /// World-space paper tooth strength (`PainterParams::paper_grain`, 0..1) —
     /// a substrate property, so it lives on the tool params, NOT the brush.
@@ -273,21 +261,6 @@ pub enum BrushParam {
     SpeedSize,
     SpeedOpacity,
     SpeedSpacing,
-    /// **Watercolor control `index` (ADR-0079).** One payload-carrying variant for all 16
-    /// `WatercolorParams` controls (the index is the position in
-    /// `WatercolorParams::CONTROLS`). The slider sends a normalized `0..1`; the handler maps
-    /// it onto the control's physical range via `WatercolorParams::set_normalized`. Writes
-    /// `brush.rendering.watercolor.*`. One variant (not 15) keeps the studio's growth flat.
-    Watercolor(u8),
-    /// **Keep-wet (watercolor UX).** Bool: pause evaporation indefinitely — the live
-    /// wash stays wet + re-workable until toggled off. TOOL-level state (like `Paper`):
-    /// `WatercolorParams` is at its 21-control cap and `PainterUiEdit` stays frozen at
-    /// 21/24, so it rides the uncapped `SetBrushParam` channel. Writes `tool.keep_wet`.
-    KeepWet,
-    /// **Show-wet (watercolor UX).** Bool: the wet-paper sheen (subtle darkening of wet
-    /// regions + bright meniscus at the wet boundary), VIEW-ONLY in the live preview.
-    /// TOOL-level like `KeepWet`; default ON. Writes `tool.show_wet`.
-    ShowWet,
 }
 
 // ----------------------------------------------------------------------------
@@ -435,13 +408,6 @@ pub struct BrushStudioSnapshot {
     // Rendering
     pub flow: f32,
     pub alpha_threshold: f32,
-    pub wet_edges: bool,
-    pub burnt_edges: bool,
-    /// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11) display state.
-    pub fluid_enabled: bool,
-    /// Minimal watercolor core (ADR-0087) display state — the "Wash" toggle.
-    pub wash_enabled: bool,
-    pub edge_intensity: f32,
     pub pigment_enabled: bool,
     pub accumulate_enabled: bool,
     /// 0 = LightGlaze .. 5 = IntenseBlending (`RenderingMode` discriminant).
@@ -467,17 +433,6 @@ pub struct BrushStudioSnapshot {
     pub speed_size: f32,
     pub speed_opacity: f32,
     pub speed_spacing: f32,
-    /// **Watercolor controls (ADR-0079)** — the 17 `WatercolorParams` values NORMALIZED to
-    /// `0..1` (each over its own `[min,max]` range), indexed by `WatercolorParams::CONTROLS`.
-    /// The Brush Studio "Watercolor" section reads these to position its sliders.
-    pub watercolor: [f32; ph2d_painter_brush::WatercolorParams::COUNT],
-    /// **Real-pigment palette (ADR-0081).** The active pigment's `PALETTE` index, or `None` for
-    /// raw colour. The Brush Studio "Watercolor" section reads it to label its Pigment cycler.
-    pub active_pigment: Option<u8>,
-    /// Keep-wet pill display state (watercolor UX): `true` = evaporation paused.
-    pub keep_wet: bool,
-    /// Show-wet pill display state (watercolor UX): `true` = wet-paper sheen on (default).
-    pub show_wet: bool,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -506,11 +461,6 @@ impl Default for BrushStudioSnapshot {
             shape_flip_y: b.shape.shape_flip_y,
             flow: b.rendering.flow,
             alpha_threshold: b.rendering.alpha_threshold,
-            wet_edges: b.rendering.wet_edges,
-            burnt_edges: b.rendering.burnt_edges,
-            fluid_enabled: b.rendering.fluid_enabled,
-            wash_enabled: b.rendering.wash_enabled,
-            edge_intensity: b.rendering.edge_intensity,
             pigment_enabled: b.rendering.pigment_mode
                 == ph2d_painter_brush::PigmentMode::Subtractive,
             accumulate_enabled: b.rendering.accumulate,
@@ -528,10 +478,6 @@ impl Default for BrushStudioSnapshot {
             speed_size: b.dynamics.speed_size,
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
-            watercolor: core::array::from_fn(|i| b.rendering.watercolor.normalized(i)),
-            active_pigment: None,
-            keep_wet: false,
-            show_wet: true, // mirror PainterTool::default — the wet-paper look is ON
             brush_name: String::new(),
         }
     }
@@ -570,7 +516,7 @@ pub struct PainterParams {
     pub eyedropper_armed: bool,
     pub takeover_active: bool,
     pub version: u32,
-    // 10 fields v1 — 2 slots de headroom
+    // 11 fields v1 — 1 slot de headroom
 }
 
 impl Default for PainterParams {

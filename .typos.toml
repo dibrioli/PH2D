@@ -66,6 +66,9 @@ fase = "fase"
 # pt-BR plurals that typos-cli wants in English.
 individuais = "individuais"
 individual = "individual"
+# `posicional` = pt-BR for "positional" (postcard's positional layout, scatter
+# offset). In code comments; typos-cli maps it to en-US "positional".
+posicional = "posicional"
 # More pt-BR tokens that appear inside user-feedback quotes in code
 # comments and tests (kept verbatim to preserve the user's voice).
 nomes = "nomes"

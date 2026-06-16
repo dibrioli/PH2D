@@ -45,7 +45,6 @@ pub fn populate(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::SEC_RENDERING);
     store.mark_collapsible_section(ids::SEC_COLOR);
     store.mark_collapsible_section(ids::SEC_DYNAMICS);
-    store.mark_collapsible_section(ids::SEC_WATERCOLOR);
 
     let s = BrushStudioSnapshot::default();
 
@@ -139,30 +138,10 @@ pub fn populate(store: &mut WidgetStore) {
     );
     checkbox(store, ids::PIGMENT, s.pigment_enabled);
     checkbox(store, ids::ACCUMULATE, s.accumulate_enabled);
-    checkbox(store, ids::WET_EDGES, s.wet_edges);
-    checkbox(store, ids::BURNT_EDGES, s.burnt_edges);
-    checkbox(store, ids::FLUID, s.fluid_enabled);
-    checkbox(store, ids::WASH, s.wash_enabled);
-    // Register the interactive slider state UNCONDITIONALLY (same pattern as the
-    // grain sliders) — `paint` shows it only when an edge mode is on, but the
-    // `SliderState` must exist in the store regardless so a drag is accepted the
-    // moment it appears (a conditional register here leaves it un-draggable).
-    pct(
-        store,
-        ids::EDGE_INTENSITY_SLIDER,
-        ids::EDGE_INTENSITY_CHIP,
-        s.edge_intensity,
-    );
     // Paper tooth — always visible, so register straight (no conditional).
     pct(store, ids::PAPER_SLIDER, ids::PAPER_CHIP, s.paper_grain);
     button(store, ids::GRAIN_TYPE);
     button(store, ids::RENDERING_MODE);
-    // Real-pigment palette cycler (ADR-0081) — painted in the Watercolor section.
-    button(store, ids::PIGMENT_PICK);
-    // Watercolor UX toggle pills (Keep Wet / Show Wet) — painted in the Watercolor
-    // section; buttons with pressed = on (the cycler-pill pattern), not checkboxes.
-    button(store, ids::KEEP_WET);
-    button(store, ids::SHOW_WET);
     // Per-section "reset to default" buttons — one beside each subsection header (painted by
     // `section_rows::section_header`; clicking resets that section's brush params to default).
     for id in [
@@ -171,7 +150,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::RESET_RENDERING,
         ids::RESET_COLOR,
         ids::RESET_DYNAMICS,
-        ids::RESET_WATERCOLOR,
     ] {
         button(store, id);
     }
@@ -234,31 +212,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SPEED_SPACING_CHIP,
         s.speed_spacing,
     );
-
-    // ── Watercolor — all 15 fluid-solver controls (ADR-0079) ────────────────
-    populate_watercolor(store, &s);
-}
-
-/// Register the Watercolor section's fluid-solver control slider+chip pairs (ADR-0079) —
-/// split out of [`populate`] to keep it under the panel fn LOC cap. The slider stores the
-/// normalized 0..1; the chip's affine map (scale = max−min, offset = min) shows the physical
-/// value, the SAME mapping the paint + the tool's `set_normalized` use. Index-derived ids
-/// (no per-control const) iterate the single CONTROLS source.
-fn populate_watercolor(store: &mut WidgetStore, s: &BrushStudioSnapshot) {
-    use ph2d_editor_core::ids as core_ids;
-    use ph2d_tool_painter::WatercolorParams;
-    for i in 0..WatercolorParams::COUNT {
-        let c = &WatercolorParams::CONTROLS[i];
-        slider_chip(
-            store,
-            core_ids::painter_studio_watercolor_slider_id(i),
-            core_ids::painter_studio_watercolor_chip_id(i),
-            s.watercolor[i],
-            c.max - c.min,
-            c.min,
-            false,
-        );
-    }
 }
 
 /// Register a percent slider+chip pair (0..1 → 0..100%, integer display).
@@ -453,75 +406,6 @@ mod tests {
     }
 
     #[test]
-    fn watercolor_controls_round_trip_through_tool() {
-        // ADR-0079: each of the 15 watercolor sliders drives `Watercolor(i)` → the tool's
-        // `set_normalized(i, v)` → the brush's WatercolorParams → `brush_studio_snapshot`'s
-        // normalized value must echo the slider position back. Proves the whole panel↔tool
-        // loop (index-derived id → payload variant → per-control range map).
-        use ph2d_tool_painter::WatercolorParams;
-        for i in 0..WatercolorParams::COUNT {
-            let mut tool = PainterTool::default();
-            tool.apply_ui_edit(PainterUiEdit::SetBrushParam(
-                BrushParam::Watercolor(i as u8),
-                0.3,
-            ));
-            let got = tool.brush_studio_snapshot().watercolor[i];
-            assert!(
-                (got - 0.3).abs() < 1e-6,
-                "watercolor control {i} ({}) must round-trip panel<->tool (got {got})",
-                WatercolorParams::CONTROLS[i].label
-            );
-        }
-    }
-
-    #[test]
-    fn pigment_cycler_round_trips_through_tool() {
-        // ADR-0081: the panel's PIGMENT_PICK Click → `handle_panel_event` steps the tool's
-        // active pigment None → 0 → … → len-1 → None, loading each pigment's masstone +
-        // granulation. The published snapshot index must follow the cycle the panel labels.
-        use ph2d_editor_core::ids::PAINTER_STUDIO_PIGMENT_PICK;
-        use ph2d_editor_core::tool::{PanelEvent, Tool};
-        use ph2d_tool_painter::PALETTE;
-
-        let mut tool = PainterTool::default();
-        assert_eq!(tool.brush_studio_snapshot().active_pigment, None);
-
-        // First click → pigment 0; each subsequent click → next index.
-        for (i, pigment) in PALETTE.iter().enumerate() {
-            tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_PIGMENT_PICK));
-            assert_eq!(
-                tool.brush_studio_snapshot().active_pigment,
-                Some(i as u8),
-                "click {i} must select pigment {i} ({})",
-                pigment.name
-            );
-            // Picking a pigment must load its granulation into the brush slider: the snapshot's
-            // NORMALIZED value, mapped back onto the control's physical range, must equal the
-            // pigment's `granulation_param()`.
-            use ph2d_tool_painter::WatercolorParams;
-            let gi = granulation_control_index();
-            let c = &WatercolorParams::CONTROLS[gi];
-            let phys = c.min + tool.brush_studio_snapshot().watercolor[gi] * (c.max - c.min);
-            assert!(
-                (phys - pigment.granulation_param()).abs() < 1e-3,
-                "pigment {i} granulation must reach the brush watercolor slider (got {phys})"
-            );
-        }
-        // One more click past the last pigment wraps back to None (raw colour).
-        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_PIGMENT_PICK));
-        assert_eq!(tool.brush_studio_snapshot().active_pigment, None);
-    }
-
-    /// The `WatercolorParams::CONTROLS` index of the "Granulation" control (the one a
-    /// pigment pick writes), found by label so a reorder can't silently break the test.
-    fn granulation_control_index() -> usize {
-        use ph2d_tool_painter::WatercolorParams;
-        (0..WatercolorParams::COUNT)
-            .find(|&i| WatercolorParams::CONTROLS[i].label == "Granulation")
-            .expect("a Granulation watercolor control")
-    }
-
-    #[test]
     fn bool_and_open_close_wiring() {
         let mut tool = PainterTool::default();
         // shape_flip_x defaults false; set it true via the generic param (a
@@ -536,45 +420,5 @@ mod tests {
         assert!(tool.show_brush_studio());
         tool.close_brush_studio();
         assert!(!tool.show_brush_studio());
-    }
-
-    #[test]
-    fn keep_wet_and_show_wet_pills_round_trip_through_tool() {
-        // Watercolor UX pills: a KEEP_WET / SHOW_WET Click (forwarded by the panel as a
-        // button, mirroring PIGMENT_PICK) must flip the tool's bool and the published
-        // snapshot must show the new state (the pill paints pressed = on). Keep-wet
-        // reduces the evaporation the bridge uploads to a MINIMAL value (not 0): the field
-        // never crosses the dry threshold + drops, but the trace of evaporation softens the
-        // rim (Enio 2026-06-12) instead of pinning a hard step.
-        use ph2d_editor_core::ids::{PAINTER_STUDIO_KEEP_WET, PAINTER_STUDIO_SHOW_WET};
-        use ph2d_editor_core::tool::{PanelEvent, Tool};
-
-        let mut tool = PainterTool::default();
-        let snap = tool.brush_studio_snapshot();
-        assert!(!snap.keep_wet, "keep-wet defaults OFF");
-        assert!(snap.show_wet, "show-wet defaults ON (the wet-paper look)");
-        let dry_evap = tool.fluid_diffusion_params().evaporation;
-        assert!(dry_evap > 0.0, "without keep-wet the wash must dry");
-
-        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
-        assert!(tool.brush_studio_snapshot().keep_wet);
-        let wet_evap = tool.fluid_diffusion_params().evaporation;
-        assert!(
-            wet_evap > 0.0 && wet_evap < dry_evap,
-            "keep-wet pauses evaporation to a MINIMAL residual (soft rim), not 0: {wet_evap}"
-        );
-        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_KEEP_WET));
-        assert!(!tool.brush_studio_snapshot().keep_wet);
-        assert_eq!(
-            tool.fluid_diffusion_params().evaporation,
-            dry_evap,
-            "toggling keep-wet off restores the brush evaporation"
-        );
-
-        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_SHOW_WET));
-        assert!(!tool.brush_studio_snapshot().show_wet);
-        assert!(!tool.fluid_show_wet());
-        tool.handle_panel_event(PanelEvent::Click(PAINTER_STUDIO_SHOW_WET));
-        assert!(tool.fluid_show_wet());
     }
 }

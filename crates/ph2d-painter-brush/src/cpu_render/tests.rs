@@ -541,10 +541,6 @@ fn shader_flag_constants_match_rust_bit_values() {
             crate::stamp::FLAG_GRAIN_PROCEDURAL,
         ),
         (
-            "FLAG_FLUID_SAMPLE: u32 = 128u",
-            crate::stamp::FLAG_FLUID_SAMPLE,
-        ),
-        (
             "FLAG_HOVER_PREVIEW: u32 = 256u",
             crate::stamp::FLAG_HOVER_PREVIEW,
         ),

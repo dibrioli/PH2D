@@ -387,7 +387,6 @@ pub const PAINTER_STUDIO_RESET_SHAPE: NodeId = hash_node_id("painter_studio.rese
 pub const PAINTER_STUDIO_RESET_RENDERING: NodeId = hash_node_id("painter_studio.reset_rendering");
 pub const PAINTER_STUDIO_RESET_COLOR: NodeId = hash_node_id("painter_studio.reset_color");
 pub const PAINTER_STUDIO_RESET_DYNAMICS: NodeId = hash_node_id("painter_studio.reset_dynamics");
-pub const PAINTER_STUDIO_RESET_WATERCOLOR: NodeId = hash_node_id("painter_studio.reset_watercolor");
 
 // ── Stroke Path section — float sliders (slider + editable chip) ──────────────
 pub const PAINTER_STUDIO_SPACING_SLIDER: NodeId = hash_node_id("painter_studio.spacing_slider");
@@ -471,19 +470,6 @@ pub const PAINTER_STUDIO_GRAIN_DEPTH_SLIDER: NodeId =
 pub const PAINTER_STUDIO_GRAIN_DEPTH_CHIP: NodeId = hash_node_id("painter_studio.grain_depth_chip");
 pub const PAINTER_STUDIO_PIGMENT: NodeId = hash_node_id("painter_studio.pigment");
 pub const PAINTER_STUDIO_ACCUMULATE: NodeId = hash_node_id("painter_studio.accumulate");
-pub const PAINTER_STUDIO_WET_EDGES: NodeId = hash_node_id("painter_studio.wet_edges");
-pub const PAINTER_STUDIO_BURNT_EDGES: NodeId = hash_node_id("painter_studio.burnt_edges");
-/// Live watercolor fluid diffusion (ADR-0049 / ADR-0077 D11). Toggles
-/// `brush.rendering.fluid_enabled`: stamps splat into a per-stroke
-/// `DiffusionGrid` advected by `Tool::on_tick` instead of stamping the canvas.
-pub const PAINTER_STUDIO_FLUID: NodeId = hash_node_id("painter_studio.fluid");
-/// Minimal watercolor core (ADR-0086/0087) toggle — the simplified GPU "Wash" mode,
-/// parallel to + mutually exclusive with Fluid.
-pub const PAINTER_STUDIO_WASH: NodeId = hash_node_id("painter_studio.wash");
-pub const PAINTER_STUDIO_EDGE_INTENSITY_SLIDER: NodeId =
-    hash_node_id("painter_studio.edge_intensity_slider");
-pub const PAINTER_STUDIO_EDGE_INTENSITY_CHIP: NodeId =
-    hash_node_id("painter_studio.edge_intensity_chip");
 /// Paper tooth strength (0 = crisp ink, 1 = heavy paper) — world-space
 /// substrate texture, independent of the brush grain source.
 pub const PAINTER_STUDIO_PAPER_SLIDER: NodeId = hash_node_id("painter_studio.paper_slider");
@@ -492,15 +478,6 @@ pub const PAINTER_STUDIO_PAPER_CHIP: NodeId = hash_node_id("painter_studio.paper
 pub const PAINTER_STUDIO_GRAIN_TYPE: NodeId = hash_node_id("painter_studio.grain_type");
 /// Rendering mode cycler (LightGlaze → … → IntenseBlending, 6 modes).
 pub const PAINTER_STUDIO_RENDERING_MODE: NodeId = hash_node_id("painter_studio.rendering_mode");
-/// Real-pigment palette cycler (ADR-0081): None → each `PALETTE` pigment → wrap to None. Picks
-/// the pigment's masstone colour + granulation; its staining rides each dab.
-pub const PAINTER_STUDIO_PIGMENT_PICK: NodeId = hash_node_id("painter_studio.pigment_pick");
-/// Keep-wet toggle pill (watercolor UX): pause evaporation indefinitely — the live
-/// wash stays wet + re-workable until toggled off. Tool-level bool (`BrushParam::KeepWet`).
-pub const PAINTER_STUDIO_KEEP_WET: NodeId = hash_node_id("painter_studio.keep_wet");
-/// Show-wet toggle pill (watercolor UX): the wet-paper sheen (darker wet regions + a
-/// bright meniscus at the wet boundary), view-only in the live preview. Default ON.
-pub const PAINTER_STUDIO_SHOW_WET: NodeId = hash_node_id("painter_studio.show_wet");
 
 // ── Color Dynamics section — per-stamp OKLab jitter (engine-wired) ────────────
 pub const PAINTER_STUDIO_SEC_COLOR: NodeId = hash_node_id("painter_studio.sec_color");
@@ -527,13 +504,6 @@ pub const PAINTER_STUDIO_OPACITY_JITTER_SLIDER: NodeId =
     hash_node_id("painter_studio.opacity_jitter_slider");
 pub const PAINTER_STUDIO_OPACITY_JITTER_CHIP: NodeId =
     hash_node_id("painter_studio.opacity_jitter_chip");
-
-// ── Watercolor section — per-brush fluid-solver controls (ADR-0079) ───────────
-// The 15 controls share two index-derived id helpers ([`painter_studio_watercolor_slider_id`]
-// / `_chip_id`) instead of 30 hand-written consts: the panel paints by iterating
-// `0..WatercolorParams::COUNT` and the tool decodes by recomputing + matching (the
-// layers-panel pattern). Only the section header is a fixed const.
-pub const PAINTER_STUDIO_SEC_WATERCOLOR: NodeId = hash_node_id("painter_studio.sec_watercolor");
 
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via
@@ -689,23 +659,6 @@ fn fnv_node_id_runtime(s: &str) -> NodeId {
 #[must_use]
 pub fn painter_layer_widget_id(layer_id: u64, kind: PainterLayerWidget) -> NodeId {
     fnv_node_id_runtime(&format!("painter_layer.{}.{}", kind.tag(), layer_id))
-}
-
-/// Derive the stable [`NodeId`] for the `index`-th watercolor control's SLIDER in the
-/// Brush Studio "Watercolor" section (ADR-0079). `index` is the position in
-/// `ph2d_painter_brush::WatercolorParams::CONTROLS` (the contract index the panel paints and
-/// the tool decodes). FNV-hashed; the Brush Studio is not a hot path (the existing
-/// per-row sliders format "NN%" per frame the same way).
-#[must_use]
-pub fn painter_studio_watercolor_slider_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_studio.watercolor.{index}.slider"))
-}
-
-/// Derive the stable [`NodeId`] for the `index`-th watercolor control's numeric CHIP
-/// (companion to [`painter_studio_watercolor_slider_id`], ADR-0079).
-#[must_use]
-pub fn painter_studio_watercolor_chip_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_studio.watercolor.{index}.chip"))
 }
 
 /// Derive the stable [`NodeId`] for blend-mode option `mode` (the

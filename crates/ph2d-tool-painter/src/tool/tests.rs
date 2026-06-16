@@ -158,6 +158,83 @@ fn add_layer_stacks_transparent_on_top_base_shows_through() {
 }
 
 #[test]
+fn undo_removes_added_layer_and_redo_restores_it() {
+    // ADR-0093 transactional undo: creating a layer is undoable (the v1 "clear
+    // undo on any layer op" limitation is gone).
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(4, 4, [200, 50, 50, 255]), 4, 4);
+    let base = t.layers().active().unwrap();
+    let top = t.add_raster_layer("Layer 2").expect("add layer");
+    assert_eq!(t.layers().len(), 2);
+    assert!(t.can_undo(), "adding a layer is undoable");
+
+    // Undo → the added layer is gone and the base is the active target again.
+    assert!(t.undo_last_stroke());
+    assert_eq!(t.layers().len(), 1, "undo removed the added layer");
+    assert_eq!(t.layers().active(), Some(base));
+    assert!(t.layers().get(top).is_none());
+    assert!(t.can_redo());
+
+    // Redo → the layer comes back, active, on top.
+    assert!(t.redo_last_stroke());
+    assert_eq!(t.layers().len(), 2, "redo restored the added layer");
+    assert_eq!(t.layers().active(), Some(top));
+    assert_eq!(t.layers().root().first(), Some(&top));
+}
+
+#[test]
+fn undo_restores_deleted_layer_with_its_pixels() {
+    let mut t = PainterTool::default();
+    t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2);
+    let top = t.add_raster_layer("Layer 2").unwrap();
+    // Give the top layer recognizable pixels, then flush them into `images`.
+    t.canvas_rgba = std::sync::Arc::new([10, 20, 30, 255].repeat(4));
+    t.flush_active_to_images();
+    assert!(t.delete_layer(top), "delete the top layer");
+    assert_eq!(t.layers().len(), 1, "only the base remains");
+
+    // Undo the delete → the layer (and its pixels) come back.
+    assert!(t.undo_last_stroke());
+    assert_eq!(t.layers().len(), 2, "undo restored the deleted layer");
+    assert_eq!(t.layers().active(), Some(top));
+    assert!(
+        t.canvas_rgba
+            .chunks_exact(4)
+            .all(|p| p == [10, 20, 30, 255]),
+        "the deleted layer's pixels were restored"
+    );
+}
+
+#[test]
+fn layer_switch_no_longer_wipes_stroke_undo() {
+    // The headline of the transactional fix: switching the active layer used to
+    // CLEAR the stroke undo history; now it is itself an undoable transition, so
+    // earlier strokes remain reachable across a switch.
+    let mut t = PainterTool::default();
+    t.params.size_px = 4.0;
+    t.set_source(flat_source(8, 8, [0, 0, 0, 255]), 8, 8);
+    let base = t.layers().active().unwrap();
+    // Stroke on the base layer.
+    t.begin_stroke(1);
+    t.queue_pointer(PointerSample {
+        position: [4.0, 4.0],
+        pressure: 1.0,
+        tilt: 0.0,
+    });
+    t.end_stroke();
+    let top = t.add_raster_layer("Layer 2").unwrap();
+    assert_eq!(t.layers().active(), Some(top));
+
+    // The base stroke is still undoable AFTER the structural add — first undo
+    // peels the add, second undo peels the stroke (chronological order).
+    assert!(t.undo_last_stroke(), "undo the add");
+    assert_eq!(t.layers().len(), 1);
+    assert_eq!(t.layers().active(), Some(base));
+    assert!(t.can_undo(), "the pre-add stroke survives the layer op");
+    assert!(t.undo_last_stroke(), "undo the base stroke");
+}
+
+#[test]
 fn select_layer_round_trips_working_buffers() {
     let mut t = PainterTool::default();
     t.set_source(flat_source(2, 2, [200, 50, 50, 255]), 2, 2); // base red
@@ -649,36 +726,6 @@ fn pigment_toggle_via_panel_event_click() {
         ph2d_editor_core::ids::PAINTER_SIDEBAR_PIGMENT_TOGGLE,
     ));
     assert_eq!(t.active_brush().rendering.pigment_mode, PigmentMode::Linear);
-}
-
-#[test]
-fn fluid_toggle_via_brush_studio_checkbox() {
-    // Brush Studio "Fluid" checkbox routes Click(PAINTER_STUDIO_FLUID) →
-    // handle_panel_event → SetBrushParam(Fluid) (bool via the uncapped param,
-    // mirroring Wet/Burnt Edges — no new frozen PainterUiEdit slot). The studio
-    // snapshot mirrors `brush.rendering.fluid_enabled` both ways.
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = PainterTool::default();
-    assert!(
-        !t.brush_studio_snapshot().fluid_enabled,
-        "fluid off by default"
-    );
-    assert!(!t.active_brush().rendering.fluid_enabled);
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
-    ));
-    assert!(t.active_brush().rendering.fluid_enabled, "click → fluid on");
-    assert!(
-        t.brush_studio_snapshot().fluid_enabled,
-        "snapshot mirrors it"
-    );
-    t.handle_panel_event(PanelEvent::Click(
-        ph2d_editor_core::ids::PAINTER_STUDIO_FLUID,
-    ));
-    assert!(
-        !t.active_brush().rendering.fluid_enabled,
-        "second click → fluid off"
-    );
 }
 
 #[test]
@@ -2650,57 +2697,6 @@ fn add_adjustment_via_kind_menu_select_creates_that_kind() {
 }
 
 #[test]
-fn wet_edges_darken_the_stroke_rim_on_pen_up() {
-    // End-to-end watercolor wet-edge check: paint a wash stroke with `wet_edges`
-    // ON, then verify the stroke comes out DARKER on its rim (the inner edge
-    // shoulder = the receding water boundary) than at its fill centre. This is
-    // pigment-transport edge darkening, not a silhouette outline — proven by the
-    // rim sitting *inside* the stroke, darker than the fill, with the fill centre
-    // essentially the flat brush colour.
-    let (w, h) = (48u32, 48u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 18.0;
-    // Transparent wash (opacity < 1): the K–M rim concentrates pigment toward the
-    // masstone, so edge darkening is bounded by it — it shows only where the fill is
-    // a GLAZE (lighter than the masstone), the physical watercolor case. At opacity
-    // 1.0 the fill is the masstone itself, so the rim correctly can't go darker.
-    t.params.opacity = 0.5;
-    // Wash mode (default accumulate=false) + wet_edges ON + a plain linear blend.
-    t.brush.rendering.wet_edges = true;
-    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h); // white paper
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]); // blue
-    t.begin_stroke(5);
-    for x in (6..42).step_by(2) {
-        t.queue_pointer(PointerSample {
-            position: [x as f32, 24.0],
-            pressure: 1.0,
-            tilt: 0.0,
-        });
-    }
-    t.end_stroke();
-    let (px, _, _) = t.current_preview().expect("painted preview");
-    let luma = |x: u32, y: u32| {
-        let i = ((y * w + x) * 4) as usize;
-        px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
-    };
-    let center = luma(24, 24); // middle of the horizontal band = fill
-    // Darkest covered pixel along a vertical slice through the band = the rim.
-    let mut min_band = f32::INFINITY;
-    for y in 14..35 {
-        let l = luma(24, y);
-        if l < 245.0 {
-            // ignore the white paper / soft AA fringe
-            min_band = min_band.min(l);
-        }
-    }
-    assert!(
-        min_band < center - 6.0,
-        "wet-edge rim must be darker than the fill centre: rim {min_band} vs fill {center}"
-    );
-}
-
-#[test]
 fn wet_edges_off_leaves_a_flat_wash() {
     // Control: the SAME stroke with wet_edges OFF has no rim — the band is flat
     // (rim ≈ centre). Guards against the settle pass firing unconditionally.
@@ -2888,96 +2884,6 @@ fn visual_smoke_dump_strokes() {
 }
 
 #[test]
-fn wet_edges_work_in_accumulate_buildup_mode() {
-    // Regression: wet/burnt edges must fire in build-up (`accumulate`) mode too,
-    // not only wash. The coverage buffer is now a side output of the build-up
-    // render, so the pen-up settle has the stroke extent to darken its rim.
-    let (w, h) = (48u32, 48u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 18.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.accumulate = true; // BUILD-UP, not wash
-    t.brush.rendering.wet_edges = true;
-    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]);
-    t.begin_stroke(5);
-    for x in (6..42).step_by(2) {
-        t.queue_pointer(PointerSample {
-            position: [x as f32, 24.0],
-            pressure: 1.0,
-            tilt: 0.0,
-        });
-    }
-    t.end_stroke();
-    let (px, _, _) = t.current_preview().expect("painted preview");
-    let luma = |x: u32, y: u32| {
-        let i = ((y * w + x) * 4) as usize;
-        px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
-    };
-    let center = luma(24, 24);
-    let mut min_band = f32::INFINITY;
-    for y in 14..35 {
-        let l = luma(24, y);
-        if l < 245.0 {
-            min_band = min_band.min(l);
-        }
-    }
-    assert!(
-        min_band < center - 6.0,
-        "wet-edge rim must darken in build-up mode too: rim {min_band} vs fill {center}"
-    );
-}
-
-#[test]
-fn edge_intensity_scales_the_rim_darkness() {
-    // The Edge Intensity slider (brush.rendering.edge_intensity) must scale the
-    // settle strength: a higher value → a darker rim. Proves the field flows
-    // through end_stroke into apply_wash_settle.
-    let rim_luma = |intensity: f32| -> f32 {
-        let (w, h) = (48u32, 48u32);
-        let mut t = PainterTool::default();
-        t.params.size_px = 18.0;
-        // Transparent wash so the K–M rim has glaze headroom toward the masstone
-        // (see `wet_edges_darken_the_stroke_rim_on_pen_up`).
-        t.params.opacity = 0.5;
-        t.brush.rendering.wet_edges = true;
-        t.brush.rendering.edge_intensity = intensity;
-        t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Linear;
-        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-        t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 90, 200, 255]);
-        t.begin_stroke(5);
-        for x in (6..42).step_by(2) {
-            t.queue_pointer(PointerSample {
-                position: [x as f32, 24.0],
-                pressure: 1.0,
-                tilt: 0.0,
-            });
-        }
-        t.end_stroke();
-        let (px, _, _) = t.current_preview().unwrap();
-        let luma = |x: u32, y: u32| {
-            let i = ((y * w + x) * 4) as usize;
-            px[i] as f32 * 0.299 + px[i + 1] as f32 * 0.587 + px[i + 2] as f32 * 0.114
-        };
-        let mut min_band = f32::INFINITY;
-        for y in 14..35 {
-            let l = luma(24, y);
-            if l < 245.0 {
-                min_band = min_band.min(l);
-            }
-        }
-        min_band
-    };
-    let rim_lo = rim_luma(0.2);
-    let rim_hi = rim_luma(1.0);
-    assert!(
-        rim_hi < rim_lo - 5.0,
-        "higher edge intensity must darken the rim more: hi {rim_hi} vs lo {rim_lo}"
-    );
-}
-
-#[test]
 fn visual_smoke_rendering_modes() {
     if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
         return;
@@ -3138,487 +3044,6 @@ fn visual_smoke_paper_tooth() {
 }
 
 #[test]
-fn visual_smoke_watercolor_v15() {
-    // Watercolor v1.5 dry-down: a TRANSPARENT pigment wash (opacity 0.5) with
-    // wet_edges ON. Three bands, top→bottom, vary the Paper (= granulation) amount:
-    //   0.0  → K–M edge darkening only (dark rim concentrating toward the masstone)
-    //   0.5  → edge darkening + moderate granular sediment in the paper valleys
-    //   0.9  → strong granulation mottle + edge darkening
-    // Pen-up settle gives the rim + mottle; the body stays a luminous glaze.
-    if std::env::var("PAINTER_VISUAL_SMOKE").as_deref() != Ok("1") {
-        return;
-    }
-    let (w, h) = (320u32, 210u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 34.0;
-    t.params.opacity = 0.5; // transparent wash — the watercolor case
-    t.brush.rendering.wet_edges = true;
-    t.brush.rendering.edge_intensity = 0.7;
-    t.brush.rendering.pigment_mode = ph2d_painter_brush::PigmentMode::Subtractive;
-    t.set_source(flat_source(w, h, [252, 250, 246, 255]), w, h); // warm paper
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 70, 165, 255]); // ultramarine
-    for (i, pg) in [0.0f32, 0.5, 0.9].iter().enumerate() {
-        t.params.paper_grain = *pg;
-        let y = 40.0 + i as f32 * 64.0;
-        let line: Vec<(f32, f32, f32)> = (0..56)
-            .map(|k| {
-                let s = k as f32 / 55.0;
-                (
-                    26.0 + s * 268.0,
-                    y + (s * std::f32::consts::TAU).sin() * 10.0,
-                    1.0,
-                )
-            })
-            .collect();
-        paint_arc(&mut t, &line);
-    }
-    let (px, _, _) = t.current_preview().unwrap();
-    dump_ppm("/tmp/painter_smoke_watercolor.ppm", px, w, h);
-    eprintln!(
-        "[watercolor v1.5] ultramarine wash, granulation 0.0 / 0.5 / 0.9 top→bottom; \
-         K-M edge darkening + paper-valley sediment"
-    );
-}
-
-#[test]
-fn non_fluid_brush_allocates_no_wet_field() {
-    // The default (fluid_enabled = false) brush never allocates a wet field → the
-    // normal render path is byte-for-byte unchanged.
-    let mut t = PainterTool::default();
-    t.set_source(flat_source(8, 8, [255; 4]), 8, 8);
-    t.begin_stroke(1);
-    assert!(t.wet_field.is_none(), "non-fluid brush has no wet field");
-}
-
-#[test]
-fn fluid_brush_without_gpu_allocates_no_wet_field() {
-    // ADR-0085 graceful degrade: the live watercolor sim is GPU-resident with no CPU twin, so
-    // a fluid brush on a device WITHOUT a GPU (`fluid_hires` = false, the default in a headless
-    // tool) allocates NO wet field — the brush falls through to the normal wash path
-    // (watercolor OFF). A wet field is only ever created on a GPU-capable device.
-    let mut t = PainterTool::default();
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(16, 16, [255; 4]), 16, 16);
-    // fluid_hires defaults to false (no shell set it) → no GPU.
-    t.begin_stroke(1);
-    assert!(
-        t.wet_field.is_none(),
-        "a fluid brush without a GPU must NOT allocate a wet field (degrades to the wash path)"
-    );
-    // And a dab paints the canvas directly (non-fluid path), not a fluid no-op.
-    t.queue_pointer(PointerSample {
-        position: [8.0, 8.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(
-        t.has_painted_since_source,
-        "the degraded fluid brush still paints"
-    );
-}
-
-#[test]
-fn fluid_wet_field_dropped_on_undo_and_set_source() {
-    // Now that "Fluid" is a user toggle, the v1 edge cases are reachable: a wash
-    // still blooming post-pen-up must NOT re-composite onto a canvas whose stroke
-    // was undone or whose source was swapped out from under it. Both drop the field.
-    let (w, h) = (32u32, 24u32);
-    let make_fluid_stroke = || {
-        let mut t = PainterTool::default();
-        t.params.size_px = 12.0;
-        t.params.opacity = 1.0;
-        t.brush.rendering.fluid_enabled = true;
-        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-        t.set_fluid_hires(true); // ADR-0085: a wet field allocates only on a GPU device
-        t.begin_stroke(3);
-        t.queue_pointer(PointerSample {
-            position: [16.0, 12.0],
-            pressure: 1.0,
-            tilt: 0.0,
-        });
-        t.end_stroke();
-        t
-    };
-    // Undo backs out the stroke → the still-wet field must go with it.
-    let mut t = make_fluid_stroke();
-    assert!(t.wet_field.is_some(), "field still wet right after pen-up");
-    assert!(t.undo_last_stroke(), "the committed fluid stroke undoes");
-    assert!(t.wet_field.is_none(), "undo drops the blooming field");
-    // A fresh source (sized differently) → the old grid is meaningless; drop it.
-    let mut t2 = make_fluid_stroke();
-    assert!(t2.wet_field.is_some());
-    t2.set_source(flat_source(40, 40, [255; 4]), 40, 40);
-    assert!(t2.wet_field.is_none(), "set_source drops the stale field");
-}
-
-#[test]
-fn fluid_cross_stroke_wet_on_wet_mixes() {
-    // **ADR-0080 cross-stroke gate (tool side).** A still-WET field persists across strokes:
-    // paint BLUE, then (a NEW stroke) paint YELLOW over the same wet spot before it dries — the
-    // SECOND `begin_stroke` must REUSE the surviving field (not bump the GPU-reset epoch), so
-    // both strokes' dabs land in the same GPU-resident field and mix there. The actual
-    // subtractive mix (blue⊗yellow→green) is asserted GPU-side by INV-4 / the composite
-    // green-dominant gate; here we only assert the tool's cross-stroke REUSE bookkeeping.
-    let (w, h) = (48u32, 36u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 22.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h); // white paper
-    t.set_fluid_hires(true); // ADR-0085: GPU-resident field
-    // Stroke 1 — blue, at the centre.
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([20, 40, 235, 255]);
-    t.begin_stroke(1);
-    t.queue_pointer(PointerSample {
-        position: [24.0, 18.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(t.has_wet_field(), "stroke 1 allocated the wet field");
-    let epoch1 = t.fluid_stroke_epoch();
-    t.end_stroke();
-    assert!(
-        t.has_wet_field(),
-        "the wet field must persist (still wet) after stroke 1 ends — cross-stroke wet-on-wet"
-    );
-    // Stroke 2 — yellow, over the SAME wet spot. begin_stroke must REUSE the wet field:
-    // a reused field does NOT bump the stroke epoch (a fresh field would, resetting the GPU
-    // resident pigment + losing stroke 1's wash).
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([235, 210, 20, 255]);
-    t.begin_stroke(2);
-    assert_eq!(
-        t.fluid_stroke_epoch(),
-        epoch1,
-        "stroke 2 must REUSE the still-wet field (epoch unchanged) — not reset the GPU pigment"
-    );
-    t.queue_pointer(PointerSample {
-        position: [24.0, 18.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    // Both strokes' dabs are captured into the same GPU dab list for `cs_splat`.
-    let (dabs, _) = t
-        .fluid_take_dabs()
-        .expect("wet field present after stroke 2");
-    assert!(
-        !dabs.is_empty(),
-        "stroke 2 captured dabs into the reused field"
-    );
-}
-
-#[test]
-fn gpu_fluid_driven_skips_cpu_diffusion() {
-    // ADR-0085: the field is GPU-resident — the tool NEVER CPU-steps or CPU-splats it. A dab
-    // goes to the GPU dab list (`cs_splat` on the shell drive), and the per-frame `on_tick`
-    // heartbeat is a no-op. Verify the CPU `DiffusionGrid` stays empty across a dab + an
-    // `on_tick`, so nothing leaks back into the CPU mirror.
-    let (w, h) = (40u32, 32u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 14.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
-    t.set_fluid_hires(true); // GPU device → resident field
-    t.begin_stroke(3);
-    t.queue_pointer(PointerSample {
-        position: [20.0, 16.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(
-        t.has_wet_field(),
-        "fluid field allocated; dab captured to the GPU list"
-    );
-    let grid_mass = |t: &mut PainterTool| -> f32 {
-        t.fluid_grid_mut()
-            .unwrap()
-            .pigment()
-            .iter()
-            .map(|p| p[0] + p[1] + p[2])
-            .sum()
-    };
-    assert_eq!(
-        grid_mass(&mut t),
-        0.0,
-        "the dab must NOT splat into the CPU grid"
-    );
-    t.on_tick_diffusion(); // GPU-only → a no-op (shell drives the resident field)
-    assert_eq!(grid_mass(&mut t), 0.0, "on_tick must not CPU-step the grid");
-    assert!(t.has_wet_field(), "field still present (nothing dried it)");
-}
-
-#[test]
-fn gpu_resident_path_captures_dabs_to_list_not_grid() {
-    // 4K real-time arch §4: on a capable GPU (`fluid_hires` = true, set by the shell
-    // BEFORE begin_stroke) the tool captures dabs as a small list for `cs_splat` — it
-    // must NOT splat into the CPU grid (the field is GPU-resident) and must grow the
-    // monotonic composite envelope. `fluid_hires` (not `gpu_fluid_driven`) gates this
-    // so the stroke's FIRST frame is captured too.
-    let (w, h) = (40u32, 32u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 14.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
-    t.set_fluid_hires(true); // capable GPU → the resident dab path
-    t.begin_stroke(7);
-    t.queue_pointer(PointerSample {
-        position: [20.0, 16.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(t.has_wet_field(), "fluid field allocated");
-    // The CPU grid stays empty — the dabs went to the GPU list, not `DiffusionGrid`.
-    let grid_pig: f32 = t
-        .fluid_grid_mut()
-        .unwrap()
-        .pigment()
-        .iter()
-        .map(|p| p[0] + p[1] + p[2])
-        .sum();
-    assert_eq!(
-        grid_pig, 0.0,
-        "GPU-resident path must NOT splat into the CPU grid"
-    );
-    // Draining returns the dabs + a monotonic in-grid envelope covering the dab.
-    let (dabs, region) = t.fluid_take_dabs().expect("envelope set after a dab");
-    assert!(!dabs.is_empty(), "dabs captured for cs_splat");
-    let (gw, gh) = t.fluid_grid_dims().unwrap();
-    let (x0, y0, x1, y1) = region;
-    assert!(
-        x1 >= x0 && y1 >= y0 && x1 < gw && y1 < gh,
-        "valid in-grid composite region {region:?} for {gw}x{gh}"
-    );
-    // After draining, the list is empty but the envelope persists (so the field keeps
-    // compositing while it blooms out after pen-up).
-    let (dabs2, region2) = t.fluid_take_dabs().expect("envelope persists after drain");
-    assert!(dabs2.is_empty(), "dab list drained");
-    assert_eq!(region2, region, "monotonic envelope persists across drains");
-}
-
-#[test]
-fn water_brush_emits_waterful_pigmentless_dabs() {
-    // Water brush / rewetting (ADR-0079 control 19, 2026-06-09): `watercolor.water = 1`
-    // scales each dab's PIGMENT to zero while the WATER deposit stays full — the wet-on-wet
-    // staple (pre-wet paper, soften wet edges, lift without laying colour). 0 = the validated
-    // paint look (full pigment). Continuous: 0.5 = half-load.
-    let (w, h) = (40u32, 32u32);
-    let dab_for_water = |water: f32| {
-        let mut t = PainterTool::default();
-        t.params.size_px = 14.0;
-        t.params.opacity = 1.0;
-        t.brush.rendering.fluid_enabled = true;
-        t.brush.rendering.watercolor.water = water;
-        t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-        t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
-        t.set_fluid_hires(true);
-        t.begin_stroke(7);
-        t.queue_pointer(PointerSample {
-            position: [20.0, 16.0],
-            pressure: 1.0,
-            tilt: 0.0,
-        });
-        let (dabs, _) = t.fluid_take_dabs().expect("dab captured");
-        assert!(!dabs.is_empty(), "stroke still emits dabs at water={water}");
-        dabs[0]
-    };
-    let paint = dab_for_water(0.0);
-    let damp = dab_for_water(0.5);
-    let pure = dab_for_water(1.0);
-    assert!(paint.mass > 0.0, "paint brush deposits pigment");
-    assert!(
-        (damp.mass - paint.mass * 0.5).abs() < 1e-6,
-        "damp brush deposits half the pigment load ({} vs {}/2)",
-        damp.mass,
-        paint.mass
-    );
-    assert_eq!(pure.mass, 0.0, "pure water deposits ZERO pigment");
-    assert_eq!(
-        pure.water, paint.water,
-        "the WATER deposit is untouched by the Water control"
-    );
-}
-
-#[test]
-fn fluid_field_survives_mid_stroke_dry_pause() {
-    // REGRESSION (Enio pause bug, 2026-06-07): pausing mid-stroke (button held, no dabs) dries
-    // the wet field in ~0.3s, but it must NOT be dropped while the stroke is ACTIVE — else
-    // resuming the drag finds no field and paints NON-fluid (the solid blob at the stroke's
-    // end). ADR-0085: drying is GPU-driven — the shell reads the GPU-reduced `max_water` and
-    // calls `fluid_dry_check_and_drop_gpu`, which is gated on `!stroke_active`. Drive that gate
-    // directly with a dried (≈0) water reading.
-    let (w, h) = (48u32, 36u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 14.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([40, 60, 200, 255]);
-    t.set_fluid_hires(true); // ADR-0085: GPU-resident field
-    t.begin_stroke(5);
-    t.queue_pointer(PointerSample {
-        position: [24.0, 18.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(t.has_wet_field(), "field allocated after first dab");
-    // Mid-stroke pause: the GPU reports the field has dried (max_water ≈ 0), but the stroke is
-    // still ACTIVE → the drop gate must NOT fire.
-    assert!(
-        !t.fluid_dry_check_and_drop_gpu(0.0),
-        "dry-check must NOT drop while the stroke is active"
-    );
-    assert!(
-        t.has_wet_field(),
-        "field MUST survive a mid-stroke dry pause (resume stays fluid)"
-    );
-    // Resuming the drag re-wets the kept field — still the fluid path.
-    t.queue_pointer(PointerSample {
-        position: [32.0, 18.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    assert!(t.has_wet_field(), "field re-wet on resume");
-    // After pen-up, the same dried reading DROPS the field.
-    t.end_stroke();
-    assert!(
-        t.fluid_dry_check_and_drop_gpu(0.0),
-        "dry-check drops the field once the stroke has ended"
-    );
-    assert!(!t.has_wet_field(), "field drops after pen-up dry-out");
-}
-
-#[test]
-fn keep_wet_field_never_drops_on_dry_check() {
-    // ADR-0085 ("Keep Wet para de funcionar"): Keep Wet means the wash stays workable
-    // INDEFINITELY, so the dry-check must NEVER drop the field while it is on — even at a
-    // bone-dry `max_water` reading (the capillary layer thins the pool, a thin wash sits near
-    // the threshold). Forcing evaporation to 0 wasn't enough; the drop must be gated on keep_wet.
-    let (w, h) = (32u32, 24u32);
-    let mut t = PainterTool::default();
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.set_fluid_hires(true);
-    t.keep_wet = true;
-    t.begin_stroke(5);
-    t.queue_pointer(PointerSample {
-        position: [16.0, 12.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    t.end_stroke();
-    assert!(t.has_wet_field(), "field allocated");
-    // Bone-dry + pointer up: WITHOUT keep-wet this drops; with keep-wet on it must NOT.
-    assert!(
-        !t.fluid_dry_check_and_drop_gpu(0.0),
-        "keep-wet must NOT drop the field, even bone-dry"
-    );
-    assert!(t.has_wet_field(), "field survives under keep-wet");
-    // Toggling keep-wet OFF lets the dry-check drop it again (the wash resumes drying).
-    t.keep_wet = false;
-    assert!(
-        t.fluid_dry_check_and_drop_gpu(0.0),
-        "without keep-wet a bone-dry field drops"
-    );
-    assert!(!t.has_wet_field(), "field drops once keep-wet is off");
-}
-
-#[test]
-fn keep_wet_minimal_evaporation_soft_rim_and_slider_zero_suppresses_deposition() {
-    // ADR-0085 (Enio 2026-06-12 "se há o mínimo de evaporação, a borda fica boa"): Keep Wet no
-    // longer forces evaporation to a hard 0 (a static front pins into a crisp/pixelated rim) — it
-    // pauses it to a MINIMAL residual so the edge water recedes through the wet gate into a SOFT
-    // rim. With evaporation > 0 the DRY-gated deposition runs, so the wet interior stays mobile
-    // (wet-on-wet still blends) while only the drying edge gets the soft watercolor rim. The
-    // deposition suppression now fires ONLY for an explicit Evaporation-slider-0 (pure wet).
-    let mut t = PainterTool::default();
-    let dp = t.fluid_diffusion_params();
-    assert!(dp.evaporation > 0.0, "default wash dries (ratified look)");
-    assert!(
-        dp.deposition > 0.0 && dp.deposition_dry > 0.0,
-        "default look deposits + edge-darkens"
-    );
-    // Keep Wet → a MINIMAL (non-zero) evaporation, BELOW the 0.012 preset; deposition is NOT
-    // forced off (the shader dry-gates it so only the edge deposits).
-    t.keep_wet = true;
-    let dp = t.fluid_diffusion_params();
-    assert!(
-        dp.evaporation > 0.0 && dp.evaporation < 0.012,
-        "keep-wet pauses evaporation to a minimal residual, not 0: {}",
-        dp.evaporation
-    );
-    assert!(
-        dp.deposition > 0.0,
-        "keep-wet no longer suppresses deposition — the shader dry-gates it for the soft rim"
-    );
-    // The Evaporation SLIDER at 0 (keep-wet OFF) DOES suppress deposition (pure wet, no rim).
-    t.keep_wet = false;
-    t.brush.rendering.watercolor.evaporation = 0.0;
-    let dp = t.fluid_diffusion_params();
-    assert_eq!(dp.evaporation, 0.0);
-    assert_eq!(
-        dp.deposition, 0.0,
-        "evaporation 0 suppresses base deposition"
-    );
-    assert_eq!(
-        dp.deposition_dry, 0.0,
-        "evaporation 0 suppresses edge-darkening"
-    );
-}
-
-#[test]
-fn fluid_gpu_envelope_never_recedes_under_evaporation() {
-    // REGRESSION (Enio "bordas cheias de quinas retangulares", 2026-06-07): the GPU
-    // composite region must be the MONOTONIC wet envelope, not the current water
-    // bbox. Water only evaporates (its bbox marches inward) while the conserved
-    // pigment lingers outside it — compositing over a RECEDING rect hard-cut the
-    // round dab into an axis-aligned rectangle. The envelope never shrinks for the
-    // life of the field. (The OLD `cur ∪ prev` region receded → this would fail.)
-    let (w, h) = (64u32, 64u32);
-    let mut t = PainterTool::default();
-    t.params.size_px = 18.0;
-    t.params.opacity = 1.0;
-    t.brush.rendering.fluid_enabled = true;
-    t.set_source(flat_source(w, h, [255, 255, 255, 255]), w, h);
-    t.params.active_color = crate::color::srgb8_to_painter_oklch([30, 60, 180, 255]);
-    t.set_gpu_fluid_driven(true); // GPU path: queue_pointer only splats (no CPU step)
-    t.set_fluid_hires(true); // GPU-resident dab path: grows wet_pigment_envelope (fluid_take_dabs)
-    t.begin_stroke(9);
-    t.queue_pointer(PointerSample {
-        position: [32.0, 32.0],
-        pressure: 1.0,
-        tilt: 0.0,
-    });
-    // The composite region is the MONOTONIC wet envelope (`wet_pigment_envelope`), returned by
-    // the live `fluid_take_dabs`. It only ever GROWS (queue_pointer unions each dab's bbox; reset
-    // only at a fresh stroke), so across frames it never recedes — even as the GPU water field
-    // evaporates underneath it.
-    let r0 = t.fluid_take_dabs().expect("wet field after a dab").1;
-    let mut prev = r0;
-    // March the pointer outward over many frames; the envelope must grow + never recede.
-    for k in 1..40u32 {
-        t.queue_pointer(PointerSample {
-            position: [32.0 + k as f32, 32.0],
-            pressure: 1.0,
-            tilt: 0.0,
-        });
-        if let Some((_dabs, r)) = t.fluid_take_dabs() {
-            assert!(
-                r.0 <= prev.0 && r.1 <= prev.1 && r.2 >= prev.2 && r.3 >= prev.3,
-                "composite envelope RECEDED {prev:?} -> {r:?} (the rectangular-clip bug)"
-            );
-            prev = r;
-        }
-    }
-    assert!(
-        prev.2 > r0.2,
-        "the envelope must have GROWN rightward as the stroke marched out: {r0:?} -> {prev:?}"
-    );
-}
-
-#[test]
 fn visual_smoke_velocity_and_smoothing() {
     // Velocity dynamics + One-Euro motion filtering. Three bands, top→bottom:
     //   1. Calligraphy: an ACCELERATING stroke with speed_size = −0.85 (fast → thin)
@@ -3749,58 +3174,4 @@ fn paper_tooth_textures_stroke_and_modulates_by_pressure() {
         light > firm + 15.0,
         "light pressure leaves more paper (brighter) than firm: light {light} vs firm {firm}"
     );
-}
-
-#[test]
-fn pigment_pick_sets_colour_granulation_and_staining() {
-    // ADR-0081: picking a real pigment loads its masstone colour + granulation into the brush
-    // and makes its staining ride each dab; clearing it restores the raw-colour (staining 0) path.
-    use ph2d_painter_brush::PALETTE;
-    let ultra_idx = PALETTE
-        .iter()
-        .position(|p| p.name == "French Ultramarine")
-        .expect("French Ultramarine in the palette") as u8;
-    let ultra = &PALETTE[ultra_idx as usize];
-
-    let mut t = PainterTool::default();
-    t.set_active_pigment(Some(ultra_idx));
-    assert_eq!(t.active_pigment(), Some(ultra_idx));
-
-    // Colour == the pigment's masstone (the exact value set_active_pigment writes).
-    let [r, g, b] = ultra.srgb;
-    let expected = crate::color::srgb8_to_painter_oklch([r, g, b, 255]);
-    let got = t.params.active_color;
-    assert!(
-        (got.l - expected.l).abs() < 1e-6
-            && (got.c - expected.c).abs() < 1e-6
-            && (got.h - expected.h).abs() < 1e-6,
-        "brush colour must match ultramarine masstone: got {got:?} vs {expected:?}"
-    );
-
-    // Granulation folded into the brush watercolor slider.
-    assert!(
-        (t.brush.rendering.watercolor.granulation - ultra.granulation_param()).abs() < 1e-6,
-        "brush granulation must equal the pigment's granulation_param"
-    );
-
-    // The active pigment's staining rides each dab — equals the pigment's staining.
-    assert!(
-        ultra.staining > 0.0,
-        "ultramarine has a real staining value"
-    );
-    assert!(
-        (t.active_staining() - ultra.staining).abs() < 1e-6,
-        "active_staining must equal the picked pigment's staining"
-    );
-    // Also visible through the published snapshot index.
-    assert_eq!(t.brush_studio_snapshot().active_pigment, Some(ultra_idx));
-
-    // Clearing → raw colour: no active pigment ⇒ staining 0 (colour/params left as-is).
-    let colour_before_clear = t.params.active_color;
-    t.set_active_pigment(None);
-    assert_eq!(t.active_pigment(), None);
-    assert_eq!(t.active_staining(), 0.0, "no pigment ⇒ zero staining");
-    assert_eq!(t.brush_studio_snapshot().active_pigment, None);
-    // Colour is NOT reset on clear (raw-colour path leaves the brush as-is).
-    assert_eq!(t.params.active_color, colour_before_clear);
 }

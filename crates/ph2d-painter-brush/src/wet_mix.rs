@@ -6,8 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Simulação de mídia úmida (matemática — fluid sim real vive em
-/// ph2d-painter-fluid opt-in W15). §1.3.7.
+/// Simulação de mídia úmida (matemática — wet-mix/smudge do `IntenseBlending`). §1.3.7.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WetMixParams {
     /// Master toggle.

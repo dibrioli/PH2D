@@ -5,7 +5,7 @@
 use ph2d_painter_stroke::{
     CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerId, LayerNode, LayerNodeKind,
     LayerStackEntry, LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES,
-    MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS, PaintProject, load, save,
+    MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS, PaintProject, SCHEMA_VERSION, load, save,
 };
 
 fn canvas(w: u32, h: u32) -> CanvasInfo {
@@ -45,7 +45,10 @@ fn v1_bytes(w: u32, h: u32) -> Vec<u8> {
 fn load_migrates_v1_to_v2_with_default_layer() {
     let bytes = v1_bytes(100, 80);
     let p = load(&bytes).expect("load + migrate v1");
-    assert_eq!(p.version, 2, "v1 file must migrate to v2");
+    assert_eq!(
+        p.version, SCHEMA_VERSION,
+        "v1 file migrates up to the current schema version"
+    );
     assert_eq!(
         p.layer_stack.layers.len(),
         1,
@@ -81,7 +84,7 @@ fn load_migrates_v1_to_v2_with_default_layer() {
     }
     // The migrated project re-locks its checksum (re-save → load is clean).
     let resaved = save(&p).expect("re-save migrated");
-    assert_eq!(load(&resaved).expect("reload").version, 2);
+    assert_eq!(load(&resaved).expect("reload").version, SCHEMA_VERSION);
 }
 
 #[test]
@@ -128,7 +131,7 @@ fn v2_layer_tree_roundtrips_through_save_load() {
         back.layer_stack, p.layer_stack,
         "layer tree must round-trip losslessly"
     );
-    assert_eq!(back.version, 2);
+    assert_eq!(back.version, SCHEMA_VERSION);
 }
 
 #[test]

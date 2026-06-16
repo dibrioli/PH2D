@@ -384,10 +384,9 @@ pub fn mix_prepared(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
 
 /// Exact (no-LUT) twin of [`mix_prepared`]: reconstructs the backdrop reflectance
 /// directly with [`to_reflectance`] instead of the trilinear LUT cache. Bit-for-bit
-/// the same algorithm; only the backdrop-side fast path differs. The wet-field
-/// composite ([`crate::wet_composite`]) uses THIS variant so its GPU port — which
-/// has no LUT (ADR-0049 §2; the GPU runs the spectral solve inline) — agrees with
-/// the CPU to float precision, and the CPU fallback is the true parity reference.
+/// the same algorithm; only the backdrop-side fast path differs. The LUT-free twin
+/// agrees with an inline (no-LUT) spectral solve to float precision, and is the true
+/// parity reference for any GPU port of the K–M mix.
 /// The LUT [`mix_prepared`] stays the per-dab hot-path version.
 #[must_use]
 pub fn mix_prepared_exact(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32; 3] {
@@ -425,7 +424,7 @@ pub fn mix_prepared_exact(brush: &PreparedPigment, a: [f32; 3], t: f32) -> [f32;
 
 // ───────────────────── wet-field multi-pigment mix (ADR-0080) ─────────────────────
 //
-// The wet diffusion field (`crate::diffusion`, + its GPU mirror) carries, per cell, the
+// A mass-weighted multi-pigment field carries, per cell, the
 // MASS-WEIGHTED ACCUMULATION of a [`PreparedPigment`]: `ks_acc = Σ_i mass_i·ks_i` (per
 // band), `err_acc = Σ_i mass_i·err_i` (the round-trip re-anchor), and `mass = Σ_i mass_i`
 // (coverage). Because K/S blends LINEARLY by concentration (the K–M law [`mix_prepared`]

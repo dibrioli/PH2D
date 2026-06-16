@@ -155,10 +155,7 @@ pub const FLAG_BURNT_EDGES: u32 = 1 << 3;
 pub const FLAG_WET_EDGES: u32 = 1 << 4;
 pub const FLAG_LUMINANCE_BLENDING: u32 = 1 << 5;
 pub const FLAG_GRAIN_PROCEDURAL: u32 = 1 << 6;
-/// **RESERVADO ADR-0049 §2.3** — fluid sim per-stamp opt-in (W15+).
-/// Setado pelo StampScheduler quando brush tem `fluid_enabled=true` AND
-/// device tier ativou fluid (`PlatformHost::fluid_capable()` true).
-pub const FLAG_FLUID_SAMPLE: u32 = 1 << 7;
+// bit 7 livre (ex-`FLAG_FLUID_SAMPLE`, removido com o sistema de aquarela).
 /// **RESERVADO ADR-0050 §2.6** — stamp "fantasma" de hover preview (Pencil
 /// hover state). Setado para stamps pre-down; descartado em commit.
 pub const FLAG_HOVER_PREVIEW: u32 = 1 << 8;
@@ -216,7 +213,6 @@ mod tests {
             FLAG_WET_EDGES,
             FLAG_LUMINANCE_BLENDING,
             FLAG_GRAIN_PROCEDURAL,
-            FLAG_FLUID_SAMPLE,
             FLAG_HOVER_PREVIEW,
             FLAG_PREDICTED_SAMPLE,
         ];

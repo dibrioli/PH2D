@@ -127,9 +127,9 @@ pub fn apply_stamps_with_options(
 /// Like [`apply_stamps_with_options`] (build-up / `accumulate`), but ALSO
 /// accumulates each dab's per-pixel coverage into `coverage` (`cov ← cov +
 /// α·(1−cov)`). The build-up render itself is byte-identical to
-/// [`apply_stamps_with_options`]; the coverage buffer is a side output the
-/// **edge settle** ([`apply_wash_settle`]) needs to locate the stroke — so
-/// wet/burnt edges work in build-up mode too, not only in the wash path.
+/// [`apply_stamps_with_options`]; the coverage buffer is a side output used by
+/// the global paper-tooth path so build-up strokes interact with the canvas
+/// grain too, not only the wash path.
 #[allow(clippy::too_many_arguments)]
 pub fn apply_stamps_buildup(
     canvas: &mut [u8],
@@ -205,10 +205,9 @@ const PAPER_TOOTH_MAX_FILL: f32 = 0.7;
 const PAPER_TOOTH_SOFT: f32 = 0.24;
 
 /// Raw paper-tooth height at a world pixel ∈[0,1] (1 = crest, 0 = valley) — the
-/// SAME world-space field [`paper_tooth_factor`] thresholds. Exposed so the pen-up
-/// settle ([`settle`]) reads the identical paper surface for granulation (pigment
-/// sediments into the valleys), keeping the live tooth and the dry-down grain
-/// spatially coherent.
+/// SAME world-space field [`paper_tooth_factor`] thresholds. Exposed so any pen-up
+/// pass reads the identical paper surface for granulation (pigment sediments into
+/// the valleys), keeping the live tooth and the dry-down grain spatially coherent.
 #[inline]
 pub(crate) fn paper_tooth_height(world_x: f32, world_y: f32) -> f32 {
     crate::grain_noise::grain_value(
@@ -821,7 +820,5 @@ pub fn oklab_to_linear_srgb(l: f32, a: f32, b: f32) -> [f32; 3] {
 // ── Submodules (god-module split, 2026-06-04; pure move) ──
 mod blends;
 use blends::*;
-mod settle;
-pub use settle::{EdgeStyle, apply_wash_settle, coverage_bbox};
 #[cfg(test)]
 mod tests;

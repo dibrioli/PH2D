@@ -83,11 +83,10 @@ impl LayerPixelProvider for PainterLayerProvider<'_> {
 /// - the CPU producer there is zero-composite (`take_preview_arc` hands back the
 ///   canvas `Arc`) with the B.1 partial dirty-bbox upload, strictly cheaper than
 ///   a full-slice re-upload + composite + premul + copy per stroke frame;
-/// - the fluid E4 zero-readback texture mode only engages on a trivial stack
-///   (`preview_is_trivial_stack` — see `painter_fluid_bridge`), so bowing out
-///   here guarantees the GPU layer path never claims the preview slot (nor
-///   spends a recomposite on intentionally-stale mid-stroke `canvas_rgba`)
-///   while a fluid stroke owns the frame.
+/// - the zero-readback texture mode only engages on a trivial stack
+///   (`preview_is_trivial_stack`), so bowing out here guarantees the GPU layer
+///   path never claims the preview slot (nor spends a recomposite on
+///   intentionally-stale mid-stroke `canvas_rgba`).
 pub(super) fn try_drive(
     session_slot: &mut Option<PainterGpuPreview>,
     renderer: &mut SpriteRenderer,

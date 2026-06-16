@@ -196,16 +196,6 @@ pub(crate) fn rendering_mode_label(mode: u8) -> &'static str {
     }
 }
 
-/// Label for the real-pigment cycler (ADR-0081): `Pigment: None` for raw colour, else
-/// `Pigment: <name>` (English — HR-15) read straight from the `PALETTE`. An out-of-range
-/// index degrades to `None` (defensive — the tool only ever publishes valid indices).
-pub(crate) fn pigment_cycler_label(active: Option<u8>) -> String {
-    match active.and_then(|i| ph2d_tool_painter::PALETTE.get(i as usize)) {
-        Some(p) => format!("Pigment: {}", p.name),
-        None => "Pigment: None".to_string(),
-    }
-}
-
 pub(crate) fn grain_type_label(grain: u8) -> &'static str {
     match grain {
         1 => "Simplex",

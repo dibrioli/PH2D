@@ -75,9 +75,10 @@ fn paint_project_magic_and_version_stable() {
     assert_eq!(p.magic, PAINT_PROJECT_MAGIC);
     assert_eq!(p.version, SCHEMA_VERSION);
     assert_eq!(
-        SCHEMA_VERSION, 2,
-        "v2 = layer-stack format (W3, ADR-0046-amendment-1); bump exige \
-         migration helper — migrate_v1_to_v2 + tests/layer_stack_v2.rs"
+        SCHEMA_VERSION, 3,
+        "v3 = aquarela/fluido removidos do RenderingParams (ADR-0096), quebra dura \
+         de save (postcard posicional); pré-v3 não carrega. Bump exige migration \
+         helper sequencial (ou quebra dura documentada) + atualizar os pins de versão"
     );
 }
 

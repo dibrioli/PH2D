@@ -105,7 +105,7 @@ const FLAG_BURNT_EDGES: u32            = 8u;
 const FLAG_WET_EDGES: u32              = 16u;
 const FLAG_LUMINANCE_BLENDING: u32     = 32u;
 const FLAG_GRAIN_PROCEDURAL: u32       = 64u;
-const FLAG_FLUID_SAMPLE: u32           = 128u;
+// bit 7 (128u) livre — ex-FLAG_FLUID_SAMPLE, removido com o sistema de aquarela.
 const FLAG_HOVER_PREVIEW: u32          = 256u;
 const FLAG_PREDICTED_SAMPLE: u32       = 512u;
 

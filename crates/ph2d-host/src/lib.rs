@@ -16,11 +16,9 @@
 //! core calls `PlatformHost` methods when it needs the OS to do
 //! something on its behalf.
 
-pub mod budget;
 pub mod events;
 pub mod filter;
 
-pub use budget::{MemoryBudget, MemoryTier, PerfBudget};
 pub use events::{
     CloseAction, KeyEvent, KeyKind, Lifecycle, Modifiers, PointerButton, PointerEvent, PointerKind,
     PointerSource, WheelEvent, WindowSize,

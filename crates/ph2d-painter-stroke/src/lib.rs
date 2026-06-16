@@ -129,7 +129,12 @@ pub use snapshot::{
 /// - v1 = stub `LayerStackEntry::Reserved` (sem modelo de layer).
 /// - **v2 (W3, ADR-0046-amendment-1)** = `LayerStackEntry::Node` real (layer
 ///   stack persistível). Files v1 migram via [`persistence::migrate_v1_to_v2`].
+/// - **v3 (ADR-0096)** = remoção da aquarela/fluido do `RenderingParams`
+///   (`watercolor`/`fluid_enabled`/`wash_enabled` saíram do `Brush` serializado).
+///   QUEBRA DURA: postcard é posicional, logo projetos pré-v3 com brush não-default
+///   NÃO carregam (falham no deserialize/checksum). Sem migration possível — não há
+///   como re-ler os bytes antigos sem o struct antigo. Decisão "começar do zero".
 ///
-/// Bump quando schema do `PaintProject` mudar; cada bump exige um migration
-/// helper sequencial em `persistence`.
-pub const SCHEMA_VERSION: u32 = 2;
+/// Bump quando schema do `PaintProject` mudar; cada bump exige um migration helper
+/// sequencial em `persistence` (exceto quebras duras documentadas, como o v3).
+pub const SCHEMA_VERSION: u32 = 3;

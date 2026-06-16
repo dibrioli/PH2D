@@ -37,15 +37,15 @@ pub struct Brush {
     pub taper: TaperParams,                  // §1.3.3
     pub shape: ShapeParams,                  // §1.3.4
     pub grain: GrainParams,                  // §1.3.5
-    pub rendering: RenderingParams, // §1.3.6 (inclui pigment_mode + fluid_enabled ADR-0049)
-    pub wet_mix: WetMixParams,      // §1.3.7
+    pub rendering: RenderingParams,          // §1.3.6 (inclui pigment_mode)
+    pub wet_mix: WetMixParams,               // §1.3.7
     pub color_dynamics: ColorDynamicsParams, // §1.3.8
-    pub dynamics: DynamicsParams,   // §1.3.9
-    pub pencil: PencilParams,       // §1.3.10
-    pub properties: PropertiesParams, // §1.3.11
-    pub about: AboutParams,         // §1.3.12
-    pub version: u32,               // HR-14 — v1 = 1
-                                    // === 1 slot top-level de headroom (cap ≤ 14) ===
+    pub dynamics: DynamicsParams,            // §1.3.9
+    pub pencil: PencilParams,                // §1.3.10
+    pub properties: PropertiesParams,        // §1.3.11
+    pub about: AboutParams,                  // §1.3.12
+    pub version: u32,                        // HR-14 — v1 = 1
+                                             // === 1 slot top-level de headroom (cap ≤ 14) ===
 }
 
 impl Default for Brush {

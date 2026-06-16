@@ -293,14 +293,16 @@ pub(super) fn dispatch(
         // GPU-vs-CPU preview decision (ADR-0045 Phase 3 step 2): representable
         // stack → GPU composite (fast slider drags), else CPU `take_preview_arc`
         // below. Both end in `painter_preview_gpu`. See `try_drive`.
-        gpu_owns_preview = painter_gpu_preview::try_drive(
-            painter_gpu_preview,
-            renderer,
-            painter,
-            hero.gizmo.selection,
-            painter_preview_gpu,
-            toasts,
-        );
+        if !gpu_owns_preview {
+            gpu_owns_preview = painter_gpu_preview::try_drive(
+                painter_gpu_preview,
+                renderer,
+                painter,
+                hero.gizmo.selection,
+                painter_preview_gpu,
+                toasts,
+            );
+        }
         if gpu_owns_preview {
             // CPU cache unused while the GPU owns the slot — clear it so the
             // inactive/apply release + the gated CPU block below see `None`.

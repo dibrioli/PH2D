@@ -1,6 +1,6 @@
 # ADR-0097 — Brush Engine: paridade Procreate, dab pipeline CPU-first
 
-- **Status:** PROPOSTO — aguarda ratificação do Enio (decisão fundacional, Coord-only, CLAUDE.md §4/§6).
+- **Status:** ACEITO (Enio, 2026-06-16) — CPU-first ratificado (§6). Fundacional, Coord-only (CLAUDE.md §4/§6).
 - **Data:** 2026-06-16.
 - **Decisor:** Enio (direção: "desenvolver de forma plena o Brush Tool/Brush Engine usando cada parâmetro
   do Procreate como fonte definitiva; paridade primeiro, diferencial depois").
@@ -101,9 +101,9 @@ Dual Brush (commodity, pós-paridade).
 - **Mudar todos os ~12 campos de `Brush` já:** quebraria o ABI congelado antes de saber a forma final de cada
   feature. Rejeitado — amendment único, just-in-time por onda.
 
-## 6. Decisão que pede ratificação explícita do Enio
+## 6. Ratificação do CPU-first (Enio, 2026-06-16)
 
-A escolha **CPU-first (§2.2)** é a única consequente e reversível: ela define que o GPU-dispatch é trabalho
-futuro de perf, não agora. Recomendação forte = **CPU-first**. Se o Enio preferir GPU-dispatch já (brush
-gigante/4K como requisito imediato), o roteiro reordena (W0 inclui despachar o `StampPipeline`). Tudo o mais
-(arquitetura de 3 estágios, paridade-primeiro, amendment único) é consenso técnico e não precisa de fork.
+A escolha **CPU-first (§2.2)** foi **ratificada**: o GPU-dispatch é trabalho futuro de perf, não agora.
+O `cpu_render` é a fonte-da-verdade; brush gigante/4K real-time via GPU = rebuild deliberado posterior,
+reconciliado por paridade ULP. Tudo o mais (arquitetura de 3 estágios, paridade-primeiro, amendment único)
+é consenso técnico.

@@ -1311,10 +1311,10 @@ fn wet_blur_averages_backdrop_neighbourhood() {
         }
     }
     // Pixel just right of the edge (x=4, white): radius 0 = white (1.0).
-    let sharp = blurred_backdrop_linear(&bd, 4, 4, 0, w, h);
+    let sharp = box_average_linear(&bd, 4, 4, 0, w, h);
     assert!(sharp[0] > 0.99, "radius 0 returns the exact (white) pixel");
     // radius 2 spans into the black half → intermediate grey.
-    let soft = blurred_backdrop_linear(&bd, 4, 4, 2, w, h);
+    let soft = box_average_linear(&bd, 4, 4, 2, w, h);
     assert!(soft[0] > 0.05 && soft[0] < 0.95, "blur pulls the edge toward grey: {}", soft[0]);
 }
 
@@ -1353,4 +1353,54 @@ fn wet_grade_and_blur_are_wired() {
     assert_ne!(paint(0.9, 0.0, 0.9, 1.0), paint(0.5, 0.0, 0.9, 1.0), "grade is wired");
     // Blur changes the painted result at partial coverage over the hard edge.
     assert_ne!(paint(0.5, 1.0, 0.0, 0.4), paint(0.5, 0.0, 0.0, 0.4), "blur is wired");
+}
+
+/// Pull smears the LIVE canvas: a WHITE brush dragged from a red region onto a
+/// white region carries red across the boundary (industry-standard Dulling smudge
+/// reads the live paint, not a frozen snapshot). Compared to `pull=0` (no smear),
+/// the white side near the boundary becomes redder (lower green).
+#[test]
+fn wet_pull_smears_live_canvas_across_boundary() {
+    let (w, h) = (48u32, 12u32);
+    let mut backdrop = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let c = if x < w / 2 { [220, 30, 30, 255] } else { [245, 245, 245, 255] };
+            let i = ((y * w + x) * 4) as usize;
+            backdrop[i..i + 4].copy_from_slice(&c);
+        }
+    }
+    // White brush (OKLab of linear white = L=1, a=b=0) so any red is purely smeared.
+    let run = |pull: f32| {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut st = WetState { color: [1.0, 1.0, 1.0], load: 1.0 };
+        let cfg = WetMixConfig {
+            dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0,
+            grade: 0.5, blur: 0.0, blur_jitter: 0.0,
+        };
+        let stamps: Vec<Stamp> = (6..42)
+            .step_by(2)
+            .map(|x| {
+                let mut s = red_stamp(x as f32, 6.0, 6.0);
+                s.color_oklab = [1.0, 0.0, 0.0, 1.0]; // white
+                s
+            })
+            .collect();
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &stamps, 1.0, false, false, 0.0,
+            Some((&mut st, cfg)),
+        );
+        // White-side pixel just past the boundary (x=27, boundary at 24).
+        let i = ((6 * w + 27) * 4) as usize;
+        (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32)
+    };
+    let (r_p, g_p, _) = run(0.6);
+    let (_, g_n, _) = run(0.0);
+    assert!(
+        g_p < g_n - 8,
+        "pull drags red across the boundary (greener without pull): g(pull)={g_p} g(none)={g_n}"
+    );
+    assert!(r_p > g_p + 10, "the smeared white-side pixel reads reddish: r={r_p} g={g_p}");
 }

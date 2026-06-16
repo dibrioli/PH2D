@@ -588,10 +588,18 @@ fn apply_grade(tex: f32, grade: f32) -> f32 {
     (1.0 - (1.0 - tex) * k).clamp(0.0, 1.0)
 }
 
-/// Box-average the PRE-STROKE backdrop (straight linear RGBA) over a square of
-/// `radius`, clamped to the canvas — the spread the wet **Blur** composites over.
+/// Smudge pickup radius as a fraction of the dab footprint (Krita "Smudge
+/// Radius" is a % of brush size; MyPaint defaults to the dab radius). Capped for
+/// per-dab cost.
+const SMUDGE_RADIUS_FRAC: f32 = 0.5;
+const MAX_SMUDGE_RADIUS: i32 = 16;
+
+/// Box-average an RGBA8 slice (straight → linear) over a square of `radius`,
+/// clamped to the canvas. Used both for the wet **Blur** (over the pre-stroke
+/// backdrop) and the **Pull** pickup (over the LIVE canvas — Krita "Dulling").
 #[inline]
-fn blurred_backdrop_linear(backdrop: &[u8], cx: i32, cy: i32, radius: i32, w: i32, h: i32) -> [f32; 4] {
+fn box_average_linear(src: &[u8], cx: i32, cy: i32, radius: i32, w: i32, h: i32) -> [f32; 4] {
+    let backdrop = src;
     let (mut r, mut g, mut b, mut a, mut n) = (0.0f32, 0.0f32, 0.0f32, 0.0f32, 0.0f32);
     for yy in (cy - radius)..=(cy + radius) {
         let sy = yy.clamp(0, h - 1);
@@ -711,22 +719,24 @@ fn apply_one_stamp_wash(
     let mode = RenderingMode::from_u32(stamp.rendering_mode);
     let wet_amount = stamp.wet_amount;
     // ── Wet Mix (W7, design 04): ONE reservoir update per dab ────────────────
-    // Pickup at the dab centre from the PRE-STROKE backdrop (stable overlap —
-    // design §risco 1), mixing the reservoir toward it by `pull`; the deposited
-    // colour then BECOMES the reservoir colour (the smear), and the deposit RATE
-    // is scaled by `attack · load · (1 − dilution)`. `load` depletes after the
-    // dab. `wet = None` ⇒ deposit the brush colour at full rate (legacy wash —
-    // byte-for-byte identical, the default brush is unaffected).
+    // **Pull = smudge (Krita "Dulling", MyPaint reservoir EMA).** Sample the
+    // **LIVE canvas** (not the frozen backdrop) over an **area** under the dab
+    // (the Smudge Radius — % of the footprint), so the brush drags the paint laid
+    // this stroke instead of re-stamping a single stale pixel. The reservoir is an
+    // EMA toward that sample by `pull`: `reservoir ← (1−pull)·reservoir +
+    // pull·sample`. The deposited colour is the reservoir (the smear); the deposit
+    // RATE is scaled by `attack · load · (1 − dilution)`, and `load` depletes per
+    // dab (Charge). The *composite* still uses the stable pre-stroke backdrop —
+    // pickup-source and composite-source are independent (Krita samples the live
+    // paint device too). `wet = None` ⇒ legacy wash, byte-for-byte identical.
     let (rgb_clamped, deposit_scale, wetcfg) = match wet {
         Some((ref mut st, cfg)) => {
             let cx = (stamp.position_world[0].round() as i32).clamp(0, width as i32 - 1);
             let cy = (stamp.position_world[1].round() as i32).clamp(0, height as i32 - 1);
-            let cidx = (cy as usize * width as usize + cx as usize) * 4;
-            let picked = [
-                srgb_to_linear_byte(backdrop[cidx]),
-                srgb_to_linear_byte(backdrop[cidx + 1]),
-                srgb_to_linear_byte(backdrop[cidx + 2]),
-            ];
+            let smudge_r = ((footprint as f32 * SMUDGE_RADIUS_FRAC).round() as i32)
+                .clamp(1, MAX_SMUDGE_RADIUS);
+            let pk = box_average_linear(canvas, cx, cy, smudge_r, width as i32, height as i32);
+            let picked = [pk[0], pk[1], pk[2]];
             let k_pickup = cfg.pull.clamp(0.0, 1.0);
             st.color = [
                 st.color[0] + (picked[0] - st.color[0]) * k_pickup,
@@ -858,7 +868,7 @@ fn apply_one_stamp_wash(
             // building toward pure brush colour. Wet Mix **Blur** (W7 phase 2)
             // composites over a box-blurred backdrop so the paint seam spreads.
             let back = if blur_radius > 0 {
-                blurred_backdrop_linear(backdrop, world_x, world_y, blur_radius, canvas_w, canvas_h)
+                box_average_linear(backdrop, world_x, world_y, blur_radius, canvas_w, canvas_h)
             } else {
                 [
                     srgb_to_linear_byte(backdrop[idx]),

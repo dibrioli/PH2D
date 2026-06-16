@@ -73,6 +73,14 @@ impl RenderingMode {
             _ => Self::UniformGlaze,
         }
     }
+
+    /// The two **Blending** modes engage Wet Mix (mixer-brush) — Procreate gates
+    /// the Wet Mix sliders behind exactly these (W7, ADR-0097). The four Glaze
+    /// modes do not pick up / smear canvas colour.
+    #[must_use]
+    pub const fn is_blending(self) -> bool {
+        matches!(self, Self::UniformBlending | Self::IntenseBlending)
+    }
 }
 
 #[cfg(test)]

@@ -495,6 +495,23 @@ pub const PAINTER_STUDIO_DARK_JITTER_SLIDER: NodeId =
     hash_node_id("painter_studio.dark_jitter_slider");
 pub const PAINTER_STUDIO_DARK_JITTER_CHIP: NodeId = hash_node_id("painter_studio.dark_jitter_chip");
 
+// ── Wet Mix section — mixer-brush reservoir (W7, ADR-0097; engine-wired) ──────
+pub const PAINTER_STUDIO_SEC_WET_MIX: NodeId = hash_node_id("painter_studio.sec_wet_mix");
+pub const PAINTER_STUDIO_RESET_WET_MIX: NodeId = hash_node_id("painter_studio.reset_wet_mix");
+pub const PAINTER_STUDIO_DILUTION_SLIDER: NodeId =
+    hash_node_id("painter_studio.dilution_slider");
+pub const PAINTER_STUDIO_DILUTION_CHIP: NodeId = hash_node_id("painter_studio.dilution_chip");
+pub const PAINTER_STUDIO_CHARGE_SLIDER: NodeId = hash_node_id("painter_studio.charge_slider");
+pub const PAINTER_STUDIO_CHARGE_CHIP: NodeId = hash_node_id("painter_studio.charge_chip");
+pub const PAINTER_STUDIO_ATTACK_SLIDER: NodeId = hash_node_id("painter_studio.attack_slider");
+pub const PAINTER_STUDIO_ATTACK_CHIP: NodeId = hash_node_id("painter_studio.attack_chip");
+pub const PAINTER_STUDIO_PULL_SLIDER: NodeId = hash_node_id("painter_studio.pull_slider");
+pub const PAINTER_STUDIO_PULL_CHIP: NodeId = hash_node_id("painter_studio.pull_chip");
+pub const PAINTER_STUDIO_WETNESS_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.wetness_jitter_slider");
+pub const PAINTER_STUDIO_WETNESS_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.wetness_jitter_chip");
+
 // ── Dynamics section — per-stamp size/opacity jitter (engine-wired T1.7) ──────
 pub const PAINTER_STUDIO_SEC_DYNAMICS: NodeId = hash_node_id("painter_studio.sec_dynamics");
 pub const PAINTER_STUDIO_SIZE_JITTER_SLIDER: NodeId =

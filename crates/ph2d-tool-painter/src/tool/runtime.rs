@@ -49,7 +49,7 @@ impl PainterTool {
         use ph2d_editor_core::ids as cids;
         use ph2d_painter_brush::{
             ColorDynamicsParams, DynamicsParams, GrainParams, RenderingParams, ShapeParams,
-            StrokePathParams,
+            StrokePathParams, WetMixParams,
         };
         if id == cids::PAINTER_STUDIO_RESET_STROKE {
             self.brush.stroke_path = StrokePathParams::default();
@@ -63,6 +63,8 @@ impl PainterTool {
             self.brush.color_dynamics = ColorDynamicsParams::default();
         } else if id == cids::PAINTER_STUDIO_RESET_DYNAMICS {
             self.brush.dynamics = DynamicsParams::default();
+        } else if id == cids::PAINTER_STUDIO_RESET_WET_MIX {
+            self.brush.wet_mix = WetMixParams::default();
         } else {
             return;
         }

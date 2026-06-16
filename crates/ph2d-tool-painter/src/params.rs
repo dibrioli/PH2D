@@ -261,6 +261,17 @@ pub enum BrushParam {
     SpeedSize,
     SpeedOpacity,
     SpeedSpacing,
+    // Wet Mix (WetMixParams) — mixer-brush reservoir (W7, ADR-0097), all 0..1.
+    /// Water mixed into the paint (transparency).
+    Dilution,
+    /// Reservoir paint loaded at stroke start (`wet_mix.load`).
+    Charge,
+    /// Deposit rate — how much loaded paint sticks.
+    Attack,
+    /// Pickup / smear of canvas colour into the reservoir.
+    Pull,
+    /// Per-dab randomisation of dilution.
+    WetnessJitter,
 }
 
 // ----------------------------------------------------------------------------
@@ -433,6 +444,12 @@ pub struct BrushStudioSnapshot {
     pub speed_size: f32,
     pub speed_opacity: f32,
     pub speed_spacing: f32,
+    // Wet Mix — mixer-brush reservoir (W7, all 0..1). Active on Blending modes.
+    pub dilution: f32,
+    pub charge: f32,
+    pub attack: f32,
+    pub pull: f32,
+    pub wetness_jitter: f32,
     /// Display name of the active brush.
     pub brush_name: String,
 }
@@ -478,6 +495,11 @@ impl Default for BrushStudioSnapshot {
             speed_size: b.dynamics.speed_size,
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
+            dilution: b.wet_mix.dilution,
+            charge: b.wet_mix.load,
+            attack: b.wet_mix.attack,
+            pull: b.wet_mix.pull,
+            wetness_jitter: b.wet_mix.wetness_jitter,
             brush_name: String::new(),
         }
     }

@@ -81,6 +81,11 @@ fn is_studio_slider(id: NodeId) -> bool {
         || id == ids::DARK_JITTER_SLIDER
         || id == ids::SIZE_JITTER_SLIDER
         || id == ids::OPACITY_JITTER_SLIDER
+        || id == ids::DILUTION_SLIDER
+        || id == ids::CHARGE_SLIDER
+        || id == ids::ATTACK_SLIDER
+        || id == ids::PULL_SLIDER
+        || id == ids::WETNESS_JITTER_SLIDER
 }
 
 #[inline]
@@ -109,4 +114,5 @@ fn is_studio_reset_button(id: NodeId) -> bool {
         || id == ids::RESET_RENDERING
         || id == ids::RESET_COLOR
         || id == ids::RESET_DYNAMICS
+        || id == ids::RESET_WET_MIX
 }

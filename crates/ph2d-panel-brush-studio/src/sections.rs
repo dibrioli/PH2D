@@ -33,6 +33,50 @@ pub(crate) fn paint_sections(
     y = paint_color_dynamics_section(ctx, x, w, y, snapshot, theme);
     y = paint_section_separator(ctx.scene, theme, x, w, y);
     y = paint_dynamics_section(ctx, x, w, y, snapshot, theme);
+    y = paint_section_separator(ctx.scene, theme, x, w, y);
+    y = paint_wet_mix_section(ctx, x, w, y, snapshot, theme);
+    y
+}
+
+/// **Wet Mix** (mixer-brush reservoir, W7/ADR-0097) — engages on the Blending
+/// rendering modes. Five 0..1 sliders: Dilution, Charge, Attack, Pull, Wetness
+/// Jitter. Grade/Blur are W7 phase 2 (not yet engine-wired) so they are omitted.
+fn paint_wet_mix_section(
+    ctx: &mut PaintCtx,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    s: &BrushStudioSnapshot,
+    theme: Theme,
+) -> f32 {
+    let (hy, collapsed) = section_header(
+        ctx,
+        ids::SEC_WET_MIX,
+        ids::RESET_WET_MIX,
+        "Wet Mix",
+        x,
+        w,
+        y,
+        theme,
+    );
+    y = hy;
+    if collapsed {
+        return y;
+    }
+    for (label, val, sld, chip) in [
+        ("Dilution", s.dilution, ids::DILUTION_SLIDER, ids::DILUTION_CHIP),
+        ("Charge", s.charge, ids::CHARGE_SLIDER, ids::CHARGE_CHIP),
+        ("Attack", s.attack, ids::ATTACK_SLIDER, ids::ATTACK_CHIP),
+        ("Pull", s.pull, ids::PULL_SLIDER, ids::PULL_CHIP),
+        (
+            "Wetness Jit",
+            s.wetness_jitter,
+            ids::WETNESS_JITTER_SLIDER,
+            ids::WETNESS_JITTER_CHIP,
+        ),
+    ] {
+        y = pct_row(ctx, x, w, y, label, val, sld, chip, theme);
+    }
     y
 }
 

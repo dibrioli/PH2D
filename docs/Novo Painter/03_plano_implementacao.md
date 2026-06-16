@@ -244,11 +244,13 @@ visível, Moving "rola" com o traço.
 > Modelo reservatório pickup-and-deposit (IMPaSTo/DAB, §2 da teoria), com a cor passando por Mixbox.
 > Depende de W0.3 (estágio de cor) e dos modos Blending (W3.1).
 >
-> **✅ NÚCLEO IMPLEMENTADO (2026-06-16)** — design em [`04_design_W7_wet_mix.md`](04_design_W7_wet_mix.md).
+> **✅ NÚCLEO + GATING + UI IMPLEMENTADOS (2026-06-16)** — design em [`04_design_W7_wet_mix.md`](04_design_W7_wet_mix.md).
 > `WetState`/`WetMixConfig` em `cpu_render`; reservatório threaded no `apply_stamps_wash`; wiring no tool
-> (`begin_stroke` semeia, `queue_pointer` passa, `end_stroke` dropa; gated em `wet_mix_enabled`). 4 testes de
-> paridade verdes + 321/321 da crate (anti-regressão). Falta: **W7.5 Grade / W7.6 Blur / W7.7 Blur Jitter**
-> (fase 2 — blur precisa de pass de vizinhança) + UI (W10) + ligar `wet_mix_enabled` aos modos Blending no tool.
+> (`begin_stroke` semeia, `queue_pointer` passa, `end_stroke` dropa). **Gating:** `RenderingMode::is_blending()`
+> ativa o Wet Mix nos 2 modos Blending (ou toggle explícito) — paridade Procreate. **UI:** seção "Wet Mix" no
+> Brush Studio com 5 sliders (Dilution/Charge/Attack/Pull/Wetness Jit) + reset, wirada ponta-a-ponta
+> (ids → BrushParam → set_param → snapshot). 4 testes de paridade + suítes brush/tool/panel/contracts verdes +
+> shell compila. **Falta:** **W7.5 Grade / W7.6 Blur / W7.7 Blur Jitter** (fase 2 — blur precisa de pass de vizinhança).
 
 - [x] **W7.0 — Reservatório por-pincelada.** Estado do brush: carga (`load`) depositada no início, esgota ao
   arrastar, recarrega ao levantar/retocar. Pickup (`r_pickup ∝ canvas`) + deposit (`r_deposit ∝ reservoir`)

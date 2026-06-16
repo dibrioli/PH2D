@@ -120,7 +120,8 @@ impl Tool for PainterTool {
                     || id == core_ids::PAINTER_STUDIO_RESET_SHAPE
                     || id == core_ids::PAINTER_STUDIO_RESET_RENDERING
                     || id == core_ids::PAINTER_STUDIO_RESET_COLOR
-                    || id == core_ids::PAINTER_STUDIO_RESET_DYNAMICS =>
+                    || id == core_ids::PAINTER_STUDIO_RESET_DYNAMICS
+                    || id == core_ids::PAINTER_STUDIO_RESET_WET_MIX =>
             {
                 self.reset_studio_section(id);
             }
@@ -511,6 +512,16 @@ fn brush_studio_param_for_slider(id: ph2d_a11y::NodeId) -> Option<crate::params:
         Some(P::SizeJitter)
     } else if id == core_ids::PAINTER_STUDIO_OPACITY_JITTER_SLIDER {
         Some(P::OpacityJitter)
+    } else if id == core_ids::PAINTER_STUDIO_DILUTION_SLIDER {
+        Some(P::Dilution)
+    } else if id == core_ids::PAINTER_STUDIO_CHARGE_SLIDER {
+        Some(P::Charge)
+    } else if id == core_ids::PAINTER_STUDIO_ATTACK_SLIDER {
+        Some(P::Attack)
+    } else if id == core_ids::PAINTER_STUDIO_PULL_SLIDER {
+        Some(P::Pull)
+    } else if id == core_ids::PAINTER_STUDIO_WETNESS_JITTER_SLIDER {
+        Some(P::WetnessJitter)
     } else {
         None
     }

@@ -90,12 +90,15 @@ impl PainterTool {
             self.wash_color = None;
             self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
         }
-        // **W7 Wet Mix:** seed the mixer-brush reservoir for this stroke. Only on
-        // the wash path with Wet Mix enabled (Procreate gates Wet Mix behind the
-        // Blending rendering modes). `color` = the brush colour (linear sRGB,
-        // matching `wash_color`); `load` = Charge. Re-seeding here is the "re-wet
-        // the brush" on each pen-down. Dropped at `end_stroke`.
-        self.wet_state = if wash && self.brush.wet_mix.wet_mix_enabled {
+        // **W7 Wet Mix:** seed the mixer-brush reservoir for this stroke. Active on
+        // the wash path when the rendering mode is **Blending** (Procreate gates Wet
+        // Mix behind the two Blending modes) OR the explicit master toggle is on.
+        // `color` = the brush colour (linear sRGB, matching `wash_color`); `load` =
+        // Charge. Re-seeding here is "re-wet the brush" on each pen-down; dropped at
+        // `end_stroke`.
+        let wet_active =
+            self.brush.rendering.rendering_mode.is_blending() || self.brush.wet_mix.wet_mix_enabled;
+        self.wet_state = if wash && wet_active {
             let [l, a, b, _] = self.stroke_color_oklab;
             Some(ph2d_painter_brush::WetState {
                 color: ph2d_painter_brush::oklab_to_linear_srgb(l, a, b),
@@ -841,6 +844,12 @@ impl PainterTool {
             P::DarknessJitter => b.color_dynamics.stamp_darkness_jitter = v.clamp(0.0, 1.0),
             P::SizeJitter => b.dynamics.jitter_size = v.clamp(0.0, 1.0),
             P::OpacityJitter => b.dynamics.jitter_opacity = v.clamp(0.0, 1.0),
+            // Wet Mix (W7) — all 0..1; engaged on the Blending rendering modes.
+            P::Dilution => b.wet_mix.dilution = v.clamp(0.0, 1.0),
+            P::Charge => b.wet_mix.load = v.clamp(0.0, 1.0),
+            P::Attack => b.wet_mix.attack = v.clamp(0.0, 1.0),
+            P::Pull => b.wet_mix.pull = v.clamp(0.0, 1.0),
+            P::WetnessJitter => b.wet_mix.wetness_jitter = v.clamp(0.0, 1.0),
         }
         self.cached_brush_hash = None;
     }
@@ -896,6 +905,11 @@ impl PainterTool {
             speed_size: b.dynamics.speed_size,
             speed_opacity: b.dynamics.speed_opacity,
             speed_spacing: b.dynamics.speed_spacing,
+            dilution: b.wet_mix.dilution,
+            charge: b.wet_mix.load,
+            attack: b.wet_mix.attack,
+            pull: b.wet_mix.pull,
+            wetness_jitter: b.wet_mix.wetness_jitter,
             brush_name: format!("brush_{}", self.params.active_brush.0),
         }
     }

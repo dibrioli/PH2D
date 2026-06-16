@@ -45,6 +45,7 @@ pub fn populate(store: &mut WidgetStore) {
     store.mark_collapsible_section(ids::SEC_RENDERING);
     store.mark_collapsible_section(ids::SEC_COLOR);
     store.mark_collapsible_section(ids::SEC_DYNAMICS);
+    store.mark_collapsible_section(ids::SEC_WET_MIX);
 
     let s = BrushStudioSnapshot::default();
 
@@ -211,6 +212,18 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SPEED_SPACING_SLIDER,
         ids::SPEED_SPACING_CHIP,
         s.speed_spacing,
+    );
+
+    // ── Wet Mix — mixer-brush reservoir (W7, ADR-0097; 0..1 percent sliders) ──
+    pct(store, ids::DILUTION_SLIDER, ids::DILUTION_CHIP, s.dilution);
+    pct(store, ids::CHARGE_SLIDER, ids::CHARGE_CHIP, s.charge);
+    pct(store, ids::ATTACK_SLIDER, ids::ATTACK_CHIP, s.attack);
+    pct(store, ids::PULL_SLIDER, ids::PULL_CHIP, s.pull);
+    pct(
+        store,
+        ids::WETNESS_JITTER_SLIDER,
+        ids::WETNESS_JITTER_CHIP,
+        s.wetness_jitter,
     );
 }
 

@@ -15,6 +15,69 @@ a avaliação e a UI não:
 
 Uma etapa só está **fechada** quando M+E+U estão verdes e há teste de paridade headless. `[ ]` = pendente.
 
+---
+
+## W0.1 RESULTADO — Matriz de cobertura `[E]` (auditoria 2026-06-16)
+
+> Varredura de produção (exclui tests/defs/UI) do dab pipeline: `stamp_scheduler/{mod,advance}.rs`
+> (geometria: brush+path → `Vec<Stamp>`), os `FLAG_*` em `stamp.rs`, e o **render vivo**.
+
+**Fato 1 — o render VIVO é CPU.** O tool chama `apply_stamps_wash`/`apply_stamps_buildup`/
+`apply_stamps_with_options` ([`lifecycle.rs:274-303`](../../crates/ph2d-tool-painter/src/tool/lifecycle.rs#L274))
+→ [`cpu_render/mod.rs`](../../crates/ph2d-painter-brush/src/cpu_render/mod.rs). O GPU `StampPipeline` +
+`shader/stamp.wgsl` existe e é naga-validado, mas **não é despachado** (revertido a CPU-residente pós-ADR-0096).
+**Consequência:** um param "wired" só no `stamp.wgsl` está **dormente** no caminho vivo. Notavelmente
+`Stamp.tilt`/`azimuth`/`barrel_roll` são consumidos pelo WGSL mas **não** pelo `cpu_render` → tilt/azimuth/barrel
+não têm efeito de render hoje.
+
+**Fato 2 — Mixbox/pigment está VIVO.** `cpu_render` aplica `pigment_mix::prepare_pigment` + `mix_prepared`
+gated por `pigment_mode==1` ([`cpu_render/mod.rs:321,437,616,735`](../../crates/ph2d-painter-brush/src/cpu_render/mod.rs#L321)).
+A mistura espectral de cor já funciona no caminho wash/blend.
+
+**Fato 3 — Wet Mix está 100% MORTO.** O scheduler faz `s.wet_amount = 0.0; // T-wet-mix W7+`
+([`advance.rs:829`](../../crates/ph2d-painter-brush/src/stamp_scheduler/advance.rs#L829)). Nenhum dos 8 sliders
+de Wet Mix é lido. O shader/cpu lêem `wet_amount` mas sempre recebem 0.
+
+### Matriz por categoria (✅ vivo · 🟡 parcial/dormente · ❌ morto · `—` não no modelo)
+
+| Categoria | ✅ VIVO (avaliado no caminho CPU) | 🟡 parcial / dormente | ❌ MORTO (campo existe, não avaliado) |
+|---|---|---|---|
+| **Stroke Path** | spacing · spacing_jitter · jitter_lateral · falloff | — | — (falta `jitter_linear` no modelo) |
+| **Stabilization** | streamline_amount · stabilization · motion_filtering_amount | — | streamline_pressure · motion_filtering_expression |
+| **Taper** | length start/end · size · opacity (via `taper_factors`/`start_taper`) | taper_pressure_link (bool) | — (faltam tip/classic/split touch) |
+| **Shape** | source · count · count_jitter · scatter · rotation_follow · randomized · flip_x · flip_y | — | input_style · **roundness** · pressure_roundness · tilt_roundness · vertical_jitter · horizontal_jitter · filtering |
+| **Grain** | source · scale · depth · behavior (Moving flag) | — | movement · zoom · rotation · depth_min · depth_jitter · offset_jitter · blend_mode · brightness · contrast · filtering |
+| **Rendering** | rendering_mode (6) · pigment_mode (Mixbox) · flow · accumulate (wash↔buildup) | — | wet_edges · burnt_edges · burnt_edges_mode · luminance_blending · alpha_threshold · stroke_blend_mode_index · edge_intensity |
+| **Wet Mix** | — | — | **TODOS** (dilution · load · attack · pull · grade · blur · blur_jitter · wetness_jitter) — `wet_amount=0.0` hardcoded |
+| **Color Dynamics** | stamp: hue · saturation · lightness · darkness · secondary | — | stroke_* (5) · pressure_* (4) · tilt_* (4) · barrel_* (4) |
+| **Dynamics** | speed_size · speed_opacity · speed_spacing · jitter_size · jitter_opacity | — | — (categoria 100% viva) |
+| **Apple Pencil** | pressure_curve · pressure_targets | tilt **input** empacotado mas só consumido no WGSL (dormente) | tilt_curve · tilt_targets · barrel_roll_curve · barrel_targets · hover_* |
+| **Properties** | — | max/min size/opacity (clamp tool-side) · smudge_pull (smudge tool) | orient_to_screen |
+| **Color (Mixbox)** | `pigment_mix` vivo no cpu_render | — | — |
+
+### Veredicto e re-priorização
+
+O engine vivo já entrega um **MVP de mark respeitável**: carimba ao longo do path (spacing/jitter/falloff),
+com taper, colocação de shape (count/scatter/flip/rotation), todas as Dynamics, pressão via curva, os 6
+Rendering Modes, **mistura de cor Mixbox**, jitter de cor por-stamp, e grain básico.
+
+**Os grandes buracos (ordem de impacto):**
+1. **Wet Mix inteiro** (W7) — `wet_amount=0.0`. É o coração do mixer-brush; é o maior trabalho e o maior valor.
+2. **Shape: roundness/elipse + filtering + input_style** (W2) — sem elipse, brushes caligráficos não existem.
+3. **Grain detalhado** (W4) — 10 params mortos (movement/zoom/depth_jitter/blend_mode/brightness/contrast…).
+4. **Rendering edges** (W3) — wet_edges/burnt_edges/luminance/alpha_threshold (FLAGs nunca setados).
+5. **Color dynamics não-stamp** (W8) — stroke/pressure/tilt/barrel (16 params).
+6. **Tilt/barrel como resposta de brush** (W9) — input chega mas só o WGSL (dormente) usa; cpu_render ignora.
+7. **2 params de Stabilization** (streamline_pressure, motion_filtering_expression).
+
+**Decisão de arquitetura que a auditoria força (para o ADR-0097, W0.0):** o GPU `StampPipeline` está
+validado mas morto. Ou (A) **consolidar no CPU** como fonte-da-verdade e tratar o WGSL como paridade futura,
+ou (B) **despachar o GPU** (retoma parte do plano [wise-seeking-gem](../../), sem fluido). Recomendação:
+**(A) CPU-first** — menos superfície, destrava Wet Mix/grain/edges no caminho vivo já; GPU vira otimização
+de perf depois (brush grande/4K), reconciliado por paridade ULP. Decidir no ADR.
+
+> As marcações `[E?]` por-etapa abaixo ficam **superseded por esta matriz**.
+
 ## Crates e papéis
 
 | Crate | Papel | Contrato congelado (§6) |

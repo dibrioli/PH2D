@@ -743,11 +743,13 @@ fn apply_one_stamp_wash(
                 st.color[1] + (picked[1] - st.color[1]) * k_pickup,
                 st.color[2] + (picked[2] - st.color[2]) * k_pickup,
             ];
-            let signed = dab_hash01(stamp.position_world[0], stamp.position_world[1]) * 2.0 - 1.0;
-            let dil = (cfg.dilution * (1.0 + cfg.wetness_jitter.clamp(0.0, 1.0) * signed))
-                .clamp(0.0, 1.0);
-            let ds = (cfg.attack.clamp(0.0, 1.0) * st.load.clamp(0.0, 1.0) * (1.0 - dil))
-                .clamp(0.0, 1.0);
+            // Deposit RATE = attack · load (NO dilution). Keeping dilution OUT of
+            // the rate lets coverage SATURATE normally → a smooth diluted wash.
+            // Folding dilution into the rate (the old bug) made coverage never
+            // saturate, so the per-dab overlap structure showed through as a
+            // "spacing-too-high" scallop (Enio 2026-06-16). Dilution = transparency
+            // is applied to `eff` below (the stroke opacity), not here.
+            let ds = (cfg.attack.clamp(0.0, 1.0) * st.load.clamp(0.0, 1.0)).clamp(0.0, 1.0);
             (st.color, ds, Some(cfg))
         }
         None => (rgb_clamped, 1.0, None),
@@ -756,6 +758,12 @@ fn apply_one_stamp_wash(
     // footprint). `grade` reshapes the texture contrast; `blur_radius` is the
     // backdrop box-blur the deposit composites over (jittered per dab).
     let wet_grade = wetcfg.map(|c| c.grade);
+    // Dilution = stroke TRANSPARENCY (per-dab, jittered by Wetness Jitter), applied
+    // to `eff`. `0` when no Wet Mix. Procreate: "give your paint a transparent effect".
+    let wet_dilution = wetcfg.map_or(0.0, |c| {
+        let signed = dab_hash01(stamp.position_world[0], stamp.position_world[1]) * 2.0 - 1.0;
+        (c.dilution * (1.0 + c.wetness_jitter.clamp(0.0, 1.0) * signed)).clamp(0.0, 1.0)
+    });
     let blur_radius = wetcfg.map_or(0, |c| {
         let signed =
             dab_hash01(stamp.position_world[0] + 1.7, stamp.position_world[1] + 3.1) * 2.0 - 1.0;
@@ -882,7 +890,9 @@ fn apply_one_stamp_wash(
                 continue;
             }
             // Stroke pigment that reaches the canvas = coverage capped by opacity.
-            let eff = (opacity_cap * new_cov).clamp(0.0, 1.0);
+            // Wet Mix Dilution thins the stroke as transparency on the cap (NOT the
+            // coverage), so the diluted wash stays smooth (coverage still saturates).
+            let eff = (opacity_cap * (1.0 - wet_dilution) * new_cov).clamp(0.0, 1.0);
             // Composite via the brush's RENDERING MODE (option a — the wash now
             // honours the Mode cycler). PIGMENT keeps the subtractive K-M colour but
             // applies a per-mode coverage curve (glaze transparency); LINEAR runs

@@ -151,6 +151,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::RESET_RENDERING,
         ids::RESET_COLOR,
         ids::RESET_DYNAMICS,
+        ids::RESET_WET_MIX,
     ] {
         button(store, id);
     }

@@ -21,7 +21,7 @@ Mixer-brush = **reservatório** que evolui por dab: **pickup** (amostra a área 
 | **Carry (reservatório)** | EMA `r←(1−pull)·r+pull·sample` | EMA `r←L·r+(1−L)·α·sample` (MyPaint) | ✅ é EMA (L=1−pull) |
 | **Charge / depleção** | `load −= deposit·K` (∝ depositado) | ∝ volume depositado (IMPaSTo §4.5; PS Load) | ✅ padrão |
 | **Attack** | escala a taxa de depósito | deposit-rate (Krita Color Rate / PS Flow) | ✅ padrão (conceito) |
-| **Dilution** | `(1−dilution)` reduz cobertura → transparente | reduzir carga/opacidade sobre branco; **não** lerp p/ branco | ✅ padrão |
+| **Dilution** | era: `(1−dilution)` na **taxa** (escalopava) → agora no **cap de opacidade** | reduzir opacidade/carga sobre branco; **não** lerp p/ branco | ⚠️→✅ **CORRIGIDO** |
 | **Wetness Jitter** | randomiza `dilution` por-dab | "randomize water mix" (Procreate) | ✅ |
 | **Grade** | contraste dos vales da textura (pivota em 1) | "chunkiness/contrast da textura" (Procreate, proprietário) | 🟡 interpretação |
 | **Blur** | compõe sobre **backdrop** box-blurred | "blur the laid paint + spread" (Procreate, proprietário) | 🟡 aproximação |
@@ -67,12 +67,19 @@ Padrão: deposit-rate (Krita *Color Rate*, PS *Flow*). Nossa: escala a taxa de d
 **Nota:** Krita aplica Color Rate **quadrático** (`colorRate²`); o nosso Attack é linear (escolha — Attack ≠
 Color Rate exatamente, pois não re-injeta cor de brush; o Procreate carrega 1× via Charge e esfrega).
 
-## 5. Dilution — ✅
+## 5. Dilution — ⚠️→✅ CORRIGIDO
 
 Padrão (aquarela/Procreate): **transparência** = reduzir carga de pigmento sobre o branco do papel, **não**
-lerp da cor para branco (resultado diferente sob mistura espectral), e **desacoplado** do termo de smear.
-Nossa: `(1−dilution)` reduz a cobertura → mais backdrop aparece = transparente; não toca a cor; independente
-de Pull. ✅ exatamente o padrão.
+lerp da cor para branco, e **desacoplado** do termo de smear.
+
+**Era (bug):** `(1−dilution)` multiplicava a **taxa de depósito** (`deposit_scale`). Com dilution alto a taxa
+ficava baixa → a **cobertura nunca saturava** → a estrutura de sobreposição dos dabs aparecia como um
+escalopo "spacing-too-high" (relato do Enio: "dilution alto + charge alto parece spacing alto"). Charge alto
+deixava isso uniforme no traço todo.
+
+**Agora:** `deposit_scale = attack·load` (cobertura **satura** normal → traço liso) e a Dilution é aplicada
+como **transparência no `eff`** (cap de opacidade): `eff = opacity_cap·(1−dilution)·coverage`. Per-dab
+(jittered por Wetness Jitter). É o "transparent effect" do Procreate, sem revelar a estrutura dos dabs. ✅.
 
 ## 6. Wetness Jitter — ✅
 

@@ -90,6 +90,20 @@ impl PainterTool {
             self.wash_color = None;
             self.stroke_color_oklab[3] *= self.params.opacity.clamp(0.0, 1.0);
         }
+        // **W7 Wet Mix:** seed the mixer-brush reservoir for this stroke. Only on
+        // the wash path with Wet Mix enabled (Procreate gates Wet Mix behind the
+        // Blending rendering modes). `color` = the brush colour (linear sRGB,
+        // matching `wash_color`); `load` = Charge. Re-seeding here is the "re-wet
+        // the brush" on each pen-down. Dropped at `end_stroke`.
+        self.wet_state = if wash && self.brush.wet_mix.wet_mix_enabled {
+            let [l, a, b, _] = self.stroke_color_oklab;
+            Some(ph2d_painter_brush::WetState {
+                color: ph2d_painter_brush::oklab_to_linear_srgb(l, a, b),
+                load: self.brush.wet_mix.load.clamp(0.0, 1.0),
+            })
+        } else {
+            None
+        };
 
         // T1.9: construir PartialStroke + wire journal se ativo.
         //
@@ -256,6 +270,13 @@ impl PainterTool {
                 let pigment = self.brush.rendering.pigment_mode
                     == ph2d_painter_brush::PigmentMode::Subtractive;
                 let paper_grain = self.params.paper_grain.clamp(0.0, 1.0);
+                // W7 Wet Mix config snapshot (read before the &mut canvas borrow).
+                let wmcfg = ph2d_painter_brush::WetMixConfig {
+                    dilution: self.brush.wet_mix.dilution,
+                    attack: self.brush.wet_mix.attack,
+                    pull: self.brush.wet_mix.pull,
+                    wetness_jitter: self.brush.wet_mix.wetness_jitter,
+                };
                 let canvas_vec: &mut Vec<u8> = Arc::make_mut(&mut self.canvas_rgba);
                 // **W5 wash path (accumulate OFF):** composite each dab against the
                 // pre-stroke backdrop with opacity-capped coverage — stable, no build-up.
@@ -271,6 +292,8 @@ impl PainterTool {
                     (Some(coverage), Some(color), Some(backdrop))
                         if backdrop.len() == canvas_vec.len() =>
                     {
+                        // W7: thread the reservoir if this is a Wet-Mix stroke.
+                        let wet = self.wet_state.as_mut().map(|st| (st, wmcfg));
                         ph2d_painter_brush::apply_stamps_wash(
                             canvas_vec,
                             backdrop,
@@ -283,6 +306,7 @@ impl PainterTool {
                             pigment,
                             alpha_lock,
                             paper_grain,
+                            wet,
                         );
                     }
                     // Build-up (`accumulate`) WITH coverage allocated (edges on OR paper
@@ -378,6 +402,9 @@ impl PainterTool {
     pub fn end_stroke(&mut self) {
         self.scheduler.end_stroke();
         self.stroke_active = false;
+        // W7: drop the Wet Mix reservoir so it never leaks into the next stroke
+        // (covers all early-return paths below). Re-seeded fresh at begin_stroke.
+        self.wet_state = None;
         // T1.9: materializar PartialStroke → StrokeRecord + history push.
         let Some(mut partial) = self.current_partial.take() else {
             // Nenhum PartialStroke ⇒ no-op. **Q-10:** defesa-em-profundidade

@@ -550,6 +550,11 @@ pub struct PainterTool {
     /// at `begin_stroke` so a mid-stroke UI change can't destabilise coverage.
     /// Meaningful only while `wash_coverage` is `Some`.
     wash_opacity_cap: f32,
+    /// **W7 Wet Mix reservoir** (mixer-brush). `Some` only while a Wet-Mix stroke
+    /// is live (`wet_mix.wet_mix_enabled` at `begin_stroke`); seeded with the
+    /// brush colour + Charge, evolves dab-to-dab in `apply_stamps_wash`, dropped
+    /// at `end_stroke`. `None` ⇒ the default brush (legacy wash, unaffected).
+    wet_state: Option<ph2d_painter_brush::WetState>,
 }
 
 impl Default for PainterTool {
@@ -609,6 +614,7 @@ impl Default for PainterTool {
             wash_coverage: None,
             wash_color: None,
             wash_opacity_cap: 1.0,
+            wet_state: None,
         }
     }
 }

@@ -515,6 +515,53 @@ fn apply_one_stamp(
 /// owned by the stroke. Opacity must NOT be pre-baked into the stamp colour
 /// alpha on this path (the tool skips that bake for pigment strokes) — it is
 /// applied once, here, as the cap.
+/// **Wet Mix mixer-brush reservoir** (W7, ADR-0097). The pigment the brush
+/// carries as it travels: evolves dab-to-dab (picks up canvas colour → smear)
+/// and depletes (the `load` runs out → the trail fades). Persists across dabs
+/// WITHIN one stroke; owned by the tool, seeded at `begin_stroke`
+/// (`color` = brush colour, `load` = Charge), dropped at `end_stroke`. The
+/// reservoir is updated **once per dab** (not per footprint pixel) — one pickup
+/// at the dab centre, then the same reservoir colour deposits over the footprint.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WetState {
+    /// Reservoir pigment in **linear sRGB** (matches `wash_color`).
+    pub color: [f32; 3],
+    /// Remaining paint ∈ [0, 1]; seeded from `wet_mix.load` (Charge).
+    pub load: f32,
+}
+
+/// Snapshot of the Wet Mix sliders that drive the per-dab pickup/deposit.
+/// Passed **by value** (not through the frozen 96 B `Stamp`) so the ABI is
+/// untouched. `None` wet argument ⇒ the wash path is byte-for-byte the legacy
+/// default brush. Grade/Blur are W7 phase 2 (not here). W7.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WetMixConfig {
+    /// Water mixed in → transparency (lowers deposit). `[0,1]`.
+    pub dilution: f32,
+    /// Deposit-rate multiplier (how much loaded paint sticks). `[0,1]`.
+    pub attack: f32,
+    /// How strongly the brush picks up / smears canvas colour. `[0,1]`.
+    pub pull: f32,
+    /// Per-dab randomisation of `dilution`. `[0,1]`.
+    pub wetness_jitter: f32,
+}
+
+/// Charge depletion per unit of per-dab deposit intensity. Tuned so a full
+/// Charge (`load = 1`) lays a long trail before drying, while a low Charge dries
+/// out within ~1 brush diameter. The only free tuning knob of W7 (design §risco 3).
+const WET_DEPLETE_K: f32 = 0.06;
+
+/// Deterministic `[0,1)` hash of a dab's world position — HR-5 safe (no RNG
+/// state, same bits cross-OS). Drives `wetness_jitter` per dab.
+#[inline]
+fn dab_hash01(x: f32, y: f32) -> f32 {
+    let mut h = x.to_bits().wrapping_mul(0x9E37_79B1) ^ y.to_bits().wrapping_mul(0x85EB_CA77);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x2C1B_3C6D);
+    h ^= h >> 12;
+    (h & 0x00FF_FFFF) as f32 / (0x0100_0000u32 as f32)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn apply_stamps_wash(
     canvas: &mut [u8],
@@ -528,6 +575,7 @@ pub fn apply_stamps_wash(
     pigment: bool,
     alpha_lock: bool,
     paper_grain: f32,
+    wet: Option<(&mut WetState, WetMixConfig)>,
 ) {
     let n = (width as usize) * (height as usize);
     assert_eq!(canvas.len(), n * 4, "canvas size must match width*height*4");
@@ -543,7 +591,11 @@ pub fn apply_stamps_wash(
         "wash_color size must match width*height"
     );
     let cap = opacity_cap.clamp(0.0, 1.0);
+    // The reservoir (if any) is mutated dab-to-dab: reborrow it for each stamp so
+    // the `&mut WetState` threads through the whole stroke. `None` ⇒ legacy wash.
+    let mut wet = wet;
     for stamp in stamps {
+        let wet_ref = wet.as_mut().map(|(st, cfg)| (&mut **st, *cfg));
         apply_one_stamp_wash(
             canvas,
             backdrop,
@@ -556,6 +608,7 @@ pub fn apply_stamps_wash(
             pigment,
             alpha_lock,
             paper_grain,
+            wet_ref,
         );
     }
 }
@@ -573,6 +626,7 @@ fn apply_one_stamp_wash(
     pigment: bool,
     alpha_lock: bool,
     paper_grain: f32,
+    mut wet: Option<(&mut WetState, WetMixConfig)>,
 ) {
     if !stamp.size_px.is_finite()
         || stamp.size_px <= 0.0
@@ -609,7 +663,39 @@ fn apply_one_stamp_wash(
     // applies a per-mode coverage curve (`wash_glaze_coverage`) so the glaze modes
     // still vary the wash transparency. Constant per stamp.
     let mode = RenderingMode::from_u32(stamp.rendering_mode);
-    let wet = stamp.wet_amount;
+    let wet_amount = stamp.wet_amount;
+    // ── Wet Mix (W7, design 04): ONE reservoir update per dab ────────────────
+    // Pickup at the dab centre from the PRE-STROKE backdrop (stable overlap —
+    // design §risco 1), mixing the reservoir toward it by `pull`; the deposited
+    // colour then BECOMES the reservoir colour (the smear), and the deposit RATE
+    // is scaled by `attack · load · (1 − dilution)`. `load` depletes after the
+    // dab. `wet = None` ⇒ deposit the brush colour at full rate (legacy wash —
+    // byte-for-byte identical, the default brush is unaffected).
+    let (rgb_clamped, deposit_scale) = match wet {
+        Some((ref mut st, cfg)) => {
+            let cx = (stamp.position_world[0].round() as i32).clamp(0, width as i32 - 1);
+            let cy = (stamp.position_world[1].round() as i32).clamp(0, height as i32 - 1);
+            let cidx = (cy as usize * width as usize + cx as usize) * 4;
+            let picked = [
+                srgb_to_linear_byte(backdrop[cidx]),
+                srgb_to_linear_byte(backdrop[cidx + 1]),
+                srgb_to_linear_byte(backdrop[cidx + 2]),
+            ];
+            let k_pickup = cfg.pull.clamp(0.0, 1.0);
+            st.color = [
+                st.color[0] + (picked[0] - st.color[0]) * k_pickup,
+                st.color[1] + (picked[1] - st.color[1]) * k_pickup,
+                st.color[2] + (picked[2] - st.color[2]) * k_pickup,
+            ];
+            let signed = dab_hash01(stamp.position_world[0], stamp.position_world[1]) * 2.0 - 1.0;
+            let dil = (cfg.dilution * (1.0 + cfg.wetness_jitter.clamp(0.0, 1.0) * signed))
+                .clamp(0.0, 1.0);
+            let ds = (cfg.attack.clamp(0.0, 1.0) * st.load.clamp(0.0, 1.0) * (1.0 - dil))
+                .clamp(0.0, 1.0);
+            (st.color, ds)
+        }
+        None => (rgb_clamped, 1.0),
+    };
     // Pigment prepared once per stamp (constant across the footprint; varies
     // stamp-to-stamp only under hue jitter, which we honour by re-preparing).
     // `None` when the brush is in linear (non-pigment) wash mode.
@@ -662,7 +748,9 @@ fn apply_one_stamp_wash(
             // coverage and the stroke fades. Without this the wash path (the
             // default brush) ignored falloff entirely.
             let taper = stamp.opacity.clamp(0.0, 1.0);
-            let mut rate = (color_alpha * flow * shape_alpha * taper).clamp(0.0, 1.0);
+            // `deposit_scale` is 1.0 on the legacy path; under Wet Mix it folds in
+            // attack·load·(1−dilution) so the trail thins as the reservoir runs out.
+            let mut rate = (color_alpha * flow * shape_alpha * taper * deposit_scale).clamp(0.0, 1.0);
             if rate < (1.0 / 255.0) {
                 continue;
             }
@@ -748,7 +836,7 @@ fn apply_one_stamp_wash(
                     eff,
                 ];
                 let dst = [back[0] * back_a, back[1] * back_a, back[2] * back_a, back_a];
-                let out = apply_rendering_mode(mode, src, dst, wet);
+                let out = apply_rendering_mode(mode, src, dst, wet_amount);
                 let oa = out[3].clamp(0.0, 1.0);
                 let m = if oa > 1e-6 {
                     [
@@ -777,6 +865,11 @@ fn apply_one_stamp_wash(
                 canvas[idx + 3] = (out_a.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             }
         }
+    }
+    // Charge depletion (W7): once per dab, proportional to how much it deposited.
+    // The trail fades as `load → 0`; recharge happens at the next `begin_stroke`.
+    if let Some((st, _)) = wet {
+        st.load = (st.load - deposit_scale * WET_DEPLETE_K).max(0.0);
     }
 }
 

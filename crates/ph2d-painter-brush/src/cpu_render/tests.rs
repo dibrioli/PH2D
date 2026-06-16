@@ -978,6 +978,7 @@ fn falloff_taper_fades_the_wash_stroke() {
         false, // pigment
         false, // alpha_lock
         0.0,   // paper_grain (off in this test)
+        None,  // wet (legacy wash path)
     );
 
     let (mut left_max, mut right_max) = (0u8, 0u8);
@@ -1023,6 +1024,7 @@ fn wash_color_accumulation_blends_overlapping_dab_colors() {
             false,
             false,
             0.0,
+            None,
         );
         canvas
     };
@@ -1076,6 +1078,7 @@ fn wash_later_opaque_dab_is_on_top_not_inverted_z() {
         false,
         false,
         0.0,
+        None,
     );
     let i = ((20 * w + 20) * 4) as usize;
     let (r, g, bl) = (canvas[i] as i32, canvas[i + 1] as i32, canvas[i + 2] as i32);
@@ -1111,6 +1114,7 @@ fn wash_honors_rendering_mode_option_a() {
             pigment,
             false,
             0.0,
+            None,
         );
         let i = ((4 * w + 4) * 4) as usize;
         (canvas[i], canvas[i + 1], canvas[i + 2])
@@ -1137,5 +1141,142 @@ fn wash_honors_rendering_mode_option_a() {
         paint(3, true),
         paint(1, true),
         "Pigment wash: HeavyGlaze must differ from UniformGlaze"
+    );
+}
+
+// ───────────────────────── W7 Wet Mix (mixer-brush) ─────────────────────────
+// Design: docs/Novo Painter/04_design_W7_wet_mix.md. Reservoir pickup/deposit on
+// the live wash path; `wet = None` is the legacy default brush.
+
+fn solid_canvas(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {
+    let mut c = vec![0u8; (w * h * 4) as usize];
+    for px in c.chunks_exact_mut(4) {
+        px.copy_from_slice(&rgba);
+    }
+    c
+}
+
+fn clamp3(c: [f32; 3]) -> [f32; 3] {
+    [c[0].clamp(0.0, 1.0), c[1].clamp(0.0, 1.0), c[2].clamp(0.0, 1.0)]
+}
+
+/// Neutral Wet Mix (full charge, full attack, no pull, no dilution) on a SINGLE
+/// dab must reproduce the legacy wash (`wet = None`) byte-for-byte — the mixer
+/// path reduces to the default brush when nothing is asked of it. (Depletion only
+/// affects the NEXT dab, so a single dab is the clean equivalence point.)
+#[test]
+fn wet_neutral_single_dab_equals_legacy() {
+    let (w, h) = (24u32, 24u32);
+    let backdrop = solid_canvas(w, h, [255, 255, 255, 255]);
+    let s = red_stamp(12.0, 12.0, 10.0);
+    let seed = clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1)); // == the stamp's rgb_clamped
+    let run = |wet: bool| {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut st = WetState { color: seed, load: 1.0 };
+        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+        let wetarg = if wet { Some((&mut st, cfg)) } else { None };
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[s], 1.0, false, false, 0.0, wetarg,
+        );
+        canvas
+    };
+    assert_eq!(
+        run(true),
+        run(false),
+        "neutral Wet Mix on a single dab must equal the legacy wash byte-for-byte"
+    );
+}
+
+/// Charge depletes along the trail: with no pull/dilution and a partial Charge,
+/// a straight line of dabs must be MORE opaque at the start than at the fading end.
+#[test]
+fn wet_charge_depletes_along_trail() {
+    let (w, h) = (96u32, 8u32);
+    let backdrop = empty_canvas(w, h); // transparent pre-stroke
+    let mut canvas = empty_canvas(w, h);
+    let mut cov = vec![0.0f32; (w * h) as usize];
+    let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+    let mut st = WetState {
+        color: clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1)),
+        load: 0.6,
+    };
+    let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+    let stamps: Vec<Stamp> = (6..90).step_by(3).map(|x| red_stamp(x as f32, 4.0, 5.0)).collect();
+    apply_stamps_wash(
+        &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &stamps, 1.0, false, false, 0.0,
+        Some((&mut st, cfg)),
+    );
+    let alpha = |x: u32| canvas[((4 * w + x) * 4 + 3) as usize];
+    assert!(
+        alpha(8) > alpha(86),
+        "charge depletes → trail fades: start alpha {} should exceed end alpha {}",
+        alpha(8),
+        alpha(86)
+    );
+    assert!(st.load < 0.6, "load must have depleted (was 0.6, now {})", st.load);
+}
+
+/// Pull picks up the canvas colour: a BLUE brush over a RED backdrop deposits red
+/// with `pull = 1`, blue with `pull = 0`.
+#[test]
+fn wet_pull_picks_up_backdrop_color() {
+    let (w, h) = (16u32, 16u32);
+    let backdrop = solid_canvas(w, h, [220, 20, 20, 255]); // opaque red canvas
+    let blue = {
+        let mut s = red_stamp(8.0, 8.0, 10.0);
+        s.color_oklab = [0.55, -0.05, -0.18, 1.0]; // bluish
+        s
+    };
+    let seed_blue = clamp3(oklab_to_linear_srgb(0.55, -0.05, -0.18));
+    let run = |pull: f32| {
+        let mut canvas = backdrop.clone();
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut st = WetState { color: seed_blue, load: 1.0 };
+        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0 };
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[blue], 1.0, false, false, 0.0,
+            Some((&mut st, cfg)),
+        );
+        let i = ((8 * w + 8) * 4) as usize;
+        (canvas[i] as i32, canvas[i + 2] as i32) // (r, b)
+    };
+    let (r_pull, b_pull) = run(1.0);
+    let (r_none, b_none) = run(0.0);
+    assert!(
+        r_pull > r_none,
+        "pull picks up the red backdrop: r(pull)={r_pull} > r(no pull)={r_none}"
+    );
+    assert!(
+        b_pull < b_none,
+        "pull replaces the brush blue with red: b(pull)={b_pull} < b(no pull)={b_none}"
+    );
+}
+
+/// Dilution thins the deposit: more water → less coverage on the same dab.
+#[test]
+fn wet_dilution_reduces_coverage() {
+    let (w, h) = (24u32, 24u32);
+    let backdrop = empty_canvas(w, h);
+    let seed = clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1));
+    let run = |dilution: f32| {
+        let mut canvas = empty_canvas(w, h);
+        let mut cov = vec![0.0f32; (w * h) as usize];
+        let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
+        let mut st = WetState { color: seed, load: 1.0 };
+        let cfg = WetMixConfig { dilution, attack: 1.0, pull: 0.0, wetness_jitter: 0.0 };
+        apply_stamps_wash(
+            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[red_stamp(12.0, 12.0, 10.0)], 1.0,
+            false, false, 0.0, Some((&mut st, cfg)),
+        );
+        canvas[((12 * w + 12) * 4 + 3) as usize] // centre alpha
+    };
+    assert!(
+        run(0.0) > run(0.8),
+        "more dilution → less coverage: dry alpha {} should exceed diluted alpha {}",
+        run(0.0),
+        run(0.8)
     );
 }

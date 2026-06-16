@@ -96,7 +96,7 @@ UI sempre em **inglês** (labels/toasts), via tokens (HR-15).
 
 ## Wave 0 — Fundação *(Coord-only + ADR; pré-requisito de tudo)*
 
-- [ ] **W0.0 — ADR-0097: arquitetura do Brush Engine.** Define o dab pipeline como fonte-da-verdade do mark:
+- [x] **W0.0 — ADR-0097: arquitetura do Brush Engine — ACEITO (CPU-first).** Define o dab pipeline como fonte-da-verdade do mark:
   `evaluate_stroke(brush, path, input) → Vec<Stamp>` (scheduler determinístico CPU, HR-5) → render
   (CPU `apply_stamps_*` + GPU `StampPipeline`). Formaliza os **3 estágios ortogonais**: (1) **geometria**
   (path→dabs: spacing/jitter/taper/shape/dynamics), (2) **cobertura/composição** (build-up vs wash, os 6
@@ -243,18 +243,24 @@ visível, Moving "rola" com o traço.
 
 > Modelo reservatório pickup-and-deposit (IMPaSTo/DAB, §2 da teoria), com a cor passando por Mixbox.
 > Depende de W0.3 (estágio de cor) e dos modos Blending (W3.1).
+>
+> **✅ NÚCLEO IMPLEMENTADO (2026-06-16)** — design em [`04_design_W7_wet_mix.md`](04_design_W7_wet_mix.md).
+> `WetState`/`WetMixConfig` em `cpu_render`; reservatório threaded no `apply_stamps_wash`; wiring no tool
+> (`begin_stroke` semeia, `queue_pointer` passa, `end_stroke` dropa; gated em `wet_mix_enabled`). 4 testes de
+> paridade verdes + 321/321 da crate (anti-regressão). Falta: **W7.5 Grade / W7.6 Blur / W7.7 Blur Jitter**
+> (fase 2 — blur precisa de pass de vizinhança) + UI (W10) + ligar `wet_mix_enabled` aos modos Blending no tool.
 
-- [ ] **W7.0 — Reservatório por-pincelada.** Estado do brush: carga (`load`) depositada no início, esgota ao
+- [x] **W7.0 — Reservatório por-pincelada.** Estado do brush: carga (`load`) depositada no início, esgota ao
   arrastar, recarrega ao levantar/retocar. Pickup (`r_pickup ∝ canvas`) + deposit (`r_deposit ∝ reservoir`)
   por dab; cor mistura via Mixbox (`C_new` ponderado).
-- [ ] **W7.1 — Dilution** `[M✅][E?][U❌]` — água/transparência.
-- [ ] **W7.2 — Charge** `[M✅][E?][U❌]` — carga inicial / esgotamento.
-- [ ] **W7.3 — Attack** `[M✅][E?][U❌]` — taxa de depósito.
-- [ ] **W7.4 — Pull** `[M✅][E?][U❌]` — pickup/esfregaço do canvas.
+- [x] **W7.1 — Dilution** `[M✅][E?][U❌]` — água/transparência.
+- [x] **W7.2 — Charge** `[M✅][E?][U❌]` — carga inicial / esgotamento.
+- [x] **W7.3 — Attack** `[M✅][E?][U❌]` — taxa de depósito.
+- [x] **W7.4 — Pull** `[M✅][E?][U❌]` — pickup/esfregaço do canvas.
 - [ ] **W7.5 — Grade** `[M✅][E?][U❌]` — chunkiness da textura.
 - [ ] **W7.6 — Blur** `[M✅][E?][U❌]`.
 - [ ] **W7.7 — Blur Jitter** `[M✅][E?][U❌]`.
-- [ ] **W7.8 — Wetness Jitter** `[M✅][E?][U❌]`.
+- [x] **W7.8 — Wetness Jitter** `[M✅][E?][U❌]`.
 
 **Verificação W7:** parity headless do reservatório (esgotamento determinístico); manual: amarelo sobre azul →
 **verde** (Mixbox), não cinza; o traço afina conforme a carga esgota; Pull esfrega cor existente.

@@ -94,7 +94,8 @@ pub use brush::{Brush, BrushSerializeError};
 pub use brush_handle::{BrushHandle, BrushParamsHash};
 pub use color_dynamics::ColorDynamicsParams;
 pub use cpu_render::{
-    apply_stamps, apply_stamps_buildup, apply_stamps_wash, apply_stamps_with_options,
+    WetMixConfig, WetState, apply_stamps, apply_stamps_buildup, apply_stamps_wash,
+    apply_stamps_with_options, oklab_to_linear_srgb,
 };
 pub use dynamics::DynamicsParams;
 pub use grain::{

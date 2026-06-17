@@ -1157,7 +1157,11 @@ fn solid_canvas(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {
 }
 
 fn clamp3(c: [f32; 3]) -> [f32; 3] {
-    [c[0].clamp(0.0, 1.0), c[1].clamp(0.0, 1.0), c[2].clamp(0.0, 1.0)]
+    [
+        c[0].clamp(0.0, 1.0),
+        c[1].clamp(0.0, 1.0),
+        c[2].clamp(0.0, 1.0),
+    ]
 }
 
 /// Neutral Wet Mix (full charge, full attack, no pull, no dilution) on a SINGLE
@@ -1174,11 +1178,33 @@ fn wet_neutral_single_dab_equals_legacy() {
         let mut canvas = backdrop.clone();
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        let mut st = WetState { color: seed, load: 1.0 };
-        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
+        let mut st = WetState {
+            color: seed,
+            load: 1.0,
+        };
+        let cfg = WetMixConfig {
+            dilution: 0.0,
+            attack: 1.0,
+            pull: 0.0,
+            wetness_jitter: 0.0,
+            grade: 0.5,
+            blur: 0.0,
+            blur_jitter: 0.0,
+        };
         let wetarg = if wet { Some((&mut st, cfg)) } else { None };
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[s], 1.0, false, false, 0.0, wetarg,
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &[s],
+            1.0,
+            false,
+            false,
+            0.0,
+            wetarg,
         );
         canvas
     };
@@ -1202,10 +1228,31 @@ fn wet_charge_depletes_along_trail() {
         color: clamp3(oklab_to_linear_srgb(0.6, 0.25, 0.1)),
         load: 0.6,
     };
-    let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
-    let stamps: Vec<Stamp> = (6..90).step_by(3).map(|x| red_stamp(x as f32, 4.0, 5.0)).collect();
+    let cfg = WetMixConfig {
+        dilution: 0.0,
+        attack: 1.0,
+        pull: 0.0,
+        wetness_jitter: 0.0,
+        grade: 0.5,
+        blur: 0.0,
+        blur_jitter: 0.0,
+    };
+    let stamps: Vec<Stamp> = (6..90)
+        .step_by(3)
+        .map(|x| red_stamp(x as f32, 4.0, 5.0))
+        .collect();
     apply_stamps_wash(
-        &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &stamps, 1.0, false, false, 0.0,
+        &mut canvas,
+        &backdrop,
+        &mut cov,
+        &mut wc,
+        w,
+        h,
+        &stamps,
+        1.0,
+        false,
+        false,
+        0.0,
         Some((&mut st, cfg)),
     );
     let alpha = |x: u32| canvas[((4 * w + x) * 4 + 3) as usize];
@@ -1215,7 +1262,11 @@ fn wet_charge_depletes_along_trail() {
         alpha(8),
         alpha(86)
     );
-    assert!(st.load < 0.6, "load must have depleted (was 0.6, now {})", st.load);
+    assert!(
+        st.load < 0.6,
+        "load must have depleted (was 0.6, now {})",
+        st.load
+    );
 }
 
 /// Pull picks up the canvas colour: a BLUE brush over a RED backdrop deposits red
@@ -1234,10 +1285,31 @@ fn wet_pull_picks_up_backdrop_color() {
         let mut canvas = backdrop.clone();
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        let mut st = WetState { color: seed_blue, load: 1.0 };
-        let cfg = WetMixConfig { dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
+        let mut st = WetState {
+            color: seed_blue,
+            load: 1.0,
+        };
+        let cfg = WetMixConfig {
+            dilution: 0.0,
+            attack: 1.0,
+            pull,
+            wetness_jitter: 0.0,
+            grade: 0.5,
+            blur: 0.0,
+            blur_jitter: 0.0,
+        };
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[blue], 1.0, false, false, 0.0,
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &[blue],
+            1.0,
+            false,
+            false,
+            0.0,
             Some((&mut st, cfg)),
         );
         let i = ((8 * w + 8) * 4) as usize;
@@ -1265,11 +1337,32 @@ fn wet_dilution_reduces_coverage() {
         let mut canvas = empty_canvas(w, h);
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        let mut st = WetState { color: seed, load: 1.0 };
-        let cfg = WetMixConfig { dilution, attack: 1.0, pull: 0.0, wetness_jitter: 0.0, grade: 0.5, blur: 0.0, blur_jitter: 0.0 };
+        let mut st = WetState {
+            color: seed,
+            load: 1.0,
+        };
+        let cfg = WetMixConfig {
+            dilution,
+            attack: 1.0,
+            pull: 0.0,
+            wetness_jitter: 0.0,
+            grade: 0.5,
+            blur: 0.0,
+            blur_jitter: 0.0,
+        };
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &[red_stamp(12.0, 12.0, 10.0)], 1.0,
-            false, false, 0.0, Some((&mut st, cfg)),
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &[red_stamp(12.0, 12.0, 10.0)],
+            1.0,
+            false,
+            false,
+            0.0,
+            Some((&mut st, cfg)),
         );
         canvas[((12 * w + 12) * 4 + 3) as usize] // centre alpha
     };
@@ -1288,13 +1381,25 @@ fn wet_dilution_reduces_coverage() {
 #[test]
 fn wet_grade_pivots_at_full_and_is_identity_at_half() {
     for t in [0.0f32, 0.25, 0.6, 1.0] {
-        assert!((apply_grade(t, 0.5) - t).abs() < 1e-6, "grade 0.5 is identity at {t}");
+        assert!(
+            (apply_grade(t, 0.5) - t).abs() < 1e-6,
+            "grade 0.5 is identity at {t}"
+        );
     }
     for g in [0.0f32, 0.3, 0.5, 0.9, 1.0] {
-        assert!((apply_grade(1.0, g) - 1.0).abs() < 1e-6, "grade pivots at full coverage (g={g})");
+        assert!(
+            (apply_grade(1.0, g) - 1.0).abs() < 1e-6,
+            "grade pivots at full coverage (g={g})"
+        );
     }
-    assert!(apply_grade(0.6, 0.9) < 0.6 - 1e-3, "grade>0.5 deepens the valley");
-    assert!(apply_grade(0.6, 0.1) > 0.6 + 1e-3, "grade<0.5 fills the valley toward full");
+    assert!(
+        apply_grade(0.6, 0.9) < 0.6 - 1e-3,
+        "grade>0.5 deepens the valley"
+    );
+    assert!(
+        apply_grade(0.6, 0.1) > 0.6 + 1e-3,
+        "grade<0.5 fills the valley toward full"
+    );
 }
 
 /// Blur averages the backdrop neighbourhood: at a hard black/white edge a
@@ -1315,7 +1420,11 @@ fn wet_blur_averages_backdrop_neighbourhood() {
     assert!(sharp[0] > 0.99, "radius 0 returns the exact (white) pixel");
     // radius 2 spans into the black half → intermediate grey.
     let soft = box_average_linear(&bd, 4, 4, 2, w, h);
-    assert!(soft[0] > 0.05 && soft[0] < 0.95, "blur pulls the edge toward grey: {}", soft[0]);
+    assert!(
+        soft[0] > 0.05 && soft[0] < 0.95,
+        "blur pulls the edge toward grey: {}",
+        soft[0]
+    );
 }
 
 /// Grade and Blur are wired into the live wash loop (change the output when off
@@ -1338,21 +1447,47 @@ fn wet_grade_and_blur_are_wired() {
         let mut canvas = backdrop.clone();
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        let mut st = WetState { color: seed, load: 1.0 };
+        let mut st = WetState {
+            color: seed,
+            load: 1.0,
+        };
         let cfg = WetMixConfig {
-            dilution: 0.0, attack: 1.0, pull: 0.0, wetness_jitter: 0.0,
-            grade, blur, blur_jitter: 0.0,
+            dilution: 0.0,
+            attack: 1.0,
+            pull: 0.0,
+            wetness_jitter: 0.0,
+            grade,
+            blur,
+            blur_jitter: 0.0,
         };
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h,
-            &[red_stamp(20.0, 20.0, 30.0)], cap, false, false, paper, Some((&mut st, cfg)),
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &[red_stamp(20.0, 20.0, 30.0)],
+            cap,
+            false,
+            false,
+            paper,
+            Some((&mut st, cfg)),
         );
         canvas
     };
     // Grade changes the painted result when there is paper texture to reshape.
-    assert_ne!(paint(0.9, 0.0, 0.9, 1.0), paint(0.5, 0.0, 0.9, 1.0), "grade is wired");
+    assert_ne!(
+        paint(0.9, 0.0, 0.9, 1.0),
+        paint(0.5, 0.0, 0.9, 1.0),
+        "grade is wired"
+    );
     // Blur changes the painted result at partial coverage over the hard edge.
-    assert_ne!(paint(0.5, 1.0, 0.0, 0.4), paint(0.5, 0.0, 0.0, 0.4), "blur is wired");
+    assert_ne!(
+        paint(0.5, 1.0, 0.0, 0.4),
+        paint(0.5, 0.0, 0.0, 0.4),
+        "blur is wired"
+    );
 }
 
 /// Pull smears the LIVE canvas: a WHITE brush dragged from a red region onto a
@@ -1365,7 +1500,11 @@ fn wet_pull_smears_live_canvas_across_boundary() {
     let mut backdrop = vec![0u8; (w * h * 4) as usize];
     for y in 0..h {
         for x in 0..w {
-            let c = if x < w / 2 { [220, 30, 30, 255] } else { [245, 245, 245, 255] };
+            let c = if x < w / 2 {
+                [220, 30, 30, 255]
+            } else {
+                [245, 245, 245, 255]
+            };
             let i = ((y * w + x) * 4) as usize;
             backdrop[i..i + 4].copy_from_slice(&c);
         }
@@ -1375,10 +1514,18 @@ fn wet_pull_smears_live_canvas_across_boundary() {
         let mut canvas = backdrop.clone();
         let mut cov = vec![0.0f32; (w * h) as usize];
         let mut wc = vec![[0.0f32; 3]; (w * h) as usize];
-        let mut st = WetState { color: [1.0, 1.0, 1.0], load: 1.0 };
+        let mut st = WetState {
+            color: [1.0, 1.0, 1.0],
+            load: 1.0,
+        };
         let cfg = WetMixConfig {
-            dilution: 0.0, attack: 1.0, pull, wetness_jitter: 0.0,
-            grade: 0.5, blur: 0.0, blur_jitter: 0.0,
+            dilution: 0.0,
+            attack: 1.0,
+            pull,
+            wetness_jitter: 0.0,
+            grade: 0.5,
+            blur: 0.0,
+            blur_jitter: 0.0,
         };
         let stamps: Vec<Stamp> = (6..42)
             .step_by(2)
@@ -1389,7 +1536,17 @@ fn wet_pull_smears_live_canvas_across_boundary() {
             })
             .collect();
         apply_stamps_wash(
-            &mut canvas, &backdrop, &mut cov, &mut wc, w, h, &stamps, 1.0, false, false, 0.0,
+            &mut canvas,
+            &backdrop,
+            &mut cov,
+            &mut wc,
+            w,
+            h,
+            &stamps,
+            1.0,
+            false,
+            false,
+            0.0,
             Some((&mut st, cfg)),
         );
         // White-side pixel just past the boundary (x=27, boundary at 24).
@@ -1402,5 +1559,8 @@ fn wet_pull_smears_live_canvas_across_boundary() {
         g_p < g_n - 8,
         "pull drags red across the boundary (greener without pull): g(pull)={g_p} g(none)={g_n}"
     );
-    assert!(r_p > g_p + 10, "the smeared white-side pixel reads reddish: r={r_p} g={g_p}");
+    assert!(
+        r_p > g_p + 10,
+        "the smeared white-side pixel reads reddish: r={r_p} g={g_p}"
+    );
 }

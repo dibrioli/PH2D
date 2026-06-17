@@ -3,7 +3,9 @@
 
 use std::path::PathBuf;
 
-use ph2d_painter_stroke::{LayerSnapshot, SNAPSHOT_VERSION, SnapshotStorage, device::PersistLayerId};
+use ph2d_painter_stroke::{
+    LayerSnapshot, SNAPSHOT_VERSION, SnapshotStorage, device::PersistLayerId,
+};
 
 #[test]
 fn snapshot_ondisk_roundtrips_postcard_utf8_path() {

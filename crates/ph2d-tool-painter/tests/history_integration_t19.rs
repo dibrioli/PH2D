@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use ph2d_painter_brush::PointerSample;
 use ph2d_painter_stroke::{
-    CanvasId, CrashRecovery, FlushPolicy, JournalError, LayerId, RecoveryState,
+    CanvasId, CrashRecovery, FlushPolicy, JournalError, PersistLayerId, RecoveryState,
     SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
     SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory,
 };
@@ -201,7 +201,7 @@ fn set_next_seq_overrides_baseline() {
 #[test]
 fn set_layer_target_stamped_in_record() {
     let mut t = mk_painter_with_canvas();
-    t.set_layer_target(LayerId(7));
+    t.set_layer_target(PersistLayerId(7));
     t.begin_stroke(0);
     t.queue_pointer(PointerSample {
         position: [1.0, 1.0],
@@ -210,7 +210,7 @@ fn set_layer_target_stamped_in_record() {
     });
     t.end_stroke();
     let recorded = t.stroke_history().iter().next().unwrap();
-    assert_eq!(recorded.layer_target, LayerId(7));
+    assert_eq!(recorded.layer_target, PersistLayerId(7));
 }
 
 #[test]
@@ -731,7 +731,7 @@ fn t6_s7_set_canvas_id_mid_stroke_panics() {
 fn s7_set_layer_target_mid_stroke_panics() {
     let mut t = mk_painter_with_canvas();
     t.begin_stroke(0);
-    t.set_layer_target(LayerId(99));
+    t.set_layer_target(PersistLayerId(99));
 }
 
 /// S-7: set_next_seq mid-stroke disparar debug_assert.

@@ -3,9 +3,9 @@
 //! pins in `device.rs` and the byte-order pins in `forward_compat_pins.rs`.
 
 use ph2d_painter_stroke::{
-    CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, PersistLayerId, LayerNode, LayerNodeKind,
-    LayerStackEntry, LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES,
-    MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS, PaintProject, SCHEMA_VERSION, load, save,
+    CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerNode, LayerNodeKind, LayerStackEntry,
+    LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES, MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS,
+    PaintProject, PersistLayerId, SCHEMA_VERSION, load, save,
 };
 
 fn canvas(w: u32, h: u32) -> CanvasInfo {

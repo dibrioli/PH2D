@@ -499,11 +499,9 @@ pub const PAINTER_STUDIO_DARK_JITTER_CHIP: NodeId = hash_node_id("painter_studio
 pub const PAINTER_STUDIO_SEC_WET_MIX: NodeId = hash_node_id("painter_studio.sec_wet_mix");
 /// Master enable for the Wet Mix reservoir (mirrors `wet_mix.wet_mix_enabled`).
 /// Blending rendering modes auto-engage it; this checkbox lets any brush use it.
-pub const PAINTER_STUDIO_WET_MIX_ENABLED: NodeId =
-    hash_node_id("painter_studio.wet_mix_enabled");
+pub const PAINTER_STUDIO_WET_MIX_ENABLED: NodeId = hash_node_id("painter_studio.wet_mix_enabled");
 pub const PAINTER_STUDIO_RESET_WET_MIX: NodeId = hash_node_id("painter_studio.reset_wet_mix");
-pub const PAINTER_STUDIO_DILUTION_SLIDER: NodeId =
-    hash_node_id("painter_studio.dilution_slider");
+pub const PAINTER_STUDIO_DILUTION_SLIDER: NodeId = hash_node_id("painter_studio.dilution_slider");
 pub const PAINTER_STUDIO_DILUTION_CHIP: NodeId = hash_node_id("painter_studio.dilution_chip");
 pub const PAINTER_STUDIO_CHARGE_SLIDER: NodeId = hash_node_id("painter_studio.charge_slider");
 pub const PAINTER_STUDIO_CHARGE_CHIP: NodeId = hash_node_id("painter_studio.charge_chip");
@@ -521,8 +519,7 @@ pub const PAINTER_STUDIO_BLUR_SLIDER: NodeId = hash_node_id("painter_studio.blur
 pub const PAINTER_STUDIO_BLUR_CHIP: NodeId = hash_node_id("painter_studio.blur_chip");
 pub const PAINTER_STUDIO_BLUR_JITTER_SLIDER: NodeId =
     hash_node_id("painter_studio.blur_jitter_slider");
-pub const PAINTER_STUDIO_BLUR_JITTER_CHIP: NodeId =
-    hash_node_id("painter_studio.blur_jitter_chip");
+pub const PAINTER_STUDIO_BLUR_JITTER_CHIP: NodeId = hash_node_id("painter_studio.blur_jitter_chip");
 
 // ── Dynamics section — per-stamp size/opacity jitter (engine-wired T1.7) ──────
 pub const PAINTER_STUDIO_SEC_DYNAMICS: NodeId = hash_node_id("painter_studio.sec_dynamics");

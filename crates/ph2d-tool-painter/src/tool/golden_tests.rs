@@ -121,7 +121,10 @@ fn golden_high_dilution_high_charge_stroke_has_no_scallop() {
         "SCALLOP spine mean={mean:.1} depth={depth:.1} ripple={ripple:.1} ratio={:.3}",
         ripple / depth.max(1.0)
     );
-    assert!(depth > 8.0, "traço fraco demais p/ julgar (depth={depth:.1})");
+    assert!(
+        depth > 8.0,
+        "traço fraco demais p/ julgar (depth={depth:.1})"
+    );
     // Wash com cobertura saturada ondula pouco vs. sua profundidade; o bug
     // da-taxa fazia ripple ≈ depth (vales voltavam ao branco) → ratio ~1.0.
     assert!(
@@ -179,5 +182,7 @@ fn spike_cpu_stroke_cost_4k() {
             dt / steps as f64
         );
     }
-    eprintln!("Budget: 60fps=16.7ms/frame, 30fps=33.3ms. 1 frame ≈ 1-3 dabs. Se brush grande >> budget ⇒ GPU-residência justificada; senão CPU-first basta.");
+    eprintln!(
+        "Budget: 60fps=16.7ms/frame, 30fps=33.3ms. 1 frame ≈ 1-3 dabs. Se brush grande >> budget ⇒ GPU-residência justificada; senão CPU-first basta."
+    );
 }

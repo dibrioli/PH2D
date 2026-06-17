@@ -7,15 +7,10 @@
 //! a compilação não vê. Ver docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md §2.
 //!
 //! Invariantes (sliders do Brush Studio):
-//!  - A ⊆ D  : todo slider que o painel torna VIVO (is_studio_slider) é de fato
-//!             despachado pela tool — senão arrastar o slider não faz nada.
-//!  - A ⊆ P  : todo slider vivo é REGISTRADO em populate() — senão o clique é
-//!             dropado (a classe do "botão reset não funciona" / pills mortas).
-//!  - D\A ⊆ DORMANT : todo slider que a tool despacha mas o painel NÃO expõe é
-//!             um stub dormente DOCUMENTADO (Cerca de Chesterton). Hoje:
-//!             Roundness + AlphaThreshold (campos que o engine não lê — exigem
-//!             Stamp ABI 96B congelado; ver sections.rs / event.rs). Qualquer
-//!             fio morto ACIDENTAL novo cai aqui e força uma decisão explícita.
+//!
+//! - `A ⊆ D`: todo slider que o painel torna VIVO (is_studio_slider) é de fato despachado pela tool — senão arrastar não faz nada.
+//! - `A ⊆ P`: todo slider vivo é REGISTRADO em populate() — senão o clique é dropado (a classe do "botão reset não funciona" / pills mortas).
+//! - `D\A ⊆ DORMANT`: todo slider que a tool despacha mas o painel NÃO expõe é um stub dormente DOCUMENTADO (Cerca de Chesterton): Roundness + AlphaThreshold (campos que o engine não lê — exigem Stamp ABI 96B congelado, ver sections.rs / event.rs). Fio morto ACIDENTAL novo cai aqui e força decisão explícita.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -77,7 +72,9 @@ fn live_panel_sliders() -> BTreeSet<String> {
 
 /// Sliders REGISTRADOS em populate.rs.
 fn registered_sliders() -> BTreeSet<String> {
-    slider_idents(&read("src/populate.rs")).into_iter().collect()
+    slider_idents(&read("src/populate.rs"))
+        .into_iter()
+        .collect()
 }
 
 /// Sliders do STUDIO despachados pela tool = idents `PAINTER_STUDIO_*_SLIDER`

@@ -69,6 +69,13 @@ individual = "individual"
 # `posicional` = pt-BR for "positional" (postcard's positional layout, scatter
 # offset). In code comments; typos-cli maps it to en-US "positional".
 posicional = "posicional"
+# pt-BR em comentários do Painter/Brush Engine (Track A/B/C, 2026-06-17).
+Mede = "Mede"
+mede = "mede"
+Registre = "Registre"
+registre = "registre"
+algoritmos = "algoritmos"
+classe = "classe"
 # More pt-BR tokens that appear inside user-feedback quotes in code
 # comments and tests (kept verbatim to preserve the user's voice).
 nomes = "nomes"

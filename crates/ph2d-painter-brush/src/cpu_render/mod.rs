@@ -824,7 +824,8 @@ fn apply_one_stamp_wash(
             let taper = stamp.opacity.clamp(0.0, 1.0);
             // `deposit_scale` is 1.0 on the legacy path; under Wet Mix it folds in
             // attack·load·(1−dilution) so the trail thins as the reservoir runs out.
-            let mut rate = (color_alpha * flow * shape_alpha * taper * deposit_scale).clamp(0.0, 1.0);
+            let mut rate =
+                (color_alpha * flow * shape_alpha * taper * deposit_scale).clamp(0.0, 1.0);
             if rate < (1.0 / 255.0) {
                 continue;
             }

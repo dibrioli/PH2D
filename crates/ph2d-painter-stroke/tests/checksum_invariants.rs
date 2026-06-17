@@ -7,8 +7,8 @@
 use ph2d_color::OklchColor;
 use ph2d_painter_brush::{Brush, BrushHandle};
 use ph2d_painter_stroke::{
-    CanvasInfo, LoadError, PaintProject, SCHEMA_VERSION, StrokeRecord, ToolMode, device::PersistLayerId,
-    load,
+    CanvasInfo, LoadError, PaintProject, SCHEMA_VERSION, StrokeRecord, ToolMode,
+    device::PersistLayerId, load,
 };
 use uuid::Uuid;
 

@@ -76,7 +76,12 @@ fn paint_wet_mix_section(
         theme,
     );
     for (label, val, sld, chip) in [
-        ("Dilution", s.dilution, ids::DILUTION_SLIDER, ids::DILUTION_CHIP),
+        (
+            "Dilution",
+            s.dilution,
+            ids::DILUTION_SLIDER,
+            ids::DILUTION_CHIP,
+        ),
         ("Charge", s.charge, ids::CHARGE_SLIDER, ids::CHARGE_CHIP),
         ("Attack", s.attack, ids::ATTACK_SLIDER, ids::ATTACK_CHIP),
         ("Pull", s.pull, ids::PULL_SLIDER, ids::PULL_CHIP),

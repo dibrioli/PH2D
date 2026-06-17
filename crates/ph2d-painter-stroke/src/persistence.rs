@@ -19,8 +19,8 @@ use subtle::ConstantTimeEq;
 
 use crate::SCHEMA_VERSION;
 use crate::device::{
-    LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, PersistLayerId, LayerNode, LayerNodeKind, PersistLayerStack,
-    LayerStackEntry,
+    LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerNode, LayerNodeKind, LayerStackEntry,
+    PersistLayerId, PersistLayerStack,
 };
 use crate::history::StrokeHistory;
 use crate::record::MAX_SAMPLES_PER_STROKE;

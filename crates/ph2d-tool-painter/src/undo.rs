@@ -49,7 +49,7 @@
 //! ~50×. Until then, full textures are the only way to make every single undo
 //! exact, so we pay the memory and bound it with `max_depth`.
 
-use ph2d_painter_stroke::{PersistLayerId, LayerSnapshot};
+use ph2d_painter_stroke::{LayerSnapshot, PersistLayerId};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 

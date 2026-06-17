@@ -203,7 +203,7 @@ use ph2d_painter_brush::{
     apply_stamps_with_options, library,
 };
 use ph2d_painter_stroke::{
-    CanvasId, FlushPolicy, JournalError, PersistLayerId, PartialStroke, RawPointerSample,
+    CanvasId, FlushPolicy, JournalError, PartialStroke, PersistLayerId, RawPointerSample,
     SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
     SAMPLE_FLAG_TILT_UNAVAILABLE, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory, StrokeJournal,
     StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_checked,
@@ -623,11 +623,11 @@ impl Default for PainterTool {
 // ── Submodules (god-object split, 2026-06-04; pure mechanical move) ──
 mod internal;
 pub(crate) use internal::*;
+#[cfg(test)]
+mod golden_tests;
 mod layers;
 mod lifecycle;
 mod runtime;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod golden_tests;
 mod trait_impls;

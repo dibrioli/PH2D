@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use ph2d_color::OklchColor;
 use ph2d_painter_brush::BrushHandle;
 use ph2d_painter_stroke::{
-    AutoSave, AutoSavePolicy, CanvasId, CrashRecovery, FlushPolicy, PersistLayerId, PartialStroke,
+    AutoSave, AutoSavePolicy, CanvasId, CrashRecovery, FlushPolicy, PartialStroke, PersistLayerId,
     RawPointerSample, RecoveryState, StrokeJournal,
 };
 

@@ -3,9 +3,9 @@
 - **Status:** ACEITO (Enio, 2026-06-15).
 - **Data:** 2026-06-15.
 - **Supersede:** toda a linha de aquarela como **simulação de fluido** —
-  [ADR-0085](0085-watercolor-v2-gpu-first.md) (GPU-first watercolor v2),
+  [ADR-0085](0085-watercolor-v2-gpu-first-realtime.md) (GPU-first watercolor v2),
   [ADR-0086](0086-watercolor-minimal-core-wash.md)/[0087](0087-wash-integration-parallel-watercolor-mode.md)
-  (núcleo Wash + integração), [ADR-0090](0090-wash-undo-event-driven.md)/[0091](0091-wash-mixbox-residual-faithful-pigment-color.md)
+  (núcleo Wash + integração), [ADR-0090](0090-wash-event-driven-undo-rebuild.md)/[0091](0091-wash-mixbox-residual-faithful-pigment-color.md)
   (undo/cor do Wash), [ADR-0092](0092-wash-capillary-fringe-realistic-deposition-edge.md) (capilar),
   [ADR-0093](0093-gpu-resident-painter-canvas.md)/[0094](0094-wash-gpu-resident-simplified-core.md)
   (canvas GPU-residente + Wash GPU-residente) e [ADR-0095](0095-wash-curtis-gd-deposition-topology.md)

@@ -17,6 +17,10 @@
 
 ## §1 — Roteador leia-por-tarefa (leia SÓ o que sua tarefa exige)
 
+> **A CADA passo de QUALQUER implementação, leia primeiro [DIRETIVA_IMPLEMENTACAO.md](docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md).**
+> É o antídoto das 4 causas da semana perdida no Painter (costura não-testada · "audit"=compilar ·
+> isolamento órfão · alvo irrefutável). Regra-mãe: **verde-de-compilação é velocidade; no audit vale ZERO.**
+
 | Sua tarefa | Leia ISTO (e só isto) |
 |---|---|
 | **Tool ou node nova** | DIRETRIZ §2 (triagem) + §3.A + [examples-fan-out.md](docs/IntegracaoMultiAgente/examples-fan-out.md) |

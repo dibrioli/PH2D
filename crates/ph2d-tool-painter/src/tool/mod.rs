@@ -627,4 +627,6 @@ mod lifecycle;
 mod runtime;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod golden_tests;
 mod trait_impls;

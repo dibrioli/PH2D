@@ -1,0 +1,38 @@
+# HANDOFF — Painter / Brush Engine (tracker ÚNICO do módulo)
+
+> Regra (pós-investigação 2026-06-16): **um tracker vivo por módulo**. Handoffs por-task/coord
+> são efêmeros e vão pra `docs/archive/` ao fechar. Histórico antigo: `docs/archive/handoffs-2026-06-16/`.
+> Toda etapa segue [`DIRETIVA_IMPLEMENTACAO.md`](IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md).
+> Norte: [ADR-0097](architecture/decisions/0097-brush-engine-procreate-parity-cpu-first-dab-pipeline.md) (CPU-first dab pipeline).
+
+## Estado (2026-06-16)
+
+**Track A — provar a costura (FECHADO):**
+- ✅ Golden-image harness end-to-end: [`golden_tests.rs`](../crates/ph2d-tool-painter/src/tool/golden_tests.rs)
+  — dirige `begin_stroke→queue_pointer→end_stroke` e afirma PIXEIS (depósito + sem-scallop com
+  ripple/depth medido em 0.144, guarda a regressão do bug Dilution-na-taxa).
+- ✅ Gate executável dos 8 sites: [`architecture_studio_slider_wiring.rs`](../crates/ph2d-panel-brush-studio/tests/architecture_studio_slider_wiring.rs)
+  — A⊆D (vivo→despachado), A⊆P (vivo→registrado), D\A⊆DORMANT. Qualquer fio morto acidental falha.
+- ✅ Diagnóstico corrigido: Roundness/AlphaThreshold = **dormência intencional** (engine não lê os
+  campos; exigem Stamp ABI 96B), não bug. Codificado na allowlist DORMANT do gate.
+- ✅ SelectBrush no-op → **ruidoso** ([`lifecycle.rs`](../crates/ph2d-tool-painter/src/tool/lifecycle.rs) `SelectBrush`).
+
+## Carry-overs (open)
+
+1. **SelectBrush real** — falta um **registry handle→Brush** pra resolver o handle; depois rotear por
+   `set_brush(handle, brush)` (runtime.rs). Hoje é no-op ruidoso. Existe `library::{round_hard,round_soft,…}`
+   em `ph2d-painter-brush` como ponto de partida do registry.
+2. **alpha_threshold** — campo existe (`rendering.rs`) mas **não é lido**. É barato implementar de verdade
+   (gate de escrita por-pixel abaixo do threshold em `cpu_render`, NÃO exige Stamp ABI). **Muda render →
+   decisão do Enio** antes de expor o slider (senão vira no-op se exposto sem o engine).
+3. **shape_roundness** — dormente correto: precisa de campo no **Stamp ABI 96B congelado** (Coord + ADR).
+4. **Smudge spacing** — quando Pull/Wet ativo, apertar o spacing no `stamp_scheduler` (0.05–0.10×∅ vs
+   ~0.25×∅ default) — `05_auditoria_algoritmos_wet_mix.md` §Gap. Geometria (W1/scheduler), fora do `cpu_render`.
+
+## Próximo (sequência ratificada pelo Enio: A→B→C)
+
+- **Track B — reconciliar base:** arquivar ADR-0078..0095 (aquarela, superados por 0096), corrigir
+  contradições do CLAUDE.md §5 (W3 vs Brush Engine, datas 06-14/06-15, Tool 10/11), links quebrados do
+  ADR-0096, **colapsar os 2 `LayerStack`/`LayerId`** (u64 vs u32) num dono.
+- **Track C — canvas GPU:** spike de viabilidade no Mac 8GB + decisão **wire** `StampPipeline` no caminho
+  vivo (canvas GPU-residente) **vs aposentar** o pipeline morto + 9 gates. ADR + kill-criterion ANTES do build.

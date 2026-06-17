@@ -682,10 +682,20 @@ impl PainterTool {
                 self.params.active_color = crate::color::srgb8_to_painter_oklch(rgba);
                 self.refresh_stroke_color_if_in_flight();
             }
-            crate::params::PainterUiEdit::SelectBrush(_h) => {
-                // T1.6 R7 L1-4 — `set_brush` exige Brush runtime alongside
-                // handle. Sidebar W2 ainda não tem brush library lookup;
-                // wire completo é W5 Brush Studio (carry-over T2.3).
+            crate::params::PainterUiEdit::SelectBrush(h) => {
+                // NO-OP RUIDOSO (DIRETIVA_IMPLEMENTACAO §2: zero no-op silencioso).
+                // `set_brush(handle, brush)` (runtime.rs) é o ÚNICO path correto —
+                // escreve handle E Brush juntos (senão split-brain: snapshot mostra
+                // um brush, engine usa outro). SelectBrush só tem o handle e NÃO há
+                // registry handle→Brush pra resolvê-lo. Em vez de meio-setar (o que
+                // o params.rs alerta contra), deixamos tudo INALTERADO e avisamos —
+                // quem wirar a sidebar vê na hora por que o brush não mudou.
+                // Falta: lookup handle→Brush. Tracker: HANDOFF_painter_brush_engine.md.
+                eprintln!(
+                    "[painter] SelectBrush({h:?}) ignorado: não existe brush library \
+                     lookup (handle→Brush). Brush ativo INALTERADO. Wire um registry \
+                     e roteie por set_brush(handle, brush)."
+                );
             }
             crate::params::PainterUiEdit::ToggleBrushMode => {
                 self.params.mode = crate::params::PainterMode::Brush;

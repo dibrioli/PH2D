@@ -8,7 +8,7 @@
 use ph2d_painter_brush::{Brush, BrushHandle};
 use ph2d_painter_stroke::{
     CanvasInfo, ColorProfile, PAINT_PROJECT_MAGIC, PaintProject, SCHEMA_VERSION, StrokeHistory,
-    StrokeRecord, ToolMode, device::LayerId,
+    StrokeRecord, ToolMode, device::PersistLayerId,
 };
 
 fn sample_project() -> PaintProject {
@@ -27,7 +27,7 @@ fn sample_project() -> PaintProject {
             seq,
             handle,
             hash,
-            LayerId(0),
+            PersistLayerId(0),
             ph2d_color::OklchColor::opaque(0.7, 0.12, 30.0 * seq as f32),
         );
         rec.tool_mode = if seq % 2 == 0 {

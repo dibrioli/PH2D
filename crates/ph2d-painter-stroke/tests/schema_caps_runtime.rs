@@ -10,7 +10,7 @@
 use ph2d_color::OklchColor;
 use ph2d_painter_brush::BrushHandle;
 use ph2d_painter_stroke::{
-    MAX_SAMPLES_PER_STROKE, RawPointerSample, StrokeRecord, device::LayerId,
+    MAX_SAMPLES_PER_STROKE, RawPointerSample, StrokeRecord, device::PersistLayerId,
 };
 
 #[test]
@@ -25,7 +25,7 @@ fn stroke_record_detects_points_at_cap_boundary() {
         0,
         BrushHandle::default(),
         [0u8; 32],
-        LayerId::default(),
+        PersistLayerId::default(),
         OklchColor::default(),
     );
     assert!(!rec.points_at_cap());
@@ -42,7 +42,7 @@ fn stroke_record_postcard_roundtrip_at_cap() {
         42,
         BrushHandle::default(),
         [0u8; 32],
-        LayerId(7),
+        PersistLayerId(7),
         OklchColor::opaque(0.5, 0.2, 180.0),
     );
     // 1024 samples — ordem de magnitude real (estudo Procreate típico: 256-512).

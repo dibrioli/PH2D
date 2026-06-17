@@ -14,7 +14,7 @@
 //!    Wacom Pro Pen 3, Surface Slim Pen 2, finger, mouse, etc. Adicionar dep
 //!    `ph2d-painter-input` aqui e trocar `use crate::device::PointerSource`
 //!    por `use ph2d_painter_input::PointerSource`.
-//! 2. Mover `LayerId` / `LayerStack` / `LayerStackEntry` para
+//! 2. Mover `PersistLayerId` / `PersistLayerStack` / `LayerStackEntry` para
 //!    `crates/ph2d-painter-layers/` (W3) com o sistema de layers completo
 //!    (raster + group + mask + clipping + reference + alpha-lock + adjustment).
 //!
@@ -37,17 +37,17 @@ pub enum PointerSource {
     Unknown = 0,
 }
 
-/// Identidade de uma layer raster/group/mask dentro de um `LayerStack`.
+/// Identidade de uma layer raster/group/mask dentro de um `PersistLayerStack`.
 ///
 /// Stub W3: newtype sobre `u32` (4G layers possíveis; cap operacional é
 /// `HARD_CAP_LAYERS = 999` per spec §2.2 — espelha Procreate — mas o tipo
 /// aguenta mais). O modelo runtime W3 vive em `ph2d_tool_painter::layers`
-/// (`LayerId(u64)`); a ponte de persistência mapeia u64→u32 no save
+/// (`PersistLayerId(u64)`); a ponte de persistência mapeia u64→u32 no save
 /// (Coord ratification 2026-05-31, HANDOFF_painter_w3_layerstack_divergence_RATIFIED.md).
 #[derive(
     Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]
-pub struct LayerId(pub u32);
+pub struct PersistLayerId(pub u32);
 
 /// Identidade de um canvas (PaintProject runtime instance). ADR-0052 §2.2.
 /// Stub W11+: hoje newtype `u64`; futuro pode ganhar workspace prefix
@@ -65,11 +65,11 @@ pub struct CanvasId(pub u64);
 /// filhos recursivamente, e a layer ativa é marcada por [`LAYER_FLAG_ACTIVE`].
 /// O `next_id` do runtime NÃO é serializado — deriva-se de `max(id)+1` no load.
 /// O modelo runtime canônico vive em `ph2d_tool_painter::layers`
-/// (`LayerId(u64)`); a ponte (de)serialização mapeia u64↔u32 (HANDOFF
+/// (`PersistLayerId(u64)`); a ponte (de)serialização mapeia u64↔u32 (HANDOFF
 /// painter_w3_layerstack_divergence_RATIFIED.md). Files v1 carregam `Reserved`
 /// e migram via [`crate::persistence::migrate_v1_to_v2`].
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct LayerStack {
+pub struct PersistLayerStack {
     /// Entries em z-order **top-first** (índice 0 = topo) — W3 v2. v1 files
     /// carregam `Reserved` (sem ordem semântica).
     pub layers: Vec<LayerStackEntry>,
@@ -88,11 +88,11 @@ pub const LAYER_FLAG_CLIPPING: u8 = 1 << 3;
 /// Marca como reference (geometry source pra ColorDrop/fill).
 pub const LAYER_FLAG_IS_REFERENCE: u8 = 1 << 4;
 /// A layer ativa (selecionada). **No máximo uma** `Node` no stack carrega este
-/// bit (mapeia pro runtime `active: Option<LayerId>` — 0 = nada selecionado, 1
+/// bit (mapeia pro runtime `active: Option<PersistLayerId>` — 0 = nada selecionado, 1
 /// = a ativa; ≥2 é rejeitado no load). Audit 2026-06-01.
 pub const LAYER_FLAG_ACTIVE: u8 = 1 << 5;
 
-/// Entry de um `LayerStack`.
+/// Entry de um `PersistLayerStack`.
 ///
 /// **HR-14 forward-compat (audit T1.8 L1-F11):** `enum` com `Reserved` no
 /// discriminant 0 FROZEN. postcard serializa enum como `varint(discriminant) +
@@ -122,7 +122,7 @@ impl Default for LayerStackEntry {
 /// Uma layer serializada — **metadata only** (os pixels reconstroem-se via
 /// replay de `history`, ADR-0046 §2.7.1). Espelha
 /// `ph2d_tool_painter::layers::Layer` campo-a-campo, com o `mask:
-/// Option<LayerId>` do runtime virando ownership aninhado ([`Self::mask`]) e os
+/// Option<PersistLayerId>` do runtime virando ownership aninhado ([`Self::mask`]) e os
 /// 6 bools modifier compactados em [`Self::modifiers`]. 7 fields (cap gate
 /// co-locado em `tests`).
 ///
@@ -132,8 +132,8 @@ impl Default for LayerStackEntry {
 /// derived, so the wire format + cook-hash are unchanged.
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct LayerNode {
-    /// Id u32 (runtime `LayerId(u64)` narrowed no save; widened no load).
-    pub id: LayerId,
+    /// Id u32 (runtime `PersistLayerId(u64)` narrowed no save; widened no load).
+    pub id: PersistLayerId,
     /// Nome exibido (cap `persistence::MAX_LAYER_NAME_BYTES`).
     pub name: String,
     /// Tipo + payload (raster dims / mask dims / group children).
@@ -205,7 +205,7 @@ impl Drop for LayerNodeDepthGuard {
 /// `Deserialize`, threading the depth counter through the whole chain.
 #[derive(Deserialize)]
 struct LayerNodeWire {
-    id: LayerId,
+    id: PersistLayerId,
     name: String,
     kind: LayerNodeKind,
     blend_mode: u8,
@@ -254,21 +254,21 @@ mod tests {
 
     #[test]
     fn layer_id_default_is_zero() {
-        assert_eq!(LayerId::default().0, 0);
+        assert_eq!(PersistLayerId::default().0, 0);
     }
 
     #[test]
     fn layer_stack_default_is_empty() {
-        assert!(LayerStack::default().layers.is_empty());
+        assert!(PersistLayerStack::default().layers.is_empty());
     }
 
     fn sample_node() -> LayerNode {
         LayerNode {
-            id: LayerId(3),
+            id: PersistLayerId(3),
             name: "Foreground".to_string(),
             kind: LayerNodeKind::Group {
                 children: vec![LayerNode {
-                    id: LayerId(4),
+                    id: PersistLayerId(4),
                     name: "Line art".to_string(),
                     kind: LayerNodeKind::Raster {
                         width: 64,
@@ -278,7 +278,7 @@ mod tests {
                     opacity: 0.5,
                     modifiers: LAYER_FLAG_VISIBLE | LAYER_FLAG_CLIPPING,
                     mask: Some(Box::new(LayerNode {
-                        id: LayerId(5),
+                        id: PersistLayerId(5),
                         name: "Mask".to_string(),
                         kind: LayerNodeKind::Mask {
                             width: 64,

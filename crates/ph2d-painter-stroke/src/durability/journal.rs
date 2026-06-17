@@ -54,7 +54,7 @@ use ph2d_painter_brush::{BrushHandle, BrushParamsHash};
 use serde::{Deserialize, Serialize};
 
 use crate::SCHEMA_VERSION;
-use crate::device::{CanvasId, LayerId};
+use crate::device::{CanvasId, PersistLayerId};
 use crate::record::{RawPointerSample, StrokeId, ToolMode};
 
 use super::atomic_write::atomic_write;
@@ -122,7 +122,7 @@ pub struct PartialStroke {
     /// Qual canvas o stroke pertence.
     pub canvas_id: CanvasId,
     /// Qual layer recebe os stamps.
-    pub layer_target: LayerId,
+    pub layer_target: PersistLayerId,
     /// Brush opaco (built-in slot ou imported atlas).
     pub brush_handle: BrushHandle,
     /// blake3 do Brush snapshot — dedup em PaintProject::brush_snapshots.
@@ -152,7 +152,7 @@ impl PartialStroke {
     pub fn new(
         seq: u64,
         canvas_id: CanvasId,
-        layer_target: LayerId,
+        layer_target: PersistLayerId,
         brush_handle: BrushHandle,
         brush_params_hash: BrushParamsHash,
         primary_color: OklchColor,
@@ -908,7 +908,7 @@ mod tests {
         PartialStroke::new(
             seq,
             CanvasId(1),
-            LayerId(0),
+            PersistLayerId(0),
             BrushHandle::default(),
             [0u8; 32],
             OklchColor::default(),

@@ -419,7 +419,7 @@ impl PartialEq for RecoveryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::device::{CanvasId, LayerId};
+    use crate::device::{CanvasId, PersistLayerId};
     use crate::durability::journal::{FlushPolicy, StrokeJournal};
     use ph2d_color::OklchColor;
     use ph2d_painter_brush::BrushHandle;
@@ -435,7 +435,7 @@ mod tests {
         PartialStroke::new(
             seq,
             CanvasId(1),
-            LayerId(0),
+            PersistLayerId(0),
             BrushHandle::default(),
             [0u8; 32],
             OklchColor::default(),

@@ -59,7 +59,7 @@
 //!
 //! - [`device::PointerSource`] — stub `Unknown` enquanto `ph2d-painter-input`
 //!   (T-input, ADR-0050) não nasce.
-//! - [`device::LayerId`] + [`device::LayerStack`] — stubs até W3 layers crate.
+//! - [`device::PersistLayerId`] + [`device::PersistLayerStack`] — stubs até W3 layers crate.
 //! - [`persistence::ColorProfile`] — stub `Srgb` enquanto T-color (ADR-0051)
 //!   não materializa `ph2d-color::ColorProfile`.
 //! - [`budget::PainterMemoryBudget`] — standalone até Coord-A move pra
@@ -70,7 +70,7 @@
 pub mod budget;
 pub mod determinism;
 // Audit T1.8 L4-H2 — `device` é módulo de stubs temporários (PointerSource +
-// LayerId + LayerStack + CanvasId) que migrarão para `ph2d-painter-input`
+// PersistLayerId + PersistLayerStack + CanvasId) que migrarão para `ph2d-painter-input`
 // (T-input) e `ph2d-painter-layers` (W3). `#[doc(hidden)]` esconde de
 // rustdoc public pra que consumers prefiram o caminho top-level re-exportado.
 #[doc(hidden)]
@@ -93,8 +93,8 @@ pub use determinism::{
 };
 pub use device::{
     CanvasId, LAYER_FLAG_ACTIVE, LAYER_FLAG_ALPHA_LOCKED, LAYER_FLAG_CLIPPING,
-    LAYER_FLAG_IS_REFERENCE, LAYER_FLAG_LOCKED, LAYER_FLAG_VISIBLE, LayerId, LayerNode,
-    LayerNodeKind, LayerStack, LayerStackEntry, MAX_LAYER_NODE_DESERIALIZE_DEPTH, PointerSource,
+    LAYER_FLAG_IS_REFERENCE, LAYER_FLAG_LOCKED, LAYER_FLAG_VISIBLE, PersistLayerId, LayerNode,
+    LayerNodeKind, PersistLayerStack, LayerStackEntry, MAX_LAYER_NODE_DESERIALIZE_DEPTH, PointerSource,
 };
 pub use durability::{
     AtomicWriteError, AutoSave, AutoSaveError, AutoSavePolicy, AutoSaveState, CrashRecovery,

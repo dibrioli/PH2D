@@ -19,7 +19,7 @@ use subtle::ConstantTimeEq;
 
 use crate::SCHEMA_VERSION;
 use crate::device::{
-    LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerId, LayerNode, LayerNodeKind, LayerStack,
+    LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, PersistLayerId, LayerNode, LayerNodeKind, PersistLayerStack,
     LayerStackEntry,
 };
 use crate::history::StrokeHistory;
@@ -108,8 +108,8 @@ pub struct PaintProject {
     pub version: u32,
     /// Dimensões + color profile + ppm.
     pub canvas: CanvasInfo,
-    /// Stack de layers (W3 preenche; T1.8 ship com stub LayerStack default).
-    pub layer_stack: LayerStack,
+    /// Stack de layers (W3 preenche; T1.8 ship com stub PersistLayerStack default).
+    pub layer_stack: PersistLayerStack,
     /// Source of truth vetorial.
     pub history: StrokeHistory,
     /// Tabela dedup de brushes referenciados em `history` via blake3.
@@ -165,7 +165,7 @@ impl PaintProject {
             magic: PAINT_PROJECT_MAGIC,
             version: SCHEMA_VERSION,
             canvas,
-            layer_stack: LayerStack::default(),
+            layer_stack: PersistLayerStack::default(),
             history: StrokeHistory::default(),
             brush_snapshots: Vec::new(),
             created_at: 0,
@@ -657,7 +657,7 @@ pub fn validate_caps_post_deserialize(p: &PaintProject) -> Result<(), LoadError>
             max: MAX_LAYERS,
         });
     }
-    // The active layer maps to the runtime `active: Option<LayerId>` (0 or 1).
+    // The active layer maps to the runtime `active: Option<PersistLayerId>` (0 or 1).
     // 0 ACTIVE flags is legal (nothing selected); ≥2 is malformed and would
     // make the runtime's "which layer is active" ambiguous — reject it.
     if active_nodes > 1 {
@@ -752,7 +752,7 @@ pub fn apply_migrations(p: &mut PaintProject) -> Result<(), LoadError> {
 
 /// Migration v1 → v2 (ADR-0046-amendment-1): files v1 carregam só
 /// `LayerStackEntry::Reserved` (sem modelo de layer) mas têm `history` cujos
-/// strokes miram `device::LayerId(0)` (o default v1). Reconstrói **uma raster
+/// strokes miram `device::PersistLayerId(0)` (o default v1). Reconstrói **uma raster
 /// layer default** (id 0, ativa, dims do canvas) pra esses strokes replayarem
 /// numa layer real. Depois seta `version = 2` e re-locka o checksum.
 ///
@@ -760,7 +760,7 @@ pub fn apply_migrations(p: &mut PaintProject) -> Result<(), LoadError> {
 /// canvas v1 sempre teve conteúdo numa layer implícita).
 pub fn migrate_v1_to_v2(p: &mut PaintProject) -> Result<(), LoadError> {
     let default_layer = LayerNode {
-        id: LayerId(0),
+        id: PersistLayerId(0),
         name: "Layer 1".to_string(),
         kind: LayerNodeKind::Raster {
             width: p.canvas.width,

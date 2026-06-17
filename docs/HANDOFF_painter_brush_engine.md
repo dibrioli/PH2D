@@ -31,9 +31,12 @@
 
 ## Próximo (sequência ratificada pelo Enio: A→B→C)
 
-- **Track B — reconciliar base:** arquivar ADR-0078..0095 (aquarela, superados por 0096), corrigir
-  contradições do CLAUDE.md §5 (W3 vs Brush Engine, datas 06-14/06-15, Tool 10/11), links quebrados do
-  ADR-0096, **colapsar os 2 `LayerStack`/`LayerId`** (u64 vs u32) num dono.
+- **Track B — reconciliar base (FECHADO):** links ADR-0096, Tool 10→11, CLAUDE.md §5 (duplo-ativo+data)
+  corrigidos. Os 2 `LayerStack`/`LayerId` (u64 runtime vs u32 savefile) **NÃO colapsados** — leitura do
+  código revelou split RATIFICADO (Coord 2026-05-31) com ponte u64↔u32 documentada (Chesterton). Resolvido
+  por **desambiguação**: savefile → `PersistLayerId`/`PersistLayerStack` (zero quebra de save, provado por
+  `persistence_roundtrip`), + gate `architecture_no_layerid_name_collision`. ADRs 0078-0095 mantidos
+  (log append-only; §5 já os marca histórico).
 - **Track C — canvas GPU: RESOLVIDO ([ADR-0098](architecture/decisions/0098-gpu-resident-canvas-spike-no-go-cpu-first-stands.md)).**
   Spike `spike_cpu_stroke_cost_4k` (4K, release): CPU aguenta brush ≤256px com folga; só >1024px@4K
   estoura. **NO-GO na migração GPU-residente** (não é requisito da paridade). CPU-first (ADR-0097)

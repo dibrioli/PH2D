@@ -273,14 +273,14 @@ mod tests {
     use ph2d_color::OklchColor;
     use ph2d_painter_brush::BrushHandle;
 
-    use crate::device::LayerId;
+    use crate::device::PersistLayerId;
 
     fn rec(seq: u64) -> StrokeRecord {
         StrokeRecord::new(
             seq,
             BrushHandle::default(),
             [0u8; 32],
-            LayerId::default(),
+            PersistLayerId::default(),
             OklchColor::default(),
         )
     }

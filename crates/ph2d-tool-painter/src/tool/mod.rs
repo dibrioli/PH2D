@@ -203,7 +203,7 @@ use ph2d_painter_brush::{
     apply_stamps_with_options, library,
 };
 use ph2d_painter_stroke::{
-    CanvasId, FlushPolicy, JournalError, LayerId, PartialStroke, RawPointerSample,
+    CanvasId, FlushPolicy, JournalError, PersistLayerId, PartialStroke, RawPointerSample,
     SAMPLE_FLAG_AZIMUTH_UNAVAILABLE, SAMPLE_FLAG_BARREL_ROLL_UNAVAILABLE,
     SAMPLE_FLAG_TILT_UNAVAILABLE, SAMPLE_FLAG_TIMESTAMP_UNAVAILABLE, StrokeHistory, StrokeJournal,
     StrokeRecord, ToolMode, f32_to_q88, f32_to_q1616_checked,
@@ -449,8 +449,9 @@ pub struct PainterTool {
     /// `CrashRecovery::committed_for_canvas(id)` filter multi-canvas W11+.
     canvas_id: CanvasId,
     /// Layer alvo deste stroke. W3 layers nasce → caller seta via
-    /// `params.target_layer`; T1.9 default `LayerId(0)` (single-raster).
-    layer_target: LayerId,
+    /// `params.target_layer`; T1.9 default `PersistLayerId(0)` (single-raster).
+    /// Tipo do SAVEFILE (DTO u32), não o runtime `crate::layers::LayerId(u64)`.
+    layer_target: PersistLayerId,
     /// **Audit T1.9 R-5** — cache do `Brush::params_blake3()` (postcard
     /// serialize ~1KB + blake3 ~32B). Invalidado em [`Self::set_brush`].
     /// Sem cache: 30 strokes/s × ~1KB alloc per `begin_stroke` no flicking
@@ -599,7 +600,7 @@ impl Default for PainterTool {
             current_samples: Vec::new(),
             next_seq: 0,
             canvas_id: CanvasId(0),
-            layer_target: LayerId(0),
+            layer_target: PersistLayerId(0),
             cached_brush_hash: None,
             last_wal_error: None,
             undo: crate::undo::UndoController::default(),

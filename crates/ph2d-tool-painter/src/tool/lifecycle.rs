@@ -1082,7 +1082,7 @@ impl PainterTool {
     ///
     /// **S-7 (audit T1.9):** mid-stroke = lifecycle violation. Vide
     /// [`Self::set_canvas_id`] rationale.
-    pub fn set_layer_target(&mut self, layer: LayerId) {
+    pub fn set_layer_target(&mut self, layer: PersistLayerId) {
         debug_assert!(
             !self.stroke_active,
             "set_layer_target called mid-stroke — ADR-0052 §2.6 lifecycle \

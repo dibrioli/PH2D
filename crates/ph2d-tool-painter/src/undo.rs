@@ -49,7 +49,7 @@
 //! ~50×. Until then, full textures are the only way to make every single undo
 //! exact, so we pay the memory and bound it with `max_depth`.
 
-use ph2d_painter_stroke::{LayerId, LayerSnapshot};
+use ph2d_painter_stroke::{PersistLayerId, LayerSnapshot};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -122,7 +122,7 @@ enum UndoEntry {
 /// the latter returns the texture the caller must blit into `canvas_rgba`.
 #[derive(Debug)]
 pub struct UndoController {
-    layer_id: LayerId,
+    layer_id: PersistLayerId,
     undo: Vec<UndoEntry>,
     redo: Vec<UndoEntry>,
     max_depth: usize,
@@ -130,14 +130,14 @@ pub struct UndoController {
 
 impl Default for UndoController {
     fn default() -> Self {
-        Self::new(LayerId(0), DEFAULT_MAX_DEPTH)
+        Self::new(PersistLayerId(0), DEFAULT_MAX_DEPTH)
     }
 }
 
 impl UndoController {
     /// New controller for `layer_id` with an explicit retained-depth ceiling.
     #[must_use]
-    pub fn new(layer_id: LayerId, max_depth: usize) -> Self {
+    pub fn new(layer_id: PersistLayerId, max_depth: usize) -> Self {
         Self {
             layer_id,
             undo: Vec::new(),
@@ -329,7 +329,7 @@ mod tests {
     impl Sim {
         fn new(cap: usize, initial: Vec<u8>) -> Self {
             Self {
-                c: UndoController::new(LayerId(0), cap),
+                c: UndoController::new(PersistLayerId(0), cap),
                 live: initial,
             }
         }

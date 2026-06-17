@@ -7,7 +7,7 @@
 use ph2d_color::OklchColor;
 use ph2d_painter_brush::{Brush, BrushHandle};
 use ph2d_painter_stroke::{
-    CanvasInfo, LoadError, PaintProject, SCHEMA_VERSION, StrokeRecord, ToolMode, device::LayerId,
+    CanvasInfo, LoadError, PaintProject, SCHEMA_VERSION, StrokeRecord, ToolMode, device::PersistLayerId,
     load,
 };
 use uuid::Uuid;
@@ -31,7 +31,7 @@ fn make_project(seed: u64) -> PaintProject {
             i,
             handle,
             hash,
-            LayerId(0),
+            PersistLayerId(0),
             OklchColor::opaque(0.5, 0.1, (i as f32) * 30.0),
         );
         // PIN UUID determinístico — caso contrário Uuid::new_v4() randomiza
@@ -186,7 +186,7 @@ fn iter_ring_yields_chronological_order() {
             i,
             ph2d_painter_brush::BrushHandle::default(),
             [0u8; 32],
-            ph2d_painter_stroke::device::LayerId::default(),
+            ph2d_painter_stroke::device::PersistLayerId::default(),
             OklchColor::default(),
         );
         rec.uuid = Uuid::from_u128(i as u128);

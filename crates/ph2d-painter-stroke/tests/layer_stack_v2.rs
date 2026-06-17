@@ -3,7 +3,7 @@
 //! pins in `device.rs` and the byte-order pins in `forward_compat_pins.rs`.
 
 use ph2d_painter_stroke::{
-    CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, LayerId, LayerNode, LayerNodeKind,
+    CanvasInfo, LAYER_FLAG_ACTIVE, LAYER_FLAG_VISIBLE, PersistLayerId, LayerNode, LayerNodeKind,
     LayerStackEntry, LoadError, MAX_GROUP_DEPTH, MAX_LAYER_NAME_BYTES,
     MAX_LAYER_NODE_DESERIALIZE_DEPTH, MAX_LAYERS, PaintProject, SCHEMA_VERSION, load, save,
 };
@@ -18,7 +18,7 @@ fn canvas(w: u32, h: u32) -> CanvasInfo {
 
 fn raster(id: u32, name: &str) -> LayerNode {
     LayerNode {
-        id: LayerId(id),
+        id: PersistLayerId(id),
         name: name.to_string(),
         kind: LayerNodeKind::Raster {
             width: 16,
@@ -58,7 +58,7 @@ fn load_migrates_v1_to_v2_with_default_layer() {
         LayerStackEntry::Node(n) => {
             assert_eq!(
                 n.id,
-                LayerId(0),
+                PersistLayerId(0),
                 "default layer id 0 — matches v1 stroke layer_target"
             );
             assert_ne!(
@@ -96,7 +96,7 @@ fn v2_layer_tree_roundtrips_through_save_load() {
     top.blend_mode = 11; // HardLight
     top.opacity = 0.7;
     top.mask = Some(Box::new(LayerNode {
-        id: LayerId(3),
+        id: PersistLayerId(3),
         name: "Ink mask".to_string(),
         kind: LayerNodeKind::Mask {
             width: 64,
@@ -109,7 +109,7 @@ fn v2_layer_tree_roundtrips_through_save_load() {
         mask: None,
     }));
     let group = LayerNode {
-        id: LayerId(4),
+        id: PersistLayerId(4),
         name: "Inking".to_string(),
         kind: LayerNodeKind::Group {
             children: vec![top],
@@ -139,7 +139,7 @@ fn load_rejects_groups_nested_past_max_depth() {
     let mut p = PaintProject::new(canvas(8, 8));
     // MAX_GROUP_DEPTH + 1 nested groups → the deepest trips the depth guard.
     let mut node = LayerNode {
-        id: LayerId(0),
+        id: PersistLayerId(0),
         name: "g".to_string(),
         kind: LayerNodeKind::Group {
             children: vec![],
@@ -152,7 +152,7 @@ fn load_rejects_groups_nested_past_max_depth() {
     };
     for i in 0..MAX_GROUP_DEPTH {
         node = LayerNode {
-            id: LayerId(i as u32 + 1),
+            id: PersistLayerId(i as u32 + 1),
             name: "g".to_string(),
             kind: LayerNodeKind::Group {
                 children: vec![node],
@@ -191,7 +191,7 @@ fn deep_group_chain(depth: usize) -> LayerNode {
     let mut node = raster(0, "leaf");
     for i in 1..depth {
         node = LayerNode {
-            id: LayerId(i as u32),
+            id: PersistLayerId(i as u32),
             name: "g".to_string(),
             kind: LayerNodeKind::Group {
                 children: vec![node],
@@ -262,7 +262,7 @@ fn load_accepts_legit_max_depth_tree() {
 
 #[test]
 fn load_rejects_more_than_one_active_layer() {
-    // The active flag maps to runtime `active: Option<LayerId>` — 0 or 1. Two
+    // The active flag maps to runtime `active: Option<PersistLayerId>` — 0 or 1. Two
     // ACTIVE nodes is ambiguous → rejected (audit 2026-06-01). 0 is legal
     // (covered implicitly by other tests with no ACTIVE).
     let mut p = PaintProject::new(canvas(8, 8));
@@ -311,7 +311,7 @@ fn load_rejects_more_total_nodes_than_max_layers() {
     // One group with MAX_LAYERS children → total = 1 + MAX_LAYERS > MAX_LAYERS.
     let children: Vec<LayerNode> = (0..MAX_LAYERS as u32).map(|i| raster(i + 1, "c")).collect();
     let group = LayerNode {
-        id: LayerId(0),
+        id: PersistLayerId(0),
         name: "root".to_string(),
         kind: LayerNodeKind::Group {
             children,

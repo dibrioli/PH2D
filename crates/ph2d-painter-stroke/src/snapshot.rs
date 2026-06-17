@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::device::LayerId;
+use crate::device::PersistLayerId;
 
 /// Snapshot de uma layer raster em um ponto da history.
 ///
@@ -31,7 +31,7 @@ pub struct LayerSnapshot {
     /// Após qual stroke seq foi tirado o snapshot (boundary upstream).
     pub at_seq: u64,
     /// Layer de origem.
-    pub layer_id: LayerId,
+    pub layer_id: PersistLayerId,
     /// blake3 do conteúdo da texture (dedup + integrity).
     pub texture_blake3: [u8; 32],
     /// Onde os bytes vivem (RAM ou disk).
@@ -84,7 +84,7 @@ pub const SNAPSHOT_STROKE_INTERVAL: u64 = 50;
 
 impl LayerSnapshot {
     /// Construtor mínimo. `timestamp_ms` zera — caller seta com wall-clock real.
-    pub fn new_in_memory(layer_id: LayerId, at_seq: u64, bytes: Vec<u8>) -> Self {
+    pub fn new_in_memory(layer_id: PersistLayerId, at_seq: u64, bytes: Vec<u8>) -> Self {
         let texture_blake3 = blake3::hash(&bytes);
         Self {
             at_seq,
@@ -184,18 +184,18 @@ mod tests {
     #[test]
     fn new_in_memory_computes_blake3_correctly() {
         let bytes = vec![0xDE, 0xAD, 0xBE, 0xEF];
-        let snap = LayerSnapshot::new_in_memory(LayerId(7), 42, bytes.clone());
+        let snap = LayerSnapshot::new_in_memory(PersistLayerId(7), 42, bytes.clone());
         let expected = blake3::hash(&bytes);
         assert_eq!(snap.texture_blake3, *expected.as_bytes());
         assert_eq!(snap.at_seq, 42);
-        assert_eq!(snap.layer_id, LayerId(7));
+        assert_eq!(snap.layer_id, PersistLayerId(7));
         assert!(snap.is_in_memory());
         assert_eq!(snap.version, SNAPSHOT_VERSION);
     }
 
     #[test]
     fn snapshot_roundtrips_postcard() {
-        let snap = LayerSnapshot::new_in_memory(LayerId(1), 100, vec![1, 2, 3]);
+        let snap = LayerSnapshot::new_in_memory(PersistLayerId(1), 100, vec![1, 2, 3]);
         let bytes = postcard::to_allocvec(&snap).unwrap();
         let back: LayerSnapshot = postcard::from_bytes(&bytes).unwrap();
         assert_eq!(snap, back);

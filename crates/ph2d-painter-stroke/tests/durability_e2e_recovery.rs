@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use ph2d_color::OklchColor;
 use ph2d_painter_brush::BrushHandle;
 use ph2d_painter_stroke::{
-    AutoSave, AutoSavePolicy, CanvasId, CrashRecovery, FlushPolicy, LayerId, PartialStroke,
+    AutoSave, AutoSavePolicy, CanvasId, CrashRecovery, FlushPolicy, PersistLayerId, PartialStroke,
     RawPointerSample, RecoveryState, StrokeJournal,
 };
 
@@ -21,7 +21,7 @@ fn mk_partial(seq: u64, canvas: u64) -> PartialStroke {
     PartialStroke::new(
         seq,
         CanvasId(canvas),
-        LayerId(0),
+        PersistLayerId(0),
         BrushHandle::default(),
         [0u8; 32],
         OklchColor::default(),

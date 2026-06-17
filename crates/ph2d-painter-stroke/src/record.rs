@@ -11,7 +11,7 @@ use ph2d_painter_brush::{BrushHandle, BrushParamsHash};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::device::{LayerId, PointerSource};
+use crate::device::{PersistLayerId, PointerSource};
 
 /// Identidade global de um stroke. ADR-0046 §2.2 — referenciado por
 /// ADRs 0047 (MCP) e 0048 (Inspector).
@@ -87,7 +87,7 @@ pub struct StrokeRecord {
     /// `struct BrushParamsHash(pub [u8; 32])` cross-crate.
     pub brush_params_hash: BrushParamsHash,
     /// Qual raster layer recebe os stamps.
-    pub layer_target: LayerId,
+    pub layer_target: PersistLayerId,
     /// Cor primária OKLCH no momento do stroke (ADR-0051 working space conversion runtime).
     pub primary_color: OklchColor,
     /// Cor secundária (Procreate long-press slot). `None` quando stroke não usou.
@@ -120,7 +120,7 @@ impl StrokeRecord {
         seq: u64,
         brush_handle: BrushHandle,
         brush_params_hash: BrushParamsHash,
-        layer_target: LayerId,
+        layer_target: PersistLayerId,
         primary_color: OklchColor,
     ) -> Self {
         Self {
@@ -290,7 +290,7 @@ mod tests {
             7,
             BrushHandle::default(),
             sample_brush_hash(),
-            LayerId(3),
+            PersistLayerId(3),
             OklchColor::opaque(0.6, 0.1, 200.0),
         );
         assert_eq!(rec.seq, 7);
@@ -328,7 +328,7 @@ mod tests {
             0,
             BrushHandle::default(),
             [0u8; 32],
-            LayerId::default(),
+            PersistLayerId::default(),
             OklchColor::default(),
         );
         rec.points
@@ -351,7 +351,7 @@ mod tests {
             0,
             BrushHandle::default(),
             [0u8; 32],
-            LayerId::default(),
+            PersistLayerId::default(),
             OklchColor::default(),
         );
         for _ in 0..10 {
@@ -367,7 +367,7 @@ mod tests {
             0,
             BrushHandle::default(),
             [0u8; 32],
-            LayerId::default(),
+            PersistLayerId::default(),
             OklchColor::default(),
         );
         assert!(!rec.points_at_cap());

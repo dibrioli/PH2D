@@ -129,3 +129,55 @@ fn golden_high_dilution_high_charge_stroke_has_no_scallop() {
         "scallop: ripple {ripple:.1} ≥ 0.5·depth {depth:.1} (cobertura não saturou)"
     );
 }
+
+/// SPIKE de viabilidade (Track C / ADR-0098): custo CPU de pintar num canvas 4K
+/// com brushes pequeno→grande. É O número que decide se a migração foundational
+/// p/ canvas GPU-residente (destravaria 4K/brush grande) se justifica, ou se o
+/// CPU-first (ADR-0097) aguenta. Mede o caminho quente real begin→queue→end
+/// (scheduler + apply_stamps_wash + composite trivial). #[ignore] + --release
+/// (dev=opt0 mente, ver feedback_measure_perf_symptom_scale).
+///
+/// `cargo test --release -p ph2d-tool-painter spike_cpu_stroke_cost_4k -- --ignored --nocapture`
+#[test]
+#[ignore = "spike de perf — rode com --release --ignored"]
+fn spike_cpu_stroke_cost_4k() {
+    use std::time::Instant;
+    let (w, h) = (4096u32, 4096u32);
+    eprintln!("== SPIKE canvas {w}x{h} (CPU apply_stamps_wash, caminho vivo) ==");
+    for size in [64.0f32, 256.0, 1024.0, 2048.0] {
+        let mut t = PainterTool::default();
+        t.params.size_px = size;
+        t.params.opacity = 1.0;
+        t.params.active_color = OklchColor {
+            l: 0.45,
+            c: 0.16,
+            h: 0.9,
+            a: 1.0,
+        };
+        t.set_source(flat(w, h, [255, 255, 255, 255]), w, h);
+        let _ = t.current_preview();
+
+        // Um traço curto no centro ≈ alguns frames de input p/ um brush grande.
+        let (cx, cy) = ((w / 2) as f32, (h / 2) as f32);
+        let len = (size * 2.0).clamp(96.0, 1024.0);
+        let steps = 24;
+        let t0 = Instant::now();
+        t.begin_stroke(99);
+        for i in 0..steps {
+            let dx = (i as f32 / steps as f32) * len;
+            t.queue_pointer(PointerSample {
+                position: [cx + dx, cy],
+                pressure: 1.0,
+                tilt: 0.0,
+            });
+        }
+        t.end_stroke();
+        let dt = t0.elapsed().as_secs_f64() * 1e3;
+        let _ = t.current_preview();
+        eprintln!(
+            "  brush={size:>6.0}px  stroke({steps} samples / {len:.0}px)  total={dt:>8.2}ms  ({:>6.2}ms/sample)",
+            dt / steps as f64
+        );
+    }
+    eprintln!("Budget: 60fps=16.7ms/frame, 30fps=33.3ms. 1 frame ≈ 1-3 dabs. Se brush grande >> budget ⇒ GPU-residência justificada; senão CPU-first basta.");
+}

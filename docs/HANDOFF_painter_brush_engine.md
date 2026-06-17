@@ -34,5 +34,8 @@
 - **Track B — reconciliar base:** arquivar ADR-0078..0095 (aquarela, superados por 0096), corrigir
   contradições do CLAUDE.md §5 (W3 vs Brush Engine, datas 06-14/06-15, Tool 10/11), links quebrados do
   ADR-0096, **colapsar os 2 `LayerStack`/`LayerId`** (u64 vs u32) num dono.
-- **Track C — canvas GPU:** spike de viabilidade no Mac 8GB + decisão **wire** `StampPipeline` no caminho
-  vivo (canvas GPU-residente) **vs aposentar** o pipeline morto + 9 gates. ADR + kill-criterion ANTES do build.
+- **Track C — canvas GPU: RESOLVIDO ([ADR-0098](architecture/decisions/0098-gpu-resident-canvas-spike-no-go-cpu-first-stands.md)).**
+  Spike `spike_cpu_stroke_cost_4k` (4K, release): CPU aguenta brush ≤256px com folga; só >1024px@4K
+  estoura. **NO-GO na migração GPU-residente** (não é requisito da paridade). CPU-first (ADR-0097)
+  mantido. Gatilho de revisita escrito. Follow-up: relaxar os 9 gates de ABI-freeze do StampPipeline
+  (congelam ABI sem consumidor) — não deletar (substrato do gatilho).

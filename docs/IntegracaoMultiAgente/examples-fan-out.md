@@ -32,7 +32,7 @@ pelo seu slug em todo o doc e o resultado é o crate fim-a-fim.
 > - Node Temporal + ph2d-expr: `crates/ph2d-node-debug-wave/`
 > - Node vertical (3 nodes): `crates/ph2d-node-motion-{grid,clone,transform}/`
 > - Tool sabor (1) one-shot: `crates/ph2d-tool-make-square/`
-> - Tool sabor (2) palette modal: `crates/ph2d-tool-brush/`
+> - Tool sabor (2) palette modal: `crates/ph2d-tool-move/`
 > - Tool sabor (3) stateful + panel: `crates/ph2d-tool-padding/` (leve) ou
 >   `crates/ph2d-tool-bgremoval/` (completo)
 
@@ -570,9 +570,9 @@ ph2d-tool-sync: <N+1> crate(s) total; <M+1> manifest, <K> modal (make);
 | Superfícies regen | 1 (register_all_nodes) | 5 (register_all + register_all_tools + 2 testes + deps) |
 | Staleness gate | `-p ph2d-node-registry-init` | `-p ph2d-tool-registry-init` |
 | Entry point | `pub fn register(reg) -> Result<…>` | `pub fn register(reg)` |
-| Contrato congelado | NodeOp ≤ 2 / NodeManifest ≤ 8 (ADR-0039) | Tool ≤ 10 / RasterEditTool ≤ 5 / PanelEvent ≤ 4 (ADR-0040+0041) |
+| Contrato congelado | NodeOp ≤ 2 / NodeManifest ≤ 8 (ADR-0039) | Tool ≤ 11 / RasterEditTool ≤ 5 / PanelEvent ≤ 4 (ADR-0040+0041) |
 | Edição fora da pasta | Nenhuma | 3 touches: IconId variant em `editor-core/src/icons.rs` (ordem alfabética) + design TOML em `docs/design/tools/` + SVG em `docs/design/icons/` (Enio fornece) |
-| Templates vivos | `ph2d-node-debug-const` / `-debug-wave` / `-motion-*` | `ph2d-tool-make-square` / `-brush` / `-padding` |
+| Templates vivos | `ph2d-node-debug-const` / `-debug-wave` / `-motion-*` | `ph2d-tool-make-square` / `-move` / `-padding` |
 
 ---
 

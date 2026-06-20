@@ -143,7 +143,7 @@ Receita simétrica única. Drop a crate, roda o sync, gates fecham. **Sem coorde
 | 🔒 Cap arch-gate | `NodeOp=2` / `OpResolver=1` / `NodeManifest=8` (ADR-0039) | `Tool=11` / `RasterEditTool=5` / `PanelEvent=4` (ADR-0040+0041; cap real em `architecture_tool_contract_surface.rs`) |
 | Entry points | `pub fn register(reg: &mut NodeRegistry) -> Result<…>` | `pub fn register(reg: &mut Registry)` (manifest) E/OU `pub fn make() -> Box<dyn Tool>` (behavior); 3 sabores §3.A.3 |
 | Vocab de canal | portas tipadas + effect + clock + params | `EditorAction::{ActivateTool, OneShotImageOp, ToolPanelEvent(PanelEvent), CancelActiveTool}` (4 genéricos — sem variant per-tool) |
-| Templates | `ph2d-node-debug-const/` (Pure trivial) · `-debug-wave/` (Temporal + ph2d-expr + golden) · `-motion-{grid,clone,transform}/` (vertical Stateful-free) | `-make-square/` (sabor 1) · `-brush/` (sabor 2, `is_default=true`) · `-padding/` (sabor 3 leve) · `-bgremoval/` (sabor 3 completo) |
+| Templates | `ph2d-node-debug-const/` (Pure trivial) · `-debug-wave/` (Temporal + ph2d-expr + golden) · `-motion-{grid,clone,transform}/` (vertical Stateful-free) | `-make-square/` (sabor 1) · `-move/` (sabor 2, `is_default=true`) · `-padding/` (sabor 3 leve) · `-bgremoval/` (sabor 3 completo) |
 | Pegadinhas | `ctx.param("nome")` no eval (nunca `MANIFEST.params[..].default`); `param_as_count(v, max)` p/ alocação capada | `apply_ui_edit` = single-source-of-truth de clamps; ícone exige IconId variant alfabético em `editor-core/src/icons.rs` |
 
 #### 3.A.2 Briefing pronto-pra-colar
@@ -236,7 +236,7 @@ QUANDO TERMINAR, reporte:
 | Sabor | Expõe | Templates | Quando usar |
 |---|---|---|---|
 | **(1) One-shot stateless** | `pub fn register` (manifest) | `-make-square/` · `-trim-transparency/` · `-real-size/` · `-rasterize/` | Pill dispara algoritmo puro no Sprite ativo. Sem `impl Tool`. Shell drena via `EditorAction::OneShotImageOp`. |
-| **(2) Palette modal** | `pub fn make` (`Box<dyn Tool>`) | `-brush/` (`is_default=true`) · `-move/` | Cursor de canvas, sem pill. `impl Tool` + `build_panel` Procreate-style. Sem `ToolManifest`. |
+| **(2) Palette modal** | `pub fn make` (`Box<dyn Tool>`) | `-move/` (`is_default=true`) | Cursor de canvas, sem pill. `impl Tool` + `build_panel`. Sem `ToolManifest`. |
 | **(3) Stateful + panel docado** | ambos `register` E `make` | `-padding/` (leve) · `-bgremoval/` (completo) · `-color-equalization/` · `-upscale/` | Pill + panel próprio (`ph2d-panel-<slug>/`) + preview/commit raster. (1)+(2)+opcional `impl RasterEditTool`. |
 
 O `ph2d-tool-sync` é configurado pelas needles `"pub fn register("` (manifest) e `"pub fn make("` (behavior) — sabor (1) só em `register_all`, (2) só em `register_all_tools`, (3) nos dois.
@@ -271,7 +271,7 @@ Dois agentes adicionando duas features (mesma família ou não) **não tocam nen
 - [ ] Golden test verde.
 
 **Tool:**
-- [ ] `MANIFEST` completo OU `is_default` correto (sabor 2: só Brush é true).
+- [ ] `MANIFEST` completo OU `is_default` correto (sabor 2: só o tool default — Move — retorna true).
 - [ ] Se stateful: `handle_panel_event` cobre 1:1 os NodeIds; rota tudo via `apply_ui_edit`.
 - [ ] Se `impl RasterEditTool`: `as_raster_edit_mut` retorna `Some(self)`; cache zerado em `set_source` + `on_deactivate`.
 - [ ] Ícone: SVG em `docs/design/icons/` + IconId alfabético em `icons.rs`.

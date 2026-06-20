@@ -9,18 +9,19 @@
 - [ ] Leia o **tracker único** do módulo (1 por módulo; o resto é histórico arquivado).
 - [ ] Sua mudança cruza foundational / shell / outra crate? **O consumidor faz parte DESTE work item.**
       Proibido armar flag/evento órfão e "fiar depois" — é a causa nº 1 de feature morta (eyedropper, pills).
-- [ ] Existe algoritmo de **referência publicado** (Krita Dulling, Curtis g/d, Mixbox, param do Procreate)?
-      **Porte-o** antes de escrever a sua versão. Constante inventada (`D_MAX`, `COVER_K`, …) = **PARE**.
+- [ ] Existe algoritmo de **referência publicado** (transfer sRGB/OKLab, math canônica de blend-mode,
+      geometria kurbo/vello, K–M/Mixbox onde houver pigmento)? **Porte-o** antes de escrever a sua versão.
+      Constante de magia inventada (`*_MAX`, `*_K`, fator solto) = **PARE** e ache a fonte.
 
-## 2 — Codando UI interativa (slider / botão / pincel): fie as pontas JUNTAS
-A mesma feature atravessa, no mínimo, **8 sites**:
+## 2 — Codando UI interativa (slider / botão / cycler): fie as pontas JUNTAS
+Um controle interativo atravessa o **seam painel↔tool**, no mínimo **7 sites**:
 
-`id (editor-core/chrome.rs)` → `variante BrushParam (params.rs)` → `braço set_brush_param (lifecycle.rs)`
-→ `campo do snapshot (params.rs)` → `register em populate.rs` → `paint em sections.rs`
-→ `allowlist em event.rs` → `dispatch em trait_impls.rs`.
+`id (ph2d-editor-core/src/ids/…)` → `register em populate.rs/seam.rs (vira focável)`
+→ `paint + hit-index em paint*.rs` → `emite o evento em event.rs/seam.rs`
+→ `EditorAction::ToolPanelEvent (bus)` → `tool.handle_panel_event` → `apply_ui_edit (muda o spec/estado)`.
 
 - [ ] Faltar **uma** ponta = clique dropado **em silêncio**, não erro de compilação. Fie todas no mesmo passo.
-      Se uma tabela/macro (tipo `tool-sync`) consegue emitir as 8, **use-a** — é a correção definitiva.
+      Se uma macro (`panel_seam!`, abaixo) consegue emitir as pontas do lado do painel, **use-a** — é a correção definitiva.
 - [ ] **Painel forwarder novo (slider+chip / botão → tool): use `ph2d_editor_core::panel_seam!`**
       (Fase 2). Ele gera `populate` + `apply_event` de UMA declaração — registrar e forwardear
       saem JUNTOS, então um widget registrado não pode ficar sem arm. Referência:
@@ -30,16 +31,19 @@ A mesma feature atravessa, no mínimo, **8 sites**:
       explícito — não dobre o macro pra encaixar; as gates `architecture_panel_wiring_parity` +
       o seam test guardam os dois estilos. **A parte do TOOL** (`UiEdit`/`apply_ui_edit`/`handle_panel_event`/
       snapshot) continua escrita à mão (lógica bespoke por-tool, não boilerplate).
-- [ ] **Zero no-op silencioso.** Fora de escopo (ex.: `SelectBrush` sem library) = `debug_assert!` /
+- [ ] **Zero no-op silencioso.** Caminho fora de escopo / pré-condição ausente = `debug_assert!` /
       `tracing::warn!` + UI mostra "desabilitado". Nunca um corpo vazio que "passa".
 - [ ] **Gates de costura (lêem o FONTE, não compilam — falham no CI se faltar ponta):**
-      `architecture_panel_wiring_parity` (todo id hit-indexado no paint está registrado em `populate.rs` → focável; a costura de DISPATCH do evento é provada pelo teste comportamental de seam, `ph2d-ui-testkit`).
-      Âncora = **o site de pintura** (`cycler_row`/`pct_row` em sections.rs): **pintou ⟹ wirado**.
+      `architecture_panel_wiring_parity` (todo id hit-indexado no paint está registrado em `populate.rs`/`seam.rs` → focável; a costura de DISPATCH do evento é provada pelo teste comportamental de seam, `ph2d-ui-testkit`).
+      Âncora = **o site de pintura** (onde o widget é hit-indexado): **pintou ⟹ wirado**.
       Widget novo de tipo **sem gate** (ex.: um row interativo inédito) = **escreva o gate junto** —
       checklist em prosa NÃO morde (o bug do "Filter: não é clicável" tinha doc completa e mesmo assim passou).
-- [ ] **Cycler/dropdown** = 2 registros que o compilador não cobra, ALÉM do slider-flow:
-      `button(store, ids::X)` em **populate.rs** (hit-test) **E** `|| id == ids::X` em **`is_studio_button`/event.rs**
-      (emitir o Click). Faltar qualquer um = botão pintado mas inerte. O gate de cycler prova os dois + o dispatch.
+- [ ] **Cycler/dropdown** = registros que o compilador não cobra, ALÉM do slider-flow: hit-index +
+      `store.register` em **populate.rs** **E** o arm que emite o Click em **event.rs**, com a tabela
+      id→opção resolvida no paint (padrão vivo: `kind_option_ids_in_order` em
+      [`ph2d-panel-grid-snap/src/paint_helpers.rs`](../../crates/ph2d-panel-grid-snap/src/paint_helpers.rs) +
+      dispatch em [`event.rs`](../../crates/ph2d-panel-grid-snap/src/event.rs)). Faltar qualquer um =
+      botão pintado mas inerte; o seam test (`ph2d-ui-testkit`) que dirige o Click prova o dispatch.
 
 ## 3 — Auditar ≠ compilar (a regra que o Enio cobrou)
 - [ ] `cargo check -p` e os gates `architecture_*` (inclusive `*_contract_surface`) = forma-de-ABI /
@@ -60,12 +64,14 @@ A mesma feature atravessa, no mínimo, **8 sites**:
 - [ ] 0 file:line + veredito "nenhum bug" = **não-audit**, rejeitado. Claim verde sem
       ASSERÇÃO-VERMELHA correspondente = **não-audit**, rejeitado.
 
-## 4 — Feature perceptual (marca / pintura) não fecha sem OLHAR
-- [ ] Rode o **golden-image harness**: `begin_stroke → queue_pointer (arco determinístico) → end_stroke
-      → assert pixels` — opacidade da linha central; azul-sobre-amarelo → verde no pigmento; taper;
-      ripple/scallop por FFT ou max−min na espinha do traço.
-- [ ] Testes GPU / `#[ignore]`: rode com `--include-ignored` e **registre** o resultado.
-      Surface sem teste comportamental = **um achado**, não um pass.
+## 4 — Efeito perceptual (ajuste / blend / filtro / compositor) não fecha sem OLHAR
+- [ ] Prove **paridade numérica** contra a referência canônica, não "parece certo": o caminho GPU bate
+      o CPU **bit-a-bit** (ex.: `shader_adjustment_coefficients_bit_identical_with_rust` em
+      [`ph2d-render/src/layer_compositor/tests.rs`](../../crates/ph2d-render/src/layer_compositor/tests.rs);
+      blend-modes em [`ph2d-painter-effects/src/blend.rs`](../../crates/ph2d-painter-effects/src/blend.rs)).
+      Efeito espacial (bloom / shadows-highlights) reconcilia o kernel contra a fn CPU canônica.
+- [ ] Testes GPU `#[ignore]` (headless Metal — rodam no sandbox): rode com `-- --ignored` e **registre**
+      o resultado. Kernel/efeito **sem** teste de paridade = **um achado**, não um pass.
 
 ## 5 — Antes de marcar FECHADO
 - [ ] **DoD (definição de pronto): teste comportamental de seam VERDE (`ph2d-ui-testkit`:

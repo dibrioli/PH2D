@@ -40,3 +40,6 @@ ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
+# Headless seam test (MockPanelHost): drives the real apply_event path and
+# drains the action bus to prove the panel→shell forward is alive.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

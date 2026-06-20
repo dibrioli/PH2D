@@ -25,3 +25,4 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

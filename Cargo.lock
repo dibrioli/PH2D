@@ -5245,6 +5245,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5256,6 +5257,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5282,6 +5284,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-painter",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5329,6 +5332,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]
@@ -5339,6 +5343,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]
@@ -5350,6 +5355,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-text",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 

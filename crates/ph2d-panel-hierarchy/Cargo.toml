@@ -15,3 +15,6 @@ ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

@@ -36,14 +36,10 @@ use std::path::{Path, PathBuf};
 /// know it works). Removing an entry once its `tests/` gains a seam test is
 /// enforced by `debt_list_has_no_stale_entries`.
 const BEHAVIORAL_TEST_DEBT: &[&str] = &[
-    // Generic / complex panels (no single paired tool; multi-file dispatch).
-    // Backfill order tracked in docs/plans/2026-06-20-blindagem-implementacao.md.
-    "ph2d-panel-hierarchy",
-    "ph2d-panel-inspector",
-    "ph2d-panel-painter-layers",
-    "ph2d-panel-vector-graph",
-    "ph2d-panel-vector-inspector",
-    "ph2d-panel-widget-gallery",
+    // EMPTY — debt cleared 2026-06-20 (blindagem Fase 1): all 12 interactive
+    // panels ship a behavioral seam test. Any NEW interactive panel must ship
+    // one too (this gate fails otherwise). Do not re-add entries to dodge the
+    // requirement — write the test.
 ];
 
 fn crates_root() -> PathBuf {

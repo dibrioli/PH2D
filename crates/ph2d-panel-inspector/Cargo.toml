@@ -15,3 +15,9 @@ ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+# Blindagem Fase 0.1: headless seam harness. Dev-dep only — the
+# `architecture_cycle_prevention` gate reads `[dependencies]` only, so this
+# builds no runtime cycle. See `tests/seam.rs`.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

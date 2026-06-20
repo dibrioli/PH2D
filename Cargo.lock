@@ -5170,6 +5170,10 @@ name = "ph2d-nodegraph"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-painter-brush"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-painter-effects"
 version = "0.0.0"
 dependencies = [

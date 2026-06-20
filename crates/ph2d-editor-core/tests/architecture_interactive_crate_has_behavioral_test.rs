@@ -60,7 +60,9 @@ fn interactive_panels(root: &Path) -> Vec<(String, PathBuf)> {
             let name = p.file_name()?.to_str()?.to_string();
             if name.starts_with("ph2d-panel-")
                 && name != "ph2d-panel-registry-init"
-                && p.join("src/event.rs").is_file()
+                // Interactive = handles widget events: a hand-written `event.rs`
+                // OR a `panel_seam!`-generated `seam.rs` (Fase 2).
+                && (p.join("src/event.rs").is_file() || p.join("src/seam.rs").is_file())
             {
                 Some((name, p))
             } else {

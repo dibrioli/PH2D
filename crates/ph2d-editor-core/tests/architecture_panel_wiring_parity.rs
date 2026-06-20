@@ -192,17 +192,26 @@ fn hit_indexed_ids_are_registered() {
             .and_then(|n| n.to_str())
             .unwrap_or("?")
             .to_string();
-        let populate = dir.join("src/populate.rs");
-        let Ok(pop_src) = std::fs::read_to_string(&populate) else {
-            continue; // no populate.rs → not a store-registering panel
-        };
+        // Registered-id source: hand-written `populate.rs` AND/OR the
+        // `panel_seam!`-generated `seam.rs` (Fase 2) — a panel uses one or the
+        // other (or both). Read whichever exist and union their id tokens.
+        let mut reg_src = String::new();
+        for f in ["src/populate.rs", "src/seam.rs"] {
+            if let Ok(s) = std::fs::read_to_string(dir.join(f)) {
+                reg_src.push_str(&s);
+                reg_src.push('\n');
+            }
+        }
+        if reg_src.is_empty() {
+            continue; // no populate.rs/seam.rs → not a store-registering panel
+        }
         let paint_src = read_paint_sources(&dir);
         if paint_src.is_empty() {
             continue;
         }
         checked.push(name.clone());
 
-        let mut registered = referenced_ids(&pop_src);
+        let mut registered = referenced_ids(&reg_src);
         registered.extend(global_registered.iter().cloned());
         let hit = hit_registered_literal_ids(&paint_src);
         for id in hit.difference(&registered) {

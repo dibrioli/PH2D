@@ -21,6 +21,15 @@ A mesma feature atravessa, no mínimo, **8 sites**:
 
 - [ ] Faltar **uma** ponta = clique dropado **em silêncio**, não erro de compilação. Fie todas no mesmo passo.
       Se uma tabela/macro (tipo `tool-sync`) consegue emitir as 8, **use-a** — é a correção definitiva.
+- [ ] **Painel forwarder novo (slider+chip / botão → tool): use `ph2d_editor_core::panel_seam!`**
+      (Fase 2). Ele gera `populate` + `apply_event` de UMA declaração — registrar e forwardear
+      saem JUNTOS, então um widget registrado não pode ficar sem arm. Referência:
+      [`ph2d-panel-padding/src/seam.rs`](../../crates/ph2d-panel-padding/src/seam.rs). **Escopo:** só
+      a forma forwarder (slider+chip, forward-button, cancel-button). Painel com dropdown / toggle /
+      picker / dispatch indireto (grid-snap, inspector, vector, painter-layers) fica com `event.rs`
+      explícito — não dobre o macro pra encaixar; as gates `architecture_panel_wiring_parity` +
+      o seam test guardam os dois estilos. **A parte do TOOL** (`UiEdit`/`apply_ui_edit`/`handle_panel_event`/
+      snapshot) continua escrita à mão (lógica bespoke por-tool, não boilerplate).
 - [ ] **Zero no-op silencioso.** Fora de escopo (ex.: `SelectBrush` sem library) = `debug_assert!` /
       `tracing::warn!` + UI mostra "desabilitado". Nunca um corpo vazio que "passa".
 - [ ] **Gates de costura (lêem o FONTE, não compilam — falham no CI se faltar ponta):**

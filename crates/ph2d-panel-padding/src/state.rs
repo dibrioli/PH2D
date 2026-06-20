@@ -5,7 +5,7 @@
 //! frame the shell publishes a [`PaddingUiSnapshot`] via
 //! [`set_current_padding_snapshot`] BEFORE the panel paints; the paint
 //! reads it to seed the four field values. Edits flow back out over
-//! `EditorAction::ToolPanelEvent` (see [`crate::event`]), so the panel
+//! `EditorAction::ToolPanelEvent` (see [`crate::seam`]), so the panel
 //! itself holds no authoritative state — [`PaddingPanelState`] is an
 //! empty marker.
 

@@ -25,10 +25,12 @@ pub mod manifest;
 pub mod paint_ctx;
 pub mod panel_trait;
 pub mod registry;
+pub mod seam_macro;
 
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;
 pub use host::{PanelHost, PanelHostInternal};
+pub use seam_macro::seam_reset_button;
 pub use manifest::{ErasedApplyEventFn, ErasedPaintFn, PanelManifest, PopulateFn};
 pub use paint_ctx::PaintCtx;
 pub use panel_trait::Panel;

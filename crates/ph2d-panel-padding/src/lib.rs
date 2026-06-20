@@ -21,10 +21,9 @@
 
 #![forbid(unsafe_code)]
 
-mod event;
 pub mod ids;
 mod paint;
-mod populate;
+mod seam;
 pub mod state;
 
 pub use state::{PaddingPanelState, last_content_h, last_visible_h, set_current_padding_snapshot};
@@ -52,10 +51,10 @@ impl Panel for PaddingPanel {
         host: &mut dyn PanelHostInternal,
         ev: WidgetEvent,
     ) -> EventOutcome {
-        event::apply_event(state, host, ev)
+        seam::apply_event(state, host, ev)
     }
 
     fn populate(store: &mut WidgetStore) {
-        populate::populate(store);
+        seam::populate(store);
     }
 }

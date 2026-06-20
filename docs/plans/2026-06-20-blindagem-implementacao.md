@@ -99,6 +99,19 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
   - [x] 1.1 backfill seam tests: bgremoval, color-equalization, upscale, equalize-sizes, grid-snap (+ padding) = **6 painéis, 13 testes verdes** (cada um dirige evento real → afirma efeito observável no tool/state, com guard anti-vacuidade)
   - [x] 1.3 DoD + **rubrica executável de auditoria** na DIRETIVA §3 (template obrigatório: LENTE/CLAIM/TRAÇO/ASSERÇÃO-VERMELHA/LOC) + §5 (DoD = seam verde + smoke; compile/gate-verde nunca é done)
   - [x] **Dívida Fase 1 ZERADA (2026-06-20):** seam tests para inspector, hierarchy, painter-layers, vector-graph, vector-inspector, widget-gallery (10 testes; bus action / panel_visible / param thread-local conforme o seam de cada um). `BEHAVIORAL_TEST_DEBT` agora **vazio** — **12/12 painéis interativos cobertos**. (1 e2e de agente foi over-reach: `PainterTool::add_raster_layer` precisa de canvas → relaxado pro forward-do-seam, pego ao compilar.)
-- [ ] **Fase 2 / 3 / 4** (não iniciadas)
+- [x] **Fase 2** — codegen do widget (parcial, por kill-criterion):
+  - **Achado:** os 13 sites moram em 3 crates (editor-core ids · panel · tool); a parte do tool
+    (`UiEdit`/`apply_ui_edit`/projeção/snapshot) é lógica bespoke, não boilerplate. Um único macro
+    NÃO cobre os 3 crates nem ≥80% dos sites → o "1 declaração → 13 sites" foi **abandonado** (kill-criterion).
+  - **Entregue:** `ph2d_editor_core::panel_seam!` (`panel/seam_macro.rs`) gera `populate` + `apply_event`
+    do **lado do painel** para a forma **forwarder** (slider+chip → SetValue, botão → Click/Cancel) de UMA
+    declaração — registrar e forwardear saem juntos (clique-morto impossível por construção). **Provado**
+    reescrevendo `ph2d-panel-padding` (seam test da Fase 1 = rede; comportamento idêntico, verde).
+  - **Spike revelou** que mover wiring p/ `seam.rs` quebrava as gates 0.2/1.2 (indexavam por nome de
+    arquivo) → co-evoluí ambas p/ reconhecer `seam.rs`. 4 gates verdes.
+  - **Escopo (kill-criterion aplicado):** só o padding migrado (forwarder puro). CEQ/bgremoval/upscale/
+    equalize-sizes têm dropdown/toggle/swatch fora do vocab → ficam explícitos. Macro é o caminho
+    canônico p/ **novos** forwarders (DIRETIVA §2); existentes migram se/quando virarem forwarder puro.
+- [ ] **Fase 3** (decompor god-files, atrás da cobertura) / **Fase 4** (reconciliar docs) — não iniciadas
 
 [node-sync glob gotcha]: ../../CLAUDE.md

@@ -15,8 +15,8 @@
 //! Each edge row pairs a bipolar slider (track `0.5` = 0 px) with a
 //! px-valued chip. The slider track reads the live stored value (so a
 //! drag is smooth), falling back to the per-frame snapshot; the chip
-//! DISPLAYS the live stored px value (kept in sync by [`crate::event`]),
-//! falling back to the snapshot. [`crate::event`] keeps the two widgets
+//! DISPLAYS the live stored px value (kept in sync by [`crate::seam`]),
+//! falling back to the snapshot. [`crate::seam`] keeps the two widgets
 //! in lock-step so dragging the slider moves the chip and typing in the
 //! chip moves the slider — both in real time.
 //!

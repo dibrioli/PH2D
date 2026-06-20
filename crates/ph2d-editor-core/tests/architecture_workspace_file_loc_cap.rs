@@ -45,7 +45,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-editor-core/src/action_bus.rs", 625),
     ("ph2d-editor-core/src/gizmo/paint.rs", 672),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
-    ("ph2d-editor-core/src/interaction/dispatch/pointer.rs", 1261),
     ("ph2d-editor-core/src/paint.rs", 884),
     (
         "ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",

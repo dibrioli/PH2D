@@ -1,0 +1,69 @@
+//! TopBar cluster chrome NodeIds (TOPBAR_*).
+use super::{NodeId, hash_node_id};
+
+pub const TOPBAR_THEME: NodeId = hash_node_id("topbar_theme");
+pub const TOPBAR_SAVE: NodeId = hash_node_id("topbar_save");
+pub const TOPBAR_PROJECT: NodeId = hash_node_id("topbar_project");
+pub const TOPBAR_PLAY_TOGGLE: NodeId = hash_node_id("topbar_play_toggle");
+pub const TOPBAR_PLAY_BUTTON: NodeId = hash_node_id("topbar_play_button");
+pub const TOPBAR_RIGHT_LAYERS: NodeId = hash_node_id("topbar_right_layers");
+pub const TOPBAR_RIGHT_ASSETS: NodeId = hash_node_id("topbar_right_assets");
+pub const TOPBAR_RIGHT_SCRIPT: NodeId = hash_node_id("topbar_right_script");
+pub const TOPBAR_PAUSE: NodeId = hash_node_id("topbar_pause");
+pub const TOPBAR_RESET: NodeId = hash_node_id("topbar_reset");
+pub const TOPBAR_SAVE_AS: NodeId = hash_node_id("topbar_save_as");
+pub const TOPBAR_OPEN: NodeId = hash_node_id("topbar_open");
+/// Settings cluster (gear icon) — opens the SettingsMenu context menu
+/// with project-level toggles (pixels-per-meter presets, future
+/// global config). Added M14.4d retrofit.
+pub const TOPBAR_SETTINGS: NodeId = hash_node_id("topbar_settings");
+/// Frosted-glass agrupador backdrops behind each topbar cluster
+/// group. Painted before the chips so clicks on chips win; clicks
+/// on the empty backdrop space land here.
+pub const TOPBAR_LEFT_BACKDROP: NodeId = hash_node_id("topbar_left_backdrop");
+pub const TOPBAR_RIGHT_BACKDROP: NodeId = hash_node_id("topbar_right_backdrop");
+pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools_backdrop");
+/// Image Tools cluster — toggle entry-point for the image-editing
+/// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
+/// to follow). Click flips the TopBar between Edit mode and
+/// ImageTools mode; the state lives on
+/// [`crate::screens::HeroScreen::image_tools_mode`].
+pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
+/// Vector Pen tool cluster — TopBar single-pill that activates the
+/// Vector Module Pen tool (W1.T1.7). Click pushes
+/// `EditorAction::ActivateTool { tool_id: "vector_pen" }`; shell
+/// drain in `render_loop::mod` calls
+/// `tools.set_active(&ToolId::new("vector_pen"))`. MVP placement
+/// alongside the other right-side single pills; W2+ may move into a
+/// dedicated "vector_tools" mode toggle (parallel to Image Tools).
+///
+/// **Hash key = `hash_node_id("vector_pen")`** (NOT
+/// `"topbar_vector_pen"`) to match the **image-action pill
+/// convention** (`IMAGE_ACTION_BGREMOVAL = hash_node_id("bgremoval")`,
+/// etc.). This lets the Pressed-highlight reconcile loop in
+/// `shells/desktop/src/render_loop/mod.rs` discover the pill via
+/// `hash_node_id(manifest.id)` lookup — same code path bgremoval uses.
+pub const TOPBAR_VECTOR_PEN: NodeId = hash_node_id("vector_pen");
+/// Vector Pencil pill (W2 T2.1) — same `hash_node_id(manifest.id)`
+/// convention as the Pen, so the `vector_tools` reconcile loop highlights it.
+pub const TOPBAR_VECTOR_PENCIL: NodeId = hash_node_id("vector_pencil");
+/// Vector Shape pill (W2 T2.2) — same `hash_node_id(manifest.id)` convention.
+pub const TOPBAR_VECTOR_SHAPE: NodeId = hash_node_id("vector_shape");
+/// Vector Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
+pub const TOPBAR_VECTOR_SELECT: NodeId = hash_node_id("vector_select");
+/// Vector Direct-Select pill (W2 T2.3) — same `hash_node_id(manifest.id)` convention.
+pub const TOPBAR_VECTOR_DIRECT: NodeId = hash_node_id("vector_direct");
+/// Widget Gallery cluster — toggles the floating reference panel
+/// that showcases every canonical widget (Inputs / Slider /
+/// Switches / Lists / Vector / Status / Color / Actions / Identity /
+/// Card). Peripheral agents open this from the live app as the
+/// single in-app source of truth for UI decoration. Visibility lives
+/// in `HeroScreen::panel_visibility` (keyed `"widget_gallery"`) after
+/// ADR-0029 Phase C.3; persistent rect lives on
+/// `ph2d_panel_widget_gallery::WidgetGalleryState::rect`.
+pub const TOPBAR_WIDGET_GALLERY: NodeId = hash_node_id("topbar_widget_gallery");
+/// Grid Settings cluster — opens the floating Grid Settings panel
+/// (grid-snap subsystem). Toggles
+/// `HeroScreen::panel_visibility["grid_snap"]` via the typed
+/// `GridSnapPanel::apply_event` after ADR-0029 Phase C.4.
+pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");

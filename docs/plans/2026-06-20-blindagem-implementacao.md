@@ -114,7 +114,12 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
     canônico p/ **novos** forwarders (DIRETIVA §2); existentes migram se/quando virarem forwarder puro.
 - [~] **Fase 3** — estancar a podridão arquitetural (em curso):
   - [x] **3.3 já gateado:** `architecture_no_downcast_to_concrete_tool_in_shell` + `architecture_no_per_tool_branch_in_render_loop` congelam o acoplamento do shell (allowlist = freeze; nova entrada = decisão Coord + justificativa, gate falha em downcast novo fora dela). Confirmado — nada a fazer.
-  - [~] **3.2 decompor god-files** (debt paydown; rede = testes existentes + cap 0.4 trava regrowth): **compute.rs** (1636 LOC → módulos por família de ajuste) em curso.
+  - [x] **3.2 decompor god-files** (debt paydown; rede = testes existentes; cap 0.4 trava regrowth + drive-to-zero): **4 decompostos**, todos <600 LOC, superfície pública idêntica, entradas removidas do allowlist 0.4:
+    - `painter-effects/adjustments/compute.rs` 1636 → `compute/` 10 mods (117 testes idênticos)
+    - `editor-core/ids/chrome.rs` 1027 → `chrome/` 9 mods por domínio (export-set 282→282 por diff; node_id_collisions 4 verdes)
+    - `render/atlas.rs` 1159 → `atlas/` 5 mods (146 testes, GPU Metal headless rodou)
+    - `tool-painter/tool/layers.rs` 1148 → `layers/` 7 mods por responsabilidade (54 testes)
+    - **Restam (alto risco, caps-guarded):** `interaction/dispatch/pointer.rs` (1261, 1 função gigante de dispatch — core de input) · `render/layer_compositor/compositor.rs` (2396, GPU pipeline + 4 kernels).
   - [ ] **3.1 DEFERIDO** (fix parser comment-aware + cap de FUNÇÃO workspace): o próprio comentário da gate avisa que re-baseia toda allowance de panel e desmascara violações ("passo foundational deliberado, não às pressas"); cap de fn confiável cross-crate precisa de AST (syn), não brace-walk (frágil em raw-string/WGSL). O cap de **arquivo** (0.4) já trava regrowth. Follow-up.
 - [ ] **Fase 4** (reconciliar docs) — não iniciada
 

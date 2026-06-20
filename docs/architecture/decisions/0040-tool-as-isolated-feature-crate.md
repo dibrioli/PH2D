@@ -194,3 +194,17 @@ locais (não-pushados; ship é do Enio):
 ## 8. Amendment 2 — `Tool::on_tick` (2026-06-07, Coord)
 
 **Mudança de contrato congelado (Coord-only):** `Tool` cap **10 → 11** — adicionado `fn on_tick(&mut self, _dt_ms: f32) {}` (default no-op). Driver: ADR-0049 (fluid live tick) realizado via [ADR-0077 §D11](0077-brush-engine-physics-overhaul.md) — a aquarela wet-on-wet ao vivo precisa de um heartbeat por-frame que avance a difusão **enquanto idle** (a tinta "fica molhada" e seca depois do pen-up; sem o tick, o solver só roda em eventos de pointer). O shell chama `active_tool.on_tick(dt_ms)` 1×/frame **apenas na tool ativa** (tool inativa custa zero). Por ser default no-op, **nenhuma das 8 tools satélite precisa mudar** — o ripple-de-fan-out que o freeze protege é zero. Gate `architecture_tool_contract_surface::tool_contract_is_capped` atualizado (10→11) + CLAUDE.md §6 (`Tool=11`). `RasterEditTool=5` e `PanelEvent=4` permanecem.
+
+## 9. Amendment 3 — entrega de ponteiro de canvas (`CanvasPaintTool`, 2026-06-20, Coord)
+
+**Driver:** o **novo Painter** (clean-room do Blender Texture Paint — ver [`docs/Painter/`](../../Painter/00_INDEX.md), Fase 0). O contrato `Tool` congelado **não tinha hook de ponteiro de canvas**: pointer de canvas (x, y, **pressão**, **tilt**, fase) não chegava a um tool stateful — pós-ADR-0099 a pintura saiu e nenhuma tool recebia traço no canvas. Sem isto, nenhum brush funciona.
+
+**Mudança de contrato congelado (Coord-only):**
+1. `Tool` cap **11 → 12** — adicionado `fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> { None }` (default `None`). É um **upcast de capacidade idêntico em forma a `as_raster_edit_mut`** (ADR-0040 §2.1 / ADR-0041): o shell dirige **qualquer** tool que pinte no canvas por um caminho genérico, sem nomear tipo concreto.
+2. Novo **sub-trait** `CanvasPaintTool: Tool` com **1 método** — `fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool` (retorna `true` se consumiu a amostra). Tipos acompanhantes `CanvasPointer { pos:[f32;2] (image-space px), pressure:f32, tilt:[f32;2], phase: PointerPhase }` + `enum PointerPhase { Down, Move, Up, Hover }`. Novo gate `architecture_tool_contract_surface::canvas_paint_tool_contract_is_capped` (**cap ≤ 1**), espelhando `raster_edit_tool_contract_is_capped`.
+
+**Por que sub-trait e não métodos na base `Tool`:** as 8+ tools satélite implementam `Tool`; só **tools que pintam** implementam `CanvasPaintTool`. O resolver default-`None` ⇒ **ripple-de-fan-out zero** (nenhuma tool existente muda). Rejeitado: (a) `on_pointer_down/move/up` direto em `Tool` (infla a base que todas herdam); (b) variant novo em `EditorAction` (o canal congelado dos 4 genéricos é painel↔tool, não stream de canvas de alta frequência com pressão).
+
+**Consumidor (parte DESTE work item — sem ponta órfã, DIRETIVA §1):** o `shells/desktop` converte o ponteiro de canvas **tela→imagem** (invertendo pan/zoom da view do painter) + anexa pressão/tilt (já no `PointerEvent` de `ph2d-input`) e chama `active.as_canvas_paint_mut()?.on_canvas_pointer(ev)`. Prova comportamental: seam headless em `ph2d-ui-testkit` que dirige Down→Move…→Up e afirma o efeito observável (não é o veredito — é o entregável, DIRETIVA §3/§5).
+
+**Atualizações:** gate `tool_contract_is_capped` (11→12) + novo `canvas_paint_tool_contract_is_capped` (≤1) + CLAUDE.md §6 (`Tool=12`, `CanvasPaintTool=1`). `RasterEditTool=5` e `PanelEvent=4` permanecem.

@@ -39,16 +39,19 @@ fn tool_contract_is_capped() {
     let src = include_str!("../src/tool.rs");
     let n = trait_method_count(src, "pub trait Tool");
     assert!(
-        n <= 11,
-        "Tool has {n} methods; cap is 11. FROZEN at ADR-0040 TG-E to the \
+        n <= 12,
+        "Tool has {n} methods; cap is 12. FROZEN at ADR-0040 TG-E to the \
          current surface (id / label / icon_slug / build_panel / on_activate / \
          on_deactivate / handle_panel_event / on_tick / as_any_mut / \
-         as_raster_edit_mut / is_default) — every `ph2d-tool-*` crate implements \
-         this, so any growth ripples the whole fan-out. Adding a method is a \
-         Coordenador-only contract change: bump the cap here + write the ADR \
-         amendment. Cap 10→11 at ADR-0040-amendment-2 (2026-06-07): `on_tick` \
-         per-frame heartbeat for the ADR-0049 watercolor live diffusion (a \
-         default no-op, so existing tool impls are unaffected)."
+         as_raster_edit_mut / as_canvas_paint_mut / is_default) — every \
+         `ph2d-tool-*` crate implements this, so any growth ripples the whole \
+         fan-out. Adding a method is a Coordenador-only contract change: bump \
+         the cap here + write the ADR amendment. Cap 10→11 at \
+         ADR-0040-amendment-2 (2026-06-07): `on_tick` per-frame heartbeat for \
+         the ADR-0049 watercolor live diffusion. Cap 11→12 at \
+         ADR-0040-amendment-3 (2026-06-20): `as_canvas_paint_mut` capability \
+         upcast for canvas pointer delivery to the new Painter brush (a default \
+         `None`, so existing tool impls are unaffected)."
     );
 }
 
@@ -64,6 +67,20 @@ fn raster_edit_tool_contract_is_capped() {
          tool crate implements this on top of `Tool`. Adding a method \
          ripples to every raster tool. A Coordenador-only contract change: \
          bump the cap here + write the ADR-0040/0041 amendment."
+    );
+}
+
+#[test]
+fn canvas_paint_tool_contract_is_capped() {
+    let src = include_str!("../src/tool.rs");
+    let n = trait_method_count(src, "pub trait CanvasPaintTool");
+    assert!(
+        n <= 1,
+        "CanvasPaintTool has {n} methods; cap is 1. FROZEN at ADR-0040 \
+         Amendment 3 (2026-06-20) to the current surface (on_canvas_pointer) — \
+         every canvas-painting tool implements this on top of `Tool`, so any \
+         growth ripples the painting fan-out. A Coordenador-only contract \
+         change: bump the cap here + write the ADR-0040 amendment."
     );
 }
 

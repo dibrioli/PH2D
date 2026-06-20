@@ -108,6 +108,19 @@ pub trait Tool: std::any::Any {
         None
     }
 
+    /// Capability upcast: a tool that paints with the pointer on the
+    /// editing canvas (a brush) returns `Some(self)`; everything else
+    /// uses the default `None`. The shell delivers canvas pointer
+    /// samples (image-space, with pressure/tilt) through this single
+    /// generic path ([`CanvasPaintTool`]) without naming a concrete
+    /// type — the same shape as [`Self::as_raster_edit_mut`]. Added in
+    /// ADR-0040 Amendment 3 for the new Painter (`docs/Painter/`).
+    /// Implementors that also impl [`CanvasPaintTool`] override with
+    /// `{ Some(self) }`.
+    fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
+        None
+    }
+
     /// Whether this tool is the editor's initial / fallback tool — the
     /// one selected at boot and returned to when a transient tool (an
     /// image edit) deactivates. Exactly one registered tool should
@@ -183,6 +196,52 @@ pub trait RasterEditTool: Tool {
     /// (including between two raster tools), whereas this fires
     /// specifically on leaving raster editing entirely.
     fn deactivate(&mut self);
+}
+
+/// Which phase of a pointer gesture a [`CanvasPointer`] sample belongs to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PointerPhase {
+    /// Pointer/pen made contact (button/tip down) — start of a stroke.
+    Down,
+    /// Pointer moved while in contact.
+    Move,
+    /// Pointer/pen lifted (button/tip up) — end of a stroke.
+    Up,
+    /// Pointer moved without contact (pen hover) — for cursor/preview only.
+    Hover,
+}
+
+/// One pointer sample delivered to the active canvas-painting tool.
+///
+/// [`Self::pos`] is in **image/sprite-space pixels** (origin top-left, +Y down): the shell has
+/// already removed the canvas pan/zoom before delivering, so the tool paints in its own buffer
+/// coordinates. Pressure/tilt come straight from the device (Apple Pencil is first-class); a mouse
+/// reports `pressure = 1.0` and `tilt = [0, 0]`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CanvasPointer {
+    /// Position in image-space pixels.
+    pub pos: [f32; 2],
+    /// Pen pressure in `[0, 1]`; `1.0` for devices without pressure.
+    pub pressure: f32,
+    /// Pen tilt in `[-1, 1]` per axis; `[0, 0]` for devices without tilt.
+    pub tilt: [f32; 2],
+    /// Gesture phase of this sample.
+    pub phase: PointerPhase,
+}
+
+/// A tool that paints with the pointer directly on the editing canvas (a brush). The shell drives
+/// **every** `CanvasPaintTool` through one generic path: resolve it via
+/// [`Tool::as_canvas_paint_mut`], convert each canvas pointer sample to image space, and deliver it
+/// here. No per-tool `EditorAction` variant, no per-tool branch in the shell — adding a painting
+/// tool touches nothing central (the same isolation `RasterEditTool` gives raster-edit tools).
+///
+/// 🔒 **FROZEN at ADR-0040 Amendment 3 (2026-06-20).** Growth ripples to every painting tool; the
+/// cap is enforced by `tests/architecture_tool_contract_surface.rs::canvas_paint_tool_contract_is_capped`.
+pub trait CanvasPaintTool: Tool {
+    /// Deliver one canvas pointer sample (image-space, with pressure/tilt and gesture phase).
+    /// Returns `true` if the tool consumed the sample (e.g. painted a dab), so the shell can
+    /// suppress competing canvas handling (pan/zoom) for that event.
+    fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool;
 }
 
 /// Owns the registered tools and tracks which one is active. The
@@ -559,5 +618,72 @@ mod tests {
         // deactivate() clears state.
         re.deactivate();
         assert!(re.current_preview().is_none());
+    }
+
+    /// A minimal `CanvasPaintTool` that records the pointer samples it
+    /// receives — exercises the canvas-paint capability upcast (ADR-0040
+    /// Amendment 3) without any concrete painting tool.
+    struct Painty {
+        id: ToolId,
+        samples: Vec<CanvasPointer>,
+    }
+
+    impl Tool for Painty {
+        fn id(&self) -> ToolId {
+            self.id.clone()
+        }
+        fn label(&self) -> &str {
+            "Painty"
+        }
+        fn icon_slug(&self) -> &str {
+            "painty"
+        }
+        fn build_panel(&self) -> FloatingPanel {
+            FloatingPanel::new(self.id.clone(), "Painty")
+        }
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+        fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
+            Some(self)
+        }
+    }
+
+    impl CanvasPaintTool for Painty {
+        fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
+            self.samples.push(ev);
+            true
+        }
+    }
+
+    #[test]
+    fn plain_tool_does_not_upcast_to_canvas_paint() {
+        let (mut t, _, _) = hooked("plain");
+        assert!(t.as_canvas_paint_mut().is_none());
+    }
+
+    #[test]
+    fn canvas_paint_tool_upcasts_and_receives_pointer() {
+        let mut reg = ToolRegistry::new();
+        reg.register(Box::new(Painty { id: ToolId::new("painty"), samples: Vec::new() }));
+        reg.set_active(&ToolId::new("painty"));
+        let tool = reg.active_mut().expect("active");
+        let cp = tool
+            .as_canvas_paint_mut()
+            .expect("Painty should upcast to CanvasPaintTool");
+        let down = CanvasPointer {
+            pos: [12.0, 34.0],
+            pressure: 0.5,
+            tilt: [0.0, 0.0],
+            phase: PointerPhase::Down,
+        };
+        assert!(cp.on_canvas_pointer(down), "tool consumed the sample");
+        cp.on_canvas_pointer(CanvasPointer { phase: PointerPhase::Up, ..down });
+        // Downcast back to the concrete type to inspect what it recorded.
+        let painty = tool.as_any_mut().downcast_mut::<Painty>().expect("downcast");
+        assert_eq!(painty.samples.len(), 2);
+        assert_eq!(painty.samples[0].pos, [12.0, 34.0]);
+        assert!((painty.samples[0].pressure - 0.5).abs() < 1e-6);
+        assert_eq!(painty.samples[1].phase, PointerPhase::Up);
     }
 }

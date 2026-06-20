@@ -32,7 +32,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn scale_slider_drag_reaches_tool_params() {
     let mut host = MockPanelHost::with_panel::<UpscalePanel>();
-    let mut panel_state = UpscalePanelState::default();
+    let mut panel_state = UpscalePanelState;
     let mut tool = UpscaleTool::default();
 
     // Sanity: default tool sits at 2.0× before any seam traffic, so a
@@ -95,7 +95,7 @@ fn scale_slider_drag_reaches_tool_params() {
 #[test]
 fn algorithm_segment_click_reaches_tool_params() {
     let mut host = MockPanelHost::with_panel::<UpscalePanel>();
-    let mut panel_state = UpscalePanelState::default();
+    let mut panel_state = UpscalePanelState;
     let mut tool = UpscaleTool::default();
 
     assert_eq!(
@@ -138,7 +138,7 @@ fn algorithm_segment_click_reaches_tool_params() {
 #[test]
 fn apply_button_arms_the_bake() {
     let mut host = MockPanelHost::with_panel::<UpscalePanel>();
-    let mut panel_state = UpscalePanelState::default();
+    let mut panel_state = UpscalePanelState;
     let mut tool = UpscaleTool::default();
 
     let outcome = host

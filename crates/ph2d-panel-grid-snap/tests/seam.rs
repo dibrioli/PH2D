@@ -28,7 +28,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn kind_hex_click_reaches_grid_snap_state() {
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
-    let mut panel_state = GridSnapPanelState::default();
+    let mut panel_state = GridSnapPanelState;
 
     // Precondition: GridSnapState::default().kind == Square, so a flip to
     // Hex is a genuine state change (guards against a vacuous assertion).
@@ -38,8 +38,10 @@ fn kind_hex_click_reaches_grid_snap_state() {
         "default grid kind unexpectedly not Square — Hex assertion would be vacuous"
     );
 
-    let outcome = host
-        .apply_panel_event::<GridSnapPanel>(&mut panel_state, WidgetEvent::Click(ids::GS_KIND_OPT_HEX));
+    let outcome = host.apply_panel_event::<GridSnapPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::GS_KIND_OPT_HEX),
+    );
 
     assert_eq!(
         outcome,
@@ -60,7 +62,7 @@ fn kind_hex_click_reaches_grid_snap_state() {
 #[test]
 fn opacity_slider_reaches_grid_snap_state() {
     let mut host = MockPanelHost::with_panel::<GridSnapPanel>();
-    let mut panel_state = GridSnapPanelState::default();
+    let mut panel_state = GridSnapPanelState;
 
     // Precondition: default opacity is 0.75, so 0.5 is a genuine change.
     assert!(
@@ -71,8 +73,10 @@ fn opacity_slider_reaches_grid_snap_state() {
     // A drag writes the slider's stored value first, then dispatch emits
     // ValueChanged. Simulate both.
     host.set_slider_value(ids::GS_OPACITY_SLIDER, 0.5);
-    let outcome = host
-        .apply_panel_event::<GridSnapPanel>(&mut panel_state, WidgetEvent::ValueChanged(ids::GS_OPACITY_SLIDER));
+    let outcome = host.apply_panel_event::<GridSnapPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::GS_OPACITY_SLIDER),
+    );
 
     assert_eq!(
         outcome,

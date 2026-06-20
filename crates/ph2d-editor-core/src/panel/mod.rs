@@ -30,7 +30,6 @@ pub mod seam_macro;
 pub use erased::ErasedPanel;
 pub use event_outcome::EventOutcome;
 pub use host::{PanelHost, PanelHostInternal};
-pub use seam_macro::seam_reset_button;
 pub use manifest::{ErasedApplyEventFn, ErasedPaintFn, PanelManifest, PopulateFn};
 pub use paint_ctx::PaintCtx;
 pub use panel_trait::Panel;
@@ -38,3 +37,4 @@ pub use registry::{
     PANEL_REGISTRY, PanelRegistry, install_panel_registry, with_registry, with_registry_opt,
     with_registry_ref,
 };
+pub use seam_macro::seam_reset_button;

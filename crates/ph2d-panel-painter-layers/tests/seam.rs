@@ -38,7 +38,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn add_layer_click_forwards_specific_id() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-    let mut panel_state = PainterLayersPanelState::default();
+    let mut panel_state = PainterLayersPanelState;
 
     // The exact id a real pointer click on the "+ Layer" button carries.
     let clicked = core_ids::PAINTER_LAYERS_ADD;
@@ -73,7 +73,7 @@ fn add_layer_click_forwards_specific_id() {
 #[test]
 fn close_button_forwards_cancel_active_tool() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-    let mut panel_state = PainterLayersPanelState::default();
+    let mut panel_state = PainterLayersPanelState;
 
     let outcome = host.apply_panel_event::<PainterLayersPanel>(
         &mut panel_state,

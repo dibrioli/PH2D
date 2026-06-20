@@ -134,7 +134,9 @@ fn debt_list_has_no_stale_entries() {
         if !dir.is_dir() {
             stale.push(format!("{name} (crate gone — remove from debt list)"));
         } else if has_seam_test(&dir) {
-            stale.push(format!("{name} (now HAS a seam test — remove from debt list)"));
+            stale.push(format!(
+                "{name} (now HAS a seam test — remove from debt list)"
+            ));
         }
     }
     assert!(

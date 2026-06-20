@@ -41,7 +41,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn tolerance_slider_drag_reaches_tool_snapshot() {
     let mut host = MockPanelHost::with_panel::<BgRemovalPanel>();
-    let mut panel_state = BgRemovalPanelState::default();
+    let mut panel_state = BgRemovalPanelState;
     let mut tool = BgRemovalTool::default();
 
     // Sanity: the default snapshot does NOT already sit at our target, so a
@@ -101,7 +101,7 @@ fn tolerance_slider_drag_reaches_tool_snapshot() {
 #[test]
 fn apply_button_arms_the_bake() {
     let mut host = MockPanelHost::with_panel::<BgRemovalPanel>();
-    let mut panel_state = BgRemovalPanelState::default();
+    let mut panel_state = BgRemovalPanelState;
     let mut tool = BgRemovalTool::default();
 
     // Nothing pending before the click.
@@ -110,10 +110,8 @@ fn apply_button_arms_the_bake() {
         "test setup invalid: bake latch already armed before the click"
     );
 
-    let outcome = host.apply_panel_event::<BgRemovalPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::BGR_APPLY),
-    );
+    let outcome = host
+        .apply_panel_event::<BgRemovalPanel>(&mut panel_state, WidgetEvent::Click(ids::BGR_APPLY));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

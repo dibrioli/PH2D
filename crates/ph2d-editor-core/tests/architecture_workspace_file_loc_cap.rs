@@ -47,7 +47,10 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     ("ph2d-editor-core/src/interaction/dispatch/pointer.rs", 1261),
     ("ph2d-editor-core/src/paint.rs", 884),
-    ("ph2d-editor-core/src/screens/hero/context_menu_overlay.rs", 783),
+    (
+        "ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",
+        783,
+    ),
     ("ph2d-editor-core/src/screens/hero/pre_populate.rs", 689),
     ("ph2d-editor-core/src/screens/hero/topbar/mod.rs", 701),
     ("ph2d-grid/src/hex.rs", 694),
@@ -146,7 +149,9 @@ fn workspace_src_files_under_loc_cap() {
             if is_excluded(&rel) {
                 return;
             }
-            let loc = fs::read_to_string(path).map(|b| b.lines().count()).unwrap_or(0);
+            let loc = fs::read_to_string(path)
+                .map(|b| b.lines().count())
+                .unwrap_or(0);
             if loc <= FILE_LOC_CAP {
                 return;
             }

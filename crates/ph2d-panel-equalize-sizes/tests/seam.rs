@@ -31,7 +31,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn fixed_w_chip_edit_reaches_tool_params() {
     let mut host = MockPanelHost::with_panel::<EqualizeSizesPanel>();
-    let mut panel_state = EqualizeSizesPanelState::default();
+    let mut panel_state = EqualizeSizesPanelState;
     let mut tool = EqualizeSizesTool::default();
 
     // Sanity: the default width must differ from our target so the
@@ -89,7 +89,7 @@ fn fixed_w_chip_edit_reaches_tool_params() {
 #[test]
 fn grid_mode_button_click_flips_tool_target_mode() {
     let mut host = MockPanelHost::with_panel::<EqualizeSizesPanel>();
-    let mut panel_state = EqualizeSizesPanelState::default();
+    let mut panel_state = EqualizeSizesPanelState;
     let mut tool = EqualizeSizesTool::default();
 
     assert_eq!(

@@ -73,8 +73,10 @@ fn shape_option_click_records_pending_selection() {
 
     // Click the Polygon option (index 2 in `ShapeKind::ALL` / SHAPE_OPTION_IDS).
     let polygon_id = ids::SHAPE_OPTION_IDS[2];
-    let outcome = host
-        .apply_panel_event::<VectorInspectorPanel>(&mut panel_state, WidgetEvent::Click(polygon_id));
+    let outcome = host.apply_panel_event::<VectorInspectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(polygon_id),
+    );
     assert_eq!(
         outcome,
         EventOutcome::Consumed,

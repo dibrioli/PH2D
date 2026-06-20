@@ -15,13 +15,13 @@
 //! NOTE: `event.rs` TOGGLES visibility (`next = !panel_visible(..)`), so the
 //! observable effect of clicking close while visible is a flip to `false`.
 
+use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
-use ph2d_editor_core::panel::PanelHostInternal; // brings panel_visible / set_panel_visible into scope
 use ph2d_editor_core::panel::Panel; // brings the `ID` const into scope
-use ph2d_editor_core::ids;
-use ph2d_panel_widget_gallery::state::WidgetGalleryState;
+use ph2d_editor_core::panel::PanelHostInternal; // brings panel_visible / set_panel_visible into scope
 use ph2d_panel_widget_gallery::WidgetGalleryPanel;
+use ph2d_panel_widget_gallery::state::WidgetGalleryState;
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Clicking the close (X) button while the gallery is visible must flip the
@@ -40,10 +40,8 @@ fn gal_close_click_flips_visibility_off() {
     );
 
     // Drive the exact event the close (X) button emits.
-    let outcome = host.apply_panel_event::<WidgetGalleryPanel>(
-        &mut state,
-        WidgetEvent::Click(ids::GAL_CLOSE),
-    );
+    let outcome = host
+        .apply_panel_event::<WidgetGalleryPanel>(&mut state, WidgetEvent::Click(ids::GAL_CLOSE));
 
     assert_eq!(
         outcome,

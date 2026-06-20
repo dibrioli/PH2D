@@ -33,7 +33,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn brightness_slider_drag_reaches_tool_params() {
     let mut host = MockPanelHost::with_panel::<ColorEqualizationPanel>();
-    let mut panel_state = ColorEqualizationPanelState::default();
+    let mut panel_state = ColorEqualizationPanelState;
     let mut tool = ColorEqualizationTool::default();
 
     // Default must NOT already equal the post-edit value, or the assertion
@@ -91,7 +91,7 @@ fn brightness_slider_drag_reaches_tool_params() {
 #[test]
 fn brightness_slider_low_end_projects_to_min() {
     let mut host = MockPanelHost::with_panel::<ColorEqualizationPanel>();
-    let mut panel_state = ColorEqualizationPanelState::default();
+    let mut panel_state = ColorEqualizationPanelState;
     let mut tool = ColorEqualizationTool::default();
 
     host.set_slider_value(ids::CEQ_BRIGHTNESS, 0.0);
@@ -99,7 +99,11 @@ fn brightness_slider_low_end_projects_to_min() {
         &mut panel_state,
         WidgetEvent::ValueChanged(ids::CEQ_BRIGHTNESS),
     );
-    assert_eq!(outcome, EventOutcome::Consumed, "low-end slider edit ignored by panel");
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "low-end slider edit ignored by panel"
+    );
 
     for action in host.drained_actions() {
         if let EditorAction::ToolPanelEvent(pe) = action {

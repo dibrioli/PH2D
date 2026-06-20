@@ -55,7 +55,10 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // the user adds colours, never statically in `populate.rs`. Dispatched by
     // the colour-picker hit path in `interaction/dispatch/pointer.rs`.
     ("ph2d-panel-bgremoval", "BGR_SWATCHES"),
-    ("ph2d-panel-vector-inspector", "VECTOR_INSPECTOR_FILL_SWATCH"),
+    (
+        "ph2d-panel-vector-inspector",
+        "VECTOR_INSPECTOR_FILL_SWATCH",
+    ),
     // Inline-rename text field: registered dynamically only while rename mode
     // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
     // Submit/Cancel arms (verified) — not a static populate widget.
@@ -155,11 +158,10 @@ fn read_paint_sources(panel_dir: &Path) -> String {
                 && p.file_name()
                     .and_then(|s| s.to_str())
                     .is_some_and(|n| n.contains("paint"))
+                && let Ok(body) = std::fs::read_to_string(&p)
             {
-                if let Ok(body) = std::fs::read_to_string(&p) {
-                    out.push_str(&body);
-                    out.push('\n');
-                }
+                out.push_str(&body);
+                out.push('\n');
             }
         }
     }

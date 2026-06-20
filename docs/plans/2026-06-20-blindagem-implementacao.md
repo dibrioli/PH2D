@@ -112,6 +112,10 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
   - **Escopo (kill-criterion aplicado):** só o padding migrado (forwarder puro). CEQ/bgremoval/upscale/
     equalize-sizes têm dropdown/toggle/swatch fora do vocab → ficam explícitos. Macro é o caminho
     canônico p/ **novos** forwarders (DIRETIVA §2); existentes migram se/quando virarem forwarder puro.
-- [ ] **Fase 3** (decompor god-files, atrás da cobertura) / **Fase 4** (reconciliar docs) — não iniciadas
+- [~] **Fase 3** — estancar a podridão arquitetural (em curso):
+  - [x] **3.3 já gateado:** `architecture_no_downcast_to_concrete_tool_in_shell` + `architecture_no_per_tool_branch_in_render_loop` congelam o acoplamento do shell (allowlist = freeze; nova entrada = decisão Coord + justificativa, gate falha em downcast novo fora dela). Confirmado — nada a fazer.
+  - [~] **3.2 decompor god-files** (debt paydown; rede = testes existentes + cap 0.4 trava regrowth): **compute.rs** (1636 LOC → módulos por família de ajuste) em curso.
+  - [ ] **3.1 DEFERIDO** (fix parser comment-aware + cap de FUNÇÃO workspace): o próprio comentário da gate avisa que re-baseia toda allowance de panel e desmascara violações ("passo foundational deliberado, não às pressas"); cap de fn confiável cross-crate precisa de AST (syn), não brace-walk (frágil em raw-string/WGSL). O cap de **arquivo** (0.4) já trava regrowth. Follow-up.
+- [ ] **Fase 4** (reconciliar docs) — não iniciada
 
 [node-sync glob gotcha]: ../../CLAUDE.md

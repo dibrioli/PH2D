@@ -58,7 +58,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
     ("ph2d-imageio-tiff/src/lib.rs", 905),
     ("ph2d-nodegraph/src/cook.rs", 864),
-    ("ph2d-painter-effects/src/adjustments/compute.rs", 1636),
     ("ph2d-painter-effects/src/adjustments/mod.rs", 946),
     ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
     ("ph2d-painter-effects/src/blend.rs", 689),

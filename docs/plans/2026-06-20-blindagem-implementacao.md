@@ -1,6 +1,6 @@
 # Plano de Blindagem da Implementação — PH2D
 
-**Aberto:** 2026-06-20 (Enio) · **Dono:** Coordenador · **Status:** Fase 0 em curso
+**Aberto:** 2026-06-20 (Enio) · **Dono:** Coordenador · **Status:** Fases 0–4 fechadas (commits locais); 3.1 deferido (cap de função precisa de AST)
 
 > Diagnóstico forense (2026-06-20, 5 frentes paralelas) concluiu: **todo o aparato de
 > qualidade mede correção ESTRUTURAL (compila? contrato congelado? arquivo < N LOC? deps
@@ -119,8 +119,22 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
     - `editor-core/ids/chrome.rs` 1027 → `chrome/` 9 mods por domínio (export-set 282→282 por diff; node_id_collisions 4 verdes)
     - `render/atlas.rs` 1159 → `atlas/` 5 mods (146 testes, GPU Metal headless rodou)
     - `tool-painter/tool/layers.rs` 1148 → `layers/` 7 mods por responsabilidade (54 testes)
-    - **Restam (alto risco, caps-guarded):** `interaction/dispatch/pointer.rs` (1261, 1 função gigante de dispatch — core de input) · `render/layer_compositor/compositor.rs` (2396, GPU pipeline + 4 kernels).
+    - `interaction/dispatch/pointer.rs` 1261 → 5 módulos-irmão por arm do match (66/310/504/203/244); rede = 75 dispatch + 626 lib + 16 mapped-link + HR-3 `interaction_no_alloc` (commit `01e993f5`)
+    - `render/layer_compositor/compositor.rs` 2396 → subdir `compositor/` 6 mods (519/322/329/434/365/475); rede = 146 lib + **4 GPU device headless Metal** (paridade de coeficiente + composite); subdir (não flat) p/ `layer_compositor/mod.rs` ficar byte-idêntico → 2º god-file (934) não cresce (commit `a2f03028`)
+    - **TODOS os 6 god-files >1000 LOC decompostos.** Allowlist 0.4 enxugada; cap trava regrowth.
   - [ ] **3.1 DEFERIDO** (fix parser comment-aware + cap de FUNÇÃO workspace): o próprio comentário da gate avisa que re-baseia toda allowance de panel e desmascara violações ("passo foundational deliberado, não às pressas"); cap de fn confiável cross-crate precisa de AST (syn), não brace-walk (frágil em raw-string/WGSL). O cap de **arquivo** (0.4) já trava regrowth. Follow-up.
-- [ ] **Fase 4** (reconciliar docs) — não iniciada
+- [x] **Fase 4** (reconciliar docs) — canon read-every-step purgada de refs a features deletadas
+  (ADR-0099 pintura/brush · ADR-0096 watercolor/wash), commit `d327fb5d`:
+  - DIRETIVA §2 (path brush 8-sites → seam genérico painel↔tool 7 sites; cycler → grid-snap vivo),
+    §4 (golden de pintura → paridade de efeito perceptual vivo), §1 (ref-algoritmo/constante genéricos).
+  - DIRETRIZ + examples-fan-out: template morto `ph2d-tool-brush` → `-move` (o `is_default` real);
+    `Tool ≤ 10` → `≤ 11` (ADR-0040-amend-2). RasterEditTool/PanelEvent intactos (congelados).
+  - SESSION_ACTIVE.md: reset de 411 linhas de estado de mundo-deletado → template idle (→ CLAUDE.md §5 + git log).
+  - **Arquivamento agressivo: investigado e NÃO feito (inseguro).** `Painter_projeto/02_layers.md` é
+    design canônico do layer-stack/compositor/blend SOBREVIVENTES (citado por código vivo em 3 crates);
+    `Novo Painter/` é pesquisa morta de brush mas referenciada por 3 comentários stale no shell + 2 ADRs.
+    Mover qualquer um 404a uma teia de links code↔doc, p/ árvores que o roteador não alcança — risco > valor.
+  - **Follow-up p/ Enio:** 3 comentários stale em `shells/desktop/src/{main,image_import,input_handlers}.rs`
+    apontam p/ `docs/Novo Painter` (brush engine deletado) — limpeza de comentário no shell (não-meu-escopo).
 
 [node-sync glob gotcha]: ../../CLAUDE.md

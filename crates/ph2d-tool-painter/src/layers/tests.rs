@@ -91,6 +91,50 @@ fn group_nesting_capped_at_8_levels_matching_savefile() {
 }
 
 #[test]
+fn move_into_group_rejects_subtree_that_would_overflow_depth() {
+    // Regression (audit 2026-06-18): move_into_group must account for the MOVED
+    // item's subtree HEIGHT, not just its own landing depth — else a reparent-
+    // into-group drag builds a tree deeper than the FROZEN savefile validator
+    // accepts (unsaveable). The old `group_nesting_capped` test never caught this
+    // because it nests one empty group at a time (subtree_height 0 at each move).
+    let mut s = LayerStack::new();
+
+    // Target group G nested to depth 6 (one empty group per level — the leaf
+    // case the old guard handled correctly).
+    let mut g = s.add_group("g0").unwrap(); // depth 0
+    for i in 1..=6 {
+        let next = s.add_group(format!("g{i}")).unwrap();
+        assert!(s.move_into_group(next, g));
+        g = next;
+    }
+    assert_eq!(s.depth(g), 6, "target group G must sit at depth 6");
+
+    // A NON-trivial subtree M = { N = { raster } }, subtree_height(M) == 2.
+    let m = s.add_group("M").unwrap();
+    let n = s.add_group("N").unwrap();
+    let r = s.add_raster("r", 8, 8).unwrap();
+    assert!(s.move_into_group(r, n));
+    assert!(s.move_into_group(n, m));
+    assert_eq!(s.subtree_height(m), 2, "M={{N={{raster}}}} has height 2");
+
+    // Moving M into G would place N (a Group) at depth 8 → the frozen savefile
+    // validator rejects Group@depth≥MAX_GROUP_DEPTH. Must be refused. The OLD
+    // guard only checked depth(G)+1 = 7 < 8 and wrongly allowed it.
+    assert!(
+        !s.move_into_group(m, g),
+        "moving a 2-deep subtree into a depth-6 group overflows the frozen \
+         savefile depth cap — must be rejected"
+    );
+
+    // Positive control: a bare leaf still fits at depth 7 (≤ cap).
+    let leaf = s.add_raster("leaf", 8, 8).unwrap();
+    assert!(
+        s.move_into_group(leaf, g),
+        "a leaf raster lands at depth 7 (≤ cap) and must still be accepted"
+    );
+}
+
+#[test]
 fn remove_scrubs_dangling_mask_reference() {
     // audit W3: removing a layer that another layer references as its mask
     // must scrub the now-dangling ref (no `mask: Some(dead_id)`).

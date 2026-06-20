@@ -35,6 +35,27 @@
 //! v1 returns [`AtlasFull`] on overflow and surfaces it as a toast
 //! at the import site. Atlas regrow (re-pack everything into a
 //! 2×-larger texture) is a follow-up — see the plan §Backlog.
+//!
+//! ## Mipmaps (2026-06-18 minification fix, Phase 2)
+//!
+//! The atlas texture carries a full mip chain ([`crate::mipgen`]) so a
+//! minified (zoomed-out) sprite samples trilinearly instead of
+//! undersampling its antialiased edges into jaggies — the same fix the
+//! individual-texture store got in Phase 1, now extended to the SHARED
+//! atlas where committed paint strokes and imported images live.
+//!
+//! Because the atlas packs many regions into ONE texture, a naïve
+//! whole-texture downsample would bleed neighbouring regions (and the
+//! never-written garbage between them) into each region's edge mips.
+//! Two guards bound that bleed to sub-pixel: (1) [`AtlasRegion::uv`]'s
+//! half-texel inset keeps level-0 sampling strictly inside each region,
+//! and (2) the texture is CLEARED to transparent at creation so edge
+//! bleed at higher mips fades toward transparent (correct for a
+//! premultiplied sprite edge) instead of pulling in stale garbage. Full
+//! gutter padding (needed only for tightly-packed tile-atlases zoomed
+//! out past mip ~4) is a documented follow-up; the painter case (large
+//! canvas + a few imports with soft/transparent borders) is the benign
+//! one.
 
 use ph2d_gpu::GpuContext;
 // BTreeMap (not HashMap): HR-5 / ADR-0022 forbid unordered maps in
@@ -158,6 +179,14 @@ pub struct TextureAtlas {
     /// adapter exposes 16384 — packer + bind-group cost grows
     /// quadratically with side length.
     max_size_px: u32,
+    /// Regenerates the atlas mip chain after each content write so a
+    /// minified (zoomed-out) sprite samples trilinearly instead of
+    /// aliasing its antialiased edges (2026-06-18 Phase 2). The atlas is
+    /// `Rgba8UnormSrgb`, so one generator serves the whole texture; a
+    /// full regen costs ~one fullscreen blit per level (≈0.5 ms at
+    /// 8192²) and only fires on insert / replace / regrow — never per
+    /// frame (the painter live preview uses individual textures).
+    mip_gen: crate::mipgen::MipGenerator,
 }
 
 impl TextureAtlas {
@@ -180,9 +209,13 @@ impl TextureAtlas {
         let max_size_px = adapter_cap.min(8192);
         let size_px = size_px.max(1).min(max_size_px);
         let (texture, view) = create_texture(&gpu.device, size_px);
+        // Clear to transparent so untouched packing space (and the gap
+        // between regions) downsamples cleanly instead of bleeding stale
+        // garbage into region-edge mips (see module doc §Mipmaps).
+        clear_level0_transparent(gpu, &texture);
         let sampler =
             crate::create_sprite_sampler(&gpu.device, filter, "ph2d-render atlas sampler");
-        Self {
+        let atlas = Self {
             texture,
             view,
             sampler,
@@ -191,7 +224,23 @@ impl TextureAtlas {
             regions: BTreeMap::new(),
             free_slots: BTreeMap::new(),
             max_size_px,
-        }
+            mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
+        };
+        // Fill the (transparent) mip chain so the texture is sampleable
+        // at any level before the first insert.
+        atlas.regen_mips(gpu);
+        atlas
+    }
+
+    /// Regenerate the atlas mip chain (levels `1..`) from level 0 after a
+    /// content write. Cheap enough to run on every insert/replace; never
+    /// called per frame.
+    fn regen_mips(&self, gpu: &GpuContext) {
+        self.mip_gen.run(
+            gpu,
+            &self.texture,
+            crate::mipgen::mip_levels(self.size_px, self.size_px),
+        );
     }
 
     /// Maximum side length [`Self::regrow_inplace`] will allow.
@@ -275,6 +324,7 @@ impl TextureAtlas {
             if existing.w == width && existing.h == height {
                 upload_region(gpu, &self.texture, existing, rgba);
                 self.regions.insert(key, existing);
+                self.regen_mips(gpu);
                 return Ok(existing);
             }
             self.free_slots
@@ -295,6 +345,7 @@ impl TextureAtlas {
             }
             upload_region(gpu, &self.texture, region, rgba);
             self.regions.insert(key, region);
+            self.regen_mips(gpu);
             return Ok(region);
         }
 
@@ -312,6 +363,7 @@ impl TextureAtlas {
         };
         upload_region(gpu, &self.texture, region, rgba);
         self.regions.insert(key, region);
+        self.regen_mips(gpu);
         Ok(region)
     }
 
@@ -369,10 +421,15 @@ impl TextureAtlas {
         let old_regions = std::mem::take(&mut self.regions);
         self.free_slots.clear();
         let (texture, view) = create_texture(&gpu.device, new_size_px);
+        clear_level0_transparent(gpu, &texture);
         self.texture = texture;
         self.view = view;
         self.size_px = new_size_px;
         self.packer = rect_packer::DensePacker::new(new_size_px as i32, new_size_px as i32);
+        // Define the (transparent) mip chain up front; each re-insert
+        // below regenerates it, but an empty regrow still leaves a
+        // sampleable chain.
+        self.regen_mips(gpu);
         // Re-insert in BTreeMap key order so re-pack is deterministic
         // even when the underlying packer is sensitive to insert
         // sequence (HR-5: identical input → identical layout across
@@ -424,6 +481,17 @@ impl TextureAtlas {
     pub fn region_count(&self) -> usize {
         self.regions.len()
     }
+
+    /// Read a whole **mip level** of the atlas texture back into a tightly
+    /// packed `Vec<u8>` (RGBA8). Level 0 is full res; level `n` is
+    /// `(size_px >> n).max(1)` square. One-shot staging copy (same cost
+    /// model as the individual store's readback) — for tests and
+    /// diagnostics only, never a per-frame path. Returns `(w, h, bytes)`.
+    pub fn readback_mip(&self, gpu: &GpuContext, level: u32) -> (u32, u32, Vec<u8>) {
+        let side = (self.size_px >> level).max(1);
+        let bytes = readback_atlas_texture(gpu, &self.texture, level, side, side);
+        (side, side, bytes)
+    }
 }
 
 /// Upload `rgba` into `texture` at `region`'s pixel offset.
@@ -465,15 +533,139 @@ fn create_texture(device: &wgpu::Device, size_px: u32) -> (wgpu::Texture, wgpu::
             height: size_px,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        // Full mip chain (2026-06-18 Phase 2). +33 % memory over a
+        // single-level texture (8192² RGBA8: 256 → ~341 MiB) buys
+        // trilinear/anisotropic minification for every atlas sprite.
+        mip_level_count: crate::mipgen::mip_levels(size_px, size_px),
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        // RENDER_ATTACHMENT lets `MipGenerator` blit each mip level;
+        // COPY_SRC feeds `readback_mip` (tests/diagnostics).
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::RENDER_ATTACHMENT,
         view_formats: &[],
     });
+    // The sampled view spans ALL mip levels (default) so the trilinear
+    // sampler can pick the right level; the generator makes its own
+    // single-level views.
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     (texture, view)
+}
+
+/// Clear mip level 0 of `texture` to transparent via a no-draw render
+/// pass. Run once at atlas creation / regrow so untouched packing space
+/// downsamples toward transparent (a correct premultiplied edge) rather
+/// than bleeding undefined garbage into region-edge mips.
+fn clear_level0_transparent(gpu: &GpuContext, texture: &wgpu::Texture) {
+    let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        label: Some("ph2d-render atlas clear view"),
+        base_mip_level: 0,
+        mip_level_count: Some(1),
+        ..Default::default()
+    });
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-render atlas clear encoder"),
+        });
+    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("ph2d-render atlas clear pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: &view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+    gpu.queue.submit([encoder.finish()]);
+}
+
+/// Copy `mip_level` (a `width × height` region from the texture origin)
+/// out of GPU memory into a tightly-packed `Vec<u8>`. Mirrors the
+/// individual store's `readback_texture`: pads rows to
+/// [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`] for the staging copy, then
+/// strips the padding. One-shot blocking map — diagnostics/tests only.
+fn readback_atlas_texture(
+    gpu: &GpuContext,
+    texture: &wgpu::Texture,
+    mip_level: u32,
+    width: u32,
+    height: u32,
+) -> Vec<u8> {
+    if width == 0 || height == 0 {
+        return Vec::new();
+    }
+    let unpadded_bpr = width * 4;
+    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let padded_bpr = unpadded_bpr.div_ceil(align) * align;
+    let buffer_size = (padded_bpr as u64) * (height as u64);
+
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("ph2d-render atlas readback staging"),
+        size: buffer_size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut encoder = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ph2d-render atlas readback encoder"),
+        });
+    encoder.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &staging,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(padded_bpr),
+                rows_per_image: Some(height),
+            },
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([encoder.finish()]);
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let slice = staging.slice(..);
+    slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = tx.send(result);
+    });
+    gpu.device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .expect("atlas readback poll");
+    rx.recv()
+        .expect("atlas readback channel")
+        .expect("atlas readback map");
+
+    let mapped = slice.get_mapped_range();
+    let mut out = Vec::with_capacity((unpadded_bpr as usize) * (height as usize));
+    for row in 0..height as usize {
+        let start = row * padded_bpr as usize;
+        let end = start + unpadded_bpr as usize;
+        out.extend_from_slice(&mapped[start..end]);
+    }
+    drop(mapped);
+    staging.unmap();
+    out
 }
 
 /// Build a `DEMO_TILE_PX × DEMO_TILE_PX` RGBA tile filled with the
@@ -854,6 +1046,88 @@ mod tests {
         assert_eq!(atlas.region_count(), 1);
         assert!(atlas.region(1).is_some());
         assert!(atlas.region(2).is_none());
+    }
+
+    // ── Phase 2: atlas mip chain ────────────────────────────────────
+
+    #[test]
+    fn atlas_texture_has_full_mip_chain() {
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let atlas = TextureAtlas::new(&gpu, 256);
+        // 256² → floor(log2 256)+1 = 9 mip levels (256,128,…,1).
+        assert_eq!(atlas.texture.mip_level_count(), 9);
+    }
+
+    #[test]
+    fn atlas_mip_chain_downsamples_region_in_linear_light() {
+        // Phase 2 mirror of the individual store's linear-light mip test.
+        // The first insert into a fresh atlas packs at (0,0), so a 8×8
+        // half-white/half-black region's mip-3 footprint collapses to the
+        // single texel (0,0) of the 32² level — the LINEAR average of
+        // white+black ≈ 188 (0.5 linear → sRGB), NOT the naïve sRGB-byte
+        // midpoint 128. That gap is the whole point: averaging sRGB bytes
+        // directly is the classic too-dark downsample bug.
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        let (w, h) = (8u32, 8u32);
+        let mut rgba = vec![0u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                let idx = ((y * w + x) * 4) as usize;
+                let v = if x < w / 2 { 255 } else { 0 }; // left white, right black
+                rgba[idx] = v;
+                rgba[idx + 1] = v;
+                rgba[idx + 2] = v;
+                rgba[idx + 3] = 255; // opaque
+            }
+        }
+        let region = atlas.insert(&gpu, 0, w, h, &rgba).expect("insert");
+        assert_eq!(
+            (region.x, region.y),
+            (0, 0),
+            "first insert must pack at the origin for this test's mip math"
+        );
+
+        let (mw, mh, level3) = atlas.readback_mip(&gpu, 3);
+        assert_eq!((mw, mh), (32, 32), "256² → mip 3 is 32²");
+        let r = level3[0]; // texel (0,0) = average of the [0,8)² region
+        assert!(
+            (180..=196).contains(&r),
+            "atlas mip-3 texel(0,0) must be the LINEAR avg of white+black ≈ 188, got {r} \
+             (128 would mean a wrong sRGB-space average)"
+        );
+        assert_eq!(level3[3], 255, "opaque region stays opaque in its mip");
+    }
+
+    #[test]
+    fn atlas_untouched_space_is_transparent_in_mips() {
+        // The transparent-clear guard: a region inserted far from the
+        // origin leaves the origin texel untouched, and it must read back
+        // as transparent (alpha 0) at every mip level — proof the clear
+        // ran and garbage isn't bleeding into the chain.
+        let Some(gpu) = try_headless_gpu() else {
+            return;
+        };
+        let mut atlas = TextureAtlas::new(&gpu, 256);
+        // A single small opaque region; with the Skyline packer it lands
+        // at (0,0), so probe a DEEP mip whose origin texel still aggregates
+        // only transparent cleared space beyond the tiny region.
+        let rgba = vec![255u8; (4 * 4 * 4) as usize];
+        atlas.insert(&gpu, 0, 4, 4, &rgba).expect("insert");
+        // mip 6 of 256² is 4²; its texel (1,1) covers original [64,128)²,
+        // entirely outside the 4×4 region → must be cleared transparent.
+        let (mw, mh, level6) = atlas.readback_mip(&gpu, 6);
+        assert_eq!((mw, mh), (4, 4));
+        let idx = ((mw + 1) * 4) as usize; // texel (1,1), alpha channel
+        assert_eq!(
+            level6[idx + 3],
+            0,
+            "untouched packing space must downsample to transparent, not garbage"
+        );
     }
 
     #[test]

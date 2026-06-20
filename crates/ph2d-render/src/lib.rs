@@ -42,6 +42,7 @@ pub mod ktx2_format;
 /// per-pixel stack machine; texture-array cache + dirty-rect dispatch. See
 /// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
 pub mod layer_compositor;
+pub mod mipgen;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;

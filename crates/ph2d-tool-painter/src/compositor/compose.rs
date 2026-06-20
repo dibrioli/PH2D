@@ -283,11 +283,11 @@ fn composite_into(
                 // sub-window is clamp-to-edge approximate at the seam — the GPU
                 // pass-graph with halo is the exact real-time path; a full-canvas
                 // recompose here, the common param-drag case, is exact.)
-                ph2d_painter_brush::adjustments::apply_adjustment_windowed(
+                ph2d_painter_effects::adjustments::apply_adjustment_windowed(
                     &adj.kind,
                     &adj.params,
                     &mut adjusted,
-                    ph2d_painter_brush::adjustments::AdjustWindow {
+                    ph2d_painter_effects::adjustments::AdjustWindow {
                         width: rw,
                         height: rh,
                         origin_x: rx,

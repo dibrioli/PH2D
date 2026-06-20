@@ -49,7 +49,6 @@ use crate::forwarding::{
 mod eyedropper;
 mod gizmo_drag;
 mod keyboard;
-mod painter_input;
 pub(crate) mod protect_brush;
 mod vector_direct_input;
 mod vector_pen_input;
@@ -180,12 +179,6 @@ impl App {
         if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
-        // Painter stroke drag (SHELL-only, T1.5): while a stroke is open
-        // every motion deposits another stamp via the StampScheduler. Early-
-        // return so it doesn't move the sprite or drive a gizmo.
-        if self.painter_drag_move(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
         // Vector Pen handle drag (W2): while the Primary button is held after
         // placing an anchor, motion pulls its Bézier handles. Early-return so
         // it doesn't pan / drive a gizmo. No-ops unless a Pen click-drag is live.
@@ -303,24 +296,6 @@ impl App {
             .unwrap_or(false)
     }
 
-    /// `true` only when `(x, y)` lands on a **Rotate** gizmo handle. The Painter lets
-    /// ONLY rotate fall through to the gizmo (Enio 2026-06-08): the interior handle is
-    /// Translate — letting that through would DRAG the sprite instead of painting — and
-    /// the scale handles sit on the footprint border where painting wins. The rotate
-    /// handles sit OUTSIDE the footprint, so they never collide with a paint stroke.
-    fn cursor_on_gizmo_rotate_handle(&self, x: f32, y: f32) -> bool {
-        self.gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .and_then(|h| {
-                let id = h.hit_index.hit(x, y)?;
-                let kind = ph2d_editor::gizmo_kind_for_id(id)
-                    .or_else(|| h.gizmo.gizmo_hit_map.get(&id).map(|hit| hit.kind))?;
-                Some(matches!(kind, ph2d_editor::GizmoDragKind::Rotate))
-            })
-            .unwrap_or(false)
-    }
-
     /// `true` if `(x, y)` lands on a committed vector shape (placement-aware).
     /// ADR-0076: lets the vector Select tool's marquee/consume arms YIELD a
     /// shape-body click to the gizmo canvas-pick path, which selects it + opens a
@@ -365,22 +340,6 @@ impl App {
             button: mapped_button,
             timestamp_ns: Self::timestamp_ns(),
         };
-        // Painter eyedropper (W2.T2.4): capture whether the color picker
-        // popover is open BEFORE the hero dispatch runs — that dispatch may
-        // consume an eyedropper pick on THIS click (sampling a canvas pixel
-        // into the Painter via the picker → painter_bridge path) or dismiss
-        // the popover. While the picker is open, a canvas Primary Down
-        // belongs to the picker, not the brush: we must NOT also start a
-        // stroke (sample-AND-paint on one click). Suppressing the painter
-        // stroke-down lets the click fall through to
-        // `painter_active_consume_canvas_click` (silent consume — no stroke,
-        // no selection-rect).
-        let picker_open_at_press = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| h.store.picker_target().is_some())
-            .unwrap_or(false);
         self.handler.on_pointer(evt);
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
         // PainterLayerReparent on Up of an active layer-row drag; route it to
@@ -406,9 +365,6 @@ impl App {
         // (below the consume block) even while a vector tool is active — so it
         // bypasses the vector tools' unconditional canvas-consume arms.
         let on_gizmo_handle = self.cursor_on_gizmo_handle(evt.x, evt.y);
-        // Painter-only: ONLY a Rotate handle falls through (translate=body would drag, scale
-        // sits on the paint border) — see `cursor_on_gizmo_rotate_handle` (Enio 2026-06-08).
-        let on_gizmo_rotate_handle = self.cursor_on_gizmo_rotate_handle(evt.x, evt.y);
         // ADR-0076: a click on a vector shape body should select + click-to-drag via
         // the gizmo path (like a sprite) — so the Select tool's marquee/consume arms
         // yield it. Only empty canvas begins a marquee.
@@ -462,30 +418,6 @@ impl App {
             {
                 return;
             }
-            // Painter stroke down (SHELL-only, T1.5): Primary Down over the
-            // sprite footprint opens a stroke + carimba the first stamp.
-            // Consumes the event so it doesn't pick/move the sprite.
-            // Suppressed while the color picker is open (W2.T2.4 eyedropper):
-            // that click is the picker's (sample / dismiss), never a stroke.
-            // Painter stroke down (SHELL-only, T1.5): Primary Down over the sprite footprint
-            // opens a stroke. NOT gated on `on_gizmo_handle` — the BODY of the sprite is the
-            // gizmo's INTERIOR (Translate) handle, so gating here would make a body click move
-            // the sprite instead of painting (Enio 2026-06-08). `try_painter_paint_down`
-            // already returns `None` OFF the quad, so the rotate handles (which sit OUTSIDE
-            // the footprint) fall through to the consume arm below → the gizmo path.
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !picker_open_at_press && self.try_painter_paint_down(evt.x, evt.y) =>
-            {
-                return;
-            }
-            // **R3-LE-2 fix:** Painter active + Primary Down OUTSIDE the
-            // sprite footprint (cursor on empty canvas / different sprite
-            // area). Without this guard the click falls through to the
-            // gizmo/rubber-band logic and OPENS a selection-rectangle while
-            // painting mode is active — a wrong-mode interaction (Procreate
-            // never opens selection while a brush tool is active). Consume
-            // the event silently — equivalent to "click landed off-canvas",
-            // no paint, no selection change.
             // W1.T1.7: Vector Pen — Primary Down on canvas inside
             // sprite footprint adds a vertex / extends / close-paths
             // the in-progress network via `VectorPenTool::on_canvas_click`.
@@ -560,17 +492,9 @@ impl App {
             {
                 return;
             }
-            (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if !cursor_over_hero_panel(self.gfx.as_ref(), evt.x, evt.y)
-                    && !on_gizmo_rotate_handle
-                    && self.painter_active_consume_canvas_click() =>
-            {
-                return;
-            }
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
-                self.end_painter_paint();
                 // Close a Pen click-drag handle window (logs the pulled
                 // tangent). No-op when the Pen isn't mid-click-drag.
                 self.try_vector_pen_pointer_up();

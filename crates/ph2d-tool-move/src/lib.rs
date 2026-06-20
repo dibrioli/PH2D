@@ -127,6 +127,12 @@ impl Tool for MoveTool {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    /// Move is the editor's default / fallback boot tool (the former default,
+    /// the painting Brush tool, was removed with the brush engine).
+    fn is_default(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

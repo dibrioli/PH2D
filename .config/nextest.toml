@@ -27,16 +27,3 @@ test-group = 'asset-cooker-ispc'
 # the crash is in vendored ctt (no code root-cause our side — see the test-group
 # note). Retries are nearly free — each aborts in ~0.06s.
 retries = 10
-
-# ph2d-painter-brush `painter_no_alloc_hot_path` measures the brush scheduler
-# hot path with dhat (heap-block delta). It is alloc-free in isolation (5/5) and
-# in a clean full-workspace run, but under HEAVY concurrent nextest load it
-# intermittently counts ~3 stray blocks — dhat's own bookkeeping / a background-
-# thread lazy alloc landing in the measurement window, NOT the scheduler (the
-# test already warms BOTH brushes + `HeapStats::get` before the window). Same
-# environmental class as the asset-cooker entry above. A NARROW bounded retry
-# (not global) keeps CI green without masking a real regression: a genuine
-# hot-path alloc would fail all 3 tries consistently, not 1-in-N under load.
-[[profile.default.overrides]]
-filter = 'package(ph2d-painter-brush) and test(painter_no_alloc_hot_path)'
-retries = 2

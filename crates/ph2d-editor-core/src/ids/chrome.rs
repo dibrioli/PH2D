@@ -449,6 +449,26 @@ pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_SLIDER: NodeId =
     hash_node_id("painter_studio.shape_roundness_slider");
 pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_CHIP: NodeId =
     hash_node_id("painter_studio.shape_roundness_chip");
+// Roundness modulators (W2.11/W2.12/W2.13): pressure/tilt flatten the nib, jitter
+// randomizes the squash per dab.
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_PRESSURE_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_roundness_pressure_slider");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_PRESSURE_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_roundness_pressure_chip");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_TILT_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_roundness_tilt_slider");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_TILT_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_roundness_tilt_chip");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_JITTER_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_roundness_jitter_slider");
+pub const PAINTER_STUDIO_SHAPE_ROUNDNESS_JITTER_CHIP: NodeId =
+    hash_node_id("painter_studio.shape_roundness_jitter_chip");
+// Base nib angle (W2.10): the calligraphic chisel's resting orientation.
+pub const PAINTER_STUDIO_SHAPE_ANGLE_SLIDER: NodeId =
+    hash_node_id("painter_studio.shape_angle_slider");
+pub const PAINTER_STUDIO_SHAPE_ANGLE_CHIP: NodeId = hash_node_id("painter_studio.shape_angle_chip");
+// Shape Filtering edge-AA mode cycler (W2.14): None / Classic / Improved.
+pub const PAINTER_STUDIO_SHAPE_FILTERING: NodeId = hash_node_id("painter_studio.shape_filtering");
 pub const PAINTER_STUDIO_SHAPE_ROTATION_FOLLOW: NodeId =
     hash_node_id("painter_studio.shape_rotation_follow");
 pub const PAINTER_STUDIO_SHAPE_RANDOMIZED: NodeId = hash_node_id("painter_studio.shape_randomized");

@@ -46,7 +46,6 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # staleness gate fails CI if it drifts from the crates/ph2d-tool-* scan.
 # <ph2d-tool-sync:begin>
 ph2d-tool-bgremoval = { path = "../ph2d-tool-bgremoval" }
-ph2d-tool-brush = { path = "../ph2d-tool-brush" }
 ph2d-tool-color-equalization = { path = "../ph2d-tool-color-equalization" }
 ph2d-tool-equalize-sizes = { path = "../ph2d-tool-equalize-sizes" }
 ph2d-tool-grid-snap = { path = "../ph2d-tool-grid-snap" }

@@ -79,12 +79,12 @@ impl GpuContext {
         // for Vello to even compile its shaders. iPad/web shells will
         // need to revisit if/when they pick a downlevel adapter.
         //
-        // **ADR-0083 — 4K full-res watercolor residency.** The 32-channel wet-field
-        // (`ph2d_painter_brush` `PIG_CH`, ADR-0080/0081) is 128 B/cell, so a full-res 4K grid
-        // pigment buffer is ~1.06 GB — past the desktop-default `max_storage_buffer_binding_size`
-        // (128 MiB). Raise the storage-buffer + total buffer-size caps to the ADAPTER's advertised
+        // **Large storage-buffer residency.** Some GPU-resident buffers (e.g. a
+        // full-res 4K layer/effect working buffer) exceed the desktop-default
+        // `max_storage_buffer_binding_size` (128 MiB). Raise the storage-buffer + total
+        // buffer-size caps to the ADAPTER's advertised
         // max (always ≥ the default → a safe superset; `request_device` can't fail on it and
-        // nothing that worked breaks — it only ALLOWS bigger buffers). The resident field then
+        // nothing that worked breaks — it only ALLOWS bigger buffers). The resident buffer then
         // allocates at full-res 4K where the hardware has the VRAM (Apple Silicon unified memory,
         // modern dGPUs). Smaller devices advertise less → the field stays low-res grid (canvas/4,
         // the production default) + the perf bench skips oversized configs (no silent cap).

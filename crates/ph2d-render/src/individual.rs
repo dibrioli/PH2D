@@ -46,6 +46,9 @@ pub struct IndividualTextureEntry {
     pub bind_group: wgpu::BindGroup,
     pub width: u32,
     pub height: u32,
+    /// Mip levels in `texture` (`mipgen::mip_levels(width, height)`). The
+    /// generator fills `1..mip_count` after each content write.
+    pub mip_count: u32,
     /// Sprites currently referencing this texture. Drops to 0 →
     /// [`IndividualTextureStore::release`] removes the entry and the
     /// `wgpu::Texture` handle drops.
@@ -63,6 +66,11 @@ pub struct IndividualTextureStore {
     entries: BTreeMap<u32, IndividualTextureEntry>,
     next_id: u32,
     sampler: wgpu::Sampler,
+    /// Regenerates each entry's mip chain after a content write so a minified
+    /// (zoomed-out) sprite samples trilinearly instead of undersampling its
+    /// antialiased edges into jaggies (2026-06-17 fix). All individual textures
+    /// are `Rgba8UnormSrgb`, so one generator serves the whole store.
+    mip_gen: crate::mipgen::MipGenerator,
 }
 
 /// Errors returned by [`IndividualTextureStore::acquire`] and
@@ -161,6 +169,15 @@ impl IndividualTextureStore {
             // 1 because 0 is reserved for "shared atlas".
             next_id: 1,
             sampler,
+            mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
+        }
+    }
+
+    /// Regenerate mip levels `1..` of an entry from its freshly-written level 0.
+    /// No-op for an unknown id or a single-level (tiny) texture.
+    fn regen_mips(&self, gpu: &GpuContext, id: u32) {
+        if let Some(entry) = self.entries.get(&id) {
+            self.mip_gen.run(gpu, &entry.texture, entry.mip_count);
         }
     }
 
@@ -239,6 +256,7 @@ impl IndividualTextureStore {
             .expect("IndividualTextureStore: u32 id space exhausted");
         let entry = create_entry(gpu, material_bgl, &self.sampler, width, height, rgba);
         self.entries.insert(id, entry);
+        self.regen_mips(gpu, id);
         Ok(id)
     }
 
@@ -331,6 +349,7 @@ impl IndividualTextureStore {
             ph2d_gpu::pass_profiler::copy_span_end(&mut encoder, t);
         }
         gpu.queue.submit([encoder.finish()]);
+        self.regen_mips(gpu, id);
         Ok(())
     }
 
@@ -406,6 +425,7 @@ impl IndividualTextureStore {
             ph2d_gpu::pass_profiler::copy_span_end(&mut encoder, t);
         }
         gpu.queue.submit([encoder.finish()]);
+        self.regen_mips(gpu, id);
         Ok(())
     }
 
@@ -595,7 +615,27 @@ impl IndividualTextureStore {
             .entries
             .get(&id)
             .ok_or(IndividualTextureError::NotFound(id))?;
-        readback_texture(gpu, &entry.texture, entry.width, entry.height)
+        readback_texture(gpu, &entry.texture, 0, entry.width, entry.height)
+    }
+
+    /// Read back a specific **mip level** of an entry (level 0 = full res).
+    /// Dimensions are `(width >> level).max(1) × (height >> level).max(1)`.
+    /// Used by the mip-generation tests to assert the downsample is a correct
+    /// LINEAR-light box average; same one-shot staging cost as [`Self::readback`]
+    /// (not for any per-frame path).
+    pub fn readback_mip(
+        &self,
+        gpu: &GpuContext,
+        id: u32,
+        level: u32,
+    ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
+        let entry = self
+            .entries
+            .get(&id)
+            .ok_or(IndividualTextureError::NotFound(id))?;
+        let w = (entry.width >> level).max(1);
+        let h = (entry.height >> level).max(1);
+        readback_texture(gpu, &entry.texture, level, w, h)
     }
 
     /// Replace the pixel contents of an existing entry in place.
@@ -638,6 +678,7 @@ impl IndividualTextureStore {
             new_entry.refcount = refcount;
             *entry = new_entry;
         }
+        self.regen_mips(gpu, id);
         Ok(())
     }
 
@@ -699,6 +740,7 @@ impl IndividualTextureStore {
             });
         }
         write_pixels_region(gpu, &entry.texture, x, y, width, height, region_rgba);
+        self.regen_mips(gpu, id);
         Ok(())
     }
 }
@@ -728,6 +770,7 @@ fn create_entry_empty(
     width: u32,
     height: u32,
 ) -> IndividualTextureEntry {
+    let mip_count = crate::mipgen::mip_levels(width, height);
     let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-render individual texture"),
         size: wgpu::Extent3d {
@@ -735,19 +778,23 @@ fn create_entry_empty(
             height,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: mip_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        // COPY_SRC required for `readback()` to copy this texture's
-        // contents back into a staging buffer (F2 — Image Tools edit
-        // path on Individual-source sprites). COPY_DST also feeds
-        // `copy_from_texture` (the Painter GPU preview blit).
+        // COPY_SRC required for `readback()` to copy this texture's contents back
+        // into a staging buffer (F2 — Image Tools edit path on Individual-source
+        // sprites). COPY_DST also feeds `copy_from_texture` (the Painter GPU
+        // preview blit). RENDER_ATTACHMENT lets `MipGenerator` blit each mip
+        // level (2026-06-17 trilinear-minification fix).
         usage: wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::COPY_SRC,
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::RENDER_ATTACHMENT,
         view_formats: &[],
     });
+    // The sampled view spans ALL mip levels (default) so the trilinear sampler can
+    // pick the right level; the generator makes its own single-level views.
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("ph2d-render individual bg"),
@@ -769,6 +816,7 @@ fn create_entry_empty(
         bind_group,
         width,
         height,
+        mip_count,
         refcount: 1,
     }
 }
@@ -837,6 +885,7 @@ fn write_pixels_region(
 fn readback_texture(
     gpu: &GpuContext,
     texture: &wgpu::Texture,
+    mip_level: u32,
     width: u32,
     height: u32,
 ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
@@ -864,7 +913,7 @@ fn readback_texture(
     encoder.copy_texture_to_buffer(
         wgpu::TexelCopyTextureInfo {
             texture,
-            mip_level: 0,
+            mip_level,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },

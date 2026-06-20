@@ -41,15 +41,6 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
         829,
         "Painter W4 bespoke adjustment panels — per-adjustment split deferred (Painter impl follow-up)",
     ),
-    // Ship-prep 2026-06-09: the ADR-0079 Watercolor subsection (15 fluid-solver slider rows)
-    // grew this brush-studio paint orchestrator past the 600 cap. A sibling split
-    // (paint_watercolor.rs) is a brush-studio follow-up. ADR-0081 added the real-pigment
-    // cycler (label helper + cycler_row) to the same section → 650; sibling split still deferred.
-    (
-        "ph2d-panel-brush-studio/src/sections.rs",
-        650,
-        "ADR-0079 watercolor rows + ADR-0081 pigment cycler — sibling split deferred (brush-studio follow-up)",
-    ),
 ];
 
 /// Per-function overage allowance. Each entry:

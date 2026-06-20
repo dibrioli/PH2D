@@ -23,6 +23,14 @@ A mesma feature atravessa, no mínimo, **8 sites**:
       Se uma tabela/macro (tipo `tool-sync`) consegue emitir as 8, **use-a** — é a correção definitiva.
 - [ ] **Zero no-op silencioso.** Fora de escopo (ex.: `SelectBrush` sem library) = `debug_assert!` /
       `tracing::warn!` + UI mostra "desabilitado". Nunca um corpo vazio que "passa".
+- [ ] **Gates de costura (lêem o FONTE, não compilam — falham no CI se faltar ponta):**
+      `architecture_studio_slider_wiring` (sliders) · `architecture_studio_cycler_wiring` (cyclers/dropdowns).
+      Âncora = **o site de pintura** (`cycler_row`/`pct_row` em sections.rs): **pintou ⟹ wirado**.
+      Widget novo de tipo **sem gate** (ex.: um row interativo inédito) = **escreva o gate junto** —
+      checklist em prosa NÃO morde (o bug do "Filter: não é clicável" tinha doc completa e mesmo assim passou).
+- [ ] **Cycler/dropdown** = 2 registros que o compilador não cobra, ALÉM do slider-flow:
+      `button(store, ids::X)` em **populate.rs** (hit-test) **E** `|| id == ids::X` em **`is_studio_button`/event.rs**
+      (emitir o Click). Faltar qualquer um = botão pintado mas inerte. O gate de cycler prova os dois + o dispatch.
 
 ## 3 — Auditar ≠ compilar (a regra que o Enio cobrou)
 - [ ] `cargo check -p` e os gates `architecture_*_contract_surface` = forma-de-ABI / velocidade. No audit

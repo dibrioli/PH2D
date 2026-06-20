@@ -918,36 +918,6 @@ impl crate::App {
                     .active()
                     .map(|t| crate::is_image_edit_tool(&t.id()))
                     .unwrap_or(false);
-                // **Audit T1.6 R7 L1-1 — destructive-deactivate warn.**
-                // Painter is registered in the `image_tools` cluster
-                // (for TopBar pill placement) but unlike bgremoval /
-                // padding / etc., Painter is a workhorse stateful tool:
-                // its `Tool::on_deactivate` → `RasterEditTool::deactivate`
-                // wipes `canvas_rgba` to `Vec::new()`. A user mid-paint
-                // who toggles Image Tools OFF previously lost every
-                // unflushed stroke silently — no warn, no toast, no
-                // recovery. Surface the loss via toast BEFORE the
-                // set_active fires the destructive deactivate path.
-                if active_is_image_tool
-                    && tools
-                        .active()
-                        .map(|t| t.id().0.as_str() == "painter")
-                        .unwrap_or(false)
-                {
-                    // Tool-concrete downcast lives in the allowlisted
-                    // painter_bridge (this central dispatch stays downcast-free
-                    // per the arch-gate).
-                    let lost_painting =
-                        painter_bridge_queries::painter_has_unflushed_strokes(tools);
-                    if lost_painting {
-                        toasts.push(Toast::warning(
-                            "Painter: unflushed strokes were discarded when \
-                             Image Tools toggled off. Use Apply before \
-                             switching the mode."
-                                .to_string(),
-                        ));
-                    }
-                }
                 if active_is_image_tool
                     && let Some(default_id) = tools.default_tool_id()
                     && tools.set_active(&default_id)

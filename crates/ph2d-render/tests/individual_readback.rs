@@ -99,6 +99,48 @@ fn acquire_and_readback_round_trips_pixels() {
 }
 
 #[test]
+fn mip_chain_downsamples_in_linear_light() {
+    // The 2026-06-17 trilinear-minification fix: acquiring a texture must fill its
+    // whole mip chain by a 2× box downsample IN LINEAR LIGHT. A half-white /
+    // half-black 8×8 image (power-of-2 split stays half/half at every level) must
+    // bottom out at a 1×1 mip that is the LINEAR average (0.5 linear → sRGB ≈ 188),
+    // NOT the naïve 8-bit sRGB midpoint (128). That gap is the whole point —
+    // averaging sRGB bytes directly is the classic too-dark downsample bug.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping: no headless GPU adapter");
+        return;
+    };
+    let bgl = material_bgl(&gpu);
+    let mut store = IndividualTextureStore::new(&gpu);
+
+    let (w, h) = (8u32, 8u32);
+    let mut input = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let idx = ((y * w + x) * 4) as usize;
+            let v = if x < w / 2 { 255 } else { 0 }; // left white, right black
+            input[idx] = v;
+            input[idx + 1] = v;
+            input[idx + 2] = v;
+            input[idx + 3] = 255; // opaque (premul-irrelevant at full alpha)
+        }
+    }
+    let id = store.acquire(&gpu, &bgl, w, h, &input).expect("acquire");
+
+    // mip 3 of an 8×8 texture is 1×1 — the average of the whole image.
+    let (mw, mh, bottom) = store.readback_mip(&gpu, id, 3).expect("readback mip 3");
+    assert_eq!((mw, mh), (1, 1), "8×8 → mip 3 is 1×1");
+    let r = bottom[0];
+    assert!(
+        (180..=196).contains(&r),
+        "1×1 mip must be the LINEAR average of white+black ≈ 188, got {r} \
+         (128 would mean a wrong sRGB-space average)"
+    );
+    assert_eq!(bottom[3], 255, "alpha average of opaque image stays opaque");
+    let _ = store.release(id);
+}
+
+#[test]
 fn readback_unknown_id_yields_not_found() {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("skipping: no headless GPU adapter");

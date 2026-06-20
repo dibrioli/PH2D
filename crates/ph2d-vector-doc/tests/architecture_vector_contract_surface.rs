@@ -248,46 +248,13 @@ fn procedural_fill_kind_is_capped_at_4_variants() {
 }
 
 // ----------------------------------------------------------------------------
-// ADR-0067 §2.6 — BrushEngine trait method cap + StampSpec field cap +
-// total dep count cap. Counted textually from the brush-traits crate
-// source (`pub fn` for methods, `pub <field>:` for StampSpec fields).
+// ADR-0067 §2.6 (BrushEngine trait + StampSpec caps) — **REVOGADO** por
+// [ADR-0099]: a crate `ph2d-brush-traits` (decoupling Painter↔Vector da era do
+// brush engine) foi removida junto com toda a pintura. O nó vetor
+// `ph2d-node-vector-pattern-along-path` é puro-vetor e nunca consumiu o
+// `BrushEngine`/`StampSpec` (o bridge raster era Painter-gated, nunca wirado),
+// então não há contrato a gatear aqui.
 // ----------------------------------------------------------------------------
-
-const BRUSH_TRAITS_CRATE: &str = "ph2d-brush-traits";
-
-#[test]
-fn brush_engine_method_count_is_capped_at_3() {
-    // Count `fn <ident>(` inside the BrushEngine trait body. Default
-    // impls + signatures both count toward the cap.
-    let src = crate_source(BRUSH_TRAITS_CRATE);
-    if src.is_empty() {
-        return;
-    }
-    let Some(body) = find_decl_body(&src, "trait", "BrushEngine") else {
-        return;
-    };
-    let count = body
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.starts_with("//") && !l.starts_with("///"))
-        .filter(|l| l.starts_with("fn ") || l.contains(" fn "))
-        .count();
-    assert!(
-        count <= 3,
-        "[BrushEngine method count (ADR-0067 §2.6)] {count} exceeds cap 3"
-    );
-}
-
-#[test]
-fn stamp_spec_field_count_is_capped_at_7() {
-    // Strict: StampSpec is a W1 foundation symbol that exists today — a
-    // rename must FAIL the gate, not pass vacuously (audit M9).
-    assert_capped_strict(
-        count_struct_fields(BRUSH_TRAITS_CRATE, "StampSpec"),
-        7,
-        "StampSpec (ADR-0067 §2.6)",
-    );
-}
 
 // ----------------------------------------------------------------------------
 // ADR-0056 §2.5 — AnimValue typed enum cap.

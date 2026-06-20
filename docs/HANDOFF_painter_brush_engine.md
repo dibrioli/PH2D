@@ -1,5 +1,13 @@
 # HANDOFF — Painter / Brush Engine (tracker ÚNICO do módulo)
 
+> ⚠️ **SUPERSEDED (2026-06-20, [ADR-0099](architecture/decisions/0099-remove-painting-brush-engine-preserve-layers-effects.md)).**
+> A ferramenta de **pintura / brush engine foi DELETADA por completo** (8 crates removidas). O que
+> sobrevive é o **host de Layers + Efeitos** (`ph2d-tool-painter` slim + `ph2d-panel-painter-layers` +
+> efeitos em `ph2d-painter-effects` + compositor GPU em `ph2d-render`). Default tool = `move`. Todo o
+> conteúdo abaixo é **histórico** da era do brush engine. Para o estado atual ver ADR-0099 + CLAUDE.md §5.
+>
+> _(Histórico abaixo — não é mais o estado vivo.)_
+>
 > Regra (pós-investigação 2026-06-16): **um tracker vivo por módulo**. Handoffs por-task/coord
 > são efêmeros e vão pra `docs/archive/` ao fechar. Histórico antigo: `docs/archive/handoffs-2026-06-16/`.
 > Toda etapa segue [`DIRETIVA_IMPLEMENTACAO.md`](IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md).

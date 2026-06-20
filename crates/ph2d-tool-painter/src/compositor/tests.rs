@@ -418,7 +418,7 @@ fn adjustment_layer_noop_stub_is_identity() {
     // `apply_adjustment` stub leaves the layers below unchanged) — verifies
     // the LayerKind::Adjustment arm runs + the path is wired. A real arm
     // goes live the next frame once the implementer fills the compute.
-    use ph2d_painter_brush::adjustments::AdjustmentKind;
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
     let (w, h) = (2, 2);
     let mut s = LayerStack::new();
     let base = s.add_raster("base", w, h).unwrap();
@@ -474,8 +474,8 @@ fn varied(w: u32, h: u32, seed: u32) -> LayerImage {
     img
 }
 
-fn bc(brightness: f32, contrast: f32) -> ph2d_painter_brush::adjustments::AdjustmentParams {
-    use ph2d_painter_brush::adjustments::{AdjustmentParams, BrightnessContrastParams};
+fn bc(brightness: f32, contrast: f32) -> ph2d_painter_effects::adjustments::AdjustmentParams {
+    use ph2d_painter_effects::adjustments::{AdjustmentParams, BrightnessContrastParams};
     AdjustmentParams::BrightnessContrast(BrightnessContrastParams {
         brightness,
         contrast,
@@ -490,7 +490,7 @@ fn cache_matches_full_recompose() {
     // higher adjustment (the slider-drag hot path). Creation order is
     // bottom→top, so the panel root ends up
     // [top, adj_high, mid, adj_low, base] (index 0 = topmost).
-    use ph2d_painter_brush::adjustments::AdjustmentKind;
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
     let (w, h) = (4, 4);
     let mut s = LayerStack::new();
     let base = s.add_raster("base", w, h).unwrap();
@@ -541,7 +541,7 @@ fn cache_matches_full_recompose() {
 fn cache_hit_skips_below_layers() {
     // The bandwidth win: a param-only change of an adjustment must NOT re-read
     // the layers below its cut (only the adjustment + layers above recompose).
-    use ph2d_painter_brush::adjustments::AdjustmentKind;
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
     use std::cell::RefCell;
     use std::collections::BTreeMap;
 

@@ -439,22 +439,21 @@ pub(crate) struct App {
     /// transparent to `sim_extract`'s `PreviewOverride`.
     pub(crate) painter_gpu_preview:
         Option<crate::render_loop::painter_gpu_preview::PainterGpuPreview>,
-    /// W2.T2.5: transient flag set by the Cmd/Ctrl+Enter keybind in
-    /// `input_handlers::handle_editor_key` to commit the active Painter
-    /// stroke into the sprite WITHOUT switching tools. Consumed (taken)
-    /// by `painter_bridge::dispatch` — the only site allowed to downcast
-    /// to `PainterTool` — which calls `request_commit()`. The
-    /// deactivate-commit path (tool switch) is separate via
-    /// `drive_pending_commit`. No concrete-tool downcast in the keyboard
-    /// handler (keeps `architecture_no_downcast_to_concrete_tool_in_shell` green).
+    /// Transient flag set by the Cmd/Ctrl+Enter keybind in
+    /// `input_handlers::handle_editor_key` to Apply (bake the layer composite
+    /// into the sprite) WITHOUT switching tools. Consumed (taken) by
+    /// `painter_bridge::dispatch` — the only site allowed to downcast to
+    /// `PainterTool` — which calls `request_commit()`. The deactivate-commit
+    /// path (tool switch) is separate via `drive_pending_commit`. No
+    /// concrete-tool downcast in the keyboard handler (keeps
+    /// `architecture_no_downcast_to_concrete_tool_in_shell` green).
     pub(crate) painter_commit_requested: bool,
-    /// W2.T2.2: transient flags set by the Cmd+Z / Cmd+Shift+Z keybind
-    /// (only while the Painter tool is active) to undo/redo the last
-    /// brush stroke. Consumed (taken) by `painter_bridge::dispatch` —
-    /// the downcast-allowed site — which calls
-    /// `PainterTool::undo_last_stroke` / `redo_last_stroke` (those mark
-    /// the preview dirty so the bridge re-blits the restored canvas).
-    /// No concrete-tool downcast in the keyboard handler.
+    /// Transient flags set by the Cmd+Z / Cmd+Shift+Z keybind (only while the
+    /// Painter tool is active) to undo/redo the last structural layer edit.
+    /// Consumed (taken) by `painter_bridge::dispatch` — the downcast-allowed
+    /// site — which calls `PainterTool::undo_last` / `redo_last` (those mark
+    /// the preview dirty so the bridge re-composites). No concrete-tool
+    /// downcast in the keyboard handler.
     pub(crate) painter_undo_requested: bool,
     pub(crate) painter_redo_requested: bool,
     /// Accumulator of committed Vector Pen `.ph2d-vector` assets. Each

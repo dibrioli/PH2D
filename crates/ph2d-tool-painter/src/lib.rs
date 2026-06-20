@@ -20,7 +20,6 @@
 //! nos métodos que exigem brush engine real (W1 T1.4+). Smoke W1 day 1:
 //! abrir app sem panic. Pill ainda não aparece (T1.2 implementa).
 
-pub mod color;
 pub mod compositor;
 pub mod icon;
 pub mod layers;
@@ -28,10 +27,6 @@ pub mod params;
 pub mod tool;
 pub mod undo;
 
-pub use color::{
-    HexParseError, format_hex, painter_oklch_to_hex, painter_oklch_to_srgb8, parse_hex,
-    parse_hex_to_painter_oklch, srgb8_to_painter_oklch,
-};
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
 };
@@ -39,13 +34,10 @@ pub use layers::{
     GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers, LayerStack,
     MAX_GROUP_DEPTH, MaskLayer, RasterLayer,
 };
-// Re-export so callers of `set_layer_blend_mode` / the layers panel can name
-// the blend mode without a direct `ph2d-painter-brush` import.
-pub use params::{
-    BrushParam, BrushStudioSnapshot, PainterMode, PainterParams, PainterUiEdit, PainterUiSnapshot,
-    opacity_chip_mapping, opacity01_to_pct, px_to_size01, size_chip_mapping, size01_to_px,
-};
-pub use ph2d_painter_brush::adjustments::{
+pub use params::PainterParams;
+// Re-export the effects surface so the layers panel can name adjustment params /
+// blend modes without a direct `ph2d-painter-effects` import.
+pub use ph2d_painter_effects::adjustments::{
     AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams, SELCOLOR_BUCKETS,
     adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
     channel_mixer_slider_params, colorbalance_display_luts, curve_value_at, curves_display_luts,
@@ -53,7 +45,7 @@ pub use ph2d_painter_brush::adjustments::{
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
 };
-pub use ph2d_painter_brush::{BlendMode, MAX_BLEND_MODES};
+pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 pub use tool::{PainterTool, set_pending_select_mods};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

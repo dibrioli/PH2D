@@ -91,6 +91,36 @@ impl AssetDb {
         Ok(id)
     }
 
+    /// Store an already-decoded RGBA8 image directly — no encode/decode
+    /// round-trip. Content-addressed over `(width, height, pixels)` so two
+    /// identical buffers dedup to one entry (HR-6). Used by the shell's
+    /// "New Canvas" path to seat a blank, realistic-resolution paint target
+    /// without round-tripping a solid color through PNG.
+    ///
+    /// `pixels` MUST be tight-packed RGBA8 (`len == width * height * 4`).
+    pub fn insert_image_rgba8(&self, width: u32, height: u32, pixels: Vec<u8>) -> AssetId {
+        debug_assert_eq!(
+            pixels.len(),
+            (width as usize) * (height as usize) * 4,
+            "insert_image_rgba8: pixels must be tight-packed RGBA8"
+        );
+        // Hash dims + bytes so a 2048² white canvas and a 4096² white canvas get
+        // distinct ids (dims alone would alias same-pixel-count buffers).
+        let mut hash_input = Vec::with_capacity(8 + pixels.len());
+        hash_input.extend_from_slice(&width.to_le_bytes());
+        hash_input.extend_from_slice(&height.to_le_bytes());
+        hash_input.extend_from_slice(&pixels);
+        let id = AssetId::from_bytes(&hash_input);
+        let asset = Asset::ImageRgba8 {
+            width,
+            height,
+            pixels: pixels.into(),
+        };
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
+        id
+    }
+
     /// Decode `bytes` as a postcard-encoded [`PrefabDoc`], hash the
     /// raw bytes, and store under the resulting [`AssetId`].
     /// Idempotent (HR-6 content-addressed).
@@ -272,6 +302,30 @@ mod tests {
         let b = db.insert_png_bytes(&tiny_png(0, 255, 0, 255)).unwrap();
         assert_ne!(a, b);
         assert_eq!(db.len_assets(), 2);
+    }
+
+    #[test]
+    fn insert_image_rgba8_round_trips_and_dedups() {
+        let db = AssetDb::new();
+        let white = vec![255u8; 4 * 4 * 4]; // 4×4 opaque white
+        let id1 = db.insert_image_rgba8(4, 4, white.clone());
+        let id2 = db.insert_image_rgba8(4, 4, white.clone()); // identical → dedup
+        assert_eq!(id1, id2, "content-addressed: same pixels → same id");
+        assert_eq!(db.len_assets(), 1);
+        match &*db.get(&id1).expect("stored") {
+            Asset::ImageRgba8 {
+                width,
+                height,
+                pixels,
+            } => {
+                assert_eq!((*width, *height), (4, 4));
+                assert_eq!(&pixels[..], &white[..]);
+            }
+            _ => panic!("expected ImageRgba8"),
+        }
+        // Different dims (same pixel count would alias without the dim hash).
+        let id3 = db.insert_image_rgba8(8, 2, vec![255u8; 4 * 4 * 4]);
+        assert_ne!(id1, id3, "dims participate in the content hash");
     }
 
     #[test]

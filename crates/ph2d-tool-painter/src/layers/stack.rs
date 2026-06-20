@@ -121,7 +121,7 @@ impl LayerStack {
     /// `None` at the hard cap. The compositor applies it to the layers below.
     pub fn add_adjustment(
         &mut self,
-        kind: ph2d_painter_brush::adjustments::AdjustmentKind,
+        kind: ph2d_painter_effects::adjustments::AdjustmentKind,
     ) -> Option<LayerId> {
         if self.arena.len() >= HARD_CAP_LAYERS {
             return None;
@@ -422,13 +422,17 @@ impl LayerStack {
         if self.is_descendant(group_id, id) {
             return false;
         }
-        // Depth check (audit W3): cap the moved item at depth
-        // `MAX_GROUP_DEPTH - 1` (i.e. ≤ 8 levels, depths 0..=7). This matches
-        // the FROZEN savefile validator (`ph2d-painter-stroke` rejects a Group
+        // Depth check (audit W3): the moved item lands at depth
+        // `depth(group_id) + 1`, and its OWN SUBTREE extends `subtree_height(id)`
+        // deeper — so the deepest descendant sits at `depth(group_id) + 1 +
+        // subtree_height(id)`. Reject when THAT would reach `MAX_GROUP_DEPTH`
+        // (depths valid 0..=MAX_GROUP_DEPTH-1), matching the FROZEN savefile
+        // validator (`ph2d-painter-stroke::validate_layer_node` rejects a Group
         // node at depth ≥ MAX_GROUP_DEPTH), so a runtime tree built here is
-        // always saveable. (Was `> MAX_GROUP_DEPTH`, which allowed a 9th level
-        // the savefile would reject — divergence flagged to the Coordinator.)
-        if self.depth(group_id) + 1 >= MAX_GROUP_DEPTH {
+        // ALWAYS saveable. (Audit 2026-06-18: previously omitted `subtree_height`
+        // — mirroring only `move_to_sibling_of`'s leaf case — which let a
+        // reparent-into-group drag build an unsaveable >8-deep tree.)
+        if self.depth(group_id) + 1 + self.subtree_height(id) >= MAX_GROUP_DEPTH {
             return false;
         }
         // Detach from current parent.

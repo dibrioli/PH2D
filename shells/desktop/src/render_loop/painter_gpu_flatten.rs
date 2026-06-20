@@ -17,8 +17,10 @@
 //! group recursion, skip invisible / zero-opacity / mask layers. Any divergence
 //! from that reference is a correctness bug; keep them in lock-step.
 
-use ph2d_painter_brush::BlendMode;
-use ph2d_painter_brush::adjustments::{AdjustmentParams, curves_display_luts, levels_display_lut};
+use ph2d_painter_effects::BlendMode;
+use ph2d_painter_effects::adjustments::{
+    AdjustmentParams, curves_display_luts, levels_display_lut,
+};
 use ph2d_render::layer_compositor::LayerOp;
 use ph2d_tool_painter::{LayerId, LayerKind, LayerStack};
 
@@ -134,7 +136,7 @@ fn flatten_ids(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ph2d_painter_brush::adjustments::AdjustmentKind;
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
     use ph2d_tool_painter::LayerStack;
 
     #[test]

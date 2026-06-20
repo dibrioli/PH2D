@@ -87,9 +87,17 @@ impl PainterTool {
         std::mem::take(&mut self.preview_dirty)
     }
 
+    /// Public projection of [`Self::is_trivial_stack`] for the shell's GPU
+    /// preview producer (it bows out of GPU compositing on a trivial stack so
+    /// the zero-copy CPU fast path owns the slot).
+    #[must_use]
+    pub fn preview_is_trivial_stack(&self) -> bool {
+        self.is_trivial_stack()
+    }
+
     /// `true` when the stack is a single visible, opaque, Normal raster with
     /// no mask/clip — i.e. the composite is byte-identical to `canvas_rgba`,
-    /// so `current_preview` skips compositing entirely (T1.5 fast path).
+    /// so `current_preview` skips compositing entirely (the fast path).
     pub(crate) fn is_trivial_stack(&self) -> bool {
         let root = self.layers.root();
         if root.len() != 1 {
@@ -154,32 +162,16 @@ impl PainterTool {
         // composite cache + bump the panel `layers_revision`.
         self.bump_all_layer_pixels();
         self.invalidate_composite();
-        // The restored active target is the new lift "paper" base (ADR-0084).
-        self.paper_base = self.canvas_rgba.clone();
-        self.pending_pre_stroke = None;
         self.preview_dirty = true;
     }
 
     /// Record a STRUCTURAL transition from `before` (captured at the edit's start)
-    /// to the CURRENT model, making the edit undoable in chronological order with
-    /// strokes (transactional history — supersedes the v1 "clear undo on any layer
-    /// switch" limitation). Also refreshes the per-switch side state the lift brush
-    /// and in-flight-stroke guard depend on. Every structural site
-    /// (add/delete/duplicate layer, mask/adjustment create, active switch) calls
-    /// this with the model it snapshotted before mutating.
+    /// to the CURRENT model, making the edit undoable in chronological order. Every
+    /// structural site (add/delete/duplicate layer, mask/adjustment create, active
+    /// switch) calls this with the model it snapshotted before mutating.
     pub(crate) fn commit_structural_edit(&mut self, before: crate::undo::ModelSnapshot) {
         let after = self.snapshot_model();
         self.undo.record_structural(before, after);
-        // A new edit invalidates the stroke redo-record branch (mirror of the
-        // controller clearing its own redo stack).
-        self.undo_redo_records.clear();
-        self.pending_pre_stroke = None;
-        // ADR-0084 (paper-reveal lift): the freshly-activated edit target's content IS the
-        // "paper" the lift brush reveals — paint added while editing it is what's liftable.
-        // Arc clone = zero-copy (commits CoW `canvas_rgba` via `Arc::make_mut`, leaving this
-        // snapshot pointing at the pre-paint content). Every layer-switch site assigns
-        // `canvas_rgba` immediately before calling this, so this hook is the single source.
-        self.paper_base = self.canvas_rgba.clone();
     }
 
     /// Set a layer's visibility (layers panel edit). No-op if `id` unknown.
@@ -232,9 +224,6 @@ impl PainterTool {
     /// Add an empty group at the top of the stack (§2.1). No-op (`None`)
     /// mid-stroke or at the hard cap.
     pub fn add_group(&mut self) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         let id = self.layers.add_group("Group")?;
         self.invalidate_composite();
         Some(id)
@@ -246,9 +235,6 @@ impl PainterTool {
     /// active layer stays the edit target (its `canvas_rgba` is untouched). No-op
     /// (`None`) mid-stroke, with no active layer, on the base sprite, or at cap.
     pub fn group_active(&mut self) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         let active = self.layers.active()?;
         // The base sprite is pinned at root bottom — don't nest it.
         if self.layers.root().last() == Some(&active) {
@@ -280,9 +266,6 @@ impl PainterTool {
         drop: ph2d_editor_core::interaction::PainterLayerDrop,
     ) {
         use ph2d_editor_core::interaction::PainterLayerDrop;
-        if self.stroke_active {
-            return;
-        }
         let Some(d) = self.decode_layer_widget(dragged).map(|(l, _)| l) else {
             return;
         };
@@ -331,7 +314,7 @@ impl PainterTool {
     /// bottom) is NOT removable. No-op (`false`) mid-stroke, if `id` is unknown,
     /// or if `id` is the base.
     pub fn delete_layer(&mut self, id: RtLayerId) -> bool {
-        if self.stroke_active || self.layers.get(id).is_none() {
+        if self.layers.get(id).is_none() {
             return false;
         }
         // The base sprite (bottom of root) is permanent — Apply bakes into it.
@@ -366,9 +349,6 @@ impl PainterTool {
     /// inserts above, and makes the copy the active edit target. No-op (`None`)
     /// mid-stroke, for a non-raster, or at the cap.
     pub fn duplicate_layer(&mut self, id: RtLayerId) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         if !matches!(self.layers.get(id)?.kind, LayerKind::Raster(_)) {
             return None;
         }
@@ -413,9 +393,6 @@ impl PainterTool {
     /// the new active starts as a fresh transparent `canvas_rgba`. Returns the
     /// new id, or `None` mid-stroke / before a source is set / at the cap.
     pub fn add_raster_layer(&mut self, name: impl Into<String>) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None; // lifecycle: no structural edits mid-stroke
-        }
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return None;
@@ -443,9 +420,6 @@ impl PainterTool {
     /// stroke). No-op (`None`) mid-stroke, if the active layer isn't a raster,
     /// if it already has a mask, or at the hard cap.
     pub fn add_mask_to_active(&mut self) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         let active = self.layers.active()?;
         if !matches!(self.layers.get(active)?.kind, LayerKind::Raster(_)) {
             return None; // only a raster takes a mask (not a group / another mask)
@@ -459,7 +433,6 @@ impl PainterTool {
         self.images.remove(&mask); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
         self.layers.set_active(mask);
-        self.sync_mask_brush_color(); // entering a mask → black brush (hide)
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(mask);
         self.invalidate_composite();
@@ -470,9 +443,6 @@ impl PainterTool {
     /// it (`1 - value`), so this just flips the flag + invalidates the
     /// composite. No-op mid-stroke or if `mask_id` is not a mask.
     pub fn toggle_mask_inverted(&mut self, mask_id: RtLayerId) {
-        if self.stroke_active {
-            return;
-        }
         let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
             Some(LayerKind::Mask(m)) => m.inverted,
             _ => return,
@@ -489,9 +459,6 @@ impl PainterTool {
     /// deletion). No-op (`false`) mid-stroke, if `mask_id` is not a mask, its
     /// parent is gone, or a buffer is missing/short.
     pub fn apply_mask(&mut self, mask_id: RtLayerId) -> bool {
-        if self.stroke_active {
-            return false;
-        }
         // Resolve the mask + its invert flag, then the owning parent raster
         // (the layer whose `.mask == Some(mask_id)`).
         let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
@@ -549,7 +516,6 @@ impl PainterTool {
             .map(|img| img.rgba8)
             .unwrap_or_else(|| vec![0u8; n * 4]);
         self.canvas_rgba = Arc::new(buf);
-        self.sync_mask_brush_color(); // leaving the mask → restore the real color
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_active);
         self.invalidate_composite();
@@ -563,11 +529,8 @@ impl PainterTool {
     /// No-op (`None`) mid-stroke or at the layer cap. W4 T4.3 (HSB Day-4 smoke).
     pub fn add_adjustment_layer(
         &mut self,
-        kind: ph2d_painter_brush::adjustments::AdjustmentKind,
+        kind: ph2d_painter_effects::adjustments::AdjustmentKind,
     ) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         let undo_before = self.snapshot_model();
         let prev_active = self.layers.active();
         let id = self.layers.add_adjustment(kind)?; // LayerStack sets active = adj
@@ -576,9 +539,9 @@ impl PainterTool {
         // opens with draggable control points. The data-model default stays empty
         // (a bit-exact identity for persisted / programmatic layers); a user-created
         // Curves layer gets editable handles. All-diagonal seeds = identity output.
-        if kind == ph2d_painter_brush::adjustments::AdjustmentKind::Curves
+        if kind == ph2d_painter_effects::adjustments::AdjustmentKind::Curves
             && let Some(adj) = self.layers.adjustment_mut(id)
-            && let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params
+            && let ph2d_painter_effects::adjustments::AdjustmentParams::Curves(c) = &mut adj.params
         {
             let identity: Vec<[f32; 2]> = (0..5)
                 .map(|i| {
@@ -609,13 +572,10 @@ impl PainterTool {
     /// …). No-op mid-stroke or if `id` is not an adjustment. Invalidates the
     /// composite so the live preview re-renders.
     pub fn set_adjustment_param(&mut self, id: RtLayerId, slot: usize, slider01: f32) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        ph2d_painter_brush::adjustments::set_adjustment_slider_param(
+        ph2d_painter_effects::adjustments::set_adjustment_slider_param(
             &mut adj.params,
             slot,
             slider01,
@@ -645,17 +605,14 @@ impl PainterTool {
     /// adjustment. Routes the preview through the same cut-cache fast lane as a
     /// slider edit ([`Self::set_adjustment_param`]).
     pub fn flip_adjustment_toggle(&mut self, id: RtLayerId, slot: usize) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let cur = ph2d_painter_brush::adjustments::adjustment_toggle_params(&adj.params)
+        let cur = ph2d_painter_effects::adjustments::adjustment_toggle_params(&adj.params)
             .get(slot)
             .map(|(_, on)| *on)
             .unwrap_or(false);
-        ph2d_painter_brush::adjustments::set_adjustment_toggle_param(&mut adj.params, slot, !cur);
+        ph2d_painter_effects::adjustments::set_adjustment_toggle_param(&mut adj.params, slot, !cur);
         // Same param-only hot lane as `set_adjustment_param`: keep the cuts below
         // this adjustment, restart from its cut, republish for the panel snapshot.
         self.compositor_cache.invalidate_above(id, &self.layers);
@@ -679,17 +636,14 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let ph2d_painter_brush::adjustments::AdjustmentParams::ChannelMixer(m) = &mut adj.params
+        let ph2d_painter_effects::adjustments::AdjustmentParams::ChannelMixer(m) = &mut adj.params
         else {
             return;
         };
-        ph2d_painter_brush::adjustments::set_channel_mixer_param(m, output, slot, value01);
+        ph2d_painter_effects::adjustments::set_channel_mixer_param(m, output, slot, value01);
         self.compositor_cache.invalidate_above(id, &self.layers);
         self.composited = None;
         self.dirty_rect = None;
@@ -704,7 +658,7 @@ impl PainterTool {
     /// layer / out-of-range stop (delegated to the brush helpers).
     pub fn set_gradient_stop_offset(&mut self, id: RtLayerId, stop: usize, offset: f32) {
         if let Some(g) = self.gradient_params_mut(id) {
-            ph2d_painter_brush::adjustments::move_gradient_stop(g, stop, offset);
+            ph2d_painter_effects::adjustments::move_gradient_stop(g, stop, offset);
             self.after_curve_edit(id);
         }
     }
@@ -713,7 +667,7 @@ impl PainterTool {
     /// current gradient). Returns the inserted index, or `None` (cap / non-Gradient).
     pub fn add_gradient_stop(&mut self, id: RtLayerId) -> Option<usize> {
         let g = self.gradient_params_mut(id)?;
-        let idx = ph2d_painter_brush::adjustments::add_gradient_stop(g);
+        let idx = ph2d_painter_effects::adjustments::add_gradient_stop(g);
         if idx.is_some() {
             self.after_curve_edit(id);
         }
@@ -723,7 +677,7 @@ impl PainterTool {
     /// Remove stop `stop` from Gradient-Map `id` (keeps ≥2 stops).
     pub fn remove_gradient_stop(&mut self, id: RtLayerId, stop: usize) {
         if let Some(g) = self.gradient_params_mut(id) {
-            ph2d_painter_brush::adjustments::remove_gradient_stop(g, stop);
+            ph2d_painter_effects::adjustments::remove_gradient_stop(g, stop);
             self.after_curve_edit(id);
         }
     }
@@ -731,7 +685,7 @@ impl PainterTool {
     /// Set RGB slider `slot` of Gradient-Map `id`'s `stop` from a `0..1` value.
     pub fn set_gradient_stop_color(&mut self, id: RtLayerId, stop: usize, slot: usize, value: f32) {
         if let Some(g) = self.gradient_params_mut(id) {
-            ph2d_painter_brush::adjustments::set_gradient_stop_color_param(g, stop, slot, value);
+            ph2d_painter_effects::adjustments::set_gradient_stop_color_param(g, stop, slot, value);
             self.after_curve_edit(id);
         }
     }
@@ -741,13 +695,10 @@ impl PainterTool {
     fn gradient_params_mut(
         &mut self,
         id: RtLayerId,
-    ) -> Option<&mut ph2d_painter_brush::adjustments::GradientMapParams> {
-        if self.stroke_active {
-            return None;
-        }
+    ) -> Option<&mut ph2d_painter_effects::adjustments::GradientMapParams> {
         let adj = self.layers.adjustment_mut(id)?;
         match &mut adj.params {
-            ph2d_painter_brush::adjustments::AdjustmentParams::GradientMap(g) => Some(g),
+            ph2d_painter_effects::adjustments::AdjustmentParams::GradientMap(g) => Some(g),
             _ => None,
         }
     }
@@ -764,17 +715,15 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let ph2d_painter_brush::adjustments::AdjustmentParams::SelectiveColor(s) = &mut adj.params
+        let ph2d_painter_effects::adjustments::AdjustmentParams::SelectiveColor(s) =
+            &mut adj.params
         else {
             return;
         };
-        ph2d_painter_brush::adjustments::set_selective_color_param(s, bucket, slot, value01);
+        ph2d_painter_effects::adjustments::set_selective_color_param(s, bucket, slot, value01);
         self.compositor_cache.invalidate_above(id, &self.layers);
         self.composited = None;
         self.dirty_rect = None;
@@ -789,13 +738,10 @@ impl PainterTool {
     /// mid-stroke or if `id` is not an adjustment. Routes the preview through the
     /// same cut-cache fast lane as a slider edit ([`Self::set_adjustment_param`]).
     pub fn set_adjustment_segment(&mut self, id: RtLayerId, option: usize) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        ph2d_painter_brush::adjustments::set_adjustment_segment_param(&mut adj.params, option);
+        ph2d_painter_effects::adjustments::set_adjustment_segment_param(&mut adj.params, option);
         // Same param-only hot lane as `set_adjustment_param` (a scope change only
         // rebuilds this adjustment's transfer; layers below keep their cuts).
         self.compositor_cache.invalidate_above(id, &self.layers);
@@ -828,13 +774,10 @@ impl PainterTool {
         x01: f32,
         y01: f32,
     ) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+        let ph2d_painter_effects::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
             return;
         };
         let pts = match channel {
@@ -887,11 +830,8 @@ impl PainterTool {
     /// inserted index, or `None` (no-op) mid-stroke, for a non-Curves layer, an
     /// out-of-range channel, a degenerate (<2-point) curve, or at the ≤8-point cap.
     pub fn add_curve_point(&mut self, id: RtLayerId, channel: u8) -> Option<usize> {
-        if self.stroke_active {
-            return None;
-        }
         let adj = self.layers.adjustment_mut(id)?;
-        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+        let ph2d_painter_effects::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
             return None;
         };
         let pts = match channel {
@@ -916,7 +856,7 @@ impl PainterTool {
                 insert_at = i + 1;
             }
         }
-        let new_y = ph2d_painter_brush::adjustments::curve_value_at(&pts.points, new_x);
+        let new_y = ph2d_painter_effects::adjustments::curve_value_at(&pts.points, new_x);
         pts.points.insert(insert_at, [new_x, new_y]);
         self.after_curve_edit(id);
         Some(insert_at)
@@ -926,13 +866,10 @@ impl PainterTool {
     /// mid-stroke, for a non-Curves layer, an out-of-range channel/index, or when
     /// only the two endpoints remain (a curve needs ≥2 points).
     pub fn remove_curve_point(&mut self, id: RtLayerId, channel: u8, index: usize) {
-        if self.stroke_active {
-            return;
-        }
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
-        let ph2d_painter_brush::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
+        let ph2d_painter_effects::adjustments::AdjustmentParams::Curves(c) = &mut adj.params else {
             return;
         };
         let pts = match channel {
@@ -966,45 +903,6 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked)
-    }
-
-    /// The active stroke color, forced ACHROMATIC (chroma 0) when the edit
-    /// target is a mask so brush paint lands as luminance (white = reveal,
-    /// black = hide, §2.7). Unchanged for a normal raster.
-    pub(crate) fn effective_active_color(&self) -> OklchColor {
-        let c = self.params.active_color;
-        if self.active_is_mask() {
-            OklchColor { c: 0.0, ..c }
-        } else {
-            c
-        }
-    }
-
-    /// Sync the brush color with mask-edit mode: entering a mask defaults the
-    /// brush to BLACK — a mask starts WHITE (all visible), so the expected first
-    /// action is to HIDE (white still reveals). Saves the user's real color and
-    /// restores it on leaving the mask. (The default brush is a LIGHT orange,
-    /// which grayed for a mask barely hides — masking looked like a no-op.)
-    /// Call after every `set_active`.
-    pub(crate) fn sync_mask_brush_color(&mut self) {
-        let now_mask = self
-            .layers
-            .active()
-            .and_then(|a| self.layers.get(a))
-            .is_some_and(|l| matches!(l.kind, LayerKind::Mask(_)));
-        if now_mask {
-            if self.color_before_mask.is_none() {
-                self.color_before_mask = Some(self.params.active_color);
-            }
-            self.params.active_color = OklchColor {
-                l: 0.0,
-                c: 0.0,
-                h: 0.0,
-                a: 1.0,
-            };
-        } else if let Some(c) = self.color_before_mask.take() {
-            self.params.active_color = c;
-        }
     }
 
     /// The first raster layer (depth-first pre-order) inside group `id`, or
@@ -1066,7 +964,6 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.layers.set_active(id);
-        self.sync_mask_brush_color(); // mask ↔ normal layer: swap to/from black
         self.commit_structural_edit(undo_before);
         self.invalidate_composite();
     }
@@ -1095,7 +992,7 @@ impl PainterTool {
     /// Plain row click — replace the selection with `id` and make it active.
     /// No-op mid-stroke or for an unknown id.
     pub fn select_single(&mut self, id: RtLayerId) {
-        if self.stroke_active || self.layers.get(id).is_none() {
+        if self.layers.get(id).is_none() {
             return;
         }
         self.set_active_layer(id);
@@ -1108,7 +1005,7 @@ impl PainterTool {
     /// another member. Never empties the selection (a toggle-off of the lone
     /// member is ignored). No-op mid-stroke or for an unknown id.
     pub fn select_additive(&mut self, id: RtLayerId) {
-        if self.stroke_active || self.layers.get(id).is_none() {
+        if self.layers.get(id).is_none() {
             return;
         }
         // The current active is always a selected row — fold it in so the FIRST
@@ -1138,7 +1035,7 @@ impl PainterTool {
     /// visible z-order run (e.g. a mask sub-row, or no active anchor). No-op
     /// mid-stroke or for an unknown id.
     pub fn select_range(&mut self, id: RtLayerId) {
-        if self.stroke_active || self.layers.get(id).is_none() {
+        if self.layers.get(id).is_none() {
             return;
         }
         let order = self.visible_row_order();
@@ -1200,9 +1097,6 @@ impl PainterTool {
     /// when fewer than two layers are selected. No-op (`None`) mid-stroke or if
     /// the group could not be created / nothing could be nested.
     pub fn group_selected(&mut self) -> Option<RtLayerId> {
-        if self.stroke_active {
-            return None;
-        }
         // Collect selected layers in stable visible order; the base sprite
         // (pinned at root bottom) is never groupable.
         let base = self.layers.root().last().copied();
@@ -1240,9 +1134,6 @@ impl PainterTool {
     /// ↑ reorder button. No-op mid-stroke (structural-edit lifecycle, mirror of
     /// `select_layer`) or at the top. Invalidates the composite.
     pub fn move_layer_up(&mut self, id: RtLayerId) {
-        if self.stroke_active {
-            return;
-        }
         self.layers.move_up(id);
         self.invalidate_composite();
     }
@@ -1251,9 +1142,6 @@ impl PainterTool {
     /// ↓ reorder button. No-op mid-stroke or at the bottom. Invalidates the
     /// composite.
     pub fn move_layer_down(&mut self, id: RtLayerId) {
-        if self.stroke_active {
-            return;
-        }
         self.layers.move_down(id);
         self.invalidate_composite();
     }

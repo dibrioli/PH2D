@@ -3,7 +3,7 @@
 //!
 //! Composites a [`LayerStack`] **top-down recursively** in linear-sRGB:
 //! each visible layer is decoded sRGB→linear, blended over the
-//! accumulator via [`ph2d_painter_brush::apply_blend`] (opacity folded
+//! accumulator via [`ph2d_painter_effects::apply_blend`] (opacity folded
 //! into the source alpha), groups composite their children into a
 //! sub-buffer first, then the final accumulator is encoded linear→sRGB.
 //!
@@ -19,7 +19,7 @@
 
 use crate::layers::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH};
 use ph2d_color::srgb::srgb_to_linear_byte;
-use ph2d_painter_brush::{BlendMode, apply_blend};
+use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 

@@ -2148,26 +2148,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs-err"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73fde052dbfc920003cfd2c8e2c6e6d4cc7c1091538c3a24226cec0665ab08c0"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
-name = "fs4"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8640e34b88f7652208ce9e88b1a37a2ae95227d84abec377ccd3c5cfeb141ed4"
-dependencies = [
- "fs-err",
- "rustix 1.1.4",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "fsevent-sys"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4536,24 +4516,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-brush-along-path"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-painter-brush",
- "ph2d-vector-doc",
-]
-
-[[package]]
-name = "ph2d-brush-traits"
-version = "0.0.0"
-dependencies = [
- "glam 0.30.10",
- "ph2d-color",
- "serde",
-]
-
-[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -4690,16 +4652,14 @@ dependencies = [
  "ph2d-node-vector-boolean",
  "ph2d-node-vector-source",
  "ph2d-nodegraph",
- "ph2d-painter-brush",
+ "ph2d-painter-effects",
  "ph2d-panel-bgremoval",
- "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
- "ph2d-panel-painter-sidebar",
  "ph2d-panel-registry-init",
  "ph2d-panel-upscale",
  "ph2d-panel-vector-graph",
@@ -5210,40 +5170,12 @@ name = "ph2d-nodegraph"
 version = "0.0.0"
 
 [[package]]
-name = "ph2d-painter-brush"
+name = "ph2d-painter-effects"
 version = "0.0.0"
 dependencies = [
- "blake3",
- "bytemuck",
- "dhat",
- "naga",
  "ph2d-color",
- "ph2d-gpu",
  "postcard",
  "serde",
- "wgpu",
-]
-
-[[package]]
-name = "ph2d-painter-contracts"
-version = "0.0.0"
-dependencies = [
- "walkdir",
-]
-
-[[package]]
-name = "ph2d-painter-stroke"
-version = "0.0.0"
-dependencies = [
- "blake3",
- "crc32fast",
- "fs4",
- "ph2d-color",
- "ph2d-painter-brush",
- "postcard",
- "serde",
- "subtle",
- "uuid",
 ]
 
 [[package]]
@@ -5258,17 +5190,6 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-bgremoval",
  "ph2d-vector",
-]
-
-[[package]]
-name = "ph2d-panel-brush-studio"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-editor-core",
- "ph2d-host",
- "ph2d-tokens",
- "ph2d-tool-painter",
 ]
 
 [[package]]
@@ -5360,23 +5281,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-panel-painter-sidebar"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-editor-core",
- "ph2d-host",
- "ph2d-tokens",
- "ph2d-tool-painter",
-]
-
-[[package]]
 name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
  "ph2d-panel-bgremoval",
- "ph2d-panel-brush-studio",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
  "ph2d-panel-grid-snap",
@@ -5384,7 +5293,6 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
- "ph2d-panel-painter-sidebar",
  "ph2d-panel-sync",
  "ph2d-panel-upscale",
  "ph2d-panel-vector-graph",
@@ -5467,7 +5375,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-gpu",
  "ph2d-host",
- "ph2d-painter-brush",
+ "ph2d-painter-effects",
  "postcard",
  "rect_packer",
  "serde",
@@ -5554,14 +5462,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ph2d-tool-brush"
-version = "0.0.0"
-dependencies = [
- "ph2d-a11y",
- "ph2d-editor-core",
-]
-
-[[package]]
 name = "ph2d-tool-color-equalization"
 version = "0.0.0"
 dependencies = [
@@ -5640,8 +5540,7 @@ dependencies = [
  "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
- "ph2d-painter-brush",
- "ph2d-painter-stroke",
+ "ph2d-painter-effects",
  "ph2d-tool-registry",
  "ph2d-vector",
  "serde",
@@ -5686,7 +5585,6 @@ dependencies = [
  "ph2d-editor",
  "ph2d-editor-core",
  "ph2d-tool-bgremoval",
- "ph2d-tool-brush",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-grid-snap",

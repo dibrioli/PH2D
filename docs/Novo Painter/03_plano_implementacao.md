@@ -61,14 +61,21 @@ O engine vivo já entrega um **MVP de mark respeitável**: carimba ao longo do p
 com taper, colocação de shape (count/scatter/flip/rotation), todas as Dynamics, pressão via curva, os 6
 Rendering Modes, **mistura de cor Mixbox**, jitter de cor por-stamp, e grain básico.
 
-**Os grandes buracos (ordem de impacto):**
-1. **Wet Mix inteiro** (W7) — `wet_amount=0.0`. É o coração do mixer-brush; é o maior trabalho e o maior valor.
-2. **Shape: roundness/elipse + filtering + input_style** (W2) — sem elipse, brushes caligráficos não existem.
-3. **Grain detalhado** (W4) — 10 params mortos (movement/zoom/depth_jitter/blend_mode/brightness/contrast…).
-4. **Rendering edges** (W3) — wet_edges/burnt_edges/luminance/alpha_threshold (FLAGs nunca setados).
+**Os grandes buracos (ordem de impacto) — ⚠️ esta lista é um resumo HISTÓRICO; as seções por-wave abaixo
+são a verdade autoritativa. Reconciliado 2026-06-19:**
+1. ~~**Wet Mix inteiro** (W7)~~ — **✅ FECHADO 2026-06-16/17** (reservatório + 8 params + UI + gating; smoke do
+   Enio azul+amarelo→verde). Era o #1; já entregue. Ver §Wave 7.
+2. **Shape (W2)** — roundness/elipse **✅ FECHADO**; **resta:** `shape_angle` (W2.10, ângulo-base do nib
+   caligráfico — gap de modelo, completa direto a elipse), `shape_filtering` (W2.14, campo existe mas NÃO é
+   consumido no render), `input_style` (W2.2, precisa de input tilt/azimuth). **← próximo de maior impacto.**
+3. **Grain detalhado** (W4) — ~10 params mortos (movement/zoom/depth_jitter/blend_mode/brightness/contrast…);
+   `GrainParams` existe mas o `cpu_render` ignora os campos detalhados (só `paper_grain` on/off vivo).
+4. **Rendering edges** (W3) — wet_edges/burnt_edges/luminance/alpha_threshold (FLAGs/params existem, consumo no
+   cpu_render não-verificado).
 5. **Color dynamics não-stamp** (W8) — stroke/pressure/tilt/barrel (16 params).
 6. **Tilt/barrel como resposta de brush** (W9) — input chega mas só o WGSL (dormente) usa; cpu_render ignora.
-7. **2 params de Stabilization** (streamline_pressure, motion_filtering_expression).
+7. **2 params de Stabilization** (streamline_pressure, motion_filtering_expression). NB: os sliders
+   StreamLine/Stabilization/Motion JÁ estão wirados (`smooth_input_position`); falta só um **default ≠ 0**.
 
 **Decisão de arquitetura que a auditoria força (para o ADR-0097, W0.0):** o GPU `StampPipeline` está
 validado mas morto. Ou (A) **consolidar no CPU** como fonte-da-verdade e tratar o WGSL como paridade futura,
@@ -154,12 +161,41 @@ real-time, taper de pressão visível.
 - [ ] **W2.6 — Count Jitter** `[M✅][E?][U?]`.
 - [ ] **W2.7 — Randomised** `[M✅][E?][U?]` — rotação aleatória no início.
 - [ ] **W2.8 — Flip X / Flip Y** `[M✅][E?][U?]`.
-- [ ] **W2.9 — Roundness: squash (elipse)** `[M✅][E?][U?]`.
-- [ ] **W2.10 — Roundness: Angle base** `[M❌][E❌][U❌]` — **gap:** adicionar `shape.shape_angle` (`shapeAngle`). ⚠️ toca `Brush`.
-- [ ] **W2.11 — Pressure → Roundness** `[M✅][E?][U?]`.
-- [ ] **W2.12 — Tilt → Roundness** `[M✅][E?][U?]`.
-- [ ] **W2.13 — Roundness Vertical / Horizontal Jitter** `[M✅][E?][U?]`.
-- [ ] **W2.14 — Shape Filtering** (None/Classic/Improved) `[M✅][E?][U?]`.
+- [x] **W2.9 — Roundness: squash (elipse)** `[M✅][E✅][U✅]` — **FECHADO 2026-06-17**
+  ([ADR-0044-amendment-1](../architecture/decisions/0044-amendment-1.md)): `Stamp._pad`→`roundness: f32`
+  (96B intacto); squash `v = vr/roundness + 0.5` no `cpu_render` (2 caminhos) + `cs_stamp`; 4 sliders na UI
+  fiados nos 8 sites (gate de wiring VERDE); golden tests de anisotropia + rotação. Smoke manual pendente.
+- [x] **W2.10 — Roundness: Angle base** `[M✅][E✅][U✅]` — **FECHADO 2026-06-19.** `shape.shape_angle` (radianos)
+  somado em `rotation_rad` no scheduler (ANTES de follow/scatter) E na orientação do nib da spacing anti-veneziana
+  (SCHED-1); slider "Angle" (0..1 → 0..2π) fiado nos 8 sites (wiring gate VERDE); `ShapeParams` 15→16 (cap 20);
+  2 golden tests (`shape_angle_folds_into_rotation`, zero=byte-idêntico). Completa o chisel caligráfico da elipse W2.9.
+- [x] **W2.11 — Pressure → Roundness** `[M✅][E✅][U✅]` — **FECHADO 2026-06-17** (modula `roundness` por-dab no scheduler; slider "Round Press").
+- [x] **W2.12 — Tilt → Roundness** `[M✅][E✅][U✅]` — **FECHADO 2026-06-17** (idem via `sample.tilt`; slider "Round Tilt"; smoke = Apple Pencil).
+- [~] **W2.13 — Roundness Vertical / Horizontal Jitter** — **vertical FECHADO 2026-06-17** (eixo 0xD5, slider "Round Jit");
+  **horizontal = follow-up nomeado** (exige 2º carrier de anisotropia no Stamp — não cabe no slot único de `roundness`).
+- [x] **W2.14 — Shape Filtering** (None/Classic/Improved) `[M✅][E✅][U✅]` — **FECHADO 2026-06-19.** Referência:
+  `shapeFilter` = "antialias da borda" → para os shapes analíticos, filtering É a largura do AA. Helper
+  `shape_filtering_aa_px` (None ½px · Classic 1px · Improved `SHAPE_AA_PX`); threadado como render-arg via
+  **delegação** (`*_aa` em wash/buildup/with_options — 47 callers intactos, default Improved = byte-idêntico);
+  tool passa nos 3 caminhos; cycler "Filter: …" na UI (mirror do RenderingMode). Sem tocar ABI. 1 teste (mapping +
+  banda de AA). Latente: GPU (dormente) usa o const SHAPE_AA_PX (Stamp congelado não carrega filtering per-dab) — só
+  diverge se o GPU path ligar com filtering ≠ Improved.
+
+> **Foundational render-quality (mip chain de minificação) — FECHADO 2026-06-18.** Distinto do W2.14 (filtering
+> per-brush): é a correção do *display path* em `ph2d-render`. Sintoma: traço/imagem com zoom-out aliasava as bordas
+> antialiased (sub-amostragem sem mip chain). **Fase 1** — texturas individuais (preview do painter): `mipgen.rs`
+> (blit box-downsample em luz LINEAR via sRGB decode/encode) + trilinear + aniso 16× no sampler canônico.
+> **Fase 2** — atlas (traços commitados + imports): mesma mip chain na textura compartilhada, com clear-transparente
+> + half-texel inset para limitar bleed entre regiões a sub-pixel; `sampler_from_tags` agora resolve trilinear/aniso
+> reais. Provado em Metal (linear-light ≈188 não 128; clear sem garbage; 9 níveis em 256²). Gutter por-região = follow-up
+> só relevante p/ tile-atlas muito reduzido. O buffer do pincel já era liso a 1:1 (dump real confirmado); a melhora é só
+> na minificação.
+>
+> **AA da borda afinado por gosto → `SHAPE_AA_PX = 2.0px` — 2026-06-18.** CPU `library.rs` + shader `stamp.wgsl` em lock-step.
+> Iterado 1.5 → 1.0 (literal Van Verth, mais crava) → **2.0** (preferência do Enio: borda mais macia/suave, 2× o piso
+> alias-free de 1px). Bem acima do piso de Nyquist (1px) → sem aliasing; o trade é borda gentil vs vector-crava. Vale p/ os 2
+> caminhos vivos (`apply_one_stamp` build-up + `apply_one_stamp_wash` default). Piso real = 1.0 (abaixo re-aliasa). Bake 256²
+> de referência mantém borda AA visível nessa largura. **Sinal:** se o valor voltar a mudar, virar slider de Hardness per-brush.
 
 **Verificação W2:** parity de um carimbo isolado (scatter/count/roundness/flip determinísticos por seed).
 
@@ -254,7 +290,11 @@ visível, Moving "rola" com o traço.
 >
 > **✅ FASE 2 COMPLETA (2026-06-16)** — Grade (contraste de textura, pivota em 1.0), Blur (composição sobre
 > backdrop box-blurred, raio ≤3px) e Blur Jitter (raio randomizado por-dab) implementados no engine + 3 sliders
-> na UI (ponta-a-ponta) + 3 testes (helpers + wiring). **W7 INTEIRO FECHADO.** Pendente só o teste visual manual.
+> na UI (ponta-a-ponta) + 3 testes (helpers + wiring). **W7 INTEIRO FECHADO.**
+>
+> **✅ SMOKE VISUAL OK (2026-06-17, Enio)** — traço amarelo sobre azul rendeu **verde** (mistura espectral
+> Mixbox, não cinza/lama), com a textura do reservatório esgotando ao arrastar. Veredito condicional da
+> DIRETIVA §5 resolvido → **W7 incondicionalmente FECHADO.** Primeiro caso provado do golden-image harness.
 
 - [x] **W7.0 — Reservatório por-pincelada.** Estado do brush: carga (`load`) depositada no início, esgota ao
   arrastar, recarrega ao levantar/retocar. Pickup (`r_pickup ∝ canvas`) + deposit (`r_deposit ∝ reservoir`)

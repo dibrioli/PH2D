@@ -55,7 +55,6 @@ pub fn register_all(reg: &mut Registry) {
 pub fn register_all_tools(reg: &mut ToolRegistry) {
     // <ph2d-tool-sync:tools:begin>
     reg.register(ph2d_tool_bgremoval::make());
-    reg.register(ph2d_tool_brush::make());
     reg.register(ph2d_tool_color_equalization::make());
     reg.register(ph2d_tool_equalize_sizes::make());
     reg.register(ph2d_tool_move::make());

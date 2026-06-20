@@ -40,8 +40,6 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     // <ph2d-panel-sync:begin>
     #[cfg(feature = "panel-bgremoval")]
     reg.push(ErasedPanel::new::<ph2d_panel_bgremoval::BgRemovalPanel>());
-    #[cfg(feature = "panel-brush-studio")]
-    reg.push(ErasedPanel::new::<ph2d_panel_brush_studio::BrushStudioPanel>());
     #[cfg(feature = "panel-color-equalization")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_color_equalization::ColorEqualizationPanel,
@@ -61,10 +59,6 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     #[cfg(feature = "panel-painter-layers")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_painter_layers::PainterLayersPanel,
-    >());
-    #[cfg(feature = "panel-painter-sidebar")]
-    reg.push(ErasedPanel::new::<
-        ph2d_panel_painter_sidebar::PainterSidebarPanel,
     >());
     #[cfg(feature = "panel-upscale")]
     reg.push(ErasedPanel::new::<ph2d_panel_upscale::UpscalePanel>());
@@ -111,15 +105,7 @@ mod tests {
         // new panel feature must be counted here too (else workspace feature
         // unification enables the panel and this count drifts; cf. memory
         // feedback-fanout-registry-init-friction).
-        #[cfg(feature = "panel-painter-sidebar")]
-        {
-            n += 1;
-        }
         #[cfg(feature = "panel-painter-layers")]
-        {
-            n += 1;
-        }
-        #[cfg(feature = "panel-brush-studio")]
         {
             n += 1;
         }

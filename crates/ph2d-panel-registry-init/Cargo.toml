@@ -13,7 +13,6 @@ authors.workspace = true
 ph2d-editor-core               = { path = "../ph2d-editor-core" }
 # <ph2d-panel-sync:deps:begin>
 ph2d-panel-bgremoval = { path = "../ph2d-panel-bgremoval", optional = true }
-ph2d-panel-brush-studio = { path = "../ph2d-panel-brush-studio", optional = true }
 ph2d-panel-color-equalization = { path = "../ph2d-panel-color-equalization", optional = true }
 ph2d-panel-equalize-sizes = { path = "../ph2d-panel-equalize-sizes", optional = true }
 ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
@@ -21,7 +20,6 @@ ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy", optional = true }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
 ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
-ph2d-panel-painter-sidebar = { path = "../ph2d-panel-painter-sidebar", optional = true }
 ph2d-panel-upscale = { path = "../ph2d-panel-upscale", optional = true }
 ph2d-panel-vector-graph = { path = "../ph2d-panel-vector-graph", optional = true }
 ph2d-panel-vector-inspector = { path = "../ph2d-panel-vector-inspector", optional = true }
@@ -40,7 +38,6 @@ default = [
 # do NOT edit between the markers by hand.
 # <ph2d-panel-sync:features:begin>
 panel-bgremoval = ["dep:ph2d-panel-bgremoval"]
-panel-brush-studio = ["dep:ph2d-panel-brush-studio"]
 panel-color-equalization = ["dep:ph2d-panel-color-equalization"]
 panel-equalize-sizes = ["dep:ph2d-panel-equalize-sizes"]
 panel-grid-snap = ["dep:ph2d-panel-grid-snap"]
@@ -48,7 +45,6 @@ panel-hierarchy = ["dep:ph2d-panel-hierarchy"]
 panel-inspector = ["dep:ph2d-panel-inspector"]
 panel-padding = ["dep:ph2d-panel-padding"]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
-panel-painter-sidebar = ["dep:ph2d-panel-painter-sidebar"]
 panel-upscale = ["dep:ph2d-panel-upscale"]
 panel-vector-graph = ["dep:ph2d-panel-vector-graph"]
 panel-vector-inspector = ["dep:ph2d-panel-vector-inspector"]

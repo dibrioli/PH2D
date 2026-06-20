@@ -21,8 +21,8 @@
 //! **top-to-bottom** (index 0 = topmost, matching the layer panel). The
 //! compositor walks them in reverse (bottom-up) per §2.11.
 
-use ph2d_painter_brush::BlendMode;
-use ph2d_painter_brush::adjustments::AdjustmentLayer;
+use ph2d_painter_effects::BlendMode;
+use ph2d_painter_effects::adjustments::AdjustmentLayer;
 use serde::{Deserialize, Serialize};
 
 /// Maximum group nesting depth (§2.6). A would-be level-9 group folds to

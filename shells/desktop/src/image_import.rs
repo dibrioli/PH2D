@@ -139,6 +139,62 @@ fn spawn_sprite(
     (label, entity.to_bits())
 }
 
+/// Spawn a blank, opaque-white **paint canvas** of `size_px` × `size_px` at
+/// `world_center`, packed into the atlas exactly like an import so the Painter
+/// edits it at native resolution. Returns `(label, entity_bits)` for seating
+/// the selection.
+///
+/// **Why this exists (the realistic-smoke target).** The demo's atlas sprites
+/// are 64px; painting there distorts the brush↔canvas ratio and makes the
+/// world-space paper/grain texture read as coarse "grass" at display zoom (see
+/// `docs/Novo Painter`). A `2048²` blank canvas is the canonical scale to smoke
+/// the brush engine against — what a real Procreate canvas looks like.
+///
+/// Mirrors [`pack_image`] + [`spawn_sprite`]: the canvas is registered in the
+/// `AssetDb` + `atlas_asset_map` BEFORE the atlas insert so a regrow triggered
+/// by it can recover the pixels (same ordering as the import path).
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_blank_canvas(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    size_px: u32,
+    world_center: Vec2,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Result<(String, u64), String> {
+    let px_count = (size_px as usize)
+        .checked_mul(size_px as usize)
+        .and_then(|n| n.checked_mul(4))
+        .ok_or_else(|| format!("canvas {size_px}² overflows a pixel buffer"))?;
+    let pixels = vec![255u8; px_count]; // opaque white — the standard blank canvas
+    let asset_id = asset_db.insert_image_rgba8(size_px, size_px, pixels.clone());
+    atlas_asset_map.insert(cell_idx, asset_id);
+    let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
+        let aid = atlas_asset_map.get(&key)?;
+        match &*asset_db.get(aid)? {
+            ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
+            _ => None,
+        }
+    };
+    if let Err(e) =
+        renderer.insert_atlas_sprite_with_regrow(cell_idx, size_px, size_px, &pixels, fetch_pixels)
+    {
+        atlas_asset_map.remove(&cell_idx);
+        return Err(format!("atlas insert blank canvas: {e}"));
+    }
+    let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
+    let world = (size_px as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
+    Ok(spawn_sprite(
+        sim,
+        cell_idx,
+        world_center,
+        [world, world],
+        "Canvas",
+    ))
+}
+
 /// One packed-but-not-yet-spawned image, carried from the measure pass
 /// into the spawn pass.
 struct Packed {

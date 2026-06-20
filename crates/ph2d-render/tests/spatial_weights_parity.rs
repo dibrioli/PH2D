@@ -18,7 +18,7 @@
 //! line-for-line identical code, so equality is exact (no tolerance) and a NaN
 //! could only arise from a real bug, which the test would correctly surface.
 
-use ph2d_painter_brush::adjustments::{
+use ph2d_painter_effects::adjustments::{
     gaussian_weights as brush_gaussian, motion_weights as brush_motion,
 };
 use ph2d_render::{gaussian_weights as render_gaussian, motion_weights as render_motion};

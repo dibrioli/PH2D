@@ -28,6 +28,19 @@ pub fn create_sprite_sampler(
     label: &str,
 ) -> wgpu::Sampler {
     let filter = wgpu_filter(mode);
+    // Anisotropic filtering sharpens MINIFICATION (zoomed-out / oblique sprites)
+    // well beyond plain trilinear — it takes multiple taps along the axis of
+    // greatest compression instead of one isotropic mip sample, so a high-res
+    // canvas viewed small keeps crisp edges instead of the trilinear "safe blur".
+    // Requires all three filters Linear + a real mip chain — both true for the
+    // mipmapped individual-texture store AND the mipmapped atlas (Phase 2); a
+    // no-op fallback only on Nearest (pixel art, which can't use aniso anyway).
+    // `16×` is the universal wgpu/Metal max.
+    let anisotropy_clamp = if filter == wgpu::FilterMode::Linear {
+        16
+    } else {
+        1
+    };
     device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some(label),
         address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -35,7 +48,9 @@ pub fn create_sprite_sampler(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+        // Linear between mip levels = trilinear minification (no level "popping").
+        mipmap_filter: wgpu::MipmapFilterMode::Linear,
+        anisotropy_clamp,
         ..Default::default()
     })
 }
@@ -43,8 +58,9 @@ pub fn create_sprite_sampler(
 /// Build a sprite sampler from a packed `RenderInstance::sampling` key
 /// (Sprite Inspector v2 W3.T3.11): `filter_tag (low byte) | repeat_tag
 /// << 8`, where the tags are the `ph2d_ecs::FilterMode`/`RepeatMode`
-/// enum discriminants. Mipmap/aniso filter variants map to their base
-/// mag/min filter (the sprite atlas has no mip chain yet — a follow-up).
+/// enum discriminants. The mipmapped/aniso variants now resolve to real
+/// trilinear / anisotropic minification — both the atlas and the
+/// individual store carry a full mip chain since Phase 2 (2026-06-18).
 pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) -> wgpu::Sampler {
     // FilterMode: 1 Nearest · 2 Linear · 3 NearestMipmap · 4 LinearMipmap
     // · 5 NearestAniso · 6 LinearAniso (0 Inherit → Linear fallback).
@@ -52,6 +68,17 @@ pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) 
         1 | 3 | 5 => wgpu::FilterMode::Nearest,
         _ => wgpu::FilterMode::Linear,
     };
+    // Trilinear (Linear mip blend) for every mipmapped/aniso variant now
+    // that the sprite textures carry a real mip chain; plain Nearest(1)/
+    // Linear(2) keep Nearest mip selection (effectively single-level).
+    let mipmap_filter = match filter_tag {
+        3..=6 => wgpu::MipmapFilterMode::Linear,
+        _ => wgpu::MipmapFilterMode::Nearest,
+    };
+    // Anisotropy needs mag+min+mipmap ALL Linear (wgpu/Metal rule), so only
+    // LinearAniso(6) qualifies; NearestAniso(5) keeps point mag/min and
+    // falls back to 1× (it still gets the trilinear mip blend above).
+    let anisotropy_clamp = if filter_tag == 6 { 16 } else { 1 };
     // RepeatMode: 1 Disabled (clamp) · 2 Enabled (repeat) · 3 Mirror
     // (0 Inherit → clamp fallback).
     let address = match repeat_tag {
@@ -66,7 +93,8 @@ pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) 
         address_mode_w: address,
         mag_filter: filter,
         min_filter: filter,
-        mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+        mipmap_filter,
+        anisotropy_clamp,
         ..Default::default()
     })
 }

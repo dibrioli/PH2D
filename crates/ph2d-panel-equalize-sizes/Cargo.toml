@@ -33,3 +33,9 @@ ph2d-tool-registry       = { path = "../ph2d-tool-registry" }
 # vector already; we just re-import here for the panel paint helpers).
 ph2d-text                = { path = "../ph2d-text" }
 ph2d-vector              = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+# Blindagem Fase 0.1: headless panel↔tool seam harness. Dev-dep only —
+# the `architecture_cycle_prevention` gate reads `[dependencies]` only,
+# so this builds no runtime cycle. See `tests/seam.rs`.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

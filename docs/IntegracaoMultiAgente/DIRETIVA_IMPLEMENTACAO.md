@@ -33,14 +33,23 @@ A mesma feature atravessa, no mínimo, **8 sites**:
       (emitir o Click). Faltar qualquer um = botão pintado mas inerte. O gate de cycler prova os dois + o dispatch.
 
 ## 3 — Auditar ≠ compilar (a regra que o Enio cobrou)
-- [ ] `cargo check -p` e os gates `architecture_*_contract_surface` = forma-de-ABI / velocidade. No audit
-      valem **ZERO**: são contadores de símbolo; um bug lógico que mantém a contagem passa todos eles.
-- [ ] Um audit **só conta** se produzir, por lente:
-      **(a)** ≥1 caminho traçado **fim-a-fim com file:line**;
-      **(b)** a lista de comportamentos que a compilação **não** checa;
-      **(c)** para cada "verde", a **asserção executável que ficaria VERMELHA** se a propriedade quebrasse;
-      **(d)** quantas LOC você de fato **leu**.
-- [ ] 0 file:line + veredito "nenhum bug" = **não-audit**, rejeitado.
+- [ ] `cargo check -p` e os gates `architecture_*` (inclusive `*_contract_surface`) = forma-de-ABI /
+      velocidade. No audit valem **ZERO**: são contadores de símbolo; um bug lógico que mantém a
+      contagem passa todos eles. **Auditoria que rodou cargo/gates e concluiu "compila, OK" é
+      REJEITADA por definição** — é o exato erro que custou semanas (vector pills CI-verdes-e-mortas).
+- [ ] **TEMPLATE OBRIGATÓRIO — preencha por lente/claim. Sem isto, não é audit:**
+      ```
+      LENTE:  <correção | wiring | perf | determinismo | …>
+      CLAIM:  <a propriedade que afirmo estar correta>
+      TRAÇO:  <caminho fim-a-fim com file:line — entrada → … → efeito observável>
+      ASSERÇÃO-VERMELHA: <o teste executável que ficaria VERMELHO se a propriedade quebrasse>
+              (seam de UI: um teste `ph2d-ui-testkit` que DIRIGE o evento real e afirma o efeito
+               observável; se não existe, ESCREVA-O — o teste é o entregável, não o veredito)
+      NÃO-CHECADO-PELA-COMPILAÇÃO: <comportamentos que o build/gates não pegam>
+      LOC LIDAS: <nº de linhas que de fato li>
+      ```
+- [ ] 0 file:line + veredito "nenhum bug" = **não-audit**, rejeitado. Claim verde sem
+      ASSERÇÃO-VERMELHA correspondente = **não-audit**, rejeitado.
 
 ## 4 — Feature perceptual (marca / pintura) não fecha sem OLHAR
 - [ ] Rode o **golden-image harness**: `begin_stroke → queue_pointer (arco determinístico) → end_stroke
@@ -50,6 +59,11 @@ A mesma feature atravessa, no mínimo, **8 sites**:
       Surface sem teste comportamental = **um achado**, não um pass.
 
 ## 5 — Antes de marcar FECHADO
+- [ ] **DoD (definição de pronto): teste comportamental de seam VERDE (`ph2d-ui-testkit`:
+      evento real → efeito observável) + smoke do Enio.** Compile-verde e gate-verde **NÃO** são
+      "pronto" — são velocidade (§3). Painel interativo sem seam test é barrado pela gate
+      `architecture_interactive_crate_has_behavioral_test` (e a dívida vive em
+      `BEHAVIORAL_TEST_DEBT`, drive-to-zero — não é exceção permanente).
 - [ ] Grep dos ids nos 8 sites. Grep `pub struct <Tipo>` — **um dono só** (não recrie modelo paralelo).
 - [ ] **Não entregue incremento que o Enio precise QA na mão pra descobrir que está morto.**
       DEFER **nomeia** a capacidade exata faltante + abre handoff + **não conta** como fechamento.

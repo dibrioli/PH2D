@@ -5189,6 +5189,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-bgremoval",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5203,6 +5204,7 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-color-equalization",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5216,6 +5218,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-registry",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5230,6 +5233,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -5314,6 +5318,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-registry",
  "ph2d-tool-upscale",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]

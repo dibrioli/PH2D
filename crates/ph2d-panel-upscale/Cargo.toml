@@ -25,3 +25,10 @@ ph2d-tool-upscale  = { path = "../ph2d-tool-upscale" }
 ph2d-a11y          = { path = "../ph2d-a11y" }
 ph2d-tokens        = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[dev-dependencies]
+# Headless panel↔tool seam harness (blindagem Fase 0.1) — real
+# PanelHostInternal backed by a real WidgetStore + ActionBus, so
+# `tests/seam.rs` drives the full populate → apply_event → bus →
+# handle_panel_event path the desktop shell runs.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

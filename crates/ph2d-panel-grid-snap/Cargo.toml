@@ -18,5 +18,6 @@ ph2d-vector      = { path = "../ph2d-vector" }
 ph2d-grid        = { path = "../ph2d-grid" }
 
 [dev-dependencies]
-ph2d-host = { path = "../ph2d-host" }
-bumpalo   = "3"
+ph2d-host       = { path = "../ph2d-host" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+bumpalo         = "3"

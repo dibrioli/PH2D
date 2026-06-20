@@ -44,3 +44,6 @@ ignored = ["ph2d-text"]
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
+# Behavioral SEAM test (tests/seam.rs): MockPanelHost drives the real
+# panel→tool wire (populate → apply_event → bus → handle_panel_event).
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

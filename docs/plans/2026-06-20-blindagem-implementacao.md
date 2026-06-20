@@ -94,7 +94,11 @@ causa regressão visual que nenhuma gate pega* (`architecture_panel_loc_cap.rs:9
 - [x] **0.2** `architecture_panel_wiring_parity` (hit↔register; 3 ids dinâmicos allowlistados c/ mecanismo verificado) — **verde**
 - [x] **0.3** `architecture_docs_reference_live_gates` — caçou 4 refs mortas reais (DIRETIVA/DIRETRIZ/CLAUDE corrigidos) — **verde**
 - [x] **0.4** `architecture_workspace_file_loc_cap` (53 offenders congelados em baseline 2026-06-20 + guard de stale) — **verde**
-- [ ] **Fase 1** — backfill de testes de seam + `architecture_interactive_crate_has_behavioral_test` + DoD/rubrica de auditoria
+- [x] **Fase 1** — comporta-verde vira lei:
+  - [x] 1.2 `architecture_interactive_crate_has_behavioral_test` (12 painéis interativos; 6 cobertos, 6 em `BEHAVIORAL_TEST_DEBT` drive-to-zero + guard anti-stale) — **verde**
+  - [x] 1.1 backfill seam tests: bgremoval, color-equalization, upscale, equalize-sizes, grid-snap (+ padding) = **6 painéis, 13 testes verdes** (cada um dirige evento real → afirma efeito observável no tool/state, com guard anti-vacuidade)
+  - [x] 1.3 DoD + **rubrica executável de auditoria** na DIRETIVA §3 (template obrigatório: LENTE/CLAIM/TRAÇO/ASSERÇÃO-VERMELHA/LOC) + §5 (DoD = seam verde + smoke; compile/gate-verde nunca é done)
+  - [ ] **Dívida Fase 1 (drive-to-zero):** seam tests para inspector, hierarchy, painter-layers, vector-graph, vector-inspector, widget-gallery (genéricos/multi-arquivo — backfill incremental; a gate trava regressão)
 - [ ] **Fase 2 / 3 / 4** (não iniciadas)
 
 [node-sync glob gotcha]: ../../CLAUDE.md

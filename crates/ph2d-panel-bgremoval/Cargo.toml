@@ -34,3 +34,8 @@ ph2d-text           = { path = "../ph2d-text" }
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
+# Blindagem Fase 0.1 — headless panel↔tool SEAM harness (MockPanelHost).
+# Dev-dep only: the `architecture_cycle_prevention` gate reads
+# `[dependencies]`, so this edge builds no runtime cycle. ph2d-tool-bgremoval
+# is already a regular dep above (the seam test asserts against it directly).
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

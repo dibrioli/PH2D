@@ -64,7 +64,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-painter-effects/src/blend.rs", 689),
     ("ph2d-render/src/compressed_pipeline.rs", 993),
     ("ph2d-render/src/individual.rs", 969),
-    ("ph2d-render/src/layer_compositor/compositor.rs", 2396),
     ("ph2d-render/src/layer_compositor/mod.rs", 934),
     ("ph2d-render/src/picking.rs", 631),
     ("ph2d-render/src/renderer.rs", 1000),

@@ -5265,6 +5265,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-tokens",
  "ph2d-tool-padding",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]
@@ -5709,6 +5710,15 @@ dependencies = [
  "ph2d-tool-registry",
  "ph2d-vector",
  "ph2d-vector-doc",
+]
+
+[[package]]
+name = "ph2d-ui-testkit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-tokens",
 ]
 
 [[package]]

@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-ui-testkit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Headless test harness (blindagem Fase 0.1): a real `PanelHostInternal`
+# (`MockPanelHost`) backed by a real WidgetStore + ActionBus, so panel↔tool
+# seam tests can run the full populate → apply_event → bus → handle_panel_event
+# path with no shell and no GPU. Consume from `[dev-dependencies]` only.
+# NOT named ph2d-panel-*/ph2d-tool-*/ph2d-node-* on purpose (codegen + LOC-cap
+# globs would otherwise mis-sweep it).
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y        = { path = "../ph2d-a11y" }
+ph2d-tokens      = { path = "../ph2d-tokens" }

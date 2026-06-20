@@ -412,7 +412,10 @@ Violação = build vermelho. Não há "vou abrir exceção".
 | [`hr12_widgets_a11y`](../../crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs) | widget que não emite `Node` AccessKit |
 | [`architecture_widget_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_widget_loc_cap.rs) | widget primitive > 500 LOC |
 | [`architecture_widget_showcase_coverage`](../../crates/ph2d-editor-core/tests/architecture_widget_showcase_coverage.rs) | widget que não aparece no Widget Gallery (nem em opt-out) |
-| [`architecture_panel_chip_pill_no_stepper`](../../crates/ph2d-editor-core/tests/architecture_panel_chip_pill_no_stepper.rs) | chip pill sem `link_slider_number`/`mark_chip_no_stepper` (phantom stepper) |
+| [`architecture_no_chip_without_steppers`](../../crates/ph2d-editor-core/tests/architecture_no_chip_without_steppers.rs) | chip pill sem `link_slider_number`/`mark_chip_no_stepper` (phantom stepper) |
+| [`architecture_panel_wiring_parity`](../../crates/ph2d-editor-core/tests/architecture_panel_wiring_parity.rs) | id hit-indexado no paint sem registro em `populate.rs` (não-focável → clique morto) |
+| [`architecture_workspace_file_loc_cap`](../../crates/ph2d-editor-core/tests/architecture_workspace_file_loc_cap.rs) | arquivo `crates/*/src/**` > 600 LOC (fora dos caps de painel/widget/runtime) |
+| [`architecture_docs_reference_live_gates`](../../crates/ph2d-editor-core/tests/architecture_docs_reference_live_gates.rs) | doc instrucional cita gate `architecture_*` inexistente |
 | `mockup_tokens_exist` | `var(--X)` em mockup HTML não resolve em tokens.json |
 | `architecture_register_all_alphabetical` | `register_all*` / Cargo deps fora de ordem |
 | `staleness` (tool + node) | sync esquecido |

@@ -24,7 +24,7 @@ A mesma feature atravessa, no mínimo, **8 sites**:
 - [ ] **Zero no-op silencioso.** Fora de escopo (ex.: `SelectBrush` sem library) = `debug_assert!` /
       `tracing::warn!` + UI mostra "desabilitado". Nunca um corpo vazio que "passa".
 - [ ] **Gates de costura (lêem o FONTE, não compilam — falham no CI se faltar ponta):**
-      `architecture_studio_slider_wiring` (sliders) · `architecture_studio_cycler_wiring` (cyclers/dropdowns).
+      `architecture_panel_wiring_parity` (todo id hit-indexado no paint está registrado em `populate.rs` → focável; a costura de DISPATCH do evento é provada pelo teste comportamental de seam, `ph2d-ui-testkit`).
       Âncora = **o site de pintura** (`cycler_row`/`pct_row` em sections.rs): **pintou ⟹ wirado**.
       Widget novo de tipo **sem gate** (ex.: um row interativo inédito) = **escreva o gate junto** —
       checklist em prosa NÃO morde (o bug do "Filter: não é clicável" tinha doc completa e mesmo assim passou).

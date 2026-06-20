@@ -1,0 +1,227 @@
+//! Architecture gate (blindagem Fase 0.2) — panel **hit-index ↔ register**
+//! parity. Generalises the proven `architecture_topbar_registration_parity`
+//! from the topbar to every `ph2d-panel-*`.
+//!
+//! ## Why this exists
+//!
+//! The #1 documented "green-but-dead" bug (the four vector pills
+//! PENCIL/SHAPE/SELECT/DIRECT shipped CI-green-but-dead for sessions; see
+//! `feedback_tool_unit_green_integration_dead`): a widget is PAINTED and
+//! HIT-INDEXED (`hit_index.register(id, rect)`) but never given an
+//! `InteractiveState` in `populate.rs` (`store.register(id, …)`). Then
+//! `is_focusable(id) == false`, a pointer-Down never makes it active, the Up
+//! never emits a Click — **dead on click**, while unit tests + the
+//! `*_contract_surface` gates stay green. A human clicking the inert control
+//! is the only detector. That is the "3 cycles per button" tax.
+//!
+//! Invariant: **every `ids::X` literal passed to a `.register(` call in a
+//! panel's paint code MUST also appear in that panel's `populate.rs`.** (Paint
+//! files only ever call `hit_index.register`; `store.register` lives in
+//! `populate.rs` — so a `.register(ids::X` in a paint file is a hit
+//! registration whose id must be focusable.)
+//!
+//! ## Why not "register ↔ event.rs"?
+//!
+//! An earlier draft asserted every registered id has an arm in `event.rs`.
+//! Verified-empirically it false-positived >30% because panels dispatch
+//! through paths a text scan can't follow: indirect id→action mapping tables
+//! (`grid-snap` resolves kind options via `kind_option_ids_in_order()` in
+//! `paint_helpers.rs`), multi-file event handling (`inspector` splits into
+//! `event.rs` + `event_ordering.rs`), and editor-core GENERIC dispatch (panel
+//! drag/resize chrome handled in `interaction/dispatch/pointer.rs`). Per the
+//! plan's kill-criterion (>30% false positive ⇒ change approach), this gate
+//! targets the FOCUSABILITY failure instead — which is reliably text-visible
+//! per-panel. The complementary failure (a focusable widget whose event is
+//! dropped at the router's `_ => false`) is caught by the **behavioral seam
+//! test** (`ph2d-ui-testkit`, Fase 1), which drives the real event and
+//! follows the indirection.
+//!
+//! Extraction is conservative: only `.register(ids::LITERAL` is collected;
+//! loop-variable registrations (`for id in [...] { hit_index.register(id, …) }`)
+//! are skipped, so a flagged id is GENUINELY hit-indexed-but-unregistered — a
+//! real bug, never a false positive. Coverage is partial (loop cases), which
+//! is the honest trade for zero noise.
+//!
+//! Dep-free (std only).
+
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
+
+/// Hit-registered ids that are focusable via a path this static scan can't
+/// see — VERIFIED dynamic/special registrations, not dead wires. (panel, ID).
+const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
+    // Dynamic picker swatches: registered at runtime via
+    // `WidgetStore::register_picker_swatch` / an indexed `ids::X[i]` array as
+    // the user adds colours, never statically in `populate.rs`. Dispatched by
+    // the colour-picker hit path in `interaction/dispatch/pointer.rs`.
+    ("ph2d-panel-bgremoval", "BGR_SWATCHES"),
+    ("ph2d-panel-vector-inspector", "VECTOR_INSPECTOR_FILL_SWATCH"),
+    // Inline-rename text field: registered dynamically only while rename mode
+    // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
+    // Submit/Cancel arms (verified) — not a static populate widget.
+    ("ph2d-panel-hierarchy", "HIER_RENAME_INPUT"),
+];
+
+/// Editor-core global registration files (hero chrome). Shared ids like panel
+/// drag/resize handles + close buttons are `store.register`-ed here ONCE for
+/// all panels (e.g. `pre_populate.rs:585-649`), not in each panel's
+/// `populate.rs` — so they count as registered for every panel.
+const GLOBAL_REGISTRATION_FILES: &[&str] = &[
+    "ph2d-editor-core/src/screens/hero/pre_populate.rs",
+    "ph2d-editor-core/src/screens/hero/left_rail.rs",
+    "ph2d-editor-core/src/screens/hero/topbar/mod.rs",
+];
+
+fn crates_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("crates/ dir")
+        .to_path_buf()
+}
+
+/// Every distinct `ids::<IDENT>` referenced anywhere in `src`.
+fn referenced_ids(src: &str) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    let needle = "ids::";
+    let mut rest = src;
+    while let Some(pos) = rest.find(needle) {
+        let tail = &rest[pos + needle.len()..];
+        let end = tail
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .unwrap_or(tail.len());
+        let ident = &tail[..end];
+        if !ident.is_empty() && ident.chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
+            out.insert(ident.to_string());
+        }
+        rest = &tail[end..];
+    }
+    out
+}
+
+/// `ids::<IDENT>` literals passed as the FIRST argument to a `.register(`
+/// call in `src` (i.e. hit-index registrations in paint code). Loop-variable
+/// first args (no `ids::` literal) are skipped.
+fn hit_registered_literal_ids(src: &str) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    let needle = ".register(";
+    let mut rest = src;
+    while let Some(pos) = rest.find(needle) {
+        let after = &rest[pos + needle.len()..];
+        // First argument = up to the first top-level comma (bounded scan).
+        let arg_end = after.find(',').unwrap_or(after.len().min(160));
+        let arg = &after[..arg_end];
+        if let Some(ip) = arg.find("ids::") {
+            let tail = &arg[ip + "ids::".len()..];
+            let end = tail
+                .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .unwrap_or(tail.len());
+            let ident = &tail[..end];
+            if !ident.is_empty() && ident.chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
+                out.insert(ident.to_string());
+            }
+        }
+        rest = after;
+    }
+    out
+}
+
+fn panel_dirs(root: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = std::fs::read_dir(root)
+        .unwrap_or_else(|e| panic!("read_dir {}: {e}", root.display()))
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n.starts_with("ph2d-panel-") && n != "ph2d-panel-registry-init")
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// Concatenate every `src/**` file whose name contains "paint" (paint.rs,
+/// paint_sections.rs, paint_helpers.rs, paint_adjust.rs, …).
+fn read_paint_sources(panel_dir: &Path) -> String {
+    fn walk(dir: &Path, out: &mut String) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.extension().and_then(|s| s.to_str()) == Some("rs")
+                && p.file_name()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|n| n.contains("paint"))
+            {
+                if let Ok(body) = std::fs::read_to_string(&p) {
+                    out.push_str(&body);
+                    out.push('\n');
+                }
+            }
+        }
+    }
+    let mut out = String::new();
+    walk(&panel_dir.join("src"), &mut out);
+    out
+}
+
+#[test]
+fn hit_indexed_ids_are_registered() {
+    let root = crates_root();
+    let allow: BTreeSet<(&str, &str)> = HIT_PARITY_ALLOW.iter().copied().collect();
+
+    // Shared chrome ids (drag/resize/close) are registered once in editor-core's
+    // global hero populate, not per-panel — fold them into every panel's
+    // registered set.
+    let mut global_registered: BTreeSet<String> = BTreeSet::new();
+    for rel in GLOBAL_REGISTRATION_FILES {
+        if let Ok(body) = std::fs::read_to_string(root.join(rel)) {
+            global_registered.extend(referenced_ids(&body));
+        }
+    }
+
+    let mut offenders: Vec<String> = Vec::new();
+    let mut checked: Vec<String> = Vec::new();
+
+    for dir in panel_dirs(&root) {
+        let name = dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("?")
+            .to_string();
+        let populate = dir.join("src/populate.rs");
+        let Ok(pop_src) = std::fs::read_to_string(&populate) else {
+            continue; // no populate.rs → not a store-registering panel
+        };
+        let paint_src = read_paint_sources(&dir);
+        if paint_src.is_empty() {
+            continue;
+        }
+        checked.push(name.clone());
+
+        let mut registered = referenced_ids(&pop_src);
+        registered.extend(global_registered.iter().cloned());
+        let hit = hit_registered_literal_ids(&paint_src);
+        for id in hit.difference(&registered) {
+            if allow.contains(&(name.as_str(), id.as_str())) {
+                continue;
+            }
+            offenders.push(format!("{name}: ids::{id}"));
+        }
+    }
+
+    offenders.sort();
+    assert!(
+        offenders.is_empty(),
+        "panel widgets HIT-INDEXED in paint but NOT registered in `populate.rs` \
+         → `is_focusable()==false` → dead on click (the vector-pills class):\n  {}\n\n\
+         checked panels: {checked:?}\n\n\
+         fix: add `store.register(ids::X, InteractiveState::{{Button|Slider|…}})` to \
+         the panel's `populate.rs` (a pill that paints + hit-tests but isn't \
+         registered never becomes focusable, so Down/Up never fire).",
+        offenders.join("\n  ")
+    );
+}

@@ -31,3 +31,7 @@ ph2d-tokens       = { path = "../ph2d-tokens" }
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
 bumpalo   = "3"
+# Blindagem Fase 0.1: headless seam harness. Dev-dep only — the
+# `architecture_cycle_prevention` gate reads `[dependencies]` only, so this
+# builds no runtime cycle. See `tests/seam.rs`.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

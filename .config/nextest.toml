@@ -27,3 +27,11 @@ test-group = 'asset-cooker-ispc'
 # the crash is in vendored ctt (no code root-cause our side — see the test-group
 # note). Retries are nearly free — each aborts in ~0.06s.
 retries = 10
+# 2026-06-20: besides the fast SIGABRT/SIGBUS crash above, the vendored ISPC can
+# also HANG non-deterministically (observed: a single cook test stuck >40min with
+# no abort during a ship.sh run). A hang never returns to trigger a retry, so the
+# crash-retry lever above doesn't cover it. `slow-timeout` with `terminate-after`
+# KILLS a stuck attempt (120s ≫ a normal cook's few seconds, even on a loaded CI
+# box) so it becomes a failure the `retries` then re-attempts — extending the
+# existing retry strategy to the hang mode. Scoped to asset-cooker only.
+slow-timeout = { period = "60s", terminate-after = 2 }

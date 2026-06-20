@@ -14,17 +14,23 @@
 //! that the existing layer/effects host (`ph2d-tool-painter`) owns.
 //!
 //! Modules:
-//! - [`spec`]   — `BrushSpec`, the brush parameters (clean-room model of Blender's `Brush`).
-//! - [`falloff`]— radial distance falloff presets (Blender `eBrushCurvePreset` shapes).
-//! - [`blend`]  — the 24 Blender brush blend modes, applied in the layer's native space.
-//! - [`dab`]    — stamp one dab into an RGBA8 buffer using falloff + blend.
+//! - [`spec`]    — `BrushSpec`, the brush parameters (clean-room model of Blender's `Brush`).
+//! - [`falloff`] — radial distance falloff presets (Blender `eBrushCurvePreset` shapes).
+//! - [`blend`]   — the 24 Blender brush blend modes, applied in the layer's native space.
+//! - [`dab`]     — stamp one dab into an RGBA8 buffer using falloff + blend.
+//! - [`dynamics`]— how pen pressure drives dab size and coverage.
+//! - [`stroke`]  — the "Space" stroke engine: a pointer path → evenly-spaced dabs.
 
 pub mod blend;
 pub mod dab;
+pub mod dynamics;
 pub mod falloff;
 pub mod spec;
+pub mod stroke;
 
 pub use blend::{blend_over, BrushBlend};
 pub use dab::{stamp_dab, DirtyRect};
+pub use dynamics::Dynamics;
 pub use falloff::Falloff;
 pub use spec::BrushSpec;
+pub use stroke::{Dab, Stroke, StrokePoint};

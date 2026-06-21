@@ -237,19 +237,6 @@ pub(super) fn dispatch_up<'frame>(
         {
             apply_click(store, active, events);
         }
-        // Releasing on a widget while a context menu is open dismisses the menu
-        // HERE — on the Up, AFTER the item's Click is queued — so a menu item
-        // survives any repaint between Down and Up (the Painter repaints
-        // continuously; closing on the Down un-registered the item before the Up
-        // and the Click was lost). The item's handler runs later via `apply_event`
-        // and may re-open a cascade submenu, which then wins. Text inputs hosted
-        // inside a menu (the SceneList / API-key search) keep it open for typing.
-        if still_hot
-            && store.context_menu().is_some()
-            && !matches!(store.get(active), Some(InteractiveState::TextInput { .. }))
-        {
-            store.close_context_menu();
-        }
         set_widget_released(store, active, still_hot);
         store.set_active(None);
         store.set_active_rect(None);

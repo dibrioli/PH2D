@@ -118,6 +118,14 @@ fn size_norm_to_px(t: f32) -> f32 {
 }
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
+/// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint
+/// (RGBA8, row-major over `rect`) saved *before* it was stamped, so the next move can erase it.
+/// The dot then follows the cursor leaving no trail, and only the dab at the release point survives.
+struct DragPreview {
+    rect: Region,
+    pixels: Vec<u8>,
+}
+
 pub(crate) struct PaintState {
     /// The active brush.
     brush: BrushSpec,
@@ -140,6 +148,9 @@ pub(crate) struct PaintState {
     /// settles the stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause,
     /// not only on pointer-up. Gating on it keeps the during-movement smoothing at full strength.
     moved_this_frame: bool,
+    /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
+    /// method (and once the dot is committed on pointer-up).
+    drag_preview: Option<DragPreview>,
 }
 
 impl Default for PaintState {
@@ -159,6 +170,7 @@ impl Default for PaintState {
             stroke_undo: None,
             eraser: false,
             moved_this_frame: false,
+            drag_preview: None,
         }
     }
 }
@@ -182,6 +194,7 @@ impl PainterTool {
     fn paint_begin(&mut self, ev: CanvasPointer) {
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
+        self.paint.drag_preview = None;
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
@@ -192,7 +205,7 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        self.stamp_dabs(&dabs);
+        self.stamp_stroke_dabs(&dabs);
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
     }
@@ -211,7 +224,7 @@ impl PainterTool {
             },
             &mut dabs,
         );
-        self.stamp_dabs(&dabs);
+        self.stamp_stroke_dabs(&dabs);
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
         self.paint.moved_this_frame = true;
@@ -249,6 +262,8 @@ impl PainterTool {
             self.paint.dabs = dabs;
             self.paint.stroke = Some(stroke);
         }
+        // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
+        self.commit_drag_preview();
         self.close_stroke();
     }
 
@@ -304,10 +319,99 @@ impl PainterTool {
             }
         }
         if let Some(rect) = touched {
-            self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
-            self.preview_dirty = true;
-            let active = self.layers.active();
-            self.bump_layer_pixels(active);
+            self.mark_dirty(rect);
+        }
+    }
+
+    /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
+    fn mark_dirty(&mut self, rect: Region) {
+        self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
+        self.preview_dirty = true;
+        let active = self.layers.active();
+        self.bump_layer_pixels(active);
+    }
+
+    /// Conservative pixel bbox a dab of `radius` at `center` can touch, clamped to the canvas.
+    fn dab_bbox(&self, center: [f32; 2], radius: f32) -> Option<Region> {
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let r = radius.ceil() as i64 + 1;
+        let cx = center[0].round() as i64;
+        let cy = center[1].round() as i64;
+        let x0 = (cx - r).clamp(0, w as i64);
+        let y0 = (cy - r).clamp(0, h as i64);
+        let x1 = (cx + r).clamp(0, w as i64);
+        let y1 = (cy + r).clamp(0, h as i64);
+        if x1 <= x0 || y1 <= y0 {
+            return None;
+        }
+        Some(Region {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: (x1 - x0) as u32,
+            h: (y1 - y0) as u32,
+        })
+    }
+
+    /// Copy the RGBA8 pixels of `rect` out of `canvas_rgba` (row-major over the region).
+    fn save_region(&self, rect: &Region) -> Vec<u8> {
+        let stride = self.source_size.0 as usize * 4;
+        let rw = rect.w as usize * 4;
+        let mut out = Vec::with_capacity(rw * rect.h as usize);
+        for row in 0..rect.h {
+            let start = (rect.y + row) as usize * stride + rect.x as usize * 4;
+            out.extend_from_slice(&self.canvas_rgba[start..start + rw]);
+        }
+        out
+    }
+
+    /// Write `pixels` (from [`Self::save_region`]) back into `rect` and flag it dirty.
+    fn restore_region(&mut self, rect: &Region, pixels: &[u8]) {
+        let stride = self.source_size.0 as usize * 4;
+        let rw = rect.w as usize * 4;
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        for row in 0..rect.h {
+            let dst = (rect.y + row) as usize * stride + rect.x as usize * 4;
+            let src = row as usize * rw;
+            buf[dst..dst + rw].copy_from_slice(&pixels[src..src + rw]);
+        }
+        self.mark_dirty(*rect);
+    }
+
+    /// Stamp the Drag Dot's single moving dab: erase the previous position (restore its saved
+    /// pixels), then save the pristine pixels under the new footprint and stamp the dab there — one
+    /// dab follows the cursor with no trail. [`Self::commit_drag_preview`] keeps the last on pen-up.
+    fn stamp_drag_preview(&mut self, dab: Dab) {
+        if let Some(prev) = self.paint.drag_preview.take() {
+            self.restore_region(&prev.rect, &prev.pixels);
+        }
+        match self.dab_bbox(dab.center, dab.radius_px) {
+            Some(rect) => {
+                let pixels = self.save_region(&rect);
+                self.stamp_dabs(&[dab]);
+                self.paint.drag_preview = Some(DragPreview { rect, pixels });
+            }
+            None => self.stamp_dabs(&[dab]),
+        }
+    }
+
+    /// Commit the Drag Dot: drop the restore record so the dab at the release point stays painted.
+    /// Safe to call for any method (a no-op unless a Drag Dot preview is live).
+    fn commit_drag_preview(&mut self) {
+        self.paint.drag_preview = None;
+    }
+
+    /// Stamp the dabs a `begin`/`extend` produced. For Drag Dot, route the single dab through the
+    /// moving-preview path (restore + re-stamp); for every other method, the normal cumulative stamp.
+    fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
+        if self.paint.brush.stroke_method == StrokeMethod::DragDot {
+            if let Some(&dab) = dabs.last() {
+                self.stamp_drag_preview(dab);
+            }
+        } else {
+            self.stamp_dabs(dabs);
         }
     }
 }

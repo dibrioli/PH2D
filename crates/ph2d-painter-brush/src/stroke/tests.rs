@@ -202,6 +202,28 @@ fn drag_dot_forces_full_pressure_and_no_jitter() {
 }
 
 #[test]
+fn drag_dot_ignores_the_stabilizer_and_sits_at_the_cursor() {
+    // Drag Dot places its dab exactly at the cursor even with a heavy stabilizer — careful
+    // positioning (Blender disables smooth-stroke for it). One dab per move at the raw cursor; the
+    // tool turns the per-move dabs into a single moving dot.
+    let spec = BrushSpec {
+        stabilizer: 1.0,
+        stroke_method: StrokeMethod::DragDot,
+        ..straight_spec(4.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(80.0, 0.0, 1.0), &mut out);
+    assert_eq!(out.len(), 1, "Drag Dot emits exactly one dab per move");
+    assert!(
+        (out[0].center[0] - 80.0).abs() < 1e-3,
+        "Drag Dot dab must sit at the cursor (80), not lagged by the stabilizer; got {}",
+        out[0].center[0]
+    );
+}
+
+#[test]
 fn input_samples_average_smooths_position() {
     // window 2: a dab's centre is the mean of the last two raw samples.
     let spec = BrushSpec {

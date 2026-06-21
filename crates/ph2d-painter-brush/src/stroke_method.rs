@@ -89,6 +89,14 @@ impl StrokeMethod {
         matches!(self, Self::Space | Self::Line | Self::Curve)
     }
 
+    /// True when the stroke **stabilizer** (the "how regular" knob) applies — only the freehand
+    /// `Space` path runs the position filter + spline. The per-event methods place dabs at the raw
+    /// cursor (Drag Dot must stay exactly under the pointer); the interactive ones are geometric.
+    #[must_use]
+    pub fn uses_stabilizer(self) -> bool {
+        matches!(self, Self::Space)
+    }
+
     /// True when this method forces pressure to 1.0 (Blender: DRAG_DOT, ANCHORED, LINE).
     #[must_use]
     pub fn forces_full_pressure(self) -> bool {
@@ -171,19 +179,20 @@ mod tests {
         // the layers panel paints against — a predicate edit that breaks parity goes red here,
         // not in a human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
         let rows = [
-            //         spacing  dash   jitter
-            (Dots, false, false, true),
-            (Airbrush, false, false, true),
-            (Anchored, false, false, false),
-            (Space, true, true, true),
-            (DragDot, false, false, false),
-            (Line, true, true, true),
-            (Curve, true, true, true),
+            //         spacing  dash   jitter stabilizer
+            (Dots, false, false, true, false),
+            (Airbrush, false, false, true, false),
+            (Anchored, false, false, false, false),
+            (Space, true, true, true, true),
+            (DragDot, false, false, false, false),
+            (Line, true, true, true, false),
+            (Curve, true, true, true, false),
         ];
-        for (m, spacing, dash, jitter) in rows {
+        for (m, spacing, dash, jitter, stabilizer) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");
             assert_eq!(m.uses_dash(), dash, "{m:?} Dash visibility");
             assert_eq!(m.allows_jitter(), jitter, "{m:?} Jitter visibility");
+            assert_eq!(m.uses_stabilizer(), stabilizer, "{m:?} Stabilizer visibility");
         }
     }
 

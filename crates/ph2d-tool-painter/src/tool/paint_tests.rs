@@ -66,6 +66,38 @@ fn hover_never_paints() {
 }
 
 #[test]
+fn drag_dot_follows_cursor_leaving_no_trail() {
+    // Blender Drag Dot: one dab follows the cursor (no trail) and only the dab at the release point
+    // is committed. The tool restores the pixels under the previous position before re-stamping.
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::DragDot;
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down)); // dot appears at the press point
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Move)); // dot moves — previous erased
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move)); // dot moves again
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // commit at the release point
+    assert_eq!(
+        px(&t, 64, 56, 32),
+        [0, 0, 0, 255],
+        "the dot is committed at the release point"
+    );
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [255, 255, 255, 255],
+        "no trail left at the press point"
+    );
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "no trail left at the intermediate point"
+    );
+    assert!(t.paint.stroke.is_none());
+    assert!(
+        t.paint.drag_preview.is_none(),
+        "the restore record is cleared once the dot is committed"
+    );
+}
+
+#[test]
 fn stroke_down_move_up_paints_a_line() {
     let mut t = white_canvas(64, 3.0);
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));

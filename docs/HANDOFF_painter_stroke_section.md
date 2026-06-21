@@ -26,9 +26,9 @@ UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`).
 > amostras). **0% = traço CRU** (cantos retos, exato, real-time); **100% = bem regular/liso.**
 > Catch-up no pointer-up (não trunca). Real-time (causal). **§2.3/§2.3-ter/§2.6 são histórico.**
 
-Estado dos gaps: §2.1 (esconder params por método) **válido**; a regularidade agora é o slider
-único. (2) **Drag Dot** ainda deixa rastro; (4) Anchored/Line/Curve **DEFER**.
-**Abertos: 2.2 (Drag Dot) · 2.4 (interativo + airbrush on_tick).**
+Estado dos gaps: §2.1 (esconder params por método) **válido**; a regularidade é o slider único.
+~~2.2 Drag Dot~~ → **✅ RESOLVIDO** (§2.2: carimbo único restore+re-stamp, segue o cursor, sem
+rastro). **Abertos: 2.4 (Anchored/Line/Curve interativo + airbrush on_tick).**
 **NOTA:** Enio me deu coord+impl (autoridade total: editor-core/shell/contratos sem coordenação).
 
 ## §1 — O que está PRONTO (mantenha; é fiel + testado)
@@ -89,7 +89,31 @@ Arquivos-chave:
   timer (mesma classe interativa do 2.4). Por enquanto Airbrush mostra Method/Jitter/Samples/Stabilize
   (honesto, sem no-op). **Não adicione o slider antes de o `on_tick` dirigir o `tick`.**
 
-### 2.2 — Drag Dot e Dots errados vs Blender 🟡
+### 2.2 — Drag Dot ✅ RESOLVIDO (2026-06-21) — carimbo único que segue o cursor
+
+- **Comportamento Blender (verificado no source vendido `paint_stroke.cc`):** Drag Dot = UM dab que
+  segue o cursor (raio fixo, posição = cursor), re-renderizado a cada evento por **restore + re-stamp**
+  (o Blender restaura a região 2D e re-aplica o dab), commitado na soltura. **Sem suavização** (o
+  Blender desliga smooth-stroke pra Drag Dot — posicionamento preciso). Pressão 1.0, sem jitter.
+- **Implementação (espelha o Blender 2D, sem overlay no shell — o preview É o `canvas_rgba` vivo):**
+  - Engine: o `extend` do Drag Dot usa o cursor **cru** (movi o `stabilize()` pra dentro do braço
+    Space; novo predicado `uses_stabilizer()` = só Space). Emite 1 dab/evento na posição crua.
+  - Tool ([`paint.rs`](../crates/ph2d-tool-painter/src/tool/paint.rs)): `stamp_drag_preview` —
+    **restaura os pixels sob a posição anterior** (`save_region`/`restore_region` + `dab_bbox`) e
+    re-carimba na nova → um dab segue o cursor sem rastro; `commit_drag_preview` no `paint_end`
+    larga o restore-record (o dab da soltura fica). Roteado via `stamp_stroke_dabs` (Drag Dot →
+    preview; resto → cumulativo). Dirty-rect cobre as duas regiões (apaga a antiga, mostra a nova).
+  - Painel: o slider **Stabilize agora é gateado a Space** (`uses_stabilizer()`) — Drag Dot não
+    mostra knob de suavização (não se aplica). Matriz de visibilidade atualizada.
+- **Testes:** engine `drag_dot_ignores_the_stabilizer_and_sits_at_the_cursor`; tool
+  `drag_dot_follows_cursor_leaving_no_trail` (carimba em A→B→C, prova: pixel em C preto, A e B
+  brancos = sem rastro, restore-record limpo); painel paint-level atualizado (Drag Dot esconde
+  Stabilize). 63 engine / 73 tool / clippy / host compila.
+- **NOTA — Dots:** o "Dots errado" do sintoma original é provavelmente só o param-hiding (§2.1, já
+  fechado) + Dots não passar pela suavização (agora `uses_stabilizer()`=false p/ Dots → cru, como o
+  Blender). Se o Enio ainda achar Dots errado, peça repro específico.
+
+#### ~~2.2-orig — Drag Dot e Dots errados vs Blender~~ (resolvido acima; texto original abaixo)
 - **Sintoma (Enio):** "Dot e drag dots não funcionam como no Blender."
 - **Drag Dot (o claro):** no Blender é **UM carimbo único que segue o cursor** e só commita 1 dab
   (na posição de release) — não um rastro. Hoje

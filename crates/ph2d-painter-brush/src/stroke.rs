@@ -150,21 +150,28 @@ impl Stroke {
         let avg = self.sampler.push_average(raw);
         self.last_raw_pos = avg.pos;
         self.last_raw_pressure = avg.pressure;
-        let target = self.stabilize(avg);
         match self.spec.stroke_method {
-            StrokeMethod::Space => self.walk_smoothed(target, out),
-            StrokeMethod::Dots | StrokeMethod::Airbrush => {
-                self.emit_single(target.pos, self.method_pressure(target.pressure), out);
-                self.advance_anchor(target);
+            // Only the freehand `Space` path runs the stabilizer (and the spline). The per-event
+            // and interactive methods use the raw cursor: Drag Dot in particular must sit exactly
+            // under the cursor for careful positioning (Blender disables smooth-stroke for it).
+            StrokeMethod::Space => {
+                let target = self.stabilize(avg);
+                self.walk_smoothed(target, out);
             }
+            StrokeMethod::Dots | StrokeMethod::Airbrush => {
+                self.emit_single(avg.pos, self.method_pressure(avg.pressure), out);
+                self.advance_anchor(avg);
+            }
+            // Drag Dot emits one dab per move at the cursor; the TOOL restores the previous one so
+            // only a single dab follows the pointer (no trail), committing the last on pointer-up.
             StrokeMethod::DragDot => {
-                self.emit_single(target.pos, 1.0, out);
-                self.advance_anchor(target);
+                self.emit_single(avg.pos, 1.0, out);
+                self.advance_anchor(avg);
             }
             // Interactive: the engine doesn't paint per-move. The tool drives `fill_segment` /
             // a resized stamp on finalise; we still track the anchor so a preview can read it.
             StrokeMethod::Anchored | StrokeMethod::Line | StrokeMethod::Curve => {
-                self.advance_anchor(target);
+                self.advance_anchor(avg);
             }
         }
     }

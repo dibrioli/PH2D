@@ -31,6 +31,23 @@ fn pt(x: f32, y: f32, p: f32) -> StrokePoint {
     }
 }
 
+/// Run a whole stroke (down → moves → up) and return every dab, the way the tool does
+/// (`begin` + `extend`× + `finish` to flush the freehand smoother's tail).
+fn collect_stroke(spec: BrushSpec, dynamics: Dynamics, points: &[StrokePoint]) -> Vec<Dab> {
+    let mut s = Stroke::new(spec, dynamics, 1);
+    let mut all = Vec::new();
+    let mut out = Vec::new();
+    s.begin(points[0], &mut out);
+    all.extend_from_slice(&out);
+    for &p in &points[1..] {
+        s.extend(p, &mut out);
+        all.extend_from_slice(&out);
+    }
+    s.finish(&mut out);
+    all.extend_from_slice(&out);
+    all
+}
+
 #[test]
 fn begin_emits_one_dab_at_down() {
     let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
@@ -42,36 +59,57 @@ fn begin_emits_one_dab_at_down() {
 
 #[test]
 fn space_method_emits_at_arc_length_intervals() {
-    // radius 10 → diameter 20; spacing 0.5 → step 10 px.
-    let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out);
-    // Move 100 px along +x: expect dabs at 10,20,...,100 ⟹ 10 dabs.
-    s.extend(pt(100.0, 0.0, 1.0), &mut out);
-    assert_eq!(
-        out.len(),
-        10,
-        "got {:?}",
-        out.iter().map(|d| d.center[0]).collect::<Vec<_>>()
+    // radius 10 → diameter 20; spacing 0.5 → step 10 px. A straight 0→100 drag lays dabs every
+    // 10 px ON the x axis — the smoother collapses to a straight line for collinear input.
+    let dabs = collect_stroke(
+        straight_spec(10.0, 0.5),
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(100.0, 0.0, 1.0)],
     );
-    assert!((out[0].center[0] - 10.0).abs() < 1e-3);
-    assert!((out[9].center[0] - 100.0).abs() < 1e-3);
-    for d in &out {
-        assert!((d.center[1]).abs() < 1e-4, "stayed on the x axis");
+    let xs: Vec<f32> = dabs.iter().map(|d| d.center[0]).collect();
+    assert!(dabs.len() >= 10, "got {xs:?}");
+    for d in &dabs {
+        assert!(
+            d.center[1].abs() < 1e-3,
+            "stayed on the x axis: {:?}",
+            d.center
+        );
+    }
+    assert!(dabs[0].center[0].abs() < 1e-3, "starts at 0");
+    assert!(
+        (dabs.last().unwrap().center[0] - 100.0).abs() < 1e-2,
+        "reaches 100: {xs:?}"
+    );
+    for w in dabs.windows(2) {
+        let dx = w[1].center[0] - w[0].center[0];
+        assert!(
+            dx > 0.0 && dx <= 10.0 + 1e-3,
+            "≈10px monotonic spacing, got {dx}"
+        );
     }
 }
 
 #[test]
 fn accumulates_across_short_segments() {
-    // step = 10. Two 6-px moves (total 12) ⟹ exactly one dab (at arc-length 10).
-    let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out);
-    s.extend(pt(6.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 0, "6 < 10, no dab yet");
-    s.extend(pt(12.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 1, "crossed 10 between 6 and 12");
-    assert!((out[0].center[0] - 10.0).abs() < 1e-3);
+    // step = 10. Small 6-px moves accumulate; over the whole drag + finish a dab lands at the
+    // 10 px crossing, all on the x axis (collinear input stays straight through the smoother).
+    let dabs = collect_stroke(
+        straight_spec(10.0, 0.5),
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(6.0, 0.0, 1.0), pt(12.0, 0.0, 1.0)],
+    );
+    for d in &dabs {
+        assert!(d.center[1].abs() < 1e-3, "on the x axis");
+    }
+    assert!(
+        dabs.iter().any(|d| (d.center[0] - 10.0).abs() < 1.5),
+        "a dab near the 10px crossing: {:?}",
+        dabs.iter().map(|d| d.center[0]).collect::<Vec<_>>()
+    );
+    assert!(
+        dabs.last().unwrap().center[0] <= 12.0 + 1e-3,
+        "never overshoots the drag"
+    );
 }
 
 #[test]
@@ -208,23 +246,60 @@ fn input_samples_average_smooths_position() {
 
 #[test]
 fn dash_gates_dabs_off() {
-    // dash_samples=4, ratio=0.2 ⇒ paint only slot idx 0 of every 4 (idx 1 gives dash=0.25 > 0.2).
-    let spec = BrushSpec {
-        dash_samples: 4,
-        dash_ratio: 0.2,
-        ..straight_spec(10.0, 0.5)
-    };
-    let mut s = Stroke::new(spec, no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out); // slot 0 → painted (down dab)
-    assert_eq!(out.len(), 1);
-    // 80px move ⇒ 8 spaced slots (1..=8). Painted only where slot%4==0 → slots 4,8 → 2 dabs.
-    s.extend(pt(80.0, 0.0, 1.0), &mut out);
-    assert_eq!(
-        out.len(),
-        2,
-        "got {:?}",
-        out.iter().map(|d| d.center[0]).collect::<Vec<_>>()
+    // A straight drag: dashing (4 slots, ratio 0.2 → ~1/4 of slots painted) lays clearly fewer
+    // dabs than solid (ratio 1.0). Per-dab gating is `slot % dash_samples / dash_samples <= ratio`.
+    let drag = [pt(0.0, 0.0, 1.0), pt(200.0, 0.0, 1.0)];
+    let solid = collect_stroke(
+        BrushSpec {
+            dash_samples: 20,
+            dash_ratio: 1.0,
+            ..straight_spec(10.0, 0.5)
+        },
+        no_dynamics(),
+        &drag,
+    );
+    let dashed = collect_stroke(
+        BrushSpec {
+            dash_samples: 4,
+            dash_ratio: 0.2,
+            ..straight_spec(10.0, 0.5)
+        },
+        no_dynamics(),
+        &drag,
+    );
+    assert!(!dashed.is_empty());
+    assert!(
+        dashed.len() < solid.len(),
+        "dash gated dabs off: dashed {} vs solid {}",
+        dashed.len(),
+        solid.len()
+    );
+    // ~1/4 of slots painted (idx 0 of every 4) — well under half the solid count.
+    assert!(
+        (dashed.len() as f32) <= (solid.len() as f32) * 0.5,
+        "dashed ≈ 1/4: dashed {} vs solid {}",
+        dashed.len(),
+        solid.len()
+    );
+}
+
+#[test]
+fn smoother_rounds_a_corner_instead_of_facets() {
+    // A 90° corner (P0→P1→P2). Straight chords would keep every dab exactly on the two axes (a
+    // sharp vertex). The quadratic smoother rounds the corner → at least one dab lands in the
+    // interior of the bounding L, proving the path curves instead of faceting.
+    let dabs = collect_stroke(
+        straight_spec(4.0, 0.25), // small brush + fine spacing → dabs land in the corner region
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(40.0, 0.0, 1.0), pt(40.0, 40.0, 1.0)],
+    );
+    let rounded = dabs.iter().any(|d| {
+        d.center[0] > 1.0 && d.center[0] < 39.0 && d.center[1] > 1.0 && d.center[1] < 39.0
+    });
+    assert!(
+        rounded,
+        "corner not rounded (still faceted) — centres {:?}",
+        dabs.iter().map(|d| d.center).collect::<Vec<_>>()
     );
 }
 

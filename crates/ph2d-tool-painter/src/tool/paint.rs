@@ -217,9 +217,17 @@ impl PainterTool {
         true
     }
 
-    /// Finish the stroke at `ev` (stamp the final segment, then close + record undo).
+    /// Finish the stroke at `ev` (stamp the final segment, flush the freehand smoother's tail so
+    /// the stroke reaches the release point, then close + record undo).
     fn paint_end(&mut self, ev: CanvasPointer) {
         self.paint_extend(ev);
+        if let Some(mut stroke) = self.paint.stroke.take() {
+            let mut dabs = std::mem::take(&mut self.paint.dabs);
+            stroke.finish(&mut dabs);
+            self.stamp_dabs(&dabs);
+            self.paint.dabs = dabs;
+            self.paint.stroke = Some(stroke);
+        }
         self.close_stroke();
     }
 

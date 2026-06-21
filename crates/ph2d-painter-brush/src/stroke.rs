@@ -62,6 +62,10 @@ pub struct Stroke {
     overlap: f32,
     /// Airbrush time accumulator in seconds, consumed by [`Stroke::tick`].
     airbrush_accum_s: f32,
+    /// Previous input point for the freehand path smoother (quadratic-midpoint). `None` until the
+    /// first move after [`Stroke::begin`]. The smoother turns the sparse, possibly-faceted input
+    /// polyline into a curve so the stroke reads smooth regardless of input sample density.
+    sp_prev: Option<StrokePoint>,
 }
 
 impl Stroke {
@@ -81,6 +85,7 @@ impl Stroke {
             tot_samples: 0,
             overlap: spec.space_overlap_factor(),
             airbrush_accum_s: 0.0,
+            sp_prev: None,
         }
     }
 
@@ -102,6 +107,7 @@ impl Stroke {
         self.accum = 0.0;
         self.tot_samples = 0;
         self.airbrush_accum_s = 0.0;
+        self.sp_prev = None;
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -125,7 +131,7 @@ impl Stroke {
             None => return, // inside the stabilize dead-zone — no dab this event
         };
         match self.spec.stroke_method {
-            StrokeMethod::Space => self.walk_space(target, out),
+            StrokeMethod::Space => self.walk_smoothed(target, out),
             StrokeMethod::Dots | StrokeMethod::Airbrush => {
                 self.emit_single(target.pos, self.method_pressure(target.pressure), out);
                 self.advance_anchor(target);
@@ -156,6 +162,19 @@ impl Stroke {
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         self.walk_space(StrokePoint { pos: b, pressure }, out);
+    }
+
+    /// Flush the freehand smoother's tail — the final straight bit from the last emitted midpoint
+    /// to the final input point. Call once on pointer-up (after the last [`Stroke::extend`]) so the
+    /// stroke reaches the cursor's release position. No-op for non-`Space` methods.
+    pub fn finish(&mut self, out: &mut Vec<Dab>) {
+        out.clear();
+        if !self.started {
+            return;
+        }
+        if let Some(prev) = self.sp_prev.take() {
+            self.walk_space(prev, out);
+        }
     }
 
     /// Advance the airbrush timer by `dt` seconds, emitting a dab at the current cursor every
@@ -229,6 +248,54 @@ impl Stroke {
         self.accum += seg - traveled;
         self.last_pos = to;
         self.last_pressure = target.pressure;
+    }
+
+    /// Freehand path smoother for the `Space` method: turns the input polyline into a quadratic
+    /// curve so it never reads as straight chords, regardless of how sparse / faceted the input
+    /// samples are (low frame-rate, the stabilize dead-zone, coalesced device events).
+    ///
+    /// Quadratic-midpoint scheme (the standard smooth-freehand technique): each input point is the
+    /// Bézier *control*; consecutive segment midpoints are the curve endpoints. So a new point `p`
+    /// paints the quadratic from the previous midpoint through the previous point to
+    /// `mid(prev, p)`, with one input-point of lag (flushed by [`Stroke::finish`] on pointer-up).
+    /// The curve is flattened into short chords and fed through [`Stroke::walk_space`], which keeps
+    /// the spacing / dash / jitter / attenuation behaviour and chains via `last_pos`. Collinear
+    /// input collapses to a straight line (no change for straight strokes).
+    fn walk_smoothed(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
+        match self.sp_prev {
+            None => {
+                // Warm-up: straight from the down point to the first segment's midpoint.
+                let mid = StrokePoint {
+                    pos: midpoint(self.last_pos, p.pos),
+                    pressure: 0.5 * (self.last_pressure + p.pressure),
+                };
+                self.walk_space(mid, out);
+                self.sp_prev = Some(p);
+            }
+            Some(prev) => {
+                let pen = self.last_pos;
+                let pen_pr = self.last_pressure;
+                let end = StrokePoint {
+                    pos: midpoint(prev.pos, p.pos),
+                    pressure: 0.5 * (prev.pressure + p.pressure),
+                };
+                // Flatten the quadratic pen → (control = prev) → end into ~4 px chords, feeding
+                // each through `walk_space` (which chains off `last_pos`).
+                let approx_len = dist(pen, prev.pos) + dist(prev.pos, end.pos);
+                let n = ((approx_len / 4.0).ceil() as usize).clamp(1, 64);
+                for i in 1..=n {
+                    let t = i as f32 / n as f32;
+                    self.walk_space(
+                        StrokePoint {
+                            pos: quad_bezier(pen, prev.pos, end.pos, t),
+                            pressure: lerp(pen_pr, end.pressure, t),
+                        },
+                        out,
+                    );
+                }
+                self.sp_prev = Some(p);
+            }
+        }
     }
 
     /// Emit one dab at `pos`/`pressure` (the per-event methods). Per-event dabs carry no
@@ -334,6 +401,24 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
 #[inline]
 fn lerp2(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
     [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
+}
+
+#[inline]
+fn midpoint(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
+    [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5]
+}
+
+/// Quadratic Bézier `B(t) = (1−t)² p0 + 2(1−t)t c + t² p1`.
+#[inline]
+fn quad_bezier(p0: [f32; 2], c: [f32; 2], p1: [f32; 2], t: f32) -> [f32; 2] {
+    let mt = 1.0 - t;
+    let a = mt * mt;
+    let b = 2.0 * mt * t;
+    let d = t * t;
+    [
+        a * p0[0] + b * c[0] + d * p1[0],
+        a * p0[1] + b * c[1] + d * p1[1],
+    ]
 }
 
 #[cfg(test)]

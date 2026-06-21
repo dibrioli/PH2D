@@ -124,6 +124,19 @@ impl App {
             return;
         }
 
+        // Painter Falloff curve: Delete/Backspace drops the selected control
+        // point. Consumed only when a Falloff point is selected (the helper gates
+        // on it), so the key falls through to other tools otherwise.
+        if state == ElementState::Pressed
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+            && self.painter_delete_selected_falloff_point()
+        {
+            return;
+        }
+
         // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
         // Polygon / Star / Spiral) while Shape is active — the functional
         // selector until the on-screen picker lands in the end-of-impl chrome

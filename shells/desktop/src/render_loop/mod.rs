@@ -1213,6 +1213,18 @@ impl crate::App {
                     );
                 }
             }
+            // Drain the Painter Falloff right-click handle menu choice (chrome
+            // parked the HandleType wire u8 in `pending_falloff_point_handle`) →
+            // apply it to the selected control point.
+            if let Some(handle) = hero.pending_falloff_point_handle.take()
+                && let Some(id) = ph2d_panel_painter_layers::selected_falloff_point()
+                && let Some(painter) = tools.active_mut().and_then(|t| {
+                    t.as_any_mut()
+                        .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                })
+            {
+                painter.set_brush_falloff_point_handle(id, handle);
+            }
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo
             // AND the multi-selection extras + global gizmo (the latter

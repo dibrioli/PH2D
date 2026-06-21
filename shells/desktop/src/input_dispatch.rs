@@ -397,6 +397,13 @@ impl App {
             {
                 return;
             }
+            // Painter Falloff curve: right-click a control point → open the
+            // handle-type menu (Vector / Auto). No-op off a point.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.painter_falloff_open_point_menu(evt.x, evt.y) =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
                 // End any erase drag (no-op when not erasing).
                 self.end_protect_paint();
@@ -405,6 +412,14 @@ impl App {
                 if self.try_eyedropper_sample(evt.x, evt.y) =>
             {
                 self.eyedropper_dragging = true;
+                return;
+            }
+            // Painter Falloff curve: left-click the empty graph (Custom preset) →
+            // add a control point where clicked. A press on a handle falls through
+            // (the panel's drag dispatch grabs it).
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.painter_falloff_canvas_add(evt.x, evt.y) =>
+            {
                 return;
             }
             // Protection brush: a Primary Down with the brush armed paints

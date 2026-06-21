@@ -26,7 +26,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
-use ph2d_tool_painter::{BrushSettings, Falloff, brush_falloff_weight_at};
+use ph2d_tool_painter::{BrushSettings, Falloff, HandleType, brush_falloff_weight_at};
+use ph2d_vector::Color;
 
 const CANVAS_H: f32 = 96.0; // LITERAL-PX-OK: falloff curve-graph canvas height
 const HANDLE_R: f32 = 4.0; // LITERAL-PX-OK: control-point handle radius
@@ -136,14 +137,20 @@ pub(crate) fn paint_falloff_section(
 
     // ── (Custom only) draggable control points over the same canvas ──
     if is_custom {
-        let ring = resolve(ColorToken::Accent, theme);
+        let accent = resolve(ColorToken::Accent, theme);
+        let ring = resolve(ColorToken::TextDisabled, theme);
         let fill = resolve(ColorToken::Text1, theme);
+        let selected = crate::state::selected_falloff_point();
         let n = (brush.falloff_len as usize).min(MAX_POINTS);
-        for index in 0..n {
-            let [px, py] = brush.falloff_points[index];
-            let id = painter_brush_falloff_point_id(index as u8);
-            let cx = canvas.x + px.clamp(0.0, 1.0) * canvas.w;
-            let cy = canvas.y + (1.0 - py.clamp(0.0, 1.0)) * canvas.h;
+        let mut geom: Vec<(u8, f32, f32)> = Vec::with_capacity(n);
+        for point in brush.falloff_points.iter().take(n) {
+            // Key the handle by the point's STABLE id (not its sorted position),
+            // so dragging it past another point keeps the same widget grabbed
+            // through the re-sort. `CurvePoint.index` carries the id.
+            let pid = point.id;
+            let id = painter_brush_falloff_point_id(pid);
+            let cx = canvas.x + point.x.clamp(0.0, 1.0) * canvas.w;
+            let cy = canvas.y + (1.0 - point.y.clamp(0.0, 1.0)) * canvas.h;
             // Overwrite each frame so the carried `canvas` tracks panel resizes
             // (CurvePoint has no per-frame drag state — the result lands in the
             // store's `curve_point_drag` slot).
@@ -152,16 +159,43 @@ pub(crate) fn paint_falloff_section(
                 InteractiveState::CurvePoint {
                     parent: core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
                     channel: 0,
-                    index: index as u8,
+                    index: pid,
                     canvas,
                 },
             );
             let grab = Rect::new(cx - GRAB_R, cy - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0);
             ctx.host.hit_index_mut().register(id, grab);
-            fill_circle(ctx.scene, cx, cy, HANDLE_R + RING_W, ring);
-            fill_circle(ctx.scene, cx, cy, HANDLE_R, fill);
+            // Selected point gets the accent ring; a Vector handle reads as a
+            // diamond (sharp corner), an Auto handle as a round dot — mirror of
+            // the Direct-Select vertex glyphs.
+            let ring_col = if selected == Some(pid) { accent } else { ring };
+            let is_vector = point.handle == HandleType::Vector;
+            paint_handle(ctx, cx, cy, is_vector, ring_col, fill);
+            geom.push((pid, cx, cy));
         }
+        crate::state::set_falloff_geom(canvas, &geom, GRAB_R, true);
+    } else {
+        crate::state::set_falloff_geom(canvas, &[], GRAB_R, false);
     }
 
     y + CANVAS_H + Spacing::Sm.px()
+}
+
+/// Paint one control-point handle: a ring under a fill dot. A `Vector` handle
+/// (sharp corner) is additionally marked with a diamond outline — mirror of the
+/// Direct-Select vertex glyphs (round = smooth, angular = corner).
+fn paint_handle(ctx: &mut PaintCtx, cx: f32, cy: f32, vector: bool, ring: Color, fill: Color) {
+    fill_circle(ctx.scene, cx, cy, HANDLE_R + RING_W, ring);
+    fill_circle(ctx.scene, cx, cy, HANDLE_R, fill);
+    if vector {
+        let r = HANDLE_R + RING_W + 2.0; // LITERAL-PX-OK: diamond marker offset
+        let pts = [
+            (cx, cy - r),
+            (cx + r, cy),
+            (cx, cy + r),
+            (cx - r, cy),
+            (cx, cy - r),
+        ];
+        stroke_polyline(ctx.scene, &pts, RING_W, ring);
+    }
 }

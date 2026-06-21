@@ -34,6 +34,9 @@ pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use dab::{DirtyRect, stamp_dab};
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};
-pub use falloff_curve::{FalloffCurve, MAX_FALLOFF_POINTS, eval_falloff_curve};
+pub use falloff_curve::{
+    FalloffCurve, FalloffPoint, HandleType, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES,
+    eval_falloff_curve,
+};
 pub use spec::BrushSpec;
 pub use stroke::{Dab, Stroke, StrokePoint};

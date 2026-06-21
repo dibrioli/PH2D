@@ -3,12 +3,7 @@
 //! Painted by the hero orchestrator after every panel painter so the
 //! floating menu lands above everything. Reads the open-menu state
 //! from [`crate::interaction::WidgetStore::context_menu`] and walks a
-//! per-kind option list.
-//!
-//! Two kinds (so far):
-//!   - [`ContextMenuKind::CreateNote`] — single "Create note" item.
-//!   - [`ContextMenuKind::SectionOutline`] — 6 items: "No outline" +
-//!     5 highlighter colors (yellow / pink / green / blue / orange).
+//! per-kind option list (one match arm per [`ContextMenuKind`]).
 
 use super::fixture;
 use super::ids;
@@ -331,15 +326,18 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
-        // Vector Direct-Select vertex continuity (Illustrator/Affinity order:
-        // Corner → Smooth → Asymmetric → Auto). The Direct overlay glyphs mirror
-        // these (square / round / round / diamond). No swatch — the shape IS the
-        // affordance, painted by the canvas overlay, not a menu glyph.
+        // Vector Direct-Select vertex continuity (Illustrator/Affinity order;
+        // no swatch — the Direct overlay glyph IS the affordance, not a menu icon).
         ContextMenuKind::VectorPointType => &[
             (ids::CTX_MENU_POINT_TYPE_CORNER, "Corner", None),
             (ids::CTX_MENU_POINT_TYPE_SMOOTH, "Smooth", None),
             (ids::CTX_MENU_POINT_TYPE_ASYMMETRIC, "Asymmetric", None),
             (ids::CTX_MENU_POINT_TYPE_AUTO, "Auto", None),
+        ],
+        // Painter Falloff curve point handle (Blender per-point handle types).
+        ContextMenuKind::FalloffPointHandle => &[
+            (ids::CTX_MENU_FALLOFF_HANDLE_VECTOR, "Vector", None),
+            (ids::CTX_MENU_FALLOFF_HANDLE_AUTO, "Auto", None),
         ],
     };
 

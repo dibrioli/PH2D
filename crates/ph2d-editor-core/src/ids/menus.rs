@@ -134,6 +134,11 @@ pub const CTX_MENU_POINT_TYPE_CORNER: NodeId = hash_node_id("ctx_menu_point_type
 pub const CTX_MENU_POINT_TYPE_SMOOTH: NodeId = hash_node_id("ctx_menu_point_type_smooth");
 pub const CTX_MENU_POINT_TYPE_ASYMMETRIC: NodeId = hash_node_id("ctx_menu_point_type_asymmetric");
 pub const CTX_MENU_POINT_TYPE_AUTO: NodeId = hash_node_id("ctx_menu_point_type_auto");
+// Painter brush Falloff curve point handle menu (secondary-click on a control
+// point). Two HandleType options (Vector / Auto); the chrome handler maps a
+// click to the HandleType wire u8 in `HeroScreen.pending_falloff_point_handle`.
+pub const CTX_MENU_FALLOFF_HANDLE_VECTOR: NodeId = hash_node_id("ctx_menu_falloff_handle_vector");
+pub const CTX_MENU_FALLOFF_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_falloff_handle_auto");
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = hash_node_id("ctx_scene_search");
 pub const CTX_SCENE_ROW_0: NodeId = hash_node_id("ctx_scene_row_0");

@@ -442,14 +442,17 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
         }
-        // Custom-falloff "−" point button → drop the last-touched point (else a
-        // sensible interior default — index 1, the first non-endpoint).
+        // Custom-falloff "−" point button → drop the selected point (else a
+        // sensible interior default — the first non-endpoint by the stable id).
         WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
-            let idx = state::selected_falloff_point().unwrap_or(1);
+            let Some(target) = state::selected_falloff_point().or_else(default_falloff_remove_id)
+            else {
+                return Some(true); // nothing to remove (only the 2 endpoints)
+            };
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                     core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
-                    idx.to_string(),
+                    target.to_string(),
                 )));
             Some(true)
         }
@@ -471,7 +474,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // unambiguously ours — pull it and forward `"index:x:y"` to the tool.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
             if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
-                state::set_selected_falloff_point(Some(usize::from(idx)));
+                // `idx` is the point's STABLE id (the panel registered the handle
+                // keyed by id), so it stays valid across a drag-past re-sort.
+                state::set_selected_falloff_point(Some(idx));
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                         core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
@@ -538,6 +543,15 @@ fn decode_brush_blend_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 /// per-layer), so iterate the stable preset ids.
 fn decode_brush_falloff_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
+}
+
+/// Fallback target for the Falloff "−" button when no point is selected: the
+/// stable id of the first interior (non-endpoint) control point, or `None` when
+/// only the two endpoints remain (nothing removable).
+fn default_falloff_remove_id() -> Option<u8> {
+    let b = state::current_brush()?;
+    let n = b.falloff_len as usize;
+    (n > 2).then(|| b.falloff_points[1].id)
 }
 
 /// Decode a blend-mode popover option id → `(layer, mode_u8)`.

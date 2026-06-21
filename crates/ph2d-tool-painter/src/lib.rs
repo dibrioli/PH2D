@@ -49,8 +49,8 @@ pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 // Re-export the brush blend + falloff surface so the layers panel's Brush
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{
-    BrushBlend, Falloff, FalloffCurve, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, MAX_FALLOFF_POINTS,
-    eval_falloff_curve,
+    BrushBlend, Falloff, FalloffCurve, FalloffPoint, HandleType, MAX_BRUSH_BLEND_MODES,
+    MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, eval_falloff_curve,
 };
 pub use tool::{
     BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings, PainterTool, brush_falloff_weight_at,

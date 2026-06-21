@@ -270,30 +270,75 @@ fn panel_events_drive_custom_falloff_curve() {
 
     // "+" button → a third control point (profile unchanged until dragged).
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
-    assert_eq!(t.brush_settings().falloff_len, 3, "added a control point");
+    let s = t.brush_settings();
+    assert_eq!(s.falloff_len, 3, "added a control point");
+    // The new middle point (x≈0.5) — drive it by its STABLE id, not a position.
+    let mid = s.falloff_points[..3]
+        .iter()
+        .find(|p| (p.x - 0.5).abs() < 0.05)
+        .expect("middle point")
+        .id;
 
-    // 2-D drag of the middle point (index 1) to (distance 0.5, strength 0.9).
+    // 2-D drag of the middle point (by id) to (distance 0.5, strength 0.9).
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
-        "1:0.5:0.9".to_string(),
+        format!("{mid}:0.5:0.9"),
     ));
     let s = t.brush_settings();
-    assert!((s.falloff_points[1][0] - 0.5).abs() < 1e-6, "x moved");
-    assert!((s.falloff_points[1][1] - 0.9).abs() < 1e-6, "y moved");
+    let p = s.falloff_points[..3].iter().find(|p| p.id == mid).unwrap();
+    assert!((p.x - 0.5).abs() < 1e-6, "x moved");
+    assert!((p.y - 0.9).abs() < 1e-6, "y moved");
     // The dab now evaluates the custom curve: mid-distance strength is lifted,
     // and the panel preview reads the SAME value the engine stamps.
     let w = brush_falloff_weight_at(&s, 0.5);
     assert!(w > 0.8, "custom curve lifted the mid strength, got {w}");
 
-    // "−" button (payload = index) drops the point; back to the two endpoints.
+    // "−" button (payload = the stable id) drops the point; back to 2 endpoints.
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
-        "1".to_string(),
+        mid.to_string(),
     ));
     assert_eq!(
         t.brush_settings().falloff_len,
         2,
         "removed the control point"
+    );
+}
+
+#[test]
+fn falloff_point_drags_past_neighbour_and_handle_sets() {
+    use ph2d_painter_brush::HandleType;
+
+    let mut t = PainterTool::default();
+    t.set_brush_falloff(Falloff::Custom.to_u8());
+    let mid = t.add_brush_falloff_point_at(0.5, 0.5).expect("added");
+    // Drag the middle point PAST the right endpoint — the curve re-sorts and the
+    // id stays valid (the handle keeps its grab).
+    t.set_brush_falloff_point(mid, 1.0, 0.3);
+    let s = t.brush_settings();
+    let xs: Vec<f32> = s.falloff_points[..s.falloff_len as usize]
+        .iter()
+        .map(|p| p.x)
+        .collect();
+    for w in xs.windows(2) {
+        assert!(w[0] <= w[1] + 1e-6, "points stay ascending after re-sort");
+    }
+    assert!(
+        s.falloff_points[..s.falloff_len as usize]
+            .iter()
+            .any(|p| p.id == mid),
+        "dragged id survives the re-sort"
+    );
+    // Vector handle (the right-click menu choice) sticks on the point.
+    t.set_brush_falloff_point_handle(mid, HandleType::Vector.to_u8());
+    let s = t.brush_settings();
+    assert_eq!(
+        s.falloff_points[..s.falloff_len as usize]
+            .iter()
+            .find(|p| p.id == mid)
+            .unwrap()
+            .handle,
+        HandleType::Vector
     );
 }
 
@@ -314,11 +359,17 @@ fn custom_falloff_curve_changes_the_dab() {
             Falloff::Custom.to_u8().to_string(),
         ));
         if custom {
-            // Lift the whole interior toward full strength (steep shoulder).
+            // Lift the whole interior toward full strength (steep shoulder): add a
+            // point and drag it (by its stable id) up near the rim.
             t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
+            let mid = t.brush_settings().falloff_points[..3]
+                .iter()
+                .find(|p| (p.x - 0.5).abs() < 0.05)
+                .expect("middle point")
+                .id;
             t.handle_panel_event(PanelEvent::SelectOption(
                 core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
-                "1:0.8:0.95".to_string(),
+                format!("{mid}:0.8:0.95"),
             ));
         }
         t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));

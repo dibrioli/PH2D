@@ -86,11 +86,17 @@ thread_local! {
     /// point to drop. `None` until a handle is touched.
     static SELECTED_CURVE_POINT: Cell<Option<(u64, u8, usize)>> = const { Cell::new(None) };
 
-    /// Last-interacted brush Custom-falloff control point index — set when a
-    /// handle is dragged, read by the Falloff "−" button so it drops the point
-    /// the artist last touched (else a sensible interior default). Tool-global
-    /// (the brush is not per-layer), so just the index.
-    static SELECTED_FALLOFF_POINT: Cell<Option<usize>> = const { Cell::new(None) };
+    /// Last-interacted brush Custom-falloff control point — its STABLE id (not a
+    /// sorted index, so it survives a drag-past-neighbour re-sort). Set on drag /
+    /// right-click / click-add; read by the Falloff "−" button + the Delete key +
+    /// the highlight. Tool-global (the brush is not per-layer).
+    static SELECTED_FALLOFF_POINT: Cell<Option<u8>> = const { Cell::new(None) };
+
+    /// Screen geometry of the Falloff curve graph, published each frame by
+    /// [`crate::paint_falloff`] so the shell can hit-test a right-click (open the
+    /// handle menu) / left-click (add a point) against it — the panel knows the
+    /// canvas rect + handle positions; the shell only has the cursor.
+    static FALLOFF_GEOM: Cell<Option<FalloffGeom>> = const { Cell::new(None) };
 
     /// Active output-channel TAB per Channel-Mixer layer (W4 BATCH-1): `0` = Red
     /// (or Gray when monochrome), `1` = Green, `2` = Blue. Pure VIEW state (which
@@ -169,14 +175,102 @@ pub(crate) fn selected_curve_point() -> Option<(u64, u8, usize)> {
     SELECTED_CURVE_POINT.with(|c| c.get())
 }
 
-/// Record the last-interacted brush Custom-falloff point (for the "−" button).
-pub(crate) fn set_selected_falloff_point(v: Option<usize>) {
+/// Record the selected brush Custom-falloff point by its stable id (for the "−"
+/// button, the Delete key, and the highlight). `pub` so the shell can set it on
+/// a right-click / click-add.
+pub fn set_selected_falloff_point(v: Option<u8>) {
     SELECTED_FALLOFF_POINT.with(|c| c.set(v));
 }
 
-/// The last-interacted brush Custom-falloff point index, if any.
-pub(crate) fn selected_falloff_point() -> Option<usize> {
+/// The selected brush Custom-falloff point's stable id, if any. `pub` so the
+/// shell's Delete key can drop it.
+#[must_use]
+pub fn selected_falloff_point() -> Option<u8> {
     SELECTED_FALLOFF_POINT.with(|c| c.get())
+}
+
+/// Max control points the Falloff geometry snapshot carries (mirrors
+/// `ph2d_painter_brush::MAX_FALLOFF_POINTS`).
+const FALLOFF_GEOM_MAX: usize = 8;
+
+/// Screen geometry of the Falloff curve graph for the shell's hit-test: the
+/// plotting canvas rect, each visible control point's stable id + screen centre,
+/// and the grab radius. Only meaningful while the Custom preset is shown
+/// ([`Self::active`]).
+#[derive(Clone, Copy, Debug)]
+pub struct FalloffGeom {
+    canvas: Rect,
+    points: [(u8, f32, f32); FALLOFF_GEOM_MAX],
+    len: usize,
+    grab_r: f32,
+    active: bool,
+}
+
+/// Result of hit-testing the cursor against the published Falloff geometry.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FalloffHit {
+    /// Over a control point (within the grab radius) — its stable id.
+    Point(u8),
+    /// Over the empty canvas at normalized `(distance, strength)` in `[0,1]²`.
+    Canvas(f32, f32),
+    /// Not over the editable Falloff graph at all.
+    Outside,
+}
+
+/// Publish the Falloff graph's screen geometry for the shell (called once per
+/// frame by [`crate::paint_falloff`]). `points` is `(stable_id, cx, cy)` per
+/// visible handle; `active` is `true` only while the Custom preset is shown.
+pub(crate) fn set_falloff_geom(canvas: Rect, points: &[(u8, f32, f32)], grab_r: f32, active: bool) {
+    let mut arr = [(0u8, 0.0_f32, 0.0_f32); FALLOFF_GEOM_MAX];
+    let len = points.len().min(FALLOFF_GEOM_MAX);
+    arr[..len].copy_from_slice(&points[..len]);
+    FALLOFF_GEOM.with(|c| {
+        c.set(Some(FalloffGeom {
+            canvas,
+            points: arr,
+            len,
+            grab_r,
+            active,
+        }))
+    });
+}
+
+/// Hit-test a screen point against the published Falloff geometry: a control
+/// point (within grab radius), the empty canvas (normalized position), or
+/// outside. `Outside` whenever the Custom preset is not currently shown. `pub`
+/// so the shell's right-click / left-click handlers can route to the tool.
+#[must_use]
+pub fn falloff_hit_test(px: f32, py: f32) -> FalloffHit {
+    // The graph only exists in the Brush-properties view; in Layers mode the
+    // published geometry is stale, so never hit-test it there.
+    if current_dock_shows_layers() {
+        return FalloffHit::Outside;
+    }
+    let Some(g) = FALLOFF_GEOM.with(Cell::get) else {
+        return FalloffHit::Outside;
+    };
+    if !g.active {
+        return FalloffHit::Outside;
+    }
+    // Nearest handle within the grab radius wins (handles sit on top of the canvas).
+    let r2 = g.grab_r * g.grab_r;
+    let mut best: Option<(u8, f32)> = None;
+    for &(id, cx, cy) in &g.points[..g.len] {
+        let d2 = (px - cx) * (px - cx) + (py - cy) * (py - cy);
+        if d2 <= r2 && best.is_none_or(|(_, bd)| d2 < bd) {
+            best = Some((id, d2));
+        }
+    }
+    if let Some((id, _)) = best {
+        return FalloffHit::Point(id);
+    }
+    let c = g.canvas;
+    if px >= c.x && px <= c.x + c.w && py >= c.y && py <= c.y + c.h && c.w > 0.0 && c.h > 0.0 {
+        let nx = ((px - c.x) / c.w).clamp(0.0, 1.0);
+        let ny = (1.0 - (py - c.y) / c.h).clamp(0.0, 1.0);
+        return FalloffHit::Canvas(nx, ny);
+    }
+    FalloffHit::Outside
 }
 
 /// Stash the open "+ Adjustment" kind menu for the deferred popover pass.

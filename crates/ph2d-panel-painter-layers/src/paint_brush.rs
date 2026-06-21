@@ -30,10 +30,22 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
+use ph2d_tool_painter::{
+    BrushBlend, BrushSettings, Falloff, FalloffPoint, HandleType, MAX_BRUSH_BLEND_MODES,
+    MAX_FALLOFF,
+};
 
 const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: brush row label column ("Hardness"/"Strength")
 const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
+
+/// Padding entry for the fixed-size `falloff_points` array (only the first
+/// `falloff_len` are read).
+const FALLOFF_PT_NIL: FalloffPoint = FalloffPoint {
+    id: 0,
+    x: 0.0,
+    y: 0.0,
+    handle: HandleType::Auto,
+};
 
 /// Brush used before the first snapshot publish (Painter just activated). In
 /// practice the bridge publishes every frame the panel is visible, so this is
@@ -45,14 +57,24 @@ const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     falloff: 0,
     // Default Custom curve = linear ramp (0,1)→(1,0); only read when falloff == Custom.
     falloff_points: [
-        [0.0, 1.0],
-        [1.0, 0.0],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [0.0, 0.0],
-        [0.0, 0.0],
+        FalloffPoint {
+            id: 0,
+            x: 0.0,
+            y: 1.0,
+            handle: HandleType::Auto,
+        },
+        FalloffPoint {
+            id: 1,
+            x: 1.0,
+            y: 0.0,
+            handle: HandleType::Auto,
+        },
+        FALLOFF_PT_NIL,
+        FALLOFF_PT_NIL,
+        FALLOFF_PT_NIL,
+        FALLOFF_PT_NIL,
+        FALLOFF_PT_NIL,
+        FALLOFF_PT_NIL,
     ],
     falloff_len: 2,
     color: [0.0, 0.0, 0.0],

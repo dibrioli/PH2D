@@ -52,6 +52,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 // from a scan of `chrome/*.rs`. Do NOT edit between markers by hand —
 // staleness gate catches drift.
 // <ph2d-chrome-sync:begin>
+mod falloff_handle;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
@@ -98,6 +99,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
         || point_type::apply(hero, event)
+        || falloff_handle::apply(hero, event)
         || vector_pen_toggle::apply(hero, event)
         || vector_pencil_toggle::apply(hero, event)
         || vector_shape_toggle::apply(hero, event)

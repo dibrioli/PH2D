@@ -63,6 +63,83 @@ impl App {
         true
     }
 
+    /// Borrow the active tool as the concrete [`PainterTool`] (the ADR-0040 §3
+    /// downcast exception, allowlisted to this painter-input module). `None` when
+    /// the Painter is not the active tool.
+    fn painter_tool_mut(&mut self) -> Option<&mut PainterTool> {
+        self.gfx
+            .as_mut()?
+            .tools
+            .active_mut()?
+            .as_any_mut()
+            .downcast_mut::<PainterTool>()
+    }
+
+    /// Primary Down on the Falloff curve graph's empty canvas (Custom preset):
+    /// add a control point where the artist clicked and select it. Returns `true`
+    /// (consuming) only when a point was added — a press on an existing handle
+    /// (`FalloffHit::Point`) returns `false` so the panel's drag dispatch grabs
+    /// it, and an off-canvas press also falls through.
+    pub(crate) fn painter_falloff_canvas_add(&mut self, px: f32, py: f32) -> bool {
+        let ph2d_panel_painter_layers::FalloffHit::Canvas(nx, ny) =
+            ph2d_panel_painter_layers::falloff_hit_test(px, py)
+        else {
+            return false;
+        };
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        if let Some(id) = painter.add_brush_falloff_point_at(nx, ny) {
+            ph2d_panel_painter_layers::set_selected_falloff_point(Some(id));
+            return true;
+        }
+        false
+    }
+
+    /// Secondary Down on a Falloff curve control point (Custom preset): select it
+    /// and open the handle-type menu (Vector / Auto) at the cursor. The chrome
+    /// handler parks the choice in `HeroScreen.pending_falloff_point_handle`;
+    /// [`Self::painter_apply_pending_falloff_handle`] drains it. Returns `true`
+    /// (consuming) iff a point was hit.
+    pub(crate) fn painter_falloff_open_point_menu(&mut self, px: f32, py: f32) -> bool {
+        let ph2d_panel_painter_layers::FalloffHit::Point(id) =
+            ph2d_panel_painter_layers::falloff_hit_test(px, py)
+        else {
+            return false;
+        };
+        // Only meaningful while the Painter owns the active tool.
+        if self.painter_tool_mut().is_none() {
+            return false;
+        }
+        ph2d_panel_painter_layers::set_selected_falloff_point(Some(id));
+        if let Some(gfx) = self.gfx.as_mut()
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            hero.store
+                .open_context_menu(ph2d_editor::interaction::ContextMenuRequest {
+                    x: px,
+                    y: py,
+                    kind: ph2d_editor::interaction::ContextMenuKind::FalloffPointHandle,
+                });
+        }
+        true
+    }
+
+    /// Delete/Backspace: remove the selected Falloff control point. Returns `true`
+    /// (consuming) iff a point was selected and dropped, so the key falls through
+    /// otherwise (it must not eat Delete for other tools).
+    pub(crate) fn painter_delete_selected_falloff_point(&mut self) -> bool {
+        let Some(id) = ph2d_panel_painter_layers::selected_falloff_point() else {
+            return false;
+        };
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        painter.remove_brush_falloff_point(id);
+        ph2d_panel_painter_layers::set_selected_falloff_point(None);
+        true
+    }
+
     /// Primary Down on the canvas while the Painter is active: convert to image
     /// space and deliver as [`PointerPhase::Down`]. Returns `true` (consuming the
     /// click) iff the painter started a stroke, so it doesn't also pick/move the

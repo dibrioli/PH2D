@@ -181,4 +181,12 @@ pub enum ContextMenuKind {
     /// `VectorDirectTool::set_selected_vertex_kind` (editor-core can't depend on
     /// the vector-doc crate, so the kind crosses the boundary as an index).
     VectorPointType,
+    /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
+    /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
+    /// the secondary-click already selected the point; the chrome handler routes
+    /// the click into `HeroScreen.pending_falloff_point_handle` as the
+    /// `HandleType` wire u8 (`0` = Auto, `1` = Vector). The shell drains it and
+    /// calls `PainterTool::set_brush_falloff_point_handle` on the selected point
+    /// (editor-core can't depend on the brush crate, so it crosses as a u8).
+    FalloffPointHandle,
 }

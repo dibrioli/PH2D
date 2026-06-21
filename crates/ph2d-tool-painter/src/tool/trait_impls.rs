@@ -197,20 +197,22 @@ impl Tool for PainterTool {
                     self.set_brush_falloff(preset);
                 }
             }
-            // ── Custom-falloff curve point 2-D drag: value = "index:x:y". ────
+            // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The
+            // stable id (not a sorted index) keeps the handle grabbed across the
+            // re-sort when a point is dragged past another. ─────────────────
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(i), Some(xs), Some(ys)) = (it.next(), it.next(), it.next())
-                    && let (Ok(idx), Ok(x), Ok(y)) =
-                        (i.parse::<usize>(), xs.parse::<f32>(), ys.parse::<f32>())
+                    && let (Ok(pid), Ok(x), Ok(y)) =
+                        (i.parse::<u8>(), xs.parse::<f32>(), ys.parse::<f32>())
                 {
-                    self.set_brush_falloff_point(idx, x, y);
+                    self.set_brush_falloff_point(pid, x, y);
                 }
             }
-            // ── Custom-falloff "−" point button: value = "index". ───────────
+            // ── Custom-falloff "−" point button: value = stable point id. ───
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
-                if let Ok(idx) = value.parse::<usize>() {
-                    self.remove_brush_falloff_point(idx);
+                if let Ok(pid) = value.parse::<u8>() {
+                    self.remove_brush_falloff_point(pid);
                 }
             }
             // ── Brush colour from the shared Blender picker: value = "r,g,b"

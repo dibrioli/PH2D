@@ -169,6 +169,9 @@ pub struct HeroScreen {
     /// vector tool (editor-core can't reference `VertexKind`, so it crosses the
     /// crate boundary as an index). Mirror of the panel `take_pending_*` pattern.
     pub pending_vector_point_type: Option<u8>,
+    /// Pending Painter Falloff handle from the right-click menu (`HandleType` wire
+    /// u8: `0` = Auto / `1` = Vector); `.take()`n by the shell onto the sel. point.
+    pub pending_falloff_point_handle: Option<u8>,
     // Wave 2.5 PR 11.8c: 6 hierarchy fields migrated to the bus.
     //   pending_visibility_toggle → EditorAction::HierToggleVisibility { row }
     //   pending_reparent          → EditorAction::HierReparent(HierReparentIntent)
@@ -254,6 +257,7 @@ impl HeroScreen {
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             pending_vector_point_type: None,
+            pending_falloff_point_handle: None,
         }
     }
 

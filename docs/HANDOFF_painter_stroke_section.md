@@ -125,7 +125,37 @@ Arquivos-chave:
 - **Doc stale fora da minha pasta:** [`ph2d-editor-core/.../ids/chrome/painter.rs:174,176`](../crates/ph2d-editor-core/src/ids/chrome/painter.rs)
   ainda diz "0..200 px" / "0..1 lag" — comentário, não-funcional; é editor-core (isolamento). Follow-up do owner: trocar p/ "10..200" / "0.5..0.99".
 
+### 2.3-ter — Stabilize "atualização não é em tempo real" ✅ RESOLVIDO (2026-06-21) — smoother causal
+
+- **Sintoma (Enio, 3ª passada):** "O traço suavizado parece correto, mas a atualização do traço não
+  é em tempo real." → o traço **arrastava atrás do cursor**.
+- **Causa-raiz (lida no código, não teorizada):** o smoother quadrático-midpoint (`walk_smoothed`,
+  do commit c33e04a7) **segurava meia-aresta por design** — pintava só até `mid(prev, cur)` e
+  guardava `[mid(prev,cur) → cur]` pro próximo evento / `finish()` no Up. Resultado: o fim pintado
+  ficava sempre ~½ segmento atrás do cursor. Confirmado que o shell entrega 1 amostra por
+  `CursorMoved` (per-event, não per-frame — `on_cursor_moved` seta `last_pointer` e entrega na
+  hora) e que cada `extend` carimba na hora (`stamp_dabs`); o lag era estrutural no engine.
+- **Fix — `walk_smoothed` reescrito p/ smoother causal real-time** (paint até o cursor todo evento,
+  sem cauda segurada):
+  - Cada segmento é uma quadrática `pen → control → cur`, com `control = pen + prev_tangent ·
+    (seg·0.5·w)` e `w = max(0, prev_tangent · chord_dir)`. Curva suave (direções alinhadas) →
+    `w≈1`, arredonda o join; quina dura → `w=0`, control colapsa em `pen` → reta até o cursor, **sem
+    overshoot** pra fora da quina (o Blender também mantém quina dura sem arredondar). G1-contínuo.
+  - **Trade-off honesto:** quinas duras agora **ficam duras** (não pré-arredondadas como antes) —
+    fundamental: causal + zero-lag não consegue antecipar a quina pra arredondá-la. Curvas suaves
+    seguem suavizadas (mata as facetas do c33e04a7). `finish()` virou no-op (não há cauda).
+  - Campo `sp_prev: Option<StrokePoint>` → `prev_tangent: Option<[f32;2]>`; `midpoint()` removido.
+  - Testes: `space_paints_up_to_the_cursor_each_event` (real-time), `sharp_corner_stays_sharp_
+    without_overshoot` (sem bulge), `gentle_curve_is_rounded_not_faceted` (anti-faceta). 61 no engine.
+- **Lag residual (se ainda houver) — NÃO é o smoother:** (a) o **dead-zone do Stabilizer** (≥10px)
+  segura o traço até mover 10px — é o lazy-mouse fiel ao Blender, aparece SÓ com Stabilize ON, é
+  esperado; (b) **coalescing de `CursorMoved` no macOS** (winit) deixa a amostra esparsa em traços
+  rápidos — isso é shell-side (fora da pasta). Se o Enio quiser ainda mais responsivo com Stabilize
+  ON, baixar o floor do dead-zone diverge do Blender (decisão dele).
+
 #### 2.3-bis (DEFER) — "não contínuo" GERAL, se persistir nos valores altos 🔴 (MEÇA primeiro)
+> Nota: a metade **engine** disso (lag do smoother) caiu no §2.3-ter. O que sobra aqui é só o
+> shell-side (densidade de amostra / coalescing do macOS), se ainda incomodar.
 - **Sintoma (Enio):** "o stabilize ainda precisa de ajustes" + "o traço não é desenhado
   continuamente como no Blender" (mesmo após a suavização que matou as facetas grosseiras).
 - **Importante:** o `stabilized()` é **byte-a-byte** o `paint_smooth_stroke` do Blender e os
@@ -216,6 +246,10 @@ pusha.** O Enio pediu smoke verde antes de ship. Slot warm em uso.
   (`factor∈[0.5,0.99]`, `radius∈[10,200]`, verificados no `rna_brush.cc` live). Single-source no
   engine + clamp no `stabilized()` + track-map nos setters + display invertido no painel. +2
   testes (engine clamp, tool floor-map). Ver §2.3.
+- **2.3-ter fechado** (commit local, não pushado): traço agora **real-time** — `walk_smoothed`
+  reescrito de quadrático-midpoint (segurava ½ segmento) p/ smoother **causal** (pinta até o cursor
+  todo evento, join arredondado por tangente, sem overshoot). `finish()` no-op. Trade-off: quinas
+  duras ficam duras (curvas suaves seguem suaves). +3 testes. Ver §2.3-ter.
 - **Ainda falta o smoke do Enio** (é GUI) p/ 2.1 e 2.3: trocar Method e ver params sumir/aparecer;
   Stabilize no fundo do slider ainda deve ficar liso (factor 0.5 / radius 10), não jittery.
 - **Abertos:** 2.2 (Drag Dot carimbo único — interativo) · 2.4 (Anchored/Line/Curve + on_tick do

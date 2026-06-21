@@ -312,21 +312,76 @@ fn dash_gates_dabs_off() {
 }
 
 #[test]
-fn smoother_rounds_a_corner_instead_of_facets() {
-    // A 90° corner (P0→P1→P2). Straight chords would keep every dab exactly on the two axes (a
-    // sharp vertex). The quadratic smoother rounds the corner → at least one dab lands in the
-    // interior of the bounding L, proving the path curves instead of faceting.
+fn space_paints_up_to_the_cursor_each_event() {
+    // Real-time: a SINGLE extend paints all the way to the new point — there is no half-segment
+    // held back for the next event / pointer-up (the old quadratic-midpoint smoother stopped at
+    // mid(prev,cur), so the stroke trailed the cursor). Checked on the first move (no tangent yet)
+    // and a second collinear move (tangent set).
+    let mut s = Stroke::new(straight_spec(4.0, 0.25), no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(40.0, 0.0, 1.0), &mut out);
+    assert!(
+        (out.last().unwrap().center[0] - 40.0).abs() < 1e-2,
+        "first move reaches the cursor on the same event, got {:?}",
+        out.last().unwrap().center
+    );
+    s.extend(pt(80.0, 0.0, 1.0), &mut out);
+    assert!(
+        (out.last().unwrap().center[0] - 80.0).abs() < 1e-2,
+        "second move reaches the cursor too, got {:?}",
+        out.last().unwrap().center
+    );
+}
+
+#[test]
+fn sharp_corner_stays_sharp_without_overshoot() {
+    // A 90° corner (P0→P1→P2). The real-time smoother must NOT bulge past the corner (the
+    // forward-tangent overshoot a naive causal scheme would produce): a sharp direction change
+    // collapses the control onto the corner, so the path runs straight to the cursor — every dab
+    // stays inside the L bounding box [0,40]×[0,40], and the stroke still reaches the end corner.
     let dabs = collect_stroke(
-        straight_spec(4.0, 0.25), // small brush + fine spacing → dabs land in the corner region
+        straight_spec(4.0, 0.25),
         no_dynamics(),
         &[pt(0.0, 0.0, 1.0), pt(40.0, 0.0, 1.0), pt(40.0, 40.0, 1.0)],
     );
-    let rounded = dabs.iter().any(|d| {
-        d.center[0] > 1.0 && d.center[0] < 39.0 && d.center[1] > 1.0 && d.center[1] < 39.0
+    for d in &dabs {
+        assert!(
+            d.center[0] >= -1e-2
+                && d.center[0] <= 40.0 + 1e-2
+                && d.center[1] >= -1e-2
+                && d.center[1] <= 40.0 + 1e-2,
+            "dab overshot the L corner: {:?}",
+            d.center
+        );
+    }
+    assert!(
+        dabs.iter()
+            .any(|d| (d.center[0] - 40.0).abs() < 1.0 && (d.center[1] - 40.0).abs() < 1.0),
+        "stroke reaches the end corner (40,40): {:?}",
+        dabs.iter().map(|d| d.center).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn gentle_curve_is_rounded_not_faceted() {
+    // A shallow arc P0(0,0)→P1(40,10)→P2(80,0): the second segment's direction differs only
+    // slightly from the first, so the join rounds (w≈0.9) and the path bows off the straight
+    // chord P1→P2 instead of running flat along it — at least one dab deviates from that chord by
+    // more than the brush radius, proving smoothing (not the faceted polyline).
+    let dabs = collect_stroke(
+        straight_spec(2.0, 0.25),
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(40.0, 10.0, 1.0), pt(80.0, 0.0, 1.0)],
+    );
+    // Signed vertical gap above the chord P1(40,10)→P2(80,0): chord_y(x) = 10 − (x−40)/4.
+    let bowed = dabs.iter().any(|d| {
+        let x = d.center[0];
+        x > 44.0 && x < 78.0 && d.center[1] - (10.0 - (x - 40.0) / 4.0) > 1.5
     });
     assert!(
-        rounded,
-        "corner not rounded (still faceted) — centres {:?}",
+        bowed,
+        "gentle curve faceted (no bow off the chord) — centres {:?}",
         dabs.iter().map(|d| d.center).collect::<Vec<_>>()
     );
 }

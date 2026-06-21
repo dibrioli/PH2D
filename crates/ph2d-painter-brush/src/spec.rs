@@ -8,6 +8,7 @@
 
 use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
+use crate::falloff_curve::FalloffCurve;
 
 /// Largest brush radius the engine will allocate a dab for, in pixels. Derived from the editor
 /// overlay budget (HR-4): a 4096-px-radius dab would be an 8k² bbox — far past interactive. This
@@ -37,6 +38,9 @@ pub struct BrushSpec {
     pub jitter: f32,
     /// Paint colour, straight RGB in `[0, 1]` in the layer's native space.
     pub color: [f32; 3],
+    /// The editable profile used when [`Self::falloff`] is [`Falloff::Custom`]
+    /// (ignored otherwise). Kept inline so the spec stays `Copy`/alloc-free.
+    pub custom_falloff: FalloffCurve,
 }
 
 impl Default for BrushSpec {
@@ -53,6 +57,7 @@ impl Default for BrushSpec {
             falloff: Falloff::Smooth,
             jitter: 0.0,
             color: [0.0, 0.0, 0.0],
+            custom_falloff: FalloffCurve::default(),
         }
     }
 }
@@ -74,7 +79,8 @@ impl BrushSpec {
     /// Falloff weight remapped by [`Self::hardness`]. `t = distance / radius`.
     ///
     /// Hardness pushes the falloff outward: for `t < hardness` the weight is full; the curve then
-    /// runs over `[hardness, 1]`. `hardness >= 1` yields a hard disk.
+    /// runs over `[hardness, 1]`. `hardness >= 1` yields a hard disk. [`Falloff::Custom`] reads the
+    /// editable [`Self::custom_falloff`] profile; every other preset uses its formula.
     #[must_use]
     pub fn falloff_weight(&self, t: f32) -> f32 {
         let h = self.hardness.clamp(0.0, 1.0);
@@ -82,7 +88,10 @@ impl BrushSpec {
             return if t < 1.0 { 1.0 } else { 0.0 };
         }
         let remapped = ((t - h) / (1.0 - h)).clamp(0.0, 1.0);
-        self.falloff.weight(remapped)
+        match self.falloff {
+            Falloff::Custom => self.custom_falloff.weight(remapped),
+            preset => preset.weight(remapped),
+        }
     }
 }
 

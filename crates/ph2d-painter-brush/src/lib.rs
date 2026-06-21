@@ -16,6 +16,7 @@
 //! Modules:
 //! - [`spec`]    — `BrushSpec`, the brush parameters (clean-room model of Blender's `Brush`).
 //! - [`falloff`] — radial distance falloff presets (Blender `eBrushCurvePreset` shapes).
+//! - [`falloff_curve`] — the editable `Custom` falloff profile (Blender `CurveMapping`).
 //! - [`blend`]   — the 24 Blender brush blend modes, applied in the layer's native space.
 //! - [`dab`]     — stamp one dab into an RGBA8 buffer using falloff + blend.
 //! - [`dynamics`]— how pen pressure drives dab size and coverage.
@@ -25,6 +26,7 @@ pub mod blend;
 pub mod dab;
 pub mod dynamics;
 pub mod falloff;
+pub mod falloff_curve;
 pub mod spec;
 pub mod stroke;
 
@@ -32,5 +34,6 @@ pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use dab::{DirtyRect, stamp_dab};
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};
+pub use falloff_curve::{FalloffCurve, MAX_FALLOFF_POINTS, eval_falloff_curve};
 pub use spec::BrushSpec;
 pub use stroke::{Dab, Stroke, StrokePoint};

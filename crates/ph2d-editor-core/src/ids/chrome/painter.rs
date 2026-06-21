@@ -143,6 +143,35 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
 }
 
+// ── Brush Falloff curve editor (the always-on shape preview that becomes an
+// editable curve when the `Custom` preset is selected — Blender's Falloff
+// `CurveMapping` graph). The brush is tool-global, so these are fixed ids. The
+// 2-D drag reuses the same `CurvePoint` dispatch as the adjustment Curves
+// editor; the panel drains the result and forwards `PAINTER_BRUSH_FALLOFF_EDIT`. ─
+
+/// Fixed `parent`/routing id for the brush Falloff curve editor. Each draggable
+/// control point registers an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) with
+/// THIS parent; the panel drains the drag on `ValueChanged(PAINTER_BRUSH_FALLOFF_EDIT)`
+/// and forwards `SelectOption(PAINTER_BRUSH_FALLOFF_EDIT, "index:x:y")`, which the
+/// tool parses into a `set_brush_falloff_point` call. Tool-global (not per-layer),
+/// so the payload carries only the point index.
+pub const PAINTER_BRUSH_FALLOFF_EDIT: NodeId = hash_node_id("painter_brush.falloff_edit");
+/// Fixed routing id — panel → tool "add a Falloff control point". Click; no payload.
+pub const PAINTER_BRUSH_FALLOFF_ADD: NodeId = hash_node_id("painter_brush.falloff_add");
+/// Fixed routing id — panel → tool "remove a Falloff control point". Payload
+/// `"index"`; the tool calls `remove_brush_falloff_point`.
+pub const PAINTER_BRUSH_FALLOFF_REMOVE: NodeId = hash_node_id("painter_brush.falloff_remove");
+
+/// Derive the stable [`NodeId`] for control point `index` of the brush Falloff
+/// curve editor. Registered as an
+/// [`InteractiveState::CurvePoint`](crate::interaction::InteractiveState) with a
+/// small grab rect; the 2-D drag normalizes against the editor's canvas.
+#[must_use]
+pub fn painter_brush_falloff_point_id(index: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.falloff_pt.{index}"))
+}
+
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via
 /// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's

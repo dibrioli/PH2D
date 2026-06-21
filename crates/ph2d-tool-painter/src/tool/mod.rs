@@ -154,6 +154,6 @@ mod internal;
 pub(crate) use internal::*;
 mod layers;
 mod paint;
-pub use paint::{BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings};
+pub use paint::{BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings, brush_falloff_weight_at};
 mod runtime;
 mod trait_impls;

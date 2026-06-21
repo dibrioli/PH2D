@@ -12,7 +12,8 @@ use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, Stroke, StrokePoint, stamp_dab,
+    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, MAX_FALLOFF_POINTS, Stroke, StrokePoint,
+    eval_falloff_curve, stamp_dab,
 };
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
@@ -37,13 +38,34 @@ pub struct BrushSettings {
     pub strength: f32,
     /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — Blender's
     /// "Falloff Curve Preset". Defines the dab profile (replaces a Hardness slider).
+    /// [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
     pub falloff: u8,
+    /// The `Custom` falloff curve's control points `[distance, strength]`, the
+    /// first [`Self::falloff_len`] of them valid (ascending by distance). The
+    /// panel plots these + places draggable handles when `falloff == Custom`.
+    pub falloff_points: [[f32; 2]; MAX_FALLOFF_POINTS],
+    /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
+    pub falloff_len: u8,
     /// Straight-RGB paint colour in `[0, 1]`.
     pub color: [f32; 3],
     /// Blend-mode wire discriminant ([`BrushBlend::to_u8`]).
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
+}
+
+/// Strength of the brush's active falloff at normalized distance `t` (`0` =
+/// centre, `1` = rim), for the panel's live curve preview. Reads the editable
+/// [`BrushSettings::falloff_points`] when the `Custom` preset is selected, else
+/// the matching [`Falloff`] formula — so the graph the panel draws matches the
+/// dab the engine stamps.
+#[must_use]
+pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
+    if s.falloff == Falloff::Custom.to_u8() {
+        eval_falloff_curve(&s.falloff_points[..s.falloff_len as usize], t)
+    } else {
+        Falloff::from_u8(s.falloff).weight(t)
+    }
 }
 
 /// Map a radius in pixels onto the size slider's `0..1` track (inverse of
@@ -241,11 +263,18 @@ impl PainterTool {
     #[must_use]
     pub fn brush_settings(&self) -> BrushSettings {
         let b = &self.paint.brush;
+        // Snapshot the Custom curve's control points into the Copy array (the
+        // panel reads these to plot + place handles when the Custom preset is on).
+        let mut falloff_points = [[0.0_f32; 2]; MAX_FALLOFF_POINTS];
+        let pts = b.custom_falloff.points();
+        falloff_points[..pts.len()].copy_from_slice(pts);
         BrushSettings {
             size_px: b.radius_px,
             size_norm: size_px_to_norm(b.radius_px),
             strength: b.strength,
             falloff: b.falloff.to_u8(),
+            falloff_points,
+            falloff_len: b.custom_falloff.len() as u8,
             color: b.color,
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
@@ -253,9 +282,34 @@ impl PainterTool {
     }
 
     /// Set the brush distance-falloff preset from a wire discriminant
-    /// (Blender's "Falloff Curve Preset"; out-of-range → Smooth).
+    /// (Blender's "Falloff Curve Preset"; out-of-range → Smooth). `9` = the
+    /// editable `Custom` curve ([`Self::set_brush_falloff_point`]).
     pub fn set_brush_falloff(&mut self, preset: u8) {
         self.paint.brush.falloff = Falloff::from_u8(preset);
+    }
+
+    /// Move `Custom` falloff control point `index` to `(distance, strength)` in
+    /// `[0, 1]²` (clamped between its neighbours; mirror of `set_curve_point`).
+    /// Pure brush state — no undo/preview (a brush param change only affects
+    /// future dabs).
+    pub fn set_brush_falloff_point(&mut self, index: usize, distance: f32, strength: f32) {
+        self.paint
+            .brush
+            .custom_falloff
+            .set_point(index, distance, strength);
+    }
+
+    /// Insert a `Custom` falloff control point at the widest gap (its strength
+    /// sampled on the current curve). Returns the inserted index, or `None` at
+    /// the point cap.
+    pub fn add_brush_falloff_point(&mut self) -> Option<usize> {
+        self.paint.brush.custom_falloff.add_point()
+    }
+
+    /// Remove `Custom` falloff control point `index` (no-op when only the two
+    /// endpoints remain).
+    pub fn remove_brush_falloff_point(&mut self, index: usize) {
+        self.paint.brush.custom_falloff.remove_point(index);
     }
 
     /// Set the brush strength (`0..1`, overall opacity).

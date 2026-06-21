@@ -7,7 +7,9 @@
 //! dab centre, `p = 0` at the rim); this port keeps that convention.
 
 /// Falloff profile. Shapes mirror Blender's `eBrushCurvePreset` (the single reference for this
-/// engine). `Custom` (an editable curve) is deferred to the UI phase and not represented here yet.
+/// engine). [`Falloff::Custom`] selects an editable curve whose control points live separately on
+/// [`BrushSpec::custom_falloff`](crate::BrushSpec) (the enum stays `Copy`); see
+/// [`crate::FalloffCurve`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum Falloff {
@@ -30,11 +32,16 @@ pub enum Falloff {
     InvSquare = 7,
     /// `1` everywhere inside the radius — hard disk.
     Constant = 8,
+    /// Editable curve — the profile comes from
+    /// [`BrushSpec::custom_falloff`](crate::BrushSpec), not a formula. The
+    /// standalone [`Falloff::weight`] of `Custom` is a neutral linear placeholder
+    /// (the real shape needs the curve, which `weight` does not carry).
+    Custom = 9,
 }
 
-/// Number of falloff presets (matches Blender's `eBrushCurvePreset`, minus the
-/// editable `Custom` curve which is a later UI phase).
-pub const MAX_FALLOFF: u8 = 9;
+/// Number of falloff presets, including the editable [`Falloff::Custom`] curve
+/// (mirrors Blender's `eBrushCurvePreset`).
+pub const MAX_FALLOFF: u8 = 10;
 
 impl Falloff {
     /// Every preset, in Blender's "Falloff Curve Preset" display order. The index
@@ -49,6 +56,7 @@ impl Falloff {
         Self::Pow4,
         Self::InvSquare,
         Self::Constant,
+        Self::Custom,
     ];
 
     /// The stable wire discriminant (`0..MAX_FALLOFF`).
@@ -77,6 +85,7 @@ impl Falloff {
             Self::Pow4 => "Sharper",
             Self::InvSquare => "Inverse Square",
             Self::Constant => "Constant",
+            Self::Custom => "Custom",
         }
     }
 
@@ -104,6 +113,10 @@ impl Falloff {
             Falloff::Sphere => (2.0 * p - p * p).sqrt(),
             Falloff::Pow4 => p * p * p * p,
             Falloff::InvSquare => p * (2.0 - p),
+            // `Custom`'s real shape lives on `BrushSpec::custom_falloff`; standalone
+            // it falls back to the linear ramp (the curve's own default shape) so
+            // callers that ignore the curve still get a sane monotone profile.
+            Falloff::Custom => p,
         }
     }
 }
@@ -112,7 +125,7 @@ impl Falloff {
 mod tests {
     use super::{Falloff, MAX_FALLOFF};
 
-    const ALL: [Falloff; 9] = Falloff::ALL;
+    const ALL: [Falloff; MAX_FALLOFF as usize] = Falloff::ALL;
 
     #[test]
     fn wire_round_trips_and_names_unique() {

@@ -254,6 +254,85 @@ fn panel_events_drive_strength_falloff_and_eraser() {
 }
 
 #[test]
+fn panel_events_drive_custom_falloff_curve() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+    let mut t = PainterTool::default();
+    // Pick the editable Custom preset (wire u8 = 9).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_FALLOFF,
+        Falloff::Custom.to_u8().to_string(),
+    ));
+    let s = t.brush_settings();
+    assert_eq!(s.falloff, Falloff::Custom.to_u8(), "Custom preset selected");
+    assert_eq!(s.falloff_len, 2, "default Custom curve = 2 endpoints");
+
+    // "+" button → a third control point (profile unchanged until dragged).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
+    assert_eq!(t.brush_settings().falloff_len, 3, "added a control point");
+
+    // 2-D drag of the middle point (index 1) to (distance 0.5, strength 0.9).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+        "1:0.5:0.9".to_string(),
+    ));
+    let s = t.brush_settings();
+    assert!((s.falloff_points[1][0] - 0.5).abs() < 1e-6, "x moved");
+    assert!((s.falloff_points[1][1] - 0.9).abs() < 1e-6, "y moved");
+    // The dab now evaluates the custom curve: mid-distance strength is lifted,
+    // and the panel preview reads the SAME value the engine stamps.
+    let w = brush_falloff_weight_at(&s, 0.5);
+    assert!(w > 0.8, "custom curve lifted the mid strength, got {w}");
+
+    // "−" button (payload = index) drops the point; back to the two endpoints.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
+        "1".to_string(),
+    ));
+    assert_eq!(
+        t.brush_settings().falloff_len,
+        2,
+        "removed the control point"
+    );
+}
+
+#[test]
+fn custom_falloff_curve_changes_the_dab() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+    // Two identical hard-ish brushes, one Custom-lifted in the mid-band, paint a
+    // dab; the lifted curve must darken a mid-radius pixel more than the default.
+    let dab_mid = |custom: bool| -> u8 {
+        let size = 40u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_size_px(14.0);
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_BRUSH_FALLOFF,
+            Falloff::Custom.to_u8().to_string(),
+        ));
+        if custom {
+            // Lift the whole interior toward full strength (steep shoulder).
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_FALLOFF_ADD));
+            t.handle_panel_event(PanelEvent::SelectOption(
+                core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                "1:0.8:0.95".to_string(),
+            ));
+        }
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+        // A pixel ~9 px out from the centre (mid-band of a 14 px-radius dab).
+        px(&t, size, 29, 20)[0]
+    };
+    assert!(
+        dab_mid(true) < dab_mid(false),
+        "the lifted Custom curve paints the mid-band darker"
+    );
+}
+
+#[test]
 fn eraser_removes_alpha_from_opaque_pixels() {
     // Opaque white canvas, hard brush; eraser on → a dab clears alpha.
     let mut t = white_canvas(32, 6.0);

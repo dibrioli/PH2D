@@ -436,6 +436,23 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
         }
+        // Custom-falloff "+" point button → forward the add Click.
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            Some(true)
+        }
+        // Custom-falloff "−" point button → drop the last-touched point (else a
+        // sensible interior default — index 1, the first non-endpoint).
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
+            let idx = state::selected_falloff_point().unwrap_or(1);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
+                    idx.to_string(),
+                )));
+            Some(true)
+        }
         // Blend / Falloff popover option picked → close the chip + apply.
         WidgetEvent::Click(id) => {
             if let Some(mode) = decode_brush_blend_option(id) {
@@ -447,6 +464,21 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             } else {
                 None
             }
+        }
+        // Custom-falloff control-point 2-D drag: the `CurvePoint` dispatch stashed
+        // `(parent, channel, index, x, y)` on the store and fired
+        // `ValueChanged(parent)`. The id IS the editor parent, so this drain is
+        // unambiguously ours — pull it and forward `"index:x:y"` to the tool.
+        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
+            if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
+                state::set_selected_falloff_point(Some(usize::from(idx)));
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        core_ids::PAINTER_BRUSH_FALLOFF_EDIT,
+                        format!("{idx}:{x}:{y}"),
+                    )));
+            }
+            Some(true)
         }
         // Brush sliders (Size / Strength) drag → forward the freshly-dispatched
         // 0..1 value.

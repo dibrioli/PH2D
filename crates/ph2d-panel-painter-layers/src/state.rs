@@ -86,6 +86,12 @@ thread_local! {
     /// point to drop. `None` until a handle is touched.
     static SELECTED_CURVE_POINT: Cell<Option<(u64, u8, usize)>> = const { Cell::new(None) };
 
+    /// Last-interacted brush Custom-falloff control point index — set when a
+    /// handle is dragged, read by the Falloff "−" button so it drops the point
+    /// the artist last touched (else a sensible interior default). Tool-global
+    /// (the brush is not per-layer), so just the index.
+    static SELECTED_FALLOFF_POINT: Cell<Option<usize>> = const { Cell::new(None) };
+
     /// Active output-channel TAB per Channel-Mixer layer (W4 BATCH-1): `0` = Red
     /// (or Gray when monochrome), `1` = Green, `2` = Blue. Pure VIEW state (which
     /// output row the 4 weight sliders edit) — it never goes to the tool; the
@@ -161,6 +167,16 @@ pub(crate) fn set_selected_curve_point(v: Option<(u64, u8, usize)>) {
 /// The last-interacted curve point `(layer, channel, index)`, if any.
 pub(crate) fn selected_curve_point() -> Option<(u64, u8, usize)> {
     SELECTED_CURVE_POINT.with(|c| c.get())
+}
+
+/// Record the last-interacted brush Custom-falloff point (for the "−" button).
+pub(crate) fn set_selected_falloff_point(v: Option<usize>) {
+    SELECTED_FALLOFF_POINT.with(|c| c.set(v));
+}
+
+/// The last-interacted brush Custom-falloff point index, if any.
+pub(crate) fn selected_falloff_point() -> Option<usize> {
+    SELECTED_FALLOFF_POINT.with(|c| c.get())
 }
 
 /// Stash the open "+ Adjustment" kind menu for the deferred popover pass.

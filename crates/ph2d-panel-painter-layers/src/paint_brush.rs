@@ -43,6 +43,18 @@ const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
     strength: 1.0,
     falloff: 0,
+    // Default Custom curve = linear ramp (0,1)→(1,0); only read when falloff == Custom.
+    falloff_points: [
+        [0.0, 1.0],
+        [1.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+    ],
+    falloff_len: 2,
     color: [0.0, 0.0, 0.0],
     blend: 0,
     eraser: false,
@@ -123,6 +135,10 @@ pub(crate) fn paint_brush_mode(
     if let Some(r) = falloff_open {
         state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
     }
+
+    // ── Falloff curve graph: the visual representation of the active profile
+    // (read-only for presets), editable when the Custom preset is selected. ──
+    y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
 
     // ── Eraser: full-width mode toggle (Accent while erasing) ──
     y = paint_eraser_toggle(ctx, theme, x, content_w, y, brush.eraser);

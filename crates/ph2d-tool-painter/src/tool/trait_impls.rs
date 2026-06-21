@@ -95,6 +95,10 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
                 self.toggle_brush_eraser();
             }
+            // ── Brush Custom-falloff "+" point button. ─────────────────────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
+                self.add_brush_falloff_point();
+            }
             // ── Layers panel: per-row click (row select / visibility eye) ──
             PanelEvent::Click(id) => {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
@@ -191,6 +195,22 @@ impl Tool for PainterTool {
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF => {
                 if let Ok(preset) = value.parse::<u8>() {
                     self.set_brush_falloff(preset);
+                }
+            }
+            // ── Custom-falloff curve point 2-D drag: value = "index:x:y". ────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
+                let mut it = value.split(':');
+                if let (Some(i), Some(xs), Some(ys)) = (it.next(), it.next(), it.next())
+                    && let (Ok(idx), Ok(x), Ok(y)) =
+                        (i.parse::<usize>(), xs.parse::<f32>(), ys.parse::<f32>())
+                {
+                    self.set_brush_falloff_point(idx, x, y);
+                }
+            }
+            // ── Custom-falloff "−" point button: value = "index". ───────────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
+                if let Ok(idx) = value.parse::<usize>() {
+                    self.remove_brush_falloff_point(idx);
                 }
             }
             // ── Brush colour from the shared Blender picker: value = "r,g,b"

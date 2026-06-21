@@ -26,6 +26,13 @@ thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
     /// keeps feeding the open stroke and the Up arm knows to close it.
     static STROKE_ACTIVE: Cell<bool> = const { Cell::new(false) };
+
+    /// The Falloff control point being dragged by a shell-owned gesture (the stable
+    /// id), `None` when idle. Set when a left-click on the EMPTY graph adds a point
+    /// (so the same press immediately drags it off the line — a corner needs a
+    /// non-collinear point); CursorMoved drags it; Primary Up clears it. Existing
+    /// handles keep using the panel's `CurvePoint` drag.
+    static FALLOFF_DRAG: Cell<Option<u8>> = const { Cell::new(None) };
 }
 
 impl App {
@@ -76,10 +83,11 @@ impl App {
     }
 
     /// Primary Down on the Falloff curve graph's empty canvas (Custom preset):
-    /// add a control point where the artist clicked and select it. Returns `true`
-    /// (consuming) only when a point was added — a press on an existing handle
-    /// (`FalloffHit::Point`) returns `false` so the panel's drag dispatch grabs
-    /// it, and an off-canvas press also falls through.
+    /// add a control point where clicked, select it, and GRAB it so the same
+    /// gesture drags it (a corner needs a point off the line — adding on the line
+    /// is collinear). Returns `true` (consuming) only when a point was added — a
+    /// press on an existing handle (`FalloffHit::Point`) returns `false` so the
+    /// panel's drag dispatch grabs it, and an off-canvas press also falls through.
     pub(crate) fn painter_falloff_canvas_add(&mut self, px: f32, py: f32) -> bool {
         let ph2d_panel_painter_layers::FalloffHit::Canvas(nx, ny) =
             ph2d_panel_painter_layers::falloff_hit_test(px, py)
@@ -91,9 +99,30 @@ impl App {
         };
         if let Some(id) = painter.add_brush_falloff_point_at(nx, ny) {
             ph2d_panel_painter_layers::set_selected_falloff_point(Some(id));
+            FALLOFF_DRAG.with(|c| c.set(Some(id)));
             return true;
         }
         false
+    }
+
+    /// CursorMoved while a shell-owned Falloff add-drag is live: move the grabbed
+    /// point to the cursor (clamped into the graph). Returns `true` (consuming the
+    /// move) while dragging, so it doesn't also pan / drive a gizmo.
+    pub(crate) fn painter_falloff_drag(&mut self, px: f32, py: f32) -> bool {
+        let Some(id) = FALLOFF_DRAG.with(Cell::get) else {
+            return false;
+        };
+        if let Some((nx, ny)) = ph2d_panel_painter_layers::falloff_canvas_norm(px, py)
+            && let Some(painter) = self.painter_tool_mut()
+        {
+            painter.set_brush_falloff_point(id, nx, ny);
+        }
+        true
+    }
+
+    /// Primary Up: end any shell-owned Falloff add-drag. No-op when not dragging.
+    pub(crate) fn painter_falloff_release(&mut self) {
+        FALLOFF_DRAG.with(|c| c.set(None));
     }
 
     /// Secondary Down on a Falloff curve control point (Custom preset): select it

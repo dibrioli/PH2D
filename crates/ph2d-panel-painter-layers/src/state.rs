@@ -273,6 +273,25 @@ pub fn falloff_hit_test(px: f32, py: f32) -> FalloffHit {
     FalloffHit::Outside
 }
 
+/// Convert a screen point to normalized `(distance, strength)` within the
+/// Falloff graph canvas, clamped to `[0,1]²` — for the shell's drag of a control
+/// point (the cursor may roam past the canvas edge while dragging). `None` when
+/// the graph is not currently shown. `pub` for the shell's drag handler.
+#[must_use]
+pub fn falloff_canvas_norm(px: f32, py: f32) -> Option<(f32, f32)> {
+    if current_dock_shows_layers() {
+        return None;
+    }
+    let g = FALLOFF_GEOM.with(Cell::get)?;
+    if !g.active || g.canvas.w <= 0.0 || g.canvas.h <= 0.0 {
+        return None;
+    }
+    let c = g.canvas;
+    let nx = ((px - c.x) / c.w).clamp(0.0, 1.0);
+    let ny = (1.0 - (py - c.y) / c.h).clamp(0.0, 1.0);
+    Some((nx, ny))
+}
+
 /// Stash the open "+ Adjustment" kind menu for the deferred popover pass.
 pub(crate) fn set_pending_adj_menu(v: Option<Rect>) {
     PENDING_ADJ_MENU.with(|c| c.set(v));

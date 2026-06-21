@@ -180,6 +180,12 @@ impl App {
         if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Painter Falloff add-drag (SHELL-only): while a freshly click-added
+        // control point is grabbed, motion drags it. Early-return so it doesn't
+        // pan / drive a gizmo. No-ops unless an add-drag is live.
+        if self.painter_falloff_drag(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Painter brush stroke (SHELL-only): while a canvas stroke is open, every
         // motion feeds another `CanvasPointer` to the active PainterTool. Early-
         // return so it doesn't also drive a gizmo drag / pan / slider.
@@ -538,6 +544,8 @@ impl App {
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
+                // End a Falloff add-drag (no-op when not dragging).
+                self.painter_falloff_release();
                 // Close an open painter brush stroke (no-op when not painting).
                 self.painter_canvas_up();
                 // Close a Pen click-drag handle window (logs the pulled

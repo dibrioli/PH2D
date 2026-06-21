@@ -91,9 +91,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dash_ratio: 1.0,
     dash_samples: 20,
     input_samples: 1,
-    smooth_stroke: false,
-    smooth_radius_px: 75.0,
-    smooth_factor: 0.9,
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in

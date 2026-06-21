@@ -14,14 +14,23 @@
 
 ## §0 — TL;DR
 
-A seção Stroke do Blender (Method/Spacing/Adjust-Strength/Jitter+Unit/Dash/Input-Samples/Stabilize)
-foi portada clean-room: engine puro (`ph2d-painter-brush`), seam do tool (`ph2d-tool-painter`),
-e painel UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`). Defaults conferidos = Blender DNA.
-Mas: ~~(1) o traço não fica fluido com stabilize baixo~~ → **✅ RESOLVIDO 2026-06-21** (§2.3: ranges
-do Blender `factor∈[0.5,0.99]`/`radius∈[10,200]` verificados no `rna_brush.cc` + clamp engine/tool/
-painel); (2) **Drag Dot** ainda deixa rastro em vez de carimbo único; ~~(3) UI não esconde params
-por método~~ → **✅ RESOLVIDO 2026-06-21** (§2.1); (4) Anchored/Line/Curve seguem **DEFER**.
-**Abertos agora: 2.2 (Drag Dot carimbo único) · 2.4 (interativo + airbrush on_tick).**
+A seção Stroke do Blender (Method/Spacing/Adjust-Strength/Jitter+Unit/Dash/Input-Samples) foi
+portada clean-room: engine puro (`ph2d-painter-brush`), seam do tool (`ph2d-tool-painter`), e painel
+UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`).
+
+> **⚠️ MUDANÇA GRANDE (2026-06-21, Enio): STABILIZE REMOVIDO + suavização trocada por Catmull-Rom.**
+> O Enio testou e o traço saía **facetado** (segmentos retos). A causa: meu smoother "causal com
+> w-damping" virava reta nas curvas fechadas pra evitar overshoot. Ele mandou **tirar o stabilize e
+> trocar a técnica**. Feito: (a) a feature **Stabilize** (toggle + Radius/Factor + dead-zone) foi
+> **removida** de engine/tool/painel; (b) `walk_smoothed` agora é uma **spline Catmull-Rom** que
+> interpola POR todos os pontos — curva suave entre amostras esparsas, sem faceta, e segue o cursor
+> em tempo real (sem cauda segurada). Isso **revoga §2.3 e §2.3-ter** (eram sobre o stabilize). Ver
+> **§2.6**.
+
+Estado dos gaps: ~~(1) fluidez do stabilize~~ e ~~(3) UI esconde params por método~~ → o §2.1
+(esconder por método) **continua válido** (Stabilize só saiu da lista de rows); a suavização agora é
+**automática** (Catmull-Rom, sem toggle). (2) **Drag Dot** ainda deixa rastro; (4) Anchored/Line/
+Curve **DEFER**. **Abertos: 2.2 (Drag Dot) · 2.4 (interativo + airbrush on_tick).**
 
 ## §1 — O que está PRONTO (mantenha; é fiel + testado)
 
@@ -97,7 +106,37 @@ Arquivos-chave:
   suavização de trajeto (ela só roda no Space, então Dots já está cru — OK). **Instrumente/peça
   repro** antes de reescrever (lição: não caçar causa errada).
 
-### 2.3 — Stabilize "não fluido com valores baixos" ✅ RESOLVIDO (2026-06-21) — ranges do Blender
+### 2.6 — Suavização: Catmull-Rom + Stabilize REMOVIDO ✅ (2026-06-21) — revoga §2.3/§2.3-ter
+
+- **Sintoma (Enio, com print):** o traço saía **facetado** — segmentos retos com quinas, não curva
+  suave. **Causa:** o smoother "causal com w-damping" (§2.3-ter) colapsava o control na reta quando a
+  direção mudava (pra não dar overshoot na quina); com input esparso (coalescing do macOS) isso vira
+  faceta. Resolvi o problema errado (evitar overshoot) ao custo do que o Enio queria (curva lisa).
+- **Ordem do Enio:** "retire a implementação do stabilize e tente outra técnica."
+- **O que foi feito:**
+  1. **Stabilize REMOVIDO por completo** (engine `stabilized()`+campos `smooth_*`+consts `SMOOTH_*`+
+     predicado `supports_smooth`; tool campos/setters/consts/`toggle_brush_smooth_stroke`/routing;
+     painel toggle+Radius+Factor+populate+event+FALLBACK; seam test repontado p/ Adjust-Strength).
+  2. **`walk_smoothed` reescrito como spline Catmull-Rom** (`stroke.rs`): cada `extend` pinta o
+     segmento `a→p` como Hermite cúbico com tangentes Catmull-Rom — em `a` a tangente centrada
+     `(p−prev_prev)/2` (junta suave com o segmento anterior), em `p` o chord causal `p−a` (não há
+     próximo ponto ainda). Resultado: **interpola POR todos os pontos** → curva suave entre amostras
+     esparsas (sem faceta), **segue o cursor em tempo real** (sem cauda segurada), passa pelos pontos
+     (sem o overshoot do forward-tangent). Campo `prev_tangent`→`prev_prev`; helper `hermite()`.
+- **Trade-off honesto:** é Catmull-Rom **causal** (tangente em `p` = chord, sem lookahead), então há
+  uma pequena descontinuidade de tangente nos PONTOS (mini-kink), imperceptível com input denso e
+  muito melhor que faceta. A alternativa (Catmull-Rom com 1-ponto de lag) seria C1-perfeita mas
+  voltaria a atrasar — o Enio priorizou suave+responsivo, então causal. Se ainda facetar em traços
+  MUITO rápidos, a causa-raiz é densidade de amostra (coalescing macOS, shell-side — fora da pasta).
+- **Testes:** engine `corner_is_rounded_smoothly`, `gentle_curve_is_rounded_not_faceted`,
+  `space_paints_up_to_the_cursor_each_event` (59 engine). Retas/segmentos-curtos intactos.
+- **Dead ids p/ o owner do editor-core:** `PAINTER_BRUSH_STABILIZE`/`_RADIUS`/`_FACTOR` em
+  [`ids/chrome/painter.rs`](../crates/ph2d-editor-core/src/ids/chrome/painter.rs) ficaram **órfãos**
+  (consts pub não-referenciadas) + docs stale. Limpeza = Coord (isolamento; não toquei editor-core).
+
+---
+
+### ~~2.3 — Stabilize "não fluido com valores baixos"~~ ❌ REVOGADO por §2.6 (stabilize removido)
 
 - **Sintoma (Enio, 2ª passada):** "Stabilize não funciona tão bem quanto no Blender (o traço não
   fica fluido se os valores são baixos)." → era a **pista do §3**: os ranges dos sliders.
@@ -125,7 +164,7 @@ Arquivos-chave:
 - **Doc stale fora da minha pasta:** [`ph2d-editor-core/.../ids/chrome/painter.rs:174,176`](../crates/ph2d-editor-core/src/ids/chrome/painter.rs)
   ainda diz "0..200 px" / "0..1 lag" — comentário, não-funcional; é editor-core (isolamento). Follow-up do owner: trocar p/ "10..200" / "0.5..0.99".
 
-### 2.3-ter — Stabilize "atualização não é em tempo real" ✅ RESOLVIDO (2026-06-21) — smoother causal
+### ~~2.3-ter — Stabilize "atualização não é em tempo real"~~ ❌ REVOGADO por §2.6 (smoother trocado)
 
 - **Sintoma (Enio, 3ª passada):** "O traço suavizado parece correto, mas a atualização do traço não
   é em tempo real." → o traço **arrastava atrás do cursor**.

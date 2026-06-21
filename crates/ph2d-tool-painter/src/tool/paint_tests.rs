@@ -488,40 +488,6 @@ fn stroke_is_one_undo_step_and_redoable() {
 }
 
 #[test]
-fn stabilize_sliders_map_to_blender_floors_not_zero() {
-    // The "not fluid at low values" fix: the Factor / Radius slider tracks land in Blender's hard
-    // RNA ranges ([0.5, 0.99] / [10, 200] px), so dragging either to the bottom still stabilizes
-    // (0.5 / 10px), instead of bottoming out at 0 (raw cursor / no dead-zone).
-    use ph2d_editor_core::ids as core_ids;
-    use ph2d_editor_core::tool::{PanelEvent, Tool};
-    let mut t = PainterTool::default();
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STABILIZE));
-
-    for (track, expect) in [(0.0, BRUSH_SMOOTH_FACTOR_MIN), (1.0, BRUSH_SMOOTH_FACTOR_MAX)] {
-        t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_STABILIZE_FACTOR,
-            track,
-        ));
-        assert!(
-            (t.brush_settings().smooth_factor - expect).abs() < 1e-6,
-            "factor track {track} → {}, expected {expect}",
-            t.brush_settings().smooth_factor
-        );
-    }
-    for (track, expect) in [(0.0, BRUSH_SMOOTH_RADIUS_MIN_PX), (1.0, BRUSH_SMOOTH_RADIUS_MAX_PX)] {
-        t.handle_panel_event(PanelEvent::SetValue(
-            core_ids::PAINTER_BRUSH_STABILIZE_RADIUS,
-            track,
-        ));
-        assert!(
-            (t.brush_settings().smooth_radius_px - expect).abs() < 1e-3,
-            "radius track {track} → {}, expected {expect}",
-            t.brush_settings().smooth_radius_px
-        );
-    }
-}
-
-#[test]
 fn stroke_section_panel_events_route_to_brush_settings() {
     // Behavioural seam (tool layer): a real `PanelEvent` from the Stroke section reaches the
     // matching `set_brush_*` setter and is reflected in the next `brush_settings()` snapshot,
@@ -557,17 +523,6 @@ fn stroke_section_panel_events_route_to_brush_settings() {
         0.0,
     ));
     assert_eq!(t.brush_settings().input_samples, 1);
-
-    // Stabilize toggle + radius slider (track → Blender's [10, 200] px range, not [0, 200]).
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STABILIZE));
-    assert!(t.brush_settings().smooth_stroke);
-    t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_STABILIZE_RADIUS,
-        0.5,
-    ));
-    let expect_r =
-        BRUSH_SMOOTH_RADIUS_MIN_PX + 0.5 * (BRUSH_SMOOTH_RADIUS_MAX_PX - BRUSH_SMOOTH_RADIUS_MIN_PX);
-    assert!((t.brush_settings().smooth_radius_px - expect_r).abs() < 1e-3);
 
     // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
     t.handle_panel_event(PanelEvent::SelectOption(

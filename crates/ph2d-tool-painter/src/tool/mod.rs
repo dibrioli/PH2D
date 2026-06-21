@@ -156,8 +156,7 @@ mod layers;
 mod paint;
 pub use paint::{
     BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX,
-    BRUSH_SMOOTH_FACTOR_MAX, BRUSH_SMOOTH_FACTOR_MIN, BRUSH_SMOOTH_RADIUS_MAX_PX,
-    BRUSH_SMOOTH_RADIUS_MIN_PX, BRUSH_SPACING_MAX, BrushSettings, brush_falloff_weight_at,
+    BRUSH_SPACING_MAX, BrushSettings, brush_falloff_weight_at,
 };
 mod runtime;
 mod trait_impls;

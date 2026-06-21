@@ -199,60 +199,6 @@ fn drag_dot_forces_full_pressure_and_no_jitter() {
 }
 
 #[test]
-fn stabilize_dead_zone_then_lags_toward_anchor() {
-    let spec = BrushSpec {
-        smooth_stroke: true,
-        smooth_radius_px: 50.0,
-        smooth_factor: 0.5,
-        stroke_method: StrokeMethod::Dots, // one dab per event, easy to inspect
-        ..straight_spec(10.0, 0.5)
-    };
-    let mut s = Stroke::new(spec, no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out); // anchor at 0
-    // Move 40px (< 50 dead-zone) ⇒ no dab.
-    s.extend(pt(40.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 0, "inside dead-zone, no dab");
-    // Move to 100px (> 50 from anchor) ⇒ a dab lagged halfway (factor 0.5) toward the anchor.
-    s.extend(pt(100.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 1);
-    // lerp(input=100, anchor=0, u=0.5) = 50.
-    assert!(
-        (out[0].center[0] - 50.0).abs() < 1e-3,
-        "got {}",
-        out[0].center[0]
-    );
-}
-
-#[test]
-fn stabilize_clamps_to_blender_range_so_low_values_stay_smooth() {
-    // Sub-floor values (factor 0.2 < 0.5, radius 2 < 10) must behave as Blender's hard RNA
-    // minimums, not as the near-off stabilizer they'd produce raw — the "not fluid at low
-    // values" regime Blender forbids and the engine now clamps away.
-    let spec = BrushSpec {
-        smooth_stroke: true,
-        smooth_radius_px: 2.0, // below the 10px floor
-        smooth_factor: 0.2,    // below the 0.5 floor
-        stroke_method: StrokeMethod::Dots,
-        ..straight_spec(10.0, 0.5)
-    };
-    let mut s = Stroke::new(spec, no_dynamics(), 1);
-    let mut out = Vec::new();
-    s.begin(pt(0.0, 0.0, 1.0), &mut out);
-    // 5px move: a raw 2px dead-zone would emit (5 > 2), but the clamped 10px one suppresses it.
-    s.extend(pt(5.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 0, "radius clamped up to 10 ⇒ a 5px move stays in the dead-zone");
-    // 100px move: the lag uses the clamped factor 0.5, so lerp(100, 0, 0.5) = 50 (raw 0.2 ⇒ 80).
-    s.extend(pt(100.0, 0.0, 1.0), &mut out);
-    assert_eq!(out.len(), 1);
-    assert!(
-        (out[0].center[0] - 50.0).abs() < 1e-3,
-        "factor clamped up to 0.5 ⇒ lag is halfway toward the anchor; got {}",
-        out[0].center[0]
-    );
-}
-
-#[test]
 fn input_samples_average_smooths_position() {
     // window 2: a dab's centre is the mean of the last two raw samples.
     let spec = BrushSpec {
@@ -335,53 +281,45 @@ fn space_paints_up_to_the_cursor_each_event() {
 }
 
 #[test]
-fn sharp_corner_stays_sharp_without_overshoot() {
-    // A 90° corner (P0→P1→P2). The real-time smoother must NOT bulge past the corner (the
-    // forward-tangent overshoot a naive causal scheme would produce): a sharp direction change
-    // collapses the control onto the corner, so the path runs straight to the cursor — every dab
-    // stays inside the L bounding box [0,40]×[0,40], and the stroke still reaches the end corner.
+fn corner_is_rounded_smoothly() {
+    // A 90° corner (P0→P1→P2). The Catmull-Rom spline rounds the turn into a smooth arc instead of
+    // a hard vertex: near the corner at least one dab leaves BOTH input axes (off the x axis AND
+    // off the vertical x=40 line), proving the path curves through the corner rather than tracing
+    // the faceted polyline.
     let dabs = collect_stroke(
         straight_spec(4.0, 0.25),
         no_dynamics(),
         &[pt(0.0, 0.0, 1.0), pt(40.0, 0.0, 1.0), pt(40.0, 40.0, 1.0)],
     );
-    for d in &dabs {
-        assert!(
-            d.center[0] >= -1e-2
-                && d.center[0] <= 40.0 + 1e-2
-                && d.center[1] >= -1e-2
-                && d.center[1] <= 40.0 + 1e-2,
-            "dab overshot the L corner: {:?}",
-            d.center
-        );
-    }
+    let rounded = dabs.iter().any(|d| {
+        d.center[1] > 1.0 && d.center[1] < 39.0 && (d.center[0] - 40.0).abs() > 1.0
+    });
     assert!(
-        dabs.iter()
-            .any(|d| (d.center[0] - 40.0).abs() < 1.0 && (d.center[1] - 40.0).abs() < 1.0),
-        "stroke reaches the end corner (40,40): {:?}",
+        rounded,
+        "corner not rounded (faceted) — centres {:?}",
         dabs.iter().map(|d| d.center).collect::<Vec<_>>()
     );
 }
 
 #[test]
 fn gentle_curve_is_rounded_not_faceted() {
-    // A shallow arc P0(0,0)→P1(40,10)→P2(80,0): the second segment's direction differs only
-    // slightly from the first, so the join rounds (w≈0.9) and the path bows off the straight
-    // chord P1→P2 instead of running flat along it — at least one dab deviates from that chord by
-    // more than the brush radius, proving smoothing (not the faceted polyline).
+    // A shallow arc P0(0,0)→P1(40,20)→P2(80,0): the Catmull-Rom segment through P1→P2 bows ABOVE
+    // the straight chord (rounded apex) instead of running flat along it. A faceted polyline would
+    // keep every dab on the chord; here the max deviation off it is well over a pixel.
     let dabs = collect_stroke(
         straight_spec(2.0, 0.25),
         no_dynamics(),
-        &[pt(0.0, 0.0, 1.0), pt(40.0, 10.0, 1.0), pt(80.0, 0.0, 1.0)],
+        &[pt(0.0, 0.0, 1.0), pt(40.0, 20.0, 1.0), pt(80.0, 0.0, 1.0)],
     );
-    // Signed vertical gap above the chord P1(40,10)→P2(80,0): chord_y(x) = 10 − (x−40)/4.
-    let bowed = dabs.iter().any(|d| {
-        let x = d.center[0];
-        x > 44.0 && x < 78.0 && d.center[1] - (10.0 - (x - 40.0) / 4.0) > 1.5
-    });
+    // chord P1(40,20)→P2(80,0): chord_y(x) = 20 − (x−40)/2.
+    let max_bow = dabs
+        .iter()
+        .filter(|d| d.center[0] > 42.0 && d.center[0] < 78.0)
+        .map(|d| d.center[1] - (20.0 - (d.center[0] - 40.0) / 2.0))
+        .fold(0.0_f32, f32::max);
     assert!(
-        bowed,
-        "gentle curve faceted (no bow off the chord) — centres {:?}",
+        max_bow > 1.0,
+        "gentle curve faceted (max bow off the chord = {max_bow:.2}px) — centres {:?}",
         dabs.iter().map(|d| d.center).collect::<Vec<_>>()
     );
 }

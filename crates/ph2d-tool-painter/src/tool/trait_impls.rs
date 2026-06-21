@@ -99,9 +99,6 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_SPACE_ATTEN => {
                 self.toggle_brush_space_attenuation();
             }
-            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_STABILIZE => {
-                self.toggle_brush_smooth_stroke();
-            }
             // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point();
@@ -160,10 +157,6 @@ impl Tool for PainterTool {
                     self.set_brush_dash_length_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES {
                     self.set_brush_input_samples_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_STABILIZE_RADIUS {
-                    self.set_brush_smooth_radius_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_STABILIZE_FACTOR {
-                    self.set_brush_smooth_factor(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),

@@ -65,8 +65,6 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE_RADIUS,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE_FACTOR,
     ];
     for id in brush_sliders {
         store.register(
@@ -78,14 +76,13 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Colour swatch + Eraser toggle + the two Stroke-section toggles (Adjust
-    // Strength / Stabilize) — Buttons. MUST be registered here or the dispatcher
-    // drops the click (the populate-register gotcha).
+    // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
+    // Buttons. MUST be registered here or the dispatcher drops the click (the
+    // populate-register gotcha).
     for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
-        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         store.register(
             id,

@@ -430,12 +430,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Eraser + the two Stroke-section toggles (Adjust Strength / Stabilize) →
-        // forward as a Click (the tool flips the matching bool).
+        // Eraser + the Stroke-section "Adjust Strength" toggle → forward as a Click
+        // (the tool flips the matching bool).
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
-                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
-                || id == core_ids::PAINTER_BRUSH_STABILIZE =>
+                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -506,9 +505,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_JITTER
                 || id == core_ids::PAINTER_BRUSH_DASH_RATIO
                 || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
-                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
-                || id == core_ids::PAINTER_BRUSH_STABILIZE_RADIUS
-                || id == core_ids::PAINTER_BRUSH_STABILIZE_FACTOR =>
+                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

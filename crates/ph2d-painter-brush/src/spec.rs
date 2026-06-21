@@ -16,23 +16,6 @@ use crate::stroke_method::{JitterUnit, StrokeMethod};
 /// caps the bbox, not the artist's intent (the value is clamped, not rejected).
 pub const MAX_BRUSH_RADIUS_PX: f32 = 4096.0;
 
-/// Stabilizer dead-zone radius range, in image px — Blender's `smooth_stroke_radius` RNA **hard**
-/// range `[10, 200]` (verified against `makesrna/intern/rna_brush.cc`:
-/// `RNA_def_property_range(prop, 10, 200)`). It is a hard range, so Blender cannot store a value
-/// outside it; the engine clamps to match (a sub-10 dead-zone barely stabilizes — the "not fluid
-/// at low values" regime Blender forbids).
-pub const SMOOTH_RADIUS_MIN_PX: f32 = 10.0;
-/// See [`SMOOTH_RADIUS_MIN_PX`].
-pub const SMOOTH_RADIUS_MAX_PX: f32 = 200.0;
-/// Stabilizer lag factor range — Blender's `smooth_stroke_factor` RNA **hard** range `[0.5, 0.99]`
-/// (`RNA_def_property_range(prop, 0.5, 0.99)`; UI text: "Higher values give a smoother stroke").
-/// Below `0.5` the spring `lerp(cursor, anchor, u)` barely pulls toward the anchor, so the stroke
-/// tracks the raw (jittery) cursor — what Enio reported as "not fluid at low values". Blender's
-/// floor of `0.5` is why its stabilizer always feels smooth; the engine clamps to match.
-pub const SMOOTH_FACTOR_MIN: f32 = 0.5;
-/// See [`SMOOTH_FACTOR_MIN`].
-pub const SMOOTH_FACTOR_MAX: f32 = 0.99;
-
 /// Parameters of a single brush. Cheap to copy; the stroke engine reads it per dab.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BrushSpec {
@@ -85,15 +68,6 @@ pub struct BrushSpec {
     /// Number of most-recent raw input samples box-averaged before processing, `>= 1`
     /// (Blender `input_samples`, default `1`, `DNA_brush_types.h:216`).
     pub input_samples: u32,
-    /// "Stabilize Stroke" (smooth-stroke) — the emitted point lags the cursor by a spring
-    /// (Blender `BRUSH_SMOOTH_STROKE`, default OFF, `DNA_brush_types.h:206`).
-    pub smooth_stroke: bool,
-    /// Stabilizer dead-zone radius in pixels: the smoothed point doesn't move until the cursor is
-    /// this far away (Blender `smooth_stroke_radius`, default `75`, `DNA_brush_types.h:228`).
-    pub smooth_radius_px: f32,
-    /// Stabilizer lag, `0..1`: fraction the smoothed point retains toward the previous position
-    /// each step (Blender `smooth_stroke_factor`, default `0.9`, `DNA_brush_types.h:230`).
-    pub smooth_factor: f32,
     /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz,
     /// `DNA_brush_types.h:232`). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
     pub airbrush_rate_s: f32,
@@ -121,9 +95,6 @@ impl Default for BrushSpec {
             jitter_unit: JitterUnit::Brush,
             jitter_absolute_px: 0.0,
             input_samples: 1,
-            smooth_stroke: false,
-            smooth_radius_px: 75.0,
-            smooth_factor: 0.9,
             airbrush_rate_s: 0.1,
         }
     }

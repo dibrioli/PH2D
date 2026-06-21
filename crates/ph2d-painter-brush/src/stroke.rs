@@ -13,9 +13,7 @@
 
 use crate::dynamics::Dynamics;
 use crate::sampler::InputSampler;
-use crate::spec::{
-    BrushSpec, SMOOTH_FACTOR_MAX, SMOOTH_FACTOR_MIN, SMOOTH_RADIUS_MAX_PX, SMOOTH_RADIUS_MIN_PX,
-};
+use crate::spec::BrushSpec;
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 
 /// One input sample from the pointer device, in image-space pixels.
@@ -64,12 +62,10 @@ pub struct Stroke {
     overlap: f32,
     /// Airbrush time accumulator in seconds, consumed by [`Stroke::tick`].
     airbrush_accum_s: f32,
-    /// Outgoing unit tangent of the last painted segment, for the real-time freehand smoother.
-    /// `None` until the first move after [`Stroke::begin`] (the first segment has no history, so it
-    /// paints straight). Each `extend` paints all the way to the new point — no held-back tail — and
-    /// rounds the join with this tangent, so the stroke follows the cursor in real time without
-    /// faceting on gentle curves.
-    prev_tangent: Option<[f32; 2]>,
+    /// The point *before* `last_pos` — the trailing neighbour the Catmull-Rom smoother needs for the
+    /// centred tangent at the start of each segment. `None` until the second move after
+    /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
+    prev_prev: Option<[f32; 2]>,
 }
 
 impl Stroke {
@@ -89,7 +85,7 @@ impl Stroke {
             tot_samples: 0,
             overlap: spec.space_overlap_factor(),
             airbrush_accum_s: 0.0,
-            prev_tangent: None,
+            prev_prev: None,
         }
     }
 
@@ -111,7 +107,7 @@ impl Stroke {
         self.accum = 0.0;
         self.tot_samples = 0;
         self.airbrush_accum_s = 0.0;
-        self.prev_tangent = None;
+        self.prev_prev = None;
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -122,18 +118,14 @@ impl Stroke {
         }
     }
 
-    /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, apply
-    /// the stabilize spring, then emit dabs per the stroke method. No-op until [`Stroke::begin`].
+    /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, then
+    /// emit dabs per the stroke method. No-op until [`Stroke::begin`].
     pub fn extend(&mut self, raw: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
         if !self.started {
             return;
         }
-        let avg = self.sampler.push_average(raw);
-        let target = match self.stabilized(avg) {
-            Some(t) => t,
-            None => return, // inside the stabilize dead-zone — no dab this event
-        };
+        let target = self.sampler.push_average(raw);
         match self.spec.stroke_method {
             StrokeMethod::Space => self.walk_smoothed(target, out),
             StrokeMethod::Dots | StrokeMethod::Airbrush => {
@@ -168,13 +160,12 @@ impl Stroke {
         self.walk_space(StrokePoint { pos: b, pressure }, out);
     }
 
-    /// Close the freehand smoother on pointer-up. The real-time smoother already paints up to each
-    /// point as it arrives (no held-back tail), so there is nothing to flush — this just clears the
-    /// per-stroke tangent. Kept for the tool's call shape (it always calls it after the final
-    /// [`Stroke::extend`]); emits no dabs.
+    /// Close the freehand smoother on pointer-up. Each [`Stroke::extend`] already paints the spline
+    /// up to its point as it arrives (no held-back tail), so there is nothing to flush — this just
+    /// clears the trailing-neighbour state. Kept for the tool's call shape; emits no dabs.
     pub fn finish(&mut self, out: &mut Vec<Dab>) {
         out.clear();
-        self.prev_tangent = None;
+        self.prev_prev = None;
     }
 
     /// Advance the airbrush timer by `dt` seconds, emitting a dab at the current cursor every
@@ -197,31 +188,6 @@ impl Stroke {
     }
 
     // ── internals ───────────────────────────────────────────────────────────────────
-
-    /// Apply the stabilize spring to the averaged sample. Returns `None` when the cursor is still
-    /// inside the dead-zone (skip this event entirely — what lets sharp turns settle).
-    fn stabilized(&mut self, avg: StrokePoint) -> Option<StrokePoint> {
-        if !self.spec.smooth_stroke || !self.spec.stroke_method.supports_smooth() {
-            return Some(avg);
-        }
-        // Clamp to Blender's hard RNA range so a save/LLM-authored value can't drop the stabilizer
-        // into the sub-floor regime that tracks the raw cursor (the "not fluid at low values" bug).
-        let r = self
-            .spec
-            .smooth_radius_px
-            .clamp(SMOOTH_RADIUS_MIN_PX, SMOOTH_RADIUS_MAX_PX);
-        if dist(self.last_pos, avg.pos) < r {
-            return None;
-        }
-        let u = self
-            .spec
-            .smooth_factor
-            .clamp(SMOOTH_FACTOR_MIN, SMOOTH_FACTOR_MAX);
-        Some(StrokePoint {
-            pos: lerp2(avg.pos, self.last_pos, u),
-            pressure: lerp(avg.pressure, self.last_pressure, u),
-        })
-    }
 
     /// Space spacing walk from `last_pos` → `target`, emitting a dab every `spacing × diameter` of
     /// arc length and carrying the residual distance across calls (`accum`).
@@ -258,59 +224,50 @@ impl Stroke {
         self.last_pressure = target.pressure;
     }
 
-    /// Real-time freehand smoother for the `Space` method: paints dabs all the way to the new point
-    /// `p` on every call — **no held-back tail**, which is what made the old quadratic-midpoint
-    /// scheme trail the cursor by half a segment — while still rounding the join so the path doesn't
-    /// facet on sparse input (low frame-rate, the stabilize dead-zone, coalesced device events).
+    /// Freehand smoother for the `Space` method — a **Catmull-Rom spline** through the input points.
+    /// Each `extend` paints the segment from the last point `a` to the new point `p`, so the stroke
+    /// follows the cursor in real time (no held-back tail), and the spline interpolates *through*
+    /// every sample with a smooth, continuous tangent, so sparse / coalesced input reads as a clean
+    /// curve instead of the connected straight facets the old scheme produced.
     ///
-    /// Each segment is a quadratic from the last painted point `pen` to `p`, whose control sits a
-    /// little past `pen` along the *previous* segment's outgoing tangent. The extension is scaled by
-    /// `w = max(0, prev_tangent · chord_dir)`: nearly-aligned input (a gentle curve) rounds the join
-    /// (`w → 1`); a sharp direction change collapses the control onto `pen` (`w → 0`), so the
-    /// segment runs straight to `p` with no forward-tangent overshoot past the corner — Blender
-    /// keeps sharp corners sharp too. The quadratic is flattened into ~4 px chords fed through
-    /// [`Stroke::walk_space`] (which owns spacing / dash / jitter / attenuation and chains via
-    /// `last_pos`). Collinear input keeps the control on the line, so straight strokes are
-    /// unchanged; the first segment after [`Stroke::begin`] has no tangent yet and paints straight.
+    /// The segment `a → p` is a cubic Hermite with the Catmull-Rom tangents: at `a` the centripetal
+    /// tangent `(p − prev_prev)/2` (its two neighbours — smooth join with the previous segment), and
+    /// at `p` the causal chord `p − a` (there is no next sample yet). The first segment after
+    /// [`Stroke::begin`] has no `prev_prev`, so its start tangent is the chord (straight). The cubic
+    /// is flattened into short chords fed through [`Stroke::walk_space`] (which owns spacing / dash /
+    /// jitter / attenuation and chains via `last_pos`). Collinear input keeps the tangents on the
+    /// line, so straight strokes stay straight.
     fn walk_smoothed(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
-        let pen = self.last_pos;
-        let pen_pr = self.last_pressure;
-        let seg = dist(pen, p.pos);
+        let a = self.last_pos;
+        let a_pr = self.last_pressure;
+        let b = p.pos;
+        let seg = dist(a, b);
         if seg <= f32::EPSILON {
             self.last_pressure = p.pressure;
             return;
         }
-        let chord_dir = [(p.pos[0] - pen[0]) / seg, (p.pos[1] - pen[1]) / seg];
-        let control = match self.prev_tangent {
-            Some(t) => {
-                let w = (t[0] * chord_dir[0] + t[1] * chord_dir[1]).clamp(0.0, 1.0);
-                let k = seg * 0.5 * w;
-                [pen[0] + t[0] * k, pen[1] + t[1] * k]
-            }
-            None => pen, // first segment: no history ⇒ straight to the point
+        // Catmull-Rom tangents (uniform, tension ½). At `a`: centred on its neighbours `prev_prev`
+        // and `b`; the first segment (no prev_prev) uses the chord. At `b`: the causal chord.
+        let m_a = match self.prev_prev {
+            Some(pp) => [(b[0] - pp[0]) * 0.5, (b[1] - pp[1]) * 0.5],
+            None => [b[0] - a[0], b[1] - a[1]],
         };
-        // Flatten pen → control → p into ~4 px chords, each chained through `walk_space`.
-        let approx_len = dist(pen, control) + dist(control, p.pos);
-        let n = ((approx_len / 4.0).ceil() as usize).clamp(1, 64);
+        let m_b = [b[0] - a[0], b[1] - a[1]];
+        // Flatten the Hermite `a → b` into short chords (denser than the dab spacing so the curve
+        // never facets), each chained through `walk_space`.
+        let n = ((seg / 3.0).ceil() as usize).clamp(1, 96);
         for i in 1..=n {
             let t = i as f32 / n as f32;
             self.walk_space(
                 StrokePoint {
-                    pos: quad_bezier(pen, control, p.pos, t),
-                    pressure: lerp(pen_pr, p.pressure, t),
+                    pos: hermite(a, m_a, b, m_b, t),
+                    pressure: lerp(a_pr, p.pressure, t),
                 },
                 out,
             );
         }
-        // Remember this segment's outgoing tangent (quad'(1) ∝ p − control) for the next join.
-        let ox = p.pos[0] - control[0];
-        let oy = p.pos[1] - control[1];
-        let ol = (ox * ox + oy * oy).sqrt();
-        self.prev_tangent = Some(if ol > f32::EPSILON {
-            [ox / ol, oy / ol]
-        } else {
-            chord_dir
-        });
+        // This segment's start point becomes the next segment's `prev_prev` neighbour.
+        self.prev_prev = Some(a);
     }
 
     /// Emit one dab at `pos`/`pressure` (the per-event methods). Per-event dabs carry no
@@ -413,21 +370,19 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
+/// Cubic Hermite at `t∈[0,1]`: endpoints `p0`,`p1` with tangents `m0`,`m1`. With Catmull-Rom
+/// tangents this evaluates the spline segment between two input points.
 #[inline]
-fn lerp2(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
-    [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
-}
-
-/// Quadratic Bézier `B(t) = (1−t)² p0 + 2(1−t)t c + t² p1`.
-#[inline]
-fn quad_bezier(p0: [f32; 2], c: [f32; 2], p1: [f32; 2], t: f32) -> [f32; 2] {
-    let mt = 1.0 - t;
-    let a = mt * mt;
-    let b = 2.0 * mt * t;
-    let d = t * t;
+fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f32; 2] {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
+    let h10 = t3 - 2.0 * t2 + t;
+    let h01 = -2.0 * t3 + 3.0 * t2;
+    let h11 = t3 - t2;
     [
-        a * p0[0] + b * c[0] + d * p1[0],
-        a * p0[1] + b * c[1] + d * p1[1],
+        h00 * p0[0] + h10 * m0[0] + h01 * p1[0] + h11 * m1[0],
+        h00 * p0[1] + h10 * m0[1] + h01 * p1[1] + h11 * m1[1],
     ]
 }
 

@@ -102,13 +102,6 @@ impl StrokeMethod {
         matches!(self, Self::Space | Self::Dots | Self::DragDot | Self::Airbrush)
     }
 
-    /// True when the stabilize (smooth-stroke) spring applies (Blender disables it for
-    /// ANCHORED/DRAG_DOT/LINE).
-    #[must_use]
-    pub fn supports_smooth(self) -> bool {
-        !matches!(self, Self::Anchored | Self::DragDot | Self::Line)
-    }
-
     /// True when per-dab position jitter applies (Blender disables it for DRAG_DOT/ANCHORED).
     #[must_use]
     pub fn allows_jitter(self) -> bool {
@@ -173,26 +166,24 @@ mod tests {
     #[test]
     fn stroke_panel_visibility_matches_blender() {
         use StrokeMethod::{Airbrush, Anchored, Curve, DragDot, Dots, Line, Space};
-        // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter, Stabilize) per
-        // method. Input Samples is always shown, so it is not in the table. This locks
-        // the per-method gate the layers panel paints against — a predicate edit that
-        // breaks parity (e.g. re-enabling Stabilize on Line) goes red here, not in a
-        // human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
+        // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
+        // Samples is always shown, so it is not in the table. This locks the per-method gate
+        // the layers panel paints against — a predicate edit that breaks parity goes red here,
+        // not in a human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
         let rows = [
-            //         spacing  dash   jitter stabilize
-            (Dots, false, false, true, true),
-            (Airbrush, false, false, true, true),
-            (Anchored, false, false, false, false),
-            (Space, true, true, true, true),
-            (DragDot, false, false, false, false),
-            (Line, true, true, true, false),
-            (Curve, true, true, true, true),
+            //         spacing  dash   jitter
+            (Dots, false, false, true),
+            (Airbrush, false, false, true),
+            (Anchored, false, false, false),
+            (Space, true, true, true),
+            (DragDot, false, false, false),
+            (Line, true, true, true),
+            (Curve, true, true, true),
         ];
-        for (m, spacing, dash, jitter, stabilize) in rows {
+        for (m, spacing, dash, jitter) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");
             assert_eq!(m.uses_dash(), dash, "{m:?} Dash visibility");
             assert_eq!(m.allows_jitter(), jitter, "{m:?} Jitter visibility");
-            assert_eq!(m.supports_smooth(), stabilize, "{m:?} Stabilize visibility");
         }
     }
 

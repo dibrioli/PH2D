@@ -1,6 +1,7 @@
 //! The Painter dock's **Stroke** sub-section (clean-room port of Blender's 2D-paint "Stroke"
 //! panel): Stroke Method, Spacing, Adjust-Strength, Jitter + Jitter Unit, Dash Ratio/Length,
-//! Input Samples, and Stabilize Stroke (+ Radius/Factor when on).
+//! and Input Samples. (Smoothing is automatic — a Catmull-Rom spline in the engine — so there is
+//! no Stabilize toggle.)
 //!
 //! All controls are fixed-id, tool-global widgets (registered in [`crate::populate`]); this
 //! module only paints them off the published [`BrushSettings`] snapshot and reuses the row/chip
@@ -18,9 +19,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
-    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BRUSH_SMOOTH_FACTOR_MAX,
-    BRUSH_SMOOTH_FACTOR_MIN, BRUSH_SMOOTH_RADIUS_MAX_PX, BRUSH_SMOOTH_RADIUS_MIN_PX, BrushSettings,
-    JitterUnit, StrokeMethod,
+    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
 };
 
 /// Paint the Stroke section starting at `y`, returning the next `y`. The two dropdowns (Method,
@@ -162,47 +161,6 @@ pub(crate) fn paint_stroke_section(
         value: count_to_norm(brush.input_samples),
         readout: &brush.input_samples.to_string(),
     });
-
-    // ── Stabilize Stroke (+ Radius / Factor sub-sliders only while on) — all but
-    //    Anchored/Drag Dot/Line ──
-    if method.supports_smooth() {
-        y = paint_toggle_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_BRUSH_STABILIZE,
-            "Stabilize",
-            brush.smooth_stroke,
-        );
-        if brush.smooth_stroke {
-            y = paint_param_row(ParamRow {
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                label: "Radius",
-                id: core_ids::PAINTER_BRUSH_STABILIZE_RADIUS,
-                value: (brush.smooth_radius_px - BRUSH_SMOOTH_RADIUS_MIN_PX)
-                    / (BRUSH_SMOOTH_RADIUS_MAX_PX - BRUSH_SMOOTH_RADIUS_MIN_PX),
-                readout: &format!("{:.0}", brush.smooth_radius_px),
-            });
-            y = paint_param_row(ParamRow {
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                label: "Factor",
-                id: core_ids::PAINTER_BRUSH_STABILIZE_FACTOR,
-                value: (brush.smooth_factor - BRUSH_SMOOTH_FACTOR_MIN)
-                    / (BRUSH_SMOOTH_FACTOR_MAX - BRUSH_SMOOTH_FACTOR_MIN),
-                readout: &format!("{:.2}", brush.smooth_factor),
-            });
-        }
-    }
     y
 }
 
@@ -362,9 +320,9 @@ mod tests {
     }
 
     /// Dots: per-event method — Spacing/Dash are no-ops, so they must be hidden;
-    /// Jitter, Input Samples and Stabilize stay (Method is always shown).
+    /// Jitter and Input Samples stay (Method is always shown).
     #[test]
-    fn dots_hides_spacing_and_dash_keeps_jitter_samples_stabilize() {
+    fn dots_hides_spacing_and_dash_keeps_jitter_and_samples() {
         let ids = painted_hit_ids(StrokeMethod::Dots);
         for hidden in [
             core_ids::PAINTER_BRUSH_SPACING,
@@ -383,7 +341,6 @@ mod tests {
             core_ids::PAINTER_BRUSH_JITTER,
             core_ids::PAINTER_BRUSH_JITTER_UNIT,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),
@@ -406,7 +363,6 @@ mod tests {
             core_ids::PAINTER_BRUSH_DASH_RATIO,
             core_ids::PAINTER_BRUSH_DASH_LENGTH,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),
@@ -429,12 +385,11 @@ mod tests {
             core_ids::PAINTER_BRUSH_DASH_LENGTH,
             core_ids::PAINTER_BRUSH_JITTER,
             core_ids::PAINTER_BRUSH_JITTER_UNIT,
-            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 !ids.contains(&hidden),
                 "Drag Dot painted a hit rect for {hidden:?} — it forces pressure 1, no \
-                 jitter, no smoothing. painted = {ids:?}"
+                 jitter. painted = {ids:?}"
             );
         }
         for shown in [

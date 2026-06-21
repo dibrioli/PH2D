@@ -134,18 +134,18 @@ fn close_button_forwards_cancel_active_tool() {
 // forgotten `event.rs` drain or a wrong wire shape leaves the control painted,
 // clickable, and silently dead while every unit test stays green (DIRETIVA §2).
 
-/// Toggle shape: the Stabilize toggle forwards `Click(PAINTER_BRUSH_STABILIZE)` (consumed by the
-/// tool's `toggle_brush_smooth_stroke` arm). Adjust-Strength rides the same arm.
+/// Toggle shape: the Adjust-Strength toggle forwards `Click(PAINTER_BRUSH_SPACE_ATTEN)` (consumed
+/// by the tool's `toggle_brush_space_attenuation` arm) — the surviving Stroke-section toggle.
 #[test]
-fn stroke_stabilize_toggle_forwards_click() {
+fn stroke_adjust_strength_toggle_forwards_click() {
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
-    let id = core_ids::PAINTER_BRUSH_STABILIZE;
+    let id = core_ids::PAINTER_BRUSH_SPACE_ATTEN;
     let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(id));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
-        "Stabilize toggle click ignored — the event.rs toggle arm is missing the id"
+        "Adjust-Strength toggle click ignored — the event.rs toggle arm is missing the id"
     );
     let actions = host.drained_actions();
     assert!(
@@ -153,7 +153,7 @@ fn stroke_stabilize_toggle_forwards_click() {
             a,
             EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if *i == id
         )),
-        "Stabilize click never forwarded as Click(PAINTER_BRUSH_STABILIZE) — seam dead. \
+        "Adjust-Strength click never forwarded as Click(PAINTER_BRUSH_SPACE_ATTEN) — seam dead. \
          drained = {actions:?}"
     );
 }

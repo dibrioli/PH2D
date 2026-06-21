@@ -32,6 +32,12 @@ thread_local! {
     /// default). `Copy`, então o clone é trivial.
     static CURRENT_BRUSH: Cell<Option<BrushSettings>> = const { Cell::new(None) };
 
+    /// Dock-view mode published per-frame: `true` = Layers/Effects body, `false`
+    /// = Brush-properties body. The header toggle flips the tool's
+    /// `dock_shows_layers`; the bridge publishes it here and `paint` branches.
+    /// Defaults to Layers so a fresh frame (pre-publish) shows the main view.
+    static CURRENT_DOCK_SHOWS_LAYERS: Cell<bool> = const { Cell::new(true) };
+
     /// The open brush blend-mode dropdown to render as a deferred popover on top
     /// of the body (after the clip pops): `(chip_rect, current_mode_u8)`. Set
     /// during the Brush section paint, drained at the end of `paint`. Mirror of
@@ -211,6 +217,17 @@ pub fn set_current_brush(brush: Option<BrushSettings>) {
 /// Brush section então usa o `BrushSettings` default).
 pub(crate) fn current_brush() -> Option<BrushSettings> {
     CURRENT_BRUSH.with(Cell::get)
+}
+
+/// Publica o modo do dock (`true` = Layers/Effects, `false` = Brush). Chamado
+/// pelo shell por frame quando o `painter` é ativo.
+pub fn set_current_dock_shows_layers(shows_layers: bool) {
+    CURRENT_DOCK_SHOWS_LAYERS.with(|c| c.set(shows_layers));
+}
+
+/// Lê o modo do dock publicado neste frame (default `true` = Layers).
+pub(crate) fn current_dock_shows_layers() -> bool {
+    CURRENT_DOCK_SHOWS_LAYERS.with(Cell::get)
 }
 
 /// Stash the open brush blend dropdown for the deferred popover pass.

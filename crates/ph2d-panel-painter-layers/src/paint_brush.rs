@@ -1,22 +1,27 @@
-//! The layers-panel **Brush** section: the active brush's Size slider, an RGB
-//! colour control (live preview swatch + R/G/B sliders) and the blend-mode chip.
+//! The Painter dock's **Brush-properties** view (header toggle → "Brush"): the
+//! active brush's Size slider, blend-mode chip, and a colour swatch that opens
+//! the shared Blender colour picker (`INSP_BLENDER_PICKER`, the same rich picker
+//! the Inspector uses — only one is ever open, so they share the slot).
 //!
 //! The brush is tool-global, so these are FIXED-id widgets (registered in
-//! [`crate::populate`], not per-frame): the panel reads the published
-//! [`BrushSettings`] snapshot to position them and forwards edits over the
-//! frozen `PanelEvent` channel (`event.rs`). Painted at the top of the
-//! scrollable body by [`crate::paint`]; the blend popover is a deferred pass
-//! (mirror of the per-row blend chip in [`crate::blend`]).
+//! [`crate::populate`]). The panel reads the published [`BrushSettings`] snapshot
+//! to position them and forwards edits over the frozen `PanelEvent` channel. The
+//! colour round-trip is a per-frame read-back: when the floating picker targets
+//! our swatch, its live value (mirrored by the hero loop into
+//! `widget_color(target)`) is forwarded to the tool.
 
 use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::IconId;
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{self as core_ids, painter_brush_blend_option_id};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::tool::PanelEvent;
+use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::{
     Dropdown, DropdownOption, DropdownState, Slider, SliderState,
     paint_dropdown_popover_in_viewport, paint_slider,
@@ -26,9 +31,7 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken}
 use ph2d_tool_painter::{BrushBlend, BrushSettings, MAX_BRUSH_BLEND_MODES};
 
 const LABEL_W: f32 = 44.0; // LITERAL-PX-OK: brush row label column ("Size"/"Blend")
-const RGB_LABEL_W: f32 = 16.0; // LITERAL-PX-OK: single-letter R/G/B label column
 const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: size px readout column
-const SWATCH_W: f32 = 20.0; // LITERAL-PX-OK: colour preview square (≤ ROW_H_PX)
 
 /// Brush used before the first snapshot publish (Painter just activated). In
 /// practice the bridge publishes every frame the panel is visible, so this is
@@ -40,31 +43,23 @@ const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     blend: 0,
 };
 
-/// Paint the Brush section starting at `y`; returns the next `y`. `x` is the
-/// body's left padding origin and `content_w` the body content width.
-pub(crate) fn paint_brush_section(
+/// Paint the Brush-properties body below `header_bottom` (the Painter dock in
+/// Brush mode). Terminal for the panel — owns its own popover pass.
+pub(crate) fn paint_brush_mode(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    mut y: f32,
-) -> f32 {
+    rect: Rect,
+    header_bottom: f32,
+) {
+    let x = rect.x + PANEL_HEAD_PAD;
+    let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
     let brush = state::current_brush().unwrap_or(FALLBACK_BRUSH);
-    let gap = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
+    // If the shared picker is editing our swatch, forward its live colour.
+    brush_color_readback(ctx, brush);
 
-    // Section header.
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        "Brush",
-        x,
-        y,
-        TypeToken::Base.px(),
-        content_w,
-        resolve(ColorToken::Text1, theme),
-    );
-    y += TypeToken::Base.px() + Spacing::Xs.px();
+    let font = TypeToken::Sm.px();
+    let gap = Spacing::Sm.px();
+    let mut y = header_bottom + Spacing::Md.px();
 
     // ── Size: label + slider + "NN" px readout ──
     label(ctx, theme, "Size", x, y, font);
@@ -86,47 +81,7 @@ pub(crate) fn paint_brush_section(
         READOUT_W,
         resolve(ColorToken::Text2, theme),
     );
-    y += ROW_H_PX + Spacing::Xs.px();
-
-    // ── Colour: "Color" label + live preview swatch ──
-    label(ctx, theme, "Color", x, y, font);
-    let swatch = Rect::new(
-        x + LABEL_W + gap,
-        y + ((ROW_H_PX - SWATCH_W) * 0.5).max(0.0),
-        SWATCH_W,
-        SWATCH_W,
-    );
-    let [r, g, b] = encode_rgb(brush.color);
-    let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: brush colour (data)
-    let radius = Radius::Sm.px();
-    fill_rounded_rect(ctx.scene, swatch, radius, col);
-    stroke_rounded_rect(
-        ctx.scene,
-        swatch,
-        radius,
-        StrokeToken::Default.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    y += ROW_H_PX + Spacing::Xs.px();
-
-    // R / G / B channel sliders, one per row (indented under the swatch).
-    let channels = [
-        ("R", core_ids::PAINTER_BRUSH_COLOR_R, brush.color[0]),
-        ("G", core_ids::PAINTER_BRUSH_COLOR_G, brush.color[1]),
-        ("B", core_ids::PAINTER_BRUSH_COLOR_B, brush.color[2]),
-    ];
-    let rgb_slider_w = (content_w - RGB_LABEL_W - gap).max(0.0);
-    for (letter, id, value) in channels {
-        label(ctx, theme, letter, x, y, font);
-        paint_brush_slider(
-            ctx,
-            theme,
-            id,
-            Rect::new(x + RGB_LABEL_W + gap, y, rgb_slider_w, ROW_H_PX),
-            value,
-        );
-        y += ROW_H_PX + Spacing::Xs.px();
-    }
+    y += ROW_H_PX + Spacing::Sm.px();
 
     // ── Blend: label + dropdown chip ──
     label(ctx, theme, "Blend", x, y, font);
@@ -137,14 +92,83 @@ pub(crate) fn paint_brush_section(
         brush.blend,
         Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX),
     );
-    y += ROW_H_PX + Spacing::Md.px();
+    y += ROW_H_PX + Spacing::Sm.px();
 
-    y
+    // ── Colour: label + swatch (click opens the shared Blender picker) ──
+    paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
+
+    // Deferred: the brush blend popover, on top of the body.
+    if let Some((chip_rect, cur_mode)) = state::take_pending_brush_blend_dd() {
+        paint_brush_blend_popover(ctx, theme, chip_rect, cur_mode);
+    }
 }
 
-/// Deferred paint of the open brush blend popover (on top of the rows, clamped
-/// to the viewport). Mirror of [`crate::blend::paint_blend_popover`] but for the
-/// single fixed brush chip + the 24 `BrushBlend` modes.
+/// When the shared Blender picker targets the brush swatch, the hero loop mirrors
+/// its live value into `widget_color(PAINTER_COLOR_THUMB)`. Forward that colour to
+/// the tool (as `"r,g,b"`) when it differs from the brush's current colour — this
+/// makes the picker drive the brush live.
+fn brush_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
+    if ctx.host.store().picker_target() != Some(core_ids::PAINTER_COLOR_THUMB) {
+        return;
+    }
+    let Some(picked) = ctx.host.store().widget_color(core_ids::PAINTER_COLOR_THUMB) else {
+        return;
+    };
+    let cur = encode_rgb(brush.color);
+    if [picked[0], picked[1], picked[2]] == cur {
+        return; // already applied — don't spam the bus
+    }
+    ctx.host
+        .bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            core_ids::PAINTER_COLOR_THUMB,
+            format!("{},{},{}", picked[0], picked[1], picked[2]),
+        )));
+}
+
+/// Paint the colour preview swatch (a full-width bar). Registered as a button:
+/// clicking it toggles the shared Blender picker (see `event.rs`). The accent
+/// border shows when the picker is currently editing it.
+fn paint_color_swatch_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) {
+    let font = TypeToken::Sm.px();
+    label(ctx, theme, "Color", x, y, font);
+    let sx = x + LABEL_W + Spacing::Sm.px();
+    let sw = (content_w - LABEL_W - Spacing::Sm.px()).max(0.0);
+    let rect = Rect::new(sx, y, sw, ROW_H_PX);
+    register_button(ctx.host.store_mut(), core_ids::PAINTER_COLOR_THUMB);
+
+    let [r, g, b] = encode_rgb(brush.color);
+    let col = ph2d_vector::Color::from_rgba8(r, g, b, 255); // LITERAL-COLOR-OK: brush colour (data)
+    let radius = Radius::Sm.px();
+    fill_rounded_rect(ctx.scene, rect, radius, col);
+    let open = ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB);
+    let border = if open {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    stroke_rounded_rect(
+        ctx.scene,
+        rect,
+        radius,
+        StrokeToken::Default.px(),
+        resolve(border, theme),
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_COLOR_THUMB, rect);
+}
+
+/// Deferred paint of the open brush blend popover (clamped to the viewport).
+/// Mirror of [`crate::blend::paint_blend_popover`] but for the single fixed brush
+/// chip + the 24 `BrushBlend` modes.
 pub(crate) fn paint_brush_blend_popover(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

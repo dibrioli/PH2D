@@ -49,6 +49,12 @@ const APPLY_BTN_W: f32 = 80.0; // LITERAL-PX-OK: "Apply" CTA button width
 
 pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PainterLayersPanel::ID) {
+        // Painter closed while the brush colour picker was open → close it too,
+        // else the floating picker lingers on the canvas. (Only ours — never the
+        // Inspector's swatch target.)
+        if ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB) {
+            ctx.host.store_mut().set_picker_target(None);
+        }
         ctx.host
             .store_mut()
             .clear_panel_rect(core_ids::PAINTER_LAYERS_PANEL);
@@ -83,17 +89,19 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         hit_index.register(core_ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
     }
 
+    // Dock view-mode (published by the bridge): Layers/Effects vs Brush props.
+    let shows_layers = state::current_dock_shows_layers();
     let title_size = paint_panel_title(
         rect,
-        "Layers",
+        if shows_layers { "Layers" } else { "Brush" },
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
         theme,
     );
 
-    // Dock-toggle (Brush) + close (X).
-    paint_dock_toggle(ctx, rect, theme);
+    // Dock-toggle (label = the OTHER view) + close (X).
+    paint_dock_toggle(ctx, rect, theme, shows_layers);
     paint_panel_close_button(
         rect,
         core_ids::PAINTER_LAYERS_CLOSE,
@@ -102,10 +110,28 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
+    let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+
+    // ── Brush-properties view: paint the brush body and return (no layers
+    // toolbars / rows / scroll). The shared colour picker is driven from here. ─
+    if !shows_layers {
+        crate::paint_brush::paint_brush_mode(ctx, theme, rect, header_bottom);
+        set_last_content_h(0.0);
+        set_last_visible_h(0.0);
+        return;
+    }
+    // Layers view: if the shared colour picker is still open from the Brush view,
+    // close it (it edits the brush colour, irrelevant here).
+    {
+        let store = ctx.host.store_mut();
+        if store.picker_target() == Some(core_ids::PAINTER_COLOR_THUMB) {
+            store.set_picker_target(None);
+        }
+    }
+
     // Two fixed toolbar strips below the header: actions (New / Group /
     // Duplicate / Delete) then modifiers (Mask / Clip / Lock / Ref), between the
     // header and the scrollable list.
-    let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
     let toolbar_rect = Rect::new(rect.x, header_bottom, rect.w, TOOLBAR_H);
     let modifier_toolbar_rect = Rect::new(rect.x, header_bottom + TOOLBAR_H, rect.w, TOOLBAR_H);
 
@@ -128,12 +154,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
     let mut y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
-
-    // Brush section (Size / Colour / Blend) at the top of the scrollable body,
-    // above the layer list. Reads the published `BrushSettings` snapshot; the
-    // open blend popover is a deferred pass below (like the per-row blend chip).
-    y = crate::paint_brush::paint_brush_section(ctx, theme, rect.x + PANEL_HEAD_PAD, content_w, y);
-    y += Spacing::Sm.px();
 
     // Row-id set published to the dispatch so it knows which NodeIds are
     // draggable layer rows (Coord drag foundation `1c3411d`). Filled in the
@@ -313,11 +333,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         crate::blend::paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
     }
 
-    // Deferred: the brush blend popover (Brush section), same treatment.
-    if let Some((chip_rect, cur_mode)) = state::take_pending_brush_blend_dd() {
-        crate::paint_brush::paint_brush_blend_popover(ctx, theme, chip_rect, cur_mode);
-    }
-
     // Deferred: the open "+ Adjustment" kind-picker menu, on top of everything
     // (after the blend popover — only one is realistically open at a time).
     if let Some(menu_chip) = state::take_pending_adj_menu() {
@@ -332,9 +347,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     }
 }
 
-/// Header dock-toggle ("Brush") — swaps the shared dock slot to the brush
-/// sidebar. Placed left of the close button.
-fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
+/// Header dock-toggle — swaps the docked body between the Layers/Effects view
+/// and the Brush-properties view. Labelled with the OTHER view (what a click
+/// switches TO). Placed left of the close button.
+fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme, shows_layers: bool) {
     let close = panel_close_button_rect(rect);
     let btn_rect = Rect::new(
         close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
@@ -347,7 +363,8 @@ fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) 
         .store()
         .button_state(core_ids::PAINTER_LAYERS_TOGGLE_DOCK)
         .unwrap_or(ButtonState::Normal);
-    let btn = Button::new(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, "Brush").state(st);
+    let label = if shows_layers { "Brush" } else { "Layers" };
+    let btn = Button::new(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, label).state(st);
     paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
     ctx.host
         .hit_index_mut()

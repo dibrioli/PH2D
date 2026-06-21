@@ -422,20 +422,22 @@ mod tests {
         // Size slider drag (0..1 track).
         t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SIZE_SLIDER, 0.5));
         assert!((t.brush_settings().size_px - 128.75).abs() < 0.01);
-        // R/G/B sliders.
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_R, 1.0));
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_G, 0.25));
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_B, 0.0));
-        assert_eq!(t.brush_settings().color, [1.0, 0.25, 0.0]);
+        // Colour from the shared Blender picker read-back ("r,g,b", 8-bit native).
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_COLOR_THUMB,
+            "255,64,0".to_string(),
+        ));
+        let c = t.brush_settings().color;
+        assert!((c[0] - 1.0).abs() < 1e-6 && (c[1] - 64.0 / 255.0).abs() < 1e-6 && c[2] == 0.0);
         // Blend dropdown pick (wire u8 → Multiply == 3).
         t.handle_panel_event(PanelEvent::SelectOption(
             core_ids::PAINTER_BRUSH_BLEND,
             "3".to_string(),
         ));
         assert_eq!(t.brush_settings().blend, 3);
-        // The chosen brush colour ([1, 0.25, 0]) + Multiply blend actually drive
-        // the next stroke: a hard dab over white → white·colour = the colour
-        // itself at full coverage (0.25·255 ≈ 64).
+        // The chosen brush colour (255,64,0) + Multiply blend actually drive the
+        // next stroke: a hard dab over white → white·colour = the colour itself at
+        // full coverage.
         let size = 16u32;
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         t.set_brush_size_px(4.0);
@@ -448,6 +450,16 @@ mod tests {
             [255, 64, 0, 255],
             "Multiply brush colour over white painted the colour"
         );
+    }
+
+    #[test]
+    fn dock_defaults_to_layers_then_toggles() {
+        let mut t = PainterTool::default();
+        assert!(t.dock_shows_layers(), "dock opens on the Layers/Effects view");
+        t.toggle_dock();
+        assert!(!t.dock_shows_layers(), "header toggle flips to the Brush view");
+        t.toggle_dock();
+        assert!(t.dock_shows_layers(), "toggling back returns to Layers");
     }
 
     #[test]

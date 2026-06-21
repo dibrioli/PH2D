@@ -411,6 +411,24 @@ fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
 /// `apply_event_impl` so that already-at-cap function stays put.
 fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     match ev {
+        // Colour swatch → toggle the shared Blender picker, seeded with the brush
+        // colour. The read-back (in `paint_brush::paint_brush_mode`) forwards the
+        // picked colour back to the brush each frame.
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_COLOR_THUMB => {
+            let store = host.store_mut();
+            if store.picker_target() == Some(id) {
+                store.set_picker_target(None);
+            } else {
+                let rgba = brush_seed_rgba8();
+                store.set_blender_value(
+                    core_ids::INSP_BLENDER_PICKER,
+                    ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
+                );
+                store.set_widget_color(id, rgba);
+                store.set_picker_target(Some(id));
+            }
+            Some(true)
+        }
         // Blend popover option picked → close the brush dropdown + apply.
         WidgetEvent::Click(id) => {
             let mode = decode_brush_blend_option(id)?;
@@ -430,13 +448,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Size + R/G/B colour slider drag → forward the freshly-dispatched 0..1.
-        WidgetEvent::ValueChanged(id)
-            if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
-                || id == core_ids::PAINTER_BRUSH_COLOR_R
-                || id == core_ids::PAINTER_BRUSH_COLOR_G
-                || id == core_ids::PAINTER_BRUSH_COLOR_B =>
-        {
+        // Size slider drag → forward the freshly-dispatched 0..1 value.
+        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER => {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
@@ -446,6 +459,14 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         _ => None,
     }
+}
+
+/// The active brush colour as 8-bit RGBA (opaque), to seed the shared picker.
+fn brush_seed_rgba8() -> [u8; 4] {
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    state::current_brush()
+        .map(|b| [enc(b.color[0]), enc(b.color[1]), enc(b.color[2]), 255])
+        .unwrap_or([0, 0, 0, 255])
 }
 
 /// Decode a brush blend-mode popover option id → its mode `u8`. Fixed (not

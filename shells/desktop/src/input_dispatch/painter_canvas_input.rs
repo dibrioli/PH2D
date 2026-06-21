@@ -52,6 +52,21 @@ impl App {
     /// click) iff the painter started a stroke, so it doesn't also pick/move the
     /// sprite.
     pub(crate) fn painter_canvas_down(&mut self, px: f32, py: f32, pressure: f32) -> bool {
+        // A press over a docked panel (Layers / Brush properties) belongs to the
+        // panel's own widgets — sliders, colour picker, buttons. Don't start a
+        // canvas stroke there: that painted *through* the panel and stole the
+        // slider drag (the stroke's Move capture swallowed the drag). Mirror of
+        // the gizmo/canvas-pick gate (`store.panel_at(..).is_none()`). A stroke
+        // already open keeps painting over the panel via the Move path (it does
+        // not re-enter here).
+        let over_panel = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.store.panel_at(px, py).is_some());
+        if over_panel {
+            return false;
+        }
         let started = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Down);
         if started {
             STROKE_ACTIVE.with(|s| s.set(true));

@@ -137,11 +137,13 @@ impl Default for PainterTool {
             preview_dirty: false,
             pending_commit: false,
             undo: crate::undo::UndoController::default(),
-            dock_shows_layers: false,
             dirty_rect: None,
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,
+            // Dock opens on the Layers/Effects view; the header toggle flips to
+            // the Brush-properties view (`dock_shows_layers == false`).
+            dock_shows_layers: true,
             paint: paint::PaintState::default(),
         }
     }

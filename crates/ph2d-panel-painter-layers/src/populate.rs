@@ -52,26 +52,25 @@ pub fn populate(store: &mut WidgetStore) {
         },
     );
 
-    // Brush section (fixed-id, so registered here, not per-frame in paint): the
-    // Size + R/G/B colour sliders, and the brush blend-mode dropdown chip. The
-    // panel paints them off the published `BrushSettings` snapshot; the values
-    // here are placeholders overwritten by the drag / the snapshot each frame.
-    let brush_sliders = [
+    // Brush-properties view (fixed-id, so registered here, not per-frame): the
+    // Size slider. The panel paints it off the published `BrushSettings`
+    // snapshot; the value here is a placeholder overwritten by the drag / snapshot.
+    store.register(
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_R,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_G,
-        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_B,
-    ];
-    for id in brush_sliders {
-        store.register(
-            id,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
-                value: 0.0,
-                orientation: SliderOrientation::Horizontal,
-            },
-        );
-    }
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    // Colour swatch — a Button; clicking it toggles the shared Blender picker.
+    // MUST be registered here or the dispatcher drops the click.
+    store.register(
+        ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     // Blend chip is a Dropdown (generic open/close dispatch, like the per-row
     // blend chip + the "+ Adj" picker); its 24 options are deferred-popover buttons.
     store.register(

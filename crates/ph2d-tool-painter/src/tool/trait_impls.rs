@@ -187,6 +187,19 @@ impl Tool for PainterTool {
                     self.set_brush_blend(mode);
                 }
             }
+            // ── Brush colour from the shared Blender picker: value = "r,g,b"
+            // (8-bit native), forwarded by the panel's per-frame read-back. ──
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_COLOR_THUMB => {
+                let mut it = value.split(',');
+                if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+                    && let (Ok(r), Ok(g), Ok(b)) =
+                        (r.parse::<u8>(), g.parse::<u8>(), b.parse::<u8>())
+                {
+                    self.set_brush_color_channel(0, f32::from(r) / 255.0);
+                    self.set_brush_color_channel(1, f32::from(g) / 255.0);
+                    self.set_brush_color_channel(2, f32::from(b) / 255.0);
+                }
+            }
             // ── Curves editor 2-D point drag: value = "layer:channel:index:x:y". ─
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_CURVE_EDIT => {
                 let mut it = value.split(':');
@@ -412,7 +425,7 @@ impl RasterEditTool for PainterTool {
         self.source_size = (0, 0);
         self.preview_dirty = false;
         self.pending_commit = false;
-        // Reset the dock-mode flag so re-activating on another sprite starts clean.
-        self.dock_shows_layers = false;
+        // Reset the dock-mode flag so re-activating starts on the Layers view.
+        self.dock_shows_layers = true;
     }
 }

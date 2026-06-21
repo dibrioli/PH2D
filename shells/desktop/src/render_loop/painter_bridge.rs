@@ -287,6 +287,9 @@ pub(super) fn dispatch(
             // gated: brush edits don't bump `layers_revision`, and the cost is a
             // few floats.
             ph2d_panel_painter_layers::set_current_brush(Some(painter.brush_settings()));
+            // (Brush UI) Publish the dock view-mode so the panel renders either
+            // the Layers/Effects body or the Brush-properties body (header toggle).
+            ph2d_panel_painter_layers::set_current_dock_shows_layers(painter.dock_shows_layers());
         }
     }
 

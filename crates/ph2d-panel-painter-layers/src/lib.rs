@@ -36,8 +36,8 @@ mod populate;
 pub mod state;
 
 pub use state::{
-    PainterLayersPanelState, last_content_h, last_visible_h, set_current_brush, set_current_layers,
-    set_current_selection,
+    PainterLayersPanelState, last_content_h, last_visible_h, set_current_brush,
+    set_current_dock_shows_layers, set_current_layers, set_current_selection,
 };
 
 use ph2d_a11y::NodeId;

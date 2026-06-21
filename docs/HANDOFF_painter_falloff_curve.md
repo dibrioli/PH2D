@@ -1,10 +1,45 @@
 # HANDOFF — Painter Custom Falloff curve + a dispatch regression + an FPS drop
 
-> Status: **APP EM ESTADO QUEBRADO.** Dois bugs abertos e graves (menus suspensos
-> não funcionam · Painter caiu para ~10 FPS). Escrito ao passar o bastão para outro
-> agente. Seja honesto e cético: o agente anterior (eu) gastou ~10 rounds, acertou
-> a causa-raiz de UM bug mas introduziu regressões mexendo no **dispatch global**.
-> **Leia a §1 (recomendação) antes de qualquer coisa.**
+> ## ✅ UPDATE — sessão 2 (2026-06-21, commit `c32608a7`)
+>
+> **Vector handle: RESOLVIDO** — e a §3 abaixo estava com a causa-raiz ERRADA.
+> A causa real: as linhas do menu (`CTX_MENU_FALLOFF_HANDLE_VECTOR`/`_AUTO`) não
+> estavam em `pre_populate.rs::populate_global_context_menu`. Toda linha de menu
+> simples precisa de uma entrada `Plain` no `WidgetStore` ali — senão a linha não é
+> `is_focusable`, o **Down nunca arma `active`/`active_rect`**, e o **Up emite 0
+> Click** (é por isso que os logs da §3 mostram "0 events" nos DOIS). É a gotcha
+> "panel populate register"; as linhas irmãs `CTX_MENU_POINT_TYPE_*` já estavam lá.
+> Fix = 2 ids (mais um gate, `simple_row_context_menu_items_are_populate_registered`).
+>
+> **O repaint/close-on-Down (§3) era RED HERRING.** O Up resolve o widget ativo pelo
+> snapshot `active_rect` tirado no Down (`pointer_up.rs` ~209-217), **não** pelo
+> hit-index vivo — então o repaint des-registrar o item é irrelevante. Todos os
+> outros menus sobrevivem a fechar-no-Down + repaint por esse snapshot; o falloff
+> falhava só por nunca armar `active`. Os 2 commits de dispatch global já foram
+> revertidos (`d72873af`) e **não devem voltar**. O fix correto é feature-local
+> (registrar a linha), como a §1.3 intuiu — só que era ainda mais simples.
+>
+> **Menus globais: OK** (restaurados pela revert). **FPS ~10: PENDENTE smoke do
+> Enio num REBUILD LIMPO.** Provas: (a) a feature de falloff NÃO suja o composite —
+> `paint.rs:238 preview_dirty=true` só dispara dentro do stamp de dab (gated em
+> `touched`), nunca pelos setters de falloff; (b) zero `eprintln!` por-frame
+> sobrevive no HEAD (os de `render_loop` são error-path; `[hero] unhandled event` só
+> dispara em evento não-tratado). Logo o FPS-10 era quase certamente a regressão de
+> menu-grudado (agora revertida, que spammava `[hero] unhandled event` todo frame)
+> e/ou o `eprintln!` de instrumentação do agente anterior (já removido). Confirme
+> com `cargo build -p ph2d-host-desktop` limpo + rodar. Se persistir: profiler de
+> frame (`frame_prof_on()`/`FRAME_PROF_DISPATCH_US` em `render_loop`).
+>
+> _A §1–§7 abaixo são o registro original (sessão 1). Mantidas como histórico; a §3
+> está factualmente errada na causa — ver acima._
+
+---
+
+> Status (sessão 1, histórico): **APP EM ESTADO QUEBRADO.** Dois bugs abertos e graves
+> (menus suspensos não funcionam · Painter caiu para ~10 FPS). Escrito ao passar o
+> bastão para outro agente. Seja honesto e cético: o agente anterior (eu) gastou ~10
+> rounds, acertou a causa-raiz de UM bug mas introduziu regressões mexendo no
+> **dispatch global**. **Leia a §1 (recomendação) antes de qualquer coisa.**
 
 ## §0 — TL;DR do que aconteceu
 

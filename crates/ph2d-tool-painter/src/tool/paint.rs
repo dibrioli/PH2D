@@ -14,10 +14,6 @@ use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{stamp_dab, BrushSpec, Dab, Dynamics, Stroke, StrokePoint};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
-///
-/// `Default` is the engine's default brush (soft round black "TexDraw"), default
-/// dynamics, no stroke in progress, empty buffers.
-#[derive(Default)]
 pub(crate) struct PaintState {
     /// The active brush.
     brush: BrushSpec,
@@ -29,6 +25,21 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
+}
+
+impl Default for PaintState {
+    fn default() -> Self {
+        Self {
+            // A moderate black brush so strokes read clearly on both small and
+            // large canvases. The brush-settings UI drives size/colour later
+            // (`docs/Painter/` Fase 4); the engine's own default is 25 px radius.
+            brush: BrushSpec { radius_px: 10.0, ..BrushSpec::default() },
+            dynamics: Dynamics::default(),
+            stroke: None,
+            dabs: Vec::new(),
+            seed: 0,
+        }
+    }
 }
 
 impl PainterTool {

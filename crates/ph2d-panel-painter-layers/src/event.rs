@@ -475,7 +475,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
 
 /// The active brush colour as 8-bit RGBA (opaque), to seed the shared picker.
 fn brush_seed_rgba8() -> [u8; 4] {
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
     state::current_brush()
         .map(|b| [enc(b.color[0]), enc(b.color[1]), enc(b.color[2]), 255])
         .unwrap_or([0, 0, 0, 255])

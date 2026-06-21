@@ -37,8 +37,8 @@ const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
 /// practice the bridge publishes every frame the panel is visible, so this is
 /// only a defensive default.
 const FALLBACK_BRUSH: BrushSettings = BrushSettings {
-    size_px: 25.0,
-    size_norm: 0.217,
+    size_px: 25.0,    // LITERAL-PX-OK: defensive pre-publish fallback default
+    size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
     hardness: 0.0,
     flow: 1.0,
     strength: 1.0,
@@ -64,7 +64,7 @@ pub(crate) fn paint_brush_mode(
     let gap = Spacing::Sm.px();
     let mut y = header_bottom + Spacing::Md.px();
     // Hardness/Flow/Strength read as percent; Size reads raw px.
-    let pct = |v: f32| format!("{:.0}", v * 100.0);
+    let pct = |v: f32| format!("{:.0}", v * 100.0); // LITERAL-PX-OK: fraction → percent
 
     // ── Slider rows: Size (px) + Hardness / Flow / Strength (%) ──
     y = paint_param_row(ParamRow {
@@ -425,8 +425,8 @@ fn brush_blend_options() -> Vec<DropdownOption<u8>> {
 /// Encode a straight-RGB colour in `[0, 1]` (native space) to 8-bit for display.
 fn encode_rgb(c: [f32; 3]) -> [u8; 3] {
     [
-        (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-        (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
-        (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
+        (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8, // LITERAL-PX-OK: sRGB 8-bit normalize
+        (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8, // LITERAL-PX-OK: sRGB 8-bit normalize
+        (c[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8, // LITERAL-PX-OK: sRGB 8-bit normalize
     ]
 }

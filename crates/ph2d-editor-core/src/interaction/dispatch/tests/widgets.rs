@@ -161,6 +161,11 @@ fn context_menu_item_click_emits_click_even_though_menu_closes_on_down() {
         "Up must emit Click(CTX_MENU_FALLOFF_HANDLE_VECTOR) — this is the event \
          that drives chrome::falloff_handle"
     );
+    assert!(
+        store.context_menu().is_none(),
+        "the item Click dismisses the menu on the Up (regardless of whether the \
+         item's handler also closes it)"
+    );
 }
 
 /// A primary Down on EMPTY space (no hit) while a context menu is open dismisses

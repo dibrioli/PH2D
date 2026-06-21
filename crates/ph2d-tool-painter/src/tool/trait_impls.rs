@@ -95,6 +95,13 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
                 self.toggle_brush_eraser();
             }
+            // ── Stroke section toggles. ────────────────────────────────────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_SPACE_ATTEN => {
+                self.toggle_brush_space_attenuation();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_STABILIZE => {
+                self.toggle_brush_smooth_stroke();
+            }
             // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point();
@@ -143,6 +150,20 @@ impl Tool for PainterTool {
                     self.set_brush_size_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER {
                     self.set_brush_strength(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_SPACING {
+                    self.set_brush_spacing(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_JITTER {
+                    self.set_brush_jitter_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {
+                    self.set_brush_dash_ratio(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_DASH_LENGTH {
+                    self.set_brush_dash_length_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES {
+                    self.set_brush_input_samples_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_STABILIZE_RADIUS {
+                    self.set_brush_smooth_radius_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_STABILIZE_FACTOR {
+                    self.set_brush_smooth_factor(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
@@ -195,6 +216,17 @@ impl Tool for PainterTool {
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF => {
                 if let Ok(preset) = value.parse::<u8>() {
                     self.set_brush_falloff(preset);
+                }
+            }
+            // ── Stroke section dropdowns: method + jitter unit (value = wire u8). ─
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_STROKE_METHOD => {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_brush_stroke_method(m);
+                }
+            }
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_JITTER_UNIT => {
+                if let Ok(u) = value.parse::<u8>() {
+                    self.set_brush_jitter_unit(u);
                 }
             }
             // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The

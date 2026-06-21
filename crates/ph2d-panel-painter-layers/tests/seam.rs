@@ -127,3 +127,84 @@ fn close_button_forwards_cancel_active_tool() {
          drained = {actions:?}"
     );
 }
+
+// ── Stroke section seam (the new Blender "Stroke" controls) ──────────────────────
+// One test per control SHAPE (toggle / slider / dropdown), proving the real
+// WidgetEvent forwards the EXACT PanelEvent the tool's matching arm consumes. A
+// forgotten `event.rs` drain or a wrong wire shape leaves the control painted,
+// clickable, and silently dead while every unit test stays green (DIRETIVA §2).
+
+/// Toggle shape: the Stabilize toggle forwards `Click(PAINTER_BRUSH_STABILIZE)` (consumed by the
+/// tool's `toggle_brush_smooth_stroke` arm). Adjust-Strength rides the same arm.
+#[test]
+fn stroke_stabilize_toggle_forwards_click() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let id = core_ids::PAINTER_BRUSH_STABILIZE;
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Stabilize toggle click ignored — the event.rs toggle arm is missing the id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if *i == id
+        )),
+        "Stabilize click never forwarded as Click(PAINTER_BRUSH_STABILIZE) — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
+/// Slider shape: a Spacing drag forwards `SetValue(PAINTER_BRUSH_SPACING, _)` (consumed by the
+/// tool's `set_brush_spacing` arm). All Stroke sliders ride the same `event.rs` arm.
+#[test]
+fn stroke_spacing_slider_forwards_setvalue() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let id = core_ids::PAINTER_BRUSH_SPACING;
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Spacing slider drag ignored — the event.rs ValueChanged arm is missing the id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "Spacing drag never forwarded as SetValue(PAINTER_BRUSH_SPACING) — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
+/// Dropdown shape: clicking the "Drag Dot" (wire 4) Method option forwards
+/// `SelectOption(PAINTER_BRUSH_STROKE_METHOD, "4")` (consumed by `set_brush_stroke_method`).
+/// Pins the option-id ↔ decode round-trip for the Stroke Method chip.
+#[test]
+fn stroke_method_option_forwards_selectoption() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let opt = core_ids::painter_brush_stroke_method_option_id(4);
+    let outcome = host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(opt));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Method option click ignored — decode_stroke_method_option is missing"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(i, v))
+                if *i == core_ids::PAINTER_BRUSH_STROKE_METHOD && v == "4"
+        )),
+        "Method pick never forwarded as SelectOption(PAINTER_BRUSH_STROKE_METHOD, \"4\") — \
+         seam dead. drained = {actions:?}"
+    );
+}

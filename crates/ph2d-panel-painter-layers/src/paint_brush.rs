@@ -80,6 +80,19 @@ const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     color: [0.0, 0.0, 0.0],
     blend: 0,
     eraser: false,
+    // Stroke section (mirrors BrushSpec::default / Blender defaults).
+    stroke_method: 3, // Space
+    spacing: 0.10,
+    space_attenuation: true,
+    jitter: 0.0,
+    jitter_absolute_px: 0.0,
+    jitter_unit: 0, // Brush
+    dash_ratio: 1.0,
+    dash_samples: 20,
+    input_samples: 1,
+    smooth_stroke: false,
+    smooth_radius_px: 75.0,
+    smooth_factor: 0.9,
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in
@@ -162,8 +175,21 @@ pub(crate) fn paint_brush_mode(
     // (read-only for presets), editable when the Custom preset is selected. ──
     y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
 
+    // ── Stroke section (Blender Stroke panel: method/spacing/jitter/dash/
+    // input-samples/stabilize). Owns its own dropdown-popover deferral below. ──
+    y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+
     // ── Eraser: full-width mode toggle (Accent while erasing) ──
-    y = paint_eraser_toggle(ctx, theme, x, content_w, y, brush.eraser);
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_ERASER,
+        "Eraser",
+        brush.eraser,
+    );
 
     // ── Colour: label + swatch (click opens the shared Blender picker) ──
     paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
@@ -189,23 +215,27 @@ pub(crate) fn paint_brush_mode(
             cur,
         );
     }
+    // Stroke-section dropdowns (Method + Jitter Unit) — drained last so they sit
+    // on top of every body row, same as the Blend/Falloff chips above.
+    crate::paint_stroke::paint_stroke_popovers(ctx, theme);
 }
 
 /// Args for [`paint_param_row`] (grouped to dodge the too-many-arguments lint).
-struct ParamRow<'a, 'b> {
-    ctx: &'a mut PaintCtx<'b>,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    label: &'a str,
-    id: ph2d_a11y::NodeId,
-    value: f32,
-    readout: &'a str,
+/// `pub(crate)` so the Stroke section ([`crate::paint_stroke`]) reuses the same row.
+pub(crate) struct ParamRow<'a, 'b> {
+    pub(crate) ctx: &'a mut PaintCtx<'b>,
+    pub(crate) theme: ph2d_tokens::Theme,
+    pub(crate) x: f32,
+    pub(crate) content_w: f32,
+    pub(crate) y: f32,
+    pub(crate) label: &'a str,
+    pub(crate) id: ph2d_a11y::NodeId,
+    pub(crate) value: f32,
+    pub(crate) readout: &'a str,
 }
 
 /// Paint one "label · slider · readout" brush param row. Returns the next `y`.
-fn paint_param_row(r: ParamRow) -> f32 {
+pub(crate) fn paint_param_row(r: ParamRow) -> f32 {
     let ParamRow {
         ctx,
         theme,
@@ -241,23 +271,26 @@ fn paint_param_row(r: ParamRow) -> f32 {
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
-/// Paint the full-width Eraser mode toggle (Accent while `on`). Returns next `y`.
-fn paint_eraser_toggle(
+/// Paint a full-width toggle Button labelled `label` (Accent while `on`). Returns next `y`.
+/// `pub(crate)` so the Stroke section reuses it for its Adjust-Strength / Stabilize toggles.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_toggle_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
+    id: ph2d_a11y::NodeId,
+    label: &str,
     on: bool,
 ) -> f32 {
-    let id = core_ids::PAINTER_BRUSH_ERASER;
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
     let st = ctx
         .host
         .store()
         .button_state(id)
         .unwrap_or(ButtonState::Normal);
-    let mut btn = Button::new(id, "Eraser").state(st);
+    let mut btn = Button::new(id, label).state(st);
     if on {
         btn.kind = ButtonKind::Accent;
     }
@@ -330,8 +363,9 @@ fn paint_color_swatch_row(
 }
 
 /// Deferred paint of an open brush dropdown popover (clamped to the viewport).
-/// Shared by the Blend + Falloff chips (mirror of `crate::blend::paint_blend_popover`).
-fn paint_dropdown_popover(
+/// Shared by the Blend + Falloff chips + the Stroke section (mirror of
+/// `crate::blend::paint_blend_popover`).
+pub(crate) fn paint_dropdown_popover(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     id: ph2d_a11y::NodeId,
@@ -400,8 +434,9 @@ fn paint_brush_slider(
 
 /// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when
 /// the chip is open (the caller stashes the rect into the matching pending slot).
+/// `pub(crate)` so the Stroke section reuses it for Method + Jitter Unit.
 #[allow(clippy::too_many_arguments)]
-fn paint_dropdown_row(
+pub(crate) fn paint_dropdown_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,

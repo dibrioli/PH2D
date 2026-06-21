@@ -21,6 +21,11 @@ fn white_canvas(size: u32, radius: f32) -> PainterTool {
         hardness: 1.0, // hard disk → deterministic centre
         falloff: Falloff::Constant,
         color: [0.0, 0.0, 0.0],
+        // These tests assert FULL-coverage pixels to verify painting mechanics
+        // (alpha-lock / undo / blend). The Blender-default "Adjust Strength for
+        // Spacing" attenuates a lone dab below full opacity, so opt out here — the
+        // attenuation behaviour has its own dedicated engine test.
+        space_attenuation: false,
         ..Default::default()
     };
     t
@@ -110,6 +115,7 @@ fn alpha_lock_blocks_paint_on_transparency() {
         hardness: 1.0,
         falloff: Falloff::Constant,
         color: [0.0, 0.0, 0.0],
+        space_attenuation: false, // full coverage for the alpha-lock assertion
         ..Default::default()
     };
     // Enable alpha lock on the active layer.
@@ -212,6 +218,7 @@ fn panel_events_drive_brush_size_colour_blend() {
     t.set_brush_size_px(4.0);
     t.paint.brush.hardness = 1.0; // hard disk → deterministic full coverage
     t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false; // full coverage for the pixel assertion
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
     assert_eq!(
@@ -478,4 +485,65 @@ fn stroke_is_one_undo_step_and_redoable() {
         [0, 0, 0, 255],
         "stroke start back to black"
     );
+}
+
+#[test]
+fn stroke_section_panel_events_route_to_brush_settings() {
+    // Behavioural seam (tool layer): a real `PanelEvent` from the Stroke section reaches the
+    // matching `set_brush_*` setter and is reflected in the next `brush_settings()` snapshot,
+    // including the clamps and the jitter-unit conditional routing.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+
+    // Method dropdown (DragDot = wire 4).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_STROKE_METHOD,
+        "4".into(),
+    ));
+    assert_eq!(t.brush_settings().stroke_method, 4);
+
+    // Spacing slider (fraction-of-diameter track).
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SPACING, 0.25));
+    assert!((t.brush_settings().spacing - 0.25).abs() < 1e-6);
+
+    // "Adjust Strength for Spacing" toggles from the default ON.
+    assert!(t.brush_settings().space_attenuation);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+    assert!(!t.brush_settings().space_attenuation);
+
+    // Input samples: track 1.0 → max window; 0.0 → 1.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        1.0,
+    ));
+    assert_eq!(t.brush_settings().input_samples, BRUSH_COUNT_SLIDER_MAX);
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        0.0,
+    ));
+    assert_eq!(t.brush_settings().input_samples, 1);
+
+    // Stabilize toggle + radius slider (track → px via BRUSH_SMOOTH_RADIUS_MAX_PX).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STABILIZE));
+    assert!(t.brush_settings().smooth_stroke);
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STABILIZE_RADIUS,
+        0.5,
+    ));
+    assert!((t.brush_settings().smooth_radius_px - BRUSH_SMOOTH_RADIUS_MAX_PX * 0.5).abs() < 1e-3);
+
+    // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        "1".into(),
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_JITTER, 1.0));
+    assert!((t.brush_settings().jitter_absolute_px - BRUSH_JITTER_ABS_MAX_PX).abs() < 1e-3);
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        "0".into(),
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_JITTER, 0.3));
+    assert!((t.brush_settings().jitter - 0.3).abs() < 1e-6);
 }

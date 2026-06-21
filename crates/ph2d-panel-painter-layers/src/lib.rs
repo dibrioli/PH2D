@@ -33,6 +33,7 @@ mod paint_adjust;
 mod paint_brush;
 mod paint_falloff;
 mod paint_rows;
+mod paint_stroke;
 mod populate;
 pub mod state;
 

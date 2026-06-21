@@ -143,6 +143,53 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
 }
 
+// ── Stroke section (the layers-panel "Stroke" sub-section; Blender Stroke panel) ──
+// Clean-room port of the Blender 2D-paint "Stroke" controls. All forward over the
+// frozen `PanelEvent` channel to `PainterTool::set_brush_*` (the single clamp source).
+
+/// Brush "Stroke Method" dropdown chip (Dots/Airbrush/Anchored/Space/DragDot/Line/Curve).
+/// `SelectOption` → `set_brush_stroke_method`. Options via [`painter_brush_stroke_method_option_id`].
+pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stroke_method");
+/// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %).
+/// `SetValue` → `set_brush_spacing`.
+pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
+/// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`).
+/// `Click` → `set_brush_space_attenuation` (toggles).
+pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
+/// Brush "Jitter" slider (`0..1` track; relative-to-diameter under the Brush unit, or maps to
+/// pixels under the View unit). `SetValue` → `set_brush_jitter_norm`.
+pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
+/// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px).
+/// `SelectOption` → `set_brush_jitter_unit`. Options via [`painter_brush_jitter_unit_option_id`].
+pub const PAINTER_BRUSH_JITTER_UNIT: NodeId = hash_node_id("painter_brush.jitter_unit");
+/// Brush "Dash Ratio" slider (`0..1` on-fraction of the dash period). `SetValue` → `set_brush_dash_ratio`.
+pub const PAINTER_BRUSH_DASH_RATIO: NodeId = hash_node_id("painter_brush.dash_ratio");
+/// Brush "Dash Length" slider (`0..1` track → 1..64 dab-slots). `SetValue` → `set_brush_dash_length_norm`.
+pub const PAINTER_BRUSH_DASH_LENGTH: NodeId = hash_node_id("painter_brush.dash_length");
+/// Brush "Input Samples" slider (`0..1` track → 1..64 averaged samples).
+/// `SetValue` → `set_brush_input_samples_norm`.
+pub const PAINTER_BRUSH_INPUT_SAMPLES: NodeId = hash_node_id("painter_brush.input_samples");
+/// "Stabilize Stroke" (smooth-stroke) toggle. `Click` → `set_brush_smooth_stroke` (toggles).
+pub const PAINTER_BRUSH_STABILIZE: NodeId = hash_node_id("painter_brush.stabilize");
+/// Stabilizer "Radius" slider (`0..1` track → 0..200 px dead-zone). `SetValue` → `set_brush_smooth_radius_norm`.
+pub const PAINTER_BRUSH_STABILIZE_RADIUS: NodeId = hash_node_id("painter_brush.stabilize_radius");
+/// Stabilizer "Factor" slider (`0..1` lag). `SetValue` → `set_brush_smooth_factor`.
+pub const PAINTER_BRUSH_STABILIZE_FACTOR: NodeId = hash_node_id("painter_brush.stabilize_factor");
+
+/// Derive the stable [`NodeId`] for stroke-method option `m` (the [`StrokeMethod`] wire
+/// discriminant) in the open Stroke Method dropdown popover. Mirror of the blend option factory.
+#[must_use]
+pub fn painter_brush_stroke_method_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.strokeopt.{m}"))
+}
+
+/// Derive the stable [`NodeId`] for jitter-unit option `u` (`0` = Brush, `1` = View) in the open
+/// Jitter Unit dropdown popover.
+#[must_use]
+pub fn painter_brush_jitter_unit_option_id(u: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.jituopt.{u}"))
+}
+
 // ── Brush Falloff curve editor (the always-on shape preview that becomes an
 // editable curve when the `Custom` preset is selected — Blender's Falloff
 // `CurveMapping` graph). The brush is tool-global, so these are fixed ids. The

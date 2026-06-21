@@ -430,8 +430,13 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Eraser toggle → forward as a Click (the tool flips erase mode).
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
+        // Eraser + the two Stroke-section toggles (Adjust Strength / Stabilize) →
+        // forward as a Click (the tool flips the matching bool).
+        WidgetEvent::Click(id)
+            if id == core_ids::PAINTER_BRUSH_ERASER
+                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
+                || id == core_ids::PAINTER_BRUSH_STABILIZE =>
+        {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
@@ -456,13 +461,20 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Blend / Falloff popover option picked → close the chip + apply.
+        // Blend / Falloff / Stroke-Method / Jitter-Unit popover option picked →
+        // close the chip + apply.
         WidgetEvent::Click(id) => {
             if let Some(mode) = decode_brush_blend_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_BLEND, mode);
                 Some(true)
             } else if let Some(preset) = decode_brush_falloff_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_FALLOFF, preset);
+                Some(true)
+            } else if let Some(m) = decode_stroke_method_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_STROKE_METHOD, m);
+                Some(true)
+            } else if let Some(u) = decode_jitter_unit_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_JITTER_UNIT, u);
                 Some(true)
             } else {
                 None
@@ -485,11 +497,18 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Brush sliders (Size / Strength) drag → forward the freshly-dispatched
-        // 0..1 value.
+        // Brush sliders (Size / Strength + the Stroke-section sliders) drag →
+        // forward the freshly-dispatched 0..1 track value; the tool maps each.
         WidgetEvent::ValueChanged(id)
             if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
-                || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER =>
+                || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER
+                || id == core_ids::PAINTER_BRUSH_SPACING
+                || id == core_ids::PAINTER_BRUSH_JITTER
+                || id == core_ids::PAINTER_BRUSH_DASH_RATIO
+                || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
+                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
+                || id == core_ids::PAINTER_BRUSH_STABILIZE_RADIUS
+                || id == core_ids::PAINTER_BRUSH_STABILIZE_FACTOR =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()
@@ -543,6 +562,16 @@ fn decode_brush_blend_option(id: ph2d_a11y::NodeId) -> Option<u8> {
 /// per-layer), so iterate the stable preset ids.
 fn decode_brush_falloff_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
+}
+
+/// Decode a Stroke-Method popover option id → its [`StrokeMethod`] wire `u8` (the 7 methods).
+fn decode_stroke_method_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    (0..7).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
+}
+
+/// Decode a Jitter-Unit popover option id → its wire `u8` (`0` = Brush, `1` = View).
+fn decode_jitter_unit_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    (0..2).find(|&u| core_ids::painter_brush_jitter_unit_option_id(u) == id)
 }
 
 /// Fallback target for the Falloff "−" button when no point is selected: the

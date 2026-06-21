@@ -59,6 +59,14 @@ pub fn populate(store: &mut WidgetStore) {
     let brush_sliders = [
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
         ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        // Stroke section sliders (all `0..1` track; the tool maps each to its range).
+        ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
+        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
+        ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
+        ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
+        ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE_RADIUS,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE_FACTOR,
     ];
     for id in brush_sliders {
         store.register(
@@ -70,12 +78,14 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Colour swatch + Eraser toggle — Buttons; clicking the swatch toggles the
-    // shared Blender picker, the eraser flips erase mode. MUST be registered here
-    // or the dispatcher drops the click.
+    // Colour swatch + Eraser toggle + the two Stroke-section toggles (Adjust
+    // Strength / Stabilize) — Buttons. MUST be registered here or the dispatcher
+    // drops the click (the populate-register gotcha).
     for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
+        ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
     ] {
         store.register(
             id,
@@ -84,11 +94,13 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Blend + Falloff chips are Dropdowns (generic open/close dispatch, like the
-    // per-row blend chip + the "+ Adj" picker); their options are popover buttons.
+    // Blend + Falloff + Stroke-Method + Jitter-Unit chips are Dropdowns (generic
+    // open/close dispatch); their options are popover buttons.
     for id in [
         ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,
+        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_UNIT,
     ] {
         store.register(
             id,

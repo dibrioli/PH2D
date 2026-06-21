@@ -12,8 +12,9 @@ use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, FalloffPoint, HandleType, MAX_FALLOFF_POINTS,
-    Stroke, StrokePoint, eval_falloff_curve, stamp_dab,
+    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, FalloffPoint, HandleType, JitterUnit,
+    MAX_FALLOFF_POINTS, MAX_INPUT_SAMPLES, Stroke, StrokeMethod, StrokePoint, eval_falloff_curve,
+    stamp_dab,
 };
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
@@ -22,6 +23,20 @@ pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
 /// Largest brush radius the size UI maps to, in image pixels. (The engine's own
 /// allocation cap is higher; this is the interactive range, not a hard limit.)
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
+
+// Interactive UI ranges for the Stroke section's non-`0..1` sliders. The slider's
+// `0..1` track maps onto `0..MAX` (or `1..MAX` for counts); these are the single
+// source of truth shared by the tool setters and the panel's value↔track maps.
+/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = 100% = one full
+/// diameter between dab centres). The engine accepts more; this is the interactive top.
+pub const BRUSH_SPACING_MAX: f32 = 1.0;
+/// Max absolute jitter the slider reaches, in pixels (View unit).
+pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
+/// Max stabilizer dead-zone radius the slider reaches, in pixels.
+pub const BRUSH_SMOOTH_RADIUS_MAX_PX: f32 = 200.0;
+/// Max value for the Input Samples / Dash Length count sliders (mirrors the engine's
+/// input-sample window cap).
+pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
 
 /// A compact snapshot of the active brush for the layers panel's Brush section.
 /// Published each frame by the shell bridge (mirror of the `LayerStack`
@@ -53,6 +68,32 @@ pub struct BrushSettings {
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
+
+    // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
+    /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
+    pub stroke_method: u8,
+    /// Spacing as a fraction of diameter (`0.10` = 10%); the slider track is this value.
+    pub spacing: f32,
+    /// "Adjust Strength for Spacing" on/off.
+    pub space_attenuation: bool,
+    /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
+    pub jitter: f32,
+    /// Absolute jitter in pixels — the Jitter slider under the View unit.
+    pub jitter_absolute_px: f32,
+    /// Jitter-unit wire discriminant ([`JitterUnit::to_u8`]; `0` = Brush, `1` = View).
+    pub jitter_unit: u8,
+    /// Dash on-fraction (`0..1`).
+    pub dash_ratio: f32,
+    /// Dash period in dab-slots.
+    pub dash_samples: u32,
+    /// Input-samples averaging window (`>= 1`).
+    pub input_samples: u32,
+    /// "Stabilize Stroke" (smooth-stroke) on/off.
+    pub smooth_stroke: bool,
+    /// Stabilizer dead-zone radius in pixels.
+    pub smooth_radius_px: f32,
+    /// Stabilizer lag (`0..1`).
+    pub smooth_factor: f32,
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
@@ -279,6 +320,18 @@ impl PainterTool {
             color: b.color,
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
+            stroke_method: b.stroke_method.to_u8(),
+            spacing: b.spacing,
+            space_attenuation: b.space_attenuation,
+            jitter: b.jitter,
+            jitter_absolute_px: b.jitter_absolute_px,
+            jitter_unit: b.jitter_unit.to_u8(),
+            dash_ratio: b.dash_ratio,
+            dash_samples: b.dash_samples,
+            input_samples: b.input_samples,
+            smooth_stroke: b.smooth_stroke,
+            smooth_radius_px: b.smooth_radius_px,
+            smooth_factor: b.smooth_factor,
         }
     }
 
@@ -378,6 +431,75 @@ impl PainterTool {
     pub fn set_brush_blend(&mut self, mode: u8) {
         self.paint.brush.blend = BrushBlend::from_u8(mode);
     }
+
+    // ── Stroke section setters (the single clamp source; the panel forwards raw UI values) ──
+
+    /// Set the stroke method from a wire discriminant (out-of-range → Space).
+    pub fn set_brush_stroke_method(&mut self, m: u8) {
+        self.paint.brush.stroke_method = StrokeMethod::from_u8(m);
+    }
+
+    /// Set spacing as a fraction of diameter (slider track), clamped to the interactive range.
+    pub fn set_brush_spacing(&mut self, frac: f32) {
+        self.paint.brush.spacing = frac.clamp(0.01, BRUSH_SPACING_MAX);
+    }
+
+    /// Toggle "Adjust Strength for Spacing".
+    pub fn toggle_brush_space_attenuation(&mut self) {
+        self.paint.brush.space_attenuation = !self.paint.brush.space_attenuation;
+    }
+
+    /// Set the Jitter slider (`0..1` track), routed by the current unit: `Brush` → relative jitter
+    /// (`0..1`), `View` → absolute pixels (`track × BRUSH_JITTER_ABS_MAX_PX`).
+    pub fn set_brush_jitter_norm(&mut self, t: f32) {
+        let t = t.clamp(0.0, 1.0);
+        match self.paint.brush.jitter_unit {
+            JitterUnit::View => self.paint.brush.jitter_absolute_px = t * BRUSH_JITTER_ABS_MAX_PX,
+            JitterUnit::Brush => self.paint.brush.jitter = t,
+        }
+    }
+
+    /// Set the jitter unit from a wire discriminant (out-of-range → Brush).
+    pub fn set_brush_jitter_unit(&mut self, u: u8) {
+        self.paint.brush.jitter_unit = JitterUnit::from_u8(u);
+    }
+
+    /// Set the dash on-fraction (`0..1`).
+    pub fn set_brush_dash_ratio(&mut self, t: f32) {
+        self.paint.brush.dash_ratio = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the dash period from the slider's `0..1` track → `1..=BRUSH_COUNT_SLIDER_MAX` slots.
+    pub fn set_brush_dash_length_norm(&mut self, t: f32) {
+        self.paint.brush.dash_samples = count_from_norm(t);
+    }
+
+    /// Set the input-samples window from the slider's `0..1` track → `1..=BRUSH_COUNT_SLIDER_MAX`.
+    pub fn set_brush_input_samples_norm(&mut self, t: f32) {
+        self.paint.brush.input_samples = count_from_norm(t);
+    }
+
+    /// Toggle "Stabilize Stroke" (smooth-stroke).
+    pub fn toggle_brush_smooth_stroke(&mut self) {
+        self.paint.brush.smooth_stroke = !self.paint.brush.smooth_stroke;
+    }
+
+    /// Set the stabilizer dead-zone radius from the slider's `0..1` track → `0..MAX` px.
+    pub fn set_brush_smooth_radius_norm(&mut self, t: f32) {
+        self.paint.brush.smooth_radius_px = t.clamp(0.0, 1.0) * BRUSH_SMOOTH_RADIUS_MAX_PX;
+    }
+
+    /// Set the stabilizer lag (`0..1`).
+    pub fn set_brush_smooth_factor(&mut self, t: f32) {
+        self.paint.brush.smooth_factor = t.clamp(0.0, 1.0);
+    }
+}
+
+/// Map a slider's `0..1` track onto a count in `1..=BRUSH_COUNT_SLIDER_MAX` (Input Samples /
+/// Dash Length). Inverse of `count_to_norm` in the panel.
+fn count_from_norm(t: f32) -> u32 {
+    let span = (BRUSH_COUNT_SLIDER_MAX - 1) as f32;
+    1 + (t.clamp(0.0, 1.0) * span).round() as u32
 }
 
 impl CanvasPaintTool for PainterTool {

@@ -73,6 +73,16 @@ impl StrokeMethod {
         matches!(self, Self::Space)
     }
 
+    /// True when the **Spacing** param (and its "Adjust Strength" attenuation toggle)
+    /// is meaningful — the methods that lay dabs at a fixed arc-length interval
+    /// (Blender: SPACE/LINE/CURVE). Same set as [`uses_dash`](Self::uses_dash) today
+    /// (both controls are spacing-driven), but kept as its own predicate so the UI
+    /// gate reads by intent rather than by coincidence, and the two can diverge.
+    #[must_use]
+    pub fn uses_spacing(self) -> bool {
+        matches!(self, Self::Space | Self::Line | Self::Curve)
+    }
+
     /// True when dabs are gated by the dash pattern (Blender: SPACE/LINE/CURVE).
     #[must_use]
     pub fn uses_dash(self) -> bool {
@@ -158,6 +168,32 @@ mod tests {
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
         // Unknown → Space (paints), not Dots.
         assert_eq!(StrokeMethod::from_u8(200), StrokeMethod::Space);
+    }
+
+    #[test]
+    fn stroke_panel_visibility_matches_blender() {
+        use StrokeMethod::{Airbrush, Anchored, Curve, DragDot, Dots, Line, Space};
+        // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter, Stabilize) per
+        // method. Input Samples is always shown, so it is not in the table. This locks
+        // the per-method gate the layers panel paints against — a predicate edit that
+        // breaks parity (e.g. re-enabling Stabilize on Line) goes red here, not in a
+        // human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
+        let rows = [
+            //         spacing  dash   jitter stabilize
+            (Dots, false, false, true, true),
+            (Airbrush, false, false, true, true),
+            (Anchored, false, false, false, false),
+            (Space, true, true, true, true),
+            (DragDot, false, false, false, false),
+            (Line, true, true, true, false),
+            (Curve, true, true, true, true),
+        ];
+        for (m, spacing, dash, jitter, stabilize) in rows {
+            assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");
+            assert_eq!(m.uses_dash(), dash, "{m:?} Dash visibility");
+            assert_eq!(m.allows_jitter(), jitter, "{m:?} Jitter visibility");
+            assert_eq!(m.supports_smooth(), stabilize, "{m:?} Stabilize visibility");
+        }
     }
 
     #[test]

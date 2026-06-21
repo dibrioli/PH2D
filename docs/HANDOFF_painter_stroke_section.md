@@ -18,9 +18,10 @@ A seção Stroke do Blender (Method/Spacing/Adjust-Strength/Jitter+Unit/Dash/Inp
 foi portada clean-room: engine puro (`ph2d-painter-brush`), seam do tool (`ph2d-tool-painter`),
 e painel UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`). Defaults conferidos = Blender DNA.
 Mas: (1) o traço não se desenha tão **contínuo** quanto no Blender; (2) **Dots/Drag Dot estão
-errados** — Drag Dot deixa um rastro em vez de um carimbo único; (3) a **UI não esconde os
-parâmetros por método** (Spacing aparece em Dots, onde não faz nada = no-op silencioso, viola
-DIRETIVA §2); (4) Anchored/Line/Curve seguem **DEFER** (sem finalização interativa).
+errados** — Drag Dot deixa um rastro em vez de um carimbo único; ~~(3) a UI não esconde os
+parâmetros por método~~ → **✅ RESOLVIDO 2026-06-21** (§2.1: rows gateadas por método + 3 testes
+paint-level provando o hit-rect sumir); (4) Anchored/Line/Curve seguem **DEFER** (sem finalização
+interativa). **Abertos agora: 2.2 (Drag Dot carimbo único) → 2.3 (medir densidade de amostra).**
 
 ## §1 — O que está PRONTO (mantenha; é fiel + testado)
 
@@ -52,23 +53,33 @@ Arquivos-chave:
 
 ## §2 — GAPS ABERTOS (o que o Enio reportou) — ataque nesta ordem
 
-### 2.1 — UI não esconde parâmetros por método (CLEAN WIN, faça primeiro) 🟢
-- **Sintoma (Enio):** "spacing só existe para Method:Space" — mas o painel mostra TODOS os params
-  pra todo método. Spacing num brush Dots não faz nada → **no-op silencioso (DIRETIVA §2)**.
-- **Onde:** [`paint_stroke.rs::paint_stroke_section`](../crates/ph2d-panel-painter-layers/src/paint_stroke.rs)
-  pinta todas as linhas incondicionalmente (não há `match`/`if` por `brush.stroke_method`).
-- **Comportamento Blender (por método mostra):**
-  - **Spacing + Adjust-Strength:** só Space/Line/Curve (baseado em espaçamento) → predicado
-    `uses_dash()` já existe (Space|Line|Curve) e serve; ou crie `uses_spacing()`.
-  - **Dash (Ratio/Length):** só Space/Line/Curve (`uses_dash()`).
-  - **Jitter + Unit:** todos MENOS Drag Dot/Anchored (`allows_jitter()`).
-  - **Stabilize (+ Radius/Factor):** todos MENOS Anchored/Drag Dot/Line (`supports_smooth()`).
-  - **Input Samples:** todos.
-  - **Airbrush rate:** só Airbrush (campo existe em `BrushSpec.airbrush_rate_s`; **não tem UI ainda**).
-- **Fix:** gate cada linha em `paint_stroke_section` pelo predicado do método (re-exporte os
-  predicados de `StrokeMethod` via `ph2d_tool_painter`, ou passe flags no `BrushSettings`). Cuidado
-  com a contagem de linhas / LOC do painel (paint_stroke.rs já tem ~286 LOC, cap 600). **Não basta
-  esconder** — confirme com seam test que o param escondido não é dispatchável (ou que o tool ignora).
+### 2.1 — UI não esconde parâmetros por método ✅ RESOLVIDO (2026-06-21)
+- **Sintoma (Enio):** "spacing só existe para Method:Space" — mas o painel mostrava TODOS os params
+  pra todo método. Spacing num brush Dots não fazia nada → **no-op silencioso (DIRETIVA §2)**.
+- **O que foi feito:**
+  - Engine: novo predicado `StrokeMethod::uses_spacing()` (= Space|Line|Curve, par do
+    `uses_dash()`, separado por intenção). Os outros predicados (`uses_dash`/`allows_jitter`/
+    `supports_smooth`) já existiam e bastaram. Lock comportamental novo:
+    `stroke_panel_visibility_matches_blender` (a matriz por-método dos 7 métodos vira teste).
+  - Painel ([`paint_stroke.rs::paint_stroke_section`](../crates/ph2d-panel-painter-layers/src/paint_stroke.rs)):
+    cada bloco agora gateado por `StrokeMethod::from_u8(brush.stroke_method).<predicado>()`.
+    Spacing+Adjust-Strength → `uses_spacing()`; Dash → `uses_dash()`; Jitter+Unit →
+    `allows_jitter()`; Stabilize(+Radius/Factor) → `supports_smooth()`; Method + Input Samples
+    sempre. **Valor persiste:** linha não-pintada não registra hit-rect (não clicável) mas o
+    `WidgetStore` mantém o valor → trocar de método e voltar preserva (fiel ao Blender).
+  - **Prova (DoD):** 3 testes paint-level novos em `paint_stroke.rs` dirigem o paint real e leem o
+    `HitIndex` — `dots_hides_spacing_and_dash_keeps_jitter_samples_stabilize`,
+    `space_shows_spacing_dash_and_the_rest`, `dragdot_shows_only_method_and_samples`. Provam que a
+    linha SOME (sem hit-rect) por método — o que os seam tests (que injetam `WidgetEvent` direto,
+    pulando o hit-test) não cobrem. Gates verdes: panel-LOC (file+fn), wiring-parity
+    (`hit_indexed_ids_are_registered`), seam (6), engine stroke (18).
+- **Airbrush rate — DEFERIDO de propósito (NÃO é gap aberto):** o `BrushSpec.airbrush_rate_s` existe
+  e o engine `Stroke::tick` (timer) é testado, MAS o `PainterTool::on_tick` é **stub vazio**
+  ([`trait_impls.rs:378`](../crates/ph2d-tool-painter/src/tool/trait_impls.rs)) — o shell chama
+  `on_tick` mas o tool não dirige o `tick`. Logo Airbrush ≈ Dots hoje, e um slider "rate" controlaria
+  valor morto = **exatamente o no-op que 2.1 conserta**. A UI do rate entra JUNTO com o wiring do
+  timer (mesma classe interativa do 2.4). Por enquanto Airbrush mostra Method/Jitter/Samples/Stabilize
+  (honesto, sem no-op). **Não adicione o slider antes de o `on_tick` dirigir o `tick`.**
 
 ### 2.2 — Drag Dot e Dots errados vs Blender 🟡
 - **Sintoma (Enio):** "Dot e drag dots não funcionam como no Blender."
@@ -163,7 +174,17 @@ pusha.** O Enio pediu smoke verde antes de ship. Slot warm em uso.
 - **Mas** entreguei a UI mostrando params irrelevantes por método (no-op silencioso — eu mesmo
   deveria ter pego: é exatamente o que a DIRETIVA §2 proíbe). E Drag Dot ficou como rastro (não
   pensei no caso "carimbo único interativo"). São gaps que um smoke pega na hora — entreguei sem o
-  smoke do Enio. **Não conte 2.1/2.2 como fechados.**
+  smoke do Enio.
 - O "não-contínuo" (2.3) eu **não consigo medir sem GUI** — não teorize a causa; instrumente a
   densidade de amostra primeiro. Pode ser FPS/coalescing (shell), não o engine.
-- Próximo passo sugerido: **2.1 (esconder params) → 2.2 (Drag Dot carimbo único) → medir 2.3**.
+- Próximo passo sugerido: ~~2.1~~ ✅ → **2.2 (Drag Dot carimbo único) → medir 2.3**.
+
+## §7 — Progresso (agente seguinte, 2026-06-21)
+
+- **2.1 fechado** (commit local, não pushado): gate por-método + `uses_spacing()` + matriz
+  Blender testada + 3 testes paint-level (HitIndex). Airbrush-rate deferido (on_tick é stub —
+  ver §2.1). **Ainda falta o smoke do Enio** (é GUI): trocar Method e ver os params certos
+  sumir/aparecer. Tudo o mais (2.2/2.3/2.4) intacto e aberto.
+- **2.2 (Drag Dot) é o próximo** — é interativo (preview + commit único no Up), parte tool/shell.
+  Lembrar: a metade UI-honesta do "Drag Dot errado" já caiu com 2.1 (Drag Dot agora só mostra
+  Method+Samples); falta o COMPORTAMENTO (não acumular rastro). Ver §2.2.

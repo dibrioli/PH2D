@@ -49,8 +49,9 @@ const FALLOFF_PT_NIL: FalloffPoint = FalloffPoint {
 
 /// Brush used before the first snapshot publish (Painter just activated). In
 /// practice the bridge publishes every frame the panel is visible, so this is
-/// only a defensive default.
-const FALLBACK_BRUSH: BrushSettings = BrushSettings {
+/// only a defensive default. `pub(crate)` so the Stroke-section paint tests reuse
+/// it as a Blender-default base (struct-update the one field under test).
+pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_px: 25.0,    // LITERAL-PX-OK: defensive pre-publish fallback default
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
     strength: 1.0,

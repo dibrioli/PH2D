@@ -9,6 +9,7 @@
 use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
+use crate::stroke_method::{JitterUnit, StrokeMethod};
 
 /// Largest brush radius the engine will allocate a dab for, in pixels. Derived from the editor
 /// overlay budget (HR-4): a 4096-px-radius dab would be an 8k² bbox — far past interactive. This
@@ -34,13 +35,51 @@ pub struct BrushSpec {
     pub blend: BrushBlend,
     /// Radial intensity profile.
     pub falloff: Falloff,
-    /// Random per-dab position offset as a fraction of the radius, `0..1` (Blender "Jitter").
+    /// Random per-dab position offset when [`Self::jitter_unit`] is [`JitterUnit::Brush`]: a
+    /// fraction of the diameter, `0..1` (Blender `Brush.jitter`, default `0.0`,
+    /// `DNA_brush_types.h:221`). Max radial offset ≈ `jitter × diameter`.
     pub jitter: f32,
     /// Paint colour, straight RGB in `[0, 1]` in the layer's native space.
     pub color: [f32; 3],
     /// The editable profile used when [`Self::falloff`] is [`Falloff::Custom`]
     /// (ignored otherwise). Kept inline so the spec stays `Copy`/alloc-free.
     pub custom_falloff: FalloffCurve,
+
+    // ── Stroke panel (Blender `paint_stroke.cc` / `DNA_brush_types.h`) ──────────────
+    /// How the pointer path becomes dabs (Blender `stroke_method`, default `Space`,
+    /// `DNA_brush_types.h:213`).
+    pub stroke_method: StrokeMethod,
+    /// "Adjust Strength for Spacing" — normalise total deposited opacity so a densely-spaced
+    /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON,
+    /// `DNA_brush_types.h:206`). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).
+    pub space_attenuation: bool,
+    /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
+    /// `DNA_brush_types.h:275`).
+    pub dash_ratio: f32,
+    /// Dash period length in dab-slots (Blender `dash_samples`, default `20`,
+    /// `DNA_brush_types.h:276`). `0` is treated as "no dash" (solid).
+    pub dash_samples: u32,
+    /// Unit for [`Self::jitter`] / [`Self::jitter_absolute_px`] (Blender `BRUSH_ABSOLUTE_JITTER`).
+    pub jitter_unit: JitterUnit,
+    /// Random per-dab offset in pixels when [`Self::jitter_unit`] is [`JitterUnit::View`]
+    /// (Blender `jitter_absolute`, default `0`, `DNA_brush_types.h:223`). Max radial offset
+    /// ≈ `2 × jitter_absolute_px`, independent of brush size.
+    pub jitter_absolute_px: f32,
+    /// Number of most-recent raw input samples box-averaged before processing, `>= 1`
+    /// (Blender `input_samples`, default `1`, `DNA_brush_types.h:216`).
+    pub input_samples: u32,
+    /// "Stabilize Stroke" (smooth-stroke) — the emitted point lags the cursor by a spring
+    /// (Blender `BRUSH_SMOOTH_STROKE`, default OFF, `DNA_brush_types.h:206`).
+    pub smooth_stroke: bool,
+    /// Stabilizer dead-zone radius in pixels: the smoothed point doesn't move until the cursor is
+    /// this far away (Blender `smooth_stroke_radius`, default `75`, `DNA_brush_types.h:228`).
+    pub smooth_radius_px: f32,
+    /// Stabilizer lag, `0..1`: fraction the smoothed point retains toward the previous position
+    /// each step (Blender `smooth_stroke_factor`, default `0.9`, `DNA_brush_types.h:230`).
+    pub smooth_factor: f32,
+    /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz,
+    /// `DNA_brush_types.h:232`). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
+    pub airbrush_rate_s: f32,
 }
 
 impl Default for BrushSpec {
@@ -58,6 +97,17 @@ impl Default for BrushSpec {
             jitter: 0.0,
             color: [0.0, 0.0, 0.0],
             custom_falloff: FalloffCurve::default(),
+            stroke_method: StrokeMethod::Space,
+            space_attenuation: true,
+            dash_ratio: 1.0,
+            dash_samples: 20,
+            jitter_unit: JitterUnit::Brush,
+            jitter_absolute_px: 0.0,
+            input_samples: 1,
+            smooth_stroke: false,
+            smooth_radius_px: 75.0,
+            smooth_factor: 0.9,
+            airbrush_rate_s: 0.1,
         }
     }
 }
@@ -74,6 +124,65 @@ impl BrushSpec {
     #[must_use]
     pub fn dab_spacing_px(&self) -> f32 {
         (self.spacing.max(0.01) * 2.0 * self.clamped_radius()).max(1.0)
+    }
+
+    /// Whether the dab at dash-slot `slot` is painted, given the dash pattern.
+    ///
+    /// Behavioural reference: `paint_stroke.cc::add_step` (`dash = (slot % dash_samples) /
+    /// dash_samples`; skip when `dash > dash_ratio`). `dash_samples == 0` ⇒ no dash (always on).
+    /// With the default `dash_ratio = 1.0` every slot is on (solid).
+    #[must_use]
+    pub fn dash_on(&self, slot: u32) -> bool {
+        if self.dash_samples == 0 {
+            return true;
+        }
+        let dash = (slot % self.dash_samples) as f32 / self.dash_samples as f32;
+        dash <= self.dash_ratio.clamp(0.0, 1.0)
+    }
+
+    /// "Adjust Strength for Spacing" multiplier applied to each dab's coverage, in `(0, 1]`.
+    ///
+    /// Behavioural reference (clean-room): `paint_stroke.cc::paint_stroke_integrate_overlap` +
+    /// `paint_stroke_overlapped_curve`. Models how many neighbouring dab falloff kernels stack at a
+    /// given phase and returns `1 / max_phase(Σ kernels)` so a densely-spaced stroke is normalised to
+    /// unit opacity instead of piling up. Returns `1.0` (no attenuation) when the flag is off or
+    /// spacing ≥ 100% (Blender's exact gate). Uses this brush's own falloff, like Blender.
+    #[must_use]
+    pub fn space_overlap_factor(&self) -> f32 {
+        // Blender stores spacing as an integer percent; this engine stores a 0..1 fraction.
+        let spacing_pct = (self.spacing * 100.0).max(0.0);
+        if !(self.space_attenuation && spacing_pct < 100.0) {
+            return 1.0;
+        }
+        // Sample the overlap sum at M phases across one period; the factor cancels the peak.
+        const M: usize = 10;
+        let g = 1.0 / M as f32;
+        let mut max = 0.0_f32;
+        for i in 0..M {
+            let o = self.overlapped_curve(i as f32 * g, spacing_pct).abs();
+            if o > max {
+                max = o;
+            }
+        }
+        if max == 0.0 { 1.0 } else { 1.0 / max }
+    }
+
+    /// Sum of overlapping dab falloff kernels at phase `x` for a given `spacing_pct`
+    /// (`paint_stroke_overlapped_curve`): `n = floor(100 / spacing_pct)` kernels spaced
+    /// `h = spacing_pct / 50` apart, each evaluated through this brush's falloff.
+    fn overlapped_curve(&self, x: f32, spacing_pct: f32) -> f32 {
+        let clamped = spacing_pct.max(0.1);
+        let n = (100.0 / clamped) as i32;
+        let h = clamped / 50.0;
+        let x0 = x - 1.0;
+        let mut sum = 0.0;
+        for i in 0..n {
+            let xx = (x0 + i as f32 * h).abs();
+            if xx < 1.0 {
+                sum += self.falloff_weight(xx);
+            }
+        }
+        sum
     }
 
     /// Falloff weight remapped by [`Self::hardness`]. `t = distance / radius`.

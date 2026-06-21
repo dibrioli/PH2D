@@ -1,14 +1,20 @@
-//! The "Space" stroke engine — turns a pointer path into evenly-spaced dabs.
+//! The stroke engine — turns a pointer path into dabs per the Blender "Stroke" panel.
 //!
 //! Behavioural reference (clean-room, no code copied): Blender
-//! `editors/sculpt_paint/paint_stroke.cc::paint_space_stroke` — dabs are emitted at fixed
-//! arc-length intervals (`spacing × diameter`) along the interpolated path, with pen pressure
-//! interpolated between input samples. Only the default "Space" method is implemented here;
-//! Smooth Stroke (stabilizer) and Airbrush (time-based emission) are deferred (see
-//! `docs/Painter/02_plano_de_implementacao.md` T2.3/T2.4).
+//! `editors/sculpt_paint/paint_stroke.cc`. The per-raw-sample pipeline is:
+//! **input-samples box-average** ([`crate::sampler`]) → **stabilize spring** (smooth-stroke,
+//! dead-zone + lerp) → per-[`StrokeMethod`] emission → per-dab **dash gate** + **jitter** +
+//! pressure **dynamics** + **space-attenuation**. `Space` resamples the path at `spacing ×
+//! diameter`; the per-event methods (`Dots`/`DragDot`/`Airbrush`) emit one dab per processed
+//! sample. The *interactive* methods (`Anchored`/`Line`/`Curve` — live preview + finalise) are
+//! owned by the tool/shell; the engine exposes [`Stroke::fill_segment`] (line/curve fill) and
+//! [`Stroke::tick`] (airbrush timer) as the primitives those drive. See
+//! `docs/Painter/03_algoritmos_referencia_blender.md` §3.
 
 use crate::dynamics::Dynamics;
+use crate::sampler::InputSampler;
 use crate::spec::BrushSpec;
+use crate::stroke_method::{JitterUnit, StrokeMethod};
 
 /// One input sample from the pointer device, in image-space pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -27,11 +33,11 @@ pub struct Dab {
     pub center: [f32; 2],
     /// Radius in pixels (brush radius × pressure size-scale).
     pub radius_px: f32,
-    /// Per-dab opacity in `[0, 1]` (brush strength × pressure coverage-scale).
+    /// Per-dab opacity in `[0, 1]` (brush strength × pressure coverage-scale × space-attenuation).
     pub coverage: f32,
 }
 
-/// Incremental stroke state. Feed it pointer samples; it emits dabs at the brush spacing.
+/// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
 ///
 /// Usage: [`Stroke::begin`] on pointer-down, [`Stroke::extend`] on every move. Both fill a
 /// caller-provided `Vec<Dab>` (cleared first) so a hot pointer loop allocates nothing per call.
@@ -39,13 +45,23 @@ pub struct Dab {
 pub struct Stroke {
     spec: BrushSpec,
     dynamics: Dynamics,
+    /// Last point the path was walked to — the spacing segment start AND the stabilize spring
+    /// anchor (Blender's `last_mouse_position`).
     last_pos: [f32; 2],
     last_pressure: f32,
-    /// Distance travelled since the last emitted dab.
+    /// Distance travelled since the last emitted dab (carried across segments).
     accum: f32,
     /// State for the dep-free jitter RNG (splitmix64).
     rng: u64,
     started: bool,
+    /// Input-samples box-average ring (front of the pipeline).
+    sampler: InputSampler,
+    /// Monotonic emitted-dab-slot counter that drives the dash pattern.
+    tot_samples: u32,
+    /// Cached "Adjust Strength for Spacing" multiplier (recomputed on every spec change).
+    overlap: f32,
+    /// Airbrush time accumulator in seconds, consumed by [`Stroke::tick`].
+    airbrush_accum_s: f32,
 }
 
 impl Stroke {
@@ -61,40 +77,138 @@ impl Stroke {
             accum: 0.0,
             rng: seed ^ 0x9E37_79B9_7F4A_7C15,
             started: false,
+            sampler: InputSampler::new(spec.input_samples),
+            tot_samples: 0,
+            overlap: spec.space_overlap_factor(),
+            airbrush_accum_s: 0.0,
         }
     }
 
-    /// Update the live brush parameters mid-stroke (e.g. the artist drags the size slider).
+    /// Update the live brush parameters mid-stroke (e.g. the artist drags a slider). Recomputes the
+    /// cached space-attenuation factor and re-clamps the input-samples window.
     pub fn set_spec(&mut self, spec: BrushSpec) {
         self.spec = spec;
+        self.overlap = spec.space_overlap_factor();
+        self.sampler.set_window(spec.input_samples);
     }
 
-    /// Begin the stroke at `p`, emitting the first dab at the down point.
+    /// Begin the stroke at `p`. For the continuous methods this emits the first dab at the down
+    /// point; the interactive methods (Anchored/Line/Curve) only record the anchor (they paint on
+    /// finalise via [`Stroke::fill_segment`]).
     pub fn begin(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
         self.last_pos = p.pos;
         self.last_pressure = p.pressure;
         self.accum = 0.0;
+        self.tot_samples = 0;
+        self.airbrush_accum_s = 0.0;
+        self.sampler.reset(p);
         self.started = true;
-        out.push(self.dab_at(p.pos, p.pressure));
+        if self.spec.stroke_method.emits_on_begin() {
+            let pr = self.method_pressure(p.pressure);
+            let dab = self.dab_at(p.pos, pr, self.method_overlap());
+            out.push(dab);
+            self.tot_samples = self.tot_samples.wrapping_add(1);
+        }
     }
 
-    /// Extend the stroke to `p`, emitting a dab every `spacing × diameter` of arc length since the
-    /// last dab. Pressure is interpolated along the segment. No-op until [`Stroke::begin`].
-    pub fn extend(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
+    /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, apply
+    /// the stabilize spring, then emit dabs per the stroke method. No-op until [`Stroke::begin`].
+    pub fn extend(&mut self, raw: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
         if !self.started {
             return;
         }
+        let avg = self.sampler.push_average(raw);
+        let target = match self.stabilized(avg) {
+            Some(t) => t,
+            None => return, // inside the stabilize dead-zone — no dab this event
+        };
+        match self.spec.stroke_method {
+            StrokeMethod::Space => self.walk_space(target, out),
+            StrokeMethod::Dots | StrokeMethod::Airbrush => {
+                self.emit_single(target.pos, self.method_pressure(target.pressure), out);
+                self.advance_anchor(target);
+            }
+            StrokeMethod::DragDot => {
+                self.emit_single(target.pos, 1.0, out);
+                self.advance_anchor(target);
+            }
+            // Interactive: the engine doesn't paint per-move. The tool drives `fill_segment` /
+            // a resized stamp on finalise; we still track the anchor so a preview can read it.
+            StrokeMethod::Anchored | StrokeMethod::Line | StrokeMethod::Curve => {
+                self.advance_anchor(target);
+            }
+        }
+    }
+
+    /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).
+    /// Pressure is constant (Blender fills lines/curves at pressure `1.0`). Appends to `out` (the
+    /// caller clears) and continues the dash counter so a multi-segment curve dashes continuously.
+    pub fn fill_segment(&mut self, a: [f32; 2], b: [f32; 2], pressure: f32, out: &mut Vec<Dab>) {
+        self.last_pos = a;
+        self.last_pressure = pressure;
+        self.accum = 0.0;
+        if self.spec.dash_on(self.tot_samples) {
+            let pr = self.method_pressure(pressure);
+            let d = self.dab_at(a, pr, self.method_overlap());
+            out.push(d);
+        }
+        self.tot_samples = self.tot_samples.wrapping_add(1);
+        self.walk_space(StrokePoint { pos: b, pressure }, out);
+    }
+
+    /// Advance the airbrush timer by `dt` seconds, emitting a dab at the current cursor every
+    /// `rate` seconds (Blender airbrush TIMER). No-op unless the method is [`StrokeMethod::Airbrush`].
+    /// The tool drives this from its tick while the button is held and the cursor is parked.
+    pub fn tick(&mut self, dt: f32, out: &mut Vec<Dab>) {
+        out.clear();
+        if !self.started || self.spec.stroke_method != StrokeMethod::Airbrush {
+            return;
+        }
+        let rate = self.spec.airbrush_rate_s.max(1e-3);
+        self.airbrush_accum_s += dt.max(0.0);
+        while self.airbrush_accum_s >= rate {
+            self.airbrush_accum_s -= rate;
+            let pr = self.method_pressure(self.last_pressure);
+            let d = self.dab_at(self.last_pos, pr, 1.0); // per-event: no spacing attenuation
+            out.push(d);
+            self.tot_samples = self.tot_samples.wrapping_add(1);
+        }
+    }
+
+    // ── internals ───────────────────────────────────────────────────────────────────
+
+    /// Apply the stabilize spring to the averaged sample. Returns `None` when the cursor is still
+    /// inside the dead-zone (skip this event entirely — what lets sharp turns settle).
+    fn stabilized(&mut self, avg: StrokePoint) -> Option<StrokePoint> {
+        if !self.spec.smooth_stroke || !self.spec.stroke_method.supports_smooth() {
+            return Some(avg);
+        }
+        let r = self.spec.smooth_radius_px.max(0.0);
+        if dist(self.last_pos, avg.pos) < r {
+            return None;
+        }
+        let u = self.spec.smooth_factor.clamp(0.0, 1.0);
+        Some(StrokePoint {
+            pos: lerp2(avg.pos, self.last_pos, u),
+            pressure: lerp(avg.pressure, self.last_pressure, u),
+        })
+    }
+
+    /// Space spacing walk from `last_pos` → `target`, emitting a dab every `spacing × diameter` of
+    /// arc length and carrying the residual distance across calls (`accum`).
+    fn walk_space(&mut self, target: StrokePoint, out: &mut Vec<Dab>) {
         let from = self.last_pos;
-        let to = p.pos;
+        let to = target.pos;
         let seg = dist(from, to);
         if seg <= f32::EPSILON {
-            self.last_pressure = p.pressure;
+            self.last_pressure = target.pressure;
             return;
         }
         let step = self.spec.dab_spacing_px();
         let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
+        let overlap = self.method_overlap();
         let mut traveled = 0.0;
         loop {
             let to_next = step - self.accum;
@@ -104,20 +218,58 @@ impl Stroke {
             traveled += to_next;
             let f = traveled / seg;
             let pos = [from[0] + dir[0] * traveled, from[1] + dir[1] * traveled];
-            let pressure = lerp(self.last_pressure, p.pressure, f);
-            out.push(self.dab_at(pos, pressure));
+            let pressure = lerp(self.last_pressure, target.pressure, f);
+            if self.spec.dash_on(self.tot_samples) {
+                let d = self.dab_at(pos, pressure, overlap);
+                out.push(d);
+            }
+            self.tot_samples = self.tot_samples.wrapping_add(1);
             self.accum = 0.0;
         }
         self.accum += seg - traveled;
         self.last_pos = to;
-        self.last_pressure = p.pressure;
+        self.last_pressure = target.pressure;
     }
 
-    /// Build a dab at `pos`/`pressure`, applying pressure dynamics and jitter.
-    fn dab_at(&mut self, pos: [f32; 2], pressure: f32) -> Dab {
+    /// Emit one dab at `pos`/`pressure` (the per-event methods). Per-event dabs carry no
+    /// space-attenuation (that normalises *dense spacing*, which these don't have).
+    fn emit_single(&mut self, pos: [f32; 2], pressure: f32, out: &mut Vec<Dab>) {
+        let d = self.dab_at(pos, pressure, 1.0);
+        out.push(d);
+        self.tot_samples = self.tot_samples.wrapping_add(1);
+    }
+
+    /// Move the spacing/spring anchor to `target` without resetting the spacing residual (used by
+    /// the per-event + interactive methods, which don't accumulate distance).
+    fn advance_anchor(&mut self, target: StrokePoint) {
+        self.last_pos = target.pos;
+        self.last_pressure = target.pressure;
+    }
+
+    /// Pressure to use given the method (DragDot/Anchored/Line force full pressure).
+    fn method_pressure(&self, pressure: f32) -> f32 {
+        if self.spec.stroke_method.forces_full_pressure() {
+            1.0
+        } else {
+            pressure
+        }
+    }
+
+    /// Space-attenuation multiplier for the current method — applied to the spaced fills
+    /// (Space/Line/Curve), `1.0` for the per-event methods.
+    fn method_overlap(&self) -> f32 {
+        match self.spec.stroke_method {
+            StrokeMethod::Space | StrokeMethod::Line | StrokeMethod::Curve => self.overlap,
+            _ => 1.0,
+        }
+    }
+
+    /// Build a dab at `pos`/`pressure`, applying pressure dynamics, the space-attenuation
+    /// `overlap` multiplier, and jitter.
+    fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32) -> Dab {
         let radius = self.spec.clamped_radius() * self.dynamics.radius_scale(pressure);
         let coverage =
-            (self.spec.strength * self.dynamics.coverage_scale(pressure)).clamp(0.0, 1.0);
+            (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         let center = self.apply_jitter(pos, radius);
         Dab {
             center,
@@ -126,15 +278,33 @@ impl Stroke {
         }
     }
 
-    /// Offset the dab centre by up to `jitter × radius` in a random direction.
+    /// Offset the dab centre by a random vector sampled uniformly inside a disc, sized by the
+    /// jitter unit: `Brush` → radius `jitter × diameter`; `View` → radius `2 × jitter_absolute_px`
+    /// (Blender `BKE_brush_jitter_pos`). No-op for methods that disable jitter (DragDot/Anchored).
     fn apply_jitter(&mut self, pos: [f32; 2], radius: f32) -> [f32; 2] {
-        let j = self.spec.jitter.clamp(0.0, 1.0);
-        if j <= 0.0 {
+        if !self.spec.stroke_method.allows_jitter() {
             return pos;
         }
-        let angle = self.next_f32() * std::f32::consts::TAU;
-        let mag = self.next_f32() * j * radius;
-        [pos[0] + angle.cos() * mag, pos[1] + angle.sin() * mag]
+        let max_offset = match self.spec.jitter_unit {
+            JitterUnit::Brush => self.spec.jitter.clamp(0.0, 1.0) * (2.0 * radius),
+            JitterUnit::View => 2.0 * self.spec.jitter_absolute_px.max(0.0),
+        };
+        if max_offset <= 0.0 {
+            return pos;
+        }
+        let (dx, dy) = self.disc_sample();
+        [pos[0] + dx * max_offset, pos[1] + dy * max_offset]
+    }
+
+    /// Uniform sample inside the unit disc by rejection (matches Blender's jitter sampling).
+    fn disc_sample(&mut self) -> (f32, f32) {
+        loop {
+            let x = self.next_f32() * 2.0 - 1.0;
+            let y = self.next_f32() * 2.0 - 1.0;
+            if x * x + y * y <= 1.0 {
+                return (x, y);
+            }
+        }
     }
 
     /// Dep-free deterministic `[0,1)` RNG (splitmix64 → top 24 bits).
@@ -161,184 +331,10 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::falloff::Falloff;
-
-    fn straight_spec(radius: f32, spacing: f32) -> BrushSpec {
-        BrushSpec {
-            radius_px: radius,
-            spacing,
-            falloff: Falloff::Constant,
-            ..Default::default()
-        }
-    }
-
-    fn no_dynamics() -> Dynamics {
-        Dynamics {
-            size_pressure: false,
-            strength_pressure: false,
-            ..Default::default()
-        }
-    }
-
-    #[test]
-    fn begin_emits_one_dab_at_down() {
-        let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-        let mut out = Vec::new();
-        s.begin(
-            StrokePoint {
-                pos: [5.0, 5.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert_eq!(out.len(), 1);
-        assert_eq!(out[0].center, [5.0, 5.0]);
-    }
-
-    #[test]
-    fn space_method_emits_at_arc_length_intervals() {
-        // radius 10 → diameter 20; spacing 0.5 → step 10 px.
-        let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-        let mut out = Vec::new();
-        s.begin(
-            StrokePoint {
-                pos: [0.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        // Move 100 px along +x: expect dabs at 10,20,...,100 ⟹ 10 dabs.
-        s.extend(
-            StrokePoint {
-                pos: [100.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert_eq!(
-            out.len(),
-            10,
-            "got {:?}",
-            out.iter().map(|d| d.center[0]).collect::<Vec<_>>()
-        );
-        assert!((out[0].center[0] - 10.0).abs() < 1e-3);
-        assert!((out[9].center[0] - 100.0).abs() < 1e-3);
-        for d in &out {
-            assert!((d.center[1]).abs() < 1e-4, "stayed on the x axis");
-        }
-    }
-
-    #[test]
-    fn accumulates_across_short_segments() {
-        // step = 10. Two 6-px moves (total 12) ⟹ exactly one dab (at arc-length 10).
-        let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-        let mut out = Vec::new();
-        s.begin(
-            StrokePoint {
-                pos: [0.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        s.extend(
-            StrokePoint {
-                pos: [6.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert_eq!(out.len(), 0, "6 < 10, no dab yet");
-        s.extend(
-            StrokePoint {
-                pos: [12.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert_eq!(out.len(), 1, "crossed 10 between 6 and 12");
-        assert!((out[0].center[0] - 10.0).abs() < 1e-3);
-    }
-
-    #[test]
-    fn zero_length_move_emits_nothing() {
-        let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
-        let mut out = Vec::new();
-        s.begin(
-            StrokePoint {
-                pos: [3.0, 3.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        s.extend(
-            StrokePoint {
-                pos: [3.0, 3.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert_eq!(out.len(), 0);
-    }
-
-    #[test]
-    fn pressure_interpolates_along_segment() {
-        // size follows pressure; check the dab radius grows along the segment.
-        let dyn_ = Dynamics {
-            size_pressure: true,
-            size_min: 0.0,
-            ..Default::default()
-        };
-        let mut s = Stroke::new(straight_spec(10.0, 0.5), dyn_, 1);
-        let mut out = Vec::new();
-        s.begin(
-            StrokePoint {
-                pos: [0.0, 0.0],
-                pressure: 0.0,
-            },
-            &mut out,
-        );
-        s.extend(
-            StrokePoint {
-                pos: [100.0, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        assert!(out.len() >= 2);
-        assert!(
-            out[0].radius_px < out[out.len() - 1].radius_px,
-            "radius rises with pressure"
-        );
-    }
-
-    #[test]
-    fn jitter_is_deterministic_for_a_seed() {
-        let spec = BrushSpec {
-            jitter: 0.5,
-            ..straight_spec(10.0, 0.5)
-        };
-        let run = || {
-            let mut s = Stroke::new(spec, no_dynamics(), 42);
-            let mut out = Vec::new();
-            s.begin(
-                StrokePoint {
-                    pos: [50.0, 50.0],
-                    pressure: 1.0,
-                },
-                &mut out,
-            );
-            s.extend(
-                StrokePoint {
-                    pos: [150.0, 50.0],
-                    pressure: 1.0,
-                },
-                &mut out,
-            );
-            out
-        };
-        assert_eq!(run(), run(), "same seed ⟹ identical jittered dabs");
-    }
+#[inline]
+fn lerp2(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
+    [lerp(a[0], b[0], t), lerp(a[1], b[1], t)]
 }
+
+#[cfg(test)]
+mod tests;

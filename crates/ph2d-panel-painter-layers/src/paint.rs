@@ -61,6 +61,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let theme = ctx.host.theme();
     state::set_pending_blend_dd(None);
     state::set_pending_adj_menu(None);
+    state::set_pending_brush_blend_dd(None);
 
     ctx.host
         .store_mut()
@@ -127,6 +128,12 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
     let mut y = body_paint_top;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
+
+    // Brush section (Size / Colour / Blend) at the top of the scrollable body,
+    // above the layer list. Reads the published `BrushSettings` snapshot; the
+    // open blend popover is a deferred pass below (like the per-row blend chip).
+    y = crate::paint_brush::paint_brush_section(ctx, theme, rect.x + PANEL_HEAD_PAD, content_w, y);
+    y += Spacing::Sm.px();
 
     // Row-id set published to the dispatch so it knows which NodeIds are
     // draggable layer rows (Coord drag foundation `1c3411d`). Filled in the
@@ -304,6 +311,11 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // Deferred: the single open blend dropdown popover, on top of everything.
     if let Some((layer_u64, chip_rect, cur_mode)) = state::take_pending_blend_dd() {
         crate::blend::paint_blend_popover(ctx, theme, layer_u64, chip_rect, cur_mode);
+    }
+
+    // Deferred: the brush blend popover (Brush section), same treatment.
+    if let Some((chip_rect, cur_mode)) = state::take_pending_brush_blend_dd() {
+        crate::paint_brush::paint_brush_blend_popover(ctx, theme, chip_rect, cur_mode);
     }
 
     // Deferred: the open "+ Adjustment" kind-picker menu, on top of everything

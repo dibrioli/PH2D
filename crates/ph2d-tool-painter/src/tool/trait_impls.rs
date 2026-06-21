@@ -130,7 +130,16 @@ impl Tool for PainterTool {
             // ── Layers panel: per-row sliders (opacity + adjustment params),
             // all stored 0..1; the tool maps each to its target. ───────────
             PanelEvent::SetValue(id, v) => {
-                if let Some((layer, kind)) = self.decode_layer_widget(id) {
+                // Brush section sliders (fixed ids, tool-global): Size + R/G/B.
+                if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER {
+                    self.set_brush_size_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_COLOR_R {
+                    self.set_brush_color_channel(0, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_COLOR_G {
+                    self.set_brush_color_channel(1, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_COLOR_B {
+                    self.set_brush_color_channel(2, v as f32);
+                } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
                         PainterLayerWidget::AdjParam0 => {
@@ -170,6 +179,12 @@ impl Tool for PainterTool {
                         ph2d_painter_effects::adjustments::AdjustmentKind::ALL.get(idx)
                 {
                     self.add_adjustment_layer(kind);
+                }
+            }
+            // ── Brush section blend pick: value = `BrushBlend` wire u8. ──────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_BLEND => {
+                if let Ok(mode) = value.parse::<u8>() {
+                    self.set_brush_blend(mode);
                 }
             }
             // ── Curves editor 2-D point drag: value = "layer:channel:index:x:y". ─

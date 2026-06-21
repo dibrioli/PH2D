@@ -11,7 +11,44 @@
 use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-use ph2d_painter_brush::{stamp_dab, BrushSpec, Dab, Dynamics, Stroke, StrokePoint};
+use ph2d_painter_brush::{stamp_dab, BrushBlend, BrushSpec, Dab, Dynamics, Stroke, StrokePoint};
+
+/// Smallest brush radius the size UI maps to, in image pixels. The size slider's
+/// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
+pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
+/// Largest brush radius the size UI maps to, in image pixels. (The engine's own
+/// allocation cap is higher; this is the interactive range, not a hard limit.)
+pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
+
+/// A compact snapshot of the active brush for the layers panel's Brush section.
+/// Published each frame by the shell bridge (mirror of the `LayerStack`
+/// snapshot) — the panel reads it to position the size/colour sliders and the
+/// blend chip; it never owns brush state.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BrushSettings {
+    /// Radius in image pixels (UI label "Size").
+    pub size_px: f32,
+    /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so
+    /// small brushes get more of the track).
+    pub size_norm: f32,
+    /// Straight-RGB paint colour in `[0, 1]`.
+    pub color: [f32; 3],
+    /// Blend-mode wire discriminant ([`BrushBlend::to_u8`]).
+    pub blend: u8,
+}
+
+/// Map a radius in pixels onto the size slider's `0..1` track (inverse of
+/// [`size_norm_to_px`]). Squared track → finer control at small sizes.
+fn size_px_to_norm(px: f32) -> f32 {
+    let span = BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX;
+    ((px - BRUSH_SIZE_MIN_PX) / span).clamp(0.0, 1.0).sqrt()
+}
+
+/// Map the size slider's `0..1` track onto a radius in pixels.
+fn size_norm_to_px(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    BRUSH_SIZE_MIN_PX + t * t * (BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX)
+}
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
 pub(crate) struct PaintState {
@@ -150,6 +187,60 @@ fn union_region(a: Region, b: Region) -> Region {
     Region { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
 }
 
+/// Brush-settings accessors — the Brush section of the layers panel and the
+/// `[` / `]` keyboard nudge drive these; the brush is plain state (changing it
+/// touches no pixels, so there is no undo entry or preview invalidation here).
+impl PainterTool {
+    /// Snapshot the active brush for the panel's Brush section.
+    #[must_use]
+    pub fn brush_settings(&self) -> BrushSettings {
+        let px = self.paint.brush.radius_px;
+        BrushSettings {
+            size_px: px,
+            size_norm: size_px_to_norm(px),
+            color: self.paint.brush.color,
+            blend: self.paint.brush.blend.to_u8(),
+        }
+    }
+
+    /// Set the brush radius in pixels, clamped to the interactive size range.
+    pub fn set_brush_size_px(&mut self, px: f32) {
+        self.paint.brush.radius_px = px.clamp(BRUSH_SIZE_MIN_PX, BRUSH_SIZE_MAX_PX);
+    }
+
+    /// Set the brush radius from the size slider's `0..1` track.
+    pub fn set_brush_size_norm(&mut self, t: f32) {
+        self.set_brush_size_px(size_norm_to_px(t));
+    }
+
+    /// Nudge the brush radius by one step — `[` (`dir < 0`) / `]` (`dir >= 0`).
+    /// Multiplicative for a constant *perceptual* step, with a ±1 px floor so the
+    /// smallest brushes still change. Returns the new radius in pixels.
+    pub fn nudge_brush_size(&mut self, dir: i32) -> f32 {
+        const STEP: f32 = 1.15;
+        let cur = self.paint.brush.radius_px;
+        let next = if dir >= 0 {
+            (cur * STEP).max(cur + 1.0)
+        } else {
+            (cur / STEP).min(cur - 1.0)
+        };
+        self.set_brush_size_px(next);
+        self.paint.brush.radius_px
+    }
+
+    /// Set one straight-RGB colour channel (`0..3`) of the brush, clamped `0..1`.
+    pub fn set_brush_color_channel(&mut self, ch: usize, v: f32) {
+        if ch < 3 {
+            self.paint.brush.color[ch] = v.clamp(0.0, 1.0);
+        }
+    }
+
+    /// Set the brush blend mode from a wire discriminant (out-of-range → Mix).
+    pub fn set_brush_blend(&mut self, mode: u8) {
+        self.paint.brush.blend = BrushBlend::from_u8(mode);
+    }
+}
+
 impl CanvasPaintTool for PainterTool {
     fn on_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
         if ev.phase == PointerPhase::Hover {
@@ -280,6 +371,83 @@ mod tests {
         t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Up));
         assert_eq!(px(&t, size, 3, 8), [0, 0, 0, 255], "recoloured the opaque side");
+    }
+
+    #[test]
+    fn brush_size_norm_round_trips_through_settings() {
+        let mut t = PainterTool::default();
+        t.set_brush_size_norm(0.5);
+        let s = t.brush_settings();
+        // Squared track: 0.5 → 1 + 0.25·(512−1) px, and the snapshot maps back.
+        assert!((s.size_px - 128.75).abs() < 0.01, "size_px = {}", s.size_px);
+        assert!((s.size_norm - 0.5).abs() < 1e-4, "size_norm = {}", s.size_norm);
+        // Clamps at the ends.
+        t.set_brush_size_norm(2.0);
+        assert!((t.brush_settings().size_px - BRUSH_SIZE_MAX_PX).abs() < 0.01);
+        t.set_brush_size_norm(-1.0);
+        assert!((t.brush_settings().size_px - BRUSH_SIZE_MIN_PX).abs() < 0.01);
+    }
+
+    #[test]
+    fn nudge_grows_and_shrinks_and_clamps() {
+        let mut t = PainterTool::default();
+        let start = t.brush_settings().size_px;
+        let up = t.nudge_brush_size(1);
+        assert!(up > start, "`]` grows ({start} → {up})");
+        let down = t.nudge_brush_size(-1);
+        assert!(down < up, "`[` shrinks ({up} → {down})");
+        // Bracket-down never goes below the floor.
+        for _ in 0..200 {
+            t.nudge_brush_size(-1);
+        }
+        assert!((t.brush_settings().size_px - BRUSH_SIZE_MIN_PX).abs() < 0.01);
+    }
+
+    #[test]
+    fn brush_color_channels_set_and_clamp() {
+        let mut t = PainterTool::default();
+        t.set_brush_color_channel(0, 0.5);
+        t.set_brush_color_channel(1, 2.0); // over → 1
+        t.set_brush_color_channel(2, -1.0); // under → 0
+        t.set_brush_color_channel(9, 0.7); // out-of-range channel → ignored
+        assert_eq!(t.brush_settings().color, [0.5, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn panel_events_drive_brush_size_colour_blend() {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+        let mut t = PainterTool::default();
+        // Size slider drag (0..1 track).
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SIZE_SLIDER, 0.5));
+        assert!((t.brush_settings().size_px - 128.75).abs() < 0.01);
+        // R/G/B sliders.
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_R, 1.0));
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_G, 0.25));
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_COLOR_B, 0.0));
+        assert_eq!(t.brush_settings().color, [1.0, 0.25, 0.0]);
+        // Blend dropdown pick (wire u8 → Multiply == 3).
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_BRUSH_BLEND,
+            "3".to_string(),
+        ));
+        assert_eq!(t.brush_settings().blend, 3);
+        // The chosen brush colour ([1, 0.25, 0]) + Multiply blend actually drive
+        // the next stroke: a hard dab over white → white·colour = the colour
+        // itself at full coverage (0.25·255 ≈ 64).
+        let size = 16u32;
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_size_px(4.0);
+        t.paint.brush.hardness = 1.0; // hard disk → deterministic full coverage
+        t.paint.brush.falloff = Falloff::Constant;
+        t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+        assert_eq!(
+            px(&t, size, 8, 8),
+            [255, 64, 0, 255],
+            "Multiply brush colour over white painted the colour"
+        );
     }
 
     #[test]

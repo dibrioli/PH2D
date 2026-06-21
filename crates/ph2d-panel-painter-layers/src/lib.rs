@@ -30,12 +30,13 @@ mod event;
 pub mod ids;
 mod paint;
 mod paint_adjust;
+mod paint_brush;
 mod paint_rows;
 mod populate;
 pub mod state;
 
 pub use state::{
-    PainterLayersPanelState, last_content_h, last_visible_h, set_current_layers,
+    PainterLayersPanelState, last_content_h, last_visible_h, set_current_brush, set_current_layers,
     set_current_selection,
 };
 

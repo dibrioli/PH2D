@@ -24,13 +24,20 @@ use ph2d_editor_core::ids::{
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
+use ph2d_tool_painter::{
+    AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES, MAX_BRUSH_BLEND_MODES,
+};
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // Brush section (Brush UI) widgets are fixed-id + tool-global, so they route
+    // before the per-layer dispatch (no `LayerStack` snapshot needed).
+    if let Some(consumed) = try_apply_brush_event(host, ev) {
+        return EventOutcome::from_bool(consumed);
+    }
     EventOutcome::from_bool(apply_event_impl(host, ev))
 }
 
@@ -396,6 +403,55 @@ fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
     (0..ph2d_tool_painter::AdjustmentKind::ALL.len() as u8)
         .find(|&i| core_ids::painter_adjustment_kind_option_id(i) == id)
         .map(usize::from)
+}
+
+/// Handle a Brush-section widget event (fixed-id, tool-global). Returns
+/// `Some(true)` when `ev` belonged to the Brush section (consumed), `None`
+/// otherwise (the caller falls through to the per-layer dispatch). Split out of
+/// `apply_event_impl` so that already-at-cap function stays put.
+fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
+    match ev {
+        // Blend popover option picked → close the brush dropdown + apply.
+        WidgetEvent::Click(id) => {
+            let mode = decode_brush_blend_option(id)?;
+            if let Some(InteractiveState::Dropdown {
+                open,
+                selected_index,
+                ..
+            }) = host.store_mut().get_mut(core_ids::PAINTER_BRUSH_BLEND)
+            {
+                *open = false;
+                *selected_index = Some(mode as usize);
+            }
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                    core_ids::PAINTER_BRUSH_BLEND,
+                    mode.to_string(),
+                )));
+            Some(true)
+        }
+        // Size + R/G/B colour slider drag → forward the freshly-dispatched 0..1.
+        WidgetEvent::ValueChanged(id)
+            if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
+                || id == core_ids::PAINTER_BRUSH_COLOR_R
+                || id == core_ids::PAINTER_BRUSH_COLOR_G
+                || id == core_ids::PAINTER_BRUSH_COLOR_B =>
+        {
+            let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id, v as f64,
+                )));
+            Some(true)
+        }
+        _ => None,
+    }
+}
+
+/// Decode a brush blend-mode popover option id → its mode `u8`. Fixed (not
+/// per-layer), so iterate the 24 stable ids.
+fn decode_brush_blend_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)
 }
 
 /// Decode a blend-mode popover option id → `(layer, mode_u8)`.

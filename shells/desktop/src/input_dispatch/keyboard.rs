@@ -98,6 +98,20 @@ impl App {
             return;
         }
 
+        // Painter brush size: `[` shrinks, `]` grows the active brush
+        // (Blender/Photoshop convention). Consumed only when the Painter tool is
+        // active (the nudge downcast gates on it), so the brackets fall through
+        // otherwise. `Pressed` covers held-key repeat so the size keeps changing.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code @ (KeyCode::BracketLeft | KeyCode::BracketRight)) =
+                physical_key
+        {
+            let dir = if code == KeyCode::BracketRight { 1 } else { -1 };
+            if self.painter_nudge_brush_size(dir) {
+                return;
+            }
+        }
+
         // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
         // Polygon / Star / Spiral) while Shape is active — the functional
         // selector until the on-screen picker lands in the end-of-impl chrome

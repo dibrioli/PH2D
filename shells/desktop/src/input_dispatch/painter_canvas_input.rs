@@ -29,6 +29,24 @@ thread_local! {
 }
 
 impl App {
+    /// Nudge the active Painter brush radius — `[` (`dir < 0`) shrinks, `]`
+    /// (`dir >= 0`) grows (Blender/Photoshop convention). Returns `true` when
+    /// consumed (the active tool IS the Painter), so the bracket key doesn't fall
+    /// through to other handlers.
+    pub(crate) fn painter_nudge_brush_size(&mut self, dir: i32) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let Some(tool) = gfx.tools.active_mut() else {
+            return false;
+        };
+        let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
+            return false;
+        };
+        painter.nudge_brush_size(dir);
+        true
+    }
+
     /// Primary Down on the canvas while the Painter is active: convert to image
     /// space and deliver as [`PointerPhase::Down`]. Returns `true` (consuming the
     /// click) iff the painter started a stroke, so it doesn't also pick/move the

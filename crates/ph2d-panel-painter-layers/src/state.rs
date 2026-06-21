@@ -18,7 +18,7 @@
 //! os únicos pontos de contato com o shell.
 
 use ph2d_editor_core::zones::Rect;
-use ph2d_tool_painter::{LayerId, LayerStack};
+use ph2d_tool_painter::{BrushSettings, LayerId, LayerStack};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -26,6 +26,17 @@ thread_local! {
     /// Snapshot do `LayerStack` publicado pelo host antes de cada `paint`.
     /// `None` até o primeiro push (panel pinta o placeholder "No layers").
     static CURRENT_LAYERS: RefCell<Option<LayerStack>> = const { RefCell::new(None) };
+
+    /// Snapshot do brush ativo publicado pelo host antes de cada `paint` (mirror
+    /// de [`CURRENT_LAYERS`]). `None` até o primeiro push (Brush section usa o
+    /// default). `Copy`, então o clone é trivial.
+    static CURRENT_BRUSH: Cell<Option<BrushSettings>> = const { Cell::new(None) };
+
+    /// The open brush blend-mode dropdown to render as a deferred popover on top
+    /// of the body (after the clip pops): `(chip_rect, current_mode_u8)`. Set
+    /// during the Brush section paint, drained at the end of `paint`. Mirror of
+    /// [`PENDING_BLEND_DD`] but for the single fixed brush chip.
+    static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
@@ -187,6 +198,29 @@ pub fn set_current_layers(stack: Option<LayerStack>) {
 /// placeholder "No layers".
 pub(crate) fn current_layers() -> Option<LayerStack> {
     CURRENT_LAYERS.with(|c| c.borrow().clone())
+}
+
+/// Publica o snapshot do brush ativo. Chamado pelo shell uma vez por frame
+/// quando o `painter` tool é ativo (mirror de [`set_current_layers`]); pass
+/// `None` pra limpar.
+pub fn set_current_brush(brush: Option<BrushSettings>) {
+    CURRENT_BRUSH.with(|c| c.set(brush));
+}
+
+/// Lê o snapshot do brush publicado neste frame (`None` antes do 1º push — a
+/// Brush section então usa o `BrushSettings` default).
+pub(crate) fn current_brush() -> Option<BrushSettings> {
+    CURRENT_BRUSH.with(Cell::get)
+}
+
+/// Stash the open brush blend dropdown for the deferred popover pass.
+pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
+    PENDING_BRUSH_BLEND_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending brush blend dropdown for the deferred popover paint.
+pub(crate) fn take_pending_brush_blend_dd() -> Option<(Rect, u8)> {
+    PENDING_BRUSH_BLEND_DD.with(|c| c.take())
 }
 
 /// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por

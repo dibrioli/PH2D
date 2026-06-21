@@ -46,7 +46,12 @@ pub use ph2d_painter_effects::adjustments::{
     set_channel_mixer_param, set_selective_color_param,
 };
 pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
-pub use tool::{PainterTool, set_pending_select_mods};
+// Re-export the brush blend surface so the layers panel's Brush section can name
+// + enumerate the modes without a direct `ph2d-painter-brush` import.
+pub use ph2d_painter_brush::{BrushBlend, MAX_BRUSH_BLEND_MODES};
+pub use tool::{
+    BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BrushSettings, PainterTool, set_pending_select_mods,
+};
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 
 use ph2d_a11y::Role;

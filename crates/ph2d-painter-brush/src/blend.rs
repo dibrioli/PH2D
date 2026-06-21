@@ -49,6 +49,80 @@ pub enum BrushBlend {
 /// Number of brush blend modes (matches Blender's brush mode set).
 pub const MAX_BRUSH_BLEND_MODES: u8 = 24;
 
+impl BrushBlend {
+    /// Every mode, in wire-discriminant order. The brush-settings dropdown
+    /// iterates this; the index is the stable `u8` discriminant.
+    pub const ALL: [BrushBlend; MAX_BRUSH_BLEND_MODES as usize] = [
+        Self::Mix,
+        Self::Add,
+        Self::Subtract,
+        Self::Multiply,
+        Self::Lighten,
+        Self::Darken,
+        Self::EraseAlpha,
+        Self::AddAlpha,
+        Self::Overlay,
+        Self::HardLight,
+        Self::ColorBurn,
+        Self::LinearBurn,
+        Self::ColorDodge,
+        Self::Screen,
+        Self::SoftLight,
+        Self::PinLight,
+        Self::LinearLight,
+        Self::VividLight,
+        Self::Difference,
+        Self::Exclusion,
+        Self::Color,
+        Self::Hue,
+        Self::Saturation,
+        Self::Luminosity,
+    ];
+
+    /// The stable wire discriminant (`0..MAX_BRUSH_BLEND_MODES`).
+    #[must_use]
+    pub const fn to_u8(self) -> u8 {
+        self as u8
+    }
+
+    /// Mode for a wire discriminant; out-of-range falls back to [`Self::Mix`].
+    #[must_use]
+    pub fn from_u8(v: u8) -> Self {
+        Self::ALL.get(v as usize).copied().unwrap_or(Self::Mix)
+    }
+
+    /// Human display name for the brush-settings dropdown (English UI per HR-15).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Mix => "Mix",
+            Self::Add => "Add",
+            Self::Subtract => "Subtract",
+            Self::Multiply => "Multiply",
+            Self::Lighten => "Lighten",
+            Self::Darken => "Darken",
+            Self::EraseAlpha => "Erase Alpha",
+            Self::AddAlpha => "Add Alpha",
+            Self::Overlay => "Overlay",
+            Self::HardLight => "Hard Light",
+            Self::ColorBurn => "Color Burn",
+            Self::LinearBurn => "Linear Burn",
+            Self::ColorDodge => "Color Dodge",
+            Self::Screen => "Screen",
+            Self::SoftLight => "Soft Light",
+            Self::PinLight => "Pin Light",
+            Self::LinearLight => "Linear Light",
+            Self::VividLight => "Vivid Light",
+            Self::Difference => "Difference",
+            Self::Exclusion => "Exclusion",
+            Self::Color => "Color",
+            Self::Hue => "Hue",
+            Self::Saturation => "Saturation",
+            Self::Luminosity => "Luminosity",
+        }
+    }
+}
+
 /// Blend a single brush sample of colour `color` and coverage `a` over destination pixel `dst`.
 ///
 /// All inputs/outputs are straight-alpha RGBA in `[0, 1]` in the layer's native space. Colour
@@ -319,5 +393,28 @@ mod tests {
                 assert!((-1e-4..=1.0001).contains(v), "{mode:?} channel {i} = {v} out of range");
             }
         }
+    }
+
+    #[test]
+    fn wire_discriminants_round_trip() {
+        assert_eq!(BrushBlend::ALL.len(), MAX_BRUSH_BLEND_MODES as usize);
+        for (i, &mode) in BrushBlend::ALL.iter().enumerate() {
+            // The array index IS the wire discriminant.
+            assert_eq!(mode.to_u8() as usize, i, "{mode:?} discriminant != index");
+            assert_eq!(BrushBlend::from_u8(i as u8), mode, "from_u8 != ALL[{i}]");
+            assert!(!mode.name().is_empty(), "{mode:?} has no display name");
+        }
+        // Out-of-range falls back to Mix (never panics).
+        assert_eq!(BrushBlend::from_u8(MAX_BRUSH_BLEND_MODES), BrushBlend::Mix);
+        assert_eq!(BrushBlend::from_u8(255), BrushBlend::Mix);
+    }
+
+    #[test]
+    fn display_names_are_unique() {
+        let mut names: Vec<&str> = BrushBlend::ALL.iter().map(|m| m.name()).collect();
+        names.sort_unstable();
+        let n = names.len();
+        names.dedup();
+        assert_eq!(names.len(), n, "duplicate brush blend display name");
     }
 }

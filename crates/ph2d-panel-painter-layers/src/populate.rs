@@ -7,7 +7,7 @@
 //! they can't be known at boot. Only the chrome buttons live here.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, DropdownState};
+use ph2d_editor_core::widget::{ButtonState, DropdownState, SliderOrientation, SliderState};
 
 pub fn populate(store: &mut WidgetStore) {
     let buttons = [
@@ -49,6 +49,37 @@ pub fn populate(store: &mut WidgetStore) {
             state: DropdownState::Normal,
             open: false,
             selected_index: None,
+        },
+    );
+
+    // Brush section (fixed-id, so registered here, not per-frame in paint): the
+    // Size + R/G/B colour sliders, and the brush blend-mode dropdown chip. The
+    // panel paints them off the published `BrushSettings` snapshot; the values
+    // here are placeholders overwritten by the drag / the snapshot each frame.
+    let brush_sliders = [
+        ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_R,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_G,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_B,
+    ];
+    for id in brush_sliders {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+    // Blend chip is a Dropdown (generic open/close dispatch, like the per-row
+    // blend chip + the "+ Adj" picker); its 24 options are deferred-popover buttons.
+    store.register(
+        ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
         },
     );
 }

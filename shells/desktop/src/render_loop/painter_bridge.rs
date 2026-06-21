@@ -281,6 +281,12 @@ pub(super) fn dispatch(
             // edit, so a revision gate would miss it. The panel reads this for
             // the multi-row highlight (active = strong outline, others = wash).
             ph2d_panel_painter_layers::set_current_selection(painter.selection());
+            // (Brush UI) Publish the active brush snapshot every frame — a tiny
+            // Copy struct (size/colour/blend). The panel's Brush section reads it
+            // to position the Size/RGB sliders + the blend chip. Not revision-
+            // gated: brush edits don't bump `layers_revision`, and the cost is a
+            // few floats.
+            ph2d_panel_painter_layers::set_current_brush(Some(painter.brush_settings()));
         }
     }
 

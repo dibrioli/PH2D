@@ -99,6 +99,35 @@ pub const PAINTER_SIDEBAR_TOGGLE_DOCK: NodeId = hash_node_id("painter_sidebar.to
 /// Without it the only way to commit was the invisible Cmd/Ctrl+Enter shortcut.
 pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
 
+// ── Brush settings (the layers-panel "Brush" section) ──────────────────────
+// Fixed ids (the brush is tool-global, not per-layer), so they live as consts
+// alongside the chrome buttons and are pre-registered in `populate`. The tool
+// owns the brush state; the panel reads a `BrushSettings` snapshot to position
+// these and forwards edits over the frozen `PanelEvent` channel.
+
+/// Brush "Size" slider (stores the size slider's `0..1` track; the tool maps it
+/// to a pixel radius). `SetValue` → `PainterTool::set_brush_size_norm`.
+pub const PAINTER_BRUSH_SIZE_SLIDER: NodeId = hash_node_id("painter_brush.size_slider");
+/// Brush colour Red channel slider (`0..1`). `SetValue` → channel 0.
+pub const PAINTER_BRUSH_COLOR_R: NodeId = hash_node_id("painter_brush.color_r");
+/// Brush colour Green channel slider (`0..1`). `SetValue` → channel 1.
+pub const PAINTER_BRUSH_COLOR_G: NodeId = hash_node_id("painter_brush.color_g");
+/// Brush colour Blue channel slider (`0..1`). `SetValue` → channel 2.
+pub const PAINTER_BRUSH_COLOR_B: NodeId = hash_node_id("painter_brush.color_b");
+/// Brush blend-mode dropdown chip (opens the brush-blend popover; mirror of the
+/// per-row blend chip but with a fixed id + the 24 `BrushBlend` modes).
+pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");
+
+/// Derive the stable [`NodeId`] for brush blend-mode option `mode` (the
+/// `BrushBlend` wire discriminant, `0..MAX_BRUSH_BLEND_MODES`) in the open brush
+/// blend dropdown popover. Mirror of [`painter_layer_blend_option_id`] but fixed
+/// (the brush is tool-global). Only the single open popover's options are
+/// hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
+}
+
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-
 /// safe [`NodeId`] for each control painted on a Painter layers-panel row via
 /// [`painter_layer_widget_id`]. The id is hash-derived (FNV) from the layer's

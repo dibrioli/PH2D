@@ -25,6 +25,10 @@ pub struct DirtyRect {
 /// are applied here. Returns the touched [`DirtyRect`], or `None` if the dab is fully off-canvas
 /// or has zero coverage.
 ///
+/// When `preserve_alpha` is set ("alpha lock" / "preserve transparency"), each pixel's coverage is
+/// scaled by the destination's existing alpha, so paint only lands where the layer already has
+/// opacity (it recolours the shape without growing it).
+///
 /// Panics in debug if `buf` is smaller than `width * height * 4`.
 #[must_use]
 pub fn stamp_dab(
@@ -34,6 +38,7 @@ pub fn stamp_dab(
     center: [f32; 2],
     spec: &BrushSpec,
     coverage: f32,
+    preserve_alpha: bool,
 ) -> Option<DirtyRect> {
     debug_assert!(buf.len() >= (width as usize) * (height as usize) * 4, "buffer too small");
     let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
@@ -67,10 +72,6 @@ pub fn stamp_dab(
             if w <= 0.0 {
                 continue;
             }
-            let a = w * coverage;
-            if a <= 0.0 {
-                continue;
-            }
             let i = row + (px as usize) * 4;
             let dst = [
                 f32::from(buf[i]) / 255.0,
@@ -78,6 +79,12 @@ pub fn stamp_dab(
                 f32::from(buf[i + 2]) / 255.0,
                 f32::from(buf[i + 3]) / 255.0,
             ];
+            // Alpha lock: gate coverage by the destination's existing alpha so paint
+            // recolours the shape without extending it.
+            let a = if preserve_alpha { w * coverage * dst[3] } else { w * coverage };
+            if a <= 0.0 {
+                continue;
+            }
             let out = crate::blend::blend_over(blend, dst, color, a);
             buf[i] = encode(out[0]);
             buf[i + 1] = encode(out[1]);
@@ -125,7 +132,7 @@ mod tests {
             falloff: Falloff::Constant, // hard so the centre is fully painted
             ..Default::default()
         };
-        let rect = stamp_dab(&mut buf, w, h, [16.0, 16.0], &spec, 1.0).expect("painted");
+        let rect = stamp_dab(&mut buf, w, h, [16.0, 16.0], &spec, 1.0, false).expect("painted");
         // Centre pixel went black.
         let i = ((16 * w + 16) * 4) as usize;
         assert_eq!(&buf[i..i + 4], &[0, 0, 0, 255]);
@@ -142,7 +149,7 @@ mod tests {
         let (w, h) = (16, 16);
         let mut buf = solid(w, h, [0, 0, 0, 0]);
         let spec = BrushSpec { radius_px: 3.0, ..Default::default() };
-        assert!(stamp_dab(&mut buf, w, h, [-100.0, -100.0], &spec, 1.0).is_none());
+        assert!(stamp_dab(&mut buf, w, h, [-100.0, -100.0], &spec, 1.0, false).is_none());
     }
 
     #[test]
@@ -150,7 +157,7 @@ mod tests {
         let (w, h) = (16, 16);
         let mut buf = solid(w, h, [10, 20, 30, 255]);
         let spec = BrushSpec::default();
-        assert!(stamp_dab(&mut buf, w, h, [8.0, 8.0], &spec, 0.0).is_none());
+        assert!(stamp_dab(&mut buf, w, h, [8.0, 8.0], &spec, 0.0, false).is_none());
         // Buffer untouched.
         assert_eq!(buf[0..4], [10, 20, 30, 255]);
     }
@@ -166,9 +173,41 @@ mod tests {
             falloff: Falloff::Smooth,
             ..Default::default()
         };
-        stamp_dab(&mut buf, w, h, [20.0, 20.0], &spec, 1.0).expect("painted");
+        stamp_dab(&mut buf, w, h, [20.0, 20.0], &spec, 1.0, false).expect("painted");
         let val = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
         // Centre darker than a point near the rim.
         assert!(val(20, 20) < val(20, 32), "centre should be darker than the rim");
+    }
+
+    #[test]
+    fn preserve_alpha_paints_only_into_existing_alpha() {
+        let (w, h) = (8, 8);
+        // Left half opaque white, right half fully transparent.
+        let mut buf = vec![0u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 0..4 {
+                let i = ((y * w + x) * 4) as usize;
+                buf[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+        let spec = BrushSpec {
+            radius_px: 6.0,
+            color: [0.0, 0.0, 0.0],
+            blend: BrushBlend::Mix,
+            falloff: Falloff::Constant,
+            ..Default::default()
+        };
+        // Cover the whole buffer with alpha-lock on.
+        stamp_dab(&mut buf, w, h, [4.0, 4.0], &spec, 1.0, true).expect("painted");
+        let alpha = |x: u32, y: u32| buf[((y * w + x) * 4 + 3) as usize];
+        let rgb = |x: u32, y: u32| {
+            let i = ((y * w + x) * 4) as usize;
+            [buf[i], buf[i + 1], buf[i + 2]]
+        };
+        // Opaque side recoloured to black, alpha preserved.
+        assert_eq!(rgb(1, 4), [0, 0, 0], "opaque side recoloured");
+        assert_eq!(alpha(1, 4), 255, "opaque alpha preserved");
+        // Transparent side untouched — no alpha created.
+        assert_eq!(alpha(6, 4), 0, "alpha-lock did not paint into transparency");
     }
 }

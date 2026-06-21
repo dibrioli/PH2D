@@ -115,11 +115,19 @@ impl PainterTool {
         }
         let (w, h) = self.source_size;
         let brush = self.paint.brush;
+        // Alpha lock ("Lock"/Preserve Transparency): the dab paints only into the
+        // active layer's existing alpha. (Clip + mask are composite-time effects the
+        // compositor already honours; only alpha-lock constrains the dab itself.)
+        let alpha_locked = self
+            .layers
+            .active()
+            .and_then(|id| self.layers.get(id))
+            .is_some_and(|l| l.alpha_locked);
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec { radius_px: d.radius_px, ..brush };
-            if let Some(r) = stamp_dab(buf, w, h, d.center, &spec, d.coverage) {
+            if let Some(r) = stamp_dab(buf, w, h, d.center, &spec, d.coverage, alpha_locked) {
                 let rect = Region { x: r.x, y: r.y, w: r.w, h: r.h };
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
@@ -237,6 +245,41 @@ mod tests {
         let mut t = white_canvas(32, 4.0);
         assert!(!t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Move)), "stray move");
         assert_eq!(px(&t, 32, 16, 16), [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn alpha_lock_blocks_paint_on_transparency() {
+        // Canvas: left half opaque white, right half transparent.
+        let size = 16u32;
+        let mut src = vec![0u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size / 2 {
+                let i = ((y * size + x) * 4) as usize;
+                src[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 3.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.0, 0.0, 0.0],
+            ..Default::default()
+        };
+        // Enable alpha lock on the active layer.
+        let active = t.layers.active().expect("active layer");
+        t.layers.get_mut(active).expect("layer").alpha_locked = true;
+
+        // Paint on the transparent side → blocked (no alpha created).
+        t.on_canvas_pointer(cp([12.0, 8.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([12.0, 8.0], PointerPhase::Up));
+        assert_eq!(px(&t, size, 12, 8)[3], 0, "alpha-lock blocked paint on transparency");
+
+        // Paint on the opaque side → recoloured, alpha preserved.
+        t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Up));
+        assert_eq!(px(&t, size, 3, 8), [0, 0, 0, 255], "recoloured the opaque side");
     }
 
     #[test]

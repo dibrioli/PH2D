@@ -65,6 +65,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        // Stabilizer intensity — the single "how regular" knob (reuses the STABILIZE id, now a
+        // slider instead of the removed toggle).
+        ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
     ];
     for id in brush_sliders {
         store.register(

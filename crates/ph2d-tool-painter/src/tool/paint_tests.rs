@@ -524,6 +524,10 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     ));
     assert_eq!(t.brush_settings().input_samples, 1);
 
+    // Stabilizer intensity slider: the 0..1 track lands verbatim on `stabilizer`.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STABILIZE, 0.8));
+    assert!((t.brush_settings().stabilizer - 0.8).abs() < 1e-6);
+
     // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_BRUSH_JITTER_UNIT,

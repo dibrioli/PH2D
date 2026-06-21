@@ -183,6 +183,32 @@ fn stroke_spacing_slider_forwards_setvalue() {
     );
 }
 
+/// Slider shape (the new Stabilizer knob): a drag forwards `SetValue(PAINTER_BRUSH_STABILIZE, _)`
+/// (consumed by the tool's `set_brush_stabilizer` arm). Proves the populate registration (now a
+/// slider, not the removed toggle) + the `event.rs` drain are both wired.
+#[test]
+fn stroke_stabilizer_slider_forwards_setvalue() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let id = core_ids::PAINTER_BRUSH_STABILIZE;
+    let outcome =
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "Stabilizer slider drag ignored — the event.rs ValueChanged arm is missing the id"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+        )),
+        "Stabilizer drag never forwarded as SetValue(PAINTER_BRUSH_STABILIZE) — seam dead. \
+         drained = {actions:?}"
+    );
+}
+
 /// Dropdown shape: clicking the "Drag Dot" (wire 4) Method option forwards
 /// `SelectOption(PAINTER_BRUSH_STROKE_METHOD, "4")` (consumed by `set_brush_stroke_method`).
 /// Pins the option-id ↔ decode round-trip for the Stroke Method chip.

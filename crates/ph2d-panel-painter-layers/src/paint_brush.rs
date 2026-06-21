@@ -91,6 +91,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dash_ratio: 1.0,
     dash_samples: 20,
     input_samples: 1,
+    stabilizer: 0.5,
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in

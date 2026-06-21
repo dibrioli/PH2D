@@ -86,6 +86,8 @@ pub struct BrushSettings {
     pub dash_samples: u32,
     /// Input-samples averaging window (`>= 1`).
     pub input_samples: u32,
+    /// Stroke stabilizer intensity, `0..1` (the "how regular" knob).
+    pub stabilizer: f32,
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
@@ -329,6 +331,7 @@ impl PainterTool {
             dash_ratio: b.dash_ratio,
             dash_samples: b.dash_samples,
             input_samples: b.input_samples,
+            stabilizer: b.stabilizer,
         }
     }
 
@@ -476,6 +479,10 @@ impl PainterTool {
         self.paint.brush.input_samples = count_from_norm(t);
     }
 
+    /// Set the stroke stabilizer intensity from the slider's `0..1` track (the "how regular" knob).
+    pub fn set_brush_stabilizer(&mut self, t: f32) {
+        self.paint.brush.stabilizer = t.clamp(0.0, 1.0);
+    }
 }
 
 /// Map a slider's `0..1` track onto a count in `1..=BRUSH_COUNT_SLIDER_MAX` (Input Samples /

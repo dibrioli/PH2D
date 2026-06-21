@@ -161,6 +161,19 @@ pub(crate) fn paint_stroke_section(
         value: count_to_norm(brush.input_samples),
         readout: &brush.input_samples.to_string(),
     });
+
+    // ── Stabilizer intensity (always) — the single "how regular" knob; 0% = raw path. ──
+    y = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        label: "Stabilize",
+        id: core_ids::PAINTER_BRUSH_STABILIZE,
+        value: brush.stabilizer,
+        readout: &format!("{:.0}%", brush.stabilizer * 100.0),
+    });
     y
 }
 
@@ -341,6 +354,7 @@ mod tests {
             core_ids::PAINTER_BRUSH_JITTER,
             core_ids::PAINTER_BRUSH_JITTER_UNIT,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),
@@ -363,6 +377,7 @@ mod tests {
             core_ids::PAINTER_BRUSH_DASH_RATIO,
             core_ids::PAINTER_BRUSH_DASH_LENGTH,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),
@@ -372,11 +387,10 @@ mod tests {
         }
     }
 
-    /// Drag Dot: the most-restricted method (no jitter, no smooth, no spacing) —
-    /// only Method + Input Samples survive. This is the UI-honesty half of the
-    /// Enio-reported "Drag Dot wrong" gap.
+    /// Drag Dot: the most-restricted method (no jitter, no spacing) — only Method, Input Samples
+    /// and the always-on Stabilizer survive. The UI-honesty half of the "Drag Dot wrong" gap.
     #[test]
-    fn dragdot_shows_only_method_and_samples() {
+    fn dragdot_shows_only_method_samples_and_stabilizer() {
         let ids = painted_hit_ids(StrokeMethod::DragDot);
         for hidden in [
             core_ids::PAINTER_BRUSH_SPACING,
@@ -395,6 +409,7 @@ mod tests {
         for shown in [
             core_ids::PAINTER_BRUSH_STROKE_METHOD,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),

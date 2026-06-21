@@ -68,6 +68,12 @@ pub struct BrushSpec {
     /// Number of most-recent raw input samples box-averaged before processing, `>= 1`
     /// (Blender `input_samples`, default `1`, `DNA_brush_types.h:216`).
     pub input_samples: u32,
+    /// Stroke **stabilizer** intensity, `0..1` — a single "how regular" knob (substitute for
+    /// Blender's smooth-stroke). `0` = the raw path (straight chords through every sample, exact,
+    /// real-time); higher = a stronger lazy-mouse position filter (removes hand tremor) plus more
+    /// inter-sample curvature, so a shaky hand draws a clean, regular line. Real-time (causal); the
+    /// lag is proportional to the intensity the artist dials in. See [`Stroke`].
+    pub stabilizer: f32,
     /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz,
     /// `DNA_brush_types.h:232`). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
     pub airbrush_rate_s: f32,
@@ -95,6 +101,7 @@ impl Default for BrushSpec {
             jitter_unit: JitterUnit::Brush,
             jitter_absolute_px: 0.0,
             input_samples: 1,
+            stabilizer: 0.5,
             airbrush_rate_s: 0.1,
         }
     }

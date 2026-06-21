@@ -66,7 +66,18 @@ pub struct Stroke {
     /// centred tangent at the start of each segment. `None` until the second move after
     /// [`Stroke::begin`] (the first segment has no trailing neighbour, so it starts straight).
     prev_prev: Option<[f32; 2]>,
+    /// The stabilizer's lazy-mouse filtered position (lags the cursor by the stabilizer intensity).
+    /// The path is built from this, not the raw cursor — that is what regularises a shaky hand.
+    stab_pos: [f32; 2],
+    /// The most recent *raw* (un-stabilized) sample, so [`Stroke::finish`] can catch the lagged
+    /// stroke up to the real release point on pointer-up.
+    last_raw_pos: [f32; 2],
+    last_raw_pressure: f32,
 }
+
+/// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
+/// At stabilizer `0.0` the factor is `1.0` (the filtered point IS the cursor — no stabilization).
+const STABILIZER_MIN_BLEND: f32 = 0.08;
 
 impl Stroke {
     /// Create a stroke for `spec`/`dynamics`. `seed` seeds the jitter RNG (use a per-stroke
@@ -86,6 +97,9 @@ impl Stroke {
             overlap: spec.space_overlap_factor(),
             airbrush_accum_s: 0.0,
             prev_prev: None,
+            stab_pos: [0.0, 0.0],
+            last_raw_pos: [0.0, 0.0],
+            last_raw_pressure: 1.0,
         }
     }
 
@@ -108,6 +122,9 @@ impl Stroke {
         self.tot_samples = 0;
         self.airbrush_accum_s = 0.0;
         self.prev_prev = None;
+        self.stab_pos = p.pos;
+        self.last_raw_pos = p.pos;
+        self.last_raw_pressure = p.pressure;
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -118,14 +135,17 @@ impl Stroke {
         }
     }
 
-    /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, then
-    /// emit dabs per the stroke method. No-op until [`Stroke::begin`].
+    /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, run it
+    /// through the stabilizer, then emit dabs per the stroke method. No-op until [`Stroke::begin`].
     pub fn extend(&mut self, raw: StrokePoint, out: &mut Vec<Dab>) {
         out.clear();
         if !self.started {
             return;
         }
-        let target = self.sampler.push_average(raw);
+        let avg = self.sampler.push_average(raw);
+        self.last_raw_pos = avg.pos;
+        self.last_raw_pressure = avg.pressure;
+        let target = self.stabilize(avg);
         match self.spec.stroke_method {
             StrokeMethod::Space => self.walk_smoothed(target, out),
             StrokeMethod::Dots | StrokeMethod::Airbrush => {
@@ -160,12 +180,43 @@ impl Stroke {
         self.walk_space(StrokePoint { pos: b, pressure }, out);
     }
 
-    /// Close the freehand smoother on pointer-up. Each [`Stroke::extend`] already paints the spline
-    /// up to its point as it arrives (no held-back tail), so there is nothing to flush — this just
-    /// clears the trailing-neighbour state. Kept for the tool's call shape; emits no dabs.
+    /// Close the stroke on pointer-up. With the stabilizer on, the painted path lags the cursor, so
+    /// flush the lag: walk the spline from the last filtered point up to the true release point so
+    /// the stroke ends exactly where the pen lifted (Space only — the per-event methods stamp at the
+    /// cursor each event and have nothing pending). Then clear the smoother state.
     pub fn finish(&mut self, out: &mut Vec<Dab>) {
         out.clear();
+        if self.started && self.spec.stroke_method == StrokeMethod::Space {
+            self.walk_smoothed(
+                StrokePoint {
+                    pos: self.last_raw_pos,
+                    pressure: self.last_raw_pressure,
+                },
+                out,
+            );
+        }
         self.prev_prev = None;
+    }
+
+    /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the
+    /// incoming sample by `1 − intensity` (clamped to a floor), so a higher intensity lags more and
+    /// filters out hand tremor. At intensity `0` the filtered point is the sample itself (raw,
+    /// real-time). Position only — pressure passes through.
+    fn stabilize(&mut self, sample: StrokePoint) -> StrokePoint {
+        let s = self.spec.stabilizer.clamp(0.0, 1.0);
+        if s <= f32::EPSILON {
+            self.stab_pos = sample.pos;
+            return sample;
+        }
+        let blend = 1.0 - s * (1.0 - STABILIZER_MIN_BLEND);
+        self.stab_pos = [
+            self.stab_pos[0] + (sample.pos[0] - self.stab_pos[0]) * blend,
+            self.stab_pos[1] + (sample.pos[1] - self.stab_pos[1]) * blend,
+        ];
+        StrokePoint {
+            pos: self.stab_pos,
+            pressure: sample.pressure,
+        }
     }
 
     /// Advance the airbrush timer by `dt` seconds, emitting a dab at the current cursor every
@@ -246,13 +297,16 @@ impl Stroke {
             self.last_pressure = p.pressure;
             return;
         }
-        // Catmull-Rom tangents (uniform, tension ½). At `a`: centred on its neighbours `prev_prev`
-        // and `b`; the first segment (no prev_prev) uses the chord. At `b`: the causal chord.
+        // Catmull-Rom tangents (at `a`: centred on its neighbours `prev_prev` and `b`; the first
+        // segment uses the chord. at `b`: the causal chord), scaled by the stabilizer intensity `w`:
+        // `w = 0` ⇒ zero tangents ⇒ the Hermite is the straight chord `a→b` (raw, faceted path);
+        // `w → 1` ⇒ full curvature between samples. So the one knob ramps from raw to smooth.
+        let w = self.spec.stabilizer.clamp(0.0, 1.0);
         let m_a = match self.prev_prev {
-            Some(pp) => [(b[0] - pp[0]) * 0.5, (b[1] - pp[1]) * 0.5],
-            None => [b[0] - a[0], b[1] - a[1]],
+            Some(pp) => [(b[0] - pp[0]) * 0.5 * w, (b[1] - pp[1]) * 0.5 * w],
+            None => [(b[0] - a[0]) * w, (b[1] - a[1]) * w],
         };
-        let m_b = [b[0] - a[0], b[1] - a[1]];
+        let m_b = [(b[0] - a[0]) * w, (b[1] - a[1]) * w];
         // Flatten the Hermite `a → b` into short chords (denser than the dab spacing so the curve
         // never facets), each chained through `walk_space`.
         let n = ((seg / 3.0).ceil() as usize).clamp(1, 96);

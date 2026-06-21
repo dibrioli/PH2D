@@ -157,6 +157,8 @@ impl Tool for PainterTool {
                     self.set_brush_dash_length_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES {
                     self.set_brush_input_samples_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_STABILIZE {
+                    self.set_brush_stabilizer(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),

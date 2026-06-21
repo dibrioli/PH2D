@@ -505,7 +505,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_JITTER
                 || id == core_ids::PAINTER_BRUSH_DASH_RATIO
                 || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
-                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES =>
+                || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
+                || id == core_ids::PAINTER_BRUSH_STABILIZE =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

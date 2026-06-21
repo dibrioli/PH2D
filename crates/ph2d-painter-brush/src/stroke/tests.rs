@@ -12,6 +12,9 @@ fn straight_spec(radius: f32, spacing: f32) -> BrushSpec {
         // Tests below assert dab *positions/counts*; keep attenuation off so coverage stays 1
         // unless a test opts in.
         space_attenuation: false,
+        // Raw by default (no stabilizer) so geometry tests are predictable; the stabilizer tests
+        // opt in with their own value.
+        stabilizer: 0.0,
         ..Default::default()
     }
 }
@@ -281,46 +284,70 @@ fn space_paints_up_to_the_cursor_each_event() {
 }
 
 #[test]
-fn corner_is_rounded_smoothly() {
-    // A 90° corner (P0→P1→P2). The Catmull-Rom spline rounds the turn into a smooth arc instead of
-    // a hard vertex: near the corner at least one dab leaves BOTH input axes (off the x axis AND
-    // off the vertical x=40 line), proving the path curves through the corner rather than tracing
-    // the faceted polyline.
+fn stabilizer_zero_keeps_the_raw_path() {
+    // At intensity 0 there is no smoothing: the painted dabs sit on the raw input polyline, so the
+    // apex sample (20,20) is reached exactly (within one dab spacing).
+    let spec = BrushSpec {
+        stabilizer: 0.0,
+        ..straight_spec(2.0, 0.5)
+    };
     let dabs = collect_stroke(
-        straight_spec(4.0, 0.25),
+        spec,
         no_dynamics(),
-        &[pt(0.0, 0.0, 1.0), pt(40.0, 0.0, 1.0), pt(40.0, 40.0, 1.0)],
+        &[pt(0.0, 0.0, 1.0), pt(20.0, 20.0, 1.0), pt(40.0, 0.0, 1.0)],
     );
-    let rounded = dabs.iter().any(|d| {
-        d.center[1] > 1.0 && d.center[1] < 39.0 && (d.center[0] - 40.0).abs() > 1.0
-    });
     assert!(
-        rounded,
-        "corner not rounded (faceted) — centres {:?}",
+        dabs.iter()
+            .any(|d| (d.center[0] - 20.0).abs() < 2.0 && (d.center[1] - 20.0).abs() < 2.0),
+        "raw path should pass through the apex (20,20): {:?}",
         dabs.iter().map(|d| d.center).collect::<Vec<_>>()
     );
 }
 
 #[test]
-fn gentle_curve_is_rounded_not_faceted() {
-    // A shallow arc P0(0,0)→P1(40,20)→P2(80,0): the Catmull-Rom segment through P1→P2 bows ABOVE
-    // the straight chord (rounded apex) instead of running flat along it. A faceted polyline would
-    // keep every dab on the chord; here the max deviation off it is well over a pixel.
-    let dabs = collect_stroke(
-        straight_spec(2.0, 0.25),
-        no_dynamics(),
-        &[pt(0.0, 0.0, 1.0), pt(40.0, 20.0, 1.0), pt(80.0, 0.0, 1.0)],
-    );
-    // chord P1(40,20)→P2(80,0): chord_y(x) = 20 − (x−40)/2.
-    let max_bow = dabs
-        .iter()
-        .filter(|d| d.center[0] > 42.0 && d.center[0] < 78.0)
-        .map(|d| d.center[1] - (20.0 - (d.center[0] - 40.0) / 2.0))
-        .fold(0.0_f32, f32::max);
+fn stabilizer_regularizes_a_jittery_line() {
+    // A horizontal line drawn with ±6 px vertical hand tremor. The stabilizer must flatten it:
+    // at full intensity the painted path stays much closer to the centre line than the raw path.
+    let zig = [
+        pt(0.0, 0.0, 1.0),
+        pt(10.0, 6.0, 1.0),
+        pt(20.0, -6.0, 1.0),
+        pt(30.0, 6.0, 1.0),
+        pt(40.0, -6.0, 1.0),
+        pt(50.0, 0.0, 1.0),
+    ];
+    let max_abs_y = |stab: f32| {
+        let spec = BrushSpec {
+            stabilizer: stab,
+            ..straight_spec(2.0, 0.5)
+        };
+        collect_stroke(spec, no_dynamics(), &zig)
+            .iter()
+            .map(|d| d.center[1].abs())
+            .fold(0.0_f32, f32::max)
+    };
+    let raw = max_abs_y(0.0);
+    let smooth = max_abs_y(0.95);
+    assert!(raw > 4.0, "raw path should follow the ±6 tremor, got {raw}");
     assert!(
-        max_bow > 1.0,
-        "gentle curve faceted (max bow off the chord = {max_bow:.2}px) — centres {:?}",
-        dabs.iter().map(|d| d.center).collect::<Vec<_>>()
+        smooth < raw * 0.6,
+        "stabilizer did not regularise the line: raw amplitude {raw:.1} vs stabilized {smooth:.1}"
+    );
+}
+
+#[test]
+fn stabilizer_catches_up_to_release_on_finish() {
+    // A heavy stabilizer lags the painted point far behind the cursor, but pointer-up must flush
+    // the lag so the stroke ends exactly at the release point (no truncated stroke).
+    let spec = BrushSpec {
+        stabilizer: 1.0,
+        ..straight_spec(2.0, 0.5)
+    };
+    let dabs = collect_stroke(spec, no_dynamics(), &[pt(0.0, 0.0, 1.0), pt(60.0, 0.0, 1.0)]);
+    let last_x = dabs.last().unwrap().center[0];
+    assert!(
+        (last_x - 60.0).abs() < 2.0,
+        "stabilized stroke did not reach the release point, last dab x = {last_x}"
     );
 }
 

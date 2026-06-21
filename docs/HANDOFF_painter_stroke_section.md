@@ -18,19 +18,18 @@ A seção Stroke do Blender (Method/Spacing/Adjust-Strength/Jitter+Unit/Dash/Inp
 portada clean-room: engine puro (`ph2d-painter-brush`), seam do tool (`ph2d-tool-painter`), e painel
 UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`).
 
-> **⚠️ MUDANÇA GRANDE (2026-06-21, Enio): STABILIZE REMOVIDO + suavização trocada por Catmull-Rom.**
-> O Enio testou e o traço saía **facetado** (segmentos retos). A causa: meu smoother "causal com
-> w-damping" virava reta nas curvas fechadas pra evitar overshoot. Ele mandou **tirar o stabilize e
-> trocar a técnica**. Feito: (a) a feature **Stabilize** (toggle + Radius/Factor + dead-zone) foi
-> **removida** de engine/tool/painel; (b) `walk_smoothed` agora é uma **spline Catmull-Rom** que
-> interpola POR todos os pontos — curva suave entre amostras esparsas, sem faceta, e segue o cursor
-> em tempo real (sem cauda segurada). Isso **revoga §2.3 e §2.3-ter** (eram sobre o stabilize). Ver
-> **§2.6**.
+> **⚠️ ESTADO ATUAL (2026-06-21, Enio é coord+impl agora — eu): suavização = UM knob "Stabilize" (0–100%).**
+> Histórico: removi o Stabilize do Blender (2 knobs dead-zone+factor) e pus Catmull-Rom **fixo** →
+> Enio: "o traço não pode ser suavizado [à força]; substituto do Stabilizer; ajustar o quanto fica
+> regular." **Design final (§2.7):** um **slider único "Stabilize" (0–100%)** que escala JUNTOS
+> (a) um filtro lazy-mouse de posição (tira tremor da mão) e (b) a tensão Catmull-Rom (curva entre
+> amostras). **0% = traço CRU** (cantos retos, exato, real-time); **100% = bem regular/liso.**
+> Catch-up no pointer-up (não trunca). Real-time (causal). **§2.3/§2.3-ter/§2.6 são histórico.**
 
-Estado dos gaps: ~~(1) fluidez do stabilize~~ e ~~(3) UI esconde params por método~~ → o §2.1
-(esconder por método) **continua válido** (Stabilize só saiu da lista de rows); a suavização agora é
-**automática** (Catmull-Rom, sem toggle). (2) **Drag Dot** ainda deixa rastro; (4) Anchored/Line/
-Curve **DEFER**. **Abertos: 2.2 (Drag Dot) · 2.4 (interativo + airbrush on_tick).**
+Estado dos gaps: §2.1 (esconder params por método) **válido**; a regularidade agora é o slider
+único. (2) **Drag Dot** ainda deixa rastro; (4) Anchored/Line/Curve **DEFER**.
+**Abertos: 2.2 (Drag Dot) · 2.4 (interativo + airbrush on_tick).**
+**NOTA:** Enio me deu coord+impl (autoridade total: editor-core/shell/contratos sem coordenação).
 
 ## §1 — O que está PRONTO (mantenha; é fiel + testado)
 
@@ -106,7 +105,38 @@ Arquivos-chave:
   suavização de trajeto (ela só roda no Space, então Dots já está cru — OK). **Instrumente/peça
   repro** antes de reescrever (lição: não caçar causa errada).
 
-### 2.6 — Suavização: Catmull-Rom + Stabilize REMOVIDO ✅ (2026-06-21) — revoga §2.3/§2.3-ter
+### 2.7 — Stabilize = UM knob de intensidade ✅ (2026-06-21) — design FINAL da suavização
+
+- **Pedido do Enio:** "um substituto do Stabilizer. Uma forma de ajustar **o quanto o traço se torna
+  regular**." (Não é opacidade — é regularidade ajustável. "Não pode ser suavizado" = não fixo.)
+- **Design:** um único campo `BrushSpec.stabilizer: f32` (0..1) + slider "Stabilize" (0–100%) na
+  seção Stroke (sempre visível, todos os métodos). O knob escala **dois efeitos juntos**:
+  1. **Lazy-mouse de posição** ([`stroke.rs::stabilize`](../crates/ph2d-painter-brush/src/stroke.rs)):
+     `stab_pos += (amostra − stab_pos) · blend`, `blend = 1 − intensidade·(1−0.08)`. Filtra o tremor
+     da mão (a "regularidade" de verdade). Em 0 → `stab_pos = amostra` (sem filtro).
+  2. **Tensão Catmull-Rom** (`walk_smoothed`): as tangentes do Hermite são escaladas por
+     `w = intensidade`. Em `w=0` → tangentes zero → **chord reto** (cru, facetado); em `w=1` →
+     curva cheia entre amostras.
+  - **0% = traço cru** (cantos retos, exato, real-time — honra "não pode ser suavizado"); **100% =
+    bem regular/liso**. Real-time (causal, sem lookahead) — o lag é proporcional à intensidade que o
+    Enio escolhe. **Catch-up no `finish()`**: com lazy-mouse o traço fica atrás do cursor; no
+    pointer-up ele caminha até o ponto de soltura real (Space) → não trunca. Default 0.5.
+- **Wiring:** engine (campo + `stabilize()` + tensão + catch-up); tool (`BrushSettings.stabilizer`
+  + `set_brush_stabilizer` + routing do id `PAINTER_BRUSH_STABILIZE` **reaproveitado como slider**);
+  painel (slider + populate como Slider + event drain + FALLBACK). Ids dead `_RADIUS`/`_FACTOR` em
+  editor-core seguem órfãos (limpeza trivial, tenho autoridade — follow-up).
+- **Testes:** engine `stabilizer_zero_keeps_the_raw_path`, `stabilizer_regularizes_a_jittery_line`
+  (zigzag ±6px: 95% achata pra <60% da amplitude crua), `stabilizer_catches_up_to_release_on_finish`
+  (60 engine). Tool: routing no `stroke_section_*`. Painel: 3 paint-level (STABILIZE sempre visível)
+  + seam `stroke_stabilizer_slider_forwards_setvalue` (7 seam). Host-desktop compila. **Falta smoke
+  do Enio:** mexer o slider e ver de cru (0) a liso (100).
+- **Se ainda não satisfizer:** o lazy-mouse exponencial é frame-rate-dependente; se o feel variar com
+  FPS, trocar por média-móvel-ponderada (janela ∝ intensidade) — sample-count, previsível. E o
+  coalescing de `CursorMoved` no macOS (shell) ainda limita a densidade em traços rápidos.
+
+---
+
+### ~~2.6 — Suavização: Catmull-Rom + Stabilize REMOVIDO~~ ⚠️ HISTÓRICO (o Catmull-Rom virou a tensão do §2.7)
 
 - **Sintoma (Enio, com print):** o traço saía **facetado** — segmentos retos com quinas, não curva
   suave. **Causa:** o smoother "causal com w-damping" (§2.3-ter) colapsava o control na reta quando a

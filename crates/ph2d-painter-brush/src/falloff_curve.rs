@@ -268,6 +268,10 @@ fn secant(points: &[FalloffPoint], a: usize, b: usize) -> f32 {
 
 /// Smooth auto tangent at point `i` (Catmull-Rom central difference; free to
 /// overshoot so a lifted middle point makes a bump, like a general curve editor).
+/// Endpoints use the bare secant to the single neighbour — a straight line is its
+/// own smooth fit, so the default linear ramp stays exact. (A `Vector` handle on
+/// an endpoint therefore coincides with `Auto`: with only one adjacent segment
+/// there is no corner to make — see [`tangent_for_segment`].)
 fn auto_tangent(points: &[FalloffPoint], i: usize) -> f32 {
     let n = points.len();
     if n < 2 {
@@ -393,6 +397,38 @@ mod tests {
         // (0,0.2) → (0.5,0.8) → (1,0): the curve rises to the peak then falls.
         assert!(c.weight(0.5) > c.weight(0.1), "rises toward the peak");
         assert!(c.weight(0.5) > c.weight(0.9), "falls after the peak");
+    }
+
+    #[test]
+    fn vector_handle_is_a_noop_on_an_endpoint_but_works_on_an_interior_point() {
+        // ROOT-CAUSE DOC (Enio "Vector does nothing"): a Vector handle makes a
+        // sharp corner ONLY at an INTERIOR point (one segment on each side). At an
+        // ENDPOINT there is a single segment, so the "straight" Vector tangent and
+        // the "smooth" Auto tangent both reduce to the secant — Vector is a no-op
+        // there, GEOMETRICALLY CORRECT. A fresh Custom curve has ONLY the two
+        // endpoints, so right-clicking the obvious handles and picking Vector does
+        // nothing visible; the user must add an INTERIOR point OFF the line first
+        // (the panel's click-and-drag-to-add gesture does exactly that). This test
+        // pins both halves so a future "fix" that distorts the endpoint tangent
+        // (and silently reshapes every Custom curve) is caught.
+        let mut c = FalloffCurve::default(); // (0,1)→(1,0), only endpoints
+        let before = c.weight(0.3);
+        c.set_handle(0, HandleType::Vector); // Vector on the left ENDPOINT …
+        assert!(
+            (c.weight(0.3) - before).abs() < 1e-6,
+            "Vector on an endpoint is a no-op (single segment, no corner)"
+        );
+        // … but on an INTERIOR point lifted off the line it makes a real corner.
+        let mid = c.add_point_at(0.5, 0.9).unwrap();
+        let auto_l = (c.weight(0.5) - c.weight(0.49)) / 0.01;
+        let auto_r = (c.weight(0.51) - c.weight(0.5)) / 0.01;
+        c.set_handle(mid, HandleType::Vector);
+        let vec_l = (c.weight(0.5) - c.weight(0.49)) / 0.01;
+        let vec_r = (c.weight(0.51) - c.weight(0.5)) / 0.01;
+        assert!(
+            (auto_l - auto_r).abs() < 0.3 && (vec_l - vec_r).abs() > 1.0,
+            "interior Vector is a sharp corner: auto({auto_l},{auto_r}) vector({vec_l},{vec_r})"
+        );
     }
 
     #[test]

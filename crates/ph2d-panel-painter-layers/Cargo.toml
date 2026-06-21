@@ -43,3 +43,10 @@ ph2d-host = { path = "../ph2d-host" }
 # Headless seam test (MockPanelHost): drives the real apply_event path and
 # drains the action bus to prove the panel→shell forward is alive.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# Full-registry e2e (falloff_handle_menu_e2e): install the real sibling panels
+# alongside the painter panel and dispatch the menu Click through HeroScreen, to
+# prove NO sibling panel eats `Click(CTX_MENU_FALLOFF_HANDLE_*)` before chrome.
+# (No dep cycle: none of these depend on ph2d-panel-painter-layers.)
+ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
+ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
+ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery" }

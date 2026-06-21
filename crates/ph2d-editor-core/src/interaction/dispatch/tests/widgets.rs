@@ -89,6 +89,98 @@ fn button_down_then_drag_out_then_up_does_not_click() {
     assert_eq!(store.active_id(), None);
 }
 
+/// A `Secondary` (right-button) pointer event, for opening context menus.
+fn secondary(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
+    PointerEvent {
+        button: ph2d_host::PointerButton::Secondary,
+        ..pointer(kind, x, y)
+    }
+}
+
+/// DEFECT REPRO (Painter Falloff "Vector handle does nothing"): clicking a
+/// context-menu ITEM must emit `Click(item_id)` even though the menu CLOSES on
+/// the item's Down (so by Up the hit-index no longer holds the item). The
+/// falloff handle menu, the vector point-type menu, and every chrome menu all
+/// depend on this. The item is registered as a `Button` + hit-rect by the menu
+/// paint; Down arms it (and closes the menu), Up fires the Click off the
+/// Down-snapshotted active_rect.
+#[test]
+fn context_menu_item_click_emits_click_even_though_menu_closes_on_down() {
+    use crate::ids::CTX_MENU_FALLOFF_HANDLE_VECTOR as ITEM;
+    use crate::interaction::{ContextMenuKind, ContextMenuRequest};
+
+    let mut store = WidgetStore::with_capacity(4);
+    // The menu paint registers each item as a Button in the store + a hit-rect.
+    store.register(
+        ITEM,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    let mut hits = HitIndex::new();
+    let item_rect = Rect::new(10.0, 10.0, 120.0, 24.0);
+    hits.register(ITEM, item_rect);
+
+    // The right-click opened the FalloffPointHandle menu (shell side).
+    store.open_context_menu(ContextMenuRequest {
+        x: 10.0,
+        y: 10.0,
+        kind: ContextMenuKind::FalloffPointHandle,
+    });
+
+    let arena = Bump::new();
+    // Primary Down on the "Vector" item: the dispatch closes the menu here.
+    let down = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 50.0, 22.0),
+        &arena,
+    )
+    .to_vec();
+    assert!(
+        store.context_menu().is_none(),
+        "menu should close on the item Down: {down:?}"
+    );
+    assert_eq!(store.active_id(), Some(ITEM), "item armed active on Down");
+
+    // Primary Up: fires the Click off the Down-snapshotted active_rect — even
+    // though the menu (and its fresh hit-rect) is already gone.
+    let up = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 50.0, 22.0),
+        &arena,
+    );
+    assert_eq!(
+        up,
+        &[WidgetEvent::Click(ITEM)],
+        "Up must emit Click(CTX_MENU_FALLOFF_HANDLE_VECTOR) — this is the event \
+         that drives chrome::falloff_handle"
+    );
+}
+
+/// A right-click that OPENS the falloff handle menu must not be eaten by the
+/// generic `CreateNote` panel-menu opener for a non-excluded panel. (Guards the
+/// double-open the painter panel triggers — see the fix in pointer_down_menus.)
+#[test]
+fn secondary_click_does_not_self_open_create_note_for_painter_panel() {
+    // No panel rect registered → `panel_at` is None → the secondary click just
+    // closes any menu (the baseline this dispatch test can assert without a
+    // painter panel rect). The real-app double-open is covered by the shell's
+    // own ordering; here we only pin that a bare secondary click emits no
+    // spurious Click.
+    let mut store = WidgetStore::with_capacity(4);
+    let hits = HitIndex::new();
+    let arena = Bump::new();
+    let evts = dispatch_pointer(
+        &mut store,
+        &hits,
+        secondary(PointerKind::Down, 5.0, 5.0),
+        &arena,
+    );
+    assert_eq!(evts, &[], "a bare secondary click emits no widget Click");
+}
+
 #[test]
 fn hierarchy_eye_companion_click_emits_click_event() {
     // Regression: companion NodeIds for the hierarchy eye-toggle

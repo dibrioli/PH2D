@@ -342,6 +342,43 @@ fn falloff_point_drags_past_neighbour_and_handle_sets() {
     );
 }
 
+/// The user's REAL workflow end-to-end through the tool's public API: select
+/// Custom, click-add a point (collinear, as the click-add does), drag it OFF the
+/// line (so a Vector corner is geometrically visible), then set the Vector
+/// handle. Assert `brush_falloff_weight_at` shows a SLOPE DISCONTINUITY — the
+/// sharp corner the right-click menu promises. This is the step-5→7 contract the
+/// shell drain depends on (the drain just calls `set_brush_falloff_point_handle`).
+#[test]
+fn vector_handle_on_dragged_off_line_point_makes_a_corner() {
+    use ph2d_painter_brush::HandleType;
+
+    let mut t = PainterTool::default();
+    t.set_brush_falloff(Falloff::Custom.to_u8());
+    // Click-add ON the line at x=0.5 (default curve passes through (0.5, 0.5)).
+    let mid = t.add_brush_falloff_point_at(0.5, 0.5).expect("added");
+    // Drag it OFF the line — up to (0.5, 0.9), non-collinear.
+    t.set_brush_falloff_point(mid, 0.5, 0.9);
+
+    let slopes = |t: &PainterTool| {
+        let s = t.brush_settings();
+        let l = (brush_falloff_weight_at(&s, 0.5) - brush_falloff_weight_at(&s, 0.49)) / 0.01;
+        let r = (brush_falloff_weight_at(&s, 0.51) - brush_falloff_weight_at(&s, 0.5)) / 0.01;
+        (l, r)
+    };
+
+    // Auto (default) → smooth, C1 across the point (no corner).
+    let (al, ar) = slopes(&t);
+    assert!((al - ar).abs() < 0.3, "Auto must be smooth: {al} vs {ar}");
+
+    // The right-click menu choice: Vector handle on the off-line point.
+    t.set_brush_falloff_point_handle(mid, HandleType::Vector.to_u8());
+    let (vl, vr) = slopes(&t);
+    assert!(
+        (vl - vr).abs() > 1.0,
+        "Vector must make a sharp corner (slope discontinuity): {vl} vs {vr}"
+    );
+}
+
 #[test]
 fn custom_falloff_curve_changes_the_dab() {
     use ph2d_editor_core::ids as core_ids;

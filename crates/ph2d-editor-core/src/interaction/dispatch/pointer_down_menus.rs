@@ -101,6 +101,7 @@ pub(super) fn handle_down_menus(
                 && *p != crate::ids::CEQ_PANEL
                 && *p != crate::ids::UPS_PANEL
                 && *p != crate::ids::EQS_PANEL
+                && *p != crate::ids::PAINTER_LAYERS_PANEL
                 && *p != crate::grid_snap::ids::GS_PANEL
         }) {
             // `before_section` is filled in by apply_event

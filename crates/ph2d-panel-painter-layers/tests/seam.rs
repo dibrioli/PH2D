@@ -68,6 +68,39 @@ fn add_layer_click_forwards_specific_id() {
     );
 }
 
+/// DEFECT REPRO (Vector falloff-handle menu does nothing): the right-click
+/// "handle type" menu item `Click(CTX_MENU_FALLOFF_HANDLE_VECTOR)` is a CHROME
+/// id, NOT a panel widget — it must fall through to `chrome::falloff_handle`.
+/// The painter panel is in the registry whenever the Painter is active and runs
+/// BEFORE chrome in `HeroScreen::apply_event`; if it returns `Consumed` (or
+/// `Observed` that the host treats as handled) for this unknown id, the chrome
+/// handler never runs and `pending_falloff_point_handle` is never set → the
+/// curve stays smooth. This test pins the panel to `Ignored`.
+#[test]
+fn falloff_handle_menu_click_is_not_consumed_by_panel() {
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut panel_state = PainterLayersPanelState;
+
+    for id in [
+        core_ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
+        core_ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
+    ] {
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut panel_state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Ignored,
+            "painter panel ATE the falloff-handle menu click {id:?} — chrome::falloff_handle \
+             never runs, so the Vector/Auto choice is silently dropped"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.is_empty(),
+            "panel forwarded a spurious action for a chrome menu id: {actions:?}"
+        );
+    }
+}
+
 /// The Close (X) button is the OTHER fixed-chrome seam: it must push
 /// `CancelActiveTool` (canon BgRemoval/Painter sidebar), not a ToolPanelEvent.
 #[test]

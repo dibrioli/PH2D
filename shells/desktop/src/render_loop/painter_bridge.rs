@@ -321,9 +321,9 @@ pub(super) fn dispatch(
                     let scale = (x1 - x0).abs() / iw as f32;
                     let r_screen = (size_px * scale).max(1.0);
                     use ph2d_vector::{Affine, Brush, Circle, Color, Stroke};
-                    // Neutral ring (baked inline, like the rubber-band overlay's
+                    // Light-grey ring (baked inline, like the rubber-band overlay's
                     // colour — a follow-up can swap to a theme token / 2-tone).
-                    let color = Color::new([1.0, 1.0, 1.0, 0.85]); // LITERAL-COLOR-OK: overlay cursor
+                    let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
                     vector_scene.inner_mut().stroke(
                         &Stroke::new(1.5),
                         Affine::IDENTITY,

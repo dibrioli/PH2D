@@ -222,27 +222,29 @@ fn panel_events_drive_brush_size_colour_blend() {
 }
 
 #[test]
-fn panel_events_drive_hardness_flow_strength_and_eraser() {
+fn panel_events_drive_strength_falloff_and_eraser() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::Falloff;
 
     let mut t = PainterTool::default();
-    t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_HARDNESS_SLIDER,
-        0.5,
-    ));
-    t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_FLOW_SLIDER,
-        0.25,
-    ));
+    // Strength slider.
     t.handle_panel_event(PanelEvent::SetValue(
         core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
         0.75,
     ));
+    // Falloff preset pick (wire u8 → Constant == 8 = hard disk).
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_FALLOFF,
+        Falloff::Constant.to_u8().to_string(),
+    ));
     let s = t.brush_settings();
-    assert!((s.hardness - 0.5).abs() < 1e-6, "hardness {}", s.hardness);
-    assert!((s.flow - 0.25).abs() < 1e-6, "flow {}", s.flow);
     assert!((s.strength - 0.75).abs() < 1e-6, "strength {}", s.strength);
+    assert_eq!(
+        s.falloff,
+        Falloff::Constant.to_u8(),
+        "falloff preset applied"
+    );
     assert!(!s.eraser);
     // Eraser toggle via the panel button.
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ERASER));

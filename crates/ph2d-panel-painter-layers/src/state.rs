@@ -44,6 +44,10 @@ thread_local! {
     /// [`PENDING_BLEND_DD`] but for the single fixed brush chip.
     static PENDING_BRUSH_BLEND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open brush Falloff dropdown popover: `(chip_rect, current_preset_u8)`.
+    /// Mirror of [`PENDING_BRUSH_BLEND_DD`] for the Falloff section chip.
+    static PENDING_BRUSH_FALLOFF_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
     /// (the tool folds it in via `selection()`); a single-element set means just
@@ -238,6 +242,16 @@ pub(crate) fn set_pending_brush_blend_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending brush blend dropdown for the deferred popover paint.
 pub(crate) fn take_pending_brush_blend_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_BLEND_DD.with(|c| c.take())
+}
+
+/// Stash the open brush Falloff dropdown for the deferred popover pass.
+pub(crate) fn set_pending_brush_falloff_dd(v: Option<(Rect, u8)>) {
+    PENDING_BRUSH_FALLOFF_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending brush Falloff dropdown for the deferred popover.
+pub(crate) fn take_pending_brush_falloff_dd() -> Option<(Rect, u8)> {
+    PENDING_BRUSH_FALLOFF_DD.with(|c| c.take())
 }
 
 /// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por

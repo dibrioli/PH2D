@@ -31,6 +31,6 @@ pub mod stroke;
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use dab::{DirtyRect, stamp_dab};
 pub use dynamics::Dynamics;
-pub use falloff::Falloff;
+pub use falloff::{Falloff, MAX_FALLOFF};
 pub use spec::BrushSpec;
 pub use stroke::{Dab, Stroke, StrokePoint};

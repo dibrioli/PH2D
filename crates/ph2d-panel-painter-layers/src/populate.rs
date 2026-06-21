@@ -58,8 +58,6 @@ pub fn populate(store: &mut WidgetStore) {
     // overwritten by the drag / the snapshot each frame.
     let brush_sliders = [
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
-        ph2d_editor_core::ids::PAINTER_BRUSH_HARDNESS_SLIDER,
-        ph2d_editor_core::ids::PAINTER_BRUSH_FLOW_SLIDER,
         ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
     ];
     for id in brush_sliders {
@@ -86,14 +84,19 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Blend chip is a Dropdown (generic open/close dispatch, like the per-row
-    // blend chip + the "+ Adj" picker); its 24 options are deferred-popover buttons.
-    store.register(
+    // Blend + Falloff chips are Dropdowns (generic open/close dispatch, like the
+    // per-row blend chip + the "+ Adj" picker); their options are popover buttons.
+    for id in [
         ph2d_editor_core::ids::PAINTER_BRUSH_BLEND,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: Some(0),
-        },
-    );
+        ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: Some(0),
+            },
+        );
+    }
 }

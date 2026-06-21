@@ -32,7 +32,54 @@ pub enum Falloff {
     Constant = 8,
 }
 
+/// Number of falloff presets (matches Blender's `eBrushCurvePreset`, minus the
+/// editable `Custom` curve which is a later UI phase).
+pub const MAX_FALLOFF: u8 = 9;
+
 impl Falloff {
+    /// Every preset, in Blender's "Falloff Curve Preset" display order. The index
+    /// is the stable `u8` discriminant.
+    pub const ALL: [Falloff; MAX_FALLOFF as usize] = [
+        Self::Smooth,
+        Self::Smoother,
+        Self::Sphere,
+        Self::Root,
+        Self::Sharp,
+        Self::Linear,
+        Self::Pow4,
+        Self::InvSquare,
+        Self::Constant,
+    ];
+
+    /// The stable wire discriminant (`0..MAX_FALLOFF`).
+    #[must_use]
+    pub const fn to_u8(self) -> u8 {
+        self as u8
+    }
+
+    /// Preset for a wire discriminant; out-of-range falls back to [`Self::Smooth`].
+    #[must_use]
+    pub fn from_u8(v: u8) -> Self {
+        Self::ALL.get(v as usize).copied().unwrap_or(Self::Smooth)
+    }
+
+    /// Display name for the Falloff section dropdown (Blender's preset labels;
+    /// `Pow4` is shown as Blender's "Sharper"). English UI per HR-15.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Smooth => "Smooth",
+            Self::Smoother => "Smoother",
+            Self::Sphere => "Sphere",
+            Self::Root => "Root",
+            Self::Sharp => "Sharp",
+            Self::Linear => "Linear",
+            Self::Pow4 => "Sharper",
+            Self::InvSquare => "Inverse Square",
+            Self::Constant => "Constant",
+        }
+    }
+
     /// Weight at normalized distance `t = distance / radius`.
     ///
     /// Returns `1.0` at the centre (`t = 0`), decreases monotonically, and is exactly `0.0` at or
@@ -63,19 +110,30 @@ impl Falloff {
 
 #[cfg(test)]
 mod tests {
-    use super::Falloff;
+    use super::{Falloff, MAX_FALLOFF};
 
-    const ALL: [Falloff; 9] = [
-        Falloff::Smooth,
-        Falloff::Smoother,
-        Falloff::Sphere,
-        Falloff::Root,
-        Falloff::Sharp,
-        Falloff::Linear,
-        Falloff::Pow4,
-        Falloff::InvSquare,
-        Falloff::Constant,
-    ];
+    const ALL: [Falloff; 9] = Falloff::ALL;
+
+    #[test]
+    fn wire_round_trips_and_names_unique() {
+        assert_eq!(Falloff::ALL.len(), MAX_FALLOFF as usize);
+        let mut names = Vec::new();
+        for (i, &f) in Falloff::ALL.iter().enumerate() {
+            assert_eq!(f.to_u8() as usize, i, "{f:?} discriminant != index");
+            assert_eq!(Falloff::from_u8(i as u8), f);
+            assert!(!f.name().is_empty());
+            names.push(f.name());
+        }
+        assert_eq!(
+            Falloff::from_u8(MAX_FALLOFF),
+            Falloff::Smooth,
+            "OOR → Smooth"
+        );
+        names.sort_unstable();
+        let n = names.len();
+        names.dedup();
+        assert_eq!(names.len(), n, "duplicate falloff name");
+    }
 
     #[test]
     fn endpoints_centre_full_rim_zero() {

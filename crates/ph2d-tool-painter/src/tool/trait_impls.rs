@@ -134,13 +134,9 @@ impl Tool for PainterTool {
             // ── Layers panel: per-row sliders (opacity + adjustment params),
             // all stored 0..1; the tool maps each to its target. ───────────
             PanelEvent::SetValue(id, v) => {
-                // Brush-properties sliders (fixed ids, tool-global).
+                // Brush-properties sliders (fixed ids, tool-global): Size + Strength.
                 if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER {
                     self.set_brush_size_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_HARDNESS_SLIDER {
-                    self.set_brush_hardness(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_FLOW_SLIDER {
-                    self.set_brush_flow(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER {
                     self.set_brush_strength(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
@@ -189,6 +185,12 @@ impl Tool for PainterTool {
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_BLEND => {
                 if let Ok(mode) = value.parse::<u8>() {
                     self.set_brush_blend(mode);
+                }
+            }
+            // ── Falloff section preset pick: value = `Falloff` wire u8. ──────
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF => {
+                if let Ok(preset) = value.parse::<u8>() {
+                    self.set_brush_falloff(preset);
                 }
             }
             // ── Brush colour from the shared Blender picker: value = "r,g,b"

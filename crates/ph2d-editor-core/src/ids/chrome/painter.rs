@@ -108,12 +108,11 @@ pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
 /// Brush "Size" slider (stores the size slider's `0..1` track; the tool maps it
 /// to a pixel radius). `SetValue` → `PainterTool::set_brush_size_norm`.
 pub const PAINTER_BRUSH_SIZE_SLIDER: NodeId = hash_node_id("painter_brush.size_slider");
-/// Brush "Hardness" slider (`0..1`, edge softness). `SetValue` → `set_brush_hardness`.
-pub const PAINTER_BRUSH_HARDNESS_SLIDER: NodeId = hash_node_id("painter_brush.hardness_slider");
-/// Brush "Flow" slider (`0..1`, per-dab build-up). `SetValue` → `set_brush_flow`.
-pub const PAINTER_BRUSH_FLOW_SLIDER: NodeId = hash_node_id("painter_brush.flow_slider");
 /// Brush "Strength" slider (`0..1`, overall opacity). `SetValue` → `set_brush_strength`.
 pub const PAINTER_BRUSH_STRENGTH_SLIDER: NodeId = hash_node_id("painter_brush.strength_slider");
+/// Brush "Falloff" dropdown chip — the dab distance-falloff preset (Blender's
+/// "Falloff Curve Preset"). Mirror of the per-row blend chip but with a fixed id.
+pub const PAINTER_BRUSH_FALLOFF: NodeId = hash_node_id("painter_brush.falloff");
 /// Brush "Eraser" mode toggle — overrides the blend to Erase Alpha while on.
 /// `Click` → `PainterTool::toggle_brush_eraser`.
 pub const PAINTER_BRUSH_ERASER: NodeId = hash_node_id("painter_brush.eraser");
@@ -135,6 +134,13 @@ pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");
 #[must_use]
 pub fn painter_brush_blend_option_id(mode: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.blendopt.{mode}"))
+}
+
+/// Derive the stable [`NodeId`] for falloff preset option `preset` in the open
+/// brush Falloff dropdown popover. Mirror of [`painter_brush_blend_option_id`].
+#[must_use]
+pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.falloffopt.{preset}"))
 }
 
 /// Per-layer-row interactive widget kind, used to derive a stable, collision-

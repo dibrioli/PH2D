@@ -26,6 +26,7 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::{
     AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES, MAX_BRUSH_BLEND_MODES,
+    MAX_FALLOFF,
 };
 
 pub(crate) fn apply_event(
@@ -435,31 +436,22 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
         }
-        // Blend popover option picked → close the brush dropdown + apply.
+        // Blend / Falloff popover option picked → close the chip + apply.
         WidgetEvent::Click(id) => {
-            let mode = decode_brush_blend_option(id)?;
-            if let Some(InteractiveState::Dropdown {
-                open,
-                selected_index,
-                ..
-            }) = host.store_mut().get_mut(core_ids::PAINTER_BRUSH_BLEND)
-            {
-                *open = false;
-                *selected_index = Some(mode as usize);
+            if let Some(mode) = decode_brush_blend_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_BLEND, mode);
+                Some(true)
+            } else if let Some(preset) = decode_brush_falloff_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_FALLOFF, preset);
+                Some(true)
+            } else {
+                None
             }
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                    core_ids::PAINTER_BRUSH_BLEND,
-                    mode.to_string(),
-                )));
-            Some(true)
         }
-        // Brush sliders (Size / Hardness / Flow / Strength) drag → forward the
-        // freshly-dispatched 0..1 value.
+        // Brush sliders (Size / Strength) drag → forward the freshly-dispatched
+        // 0..1 value.
         WidgetEvent::ValueChanged(id)
             if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
-                || id == core_ids::PAINTER_BRUSH_HARDNESS_SLIDER
-                || id == core_ids::PAINTER_BRUSH_FLOW_SLIDER
                 || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
@@ -471,6 +463,29 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         _ => None,
     }
+}
+
+/// Close the dropdown `chip_id` + forward the chosen option `value` (wire u8) to
+/// the tool. Shared by the Blend + Falloff option clicks.
+fn forward_dropdown_option(
+    host: &mut dyn PanelHostInternal,
+    chip_id: ph2d_a11y::NodeId,
+    value: u8,
+) {
+    if let Some(InteractiveState::Dropdown {
+        open,
+        selected_index,
+        ..
+    }) = host.store_mut().get_mut(chip_id)
+    {
+        *open = false;
+        *selected_index = Some(value as usize);
+    }
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            chip_id,
+            value.to_string(),
+        )));
 }
 
 /// The active brush colour as 8-bit RGBA (opaque), to seed the shared picker.
@@ -485,6 +500,12 @@ fn brush_seed_rgba8() -> [u8; 4] {
 /// per-layer), so iterate the 24 stable ids.
 fn decode_brush_blend_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)
+}
+
+/// Decode a brush Falloff popover option id → its preset `u8`. Fixed (not
+/// per-layer), so iterate the stable preset ids.
+fn decode_brush_falloff_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
 }
 
 /// Decode a blend-mode popover option id → `(layer, mode_u8)`.

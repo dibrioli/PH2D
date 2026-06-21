@@ -11,7 +11,9 @@
 use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, Dynamics, Stroke, StrokePoint, stamp_dab};
+use ph2d_painter_brush::{
+    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, Stroke, StrokePoint, stamp_dab,
+};
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
 /// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
@@ -31,12 +33,11 @@ pub struct BrushSettings {
     /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so
     /// small brushes get more of the track).
     pub size_norm: f32,
-    /// Edge softness plateau, `0..1` (UI "Hardness"; `1` = hard disk).
-    pub hardness: f32,
-    /// Per-dab build-up, `0..1` (UI "Flow").
-    pub flow: f32,
     /// Overall opacity, `0..1` (UI "Strength").
     pub strength: f32,
+    /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — Blender's
+    /// "Falloff Curve Preset". Defines the dab profile (replaces a Hardness slider).
+    pub falloff: u8,
     /// Straight-RGB paint colour in `[0, 1]`.
     pub color: [f32; 3],
     /// Blend-mode wire discriminant ([`BrushBlend::to_u8`]).
@@ -243,23 +244,18 @@ impl PainterTool {
         BrushSettings {
             size_px: b.radius_px,
             size_norm: size_px_to_norm(b.radius_px),
-            hardness: b.hardness,
-            flow: b.flow,
             strength: b.strength,
+            falloff: b.falloff.to_u8(),
             color: b.color,
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
         }
     }
 
-    /// Set the brush hardness (`0..1`, edge softness).
-    pub fn set_brush_hardness(&mut self, t: f32) {
-        self.paint.brush.hardness = t.clamp(0.0, 1.0);
-    }
-
-    /// Set the brush flow (`0..1`, per-dab build-up).
-    pub fn set_brush_flow(&mut self, t: f32) {
-        self.paint.brush.flow = t.clamp(0.0, 1.0);
+    /// Set the brush distance-falloff preset from a wire discriminant
+    /// (Blender's "Falloff Curve Preset"; out-of-range → Smooth).
+    pub fn set_brush_falloff(&mut self, preset: u8) {
+        self.paint.brush.falloff = Falloff::from_u8(preset);
     }
 
     /// Set the brush strength (`0..1`, overall opacity).

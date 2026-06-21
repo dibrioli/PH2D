@@ -14,7 +14,9 @@ use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids::{self as core_ids, painter_brush_blend_option_id};
+use ph2d_editor_core::ids::{
+    self as core_ids, painter_brush_blend_option_id, painter_brush_falloff_option_id,
+};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
@@ -28,7 +30,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
-use ph2d_tool_painter::{BrushBlend, BrushSettings, MAX_BRUSH_BLEND_MODES};
+use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF};
 
 const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: brush row label column ("Hardness"/"Strength")
 const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
@@ -39,9 +41,8 @@ const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
 const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_px: 25.0,    // LITERAL-PX-OK: defensive pre-publish fallback default
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
-    hardness: 0.0,
-    flow: 1.0,
     strength: 1.0,
+    falloff: 0,
     color: [0.0, 0.0, 0.0],
     blend: 0,
     eraser: false,
@@ -61,12 +62,10 @@ pub(crate) fn paint_brush_mode(
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
 
-    let gap = Spacing::Sm.px();
     let mut y = header_bottom + Spacing::Md.px();
-    // Hardness/Flow/Strength read as percent; Size reads raw px.
     let pct = |v: f32| format!("{:.0}", v * 100.0); // LITERAL-PX-OK: fraction → percent
 
-    // ── Slider rows: Size (px) + Hardness / Flow / Strength (%) ──
+    // ── Size (px) + Strength (%) — the Blender TexDraw popover sliders ──
     y = paint_param_row(ParamRow {
         ctx,
         theme,
@@ -78,42 +77,52 @@ pub(crate) fn paint_brush_mode(
         value: brush.size_norm,
         readout: &format!("{:.0}", brush.size_px),
     });
-    for (lbl, id, value) in [
-        (
-            "Hardness",
-            core_ids::PAINTER_BRUSH_HARDNESS_SLIDER,
-            brush.hardness,
-        ),
-        ("Flow", core_ids::PAINTER_BRUSH_FLOW_SLIDER, brush.flow),
-        (
-            "Strength",
-            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            brush.strength,
-        ),
-    ] {
-        y = paint_param_row(ParamRow {
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            label: lbl,
-            id,
-            value,
-            readout: &pct(value),
-        });
-    }
-
-    // ── Blend: label + dropdown chip ──
-    label(ctx, theme, "Blend", x, y, TypeToken::Sm.px());
-    let chip_w = (content_w - LABEL_W - gap).max(0.0);
-    paint_brush_blend_chip(
+    y = paint_param_row(ParamRow {
         ctx,
         theme,
+        x,
+        content_w,
+        y,
+        label: "Strength",
+        id: core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        value: brush.strength,
+        readout: &pct(brush.strength),
+    });
+
+    // ── Blend chip ──
+    let (ny, blend_open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Blend",
+        core_ids::PAINTER_BRUSH_BLEND,
         brush.blend,
-        Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX),
+        BrushBlend::from_u8(brush.blend).name(),
     );
-    y += ROW_H_PX + Spacing::Sm.px();
+    y = ny;
+    if let Some(r) = blend_open {
+        state::set_pending_brush_blend_dd(Some((r, brush.blend)));
+    }
+
+    // ── Falloff section — the dab distance-falloff preset (Blender's Falloff
+    // Curve Preset). Replaces a Hardness slider, matching the Blender UI. ──
+    let (ny, falloff_open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Falloff",
+        core_ids::PAINTER_BRUSH_FALLOFF,
+        brush.falloff,
+        Falloff::from_u8(brush.falloff).name(),
+    );
+    y = ny;
+    if let Some(r) = falloff_open {
+        state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
+    }
 
     // ── Eraser: full-width mode toggle (Accent while erasing) ──
     y = paint_eraser_toggle(ctx, theme, x, content_w, y, brush.eraser);
@@ -121,9 +130,26 @@ pub(crate) fn paint_brush_mode(
     // ── Colour: label + swatch (click opens the shared Blender picker) ──
     paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
 
-    // Deferred: the brush blend popover, on top of the body.
-    if let Some((chip_rect, cur_mode)) = state::take_pending_brush_blend_dd() {
-        paint_brush_blend_popover(ctx, theme, chip_rect, cur_mode);
+    // Deferred: the open dropdown popover, on top of the body (one at a time).
+    if let Some((chip_rect, cur)) = state::take_pending_brush_blend_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_BRUSH_BLEND,
+            brush_blend_options(),
+            chip_rect,
+            cur,
+        );
+    }
+    if let Some((chip_rect, cur)) = state::take_pending_brush_falloff_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_BRUSH_FALLOFF,
+            falloff_options(),
+            chip_rect,
+            cur,
+        );
     }
 }
 
@@ -265,18 +291,17 @@ fn paint_color_swatch_row(
         .register(core_ids::PAINTER_COLOR_THUMB, rect);
 }
 
-/// Deferred paint of the open brush blend popover (clamped to the viewport).
-/// Mirror of [`crate::blend::paint_blend_popover`] but for the single fixed brush
-/// chip + the 24 `BrushBlend` modes.
-pub(crate) fn paint_brush_blend_popover(
+/// Deferred paint of an open brush dropdown popover (clamped to the viewport).
+/// Shared by the Blend + Falloff chips (mirror of `crate::blend::paint_blend_popover`).
+fn paint_dropdown_popover(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
+    id: ph2d_a11y::NodeId,
+    options: Vec<DropdownOption<u8>>,
     chip_rect: Rect,
-    cur_mode: u8,
+    cur: u8,
 ) {
-    let dd = Dropdown::new(core_ids::PAINTER_BRUSH_BLEND, "", brush_blend_options())
-        .selected(cur_mode)
-        .open(true);
+    let dd = Dropdown::new(id, "", options).selected(cur).open(true);
     let viewport = ctx.viewport;
     let panel = dd.popover_rect_clamped(chip_rect, viewport);
     paint_dropdown_popover_in_viewport(
@@ -335,16 +360,44 @@ fn paint_brush_slider(
     ctx.host.hit_index_mut().register(id, rect);
 }
 
-/// The brush blend chip (registered as a `Dropdown` for the generic open/close
-/// dispatch); when open, stash it for the deferred popover pass.
-fn paint_brush_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, cur_mode: u8, rect: Rect) {
-    let id = core_ids::PAINTER_BRUSH_BLEND;
+/// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when
+/// the chip is open (the caller stashes the rect into the matching pending slot).
+#[allow(clippy::too_many_arguments)]
+fn paint_dropdown_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    label_txt: &str,
+    id: ph2d_a11y::NodeId,
+    cur_value: u8,
+    cur_label: &str,
+) -> (f32, Option<Rect>) {
+    let gap = Spacing::Sm.px();
+    label(ctx, theme, label_txt, x, y, TypeToken::Sm.px());
+    let chip_w = (content_w - LABEL_W - gap).max(0.0);
+    let rect = Rect::new(x + LABEL_W + gap, y, chip_w, ROW_H_PX);
+    let open = paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect);
+    (y + ROW_H_PX + Spacing::Sm.px(), open.then_some(rect))
+}
+
+/// Paint a dropdown chip (registered as a `Dropdown` for the generic open/close
+/// dispatch). Returns whether it is open. Shared by the Blend + Falloff chips.
+fn paint_dropdown_chip(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    id: ph2d_a11y::NodeId,
+    cur_value: u8,
+    cur_label: &str,
+    rect: Rect,
+) -> bool {
     ctx.host.store_mut().register_if_absent(
         id,
         InteractiveState::Dropdown {
             state: DropdownState::Normal,
             open: false,
-            selected_index: Some(cur_mode as usize),
+            selected_index: Some(cur_value as usize),
         },
     );
     let open = matches!(
@@ -394,7 +447,7 @@ fn paint_brush_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, cur_mod
     paint_text(
         ctx.text_system,
         ctx.scene,
-        BrushBlend::from_u8(cur_mode).name(),
+        cur_label,
         text_x,
         rect.y + (rect.h - font) * 0.5,
         font,
@@ -403,9 +456,7 @@ fn paint_brush_blend_chip(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, cur_mod
     );
 
     ctx.host.hit_index_mut().register(id, rect);
-    if open {
-        state::set_pending_brush_blend_dd(Some((rect, cur_mode)));
-    }
+    open
 }
 
 /// The 24 brush blend modes as `Dropdown` options (value = wire discriminant,
@@ -417,6 +468,20 @@ fn brush_blend_options() -> Vec<DropdownOption<u8>> {
                 painter_brush_blend_option_id(m),
                 m,
                 BrushBlend::from_u8(m).name(),
+            )
+        })
+        .collect()
+}
+
+/// The falloff presets as `Dropdown` options (value = wire discriminant, label =
+/// Blender's preset name).
+fn falloff_options() -> Vec<DropdownOption<u8>> {
+    (0..MAX_FALLOFF)
+        .map(|p| {
+            DropdownOption::new(
+                painter_brush_falloff_option_id(p),
+                p,
+                Falloff::from_u8(p).name(),
             )
         })
         .collect()

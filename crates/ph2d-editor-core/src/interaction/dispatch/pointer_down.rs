@@ -74,7 +74,14 @@ pub(super) fn dispatch_down<'frame>(
             Some(id) if id == crate::ids::CTX_MENU_VECTOR_PROMPT_INPUT
                 || id == crate::ids::CTX_MENU_VECTOR_PROMPT_GENERATE
         );
-        if !inside_scene_list && !inside_api_key && !inside_prompt {
+        // Only an empty-space click dismisses the menu on the Down. A click on a
+        // REGISTERED widget — a menu item, or the special-menu inputs above —
+        // keeps the menu open: a menu item's handler closes it on the Up (via
+        // `apply_event`). Closing on the Down broke item clicks whenever a frame
+        // repainted between Down and Up (e.g. the Painter's continuous preview):
+        // the closed menu un-registered its items, so the Up landed on the widget
+        // underneath and never produced the item `Click`.
+        if hit_id.is_none() && !inside_scene_list && !inside_api_key && !inside_prompt {
             store.close_context_menu();
         }
     }

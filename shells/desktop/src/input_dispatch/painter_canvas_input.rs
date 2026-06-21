@@ -94,6 +94,20 @@ impl App {
         else {
             return false;
         };
+        // While a floating overlay is open (the colour picker, or a right-click
+        // context menu), a click belongs to it — not to the graph underneath.
+        // Without this guard, clicking inside the floating picker dropped stray
+        // points onto the curve. (Earlier the gate used `hit_index.hit`, but the
+        // panel chrome registers hit rects over the graph area, so that blocked
+        // ALL adds — this open-overlay gate is precise.)
+        let overlay_open = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.store.picker_target().is_some() || h.store.context_menu().is_some());
+        if overlay_open {
+            return false;
+        }
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };

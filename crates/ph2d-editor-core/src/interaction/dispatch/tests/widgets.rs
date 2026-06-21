@@ -129,22 +129,26 @@ fn context_menu_item_click_emits_click_even_though_menu_closes_on_down() {
     });
 
     let arena = Bump::new();
-    // Primary Down on the "Vector" item: the dispatch closes the menu here.
-    let down = dispatch_pointer(
+    // Primary Down on the "Vector" item: the menu must STAY open (a click on a
+    // registered widget is not a dismiss), arming the item. Closing here broke
+    // item clicks whenever a frame repainted between Down and Up (e.g. the
+    // Painter's continuous preview): the closed menu un-registered its items, so
+    // the Up landed on the widget underneath and the item Click never fired.
+    let _down = dispatch_pointer(
         &mut store,
         &hits,
         pointer(PointerKind::Down, 50.0, 22.0),
         &arena,
-    )
-    .to_vec();
+    );
     assert!(
-        store.context_menu().is_none(),
-        "menu should close on the item Down: {down:?}"
+        store.context_menu().is_some(),
+        "menu stays open on the item Down (so a repaint keeps the item registered)"
     );
     assert_eq!(store.active_id(), Some(ITEM), "item armed active on Down");
 
-    // Primary Up: fires the Click off the Down-snapshotted active_rect — even
-    // though the menu (and its fresh hit-rect) is already gone.
+    // Simulate the repaint that bit the real app: the menu is still open, so the
+    // overlay re-registers the item's hit-rect. The Up then lands on the item and
+    // emits the Click that drives `chrome::falloff_handle`.
     let up = dispatch_pointer(
         &mut store,
         &hits,
@@ -156,6 +160,34 @@ fn context_menu_item_click_emits_click_even_though_menu_closes_on_down() {
         &[WidgetEvent::Click(ITEM)],
         "Up must emit Click(CTX_MENU_FALLOFF_HANDLE_VECTOR) — this is the event \
          that drives chrome::falloff_handle"
+    );
+}
+
+/// A primary Down on EMPTY space (no hit) while a context menu is open dismisses
+/// it — the only thing that closes a menu on the Down. (Counterpart to
+/// [`context_menu_item_click_emits_click_even_though_menu_closes_on_down`], which
+/// pins that a click ON an item does NOT.)
+#[test]
+fn empty_space_click_dismisses_open_context_menu() {
+    use crate::interaction::{ContextMenuKind, ContextMenuRequest};
+
+    let mut store = WidgetStore::with_capacity(4);
+    let hits = HitIndex::new(); // nothing registered → every click misses
+    store.open_context_menu(ContextMenuRequest {
+        x: 10.0,
+        y: 10.0,
+        kind: ContextMenuKind::FalloffPointHandle,
+    });
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 400.0, 400.0),
+        &arena,
+    );
+    assert!(
+        store.context_menu().is_none(),
+        "an empty-space Down dismisses the menu"
     );
 }
 

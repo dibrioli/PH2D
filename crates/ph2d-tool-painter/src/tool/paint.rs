@@ -25,6 +25,9 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
+    /// Model snapshot captured at pointer-down (before the first dab) — committed
+    /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
+    stroke_undo: Option<crate::undo::ModelSnapshot>,
 }
 
 impl Default for PaintState {
@@ -38,6 +41,7 @@ impl Default for PaintState {
             stroke: None,
             dabs: Vec::new(),
             seed: 0,
+            stroke_undo: None,
         }
     }
 }
@@ -56,8 +60,11 @@ impl PainterTool {
             .is_some_and(|l| matches!(l.kind, LayerKind::Raster(_)))
     }
 
-    /// Begin a stroke at `ev` and stamp the first dab.
+    /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo
+    /// **before** painting so the whole stroke restores to the pre-stroke pixels.
     fn paint_begin(&mut self, ev: CanvasPointer) {
+        let before = self.snapshot_model();
+        self.paint.stroke_undo = Some(before);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
@@ -81,10 +88,20 @@ impl PainterTool {
         true
     }
 
-    /// Finish the stroke at `ev` (stamp the final segment, then drop the stroke).
+    /// Finish the stroke at `ev` (stamp the final segment, then close + record undo).
     fn paint_end(&mut self, ev: CanvasPointer) {
-        if self.paint_extend(ev) {
-            self.paint.stroke = None;
+        self.paint_extend(ev);
+        self.close_stroke();
+    }
+
+    /// Finalize the current stroke: drop the in-progress state and push one undo
+    /// entry (pre-stroke → current) so the whole stroke undoes/redoes as a unit.
+    /// No-op when no stroke is open. Reuses the structural-undo stack (a full-canvas
+    /// snapshot per stroke; a tile-based delta is a later optimization).
+    fn close_stroke(&mut self) {
+        self.paint.stroke = None;
+        if let Some(before) = self.paint.stroke_undo.take() {
+            self.commit_structural_edit(before);
         }
     }
 
@@ -132,8 +149,8 @@ impl CanvasPaintTool for PainterTool {
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:
-            // drop any half-open stroke so a later valid Down starts clean.
-            self.paint.stroke = None;
+            // finalize any half-open stroke (records its undo) before bailing.
+            self.close_stroke();
             return false;
         }
         match ev.phase {
@@ -220,5 +237,29 @@ mod tests {
         let mut t = white_canvas(32, 4.0);
         assert!(!t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Move)), "stray move");
         assert_eq!(px(&t, 32, 16, 16), [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn stroke_is_one_undo_step_and_redoable() {
+        let mut t = white_canvas(64, 6.0);
+        let pristine = Vec::clone(&t.canvas_rgba); // white, pre-stroke
+        assert!(!t.can_undo(), "fresh source has nothing to undo");
+
+        // One stroke (down → up).
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+        assert_ne!(*t.canvas_rgba, pristine, "stroke changed pixels");
+        assert!(t.can_undo(), "stroke pushed exactly one undo step");
+
+        // Undo restores the pre-stroke pixels byte-for-byte.
+        assert!(t.undo_last());
+        assert_eq!(*t.canvas_rgba, pristine, "undo restored the canvas");
+        assert!(!t.can_undo(), "one stroke == one undo step");
+
+        // Redo repaints.
+        assert!(t.redo_last());
+        assert_ne!(*t.canvas_rgba, pristine, "redo repainted the stroke");
+        assert_eq!(px(&t, 64, 32, 32), [0, 0, 0, 255], "stroke start back to black");
     }
 }

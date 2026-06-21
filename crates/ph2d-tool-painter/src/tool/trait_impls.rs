@@ -297,6 +297,12 @@ impl Tool for PainterTool {
         Some(self)
     }
 
+    /// The painter consumes canvas pointer samples to paint dabs into the active
+    /// raster layer (ADR-0040 Amendment 3). See [`crate::tool::paint`].
+    fn as_canvas_paint_mut(&mut self) -> Option<&mut dyn CanvasPaintTool> {
+        Some(self)
+    }
+
     fn is_default(&self) -> bool {
         false
     }

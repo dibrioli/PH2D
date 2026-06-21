@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
-use ph2d_editor_core::tool::{RasterEditTool, Tool};
+use ph2d_editor_core::tool::{CanvasPaintTool, RasterEditTool, Tool};
 use ph2d_painter_effects::BlendMode;
 
 use crate::compositor::{
@@ -116,6 +116,9 @@ pub struct PainterTool {
     /// Set by `set_adjustment_param` so the next `take_preview_arc` full recompose
     /// routes through the cut-point cache. Taken on consume.
     adjustment_cache_pending: bool,
+    /// Brush + in-progress stroke state for canvas painting (the clean-room
+    /// Blender brush engine). See [`crate::tool::paint`].
+    paint: paint::PaintState,
 }
 
 impl Default for PainterTool {
@@ -139,6 +142,7 @@ impl Default for PainterTool {
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,
+            paint: paint::PaintState::default(),
         }
     }
 }
@@ -147,5 +151,6 @@ impl Default for PainterTool {
 mod internal;
 pub(crate) use internal::*;
 mod layers;
+mod paint;
 mod runtime;
 mod trait_impls;

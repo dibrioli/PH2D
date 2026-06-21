@@ -32,6 +32,9 @@ ph2d-core = { path = "../ph2d-core" }
 # adjustment editing fns). The layers + effects surface, extracted from the
 # (deleted) brush engine.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# Pure clean-room Blender brush engine (BrushSpec / Stroke / stamp_dab). Driven
+# from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # Canonical sRGB↔linear byte transfer for the CPU compositor's gamma boundary.
 ph2d-color = { path = "../ph2d-color" }
 # serde for PainterParams + the layer model serialization.

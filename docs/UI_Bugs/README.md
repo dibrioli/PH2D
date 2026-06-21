@@ -98,6 +98,36 @@ durante o desenvolvimento.
 - **Código**: [`crates/ph2d-host/src/events.rs`
   `PointerButton`](../../crates/ph2d-host/src/events.rs).
 
+### 2.4 Item de menu de contexto não dispara — faltou registrar no populate
+
+
+**Gate:** `simple_row_context_menu_items_are_populate_registered`
+([`ph2d-editor-core/src/screens/hero/tests.rs`](../../crates/ph2d-editor-core/src/screens/hero/tests.rs))
+— afirma que toda linha de menu chrome-driven tem entrada no populate.
+- **Sintoma**: o menu de contexto abre, mas clicar num item **não faz nada** —
+  nenhum evento gerado (o handle Vector/Auto do falloff do Painter custou várias
+  horas, 2026-06-21). Logs decisivos: no Down do item `dispatch produced 0
+  events`, no Up `dispatch produced 0 events` (Click nunca emitido).
+- **Causa**: a linha do menu estava só em `hit_index.register` (no paint do
+  overlay), mas **faltava a entrada `Plain`** em
+  `pre_populate.rs::populate_global_context_menu`. Sem ela a linha não é
+  `is_focusable` → o **Down nunca arma `active`/`active_rect`** → o Up não emite
+  `Click` → o handler do chrome nunca roda. Toda linha de menu simples precisa
+  dessa entrada; as irmãs `CTX_MENU_POINT_TYPE_*` (VectorPointType) já estavam lá.
+  É a mesma classe das pegadinhas de populate (§10 "Esquecido no populate").
+- **Red herring (NÃO repita)**: parece "o menu fecha no Down + o repaint contínuo
+  do Painter des-registra o item antes do Up". **Não é.** O Up resolve o widget
+  ativo pelo **snapshot `active_rect`** tirado no Down (`pointer_up.rs` ~209-217),
+  não pelo hit-index vivo — por isso TODO menu (hierarquia/inspector/tema)
+  sobrevive a fechar-no-Down + repaint. Mexer no `pointer_down`/`pointer_up`
+  global pra "consertar" quebra os menus do app inteiro (tentativa revertida em
+  `d72873af`, CLAUDE.md §0.2). O fix é feature-local: registrar a linha.
+- **Fix**: adicione o id da linha em `populate_global_context_menu` (1 linha por
+  item). Diagnóstico: PRIMEIRO grep o id no populate antes de teorizar dispatch.
+- **Código**: [`screens/hero/pre_populate.rs` `populate_global_context_menu`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)
+  · snapshot que mata o red herring: [`interaction/dispatch/pointer_up.rs`](../../crates/ph2d-editor-core/src/interaction/dispatch/pointer_up.rs)
+  · handler de exemplo: [`screens/hero/chrome/falloff_handle.rs`](../../crates/ph2d-editor-core/src/screens/hero/chrome/falloff_handle.rs).
+
 ---
 
 ## 3. Painters & rounded chrome

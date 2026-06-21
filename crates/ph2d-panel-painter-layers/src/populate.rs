@@ -53,24 +53,39 @@ pub fn populate(store: &mut WidgetStore) {
     );
 
     // Brush-properties view (fixed-id, so registered here, not per-frame): the
-    // Size slider. The panel paints it off the published `BrushSettings`
-    // snapshot; the value here is a placeholder overwritten by the drag / snapshot.
-    store.register(
+    // Size / Hardness / Flow / Strength sliders. The panel paints them off the
+    // published `BrushSettings` snapshot; the values here are placeholders
+    // overwritten by the drag / the snapshot each frame.
+    let brush_sliders = [
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: 0.0,
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
-    // Colour swatch — a Button; clicking it toggles the shared Blender picker.
-    // MUST be registered here or the dispatcher drops the click.
-    store.register(
+        ph2d_editor_core::ids::PAINTER_BRUSH_HARDNESS_SLIDER,
+        ph2d_editor_core::ids::PAINTER_BRUSH_FLOW_SLIDER,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+    ];
+    for id in brush_sliders {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
+    // Colour swatch + Eraser toggle — Buttons; clicking the swatch toggles the
+    // shared Blender picker, the eraser flips erase mode. MUST be registered here
+    // or the dispatcher drops the click.
+    for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
+        ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     // Blend chip is a Dropdown (generic open/close dispatch, like the per-row
     // blend chip + the "+ Adj" picker); its 24 options are deferred-popover buttons.
     store.register(

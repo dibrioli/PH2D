@@ -47,6 +47,22 @@ impl App {
         true
     }
 
+    /// Toggle the active Painter brush's eraser mode (`E`). Returns `true` when
+    /// consumed (the active tool IS the Painter), so `E` falls through otherwise.
+    pub(crate) fn painter_toggle_eraser(&mut self) -> bool {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let Some(tool) = gfx.tools.active_mut() else {
+            return false;
+        };
+        let Some(painter) = tool.as_any_mut().downcast_mut::<PainterTool>() else {
+            return false;
+        };
+        painter.toggle_brush_eraser();
+        true
+    }
+
     /// Primary Down on the canvas while the Painter is active: convert to image
     /// space and deliver as [`PointerPhase::Down`]. Returns `true` (consuming the
     /// click) iff the painter started a stroke, so it doesn't also pick/move the

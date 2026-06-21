@@ -91,6 +91,10 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_APPLY => {
                 self.request_commit();
             }
+            // ── Brush Eraser toggle (Brush-properties view). ───────────────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
+                self.toggle_brush_eraser();
+            }
             // ── Layers panel: per-row click (row select / visibility eye) ──
             PanelEvent::Click(id) => {
                 if let Some((layer, kind)) = self.decode_layer_widget(id) {
@@ -130,15 +134,15 @@ impl Tool for PainterTool {
             // ── Layers panel: per-row sliders (opacity + adjustment params),
             // all stored 0..1; the tool maps each to its target. ───────────
             PanelEvent::SetValue(id, v) => {
-                // Brush section sliders (fixed ids, tool-global): Size + R/G/B.
+                // Brush-properties sliders (fixed ids, tool-global).
                 if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER {
                     self.set_brush_size_norm(v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_COLOR_R {
-                    self.set_brush_color_channel(0, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_COLOR_G {
-                    self.set_brush_color_channel(1, v as f32);
-                } else if id == core_ids::PAINTER_BRUSH_COLOR_B {
-                    self.set_brush_color_channel(2, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_HARDNESS_SLIDER {
+                    self.set_brush_hardness(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_FLOW_SLIDER {
+                    self.set_brush_flow(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER {
+                    self.set_brush_strength(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),

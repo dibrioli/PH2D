@@ -112,6 +112,18 @@ impl App {
             }
         }
 
+        // Painter eraser toggle: `E` flips erase mode (Blender/PS convention).
+        // Consumed only when the Painter tool is active (the toggle gates on it),
+        // so `E` falls through otherwise. No modifiers, no repeat.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyE))
+            && !(self.modifiers.super_key() || self.modifiers.control_key())
+            && self.painter_toggle_eraser()
+        {
+            return;
+        }
+
         // Vector Shape: number keys 1-5 pick the sub-mode (Rect / Ellipse /
         // Polygon / Star / Spiral) while Shape is active — the functional
         // selector until the on-screen picker lands in the end-of-impl chrome

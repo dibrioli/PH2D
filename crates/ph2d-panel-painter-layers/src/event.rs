@@ -429,6 +429,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
+        // Eraser toggle → forward as a Click (the tool flips erase mode).
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            Some(true)
+        }
         // Blend popover option picked → close the brush dropdown + apply.
         WidgetEvent::Click(id) => {
             let mode = decode_brush_blend_option(id)?;
@@ -448,8 +454,14 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Size slider drag → forward the freshly-dispatched 0..1 value.
-        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER => {
+        // Brush sliders (Size / Hardness / Flow / Strength) drag → forward the
+        // freshly-dispatched 0..1 value.
+        WidgetEvent::ValueChanged(id)
+            if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
+                || id == core_ids::PAINTER_BRUSH_HARDNESS_SLIDER
+                || id == core_ids::PAINTER_BRUSH_FLOW_SLIDER
+                || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER =>
+        {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(

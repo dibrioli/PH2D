@@ -23,15 +23,15 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::{
-    Dropdown, DropdownOption, DropdownState, Slider, SliderState,
-    paint_dropdown_popover_in_viewport, paint_slider,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, Slider, SliderState,
+    paint_button, paint_dropdown_popover_in_viewport, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{BrushBlend, BrushSettings, MAX_BRUSH_BLEND_MODES};
 
-const LABEL_W: f32 = 44.0; // LITERAL-PX-OK: brush row label column ("Size"/"Blend")
-const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: size px readout column
+const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: brush row label column ("Hardness"/"Strength")
+const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
 
 /// Brush used before the first snapshot publish (Painter just activated). In
 /// practice the bridge publishes every frame the panel is visible, so this is
@@ -39,8 +39,12 @@ const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: size px readout column
 const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_px: 25.0,
     size_norm: 0.217,
+    hardness: 0.0,
+    flow: 1.0,
+    strength: 1.0,
     color: [0.0, 0.0, 0.0],
     blend: 0,
+    eraser: false,
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in
@@ -57,34 +61,43 @@ pub(crate) fn paint_brush_mode(
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
 
-    let font = TypeToken::Sm.px();
     let gap = Spacing::Sm.px();
     let mut y = header_bottom + Spacing::Md.px();
+    // Hardness/Flow/Strength read as percent; Size reads raw px.
+    let pct = |v: f32| format!("{:.0}", v * 100.0);
 
-    // ── Size: label + slider + "NN" px readout ──
-    label(ctx, theme, "Size", x, y, font);
-    let size_slider_w = (content_w - LABEL_W - gap - READOUT_W - gap).max(0.0);
-    paint_brush_slider(
+    // ── Slider rows: Size (px) + Hardness / Flow / Strength (%) ──
+    y = paint_param_row(ParamRow {
         ctx,
         theme,
-        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-        Rect::new(x + LABEL_W + gap, y, size_slider_w, ROW_H_PX),
-        brush.size_norm,
-    );
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &format!("{:.0}", brush.size_px),
-        x + LABEL_W + gap + size_slider_w + gap,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    y += ROW_H_PX + Spacing::Sm.px();
+        x,
+        content_w,
+        y,
+        label: "Size",
+        id: core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+        value: brush.size_norm,
+        readout: &format!("{:.0}", brush.size_px),
+    });
+    for (lbl, id, value) in [
+        ("Hardness", core_ids::PAINTER_BRUSH_HARDNESS_SLIDER, brush.hardness),
+        ("Flow", core_ids::PAINTER_BRUSH_FLOW_SLIDER, brush.flow),
+        ("Strength", core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, brush.strength),
+    ] {
+        y = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label: lbl,
+            id,
+            value,
+            readout: &pct(value),
+        });
+    }
 
     // ── Blend: label + dropdown chip ──
-    label(ctx, theme, "Blend", x, y, font);
+    label(ctx, theme, "Blend", x, y, TypeToken::Sm.px());
     let chip_w = (content_w - LABEL_W - gap).max(0.0);
     paint_brush_blend_chip(
         ctx,
@@ -94,6 +107,9 @@ pub(crate) fn paint_brush_mode(
     );
     y += ROW_H_PX + Spacing::Sm.px();
 
+    // ── Eraser: full-width mode toggle (Accent while erasing) ──
+    y = paint_eraser_toggle(ctx, theme, x, content_w, y, brush.eraser);
+
     // ── Colour: label + swatch (click opens the shared Blender picker) ──
     paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
 
@@ -101,6 +117,71 @@ pub(crate) fn paint_brush_mode(
     if let Some((chip_rect, cur_mode)) = state::take_pending_brush_blend_dd() {
         paint_brush_blend_popover(ctx, theme, chip_rect, cur_mode);
     }
+}
+
+/// Args for [`paint_param_row`] (grouped to dodge the too-many-arguments lint).
+struct ParamRow<'a, 'b> {
+    ctx: &'a mut PaintCtx<'b>,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    label: &'a str,
+    id: ph2d_a11y::NodeId,
+    value: f32,
+    readout: &'a str,
+}
+
+/// Paint one "label · slider · readout" brush param row. Returns the next `y`.
+fn paint_param_row(r: ParamRow) -> f32 {
+    let ParamRow { ctx, theme, x, content_w, y, label: label_txt, id, value, readout } = r;
+    let font = TypeToken::Sm.px();
+    let gap = Spacing::Sm.px();
+    label(ctx, theme, label_txt, x, y, font);
+    let slider_w = (content_w - LABEL_W - gap - READOUT_W - gap).max(0.0);
+    paint_brush_slider(
+        ctx,
+        theme,
+        id,
+        Rect::new(x + LABEL_W + gap, y, slider_w, ROW_H_PX),
+        value,
+    );
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        readout,
+        x + LABEL_W + gap + slider_w + gap,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        READOUT_W,
+        resolve(ColorToken::Text2, theme),
+    );
+    y + ROW_H_PX + Spacing::Xs.px()
+}
+
+/// Paint the full-width Eraser mode toggle (Accent while `on`). Returns next `y`.
+fn paint_eraser_toggle(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    on: bool,
+) -> f32 {
+    let id = core_ids::PAINTER_BRUSH_ERASER;
+    let rect = Rect::new(x, y, content_w, ROW_H_PX);
+    let st = ctx
+        .host
+        .store()
+        .button_state(id)
+        .unwrap_or(ButtonState::Normal);
+    let mut btn = Button::new(id, "Eraser").state(st);
+    if on {
+        btn.kind = ButtonKind::Accent;
+    }
+    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(id, rect);
+    y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// When the shared Blender picker targets the brush swatch, the hero loop mirrors

@@ -41,7 +41,12 @@ pub fn stamp_dab(
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
     debug_assert!(buf.len() >= (width as usize) * (height as usize) * 4, "buffer too small");
-    let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
+    // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up)
+    // × Strength (overall opacity). Both default to 1.0. (A true per-stroke
+    // accumulation cap for Strength — the "Accumulate off" model — is a later
+    // refinement; today it scales the dab, which composes with Flow.)
+    let coverage =
+        coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 {
         return None;
     }
@@ -177,6 +182,29 @@ mod tests {
         let val = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
         // Centre darker than a point near the rim.
         assert!(val(20, 20) < val(20, 32), "centre should be darker than the rim");
+    }
+
+    #[test]
+    fn strength_scales_dab_opacity() {
+        // Full strength → black; half strength → mid-grey over white (Mix at a=0.5).
+        let (w, h) = (16, 16);
+        let hard = |strength: f32| BrushSpec {
+            radius_px: 5.0,
+            color: [0.0, 0.0, 0.0],
+            blend: BrushBlend::Mix,
+            falloff: Falloff::Constant,
+            hardness: 1.0,
+            strength,
+            ..Default::default()
+        };
+        let mut full = solid(w, h, [255, 255, 255, 255]);
+        stamp_dab(&mut full, w, h, [8.0, 8.0], &hard(1.0), 1.0, false).expect("painted");
+        assert_eq!(full[((8 * w + 8) * 4) as usize], 0, "full strength = black");
+
+        let mut half = solid(w, h, [255, 255, 255, 255]);
+        stamp_dab(&mut half, w, h, [8.0, 8.0], &hard(0.5), 1.0, false).expect("painted");
+        let v = half[((8 * w + 8) * 4) as usize];
+        assert!((120..=136).contains(&v), "half strength ≈ mid-grey, got {v}");
     }
 
     #[test]

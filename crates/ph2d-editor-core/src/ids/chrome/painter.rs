@@ -108,6 +108,15 @@ pub const PAINTER_APPLY: NodeId = hash_node_id("painter.apply");
 /// Brush "Size" slider (stores the size slider's `0..1` track; the tool maps it
 /// to a pixel radius). `SetValue` → `PainterTool::set_brush_size_norm`.
 pub const PAINTER_BRUSH_SIZE_SLIDER: NodeId = hash_node_id("painter_brush.size_slider");
+/// Brush "Hardness" slider (`0..1`, edge softness). `SetValue` → `set_brush_hardness`.
+pub const PAINTER_BRUSH_HARDNESS_SLIDER: NodeId = hash_node_id("painter_brush.hardness_slider");
+/// Brush "Flow" slider (`0..1`, per-dab build-up). `SetValue` → `set_brush_flow`.
+pub const PAINTER_BRUSH_FLOW_SLIDER: NodeId = hash_node_id("painter_brush.flow_slider");
+/// Brush "Strength" slider (`0..1`, overall opacity). `SetValue` → `set_brush_strength`.
+pub const PAINTER_BRUSH_STRENGTH_SLIDER: NodeId = hash_node_id("painter_brush.strength_slider");
+/// Brush "Eraser" mode toggle — overrides the blend to Erase Alpha while on.
+/// `Click` → `PainterTool::toggle_brush_eraser`.
+pub const PAINTER_BRUSH_ERASER: NodeId = hash_node_id("painter_brush.eraser");
 /// Brush colour Red channel slider (`0..1`). `SetValue` → channel 0.
 pub const PAINTER_BRUSH_COLOR_R: NodeId = hash_node_id("painter_brush.color_r");
 /// Brush colour Green channel slider (`0..1`). `SetValue` → channel 1.

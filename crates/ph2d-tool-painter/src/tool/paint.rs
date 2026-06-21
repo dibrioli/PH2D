@@ -31,10 +31,18 @@ pub struct BrushSettings {
     /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so
     /// small brushes get more of the track).
     pub size_norm: f32,
+    /// Edge softness plateau, `0..1` (UI "Hardness"; `1` = hard disk).
+    pub hardness: f32,
+    /// Per-dab build-up, `0..1` (UI "Flow").
+    pub flow: f32,
+    /// Overall opacity, `0..1` (UI "Strength").
+    pub strength: f32,
     /// Straight-RGB paint colour in `[0, 1]`.
     pub color: [f32; 3],
     /// Blend-mode wire discriminant ([`BrushBlend::to_u8`]).
     pub blend: u8,
+    /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
+    pub eraser: bool,
 }
 
 /// Map a radius in pixels onto the size slider's `0..1` track (inverse of
@@ -65,6 +73,9 @@ pub(crate) struct PaintState {
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
+    /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time
+    /// (the drawing blend in `brush.blend` is preserved for when it's off).
+    eraser: bool,
 }
 
 impl Default for PaintState {
@@ -79,6 +90,7 @@ impl Default for PaintState {
             dabs: Vec::new(),
             seed: 0,
             stroke_undo: None,
+            eraser: false,
         }
     }
 }
@@ -151,7 +163,12 @@ impl PainterTool {
             return;
         }
         let (w, h) = self.source_size;
-        let brush = self.paint.brush;
+        let mut brush = self.paint.brush;
+        // Eraser mode overrides the blend with Erase Alpha (removes coverage from
+        // the layer's alpha); the drawing blend in `brush.blend` is untouched.
+        if self.paint.eraser {
+            brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
+        }
         // Alpha lock ("Lock"/Preserve Transparency): the dab paints only into the
         // active layer's existing alpha. (Clip + mask are composite-time effects the
         // compositor already honours; only alpha-lock constrains the dab itself.)
@@ -194,13 +211,37 @@ impl PainterTool {
     /// Snapshot the active brush for the panel's Brush section.
     #[must_use]
     pub fn brush_settings(&self) -> BrushSettings {
-        let px = self.paint.brush.radius_px;
+        let b = &self.paint.brush;
         BrushSettings {
-            size_px: px,
-            size_norm: size_px_to_norm(px),
-            color: self.paint.brush.color,
-            blend: self.paint.brush.blend.to_u8(),
+            size_px: b.radius_px,
+            size_norm: size_px_to_norm(b.radius_px),
+            hardness: b.hardness,
+            flow: b.flow,
+            strength: b.strength,
+            color: b.color,
+            blend: b.blend.to_u8(),
+            eraser: self.paint.eraser,
         }
+    }
+
+    /// Set the brush hardness (`0..1`, edge softness).
+    pub fn set_brush_hardness(&mut self, t: f32) {
+        self.paint.brush.hardness = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the brush flow (`0..1`, per-dab build-up).
+    pub fn set_brush_flow(&mut self, t: f32) {
+        self.paint.brush.flow = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the brush strength (`0..1`, overall opacity).
+    pub fn set_brush_strength(&mut self, t: f32) {
+        self.paint.brush.strength = t.clamp(0.0, 1.0);
+    }
+
+    /// Toggle eraser mode (overrides the blend with Erase Alpha while on).
+    pub fn toggle_brush_eraser(&mut self) {
+        self.paint.eraser = !self.paint.eraser;
     }
 
     /// Set the brush radius in pixels, clamped to the interactive size range.
@@ -450,6 +491,39 @@ mod tests {
             [255, 64, 0, 255],
             "Multiply brush colour over white painted the colour"
         );
+    }
+
+    #[test]
+    fn panel_events_drive_hardness_flow_strength_and_eraser() {
+        use ph2d_editor_core::ids as core_ids;
+        use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+        let mut t = PainterTool::default();
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_HARDNESS_SLIDER, 0.5));
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_FLOW_SLIDER, 0.25));
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, 0.75));
+        let s = t.brush_settings();
+        assert!((s.hardness - 0.5).abs() < 1e-6, "hardness {}", s.hardness);
+        assert!((s.flow - 0.25).abs() < 1e-6, "flow {}", s.flow);
+        assert!((s.strength - 0.75).abs() < 1e-6, "strength {}", s.strength);
+        assert!(!s.eraser);
+        // Eraser toggle via the panel button.
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ERASER));
+        assert!(t.brush_settings().eraser, "eraser toggled on");
+        t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ERASER));
+        assert!(!t.brush_settings().eraser, "eraser toggled off");
+    }
+
+    #[test]
+    fn eraser_removes_alpha_from_opaque_pixels() {
+        // Opaque white canvas, hard brush; eraser on → a dab clears alpha.
+        let mut t = white_canvas(32, 6.0);
+        t.toggle_brush_eraser();
+        t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+        assert_eq!(px(&t, 32, 16, 16)[3], 0, "eraser cleared alpha at the centre");
+        // A far corner is untouched (still opaque).
+        assert_eq!(px(&t, 32, 0, 0)[3], 255);
     }
 
     #[test]

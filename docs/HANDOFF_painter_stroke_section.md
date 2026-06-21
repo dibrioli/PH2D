@@ -17,11 +17,11 @@
 A seção Stroke do Blender (Method/Spacing/Adjust-Strength/Jitter+Unit/Dash/Input-Samples/Stabilize)
 foi portada clean-room: engine puro (`ph2d-painter-brush`), seam do tool (`ph2d-tool-painter`),
 e painel UI (`ph2d-panel-painter-layers/src/paint_stroke.rs`). Defaults conferidos = Blender DNA.
-Mas: (1) o traço não se desenha tão **contínuo** quanto no Blender; (2) **Dots/Drag Dot estão
-errados** — Drag Dot deixa um rastro em vez de um carimbo único; ~~(3) a UI não esconde os
-parâmetros por método~~ → **✅ RESOLVIDO 2026-06-21** (§2.1: rows gateadas por método + 3 testes
-paint-level provando o hit-rect sumir); (4) Anchored/Line/Curve seguem **DEFER** (sem finalização
-interativa). **Abertos agora: 2.2 (Drag Dot carimbo único) → 2.3 (medir densidade de amostra).**
+Mas: ~~(1) o traço não fica fluido com stabilize baixo~~ → **✅ RESOLVIDO 2026-06-21** (§2.3: ranges
+do Blender `factor∈[0.5,0.99]`/`radius∈[10,200]` verificados no `rna_brush.cc` + clamp engine/tool/
+painel); (2) **Drag Dot** ainda deixa rastro em vez de carimbo único; ~~(3) UI não esconde params
+por método~~ → **✅ RESOLVIDO 2026-06-21** (§2.1); (4) Anchored/Line/Curve seguem **DEFER**.
+**Abertos agora: 2.2 (Drag Dot carimbo único) · 2.4 (interativo + airbrush on_tick).**
 
 ## §1 — O que está PRONTO (mantenha; é fiel + testado)
 
@@ -97,7 +97,35 @@ Arquivos-chave:
   suavização de trajeto (ela só roda no Space, então Dots já está cru — OK). **Instrumente/peça
   repro** antes de reescrever (lição: não caçar causa errada).
 
-### 2.3 — Stabilize / traço "não contínuo como no Blender" 🔴 (mais difícil — MEÇA primeiro)
+### 2.3 — Stabilize "não fluido com valores baixos" ✅ RESOLVIDO (2026-06-21) — ranges do Blender
+
+- **Sintoma (Enio, 2ª passada):** "Stabilize não funciona tão bem quanto no Blender (o traço não
+  fica fluido se os valores são baixos)." → era a **pista do §3**: os ranges dos sliders.
+- **Causa-raiz (verificada, não chutada):** PH2D mapeava o track `0..1` em `factor∈[0,1]` e
+  `radius∈[0,200]`. Com factor→0, a mola `lerp(cursor, anchor, u)` não puxa nada (segue o cursor
+  cru/jittery); com radius→0, sem dead-zone. **O Blender PROÍBE esse regime** — confirmado no
+  source live `makesrna/intern/rna_brush.cc`: `smooth_stroke_radius` = `RNA_def_property_range(10,
+  200)` e `smooth_stroke_factor` = `RNA_def_property_range(0.5, 0.99)` (são ranges HARD do RNA, o
+  Blender nem armazena fora deles). O floor de 0.5 é por que o stabilizer do Blender sempre parece
+  liso.
+- **Fix (single-source no engine, clamp duplo):**
+  - Engine `spec.rs`: consts `SMOOTH_RADIUS_MIN_PX=10`/`MAX_PX=200`, `SMOOTH_FACTOR_MIN=0.5`/
+    `MAX=0.99` (citados ao RNA). `stroke.rs::stabilized()` clampa a eles → save/LLM não alcança o
+    regime jittery. Teste `stabilize_clamps_to_blender_range_so_low_values_stay_smooth`.
+  - Tool `paint.rs`: re-exporta as consts (alias `BRUSH_SMOOTH_*`); setters mapeiam track `0..1`
+    → `[min,max]` (radius `10 + t·190`, factor `0.5 + t·0.49`). Teste
+    `stabilize_sliders_map_to_blender_floors_not_zero`.
+  - Painel `paint_stroke.rs`: o display inverte (value→track) com os mesmos mins. Readouts mostram
+    o valor real (0.50..0.99 / 10..200) = o que o Blender mostra.
+- **NOTA — o que NÃO foi tocado (e por quê):** o handoff original teorizava densidade-de-amostra
+  (FPS/coalescing do macOS) como causa do não-contínuo GERAL. **Isso é uma questão separada** e só
+  mede com GUI. O sintoma que o Enio reportou agora ("valores baixos") era o range — fechado. SE
+  depois de testar ele achar não-fluido nos valores ALTOS/default, aí sim instrumente a densidade
+  de amostra (§ abaixo, preservado). Não toquei no smoother quadrático nem no shell.
+- **Doc stale fora da minha pasta:** [`ph2d-editor-core/.../ids/chrome/painter.rs:174,176`](../crates/ph2d-editor-core/src/ids/chrome/painter.rs)
+  ainda diz "0..200 px" / "0..1 lag" — comentário, não-funcional; é editor-core (isolamento). Follow-up do owner: trocar p/ "10..200" / "0.5..0.99".
+
+#### 2.3-bis (DEFER) — "não contínuo" GERAL, se persistir nos valores altos 🔴 (MEÇA primeiro)
 - **Sintoma (Enio):** "o stabilize ainda precisa de ajustes" + "o traço não é desenhado
   continuamente como no Blender" (mesmo após a suavização que matou as facetas grosseiras).
 - **Importante:** o `stabilized()` é **byte-a-byte** o `paint_smooth_stroke` do Blender e os
@@ -181,10 +209,18 @@ pusha.** O Enio pediu smoke verde antes de ship. Slot warm em uso.
 
 ## §7 — Progresso (agente seguinte, 2026-06-21)
 
-- **2.1 fechado** (commit local, não pushado): gate por-método + `uses_spacing()` + matriz
-  Blender testada + 3 testes paint-level (HitIndex). Airbrush-rate deferido (on_tick é stub —
-  ver §2.1). **Ainda falta o smoke do Enio** (é GUI): trocar Method e ver os params certos
-  sumir/aparecer. Tudo o mais (2.2/2.3/2.4) intacto e aberto.
-- **2.2 (Drag Dot) é o próximo** — é interativo (preview + commit único no Up), parte tool/shell.
-  Lembrar: a metade UI-honesta do "Drag Dot errado" já caiu com 2.1 (Drag Dot agora só mostra
-  Method+Samples); falta o COMPORTAMENTO (não acumular rastro). Ver §2.2.
+- **2.1 fechado** (commit local `0cdebf1d`, não pushado): gate por-método + `uses_spacing()` +
+  matriz Blender testada + 3 testes paint-level (HitIndex). Airbrush-rate deferido (on_tick é
+  stub — ver §2.1).
+- **2.3 fechado** (commit local, não pushado): ranges do stabilizer alinhados ao Blender
+  (`factor∈[0.5,0.99]`, `radius∈[10,200]`, verificados no `rna_brush.cc` live). Single-source no
+  engine + clamp no `stabilized()` + track-map nos setters + display invertido no painel. +2
+  testes (engine clamp, tool floor-map). Ver §2.3.
+- **Ainda falta o smoke do Enio** (é GUI) p/ 2.1 e 2.3: trocar Method e ver params sumir/aparecer;
+  Stabilize no fundo do slider ainda deve ficar liso (factor 0.5 / radius 10), não jittery.
+- **Abertos:** 2.2 (Drag Dot carimbo único — interativo) · 2.4 (Anchored/Line/Curve + on_tick do
+  airbrush) · 2.3-bis (não-contínuo GERAL, só se persistir nos valores altos — MEÇA densidade de
+  amostra antes).
+- **2.2 (Drag Dot) é o próximo lógico** — interativo (preview + commit único no Up), parte
+  tool/shell. A metade UI-honesta já caiu com 2.1 (Drag Dot só mostra Method+Samples); falta o
+  COMPORTAMENTO (não acumular rastro). Ver §2.2.

@@ -18,7 +18,8 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
-    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BRUSH_SMOOTH_RADIUS_MAX_PX, BrushSettings,
+    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BRUSH_SMOOTH_FACTOR_MAX,
+    BRUSH_SMOOTH_FACTOR_MIN, BRUSH_SMOOTH_RADIUS_MAX_PX, BRUSH_SMOOTH_RADIUS_MIN_PX, BrushSettings,
     JitterUnit, StrokeMethod,
 };
 
@@ -184,7 +185,8 @@ pub(crate) fn paint_stroke_section(
                 y,
                 label: "Radius",
                 id: core_ids::PAINTER_BRUSH_STABILIZE_RADIUS,
-                value: brush.smooth_radius_px / BRUSH_SMOOTH_RADIUS_MAX_PX,
+                value: (brush.smooth_radius_px - BRUSH_SMOOTH_RADIUS_MIN_PX)
+                    / (BRUSH_SMOOTH_RADIUS_MAX_PX - BRUSH_SMOOTH_RADIUS_MIN_PX),
                 readout: &format!("{:.0}", brush.smooth_radius_px),
             });
             y = paint_param_row(ParamRow {
@@ -195,7 +197,8 @@ pub(crate) fn paint_stroke_section(
                 y,
                 label: "Factor",
                 id: core_ids::PAINTER_BRUSH_STABILIZE_FACTOR,
-                value: brush.smooth_factor,
+                value: (brush.smooth_factor - BRUSH_SMOOTH_FACTOR_MIN)
+                    / (BRUSH_SMOOTH_FACTOR_MAX - BRUSH_SMOOTH_FACTOR_MIN),
                 readout: &format!("{:.2}", brush.smooth_factor),
             });
         }

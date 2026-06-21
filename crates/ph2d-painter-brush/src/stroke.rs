@@ -13,7 +13,9 @@
 
 use crate::dynamics::Dynamics;
 use crate::sampler::InputSampler;
-use crate::spec::BrushSpec;
+use crate::spec::{
+    BrushSpec, SMOOTH_FACTOR_MAX, SMOOTH_FACTOR_MIN, SMOOTH_RADIUS_MAX_PX, SMOOTH_RADIUS_MIN_PX,
+};
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 
 /// One input sample from the pointer device, in image-space pixels.
@@ -204,11 +206,19 @@ impl Stroke {
         if !self.spec.smooth_stroke || !self.spec.stroke_method.supports_smooth() {
             return Some(avg);
         }
-        let r = self.spec.smooth_radius_px.max(0.0);
+        // Clamp to Blender's hard RNA range so a save/LLM-authored value can't drop the stabilizer
+        // into the sub-floor regime that tracks the raw cursor (the "not fluid at low values" bug).
+        let r = self
+            .spec
+            .smooth_radius_px
+            .clamp(SMOOTH_RADIUS_MIN_PX, SMOOTH_RADIUS_MAX_PX);
         if dist(self.last_pos, avg.pos) < r {
             return None;
         }
-        let u = self.spec.smooth_factor.clamp(0.0, 1.0);
+        let u = self
+            .spec
+            .smooth_factor
+            .clamp(SMOOTH_FACTOR_MIN, SMOOTH_FACTOR_MAX);
         Some(StrokePoint {
             pos: lerp2(avg.pos, self.last_pos, u),
             pressure: lerp(avg.pressure, self.last_pressure, u),

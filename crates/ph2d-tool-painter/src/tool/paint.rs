@@ -32,8 +32,15 @@ pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
 /// Max absolute jitter the slider reaches, in pixels (View unit).
 pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
-/// Max stabilizer dead-zone radius the slider reaches, in pixels.
-pub const BRUSH_SMOOTH_RADIUS_MAX_PX: f32 = 200.0;
+// Stabilizer (Stabilize Stroke) ranges live in the engine — Blender's `smooth_stroke_radius` /
+// `smooth_stroke_factor` RNA hard ranges, which the engine model clamps to. Re-exported here under
+// the tool's `BRUSH_*` naming so the setters below and the panel's value↔track maps share that one
+// source (no second copy of the numbers to drift).
+pub use ph2d_painter_brush::{
+    SMOOTH_FACTOR_MAX as BRUSH_SMOOTH_FACTOR_MAX, SMOOTH_FACTOR_MIN as BRUSH_SMOOTH_FACTOR_MIN,
+    SMOOTH_RADIUS_MAX_PX as BRUSH_SMOOTH_RADIUS_MAX_PX,
+    SMOOTH_RADIUS_MIN_PX as BRUSH_SMOOTH_RADIUS_MIN_PX,
+};
 /// Max value for the Input Samples / Dash Length count sliders (mirrors the engine's
 /// input-sample window cap).
 pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
@@ -492,14 +499,22 @@ impl PainterTool {
         self.paint.brush.smooth_stroke = !self.paint.brush.smooth_stroke;
     }
 
-    /// Set the stabilizer dead-zone radius from the slider's `0..1` track → `0..MAX` px.
+    /// Set the stabilizer dead-zone radius from the slider's `0..1` track → Blender's
+    /// `[10, 200]` px range (`smooth_stroke_radius`). The track floor is `10`, not `0`: a
+    /// sub-10 dead-zone barely stabilizes, which is the "not fluid at low values" regime.
     pub fn set_brush_smooth_radius_norm(&mut self, t: f32) {
-        self.paint.brush.smooth_radius_px = t.clamp(0.0, 1.0) * BRUSH_SMOOTH_RADIUS_MAX_PX;
+        let t = t.clamp(0.0, 1.0);
+        self.paint.brush.smooth_radius_px =
+            BRUSH_SMOOTH_RADIUS_MIN_PX + t * (BRUSH_SMOOTH_RADIUS_MAX_PX - BRUSH_SMOOTH_RADIUS_MIN_PX);
     }
 
-    /// Set the stabilizer lag (`0..1`).
+    /// Set the stabilizer lag from the slider's `0..1` track → Blender's `[0.5, 0.99]` range
+    /// (`smooth_stroke_factor`). The floor of `0.5` is why Blender's stabilizer always feels
+    /// smooth; below it the spring barely pulls toward the anchor and the stroke gets jittery.
     pub fn set_brush_smooth_factor(&mut self, t: f32) {
-        self.paint.brush.smooth_factor = t.clamp(0.0, 1.0);
+        let t = t.clamp(0.0, 1.0);
+        self.paint.brush.smooth_factor =
+            BRUSH_SMOOTH_FACTOR_MIN + t * (BRUSH_SMOOTH_FACTOR_MAX - BRUSH_SMOOTH_FACTOR_MIN);
     }
 }
 

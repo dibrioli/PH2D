@@ -225,6 +225,34 @@ fn stabilize_dead_zone_then_lags_toward_anchor() {
 }
 
 #[test]
+fn stabilize_clamps_to_blender_range_so_low_values_stay_smooth() {
+    // Sub-floor values (factor 0.2 < 0.5, radius 2 < 10) must behave as Blender's hard RNA
+    // minimums, not as the near-off stabilizer they'd produce raw — the "not fluid at low
+    // values" regime Blender forbids and the engine now clamps away.
+    let spec = BrushSpec {
+        smooth_stroke: true,
+        smooth_radius_px: 2.0, // below the 10px floor
+        smooth_factor: 0.2,    // below the 0.5 floor
+        stroke_method: StrokeMethod::Dots,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    // 5px move: a raw 2px dead-zone would emit (5 > 2), but the clamped 10px one suppresses it.
+    s.extend(pt(5.0, 0.0, 1.0), &mut out);
+    assert_eq!(out.len(), 0, "radius clamped up to 10 ⇒ a 5px move stays in the dead-zone");
+    // 100px move: the lag uses the clamped factor 0.5, so lerp(100, 0, 0.5) = 50 (raw 0.2 ⇒ 80).
+    s.extend(pt(100.0, 0.0, 1.0), &mut out);
+    assert_eq!(out.len(), 1);
+    assert!(
+        (out[0].center[0] - 50.0).abs() < 1e-3,
+        "factor clamped up to 0.5 ⇒ lag is halfway toward the anchor; got {}",
+        out[0].center[0]
+    );
+}
+
+#[test]
 fn input_samples_average_smooths_position() {
     // window 2: a dab's centre is the mean of the last two raw samples.
     let spec = BrushSpec {

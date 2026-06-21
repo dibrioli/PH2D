@@ -369,8 +369,11 @@ impl Tool for PainterTool {
         }
     }
 
-    /// Per-frame heartbeat (ADR-0040-amendment-2). No-op for the layers host.
-    fn on_tick(&mut self, _dt_ms: f32) {}
+    /// Per-frame heartbeat (ADR-0040-amendment-2): settle the stabilizer toward the cursor while a
+    /// stroke is held and the pointer is parked, so a high-stabilizer stroke catches up on a pause.
+    fn on_tick(&mut self, _dt_ms: f32) {
+        self.paint_tick();
+    }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self

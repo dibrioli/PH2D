@@ -336,6 +336,52 @@ fn stabilizer_regularizes_a_jittery_line() {
 }
 
 #[test]
+fn settle_catches_the_stroke_up_to_the_cursor_on_a_pause() {
+    // High stabilizer: one move leaves the painted point lagging far behind the cursor. Repeated
+    // settle ticks (pointer parked, NO pointer-up) must walk the stroke up to the cursor.
+    let spec = BrushSpec {
+        stabilizer: 1.0,
+        ..straight_spec(2.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    let mut all = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(80.0, 0.0, 1.0), &mut out);
+    all.extend_from_slice(&out);
+    let after_move = all.last().map(|d| d.center[0]).unwrap_or(0.0);
+    assert!(
+        after_move < 40.0,
+        "heavy stabilizer should lag far behind the cursor on a single move, got {after_move}"
+    );
+    // Park the pointer and tick: the stroke should reach the cursor without a pointer-up.
+    for _ in 0..120 {
+        s.settle(&mut out);
+        all.extend_from_slice(&out);
+    }
+    let last = all.last().unwrap().center[0];
+    assert!(
+        (last - 80.0).abs() < 2.0,
+        "settle did not catch the stroke up to the parked cursor (80), got {last}"
+    );
+}
+
+#[test]
+fn settle_is_a_noop_without_lag() {
+    // Stabilizer 0 (no lag) ⇒ settle emits nothing (there is nothing to catch up).
+    let spec = BrushSpec {
+        stabilizer: 0.0,
+        ..straight_spec(2.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(40.0, 0.0, 1.0), &mut out);
+    s.settle(&mut out);
+    assert!(out.is_empty(), "settle should be a no-op with the stabilizer off");
+}
+
+#[test]
 fn stabilizer_catches_up_to_release_on_finish() {
     // A heavy stabilizer lags the painted point far behind the cursor, but pointer-up must flush
     // the lag so the stroke ends exactly at the release point (no truncated stroke).

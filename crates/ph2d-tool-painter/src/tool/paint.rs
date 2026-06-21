@@ -135,6 +135,11 @@ pub(crate) struct PaintState {
     /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time
     /// (the drawing blend in `brush.blend` is preserved for when it's off).
     eraser: bool,
+    /// Set by [`PainterTool::paint_extend`] each pointer move and cleared by the per-frame tick.
+    /// While a stroke is held and this stays `false` for a frame (the pointer is parked), the tick
+    /// settles the stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause,
+    /// not only on pointer-up. Gating on it keeps the during-movement smoothing at full strength.
+    moved_this_frame: bool,
 }
 
 impl Default for PaintState {
@@ -153,6 +158,7 @@ impl Default for PaintState {
             seed: 0,
             stroke_undo: None,
             eraser: false,
+            moved_this_frame: false,
         }
     }
 }
@@ -208,7 +214,28 @@ impl PainterTool {
         self.stamp_dabs(&dabs);
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
+        self.paint.moved_this_frame = true;
         true
+    }
+
+    /// Per-frame heartbeat while a stroke is held: when the pointer is parked (no move this frame),
+    /// settle the stabilizer toward the cursor so a high-stabilizer stroke catches up on a pause —
+    /// not only at pointer-up. A no-op while the pointer is moving (the move already advanced it) or
+    /// when the stabilizer is off. Always clears the per-frame move flag.
+    pub(crate) fn paint_tick(&mut self) {
+        let parked = !self.paint.moved_this_frame;
+        self.paint.moved_this_frame = false;
+        if !parked {
+            return;
+        }
+        let Some(mut stroke) = self.paint.stroke.take() else {
+            return;
+        };
+        let mut dabs = std::mem::take(&mut self.paint.dabs);
+        stroke.settle(&mut dabs);
+        self.stamp_dabs(&dabs);
+        self.paint.dabs = dabs;
+        self.paint.stroke = Some(stroke);
     }
 
     /// Finish the stroke at `ev` (stamp the final segment, flush the freehand smoother's tail so

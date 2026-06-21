@@ -78,6 +78,11 @@ pub struct Stroke {
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
 /// At stabilizer `0.0` the factor is `1.0` (the filtered point IS the cursor — no stabilization).
 const STABILIZER_MIN_BLEND: f32 = 0.08;
+/// When settling on a pause, converge at least this fast per tick — so even the heaviest stabilizer
+/// catches up to the cursor in a fraction of a second, not the ~1 s its in-stroke blend would take.
+const SETTLE_BLEND_FLOOR: f32 = 0.3;
+/// Sub-pixel distance at which the stabilizer counts as caught up to the cursor (stops settling).
+const SETTLE_EPS_PX: f32 = 0.5;
 
 impl Stroke {
     /// Create a stroke for `spec`/`dynamics`. `seed` seeds the jitter RNG (use a per-stroke
@@ -196,6 +201,44 @@ impl Stroke {
             );
         }
         self.prev_prev = None;
+    }
+
+    /// Catch the stabilizer up to the cursor while the stroke is held but the pointer is parked:
+    /// step the filtered position toward the last raw sample and paint the spline up to it, so a
+    /// high-stabilizer stroke reaches the cursor on a pause — not only at pointer-up. No-op when
+    /// there is no lag to flush (stabilizer off, already caught up, or a non-`Space` method). The
+    /// tool drives this from its per-frame tick while the pointer is stationary.
+    pub fn settle(&mut self, out: &mut Vec<Dab>) {
+        out.clear();
+        if !self.started || self.spec.stroke_method != StrokeMethod::Space {
+            return;
+        }
+        let s = self.spec.stabilizer.clamp(0.0, 1.0);
+        if s <= f32::EPSILON {
+            return;
+        }
+        let d = dist(self.stab_pos, self.last_raw_pos);
+        if d <= SETTLE_EPS_PX {
+            return; // already at the cursor
+        }
+        // Converge faster than the in-stroke blend (no new input to smooth on a pause — the artist
+        // just wants the line to arrive); snap the final sub-pixel (the exponential never reaches).
+        let blend = (1.0 - s * (1.0 - STABILIZER_MIN_BLEND)).max(SETTLE_BLEND_FLOOR);
+        self.stab_pos = if d * (1.0 - blend) <= SETTLE_EPS_PX {
+            self.last_raw_pos
+        } else {
+            [
+                self.stab_pos[0] + (self.last_raw_pos[0] - self.stab_pos[0]) * blend,
+                self.stab_pos[1] + (self.last_raw_pos[1] - self.stab_pos[1]) * blend,
+            ]
+        };
+        self.walk_smoothed(
+            StrokePoint {
+                pos: self.stab_pos,
+                pressure: self.last_raw_pressure,
+            },
+            out,
+        );
     }
 
     /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the

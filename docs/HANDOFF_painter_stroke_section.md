@@ -121,6 +121,14 @@ Arquivos-chave:
     bem regular/liso**. Real-time (causal, sem lookahead) — o lag é proporcional à intensidade que o
     Enio escolhe. **Catch-up no `finish()`**: com lazy-mouse o traço fica atrás do cursor; no
     pointer-up ele caminha até o ponto de soltura real (Space) → não trunca. Default 0.5.
+  - **Catch-up na PAUSA (2026-06-21, pedido do Enio):** com stabilize alto o traço só alcançava o
+    cursor no mouse-up. Agora `Stroke::settle()` (engine) avança `stab_pos` rumo ao último cursor a
+    cada **tick por frame** e o tool dirige via `on_tick`→`paint_tick()` (antes era stub) — **só
+    quando o cursor está PARADO** (flag `moved_this_frame`, pra não enfraquecer a suavização durante
+    o movimento). O shell já redesenha contínuo (`ControlFlow::Poll`+`request_redraw`/frame), então
+    `on_tick` roda parado. `settle` converge com piso `SETTLE_BLEND_FLOOR=0.3` (alcança em ~⅓s mesmo
+    no máximo) + snap sub-pixel. Testes `settle_catches_the_stroke_up_to_the_cursor_on_a_pause` +
+    `settle_is_a_noop_without_lag`.
 - **Wiring:** engine (campo + `stabilize()` + tensão + catch-up); tool (`BrushSettings.stabilizer`
   + `set_brush_stabilizer` + routing do id `PAINTER_BRUSH_STABILIZE` **reaproveitado como slider**);
   painel (slider + populate como Slider + event drain + FALLBACK). Ids dead `_RADIUS`/`_FACTOR` em

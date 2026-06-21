@@ -665,7 +665,10 @@ mod tests {
     #[test]
     fn canvas_paint_tool_upcasts_and_receives_pointer() {
         let mut reg = ToolRegistry::new();
-        reg.register(Box::new(Painty { id: ToolId::new("painty"), samples: Vec::new() }));
+        reg.register(Box::new(Painty {
+            id: ToolId::new("painty"),
+            samples: Vec::new(),
+        }));
         reg.set_active(&ToolId::new("painty"));
         let tool = reg.active_mut().expect("active");
         let cp = tool
@@ -678,9 +681,15 @@ mod tests {
             phase: PointerPhase::Down,
         };
         assert!(cp.on_canvas_pointer(down), "tool consumed the sample");
-        cp.on_canvas_pointer(CanvasPointer { phase: PointerPhase::Up, ..down });
+        cp.on_canvas_pointer(CanvasPointer {
+            phase: PointerPhase::Up,
+            ..down
+        });
         // Downcast back to the concrete type to inspect what it recorded.
-        let painty = tool.as_any_mut().downcast_mut::<Painty>().expect("downcast");
+        let painty = tool
+            .as_any_mut()
+            .downcast_mut::<Painty>()
+            .expect("downcast");
         assert_eq!(painty.samples.len(), 2);
         assert_eq!(painty.samples[0].pos, [12.0, 34.0]);
         assert!((painty.samples[0].pressure - 0.5).abs() < 1e-6);

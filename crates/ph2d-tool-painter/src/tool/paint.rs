@@ -11,7 +11,7 @@
 use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-use ph2d_painter_brush::{stamp_dab, BrushBlend, BrushSpec, Dab, Dynamics, Stroke, StrokePoint};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, Dynamics, Stroke, StrokePoint, stamp_dab};
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
 /// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
@@ -84,7 +84,10 @@ impl Default for PaintState {
             // A moderate black brush so strokes read clearly on both small and
             // large canvases. The brush-settings UI drives size/colour later
             // (`docs/Painter/` Fase 4); the engine's own default is 25 px radius.
-            brush: BrushSpec { radius_px: 10.0, ..BrushSpec::default() },
+            brush: BrushSpec {
+                radius_px: 10.0,
+                ..BrushSpec::default()
+            },
             dynamics: Dynamics::default(),
             stroke: None,
             dabs: Vec::new(),
@@ -117,7 +120,13 @@ impl PainterTool {
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.begin(StrokePoint { pos: ev.pos, pressure: ev.pressure }, &mut dabs);
+        stroke.begin(
+            StrokePoint {
+                pos: ev.pos,
+                pressure: ev.pressure,
+            },
+            &mut dabs,
+        );
         self.stamp_dabs(&dabs);
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -130,7 +139,13 @@ impl PainterTool {
             return false;
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.extend(StrokePoint { pos: ev.pos, pressure: ev.pressure }, &mut dabs);
+        stroke.extend(
+            StrokePoint {
+                pos: ev.pos,
+                pressure: ev.pressure,
+            },
+            &mut dabs,
+        );
         self.stamp_dabs(&dabs);
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -180,9 +195,17 @@ impl PainterTool {
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for d in dabs {
-            let spec = BrushSpec { radius_px: d.radius_px, ..brush };
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                ..brush
+            };
             if let Some(r) = stamp_dab(buf, w, h, d.center, &spec, d.coverage, alpha_locked) {
-                let rect = Region { x: r.x, y: r.y, w: r.w, h: r.h };
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
@@ -201,7 +224,12 @@ fn union_region(a: Region, b: Region) -> Region {
     let y0 = a.y.min(b.y);
     let x1 = (a.x + a.w).max(b.x + b.w);
     let y1 = (a.y + a.h).max(b.y + b.h);
-    Region { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
+    Region {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    }
 }
 
 /// Brush-settings accessors — the Brush section of the layers panel and the
@@ -315,7 +343,12 @@ mod tests {
     use ph2d_painter_brush::Falloff;
 
     fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
-        CanvasPointer { pos, pressure: 1.0, tilt: [0.0, 0.0], phase }
+        CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        }
     }
 
     /// A `PainterTool` sourced with a white opaque `size`×`size` canvas (one
@@ -335,7 +368,12 @@ mod tests {
 
     fn px(t: &PainterTool, size: u32, x: u32, y: u32) -> [u8; 4] {
         let i = ((y * size + x) * 4) as usize;
-        [t.canvas_rgba[i], t.canvas_rgba[i + 1], t.canvas_rgba[i + 2], t.canvas_rgba[i + 3]]
+        [
+            t.canvas_rgba[i],
+            t.canvas_rgba[i + 1],
+            t.canvas_rgba[i + 2],
+            t.canvas_rgba[i + 3],
+        ]
     }
 
     #[test]
@@ -354,7 +392,11 @@ mod tests {
         let mut t = white_canvas(32, 4.0);
         let _ = t.take_preview_dirty(); // clear the dirty flag `set_source` raised
         assert!(!t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Hover)));
-        assert_eq!(px(&t, 32, 16, 16), [255, 255, 255, 255], "hover left canvas untouched");
+        assert_eq!(
+            px(&t, 32, 16, 16),
+            [255, 255, 255, 255],
+            "hover left canvas untouched"
+        );
         assert!(!t.preview_dirty, "hover did not re-dirty the preview");
     }
 
@@ -366,8 +408,16 @@ mod tests {
         t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
         // Spacing emits many dabs along the horizontal segment → the midpoint is
         // painted, while a point well off the line stays white.
-        assert_eq!(px(&t, 64, 32, 32), [0, 0, 0, 255], "midpoint of the stroke painted");
-        assert_eq!(px(&t, 64, 32, 10), [255, 255, 255, 255], "off-line pixel untouched");
+        assert_eq!(
+            px(&t, 64, 32, 32),
+            [0, 0, 0, 255],
+            "midpoint of the stroke painted"
+        );
+        assert_eq!(
+            px(&t, 64, 32, 10),
+            [255, 255, 255, 255],
+            "off-line pixel untouched"
+        );
         // Stroke ended → no stroke in progress.
         assert!(t.paint.stroke.is_none());
     }
@@ -375,7 +425,10 @@ mod tests {
     #[test]
     fn move_without_down_is_ignored() {
         let mut t = white_canvas(32, 4.0);
-        assert!(!t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Move)), "stray move");
+        assert!(
+            !t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Move)),
+            "stray move"
+        );
         assert_eq!(px(&t, 32, 16, 16), [255, 255, 255, 255]);
     }
 
@@ -406,12 +459,20 @@ mod tests {
         // Paint on the transparent side → blocked (no alpha created).
         t.on_canvas_pointer(cp([12.0, 8.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([12.0, 8.0], PointerPhase::Up));
-        assert_eq!(px(&t, size, 12, 8)[3], 0, "alpha-lock blocked paint on transparency");
+        assert_eq!(
+            px(&t, size, 12, 8)[3],
+            0,
+            "alpha-lock blocked paint on transparency"
+        );
 
         // Paint on the opaque side → recoloured, alpha preserved.
         t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([3.0, 8.0], PointerPhase::Up));
-        assert_eq!(px(&t, size, 3, 8), [0, 0, 0, 255], "recoloured the opaque side");
+        assert_eq!(
+            px(&t, size, 3, 8),
+            [0, 0, 0, 255],
+            "recoloured the opaque side"
+        );
     }
 
     #[test]
@@ -421,7 +482,11 @@ mod tests {
         let s = t.brush_settings();
         // Squared track: 0.5 → 1 + 0.25·(512−1) px, and the snapshot maps back.
         assert!((s.size_px - 128.75).abs() < 0.01, "size_px = {}", s.size_px);
-        assert!((s.size_norm - 0.5).abs() < 1e-4, "size_norm = {}", s.size_norm);
+        assert!(
+            (s.size_norm - 0.5).abs() < 1e-4,
+            "size_norm = {}",
+            s.size_norm
+        );
         // Clamps at the ends.
         t.set_brush_size_norm(2.0);
         assert!((t.brush_settings().size_px - BRUSH_SIZE_MAX_PX).abs() < 0.01);
@@ -461,7 +526,10 @@ mod tests {
 
         let mut t = PainterTool::default();
         // Size slider drag (0..1 track).
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SIZE_SLIDER, 0.5));
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+            0.5,
+        ));
         assert!((t.brush_settings().size_px - 128.75).abs() < 0.01);
         // Colour from the shared Blender picker read-back ("r,g,b", 8-bit native).
         t.handle_panel_event(PanelEvent::SelectOption(
@@ -499,9 +567,18 @@ mod tests {
         use ph2d_editor_core::tool::{PanelEvent, Tool};
 
         let mut t = PainterTool::default();
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_HARDNESS_SLIDER, 0.5));
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_FLOW_SLIDER, 0.25));
-        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, 0.75));
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_BRUSH_HARDNESS_SLIDER,
+            0.5,
+        ));
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_BRUSH_FLOW_SLIDER,
+            0.25,
+        ));
+        t.handle_panel_event(PanelEvent::SetValue(
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            0.75,
+        ));
         let s = t.brush_settings();
         assert!((s.hardness - 0.5).abs() < 1e-6, "hardness {}", s.hardness);
         assert!((s.flow - 0.25).abs() < 1e-6, "flow {}", s.flow);
@@ -521,7 +598,11 @@ mod tests {
         t.toggle_brush_eraser();
         t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
-        assert_eq!(px(&t, 32, 16, 16)[3], 0, "eraser cleared alpha at the centre");
+        assert_eq!(
+            px(&t, 32, 16, 16)[3],
+            0,
+            "eraser cleared alpha at the centre"
+        );
         // A far corner is untouched (still opaque).
         assert_eq!(px(&t, 32, 0, 0)[3], 255);
     }
@@ -529,9 +610,15 @@ mod tests {
     #[test]
     fn dock_defaults_to_layers_then_toggles() {
         let mut t = PainterTool::default();
-        assert!(t.dock_shows_layers(), "dock opens on the Layers/Effects view");
+        assert!(
+            t.dock_shows_layers(),
+            "dock opens on the Layers/Effects view"
+        );
         t.toggle_dock();
-        assert!(!t.dock_shows_layers(), "header toggle flips to the Brush view");
+        assert!(
+            !t.dock_shows_layers(),
+            "header toggle flips to the Brush view"
+        );
         t.toggle_dock();
         assert!(t.dock_shows_layers(), "toggling back returns to Layers");
     }
@@ -557,6 +644,10 @@ mod tests {
         // Redo repaints.
         assert!(t.redo_last());
         assert_ne!(*t.canvas_rgba, pristine, "redo repainted the stroke");
-        assert_eq!(px(&t, 64, 32, 32), [0, 0, 0, 255], "stroke start back to black");
+        assert_eq!(
+            px(&t, 64, 32, 32),
+            [0, 0, 0, 255],
+            "stroke start back to black"
+        );
     }
 }

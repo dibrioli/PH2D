@@ -79,9 +79,17 @@ pub(crate) fn paint_brush_mode(
         readout: &format!("{:.0}", brush.size_px),
     });
     for (lbl, id, value) in [
-        ("Hardness", core_ids::PAINTER_BRUSH_HARDNESS_SLIDER, brush.hardness),
+        (
+            "Hardness",
+            core_ids::PAINTER_BRUSH_HARDNESS_SLIDER,
+            brush.hardness,
+        ),
         ("Flow", core_ids::PAINTER_BRUSH_FLOW_SLIDER, brush.flow),
-        ("Strength", core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, brush.strength),
+        (
+            "Strength",
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            brush.strength,
+        ),
     ] {
         y = paint_param_row(ParamRow {
             ctx,
@@ -134,7 +142,17 @@ struct ParamRow<'a, 'b> {
 
 /// Paint one "label · slider · readout" brush param row. Returns the next `y`.
 fn paint_param_row(r: ParamRow) -> f32 {
-    let ParamRow { ctx, theme, x, content_w, y, label: label_txt, id, value, readout } = r;
+    let ParamRow {
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        label: label_txt,
+        id,
+        value,
+        readout,
+    } = r;
     let font = TypeToken::Sm.px();
     let gap = Spacing::Sm.px();
     label(ctx, theme, label_txt, x, y, font);

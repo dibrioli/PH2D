@@ -63,7 +63,11 @@ mod tests {
 
     #[test]
     fn mouse_pressure_is_noop() {
-        let d = Dynamics { size_pressure: true, strength_pressure: true, ..Default::default() };
+        let d = Dynamics {
+            size_pressure: true,
+            strength_pressure: true,
+            ..Default::default()
+        };
         assert!((d.radius_scale(1.0) - 1.0).abs() < 1e-6);
         assert!((d.coverage_scale(1.0) - 1.0).abs() < 1e-6);
     }
@@ -82,7 +86,11 @@ mod tests {
 
     #[test]
     fn size_min_floor_at_zero_pressure() {
-        let d = Dynamics { size_pressure: true, size_min: 0.25, ..Default::default() };
+        let d = Dynamics {
+            size_pressure: true,
+            size_min: 0.25,
+            ..Default::default()
+        };
         assert!((d.radius_scale(0.0) - 0.25).abs() < 1e-6);
         assert!((d.radius_scale(0.5) - 0.625).abs() < 1e-6); // 0.25 + 0.75*0.5
     }

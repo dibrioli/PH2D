@@ -40,7 +40,10 @@ pub fn stamp_dab(
     coverage: f32,
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
-    debug_assert!(buf.len() >= (width as usize) * (height as usize) * 4, "buffer too small");
+    debug_assert!(
+        buf.len() >= (width as usize) * (height as usize) * 4,
+        "buffer too small"
+    );
     // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up)
     // × Strength (overall opacity). Both default to 1.0. (A true per-stroke
     // accumulation cap for Strength — the "Accumulate off" model — is a later
@@ -86,7 +89,11 @@ pub fn stamp_dab(
             ];
             // Alpha lock: gate coverage by the destination's existing alpha so paint
             // recolours the shape without extending it.
-            let a = if preserve_alpha { w * coverage * dst[3] } else { w * coverage };
+            let a = if preserve_alpha {
+                w * coverage * dst[3]
+            } else {
+                w * coverage
+            };
             if a <= 0.0 {
                 continue;
             }
@@ -123,7 +130,11 @@ mod tests {
     use crate::falloff::Falloff;
 
     fn solid(width: u32, height: u32, rgba: [u8; 4]) -> Vec<u8> {
-        rgba.iter().copied().cycle().take((width * height * 4) as usize).collect()
+        rgba.iter()
+            .copied()
+            .cycle()
+            .take((width * height * 4) as usize)
+            .collect()
     }
 
     #[test]
@@ -153,7 +164,10 @@ mod tests {
     fn dab_off_canvas_is_none() {
         let (w, h) = (16, 16);
         let mut buf = solid(w, h, [0, 0, 0, 0]);
-        let spec = BrushSpec { radius_px: 3.0, ..Default::default() };
+        let spec = BrushSpec {
+            radius_px: 3.0,
+            ..Default::default()
+        };
         assert!(stamp_dab(&mut buf, w, h, [-100.0, -100.0], &spec, 1.0, false).is_none());
     }
 
@@ -181,7 +195,10 @@ mod tests {
         stamp_dab(&mut buf, w, h, [20.0, 20.0], &spec, 1.0, false).expect("painted");
         let val = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
         // Centre darker than a point near the rim.
-        assert!(val(20, 20) < val(20, 32), "centre should be darker than the rim");
+        assert!(
+            val(20, 20) < val(20, 32),
+            "centre should be darker than the rim"
+        );
     }
 
     #[test]
@@ -204,7 +221,10 @@ mod tests {
         let mut half = solid(w, h, [255, 255, 255, 255]);
         stamp_dab(&mut half, w, h, [8.0, 8.0], &hard(0.5), 1.0, false).expect("painted");
         let v = half[((8 * w + 8) * 4) as usize];
-        assert!((120..=136).contains(&v), "half strength ≈ mid-grey, got {v}");
+        assert!(
+            (120..=136).contains(&v),
+            "half strength ≈ mid-grey, got {v}"
+        );
     }
 
     #[test]

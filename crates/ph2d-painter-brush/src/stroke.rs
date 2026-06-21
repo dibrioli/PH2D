@@ -119,7 +119,11 @@ impl Stroke {
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure)).clamp(0.0, 1.0);
         let center = self.apply_jitter(pos, radius);
-        Dab { center, radius_px: radius, coverage }
+        Dab {
+            center,
+            radius_px: radius,
+            coverage,
+        }
     }
 
     /// Offset the dab centre by up to `jitter × radius` in a random direction.
@@ -163,18 +167,33 @@ mod tests {
     use crate::falloff::Falloff;
 
     fn straight_spec(radius: f32, spacing: f32) -> BrushSpec {
-        BrushSpec { radius_px: radius, spacing, falloff: Falloff::Constant, ..Default::default() }
+        BrushSpec {
+            radius_px: radius,
+            spacing,
+            falloff: Falloff::Constant,
+            ..Default::default()
+        }
     }
 
     fn no_dynamics() -> Dynamics {
-        Dynamics { size_pressure: false, strength_pressure: false, ..Default::default() }
+        Dynamics {
+            size_pressure: false,
+            strength_pressure: false,
+            ..Default::default()
+        }
     }
 
     #[test]
     fn begin_emits_one_dab_at_down() {
         let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [5.0, 5.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [5.0, 5.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].center, [5.0, 5.0]);
     }
@@ -184,10 +203,27 @@ mod tests {
         // radius 10 → diameter 20; spacing 0.5 → step 10 px.
         let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [0.0, 0.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [0.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         // Move 100 px along +x: expect dabs at 10,20,...,100 ⟹ 10 dabs.
-        s.extend(StrokePoint { pos: [100.0, 0.0], pressure: 1.0 }, &mut out);
-        assert_eq!(out.len(), 10, "got {:?}", out.iter().map(|d| d.center[0]).collect::<Vec<_>>());
+        s.extend(
+            StrokePoint {
+                pos: [100.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        assert_eq!(
+            out.len(),
+            10,
+            "got {:?}",
+            out.iter().map(|d| d.center[0]).collect::<Vec<_>>()
+        );
         assert!((out[0].center[0] - 10.0).abs() < 1e-3);
         assert!((out[9].center[0] - 100.0).abs() < 1e-3);
         for d in &out {
@@ -200,10 +236,28 @@ mod tests {
         // step = 10. Two 6-px moves (total 12) ⟹ exactly one dab (at arc-length 10).
         let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [0.0, 0.0], pressure: 1.0 }, &mut out);
-        s.extend(StrokePoint { pos: [6.0, 0.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [0.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        s.extend(
+            StrokePoint {
+                pos: [6.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         assert_eq!(out.len(), 0, "6 < 10, no dab yet");
-        s.extend(StrokePoint { pos: [12.0, 0.0], pressure: 1.0 }, &mut out);
+        s.extend(
+            StrokePoint {
+                pos: [12.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         assert_eq!(out.len(), 1, "crossed 10 between 6 and 12");
         assert!((out[0].center[0] - 10.0).abs() < 1e-3);
     }
@@ -212,31 +266,77 @@ mod tests {
     fn zero_length_move_emits_nothing() {
         let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [3.0, 3.0], pressure: 1.0 }, &mut out);
-        s.extend(StrokePoint { pos: [3.0, 3.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [3.0, 3.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
+        s.extend(
+            StrokePoint {
+                pos: [3.0, 3.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         assert_eq!(out.len(), 0);
     }
 
     #[test]
     fn pressure_interpolates_along_segment() {
         // size follows pressure; check the dab radius grows along the segment.
-        let dyn_ = Dynamics { size_pressure: true, size_min: 0.0, ..Default::default() };
+        let dyn_ = Dynamics {
+            size_pressure: true,
+            size_min: 0.0,
+            ..Default::default()
+        };
         let mut s = Stroke::new(straight_spec(10.0, 0.5), dyn_, 1);
         let mut out = Vec::new();
-        s.begin(StrokePoint { pos: [0.0, 0.0], pressure: 0.0 }, &mut out);
-        s.extend(StrokePoint { pos: [100.0, 0.0], pressure: 1.0 }, &mut out);
+        s.begin(
+            StrokePoint {
+                pos: [0.0, 0.0],
+                pressure: 0.0,
+            },
+            &mut out,
+        );
+        s.extend(
+            StrokePoint {
+                pos: [100.0, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
+        );
         assert!(out.len() >= 2);
-        assert!(out[0].radius_px < out[out.len() - 1].radius_px, "radius rises with pressure");
+        assert!(
+            out[0].radius_px < out[out.len() - 1].radius_px,
+            "radius rises with pressure"
+        );
     }
 
     #[test]
     fn jitter_is_deterministic_for_a_seed() {
-        let spec = BrushSpec { jitter: 0.5, ..straight_spec(10.0, 0.5) };
+        let spec = BrushSpec {
+            jitter: 0.5,
+            ..straight_spec(10.0, 0.5)
+        };
         let run = || {
             let mut s = Stroke::new(spec, no_dynamics(), 42);
             let mut out = Vec::new();
-            s.begin(StrokePoint { pos: [50.0, 50.0], pressure: 1.0 }, &mut out);
-            s.extend(StrokePoint { pos: [150.0, 50.0], pressure: 1.0 }, &mut out);
+            s.begin(
+                StrokePoint {
+                    pos: [50.0, 50.0],
+                    pressure: 1.0,
+                },
+                &mut out,
+            );
+            s.extend(
+                StrokePoint {
+                    pos: [150.0, 50.0],
+                    pressure: 1.0,
+                },
+                &mut out,
+            );
             out
         };
         assert_eq!(run(), run(), "same seed ⟹ identical jittered dabs");

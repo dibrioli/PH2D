@@ -142,7 +142,12 @@ pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [
                 return [0.0, 0.0, 0.0, 0.0];
             }
             let co = |b: f32, s: f32| (s * a + b * ab * (1.0 - a)) / ao;
-            [co(cb[0], color[0]), co(cb[1], color[1]), co(cb[2], color[2]), ao]
+            [
+                co(cb[0], color[0]),
+                co(cb[1], color[1]),
+                co(cb[2], color[2]),
+                ao,
+            ]
         }
         BrushBlend::EraseAlpha => [cb[0], cb[1], cb[2], (ab - a).clamp(0.0, 1.0)],
         BrushBlend::AddAlpha => [cb[0], cb[1], cb[2], (ab + a).clamp(0.0, 1.0)],
@@ -346,23 +351,43 @@ mod tests {
 
     #[test]
     fn multiply_halves() {
-        let out = blend_over(BrushBlend::Multiply, [0.5, 0.5, 0.5, 1.0], [0.5, 0.5, 0.5], 1.0);
+        let out = blend_over(
+            BrushBlend::Multiply,
+            [0.5, 0.5, 0.5, 1.0],
+            [0.5, 0.5, 0.5],
+            1.0,
+        );
         assert!((out[0] - 0.25).abs() < 1e-6);
         assert!((out[3] - 1.0).abs() < 1e-6, "colour mode keeps bg alpha");
     }
 
     #[test]
     fn screen_is_inverse_multiply() {
-        let out = blend_over(BrushBlend::Screen, [0.5, 0.5, 0.5, 1.0], [0.5, 0.5, 0.5], 1.0);
+        let out = blend_over(
+            BrushBlend::Screen,
+            [0.5, 0.5, 0.5, 1.0],
+            [0.5, 0.5, 0.5],
+            1.0,
+        );
         assert!((out[0] - 0.75).abs() < 1e-6);
     }
 
     #[test]
     fn erase_and_add_alpha_move_only_alpha() {
-        let e = blend_over(BrushBlend::EraseAlpha, [0.3, 0.3, 0.3, 0.8], [1.0, 1.0, 1.0], 0.5);
+        let e = blend_over(
+            BrushBlend::EraseAlpha,
+            [0.3, 0.3, 0.3, 0.8],
+            [1.0, 1.0, 1.0],
+            0.5,
+        );
         assert!((e[3] - 0.3).abs() < 1e-6);
         assert!((e[0] - 0.3).abs() < 1e-6, "erase keeps colour");
-        let a = blend_over(BrushBlend::AddAlpha, [0.3, 0.3, 0.3, 0.4], [1.0, 1.0, 1.0], 0.5);
+        let a = blend_over(
+            BrushBlend::AddAlpha,
+            [0.3, 0.3, 0.3, 0.4],
+            [1.0, 1.0, 1.0],
+            0.5,
+        );
         assert!((a[3] - 0.9).abs() < 1e-6);
     }
 
@@ -390,7 +415,10 @@ mod tests {
         for &mode in &[BrushBlend::Color, BrushBlend::Hue, BrushBlend::Saturation] {
             let out = blend_rgb(mode, [0.05, 0.9, 0.5], [0.95, 0.1, 0.2]);
             for (i, v) in out.iter().enumerate() {
-                assert!((-1e-4..=1.0001).contains(v), "{mode:?} channel {i} = {v} out of range");
+                assert!(
+                    (-1e-4..=1.0001).contains(v),
+                    "{mode:?} channel {i} = {v} out of range"
+                );
             }
         }
     }

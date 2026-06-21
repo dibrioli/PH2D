@@ -350,7 +350,12 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 /// Header dock-toggle — swaps the docked body between the Layers/Effects view
 /// and the Brush-properties view. Labelled with the OTHER view (what a click
 /// switches TO). Placed left of the close button.
-fn paint_dock_toggle(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme, shows_layers: bool) {
+fn paint_dock_toggle(
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    theme: ph2d_tokens::Theme,
+    shows_layers: bool,
+) {
     let close = panel_close_button_rect(rect);
     let btn_rect = Rect::new(
         close.x - Spacing::Sm.px() - TOGGLE_BTN_W,

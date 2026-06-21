@@ -28,8 +28,8 @@ pub mod falloff;
 pub mod spec;
 pub mod stroke;
 
-pub use blend::{blend_over, BrushBlend, MAX_BRUSH_BLEND_MODES};
-pub use dab::{stamp_dab, DirtyRect};
+pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
+pub use dab::{DirtyRect, stamp_dab};
 pub use dynamics::Dynamics;
 pub use falloff::Falloff;
 pub use spec::BrushSpec;

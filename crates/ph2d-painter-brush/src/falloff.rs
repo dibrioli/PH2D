@@ -93,8 +93,14 @@ mod tests {
             let mut t = 0.0;
             while t <= 1.0 {
                 let w = f.weight(t);
-                assert!(w <= prev + 1e-6, "{f:?} not monotonic at t={t}: {w} > {prev}");
-                assert!((0.0..=1.0).contains(&w), "{f:?} weight {w} out of [0,1] at t={t}");
+                assert!(
+                    w <= prev + 1e-6,
+                    "{f:?} not monotonic at t={t}: {w} > {prev}"
+                );
+                assert!(
+                    (0.0..=1.0).contains(&w),
+                    "{f:?} weight {w} out of [0,1] at t={t}"
+                );
                 prev = w;
                 t += 0.01;
             }

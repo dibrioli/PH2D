@@ -100,15 +100,24 @@ mod tests {
 
     #[test]
     fn radius_clamped() {
-        let b = BrushSpec { radius_px: 999_999.0, ..Default::default() };
+        let b = BrushSpec {
+            radius_px: 999_999.0,
+            ..Default::default()
+        };
         assert_eq!(b.clamped_radius(), MAX_BRUSH_RADIUS_PX);
-        let b = BrushSpec { radius_px: 0.0, ..Default::default() };
+        let b = BrushSpec {
+            radius_px: 0.0,
+            ..Default::default()
+        };
         assert_eq!(b.clamped_radius(), 0.5);
     }
 
     #[test]
     fn hardness_full_is_hard_disk() {
-        let b = BrushSpec { hardness: 1.0, ..Default::default() };
+        let b = BrushSpec {
+            hardness: 1.0,
+            ..Default::default()
+        };
         assert_eq!(b.falloff_weight(0.0), 1.0);
         assert_eq!(b.falloff_weight(0.99), 1.0);
         assert_eq!(b.falloff_weight(1.0), 0.0);
@@ -116,7 +125,11 @@ mod tests {
 
     #[test]
     fn hardness_plateau_then_falls() {
-        let b = BrushSpec { hardness: 0.5, falloff: Falloff::Linear, ..Default::default() };
+        let b = BrushSpec {
+            hardness: 0.5,
+            falloff: Falloff::Linear,
+            ..Default::default()
+        };
         assert_eq!(b.falloff_weight(0.5), 1.0); // inside plateau
         // At t=0.75, remapped = (0.75-0.5)/0.5 = 0.5 → linear weight 0.5.
         assert!((b.falloff_weight(0.75) - 0.5).abs() < 1e-6);

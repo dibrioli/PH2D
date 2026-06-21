@@ -54,6 +54,11 @@ assets/sprites/*.png
 # and avoid committing third-party screenshots with unclear licenses.
 docs/design/uploads/
 
+# Vendored Blender Texture Paint source — GPL-2.0, kept ONLY as a
+# clean-room study reference (never committed: PH2D is proprietary).
+# Also keeps its source out of the `typos` scan (Blender's own typos).
+reference/
+
 # Claude Code session-local artifacts: agent worktrees (isolated git
 # checkouts spawned by the Agent tool) and any other harness state
 # under .claude/. These are per-machine and should never enter repo.

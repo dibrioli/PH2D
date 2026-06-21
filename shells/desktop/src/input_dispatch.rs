@@ -348,6 +348,17 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         };
         self.handler.on_pointer(evt);
+        // Was a right-click context menu open when this click arrived? If so the
+        // click belongs to the menu (selecting an item or dismissing it) — chrome
+        // dispatch in `forward_to_hero` consumes it and CLOSES the menu, so by the
+        // time the consume arms below run the menu reads as closed. Capture it now
+        // so the Painter Falloff click-to-add does NOT also fire on a menu click
+        // (which spawned an unwanted point under the menu).
+        let menu_open_before = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.store.context_menu().is_some());
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
         // PainterLayerReparent on Up of an active layer-row drag; route it to
         // the active PainterTool, which reverses NodeId→LayerId and applies
@@ -416,9 +427,10 @@ impl App {
             }
             // Painter Falloff curve: left-click the empty graph (Custom preset) →
             // add a control point where clicked. A press on a handle falls through
-            // (the panel's drag dispatch grabs it).
+            // (the panel's drag dispatch grabs it); a click on an open context menu
+            // is the menu's, not a canvas-add (`menu_open_before`).
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.painter_falloff_canvas_add(evt.x, evt.y) =>
+                if !menu_open_before && self.painter_falloff_canvas_add(evt.x, evt.y) =>
             {
                 return;
             }

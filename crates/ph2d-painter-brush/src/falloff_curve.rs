@@ -397,16 +397,39 @@ mod tests {
 
     #[test]
     fn vector_handle_makes_a_straight_corner() {
+        // Slope just left and just right of a control point at (0.5, 0.9). A small
+        // step so an Auto (C1) point reads as continuous — only a Vector corner
+        // shows a slope jump.
+        let slopes = |c: &FalloffCurve| {
+            let l = (c.weight(0.5) - c.weight(0.49)) / 0.01;
+            let r = (c.weight(0.51) - c.weight(0.5)) / 0.01;
+            (l, r)
+        };
         let mut c = FalloffCurve::default();
         let mid = c.add_point_at(0.5, 0.9).unwrap();
+
+        // Auto handle: the spline is C1 → the slope is continuous (no corner).
+        let (al, ar) = slopes(&c);
+        assert!((al - ar).abs() < 0.3, "Auto is smooth: {al} vs {ar}");
+
+        // Vector handle: both adjacent segments run straight into the point, with
+        // DIFFERENT slopes → a real sharp corner (slope discontinuity). Left ≈
+        // −0.2 (line (0,1)→(0.5,0.9)), right ≈ −1.8 (line (0.5,0.9)→(1,0)).
         c.set_handle(mid, HandleType::Vector);
-        // Both endpoints are Auto but the corner is Vector → the two segments run
-        // straight into (0.5, 0.9): the value at 0.25 is the midpoint of the line
-        // from (0,1) to (0.5,0.9) ≈ 0.95.
         assert!(
             (c.weight(0.25) - 0.95).abs() < 0.02,
-            "left segment is straight, got {}",
+            "left segment straight, got {}",
             c.weight(0.25)
+        );
+        assert!(
+            (c.weight(0.75) - 0.45).abs() < 0.02,
+            "right segment straight, got {}",
+            c.weight(0.75)
+        );
+        let (vl, vr) = slopes(&c);
+        assert!(
+            (vl - vr).abs() > 1.0,
+            "Vector is a sharp corner: {vl} vs {vr}"
         );
     }
 

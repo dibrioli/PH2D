@@ -49,6 +49,7 @@ use crate::forwarding::{
 mod eyedropper;
 mod gizmo_drag;
 mod keyboard;
+mod painter_canvas_input;
 pub(crate) mod protect_brush;
 mod vector_direct_input;
 mod vector_pen_input;
@@ -177,6 +178,12 @@ impl App {
         // progress, every motion paints/erases another disc into the keep
         // mask. Early-return so it doesn't also drive a gizmo drag / slider.
         if self.protect_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
+        // Painter brush stroke (SHELL-only): while a canvas stroke is open, every
+        // motion feeds another `CanvasPointer` to the active PainterTool. Early-
+        // return so it doesn't also drive a gizmo drag / pan / slider.
+        if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Vector Pen handle drag (W2): while the Primary button is held after
@@ -418,6 +425,15 @@ impl App {
             {
                 return;
             }
+            // Painter brush: a Primary Down with the Painter active + a sprite
+            // selected, inside the footprint, starts a stroke (the first dab) and
+            // arms the drag (continues in CursorMoved). Consumes the event so it
+            // doesn't pick / move the sprite.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down)
+                if self.painter_canvas_down(evt.x, evt.y, evt.pressure) =>
+            {
+                return;
+            }
             // W1.T1.7: Vector Pen — Primary Down on canvas inside
             // sprite footprint adds a vertex / extends / close-paths
             // the in-progress network via `VectorPenTool::on_canvas_click`.
@@ -495,6 +511,8 @@ impl App {
             (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                 self.eyedropper_dragging = false;
                 self.end_protect_paint();
+                // Close an open painter brush stroke (no-op when not painting).
+                self.painter_canvas_up();
                 // Close a Pen click-drag handle window (logs the pulled
                 // tangent). No-op when the Pen isn't mid-click-drag.
                 self.try_vector_pen_pointer_up();

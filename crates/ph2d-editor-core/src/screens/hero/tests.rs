@@ -479,6 +479,41 @@ fn point_type_menu_routes_each_kind_to_pending_index() {
 }
 
 #[test]
+fn simple_row_context_menu_items_are_populate_registered() {
+    // Regression gate for the Painter Falloff "Vector handle does nothing" bug.
+    //
+    // A simple-row context-menu item drives its chrome handler via the generic
+    // dispatch Click path: the Down arms `active` only when the row id is
+    // `is_focusable`, which requires a WidgetStore entry (registered `Plain` by
+    // `pre_populate::populate_global_context_menu`). The Falloff handle rows were
+    // added to the overlay paint + the `chrome::falloff_handle` Click handler but
+    // OMITTED from that populate list, so the rows hit-registered yet never armed
+    // `active` → the Up emitted no `Click` → the handler never ran (a silent
+    // no-op). The dispatch-layer test
+    // (`dispatch::tests::context_menu_item_click_emits_click_even_though_menu_closes_on_down`)
+    // ASSUMES this registration; THIS test pins the registration itself for every
+    // chrome-driven simple-row menu so the populate-register gotcha can't recur.
+    crate::test_support::ensure_panel_registry();
+    let hero = HeroScreen::new(NodeId(1));
+    for id in [
+        // Painter Falloff handle (the regression).
+        ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
+        ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
+        // VectorPointType — the working sibling that proves the pattern.
+        ids::CTX_MENU_POINT_TYPE_CORNER,
+        ids::CTX_MENU_POINT_TYPE_SMOOTH,
+        ids::CTX_MENU_POINT_TYPE_ASYMMETRIC,
+        ids::CTX_MENU_POINT_TYPE_AUTO,
+    ] {
+        assert!(
+            hero.store.contains(id),
+            "context-menu row {id:?} must be registered by populate_global_context_menu \
+             (else its dispatch Click never fires — the populate-register gotcha)"
+        );
+    }
+}
+
+#[test]
 fn settings_unit_cascade_opens_unit_submenu() {
     crate::test_support::ensure_panel_registry();
     // Clicking the top-level "Display unit ▶" row swaps the open

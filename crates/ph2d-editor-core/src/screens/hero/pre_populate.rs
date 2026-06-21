@@ -518,9 +518,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_TEXT_DEFAULT,
         ids::CTX_MENU_TEXT_CRISP_HEAVY,
         ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
-        // P4 (ADR-0061): the API-key submenu's open row + its Save row. Without
-        // this `Plain` registration the rows paint + hit-register but never emit
-        // a Click — the chrome handler would never fire (the populate gotcha).
+        // P4 (ADR-0061): API-key submenu open + Save rows — populate-register gotcha (see falloff rows below).
         ids::CTX_MENU_SETTINGS_API_KEY,
         ids::CTX_MENU_API_KEY_SAVE,
         // P4 (ADR-0061): the LLM prompt-dialog Generate button.
@@ -535,6 +533,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_POINT_TYPE_SMOOTH,
         ids::CTX_MENU_POINT_TYPE_ASYMMETRIC,
         ids::CTX_MENU_POINT_TYPE_AUTO,
+        ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
+        ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
         ids::CTX_SCENE_ROW_0,
         ids::CTX_SCENE_ROW_1,
         ids::CTX_SCENE_ROW_2,

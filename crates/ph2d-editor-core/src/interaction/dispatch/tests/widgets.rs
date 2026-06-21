@@ -97,26 +97,29 @@ fn secondary(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
     }
 }
 
-/// DEFECT REPRO (Painter Falloff "Vector handle does nothing"): clicking a
-/// context-menu ITEM must emit `Click(item_id)` even though the menu CLOSES on
-/// the item's Down (so by Up the hit-index no longer holds the item). The
-/// falloff handle menu, the vector point-type menu, and every chrome menu all
-/// depend on this. The item is registered as a `Button` + hit-rect by the menu
-/// paint; Down arms it (and closes the menu), Up fires the Click off the
-/// Down-snapshotted active_rect.
+/// DISPATCH-LAYER contract (Painter Falloff "Vector handle does nothing"):
+/// clicking a context-menu ITEM must emit `Click(item_id)` even though the menu
+/// CLOSES on the item's Down (so by Up the hit-index no longer holds the item).
+/// The falloff handle menu, the vector point-type menu, and every chrome menu
+/// all depend on this. The menu PAINT registers each item only as a hit-rect;
+/// the WidgetStore entry that makes the row `is_focusable` (so the Down arms
+/// `active`) is the `Plain` registration from
+/// `pre_populate::populate_global_context_menu` — pinned separately by
+/// `screens::hero::tests::simple_row_context_menu_items_are_populate_registered`
+/// (the falloff regression was a MISSING entry there). This test ASSUMES that
+/// registration and proves the dispatch half: Down arms `active` (and closes the
+/// menu), Up fires the Click off the Down-snapshotted active_rect.
 #[test]
 fn context_menu_item_click_emits_click_even_though_menu_closes_on_down() {
     use crate::ids::CTX_MENU_FALLOFF_HANDLE_VECTOR as ITEM;
     use crate::interaction::{ContextMenuKind, ContextMenuRequest};
 
     let mut store = WidgetStore::with_capacity(4);
-    // The menu paint registers each item as a Button in the store + a hit-rect.
-    store.register(
-        ITEM,
-        InteractiveState::Button {
-            state: ButtonState::Normal,
-        },
-    );
+    // Mirror what `populate_global_context_menu` does for every menu row: a
+    // `Plain` store entry (so the row is `is_focusable`). The menu paint adds the
+    // hit-rect below. (Registering a `Button` here would also pass but would not
+    // match how menu rows are actually registered.)
+    store.register(ITEM, InteractiveState::Plain);
     let mut hits = HitIndex::new();
     let item_rect = Rect::new(10.0, 10.0, 120.0, 24.0);
     hits.register(ITEM, item_rect);

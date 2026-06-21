@@ -1050,6 +1050,7 @@ impl crate::App {
                 camera,
                 window_size,
                 vector_scene,
+                self.last_pointer,
                 &mut self.last_painter_pushed_entity,
                 &mut self.painter_preview,
                 &mut self.painter_preview_gpu,

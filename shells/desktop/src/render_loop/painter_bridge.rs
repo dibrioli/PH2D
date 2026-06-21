@@ -69,12 +69,14 @@ pub(super) fn dispatch(
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
-    // Reserved (the on-canvas preview now goes through the sprite pipeline via
-    // a PreviewOverride, not a Vello overlay): kept for future UI hints / the
-    // GPU LayerCompositor upload path. See module header "Sprite suppression".
-    _camera: &Camera2d,
-    _window_size: WindowSize,
-    _vector_scene: &mut VectorScene,
+    // The composite preview goes through the sprite pipeline (PreviewOverride),
+    // not a Vello overlay — but these drive the on-canvas **brush cursor ring**
+    // (a UI hint drawn into the overlay scene). See module header + the ring below.
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+    // Last cursor position in screen pixels (for the brush cursor ring).
+    cursor: (f32, f32),
     last_painter_pushed_entity: &mut Option<u64>,
     painter_preview: &mut Option<PainterPreview>,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
@@ -290,6 +292,47 @@ pub(super) fn dispatch(
             // (Brush UI) Publish the dock view-mode so the panel renders either
             // the Layers/Effects body or the Brush-properties body (header toggle).
             ph2d_panel_painter_layers::set_current_dock_shows_layers(painter.dock_shows_layers());
+        }
+
+        // ── Brush cursor ring (UI hint) ──────────────────────────────────
+        // The brush radius (image px) scaled to screen at the cursor, while a
+        // sprite is selected and the cursor is over the canvas (not a panel).
+        // Uses the same footprint-AABB mapping as the paint delivery, so the
+        // ring matches where dabs land. Drawn into the overlay scene (composited
+        // over the canvas this frame, like the rubber-band / bgremoval ring).
+        if let Some(bits) = hero.gizmo.selection {
+            let (cx, cy) = cursor;
+            if hero.store.panel_at(cx, cy).is_none() {
+                let size_px = painter.brush_settings().size_px;
+                let (iw, _ih) = painter.canvas_size();
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                if iw > 0
+                    && let (Some(tr), Some(sprite)) = (
+                        sim.world().get::<crate::Transform>(entity),
+                        sim.world().get::<ph2d_render::Sprite>(entity),
+                    )
+                {
+                    let (tx, ty) = (tr.translation.x, tr.translation.y);
+                    let (sw, sh) = (sprite.size[0], sprite.size[1]);
+                    let (x0, _) =
+                        camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
+                    let (x1, _) =
+                        camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+                    let scale = (x1 - x0).abs() / iw as f32;
+                    let r_screen = (size_px * scale).max(1.0);
+                    use ph2d_vector::{Affine, Brush, Circle, Color, Stroke};
+                    // Neutral ring (baked inline, like the rubber-band overlay's
+                    // colour — a follow-up can swap to a theme token / 2-tone).
+                    let color = Color::new([1.0, 1.0, 1.0, 0.85]); // LITERAL-COLOR-OK: overlay cursor
+                    vector_scene.inner_mut().stroke(
+                        &Stroke::new(1.5),
+                        Affine::IDENTITY,
+                        &Brush::Solid(color),
+                        None,
+                        &Circle::new((f64::from(cx), f64::from(cy)), f64::from(r_screen)),
+                    );
+                }
+            }
         }
     }
 

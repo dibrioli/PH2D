@@ -700,3 +700,102 @@ fn line_pivots_on_the_anchor() {
     s.extend(pt(90.0, 50.0, 1.0), &mut out); // drag right — still from the anchor
     assert_eq!(out[0].center, [50.0, 50.0], "anchor unchanged across moves");
 }
+
+#[test]
+fn flatten_catmull_rom_keeps_collinear_points_on_the_line() {
+    // The initial 3-point curve is collinear (start, midpoint, end) — auto-smoothing must leave it a
+    // straight line, so it reads as a line until a point is dragged off it.
+    let pts = [[0.0, 0.0], [50.0, 0.0], [100.0, 0.0]];
+    let mut spine = Vec::new();
+    flatten_catmull_rom(&pts, &mut spine);
+    assert!(spine.len() > 3, "subdivided into a dense polyline");
+    assert_eq!(
+        spine.first(),
+        Some(&[0.0, 0.0]),
+        "starts at the first point"
+    );
+    assert_eq!(spine.last(), Some(&[100.0, 0.0]), "ends at the last point");
+    for p in &spine {
+        assert!(p[1].abs() < 1e-3, "stays on the x axis (collinear): {p:?}");
+    }
+}
+
+#[test]
+fn flatten_catmull_rom_bends_off_a_moved_midpoint() {
+    // Drag the midpoint off the line → the spline must bow toward it (some interior point leaves y=0).
+    let pts = [[0.0, 0.0], [50.0, 40.0], [100.0, 0.0]];
+    let mut spine = Vec::new();
+    flatten_catmull_rom(&pts, &mut spine);
+    assert!(
+        spine.iter().any(|p| p[1] > 1.0),
+        "the curve bows toward the moved midpoint"
+    );
+}
+
+#[test]
+fn curve_fills_spaced_dabs_along_the_spline() {
+    // Curve: author 3 points → the engine auto-smooths + lays spaced dabs along the whole spline.
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Curve,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    let pts = [[0.0, 0.0], [50.0, 40.0], [100.0, 0.0]];
+    s.fill_curve_preview(&pts, &mut out);
+    assert!(
+        out.len() >= 10,
+        "filled the curve with spaced dabs, got {}",
+        out.len()
+    );
+    assert!(
+        out[0].center[0].abs() < 1e-3,
+        "first dab at the first control point"
+    );
+    assert!(
+        (out.last().unwrap().center[0] - 100.0).abs() < 2.0,
+        "reaches the last control point"
+    );
+    // The spline bows up, so some dab must sit clearly above the chord.
+    assert!(
+        out.iter().any(|d| d.center[1] > 1.0),
+        "dabs follow the bowed curve, not the straight chord"
+    );
+}
+
+#[test]
+fn curve_preview_is_deterministic_per_fill() {
+    // A fresh Stroke per re-fill with the SAME points + seed yields IDENTICAL dabs (no shimmer as the
+    // curve is reshaped), even with jitter on — the engine fill is a pure function of (points, spec).
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Curve,
+        jitter: 0.5,
+        ..straight_spec(10.0, 0.5)
+    };
+    let pts = [[0.0, 0.0], [40.0, 30.0], [90.0, 10.0]];
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    Stroke::new(spec, no_dynamics(), 9).fill_curve_preview(&pts, &mut a);
+    Stroke::new(spec, no_dynamics(), 9).fill_curve_preview(&pts, &mut b);
+    assert!(!a.is_empty());
+    assert_eq!(a, b, "same points + seed ⇒ identical dabs");
+}
+
+#[test]
+fn curve_fill_needs_two_points() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Curve,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = vec![Dab {
+        center: [9.0, 9.0],
+        radius_px: 1.0,
+        coverage: 1.0,
+    }];
+    s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
+    assert!(
+        out.is_empty(),
+        "a single control point fills nothing (and clears the buffer)"
+    );
+}

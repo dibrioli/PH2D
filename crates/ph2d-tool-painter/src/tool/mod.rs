@@ -157,7 +157,7 @@ mod paint;
 pub use paint::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
-    BrushSettings, brush_falloff_weight_at,
+    BrushSettings, CurveOverlay, brush_falloff_weight_at,
 };
 mod runtime;
 mod trait_impls;

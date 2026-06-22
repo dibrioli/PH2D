@@ -22,6 +22,10 @@ use ph2d_tool_painter::PainterTool;
 use crate::App;
 use crate::Transform;
 
+/// Curve control-point grab radius in SCREEN px — scaled to image px by the sprite footprint before
+/// it's forwarded to the tool, so the hit target stays a constant on-screen size at any zoom.
+const CURVE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
+
 thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
     /// keeps feeding the open stroke and the Up arm knows to close it.
@@ -314,7 +318,46 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
+        // Curve method: forward the control-point grab radius in IMAGE px (screen tolerance ÷ the
+        // footprint's screen-per-image scale), so the hit target is a constant on-screen size at any
+        // zoom. Out-of-band, like `set_line_constrain` (the frozen `CanvasPointer` carries neither).
+        let scale = (hi_x - lo_x) / iw as f32;
+        let grab_tol_img = if scale > 0.0 {
+            CURVE_GRAB_TOL_SCREEN_PX / scale
+        } else {
+            CURVE_GRAB_TOL_SCREEN_PX
+        };
+        painter.set_curve_grab_tol_px(grab_tol_img);
         painter.set_line_constrain(alt);
         painter.on_canvas_pointer(ev)
+    }
+
+    /// Enter: commit the in-progress Curve (bake the painted stroke). Returns `true` (consuming the
+    /// key) iff a curve session was open, so Enter falls through to text fields / other handlers
+    /// otherwise. Mirror of the Falloff-delete shell helper (ADR-0040 §3 downcast).
+    pub(crate) fn painter_curve_commit(&mut self) -> bool {
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        painter.curve_commit()
+    }
+
+    /// Esc: discard the in-progress Curve (revert the preview). Returns `true` (consuming) iff a
+    /// session was open.
+    pub(crate) fn painter_curve_cancel(&mut self) -> bool {
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        painter.curve_cancel()
+    }
+
+    /// Delete/Backspace: remove the selected Curve control point. Returns `true` (consuming) iff a
+    /// point was removed, so the key falls through to the Falloff-point delete / other tools when
+    /// no curve point is selected.
+    pub(crate) fn painter_curve_delete_selected_point(&mut self) -> bool {
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        painter.curve_delete_selected()
     }
 }

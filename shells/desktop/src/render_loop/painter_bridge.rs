@@ -334,6 +334,71 @@ pub(super) fn dispatch(
                 }
             }
         }
+
+        // ── Curve editor overlay (control dots + the auto-smoothed spine) ──────
+        // Drawn while a Curve session is being EDITED, regardless of the cursor /
+        // panels — it's the editing chrome, not a hover hint. Maps image px →
+        // screen via the SAME sprite-footprint AABB as the paint delivery, so the
+        // dots sit exactly on the painted curve.
+        if let Some(bits) = hero.gizmo.selection
+            && let Some(overlay) = painter.curve_overlay()
+        {
+            let (iw, ih) = painter.canvas_size();
+            let entity = ph2d_ecs::Entity::from_bits(bits);
+            if iw > 0
+                && ih > 0
+                && let (Some(tr), Some(sprite)) = (
+                    sim.world().get::<crate::Transform>(entity),
+                    sim.world().get::<ph2d_render::Sprite>(entity),
+                )
+            {
+                let (tx, ty) = (tr.translation.x, tr.translation.y);
+                let (sw, sh) = (sprite.size[0], sprite.size[1]);
+                let (sx0, sy0) =
+                    camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
+                let (sx1, sy1) =
+                    camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+                use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+                let map = |p: [f32; 2]| {
+                    Point::new(
+                        f64::from(sx0 + p[0] / iw as f32 * (sx1 - sx0)),
+                        f64::from(sy0 + p[1] / ih as f32 * (sy1 - sy0)),
+                    )
+                };
+                let scene = vector_scene.inner_mut();
+                // Spine guide — the auto-smoothed curve through the control points.
+                if overlay.spine.len() >= 2 {
+                    let mut path = BezPath::new();
+                    path.move_to(map(overlay.spine[0]));
+                    for &p in &overlay.spine[1..] {
+                        path.line_to(map(p));
+                    }
+                    let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: curve guide
+                    scene.stroke(
+                        &Stroke::new(1.5),
+                        Affine::IDENTITY,
+                        &Brush::Solid(guide),
+                        None,
+                        &path,
+                    );
+                }
+                // Control dots — the selected one larger + accented.
+                let dot = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: curve point
+                let sel = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: selected curve point
+                for (i, &p) in overlay.points.iter().enumerate() {
+                    let is_sel = overlay.selected == Some(i);
+                    let r = if is_sel { 6.0 } else { 4.0 };
+                    let c = if is_sel { sel } else { dot };
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(c),
+                        None,
+                        &Circle::new(map(p), r),
+                    );
+                }
+            }
+        }
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

@@ -84,6 +84,26 @@ impl App {
         {
             return;
         }
+        // Painter Curve: Escape discards the in-progress curve (reverts the preview); Enter commits
+        // it (bakes the painted stroke). Consumed only when a Curve session is open (the helpers gate
+        // on it), so both keys fall through to widget-blur / text fields otherwise.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.painter_curve_cancel()
+        {
+            return;
+        }
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter)
+            )
+            && self.painter_curve_commit()
+        {
+            return;
+        }
 
         // LLM vector authoring (P4, ADR-0061): Cmd/Ctrl+Shift+G opens the prompt
         // dialog — the user types a shape description and clicks Generate. Needs
@@ -120,6 +140,19 @@ impl App {
             && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyE))
             && !(self.modifiers.super_key() || self.modifiers.control_key())
             && self.painter_toggle_eraser()
+        {
+            return;
+        }
+
+        // Painter Curve: Delete/Backspace drops the selected control point (kept ≥ 2). Tried BEFORE
+        // the Falloff delete — curve editing is on-canvas, falloff editing is in the Brush dock, so
+        // only one can have a selection. Consumed only when a curve point was removed.
+        if state == ElementState::Pressed
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+            && self.painter_curve_delete_selected_point()
         {
             return;
         }

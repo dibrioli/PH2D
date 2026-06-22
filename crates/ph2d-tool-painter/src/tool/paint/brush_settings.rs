@@ -166,9 +166,14 @@ impl PainterTool {
 
     // ── Stroke section setters (the single clamp source; the panel forwards raw UI values) ──
 
-    /// Set the stroke method from a wire discriminant (out-of-range → Space).
+    /// Set the stroke method from a wire discriminant (out-of-range → Space). Leaving Curve with an
+    /// un-committed session discards it (revert the preview) — the artist switched away deliberately.
     pub fn set_brush_stroke_method(&mut self, m: u8) {
-        self.paint.brush.stroke_method = StrokeMethod::from_u8(m);
+        let method = StrokeMethod::from_u8(m);
+        if method != StrokeMethod::Curve {
+            self.curve_cancel();
+        }
+        self.paint.brush.stroke_method = method;
     }
 
     /// Set spacing as a fraction of diameter (slider track), clamped to the interactive range.

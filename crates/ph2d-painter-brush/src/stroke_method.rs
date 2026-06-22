@@ -103,13 +103,16 @@ impl StrokeMethod {
         matches!(self, Self::Anchored)
     }
 
-    /// True when the stroke **stabilizer** (the "how regular" knob) applies. Mirrors Blender's
-    /// `paint_supports_smooth_stroke`, which enables smooth-stroke for every method **except**
-    /// `ANCHORED`/`DRAG_DOT`/`LINE` — so `Space`/`Dots`/`Airbrush`/`Curve` all run the position
-    /// filter (Space additionally runs the spline). Drag Dot/Anchored need exact cursor placement.
+    /// True when the stroke **stabilizer** (the "how regular" knob) applies — `Space`/`Dots`/
+    /// `Airbrush`, the methods that build a path from raw freehand input. Blender's
+    /// `paint_supports_smooth_stroke` also enables it for `LINE`/`CURVE`, but PH2D's Line and Curve
+    /// are NOT freehand: Line is an explicit anchor→cursor segment and Curve is a point-editor
+    /// (`docs/Painter/` — author control points, auto-smooth between them). There is no shaky
+    /// freehand path to filter, so the stabilizer is a genuine no-op for both and the panel hides it
+    /// (DIRETIVA §2: no silent no-op). Drag Dot/Anchored also place dabs at the exact cursor.
     #[must_use]
     pub fn uses_stabilizer(self) -> bool {
-        !matches!(self, Self::Anchored | Self::DragDot | Self::Line)
+        matches!(self, Self::Space | Self::Dots | Self::Airbrush)
     }
 
     /// True when this method forces pressure to 1.0 (Blender: DRAG_DOT, ANCHORED, LINE).
@@ -204,7 +207,7 @@ mod tests {
             (Space, true, true, true, true, false, false),
             (DragDot, false, false, false, false, false, false),
             (Line, true, true, true, false, false, false),
-            (Curve, true, true, true, true, false, false),
+            (Curve, true, true, true, false, false, false),
         ];
         for (m, spacing, dash, jitter, stabilizer, rate, edge) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");

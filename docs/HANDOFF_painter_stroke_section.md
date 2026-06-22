@@ -296,9 +296,35 @@ Arquivos-chave:
 - **Two-strikes:** já houve 1 reescrita da suavização (quadrática). Se precisar de uma 2ª, MEÇA a
   densidade de amostra e prove a causa antes de uma 3ª.
 
-### 2.4 — Curve segue DEFER (interativo não wirado) 🟡
+### 2.4 — Stroke methods interativos ✅ TODOS RESOLVIDOS
 > **NOTA:** "airbrush on_tick" **caiu** (§2.1). **Anchored** **caiu** (✅ abaixo). **Line** **caiu**
-> (✅ RESOLVIDO abaixo). Sobra só **Curve** (autoria Bézier + fill no finalise).
+> (✅ abaixo). **Curve** **caiu** (✅ RESOLVIDO abaixo). Stroke Method está **completo** (Dots,
+> Airbrush, Anchored, Space, Drag Dot, Line, Curve).
+>
+> **Curve ✅ RESOLVIDO (2026-06-22):** editor de pontos on-canvas **simplificado** — diverge do
+> workflow de objeto-Curva do Blender (decisão do Enio: "vamos simplificar"). Fluxo: (1) **traça** uma
+> linha (press-drag-release, como Line); ao soltar aparecem **3 pontos de controle** (extremos +
+> centro). (2) **edita**: arrasta um ponto pra mover; clica em espaço vazio/perto da curva pra
+> **adicionar** um ponto (e já arrastá-lo); **handles auto** = spline Catmull-Rom suaviza entre os
+> pontos → curvas de qualquer forma; preview pintado ao vivo (restore+re-stamp, sem rastro). (3)
+> **Del** apaga o ponto selecionado (mantém ≥2). (4) **Enter** comita (bake, 1 passo de undo); **Esc**
+> descarta. Engine: `flatten_catmull_rom` (free fn compartilhada, reusa `hermite`+`dist`) +
+> `Stroke::fill_curve_preview` (fill espaçado contínuo via `walk_space` ao longo do spine) — ambos em
+> `stroke/curve.rs` (submódulo filho mantém acesso privado; split por LOC-cap). Tool: `tool/paint/curve.rs`
+> (`CurveEditor` state machine: draw→edit→commit; hit-test/insert transcendental-free; `curve_overlay()`
+> p/ a chrome; `set_curve_grab_tol_px` out-of-band como `set_line_constrain`). Shell: keyboard
+> Enter/Esc/Del (`painter_curve_commit/cancel/delete_selected_point`, downcast ADR-0040 §3); overlay
+> (spine + dots, selecionado destacado) em `painter_bridge` via o mesmo footprint AABB da entrega de
+> pointer. Painel de Curve = **Method+Spacing+Adjust+Dash+Jitter+Samples** (sem Stabilize:
+> `uses_stabilizer` agora **só** Space/Dots/Airbrush — Curve é point-editor, não freehand, então o
+> stabilizer é no-op → escondido, DIRETIVA §2). Testes: engine `flatten_catmull_rom_*`/`curve_fills_*`/
+> `curve_preview_is_deterministic_*`/`curve_fill_needs_two_points`; tool `curve_draw_creates_three_*`/
+> `curve_bend_then_cancel_reverts_*`/`curve_add_delete_and_commit`/`curve_discarded_when_switching_*`/
+> `curve_grab_tolerance_*`; painel `curve_shows_*`. ⚠️ **Perf:** restore+re-stamp da curva inteira =
+> O(bbox)/edit; canvas grande = follow-up (overlay-guia / dirty sub-rect). **Follow-ups (V2):** drag de
+> handles manual + toggle corner/smooth (hoje só auto-handles); botão "novo curve" sem precisar de
+> Enter. **Falta smoke do Enio (GUI):** traça linha → 3 pontos; arrasta ponto = curva; clica = adiciona;
+> Del apaga; Enter comita; Esc descarta.
 >
 > **Line ✅ RESOLVIDO (2026-06-22):** linha reta do press point (anchor) ao cursor, preenchida com
 > dabs espaçados; **preview ao vivo** (restore+re-stamp, sem rastro) + commit no Up. Difere do Blender
@@ -330,12 +356,9 @@ Arquivos-chave:
 > `anchored_edge_to_edge_spans_*` + matriz `uses_edge_to_edge`; tool `anchored_stamps_a_drag_sized_disc_*`
 > + routing; painel `anchored_shows_edge_to_edge_*`. **Falta smoke do Enio (GUI):** arrastar = disco
 > cresce do anchor; Edge-to-Edge = vai de borda a borda.
-- (Line/Curve) Selecionáveis no dropdown, mas **não pintam durante o drag** (engine só faz `advance_anchor`).
-  `fill_segment()` existe no engine pra Line/Curve; falta o tool/shell dirigir: preview ao vivo,
-  finalização no Up (Line: `fill_segment(down,up)`; constrain 45° com Alt), autoria Bézier (Curve),
-  carimbo redimensionável (Anchored). É a mesma classe interativa do Drag Dot (2.2). **Hoje é no-op
-  silencioso se selecionado** — idealmente esconda/desabilite no dropdown até wirar, OU wire Line
-  primeiro (mais barato, engine pronto).
+- ~~(Line/Curve) Selecionáveis no dropdown, mas **não pintam durante o drag**~~ — **OBSOLETO**: Line
+  (✅ 2026-06-22) e Curve (✅ 2026-06-22) agora pintam ao vivo (blocos acima). Todos os 7 stroke
+  methods estão wirados e testados.
 
 ## §3 — Itens menores / notas
 

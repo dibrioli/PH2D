@@ -20,6 +20,11 @@ use ph2d_painter_brush::{
 /// Brush + Stroke-section parameter snapshot & setters (submodule so it shares `PaintState`'s
 /// private brush access; split out to keep both files under the workspace LOC cap).
 mod brush_settings;
+/// The Curve stroke method's on-canvas point editor (submodule for the same private-access +
+/// LOC-cap reasons as `brush_settings`).
+mod curve;
+pub use curve::CurveOverlay;
+use curve::DEFAULT_CURVE_GRAB_TOL_PX;
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
 /// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
@@ -160,6 +165,12 @@ pub(crate) struct PaintState {
     /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`). Set
     /// by the shell each pointer event (the frozen `CanvasPointer` can't carry modifiers).
     line_constrain: bool,
+    /// In-progress Curve session (the on-canvas point editor); `None` when no curve is being
+    /// authored. See [`crate::tool::paint::curve`].
+    curve: Option<curve::CurveEditor>,
+    /// Control-point grab radius in image px for the Curve editor — the shell forwards a
+    /// screen-constant value scaled by the sprite footprint before each pointer event.
+    curve_grab_tol_px: f32,
 }
 
 impl Default for PaintState {
@@ -182,6 +193,8 @@ impl Default for PaintState {
             drag_preview: None,
             line_anchor: None,
             line_constrain: false,
+            curve: None,
+            curve_grab_tol_px: DEFAULT_CURVE_GRAB_TOL_PX,
         }
     }
 }
@@ -508,9 +521,16 @@ impl CanvasPaintTool for PainterTool {
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:
-            // finalize any half-open stroke (records its undo) before bailing.
+            // finalize any half-open stroke (records its undo) before bailing. Drop any open
+            // Curve session too (its restore would read a stale buffer once the layer changed).
+            self.curve_discard();
             self.close_stroke();
             return false;
+        }
+        // Curve is a persistent on-canvas point editor (draw → edit → commit), not a single
+        // press→release stroke — route every canvas event through it instead of the generic path.
+        if self.paint.brush.stroke_method == StrokeMethod::Curve {
+            return self.curve_pointer(ev);
         }
         match ev.phase {
             PointerPhase::Down => {

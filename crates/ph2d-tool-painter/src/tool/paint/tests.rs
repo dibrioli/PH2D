@@ -812,3 +812,183 @@ fn line_alt_constrain_snaps_to_45_degrees() {
         "the un-snapped endpoint (56,36) is NOT on the constrained line"
     );
 }
+
+/// Curve: a press-drag-release of the initial line yields a 3-point editable curve (overlay shows
+/// start / midpoint / end), the midpoint pre-selected — and the line paints along it (no trail).
+#[test]
+fn curve_draw_creates_three_points_and_paints_the_line() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    assert!(t.curve_overlay().is_none(), "no chrome before drawing");
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    assert!(
+        t.curve_overlay().is_none(),
+        "still drawing — chrome appears on release"
+    );
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+
+    let ov = t
+        .curve_overlay()
+        .expect("editing after the line is released");
+    assert_eq!(ov.points.len(), 3, "start + midpoint + end");
+    assert_eq!(ov.points[0], [8.0, 32.0]);
+    assert_eq!(ov.points[2], [56.0, 32.0]);
+    assert_eq!(
+        ov.selected,
+        Some(1),
+        "midpoint pre-selected (ready to bend)"
+    );
+    // The straight line is painted along y=32 (preview is live, not committed).
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [0, 0, 0, 255],
+        "the line paints through the midpoint"
+    );
+}
+
+/// Dragging the selected midpoint bends the curve OFF the chord — pixels appear above the original
+/// straight line. Esc then reverts every painted pixel (nothing was committed).
+#[test]
+fn curve_bend_then_cancel_reverts_all_pixels() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    // Draw the base line at y=40, then grab the midpoint (~[32,40]) and drag it up to y=12.
+    t.on_canvas_pointer(cp([8.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 40.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([32.0, 40.0], PointerPhase::Down)); // grab midpoint
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Move)); // bend up
+    t.on_canvas_pointer(cp([32.0, 12.0], PointerPhase::Up));
+
+    assert_eq!(
+        px(&t, 64, 32, 12),
+        [0, 0, 0, 255],
+        "the curve bows up to the dragged midpoint"
+    );
+    // Esc reverts the whole preview to the pristine white canvas.
+    assert!(t.curve_cancel(), "a session was open");
+    assert!(t.curve_overlay().is_none(), "session gone");
+    for (x, y) in [(8u32, 40u32), (32, 40), (56, 40), (32, 12)] {
+        assert_eq!(
+            px(&t, 64, x, y),
+            [255, 255, 255, 255],
+            "cancel reverted ({x},{y})"
+        );
+    }
+}
+
+/// Clicking empty space adds a control point (and grabs it); Delete removes the selected point but
+/// never drops below two; Enter commits (the painted curve survives + is one undo step).
+#[test]
+fn curve_add_delete_and_commit() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3 points now
+    // Click a 4th point in open space (added + grabbed + selected).
+    t.on_canvas_pointer(cp([40.0, 50.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 50.0], PointerPhase::Up));
+    let ov = t.curve_overlay().unwrap();
+    assert_eq!(
+        ov.points.len(),
+        4,
+        "a point was added on the empty-space click"
+    );
+    let sel = ov.selected.unwrap();
+
+    // Delete the selected point → back to 3.
+    assert!(t.curve_delete_selected());
+    assert_eq!(t.curve_overlay().unwrap().points.len(), 3);
+    assert_eq!(t.curve_overlay().unwrap().selected, Some(sel.min(2)));
+
+    // Floor at 2: select an endpoint, delete twice — the second is refused.
+    // (selected is some valid index; delete down to 2 then refuse.)
+    assert!(t.curve_delete_selected(), "3 → 2 allowed");
+    assert!(!t.curve_delete_selected(), "2 is the floor — refused");
+    assert_eq!(t.curve_overlay().unwrap().points.len(), 2);
+
+    // Enter commits: the painted curve stays + the session closes + it is one undo step.
+    assert!(
+        px(&t, 64, 32, 32) != [255, 255, 255, 255],
+        "something is painted pre-commit"
+    );
+    assert!(t.curve_commit());
+    assert!(t.curve_overlay().is_none(), "committed → no session");
+    let painted = px(&t, 64, 8, 32);
+    assert_eq!(painted, [0, 0, 0, 255], "committed dabs survive");
+    // One undo step: undo restores the pristine canvas.
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [255, 255, 255, 255],
+        "the whole curve undoes as one step"
+    );
+}
+
+/// Switching the stroke method away from Curve mid-session discards it (reverts the preview).
+#[test]
+fn curve_discarded_when_switching_method_away() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 20.0], PointerPhase::Up));
+    assert!(t.curve_overlay().is_some());
+    t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
+    assert!(
+        t.curve_overlay().is_none(),
+        "leaving Curve discarded the session"
+    );
+    assert_eq!(
+        px(&t, 64, 32, 20),
+        [255, 255, 255, 255],
+        "the preview was reverted"
+    );
+}
+
+/// The grab tolerance is honoured: a Down within the forwarded radius grabs the nearest point; a
+/// Down well outside it adds a new point instead.
+#[test]
+fn curve_grab_tolerance_grabs_near_and_adds_far() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.set_curve_grab_tol_px(5.0);
+
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // points: 8 / 32 / 56 at y=32
+    assert_eq!(t.curve_overlay().unwrap().points.len(), 3);
+
+    // Down 3 px from the midpoint (within tol 5) → grabs it, no new point.
+    t.on_canvas_pointer(cp([32.0, 35.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 35.0], PointerPhase::Up));
+    assert_eq!(
+        t.curve_overlay().unwrap().points.len(),
+        3,
+        "near press grabbed, didn't add"
+    );
+
+    // Down far from every point (> tol) → adds a 4th.
+    t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Up));
+    assert_eq!(
+        t.curve_overlay().unwrap().points.len(),
+        4,
+        "far press added a point"
+    );
+}

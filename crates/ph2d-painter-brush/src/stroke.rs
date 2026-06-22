@@ -207,7 +207,11 @@ impl Stroke {
             StrokeMethod::Line => {
                 self.fill_line_preview(self.last_pos, avg.pos, out);
             }
-            // Curve: Bézier authoring + spaced fill on finalise — still tool/shell-driven (deferred).
+            // Curve: a point-editor (`docs/Painter/`) — the artist authors control points and the
+            // engine auto-smooths between them (Catmull-Rom), filling spaced dabs along the spline
+            // via [`Stroke::fill_curve_preview`]. The interaction (draw initial line → move/add/delete
+            // points → commit) lives in the tool/shell; a bare `extend` (no editor driving it) only
+            // tracks the anchor, so a stray sample paints nothing.
             StrokeMethod::Curve => {
                 self.advance_anchor(avg);
             }
@@ -571,6 +575,12 @@ fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f
         h00 * p0[1] + h10 * m0[1] + h01 * p1[1] + h11 * m1[1],
     ]
 }
+
+/// The Curve stroke method's fill + the shared Catmull-Rom flattener (a child module so it keeps
+/// private access to `walk_space`/`dab_at`/`dist`/`hermite`; split out to keep `stroke.rs` under the
+/// workspace LOC cap).
+mod curve;
+pub use curve::flatten_catmull_rom;
 
 #[cfg(test)]
 mod tests;

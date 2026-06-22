@@ -150,6 +150,9 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
 /// Brush "Stroke Method" dropdown chip (Dots/Airbrush/Anchored/Space/DragDot/Line/Curve).
 /// `SelectOption` → `set_brush_stroke_method`. Options via [`painter_brush_stroke_method_option_id`].
 pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stroke_method");
+/// Brush "Rate" slider — the airbrush timer period in seconds (`0..1` track → `[0.01, 1.0]` s).
+/// Shown only for the Airbrush method. `SetValue` → `set_brush_airbrush_rate_norm`.
+pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
 /// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %).
 /// `SetValue` → `set_brush_spacing`.
 pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");

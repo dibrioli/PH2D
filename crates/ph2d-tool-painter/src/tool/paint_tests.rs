@@ -53,6 +53,42 @@ fn down_paints_into_active_raster_and_marks_dirty() {
 }
 
 #[test]
+fn trivial_stack_stroke_uploads_only_the_dab_bbox_not_the_whole_canvas() {
+    // Regression: a single-layer (trivial) stroke must hand the bridge the dab's
+    // dirty bbox so it patches only that sub-rect. Forcing `None` here made every
+    // painted frame a full clone + premul + full GPU texture upload, O(W×H)
+    // regardless of the 10px brush — the 300→150 fps drop.
+    let mut t = white_canvas(64, 4.0);
+    assert!(t.is_trivial_stack(), "single opaque Normal raster is trivial");
+
+    // First drain is the source-push seed (no paint yet) → `None` → the bridge
+    // does one full upload to seed the GPU texture.
+    assert!(t.take_preview_arc().is_some(), "source-push marks dirty");
+    assert_eq!(
+        t.take_preview_upload_bbox(),
+        None,
+        "seed frame uploads the full canvas (no dab yet)"
+    );
+
+    // Now paint one dab and drain again — the bbox must be present and strictly
+    // smaller than the canvas (the dab footprint), not the whole 64×64.
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    assert!(t.take_preview_arc().is_some(), "the dab re-dirtied the preview");
+    let (bx, by, bw, bh) = t
+        .take_preview_upload_bbox()
+        .expect("a trivial-stack stroke must carry its dab bbox, not None");
+    assert!(bw > 0 && bh > 0, "bbox is non-empty");
+    assert!(
+        bw < 64 && bh < 64,
+        "partial upload, not the full canvas: got {bw}×{bh}"
+    );
+    assert!(
+        bx <= 32 && by <= 32 && bx + bw >= 32 && by + bh >= 32,
+        "bbox contains the dab centre (32,32): ({bx},{by},{bw},{bh})"
+    );
+}
+
+#[test]
 fn hover_never_paints() {
     let mut t = white_canvas(32, 4.0);
     let _ = t.take_preview_dirty(); // clear the dirty flag `set_source` raised
@@ -560,6 +596,12 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STABILIZE, 0.8));
     assert!((t.brush_settings().stabilizer - 0.8).abs() < 1e-6);
 
+    // Rate slider: 0..1 track maps linearly onto [MIN, MAX] s; 0 → MIN, 1 → MAX.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_RATE, 0.0));
+    assert!((t.brush_settings().airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MIN_S).abs() < 1e-6);
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_RATE, 1.0));
+    assert!((t.brush_settings().airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MAX_S).abs() < 1e-6);
+
     // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_BRUSH_JITTER_UNIT,
@@ -573,4 +615,44 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     ));
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_JITTER, 0.3));
     assert!((t.brush_settings().jitter - 0.3).abs() < 1e-6);
+}
+
+#[test]
+fn airbrush_deposits_on_the_tick_at_the_tracked_cursor_not_on_a_bare_move() {
+    // End-to-end (tool layer): the airbrush is a timer method — a bare move lays NO dab; the
+    // per-frame `on_tick` fires the timer and deposits at the cursor the moves tracked to. Wire
+    // path: `on_canvas_pointer(Down/Move)` tracks position, `on_tick(dt_ms)` → `paint_tick` →
+    // `Stroke::tick` → `stamp_dabs`. This is the behaviour the §2.1 handoff deferred until `on_tick`
+    // drove the timer (it now does).
+    use ph2d_editor_core::tool::Tool;
+    let mut t = white_canvas(48, 4.0);
+    t.paint.brush.stroke_method = StrokeMethod::Airbrush;
+    t.paint.brush.airbrush_rate_s = 0.1; // 10 Hz
+    t.paint.brush.stabilizer = 0.0; // raw, so the tick lands exactly at the moved-to point
+    t.paint.brush.space_attenuation = false; // full coverage for the pixel assertion
+
+    // Down at A: the begin dab paints A (airbrush `emits_on_begin`).
+    t.on_canvas_pointer(cp([8.0, 24.0], PointerPhase::Down));
+    assert_eq!(px(&t, 48, 8, 24), [0, 0, 0, 255], "down paints the first dab");
+
+    // Move to B with NO tick: the airbrush must not paint on the bare move (timer-only).
+    t.on_canvas_pointer(cp([40.0, 24.0], PointerPhase::Move));
+    assert_eq!(
+        px(&t, 48, 40, 24),
+        [255, 255, 255, 255],
+        "a bare move left a dab — airbrush must deposit only on the timer"
+    );
+
+    // One frame of 100 ms = one rate period → the timer deposits one dab at the tracked cursor B.
+    t.on_tick(100.0);
+    assert_eq!(
+        px(&t, 48, 40, 24),
+        [0, 0, 0, 255],
+        "the tick deposited the airbrush dab at the tracked cursor"
+    );
+
+    // Closing the stroke stops the spray: a later tick paints nothing new.
+    t.on_canvas_pointer(cp([40.0, 24.0], PointerPhase::Up));
+    t.on_tick(100.0);
+    assert_eq!(px(&t, 48, 24, 24), [255, 255, 255, 255], "no spray after pointer-up");
 }

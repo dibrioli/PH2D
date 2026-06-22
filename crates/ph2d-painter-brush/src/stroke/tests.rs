@@ -515,3 +515,35 @@ fn airbrush_tick_emits_by_time() {
         "parked at the cursor"
     );
 }
+
+#[test]
+fn airbrush_does_not_emit_on_motion_only_tracks_the_cursor() {
+    // Blender airbrush deposits dabs ONLY on the timer (TIMER events), never on motion. A move
+    // updates the cursor the next tick deposits at; it must NOT lay a dab itself (that would be
+    // Dots). Regression: `extend` used to share the Dots arm and emit one dab per move.
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Airbrush,
+        airbrush_rate_s: 0.1,
+        stabilizer: 0.0, // raw position so the tick lands exactly where the cursor moved
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out); // one down dab
+    assert_eq!(out.len(), 1, "down emits the first dab");
+
+    // Several moves with NO time elapsed (no tick): airbrush must emit nothing.
+    s.extend(pt(20.0, 0.0, 1.0), &mut out);
+    assert!(out.is_empty(), "move 1 emitted a dab — airbrush must not paint on motion");
+    s.extend(pt(40.0, 0.0, 1.0), &mut out);
+    assert!(out.is_empty(), "move 2 emitted a dab — airbrush must not paint on motion");
+
+    // Now a tick fires the timer: one dab at the LAST moved-to position (40, 0), not the down point.
+    s.tick(0.1, &mut out);
+    assert_eq!(out.len(), 1, "one rate period ⇒ one timed dab");
+    assert!(
+        (out[0].center[0] - 40.0).abs() < 1e-3 && out[0].center[1].abs() < 1e-3,
+        "the timed dab lands where the cursor was tracked to, got {:?}",
+        out[0].center
+    );
+}

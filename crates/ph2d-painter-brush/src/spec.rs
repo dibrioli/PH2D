@@ -16,6 +16,15 @@ use crate::stroke_method::{JitterUnit, StrokeMethod};
 /// caps the bbox, not the artist's intent (the value is clamped, not rejected).
 pub const MAX_BRUSH_RADIUS_PX: f32 = 4096.0;
 
+/// Airbrush **Rate** (timer period, seconds) soft-range floor — the fastest spray the UI slider
+/// reaches (~100 Hz). Blender's `rate` `ui_range` is `0.01..1.0` s (default `0.1`); the hard RNA
+/// range is wider, but `rna_brush.cc` is not in the vendored checkout, so this is the well-known
+/// Blender soft range, not an in-tree-verified value. The default `0.1` IS verified
+/// (`DNA_brush_types.h:232`). See [`crate::Stroke::tick`].
+pub const AIRBRUSH_RATE_MIN_S: f32 = 0.01;
+/// Airbrush **Rate** soft-range ceiling (slowest spray, ~1 Hz). See [`AIRBRUSH_RATE_MIN_S`].
+pub const AIRBRUSH_RATE_MAX_S: f32 = 1.0;
+
 /// Parameters of a single brush. Cheap to copy; the stroke engine reads it per dab.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BrushSpec {

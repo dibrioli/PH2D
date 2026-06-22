@@ -83,6 +83,9 @@ const STABILIZER_MIN_BLEND: f32 = 0.08;
 const SETTLE_BLEND_FLOOR: f32 = 0.3;
 /// Sub-pixel distance at which the stabilizer counts as caught up to the cursor (stops settling).
 const SETTLE_EPS_PX: f32 = 0.5;
+/// Max airbrush dabs a single [`Stroke::tick`] may emit, so a stalled frame's oversized `dt`
+/// can't dump a retroactive flood (Blender's async timer never catches up after a hitch).
+const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
 
 impl Stroke {
     /// Create a stroke for `spec`/`dynamics`. `seed` seeds the jitter RNG (use a per-stroke
@@ -158,9 +161,18 @@ impl Stroke {
                 let target = self.stabilize(avg);
                 self.walk_smoothed(target, out);
             }
-            StrokeMethod::Dots | StrokeMethod::Airbrush => {
+            StrokeMethod::Dots => {
                 let target = self.stabilize(avg);
                 self.emit_single(target.pos, self.method_pressure(target.pressure), out);
+                self.advance_anchor(target);
+            }
+            // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion — Blender
+            // emits airbrush dabs on TIMER events only (`paint_stroke.cc` modal dispatch: the
+            // motion arm is gated `!AIRBRUSH`, the timer arm `AIRBRUSH`). A move just tracks the
+            // (stabilized) cursor so the next tick lands where the pen now is; holding still keeps
+            // depositing at one spot, and moving fast leaves the characteristic sparse spray.
+            StrokeMethod::Airbrush => {
+                let target = self.stabilize(avg);
                 self.advance_anchor(target);
             }
             // Drag Dot emits one dab per move at the cursor; the TOOL restores the previous one so
@@ -280,12 +292,21 @@ impl Stroke {
         }
         let rate = self.spec.airbrush_rate_s.max(1e-3);
         self.airbrush_accum_s += dt.max(0.0);
+        let mut emitted = 0u32;
         while self.airbrush_accum_s >= rate {
             self.airbrush_accum_s -= rate;
             let pr = self.method_pressure(self.last_pressure);
             let d = self.dab_at(self.last_pos, pr, 1.0); // per-event: no spacing attenuation
             out.push(d);
             self.tot_samples = self.tot_samples.wrapping_add(1);
+            emitted += 1;
+            // Stall guard: a frame-driven tick can hand us a huge `dt` after a hitch (GC/resize/
+            // breakpoint). Blender's async timer wouldn't fire retroactively, so cap the burst and
+            // drop the backlog rather than dump a flood of overlapping dabs at one spot.
+            if emitted >= MAX_AIRBRUSH_DABS_PER_TICK {
+                self.airbrush_accum_s = 0.0;
+                break;
+            }
         }
     }
 

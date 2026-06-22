@@ -53,8 +53,9 @@ pub use ph2d_painter_brush::{
     MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, StrokeMethod, eval_falloff_curve,
 };
 pub use tool::{
-    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX,
-    BRUSH_SPACING_MAX, BrushSettings, PainterTool, brush_falloff_weight_at, set_pending_select_mods,
+    BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
+    BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX, BrushSettings,
+    PainterTool, brush_falloff_weight_at, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

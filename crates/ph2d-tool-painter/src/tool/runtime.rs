@@ -106,7 +106,16 @@ impl PainterTool {
         // opacity<1 / non-Normal blend / hidden / an adjustment) MUST be
         // composited here so per-layer opacity / blend / adjustments are visible.
         if self.is_trivial_stack() {
-            self.preview_upload_bbox = None;
+            // Carry the accumulated dirty bbox into the bridge so a stroke uploads
+            // only the touched sub-rect (B.1 partial lane), NOT the whole canvas
+            // each frame. `None` here forced a full clone + premul + full texture
+            // upload per painted frame, O(W×H) regardless of the 10px dab — the
+            // 300→150 fps stroke regression. The first drain (source-push, no paint
+            // yet) has no `dirty_rect` → stays `None` → the bridge seeds the GPU
+            // texture with one full upload; paint frames then patch just the dab
+            // footprint. If the texture isn't seeded yet the bridge's guard falls
+            // back to a full upload anyway, so an early bbox can never desync it.
+            self.preview_upload_bbox = self.dirty_rect.take();
             return Some((Arc::clone(&self.canvas_rgba), w, h));
         }
         let active = self.layers.active().unwrap_or(RtLayerId(0));

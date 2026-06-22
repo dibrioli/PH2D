@@ -60,6 +60,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
         ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
         // Stroke section sliders (all `0..1` track; the tool maps each to its range).
+        ph2d_editor_core::ids::PAINTER_BRUSH_RATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,

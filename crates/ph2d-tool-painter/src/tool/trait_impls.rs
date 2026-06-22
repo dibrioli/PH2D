@@ -159,6 +159,8 @@ impl Tool for PainterTool {
                     self.set_brush_input_samples_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_STABILIZE {
                     self.set_brush_stabilizer(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_RATE {
+                    self.set_brush_airbrush_rate_norm(v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
@@ -369,10 +371,11 @@ impl Tool for PainterTool {
         }
     }
 
-    /// Per-frame heartbeat (ADR-0040-amendment-2): settle the stabilizer toward the cursor while a
-    /// stroke is held and the pointer is parked, so a high-stabilizer stroke catches up on a pause.
-    fn on_tick(&mut self, _dt_ms: f32) {
-        self.paint_tick();
+    /// Per-frame heartbeat (ADR-0040-amendment-2): drives the airbrush timer (deposit dabs at the
+    /// brush Rate while held) and the stabilizer catch-up (converge the lagged path to a parked
+    /// cursor). `dt_ms` is the real wall time since the last frame (shell `frame_ms_now`).
+    fn on_tick(&mut self, dt_ms: f32) {
+        self.paint_tick(dt_ms * 1e-3);
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

@@ -92,6 +92,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dash_samples: 20,
     input_samples: 1,
     stabilizer: 0.5,
+    airbrush_rate_s: 0.1, // Blender default (DNA_brush_types.h:232)
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in

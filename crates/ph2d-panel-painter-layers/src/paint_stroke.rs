@@ -19,7 +19,8 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
-    BRUSH_COUNT_SLIDER_MAX, BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
+    BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
+    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
 };
 
 /// Paint the Stroke section starting at `y`, returning the next `y`. The two dropdowns (Method,
@@ -57,6 +58,23 @@ pub(crate) fn paint_stroke_section(
     y = ny;
     if let Some(r) = open {
         state::set_pending_brush_stroke_method_dd(Some((r, brush.stroke_method)));
+    }
+
+    // ── Rate (airbrush timer period, seconds) — only Airbrush emits on a timer ──
+    if method.uses_rate() {
+        let span = BRUSH_AIRBRUSH_RATE_MAX_S - BRUSH_AIRBRUSH_RATE_MIN_S;
+        let track = ((brush.airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MIN_S) / span).clamp(0.0, 1.0);
+        y = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label: "Rate",
+            id: core_ids::PAINTER_BRUSH_RATE,
+            value: track,
+            readout: &format!("{:.3}", brush.airbrush_rate_s),
+        });
     }
 
     // ── Spacing (% of diameter) + Adjust Strength — only the spacing-driven methods ──
@@ -345,6 +363,7 @@ mod tests {
             core_ids::PAINTER_BRUSH_SPACE_ATTEN,
             core_ids::PAINTER_BRUSH_DASH_RATIO,
             core_ids::PAINTER_BRUSH_DASH_LENGTH,
+            core_ids::PAINTER_BRUSH_RATE,
         ] {
             assert!(
                 !ids.contains(&hidden),
@@ -386,6 +405,39 @@ mod tests {
                 ids.contains(&shown),
                 "Space dropped {shown:?} — the spacing-driven default must show every \
                  Stroke row. painted = {ids:?}"
+            );
+        }
+    }
+
+    /// Airbrush: the one timer-driven method — the **Rate** row shows (its defining param), while
+    /// the spacing/dash rows stay hidden (airbrush isn't spacing-driven). Jitter, Samples and the
+    /// Stabilizer also show (Blender enables smooth-stroke for Airbrush). Locks "Rate is
+    /// airbrush-only" so the slider can't become a silent no-op on another method.
+    #[test]
+    fn airbrush_shows_rate_and_hides_spacing_dash() {
+        let ids = painted_hit_ids(StrokeMethod::Airbrush);
+        for shown in [
+            core_ids::PAINTER_BRUSH_STROKE_METHOD,
+            core_ids::PAINTER_BRUSH_RATE,
+            core_ids::PAINTER_BRUSH_JITTER,
+            core_ids::PAINTER_BRUSH_JITTER_UNIT,
+            core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_STABILIZE,
+        ] {
+            assert!(
+                ids.contains(&shown),
+                "Airbrush dropped a row it should show ({shown:?}). painted = {ids:?}"
+            );
+        }
+        for hidden in [
+            core_ids::PAINTER_BRUSH_SPACING,
+            core_ids::PAINTER_BRUSH_SPACE_ATTEN,
+            core_ids::PAINTER_BRUSH_DASH_RATIO,
+            core_ids::PAINTER_BRUSH_DASH_LENGTH,
+        ] {
+            assert!(
+                !ids.contains(&hidden),
+                "Airbrush painted a hit rect for {hidden:?} — it's not spacing-driven. painted = {ids:?}"
             );
         }
     }

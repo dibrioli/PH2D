@@ -12,9 +12,9 @@ use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, Dab, Dynamics, Falloff, FalloffPoint, HandleType, JitterUnit,
-    MAX_FALLOFF_POINTS, MAX_INPUT_SAMPLES, Stroke, StrokeMethod, StrokePoint, eval_falloff_curve,
-    stamp_dab,
+    AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushBlend, BrushSpec, Dab, Dynamics, Falloff,
+    FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS, MAX_INPUT_SAMPLES, Stroke,
+    StrokeMethod, StrokePoint, eval_falloff_curve, stamp_dab,
 };
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
@@ -35,6 +35,12 @@ pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
 /// Max value for the Input Samples / Dash Length count sliders (mirrors the engine's
 /// input-sample window cap).
 pub const BRUSH_COUNT_SLIDER_MAX: u32 = MAX_INPUT_SAMPLES as u32;
+/// Airbrush **Rate** slider floor / ceiling, in seconds — the panel maps its `0..1` track linearly
+/// onto `[MIN, MAX]` and the tool clamps to it. Re-exported from the engine's Blender soft range
+/// (default `0.1`) so the panel value↔track map shares the single source.
+pub const BRUSH_AIRBRUSH_RATE_MIN_S: f32 = AIRBRUSH_RATE_MIN_S;
+/// See [`BRUSH_AIRBRUSH_RATE_MIN_S`].
+pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 
 /// A compact snapshot of the active brush for the layers panel's Brush section.
 /// Published each frame by the shell bridge (mirror of the `LayerStack`
@@ -88,6 +94,9 @@ pub struct BrushSettings {
     pub input_samples: u32,
     /// Stroke stabilizer intensity, `0..1` (the "how regular" knob).
     pub stabilizer: f32,
+    /// Airbrush emission period in seconds (the "Rate" slider; only meaningful for the Airbrush
+    /// method). The panel maps it onto the slider track via `BRUSH_AIRBRUSH_RATE_{MIN,MAX}_S`.
+    pub airbrush_rate_s: f32,
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
@@ -231,22 +240,28 @@ impl PainterTool {
         true
     }
 
-    /// Per-frame heartbeat while a stroke is held: when the pointer is parked (no move this frame),
-    /// settle the stabilizer toward the cursor so a high-stabilizer stroke catches up on a pause —
-    /// not only at pointer-up. A no-op while the pointer is moving (the move already advanced it) or
-    /// when the stabilizer is off. Always clears the per-frame move flag.
-    pub(crate) fn paint_tick(&mut self) {
+    /// Per-frame heartbeat while a stroke is held (`dt_s` = wall time since the last frame). Drives
+    /// the two time-based behaviours; both no-op when their method / condition doesn't apply, and the
+    /// per-frame move flag is always cleared:
+    /// - **Airbrush timer:** deposit dabs at the brush's Rate, moving OR parked (Blender fires the
+    ///   airbrush on a timer, not on motion — so the spray builds up when held still and stays sparse
+    ///   when swept fast). The engine's `tick` is a no-op for every non-Airbrush method.
+    /// - **Stabilizer catch-up:** when the pointer is parked, walk the lagged (smoothed) path up to
+    ///   the cursor so a high-stabilizer stroke arrives without waiting for pointer-up. Only while
+    ///   parked, so during-movement smoothing keeps full strength (`settle` is Space-only).
+    pub(crate) fn paint_tick(&mut self, dt_s: f32) {
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
-        if !parked {
-            return;
-        }
         let Some(mut stroke) = self.paint.stroke.take() else {
             return;
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.settle(&mut dabs);
+        stroke.tick(dt_s, &mut dabs);
         self.stamp_dabs(&dabs);
+        if parked {
+            stroke.settle(&mut dabs); // clears `dabs` first
+            self.stamp_dabs(&dabs);
+        }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
     }
@@ -463,6 +478,7 @@ impl PainterTool {
             dash_samples: b.dash_samples,
             input_samples: b.input_samples,
             stabilizer: b.stabilizer,
+            airbrush_rate_s: b.airbrush_rate_s,
         }
     }
 
@@ -613,6 +629,14 @@ impl PainterTool {
     /// Set the stroke stabilizer intensity from the slider's `0..1` track (the "how regular" knob).
     pub fn set_brush_stabilizer(&mut self, t: f32) {
         self.paint.brush.stabilizer = t.clamp(0.0, 1.0);
+    }
+
+    /// Set the airbrush **Rate** (timer period, seconds) from the slider's `0..1` track, mapped
+    /// linearly onto `[BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_AIRBRUSH_RATE_MAX_S]` (default `0.1`).
+    pub fn set_brush_airbrush_rate_norm(&mut self, t: f32) {
+        let t = t.clamp(0.0, 1.0);
+        self.paint.brush.airbrush_rate_s =
+            BRUSH_AIRBRUSH_RATE_MIN_S + t * (BRUSH_AIRBRUSH_RATE_MAX_S - BRUSH_AIRBRUSH_RATE_MIN_S);
     }
 }
 

@@ -81,13 +81,18 @@ Arquivos-chave:
     linha SOME (sem hit-rect) por método — o que os seam tests (que injetam `WidgetEvent` direto,
     pulando o hit-test) não cobrem. Gates verdes: panel-LOC (file+fn), wiring-parity
     (`hit_indexed_ids_are_registered`), seam (6), engine stroke (18).
-- **Airbrush rate — DEFERIDO de propósito (NÃO é gap aberto):** o `BrushSpec.airbrush_rate_s` existe
-  e o engine `Stroke::tick` (timer) é testado, MAS o `PainterTool::on_tick` é **stub vazio**
-  ([`trait_impls.rs:378`](../crates/ph2d-tool-painter/src/tool/trait_impls.rs)) — o shell chama
-  `on_tick` mas o tool não dirige o `tick`. Logo Airbrush ≈ Dots hoje, e um slider "rate" controlaria
-  valor morto = **exatamente o no-op que 2.1 conserta**. A UI do rate entra JUNTO com o wiring do
-  timer (mesma classe interativa do 2.4). Por enquanto Airbrush mostra Method/Jitter/Samples/Stabilize
-  (honesto, sem no-op). **Não adicione o slider antes de o `on_tick` dirigir o `tick`.**
+- **Airbrush rate — ✅ RESOLVIDO (2026-06-21):** o `on_tick` agora dirige `Stroke::tick(dt)` **todo
+  frame enquanto o traço está ativo** (movendo OU parado), com `dt` = `frame_ms_now` real do shell.
+  Correção de fidelidade no engine: o `extend` do Airbrush **não emite mais no movimento** (era ramo
+  compartilhado com Dots = errado); fiel ao Blender, airbrush deposita dabs **só no timer**
+  (`paint_stroke.cc`: o ramo de motion é gateado `!AIRBRUSH`, o de TIMER `AIRBRUSH`). Logo: parado →
+  acumula num ponto; varrendo rápido → spray esparso. Slider **Rate** agora VIVO (gateado por novo
+  predicado `uses_rate()` = Airbrush; track `0..1` → `[0.01,1.0]`s, default 0.1, readout em segundos).
+  Guard anti-stall no `tick` (cap 8 dabs/frame, dropa backlog — timer async do Blender não dispara
+  retroativo). Wiring completo: engine (`extend` fix + `uses_rate` + consts `AIRBRUSH_RATE_*`); tool
+  (`BrushSettings.airbrush_rate_s` + `set_brush_airbrush_rate_norm` + `paint_tick(dt)` dirige tick+settle);
+  editor-core (id `PAINTER_BRUSH_RATE`); painel (linha Rate + populate + event drain). **Falta smoke
+  do Enio:** segurar parado = mancha cresce; varrer rápido = pontilhado; mexer Rate muda a densidade.
 
 ### 2.2 — Drag Dot ✅ RESOLVIDO (2026-06-21) — carimbo único que segue o cursor
 
@@ -292,6 +297,8 @@ Arquivos-chave:
   densidade de amostra e prove a causa antes de uma 3ª.
 
 ### 2.4 — Anchored / Line / Curve seguem DEFER (interativo não wirado) 🟡
+> **NOTA (2026-06-21):** a parte "airbrush on_tick" que estava agrupada aqui **caiu** (ver §2.1
+> RESOLVIDO). Sobra só Anchored/Line/Curve interativo.
 - Selecionáveis no dropdown, mas **não pintam durante o drag** (engine só faz `advance_anchor`).
   `fill_segment()` existe no engine pra Line/Curve; falta o tool/shell dirigir: preview ao vivo,
   finalização no Up (Line: `fill_segment(down,up)`; constrain 45° com Alt), autoria Bézier (Curve),
@@ -361,6 +368,15 @@ pusha.** O Enio pediu smoke verde antes de ship. Slot warm em uso.
 - **Abertos:** 2.2 (Drag Dot carimbo único — interativo) · 2.4 (Anchored/Line/Curve + on_tick do
   airbrush) · 2.3-bis (não-contínuo GERAL, só se persistir nos valores altos — MEÇA densidade de
   amostra antes).
+
+- **Airbrush fechado (2026-06-21, commit local pendente):** ver §2.1 RESOLVIDO. Engine: `extend` do
+  Airbrush não emite no movimento (timer-only, fiel ao `paint_stroke.cc`); `uses_rate()`; guard
+  anti-stall + consts `AIRBRUSH_RATE_*`. Tool: `paint_tick(dt)` dirige `tick`+`settle`; `on_tick`
+  passa o dt real; `set_brush_airbrush_rate_norm`. editor-core: id `PAINTER_BRUSH_RATE`. Painel:
+  linha Rate gateada. Testes: engine `airbrush_does_not_emit_on_motion_only_tracks_the_cursor` +
+  matriz `uses_rate`; tool `airbrush_deposits_on_the_tick_at_the_tracked_cursor_not_on_a_bare_move`
+  + routing; painel `airbrush_shows_rate_and_hides_spacing_dash`. 65 engine / 75 tool / painel
+  (4 paint + 7 seam) / wiring-parity / clippy / host-desktop compila. **Falta smoke do Enio (GUI).**
 - **2.2 (Drag Dot) é o próximo lógico** — interativo (preview + commit único no Up), parte
   tool/shell. A metade UI-honesta já caiu com 2.1 (Drag Dot só mostra Method+Samples); falta o
   COMPORTAMENTO (não acumular rastro). Ver §2.2.

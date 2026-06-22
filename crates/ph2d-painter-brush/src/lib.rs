@@ -42,6 +42,6 @@ pub use falloff_curve::{
     eval_falloff_curve,
 };
 pub use sampler::MAX_INPUT_SAMPLES;
-pub use spec::BrushSpec;
+pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stroke::{Dab, Stroke, StrokePoint};
 pub use stroke_method::{JitterUnit, StrokeMethod};

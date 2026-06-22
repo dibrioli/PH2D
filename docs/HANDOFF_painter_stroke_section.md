@@ -103,15 +103,20 @@ Arquivos-chave:
     re-carimba na nova → um dab segue o cursor sem rastro; `commit_drag_preview` no `paint_end`
     larga o restore-record (o dab da soltura fica). Roteado via `stamp_stroke_dabs` (Drag Dot →
     preview; resto → cumulativo). Dirty-rect cobre as duas regiões (apaga a antiga, mostra a nova).
-  - Painel: o slider **Stabilize agora é gateado a Space** (`uses_stabilizer()`) — Drag Dot não
-    mostra knob de suavização (não se aplica). Matriz de visibilidade atualizada.
+  - Painel: o slider **Stabilize é gateado por `uses_stabilizer()`** = `!{Anchored, DragDot, Line}`
+    (= o conjunto smooth-stroke do Blender: Space/Dots/Airbrush/Curve). **Drag Dot e Anchored** não
+    mostram (posicionamento exato); **Dots/Airbrush MOSTRAM** (Enio pediu + Blender suporta). Matriz
+    de visibilidade atualizada.
 - **Testes:** engine `drag_dot_ignores_the_stabilizer_and_sits_at_the_cursor`; tool
   `drag_dot_follows_cursor_leaving_no_trail` (carimba em A→B→C, prova: pixel em C preto, A e B
   brancos = sem rastro, restore-record limpo); painel paint-level atualizado (Drag Dot esconde
   Stabilize). 63 engine / 73 tool / clippy / host compila.
-- **NOTA — Dots:** o "Dots errado" do sintoma original é provavelmente só o param-hiding (§2.1, já
-  fechado) + Dots não passar pela suavização (agora `uses_stabilizer()`=false p/ Dots → cru, como o
-  Blender). Se o Enio ainda achar Dots errado, peça repro específico.
+- **NOTA — Dots (revisado 2026-06-21, pedido do Enio):** auditado vs `paint_stroke.cc`. Core CORRETO
+  (1 dab/evento no cursor, sem spacing, input-samples + jitter + pressão como Blender). O Enio pediu
+  **Stabilize pra Dots** → o Blender suporta smooth-stroke pra Dots, então liguei (`uses_stabilizer`
+  agora inclui Dots/Airbrush; o engine estabiliza a posição do dab; teste `dots_use_the_stabilizer_
+  like_space`). **Dots NÃO tem Dash/Length** (`uses_dash` só Space/Line/Curve) nem Spacing. Painel
+  final de Dots = **Method + Jitter+Unit + Samples + Stabilize**.
 
 #### ~~2.2-orig — Drag Dot e Dots errados vs Blender~~ (resolvido acima; texto original abaixo)
 - **Sintoma (Enio):** "Dot e drag dots não funcionam como no Blender."

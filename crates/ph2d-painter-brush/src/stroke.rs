@@ -151,16 +151,17 @@ impl Stroke {
         self.last_raw_pos = avg.pos;
         self.last_raw_pressure = avg.pressure;
         match self.spec.stroke_method {
-            // Only the freehand `Space` path runs the stabilizer (and the spline). The per-event
-            // and interactive methods use the raw cursor: Drag Dot in particular must sit exactly
-            // under the cursor for careful positioning (Blender disables smooth-stroke for it).
+            // The stabilizer (smooth-stroke) applies to Space + the per-event Dots/Airbrush, like
+            // Blender. Space additionally resamples through the spline; Dots/Airbrush place one
+            // dab per event at the filtered position. Drag Dot below stays raw (exact placement).
             StrokeMethod::Space => {
                 let target = self.stabilize(avg);
                 self.walk_smoothed(target, out);
             }
             StrokeMethod::Dots | StrokeMethod::Airbrush => {
-                self.emit_single(avg.pos, self.method_pressure(avg.pressure), out);
-                self.advance_anchor(avg);
+                let target = self.stabilize(avg);
+                self.emit_single(target.pos, self.method_pressure(target.pressure), out);
+                self.advance_anchor(target);
             }
             // Drag Dot emits one dab per move at the cursor; the TOOL restores the previous one so
             // only a single dab follows the pointer (no trail), committing the last on pointer-up.

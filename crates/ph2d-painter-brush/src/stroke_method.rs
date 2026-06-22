@@ -89,12 +89,13 @@ impl StrokeMethod {
         matches!(self, Self::Space | Self::Line | Self::Curve)
     }
 
-    /// True when the stroke **stabilizer** (the "how regular" knob) applies — only the freehand
-    /// `Space` path runs the position filter + spline. The per-event methods place dabs at the raw
-    /// cursor (Drag Dot must stay exactly under the pointer); the interactive ones are geometric.
+    /// True when the stroke **stabilizer** (the "how regular" knob) applies. Mirrors Blender's
+    /// `paint_supports_smooth_stroke`, which enables smooth-stroke for every method **except**
+    /// `ANCHORED`/`DRAG_DOT`/`LINE` — so `Space`/`Dots`/`Airbrush`/`Curve` all run the position
+    /// filter (Space additionally runs the spline). Drag Dot/Anchored need exact cursor placement.
     #[must_use]
     pub fn uses_stabilizer(self) -> bool {
-        matches!(self, Self::Space)
+        !matches!(self, Self::Anchored | Self::DragDot | Self::Line)
     }
 
     /// True when this method forces pressure to 1.0 (Blender: DRAG_DOT, ANCHORED, LINE).
@@ -180,13 +181,13 @@ mod tests {
         // not in a human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
         let rows = [
             //         spacing  dash   jitter stabilizer
-            (Dots, false, false, true, false),
-            (Airbrush, false, false, true, false),
+            (Dots, false, false, true, true),
+            (Airbrush, false, false, true, true),
             (Anchored, false, false, false, false),
             (Space, true, true, true, true),
             (DragDot, false, false, false, false),
             (Line, true, true, true, false),
-            (Curve, true, true, true, false),
+            (Curve, true, true, true, true),
         ];
         for (m, spacing, dash, jitter, stabilizer) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");

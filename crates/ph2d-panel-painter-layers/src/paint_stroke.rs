@@ -335,21 +335,20 @@ mod tests {
             .collect()
     }
 
-    /// Dots: per-event method — Spacing/Dash + the freehand Stabilizer are no-ops, so they must be
-    /// hidden; Jitter and Input Samples stay (Method is always shown).
+    /// Dots: per-event method — Spacing and Dash/Length are no-ops, so they stay hidden; Jitter,
+    /// Input Samples and the Stabilizer (Blender enables smooth-stroke for Dots) show.
     #[test]
-    fn dots_hides_spacing_dash_and_stabilizer_keeps_jitter_and_samples() {
+    fn dots_hides_spacing_and_dash_but_shows_jitter_samples_and_stabilizer() {
         let ids = painted_hit_ids(StrokeMethod::Dots);
         for hidden in [
             core_ids::PAINTER_BRUSH_SPACING,
             core_ids::PAINTER_BRUSH_SPACE_ATTEN,
             core_ids::PAINTER_BRUSH_DASH_RATIO,
             core_ids::PAINTER_BRUSH_DASH_LENGTH,
-            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 !ids.contains(&hidden),
-                "Dots painted a hit rect for {hidden:?} — Spacing/Dash/Stabilize must be hidden \
+                "Dots painted a hit rect for {hidden:?} — Spacing/Dash must be hidden \
                  (silent no-op). painted = {ids:?}"
             );
         }
@@ -358,6 +357,7 @@ mod tests {
             core_ids::PAINTER_BRUSH_JITTER,
             core_ids::PAINTER_BRUSH_JITTER_UNIT,
             core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_STABILIZE,
         ] {
             assert!(
                 ids.contains(&shown),

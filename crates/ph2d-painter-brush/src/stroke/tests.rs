@@ -202,6 +202,27 @@ fn drag_dot_forces_full_pressure_and_no_jitter() {
 }
 
 #[test]
+fn dots_use_the_stabilizer_like_space() {
+    // Blender enables smooth-stroke for Dots too: with the stabilizer up, the dab is placed at the
+    // lazy-mouse-filtered position (lagged), not the raw cursor (still one dab per event though).
+    let spec = BrushSpec {
+        stabilizer: 1.0,
+        stroke_method: StrokeMethod::Dots,
+        ..straight_spec(4.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(80.0, 0.0, 1.0), &mut out);
+    assert_eq!(out.len(), 1, "Dots still emits exactly one dab per move");
+    assert!(
+        out[0].center[0] < 40.0,
+        "with a heavy stabilizer the Dots dab should lag well behind the cursor (80); got {}",
+        out[0].center[0]
+    );
+}
+
+#[test]
 fn drag_dot_ignores_the_stabilizer_and_sits_at_the_cursor() {
     // Drag Dot places its dab exactly at the cursor even with a heavy stabilizer — careful
     // positioning (Blender disables smooth-stroke for it). One dab per move at the raw cursor; the

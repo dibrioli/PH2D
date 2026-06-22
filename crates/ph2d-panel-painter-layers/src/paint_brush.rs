@@ -98,19 +98,23 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in
 /// Brush mode). Terminal for the panel — owns its own popover pass.
-pub(crate) fn paint_brush_mode(
+/// Paint the Brush-properties body rows from `top_y` (already offset by the panel scroll), returning
+/// the content-bottom `y`. The caller clips to the body viewport, measures the returned height for
+/// the scrollbar, and drains the dropdown popovers via [`paint_brush_popovers`] AFTER popping the
+/// clip (so an open dropdown floats unclipped over the rows).
+pub(crate) fn paint_brush_body(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     rect: Rect,
-    header_bottom: f32,
-) {
+    top_y: f32,
+) -> f32 {
     let x = rect.x + PANEL_HEAD_PAD;
     let content_w = rect.w - PANEL_HEAD_PAD * 2.0;
     let brush = state::current_brush().unwrap_or(FALLBACK_BRUSH);
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
 
-    let mut y = header_bottom + Spacing::Md.px();
+    let mut y = top_y;
     let pct = |v: f32| format!("{:.0}", v * 100.0); // LITERAL-PX-OK: fraction → percent
 
     // ── Size (px) + Strength (%) — the Blender TexDraw popover sliders ──
@@ -193,9 +197,15 @@ pub(crate) fn paint_brush_mode(
     );
 
     // ── Colour: label + swatch (click opens the shared Blender picker) ──
-    paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
+    y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
+    y
+}
 
-    // Deferred: the open dropdown popover, on top of the body (one at a time).
+/// Drain the Brush-properties dropdown popovers (Blend, Falloff, Stroke Method, Jitter Unit) — one
+/// at a time, on TOP of the body. Painted by the caller AFTER the body clip is popped, so an open
+/// dropdown is never clipped to the scrolling viewport. The chip rects were stashed during
+/// [`paint_brush_body`] (already at their scrolled positions).
+pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
     if let Some((chip_rect, cur)) = state::take_pending_brush_blend_dd() {
         paint_dropdown_popover(
             ctx,
@@ -333,7 +343,7 @@ fn paint_color_swatch_row(
     content_w: f32,
     y: f32,
     brush: BrushSettings,
-) {
+) -> f32 {
     let font = TypeToken::Sm.px();
     label(ctx, theme, "Color", x, y, font);
     let sx = x + LABEL_W + Spacing::Sm.px();
@@ -361,6 +371,7 @@ fn paint_color_swatch_row(
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_COLOR_THUMB, rect);
+    y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// Deferred paint of an open brush dropdown popover (clamped to the viewport).

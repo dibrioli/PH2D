@@ -112,12 +112,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
 
     let header_bottom = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
 
-    // ── Brush-properties view: paint the brush body and return (no layers
-    // toolbars / rows / scroll). The shared colour picker is driven from here. ─
+    // ── Brush-properties view: scrollable brush body (extracted to keep `paint`
+    // under the panel fn-LOC cap). Same scroll machinery as the Layers view below. ─
     if !shows_layers {
-        crate::paint_brush::paint_brush_mode(ctx, theme, rect, header_bottom);
-        set_last_content_h(0.0);
-        set_last_visible_h(0.0);
+        paint_brush_view(ctx, theme, rect, header_bottom);
         return;
     }
     // Layers view: if the shared colour picker is still open from the Brush view,
@@ -345,6 +343,65 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     if let Some((name, cx, cy)) = ghost {
         paint_drag_ghost(ctx, theme, &name, cx, cy);
     }
+}
+
+/// Paint the scrollable Brush-properties body (Size / Strength / Blend / Falloff / Stroke / Eraser /
+/// Colour) below `header_bottom`. Mirrors the Layers view's scroll machinery: clip the body, offset
+/// the paint origin by the scroll position, draw the scrollbar, and publish the content/visible
+/// heights so the generic `dispatch_wheel` + the thumb drag route here (shared `PAINTER_LAYERS_PANEL`
+/// key + `PAINTER_LAYERS_SCROLLBAR_ID`). The open dropdown popover is drained AFTER the clip is
+/// popped, so it floats unclipped over the rows.
+fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, header_bottom: f32) {
+    let body_top = header_bottom;
+    let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll_y = ctx
+        .host
+        .store()
+        .panel_scroll(core_ids::PAINTER_LAYERS_PANEL)
+        .max(0.0);
+    let body_paint_top = body_top + Spacing::Md.px() - scroll_y;
+
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    let content_bottom = crate::paint_brush::paint_brush_body(ctx, theme, rect, body_paint_top);
+    ctx.scene.pop_layer();
+
+    let content_h = (content_bottom - body_paint_top + PANEL_HEAD_PAD).max(0.0);
+    set_last_content_h(content_h);
+    set_last_visible_h(body_h);
+
+    let scrollbar_active = matches!(
+        ctx.host.store().scrollbar_drag(),
+        Some(d) if d.panel == core_ids::PAINTER_LAYERS_PANEL
+    );
+    paint_scrollbar(
+        body_rect,
+        scroll_y,
+        content_h,
+        body_h,
+        scrollbar_active,
+        ctx.scene,
+        theme,
+    );
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll_y, content_h, body_h);
+        ctx.host
+            .hit_index_mut()
+            .register(PAINTER_LAYERS_SCROLLBAR_ID, thumb);
+    }
+    {
+        let store = ctx.host.store_mut();
+        store.set_panel_content_h(core_ids::PAINTER_LAYERS_PANEL, content_h);
+        store.set_panel_visible_h(core_ids::PAINTER_LAYERS_PANEL, body_h);
+        let max_scroll = (content_h - body_h).max(0.0);
+        if store.panel_scroll(core_ids::PAINTER_LAYERS_PANEL) > max_scroll {
+            store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
+        }
+    }
+    // The open dropdown popover (Blend / Falloff / Method / Jitter Unit) floats over the body,
+    // unclipped, above the scrollbar.
+    crate::paint_brush::paint_brush_popovers(ctx, theme);
 }
 
 /// Header dock-toggle — swaps the docked body between the Layers/Effects view

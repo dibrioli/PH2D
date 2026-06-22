@@ -128,6 +128,10 @@ pub(crate) struct PaintState {
     /// In-progress Stencil overlay drag (move/resize the texture rect); `None` when not dragging a
     /// handle. See [`crate::tool::paint::stencil`].
     stencil_grab: Option<stencil::StencilGrab>,
+    /// Imported brush-texture luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
+    texture_image: Option<brush_settings::BrushTextureImage>,
+    /// Set when the user picks the Image kind; the shell polls it to open a file picker.
+    texture_image_pending: bool,
 }
 
 impl Default for PaintState {
@@ -156,6 +160,8 @@ impl Default for PaintState {
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             stencil_grab: None,
+            texture_image: None,
+            texture_image_pending: false,
         }
     }
 }
@@ -343,6 +349,7 @@ impl PainterTool {
         // takes the texture-free fast path (`None`). The texture RNG is copied out so the canvas
         // borrow below doesn't conflict, then written back.
         let textured = brush.texture.is_active();
+        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let mut tex_rng = self.paint.tex_rng;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
@@ -354,7 +361,7 @@ impl PainterTool {
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    dab_tangent(dabs, i),
+                    brush_settings::dab_tangent(dabs, i),
                     &mut tex_rng,
                     [w as f32, h as f32],
                 )
@@ -368,6 +375,7 @@ impl PainterTool {
                 d.coverage,
                 alpha_locked,
                 basis.as_ref(),
+                image.as_ref(),
             ) {
                 let rect = Region {
                     x: r.x,
@@ -509,22 +517,6 @@ fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     // Project the cursor onto the ray (dot product = signed distance along the unit direction).
     let proj = dx * ux + dy * uy;
     [anchor[0] + ux * proj, anchor[1] + uy * proj]
-}
-
-/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake**
-/// rotation aligns to it ([`ph2d_painter_brush::texture::dab_basis`] normalises). Uses the chord to
-/// the next dab when there is one, else from the previous; a lone dab returns `[0, 0]` (Rake then
-/// falls back to the Angle). Derived here rather than carried on `Dab` so the engine's dab stays
-/// pressure-only.
-fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
-    let (a, b) = if i + 1 < dabs.len() {
-        (dabs[i].center, dabs[i + 1].center)
-    } else if i > 0 {
-        (dabs[i - 1].center, dabs[i].center)
-    } else {
-        return [0.0, 0.0];
-    };
-    [b[0] - a[0], b[1] - a[1]]
 }
 
 /// Smallest region covering both `a` and `b`.

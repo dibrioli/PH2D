@@ -1578,6 +1578,39 @@ fn stencil_corner_handle_drag_resizes_the_rect() {
 }
 
 #[test]
+fn texture_image_request_then_modulates_the_dab() {
+    use ph2d_painter_brush::TextureKind;
+    let mut t = white_canvas(64, 12.0);
+    // Picking the Image kind requests a file load (the shell polls this); consumed once.
+    t.set_brush_texture_kind(TextureKind::Image.to_u8());
+    assert!(
+        t.take_brush_texture_image_request(),
+        "picking Image requests a file load"
+    );
+    assert!(
+        !t.take_brush_texture_image_request(),
+        "the request is consumed once"
+    );
+    // All-black luminance → mask 0 → the dab paints nothing.
+    t.set_brush_texture_image(vec![0u8; 16], 4, 4);
+    assert_eq!(t.brush_settings().texture_kind, TextureKind::Image.to_u8());
+    let _ = t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "an all-black image mask paints nothing"
+    );
+    // All-white luminance → mask 1 → paints fully (hard brush → black centre).
+    t.set_brush_texture_image(vec![255u8; 16], 4, 4);
+    let _ = t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    assert_eq!(
+        px(&t, 64, 20, 20),
+        [0, 0, 0, 255],
+        "an all-white image mask paints fully"
+    );
+}
+
+#[test]
 fn stencil_down_away_from_handles_paints_not_edits() {
     let mut t = stencil_tool();
     let before = t.brush_settings();

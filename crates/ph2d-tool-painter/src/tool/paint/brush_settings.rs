@@ -8,10 +8,46 @@ use super::{
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS, StrokeMethod,
-    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureMapping, eval_falloff_curve,
+    BrushBlend, Dab, Falloff, FalloffPoint, HandleType, ImageMask, JitterUnit, MAX_FALLOFF_POINTS,
+    StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TextureKind, TextureMapping, eval_falloff_curve,
 };
+
+/// An imported brush-texture image: owned grayscale luminance + dims, held in
+/// [`super::PaintState`] (the heavy pixels can't live in the `Copy` `BrushSpec`). [`stamp_dabs`]
+/// borrows it as an [`ImageMask`] for the engine.
+pub(super) struct BrushTextureImage {
+    lum: Vec<u8>,
+    width: u32,
+    height: u32,
+}
+
+impl BrushTextureImage {
+    /// Borrow as the engine's [`ImageMask`].
+    pub(super) fn as_mask(&self) -> ImageMask<'_> {
+        ImageMask {
+            lum: &self.lum,
+            width: self.width,
+            height: self.height,
+        }
+    }
+}
+
+/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake**
+/// rotation aligns to it ([`ph2d_painter_brush::texture::dab_basis`] normalises). Uses the chord to
+/// the next dab when there is one, else from the previous; a lone dab returns `[0, 0]` (Rake then
+/// falls back to the Angle). Derived here rather than carried on `Dab` so the engine's dab stays
+/// pressure-only.
+pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
+    let (a, b) = if i + 1 < dabs.len() {
+        (dabs[i].center, dabs[i + 1].center)
+    } else if i > 0 {
+        (dabs[i - 1].center, dabs[i].center)
+    } else {
+        return [0.0, 0.0];
+    };
+    [b[0] - a[0], b[1] - a[1]]
+}
 
 /// A compact snapshot of the active brush for the layers panel's Brush section.
 /// Published each frame by the shell bridge (mirror of the `LayerStack`
@@ -342,8 +378,28 @@ impl PainterTool {
     // ── Texture section setters (the single clamp source; the panel forwards raw UI values) ──
 
     /// Set the brush texture kind from a wire discriminant (out-of-range → None = no texture).
+    /// Picking [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O);
+    /// until one is supplied via [`Self::set_brush_texture_image`] the Image texture is inert.
     pub fn set_brush_texture_kind(&mut self, k: u8) {
-        self.paint.brush.texture.kind = TextureKind::from_u8(k);
+        let kind = TextureKind::from_u8(k);
+        self.paint.brush.texture.kind = kind;
+        if kind == TextureKind::Image {
+            self.paint.texture_image_pending = true;
+        }
+    }
+
+    /// Store an imported grayscale `lum` image (`width × height`, row-major) as the brush texture and
+    /// switch the kind to Image. Called by the shell after a file pick + decode.
+    pub fn set_brush_texture_image(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        self.paint.texture_image = Some(BrushTextureImage { lum, width, height });
+        self.paint.brush.texture.kind = TextureKind::Image;
+        self.paint.texture_image_pending = false;
+    }
+
+    /// Take (and clear) the "the user picked Image — open a file picker" request. The shell polls
+    /// this each frame; on a successful pick it calls [`Self::set_brush_texture_image`].
+    pub fn take_brush_texture_image_request(&mut self) -> bool {
+        std::mem::take(&mut self.paint.texture_image_pending)
     }
 
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.

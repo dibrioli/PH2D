@@ -21,7 +21,7 @@ fn none_kind_is_full_coverage() {
     let b = TexDabBasis::identity();
     for px in -3..3 {
         for py in -3..3 {
-            assert_eq!(sample(&s, &b, px, py, [0.0, 0.0], 8.0), 1.0);
+            assert_eq!(sample(&s, &b, px, py, [0.0, 0.0], 8.0, None), 1.0);
         }
     }
 }
@@ -166,12 +166,12 @@ fn view_follows_the_dab_but_tiled_is_fixed_to_canvas() {
     let b = TexDabBasis::identity();
     let (px, py) = (40, 40);
     // View: moving the dab centre changes the sampled value (texture rides the brush).
-    let v_a = sample(&view, &b, px, py, [40.0, 40.0], 16.0);
-    let v_b = sample(&view, &b, px, py, [10.0, 10.0], 16.0);
+    let v_a = sample(&view, &b, px, py, [40.0, 40.0], 16.0, None);
+    let v_b = sample(&view, &b, px, py, [10.0, 10.0], 16.0, None);
     assert_ne!(v_a, v_b, "View Plane should follow the dab centre");
     // Tiled: the same pixel samples the same value regardless of dab centre.
-    let t_a = sample(&tiled, &b, px, py, [40.0, 40.0], 16.0);
-    let t_b = sample(&tiled, &b, px, py, [10.0, 10.0], 16.0);
+    let t_a = sample(&tiled, &b, px, py, [40.0, 40.0], 16.0, None);
+    let t_b = sample(&tiled, &b, px, py, [10.0, 10.0], 16.0, None);
     assert_eq!(t_a, t_b, "Tiled is fixed to the image, not the brush");
 }
 
@@ -238,14 +238,14 @@ fn stencil_masks_outside_the_rect_and_is_image_fixed() {
     let b = dab_basis(&s, [0.0, 0.0], &mut rng, [100.0, 100.0]);
     // A pixel far outside the rect → masked to 0.
     assert_eq!(
-        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0),
+        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0, None),
         0.0,
         "outside the stencil paints nothing"
     );
     // The rect is fixed to the image: moving the dab centre does NOT change the mask.
     assert_eq!(
-        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0),
-        sample(&s, &b, 5, 5, [99.0, 99.0], 8.0),
+        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0, None),
+        sample(&s, &b, 5, 5, [99.0, 99.0], 8.0, None),
         "stencil is image-fixed, not dab-relative"
     );
 }
@@ -265,7 +265,7 @@ fn stencil_rect_shows_the_procedural_pattern() {
     let mut seen0 = false;
     let mut seen1 = false;
     for x in (2..62).step_by(3) {
-        let v = sample(&s, &b, x, 32, [32.0, 32.0], 8.0);
+        let v = sample(&s, &b, x, 32, [32.0, 32.0], 8.0, None);
         if v == 0.0 {
             seen0 = true;
         }
@@ -303,7 +303,17 @@ fn inactive_texture_is_byte_identical_to_stamp_dab() {
     let mut b = solid(w, h, [255, 255, 255, 255]);
     let basis = TexDabBasis::identity();
     let ra = stamp_dab(&mut a, w, h, [16.0, 16.0], &spec, 1.0, false);
-    let rb = stamp_dab_textured(&mut b, w, h, [16.0, 16.0], &spec, 1.0, false, Some(&basis));
+    let rb = stamp_dab_textured(
+        &mut b,
+        w,
+        h,
+        [16.0, 16.0],
+        &spec,
+        1.0,
+        false,
+        Some(&basis),
+        None,
+    );
     assert_eq!(ra, rb);
     assert_eq!(a, b, "an inactive texture must not change a single byte");
 }
@@ -346,6 +356,7 @@ fn checker_texture_leaves_zero_texel_cells_unpainted() {
         1.0,
         false,
         Some(&basis),
+        None,
     )
     .expect("textured painted");
 
@@ -396,6 +407,7 @@ fn full_one_texture_matches_unmodulated_dab() {
         1.0,
         false,
         Some(&basis),
+        None,
     );
     // The texture only attenuates: every channel value is ≥ the plain one (lighter or equal,
     // because less black was deposited). Never darker.
@@ -405,4 +417,117 @@ fn full_one_texture_matches_unmodulated_dab() {
             "texture must only attenuate coverage, never add paint (pixel {i})"
         );
     }
+}
+
+// ── Image-mask texture (imported luminance) ─────────────────────────────────────────────────
+
+#[test]
+fn sample_image_is_bilinear_centre_coord_and_tiles() {
+    // 2×2 luminance: [0, 255; 128, 64].
+    let lum = [0u8, 255, 128, 64];
+    let img = ImageMask {
+        lum: &lum,
+        width: 2,
+        height: 2,
+    };
+    // Texel centres (centre-coord): texel 0 centre at u=0.25, texel 1 at u=0.75.
+    assert!(
+        (sample_image(&img, 0.25, 0.25) - 0.0).abs() < 1e-6,
+        "texel (0,0) = 0"
+    );
+    assert!(
+        (sample_image(&img, 0.75, 0.25) - 1.0).abs() < 1e-6,
+        "texel (1,0) = 255"
+    );
+    // Tiling: u + 1 wraps to the same texel.
+    assert!((sample_image(&img, 1.25, 0.25) - sample_image(&img, 0.25, 0.25)).abs() < 1e-6);
+    // Always bounded.
+    for k in 0..30 {
+        let u = k as f32 * 0.17;
+        assert!((0.0..=1.0).contains(&sample_image(&img, u, -u)));
+    }
+}
+
+#[test]
+fn image_texture_modulates_the_dab() {
+    let (w, h) = (24u32, 24u32);
+    let spec = BrushSpec {
+        radius_px: 9.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Constant,
+        hardness: 1.0,
+        texture: TextureSettings {
+            kind: TextureKind::Image,
+            mapping: TextureMapping::Tiled,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let b = TexDabBasis::identity();
+    // All-black luminance → mask 0 → nothing painted.
+    let black = vec![0u8; 64];
+    let img_k = ImageMask {
+        lum: &black,
+        width: 8,
+        height: 8,
+    };
+    let mut buf = solid(w, h, [255, 255, 255, 255]);
+    assert!(
+        stamp_dab_textured(
+            &mut buf,
+            w,
+            h,
+            [12.0, 12.0],
+            &spec,
+            1.0,
+            false,
+            Some(&b),
+            Some(&img_k)
+        )
+        .is_none(),
+        "an all-black image mask deposits nothing"
+    );
+    // All-white luminance → mask 1 → paints fully (centre black).
+    let white = vec![255u8; 64];
+    let img_w = ImageMask {
+        lum: &white,
+        width: 8,
+        height: 8,
+    };
+    let mut buf2 = solid(w, h, [255, 255, 255, 255]);
+    stamp_dab_textured(
+        &mut buf2,
+        w,
+        h,
+        [12.0, 12.0],
+        &spec,
+        1.0,
+        false,
+        Some(&b),
+        Some(&img_w),
+    )
+    .expect("painted");
+    assert_eq!(
+        buf2[((12 * w + 12) * 4) as usize],
+        0,
+        "all-white image mask paints fully"
+    );
+    // kind Image with NO pixels supplied → inert (1.0) → paints like no texture.
+    let mut buf3 = solid(w, h, [255, 255, 255, 255]);
+    assert!(
+        stamp_dab_textured(
+            &mut buf3,
+            w,
+            h,
+            [12.0, 12.0],
+            &spec,
+            1.0,
+            false,
+            Some(&b),
+            None
+        )
+        .is_some(),
+        "kind Image without pixels is inert (full coverage), not a mask"
+    );
 }

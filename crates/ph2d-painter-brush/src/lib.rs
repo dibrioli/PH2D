@@ -51,6 +51,7 @@ pub use stroke::{
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use texture::{
-    DEG_STEP, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TEX_TILE_BASE_PX, TexDabBasis, TextureKind, TextureMapping, TextureSettings, stencil_frame,
+    DEG_STEP, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
+    TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis, TextureKind, TextureMapping, TextureSettings,
+    stencil_frame,
 };

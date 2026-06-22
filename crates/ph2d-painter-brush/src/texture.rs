@@ -53,6 +53,10 @@ pub enum TextureKind {
     Voronoi,
     /// Soft parallel stripes (triangle wave) — hatching.
     Stripes,
+    /// An imported image's luminance, supplied separately (the pixels are heavy, so they don't live
+    /// in the `Copy` settings — the caller passes an [`ImageMask`] to [`sample`]). Without one, the
+    /// texture is inert (returns `1.0`).
+    Image,
 }
 
 impl TextureKind {
@@ -65,6 +69,7 @@ impl TextureKind {
             Self::Checker => 2,
             Self::Voronoi => 3,
             Self::Stripes => 4,
+            Self::Image => 5,
         }
     }
 
@@ -76,12 +81,13 @@ impl TextureKind {
             2 => Self::Checker,
             3 => Self::Voronoi,
             4 => Self::Stripes,
+            5 => Self::Image,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 5;
+    pub const COUNT: u8 = 6;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -92,6 +98,7 @@ impl TextureKind {
             Self::Checker => "Checker",
             Self::Voronoi => "Voronoi",
             Self::Stripes => "Stripes",
+            Self::Image => "Image",
         }
     }
 }
@@ -214,6 +221,20 @@ impl TextureSettings {
     }
 }
 
+/// A borrowed grayscale (luminance) image supplied to [`sample`] for [`TextureKind::Image`]. One
+/// byte per texel, row-major; the engine samples it bilinearly (centre-coord) and tiles it (`fract`)
+/// so it composes with every mapping. Kept borrowed so the heavy pixels stay owned by the caller
+/// (the `Copy` settings can't hold them).
+#[derive(Clone, Copy, Debug)]
+pub struct ImageMask<'a> {
+    /// Luminance bytes, row-major, at least `width * height` long.
+    pub lum: &'a [u8],
+    /// Image width in texels.
+    pub width: u32,
+    /// Image height in texels.
+    pub height: u32,
+}
+
 /// Per-dab resolved texture frame: the rotated basis (`u`, `v`, both unit), the per-dab random
 /// translation (in tile fractions; `[0,0]` unless the mapping randomises the offset), and — for the
 /// Stencil mapping — the rect's centre + half-extent in canvas pixels. Computed once per dab by
@@ -321,6 +342,7 @@ pub fn sample(
     py: i64,
     center: [f32; 2],
     radius: f32,
+    image: Option<&ImageMask>,
 ) -> f32 {
     if !s.is_active() {
         return 1.0;
@@ -369,8 +391,35 @@ pub fn sample(
         TextureKind::Checker => checker(tex[0], tex[1]),
         TextureKind::Voronoi => voronoi(tex[0], tex[1]),
         TextureKind::Stripes => stripes(tex[0]),
+        TextureKind::Image => match image {
+            Some(img) => sample_image(img, tex[0], tex[1]),
+            None => 1.0, // kind is Image but no pixels supplied → inert
+        },
     };
     v.clamp(0.0, 1.0)
+}
+
+/// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one full image), tiled via
+/// `fract` and read with the centre-coord convention (memory `feedback_pixel_center_vs_edge_coord`).
+/// Returns `[0, 1]`; transcendental-free (floor / rem_euclid / lerp). A malformed buffer reads `1.0`
+/// (inert) rather than panicking.
+fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
+    let (w, h) = (img.width.max(1), img.height.max(1));
+    if img.lum.len() < (w as usize) * (h as usize) {
+        return 1.0;
+    }
+    // Tile into [0,1), then to pixel space (centre-coord: pixel i spans [i, i+1), centre at i+0.5).
+    let x = (u - u.floor()) * w as f32 - 0.5;
+    let y = (v - v.floor()) * h as f32 - 0.5;
+    let (x0, y0) = (x.floor(), y.floor());
+    let (tx, ty) = (x - x0, y - y0);
+    let wrap = |i: i32, n: u32| (i.rem_euclid(n as i32)) as usize;
+    let (xi0, xi1) = (wrap(x0 as i32, w), wrap(x0 as i32 + 1, w));
+    let (yi0, yi1) = (wrap(y0 as i32, h), wrap(y0 as i32 + 1, h));
+    let at = |xi: usize, yi: usize| f32::from(img.lum[yi * w as usize + xi]) / 255.0;
+    let top = lerp(at(xi0, yi0), at(xi1, yi0), tx);
+    let bot = lerp(at(xi0, yi1), at(xi1, yi1), tx);
+    lerp(top, bot, ty)
 }
 
 // ── Procedural samplers (transcendental-free) ───────────────────────────────────────────────

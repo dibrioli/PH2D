@@ -7,7 +7,7 @@
 //! (`px + 0.5`), matching the texel-centre convention.
 
 use crate::spec::BrushSpec;
-use crate::texture::TexDabBasis;
+use crate::texture::{ImageMask, TexDabBasis};
 
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,13 +52,15 @@ pub fn stamp_dab(
         coverage,
         preserve_alpha,
         None,
+        None,
     )
 }
 
 /// As [`stamp_dab`], but the brush texture ([`BrushSpec::texture`]) modulates each texel's coverage
 /// when `tex` is `Some` and a texture kind is assigned. `tex` is the per-dab texture frame resolved
-/// once by [`crate::texture::dab_basis`] (rotation + per-dab random offset); passing `None` — or an
-/// inactive texture — reproduces [`stamp_dab`] exactly. See [`crate::texture`].
+/// once by [`crate::texture::dab_basis`] (rotation + per-dab random offset); `image` supplies the
+/// pixels for [`crate::TextureKind::Image`] (ignored by the procedural kinds). Passing `None`/`None`
+/// — or an inactive texture — reproduces [`stamp_dab`] exactly. See [`crate::texture`].
 // Mirrors [`stamp_dab`]'s established positional signature plus the per-dab texture frame; bundling
 // the buffer/geometry into a struct here would diverge from the sibling fast path for no real gain.
 #[allow(clippy::too_many_arguments)]
@@ -72,6 +74,7 @@ pub fn stamp_dab_textured(
     coverage: f32,
     preserve_alpha: bool,
     tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -116,7 +119,7 @@ pub fn stamp_dab_textured(
             // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
             // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
             if let Some(b) = tex {
-                w *= crate::texture::sample(&spec.texture, b, px, py, center, radius);
+                w *= crate::texture::sample(&spec.texture, b, px, py, center, radius, image);
             }
             if w <= 0.0 {
                 continue;

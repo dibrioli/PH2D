@@ -83,7 +83,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     eraser: false,
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3, // Space
-    spacing: 0.10,
+    spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
     space_attenuation: true,
     jitter: 0.0,
     jitter_absolute_px: 0.0,
@@ -92,7 +92,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     dash_samples: 20,
     input_samples: 1,
     stabilizer: 0.5,
-    airbrush_rate_s: 0.1, // Blender default (DNA_brush_types.h:232)
+    airbrush_rate_s: 0.1, // LITERAL-PX-OK: Blender default (DNA_brush_types.h:232)
     edge_to_edge: false,
 };
 

@@ -102,7 +102,7 @@ pub(crate) fn paint_stroke_section(
             label: "Spacing",
             id: core_ids::PAINTER_BRUSH_SPACING,
             value: brush.spacing,
-            readout: &format!("{:.0}%", brush.spacing * 100.0),
+            readout: &format!("{:.0}%", brush.spacing * 100.0), // LITERAL-PX-OK: fraction→percent
         });
         y = paint_toggle_row(
             ctx,
@@ -206,7 +206,7 @@ pub(crate) fn paint_stroke_section(
             label: "Stabilize",
             id: core_ids::PAINTER_BRUSH_STABILIZE,
             value: brush.stabilizer,
-            readout: &format!("{:.0}%", brush.stabilizer * 100.0),
+            readout: &format!("{:.0}%", brush.stabilizer * 100.0), // LITERAL-PX-OK: fraction→percent
         });
     }
     y

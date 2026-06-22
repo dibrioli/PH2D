@@ -248,6 +248,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-color-equalization/src/paint_histogram.rs",
         "read-only histogram visualization, no a11y semantics",
     ),
+    // Falloff curve editor — render half only. Its interactive elements get their
+    // a11y from the registered-widget system, not this file: the +/− buttons are
+    // registered widgets (populate + event drain), and the draggable curve handles
+    // are dispatched in editor-core (the 2D-drag BlenderHit pattern).
+    // TODO(a11y follow-up): wire AccessKit nodes for the curve handles themselves.
+    (
+        "ph2d-panel-painter-layers/src/paint_falloff.rs",
+        "falloff-curve render half; handles dispatched in editor-core, buttons are registered widgets",
+    ),
 ];
 
 fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {

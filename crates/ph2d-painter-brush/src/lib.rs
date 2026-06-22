@@ -22,6 +22,7 @@
 //! - [`dynamics`]— how pen pressure drives dab size and coverage.
 //! - [`stroke_method`] — the "Stroke" panel's discrete options (method + jitter unit).
 //! - [`stroke`]  — the stroke engine: a pointer path → dabs (spacing, dash, jitter, stabilize).
+//! - [`texture`] — the brush texture mask (procedural patterns + 2D mapping modes).
 
 pub mod blend;
 pub mod dab;
@@ -32,9 +33,10 @@ pub mod sampler;
 pub mod spec;
 pub mod stroke;
 pub mod stroke_method;
+pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use dab::{DirtyRect, stamp_dab};
+pub use dab::{DirtyRect, stamp_dab, stamp_dab_textured};
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};
 pub use falloff_curve::{
@@ -48,3 +50,7 @@ pub use stroke::{
     flatten_catmull_rom, polygon_perimeter,
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};
+pub use texture::{
+    DEG_STEP, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TEX_TILE_BASE_PX, TexDabBasis, TextureKind, TextureMapping, TextureSettings,
+};

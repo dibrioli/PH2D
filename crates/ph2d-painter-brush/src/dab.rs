@@ -7,6 +7,7 @@
 //! (`px + 0.5`), matching the texel-centre convention.
 
 use crate::spec::BrushSpec;
+use crate::texture::TexDabBasis;
 
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,6 +31,8 @@ pub struct DirtyRect {
 /// opacity (it recolours the shape without growing it).
 ///
 /// Panics in debug if `buf` is smaller than `width * height * 4`.
+///
+/// This is the texture-free fast path; it delegates to [`stamp_dab_textured`] with no texture.
 #[must_use]
 pub fn stamp_dab(
     buf: &mut [u8],
@@ -39,6 +42,36 @@ pub fn stamp_dab(
     spec: &BrushSpec,
     coverage: f32,
     preserve_alpha: bool,
+) -> Option<DirtyRect> {
+    stamp_dab_textured(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        None,
+    )
+}
+
+/// As [`stamp_dab`], but the brush texture ([`BrushSpec::texture`]) modulates each texel's coverage
+/// when `tex` is `Some` and a texture kind is assigned. `tex` is the per-dab texture frame resolved
+/// once by [`crate::texture::dab_basis`] (rotation + per-dab random offset); passing `None` — or an
+/// inactive texture — reproduces [`stamp_dab`] exactly. See [`crate::texture`].
+// Mirrors [`stamp_dab`]'s established positional signature plus the per-dab texture frame; bundling
+// the buffer/geometry into a struct here would diverge from the sibling fast path for no real gain.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_textured(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -68,6 +101,9 @@ pub fn stamp_dab(
     let inv_radius = 1.0 / radius;
     let color = spec.color;
     let blend = spec.blend;
+    // Texture frame, only when a texture is actually assigned (else the per-pixel sample is skipped
+    // entirely so the texture-free path costs nothing).
+    let tex = tex.filter(|_| spec.texture.is_active());
     let mut touched = false;
 
     for py in y0..y1 {
@@ -76,7 +112,12 @@ pub fn stamp_dab(
         for px in x0..x1 {
             let dx = (px as f32 + 0.5) - cx;
             let t = (dx * dx + dy * dy).sqrt() * inv_radius;
-            let w = spec.falloff_weight(t);
+            let mut w = spec.falloff_weight(t);
+            // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
+            // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
+            if let Some(b) = tex {
+                w *= crate::texture::sample(&spec.texture, b, px, py, center, radius);
+            }
             if w <= 0.0 {
                 continue;
             }

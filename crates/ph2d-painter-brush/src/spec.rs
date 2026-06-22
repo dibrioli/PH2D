@@ -10,6 +10,7 @@ use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
 use crate::stroke_method::{JitterUnit, StrokeMethod};
+use crate::texture::TextureSettings;
 
 /// Largest brush radius the engine will allocate a dab for, in pixels. Derived from the editor
 /// overlay budget (HR-4): a 4096-px-radius dab would be an 8k² bbox — far past interactive. This
@@ -91,6 +92,11 @@ pub struct BrushSpec {
     /// ON: it's centred on the midpoint anchor→cursor with half that radius, so the dab spans
     /// edge-to-edge from the press point to the cursor. See the Anchored arm of [`Stroke::extend`].
     pub edge_to_edge: bool,
+
+    // ── Texture panel (Blender `MTex` / `brush_painter_2d_tex_mapping`) ───────────────
+    /// Brush texture: a per-texel mask that modulates each dab's coverage (Blender's brush `mtex`).
+    /// Default [`TextureSettings::kind`] is `None` (no modulation). See [`crate::texture`].
+    pub texture: TextureSettings,
 }
 
 impl Default for BrushSpec {
@@ -118,6 +124,7 @@ impl Default for BrushSpec {
             stabilizer: 0.5,
             airbrush_rate_s: 0.1,
             edge_to_edge: false,
+            texture: TextureSettings::default(),
         }
     }
 }

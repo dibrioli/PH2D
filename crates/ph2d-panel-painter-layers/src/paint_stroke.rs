@@ -491,6 +491,39 @@ mod tests {
         }
     }
 
+    /// Line: a spacing-driven method (Spacing + Adjust-Strength + Dash + Jitter + Samples), but
+    /// NOT smooth-stroke (Blender rejects LINE in `paint_supports_smooth_stroke`), so the Stabilizer
+    /// stays hidden. Rate/Edge-to-Edge are other methods' controls — hidden.
+    #[test]
+    fn line_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
+        let ids = painted_hit_ids(StrokeMethod::Line);
+        for shown in [
+            core_ids::PAINTER_BRUSH_STROKE_METHOD,
+            core_ids::PAINTER_BRUSH_SPACING,
+            core_ids::PAINTER_BRUSH_SPACE_ATTEN,
+            core_ids::PAINTER_BRUSH_DASH_RATIO,
+            core_ids::PAINTER_BRUSH_DASH_LENGTH,
+            core_ids::PAINTER_BRUSH_JITTER,
+            core_ids::PAINTER_BRUSH_JITTER_UNIT,
+            core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ] {
+            assert!(
+                ids.contains(&shown),
+                "Line dropped a spacing-driven row it should show ({shown:?}). painted = {ids:?}"
+            );
+        }
+        for hidden in [
+            core_ids::PAINTER_BRUSH_STABILIZE,
+            core_ids::PAINTER_BRUSH_RATE,
+            core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        ] {
+            assert!(
+                !ids.contains(&hidden),
+                "Line painted a hit rect for {hidden:?} — not a Line control. painted = {ids:?}"
+            );
+        }
+    }
+
     /// Drag Dot: the most-restricted method (no jitter, no spacing, no stabilizer — the dot sits
     /// raw under the cursor) — only Method + Input Samples survive. UI-honesty for "Drag Dot wrong".
     #[test]

@@ -154,6 +154,12 @@ pub(crate) struct PaintState {
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
     /// method (and once the dot is committed on pointer-up).
     drag_preview: Option<DragPreview>,
+    /// The press point of the in-progress stroke — the pivot the Line method's Alt-constrain snaps
+    /// the cursor around (45° increments). `None` when no stroke is open.
+    line_anchor: Option<[f32; 2]>,
+    /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`). Set
+    /// by the shell each pointer event (the frozen `CanvasPointer` can't carry modifiers).
+    line_constrain: bool,
 }
 
 impl Default for PaintState {
@@ -174,6 +180,8 @@ impl Default for PaintState {
             eraser: false,
             moved_this_frame: false,
             drag_preview: None,
+            line_anchor: None,
+            line_constrain: false,
         }
     }
 }
@@ -198,6 +206,7 @@ impl PainterTool {
         let before = self.snapshot_model();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
+        self.paint.line_anchor = Some(ev.pos);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
@@ -219,10 +228,18 @@ impl PainterTool {
         let Some(mut stroke) = self.paint.stroke.take() else {
             return false;
         };
+        // Line + Alt: snap the cursor to a 45° increment around the press point (Blender
+        // `constrain_line`). Tool-side so the engine's Line fill stays a plain anchor→cursor segment.
+        let pos = match (self.paint.brush.stroke_method, self.paint.line_anchor) {
+            (StrokeMethod::Line, Some(anchor)) if self.paint.line_constrain => {
+                snap_to_45(anchor, ev.pos)
+            }
+            _ => ev.pos,
+        };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.extend(
             StrokePoint {
-                pos: ev.pos,
+                pos,
                 pressure: ev.pressure,
             },
             &mut dabs,
@@ -282,9 +299,17 @@ impl PainterTool {
     /// snapshot per stroke; a tile-based delta is a later optimization).
     fn close_stroke(&mut self) {
         self.paint.stroke = None;
+        self.paint.line_anchor = None;
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }
+    }
+
+    /// Set whether the Line method constrains to 45° increments this event (Blender Alt-drag). The
+    /// shell forwards the live Alt state before each [`Self::on_canvas_pointer`], since the frozen
+    /// `CanvasPointer` carries no modifiers. No effect on the other methods.
+    pub fn set_line_constrain(&mut self, on: bool) {
+        self.paint.line_constrain = on;
     }
 
     /// Stamp a batch of dabs into `canvas_rgba`, accumulate the dirty rect, and flag
@@ -389,45 +414,74 @@ impl PainterTool {
         self.mark_dirty(*rect);
     }
 
-    /// Stamp the Drag Dot's single moving dab: erase the previous position (restore its saved
-    /// pixels), then save the pristine pixels under the new footprint and stamp the dab there — one
-    /// dab follows the cursor with no trail. [`Self::commit_drag_preview`] keeps the last on pen-up.
-    fn stamp_drag_preview(&mut self, dab: Dab) {
+    /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): erase the
+    /// previous footprint (restore its saved pixels), then save the pristine pixels under the new
+    /// dabs' UNION bbox and stamp them there — so the moving / resizing / growing preview leaves no
+    /// trail. [`Self::commit_drag_preview`] keeps the last batch on pen-up.
+    fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
-        match self.dab_bbox(dab.center, dab.radius_px) {
+        let bbox = dabs.iter().fold(None, |acc, d| {
+            match (acc, self.dab_bbox(d.center, d.radius_px)) {
+                (Some(a), Some(r)) => Some(union_region(a, r)),
+                (a, r) => a.or(r),
+            }
+        });
+        match bbox {
             Some(rect) => {
                 let pixels = self.save_region(&rect);
-                self.stamp_dabs(&[dab]);
+                self.stamp_dabs(dabs);
                 self.paint.drag_preview = Some(DragPreview { rect, pixels });
             }
-            None => self.stamp_dabs(&[dab]),
+            None => self.stamp_dabs(dabs),
         }
     }
 
-    /// Commit the Drag Dot: drop the restore record so the dab at the release point stays painted.
-    /// Safe to call for any method (a no-op unless a Drag Dot preview is live).
+    /// Commit the interactive preview: drop the restore record so the last batch stays painted.
+    /// Safe to call for any method (a no-op unless a preview is live).
     fn commit_drag_preview(&mut self) {
         self.paint.drag_preview = None;
     }
 
-    /// Stamp the dabs a `begin`/`extend` produced. Drag Dot AND Anchored are single-stamp
-    /// interactive methods: route their lone dab through the moving-preview path (restore the prior
-    /// footprint + re-stamp) so the resizing/moving stamp leaves no trail and `commit_drag_preview`
-    /// keeps the last on pen-up. Every other method uses the normal cumulative stamp.
+    /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive
+    /// preview methods: route their batch through the restore+re-stamp path (restore the prior
+    /// footprint + re-stamp) so the moving/resizing/growing preview leaves no trail and
+    /// `commit_drag_preview` keeps the last on pen-up. Every other method uses the cumulative stamp.
     fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
         if matches!(
             self.paint.brush.stroke_method,
-            StrokeMethod::DragDot | StrokeMethod::Anchored
+            StrokeMethod::DragDot | StrokeMethod::Anchored | StrokeMethod::Line
         ) {
-            if let Some(&dab) = dabs.last() {
-                self.stamp_drag_preview(dab);
-            }
+            self.stamp_drag_preview(dabs);
         } else {
             self.stamp_dabs(dabs);
         }
     }
+}
+
+/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting the
+/// cursor onto that ray. Transcendental-free (only abs/signum/compare/mul — `tan(22.5°)≈0.4142`,
+/// `tan(67.5°)≈2.4142` are the sector boundaries, `√½` the diagonal unit), so it stays
+/// bit-deterministic across platforms (HR-5) instead of going through `atan2`/`sin`/`cos`.
+fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
+    const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
+    const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2; // √½
+    let dx = cursor[0] - anchor[0];
+    let dy = cursor[1] - anchor[1];
+    let (adx, ady) = (dx.abs(), dy.abs());
+    // The snapped unit direction (one of the 8 rays).
+    let (ux, uy) = if ady <= adx * TAN_22_5 {
+        (dx.signum(), 0.0) // horizontal
+    } else if ady >= adx * TAN_67_5 {
+        (0.0, dy.signum()) // vertical
+    } else {
+        (dx.signum() * DIAG, dy.signum() * DIAG) // diagonal
+    };
+    // Project the cursor onto the ray (dot product = signed distance along the unit direction).
+    let proj = dx * ux + dy * uy;
+    [anchor[0] + ux * proj, anchor[1] + uy * proj]
 }
 
 /// Smallest region covering both `a` and `b`.

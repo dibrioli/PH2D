@@ -199,12 +199,42 @@ impl Stroke {
                 };
                 out.push(self.anchored_dab(center, radius));
             }
-            // Interactive: the engine doesn't paint per-move. The tool drives `fill_segment` on
-            // finalise; we still track the anchor so a preview can read it.
-            StrokeMethod::Line | StrokeMethod::Curve => {
+            // Line: a straight line from the anchor (down point, `last_pos`, never advanced) to the
+            // cursor, filled with spaced dabs. We live-preview it (consistent with Anchored/Drag Dot)
+            // rather than Blender's release-only fill: a deterministic fill (the walk state is
+            // snapshot/restored, so re-stamping each move yields the identical line) routed by the
+            // tool through the restore+re-stamp preview. Pen-up just keeps the last fill.
+            StrokeMethod::Line => {
+                self.fill_line_preview(self.last_pos, avg.pos, out);
+            }
+            // Curve: Bézier authoring + spaced fill on finalise — still tool/shell-driven (deferred).
+            StrokeMethod::Curve => {
                 self.advance_anchor(avg);
             }
         }
+    }
+
+    /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor`
+    /// with spaced dabs (forcing full pressure, like Blender), then RESTORE every bit of mutated
+    /// walk state (spacing residual, dash counter, jitter RNG, anchor) so the next move re-stamps
+    /// the identical line. The tool restores the prior footprint and re-stamps these dabs, so the
+    /// growing line leaves no trail; pen-up keeps the last fill.
+    fn fill_line_preview(&mut self, anchor: [f32; 2], cursor: [f32; 2], out: &mut Vec<Dab>) {
+        let saved = (
+            self.accum,
+            self.tot_samples,
+            self.rng,
+            self.last_pos,
+            self.last_pressure,
+        );
+        self.fill_segment(anchor, cursor, 1.0, out);
+        (
+            self.accum,
+            self.tot_samples,
+            self.rng,
+            self.last_pos,
+            self.last_pressure,
+        ) = saved;
     }
 
     /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).

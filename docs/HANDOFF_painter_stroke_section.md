@@ -296,9 +296,24 @@ Arquivos-chave:
 - **Two-strikes:** já houve 1 reescrita da suavização (quadrática). Se precisar de uma 2ª, MEÇA a
   densidade de amostra e prove a causa antes de uma 3ª.
 
-### 2.4 — Line / Curve seguem DEFER (interativo não wirado) 🟡
-> **NOTA (2026-06-21):** "airbrush on_tick" **caiu** (§2.1 RESOLVIDO). **Anchored** também **caiu**
-> (✅ RESOLVIDO abaixo). Sobra só **Line / Curve** interativo.
+### 2.4 — Curve segue DEFER (interativo não wirado) 🟡
+> **NOTA:** "airbrush on_tick" **caiu** (§2.1). **Anchored** **caiu** (✅ abaixo). **Line** **caiu**
+> (✅ RESOLVIDO abaixo). Sobra só **Curve** (autoria Bézier + fill no finalise).
+>
+> **Line ✅ RESOLVIDO (2026-06-22):** linha reta do press point (anchor) ao cursor, preenchida com
+> dabs espaçados; **preview ao vivo** (restore+re-stamp, sem rastro) + commit no Up. Difere do Blender
+> (que só faz fill no release + guia overlay) — live-preview consistente com Anchored/Drag Dot. Engine
+> `extend` Line = `fill_line_preview` determinístico (snapshot/restore do dash+jitter+accum, então
+> re-stampar a mesma linha é idêntico); `finish` no-op (o preview É o commit). Tool: `stamp_drag_preview`
+> generalizado p/ **lista** de dabs (union bbox), `stamp_stroke_dabs` roteia DragDot/Anchored/**Line**.
+> **Alt-constrain 45°** (Blender `constrain_line`): `snap_to_45` tool-side (projeção nos 8 raios,
+> **sem transcendentais** — determinismo HR-5), shell forward do Alt via `set_line_constrain` (canal
+> out-of-band, `CanvasPointer` é congelado). Painel de Line = **Method+Spacing+Adjust+Dash+Jitter+Samples**
+> (sem Stabilize: Blender rejeita LINE em `paint_supports_smooth_stroke`). Testes: engine
+> `line_fills_*`/`line_preview_is_deterministic_*`/`line_pivots_*`; tool `line_paints_a_straight_*`/
+> `line_alt_constrain_*`/`snap_to_45_*`; painel `line_shows_*`. ⚠️ **Perf:** restore+re-stamp de linha
+> longa = O(bbox da linha)/frame; p/ canvas grande, o overlay-guia (estilo Blender) seria o follow-up.
+> **Falta smoke do Enio (GUI):** arrastar = linha segue; Alt = trava em 45°.
 >
 > **Anchored ✅ RESOLVIDO (2026-06-21):** carimbo único fixado no press point cujo **raio = distância
 > arrastada** (sobrescreve o Size); **Edge to Edge** (toggle novo, `BRUSH_EDGE_TO_EDGE`) centra no

@@ -246,6 +246,10 @@ impl App {
         pressure: f32,
         phase: PointerPhase,
     ) -> bool {
+        // Read Alt before the `gfx` borrow — the Line method constrains to 45° while it's held
+        // (Blender Alt-drag). The frozen `CanvasPointer` carries no modifiers, so it's forwarded
+        // out-of-band via `PainterTool::set_line_constrain` just before delivery.
+        let alt = self.modifiers.alt_key();
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -310,6 +314,7 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
+        painter.set_line_constrain(alt);
         painter.on_canvas_pointer(ev)
     }
 }

@@ -714,3 +714,101 @@ fn anchored_stamps_a_drag_sized_disc_centred_on_the_press_point() {
         "a far corner is outside the disc"
     );
 }
+
+#[test]
+fn line_paints_a_straight_committed_line_with_no_trail() {
+    // Line end-to-end (tool layer): press anchors (no paint), each move previews the straight
+    // anchor→cursor line (restore + re-stamp — no trail), pen-up commits the last. A wrong
+    // intermediate drag must leave no trace.
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.paint.brush.hardness = 1.0; // hard disk → deterministic full coverage
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    assert_eq!(
+        px(&t, 64, 8, 8),
+        [255, 255, 255, 255],
+        "the press alone paints nothing"
+    );
+
+    // Drag to a WRONG spot (a vertical line), then to the final spot (a horizontal line), release.
+    t.on_canvas_pointer(cp([8.0, 56.0], PointerPhase::Move)); // wrong: vertical
+    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Move)); // final: horizontal
+    t.on_canvas_pointer(cp([56.0, 8.0], PointerPhase::Up)); // commit
+
+    // The committed line is horizontal at y=8 from the anchor (8,8) to the release (56,8).
+    assert_eq!(px(&t, 64, 8, 8), [0, 0, 0, 255], "anchor end painted");
+    assert_eq!(
+        px(&t, 64, 32, 8),
+        [0, 0, 0, 255],
+        "midpoint of the committed line painted"
+    );
+    assert_eq!(px(&t, 64, 56, 8), [0, 0, 0, 255], "release end painted");
+    // The discarded vertical drag left no trail (restored before the horizontal re-stamp).
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [255, 255, 255, 255],
+        "the discarded vertical drag left no trail"
+    );
+}
+
+#[test]
+fn snap_to_45_projects_onto_the_eight_rays() {
+    let a = [0.0, 0.0];
+    assert_eq!(
+        snap_to_45(a, [10.0, 1.0]),
+        [10.0, 0.0],
+        "near-horizontal → flat"
+    );
+    assert_eq!(
+        snap_to_45(a, [1.0, 10.0]),
+        [0.0, 10.0],
+        "near-vertical → vertical"
+    );
+    assert_eq!(
+        snap_to_45(a, [-1.0, 10.0]),
+        [0.0, 10.0],
+        "sign of the cursor picks the ray"
+    );
+    let d = snap_to_45(a, [10.0, 9.0]); // near-diagonal
+    assert!(
+        (d[0] - d[1]).abs() < 1e-4,
+        "snapped onto the y=x diagonal: {d:?}"
+    );
+    assert!(d[0] > 0.0);
+}
+
+#[test]
+fn line_alt_constrain_snaps_to_45_degrees() {
+    // Alt-drag constrains the Line to 45° increments around the anchor: a near-horizontal drag
+    // (small vertical drift) snaps flat onto the anchor's row.
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+    t.set_line_constrain(true);
+
+    t.on_canvas_pointer(cp([8.0, 30.0], PointerPhase::Down));
+    // Drag to (56, 36): 48 across, 6 down → ~7° → snaps to horizontal at y=30, projected to x=56.
+    t.on_canvas_pointer(cp([56.0, 36.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 36.0], PointerPhase::Up));
+
+    assert_eq!(
+        px(&t, 64, 32, 30),
+        [0, 0, 0, 255],
+        "the snapped line is horizontal at the anchor row"
+    );
+    assert_eq!(
+        px(&t, 64, 56, 30),
+        [0, 0, 0, 255],
+        "snapped endpoint painted at (56,30)"
+    );
+    assert_eq!(
+        px(&t, 64, 56, 36),
+        [255, 255, 255, 255],
+        "the un-snapped endpoint (56,36) is NOT on the constrained line"
+    );
+}

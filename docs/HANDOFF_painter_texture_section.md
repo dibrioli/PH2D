@@ -208,9 +208,11 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
 
 ## 7 — Faseamento sugerido (refine no plano)
 
-> **STATUS (2026-06-22):** **P0 + P1 FEITOS** (commit local `f7f40df1`, sem push). Plano aprovado
-> pelo Enio em [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **Próximo:
-> P2 (tool + panel).** Ver §7.1 abaixo para o estado exato de costura que o P2 herda.
+> **STATUS (2026-06-22):** **P0 + P1 + P2 FEITOS** (commits locais `f7f40df1` engine, `a0862665`
+> tool+panel+ids; sem push). Plano aprovado pelo Enio em
+> [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **A seção Texture está
+> VIVA na view Brush** (Kind picker + New + Mapping/Angle/Rake/Random/Offset/Size, gated). **Falta só
+> P3: Stencil (overlay de shell) + imagem importada (opcional).** Ver §7.2.
 
 - **P0 — PLANO** ✅ — decisões §5 fechadas no padrão-ouro + faseamento + arquivos/testes →
   aprovado.
@@ -221,10 +223,17 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
   delega com `None` → tool segue verde). **Transcendental-free** (sweep limpo; só `sqrt`), rotação
   por `DEG_STEP` baked, Rake=tangente, Random=splitmix64. 16 testes verdes; clippy/fmt/LOC-cap
   verdes; tool crate compila.
-- **P2 — Tool + Panel:** `BrushSettings` + setters + ids editor-core + seção `paint_texture.rs` +
-  populate + event (decode coberto + round-trip) + trait_impls. Testes de painel (visibilidade
-  gateada, decode) + tool (setters/clamp).
+- **P2 — Tool + Panel** ✅ (`a0862665`) — `BrushSettings` movido p/ `brush_settings.rs` (paint.rs
+  estava em 600) + 7 campos de textura + snapshot + setters (clamp único; New=Noise); `stamp_dabs`
+  resolve basis por-dab (tangente Rake de centros consecutivos + RNG `tex_rng` por-traço) e chama
+  `stamp_dab_textured`. editor-core: 10 NodeIds + 2 factories em `painter_texture.rs` (sibling novo;
+  fnv twin → `pub(super)`). Painel: `paint_texture.rs` (Kind picker + New sempre; resto gated em
+  kind≠None) + populate + state + decoders movidos p/ `event/decode.rs` (event.rs estava em 600),
+  range `0..=COUNT`. **Testes:** painel (visibilidade gateada none→picker / kind→tudo; round-trip
+  Kind+Mapping) + tool (setters/clamp + e2e: dab texturizado mascara o footprint). Gates verdes
+  (LOC/magic/color/a11y/node-id), clippy, fmt, sweep limpo; shell compila.
 - **P3 — Stencil + (opcional) imagem importada:** overlay de tela + gesto (shell). Testes possíveis.
+  **Ver §7.2 para a costura exata.**
 - **Fim:** gates (LOC/magic/a11y/color), clippy, fmt, sweep transcendental, commit LOCAL. Atualize
   ESTE handoff (marque resolvido) + `HANDOFF_painter_stroke_section.md` se a Texture interagir com Stroke.
 
@@ -253,6 +262,26 @@ A capacidade existe e é testada; o P2 só **liga**. Pontos exatos:
 - **Restrições de LOC já mapeadas (verificadas):** `tool/paint.rs` 599/600 → mover `BrushSettings`
   p/ sibling antes de add campos; `panel/event.rs` 600/600 → decoders em `event/texture.rs`. Ver
   plano §6.
+
+## 7.2 — Estado de costura que o P3 herda (tudo P1/P2 pronto; falta shell)
+
+**Stencil (mapping em espaço de tela):**
+- Engine: adicionar `TextureMapping::Stencil` (wire 3) + `COUNT` 3→4 em
+  `ph2d-painter-brush/src/texture.rs`; em `sample`, ramo Stencil = UV em coords de tela (pos/rot/
+  escala próprios do stencil, **não** o footprint do dab). Como o mapping é por-pixel mas o stencil é
+  fixo na tela, o `sample` precisa receber a transformação tela→canvas (passar via `TexDabBasis` ou
+  um arg novo). Cuidado: o canvas é CPU-residente e o dab trabalha em px de imagem — converter tela↔
+  imagem precisa do zoom/pan do viewport (vem do shell).
+- Panel: ao adicionar Stencil ao dropdown, ele deixa de ser no-op (DIRETIVA §2 OK). `TextureMapping::
+  COUNT` já dirige o decode/options — sobe sozinho p/ 4.
+- Shell (`shells/desktop/`): overlay em espaço de tela (`render_loop/painter_bridge.rs`, padrão dos
+  overlays de Circle/Polygon) + gesto mover/rotacionar/escalar (`input_dispatch/painter_canvas_input
+  .rs`). Estado do stencil (pos/rot/escala) provavelmente no `PaintState` + snapshot leve.
+
+**Imagem importada (opcional):** pixels pesados no `PaintState` (como curve/circle) + handle leve no
+`BrushSpec.texture` (ex.: um id/Arc); `texture::sample` ganha um ramo que lê a imagem (bilinear,
+center-coord — memory `feedback_pixel_center_vs_edge_coord`). Load de arquivo = shell (mirror dos
+importadores). "+ New" passa a oferecer "from image".
 
 ## 8 — Definition of done
 

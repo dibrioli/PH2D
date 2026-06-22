@@ -319,10 +319,10 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
-        // Shape methods (Curve/Circle): forward the control-handle grab radius in IMAGE px (screen
-        // tolerance ÷ the footprint's screen-per-image scale), so the hit target is a constant
-        // on-screen size at any zoom. Out-of-band, like `set_line_constrain` (the frozen
-        // `CanvasPointer` carries neither).
+        // Control-handle grab radius for the shape editors (Curve/Circle/Polygon) AND the Stencil
+        // texture handles: forward it in IMAGE px (screen tolerance ÷ the footprint's
+        // screen-per-image scale), so the hit target is a constant on-screen size at any zoom.
+        // Out-of-band, like `set_line_constrain` (the frozen `CanvasPointer` carries neither).
         let scale = (hi_x - lo_x) / iw as f32;
         let grab_tol_img = if scale > 0.0 {
             SHAPE_GRAB_TOL_SCREEN_PX / scale

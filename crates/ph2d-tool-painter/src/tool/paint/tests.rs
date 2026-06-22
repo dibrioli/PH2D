@@ -1515,3 +1515,82 @@ fn stencil_dab_paints_only_inside_the_rect() {
         "a corner outside the stencil rect is untouched"
     );
 }
+
+/// A `PainterTool` with a centred full-canvas Stencil texture (handles at the canvas corners +
+/// centre), ready for the drag-gesture tests.
+fn stencil_tool() -> PainterTool {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        ..Default::default() // offset 0, size 1 → rect = whole canvas
+    };
+    t
+}
+
+#[test]
+fn stencil_centre_handle_drag_moves_the_rect() {
+    let mut t = stencil_tool();
+    let center = t.stencil_overlay().expect("overlay").center; // (32, 32)
+    assert!(
+        t.on_canvas_pointer(cp(center, PointerPhase::Down)),
+        "grab the centre handle"
+    );
+    let _ = t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Move));
+    let _ = t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Up));
+    let s = t.brush_settings();
+    // new centre (40,36) → offset = (px/64*2 − 1) = (0.25, 0.125).
+    assert!(
+        (s.texture_offset[0] - 0.25).abs() < 1e-3,
+        "x {}",
+        s.texture_offset[0]
+    );
+    assert!(
+        (s.texture_offset[1] - 0.125).abs() < 1e-3,
+        "y {}",
+        s.texture_offset[1]
+    );
+}
+
+#[test]
+fn stencil_corner_handle_drag_resizes_the_rect() {
+    let mut t = stencil_tool();
+    // Grab the bottom-right corner (64, 64) and drag in to (48, 48).
+    assert!(
+        t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down)),
+        "grab a corner handle"
+    );
+    let _ = t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Move));
+    let _ = t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up));
+    let s = t.brush_settings();
+    // half = |(48,48) − centre(32,32)| = 16 each → size = 2·16/64 = 0.5.
+    assert!(
+        (s.texture_size[0] - 0.5).abs() < 1e-3,
+        "x {}",
+        s.texture_size[0]
+    );
+    assert!(
+        (s.texture_size[1] - 0.5).abs() < 1e-3,
+        "y {}",
+        s.texture_size[1]
+    );
+}
+
+#[test]
+fn stencil_down_away_from_handles_paints_not_edits() {
+    let mut t = stencil_tool();
+    let before = t.brush_settings();
+    // (16, 8) is well clear of every handle (corners + centre) → no grab → it paints.
+    let _ = t.on_canvas_pointer(cp([16.0, 8.0], PointerPhase::Down));
+    let after = t.brush_settings();
+    assert_eq!(
+        before.texture_offset, after.texture_offset,
+        "a Down away from handles must not move the stencil"
+    );
+    assert_eq!(
+        before.texture_size, after.texture_size,
+        "a Down away from handles must not resize the stencil"
+    );
+    assert!(t.dirty_rect.is_some(), "it painted instead of editing");
+}

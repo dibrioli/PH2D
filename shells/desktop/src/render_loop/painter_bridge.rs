@@ -567,10 +567,10 @@ pub(super) fn dispatch(
             }
         }
 
-        // ── Stencil texture overlay (read-only rect outline of the image-space mask) ──
-        // The stencil is positioned/sized/rotated via the Texture section's Offset/Size/Angle
-        // sliders; this outline shows where the mask lets paint through. (Drag-to-position is a
-        // follow-up — see HANDOFF_painter_texture_section §7.2.)
+        // ── Stencil texture overlay (rect outline + drag handles of the image-space mask) ──
+        // The stencil is positioned/sized via its handles (corners = resize, centre = move) or the
+        // Texture section's Offset/Size sliders; Angle rotates it. The outline shows where the mask
+        // lets paint through.
         if let Some(bits) = hero.gizmo.selection
             && let Some(overlay) = painter.stencil_overlay()
         {
@@ -589,7 +589,7 @@ pub(super) fn dispatch(
                     camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
                 let (sx1, sy1) =
                     camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
-                use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+                use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
                 let map = |p: [f32; 2]| {
                     Point::new(
                         f64::from(sx0 + p[0] / iw as f32 * (sx1 - sx0)),
@@ -611,6 +611,26 @@ pub(super) fn dispatch(
                     None,
                     &path,
                 );
+                // Handles: 4 corners (resize) + centre (move); the grabbed one is larger + orange.
+                let handle = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: stencil handle
+                let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
+                for (i, &p) in overlay
+                    .corners
+                    .iter()
+                    .enumerate()
+                    .chain(std::iter::once((4usize, &overlay.center)))
+                {
+                    let grabbed = overlay.grabbed == Some(i as u8);
+                    let c = if grabbed { grab } else { handle };
+                    let r = if grabbed { 6.0 } else { 4.0 };
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(c),
+                        None,
+                        &Circle::new(map(p), r),
+                    );
+                }
             }
         }
     }

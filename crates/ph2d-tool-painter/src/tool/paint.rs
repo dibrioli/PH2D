@@ -29,6 +29,9 @@ pub use circle::CircleOverlay;
 /// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
 mod polygon;
 pub use polygon::PolygonOverlay;
+/// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
+mod stencil;
+pub use stencil::StencilOverlay;
 
 /// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
@@ -63,7 +66,7 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 // `brush_falloff_weight_at` live in the `brush_settings` submodule (alongside the setters that
 // are their single clamp source), so this file stays under the workspace LOC cap. Re-exported
 // here to keep their `paint::` public path.
-pub use brush_settings::{BrushSettings, StencilOverlay, brush_falloff_weight_at};
+pub use brush_settings::{BrushSettings, brush_falloff_weight_at};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
 /// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint
@@ -122,6 +125,9 @@ pub(crate) struct PaintState {
     /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
     /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
     shape_grab_tol_px: f32,
+    /// In-progress Stencil overlay drag (move/resize the texture rect); `None` when not dragging a
+    /// handle. See [`crate::tool::paint::stencil`].
+    stencil_grab: Option<stencil::StencilGrab>,
 }
 
 impl Default for PaintState {
@@ -149,6 +155,7 @@ impl Default for PaintState {
             circle: None,
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
+            stencil_grab: None,
         }
     }
 }
@@ -558,6 +565,15 @@ impl CanvasPaintTool for PainterTool {
             StrokeMethod::Circle => return self.circle_pointer(ev),
             StrokeMethod::Polygon => return self.polygon_pointer(ev),
             _ => {}
+        }
+        // Stencil texture: grabbing an overlay handle (corner = resize, centre = move) edits the
+        // rect and consumes the event; a Down away from every handle (or any move without a grab)
+        // falls through to normal painting — the handles disambiguate, so no modifier is needed.
+        if self.stencil_edit_active()
+            && (ev.phase == PointerPhase::Down || self.paint.stencil_grab.is_some())
+            && self.stencil_pointer(ev)
+        {
+            return true;
         }
         match ev.phase {
             PointerPhase::Down => {

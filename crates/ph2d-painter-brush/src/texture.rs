@@ -27,6 +27,10 @@ pub const TEX_SIZE_MIN: f32 = 0.1;
 pub const TEX_SIZE_MAX: f32 = 10.0;
 /// Canvas pixels spanned by one texture tile at Size `1.0` under the **Tiled** mapping.
 pub const TEX_TILE_BASE_PX: f32 = 256.0;
+/// How many procedural tiles the **Stencil** rect spans across each axis, so the pattern reads
+/// (a single tile of Checker/Stripes would be one flat cell). Density is fixed; the rect's on-canvas
+/// size is set by [`TextureSettings::size`].
+const STENCIL_TILES: f32 = 4.0;
 
 /// Baked unit-vector step for a **1° rotation**, `(cos 1°, sin 1°)`. Rotating by `n°` applies this
 /// `n` times — a single committed constant, only `*`/`+` at runtime, bit-identical on every
@@ -105,6 +109,11 @@ pub enum TextureMapping {
     Tiled,
     /// Like [`Self::ViewPlane`] but with a random per-dab offset.
     Random,
+    /// A single positioned/rotated/scaled rectangular **stencil** you paint *through*: the texture
+    /// fills the rect once and masks (deposits nothing) outside it. 2D-adapted to **image space**
+    /// (the rect is fixed to the canvas, not the screen) so the pure engine stays screen-agnostic;
+    /// the frame is driven by Offset (centre) / Size (extent) / Angle (rotation). See [`dab_basis`].
+    Stencil,
 }
 
 impl TextureMapping {
@@ -115,6 +124,7 @@ impl TextureMapping {
             Self::ViewPlane => 0,
             Self::Tiled => 1,
             Self::Random => 2,
+            Self::Stencil => 3,
         }
     }
 
@@ -124,12 +134,13 @@ impl TextureMapping {
         match v {
             1 => Self::Tiled,
             2 => Self::Random,
+            3 => Self::Stencil,
             _ => Self::ViewPlane,
         }
     }
 
     /// Number of selectable mappings (drives the dropdown decode range).
-    pub const COUNT: u8 = 3;
+    pub const COUNT: u8 = 4;
 
     /// English label for the dropdown.
     #[must_use]
@@ -138,6 +149,7 @@ impl TextureMapping {
             Self::ViewPlane => "View Plane",
             Self::Tiled => "Tiled",
             Self::Random => "Random",
+            Self::Stencil => "Stencil",
         }
     }
 
@@ -145,6 +157,19 @@ impl TextureMapping {
     #[must_use]
     pub fn randomises_offset(self) -> bool {
         matches!(self, Self::Random)
+    }
+
+    /// Whether the per-dab Rake / Random rotation applies. Stencil has its own fixed frame, so it
+    /// ignores them (the panel hides those controls for Stencil).
+    #[must_use]
+    pub fn uses_dab_rotation(self) -> bool {
+        !matches!(self, Self::Stencil)
+    }
+
+    /// Whether this is the [`Self::Stencil`] mapping (image-space positioned mask).
+    #[must_use]
+    pub fn is_stencil(self) -> bool {
+        matches!(self, Self::Stencil)
     }
 }
 
@@ -189,14 +214,20 @@ impl TextureSettings {
     }
 }
 
-/// Per-dab resolved texture frame: the rotated basis (`u`, `v`, both unit) and the per-dab random
-/// translation (in tile fractions; `[0,0]` unless the mapping randomises the offset). Computed once
-/// per dab by [`dab_basis`] so the per-pixel [`sample`] is cheap (two dot products, no rotation).
+/// Per-dab resolved texture frame: the rotated basis (`u`, `v`, both unit), the per-dab random
+/// translation (in tile fractions; `[0,0]` unless the mapping randomises the offset), and — for the
+/// Stencil mapping — the rect's centre + half-extent in canvas pixels. Computed once per dab by
+/// [`dab_basis`] so the per-pixel [`sample`] is cheap (two dot products, no rotation / no canvas
+/// math).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TexDabBasis {
     u: [f32; 2],
     v: [f32; 2],
     jitter: [f32; 2],
+    /// Stencil rect centre in canvas px (unused unless the mapping is Stencil).
+    stencil_center: [f32; 2],
+    /// Stencil rect half-extent in canvas px, per axis (unused unless Stencil).
+    stencil_half: [f32; 2],
 }
 
 impl TexDabBasis {
@@ -207,17 +238,37 @@ impl TexDabBasis {
             u: [1.0, 0.0],
             v: [0.0, 1.0],
             jitter: [0.0, 0.0],
+            stencil_center: [0.0, 0.0],
+            stencil_half: [1.0, 1.0],
         }
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (for Rake) and
-/// a mutable splitmix64 `rng` state (for Random rotation / offset). `dab_dir` need not be
-/// normalised; a near-zero tangent falls back to the [`TextureSettings::angle_deg`] rotation.
+/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (for Rake), a
+/// mutable splitmix64 `rng` state (for Random rotation / offset), and the canvas size in px (for the
+/// Stencil rect placement). `dab_dir` need not be normalised; a near-zero tangent falls back to the
+/// [`TextureSettings::angle_deg`] rotation.
 ///
-/// Determinism: identical `(settings, dab_dir, rng)` ⇒ identical frame, on every platform.
+/// Determinism: identical `(settings, dab_dir, rng, canvas)` ⇒ identical frame, on every platform.
 #[must_use]
-pub fn dab_basis(s: &TextureSettings, dab_dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
+pub fn dab_basis(
+    s: &TextureSettings,
+    dab_dir: [f32; 2],
+    rng: &mut u64,
+    canvas: [f32; 2],
+) -> TexDabBasis {
+    // Stencil has a single fixed image-space frame (Offset = centre, Size = extent, Angle =
+    // rotation); the per-dab Rake / Random rotation and offset-jitter do not apply.
+    if s.mapping.is_stencil() {
+        let (center, half, u) = stencil_frame(s, canvas);
+        return TexDabBasis {
+            u,
+            v: perp(u),
+            jitter: [0.0, 0.0],
+            stencil_center: center,
+            stencil_half: half,
+        };
+    }
     let u = if s.random_angle {
         random_unit(rng)
     } else if s.rake {
@@ -232,7 +283,31 @@ pub fn dab_basis(s: &TextureSettings, dab_dir: [f32; 2], rng: &mut u64) -> TexDa
     } else {
         [0.0, 0.0]
     };
-    TexDabBasis { u, v, jitter }
+    TexDabBasis {
+        u,
+        v,
+        jitter,
+        stencil_center: [0.0, 0.0],
+        stencil_half: [1.0, 1.0],
+    }
+}
+
+/// The Stencil rect's centre + half-extent (canvas px) + rotation unit vector, derived from the
+/// texture settings and the canvas size. Offset maps `[-1, 1]` onto the canvas span (centre at `0`);
+/// Size is the rect's half-extent as a fraction of the canvas (`1.0` ≈ the full canvas); the
+/// rotation is the deterministic baked rotation of [`TextureSettings::angle_deg`]. Shared by
+/// [`dab_basis`] and the tool's overlay so the painted mask and its visual outline agree exactly.
+#[must_use]
+pub fn stencil_frame(s: &TextureSettings, canvas: [f32; 2]) -> ([f32; 2], [f32; 2], [f32; 2]) {
+    let center = [
+        (0.5 + 0.5 * s.offset[0]) * canvas[0],
+        (0.5 + 0.5 * s.offset[1]) * canvas[1],
+    ];
+    let half = [
+        (s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX) * 0.5 * canvas[0]).max(1e-3),
+        (s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX) * 0.5 * canvas[1]).max(1e-3),
+    ];
+    (center, half, rotate_by_degrees(s.angle_deg))
 }
 
 /// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius` (the
@@ -252,26 +327,42 @@ pub fn sample(
     }
     // Pixel centre, in canvas pixels.
     let p = [px as f32 + 0.5, py as f32 + 0.5];
-    // Per-axis scale clamped away from zero so the division is finite.
-    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    // Raw coordinates before rotation, in tile units (footprint-relative or canvas-tiled).
-    let rel = match s.mapping {
-        TextureMapping::Tiled => {
-            let base = TEX_TILE_BASE_PX;
-            [p[0] / (base * sx), p[1] / (base * sy)]
+    // Texture coordinates, by mapping. Stencil is special: it masks (deposits nothing) outside its
+    // rect, and maps the rect onto one tile of the procedural.
+    let tex = if s.mapping.is_stencil() {
+        let rel = [p[0] - b.stencil_center[0], p[1] - b.stencil_center[1]];
+        let lx = (rel[0] * b.u[0] + rel[1] * b.u[1]) / b.stencil_half[0];
+        let ly = (rel[0] * b.v[0] + rel[1] * b.v[1]) / b.stencil_half[1];
+        if lx.abs() > 1.0 || ly.abs() > 1.0 {
+            return 0.0; // outside the stencil → paint nothing
         }
-        // View Plane and Random both anchor to the dab footprint.
-        _ => {
-            let r = radius.max(1e-3);
-            [(p[0] - center[0]) / (r * sx), (p[1] - center[1]) / (r * sy)]
-        }
+        // Map [-1,1]² onto a fixed-density tile window so the procedural pattern reads in the rect.
+        [
+            (lx + 1.0) * 0.5 * STENCIL_TILES,
+            (ly + 1.0) * 0.5 * STENCIL_TILES,
+        ]
+    } else {
+        // Per-axis scale clamped away from zero so the division is finite.
+        let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        // Raw coordinates before rotation, in tile units (footprint-relative or canvas-tiled).
+        let rel = match s.mapping {
+            TextureMapping::Tiled => {
+                let base = TEX_TILE_BASE_PX;
+                [p[0] / (base * sx), p[1] / (base * sy)]
+            }
+            // View Plane and Random both anchor to the dab footprint.
+            _ => {
+                let r = radius.max(1e-3);
+                [(p[0] - center[0]) / (r * sx), (p[1] - center[1]) / (r * sy)]
+            }
+        };
+        // Rotate into texture space (basis is already the dab's rotation), then translate.
+        [
+            rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0] + b.jitter[0],
+            rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
+        ]
     };
-    // Rotate into texture space (basis is already the dab's rotation), then translate.
-    let tex = [
-        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0] + b.jitter[0],
-        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
-    ];
     let v = match s.kind {
         TextureKind::None => 1.0,
         TextureKind::Noise => value_noise(tex[0], tex[1]),

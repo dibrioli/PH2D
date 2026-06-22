@@ -566,6 +566,53 @@ pub(super) fn dispatch(
                 }
             }
         }
+
+        // ── Stencil texture overlay (read-only rect outline of the image-space mask) ──
+        // The stencil is positioned/sized/rotated via the Texture section's Offset/Size/Angle
+        // sliders; this outline shows where the mask lets paint through. (Drag-to-position is a
+        // follow-up — see HANDOFF_painter_texture_section §7.2.)
+        if let Some(bits) = hero.gizmo.selection
+            && let Some(overlay) = painter.stencil_overlay()
+        {
+            let (iw, ih) = painter.canvas_size();
+            let entity = ph2d_ecs::Entity::from_bits(bits);
+            if iw > 0
+                && ih > 0
+                && let (Some(tr), Some(sprite)) = (
+                    sim.world().get::<crate::Transform>(entity),
+                    sim.world().get::<ph2d_render::Sprite>(entity),
+                )
+            {
+                let (tx, ty) = (tr.translation.x, tr.translation.y);
+                let (sw, sh) = (sprite.size[0], sprite.size[1]);
+                let (sx0, sy0) =
+                    camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
+                let (sx1, sy1) =
+                    camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+                use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+                let map = |p: [f32; 2]| {
+                    Point::new(
+                        f64::from(sx0 + p[0] / iw as f32 * (sx1 - sx0)),
+                        f64::from(sy0 + p[1] / ih as f32 * (sy1 - sy0)),
+                    )
+                };
+                let scene = vector_scene.inner_mut();
+                let guide = Color::new([1.0, 0.62, 0.20, 0.9]); // LITERAL-COLOR-OK: stencil outline
+                let mut path = BezPath::new();
+                path.move_to(map(overlay.corners[0]));
+                for &p in &overlay.corners[1..] {
+                    path.line_to(map(p));
+                }
+                path.close_path();
+                scene.stroke(
+                    &Stroke::new(1.5),
+                    Affine::IDENTITY,
+                    &Brush::Solid(guide),
+                    None,
+                    &path,
+                );
+            }
+        }
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

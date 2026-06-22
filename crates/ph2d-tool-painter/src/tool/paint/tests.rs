@@ -1468,3 +1468,50 @@ fn textured_dab_masks_part_of_the_footprint() {
         "the texture masked part of the footprint (checker 0-cells)"
     );
 }
+
+#[test]
+fn stencil_overlay_outlines_the_rect_only_for_stencil() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 10.0);
+    // No texture → no overlay.
+    assert!(t.stencil_overlay().is_none());
+    // A texture but a non-Stencil mapping → still no overlay.
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::ViewPlane,
+        ..Default::default()
+    };
+    assert!(t.stencil_overlay().is_none());
+    // Stencil, centred, full-canvas size, no rotation → corners at the canvas corners.
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Stencil,
+        ..Default::default()
+    };
+    let o = t.stencil_overlay().expect("stencil overlay present");
+    assert_eq!(
+        o.corners,
+        [[0.0, 0.0], [64.0, 0.0], [64.0, 64.0], [0.0, 64.0]],
+        "centred full-canvas stencil outlines the whole canvas"
+    );
+}
+
+#[test]
+fn stencil_dab_paints_only_inside_the_rect() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    // A hard black dab whose Stencil rect covers only the centre: a corner well outside the rect
+    // stays white (masked), proving the engine mask reaches the canvas via stamp_dabs.
+    let mut t = white_canvas(64, 30.0);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Stencil,
+        size: [0.4, 0.4], // a central rect ≈ [19.2 .. 44.8]
+        ..Default::default()
+    };
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    assert_eq!(
+        px(&t, 64, 2, 2),
+        [255, 255, 255, 255],
+        "a corner outside the stencil rect is untouched"
+    );
+}

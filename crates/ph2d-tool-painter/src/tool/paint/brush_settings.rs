@@ -10,7 +10,7 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushBlend, Falloff, FalloffPoint, HandleType, JitterUnit, MAX_FALLOFF_POINTS, StrokeMethod,
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureMapping, eval_falloff_curve,
+    TextureMapping, eval_falloff_curve, stencil_frame,
 };
 
 /// A compact snapshot of the active brush for the layers panel's Brush section.
@@ -89,6 +89,16 @@ pub struct BrushSettings {
     pub texture_size: [f32; 2],
 }
 
+/// The Stencil mapping's rect outline for the shell overlay — the 4 corners in image-space px
+/// (`[--, +-, ++, -+]` along the stencil's rotated axes), so the artist sees the masked region. It
+/// is derived from the same [`ph2d_painter_brush::stencil_frame`] the dab uses, so the outline and
+/// the painted mask agree exactly.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StencilOverlay {
+    /// The rect's 4 corners in image-space pixels.
+    pub corners: [[f32; 2]; 4],
+}
+
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
 /// centre, `1` = rim), for the panel's live curve preview. Reads the editable
 /// [`BrushSettings::falloff_points`] when the `Custom` preset is selected, else
@@ -163,6 +173,37 @@ impl PainterTool {
             texture_offset: b.texture.offset,
             texture_size: b.texture.size,
         }
+    }
+
+    /// The Stencil rect outline for the shell overlay, or `None` unless a texture is assigned and
+    /// the mapping is Stencil. Derived from [`ph2d_painter_brush::stencil_frame`] + the canvas size,
+    /// so the outline matches the painted mask exactly.
+    #[must_use]
+    pub fn stencil_overlay(&self) -> Option<StencilOverlay> {
+        let t = &self.paint.brush.texture;
+        if !t.is_active() || !t.mapping.is_stencil() {
+            return None;
+        }
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let (center, half, u) = stencil_frame(t, [w as f32, h as f32]);
+        let v = [-u[1], u[0]];
+        let corner = |sx: f32, sy: f32| {
+            [
+                center[0] + sx * half[0] * u[0] + sy * half[1] * v[0],
+                center[1] + sx * half[0] * u[1] + sy * half[1] * v[1],
+            ]
+        };
+        Some(StencilOverlay {
+            corners: [
+                corner(-1.0, -1.0),
+                corner(1.0, -1.0),
+                corner(1.0, 1.0),
+                corner(-1.0, 1.0),
+            ],
+        })
     }
 
     /// Set the brush distance-falloff preset from a wire discriminant

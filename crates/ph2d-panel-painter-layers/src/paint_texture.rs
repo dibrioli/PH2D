@@ -33,6 +33,7 @@ pub(crate) fn paint_texture_section(
 ) -> f32 {
     let mut y = section_header(ctx, theme, x, content_w, y, "Texture");
     let kind = TextureKind::from_u8(brush.texture_kind);
+    let mapping = TextureMapping::from_u8(brush.texture_mapping);
 
     // ── Kind picker ("thumbnail") + New (always) ──
     let (ny, open) = paint_dropdown_row(
@@ -98,27 +99,29 @@ pub(crate) fn paint_texture_section(
         readout: &format!("{}°", brush.texture_angle_deg),
     });
 
-    // ── Rake + Random toggles ──
-    y = paint_toggle_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-        "Rake",
-        brush.texture_rake,
-    );
-    y = paint_toggle_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-        "Random",
-        brush.texture_random,
-    );
+    // ── Rake + Random toggles — only the per-dab rotation mappings (Stencil has a fixed frame) ──
+    if mapping.uses_dab_rotation() {
+        y = paint_toggle_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
+            "Rake",
+            brush.texture_rake,
+        );
+        y = paint_toggle_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+            "Random",
+            brush.texture_random,
+        );
+    }
 
     // ── Offset X / Y (tile fractions) ──
     y = paint_param_row(ParamRow {

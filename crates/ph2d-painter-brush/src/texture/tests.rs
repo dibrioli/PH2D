@@ -7,6 +7,12 @@ use crate::dab::{stamp_dab, stamp_dab_textured};
 use crate::falloff::Falloff;
 use crate::spec::BrushSpec;
 
+/// `dab_basis` with a default 64×64 canvas — the rotation / jitter tests don't depend on the canvas
+/// size (only the Stencil mapping does, and those tests pass it explicitly).
+fn basis(s: &TextureSettings, dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
+    dab_basis(s, dir, rng, [64.0, 64.0])
+}
+
 // ── Procedural samplers ─────────────────────────────────────────────────────────────────────
 
 #[test]
@@ -91,8 +97,8 @@ fn dab_basis_angle_is_deterministic() {
     let mut r1 = 123;
     let mut r2 = 123;
     assert_eq!(
-        dab_basis(&s, [0.0, 0.0], &mut r1),
-        dab_basis(&s, [0.0, 0.0], &mut r2)
+        basis(&s, [0.0, 0.0], &mut r1),
+        basis(&s, [0.0, 0.0], &mut r2)
     );
 }
 
@@ -105,7 +111,7 @@ fn rake_uses_the_stroke_tangent() {
         ..Default::default()
     };
     let mut rng = 1;
-    let b = dab_basis(&s, [0.0, 5.0], &mut rng); // tangent points +y
+    let b = basis(&s, [0.0, 5.0], &mut rng); // tangent points +y
     // u should align with the (normalised) tangent.
     assert!((b.u[0] - 0.0).abs() < 1e-6 && (b.u[1] - 1.0).abs() < 1e-6);
 }
@@ -119,7 +125,7 @@ fn rake_falls_back_to_angle_for_zero_tangent() {
         ..Default::default()
     };
     let mut rng = 1;
-    let b = dab_basis(&s, [0.0, 0.0], &mut rng); // degenerate tangent
+    let b = basis(&s, [0.0, 0.0], &mut rng); // degenerate tangent
     assert_eq!(b.u, [1.0, 0.0], "zero tangent ⇒ angle 0 ⇒ (1,0)");
 }
 
@@ -132,14 +138,14 @@ fn random_angle_is_deterministic_per_seed_but_varies() {
     };
     let (mut a1, mut a2) = (7, 7);
     assert_eq!(
-        dab_basis(&s, [0.0, 0.0], &mut a1),
-        dab_basis(&s, [0.0, 0.0], &mut a2)
+        basis(&s, [0.0, 0.0], &mut a1),
+        basis(&s, [0.0, 0.0], &mut a2)
     );
     // A different seed (almost surely) gives a different rotation.
     let mut b = 99;
     assert_ne!(
-        dab_basis(&s, [0.0, 0.0], &mut a1).u,
-        dab_basis(&s, [0.0, 0.0], &mut b).u
+        basis(&s, [0.0, 0.0], &mut a1).u,
+        basis(&s, [0.0, 0.0], &mut b).u
     );
 }
 
@@ -178,8 +184,8 @@ fn random_mapping_jitters_offset_other_mappings_do_not() {
     };
     let mut s1 = 1;
     let mut s2 = 2;
-    let b1 = dab_basis(&rnd, [0.0, 0.0], &mut s1);
-    let b2 = dab_basis(&rnd, [0.0, 0.0], &mut s2);
+    let b1 = basis(&rnd, [0.0, 0.0], &mut s1);
+    let b2 = basis(&rnd, [0.0, 0.0], &mut s2);
     assert_ne!(
         b1.jitter, b2.jitter,
         "Random mapping randomises the per-dab offset"
@@ -191,9 +197,85 @@ fn random_mapping_jitters_offset_other_mappings_do_not() {
     };
     let mut s3 = 3;
     assert_eq!(
-        dab_basis(&view, [0.0, 0.0], &mut s3).jitter,
+        basis(&view, [0.0, 0.0], &mut s3).jitter,
         [0.0, 0.0],
         "non-Random mappings have no per-dab offset"
+    );
+}
+
+// ── Stencil mapping (image-space positioned mask) ───────────────────────────────────────────
+
+#[test]
+fn stencil_frame_maps_offset_and_size_to_canvas() {
+    let s = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        ..Default::default()
+    };
+    // offset 0, size 1 → centred, half = half the canvas; angle 0 → u = (1,0).
+    let (c, h, u) = stencil_frame(&s, [100.0, 80.0]);
+    assert_eq!(c, [50.0, 40.0]);
+    assert_eq!(h, [50.0, 40.0]);
+    assert_eq!(u, [1.0, 0.0]);
+    // offset +1 X / -1 Y → centre at the right / top edge.
+    let s2 = TextureSettings {
+        offset: [1.0, -1.0],
+        ..s
+    };
+    let (c2, _, _) = stencil_frame(&s2, [100.0, 80.0]);
+    assert_eq!(c2, [100.0, 0.0]);
+}
+
+#[test]
+fn stencil_masks_outside_the_rect_and_is_image_fixed() {
+    let s = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        size: [0.2, 0.2], // ±10% of a 100px canvas → a small central rect
+        ..Default::default()
+    };
+    let mut rng = 0;
+    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [100.0, 100.0]);
+    // A pixel far outside the rect → masked to 0.
+    assert_eq!(
+        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0),
+        0.0,
+        "outside the stencil paints nothing"
+    );
+    // The rect is fixed to the image: moving the dab centre does NOT change the mask.
+    assert_eq!(
+        sample(&s, &b, 5, 5, [5.0, 5.0], 8.0),
+        sample(&s, &b, 5, 5, [99.0, 99.0], 8.0),
+        "stencil is image-fixed, not dab-relative"
+    );
+}
+
+#[test]
+fn stencil_rect_shows_the_procedural_pattern() {
+    // Inside a Checker stencil the rect spans several cells (STENCIL_TILES), so distinct interior
+    // pixels return both parities — i.e. the pattern reads, it is not one flat cell.
+    let s = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        size: [1.0, 1.0], // rect = the whole canvas
+        ..Default::default()
+    };
+    let mut rng = 0;
+    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [64.0, 64.0]);
+    let mut seen0 = false;
+    let mut seen1 = false;
+    for x in (2..62).step_by(3) {
+        let v = sample(&s, &b, x, 32, [32.0, 32.0], 8.0);
+        if v == 0.0 {
+            seen0 = true;
+        }
+        if v == 1.0 {
+            seen1 = true;
+        }
+    }
+    assert!(
+        seen0 && seen1,
+        "the stencil rect shows the checker pattern (both cells)"
     );
 }
 

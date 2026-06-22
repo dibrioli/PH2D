@@ -63,7 +63,7 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 // `brush_falloff_weight_at` live in the `brush_settings` submodule (alongside the setters that
 // are their single clamp source), so this file stays under the workspace LOC cap. Re-exported
 // here to keep their `paint::` public path.
-pub use brush_settings::{BrushSettings, brush_falloff_weight_at};
+pub use brush_settings::{BrushSettings, StencilOverlay, brush_falloff_weight_at};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
 /// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint
@@ -349,6 +349,7 @@ impl PainterTool {
                     &spec.texture,
                     dab_tangent(dabs, i),
                     &mut tex_rng,
+                    [w as f32, h as f32],
                 )
             });
             if let Some(r) = stamp_dab_textured(

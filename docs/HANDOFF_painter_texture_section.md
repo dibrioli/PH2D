@@ -208,11 +208,12 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
 
 ## 7 — Faseamento sugerido (refine no plano)
 
-> **STATUS (2026-06-22):** **P0 + P1 + P2 FEITOS** (commits locais `f7f40df1` engine, `a0862665`
-> tool+panel+ids; sem push). Plano aprovado pelo Enio em
+> **STATUS (2026-06-22):** **P0–P3 FEITOS** (commits locais `f7f40df1` engine, `a0862665`
+> tool+panel+ids, `2936075f` Stencil; sem push). Plano aprovado pelo Enio em
 > [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **A seção Texture está
-> VIVA na view Brush** (Kind picker + New + Mapping/Angle/Rake/Random/Offset/Size, gated). **Falta só
-> P3: Stencil (overlay de shell) + imagem importada (opcional).** Ver §7.2.
+> COMPLETA na view Brush** — Kind picker + New + Mapping (**View/Tiled/Random/Stencil**) + Angle +
+> Rake + Random + Offset X/Y + Size X/Y, gated; modula o dab ao vivo; Stencil com overlay read-only.
+> **Restam só 2 follow-ups opcionais (§7.2):** gesto drag-to-position do Stencil + imagem importada.
 
 - **P0 — PLANO** ✅ — decisões §5 fechadas no padrão-ouro + faseamento + arquivos/testes →
   aprovado.
@@ -232,8 +233,14 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
   range `0..=COUNT`. **Testes:** painel (visibilidade gateada none→picker / kind→tudo; round-trip
   Kind+Mapping) + tool (setters/clamp + e2e: dab texturizado mascara o footprint). Gates verdes
   (LOC/magic/color/a11y/node-id), clippy, fmt, sweep limpo; shell compila.
-- **P3 — Stencil + (opcional) imagem importada:** overlay de tela + gesto (shell). Testes possíveis.
-  **Ver §7.2 para a costura exata.**
+- **P3 — Stencil** ✅ (`2936075f`) — `TextureMapping::Stencil` (wire 3, COUNT→4): máscara retangular
+  **em espaço de imagem** (adaptação 2D — engine puro, sem transform de tela) posicionada/rotacionada/
+  escalada pelos sliders Offset (centro) / Size (extensão) / Angle; mascara fora do retângulo.
+  `stencil_frame()` é fonte única (centro/half/rotação) p/ a máscara E o overlay. Painel: Stencil
+  entra no dropdown sozinho (COUNT) + esconde Rake/Random p/ Stencil. Shell: overlay **read-only** do
+  retângulo (espelho do Circle). **Testes:** engine (frame, mascara-fora + fixo-à-imagem, padrão lê) +
+  tool (overlay + e2e mascara) + painel (gating Stencil). Gates/clippy/fmt/sweep verdes; shell compila.
+  **Follow-ups deferidos (§7.2):** gesto drag-to-position + imagem importada.
 - **Fim:** gates (LOC/magic/a11y/color), clippy, fmt, sweep transcendental, commit LOCAL. Atualize
   ESTE handoff (marque resolvido) + `HANDOFF_painter_stroke_section.md` se a Texture interagir com Stroke.
 
@@ -263,25 +270,31 @@ A capacidade existe e é testada; o P2 só **liga**. Pontos exatos:
   p/ sibling antes de add campos; `panel/event.rs` 600/600 → decoders em `event/texture.rs`. Ver
   plano §6.
 
-## 7.2 — Estado de costura que o P3 herda (tudo P1/P2 pronto; falta shell)
+## 7.2 — Follow-ups opcionais (Stencil drag-gesture + imagem importada)
 
-**Stencil (mapping em espaço de tela):**
-- Engine: adicionar `TextureMapping::Stencil` (wire 3) + `COUNT` 3→4 em
-  `ph2d-painter-brush/src/texture.rs`; em `sample`, ramo Stencil = UV em coords de tela (pos/rot/
-  escala próprios do stencil, **não** o footprint do dab). Como o mapping é por-pixel mas o stencil é
-  fixo na tela, o `sample` precisa receber a transformação tela→canvas (passar via `TexDabBasis` ou
-  um arg novo). Cuidado: o canvas é CPU-residente e o dab trabalha em px de imagem — converter tela↔
-  imagem precisa do zoom/pan do viewport (vem do shell).
-- Panel: ao adicionar Stencil ao dropdown, ele deixa de ser no-op (DIRETIVA §2 OK). `TextureMapping::
-  COUNT` já dirige o decode/options — sobe sozinho p/ 4.
-- Shell (`shells/desktop/`): overlay em espaço de tela (`render_loop/painter_bridge.rs`, padrão dos
-  overlays de Circle/Polygon) + gesto mover/rotacionar/escalar (`input_dispatch/painter_canvas_input
-  .rs`). Estado do stencil (pos/rot/escala) provavelmente no `PaintState` + snapshot leve.
+**Decisão de arquitetura do Stencil (feita no P3):** Stencil é **espaço de IMAGEM**, não de tela. O
+engine `ph2d-painter-brush` é puro (sem UI/tela/GPU); threadear o transform de viewport nele
+quebraria essa fronteira. Então o stencil é um retângulo fixo ao canvas, posicionado por Offset/Size/
+Angle. O Blender-style "fixo à tela" (fica parado na tela ao pan/zoom) é o que esses follow-ups
+trariam se quisermos — mas exige threadear o transform tela→imagem (vem do `deliver_canvas_pointer`,
+`scale=(hi_x-lo_x)/iw`) até o `sample`, e é onde mora a complexidade.
 
-**Imagem importada (opcional):** pixels pesados no `PaintState` (como curve/circle) + handle leve no
-`BrushSpec.texture` (ex.: um id/Arc); `texture::sample` ganha um ramo que lê a imagem (bilinear,
-center-coord — memory `feedback_pixel_center_vs_edge_coord`). Load de arquivo = shell (mirror dos
-importadores). "+ New" passa a oferecer "from image".
+**(A) Gesto drag-to-position do Stencil (ergonomia; shell).** Hoje o stencil se posiciona por
+sliders + overlay read-only. Para arrastar/rotacionar/escalar o retângulo no canvas:
+- Estado: o frame já vem de `offset/size/angle` (não precisa novo estado no `PaintState`). O gesto
+  edita esses 3 via os setters existentes (`set_brush_texture_offset_norm/size_norm/angle_norm`).
+- Shell: dar handles ao overlay (`stencil_overlay()` já dá os 4 cantos; adicionar handles de canto/
+  rotação como Circle) em `painter_bridge.rs`; hit-test + drag em `painter_canvas_input.rs`. ⚠️ O
+  stencil **coexiste com pintura** (você pinta E reposiciona) → precisa de **modifier-gate** (ex.:
+  segurar uma tecla para mover o stencil em vez de pintar), distinto do Circle/Polygon (que SÃO o
+  stroke method). Esse interleave é o pedaço arriscado — daí ter sido deferido.
+- Converter drag de tela→imagem: `scale` já existe no `deliver_canvas_pointer`; o delta de tela ÷
+  scale = delta de imagem → vira delta de offset (÷canvas) / size / angle.
+
+**(B) Imagem importada (opcional).** Pixels pesados no `PaintState` (como curve/circle) + handle leve
+no `BrushSpec.texture` (id/`Arc`); `texture::sample` ganha um `TextureKind::Image` que lê a imagem
+(bilinear, **center-coord** — memory `feedback_pixel_center_vs_edge_coord`). Load de arquivo = shell
+(mirror dos importadores). "+ New" passa a oferecer "from image". `TextureKind::COUNT` sobe sozinho.
 
 ## 8 — Definition of done
 

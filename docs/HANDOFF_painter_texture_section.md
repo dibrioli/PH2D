@@ -208,11 +208,19 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
 
 ## 7 — Faseamento sugerido (refine no plano)
 
-- **P0 — PLANO** (este passo): decisões §5 fechadas + faseamento + arquivos/testes por fase →
-  aprovação do Enio.
-- **P1 — Engine:** modelo de textura (procedural embutida) + amostragem + modos de mapeamento 2D
-  (View/Tiled/Random; Stencil pode ficar p/ P3) + modulação em `dab.rs` + transcendental-free/
-  sweep. Testes de engine (mapeamento determinístico, modulação multiplica coverage, modos diferem).
+> **STATUS (2026-06-22):** **P0 + P1 FEITOS** (commit local `f7f40df1`, sem push). Plano aprovado
+> pelo Enio em [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **Próximo:
+> P2 (tool + panel).** Ver §7.1 abaixo para o estado exato de costura que o P2 herda.
+
+- **P0 — PLANO** ✅ — decisões §5 fechadas no padrão-ouro + faseamento + arquivos/testes →
+  aprovado.
+- **P1 — Engine** ✅ — `crates/ph2d-painter-brush/src/texture.rs` (novo) + `texture/tests.rs`:
+  `TextureKind` (None/Noise/Checker/Voronoi/Stripes) + `TextureMapping` (ViewPlane/Tiled/Random) +
+  `TextureSettings` (Copy) + `dab_basis`/`sample` + 4 samplers procedurais. `BrushSpec` ganhou o
+  campo `texture` (default None). Modulação em `dab.rs` via novo `stamp_dab_textured` (`stamp_dab`
+  delega com `None` → tool segue verde). **Transcendental-free** (sweep limpo; só `sqrt`), rotação
+  por `DEG_STEP` baked, Rake=tangente, Random=splitmix64. 16 testes verdes; clippy/fmt/LOC-cap
+  verdes; tool crate compila.
 - **P2 — Tool + Panel:** `BrushSettings` + setters + ids editor-core + seção `paint_texture.rs` +
   populate + event (decode coberto + round-trip) + trait_impls. Testes de painel (visibilidade
   gateada, decode) + tool (setters/clamp).
@@ -221,6 +229,30 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
   ESTE handoff (marque resolvido) + `HANDOFF_painter_stroke_section.md` se a Texture interagir com Stroke.
 
 ---
+
+## 7.1 — Estado de costura que o P2 herda (engine pronto, falta ligar UI→engine)
+
+A capacidade existe e é testada; o P2 só **liga**. Pontos exatos:
+
+- **Engine API a chamar:** `ph2d_painter_brush::texture::dab_basis(&settings, dab_dir, &mut rng) ->
+  TexDabBasis` (1× por dab) + `ph2d_painter_brush::stamp_dab_textured(buf, w, h, center, &spec,
+  coverage, preserve_alpha, Some(&basis))`. Hoje o tool chama `stamp_dab` (sem textura) em
+  `tool/paint.rs` (`stamp_dabs`, ~l.381) — **trocar p/ `stamp_dab_textured`** passando o basis.
+- **`dab_dir` (Rake):** o `Dab` **não carrega direção**. Derive a tangente em `stamp_dabs` de
+  `d[i].center − d[i-1].center` (normalizada; primeiro dab → `[0,0]`, que cai no ângulo). **Não
+  precisa mudar o struct `Dab`.**
+- **`rng` (Random):** use o seed por-traço já existente (`PaintState.seed`) com um contador por-dab,
+  como o jitter faz — determinístico (HR-5).
+- **Campos a expor no `BrushSettings` + setters (clamp único):** `kind`(u8), `mapping`(u8),
+  `angle_deg`(u16), `rake`(bool), `random_angle`(bool), `offset`[x,y], `size`[x,y]. Ranges/consts
+  já existem no engine: `TEX_ANGLE_MAX_DEG`, `TEX_OFFSET_MIN/MAX`, `TEX_SIZE_MIN/MAX`. Wire u8:
+  `TextureKind::to_u8/from_u8` (COUNT=5, inclui None), `TextureMapping::to_u8/from_u8` (COUNT=3).
+- **"+ New":** setter atribui `kind = Noise` (default real); thumbnail-picker cobre as 5 kinds.
+- **Decode de dropdown:** cubra `0..=TextureMapping::COUNT-1` e `0..=TextureKind::COUNT-1` (inclui o
+  último — bug Circle@7). Round-trip test usando `to_u8/from_u8`.
+- **Restrições de LOC já mapeadas (verificadas):** `tool/paint.rs` 599/600 → mover `BrushSettings`
+  p/ sibling antes de add campos; `panel/event.rs` 600/600 → decoders em `event/texture.rs`. Ver
+  plano §6.
 
 ## 8 — Definition of done
 

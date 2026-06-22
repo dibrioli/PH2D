@@ -1,8 +1,9 @@
 # PLANO — Seção **Texture** do pincel (Blender-parity, adaptado a 2D)
 
-> **Status:** P0 — plano para aprovação do Enio. **Nada implementado.** Fonte do pedido:
-> [`HANDOFF_painter_texture_section.md`](../HANDOFF_painter_texture_section.md). Decisões §5 do handoff
-> fechadas no padrão-ouro abaixo (com justificativa). Aprovado o plano → implemento P1→P2→P3.
+> **Status:** **P1 FEITO** (engine, commit local `f7f40df1`). Plano **aprovado pelo Enio**
+> (2026-06-22). Decisões §5 fechadas no padrão-ouro abaixo. **Próximo: P2 (tool + panel)** — o estado
+> de costura exato que o P2 herda está em [`HANDOFF_painter_texture_section.md`](../HANDOFF_painter_texture_section.md)
+> §7.1. Fonte do pedido: mesmo handoff.
 >
 > Todo file:line aqui foi **verificado no código real** (não é spec aspiracional) — os caminhos de
 > costura batem com Stroke Methods, que é o template canônico.

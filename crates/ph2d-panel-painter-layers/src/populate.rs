@@ -87,6 +87,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
     ] {
         store.register(
             id,

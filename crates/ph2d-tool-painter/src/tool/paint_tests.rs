@@ -59,7 +59,10 @@ fn trivial_stack_stroke_uploads_only_the_dab_bbox_not_the_whole_canvas() {
     // painted frame a full clone + premul + full GPU texture upload, O(W×H)
     // regardless of the 10px brush — the 300→150 fps drop.
     let mut t = white_canvas(64, 4.0);
-    assert!(t.is_trivial_stack(), "single opaque Normal raster is trivial");
+    assert!(
+        t.is_trivial_stack(),
+        "single opaque Normal raster is trivial"
+    );
 
     // First drain is the source-push seed (no paint yet) → `None` → the bridge
     // does one full upload to seed the GPU texture.
@@ -73,7 +76,10 @@ fn trivial_stack_stroke_uploads_only_the_dab_bbox_not_the_whole_canvas() {
     // Now paint one dab and drain again — the bbox must be present and strictly
     // smaller than the canvas (the dab footprint), not the whole 64×64.
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
-    assert!(t.take_preview_arc().is_some(), "the dab re-dirtied the preview");
+    assert!(
+        t.take_preview_arc().is_some(),
+        "the dab re-dirtied the preview"
+    );
     let (bx, by, bw, bh) = t
         .take_preview_upload_bbox()
         .expect("a trivial-stack stroke must carry its dab bbox, not None");
@@ -602,6 +608,11 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_RATE, 1.0));
     assert!((t.brush_settings().airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MAX_S).abs() < 1e-6);
 
+    // Edge to Edge toggles from the default OFF (Anchored only, but routing is method-agnostic).
+    assert!(!t.brush_settings().edge_to_edge);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_EDGE_TO_EDGE));
+    assert!(t.brush_settings().edge_to_edge);
+
     // Jitter unit routing: View → the Jitter slider drives absolute px; Brush → relative 0..1.
     t.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_BRUSH_JITTER_UNIT,
@@ -633,7 +644,11 @@ fn airbrush_deposits_on_the_tick_at_the_tracked_cursor_not_on_a_bare_move() {
 
     // Down at A: the begin dab paints A (airbrush `emits_on_begin`).
     t.on_canvas_pointer(cp([8.0, 24.0], PointerPhase::Down));
-    assert_eq!(px(&t, 48, 8, 24), [0, 0, 0, 255], "down paints the first dab");
+    assert_eq!(
+        px(&t, 48, 8, 24),
+        [0, 0, 0, 255],
+        "down paints the first dab"
+    );
 
     // Move to B with NO tick: the airbrush must not paint on the bare move (timer-only).
     t.on_canvas_pointer(cp([40.0, 24.0], PointerPhase::Move));
@@ -654,5 +669,48 @@ fn airbrush_deposits_on_the_tick_at_the_tracked_cursor_not_on_a_bare_move() {
     // Closing the stroke stops the spray: a later tick paints nothing new.
     t.on_canvas_pointer(cp([40.0, 24.0], PointerPhase::Up));
     t.on_tick(100.0);
-    assert_eq!(px(&t, 48, 24, 24), [255, 255, 255, 255], "no spray after pointer-up");
+    assert_eq!(
+        px(&t, 48, 24, 24),
+        [255, 255, 255, 255],
+        "no spray after pointer-up"
+    );
+}
+
+#[test]
+fn anchored_stamps_a_drag_sized_disc_centred_on_the_press_point() {
+    // Anchored end-to-end (tool layer): press anchors (no paint), the drag sizes a single disc
+    // centred on the press point (restore+re-stamp preview — no trail), pen-up commits it.
+    let mut t = white_canvas(48, 4.0);
+    t.paint.brush.stroke_method = StrokeMethod::Anchored;
+    t.paint.brush.edge_to_edge = false;
+    t.paint.brush.hardness = 1.0; // hard disk → deterministic full coverage
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    // Press at the anchor — nothing painted yet (interactive).
+    t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
+    assert_eq!(
+        px(&t, 48, 10, 24),
+        [255, 255, 255, 255],
+        "the press alone paints nothing"
+    );
+
+    // An intermediate small drag then a larger one: the preview restores between moves, so only the
+    // final disc survives — proving the resize leaves no trail.
+    t.on_canvas_pointer(cp([16.0, 24.0], PointerPhase::Move)); // small (r≈6)
+    t.on_canvas_pointer(cp([26.0, 24.0], PointerPhase::Move)); // grow (r≈16)
+    t.on_canvas_pointer(cp([26.0, 24.0], PointerPhase::Up)); // commit
+
+    // Committed disc: centre = anchor (10,24), radius = final drag distance 16.
+    assert_eq!(px(&t, 48, 10, 24), [0, 0, 0, 255], "anchor painted");
+    assert_eq!(
+        px(&t, 48, 22, 24),
+        [0, 0, 0, 255],
+        "12 px from the anchor is inside the disc"
+    );
+    assert_eq!(
+        px(&t, 48, 0, 0),
+        [255, 255, 255, 255],
+        "a far corner is outside the disc"
+    );
 }

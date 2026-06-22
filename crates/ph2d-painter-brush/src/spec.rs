@@ -86,6 +86,11 @@ pub struct BrushSpec {
     /// Airbrush emission period in seconds (Blender `rate`, default `0.1` = 10 Hz,
     /// `DNA_brush_types.h:232`). Used only by [`StrokeMethod::Airbrush`]; the tool's tick drives it.
     pub airbrush_rate_s: f32,
+    /// "Edge to Edge" — Anchored only (Blender `BRUSH_EDGE_TO_EDGE`, `DNA_brush_enums.h:376`).
+    /// OFF: the single stamp is centred on the anchor (press point) with radius = drag distance.
+    /// ON: it's centred on the midpoint anchor→cursor with half that radius, so the dab spans
+    /// edge-to-edge from the press point to the cursor. See the Anchored arm of [`Stroke::extend`].
+    pub edge_to_edge: bool,
 }
 
 impl Default for BrushSpec {
@@ -112,6 +117,7 @@ impl Default for BrushSpec {
             input_samples: 1,
             stabilizer: 0.5,
             airbrush_rate_s: 0.1,
+            edge_to_edge: false,
         }
     }
 }

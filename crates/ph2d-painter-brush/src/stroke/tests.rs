@@ -421,7 +421,10 @@ fn settle_is_a_noop_without_lag() {
     s.begin(pt(0.0, 0.0, 1.0), &mut out);
     s.extend(pt(40.0, 0.0, 1.0), &mut out);
     s.settle(&mut out);
-    assert!(out.is_empty(), "settle should be a no-op with the stabilizer off");
+    assert!(
+        out.is_empty(),
+        "settle should be a no-op with the stabilizer off"
+    );
 }
 
 #[test]
@@ -432,7 +435,11 @@ fn stabilizer_catches_up_to_release_on_finish() {
         stabilizer: 1.0,
         ..straight_spec(2.0, 0.5)
     };
-    let dabs = collect_stroke(spec, no_dynamics(), &[pt(0.0, 0.0, 1.0), pt(60.0, 0.0, 1.0)]);
+    let dabs = collect_stroke(
+        spec,
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(60.0, 0.0, 1.0)],
+    );
     let last_x = dabs.last().unwrap().center[0];
     assert!(
         (last_x - 60.0).abs() < 2.0,
@@ -534,9 +541,15 @@ fn airbrush_does_not_emit_on_motion_only_tracks_the_cursor() {
 
     // Several moves with NO time elapsed (no tick): airbrush must emit nothing.
     s.extend(pt(20.0, 0.0, 1.0), &mut out);
-    assert!(out.is_empty(), "move 1 emitted a dab — airbrush must not paint on motion");
+    assert!(
+        out.is_empty(),
+        "move 1 emitted a dab — airbrush must not paint on motion"
+    );
     s.extend(pt(40.0, 0.0, 1.0), &mut out);
-    assert!(out.is_empty(), "move 2 emitted a dab — airbrush must not paint on motion");
+    assert!(
+        out.is_empty(),
+        "move 2 emitted a dab — airbrush must not paint on motion"
+    );
 
     // Now a tick fires the timer: one dab at the LAST moved-to position (40, 0), not the down point.
     s.tick(0.1, &mut out);
@@ -545,5 +558,73 @@ fn airbrush_does_not_emit_on_motion_only_tracks_the_cursor() {
         (out[0].center[0] - 40.0).abs() < 1e-3 && out[0].center[1].abs() < 1e-3,
         "the timed dab lands where the cursor was tracked to, got {:?}",
         out[0].center
+    );
+}
+
+#[test]
+fn anchored_radius_is_the_drag_distance_centred_on_the_anchor() {
+    // Blender Anchored: a single stamp pinned at the press point; its radius = the distance dragged
+    // from it (the Size slider is overridden). No dab on begin (it's interactive).
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Anchored,
+        edge_to_edge: false,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(20.0, 20.0, 1.0), &mut out);
+    assert!(
+        out.is_empty(),
+        "anchored does not stamp on begin (interactive)"
+    );
+
+    // Drag to (50, 60): displacement (30, 40) → distance 50, centred on the anchor.
+    s.extend(pt(50.0, 60.0, 1.0), &mut out);
+    assert_eq!(out.len(), 1, "one anchored dab per move");
+    assert_eq!(
+        out[0].center,
+        [20.0, 20.0],
+        "centred on the anchor (press point)"
+    );
+    assert!(
+        (out[0].radius_px - 50.0).abs() < 1e-3,
+        "radius = drag distance, got {}",
+        out[0].radius_px
+    );
+
+    // Dragging further GROWS the radius; the anchor stays put (no trail — the tool re-stamps).
+    s.extend(pt(20.0, 120.0, 1.0), &mut out); // 100 px straight down from the anchor
+    assert_eq!(out.len(), 1);
+    assert_eq!(
+        out[0].center,
+        [20.0, 20.0],
+        "anchor stays fixed across moves"
+    );
+    assert!((out[0].radius_px - 100.0).abs() < 1e-3);
+}
+
+#[test]
+fn anchored_edge_to_edge_spans_anchor_to_cursor() {
+    // Edge to Edge: the stamp is centred on the anchor↔cursor midpoint with HALF the radius, so it
+    // spans exactly from the press point to the cursor (Blender `BRUSH_EDGE_TO_EDGE`).
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Anchored,
+        edge_to_edge: true,
+        ..straight_spec(10.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    s.extend(pt(100.0, 0.0, 1.0), &mut out); // drag 100 px along +x
+    assert_eq!(out.len(), 1);
+    assert_eq!(
+        out[0].center,
+        [50.0, 0.0],
+        "centred on the anchor↔cursor midpoint"
+    );
+    assert!(
+        (out[0].radius_px - 50.0).abs() < 1e-3,
+        "radius = half the drag distance (spans 0→100), got {}",
+        out[0].radius_px
     );
 }

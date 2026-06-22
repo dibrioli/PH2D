@@ -153,6 +153,9 @@ pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stro
 /// Brush "Rate" slider — the airbrush timer period in seconds (`0..1` track → `[0.01, 1.0]` s).
 /// Shown only for the Airbrush method. `SetValue` → `set_brush_airbrush_rate_norm`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
+/// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — shown only for the Anchored method.
+/// `Click` → `set_brush_edge_to_edge` (toggles).
+pub const PAINTER_BRUSH_EDGE_TO_EDGE: NodeId = hash_node_id("painter_brush.edge_to_edge");
 /// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %).
 /// `SetValue` → `set_brush_spacing`.
 pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");

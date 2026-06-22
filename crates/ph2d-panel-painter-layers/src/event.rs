@@ -434,7 +434,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // (the tool flips the matching bool).
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
-                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN =>
+                || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
+                || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

@@ -96,6 +96,13 @@ impl StrokeMethod {
         matches!(self, Self::Airbrush)
     }
 
+    /// True when the **Edge to Edge** toggle is meaningful — Blender's `BRUSH_EDGE_TO_EDGE` only
+    /// affects `ANCHORED` (whether the drag-sized stamp grows from the anchor or spans anchor→cursor).
+    #[must_use]
+    pub fn uses_edge_to_edge(self) -> bool {
+        matches!(self, Self::Anchored)
+    }
+
     /// True when the stroke **stabilizer** (the "how regular" knob) applies. Mirrors Blender's
     /// `paint_supports_smooth_stroke`, which enables smooth-stroke for every method **except**
     /// `ANCHORED`/`DRAG_DOT`/`LINE` — so `Space`/`Dots`/`Airbrush`/`Curve` all run the position
@@ -115,7 +122,10 @@ impl StrokeMethod {
     /// The interactive methods (Anchored/Line/Curve) paint on finalise, so begin only anchors.
     #[must_use]
     pub fn emits_on_begin(self) -> bool {
-        matches!(self, Self::Space | Self::Dots | Self::DragDot | Self::Airbrush)
+        matches!(
+            self,
+            Self::Space | Self::Dots | Self::DragDot | Self::Airbrush
+        )
     }
 
     /// True when per-dab position jitter applies (Blender disables it for DRAG_DOT/ANCHORED).
@@ -181,34 +191,45 @@ mod tests {
 
     #[test]
     fn stroke_panel_visibility_matches_blender() {
-        use StrokeMethod::{Airbrush, Anchored, Curve, DragDot, Dots, Line, Space};
+        use StrokeMethod::{Airbrush, Anchored, Curve, Dots, DragDot, Line, Space};
         // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
         // Samples is always shown, so it is not in the table. This locks the per-method gate
         // the layers panel paints against — a predicate edit that breaks parity goes red here,
         // not in a human smoke. Reference: paint_stroke.cc dispatch + DNA_brush_enums flags.
         let rows = [
-            //         spacing  dash   jitter stabilizer rate
-            (Dots, false, false, true, true, false),
-            (Airbrush, false, false, true, true, true),
-            (Anchored, false, false, false, false, false),
-            (Space, true, true, true, true, false),
-            (DragDot, false, false, false, false, false),
-            (Line, true, true, true, false, false),
-            (Curve, true, true, true, true, false),
+            //         spacing  dash   jitter stabilizer rate   edge
+            (Dots, false, false, true, true, false, false),
+            (Airbrush, false, false, true, true, true, false),
+            (Anchored, false, false, false, false, false, true),
+            (Space, true, true, true, true, false, false),
+            (DragDot, false, false, false, false, false, false),
+            (Line, true, true, true, false, false, false),
+            (Curve, true, true, true, true, false, false),
         ];
-        for (m, spacing, dash, jitter, stabilizer, rate) in rows {
+        for (m, spacing, dash, jitter, stabilizer, rate, edge) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");
             assert_eq!(m.uses_dash(), dash, "{m:?} Dash visibility");
             assert_eq!(m.allows_jitter(), jitter, "{m:?} Jitter visibility");
-            assert_eq!(m.uses_stabilizer(), stabilizer, "{m:?} Stabilizer visibility");
+            assert_eq!(
+                m.uses_stabilizer(),
+                stabilizer,
+                "{m:?} Stabilizer visibility"
+            );
             assert_eq!(m.uses_rate(), rate, "{m:?} Rate visibility");
+            assert_eq!(m.uses_edge_to_edge(), edge, "{m:?} Edge-to-Edge visibility");
         }
     }
 
     #[test]
     fn jitter_unit_wire_roundtrips() {
-        assert_eq!(JitterUnit::from_u8(JitterUnit::Brush.to_u8()), JitterUnit::Brush);
-        assert_eq!(JitterUnit::from_u8(JitterUnit::View.to_u8()), JitterUnit::View);
+        assert_eq!(
+            JitterUnit::from_u8(JitterUnit::Brush.to_u8()),
+            JitterUnit::Brush
+        );
+        assert_eq!(
+            JitterUnit::from_u8(JitterUnit::View.to_u8()),
+            JitterUnit::View
+        );
         assert_eq!(JitterUnit::default(), JitterUnit::Brush);
         assert_eq!(JitterUnit::from_u8(9), JitterUnit::Brush);
     }

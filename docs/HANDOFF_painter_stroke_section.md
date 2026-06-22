@@ -296,10 +296,26 @@ Arquivos-chave:
 - **Two-strikes:** já houve 1 reescrita da suavização (quadrática). Se precisar de uma 2ª, MEÇA a
   densidade de amostra e prove a causa antes de uma 3ª.
 
-### 2.4 — Anchored / Line / Curve seguem DEFER (interativo não wirado) 🟡
-> **NOTA (2026-06-21):** a parte "airbrush on_tick" que estava agrupada aqui **caiu** (ver §2.1
-> RESOLVIDO). Sobra só Anchored/Line/Curve interativo.
-- Selecionáveis no dropdown, mas **não pintam durante o drag** (engine só faz `advance_anchor`).
+### 2.4 — Line / Curve seguem DEFER (interativo não wirado) 🟡
+> **NOTA (2026-06-21):** "airbrush on_tick" **caiu** (§2.1 RESOLVIDO). **Anchored** também **caiu**
+> (✅ RESOLVIDO abaixo). Sobra só **Line / Curve** interativo.
+>
+> **Anchored ✅ RESOLVIDO (2026-06-21):** carimbo único fixado no press point cujo **raio = distância
+> arrastada** (sobrescreve o Size); **Edge to Edge** (toggle novo, `BRUSH_EDGE_TO_EDGE`) centra no
+> ponto médio anchor→cursor com metade do raio (vai de borda a borda). Fiel ao anchored arm de
+> `paint_stroke.cc` (`anchored_size = |cursor − initial|`; edge-to-edge → halfway + size/2). Reusa a
+> infra de preview do Drag Dot (restore+re-stamp, sem rastro, commit no Up) — `stamp_stroke_dabs`
+> roteia DragDot **e** Anchored. **Jitter e Stabilize ficam ESCONDIDOS** para Anchored: o Blender os
+> mostra no painel mas são **no-op no código** (`paint_stroke_use_jitter` linha 435 e
+> `paint_supports_smooth_stroke` linha 1059 rejeitam ANCHORED) → DIRETIVA §2 (não pintar no-op).
+> Painel de Anchored = **Method + Edge to Edge + Input Samples**. Wiring: engine (`extend` Anchored +
+> `anchored_dab` + `uses_edge_to_edge()` + campo `edge_to_edge`); tool (`BrushSettings.edge_to_edge` +
+> `toggle_brush_edge_to_edge` + roteamento Click + preview); editor-core (`PAINTER_BRUSH_EDGE_TO_EDGE`);
+> painel (toggle + populate + event). Testes: engine `anchored_radius_is_the_drag_distance_*` +
+> `anchored_edge_to_edge_spans_*` + matriz `uses_edge_to_edge`; tool `anchored_stamps_a_drag_sized_disc_*`
+> + routing; painel `anchored_shows_edge_to_edge_*`. **Falta smoke do Enio (GUI):** arrastar = disco
+> cresce do anchor; Edge-to-Edge = vai de borda a borda.
+- (Line/Curve) Selecionáveis no dropdown, mas **não pintam durante o drag** (engine só faz `advance_anchor`).
   `fill_segment()` existe no engine pra Line/Curve; falta o tool/shell dirigir: preview ao vivo,
   finalização no Up (Line: `fill_segment(down,up)`; constrain 45° com Alt), autoria Bézier (Curve),
   carimbo redimensionável (Anchored). É a mesma classe interativa do Drag Dot (2.2). **Hoje é no-op

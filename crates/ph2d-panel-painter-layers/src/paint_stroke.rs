@@ -60,6 +60,20 @@ pub(crate) fn paint_stroke_section(
         state::set_pending_brush_stroke_method_dd(Some((r, brush.stroke_method)));
     }
 
+    // ── Edge to Edge — only Anchored (the drag-sized stamp spans anchor→cursor) ──
+    if method.uses_edge_to_edge() {
+        y = paint_toggle_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+            "Edge to Edge",
+            brush.edge_to_edge,
+        );
+    }
+
     // ── Rate (airbrush timer period, seconds) — only Airbrush emits on a timer ──
     if method.uses_rate() {
         let span = BRUSH_AIRBRUSH_RATE_MAX_S - BRUSH_AIRBRUSH_RATE_MIN_S;
@@ -438,6 +452,41 @@ mod tests {
             assert!(
                 !ids.contains(&hidden),
                 "Airbrush painted a hit rect for {hidden:?} — it's not spacing-driven. painted = {ids:?}"
+            );
+        }
+    }
+
+    /// Anchored: shows **Edge to Edge** (its one real control) + Method + Input Samples. Jitter and
+    /// the Stabilizer stay HIDDEN even though Blender's panel shows them — both are no-ops for
+    /// Anchored in Blender's own code (`paint_stroke_use_jitter` and `paint_supports_smooth_stroke`
+    /// reject ANCHORED), so PH2D hides them rather than paint a silent no-op (DIRETIVA §2).
+    #[test]
+    fn anchored_shows_edge_to_edge_method_and_samples_hides_the_no_op_rows() {
+        let ids = painted_hit_ids(StrokeMethod::Anchored);
+        for shown in [
+            core_ids::PAINTER_BRUSH_STROKE_METHOD,
+            core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+            core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        ] {
+            assert!(
+                ids.contains(&shown),
+                "Anchored dropped a row it should show ({shown:?}). painted = {ids:?}"
+            );
+        }
+        for hidden in [
+            core_ids::PAINTER_BRUSH_SPACING,
+            core_ids::PAINTER_BRUSH_SPACE_ATTEN,
+            core_ids::PAINTER_BRUSH_DASH_RATIO,
+            core_ids::PAINTER_BRUSH_DASH_LENGTH,
+            core_ids::PAINTER_BRUSH_RATE,
+            core_ids::PAINTER_BRUSH_JITTER,
+            core_ids::PAINTER_BRUSH_JITTER_UNIT,
+            core_ids::PAINTER_BRUSH_STABILIZE,
+        ] {
+            assert!(
+                !ids.contains(&hidden),
+                "Anchored painted a hit rect for {hidden:?} — it's a Blender no-op for Anchored. \
+                 painted = {ids:?}"
             );
         }
     }

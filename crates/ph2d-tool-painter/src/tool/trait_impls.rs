@@ -99,6 +99,9 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_SPACE_ATTEN => {
                 self.toggle_brush_space_attenuation();
             }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
+                self.toggle_brush_edge_to_edge();
+            }
             // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point();

@@ -97,6 +97,9 @@ pub struct BrushSettings {
     /// Airbrush emission period in seconds (the "Rate" slider; only meaningful for the Airbrush
     /// method). The panel maps it onto the slider track via `BRUSH_AIRBRUSH_RATE_{MIN,MAX}_S`.
     pub airbrush_rate_s: f32,
+    /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor instead of growing
+    /// from the anchor).
+    pub edge_to_edge: bool,
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
@@ -418,10 +421,15 @@ impl PainterTool {
         self.paint.drag_preview = None;
     }
 
-    /// Stamp the dabs a `begin`/`extend` produced. For Drag Dot, route the single dab through the
-    /// moving-preview path (restore + re-stamp); for every other method, the normal cumulative stamp.
+    /// Stamp the dabs a `begin`/`extend` produced. Drag Dot AND Anchored are single-stamp
+    /// interactive methods: route their lone dab through the moving-preview path (restore the prior
+    /// footprint + re-stamp) so the resizing/moving stamp leaves no trail and `commit_drag_preview`
+    /// keeps the last on pen-up. Every other method uses the normal cumulative stamp.
     fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
-        if self.paint.brush.stroke_method == StrokeMethod::DragDot {
+        if matches!(
+            self.paint.brush.stroke_method,
+            StrokeMethod::DragDot | StrokeMethod::Anchored
+        ) {
             if let Some(&dab) = dabs.last() {
                 self.stamp_drag_preview(dab);
             }
@@ -479,6 +487,7 @@ impl PainterTool {
             input_samples: b.input_samples,
             stabilizer: b.stabilizer,
             airbrush_rate_s: b.airbrush_rate_s,
+            edge_to_edge: b.edge_to_edge,
         }
     }
 
@@ -637,6 +646,11 @@ impl PainterTool {
         let t = t.clamp(0.0, 1.0);
         self.paint.brush.airbrush_rate_s =
             BRUSH_AIRBRUSH_RATE_MIN_S + t * (BRUSH_AIRBRUSH_RATE_MAX_S - BRUSH_AIRBRUSH_RATE_MIN_S);
+    }
+
+    /// Toggle "Edge to Edge" (Anchored: the stamp spans anchor→cursor instead of growing from it).
+    pub fn toggle_brush_edge_to_edge(&mut self) {
+        self.paint.brush.edge_to_edge = !self.paint.brush.edge_to_edge;
     }
 }
 

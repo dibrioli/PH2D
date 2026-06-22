@@ -13,7 +13,7 @@
 
 use crate::dynamics::Dynamics;
 use crate::sampler::InputSampler;
-use crate::spec::BrushSpec;
+use crate::spec::{BrushSpec, MAX_BRUSH_RADIUS_PX};
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 
 /// One input sample from the pointer device, in image-space pixels.
@@ -181,9 +181,27 @@ impl Stroke {
                 self.emit_single(avg.pos, 1.0, out);
                 self.advance_anchor(avg);
             }
-            // Interactive: the engine doesn't paint per-move. The tool drives `fill_segment` /
-            // a resized stamp on finalise; we still track the anchor so a preview can read it.
-            StrokeMethod::Anchored | StrokeMethod::Line | StrokeMethod::Curve => {
+            // Anchored: a single stamp pinned at the press point (`last_pos`, never advanced) whose
+            // RADIUS is the drag distance from it — so dragging out grows the dab. Edge-to-edge
+            // centres on the midpoint with half the radius, so the dab spans anchor→cursor. Blender
+            // `paint_stroke.cc` anchored arm (`anchored_size = |cursor − initial|`; edge-to-edge →
+            // halfway + size/2). The tool routes this single dab through the restore+re-stamp preview
+            // (same path as Drag Dot) so the resizing stamp leaves no trail and commits on pen-up.
+            StrokeMethod::Anchored => {
+                let anchor = self.last_pos;
+                let dx = avg.pos[0] - anchor[0];
+                let dy = avg.pos[1] - anchor[1];
+                let dist = (dx * dx + dy * dy).sqrt();
+                let (center, radius) = if self.spec.edge_to_edge {
+                    ([anchor[0] + dx * 0.5, anchor[1] + dy * 0.5], dist * 0.5)
+                } else {
+                    (anchor, dist)
+                };
+                out.push(self.anchored_dab(center, radius));
+            }
+            // Interactive: the engine doesn't paint per-move. The tool drives `fill_segment` on
+            // finalise; we still track the anchor so a preview can read it.
+            StrokeMethod::Line | StrokeMethod::Curve => {
                 self.advance_anchor(avg);
             }
         }
@@ -402,6 +420,18 @@ impl Stroke {
         let d = self.dab_at(pos, pressure, 1.0);
         out.push(d);
         self.tot_samples = self.tot_samples.wrapping_add(1);
+    }
+
+    /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No
+    /// jitter (Blender disables it for Anchored, `paint_stroke_use_jitter`), full pressure
+    /// (coverage = strength); the falloff / hardness / blend / colour come from the spec at stamp
+    /// time, like every dab — so the anchored stamp wears the brush profile, just sized by the drag.
+    fn anchored_dab(&self, center: [f32; 2], radius_px: f32) -> Dab {
+        Dab {
+            center,
+            radius_px: radius_px.clamp(0.0, MAX_BRUSH_RADIUS_PX),
+            coverage: self.spec.strength.clamp(0.0, 1.0),
+        }
     }
 
     /// Move the spacing/spring anchor to `target` without resetting the spacing residual (used by

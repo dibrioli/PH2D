@@ -207,11 +207,11 @@ impl Stroke {
             StrokeMethod::Line => {
                 self.fill_line_preview(self.last_pos, avg.pos, out);
             }
-            // Curve (point editor + Catmull-Rom fill, `Stroke::fill_curve_preview`) and Circle
-            // (editable ellipse + perimeter fill, `Stroke::fill_ellipse_preview`) are both
-            // tool/shell-driven shape editors (`docs/Painter/`): draw → adjust → commit. A bare
-            // `extend` (no editor driving it) only tracks the anchor, so a stray sample paints nothing.
-            StrokeMethod::Curve | StrokeMethod::Circle => {
+            // Curve (Catmull-Rom fill), Circle (ellipse perimeter) and Polygon (regular N-gon
+            // perimeter) are all tool/shell-driven shape editors (`docs/Painter/`): draw → adjust →
+            // commit, filled via the `Stroke::fill_*_preview` primitives. A bare `extend` (no editor
+            // driving it) only tracks the anchor, so a stray sample paints nothing.
+            StrokeMethod::Curve | StrokeMethod::Circle | StrokeMethod::Polygon => {
                 self.advance_anchor(avg);
             }
         }
@@ -490,7 +490,8 @@ impl Stroke {
             StrokeMethod::Space
             | StrokeMethod::Line
             | StrokeMethod::Curve
-            | StrokeMethod::Circle => self.overlap,
+            | StrokeMethod::Circle
+            | StrokeMethod::Polygon => self.overlap,
             _ => 1.0,
         }
     }
@@ -586,6 +587,9 @@ pub use curve::flatten_catmull_rom;
 /// The Circle stroke method's perimeter generator + ellipse fill (same child-module rationale).
 mod ellipse;
 pub use ellipse::ellipse_perimeter;
+/// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
+mod polygon;
+pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
 
 #[cfg(test)]
 mod tests;

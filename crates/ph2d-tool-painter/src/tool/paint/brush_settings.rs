@@ -177,6 +177,9 @@ impl PainterTool {
         if method != StrokeMethod::Circle {
             self.circle_cancel();
         }
+        if method != StrokeMethod::Polygon {
+            self.polygon_cancel();
+        }
         self.paint.brush.stroke_method = method;
     }
 

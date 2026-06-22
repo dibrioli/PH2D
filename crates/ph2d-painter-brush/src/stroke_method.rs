@@ -38,6 +38,9 @@ pub enum StrokeMethod {
     /// centre-out, then adjusted with 4 axis handles + a rotation handle, its perimeter filled with
     /// spaced dabs on finalise. Wire discriminant `7`.
     Circle,
+    /// **PH2D extension:** an editable regular polygon inscribed in an ellipse — 4 axis handles +
+    /// rotation + a handle to change the side count (3..12) + a centre handle. Wire discriminant `8`.
+    Polygon,
 }
 
 impl StrokeMethod {
@@ -53,6 +56,7 @@ impl StrokeMethod {
             Self::Line => 5,
             Self::Curve => 6,
             Self::Circle => 7,
+            Self::Polygon => 8,
         }
     }
 
@@ -68,6 +72,7 @@ impl StrokeMethod {
             5 => Self::Line,
             6 => Self::Curve,
             7 => Self::Circle,
+            8 => Self::Polygon,
             _ => Self::Space,
         }
     }
@@ -86,14 +91,20 @@ impl StrokeMethod {
     /// gate reads by intent rather than by coincidence, and the two can diverge.
     #[must_use]
     pub fn uses_spacing(self) -> bool {
-        matches!(self, Self::Space | Self::Line | Self::Curve | Self::Circle)
+        matches!(
+            self,
+            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon
+        )
     }
 
     /// True when dabs are gated by the dash pattern (Blender: SPACE/LINE/CURVE; PH2D adds CIRCLE,
     /// whose perimeter is a spaced fill too).
     #[must_use]
     pub fn uses_dash(self) -> bool {
-        matches!(self, Self::Space | Self::Line | Self::Curve | Self::Circle)
+        matches!(
+            self,
+            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon
+        )
     }
 
     /// True when the **Rate** param (the airbrush timer period) is meaningful — Blender shows it
@@ -190,12 +201,14 @@ mod tests {
             StrokeMethod::Line,
             StrokeMethod::Curve,
             StrokeMethod::Circle,
+            StrokeMethod::Polygon,
         ] {
             assert_eq!(StrokeMethod::from_u8(m.to_u8()), m);
         }
-        // Blender enum values are the wire contract; Circle is the PH2D extension (7).
+        // Blender enum values are the wire contract; Circle/Polygon are PH2D extensions (7/8).
         assert_eq!(StrokeMethod::Space.to_u8(), 3);
         assert_eq!(StrokeMethod::Circle.to_u8(), 7);
+        assert_eq!(StrokeMethod::Polygon.to_u8(), 8);
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
         // Unknown → Space (paints), not Dots.
         assert_eq!(StrokeMethod::from_u8(200), StrokeMethod::Space);
@@ -203,7 +216,9 @@ mod tests {
 
     #[test]
     fn stroke_panel_visibility_matches_blender() {
-        use StrokeMethod::{Airbrush, Anchored, Circle, Curve, Dots, DragDot, Line, Space};
+        use StrokeMethod::{
+            Airbrush, Anchored, Circle, Curve, Dots, DragDot, Line, Polygon, Space,
+        };
         // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
         // Samples is always shown, so it is not in the table. This locks the per-method gate
         // the layers panel paints against — a predicate edit that breaks parity goes red here,
@@ -218,6 +233,7 @@ mod tests {
             (Line, true, true, true, false, false, false),
             (Curve, true, true, true, false, false, false),
             (Circle, true, true, true, false, false, false),
+            (Polygon, true, true, true, false, false, false),
         ];
         for (m, spacing, dash, jitter, stabilizer, rate, edge) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");

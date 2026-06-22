@@ -271,6 +271,39 @@ fn circle_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     }
 }
 
+/// Polygon: the PH2D regular-N-gon shape — spacing-driven like Circle (Spacing + Adjust + Dash +
+/// Jitter + Samples), NOT freehand, so the Stabilizer stays hidden. Same visible set as Circle.
+#[test]
+fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
+    let ids = painted_hit_ids(StrokeMethod::Polygon);
+    for shown in [
+        core_ids::PAINTER_BRUSH_STROKE_METHOD,
+        core_ids::PAINTER_BRUSH_SPACING,
+        core_ids::PAINTER_BRUSH_SPACE_ATTEN,
+        core_ids::PAINTER_BRUSH_DASH_RATIO,
+        core_ids::PAINTER_BRUSH_DASH_LENGTH,
+        core_ids::PAINTER_BRUSH_JITTER,
+        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+    ] {
+        assert!(
+            ids.contains(&shown),
+            "Polygon dropped a spacing-driven row it should show ({shown:?}). painted = {ids:?}"
+        );
+    }
+    for hidden in [
+        core_ids::PAINTER_BRUSH_STABILIZE,
+        core_ids::PAINTER_BRUSH_RATE,
+        core_ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+    ] {
+        assert!(
+            !ids.contains(&hidden),
+            "Polygon painted a hit rect for {hidden:?} — not a Polygon control (shape, no freehand \
+             to stabilize). painted = {ids:?}"
+        );
+    }
+}
+
 /// Drag Dot: the most-restricted method (no jitter, no spacing, no stabilizer — the dot sits
 /// raw under the cursor) — only Method + Input Samples survive. UI-honesty for "Drag Dot wrong".
 #[test]

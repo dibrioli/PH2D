@@ -278,6 +278,7 @@ fn stroke_method_name(m: u8) -> &'static str {
         StrokeMethod::Line => "Line",
         StrokeMethod::Curve => "Curve",
         StrokeMethod::Circle => "Circle",
+        StrokeMethod::Polygon => "Polygon",
     }
 }
 
@@ -290,9 +291,9 @@ fn jitter_unit_name(u: u8) -> &'static str {
 }
 
 /// The stroke methods as dropdown options, in Blender's menu order (Dots, Drag Dot, Space, Airbrush,
-/// Anchored, Line, Curve), then the PH2D Circle shape extension last.
+/// Anchored, Line, Curve), then the PH2D Circle + Polygon shape extensions last.
 fn stroke_method_options() -> Vec<DropdownOption<u8>> {
-    [0u8, 4, 3, 1, 2, 5, 6, 7]
+    [0u8, 4, 3, 1, 2, 5, 6, 7, 8]
         .into_iter()
         .map(|m| {
             DropdownOption::new(

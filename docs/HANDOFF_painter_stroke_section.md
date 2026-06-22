@@ -296,10 +296,29 @@ Arquivos-chave:
 - **Two-strikes:** já houve 1 reescrita da suavização (quadrática). Se precisar de uma 2ª, MEÇA a
   densidade de amostra e prove a causa antes de uma 3ª.
 
-### 2.4 — Stroke methods interativos ✅ TODOS RESOLVIDOS (+ Circle, extensão PH2D)
+### 2.4 — Stroke methods interativos ✅ TODOS RESOLVIDOS (+ Circle/Polygon, extensões PH2D)
 > **NOTA:** "airbrush on_tick" **caiu** (§2.1). **Anchored** **caiu** (✅ abaixo). **Line** **caiu**
 > (✅ abaixo). **Curve** **caiu** (✅ RESOLVIDO abaixo). Os 7 métodos do Blender estão completos
-> (Dots, Airbrush, Anchored, Space, Drag Dot, Line, Curve) + **Circle** (8º, extensão PH2D).
+> (Dots, Airbrush, Anchored, Space, Drag Dot, Line, Curve) + **Circle** (8º) + **Polygon** (9º),
+> extensões PH2D.
+>
+> **Polygon ✅ RESOLVIDO (2026-06-22):** segue EXATAMENTE o padrão do Circle (mesma máquina de
+> shape: draw centre-out → editar handles → Enter/Esc; verbos `commit/cancel/discard_open_shape`
+> cobrem os 3 shapes; preview restore+re-stamp; geometria **sem transcendentais**). `StrokeMethod::
+> Polygon` = wire 8. Polígono regular **inscrito na elipse** (rx, ry, orientação `u`) com **N lados
+> 3..12**. **7 handles** (vs 6 do Circle): 4 de eixo + rotação + **lados** (índice 5: arrasta ao longo
+> de `+u`; a posição codifica a contagem — `rx + 3·tol + (sides-3)·1.5·tol`; inverter a projeção dá o
+> N, clamp 3..12) + centro. Vértices via **rotação incremental** por `(cos,sin)` de `2π/N`
+> pré-computados como const `POLY_STEP[3..=12]` (só mul/add em runtime; drift sub-`1e-6`,
+> determinístico) — 1º vértice no topo (`+y`). Engine: `polygon_perimeter` + `fill_polygon_preview`
+> em `stroke/polygon.rs`. Tool: `tool/paint/polygon.rs` (`PolygonEditor`, handle de lados,
+> `polygon_overlay()` expõe `sides`). Shell: overlay (contorno fechado + 7 handles, lados em ciano +
+> conectores centro→rotação/lados) em `painter_bridge`. Painel: dropdown + name "Polygon" + decode
+> `0..9`. Testes: engine `polygon_perimeter_has_n_vertices`/`polygon_side_count_clamps`/`polygon_fills_*`;
+> tool `polygon_draw_*`/`polygon_sides_handle_*`/`polygon_axis_*`/`polygon_rotate_*`/`polygon_centre_*`/
+> `polygon_commit_cancel_and_undo`; painel `polygon_shows_*` + decode round-trip 9 métodos. **Falta
+> smoke do Enio (GUI):** desenha; 4 handles redimensionam; rotação gira; **handle de lados** muda 3↔12;
+> centro move; Enter aplica; Esc descarta.
 >
 > **Circle ✅ RESOLVIDO (2026-06-22):** editor de elipse on-canvas (não existe no Blender — extensão
 > PH2D, `StrokeMethod::Circle` = wire 7). Fluxo: (1) **desenha** do centro pra fora (press = centro,

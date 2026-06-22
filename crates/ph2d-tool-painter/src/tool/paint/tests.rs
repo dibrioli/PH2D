@@ -1209,3 +1209,191 @@ fn circle_discarded_when_switching_method_away() {
         "the preview was reverted"
     );
 }
+
+/// A `PainterTool` set to the Polygon method on a 128² white canvas, with a known grab tolerance.
+fn polygon_tool() -> PainterTool {
+    let mut t = white_canvas(128, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Polygon;
+    t.set_shape_grab_tol_px(6.0);
+    t
+}
+
+/// Draw a polygon centre (cx,cy) radius r (centre-out drag) and leave it in edit mode.
+fn draw_polygon(t: &mut PainterTool, cx: f32, cy: f32, r: f32) {
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Down));
+    t.on_canvas_pointer(cp([cx + r, cy], PointerPhase::Move));
+    t.on_canvas_pointer(cp([cx + r, cy], PointerPhase::Up));
+}
+
+#[test]
+fn polygon_draw_creates_an_editable_outline() {
+    let mut t = polygon_tool();
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    assert!(t.polygon_overlay().is_none(), "no handles while drawing");
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Up));
+
+    let ov = t.polygon_overlay().expect("editing after release");
+    assert!(ov.perimeter.len() >= 3, "at least a triangle");
+    assert_eq!(ov.sides, 5, "default pentagon");
+    assert_eq!(ov.handles[6], [64.0, 64.0], "centre handle");
+    // The first vertex (top) of a pentagon at (64, 64+20) is painted (the OUTLINE), centre empty.
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [0, 0, 0, 255],
+        "top vertex of the outline painted"
+    );
+    assert_eq!(
+        px(&t, 128, 64, 64),
+        [255, 255, 255, 255],
+        "centre empty (outline only)"
+    );
+}
+
+#[test]
+fn polygon_sides_handle_changes_the_side_count() {
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    // sides handle (index 5) for 5 sides sits at x = 64 + 20 + 3*6 + (5-3)*1.5*6 = 64 + 56 = 120.
+    let sh = t.polygon_overlay().unwrap().handles[5];
+    assert!(
+        (sh[0] - 120.0).abs() < 0.5 && (sh[1] - 64.0).abs() < 0.5,
+        "sides handle: {sh:?}"
+    );
+
+    // Drag it further out → more sides.
+    t.on_canvas_pointer(cp([sh[0], sh[1]], PointerPhase::Down));
+    t.on_canvas_pointer(cp([140.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([140.0, 64.0], PointerPhase::Up));
+    assert!(
+        t.polygon_overlay().unwrap().sides > 5,
+        "dragging out adds sides"
+    );
+
+    // Drag it well in → clamps to the 3-side minimum.
+    let sh2 = t.polygon_overlay().unwrap().handles[5];
+    t.on_canvas_pointer(cp([sh2[0], sh2[1]], PointerPhase::Down));
+    t.on_canvas_pointer(cp([66.0, 64.0], PointerPhase::Move)); // proj ≈ 2 → below the 3-side base
+    t.on_canvas_pointer(cp([66.0, 64.0], PointerPhase::Up));
+    assert_eq!(
+        t.polygon_overlay().unwrap().sides,
+        3,
+        "clamps to the minimum"
+    );
+}
+
+#[test]
+fn polygon_axis_handle_resizes_one_axis() {
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    // Right axis handle at (84,64); drag out to rx = 30.
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
+    let ov = t.polygon_overlay().unwrap();
+    assert!(
+        (ov.handles[0][0] - 94.0).abs() < 0.5,
+        "rx grew: {:?}",
+        ov.handles[0]
+    );
+    assert!(
+        (ov.handles[1][1] - 84.0).abs() < 0.5,
+        "ry unchanged: {:?}",
+        ov.handles[1]
+    );
+}
+
+#[test]
+fn polygon_rotate_handle_spins() {
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    let rot = t.polygon_overlay().unwrap().handles[4]; // (64, 64+20+18) = (64,102)
+    t.on_canvas_pointer(cp([rot[0], rot[1]], PointerPhase::Down));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move)); // drag rotate to the right of centre
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
+    let ov = t.polygon_overlay().unwrap();
+    // u becomes (0,-1) → right handle = centre + (0,-1)*rx = (64, 44).
+    assert!(
+        (ov.handles[0][0] - 64.0).abs() < 1.0 && (ov.handles[0][1] - 44.0).abs() < 1.0,
+        "rotated 90°: {:?}",
+        ov.handles[0]
+    );
+}
+
+#[test]
+fn polygon_centre_handle_moves() {
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down)); // centre (axis handles 20px away)
+    t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Up));
+    assert_eq!(
+        t.polygon_overlay().unwrap().handles[6],
+        [70.0, 72.0],
+        "centre moved"
+    );
+}
+
+#[test]
+fn polygon_commit_cancel_and_undo() {
+    // Commit keeps the outline + is one undo step.
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    assert_eq!(px(&t, 128, 64, 84), [0, 0, 0, 255], "outline painted");
+    assert!(t.polygon_commit());
+    assert!(t.polygon_overlay().is_none());
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [0, 0, 0, 255],
+        "committed outline survives"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [255, 255, 255, 255],
+        "one undo removes it"
+    );
+
+    // Cancel reverts.
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.cancel_open_shape());
+    assert_eq!(px(&t, 128, 64, 84), [255, 255, 255, 255], "cancel reverted");
+
+    // Undo while authoring commits first.
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.undo_last());
+    assert!(
+        t.polygon_overlay().is_none(),
+        "first undo applied the polygon"
+    );
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [0, 0, 0, 255],
+        "outline survives the commit"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [255, 255, 255, 255],
+        "second undo removes it"
+    );
+}
+
+#[test]
+fn polygon_discarded_when_switching_method_away() {
+    let mut t = polygon_tool();
+    draw_polygon(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.polygon_overlay().is_some());
+    t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
+    assert!(
+        t.polygon_overlay().is_none(),
+        "leaving Polygon discarded it"
+    );
+    assert_eq!(
+        px(&t, 128, 64, 84),
+        [255, 255, 255, 255],
+        "the preview was reverted"
+    );
+}

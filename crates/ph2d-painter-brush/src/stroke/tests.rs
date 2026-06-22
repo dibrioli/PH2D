@@ -909,6 +909,101 @@ fn circle_degenerate_axis_fills_nothing() {
 }
 
 #[test]
+fn polygon_perimeter_has_n_vertices_on_the_ellipse() {
+    // A regular polygon inscribed in a circle (rx == ry): exactly `n` vertices, each at radius R.
+    let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
+    for n in 3u32..=12 {
+        let mut out = Vec::new();
+        polygon_perimeter([cx, cy], [1.0, 0.0], r, r, n, &mut out);
+        assert_eq!(out.len(), n as usize, "{n}-gon has {n} vertices");
+        for p in &out {
+            let d = ((p[0] - cx).powi(2) + (p[1] - cy).powi(2)).sqrt();
+            assert!(
+                (d - r).abs() < 0.02,
+                "{n}-gon vertex off the circle: {d} vs {r}"
+            );
+        }
+    }
+    // First vertex sits at the top (+y): center + (0, r).
+    let mut tri = Vec::new();
+    polygon_perimeter([cx, cy], [1.0, 0.0], r, r, 3, &mut tri);
+    assert!(
+        (tri[0][0] - cx).abs() < 0.01 && (tri[0][1] - (cy + r)).abs() < 0.01,
+        "first vertex at the top: {:?}",
+        tri[0]
+    );
+}
+
+#[test]
+fn polygon_side_count_clamps() {
+    let mut out = Vec::new();
+    polygon_perimeter([0.0, 0.0], [1.0, 0.0], 20.0, 20.0, 2, &mut out); // below min
+    assert_eq!(out.len(), 3, "clamps up to 3 sides");
+    polygon_perimeter([0.0, 0.0], [1.0, 0.0], 20.0, 20.0, 99, &mut out); // above max
+    assert_eq!(out.len(), 12, "clamps down to 12 sides");
+}
+
+#[test]
+fn polygon_fills_spaced_dabs_around_the_perimeter() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Polygon,
+        ..straight_spec(6.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
+    s.fill_polygon_preview([cx, cy], [1.0, 0.0], r, r, 5, &mut out);
+    assert!(
+        out.len() >= 12,
+        "filled the pentagon with spaced dabs, got {}",
+        out.len()
+    );
+    // Every dab lies inside the bounding circle (within a dab radius of the rim).
+    for d in &out {
+        let dist = ((d.center[0] - cx).powi(2) + (d.center[1] - cy).powi(2)).sqrt();
+        assert!(dist <= r + 8.0, "dab outside the polygon: {dist} vs {r}");
+    }
+    // The first vertex (top) is covered, and so is the bottom region (closed loop).
+    assert!(
+        out.iter().any(|d| d.center[1] > cy + r * 0.8),
+        "covers the top vertex"
+    );
+    assert!(
+        out.iter().any(|d| d.center[1] < cy - r * 0.3),
+        "covers the bottom edge"
+    );
+}
+
+#[test]
+fn polygon_preview_is_deterministic_per_fill() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Polygon,
+        jitter: 0.5,
+        ..straight_spec(6.0, 0.5)
+    };
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    Stroke::new(spec, no_dynamics(), 5).fill_polygon_preview(
+        [50.0, 50.0],
+        [1.0, 0.0],
+        30.0,
+        18.0,
+        7,
+        &mut a,
+    );
+    Stroke::new(spec, no_dynamics(), 5).fill_polygon_preview(
+        [50.0, 50.0],
+        [1.0, 0.0],
+        30.0,
+        18.0,
+        7,
+        &mut b,
+    );
+    assert!(!a.is_empty());
+    assert_eq!(a, b, "same params + seed ⇒ identical dabs");
+}
+
+#[test]
 fn curve_fill_needs_two_points() {
     let spec = BrushSpec {
         stroke_method: StrokeMethod::Curve,

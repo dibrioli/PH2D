@@ -27,6 +27,9 @@ pub use curve::CurveOverlay;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;
 pub use circle::CircleOverlay;
+/// The Polygon stroke method's on-canvas regular-N-gon editor (same submodule rationale).
+mod polygon;
+pub use polygon::PolygonOverlay;
 
 /// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
@@ -177,6 +180,9 @@ pub(crate) struct PaintState {
     /// In-progress Circle session (the on-canvas ellipse editor); `None` when none is being authored.
     /// See [`crate::tool::paint::circle`].
     circle: Option<circle::CircleEditor>,
+    /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when none is open.
+    /// See [`crate::tool::paint::polygon`].
+    polygon: Option<polygon::PolygonEditor>,
     /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
     /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
     shape_grab_tol_px: f32,
@@ -204,6 +210,7 @@ impl Default for PaintState {
             line_constrain: false,
             curve: None,
             circle: None,
+            polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
         }
     }
@@ -342,16 +349,16 @@ impl PainterTool {
         self.paint.shape_grab_tol_px = px.max(1.0);
     }
 
-    /// Commit whichever on-canvas shape editor (Curve or Circle) is open — the verb behind Enter and
-    /// the first undo. Returns `true` when one was committed. At most one is ever open at a time.
+    /// Commit whichever on-canvas shape editor (Curve / Circle / Polygon) is open — the verb behind
+    /// Enter and the first undo. Returns `true` when one was committed. At most one is ever open.
     pub fn commit_open_shape(&mut self) -> bool {
-        self.curve_commit() || self.circle_commit()
+        self.curve_commit() || self.circle_commit() || self.polygon_commit()
     }
 
     /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving
     /// the shape's method. Returns `true` when one was cancelled.
     pub fn cancel_open_shape(&mut self) -> bool {
-        self.curve_cancel() || self.circle_cancel()
+        self.curve_cancel() || self.circle_cancel() || self.polygon_cancel()
     }
 
     /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced
@@ -359,6 +366,7 @@ impl PainterTool {
     pub(crate) fn discard_open_shape(&mut self) {
         self.curve_discard();
         self.circle_discard();
+        self.polygon_discard();
     }
 
     /// Stamp a batch of dabs into `canvas_rgba`, accumulate the dirty rect, and flag
@@ -569,6 +577,7 @@ impl CanvasPaintTool for PainterTool {
         match self.paint.brush.stroke_method {
             StrokeMethod::Curve => return self.curve_pointer(ev),
             StrokeMethod::Circle => return self.circle_pointer(ev),
+            StrokeMethod::Polygon => return self.polygon_pointer(ev),
             _ => {}
         }
         match ev.phase {

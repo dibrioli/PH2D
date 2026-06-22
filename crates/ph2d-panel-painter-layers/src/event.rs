@@ -564,9 +564,10 @@ fn decode_brush_falloff_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
 }
 
-/// Decode a Stroke-Method popover option id → its [`StrokeMethod`] wire `u8` (the 7 methods).
+/// Decode a Stroke-Method popover option id → its [`StrokeMethod`] wire `u8` (the 8 methods: the 7
+/// Blender ones `0..=6` + the PH2D `Circle` extension `7`).
 fn decode_stroke_method_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..7).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
+    (0..8).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
 }
 
 /// Decode a Jitter-Unit popover option id → its wire `u8` (`0` = Brush, `1` = View).
@@ -594,3 +595,6 @@ fn decode_blend_option(stack: &LayerStack, id: ph2d_a11y::NodeId) -> Option<(Lay
     }
     None
 }
+
+#[cfg(test)]
+mod tests;

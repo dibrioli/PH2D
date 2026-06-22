@@ -208,12 +208,13 @@ Repita EXATAMENTE o pipeline que os Stroke Methods usam. Mapa dos arquivos canô
 
 ## 7 — Faseamento sugerido (refine no plano)
 
-> **STATUS (2026-06-22):** **P0–P3 FEITOS** (commits locais `f7f40df1` engine, `a0862665`
-> tool+panel+ids, `2936075f` Stencil; sem push). Plano aprovado pelo Enio em
-> [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **A seção Texture está
-> COMPLETA na view Brush** — Kind picker + New + Mapping (**View/Tiled/Random/Stencil**) + Angle +
-> Rake + Random + Offset X/Y + Size X/Y, gated; modula o dab ao vivo; Stencil com overlay read-only.
-> **Restam só 2 follow-ups opcionais (§7.2):** gesto drag-to-position do Stencil + imagem importada.
+> **STATUS (2026-06-22):** **TUDO FEITO — P0–P3 + os 2 follow-ups** (commits locais `f7f40df1`,
+> `a0862665`, `2936075f`, `8428006c` Stencil-gesture, `d49d13f2` imagem; sem push). Plano aprovado
+> pelo Enio em [`docs/Painter/PLAN_texture_section.md`](Painter/PLAN_texture_section.md). **A seção
+> Texture está COMPLETA** — Kind picker (None/Noise/Checker/Voronoi/Stripes/**Image**) + New +
+> Mapping (**View/Tiled/Random/Stencil**) + Angle + Rake + Random + Offset X/Y + Size X/Y, gated;
+> modula o dab ao vivo. **Stencil** com overlay + handles (arrastar canto=resize, centro=move).
+> **Imagem importada** via file-picker (luminância → máscara). Nada pendente além de smoke do Enio.
 
 - **P0 — PLANO** ✅ — decisões §5 fechadas no padrão-ouro + faseamento + arquivos/testes →
   aprovado.
@@ -270,7 +271,15 @@ A capacidade existe e é testada; o P2 só **liga**. Pontos exatos:
   p/ sibling antes de add campos; `panel/event.rs` 600/600 → decoders em `event/texture.rs`. Ver
   plano §6.
 
-## 7.2 — Follow-ups opcionais (Stencil drag-gesture + imagem importada)
+## 7.2 — Follow-ups (FEITOS: Stencil drag-gesture `8428006c` + imagem importada `d49d13f2`)
+
+> **(A) e (B) abaixo foram implementados.** (A) Stencil drag: `paint/stencil.rs` (canto=resize,
+> centro=move; handles desambiguam → sem modificador; Angle pelo slider, sem `atan2`); shell desenha
+> os handles. (B) Imagem: `TextureKind::Image` + `ImageMask` (bilinear center-coord) + storage no
+> `PaintState` + request-flag que o shell pollla → rfd + decode (`AssetDb`) + luminância Rec.601.
+> **O texto histórico abaixo era o plano dos follow-ups** (mantido p/ referência + os refinamentos
+> ainda em aberto: stencil fixo-à-tela; máscara alpha-aware em vez de só luminância).
+
 
 **Decisão de arquitetura do Stencil (feita no P3):** Stencil é **espaço de IMAGEM**, não de tela. O
 engine `ph2d-painter-brush` é puro (sem UI/tela/GPU); threadear o transform de viewport nele

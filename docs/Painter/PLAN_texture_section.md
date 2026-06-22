@@ -1,10 +1,11 @@
 # PLANO — Seção **Texture** do pincel (Blender-parity, adaptado a 2D)
 
-> **Status:** **P1 + P2 + P3 FEITOS** (commits locais `f7f40df1` engine, `a0862665` tool+panel+ids,
-> `2936075f` Stencil; sem push). Plano **aprovado pelo Enio** (2026-06-22). **Seção Texture COMPLETA**
-> (View/Tiled/Random/**Stencil**). Stencil = adaptação **espaço-de-imagem** (engine puro). Restam só 2
-> follow-ups opcionais (gesto drag do Stencil + imagem importada) —
-> [`HANDOFF_painter_texture_section.md`](../HANDOFF_painter_texture_section.md) §7.2.
+> **Status:** **TUDO FEITO** — P1+P2+P3 + os 2 follow-ups (commits locais `f7f40df1`, `a0862665`,
+> `2936075f`, `8428006c` Stencil-gesture, `d49d13f2` imagem; sem push). Plano **aprovado pelo Enio**
+> (2026-06-22). **Seção Texture COMPLETA:** kinds None/Noise/Checker/Voronoi/Stripes/**Image**;
+> mappings View/Tiled/Random/**Stencil** (com overlay + handles de drag); imagem importada via
+> file-picker. Stencil = adaptação **espaço-de-imagem** (engine puro). Refinamentos abertos (não
+> pedidos): stencil fixo-à-tela, máscara alpha-aware — [`HANDOFF`](../HANDOFF_painter_texture_section.md) §7.2.
 >
 > Todo file:line aqui foi **verificado no código real** (não é spec aspiracional) — os caminhos de
 > costura batem com Stroke Methods, que é o template canônico.

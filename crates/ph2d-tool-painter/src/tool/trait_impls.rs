@@ -30,9 +30,9 @@ impl Tool for PainterTool {
 
     fn on_deactivate(&mut self) {
         self.params.takeover_active = false;
-        // Drop any in-progress Curve session before the canvas is torn down (no restore — the
-        // working buffer is cleared next).
-        self.curve_discard();
+        // Drop any in-progress shape session (Curve/Circle) before the canvas is torn down (no
+        // restore — the working buffer is cleared next).
+        self.discard_open_shape();
         // Full teardown: clears canvas_rgba + source_size + commit flag + dock mode.
         <Self as RasterEditTool>::deactivate(self);
     }
@@ -412,9 +412,9 @@ impl RasterEditTool for PainterTool {
             (width as usize) * (height as usize) * 4,
             "set_source rgba length must equal width*height*4"
         );
-        // A new working canvas invalidates any open Curve session (its restore record points at the
+        // A new working canvas invalidates any open shape session (its restore record points at the
         // OLD buffer). Drop it without restoring.
-        self.curve_discard();
+        self.discard_open_shape();
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;

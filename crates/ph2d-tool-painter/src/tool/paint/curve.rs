@@ -23,10 +23,6 @@ use ph2d_painter_brush::{Stroke, flatten_catmull_rom};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
-/// Default control-point grab radius in image px, until the shell forwards a screen-scaled value
-/// via [`PainterTool::set_curve_grab_tol_px`].
-pub(super) const DEFAULT_CURVE_GRAB_TOL_PX: f32 = 8.0;
-
 /// In-progress Curve session: the editable control polygon (image-space px) + the current
 /// selection / grab + the draw-vs-edit phase. Held in [`PaintState::curve`]; `None` when idle.
 pub(super) struct CurveEditor {
@@ -73,7 +69,7 @@ impl PainterTool {
     /// Pointer-down: start a session (begin drawing the line) when idle; otherwise grab the control
     /// point under the cursor, or — on a miss — insert a new point there and grab it.
     fn curve_down(&mut self, pos: [f32; 2]) -> bool {
-        let tol = self.paint.curve_grab_tol_px;
+        let tol = self.paint.shape_grab_tol_px;
         let Some(ed) = self.paint.curve.as_mut() else {
             // No session → snapshot for undo + begin drawing the initial straight line.
             let before = self.snapshot_model();
@@ -215,12 +211,6 @@ impl PainterTool {
         self.paint.curve = None;
         self.paint.drag_preview = None;
         self.paint.stroke_undo = None;
-    }
-
-    /// Set the control-point grab radius in image px (the shell forwards a screen-constant value
-    /// scaled by the sprite footprint, so the hit target stays the same size at any zoom).
-    pub fn set_curve_grab_tol_px(&mut self, px: f32) {
-        self.paint.curve_grab_tol_px = px.max(1.0);
     }
 
     /// Snapshot the Curve editor for the shell overlay — `None` until editing (the chrome appears

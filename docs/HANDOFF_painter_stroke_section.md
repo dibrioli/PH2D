@@ -296,10 +296,32 @@ Arquivos-chave:
 - **Two-strikes:** já houve 1 reescrita da suavização (quadrática). Se precisar de uma 2ª, MEÇA a
   densidade de amostra e prove a causa antes de uma 3ª.
 
-### 2.4 — Stroke methods interativos ✅ TODOS RESOLVIDOS
+### 2.4 — Stroke methods interativos ✅ TODOS RESOLVIDOS (+ Circle, extensão PH2D)
 > **NOTA:** "airbrush on_tick" **caiu** (§2.1). **Anchored** **caiu** (✅ abaixo). **Line** **caiu**
-> (✅ abaixo). **Curve** **caiu** (✅ RESOLVIDO abaixo). Stroke Method está **completo** (Dots,
-> Airbrush, Anchored, Space, Drag Dot, Line, Curve).
+> (✅ abaixo). **Curve** **caiu** (✅ RESOLVIDO abaixo). Os 7 métodos do Blender estão completos
+> (Dots, Airbrush, Anchored, Space, Drag Dot, Line, Curve) + **Circle** (8º, extensão PH2D).
+>
+> **Circle ✅ RESOLVIDO (2026-06-22):** editor de elipse on-canvas (não existe no Blender — extensão
+> PH2D, `StrokeMethod::Circle` = wire 7). Fluxo: (1) **desenha** do centro pra fora (press = centro,
+> drag = raio → círculo); ao soltar aparecem os handles. (2) **edita**: **4 handles de eixo**
+> (dir/cima/esq/baixo, simétricos ao centro → vira elipse), **1 handle de rotação** (sai do topo),
+> **centro** arrastável; contorno pintado ao vivo (restore+re-stamp). (3) **Enter** aplica (1 undo);
+> **Esc** descarta. **Sem transcendentais (HR-5):** perímetro = 4 cardinais + subdivisão
+> `normalize`-midpoint (só `sqrt`, IEEE-determinístico), orientação = vetor unitário `u` (nunca
+> ângulo) → `sin`/`cos` ZERO. Engine: `ellipse_perimeter` (free fn compartilhada) + `fill_ellipse_
+> preview` (fill espaçado contínuo do perímetro fechado), em `stroke/ellipse.rs`. Tool: `tool/paint/
+> circle.rs` (`CircleEditor`, hit-test por handle, `circle_overlay()`). Verbos de forma unificados:
+> `commit_open_shape`/`cancel_open_shape`/`discard_open_shape` (cobrem Curve **e** Circle) — undo
+> (1º undo aplica a forma), Enter/Esc, troca de método, deactivate, source novo. Shell: overlay
+> (contorno + 6 handles, grabbed destacado) em `painter_bridge`; mesmo footprint + grab-tol que o
+> Curve. Painel idêntico a Line/Curve (sem Stabilize). Testes: engine `ellipse_perimeter_*`/
+> `circle_fills_*`/`circle_preview_is_deterministic_*`; tool `circle_draw_*`/`circle_axis_*`/
+> `circle_rotate_*`/`circle_centre_*`/`circle_commit_*`/`circle_cancel_*`/`circle_undo_*`/
+> `circle_discarded_*`; painel `circle_shows_*`. **NOTA de split:** `paint_stroke.rs` (painel) passou
+> de 600 LOC com o teste → testes movidos p/ `paint_stroke/tests.rs` (o gate per-file do painel conta
+> o `mod tests` inline; o sibling fica sob o cap). **Follow-ups (V2):** snap de rotação (Shift = 15°),
+> manter aspecto (Shift no eixo); círculo perfeito vs elipse já coberto. **Falta smoke do Enio (GUI):**
+> desenha do centro; 4 handles redimensionam; rotação gira; centro move; Enter aplica; Esc descarta.
 >
 > **Curve ✅ RESOLVIDO (2026-06-22):** editor de pontos on-canvas **simplificado** — diverge do
 > workflow de objeto-Curva do Blender (decisão do Enio: "vamos simplificar"). Fluxo: (1) **traça** uma

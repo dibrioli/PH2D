@@ -84,13 +84,13 @@ impl App {
         {
             return;
         }
-        // Painter Curve: Escape discards the in-progress curve (reverts the preview); Enter commits
-        // it (bakes the painted stroke). Consumed only when a Curve session is open (the helpers gate
-        // on it), so both keys fall through to widget-blur / text fields otherwise.
+        // Painter shapes (Curve/Circle): Escape discards the in-progress shape (reverts the preview);
+        // Enter commits it (bakes the painted stroke). Consumed only when a shape session is open (the
+        // helpers gate on it), so both keys fall through to widget-blur / text fields otherwise.
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.painter_curve_cancel()
+            && self.painter_shape_cancel()
         {
             return;
         }
@@ -100,7 +100,7 @@ impl App {
                 physical_key,
                 PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter)
             )
-            && self.painter_curve_commit()
+            && self.painter_shape_commit()
         {
             return;
         }

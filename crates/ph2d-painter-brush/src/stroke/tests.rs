@@ -782,6 +782,133 @@ fn curve_preview_is_deterministic_per_fill() {
 }
 
 #[test]
+fn ellipse_perimeter_is_round_for_a_circle() {
+    // rx == ry → every perimeter point sits at distance ~R from the centre (a circle), with no
+    // transcendentals. Check the chord deviation is sub-pixel.
+    let mut out = Vec::new();
+    let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
+    ellipse_perimeter([cx, cy], [1.0, 0.0], r, r, &mut out);
+    assert!(
+        out.len() >= 32,
+        "subdivided into a dense polyline, got {}",
+        out.len()
+    );
+    for p in &out {
+        let d = ((p[0] - cx).powi(2) + (p[1] - cy).powi(2)).sqrt();
+        assert!((d - r).abs() < 0.2, "point off the circle: dist {d} vs {r}");
+    }
+    // Spans the full circle (has points on both sides of the centre, both axes).
+    assert!(out.iter().any(|p| p[0] > cx + r * 0.9));
+    assert!(out.iter().any(|p| p[0] < cx - r * 0.9));
+    assert!(out.iter().any(|p| p[1] > cy + r * 0.9));
+    assert!(out.iter().any(|p| p[1] < cy - r * 0.9));
+}
+
+#[test]
+fn ellipse_perimeter_respects_axes_and_orientation() {
+    // An axis-aligned ellipse rx=60, ry=20: extents are ±60 in x, ±20 in y.
+    let mut out = Vec::new();
+    ellipse_perimeter([0.0, 0.0], [1.0, 0.0], 60.0, 20.0, &mut out);
+    let max_x = out.iter().fold(0.0_f32, |m, p| m.max(p[0].abs()));
+    let max_y = out.iter().fold(0.0_f32, |m, p| m.max(p[1].abs()));
+    assert!((max_x - 60.0).abs() < 0.5, "x extent ~rx: {max_x}");
+    assert!((max_y - 20.0).abs() < 0.5, "y extent ~ry: {max_y}");
+    // Rotate the SAME ellipse 90° (u = +y) → the long axis is now vertical.
+    let mut rot = Vec::new();
+    ellipse_perimeter([0.0, 0.0], [0.0, 1.0], 60.0, 20.0, &mut rot);
+    let rmax_x = rot.iter().fold(0.0_f32, |m, p| m.max(p[0].abs()));
+    let rmax_y = rot.iter().fold(0.0_f32, |m, p| m.max(p[1].abs()));
+    assert!(
+        (rmax_x - 20.0).abs() < 0.5,
+        "rotated: x extent ~ry: {rmax_x}"
+    );
+    assert!(
+        (rmax_y - 60.0).abs() < 0.5,
+        "rotated: y extent ~rx: {rmax_y}"
+    );
+}
+
+#[test]
+fn circle_fills_spaced_dabs_around_the_perimeter() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Circle,
+        ..straight_spec(6.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
+    s.fill_ellipse_preview([cx, cy], [1.0, 0.0], r, r, &mut out);
+    assert!(
+        out.len() >= 16,
+        "filled the perimeter with spaced dabs, got {}",
+        out.len()
+    );
+    // Every dab sits on the ring (radius ~r, within a dab radius of tolerance).
+    for d in &out {
+        let dist = ((d.center[0] - cx).powi(2) + (d.center[1] - cy).powi(2)).sqrt();
+        assert!(
+            (dist - r).abs() < 8.0,
+            "dab off the ring: dist {dist} vs {r}"
+        );
+    }
+    // The loop is closed: a dab near the top AND near the bottom of the ring.
+    assert!(
+        out.iter().any(|d| d.center[1] > cy + r * 0.8),
+        "covers the top"
+    );
+    assert!(
+        out.iter().any(|d| d.center[1] < cy - r * 0.8),
+        "covers the bottom"
+    );
+}
+
+#[test]
+fn circle_preview_is_deterministic_per_fill() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Circle,
+        jitter: 0.5,
+        ..straight_spec(6.0, 0.5)
+    };
+    let mut a = Vec::new();
+    let mut b = Vec::new();
+    Stroke::new(spec, no_dynamics(), 5).fill_ellipse_preview(
+        [50.0, 50.0],
+        [1.0, 0.0],
+        30.0,
+        18.0,
+        &mut a,
+    );
+    Stroke::new(spec, no_dynamics(), 5).fill_ellipse_preview(
+        [50.0, 50.0],
+        [1.0, 0.0],
+        30.0,
+        18.0,
+        &mut b,
+    );
+    assert!(!a.is_empty());
+    assert_eq!(a, b, "same params + seed ⇒ identical dabs");
+}
+
+#[test]
+fn circle_degenerate_axis_fills_nothing() {
+    let spec = BrushSpec {
+        stroke_method: StrokeMethod::Circle,
+        ..straight_spec(6.0, 0.5)
+    };
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = vec![Dab {
+        center: [9.0, 9.0],
+        radius_px: 1.0,
+        coverage: 1.0,
+    }];
+    s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
+    assert!(
+        out.is_empty(),
+        "a near-zero axis fills nothing (and clears the buffer)"
+    );
+}
+
+#[test]
 fn curve_fill_needs_two_points() {
     let spec = BrushSpec {
         stroke_method: StrokeMethod::Curve,

@@ -968,7 +968,7 @@ fn curve_discarded_when_switching_method_away() {
 fn curve_grab_tolerance_grabs_near_and_adds_far() {
     let mut t = white_canvas(64, 3.0);
     t.paint.brush.stroke_method = StrokeMethod::Curve;
-    t.set_curve_grab_tol_px(5.0);
+    t.set_shape_grab_tol_px(5.0);
 
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // points: 8 / 32 / 56 at y=32
@@ -1030,5 +1030,182 @@ fn curve_undo_commits_first_then_undoes() {
         px(&t, 64, 8, 32),
         [255, 255, 255, 255],
         "second undo removes the committed curve"
+    );
+}
+
+/// A `PainterTool` set to the Circle method on a 128² white canvas, with a known grab tolerance so
+/// the handle positions are predictable.
+fn circle_tool() -> PainterTool {
+    let mut t = white_canvas(128, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Circle;
+    t.set_shape_grab_tol_px(6.0); // gap = 6 * 3 = 18 px below the rotate handle
+    t
+}
+
+/// Draw a circle centre (cx,cy) radius r (centre-out drag) and leave it in edit mode.
+fn draw_circle(t: &mut PainterTool, cx: f32, cy: f32, r: f32) {
+    t.on_canvas_pointer(cp([cx, cy], PointerPhase::Down));
+    t.on_canvas_pointer(cp([cx + r, cy], PointerPhase::Move));
+    t.on_canvas_pointer(cp([cx + r, cy], PointerPhase::Up));
+}
+
+#[test]
+fn circle_draw_creates_an_editable_ellipse_outline() {
+    let mut t = circle_tool();
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    assert!(t.circle_overlay().is_none(), "no handles while drawing");
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Up));
+
+    let ov = t.circle_overlay().expect("editing after release");
+    assert!(ov.perimeter.len() >= 16, "perimeter is a dense polyline");
+    // right handle at (84,64), centre at (64,64).
+    assert!(
+        (ov.handles[0][0] - 84.0).abs() < 0.5 && (ov.handles[0][1] - 64.0).abs() < 0.5,
+        "right handle at the rim: {:?}",
+        ov.handles[0]
+    );
+    assert_eq!(ov.handles[5], [64.0, 64.0], "centre handle");
+    // The OUTLINE is painted (rim black), the centre is empty (it's a ring, not a disc).
+    assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "rim painted");
+    assert_eq!(
+        px(&t, 128, 64, 64),
+        [255, 255, 255, 255],
+        "centre empty (outline only)"
+    );
+}
+
+#[test]
+fn circle_axis_handle_resizes_one_axis_into_an_ellipse() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    // Grab the right handle (84,64) and drag it out to rx = 30.
+    t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
+    let ov = t.circle_overlay().unwrap();
+    assert!(
+        (ov.handles[0][0] - 94.0).abs() < 0.5,
+        "rx grew: {:?}",
+        ov.handles[0]
+    );
+    // The top handle is unchanged (ry stays 20) → it's now an ellipse, not a circle.
+    assert!(
+        (ov.handles[1][1] - 84.0).abs() < 0.5,
+        "ry unchanged: {:?}",
+        ov.handles[1]
+    );
+}
+
+#[test]
+fn circle_rotate_handle_spins_the_ellipse() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    let rot = t.circle_overlay().unwrap().handles[4];
+    // rotate handle sits gap (18) above the top (64, 64+20) → (64, 102).
+    assert!(
+        (rot[0] - 64.0).abs() < 0.5 && (rot[1] - 102.0).abs() < 0.5,
+        "rotate handle above the top: {rot:?}"
+    );
+    // Drag the rotate handle to the RIGHT of the centre → local up becomes +x, so the x-axis (right
+    // handle) rotates to point DOWN: right handle = centre + (0,-1)*rx = (64, 44).
+    t.on_canvas_pointer(cp([rot[0], rot[1]], PointerPhase::Down));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([94.0, 64.0], PointerPhase::Up));
+    let ov = t.circle_overlay().unwrap();
+    assert!(
+        (ov.handles[0][0] - 64.0).abs() < 1.0 && (ov.handles[0][1] - 44.0).abs() < 1.0,
+        "the ellipse rotated 90°: right handle now below centre: {:?}",
+        ov.handles[0]
+    );
+}
+
+#[test]
+fn circle_centre_handle_moves_the_ellipse() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    // Press at the centre (axis handles are 20 px away > tol 6, so the centre is grabbed).
+    t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([70.0, 72.0], PointerPhase::Up));
+    assert_eq!(
+        t.circle_overlay().unwrap().handles[5],
+        [70.0, 72.0],
+        "centre moved"
+    );
+}
+
+#[test]
+fn circle_commit_keeps_the_ring_and_is_one_undo_step() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.circle_commit());
+    assert!(t.circle_overlay().is_none(), "committed → no session");
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "committed ring survives"
+    );
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [255, 255, 255, 255],
+        "one undo removes the whole ring"
+    );
+}
+
+#[test]
+fn circle_cancel_reverts_all_pixels() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert_eq!(px(&t, 128, 84, 64), [0, 0, 0, 255], "ring painted");
+    assert!(t.cancel_open_shape(), "a shape was open");
+    assert!(t.circle_overlay().is_none());
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [255, 255, 255, 255],
+        "cancel reverted the ring"
+    );
+}
+
+#[test]
+fn circle_undo_commits_first_then_undoes() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.circle_overlay().is_some(), "handles visible");
+    // Undo #1 applies the circle (handles gone, ring survives).
+    assert!(t.undo_last());
+    assert!(
+        t.circle_overlay().is_none(),
+        "first undo applied the circle"
+    );
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [0, 0, 0, 255],
+        "ring survives the commit"
+    );
+    // Undo #2 removes the committed ring.
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [255, 255, 255, 255],
+        "second undo removes the ring"
+    );
+}
+
+#[test]
+fn circle_discarded_when_switching_method_away() {
+    let mut t = circle_tool();
+    draw_circle(&mut t, 64.0, 64.0, 20.0);
+    assert!(t.circle_overlay().is_some());
+    t.set_brush_stroke_method(StrokeMethod::Space.to_u8());
+    assert!(
+        t.circle_overlay().is_none(),
+        "leaving Circle discarded the session"
+    );
+    assert_eq!(
+        px(&t, 128, 84, 64),
+        [255, 255, 255, 255],
+        "the preview was reverted"
     );
 }

@@ -24,7 +24,13 @@ mod brush_settings;
 /// LOC-cap reasons as `brush_settings`).
 mod curve;
 pub use curve::CurveOverlay;
-use curve::DEFAULT_CURVE_GRAB_TOL_PX;
+/// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
+mod circle;
+pub use circle::CircleOverlay;
+
+/// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
+/// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
+const DEFAULT_SHAPE_GRAB_TOL_PX: f32 = 8.0;
 
 /// Smallest brush radius the size UI maps to, in image pixels. The size slider's
 /// `0..1` track and the `[` / `]` keyboard nudge both clamp here.
@@ -168,9 +174,12 @@ pub(crate) struct PaintState {
     /// In-progress Curve session (the on-canvas point editor); `None` when no curve is being
     /// authored. See [`crate::tool::paint::curve`].
     curve: Option<curve::CurveEditor>,
-    /// Control-point grab radius in image px for the Curve editor — the shell forwards a
-    /// screen-constant value scaled by the sprite footprint before each pointer event.
-    curve_grab_tol_px: f32,
+    /// In-progress Circle session (the on-canvas ellipse editor); `None` when none is being authored.
+    /// See [`crate::tool::paint::circle`].
+    circle: Option<circle::CircleEditor>,
+    /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
+    /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
+    shape_grab_tol_px: f32,
 }
 
 impl Default for PaintState {
@@ -194,7 +203,8 @@ impl Default for PaintState {
             line_anchor: None,
             line_constrain: false,
             curve: None,
-            curve_grab_tol_px: DEFAULT_CURVE_GRAB_TOL_PX,
+            circle: None,
+            shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
         }
     }
 }
@@ -323,6 +333,32 @@ impl PainterTool {
     /// `CanvasPointer` carries no modifiers. No effect on the other methods.
     pub fn set_line_constrain(&mut self, on: bool) {
         self.paint.line_constrain = on;
+    }
+
+    /// Set the shape editors' control-handle grab radius in image px (the shell forwards a
+    /// screen-constant value scaled by the sprite footprint, so the hit targets stay the same size at
+    /// any zoom). Shared by Curve and Circle.
+    pub fn set_shape_grab_tol_px(&mut self, px: f32) {
+        self.paint.shape_grab_tol_px = px.max(1.0);
+    }
+
+    /// Commit whichever on-canvas shape editor (Curve or Circle) is open — the verb behind Enter and
+    /// the first undo. Returns `true` when one was committed. At most one is ever open at a time.
+    pub fn commit_open_shape(&mut self) -> bool {
+        self.curve_commit() || self.circle_commit()
+    }
+
+    /// Cancel whichever shape editor is open (revert its preview) — the verb behind Esc and leaving
+    /// the shape's method. Returns `true` when one was cancelled.
+    pub fn cancel_open_shape(&mut self) -> bool {
+        self.curve_cancel() || self.circle_cancel()
+    }
+
+    /// Drop any open shape editor without touching pixels — for teardown where the canvas is replaced
+    /// or cleared (fresh source / deactivate / non-paintable layer).
+    pub(crate) fn discard_open_shape(&mut self) {
+        self.curve_discard();
+        self.circle_discard();
     }
 
     /// Stamp a batch of dabs into `canvas_rgba`, accumulate the dirty rect, and flag
@@ -522,15 +558,18 @@ impl CanvasPaintTool for PainterTool {
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:
             // finalize any half-open stroke (records its undo) before bailing. Drop any open
-            // Curve session too (its restore would read a stale buffer once the layer changed).
-            self.curve_discard();
+            // shape session too (its restore would read a stale buffer once the layer changed).
+            self.discard_open_shape();
             self.close_stroke();
             return false;
         }
-        // Curve is a persistent on-canvas point editor (draw → edit → commit), not a single
-        // press→release stroke — route every canvas event through it instead of the generic path.
-        if self.paint.brush.stroke_method == StrokeMethod::Curve {
-            return self.curve_pointer(ev);
+        // Curve and Circle are persistent on-canvas shape editors (draw → edit → commit), not a
+        // single press→release stroke — route every canvas event through them instead of the generic
+        // path.
+        match self.paint.brush.stroke_method {
+            StrokeMethod::Curve => return self.curve_pointer(ev),
+            StrokeMethod::Circle => return self.circle_pointer(ev),
+            _ => {}
         }
         match ev.phase {
             PointerPhase::Down => {

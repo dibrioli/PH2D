@@ -22,9 +22,10 @@ use ph2d_tool_painter::PainterTool;
 use crate::App;
 use crate::Transform;
 
-/// Curve control-point grab radius in SCREEN px — scaled to image px by the sprite footprint before
-/// it's forwarded to the tool, so the hit target stays a constant on-screen size at any zoom.
-const CURVE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
+/// Shape-editor (Curve/Circle) control-handle grab radius in SCREEN px — scaled to image px by the
+/// sprite footprint before it's forwarded to the tool, so the hit target stays a constant on-screen
+/// size at any zoom.
+const SHAPE_GRAB_TOL_SCREEN_PX: f32 = 10.0;
 
 thread_local! {
     /// `true` between a consumed painter Down and the matching Up — so CursorMoved
@@ -318,37 +319,38 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
-        // Curve method: forward the control-point grab radius in IMAGE px (screen tolerance ÷ the
-        // footprint's screen-per-image scale), so the hit target is a constant on-screen size at any
-        // zoom. Out-of-band, like `set_line_constrain` (the frozen `CanvasPointer` carries neither).
+        // Shape methods (Curve/Circle): forward the control-handle grab radius in IMAGE px (screen
+        // tolerance ÷ the footprint's screen-per-image scale), so the hit target is a constant
+        // on-screen size at any zoom. Out-of-band, like `set_line_constrain` (the frozen
+        // `CanvasPointer` carries neither).
         let scale = (hi_x - lo_x) / iw as f32;
         let grab_tol_img = if scale > 0.0 {
-            CURVE_GRAB_TOL_SCREEN_PX / scale
+            SHAPE_GRAB_TOL_SCREEN_PX / scale
         } else {
-            CURVE_GRAB_TOL_SCREEN_PX
+            SHAPE_GRAB_TOL_SCREEN_PX
         };
-        painter.set_curve_grab_tol_px(grab_tol_img);
+        painter.set_shape_grab_tol_px(grab_tol_img);
         painter.set_line_constrain(alt);
         painter.on_canvas_pointer(ev)
     }
 
-    /// Enter: commit the in-progress Curve (bake the painted stroke). Returns `true` (consuming the
-    /// key) iff a curve session was open, so Enter falls through to text fields / other handlers
-    /// otherwise. Mirror of the Falloff-delete shell helper (ADR-0040 §3 downcast).
-    pub(crate) fn painter_curve_commit(&mut self) -> bool {
+    /// Enter: commit the in-progress shape (Curve/Circle — bake the painted stroke). Returns `true`
+    /// (consuming the key) iff a shape session was open, so Enter falls through to text fields / other
+    /// handlers otherwise. Mirror of the Falloff-delete shell helper (ADR-0040 §3 downcast).
+    pub(crate) fn painter_shape_commit(&mut self) -> bool {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
-        painter.curve_commit()
+        painter.commit_open_shape()
     }
 
-    /// Esc: discard the in-progress Curve (revert the preview). Returns `true` (consuming) iff a
+    /// Esc: discard the in-progress shape (revert the preview). Returns `true` (consuming) iff a
     /// session was open.
-    pub(crate) fn painter_curve_cancel(&mut self) -> bool {
+    pub(crate) fn painter_shape_cancel(&mut self) -> bool {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
-        painter.curve_cancel()
+        painter.cancel_open_shape()
     }
 
     /// Delete/Backspace: remove the selected Curve control point. Returns `true` (consuming) iff a

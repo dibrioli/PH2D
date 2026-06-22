@@ -207,12 +207,11 @@ impl Stroke {
             StrokeMethod::Line => {
                 self.fill_line_preview(self.last_pos, avg.pos, out);
             }
-            // Curve: a point-editor (`docs/Painter/`) — the artist authors control points and the
-            // engine auto-smooths between them (Catmull-Rom), filling spaced dabs along the spline
-            // via [`Stroke::fill_curve_preview`]. The interaction (draw initial line → move/add/delete
-            // points → commit) lives in the tool/shell; a bare `extend` (no editor driving it) only
-            // tracks the anchor, so a stray sample paints nothing.
-            StrokeMethod::Curve => {
+            // Curve (point editor + Catmull-Rom fill, `Stroke::fill_curve_preview`) and Circle
+            // (editable ellipse + perimeter fill, `Stroke::fill_ellipse_preview`) are both
+            // tool/shell-driven shape editors (`docs/Painter/`): draw → adjust → commit. A bare
+            // `extend` (no editor driving it) only tracks the anchor, so a stray sample paints nothing.
+            StrokeMethod::Curve | StrokeMethod::Circle => {
                 self.advance_anchor(avg);
             }
         }
@@ -488,7 +487,10 @@ impl Stroke {
     /// (Space/Line/Curve), `1.0` for the per-event methods.
     fn method_overlap(&self) -> f32 {
         match self.spec.stroke_method {
-            StrokeMethod::Space | StrokeMethod::Line | StrokeMethod::Curve => self.overlap,
+            StrokeMethod::Space
+            | StrokeMethod::Line
+            | StrokeMethod::Curve
+            | StrokeMethod::Circle => self.overlap,
             _ => 1.0,
         }
     }
@@ -581,6 +583,9 @@ fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f
 /// workspace LOC cap).
 mod curve;
 pub use curve::flatten_catmull_rom;
+/// The Circle stroke method's perimeter generator + ellipse fill (same child-module rationale).
+mod ellipse;
+pub use ellipse::ellipse_perimeter;
 
 #[cfg(test)]
 mod tests;

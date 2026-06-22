@@ -44,11 +44,11 @@ impl PainterTool {
     /// Returns `true` if an edit was undone. Driven by the shell's undo gesture /
     /// shortcut.
     pub fn undo_last(&mut self) -> bool {
-        // A curve being authored (control points still visible) is an in-progress edit. The first
-        // undo COMMITS it (applies the curve, clears the points) instead of touching the layer
+        // A shape being authored (Curve/Circle — handles still visible) is an in-progress edit. The
+        // first undo COMMITS it (applies the shape, clears the handles) instead of touching the layer
         // history — otherwise the history undo would wipe the painted preview while leaving the
-        // points orphaned on screen. The NEXT undo then undoes the committed stroke normally.
-        if self.curve_commit() {
+        // handles orphaned on screen. The NEXT undo then undoes the committed stroke normally.
+        if self.commit_open_shape() {
             return true;
         }
         if let Some(model) = self.undo.undo() {
@@ -62,9 +62,9 @@ impl PainterTool {
     /// Redo the most recently undone structural layer edit. Returns `true` if an
     /// edit was redone.
     pub fn redo_last(&mut self) -> bool {
-        // Same in-progress guard as [`Self::undo_last`]: finalise an open curve before navigating
-        // history, so a stray redo can't strand the control points over a reverted canvas.
-        if self.curve_commit() {
+        // Same in-progress guard as [`Self::undo_last`]: finalise an open shape before navigating
+        // history, so a stray redo can't strand the handles over a reverted canvas.
+        if self.commit_open_shape() {
             return true;
         }
         if let Some(model) = self.undo.redo() {

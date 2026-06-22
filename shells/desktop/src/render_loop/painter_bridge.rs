@@ -399,6 +399,88 @@ pub(super) fn dispatch(
                 }
             }
         }
+
+        // ── Circle editor overlay (ellipse outline + 4 axis handles + rotate + centre) ──
+        // Same footprint mapping as the curve overlay; the handle indices match `CircleOverlay`:
+        // 0 right, 1 top, 2 left, 3 bottom, 4 rotate, 5 centre.
+        if let Some(bits) = hero.gizmo.selection
+            && let Some(overlay) = painter.circle_overlay()
+        {
+            let (iw, ih) = painter.canvas_size();
+            let entity = ph2d_ecs::Entity::from_bits(bits);
+            if iw > 0
+                && ih > 0
+                && let (Some(tr), Some(sprite)) = (
+                    sim.world().get::<crate::Transform>(entity),
+                    sim.world().get::<ph2d_render::Sprite>(entity),
+                )
+            {
+                let (tx, ty) = (tr.translation.x, tr.translation.y);
+                let (sw, sh) = (sprite.size[0], sprite.size[1]);
+                let (sx0, sy0) =
+                    camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
+                let (sx1, sy1) =
+                    camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
+                use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+                let map = |p: [f32; 2]| {
+                    Point::new(
+                        f64::from(sx0 + p[0] / iw as f32 * (sx1 - sx0)),
+                        f64::from(sy0 + p[1] / ih as f32 * (sy1 - sy0)),
+                    )
+                };
+                let scene = vector_scene.inner_mut();
+                let guide = Color::new([0.55, 0.72, 1.0, 0.85]); // LITERAL-COLOR-OK: ellipse guide
+                // Outline.
+                if overlay.perimeter.len() >= 2 {
+                    let mut path = BezPath::new();
+                    path.move_to(map(overlay.perimeter[0]));
+                    for &p in &overlay.perimeter[1..] {
+                        path.line_to(map(p));
+                    }
+                    path.close_path();
+                    scene.stroke(
+                        &Stroke::new(1.5),
+                        Affine::IDENTITY,
+                        &Brush::Solid(guide),
+                        None,
+                        &path,
+                    );
+                }
+                // Connector from the centre to the rotation handle.
+                let mut stem = BezPath::new();
+                stem.move_to(map(overlay.handles[5]));
+                stem.line_to(map(overlay.handles[4]));
+                scene.stroke(
+                    &Stroke::new(1.0),
+                    Affine::IDENTITY,
+                    &Brush::Solid(guide),
+                    None,
+                    &stem,
+                );
+                // Handles: axis (white), rotate (green), centre (grey), grabbed (orange).
+                let axis = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: axis handle
+                let rotate = Color::new([0.45, 0.85, 0.50, 1.0]); // LITERAL-COLOR-OK: rotation handle
+                let center = Color::new([0.75, 0.78, 0.82, 0.95]); // LITERAL-COLOR-OK: centre handle
+                let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
+                for (i, &h) in overlay.handles.iter().enumerate() {
+                    let grabbed = overlay.grabbed == Some(i as u8);
+                    let base = match i {
+                        4 => rotate,
+                        5 => center,
+                        _ => axis,
+                    };
+                    let c = if grabbed { grab } else { base };
+                    let r = if grabbed { 6.0 } else { 4.0 };
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(c),
+                        None,
+                        &Circle::new(map(h), r),
+                    );
+                }
+            }
+        }
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

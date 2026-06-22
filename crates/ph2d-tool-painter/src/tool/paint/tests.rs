@@ -992,3 +992,43 @@ fn curve_grab_tolerance_grabs_near_and_adds_far() {
         "far press added a point"
     );
 }
+
+/// Undo while the curve is being authored (points visible) COMMITS it first (applies the curve,
+/// clears the points); the NEXT undo removes the committed stroke. Regression for "the drawing
+/// vanished but the control points stayed" — undo must not strand the points over a reverted canvas.
+#[test]
+fn curve_undo_commits_first_then_undoes() {
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.space_attenuation = false;
+
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // 3 points, painted, editing
+    assert!(
+        t.curve_overlay().is_some(),
+        "points visible while authoring"
+    );
+    assert_eq!(px(&t, 64, 8, 32), [0, 0, 0, 255], "curve painted");
+
+    // Undo #1: applies the curve — points cleared, the painted curve survives (no orphan state).
+    assert!(t.undo_last());
+    assert!(
+        t.curve_overlay().is_none(),
+        "first undo applied the curve (points cleared)"
+    );
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [0, 0, 0, 255],
+        "the painted curve survives the commit"
+    );
+
+    // Undo #2: now undoes the committed stroke — back to the pristine canvas.
+    assert!(t.undo_last());
+    assert_eq!(
+        px(&t, 64, 8, 32),
+        [255, 255, 255, 255],
+        "second undo removes the committed curve"
+    );
+}

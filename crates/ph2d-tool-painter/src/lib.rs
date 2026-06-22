@@ -50,7 +50,9 @@ pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{
     BrushBlend, Falloff, FalloffCurve, FalloffPoint, HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES,
-    MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, StrokeMethod, eval_falloff_curve,
+    MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, StrokeMethod, TEX_ANGLE_MAX_DEG,
+    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping,
+    eval_falloff_curve,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

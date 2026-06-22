@@ -94,6 +94,14 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     stabilizer: 0.5,
     airbrush_rate_s: 0.1, // LITERAL-PX-OK: Blender default (DNA_brush_types.h:232)
     edge_to_edge: false,
+    // Texture section (mirrors TextureSettings::default — no texture assigned).
+    texture_kind: 0,    // None
+    texture_mapping: 0, // View Plane
+    texture_angle_deg: 0,
+    texture_rake: false,
+    texture_random: false,
+    texture_offset: [0.0, 0.0],
+    texture_size: [1.0, 1.0],
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in
@@ -184,6 +192,10 @@ pub(crate) fn paint_brush_body(
     // input-samples/stabilize). Owns its own dropdown-popover deferral below. ──
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
 
+    // ── Texture section (Blender brush texture: kind/mapping/angle/rake/random/
+    // offset/size, 2D-adapted). Owns its own dropdown-popover deferral below. ──
+    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush);
+
     // ── Eraser: full-width mode toggle (Accent while erasing) ──
     y = paint_toggle_row(
         ctx,
@@ -229,6 +241,8 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     // Stroke-section dropdowns (Method + Jitter Unit) — drained last so they sit
     // on top of every body row, same as the Blend/Falloff chips above.
     crate::paint_stroke::paint_stroke_popovers(ctx, theme);
+    // Texture-section dropdowns (Kind picker + Mapping).
+    crate::paint_texture::paint_texture_popovers(ctx, theme);
 }
 
 /// Args for [`paint_param_row`] (grouped to dodge the too-many-arguments lint).

@@ -237,8 +237,9 @@ pub(crate) fn paint_stroke_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Them
     }
 }
 
-/// A faint, left-aligned section divider label in a `ROW_H_PX` cell.
-fn section_header(
+/// A faint, left-aligned section divider label in a `ROW_H_PX` cell. `pub(crate)` so the Texture
+/// section ([`crate::paint_texture`]) reuses the same divider.
+pub(crate) fn section_header(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,

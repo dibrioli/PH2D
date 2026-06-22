@@ -24,9 +24,13 @@ use ph2d_editor_core::ids::{
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_tool_painter::{
-    AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES, MAX_BRUSH_BLEND_MODES,
-    MAX_FALLOFF,
+use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
+
+/// Dropdown option-id decoders (split out to keep this file under the LOC cap).
+mod decode;
+use decode::{
+    decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
+    decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
 };
 
 pub(crate) fn apply_event(
@@ -435,7 +439,10 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
                 || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
-                || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE =>
+                || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_NEW =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
@@ -476,6 +483,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             } else if let Some(u) = decode_jitter_unit_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_JITTER_UNIT, u);
                 Some(true)
+            } else if let Some(k) = decode_texture_kind_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_KIND, k);
+                Some(true)
+            } else if let Some(m) = decode_texture_mapping_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING, m);
+                Some(true)
             } else {
                 None
             }
@@ -508,7 +521,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_DASH_LENGTH
                 || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
                 || id == core_ids::PAINTER_BRUSH_STABILIZE
-                || id == core_ids::PAINTER_BRUSH_RATE =>
+                || id == core_ids::PAINTER_BRUSH_RATE
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()
@@ -550,29 +568,6 @@ fn brush_seed_rgba8() -> [u8; 4] {
     state::current_brush()
         .map(|b| [enc(b.color[0]), enc(b.color[1]), enc(b.color[2]), 255])
         .unwrap_or([0, 0, 0, 255])
-}
-
-/// Decode a brush blend-mode popover option id → its mode `u8`. Fixed (not
-/// per-layer), so iterate the 24 stable ids.
-fn decode_brush_blend_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..MAX_BRUSH_BLEND_MODES).find(|&m| core_ids::painter_brush_blend_option_id(m) == id)
-}
-
-/// Decode a brush Falloff popover option id → its preset `u8`. Fixed (not
-/// per-layer), so iterate the stable preset ids.
-fn decode_brush_falloff_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
-}
-
-/// Decode a Stroke-Method popover option id → its [`StrokeMethod`] wire `u8` (the 9 methods: the 7
-/// Blender ones `0..=6` + the PH2D `Circle` (7) + `Polygon` (8) extensions).
-fn decode_stroke_method_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..9).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
-}
-
-/// Decode a Jitter-Unit popover option id → its wire `u8` (`0` = Brush, `1` = View).
-fn decode_jitter_unit_option(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..2).find(|&u| core_ids::painter_brush_jitter_unit_option_id(u) == id)
 }
 
 /// Fallback target for the Falloff "−" button when no point is selected: the

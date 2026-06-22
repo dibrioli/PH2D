@@ -12,9 +12,8 @@ use super::*;
 
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{
-    AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, Dab, Dynamics, Falloff, FalloffPoint,
-    MAX_FALLOFF_POINTS, MAX_INPUT_SAMPLES, Stroke, StrokeMethod, StrokePoint, eval_falloff_curve,
-    stamp_dab,
+    AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, Dab, Dynamics, MAX_INPUT_SAMPLES, Stroke,
+    StrokeMethod, StrokePoint, stamp_dab_textured,
 };
 
 /// Brush + Stroke-section parameter snapshot & setters (submodule so it shares `PaintState`'s
@@ -60,79 +59,11 @@ pub const BRUSH_AIRBRUSH_RATE_MIN_S: f32 = AIRBRUSH_RATE_MIN_S;
 /// See [`BRUSH_AIRBRUSH_RATE_MIN_S`].
 pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 
-/// A compact snapshot of the active brush for the layers panel's Brush section.
-/// Published each frame by the shell bridge (mirror of the `LayerStack`
-/// snapshot) — the panel reads it to position the size/colour sliders and the
-/// blend chip; it never owns brush state.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct BrushSettings {
-    /// Radius in image pixels (UI label "Size").
-    pub size_px: f32,
-    /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so
-    /// small brushes get more of the track).
-    pub size_norm: f32,
-    /// Overall opacity, `0..1` (UI "Strength").
-    pub strength: f32,
-    /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — Blender's
-    /// "Falloff Curve Preset". Defines the dab profile (replaces a Hardness slider).
-    /// [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
-    pub falloff: u8,
-    /// The `Custom` falloff curve's control points (id + `[distance, strength]` +
-    /// handle), the first [`Self::falloff_len`] valid, ascending by distance. The
-    /// panel plots these + places draggable handles (keyed by the stable id) when
-    /// `falloff == Custom`.
-    pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],
-    /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
-    pub falloff_len: u8,
-    /// Straight-RGB paint colour in `[0, 1]`.
-    pub color: [f32; 3],
-    /// Blend-mode wire discriminant ([`BrushBlend::to_u8`]).
-    pub blend: u8,
-    /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
-    pub eraser: bool,
-
-    // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
-    /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
-    pub stroke_method: u8,
-    /// Spacing as a fraction of diameter (`0.10` = 10%); the slider track is this value.
-    pub spacing: f32,
-    /// "Adjust Strength for Spacing" on/off.
-    pub space_attenuation: bool,
-    /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
-    pub jitter: f32,
-    /// Absolute jitter in pixels — the Jitter slider under the View unit.
-    pub jitter_absolute_px: f32,
-    /// Jitter-unit wire discriminant ([`JitterUnit::to_u8`]; `0` = Brush, `1` = View).
-    pub jitter_unit: u8,
-    /// Dash on-fraction (`0..1`).
-    pub dash_ratio: f32,
-    /// Dash period in dab-slots.
-    pub dash_samples: u32,
-    /// Input-samples averaging window (`>= 1`).
-    pub input_samples: u32,
-    /// Stroke stabilizer intensity, `0..1` (the "how regular" knob).
-    pub stabilizer: f32,
-    /// Airbrush emission period in seconds (the "Rate" slider; only meaningful for the Airbrush
-    /// method). The panel maps it onto the slider track via `BRUSH_AIRBRUSH_RATE_{MIN,MAX}_S`.
-    pub airbrush_rate_s: f32,
-    /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor instead of growing
-    /// from the anchor).
-    pub edge_to_edge: bool,
-}
-
-/// Strength of the brush's active falloff at normalized distance `t` (`0` =
-/// centre, `1` = rim), for the panel's live curve preview. Reads the editable
-/// [`BrushSettings::falloff_points`] when the `Custom` preset is selected, else
-/// the matching [`Falloff`] formula — so the graph the panel draws matches the
-/// dab the engine stamps.
-#[must_use]
-pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
-    if s.falloff == Falloff::Custom.to_u8() {
-        eval_falloff_curve(&s.falloff_points[..s.falloff_len as usize], t)
-    } else {
-        Falloff::from_u8(s.falloff).weight(t)
-    }
-}
+// The panel-facing snapshot [`BrushSettings`] + the falloff preview helper
+// `brush_falloff_weight_at` live in the `brush_settings` submodule (alongside the setters that
+// are their single clamp source), so this file stays under the workspace LOC cap. Re-exported
+// here to keep their `paint::` public path.
+pub use brush_settings::{BrushSettings, brush_falloff_weight_at};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
 /// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint
@@ -154,6 +85,11 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
+    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset
+    /// from the stroke seed at pointer-down (decorrelated from the jitter stream) and advanced once
+    /// per textured dab in [`PainterTool::stamp_dabs`], so a stroke's texture randomness is
+    /// reproducible (HR-5) yet differs across dabs and strokes.
+    tex_rng: u64,
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
@@ -202,6 +138,7 @@ impl Default for PaintState {
             stroke: None,
             dabs: Vec::new(),
             seed: 0,
+            tex_rng: 0,
             stroke_undo: None,
             eraser: false,
             moved_this_frame: false,
@@ -238,6 +175,9 @@ impl PainterTool {
         self.paint.drag_preview = None;
         self.paint.line_anchor = Some(ev.pos);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
+        // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
+        // two don't lock-step (HR-5: deterministic per stroke).
+        self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.begin(
@@ -392,14 +332,35 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
+        // Resolve the per-dab texture frame only when a texture is assigned; otherwise the engine
+        // takes the texture-free fast path (`None`). The texture RNG is copied out so the canvas
+        // borrow below doesn't conflict, then written back.
+        let textured = brush.texture.is_active();
+        let mut tex_rng = self.paint.tex_rng;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
-        for d in dabs {
+        for (i, d) in dabs.iter().enumerate() {
             let spec = BrushSpec {
                 radius_px: d.radius_px,
                 ..brush
             };
-            if let Some(r) = stamp_dab(buf, w, h, d.center, &spec, d.coverage, alpha_locked) {
+            let basis = textured.then(|| {
+                ph2d_painter_brush::texture::dab_basis(
+                    &spec.texture,
+                    dab_tangent(dabs, i),
+                    &mut tex_rng,
+                )
+            });
+            if let Some(r) = stamp_dab_textured(
+                buf,
+                w,
+                h,
+                d.center,
+                &spec,
+                d.coverage,
+                alpha_locked,
+                basis.as_ref(),
+            ) {
                 let rect = Region {
                     x: r.x,
                     y: r.y,
@@ -409,6 +370,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        self.paint.tex_rng = tex_rng;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -539,6 +501,22 @@ fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     // Project the cursor onto the ray (dot product = signed distance along the unit direction).
     let proj = dx * ux + dy * uy;
     [anchor[0] + ux * proj, anchor[1] + uy * proj]
+}
+
+/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake**
+/// rotation aligns to it ([`ph2d_painter_brush::texture::dab_basis`] normalises). Uses the chord to
+/// the next dab when there is one, else from the previous; a lone dab returns `[0, 0]` (Rake then
+/// falls back to the Angle). Derived here rather than carried on `Dab` so the engine's dab stays
+/// pressure-only.
+fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
+    let (a, b) = if i + 1 < dabs.len() {
+        (dabs[i].center, dabs[i + 1].center)
+    } else if i > 0 {
+        (dabs[i - 1].center, dabs[i].center)
+    } else {
+        return [0.0, 0.0];
+    };
+    [b[0] - a[0], b[1] - a[1]]
 }
 
 /// Smallest region covering both `a` and `b`.

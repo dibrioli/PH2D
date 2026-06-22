@@ -356,8 +356,10 @@ impl PainterLayerWidget {
 /// Needed because the per-row layer ids below are derived from a runtime
 /// `format!` (the layer id is only known at runtime). Kept here, private to
 /// the additive per-row helpers, so the hashing stays consistent with the rest
-/// of the id space (same offset basis / prime / `NodeId(0)` bump).
-fn fnv_node_id_runtime(s: &str) -> NodeId {
+/// of the id space (same offset basis / prime / `NodeId(0)` bump). `pub(super)`
+/// so the sibling `painter_texture` module's option-id factories share the one
+/// twin (its agreement with `hash_node_id` is pinned by the test below).
+pub(super) fn fnv_node_id_runtime(s: &str) -> NodeId {
     const FNV_OFFSET_BASIS_64: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
     let mut hash: u64 = FNV_OFFSET_BASIS_64;

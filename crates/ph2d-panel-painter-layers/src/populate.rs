@@ -69,6 +69,12 @@ pub fn populate(store: &mut WidgetStore) {
         // Stabilizer intensity — the single "how regular" knob (reuses the STABILIZE id, now a
         // slider instead of the removed toggle).
         ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
+        // Texture section sliders (Angle / Offset X-Y / Size X-Y; all `0..1` track).
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
     ];
     for id in brush_sliders {
         store.register(
@@ -88,6 +94,10 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        // Texture section: "New" (momentary) + Rake / Random toggles.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_NEW,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
     ] {
         store.register(
             id,
@@ -103,6 +113,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_UNIT,
+        // Texture section: Kind picker + Mapping chips.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
     ] {
         store.register(
             id,

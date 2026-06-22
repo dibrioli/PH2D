@@ -105,6 +105,16 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
                 self.toggle_brush_edge_to_edge();
             }
+            // ── Texture section toggles + "New" (assign the default procedural). ─
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE => {
+                self.toggle_brush_texture_rake();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM => {
+                self.toggle_brush_texture_random();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_NEW => {
+                self.new_brush_texture();
+            }
             // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point();
@@ -167,6 +177,16 @@ impl Tool for PainterTool {
                     self.set_brush_stabilizer(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_RATE {
                     self.set_brush_airbrush_rate_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE {
+                    self.set_brush_texture_angle_norm(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {
+                    self.set_brush_texture_offset_norm(0, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y {
+                    self.set_brush_texture_offset_norm(1, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X {
+                    self.set_brush_texture_size_norm(0, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y {
+                    self.set_brush_texture_size_norm(1, v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
@@ -230,6 +250,19 @@ impl Tool for PainterTool {
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_JITTER_UNIT => {
                 if let Ok(u) = value.parse::<u8>() {
                     self.set_brush_jitter_unit(u);
+                }
+            }
+            // ── Texture section dropdowns: kind picker + mapping (value = wire u8). ─
+            PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_TEXTURE_KIND => {
+                if let Ok(k) = value.parse::<u8>() {
+                    self.set_brush_texture_kind(k);
+                }
+            }
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_MAPPING =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_brush_texture_mapping(m);
                 }
             }
             // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The

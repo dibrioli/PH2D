@@ -1397,3 +1397,74 @@ fn polygon_discarded_when_switching_method_away() {
         "the preview was reverted"
     );
 }
+
+#[test]
+fn texture_setters_clamp_and_new_assigns_noise() {
+    use ph2d_painter_brush::{TEX_OFFSET_MAX, TEX_SIZE_MAX, TextureKind, TextureMapping};
+    let mut t = PainterTool::default();
+    // No texture by default; "New" assigns the default procedural (Noise).
+    assert_eq!(t.brush_settings().texture_kind, TextureKind::None.to_u8());
+    t.new_brush_texture();
+    assert_eq!(t.brush_settings().texture_kind, TextureKind::Noise.to_u8());
+    // Kind + mapping round-trip through the wire setters.
+    t.set_brush_texture_kind(TextureKind::Checker.to_u8());
+    assert_eq!(
+        t.brush_settings().texture_kind,
+        TextureKind::Checker.to_u8()
+    );
+    t.set_brush_texture_mapping(TextureMapping::Tiled.to_u8());
+    assert_eq!(
+        t.brush_settings().texture_mapping,
+        TextureMapping::Tiled.to_u8()
+    );
+    // Angle: 0..1 track → 0..=360°, clamped.
+    t.set_brush_texture_angle_norm(0.5);
+    assert_eq!(t.brush_settings().texture_angle_deg, 180);
+    t.set_brush_texture_angle_norm(2.0);
+    assert_eq!(t.brush_settings().texture_angle_deg, 360);
+    // Offset: track 0.5 → 0 (centre of the symmetric range); track 1 → MAX.
+    t.set_brush_texture_offset_norm(0, 0.5);
+    assert!(t.brush_settings().texture_offset[0].abs() < 1e-6);
+    t.set_brush_texture_offset_norm(1, 1.0);
+    assert!((t.brush_settings().texture_offset[1] - TEX_OFFSET_MAX).abs() < 1e-6);
+    // Size: track 1 → MAX; a bad axis index is a no-op (Y stays at the default 1.0).
+    t.set_brush_texture_size_norm(0, 1.0);
+    assert!((t.brush_settings().texture_size[0] - TEX_SIZE_MAX).abs() < 1e-6);
+    t.set_brush_texture_size_norm(9, 0.0);
+    assert!((t.brush_settings().texture_size[1] - 1.0).abs() < 1e-6);
+    // Rake / Random toggles flip.
+    t.toggle_brush_texture_rake();
+    t.toggle_brush_texture_random();
+    assert!(t.brush_settings().texture_rake && t.brush_settings().texture_random);
+}
+
+#[test]
+fn textured_dab_masks_part_of_the_footprint() {
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 14.0);
+    // Big checker tiles so each cell spans several pixels across the footprint; the 0-cells
+    // deposit no paint, so a textured hard dab leaves a MIX of black + untouched white pixels —
+    // proving the texture reaches the canvas through the tool's stamp_dabs → stamp_dab_textured.
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::ViewPlane,
+        size: [0.25, 0.25],
+        ..Default::default()
+    };
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    let (mut black, mut white) = (0, 0);
+    for y in 18..46 {
+        for x in 18..46 {
+            match px(&t, 64, x, y) {
+                [0, 0, 0, 255] => black += 1,
+                [255, 255, 255, 255] => white += 1,
+                _ => {}
+            }
+        }
+    }
+    assert!(black > 0, "the texture let some paint through");
+    assert!(
+        white > 0,
+        "the texture masked part of the footprint (checker 0-cells)"
+    );
+}

@@ -1,0 +1,49 @@
+//! Brush **Texture** section NodeIds (the per-dab texture mask; Blender `MTex`,
+//! 2D-adapted). Fixed-id, tool-global widgets forwarding over the frozen
+//! `PanelEvent` channel to `PainterTool::set_brush_texture_*` (the single clamp
+//! source). Split from `painter.rs` to keep that file under the workspace LOC cap;
+//! the option-id factories reuse the FNV runtime-hash twin in `painter.rs`.
+
+use super::painter::fnv_node_id_runtime;
+use super::{NodeId, hash_node_id};
+
+/// Brush texture **kind** picker chip (None/Noise/Checker/Voronoi/Stripes — the
+/// thumbnail picker). `SelectOption` → `set_brush_texture_kind`. Options via
+/// [`painter_brush_texture_kind_option_id`].
+pub const PAINTER_BRUSH_TEXTURE_KIND: NodeId = hash_node_id("painter_brush.texture_kind");
+/// Brush texture **"New"** button — assigns the default procedural (Noise). `Click` → tool.
+pub const PAINTER_BRUSH_TEXTURE_NEW: NodeId = hash_node_id("painter_brush.texture_new");
+/// Brush texture **Mapping** dropdown chip (View Plane/Tiled/Random). `SelectOption` →
+/// `set_brush_texture_mapping`. Options via [`painter_brush_texture_mapping_option_id`].
+pub const PAINTER_BRUSH_TEXTURE_MAPPING: NodeId = hash_node_id("painter_brush.texture_mapping");
+/// Brush texture **Angle** slider (`0..1` track → `0..=360°`). `SetValue` → `set_brush_texture_angle_norm`.
+pub const PAINTER_BRUSH_TEXTURE_ANGLE: NodeId = hash_node_id("painter_brush.texture_angle");
+/// Brush texture **Rake** toggle (angle follows the stroke). `Click` → `toggle_brush_texture_rake`.
+pub const PAINTER_BRUSH_TEXTURE_RAKE: NodeId = hash_node_id("painter_brush.texture_rake");
+/// Brush texture **Random** toggle (random angle per dab). `Click` → `toggle_brush_texture_random`.
+pub const PAINTER_BRUSH_TEXTURE_RANDOM: NodeId = hash_node_id("painter_brush.texture_random");
+/// Brush texture **Offset X** slider (`0..1` track → `−1..1` tile). `SetValue` →
+/// `set_brush_texture_offset_norm(0, ..)`.
+pub const PAINTER_BRUSH_TEXTURE_OFFSET_X: NodeId = hash_node_id("painter_brush.texture_offset_x");
+/// Brush texture **Offset Y** slider (axis 1). See [`PAINTER_BRUSH_TEXTURE_OFFSET_X`].
+pub const PAINTER_BRUSH_TEXTURE_OFFSET_Y: NodeId = hash_node_id("painter_brush.texture_offset_y");
+/// Brush texture **Size X** slider (`0..1` track → `0.1..10` scale). `SetValue` →
+/// `set_brush_texture_size_norm(0, ..)`.
+pub const PAINTER_BRUSH_TEXTURE_SIZE_X: NodeId = hash_node_id("painter_brush.texture_size_x");
+/// Brush texture **Size Y** slider (axis 1). See [`PAINTER_BRUSH_TEXTURE_SIZE_X`].
+pub const PAINTER_BRUSH_TEXTURE_SIZE_Y: NodeId = hash_node_id("painter_brush.texture_size_y");
+
+/// Derive the stable [`NodeId`] for texture-mapping option `m` (the `TextureMapping` wire
+/// discriminant) in the open Mapping dropdown popover. Only the open popover's options are
+/// hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_brush_texture_mapping_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texmapopt.{m}"))
+}
+
+/// Derive the stable [`NodeId`] for texture-kind option `k` (the `TextureKind` wire discriminant)
+/// in the open kind picker popover.
+#[must_use]
+pub fn painter_brush_texture_kind_option_id(k: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texkindopt.{k}"))
+}

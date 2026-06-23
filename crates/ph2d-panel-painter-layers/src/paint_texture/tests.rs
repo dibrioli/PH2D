@@ -173,11 +173,15 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
             "ramp {hidden:?} must be hidden when the ramp is off"
         );
     }
-    // Ramp ON: every control registers a hit rect (so a real click can reach it — no silent no-op).
+    // Ramp ON: 2 stops with distinct stable ids (slot 5) so the handles key apart.
+    let mut stops = [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS];
+    stops[0] = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0]; // id 0
+    stops[1] = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; // id 1
     let on = painted_hit_ids_for(BrushSettings {
         texture_kind: TextureKind::Noise.to_u8(),
         texture_ramp_enabled: true,
         texture_ramp_stop_count: 2,
+        texture_ramp_stops: stops,
         ..crate::paint_brush::FALLBACK_BRUSH
     });
     for shown in [

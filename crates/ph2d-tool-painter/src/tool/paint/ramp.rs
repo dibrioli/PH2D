@@ -18,41 +18,25 @@ impl PainterTool {
         self.paint.texture_ramp_dirty = true;
     }
 
-    /// Move ramp stop `idx` to normalized position `pos`, **clamped strictly between its neighbours**
-    /// so it never crosses them — the drag keeps a stable index (no re-sort), matching gradient-editor
-    /// convention. Returns the (unchanged) index.
-    pub fn ramp_move_stop(&mut self, idx: usize, pos: f32) -> usize {
-        const EPS: f32 = 1e-3;
-        let stops = self.paint.texture_ramp.stops();
-        if idx >= stops.len() {
-            return idx;
+    /// Move the stop with stable `id` to normalized position `pos`. Tracked by id (not sorted index),
+    /// so it may be dragged **past its neighbours** and keep its identity (the ramp re-sorts).
+    pub fn ramp_move_stop(&mut self, id: u8, pos: f32) {
+        if let Some(idx) = self.paint.texture_ramp.index_of_id(id) {
+            self.paint
+                .texture_ramp
+                .set_position(idx, pos.clamp(0.0, 1.0));
+            self.paint.texture_ramp_dirty = true;
         }
-        let lo = if idx > 0 { stops[idx - 1].pos } else { 0.0 };
-        let hi = if idx + 1 < stops.len() {
-            stops[idx + 1].pos
-        } else {
-            1.0
-        };
-        let clamped = if hi - lo > 2.0 * EPS {
-            pos.clamp(lo + EPS, hi - EPS)
-        } else {
-            (lo + hi) * 0.5
-        };
-        let new_i = self.paint.texture_ramp.set_position(idx, clamped);
-        self.paint.texture_ramp_dirty = true;
-        new_i
     }
 
-    /// Set ramp stop `idx`'s colour from straight-sRGB bytes (the colour picker's space) — converted
-    /// to the ramp's LINEAR space. The stop's existing alpha is preserved.
-    pub fn ramp_set_stop_color(&mut self, idx: usize, srgb: [u8; 3]) {
+    /// Set the colour of the stop with stable `id` from straight-sRGB bytes (the picker's space) —
+    /// converted to the ramp's LINEAR space. The stop's existing alpha is preserved.
+    pub fn ramp_set_stop_color(&mut self, id: u8, srgb: [u8; 3]) {
+        let Some(idx) = self.paint.texture_ramp.index_of_id(id) else {
+            return;
+        };
         let lin = ph2d_color::srgb::srgb_to_linear_byte;
-        let a = self
-            .paint
-            .texture_ramp
-            .stops()
-            .get(idx)
-            .map_or(1.0, |s| s.color[3]);
+        let a = self.paint.texture_ramp.stops()[idx].color[3];
         self.paint
             .texture_ramp
             .set_color(idx, [lin(srgb[0]), lin(srgb[1]), lin(srgb[2]), a]);

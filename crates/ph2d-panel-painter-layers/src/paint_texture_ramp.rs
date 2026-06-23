@@ -64,7 +64,13 @@ pub(crate) fn paint_texture_ramp_section(
         return y; // hide the editor when off (no dead controls)
     }
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-    let sel = (state::selected_ramp_stop() as usize).min(count.saturating_sub(1));
+    // The selection is a STABLE id; resolve it to the current sorted index (so it follows a stop that
+    // was dragged past a neighbour).
+    let sel_id = state::selected_ramp_stop();
+    let sel = brush.texture_ramp_stops[..count]
+        .iter()
+        .position(|s| s[5] as u8 == sel_id)
+        .unwrap_or(0);
 
     // ── Controls line: + − [Mode] [Interp] (no labels) ──
     let gap = Spacing::Xs.px();
@@ -157,13 +163,14 @@ fn paint_ramp_bar(
     let my = bar.y + bar.h;
     for (i, s) in stops.iter().enumerate() {
         let mx = bar.x + s[0].clamp(0.0, 1.0) * bar.w;
-        let id = painter_brush_texture_ramp_handle_id(i as u8);
+        let stop_id = s[5] as u8; // the stable stop id (so a drag can cross neighbours)
+        let id = painter_brush_texture_ramp_handle_id(stop_id);
         ctx.host.store_mut().register(
             id,
             InteractiveState::CurvePoint {
                 parent: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
                 channel: 0,
-                index: i as u8,
+                index: stop_id,
                 canvas: bar,
             },
         );
@@ -298,19 +305,20 @@ fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings, sel: usize) {
     if [enc(s[1]), enc(s[2]), enc(s[3])] == [picked[0], picked[1], picked[2]] {
         return; // already applied — don't spam the bus
     }
+    let stop_id = s[5] as u8; // forward by stable id (the tool resolves the current index)
     ctx.host
         .bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
             core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-            format!("{sel},{},{},{}", picked[0], picked[1], picked[2]),
+            format!("{stop_id},{},{},{}", picked[0], picked[1], picked[2]),
         )));
 }
 
 /// Linear-interpolated colour at `t` for the bar preview (the real paint uses the ramp's interp mode;
 /// this is a quick visual). Stops are `(pos, r, g, b, a)` in display sRGB.
-fn ramp_color_at(stops: &[[f32; 5]], t: f32) -> Color {
+fn ramp_color_at(stops: &[[f32; 6]], t: f32) -> Color {
     match stops {
-        [] => rgba_color([0.0, 0.0, 0.0, 0.0, 1.0]),
+        [] => rgba_color([0.0, 0.0, 0.0, 0.0, 1.0, 0.0]),
         [only] => rgba_color(*only),
         _ => {
             if t <= stops[0][0] {
@@ -325,7 +333,7 @@ fn ramp_color_at(stops: &[[f32; 5]], t: f32) -> Color {
                         0.0
                     };
                     let mix = |i: usize| a[i] + (b[i] - a[i]) * f;
-                    return rgba_color([t, mix(1), mix(2), mix(3), mix(4)]);
+                    return rgba_color([t, mix(1), mix(2), mix(3), mix(4), 0.0]);
                 }
             }
             rgba_color(stops[stops.len() - 1])
@@ -335,7 +343,7 @@ fn ramp_color_at(stops: &[[f32; 5]], t: f32) -> Color {
 
 /// `(pos, r, g, b, a)` (sRGB `[0,1]`) → a vello colour. LITERAL-COLOR-OK: a user-authored ramp stop
 /// colour, not a theme token.
-fn rgba_color(s: [f32; 5]) -> Color {
+fn rgba_color(s: [f32; 6]) -> Color {
     let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     Color::from_rgba8(u(s[1]), u(s[2]), u(s[3]), u(s[4]))
 }

@@ -208,6 +208,36 @@ fn set_position_resorts() {
 }
 
 #[test]
+fn set_position_preserves_id_so_a_stop_can_cross_a_neighbour() {
+    let mut r = ColorRamp::new(
+        vec![
+            RampStop::new(0.0, BLACK),
+            RampStop::new(0.4, RED),
+            RampStop::new(0.8, WHITE),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    );
+    // Initial stops get sequential ids 0,1,2; the RED stop (index 1) has a stable id.
+    let red_id = r.stops()[1].id;
+    // Drag RED PAST WHITE (0.8) to 0.9 → it re-sorts to the end, keeping its colour + id (it crossed,
+    // it did not swap identities with WHITE).
+    let new_i = r.set_position(1, 0.9);
+    assert_eq!(new_i, 2, "RED crossed WHITE → it is now the last stop");
+    assert_eq!(r.stops()[2].color, RED, "the moved stop kept its colour");
+    assert_eq!(r.stops()[2].id, red_id, "and its stable id");
+    assert_eq!(
+        r.index_of_id(red_id),
+        Some(2),
+        "index_of_id tracks it to the new position"
+    );
+    assert!(
+        r.stops().windows(2).all(|w| w[0].pos <= w[1].pos),
+        "stays sorted"
+    );
+}
+
+#[test]
 fn bake_lut_matches_eval() {
     let r = ColorRamp::new(
         vec![

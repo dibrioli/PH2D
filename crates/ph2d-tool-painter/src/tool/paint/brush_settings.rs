@@ -159,9 +159,10 @@ pub struct BrushSettings {
     pub texture_ramp_mode: u8,
     /// Ramp interpolation mode (`RampInterp::to_u8`).
     pub texture_ramp_interp: u8,
-    /// Ramp stops as `(pos, r, g, b, a)` (LINEAR), the first [`Self::texture_ramp_stop_count`] valid,
-    /// sorted by `pos`. The panel plots the bar + a draggable handle per stop.
-    pub texture_ramp_stops: [[f32; 5]; PANEL_RAMP_STOPS],
+    /// Ramp stops as `(pos, r, g, b, a, id)` (colour in display sRGB; `id` = the stable stop id as a
+    /// float), the first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`. The panel keys each
+    /// draggable handle by the stable `id` so a stop can be dragged past its neighbours.
+    pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     /// Count of valid entries in [`Self::texture_ramp_stops`].
     pub texture_ramp_stop_count: u8,
 }
@@ -217,9 +218,10 @@ impl PainterTool {
         // Snapshot the texture Color Ramp's stops into the Copy array (the panel plots the bar +
         // draggable handles).
         let ramp = self.texture_ramp();
-        let mut texture_ramp_stops = [[0.0f32; 5]; PANEL_RAMP_STOPS];
+        let mut texture_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
         let ramp_count = ramp.stops().len().min(PANEL_RAMP_STOPS);
         // Stops are stored LINEAR; the panel paints in display sRGB, so convert here (alpha straight).
+        // The 6th slot carries the stable stop id (so the panel keys handles by identity).
         let srgb = |x: f32| f32::from(ph2d_color::srgb::linear_to_srgb_byte(x)) / 255.0;
         for (slot, s) in texture_ramp_stops.iter_mut().zip(ramp.stops()) {
             *slot = [
@@ -228,6 +230,7 @@ impl PainterTool {
                 srgb(s.color[1]),
                 srgb(s.color[2]),
                 s.color[3],
+                f32::from(s.id),
             ];
         }
         BrushSettings {

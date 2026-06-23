@@ -106,7 +106,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_ramp_enabled: false,
     texture_ramp_mode: 0,
     texture_ramp_interp: 2,
-    texture_ramp_stops: [[0.0; 5]; ph2d_tool_painter::PANEL_RAMP_STOPS],
+    texture_ramp_stops: [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS],
     texture_ramp_stop_count: 0,
 };
 

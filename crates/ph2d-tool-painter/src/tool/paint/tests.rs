@@ -1468,25 +1468,32 @@ fn texture_params_reset_on_kind_change_and_set_per_slot() {
 }
 
 #[test]
-fn ramp_move_stop_clamps_between_neighbours() {
+fn ramp_move_stop_can_cross_a_neighbour_by_id() {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
     let mut t = white_canvas(32, 8.0);
-    t.ramp_add_stop(); // default 2 stops (0, 1) + one at the 0.5 gap → 3 stops; idx 1 = 0.5
-    assert_eq!(t.texture_ramp().len(), 3);
-    // Dragging the middle stop past the last (→ 1.5) clamps it just below 1.0 → index stays 1.
+    t.set_texture_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
+            RampStop::new(0.4, [1.0, 0.0, 0.0, 1.0]), // RED, the middle stop
+            RampStop::new(0.8, [1.0, 1.0, 1.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    let mid_id = t.texture_ramp().stops()[1].id; // the RED stop's stable id
+    // Drag it PAST the 0.8 stop to 0.9 — tracked by id, it crosses + keeps its colour.
+    t.ramp_move_stop(mid_id, 0.9);
+    let stops = t.texture_ramp().stops();
     assert_eq!(
-        t.ramp_move_stop(1, 1.5),
-        1,
-        "clamped between neighbours → no re-sort"
+        stops[2].id, mid_id,
+        "the dragged stop crossed to the last position, same id"
     );
-    let mid = t.texture_ramp().stops()[1].pos;
-    assert!(
-        mid > 0.5 && mid < 1.0,
-        "moved up but stayed below the last stop: {mid}"
+    assert!((stops[2].pos - 0.9).abs() < 1e-6, "at its new position");
+    assert_eq!(
+        stops[2].color,
+        [1.0, 0.0, 0.0, 1.0],
+        "kept its red colour through the cross"
     );
-    // Dragging below 0 clamps just above 0.0 → still index 1, still left of where it was.
-    assert_eq!(t.ramp_move_stop(1, -1.0), 1);
-    let lo = t.texture_ramp().stops()[1].pos;
-    assert!(lo > 0.0 && lo < mid, "clamped above the first stop: {lo}");
 }
 
 #[test]

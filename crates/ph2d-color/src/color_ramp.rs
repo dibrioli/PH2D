@@ -174,15 +174,20 @@ pub struct RampStop {
     pub pos: f32,
     /// Linear RGBA color, each channel `[0, 1]`.
     pub color: [f32; 4],
+    /// **Stable identity**, preserved across re-sorts — so an editor can drag a stop *past* its
+    /// neighbours and keep tracking the same stop. Assigned by the owning [`ColorRamp`];
+    /// [`RampStop::new`] leaves it `0` until the ramp adopts the stop.
+    pub id: u8,
 }
 
 impl RampStop {
-    /// A stop at `pos` with linear color `color`.
+    /// A stop at `pos` with linear color `color` (id `0` until a [`ColorRamp`] adopts it).
     #[must_use]
     pub fn new(pos: f32, color: [f32; 4]) -> Self {
         Self {
             pos: pos.clamp(0.0, 1.0),
             color,
+            id: 0,
         }
     }
 }
@@ -205,15 +210,14 @@ pub struct ColorRamp {
 impl Default for ColorRamp {
     /// Blender's default: black at `0.0` → white at `1.0`, RGB / Linear.
     fn default() -> Self {
-        Self {
-            stops: vec![
+        Self::new(
+            vec![
                 RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
                 RampStop::new(1.0, [1.0, 1.0, 1.0, 1.0]),
             ],
-            color_mode: RampColorMode::Rgb,
-            interp: RampInterp::Linear,
-            hue: RampHue::Near,
-        }
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        )
     }
 }
 
@@ -232,7 +236,18 @@ impl ColorRamp {
             hue: RampHue::Near,
         };
         ramp.sort();
+        // Assign fresh stable ids to the initial stops (callers' `RampStop`s come in with id 0).
+        for (i, s) in ramp.stops.iter_mut().enumerate() {
+            s.id = i as u8;
+        }
         ramp
+    }
+
+    /// Smallest stable id not currently in use (`0..=255`) — assigned to a freshly added stop.
+    fn alloc_id(&self) -> u8 {
+        (0u8..=u8::MAX)
+            .find(|id| !self.stops.iter().any(|s| s.id == *id))
+            .unwrap_or(0)
     }
 
     /// The stops, sorted by position (read-only).
@@ -259,7 +274,8 @@ impl ColorRamp {
         if self.stops.len() >= MAX_RAMP_STOPS {
             return self.nearest(stop.pos);
         }
-        let stop = RampStop::new(stop.pos, stop.color);
+        let mut stop = RampStop::new(stop.pos, stop.color);
+        stop.id = self.alloc_id();
         let idx = self.stops.partition_point(|s| s.pos < stop.pos);
         self.stops.insert(idx, stop);
         idx
@@ -279,14 +295,24 @@ impl ColorRamp {
         }
     }
 
-    /// Move stop `index` to `pos` (clamped `[0,1]`), re-sorting; returns the stop's new index.
+    /// Move stop `index` to `pos` (clamped `[0,1]`), re-sorting; returns the stop's new index. The
+    /// stop's color + **stable id are preserved**, so it may be dragged *past* a neighbour and stay
+    /// the same stop. Find a stop by id with [`Self::index_of_id`].
     pub fn set_position(&mut self, index: usize, pos: f32) -> usize {
         if index >= self.stops.len() {
             return index;
         }
-        let color = self.stops[index].color;
-        self.stops.remove(index);
-        self.add_stop(RampStop::new(pos, color))
+        let mut stop = self.stops.remove(index);
+        stop.pos = pos.clamp(0.0, 1.0);
+        let idx = self.stops.partition_point(|s| s.pos < stop.pos);
+        self.stops.insert(idx, stop);
+        idx
+    }
+
+    /// The current index of the stop with stable `id`, if present.
+    #[must_use]
+    pub fn index_of_id(&self, id: u8) -> Option<usize> {
+        self.stops.iter().position(|s| s.id == id)
     }
 
     /// Index of the stop nearest `pos` (used when adding at the cap).

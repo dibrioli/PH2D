@@ -334,12 +334,18 @@ fn diamonds(u: f32, v: f32) -> f32 {
     ((ifloor(u + v) ^ ifloor(u - v)) & 1) as f32
 }
 
-/// **Triangles**: a two-tone triangular tiling (each square split along its diagonal).
+/// **Triangles**: an equilateral triangular grid, two-toned by up/down orientation. The coordinate is
+/// sheared onto the triangular lattice (`q.y = v/h`, `q.x = u − v/√3`, with row height `h = √3/2`) so
+/// each unit cell is a rhombus; its anti-diagonal split colours the two opposite-pointing triangles.
+/// (The naive "square split by the same diagonal" instead aligns same-orientation triangles into
+/// diagonal stripes — the bug this replaces.)
 fn triangles(u: f32, v: f32) -> f32 {
-    let (cu, cv) = (ifloor(u), ifloor(v));
-    let (fu, fv) = (u - u.floor(), v - v.floor());
-    let upper = i32::from(fu + fv > 1.0);
-    (((cu ^ cv) & 1) ^ upper) as f32
+    const INV_H: f32 = 1.154_700_5; // 1 / (√3/2) — unit-triangle row height
+    const SHEAR: f32 = 0.577_350_3; // 1 / √3
+    let qx = u - v * SHEAR;
+    let qy = v * INV_H;
+    let (fx, fy) = (qx - qx.floor(), qy - qy.floor());
+    f32::from(fx + fy >= 1.0)
 }
 
 /// **Hexagons** (honeycomb): Voronoi cells of a triangular lattice. `Rim` = rim softness/width.

@@ -11,6 +11,23 @@
 >   decode auto-escalam por `0..COUNT` (zero mudança de painel/id).
 > - **Perf Tiled/Stencil**: cache de textura em espaço-canvas (`stamp::blit_canvas_cached`) — textura
 >   computada 1× por pixel por traço (commit `af8974d0`).
+> - **+7 padrões vetoriais** (`COUNT=26`): Waves, Chevron, Diamonds, Triangles, Hexagons, Scales,
+>   Weave. **Per-pattern params** (`TextureSettings.params[4]`: Contrast/Brightness universais +
+>   knob de forma por kind via `param_specs`) com sliders no painel.
+> - **Color Ramp** (`ph2d_color::ColorRamp`, objeto reutilizável) integrado ao pincel: caminho de cor
+>   por-texel via LUT (`stamp_dab_ramped`) + **widget no painel** (toggle/Mode/Interp/bar/+−).
+>
+> ### ⚠️ TAREFAS ABERTAS (Enio 2026-06-23)
+> 1. **Revisão VISUAL dos padrões geométricos** — `triangles` saiu como LISTRAS, não triângulos
+>    (split sempre na mesma diagonal → triângulos de mesma orientação se alinham). **CORRIGIDO**:
+>    grade equilátera cisalhada 2-colorida por orientação up/down. **Lição:** o teste
+>    `every_procedural_kind_varies` só prova *não-chapado*, NÃO correção visual. **Revisar com olho**
+>    os outros geométricos: **Hexagons, Scales, Weave, Chevron, Waves, Diamonds** (procedural-correto
+>    ≠ visualmente-correto). Render headless + inspeção, não só "varia".
+> 2. **Color Ramp widget — follow-ups** (mecanismos já mapeados): **(a) color picker por stop** (reusa
+>    `picker_target` + `blender_color_picker`, como o `PAINTER_COLOR_THUMB`) — **EM ANDAMENTO**;
+>    **(b) arrastar stops na barra + editar posição** (reusa `CurvePoint`, como os handles da curva de
+>    falloff).
 
 > **Para o próximo agente.** Enio pediu a seção **Texture** do pincel, seguindo o padrão Blender
 > (fonte vendorizada em `reference/blender-texture-paint/`), com **uma adaptação**: *o que não se

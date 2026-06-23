@@ -196,6 +196,7 @@ impl PainterTool {
         // canvas (`self.canvas_rgba`) are held at once; the texture RNG is copied out + written back.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let lut = &self.paint.texture_ramp_lut;
+        let alpha_mode = self.paint.texture_ramp_alpha_mode;
         let mut tex_rng = self.paint.tex_rng;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
@@ -223,6 +224,7 @@ impl PainterTool {
                 basis.as_ref(),
                 image.as_ref(),
                 lut,
+                alpha_mode,
             ) {
                 let rect = Region {
                     x: r.x,

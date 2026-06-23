@@ -46,6 +46,7 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
         Some(&basis),
         None,
         &lut,
+        crate::ramp_alpha::RampAlphaMode::None,
     )
     .expect("ramped dab painted");
     let (mut red, mut blue, mut green) = (0, 0, 0);
@@ -66,6 +67,92 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
     assert_eq!(
         green, 0,
         "the brush's own colour must NOT appear — the ramp drives colour"
+    );
+}
+
+/// Shared fixture for the ramp-alpha-mode tests: a hard checker dab whose ramp is opaque red at the
+/// 0-cells and `a0`-alpha blue at the 1-cells.
+#[cfg(test)]
+fn ramp_alpha_dab(buf: &mut [u8], w: u32, h: u32, a1: f32, mode: crate::ramp_alpha::RampAlphaMode) {
+    use crate::texture::{TexDabBasis, TextureKind, TextureMapping, TextureSettings};
+    let spec = BrushSpec {
+        radius_px: 18.0,
+        color: [0.0, 1.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Constant, // hard disk → coverage ≈ 1 across the footprint
+        hardness: 1.0,
+        texture: TextureSettings {
+            kind: TextureKind::Checker,
+            mapping: TextureMapping::ViewPlane,
+            size: [0.25, 0.25], // big cells → both parities land in the footprint
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let lut = [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, a1]];
+    let basis = TexDabBasis::identity();
+    stamp_dab_ramped(
+        buf,
+        w,
+        h,
+        [24.0, 24.0],
+        &spec,
+        1.0,
+        false,
+        Some(&basis),
+        None,
+        &lut,
+        mode,
+    )
+    .expect("ramped dab painted");
+}
+
+#[test]
+fn ramp_alpha_texture_mode_punches_the_sprite_transparent() {
+    use crate::ramp_alpha::RampAlphaMode;
+    let (w, h) = (48u32, 48u32);
+    // s=1 stop is fully transparent → mode TextureAlpha makes those cells see-through.
+    let mut buf = solid(w, h, [255, 255, 255, 255]);
+    ramp_alpha_dab(&mut buf, w, h, 0.0, RampAlphaMode::TextureAlpha);
+    let (mut transparent, mut opaque) = (0, 0);
+    for i in 0..(w * h) as usize {
+        match buf[i * 4 + 3] {
+            a if a < 30 => transparent += 1,
+            a if a > 220 => opaque += 1,
+            _ => {}
+        }
+    }
+    assert!(
+        transparent > 0,
+        "transparent ramp cells punch the sprite see-through: {transparent}"
+    );
+    assert!(opaque > 0, "opaque ramp cells stay solid: {opaque}");
+}
+
+#[test]
+fn ramp_alpha_none_vs_strength_on_a_transparent_canvas() {
+    use crate::ramp_alpha::RampAlphaMode;
+    let (w, h) = (48u32, 48u32);
+    let opaque_px = |buf: &[u8]| {
+        (0..(w * h) as usize)
+            .filter(|&i| buf[i * 4 + 3] > 220)
+            .count()
+    };
+    // Onto a transparent canvas, the s=1 (alpha-0) cells: None ignores alpha → still deposits full
+    // coverage; Strength → zero coverage there → those cells stay transparent. So None covers more.
+    let mut none = solid(w, h, [0, 0, 0, 0]);
+    ramp_alpha_dab(&mut none, w, h, 0.0, RampAlphaMode::None);
+    let mut strength = solid(w, h, [0, 0, 0, 0]);
+    ramp_alpha_dab(&mut strength, w, h, 0.0, RampAlphaMode::Strength);
+    assert!(
+        opaque_px(&none) > opaque_px(&strength),
+        "Strength drops coverage at the translucent cells: none={} strength={}",
+        opaque_px(&none),
+        opaque_px(&strength)
+    );
+    assert!(
+        opaque_px(&strength) > 0,
+        "the opaque (s=0) cells still paint under Strength"
     );
 }
 

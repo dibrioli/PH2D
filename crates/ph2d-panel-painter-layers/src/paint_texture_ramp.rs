@@ -11,13 +11,16 @@
 //! `PanelEvent` channel to `PainterTool::*_texture_ramp*`.
 
 use crate::paint::register_button;
-use crate::paint_brush::{paint_dropdown_chip, paint_dropdown_popover, paint_toggle_row};
+use crate::paint_brush::{
+    paint_dropdown_chip, paint_dropdown_popover, paint_dropdown_row, paint_toggle_row,
+};
 use crate::state;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_texture_ramp_handle_id,
-    painter_brush_texture_ramp_interp_option_id, painter_brush_texture_ramp_mode_option_id,
+    self as core_ids, painter_brush_texture_ramp_alpha_option_id,
+    painter_brush_texture_ramp_handle_id, painter_brush_texture_ramp_interp_option_id,
+    painter_brush_texture_ramp_mode_option_id,
 };
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
@@ -31,7 +34,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
-use ph2d_tool_painter::{BrushSettings, RampColorMode, RampInterp};
+use ph2d_tool_painter::{BrushSettings, RampAlphaMode, RampColorMode, RampInterp};
 use ph2d_vector::Color;
 
 const BAR_H: f32 = 30.0; // LITERAL-PX-OK: gradient bar height
@@ -136,6 +139,23 @@ pub(crate) fn paint_texture_ramp_section(
     // ── Bottom row: editable index + position chips + the final-colour box (edits the selected stop) ──
     y = paint_ramp_bottom(ctx, theme, x, content_w, y, brush, sel);
     ramp_color_readback(ctx, brush, sel);
+
+    // ── Alpha action: what the ramp colour alpha does (Off / Reduce Strength / Sprite Alpha) ──
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Alpha",
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+        brush.texture_ramp_alpha_mode,
+        RampAlphaMode::from_u8(brush.texture_ramp_alpha_mode).name(),
+    );
+    y = ny;
+    if let Some(r) = open {
+        state::set_pending_ramp_alpha_dd(Some((r, brush.texture_ramp_alpha_mode)));
+    }
     y
 }
 
@@ -414,6 +434,28 @@ pub(crate) fn paint_texture_ramp_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens
             cur,
         );
     }
+    if let Some((chip, cur)) = state::take_pending_ramp_alpha_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+            ramp_alpha_options(),
+            chip,
+            cur,
+        );
+    }
+}
+
+fn ramp_alpha_options() -> Vec<DropdownOption<u8>> {
+    (0..RampAlphaMode::COUNT)
+        .map(|m| {
+            DropdownOption::new(
+                painter_brush_texture_ramp_alpha_option_id(m),
+                m,
+                RampAlphaMode::from_u8(m).name(),
+            )
+        })
+        .collect()
 }
 
 fn ramp_mode_options() -> Vec<DropdownOption<u8>> {

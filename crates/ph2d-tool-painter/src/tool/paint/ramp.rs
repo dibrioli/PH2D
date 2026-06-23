@@ -48,6 +48,13 @@ impl PainterTool {
         self.paint.texture_ramp_enabled = !self.paint.texture_ramp_enabled;
     }
 
+    /// Set what the ramp colour's **alpha** does when painting (`RampAlphaMode` wire discriminant):
+    /// `0` ignore · `1` scale brush Strength · `2` drive the sprite's own alpha. No LUT re-bake needed
+    /// (the mode is applied at stamp time, not baked).
+    pub fn set_texture_ramp_alpha_mode(&mut self, m: u8) {
+        self.paint.texture_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::from_u8(m);
+    }
+
     /// Add a ramp stop at the midpoint of the **largest gap** between existing stops, coloured by the
     /// current ramp there (so it sits on the gradient + spreads out without a position control yet);
     /// returns its index.

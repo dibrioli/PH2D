@@ -5,9 +5,9 @@
 use super::*;
 use ph2d_editor_core::ids::{
     painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
-    painter_brush_texture_mapping_option_id,
+    painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,
 };
-use ph2d_tool_painter::{TextureKind, TextureMapping};
+use ph2d_tool_painter::{RampAlphaMode, TextureKind, TextureMapping};
 
 #[test]
 fn every_stroke_method_option_id_round_trips() {
@@ -70,6 +70,24 @@ fn every_texture_mapping_option_id_round_trips() {
     }
     assert_eq!(
         decode_texture_mapping_option(core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
+        None,
+        "the chip id is not an option id"
+    );
+}
+
+#[test]
+fn every_ramp_alpha_option_id_round_trips() {
+    // All 3 alpha actions (Off / Strength / Sprite) must decode back — the range MUST include the last.
+    for m in 0u8..RampAlphaMode::COUNT {
+        let id = painter_brush_texture_ramp_alpha_option_id(m);
+        assert_eq!(
+            decode_texture_ramp_alpha_option(id),
+            Some(m),
+            "ramp alpha action {m} did not decode back (last-value-dropped regression)"
+        );
+    }
+    assert_eq!(
+        decode_texture_ramp_alpha_option(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
         None,
         "the chip id is not an option id"
     );

@@ -53,9 +53,9 @@ pub use ph2d_color::{RampColorMode, RampInterp};
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{
     BrushBlend, Falloff, FalloffCurve, FalloffPoint, HandleType, JitterUnit, MAX_BRUSH_BLEND_MODES,
-    MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, MAX_TEX_PARAMS, ParamSpec, StrokeMethod,
-    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureMapping, eval_falloff_curve, param_specs,
+    MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, MAX_TEX_PARAMS, ParamSpec, RampAlphaMode,
+    StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
+    TextureKind, TextureMapping, eval_falloff_curve, param_specs,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

@@ -295,6 +295,14 @@ impl Tool for PainterTool {
                     self.set_texture_ramp_interp(i);
                 }
             }
+            // Ramp alpha action: Off / → Strength / → Sprite (value = `RampAlphaMode` wire u8).
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_texture_ramp_alpha_mode(m);
+                }
+            }
             // Ramp stop colour from the picker: value = "stop,r,g,b,a" (sRGB bytes, straight alpha).
             PanelEvent::SelectOption(id, value)
                 if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>

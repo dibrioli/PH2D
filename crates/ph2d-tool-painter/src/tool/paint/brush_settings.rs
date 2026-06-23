@@ -165,6 +165,9 @@ pub struct BrushSettings {
     pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     /// Count of valid entries in [`Self::texture_ramp_stops`].
     pub texture_ramp_stop_count: u8,
+    /// What the ramp colour's alpha does when painting (`RampAlphaMode::to_u8`): `0` off · `1` scales
+    /// brush Strength · `2` drives the sprite's own alpha.
+    pub texture_ramp_alpha_mode: u8,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
@@ -268,6 +271,7 @@ impl PainterTool {
             texture_ramp_interp: ramp.interp.to_u8(),
             texture_ramp_stops,
             texture_ramp_stop_count: ramp_count as u8,
+            texture_ramp_alpha_mode: self.paint.texture_ramp_alpha_mode.to_u8(),
         }
     }
 

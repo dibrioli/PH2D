@@ -114,3 +114,15 @@ pub fn painter_brush_texture_ramp_mode_option_id(m: u8) -> NodeId {
 pub fn painter_brush_texture_ramp_interp_option_id(i: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.texrampinterpopt.{i}"))
 }
+
+/// Ramp **alpha action** dropdown (Off / → Strength / → Sprite) — what the ramp colour's alpha does
+/// when painting. `SelectOption` → `set_texture_ramp_alpha_mode`. Sits just below the Color Ramp.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE: NodeId =
+    hash_node_id("painter_brush.texture_ramp_alpha_mode");
+
+/// Stable [`NodeId`] for ramp alpha-action option `m` (the `RampAlphaMode` wire discriminant) in the
+/// open dropdown popover.
+#[must_use]
+pub fn painter_brush_texture_ramp_alpha_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texrampalphaopt.{m}"))
+}

@@ -223,6 +223,11 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS),
         "the stop-position chip must register a hit rect. painted = {on:?}"
     );
+    // The Alpha-action dropdown below the ramp registers a hit rect.
+    assert!(
+        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE),
+        "the ramp alpha-action dropdown must register a hit rect. painted = {on:?}"
+    );
 }
 
 #[test]

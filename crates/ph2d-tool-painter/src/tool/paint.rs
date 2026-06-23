@@ -149,14 +149,13 @@ pub(crate) struct PaintState {
     texture_ramp_enabled: bool,
     texture_ramp_lut: Vec<[f32; 4]>,
     texture_ramp_dirty: bool,
+    texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
 }
 
 impl Default for PaintState {
     fn default() -> Self {
         Self {
-            // A moderate black brush so strokes read clearly on both small and
-            // large canvases. The brush-settings UI drives size/colour later
-            // (`docs/Painter/` Fase 4); the engine's own default is 25 px radius.
+            // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
             brush: BrushSpec {
                 radius_px: 10.0,
                 ..BrushSpec::default()
@@ -186,6 +185,7 @@ impl Default for PaintState {
             texture_ramp_enabled: false,
             texture_ramp_lut: Vec::new(),
             texture_ramp_dirty: true,
+            texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
         }
     }
 }

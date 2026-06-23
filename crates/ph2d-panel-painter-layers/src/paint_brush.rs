@@ -47,10 +47,9 @@ const FALLOFF_PT_NIL: FalloffPoint = FalloffPoint {
     handle: HandleType::Auto,
 };
 
-/// Brush used before the first snapshot publish (Painter just activated). In
-/// practice the bridge publishes every frame the panel is visible, so this is
-/// only a defensive default. `pub(crate)` so the Stroke-section paint tests reuse
-/// it as a Blender-default base (struct-update the one field under test).
+/// Brush used before the first snapshot publish (Painter just activated; the bridge then publishes
+/// every frame). `pub(crate)` so the Stroke-section paint tests reuse it as a Blender-default base
+/// (struct-update the one field under test).
 pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     size_px: 25.0,    // LITERAL-PX-OK: defensive pre-publish fallback default
     size_norm: 0.217, // LITERAL-PX-OK: defensive pre-publish fallback default
@@ -108,6 +107,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_ramp_interp: 2,
     texture_ramp_stops: [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS],
     texture_ramp_stop_count: 0,
+    texture_ramp_alpha_mode: 0,
 };
 
 /// Paint the Brush-properties body rows from `top_y` (already offset by the panel scroll), returning

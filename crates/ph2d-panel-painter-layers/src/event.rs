@@ -24,7 +24,8 @@ mod ramp_picker;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
     decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
-    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
+    decode_texture_ramp_alpha_option, decode_texture_ramp_interp_option,
+    decode_texture_ramp_mode_option,
 };
 
 pub(crate) fn apply_event(
@@ -483,6 +484,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 Some(true)
             } else if let Some(i) = decode_texture_ramp_interp_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP, i);
+                Some(true)
+            } else if let Some(m) = decode_texture_ramp_alpha_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE, m);
                 Some(true)
             } else {
                 None

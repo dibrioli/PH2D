@@ -6,6 +6,7 @@
 //! per-texel falloff weight). Distance is measured from the dab centre to each **pixel centre**
 //! (`px + 0.5`), matching the texel-centre convention.
 
+use crate::ramp_alpha::RampAlphaMode;
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
@@ -87,14 +88,17 @@ pub fn stamp_dab_textured(
         tex,
         image,
         None,
+        RampAlphaMode::None,
     )
 }
 
 /// As [`stamp_dab_textured`], but a baked **Color Ramp** LUT (256 straight-RGBA entries, in the
-/// layer's colour space) maps each texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB
-/// with coverage `falloff × lut[t].a × coverage`, so the texture's scalar drives the painted colour
-/// (via the ramp) rather than only attenuating the brush's single colour. Requires an active texture
-/// (`tex` resolved); with no texture there is nothing to index, so it falls back to the plain stamp.
+/// layer's colour space) maps each texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB,
+/// so the texture's scalar drives the painted colour (via the ramp) rather than only attenuating the
+/// brush's single colour. What the ramp's **alpha** does is selected by `alpha_mode` (see
+/// [`RampAlphaMode`]): ignored, scaling per-texel coverage, or driving the painted pixel's own alpha
+/// (punching the sprite transparent). Requires an active texture (`tex` resolved); with no texture
+/// there is nothing to index, so it falls back to the plain stamp.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn stamp_dab_ramped(
@@ -108,6 +112,7 @@ pub fn stamp_dab_ramped(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
     ramp: &[[f32; 4]],
+    alpha_mode: RampAlphaMode,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -120,6 +125,7 @@ pub fn stamp_dab_ramped(
         tex,
         image,
         Some(ramp),
+        alpha_mode,
     )
 }
 
@@ -136,6 +142,7 @@ fn stamp_dab_inner(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
     ramp: Option<&[[f32; 4]]>,
+    alpha_mode: RampAlphaMode,
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
@@ -171,6 +178,7 @@ fn stamp_dab_inner(
         image: image.copied(),
         // The ramp only applies where a texture supplies the index value.
         ramp: ramp.filter(|_| spec.texture.is_active()),
+        alpha_mode,
         center,
         cx,
         cy,
@@ -309,6 +317,8 @@ struct DabCtx<'a> {
     /// Baked Color Ramp LUT (straight RGBA, layer colour space): when present (and a texture is
     /// active), the texture value indexes it for the per-texel paint colour. See [`stamp_dab_ramped`].
     ramp: Option<&'a [[f32; 4]]>,
+    /// What the ramp colour's alpha does (only meaningful when `ramp` is `Some`). See [`RampAlphaMode`].
+    alpha_mode: RampAlphaMode,
     center: [f32; 2],
     cx: f32,
     cy: f32,
@@ -343,8 +353,10 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
             }
             // Default: the brush's single colour. The texture multiplies the falloff mask, exactly
             // as the falloff multiplies coverage (texel 0 → nothing, 1 → full falloff). With a Color
-            // Ramp the texture value instead indexes the ramp for the per-texel COLOUR + alpha.
+            // Ramp the texture value instead indexes the ramp for the per-texel COLOUR; the ramp's
+            // alpha does what `ctx.alpha_mode` selects (nothing / less coverage / the pixel's alpha).
             let mut color = ctx.spec.color;
+            let mut stamp_alpha = 1.0_f32; // mode TextureAlpha: the source pixel's own alpha
             if let Some(b) = ctx.tex {
                 let s = crate::texture::sample(
                     &ctx.spec.texture,
@@ -358,7 +370,11 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 if let Some(lut) = ctx.ramp {
                     let c = ramp_sample(lut, s);
                     color = [c[0], c[1], c[2]];
-                    w *= c[3];
+                    match ctx.alpha_mode {
+                        RampAlphaMode::None => {}             // recolour only — alpha ignored
+                        RampAlphaMode::Strength => w *= c[3], // less coverage where translucent
+                        RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
+                    }
                 } else {
                     w *= s;
                 }
@@ -373,17 +389,28 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 f32::from(dst[i + 2]) / 255.0,
                 f32::from(dst[i + 3]) / 255.0,
             ];
-            // Alpha lock: gate coverage by the destination's existing alpha so paint
-            // recolours the shape without extending it.
-            let a = if ctx.preserve_alpha {
-                w * ctx.coverage * prev[3]
+            // Mode TextureAlpha stamps the ramp as an RGBA image so translucent areas LOWER the
+            // sprite's own alpha (punch it transparent) — alpha-lock can't apply (it edits alpha).
+            // The other modes gate coverage by the dest alpha when alpha-locked + blend with the brush
+            // mode (colour blend modes keep the dest alpha; you only paint where there's coverage).
+            let out = if matches!(ctx.alpha_mode, RampAlphaMode::TextureAlpha) && ctx.ramp.is_some()
+            {
+                let m = w * ctx.coverage;
+                if m <= 0.0 {
+                    continue;
+                }
+                stamp_rgba(prev, color, stamp_alpha, m)
             } else {
-                w * ctx.coverage
+                let a = if ctx.preserve_alpha {
+                    w * ctx.coverage * prev[3]
+                } else {
+                    w * ctx.coverage
+                };
+                if a <= 0.0 {
+                    continue;
+                }
+                crate::blend::blend_over(blend, prev, color, a)
             };
-            if a <= 0.0 {
-                continue;
-            }
-            let out = crate::blend::blend_over(blend, prev, color, a);
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
             dst[i + 2] = encode(out[2]);
@@ -398,6 +425,28 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
 pub(crate) fn encode(v: f32) -> u8 {
     // Round-to-nearest, clamped. (No gamma here — the buffer is already in its native space.)
     (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
+}
+
+/// Stamp source `(color, sa)` (straight RGBA) onto destination `dst` within coverage `m ∈ [0,1]`:
+/// a premultiplied lerp `out = dst·(1−m) + (color,sa)·m`. Unlike a colour blend this can LOWER the
+/// destination alpha (where `sa < dst.a` and `m` is high) — that's how mode [`RampAlphaMode::TextureAlpha`]
+/// makes parts of the sprite transparent. With `sa = 1` everywhere it reduces to ordinary opaque paint.
+fn stamp_rgba(dst: [f32; 4], color: [f32; 3], sa: f32, m: f32) -> [f32; 4] {
+    let sa = sa.clamp(0.0, 1.0);
+    let m = m.clamp(0.0, 1.0);
+    let da = dst[3];
+    let out_a = da * (1.0 - m) + sa * m;
+    if out_a <= 0.0 {
+        return [0.0, 0.0, 0.0, 0.0];
+    }
+    // Un-premultiply: each channel is the premultiplied lerp divided by the out alpha.
+    let mix = |b: f32, s: f32| (b * da * (1.0 - m) + s * sa * m) / out_a;
+    [
+        mix(dst[0], color[0]),
+        mix(dst[1], color[1]),
+        mix(dst[2], color[2]),
+        out_a,
+    ]
 }
 
 /// Sample a baked Color Ramp LUT at `s ∈ [0, 1]` (nearest entry — the 256-step LUT is already fine).

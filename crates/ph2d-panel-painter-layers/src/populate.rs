@@ -126,9 +126,10 @@ pub fn populate(store: &mut WidgetStore) {
         // Texture section: Kind picker + Mapping chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
-        // Color Ramp: Mode + Interpolation chips.
+        // Color Ramp: Mode + Interpolation + Alpha-action chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
     ] {
         store.register(
             id,

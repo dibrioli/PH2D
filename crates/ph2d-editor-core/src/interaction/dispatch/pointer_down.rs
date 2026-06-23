@@ -418,14 +418,20 @@ pub(super) fn dispatch_down<'frame>(
         if store.is_painter_layer_row(id) {
             store.begin_painter_layer_drag(id, event.x, event.y, event.timestamp_ns);
         }
-        // Scrollbar thumb drag — snapshot the panel
-        // metrics so subsequent Move events can compute a
-        // proportional `panel_scroll` delta. The
-        // scrollbar id encodes its panel (see helper
-        // below); the metrics come from the side-tables
-        // the painters publish each frame.
-        // The single dropdown scrollbar id maps to whichever dropdown is currently open (its scroll
-        // value + heights live in the panel tables keyed by the dropdown id, so the drag is generic).
+        // BlenderColorPicker sub-control hits route into the
+        // parent's stored state mutation. Right-click on a
+        // palette swatch removes it instead of picking it.
+        if let Some(parent) = apply_blender_hit(store, id, rect, event.x, event.y, event.button) {
+            events.push(WidgetEvent::ValueChanged(parent));
+        }
+    }
+
+    // Scrollbar drag — NOT gated on `is_focusable`. The bar isn't a registered `InteractiveState`, so
+    // it is never focusable: gating the begin behind the focus block above meant the drag never
+    // started (the real reason no scrollbar could be dragged). Snapshot the panel metrics so Move
+    // computes a proportional `panel_scroll` delta. The single dropdown scrollbar id maps to whichever
+    // dropdown is open; the rest are fixed (see `scrollbar_panel_for_id`).
+    if let Some((id, rect)) = hit {
         let scroll_panel = if id == crate::widget::DROPDOWN_SCROLLBAR_ID {
             store.dropdown_popover().map(|(dd, _)| dd)
         } else {
@@ -443,12 +449,6 @@ pub(super) fn dispatch_down<'frame>(
                 content_h,
                 visible_h,
             });
-        }
-        // BlenderColorPicker sub-control hits route into the
-        // parent's stored state mutation. Right-click on a
-        // palette swatch removes it instead of picking it.
-        if let Some(parent) = apply_blender_hit(store, id, rect, event.x, event.y, event.button) {
-            events.push(WidgetEvent::ValueChanged(parent));
         }
     }
 }

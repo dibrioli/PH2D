@@ -520,3 +520,47 @@ fn wheel_over_an_open_dropdown_popover_scrolls_it() {
         "closed dropdown ignores the wheel"
     );
 }
+
+#[test]
+fn scrollbar_track_drag_begins_without_focus_and_scrolls() {
+    // A scrollbar is hit-registered only (never a store `InteractiveState`) → NOT focusable. The Down
+    // handler must still begin the drag — the regression was that the begin sat inside the
+    // `is_focusable` block, so no scrollbar could ever be dragged.
+    let mut store = WidgetStore::with_capacity(8);
+    let panel = crate::ids::PAINTER_LAYERS_PANEL;
+    store.set_panel_content_h(panel, 300.0);
+    store.set_panel_visible_h(panel, 100.0);
+    let mut hits = HitIndex::new();
+    hits.register(
+        crate::widget::PAINTER_LAYERS_SCROLLBAR_ID,
+        Rect::new(200.0, 0.0, 10.0, 100.0), // the full track
+    );
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 205.0, 10.0),
+        &arena,
+    );
+    assert!(
+        store.scrollbar_drag().is_some(),
+        "Down on the track begins a scrollbar drag (no focus required)"
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 205.0, 70.0),
+        &arena,
+    );
+    assert!(
+        store.panel_scroll(panel) > 0.0,
+        "dragging the track down scrolled the panel"
+    );
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 205.0, 70.0),
+        &arena,
+    );
+    assert!(store.scrollbar_drag().is_none(), "Up ends the drag");
+}

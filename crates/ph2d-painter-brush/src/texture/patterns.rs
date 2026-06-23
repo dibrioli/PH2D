@@ -32,6 +32,13 @@ pub(super) fn sample_kind(kind: TextureKind, tex: [f32; 2], image: Option<&Image
         TextureKind::Dots => dots(u, v),
         TextureKind::Grid => grid(u, v),
         TextureKind::Bricks => bricks(u, v),
+        TextureKind::Waves => waves(u, v),
+        TextureKind::Chevron => chevron(u, v),
+        TextureKind::Diamonds => diamonds(u, v),
+        TextureKind::Triangles => triangles(u, v),
+        TextureKind::Hexagons => hexagons(u, v),
+        TextureKind::Scales => scales(u, v),
+        TextureKind::Weave => weave(u, v),
         TextureKind::Image => match image {
             Some(img) => sample_image(img, u, v),
             None => 1.0, // kind is Image but no pixels supplied → inert
@@ -179,6 +186,72 @@ fn bricks(u: f32, v: f32) -> f32 {
     const MORTAR: f32 = 0.08;
     let inside = |f: f32| f > MORTAR && f < 1.0 - MORTAR;
     if inside(fu) && inside(fv) { 1.0 } else { 0.0 }
+}
+
+// ── Vector-app geometric patterns ───────────────────────────────────────────────────────────
+
+/// **Waves**: smooth horizontal bands rippled along `x` (water / silk).
+fn waves(u: f32, v: f32) -> f32 {
+    wave01(v + (wave01(u) - 0.5) * 0.6)
+}
+
+/// **Chevron**: V-shaped zigzag bands.
+fn chevron(u: f32, v: f32) -> f32 {
+    let zig = (2.0 * (u - (u + 0.5).floor())).abs(); // triangle 0→1 across each unit
+    wave01(v + zig * 0.5)
+}
+
+/// **Diamonds** (harlequin): a 45°-rotated checker of diamonds.
+fn diamonds(u: f32, v: f32) -> f32 {
+    ((ifloor(u + v) ^ ifloor(u - v)) & 1) as f32
+}
+
+/// **Triangles**: a two-tone triangular tiling (each square split along its diagonal).
+fn triangles(u: f32, v: f32) -> f32 {
+    let (cu, cv) = (ifloor(u), ifloor(v));
+    let (fu, fv) = (u - u.floor(), v - v.floor());
+    let upper = i32::from(fu + fv > 1.0);
+    (((cu ^ cv) & 1) ^ upper) as f32
+}
+
+/// **Hexagons** (honeycomb): Voronoi cells of a triangular lattice, with bright rims.
+fn hexagons(u: f32, v: f32) -> f32 {
+    const GX: f32 = 1.0;
+    const GY: f32 = 1.732_05; // √3
+    // Two interleaved square grids whose union is the hex-centre (triangular) lattice.
+    let a = [(u / GX).round() * GX, (v / GY).round() * GY];
+    let b = [
+        ((u - GX * 0.5) / GX).round() * GX + GX * 0.5,
+        ((v - GY * 0.5) / GY).round() * GY + GY * 0.5,
+    ];
+    let d2 = |c: [f32; 2]| (u - c[0]) * (u - c[0]) + (v - c[1]) * (v - c[1]);
+    let c = if d2(a) < d2(b) { a } else { b };
+    let (px, py) = ((u - c[0]).abs(), (v - c[1]).abs());
+    let hd = (px * 0.866_025 + py * 0.5).max(py); // hexagon distance, 0 centre → ~0.5 rim
+    smoothstep((hd / 0.5).min(1.0))
+}
+
+/// **Scales** (fish-scale): overlapping rows of ringed discs.
+fn scales(u: f32, v: f32) -> f32 {
+    let row = v.floor();
+    let off = if (row as i32) & 1 == 0 { 0.0 } else { 0.5 };
+    let cx = (u - off + 0.5).floor() + off; // nearest scale centre on this row
+    let (dx, dy) = (u - cx, v - row);
+    smoothstep(((dx * dx + dy * dy).sqrt() / 0.7).min(1.0))
+}
+
+/// **Weave** (basketweave): over-under woven bands.
+fn weave(u: f32, v: f32) -> f32 {
+    let over_h = (ifloor(u) ^ ifloor(v)) & 1 == 0;
+    let (fu, fv) = (u - u.floor(), v - v.floor());
+    let (horiz, vert) = ((0.2..0.8).contains(&fv), (0.2..0.8).contains(&fu));
+    if (over_h && horiz) || (!over_h && vert) {
+        1.0 // the band on top
+    } else if horiz || vert {
+        0.4 // the band underneath
+    } else {
+        0.0 // gap
+    }
 }
 
 // ── Image-backed sampling ───────────────────────────────────────────────────────────────────

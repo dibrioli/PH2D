@@ -79,6 +79,20 @@ pub enum TextureKind {
     Grid,
     /// Running-bond rectangles with mortar gaps (bricks).
     Bricks,
+    /// Smooth horizontal bands rippled along x (water / silk).
+    Waves,
+    /// V-shaped zigzag bands.
+    Chevron,
+    /// 45°-rotated checker of diamonds (harlequin).
+    Diamonds,
+    /// Two-tone triangular tiling.
+    Triangles,
+    /// Honeycomb hexagon cells with bright rims.
+    Hexagons,
+    /// Overlapping ringed discs (fish-scale / scallops).
+    Scales,
+    /// Over-under woven bands (basketweave).
+    Weave,
 }
 
 impl TextureKind {
@@ -105,6 +119,13 @@ impl TextureKind {
             Self::Dots => 16,
             Self::Grid => 17,
             Self::Bricks => 18,
+            Self::Waves => 19,
+            Self::Chevron => 20,
+            Self::Diamonds => 21,
+            Self::Triangles => 22,
+            Self::Hexagons => 23,
+            Self::Scales => 24,
+            Self::Weave => 25,
         }
     }
 
@@ -130,12 +151,19 @@ impl TextureKind {
             16 => Self::Dots,
             17 => Self::Grid,
             18 => Self::Bricks,
+            19 => Self::Waves,
+            20 => Self::Chevron,
+            21 => Self::Diamonds,
+            22 => Self::Triangles,
+            23 => Self::Hexagons,
+            24 => Self::Scales,
+            25 => Self::Weave,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 19;
+    pub const COUNT: u8 = 26;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -160,6 +188,13 @@ impl TextureKind {
             Self::Dots => "Dots",
             Self::Grid => "Grid",
             Self::Bricks => "Bricks",
+            Self::Waves => "Waves",
+            Self::Chevron => "Chevron",
+            Self::Diamonds => "Diamonds",
+            Self::Triangles => "Triangles",
+            Self::Hexagons => "Hexagons",
+            Self::Scales => "Scales",
+            Self::Weave => "Weave",
         }
     }
 }

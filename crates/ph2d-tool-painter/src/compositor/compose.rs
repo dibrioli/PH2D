@@ -176,7 +176,10 @@ fn composite_into(
         let opacity = layer.opacity.clamp(0.0, 1.0);
         let mode = layer.blend_mode;
         match &layer.kind {
-            LayerKind::Raster(_) => {
+            // A Texture layer is raster-backed (its pixels are pre-rendered into the source's
+            // `images[id]`), so it blends through the exact same path as a painted raster — mask,
+            // clipping, blend, opacity, and clip-base all apply identically.
+            LayerKind::Raster(_) | LayerKind::Texture(_) => {
                 let Some(rgba) = src.layer_rgba(id) else {
                     continue;
                 };

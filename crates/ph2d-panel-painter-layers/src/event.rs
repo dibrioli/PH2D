@@ -33,8 +33,7 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
-    // Brush section (Brush UI) widgets are fixed-id + tool-global, so they route
-    // before the per-layer dispatch (no `LayerStack` snapshot needed).
+    // Brush-section widgets are fixed-id + tool-global → route before the per-layer dispatch.
     if let Some(consumed) = try_apply_brush_event(host, ev) {
         return EventOutcome::from_bool(consumed);
     }
@@ -57,6 +56,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 || id == core_ids::PAINTER_LAYERS_DUPLICATE
                 || id == core_ids::PAINTER_LAYERS_DELETE
                 || id == core_ids::PAINTER_LAYERS_GROUP
+                || id == core_ids::PAINTER_LAYERS_ADD_TEXTURE
                 || id == core_ids::PAINTER_LAYERS_MASK
                 || id == core_ids::PAINTER_LAYERS_CLIP
                 || id == core_ids::PAINTER_LAYERS_ALPHA_LOCK

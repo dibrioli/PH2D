@@ -84,6 +84,9 @@ pub const PAINTER_LAYERS_REFERENCE: NodeId = hash_node_id("painter_layers.refere
 /// Action toolbar "+ Adj" — creates a non-destructive adjustment layer (W4
 /// T4.3; HSB for the Day-4 smoke, full 24-kind menu lands with T4.15).
 pub const PAINTER_LAYERS_ADD_ADJUSTMENT: NodeId = hash_node_id("painter_layers.add_adjustment");
+/// Action toolbar "+ Texture" — creates a Texture layer (a procedural brush-texture fill recoloured by
+/// a Color Ramp, covering the sprite). Click → `PainterTool::add_texture_layer`. Sits next to "+ Adj".
+pub const PAINTER_LAYERS_ADD_TEXTURE: NodeId = hash_node_id("painter_layers.add_texture");
 /// Dock-mode toggle no header do Painter **layers** panel — alterna o slot
 /// docado de volta pra brush-settings (mostra "Brush"). Enio escolheu o modo
 /// C = toggle (um slot, dois painéis). Estado vive no `PainterTool`

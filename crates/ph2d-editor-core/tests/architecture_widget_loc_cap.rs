@@ -30,8 +30,10 @@ const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     ),
     (
         "src/widget/dropdown.rs",
-        515,
-        "Dropdown chip + popover + option-row paint live cohesively; split é follow-up.",
+        639,
+        "Dropdown chip + popover + option-row paint live cohesively; the 2026-06 scrollable-popover \
+         feature (wheel + draggable bar, app-wide default) added the scrolled-popover paint + \
+         scrollbar/track geometry. Split into a sub-folder is a follow-up.",
     ),
 ];
 

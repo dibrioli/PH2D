@@ -9,7 +9,9 @@
 use super::{ImageMask, TextureKind};
 use crate::ramp_alpha::RampAlphaMode;
 
+mod layer;
 mod specs;
+pub use layer::render_texture_layer;
 pub use specs::{ParamSpec, param_specs};
 
 /// Evaluate `kind` at texture coords `tex` (after the mapping resolved them), shaped by the kind's

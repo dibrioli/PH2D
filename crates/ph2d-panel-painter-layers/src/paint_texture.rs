@@ -22,12 +22,17 @@ use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
     BrushSettings, ColorRamp, RampAlphaMode, RampColorMode, RampInterp, RampStop,
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview, srgb_to_linear_byte,
+    TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
+    srgb_to_linear_byte,
 };
 use ph2d_vector::ImageQuality;
 
 /// Paint the Texture section starting at `y`, returning the next `y`. The Kind picker + Mapping
 /// dropdowns stash their open rects for the deferred [`paint_texture_popovers`] pass.
+///
+/// `compact` (a **Texture layer** editor, not the brush) hides the per-dab-only controls — the "New"
+/// button, Mapping, Angle, Rake and Random — since a full-cover layer maps at identity. The Kind
+/// picker, Size / Offset, per-pattern params, the live preview and the Color Ramp are always shown.
 pub(crate) fn paint_texture_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -35,12 +40,13 @@ pub(crate) fn paint_texture_section(
     content_w: f32,
     y: f32,
     brush: BrushSettings,
+    compact: bool,
 ) -> f32 {
     let mut y = section_header(ctx, theme, x, content_w, y, "Texture");
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);
 
-    // ── Kind picker ("thumbnail") + New (always) ──
+    // ── Kind picker ("thumbnail") + New (brush only) ──
     let (ny, open) = paint_dropdown_row(
         ctx,
         theme,
@@ -56,76 +62,78 @@ pub(crate) fn paint_texture_section(
     if let Some(r) = open {
         state::set_pending_brush_texture_kind_dd(Some((r, brush.texture_kind)));
     }
-    // "New" — a momentary button (assigns the default procedural); painted as an un-filled toggle.
-    y = paint_toggle_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_TEXTURE_NEW,
-        "New",
-        false,
-    );
+    if !compact {
+        // "New" — a momentary button (assigns the default procedural); painted as an un-filled toggle.
+        y = paint_toggle_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_BRUSH_TEXTURE_NEW,
+            "New",
+            false,
+        );
+    }
 
     // Everything below modulates an assigned texture — hide it when there is none (no dead controls).
     if kind == TextureKind::None {
         return y;
     }
 
-    // ── Mapping dropdown ──
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Mapping",
-        core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
-        brush.texture_mapping,
-        TextureMapping::from_u8(brush.texture_mapping).name(),
-    );
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_brush_texture_mapping_dd(Some((r, brush.texture_mapping)));
-    }
-
-    // ── Angle (whole degrees) ──
-    let angle_track = f32::from(brush.texture_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Angle",
-        id: core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-        value: angle_track,
-        readout: &format!("{}°", brush.texture_angle_deg),
-    });
-
-    // ── Rake + Random toggles — only the per-dab rotation mappings (Stencil has a fixed frame) ──
-    if mapping.uses_dab_rotation() {
-        y = paint_toggle_row(
+    // ── Per-dab mapping controls — brush only (a layer covers the sprite at identity rotation) ──
+    if !compact {
+        let (ny, open) = paint_dropdown_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-            "Rake",
-            brush.texture_rake,
+            "Mapping",
+            core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+            brush.texture_mapping,
+            TextureMapping::from_u8(brush.texture_mapping).name(),
         );
-        y = paint_toggle_row(
+        y = ny;
+        if let Some(r) = open {
+            state::set_pending_brush_texture_mapping_dd(Some((r, brush.texture_mapping)));
+        }
+        // ── Angle (whole degrees) ──
+        let angle_track = f32::from(brush.texture_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
+        y = paint_param_row(ParamRow {
             ctx,
             theme,
             x,
             content_w,
             y,
-            core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-            "Random",
-            brush.texture_random,
-        );
+            label: "Angle",
+            id: core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+            value: angle_track,
+            readout: &format!("{}°", brush.texture_angle_deg),
+        });
+        // ── Rake + Random toggles — only the per-dab rotation mappings (Stencil has a fixed frame) ──
+        if mapping.uses_dab_rotation() {
+            y = paint_toggle_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
+                "Rake",
+                brush.texture_rake,
+            );
+            y = paint_toggle_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+                "Random",
+                brush.texture_random,
+            );
+        }
     }
 
     // ── Offset X / Y (tile fractions) ──
@@ -197,6 +205,55 @@ pub(crate) fn paint_texture_section(
 
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
     crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)
+}
+
+/// Paint the **Texture-layer** editor inline under the active Texture-layer row: the same Texture
+/// section (Kind / Size / Offset / params / preview / Color Ramp), bound to the layer instead of the
+/// brush. Builds a `BrushSettings` *view* by overwriting the published brush snapshot's texture fields
+/// from the layer's spec, so the shared fixed-id widgets, preview and ramp all reflect the layer; the
+/// tool routes their edits to the active texture layer. Returns the next `y` (no-op before the brush
+/// snapshot is published).
+pub(crate) fn paint_texture_layer_editor(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    tex: &TextureLayer,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    let Some(view) = state::current_brush().map(|b| brush_view_from_texture_layer(b, tex)) else {
+        return y;
+    };
+    paint_texture_section(ctx, theme, x, content_w, y, view, true)
+}
+
+/// Overwrite `base`'s texture fields from a Texture layer's spec (kind / params / size / offset + the
+/// Color Ramp), leaving the brush's other fields intact. The ramp stops are converted from the layer's
+/// linear `ColorRamp` to the panel's display-sRGB form (mirror of the tool's `brush_settings`).
+fn brush_view_from_texture_layer(mut base: BrushSettings, tex: &TextureLayer) -> BrushSettings {
+    base.texture_kind = tex.kind;
+    base.texture_params = tex.params;
+    base.texture_size = tex.size;
+    base.texture_offset = tex.offset;
+    base.texture_ramp_enabled = tex.ramp_enabled;
+    base.texture_ramp_mode = tex.ramp.color_mode.to_u8();
+    base.texture_ramp_interp = tex.ramp.interp.to_u8();
+    base.texture_ramp_alpha_mode = tex.ramp_alpha_mode;
+    let srgb = |c: f32| f32::from(linear_to_srgb_byte(c)) / 255.0;
+    let stops = tex.ramp.stops();
+    let count = stops.len().min(base.texture_ramp_stops.len());
+    base.texture_ramp_stop_count = count as u8;
+    for (slot, s) in base.texture_ramp_stops.iter_mut().zip(stops).take(count) {
+        *slot = [
+            s.pos,
+            srgb(s.color[0]),
+            srgb(s.color[1]),
+            srgb(s.color[2]),
+            s.color[3],
+            f32::from(s.id),
+        ];
+    }
+    base
 }
 
 /// Real-time preview of the active texture pattern: re-rendered each frame from the published snapshot

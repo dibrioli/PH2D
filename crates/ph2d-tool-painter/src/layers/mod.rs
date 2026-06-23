@@ -25,6 +25,8 @@ use ph2d_painter_effects::BlendMode;
 use ph2d_painter_effects::adjustments::AdjustmentLayer;
 use serde::{Deserialize, Serialize};
 
+pub use texture::TextureLayer;
+
 /// Maximum group nesting depth (§2.6). A would-be level-9 group folds to
 /// level 8 (the deeper insert is rejected).
 pub const MAX_GROUP_DEPTH: usize = 8;
@@ -81,6 +83,11 @@ pub enum LayerKind {
     Mask(MaskLayer),
     Group(GroupLayer),
     Adjustment(AdjustmentLayer),
+    /// A procedural-texture fill (the brush textures) recoloured by a Color Ramp, covering the whole
+    /// sprite. Raster-backed: its pixels are rendered into the tool's `images[id]` from the
+    /// [`TextureLayer`] spec, so the compositor blends it exactly like a raster (mask / clip / blend /
+    /// opacity / groups all apply). Real-time editable from the layers panel.
+    Texture(TextureLayer),
 }
 
 /// A single layer: identity + kind + composite params + modifier flags.
@@ -126,6 +133,11 @@ impl Layer {
     pub fn is_group(&self) -> bool {
         matches!(self.kind, LayerKind::Group(_))
     }
+
+    #[must_use]
+    pub fn is_texture(&self) -> bool {
+        matches!(self.kind, LayerKind::Texture(_))
+    }
 }
 
 /// Modifier flags of the active layer — the layers panel's modifier toolbar
@@ -162,3 +174,4 @@ impl Default for LayerStack {
 mod stack;
 #[cfg(test)]
 mod tests;
+mod texture;

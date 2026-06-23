@@ -103,6 +103,15 @@ pub(crate) fn paint_layer_subtree(
             );
         }
 
+        // The ACTIVE Texture layer renders its editor inline under its row (one fixed-id instance).
+        if let LayerKind::Texture(tex) = &layer.kind
+            && active == Some(id)
+        {
+            let tx = row_x + LAYER_INDENT_STEP;
+            let tw = (row_w - LAYER_INDENT_STEP).max(0.0);
+            y = crate::paint_texture::paint_texture_layer_editor(ctx, theme, tex, tx, tw, y);
+        }
+
         // T3.5: a layer's attached mask renders as an indented, selectable
         // sub-row directly under it (one nesting level deeper).
         if let Some(mask_id) = layer.mask {

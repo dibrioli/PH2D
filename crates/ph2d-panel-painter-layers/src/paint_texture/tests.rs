@@ -29,7 +29,7 @@ fn painted_hit_ids_for(brush: BrushSettings) -> Vec<NodeId> {
             scene: &mut scene,
             text_system: &mut text,
         };
-        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush);
+        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush, false);
     }
     host.hit_index_mut()
         .iter_registrations()

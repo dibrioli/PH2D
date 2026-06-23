@@ -335,6 +335,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         crate::adjust_menu::paint_adjustment_menu_popover(ctx, theme, menu_chip);
     }
 
+    // Deferred: the active Texture layer's editor dropdown popovers (Kind + Color Ramp Mode /
+    // Interp / Alpha), drained on top of the rows so they float unclipped.
+    crate::paint_texture::paint_texture_popovers(ctx, theme);
+
     // W3.T3.8: the floating drag ghost is the very top layer (a drag and an open
     // blend popover are mutually exclusive, so order vs the popover is moot).
     // Painted after the body clip pop so it tracks the cursor past the list.
@@ -493,6 +497,22 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         );
         state::set_pending_adj_menu(Some(menu_chip));
     }
+
+    // "+ Texture" — create a Texture layer (a procedural brush-texture fill recoloured by a Color
+    // Ramp, covering the sprite); a plain action next to "+ Adj".
+    x += HEADER_ICON_W + Spacing::Xs.px();
+    let tex_id = core_ids::PAINTER_LAYERS_ADD_TEXTURE;
+    let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
+    let tex_st = ctx
+        .host
+        .store()
+        .button_state(tex_id)
+        .unwrap_or(ButtonState::Normal);
+    let tex_btn = Button::new(tex_id, "Add texture layer")
+        .icon_only(IconId::Grid)
+        .state(tex_st);
+    paint_button(&tex_btn, tex_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host.hit_index_mut().register(tex_id, tex_rect);
 }
 
 /// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggle

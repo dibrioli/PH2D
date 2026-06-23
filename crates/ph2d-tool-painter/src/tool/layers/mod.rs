@@ -18,6 +18,7 @@ mod cache;
 mod model;
 mod mutate;
 mod preview;
+mod texture;
 mod undo;
 
 // Preserve the historic public path `tool::layers::MAX_CURVE_POINTS_PER_CHANNEL`

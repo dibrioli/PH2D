@@ -19,7 +19,7 @@ use convert::{
 pub const MAX_RAMP_STOPS: usize = 32;
 
 /// The space in which adjacent stop colors are interpolated.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum RampColorMode {
     /// Interpolate the linear R, G, B channels directly.
     #[default]
@@ -32,7 +32,7 @@ pub enum RampColorMode {
 
 /// How the factor between two bracketing stops is shaped (and, for the cubic modes, how four
 /// surrounding stops combine). Mirrors Blender's `ipotype`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum RampInterp {
     /// Smoothstep ease-in/out between the two stops.
     Ease,
@@ -49,7 +49,7 @@ pub enum RampInterp {
 
 /// Which way around the hue circle [`RampColorMode::Hsv`] / [`RampColorMode::Hsl`] interpolates.
 /// Mirrors Blender's `ipotype_hue`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum RampHue {
     /// Shortest arc between the two hues.
     #[default]
@@ -168,7 +168,7 @@ impl RampHue {
 }
 
 /// One color stop: a position on the ramp and its linear RGBA color.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RampStop {
     /// Position on the ramp in `[0, 1]`.
     pub pos: f32,
@@ -195,7 +195,7 @@ impl RampStop {
 /// A gradient of color stops with a chosen interpolation space + mode. Stops are kept **sorted by
 /// position**; there is always at least one. Evaluate with [`Self::eval`] or bake a LUT with
 /// [`Self::bake_into`].
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ColorRamp {
     /// Sorted by `pos` (ascending); invariant: non-empty, len ≤ [`MAX_RAMP_STOPS`].
     stops: Vec<RampStop>,

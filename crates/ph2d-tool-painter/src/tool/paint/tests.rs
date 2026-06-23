@@ -1918,3 +1918,89 @@ fn stencil_down_away_from_handles_paints_not_edits() {
     );
     assert!(t.dirty_rect.is_some(), "it painted instead of editing");
 }
+
+// ── Texture layers (LayerKind::Texture) — end-to-end through the panel-event path ──
+
+/// `true` when the RGBA buffer is not a flat fill (the texture produced spatial variation).
+fn buf_varies(b: &[u8]) -> bool {
+    b.chunks_exact(4).any(|p| p != &b[0..4])
+}
+
+#[test]
+fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_painter_brush::TextureKind;
+
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32); // opaque white base
+
+    // Add a Texture layer: it becomes active, with its rendered pixels in `canvas_rgba`.
+    let id = t.add_texture_layer().expect("texture layer added");
+    assert!(
+        matches!(
+            t.layers().get(id).map(|l| &l.kind),
+            Some(LayerKind::Texture(_))
+        ),
+        "the new layer is a Texture layer"
+    );
+    assert_eq!(t.layers().active(), Some(id), "the texture layer is active");
+    let buf_default = t.canvas_rgba.as_ref().clone();
+    assert_eq!(buf_default.len(), 32 * 32 * 4);
+    assert!(
+        buf_varies(&buf_default),
+        "the default texture fills with variation"
+    );
+
+    // It composites like a raster (non-trivial stack → the texture covers the white base).
+    let (composite, _, _) = t.run_full();
+    assert!(
+        buf_varies(&composite),
+        "the composite shows the texture over the base"
+    );
+
+    // Live edit through the FROZEN panel-event channel — change the kind. The active layer is a
+    // texture layer, so the tool routes the texture widget to it (not the brush).
+    let brush_kind_before = t.brush_settings().texture_kind;
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+        TextureKind::Checker.to_u8().to_string(),
+    ));
+    let buf_checker = t.canvas_rgba.as_ref().clone();
+    assert_ne!(
+        buf_default, buf_checker,
+        "changing the kind re-rendered the layer live"
+    );
+    match t.layers().get(id).map(|l| &l.kind) {
+        Some(LayerKind::Texture(tex)) => assert_eq!(tex.kind, TextureKind::Checker.to_u8()),
+        _ => panic!("layer should still be a Texture layer"),
+    }
+    assert_eq!(
+        t.brush_settings().texture_kind,
+        brush_kind_before,
+        "the edit routed to the LAYER, leaving the brush texture untouched"
+    );
+
+    // A per-pattern param edit also re-renders live (Checker defaults to hard Softness 0.0; push it
+    // fully soft so the edge pixels change).
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[2],
+        1.0,
+    ));
+    let buf_soft = t.canvas_rgba.as_ref().clone();
+    assert_ne!(
+        buf_checker, buf_soft,
+        "editing a per-pattern param re-rendered the layer"
+    );
+
+    // A standard layer feature works on a Texture layer: hiding it drops it from the composite,
+    // leaving only the opaque white base.
+    t.set_layer_visible(id, false);
+    let (hidden, _, _) = t.run_full();
+    assert!(
+        hidden
+            .chunks_exact(4)
+            .all(|p| p[0] == 255 && p[1] == 255 && p[2] == 255 && p[3] == 255),
+        "hiding the texture layer reveals the white base"
+    );
+}

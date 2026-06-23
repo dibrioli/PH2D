@@ -32,7 +32,7 @@ pub use compositor::{
 };
 pub use layers::{
     GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers, LayerStack,
-    MAX_GROUP_DEPTH, MaskLayer, RasterLayer,
+    MAX_GROUP_DEPTH, MaskLayer, RasterLayer, TextureLayer,
 };
 pub use params::PainterParams;
 // Re-export the effects surface so the layers panel can name adjustment params /

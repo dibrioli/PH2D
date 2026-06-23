@@ -44,6 +44,11 @@ impl Tool for PainterTool {
         // `tool/layers.rs`).
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
+        // "+ Texture" creation + (when a Texture layer is active) its texture-section edits route to
+        // the layer here; falls through to the brush/layer handlers below otherwise. See `route_*`.
+        if self.route_texture_layer_event(&event) {
+            return;
+        }
         match event {
             // ── Dock toggle — layers panel header button ───────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK => {

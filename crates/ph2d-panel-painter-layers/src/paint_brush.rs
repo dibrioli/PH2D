@@ -198,7 +198,7 @@ pub(crate) fn paint_brush_body(
 
     // ── Texture section (Blender brush texture: kind/mapping/angle/rake/random/
     // offset/size, 2D-adapted). Owns its own dropdown-popover deferral below. ──
-    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush);
+    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
     // ── Eraser: full-width mode toggle (Accent while erasing) ──
     y = paint_toggle_row(

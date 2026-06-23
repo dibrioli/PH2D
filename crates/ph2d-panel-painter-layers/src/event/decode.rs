@@ -51,10 +51,3 @@ pub(super) fn decode_texture_ramp_mode_option(id: NodeId) -> Option<u8> {
 pub(super) fn decode_texture_ramp_interp_option(id: NodeId) -> Option<u8> {
     (0..RampInterp::COUNT).find(|&i| core_ids::painter_brush_texture_ramp_interp_option_id(i) == id)
 }
-
-/// Decode a Color Ramp **stop swatch** id → its stop index (`0..PANEL_RAMP_STOPS`). Each stop swatch
-/// is a colour button that opens the shared picker targeting itself.
-pub(super) fn decode_texture_ramp_stop(id: NodeId) -> Option<u8> {
-    (0..ph2d_tool_painter::PANEL_RAMP_STOPS as u8)
-        .find(|&i| core_ids::painter_brush_texture_ramp_stop_id(i) == id)
-}

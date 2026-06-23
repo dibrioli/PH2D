@@ -487,7 +487,7 @@ pub(crate) fn paint_dropdown_row(
 
 /// Paint a dropdown chip (registered as a `Dropdown` for the generic open/close
 /// dispatch). Returns whether it is open. Shared by the Blend + Falloff chips.
-fn paint_dropdown_chip(
+pub(crate) fn paint_dropdown_chip(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     id: ph2d_a11y::NodeId,

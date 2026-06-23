@@ -1,21 +1,21 @@
 //! The Texture section's **Color Ramp** sub-editor — maps the texture's scalar to a colour gradient
-//! (the reusable `ph2d_color::ColorRamp`). Mirrors Blender's Color Ramp panel: an enable toggle, the
-//! RGB/HSV/HSL **Mode** + interpolation **Interp** dropdowns, a live gradient **bar** with a
-//! draggable handle per stop (position) + a clickable colour swatch per stop (opens the shared
-//! picker), and **+ / −** to add (largest-gap) / remove (last) stops.
+//! (the reusable `ph2d_color::ColorRamp`). Blender-style layout: the enable toggle; one compact
+//! controls line (`+` `−` + the RGB/HSV/HSL **Mode** and interpolation chips, no labels); the live
+//! gradient **bar** with a colour-filled draggable handle per stop; and a bottom row of the selected
+//! stop's **index** + **position** number chips and a split **colour box** (colour | alpha) that opens
+//! the shared picker.
 //!
-//! Painted off the Copy [`BrushSettings`] snapshot (the tool owns the ramp); edits forward over the
-//! frozen `PanelEvent` channel to `PainterTool::*_texture_ramp*`. The bar handles reuse the
-//! foundational `CurvePoint` drag (as the falloff editor); the swatches reuse the shared picker.
+//! The bar handles reuse the foundational `CurvePoint` drag (as the falloff editor) — drag = position,
+//! click = select. The selected stop drives the bottom row + the colour box. Edits forward over the
+//! frozen `PanelEvent` channel to `PainterTool::*_texture_ramp*`.
 
 use crate::paint::register_button;
-use crate::paint_brush::{paint_dropdown_popover, paint_dropdown_row, paint_toggle_row};
+use crate::paint_brush::{paint_dropdown_chip, paint_dropdown_popover, paint_toggle_row};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_texture_ramp_handle_id,
     painter_brush_texture_ramp_interp_option_id, painter_brush_texture_ramp_mode_option_id,
-    painter_brush_texture_ramp_stop_id,
 };
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
@@ -23,22 +23,25 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::DropdownOption;
+use ph2d_editor_core::widget::{
+    ColorSwatch, DropdownOption, SwatchSize, SwatchState, TextInputState, paint_color_swatch,
+    paint_number_chip,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{BrushSettings, RampColorMode, RampInterp};
 use ph2d_vector::Color;
 
-const BAR_H: f32 = 28.0; // LITERAL-PX-OK: gradient bar height
-const BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/− stop-button width
+const BAR_H: f32 = 30.0; // LITERAL-PX-OK: gradient bar height
 const STRIPS: usize = 64; // gradient-preview strip count
-const MARK_R: f32 = 4.0; // LITERAL-PX-OK: stop marker radius
-const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: bar outline stroke width
-const SWATCH_W: f32 = 26.0; // LITERAL-PX-OK: per-stop colour swatch width
+const MARK_R: f32 = 6.0; // LITERAL-PX-OK: stop handle radius (colour-filled circle)
+const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: stroke width
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's pointer grab box
+const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
+const POS_W: f32 = 70.0; // LITERAL-PX-OK: position chip width
 
-/// Paint the Color Ramp editor at `y`, returning the next `y`. The Mode / Interp dropdowns stash
-/// their open rects for the deferred [`paint_texture_ramp_popovers`] pass.
+/// Paint the Color Ramp editor at `y`, returning the next `y`. The Mode / Interp chips stash their
+/// open rects for the deferred [`paint_texture_ramp_popovers`] pass.
 pub(crate) fn paint_texture_ramp_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -47,7 +50,6 @@ pub(crate) fn paint_texture_ramp_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // ── Enable toggle ──
     let mut y = paint_toggle_row(
         ctx,
         theme,
@@ -61,58 +63,20 @@ pub(crate) fn paint_texture_ramp_section(
     if !brush.texture_ramp_enabled {
         return y; // hide the editor when off (no dead controls)
     }
+    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
+    let sel = (state::selected_ramp_stop() as usize).min(count.saturating_sub(1));
 
-    // ── Mode (RGB/HSV/HSL) + Interpolation dropdowns ──
-    let mode = brush.texture_ramp_mode;
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Mode",
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
-        mode,
-        RampColorMode::from_u8(mode).name(),
-    );
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_ramp_mode_dd(Some((r, mode)));
-    }
-    let interp = brush.texture_ramp_interp;
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Interpolation",
-        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
-        interp,
-        RampInterp::from_u8(interp).name(),
-    );
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_ramp_interp_dd(Some((r, interp)));
-    }
-
-    // ── + / − stop buttons (right-aligned, above the bar) ──
+    // ── Controls line: + − [Mode] [Interp] (no labels) ──
     let gap = Spacing::Xs.px();
-    for (brect, label, id) in [
-        (
-            Rect::new(x + content_w - BTN_W * 2.0 - gap, y, BTN_W, ROW_H_PX),
-            "+",
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        ),
-        (
-            Rect::new(x + content_w - BTN_W, y, BTN_W, ROW_H_PX),
-            "−",
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
-        ),
+    let mut cx = x;
+    for (label, id) in [
+        ("+", core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD),
+        ("−", core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE),
     ] {
+        let r = Rect::new(cx, y, ROW_H_PX, ROW_H_PX);
         fill_rounded_rect(
             ctx.scene,
-            brect,
+            r,
             Radius::Sm.px(),
             resolve(ColorToken::Bg2, theme),
         );
@@ -120,93 +84,60 @@ pub(crate) fn paint_texture_ramp_section(
             ctx.text_system,
             ctx.scene,
             label,
-            brect,
+            r,
             TypeToken::Base.px(),
             resolve(ColorToken::Text1, theme),
         );
         register_button(ctx.host.store_mut(), id);
-        ctx.host.hit_index_mut().register(id, brect);
+        ctx.host.hit_index_mut().register(id, r);
+        cx += ROW_H_PX + gap;
+    }
+    let chip_w = ((x + content_w - cx - gap) * 0.5).max(0.0);
+    let mode = brush.texture_ramp_mode;
+    let mode_rect = Rect::new(cx, y, chip_w, ROW_H_PX);
+    if paint_dropdown_chip(
+        ctx,
+        theme,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        mode,
+        RampColorMode::from_u8(mode).name(),
+        mode_rect,
+    ) {
+        state::set_pending_ramp_mode_dd(Some((mode_rect, mode)));
+    }
+    let interp = brush.texture_ramp_interp;
+    let interp_rect = Rect::new(cx + chip_w + gap, y, chip_w, ROW_H_PX);
+    if paint_dropdown_chip(
+        ctx,
+        theme,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        interp,
+        RampInterp::from_u8(interp).name(),
+        interp_rect,
+    ) {
+        state::set_pending_ramp_interp_dd(Some((interp_rect, interp)));
     }
     y += ROW_H_PX + gap;
 
-    // ── Gradient bar + a marker per stop ──
+    // ── Gradient bar + a colour-filled draggable handle per stop ──
     let bar = Rect::new(x, y, content_w, BAR_H);
-    paint_ramp_bar(ctx, theme, bar, brush);
+    paint_ramp_bar(ctx, theme, bar, brush, sel);
     y += BAR_H + gap;
 
-    // ── Per-stop colour swatches (click → the shared picker, targeting that stop) ──
-    y = paint_ramp_stops(ctx, theme, x, y, brush);
-    ramp_color_readback(ctx, brush);
+    // ── Bottom row: index + position chips + the split colour box (edits the selected stop) ──
+    y = paint_ramp_bottom(ctx, theme, x, content_w, y, brush, sel);
+    ramp_color_readback(ctx, brush, sel);
     y
 }
 
-/// Paint a small colour swatch per stop in a row; each is a button that opens the shared Blender
-/// picker targeting that stop (see `event.rs`). The accent border marks the stop being edited.
-fn paint_ramp_stops(
+/// The gradient preview + a colour-filled circular handle per stop (the selected one ringed accent).
+fn paint_ramp_bar(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
-    x: f32,
-    y: f32,
+    bar: Rect,
     brush: BrushSettings,
-) -> f32 {
-    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-    if count == 0 {
-        return y;
-    }
-    let gap = Spacing::Xs.px();
-    let target = ctx.host.store().picker_target();
-    for (i, s) in brush.texture_ramp_stops[..count].iter().enumerate() {
-        let rect = Rect::new(x + i as f32 * (SWATCH_W + gap), y, SWATCH_W, ROW_H_PX);
-        fill_rounded_rect(ctx.scene, rect, Radius::Sm.px(), rgba_color(*s));
-        let id = painter_brush_texture_ramp_stop_id(i as u8);
-        let border = if target == Some(id) {
-            ColorToken::Accent
-        } else {
-            ColorToken::Border
-        };
-        stroke_rounded_rect(
-            ctx.scene,
-            rect,
-            Radius::Sm.px(),
-            OUTLINE_W,
-            resolve(border, theme),
-        );
-        register_button(ctx.host.store_mut(), id);
-        ctx.host.hit_index_mut().register(id, rect);
-    }
-    y + ROW_H_PX + gap
-}
-
-/// When the shared picker targets a ramp stop, forward its live colour to the tool (as `"i,r,g,b"`)
-/// once it differs from the stop's current colour — so the picker drives the stop live. Mirrors
-/// `paint_brush::brush_color_readback`.
-fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
-    let Some(target) = ctx.host.store().picker_target() else {
-        return;
-    };
-    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-    let Some(i) = (0..count).find(|&i| painter_brush_texture_ramp_stop_id(i as u8) == target)
-    else {
-        return;
-    };
-    let Some(picked) = ctx.host.store().widget_color(target) else {
-        return;
-    };
-    let s = brush.texture_ramp_stops[i];
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    if [enc(s[1]), enc(s[2]), enc(s[3])] == [picked[0], picked[1], picked[2]] {
-        return; // already applied — don't spam the bus
-    }
-    ctx.host
-        .bus_mut()
-        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-            format!("{i},{},{},{}", picked[0], picked[1], picked[2]),
-        )));
-}
-
-/// Paint the live gradient (linear preview between stops) + a marker per stop along the bottom.
-fn paint_ramp_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brush: BrushSettings) {
+    sel: usize,
+) {
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
     let stops = &brush.texture_ramp_stops[..count];
     let strip_w = bar.w / STRIPS as f32;
@@ -222,10 +153,10 @@ fn paint_ramp_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brus
         OUTLINE_W,
         resolve(ColorToken::Border, theme),
     );
-    // Each marker is a draggable handle (a `CurvePoint` whose `x` → the stop position; `y` ignored).
+    // Each marker is a colour-filled handle: a `CurvePoint` whose x → the stop position (y ignored).
+    let my = bar.y + bar.h;
     for (i, s) in stops.iter().enumerate() {
         let mx = bar.x + s[0].clamp(0.0, 1.0) * bar.w;
-        let my = bar.y + bar.h;
         let id = painter_brush_texture_ramp_handle_id(i as u8);
         ctx.host.store_mut().register(
             id,
@@ -240,8 +171,139 @@ fn paint_ramp_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brus
             id,
             Rect::new(mx - GRAB_R, my - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0),
         );
-        fill_circle(ctx.scene, mx, my, MARK_R, resolve(ColorToken::Text1, theme));
+        // White outer ring (accent if selected) so the marker reads on any gradient; filled colour.
+        let ring = if i == sel {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text1
+        };
+        fill_circle(ctx.scene, mx, my, MARK_R, resolve(ring, theme));
+        fill_circle(ctx.scene, mx, my, MARK_R - OUTLINE_W, rgba_color(*s));
     }
+}
+
+/// The bottom row: the selected stop's index + position number chips, then a split colour box
+/// (left = opaque colour, right = colour over a checker so the alpha reads) that opens the picker.
+fn paint_ramp_bottom(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+    sel: usize,
+) -> f32 {
+    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
+    if count == 0 {
+        return y;
+    }
+    let s = brush.texture_ramp_stops[sel.min(count - 1)];
+    let gap = Spacing::Xs.px();
+    paint_number_chip(
+        Rect::new(x, y, IDX_W, ROW_H_PX),
+        TextInputState::Normal,
+        sel as f64,
+        Some(&format!("{sel}")),
+        None,
+        0,
+        None,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    paint_number_chip(
+        Rect::new(x + IDX_W + gap, y, POS_W, ROW_H_PX),
+        TextInputState::Normal,
+        f64::from(s[0]),
+        Some(&format!("{:.3}", s[0])),
+        None,
+        0,
+        None,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    // Split colour box: fill opaque, then a swatch (colour over checker → alpha) on the right half.
+    let bx = x + IDX_W + POS_W + gap * 2.0;
+    let box_rect = Rect::new(bx, y, (x + content_w - bx).max(0.0), ROW_H_PX);
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let rgba = [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])];
+    fill_rounded_rect(
+        ctx.scene,
+        box_rect,
+        Radius::Sm.px(),
+        Color::from_rgba8(rgba[0], rgba[1], rgba[2], 255), // LITERAL-COLOR-OK: ramp stop colour (data)
+    );
+    let half = Rect::new(
+        box_rect.x + box_rect.w * 0.5,
+        box_rect.y,
+        box_rect.w * 0.5,
+        box_rect.h,
+    );
+    paint_color_swatch(
+        &ColorSwatch {
+            id: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+            label: String::new(),
+            rgba,
+            state: SwatchState::Normal,
+            size: SwatchSize::Sm,
+        },
+        half,
+        ctx.scene,
+        theme,
+    );
+    let open =
+        ctx.host.store().picker_target() == Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH);
+    let border = if open {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    stroke_rounded_rect(
+        ctx.scene,
+        box_rect,
+        Radius::Sm.px(),
+        OUTLINE_W,
+        resolve(border, theme),
+    );
+    register_button(
+        ctx.host.store_mut(),
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH, box_rect);
+    y + ROW_H_PX + gap
+}
+
+/// When the shared picker targets the colour box, forward its live colour to the **selected** stop
+/// (as `"sel,r,g,b"`) once it differs. Mirrors `paint_brush::brush_color_readback`.
+fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings, sel: usize) {
+    if ctx.host.store().picker_target() != Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH) {
+        return;
+    }
+    let Some(picked) = ctx
+        .host
+        .store()
+        .widget_color(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH)
+    else {
+        return;
+    };
+    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
+    if sel >= count {
+        return;
+    }
+    let s = brush.texture_ramp_stops[sel];
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    if [enc(s[1]), enc(s[2]), enc(s[3])] == [picked[0], picked[1], picked[2]] {
+        return; // already applied — don't spam the bus
+    }
+    ctx.host
+        .bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+            format!("{sel},{},{},{}", picked[0], picked[1], picked[2]),
+        )));
 }
 
 /// Linear-interpolated colour at `t` for the bar preview (the real paint uses the ramp's interp mode;

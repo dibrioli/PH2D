@@ -103,10 +103,11 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_NEW,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-        // Color Ramp: enable toggle + add / remove stop buttons.
+        // Color Ramp: enable toggle + add / remove stop + colour-box buttons.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
     ] {
         store.register(
             id,

@@ -24,7 +24,7 @@ mod ramp_picker;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
     decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
-    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option, decode_texture_ramp_stop,
+    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
 
 pub(crate) fn apply_event(
@@ -89,10 +89,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let Some(stack) = state::current_layers() else {
                 return false;
             };
-            // W4 §3 — Curves editor chrome: channel tabs (panel-local view state,
-            // never forwarded) + the +/− point buttons (forwarded to the tool on
-            // the ACTIVE channel; remove targets the last-dragged point, else a
-            // middle interior point).
+            // W4 §3 — Curves editor chrome: channel tabs (panel-local) + the +/− point buttons
+            // (forwarded on the ACTIVE channel; remove targets the last-dragged point).
             for layer in stack.all_ids() {
                 let lid = layer.0;
                 if (0u8..4).any(|ch| painter_curve_tab_id(lid, ch) == id) {
@@ -455,9 +453,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Color Ramp stop swatch → toggle the shared picker targeting that stop.
-        WidgetEvent::Click(id) if decode_texture_ramp_stop(id).is_some() => {
-            ramp_picker::on_stop_click(host, id);
+        // Color Ramp colour box → toggle the shared picker targeting the selected stop.
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH => {
+            ramp_picker::on_swatch_click(host);
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (decode by id).
@@ -504,9 +502,10 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Color Ramp stop drag: CurvePoint stashed `(_, _, idx, x, _)` → forward `"idx:x"`.
+        // Color Ramp stop drag: CurvePoint stashed `(_, _, idx, x, _)` → select it + forward `"idx:x"`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT => {
             if let Some((_p, _c, idx, x, _y)) = host.store_mut().take_curve_point_drag() {
+                state::set_selected_ramp_stop(idx);
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                         core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,

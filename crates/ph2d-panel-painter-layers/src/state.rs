@@ -110,6 +110,10 @@ thread_local! {
     /// the highlight. Tool-global (the brush is not per-layer).
     static SELECTED_FALLOFF_POINT: Cell<Option<u8>> = const { Cell::new(None) };
 
+    /// The Color Ramp's selected stop index — set by clicking/dragging a stop on the bar; the bottom
+    /// row (index / position chips + colour box) edits this stop. Tool-global.
+    static SELECTED_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
+
     /// Screen geometry of the Falloff curve graph, published each frame by
     /// [`crate::paint_falloff`] so the shell can hit-test a right-click (open the
     /// handle menu) / left-click (add a point) against it — the panel knows the
@@ -198,6 +202,16 @@ pub(crate) fn selected_curve_point() -> Option<(u64, u8, usize)> {
 /// a right-click / click-add.
 pub fn set_selected_falloff_point(v: Option<u8>) {
     SELECTED_FALLOFF_POINT.with(|c| c.set(v));
+}
+
+/// Set the Color Ramp's selected stop index (clicked/dragged on the bar).
+pub fn set_selected_ramp_stop(i: u8) {
+    SELECTED_RAMP_STOP.with(|c| c.set(i));
+}
+
+/// The Color Ramp's selected stop index (default `0`).
+pub(crate) fn selected_ramp_stop() -> u8 {
+    SELECTED_RAMP_STOP.with(|c| c.get())
 }
 
 /// The selected brush Custom-falloff point's stable id, if any. `pub` so the

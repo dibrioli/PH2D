@@ -48,7 +48,8 @@ pub use ph2d_painter_effects::adjustments::{
 pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
 // Re-export the Color Ramp enums so the layers panel's ramp editor can name + enumerate the
 // mode / interpolation options without a direct `ph2d-color` import.
-pub use ph2d_color::{RampColorMode, RampInterp};
+pub use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+pub use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
 // Re-export the brush blend + falloff surface so the layers panel's Brush
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{

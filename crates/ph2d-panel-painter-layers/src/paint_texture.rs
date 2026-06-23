@@ -20,8 +20,9 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
-    TEX_SIZE_MIN, TextureKind, TextureMapping, param_specs, render_texture_preview,
+    BrushSettings, ColorRamp, RampAlphaMode, RampColorMode, RampInterp, RampStop,
+    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
+    TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview, srgb_to_linear_byte,
 };
 use ph2d_vector::ImageQuality;
 
@@ -212,23 +213,17 @@ fn paint_texture_preview(
 ) -> f32 {
     let ph = (content_w * 0.5).clamp(56.0, 120.0); // a wide preview strip
     let rect = Rect::new(x, y, content_w, ph);
-    // When the Color Ramp is on, bake a 256-entry sRGB-RGBA LUT by linearly interpolating the snapshot
-    // stops (incl. alpha) — same colours as the ramp bar above. `None` → grayscale scalar preview.
+    // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
+    // the real `ColorRamp` + its Mode/Interpolation), so the preview is faithful to every ramp option
+    // (Ease/Cardinal/B-Spline/Constant · RGB/HSV/HSL), alpha included. `None` → grayscale scalar.
     let mut lut = [[0.0f32; 4]; 256];
-    let ramp = {
-        let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-        if brush.texture_ramp_enabled && count > 0 {
-            let stops = &brush.texture_ramp_stops[..count];
-            for (i, slot) in lut.iter_mut().enumerate() {
-                *slot = ramp_lut_color(stops, i as f32 / 255.0);
-            }
-            Some((
-                &lut[..],
-                RampAlphaMode::from_u8(brush.texture_ramp_alpha_mode),
-            ))
-        } else {
-            None
-        }
+    let ramp = if build_ramp_preview_lut(&brush, &mut lut) {
+        Some((
+            &lut[..],
+            RampAlphaMode::from_u8(brush.texture_ramp_alpha_mode),
+        ))
+    } else {
+        None
     };
     // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
     let bw = 140u32;
@@ -267,34 +262,37 @@ fn paint_texture_preview(
     y + ph + Spacing::Sm.px()
 }
 
-/// Linearly interpolate the snapshot ramp `stops` (`[pos, r, g, b, a, id]`, sRGB, sorted by `pos`) at
-/// `t ∈ [0, 1]` → `[r, g, b, a]`. Mirrors the ramp bar's `ramp_color_at` (the preview matches the bar,
-/// not the exact paint interp curve) and carries the alpha through.
-fn ramp_lut_color(stops: &[[f32; 6]], t: f32) -> [f32; 4] {
-    if stops.is_empty() {
-        return [0.0, 0.0, 0.0, 1.0];
+/// Rebuild the **exact** `ColorRamp` from the published snapshot — stops are display sRGB, so convert
+/// them back to the ramp's linear space; honour the chosen colour **Mode** + **Interpolation** — and
+/// bake it into `out` as a 256-entry **sRGB-straight RGBA** LUT (RGB linear→sRGB, alpha straight). This
+/// is the same bake the tool paints with (`ensure_ramp_lut`), so the preview is faithful to every ramp
+/// option. Returns `false` (→ grayscale) when the ramp is off / has no stops.
+fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
+    if !brush.texture_ramp_enabled {
+        return false;
     }
-    if t <= stops[0][0] {
-        return [stops[0][1], stops[0][2], stops[0][3], stops[0][4]];
+    let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
+    if count == 0 {
+        return false;
     }
-    for w in stops.windows(2) {
-        let (a, b) = (w[0], w[1]);
-        if t >= a[0] && t <= b[0] {
-            let f = if b[0] > a[0] {
-                (t - a[0]) / (b[0] - a[0])
-            } else {
-                0.0
-            };
-            return [
-                a[1] + (b[1] - a[1]) * f,
-                a[2] + (b[2] - a[2]) * f,
-                a[3] + (b[3] - a[3]) * f,
-                a[4] + (b[4] - a[4]) * f,
-            ];
-        }
+    let s2l = |c: f32| srgb_to_linear_byte((c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
+    let stops: Vec<RampStop> = brush.texture_ramp_stops[..count]
+        .iter()
+        .map(|s| RampStop::new(s[0], [s2l(s[1]), s2l(s[2]), s2l(s[3]), s[4]])) // alpha straight
+        .collect();
+    let ramp = ColorRamp::new(
+        stops,
+        RampColorMode::from_u8(brush.texture_ramp_mode),
+        RampInterp::from_u8(brush.texture_ramp_interp),
+    );
+    ramp.bake_into(out); // linear RGBA in the chosen interp/colour space
+    for c in out.iter_mut() {
+        c[0] = f32::from(linear_to_srgb_byte(c[0])) / 255.0;
+        c[1] = f32::from(linear_to_srgb_byte(c[1])) / 255.0;
+        c[2] = f32::from(linear_to_srgb_byte(c[2])) / 255.0;
+        // alpha stays straight
     }
-    let l = stops[stops.len() - 1];
-    [l[1], l[2], l[3], l[4]]
+    true
 }
 
 /// Deferred paint of the Texture section's open dropdown popovers (Kind + Mapping), drained at the

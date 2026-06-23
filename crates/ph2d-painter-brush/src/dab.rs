@@ -187,6 +187,56 @@ where
     })
 }
 
+/// Like [`parallel_band_stamp`] but splits THREE row-aligned buffers across the bands: the RGBA
+/// `canvas` (stride `width*4`) plus the canvas-space texture cache `tex` and its `ready` flags (both
+/// stride `width`). Each band owns disjoint rows of all three, so the lazy cache fill + the blend run
+/// race-free and bit-identical to serial (HR-5). Used by [`crate::stamp::blit_canvas_cached`].
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn parallel_band_cached<F>(
+    canvas: &mut [u8],
+    tex: &mut [u8],
+    ready: &mut [u8],
+    width: u32,
+    y0: i64,
+    y1: i64,
+    x0: i64,
+    x1: i64,
+    stamp: F,
+) -> bool
+where
+    F: Fn(&mut [u8], &mut [u8], &mut [u8], i64) -> bool + Sync,
+{
+    let (cstride, mstride) = ((width as usize) * 4, width as usize);
+    let canvas = &mut canvas[(y0 as usize) * cstride..(y1 as usize) * cstride];
+    let tex = &mut tex[(y0 as usize) * mstride..(y1 as usize) * mstride];
+    let ready = &mut ready[(y0 as usize) * mstride..(y1 as usize) * mstride];
+    let rows = (y1 - y0) as usize;
+    let area = rows * ((x1 - x0).max(0) as usize);
+    if area < PARALLEL_MIN_AREA || rows <= 1 {
+        return stamp(canvas, tex, ready, y0);
+    }
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .clamp(1, rows);
+    let rpb = rows.div_ceil(threads);
+    let stamp = &stamp;
+    std::thread::scope(|s| {
+        canvas
+            .chunks_mut(rpb * cstride)
+            .zip(tex.chunks_mut(rpb * mstride))
+            .zip(ready.chunks_mut(rpb * mstride))
+            .enumerate()
+            .map(|(bi, ((cb, tb), rb))| {
+                let band_y0 = y0 + (bi * rpb) as i64;
+                s.spawn(move || stamp(cb, tb, rb, band_y0))
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .fold(false, |acc, h| acc | h.join().unwrap_or(false))
+    })
+}
+
 /// Read-only per-dab context shared by every row band of a [`stamp_dab_textured`] stamp. `Sync`
 /// (refs to `Sync` data + `Copy` scalars), so `&DabCtx` is safely shared across the band threads.
 struct DabCtx<'a> {

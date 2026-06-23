@@ -139,6 +139,9 @@ pub(crate) struct PaintState {
     /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
     /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
     stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
+    /// Lazily-filled canvas-space texture cache for the Tiled / Stencil mappings (canvas-fixed); the
+    /// texture is computed once per canvas pixel per stroke. See [`crate::tool::paint::stamp_cache`].
+    canvas_tex_cache: Option<stamp_cache::CanvasTexCache>,
 }
 
 impl Default for PaintState {
@@ -171,6 +174,7 @@ impl Default for PaintState {
             texture_image_pending: false,
             texture_image_version: 0,
             stamp_cache: None,
+            canvas_tex_cache: None,
         }
     }
 }
@@ -361,6 +365,13 @@ impl PainterTool {
         // (Tiled/Stencil/Random/Rake) aren't scale-invariant and also stay per-pixel.
         if brush.texture.is_active() && brush.texture.is_cacheable() {
             self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
+        // Tiled / Stencil are canvas-fixed (not scale-invariant), but dab-independent — cache each
+        // canvas pixel's texture once per stroke and look it up per dab (Anchored re-stamps the same
+        // growing canvas region every move, so the inner pixels are pure reuse).
+        if brush.texture.is_canvas_cacheable() {
+            self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
         // Resolve the per-dab texture frame only when a texture is assigned; otherwise the engine

@@ -1477,28 +1477,55 @@ fn textured_dab_masks_part_of_the_footprint() {
 fn perf_anchored_drag_per_move_cost() {
     use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
     use std::time::Instant;
-    let run = |label: &str, kind: TextureKind| {
+    // `hold_preview` simulates the shell bridge retaining the preview Arc across frames (it drains
+    // `take_preview_arc` each frame and keeps it). With it held, the tool's next mutation hits
+    // refcount=2 → `Arc::make_mut` deep-clones the whole 16.8MB canvas EVERY move. That clone is
+    // invisible to a bench that doesn't hold the Arc — the bench-vs-live gap.
+    let run = |label: &str, kind: TextureKind, mapping: TextureMapping, hold_preview: bool| {
         let mut t = white_canvas(2048, 10.0);
         t.paint.brush.texture = TextureSettings {
             kind,
-            mapping: TextureMapping::ViewPlane,
+            mapping,
             ..Default::default()
         };
         t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
         let _ = t.on_canvas_pointer(cp([1024.0, 1024.0], PointerPhase::Down));
         let moves = 20u32;
+        let mut held = None;
         let t0 = Instant::now();
         for k in 1..=moves {
             let r = 60.0 + k as f32 * 45.0; // radius grows to ~960 px
             let _ = t.on_canvas_pointer(cp([1024.0, 1024.0 + r], PointerPhase::Move));
+            if hold_preview {
+                held = t.take_preview_arc(); // retain across the next move (bridge behaviour)
+            }
         }
+        let _ = held;
         let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(moves);
-        eprintln!("  anchored {label:<8} {ms:6.2} ms/move (restore+save+stamp)");
+        eprintln!("  anchored {label:<22} {ms:6.2} ms/move");
     };
-    eprintln!("perf: Anchored size-drag on 2048², radius→960 px, per-move tool cost:");
-    run("plain", TextureKind::None);
-    run("noise", TextureKind::Noise);
-    run("voronoi", TextureKind::Voronoi);
+    eprintln!(
+        "perf: Anchored size-drag on 2048², radius→960 px, per-move tool cost (preview held):"
+    );
+    run("plain", TextureKind::None, TextureMapping::ViewPlane, true);
+    run(
+        "voronoi View (cached)",
+        TextureKind::Voronoi,
+        TextureMapping::ViewPlane,
+        true,
+    );
+    run(
+        "voronoi Tiled (cached)",
+        TextureKind::Voronoi,
+        TextureMapping::Tiled,
+        true,
+    );
+    run(
+        "noise Tiled (cached)",
+        TextureKind::Noise,
+        TextureMapping::Tiled,
+        true,
+    );
 }
 
 #[test]

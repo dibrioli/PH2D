@@ -46,7 +46,7 @@ pub use falloff_curve::{
 };
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
-pub use stamp::{StampMask, blit_stamp, render_stamp_mask};
+pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
 pub use stroke::{
     Dab, POLY_MAX_SIDES, POLY_MIN_SIDES, Stroke, StrokePoint, ellipse_perimeter,
     flatten_catmull_rom, polygon_perimeter,

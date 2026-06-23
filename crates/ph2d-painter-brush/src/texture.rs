@@ -5,15 +5,10 @@
 //! mode and the `Z` axis are dropped (degenerate for raster paint). The texture multiplies the
 //! falloff mask per pixel, exactly as the falloff weight does — see [`crate::dab::stamp_dab`].
 //!
-//! **Determinism (HR-5).** The engine is transcendental-free: rotation is carried as a unit
-//! *vector*, never an angle (the same strategy as `stroke/ellipse.rs` / `stroke/polygon.rs`). The
-//! user **Angle** (whole degrees) rotates `(1,0)` by repeated application of the baked 1° step
-//! [`DEG_STEP`]; **Rake** uses the stroke tangent (already a vector); **Random** builds a per-dab
-//! unit vector from the dep-free splitmix64 RNG. The per-pixel sampler uses only `floor`/`*`/`+`
-//! and `sqrt` (Voronoi) — no `sin`/`cos`/`exp`/`pow`.
-//!
-//! P1 scope: the four **procedural** kinds below + the View/Tiled/Random mappings. Image-backed
-//! textures and the Stencil mapping (which needs a screen-space overlay) are later phases.
+//! **Determinism (HR-5).** Transcendental-free: rotation is carried as a unit *vector*, never an
+//! angle (as in `stroke/ellipse.rs` / `stroke/polygon.rs`). **Angle** rotates `(1,0)` by repeated
+//! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent; **Random** builds
+//! a per-dab unit vector from the dep-free splitmix64 RNG. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;
@@ -27,15 +22,13 @@ pub const TEX_SIZE_MIN: f32 = 0.1;
 pub const TEX_SIZE_MAX: f32 = 10.0;
 /// Canvas pixels spanned by one texture tile at Size `1.0` under the **Tiled** mapping.
 pub const TEX_TILE_BASE_PX: f32 = 256.0;
-/// How many procedural tiles the **Stencil** rect spans across each axis, so the pattern reads
-/// (a single tile of Checker/Stripes would be one flat cell). Density is fixed; the rect's on-canvas
-/// size is set by [`TextureSettings::size`].
+/// Procedural tiles the **Stencil** rect spans per axis, so the pattern reads (one tile would be a
+/// flat cell). Density is fixed; the rect's on-canvas size is [`TextureSettings::size`].
 const STENCIL_TILES: f32 = 4.0;
 
 /// Baked unit-vector step for a **1° rotation**, `(cos 1°, sin 1°)`. Rotating by `n°` applies this
-/// `n` times — a single committed constant, only `*`/`+` at runtime, bit-identical on every
-/// platform (mirrors `stroke/polygon.rs::POLY_STEP`). Drift over ≤360 steps is deterministic and
-/// sub-`5e-5`, irrelevant for a texture rotation.
+/// `n` times — only `*`/`+` at runtime, bit-identical on every platform (mirrors
+/// `stroke/polygon.rs::POLY_STEP`); drift over ≤360 steps is deterministic + sub-`5e-5`.
 pub const DEG_STEP: [f32; 2] = [0.999_847_7, 0.017_452_406];
 
 /// The built-in procedural texture patterns. `None` = no texture assigned (the dab is unmodulated;
@@ -116,10 +109,9 @@ pub enum TextureMapping {
     Tiled,
     /// Like [`Self::ViewPlane`] but with a random per-dab offset.
     Random,
-    /// A single positioned/rotated/scaled rectangular **stencil** you paint *through*: the texture
-    /// fills the rect once and masks (deposits nothing) outside it. 2D-adapted to **image space**
-    /// (the rect is fixed to the canvas, not the screen) so the pure engine stays screen-agnostic;
-    /// the frame is driven by Offset (centre) / Size (extent) / Angle (rotation). See [`dab_basis`].
+    /// A positioned/rotated/scaled rectangular **stencil** you paint *through*: the texture fills the
+    /// rect once and masks outside it. 2D-adapted to **image space** (fixed to the canvas, not the
+    /// screen), driven by Offset (centre) / Size (extent) / Angle (rotation). See [`dab_basis`].
     Stencil,
 }
 
@@ -220,17 +212,29 @@ impl TextureSettings {
         self.kind != TextureKind::None
     }
 
-    /// Whether the brush stamp (falloff × texture) is dab-relative and constant across a stroke, so
-    /// it can be rendered once into a cached mask and scale-blitted (Blender's brush-image approach;
-    /// see [`crate::stamp`]). True with no texture, or a **View**-mapped texture at a static angle —
-    /// Rake / Random vary the rotation per dab, and Tiled / Stencil are canvas-relative (vary by dab
-    /// position), so those keep the per-pixel [`sample`] path.
+    /// Stamp is dab-relative + constant across a stroke → render once into a mask + scale-blit
+    /// (Blender's brush-image cache; see [`crate::stamp`]). True with no texture or a static **View**
+    /// texture; Rake / Random (per-dab rotation) and Tiled / Stencil (canvas-relative) stay per-pixel.
     #[must_use]
     pub fn is_cacheable(&self) -> bool {
         !self.is_active()
             || (matches!(self.mapping, TextureMapping::ViewPlane)
                 && !self.rake
                 && !self.random_angle)
+    }
+
+    /// Texture is canvas-fixed + dab-independent → cache each canvas pixel's value once per stroke
+    /// (see [`crate::stamp::blit_canvas_cached`]). True for static **Tiled** / **Stencil**; Rake /
+    /// Random vary per dab, so they stay per-pixel.
+    #[must_use]
+    pub fn is_canvas_cacheable(&self) -> bool {
+        self.is_active()
+            && matches!(
+                self.mapping,
+                TextureMapping::Tiled | TextureMapping::Stencil
+            )
+            && !self.rake
+            && !self.random_angle
     }
 }
 
@@ -248,11 +252,9 @@ pub struct ImageMask<'a> {
     pub height: u32,
 }
 
-/// Per-dab resolved texture frame: the rotated basis (`u`, `v`, both unit), the per-dab random
-/// translation (in tile fractions; `[0,0]` unless the mapping randomises the offset), and — for the
-/// Stencil mapping — the rect's centre + half-extent in canvas pixels. Computed once per dab by
-/// [`dab_basis`] so the per-pixel [`sample`] is cheap (two dot products, no rotation / no canvas
-/// math).
+/// Per-dab resolved texture frame: the rotated unit basis (`u`, `v`), the per-dab random translation
+/// (tile fractions; `[0,0]` unless randomised), and — for Stencil — the rect's centre + half-extent
+/// in canvas px. Computed once per dab by [`dab_basis`] so the per-pixel [`sample`] is cheap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TexDabBasis {
     u: [f32; 2],
@@ -278,12 +280,9 @@ impl TexDabBasis {
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (for Rake), a
-/// mutable splitmix64 `rng` state (for Random rotation / offset), and the canvas size in px (for the
-/// Stencil rect placement). `dab_dir` need not be normalised; a near-zero tangent falls back to the
-/// [`TextureSettings::angle_deg`] rotation.
-///
-/// Determinism: identical `(settings, dab_dir, rng, canvas)` ⇒ identical frame, on every platform.
+/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; need not
+/// be normalised — a near-zero tangent falls back to [`TextureSettings::angle_deg`]), a mutable
+/// splitmix64 `rng` (Random), and the canvas size (Stencil rect). Deterministic per input platform.
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
@@ -326,11 +325,10 @@ pub fn dab_basis(
     }
 }
 
-/// The Stencil rect's centre + half-extent (canvas px) + rotation unit vector, derived from the
-/// texture settings and the canvas size. Offset maps `[-1, 1]` onto the canvas span (centre at `0`);
-/// Size is the rect's half-extent as a fraction of the canvas (`1.0` ≈ the full canvas); the
-/// rotation is the deterministic baked rotation of [`TextureSettings::angle_deg`]. Shared by
-/// [`dab_basis`] and the tool's overlay so the painted mask and its visual outline agree exactly.
+/// The Stencil rect's centre + half-extent (canvas px) + rotation unit vector. Offset maps `[-1, 1]`
+/// onto the canvas span (centre at `0`); Size is the half-extent as a canvas fraction (`1.0` ≈ full);
+/// rotation is the baked [`TextureSettings::angle_deg`]. Shared by [`dab_basis`] and the tool's
+/// overlay so the painted mask and its outline agree exactly.
 #[must_use]
 pub fn stencil_frame(s: &TextureSettings, canvas: [f32; 2]) -> ([f32; 2], [f32; 2], [f32; 2]) {
     let center = [
@@ -417,11 +415,9 @@ fn sample_kind(kind: TextureKind, tex: [f32; 2], image: Option<&ImageMask>) -> f
     }
 }
 
-/// Sample the **View-mapped** texture at the dab-relative unit coordinate `(u, v) ∈ [-1, 1]` (centre
-/// `(0,0)`, rim `|.|=1`). This is the scale-invariant form used to bake the cached brush stamp
-/// ([`crate::stamp`]): a View dab's texture depends only on `(u, v)/size` + rotation, never on the
-/// dab radius, so the mask renders once and scale-blits for any size. Only valid for View mapping —
-/// the caller checks [`TextureSettings::is_cacheable`]. Returns the coverage multiplier in `[0, 1]`.
+/// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the
+/// scale-invariant form baking the cached brush stamp ([`crate::stamp`]): depends only on
+/// `(u, v)/size` + rotation, never the radius. View-only; returns the coverage in `[0, 1]`.
 #[must_use]
 pub fn sample_unit(
     s: &TextureSettings,
@@ -443,10 +439,9 @@ pub fn sample_unit(
     sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
 }
 
-/// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one full image), tiled via
-/// `fract` and read with the centre-coord convention (memory `feedback_pixel_center_vs_edge_coord`).
-/// Returns `[0, 1]`; transcendental-free (floor / rem_euclid / lerp). A malformed buffer reads `1.0`
-/// (inert) rather than panicking.
+/// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one image), tiled via
+/// `fract`, centre-coord convention (memory `feedback_pixel_center_vs_edge_coord`). Returns `[0, 1]`;
+/// transcendental-free. A malformed buffer reads `1.0` (inert) rather than panicking.
 fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
     let (w, h) = (img.width.max(1), img.height.max(1));
     if img.lum.len() < (w as usize) * (h as usize) {

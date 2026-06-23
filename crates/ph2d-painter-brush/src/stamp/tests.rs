@@ -99,6 +99,89 @@ fn textured_mask_blit_shows_the_pattern() {
 }
 
 #[test]
+fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
+    use crate::dab::stamp_dab_textured;
+    use crate::texture::dab_basis;
+    let (w, h) = (96u32, 96u32);
+    let spec = BrushSpec {
+        radius_px: 36.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth,
+        texture: TextureSettings {
+            kind: TextureKind::Voronoi,
+            mapping: TextureMapping::Tiled,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    // Per-pixel reference.
+    let mut rng = 0u64;
+    let basis = dab_basis(&spec.texture, [0.0, 0.0], &mut rng, [w as f32, h as f32]);
+    let mut a = solid(w, h, [255, 255, 255, 255]);
+    let _ = stamp_dab_textured(
+        &mut a,
+        w,
+        h,
+        [48.0, 48.0],
+        &spec,
+        1.0,
+        false,
+        Some(&basis),
+        None,
+    );
+    // Canvas-cached blit (fresh cache).
+    let mut b = solid(w, h, [255, 255, 255, 255]);
+    let mut tex = vec![0u8; (w * h) as usize];
+    let mut ready = vec![0u8; (w * h) as usize];
+    let _ = blit_canvas_cached(
+        &mut b,
+        &mut tex,
+        &mut ready,
+        w,
+        h,
+        [48.0, 48.0],
+        36.0,
+        &spec,
+        None,
+        1.0,
+        false,
+    );
+    // Bit-close: the only difference is the texture's u8 quantisation in the cache.
+    let maxdiff = (0..(w * h * 4) as usize)
+        .map(|i| i32::from(a[i]).abs_diff(i32::from(b[i])))
+        .max()
+        .unwrap();
+    assert!(
+        maxdiff <= 3,
+        "canvas-cached Tiled ≈ per-pixel, maxdiff={maxdiff}"
+    );
+    assert!(
+        ready.contains(&1),
+        "the cache was filled where the dab painted"
+    );
+    // Reuse: a second blit at the same spot reads the cache (no recompute) and is identical.
+    let mut c = solid(w, h, [255, 255, 255, 255]);
+    let _ = blit_canvas_cached(
+        &mut c,
+        &mut tex,
+        &mut ready,
+        w,
+        h,
+        [48.0, 48.0],
+        36.0,
+        &spec,
+        None,
+        1.0,
+        false,
+    );
+    assert_eq!(
+        b, c,
+        "a cache-hit blit reproduces the cache-fill blit exactly"
+    );
+}
+
+#[test]
 fn cacheability_predicate() {
     let none = TextureSettings::default();
     assert!(none.is_cacheable(), "no texture is cacheable");

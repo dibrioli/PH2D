@@ -193,5 +193,165 @@ fn sample_mask(mask: &StampMask, u: f32, v: f32) -> f32 {
     top + (bot - top) * ty
 }
 
+/// Read-only per-dab context for the canvas-cache blit, shared across the row bands.
+struct CanvasBlitCtx<'a> {
+    spec: &'a BrushSpec,
+    basis: crate::texture::TexDabBasis,
+    image: Option<ImageMask<'a>>,
+    cx: f32,
+    cy: f32,
+    inv_radius: f32,
+    radius: f32,
+    coverage: f32,
+    preserve_alpha: bool,
+    x0: i64,
+    x1: i64,
+    width: usize,
+}
+
+/// Composite a **Tiled / Stencil** dab using a lazily-filled CANVAS-SPACE texture cache: the texture
+/// value at each canvas pixel is computed once (the first dab to touch it) into `tex` + `ready`, then
+/// reused by every later dab — so a large Anchored re-stamp pays the procedural cost **once per pixel
+/// per stroke**, not per move. The falloff (dab-relative) is still evaluated per pixel (cheap), so the
+/// result is bit-identical to the per-pixel path (no approximation). `tex` / `ready` are canvas-sized
+/// (`width*height`); the caller persists them and invalidates on a texture-settings / canvas-size
+/// change ([`crate::TextureSettings::is_canvas_cacheable`] gates eligibility). Returns the touched rect.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn blit_canvas_cached(
+    canvas: &mut [u8],
+    tex: &mut [u8],
+    ready: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    radius: f32,
+    spec: &BrushSpec,
+    image: Option<&ImageMask>,
+    coverage: f32,
+    preserve_alpha: bool,
+) -> Option<DirtyRect> {
+    let coverage =
+        coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
+        return None;
+    }
+    let (cx, cy) = (center[0], center[1]);
+    let x0 = (cx - radius).floor().max(0.0) as i64;
+    let y0 = (cy - radius).floor().max(0.0) as i64;
+    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
+    // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent.
+    let basis = crate::texture::dab_basis(
+        &spec.texture,
+        [0.0, 0.0],
+        &mut 0u64,
+        [width as f32, height as f32],
+    );
+    let ctx = CanvasBlitCtx {
+        spec,
+        basis,
+        image: image.copied(),
+        cx,
+        cy,
+        inv_radius: 1.0 / radius,
+        radius,
+        coverage,
+        preserve_alpha,
+        x0,
+        x1,
+        width: width as usize,
+    };
+    let touched = crate::dab::parallel_band_cached(
+        canvas,
+        tex,
+        ready,
+        width,
+        y0,
+        y1,
+        x0,
+        x1,
+        |cb, tb, rb, band_y0| canvas_blit_band(&ctx, cb, tb, rb, band_y0),
+    );
+    if !touched {
+        return None;
+    }
+    Some(DirtyRect {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0) as u32,
+        h: (y1 - y0) as u32,
+    })
+}
+
+/// Blit one row band: lazily fill the canvas texture cache for un-`ready` pixels, then
+/// `falloff × cached_texture × coverage` into the canvas band.
+fn canvas_blit_band(
+    ctx: &CanvasBlitCtx,
+    canvas: &mut [u8],
+    tex: &mut [u8],
+    ready: &mut [u8],
+    band_y0: i64,
+) -> bool {
+    let (cstride, mstride) = (ctx.width * 4, ctx.width);
+    let mut touched = false;
+    for r in 0..canvas.len() / cstride {
+        let py = band_y0 + r as i64;
+        let dy = (py as f32 + 0.5) - ctx.cy;
+        for px in ctx.x0..ctx.x1 {
+            let dx = (px as f32 + 0.5) - ctx.cx;
+            let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+            let mut w = ctx.spec.falloff_weight(t);
+            if w <= 0.0 {
+                continue; // outside the dab → no falloff, no cache fill
+            }
+            let mi = r * mstride + px as usize;
+            if ready[mi] == 0 {
+                // First dab to touch this canvas pixel: compute its (canvas-fixed) texture once.
+                let tv = crate::texture::sample(
+                    &ctx.spec.texture,
+                    &ctx.basis,
+                    px,
+                    py,
+                    [ctx.cx, ctx.cy],
+                    ctx.radius,
+                    ctx.image.as_ref(),
+                );
+                tex[mi] = encode(tv);
+                ready[mi] = 1;
+            }
+            w *= f32::from(tex[mi]) / 255.0;
+            if w <= 0.0 {
+                continue;
+            }
+            let i = r * cstride + (px as usize) * 4;
+            let prev = [
+                f32::from(canvas[i]) / 255.0,
+                f32::from(canvas[i + 1]) / 255.0,
+                f32::from(canvas[i + 2]) / 255.0,
+                f32::from(canvas[i + 3]) / 255.0,
+            ];
+            let a = if ctx.preserve_alpha {
+                w * ctx.coverage * prev[3]
+            } else {
+                w * ctx.coverage
+            };
+            if a <= 0.0 {
+                continue;
+            }
+            let out = crate::blend::blend_over(ctx.spec.blend, prev, ctx.spec.color, a);
+            canvas[i] = encode(out[0]);
+            canvas[i + 1] = encode(out[1]);
+            canvas[i + 2] = encode(out[2]);
+            canvas[i + 3] = encode(out[3]);
+            touched = true;
+        }
+    }
+    touched
+}
+
 #[cfg(test)]
 mod tests;

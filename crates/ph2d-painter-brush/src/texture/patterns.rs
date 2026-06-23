@@ -57,6 +57,42 @@ pub(super) fn sample_kind(
     apply_tone(raw, params[0], params[1])
 }
 
+/// Fill `out` (RGBA8, `w`×`h`, row-major) with a **grayscale preview** of texture `kind` shaped by
+/// `params` / `size` / `offset` — the scalar pattern as it modulates the brush, View-plane mapped at
+/// identity rotation (the preview ignores per-dab rotation + jitter). ~3 tiles across with square
+/// cells. `image` backs [`TextureKind::Image`]; without it that kind previews flat. Drives the panel's
+/// live texture preview. No-op if `out` is too small.
+#[allow(clippy::too_many_arguments)]
+pub fn render_texture_preview(
+    kind: TextureKind,
+    params: [f32; super::MAX_TEX_PARAMS],
+    size: [f32; 2],
+    offset: [f32; 2],
+    image: Option<&ImageMask>,
+    out: &mut [u8],
+    w: u32,
+    h: u32,
+) {
+    if w == 0 || h == 0 || out.len() < (w as usize) * (h as usize) * 4 {
+        return;
+    }
+    let sx = size[0].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
+    let sy = size[1].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
+    let step = 3.0 / w as f32; // tiles per pixel — same on both axes → square cells
+    for py in 0..h {
+        let v = (py as f32 + 0.5) * step * sy + offset[1];
+        for px in 0..w {
+            let u = (px as f32 + 0.5) * step * sx + offset[0];
+            let g = (sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let i = ((py * w + px) * 4) as usize;
+            out[i] = g;
+            out[i + 1] = g;
+            out[i + 2] = g;
+            out[i + 3] = 255;
+        }
+    }
+}
+
 /// Read kind knob `i` from the `&params[2..]` slice (default `0.5` if a kind reads beyond its specs).
 #[inline]
 fn knob(k: &[f32], i: usize) -> f32 {

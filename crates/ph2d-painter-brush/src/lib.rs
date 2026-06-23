@@ -54,6 +54,7 @@ pub use stroke::{
     flatten_catmull_rom, polygon_perimeter,
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};
+pub use texture::patterns::render_texture_preview;
 pub use texture::{
     DEG_STEP, ImageMask, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis, TextureKind,

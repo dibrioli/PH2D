@@ -143,3 +143,45 @@ fn knob_defaults_to_neutral_past_the_slice() {
     assert_eq!(knob(&[0.2], 0), 0.2);
     assert_eq!(knob(&[0.2], 3), 0.5, "out-of-range slot is neutral");
 }
+
+#[test]
+fn texture_preview_is_grayscale_opaque_and_varies() {
+    let (w, h) = (24u32, 16u32);
+    let mut buf = vec![0u8; (w * h * 4) as usize];
+    let mut params = [0.5f32; 6];
+    params[2] = 0.0; // hard checker → crisp dark/light cells
+    render_texture_preview(
+        TextureKind::Checker,
+        params,
+        [1.0, 1.0],
+        [0.0, 0.0],
+        None,
+        &mut buf,
+        w,
+        h,
+    );
+    let (mut dark, mut light) = (0, 0);
+    for px in buf.chunks_exact(4) {
+        assert_eq!(px[3], 255, "preview pixels are opaque");
+        assert!(px[0] == px[1] && px[1] == px[2], "preview is grayscale");
+        if px[0] < 40 {
+            dark += 1;
+        } else if px[0] > 215 {
+            light += 1;
+        }
+    }
+    assert!(dark > 0 && light > 0, "checker preview shows both cells");
+    // A too-small buffer is a no-op (must not panic or write OOB).
+    let mut tiny = vec![7u8; 4];
+    render_texture_preview(
+        TextureKind::Checker,
+        params,
+        [1.0, 1.0],
+        [0.0, 0.0],
+        None,
+        &mut tiny,
+        w,
+        h,
+    );
+    assert_eq!(tiny, [7u8; 4], "too-small buffer left untouched");
+}

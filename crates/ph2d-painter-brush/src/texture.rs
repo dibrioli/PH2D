@@ -10,7 +10,7 @@
 //! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent; **Random** builds
 //! a per-dab unit vector from the dep-free splitmix64 RNG. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
-mod patterns;
+pub(crate) mod patterns;
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;

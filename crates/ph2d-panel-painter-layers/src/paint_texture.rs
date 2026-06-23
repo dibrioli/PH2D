@@ -14,12 +14,16 @@ use crate::state;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_texture_kind_option_id, painter_brush_texture_mapping_option_id,
 };
+use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
+use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
     BrushSettings, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind, TextureMapping, param_specs,
+    TextureKind, TextureMapping, param_specs, render_texture_preview,
 };
+use ph2d_vector::ImageQuality;
 
 /// Paint the Texture section starting at `y`, returning the next `y`. The Kind picker + Mapping
 /// dropdowns stash their open rects for the deferred [`paint_texture_popovers`] pass.
@@ -187,8 +191,60 @@ pub(crate) fn paint_texture_section(
         });
     }
 
+    // ── Live preview of the current texture pattern, right below the settings ──
+    y = paint_texture_preview(ctx, theme, x, content_w, y, brush);
+
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
     crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)
+}
+
+/// Real-time grayscale preview of the active texture pattern: re-rendered each frame from the
+/// published snapshot (kind + params + size + offset) into a small buffer, then scale-blitted as one
+/// image. Bounded resolution keeps it cheap; reflects every shape knob live as the user drags.
+fn paint_texture_preview(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let ph = (content_w * 0.5).clamp(56.0, 120.0); // a wide preview strip
+    let rect = Rect::new(x, y, content_w, ph);
+    // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
+    let bw = 140u32;
+    let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
+    let mut buf = vec![0u8; (bw * bh * 4) as usize];
+    render_texture_preview(
+        TextureKind::from_u8(brush.texture_kind),
+        brush.texture_params,
+        brush.texture_size,
+        brush.texture_offset,
+        None, // imported-image pixels aren't in the snapshot → Image kind previews flat
+        &mut buf,
+        bw,
+        bh,
+    );
+    ctx.scene.draw_image_rgba(
+        &std::sync::Arc::new(buf),
+        bw,
+        bh,
+        (
+            rect.x as f64,
+            rect.y as f64,
+            (rect.x + rect.w) as f64,
+            (rect.y + rect.h) as f64,
+        ),
+        ImageQuality::Medium,
+    );
+    stroke_rounded_rect(
+        ctx.scene,
+        rect,
+        Radius::Sm.px(),
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    y + ph + Spacing::Sm.px()
 }
 
 /// Deferred paint of the Texture section's open dropdown popovers (Kind + Mapping), drained at the

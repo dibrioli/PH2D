@@ -25,8 +25,8 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, DropdownState, Slider, SliderState,
-    paint_button, paint_dropdown_popover_in_viewport, paint_slider,
+    Button, ButtonKind, ButtonState, DropdownOption, DropdownState, Slider, SliderState,
+    paint_button, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -392,39 +392,9 @@ fn paint_color_swatch_row(
     y + ROW_H_PX + Spacing::Sm.px()
 }
 
-/// Deferred paint of an open brush dropdown popover (clamped to the viewport).
-/// Shared by the Blend + Falloff chips + the Stroke section (mirror of
-/// `crate::blend::paint_blend_popover`).
-pub(crate) fn paint_dropdown_popover(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    id: ph2d_a11y::NodeId,
-    options: Vec<DropdownOption<u8>>,
-    chip_rect: Rect,
-    cur: u8,
-) {
-    let dd = Dropdown::new(id, "", options).selected(cur).open(true);
-    let viewport = ctx.viewport;
-    let panel = dd.popover_rect_clamped(chip_rect, viewport);
-    paint_dropdown_popover_in_viewport(
-        &dd,
-        chip_rect,
-        Some(viewport),
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    {
-        let store = ctx.host.store_mut();
-        for opt in dd.options.iter() {
-            register_button(store, opt.id);
-        }
-    }
-    let hit_index = ctx.host.hit_index_mut();
-    for (i, opt) in dd.options.iter().enumerate() {
-        hit_index.register(opt.id, dd.option_rect_in(chip_rect, panel, i));
-    }
-}
+/// The shared scrollable dropdown-popover renderer (moved to its own module for the LOC cap).
+/// Re-exported so the many `crate::paint_brush::paint_dropdown_popover` callers keep resolving.
+pub(crate) use crate::dropdown_popover::paint_dropdown_popover;
 
 /// A left-aligned, vertically-centred row label in a `ROW_H_PX` cell.
 fn label(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, text: &str, x: f32, y: f32, font: f32) {

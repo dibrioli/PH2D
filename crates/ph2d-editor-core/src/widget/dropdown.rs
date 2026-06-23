@@ -170,6 +170,27 @@ impl<T: Clone + PartialEq> Dropdown<T> {
         )
     }
 
+    /// The full height the option list wants (every row + panel padding) — the **scroll content
+    /// height**. When it exceeds the (clamped) popover height the list scrolls.
+    #[must_use]
+    pub fn content_height(&self, row_h: f32) -> f32 {
+        row_h * self.options.len().max(1) as f32 + POPOVER_PANEL_PAD_Y * 2.0
+    }
+
+    /// [`Self::option_rect_in`] shifted up by `scroll` (the popover's scroll offset, `>= 0`). The hit
+    /// rect a scrolled row occupies; the caller clips it to the popover.
+    pub fn option_rect_in_scrolled(
+        &self,
+        chip: Rect,
+        panel: Rect,
+        index: usize,
+        scroll: f32,
+    ) -> Rect {
+        let mut r = self.option_rect_in_panel(panel, chip.h, index);
+        r.y -= scroll;
+        r
+    }
+
     pub fn build_a11y(&self, x: f64, y: f64, w: f64, h: f64) -> Node {
         // ComboBox is the AccessKit canonical for a select-style chip;
         // role flips to ListBox when the list is rendered separately.
@@ -398,6 +419,92 @@ fn opaque(token: ColorToken, theme: Theme) -> ph2d_vector::Color {
     ph2d_vector::Color::from_rgba8(c.r, c.g, c.b, 0xFF) // LITERAL-COLOR-OK: token-bridge with forced-opaque alpha (popover must occlude content behind it)
 }
 
+/// Stable hit id for the open dropdown popover's **scrollbar** track/thumb. Only one dropdown is open
+/// at a time, so a single id suffices; the dispatch maps it to whichever dropdown is currently open
+/// (via `WidgetStore::dropdown_popover`). Long option lists (texture Kind = 26, blend = 24…) overflow
+/// the clamped popover, so the list scrolls — wheel + this draggable bar (Enio: app-wide default).
+pub const DROPDOWN_SCROLLBAR_ID: NodeId = NodeId(831);
+
+/// Paint an open dropdown popover whose option list **scrolls**: rows are clipped to `panel` and
+/// shifted up by `scroll`, with a draggable scrollbar when the list overflows. `panel` is the clamped
+/// popover rect, `scroll` the current offset (`>= 0`), `scrollbar_active` highlights the bar while
+/// dragged. Mirrors [`paint_dropdown_popover_in_viewport`] visually; the caller owns the
+/// store/scroll/hit wiring (see the panels' `paint_dropdown_popover`).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip_rect: Rect,
+    panel: Rect,
+    scroll: f32,
+    scrollbar_active: bool,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    if !dd.open {
+        return;
+    }
+    let panel_radius = Radius::Md.px();
+    fill_rounded_rect(
+        scene,
+        panel,
+        panel_radius,
+        opaque(ColorToken::BgElev, theme),
+    );
+    stroke_rounded_rect(
+        scene,
+        panel,
+        panel_radius,
+        1.0,
+        opaque(ColorToken::Border, theme),
+    );
+    // Clip the rows to the panel so scrolled-out rows don't paint past the edges.
+    let clip = ph2d_vector::Rect::new(
+        panel.x as f64,
+        panel.y as f64,
+        (panel.x + panel.w) as f64,
+        (panel.y + panel.h) as f64,
+    );
+    scene.push_clip(&clip);
+    let font_size = TypeToken::Base.px();
+    for (i, opt) in dd.options.iter().enumerate() {
+        let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
+        if r.y + r.h <= panel.y || r.y >= panel.y + panel.h {
+            continue; // fully scrolled out (the clip handles partials)
+        }
+        let is_selected = dd.selected.as_ref() == Some(&opt.value);
+        if is_selected {
+            fill_rounded_rect(scene, r, Radius::Sm.px(), opaque(ColorToken::Accent, theme));
+        }
+        let fg = if is_selected {
+            ColorToken::AccentFg
+        } else {
+            ColorToken::Text1
+        };
+        paint_text_centered(
+            text_system,
+            scene,
+            &opt.label,
+            r,
+            font_size,
+            opaque(fg, theme),
+        );
+    }
+    scene.pop_layer();
+    let content_h = dd.content_height(chip_rect.h);
+    if super::scrollbar::is_needed(content_h, panel.h) {
+        super::scrollbar::paint_scrollbar(
+            panel,
+            scroll,
+            content_h,
+            panel.h,
+            scrollbar_active,
+            scene,
+            theme,
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -505,5 +612,28 @@ mod tests {
     #[test]
     fn paint_smoke_disabled() {
         smoke(fixture().state(DropdownState::Disabled), Theme::Workshop);
+    }
+
+    #[test]
+    fn content_height_counts_every_row() {
+        let dd = fixture(); // 3 options
+        let row_h = 20.0;
+        let expected = row_h * 3.0 + POPOVER_PANEL_PAD_Y * 2.0;
+        assert!((dd.content_height(row_h) - expected).abs() < 0.001);
+    }
+
+    #[test]
+    fn option_rect_scrolled_shifts_the_row_up_by_the_offset() {
+        let dd = fixture();
+        let chip = Rect::new(0.0, 0.0, 120.0, 20.0);
+        let panel = dd.popover_rect(chip);
+        let r0 = dd.option_rect_in_scrolled(chip, panel, 2, 0.0);
+        let r1 = dd.option_rect_in_scrolled(chip, panel, 2, 15.0);
+        assert!(
+            (r0.y - r1.y - 15.0).abs() < 0.001,
+            "scroll moves the row up by exactly the offset"
+        );
+        // scroll 0 matches the un-scrolled layout.
+        assert!((dd.option_rect_in(chip, panel, 2).y - r0.y).abs() < 0.001);
     }
 }

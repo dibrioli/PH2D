@@ -12,7 +12,7 @@
 //!    routing table; hosts that add new scrollable panels extend
 //!    the match here.
 
-use super::super::{WidgetEvent, WidgetStore};
+use super::super::{InteractiveState, WidgetEvent, WidgetStore};
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_a11y::NodeId;
@@ -28,6 +28,24 @@ pub fn dispatch_wheel<'frame>(
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
     let events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a
+    // dedicated slot (not `panel_rects`) so `panel_at` isn't polluted. Its scroll value + heights use
+    // the `panel_scroll`/`panel_*_h` tables keyed by the dropdown id.
+    if let Some((dd, rect)) = store.dropdown_popover()
+        && rect.contains(event.x, event.y)
+        && matches!(
+            store.get(dd),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        )
+    {
+        let mut next = (store.panel_scroll(dd) - event.delta_y).max(0.0);
+        if let Some(content_h) = store.panel_content_h(dd) {
+            let visible_h = store.panel_visible_h(dd).unwrap_or(0.0);
+            next = next.min((content_h - visible_h).max(0.0));
+        }
+        store.set_panel_scroll(dd, next);
+        return events.into_bump_slice();
+    }
     if let Some(panel) = store.panel_at(event.x, event.y) {
         let cur = store.panel_scroll(panel);
         // delta_y > 0 from winit means "scroll forward" / content

@@ -392,6 +392,12 @@ pub struct WidgetStore {
     /// drag stays linear even if the painter republishes them
     /// mid-drag.
     pub(super) scrollbar_drag: Option<ScrollbarDragAnchor>,
+    /// The currently-open dropdown popover that owns scroll: `(dropdown id, popover rect)`. Republished
+    /// each frame the popover paints; lets `dispatch_wheel` + the `DROPDOWN_SCROLLBAR_ID` drag route to
+    /// it (the scroll value + content/visible heights live in the `panel_scroll`/`panel_*_h` tables
+    /// keyed by the dropdown id, so the generic scrollbar drag works unchanged). Stale after close —
+    /// consumers gate on the dropdown still being `open`.
+    pub(super) dropdown_popover: Option<(NodeId, Rect)>,
     /// Editor-wide corner-radius scale. `1.0` = canonical, `0.0` =
     /// sharp / squared, `1.6` = round. Painters that want to follow
     /// the user's preset multiply their `Radius::*.px()` by this.

@@ -472,3 +472,51 @@ fn interp_toggle_linear_switches_mode() {
     let (_, _, interp, _) = store.blender_picker(NodeId(100)).unwrap();
     assert_eq!(interp, InterpolationMode::Linear);
 }
+
+#[test]
+fn wheel_over_an_open_dropdown_popover_scrolls_it() {
+    let mut store = WidgetStore::with_capacity(8);
+    let dd = NodeId(50);
+    store.register(
+        dd,
+        InteractiveState::Dropdown {
+            state: crate::widget::DropdownState::Normal,
+            open: true,
+            selected_index: None,
+        },
+    );
+    // 200px of content in a 60px popover (overflows → scrolls).
+    store.set_dropdown_popover(dd, Rect::new(10.0, 10.0, 100.0, 60.0));
+    store.set_panel_content_h(dd, 200.0);
+    store.set_panel_visible_h(dd, 60.0);
+    let arena = Bump::new();
+    let wheel = |dy: f32| ph2d_host::WheelEvent {
+        x: 50.0,
+        y: 40.0,
+        delta_x: 0.0,
+        delta_y: dy,
+        modifiers: ph2d_host::Modifiers::default(),
+        timestamp_ns: 0,
+    };
+    let _ = crate::interaction::dispatch_wheel(&mut store, wheel(-20.0), &arena);
+    assert!(
+        (store.panel_scroll(dd) - 20.0).abs() < 0.01,
+        "wheel scrolls the open popover"
+    );
+    // Wheeling far down clamps at content_h - visible_h = 140.
+    let _ = crate::interaction::dispatch_wheel(&mut store, wheel(-1000.0), &arena);
+    assert!(
+        (store.panel_scroll(dd) - 140.0).abs() < 0.01,
+        "clamped at the bottom"
+    );
+    // Once closed, the popover no longer captures the wheel.
+    if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(dd) {
+        *open = false;
+    }
+    let before = store.panel_scroll(dd);
+    let _ = crate::interaction::dispatch_wheel(&mut store, wheel(50.0), &arena);
+    assert!(
+        (store.panel_scroll(dd) - before).abs() < 0.01,
+        "closed dropdown ignores the wheel"
+    );
+}

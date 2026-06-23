@@ -49,6 +49,7 @@ impl WidgetStore {
             picker_target: None,
             widget_colors: BTreeMap::new(),
             scrollbar_drag: None,
+            dropdown_popover: None,
             radius_scale: 1.0,
             rail_button_size: crate::widget::RailButtonSize::default(),
             present_vsync: true,

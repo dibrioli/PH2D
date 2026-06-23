@@ -26,6 +26,7 @@
 
 mod adjust_menu;
 mod blend;
+mod dropdown_popover;
 mod event;
 pub mod ids;
 mod paint;

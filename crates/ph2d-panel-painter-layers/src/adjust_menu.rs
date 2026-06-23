@@ -9,10 +9,9 @@
 //! (idx = position in [`AdjustmentKind::ALL`]); the tool maps it back to the kind
 //! and creates the layer. See `event.rs` / `tool.rs`.
 
-use crate::paint::register_button;
 use ph2d_editor_core::ids::painter_adjustment_kind_option_id;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_popover_in_viewport};
+use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::AdjustmentKind;
 
@@ -44,32 +43,14 @@ pub(crate) fn paint_adjustment_menu_popover(
     theme: ph2d_tokens::Theme,
     menu_chip: Rect,
 ) {
-    let dd = Dropdown::new(
-        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
-        "",
-        kind_options(),
-    )
-    .open(true);
-    let viewport = ctx.viewport;
-    let panel = dd.popover_rect_clamped(menu_chip, viewport);
-    paint_dropdown_popover_in_viewport(
-        &dd,
-        menu_chip,
-        Some(viewport),
-        ctx.scene,
-        ctx.text_system,
+    // Delegate to the shared SCROLLABLE popover (24 adjustment kinds overflow the dock). The menu has
+    // no current selection, so pass an out-of-range value — no row is highlighted.
+    crate::paint_brush::paint_dropdown_popover(
+        ctx,
         theme,
+        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_ADJUSTMENT,
+        kind_options(),
+        menu_chip,
+        usize::MAX,
     );
-    // Register option buttons (mutable store) then their hit rects (mutable
-    // hit_index) in separate borrows — mirror of `blend::paint_blend_popover`.
-    {
-        let store = ctx.host.store_mut();
-        for opt in dd.options.iter() {
-            register_button(store, opt.id);
-        }
-    }
-    let hit_index = ctx.host.hit_index_mut();
-    for (i, opt) in dd.options.iter().enumerate() {
-        hit_index.register(opt.id, dd.option_rect_in(menu_chip, panel, i));
-    }
 }

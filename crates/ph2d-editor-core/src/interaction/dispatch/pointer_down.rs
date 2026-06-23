@@ -424,7 +424,14 @@ pub(super) fn dispatch_down<'frame>(
         // scrollbar id encodes its panel (see helper
         // below); the metrics come from the side-tables
         // the painters publish each frame.
-        if let Some(panel) = scrollbar_panel_for_id(id)
+        // The single dropdown scrollbar id maps to whichever dropdown is currently open (its scroll
+        // value + heights live in the panel tables keyed by the dropdown id, so the drag is generic).
+        let scroll_panel = if id == crate::widget::DROPDOWN_SCROLLBAR_ID {
+            store.dropdown_popover().map(|(dd, _)| dd)
+        } else {
+            scrollbar_panel_for_id(id)
+        };
+        if let Some(panel) = scroll_panel
             && let (Some(content_h), Some(visible_h)) =
                 (store.panel_content_h(panel), store.panel_visible_h(panel))
         {

@@ -166,4 +166,15 @@ impl WidgetStore {
     pub fn end_scrollbar_drag(&mut self) {
         self.scrollbar_drag = None;
     }
+
+    /// Publish the open dropdown popover that owns scroll (id + popover rect). Called each frame the
+    /// popover paints; lets the wheel + `DROPDOWN_SCROLLBAR_ID` drag route to it.
+    pub fn set_dropdown_popover(&mut self, id: NodeId, rect: Rect) {
+        self.dropdown_popover = Some((id, rect));
+    }
+
+    /// The open dropdown popover `(id, rect)`, if any. Stale after close — callers gate on `open`.
+    pub fn dropdown_popover(&self) -> Option<(NodeId, Rect)> {
+        self.dropdown_popover
+    }
 }

@@ -3,7 +3,6 @@
 //! deferred popover that lists all 22 modes. Split out of `paint.rs` to keep
 //! that file under the panel-crate file-LOC cap.
 
-use crate::paint::register_button;
 use crate::state;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::{
@@ -14,9 +13,7 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    Dropdown, DropdownOption, DropdownState, paint_dropdown_popover_in_viewport,
-};
+use ph2d_editor_core::widget::{DropdownOption, DropdownState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
@@ -186,14 +183,7 @@ pub(crate) fn paint_blend_popover(
     chip_rect: Rect,
     cur_mode: u8,
 ) {
-    let dd = Dropdown::new(
-        painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend),
-        "",
-        blend_options(layer_u64),
-    )
-    .selected(cur_mode)
-    .open(true);
-    let viewport = ctx.viewport;
+    let id = painter_layer_widget_id(layer_u64, PainterLayerWidget::Blend);
     // Wider than the chip so long mode names fit one line; right-aligned to the
     // chip right edge so it extends LEFT into the panel (stays on-screen).
     let pop_w = BLEND_POPOVER_W.max(chip_rect.w);
@@ -203,26 +193,13 @@ pub(crate) fn paint_blend_popover(
         pop_w,
         chip_rect.h,
     );
-    let panel = dd.popover_rect_clamped(pop_chip, viewport);
-    paint_dropdown_popover_in_viewport(
-        &dd,
-        pop_chip,
-        Some(viewport),
-        ctx.scene,
-        ctx.text_system,
+    // Delegate to the shared SCROLLABLE popover (the 24 blend modes overflow the dock readily).
+    crate::paint_brush::paint_dropdown_popover(
+        ctx,
         theme,
+        id,
+        blend_options(layer_u64),
+        pop_chip,
+        cur_mode,
     );
-    // Register option buttons (mutable store) then their hit rects (mutable
-    // hit_index) in separate borrows — `store_and_hit_index_mut` hands back an
-    // immutable store, which cannot `register_if_absent`.
-    {
-        let store = ctx.host.store_mut();
-        for opt in dd.options.iter() {
-            register_button(store, opt.id);
-        }
-    }
-    let hit_index = ctx.host.hit_index_mut();
-    for (i, opt) in dd.options.iter().enumerate() {
-        hit_index.register(opt.id, dd.option_rect_in(pop_chip, panel, i));
-    }
 }

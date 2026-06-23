@@ -74,47 +74,7 @@ fn none_kind_is_full_coverage() {
     }
 }
 
-#[test]
-fn checker_alternates_by_cell_parity() {
-    assert_eq!(checker(0.5, 0.5), 0.0);
-    assert_eq!(checker(1.5, 0.5), 1.0);
-    assert_eq!(checker(1.5, 1.5), 0.0);
-    // Negative coordinates use floor (not truncation): cell -1 has parity 1.
-    assert_eq!(checker(-0.5, 0.5), 1.0);
-}
-
-#[test]
-fn stripes_is_a_unit_triangle_wave() {
-    assert!((stripes(0.0) - 0.0).abs() < 1e-6);
-    assert!((stripes(0.5) - 1.0).abs() < 1e-6);
-    assert!((stripes(1.0) - 0.0).abs() < 1e-6);
-    // Periodic: stripes(x) == stripes(x + 1).
-    assert!((stripes(0.25) - stripes(1.25)).abs() < 1e-6);
-}
-
-#[test]
-fn value_noise_is_bounded_and_deterministic() {
-    for i in 0..50 {
-        let u = i as f32 * 0.37;
-        let v = i as f32 * -0.21;
-        let a = value_noise(u, v);
-        assert!((0.0..=1.0).contains(&a), "noise out of range: {a}");
-        assert_eq!(a, value_noise(u, v), "noise must be a pure function");
-    }
-    // Distinct lattice cells generally differ.
-    assert_ne!(value_noise(0.5, 0.5), value_noise(10.5, 10.5));
-}
-
-#[test]
-fn voronoi_is_bounded() {
-    for i in 0..50 {
-        let u = i as f32 * 0.61;
-        let v = i as f32 * 0.43;
-        let d = voronoi(u, v);
-        assert!((0.0..=1.0).contains(&d), "voronoi out of range: {d}");
-        assert_eq!(d, voronoi(u, v));
-    }
-}
+// (Per-sampler procedural tests live in `texture/patterns.rs`, next to the functions.)
 
 // ── Rotation / basis (determinism, HR-5) ────────────────────────────────────────────────────
 
@@ -468,33 +428,7 @@ fn full_one_texture_matches_unmodulated_dab() {
 }
 
 // ── Image-mask texture (imported luminance) ─────────────────────────────────────────────────
-
-#[test]
-fn sample_image_is_bilinear_centre_coord_and_tiles() {
-    // 2×2 luminance: [0, 255; 128, 64].
-    let lum = [0u8, 255, 128, 64];
-    let img = ImageMask {
-        lum: &lum,
-        width: 2,
-        height: 2,
-    };
-    // Texel centres (centre-coord): texel 0 centre at u=0.25, texel 1 at u=0.75.
-    assert!(
-        (sample_image(&img, 0.25, 0.25) - 0.0).abs() < 1e-6,
-        "texel (0,0) = 0"
-    );
-    assert!(
-        (sample_image(&img, 0.75, 0.25) - 1.0).abs() < 1e-6,
-        "texel (1,0) = 255"
-    );
-    // Tiling: u + 1 wraps to the same texel.
-    assert!((sample_image(&img, 1.25, 0.25) - sample_image(&img, 0.25, 0.25)).abs() < 1e-6);
-    // Always bounded.
-    for k in 0..30 {
-        let u = k as f32 * 0.17;
-        assert!((0.0..=1.0).contains(&sample_image(&img, u, -u)));
-    }
-}
+// (The bilinear `sample_image` unit test lives in `texture/patterns.rs`.)
 
 #[test]
 fn image_texture_modulates_the_dab() {

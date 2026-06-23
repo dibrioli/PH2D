@@ -1,5 +1,17 @@
 # HANDOFF — Painter **Texture** section (Brush texture, Blender-parity, 2D-adapted)
 
+> **Atualização 2026-06-23** — P0-P3 + follow-ups FECHADOS. Pós-entrega:
+> - **Size corrigido p/ paridade Blender** (MTex `texvec = size·co`): **maior número = textura MENOR**
+>   (antes estava invertido). Afeta `texture::sample`/`sample_unit`.
+> - **Conjunto de texturas expandido p/ 19 kinds** (`COUNT=19`): set Blender (Clouds, Distorted Noise,
+>   Magic, Marble, Musgrave, Wood, Stucci, Gradient/Blend) + extras de pintura (Grain/papel,
+>   Crosshatch, Dots/halftone, Grid, Bricks), além dos originais (Noise/Checker/Voronoi/Stripes/Image).
+>   Samplers em **`crates/ph2d-painter-brush/src/texture/patterns.rs`** (novo módulo), todos
+>   **transcendental-free** (HR-5: `sin/cos` do Marble/Wood/Magic → `wave01` polinomial). Dropdown +
+>   decode auto-escalam por `0..COUNT` (zero mudança de painel/id).
+> - **Perf Tiled/Stencil**: cache de textura em espaço-canvas (`stamp::blit_canvas_cached`) — textura
+>   computada 1× por pixel por traço (commit `af8974d0`).
+
 > **Para o próximo agente.** Enio pediu a seção **Texture** do pincel, seguindo o padrão Blender
 > (fonte vendorizada em `reference/blender-texture-paint/`), com **uma adaptação**: *o que não se
 > aplica à pintura 2D deve ser retirado ou adaptado*.

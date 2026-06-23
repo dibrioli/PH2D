@@ -10,6 +10,8 @@
 //! application of the baked 1° step [`DEG_STEP`]; **Rake** uses the stroke tangent; **Random** builds
 //! a per-dab unit vector from the dep-free splitmix64 RNG. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
+mod patterns;
+
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;
 /// **Offset** range, in tile fractions (one unit = one full tile shift). Symmetric about 0.
@@ -31,8 +33,9 @@ const STENCIL_TILES: f32 = 4.0;
 /// `stroke/polygon.rs::POLY_STEP`); drift over ≤360 steps is deterministic + sub-`5e-5`.
 pub const DEG_STEP: [f32; 2] = [0.999_847_7, 0.017_452_406];
 
-/// The built-in procedural texture patterns. `None` = no texture assigned (the dab is unmodulated;
-/// matches the checkerboard "empty" placeholder in the panel).
+/// The built-in texture patterns — the Blender texture set (clean-room, [`patterns`]) plus
+/// painting-useful extras. `None` = no texture assigned (the dab is unmodulated). The discriminants
+/// `0..=5` are wire-stable from the original set; new kinds append from `6`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum TextureKind {
     /// No texture — [`sample`] returns `1.0` (full coverage), so the dab is unchanged.
@@ -50,6 +53,32 @@ pub enum TextureKind {
     /// in the `Copy` settings — the caller passes an [`ImageMask`] to [`sample`]). Without one, the
     /// texture is inert (returns `1.0`).
     Image,
+    /// Fractal noise — soft billowy cloud field (Blender `Clouds`).
+    Clouds,
+    /// Value noise sampled through a noise-warped coordinate (Blender `Distorted Noise`).
+    DistortedNoise,
+    /// Nested interference waves — swirly organic pattern (Blender `Magic`).
+    Magic,
+    /// Turbulence-distorted veins / bands (Blender `Marble`).
+    Marble,
+    /// Ridged multifractal — sharp creases at many scales (Blender `Musgrave`).
+    Musgrave,
+    /// Concentric growth rings with light turbulence (Blender `Wood`).
+    Wood,
+    /// Thresholded fractal noise — rough plaster relief (Blender `Stucci`).
+    Stucci,
+    /// Smooth linear ramp repeating per tile (Blender `Blend`).
+    Gradient,
+    /// Fine multi-frequency grain — paper / canvas tooth for dry media.
+    Grain,
+    /// Crossed diagonal hatch lines (ink-hatch shading).
+    Crosshatch,
+    /// Soft round dots centred per tile (halftone).
+    Dots,
+    /// Thin lattice lines (mesh / graph-paper).
+    Grid,
+    /// Running-bond rectangles with mortar gaps (bricks).
+    Bricks,
 }
 
 impl TextureKind {
@@ -63,6 +92,19 @@ impl TextureKind {
             Self::Voronoi => 3,
             Self::Stripes => 4,
             Self::Image => 5,
+            Self::Clouds => 6,
+            Self::DistortedNoise => 7,
+            Self::Magic => 8,
+            Self::Marble => 9,
+            Self::Musgrave => 10,
+            Self::Wood => 11,
+            Self::Stucci => 12,
+            Self::Gradient => 13,
+            Self::Grain => 14,
+            Self::Crosshatch => 15,
+            Self::Dots => 16,
+            Self::Grid => 17,
+            Self::Bricks => 18,
         }
     }
 
@@ -75,12 +117,25 @@ impl TextureKind {
             3 => Self::Voronoi,
             4 => Self::Stripes,
             5 => Self::Image,
+            6 => Self::Clouds,
+            7 => Self::DistortedNoise,
+            8 => Self::Magic,
+            9 => Self::Marble,
+            10 => Self::Musgrave,
+            11 => Self::Wood,
+            12 => Self::Stucci,
+            13 => Self::Gradient,
+            14 => Self::Grain,
+            15 => Self::Crosshatch,
+            16 => Self::Dots,
+            17 => Self::Grid,
+            18 => Self::Bricks,
             _ => Self::None,
         }
     }
 
     /// Number of selectable kinds (drives the dropdown decode range; includes `None`).
-    pub const COUNT: u8 = 6;
+    pub const COUNT: u8 = 19;
 
     /// English label for the picker (HR-15 / app-UI-english-only).
     #[must_use]
@@ -92,6 +147,19 @@ impl TextureKind {
             Self::Voronoi => "Voronoi",
             Self::Stripes => "Stripes",
             Self::Image => "Image",
+            Self::Clouds => "Clouds",
+            Self::DistortedNoise => "Distorted Noise",
+            Self::Magic => "Magic",
+            Self::Marble => "Marble",
+            Self::Musgrave => "Musgrave",
+            Self::Wood => "Wood",
+            Self::Stucci => "Stucci",
+            Self::Gradient => "Gradient",
+            Self::Grain => "Grain",
+            Self::Crosshatch => "Crosshatch",
+            Self::Dots => "Dots",
+            Self::Grid => "Grid",
+            Self::Bricks => "Bricks",
         }
     }
 }
@@ -375,19 +443,20 @@ pub fn sample(
             (ly + 1.0) * 0.5 * STENCIL_TILES,
         ]
     } else {
-        // Per-axis scale clamped away from zero so the division is finite.
+        // Per-axis scale clamped away from zero. Size MULTIPLIES the coordinate (Blender's MTex
+        // `texvec = size · co`): a LARGER Size scales coords up → the pattern reads SMALLER / denser.
         let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         // Raw coordinates before rotation, in tile units (footprint-relative or canvas-tiled).
         let rel = match s.mapping {
             TextureMapping::Tiled => {
                 let base = TEX_TILE_BASE_PX;
-                [p[0] / (base * sx), p[1] / (base * sy)]
+                [p[0] * sx / base, p[1] * sy / base]
             }
             // View Plane and Random both anchor to the dab footprint.
             _ => {
                 let r = radius.max(1e-3);
-                [(p[0] - center[0]) / (r * sx), (p[1] - center[1]) / (r * sy)]
+                [(p[0] - center[0]) * sx / r, (p[1] - center[1]) * sy / r]
             }
         };
         // Rotate into texture space (basis is already the dab's rotation), then translate.
@@ -396,28 +465,12 @@ pub fn sample(
             rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
         ]
     };
-    sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
-}
-
-/// Evaluate the procedural / image kind at texture coords `tex` (after the mapping resolved them).
-/// Shared by [`sample`] (per-pixel canvas path) and [`sample_unit`] (the cached stamp render).
-fn sample_kind(kind: TextureKind, tex: [f32; 2], image: Option<&ImageMask>) -> f32 {
-    match kind {
-        TextureKind::None => 1.0,
-        TextureKind::Noise => value_noise(tex[0], tex[1]),
-        TextureKind::Checker => checker(tex[0], tex[1]),
-        TextureKind::Voronoi => voronoi(tex[0], tex[1]),
-        TextureKind::Stripes => stripes(tex[0]),
-        TextureKind::Image => match image {
-            Some(img) => sample_image(img, tex[0], tex[1]),
-            None => 1.0, // kind is Image but no pixels supplied → inert
-        },
-    }
+    patterns::sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
 }
 
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the
 /// scale-invariant form baking the cached brush stamp ([`crate::stamp`]): depends only on
-/// `(u, v)/size` + rotation, never the radius. View-only; returns the coverage in `[0, 1]`.
+/// `(u, v)·size` + rotation, never the radius. View-only; returns the coverage in `[0, 1]`.
 #[must_use]
 pub fn sample_unit(
     s: &TextureSettings,
@@ -431,87 +484,15 @@ pub fn sample_unit(
     }
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    let rel = [u / sx, v / sy];
+    let rel = [u * sx, v * sy];
     let tex = [
         rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
         rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
     ];
-    sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
+    patterns::sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
 }
 
-/// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one image), tiled via
-/// `fract`, centre-coord convention (memory `feedback_pixel_center_vs_edge_coord`). Returns `[0, 1]`;
-/// transcendental-free. A malformed buffer reads `1.0` (inert) rather than panicking.
-fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
-    let (w, h) = (img.width.max(1), img.height.max(1));
-    if img.lum.len() < (w as usize) * (h as usize) {
-        return 1.0;
-    }
-    // Tile into [0,1), then to pixel space (centre-coord: pixel i spans [i, i+1), centre at i+0.5).
-    let x = (u - u.floor()) * w as f32 - 0.5;
-    let y = (v - v.floor()) * h as f32 - 0.5;
-    let (x0, y0) = (x.floor(), y.floor());
-    let (tx, ty) = (x - x0, y - y0);
-    let wrap = |i: i32, n: u32| (i.rem_euclid(n as i32)) as usize;
-    let (xi0, xi1) = (wrap(x0 as i32, w), wrap(x0 as i32 + 1, w));
-    let (yi0, yi1) = (wrap(y0 as i32, h), wrap(y0 as i32 + 1, h));
-    let at = |xi: usize, yi: usize| f32::from(img.lum[yi * w as usize + xi]) / 255.0;
-    let top = lerp(at(xi0, yi0), at(xi1, yi0), tx);
-    let bot = lerp(at(xi0, yi1), at(xi1, yi1), tx);
-    lerp(top, bot, ty)
-}
-
-// ── Procedural samplers (transcendental-free) ───────────────────────────────────────────────
-
-/// Hard 2-colour checker: `0.0` / `1.0` by the parity of the integer cell.
-fn checker(u: f32, v: f32) -> f32 {
-    let cell = ifloor(u) ^ ifloor(v);
-    (cell & 1) as f32
-}
-
-/// Soft parallel stripes along `u` — a unit-period triangle wave in `[0, 1]`.
-fn stripes(u: f32) -> f32 {
-    let f = u - u.floor(); // [0,1)
-    if f < 0.5 { 2.0 * f } else { 2.0 * (1.0 - f) }
-}
-
-/// One octave of value noise in `[0, 1]`: hashed lattice values, smoothstep-interpolated.
-fn value_noise(u: f32, v: f32) -> f32 {
-    let x0 = ifloor(u);
-    let y0 = ifloor(v);
-    let fx = u - u.floor();
-    let fy = v - v.floor();
-    let sx = smoothstep(fx);
-    let sy = smoothstep(fy);
-    let n00 = hash2(x0, y0);
-    let n10 = hash2(x0 + 1, y0);
-    let n01 = hash2(x0, y0 + 1);
-    let n11 = hash2(x0 + 1, y0 + 1);
-    lerp(lerp(n00, n10, sx), lerp(n01, n11, sx), sy)
-}
-
-/// Voronoi F1: nearest-feature distance over the 3×3 neighbour cells, mapped to `[0, 1]`.
-fn voronoi(u: f32, v: f32) -> f32 {
-    let cx = ifloor(u);
-    let cy = ifloor(v);
-    let mut best = f32::INFINITY;
-    for dy in -1..=1 {
-        for dx in -1..=1 {
-            let (gx, gy) = (cx + dx, cy + dy);
-            // Feature point inside cell (gx, gy): cell corner + hashed in-cell offset.
-            let fx = gx as f32 + hash2(gx, gy);
-            let fy = gy as f32 + hash2(gy, gx);
-            let (ex, ey) = (fx - u, fy - v);
-            let d2 = ex * ex + ey * ey;
-            if d2 < best {
-                best = d2;
-            }
-        }
-    }
-    best.sqrt().clamp(0.0, 1.0)
-}
-
-// ── Rotation / RNG / math helpers (transcendental-free) ─────────────────────────────────────
+// ── Rotation / RNG helpers (transcendental-free) ────────────────────────────────────────────
 
 /// Rotate the unit vector `(1, 0)` by `deg` whole degrees via repeated [`DEG_STEP`] application.
 fn rotate_by_degrees(deg: u16) -> [f32; 2] {
@@ -567,33 +548,6 @@ fn next_f32(state: &mut u64) -> f32 {
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     z ^= z >> 31;
     ((z >> 40) as f32) / ((1u32 << 24) as f32)
-}
-
-/// Hash an integer lattice point to `[0, 1)` — the value-noise / Voronoi randomness.
-fn hash2(ix: i32, iy: i32) -> f32 {
-    let mut h = (ix as u32).wrapping_mul(0x9E37_79B1) ^ (iy as u32).wrapping_mul(0x85EB_CA77);
-    h ^= h >> 15;
-    h = h.wrapping_mul(0x2C1B_3C6D);
-    h ^= h >> 12;
-    h = h.wrapping_mul(0x297A_2D39);
-    h ^= h >> 15;
-    ((h >> 8) as f32) / ((1u32 << 24) as f32)
-}
-
-/// Hermite smoothstep `3t² − 2t³` on a value already in `[0, 1]` (polynomial — no transcendental).
-fn smoothstep(t: f32) -> f32 {
-    t * t * (3.0 - 2.0 * t)
-}
-
-/// Linear interpolate.
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
-
-/// `floor` to `i32` (integer cell index) — avoids the `as i32` truncation-toward-zero bug for
-/// negative coordinates.
-fn ifloor(x: f32) -> i32 {
-    x.floor() as i32
 }
 
 #[cfg(test)]

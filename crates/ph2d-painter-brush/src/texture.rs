@@ -292,7 +292,15 @@ pub struct TextureSettings {
     pub offset: [f32; 2],
     /// Per-axis scale, each in `[`[`TEX_SIZE_MIN`]`, `[`TEX_SIZE_MAX`]`]` (`1.0` = one tile).
     pub size: [f32; 2],
+    /// Per-pattern shape knobs, each **normalized** `[0, 1]`; meaning is per-[`TextureKind`] (see
+    /// [`param_specs`]). Slots `0`/`1` are the universal **Contrast** / **Brightness** (`0.5` =
+    /// neutral); slot `2` is the kind's shape param (Detail / Turbulence / Radius / …). `0.5`
+    /// throughout is the neutral default, reset to each kind's [`param_specs`] defaults on a change.
+    pub params: [f32; MAX_TEX_PARAMS],
 }
+
+/// Number of per-pattern parameter slots in [`TextureSettings::params`].
+pub const MAX_TEX_PARAMS: usize = 4;
 
 impl Default for TextureSettings {
     fn default() -> Self {
@@ -304,9 +312,12 @@ impl Default for TextureSettings {
             random_angle: false,
             offset: [0.0, 0.0],
             size: [1.0, 1.0],
+            params: [0.5; MAX_TEX_PARAMS],
         }
     }
 }
+
+pub use patterns::{ParamSpec, param_specs};
 
 impl TextureSettings {
     /// Whether the texture actually modulates anything (a kind is assigned).
@@ -500,7 +511,7 @@ pub fn sample(
             rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
         ]
     };
-    patterns::sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
+    patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }
 
 /// Sample the **View-mapped** texture at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the
@@ -524,7 +535,7 @@ pub fn sample_unit(
         rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
         rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
     ];
-    patterns::sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
+    patterns::sample_kind(s.kind, tex, s.params, image).clamp(0.0, 1.0)
 }
 
 // ── Rotation / RNG helpers (transcendental-free) ────────────────────────────────────────────

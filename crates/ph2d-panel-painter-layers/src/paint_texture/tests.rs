@@ -155,6 +155,46 @@ fn param_sliders_register_exactly_the_kind_s_specs() {
 }
 
 #[test]
+fn color_ramp_controls_gate_on_the_enable_toggle() {
+    // Ramp OFF (default): only the enable toggle registers; Mode / Interp / + / − stay hidden.
+    let off = painted_hit_ids(TextureKind::Noise.to_u8());
+    assert!(
+        off.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
+        "the Color Ramp enable toggle always shows. painted = {off:?}"
+    );
+    for hidden in [
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+    ] {
+        assert!(
+            !off.contains(&hidden),
+            "ramp {hidden:?} must be hidden when the ramp is off"
+        );
+    }
+    // Ramp ON: every control registers a hit rect (so a real click can reach it — no silent no-op).
+    let on = painted_hit_ids_for(BrushSettings {
+        texture_kind: TextureKind::Noise.to_u8(),
+        texture_ramp_enabled: true,
+        texture_ramp_stop_count: 2,
+        ..crate::paint_brush::FALLBACK_BRUSH
+    });
+    for shown in [
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+    ] {
+        assert!(
+            on.contains(&shown),
+            "enabled ramp must register {shown:?}. painted = {on:?}"
+        );
+    }
+}
+
+#[test]
 fn offset_and_size_tracks_are_inverse_of_the_tool_clamp() {
     // The panel maps the stored value back onto the 0..1 slider track; the centre/identity values
     // must land where the tool's setters put them (offset 0 → mid-track, size 1 → near-low track).

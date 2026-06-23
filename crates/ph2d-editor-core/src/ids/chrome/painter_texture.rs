@@ -66,3 +66,43 @@ pub fn painter_brush_texture_mapping_option_id(m: u8) -> NodeId {
 pub fn painter_brush_texture_kind_option_id(k: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.texkindopt.{k}"))
 }
+
+// ── Texture Color Ramp editor (maps the texture's scalar to a colour) ──
+/// Color Ramp **enable** toggle. `Click` → `set_texture_ramp_enabled`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_ENABLE: NodeId =
+    hash_node_id("painter_brush.texture_ramp_enable");
+/// Ramp **colour mode** dropdown (RGB/HSV/HSL). `SelectOption` → `set_texture_ramp_mode`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_MODE: NodeId = hash_node_id("painter_brush.texture_ramp_mode");
+/// Ramp **interpolation** dropdown (Ease/Cardinal/Linear/B-Spline/Constant). `SelectOption` →
+/// `set_texture_ramp_interp`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_INTERP: NodeId =
+    hash_node_id("painter_brush.texture_ramp_interp");
+/// The ramp **bar** — the `CurvePoint` parent canvas the draggable stop handles report against.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_EDIT: NodeId = hash_node_id("painter_brush.texture_ramp_edit");
+/// Ramp **add stop** button. `Click` → `ramp_add_stop`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_ADD: NodeId = hash_node_id("painter_brush.texture_ramp_add");
+/// Ramp **remove stop** button (removes the selected stop). `Click` → `ramp_remove_stop`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_REMOVE: NodeId =
+    hash_node_id("painter_brush.texture_ramp_remove");
+/// The selected stop's **colour swatch** — opens the colour picker. `Click` → picker target.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_SWATCH: NodeId =
+    hash_node_id("painter_brush.texture_ramp_swatch");
+
+/// Stable [`NodeId`] for ramp stop `i`'s draggable handle (a `CurvePoint` under
+/// [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]). Bounded by the snapshot's stop count.
+#[must_use]
+pub fn painter_brush_texture_ramp_stop_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texrampstop.{i}"))
+}
+
+/// Stable [`NodeId`] for ramp colour-mode option `m` in the open Mode dropdown popover.
+#[must_use]
+pub fn painter_brush_texture_ramp_mode_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texrampmodeopt.{m}"))
+}
+
+/// Stable [`NodeId`] for ramp interpolation option `i` in the open Interpolation dropdown popover.
+#[must_use]
+pub fn painter_brush_texture_ramp_interp_option_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texrampinterpopt.{i}"))
+}

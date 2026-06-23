@@ -186,7 +186,9 @@ pub(crate) fn paint_texture_section(
             readout: &format!("{value:.2}"),
         });
     }
-    y
+
+    // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
+    crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)
 }
 
 /// Deferred paint of the Texture section's open dropdown popovers (Kind + Mapping), drained at the
@@ -212,6 +214,7 @@ pub(crate) fn paint_texture_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::The
             cur,
         );
     }
+    crate::paint_texture_ramp::paint_texture_ramp_popovers(ctx, theme);
 }
 
 /// Map a stored offset (tile fractions, `[TEX_OFFSET_MIN, TEX_OFFSET_MAX]`) onto the slider's

@@ -19,8 +19,7 @@ use ph2d_painter_brush::{
 /// Brush + Stroke-section parameter snapshot & setters (submodule so it shares `PaintState`'s
 /// private brush access; split out to keep both files under the workspace LOC cap).
 mod brush_settings;
-/// The Curve stroke method's on-canvas point editor (submodule for the same private-access +
-/// LOC-cap reasons as `brush_settings`).
+/// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
 pub use curve::CurveOverlay;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
@@ -32,6 +31,7 @@ pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
 pub use stencil::StencilOverlay;
+mod ramp;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
 mod stamp_cache;
 
@@ -68,7 +68,7 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 // `brush_falloff_weight_at` live in the `brush_settings` submodule (alongside the setters that
 // are their single clamp source), so this file stays under the workspace LOC cap. Re-exported
 // here to keep their `paint::` public path.
-pub use brush_settings::{BrushSettings, brush_falloff_weight_at};
+pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
 /// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint

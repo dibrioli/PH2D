@@ -103,10 +103,13 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_offset: [0.0, 0.0],
     texture_size: [1.0, 1.0],
     texture_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],
+    texture_ramp_enabled: false,
+    texture_ramp_mode: 0,
+    texture_ramp_interp: 2,
+    texture_ramp_stops: [[0.0; 5]; ph2d_tool_painter::PANEL_RAMP_STOPS],
+    texture_ramp_stop_count: 0,
 };
 
-/// Paint the Brush-properties body below `header_bottom` (the Painter dock in
-/// Brush mode). Terminal for the panel — owns its own popover pass.
 /// Paint the Brush-properties body rows from `top_y` (already offset by the panel scroll), returning
 /// the content-bottom `y`. The caller clips to the body viewport, measures the returned height for
 /// the scrollbar, and drains the dropdown popovers via [`paint_brush_popovers`] AFTER popping the

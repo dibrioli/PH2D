@@ -151,7 +151,24 @@ pub struct BrushSettings {
     /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (see
     /// `ph2d_painter_brush::param_specs`). The panel paints a slider per exposed slot.
     pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+
+    // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
+    /// Whether the Color Ramp drives the paint colour.
+    pub texture_ramp_enabled: bool,
+    /// Ramp colour-interpolation space (`RampColorMode::to_u8`).
+    pub texture_ramp_mode: u8,
+    /// Ramp interpolation mode (`RampInterp::to_u8`).
+    pub texture_ramp_interp: u8,
+    /// Ramp stops as `(pos, r, g, b, a)` (LINEAR), the first [`Self::texture_ramp_stop_count`] valid,
+    /// sorted by `pos`. The panel plots the bar + a draggable handle per stop.
+    pub texture_ramp_stops: [[f32; 5]; PANEL_RAMP_STOPS],
+    /// Count of valid entries in [`Self::texture_ramp_stops`].
+    pub texture_ramp_stop_count: u8,
 }
+
+/// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
+/// shows the first this-many — more than enough for hand-authored gradients).
+pub const PANEL_RAMP_STOPS: usize = 16;
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
 /// centre, `1` = rim), for the panel's live curve preview. Reads the editable
@@ -197,6 +214,22 @@ impl PainterTool {
         let mut falloff_points = [FalloffPoint::default(); MAX_FALLOFF_POINTS];
         let pts = b.custom_falloff.points();
         falloff_points[..pts.len()].copy_from_slice(pts);
+        // Snapshot the texture Color Ramp's stops into the Copy array (the panel plots the bar +
+        // draggable handles).
+        let ramp = self.texture_ramp();
+        let mut texture_ramp_stops = [[0.0f32; 5]; PANEL_RAMP_STOPS];
+        let ramp_count = ramp.stops().len().min(PANEL_RAMP_STOPS);
+        // Stops are stored LINEAR; the panel paints in display sRGB, so convert here (alpha straight).
+        let srgb = |x: f32| f32::from(ph2d_color::srgb::linear_to_srgb_byte(x)) / 255.0;
+        for (slot, s) in texture_ramp_stops.iter_mut().zip(ramp.stops()) {
+            *slot = [
+                s.pos,
+                srgb(s.color[0]),
+                srgb(s.color[1]),
+                srgb(s.color[2]),
+                s.color[3],
+            ];
+        }
         BrushSettings {
             size_px: b.radius_px,
             size_norm: size_px_to_norm(b.radius_px),
@@ -227,6 +260,11 @@ impl PainterTool {
             texture_offset: b.texture.offset,
             texture_size: b.texture.size,
             texture_params: b.texture.params,
+            texture_ramp_enabled: self.paint.texture_ramp_enabled,
+            texture_ramp_mode: ramp.color_mode.to_u8(),
+            texture_ramp_interp: ramp.interp.to_u8(),
+            texture_ramp_stops,
+            texture_ramp_stop_count: ramp_count as u8,
         }
     }
 

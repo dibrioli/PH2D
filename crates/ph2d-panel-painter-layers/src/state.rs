@@ -60,6 +60,12 @@ thread_local! {
     /// The open Texture-section Mapping dropdown popover: `(chip_rect, current_mapping_u8)`.
     static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open Color Ramp **Mode** dropdown popover: `(chip_rect, current_mode_u8)`.
+    static PENDING_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
+    /// The open Color Ramp **Interpolation** dropdown popover: `(chip_rect, current_interp_u8)`.
+    static PENDING_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
     /// (the tool folds it in via `selection()`); a single-element set means just
@@ -433,6 +439,26 @@ pub(crate) fn set_pending_brush_texture_mapping_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending Texture Mapping dropdown for the deferred popover.
 pub(crate) fn take_pending_brush_texture_mapping_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_TEXTURE_MAPPING_DD.with(|c| c.take())
+}
+
+/// Stash the open Color Ramp Mode dropdown for the deferred popover pass.
+pub(crate) fn set_pending_ramp_mode_dd(v: Option<(Rect, u8)>) {
+    PENDING_RAMP_MODE_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Color Ramp Mode dropdown for the deferred popover.
+pub(crate) fn take_pending_ramp_mode_dd() -> Option<(Rect, u8)> {
+    PENDING_RAMP_MODE_DD.with(|c| c.take())
+}
+
+/// Stash the open Color Ramp Interpolation dropdown for the deferred popover pass.
+pub(crate) fn set_pending_ramp_interp_dd(v: Option<(Rect, u8)>) {
+    PENDING_RAMP_INTERP_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Color Ramp Interpolation dropdown for the deferred popover.
+pub(crate) fn take_pending_ramp_interp_dd() -> Option<(Rect, u8)> {
+    PENDING_RAMP_INTERP_DD.with(|c| c.take())
 }
 
 /// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por

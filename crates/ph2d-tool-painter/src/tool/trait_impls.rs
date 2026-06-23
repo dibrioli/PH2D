@@ -115,6 +115,16 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_NEW => {
                 self.new_brush_texture();
             }
+            // ── Texture Color Ramp: enable toggle + add / remove stop. ─────
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE => {
+                self.toggle_texture_ramp_enabled();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD => {
+                self.ramp_add_stop();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
+                self.ramp_remove_last_stop();
+            }
             // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point();
@@ -268,6 +278,21 @@ impl Tool for PainterTool {
             {
                 if let Ok(m) = value.parse::<u8>() {
                     self.set_brush_texture_mapping(m);
+                }
+            }
+            // ── Color Ramp dropdowns: Mode + Interpolation (value = wire u8). ─
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_texture_ramp_mode(m);
+                }
+            }
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP =>
+            {
+                if let Ok(i) = value.parse::<u8>() {
+                    self.set_texture_ramp_interp(i);
                 }
             }
             // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The

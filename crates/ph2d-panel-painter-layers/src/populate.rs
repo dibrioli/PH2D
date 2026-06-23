@@ -103,6 +103,10 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_NEW,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+        // Color Ramp: enable toggle + add / remove stop buttons.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
     ] {
         store.register(
             id,
@@ -121,6 +125,9 @@ pub fn populate(store: &mut WidgetStore) {
         // Texture section: Kind picker + Mapping chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+        // Color Ramp: Mode + Interpolation chips.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
     ] {
         store.register(
             id,

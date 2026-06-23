@@ -35,6 +35,7 @@ mod paint_falloff;
 mod paint_rows;
 mod paint_stroke;
 mod paint_texture;
+mod paint_texture_ramp;
 mod populate;
 pub mod state;
 

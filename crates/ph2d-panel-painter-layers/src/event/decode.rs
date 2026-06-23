@@ -6,7 +6,9 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_tool_painter::{MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, TextureKind, TextureMapping};
+use ph2d_tool_painter::{
+    MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, RampColorMode, RampInterp, TextureKind, TextureMapping,
+};
 
 /// Decode a brush blend-mode popover option id → its mode `u8` (fixed; iterate the 24 stable ids).
 pub(super) fn decode_brush_blend_option(id: NodeId) -> Option<u8> {
@@ -37,4 +39,15 @@ pub(super) fn decode_texture_kind_option(id: NodeId) -> Option<u8> {
 /// Decode a texture-Mapping popover option id → its `TextureMapping` wire `u8` (`0..=2`).
 pub(super) fn decode_texture_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT).find(|&m| core_ids::painter_brush_texture_mapping_option_id(m) == id)
+}
+
+/// Decode a Color Ramp Mode popover option id → its `RampColorMode` wire `u8` (`0..=2`).
+pub(super) fn decode_texture_ramp_mode_option(id: NodeId) -> Option<u8> {
+    (0..RampColorMode::COUNT)
+        .find(|&m| core_ids::painter_brush_texture_ramp_mode_option_id(m) == id)
+}
+
+/// Decode a Color Ramp Interpolation popover option id → its `RampInterp` wire `u8` (`0..=4`).
+pub(super) fn decode_texture_ramp_interp_option(id: NodeId) -> Option<u8> {
+    (0..RampInterp::COUNT).find(|&i| core_ids::painter_brush_texture_ramp_interp_option_id(i) == id)
 }

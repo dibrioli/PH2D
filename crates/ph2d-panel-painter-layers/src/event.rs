@@ -31,6 +31,7 @@ mod decode;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
     decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
+    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
 
 pub(crate) fn apply_event(
@@ -442,20 +443,21 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_NEW =>
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_NEW
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
         }
-        // Custom-falloff "+" point button → forward the add Click.
         WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
         }
-        // Custom-falloff "−" point button → drop the selected point (else a
-        // sensible interior default — the first non-endpoint by the stable id).
+        // Custom-falloff "−" → drop the selected point (else the first non-endpoint by stable id).
         WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
             let Some(target) = state::selected_falloff_point().or_else(default_falloff_remove_id)
             else {
@@ -468,8 +470,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Blend / Falloff / Stroke-Method / Jitter-Unit popover option picked →
-        // close the chip + apply.
+        // A dropdown popover option was picked → close the chip + apply (decode by id).
         WidgetEvent::Click(id) => {
             if let Some(mode) = decode_brush_blend_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_BLEND, mode);
@@ -489,14 +490,17 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             } else if let Some(m) = decode_texture_mapping_option(id) {
                 forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING, m);
                 Some(true)
+            } else if let Some(m) = decode_texture_ramp_mode_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE, m);
+                Some(true)
+            } else if let Some(i) = decode_texture_ramp_interp_option(id) {
+                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP, i);
+                Some(true)
             } else {
                 None
             }
         }
-        // Custom-falloff control-point 2-D drag: the `CurvePoint` dispatch stashed
-        // `(parent, channel, index, x, y)` on the store and fired
-        // `ValueChanged(parent)`. The id IS the editor parent, so this drain is
-        // unambiguously ours — pull it and forward `"index:x:y"` to the tool.
+        // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
             if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
                 // `idx` is the point's STABLE id (the panel registered the handle

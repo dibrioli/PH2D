@@ -46,6 +46,9 @@ pub use ph2d_painter_effects::adjustments::{
     set_channel_mixer_param, set_selective_color_param,
 };
 pub use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
+// Re-export the Color Ramp enums so the layers panel's ramp editor can name + enumerate the
+// mode / interpolation options without a direct `ph2d-color` import.
+pub use ph2d_color::{RampColorMode, RampInterp};
 // Re-export the brush blend + falloff surface so the layers panel's Brush
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{
@@ -57,8 +60,8 @@ pub use ph2d_painter_brush::{
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
-    BrushSettings, CircleOverlay, CurveOverlay, PainterTool, PolygonOverlay, StencilOverlay,
-    brush_falloff_weight_at, set_pending_select_mods,
+    BrushSettings, CircleOverlay, CurveOverlay, PANEL_RAMP_STOPS, PainterTool, PolygonOverlay,
+    StencilOverlay, brush_falloff_weight_at, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

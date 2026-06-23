@@ -39,6 +39,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod color_ramp;
 pub mod linear;
 pub mod oklab;
 pub mod oklch;
@@ -46,6 +47,7 @@ pub mod pigment_space;
 pub mod premultiplied;
 pub mod srgb;
 
+pub use color_ramp::{ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInterp, RampStop};
 pub use linear::LinearRgba;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;

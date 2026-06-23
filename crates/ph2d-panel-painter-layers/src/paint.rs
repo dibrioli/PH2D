@@ -35,7 +35,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button, paint_scrollbar,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
@@ -294,14 +294,12 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         );
         hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
         hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
-        // Scrollbar thumb-drag: register the thumb hit-rect AFTER the rows (same
-        // last-wins reason as the chrome above). Gated to when the scrollbar is
-        // actually shown; the rect must match `paint_scrollbar`'s internal
-        // `track_rect → thumb_rect` so the grab aligns with the painted thumb.
+        // Scrollbar drag: register the whole TRACK (not just the thin thumb) AFTER the rows (same
+        // last-wins reason as the chrome above), so the user can grab the bar ANYWHERE — clicking the
+        // visible rail off the thumb used to hit nothing. It also hands the dispatch the real track
+        // height (`begin_scrollbar_drag` snapshots `track_h = rect.h`) for proportional scrolling.
         if scrollbar_is_needed(content_h, body_h) {
-            let track = scrollbar_track_rect(body_rect);
-            let thumb = scrollbar_thumb_rect(track, scroll_y, content_h, body_h);
-            hit.register(PAINTER_LAYERS_SCROLLBAR_ID, thumb);
+            hit.register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
         }
     }
 
@@ -384,11 +382,11 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
         theme,
     );
     if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll_y, content_h, body_h);
+        // Register the whole TRACK as the drag zone (grab the bar anywhere; real `track_h` for the
+        // dispatch). The Brush-properties view overflows readily now, so this is the path Enio hits.
         ctx.host
             .hit_index_mut()
-            .register(PAINTER_LAYERS_SCROLLBAR_ID, thumb);
+            .register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
     }
     {
         let store = ctx.host.store_mut();

@@ -76,6 +76,67 @@ pub fn stamp_dab_textured(
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
 ) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        None,
+    )
+}
+
+/// As [`stamp_dab_textured`], but a baked **Color Ramp** LUT (256 straight-RGBA entries, in the
+/// layer's colour space) maps each texel's texture value to a COLOUR: the brush paints `lut[t]`'s RGB
+/// with coverage `falloff × lut[t].a × coverage`, so the texture's scalar drives the painted colour
+/// (via the ramp) rather than only attenuating the brush's single colour. Requires an active texture
+/// (`tex` resolved); with no texture there is nothing to index, so it falls back to the plain stamp.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_ramped(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    ramp: &[[f32; 4]],
+) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        Some(ramp),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+fn stamp_dab_inner(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    ramp: Option<&[[f32; 4]]>,
+) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
         "buffer too small"
@@ -108,6 +169,8 @@ pub fn stamp_dab_textured(
         // skipped entirely so the texture-free path costs nothing).
         tex: tex.filter(|_| spec.texture.is_active()),
         image: image.copied(),
+        // The ramp only applies where a texture supplies the index value.
+        ramp: ramp.filter(|_| spec.texture.is_active()),
         center,
         cx,
         cy,
@@ -243,6 +306,9 @@ struct DabCtx<'a> {
     spec: &'a BrushSpec,
     tex: Option<&'a TexDabBasis>,
     image: Option<ImageMask<'a>>,
+    /// Baked Color Ramp LUT (straight RGBA, layer colour space): when present (and a texture is
+    /// active), the texture value indexes it for the per-texel paint colour. See [`stamp_dab_ramped`].
+    ramp: Option<&'a [[f32; 4]]>,
     center: [f32; 2],
     cx: f32,
     cy: f32,
@@ -259,7 +325,7 @@ struct DabCtx<'a> {
 /// row `py` lives at local offset `(py - band_y0) * stride`). Returns whether any pixel was written.
 /// Pure over disjoint bands — no shared mutable state — so bands run in parallel deterministically.
 fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
-    let (blend, color) = (ctx.spec.blend, ctx.spec.color);
+    let blend = ctx.spec.blend;
     let mut touched = false;
     for r in 0..dst.len() / ctx.stride {
         let py = band_y0 + r as i64;
@@ -275,10 +341,12 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
             if w <= 0.0 {
                 continue;
             }
-            // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
-            // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
+            // Default: the brush's single colour. The texture multiplies the falloff mask, exactly
+            // as the falloff multiplies coverage (texel 0 → nothing, 1 → full falloff). With a Color
+            // Ramp the texture value instead indexes the ramp for the per-texel COLOUR + alpha.
+            let mut color = ctx.spec.color;
             if let Some(b) = ctx.tex {
-                w *= crate::texture::sample(
+                let s = crate::texture::sample(
                     &ctx.spec.texture,
                     b,
                     px,
@@ -287,6 +355,13 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
                     ctx.radius,
                     ctx.image.as_ref(),
                 );
+                if let Some(lut) = ctx.ramp {
+                    let c = ramp_sample(lut, s);
+                    color = [c[0], c[1], c[2]];
+                    w *= c[3];
+                } else {
+                    w *= s;
+                }
                 if w <= 0.0 {
                     continue;
                 }
@@ -325,173 +400,15 @@ pub(crate) fn encode(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::blend::BrushBlend;
-    use crate::falloff::Falloff;
-
-    fn solid(width: u32, height: u32, rgba: [u8; 4]) -> Vec<u8> {
-        rgba.iter()
-            .copied()
-            .cycle()
-            .take((width * height * 4) as usize)
-            .collect()
+/// Sample a baked Color Ramp LUT at `s ∈ [0, 1]` (nearest entry — the 256-step LUT is already fine).
+fn ramp_sample(lut: &[[f32; 4]], s: f32) -> [f32; 4] {
+    if lut.is_empty() {
+        return [0.0, 0.0, 0.0, 1.0];
     }
-
-    #[test]
-    fn dab_paints_center_and_reports_rect() {
-        let (w, h) = (32, 32);
-        let mut buf = solid(w, h, [255, 255, 255, 255]); // white, opaque
-        let spec = BrushSpec {
-            radius_px: 6.0,
-            color: [0.0, 0.0, 0.0], // black
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Constant, // hard so the centre is fully painted
-            ..Default::default()
-        };
-        let rect = stamp_dab(&mut buf, w, h, [16.0, 16.0], &spec, 1.0, false).expect("painted");
-        // Centre pixel went black.
-        let i = ((16 * w + 16) * 4) as usize;
-        assert_eq!(&buf[i..i + 4], &[0, 0, 0, 255]);
-        // Rect contains the centre and is within the canvas.
-        assert!(rect.x <= 16 && rect.y <= 16);
-        assert!(rect.x + rect.w <= w && rect.y + rect.h <= h);
-        // A pixel well outside the radius is untouched (still white).
-        let far = ((2 * w + 2) * 4) as usize;
-        assert_eq!(&buf[far..far + 4], &[255, 255, 255, 255]);
-    }
-
-    #[test]
-    fn dab_off_canvas_is_none() {
-        let (w, h) = (16, 16);
-        let mut buf = solid(w, h, [0, 0, 0, 0]);
-        let spec = BrushSpec {
-            radius_px: 3.0,
-            ..Default::default()
-        };
-        assert!(stamp_dab(&mut buf, w, h, [-100.0, -100.0], &spec, 1.0, false).is_none());
-    }
-
-    #[test]
-    fn zero_coverage_is_none() {
-        let (w, h) = (16, 16);
-        let mut buf = solid(w, h, [10, 20, 30, 255]);
-        let spec = BrushSpec::default();
-        assert!(stamp_dab(&mut buf, w, h, [8.0, 8.0], &spec, 0.0, false).is_none());
-        // Buffer untouched.
-        assert_eq!(buf[0..4], [10, 20, 30, 255]);
-    }
-
-    #[test]
-    fn soft_falloff_fades_from_center_to_rim() {
-        let (w, h) = (40, 40);
-        let mut buf = solid(w, h, [255, 255, 255, 255]);
-        let spec = BrushSpec {
-            radius_px: 14.0,
-            color: [0.0, 0.0, 0.0],
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Smooth,
-            ..Default::default()
-        };
-        stamp_dab(&mut buf, w, h, [20.0, 20.0], &spec, 1.0, false).expect("painted");
-        let val = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
-        // Centre darker than a point near the rim.
-        assert!(
-            val(20, 20) < val(20, 32),
-            "centre should be darker than the rim"
-        );
-    }
-
-    #[test]
-    fn strength_scales_dab_opacity() {
-        // Full strength → black; half strength → mid-grey over white (Mix at a=0.5).
-        let (w, h) = (16, 16);
-        let hard = |strength: f32| BrushSpec {
-            radius_px: 5.0,
-            color: [0.0, 0.0, 0.0],
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Constant,
-            hardness: 1.0,
-            strength,
-            ..Default::default()
-        };
-        let mut full = solid(w, h, [255, 255, 255, 255]);
-        stamp_dab(&mut full, w, h, [8.0, 8.0], &hard(1.0), 1.0, false).expect("painted");
-        assert_eq!(full[((8 * w + 8) * 4) as usize], 0, "full strength = black");
-
-        let mut half = solid(w, h, [255, 255, 255, 255]);
-        stamp_dab(&mut half, w, h, [8.0, 8.0], &hard(0.5), 1.0, false).expect("painted");
-        let v = half[((8 * w + 8) * 4) as usize];
-        assert!(
-            (120..=136).contains(&v),
-            "half strength ≈ mid-grey, got {v}"
-        );
-    }
-
-    #[test]
-    fn preserve_alpha_paints_only_into_existing_alpha() {
-        let (w, h) = (8, 8);
-        // Left half opaque white, right half fully transparent.
-        let mut buf = vec![0u8; (w * h * 4) as usize];
-        for y in 0..h {
-            for x in 0..4 {
-                let i = ((y * w + x) * 4) as usize;
-                buf[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
-            }
-        }
-        let spec = BrushSpec {
-            radius_px: 6.0,
-            color: [0.0, 0.0, 0.0],
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Constant,
-            ..Default::default()
-        };
-        // Cover the whole buffer with alpha-lock on.
-        stamp_dab(&mut buf, w, h, [4.0, 4.0], &spec, 1.0, true).expect("painted");
-        let alpha = |x: u32, y: u32| buf[((y * w + x) * 4 + 3) as usize];
-        let rgb = |x: u32, y: u32| {
-            let i = ((y * w + x) * 4) as usize;
-            [buf[i], buf[i + 1], buf[i + 2]]
-        };
-        // Opaque side recoloured to black, alpha preserved.
-        assert_eq!(rgb(1, 4), [0, 0, 0], "opaque side recoloured");
-        assert_eq!(alpha(1, 4), 255, "opaque alpha preserved");
-        // Transparent side untouched — no alpha created.
-        assert_eq!(alpha(6, 4), 0, "alpha-lock did not paint into transparency");
-    }
-
-    #[test]
-    fn large_dab_takes_the_parallel_path_and_stamps_correctly() {
-        // A dab past `PARALLEL_MIN_AREA` splits across row bands; the result must match the serial
-        // expectation (centre + interior painted; a far corner outside the radius untouched). Guards
-        // a band-offset bug — the small-canvas tests above all take the serial path.
-        let (w, h) = (600u32, 600u32);
-        let mut buf = solid(w, h, [255, 255, 255, 255]);
-        let spec = BrushSpec {
-            radius_px: 250.0,
-            color: [0.0, 0.0, 0.0],
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Constant,
-            hardness: 1.0, // hard disk
-            ..Default::default()
-        };
-        let rect = stamp_dab(&mut buf, w, h, [300.0, 300.0], &spec, 1.0, false).expect("painted");
-        assert!(
-            rect.w as usize * rect.h as usize >= PARALLEL_MIN_AREA,
-            "this dab must cross the parallel threshold"
-        );
-        let at = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
-        assert_eq!(at(300, 300), 0, "centre painted black");
-        assert_eq!(
-            at(300, 80),
-            0,
-            "an interior point (dist 220 < 250) is painted"
-        );
-        assert_eq!(
-            at(5, 5),
-            255,
-            "a far corner outside the radius is untouched"
-        );
-    }
+    let n = lut.len();
+    let idx = (s.clamp(0.0, 1.0) * (n as f32 - 1.0) + 0.5) as usize;
+    lut[idx.min(n - 1)]
 }
+
+#[cfg(test)]
+mod tests;

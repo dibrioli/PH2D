@@ -142,6 +142,13 @@ pub(crate) struct PaintState {
     /// Lazily-filled canvas-space texture cache for the Tiled / Stencil mappings (canvas-fixed); the
     /// texture is computed once per canvas pixel per stroke. See [`crate::tool::paint::stamp_cache`].
     canvas_tex_cache: Option<stamp_cache::CanvasTexCache>,
+    /// The brush texture's **Color Ramp** (reusable `ph2d_color::ColorRamp`): when `enabled`, the
+    /// texture's scalar indexes it for the per-texel paint colour. Baked to `lut` (linear → sRGB
+    /// straight, 256 entries) when `dirty`; passed per dab to `stamp_dab_ramped`.
+    texture_ramp: ph2d_color::ColorRamp,
+    texture_ramp_enabled: bool,
+    texture_ramp_lut: Vec<[f32; 4]>,
+    texture_ramp_dirty: bool,
 }
 
 impl Default for PaintState {
@@ -175,6 +182,10 @@ impl Default for PaintState {
             texture_image_version: 0,
             stamp_cache: None,
             canvas_tex_cache: None,
+            texture_ramp: ph2d_color::ColorRamp::default(),
+            texture_ramp_enabled: false,
+            texture_ramp_lut: Vec::new(),
+            texture_ramp_dirty: true,
         }
     }
 }
@@ -253,9 +264,8 @@ impl PainterTool {
     /// - **Airbrush timer:** deposit dabs at the brush's Rate, moving OR parked (Blender fires the
     ///   airbrush on a timer, not on motion — so the spray builds up when held still and stays sparse
     ///   when swept fast). The engine's `tick` is a no-op for every non-Airbrush method.
-    /// - **Stabilizer catch-up:** when the pointer is parked, walk the lagged (smoothed) path up to
-    ///   the cursor so a high-stabilizer stroke arrives without waiting for pointer-up. Only while
-    ///   parked, so during-movement smoothing keeps full strength (`settle` is Space-only).
+    /// - **Stabilizer catch-up:** when parked, walk the lagged path up to the cursor so a
+    ///   high-stabilizer stroke arrives without waiting for pointer-up (`settle` is Space-only).
     pub(crate) fn paint_tick(&mut self, dt_s: f32) {
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
@@ -335,48 +345,48 @@ impl PainterTool {
         self.polygon_discard();
     }
 
-    /// Stamp a batch of dabs into `canvas_rgba` (with the brush texture, if any), accumulate the
-    /// dirty rect, and flag the preview dirty. Each dab carries its own pressure-scaled radius +
-    /// coverage; the static brush appearance (falloff / hardness / blend / colour) comes from
-    /// `self.paint.brush`. A large textured dab parallelises internally (see `stamp_dab_textured`).
+    /// Stamp a batch of dabs into `canvas_rgba` (with the brush texture, if any) + accumulate the
+    /// dirty rect. Each dab carries its pressure-scaled radius + coverage; the static appearance
+    /// (falloff / blend / colour) comes from `self.paint.brush`. Large dabs parallelise internally.
     fn stamp_dabs(&mut self, dabs: &[Dab]) {
         if dabs.is_empty() {
             return;
         }
         let (w, h) = self.source_size;
         let mut brush = self.paint.brush;
-        // Eraser mode overrides the blend with Erase Alpha (removes coverage from
-        // the layer's alpha); the drawing blend in `brush.blend` is untouched.
+        // Eraser overrides the blend with Erase Alpha (the drawing blend in `brush.blend` is kept).
         if self.paint.eraser {
             brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
         }
-        // Alpha lock ("Lock"/Preserve Transparency): the dab paints only into the
-        // active layer's existing alpha. (Clip + mask are composite-time effects the
-        // compositor already honours; only alpha-lock constrains the dab itself.)
+        // Alpha lock ("Lock" / Preserve Transparency): the dab paints only into the active layer's
+        // existing alpha (clip + mask are composite-time; only alpha-lock constrains the dab itself).
         let alpha_locked = self
             .layers
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
-        // A static **View** texture makes the brush stamp scale-invariant: render it once into a
-        // cached mask and scale-blit per dab (Blender's brush-image approach), so a large Anchored
-        // re-stamp pays a cheap blit instead of a per-pixel falloff+texture recompute. No-texture
-        // keeps the per-pixel fast path (nothing to cache); canvas-relative / per-dab mappings
-        // (Tiled/Stencil/Random/Rake) aren't scale-invariant and also stay per-pixel.
+        // Color Ramp: the texture's scalar drives the per-texel paint COLOUR (via the baked LUT), so
+        // it bypasses the scalar-only caches for the per-pixel colour path (the LUT keeps it cheap).
+        if self.paint.texture_ramp_enabled && brush.texture.is_active() {
+            self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
+        // A static **View** texture is scale-invariant: render the stamp once into a cached mask +
+        // scale-blit per dab (Blender's brush-image cache), so a large Anchored re-stamp pays a cheap
+        // blit, not a per-pixel recompute. No-texture / canvas-relative / per-dab mappings stay
+        // per-pixel (nothing to cache, or not scale-invariant).
         if brush.texture.is_active() && brush.texture.is_cacheable() {
             self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Tiled / Stencil are canvas-fixed (not scale-invariant), but dab-independent — cache each
-        // canvas pixel's texture once per stroke and look it up per dab (Anchored re-stamps the same
-        // growing canvas region every move, so the inner pixels are pure reuse).
+        // Tiled / Stencil are canvas-fixed but dab-independent — cache each canvas pixel's texture
+        // once per stroke + look it up per dab (Anchored re-stamps the same region, so inner = reuse).
         if brush.texture.is_canvas_cacheable() {
             self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Resolve the per-dab texture frame only when a texture is assigned; otherwise the engine
-        // takes the texture-free fast path (`None`). The texture RNG is copied out so the canvas
-        // borrow below doesn't conflict, then written back.
+        // Per-pixel path. Resolve the per-dab texture frame only when a texture is assigned (else the
+        // engine's texture-free fast path); the texture RNG is copied out (canvas borrow) + restored.
         let textured = brush.texture.is_active();
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let mut tex_rng = self.paint.tex_rng;
@@ -478,10 +488,9 @@ impl PainterTool {
         self.mark_dirty(*rect);
     }
 
-    /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): erase the
-    /// previous footprint (restore its saved pixels), then save the pristine pixels under the new
-    /// dabs' UNION bbox and stamp them there — so the moving / resizing / growing preview leaves no
-    /// trail. [`Self::commit_drag_preview`] keeps the last batch on pen-up.
+    /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the
+    /// previous footprint's saved pixels, then save the pristine pixels under the new dabs' UNION
+    /// bbox and stamp there — so the moving preview leaves no trail. Pen-up: `commit_drag_preview`.
     fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);

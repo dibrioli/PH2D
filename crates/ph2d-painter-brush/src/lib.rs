@@ -37,7 +37,7 @@ pub mod stroke_method;
 pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use dab::{DirtyRect, stamp_dab, stamp_dab_textured};
+pub use dab::{DirtyRect, stamp_dab, stamp_dab_ramped, stamp_dab_textured};
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};
 pub use falloff_curve::{

@@ -1498,6 +1498,56 @@ fn textured_dab_masks_part_of_the_footprint() {
     );
 }
 
+#[test]
+fn enabled_color_ramp_paints_the_ramp_colours_through_the_tool() {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 14.0);
+    // Checker so some texels read 0 and some 1 across the footprint.
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::ViewPlane,
+        size: [0.25, 0.25],
+        ..Default::default()
+    };
+    // Brush colour GREEN — it must NOT appear once the ramp drives the colour.
+    t.set_brush_color_channel(0, 0.0);
+    t.set_brush_color_channel(1, 1.0);
+    t.set_brush_color_channel(2, 0.0);
+    // Ramp: red at the 0-cells → blue at the 1-cells (linear stops; the tool bakes linear→sRGB).
+    t.set_texture_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+            RampStop::new(1.0, [0.0, 0.0, 1.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Constant,
+    ));
+    t.set_texture_ramp_enabled(true);
+    assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
+    let (mut red, mut blue, mut green) = (0, 0, 0);
+    for y in 18..46 {
+        for x in 18..46 {
+            let [r, g, b, _] = px(&t, 64, x, y);
+            if r > 200 && g < 60 && b < 60 {
+                red += 1;
+            } else if b > 200 && r < 60 && g < 60 {
+                blue += 1;
+            } else if g > 200 && r < 60 && b < 60 {
+                green += 1;
+            }
+        }
+    }
+    assert!(
+        red > 0 && blue > 0,
+        "ramp paints red (checker 0) + blue (checker 1): red={red} blue={blue}"
+    );
+    assert_eq!(
+        green, 0,
+        "the brush's own green must not appear — the ramp drives the colour"
+    );
+}
+
 /// Timing: the FULL per-move tool cost of an Anchored size-drag (restore + save + stamp), plain vs
 /// textured, on a large canvas. Tells us where the per-move CPU goes. Run:
 /// `cargo test -p ph2d-tool-painter --release perf_anchored -- --ignored --nocapture`.

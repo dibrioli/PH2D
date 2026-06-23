@@ -489,6 +489,31 @@ impl PainterTool {
         }
     }
 
+    /// Enable / disable the texture **Color Ramp**: when on, the texture's scalar drives the per-texel
+    /// paint colour (via the ramp) instead of only attenuating the brush's single colour.
+    pub fn set_texture_ramp_enabled(&mut self, on: bool) {
+        self.paint.texture_ramp_enabled = on;
+    }
+
+    /// Replace the texture Color Ramp (the reusable `ph2d_color::ColorRamp`); re-bakes the LUT before
+    /// the next ramped stamp.
+    pub fn set_texture_ramp(&mut self, ramp: ph2d_color::ColorRamp) {
+        self.paint.texture_ramp = ramp;
+        self.paint.texture_ramp_dirty = true;
+    }
+
+    /// The current texture Color Ramp (for the panel widget + tests).
+    #[must_use]
+    pub fn texture_ramp(&self) -> &ph2d_color::ColorRamp {
+        &self.paint.texture_ramp
+    }
+
+    /// Whether the texture Color Ramp is enabled.
+    #[must_use]
+    pub fn texture_ramp_enabled(&self) -> bool {
+        self.paint.texture_ramp_enabled
+    }
+
     /// Reset the texture params to the active kind's `param_specs` defaults (unused slots stay at the
     /// neutral `0.5`). Called on a kind change so each pattern starts from its own sensible values.
     fn reset_texture_params(&mut self) {

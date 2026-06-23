@@ -178,6 +178,85 @@ impl PainterTool {
         });
     }
 
+    /// Stamp each dab through the **Color Ramp** colour path — the texture's scalar indexes the baked
+    /// ramp LUT for the per-texel colour (the scalar-only caches can't carry colour, so this is
+    /// per-pixel; the 256-entry LUT keeps the lookup cheap). Mirrors the per-pixel branch of
+    /// [`Self::stamp_dabs`], calling [`ph2d_painter_brush::stamp_dab_ramped`].
+    pub(super) fn stamp_dabs_ramped(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        alpha_locked: bool,
+        w: u32,
+        h: u32,
+    ) {
+        self.ensure_ramp_lut();
+        let textured = brush.texture.is_active();
+        // Disjoint borrows: the imported image + the ramp LUT (both `self.paint` sub-fields) and the
+        // canvas (`self.canvas_rgba`) are held at once; the texture RNG is copied out + written back.
+        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let lut = &self.paint.texture_ramp_lut;
+        let mut tex_rng = self.paint.tex_rng;
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for (i, d) in dabs.iter().enumerate() {
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                ..*brush
+            };
+            let basis = textured.then(|| {
+                ph2d_painter_brush::texture::dab_basis(
+                    &spec.texture,
+                    super::brush_settings::dab_tangent(dabs, i),
+                    &mut tex_rng,
+                    [w as f32, h as f32],
+                )
+            });
+            if let Some(r) = ph2d_painter_brush::stamp_dab_ramped(
+                buf,
+                w,
+                h,
+                d.center,
+                &spec,
+                d.coverage,
+                alpha_locked,
+                basis.as_ref(),
+                image.as_ref(),
+                lut,
+            ) {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+            }
+        }
+        self.paint.tex_rng = tex_rng;
+        if let Some(rect) = touched {
+            self.mark_dirty(rect);
+        }
+    }
+
+    /// (Re)bake the ramp LUT when the ramp changed: `eval` is linear RGBA, but the dab blends in the
+    /// layer's straight-sRGB space (matching `brush.color` = the picked colour / 255), so the RGB is
+    /// converted linear → sRGB; alpha stays straight (no gamma).
+    fn ensure_ramp_lut(&mut self) {
+        if !self.paint.texture_ramp_dirty && self.paint.texture_ramp_lut.len() == 256 {
+            return;
+        }
+        let mut lut = vec![[0.0f32; 4]; 256];
+        self.paint.texture_ramp.bake_into(&mut lut);
+        for c in &mut lut {
+            c[0] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[0])) / 255.0;
+            c[1] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[1])) / 255.0;
+            c[2] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[2])) / 255.0;
+        }
+        self.paint.texture_ramp_lut = lut;
+        self.paint.texture_ramp_dirty = false;
+    }
+
     /// Re-render the cached stamp mask when the appearance / mask size changed; a no-op on a hit.
     fn ensure_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         let key = StampKey {

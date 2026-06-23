@@ -33,6 +33,31 @@ impl BrushTextureImage {
     }
 }
 
+/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting the
+/// cursor onto that ray. Transcendental-free (only abs/signum/compare/mul — `tan(22.5°)≈0.4142`,
+/// `tan(67.5°)≈2.4142` are the sector boundaries, `√½` the diagonal unit), so it stays
+/// bit-deterministic across platforms (HR-5) instead of going through `atan2`/`sin`/`cos`. Lives
+/// here (with the other stroke helpers) to keep `paint.rs` under the workspace LOC cap.
+pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
+    const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
+    const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
+    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2; // √½
+    let dx = cursor[0] - anchor[0];
+    let dy = cursor[1] - anchor[1];
+    let (adx, ady) = (dx.abs(), dy.abs());
+    // The snapped unit direction (one of the 8 rays).
+    let (ux, uy) = if ady <= adx * TAN_22_5 {
+        (dx.signum(), 0.0) // horizontal
+    } else if ady >= adx * TAN_67_5 {
+        (0.0, dy.signum()) // vertical
+    } else {
+        (dx.signum() * DIAG, dy.signum() * DIAG) // diagonal
+    };
+    // Project the cursor onto the ray (dot product = signed distance along the unit direction).
+    let proj = dx * ux + dy * uy;
+    [anchor[0] + ux * proj, anchor[1] + uy * proj]
+}
+
 /// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake**
 /// rotation aligns to it ([`ph2d_painter_brush::texture::dab_basis`] normalises). Uses the chord to
 /// the next dab when there is one, else from the previous; a lone dab returns `[0, 0]` (Rake then

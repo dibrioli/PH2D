@@ -758,21 +758,21 @@ fn line_paints_a_straight_committed_line_with_no_trail() {
 fn snap_to_45_projects_onto_the_eight_rays() {
     let a = [0.0, 0.0];
     assert_eq!(
-        snap_to_45(a, [10.0, 1.0]),
+        brush_settings::snap_to_45(a, [10.0, 1.0]),
         [10.0, 0.0],
         "near-horizontal → flat"
     );
     assert_eq!(
-        snap_to_45(a, [1.0, 10.0]),
+        brush_settings::snap_to_45(a, [1.0, 10.0]),
         [0.0, 10.0],
         "near-vertical → vertical"
     );
     assert_eq!(
-        snap_to_45(a, [-1.0, 10.0]),
+        brush_settings::snap_to_45(a, [-1.0, 10.0]),
         [0.0, 10.0],
         "sign of the cursor picks the ray"
     );
-    let d = snap_to_45(a, [10.0, 9.0]); // near-diagonal
+    let d = brush_settings::snap_to_45(a, [10.0, 9.0]); // near-diagonal
     assert!(
         (d[0] - d[1]).abs() < 1e-4,
         "snapped onto the y=x diagonal: {d:?}"
@@ -1466,6 +1466,43 @@ fn textured_dab_masks_part_of_the_footprint() {
     assert!(
         white > 0,
         "the texture masked part of the footprint (checker 0-cells)"
+    );
+}
+
+#[test]
+fn anchored_textured_stroke_commits_a_textured_result() {
+    // Perf fix: the interactive Anchored preview stamps texture-FREE (fast), then re-applies the
+    // texture once on pen-up. Assert the COMMITTED result is still textured — a hard Checker dab
+    // leaves a mix of painted (black) and masked (white) pixels in its footprint.
+    use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(96, 6.0);
+    t.set_brush_texture_kind(TextureKind::Checker.to_u8());
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::ViewPlane,
+        size: [0.2, 0.2], // big cells across the anchored footprint
+        ..Default::default()
+    };
+    t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
+    // Anchored: press at the centre, drag out (radius = drag distance), release.
+    let _ = t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+    let _ = t.on_canvas_pointer(cp([48.0, 78.0], PointerPhase::Move)); // radius ≈ 30
+    let _ = t.on_canvas_pointer(cp([48.0, 78.0], PointerPhase::Up));
+    // Scan the footprint for both fully-painted (black) and masked (white) pixels.
+    let (mut black, mut white) = (0, 0);
+    for y in 20..76 {
+        for x in 20..76 {
+            match px(&t, 96, x, y) {
+                [0, 0, 0, 255] => black += 1,
+                [255, 255, 255, 255] => white += 1,
+                _ => {}
+            }
+        }
+    }
+    assert!(black > 0, "the committed Anchored dab painted");
+    assert!(
+        white > 0,
+        "the committed Anchored dab is textured (checker masked some texels)"
     );
 }
 

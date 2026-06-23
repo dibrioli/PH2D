@@ -75,6 +75,9 @@ pub use brush_settings::{BrushSettings, brush_falloff_weight_at};
 struct DragPreview {
     rect: Region,
     pixels: Vec<u8>,
+    /// The dabs stamped (texture-suppressed) in this preview, retained so [`commit_drag_preview`]
+    /// can re-stamp them ONCE with the texture on pen-up — keeping the interactive drag cheap.
+    dabs: Vec<Dab>,
 }
 
 pub(crate) struct PaintState {
@@ -215,7 +218,7 @@ impl PainterTool {
         // `constrain_line`). Tool-side so the engine's Line fill stays a plain anchor→cursor segment.
         let pos = match (self.paint.brush.stroke_method, self.paint.line_anchor) {
             (StrokeMethod::Line, Some(anchor)) if self.paint.line_constrain => {
-                snap_to_45(anchor, ev.pos)
+                brush_settings::snap_to_45(anchor, ev.pos)
             }
             _ => ev.pos,
         };
@@ -322,11 +325,19 @@ impl PainterTool {
         self.polygon_discard();
     }
 
-    /// Stamp a batch of dabs into `canvas_rgba`, accumulate the dirty rect, and flag
-    /// the preview dirty. Each dab carries its own pressure-scaled radius + coverage;
-    /// the static brush appearance (falloff / hardness / blend / colour) comes from
+    /// Stamp a batch of dabs into `canvas_rgba` (with the brush texture, if any), accumulate the
+    /// dirty rect, and flag the preview dirty. Each dab carries its own pressure-scaled radius +
+    /// coverage; the static brush appearance (falloff / hardness / blend / colour) comes from
     /// `self.paint.brush`.
     fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        self.stamp_dabs_inner(dabs, true);
+    }
+
+    /// As [`Self::stamp_dabs`], but `apply_texture == false` skips the per-pixel texture sample
+    /// (the texture-free fast path). The interactive-preview methods stamp this way every move and
+    /// re-apply the texture once on commit — a large textured re-stamp (Anchored) is 2–4× the plain
+    /// cost, so paying it per move tanks the drag's FPS.
+    fn stamp_dabs_inner(&mut self, dabs: &[Dab], apply_texture: bool) {
         if dabs.is_empty() {
             return;
         }
@@ -348,8 +359,10 @@ impl PainterTool {
         // Resolve the per-dab texture frame only when a texture is assigned; otherwise the engine
         // takes the texture-free fast path (`None`). The texture RNG is copied out so the canvas
         // borrow below doesn't conflict, then written back.
-        let textured = brush.texture.is_active();
-        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let textured = apply_texture && brush.texture.is_active();
+        let image = apply_texture
+            .then(|| self.paint.texture_image.as_ref().map(|i| i.as_mask()))
+            .flatten();
         let mut tex_rng = self.paint.tex_rng;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
@@ -466,17 +479,31 @@ impl PainterTool {
         match bbox {
             Some(rect) => {
                 let pixels = self.save_region(&rect);
-                self.stamp_dabs(dabs);
-                self.paint.drag_preview = Some(DragPreview { rect, pixels });
+                // Texture-free preview stamp (fast); the texture is re-applied once on commit.
+                self.stamp_dabs_inner(dabs, false);
+                self.paint.drag_preview = Some(DragPreview {
+                    rect,
+                    pixels,
+                    dabs: dabs.to_vec(),
+                });
             }
-            None => self.stamp_dabs(dabs),
+            None => self.stamp_dabs_inner(dabs, false),
         }
     }
 
-    /// Commit the interactive preview: drop the restore record so the last batch stays painted.
-    /// Safe to call for any method (a no-op unless a preview is live).
+    /// Commit the interactive preview on pen-up. The preview was stamped texture-free; if a texture
+    /// is assigned, restore the pristine pixels and re-stamp the final dabs ONCE with the texture so
+    /// the committed result is fully textured (one stamp on pen-up instead of every move). With no
+    /// texture the untextured preview IS the final, so the record is simply dropped. No-op when no
+    /// preview is live.
     fn commit_drag_preview(&mut self) {
-        self.paint.drag_preview = None;
+        let Some(prev) = self.paint.drag_preview.take() else {
+            return;
+        };
+        if self.paint.brush.texture.is_active() {
+            self.restore_region(&prev.rect, &prev.pixels);
+            self.stamp_dabs_inner(&prev.dabs, true);
+        }
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive
@@ -493,30 +520,6 @@ impl PainterTool {
             self.stamp_dabs(dabs);
         }
     }
-}
-
-/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting the
-/// cursor onto that ray. Transcendental-free (only abs/signum/compare/mul — `tan(22.5°)≈0.4142`,
-/// `tan(67.5°)≈2.4142` are the sector boundaries, `√½` the diagonal unit), so it stays
-/// bit-deterministic across platforms (HR-5) instead of going through `atan2`/`sin`/`cos`.
-fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
-    const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
-    const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
-    const DIAG: f32 = std::f32::consts::FRAC_1_SQRT_2; // √½
-    let dx = cursor[0] - anchor[0];
-    let dy = cursor[1] - anchor[1];
-    let (adx, ady) = (dx.abs(), dy.abs());
-    // The snapped unit direction (one of the 8 rays).
-    let (ux, uy) = if ady <= adx * TAN_22_5 {
-        (dx.signum(), 0.0) // horizontal
-    } else if ady >= adx * TAN_67_5 {
-        (0.0, dy.signum()) // vertical
-    } else {
-        (dx.signum() * DIAG, dy.signum() * DIAG) // diagonal
-    };
-    // Project the cursor onto the ray (dot product = signed distance along the unit direction).
-    let proj = dx * ux + dy * uy;
-    [anchor[0] + ux * proj, anchor[1] + uy * proj]
 }
 
 /// Smallest region covering both `a` and `b`.

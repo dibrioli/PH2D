@@ -13,6 +13,54 @@ fn basis(s: &TextureSettings, dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
     dab_basis(s, dir, rng, [64.0, 64.0])
 }
 
+/// Timing: how much does the per-pixel texture sample add to a LARGE dab stamp (the Anchored
+/// re-stamp-every-move case)? Run: `cargo test -p ph2d-painter-brush --release perf_texture_stamp
+/// -- --ignored --nocapture`. Not a gate (wall-clock, machine-dependent).
+#[test]
+#[ignore]
+fn perf_texture_stamp_cost_on_a_large_dab() {
+    use std::time::Instant;
+    let (w, h) = (2048u32, 2048u32);
+    let mut buf = vec![128u8; (w * h * 4) as usize];
+    let mk = |kind: TextureKind| BrushSpec {
+        radius_px: 900.0,
+        falloff: Falloff::Smooth,
+        texture: TextureSettings {
+            kind,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let canvas = [w as f32, h as f32];
+    let runs = 8;
+    let bench = |label: &str, spec: &BrushSpec, buf: &mut [u8]| {
+        let mut rng = 1u64;
+        let b = dab_basis(&spec.texture, [1.0, 0.0], &mut rng, canvas);
+        let t0 = Instant::now();
+        for _ in 0..runs {
+            let _ = stamp_dab_textured(
+                buf,
+                w,
+                h,
+                [1024.0, 1024.0],
+                spec,
+                0.5,
+                false,
+                Some(&b),
+                None,
+            );
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
+        eprintln!("  {label:<10} {ms:6.2} ms/stamp");
+    };
+    eprintln!("perf: 2048² canvas, radius 900 (≈2.5M-px footprint), {runs} stamps avg:");
+    bench("plain", &mk(TextureKind::None), &mut buf);
+    bench("noise", &mk(TextureKind::Noise), &mut buf);
+    bench("checker", &mk(TextureKind::Checker), &mut buf);
+    bench("voronoi", &mk(TextureKind::Voronoi), &mut buf);
+    bench("stripes", &mk(TextureKind::Stripes), &mut buf);
+}
+
 // ── Procedural samplers ─────────────────────────────────────────────────────────────────────
 
 #[test]

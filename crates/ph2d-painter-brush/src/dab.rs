@@ -116,13 +116,19 @@ pub fn stamp_dab_textured(
             let dx = (px as f32 + 0.5) - cx;
             let t = (dx * dx + dy * dy).sqrt() * inv_radius;
             let mut w = spec.falloff_weight(t);
+            // Skip pixels the falloff already zeroes (the bbox corners outside the dab radius)
+            // BEFORE the texture sample — the texture only modulates where the dab paints, so
+            // sampling it there is pure waste (it dominates a large Anchored re-stamp).
+            if w <= 0.0 {
+                continue;
+            }
             // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
             // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
             if let Some(b) = tex {
                 w *= crate::texture::sample(&spec.texture, b, px, py, center, radius, image);
-            }
-            if w <= 0.0 {
-                continue;
+                if w <= 0.0 {
+                    continue;
+                }
             }
             let i = row + (px as usize) * 4;
             let dst = [

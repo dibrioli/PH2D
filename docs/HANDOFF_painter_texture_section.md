@@ -18,12 +18,12 @@
 >   por-texel via LUT (`stamp_dab_ramped`) + **widget no painel** (toggle/Mode/Interp/bar/+−).
 >
 > ### ⚠️ TAREFAS ABERTAS (Enio 2026-06-23)
-> 1. **Revisão VISUAL dos padrões geométricos** — `triangles` saiu como LISTRAS, não triângulos
+> 1. **Revisão VISUAL dos padrões geométricos — FEITA (2026-06-23).** `triangles` saiu como LISTRAS
 >    (split sempre na mesma diagonal → triângulos de mesma orientação se alinham). **CORRIGIDO**:
 >    grade equilátera cisalhada 2-colorida por orientação up/down. **Lição:** o teste
->    `every_procedural_kind_varies` só prova *não-chapado*, NÃO correção visual. **Revisar com olho**
->    os outros geométricos: **Hexagons, Scales, Weave, Chevron, Waves, Diamonds** (procedural-correto
->    ≠ visualmente-correto). Render headless + inspeção, não só "varia".
+>    `every_procedural_kind_varies` só prova *não-chapado*, NÃO correção visual. **Os 11 geométricos
+>    foram renderizados (ASCII heatmap, 6 tiles) e inspecionados** — só `triangles` estava quebrado;
+>    Hexagons/Scales/Weave/Chevron/Waves/Diamonds/Grid/Dots/Bricks/Crosshatch conferem visualmente.
 > 2. **Color Ramp widget — follow-ups** (mecanismos já mapeados): **(a) color picker por stop** (reusa
 >    `picker_target` + `blender_color_picker`, como o `PAINTER_COLOR_THUMB`) — **EM ANDAMENTO**;
 >    **(b) arrastar stops na barra + editar posição** (reusa `CurvePoint`, como os handles da curva de

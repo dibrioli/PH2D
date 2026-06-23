@@ -87,13 +87,14 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_REMOVE: NodeId =
 /// The selected stop's **colour swatch** — opens the colour picker. `Click` → picker target.
 pub const PAINTER_BRUSH_TEXTURE_RAMP_SWATCH: NodeId =
     hash_node_id("painter_brush.texture_ramp_swatch");
-
-/// Stable [`NodeId`] for ramp stop `i`'s **colour swatch** button (opens the picker). Bounded by the
-/// snapshot's stop count.
-#[must_use]
-pub fn painter_brush_texture_ramp_stop_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.texrampstop.{i}"))
-}
+/// Editable **stop-index selector** chip (`NumberInput`; type an index → select that stop).
+/// `ValueChanged` → the panel re-points the selection. Whole numbers, `0..stop_count`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX: NodeId =
+    hash_node_id("painter_brush.texture_ramp_stop_index");
+/// Editable **stop-position** chip (`NumberInput`; type `0..1` → move the selected stop).
+/// `ValueChanged` → `ramp_move_stop` (by the selected stop's stable id).
+pub const PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS: NodeId =
+    hash_node_id("painter_brush.texture_ramp_stop_pos");
 
 /// Stable [`NodeId`] for ramp stop `i`'s **draggable position handle** on the bar (a `CurvePoint`
 /// under [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]; distinct from its swatch button id).

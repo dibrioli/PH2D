@@ -1497,6 +1497,25 @@ fn ramp_move_stop_can_cross_a_neighbour_by_id() {
 }
 
 #[test]
+fn ramp_set_stop_color_applies_alpha() {
+    let mut t = white_canvas(32, 8.0);
+    // Default 2 stops with ids 0,1; recolour id 0 to a half-transparent red (sRGB bytes).
+    t.ramp_set_stop_color(0, [255, 0, 0, 128]);
+    let s = *t
+        .texture_ramp()
+        .stops()
+        .iter()
+        .find(|s| s.id == 0)
+        .expect("stop id 0");
+    assert!(
+        (s.color[3] - 128.0 / 255.0).abs() < 1e-6,
+        "alpha applied straight (was preserved-only before): {}",
+        s.color[3]
+    );
+    assert!(s.color[0] > 0.9, "red channel high (linear of sRGB 255)");
+}
+
+#[test]
 fn textured_dab_masks_part_of_the_footprint() {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     let mut t = white_canvas(64, 14.0);

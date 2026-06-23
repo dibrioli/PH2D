@@ -502,16 +502,13 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Color Ramp stop drag: CurvePoint stashed `(_, _, idx, x, _)` → select it + forward `"idx:x"`.
-        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT => {
-            if let Some((_p, _c, idx, x, _y)) = host.store_mut().take_curve_point_drag() {
-                state::set_selected_ramp_stop(idx);
-                host.bus_mut()
-                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
-                        format!("{idx}:{x}"),
-                    )));
-            }
+        // Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
+        WidgetEvent::ValueChanged(id)
+            if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS =>
+        {
+            ramp_picker::on_ramp_value_changed(host, id);
             Some(true)
         }
         // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.

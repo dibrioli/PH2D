@@ -214,6 +214,15 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH),
         "the colour box must register a hit rect. painted = {on:?}"
     );
+    // The editable index + position chips register so a click can focus + type into them.
+    assert!(
+        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX),
+        "the stop-index selector chip must register a hit rect. painted = {on:?}"
+    );
+    assert!(
+        on.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS),
+        "the stop-position chip must register a hit rect. painted = {on:?}"
+    );
 }
 
 #[test]

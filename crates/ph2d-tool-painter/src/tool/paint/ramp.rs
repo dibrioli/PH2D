@@ -29,17 +29,17 @@ impl PainterTool {
         }
     }
 
-    /// Set the colour of the stop with stable `id` from straight-sRGB bytes (the picker's space) —
-    /// converted to the ramp's LINEAR space. The stop's existing alpha is preserved.
-    pub fn ramp_set_stop_color(&mut self, id: u8, srgb: [u8; 3]) {
+    /// Set the colour of the stop with stable `id` from straight-sRGB **RGBA** bytes (the picker's
+    /// space). RGB is converted to the ramp's LINEAR space; alpha is straight (`a / 255`).
+    pub fn ramp_set_stop_color(&mut self, id: u8, rgba: [u8; 4]) {
         let Some(idx) = self.paint.texture_ramp.index_of_id(id) else {
             return;
         };
         let lin = ph2d_color::srgb::srgb_to_linear_byte;
-        let a = self.paint.texture_ramp.stops()[idx].color[3];
+        let a = f32::from(rgba[3]) / 255.0;
         self.paint
             .texture_ramp
-            .set_color(idx, [lin(srgb[0]), lin(srgb[1]), lin(srgb[2]), a]);
+            .set_color(idx, [lin(rgba[0]), lin(rgba[1]), lin(rgba[2]), a]);
         self.paint.texture_ramp_dirty = true;
     }
 

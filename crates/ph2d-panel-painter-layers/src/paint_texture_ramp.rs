@@ -2,16 +2,18 @@
 //! (the reusable `ph2d_color::ColorRamp`). Blender-style layout: the enable toggle; one compact
 //! controls line (`+` `−` + the RGB/HSV/HSL **Mode** and interpolation chips, no labels); the live
 //! gradient **bar** with a colour-filled draggable handle per stop; and a bottom row of the selected
-//! stop's **index** + **position** number chips and a split **colour box** (colour | alpha) that opens
-//! the shared picker.
+//! stop's **editable** index selector + position chips and one **colour box** showing the final
+//! colour with alpha (over a checker) that opens the shared picker.
 //!
 //! The bar handles reuse the foundational `CurvePoint` drag (as the falloff editor) — drag = position,
-//! click = select. The selected stop drives the bottom row + the colour box. Edits forward over the
-//! frozen `PanelEvent` channel to `PainterTool::*_texture_ramp*`.
+//! click = select. The index / position chips are `NumberInput`s (type-to-edit) registered in the
+//! store; the selected stop drives the bottom row + the colour box. Edits forward over the frozen
+//! `PanelEvent` channel to `PainterTool::*_texture_ramp*`.
 
 use crate::paint::register_button;
 use crate::paint_brush::{paint_dropdown_chip, paint_dropdown_popover, paint_toggle_row};
 use crate::state;
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_texture_ramp_handle_id,
@@ -128,9 +130,10 @@ pub(crate) fn paint_texture_ramp_section(
     // ── Gradient bar + a colour-filled draggable handle per stop ──
     let bar = Rect::new(x, y, content_w, BAR_H);
     paint_ramp_bar(ctx, theme, bar, brush, sel);
-    y += BAR_H + gap;
+    // Clear the handles that hang MARK_R below the bar, plus breathing room before the bottom row.
+    y += BAR_H + MARK_R + Spacing::Sm.px();
 
-    // ── Bottom row: index + position chips + the split colour box (edits the selected stop) ──
+    // ── Bottom row: editable index + position chips + the final-colour box (edits the selected stop) ──
     y = paint_ramp_bottom(ctx, theme, x, content_w, y, brush, sel);
     ramp_color_readback(ctx, brush, sel);
     y
@@ -189,8 +192,8 @@ fn paint_ramp_bar(
     }
 }
 
-/// The bottom row: the selected stop's index + position number chips, then a split colour box
-/// (left = opaque colour, right = colour over a checker so the alpha reads) that opens the picker.
+/// The bottom row: the selected stop's **editable** index selector + position chips, then one colour
+/// box showing the final colour **with alpha** (a checker reads the translucency) that opens the picker.
 fn paint_ramp_bottom(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -206,72 +209,45 @@ fn paint_ramp_bottom(
     }
     let s = brush.texture_ramp_stops[sel.min(count - 1)];
     let gap = Spacing::Xs.px();
-    paint_number_chip(
+    // Editable index selector (whole number → selects that sorted stop) + position (0..1 → moves it).
+    paint_ramp_chip(
+        ctx,
+        theme,
         Rect::new(x, y, IDX_W, ROW_H_PX),
-        TextInputState::Normal,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
         sel as f64,
-        Some(&format!("{sel}")),
-        None,
-        0,
-        None,
-        ctx.scene,
-        ctx.text_system,
-        theme,
+        &format!("{sel}"),
     );
-    paint_number_chip(
+    paint_ramp_chip(
+        ctx,
+        theme,
         Rect::new(x + IDX_W + gap, y, POS_W, ROW_H_PX),
-        TextInputState::Normal,
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
         f64::from(s[0]),
-        Some(&format!("{:.3}", s[0])),
-        None,
-        0,
-        None,
-        ctx.scene,
-        ctx.text_system,
-        theme,
+        &format!("{:.3}", s[0]),
     );
-    // Split colour box: fill opaque, then a swatch (colour over checker → alpha) on the right half.
+    // One colour box: the final colour WITH alpha (the swatch checkers behind translucency).
     let bx = x + IDX_W + POS_W + gap * 2.0;
     let box_rect = Rect::new(bx, y, (x + content_w - bx).max(0.0), ROW_H_PX);
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    let rgba = [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])];
-    fill_rounded_rect(
-        ctx.scene,
-        box_rect,
-        Radius::Sm.px(),
-        Color::from_rgba8(rgba[0], rgba[1], rgba[2], 255), // LITERAL-COLOR-OK: ramp stop colour (data)
-    );
-    let half = Rect::new(
-        box_rect.x + box_rect.w * 0.5,
-        box_rect.y,
-        box_rect.w * 0.5,
-        box_rect.h,
-    );
+    let open =
+        ctx.host.store().picker_target() == Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH);
     paint_color_swatch(
         &ColorSwatch {
             id: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
             label: String::new(),
-            rgba,
-            state: SwatchState::Normal,
+            rgba: [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])],
+            // Focused emphasizes the swatch border — our "picker open" affordance.
+            state: if open {
+                SwatchState::Focused
+            } else {
+                SwatchState::Normal
+            },
             size: SwatchSize::Sm,
         },
-        half,
+        box_rect,
         ctx.scene,
         theme,
-    );
-    let open =
-        ctx.host.store().picker_target() == Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH);
-    let border = if open {
-        ColorToken::Accent
-    } else {
-        ColorToken::Border
-    };
-    stroke_rounded_rect(
-        ctx.scene,
-        box_rect,
-        Radius::Sm.px(),
-        OUTLINE_W,
-        resolve(border, theme),
     );
     register_button(
         ctx.host.store_mut(),
@@ -283,8 +259,72 @@ fn paint_ramp_bottom(
     y + ROW_H_PX + gap
 }
 
-/// When the shared picker targets the colour box, forward its live colour to the **selected** stop
-/// (as `"sel,r,g,b"`) once it differs. Mirrors `paint_brush::brush_color_readback`.
+/// Paint one editable [`paint_number_chip`] driven by a `NumberInput` in the store: register it once
+/// (`register_if_absent`, so live typing isn't clobbered), mirror `value`/`text` into it while it
+/// isn't focused, then render the in-progress buffer + caret. The global dispatch handles focus +
+/// keys + commit; the panel's `apply_event` reacts to the `ValueChanged`.
+fn paint_ramp_chip(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    rect: Rect,
+    chip_id: NodeId,
+    value: f64,
+    text: &str,
+) {
+    let store = ctx.host.store_mut();
+    let _ = store.register_if_absent(
+        chip_id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value,
+            buffer: text.to_string(),
+            caret: text.len(),
+            last_committed: value,
+            selection_anchor: None,
+        },
+    );
+    if store.focus_id() != Some(chip_id)
+        && let Some(InteractiveState::NumberInput {
+            value: v,
+            buffer,
+            caret,
+            last_committed,
+            ..
+        }) = store.get_mut(chip_id)
+    {
+        *v = value;
+        buffer.clear();
+        buffer.push_str(text);
+        *caret = buffer.len();
+        *last_committed = value;
+    }
+    let (st, buf, caret, anchor) = match store.get(chip_id) {
+        Some(InteractiveState::NumberInput {
+            state,
+            buffer,
+            caret,
+            selection_anchor,
+            ..
+        }) => (*state, buffer.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, String::new(), 0, None),
+    };
+    paint_number_chip(
+        rect,
+        st,
+        value,
+        None,
+        Some(&buf),
+        caret,
+        anchor,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(chip_id, rect);
+}
+
+/// When the shared picker targets the colour box, forward its live colour (incl. **alpha**) to the
+/// **selected** stop (as `"id,r,g,b,a"`) once it differs. Mirrors `paint_brush::brush_color_readback`.
 fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings, sel: usize) {
     if ctx.host.store().picker_target() != Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH) {
         return;
@@ -302,15 +342,18 @@ fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings, sel: usize) {
     }
     let s = brush.texture_ramp_stops[sel];
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    if [enc(s[1]), enc(s[2]), enc(s[3])] == [picked[0], picked[1], picked[2]] {
-        return; // already applied — don't spam the bus
+    if [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])] == picked {
+        return; // already applied (RGBA) — don't spam the bus
     }
     let stop_id = s[5] as u8; // forward by stable id (the tool resolves the current index)
     ctx.host
         .bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
             core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-            format!("{stop_id},{},{},{}", picked[0], picked[1], picked[2]),
+            format!(
+                "{stop_id},{},{},{},{}",
+                picked[0], picked[1], picked[2], picked[3]
+            ),
         )));
 }
 

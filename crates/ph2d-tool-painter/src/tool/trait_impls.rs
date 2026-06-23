@@ -295,15 +295,15 @@ impl Tool for PainterTool {
                     self.set_texture_ramp_interp(i);
                 }
             }
-            // Ramp stop colour from the picker: value = "stop,r,g,b" (sRGB bytes).
+            // Ramp stop colour from the picker: value = "stop,r,g,b,a" (sRGB bytes, straight alpha).
             PanelEvent::SelectOption(id, value)
                 if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>
             {
                 let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
-                if let (Some(id), Some(r), Some(g), Some(b)) =
-                    (it.next(), it.next(), it.next(), it.next())
+                if let (Some(id), Some(r), Some(g), Some(b), Some(a)) =
+                    (it.next(), it.next(), it.next(), it.next(), it.next())
                 {
-                    self.ramp_set_stop_color(id as u8, [r as u8, g as u8, b as u8]);
+                    self.ramp_set_stop_color(id as u8, [r as u8, g as u8, b as u8, a as u8]);
                 }
             }
             // Ramp stop drag on the bar: value = "id:x" (stable id, x = normalized position `0..1`).

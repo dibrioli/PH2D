@@ -8,101 +8,8 @@
 
 use super::{ImageMask, TextureKind};
 
-/// One tunable parameter a [`TextureKind`] exposes: its label (for the panel) and neutral default
-/// (normalized `[0, 1]`). The slot index is the position in [`param_specs`] /
-/// [`super::TextureSettings::params`].
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ParamSpec {
-    /// English label shown next to the slider (HR-15).
-    pub label: &'static str,
-    /// Default value (normalized `[0, 1]`) assigned when the kind is selected.
-    pub default: f32,
-}
-
-const CONTRAST: ParamSpec = ParamSpec {
-    label: "Contrast",
-    default: 0.5,
-};
-const BRIGHTNESS: ParamSpec = ParamSpec {
-    label: "Brightness",
-    default: 0.5,
-};
-
-/// The parameters a `kind` exposes, in [`super::TextureSettings::params`] slot order. Slots `0`/`1`
-/// are always the universal Contrast / Brightness ([`apply_tone`]); a third entry is the kind's shape
-/// knob (consumed by that kind's sampler). `None` exposes nothing.
-#[must_use]
-pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
-    use TextureKind::*;
-    match kind {
-        None => &[],
-        Clouds | Grain | Stucci | Musgrave => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Detail",
-                default: 0.5,
-            },
-        ],
-        Marble | Wood => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Turbulence",
-                default: 0.5,
-            },
-        ],
-        DistortedNoise | Magic => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Distortion",
-                default: 0.5,
-            },
-        ],
-        Stripes | Waves | Chevron => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Width",
-                default: 0.5,
-            },
-        ],
-        Dots | Scales => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Radius",
-                default: 0.5,
-            },
-        ],
-        Grid | Crosshatch => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Thickness",
-                default: 0.4,
-            },
-        ],
-        Bricks | Weave => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Gap",
-                default: 0.4,
-            },
-        ],
-        Hexagons => &[
-            CONTRAST,
-            BRIGHTNESS,
-            ParamSpec {
-                label: "Rim",
-                default: 0.5,
-            },
-        ],
-        _ => &[CONTRAST, BRIGHTNESS],
-    }
-}
+mod specs;
+pub use specs::{ParamSpec, param_specs};
 
 /// Evaluate `kind` at texture coords `tex` (after the mapping resolved them), shaped by the kind's
 /// `params` (slots `0`/`1` = universal Contrast / Brightness, slot `2` = the kind's shape knob; see
@@ -115,39 +22,84 @@ pub(super) fn sample_kind(
     image: Option<&ImageMask>,
 ) -> f32 {
     let (u, v) = (tex[0], tex[1]);
-    let p = params[2]; // the kind's shape knob
+    let k = &params[2..]; // the kind's shape knobs (see `param_specs`)
     let raw = match kind {
         TextureKind::None => 1.0,
-        TextureKind::Noise => value_noise(u, v),
-        TextureKind::Checker => checker(u, v),
-        TextureKind::Voronoi => voronoi(u, v),
-        TextureKind::Stripes => stripes(u, p),
-        TextureKind::Clouds => clouds(u, v, p),
-        TextureKind::DistortedNoise => distorted_noise(u, v, p),
-        TextureKind::Magic => magic(u, v, p),
-        TextureKind::Marble => marble(u, v, p),
-        TextureKind::Musgrave => musgrave(u, v, p),
-        TextureKind::Wood => wood(u, v, p),
-        TextureKind::Stucci => stucci(u, v, p),
-        TextureKind::Gradient => gradient(u),
-        TextureKind::Grain => grain(u, v, p),
-        TextureKind::Crosshatch => crosshatch(u, v, p),
-        TextureKind::Dots => dots(u, v, p),
-        TextureKind::Grid => grid(u, v, p),
-        TextureKind::Bricks => bricks(u, v, p),
-        TextureKind::Waves => waves(u, v, p),
-        TextureKind::Chevron => chevron(u, v, p),
-        TextureKind::Diamonds => diamonds(u, v),
-        TextureKind::Triangles => triangles(u, v),
-        TextureKind::Hexagons => hexagons(u, v, p),
-        TextureKind::Scales => scales(u, v, p),
-        TextureKind::Weave => weave(u, v, p),
+        TextureKind::Noise => noise(u, v, k),
+        TextureKind::Checker => checker(u, v, k),
+        TextureKind::Voronoi => voronoi(u, v, k),
+        TextureKind::Stripes => stripes(u, v, k),
+        TextureKind::Clouds => clouds(u, v, k),
+        TextureKind::DistortedNoise => distorted_noise(u, v, k),
+        TextureKind::Magic => magic(u, v, k),
+        TextureKind::Marble => marble(u, v, k),
+        TextureKind::Musgrave => musgrave(u, v, k),
+        TextureKind::Wood => wood(u, v, k),
+        TextureKind::Stucci => stucci(u, v, k),
+        TextureKind::Gradient => gradient(u, k),
+        TextureKind::Grain => grain(u, v, k),
+        TextureKind::Crosshatch => crosshatch(u, v, k),
+        TextureKind::Dots => dots(u, v, k),
+        TextureKind::Grid => grid(u, v, k),
+        TextureKind::Bricks => bricks(u, v, k),
+        TextureKind::Waves => waves(u, v, k),
+        TextureKind::Chevron => chevron(u, v, k),
+        TextureKind::Diamonds => diamonds(u, v, k),
+        TextureKind::Triangles => triangles(u, v, k),
+        TextureKind::Hexagons => hexagons(u, v, k),
+        TextureKind::Scales => scales(u, v, k),
+        TextureKind::Weave => weave(u, v, k),
         TextureKind::Image => match image {
             Some(img) => sample_image(img, u, v),
             None => 1.0, // kind is Image but no pixels supplied → inert
         },
     };
     apply_tone(raw, params[0], params[1])
+}
+
+/// Read kind knob `i` from the `&params[2..]` slice (default `0.5` if a kind reads beyond its specs).
+#[inline]
+fn knob(k: &[f32], i: usize) -> f32 {
+    k.get(i).copied().unwrap_or(0.5)
+}
+
+/// fBm persistence (amplitude falloff) from a `Roughness` knob: `0.30..=0.80` (`0.5` ≈ the classic
+/// `0.55`). Higher = rougher (slower falloff → more high-frequency energy).
+fn gain_from(rough: f32) -> f32 {
+    0.30 + rough.clamp(0.0, 1.0) * 0.50
+}
+
+/// Distort `(u, v)` by a noise field, amount `0..1` (the `Warp` knob; `0` = identity).
+fn warp_uv(u: f32, v: f32, amt: f32) -> (f32, f32) {
+    if amt <= 1e-4 {
+        return (u, v);
+    }
+    let a = amt * 2.5;
+    let dx = value_noise(u + 5.2, v + 1.3) - 0.5;
+    let dy = value_noise(u - 1.7, v + 8.4) - 0.5;
+    (u + a * dx, v + a * dy)
+}
+
+/// fBm with a tunable persistence `gain` (see [`fbm`], which fixes `gain = 0.5`).
+fn fbm_g(u: f32, v: f32, octaves: u32, gain: f32) -> f32 {
+    let (mut sum, mut amp, mut freq, mut norm) = (0.0, 1.0, 1.0, 0.0);
+    for _ in 0..octaves {
+        sum += amp * value_noise(u * freq, v * freq);
+        norm += amp;
+        amp *= gain;
+        freq *= 2.0;
+    }
+    sum / norm.max(1e-6)
+}
+
+/// Polynomial smooth-min (transcendental-free): blends toward `min(a, b)` with a rounded valley of
+/// width `k`. `k <= 0` is the hard `min`. The Voronoi `Smoothness` knob.
+fn smin(a: f32, b: f32, k: f32) -> f32 {
+    if k <= 1e-4 {
+        return a.min(b);
+    }
+    let h = ((k - (a - b).abs()) / k).clamp(0.0, 1.0);
+    (a.min(b) - h * h * k * 0.25).max(0.0)
 }
 
 /// Universal post-process: **Contrast** (`c`) steepens/flattens around `0.5`, **Brightness** (`b`)
@@ -162,16 +114,22 @@ fn apply_tone(x: f32, c: f32, b: f32) -> f32 {
     ((x - 0.5) * gain + 0.5 + bias).clamp(0.0, 1.0)
 }
 
-/// Map a normalized Detail knob `[0,1]` to an octave count `2..=8` (`0.5` → 5).
+/// Map a normalized Detail knob `[0,1]` to an octave count `1..=8` (`0` → 1, `0.5` → ~5).
 fn octaves_from(d: f32) -> u32 {
-    (2.0 + d.clamp(0.0, 1.0) * 6.0).round() as u32
+    (1.0 + d.clamp(0.0, 1.0) * 7.0).round() as u32
 }
 
-/// Threshold `x` into a band of normalized width `w` with a soft edge (the shared Stripes / Waves /
-/// Chevron "Width" knob; wider `w` → more covered).
-fn band(x: f32, w: f32) -> f32 {
+/// Map a `Frequency` knob to a coordinate multiplier `0.3..=2.3×` (`0.35` ≈ `1×`) — pattern repeats.
+fn freq_mul(f: f32) -> f32 {
+    0.3 + f.clamp(0.0, 1.0) * 2.0
+}
+
+/// Threshold `x` into a band of normalized width `w` (the shared Stripes / Waves / Chevron "Width"
+/// knob; wider `w` → more covered) with a tunable edge: `soft` `0..1` → edge `0.05..=0.65`.
+fn band_soft(x: f32, w: f32, soft: f32) -> f32 {
     let thr = 1.0 - w.clamp(0.05, 0.95);
-    smoothstep(((x - thr) / 0.15).clamp(0.0, 1.0))
+    let edge = 0.05 + soft.clamp(0.0, 1.0) * 0.6;
+    smoothstep(((x - thr) / edge).clamp(0.0, 1.0))
 }
 
 // ── Blender-parity procedural patterns ──────────────────────────────────────────────────────
@@ -187,169 +145,246 @@ fn value_noise(u: f32, v: f32) -> f32 {
     lerp(lerp(n00, n10, sx), lerp(n01, n11, sx), sy)
 }
 
-/// Hard 2-colour checker: `0.0` / `1.0` by the parity of the integer cell.
-fn checker(u: f32, v: f32) -> f32 {
-    ((ifloor(u) ^ ifloor(v)) & 1) as f32
+/// **Noise**: fractal value noise. `Detail` = octaves, `Roughness` = persistence, `Warp` = domain
+/// distortion. At the defaults (Detail `0`) it is a single octave — the classic fine grain.
+fn noise(u: f32, v: f32, k: &[f32]) -> f32 {
+    let (wu, wv) = warp_uv(u, v, knob(k, 2));
+    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
 }
 
-/// Parallel stripes along `u` — `Width` sets the band fraction.
-fn stripes(u: f32, w: f32) -> f32 {
-    let f = u - u.floor();
-    band(1.0 - (2.0 * f - 1.0).abs(), w) // triangle (0 edges → 1 centre) thresholded to a band
+/// **Checker**: 2-colour cells by integer-cell parity. `Softness` blurs the cell edges (`0` = hard).
+fn checker(u: f32, v: f32, k: &[f32]) -> f32 {
+    let soft = knob(k, 0);
+    let (a, b) = (soft_parity(u, soft), soft_parity(v, soft));
+    (a + b - 2.0 * a * b).clamp(0.0, 1.0) // soft XOR of the two axis parities
 }
 
-/// Voronoi F1: nearest-feature distance over the 3×3 neighbour cells, mapped to `[0, 1]`.
-fn voronoi(u: f32, v: f32) -> f32 {
+/// **Stripes** along `u`: `Width` = band fraction, `Frequency` = stripe count, `Softness` = edge.
+fn stripes(u: f32, _v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let f = (u * g) - (u * g).floor();
+    band_soft(1.0 - (2.0 * f - 1.0).abs(), knob(k, 0), knob(k, 2))
+}
+
+/// A blended distance metric for [`voronoi`]: `m` `0`→Euclidean, `0.5`→Chebyshev, `1`→Manhattan.
+fn cell_distance(ex: f32, ey: f32, m: f32) -> f32 {
+    let cheby = ex.max(ey);
+    if m < 0.5 {
+        lerp((ex * ex + ey * ey).sqrt(), cheby, m * 2.0)
+    } else {
+        lerp(cheby, ex + ey, (m - 0.5) * 2.0)
+    }
+}
+
+/// **Voronoi** cellular noise over the 3×3 neighbour cells. `Randomness` jitters cell centres off the
+/// grid; `Smoothness` rounds the cell joins (polynomial [`smin`]); `Metric` morphs the cell shape
+/// (Euclidean→Chebyshev→Manhattan); `Edges` crossfades the F1 cell field to the F2−F1 crack field.
+fn voronoi(u: f32, v: f32, k: &[f32]) -> f32 {
+    let rand = knob(k, 0);
+    let smooth = knob(k, 1) * 0.5;
+    let metric = knob(k, 2);
+    let edges = knob(k, 3);
     let (cx, cy) = (ifloor(u), ifloor(v));
-    let mut best = f32::INFINITY;
+    let (mut f1, mut f2) = (f32::INFINITY, f32::INFINITY);
     for dy in -1..=1 {
         for dx in -1..=1 {
             let (gx, gy) = (cx + dx, cy + dy);
-            let fx = gx as f32 + hash2(gx, gy);
-            let fy = gy as f32 + hash2(gy, gx);
-            let (ex, ey) = (fx - u, fy - v);
-            best = best.min(ex * ex + ey * ey);
+            // Jitter the cell point toward random (rand 0 → grid centre, 1 → fully hashed).
+            let jx = lerp(0.5, hash2(gx, gy), rand);
+            let jy = lerp(0.5, hash2(gy, gx), rand);
+            let (ex, ey) = ((gx as f32 + jx - u).abs(), (gy as f32 + jy - v).abs());
+            let d = cell_distance(ex, ey, metric);
+            if d < f1 {
+                f2 = f1;
+                f1 = d;
+            } else if d < f2 {
+                f2 = d;
+            }
         }
     }
-    best.sqrt().clamp(0.0, 1.0)
+    let cell = smin(f1, f2, smooth).clamp(0.0, 1.0); // smoothness rounds the cell joins
+    let crack = (1.0 - (f2 - f1) * 2.0).clamp(0.0, 1.0); // bright at the cell borders
+    lerp(cell, crack, edges)
 }
 
-/// **Clouds**: fractal Brownian noise (soft, billowy). `Detail` = octaves.
-fn clouds(u: f32, v: f32, detail: f32) -> f32 {
-    fbm(u, v, octaves_from(detail))
+/// **Clouds**: fractal noise (soft, billowy). `Detail` = octaves, `Roughness` = persistence, `Warp`.
+fn clouds(u: f32, v: f32, k: &[f32]) -> f32 {
+    let (wu, wv) = warp_uv(u, v, knob(k, 2));
+    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
 }
 
-/// **Distorted Noise**: value noise sampled at a noise-warped coordinate. `Distortion` = warp amount.
-fn distorted_noise(u: f32, v: f32, dist: f32) -> f32 {
-    let amt = dist * 3.2;
+/// **Distorted Noise**: noise sampled at a noise-warped coordinate. `Distortion` = warp, `Detail` = octaves.
+fn distorted_noise(u: f32, v: f32, k: &[f32]) -> f32 {
+    let amt = knob(k, 0) * 3.2;
     let dx = value_noise(u + 3.1, v + 1.7) - 0.5;
     let dy = value_noise(u - 2.3, v + 4.9) - 0.5;
-    value_noise(u + amt * dx, v + amt * dy)
+    fbm_g(u + amt * dx, v + amt * dy, octaves_from(knob(k, 1)), 0.55)
 }
 
-/// **Magic**: nested periodic waves — a swirly interference pattern. `Distortion` = wave coupling.
-fn magic(u: f32, v: f32, dist: f32) -> f32 {
-    let k = dist * 2.0;
-    let a = wave01(u + wave01(v * 0.7) * k);
-    let b = wave01(v - wave01(u * 1.3 + a) * k);
+/// **Magic**: nested periodic waves. `Distortion` = wave coupling, `Complexity` = adds a 4th term.
+fn magic(u: f32, v: f32, k: &[f32]) -> f32 {
+    let kk = knob(k, 0) * 2.0;
+    let cx = knob(k, 1);
+    let a = wave01(u + wave01(v * 0.7) * kk);
+    let b = wave01(v - wave01(u * 1.3 + a) * kk);
     let c = wave01(u * 0.5 + v * 0.5 + a * b);
-    (a + b + c) * (1.0 / 3.0)
+    let d = wave01(v * 0.3 - u * 0.6 + c * cx * 2.0);
+    lerp((a + b + c) * (1.0 / 3.0), (a + b + c + d) * 0.25, cx)
 }
 
-/// **Marble**: turbulence-distorted diagonal veins. `Turbulence` = vein distortion.
-fn marble(u: f32, v: f32, turb: f32) -> f32 {
-    wave01((u + v) * 1.5 + turbulence(u, v, 5) * (turb * 6.0))
+/// **Marble**: turbulence-distorted diagonal veins. `Turbulence` = distortion, `Frequency` = vein count.
+fn marble(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    wave01((u + v) * 1.5 * g + turbulence(u, v, 5) * (knob(k, 0) * 6.0))
 }
 
-/// **Musgrave**: a ridged multifractal — sharp creases. `Detail` = octaves.
-fn musgrave(u: f32, v: f32, detail: f32) -> f32 {
-    let mut value = 0.0;
-    let mut amp = 1.0;
-    let mut freq = 1.0;
-    let mut norm = 0.0;
-    let mut weight = 1.0;
-    for _ in 0..octaves_from(detail) {
+/// **Musgrave**: ridged multifractal. `Detail` = octaves, `Roughness` = persistence, `Sharpness` = ridge exponent.
+fn musgrave(u: f32, v: f32, k: &[f32]) -> f32 {
+    let gain = gain_from(knob(k, 1));
+    let sharp = knob(k, 2);
+    let (mut value, mut amp, mut freq, mut norm, mut weight) = (0.0, 1.0, 1.0, 0.0, 1.0);
+    for _ in 0..octaves_from(knob(k, 0)) {
         let ridge = 1.0 - (2.0 * value_noise(u * freq, v * freq) - 1.0).abs();
-        let n = ridge * ridge * weight;
-        value += n * amp;
+        let r2 = ridge * ridge;
+        value += lerp(r2, r2 * r2, sharp) * weight * amp;
         weight = (ridge * 2.0).clamp(0.0, 1.0);
         norm += amp;
-        amp *= 0.5;
+        amp *= gain;
         freq *= 2.0;
     }
     (value / norm.max(1e-6)).clamp(0.0, 1.0)
 }
 
-/// **Wood**: concentric growth rings. `Turbulence` = ring distortion.
-fn wood(u: f32, v: f32, turb: f32) -> f32 {
+/// **Wood**: concentric growth rings. `Turbulence` = ring distortion, `Rings` = ring frequency.
+fn wood(u: f32, v: f32, k: &[f32]) -> f32 {
+    let rings = freq_mul(knob(k, 1));
     let r = (u * u + v * v).sqrt();
-    wave01(r * 2.0 + turbulence(u, v, 3) * (turb * 2.0))
+    wave01(r * 2.0 * rings + turbulence(u, v, 3) * (knob(k, 0) * 2.0))
 }
 
-/// **Stucci**: thresholded fractal noise — rough plaster. `Detail` = octaves.
-fn stucci(u: f32, v: f32, detail: f32) -> f32 {
-    let n = fbm(u, v, octaves_from(detail));
-    smoothstep(((n - 0.35) / 0.5).clamp(0.0, 1.0))
+/// **Stucci**: thresholded fractal noise — rough plaster. `Detail` = octaves, `Depth` = threshold
+/// spread, `Warp` = domain distortion.
+fn stucci(u: f32, v: f32, k: &[f32]) -> f32 {
+    let (wu, wv) = warp_uv(u, v, knob(k, 2));
+    let n = fbm_g(wu, wv, octaves_from(knob(k, 0)), 0.55);
+    let depth = 0.2 + knob(k, 1) * 0.6;
+    smoothstep(((n - 0.35) / depth).clamp(0.0, 1.0))
 }
 
-/// **Gradient** (Blender's `Blend`): a smooth linear ramp `0→1` repeating each tile.
-fn gradient(u: f32) -> f32 {
-    smoothstep(u - u.floor())
+/// **Gradient** (Blender's `Blend`): a ramp `0→1` per tile. `Curve` = ease shape, `Repeat` = tile count.
+fn gradient(u: f32, k: &[f32]) -> f32 {
+    let rep = 1.0 + knob(k, 1) * 5.0;
+    let f = (u * rep) - (u * rep).floor();
+    let curve = knob(k, 0);
+    if curve < 0.5 {
+        lerp(f, smoothstep(f), curve * 2.0) // linear → smoothstep
+    } else {
+        let s = smoothstep(f);
+        lerp(s, smoothstep(s), (curve - 0.5) * 2.0) // smoothstep → extra-eased
+    }
 }
 
 // ── Painting-useful extras ──────────────────────────────────────────────────────────────────
 
-/// **Grain**: fine fractal noise — the paper / canvas tooth for dry media. `Detail` = octaves.
-fn grain(u: f32, v: f32, detail: f32) -> f32 {
-    fbm(u * 6.0, v * 6.0, octaves_from(detail))
+/// **Grain**: fine fractal noise — paper / canvas tooth. `Detail`, `Roughness`, `Warp`.
+fn grain(u: f32, v: f32, k: &[f32]) -> f32 {
+    let (wu, wv) = warp_uv(u * 6.0, v * 6.0, knob(k, 2));
+    fbm_g(wu, wv, octaves_from(knob(k, 0)), gain_from(knob(k, 1)))
 }
 
-/// **Crosshatch**: crossed diagonal hatch lines. `Thickness` = line width.
-fn crosshatch(u: f32, v: f32, thick: f32) -> f32 {
-    let w = 0.02 + thick * 0.18;
-    ridge_line(u + v, w).max(ridge_line(u - v, w))
+/// **Crosshatch**: crossed diagonal hatch lines. `Thickness` = line width, `Frequency` = line count.
+fn crosshatch(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let w = 0.02 + knob(k, 0) * 0.18;
+    ridge_line((u + v) * g, w).max(ridge_line((u - v) * g, w))
 }
 
-/// **Dots** (halftone): a soft round dot centred in each tile. `Radius` = dot size.
-fn dots(u: f32, v: f32, radius: f32) -> f32 {
-    let du = u - (u + 0.5).floor();
-    let dv = v - (v + 0.5).floor();
+/// **Dots** (halftone): a round dot per tile. `Radius` = dot size, `Softness` = edge, `Randomness` = jitter.
+fn dots(u: f32, v: f32, k: &[f32]) -> f32 {
+    let rand = knob(k, 2);
+    let (cu, cv) = ((u + 0.5).floor(), (v + 0.5).floor());
+    let ju = (hash2(cu as i32, cv as i32) - 0.5) * rand;
+    let jv = (hash2(cv as i32 + 7, cu as i32 + 3) - 0.5) * rand;
+    let (du, dv) = (u - cu - ju, v - cv - jv);
     let d = (du * du + dv * dv).sqrt();
-    let r = (0.12 + radius * 0.46).max(0.02);
-    smoothstep((1.0 - (d / r).min(1.0)).max(0.0))
+    let r = (0.12 + knob(k, 0) * 0.46).max(0.02);
+    let edge = (1.0 - (d / r).min(1.0)).max(0.0);
+    lerp(f32::from(d < r), smoothstep(edge), knob(k, 1)) // Softness: hard disk ↔ soft
 }
 
-/// **Grid**: thin lines along the integer lattice (mesh / graph-paper). `Thickness` = line width.
-fn grid(u: f32, v: f32, thick: f32) -> f32 {
-    let w = 0.02 + thick * 0.12;
-    ridge_line(u, w).max(ridge_line(v, w))
+/// **Grid**: thin lattice lines (mesh / graph-paper). `Thickness` = line width, `Frequency` = cell count.
+fn grid(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let w = 0.02 + knob(k, 0) * 0.12;
+    ridge_line(u * g, w).max(ridge_line(v * g, w))
 }
 
-/// **Bricks**: running-bond rectangles separated by mortar gaps. `Gap` = mortar width.
-fn bricks(u: f32, v: f32, gap: f32) -> f32 {
+/// **Bricks**: rectangles separated by mortar gaps. `Gap` = mortar width, `Bond` = per-row offset.
+fn bricks(u: f32, v: f32, k: &[f32]) -> f32 {
     let row = ifloor(v);
-    let offset = if row & 1 == 0 { 0.0 } else { 0.5 };
+    let offset = if row & 1 == 0 { 0.0 } else { knob(k, 1) };
     let fu = (u + offset) - (u + offset).floor();
     let fv = v - v.floor();
-    let mortar = (gap * 0.2).clamp(0.02, 0.45);
+    let mortar = (knob(k, 0) * 0.2).clamp(0.02, 0.45);
     let inside = |f: f32| f > mortar && f < 1.0 - mortar;
     if inside(fu) && inside(fv) { 1.0 } else { 0.0 }
 }
 
 // ── Vector-app geometric patterns ───────────────────────────────────────────────────────────
 
-/// **Waves**: horizontal bands rippled along `x` (water / silk). `Width` = band fraction.
-fn waves(u: f32, v: f32, w: f32) -> f32 {
-    band(wave01(v + (wave01(u) - 0.5) * 0.6), w)
+/// **Waves**: horizontal bands rippled along `x`. `Width` = band fraction, `Frequency`, `Ripple`.
+fn waves(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let ripple = knob(k, 2) * 1.2;
+    band_soft(
+        wave01(v * g + (wave01(u) - 0.5) * ripple),
+        knob(k, 0),
+        2.0 / 3.0,
+    )
 }
 
-/// **Chevron**: V-shaped zigzag bands. `Width` = band fraction.
-fn chevron(u: f32, v: f32, w: f32) -> f32 {
-    let zig = (2.0 * (u - (u + 0.5).floor())).abs(); // triangle 0→1 across each unit
-    band(wave01(v + zig * 0.5), w)
+/// **Chevron**: V-shaped zigzag bands. `Width` = band fraction, `Frequency`, `Softness`.
+fn chevron(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let zig = (2.0 * (u * g - (u * g + 0.5).floor())).abs(); // triangle 0→1 across each unit
+    band_soft(wave01(v + zig * 0.5), knob(k, 0), knob(k, 2))
 }
 
-/// **Diamonds** (harlequin): a 45°-rotated checker of diamonds.
-fn diamonds(u: f32, v: f32) -> f32 {
-    ((ifloor(u + v) ^ ifloor(u - v)) & 1) as f32
+/// Soft parity of `floor(x)` (`0`/`1`) — the per-axis building block of the soft Checker / Diamonds.
+/// Flat at this cell's parity in the interior; crossfades to the neighbour's at the borders (`soft`
+/// `0` = hard step).
+fn soft_parity(x: f32, soft: f32) -> f32 {
+    let cp = (ifloor(x) & 1) as f32;
+    let f = x - x.floor();
+    let w = 0.002 + soft.clamp(0.0, 1.0) * 0.5;
+    let mid = (smoothstep((f / w).min(1.0)) * smoothstep(((1.0 - f) / w).min(1.0))).clamp(0.0, 1.0);
+    lerp(1.0 - cp, cp, mid)
 }
 
-/// **Triangles**: an equilateral triangular grid, two-toned by up/down orientation. The coordinate is
-/// sheared onto the triangular lattice (`q.y = v/h`, `q.x = u − v/√3`, with row height `h = √3/2`) so
-/// each unit cell is a rhombus; its anti-diagonal split colours the two opposite-pointing triangles.
-/// (The naive "square split by the same diagonal" instead aligns same-orientation triangles into
-/// diagonal stripes — the bug this replaces.)
-fn triangles(u: f32, v: f32) -> f32 {
+/// **Diamonds** (harlequin): a 45°-rotated checker. `Softness` blurs the diamond edges.
+fn diamonds(u: f32, v: f32, k: &[f32]) -> f32 {
+    let soft = knob(k, 0);
+    let (a, b) = (soft_parity(u + v, soft), soft_parity(u - v, soft));
+    (a + b - 2.0 * a * b).clamp(0.0, 1.0)
+}
+
+/// **Triangles**: an equilateral triangular grid (sheared onto the lattice: `q.y = v/(√3/2)`,
+/// `q.x = u − v/√3`), two-toned by the rhombus anti-diagonal. `Softness` blurs the split.
+fn triangles(u: f32, v: f32, k: &[f32]) -> f32 {
     const INV_H: f32 = 1.154_700_5; // 1 / (√3/2) — unit-triangle row height
     const SHEAR: f32 = 0.577_350_3; // 1 / √3
     let qx = u - v * SHEAR;
     let qy = v * INV_H;
     let (fx, fy) = (qx - qx.floor(), qy - qy.floor());
-    f32::from(fx + fy >= 1.0)
+    let w = 0.002 + knob(k, 0).clamp(0.0, 1.0) * 0.4;
+    smoothstep((((fx + fy) - (1.0 - w)) / w).clamp(0.0, 1.0))
 }
 
-/// **Hexagons** (honeycomb): Voronoi cells of a triangular lattice. `Rim` = rim softness/width.
-fn hexagons(u: f32, v: f32, rim: f32) -> f32 {
+/// **Hexagons** (honeycomb): Voronoi cells of a triangular lattice. `Rim` = rim softness/width,
+/// `Frequency` = cell count.
+fn hexagons(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let (u, v) = (u * g, v * g);
     const GX: f32 = 1.0;
     const GY: f32 = 1.732_05; // √3
     // Two interleaved square grids whose union is the hex-centre (triangular) lattice.
@@ -362,23 +397,30 @@ fn hexagons(u: f32, v: f32, rim: f32) -> f32 {
     let c = if d2(a) < d2(b) { a } else { b };
     let (px, py) = ((u - c[0]).abs(), (v - c[1]).abs());
     let hd = (px * 0.866_025 + py * 0.5).max(py); // hexagon distance, 0 centre → ~0.5 rim
-    smoothstep((hd / (0.1 + rim * 0.8)).min(1.0))
+    smoothstep((hd / (0.1 + knob(k, 0) * 0.8)).min(1.0))
 }
 
-/// **Scales** (fish-scale): overlapping rows of ringed discs. `Radius` = scale size.
-fn scales(u: f32, v: f32, radius: f32) -> f32 {
+/// **Scales** (fish-scale): overlapping rows of ringed discs. `Radius` = scale size, `Softness` = edge,
+/// `Randomness` = per-scale jitter.
+fn scales(u: f32, v: f32, k: &[f32]) -> f32 {
+    let rand = knob(k, 2);
     let row = v.floor();
     let off = if (row as i32) & 1 == 0 { 0.0 } else { 0.5 };
-    let cx = (u - off + 0.5).floor() + off; // nearest scale centre on this row
+    let base = (u - off + 0.5).floor() + off; // nearest scale centre on this row
+    let cx = base + (hash2(base as i32, row as i32) - 0.5) * rand;
     let (dx, dy) = (u - cx, v - row);
-    smoothstep(((dx * dx + dy * dy).sqrt() / (0.4 + radius * 0.6)).min(1.0))
+    let d = (dx * dx + dy * dy).sqrt();
+    let r = 0.4 + knob(k, 0) * 0.6;
+    lerp(f32::from(d >= r), smoothstep((d / r).min(1.0)), knob(k, 1)) // bright at the rim
 }
 
-/// **Weave** (basketweave): over-under woven bands. `Gap` = spacing between bands.
-fn weave(u: f32, v: f32, gap: f32) -> f32 {
+/// **Weave** (basketweave): over-under woven bands. `Gap` = spacing, `Frequency` = band count.
+fn weave(u: f32, v: f32, k: &[f32]) -> f32 {
+    let g = freq_mul(knob(k, 1));
+    let (u, v) = (u * g, v * g);
     let over_h = (ifloor(u) ^ ifloor(v)) & 1 == 0;
     let (fu, fv) = (u - u.floor(), v - v.floor());
-    let m = (0.1 + gap * 0.25).clamp(0.05, 0.45);
+    let m = (0.1 + knob(k, 0) * 0.25).clamp(0.05, 0.45);
     let (horiz, vert) = ((m..1.0 - m).contains(&fv), (m..1.0 - m).contains(&fu));
     if (over_h && horiz) || (!over_h && vert) {
         1.0 // the band on top
@@ -413,19 +455,6 @@ fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
 }
 
 // ── Shared noise / math helpers (transcendental-free) ───────────────────────────────────────
-
-/// Fractal Brownian motion: octaves of [`value_noise`] at doubling frequency, halving amplitude,
-/// normalised to `[0, 1]`. The soft, self-similar base of Clouds / Stucci.
-fn fbm(u: f32, v: f32, octaves: u32) -> f32 {
-    let (mut sum, mut amp, mut freq, mut norm) = (0.0, 0.5, 1.0, 0.0);
-    for _ in 0..octaves {
-        sum += amp * value_noise(u * freq, v * freq);
-        norm += amp;
-        amp *= 0.5;
-        freq *= 2.0;
-    }
-    sum / norm.max(1e-6)
-}
 
 /// Turbulence: octaves of the *absolute* signed noise `|2·noise−1|` — sharper, veiny (Marble / Wood).
 fn turbulence(u: f32, v: f32, octaves: u32) -> f32 {
@@ -480,118 +509,4 @@ fn ifloor(x: f32) -> i32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn checker_alternates_by_cell_parity() {
-        assert_eq!(checker(0.5, 0.5), 0.0);
-        assert_eq!(checker(1.5, 0.5), 1.0);
-        assert_eq!(checker(1.5, 1.5), 0.0);
-        assert_eq!(checker(-0.5, 0.5), 1.0); // floor (not truncation): cell -1 has parity 1
-    }
-
-    #[test]
-    fn stripes_width_controls_coverage() {
-        assert!(stripes(0.5, 0.5) > 0.9, "band centre is covered");
-        let cov = |w: f32| (0..100).map(|i| stripes(i as f32 / 100.0, w)).sum::<f32>();
-        assert!(
-            cov(0.8) > cov(0.3),
-            "a wider Width paints more of the period"
-        );
-        assert!(
-            (stripes(0.25, 0.5) - stripes(1.25, 0.5)).abs() < 1e-6,
-            "periodic"
-        );
-    }
-
-    #[test]
-    fn value_noise_is_bounded_and_deterministic() {
-        for i in 0..50 {
-            let (u, v) = (i as f32 * 0.37, i as f32 * -0.21);
-            let a = value_noise(u, v);
-            assert!((0.0..=1.0).contains(&a), "noise out of range: {a}");
-            assert_eq!(a, value_noise(u, v), "noise must be a pure function");
-        }
-        assert_ne!(value_noise(0.5, 0.5), value_noise(10.5, 10.5));
-    }
-
-    #[test]
-    fn voronoi_is_bounded() {
-        for i in 0..50 {
-            let d = voronoi(i as f32 * 0.61, i as f32 * 0.43);
-            assert!((0.0..=1.0).contains(&d), "voronoi out of range: {d}");
-        }
-    }
-
-    #[test]
-    fn sample_image_is_bilinear_centre_coord_and_tiles() {
-        let lum = [0u8, 255, 128, 64]; // 2×2: [0,255; 128,64]
-        let img = ImageMask {
-            lum: &lum,
-            width: 2,
-            height: 2,
-        };
-        assert!(
-            (sample_image(&img, 0.25, 0.25) - 0.0).abs() < 1e-6,
-            "texel (0,0)=0"
-        );
-        assert!(
-            (sample_image(&img, 0.75, 0.25) - 1.0).abs() < 1e-6,
-            "texel (1,0)=255"
-        );
-        assert!((sample_image(&img, 1.25, 0.25) - sample_image(&img, 0.25, 0.25)).abs() < 1e-6);
-        for k in 0..30 {
-            assert!((0.0..=1.0).contains(&sample_image(&img, k as f32 * 0.17, -(k as f32) * 0.17)));
-        }
-    }
-
-    #[test]
-    fn every_kind_is_bounded_and_deterministic() {
-        // Neutral params and a non-neutral set (high contrast, dark, extreme shape knob).
-        for params in [[0.5; 4], [0.9, 0.3, 0.8, 0.5], [0.1, 0.7, 0.2, 0.5]] {
-            for k in 0..TextureKind::COUNT {
-                let kind = TextureKind::from_u8(k);
-                for i in 0..40 {
-                    let (u, v) = (i as f32 * 0.31 - 3.0, i as f32 * -0.27 + 1.5);
-                    let a = sample_kind(kind, [u, v], params, None);
-                    assert!(
-                        (0.0..=1.0).contains(&a),
-                        "{} out of range: {a}",
-                        kind.name()
-                    );
-                    assert_eq!(
-                        a,
-                        sample_kind(kind, [u, v], params, None),
-                        "{} must be pure",
-                        kind.name()
-                    );
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn every_procedural_kind_varies_across_the_plane() {
-        // Each procedural (not None / Image) must produce a non-flat field.
-        for k in 1..TextureKind::COUNT {
-            let kind = TextureKind::from_u8(k);
-            if matches!(kind, TextureKind::Image) {
-                continue;
-            }
-            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
-            for i in 0..72 {
-                for j in 0..72 {
-                    let a = sample_kind(kind, [i as f32 * 0.17, j as f32 * 0.19], [0.5; 4], None);
-                    lo = lo.min(a);
-                    hi = hi.max(a);
-                }
-            }
-            assert!(
-                hi - lo > 0.05,
-                "{} should vary (lo={lo} hi={hi})",
-                kind.name()
-            );
-        }
-    }
-}
+mod tests;

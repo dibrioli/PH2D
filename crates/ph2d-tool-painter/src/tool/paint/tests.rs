@@ -1442,10 +1442,14 @@ fn texture_setters_clamp_and_new_assigns_noise() {
 fn texture_params_reset_on_kind_change_and_set_per_slot() {
     use ph2d_painter_brush::{TextureKind, param_specs};
     let mut t = white_canvas(32, 8.0);
-    // Selecting a kind resets params to that kind's spec defaults (Grid: …/…/Thickness=0.4).
+    // Selecting a kind resets params to that kind's spec defaults (Grid: …/…/Thickness/Frequency).
     t.set_brush_texture_kind(TextureKind::Grid.to_u8());
     let specs = param_specs(TextureKind::Grid);
-    assert_eq!(specs.len(), 3, "Grid exposes Contrast/Brightness/Thickness");
+    assert_eq!(
+        specs.len(),
+        4,
+        "Grid exposes Contrast/Brightness/Thickness/Frequency"
+    );
     assert!(
         (t.brush_settings().texture_params[2] - specs[2].default).abs() < 1e-6,
         "slot 2 reset to Grid's Thickness default ({})",
@@ -1455,15 +1459,20 @@ fn texture_params_reset_on_kind_change_and_set_per_slot() {
     t.set_brush_texture_param_norm(0, 0.9);
     assert!((t.brush_settings().texture_params[0] - 0.9).abs() < 1e-6);
     t.set_brush_texture_param_norm(9, 0.0); // bad slot ignored, no panic
-    // Switching to a kind with no shape param re-resets every slot (slot 2 → neutral 0.5).
+    // Switching kinds re-resets every slot to the new kind's spec defaults, neutral 0.5 past them.
     t.set_brush_texture_kind(TextureKind::Diamonds.to_u8());
+    let dspecs = param_specs(TextureKind::Diamonds);
     assert!(
         (t.brush_settings().texture_params[0] - 0.5).abs() < 1e-6,
         "Contrast reset to default on kind change"
     );
     assert!(
-        (t.brush_settings().texture_params[2] - 0.5).abs() < 1e-6,
-        "unused slot resets to neutral on kind change"
+        (t.brush_settings().texture_params[2] - dspecs[2].default).abs() < 1e-6,
+        "slot 2 reset to Diamonds' Softness default on kind change"
+    );
+    assert!(
+        (t.brush_settings().texture_params[dspecs.len()] - 0.5).abs() < 1e-6,
+        "a slot past the kind's specs resets to neutral 0.5"
     );
 }
 
@@ -1585,6 +1594,7 @@ fn textured_dab_masks_part_of_the_footprint() {
         size: [0.25, 0.25],
         ..Default::default()
     };
+    t.paint.brush.texture.params[2] = 0.0; // hard checker (crisp 0/1 cells) — Softness slot
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
     let (mut black, mut white) = (0, 0);
     for y in 18..46 {
@@ -1615,6 +1625,7 @@ fn enabled_color_ramp_paints_the_ramp_colours_through_the_tool() {
         size: [0.25, 0.25],
         ..Default::default()
     };
+    t.paint.brush.texture.params[2] = 0.0; // hard checker (crisp 0/1 cells) — Softness slot
     // Brush colour GREEN — it must NOT appear once the ramp drives the colour.
     t.set_brush_color_channel(0, 0.0);
     t.set_brush_color_channel(1, 1.0);

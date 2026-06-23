@@ -42,14 +42,20 @@ pub const PAINTER_BRUSH_TEXTURE_PARAM_1: NodeId = hash_node_id("painter_brush.te
 pub const PAINTER_BRUSH_TEXTURE_PARAM_2: NodeId = hash_node_id("painter_brush.texture_param_2");
 /// Per-pattern parameter slider **3**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
 pub const PAINTER_BRUSH_TEXTURE_PARAM_3: NodeId = hash_node_id("painter_brush.texture_param_3");
+/// Per-pattern parameter slider **4**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
+pub const PAINTER_BRUSH_TEXTURE_PARAM_4: NodeId = hash_node_id("painter_brush.texture_param_4");
+/// Per-pattern parameter slider **5**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
+pub const PAINTER_BRUSH_TEXTURE_PARAM_5: NodeId = hash_node_id("painter_brush.texture_param_5");
 
-/// The four per-pattern parameter slider ids, indexed by [`ph2d_painter_brush::TextureSettings::params`]
+/// The per-pattern parameter slider ids, indexed by [`ph2d_painter_brush::TextureSettings::params`]
 /// slot. Lets the panel / populate / dispatch iterate without hardcoding each.
-pub const PAINTER_BRUSH_TEXTURE_PARAMS: [NodeId; 4] = [
+pub const PAINTER_BRUSH_TEXTURE_PARAMS: [NodeId; 6] = [
     PAINTER_BRUSH_TEXTURE_PARAM_0,
     PAINTER_BRUSH_TEXTURE_PARAM_1,
     PAINTER_BRUSH_TEXTURE_PARAM_2,
     PAINTER_BRUSH_TEXTURE_PARAM_3,
+    PAINTER_BRUSH_TEXTURE_PARAM_4,
+    PAINTER_BRUSH_TEXTURE_PARAM_5,
 ];
 
 /// Derive the stable [`NodeId`] for texture-mapping option `m` (the `TextureMapping` wire

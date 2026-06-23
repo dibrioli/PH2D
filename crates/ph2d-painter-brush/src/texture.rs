@@ -299,8 +299,8 @@ pub struct TextureSettings {
     pub params: [f32; MAX_TEX_PARAMS],
 }
 
-/// Number of per-pattern parameter slots in [`TextureSettings::params`].
-pub const MAX_TEX_PARAMS: usize = 4;
+/// Per-pattern parameter slots in [`TextureSettings::params`] (`0`/`1` = Contrast / Brightness; `2..` = shape knobs).
+pub const MAX_TEX_PARAMS: usize = 6;
 
 impl Default for TextureSettings {
     fn default() -> Self {

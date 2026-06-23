@@ -2,6 +2,15 @@
 //! deterministic rotation, and the coverage modulation through [`crate::dab::stamp_dab_textured`].
 
 use super::*;
+
+/// A hard Checker's params (Softness `0`). The engine's `TextureSettings::default()` is neutral `0.5`
+/// in every slot, which for Checker means a *soft* edge that never saturates to an exact `0`/`1`; the
+/// value-pinning tests below want the crisp pattern.
+fn checker_hard() -> [f32; MAX_TEX_PARAMS] {
+    let mut p = [0.5; MAX_TEX_PARAMS];
+    p[2] = 0.0; // slot 2 = Checker Softness
+    p
+}
 use crate::blend::BrushBlend;
 use crate::dab::{stamp_dab, stamp_dab_textured};
 use crate::falloff::Falloff;
@@ -266,6 +275,7 @@ fn stencil_rect_shows_the_procedural_pattern() {
         kind: TextureKind::Checker,
         mapping: TextureMapping::Stencil,
         size: [1.0, 1.0], // rect = the whole canvas
+        params: checker_hard(),
         ..Default::default()
     };
     let mut rng = 0;
@@ -343,6 +353,7 @@ fn checker_texture_leaves_zero_texel_cells_unpainted() {
             mapping: TextureMapping::ViewPlane,
             // Big tiles so each cell spans several pixels.
             size: [0.25, 0.25],
+            params: checker_hard(),
             ..Default::default()
         },
         ..Default::default()

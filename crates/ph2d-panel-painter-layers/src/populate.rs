@@ -80,6 +80,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_1,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_2,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_3,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_4,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_5,
     ];
     for id in brush_sliders {
         store.register(

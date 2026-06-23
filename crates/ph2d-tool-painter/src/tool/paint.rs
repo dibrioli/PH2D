@@ -32,6 +32,8 @@ pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
 pub use stencil::StencilOverlay;
+/// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
+mod stamp_cache;
 
 /// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
@@ -132,6 +134,11 @@ pub(crate) struct PaintState {
     texture_image: Option<brush_settings::BrushTextureImage>,
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
     texture_image_pending: bool,
+    /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.
+    texture_image_version: u64,
+    /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
+    /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
+    stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
 }
 
 impl Default for PaintState {
@@ -162,6 +169,8 @@ impl Default for PaintState {
             stencil_grab: None,
             texture_image: None,
             texture_image_pending: false,
+            texture_image_version: 0,
+            stamp_cache: None,
         }
     }
 }
@@ -345,6 +354,15 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
+        // A static **View** texture makes the brush stamp scale-invariant: render it once into a
+        // cached mask and scale-blit per dab (Blender's brush-image approach), so a large Anchored
+        // re-stamp pays a cheap blit instead of a per-pixel falloff+texture recompute. No-texture
+        // keeps the per-pixel fast path (nothing to cache); canvas-relative / per-dab mappings
+        // (Tiled/Stencil/Random/Rake) aren't scale-invariant and also stay per-pixel.
+        if brush.texture.is_active() && brush.texture.is_cacheable() {
+            self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
         // Resolve the per-dab texture frame only when a texture is assigned; otherwise the engine
         // takes the texture-free fast path (`None`). The texture RNG is copied out so the canvas
         // borrow below doesn't conflict, then written back.

@@ -419,6 +419,8 @@ impl PainterTool {
         self.paint.texture_image = Some(BrushTextureImage { lum, width, height });
         self.paint.brush.texture.kind = TextureKind::Image;
         self.paint.texture_image_pending = false;
+        // Invalidate the cached stamp's baked Image mask.
+        self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
     }
 
     /// Take (and clear) the "the user picked Image — open a file picker" request. The shell polls

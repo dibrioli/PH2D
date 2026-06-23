@@ -1469,6 +1469,38 @@ fn textured_dab_masks_part_of_the_footprint() {
     );
 }
 
+/// Timing: the FULL per-move tool cost of an Anchored size-drag (restore + save + stamp), plain vs
+/// textured, on a large canvas. Tells us where the per-move CPU goes. Run:
+/// `cargo test -p ph2d-tool-painter --release perf_anchored -- --ignored --nocapture`.
+#[test]
+#[ignore]
+fn perf_anchored_drag_per_move_cost() {
+    use ph2d_painter_brush::{StrokeMethod, TextureKind, TextureMapping, TextureSettings};
+    use std::time::Instant;
+    let run = |label: &str, kind: TextureKind| {
+        let mut t = white_canvas(2048, 10.0);
+        t.paint.brush.texture = TextureSettings {
+            kind,
+            mapping: TextureMapping::ViewPlane,
+            ..Default::default()
+        };
+        t.set_brush_stroke_method(StrokeMethod::Anchored.to_u8());
+        let _ = t.on_canvas_pointer(cp([1024.0, 1024.0], PointerPhase::Down));
+        let moves = 20u32;
+        let t0 = Instant::now();
+        for k in 1..=moves {
+            let r = 60.0 + k as f32 * 45.0; // radius grows to ~960 px
+            let _ = t.on_canvas_pointer(cp([1024.0, 1024.0 + r], PointerPhase::Move));
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(moves);
+        eprintln!("  anchored {label:<8} {ms:6.2} ms/move (restore+save+stamp)");
+    };
+    eprintln!("perf: Anchored size-drag on 2048², radius→960 px, per-move tool cost:");
+    run("plain", TextureKind::None);
+    run("noise", TextureKind::Noise);
+    run("voronoi", TextureKind::Voronoi);
+}
+
 #[test]
 fn anchored_textured_stroke_commits_a_textured_result() {
     // Perf fix: the interactive Anchored preview stamps texture-FREE (fast), then re-applies the

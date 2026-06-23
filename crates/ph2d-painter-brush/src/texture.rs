@@ -219,6 +219,19 @@ impl TextureSettings {
     pub fn is_active(&self) -> bool {
         self.kind != TextureKind::None
     }
+
+    /// Whether the brush stamp (falloff × texture) is dab-relative and constant across a stroke, so
+    /// it can be rendered once into a cached mask and scale-blitted (Blender's brush-image approach;
+    /// see [`crate::stamp`]). True with no texture, or a **View**-mapped texture at a static angle —
+    /// Rake / Random vary the rotation per dab, and Tiled / Stencil are canvas-relative (vary by dab
+    /// position), so those keep the per-pixel [`sample`] path.
+    #[must_use]
+    pub fn is_cacheable(&self) -> bool {
+        !self.is_active()
+            || (matches!(self.mapping, TextureMapping::ViewPlane)
+                && !self.rake
+                && !self.random_angle)
+    }
 }
 
 /// A borrowed grayscale (luminance) image supplied to [`sample`] for [`TextureKind::Image`]. One
@@ -385,7 +398,13 @@ pub fn sample(
             rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
         ]
     };
-    let v = match s.kind {
+    sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
+}
+
+/// Evaluate the procedural / image kind at texture coords `tex` (after the mapping resolved them).
+/// Shared by [`sample`] (per-pixel canvas path) and [`sample_unit`] (the cached stamp render).
+fn sample_kind(kind: TextureKind, tex: [f32; 2], image: Option<&ImageMask>) -> f32 {
+    match kind {
         TextureKind::None => 1.0,
         TextureKind::Noise => value_noise(tex[0], tex[1]),
         TextureKind::Checker => checker(tex[0], tex[1]),
@@ -395,8 +414,33 @@ pub fn sample(
             Some(img) => sample_image(img, tex[0], tex[1]),
             None => 1.0, // kind is Image but no pixels supplied → inert
         },
-    };
-    v.clamp(0.0, 1.0)
+    }
+}
+
+/// Sample the **View-mapped** texture at the dab-relative unit coordinate `(u, v) ∈ [-1, 1]` (centre
+/// `(0,0)`, rim `|.|=1`). This is the scale-invariant form used to bake the cached brush stamp
+/// ([`crate::stamp`]): a View dab's texture depends only on `(u, v)/size` + rotation, never on the
+/// dab radius, so the mask renders once and scale-blits for any size. Only valid for View mapping —
+/// the caller checks [`TextureSettings::is_cacheable`]. Returns the coverage multiplier in `[0, 1]`.
+#[must_use]
+pub fn sample_unit(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    u: f32,
+    v: f32,
+    image: Option<&ImageMask>,
+) -> f32 {
+    if !s.is_active() {
+        return 1.0;
+    }
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let rel = [u / sx, v / sy];
+    let tex = [
+        rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
+        rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],
+    ];
+    sample_kind(s.kind, tex, image).clamp(0.0, 1.0)
 }
 
 /// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one full image), tiled via

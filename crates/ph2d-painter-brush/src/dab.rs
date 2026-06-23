@@ -121,36 +121,11 @@ pub fn stamp_dab_textured(
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every
-    // pointer move) splits into disjoint row bands across the cores. The result is bit-identical to
-    // the serial path — every pixel is written by exactly one thread and its value never depends on
-    // the band count — so determinism (HR-5) holds. Small dabs stay serial (thread spawn isn't worth
-    // it). The texture stays fully visible during the drag.
-    let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
-    let rows = (y1 - y0) as usize;
-    let area = rows * ((x1 - x0) as usize);
-    let touched = if area >= PARALLEL_MIN_AREA && rows > 1 {
-        let threads = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1)
-            .clamp(1, rows);
-        let rows_per_band = rows.div_ceil(threads);
-        let ctx = &ctx; // share by reference; each band's `move` closure captures the Copy ref
-        std::thread::scope(|s| {
-            region
-                .chunks_mut(rows_per_band * stride)
-                .enumerate()
-                .map(|(bi, chunk)| {
-                    let band_y0 = y0 + (bi * rows_per_band) as i64;
-                    s.spawn(move || stamp_band(ctx, chunk, band_y0))
-                })
-                // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
-                .collect::<Vec<_>>()
-                .into_iter()
-                .fold(false, |acc, h| acc | h.join().unwrap_or(false))
-        })
-    } else {
-        stamp_band(&ctx, region, y0)
-    };
+    // pointer move) splits across the cores (see `parallel_band_stamp`). The result is bit-identical
+    // to serial, so the texture stays fully visible during the drag.
+    let touched = parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
+        stamp_band(&ctx, dst, band_y0)
+    });
 
     if !touched {
         return None;
@@ -163,10 +138,54 @@ pub fn stamp_dab_textured(
     })
 }
 
-/// Footprint area (pixels) at or above which [`stamp_dab_textured`] splits the dab across cores.
-/// Below it, the serial path wins (thread spawn isn't worth ~1 ms of work). ~128k px ≈ a radius-200
-/// dab — small brush dabs (Space) stay serial; large Anchored stamps parallelise.
-const PARALLEL_MIN_AREA: usize = 1 << 17;
+/// Footprint area (pixels) at or above which a dab/blit splits across cores. Below it, the serial
+/// path wins (thread spawn isn't worth ~1 ms of work). ~128k px ≈ a radius-200 dab — small brush
+/// dabs (Space) stay serial; large Anchored stamps parallelise.
+pub(crate) const PARALLEL_MIN_AREA: usize = 1 << 17;
+
+/// Run `stamp` over the dab's row span `[y0, y1)` — serial for small footprints, split into disjoint
+/// row bands across the cores for large ones (≥ [`PARALLEL_MIN_AREA`]). `stamp(dst, band_y0)` writes
+/// the full-width band slice `dst` whose first row is `band_y0`, returning whether it touched a
+/// pixel. Disjoint bands ⇒ the result is bit-identical to serial regardless of band count (HR-5).
+/// Shared by the per-pixel [`stamp_dab_textured`] and the cached-mask [`crate::stamp::blit_stamp`].
+pub(crate) fn parallel_band_stamp<F>(
+    buf: &mut [u8],
+    y0: i64,
+    y1: i64,
+    x0: i64,
+    x1: i64,
+    stride: usize,
+    stamp: F,
+) -> bool
+where
+    F: Fn(&mut [u8], i64) -> bool + Sync,
+{
+    let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
+    let rows = (y1 - y0) as usize;
+    let area = rows * ((x1 - x0).max(0) as usize);
+    if area < PARALLEL_MIN_AREA || rows <= 1 {
+        return stamp(region, y0);
+    }
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .clamp(1, rows);
+    let rows_per_band = rows.div_ceil(threads);
+    let stamp = &stamp;
+    std::thread::scope(|s| {
+        region
+            .chunks_mut(rows_per_band * stride)
+            .enumerate()
+            .map(|(bi, chunk)| {
+                let band_y0 = y0 + (bi * rows_per_band) as i64;
+                s.spawn(move || stamp(chunk, band_y0))
+            })
+            // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
+            .collect::<Vec<_>>()
+            .into_iter()
+            .fold(false, |acc, h| acc | h.join().unwrap_or(false))
+    })
+}
 
 /// Read-only per-dab context shared by every row band of a [`stamp_dab_textured`] stamp. `Sync`
 /// (refs to `Sync` data + `Copy` scalars), so `&DabCtx` is safely shared across the band threads.
@@ -251,7 +270,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
 }
 
 #[inline]
-fn encode(v: f32) -> u8 {
+pub(crate) fn encode(v: f32) -> u8 {
     // Round-to-nearest, clamped. (No gamma here — the buffer is already in its native space.)
     (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
 }

@@ -28,10 +28,11 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 
 /// Dropdown option-id decoders (split out to keep this file under the LOC cap).
 mod decode;
+mod ramp_picker;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
     decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
-    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
+    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option, decode_texture_ramp_stop,
 };
 
 pub(crate) fn apply_event(
@@ -192,11 +193,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             // by the generic Dropdown dispatch, not forwarded.)
             match decode(&stack, id) {
                 Some((_, PainterLayerWidget::Row)) => {
-                    // Multi-select: carry the live Cmd/Shift state to the tool's
-                    // row-select. The frozen PanelEvent can not hold it and the
-                    // tool's handle_panel_event gets no store, so stash it in the
-                    // tool-crate thread-local right before forwarding the Click.
-                    // Cmd/Ctrl = toggle additive, Shift = range, plain = single.
+                    // Multi-select: the frozen PanelEvent can't carry Cmd/Shift, so stash it in the
+                    // tool-crate thread-local right before the Click (Cmd = additive, Shift = range).
                     ph2d_tool_painter::set_pending_select_mods(
                         id,
                         host.store().cmd_held(),
@@ -234,11 +232,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         // value and forward normalized (the linked chip edit propagates back
         // to the slider, so its ValueChanged arrives here too — single route).
         WidgetEvent::ValueChanged(id) => {
-            // W4 §3 — a Curves control-point 2-D drag stashed its (parent, channel,
-            // index, x, y) on the store (global slot, `Some` only when the active
-            // widget is a `CurvePoint`, so this `ValueChanged` IS that drag). Drain
-            // it, re-derive the layer from the editor `parent`, and forward to the
-            // tool as `SelectOption(PAINTER_CURVE_EDIT, "layer:ch:idx:x:y")`.
+            // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` (global slot,
+            // `Some` only for a `CurvePoint`) → drain, re-derive the layer, forward to the tool.
             if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
                 if let Some(stack) = state::current_layers() {
                     if let Some(layer) = stack
@@ -468,6 +463,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                     core_ids::PAINTER_BRUSH_FALLOFF_REMOVE,
                     target.to_string(),
                 )));
+            Some(true)
+        }
+        // Color Ramp stop swatch → toggle the shared picker targeting that stop.
+        WidgetEvent::Click(id) if decode_texture_ramp_stop(id).is_some() => {
+            ramp_picker::on_stop_click(host, id);
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (decode by id).

@@ -295,6 +295,17 @@ impl Tool for PainterTool {
                     self.set_texture_ramp_interp(i);
                 }
             }
+            // Ramp stop colour from the picker: value = "stop,r,g,b" (sRGB bytes).
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH =>
+            {
+                let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
+                if let (Some(i), Some(r), Some(g), Some(b)) =
+                    (it.next(), it.next(), it.next(), it.next())
+                {
+                    self.ramp_set_stop_color(i as usize, [r as u8, g as u8, b as u8]);
+                }
+            }
             // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The
             // stable id (not a sorted index) keeps the handle grabbed across the
             // re-sort when a point is dragged past another. ─────────────────

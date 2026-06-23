@@ -192,6 +192,19 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
             "enabled ramp must register {shown:?}. painted = {on:?}"
         );
     }
+    // Each of the 2 stops paints a clickable colour swatch (opens the picker); the 3rd does not.
+    assert!(
+        on.contains(&core_ids::painter_brush_texture_ramp_stop_id(0)),
+        "stop 0 swatch"
+    );
+    assert!(
+        on.contains(&core_ids::painter_brush_texture_ramp_stop_id(1)),
+        "stop 1 swatch"
+    );
+    assert!(
+        !on.contains(&core_ids::painter_brush_texture_ramp_stop_id(2)),
+        "only 2 stops → no 3rd swatch"
+    );
 }
 
 #[test]

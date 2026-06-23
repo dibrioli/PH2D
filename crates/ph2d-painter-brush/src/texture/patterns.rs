@@ -7,6 +7,7 @@
 //! `sin`/`cos` of Blender's Marble/Wood/Magic become the polynomial periodic [`wave01`].
 
 use super::{ImageMask, TextureKind};
+use crate::ramp_alpha::RampAlphaMode;
 
 mod specs;
 pub use specs::{ParamSpec, param_specs};
@@ -57,11 +58,16 @@ pub(super) fn sample_kind(
     apply_tone(raw, params[0], params[1])
 }
 
-/// Fill `out` (RGBA8, `w`×`h`, row-major) with a **grayscale preview** of texture `kind` shaped by
+/// Fill `out` (RGBA8, `w`×`h`, row-major) with a live preview of texture `kind` shaped by
 /// `params` / `size` / `offset` — the scalar pattern as it modulates the brush, View-plane mapped at
 /// identity rotation (the preview ignores per-dab rotation + jitter). ~3 tiles across with square
-/// cells. `image` backs [`TextureKind::Image`]; without it that kind previews flat. Drives the panel's
-/// live texture preview. No-op if `out` is too small.
+/// cells. `image` backs [`TextureKind::Image`]; without it that kind previews flat.
+///
+/// With `ramp = None` the preview is **grayscale** (the raw scalar). With `ramp = Some((lut, mode))`
+/// the scalar indexes the 256-entry **sRGB-straight RGBA** Color-Ramp `lut` and the result is shown
+/// **with its alpha** over a checker (so transparency reads): `mode` picks how the alpha shows —
+/// [`RampAlphaMode::None`] ignores it (opaque), the other two reveal the translucency. No-op if `out`
+/// is too small.
 #[allow(clippy::too_many_arguments)]
 pub fn render_texture_preview(
     kind: TextureKind,
@@ -69,6 +75,7 @@ pub fn render_texture_preview(
     size: [f32; 2],
     offset: [f32; 2],
     image: Option<&ImageMask>,
+    ramp: Option<(&[[f32; 4]], RampAlphaMode)>,
     out: &mut [u8],
     w: u32,
     h: u32,
@@ -79,15 +86,37 @@ pub fn render_texture_preview(
     let sx = size[0].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
     let sy = size[1].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
     let step = 3.0 / w as f32; // tiles per pixel — same on both axes → square cells
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     for py in 0..h {
         let v = (py as f32 + 0.5) * step * sy + offset[1];
         for px in 0..w {
             let u = (px as f32 + 0.5) * step * sx + offset[0];
-            let g = (sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
+            let [r, g, b] = match ramp {
+                Some((lut, mode)) if !lut.is_empty() => {
+                    let idx = ((s * (lut.len() - 1) as f32) + 0.5) as usize;
+                    let c = lut[idx.min(lut.len() - 1)];
+                    // Off ignores the ramp alpha (opaque); Strength / Sprite Alpha show it as opacity
+                    // over a checker so the transparency reads.
+                    let alpha = if matches!(mode, RampAlphaMode::None) {
+                        1.0
+                    } else {
+                        c[3].clamp(0.0, 1.0)
+                    };
+                    let bg = if (((px / 6) + (py / 6)) & 1) == 0 {
+                        0.80
+                    } else {
+                        0.55
+                    };
+                    let over = |ch: f32| bg * (1.0 - alpha) + ch * alpha;
+                    [over(c[0]), over(c[1]), over(c[2])]
+                }
+                _ => [s, s, s], // grayscale (the raw scalar)
+            };
             let i = ((py * w + px) * 4) as usize;
-            out[i] = g;
-            out[i + 1] = g;
-            out[i + 2] = g;
+            out[i] = enc(r);
+            out[i + 1] = enc(g);
+            out[i + 2] = enc(b);
             out[i + 3] = 255;
         }
     }

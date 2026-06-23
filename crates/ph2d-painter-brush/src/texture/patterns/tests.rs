@@ -156,6 +156,7 @@ fn texture_preview_is_grayscale_opaque_and_varies() {
         [1.0, 1.0],
         [0.0, 0.0],
         None,
+        None,
         &mut buf,
         w,
         h,
@@ -179,9 +180,64 @@ fn texture_preview_is_grayscale_opaque_and_varies() {
         [1.0, 1.0],
         [0.0, 0.0],
         None,
+        None,
         &mut tiny,
         w,
         h,
     );
     assert_eq!(tiny, [7u8; 4], "too-small buffer left untouched");
+}
+
+#[test]
+fn texture_preview_colorizes_with_the_ramp_and_shows_alpha() {
+    use crate::ramp_alpha::RampAlphaMode;
+    let (w, h) = (32u32, 24u32);
+    let mut params = [0.5f32; 6];
+    params[2] = 0.0; // hard checker → s is exactly 0 or 1
+    // LUT: opaque RED at s=0 … TRANSPARENT green at s=1 (sRGB-straight RGBA).
+    let mut lut = [[0.0f32; 4]; 256];
+    for (i, c) in lut.iter_mut().enumerate() {
+        let t = i as f32 / 255.0;
+        *c = [1.0 - t, t, 0.0, 1.0 - t]; // red→green, alpha 1→0
+    }
+    let render = |mode| {
+        let mut buf = vec![0u8; (w * h * 4) as usize];
+        render_texture_preview(
+            TextureKind::Checker,
+            params,
+            [1.0, 1.0],
+            [0.0, 0.0],
+            None,
+            Some((&lut[..], mode)),
+            &mut buf,
+            w,
+            h,
+        );
+        buf
+    };
+    // Sprite-alpha mode: the s=1 (transparent) cells composite over the checker → NOT pure green;
+    // the s=0 cells are opaque red.
+    let sprite = render(RampAlphaMode::TextureAlpha);
+    let mut reddish = 0;
+    let mut pure_green = 0;
+    for px in sprite.chunks_exact(4) {
+        if px[0] > 150 && px[1] < 90 {
+            reddish += 1;
+        }
+        if px[0] < 40 && px[1] > 215 {
+            pure_green += 1;
+        }
+    }
+    assert!(reddish > 0, "the opaque ramp end paints red");
+    assert_eq!(
+        pure_green, 0,
+        "the transparent ramp end is composited over the checker, never pure green"
+    );
+    // Off mode: alpha ignored → the s=1 cells ARE pure-ish green (no checker bleed).
+    let off = render(RampAlphaMode::None);
+    let off_green = off
+        .chunks_exact(4)
+        .filter(|px| px[0] < 40 && px[1] > 215)
+        .count();
+    assert!(off_green > 0, "Off mode shows the opaque green end");
 }

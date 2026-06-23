@@ -20,8 +20,8 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind, TextureMapping, param_specs, render_texture_preview,
+    BrushSettings, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
+    TEX_SIZE_MIN, TextureKind, TextureMapping, param_specs, render_texture_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -198,9 +198,10 @@ pub(crate) fn paint_texture_section(
     crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)
 }
 
-/// Real-time grayscale preview of the active texture pattern: re-rendered each frame from the
-/// published snapshot (kind + params + size + offset) into a small buffer, then scale-blitted as one
-/// image. Bounded resolution keeps it cheap; reflects every shape knob live as the user drags.
+/// Real-time preview of the active texture pattern: re-rendered each frame from the published snapshot
+/// (kind + params + size + offset) into a small buffer, then scale-blitted as one image. Grayscale by
+/// default; when the Color Ramp is on it is **ramp-coloured with the stop alpha** (translucent stops
+/// composite over a checker). Bounded resolution keeps it cheap; reflects every knob live.
 fn paint_texture_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -211,6 +212,24 @@ fn paint_texture_preview(
 ) -> f32 {
     let ph = (content_w * 0.5).clamp(56.0, 120.0); // a wide preview strip
     let rect = Rect::new(x, y, content_w, ph);
+    // When the Color Ramp is on, bake a 256-entry sRGB-RGBA LUT by linearly interpolating the snapshot
+    // stops (incl. alpha) — same colours as the ramp bar above. `None` → grayscale scalar preview.
+    let mut lut = [[0.0f32; 4]; 256];
+    let ramp = {
+        let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
+        if brush.texture_ramp_enabled && count > 0 {
+            let stops = &brush.texture_ramp_stops[..count];
+            for (i, slot) in lut.iter_mut().enumerate() {
+                *slot = ramp_lut_color(stops, i as f32 / 255.0);
+            }
+            Some((
+                &lut[..],
+                RampAlphaMode::from_u8(brush.texture_ramp_alpha_mode),
+            ))
+        } else {
+            None
+        }
+    };
     // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
     let bw = 140u32;
     let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
@@ -221,6 +240,7 @@ fn paint_texture_preview(
         brush.texture_size,
         brush.texture_offset,
         None, // imported-image pixels aren't in the snapshot → Image kind previews flat
+        ramp,
         &mut buf,
         bw,
         bh,
@@ -245,6 +265,36 @@ fn paint_texture_preview(
         resolve(ColorToken::Border, theme),
     );
     y + ph + Spacing::Sm.px()
+}
+
+/// Linearly interpolate the snapshot ramp `stops` (`[pos, r, g, b, a, id]`, sRGB, sorted by `pos`) at
+/// `t ∈ [0, 1]` → `[r, g, b, a]`. Mirrors the ramp bar's `ramp_color_at` (the preview matches the bar,
+/// not the exact paint interp curve) and carries the alpha through.
+fn ramp_lut_color(stops: &[[f32; 6]], t: f32) -> [f32; 4] {
+    if stops.is_empty() {
+        return [0.0, 0.0, 0.0, 1.0];
+    }
+    if t <= stops[0][0] {
+        return [stops[0][1], stops[0][2], stops[0][3], stops[0][4]];
+    }
+    for w in stops.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        if t >= a[0] && t <= b[0] {
+            let f = if b[0] > a[0] {
+                (t - a[0]) / (b[0] - a[0])
+            } else {
+                0.0
+            };
+            return [
+                a[1] + (b[1] - a[1]) * f,
+                a[2] + (b[2] - a[2]) * f,
+                a[3] + (b[3] - a[3]) * f,
+                a[4] + (b[4] - a[4]) * f,
+            ];
+        }
+    }
+    let l = stops[stops.len() - 1];
+    [l[1], l[2], l[3], l[4]]
 }
 
 /// Deferred paint of the Texture section's open dropdown popovers (Kind + Mapping), drained at the

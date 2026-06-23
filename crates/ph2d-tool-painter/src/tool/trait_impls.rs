@@ -306,6 +306,18 @@ impl Tool for PainterTool {
                     self.ramp_set_stop_color(i as usize, [r as u8, g as u8, b as u8]);
                 }
             }
+            // Ramp stop drag on the bar: value = "idx:x" (x = normalized position `0..1`).
+            PanelEvent::SelectOption(id, value)
+                if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT =>
+            {
+                let mut it = value.split(':');
+                if let (Some(Ok(i)), Some(Ok(x))) = (
+                    it.next().map(str::parse::<usize>),
+                    it.next().map(str::parse::<f32>),
+                ) {
+                    self.ramp_move_stop(i, x);
+                }
+            }
             // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The
             // stable id (not a sorted index) keeps the handle grabbed across the
             // re-sort when a point is dragged past another. ─────────────────

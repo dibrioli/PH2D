@@ -1468,6 +1468,28 @@ fn texture_params_reset_on_kind_change_and_set_per_slot() {
 }
 
 #[test]
+fn ramp_move_stop_clamps_between_neighbours() {
+    let mut t = white_canvas(32, 8.0);
+    t.ramp_add_stop(); // default 2 stops (0, 1) + one at the 0.5 gap → 3 stops; idx 1 = 0.5
+    assert_eq!(t.texture_ramp().len(), 3);
+    // Dragging the middle stop past the last (→ 1.5) clamps it just below 1.0 → index stays 1.
+    assert_eq!(
+        t.ramp_move_stop(1, 1.5),
+        1,
+        "clamped between neighbours → no re-sort"
+    );
+    let mid = t.texture_ramp().stops()[1].pos;
+    assert!(
+        mid > 0.5 && mid < 1.0,
+        "moved up but stayed below the last stop: {mid}"
+    );
+    // Dragging below 0 clamps just above 0.0 → still index 1, still left of where it was.
+    assert_eq!(t.ramp_move_stop(1, -1.0), 1);
+    let lo = t.texture_ramp().stops()[1].pos;
+    assert!(lo > 0.0 && lo < mid, "clamped above the first stop: {lo}");
+}
+
+#[test]
 fn textured_dab_masks_part_of_the_footprint() {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     let mut t = white_canvas(64, 14.0);

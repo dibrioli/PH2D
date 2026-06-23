@@ -1,17 +1,9 @@
-//! Painter layers `apply_event` — thin forwarder (ADR-0040 TG-B), mirror
-//! do `ph2d-panel-painter-sidebar` event.
-//!
-//! The panel keeps NO semantic mapping. Each `WidgetEvent` is classified into a
-//! tool-agnostic [`PanelEvent`] and pushed via `EditorAction::ToolPanelEvent`;
-//! the shell's action-bus drain calls `PainterTool::handle_panel_event` on the
-//! active tool, which decodes the per-row id back to its `(layer, kind)` and
-//! applies the edit.
-//!
-//! Per-row ids are decoded here only to pick the right `PanelEvent` shape:
-//! row-select / visibility eye → `Click`, opacity slider → `SetValue`, blend
-//! dropdown option → `SelectOption(blend_id, mode_u8)`. The blend chip itself
-//! opens/closes its popover via the generic `Dropdown` dispatch (not routed
-//! here). The decode uses the published `current_layers()` snapshot.
+//! Painter layers `apply_event` — thin forwarder (ADR-0040 TG-B). The panel keeps NO semantic
+//! mapping: each `WidgetEvent` is classified into a tool-agnostic [`PanelEvent`] and pushed via
+//! `EditorAction::ToolPanelEvent`; the shell's action-bus drain calls `PainterTool::handle_panel_event`,
+//! which decodes the id back to its `(layer, kind)` and applies the edit. Per-row ids are decoded here
+//! only to pick the `PanelEvent` shape (Click / SetValue / SelectOption) off the `current_layers()`
+//! snapshot; dropdown chips open/close via the generic `Dropdown` dispatch, not here.
 
 use crate::state::{self, PainterLayersPanelState};
 use ph2d_editor_core::action_bus::EditorAction;
@@ -228,12 +220,10 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 _ => false,
             }
         }
-        // Per-row opacity slider drag — read the freshly-dispatched `0..1`
-        // value and forward normalized (the linked chip edit propagates back
-        // to the slider, so its ValueChanged arrives here too — single route).
+        // Per-row opacity slider drag — forward the dispatched `0..1` (the linked chip edit
+        // propagates back to the slider, so its ValueChanged arrives here too — single route).
         WidgetEvent::ValueChanged(id) => {
-            // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` (global slot,
-            // `Some` only for a `CurvePoint`) → drain, re-derive the layer, forward to the tool.
+            // W4 §3 — a Curves control-point 2-D drag stashed `(parent, ch, idx, x, y)` → drain it.
             if let Some((parent, ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
                 if let Some(stack) = state::current_layers() {
                     if let Some(layer) = stack
@@ -514,8 +504,18 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Brush sliders (Size / Strength + the Stroke-section sliders) drag →
-        // forward the freshly-dispatched 0..1 track value; the tool maps each.
+        // Color Ramp stop drag: CurvePoint stashed `(_, _, idx, x, _)` → forward `"idx:x"`.
+        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT => {
+            if let Some((_p, _c, idx, x, _y)) = host.store_mut().take_curve_point_drag() {
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
+                        format!("{idx}:{x}"),
+                    )));
+            }
+            Some(true)
+        }
+        // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.
         WidgetEvent::ValueChanged(id)
             if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
                 || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER

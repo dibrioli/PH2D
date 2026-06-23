@@ -88,11 +88,18 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_REMOVE: NodeId =
 pub const PAINTER_BRUSH_TEXTURE_RAMP_SWATCH: NodeId =
     hash_node_id("painter_brush.texture_ramp_swatch");
 
-/// Stable [`NodeId`] for ramp stop `i`'s draggable handle (a `CurvePoint` under
-/// [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]). Bounded by the snapshot's stop count.
+/// Stable [`NodeId`] for ramp stop `i`'s **colour swatch** button (opens the picker). Bounded by the
+/// snapshot's stop count.
 #[must_use]
 pub fn painter_brush_texture_ramp_stop_id(i: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.texrampstop.{i}"))
+}
+
+/// Stable [`NodeId`] for ramp stop `i`'s **draggable position handle** on the bar (a `CurvePoint`
+/// under [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]; distinct from its swatch button id).
+#[must_use]
+pub fn painter_brush_texture_ramp_handle_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.texramphandle.{i}"))
 }
 
 /// Stable [`NodeId`] for ramp colour-mode option `m` in the open Mode dropdown popover.

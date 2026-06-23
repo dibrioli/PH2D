@@ -18,12 +18,27 @@ impl PainterTool {
         self.paint.texture_ramp_dirty = true;
     }
 
-    /// Move ramp stop `idx` to normalized position `pos` (re-sorts); returns the stop's new index.
+    /// Move ramp stop `idx` to normalized position `pos`, **clamped strictly between its neighbours**
+    /// so it never crosses them — the drag keeps a stable index (no re-sort), matching gradient-editor
+    /// convention. Returns the (unchanged) index.
     pub fn ramp_move_stop(&mut self, idx: usize, pos: f32) -> usize {
-        let new_i = self
-            .paint
-            .texture_ramp
-            .set_position(idx, pos.clamp(0.0, 1.0));
+        const EPS: f32 = 1e-3;
+        let stops = self.paint.texture_ramp.stops();
+        if idx >= stops.len() {
+            return idx;
+        }
+        let lo = if idx > 0 { stops[idx - 1].pos } else { 0.0 };
+        let hi = if idx + 1 < stops.len() {
+            stops[idx + 1].pos
+        } else {
+            1.0
+        };
+        let clamped = if hi - lo > 2.0 * EPS {
+            pos.clamp(lo + EPS, hi - EPS)
+        } else {
+            (lo + hi) * 0.5
+        };
+        let new_i = self.paint.texture_ramp.set_position(idx, clamped);
         self.paint.texture_ramp_dirty = true;
         new_i
     }

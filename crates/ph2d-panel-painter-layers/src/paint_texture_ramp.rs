@@ -1,20 +1,23 @@
 //! The Texture section's **Color Ramp** sub-editor — maps the texture's scalar to a colour gradient
 //! (the reusable `ph2d_color::ColorRamp`). Mirrors Blender's Color Ramp panel: an enable toggle, the
-//! RGB/HSV/HSL **Mode** + interpolation **Interp** dropdowns, a live gradient **bar** with a marker
-//! per stop, and **+ / −** to add (largest-gap) / remove (last) stops.
+//! RGB/HSV/HSL **Mode** + interpolation **Interp** dropdowns, a live gradient **bar** with a
+//! draggable handle per stop (position) + a clickable colour swatch per stop (opens the shared
+//! picker), and **+ / −** to add (largest-gap) / remove (last) stops.
 //!
 //! Painted off the Copy [`BrushSettings`] snapshot (the tool owns the ramp); edits forward over the
-//! frozen `PanelEvent` channel to `PainterTool::*_texture_ramp*`. Per-stop colour editing + stop
-//! dragging are follow-ups; this v1 makes the ramp reachable + structurally editable.
+//! frozen `PanelEvent` channel to `PainterTool::*_texture_ramp*`. The bar handles reuse the
+//! foundational `CurvePoint` drag (as the falloff editor); the swatches reuse the shared picker.
 
 use crate::paint::register_button;
 use crate::paint_brush::{paint_dropdown_popover, paint_dropdown_row, paint_toggle_row};
 use crate::state;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
-    self as core_ids, painter_brush_texture_ramp_interp_option_id,
-    painter_brush_texture_ramp_mode_option_id, painter_brush_texture_ramp_stop_id,
+    self as core_ids, painter_brush_texture_ramp_handle_id,
+    painter_brush_texture_ramp_interp_option_id, painter_brush_texture_ramp_mode_option_id,
+    painter_brush_texture_ramp_stop_id,
 };
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
 };
@@ -32,6 +35,7 @@ const STRIPS: usize = 64; // gradient-preview strip count
 const MARK_R: f32 = 4.0; // LITERAL-PX-OK: stop marker radius
 const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: bar outline stroke width
 const SWATCH_W: f32 = 26.0; // LITERAL-PX-OK: per-stop colour swatch width
+const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's pointer grab box
 
 /// Paint the Color Ramp editor at `y`, returning the next `y`. The Mode / Interp dropdowns stash
 /// their open rects for the deferred [`paint_texture_ramp_popovers`] pass.
@@ -218,15 +222,25 @@ fn paint_ramp_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brus
         OUTLINE_W,
         resolve(ColorToken::Border, theme),
     );
-    for s in stops {
+    // Each marker is a draggable handle (a `CurvePoint` whose `x` → the stop position; `y` ignored).
+    for (i, s) in stops.iter().enumerate() {
         let mx = bar.x + s[0].clamp(0.0, 1.0) * bar.w;
-        fill_circle(
-            ctx.scene,
-            mx,
-            bar.y + bar.h,
-            MARK_R,
-            resolve(ColorToken::Text1, theme),
+        let my = bar.y + bar.h;
+        let id = painter_brush_texture_ramp_handle_id(i as u8);
+        ctx.host.store_mut().register(
+            id,
+            InteractiveState::CurvePoint {
+                parent: core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
+                channel: 0,
+                index: i as u8,
+                canvas: bar,
+            },
         );
+        ctx.host.hit_index_mut().register(
+            id,
+            Rect::new(mx - GRAB_R, my - GRAB_R, GRAB_R * 2.0, GRAB_R * 2.0),
+        );
+        fill_circle(ctx.scene, mx, my, MARK_R, resolve(ColorToken::Text1, theme));
     }
 }
 

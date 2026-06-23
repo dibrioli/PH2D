@@ -101,60 +101,56 @@ pub fn stamp_dab_textured(
         return None;
     }
 
-    let inv_radius = 1.0 / radius;
-    let color = spec.color;
-    let blend = spec.blend;
-    // Texture frame, only when a texture is actually assigned (else the per-pixel sample is skipped
-    // entirely so the texture-free path costs nothing).
-    let tex = tex.filter(|_| spec.texture.is_active());
-    let mut touched = false;
+    let stride = (width as usize) * 4;
+    let ctx = DabCtx {
+        spec,
+        // Texture frame, only when a texture is actually assigned (else the per-pixel sample is
+        // skipped entirely so the texture-free path costs nothing).
+        tex: tex.filter(|_| spec.texture.is_active()),
+        image: image.copied(),
+        center,
+        cx,
+        cy,
+        inv_radius: 1.0 / radius,
+        radius,
+        coverage,
+        preserve_alpha,
+        x0,
+        x1,
+        stride,
+    };
 
-    for py in y0..y1 {
-        let dy = (py as f32 + 0.5) - cy;
-        let row = (py as usize) * (width as usize) * 4;
-        for px in x0..x1 {
-            let dx = (px as f32 + 0.5) - cx;
-            let t = (dx * dx + dy * dy).sqrt() * inv_radius;
-            let mut w = spec.falloff_weight(t);
-            // Skip pixels the falloff already zeroes (the bbox corners outside the dab radius)
-            // BEFORE the texture sample — the texture only modulates where the dab paints, so
-            // sampling it there is pure waste (it dominates a large Anchored re-stamp).
-            if w <= 0.0 {
-                continue;
-            }
-            // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
-            // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
-            if let Some(b) = tex {
-                w *= crate::texture::sample(&spec.texture, b, px, py, center, radius, image);
-                if w <= 0.0 {
-                    continue;
-                }
-            }
-            let i = row + (px as usize) * 4;
-            let dst = [
-                f32::from(buf[i]) / 255.0,
-                f32::from(buf[i + 1]) / 255.0,
-                f32::from(buf[i + 2]) / 255.0,
-                f32::from(buf[i + 3]) / 255.0,
-            ];
-            // Alpha lock: gate coverage by the destination's existing alpha so paint
-            // recolours the shape without extending it.
-            let a = if preserve_alpha {
-                w * coverage * dst[3]
-            } else {
-                w * coverage
-            };
-            if a <= 0.0 {
-                continue;
-            }
-            let out = crate::blend::blend_over(blend, dst, color, a);
-            buf[i] = encode(out[0]);
-            buf[i + 1] = encode(out[1]);
-            buf[i + 2] = encode(out[2]);
-            buf[i + 3] = encode(out[3]);
-            touched = true;
-        }
-    }
+    // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every
+    // pointer move) splits into disjoint row bands across the cores. The result is bit-identical to
+    // the serial path — every pixel is written by exactly one thread and its value never depends on
+    // the band count — so determinism (HR-5) holds. Small dabs stay serial (thread spawn isn't worth
+    // it). The texture stays fully visible during the drag.
+    let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
+    let rows = (y1 - y0) as usize;
+    let area = rows * ((x1 - x0) as usize);
+    let touched = if area >= PARALLEL_MIN_AREA && rows > 1 {
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .clamp(1, rows);
+        let rows_per_band = rows.div_ceil(threads);
+        let ctx = &ctx; // share by reference; each band's `move` closure captures the Copy ref
+        std::thread::scope(|s| {
+            region
+                .chunks_mut(rows_per_band * stride)
+                .enumerate()
+                .map(|(bi, chunk)| {
+                    let band_y0 = y0 + (bi * rows_per_band) as i64;
+                    s.spawn(move || stamp_band(ctx, chunk, band_y0))
+                })
+                // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
+                .collect::<Vec<_>>()
+                .into_iter()
+                .fold(false, |acc, h| acc | h.join().unwrap_or(false))
+        })
+    } else {
+        stamp_band(&ctx, region, y0)
+    };
 
     if !touched {
         return None;
@@ -165,6 +161,93 @@ pub fn stamp_dab_textured(
         w: (x1 - x0) as u32,
         h: (y1 - y0) as u32,
     })
+}
+
+/// Footprint area (pixels) at or above which [`stamp_dab_textured`] splits the dab across cores.
+/// Below it, the serial path wins (thread spawn isn't worth ~1 ms of work). ~128k px ≈ a radius-200
+/// dab — small brush dabs (Space) stay serial; large Anchored stamps parallelise.
+const PARALLEL_MIN_AREA: usize = 1 << 17;
+
+/// Read-only per-dab context shared by every row band of a [`stamp_dab_textured`] stamp. `Sync`
+/// (refs to `Sync` data + `Copy` scalars), so `&DabCtx` is safely shared across the band threads.
+struct DabCtx<'a> {
+    spec: &'a BrushSpec,
+    tex: Option<&'a TexDabBasis>,
+    image: Option<ImageMask<'a>>,
+    center: [f32; 2],
+    cx: f32,
+    cy: f32,
+    inv_radius: f32,
+    radius: f32,
+    coverage: f32,
+    preserve_alpha: bool,
+    x0: i64,
+    x1: i64,
+    stride: usize,
+}
+
+/// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
+/// row `py` lives at local offset `(py - band_y0) * stride`). Returns whether any pixel was written.
+/// Pure over disjoint bands — no shared mutable state — so bands run in parallel deterministically.
+fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
+    let (blend, color) = (ctx.spec.blend, ctx.spec.color);
+    let mut touched = false;
+    for r in 0..dst.len() / ctx.stride {
+        let py = band_y0 + r as i64;
+        let dy = (py as f32 + 0.5) - ctx.cy;
+        let row = r * ctx.stride;
+        for px in ctx.x0..ctx.x1 {
+            let dx = (px as f32 + 0.5) - ctx.cx;
+            let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+            let mut w = ctx.spec.falloff_weight(t);
+            // Skip pixels the falloff already zeroes (the bbox corners outside the dab radius)
+            // BEFORE the texture sample — the texture only modulates where the dab paints, so
+            // sampling it there is pure waste (it dominates a large Anchored re-stamp).
+            if w <= 0.0 {
+                continue;
+            }
+            // The brush texture multiplies the falloff mask, exactly as the falloff multiplies
+            // coverage — so a texel value of 0 paints nothing, 1 paints the full falloff weight.
+            if let Some(b) = ctx.tex {
+                w *= crate::texture::sample(
+                    &ctx.spec.texture,
+                    b,
+                    px,
+                    py,
+                    ctx.center,
+                    ctx.radius,
+                    ctx.image.as_ref(),
+                );
+                if w <= 0.0 {
+                    continue;
+                }
+            }
+            let i = row + (px as usize) * 4;
+            let prev = [
+                f32::from(dst[i]) / 255.0,
+                f32::from(dst[i + 1]) / 255.0,
+                f32::from(dst[i + 2]) / 255.0,
+                f32::from(dst[i + 3]) / 255.0,
+            ];
+            // Alpha lock: gate coverage by the destination's existing alpha so paint
+            // recolours the shape without extending it.
+            let a = if ctx.preserve_alpha {
+                w * ctx.coverage * prev[3]
+            } else {
+                w * ctx.coverage
+            };
+            if a <= 0.0 {
+                continue;
+            }
+            let out = crate::blend::blend_over(blend, prev, color, a);
+            dst[i] = encode(out[0]);
+            dst[i + 1] = encode(out[1]);
+            dst[i + 2] = encode(out[2]);
+            dst[i + 3] = encode(out[3]);
+            touched = true;
+        }
+    }
+    touched
 }
 
 #[inline]
@@ -307,5 +390,39 @@ mod tests {
         assert_eq!(alpha(1, 4), 255, "opaque alpha preserved");
         // Transparent side untouched — no alpha created.
         assert_eq!(alpha(6, 4), 0, "alpha-lock did not paint into transparency");
+    }
+
+    #[test]
+    fn large_dab_takes_the_parallel_path_and_stamps_correctly() {
+        // A dab past `PARALLEL_MIN_AREA` splits across row bands; the result must match the serial
+        // expectation (centre + interior painted; a far corner outside the radius untouched). Guards
+        // a band-offset bug — the small-canvas tests above all take the serial path.
+        let (w, h) = (600u32, 600u32);
+        let mut buf = solid(w, h, [255, 255, 255, 255]);
+        let spec = BrushSpec {
+            radius_px: 250.0,
+            color: [0.0, 0.0, 0.0],
+            blend: BrushBlend::Mix,
+            falloff: Falloff::Constant,
+            hardness: 1.0, // hard disk
+            ..Default::default()
+        };
+        let rect = stamp_dab(&mut buf, w, h, [300.0, 300.0], &spec, 1.0, false).expect("painted");
+        assert!(
+            rect.w as usize * rect.h as usize >= PARALLEL_MIN_AREA,
+            "this dab must cross the parallel threshold"
+        );
+        let at = |x: u32, y: u32| buf[((y * w + x) * 4) as usize];
+        assert_eq!(at(300, 300), 0, "centre painted black");
+        assert_eq!(
+            at(300, 80),
+            0,
+            "an interior point (dist 220 < 250) is painted"
+        );
+        assert_eq!(
+            at(5, 5),
+            255,
+            "a far corner outside the radius is untouched"
+        );
     }
 }

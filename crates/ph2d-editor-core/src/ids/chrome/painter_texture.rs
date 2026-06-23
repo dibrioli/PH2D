@@ -32,6 +32,25 @@ pub const PAINTER_BRUSH_TEXTURE_OFFSET_Y: NodeId = hash_node_id("painter_brush.t
 pub const PAINTER_BRUSH_TEXTURE_SIZE_X: NodeId = hash_node_id("painter_brush.texture_size_x");
 /// Brush texture **Size Y** slider (axis 1). See [`PAINTER_BRUSH_TEXTURE_SIZE_X`].
 pub const PAINTER_BRUSH_TEXTURE_SIZE_Y: NodeId = hash_node_id("painter_brush.texture_size_y");
+/// Per-pattern parameter slider **0** (`0..1` track). The kind's [`ParamSpec`] at this slot gives the
+/// label + default; `SetValue` → `set_brush_texture_param_norm(0, ..)`. Painted only when the active
+/// kind exposes this slot (see `param_specs`). [`ParamSpec`]: ph2d_painter_brush::ParamSpec
+pub const PAINTER_BRUSH_TEXTURE_PARAM_0: NodeId = hash_node_id("painter_brush.texture_param_0");
+/// Per-pattern parameter slider **1**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
+pub const PAINTER_BRUSH_TEXTURE_PARAM_1: NodeId = hash_node_id("painter_brush.texture_param_1");
+/// Per-pattern parameter slider **2**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
+pub const PAINTER_BRUSH_TEXTURE_PARAM_2: NodeId = hash_node_id("painter_brush.texture_param_2");
+/// Per-pattern parameter slider **3**. See [`PAINTER_BRUSH_TEXTURE_PARAM_0`].
+pub const PAINTER_BRUSH_TEXTURE_PARAM_3: NodeId = hash_node_id("painter_brush.texture_param_3");
+
+/// The four per-pattern parameter slider ids, indexed by [`ph2d_painter_brush::TextureSettings::params`]
+/// slot. Lets the panel / populate / dispatch iterate without hardcoding each.
+pub const PAINTER_BRUSH_TEXTURE_PARAMS: [NodeId; 4] = [
+    PAINTER_BRUSH_TEXTURE_PARAM_0,
+    PAINTER_BRUSH_TEXTURE_PARAM_1,
+    PAINTER_BRUSH_TEXTURE_PARAM_2,
+    PAINTER_BRUSH_TEXTURE_PARAM_3,
+];
 
 /// Derive the stable [`NodeId`] for texture-mapping option `m` (the `TextureMapping` wire
 /// discriminant) in the open Mapping dropdown popover. Only the open popover's options are

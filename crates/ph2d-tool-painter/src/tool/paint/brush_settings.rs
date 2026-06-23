@@ -148,6 +148,9 @@ pub struct BrushSettings {
     pub texture_offset: [f32; 2],
     /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
     pub texture_size: [f32; 2],
+    /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (see
+    /// `ph2d_painter_brush::param_specs`). The panel paints a slider per exposed slot.
+    pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` =
@@ -223,6 +226,7 @@ impl PainterTool {
             texture_random: b.texture.random_angle,
             texture_offset: b.texture.offset,
             texture_size: b.texture.size,
+            texture_params: b.texture.params,
         }
     }
 
@@ -408,6 +412,7 @@ impl PainterTool {
     pub fn set_brush_texture_kind(&mut self, k: u8) {
         let kind = TextureKind::from_u8(k);
         self.paint.brush.texture.kind = kind;
+        self.reset_texture_params();
         if kind == TextureKind::Image {
             self.paint.texture_image_pending = true;
         }
@@ -432,6 +437,7 @@ impl PainterTool {
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.
     pub fn new_brush_texture(&mut self) {
         self.paint.brush.texture.kind = TextureKind::Noise;
+        self.reset_texture_params();
     }
 
     /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).
@@ -473,6 +479,27 @@ impl PainterTool {
             let span = TEX_SIZE_MAX - TEX_SIZE_MIN;
             self.paint.brush.texture.size[axis] = TEX_SIZE_MIN + t.clamp(0.0, 1.0) * span;
         }
+    }
+
+    /// Set per-pattern parameter `slot` from the slider's `0..1` track (stored normalized; each
+    /// pattern maps its own range — see `ph2d_painter_brush::param_specs`).
+    pub fn set_brush_texture_param_norm(&mut self, slot: usize, t: f32) {
+        if slot < ph2d_painter_brush::MAX_TEX_PARAMS {
+            self.paint.brush.texture.params[slot] = t.clamp(0.0, 1.0);
+        }
+    }
+
+    /// Reset the texture params to the active kind's `param_specs` defaults (unused slots stay at the
+    /// neutral `0.5`). Called on a kind change so each pattern starts from its own sensible values.
+    fn reset_texture_params(&mut self) {
+        let mut params = [0.5; ph2d_painter_brush::MAX_TEX_PARAMS];
+        for (i, s) in ph2d_painter_brush::param_specs(self.paint.brush.texture.kind)
+            .iter()
+            .enumerate()
+        {
+            params[i] = s.default;
+        }
+        self.paint.brush.texture.params = params;
     }
 
     /// Set the absolute texture offset for `axis` (tile fractions, clamped) — used by the Stencil

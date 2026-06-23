@@ -18,7 +18,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tool_painter::{
     BrushSettings, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
-    TextureKind, TextureMapping,
+    TextureKind, TextureMapping, param_specs,
 };
 
 /// Paint the Texture section starting at `y`, returning the next `y`. The Kind picker + Mapping
@@ -170,6 +170,22 @@ pub(crate) fn paint_texture_section(
         value: size_track(brush.texture_size[1]),
         readout: &format!("{:.2}", brush.texture_size[1]),
     });
+
+    // ── Per-pattern parameters — each kind's own knobs (Contrast / Brightness + a shape param) ──
+    for (i, spec) in param_specs(kind).iter().enumerate() {
+        let value = brush.texture_params[i];
+        y = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label: spec.label,
+            id: core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
+            value,
+            readout: &format!("{value:.2}"),
+        });
+    }
     y
 }
 

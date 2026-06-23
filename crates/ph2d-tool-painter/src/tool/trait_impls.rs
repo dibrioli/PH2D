@@ -187,6 +187,11 @@ impl Tool for PainterTool {
                     self.set_brush_texture_size_norm(0, v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y {
                     self.set_brush_texture_size_norm(1, v as f32);
+                } else if let Some(slot) = core_ids::PAINTER_BRUSH_TEXTURE_PARAMS
+                    .iter()
+                    .position(|&p| p == id)
+                {
+                    self.set_brush_texture_param_norm(slot, v as f32);
                 } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
                     match kind {
                         PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),

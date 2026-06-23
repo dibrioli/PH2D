@@ -75,6 +75,11 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        // Per-pattern parameter sliders (painted only when the active kind exposes the slot).
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_0,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_1,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_2,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_3,
     ];
     for id in brush_sliders {
         store.register(

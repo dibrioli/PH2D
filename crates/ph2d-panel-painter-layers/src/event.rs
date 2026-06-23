@@ -526,7 +526,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y =>
+                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
+                || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

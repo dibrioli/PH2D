@@ -1439,6 +1439,35 @@ fn texture_setters_clamp_and_new_assigns_noise() {
 }
 
 #[test]
+fn texture_params_reset_on_kind_change_and_set_per_slot() {
+    use ph2d_painter_brush::{TextureKind, param_specs};
+    let mut t = white_canvas(32, 8.0);
+    // Selecting a kind resets params to that kind's spec defaults (Grid: …/…/Thickness=0.4).
+    t.set_brush_texture_kind(TextureKind::Grid.to_u8());
+    let specs = param_specs(TextureKind::Grid);
+    assert_eq!(specs.len(), 3, "Grid exposes Contrast/Brightness/Thickness");
+    assert!(
+        (t.brush_settings().texture_params[2] - specs[2].default).abs() < 1e-6,
+        "slot 2 reset to Grid's Thickness default ({})",
+        specs[2].default
+    );
+    // A param setter stores the normalized track; an out-of-range slot is a no-op.
+    t.set_brush_texture_param_norm(0, 0.9);
+    assert!((t.brush_settings().texture_params[0] - 0.9).abs() < 1e-6);
+    t.set_brush_texture_param_norm(9, 0.0); // bad slot ignored, no panic
+    // Switching to a kind with no shape param re-resets every slot (slot 2 → neutral 0.5).
+    t.set_brush_texture_kind(TextureKind::Diamonds.to_u8());
+    assert!(
+        (t.brush_settings().texture_params[0] - 0.5).abs() < 1e-6,
+        "Contrast reset to default on kind change"
+    );
+    assert!(
+        (t.brush_settings().texture_params[2] - 0.5).abs() < 1e-6,
+        "unused slot resets to neutral on kind change"
+    );
+}
+
+#[test]
 fn textured_dab_masks_part_of_the_footprint() {
     use ph2d_painter_brush::{TextureKind, TextureMapping, TextureSettings};
     let mut t = white_canvas(64, 14.0);

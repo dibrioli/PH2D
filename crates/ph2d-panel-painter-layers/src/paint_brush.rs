@@ -102,6 +102,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_random: false,
     texture_offset: [0.0, 0.0],
     texture_size: [1.0, 1.0],
+    texture_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],
 };
 
 /// Paint the Brush-properties body below `header_bottom` (the Painter dock in

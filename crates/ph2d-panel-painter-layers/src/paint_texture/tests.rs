@@ -126,6 +126,35 @@ fn stencil_mapping_hides_rake_and_random_but_keeps_offset_size_angle() {
 }
 
 #[test]
+fn param_sliders_register_exactly_the_kind_s_specs() {
+    use ph2d_tool_painter::param_specs;
+    // Clouds exposes 3 params (Contrast / Brightness / Detail) → first 3 param sliders paint a hit
+    // rect; the unused 4th must NOT (a painted-but-meaningless row is the silent-no-op trap).
+    let ids = painted_hit_ids(TextureKind::Clouds.to_u8());
+    let n = param_specs(TextureKind::Clouds).len();
+    assert_eq!(n, 3, "Clouds exposes Contrast + Brightness + Detail");
+    for i in 0..n {
+        assert!(
+            ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i]),
+            "param slot {i} must register a hit rect for Clouds. painted = {ids:?}"
+        );
+    }
+    assert!(
+        !ids.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[3]),
+        "Clouds uses 3 slots — slot 3 must not register"
+    );
+
+    // Diamonds exposes only Contrast + Brightness → slot 2 must stay hidden.
+    let ids2 = painted_hit_ids(TextureKind::Diamonds.to_u8());
+    assert_eq!(param_specs(TextureKind::Diamonds).len(), 2);
+    assert!(ids2.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[1]));
+    assert!(
+        !ids2.contains(&core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[2]),
+        "Diamonds has no shape param — slot 2 must not register. painted = {ids2:?}"
+    );
+}
+
+#[test]
 fn offset_and_size_tracks_are_inverse_of_the_tool_clamp() {
     // The panel maps the stored value back onto the 0..1 slider track; the centre/identity values
     // must land where the tool's setters put them (offset 0 → mid-track, size 1 → near-low track).

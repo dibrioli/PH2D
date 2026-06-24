@@ -44,6 +44,31 @@ fn palette_swatch_click_changes_picker_value() {
 }
 
 #[test]
+fn palette_io_pending_round_trips_and_replace_caps() {
+    use crate::interaction::PaletteIoKind;
+    let (mut store, _) = blender_picker_setup();
+    // No request until a button flags one; the dispatch arm calls `set_palette_io_pending`.
+    assert!(store.take_palette_io_pending().is_none());
+    store.set_palette_io_pending(NodeId(100), PaletteIoKind::Import);
+    assert_eq!(
+        store.take_palette_io_pending(),
+        Some((NodeId(100), PaletteIoKind::Import)),
+        "the host drains the pending request",
+    );
+    assert!(store.take_palette_io_pending().is_none(), "drained once");
+    // Import replaces the swatches, truncated to the 27 pre-registered hit slots.
+    let many: Vec<_> = (0..40)
+        .map(|i| ph2d_tokens::ColorValue::from_rgba8(i, 0, 0, 255))
+        .collect();
+    store.blender_palette_replace(NodeId(100), many);
+    assert_eq!(
+        store.blender_palette(NodeId(100)).map(<[_]>::len),
+        Some(27),
+        "replace caps at the swatch-slot count",
+    );
+}
+
+#[test]
 fn textarea_click_line2_places_caret_on_line2() {
     // Two lines: "abc" (3 bytes) + '\n' + "defgh" (5 bytes). Total 9.
     let (mut store, hits, rect) = textarea_setup("abc\ndefgh");

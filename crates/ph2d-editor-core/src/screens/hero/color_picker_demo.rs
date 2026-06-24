@@ -92,6 +92,8 @@ pub fn paint_blender_picker_demo(
         ],
         hex: ids::BLENDER_HEX,
         add_swatch: ids::BLENDER_ADD_SWATCH,
+        import_palette: ids::BLENDER_IMPORT_PALETTE,
+        export_palette: ids::BLENDER_EXPORT_PALETTE,
         eyedropper: ids::BLENDER_EYEDROPPER,
         drag_handle: ids::BLENDER_DRAG_HANDLE,
         swatches: [

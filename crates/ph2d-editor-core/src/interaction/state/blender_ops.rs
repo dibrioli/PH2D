@@ -120,6 +120,24 @@ impl WidgetStore {
         self.eyedropper_pending = parent;
     }
 
+    /// Flag a palette import/export request for the host to service (set by the picker dispatch on an
+    /// Import/Export button click).
+    pub fn set_palette_io_pending(
+        &mut self,
+        parent: NodeId,
+        kind: crate::interaction::PaletteIoKind,
+    ) {
+        self.palette_io_pending = Some((parent, kind));
+    }
+
+    /// Take the pending palette import/export request (the host drains it once, opens a file dialog,
+    /// then applies via [`Self::blender_palette_replace`] / reads [`Self::blender_palette`]).
+    pub fn take_palette_io_pending(
+        &mut self,
+    ) -> Option<(NodeId, crate::interaction::PaletteIoKind)> {
+        self.palette_io_pending.take()
+    }
+
     /// Append `color` to the BlenderPicker's palette. No-op if the
     /// palette wasn't initialized OR is already at the static cap
     /// (24 entries — matches the pre-registered swatch hit slots so
@@ -143,6 +161,15 @@ impl WidgetStore {
             return true;
         }
         false
+    }
+
+    /// REPLACE the BlenderPicker's palette swatches (the import path). Truncated to the static
+    /// 27-slot cap so every imported swatch keeps a pre-registered hit rect. Initialises the entry
+    /// if the picker was never seeded.
+    pub fn blender_palette_replace(&mut self, parent: NodeId, mut swatches: Vec<ColorValue>) {
+        const PALETTE_CAP: usize = 27;
+        swatches.truncate(PALETTE_CAP);
+        self.blender_palettes.insert(parent, swatches);
     }
 
     /// Read the retained HSV anchor (h, s) the picker uses to

@@ -53,6 +53,8 @@ fn populate_blender_picker(store: &mut WidgetStore) {
     );
     for (id, kind) in [
         (ids::BLENDER_ADD_SWATCH, BlenderHitKind::AddSwatch),
+        (ids::BLENDER_IMPORT_PALETTE, BlenderHitKind::ImportPalette),
+        (ids::BLENDER_EXPORT_PALETTE, BlenderHitKind::ExportPalette),
         (ids::BLENDER_EYEDROPPER, BlenderHitKind::Eyedropper),
         (ids::BLENDER_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (ids::BLENDER_WHEEL, BlenderHitKind::Wheel),

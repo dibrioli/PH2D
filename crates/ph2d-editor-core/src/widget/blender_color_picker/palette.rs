@@ -22,6 +22,8 @@ pub fn paint_palettes(
         rect,
         &[NodeId(0); 27],
         NodeId(0),
+        NodeId(0),
+        NodeId(0),
         &mut HitIndex::new(),
         scene,
         text_system,
@@ -39,6 +41,8 @@ pub fn paint_palettes_with_hits(
     rect: Rect,
     swatch_ids: &[NodeId; 27],
     add_swatch_id: NodeId,
+    import_id: NodeId,
+    export_id: NodeId,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -50,7 +54,16 @@ pub fn paint_palettes_with_hits(
     if cp.palettes.is_empty() {
         return;
     }
-    let body_rect = rect;
+    // Reserve a bottom strip for the Import / Export buttons when wired (id != 0); the swatch grid
+    // takes the rest. The host services a click (file dialog → `ph2d_color::palette`).
+    let gap = Spacing::Xs.px();
+    let has_io = import_id.0 != 0 || export_id.0 != 0;
+    let btn_h = if has_io { 22.0 } else { 0.0 };
+    let body_rect = if has_io {
+        Rect::new(rect.x, rect.y, rect.w, (rect.h - btn_h - gap).max(0.0))
+    } else {
+        rect
+    };
     if let Some(palette) = cp.palettes.get(cp.active_palette) {
         paint_palette_grid(
             palette,
@@ -62,6 +75,23 @@ pub fn paint_palettes_with_hits(
             text_system,
             theme,
         );
+    }
+    if has_io {
+        let by = rect.y + rect.h - btn_h;
+        let bw = (rect.w - gap) / 2.0;
+        for (id, label, bx) in [
+            (import_id, "Import", rect.x),
+            (export_id, "Export", rect.x + bw + gap),
+        ] {
+            if id.0 == 0 {
+                continue;
+            }
+            let br = Rect::new(bx, by, bw, btn_h);
+            let btn =
+                crate::widget::Button::new(id, label).kind(crate::widget::ButtonKind::Default);
+            crate::widget::paint_button(&btn, br, scene, text_system, theme);
+            hit_index.register(id, br);
+        }
     }
 }
 

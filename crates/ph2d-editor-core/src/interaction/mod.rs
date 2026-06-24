@@ -52,5 +52,5 @@ pub use drag::{
 pub use event::{PainterLayerDrop, WidgetEvent};
 pub use hit::HitIndex;
 pub use state::{InteractiveState, WidgetStore};
-pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData};
+pub use types::{BlenderHitKind, ContextMenuKind, ContextMenuRequest, NoteData, PaletteIoKind};
 pub use util::{format_number, hsv_to_color_value};

@@ -78,7 +78,82 @@ pub fn forward_to_hero(
             eprintln!("[hero] unhandled event: {e:?}");
         }
     }
+    // Palette Import / Export: a click on the picker's button flagged a host file-I/O request (the
+    // picker can't open files). Import REPLACES the active palette from a chosen file; Export saves
+    // it. The format is the file extension — .gpl / .hex / .ase / .aco (via `ph2d_color::palette`).
+    if let Some((parent, io_kind)) = hero.store.take_palette_io_pending() {
+        handle_palette_io(hero, parent, io_kind);
+    }
     reparent
+}
+
+/// Service a pending palette import/export (opens an `rfd` file dialog, then applies via the
+/// `ph2d_color::palette` engine). Split out of [`forward_to_hero`] to keep that hot path readable.
+fn handle_palette_io(
+    hero: &mut ph2d_editor::HeroScreen,
+    parent: ph2d_editor::NodeId,
+    io_kind: ph2d_editor::interaction::PaletteIoKind,
+) {
+    use ph2d_color::palette::{self, PaletteData, PaletteFormat};
+    use ph2d_editor::interaction::PaletteIoKind;
+    let fmt_of = |path: &std::path::Path| {
+        path.extension()
+            .and_then(|e| e.to_str())
+            .and_then(PaletteFormat::from_extension)
+            .unwrap_or(PaletteFormat::Gpl)
+    };
+    match io_kind {
+        PaletteIoKind::Import => {
+            let Some(path) = rfd::FileDialog::new()
+                .add_filter(
+                    "Colour palette",
+                    &["gpl", "hex", "txt", "css", "ase", "aco"],
+                )
+                .pick_file()
+            else {
+                return;
+            };
+            match std::fs::read(&path).map(|b| palette::parse(fmt_of(&path), &b)) {
+                Ok(Ok(p)) => {
+                    let colors = p
+                        .colors
+                        .iter()
+                        .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
+                        .collect();
+                    hero.store.blender_palette_replace(parent, colors);
+                }
+                Ok(Err(e)) => eprintln!("[ph2d] palette import: {e}"),
+                Err(e) => eprintln!("[ph2d] palette read: {e}"),
+            }
+        }
+        PaletteIoKind::Export => {
+            let colors: Vec<[u8; 4]> = hero
+                .store
+                .blender_palette(parent)
+                .map(|s| s.iter().map(|c| c.rgba).collect())
+                .unwrap_or_default();
+            if colors.is_empty() {
+                return;
+            }
+            let Some(path) = rfd::FileDialog::new()
+                .add_filter("GIMP palette", &["gpl"])
+                .add_filter("Hex list", &["hex"])
+                .add_filter("Adobe Swatch Exchange", &["ase"])
+                .add_filter("Adobe Color", &["aco"])
+                .set_file_name("palette.gpl")
+                .save_file()
+            else {
+                return;
+            };
+            let data = PaletteData {
+                name: "Palette".to_string(),
+                colors,
+            };
+            if let Err(e) = std::fs::write(&path, palette::write(fmt_of(&path), &data)) {
+                eprintln!("[ph2d] palette export: {e}");
+            }
+        }
+    }
 }
 
 /// Sample the painted layer COMPOSITE under the screen pixel `(px, py)` for the colour-picker

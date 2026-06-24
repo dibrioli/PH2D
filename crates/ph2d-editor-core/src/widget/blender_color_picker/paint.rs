@@ -50,6 +50,9 @@ pub struct BlenderSubIds {
     pub hex: NodeId,
     /// "+ swatch" button id (appends current value to palette).
     pub add_swatch: NodeId,
+    /// Palette Import / Export button ids (host file dialog → `.gpl`/`.hex`/`.ase`/`.aco`).
+    pub import_palette: NodeId,
+    pub export_palette: NodeId,
     /// Eyedropper button id.
     pub eyedropper: NodeId,
     /// Drag-handle bar id (at top of picker — drag to reposition).
@@ -77,6 +80,8 @@ impl BlenderSubIds {
             channels_num: [NodeId(0); 4],
             hex: NodeId(0),
             add_swatch: NodeId(0),
+            import_palette: NodeId(0),
+            export_palette: NodeId(0),
             eyedropper: NodeId(0),
             drag_handle: NodeId(0),
             swatches: [NodeId(0); 27],
@@ -398,6 +403,8 @@ pub fn paint_blender_color_picker_with_store(
             palette_rect,
             &ids.swatches,
             ids.add_swatch,
+            ids.import_palette,
+            ids.export_palette,
             hit_index,
             scene,
             text_system,

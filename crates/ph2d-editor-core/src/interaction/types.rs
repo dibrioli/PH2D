@@ -12,6 +12,17 @@
 
 use ph2d_a11y::NodeId;
 
+/// A pending palette file-I/O request the picker dispatch raises and the host (shell) services by
+/// opening a file dialog: [`Import`](Self::Import) loads + REPLACES the active palette,
+/// [`Export`](Self::Export) saves it. The format is chosen from the picked file's extension.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PaletteIoKind {
+    /// Load a palette file and replace the active swatches.
+    Import,
+    /// Save the active swatches to a palette file.
+    Export,
+}
+
 /// Which sub-control of a [`super::InteractiveState::BlenderPicker`] a
 /// [`super::InteractiveState::BlenderHit`] points at.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -36,6 +47,13 @@ pub enum BlenderHitKind {
     /// "+ swatch" button at the end of the palette grid; clicking
     /// appends the picker's current value to the palette.
     AddSwatch,
+    /// "Import" palette button — clicking flags a host file-dialog request
+    /// (`WidgetStore::set_palette_io_pending`) to load a `.gpl`/`.hex`/`.ase`/
+    /// `.aco` and REPLACE the active palette's swatches.
+    ImportPalette,
+    /// "Export" palette button — flags a host file-dialog request to save the
+    /// active palette's swatches in the format the chosen extension selects.
+    ExportPalette,
     /// Eyedropper button next to the hex field. Clicking enters
     /// pixel-pick mode (the host samples the next click's color from
     /// the rendered scene).

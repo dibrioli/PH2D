@@ -316,6 +316,9 @@ pub struct WidgetStore {
     /// by the dispatch and emitted as `WidgetEvent::EyedropperPick`,
     /// signaling the host to readback the pixel under the cursor.
     pub(super) eyedropper_pending: Option<NodeId>,
+    /// Palette import/export pending: when `Some((picker, kind))`, the host opens a file dialog next
+    /// frame and loads/saves the picker's palette (see [`WidgetStore::take_palette_io_pending`]).
+    pub(super) palette_io_pending: Option<(NodeId, crate::interaction::PaletteIoKind)>,
     /// Vertical scroll offset per panel. Wheel events advance the
     /// offset; painters subtract it from content y. Clamped on each
     /// scroll to `[0, content_h - visible_h]` by the painter (which

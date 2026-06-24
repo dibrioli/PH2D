@@ -194,6 +194,9 @@ pub const BLENDER_NUM_2: NodeId = hash_node_id("blender_num_2");
 pub const BLENDER_NUM_3: NodeId = hash_node_id("blender_num_3");
 // "+ swatch" button (appends current value to palette).
 pub const BLENDER_ADD_SWATCH: NodeId = hash_node_id("blender_add_swatch");
+// Palette Import / Export buttons (host file dialog → .gpl/.hex/.ase/.aco).
+pub const BLENDER_IMPORT_PALETTE: NodeId = hash_node_id("blender_import_palette");
+pub const BLENDER_EXPORT_PALETTE: NodeId = hash_node_id("blender_export_palette");
 // Eyedropper button (enters pixel-pick mode).
 pub const BLENDER_EYEDROPPER: NodeId = hash_node_id("blender_eyedropper");
 // Drag handle bar at the top of the picker — drag to move.

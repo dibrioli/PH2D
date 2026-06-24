@@ -188,6 +188,15 @@ pub(super) fn apply_blender_hit(
             store.blender_palette_push(parent, cur);
             Some(parent)
         }
+        BlenderHitKind::ImportPalette => {
+            // Flag the host to open a load dialog + REPLACE the palette (the picker can't do file I/O).
+            store.set_palette_io_pending(parent, crate::interaction::PaletteIoKind::Import);
+            Some(parent)
+        }
+        BlenderHitKind::ExportPalette => {
+            store.set_palette_io_pending(parent, crate::interaction::PaletteIoKind::Export);
+            Some(parent)
+        }
         BlenderHitKind::Eyedropper => {
             // Toggle eyedropper "pending" mode. While pending, the
             // next pointer Down anywhere except this button is

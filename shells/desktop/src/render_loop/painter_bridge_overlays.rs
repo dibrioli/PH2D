@@ -39,9 +39,8 @@ pub(super) fn draw_overlays(
 
 /// **Repeat Image**: draw the painted composite repeated in the 8 neighbour positions around the
 /// sprite (a 3×3 tile grid), so the artist sees the seamless tiling result. The centre is the real
-/// sprite (drawn by the pipeline); we draw only the 8 wraps as overlay images. The neighbour spacing
-/// is the sprite size × the per-axis **Aspect Ratio** (so it works regardless of the sprite's own AR).
-/// No-op unless Repeat Image is on and a CPU composite for the selected sprite is available.
+/// sprite (drawn by the pipeline); we draw only the 8 wraps as overlay images, each abutting at the
+/// sprite edges. No-op unless Repeat Image is on and a CPU composite for the selected sprite exists.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_repeat_image(
     painter: &PainterTool,
@@ -79,10 +78,9 @@ pub(super) fn draw_repeat_image(
         camera,
         window_size,
     );
-    let aspect = painter.tile_aspect();
     let k = f64::from(window_size.height) / f64::from(camera.height_world).max(1e-6);
-    let off_w = f64::from(sprite.size[0]) * f64::from(aspect[0]);
-    let off_h = f64::from(sprite.size[1]) * f64::from(aspect[1]);
+    let off_w = f64::from(sprite.size[0]);
+    let off_h = f64::from(sprite.size[1]);
     for dy in [-1i32, 0, 1] {
         for dx in [-1i32, 0, 1] {
             if dx == 0 && dy == 0 {

@@ -2237,36 +2237,19 @@ fn a_selected_mask_is_paintable_e2e() {
 }
 
 #[test]
-fn repeat_image_and_aspect_controls_reach_the_tool_e2e() {
+fn repeat_image_toggle_reaches_the_tool_e2e() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
 
     let mut t = PainterTool::default();
-    // Defaults: off, aspect 1.0.
-    assert!(!t.repeat_image());
-    assert_eq!(t.tile_aspect(), [1.0, 1.0]);
-    // Toggle Repeat Image + drive the Aspect sliders via the panel (wiring proof).
+    assert!(!t.repeat_image(), "off by default");
+    // Toggle Repeat Image via the panel (wiring proof — a dropped Click would leave it off).
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_REPEAT_IMAGE));
-    t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TILE_ASPECT_X,
-        1.0,
-    ));
-    t.handle_panel_event(PanelEvent::SetValue(
-        core_ids::PAINTER_BRUSH_TILE_ASPECT_Y,
-        0.0,
-    ));
     assert!(t.repeat_image(), "Repeat Image toggle reached the tool");
-    // track 1.0 → TILE_ASPECT_MAX; track 0.0 → TILE_ASPECT_MIN.
-    assert_eq!(
-        t.tile_aspect(),
-        [crate::TILE_ASPECT_MAX, crate::TILE_ASPECT_MIN],
-        "Aspect X/Y sliders reached the tool (mapped to the range)"
+    assert!(
+        t.brush_settings().repeat_image,
+        "snapshot mirrors it for the panel"
     );
-    // The snapshot the panel reads mirrors them.
-    let s = t.brush_settings();
-    assert!(s.repeat_image);
-    assert_eq!(
-        s.tile_aspect,
-        [crate::TILE_ASPECT_MAX, crate::TILE_ASPECT_MIN]
-    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_REPEAT_IMAGE));
+    assert!(!t.repeat_image(), "toggles back off");
 }

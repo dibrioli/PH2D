@@ -34,14 +34,6 @@ impl PainterTool {
             PanelEvent::SetValue(id, v) => {
                 let v = *v as f32;
                 match *id {
-                    x if x == core_ids::PAINTER_BRUSH_TILE_ASPECT_X => {
-                        self.set_tile_aspect(0, v);
-                        true
-                    }
-                    x if x == core_ids::PAINTER_BRUSH_TILE_ASPECT_Y => {
-                        self.set_tile_aspect(1, v);
-                        true
-                    }
                     x if x == core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE => {
                         self.set_brush_color_jitter(0, v);
                         true

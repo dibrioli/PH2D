@@ -20,8 +20,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
-    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod, TILE_ASPECT_MAX,
-    TILE_ASPECT_MIN,
+    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
 };
 
 /// Paint the Stroke section starting at `y`, returning the next `y`. The two dropdowns (Method,
@@ -270,26 +269,6 @@ pub(crate) fn paint_stroke_section(
         "Repeat Image",
         brush.repeat_image,
     );
-    if brush.repeat_image {
-        let span = TILE_ASPECT_MAX - TILE_ASPECT_MIN;
-        for (slot, label, id) in [
-            (0usize, "Aspect X", core_ids::PAINTER_BRUSH_TILE_ASPECT_X),
-            (1usize, "Aspect Y", core_ids::PAINTER_BRUSH_TILE_ASPECT_Y),
-        ] {
-            let v = brush.tile_aspect[slot];
-            y = paint_param_row(ParamRow {
-                ctx: &mut *ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                label,
-                id,
-                value: ((v - TILE_ASPECT_MIN) / span).clamp(0.0, 1.0),
-                readout: &format!("{v:.2}"),
-            });
-        }
-    }
     y
 }
 

@@ -72,9 +72,6 @@ pub fn populate(store: &mut WidgetStore) {
         // Per-dab Jitter Scale / Rotate (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
-        // Repeat-Image Aspect Ratio X / Y (shown when Repeat Image is on).
-        ph2d_editor_core::ids::PAINTER_BRUSH_TILE_ASPECT_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TILE_ASPECT_Y,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
@@ -190,12 +187,10 @@ mod tests {
             ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
             ids::PAINTER_BRUSH_JITTER_SCALE,
             ids::PAINTER_BRUSH_JITTER_ROTATE,
-            // Seamless Tiling toggles + Repeat-Image preview + its Aspect sliders.
+            // Seamless Tiling toggles + Repeat-Image preview.
             ids::PAINTER_BRUSH_TILING_X,
             ids::PAINTER_BRUSH_TILING_Y,
             ids::PAINTER_BRUSH_REPEAT_IMAGE,
-            ids::PAINTER_BRUSH_TILE_ASPECT_X,
-            ids::PAINTER_BRUSH_TILE_ASPECT_Y,
         ] {
             assert!(
                 store.get(id).is_some(),

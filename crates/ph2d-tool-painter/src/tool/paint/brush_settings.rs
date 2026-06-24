@@ -102,9 +102,8 @@ pub struct BrushSettings {
     pub eraser: bool,
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
-    /// **Repeat Image** tile-preview toggle + per-axis **Aspect Ratio** (sprite-size multipliers).
+    /// **Repeat Image** tile-preview toggle (the on-canvas 3×3 grid).
     pub repeat_image: bool,
-    pub tile_aspect: [f32; 2],
 
     // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
     /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
@@ -252,7 +251,6 @@ impl PainterTool {
             eraser: self.paint.eraser,
             tiling: self.paint.tiling,
             repeat_image: self.paint.repeat_image,
-            tile_aspect: self.paint.tile_aspect,
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             space_attenuation: b.space_attenuation,

@@ -81,7 +81,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     eraser: false,
     tiling: [false, false],
     repeat_image: false,
-    tile_aspect: [1.0, 1.0],
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3, // Space
     spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)

@@ -294,13 +294,6 @@ impl App {
         if !(hi_x > lo_x && hi_y > lo_y) {
             return false;
         }
-        // A Down only starts a stroke when inside the footprint (outside clicks
-        // fall through to pan / selection); Move/Up always reach an open stroke so
-        // you can paint to and past the edge.
-        let inside = px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y;
-        if phase == PointerPhase::Down && !inside {
-            return false;
-        }
         let u = (px - lo_x) / (hi_x - lo_x);
         let v = (py - lo_y) / (hi_y - lo_y);
         let Some(tool) = gfx.tools.active_mut() else {
@@ -311,6 +304,28 @@ impl App {
         };
         let (iw, ih) = painter.canvas_size();
         if iw == 0 || ih == 0 {
+            return false;
+        }
+        // A Down only starts a stroke when inside the footprint (outside clicks fall through to pan /
+        // selection); Move/Up always reach an open stroke so you can paint to and past the edge.
+        // **Repeat Image + Tiling**: the 8 neighbour tiles are paintable too — extend the Down hit
+        // region to the 3×3 grid on each tiled axis. The coordinate is passed UN-wrapped (`u`/`v` can
+        // fall outside `[0, 1]` on a neighbour) so a stroke crossing a tile boundary stays continuous;
+        // the painter's Tiling dab-wrap maps those off-canvas dabs back onto the canvas, and the
+        // preview re-tiles the painted result.
+        let repeat = painter.repeat_image();
+        let tiling = painter.brush_tiling();
+        let in_x = if repeat && tiling[0] {
+            (-1.0..2.0).contains(&u)
+        } else {
+            (0.0..=1.0).contains(&u)
+        };
+        let in_y = if repeat && tiling[1] {
+            (-1.0..2.0).contains(&v)
+        } else {
+            (0.0..=1.0).contains(&v)
+        };
+        if phase == PointerPhase::Down && !(in_x && in_y) {
             return false;
         }
         let ev = CanvasPointer {

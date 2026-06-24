@@ -120,7 +120,18 @@ pub(super) fn dispatch_down<'frame>(
         // before the eyedropper interception below, closing the
         // popover before the sample registers (Enio smoke W2.T2.4).
         let eyedropper_armed = store.eyedropper_pending().is_some();
-        if !inside_outer && !inside_sub && !is_color_target && !eyedropper_armed {
+        // The rename modal is a centered context menu OUTSIDE the picker rect, but it belongs to the
+        // picker — clicking its field / Rename button must NOT dismiss the picker underneath it.
+        let rename_dialog_open = matches!(
+            store.context_menu().map(|r| r.kind),
+            Some(ContextMenuKind::RenamePaletteDialog)
+        );
+        if !inside_outer
+            && !inside_sub
+            && !is_color_target
+            && !eyedropper_armed
+            && !rename_dialog_open
+        {
             store.set_picker_target(None);
         }
     }

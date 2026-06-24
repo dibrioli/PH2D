@@ -388,6 +388,9 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_API_KEY_SAVE,
         // P4 (ADR-0061): the LLM prompt-dialog Generate button.
         ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
+        // Color-picker palette rename modal: its Rename button (same populate-register gotcha — a
+        // menu button needs a Button state to be `is_focusable` → get `active` on Down → emit Click).
+        ids::CTX_MENU_PALETTE_RENAME,
         ids::CTX_MENU_HIER_RENAME,
         ids::CTX_MENU_HIER_DUPLICATE,
         ids::CTX_MENU_HIER_ADD_CHILD,

@@ -1,5 +1,5 @@
 //! Paint-level proof of the Texture section's relevance gate (DIRETIVA §2): with no texture
-//! assigned, only the Kind picker + New register a hit rect; assigning a kind reveals the rest.
+//! assigned, only the Kind picker registers a hit rect; assigning a kind reveals the rest.
 //! Drives the real `paint_texture_section` and reads the per-frame `HitIndex` (a row that is not
 //! painted registers no hit rect, so no real pointer click can reach it).
 
@@ -45,11 +45,8 @@ fn painted_hit_ids(kind: u8) -> Vec<NodeId> {
     })
 }
 
-/// The always-shown controls (the picker + New) regardless of whether a texture is assigned.
-const ALWAYS: [NodeId; 2] = [
-    core_ids::PAINTER_BRUSH_TEXTURE_KIND,
-    core_ids::PAINTER_BRUSH_TEXTURE_NEW,
-];
+/// The always-shown control (the Kind picker) regardless of whether a texture is assigned.
+const ALWAYS: [NodeId; 1] = [core_ids::PAINTER_BRUSH_TEXTURE_KIND];
 
 /// The gated controls — only painted once a texture kind is assigned.
 const GATED: [NodeId; 8] = [
@@ -64,12 +61,12 @@ const GATED: [NodeId; 8] = [
 ];
 
 #[test]
-fn none_kind_shows_only_picker_and_new() {
+fn none_kind_shows_only_picker() {
     let ids = painted_hit_ids(TextureKind::None.to_u8());
     for shown in ALWAYS {
         assert!(
             ids.contains(&shown),
-            "the picker/New must always show ({shown:?}). painted = {ids:?}"
+            "the Kind picker must always show ({shown:?}). painted = {ids:?}"
         );
     }
     for hidden in GATED {

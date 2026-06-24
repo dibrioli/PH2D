@@ -136,6 +136,30 @@ pub(super) fn dispatch_down<'frame>(
         }
     }
 
+    // An OPEN generic dropdown light-dismisses when the Down lands OUTSIDE its popover AND off its
+    // chip (Enio 2026-06-24: "se o usuário clicar fora do dropdown ele deve se fechar"). The popover
+    // rect + owner id are republished each frame the popover paints (`set_dropdown_popover`); the
+    // `open: true` re-check guards against a stale publish after the dropdown already closed. We close
+    // (not `return`) so — exactly like the context-menu light-dismiss above — the same click still
+    // drives whatever widget it lands on, so clicking straight onto another chip swaps dropdowns. A
+    // click on the chip itself (`on_chip`) is left to `apply_click`'s toggle; a click on an option
+    // (`inside_popover`) is left to the panel's select-then-close.
+    if let Some((dd_id, popover)) = store.dropdown_popover()
+        && matches!(
+            store.get(dd_id),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        )
+    {
+        let on_chip = hit.map(|(id, _)| id) == Some(dd_id);
+        let inside_popover = popover.contains(event.x, event.y);
+        if !on_chip
+            && !inside_popover
+            && let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(dd_id)
+        {
+            *open = false;
+        }
+    }
+
     // Eyedropper interception: while a pick is pending and
     // the click isn't on the eyedropper button itself, emit
     // `EyedropperPick` for the host to read back the

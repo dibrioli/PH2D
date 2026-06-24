@@ -1,6 +1,7 @@
 //! The Painter dock's **Texture** sub-section (clean-room port of Blender's brush texture panel,
-//! 2D-adapted): a Kind picker ("thumbnail") + New, then Mapping, Angle, Rake, Random, Offset X/Y
-//! and Size X/Y — shown only once a texture is assigned (Blender hides dead controls; DIRETIVA §2).
+//! 2D-adapted): a Kind picker ("thumbnail"), then the live preview, Mapping, Rake, Random, Angle,
+//! Offset X/Y and Size X/Y — the controls below the picker show only once a texture is assigned
+//! (Blender hides dead controls; DIRETIVA §2).
 //!
 //! All controls are fixed-id, tool-global widgets (registered in [`crate::populate`]); this module
 //! only paints them off the published [`BrushSettings`] snapshot and reuses the row/chip helpers
@@ -8,7 +9,7 @@
 //! range (the `TEX_*` constants are the single source). Edits forward over the frozen `PanelEvent`
 //! channel (drained in [`crate::event`]).
 
-use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row, paint_toggle_row};
+use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
 use crate::paint_stroke::section_header;
 use crate::state;
 use ph2d_editor_core::ids::{
@@ -30,9 +31,9 @@ use ph2d_vector::ImageQuality;
 /// Paint the Texture section starting at `y`, returning the next `y`. The Kind picker + Mapping
 /// dropdowns stash their open rects for the deferred [`paint_texture_popovers`] pass.
 ///
-/// `compact` (a **Texture layer** editor, not the brush) hides the per-dab-only controls — the "New"
-/// button, Mapping, Angle, Rake and Random — since a full-cover layer maps at identity. The Kind
-/// picker, Size / Offset, per-pattern params, the live preview and the Color Ramp are always shown.
+/// `compact` (a **Texture layer** editor, not the brush) hides the per-dab-only controls — Mapping,
+/// Rake, Random and Angle — since a full-cover layer maps at identity. The Kind picker, the live
+/// preview, Size / Offset, per-pattern params and the Color Ramp are always shown.
 pub(crate) fn paint_texture_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -62,24 +63,14 @@ pub(crate) fn paint_texture_section(
     if let Some(r) = open {
         state::set_pending_brush_texture_kind_dd(Some((r, brush.texture_kind)));
     }
-    if !compact {
-        // "New" — a momentary button (assigns the default procedural); painted as an un-filled toggle.
-        y = paint_toggle_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_BRUSH_TEXTURE_NEW,
-            "New",
-            false,
-        );
-    }
 
     // Everything below modulates an assigned texture — hide it when there is none (no dead controls).
     if kind == TextureKind::None {
         return y;
     }
+
+    // ── Live preview of the current texture pattern, right below the Texture dropdown (Enio 2026-06-24) ──
+    y = paint_texture_preview(ctx, theme, x, content_w, y, brush);
 
     // ── Per-dab mapping controls — brush only (a layer covers the sprite at identity rotation) ──
     if !compact {
@@ -98,6 +89,30 @@ pub(crate) fn paint_texture_section(
         if let Some(r) = open {
             state::set_pending_brush_texture_mapping_dd(Some((r, brush.texture_mapping)));
         }
+        // ── Rake + Random checkboxes — only the per-dab rotation mappings (Stencil has a fixed
+        //    frame). Placed under Mapping and above Angle (Enio 2026-06-24). ──
+        if mapping.uses_dab_rotation() {
+            y = crate::paint_brush_top::paint_checkbox_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
+                "Rake",
+                brush.texture_rake,
+            );
+            y = crate::paint_brush_top::paint_checkbox_row(
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+                "Random",
+                brush.texture_random,
+            );
+        }
         // ── Angle (whole degrees) ──
         let angle_track = f32::from(brush.texture_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
         y = paint_param_row(ParamRow {
@@ -111,29 +126,6 @@ pub(crate) fn paint_texture_section(
             value: angle_track,
             readout: &format!("{}°", brush.texture_angle_deg),
         });
-        // ── Rake + Random toggles — only the per-dab rotation mappings (Stencil has a fixed frame) ──
-        if mapping.uses_dab_rotation() {
-            y = paint_toggle_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
-                "Rake",
-                brush.texture_rake,
-            );
-            y = paint_toggle_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-                "Random",
-                brush.texture_random,
-            );
-        }
     }
 
     // ── Offset X / Y (tile fractions) ──
@@ -199,9 +191,6 @@ pub(crate) fn paint_texture_section(
             readout: &format!("{value:.2}"),
         });
     }
-
-    // ── Live preview of the current texture pattern, right below the settings ──
-    y = paint_texture_preview(ctx, theme, x, content_w, y, brush);
 
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
     crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)

@@ -427,7 +427,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_NEW
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE =>

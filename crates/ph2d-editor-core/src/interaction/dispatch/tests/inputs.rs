@@ -403,6 +403,75 @@ fn dropdown_click_toggles_open() {
 }
 
 #[test]
+fn click_outside_open_dropdown_closes_it() {
+    // Enio 2026-06-24: clicking outside an open dropdown must light-dismiss it. The popover rect +
+    // owner are published via `set_dropdown_popover`; a Down off BOTH the chip and the popover closes
+    // the dropdown.
+    let mut store = WidgetStore::with_capacity(8);
+    let dd = NodeId(1);
+    store.register(
+        dd,
+        InteractiveState::Dropdown {
+            state: crate::widget::DropdownState::Normal,
+            open: true,
+            selected_index: None,
+        },
+    );
+    let mut hits = HitIndex::new();
+    hits.register(dd, Rect::new(0.0, 0.0, 100.0, 30.0)); // chip
+    store.set_dropdown_popover(dd, Rect::new(0.0, 30.0, 100.0, 90.0)); // popover y: 30..120
+    let arena = Bump::new();
+    // Click well below the popover — outside both chip and popover.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 50.0, 200.0),
+        &arena,
+    );
+    assert!(
+        matches!(
+            store.get(dd),
+            Some(InteractiveState::Dropdown { open: false, .. })
+        ),
+        "a Down outside the popover + chip must close the dropdown"
+    );
+}
+
+#[test]
+fn click_inside_open_dropdown_popover_keeps_it_open() {
+    // A Down INSIDE the popover (selecting an option) must NOT be treated as an outside dismiss — the
+    // panel's select-then-close owns that path.
+    let mut store = WidgetStore::with_capacity(8);
+    let dd = NodeId(1);
+    store.register(
+        dd,
+        InteractiveState::Dropdown {
+            state: crate::widget::DropdownState::Normal,
+            open: true,
+            selected_index: None,
+        },
+    );
+    let mut hits = HitIndex::new();
+    hits.register(dd, Rect::new(0.0, 0.0, 100.0, 30.0));
+    store.set_dropdown_popover(dd, Rect::new(0.0, 30.0, 100.0, 90.0));
+    let arena = Bump::new();
+    // Click inside the popover area (y = 60).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 50.0, 60.0),
+        &arena,
+    );
+    assert!(
+        matches!(
+            store.get(dd),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        ),
+        "a Down inside the popover must leave the dropdown open"
+    );
+}
+
+#[test]
 fn escape_closes_open_dropdown_without_blur() {
     let mut store = WidgetStore::with_capacity(4);
     store.register(

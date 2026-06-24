@@ -212,13 +212,18 @@ pub(crate) fn paint_brush_body(
         state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
     }
 
+    // Falloff curve graph — the visual for the preset above; part of the Falloff group, so it sits
+    // directly under the dropdown and ABOVE Randomize Color (Enio 2026-06-24).
+    y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
+
     // ── Section 7: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
     y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Remaining groups (sectioned per later instructions): Falloff curve · Stroke · Texture · Eraser ──
-    y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
-    y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+    // ── Section 8: Texture — the next section below Randomize Color (Enio 2026-06-24) ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
+
+    // ── Remaining groups (sectioned per later instructions): Stroke · Eraser ──
+    y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
     y = paint_toggle_row(
         ctx,
         theme,

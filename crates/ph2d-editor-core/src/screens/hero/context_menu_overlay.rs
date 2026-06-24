@@ -141,13 +141,9 @@ fn id_is_currently_selected(
     false
 }
 
-/// Paint the open context menu (if any) and register hit rects for
-/// each item. Called last in the hero paint pipeline so the menu
-/// always sits on top.
-///
-/// `viewport` is used to clamp the menu rect so a cascade submenu
-/// anchored near the right/bottom edge (e.g. Settings → PPM opened
-/// from the topbar gear) doesn't render off-screen.
+/// Paint the open context menu (if any) and register hit rects for each item. Called last in the hero
+/// paint pipeline so the menu always sits on top. `viewport` clamps the menu rect so a cascade submenu
+/// anchored near the right/bottom edge (e.g. Settings → PPM from the topbar gear) stays on-screen.
 pub fn paint_context_menu_overlay(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -241,12 +237,8 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
-        // Settings cluster (gear) — TOP-LEVEL categories. Each entry
-        // gets a real `IconId::ChevronRight` painted at the right edge
-        // by the row loop below (matched by `kind == SettingsMenu`),
-        // not a Unicode glyph inside the label string. Enio 2026-05-25:
-        // "menu e submenus de settings ainda fora do padrão, usando
-        // emojis e não ícones".
+        // Settings cluster (gear) — TOP-LEVEL categories. Each entry gets a real `IconId::ChevronRight`
+        // painted at the right edge by the row loop below (matched by `kind == SettingsMenu`).
         ContextMenuKind::SettingsMenu => &[
             (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter", None),
             (ids::CTX_MENU_SETTINGS_UNIT, "Display unit", None),
@@ -259,15 +251,7 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
-        // M14.7 polish (6.3): Pixels-per-meter submenu — same 5
-        // presets as before the cascade, just one click deeper.
-        //
-        // 16   — classic retro tile (Stardew, 16-bit-era)
-        // 32   — Unity 2D default (a 32-px tile = 1 world meter)
-        // 100  — Godot default (project-level scale that suits
-        //        mixed-resolution indie work)
-        // 256  — Hand-drawn HD 2D (Cuphead-tier)
-        // 1024 — 4K reference sprites (1 quad fits on a 1×1 unit)
+        // Pixels-per-meter submenu — 5 presets (retro 16 · Unity 32 · Godot 100 · HD 256 · 4K 1024).
         ContextMenuKind::SettingsPpmSubmenu => &[
             (ids::CTX_MENU_PPM_16, "16 (retro tile)", None),
             (ids::CTX_MENU_PPM_32, "32 (Unity 2D)", None),

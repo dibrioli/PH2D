@@ -163,8 +163,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
-        // Texture section: "New" (momentary) + Rake / Random toggles.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_NEW,
+        // Texture section: Rake / Random checkboxes (the click still forwards as a Button Click;
+        // only the VISUAL is a checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
         // Color Ramp: enable toggle + add / remove stop + colour-box buttons.

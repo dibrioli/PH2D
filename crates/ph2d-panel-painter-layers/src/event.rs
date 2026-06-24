@@ -274,8 +274,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                         )));
                     return true;
                 }
-                // Selective Color CMYK slider (AdjParam0..3 on a SelectiveColor
-                // layer): forward the active bucket + slot via PAINTER_SELCOLOR_EDIT.
+                // Selective Color CMYK slider (AdjParam0..3): forward bucket + slot via PAINTER_SELCOLOR_EDIT.
                 if let Some(slot) = adj_param_slot(kind)
                     && slot <= 3
                     && layer_is_selective_color(&stack, layer)
@@ -422,6 +421,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             if id == core_ids::PAINTER_BRUSH_ERASER
                 || id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
                 || core_ids::PAINTER_BRUSH_TILING.contains(&id)
+                || id == core_ids::PAINTER_BRUSH_REPEAT_IMAGE
                 || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
@@ -494,8 +494,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
             if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
-                // `idx` is the point's STABLE id (the panel registered the handle
-                // keyed by id), so it stays valid across a drag-past re-sort.
+                // `idx` is the point's STABLE id (panel-registered), valid across a drag-past re-sort.
                 state::set_selected_falloff_point(Some(idx));
                 host.bus_mut()
                     .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
@@ -531,7 +530,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
                 || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
-                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id) =>
+                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id)
+                || core_ids::PAINTER_BRUSH_TILE_ASPECT.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

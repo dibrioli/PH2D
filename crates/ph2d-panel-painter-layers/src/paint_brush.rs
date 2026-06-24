@@ -80,6 +80,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     blend: 0,
     eraser: false,
     tiling: [false, false],
+    repeat_image: false,
+    tile_aspect: [1.0, 1.0],
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3, // Space
     spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
@@ -114,10 +116,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     jitter_rotate: 0.0,
 };
 
-/// Paint the Brush-properties body rows from `top_y` (already offset by the panel scroll), returning
-/// the content-bottom `y`. The caller clips to the body viewport, measures the returned height for
-/// the scrollbar, and drains the dropdown popovers via [`paint_brush_popovers`] AFTER popping the
-/// clip (so an open dropdown floats unclipped over the rows).
+/// Paint the Brush-properties body rows from `top_y` (already panel-scroll-offset), returning the
+/// content-bottom `y`. The caller clips to the body viewport, measures the height for the scrollbar,
+/// and drains the dropdown popovers via [`paint_brush_popovers`] AFTER popping the clip.
 pub(crate) fn paint_brush_body(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -358,10 +359,9 @@ pub(crate) fn paint_toggle_row(
     y + ROW_H_PX + Spacing::Sm.px()
 }
 
-/// When the shared Blender picker targets the brush swatch, the hero loop mirrors
-/// its live value into `widget_color(PAINTER_COLOR_THUMB)`. Forward that colour to
-/// the tool (as `"r,g,b"`) when it differs from the brush's current colour — this
-/// makes the picker drive the brush live.
+/// When the shared Blender picker targets the brush swatch, the hero loop mirrors its live value into
+/// `widget_color(PAINTER_COLOR_THUMB)`. Forward that colour to the tool (as `"r,g,b"`) when it differs
+/// from the brush's current colour, so the picker drives the brush live.
 fn brush_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
     if ctx.host.store().picker_target() != Some(core_ids::PAINTER_COLOR_THUMB) {
         return;

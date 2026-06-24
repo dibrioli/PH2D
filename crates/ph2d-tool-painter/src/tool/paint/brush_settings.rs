@@ -102,6 +102,9 @@ pub struct BrushSettings {
     pub eraser: bool,
     /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
     pub tiling: [bool; 2],
+    /// **Repeat Image** tile-preview toggle + per-axis **Aspect Ratio** (sprite-size multipliers).
+    pub repeat_image: bool,
+    pub tile_aspect: [f32; 2],
 
     // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
     /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
@@ -157,22 +160,17 @@ pub struct BrushSettings {
     pub texture_ramp_mode: u8,
     /// Ramp interpolation mode (`RampInterp::to_u8`).
     pub texture_ramp_interp: u8,
-    /// Ramp stops as `(pos, r, g, b, a, id)` (colour in display sRGB; `id` = the stable stop id as a
-    /// float), the first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`. The panel keys each
-    /// draggable handle by the stable `id` so a stop can be dragged past its neighbours.
+    /// Ramp stops as `(pos, r, g, b, a, id)` (display sRGB; `id` = stable stop id as a float), first
+    /// [`Self::texture_ramp_stop_count`] valid, sorted by `pos`; the panel keys handles by `id`.
     pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     /// Count of valid entries in [`Self::texture_ramp_stops`].
     pub texture_ramp_stop_count: u8,
-    /// What the ramp colour's alpha does when painting (`RampAlphaMode::to_u8`): `0` off · `1` scales
-    /// brush Strength · `2` drives the sprite's own alpha.
+    /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
     pub texture_ramp_alpha_mode: u8,
-    /// **Randomize Color** master enable (per-dab HSV scatter; see `BrushSpec`).
+    /// Per-dab randomize: Randomize-Color enable + Hue/Sat/Value amounts + Jitter Scale / Rotate (`0..1`).
     pub color_jitter_enabled: bool,
-    /// Randomize-Color Hue/Sat/Value amounts, each a `0..1` slider track.
     pub color_jitter: [f32; 3],
-    /// **Jitter Scale** per-dab radius-scatter amount, `0..1`.
     pub jitter_scale: f32,
-    /// **Jitter Rotate** per-dab texture-rotation-scatter amount, `0..1`.
     pub jitter_rotate: f32,
 }
 
@@ -253,6 +251,8 @@ impl PainterTool {
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
             tiling: self.paint.tiling,
+            repeat_image: self.paint.repeat_image,
+            tile_aspect: self.paint.tile_aspect,
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             space_attenuation: b.space_attenuation,

@@ -20,7 +20,8 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use ph2d_tool_painter::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
-    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
+    BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod, TILE_ASPECT_MAX,
+    TILE_ASPECT_MIN,
 };
 
 /// Paint the Stroke section starting at `y`, returning the next `y`. The two dropdowns (Method,
@@ -258,6 +259,37 @@ pub(crate) fn paint_stroke_section(
         "Tiling Y",
         brush.tiling[1],
     );
+    // Repeat Image: on-canvas 3×3 tile preview + its per-axis Aspect Ratio (shown when on).
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_REPEAT_IMAGE,
+        "Repeat Image",
+        brush.repeat_image,
+    );
+    if brush.repeat_image {
+        let span = TILE_ASPECT_MAX - TILE_ASPECT_MIN;
+        for (slot, label, id) in [
+            (0usize, "Aspect X", core_ids::PAINTER_BRUSH_TILE_ASPECT_X),
+            (1usize, "Aspect Y", core_ids::PAINTER_BRUSH_TILE_ASPECT_Y),
+        ] {
+            let v = brush.tile_aspect[slot];
+            y = paint_param_row(ParamRow {
+                ctx: &mut *ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                label,
+                id,
+                value: ((v - TILE_ASPECT_MIN) / span).clamp(0.0, 1.0),
+                readout: &format!("{v:.2}"),
+            });
+        }
+    }
     y
 }
 

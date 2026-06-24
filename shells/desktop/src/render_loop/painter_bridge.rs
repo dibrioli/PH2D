@@ -308,6 +308,16 @@ pub(super) fn dispatch(
             vector_scene,
             cursor,
         );
+        // Repeat Image: the 3×3 tile preview (the composite drawn at the 8 neighbour positions).
+        super::painter_bridge_overlays::draw_repeat_image(
+            painter,
+            hero,
+            sim,
+            camera,
+            window_size,
+            vector_scene,
+            painter_preview.as_ref(),
+        );
     }
 
     // ── Inactive path — clear LOCAL bridge state only (NOT the tool's,

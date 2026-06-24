@@ -414,7 +414,7 @@ fn release_preview_texture(
 ///
 /// Reused by every overlay layer (preview RGBA, protect tint) so they
 /// share the EXACT same destination geometry — no per-layer drift.
-fn sprite_image_to_screen_affine(
+pub(crate) fn sprite_image_to_screen_affine(
     image_w: u32,
     image_h: u32,
     tr: &ph2d_ecs::Transform,

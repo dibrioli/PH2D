@@ -72,6 +72,9 @@ pub fn populate(store: &mut WidgetStore) {
         // Per-dab Jitter Scale / Rotate (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
+        // Repeat-Image Aspect Ratio X / Y (shown when Repeat Image is on).
+        ph2d_editor_core::ids::PAINTER_BRUSH_TILE_ASPECT_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TILE_ASPECT_Y,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
@@ -110,9 +113,10 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         // "Randomize Color" subsection enable (Color section header checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
-        // Seamless Tiling (wrap-around painting) toggles, X / Y.
+        // Seamless Tiling (wrap-around painting) toggles, X / Y + the Repeat-Image tile preview.
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_X,
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_Y,
+        ph2d_editor_core::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Texture section: "New" (momentary) + Rake / Random toggles.
@@ -186,9 +190,12 @@ mod tests {
             ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
             ids::PAINTER_BRUSH_JITTER_SCALE,
             ids::PAINTER_BRUSH_JITTER_ROTATE,
-            // Seamless Tiling toggles.
+            // Seamless Tiling toggles + Repeat-Image preview + its Aspect sliders.
             ids::PAINTER_BRUSH_TILING_X,
             ids::PAINTER_BRUSH_TILING_Y,
+            ids::PAINTER_BRUSH_REPEAT_IMAGE,
+            ids::PAINTER_BRUSH_TILE_ASPECT_X,
+            ids::PAINTER_BRUSH_TILE_ASPECT_Y,
         ] {
             assert!(
                 store.get(id).is_some(),

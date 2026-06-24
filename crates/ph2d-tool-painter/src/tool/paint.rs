@@ -27,6 +27,7 @@ mod jitter_settings;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
+pub use tiling::{TILE_ASPECT_MAX, TILE_ASPECT_MIN};
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;
 pub use circle::CircleOverlay;
@@ -95,10 +96,9 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
-    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset
-    /// from the stroke seed at pointer-down (decorrelated from the jitter stream) and advanced once
-    /// per textured dab in [`PainterTool::stamp_dabs`], so a stroke's texture randomness is
-    /// reproducible (HR-5) yet differs across dabs and strokes.
+    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset from
+    /// the stroke seed at pointer-down (decorrelated from the jitter stream) and advanced once per
+    /// textured dab in [`PainterTool::stamp_dabs`] — reproducible (HR-5) yet differs across dabs.
     tex_rng: u64,
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
@@ -106,10 +106,14 @@ pub(crate) struct PaintState {
     /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time
     /// (the drawing blend in `brush.blend` is preserved for when it's off).
     eraser: bool,
-    /// **Tiling** (seamless tile painting): wrap-around painting per axis `[x, y]`. When on, a dab
-    /// near a sprite edge also stamps the wrapped part on the opposite edge, so a stroke crossing the
-    /// border is seamless when the sprite is repeated as a tile. Off by default.
+    /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped
+    /// part on the opposite edge (seamless when the sprite is tiled). Off by default.
     tiling: [bool; 2],
+    /// **Repeat Image**: the shell draws the sprite repeated in all 8 neighbour directions (3×3 grid).
+    repeat_image: bool,
+    /// **Aspect Ratio** `[x, y]` for the Repeat-Image grid: neighbour spacing ×sprite-size per axis
+    /// (default `1.0`), so the preview is AR-independent. Read by the shell render, not a paint input.
+    tile_aspect: [f32; 2],
     /// Set by [`PainterTool::paint_extend`] each pointer move and cleared by the per-frame tick.
     /// While a stroke is held and this stays `false` for a frame (the pointer is parked), the tick
     /// settles the stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause,
@@ -177,6 +181,8 @@ impl Default for PaintState {
             stroke_undo: None,
             eraser: false,
             tiling: [false, false],
+            repeat_image: false,
+            tile_aspect: [1.0, 1.0],
             moved_this_frame: false,
             drag_preview: None,
             line_anchor: None,

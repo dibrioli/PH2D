@@ -62,7 +62,8 @@ pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CircleOverlay, CurveOverlay, PANEL_RAMP_STOPS, PainterTool, PolygonOverlay,
-    StencilOverlay, brush_falloff_weight_at, set_pending_select_mods,
+    StencilOverlay, TILE_ASPECT_MAX, TILE_ASPECT_MIN, brush_falloff_weight_at,
+    set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

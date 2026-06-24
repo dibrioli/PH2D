@@ -37,6 +37,72 @@ pub(super) fn draw_overlays(
     draw_stencil_overlay(painter, hero, sim, camera, window_size, vector_scene);
 }
 
+/// **Repeat Image**: draw the painted composite repeated in the 8 neighbour positions around the
+/// sprite (a 3×3 tile grid), so the artist sees the seamless tiling result. The centre is the real
+/// sprite (drawn by the pipeline); we draw only the 8 wraps as overlay images. The neighbour spacing
+/// is the sprite size × the per-axis **Aspect Ratio** (so it works regardless of the sprite's own AR).
+/// No-op unless Repeat Image is on and a CPU composite for the selected sprite is available.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn draw_repeat_image(
+    painter: &PainterTool,
+    hero: &HeroScreen,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+    preview: Option<&crate::app_state::PainterPreview>,
+) {
+    if !painter.repeat_image() {
+        return;
+    }
+    let Some(bits) = hero.gizmo.selection else {
+        return;
+    };
+    // Need the CPU composite for THIS sprite (the GPU-only path leaves it `None`).
+    let Some(preview) = preview.filter(|p| p.entity_bits == bits) else {
+        return;
+    };
+    let entity = ph2d_ecs::Entity::from_bits(bits);
+    let (Some(tr), Some(sprite)) = (
+        sim.world().get::<crate::Transform>(entity),
+        sim.world().get::<ph2d_render::Sprite>(entity),
+    ) else {
+        return;
+    };
+    // image-px → screen for the centre sprite; each neighbour prepends a screen-space translation of
+    // the world offset (a pure translation maps through the world→screen scale `k`, Y flipped).
+    let base = super::bgremoval_preview::sprite_image_to_screen_affine(
+        preview.width,
+        preview.height,
+        tr,
+        sprite,
+        camera,
+        window_size,
+    );
+    let aspect = painter.tile_aspect();
+    let k = f64::from(window_size.height) / f64::from(camera.height_world).max(1e-6);
+    let off_w = f64::from(sprite.size[0]) * f64::from(aspect[0]);
+    let off_h = f64::from(sprite.size[1]) * f64::from(aspect[1]);
+    for dy in [-1i32, 0, 1] {
+        for dx in [-1i32, 0, 1] {
+            if dx == 0 && dy == 0 {
+                continue; // the real sprite occupies the centre
+            }
+            let screen_off = ph2d_vector::Affine::translate((
+                f64::from(dx) * off_w * k,
+                -f64::from(dy) * off_h * k,
+            ));
+            vector_scene.draw_image_rgba_transformed(
+                &preview.rgba,
+                preview.width,
+                preview.height,
+                screen_off * base,
+                ph2d_vector::ImageQuality::Low,
+            );
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_brush_ring(
     painter: &PainterTool,

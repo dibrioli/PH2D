@@ -227,10 +227,38 @@ pub(crate) fn paint_texture_layer_editor(
     paint_texture_section(ctx, theme, x, content_w, y, view, true)
 }
 
+/// `true` when the inline Texture-LAYER editor (not the brush) is the one showing the Texture section:
+/// the Layers dock view is up AND the active layer is a Texture layer. The shared fixed-id widgets +
+/// popovers + ramp picker then target the layer.
+pub(crate) fn texture_layer_editor_active() -> bool {
+    state::current_dock_shows_layers()
+        && state::current_layers().is_some_and(|s| s.active().is_some_and(|a| s.is_texture(a)))
+}
+
+/// The active Texture layer's spec as a `BrushSettings` *view* (its ramp in display sRGB) — the seed
+/// source for the shared Color-Ramp picker when a texture layer is being edited. `None` unless
+/// [`texture_layer_editor_active`] (callers fall back to the brush snapshot).
+pub(crate) fn active_texture_ramp_view() -> Option<BrushSettings> {
+    if !texture_layer_editor_active() {
+        return None;
+    }
+    let stack = state::current_layers()?;
+    let base = state::current_brush()?;
+    match &stack.get(stack.active()?)?.kind {
+        ph2d_tool_painter::LayerKind::Texture(tex) => {
+            Some(brush_view_from_texture_layer(base, tex))
+        }
+        _ => None,
+    }
+}
+
 /// Overwrite `base`'s texture fields from a Texture layer's spec (kind / params / size / offset + the
 /// Color Ramp), leaving the brush's other fields intact. The ramp stops are converted from the layer's
 /// linear `ColorRamp` to the panel's display-sRGB form (mirror of the tool's `brush_settings`).
-fn brush_view_from_texture_layer(mut base: BrushSettings, tex: &TextureLayer) -> BrushSettings {
+pub(crate) fn brush_view_from_texture_layer(
+    mut base: BrushSettings,
+    tex: &TextureLayer,
+) -> BrushSettings {
     base.texture_kind = tex.kind;
     base.texture_params = tex.params;
     base.texture_size = tex.size;
@@ -389,9 +417,19 @@ fn size_track(v: f32) -> f32 {
     ((v - TEX_SIZE_MIN) / (TEX_SIZE_MAX - TEX_SIZE_MIN)).clamp(0.0, 1.0)
 }
 
-/// The texture kinds as dropdown options (includes `None` so the artist can clear the texture).
+/// The texture kinds as dropdown options. The brush includes `None` (clear) + `Image` (importable);
+/// a **Texture layer** omits both — a layer can never be given image pixels (renders flat) and `None`
+/// would make it an opaque slab, so neither is a useful choice there.
 fn texture_kind_options() -> Vec<DropdownOption<u8>> {
+    let layer = texture_layer_editor_active();
     (0..TextureKind::COUNT)
+        .filter(|&k| {
+            !(layer
+                && matches!(
+                    TextureKind::from_u8(k),
+                    TextureKind::None | TextureKind::Image
+                ))
+        })
         .map(|k| {
             DropdownOption::new(
                 painter_brush_texture_kind_option_id(k),

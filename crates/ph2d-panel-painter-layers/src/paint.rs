@@ -498,8 +498,7 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
         state::set_pending_adj_menu(Some(menu_chip));
     }
 
-    // "+ Texture" — create a Texture layer (a procedural brush-texture fill recoloured by a Color
-    // Ramp, covering the sprite); a plain action next to "+ Adj".
+    // "+ Texture" — create a Texture layer (procedural fill + Color Ramp), next to "+ Adj".
     x += HEADER_ICON_W + Spacing::Xs.px();
     let tex_id = core_ids::PAINTER_LAYERS_ADD_TEXTURE;
     let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
@@ -515,14 +514,13 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     ctx.host.hit_index_mut().register(tex_id, tex_rect);
 }
 
-/// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggle
-/// buttons acting on the ACTIVE layer. The three toggles fill `Accent` when on
-/// (read from the active layer's flags); Mask is a create action (Accent = the
-/// layer already has a mask). Disabled + un-registered when the active layer
-/// isn't a raster (a group/mask can't take these), so the click is a no-op.
+/// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggles on the ACTIVE layer (fill
+/// `Accent` when on; Mask is a create action). Mask + Clip are also enabled for a Texture layer;
+/// Lock/Ref stay raster-only. A disabled button is un-registered, so its click is a no-op.
 fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_tokens::Theme) {
     let mods = state::current_layers().and_then(|s| s.active_modifiers());
     let raster = mods.is_some_and(|m| m.is_raster);
+    let tex = state::current_layers().is_some_and(|s| s.active().is_some_and(|a| s.is_texture(a)));
     let y = toolbar_rect.y + ((toolbar_rect.h - ROW_H_PX) * 0.5).max(0.0);
     let mut x = toolbar_rect.x + PANEL_HEAD_PAD;
     let specs = [
@@ -548,8 +546,11 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
         ),
     ];
     for (id, label, on) in specs {
+        let eligible = raster
+            || (tex
+                && (id == core_ids::PAINTER_LAYERS_MASK || id == core_ids::PAINTER_LAYERS_CLIP));
         let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
-        let st = if raster {
+        let st = if eligible {
             ctx.host
                 .store()
                 .button_state(id)
@@ -558,11 +559,11 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
             ButtonState::Disabled
         };
         let mut btn = Button::new(id, label).state(st);
-        if on && raster {
+        if on && eligible {
             btn.kind = ButtonKind::Accent; // toggle ON = filled accent
         }
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
-        if raster {
+        if eligible {
             ctx.host.hit_index_mut().register(id, btn_rect);
         }
         x += MOD_BTN_W + Spacing::Xs.px();

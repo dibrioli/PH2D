@@ -53,7 +53,9 @@ impl PainterTool {
         };
         for child in children {
             match self.layers.get(child).map(|l| &l.kind) {
-                Some(LayerKind::Raster(_)) => return Some(child),
+                // A Texture layer has a real per-layer pixel buffer, so it is a valid edit target —
+                // entering a texture-only group selects it (and shows its inline editor).
+                Some(LayerKind::Raster(_) | LayerKind::Texture(_)) => return Some(child),
                 Some(LayerKind::Group(_)) => {
                     if let Some(found) = self.first_paintable_descendant(child) {
                         return Some(found);

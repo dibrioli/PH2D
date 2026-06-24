@@ -48,6 +48,13 @@ impl PainterTool {
     /// Re-render `id`'s texture into the buffer that currently holds its pixels (`canvas_rgba` when it
     /// is active, else `images[id]`), bump its pixel version, and invalidate the composite so the live
     /// preview re-renders. No-op before a source / for a non-texture id.
+    ///
+    /// PERF (known): this is **O(canvas)** — the whole sprite is re-sampled (procedural noise can be
+    /// multi-octave) + ramp-LUT-indexed + sRGB-encoded on the CPU, with no dirty-rect, on EVERY edit.
+    /// On the typical sprite this is fine; on a 2K/4K canvas a continuous slider drag re-renders
+    /// millions of pixels per `SetValue` and will stutter. Follow-up (mirror of the texture-brush
+    /// stamp-cache + the adjustment dirty-rect lever): render a downscaled proxy during a live drag and
+    /// the full-res buffer once on release, or coalesce the per-frame `SetValue` burst.
     fn rerender_texture_layer(&mut self, id: RtLayerId) {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
@@ -253,14 +260,18 @@ impl PainterTool {
     ) -> bool {
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
-        // "+ Texture" creates a layer regardless of the current selection.
+        // "+ Texture" creates a layer regardless of the current selection / dock view.
         if let PanelEvent::Click(id) = event
             && *id == core_ids::PAINTER_LAYERS_ADD_TEXTURE
         {
             self.add_texture_layer();
             return true;
         }
-        if self.active_texture_id().is_none() {
+        // The shared Texture-section widgets (PAINTER_BRUSH_TEXTURE_*) are painted by EITHER the
+        // brush's Texture section (Brush dock view) OR the layer's inline editor (Layers dock view).
+        // Only intercept them for the layer when the Layers view is showing AND a texture layer is
+        // active — otherwise the brush's own texture section must keep reaching the brush handlers.
+        if !self.dock_shows_layers || self.active_texture_id().is_none() {
             return false;
         }
         match event {

@@ -7,7 +7,7 @@
 //! masks / clipping / groups / blend / opacity for free, on both the CPU and GPU paths. This struct
 //! holds only the cheap-to-clone *spec* (no pixels); the pixels live in the tool's `images` map.
 
-use super::{HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerStack};
+use super::{HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerStack, MaskLayer};
 use ph2d_color::ColorRamp;
 use ph2d_painter_brush::MAX_TEX_PARAMS;
 use serde::{Deserialize, Serialize};
@@ -92,5 +92,38 @@ impl LayerStack {
             LayerKind::Texture(t) => Some(t),
             _ => None,
         }
+    }
+
+    /// Create a grayscale mask (§2.7) on a raster **or texture** `parent`, with explicit canvas dims
+    /// (a Texture layer is full-cover and carries no dims in its spec, so the tool passes its
+    /// `source_size`). Owner-attached (not in the z-order). Rejected (`None`) if `parent` is unknown,
+    /// isn't a raster/texture, already has a mask, or the hard cap is reached. The generalization of
+    /// the raster-only [`LayerStack::add_mask`] (kept for the existing raster tests).
+    pub fn add_mask_for(&mut self, parent: LayerId, width: u32, height: u32) -> Option<LayerId> {
+        let eligible = matches!(
+            self.get(parent),
+            Some(Layer {
+                kind: LayerKind::Raster(_) | LayerKind::Texture(_),
+                mask: None,
+                ..
+            })
+        );
+        if !eligible || self.len() >= HARD_CAP_LAYERS {
+            return None;
+        }
+        let id = self.alloc_id();
+        self.arena.push(Layer::new(
+            id,
+            "Mask",
+            LayerKind::Mask(MaskLayer {
+                width,
+                height,
+                inverted: false,
+            }),
+        ));
+        if let Some(p) = self.get_mut(parent) {
+            p.mask = Some(id);
+        }
+        Some(id)
     }
 }

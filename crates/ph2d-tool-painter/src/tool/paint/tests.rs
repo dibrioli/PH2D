@@ -1995,6 +1995,7 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
 
     // A standard layer feature works on a Texture layer: hiding it drops it from the composite,
     // leaving only the opaque white base.
+    t.set_layer_visible(id, true);
     t.set_layer_visible(id, false);
     let (hidden, _, _) = t.run_full();
     assert!(
@@ -2003,4 +2004,61 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
             .all(|p| p[0] == 255 && p[1] == 255 && p[2] == 255 && p[3] == 255),
         "hiding the texture layer reveals the white base"
     );
+    t.set_layer_visible(id, true);
+}
+
+#[test]
+fn texture_layer_compatible_with_duplicate_and_mask() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+    let id = t.add_texture_layer().expect("texture layer added");
+
+    // Duplicate (audit fix): a Texture layer duplicates like a raster.
+    let dup = t.duplicate_layer(id).expect("texture layer duplicates");
+    assert_ne!(dup, id);
+    assert!(matches!(
+        t.layers().get(dup).map(|l| &l.kind),
+        Some(LayerKind::Texture(_))
+    ));
+
+    // Mask (audit fix): a Texture layer can take a grayscale mask (the dup is active after duplicate).
+    let mask = t.add_mask_to_active().expect("texture layer takes a mask");
+    assert_eq!(
+        t.layers().get(dup).and_then(|l| l.mask),
+        Some(mask),
+        "the mask is attached to the texture layer"
+    );
+}
+
+#[test]
+fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_painter_brush::TextureKind;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 16 * 16 * 4], 16, 16);
+    let id = t.add_texture_layer().expect("texture layer added"); // active, dock shows Layers
+    // Switch the dock to the Brush view; the texture layer stays active.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_LAYERS_TOGGLE_DOCK));
+    // A Kind change in the Brush view must hit the BRUSH, not the active texture layer.
+    let layer_kind_before = match t.layers().get(id).map(|l| &l.kind) {
+        Some(LayerKind::Texture(tex)) => tex.kind,
+        _ => panic!("expected a texture layer"),
+    };
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_BRUSH_TEXTURE_KIND,
+        TextureKind::Voronoi.to_u8().to_string(),
+    ));
+    assert_eq!(
+        t.brush_settings().texture_kind,
+        TextureKind::Voronoi.to_u8(),
+        "the Brush view's Kind edit reaches the brush"
+    );
+    match t.layers().get(id).map(|l| &l.kind) {
+        Some(LayerKind::Texture(tex)) => assert_eq!(
+            tex.kind, layer_kind_before,
+            "the texture layer is untouched while the Brush view is showing"
+        ),
+        _ => panic!("expected a texture layer"),
+    }
 }

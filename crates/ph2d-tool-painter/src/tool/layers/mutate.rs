@@ -184,7 +184,13 @@ impl PainterTool {
     /// inserts above, and makes the copy the active edit target. No-op (`None`)
     /// mid-stroke, for a non-raster, or at the cap.
     pub fn duplicate_layer(&mut self, id: RtLayerId) -> Option<RtLayerId> {
-        if !matches!(self.layers.get(id)?.kind, LayerKind::Raster(_)) {
+        // Texture layers are raster-backed (pixels in `images[id]`/`canvas_rgba`), so the same
+        // flush+clone path duplicates them; `LayerStack::duplicate` carries the cloned `TextureLayer`
+        // spec, and the copy's buffer re-renders on its next edit.
+        if !matches!(
+            self.layers.get(id)?.kind,
+            LayerKind::Raster(_) | LayerKind::Texture(_)
+        ) {
             return None;
         }
         // Ensure the source pixels live in `images` (flush the active), copy them,
@@ -256,15 +262,20 @@ impl PainterTool {
     /// if it already has a mask, or at the hard cap.
     pub fn add_mask_to_active(&mut self) -> Option<RtLayerId> {
         let active = self.layers.active()?;
-        if !matches!(self.layers.get(active)?.kind, LayerKind::Raster(_)) {
-            return None; // only a raster takes a mask (not a group / another mask)
+        // A raster OR a texture layer can take a mask (the compositor multiplies the layer's alpha by
+        // the mask for both). A texture has no dims in its spec, so source the canvas dims here.
+        if !matches!(
+            self.layers.get(active)?.kind,
+            LayerKind::Raster(_) | LayerKind::Texture(_)
+        ) {
+            return None; // not a group / mask / adjustment
         }
         let undo_before = self.snapshot_model();
-        let mask = self.layers.add_mask(active)?;
-        // The parent raster (still active) flushes to images; the mask becomes
-        // the active edit target with a fresh opaque-WHITE buffer (full visible).
-        self.flush_active_to_images();
         let (w, h) = self.source_size;
+        let mask = self.layers.add_mask_for(active, w, h)?;
+        // The parent (still active) flushes to images; the mask becomes the active edit target with a
+        // fresh opaque-WHITE buffer (full visible).
+        self.flush_active_to_images();
         self.images.remove(&mask); // active lives in canvas_rgba, not images
         self.canvas_rgba = Arc::new(vec![255u8; (w as usize) * (h as usize) * 4]);
         self.layers.set_active(mask);

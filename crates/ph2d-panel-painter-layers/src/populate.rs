@@ -19,6 +19,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_LAYERS_GROUP,
         ph2d_editor_core::ids::PAINTER_LAYERS_DUPLICATE,
         ph2d_editor_core::ids::PAINTER_LAYERS_DELETE,
+        // "+ Texture" — creates a Texture layer (plain Button, not a Dropdown).
+        ph2d_editor_core::ids::PAINTER_LAYERS_ADD_TEXTURE,
         // Modifier toolbar (acts on the active layer): Mask / Clip / Lock / Ref.
         ph2d_editor_core::ids::PAINTER_LAYERS_MASK,
         ph2d_editor_core::ids::PAINTER_LAYERS_CLIP,
@@ -141,5 +143,34 @@ pub fn populate(store: &mut WidgetStore) {
                 selected_index: Some(0),
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor_core::ids;
+
+    /// Regression: every plain-action toolbar button that `paint` paints + hit-registers MUST get a
+    /// store slot here, or the dispatch drops its click (the dead-button class — a missing
+    /// `PAINTER_LAYERS_ADD_TEXTURE` slot made the whole Texture-layer feature unreachable).
+    #[test]
+    fn action_toolbar_buttons_have_store_slots() {
+        let mut store = WidgetStore::with_capacity(32);
+        populate(&mut store);
+        for id in [
+            ids::PAINTER_LAYERS_ADD,
+            ids::PAINTER_LAYERS_GROUP,
+            ids::PAINTER_LAYERS_DUPLICATE,
+            ids::PAINTER_LAYERS_DELETE,
+            ids::PAINTER_LAYERS_ADD_TEXTURE,
+            ids::PAINTER_LAYERS_MASK,
+            ids::PAINTER_LAYERS_CLIP,
+        ] {
+            assert!(
+                store.get(id).is_some(),
+                "toolbar button {id:?} has no store slot — its click would be dropped"
+            );
+        }
     }
 }

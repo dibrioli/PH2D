@@ -57,7 +57,9 @@ fn on_index_commit(host: &mut dyn PanelHostInternal) {
     else {
         return;
     };
-    let Some(b) = state::current_brush() else {
+    // When a Texture layer is being edited, resolve the index against ITS ramp, not the brush's.
+    let Some(b) = crate::paint_texture::active_texture_ramp_view().or_else(state::current_brush)
+    else {
         return;
     };
     let count = (b.texture_ramp_stop_count as usize).min(b.texture_ramp_stops.len());
@@ -85,12 +87,15 @@ fn on_position_commit(host: &mut dyn PanelHostInternal) {
         )));
 }
 
-/// The selected stop's colour (sRGB bytes) from the published brush snapshot — the picker's seed.
-/// The selection is a stable id, so the stop is found by id (not array index), bounded by the count.
+/// The selected stop's colour (sRGB bytes) — the picker's seed. Reads the **active Texture layer's**
+/// ramp when one is being edited (else the brush snapshot), so the picker opens on the layer's own
+/// stop colour and the readback's equality guard short-circuits instead of overwriting the stop with
+/// the brush colour on open. The selection is a stable id (found by id, not array index).
 fn selected_stop_seed() -> [u8; 4] {
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     let sel_id = state::selected_ramp_stop();
-    state::current_brush()
+    crate::paint_texture::active_texture_ramp_view()
+        .or_else(state::current_brush)
         .and_then(|b| {
             let count = (b.texture_ramp_stop_count as usize).min(b.texture_ramp_stops.len());
             b.texture_ramp_stops[..count]

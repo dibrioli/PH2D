@@ -562,6 +562,66 @@ fn stroke_is_one_undo_step_and_redoable() {
 }
 
 #[test]
+fn section_reset_buttons_restore_section_defaults() {
+    // Each section's reset icon (forwarded as a Click) restores that section's brush fields to
+    // defaults while leaving the OTHER sections untouched (Enio 2026-06-24).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+
+    // Dirty several sections.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        0.5,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SPACING, 0.42));
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN)); // Adjust Strength → on
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_X)); // Tiling X → on
+    t.new_brush_texture(); // assign a procedural texture (Noise)
+    t.handle_panel_event(PanelEvent::Click(
+        core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+    )); // ramp → on
+
+    let s = t.brush_settings();
+    assert!(s.color_jitter[0] > 0.0);
+    assert!(s.tiling[0]);
+    assert_ne!(s.texture_kind, 0);
+    assert!(s.texture_ramp_enabled);
+
+    // Randomize reset → hue back to 0; nothing else touched.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_RANDOMIZE_RESET));
+    assert_eq!(t.brush_settings().color_jitter[0], 0.0);
+    assert!(
+        t.brush_settings().tiling[0],
+        "randomize reset spared tiling"
+    );
+
+    // Stroke reset → spacing + Adjust-Strength back to defaults; tiling untouched.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_RESET));
+    let s = t.brush_settings();
+    assert!((s.spacing - 0.10).abs() < 1e-6);
+    assert!(!s.space_attenuation);
+    assert!(s.tiling[0], "stroke reset must not touch tiling");
+
+    // Color Ramp reset → ramp off, but the texture stays assigned (finer than the Texture reset).
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET));
+    assert!(!t.brush_settings().texture_ramp_enabled);
+    assert_ne!(
+        t.brush_settings().texture_kind,
+        0,
+        "ramp reset must not clear the texture"
+    );
+
+    // Texture reset → texture cleared to None.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TEXTURE_RESET));
+    assert_eq!(t.brush_settings().texture_kind, 0);
+
+    // Tiling reset → tiling off.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_RESET));
+    assert!(!t.brush_settings().tiling[0]);
+}
+
+#[test]
 fn stroke_section_panel_events_route_to_brush_settings() {
     // Behavioural seam (tool layer): a real `PanelEvent` from the Stroke section reaches the
     // matching `set_brush_*` setter and is reflected in the next `brush_settings()` snapshot,
@@ -581,10 +641,10 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SPACING, 0.25));
     assert!((t.brush_settings().spacing - 0.25).abs() < 1e-6);
 
-    // "Adjust Strength for Spacing" toggles from the default ON.
-    assert!(t.brush_settings().space_attenuation);
-    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+    // "Adjust Strength for Spacing" toggles from the default OFF (Enio 2026-06-24).
     assert!(!t.brush_settings().space_attenuation);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
+    assert!(t.brush_settings().space_attenuation);
 
     // "Accumulate" toggles from the default OFF (Blender default; off caps a stroke at Strength).
     assert!(!t.brush_settings().accumulate);

@@ -155,6 +155,20 @@ impl PainterTool {
         self.rerender_texture_layer(id);
     }
 
+    /// Reset the active texture layer's **Color Ramp** to defaults (ramp off, default gradient, alpha
+    /// off) — the layer-editor counterpart of [`super::super::PainterTool::reset_brush_color_ramp`].
+    pub fn reset_texture_layer_ramp(&mut self) {
+        let Some(id) = self.active_texture_id() else {
+            return;
+        };
+        if let Some(t) = self.layers.texture_mut(id) {
+            t.ramp = ph2d_color::ColorRamp::default();
+            t.ramp_enabled = false;
+            t.ramp_alpha_mode = RampAlphaMode::None.to_u8();
+        }
+        self.rerender_texture_layer(id);
+    }
+
     /// Set the ramp colour-interpolation space (`RampColorMode` wire).
     pub fn set_texture_layer_ramp_mode(&mut self, m: u8) {
         let Some(id) = self.active_texture_id() else {
@@ -286,6 +300,10 @@ impl PainterTool {
                 }
                 x if x == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
                     self.texture_layer_ramp_remove_last_stop();
+                    true
+                }
+                x if x == core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
+                    self.reset_texture_layer_ramp();
                     true
                 }
                 _ => false,

@@ -232,7 +232,7 @@ impl HeroScreen {
         Self {
             id,
             theme: Theme::Forge,
-            text_rendering: ph2d_tokens::TextRendering::Default,
+            text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),

@@ -140,7 +140,7 @@ impl Default for BrushSpec {
             color: [0.0, 0.0, 0.0],
             custom_falloff: FalloffCurve::default(),
             stroke_method: StrokeMethod::Space,
-            space_attenuation: true,
+            space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             accumulate: false,
             dash_ratio: 1.0,
             dash_samples: 20,

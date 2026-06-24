@@ -48,6 +48,15 @@ impl PainterTool {
         self.paint.texture_ramp_enabled = !self.paint.texture_ramp_enabled;
     }
 
+    /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, alpha action
+    /// off. Flags the LUT dirty so the next ramped stamp re-bakes.
+    pub fn reset_brush_color_ramp(&mut self) {
+        self.paint.texture_ramp = ph2d_color::ColorRamp::default();
+        self.paint.texture_ramp_enabled = false;
+        self.paint.texture_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::None;
+        self.paint.texture_ramp_dirty = true;
+    }
+
     /// Set what the ramp colour's **alpha** does when painting (`RampAlphaMode` wire discriminant):
     /// `0` ignore · `1` scale brush Strength · `2` drive the sprite's own alpha. No LUT re-bake needed
     /// (the mode is applied at stamp time, not baked).

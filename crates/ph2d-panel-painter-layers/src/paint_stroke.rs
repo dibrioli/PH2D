@@ -9,15 +9,17 @@
 //! real range (the `BRUSH_*_MAX` constants are the single source). Edits forward over the frozen
 //! `PanelEvent` channel (drained in [`crate::event`]).
 
-use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row, paint_toggle_row};
+use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
+use crate::paint_brush_top::paint_checkbox_row;
 use crate::state;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_jitter_unit_option_id, painter_brush_stroke_method_option_id,
 };
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_editor_core::zones::Rect;
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BrushSettings, JitterUnit, StrokeMethod,
@@ -42,6 +44,7 @@ pub(crate) fn paint_stroke_section(
         "Stroke",
         core_ids::PAINTER_BRUSH_STROKE_SECTION,
         core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
+        core_ids::PAINTER_BRUSH_STROKE_RESET,
     );
     if collapsed {
         return y;
@@ -74,7 +77,7 @@ pub(crate) fn paint_stroke_section(
 
     // ── Edge to Edge — only Anchored (the drag-sized stamp spans anchor→cursor) ──
     if method.uses_edge_to_edge() {
-        y = paint_toggle_row(
+        y = paint_checkbox_row(
             ctx,
             theme,
             x,
@@ -116,7 +119,7 @@ pub(crate) fn paint_stroke_section(
             value: brush.spacing,
             readout: &format!("{:.0}%", brush.spacing * 100.0), // LITERAL-PX-OK: fraction→percent
         });
-        y = paint_toggle_row(
+        y = paint_checkbox_row(
             ctx,
             theme,
             x,
@@ -129,70 +132,10 @@ pub(crate) fn paint_stroke_section(
     }
     // (Accumulate moved to the top-of-panel basics as a checkbox — Enio 2026-06-24.)
 
-    // ── Jitter (unit-aware track + readout) + Jitter Unit dropdown — all but Drag Dot/Anchored ──
+    // ── Jitter group — Position / Scale / Rotation scatter, inside a decorative card (all but Drag
+    //    Dot/Anchored) ──
     if method.allows_jitter() {
-        let view = brush.jitter_unit == JitterUnit::View.to_u8();
-        let (jval, jread) = if view {
-            (
-                brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX,
-                format!("{:.0}px", brush.jitter_absolute_px),
-            )
-        } else {
-            (brush.jitter, format!("{:.2}", brush.jitter))
-        };
-        y = paint_param_row(ParamRow {
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            label: "Jitter",
-            id: core_ids::PAINTER_BRUSH_JITTER,
-            value: jval,
-            readout: &jread,
-        });
-        let (ny, open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Unit",
-            core_ids::PAINTER_BRUSH_JITTER_UNIT,
-            brush.jitter_unit,
-            jitter_unit_name(brush.jitter_unit),
-        );
-        y = ny;
-        if let Some(r) = open {
-            state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
-        }
-        // Per-dab Scale jitter (radius scatter). Always available with jitter.
-        y = paint_param_row(ParamRow {
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            label: "Scale",
-            id: core_ids::PAINTER_BRUSH_JITTER_SCALE,
-            value: brush.jitter_scale,
-            readout: &format!("{:.2}", brush.jitter_scale),
-        });
-        // Per-dab Rotate jitter (texture-rotation scatter) — only meaningful with a texture, so
-        // shown only when one is assigned (a round dab is isotropic; the control would look dead).
-        if brush.texture_kind != 0 {
-            y = paint_param_row(ParamRow {
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                label: "Rotate",
-                id: core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-                value: brush.jitter_rotate,
-                readout: &format!("{:.2}", brush.jitter_rotate),
-            });
-        }
+        y = paint_jitter_card(ctx, theme, x, content_w, y, brush);
     }
 
     // ── Dash ratio + length — only the spacing-driven methods ──
@@ -273,11 +216,12 @@ pub(crate) fn paint_tiling_section(
         "Tiling",
         core_ids::PAINTER_BRUSH_TILING_SECTION,
         core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
+        core_ids::PAINTER_BRUSH_TILING_RESET,
     );
     if collapsed {
         return y;
     }
-    y = paint_toggle_row(
+    y = paint_checkbox_row(
         ctx,
         theme,
         x,
@@ -287,7 +231,7 @@ pub(crate) fn paint_tiling_section(
         "Tiling X",
         brush.tiling[0],
     );
-    y = paint_toggle_row(
+    y = paint_checkbox_row(
         ctx,
         theme,
         x,
@@ -298,7 +242,7 @@ pub(crate) fn paint_tiling_section(
         brush.tiling[1],
     );
     // Repeat Image: on-canvas 3×3 tile preview + its per-axis Aspect Ratio (shown when on).
-    y = paint_toggle_row(
+    y = paint_checkbox_row(
         ctx,
         theme,
         x,
@@ -334,6 +278,126 @@ pub(crate) fn paint_stroke_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Them
             cur,
         );
     }
+}
+
+/// Paint the **Jitter** group inside a decorative rounded-rect card: a titled panel holding the
+/// per-dab **Position** scatter (unit-aware) + its Unit, the **Scale** scatter, and (texture only)
+/// the **Rotation** scatter — so the three jitter modes read clearly. The card background is drawn
+/// first (its height pre-computed from the row count), then the rows on top. Returns the next `y`.
+fn paint_jitter_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let pad = Spacing::Sm.px();
+    let xs = Spacing::Xs.px();
+    let sm = Spacing::Sm.px();
+    let font = TypeToken::Sm.px();
+    let title_h = ROW_H_PX;
+    let has_rotation = brush.texture_kind != 0;
+    // Pre-compute the card height (each row includes its own trailing spacing). Position + Scale are
+    // param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm); Rotation (texture only) is another
+    // param row. The trailing `+ xs` is bottom breathing room.
+    let mut rows_h = (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs);
+    if has_rotation {
+        rows_h += ROW_H_PX + xs;
+    }
+    let card_h = pad + title_h + rows_h + xs;
+    let card = Rect::new(x, y, content_w, card_h);
+    fill_rounded_rect(
+        ctx.scene,
+        card,
+        Radius::Md.px(),
+        resolve(ColorToken::Bg1, theme),
+    );
+    stroke_rounded_rect(
+        ctx.scene,
+        card,
+        Radius::Md.px(),
+        StrokeToken::Default.px(),
+        resolve(ColorToken::Border, theme),
+    );
+    let inner_x = x + pad;
+    let inner_w = (content_w - pad * 2.0).max(0.0);
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        "Jitter",
+        inner_x,
+        y + pad + (title_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let mut iy = y + pad + title_h;
+    // Position: the main per-dab position scatter (unit-aware track + readout).
+    let view = brush.jitter_unit == JitterUnit::View.to_u8();
+    let (jval, jread) = if view {
+        (
+            brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX,
+            format!("{:.0}px", brush.jitter_absolute_px),
+        )
+    } else {
+        (brush.jitter, format!("{:.2}", brush.jitter))
+    };
+    iy = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x: inner_x,
+        content_w: inner_w,
+        y: iy,
+        label: "Position",
+        id: core_ids::PAINTER_BRUSH_JITTER,
+        value: jval,
+        readout: &jread,
+    });
+    // Unit (Brush / View) for the Position scatter.
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        inner_x,
+        inner_w,
+        iy,
+        "Unit",
+        core_ids::PAINTER_BRUSH_JITTER_UNIT,
+        brush.jitter_unit,
+        jitter_unit_name(brush.jitter_unit),
+    );
+    iy = ny;
+    if let Some(r) = open {
+        state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
+    }
+    // Scale: per-dab radius scatter.
+    iy = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x: inner_x,
+        content_w: inner_w,
+        y: iy,
+        label: "Scale",
+        id: core_ids::PAINTER_BRUSH_JITTER_SCALE,
+        value: brush.jitter_scale,
+        readout: &format!("{:.2}", brush.jitter_scale),
+    });
+    // Rotation: per-dab texture-rotation scatter — only meaningful with a texture assigned.
+    if has_rotation {
+        iy = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x: inner_x,
+            content_w: inner_w,
+            y: iy,
+            label: "Rotation",
+            id: core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+            value: brush.jitter_rotate,
+            readout: &format!("{:.2}", brush.jitter_rotate),
+        });
+    }
+    let _ = iy;
+    y + card_h + Spacing::Sm.px()
 }
 
 /// A faint, left-aligned section divider label in a `ROW_H_PX` cell. `pub(crate)` so the Texture

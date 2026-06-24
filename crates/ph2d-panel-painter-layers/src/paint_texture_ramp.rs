@@ -65,6 +65,7 @@ pub(crate) fn paint_texture_ramp_section(
         "Color Ramp",
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
+        core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
     );
     if collapsed {
         return y;

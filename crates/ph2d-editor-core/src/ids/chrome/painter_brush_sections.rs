@@ -45,7 +45,8 @@ pub const PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR: NodeId =
 pub const PAINTER_BRUSH_TEXTURE_SECTION: NodeId = hash_node_id("painter_brush.texture_section");
 pub const PAINTER_BRUSH_TEXTURE_SECTION_COLOR: NodeId =
     hash_node_id("painter_brush.texture_section_color");
-pub const PAINTER_BRUSH_COLOR_RAMP_SECTION: NodeId = hash_node_id("painter_brush.color_ramp_section");
+pub const PAINTER_BRUSH_COLOR_RAMP_SECTION: NodeId =
+    hash_node_id("painter_brush.color_ramp_section");
 pub const PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR: NodeId =
     hash_node_id("painter_brush.color_ramp_section_color");
 pub const PAINTER_BRUSH_STROKE_SECTION: NodeId = hash_node_id("painter_brush.stroke_section");
@@ -54,3 +55,22 @@ pub const PAINTER_BRUSH_STROKE_SECTION_COLOR: NodeId =
 pub const PAINTER_BRUSH_TILING_SECTION: NodeId = hash_node_id("painter_brush.tiling_section");
 pub const PAINTER_BRUSH_TILING_SECTION_COLOR: NodeId =
     hash_node_id("painter_brush.tiling_section_color");
+
+// Per-section **reset** icon buttons (Inspector-Transform pattern: an `IconId::Reset` button in the
+// header, just left of the colour dot). Clicking restores that section's brush fields to defaults
+// (Enio 2026-06-24). Registered as Buttons in `crate::populate`; the tool resets on the forwarded Click.
+pub const PAINTER_BRUSH_RANDOMIZE_RESET: NodeId = hash_node_id("painter_brush.randomize_reset");
+pub const PAINTER_BRUSH_TEXTURE_RESET: NodeId = hash_node_id("painter_brush.texture_reset");
+pub const PAINTER_BRUSH_COLOR_RAMP_RESET: NodeId = hash_node_id("painter_brush.color_ramp_reset");
+pub const PAINTER_BRUSH_STROKE_RESET: NodeId = hash_node_id("painter_brush.stroke_reset");
+pub const PAINTER_BRUSH_TILING_RESET: NodeId = hash_node_id("painter_brush.tiling_reset");
+
+/// The 5 per-section reset icon buttons as one array — a single membership check for the panel's
+/// Click-forward (and reusable wherever the whole set is needed).
+pub const PAINTER_BRUSH_SECTION_RESETS: [NodeId; 5] = [
+    PAINTER_BRUSH_RANDOMIZE_RESET,
+    PAINTER_BRUSH_TEXTURE_RESET,
+    PAINTER_BRUSH_COLOR_RAMP_RESET,
+    PAINTER_BRUSH_STROKE_RESET,
+    PAINTER_BRUSH_TILING_RESET,
+];

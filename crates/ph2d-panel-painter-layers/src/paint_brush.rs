@@ -23,10 +23,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
-use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, DropdownOption, DropdownState, Slider, SliderState,
-    paint_button, paint_slider,
-};
+use ph2d_editor_core::widget::{DropdownOption, DropdownState, Slider, SliderState, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
@@ -82,9 +79,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     tiling: [false, false],
     repeat_image: false,
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
-    stroke_method: 3, // Space
-    spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
-    space_attenuation: true,
+    stroke_method: 3,         // Space
+    spacing: 0.10,            // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
+    space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
     jitter: 0.0,
     jitter_absolute_px: 0.0,
@@ -226,8 +223,8 @@ pub(crate) fn paint_brush_body(
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Eraser toggle (standalone, very bottom) ──
-    y = paint_toggle_row(
+    // ── Eraser checkbox (standalone, very bottom) ──
+    y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
         x,
@@ -321,34 +318,6 @@ pub(crate) fn paint_param_row(r: ParamRow) -> f32 {
         resolve(ColorToken::Text2, theme),
     );
     y + ROW_H_PX + Spacing::Xs.px()
-}
-
-/// Paint a full-width toggle Button labelled `label` (Accent while `on`). Returns next `y`.
-/// `pub(crate)` so the Stroke section reuses it for its Adjust-Strength / Stabilize toggles.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_toggle_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    id: ph2d_a11y::NodeId,
-    label: &str,
-    on: bool,
-) -> f32 {
-    let rect = Rect::new(x, y, content_w, ROW_H_PX);
-    let st = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
-    let mut btn = Button::new(id, label).state(st);
-    if on {
-        btn.kind = ButtonKind::Accent;
-    }
-    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(id, rect);
-    y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// When the shared Blender picker targets the brush swatch, the hero loop mirrors its live value into

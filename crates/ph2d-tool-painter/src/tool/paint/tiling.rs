@@ -75,4 +75,10 @@ impl PainterTool {
     pub fn repeat_image(&self) -> bool {
         self.paint.repeat_image
     }
+
+    /// Reset the **Tiling** section to defaults (no wrap-around tiling, no Repeat-Image preview).
+    pub fn reset_brush_tiling(&mut self) {
+        self.paint.tiling = [false, false];
+        self.paint.repeat_image = false;
+    }
 }

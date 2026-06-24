@@ -3,11 +3,13 @@
 //! the Brush panel matches the rest of the app (editable numeric chips, ALL-CAPS section header with
 //! a collapse chevron + assignable colour dot). Split from [`crate::paint_brush`] for the LOC cap.
 
+use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, SectionHeader, color_circle_hit_rect, paint_checkbox,
-    paint_section_header, paint_slider_with_chip,
+    ButtonState, Checkbox, CheckboxValue, IconButtonStyle, IconGlyph, SectionHeader,
+    color_circle_hit_rect, paint_checkbox, paint_icon_button, paint_section_header,
+    paint_slider_with_chip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
@@ -72,10 +74,12 @@ pub(crate) fn paint_checkbox_row(
     y + ROW_H_PX + Spacing::Sm.px()
 }
 
-/// Paint a collapsible section header (Inspector pattern: ALL-CAPS label + collapse chevron +
-/// assignable colour dot) and register the header (collapse-toggle on click) + the colour dot (opens
-/// the picker to assign it). Returns `(next_y, collapsed)` — the caller paints no body when collapsed.
-/// Shared by every Brush-panel section (Randomize / Texture / Color Ramp / Stroke / Tiling).
+/// Paint a collapsible section header (Inspector pattern: ALL-CAPS label + a **reset** icon button + an
+/// assignable colour dot + collapse chevron) and register the header (collapse-toggle on click), the
+/// reset button, and the colour dot (opens the picker). Returns `(next_y, collapsed)` — the caller
+/// paints no body when collapsed. Shared by every Brush-panel section (Randomize / Texture / Color
+/// Ramp / Stroke / Tiling). The reset rect is registered AFTER the full-width header so its click hits
+/// the reset button (last-wins), not the collapse toggle — mirror of the Inspector's Transform header.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_collapsible_section(
     ctx: &mut PaintCtx,
@@ -86,6 +90,7 @@ pub(crate) fn paint_collapsible_section(
     label: &str,
     section_id: ph2d_a11y::NodeId,
     color_id: ph2d_a11y::NodeId,
+    reset_id: ph2d_a11y::NodeId,
 ) -> (f32, bool) {
     let header_h = TypeToken::Md.px() + Spacing::Md.px();
     let collapsed = ctx.host.store().is_collapsed(section_id);
@@ -98,6 +103,11 @@ pub(crate) fn paint_collapsible_section(
         .collapsible(!collapsed)
         .color(rgba);
     let header_rect = Rect::new(x, y, content_w, header_h);
+    let reset_state = ctx
+        .host
+        .store()
+        .button_state(reset_id)
+        .unwrap_or(ButtonState::Normal);
     {
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
@@ -107,6 +117,24 @@ pub(crate) fn paint_collapsible_section(
     if let Some(circle) = color_circle_hit_rect(&header, header_rect) {
         ctx.host.hit_index_mut().register(color_id, circle);
     }
+    // Reset icon button — a square matching the header height, slotted just LEFT of the colour dot
+    // (same layout the Inspector's Transform header uses).
+    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: colour dot diameter (2 * radius 7)
+    let reset_rect = Rect::new(
+        x + content_w - color_slot_w - header_h,
+        y,
+        header_h,
+        header_h,
+    );
+    paint_icon_button(
+        reset_rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Plain,
+        reset_state,
+        ctx.scene,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(reset_id, reset_rect);
     (y + header_h + Spacing::Xs.px(), collapsed)
 }
 
@@ -130,6 +158,7 @@ pub(crate) fn paint_randomize_section(
         "Randomize Color",
         core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
         core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
+        core_ids::PAINTER_BRUSH_RANDOMIZE_RESET,
     );
     if collapsed {
         return y;

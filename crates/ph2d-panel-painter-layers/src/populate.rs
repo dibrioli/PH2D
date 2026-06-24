@@ -168,6 +168,12 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+        // Per-section reset icon buttons (Inspector-Transform pattern).
+        ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
+        ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_RESET,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_RESET,
     ] {
         store.register(
             id,

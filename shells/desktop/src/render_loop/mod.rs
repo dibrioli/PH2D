@@ -28,6 +28,9 @@ mod inspector_visibility;
 mod motion_smoke;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
+/// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
+/// `painter_bridge` for the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_overlays;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.

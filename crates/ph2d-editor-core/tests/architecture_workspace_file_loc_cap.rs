@@ -50,12 +50,6 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
         "ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",
         783,
     ),
-    // 689 → 713: the colour-picker gained palette Import/Export + named-palette CRUD (tab strip +
-    // New/Delete) + inline-rename TextInput hit registrations (Coord, 2026-06-24). PRIORITY follow-up:
-    // `populate_blender_picker` (a self-contained ~160-LOC fn) moves to a `pre_populate_blender`
-    // sibling → drops this file well under 600 and DELETES this entry. Two bumps this session is the
-    // signal to do it.
-    ("ph2d-editor-core/src/screens/hero/pre_populate.rs", 713),
     ("ph2d-editor-core/src/screens/hero/topbar/mod.rs", 701),
     ("ph2d-grid/src/hex.rs", 694),
     ("ph2d-grid/src/voronoi.rs", 626),

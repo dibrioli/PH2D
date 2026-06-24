@@ -23,9 +23,8 @@
 //! [`selection`]). Inspector + Hierarchy panels live in their own
 //! crates (`ph2d-panel-inspector`, `ph2d-panel-hierarchy`) per
 //! ADR-0029 Phase C.1/C.2. Shared layout constants + small helpers
-//! in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup
-//! content stays in [`fixture`] until a
-//! pilot project picks the entity model.
+//! in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup content
+//! stays in [`fixture`] until a pilot project picks the entity model.
 
 pub mod bottom_hud;
 pub mod canvas;
@@ -39,6 +38,7 @@ pub mod fixture;
 pub use crate::ids;
 pub mod left_rail;
 pub mod pre_populate;
+pub mod pre_populate_blender;
 pub mod selection;
 pub mod state;
 pub mod style;

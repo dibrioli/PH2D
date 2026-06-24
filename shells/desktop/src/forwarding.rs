@@ -84,7 +84,40 @@ pub fn forward_to_hero(
     if let Some((parent, io_kind)) = hero.store.take_palette_io_pending() {
         handle_palette_io(hero, parent, io_kind);
     }
+    // Cross-session persistence: the palette CRUD (new / delete / select / import / swatch edits) is
+    // pointer-driven, so this pointer-dispatch hook catches every change. Cheap hash-gate → save only
+    // when the set actually changed.
+    persist_palettes_if_changed(hero);
     reparent
+}
+
+thread_local! {
+    /// Last-saved FNV hash of the named-palette set, so [`persist_palettes_if_changed`] writes only on
+    /// a real change instead of every pointer event.
+    static LAST_PALETTE_HASH: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Save the picker's named palettes to `~/.ph2d/palettes.txt` when they changed since the last call.
+fn persist_palettes_if_changed(hero: &ph2d_editor::HeroScreen) {
+    let Some(set) = hero
+        .store
+        .blender_palette_set(ph2d_editor::ids::INSP_BLENDER_PICKER)
+    else {
+        return;
+    };
+    let data: Vec<(String, Vec<[u8; 4]>)> = set
+        .iter()
+        .map(|p| (p.name.clone(), p.swatches.iter().map(|c| c.rgba).collect()))
+        .collect();
+    let h = crate::palette_persist::hash(&data);
+    let changed = LAST_PALETTE_HASH.with(|c| {
+        let changed = c.get() != h;
+        c.set(h);
+        changed
+    });
+    if changed {
+        crate::palette_persist::save(&data);
+    }
 }
 
 /// Service a pending palette import/export (opens an `rfd` file dialog, then applies via the

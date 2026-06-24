@@ -48,6 +48,7 @@ mod keymap;
 mod ktx2_smoke;
 mod llm_vector;
 mod name_unique;
+mod palette_persist;
 mod render_loop;
 mod sim_populate;
 mod theme;

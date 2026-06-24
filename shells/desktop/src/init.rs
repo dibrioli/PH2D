@@ -271,7 +271,25 @@ pub(crate) fn build_initial_state(
         let _ = ph2d_panel_registry_init::register_all_panels();
     }
     let hero_screen = if hero_screen_enabled {
-        Some(HeroScreen::new(NodeId(1)).theme(theme))
+        let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
+        // Cross-session palettes: restore the named-palette set saved last run (the picker was just
+        // seeded with the default by `pre_populate`; replace it when a save exists).
+        let saved = crate::palette_persist::load();
+        if !saved.is_empty() {
+            let palettes = saved
+                .into_iter()
+                .map(|(name, colors)| ph2d_editor::interaction::NamedPalette {
+                    name,
+                    swatches: colors
+                        .iter()
+                        .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
+                        .collect(),
+                })
+                .collect();
+            hero.store
+                .blender_set_palettes(ph2d_editor::ids::INSP_BLENDER_PICKER, palettes);
+        }
+        Some(hero)
     } else {
         None
     };

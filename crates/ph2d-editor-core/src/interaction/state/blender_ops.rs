@@ -145,6 +145,15 @@ impl WidgetStore {
         }
     }
 
+    /// REPLACE the whole palette set (the cross-session restore path — the host loads it from disk at
+    /// startup) and reset the active index to 0. No-op on an empty set (a picker always keeps ≥1).
+    pub fn blender_set_palettes(&mut self, parent: NodeId, palettes: Vec<super::NamedPalette>) {
+        if !palettes.is_empty() {
+            self.blender_palettes.insert(parent, palettes);
+            self.set_blender_active_palette(parent, 0);
+        }
+    }
+
     /// Write the active-palette index into the picker's [`InteractiveState::BlenderPicker`] state.
     fn set_blender_active_palette(&mut self, parent: NodeId, idx: usize) {
         if let Some(InteractiveState::BlenderPicker { active_palette, .. }) =

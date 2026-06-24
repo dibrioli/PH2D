@@ -133,12 +133,12 @@ mod tests {
     fn hash_changes_with_content() {
         let a = sample();
         let mut b = a.clone();
-        assert_eq!(hash(&a), hash(&b), "same content → same hash");
+        assert_eq!(hash(&a), hash(&b), "same content -> same hash");
         b[0].1[0][0] = 0; // tweak one channel
         assert_ne!(
             hash(&a),
             hash(&b),
-            "a colour change flips the hash → triggers a save"
+            "a colour change flips the hash -> triggers a save"
         );
     }
 }

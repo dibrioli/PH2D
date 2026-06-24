@@ -1425,6 +1425,16 @@ impl crate::App {
             // the Apply-fired flag here so the teardown below can run
             // after the dispatch consumes the value.
             let padding_apply_fired = padding_apply.is_some();
+            // Did a texture-RESIZING edit (rasterize / trim / make-square / real-size) hit the SELECTED
+            // sprite? If so the Painter's working canvas is now the wrong resolution — reset the
+            // push-tracker (below, after the lists are consumed) so `drive_source_push` re-reads the
+            // sprite at its new size next frame, re-locking the brush / eyedropper / repeat-image.
+            let painter_src_resized = hero.gizmo.selection.is_some_and(|sel| {
+                rasterize_entities.contains(&sel)
+                    || trim_entities.contains(&sel)
+                    || make_square_entities.contains(&sel)
+                    || real_size_entities.contains(&sel)
+            });
             if image_edit::dispatch(
                 trim_entities,
                 make_square_entities,
@@ -1449,6 +1459,11 @@ impl crate::App {
                 &mut self.last_painter_pushed_entity,
             ) {
                 self.title_dirty = true;
+            }
+            // A resize hit the selected sprite → force the Painter to re-read it at the new resolution
+            // (see `painter_src_resized` above). The re-push replaces the now-invalid working canvas.
+            if painter_src_resized {
+                self.last_painter_pushed_entity = None;
             }
             // Apply teardown — runs AFTER the bake above (which needs
             // the BgRemovalTool still active to read the result). Now

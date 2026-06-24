@@ -281,7 +281,10 @@ impl App {
             return false;
         };
         let (tx, ty) = (tr.translation.x, tr.translation.y);
-        let (sw, sh) = (sprite.size[0], sprite.size[1]);
+        // The displayed sprite is `sprite.size × transform.scale`, so fold the scale into the
+        // footprint — a resize (including a non-uniform AR change via the gizmo) then keeps the brush
+        // mapping locked to the sprite. (Rotation stays ignored — the documented AABB limitation.)
+        let (sw, sh) = (sprite.size[0] * tr.scale.x, sprite.size[1] * tr.scale.y);
         let window_size = gfx.surface.size();
         let (x0, y0) = gfx
             .camera

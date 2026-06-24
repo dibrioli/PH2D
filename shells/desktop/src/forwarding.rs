@@ -186,23 +186,41 @@ fn painter_eyedropper_sample(
     let entity = ph2d_ecs::Entity::from_bits(selection?);
     let tr = sim.world().get::<crate::Transform>(entity)?;
     let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
-    // Sprite on-screen footprint (mirrors painter_canvas_input / bgremoval_preview).
+    // Sprite on-screen footprint (mirrors painter_canvas_input / bgremoval_preview). The displayed
+    // sprite is `sprite.size × transform.scale`, so fold the scale in — the eyedropper then tracks a
+    // resize / AR change exactly like the brush.
     let (tx, ty) = (tr.translation.x, tr.translation.y);
-    let (sw, sh) = (sprite.size[0], sprite.size[1]);
+    let (sw, sh) = (sprite.size[0] * tr.scale.x, sprite.size[1] * tr.scale.y);
     let (x0, y0) = camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window);
     let (x1, y1) = camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window);
     let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
     let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
-    if !(hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y) {
-        return None; // outside the canvas → not a paint sample
+    if !(hi_x > lo_x && hi_y > lo_y) {
+        return None;
     }
+    // UV vs the CENTRAL sprite footprint (live `sprite.size`, so it tracks any resize). Not clamped:
+    // a click on a Repeat-Image neighbour tile lands outside `[0, 1]`.
     let u = (px - lo_x) / (hi_x - lo_x);
     let v = (py - lo_y) / (hi_y - lo_y);
-    tools
+    let painter = tools
         .active_mut()?
         .as_any_mut()
-        .downcast_mut::<ph2d_tool_painter::PainterTool>()?
-        .sample_composite_at_uv(u, v)
+        .downcast_mut::<ph2d_tool_painter::PainterTool>()?;
+    // **Repeat Image**: the preview tiles the sprite 3×3, so the eyedropper works on any of the 8
+    // neighbour tiles AND the original — accept the 3×3 UV grid and WRAP the sample back onto the
+    // canvas (`rem_euclid`), exactly like the neighbour-paint hit region. Without Repeat, only the
+    // central sprite is sampleable.
+    let repeat = painter.repeat_image();
+    let (lo, hi) = if repeat { (-1.0, 2.0) } else { (0.0, 1.0) };
+    if !((lo..=hi).contains(&u) && (lo..=hi).contains(&v)) {
+        return None; // outside the sampleable region → fall back to the rendered-overlay readback
+    }
+    let (su, sv) = if repeat {
+        (u.rem_euclid(1.0), v.rem_euclid(1.0))
+    } else {
+        (u, v)
+    };
+    painter.sample_composite_at_uv(su, sv)
 }
 
 /// Forward a translated [`KeyEvent`] (with editor-canonical

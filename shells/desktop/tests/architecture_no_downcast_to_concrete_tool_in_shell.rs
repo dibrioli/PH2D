@@ -82,6 +82,11 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // without collision). FOLLOW-UP (Vector impl): move it to a bridge and
     // drop this entry — the central dispatch must stay downcast-free.
     "src/render_loop/mod.rs",
+    // Pointer forwarder: the colour-picker eyedropper samples the active PainterTool's layer COMPOSITE
+    // (`sample_composite_at_uv`) + reads `repeat_image()` to walk the Repeat-Image neighbour tiles —
+    // a Painter-specific affordance integrating the eyedropper with the layer system. Same exception
+    // class as painter_canvas_input / painter_bridge (ADR-0040 §3). (Coord ship-fix, 2026-06-24.)
+    "src/forwarding.rs",
     // Removed in Wave 10 / Etapa 3 audit [C1]: hero_intents/image_edit/*.rs
     // entries were pre-emptive — none of them actually downcast today.
     // The stale-check below ensures the allowlist only contains files

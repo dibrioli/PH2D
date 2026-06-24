@@ -156,6 +156,24 @@ impl App {
         // in italics at the caret.
     }
 
+    /// Reflect the colour-picker eyedropper state in the OS cursor — a crosshair "target" while a
+    /// pick is armed, the default arrow otherwise. Called each CursorMoved (winit dedups the icon).
+    fn update_eyedropper_cursor(&self) {
+        let Some(win) = self.window.as_ref() else {
+            return;
+        };
+        let armed = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.store.eyedropper_pending().is_some());
+        win.set_cursor(if armed {
+            winit::window::CursorIcon::Crosshair
+        } else {
+            winit::window::CursorIcon::Default
+        });
+    }
+
     pub(crate) fn on_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
         let prev = self.last_pointer;
         self.last_pointer = (position.x as f32, position.y as f32);
@@ -163,6 +181,8 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // Reflect the colour-picker eyedropper in the OS cursor (a crosshair "target" while armed).
+        self.update_eyedropper_cursor();
         // BgRemoval eyedropper drag (SHELL-only): while the primary
         // button is held with the eyedropper armed, every motion
         // samples another colour. Early-return so the move does not
@@ -365,6 +385,15 @@ impl App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.context_menu().is_some());
+        // Colour-picker eyedropper armed when this click arrived? `forward_to_hero` services the pick
+        // (sampling the pixel) AND clears the pending flag, so by the time the consume arms below run
+        // it reads as disarmed. Capture it now so the Painter brush does NOT also paint where the user
+        // sampled — the eyedropper must inhibit the brush (the sampled click is consumed, not painted).
+        let eyedropper_armed_before = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.store.eyedropper_pending().is_some());
         // Painter layers drag-reparent (W3 T3.8): the dispatch emits a
         // PainterLayerReparent on Up of an active layer-row drag; route it to
         // the active PainterTool, which reverses NodeId→LayerId and applies
@@ -456,6 +485,12 @@ impl App {
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if self.try_add_area_click(evt.x, evt.y) =>
             {
+                return;
+            }
+            // Colour-picker eyedropper sample: when the picker eyedropper was armed, `forward_to_hero`
+            // already sampled the pixel — consume the click so the Painter brush does NOT paint there
+            // and the sprite isn't picked/moved. Must precede the painter brush arm below.
+            (ph2d_host::PointerButton::Primary, PointerKind::Down) if eyedropper_armed_before => {
                 return;
             }
             // Painter brush: a Primary Down with the Painter active + a sprite

@@ -79,8 +79,11 @@ pub(super) fn draw_repeat_image(
         window_size,
     );
     let k = f64::from(window_size.height) / f64::from(camera.height_world).max(1e-6);
-    let off_w = f64::from(sprite.size[0]);
-    let off_h = f64::from(sprite.size[1]);
+    // The neighbour tile offset is the DISPLAYED sprite size (`sprite.size × transform.scale`) — the
+    // central image (`base`) already includes the scale, so the offset must too or the tiles overlap /
+    // gap after a resize (incl. a non-uniform AR change).
+    let off_w = f64::from(sprite.size[0]) * f64::from(tr.scale.x);
+    let off_h = f64::from(sprite.size[1]) * f64::from(tr.scale.y);
     for dy in [-1i32, 0, 1] {
         for dx in [-1i32, 0, 1] {
             if dx == 0 && dy == 0 {
@@ -130,7 +133,8 @@ fn draw_brush_ring(
                 )
             {
                 let (tx, ty) = (tr.translation.x, tr.translation.y);
-                let (sw, sh) = (sprite.size[0], sprite.size[1]);
+                // Displayed size = sprite.size × transform.scale, so the ring tracks a resize / AR change.
+                let (sw, sh) = (sprite.size[0] * tr.scale.x, sprite.size[1] * tr.scale.y);
                 let (x0, _) = camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
                 let (x1, _) = camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
                 let scale = (x1 - x0).abs() / iw as f32;

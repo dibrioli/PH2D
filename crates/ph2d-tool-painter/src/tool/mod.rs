@@ -98,6 +98,14 @@ pub struct PainterTool {
     source_size: (u32, u32),
     preview_dirty: bool,
     pending_commit: bool,
+    /// `true` once any edit (stroke, layer op, adjustment) touched the working canvas/composite since
+    /// the last `set_source` bind. The shell uses it to auto-bake the painting back into the sprite
+    /// when the selection leaves the bound sprite or the tool deactivates, so work never silently
+    /// vanishes (Enio 2026-06-24). Cleared on `set_source` / `mark_baked` / `deactivate`.
+    edited_since_bind: bool,
+    /// Set by `on_deactivate` when it KEEPS the working canvas (there were unbaked edits) instead of
+    /// tearing it down, so the shell can bake it back to the sprite before finishing the teardown.
+    deferred_bake: bool,
     /// Structural (layer-model) undo/redo. Driven by the layer ops in
     /// [`crate::tool`] via `commit_structural_edit`.
     undo: crate::undo::UndoController,
@@ -136,6 +144,8 @@ impl Default for PainterTool {
             source_size: (0, 0),
             preview_dirty: false,
             pending_commit: false,
+            edited_since_bind: false,
+            deferred_bake: false,
             undo: crate::undo::UndoController::default(),
             dirty_rect: None,
             selection: BTreeSet::new(),

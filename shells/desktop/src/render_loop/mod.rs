@@ -1076,6 +1076,55 @@ impl crate::App {
                 &mut self.last_upscale_pushed_entity,
                 &mut self.upscale_preview,
             );
+            // ── Persist painter work BEFORE the bridge rebinds / right after a deferred deactivation
+            // (Enio 2026-06-24: paint must survive deselect / object-switch / closing painter mode).
+            // Done HERE (not in the bridge) because the bake needs `&mut sim` and must run before the
+            // bridge's source-push replaces the working canvas. ──
+            {
+                let painter_id = ph2d_editor::ToolId::new("painter");
+                let painter_active = tools.active().map(|t| t.id()) == Some(painter_id.clone());
+                if painter_active {
+                    // Selection moved off the bound sprite (incl. deselect) → bake it now.
+                    let sel = hero.gizmo.selection;
+                    if let Some(old) = self.last_painter_pushed_entity
+                        && sel != Some(old)
+                        && let Some(painter) = tools.active_mut().and_then(|t| {
+                            t.as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                        })
+                        && painter.has_unbaked_edits()
+                    {
+                        crate::hero_intents::auto_commit_painter(
+                            old,
+                            sim,
+                            renderer,
+                            asset_db,
+                            atlas_asset_map,
+                            painter,
+                        );
+                        self.last_painter_pushed_entity = None; // bridge re-pushes the new selection
+                    }
+                } else if let Some(old) = self.last_painter_pushed_entity
+                    && let Some(painter) = tools.tool_by_id_mut(&painter_id).and_then(|t| {
+                        t.as_any_mut()
+                            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                    })
+                    && painter.take_deferred_bake()
+                {
+                    // The painter deactivated with unbaked edits → bake the kept canvas, then finish
+                    // the teardown its `on_deactivate` deferred.
+                    crate::hero_intents::auto_commit_painter(
+                        old,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                        painter,
+                    );
+                    (painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();
+                    self.last_painter_pushed_entity = None;
+                }
+            }
             // Painter panel ⟷ tool bridge (W1 T1.5) — source push +
             // current_preview drain + pending_commit capture; on-canvas
             // overlay paints the canvas RGBA over the sprite footprint.

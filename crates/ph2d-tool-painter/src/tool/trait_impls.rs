@@ -33,15 +33,18 @@ impl Tool for PainterTool {
         // Drop any in-progress shape session (Curve/Circle) before the canvas is torn down (no
         // restore — the working buffer is cleared next).
         self.discard_open_shape();
-        // Full teardown: clears canvas_rgba + source_size + commit flag + dock mode.
-        <Self as RasterEditTool>::deactivate(self);
+        // Persistence (Enio 2026-06-24): with unbaked edits, KEEP the canvas + flag a deferred bake so
+        // the shell persists it into the sprite before teardown; otherwise tear down now.
+        if self.has_unbaked_edits() {
+            self.deferred_bake = true;
+        } else {
+            <Self as RasterEditTool>::deactivate(self);
+        }
     }
 
     fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
-        // The frozen generic channel (ADR-0040 TG-B): the layers panel emits
-        // PanelEvent::{Click, SetValue, SelectOption}. Each is routed to the
-        // matching layer / adjustment edit (the single source of truth in
-        // `tool/layers.rs`).
+        // The frozen generic channel (ADR-0040 TG-B): the layers panel emits PanelEvent::{Click,
+        // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
         // Texture-layer edits + the per-dab randomize controls (Jitter Scale/Rotate + Randomize
@@ -512,15 +515,14 @@ impl RasterEditTool for PainterTool {
             "set_source rgba length must equal width*height*4"
         );
         // A new working canvas invalidates any open shape session (its restore record points at the
-        // OLD buffer). Drop it without restoring.
+        // OLD buffer); drop it without restoring.
         self.discard_open_shape();
         self.canvas_rgba = Arc::new(rgba);
         self.source_size = (width, height);
         self.preview_dirty = true;
-        // A fresh source = a fresh single-raster stack. The lone layer's pixels
-        // ARE `canvas_rgba` (the active working buffer), so `images` stays empty
-        // and the stack is trivial → the fast preview path. Multi-layer state
-        // only appears once the layers panel adds layers.
+        self.edited_since_bind = false; // fresh bind = no unbaked edits (canvas mirrors the sprite)
+        // A fresh source = a fresh single-raster stack whose lone layer's pixels ARE `canvas_rgba`
+        // (trivial → fast preview path); multi-layer state only appears once the panel adds layers.
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
@@ -529,14 +531,12 @@ impl RasterEditTool for PainterTool {
         self.bump_layer_pixels(active);
         self.composited = None;
         self.layers_revision = self.layers_revision.wrapping_add(1);
-        // A fresh source is a different working canvas — undo/redo over the OLD
-        // model is meaningless on the NEW one.
+        // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
         self.undo.clear();
     }
 
-    /// Borrow the current composite iff it changed since the last call (drains
-    /// `preview_dirty`). Trivial stack → `canvas_rgba` byte-for-byte (fast path);
-    /// non-trivial → the composited layer stack (CPU reference).
+    /// Borrow the current composite iff it changed since the last call (drains `preview_dirty`).
+    /// Trivial stack → `canvas_rgba` byte-for-byte (fast path); non-trivial → the composited stack.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
         if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
             return None;
@@ -569,9 +569,8 @@ impl RasterEditTool for PainterTool {
         std::mem::take(&mut self.pending_commit)
     }
 
-    /// Bake the final canvas for commit (Apply): the full layer COMPOSITE (base
-    /// layer + every layer above with their opacity / blend / visibility /
-    /// adjustments) — exactly what the live preview shows.
+    /// Bake the final canvas for commit (Apply): the full layer COMPOSITE (base + every layer's
+    /// opacity / blend / visibility / adjustments) — exactly what the live preview shows.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
         let (w, h) = self.source_size;
         if !self.is_trivial_stack() {
@@ -594,7 +593,8 @@ impl RasterEditTool for PainterTool {
         self.source_size = (0, 0);
         self.preview_dirty = false;
         self.pending_commit = false;
-        // Reset the dock-mode flag so re-activating starts on the Layers view.
-        self.dock_shows_layers = true;
+        self.edited_since_bind = false;
+        self.deferred_bake = false;
+        self.dock_shows_layers = true; // re-activating starts on the Layers view
     }
 }

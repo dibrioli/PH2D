@@ -51,9 +51,8 @@ pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
 /// allocation cap is higher; this is the interactive range, not a hard limit.)
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 
-// Interactive UI ranges for the Stroke section's non-`0..1` sliders. The slider's
-// `0..1` track maps onto `0..MAX` (or `1..MAX` for counts); these are the single
-// source of truth shared by the tool setters and the panel's value↔track maps.
+// Interactive UI ranges for the Stroke section's non-`0..1` sliders: the slider's `0..1` track maps
+// onto `0..MAX` (or `1..MAX` for counts), the single source shared by the tool setters + the panel.
 /// Max spacing the slider reaches, as a fraction of diameter (`1.0` = 100% = one full
 /// diameter between dab centres). The engine accepts more; this is the interactive top.
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
@@ -426,6 +425,7 @@ impl PainterTool {
     fn mark_dirty(&mut self, rect: Region) {
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
         self.preview_dirty = true;
+        self.edited_since_bind = true; // unbaked work — the shell auto-persists on leave/deactivate
         let active = self.layers.active();
         self.bump_layer_pixels(active);
     }

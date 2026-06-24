@@ -31,9 +31,9 @@ mod view;
 
 pub(crate) use hierarchy::drain_reparent;
 pub(crate) use image_edit::{
-    drain_bgremoval, drain_color_equalization, drain_equalize_sizes, drain_make_square,
-    drain_padding, drain_painter, drain_rasterize, drain_trim_transparency, drain_undo_image_edit,
-    drain_upscale,
+    auto_commit_painter, drain_bgremoval, drain_color_equalization, drain_equalize_sizes,
+    drain_make_square, drain_padding, drain_painter, drain_rasterize, drain_trim_transparency,
+    drain_undo_image_edit, drain_upscale,
 };
 pub(crate) use sprite_merge::{drain_merge_sprites, take_last_merge_result};
 pub(crate) use view::drain_view_focus;

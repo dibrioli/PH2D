@@ -290,6 +290,16 @@ impl ToolRegistry {
         Some(self.tools[i].as_mut())
     }
 
+    /// Mutably borrow a registered tool by id, **active or not**. Used by a bridge that must finalize
+    /// its own tool after it deactivated (e.g. the Painter baking its kept canvas into the sprite on
+    /// close — `active_mut` would return the NEW tool). Returns `None` if no tool has that id.
+    pub fn tool_by_id_mut(&mut self, id: &ToolId) -> Option<&mut dyn Tool> {
+        self.tools
+            .iter_mut()
+            .find(|t| t.id() == *id)
+            .map(|t| t.as_mut())
+    }
+
     /// Id of the editor's default tool — the one whose [`Tool::is_default`]
     /// returns `true`, falling back to the first registered tool if none
     /// is flagged. Used for the boot selection and as the "return to"

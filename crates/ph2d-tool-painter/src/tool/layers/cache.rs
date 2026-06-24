@@ -14,6 +14,7 @@ impl PainterTool {
         // the stamped region, so the next drain must do a FULL recompose.
         self.dirty_rect = None;
         self.preview_dirty = true;
+        self.edited_since_bind = true; // structural/metadata edit → unbaked composite change
         // W5: a structural edit (add/remove/reorder/visibility/opacity/blend/
         // select) changes the composite below some adjustment → every cut is
         // potentially stale. Conservative-correct: drop them all (they cold-

@@ -18,6 +18,42 @@ use ph2d_tool_painter::PainterTool;
 use crate::ImageEditSnapshot;
 use crate::hero_intents::texture_edit;
 
+/// Silently bake the painter's current canvas back into `entity_bits` — persist the painting WITHOUT
+/// an explicit Apply (used when the selection leaves the sprite or the tool deactivates, so work never
+/// vanishes; Enio 2026-06-24). Unlike [`drain_painter`] it pushes no undo entry and no toast — it just
+/// swaps the sprite to a fresh Individual texture holding the composite. Returns `true` if it baked,
+/// and clears the painter's unbaked-edits flag on success.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn auto_commit_painter(
+    entity_bits: u64,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+    painter: &mut PainterTool,
+) -> bool {
+    let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+    let Some(src) =
+        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+    else {
+        return false;
+    };
+    let old_size_world = src.old_size_world;
+    let (canvas, w, h) = (painter as &mut dyn RasterEditTool).run_full();
+    if canvas.is_empty() || w == 0 || h == 0 {
+        return false;
+    }
+    let edited =
+        ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
+            .into_premultiplied();
+    if texture_edit::commit_edited_texture(entity, sim, renderer, &edited, old_size_world).is_ok() {
+        painter.mark_baked();
+        true
+    } else {
+        false
+    }
+}
+
 /// Drain a `pending_painter` Tool Action: pull the painted canvas at the
 /// sprite's full resolution and swap to a fresh Individual texture with
 /// the same dimensions (alpha + colour mutation). Caller gates on

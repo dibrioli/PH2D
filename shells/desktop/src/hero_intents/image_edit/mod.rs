@@ -40,7 +40,7 @@ pub(crate) use color_equalization::drain_color_equalization;
 pub(crate) use equalize_sizes::drain_equalize_sizes;
 pub(crate) use make_square::drain_make_square;
 pub(crate) use padding::drain_padding;
-pub(crate) use painter::drain_painter;
+pub(crate) use painter::{auto_commit_painter, drain_painter};
 pub(crate) use rasterize::drain_rasterize;
 pub(crate) use trim_transparency::drain_trim_transparency;
 pub(crate) use undo::drain_undo_image_edit;

@@ -82,6 +82,7 @@ impl PainterTool {
         self.dirty_rect = None;
         self.adjustment_cache_pending = true;
         self.preview_dirty = true;
+        self.edited_since_bind = true; // adjustment edit → unbaked composite change
         // The adjustment's params live in the published LayerStack, so the panel
         // snapshot must republish (mirror of `invalidate_composite`'s bump).
         self.layers_revision = self.layers_revision.wrapping_add(1);

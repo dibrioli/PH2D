@@ -622,6 +622,46 @@ fn section_reset_buttons_restore_section_defaults() {
 }
 
 #[test]
+fn unbaked_edits_tracked_and_deactivate_defers_the_bake() {
+    // Persistence (Enio 2026-06-24): the painter flags unbaked edits so the shell auto-persists them
+    // on leave/deactivate. A fresh bind has none; an edit sets the flag; deactivating with edits KEEPS
+    // the canvas + defers the bake (so the shell can write it back before teardown).
+    use ph2d_editor_core::tool::{RasterEditTool, Tool};
+    let mut t = PainterTool::default();
+    (&mut t as &mut dyn RasterEditTool).set_source(vec![0u8; 4 * 4 * 4], 4, 4);
+    assert!(!t.has_unbaked_edits(), "fresh bind has no unbaked edits");
+
+    // A structural edit (add a layer) marks the canvas unbaked.
+    t.add_raster_layer("Layer 2");
+    assert!(t.has_unbaked_edits(), "an edit flags unbaked work");
+
+    // Deactivating with unbaked edits defers the bake + keeps the canvas for the shell.
+    t.on_deactivate();
+    assert!(
+        t.take_deferred_bake(),
+        "deactivate defers the bake when edited"
+    );
+    assert!(
+        t.has_unbaked_edits(),
+        "canvas kept until the shell bakes it"
+    );
+
+    // The shell signals the bake landed.
+    t.mark_baked();
+    assert!(!t.has_unbaked_edits());
+}
+
+#[test]
+fn deactivate_without_edits_tears_down_immediately() {
+    use ph2d_editor_core::tool::{RasterEditTool, Tool};
+    let mut t = PainterTool::default();
+    (&mut t as &mut dyn RasterEditTool).set_source(vec![0u8; 4 * 4 * 4], 4, 4);
+    t.on_deactivate();
+    assert!(!t.take_deferred_bake(), "no edits → no deferred bake");
+    assert!(!t.has_unbaked_edits());
+}
+
+#[test]
 fn stroke_section_panel_events_route_to_brush_settings() {
     // Behavioural seam (tool layer): a real `PanelEvent` from the Stroke section reaches the
     // matching `set_brush_*` setter and is reflected in the next `brush_settings()` snapshot,

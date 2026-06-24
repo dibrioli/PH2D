@@ -96,6 +96,27 @@ impl PainterTool {
         self.pending_commit = true;
     }
 
+    /// `true` when the working canvas/composite has edits not yet baked into the sprite (any stroke,
+    /// layer op or adjustment since the last `set_source` bind). The shell uses this to auto-persist
+    /// the painting when the selection leaves the sprite or the tool deactivates (Enio 2026-06-24).
+    #[must_use]
+    pub fn has_unbaked_edits(&self) -> bool {
+        self.edited_since_bind && !self.canvas_rgba.is_empty()
+    }
+
+    /// Mark the working canvas as fully baked into the sprite — clears the unbaked-edits flag without
+    /// touching the canvas (the shell calls this right after a successful auto-bake).
+    pub fn mark_baked(&mut self) {
+        self.edited_since_bind = false;
+    }
+
+    /// Take (and clear) the "deactivation deferred a bake" flag set by [`crate::tool::PainterTool`]'s
+    /// `on_deactivate` when it kept the canvas. `true` → the shell must bake the kept canvas back to
+    /// the last-bound sprite, then call `deactivate()` to finish the teardown.
+    pub fn take_deferred_bake(&mut self) -> bool {
+        std::mem::take(&mut self.deferred_bake)
+    }
+
     /// Dimensions of the working canvas in pixels (`set_source` sets, `deactivate`
     /// zeroes).
     #[must_use]

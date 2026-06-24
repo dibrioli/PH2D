@@ -267,7 +267,7 @@ pub(crate) fn brush_view_from_texture_layer(
     base.texture_ramp_mode = tex.ramp.color_mode.to_u8();
     base.texture_ramp_interp = tex.ramp.interp.to_u8();
     base.texture_ramp_alpha_mode = tex.ramp_alpha_mode;
-    let srgb = |c: f32| f32::from(linear_to_srgb_byte(c)) / 255.0;
+    let srgb = |c: f32| f32::from(linear_to_srgb_byte(c)) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
     let stops = tex.ramp.stops();
     let count = stops.len().min(base.texture_ramp_stops.len());
     base.texture_ramp_stop_count = count as u8;
@@ -296,7 +296,7 @@ fn paint_texture_preview(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let ph = (content_w * 0.5).clamp(56.0, 120.0); // a wide preview strip
+    let ph = (content_w * 0.5).clamp(56.0, 120.0); // LITERAL-PX-OK: one-off preview-strip min/max height
     let rect = Rect::new(x, y, content_w, ph);
     // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
     // the real `ColorRamp` + its Mode/Interpolation), so the preview is faithful to every ramp option
@@ -360,7 +360,7 @@ fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> b
     if count == 0 {
         return false;
     }
-    let s2l = |c: f32| srgb_to_linear_byte((c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
+    let s2l = |c: f32| srgb_to_linear_byte((c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8); // LITERAL-PX-OK: sRGB 8-bit normalize
     let stops: Vec<RampStop> = brush.texture_ramp_stops[..count]
         .iter()
         .map(|s| RampStop::new(s[0], [s2l(s[1]), s2l(s[2]), s2l(s[3]), s[4]])) // alpha straight
@@ -372,9 +372,9 @@ fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> b
     );
     ramp.bake_into(out); // linear RGBA in the chosen interp/colour space
     for c in out.iter_mut() {
-        c[0] = f32::from(linear_to_srgb_byte(c[0])) / 255.0;
-        c[1] = f32::from(linear_to_srgb_byte(c[1])) / 255.0;
-        c[2] = f32::from(linear_to_srgb_byte(c[2])) / 255.0;
+        c[0] = f32::from(linear_to_srgb_byte(c[0])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
+        c[1] = f32::from(linear_to_srgb_byte(c[1])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
+        c[2] = f32::from(linear_to_srgb_byte(c[2])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
         // alpha stays straight
     }
     true

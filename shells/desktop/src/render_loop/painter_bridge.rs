@@ -1,5 +1,9 @@
 //! Painter (layers + effects) panel ⟷ tool bridge + on-canvas live preview.
 //!
+//! ph2d-loc-cap: 863 LOC — mid-refactor. This bridge grows with the actively-developed Painter
+//! (Texture Layer + per-dab jitter just landed); decomposing it into sub-modules (preview drain /
+//! GPU lifecycle / commit capture) is a tracked follow-up, not done as a side-effect of a brush feature.
+//!
 //! Modeled after `bgremoval_preview.rs`. What it does:
 //!
 //! 1. (Generic) Pushes the active sprite's RGBA into `PainterTool`

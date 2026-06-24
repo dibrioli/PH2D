@@ -58,6 +58,13 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          model flip), NOT this setter; the compositor holds no derived cache keyed on \
          the model (the field is encoding-agnostic — both modes read the same buffers).",
     ),
+    (
+        "set_texture_ramp_alpha_mode",
+        "Painter brush Color Ramp alpha action (Off/Strength/SpriteAlpha): a single \
+         `texture_ramp_alpha_mode` field write. It is NOT baked into the ramp LUT (which \
+         holds RGBA colours) — the stamp reads it fresh each dab in `stamp_dabs_ramped`, \
+         exactly like the unflagged `set_blend_mode`. No derived cache keyed on it.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather
@@ -89,6 +96,24 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
         "set_filter_mode",
         "create_sprite_sampler",
         "ph2d-render atlas/individual: recreates the sampler — the dependent state itself",
+    ),
+    (
+        "set_texture_ramp_mode",
+        "texture_ramp_dirty",
+        "Painter brush ramp colour-interpolation space: sets `texture_ramp_dirty = true` so \
+         `ensure_ramp_lut` re-bakes the LUT (the colours the mode changes) before the next stamp",
+    ),
+    (
+        "set_texture_layer_ramp_mode",
+        "rerender_texture_layer",
+        "Painter Texture LAYER ramp mode: a Texture layer is pre-rendered, so the setter \
+         re-renders the whole layer (the dependent state the mode change invalidates)",
+    ),
+    (
+        "set_texture_layer_ramp_alpha_mode",
+        "rerender_texture_layer",
+        "Painter Texture LAYER ramp alpha action: re-renders the pre-rendered layer, like \
+         `set_texture_layer_ramp_mode`",
     ),
 ];
 

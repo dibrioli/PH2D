@@ -249,7 +249,7 @@ fn paint_ramp_bottom(
     // One colour box: the final colour WITH alpha (the swatch checkers behind translucency).
     let bx = x + IDX_W + POS_W + gap * 2.0;
     let box_rect = Rect::new(bx, y, (x + content_w - bx).max(0.0), ROW_H_PX);
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
     let open =
         ctx.host.store().picker_target() == Some(core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH);
     paint_color_swatch(
@@ -361,7 +361,7 @@ fn ramp_color_readback(ctx: &mut PaintCtx, brush: BrushSettings, sel: usize) {
         return;
     }
     let s = brush.texture_ramp_stops[sel];
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
     if [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])] == picked {
         return; // already applied (RGBA) — don't spam the bus
     }
@@ -407,8 +407,8 @@ fn ramp_color_at(stops: &[[f32; 6]], t: f32) -> Color {
 /// `(pos, r, g, b, a)` (sRGB `[0,1]`) → a vello colour. LITERAL-COLOR-OK: a user-authored ramp stop
 /// colour, not a theme token.
 fn rgba_color(s: [f32; 6]) -> Color {
-    let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    Color::from_rgba8(u(s[1]), u(s[2]), u(s[3]), u(s[4]))
+    let u = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
+    Color::from_rgba8(u(s[1]), u(s[2]), u(s[3]), u(s[4])) // LITERAL-COLOR-OK: ramp stop colour is user data, not a theme token
 }
 
 /// Deferred paint of the ramp's open Mode / Interpolation dropdown popovers — drained at the end of

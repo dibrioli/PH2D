@@ -66,7 +66,7 @@ fn on_index_commit(host: &mut dyn PanelHostInternal) {
     if count == 0 {
         return;
     }
-    let target = (v.round() as i64).clamp(0, count as i64 - 1) as usize;
+    let target = (v.round() as i64).clamp(0, count as i64 - 1) as usize; // CLAMP-OK: integer (i64) bounds, no NaN; count>=1 guarded above
     state::set_selected_ramp_stop(b.texture_ramp_stops[target][5] as u8);
 }
 
@@ -92,7 +92,7 @@ fn on_position_commit(host: &mut dyn PanelHostInternal) {
 /// stop colour and the readback's equality guard short-circuits instead of overwriting the stop with
 /// the brush colour on open. The selection is a stable id (found by id, not array index).
 fn selected_stop_seed() -> [u8; 4] {
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
     let sel_id = state::selected_ramp_stop();
     crate::paint_texture::active_texture_ramp_view()
         .or_else(state::current_brush)

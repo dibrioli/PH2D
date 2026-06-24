@@ -206,7 +206,7 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
     );
     assert!(
         !on.contains(&core_ids::painter_brush_texture_ramp_handle_id(2)),
-        "only 2 stops → no 3rd handle"
+        "only 2 stops -> no 3rd handle"
     );
     // The bottom colour box (edits the selected stop) registers a hit rect.
     assert!(
@@ -232,7 +232,7 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
 #[test]
 fn offset_and_size_tracks_are_inverse_of_the_tool_clamp() {
     // The panel maps the stored value back onto the 0..1 slider track; the centre/identity values
-    // must land where the tool's setters put them (offset 0 → mid-track, size 1 → near-low track).
+    // must land where the tool's setters put them (offset 0 -> mid-track, size 1 -> near-low track).
     assert!(
         (offset_track(0.0) - 0.5).abs() < 1e-6,
         "offset 0 is mid-track"

@@ -1,8 +1,6 @@
 //! Editor hero — composes the `02-editor-main` mockup
 //! ([`docs/design/screens/02-editor-main.html`]) into a single
-//! `paint_hero_screen` call.
-//!
-//! Layout regions (all in viewport-relative pixels):
+//! `paint_hero_screen` call. Layout regions (viewport-relative px):
 //!
 //! ```text
 //! ┌──────────────────────────────────────────────────┐
@@ -30,6 +28,7 @@ pub mod bottom_hud;
 pub mod canvas;
 pub mod chrome;
 pub mod color_picker_demo;
+mod context_menu_dialogs;
 pub mod context_menu_overlay;
 pub mod fixture;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch

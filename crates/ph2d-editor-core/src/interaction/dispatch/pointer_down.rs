@@ -74,7 +74,16 @@ pub(super) fn dispatch_down<'frame>(
             Some(id) if id == crate::ids::CTX_MENU_VECTOR_PROMPT_INPUT
                 || id == crate::ids::CTX_MENU_VECTOR_PROMPT_GENERATE
         );
-        if !inside_scene_list && !inside_api_key && !inside_prompt {
+        // And the palette-rename modal: its shared name field + Rename button.
+        let inside_palette_rename = matches!(
+            store.context_menu().map(|r| r.kind),
+            Some(ContextMenuKind::RenamePaletteDialog)
+        ) && matches!(
+            hit_id,
+            Some(id) if id == crate::ids::BLENDER_PALETTE_NAME
+                || id == crate::ids::CTX_MENU_PALETTE_RENAME
+        );
+        if !inside_scene_list && !inside_api_key && !inside_prompt && !inside_palette_rename {
             store.close_context_menu();
         }
     }

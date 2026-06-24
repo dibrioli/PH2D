@@ -194,6 +194,11 @@ pub enum ContextMenuKind {
     /// (`CTX_MENU_VECTOR_PROMPT_GENERATE`). Opened by the shell (Cmd/Ctrl+Shift+G);
     /// Generate raises `EditorAction::GenerateVectorFromPrompt`.
     VectorPromptDialog,
+    /// Color-picker palette rename: a centered modal with the shared name `TextInput`
+    /// (`BLENDER_PALETTE_NAME`) + a Rename button (`CTX_MENU_PALETTE_RENAME`). Opened by the
+    /// picker's "R" button; Rename / Enter commit `blender_rename_active_palette`, outside-click
+    /// cancels. Single picker → applies to `INSP_BLENDER_PICKER`.
+    RenamePaletteDialog,
     /// Clicked the TOPBAR Project chip. Menu offers a search input
     /// plus a filtered list of scene names; selecting a row updates
     /// the chip's label via `super::WidgetStore::current_scene_name`.

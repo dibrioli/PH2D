@@ -313,6 +313,8 @@ pub fn paint_context_menu_overlay(
         // TextInput + button in their own branches (P4, ADR-0061).
         ContextMenuKind::SettingsApiKeySubmenu => &[],
         ContextMenuKind::VectorPromptDialog => &[],
+        // The palette-rename modal paints a TextInput + Rename button in its own branch below.
+        ContextMenuKind::RenamePaletteDialog => &[],
         // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
         // the Unity / Godot / Blender convention: Rename first (the
         // most common edit), then additive ops (Duplicate, Add
@@ -351,6 +353,10 @@ pub fn paint_context_menu_overlay(
     }
     if matches!(req.kind, ContextMenuKind::VectorPromptDialog) {
         paint_vector_prompt_dialog(scene, text_system, theme, hit_index, store, viewport);
+        return;
+    }
+    if matches!(req.kind, ContextMenuKind::RenamePaletteDialog) {
+        paint_palette_rename_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
@@ -637,6 +643,34 @@ fn paint_vector_prompt_dialog(
             placeholder: "a six-pointed star\u{2026}",
             button_id: ids::CTX_MENU_VECTOR_PROMPT_GENERATE,
             button_label: "Generate",
+        },
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        viewport,
+    );
+}
+
+/// Paint the color-picker palette rename modal — the shared `BLENDER_PALETTE_NAME` field doubles
+/// as the dialog input (so Enter routes through the existing rename handler).
+fn paint_palette_rename_dialog(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    paint_centered_input_dialog(
+        CenteredInputDialog {
+            title: "Rename Palette",
+            hint: "Enter a new name, then Rename (or press Enter).",
+            input_id: ids::BLENDER_PALETTE_NAME,
+            placeholder: "Palette name\u{2026}",
+            button_id: ids::CTX_MENU_PALETTE_RENAME,
+            button_label: "Rename",
         },
         scene,
         text_system,

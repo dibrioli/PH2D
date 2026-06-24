@@ -1,14 +1,13 @@
 //! Palette section: a dropdown of named palettes (select / New / Rename / Delete), an inline
 //! rename field, the swatch grid, Import/Export, and the deferred dropdown popover.
 
-use super::paint::HEX_ROW_H;
 use super::state::{BlenderColorPicker, ColorPalette};
 use super::sub_ids::BlenderSubIds;
-use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{paint_text, resolve};
 use crate::widget::{
-    Button, ButtonKind, ColorSwatch, Dropdown, DropdownOption, TextInputState, paint_button,
-    paint_color_swatch, paint_dropdown_chip, paint_dropdown_popover_in_viewport,
+    Button, ButtonKind, ColorSwatch, Dropdown, DropdownOption, paint_button, paint_color_swatch,
+    paint_dropdown_chip, paint_dropdown_popover_in_viewport,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -115,38 +114,10 @@ pub fn paint_palette_section(
         );
         hit_index.register(id, r);
     }
-    let mut body_y = rect.y + strip_h + gap;
+    let body_y = rect.y + strip_h + gap;
 
-    // Inline rename field — shown only while the "R" toggle is on. Live buffer/caret/state come from
-    // the store's palette-name TextInput (dispatch seeds it on open; Enter commits + closes).
-    if store.palette_rename_open(parent) && ids.palette_name.0 != 0 {
-        let name_rect = Rect::new(rect.x, body_y, rect.w, HEX_ROW_H);
-        let (n_state, n_buf, n_caret, n_anchor) = match store.get(ids.palette_name) {
-            Some(InteractiveState::TextInput {
-                state,
-                text,
-                caret,
-                selection_anchor,
-            }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-            _ => (TextInputState::Normal, None, 0, None),
-        };
-        super::hex_field::paint_hex_field_with_state(
-            "",
-            "New name",
-            n_buf,
-            n_caret,
-            n_anchor,
-            n_state,
-            name_rect,
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(ids.palette_name, name_rect);
-        body_y += HEX_ROW_H + gap;
-    }
-
-    // Swatch grid + Import/Export in the remaining region.
+    // Swatch grid + Import/Export in the remaining region. (Rename is a centered modal opened by the
+    // "R" button — see `ContextMenuKind::RenamePaletteDialog`; no inline field here.)
     let body_h = (rect.y + rect.h - body_y).max(0.0);
     if body_h > 0.0 {
         let body_rect = Rect::new(rect.x, body_y, rect.w, body_h);

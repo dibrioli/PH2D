@@ -213,10 +213,9 @@ impl WidgetStore {
             const INSP_BLENDER_PICKER: NodeId = NodeId(380);
             self.bump_panel_z(INSP_BLENDER_PICKER);
         } else {
-            // Dismissing the picker drops its transient palette UI surfaces so they
-            // don't linger (or flash) the next time it's summoned.
+            // Dismissing the picker drops its transient dropdown popover so it
+            // doesn't linger (or flash) the next time the picker is summoned.
             self.palette_dropdown_open = None;
-            self.palette_rename_open = None;
         }
     }
 

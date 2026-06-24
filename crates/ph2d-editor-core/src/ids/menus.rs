@@ -108,6 +108,10 @@ pub const CTX_MENU_API_KEY_SAVE: NodeId = hash_node_id("ctx_menu_api_key_save");
 pub const CTX_MENU_VECTOR_PROMPT_INPUT: NodeId = hash_node_id("ctx_menu_vector_prompt_input");
 pub const CTX_MENU_VECTOR_PROMPT_GENERATE: NodeId = hash_node_id("ctx_menu_vector_prompt_generate");
 
+/// Color-picker palette rename modal: the "Rename" button that commits the shared
+/// `BLENDER_PALETTE_NAME` field to the active palette (the field doubles as the dialog input).
+pub const CTX_MENU_PALETTE_RENAME: NodeId = hash_node_id("ctx_menu_palette_rename");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

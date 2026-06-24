@@ -56,6 +56,7 @@ mod falloff_handle;
 mod image_actions;
 mod image_tools_toggle;
 mod io_menu;
+mod palette_rename;
 mod point_type;
 mod radius;
 mod rail_panels;
@@ -95,6 +96,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_text::apply(hero, event)
         || settings_api_key::apply(hero, event)
         || vector_prompt::apply(hero, event)
+        || palette_rename::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)

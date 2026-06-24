@@ -52,35 +52,18 @@ impl WidgetStore {
         self.palette_dropdown_open == Some(parent)
     }
 
-    /// Toggle `parent`'s palette-select dropdown popover (also closing any rename in progress so the
-    /// two transient surfaces never stack).
+    /// Toggle `parent`'s palette-select dropdown popover.
     pub fn toggle_palette_dropdown(&mut self, parent: NodeId) {
         if self.palette_dropdown_open == Some(parent) {
             self.palette_dropdown_open = None;
         } else {
             self.palette_dropdown_open = Some(parent);
-            self.palette_rename_open = None;
         }
     }
 
     /// Open/close `parent`'s palette-select dropdown popover explicitly.
     pub fn set_palette_dropdown_open(&mut self, parent: NodeId, open: bool) {
         self.palette_dropdown_open = open.then_some(parent);
-    }
-
-    /// Is `parent`'s inline palette-rename field shown?
-    pub fn palette_rename_open(&self, parent: NodeId) -> bool {
-        self.palette_rename_open == Some(parent)
-    }
-
-    /// Show/hide `parent`'s inline palette-rename field (opening it closes the dropdown popover).
-    pub fn set_palette_rename_open(&mut self, parent: NodeId, open: bool) {
-        if open {
-            self.palette_rename_open = Some(parent);
-            self.palette_dropdown_open = None;
-        } else if self.palette_rename_open == Some(parent) {
-            self.palette_rename_open = None;
-        }
     }
 
     /// Refresh the rename field's buffer to the ACTIVE palette's name — call after any active-palette

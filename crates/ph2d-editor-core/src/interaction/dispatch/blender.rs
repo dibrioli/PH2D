@@ -189,11 +189,9 @@ pub(super) fn apply_blender_hit(
             Some(parent)
         }
         BlenderHitKind::PaletteTab(idx) => {
-            // Dropdown option row → select that palette, then close the popover (and any
-            // open rename, which targeted the previously-active palette).
+            // Dropdown option row → select that palette, then close the popover.
             store.blender_select_palette(parent, idx as usize);
             store.set_palette_dropdown_open(parent, false);
-            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
@@ -203,42 +201,39 @@ pub(super) fn apply_blender_hit(
             None
         }
         BlenderHitKind::RenamePalette => {
-            // "R" → toggle the inline rename field. Opening it focuses the field and
-            // selects its whole buffer (so typing replaces the current name).
-            let opening = !store.palette_rename_open(parent);
-            store.set_palette_rename_open(parent, opening);
-            if opening {
-                store.sync_blender_palette_name_buffer(parent);
-                if let Some(field) = store.blender_palette_name_field(parent) {
-                    store.set_focus(Some(field));
-                    if let Some(InteractiveState::TextInput {
-                        state,
-                        text,
-                        caret,
-                        selection_anchor,
-                    }) = store.get_mut(field)
-                    {
-                        *state = crate::widget::TextInputState::Focused;
-                        *selection_anchor = Some(0);
-                        *caret = text.chars().count();
-                    }
+            // "R" → open a centered rename modal (canonical dialog, like the API-key / vector-prompt
+            // popovers). Seed the shared name field with the active palette name + focus & select-all
+            // so typing replaces it; the modal's Rename button / Enter commit it.
+            store.set_palette_dropdown_open(parent, false);
+            store.sync_blender_palette_name_buffer(parent);
+            if let Some(field) = store.blender_palette_name_field(parent) {
+                store.set_focus(Some(field));
+                if let Some(InteractiveState::TextInput {
+                    state,
+                    text,
+                    caret,
+                    selection_anchor,
+                }) = store.get_mut(field)
+                {
+                    *state = crate::widget::TextInputState::Focused;
+                    *selection_anchor = Some(0);
+                    *caret = text.chars().count();
                 }
-            } else if let Some(field) = store.blender_palette_name_field(parent)
-                && store.focus_id() == Some(field)
-            {
-                store.set_focus(None);
             }
+            store.open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::RenamePaletteDialog,
+            });
             None
         }
         BlenderHitKind::NewPalette => {
             store.blender_new_palette(parent);
-            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
         BlenderHitKind::DeletePalette => {
             store.blender_delete_active_palette(parent);
-            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }

@@ -153,6 +153,33 @@ pub(crate) fn paint_stroke_section(
         if let Some(r) = open {
             state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
         }
+        // Per-dab Scale jitter (radius scatter). Always available with jitter.
+        y = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label: "Scale",
+            id: core_ids::PAINTER_BRUSH_JITTER_SCALE,
+            value: brush.jitter_scale,
+            readout: &format!("{:.2}", brush.jitter_scale),
+        });
+        // Per-dab Rotate jitter (texture-rotation scatter) — only meaningful with a texture, so
+        // shown only when one is assigned (a round dab is isotropic; the control would look dead).
+        if brush.texture_kind != 0 {
+            y = paint_param_row(ParamRow {
+                ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                label: "Rotate",
+                id: core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+                value: brush.jitter_rotate,
+                readout: &format!("{:.2}", brush.jitter_rotate),
+            });
+        }
     }
 
     // ── Dash ratio + length — only the spacing-driven methods ──

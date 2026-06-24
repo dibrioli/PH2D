@@ -125,6 +125,16 @@ pub const PAINTER_BRUSH_COLOR_R: NodeId = hash_node_id("painter_brush.color_r");
 pub const PAINTER_BRUSH_COLOR_G: NodeId = hash_node_id("painter_brush.color_g");
 /// Brush colour Blue channel slider (`0..1`). `SetValue` → channel 2.
 pub const PAINTER_BRUSH_COLOR_B: NodeId = hash_node_id("painter_brush.color_b");
+/// "Randomize Color" subsection enable toggle (Blender Color → Randomize). `Click` →
+/// `toggle_brush_color_jitter_enabled`.
+pub const PAINTER_BRUSH_COLOR_JITTER_ENABLE: NodeId =
+    hash_node_id("painter_brush.color_jitter_enable");
+/// Randomize-Color **Hue** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(0, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_HUE: NodeId = hash_node_id("painter_brush.color_jitter_hue");
+/// Randomize-Color **Saturation** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(1, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_SAT: NodeId = hash_node_id("painter_brush.color_jitter_sat");
+/// Randomize-Color **Value** amount slider (`0..1`). `SetValue` → `set_brush_color_jitter(2, _)`.
+pub const PAINTER_BRUSH_COLOR_JITTER_VAL: NodeId = hash_node_id("painter_brush.color_jitter_val");
 /// Brush blend-mode dropdown chip (opens the brush-blend popover; mirror of the
 /// per-row blend chip but with a fixed id + the 24 `BrushBlend` modes).
 pub const PAINTER_BRUSH_BLEND: NodeId = hash_node_id("painter_brush.blend");
@@ -171,6 +181,23 @@ pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
 /// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px).
 /// `SelectOption` → `set_brush_jitter_unit`. Options via [`painter_brush_jitter_unit_option_id`].
 pub const PAINTER_BRUSH_JITTER_UNIT: NodeId = hash_node_id("painter_brush.jitter_unit");
+/// Brush "Jitter Scale" slider (`0..1`; per-dab radius scatter, PH2D extra).
+/// `SetValue` → `set_brush_jitter_scale`.
+pub const PAINTER_BRUSH_JITTER_SCALE: NodeId = hash_node_id("painter_brush.jitter_scale");
+/// Brush "Jitter Rotate" slider (`0..1`; per-dab texture-rotation scatter, PH2D extra; only visible
+/// with a texture). `SetValue` → `set_brush_jitter_rotate`.
+pub const PAINTER_BRUSH_JITTER_ROTATE: NodeId = hash_node_id("painter_brush.jitter_rotate");
+
+/// The per-dab randomize **slider** ids (Randomize-Color Hue/Sat/Value + Jitter Scale/Rotate). Lets
+/// the panel dispatch forward them all with one `.contains` check (mirror of
+/// `PAINTER_BRUSH_TEXTURE_PARAMS`); the enable toggle is a separate `Click`.
+pub const PAINTER_BRUSH_RANDOMIZE_SLIDERS: [NodeId; 5] = [
+    PAINTER_BRUSH_COLOR_JITTER_HUE,
+    PAINTER_BRUSH_COLOR_JITTER_SAT,
+    PAINTER_BRUSH_COLOR_JITTER_VAL,
+    PAINTER_BRUSH_JITTER_SCALE,
+    PAINTER_BRUSH_JITTER_ROTATE,
+];
 /// Brush "Dash Ratio" slider (`0..1` on-fraction of the dash period). `SetValue` → `set_brush_dash_ratio`.
 pub const PAINTER_BRUSH_DASH_RATIO: NodeId = hash_node_id("painter_brush.dash_ratio");
 /// Brush "Dash Length" slider (`0..1` track → 1..64 dab-slots). `SetValue` → `set_brush_dash_length_norm`.

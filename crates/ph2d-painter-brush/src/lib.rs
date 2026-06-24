@@ -23,12 +23,14 @@
 //! - [`stroke_method`] — the "Stroke" panel's discrete options (method + jitter unit).
 //! - [`stroke`]  — the stroke engine: a pointer path → dabs (spacing, dash, jitter, stabilize).
 //! - [`texture`] — the brush texture mask (procedural patterns + 2D mapping modes).
+//! - `jitter` — the shared deterministic RNG + the per-dab Scale / Rotate / Randomize-Color scatter.
 
 pub mod blend;
 pub mod dab;
 pub mod dynamics;
 pub mod falloff;
 pub mod falloff_curve;
+pub(crate) mod jitter;
 pub mod ramp_alpha;
 pub mod sampler;
 pub mod spec;

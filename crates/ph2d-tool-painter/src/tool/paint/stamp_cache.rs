@@ -77,6 +77,7 @@ impl PainterTool {
         for d in dabs {
             let spec = BrushSpec {
                 radius_px: d.radius_px,
+                color: d.color,
                 ..*brush
             };
             if let Some(r) = blit_stamp(
@@ -128,6 +129,7 @@ impl PainterTool {
         for d in dabs {
             let spec = BrushSpec {
                 radius_px: d.radius_px,
+                color: d.color,
                 ..*brush
             };
             if let Some(r) = blit_canvas_cached(
@@ -203,6 +205,7 @@ impl PainterTool {
         for (i, d) in dabs.iter().enumerate() {
             let spec = BrushSpec {
                 radius_px: d.radius_px,
+                color: d.color,
                 ..*brush
             };
             let basis = textured.then(|| {
@@ -211,6 +214,7 @@ impl PainterTool {
                     super::brush_settings::dab_tangent(dabs, i),
                     &mut tex_rng,
                     [w as f32, h as f32],
+                    d.rotation,
                 )
             });
             if let Some(r) = ph2d_painter_brush::stamp_dab_ramped(
@@ -225,6 +229,65 @@ impl PainterTool {
                 image.as_ref(),
                 lut,
                 alpha_mode,
+            ) {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+            }
+        }
+        self.paint.tex_rng = tex_rng;
+        if let Some(rect) = touched {
+            self.mark_dirty(rect);
+        }
+    }
+
+    /// Per-pixel stamp path — used when no cache applies (no texture, a canvas-relative / per-dab
+    /// mapping, or per-dab Jitter Rotate). Resolves the per-dab texture frame (with `d.rotation`) and
+    /// the per-dab Randomize-Color `d.color`, then stamps. The texture RNG is copied out (canvas
+    /// borrow) + restored, exactly like [`Self::stamp_dabs_ramped`].
+    pub(super) fn stamp_dabs_per_pixel(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        alpha_locked: bool,
+        w: u32,
+        h: u32,
+    ) {
+        let textured = brush.texture.is_active();
+        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let mut tex_rng = self.paint.tex_rng;
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for (i, d) in dabs.iter().enumerate() {
+            // Per-dab Randomize Color rides on `d.color`; the radius is already jittered in `d`.
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                color: d.color,
+                ..*brush
+            };
+            let basis = textured.then(|| {
+                ph2d_painter_brush::texture::dab_basis(
+                    &spec.texture,
+                    super::brush_settings::dab_tangent(dabs, i),
+                    &mut tex_rng,
+                    [w as f32, h as f32],
+                    d.rotation,
+                )
+            });
+            if let Some(r) = ph2d_painter_brush::stamp_dab_textured(
+                buf,
+                w,
+                h,
+                d.center,
+                &spec,
+                d.coverage,
+                alpha_locked,
+                basis.as_ref(),
+                image.as_ref(),
             ) {
                 let rect = Region {
                     x: r.x,

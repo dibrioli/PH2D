@@ -39,8 +39,9 @@ pub fn render_stamp_mask(spec: &BrushSpec, image: Option<&ImageMask>, size: u32)
     let size = size.max(1);
     let mut data = vec![0u8; (size as usize) * (size as usize)];
     let active = spec.texture.is_active();
-    // The View static basis (no Rake/Random ⇒ the rng / canvas args are unused).
-    let basis = crate::texture::dab_basis(&spec.texture, [0.0, 0.0], &mut 0u64, [1.0, 1.0]);
+    // The View static basis (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
+    let basis =
+        crate::texture::dab_basis(&spec.texture, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
     let inv = 2.0 / size as f32;
     for j in 0..size {
         let v = (j as f32 + 0.5) * inv - 1.0;
@@ -244,12 +245,13 @@ pub fn blit_canvas_cached(
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
-    // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent.
+    // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent (no Jitter).
     let basis = crate::texture::dab_basis(
         &spec.texture,
         [0.0, 0.0],
         &mut 0u64,
         [width as f32, height as f32],
+        [1.0, 0.0],
     );
     let ctx = CanvasBlitCtx {
         spec,

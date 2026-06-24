@@ -396,16 +396,18 @@ impl TexDabBasis {
 
 /// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; need not
 /// be normalised — a near-zero tangent falls back to [`TextureSettings::angle_deg`]), a mutable
-/// splitmix64 `rng` (Random), and the canvas size (Stencil rect). Deterministic per input platform.
+/// splitmix64 `rng` (Random), the canvas size (Stencil rect), and the per-dab **Jitter Rotate** unit
+/// vector `extra_rot` (identity `[1, 0]` = none). Deterministic per input platform.
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
     dab_dir: [f32; 2],
     rng: &mut u64,
     canvas: [f32; 2],
+    extra_rot: [f32; 2],
 ) -> TexDabBasis {
     // Stencil has a single fixed image-space frame (Offset = centre, Size = extent, Angle =
-    // rotation); the per-dab Rake / Random rotation and offset-jitter do not apply.
+    // rotation); the per-dab Rake / Random / Jitter rotation and offset-jitter do not apply.
     if s.mapping.is_stencil() {
         let (center, half, u) = stencil_frame(s, canvas);
         return TexDabBasis {
@@ -416,17 +418,23 @@ pub fn dab_basis(
             stencil_half: half,
         };
     }
-    let u = if s.random_angle {
+    let base = if s.random_angle {
         random_unit(rng)
     } else if s.rake {
         normalize_or(dab_dir, rotate_by_degrees(s.angle_deg))
     } else {
         rotate_by_degrees(s.angle_deg)
     };
+    // Compose the per-dab Jitter Rotate on top (2D rotation = complex multiply). `extra_rot = [1, 0]`
+    // leaves `base` unchanged, so a non-jittering brush is bit-identical to the old single-rotation frame.
+    let u = [
+        base[0] * extra_rot[0] - base[1] * extra_rot[1],
+        base[0] * extra_rot[1] + base[1] * extra_rot[0],
+    ];
     let v = perp(u);
     let jitter = if s.mapping.randomises_offset() {
         // A full-tile random shift per dab, in tile fractions.
-        [next_f32(rng), next_f32(rng)]
+        [crate::jitter::next_f32(rng), crate::jitter::next_f32(rng)]
     } else {
         [0.0, 0.0]
     };
@@ -541,7 +549,8 @@ pub fn sample_unit(
 // ── Rotation / RNG helpers (transcendental-free) ────────────────────────────────────────────
 
 /// Rotate the unit vector `(1, 0)` by `deg` whole degrees via repeated [`DEG_STEP`] application.
-fn rotate_by_degrees(deg: u16) -> [f32; 2] {
+/// `pub(crate)` so [`crate::jitter`] builds the per-dab Jitter Rotate vector from the same baked step.
+pub(crate) fn rotate_by_degrees(deg: u16) -> [f32; 2] {
     let d = deg % 360;
     let (cs, sn) = (DEG_STEP[0], DEG_STEP[1]);
     let (mut x, mut y) = (1.0_f32, 0.0_f32);
@@ -574,8 +583,8 @@ fn normalize_or(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
 /// to a few tries; falls back to `(1, 0)` in the vanishingly unlikely all-reject case.
 fn random_unit(rng: &mut u64) -> [f32; 2] {
     for _ in 0..8 {
-        let x = next_f32(rng) * 2.0 - 1.0;
-        let y = next_f32(rng) * 2.0 - 1.0;
+        let x = crate::jitter::next_f32(rng) * 2.0 - 1.0;
+        let y = crate::jitter::next_f32(rng) * 2.0 - 1.0;
         let d2 = x * x + y * y;
         if (1e-6..=1.0).contains(&d2) {
             let inv = 1.0 / d2.sqrt();
@@ -583,17 +592,6 @@ fn random_unit(rng: &mut u64) -> [f32; 2] {
         }
     }
     [1.0, 0.0]
-}
-
-/// Dep-free deterministic `[0, 1)` RNG (splitmix64 → top 24 bits). Mirrors
-/// `stroke.rs::Stroke::next_f32` so jitter/texture share one stream model.
-fn next_f32(state: &mut u64) -> f32 {
-    *state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-    let mut z = *state;
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^= z >> 31;
-    ((z >> 40) as f32) / ((1u32 << 24) as f32)
 }
 
 #[cfg(test)]

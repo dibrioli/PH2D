@@ -401,9 +401,8 @@ fn decode_adjustment_kind_option(id: ph2d_a11y::NodeId) -> Option<usize> {
 /// `apply_event_impl` so that already-at-cap function stays put.
 fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     match ev {
-        // Colour swatch → toggle the shared Blender picker, seeded with the brush
-        // colour. The read-back (in `paint_brush::paint_brush_mode`) forwards the
-        // picked colour back to the brush each frame.
+        // Colour swatch → toggle the shared Blender picker, seeded with the brush colour (the
+        // read-back in `paint_brush::paint_brush_mode` forwards the picked colour back each frame).
         WidgetEvent::Click(id) if id == core_ids::PAINTER_COLOR_THUMB => {
             let store = host.store_mut();
             if store.picker_target() == Some(id) {
@@ -419,10 +418,10 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Eraser + the Stroke-section "Adjust Strength" toggle → forward as a Click
-        // (the tool flips the matching bool).
+        // Toggles + momentary buttons → forward as a Click (the tool flips the matching bool / acts).
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
+                || id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
                 || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
@@ -531,7 +530,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
-                || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id) =>
+                || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
+                || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()

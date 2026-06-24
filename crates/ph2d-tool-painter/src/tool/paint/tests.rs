@@ -2062,3 +2062,97 @@ fn brush_texture_section_not_hijacked_when_dock_shows_brush() {
         _ => panic!("expected a texture layer"),
     }
 }
+
+// ── Per-dab randomize seam (Jitter Scale / Rotate + Randomize Color) ─────────────────────────
+// These prove the panel controls are WIRED end-to-end: the generic PanelEvent reaches the brush
+// state (not silently dropped — the dead-control class) AND the per-dab jitter actually alters the
+// painted pixels. Unit-green ≠ product-green; only this e2e drive catches a missing register/route.
+
+#[test]
+fn randomize_controls_reach_the_brush_and_snapshot() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+
+    let mut t = PainterTool::default();
+    // Enable toggle (Click) + the five 0..1 sliders (SetValue) — exactly what the panel emits.
+    t.handle_panel_event(PanelEvent::Click(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        0.3,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+        0.2,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+        0.1,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_JITTER_SCALE,
+        0.7,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+        0.4,
+    ));
+    // (a) the events reached the brush model (would all be 0/false if dropped).
+    assert!(t.paint.brush.color_jitter_enabled, "enable toggle wired");
+    assert_eq!(t.paint.brush.color_jitter_hue, 0.3, "Hue slider wired");
+    assert_eq!(t.paint.brush.color_jitter_sat, 0.2, "Sat slider wired");
+    assert_eq!(t.paint.brush.color_jitter_val, 0.1, "Value slider wired");
+    assert_eq!(t.paint.brush.jitter_scale, 0.7, "Jitter Scale slider wired");
+    assert_eq!(
+        t.paint.brush.jitter_rotate, 0.4,
+        "Jitter Rotate slider wired"
+    );
+    // (b) the published snapshot the panel reads back mirrors them (slider positions).
+    let s = t.brush_settings();
+    assert!(s.color_jitter_enabled);
+    assert_eq!(s.color_jitter, [0.3, 0.2, 0.1]);
+    assert_eq!(s.jitter_scale, 0.7);
+    assert_eq!(s.jitter_rotate, 0.4);
+    // A second enable Click toggles it back off.
+    t.handle_panel_event(PanelEvent::Click(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+    ));
+    assert!(!t.paint.brush.color_jitter_enabled, "enable toggle flips");
+}
+
+#[test]
+fn randomize_color_varies_the_painted_pixels_e2e() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+
+    // Mid-grey base + hard disk so each dab fully replaces its footprint with its (jittered) colour.
+    let mut t = white_canvas(64, 3.0);
+    t.paint.brush.color = [0.5, 0.5, 0.5];
+    // Drive Randomize Color ON with a strong Value amount via the PANEL events (the wiring proof).
+    t.handle_panel_event(PanelEvent::Click(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+        1.0,
+    ));
+    // Paint a multi-dab horizontal stroke; per-dab Value jitter must yield >1 painted shade.
+    t.on_canvas_pointer(cp([6.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([58.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([58.0, 32.0], PointerPhase::Up));
+    let shades: std::collections::BTreeSet<u8> = (6..58).map(|x| px(&t, 64, x, 32)[0]).collect();
+    assert!(
+        shades.len() > 1,
+        "Randomize Color must vary the painted shades end-to-end, got {shades:?}"
+    );
+
+    // Control: with Randomize Color OFF the same stroke paints a single uniform shade.
+    let mut t0 = white_canvas(64, 3.0);
+    t0.paint.brush.color = [0.5, 0.5, 0.5];
+    t0.on_canvas_pointer(cp([6.0, 32.0], PointerPhase::Down));
+    t0.on_canvas_pointer(cp([58.0, 32.0], PointerPhase::Move));
+    t0.on_canvas_pointer(cp([58.0, 32.0], PointerPhase::Up));
+    let base: std::collections::BTreeSet<u8> = (6..58).map(|x| px(&t0, 64, x, 32)[0]).collect();
+    assert_eq!(base.len(), 1, "no jitter ⟹ one uniform shade, got {base:?}");
+}

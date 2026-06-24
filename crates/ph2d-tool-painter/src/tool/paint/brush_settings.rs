@@ -1,6 +1,5 @@
-//! Brush + Stroke-section parameter snapshot & setters, split out of `paint.rs` to keep both
-//! files under the workspace LOC cap (HR-18). A submodule of `paint` so it shares its private
-//! `PaintState`/`BrushSpec` access; the setters are the single clamp source for every UI edit.
+//! Brush/Stroke parameter snapshot & setters (the single UI-edit clamp source); a submodule of
+//! `paint`, split from `paint.rs` for the workspace LOC cap. Per-dab-jitter setters: `jitter_settings`.
 
 use super::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
@@ -168,6 +167,14 @@ pub struct BrushSettings {
     /// What the ramp colour's alpha does when painting (`RampAlphaMode::to_u8`): `0` off · `1` scales
     /// brush Strength · `2` drives the sprite's own alpha.
     pub texture_ramp_alpha_mode: u8,
+    /// **Randomize Color** master enable (per-dab HSV scatter; see `BrushSpec`).
+    pub color_jitter_enabled: bool,
+    /// Randomize-Color Hue/Sat/Value amounts, each a `0..1` slider track.
+    pub color_jitter: [f32; 3],
+    /// **Jitter Scale** per-dab radius-scatter amount, `0..1`.
+    pub jitter_scale: f32,
+    /// **Jitter Rotate** per-dab texture-rotation-scatter amount, `0..1`.
+    pub jitter_rotate: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
@@ -272,6 +279,10 @@ impl PainterTool {
             texture_ramp_stops,
             texture_ramp_stop_count: ramp_count as u8,
             texture_ramp_alpha_mode: self.paint.texture_ramp_alpha_mode.to_u8(),
+            color_jitter_enabled: b.color_jitter_enabled,
+            color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
+            jitter_scale: b.jitter_scale,
+            jitter_rotate: b.jitter_rotate,
         }
     }
 

@@ -1,5 +1,36 @@
 # HANDOFF — Brush: Randomize Color + Jitter Scale + Jitter Rotate
 
+> ## ✅ STATUS: IMPLEMENTADO (2026-06-23) — commit local, ship pendente
+>
+> As três features estão prontas, testadas e auditadas e2e. **O que landou:**
+> - **Modelo** (`ph2d-painter-brush`): novo módulo `jitter.rs` (RNG splitmix64 consolidado + `per_dab()`
+>   + HSV puro, transcendental-free). `BrushSpec` +6 campos; `Dab` +`color`/`rotation`; `dab_at`
+>   aplica scale→rotate→H→S→V em ordem FIXA, gated por `allows_jitter()`; `texture::dab_basis` ganhou
+>   `extra_rot` (composto só no ramo não-stencil → Stencil ignora de graça).
+> - **Tool** (`ph2d-tool-painter`): os 4 paths de stamp injetam `d.color`; o per-pixel + ramped passam
+>   `d.rotation` ao `dab_basis`; dispatch desvia os caches quando `has_per_dab_rotation()` (senão a
+>   máscara baked ignoraria a rotação → feature morta). Setters + `route_brush_jitter_event` em novo
+>   `jitter_settings.rs`; snapshot `BrushSettings` +4 campos. Per-pixel loop extraído p/ `stamp_cache.rs`
+>   (LOC cap).
+> - **UI** (`ph2d-editor-core` ids + `ph2d-panel-painter-layers`): 6 ids novos + slice
+>   `PAINTER_BRUSH_RANDOMIZE_SLIDERS`; populate registra os 5 sliders + enable; paint_brush pinta a
+>   seção "Randomize Color" (toggle + H/S/V quando ligado); paint_stroke pinta "Scale" (sempre) +
+>   "Rotate" (só com textura); event.rs forwarda via slice-contains + Click.
+>
+> **Decisões padrão-ouro tomadas** (delegadas pelo §0 do handoff):
+> - Os 3 jitters respeitam `allows_jitter()` (DragDot/Anchored opt-out, como o position-jitter) →
+>   preserva 2 invariantes de graça: tudo-0 == baseline bit-idêntico, e DragDot/Anchored = zero draw.
+> - **Per-dab** (não per-stroke). **Ramp vence Randomize Color** (LUT sobrescreve `spec.color`).
+> - Jitter Rotate só compõe fora do Stencil; UI da row "Rotate" só aparece com textura (não-morta).
+>
+> **Verde:** 130+21+119 lib-tests · e2e `randomize_*` (wiring + pixels variados) · gates
+> workspace/panel/widget LOC + tool_contract + **panel_wiring_parity** + behavioral + clippy `--all-targets`.
+> Todos os arquivos ≤600. **Próximo:** smoke manual do Enio + ship.
+>
+> _O texto abaixo é o briefing original da implementação (mantido como referência)._
+
+---
+
 **Para:** o agente que vai implementar.
 **De:** sessão anterior (Texture Layer + perf).
 **Escopo:** três features per-dab do **brush** (`ph2d-painter-brush` + tool + painel). NÃO é o texture-layer (esse já está pronto).

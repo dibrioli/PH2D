@@ -108,6 +108,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_ramp_stops: [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS],
     texture_ramp_stop_count: 0,
     texture_ramp_alpha_mode: 0,
+    color_jitter_enabled: false,
+    color_jitter: [0.0, 0.0, 0.0],
+    jitter_scale: 0.0,
+    jitter_rotate: 0.0,
 };
 
 /// Paint the Brush-properties body rows from `top_y` (already offset by the panel scroll), returning
@@ -214,6 +218,32 @@ pub(crate) fn paint_brush_body(
 
     // ── Colour: label + swatch (click opens the shared Blender picker) ──
     y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
+    // ── Randomize Color (Blender Color → Randomize): enable toggle + (when on) Hue/Sat/Value amounts ──
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        "Randomize Color",
+        brush.color_jitter_enabled,
+    );
+    if brush.color_jitter_enabled {
+        for (slot, label) in ["Hue", "Saturation", "Value"].into_iter().enumerate() {
+            y = paint_param_row(ParamRow {
+                ctx: &mut *ctx,
+                theme,
+                x,
+                content_w,
+                y,
+                label,
+                id: core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS[slot],
+                value: brush.color_jitter[slot],
+                readout: &pct(brush.color_jitter[slot]),
+            });
+        }
+    }
     y
 }
 

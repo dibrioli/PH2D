@@ -13,7 +13,7 @@ use super::*;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use ph2d_painter_brush::{
     AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, Dab, Dynamics, MAX_INPUT_SAMPLES, Stroke,
-    StrokeMethod, StrokePoint, stamp_dab_textured,
+    StrokeMethod, StrokePoint,
 };
 
 /// Brush + Stroke-section parameter snapshot & setters (submodule so it shares `PaintState`'s
@@ -21,6 +21,9 @@ use ph2d_painter_brush::{
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
+/// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
+/// for the LOC cap (same submodule rationale).
+mod jitter_settings;
 pub use curve::CurveOverlay;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;
@@ -371,64 +374,27 @@ impl PainterTool {
             self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
             return;
         }
+        // Jitter Rotate gives every dab its own texture orientation, so the constant-orientation
+        // stamp caches no longer apply (their single baked frame would ignore `d.rotation`) — fall
+        // through to the per-dab basis path. Stencil ignores per-dab rotation, so it stays cacheable.
+        let per_dab_rotation = brush.has_per_dab_rotation();
         // A static **View** texture is scale-invariant: render the stamp once into a cached mask +
         // scale-blit per dab (Blender's brush-image cache), so a large Anchored re-stamp pays a cheap
         // blit, not a per-pixel recompute. No-texture / canvas-relative / per-dab mappings stay
         // per-pixel (nothing to cache, or not scale-invariant).
-        if brush.texture.is_active() && brush.texture.is_cacheable() {
+        if brush.texture.is_active() && brush.texture.is_cacheable() && !per_dab_rotation {
             self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
         // Tiled / Stencil are canvas-fixed but dab-independent — cache each canvas pixel's texture
         // once per stroke + look it up per dab (Anchored re-stamps the same region, so inner = reuse).
-        if brush.texture.is_canvas_cacheable() {
+        if brush.texture.is_canvas_cacheable() && !per_dab_rotation {
             self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Per-pixel path. Resolve the per-dab texture frame only when a texture is assigned (else the
-        // engine's texture-free fast path); the texture RNG is copied out (canvas borrow) + restored.
-        let textured = brush.texture.is_active();
-        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let mut tex_rng = self.paint.tex_rng;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let mut touched: Option<Region> = None;
-        for (i, d) in dabs.iter().enumerate() {
-            let spec = BrushSpec {
-                radius_px: d.radius_px,
-                ..brush
-            };
-            let basis = textured.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
-                    &spec.texture,
-                    brush_settings::dab_tangent(dabs, i),
-                    &mut tex_rng,
-                    [w as f32, h as f32],
-                )
-            });
-            if let Some(r) = stamp_dab_textured(
-                buf,
-                w,
-                h,
-                d.center,
-                &spec,
-                d.coverage,
-                alpha_locked,
-                basis.as_ref(),
-                image.as_ref(),
-            ) {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
-                };
-                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
-            }
-        }
-        self.paint.tex_rng = tex_rng;
-        if let Some(rect) = touched {
-            self.mark_dirty(rect);
-        }
+        // Per-pixel path (no cache applies: no texture, a canvas-relative / per-dab mapping, or
+        // per-dab Jitter Rotate). Resolves the texture frame + Randomize-Color colour per dab.
+        self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h);
     }
 
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.

@@ -61,10 +61,17 @@ pub fn populate(store: &mut WidgetStore) {
     let brush_sliders = [
         ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
         ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        // Randomize Color amounts (painted only when the subsection is enabled).
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
         // Stroke section sliders (all `0..1` track; the tool maps each to its range).
         ph2d_editor_core::ids::PAINTER_BRUSH_RATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
+        // Per-dab Jitter Scale / Rotate (next to the position Jitter).
+        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
@@ -101,6 +108,8 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ph2d_editor_core::ids::PAINTER_COLOR_THUMB,
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
+        // "Randomize Color" subsection enable (Color section header checkbox).
+        ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Texture section: "New" (momentary) + Rake / Random toggles.
@@ -166,6 +175,14 @@ mod tests {
             ids::PAINTER_LAYERS_ADD_TEXTURE,
             ids::PAINTER_LAYERS_MASK,
             ids::PAINTER_LAYERS_CLIP,
+            // Randomize Color enable + its H/S/V + Jitter Scale/Rotate sliders — a missing slot here
+            // is the dead-control class (the click/drag would be silently dropped).
+            ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+            ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+            ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+            ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+            ids::PAINTER_BRUSH_JITTER_SCALE,
+            ids::PAINTER_BRUSH_JITTER_ROTATE,
         ] {
             assert!(
                 store.get(id).is_some(),

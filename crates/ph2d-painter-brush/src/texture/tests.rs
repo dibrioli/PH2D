@@ -19,7 +19,7 @@ use crate::spec::BrushSpec;
 /// `dab_basis` with a default 64×64 canvas — the rotation / jitter tests don't depend on the canvas
 /// size (only the Stencil mapping does, and those tests pass it explicitly).
 fn basis(s: &TextureSettings, dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
-    dab_basis(s, dir, rng, [64.0, 64.0])
+    dab_basis(s, dir, rng, [64.0, 64.0], [1.0, 0.0])
 }
 
 /// Timing: how much does the per-pixel texture sample add to a LARGE dab stamp (the Anchored
@@ -44,7 +44,7 @@ fn perf_texture_stamp_cost_on_a_large_dab() {
     let runs = 8;
     let bench = |label: &str, spec: &BrushSpec, buf: &mut [u8]| {
         let mut rng = 1u64;
-        let b = dab_basis(&spec.texture, [1.0, 0.0], &mut rng, canvas);
+        let b = dab_basis(&spec.texture, [1.0, 0.0], &mut rng, canvas, [1.0, 0.0]);
         let t0 = Instant::now();
         for _ in 0..runs {
             let _ = stamp_dab_textured(
@@ -252,7 +252,7 @@ fn stencil_masks_outside_the_rect_and_is_image_fixed() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [100.0, 100.0]);
+    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [100.0, 100.0], [1.0, 0.0]);
     // A pixel far outside the rect → masked to 0.
     assert_eq!(
         sample(&s, &b, 5, 5, [5.0, 5.0], 8.0, None),
@@ -279,7 +279,7 @@ fn stencil_rect_shows_the_procedural_pattern() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [64.0, 64.0]);
+    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [64.0, 64.0], [1.0, 0.0]);
     let mut seen0 = false;
     let mut seen1 = false;
     for x in (2..62).step_by(3) {

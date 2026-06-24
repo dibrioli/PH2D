@@ -97,6 +97,25 @@ pub struct BrushSpec {
     /// Brush texture: a per-texel mask that modulates each dab's coverage (Blender's brush `mtex`).
     /// Default [`TextureSettings::kind`] is `None` (no modulation). See [`crate::texture`].
     pub texture: TextureSettings,
+
+    // ── Per-dab randomize (Blender "Color → Randomize" + two PH2D extras; see [`crate::jitter`]) ──
+    /// Master switch for **Randomize Color** (the subsection's enable checkbox). When off, every dab
+    /// uses [`Self::color`] unchanged. Default `false` (clean-room model of Blender's brush
+    /// `BRUSH_USE_RAND_HUE`/`SAT`/`VAL` group toggle).
+    pub color_jitter_enabled: bool,
+    /// **Hue** randomize amount, `0..1` — the per-dab hue offset is `±amount` on the colour wheel.
+    pub color_jitter_hue: f32,
+    /// **Saturation** randomize amount, `0..1` — per-dab offset `±amount`, clamped to `[0, 1]`.
+    pub color_jitter_sat: f32,
+    /// **Value** randomize amount, `0..1` — per-dab offset `±amount`, clamped to `[0, 1]`.
+    pub color_jitter_val: f32,
+    /// **Jitter Scale** (PH2D, not Blender): per-dab radius scatter, `0..1`. Each dab's radius is
+    /// multiplied by `1 ± amount`, clamped so it never collapses. `0` = no scatter.
+    pub jitter_scale: f32,
+    /// **Jitter Rotate** (PH2D, not Blender): per-dab texture-rotation scatter, `0..1`. Each dab's
+    /// texture frame is rotated by `±(amount · 180°)`. Only visible with a texture (round dabs are
+    /// isotropic) and only for mappings that use per-dab rotation (not Stencil). `0` = no scatter.
+    pub jitter_rotate: f32,
 }
 
 impl Default for BrushSpec {
@@ -125,6 +144,12 @@ impl Default for BrushSpec {
             airbrush_rate_s: 0.1,
             edge_to_edge: false,
             texture: TextureSettings::default(),
+            color_jitter_enabled: false,
+            color_jitter_hue: 0.0,
+            color_jitter_sat: 0.0,
+            color_jitter_val: 0.0,
+            jitter_scale: 0.0,
+            jitter_rotate: 0.0,
         }
     }
 }
@@ -134,6 +159,25 @@ impl BrushSpec {
     #[must_use]
     pub fn clamped_radius(&self) -> f32 {
         self.radius_px.clamp(0.5, MAX_BRUSH_RADIUS_PX)
+    }
+
+    /// Whether **Randomize Color** has any non-zero amount (so enabling it would actually change a
+    /// dab). Used to gate the RNG draw in [`crate::jitter::per_dab`].
+    #[must_use]
+    pub fn has_colour_jitter_amount(&self) -> bool {
+        self.color_jitter_hue > 0.0 || self.color_jitter_sat > 0.0 || self.color_jitter_val > 0.0
+    }
+
+    /// Whether this brush rotates each dab's texture frame independently (Jitter Rotate), so the
+    /// constant-orientation stamp caches must be bypassed (each dab needs its own basis). Only
+    /// meaningful with a texture that uses per-dab rotation (i.e. not Stencil); Drag Dot / Anchored
+    /// opt out of all per-dab jitter, so they never trigger it.
+    #[must_use]
+    pub fn has_per_dab_rotation(&self) -> bool {
+        self.jitter_rotate > 0.0
+            && self.stroke_method.allows_jitter()
+            && self.texture.is_active()
+            && self.texture.mapping.uses_dab_rotation()
     }
 
     /// Distance between dab centres in pixels, derived from spacing × diameter.
@@ -231,6 +275,12 @@ mod tests {
         assert_eq!(b.blend, BrushBlend::Mix);
         assert_eq!(b.falloff, Falloff::Smooth);
         assert!(b.dab_spacing_px() >= 1.0);
+        // Per-dab randomize is off by default (so a default stroke is byte-identical to baseline).
+        assert!(!b.color_jitter_enabled);
+        assert!(!b.has_colour_jitter_amount());
+        assert!(!b.has_per_dab_rotation());
+        assert_eq!(b.jitter_scale, 0.0);
+        assert_eq!(b.jitter_rotate, 0.0);
     }
 
     #[test]

@@ -900,6 +900,8 @@ fn circle_degenerate_axis_fills_nothing() {
         center: [9.0, 9.0],
         radius_px: 1.0,
         coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1014,10 +1016,129 @@ fn curve_fill_needs_two_points() {
         center: [9.0, 9.0],
         radius_px: 1.0,
         coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(
         out.is_empty(),
         "a single control point fills nothing (and clears the buffer)"
     );
+}
+
+// ── Per-dab jitter (Jitter Scale / Rotate / Randomize Color) ─────────────────────────────────
+
+/// A long straight, constant-pressure stroke with attenuation off — every dab is identical unless a
+/// per-dab jitter perturbs it, so it isolates the jitter under test.
+fn jitter_probe(extra: impl FnOnce(&mut BrushSpec)) -> Vec<Dab> {
+    let mut spec = straight_spec(10.0, 0.5);
+    extra(&mut spec);
+    collect_stroke(
+        spec,
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(200.0, 0.0, 1.0)],
+    )
+}
+
+#[test]
+fn no_jitter_dabs_are_uniform_baseline() {
+    let dabs = jitter_probe(|_| {});
+    assert!(dabs.len() > 3);
+    for d in &dabs {
+        assert_eq!(d.radius_px, 10.0, "radius constant with no Jitter Scale");
+        assert_eq!(
+            d.color,
+            [0.0, 0.0, 0.0],
+            "colour constant with Randomize off"
+        );
+        assert_eq!(
+            d.rotation,
+            [1.0, 0.0],
+            "rotation identity with no Jitter Rotate"
+        );
+    }
+}
+
+#[test]
+fn jitter_scale_varies_radius_deterministically() {
+    let a = jitter_probe(|s| s.jitter_scale = 0.5);
+    let b = jitter_probe(|s| s.jitter_scale = 0.5);
+    // Same seed → identical (replayable).
+    assert_eq!(
+        a.iter().map(|d| d.radius_px).collect::<Vec<_>>(),
+        b.iter().map(|d| d.radius_px).collect::<Vec<_>>(),
+    );
+    // Radii actually scatter, and never collapse below the floor.
+    let distinct = a.iter().any(|d| (d.radius_px - 10.0).abs() > 1e-4);
+    assert!(distinct, "Jitter Scale must vary the radius");
+    assert!(a.iter().all(|d| d.radius_px >= 0.5));
+}
+
+#[test]
+fn randomize_color_varies_colour_deterministically() {
+    let cfg = |s: &mut BrushSpec| {
+        s.color = [0.5, 0.5, 0.5];
+        s.color_jitter_enabled = true;
+        s.color_jitter_hue = 0.5;
+        s.color_jitter_sat = 0.3;
+        s.color_jitter_val = 0.3;
+    };
+    let a = jitter_probe(cfg);
+    let b = jitter_probe(cfg);
+    assert_eq!(
+        a.iter().map(|d| d.color).collect::<Vec<_>>(),
+        b.iter().map(|d| d.color).collect::<Vec<_>>(),
+    );
+    assert!(
+        a.iter().any(|d| d.color != [0.5, 0.5, 0.5]),
+        "Randomize Color must vary the colour"
+    );
+    // Enabled but every amount zero ⇒ no visible change (and the base colour is preserved).
+    let none = jitter_probe(|s| {
+        s.color = [0.2, 0.4, 0.8];
+        s.color_jitter_enabled = true;
+    });
+    assert!(none.iter().all(|d| d.color == [0.2, 0.4, 0.8]));
+}
+
+#[test]
+fn jitter_rotate_varies_rotation_deterministically() {
+    let a = jitter_probe(|s| s.jitter_rotate = 1.0);
+    let b = jitter_probe(|s| s.jitter_rotate = 1.0);
+    assert_eq!(
+        a.iter().map(|d| d.rotation).collect::<Vec<_>>(),
+        b.iter().map(|d| d.rotation).collect::<Vec<_>>(),
+    );
+    assert!(
+        a.iter().any(|d| d.rotation != [1.0, 0.0]),
+        "Jitter Rotate must produce non-identity rotations"
+    );
+    // Rotation vectors stay unit-length (transcendental-free rotation can't drift far).
+    for d in &a {
+        let len2 = d.rotation[0] * d.rotation[0] + d.rotation[1] * d.rotation[1];
+        assert!((len2 - 1.0).abs() < 1e-3, "rotation must stay unit length");
+    }
+}
+
+#[test]
+fn dragdot_opts_out_of_per_dab_jitter() {
+    // Drag Dot disables jitter (like position jitter); colour/rotation/scale all stay at base.
+    let mut spec = straight_spec(10.0, 0.5);
+    spec.stroke_method = StrokeMethod::DragDot;
+    spec.jitter_scale = 0.8;
+    spec.jitter_rotate = 1.0;
+    spec.color = [0.5, 0.5, 0.5];
+    spec.color_jitter_enabled = true;
+    spec.color_jitter_hue = 0.5;
+    let dabs = collect_stroke(
+        spec,
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(40.0, 0.0, 1.0), pt(80.0, 0.0, 1.0)],
+    );
+    assert!(!dabs.is_empty());
+    for d in &dabs {
+        assert_eq!(d.radius_px, 10.0);
+        assert_eq!(d.color, [0.5, 0.5, 0.5]);
+        assert_eq!(d.rotation, [1.0, 0.0]);
+    }
 }

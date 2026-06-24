@@ -25,16 +25,22 @@ pub struct StrokePoint {
     pub pressure: f32,
 }
 
-/// One dab to stamp: where, how big, and how opaque. The falloff profile / blend / colour come
-/// from the [`BrushSpec`]; only the pressure-varying parts live here.
+/// One dab to stamp: where, how big, and how opaque. The falloff profile / blend come from the
+/// [`BrushSpec`]; the pressure-varying parts plus the per-dab randomized colour / rotation live here.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dab {
     /// Centre in image pixels.
     pub center: [f32; 2],
-    /// Radius in pixels (brush radius × pressure size-scale).
+    /// Radius in pixels (brush radius × pressure size-scale × [`BrushSpec::jitter_scale`]).
     pub radius_px: f32,
     /// Per-dab opacity in `[0, 1]` (brush strength × pressure coverage-scale × space-attenuation).
     pub coverage: f32,
+    /// This dab's paint colour. Equal to [`BrushSpec::color`] unless **Randomize Color** is on, in
+    /// which case it is the per-dab HSV-jittered colour (see [`crate::jitter`]).
+    pub color: [f32; 3],
+    /// Extra per-dab texture rotation as a unit vector (identity `[1, 0]` = none); set by **Jitter
+    /// Rotate**. The stamp composes it into the texture frame; it has no effect without a texture.
+    pub rotation: [f32; 2],
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -464,6 +470,9 @@ impl Stroke {
             center,
             radius_px: radius_px.clamp(0.0, MAX_BRUSH_RADIUS_PX),
             coverage: self.spec.strength.clamp(0.0, 1.0),
+            // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
+            color: self.spec.color,
+            rotation: [1.0, 0.0],
         }
     }
 
@@ -497,9 +506,18 @@ impl Stroke {
     }
 
     /// Build a dab at `pos`/`pressure`, applying pressure dynamics, the space-attenuation
-    /// `overlap` multiplier, and jitter.
+    /// `overlap` multiplier, and the per-dab jitter (scale / rotate / colour, then position).
     fn dab_at(&mut self, pos: [f32; 2], pressure: f32, overlap: f32) -> Dab {
-        let radius = self.spec.clamped_radius() * self.dynamics.radius_scale(pressure);
+        // Per-dab Scale / Rotate / Randomize-Color in a FIXED draw order, gated like position jitter
+        // (Drag Dot / Anchored opt out). Drawn BEFORE the position jitter so it keeps its old slot
+        // when these are off — an all-off brush draws nothing and matches the no-jitter baseline.
+        let (scale, rotation, color) = if self.spec.stroke_method.allows_jitter() {
+            crate::jitter::per_dab(&mut self.rng, &self.spec)
+        } else {
+            (1.0, [1.0, 0.0], self.spec.color)
+        };
+        let radius = (self.spec.clamped_radius() * self.dynamics.radius_scale(pressure) * scale)
+            .clamp(0.5, MAX_BRUSH_RADIUS_PX);
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
         let center = self.apply_jitter(pos, radius);
@@ -507,6 +525,8 @@ impl Stroke {
             center,
             radius_px: radius,
             coverage,
+            color,
+            rotation,
         }
     }
 
@@ -524,30 +544,8 @@ impl Stroke {
         if max_offset <= 0.0 {
             return pos;
         }
-        let (dx, dy) = self.disc_sample();
+        let (dx, dy) = crate::jitter::disc_sample(&mut self.rng);
         [pos[0] + dx * max_offset, pos[1] + dy * max_offset]
-    }
-
-    /// Uniform sample inside the unit disc by rejection (matches Blender's jitter sampling).
-    fn disc_sample(&mut self) -> (f32, f32) {
-        loop {
-            let x = self.next_f32() * 2.0 - 1.0;
-            let y = self.next_f32() * 2.0 - 1.0;
-            if x * x + y * y <= 1.0 {
-                return (x, y);
-            }
-        }
-    }
-
-    /// Dep-free deterministic `[0,1)` RNG (splitmix64 → top 24 bits).
-    fn next_f32(&mut self) -> f32 {
-        self.rng = self.rng.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.rng;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^= z >> 31;
-        // Top 24 bits → [0,1).
-        ((z >> 40) as f32) / ((1u32 << 24) as f32)
     }
 }
 

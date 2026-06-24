@@ -236,6 +236,28 @@ pub(crate) fn paint_stroke_section(
             readout: &format!("{:.0}%", brush.stabilizer * 100.0), // LITERAL-PX-OK: fraction→percent
         });
     }
+
+    // ── Tiling: seamless wrap-around painting (paint past an edge → wraps to the opposite edge) ──
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_TILING_X,
+        "Tiling X",
+        brush.tiling[0],
+    );
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_TILING_Y,
+        "Tiling Y",
+        brush.tiling[1],
+    );
     y
 }
 

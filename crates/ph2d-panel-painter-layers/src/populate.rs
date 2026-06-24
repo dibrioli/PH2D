@@ -110,6 +110,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_ERASER,
         // "Randomize Color" subsection enable (Color section header checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
+        // Seamless Tiling (wrap-around painting) toggles, X / Y.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TILING_Y,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Texture section: "New" (momentary) + Rake / Random toggles.
@@ -183,6 +186,9 @@ mod tests {
             ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
             ids::PAINTER_BRUSH_JITTER_SCALE,
             ids::PAINTER_BRUSH_JITTER_ROTATE,
+            // Seamless Tiling toggles.
+            ids::PAINTER_BRUSH_TILING_X,
+            ids::PAINTER_BRUSH_TILING_Y,
         ] {
             assert!(
                 store.get(id).is_some(),

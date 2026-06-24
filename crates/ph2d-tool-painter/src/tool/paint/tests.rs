@@ -2156,3 +2156,50 @@ fn randomize_color_varies_the_painted_pixels_e2e() {
     let base: std::collections::BTreeSet<u8> = (6..58).map(|x| px(&t0, 64, x, 32)[0]).collect();
     assert_eq!(base.len(), 1, "no jitter ⟹ one uniform shade, got {base:?}");
 }
+
+// ── Seamless Tiling (wrap-around painting) ───────────────────────────────────────────────────
+
+#[test]
+fn tiling_x_wraps_paint_across_the_sprite_edge_e2e() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+
+    // Enable Tiling X via the panel (the wiring proof — a dropped Click would leave it off).
+    let mut t = white_canvas(64, 6.0);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_TILING_X));
+    assert_eq!(
+        t.brush_tiling(),
+        [true, false],
+        "Tiling X toggle reached the tool"
+    );
+    // A single dab at the RIGHT edge (x=63). With Tiling X it also paints the wrapped copy that
+    // crosses onto the LEFT edge (x=0) — so a stroke over the border is seamless when tiled.
+    t.on_canvas_pointer(cp([63.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([63.0, 32.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, 64, 63, 32),
+        [0, 0, 0, 255],
+        "the dab painted the right edge"
+    );
+    assert_eq!(
+        px(&t, 64, 0, 32),
+        [0, 0, 0, 255],
+        "Tiling X wrapped it onto the left edge"
+    );
+    // Only X tiles: the top-left corner stays white (no vertical wrap).
+    assert_eq!(
+        px(&t, 64, 0, 0),
+        [255, 255, 255, 255],
+        "Tiling Y off ⟹ no vertical wrap"
+    );
+
+    // Control: without tiling the same edge dab does NOT appear on the opposite edge.
+    let mut t0 = white_canvas(64, 6.0);
+    t0.on_canvas_pointer(cp([63.0, 32.0], PointerPhase::Down));
+    t0.on_canvas_pointer(cp([63.0, 32.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t0, 64, 0, 32),
+        [255, 255, 255, 255],
+        "no Tiling ⟹ the left edge is untouched"
+    );
+}

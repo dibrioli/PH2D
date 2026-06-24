@@ -259,9 +259,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             };
             // Per-row sliders: opacity + the adjustment param slots (0..1).
             if let Some((layer, kind)) = decode(&stack, id) {
-                // Channel Mixer weight slider (AdjParam0..3 on a ChannelMixer
-                // layer): forward the active output tab + slot via PAINTER_MIXER_EDIT
-                // — the generic SetValue can not carry which output row this edits.
+                // Channel Mixer weight slider (AdjParam0..3 on a ChannelMixer layer): forward the
+                // active output tab + slot via PAINTER_MIXER_EDIT (generic SetValue can't carry the row).
                 if let Some(slot) = adj_param_slot(kind)
                     && slot <= 3
                     && layer_is_channel_mixer(&stack, layer)
@@ -422,6 +421,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         WidgetEvent::Click(id)
             if id == core_ids::PAINTER_BRUSH_ERASER
                 || id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
+                || core_ids::PAINTER_BRUSH_TILING.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE

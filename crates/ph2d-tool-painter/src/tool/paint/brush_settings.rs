@@ -32,11 +32,9 @@ impl BrushTextureImage {
     }
 }
 
-/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting the
-/// cursor onto that ray. Transcendental-free (only abs/signum/compare/mul — `tan(22.5°)≈0.4142`,
-/// `tan(67.5°)≈2.4142` are the sector boundaries, `√½` the diagonal unit), so it stays
-/// bit-deterministic across platforms (HR-5) instead of going through `atan2`/`sin`/`cos`. Lives
-/// here (with the other stroke helpers) to keep `paint.rs` under the workspace LOC cap.
+/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto
+/// it. Transcendental-free (abs/signum/mul; the `tan(22.5°)`/`tan(67.5°)`/`√½` constants below) for
+/// HR-5 determinism instead of `atan2`/`sin`/`cos`. Here (with the stroke helpers) for the LOC cap.
 pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
     const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
@@ -73,10 +71,9 @@ pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
     [b[0] - a[0], b[1] - a[1]]
 }
 
-/// A compact snapshot of the active brush for the layers panel's Brush section.
-/// Published each frame by the shell bridge (mirror of the `LayerStack`
-/// snapshot) — the panel reads it to position the size/colour sliders and the
-/// blend chip; it never owns brush state.
+/// A compact snapshot of the active brush for the layers panel's Brush section. Published each frame
+/// by the shell bridge (mirror of the `LayerStack` snapshot) — the panel reads it to position the
+/// size/colour sliders and the blend chip; it never owns brush state.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BrushSettings {
     /// Radius in image pixels (UI label "Size").
@@ -103,6 +100,8 @@ pub struct BrushSettings {
     pub blend: u8,
     /// Eraser mode — paints with Erase Alpha regardless of [`Self::blend`].
     pub eraser: bool,
+    /// Seamless **Tiling** (wrap-around painting) flags `[x, y]`.
+    pub tiling: [bool; 2],
 
     // ── Stroke section (raw values; the panel maps to slider tracks via the BRUSH_*_MAX consts) ──
     /// Stroke-method wire discriminant ([`StrokeMethod::to_u8`]).
@@ -253,6 +252,7 @@ impl PainterTool {
             color: b.color,
             blend: b.blend.to_u8(),
             eraser: self.paint.eraser,
+            tiling: self.paint.tiling,
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             space_attenuation: b.space_attenuation,

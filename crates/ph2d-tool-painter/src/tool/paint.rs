@@ -24,6 +24,8 @@ mod curve;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// for the LOC cap (same submodule rationale).
 mod jitter_settings;
+/// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
+mod tiling;
 pub use curve::CurveOverlay;
 /// The Circle stroke method's on-canvas ellipse editor (same submodule rationale as `curve`).
 mod circle;
@@ -104,6 +106,10 @@ pub(crate) struct PaintState {
     /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time
     /// (the drawing blend in `brush.blend` is preserved for when it's off).
     eraser: bool,
+    /// **Tiling** (seamless tile painting): wrap-around painting per axis `[x, y]`. When on, a dab
+    /// near a sprite edge also stamps the wrapped part on the opposite edge, so a stroke crossing the
+    /// border is seamless when the sprite is repeated as a tile. Off by default.
+    tiling: [bool; 2],
     /// Set by [`PainterTool::paint_extend`] each pointer move and cleared by the per-frame tick.
     /// While a stroke is held and this stays `false` for a frame (the pointer is parked), the tick
     /// settles the stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause,
@@ -170,6 +176,7 @@ impl Default for PaintState {
             tex_rng: 0,
             stroke_undo: None,
             eraser: false,
+            tiling: [false, false],
             moved_this_frame: false,
             drag_preview: None,
             line_anchor: None,
@@ -349,9 +356,19 @@ impl PainterTool {
     }
 
     /// Stamp a batch of dabs into `canvas_rgba` (with the brush texture, if any) + accumulate the
-    /// dirty rect. Each dab carries its pressure-scaled radius + coverage; the static appearance
-    /// (falloff / blend / colour) comes from `self.paint.brush`. Large dabs parallelise internally.
+    /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
+    /// ([`Self::tiled_dabs`]) so a stroke near a border is seamless when the sprite repeats as a tile.
     fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        if self.paint.tiling[0] || self.paint.tiling[1] {
+            let wrapped = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            self.stamp_dabs_inner(&wrapped);
+        } else {
+            self.stamp_dabs_inner(dabs);
+        }
+    }
+
+    /// The actual stamp dispatch (already tiled if needed); [`Self::stamp_dabs`] wraps first.
+    fn stamp_dabs_inner(&mut self, dabs: &[Dab]) {
         if dabs.is_empty() {
             return;
         }
@@ -458,6 +475,15 @@ impl PainterTool {
     /// previous footprint's saved pixels, then save the pristine pixels under the new dabs' UNION
     /// bbox and stamp there — so the moving preview leaves no trail. Pen-up: `commit_drag_preview`.
     fn stamp_drag_preview(&mut self, dabs: &[Dab]) {
+        // Tiling: replicate across the wrapped edges up front so the saved bbox AND the stamp cover the
+        // wrapped copies — else the wrapped paint would fall outside the restore region (a trail).
+        let tiled;
+        let dabs = if self.paint.tiling[0] || self.paint.tiling[1] {
+            tiled = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            &tiled[..]
+        } else {
+            dabs
+        };
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
@@ -470,10 +496,10 @@ impl PainterTool {
         match bbox {
             Some(rect) => {
                 let pixels = self.save_region(&rect);
-                self.stamp_dabs(dabs);
+                self.stamp_dabs_inner(dabs);
                 self.paint.drag_preview = Some(DragPreview { rect, pixels });
             }
-            None => self.stamp_dabs(dabs),
+            None => self.stamp_dabs_inner(dabs),
         }
     }
 

@@ -8,15 +8,23 @@ use ph2d_editor_core::tool::PanelEvent;
 
 impl PainterTool {
     /// Route the per-dab randomize controls (Randomize Color enable + Hue/Sat/Value, Jitter Scale,
-    /// Jitter Rotate) from the layers panel's generic channel to the setters above. Returns `true`
-    /// when it consumed the event. Mirrors `route_texture_layer_event`; called from
-    /// `handle_panel_event` before the main match. These ids are `PAINTER_BRUSH_COLOR_*` /
-    /// `PAINTER_BRUSH_JITTER_*`, which the texture-layer router does not claim.
+    /// Jitter Rotate) AND the seamless Tiling toggles from the layers panel's generic channel to the
+    /// setters above. Returns `true` when it consumed the event. Mirrors `route_texture_layer_event`;
+    /// called from `handle_panel_event` before the main match. These ids are `PAINTER_BRUSH_COLOR_*` /
+    /// `PAINTER_BRUSH_JITTER_*` / `PAINTER_BRUSH_TILING_*`, which the texture-layer router does not claim.
     pub(crate) fn route_brush_jitter_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
         match event {
             PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE => {
                 self.toggle_brush_color_jitter_enabled();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TILING_X => {
+                self.toggle_brush_tiling(0);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TILING_Y => {
+                self.toggle_brush_tiling(1);
                 true
             }
             PanelEvent::SetValue(id, v) => {

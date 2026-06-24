@@ -6,9 +6,8 @@
 //! The brush is tool-global, so these are FIXED-id widgets (registered in
 //! [`crate::populate`]). The panel reads the published [`BrushSettings`] snapshot
 //! to position them and forwards edits over the frozen `PanelEvent` channel. The
-//! colour round-trip is a per-frame read-back: when the floating picker targets
-//! our swatch, its live value (mirrored by the hero loop into
-//! `widget_color(target)`) is forwarded to the tool.
+//! colour round-trip is a per-frame read-back: when the floating picker targets our
+//! swatch, its live value (mirrored by the hero loop into `widget_color(target)`) is forwarded.
 
 use crate::paint::register_button;
 use crate::state;
@@ -80,6 +79,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     color: [0.0, 0.0, 0.0],
     blend: 0,
     eraser: false,
+    tiling: [false, false],
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3, // Space
     spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)

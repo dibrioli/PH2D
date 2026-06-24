@@ -54,7 +54,10 @@ pub(crate) fn per_dab(rng: &mut u64, spec: &BrushSpec) -> (f32, [f32; 2], [f32; 
     } else {
         [1.0, 0.0]
     };
-    let color = if spec.color_jitter_enabled && spec.has_colour_jitter_amount() {
+    // Color randomization is driven SOLELY by the Hue/Sat/Value amounts (any > 0 → active).
+    // The legacy `color_jitter_enabled` flag is no longer gated on — the brush panel dropped its
+    // redundant enable toggle (the "Randomize Color" section activates on amount > 0, Enio 2026-06-24).
+    let color = if spec.has_colour_jitter_amount() {
         jittered_colour(
             rng,
             spec.color,

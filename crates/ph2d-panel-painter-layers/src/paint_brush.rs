@@ -132,33 +132,14 @@ pub(crate) fn paint_brush_body(
     brush_color_readback(ctx, brush);
 
     let mut y = top_y;
-    let pct = |v: f32| format!("{:.0}", v * 100.0); // LITERAL-PX-OK: fraction → percent
+    use crate::paint_brush_top::{
+        paint_checkbox_row, paint_randomize_section, paint_slider_chip_row,
+    };
 
-    // ── Size (px) + Strength (%) — the Blender TexDraw popover sliders ──
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Size",
-        id: core_ids::PAINTER_BRUSH_SIZE_SLIDER,
-        value: brush.size_norm,
-        readout: &format!("{:.0}", brush.size_px),
-    });
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Strength",
-        id: core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-        value: brush.strength,
-        readout: &pct(brush.strength),
-    });
+    // ── TOP basics (no section), reordered (Enio 2026-06-24):
+    //    Blend · Color · Size · Strength · Accumulate · Falloff ──
 
-    // ── Blend chip ──
+    // 1. Blend
     let (ny, blend_open) = paint_dropdown_row(
         ctx,
         theme,
@@ -175,8 +156,46 @@ pub(crate) fn paint_brush_body(
         state::set_pending_brush_blend_dd(Some((r, brush.blend)));
     }
 
-    // ── Falloff section — the dab distance-falloff preset (Blender's Falloff
-    // Curve Preset). Replaces a Hardness slider, matching the Blender UI. ──
+    // 2. Color
+    y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
+
+    // 3. Size + 4. Strength — canonical slider + editable numeric chip (Widget-Gallery look).
+    y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Size",
+        core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+        core_ids::PAINTER_BRUSH_SIZE_CHIP,
+        brush.size_norm,
+    );
+    y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Strength",
+        core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+        core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
+        brush.strength,
+    );
+
+    // 5. Accumulate (checkbox — caps the stroke at Strength when off).
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_ACCUMULATE,
+        "Accumulate",
+        brush.accumulate,
+    );
+
+    // 6. Falloff (dab distance-falloff preset).
     let (ny, falloff_open) = paint_dropdown_row(
         ctx,
         theme,
@@ -193,19 +212,13 @@ pub(crate) fn paint_brush_body(
         state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
     }
 
-    // ── Falloff curve graph: the visual representation of the active profile
-    // (read-only for presets), editable when the Custom preset is selected. ──
+    // ── Section 7: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
+    y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
+
+    // ── Remaining groups (sectioned per later instructions): Falloff curve · Stroke · Texture · Eraser ──
     y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
-
-    // ── Stroke section (Blender Stroke panel: method/spacing/jitter/dash/
-    // input-samples/stabilize). Owns its own dropdown-popover deferral below. ──
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
-
-    // ── Texture section (Blender brush texture: kind/mapping/angle/rake/random/
-    // offset/size, 2D-adapted). Owns its own dropdown-popover deferral below. ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
-
-    // ── Eraser: full-width mode toggle (Accent while erasing) ──
     y = paint_toggle_row(
         ctx,
         theme,
@@ -216,35 +229,6 @@ pub(crate) fn paint_brush_body(
         "Eraser",
         brush.eraser,
     );
-
-    // ── Colour: label + swatch (click opens the shared Blender picker) ──
-    y = paint_color_swatch_row(ctx, theme, x, content_w, y, brush);
-    // ── Randomize Color (Blender Color → Randomize): enable toggle + (when on) Hue/Sat/Value amounts ──
-    y = paint_toggle_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,
-        "Randomize Color",
-        brush.color_jitter_enabled,
-    );
-    if brush.color_jitter_enabled {
-        for (slot, label) in ["Hue", "Saturation", "Value"].into_iter().enumerate() {
-            y = paint_param_row(ParamRow {
-                ctx: &mut *ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                label,
-                id: core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS[slot],
-                value: brush.color_jitter[slot],
-                readout: &pct(brush.color_jitter[slot]),
-            });
-        }
-    }
     y
 }
 

@@ -7,7 +7,9 @@
 //! they can't be known at boot. Only the chrome buttons live here.
 
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, DropdownState, SliderOrientation, SliderState};
+use ph2d_editor_core::widget::{
+    ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
+};
 
 pub fn populate(store: &mut WidgetStore) {
     let buttons = [
@@ -102,6 +104,50 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Editable numeric chips paired with the canonical slider-with-chip rows (Size / Strength /
+    // Randomize Hue-Sat-Value). `link_slider_number` ties each chip to its slider so a chip edit
+    // propagates back as the slider's `ValueChanged` — the existing brush-slider forward handles it.
+    let slider_chip_pairs = [
+        (
+            ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
+            ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
+        ),
+        (
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
+        ),
+    ];
+    for (slider, chip) in slider_chip_pairs {
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number(slider, chip);
+    }
+    // "Randomize Color" collapsible section: mark the header click-to-collapse, start COLLAPSED, and
+    // make its colour dot a picker swatch (clicking opens the shared picker to assign the dot's colour).
+    store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION);
+    store.set_collapsed(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION, true);
+    store.register_picker_swatch(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).

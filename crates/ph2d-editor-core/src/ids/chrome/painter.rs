@@ -166,8 +166,7 @@ pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stro
 /// Brush "Rate" slider — the airbrush timer period in seconds (`0..1` track → `[0.01, 1.0]` s).
 /// Shown only for the Airbrush method. `SetValue` → `set_brush_airbrush_rate_norm`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
-/// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — shown only for the Anchored method.
-/// `Click` → `set_brush_edge_to_edge` (toggles).
+/// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.
 pub const PAINTER_BRUSH_EDGE_TO_EDGE: NodeId = hash_node_id("painter_brush.edge_to_edge");
 /// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %).
 /// `SetValue` → `set_brush_spacing`.
@@ -175,6 +174,8 @@ pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
 /// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`).
 /// `Click` → `set_brush_space_attenuation` (toggles).
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
+/// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
+pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
 /// Brush "Jitter" slider (`0..1` track; relative-to-diameter under the Brush unit, or maps to
 /// pixels under the View unit). `SetValue` → `set_brush_jitter_norm`.
 pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");

@@ -95,9 +95,8 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
-    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset from
-    /// the stroke seed at pointer-down (decorrelated from the jitter stream) and advanced once per
-    /// textured dab in [`PainterTool::stamp_dabs`] — reproducible (HR-5) yet differs across dabs.
+    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset from the
+    /// stroke seed at pointer-down + advanced once per textured dab — reproducible (HR-5), differs per dab.
     tex_rng: u64,
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
@@ -112,10 +111,9 @@ pub(crate) struct PaintState {
     /// and (with Tiling on) those neighbour tiles are paintable too — the shell wraps the pointer back
     /// onto the canvas.
     repeat_image: bool,
-    /// Set by [`PainterTool::paint_extend`] each pointer move and cleared by the per-frame tick.
-    /// While a stroke is held and this stays `false` for a frame (the pointer is parked), the tick
-    /// settles the stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause,
-    /// not only on pointer-up. Gating on it keeps the during-movement smoothing at full strength.
+    /// Set by [`PainterTool::paint_extend`] each pointer move, cleared by the per-frame tick. While a
+    /// stroke is held and this stays `false` for a frame (pointer parked), the tick settles the
+    /// stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause, not only on up.
     moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
     /// method (and once the dot is committed on pointer-up).
@@ -161,6 +159,8 @@ pub(crate) struct PaintState {
     texture_ramp_lut: Vec<[f32; 4]>,
     texture_ramp_dirty: bool,
     texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
+    /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
+    stroke_mask: Vec<u8>,
 }
 
 impl Default for PaintState {
@@ -199,6 +199,7 @@ impl Default for PaintState {
             texture_ramp_lut: Vec::new(),
             texture_ramp_dirty: true,
             texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
+            stroke_mask: Vec::new(),
         }
     }
 }
@@ -226,6 +227,9 @@ impl PainterTool {
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
         self.paint.line_anchor = Some(ev.pos);
+        // Reset the Accumulate-OFF cap mask — the first dab re-grows it (zero-fill), then it accumulates
+        // across the stroke's dabs until pointer-up (cap resets per stroke, not per dab).
+        self.paint.stroke_mask.clear();
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
@@ -383,39 +387,38 @@ impl PainterTool {
         if self.paint.eraser {
             brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
         }
-        // Alpha lock ("Lock" / Preserve Transparency): the dab paints only into the active layer's
-        // existing alpha (clip + mask are composite-time; only alpha-lock constrains the dab itself).
+        // Alpha lock: the dab paints only into the active layer's existing alpha (clip/mask composite-time).
         let alpha_locked = self
             .layers
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
-        // Color Ramp: the texture's scalar drives the per-texel paint COLOUR (via the baked LUT), so
-        // it bypasses the scalar-only caches for the per-pixel colour path (the LUT keeps it cheap).
+        // Color Ramp: the texture's scalar drives the per-texel COLOUR (baked LUT), bypassing scalar caches.
         if self.paint.texture_ramp_enabled && brush.texture.is_active() {
             self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Jitter Rotate gives every dab its own texture orientation, so the constant-orientation
-        // stamp caches no longer apply (their single baked frame would ignore `d.rotation`) — fall
-        // through to the per-dab basis path. Stencil ignores per-dab rotation, so it stays cacheable.
+        // Jitter Rotate orients each dab uniquely, so the constant-orientation caches don't apply.
         let per_dab_rotation = brush.has_per_dab_rotation();
-        // A static **View** texture is scale-invariant: render the stamp once into a cached mask +
-        // scale-blit per dab (Blender's brush-image cache), so a large Anchored re-stamp pays a cheap
-        // blit, not a per-pixel recompute. No-texture / canvas-relative / per-dab mappings stay
-        // per-pixel (nothing to cache, or not scale-invariant).
-        if brush.texture.is_active() && brush.texture.is_cacheable() && !per_dab_rotation {
+        // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
+        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        // A static View texture is scale-invariant: cache the stamp once + scale-blit per dab (Blender).
+        if brush.texture.is_active()
+            && brush.texture.is_cacheable()
+            && !per_dab_rotation
+            && !accumulate_cap
+        {
             self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Tiled / Stencil are canvas-fixed but dab-independent — cache each canvas pixel's texture
-        // once per stroke + look it up per dab (Anchored re-stamps the same region, so inner = reuse).
-        if brush.texture.is_canvas_cacheable() && !per_dab_rotation {
+        // Tiled / Stencil are canvas-fixed but dab-independent — cache each canvas pixel's texture once
+        // per stroke + look it up per dab (Anchored re-stamps the same region, so inner = reuse).
+        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap {
             self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
             return;
         }
-        // Per-pixel path (no cache applies: no texture, a canvas-relative / per-dab mapping, or
-        // per-dab Jitter Rotate). Resolves the texture frame + Randomize-Color colour per dab.
+        // Per-pixel path (no cache applies, or the Accumulate cap): resolves the texture frame +
+        // Randomize-Color colour per dab and threads the per-stroke coverage mask.
         self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h);
     }
 

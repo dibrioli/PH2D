@@ -112,6 +112,8 @@ pub struct BrushSettings {
     pub spacing: f32,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
+    /// **Accumulate** on/off: off (default) caps a stroke at Strength.
+    pub accumulate: bool,
     /// Relative jitter (`0..1`, fraction of diameter) — the Jitter slider under the Brush unit.
     pub jitter: f32,
     /// Absolute jitter in pixels — the Jitter slider under the View unit.
@@ -126,11 +128,9 @@ pub struct BrushSettings {
     pub input_samples: u32,
     /// Stroke stabilizer intensity, `0..1` (the "how regular" knob).
     pub stabilizer: f32,
-    /// Airbrush emission period in seconds (the "Rate" slider; only meaningful for the Airbrush
-    /// method). The panel maps it onto the slider track via `BRUSH_AIRBRUSH_RATE_{MIN,MAX}_S`.
+    /// Airbrush "Rate" — emission period in seconds (Airbrush only; track via `BRUSH_AIRBRUSH_RATE_*_S`).
     pub airbrush_rate_s: f32,
-    /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor instead of growing
-    /// from the anchor).
+    /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor, not grows from the anchor).
     pub edge_to_edge: bool,
 
     // ── Texture section (the brush texture mask; raw values — the panel maps to slider tracks) ──
@@ -148,8 +148,7 @@ pub struct BrushSettings {
     pub texture_offset: [f32; 2],
     /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
     pub texture_size: [f32; 2],
-    /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (see
-    /// `ph2d_painter_brush::param_specs`). The panel paints a slider per exposed slot.
+    /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (`param_specs`).
     pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
 
     // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
@@ -177,11 +176,8 @@ pub struct BrushSettings {
 /// shows the first this-many — more than enough for hand-authored gradients).
 pub const PANEL_RAMP_STOPS: usize = 16;
 
-/// Strength of the brush's active falloff at normalized distance `t` (`0` =
-/// centre, `1` = rim), for the panel's live curve preview. Reads the editable
-/// [`BrushSettings::falloff_points`] when the `Custom` preset is selected, else
-/// the matching [`Falloff`] formula — so the graph the panel draws matches the
-/// dab the engine stamps.
+/// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for
+/// the panel's live curve preview — the editable points for `Custom`, else the [`Falloff`] formula.
 #[must_use]
 pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
     if s.falloff == Falloff::Custom.to_u8() {
@@ -254,6 +250,7 @@ impl PainterTool {
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
             space_attenuation: b.space_attenuation,
+            accumulate: b.accumulate,
             jitter: b.jitter,
             jitter_absolute_px: b.jitter_absolute_px,
             jitter_unit: b.jitter_unit.to_u8(),
@@ -408,6 +405,11 @@ impl PainterTool {
     /// Toggle "Adjust Strength for Spacing".
     pub fn toggle_brush_space_attenuation(&mut self) {
         self.paint.brush.space_attenuation = !self.paint.brush.space_attenuation;
+    }
+
+    /// Toggle **Accumulate** (off caps a stroke at Strength; on lets overlapping dabs build up).
+    pub fn toggle_brush_accumulate(&mut self) {
+        self.paint.brush.accumulate = !self.paint.brush.accumulate;
     }
 
     /// Set the Jitter slider (`0..1` track), routed by the current unit: `Brush` → relative jitter

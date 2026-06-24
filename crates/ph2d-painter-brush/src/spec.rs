@@ -63,6 +63,12 @@ pub struct BrushSpec {
     /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON,
     /// `DNA_brush_types.h:206`). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).
     pub space_attenuation: bool,
+    /// **Accumulate** (Blender `BRUSH_ACCUMULATE`, bit 13, default OFF): when OFF, a single stroke is
+    /// capped at [`Self::strength`] — overlapping dabs (incl. passing the brush back over itself) do
+    /// NOT build past Strength (a per-stroke coverage mask, the classic "alpha mask"). When ON, every
+    /// dab adds on top so opacity builds up without the per-stroke cap (airbrush-like buildup). At
+    /// Strength `1.0` the two are identical (the cap is full coverage). See [`crate::dab`].
+    pub accumulate: bool,
     /// Dash "on" fraction of each dash period, `0..1` (Blender `dash_ratio`, default `1.0` = solid,
     /// `DNA_brush_types.h:275`).
     pub dash_ratio: f32,
@@ -135,6 +141,7 @@ impl Default for BrushSpec {
             custom_falloff: FalloffCurve::default(),
             stroke_method: StrokeMethod::Space,
             space_attenuation: true,
+            accumulate: false,
             dash_ratio: 1.0,
             dash_samples: 20,
             jitter_unit: JitterUnit::Brush,

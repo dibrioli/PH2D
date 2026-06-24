@@ -50,9 +50,8 @@ impl Tool for PainterTool {
             return;
         }
         match event {
-            // ── Dock toggle — layers panel header button ───────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_TOGGLE_DOCK => {
-                self.toggle_dock();
+                self.toggle_dock(); // dock toggle — layers panel header button
             }
             // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
             PanelEvent::Click(id) if id == core_ids::PAINTER_LAYERS_ADD => {
@@ -95,17 +94,19 @@ impl Tool for PainterTool {
                     self.set_layer_reference(a, !now);
                 }
             }
-            // ── Apply CTA — commit the composite to the sprite (next frame). ─
+            // Apply CTA — commit the composite to the sprite next frame.
             PanelEvent::Click(id) if id == core_ids::PAINTER_APPLY => {
                 self.request_commit();
             }
-            // ── Brush Eraser toggle (Brush-properties view). ───────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ERASER => {
                 self.toggle_brush_eraser();
             }
-            // ── Stroke section toggles. ────────────────────────────────────
+            // Stroke-section toggles.
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_SPACE_ATTEN => {
                 self.toggle_brush_space_attenuation();
+            }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ACCUMULATE => {
+                self.toggle_brush_accumulate();
             }
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
                 self.toggle_brush_edge_to_edge();
@@ -130,9 +131,8 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE => {
                 self.ramp_remove_last_stop();
             }
-            // ── Brush Custom-falloff "+" point button. ─────────────────────
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
-                self.add_brush_falloff_point();
+                self.add_brush_falloff_point(); // Brush Custom-falloff "+" point button
             }
             // ── Layers panel: per-row click (row select / visibility eye) ──
             PanelEvent::Click(id) => {

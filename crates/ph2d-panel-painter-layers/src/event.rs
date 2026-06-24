@@ -423,6 +423,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || core_ids::PAINTER_BRUSH_TILING.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_REPEAT_IMAGE
                 || id == core_ids::PAINTER_BRUSH_SPACE_ATTEN
+                || id == core_ids::PAINTER_BRUSH_ACCUMULATE
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM

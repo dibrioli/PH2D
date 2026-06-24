@@ -311,3 +311,56 @@ fn large_dab_takes_the_parallel_path_and_stamps_correctly() {
         "a far corner outside the radius is untouched"
     );
 }
+
+#[test]
+fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
+    // Accumulate OFF (a per-stroke coverage mask) caps overlapping dabs at Strength; ON (no mask)
+    // lets them build past it. Constant falloff + hard disk ⇒ the centre weight is exactly 1.
+    let (w, h) = (16u32, 16u32);
+    let spec = BrushSpec {
+        radius_px: 5.0,
+        color: [0.0, 0.0, 0.0], // black over white
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Constant,
+        hardness: 1.0,
+        strength: 0.5,
+        ..Default::default()
+    };
+    let center = [8.0, 8.0];
+    let i = (8 * w as usize + 8) * 4; // centre pixel
+    // OFF: five overlapping dabs in ONE stroke leave the centre at 50 % coverage (white→grey ~128).
+    let mut off = solid(w, h, [255, 255, 255, 255]);
+    let mut mask = vec![0u8; (w * h) as usize];
+    for _ in 0..5 {
+        // After the first dab caps the (constant-falloff) disk, later dabs paint nothing → `None`.
+        let _ = stamp_dab_textured_masked(
+            &mut off,
+            w,
+            h,
+            center,
+            &spec,
+            1.0,
+            false,
+            None,
+            None,
+            Some(&mut mask),
+        );
+    }
+    assert!(
+        (i32::from(off[i]) - 128).abs() <= 2,
+        "Accumulate OFF caps at Strength: {} (want ~128)",
+        off[i]
+    );
+    // ON (no mask): the same five dabs build past Strength toward black.
+    let mut on = solid(w, h, [255, 255, 255, 255]);
+    for _ in 0..5 {
+        stamp_dab_textured_masked(&mut on, w, h, center, &spec, 1.0, false, None, None, None)
+            .expect("dab painted");
+    }
+    assert!(
+        on[i] < 40 && off[i] > on[i],
+        "Accumulate ON builds past Strength: on={} off={} (want on dark, off lighter)",
+        on[i],
+        off[i]
+    );
+}

@@ -115,6 +115,7 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TILING_Y,
         ph2d_editor_core::ids::PAINTER_BRUSH_REPEAT_IMAGE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACE_ATTEN,
+        ph2d_editor_core::ids::PAINTER_BRUSH_ACCUMULATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
         // Texture section: "New" (momentary) + Rake / Random toggles.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_NEW,

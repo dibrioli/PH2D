@@ -586,6 +586,11 @@ fn stroke_section_panel_events_route_to_brush_settings() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_SPACE_ATTEN));
     assert!(!t.brush_settings().space_attenuation);
 
+    // "Accumulate" toggles from the default OFF (Blender default; off caps a stroke at Strength).
+    assert!(!t.brush_settings().accumulate);
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
+    assert!(t.brush_settings().accumulate);
+
     // Input samples: track 1.0 → max window; 0.0 → 1.
     t.handle_panel_event(PanelEvent::SetValue(
         core_ids::PAINTER_BRUSH_INPUT_SAMPLES,

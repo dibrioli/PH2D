@@ -89,6 +89,41 @@ pub fn stamp_dab_textured(
         image,
         None,
         RampAlphaMode::None,
+        None,
+    )
+}
+
+/// As [`stamp_dab_textured`], plus the **Accumulate-OFF** per-stroke coverage `mask` (canvas-sized,
+/// 1 byte/pixel). With `Some`, each pixel's stroke coverage is capped at the dab target (Strength) —
+/// overlapping dabs, incl. a back-and-forth pass, build toward but never past it; the caller resets
+/// the mask per stroke. With `None` this is exactly [`stamp_dab_textured`]. See [`stamp_dab_inner`].
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_textured_masked(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    mask: Option<&mut [u8]>,
+) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        None,
+        RampAlphaMode::None,
+        mask,
     )
 }
 
@@ -126,6 +161,7 @@ pub fn stamp_dab_ramped(
         image,
         Some(ramp),
         alpha_mode,
+        None, // Accumulate cap not applied on the Color-Ramp path (the per-pixel non-ramp path covers it)
     )
 }
 
@@ -143,15 +179,18 @@ fn stamp_dab_inner(
     image: Option<&ImageMask>,
     ramp: Option<&[[f32; 4]]>,
     alpha_mode: RampAlphaMode,
+    // **Accumulate OFF** per-stroke coverage mask (canvas-sized, 1 byte/pixel). `Some` ⇒ cap each
+    // pixel's stroke coverage at the dab target (the tool passes it only when Accumulate is off and
+    // Strength < 1, where the cap is observable); `None` ⇒ the build-up path (Accumulate ON).
+    mask: Option<&mut [u8]>,
 ) -> Option<DirtyRect> {
     debug_assert!(
         buf.len() >= (width as usize) * (height as usize) * 4,
         "buffer too small"
     );
-    // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up)
-    // × Strength (overall opacity). Both default to 1.0. (A true per-stroke
-    // accumulation cap for Strength — the "Accumulate off" model — is a later
-    // refinement; today it scales the dab, which composes with Flow.)
+    // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up) × Strength
+    // (overall opacity). With `mask` set this is the per-stroke CAP (Accumulate off); without it the
+    // dab just builds up (Accumulate on). Both default to 1.0.
     let coverage =
         coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 {
@@ -193,10 +232,20 @@ fn stamp_dab_inner(
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every
     // pointer move) splits across the cores (see `parallel_band_stamp`). The result is bit-identical
-    // to serial, so the texture stays fully visible during the drag.
-    let touched = parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
-        stamp_band(&ctx, dst, band_y0)
-    });
+    // to serial, so the texture stays fully visible during the drag. The Accumulate-cap path reads+
+    // writes the shared per-stroke mask, so it runs SERIALLY (one band over the dab's rows) — small
+    // soft-brush dabs anyway, where the cap is observable.
+    let touched = match mask {
+        Some(mask) => {
+            let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
+            let mrow = width as usize;
+            let mask_region = &mut mask[(y0 as usize) * mrow..(y1 as usize) * mrow];
+            stamp_band(&ctx, region, Some(mask_region), y0)
+        }
+        None => parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
+            stamp_band(&ctx, dst, None, band_y0)
+        }),
+    };
 
     if !touched {
         return None;
@@ -334,7 +383,7 @@ struct DabCtx<'a> {
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
 /// row `py` lives at local offset `(py - band_y0) * stride`). Returns whether any pixel was written.
 /// Pure over disjoint bands — no shared mutable state — so bands run in parallel deterministically.
-fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
+fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0: i64) -> bool {
     let blend = ctx.spec.blend;
     let mut touched = false;
     for r in 0..dst.len() / ctx.stride {
@@ -401,10 +450,25 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 }
                 stamp_rgba(prev, color, stamp_alpha, m)
             } else {
-                let a = if ctx.preserve_alpha {
-                    w * ctx.coverage * prev[3]
-                } else {
-                    w * ctx.coverage
+                let a = match mask.as_deref_mut() {
+                    // Accumulate OFF: cap the pixel's TOTAL stroke coverage at the dab target
+                    // `ctx.coverage`. `m` is the coverage laid down so far this stroke; a dab grows it
+                    // toward the cap by its local weight `w` (falloff×texture), and we blend the alpha
+                    // that takes the canvas from `m` to the new coverage (overlapping dabs, incl. a
+                    // back-and-forth pass, build toward — never past — Strength). `w ≤ 1` ⇒ no overshoot.
+                    Some(m_buf) => {
+                        let mi = r * (ctx.stride / 4) + px as usize;
+                        let m = f32::from(m_buf[mi]) / 255.0;
+                        if m >= ctx.coverage {
+                            continue; // already capped this stroke
+                        }
+                        let add = w * (ctx.coverage - m);
+                        m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
+                        let a = add / (1.0 - m).max(1e-4);
+                        if ctx.preserve_alpha { a * prev[3] } else { a }
+                    }
+                    None if ctx.preserve_alpha => w * ctx.coverage * prev[3],
+                    None => w * ctx.coverage,
                 };
                 if a <= 0.0 {
                     continue;

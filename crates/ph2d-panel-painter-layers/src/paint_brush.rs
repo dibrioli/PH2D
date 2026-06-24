@@ -85,6 +85,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     stroke_method: 3, // Space
     spacing: 0.10,    // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
     space_attenuation: true,
+    accumulate: false,
     jitter: 0.0,
     jitter_absolute_px: 0.0,
     jitter_unit: 0, // Brush

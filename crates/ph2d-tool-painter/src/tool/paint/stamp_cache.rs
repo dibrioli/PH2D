@@ -260,7 +260,18 @@ impl PainterTool {
         let textured = brush.texture.is_active();
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let mut tex_rng = self.paint.tex_rng;
+        // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
+        // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
+        // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
+        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        if accumulate_cap {
+            self.paint
+                .stroke_mask
+                .resize((w as usize) * (h as usize), 0);
+        }
         let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut mask: Option<&mut [u8]> =
+            accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
         for (i, d) in dabs.iter().enumerate() {
             // Per-dab Randomize Color rides on `d.color`; the radius is already jittered in `d`.
@@ -278,7 +289,7 @@ impl PainterTool {
                     d.rotation,
                 )
             });
-            if let Some(r) = ph2d_painter_brush::stamp_dab_textured(
+            if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked(
                 buf,
                 w,
                 h,
@@ -288,6 +299,7 @@ impl PainterTool {
                 alpha_locked,
                 basis.as_ref(),
                 image.as_ref(),
+                mask.as_deref_mut(),
             ) {
                 let rect = Region {
                     x: r.x,

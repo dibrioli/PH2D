@@ -115,6 +115,18 @@ pub(crate) fn paint_stroke_section(
             brush.space_attenuation,
         );
     }
+    // Accumulate is independent of spacing (it caps the whole stroke at Strength), so it shows for
+    // every method — Blender keeps it among the brush stroke options regardless of stroke type.
+    y = paint_toggle_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_BRUSH_ACCUMULATE,
+        "Accumulate",
+        brush.accumulate,
+    );
 
     // ── Jitter (unit-aware track + readout) + Jitter Unit dropdown — all but Drag Dot/Anchored ──
     if method.allows_jitter() {

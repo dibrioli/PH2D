@@ -24,6 +24,9 @@ pub fn paint_palettes(
         NodeId(0),
         NodeId(0),
         NodeId(0),
+        &[],
+        NodeId(0),
+        NodeId(0),
         &mut HitIndex::new(),
         scene,
         text_system,
@@ -43,27 +46,46 @@ pub fn paint_palettes_with_hits(
     add_swatch_id: NodeId,
     import_id: NodeId,
     export_id: NodeId,
+    tab_ids: &[NodeId],
+    new_id: NodeId,
+    delete_id: NodeId,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    // Single-palette picker: skip the palette-name tabs entirely
-    // (only one palette exists, so the "Default" pill was visual
-    // noise). Render the swatch grid directly in the full rect.
     if cp.palettes.is_empty() {
         return;
     }
-    // Reserve a bottom strip for the Import / Export buttons when wired (id != 0); the swatch grid
-    // takes the rest. The host services a click (file dialog → `ph2d_color::palette`).
     let gap = Spacing::Xs.px();
+    // Top: the named-palette tab strip (select / New / Delete). Bottom: the Import / Export strip.
+    // The swatch grid takes the middle.
+    let has_tabs = new_id.0 != 0 && tab_ids.iter().any(|t| t.0 != 0);
+    let tab_h = if has_tabs { 22.0 } else { 0.0 };
+    if has_tabs {
+        let tab_rect = Rect::new(rect.x, rect.y, rect.w, tab_h);
+        paint_palette_tabs(
+            cp,
+            tab_rect,
+            tab_ids,
+            new_id,
+            delete_id,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+    }
     let has_io = import_id.0 != 0 || export_id.0 != 0;
     let btn_h = if has_io { 22.0 } else { 0.0 };
-    let body_rect = if has_io {
-        Rect::new(rect.x, rect.y, rect.w, (rect.h - btn_h - gap).max(0.0))
-    } else {
-        rect
-    };
+    let top = tab_h + if has_tabs { gap } else { 0.0 };
+    let bottom = btn_h + if has_io { gap } else { 0.0 };
+    let body_rect = Rect::new(
+        rect.x,
+        rect.y + top,
+        rect.w,
+        (rect.h - top - bottom).max(0.0),
+    );
     if let Some(palette) = cp.palettes.get(cp.active_palette) {
         paint_palette_grid(
             palette,
@@ -92,6 +114,69 @@ pub fn paint_palettes_with_hits(
             crate::widget::paint_button(&btn, br, scene, text_system, theme);
             hit_index.register(id, br);
         }
+    }
+}
+
+/// The named-palette tab strip: one button per palette (the active one filled, the rest ghost) that
+/// selects it, then a "+" (New palette) and "×" (Delete palette) at the right. Tabs share the width
+/// left of the two square buttons; only the first `tab_ids.len()` palettes get a clickable tab.
+#[allow(clippy::too_many_arguments)]
+fn paint_palette_tabs(
+    cp: &BlenderColorPicker,
+    rect: Rect,
+    tab_ids: &[NodeId],
+    new_id: NodeId,
+    delete_id: NodeId,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    use crate::widget::{Button, ButtonKind, paint_button};
+    let gap = Spacing::Xs.px();
+    let btn_w = rect.h; // square New / Delete tiles at the right
+    let tabs_w = (rect.w - 2.0 * (btn_w + gap)).max(0.0);
+    let n = cp.palettes.len().min(tab_ids.len());
+    if n > 0 {
+        let tab_w = (tabs_w - gap * (n as f32 - 1.0)) / n as f32;
+        for (i, palette) in cp.palettes.iter().take(n).enumerate() {
+            let id = tab_ids[i];
+            if id.0 == 0 {
+                continue;
+            }
+            let r = Rect::new(rect.x + (tab_w + gap) * i as f32, rect.y, tab_w, rect.h);
+            let kind = if i == cp.active_palette {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            };
+            paint_button(
+                &Button::new(id, &palette.name).kind(kind),
+                r,
+                scene,
+                text_system,
+                theme,
+            );
+            hit_index.register(id, r);
+        }
+    }
+    let nx = rect.x + rect.w - 2.0 * btn_w - gap;
+    for (id, label, x, kind) in [
+        (new_id, "+", nx, ButtonKind::Default),
+        (delete_id, "x", nx + btn_w + gap, ButtonKind::Danger),
+    ] {
+        if id.0 == 0 {
+            continue;
+        }
+        let r = Rect::new(x, rect.y, btn_w, rect.h);
+        paint_button(
+            &Button::new(id, label).kind(kind),
+            r,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(id, r);
     }
 }
 

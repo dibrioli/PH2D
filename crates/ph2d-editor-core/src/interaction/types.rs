@@ -47,9 +47,16 @@ pub enum BlenderHitKind {
     /// "+ swatch" button at the end of the palette grid; clicking
     /// appends the picker's current value to the palette.
     AddSwatch,
+    /// A palette TAB in the named-palette strip. Index into the picker's palette set
+    /// ([`WidgetStore::blender_palette_set`]); clicking selects it as the active palette.
+    PaletteTab(u8),
+    /// "+ palette" button — appends a fresh empty "Palette N" and makes it active.
+    NewPalette,
+    /// "delete palette" button — removes the active palette (keeping at least one).
+    DeletePalette,
     /// "Import" palette button — clicking flags a host file-dialog request
     /// (`WidgetStore::set_palette_io_pending`) to load a `.gpl`/`.hex`/`.ase`/
-    /// `.aco` and REPLACE the active palette's swatches.
+    /// `.aco` as a NEW named palette.
     ImportPalette,
     /// "Export" palette button — flags a host file-dialog request to save the
     /// active palette's swatches in the format the chosen extension selects.

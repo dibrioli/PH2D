@@ -232,6 +232,19 @@ pub const BLENDER_SWATCH_23: NodeId = hash_node_id("blender_swatch_23");
 pub const BLENDER_SWATCH_24: NodeId = hash_node_id("blender_swatch_24");
 pub const BLENDER_SWATCH_25: NodeId = hash_node_id("blender_swatch_25");
 pub const BLENDER_SWATCH_26: NodeId = hash_node_id("blender_swatch_26");
+// Named-palette CRUD: tab strip (click → select; index = palette position), New, Delete.
+pub const BLENDER_PALETTE_TABS: [NodeId; 8] = [
+    hash_node_id("blender_palette_tab_0"),
+    hash_node_id("blender_palette_tab_1"),
+    hash_node_id("blender_palette_tab_2"),
+    hash_node_id("blender_palette_tab_3"),
+    hash_node_id("blender_palette_tab_4"),
+    hash_node_id("blender_palette_tab_5"),
+    hash_node_id("blender_palette_tab_6"),
+    hash_node_id("blender_palette_tab_7"),
+];
+pub const BLENDER_NEW_PALETTE: NodeId = hash_node_id("blender_new_palette");
+pub const BLENDER_DELETE_PALETTE: NodeId = hash_node_id("blender_delete_palette");
 
 /// Hierarchy panel container — wheel-scroll key.
 pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");

@@ -55,6 +55,8 @@ fn populate_blender_picker(store: &mut WidgetStore) {
         (ids::BLENDER_ADD_SWATCH, BlenderHitKind::AddSwatch),
         (ids::BLENDER_IMPORT_PALETTE, BlenderHitKind::ImportPalette),
         (ids::BLENDER_EXPORT_PALETTE, BlenderHitKind::ExportPalette),
+        (ids::BLENDER_NEW_PALETTE, BlenderHitKind::NewPalette),
+        (ids::BLENDER_DELETE_PALETTE, BlenderHitKind::DeletePalette),
         (ids::BLENDER_EYEDROPPER, BlenderHitKind::Eyedropper),
         (ids::BLENDER_DRAG_HANDLE, BlenderHitKind::DragHandle),
         (ids::BLENDER_WHEEL, BlenderHitKind::Wheel),
@@ -79,6 +81,16 @@ fn populate_blender_picker(store: &mut WidgetStore) {
             InteractiveState::BlenderHit {
                 parent: ids::INSP_BLENDER_PICKER,
                 kind: BlenderHitKind::ChannelSlider(idx),
+            },
+        );
+    }
+    // Palette tab strip (named-palette select): 8 pre-registered slots, index = palette position.
+    for (idx, id) in ids::BLENDER_PALETTE_TABS.into_iter().enumerate() {
+        store.register(
+            id,
+            InteractiveState::BlenderHit {
+                parent: ids::INSP_BLENDER_PICKER,
+                kind: BlenderHitKind::PaletteTab(idx as u8),
             },
         );
     }

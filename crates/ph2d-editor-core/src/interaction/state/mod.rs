@@ -181,6 +181,17 @@ pub enum InteractiveState {
     Plain,
 }
 
+/// One named colour palette in a [`InteractiveState::BlenderPicker`]'s set: a display name + its
+/// swatches. A picker holds a `Vec<NamedPalette>` (≥1); the active index lives in the picker state
+/// (`active_palette`). The "+ swatch", import/export and CRUD dispatch paths mutate the active one.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NamedPalette {
+    /// Display name shown on the palette tab.
+    pub name: String,
+    /// Straight-RGBA swatches in author order.
+    pub swatches: Vec<ColorValue>,
+}
+
 #[derive(Debug, Default)]
 pub struct WidgetStore {
     pub(super) states: BTreeMap<NodeId, InteractiveState>,
@@ -257,10 +268,10 @@ pub struct WidgetStore {
     /// Up — `apply_click` consumes this to upgrade `Click(id)` →
     /// `DoubleClick(id)`. Reset on every confirmed take.
     pub(super) pending_double_click: Option<NodeId>,
-    /// Mutable color palettes per BlenderPicker — one Vec of swatches
-    /// per parent picker id. Initialized at populate time; mutated by
-    /// "+ swatch" / right-click-delete dispatch paths.
-    pub(super) blender_palettes: BTreeMap<NodeId, Vec<ColorValue>>,
+    /// Named colour palettes per BlenderPicker — a `Vec<NamedPalette>` (≥1) per parent picker id; the
+    /// active index is the picker state's `active_palette`. Seeded at populate time; mutated by the
+    /// "+ swatch" / delete / import / and palette-CRUD (new / rename / delete / select) dispatch paths.
+    pub(super) blender_palettes: BTreeMap<NodeId, Vec<NamedPalette>>,
     /// Per-picker drag offset (dx, dy) applied to the rect chosen by
     /// the host painter. Mutated by drag-handle clicks; defaults to
     /// (0, 0). When the drag handle is `active`, `drag_anchor_px`

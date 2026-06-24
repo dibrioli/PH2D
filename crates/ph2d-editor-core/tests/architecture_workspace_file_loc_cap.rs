@@ -50,7 +50,9 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
         "ph2d-editor-core/src/screens/hero/context_menu_overlay.rs",
         783,
     ),
-    ("ph2d-editor-core/src/screens/hero/pre_populate.rs", 689),
+    // 689 → 703: colour-picker gained palette Import/Export + named-palette CRUD (tab strip + New/
+    // Delete) hit registrations (Coord, 2026-06-24). Follow-up: extract the picker block to a sibling.
+    ("ph2d-editor-core/src/screens/hero/pre_populate.rs", 703),
     ("ph2d-editor-core/src/screens/hero/topbar/mod.rs", 701),
     ("ph2d-grid/src/hex.rs", 694),
     ("ph2d-grid/src/voronoi.rs", 626),

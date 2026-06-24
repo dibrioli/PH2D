@@ -5,7 +5,7 @@ use super::channels::{oklch_norm_channels, paint_slider_row, rgba_to_hsv};
 use super::hex_field::{paint_eyedropper, paint_hex_field};
 use super::palette::{paint_palettes, paint_palettes_with_hits};
 use super::segmented::paint_channel_toggle;
-use super::state::{BlenderColorPicker, ChannelMode};
+use super::state::{BlenderColorPicker, ChannelMode, ColorPalette};
 use super::value_slider::paint_value_slider;
 use super::wheel::paint_color_wheel;
 use crate::interaction::{HitIndex, WidgetStore};
@@ -53,6 +53,11 @@ pub struct BlenderSubIds {
     /// Palette Import / Export button ids (host file dialog → `.gpl`/`.hex`/`.ase`/`.aco`).
     pub import_palette: NodeId,
     pub export_palette: NodeId,
+    /// Named-palette tab ids (up to 8; index = palette position). Entries with id == 0 are skipped.
+    pub palette_tabs: [NodeId; 8],
+    /// "+ palette" (New) and "delete palette" button ids.
+    pub new_palette: NodeId,
+    pub delete_palette: NodeId,
     /// Eyedropper button id.
     pub eyedropper: NodeId,
     /// Drag-handle bar id (at top of picker — drag to reposition).
@@ -82,6 +87,9 @@ impl BlenderSubIds {
             add_swatch: NodeId(0),
             import_palette: NodeId(0),
             export_palette: NodeId(0),
+            palette_tabs: [NodeId(0); 8],
+            new_palette: NodeId(0),
+            delete_palette: NodeId(0),
             eyedropper: NodeId(0),
             drag_handle: NodeId(0),
             swatches: [NodeId(0); 27],
@@ -387,13 +395,17 @@ pub fn paint_blender_color_picker_with_store(
     }
     y += HEX_ROW_H + ROW_GAP;
 
-    // Patch the local picker's active palette swatches with the
-    // store-side mutable palette (init_blender_palette + push/remove).
-    if let Some(swatches) = store.blender_palette(parent_id)
-        && let Some(palette) = local.palettes.get_mut(local.active_palette)
-    {
-        palette.swatches = swatches.to_vec();
-        palette.editable = true;
+    // Rebuild the local picker's palette set from the store (the runtime source of truth): every named
+    // palette's name + swatches, so the tab strip and swatch grid reflect every CRUD / import edit.
+    // The active index already came from the store state (above); clamp it onto the rebuilt set.
+    if let Some(set) = store.blender_palette_set(parent_id) {
+        local.palettes = set
+            .iter()
+            .map(|p| ColorPalette::new(p.name.clone(), p.swatches.clone()))
+            .collect();
+        local.active_palette = local
+            .active_palette
+            .min(local.palettes.len().saturating_sub(1));
     }
     let palette_h = (rect.y + rect.h - y - pad).max(0.0);
     let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);
@@ -405,6 +417,9 @@ pub fn paint_blender_color_picker_with_store(
             ids.add_swatch,
             ids.import_palette,
             ids.export_palette,
+            &ids.palette_tabs,
+            ids.new_palette,
+            ids.delete_palette,
             hit_index,
             scene,
             text_system,

@@ -60,16 +60,98 @@ impl WidgetStore {
         }
     }
 
-    /// Initialize the BlenderPicker's palette swatches. Caller passes
-    /// the seed colors (typically `default_palette()`).
+    /// Initialize the BlenderPicker's palette set with a single palette named "Palette" holding the
+    /// seed `swatches` (typically `default_palette()`). The user adds more via the New-palette button.
     pub fn init_blender_palette(&mut self, parent: NodeId, swatches: Vec<ColorValue>) {
-        self.blender_palettes.insert(parent, swatches);
+        self.blender_palettes.insert(
+            parent,
+            vec![super::NamedPalette {
+                name: "Palette".to_string(),
+                swatches,
+            }],
+        );
     }
 
-    /// Read the BlenderPicker's current palette swatches. Returns
-    /// `None` if `init_blender_palette` was never called for `parent`.
+    /// The active palette index for `parent`, clamped to the palette set so a stale index (after a
+    /// delete) never points past the end. `0` when the picker has no state yet.
+    fn active_palette_idx(&self, parent: NodeId) -> usize {
+        let count = self.blender_palettes.get(&parent).map_or(0, Vec::len);
+        self.blender_picker(parent)
+            .map_or(0, |t| t.3)
+            .min(count.saturating_sub(1))
+    }
+
+    /// Read the ACTIVE palette's swatches. `None` if the picker was never seeded.
     pub fn blender_palette(&self, parent: NodeId) -> Option<&[ColorValue]> {
-        self.blender_palettes.get(&parent).map(|v| v.as_slice())
+        let active = self.active_palette_idx(parent);
+        self.blender_palettes
+            .get(&parent)?
+            .get(active)
+            .map(|p| p.swatches.as_slice())
+    }
+
+    /// Read the full named-palette SET (for the tab strip). `None` if never seeded.
+    pub fn blender_palette_set(&self, parent: NodeId) -> Option<&[super::NamedPalette]> {
+        self.blender_palettes.get(&parent).map(Vec::as_slice)
+    }
+
+    /// Append a fresh empty palette named "Palette N" and make it active. No-op if never seeded.
+    pub fn blender_new_palette(&mut self, parent: NodeId) {
+        let new_idx = self.blender_palettes.get_mut(&parent).map(|set| {
+            let n = set.len() + 1;
+            set.push(super::NamedPalette {
+                name: format!("Palette {n}"),
+                swatches: Vec::new(),
+            });
+            set.len() - 1
+        });
+        if let Some(idx) = new_idx {
+            self.set_blender_active_palette(parent, idx);
+        }
+    }
+
+    /// Delete the active palette (keeping at least one) and clamp the active index onto the survivor.
+    pub fn blender_delete_active_palette(&mut self, parent: NodeId) {
+        let active = self.active_palette_idx(parent);
+        let new_active = self.blender_palettes.get_mut(&parent).and_then(|set| {
+            (set.len() > 1).then(|| {
+                set.remove(active);
+                active.min(set.len() - 1)
+            })
+        });
+        if let Some(idx) = new_active {
+            self.set_blender_active_palette(parent, idx);
+        }
+    }
+
+    /// Rename the active palette (empty names are ignored — the tab needs a label).
+    pub fn blender_rename_active_palette(&mut self, parent: NodeId, name: &str) {
+        let active = self.active_palette_idx(parent);
+        if !name.trim().is_empty()
+            && let Some(p) = self
+                .blender_palettes
+                .get_mut(&parent)
+                .and_then(|s| s.get_mut(active))
+        {
+            p.name = name.trim().to_string();
+        }
+    }
+
+    /// Select palette `idx` as active (clamped to the set).
+    pub fn blender_select_palette(&mut self, parent: NodeId, idx: usize) {
+        let count = self.blender_palettes.get(&parent).map_or(0, Vec::len);
+        if count > 0 {
+            self.set_blender_active_palette(parent, idx.min(count - 1));
+        }
+    }
+
+    /// Write the active-palette index into the picker's [`InteractiveState::BlenderPicker`] state.
+    fn set_blender_active_palette(&mut self, parent: NodeId, idx: usize) {
+        if let Some(InteractiveState::BlenderPicker { active_palette, .. }) =
+            self.states.get_mut(&parent)
+        {
+            *active_palette = idx;
+        }
     }
 
     /// Read the BlenderPicker's drag offset (dx, dy). Defaults to
@@ -138,38 +220,58 @@ impl WidgetStore {
         self.palette_io_pending.take()
     }
 
-    /// Append `color` to the BlenderPicker's palette. No-op if the
-    /// palette wasn't initialized OR is already at the static cap
-    /// (24 entries — matches the pre-registered swatch hit slots so
-    /// every visible swatch has a clickable hit rect).
+    /// Append `color` to the ACTIVE palette. No-op if never seeded OR already at the static cap (27 —
+    /// matches the pre-registered swatch hit slots so every visible swatch has a clickable hit rect).
     pub fn blender_palette_push(&mut self, parent: NodeId, color: ColorValue) {
         const PALETTE_CAP: usize = 27;
-        if let Some(palette) = self.blender_palettes.get_mut(&parent)
-            && palette.len() < PALETTE_CAP
+        let active = self.active_palette_idx(parent);
+        if let Some(p) = self
+            .blender_palettes
+            .get_mut(&parent)
+            .and_then(|s| s.get_mut(active))
+            && p.swatches.len() < PALETTE_CAP
         {
-            palette.push(color);
+            p.swatches.push(color);
         }
     }
 
-    /// Remove the swatch at `idx` from the BlenderPicker's palette.
-    /// Returns true if a swatch was actually removed.
+    /// Remove the swatch at `idx` from the ACTIVE palette. Returns true if one was removed.
     pub fn blender_palette_remove(&mut self, parent: NodeId, idx: usize) -> bool {
-        if let Some(palette) = self.blender_palettes.get_mut(&parent)
-            && idx < palette.len()
+        let active = self.active_palette_idx(parent);
+        if let Some(p) = self
+            .blender_palettes
+            .get_mut(&parent)
+            .and_then(|s| s.get_mut(active))
+            && idx < p.swatches.len()
         {
-            palette.remove(idx);
+            p.swatches.remove(idx);
             return true;
         }
         false
     }
 
-    /// REPLACE the BlenderPicker's palette swatches (the import path). Truncated to the static
-    /// 27-slot cap so every imported swatch keeps a pre-registered hit rect. Initialises the entry
-    /// if the picker was never seeded.
-    pub fn blender_palette_replace(&mut self, parent: NodeId, mut swatches: Vec<ColorValue>) {
+    /// IMPORT a palette: append a NEW named palette (file name + swatches, capped to the 27 hit slots)
+    /// and make it active — so an import adds to the set rather than clobbering the current palette.
+    /// Seeds the set if the picker was never initialised.
+    pub fn blender_import_palette(
+        &mut self,
+        parent: NodeId,
+        name: &str,
+        mut swatches: Vec<ColorValue>,
+    ) {
         const PALETTE_CAP: usize = 27;
         swatches.truncate(PALETTE_CAP);
-        self.blender_palettes.insert(parent, swatches);
+        let name = if name.trim().is_empty() {
+            "Imported".to_string()
+        } else {
+            name.trim().to_string()
+        };
+        let last = {
+            let set = self.blender_palettes.entry(parent).or_default();
+            set.push(super::NamedPalette { name, swatches });
+            set.len() - 1
+        };
+        self.set_blender_active_palette(parent, last);
     }
 
     /// Read the retained HSV anchor (h, s) the picker uses to

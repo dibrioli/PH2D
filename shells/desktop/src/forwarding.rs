@@ -120,7 +120,8 @@ fn handle_palette_io(
                         .iter()
                         .map(|c| ph2d_tokens::ColorValue::from_rgba8(c[0], c[1], c[2], c[3]))
                         .collect();
-                    hero.store.blender_palette_replace(parent, colors);
+                    // Import ADDS a named palette (the file's name) + activates it.
+                    hero.store.blender_import_palette(parent, &p.name, colors);
                 }
                 Ok(Err(e)) => eprintln!("[ph2d] palette import: {e}"),
                 Err(e) => eprintln!("[ph2d] palette read: {e}"),

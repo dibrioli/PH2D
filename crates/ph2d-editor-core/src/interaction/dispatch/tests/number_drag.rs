@@ -56,16 +56,44 @@ fn palette_io_pending_round_trips_and_replace_caps() {
         "the host drains the pending request",
     );
     assert!(store.take_palette_io_pending().is_none(), "drained once");
-    // Import replaces the swatches, truncated to the 27 pre-registered hit slots.
+    // Import APPENDS a new named palette + activates it, truncated to the 27 hit slots.
     let many: Vec<_> = (0..40)
         .map(|i| ph2d_tokens::ColorValue::from_rgba8(i, 0, 0, 255))
         .collect();
-    store.blender_palette_replace(NodeId(100), many);
+    store.blender_import_palette(NodeId(100), "Sunset", many);
+    assert_eq!(
+        store.blender_palette_set(NodeId(100)).map(<[_]>::len),
+        Some(2),
+        "import adds a palette (seed + imported), not replace",
+    );
     assert_eq!(
         store.blender_palette(NodeId(100)).map(<[_]>::len),
         Some(27),
-        "replace caps at the swatch-slot count",
+        "the imported palette is active + capped at the swatch-slot count",
     );
+}
+
+#[test]
+fn named_palette_crud_new_select_rename_delete() {
+    let (mut store, _) = blender_picker_setup();
+    let id = NodeId(100);
+    let count = |s: &WidgetStore| s.blender_palette_set(id).map(<[_]>::len);
+    let active = |s: &WidgetStore| s.blender_picker(id).unwrap().3;
+    assert_eq!(count(&store), Some(1), "seeded with one palette");
+    // New → appended and made active.
+    store.blender_new_palette(id);
+    assert_eq!(count(&store), Some(2));
+    assert_eq!(active(&store), 1, "the new palette is active");
+    // Select the first, rename it.
+    store.blender_select_palette(id, 0);
+    assert_eq!(active(&store), 0);
+    store.blender_rename_active_palette(id, "Warm");
+    assert_eq!(store.blender_palette_set(id).unwrap()[0].name, "Warm");
+    // Delete the active → back to one; deleting the last is a no-op (always keep ≥1).
+    store.blender_delete_active_palette(id);
+    assert_eq!(count(&store), Some(1));
+    store.blender_delete_active_palette(id);
+    assert_eq!(count(&store), Some(1), "always keeps at least one palette");
 }
 
 #[test]

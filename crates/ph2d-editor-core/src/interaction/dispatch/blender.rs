@@ -188,8 +188,20 @@ pub(super) fn apply_blender_hit(
             store.blender_palette_push(parent, cur);
             Some(parent)
         }
+        BlenderHitKind::PaletteTab(idx) => {
+            store.blender_select_palette(parent, idx as usize);
+            Some(parent)
+        }
+        BlenderHitKind::NewPalette => {
+            store.blender_new_palette(parent);
+            Some(parent)
+        }
+        BlenderHitKind::DeletePalette => {
+            store.blender_delete_active_palette(parent);
+            Some(parent)
+        }
         BlenderHitKind::ImportPalette => {
-            // Flag the host to open a load dialog + REPLACE the palette (the picker can't do file I/O).
+            // Flag the host to open a load dialog + add a NEW palette (the picker can't do file I/O).
             store.set_palette_io_pending(parent, crate::interaction::PaletteIoKind::Import);
             Some(parent)
         }

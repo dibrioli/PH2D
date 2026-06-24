@@ -43,6 +43,7 @@ pub mod color_ramp;
 pub mod linear;
 pub mod oklab;
 pub mod oklch;
+pub mod palette;
 pub mod pigment_space;
 pub mod premultiplied;
 pub mod srgb;
@@ -51,6 +52,7 @@ pub use color_ramp::{ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInte
 pub use linear::LinearRgba;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;
+pub use palette::{PaletteData, PaletteError, PaletteFormat};
 pub use pigment_space::PigmentLinearSrgb;
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;

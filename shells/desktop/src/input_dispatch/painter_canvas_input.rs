@@ -4,15 +4,15 @@
 //! on-screen footprint.
 //!
 //! Mirrors the bgremoval protection-brush plumbing (`protect_brush.rs`): gate on
-//! the painter being active + a selected sprite, AABB footprint hit-test
-//! (`world_to_screen` of the sprite corners — matches `bgremoval_preview.rs`),
-//! UV → image px via the painter's `canvas_size`. The concrete downcast to
-//! [`PainterTool`] is the documented ADR-0040 §3 exception (same shape as
-//! protect_brush / eyedropper), here used to read `canvas_size` while delivering.
+//! the painter being active + a selected sprite, then map screen → image px with
+//! the FULL sprite affine (`bgremoval_preview::sprite_image_to_screen_affine` —
+//! size · scale · rotation · anchor · camera), so the brush tracks the sprite
+//! under any transform. The concrete downcast to [`PainterTool`] is the documented
+//! ADR-0040 §3 exception (same shape as protect_brush / eyedropper), here used to
+//! read `canvas_size` + deliver the pointer.
 //!
-//! Limitations (Fase 0b): the footprint AABB ignores sprite rotation (parity with
-//! the protect brush); desktop CursorMoved has no pen pressure, so Move/Up deliver
-//! pressure 1.0 (real pressure arrives on the iPad shell). Both are follow-ups.
+//! Limitation: desktop CursorMoved has no pen pressure, so Move/Up deliver
+//! pressure 1.0 (real pressure arrives on the iPad shell) — a follow-up.
 
 use std::cell::Cell;
 
@@ -280,25 +280,7 @@ impl App {
         ) else {
             return false;
         };
-        let (tx, ty) = (tr.translation.x, tr.translation.y);
-        // The displayed sprite is `sprite.size × transform.scale`, so fold the scale into the
-        // footprint — a resize (including a non-uniform AR change via the gizmo) then keeps the brush
-        // mapping locked to the sprite. (Rotation stays ignored — the documented AABB limitation.)
-        let (sw, sh) = (sprite.size[0] * tr.scale.x, sprite.size[1] * tr.scale.y);
         let window_size = gfx.surface.size();
-        let (x0, y0) = gfx
-            .camera
-            .world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window_size);
-        let (x1, y1) = gfx
-            .camera
-            .world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window_size);
-        let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
-        let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
-        if !(hi_x > lo_x && hi_y > lo_y) {
-            return false;
-        }
-        let u = (px - lo_x) / (hi_x - lo_x);
-        let v = (py - lo_y) / (hi_y - lo_y);
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
         };
@@ -309,13 +291,29 @@ impl App {
         if iw == 0 || ih == 0 {
             return false;
         }
+        // Screen → image-px via the FULL sprite affine (size · scale · rotation · anchor · camera) —
+        // the same geometry the renderer + bgremoval use, so the brush tracks the sprite under any
+        // resize, AR change OR rotation. `u`/`v` is the image fraction, NOT clamped (a Repeat-Image
+        // neighbour tile lands outside `[0, 1]`).
+        let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
+            iw,
+            ih,
+            tr,
+            sprite,
+            &gfx.camera,
+            window_size,
+        );
+        let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
+        let (u, v) = (
+            (img.x / f64::from(iw)) as f32,
+            (img.y / f64::from(ih)) as f32,
+        );
         // A Down only starts a stroke when inside the footprint (outside clicks fall through to pan /
         // selection); Move/Up always reach an open stroke so you can paint to and past the edge.
         // **Repeat Image + Tiling**: the 8 neighbour tiles are paintable too — extend the Down hit
-        // region to the 3×3 grid on each tiled axis. The coordinate is passed UN-wrapped (`u`/`v` can
-        // fall outside `[0, 1]` on a neighbour) so a stroke crossing a tile boundary stays continuous;
-        // the painter's Tiling dab-wrap maps those off-canvas dabs back onto the canvas, and the
-        // preview re-tiles the painted result.
+        // region to the 3×3 grid on each tiled axis. The coordinate is passed UN-wrapped so a stroke
+        // crossing a tile boundary stays continuous; the painter's Tiling dab-wrap maps those off-
+        // canvas dabs back onto the canvas, and the preview re-tiles the painted result.
         let repeat = painter.repeat_image();
         let tiling = painter.brush_tiling();
         let in_x = if repeat && tiling[0] {
@@ -337,13 +335,13 @@ impl App {
             tilt: [0.0, 0.0],
             phase,
         };
-        // Control-handle grab radius for the shape editors (Curve/Circle/Polygon) AND the Stencil
-        // texture handles: forward it in IMAGE px (screen tolerance ÷ the footprint's
-        // screen-per-image scale), so the hit target is a constant on-screen size at any zoom.
-        // Out-of-band, like `set_line_constrain` (the frozen `CanvasPointer` carries neither).
-        let scale = (hi_x - lo_x) / iw as f32;
-        let grab_tol_img = if scale > 0.0 {
-            SHAPE_GRAB_TOL_SCREEN_PX / scale
+        // Control-handle grab radius for the shape editors + Stencil handles: screen tolerance ÷ the
+        // affine's per-image-pixel screen scale (|linear column 0|), so it stays a constant on-screen
+        // size at any zoom / rotation. Out-of-band, like `set_line_constrain`.
+        let c = affine.as_coeffs();
+        let pixel_scale = (c[0] * c[0] + c[1] * c[1]).sqrt() as f32;
+        let grab_tol_img = if pixel_scale > 0.0 {
+            SHAPE_GRAB_TOL_SCREEN_PX / pixel_scale
         } else {
             SHAPE_GRAB_TOL_SCREEN_PX
         };

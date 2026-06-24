@@ -16,7 +16,7 @@
 // FOLLOW-UP: extract the intent-drain match to a `intents.rs` sibling to
 // drop back under the cap (2026-05-21: +SetPresentMode/RealSize tipped it).
 
-mod bgremoval_preview;
+pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
 mod equalize_sizes_bridge;

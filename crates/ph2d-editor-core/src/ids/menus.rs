@@ -112,6 +112,44 @@ pub const CTX_MENU_VECTOR_PROMPT_GENERATE: NodeId = hash_node_id("ctx_menu_vecto
 /// `BLENDER_PALETTE_NAME` field to the active palette (the field doubles as the dialog input).
 pub const CTX_MENU_PALETTE_RENAME: NodeId = hash_node_id("ctx_menu_palette_rename");
 
+// New-image modal (Cmd/Ctrl+N): pick a square size + a background, then Create. The size + background
+// buttons are radio groups (one selected); Create raises a `(size, bg)` request the shell services
+// via `spawn_blank_canvas` (Enio 2026-06-24).
+pub const CTX_MENU_NEW_IMAGE_CREATE: NodeId = hash_node_id("ctx_menu_new_image_create");
+pub const CTX_MENU_NEW_IMAGE_BG_TRANSPARENT: NodeId =
+    hash_node_id("ctx_menu_new_image_bg_transparent");
+pub const CTX_MENU_NEW_IMAGE_BG_BLACK: NodeId = hash_node_id("ctx_menu_new_image_bg_black");
+pub const CTX_MENU_NEW_IMAGE_BG_WHITE: NodeId = hash_node_id("ctx_menu_new_image_bg_white");
+pub const CTX_MENU_NEW_IMAGE_SIZE_32: NodeId = hash_node_id("ctx_menu_new_image_size_32");
+pub const CTX_MENU_NEW_IMAGE_SIZE_64: NodeId = hash_node_id("ctx_menu_new_image_size_64");
+pub const CTX_MENU_NEW_IMAGE_SIZE_128: NodeId = hash_node_id("ctx_menu_new_image_size_128");
+pub const CTX_MENU_NEW_IMAGE_SIZE_256: NodeId = hash_node_id("ctx_menu_new_image_size_256");
+pub const CTX_MENU_NEW_IMAGE_SIZE_512: NodeId = hash_node_id("ctx_menu_new_image_size_512");
+pub const CTX_MENU_NEW_IMAGE_SIZE_1024: NodeId = hash_node_id("ctx_menu_new_image_size_1024");
+pub const CTX_MENU_NEW_IMAGE_SIZE_2048: NodeId = hash_node_id("ctx_menu_new_image_size_2048");
+/// The 7 square-size choices, paired `(px, button id)` — one source for the modal paint, the
+/// populate registration, and the click dispatch.
+pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 7] = [
+    (32, CTX_MENU_NEW_IMAGE_SIZE_32),
+    (64, CTX_MENU_NEW_IMAGE_SIZE_64),
+    (128, CTX_MENU_NEW_IMAGE_SIZE_128),
+    (256, CTX_MENU_NEW_IMAGE_SIZE_256),
+    (512, CTX_MENU_NEW_IMAGE_SIZE_512),
+    (1024, CTX_MENU_NEW_IMAGE_SIZE_1024),
+    (2048, CTX_MENU_NEW_IMAGE_SIZE_2048),
+];
+/// The 3 background choices, paired `(bg wire u8, button id)` — `0` transparent, `1` black, `2` white.
+pub const CTX_MENU_NEW_IMAGE_BGS: [(u8, NodeId); 3] = [
+    (0, CTX_MENU_NEW_IMAGE_BG_TRANSPARENT),
+    (1, CTX_MENU_NEW_IMAGE_BG_BLACK),
+    (2, CTX_MENU_NEW_IMAGE_BG_WHITE),
+];
+
+/// Hierarchy row context menu: "Use as Brush Texture" — load the right-clicked sprite's pixels as the
+/// brush texture image (shown only for image/sprite rows; Enio 2026-06-24).
+pub const CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE: NodeId =
+    hash_node_id("ctx_menu_hier_use_as_brush_texture");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

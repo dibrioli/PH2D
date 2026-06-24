@@ -160,6 +160,7 @@ pub fn spawn_blank_canvas(
     asset_db: &AssetDb,
     cell_idx: u32,
     size_px: u32,
+    bg: u8,
     world_center: Vec2,
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
@@ -168,7 +169,16 @@ pub fn spawn_blank_canvas(
         .checked_mul(size_px as usize)
         .and_then(|n| n.checked_mul(4))
         .ok_or_else(|| format!("canvas {size_px}² overflows a pixel buffer"))?;
-    let pixels = vec![255u8; px_count]; // opaque white — the standard blank canvas
+    // Background fill: 0 = transparent, 1 = black, 2 = white (the New-image modal's choices).
+    let fill: [u8; 4] = match bg {
+        1 => [0, 0, 0, 255],       // LITERAL-COLOR-OK: opaque black canvas
+        2 => [255, 255, 255, 255], // LITERAL-COLOR-OK: opaque white canvas
+        _ => [0, 0, 0, 0],         // LITERAL-COLOR-OK: fully-transparent canvas
+    };
+    let mut pixels = vec![0u8; px_count];
+    for px in pixels.chunks_exact_mut(4) {
+        px.copy_from_slice(&fill);
+    }
     let asset_id = asset_db.insert_image_rgba8(size_px, size_px, pixels.clone());
     atlas_asset_map.insert(cell_idx, asset_id);
     let fetch_pixels = |key: u32| -> Option<Vec<u8>> {

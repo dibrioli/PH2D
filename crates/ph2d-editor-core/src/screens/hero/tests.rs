@@ -104,6 +104,27 @@ fn paint_hero_smoke_alternate_theme() {
 }
 
 #[test]
+fn new_image_modal_size_bg_create_raises_request() {
+    // The New-image modal's Size/Background radio clicks update the store selection; Create raises the
+    // `(size, bg)` request the shell services, and closes the modal (Enio 2026-06-24).
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.open_new_image_dialog();
+    assert_eq!(hero.store.new_image_size(), 512); // defaults
+    assert_eq!(hero.store.new_image_bg(), 0); // transparent
+    let _ = hero.apply_event(WidgetEvent::Click(crate::ids::CTX_MENU_NEW_IMAGE_SIZE_1024));
+    let _ = hero.apply_event(WidgetEvent::Click(crate::ids::CTX_MENU_NEW_IMAGE_BG_WHITE));
+    assert_eq!(hero.store.new_image_size(), 1024);
+    assert_eq!(hero.store.new_image_bg(), 2); // white
+    let _ = hero.apply_event(WidgetEvent::Click(crate::ids::CTX_MENU_NEW_IMAGE_CREATE));
+    assert_eq!(hero.store.take_new_image_request(), Some((1024, 2)));
+    assert!(
+        hero.store.context_menu().is_none(),
+        "Create closes the modal"
+    );
+    assert_eq!(hero.store.take_new_image_request(), None, "drained once");
+}
+
+#[test]
 fn paint_hero_smoke_no_selection() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1)).selection(None);

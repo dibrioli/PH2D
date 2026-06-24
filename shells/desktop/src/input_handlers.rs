@@ -220,47 +220,14 @@ impl App {
             KeyCode::Enter if self.modifiers.super_key() || self.modifiers.control_key() => {
                 self.painter_commit_requested = true;
             }
-            // Cmd/Ctrl+N — spawn a blank, realistic-resolution paint canvas
-            // (`NEW_CANVAS_SIZE_PX`²) and seat it as the selection + frame it.
-            // The demo's atlas sprites are 64px, which distorts the brush↔canvas
-            // ratio and the world-space paper texture scale; this is the canonical
-            // smoke target for the brush engine (docs/Novo Painter).
+            // Cmd/Ctrl+N — open the New-image modal (square size + background). The render loop polls
+            // `store.take_new_image_request()` and spawns the chosen blank canvas (see
+            // `painter_bridge::service_new_image_request`). The demo's atlas sprites are 64px, which
+            // distorts the brush↔canvas ratio; a freshly-sized canvas is the canonical brush smoke target.
             KeyCode::KeyN if cmd_chord => {
-                let size = crate::NEW_CANVAS_SIZE_PX;
-                let ppm = gfx
-                    .hero_screen
-                    .as_ref()
-                    .map(|h| h.project.pixels_per_meter)
-                    .unwrap_or(1.0);
-                let cell = gfx.next_import_cell;
-                match crate::image_import::spawn_blank_canvas(
-                    &mut gfx.sim,
-                    &mut gfx.renderer,
-                    &gfx.asset_db,
-                    cell,
-                    size,
-                    ph2d_core::Vec2::new(0.0, 0.0),
-                    ppm,
-                    &mut gfx.atlas_asset_map,
-                ) {
-                    Ok((label, bits)) => {
-                        gfx.next_import_cell = gfx.next_import_cell.saturating_add(1);
-                        if let Some(hero) = gfx.hero_screen.as_mut() {
-                            hero.gizmo.replace_selection(Some(bits));
-                            hero.bus
-                                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
-                                    kind: ph2d_editor::ViewFocusKind::Selected,
-                                });
-                        }
-                        gfx.toasts
-                            .push(Toast::success(format!("New canvas · {label} ({size}²)")));
-                    }
-                    Err(e) => {
-                        gfx.toasts
-                            .push(Toast::error(format!("New canvas failed: {e}")));
-                    }
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.store.open_new_image_dialog();
                 }
-                self.title_dirty = true;
             }
             // Digit shortcuts (1=Brush, 2=Move, 3=BgRemoval) retired
             // — they collided with every numeric chip in the Image

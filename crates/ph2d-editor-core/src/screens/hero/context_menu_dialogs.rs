@@ -226,3 +226,145 @@ fn button_state(store: &WidgetStore, id: NodeId) -> ButtonState {
         ButtonState::Normal
     }
 }
+
+/// Paint one radio-style choice button (accent when `selected`) + register its hit rect. Shared by the
+/// New-image modal's Size + Background rows.
+#[allow(clippy::too_many_arguments)]
+fn paint_choice_button(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    id: NodeId,
+    label: &str,
+    rect: Rect,
+    selected: bool,
+) {
+    hit_index.register(id, rect);
+    let st = button_state(store, id);
+    let btn = if selected {
+        Button::new(id, label).accent().state(st)
+    } else {
+        Button::new(id, label).state(st)
+    };
+    paint_button(&btn, rect, scene, text_system, theme);
+}
+
+/// Paint the **New-image** modal (Cmd/Ctrl+N): a centered dialog with a Size radio row (32..2048), a
+/// Background radio row (Transparent / Black / White), and a Create CTA. The selected size/bg (accent)
+/// are read from the store; the `new_image` chrome handler updates them on click and Create raises the
+/// `(size, bg)` request the shell services.
+pub(super) fn paint_new_image_dialog(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    let menu_w = 360.0_f32; // LITERAL-PX-OK: fits the 7 size buttons in one row
+    let row_h = ROW_H;
+    let gap = Spacing::Xs.px();
+    // Six stacked rows: title · Size label · size buttons · Background label · bg buttons · Create.
+    let total_h = PAD_Y * 2.0 + row_h * 6.0 + gap * 5.0; // LITERAL-PX-OK: 5 inter-row gaps
+    let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
+    let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
+    let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
+    let radius = Radius::Md.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+
+    let inner_x = rect.x + Spacing::Md.px();
+    let inner_w = rect.w - Spacing::Md.px() * 2.0;
+    let font = TypeToken::Sm.px();
+    let mut y = rect.y + PAD_Y;
+
+    // Title.
+    paint_text(
+        text_system,
+        scene,
+        "New Image",
+        inner_x,
+        y + (row_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text1, theme),
+    );
+    y += row_h + gap;
+
+    // ── Size label + radio row (32..2048) ──
+    paint_text(
+        text_system,
+        scene,
+        "Size",
+        inner_x,
+        y + (row_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text3, theme),
+    );
+    y += row_h + gap;
+    let sel_size = store.new_image_size();
+    let n = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32;
+    let bw = ((inner_w - gap * (n - 1.0)) / n).max(1.0);
+    for (i, (px, id)) in ids::CTX_MENU_NEW_IMAGE_SIZES.iter().enumerate() {
+        let r = Rect::new(inner_x + i as f32 * (bw + gap), y, bw, row_h);
+        paint_choice_button(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            *id,
+            &px.to_string(),
+            r,
+            *px == sel_size,
+        );
+    }
+    y += row_h + gap;
+
+    // ── Background label + radio row (Transparent / Black / White) ──
+    paint_text(
+        text_system,
+        scene,
+        "Background",
+        inner_x,
+        y + (row_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text3, theme),
+    );
+    y += row_h + gap;
+    let sel_bg = store.new_image_bg();
+    let bgs = [
+        (ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT, "Transparent", 0u8),
+        (ids::CTX_MENU_NEW_IMAGE_BG_BLACK, "Black", 1u8),
+        (ids::CTX_MENU_NEW_IMAGE_BG_WHITE, "White", 2u8),
+    ];
+    let m = bgs.len() as f32;
+    let bgw = ((inner_w - gap * (m - 1.0)) / m).max(1.0);
+    for (i, (id, label, bg)) in bgs.iter().enumerate() {
+        let r = Rect::new(inner_x + i as f32 * (bgw + gap), y, bgw, row_h);
+        paint_choice_button(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            *id,
+            label,
+            r,
+            *bg == sel_bg,
+        );
+    }
+    y += row_h + gap;
+
+    // ── Create CTA ──
+    let create_rect = Rect::new(inner_x, y, inner_w, row_h);
+    hit_index.register(ids::CTX_MENU_NEW_IMAGE_CREATE, create_rect);
+    let btn = Button::new(ids::CTX_MENU_NEW_IMAGE_CREATE, "Create")
+        .accent()
+        .state(button_state(store, ids::CTX_MENU_NEW_IMAGE_CREATE));
+    paint_button(&btn, create_rect, scene, text_system, theme);
+}

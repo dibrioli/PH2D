@@ -73,11 +73,15 @@ pub(crate) fn apply_event(
             || id == ids::CTX_MENU_HIER_DELETE
             || id == ids::CTX_MENU_HIER_RENAME
             || id == ids::CTX_MENU_HIER_MERGE_SPRITES
+            || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
         {
             if let Some(req) = host.store_mut().consume_last_context_menu()
                 && let ContextMenuKind::HierarchyRow { row } = req.kind
             {
-                if id == ids::CTX_MENU_HIER_DUPLICATE {
+                if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE {
+                    host.bus_mut()
+                        .push(EditorAction::HierUseAsBrushTexture { row });
+                } else if id == ids::CTX_MENU_HIER_DUPLICATE {
                     host.bus_mut().push(EditorAction::HierDuplicate { row });
                 } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
                     host.bus_mut().push(EditorAction::HierAddChild { row });

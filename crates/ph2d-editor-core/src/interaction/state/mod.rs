@@ -379,6 +379,13 @@ pub struct WidgetStore {
     /// menu over everything; clicking outside the menu or on a menu
     /// item clears the slot.
     pub(super) context_menu: Option<ContextMenuRequest>,
+    /// New-image modal: the currently-selected square size (px) + background (`0` transparent / `1`
+    /// black / `2` white). The two radio groups in the modal write these; Create reads them.
+    pub(super) new_image_size: u32,
+    pub(super) new_image_bg: u8,
+    /// Set by the modal's Create button — `Some((size_px, bg))` the shell polls + clears to spawn a
+    /// blank canvas. Decouples the editor-core modal from the shell's `spawn_blank_canvas` (no I/O here).
+    pub(super) new_image_request: Option<(u32, u8)>,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

@@ -188,6 +188,40 @@ impl crate::App {
             }
         }
 
+        // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
+        // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).
+        if let Some(hero) = hero_screen.as_mut()
+            && let Some((size, bg)) = hero.store.take_new_image_request()
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            match crate::image_import::spawn_blank_canvas(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                size,
+                bg,
+                ph2d_core::Vec2::new(0.0, 0.0),
+                ppm,
+                atlas_asset_map,
+            ) {
+                Ok((label, bits)) => {
+                    *next_import_cell = next_import_cell.saturating_add(1);
+                    hero.gizmo.replace_selection(Some(bits));
+                    hero.bus
+                        .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                            kind: ph2d_editor::ViewFocusKind::Selected,
+                        });
+                    toasts.push(Toast::success(format!("New canvas · {label} ({size}²)")));
+                }
+                Err(e) => {
+                    toasts.push(Toast::error(format!("New canvas failed: {e}")));
+                }
+            }
+            self.title_dirty = true;
+        }
+
         // M7 per-frame GC step. Cheap (p99 ≤ 10µs target per the M7
         // gate test) — keeps the Luau heap from accumulating between
         // future scripted ticks. Errors here are non-fatal; just log.
@@ -472,6 +506,7 @@ impl crate::App {
             // adopts that row's parent for Hierarchy placement); the
             // drain reads the full multi-selection at apply time.
             let mut merge_sprites_row: Option<NodeId> = None;
+            let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut hierarchy_row_click: Option<NodeId> = None;
             let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
@@ -611,6 +646,9 @@ impl crate::App {
                     }
                     EditorAction::HierMergeSprites { row } => {
                         merge_sprites_row.get_or_insert(row);
+                    }
+                    EditorAction::HierUseAsBrushTexture { row } => {
+                        use_as_brush_texture_row.get_or_insert(row);
                     }
                     EditorAction::HierRowClick { row } => {
                         hierarchy_row_click.get_or_insert(row);
@@ -1417,6 +1455,54 @@ impl crate::App {
                         hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
                     }
                 }
+            }
+            // Hierarchy "Use as Brush Texture" → read the right-clicked sprite's pixels, install them as
+            // the brush texture (Rec.601 luminance, mirror of the file-load path), and activate the brush
+            // tool so the user can paint with it immediately. A non-image row toasts + no-ops.
+            if let Some(row) = use_as_brush_texture_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(bits) = live.bridge.entity_for(row)
+            {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                match crate::hero_intents::texture_edit::read_sprite_source(
+                    entity,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                ) {
+                    Some(src) => {
+                        let (w, h) = (src.image.width, src.image.height);
+                        // Rec.601 luminance: weights 77/150/29 sum to 256, so the `>> 8` keeps `[0,255]`.
+                        let lum: Vec<u8> = src
+                            .image
+                            .pixels
+                            .chunks_exact(4)
+                            .map(|p| {
+                                ((u32::from(p[0]) * 77
+                                    + u32::from(p[1]) * 150
+                                    + u32::from(p[2]) * 29)
+                                    >> 8) as u8
+                            })
+                            .collect();
+                        // Reach the painter only via the active tool → activate it first.
+                        tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                        if let Some(painter) = tools.active_mut().and_then(|t| {
+                            t.as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                        }) {
+                            painter.set_brush_texture_image(lum, w, h);
+                            toasts
+                                .push(ph2d_editor::Toast::success("Brush texture set from sprite"));
+                        }
+                    }
+                    None => {
+                        toasts.push(ph2d_editor::Toast::warning(
+                            "Use as Brush Texture: select an image sprite",
+                        ));
+                    }
+                }
+                self.title_dirty = true;
             }
             // Image-edit drain phase + file-picker import — extracted
             // to sibling `image_edit.rs` as a free fn (Wave 3.2 stage A).

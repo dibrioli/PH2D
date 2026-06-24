@@ -83,7 +83,26 @@ pub(super) fn dispatch_down<'frame>(
             Some(id) if id == crate::ids::BLENDER_PALETTE_NAME
                 || id == crate::ids::CTX_MENU_PALETTE_RENAME
         );
-        if !inside_scene_list && !inside_api_key && !inside_prompt && !inside_palette_rename {
+        // And the New-image modal: clicking a Size / Background radio or Create must NOT dismiss it
+        // (the user picks size, then background, then Create — all in one open).
+        let inside_new_image = matches!(
+            store.context_menu().map(|r| r.kind),
+            Some(ContextMenuKind::NewImageDialog)
+        ) && hit_id.is_some_and(|id| {
+            id == crate::ids::CTX_MENU_NEW_IMAGE_CREATE
+                || crate::ids::CTX_MENU_NEW_IMAGE_SIZES
+                    .iter()
+                    .any(|(_, b)| *b == id)
+                || crate::ids::CTX_MENU_NEW_IMAGE_BGS
+                    .iter()
+                    .any(|(_, b)| *b == id)
+        });
+        if !inside_scene_list
+            && !inside_api_key
+            && !inside_prompt
+            && !inside_palette_rename
+            && !inside_new_image
+        {
             store.close_context_menu();
         }
     }

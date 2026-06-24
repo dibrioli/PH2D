@@ -211,6 +211,11 @@ pub enum ContextMenuKind {
     /// is deferred (needs inline TextInput state-machine) and not
     /// surfaced in this menu yet.
     HierarchyRow { row: NodeId },
+    /// New-image modal (Cmd/Ctrl+N): a centered dialog with a row of square-size buttons
+    /// (`CTX_MENU_NEW_IMAGE_SIZES`) + background choices (`CTX_MENU_NEW_IMAGE_BGS`) + a Create button
+    /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
+    /// `spawn_blank_canvas`; outside-click cancels. The selected size/bg live on the `WidgetStore`.
+    NewImageDialog,
     /// Right-clicked on a Direct-Select vertex (vector tool). Menu offers the
     /// 4 frozen vertex continuity kinds — Corner / Smooth / Asymmetric / Auto
     /// (`ph2d_vector_doc::VertexKind` Free/Mirror/Aligned/Auto). No payload: it

@@ -299,6 +299,8 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::VectorPromptDialog => &[],
         // The palette-rename modal paints a TextInput + Rename button in its own branch below.
         ContextMenuKind::RenamePaletteDialog => &[],
+        // The New-image modal paints its size/bg radios + Create in its own branch below.
+        ContextMenuKind::NewImageDialog => &[],
         // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
         // the Unity / Godot / Blender convention: Rename first (the
         // most common edit), then additive ops (Duplicate, Add
@@ -309,6 +311,11 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
             (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
+            (
+                ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
+                "Use as Brush Texture",
+                None,
+            ),
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
@@ -331,37 +338,25 @@ pub fn paint_context_menu_overlay(
         paint_scene_list(req, scene, text_system, theme, hit_index, store, viewport);
         return;
     }
-    if matches!(req.kind, ContextMenuKind::SettingsApiKeySubmenu) {
-        super::context_menu_dialogs::paint_api_key_submenu(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            viewport,
-        );
-        return;
-    }
-    if matches!(req.kind, ContextMenuKind::VectorPromptDialog) {
-        super::context_menu_dialogs::paint_vector_prompt_dialog(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            viewport,
-        );
-        return;
-    }
-    if matches!(req.kind, ContextMenuKind::RenamePaletteDialog) {
-        super::context_menu_dialogs::paint_palette_rename_dialog(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            viewport,
-        );
+    // Centered single-panel dialogs all share one painter signature — dispatch by kind.
+    type DialogFn = fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, Rect);
+    let dialog: Option<DialogFn> = match req.kind {
+        ContextMenuKind::SettingsApiKeySubmenu => {
+            Some(super::context_menu_dialogs::paint_api_key_submenu)
+        }
+        ContextMenuKind::VectorPromptDialog => {
+            Some(super::context_menu_dialogs::paint_vector_prompt_dialog)
+        }
+        ContextMenuKind::RenamePaletteDialog => {
+            Some(super::context_menu_dialogs::paint_palette_rename_dialog)
+        }
+        ContextMenuKind::NewImageDialog => {
+            Some(super::context_menu_dialogs::paint_new_image_dialog)
+        }
+        _ => None,
+    };
+    if let Some(paint_dialog) = dialog {
+        paint_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
     let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;

@@ -106,6 +106,49 @@ impl WidgetStore {
         self.context_menu = Some(request);
     }
 
+    /// Open the New-image modal (Cmd/Ctrl+N) — centred (its painter ignores `x`/`y`), seeded with the
+    /// remembered size/background selection.
+    pub fn open_new_image_dialog(&mut self) {
+        self.context_menu = Some(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::types::ContextMenuKind::NewImageDialog,
+        });
+    }
+
+    /// Selected square size (px) for the New-image modal.
+    pub fn new_image_size(&self) -> u32 {
+        self.new_image_size
+    }
+
+    /// Set the New-image modal's selected square size (px).
+    pub fn set_new_image_size(&mut self, px: u32) {
+        self.new_image_size = px;
+    }
+
+    /// Selected background for the New-image modal (`0` transparent / `1` black / `2` white).
+    pub fn new_image_bg(&self) -> u8 {
+        self.new_image_bg
+    }
+
+    /// Set the New-image modal's selected background (`0` transparent / `1` black / `2` white).
+    pub fn set_new_image_bg(&mut self, bg: u8) {
+        self.new_image_bg = bg;
+    }
+
+    /// Commit the modal's current `(size, bg)` as a pending new-image request (the shell polls + clears
+    /// it via [`Self::take_new_image_request`]) and close the modal.
+    pub fn request_new_image(&mut self) {
+        self.new_image_request = Some((self.new_image_size, self.new_image_bg));
+        self.close_context_menu();
+    }
+
+    /// Take (and clear) the pending new-image request. The shell polls this each frame; on `Some` it
+    /// spawns a blank canvas of that size + background.
+    pub fn take_new_image_request(&mut self) -> Option<(u32, u8)> {
+        self.new_image_request.take()
+    }
+
     /// Close any currently-open context menu. Snapshots the request
     /// into `last_context_menu` so `apply_event` can still read the
     /// menu's `kind` when handling the item-click that triggered

@@ -184,14 +184,14 @@ pub enum EditorAction {
     /// Raised by the row's right-click → Add Child menu entry.
     HierAddChild { row: ph2d_a11y::NodeId },
 
-    /// Enio 2026-05-27: composite the current multi-selection
-    /// (≥ 2 sprites) into a single new Individual-texture sprite at
-    /// the union bounding box, then despawn the originals. Payload:
-    /// the right-clicked row's `NodeId` — used as the visual anchor
-    /// (the merged sprite inherits its parent / z-position). Drain
-    /// emits a toast when fewer than 2 sprites are currently selected
-    /// (no-op then; the menu always shows the entry).
+    /// Composite the current multi-selection (≥ 2 sprites) into one new Individual-texture sprite at
+    /// the union bbox, then despawn the originals. Payload: the right-clicked row's `NodeId` (visual
+    /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
     HierMergeSprites { row: ph2d_a11y::NodeId },
+
+    /// "Use as Brush Texture" — the shell resolves row → entity → pixels → `set_brush_texture_image`
+    /// (Enio 2026-06-24); a non-image row toasts and no-ops.
+    HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
 
     /// Sync `gizmo_selection` to the entity backing the clicked
     /// hierarchy row — cross-panel selection sync from the

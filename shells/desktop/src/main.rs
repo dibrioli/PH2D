@@ -354,12 +354,6 @@ pub(crate) fn commit_image_edit_transaction(
 /// absurd `pixels_per_meter` value combined with a 1-pixel image.
 pub(crate) const MIN_SPRITE_SIZE: f32 = 0.001;
 
-/// Side length (px) of the blank paint canvas spawned by **New Canvas**
-/// (Cmd/Ctrl+N). A realistic resolution (vs the 64px demo atlas sprites) so
-/// the brush engine is smoked at a true brush↔canvas ratio and the world-space
-/// paper/grain texture reads as fine tooth, not coarse "grass" (docs/Novo Painter).
-pub(crate) const NEW_CANVAS_SIZE_PX: u32 = 2048;
-
 /// Query the live cursor position relative to `window` in physical
 /// pixels (top-left origin). Returns `None` if the platform path
 /// fails; callers fall back to a cached value.

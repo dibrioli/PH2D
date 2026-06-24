@@ -103,6 +103,38 @@ impl PainterTool {
         self.source_size
     }
 
+    /// Sample the visible layer COMPOSITE at normalized `(u, v)` ∈ `[0, 1]` → straight-sRGB8 RGBA —
+    /// the displayed pixel, integrated with the layer stack (opacity / blend / masks / adjustments).
+    /// Drives the colour-picker eyedropper so it reads the painted colour, not the transparent Vello
+    /// overlay the generic GPU readback hits. Composites only the 1×1 pixel (the eyedrop is a one-off).
+    #[must_use]
+    pub fn sample_composite_at_uv(&self, u: f32, v: f32) -> Option<[u8; 4]> {
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 || self.canvas_rgba.is_empty() {
+            return None;
+        }
+        let ix = ((u.clamp(0.0, 1.0) * w as f32) as u32).min(w - 1);
+        let iy = ((v.clamp(0.0, 1.0) * h as f32) as u32).min(h - 1);
+        let src = ToolPixelSource {
+            active_id: self.layers.active().unwrap_or(RtLayerId(0)),
+            active_rgba: &self.canvas_rgba,
+            images: &self.images,
+        };
+        let px = composite_region(
+            &self.layers,
+            &src,
+            w,
+            h,
+            Region {
+                x: ix,
+                y: iy,
+                w: 1,
+                h: 1,
+            },
+        );
+        (px.len() >= 4).then(|| [px[0], px[1], px[2], px[3]])
+    }
+
     /// **Zero-copy preview drain** via Arc clone (1 atomic increment). Drains
     /// `preview_dirty` and returns the SAME underlying `Arc<Vec<u8>>` for a
     /// trivial stack, or a freshly-composited cache for a multi-layer stack. The

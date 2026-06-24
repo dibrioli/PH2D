@@ -2253,3 +2253,29 @@ fn repeat_image_toggle_reaches_the_tool_e2e() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_REPEAT_IMAGE));
     assert!(!t.repeat_image(), "toggles back off");
 }
+
+#[test]
+fn sample_composite_at_uv_reads_the_painted_colour() {
+    // The colour-picker eyedropper samples this (not the transparent Vello overlay). A painted
+    // pixel must read its colour; an unpainted pixel reads the canvas background — never transparent.
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.color = [1.0, 0.0, 0.0]; // red
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    let centre = t
+        .sample_composite_at_uv(0.5, 0.5)
+        .expect("composite sample at centre");
+    assert_eq!(
+        [centre[0], centre[1], centre[2], centre[3]],
+        [255, 0, 0, 255],
+        "eyedropper reads the painted (opaque) colour, not transparent"
+    );
+    let corner = t
+        .sample_composite_at_uv(0.0, 0.0)
+        .expect("composite sample at corner");
+    assert_eq!(
+        [corner[0], corner[1], corner[2], corner[3]],
+        [255, 255, 255, 255],
+        "an unpainted pixel reads the opaque white canvas, not transparent"
+    );
+}

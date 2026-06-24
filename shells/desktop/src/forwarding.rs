@@ -40,12 +40,29 @@ pub fn forward_to_hero(
         .to_vec();
     let mut reparent = None;
     for e in snapshot {
-        // Eyedropper pick — read the rendered pixel at the click
-        // position from vello_pass's intermediate texture and apply
-        // it to the picker. Only the host can do this (the dispatch
-        // has no GPU access); intercept before `apply_event`.
+        // Eyedropper pick. The generic readback samples `vello_pass`'s intermediate texture — the
+        // Vello UI layer, which is TRANSPARENT over the canvas (sprites live in the surface, not the
+        // intermediate), so picking a painted pixel always returned transparent. When the Painter is
+        // active and the click lands on the selected sprite, sample the painted layer COMPOSITE
+        // instead (`PainterTool::sample_composite_at_uv`) so the eyedropper reads the real colour;
+        // otherwise fall back to the rendered-overlay pixel.
         if let WidgetEvent::EyedropperPick { parent, px, py } = e {
-            if let Some([r, g, b, a]) = gfx.vello_pass.read_pixel(gfx.surface.gpu(), px, py) {
+            // Disjoint-field borrows (`hero` already holds `&mut gfx.hero_screen`): read the selection
+            // + panel hit from `hero` first, then pass the render fields by value/ref to the helper.
+            let selection = hero.gizmo.selection;
+            let on_panel = hero.store.panel_at(px as f32, py as f32).is_some();
+            let picked = painter_eyedropper_sample(
+                &mut gfx.tools,
+                &gfx.sim,
+                &gfx.camera,
+                gfx.surface.size(),
+                selection,
+                on_panel,
+                px as f32,
+                py as f32,
+            )
+            .or_else(|| gfx.vello_pass.read_pixel(gfx.surface.gpu(), px, py));
+            if let Some([r, g, b, a]) = picked {
                 hero.store
                     .set_blender_value(parent, ph2d_tokens::ColorValue::from_rgba8(r, g, b, a));
             }
@@ -62,6 +79,55 @@ pub fn forward_to_hero(
         }
     }
     reparent
+}
+
+/// Sample the painted layer COMPOSITE under the screen pixel `(px, py)` for the colour-picker
+/// eyedropper, when the Painter is active and the click lands on the selected sprite (not a panel).
+/// Returns the displayed RGBA there, or `None` to fall back to the rendered-overlay readback — which
+/// only has the Vello UI layer (transparent over the canvas). This is what integrates the eyedropper
+/// with the layer system. Mirrors the footprint mapping in `painter_canvas_input` / the BgRemoval
+/// eyedropper; takes disjoint `AppGfx` fields by ref so it composes with the live `&mut hero_screen`.
+#[allow(clippy::too_many_arguments)]
+fn painter_eyedropper_sample(
+    tools: &mut ph2d_editor::ToolRegistry,
+    sim: &ph2d_ecs::SimWorld,
+    camera: &ph2d_render::Camera2d,
+    window: ph2d_host::WindowSize,
+    selection: Option<u64>,
+    on_panel: bool,
+    px: f32,
+    py: f32,
+) -> Option<[u8; 4]> {
+    if on_panel {
+        return None; // a click on a panel is panel-targeted, not a canvas sample
+    }
+    let painter_active = tools
+        .active()
+        .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
+        .unwrap_or(false);
+    if !painter_active {
+        return None;
+    }
+    let entity = ph2d_ecs::Entity::from_bits(selection?);
+    let tr = sim.world().get::<crate::Transform>(entity)?;
+    let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
+    // Sprite on-screen footprint (mirrors painter_canvas_input / bgremoval_preview).
+    let (tx, ty) = (tr.translation.x, tr.translation.y);
+    let (sw, sh) = (sprite.size[0], sprite.size[1]);
+    let (x0, y0) = camera.world_to_screen([tx - sw * 0.5, ty + sh * 0.5], window);
+    let (x1, y1) = camera.world_to_screen([tx + sw * 0.5, ty - sh * 0.5], window);
+    let (lo_x, hi_x) = (x0.min(x1), x0.max(x1));
+    let (lo_y, hi_y) = (y0.min(y1), y0.max(y1));
+    if !(hi_x > lo_x && hi_y > lo_y && px >= lo_x && px <= hi_x && py >= lo_y && py <= hi_y) {
+        return None; // outside the canvas → not a paint sample
+    }
+    let u = (px - lo_x) / (hi_x - lo_x);
+    let v = (py - lo_y) / (hi_y - lo_y);
+    tools
+        .active_mut()?
+        .as_any_mut()
+        .downcast_mut::<ph2d_tool_painter::PainterTool>()?
+        .sample_composite_at_uv(u, v)
 }
 
 /// Forward a translated [`KeyEvent`] (with editor-canonical

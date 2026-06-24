@@ -349,10 +349,18 @@ impl WidgetStore {
         }
     }
 
-    /// Mutate the BlenderPicker's value. Auto-updates the retained
-    /// (h, s) anchor when the new color is chromatic (S>0, V>0); for
-    /// gray/black inputs the anchor is preserved so the user's chosen
-    /// hue doesn't reset to red on a V=0 click.
+    /// Mutate the BlenderPicker's value (the "set a concrete colour" path: eyedropper, hex commit,
+    /// swatch pick, RGB chip). Refreshes the retained (h, s) anchor so EVERY picker surface — the
+    /// SV-rect cursor + backdrop, the hue strip, the HSV chips — tracks the new colour, not just the
+    /// preview swatch:
+    /// - **S** is always recoverable from RGBA (0 for gray/white), so reflect it directly — otherwise
+    ///   an externally-set white left the SV cursor parked at the old saturation (Enio 2026-06-24).
+    /// - **H** is only meaningful for a chromatic colour; keep the previous hue for grays/black so the
+    ///   backdrop doesn't snap to red (the cursor sits on the achromatic edge regardless).
+    ///
+    /// Interactive hue/sat editing that needs the anchor RETAINED across an RGBA collapse (dragging V
+    /// to 0 on the SV-rect / sliders) goes through [`Self::set_blender_value_with_hsv`] /
+    /// [`Self::set_blender_channel`], which set the anchor explicitly — those are unaffected.
     pub fn set_blender_value(&mut self, id: NodeId, new_value: ColorValue) {
         if let Some(InteractiveState::BlenderPicker {
             value,
@@ -363,9 +371,9 @@ impl WidgetStore {
         {
             *value = new_value;
             let (h, s, v, _) = crate::widget::rgba_to_hsv(new_value.rgba);
+            *hsv_s = s;
             if s > 1e-3 && v > 1e-3 {
                 *hsv_h = h;
-                *hsv_s = s;
             }
         }
     }

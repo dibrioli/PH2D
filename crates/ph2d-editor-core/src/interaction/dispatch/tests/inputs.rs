@@ -276,6 +276,44 @@ fn blender_wheel_click_mutates_picker_value() {
 }
 
 #[test]
+fn set_blender_value_refreshes_sv_anchor_for_external_pick() {
+    // Regression (Enio 2026-06-24): an externally-set colour (eyedropper / hex / swatch) must update
+    // EVERY picker surface, not just the preview swatch. The SV-rect cursor reads the retained `hsv_s`
+    // anchor, so picking white has to reset it to 0 — otherwise the cursor stays parked at the old
+    // saturation (the photo: white #FFFFFFFF with the cursor stuck at S=1, top-right).
+    use crate::widget::{ChannelMode, InterpolationMode};
+    use ph2d_tokens::ColorValue;
+    let mut store = WidgetStore::with_capacity(8);
+    store.register(
+        NodeId(100),
+        InteractiveState::BlenderPicker {
+            value: ColorValue::from_rgba8(255, 0, 0, 255), // pure red
+            channel_mode: ChannelMode::Rgb,
+            interpolation: InterpolationMode::Perceptual,
+            active_palette: 0,
+            hsv_h: 0.0,
+            hsv_s: 1.0, // saturated anchor
+        },
+    );
+    // Pick white: S is recoverable (0) so the cursor must move; H stays (white has no hue).
+    store.set_blender_value(NodeId(100), ColorValue::from_rgba8(255, 255, 255, 255));
+    let (h, s) = store.blender_hsv_anchor(NodeId(100)).unwrap();
+    assert!(
+        s < 1e-3,
+        "white must reset the SV cursor saturation to 0, got {s}"
+    );
+    assert!(
+        (h - 0.0).abs() < 1e-3,
+        "achromatic set keeps the previous hue"
+    );
+    // A chromatic pick refreshes BOTH hue and saturation (full picker tracking).
+    store.set_blender_value(NodeId(100), ColorValue::from_rgba8(0, 0, 255, 255)); // blue
+    let (h2, s2) = store.blender_hsv_anchor(NodeId(100)).unwrap();
+    assert!(s2 > 0.9, "blue is fully saturated, got {s2}");
+    assert!((h2 - 2.0 / 3.0).abs() < 0.02, "blue hue ≈ 0.667, got {h2}");
+}
+
+#[test]
 fn linked_number_value_clamps_into_slider_range() {
     // NumberInput accepts arbitrary f64; the slider snapshot
     // clamps to [0..1] without panicking on out-of-range commits.

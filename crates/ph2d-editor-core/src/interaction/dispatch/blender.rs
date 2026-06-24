@@ -189,19 +189,63 @@ pub(super) fn apply_blender_hit(
             Some(parent)
         }
         BlenderHitKind::PaletteTab(idx) => {
+            // Dropdown option row → select that palette, then close the popover (and any
+            // open rename, which targeted the previously-active palette).
             store.blender_select_palette(parent, idx as usize);
+            store.set_palette_dropdown_open(parent, false);
+            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
+        BlenderHitKind::PaletteDropdown => {
+            // Chevron chip → toggle the palette-select popover.
+            store.toggle_palette_dropdown(parent);
+            None
+        }
+        BlenderHitKind::RenamePalette => {
+            // "R" → toggle the inline rename field. Opening it focuses the field and
+            // selects its whole buffer (so typing replaces the current name).
+            let opening = !store.palette_rename_open(parent);
+            store.set_palette_rename_open(parent, opening);
+            if opening {
+                store.sync_blender_palette_name_buffer(parent);
+                if let Some(field) = store.blender_palette_name_field(parent) {
+                    store.set_focus(Some(field));
+                    if let Some(InteractiveState::TextInput {
+                        state,
+                        text,
+                        caret,
+                        selection_anchor,
+                    }) = store.get_mut(field)
+                    {
+                        *state = crate::widget::TextInputState::Focused;
+                        *selection_anchor = Some(0);
+                        *caret = text.chars().count();
+                    }
+                }
+            } else if let Some(field) = store.blender_palette_name_field(parent)
+                && store.focus_id() == Some(field)
+            {
+                store.set_focus(None);
+            }
+            None
+        }
         BlenderHitKind::NewPalette => {
             store.blender_new_palette(parent);
+            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
         BlenderHitKind::DeletePalette => {
             store.blender_delete_active_palette(parent);
+            store.set_palette_rename_open(parent, false);
             store.sync_blender_palette_name_buffer(parent);
             Some(parent)
+        }
+        BlenderHitKind::Close => {
+            // "×" → dismiss the floating picker (mirrors a click outside it).
+            store.set_picker_target(None);
+            None
         }
         BlenderHitKind::ImportPalette => {
             // Flag the host to open a load dialog + add a NEW palette (the picker can't do file I/O).

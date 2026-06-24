@@ -1,15 +1,22 @@
-//! Palette tabs + swatch grid painter.
+//! Palette section: a dropdown of named palettes (select / New / Rename / Delete), an inline
+//! rename field, the swatch grid, Import/Export, and the deferred dropdown popover.
 
+use super::paint::HEX_ROW_H;
 use super::state::{BlenderColorPicker, ColorPalette};
-use crate::interaction::HitIndex;
+use super::sub_ids::BlenderSubIds;
+use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{paint_text, resolve};
-use crate::widget::{ColorSwatch, paint_color_swatch};
+use crate::widget::{
+    Button, ButtonKind, ColorSwatch, Dropdown, DropdownOption, TextInputState, paint_button,
+    paint_color_swatch, paint_dropdown_chip, paint_dropdown_popover_in_viewport,
+};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+/// Swatch-grid-only entry point (no palette CRUD chrome) — used by the demo/non-store picker.
 pub fn paint_palettes(
     cp: &BlenderColorPicker,
     rect: Rect,
@@ -24,9 +31,6 @@ pub fn paint_palettes(
         NodeId(0),
         NodeId(0),
         NodeId(0),
-        &[],
-        NodeId(0),
-        NodeId(0),
         &mut HitIndex::new(),
         scene,
         text_system,
@@ -34,10 +38,153 @@ pub fn paint_palettes(
     );
 }
 
-/// Paint the palette section and register each swatch's hit rect.
-/// `swatch_ids` is a fixed-size array of up to 12 NodeIds; entries
-/// with id == 0 are skipped (no hit registration). `add_swatch_id`
-/// renders a trailing "+" button (id == 0 skips it).
+/// Paint the full palette section: the dropdown header (palette select + New / Rename / Delete),
+/// an optional inline rename field, the swatch grid + Import/Export, and — last, on top — the open
+/// dropdown popover. `picker_rect` is the whole picker (the popover's clamp viewport). Reads the
+/// dropdown/rename open flags + the rename buffer from `store`; the swatch + dropdown-option hit
+/// rects are registered here so dispatch can route clicks back into `apply_blender_hit`.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_palette_section(
+    cp: &BlenderColorPicker,
+    rect: Rect,
+    picker_rect: Rect,
+    ids: &BlenderSubIds,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    if cp.palettes.is_empty() {
+        return;
+    }
+    let parent = ids.parent;
+    let gap = Spacing::Xs.px();
+    let strip_h = 22.0_f32; // LITERAL-PX-OK: palette header strip height (chrome-specific)
+    let active = cp.active_palette.min(cp.palettes.len() - 1);
+
+    // Header strip: [ dropdown ▼ ] [+] [R] [×]. The dropdown lists every named palette (capped to the
+    // 8 reusable `palette_tabs` ids); selecting a row switches the active palette via `PaletteTab`.
+    let n_opts = cp.palettes.len().min(ids.palette_tabs.len());
+    let options: Vec<DropdownOption<usize>> = cp
+        .palettes
+        .iter()
+        .take(n_opts)
+        .enumerate()
+        .map(|(i, p)| DropdownOption::new(ids.palette_tabs[i], i, p.name.clone()))
+        .collect();
+    let open = store.palette_dropdown_open(parent);
+    // `placeholder` doubles as the chip label for an active index past the 8-row cap (selected_label
+    // returns None there) — either way the chip shows the active palette's name.
+    let active_name = cp
+        .palettes
+        .get(active)
+        .map(|p| p.name.clone())
+        .unwrap_or_default();
+    let mut dd = Dropdown::new(ids.palette_dropdown, "Palette", options)
+        .placeholder(active_name)
+        .open(open);
+    dd.select(active);
+
+    let btn_w = strip_h; // square New / Rename / Delete tiles
+    let dd_w = (rect.w - 3.0 * (btn_w + gap)).max(48.0);
+    let chip_rect = Rect::new(rect.x, rect.y, dd_w, strip_h);
+    paint_dropdown_chip(&dd, chip_rect, scene, text_system, theme);
+    if ids.palette_dropdown.0 != 0 {
+        hit_index.register(ids.palette_dropdown, chip_rect);
+    }
+    let bx = rect.x + dd_w + gap;
+    for (i, (id, label, kind)) in [
+        (ids.new_palette, "+", ButtonKind::Default),
+        (ids.rename_palette, "R", ButtonKind::Default),
+        (ids.delete_palette, "x", ButtonKind::Danger),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if id.0 == 0 {
+            continue;
+        }
+        let r = Rect::new(bx + (btn_w + gap) * i as f32, rect.y, btn_w, strip_h);
+        paint_button(
+            &Button::new(id, label).kind(kind),
+            r,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(id, r);
+    }
+    let mut body_y = rect.y + strip_h + gap;
+
+    // Inline rename field — shown only while the "R" toggle is on. Live buffer/caret/state come from
+    // the store's palette-name TextInput (dispatch seeds it on open; Enter commits + closes).
+    if store.palette_rename_open(parent) && ids.palette_name.0 != 0 {
+        let name_rect = Rect::new(rect.x, body_y, rect.w, HEX_ROW_H);
+        let (n_state, n_buf, n_caret, n_anchor) = match store.get(ids.palette_name) {
+            Some(InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+            _ => (TextInputState::Normal, None, 0, None),
+        };
+        super::hex_field::paint_hex_field_with_state(
+            "",
+            "New name",
+            n_buf,
+            n_caret,
+            n_anchor,
+            n_state,
+            name_rect,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(ids.palette_name, name_rect);
+        body_y += HEX_ROW_H + gap;
+    }
+
+    // Swatch grid + Import/Export in the remaining region.
+    let body_h = (rect.y + rect.h - body_y).max(0.0);
+    if body_h > 0.0 {
+        let body_rect = Rect::new(rect.x, body_y, rect.w, body_h);
+        paint_palettes_with_hits(
+            cp,
+            body_rect,
+            &ids.swatches,
+            ids.add_swatch,
+            ids.import_palette,
+            ids.export_palette,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+    }
+
+    // Deferred dropdown popover — painted LAST so it occludes the grid, and its option hit rects
+    // register LAST so they win the back-to-front HitIndex walk over the swatches beneath.
+    if open && !dd.options.is_empty() {
+        let panel = dd.popover_rect_clamped(chip_rect, picker_rect);
+        paint_dropdown_popover_in_viewport(
+            &dd,
+            chip_rect,
+            Some(picker_rect),
+            scene,
+            text_system,
+            theme,
+        );
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect_in(chip_rect, panel, i));
+        }
+    }
+}
+
+/// Paint the swatch grid + Import/Export strip and register each swatch's hit rect. `swatch_ids` is
+/// a fixed-size array of up to 27 NodeIds; entries with id == 0 are skipped. `add_swatch_id` renders
+/// a trailing "+" tile (id == 0 skips it). Import/Export buttons sit at the bottom when non-zero.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_palettes_with_hits(
     cp: &BlenderColorPicker,
@@ -46,9 +193,6 @@ pub fn paint_palettes_with_hits(
     add_swatch_id: NodeId,
     import_id: NodeId,
     export_id: NodeId,
-    tab_ids: &[NodeId],
-    new_id: NodeId,
-    delete_id: NodeId,
     hit_index: &mut HitIndex,
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -58,34 +202,10 @@ pub fn paint_palettes_with_hits(
         return;
     }
     let gap = Spacing::Xs.px();
-    // Top: the named-palette tab strip (select / New / Delete). Bottom: the Import / Export strip.
-    // The swatch grid takes the middle.
-    let has_tabs = new_id.0 != 0 && tab_ids.iter().any(|t| t.0 != 0);
-    let tab_h = if has_tabs { 22.0 } else { 0.0 };
-    if has_tabs {
-        let tab_rect = Rect::new(rect.x, rect.y, rect.w, tab_h);
-        paint_palette_tabs(
-            cp,
-            tab_rect,
-            tab_ids,
-            new_id,
-            delete_id,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        );
-    }
     let has_io = import_id.0 != 0 || export_id.0 != 0;
     let btn_h = if has_io { 22.0 } else { 0.0 };
-    let top = tab_h + if has_tabs { gap } else { 0.0 };
     let bottom = btn_h + if has_io { gap } else { 0.0 };
-    let body_rect = Rect::new(
-        rect.x,
-        rect.y + top,
-        rect.w,
-        (rect.h - top - bottom).max(0.0),
-    );
+    let body_rect = Rect::new(rect.x, rect.y, rect.w, (rect.h - bottom).max(0.0));
     if let Some(palette) = cp.palettes.get(cp.active_palette) {
         paint_palette_grid(
             palette,
@@ -109,74 +229,10 @@ pub fn paint_palettes_with_hits(
                 continue;
             }
             let br = Rect::new(bx, by, bw, btn_h);
-            let btn =
-                crate::widget::Button::new(id, label).kind(crate::widget::ButtonKind::Default);
-            crate::widget::paint_button(&btn, br, scene, text_system, theme);
+            let btn = Button::new(id, label).kind(ButtonKind::Default);
+            paint_button(&btn, br, scene, text_system, theme);
             hit_index.register(id, br);
         }
-    }
-}
-
-/// The named-palette tab strip: one button per palette (the active one filled, the rest ghost) that
-/// selects it, then a "+" (New palette) and "×" (Delete palette) at the right. Tabs share the width
-/// left of the two square buttons; only the first `tab_ids.len()` palettes get a clickable tab.
-#[allow(clippy::too_many_arguments)]
-fn paint_palette_tabs(
-    cp: &BlenderColorPicker,
-    rect: Rect,
-    tab_ids: &[NodeId],
-    new_id: NodeId,
-    delete_id: NodeId,
-    hit_index: &mut HitIndex,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-) {
-    use crate::widget::{Button, ButtonKind, paint_button};
-    let gap = Spacing::Xs.px();
-    let btn_w = rect.h; // square New / Delete tiles at the right
-    let tabs_w = (rect.w - 2.0 * (btn_w + gap)).max(0.0);
-    let n = cp.palettes.len().min(tab_ids.len());
-    if n > 0 {
-        let tab_w = (tabs_w - gap * (n as f32 - 1.0)) / n as f32;
-        for (i, palette) in cp.palettes.iter().take(n).enumerate() {
-            let id = tab_ids[i];
-            if id.0 == 0 {
-                continue;
-            }
-            let r = Rect::new(rect.x + (tab_w + gap) * i as f32, rect.y, tab_w, rect.h);
-            let kind = if i == cp.active_palette {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            };
-            paint_button(
-                &Button::new(id, &palette.name).kind(kind),
-                r,
-                scene,
-                text_system,
-                theme,
-            );
-            hit_index.register(id, r);
-        }
-    }
-    let nx = rect.x + rect.w - 2.0 * btn_w - gap;
-    for (id, label, x, kind) in [
-        (new_id, "+", nx, ButtonKind::Default),
-        (delete_id, "x", nx + btn_w + gap, ButtonKind::Danger),
-    ] {
-        if id.0 == 0 {
-            continue;
-        }
-        let r = Rect::new(x, rect.y, btn_w, rect.h);
-        paint_button(
-            &Button::new(id, label).kind(kind),
-            r,
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(id, r);
     }
 }
 
@@ -227,9 +283,8 @@ fn paint_palette_grid(
             let plus_rect = Rect::new(x, y, swatch_size, swatch_size);
             // Canonical button (single source of truth) — bordered ghost
             // "+" tile, consistent with every other secondary button.
-            let plus_btn = crate::widget::Button::new(add_swatch_id, "+")
-                .kind(crate::widget::ButtonKind::Default);
-            crate::widget::paint_button(&plus_btn, plus_rect, scene, text_system, theme);
+            let plus_btn = Button::new(add_swatch_id, "+").kind(ButtonKind::Default);
+            paint_button(&plus_btn, plus_rect, scene, text_system, theme);
             hit_index.register(add_swatch_id, plus_rect);
         }
     }

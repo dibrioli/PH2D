@@ -31,6 +31,19 @@ pub(super) fn handle_down_menus(
     // path below. A right-click on a non-panel area closes any
     // currently-open menu.
     if event.button == ph2d_host::PointerButton::Secondary {
+        // Secondary click INSIDE the BlenderColorPicker belongs to the picker's own
+        // dispatch — right-click on a palette swatch REMOVES it (see `apply_blender_hit`).
+        // The picker publishes its outer rect to `panel_rects`, so without this guard the
+        // CreateNote fallback below (which doesn't exclude the picker) swallows the click
+        // and `return true`s, and the swatch-remove never runs. Bail to the regular Down
+        // path. Tested directly against the picker rect (not `panel_at`, whose HashMap
+        // order could surface a panel the picker overlaps).
+        if store
+            .panel_rect(crate::ids::INSP_BLENDER_PICKER)
+            .is_some_and(|r| r.contains(event.x, event.y))
+        {
+            return false;
+        }
         let panel_under = store.panel_at(event.x, event.y);
         let hit_id = hit.map(|(id, _)| id);
         let is_section = hit_id.map(is_section_header_id).unwrap_or(false);

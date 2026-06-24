@@ -122,6 +122,7 @@ pub fn dispatch_key<'frame>(
                     };
                     store.blender_rename_active_palette(parent, &name);
                     store.sync_blender_palette_name_buffer(parent); // normalise (trim) the shown name
+                    store.set_palette_rename_open(parent, false); // Enter closes the inline field
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
                         *state = crate::widget::TextInputState::Normal;
                     }

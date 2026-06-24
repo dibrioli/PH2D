@@ -335,6 +335,12 @@ pub struct WidgetStore {
     /// Palette import/export pending: when `Some((picker, kind))`, the host opens a file dialog next
     /// frame and loads/saves the picker's palette (see [`WidgetStore::take_palette_io_pending`]).
     pub(super) palette_io_pending: Option<(NodeId, crate::interaction::PaletteIoKind)>,
+    /// Picker (parent id) whose palette-select dropdown popover is OPEN, else `None`. Transient UI
+    /// state; cleared when the picker is dismissed (see [`WidgetStore::set_picker_target`]).
+    pub(super) palette_dropdown_open: Option<NodeId>,
+    /// Picker (parent id) whose inline palette-rename field is SHOWN, else `None`. The "R" button
+    /// toggles it; Enter commits + clears it. Cleared on picker dismiss / palette switch.
+    pub(super) palette_rename_open: Option<NodeId>,
     /// Vertical scroll offset per panel. Wheel events advance the
     /// offset; painters subtract it from content y. Clamped on each
     /// scroll to `[0, content_h - visible_h]` by the painter (which

@@ -247,6 +247,11 @@ pub const BLENDER_NEW_PALETTE: NodeId = hash_node_id("blender_new_palette");
 pub const BLENDER_DELETE_PALETTE: NodeId = hash_node_id("blender_delete_palette");
 // Active-palette rename field (a TextInput; Enter commits the new name).
 pub const BLENDER_PALETTE_NAME: NodeId = hash_node_id("blender_palette_name");
+// Palette dropdown chip (click → toggle the palette-select popover) + Rename (R) button.
+pub const BLENDER_PALETTE_DROPDOWN: NodeId = hash_node_id("blender_palette_dropdown");
+pub const BLENDER_RENAME_PALETTE: NodeId = hash_node_id("blender_rename_palette");
+// Close (×) button at the top-right of the floating picker — dismisses it.
+pub const BLENDER_CLOSE: NodeId = hash_node_id("blender_close");
 
 /// Hierarchy panel container — wheel-scroll key.
 pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");

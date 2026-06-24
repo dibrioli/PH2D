@@ -39,6 +39,8 @@ impl WidgetStore {
             panel_z_order: Vec::new(),
             eyedropper_pending: None,
             palette_io_pending: None,
+            palette_dropdown_open: None,
+            palette_rename_open: None,
             panel_scroll: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),

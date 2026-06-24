@@ -41,6 +41,48 @@ impl WidgetStore {
         self.palette_name_to_parent.get(&field).copied()
     }
 
+    /// The palette-rename `TextInput` field linked to `parent` (the inverse of
+    /// [`Self::blender_palette_name_parent`]). The "R" dispatch focuses it.
+    pub fn blender_palette_name_field(&self, parent: NodeId) -> Option<NodeId> {
+        self.parent_to_palette_name.get(&parent).copied()
+    }
+
+    /// Is `parent`'s palette-select dropdown popover open?
+    pub fn palette_dropdown_open(&self, parent: NodeId) -> bool {
+        self.palette_dropdown_open == Some(parent)
+    }
+
+    /// Toggle `parent`'s palette-select dropdown popover (also closing any rename in progress so the
+    /// two transient surfaces never stack).
+    pub fn toggle_palette_dropdown(&mut self, parent: NodeId) {
+        if self.palette_dropdown_open == Some(parent) {
+            self.palette_dropdown_open = None;
+        } else {
+            self.palette_dropdown_open = Some(parent);
+            self.palette_rename_open = None;
+        }
+    }
+
+    /// Open/close `parent`'s palette-select dropdown popover explicitly.
+    pub fn set_palette_dropdown_open(&mut self, parent: NodeId, open: bool) {
+        self.palette_dropdown_open = open.then_some(parent);
+    }
+
+    /// Is `parent`'s inline palette-rename field shown?
+    pub fn palette_rename_open(&self, parent: NodeId) -> bool {
+        self.palette_rename_open == Some(parent)
+    }
+
+    /// Show/hide `parent`'s inline palette-rename field (opening it closes the dropdown popover).
+    pub fn set_palette_rename_open(&mut self, parent: NodeId, open: bool) {
+        if open {
+            self.palette_rename_open = Some(parent);
+            self.palette_dropdown_open = None;
+        } else if self.palette_rename_open == Some(parent) {
+            self.palette_rename_open = None;
+        }
+    }
+
     /// Refresh the rename field's buffer to the ACTIVE palette's name — call after any active-palette
     /// change (select / new / delete / import / restore) so the field shows what it will rename.
     pub fn sync_blender_palette_name_buffer(&mut self, parent: NodeId) {

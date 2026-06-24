@@ -3,17 +3,19 @@
 
 use super::channels::{oklch_norm_channels, paint_slider_row, rgba_to_hsv};
 use super::hex_field::{paint_eyedropper, paint_hex_field};
-use super::palette::{paint_palettes, paint_palettes_with_hits};
+use super::palette::{paint_palette_section, paint_palettes};
 use super::segmented::paint_channel_toggle;
 use super::state::{BlenderColorPicker, ChannelMode, ColorPalette};
+use super::sub_ids::BlenderSubIds;
 use super::value_slider::paint_value_slider;
 use super::wheel::paint_color_wheel;
+use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use crate::paint::{fill_rounded_rect, paint_icon, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
 pub const SV_RECT_H: f32 = 150.0;
@@ -23,82 +25,6 @@ pub const TOGGLE_H: f32 = 28.0;
 pub const SLIDER_ROW_H: f32 = 22.0;
 pub const HEX_ROW_H: f32 = 28.0;
 pub const PREVIEW_H: f32 = 24.0;
-
-/// All sub-control [`NodeId`]s that
-/// [`paint_blender_color_picker_with_store`] needs to register in the
-/// [`HitIndex`]. Stack-allocated; passed by reference so callers don't
-/// pay for extra arguments. `NodeId::ZERO` slots are skipped
-/// (no hit rect registered).
-///
-/// Build via [`BlenderSubIds::new`] or fill individual fields after
-/// `Default::default()`.
-#[derive(Clone, Copy, Debug)]
-pub struct BlenderSubIds {
-    pub parent: NodeId,
-    pub wheel: NodeId,
-    pub value_slider: NodeId,
-    pub interp_linear: NodeId,
-    pub interp_perceptual: NodeId,
-    pub channel_rgb: NodeId,
-    pub channel_hsv: NodeId,
-    pub channel_oklch: NodeId,
-    /// Channel slider ids 0..4 (R/H/L, G/S/C, B/V/H, A).
-    pub channels: [NodeId; 4],
-    /// Channel value chip `NumberInput` ids 0..4 (mirror channels).
-    pub channels_num: [NodeId; 4],
-    /// Hex TextInput id.
-    pub hex: NodeId,
-    /// "+ swatch" button id (appends current value to palette).
-    pub add_swatch: NodeId,
-    /// Palette Import / Export button ids (host file dialog → `.gpl`/`.hex`/`.ase`/`.aco`).
-    pub import_palette: NodeId,
-    pub export_palette: NodeId,
-    /// Named-palette tab ids (up to 8; index = palette position). Entries with id == 0 are skipped.
-    pub palette_tabs: [NodeId; 8],
-    /// "+ palette" (New) and "delete palette" button ids.
-    pub new_palette: NodeId,
-    pub delete_palette: NodeId,
-    /// Active-palette rename `TextInput` field id (Enter commits the new name).
-    pub palette_name: NodeId,
-    /// Eyedropper button id.
-    pub eyedropper: NodeId,
-    /// Drag-handle bar id (at top of picker — drag to reposition).
-    pub drag_handle: NodeId,
-    /// Palette swatch ids (up to 27). Entries with id == 0 are
-    /// skipped. The first 12 cover the default palette; the rest
-    /// cover user "+ swatch" additions (capped to keep the array
-    /// fixed-size).
-    pub swatches: [NodeId; 27],
-}
-
-impl BlenderSubIds {
-    /// Construct with all zero (disabled) ids.
-    pub const fn zeroed() -> Self {
-        Self {
-            parent: NodeId(0),
-            wheel: NodeId(0),
-            value_slider: NodeId(0),
-            interp_linear: NodeId(0),
-            interp_perceptual: NodeId(0),
-            channel_rgb: NodeId(0),
-            channel_hsv: NodeId(0),
-            channel_oklch: NodeId(0),
-            channels: [NodeId(0); 4],
-            channels_num: [NodeId(0); 4],
-            hex: NodeId(0),
-            add_swatch: NodeId(0),
-            import_palette: NodeId(0),
-            export_palette: NodeId(0),
-            palette_tabs: [NodeId(0); 8],
-            new_palette: NodeId(0),
-            delete_palette: NodeId(0),
-            palette_name: NodeId(0),
-            eyedropper: NodeId(0),
-            drag_handle: NodeId(0),
-            swatches: [NodeId(0); 27],
-        }
-    }
-}
 
 pub fn paint_blender_color_picker(
     cp: &BlenderColorPicker,
@@ -224,11 +150,18 @@ pub fn paint_blender_color_picker_with_store(
     let inner_w = rect.w - pad * 2.0;
     let mut y = rect.y + pad;
 
-    // Drag handle — slim bar across the top with three dot grips.
-    // Click+drag to move the picker (host updates rect via stored
-    // offset before calling this painter).
+    // Top bar: a slim drag handle (three dot grips, click+drag to move) on the left and
+    // a "×" close button on the right. The drag bar is shrunk to reserve the close slot;
+    // the close hit registers AFTER the drag handle so it wins where they abut.
     let drag_h = 14.0_f32;
-    let drag_rect = Rect::new(rect.x + pad, y, inner_w, drag_h);
+    let top_gap = Spacing::Xs.px();
+    let close_sz = drag_h;
+    let drag_rect = Rect::new(
+        rect.x + pad,
+        y,
+        (inner_w - close_sz - top_gap).max(0.0),
+        drag_h,
+    );
     fill_rounded_rect(
         scene,
         drag_rect,
@@ -244,6 +177,17 @@ pub fn paint_blender_color_picker_with_store(
     }
     if ids.drag_handle.0 != 0 {
         hit_index.register(ids.drag_handle, drag_rect);
+    }
+    let close_rect = Rect::new(rect.x + pad + inner_w - close_sz, y, close_sz, drag_h);
+    paint_icon(
+        scene,
+        IconId::Close,
+        close_rect,
+        resolve(ColorToken::Text2, theme),
+        StrokeToken::Default.px(),
+    );
+    if ids.close.0 != 0 {
+        hit_index.register(ids.close, close_rect);
     }
     y += drag_h + ROW_GAP;
 
@@ -400,7 +344,7 @@ pub fn paint_blender_color_picker_with_store(
     y += HEX_ROW_H + ROW_GAP;
 
     // Rebuild the local picker's palette set from the store (the runtime source of truth): every named
-    // palette's name + swatches, so the tab strip and swatch grid reflect every CRUD / import edit.
+    // palette's name + swatches, so the dropdown + swatch grid reflect every CRUD / import edit.
     // The active index already came from the store state (above); clamp it onto the rebuilt set.
     if let Some(set) = store.blender_palette_set(parent_id) {
         local.palettes = set
@@ -411,47 +355,18 @@ pub fn paint_blender_color_picker_with_store(
             .active_palette
             .min(local.palettes.len().saturating_sub(1));
     }
-    // Active-palette rename field — a TextInput whose live buffer comes from the store (the dispatch
-    // syncs it to the active palette name; Enter renames). Clicking it focuses via the generic path.
-    if ids.palette_name.0 != 0 {
-        let name_rect = Rect::new(rect.x + pad, y, inner_w, HEX_ROW_H);
-        let (n_state, n_buf, n_caret, n_anchor) = match store.get(ids.palette_name) {
-            Some(crate::interaction::InteractiveState::TextInput {
-                state,
-                text,
-                caret,
-                selection_anchor,
-            }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-            _ => (crate::widget::TextInputState::Normal, None, 0, None),
-        };
-        super::hex_field::paint_hex_field_with_state(
-            "",
-            "Name",
-            n_buf,
-            n_caret,
-            n_anchor,
-            n_state,
-            name_rect,
-            scene,
-            text_system,
-            theme,
-        );
-        hit_index.register(ids.palette_name, name_rect);
-        y += HEX_ROW_H + ROW_GAP;
-    }
+    // Palette section — dropdown header (select + New/Rename/Delete) + optional inline rename field +
+    // swatch grid + Import/Export + the deferred dropdown popover. Owns its own store reads (rename /
+    // dropdown open flags, name-field buffer); see [`paint_palette_section`].
     let palette_h = (rect.y + rect.h - y - pad).max(0.0);
-    let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);
     if palette_h > 60.0 {
-        paint_palettes_with_hits(
+        let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);
+        paint_palette_section(
             &local,
             palette_rect,
-            &ids.swatches,
-            ids.add_swatch,
-            ids.import_palette,
-            ids.export_palette,
-            &ids.palette_tabs,
-            ids.new_palette,
-            ids.delete_palette,
+            rect,
+            ids,
+            store,
             hit_index,
             scene,
             text_system,

@@ -54,6 +54,15 @@ pub enum BlenderHitKind {
     NewPalette,
     /// "delete palette" button — removes the active palette (keeping at least one).
     DeletePalette,
+    /// Palette-select dropdown chip — clicking toggles the popover listing every named
+    /// palette (replaces the old cramped one-line tab strip; index = palette position).
+    PaletteDropdown,
+    /// "R" rename button next to the dropdown — toggles the inline rename field (a
+    /// `TextInput` whose Enter commits the new active-palette name).
+    RenamePalette,
+    /// "×" close button at the top-right of the floating picker — clears the picker
+    /// target (`WidgetStore::set_picker_target(None)`), dismissing the popover.
+    Close,
     /// "Import" palette button — clicking flags a host file-dialog request
     /// (`WidgetStore::set_palette_io_pending`) to load a `.gpl`/`.hex`/`.ase`/
     /// `.aco` as a NEW named palette.

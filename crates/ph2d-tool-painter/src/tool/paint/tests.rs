@@ -2203,3 +2203,35 @@ fn tiling_x_wraps_paint_across_the_sprite_edge_e2e() {
         "no Tiling ⟹ the left edge is untouched"
     );
 }
+
+// ── Layer mask painting (bug: a selected mask couldn't be painted — the event fell through to
+//    the move tool and dragged the sprite instead) ────────────────────────────────────────────
+
+#[test]
+fn a_selected_mask_is_paintable_e2e() {
+    let mut t = white_canvas(64, 6.0);
+    // Add a mask to the active raster layer; it becomes active with a white (fully-visible) buffer.
+    let _mask = t
+        .add_mask_to_active()
+        .expect("mask added to the active raster layer");
+    assert!(t.active_is_mask(), "the new mask is the active layer");
+    // The bug: `paint_target_ready` rejected masks, so `on_canvas_pointer` returned `false` and the
+    // event fell through to the move tool (dragging the sprite). It must now CONSUME the event...
+    let consumed = t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    assert!(
+        consumed,
+        "painting a selected mask must consume the canvas event (not fall through to move/drag)"
+    );
+    // ...and paint the mask's coverage: the default black brush conceals (luma → 0) at the centre.
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [0, 0, 0, 255],
+        "the mask was painted (black = conceal)"
+    );
+    // An unpainted corner stays white (fully visible).
+    assert_eq!(
+        px(&t, 64, 0, 0),
+        [255, 255, 255, 255],
+        "unpainted mask area stays white"
+    );
+}

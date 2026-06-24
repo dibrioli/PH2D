@@ -201,8 +201,10 @@ impl Default for PaintState {
 }
 
 impl PainterTool {
-    /// `true` when the active layer is a raster layer that can be painted and the
-    /// working buffer is sized. Mask / group / adjustment layers are not paintable.
+    /// `true` when the active layer can be painted and the working buffer is sized — a **Raster**
+    /// layer OR a **Mask** (its coverage buffer is bound to `canvas_rgba` exactly like a raster's, so
+    /// painting writes the mask's Rec.601-luma coverage directly: the default black brush conceals,
+    /// white reveals). Group / adjustment / texture layers are not paintable.
     fn paint_target_ready(&self) -> bool {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 || self.canvas_rgba.is_empty() {
@@ -211,7 +213,7 @@ impl PainterTool {
         self.layers
             .active()
             .and_then(|id| self.layers.get(id))
-            .is_some_and(|l| matches!(l.kind, LayerKind::Raster(_)))
+            .is_some_and(|l| matches!(l.kind, LayerKind::Raster(_) | LayerKind::Mask(_)))
     }
 
     /// Begin a stroke at `ev` and stamp the first dab. Snapshots the model for undo

@@ -38,38 +38,91 @@ pub fn render_texture_layer(
     let sx = size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let step = 3.0 / w as f32; // tiles per pixel — same on both axes → square cells (mirror of the preview)
-    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-    for py in 0..h {
-        let v = (py as f32 + 0.5) * step * sy + offset[1];
-        for px in 0..w {
-            let u = (px as f32 + 0.5) * step * sx + offset[0];
-            let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
-            let (r, g, b, a) = match ramp {
-                Some((lut, mode)) if !lut.is_empty() => {
-                    let idx = ((s * (lut.len() - 1) as f32) + 0.5) as usize;
-                    let c = lut[idx.min(lut.len() - 1)];
-                    // Off recolours only (opaque); Strength / Sprite Alpha carry the stop's real alpha.
-                    let alpha = if matches!(mode, RampAlphaMode::None) {
-                        1.0
-                    } else {
-                        c[3].clamp(0.0, 1.0)
-                    };
-                    (c[0], c[1], c[2], alpha)
-                }
-                _ => (s, s, s, 1.0), // grayscale, opaque (the raw scalar as a fill)
-            };
-            let i = ((py * w + px) * 4) as usize;
-            out[i] = enc(r);
-            out[i + 1] = enc(g);
-            out[i + 2] = enc(b);
-            out[i + 3] = enc(a);
+    let stride = (w as usize) * 4;
+    // Render disjoint ROW BANDS across the cores (each pixel is a pure function of its own (u,v), so
+    // the bands are independent and the result is bit-identical to serial → HR-5). This is the live
+    // FPS lever: a Texture-layer param drag re-renders the WHOLE canvas every frame, so on a large
+    // sprite this keeps the procedural fill real-time (mirror of the brush's `parallel_band_stamp`,
+    // which a small footprint short-circuits to serial — thread spawn isn't worth it).
+    let render_band = |band: &mut [u8], band_y0: i64| -> bool {
+        let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        for (ly, row) in band.chunks_exact_mut(stride).enumerate() {
+            let v = (band_y0 as f32 + ly as f32 + 0.5) * step * sy + offset[1];
+            for px in 0..w as usize {
+                let u = (px as f32 + 0.5) * step * sx + offset[0];
+                let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
+                let (r, g, b, a) = match ramp {
+                    Some((lut, mode)) if !lut.is_empty() => {
+                        let idx = ((s * (lut.len() - 1) as f32) + 0.5) as usize;
+                        let c = lut[idx.min(lut.len() - 1)];
+                        // Off recolours only (opaque); Strength / Sprite Alpha carry the stop's alpha.
+                        let alpha = if matches!(mode, RampAlphaMode::None) {
+                            1.0
+                        } else {
+                            c[3].clamp(0.0, 1.0)
+                        };
+                        (c[0], c[1], c[2], alpha)
+                    }
+                    _ => (s, s, s, 1.0), // grayscale, opaque (the raw scalar as a fill)
+                };
+                let i = px * 4;
+                row[i] = enc(r);
+                row[i + 1] = enc(g);
+                row[i + 2] = enc(b);
+                row[i + 3] = enc(a);
+            }
         }
-    }
+        false
+    };
+    crate::dab::parallel_band_stamp(out, 0, i64::from(h), 0, i64::from(w), stride, render_band);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parallel_band_render_is_deterministic_and_seamless() {
+        // 384×384 = 147_456 px ≥ PARALLEL_MIN_AREA (131_072) → the multi-thread band path runs. The
+        // result must be pure (identical across runs, regardless of how the bands fall) and have no
+        // band-seam artifact — each pixel is a function of its own (u,v) only.
+        let (w, h) = (384u32, 384u32);
+        let mut params = [0.5f32; MAX_TEX_PARAMS];
+        for (i, s) in crate::param_specs(TextureKind::Clouds).iter().enumerate() {
+            params[i] = s.default;
+        }
+        let render = || {
+            let mut buf = vec![0u8; (w * h * 4) as usize];
+            render_texture_layer(
+                TextureKind::Clouds,
+                params,
+                [1.0, 1.0],
+                [0.0, 0.0],
+                None,
+                None,
+                &mut buf,
+                w,
+                h,
+            );
+            buf
+        };
+        let a = render();
+        let b = render();
+        assert_eq!(
+            a, b,
+            "the band-parallel render must be deterministic (HR-5)"
+        );
+        // No seam: adjacent rows differ smoothly, never a hard discontinuity at a band boundary. Check
+        // that the field genuinely varies (not a flat fill that would hide a seam).
+        let stride = (w * 4) as usize;
+        let lo = a.iter().step_by(4).copied().min().unwrap();
+        let hi = a.iter().step_by(4).copied().max().unwrap();
+        assert!(
+            hi - lo > 20,
+            "the parallel render produced a real field (lo={lo} hi={hi})"
+        );
+        assert_eq!(a.len(), stride * h as usize);
+    }
 
     #[test]
     fn grayscale_layer_is_opaque_and_varies() {

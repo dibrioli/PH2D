@@ -72,6 +72,44 @@ pub(crate) fn paint_checkbox_row(
     y + ROW_H_PX + Spacing::Sm.px()
 }
 
+/// Paint a collapsible section header (Inspector pattern: ALL-CAPS label + collapse chevron +
+/// assignable colour dot) and register the header (collapse-toggle on click) + the colour dot (opens
+/// the picker to assign it). Returns `(next_y, collapsed)` — the caller paints no body when collapsed.
+/// Shared by every Brush-panel section (Randomize / Texture / Color Ramp / Stroke / Tiling).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_collapsible_section(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    label: &str,
+    section_id: ph2d_a11y::NodeId,
+    color_id: ph2d_a11y::NodeId,
+) -> (f32, bool) {
+    let header_h = TypeToken::Md.px() + Spacing::Md.px();
+    let collapsed = ctx.host.store().is_collapsed(section_id);
+    let rgba = ctx
+        .host
+        .store()
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for an unconfigured section dot
+    let header = SectionHeader::new(section_id, label)
+        .collapsible(!collapsed)
+        .color(rgba);
+    let header_rect = Rect::new(x, y, content_w, header_h);
+    {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        paint_section_header(&header, header_rect, scene, text_system, theme);
+    }
+    ctx.host.hit_index_mut().register(section_id, header_rect);
+    if let Some(circle) = color_circle_hit_rect(&header, header_rect) {
+        ctx.host.hit_index_mut().register(color_id, circle);
+    }
+    (y + header_h + Spacing::Xs.px(), collapsed)
+}
+
 /// Paint the collapsible "Randomize Color" section: ALL-CAPS header + collapse chevron + assignable
 /// colour dot (Inspector pattern). Collapsed → just the header. Expanded → Hue / Saturation / Value
 /// editable slider rows (the effect activates when any amount > 0; there is no enable toggle).
@@ -83,35 +121,16 @@ pub(crate) fn paint_randomize_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px();
-    let collapsed = ctx
-        .host
-        .store()
-        .is_collapsed(core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION);
-    let rgba = ctx
-        .host
-        .store()
-        .widget_color(core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for an unconfigured section dot
-    let header = SectionHeader::new(core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION, "Randomize Color")
-        .collapsible(!collapsed)
-        .color(rgba);
-    let header_rect = Rect::new(x, y, content_w, header_h);
-    {
-        let scene = &mut *ctx.scene;
-        let text_system = &mut *ctx.text_system;
-        paint_section_header(&header, header_rect, scene, text_system, theme);
-    }
-    // Register the header (collapse-toggle on click) + the colour dot (opens the picker to assign it).
-    ctx.host
-        .hit_index_mut()
-        .register(core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION, header_rect);
-    if let Some(circle) = color_circle_hit_rect(&header, header_rect) {
-        ctx.host
-            .hit_index_mut()
-            .register(core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR, circle);
-    }
-    let mut y = y + header_h + Spacing::Xs.px();
+    let (mut y, collapsed) = paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Randomize Color",
+        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
+    );
     if collapsed {
         return y;
     }

@@ -33,7 +33,19 @@ pub(crate) fn paint_stroke_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let mut y = section_header(ctx, theme, x, content_w, y, "Stroke");
+    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Stroke",
+        core_ids::PAINTER_BRUSH_STROKE_SECTION,
+        core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
+    );
+    if collapsed {
+        return y;
+    }
 
     // Each param is gated by the method that actually consumes it — Blender hides
     // the irrelevant rows rather than showing dead controls. A row that is not
@@ -238,7 +250,33 @@ pub(crate) fn paint_stroke_section(
         });
     }
 
-    // ── Tiling: seamless wrap-around painting (paint past an edge → wraps to the opposite edge) ──
+    y
+}
+
+/// Paint the **Tiling** section — its own collapsible section (default collapsed), the last one in the
+/// Brush body (Enio 2026-06-24). Seamless wrap-around painting (paint past an edge → wraps to the
+/// opposite edge) + the Repeat-Image on-canvas 3×3 tile preview.
+pub(crate) fn paint_tiling_section(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Tiling",
+        core_ids::PAINTER_BRUSH_TILING_SECTION,
+        core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
+    );
+    if collapsed {
+        return y;
+    }
     y = paint_toggle_row(
         ctx,
         theme,

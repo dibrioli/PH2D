@@ -43,7 +43,25 @@ pub(crate) fn paint_texture_section(
     brush: BrushSettings,
     compact: bool,
 ) -> f32 {
-    let mut y = section_header(ctx, theme, x, content_w, y, "Texture");
+    // Collapsible section (default expanded) on the brush; the inline Texture-LAYER editor keeps the
+    // plain divider (it's always-on, nested under the active layer row).
+    let (mut y, collapsed) = if compact {
+        (section_header(ctx, theme, x, content_w, y, "Texture"), false)
+    } else {
+        crate::paint_brush_top::paint_collapsible_section(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Texture",
+            core_ids::PAINTER_BRUSH_TEXTURE_SECTION,
+            core_ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
+        )
+    };
+    if collapsed {
+        return y;
+    }
     let kind = TextureKind::from_u8(brush.texture_kind);
     let mapping = TextureMapping::from_u8(brush.texture_mapping);
 

@@ -37,3 +37,20 @@ pub const PAINTER_BRUSH_RANDOMIZE_SECTION: NodeId = hash_node_id("painter_brush.
 /// shared Blender picker to assign the section's accent color (stored in `widget_color`).
 pub const PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR: NodeId =
     hash_node_id("painter_brush.randomize_section_color");
+
+// Collapsible-section headers + their assignable color dots (Inspector pattern, same as Randomize
+// Color above). Texture + Stroke default expanded; Color Ramp + Tiling default collapsed (Enio
+// 2026-06-24). Each `*_SECTION` is `mark_collapsible_section`-registered + the `*_SECTION_COLOR` is a
+// `register_picker_swatch` dot, both in `crate::populate`.
+pub const PAINTER_BRUSH_TEXTURE_SECTION: NodeId = hash_node_id("painter_brush.texture_section");
+pub const PAINTER_BRUSH_TEXTURE_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.texture_section_color");
+pub const PAINTER_BRUSH_COLOR_RAMP_SECTION: NodeId = hash_node_id("painter_brush.color_ramp_section");
+pub const PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.color_ramp_section_color");
+pub const PAINTER_BRUSH_STROKE_SECTION: NodeId = hash_node_id("painter_brush.stroke_section");
+pub const PAINTER_BRUSH_STROKE_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.stroke_section_color");
+pub const PAINTER_BRUSH_TILING_SECTION: NodeId = hash_node_id("painter_brush.tiling_section");
+pub const PAINTER_BRUSH_TILING_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.tiling_section_color");

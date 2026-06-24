@@ -143,11 +143,7 @@ pub fn populate(store: &mut WidgetStore) {
         );
         store.link_slider_number(slider, chip);
     }
-    // "Randomize Color" collapsible section: mark the header click-to-collapse, start COLLAPSED, and
-    // make its colour dot a picker swatch (clicking opens the shared picker to assign the dot's colour).
-    store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION);
-    store.set_collapsed(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION, true);
-    store.register_picker_swatch(ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR);
+    register_collapsible_sections(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).
@@ -203,6 +199,45 @@ pub fn populate(store: &mut WidgetStore) {
                 selected_index: Some(0),
             },
         );
+    }
+}
+
+/// Mark each collapsible Brush section's header (click-to-collapse) + make its colour dot a picker
+/// swatch (clicking opens the shared picker to assign the dot's colour). Randomize Color, Color Ramp
+/// and Tiling START COLLAPSED; Texture + Stroke start expanded (Enio 2026-06-24).
+fn register_collapsible_sections(store: &mut WidgetStore) {
+    use ph2d_editor_core::ids as core_ids;
+    for (section, color) in [
+        (
+            core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+            core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_TEXTURE_SECTION,
+            core_ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+            core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_STROKE_SECTION,
+            core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_TILING_SECTION,
+            core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
+        ),
+    ] {
+        store.mark_collapsible_section(section);
+        store.register_picker_swatch(color);
+    }
+    for collapsed in [
+        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
+        core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+        core_ids::PAINTER_BRUSH_TILING_SECTION,
+    ] {
+        store.set_collapsed(collapsed, true);
     }
 }
 

@@ -45,6 +45,32 @@ fn painted_hit_ids(kind: u8) -> Vec<NodeId> {
     })
 }
 
+/// Like [`painted_hit_ids_for`] but expands the **Color Ramp** section first (it defaults collapsed),
+/// so the "Use Color Ramp" checkbox + (when enabled) the ramp editor controls actually paint.
+fn painted_hit_ids_ramp_open(brush: BrushSettings) -> Vec<NodeId> {
+    let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    host.store_mut()
+        .set_collapsed(core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION, false);
+    let mut scene = VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = Rect::new(0.0, 0.0, 360.0, 4000.0);
+    let layout = HeroLayout::for_viewport(viewport);
+    {
+        let mut ctx = PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        paint_texture_section(&mut ctx, Theme::default(), 0.0, 320.0, 0.0, brush, false);
+    }
+    host.hit_index_mut()
+        .iter_registrations()
+        .map(|(id, _)| id)
+        .collect()
+}
+
 /// The always-shown control (the Kind picker) regardless of whether a texture is assigned.
 const ALWAYS: [NodeId; 1] = [core_ids::PAINTER_BRUSH_TEXTURE_KIND];
 
@@ -152,11 +178,15 @@ fn param_sliders_register_exactly_the_kind_s_specs() {
 
 #[test]
 fn color_ramp_controls_gate_on_the_enable_toggle() {
-    // Ramp OFF (default): only the enable toggle registers; Mode / Interp / + / − stay hidden.
-    let off = painted_hit_ids(TextureKind::Noise.to_u8());
+    // Section expanded but ramp OFF (default): only the enable checkbox registers; Mode / Interp / + / −
+    // stay hidden.
+    let off = painted_hit_ids_ramp_open(BrushSettings {
+        texture_kind: TextureKind::Noise.to_u8(),
+        ..crate::paint_brush::FALLBACK_BRUSH
+    });
     assert!(
         off.contains(&core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
-        "the Color Ramp enable toggle always shows. painted = {off:?}"
+        "the 'Use Color Ramp' enable checkbox shows when the section is expanded. painted = {off:?}"
     );
     for hidden in [
         core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
@@ -173,7 +203,7 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
     let mut stops = [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS];
     stops[0] = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0]; // id 0
     stops[1] = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]; // id 1
-    let on = painted_hit_ids_for(BrushSettings {
+    let on = painted_hit_ids_ramp_open(BrushSettings {
         texture_kind: TextureKind::Noise.to_u8(),
         texture_ramp_enabled: true,
         texture_ramp_stop_count: 2,

@@ -1,5 +1,6 @@
 //! The Texture section's **Color Ramp** sub-editor — maps the texture's scalar to a colour gradient
-//! (the reusable `ph2d_color::ColorRamp`). Blender-style layout: the enable toggle; one compact
+//! (the reusable `ph2d_color::ColorRamp`). A collapsible section whose first item is the "Use Color
+//! Ramp" enable checkbox; then the Blender-style layout: one compact
 //! controls line (`+` `−` + the RGB/HSV/HSL **Mode** and interpolation chips, no labels); the live
 //! gradient **bar** with a colour-filled draggable handle per stop; and a bottom row of the selected
 //! stop's **editable** index selector + position chips and one **colour box** showing the final
@@ -11,9 +12,7 @@
 //! `PanelEvent` channel to `PainterTool::*_texture_ramp*`.
 
 use crate::paint::register_button;
-use crate::paint_brush::{
-    paint_dropdown_chip, paint_dropdown_popover, paint_dropdown_row, paint_toggle_row,
-};
+use crate::paint_brush::{paint_dropdown_chip, paint_dropdown_popover, paint_dropdown_row};
 use crate::state;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -55,14 +54,31 @@ pub(crate) fn paint_texture_ramp_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let mut y = paint_toggle_row(
+    // Collapsible "Color Ramp" section (default collapsed). Its FIRST item is the enable checkbox
+    // ("Use Color Ramp"); the editor below shows only when enabled (Enio 2026-06-24).
+    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Color Ramp",
+        core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
+        core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
+    );
+    if collapsed {
+        return y;
+    }
+    // The enable checkbox still forwards its click as a Button Click (the tool toggles
+    // `texture_ramp_enabled`); only the VISUAL is a checkbox.
+    y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
         x,
         content_w,
         y,
         core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
-        "Color Ramp",
+        "Use Color Ramp",
         brush.texture_ramp_enabled,
     );
     if !brush.texture_ramp_enabled {

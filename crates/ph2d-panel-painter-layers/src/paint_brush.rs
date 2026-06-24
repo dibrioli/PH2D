@@ -222,8 +222,11 @@ pub(crate) fn paint_brush_body(
     // ── Section 8: Texture — the next section below Randomize Color (Enio 2026-06-24) ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
-    // ── Remaining groups (sectioned per later instructions): Stroke · Eraser ──
+    // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+    y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
+
+    // ── Eraser toggle (standalone, very bottom) ──
     y = paint_toggle_row(
         ctx,
         theme,

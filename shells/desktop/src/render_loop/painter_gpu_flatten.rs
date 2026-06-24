@@ -59,7 +59,11 @@ fn flatten_ids(
         let opacity = layer.opacity.clamp(0.0, 1.0);
         let blend_mode = layer.blend_mode.to_u8();
         match &layer.kind {
-            LayerKind::Raster(_) => ops.push(LayerOp::Layer {
+            // A Texture layer is raster-backed (its pixels are pre-rendered into the same per-layer
+            // buffer the provider uploads by `key`), so it flattens to the identical `Layer` op — the
+            // GPU composites the texture buffer exactly like a painted raster. Lock-step with
+            // `composite_into`'s merged `Raster | Texture` arm.
+            LayerKind::Raster(_) | LayerKind::Texture(_) => ops.push(LayerOp::Layer {
                 key: id.0,
                 blend_mode,
                 opacity,
@@ -180,6 +184,23 @@ mod tests {
         assert!(
             (bases[1].1 as usize) < luts.len(),
             "second LUT op's base is in range"
+        );
+    }
+
+    #[test]
+    fn texture_layer_is_gpu_representable_like_a_raster() {
+        // A Texture layer is raster-backed → it must flatten to a plain `Layer` op (the GPU uploads
+        // its pre-rendered buffer by key), never force the CPU fallback.
+        let mut s = LayerStack::new();
+        let _base = s.add_raster("base", 4, 4).unwrap();
+        let tex = s
+            .add_texture(ph2d_tool_painter::TextureLayer::default())
+            .unwrap();
+        let (ops, _luts) = flatten_for_gpu(&s).expect("a texture layer flattens to a GPU Layer op");
+        assert!(
+            ops.iter()
+                .any(|o| matches!(o, LayerOp::Layer { key, .. } if *key == tex.0)),
+            "the texture layer emits a Layer op like a raster: {ops:?}"
         );
     }
 

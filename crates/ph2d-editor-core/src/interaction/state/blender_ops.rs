@@ -30,6 +30,37 @@ impl WidgetStore {
         self.hex_to_blender_parent.get(&hex).copied()
     }
 
+    /// Tag a `TextInput` as the active-palette rename field for `parent`. Caller pre-registers both.
+    pub fn link_blender_palette_name(&mut self, parent: NodeId, field: NodeId) {
+        self.palette_name_to_parent.insert(field, parent);
+        self.parent_to_palette_name.insert(parent, field);
+    }
+
+    /// The picker a palette-name `TextInput` belongs to (Enter commits a rename to it).
+    pub fn blender_palette_name_parent(&self, field: NodeId) -> Option<NodeId> {
+        self.palette_name_to_parent.get(&field).copied()
+    }
+
+    /// Refresh the rename field's buffer to the ACTIVE palette's name — call after any active-palette
+    /// change (select / new / delete / import / restore) so the field shows what it will rename.
+    pub fn sync_blender_palette_name_buffer(&mut self, parent: NodeId) {
+        let Some(&field) = self.parent_to_palette_name.get(&parent) else {
+            return;
+        };
+        let active = self.active_palette_idx(parent);
+        let name = self
+            .blender_palettes
+            .get(&parent)
+            .and_then(|s| s.get(active))
+            .map(|p| p.name.clone());
+        if let (Some(name), Some(InteractiveState::TextInput { text, caret, .. })) =
+            (name, self.states.get_mut(&field))
+        {
+            *caret = name.chars().count();
+            *text = name;
+        }
+    }
+
     /// Tag a channel `NumberInput` chip as belonging to a
     /// `BlenderPicker` at channel index `idx` (0..=3). On commit,
     /// dispatch reads `idx` to know which RGBA / HSVA dimension to

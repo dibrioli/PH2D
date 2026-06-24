@@ -68,6 +68,7 @@ pub fn paint_hex_field(
 ) {
     paint_hex_field_with_state(
         hex,
+        "Hex",
         None,
         0,
         None,
@@ -87,6 +88,7 @@ pub fn paint_hex_field(
 #[allow(clippy::too_many_arguments)]
 pub fn paint_hex_field_with_state(
     fallback_hex: &str,
+    label: &str,
     buffer: Option<&str>,
     caret: usize,
     selection_anchor: Option<usize>,
@@ -112,7 +114,7 @@ pub fn paint_hex_field_with_state(
     paint_text(
         text_system,
         scene,
-        "Hex",
+        label,
         label_rect.x,
         label_rect.y + (label_rect.h - TypeToken::Xs.px()) * 0.5,
         TypeToken::Xs.px(),

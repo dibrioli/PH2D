@@ -288,6 +288,8 @@ pub(crate) fn build_initial_state(
                 .collect();
             hero.store
                 .blender_set_palettes(ph2d_editor::ids::INSP_BLENDER_PICKER, palettes);
+            hero.store
+                .sync_blender_palette_name_buffer(ph2d_editor::ids::INSP_BLENDER_PICKER);
         }
         Some(hero)
     } else {

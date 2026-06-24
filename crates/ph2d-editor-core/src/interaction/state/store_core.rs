@@ -19,6 +19,8 @@ impl WidgetStore {
             chips_without_steppers: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
             hex_to_blender_parent: BTreeMap::new(),
+            palette_name_to_parent: BTreeMap::new(),
+            parent_to_palette_name: BTreeMap::new(),
             blender_channel_chip: BTreeMap::new(),
             last_down_id: None,
             last_down_at_ns: 0,

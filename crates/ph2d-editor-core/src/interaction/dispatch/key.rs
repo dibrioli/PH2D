@@ -111,6 +111,24 @@ pub fn dispatch_key<'frame>(
                     events.push(WidgetEvent::Blur(id));
                     return events.into_bump_slice();
                 }
+                // Palette-name TextInput linked to a BlenderPicker: Enter renames the active palette
+                // to the typed buffer, then blurs (like the hex field).
+                if event.keycode == KEY_ENTER
+                    && let Some(parent) = store.blender_palette_name_parent(id)
+                {
+                    let name = match store.get(id) {
+                        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+                        _ => String::new(),
+                    };
+                    store.blender_rename_active_palette(parent, &name);
+                    store.sync_blender_palette_name_buffer(parent); // normalise (trim) the shown name
+                    if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {
+                        *state = crate::widget::TextInputState::Normal;
+                    }
+                    store.set_focus(None);
+                    events.push(WidgetEvent::Blur(id));
+                    return events.into_bump_slice();
+                }
                 // SPACE while focus is on a text widget MUST insert a
                 // space character (handled by dispatch_text_input) —
                 // we used to also fire `apply_click` here, which

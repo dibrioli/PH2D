@@ -245,6 +245,8 @@ pub const BLENDER_PALETTE_TABS: [NodeId; 8] = [
 ];
 pub const BLENDER_NEW_PALETTE: NodeId = hash_node_id("blender_new_palette");
 pub const BLENDER_DELETE_PALETTE: NodeId = hash_node_id("blender_delete_palette");
+// Active-palette rename field (a TextInput; Enter commits the new name).
+pub const BLENDER_PALETTE_NAME: NodeId = hash_node_id("blender_palette_name");
 
 /// Hierarchy panel container — wheel-scroll key.
 pub const HIER_PANEL: NodeId = hash_node_id("hier_panel");

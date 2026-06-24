@@ -97,6 +97,49 @@ fn named_palette_crud_new_select_rename_delete() {
 }
 
 #[test]
+fn palette_name_field_syncs_to_active_and_renames() {
+    use crate::widget::TextInputState;
+    let (mut store, _) = blender_picker_setup();
+    let (id, field) = (NodeId(100), NodeId(700));
+    store.register(
+        field,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    store.link_blender_palette_name(id, field);
+    let field_text = |s: &WidgetStore| match s.get(field) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        _ => String::new(),
+    };
+    // Sync pulls the active palette's name into the field buffer.
+    store.sync_blender_palette_name_buffer(id);
+    assert_eq!(
+        field_text(&store),
+        "Palette",
+        "the field shows the active palette name"
+    );
+    // Rename (the Enter-commit path) updates the set + trims whitespace.
+    store.blender_rename_active_palette(id, "  Warm  ");
+    assert_eq!(
+        store.blender_palette_set(id).unwrap()[0].name,
+        "Warm",
+        "rename trims whitespace"
+    );
+    // Switching palettes re-syncs the field to the new active name.
+    store.blender_new_palette(id);
+    store.sync_blender_palette_name_buffer(id);
+    assert_eq!(
+        field_text(&store),
+        "Palette 2",
+        "switching palettes re-syncs the field"
+    );
+}
+
+#[test]
 fn textarea_click_line2_places_caret_on_line2() {
     // Two lines: "abc" (3 bytes) + '\n' + "defgh" (5 bytes). Total 9.
     let (mut store, hits, rect) = textarea_setup("abc\ndefgh");

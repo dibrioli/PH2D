@@ -58,6 +58,8 @@ pub struct BlenderSubIds {
     /// "+ palette" (New) and "delete palette" button ids.
     pub new_palette: NodeId,
     pub delete_palette: NodeId,
+    /// Active-palette rename `TextInput` field id (Enter commits the new name).
+    pub palette_name: NodeId,
     /// Eyedropper button id.
     pub eyedropper: NodeId,
     /// Drag-handle bar id (at top of picker — drag to reposition).
@@ -90,6 +92,7 @@ impl BlenderSubIds {
             palette_tabs: [NodeId(0); 8],
             new_palette: NodeId(0),
             delete_palette: NodeId(0),
+            palette_name: NodeId(0),
             eyedropper: NodeId(0),
             drag_handle: NodeId(0),
             swatches: [NodeId(0); 27],
@@ -376,6 +379,7 @@ pub fn paint_blender_color_picker_with_store(
     };
     super::hex_field::paint_hex_field_with_state(
         &local.hex,
+        "Hex",
         hex_buffer,
         hex_caret,
         hex_anchor,
@@ -406,6 +410,34 @@ pub fn paint_blender_color_picker_with_store(
         local.active_palette = local
             .active_palette
             .min(local.palettes.len().saturating_sub(1));
+    }
+    // Active-palette rename field — a TextInput whose live buffer comes from the store (the dispatch
+    // syncs it to the active palette name; Enter renames). Clicking it focuses via the generic path.
+    if ids.palette_name.0 != 0 {
+        let name_rect = Rect::new(rect.x + pad, y, inner_w, HEX_ROW_H);
+        let (n_state, n_buf, n_caret, n_anchor) = match store.get(ids.palette_name) {
+            Some(crate::interaction::InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+            _ => (crate::widget::TextInputState::Normal, None, 0, None),
+        };
+        super::hex_field::paint_hex_field_with_state(
+            "",
+            "Name",
+            n_buf,
+            n_caret,
+            n_anchor,
+            n_state,
+            name_rect,
+            scene,
+            text_system,
+            theme,
+        );
+        hit_index.register(ids.palette_name, name_rect);
+        y += HEX_ROW_H + ROW_GAP;
     }
     let palette_h = (rect.y + rect.h - y - pad).max(0.0);
     let palette_rect = Rect::new(rect.x + pad, y, inner_w, palette_h);

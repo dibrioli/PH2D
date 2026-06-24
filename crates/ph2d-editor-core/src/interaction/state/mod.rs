@@ -255,6 +255,11 @@ pub struct WidgetStore {
     /// dispatch can parse the typed buffer on Enter / blur and apply
     /// the resulting color to the parent state.
     pub(super) hex_to_blender_parent: BTreeMap<NodeId, NodeId>,
+    /// Active-palette rename `TextInput` field id → parent `BlenderPicker`, and the reverse (parent →
+    /// field). Enter on the field renames the active palette to the typed buffer; the dispatch syncs
+    /// the buffer to the active name whenever the active palette changes.
+    pub(super) palette_name_to_parent: BTreeMap<NodeId, NodeId>,
+    pub(super) parent_to_palette_name: BTreeMap<NodeId, NodeId>,
     /// Channel `NumberInput` chip id → (parent `BlenderPicker`,
     /// channel index 0..=3). Lets dispatch rewrite the parent's
     /// color value when the user commits a new channel value.

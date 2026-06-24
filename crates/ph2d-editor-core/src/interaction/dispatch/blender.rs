@@ -190,14 +190,17 @@ pub(super) fn apply_blender_hit(
         }
         BlenderHitKind::PaletteTab(idx) => {
             store.blender_select_palette(parent, idx as usize);
+            store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
         BlenderHitKind::NewPalette => {
             store.blender_new_palette(parent);
+            store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
         BlenderHitKind::DeletePalette => {
             store.blender_delete_active_palette(parent);
+            store.sync_blender_palette_name_buffer(parent);
             Some(parent)
         }
         BlenderHitKind::ImportPalette => {

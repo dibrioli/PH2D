@@ -123,6 +123,16 @@ fn populate_blender_picker(store: &mut WidgetStore) {
         },
     );
     store.link_blender_hex(ids::INSP_BLENDER_PICKER, ids::BLENDER_HEX);
+    store.register(
+        ids::BLENDER_PALETTE_NAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: "Palette".to_string(),
+            caret: 7,
+            selection_anchor: None,
+        },
+    );
+    store.link_blender_palette_name(ids::INSP_BLENDER_PICKER, ids::BLENDER_PALETTE_NAME);
     for (id, kind) in [
         (
             ids::BLENDER_INTERP_LINEAR,

@@ -155,6 +155,7 @@ fn handle_palette_io(
                         .collect();
                     // Import ADDS a named palette (the file's name) + activates it.
                     hero.store.blender_import_palette(parent, &p.name, colors);
+                    hero.store.sync_blender_palette_name_buffer(parent);
                 }
                 Ok(Err(e)) => eprintln!("[ph2d] palette import: {e}"),
                 Err(e) => eprintln!("[ph2d] palette read: {e}"),

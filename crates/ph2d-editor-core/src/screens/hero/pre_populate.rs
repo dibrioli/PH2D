@@ -398,6 +398,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
         ids::CTX_MENU_HIER_DELETE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
+        ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         // New-image modal: the Size + Background radios + Create (same populate-register gotcha).
         ids::CTX_MENU_NEW_IMAGE_CREATE,
         ids::CTX_MENU_NEW_IMAGE_BG_TRANSPARENT,

@@ -525,6 +525,17 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_POINT_TYPE_SMOOTH,
         ids::CTX_MENU_POINT_TYPE_ASYMMETRIC,
         ids::CTX_MENU_POINT_TYPE_AUTO,
+        // HierarchyRow items — every entry of the per-row menu (`context_menu_overlay`,
+        // `ContextMenuKind::HierarchyRow`). "Use as Brush Shape" shipped dead because it was
+        // hit-painted but OMITTED here (the Grain twin was registered) — Enio 2026-06-25.
+        ids::CTX_MENU_HIER_RENAME,
+        ids::CTX_MENU_HIER_DUPLICATE,
+        ids::CTX_MENU_HIER_ADD_CHILD,
+        ids::CTX_MENU_HIER_MERGE_SPRITES,
+        ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
+        ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
+        ids::CTX_MENU_HIER_RESET_TRANSFORM,
+        ids::CTX_MENU_HIER_DELETE,
     ] {
         assert!(
             hero.store.contains(id),

@@ -204,13 +204,13 @@ pub(crate) fn paint_brush_body(
     // ── Section 6: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
     y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Section 7: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
-    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
-
-    // ── Section 8: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + a
-    //    source picker; once a Shape image is assigned the Falloff goes inactive (replaced by the image
-    //    + its preview). Placed after Grain so the two texture slots read top-to-bottom (Enio 2026-06-25). ──
+    // ── Section 7: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + its
+    //    curve preview + a source picker; once a Shape image is assigned the Falloff goes inactive
+    //    (replaced by the image + its preview). Sits ABOVE Grain (Enio 2026-06-25). ──
     y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
+
+    // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
+    y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
     // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);

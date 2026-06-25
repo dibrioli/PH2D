@@ -66,9 +66,16 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
     }
 
-    // ── Shape source picker (None / Image) — directly below Falloff, mirroring the Grain Kind picker.
-    //    Picking Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to
-    //    the falloff. The chip label tracks the live state (image assigned → "Image"). ──
+    // ── Falloff curve preview — directly under the Falloff dropdown and ABOVE the Shape picker, while
+    //    the falloff is the active silhouette. Hidden once an image overrides it (then it is inactive,
+    //    marked by the caption below). (Enio 2026-06-25). ──
+    if !brush.shape_has_image {
+        y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
+    }
+
+    // ── Shape source picker (None / Image) — below the Falloff + its preview, mirroring the Grain Kind
+    //    picker. Picking Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None
+    //    reverts to the falloff. The chip label tracks the live state (image assigned → "Image"). ──
     let shape_kind = if brush.shape_has_image {
         TextureKind::Image.to_u8()
     } else {
@@ -180,10 +187,9 @@ pub(crate) fn paint_shape_section(
             size_track(brush.shape_size[1]),
             brush.shape_size[1],
         );
-    } else {
-        // Procedural silhouette: the live Falloff curve editor (the Falloff dropdown above is active).
-        y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
     }
+    // (No image ⇒ nothing more here: the Falloff dropdown + its curve preview above the Shape picker
+    //  are the procedural silhouette.)
     y
 }
 

@@ -2,11 +2,9 @@
 //! (`ph2d-painter-brush`) from pointer samples, writing dabs into the active
 //! raster layer's `canvas_rgba`.
 //!
-//! The brush *behaviour* (falloff, spacing, pressure, blend) is the engine's;
-//! this module is only the glue between the editor's [`CanvasPaintTool`] contract
-//! (ADR-0040 Amendment 3) and the painter's layer buffers + preview/dirty plumbing.
-//! Mask / clipping / alpha-lock honouring and per-stroke undo are later-phase
-//! refinements (see `docs/Painter/02_plano_de_implementacao.md` Fase 3).
+//! The brush *behaviour* (falloff, spacing, pressure, blend) is the engine's; this module is only the
+//! glue between the editor's [`CanvasPaintTool`] contract (ADR-0040 Amendment 3) and the painter's
+//! layer buffers + preview/dirty plumbing.
 
 use super::*;
 
@@ -53,8 +51,8 @@ pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 
 // Interactive UI ranges for the Stroke section's non-`0..1` sliders: the slider's `0..1` track maps
 // onto `0..MAX` (or `1..MAX` for counts), the single source shared by the tool setters + the panel.
-/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = 100% = one full
-/// diameter between dab centres). The engine accepts more; this is the interactive top.
+/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = one full diameter between dab
+/// centres). The engine accepts more; this is the interactive top.
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
 /// Max absolute jitter the slider reaches, in pixels (View unit).
 pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
@@ -72,10 +70,9 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
 pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
 
-/// Brush settings + in-progress stroke state held by the [`PainterTool`].
-/// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint
-/// (RGBA8, row-major over `rect`) saved *before* it was stamped, so the next move can erase it.
-/// The dot then follows the cursor leaving no trail, and only the dab at the release point survives.
+/// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint (RGBA8,
+/// row-major over `rect`) saved *before* it was stamped, so the next move can erase it — the dot
+/// follows the cursor leaving no trail, only the dab at the release point survives.
 struct DragPreview {
     rect: Region,
     pixels: Vec<u8>,
@@ -95,9 +92,12 @@ pub(crate) struct PaintState {
     /// Splitmix64 state for the texture's per-dab Random rotation/offset — reset per stroke (from the
     /// seed, decorrelated), advanced once per textured dab (HR-5 reproducible, differs per dab).
     tex_rng: u64,
-    /// Smoothed **Rake** direction (unit vector) carried across dabs within a stroke so the texture
-    /// rotation eases toward the tangent instead of snapping per dab (`stamp_cache::next_rake_dir`).
+    /// Smoothed **Rake** heading (unit) carried across dabs; re-aimed from a long baseline of
+    /// accumulated travel, not the noisy 3px chord (`stamp_cache::advance_rake`).
     rake_dir: [f32; 2],
+    /// **Rake** travel accumulated since the heading last re-aimed (persists across dab batches so the
+    /// baseline spans real stroke distance, not one event's dabs).
+    rake_accum: [f32; 2],
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
@@ -176,6 +176,7 @@ impl Default for PaintState {
             seed: 0,
             tex_rng: 0,
             rake_dir: [0.0, 0.0],
+            rake_accum: [0.0, 0.0],
             stroke_undo: None,
             eraser: false,
             tiling: [false, false],
@@ -205,10 +206,9 @@ impl Default for PaintState {
 }
 
 impl PainterTool {
-    /// `true` when the active layer can be painted and the working buffer is sized — a **Raster**
-    /// layer OR a **Mask** (its coverage buffer is bound to `canvas_rgba` exactly like a raster's, so
-    /// painting writes the mask's Rec.601-luma coverage directly: the default black brush conceals,
-    /// white reveals). Group / adjustment / texture layers are not paintable.
+    /// `true` when the active layer can be painted and the working buffer is sized — a **Raster** layer
+    /// OR a **Mask** (its coverage buffer is bound to `canvas_rgba` like a raster's, so painting writes
+    /// Rec.601-luma coverage: black conceals, white reveals). Group/adjustment/texture aren't paintable.
     fn paint_target_ready(&self) -> bool {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 || self.canvas_rgba.is_empty() {
@@ -234,7 +234,8 @@ impl PainterTool {
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
-        self.paint.rake_dir = [0.0, 0.0]; // fresh stroke → Rake direction re-eases from the first tangent
+        self.paint.rake_dir = [0.0, 0.0]; // fresh stroke → Rake heading re-eases from the first travel
+        self.paint.rake_accum = [0.0, 0.0];
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.begin(
@@ -282,8 +283,8 @@ impl PainterTool {
     /// move flag and drives two time-based behaviours (both no-op when their method doesn't apply):
     /// - **Airbrush timer:** deposit dabs at the brush's Rate, moving OR parked (Blender fires it on a
     ///   timer, not on motion — builds up when held, sparse when swept). No-op for non-Airbrush.
-    /// - **Stabilizer catch-up:** when parked, walk the lagged path up to the cursor so a
-    ///   high-stabilizer stroke arrives without waiting for pointer-up (`settle` is Space-only).
+    /// - **Stabilizer catch-up:** when parked, walk the lagged path to the cursor (`settle` is
+    ///   Space-only) so a high-stabilizer stroke arrives without waiting for pointer-up.
     pub(crate) fn paint_tick(&mut self, dt_s: f32) {
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
@@ -318,9 +319,8 @@ impl PainterTool {
     }
 
     /// Finalize the current stroke: drop the in-progress state and push one undo
-    /// entry (pre-stroke → current) so the whole stroke undoes/redoes as a unit.
-    /// No-op when no stroke is open. Reuses the structural-undo stack (a full-canvas
-    /// snapshot per stroke; a tile-based delta is a later optimization).
+    /// entry (pre-stroke → current) so the whole stroke undoes/redoes as a unit. No-op when no stroke
+    /// is open. Reuses the structural-undo stack (a full-canvas snapshot per stroke; tile delta later).
     fn close_stroke(&mut self) {
         self.paint.stroke = None;
         self.paint.line_anchor = None;
@@ -518,9 +518,9 @@ impl PainterTool {
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive
-    /// preview methods: route their batch through the restore+re-stamp path (restore the prior
-    /// footprint + re-stamp) so the moving/resizing/growing preview leaves no trail and
-    /// `commit_drag_preview` keeps the last on pen-up. Every other method uses the cumulative stamp.
+    /// preview methods: route their batch through the restore+re-stamp path so the moving/resizing/
+    /// growing preview leaves no trail and `commit_drag_preview` keeps the last on pen-up. Every other
+    /// method uses the cumulative stamp.
     fn stamp_stroke_dabs(&mut self, dabs: &[Dab]) {
         if matches!(
             self.paint.brush.stroke_method,

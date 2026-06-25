@@ -202,6 +202,7 @@ impl PainterTool {
         let rake = brush.texture.rake;
         let mut tex_rng = self.paint.tex_rng;
         let mut rake_dir = self.paint.rake_dir;
+        let mut rake_accum = self.paint.rake_accum;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for (i, d) in dabs.iter().enumerate() {
@@ -210,10 +211,12 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
-            let dir = next_rake_dir(
+            let dir = advance_rake(
                 rake,
                 &mut rake_dir,
+                &mut rake_accum,
                 super::brush_settings::dab_tangent(dabs, i),
+                2.0 * d.radius_px,
             );
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
@@ -248,6 +251,7 @@ impl PainterTool {
         }
         self.paint.tex_rng = tex_rng;
         self.paint.rake_dir = rake_dir;
+        self.paint.rake_accum = rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -270,6 +274,7 @@ impl PainterTool {
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let mut tex_rng = self.paint.tex_rng;
         let mut rake_dir = self.paint.rake_dir;
+        let mut rake_accum = self.paint.rake_accum;
         // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
         // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
@@ -290,10 +295,12 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
-            let dir = next_rake_dir(
+            let dir = advance_rake(
                 rake,
                 &mut rake_dir,
+                &mut rake_accum,
                 super::brush_settings::dab_tangent(dabs, i),
+                2.0 * d.radius_px,
             );
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
@@ -327,6 +334,7 @@ impl PainterTool {
         }
         self.paint.tex_rng = tex_rng;
         self.paint.rake_dir = rake_dir;
+        self.paint.rake_accum = rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -371,65 +379,99 @@ impl PainterTool {
     }
 }
 
-/// Smoothing factor for the **Rake** rotation per dab — "um pequeno lerp" so the texture eases toward
-/// the stroke direction instead of snapping to every noisy per-dab chord (Enio 2026-06-24).
-const RAKE_LERP: f32 = 0.25;
+/// Easing applied each time the **Rake** heading re-aims at a fresh long-baseline direction.
+const RAKE_LERP: f32 = 0.5;
 
-/// The texture frame direction for dab `i` under **Rake**: ease the carried `rake_dir` (unit) toward the
-/// dab `tangent`, persisting across dabs/segments so a parked/single-dab batch (`tangent ≈ 0`) keeps the
-/// last direction instead of falling back to the Angle. With Rake off, the raw tangent passes through
-/// (ignored by `dab_basis`). Mutates `rake_dir`; returns the direction to feed `dab_basis`.
-pub(super) fn next_rake_dir(rake: bool, rake_dir: &mut [f32; 2], tangent: [f32; 2]) -> [f32; 2] {
+/// Minimum travel (px) before the **Rake** heading re-aims, regardless of brush size — keeps a small
+/// brush from re-aiming on a single noisy chord.
+const RAKE_BASELINE_MIN_PX: f32 = 10.0;
+
+/// The texture-frame direction for a dab under **Rake**. The raw inter-dab chord is only ~3px (dabs ride
+/// a stabilizer-smoothed spline), so its DIRECTION is noise — easing toward it still random-walks (the
+/// "anarchy" Enio reported 2026-06-24). Instead ACCUMULATE the chords (`accum`) across dabs/segments and
+/// re-aim the carried `dir` only once travel clears a real baseline (~½ diameter), easing toward that
+/// long-baseline heading. `dir`/`accum` persist in `PaintState` across batches. Returns the unit
+/// direction for `dab_basis` (`[0,0]` only before any travel → `dab_basis` falls back to the Angle);
+/// with Rake off the raw tangent passes through (ignored downstream).
+pub(super) fn advance_rake(
+    rake: bool,
+    dir: &mut [f32; 2],
+    accum: &mut [f32; 2],
+    tangent: [f32; 2],
+    diameter_px: f32,
+) -> [f32; 2] {
     if !rake {
         return tangent;
     }
-    let len = (tangent[0] * tangent[0] + tangent[1] * tangent[1]).sqrt();
-    if len >= 1e-4 {
-        let nt = [tangent[0] / len, tangent[1] / len];
-        *rake_dir = if *rake_dir == [0.0, 0.0] {
-            nt // first sample → snap (no lerp from a zero vector)
+    accum[0] += tangent[0];
+    accum[1] += tangent[1];
+    let baseline = (diameter_px * 0.5).max(RAKE_BASELINE_MIN_PX);
+    let alen = (accum[0] * accum[0] + accum[1] * accum[1]).sqrt();
+    if alen >= baseline {
+        let nt = [accum[0] / alen, accum[1] / alen];
+        *dir = if *dir == [0.0, 0.0] {
+            nt // first re-aim → snap (no lerp from a zero heading)
         } else {
             let d = [
-                rake_dir[0] + (nt[0] - rake_dir[0]) * RAKE_LERP,
-                rake_dir[1] + (nt[1] - rake_dir[1]) * RAKE_LERP,
+                dir[0] + (nt[0] - dir[0]) * RAKE_LERP,
+                dir[1] + (nt[1] - dir[1]) * RAKE_LERP,
             ];
             let l = (d[0] * d[0] + d[1] * d[1]).sqrt();
-            if l < 1e-4 { nt } else { [d[0] / l, d[1] / l] } // near-180° flip → snap
+            if l < 1e-4 { nt } else { [d[0] / l, d[1] / l] } // near-180° reversal → snap
         };
+        *accum = [0.0, 0.0];
+        return *dir;
     }
-    // `tangent ≈ 0` (parked / single dab) → keep the carried direction.
-    *rake_dir
+    // Below baseline: hold the established heading. Before the first re-aim, use the partial NET
+    // displacement (already summed, far cleaner than one chord) so the stroke START tracks; only fall
+    // back to the Angle (`[0,0]`) when there is no travel yet.
+    if *dir != [0.0, 0.0] {
+        *dir
+    } else if alen >= 1e-3 {
+        [accum[0] / alen, accum[1] / alen]
+    } else {
+        [0.0, 0.0]
+    }
 }
 
 #[cfg(test)]
 mod rake_tests {
-    use super::next_rake_dir;
+    use super::advance_rake;
 
     #[test]
-    fn next_rake_dir_smooths_and_persists() {
+    fn advance_rake_uses_long_baseline_and_persists() {
         // Rake OFF → the raw tangent passes through, no state kept.
-        let mut d = [0.0, 0.0];
-        assert_eq!(next_rake_dir(false, &mut d, [3.0, 4.0]), [3.0, 4.0]);
-        assert_eq!(d, [0.0, 0.0]);
+        let (mut dir, mut acc) = ([0.0, 0.0], [0.0, 0.0]);
+        assert_eq!(
+            advance_rake(false, &mut dir, &mut acc, [3.0, 4.0], 50.0),
+            [3.0, 4.0]
+        );
+        assert_eq!((dir, acc), ([0.0, 0.0], [0.0, 0.0]));
 
-        // First non-zero tangent snaps to its unit vector (no lerp from zero).
-        let mut d = [0.0, 0.0];
-        let r = next_rake_dir(true, &mut d, [3.0, 4.0]);
-        assert!((r[0] - 0.6).abs() < 1e-5 && (r[1] - 0.8).abs() < 1e-5);
-        assert_eq!(d, r);
-
-        // Parked (≈0 tangent) keeps the carried direction (the single-dab-batch fix).
-        let prev = d;
-        assert_eq!(next_rake_dir(true, &mut d, [0.0, 0.0]), prev);
-        assert_eq!(d, prev);
-
-        // A new direction eases toward it (25%) and stays a unit vector.
-        let mut d = [1.0, 0.0];
-        let r = next_rake_dir(true, &mut d, [0.0, 1.0]);
-        assert!((r[0] * r[0] + r[1] * r[1] - 1.0).abs() < 1e-5, "stays unit");
+        // Below baseline (½·50 = 25): a single +x chord does NOT re-aim the heading, but the partial
+        // net displacement already points +x — so a noisy first chord can't whip the texture around.
+        let (mut dir, mut acc) = ([0.0, 0.0], [0.0, 0.0]);
+        let r = advance_rake(true, &mut dir, &mut acc, [3.0, 0.0], 50.0);
+        assert_eq!(dir, [0.0, 0.0], "not re-aimed below baseline");
         assert!(
-            r[0] > r[1] && r[1] > 0.0,
-            "eased toward +y but mostly still +x"
+            (r[0] - 1.0).abs() < 1e-5 && r[1].abs() < 1e-5,
+            "partial tracks +x"
+        );
+
+        // Accumulate +x past the baseline → the heading re-aims to +x.
+        for _ in 0..12 {
+            advance_rake(true, &mut dir, &mut acc, [3.0, 0.0], 50.0);
+        }
+        assert!(
+            (dir[0] - 1.0).abs() < 1e-5 && dir[1].abs() < 1e-5,
+            "heading re-aimed to +x"
+        );
+
+        // Parked (≈0 tangent) keeps the established heading (no fallback to the Angle).
+        let prev = dir;
+        assert_eq!(
+            advance_rake(true, &mut dir, &mut acc, [0.0, 0.0], 50.0),
+            prev
         );
     }
 }

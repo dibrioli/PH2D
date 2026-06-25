@@ -87,6 +87,18 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_INTERP: NodeId =
 pub const PAINTER_BRUSH_TEXTURE_RAMP_EDIT: NodeId = hash_node_id("painter_brush.texture_ramp_edit");
 /// Ramp **add stop** button. `Click` → `ramp_add_stop`.
 pub const PAINTER_BRUSH_TEXTURE_RAMP_ADD: NodeId = hash_node_id("painter_brush.texture_ramp_add");
+/// Ramp **invert** button (flip stop positions L↔R). `Click` → `ramp_invert`.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_INVERT: NodeId =
+    hash_node_id("painter_brush.texture_ramp_invert");
+
+/// The Grain-ramp **Click** buttons (enable / add / remove / invert) — forwarded as `PanelEvent::Click`
+/// by the panel's `event.rs` (a single membership check).
+pub const PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS: [NodeId; 4] = [
+    PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+    PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+    PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+    PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+];
 /// Ramp **remove stop** button (removes the selected stop). `Click` → `ramp_remove_stop`.
 pub const PAINTER_BRUSH_TEXTURE_RAMP_REMOVE: NodeId =
     hash_node_id("painter_brush.texture_ramp_remove");
@@ -101,6 +113,14 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX: NodeId =
 /// `ValueChanged` → `ramp_move_stop` (by the selected stop's stable id).
 pub const PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS: NodeId =
     hash_node_id("painter_brush.texture_ramp_stop_pos");
+
+/// The Grain-ramp **ValueChanged** ids (bar-stop drag + index / position chips) — routed to
+/// `ramp_picker` by the panel's `event.rs` (a single membership check).
+pub const PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS: [NodeId; 3] = [
+    PAINTER_BRUSH_TEXTURE_RAMP_EDIT,
+    PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX,
+    PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS,
+];
 
 /// Stable [`NodeId`] for ramp stop `i`'s **draggable position handle** on the bar (a `CurvePoint`
 /// under [`PAINTER_BRUSH_TEXTURE_RAMP_EDIT`]; distinct from its swatch button id).

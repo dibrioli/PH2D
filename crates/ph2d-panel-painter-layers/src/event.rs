@@ -21,9 +21,11 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 /// Dropdown option-id decoders (split out to keep this file under the LOC cap).
 mod decode;
 mod ramp_picker;
+mod shape_ramp_picker;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
-    decode_shape_kind_option, decode_stroke_method_option, decode_texture_kind_option,
+    decode_shape_kind_option, decode_shape_ramp_interp_option, decode_stroke_method_option,
+    decode_texture_kind_option,
     decode_texture_mapping_option, decode_texture_ramp_alpha_option,
     decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
@@ -433,9 +435,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_SHAPE_RAKE
                 || id == core_ids::PAINTER_SHAPE_RANDOM
                 || id == core_ids::PAINTER_SHAPE_RESET
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE
+                || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
+                || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id) =>
         {
@@ -465,7 +466,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // an option-id decoder with the chip it targets; the first decoder that matches `id` wins (the
         // id spaces are disjoint, so order is irrelevant). Add a dropdown ⇒ add one row.
         WidgetEvent::Click(id) => {
-            let routes: [OptionRoute; 10] = [
+            let routes: [OptionRoute; 11] = [
                 (decode_brush_blend_option, core_ids::PAINTER_BRUSH_BLEND),
                 (decode_brush_falloff_option, core_ids::PAINTER_BRUSH_FALLOFF),
                 (decode_stroke_method_option, core_ids::PAINTER_BRUSH_STROKE_METHOD),
@@ -475,6 +476,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 (decode_texture_mapping_option, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
                 (decode_texture_ramp_mode_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE),
                 (decode_texture_ramp_interp_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP),
+                (decode_shape_ramp_interp_option, core_ids::PAINTER_SHAPE_RAMP_INTERP),
                 (
                     decode_texture_ramp_alpha_option,
                     core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
@@ -500,13 +502,14 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             }
             Some(true)
         }
-        // Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
-        WidgetEvent::ValueChanged(id)
-            if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_EDIT
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_INDEX
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_STOP_POS =>
-        {
+        // Grain Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
+        WidgetEvent::ValueChanged(id) if core_ids::PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS.contains(&id) => {
             ramp_picker::on_ramp_value_changed(host, id);
+            Some(true)
+        }
+        // Shape Tone ramp: bar-stop drag + the editable index / position / value chips.
+        WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
+            shape_ramp_picker::on_shape_ramp_value_changed(host, id);
             Some(true)
         }
         // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.

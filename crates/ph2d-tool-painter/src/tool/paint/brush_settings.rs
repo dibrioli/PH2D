@@ -181,6 +181,17 @@ pub struct BrushSettings {
     pub texture_ramp_stop_count: u8,
     /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
     pub texture_ramp_alpha_mode: u8,
+
+    // ── Shape value ramp (B&W tonal remap of the silhouette; orthogonal to the Grain colour ramp) ──
+    /// Whether the Shape value ramp is on.
+    pub shape_ramp_enabled: bool,
+    /// Shape ramp interpolation mode (`RampInterp::to_u8`).
+    pub shape_ramp_interp: u8,
+    /// Shape ramp stops `(pos, value, id)` (grayscale), first [`Self::shape_ramp_stop_count`] valid, sorted by pos.
+    pub shape_ramp_stops: [[f32; 3]; PANEL_RAMP_STOPS],
+    /// Count of valid entries in [`Self::shape_ramp_stops`].
+    pub shape_ramp_stop_count: u8,
+
     /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,
     pub color_jitter: [f32; 3],
@@ -206,7 +217,7 @@ pub fn brush_falloff_weight_at(s: &BrushSettings, t: f32) -> f32 {
 
 /// Map a radius in pixels onto the size slider's `0..1` track (inverse of [`size_norm_to_px`]).
 /// Squared track → finer control at small sizes.
-fn size_px_to_norm(px: f32) -> f32 {
+pub(super) fn size_px_to_norm(px: f32) -> f32 {
     let span = BRUSH_SIZE_MAX_PX - BRUSH_SIZE_MIN_PX;
     ((px - BRUSH_SIZE_MIN_PX) / span).clamp(0.0, 1.0).sqrt()
 }
@@ -225,87 +236,6 @@ fn count_from_norm(t: f32) -> u32 {
 }
 
 impl PainterTool {
-    /// Snapshot the active brush for the panel's Brush section.
-    #[must_use]
-    pub fn brush_settings(&self) -> BrushSettings {
-        let b = &self.paint.brush;
-        // Snapshot the Custom curve's control points into the Copy array (panel plots + places handles).
-        let mut falloff_points = [FalloffPoint::default(); MAX_FALLOFF_POINTS];
-        let pts = b.custom_falloff.points();
-        falloff_points[..pts.len()].copy_from_slice(pts);
-        // Snapshot the texture Color Ramp's stops into the Copy array (panel plots the bar + handles).
-        let ramp = self.texture_ramp();
-        let mut texture_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
-        let ramp_count = ramp.stops().len().min(PANEL_RAMP_STOPS);
-        // Stops are stored LINEAR; the panel paints in display sRGB, so convert here (alpha straight).
-        // The 6th slot carries the stable stop id (so the panel keys handles by identity).
-        let srgb = |x: f32| f32::from(ph2d_color::srgb::linear_to_srgb_byte(x)) / 255.0;
-        for (slot, s) in texture_ramp_stops.iter_mut().zip(ramp.stops()) {
-            *slot = [
-                s.pos,
-                srgb(s.color[0]),
-                srgb(s.color[1]),
-                srgb(s.color[2]),
-                s.color[3],
-                f32::from(s.id),
-            ];
-        }
-        BrushSettings {
-            size_px: b.radius_px,
-            size_norm: size_px_to_norm(b.radius_px),
-            strength: b.strength,
-            falloff: b.falloff.to_u8(),
-            falloff_points,
-            falloff_len: b.custom_falloff.len() as u8,
-            color: b.color,
-            blend: b.blend.to_u8(),
-            eraser: self.paint.eraser,
-            tiling: self.paint.tiling,
-            repeat_image: self.paint.repeat_image,
-            stroke_method: b.stroke_method.to_u8(),
-            spacing: b.spacing,
-            space_attenuation: b.space_attenuation,
-            accumulate: b.accumulate,
-            jitter: b.jitter,
-            jitter_absolute_px: b.jitter_absolute_px,
-            jitter_unit: b.jitter_unit.to_u8(),
-            dash_ratio: b.dash_ratio,
-            dash_samples: b.dash_samples,
-            input_samples: b.input_samples,
-            stabilizer: b.stabilizer,
-            airbrush_rate_s: b.airbrush_rate_s,
-            edge_to_edge: b.edge_to_edge,
-            texture_kind: b.texture.kind.to_u8(),
-            texture_mapping: b.texture.mapping.to_u8(),
-            texture_angle_deg: b.texture.angle_deg,
-            texture_rake: b.texture.rake,
-            texture_random: b.texture.random_angle,
-            texture_offset: b.texture.offset,
-            texture_size: b.texture.size,
-            texture_params: b.texture.params,
-            grain_depth: b.grain_depth,
-            shape_kind: b.shape.kind.to_u8(),
-            shape_has_image: self.paint.shape_image.is_some(),
-            shape_angle_deg: b.shape.angle_deg,
-            shape_rake: b.shape.rake,
-            shape_random: b.shape.random_angle,
-            shape_offset: b.shape.offset,
-            shape_size: b.shape.size,
-            shape_params: b.shape.params,
-            texture_ramp_enabled: self.paint.texture_ramp_enabled,
-            texture_ramp_mode: ramp.color_mode.to_u8(),
-            texture_ramp_interp: ramp.interp.to_u8(),
-            texture_ramp_stops,
-            texture_ramp_stop_count: ramp_count as u8,
-            texture_ramp_alpha_mode: self.paint.texture_ramp_alpha_mode.to_u8(),
-            color_jitter_enabled: b.color_jitter_enabled,
-            color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
-            jitter_scale: b.jitter_scale,
-            jitter_rotate: b.jitter_rotate,
-            jitter_spacing: b.jitter_spacing,
-        }
-    }
-
     /// Set the brush distance-falloff preset from a wire discriminant (out-of-range → Smooth). `9` =
     /// the editable `Custom` curve ([`Self::set_brush_falloff_point`]).
     pub fn set_brush_falloff(&mut self, preset: u8) {

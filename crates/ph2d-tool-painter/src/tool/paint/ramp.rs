@@ -5,6 +5,36 @@
 use crate::tool::PainterTool;
 use ph2d_color::{RampColorMode, RampInterp, RampStop};
 
+/// Midpoint of the **largest gap** between sorted stop `positions` (incl. the `0` / `1` edges) — where
+/// a new stop is added so it spreads out without a position control. Shared by the Color + Value ramps.
+pub(super) fn largest_gap_midpoint(positions: impl Iterator<Item = f32>, len: usize) -> f32 {
+    let stops: Vec<f32> = positions.collect();
+    match len {
+        0 => 0.5,
+        1 => {
+            if stops[0] < 0.5 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+        _ => {
+            let mut best = (0.0f32, -1.0f32); // (midpoint, gap)
+            let mut prev = 0.0;
+            for &p in &stops {
+                if p - prev > best.1 {
+                    best = ((prev + p) * 0.5, p - prev);
+                }
+                prev = p;
+            }
+            if 1.0 - prev > best.1 {
+                best.0 = (prev + 1.0) * 0.5;
+            }
+            best.0
+        }
+    }
+}
+
 impl PainterTool {
     /// Set the ramp colour-interpolation space (`RampColorMode` wire discriminant).
     pub fn set_texture_ramp_mode(&mut self, m: u8) {
@@ -68,32 +98,10 @@ impl PainterTool {
     /// current ramp there (so it sits on the gradient + spreads out without a position control yet);
     /// returns its index.
     pub fn ramp_add_stop(&mut self) -> usize {
-        let stops = self.paint.texture_ramp.stops();
-        let pos = match stops.len() {
-            0 => 0.5,
-            1 => {
-                if stops[0].pos < 0.5 {
-                    1.0
-                } else {
-                    0.0
-                }
-            }
-            _ => {
-                // Largest gap between consecutive stops (and the edges to 0 / 1).
-                let mut best = (0.0f32, -1.0f32); // (midpoint, gap)
-                let mut prev = 0.0;
-                for s in stops {
-                    if s.pos - prev > best.1 {
-                        best = ((prev + s.pos) * 0.5, s.pos - prev);
-                    }
-                    prev = s.pos;
-                }
-                if 1.0 - prev > best.1 {
-                    best.0 = (prev + 1.0) * 0.5;
-                }
-                best.0
-            }
-        };
+        let pos = largest_gap_midpoint(
+            self.paint.texture_ramp.stops().iter().map(|s| s.pos),
+            self.paint.texture_ramp.len(),
+        );
         let color = self.paint.texture_ramp.eval(pos);
         let i = self.paint.texture_ramp.add_stop(RampStop::new(pos, color));
         self.paint.texture_ramp_dirty = true;

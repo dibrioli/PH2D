@@ -89,6 +89,13 @@ thread_local! {
     /// The open Color Ramp **Alpha action** dropdown popover: `(chip_rect, current_mode_u8)`.
     static PENDING_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open **Shape** ramp Interpolation dropdown popover: `(chip_rect, current_interp_u8)`.
+    static PENDING_SHAPE_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
+    /// Selected **Shape**-ramp stop (stable id), so the bottom-row chips edit it (separate from the
+    /// Grain ramp's selection).
+    static SELECTED_SHAPE_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
+
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
     /// (the tool folds it in via `selection()`); a single-element set means just
@@ -235,6 +242,26 @@ pub fn set_selected_ramp_stop(i: u8) {
 /// The Color Ramp's selected stop index (default `0`).
 pub(crate) fn selected_ramp_stop() -> u8 {
     SELECTED_RAMP_STOP.with(|c| c.get())
+}
+
+/// Set the selected **Shape**-ramp stop (stable id).
+pub fn set_selected_shape_ramp_stop(i: u8) {
+    SELECTED_SHAPE_RAMP_STOP.with(|c| c.set(i));
+}
+
+/// The selected **Shape**-ramp stop (stable id).
+pub(crate) fn selected_shape_ramp_stop() -> u8 {
+    SELECTED_SHAPE_RAMP_STOP.with(|c| c.get())
+}
+
+/// Stash the open Shape-ramp Interpolation dropdown for the deferred popover pass.
+pub(crate) fn set_pending_shape_ramp_interp_dd(v: Option<(Rect, u8)>) {
+    PENDING_SHAPE_RAMP_INTERP_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Shape-ramp Interpolation dropdown.
+pub(crate) fn take_pending_shape_ramp_interp_dd() -> Option<(Rect, u8)> {
+    PENDING_SHAPE_RAMP_INTERP_DD.with(|c| c.take())
 }
 
 /// The selected brush Custom-falloff point's stable id, if any. `pub` so the

@@ -62,7 +62,7 @@ pub(crate) fn paint_texture_ramp_section(
         x,
         content_w,
         y,
-        "Color Ramp",
+        "Grain Colors",
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET,
@@ -100,6 +100,7 @@ pub(crate) fn paint_texture_ramp_section(
     for (label, id) in [
         ("+", core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD),
         ("−", core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE),
+        ("I", core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT),
     ] {
         let r = Rect::new(cx, y, ROW_H_PX, ROW_H_PX);
         fill_rounded_rect(
@@ -300,7 +301,7 @@ fn paint_ramp_bottom(
 /// (`register_if_absent`, so live typing isn't clobbered), mirror `value`/`text` into it while it
 /// isn't focused, then render the in-progress buffer + caret. The global dispatch handles focus +
 /// keys + commit; the panel's `apply_event` reacts to the `ValueChanged`.
-fn paint_ramp_chip(
+pub(crate) fn paint_ramp_chip(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     rect: Rect,

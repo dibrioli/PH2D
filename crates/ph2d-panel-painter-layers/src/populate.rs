@@ -183,11 +183,18 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,
         ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
-        // Color Ramp: enable toggle + add / remove stop + colour-box buttons.
+        // Grain Colors ramp: enable toggle + add / remove / invert stop + colour-box buttons.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+        // Shape Tone value ramp: enable + add / remove / invert + section reset.
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ENABLE,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ADD,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_REMOVE,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INVERT,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
         // Per-section reset icon buttons (Inspector-Transform pattern).
         ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,
@@ -218,6 +225,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+        // Shape Tone ramp: Interpolation chip.
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INTERP,
     ] {
         store.register(
             id,
@@ -260,6 +269,10 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
             core_ids::PAINTER_BRUSH_TILING_SECTION,
             core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
         ),
+        (
+            core_ids::PAINTER_SHAPE_RAMP_SECTION,
+            core_ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
+        ),
     ] {
         store.mark_collapsible_section(section);
         store.register_picker_swatch(color);
@@ -268,6 +281,7 @@ fn register_collapsible_sections(store: &mut WidgetStore) {
         core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         core_ids::PAINTER_BRUSH_TILING_SECTION,
+        core_ids::PAINTER_SHAPE_RAMP_SECTION,
     ] {
         store.set_collapsed(collapsed, true);
     }

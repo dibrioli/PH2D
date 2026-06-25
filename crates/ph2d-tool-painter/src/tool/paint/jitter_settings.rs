@@ -139,6 +139,52 @@ impl PainterTool {
                 }
                 true
             }
+            // ── Grain-ramp invert + Shape Tone value ramp (Click + SelectOption) — routed here (not the
+            //    main match) to keep `trait_impls.rs` under the workspace LOC cap. ─
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT => {
+                self.ramp_invert();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_ENABLE => {
+                self.toggle_shape_ramp_enabled();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_ADD => {
+                self.shape_ramp_add_stop();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_REMOVE => {
+                self.shape_ramp_remove_last_stop();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_INVERT => {
+                self.shape_ramp_invert();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_RESET => {
+                self.reset_shape_ramp();
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_INTERP => {
+                if let Ok(i) = value.parse::<u8>() {
+                    self.set_shape_ramp_interp(i);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_EDIT => {
+                if let Some((sid, x)) = parse_id_f32(value) {
+                    self.shape_ramp_move_stop(sid, x);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value)
+                if *id == core_ids::PAINTER_SHAPE_RAMP_STOP_VALUE =>
+            {
+                if let Some((sid, v)) = parse_id_f32(value) {
+                    self.shape_ramp_set_stop_value(sid, v);
+                }
+                true
+            }
             _ => false,
         }
     }
@@ -225,5 +271,14 @@ impl PainterTool {
         b.stabilizer = d.stabilizer;
         b.airbrush_rate_s = d.airbrush_rate_s;
         b.edge_to_edge = d.edge_to_edge;
+    }
+}
+
+/// Parse a `"id:value"` ramp-edit payload (stable stop id + an `f32`).
+fn parse_id_f32(s: &str) -> Option<(u8, f32)> {
+    let mut it = s.split(':');
+    match (it.next()?.parse::<u8>(), it.next()?.parse::<f32>()) {
+        (Ok(id), Ok(v)) => Some((id, v)),
+        _ => None,
     }
 }

@@ -485,6 +485,37 @@ fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
 }
 
 #[test]
+fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+    // A full-white Shape image ⇒ silhouette value 1 at the centre ⇒ paints (black on white).
+    let mut t = white_canvas(64, 12.0);
+    t.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    let _ = t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    assert_eq!(px(&t, 64, 32, 32)[0], 0, "white tip paints (ramp off)");
+
+    // Enable the Shape value ramp (identity black→white) ⇒ remap(1)=1 ⇒ still paints.
+    let mut t2 = white_canvas(64, 12.0);
+    t2.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    t2.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
+    let _ = t2.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    assert_eq!(px(&t2, 64, 32, 32)[0], 0, "identity ramp still paints");
+
+    // INVERT the ramp (now white→black) ⇒ the value-1 tip maps to 0 ⇒ paints NOTHING.
+    let mut t3 = white_canvas(64, 12.0);
+    t3.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
+    t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_INVERT));
+    let _ = t3.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    assert_eq!(
+        px(&t3, 64, 32, 32),
+        [255, 255, 255, 255],
+        "the inverted value ramp zeroes the white tip"
+    );
+}
+
+#[test]
 fn shape_image_paints_the_silhouette_end_to_end() {
     // A full-white 4×4 Shape image makes the dab a SQUARE silhouette: a footprint corner that the round
     // falloff disc would leave blank gets painted. Proves the tool routes the Shape slot end-to-end

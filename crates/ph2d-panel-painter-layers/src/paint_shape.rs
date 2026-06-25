@@ -14,9 +14,9 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
-    TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
-    render_shape_preview,
+    BrushSettings, Falloff, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
+    brush_falloff_weight_at, param_specs, render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -278,6 +278,8 @@ fn paint_shape_preview(
         *w = brush_falloff_weight_at(&brush, i as f32 / 63.0).clamp(0.0, 1.0); // LITERAL-PX-OK: LUT last-index normalize (64 entries)
     }
     let kind = TextureKind::from_u8(brush.shape_kind);
+    // Shape value-ramp LUT (B&W tonal remap), baked from the live ramp so the preview tracks it.
+    let ramp_lut = shape_ramp_lut(&brush);
     let image = state::current_brush_shape_image();
     let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
         lum: lum.as_slice(),
@@ -292,7 +294,7 @@ fn paint_shape_preview(
         brush.shape_size,
         brush.shape_params,
         &lut,
-        None, // Shape value-ramp preview: wired with the Shape-ramp section (panel-baked LUT)
+        ramp_lut.as_deref(),
         image_mask.as_ref(),
         &mut cov,
         side,
@@ -339,6 +341,24 @@ fn paint_shape_preview(
         resolve(ColorToken::Border, theme),
     );
     y + ph + Spacing::Sm.px()
+}
+
+/// Bake the live Shape **value ramp** into a 64-entry LUT (`None` when the ramp is off) by rebuilding
+/// the `ValueRamp` from the published stops + interp — so the preview applies the SAME tonal remap the
+/// engine paints with.
+fn shape_ramp_lut(brush: &BrushSettings) -> Option<Vec<f32>> {
+    if !brush.shape_ramp_enabled {
+        return None;
+    }
+    let count = (brush.shape_ramp_stop_count as usize).min(brush.shape_ramp_stops.len());
+    let stops: Vec<ValueStop> = brush.shape_ramp_stops[..count]
+        .iter()
+        .map(|s| ValueStop::new(s[0], s[1]))
+        .collect();
+    let ramp = ValueRamp::new(stops, RampInterp::from_u8(brush.shape_ramp_interp));
+    let mut lut = vec![0.0f32; 64];
+    ramp.bake_into(&mut lut);
+    Some(lut)
 }
 
 /// Map a stored Shape offset (`[TEX_OFFSET_MIN, TEX_OFFSET_MAX]`) onto the slider's `0..1` track.

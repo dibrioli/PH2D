@@ -61,6 +61,67 @@ pub const PAINTER_SHAPE_SLIDERS: [NodeId; 6] = [
     PAINTER_SHAPE_SIZE_Y,
 ];
 
+// ── Shape **value ramp** (B&W tonal remap of the silhouette; "Shape Tone" section) ──────────────
+/// Collapsible **Shape Tone** section header. `mark_collapsible_section`-registered in `crate::populate`.
+pub const PAINTER_SHAPE_RAMP_SECTION: NodeId = hash_node_id("painter_brush.shape_ramp_section");
+/// The Shape Tone header's colour dot (picker swatch).
+pub const PAINTER_SHAPE_RAMP_SECTION_COLOR: NodeId =
+    hash_node_id("painter_brush.shape_ramp_section_color");
+/// Shape Tone section **reset** — ramp off + identity gradient. `Click` → `reset_shape_ramp`.
+pub const PAINTER_SHAPE_RAMP_RESET: NodeId = hash_node_id("painter_brush.shape_ramp_reset");
+/// "Use Shape Tone" enable toggle. `Click` → `toggle_shape_ramp_enabled`.
+pub const PAINTER_SHAPE_RAMP_ENABLE: NodeId = hash_node_id("painter_brush.shape_ramp_enable");
+/// Shape ramp **interpolation** dropdown. `SelectOption` → `set_shape_ramp_interp`.
+pub const PAINTER_SHAPE_RAMP_INTERP: NodeId = hash_node_id("painter_brush.shape_ramp_interp");
+/// The grayscale **bar** — the `CurvePoint` parent the draggable stop handles report against.
+pub const PAINTER_SHAPE_RAMP_EDIT: NodeId = hash_node_id("painter_brush.shape_ramp_edit");
+/// "+" add a stop. `Click` → `shape_ramp_add_stop`.
+pub const PAINTER_SHAPE_RAMP_ADD: NodeId = hash_node_id("painter_brush.shape_ramp_add");
+/// "−" remove the last stop. `Click` → `shape_ramp_remove_last_stop`.
+pub const PAINTER_SHAPE_RAMP_REMOVE: NodeId = hash_node_id("painter_brush.shape_ramp_remove");
+/// **Invert** button (flip stop positions L↔R). `Click` → `shape_ramp_invert`.
+pub const PAINTER_SHAPE_RAMP_INVERT: NodeId = hash_node_id("painter_brush.shape_ramp_invert");
+/// Selected-stop **index** chip (`NumberInput`).
+pub const PAINTER_SHAPE_RAMP_STOP_INDEX: NodeId =
+    hash_node_id("painter_brush.shape_ramp_stop_index");
+/// Selected-stop **position** chip (`NumberInput`, `0..1`). `SelectOption` → `shape_ramp_move_stop`.
+pub const PAINTER_SHAPE_RAMP_STOP_POS: NodeId = hash_node_id("painter_brush.shape_ramp_stop_pos");
+/// Selected-stop **value** chip (`NumberInput`, `0..1` grayscale). `SelectOption` → `shape_ramp_set_stop_value`.
+pub const PAINTER_SHAPE_RAMP_STOP_VALUE: NodeId =
+    hash_node_id("painter_brush.shape_ramp_stop_value");
+
+/// The Shape-ramp **Click** buttons (enable / add / remove / invert / reset) — forwarded as a
+/// `PanelEvent::Click` by the panel's `event.rs` (a single membership check).
+pub const PAINTER_SHAPE_RAMP_BUTTONS: [NodeId; 5] = [
+    PAINTER_SHAPE_RAMP_ENABLE,
+    PAINTER_SHAPE_RAMP_ADD,
+    PAINTER_SHAPE_RAMP_REMOVE,
+    PAINTER_SHAPE_RAMP_INVERT,
+    PAINTER_SHAPE_RAMP_RESET,
+];
+
+/// The Shape-ramp **ValueChanged** ids (bar-stop drag + index / position / value chips) — routed to
+/// `shape_ramp_picker` by the panel's `event.rs` (a single membership check).
+pub const PAINTER_SHAPE_RAMP_VALUE_IDS: [NodeId; 4] = [
+    PAINTER_SHAPE_RAMP_EDIT,
+    PAINTER_SHAPE_RAMP_STOP_INDEX,
+    PAINTER_SHAPE_RAMP_STOP_POS,
+    PAINTER_SHAPE_RAMP_STOP_VALUE,
+];
+
+/// Stable [`NodeId`] for the draggable handle of Shape-ramp stop `i` (the open bar's stops are
+/// hit-registered, so the `format!` is bounded).
+#[must_use]
+pub fn painter_shape_ramp_handle_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shaperamphandle.{i}"))
+}
+
+/// Stable [`NodeId`] for Shape-ramp interpolation option `i` in the open dropdown popover.
+#[must_use]
+pub fn painter_shape_ramp_interp_option_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shaperampinterpopt.{i}"))
+}
+
 /// Per-pattern parameter sliders for a **procedural** Shape (Contrast / Brightness + the kind's shape
 /// knob), indexed by [`ph2d_painter_brush::TextureSettings::params`] slot — the Grain's
 /// [`PAINTER_BRUSH_TEXTURE_PARAMS`](super::PAINTER_BRUSH_TEXTURE_PARAMS) twin, so the Shape gets every

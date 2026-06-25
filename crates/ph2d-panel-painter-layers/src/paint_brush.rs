@@ -117,6 +117,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_ramp_stops: [[0.0; 6]; ph2d_tool_painter::PANEL_RAMP_STOPS],
     texture_ramp_stop_count: 0,
     texture_ramp_alpha_mode: 0,
+    shape_ramp_enabled: false,
+    shape_ramp_interp: 2,
+    shape_ramp_stops: [[0.0; 3]; ph2d_tool_painter::PANEL_RAMP_STOPS],
+    shape_ramp_stop_count: 0,
     color_jitter_enabled: false,
     color_jitter: [0.0, 0.0, 0.0],
     jitter_scale: 0.0,
@@ -211,6 +215,10 @@ pub(crate) fn paint_brush_body(
     //    (replaced by the image + its preview). Sits ABOVE Grain (Enio 2026-06-25). ──
     y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
+    // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
+    //    below the Shape section (Enio 2026-06-25). ──
+    y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
+
     // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
@@ -273,6 +281,8 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     crate::paint_stroke::paint_stroke_popovers(ctx, theme);
     // Texture-section dropdowns (Kind picker + Mapping).
     crate::paint_texture::paint_texture_popovers(ctx, theme);
+    // Shape Tone ramp Interpolation dropdown.
+    crate::paint_shape_ramp::paint_shape_ramp_popovers(ctx, theme);
 }
 
 /// Args for [`paint_param_row`] (grouped to dodge the too-many-arguments lint).

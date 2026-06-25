@@ -43,6 +43,11 @@ pub(super) fn decode_shape_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| core_ids::painter_shape_kind_option_id(k) == id)
 }
 
+/// Decode a Shape-ramp Interpolation popover option id → its `RampInterp` wire `u8`.
+pub(super) fn decode_shape_ramp_interp_option(id: NodeId) -> Option<u8> {
+    (0..RampInterp::COUNT).find(|&i| core_ids::painter_shape_ramp_interp_option_id(i) == id)
+}
+
 /// Decode a texture-Mapping popover option id → its `TextureMapping` wire `u8` (`0..=2`).
 pub(super) fn decode_texture_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT).find(|&m| core_ids::painter_brush_texture_mapping_option_id(m) == id)

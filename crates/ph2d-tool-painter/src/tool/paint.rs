@@ -38,6 +38,8 @@ pub use polygon::PolygonOverlay;
 mod stencil;
 pub use stencil::StencilOverlay;
 mod ramp;
+mod shape_ramp;
+mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
 mod stamp_cache;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.

@@ -36,6 +36,7 @@ mod paint_brush_top;
 mod paint_falloff;
 mod paint_rows;
 mod paint_shape;
+mod paint_shape_ramp;
 mod paint_stroke;
 mod paint_texture;
 mod paint_texture_ramp;

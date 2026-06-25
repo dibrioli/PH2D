@@ -62,7 +62,13 @@ pub fn render_stamp_mask(
             let u = (i as f32 + 0.5) * inv - 1.0;
             let mut w = match &shape_basis {
                 Some(sb) => {
-                    let sv = crate::texture::sample_shape_unit(&spec.shape, sb, u, v, shape_image);
+                    let sv = crate::texture::sample_shape_silhouette_unit(
+                        &spec.shape,
+                        sb,
+                        u,
+                        v,
+                        shape_image,
+                    );
                     let t = (u * u + v * v).sqrt();
                     spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
                 }
@@ -349,7 +355,7 @@ fn canvas_blit_band(
             // per-pixel path, so the cached Tiled/Stencil Grain stays bit-identical with a Shape on top.
             let mut w = match &ctx.shape_basis {
                 Some(sb) => {
-                    let sv = crate::texture::sample_shape(
+                    let sv = crate::texture::sample_shape_silhouette(
                         &ctx.spec.shape,
                         sb,
                         px,

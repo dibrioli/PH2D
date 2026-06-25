@@ -425,7 +425,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             // (`falloff × pattern`, Enio 2026-06-25). No Shape ⇒ the bare procedural falloff (default,
             // byte-identical to before). See `docs/Painter/05_design_dois_slots_textura.md` §2.
             let mut w = if let Some(sh) = ctx.shape {
-                let sv = crate::texture::sample_shape(
+                let sv = crate::texture::sample_shape_silhouette(
                     &ctx.spec.shape,
                     sh.basis,
                     px,

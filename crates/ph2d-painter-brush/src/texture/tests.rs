@@ -533,6 +533,35 @@ fn image_texture_modulates_the_dab() {
 }
 
 #[test]
+fn procedural_shape_silhouette_samples_like_the_grain() {
+    // A procedural Shape reads the pattern the GRAIN way (mapped across the whole dab), NOT a `[-1,1]²`
+    // clipped tip — so Size/Offset/Angle transform only the pattern (the falloff is the boundary). Its
+    // raw silhouette value must therefore equal the Grain sampler everywhere, including OUTSIDE the tip.
+    let s = TextureSettings {
+        kind: TextureKind::Checker,
+        ..Default::default()
+    };
+    let b = TexDabBasis::identity();
+    for &(px, py) in &[(3, 3), (100, 7), (50, 50), (-40, 12)] {
+        assert_eq!(
+            sample_shape_silhouette(&s, &b, px, py, [0.0, 0.0], 8.0, None),
+            sample(&s, &b, px, py, [0.0, 0.0], 8.0, None),
+            "procedural Shape ({px},{py}) must sample like the Grain, not a clipped tip"
+        );
+    }
+    // The Image tip, by contrast, IS the finite clipped silhouette (inert outside its bound).
+    let img = TextureSettings {
+        kind: TextureKind::Image,
+        ..Default::default()
+    };
+    assert_eq!(
+        sample_shape_silhouette(&img, &b, 100, 7, [0.0, 0.0], 8.0, None),
+        0.0,
+        "an Image tip with no pixels is inert outside its bound (clipped, not grain-mapped)"
+    );
+}
+
+#[test]
 fn render_shape_preview_masks_procedural_with_falloff() {
     // The live Shape preview composes `falloff × pattern` for a procedural kind, so a falloff that
     // fades to the rim deposits LESS total coverage than a flat (all-1) falloff — and the square's

@@ -433,6 +433,14 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
         !t.brush_settings().shape_has_image,
         "a procedural Shape never holds pixels"
     );
+
+    // The procedural Shape exposes the kind's per-pattern params (like the Grain): a SetValue on a
+    // PAINTER_SHAPE_PARAMS slider tunes only the Shape pattern.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_PARAMS[0], 0.9));
+    assert!(
+        (t.brush_settings().shape_params[0] - 0.9).abs() < 1e-6,
+        "Shape per-pattern param routed to the Shape slot"
+    );
 }
 
 #[test]

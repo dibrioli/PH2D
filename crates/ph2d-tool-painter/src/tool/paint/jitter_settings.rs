@@ -119,6 +119,14 @@ impl PainterTool {
                         self.set_brush_shape_size_norm(1, v);
                         true
                     }
+                    x if core_ids::PAINTER_SHAPE_PARAMS.contains(&x) => {
+                        if let Some(slot) =
+                            core_ids::PAINTER_SHAPE_PARAMS.iter().position(|&p| p == x)
+                        {
+                            self.set_brush_shape_param_norm(slot, v);
+                        }
+                        true
+                    }
                     _ => false,
                 }
             }

@@ -60,3 +60,16 @@ pub const PAINTER_SHAPE_SLIDERS: [NodeId; 6] = [
     PAINTER_SHAPE_SIZE_X,
     PAINTER_SHAPE_SIZE_Y,
 ];
+
+/// Per-pattern parameter sliders for a **procedural** Shape (Contrast / Brightness + the kind's shape
+/// knob), indexed by [`ph2d_painter_brush::TextureSettings::params`] slot — the Grain's
+/// [`PAINTER_BRUSH_TEXTURE_PARAMS`](super::PAINTER_BRUSH_TEXTURE_PARAMS) twin, so the Shape gets every
+/// characteristic param. `SetValue` → `set_brush_shape_param_norm`.
+pub const PAINTER_SHAPE_PARAMS: [NodeId; 6] = [
+    hash_node_id("painter_brush.shape_param_0"),
+    hash_node_id("painter_brush.shape_param_1"),
+    hash_node_id("painter_brush.shape_param_2"),
+    hash_node_id("painter_brush.shape_param_3"),
+    hash_node_id("painter_brush.shape_param_4"),
+    hash_node_id("painter_brush.shape_param_5"),
+];

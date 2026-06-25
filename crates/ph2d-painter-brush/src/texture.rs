@@ -13,7 +13,8 @@
 pub(crate) mod patterns;
 mod shape;
 pub use shape::{
-    compose_shape_silhouette_kind, render_shape_preview, sample_shape, sample_shape_unit,
+    compose_shape_silhouette_kind, render_shape_preview, sample_shape_silhouette,
+    sample_shape_silhouette_unit,
 };
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
@@ -214,9 +215,8 @@ pub enum TextureMapping {
     Tiled,
     /// Like [`Self::ViewPlane`] but with a random per-dab offset.
     Random,
-    /// A positioned/rotated/scaled rectangular **stencil** you paint *through*: the texture fills the
-    /// rect once and masks outside it. 2D-adapted to **image space** (fixed to the canvas, not the
-    /// screen), driven by Offset (centre) / Size (extent) / Angle (rotation). See [`dab_basis`].
+    /// A positioned/rotated/scaled rectangular **stencil** you paint *through*: the texture fills the rect
+    /// once and masks outside it. 2D-adapted to image space, driven by Offset/Size/Angle. See [`dab_basis`].
     Stencil,
 }
 

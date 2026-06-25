@@ -85,11 +85,9 @@ pub struct BrushSettings {
     pub size_norm: f32,
     /// Overall opacity, `0..1` (UI "Strength").
     pub strength: f32,
-    /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — the dab profile (replaces a
-    /// Hardness slider). [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
+    /// Distance-falloff preset ([`Falloff::to_u8`]) — the dab profile (replaces Hardness); [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
     pub falloff: u8,
-    /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), the first
-    /// [`Self::falloff_len`] valid, ascending by distance. The panel plots + drags these (by stable id).
+    /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), first [`Self::falloff_len`] valid, ascending by distance; panel plots + drags by stable id.
     pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],
     /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
     pub falloff_len: u8,
@@ -153,8 +151,7 @@ pub struct BrushSettings {
     pub grain_depth: f32,
 
     // ── Shape section (the silhouette tip; the falloff is its procedural default) ──
-    /// Shape **source** kind (`TextureKind::to_u8`): `None` falloff · `Image` replaces it · procedural is
-    /// masked by it. Drives the panel "Texture" picker + which controls show.
+    /// Shape **source** kind (`TextureKind::to_u8`): `None` falloff · `Image` replaces it · procedural is masked. Drives the panel "Texture" picker.
     pub shape_kind: u8,
     /// Whether a Shape **image** is assigned (meaningful only when [`Self::shape_kind`] is `Image`).
     pub shape_has_image: bool,
@@ -168,6 +165,8 @@ pub struct BrushSettings {
     pub shape_offset: [f32; 2],
     /// Shape per-axis scale (`0.1..10`; `1.0` = the image fills the footprint).
     pub shape_size: [f32; 2],
+    /// Procedural Shape per-pattern params (Contrast / Brightness + the kind's knob, `[0,1]`) — the Grain's `texture_params` twin for the Shape slot.
+    pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
 
     // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
     /// Whether the Color Ramp drives the paint colour.
@@ -292,6 +291,7 @@ impl PainterTool {
             shape_random: b.shape.random_angle,
             shape_offset: b.shape.offset,
             shape_size: b.shape.size,
+            shape_params: b.shape.params,
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
             texture_ramp_mode: ramp.color_mode.to_u8(),
             texture_ramp_interp: ramp.interp.to_u8(),

@@ -21,6 +21,45 @@ pub fn compose_shape_silhouette_kind(kind: TextureKind, sample: f32, falloff: f3
     }
 }
 
+/// Sample the Shape's raw silhouette value at canvas pixel `(px, py)`. An **Image** kind reads the
+/// finite clipped tip ([`sample_shape`] — bounded to `[-1, 1]²`, since an image IS a finite tip). A
+/// **procedural** kind reads the pattern the GRAIN way ([`crate::texture::sample`]) — mapped across the
+/// whole dab, so Size / Offset / Angle transform only the pattern (the falloff is the boundary), exactly
+/// like the Grain. The caller multiplies a procedural value by the falloff ([`compose_shape_silhouette_kind`]).
+#[must_use]
+pub fn sample_shape_silhouette(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+    image: Option<&ImageMask>,
+) -> f32 {
+    if s.kind == TextureKind::Image {
+        sample_shape(s, b, px, py, center, radius, image)
+    } else {
+        super::sample(s, b, px, py, center, radius, image)
+    }
+}
+
+/// Unit-coord (`[-1, 1]`) form of [`sample_shape_silhouette`], for the scale-invariant stamp bake +
+/// the panel preview.
+#[must_use]
+pub fn sample_shape_silhouette_unit(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    u: f32,
+    v: f32,
+    image: Option<&ImageMask>,
+) -> f32 {
+    if s.kind == TextureKind::Image {
+        sample_shape_unit(s, b, u, v, image)
+    } else {
+        super::sample_unit(s, b, u, v, image)
+    }
+}
+
 /// Render the composed Shape **silhouette** (the Procreate tip) into a `w×h` grayscale buffer (`1`
 /// byte/texel = coverage `0..=255`), for the panel's live Shape preview. Uses the SAME composition as
 /// the engine — `Image` is the sampled tip, a procedural kind is `falloff × pattern` — so the preview
@@ -57,7 +96,7 @@ pub fn render_shape_preview(
         let v = (j as f32 + 0.5) * inv_h - 1.0;
         for i in 0..w {
             let u = (i as f32 + 0.5) * inv_w - 1.0;
-            let sv = sample_shape_unit(&shape, &basis, u, v, image);
+            let sv = sample_shape_silhouette_unit(&shape, &basis, u, v, image);
             let t = (u * u + v * v).sqrt().min(1.0);
             let f = falloff_lut[((t * (n - 1) as f32) as usize).min(n - 1)];
             let cov = compose_shape_silhouette_kind(kind, sv, f).clamp(0.0, 1.0);

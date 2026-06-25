@@ -14,8 +14,8 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, ImageMask, MAX_TEX_PARAMS, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
-    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
+    BrushSettings, Falloff, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
+    TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
     render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
@@ -98,6 +98,24 @@ pub(crate) fn paint_shape_section(
         // — re-rendered each frame from the snapshot so it tracks the Angle / Offset / Size edits below.
         y = paint_shape_preview(ctx, theme, x, content_w, y, brush);
         y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
+        if !is_image {
+            // Procedural Shape: the kind's characteristic per-pattern params (Contrast / Brightness +
+            // its shape knob), exactly like the Grain — they tune ONLY the pattern (Enio 2026-06-25).
+            for (i, spec) in param_specs(kind).iter().enumerate() {
+                let value = brush.shape_params[i];
+                y = paint_param_row(ParamRow {
+                    ctx,
+                    theme,
+                    x,
+                    content_w,
+                    y,
+                    label: spec.label,
+                    id: core_ids::PAINTER_SHAPE_PARAMS[i],
+                    value,
+                    readout: &format!("{value:.2}"),
+                });
+            }
+        }
     }
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
     y
@@ -259,13 +277,7 @@ fn paint_shape_preview(
     for (i, w) in lut.iter_mut().enumerate() {
         *w = brush_falloff_weight_at(&brush, i as f32 / 63.0).clamp(0.0, 1.0); // LITERAL-PX-OK: LUT last-index normalize (64 entries)
     }
-    // The Shape exposes no per-pattern param UI, so the pattern uses the kind's neutral defaults (what
-    // the engine also paints with — `set_brush_shape_kind` resets them on a change).
     let kind = TextureKind::from_u8(brush.shape_kind);
-    let mut params = [0.5f32; MAX_TEX_PARAMS];
-    for (i, s) in param_specs(kind).iter().enumerate() {
-        params[i] = s.default;
-    }
     let image = state::current_brush_shape_image();
     let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
         lum: lum.as_slice(),
@@ -278,7 +290,7 @@ fn paint_shape_preview(
         brush.shape_angle_deg,
         brush.shape_offset,
         brush.shape_size,
-        params,
+        brush.shape_params,
         &lut,
         image_mask.as_ref(),
         &mut cov,

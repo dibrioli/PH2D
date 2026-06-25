@@ -105,8 +105,12 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Shape section + Grain Depth sliders (Angle / Offset / Size / Depth; all `0..1` track).
-    for id in ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS {
+    // Shape section sliders: Angle / Offset / Size / Depth + the procedural per-pattern params (all
+    // `0..1` track).
+    for id in ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS
+        .into_iter()
+        .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
+    {
         store.register(
             id,
             InteractiveState::Slider {

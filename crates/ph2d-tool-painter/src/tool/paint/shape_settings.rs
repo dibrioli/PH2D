@@ -123,6 +123,14 @@ impl PainterTool {
         self.paint.shape_image_version
     }
 
+    /// Set a procedural Shape per-pattern param `slot` (Contrast / Brightness / the kind's knob) from the
+    /// slider's `0..1` track; out-of-range slots are ignored. Mirror of `set_brush_texture_param_norm`.
+    pub fn set_brush_shape_param_norm(&mut self, slot: usize, t: f32) {
+        if slot < self.paint.brush.shape.params.len() {
+            self.paint.brush.shape.params[slot] = t.clamp(0.0, 1.0);
+        }
+    }
+
     /// Set the Shape rotation from the slider's `0..1` track → `0..=TEX_ANGLE_MAX_DEG` degrees.
     pub fn set_brush_shape_angle_norm(&mut self, t: f32) {
         self.paint.brush.shape.angle_deg =

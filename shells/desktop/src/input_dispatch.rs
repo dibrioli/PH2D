@@ -624,7 +624,7 @@ impl App {
                     let cmd_held_early = self.modifiers.super_key() || self.modifiers.control_key();
                     if (shift_held_early || cmd_held_early)
                         && hero.store.panel_at(evt.x, evt.y).is_none()
-                        && hero.store.context_menu().is_none()
+                        && !menu_open_before
                     {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
@@ -697,7 +697,7 @@ impl App {
                     let mut began_pivot = false;
                     if pivot_tool_active
                         && hero.store.panel_at(evt.x, evt.y).is_none()
-                        && hero.store.context_menu().is_none()
+                        && !menu_open_before
                         && let Some(entity_bits) = hero.gizmo.selection
                     {
                         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
@@ -900,7 +900,7 @@ impl App {
                             }
                         }
                     } else if hero.store.panel_at(evt.x, evt.y).is_none()
-                        && hero.store.context_menu().is_none()
+                        && !menu_open_before
                         && (hit_id.is_none()
                             || matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
                             || hit_id == Some(ph2d_editor::gizmo::ids::GIZMO_PIVOT)

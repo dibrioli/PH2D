@@ -42,6 +42,19 @@ impl PainterTool {
                 self.reset_brush_texture();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RESET => {
+                self.reset_brush_shape();
+                true
+            }
+            // ── Shape section toggles (silhouette rotation follows the stroke / random per dab). ─
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAKE => {
+                self.toggle_brush_shape_rake();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RANDOM => {
+                self.toggle_brush_shape_random();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET => {
                 self.reset_brush_color_ramp();
                 true
@@ -79,6 +92,31 @@ impl PainterTool {
                     }
                     x if x == core_ids::PAINTER_BRUSH_JITTER_SPACING => {
                         self.set_brush_jitter_spacing(v);
+                        true
+                    }
+                    // Grain Depth + Shape geometry sliders (the Shape/Grain sections).
+                    x if x == core_ids::PAINTER_BRUSH_GRAIN_DEPTH => {
+                        self.set_brush_grain_depth(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_SHAPE_ANGLE => {
+                        self.set_brush_shape_angle_norm(v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_SHAPE_OFFSET_X => {
+                        self.set_brush_shape_offset_norm(0, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_SHAPE_OFFSET_Y => {
+                        self.set_brush_shape_offset_norm(1, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_SHAPE_SIZE_X => {
+                        self.set_brush_shape_size_norm(0, v);
+                        true
+                    }
+                    x if x == core_ids::PAINTER_SHAPE_SIZE_Y => {
+                        self.set_brush_shape_size_norm(1, v);
                         true
                     }
                     _ => false,
@@ -136,6 +174,17 @@ impl PainterTool {
     /// (mapping / angle / Rake / Random / offset / size / params). The Color Ramp has its own reset.
     pub fn reset_brush_texture(&mut self) {
         self.paint.brush.texture = TextureSettings::default();
+    }
+
+    /// Reset the **Shape** section: clear the Shape image (the silhouette reverts to the falloff) and
+    /// reset the Shape slot's rotation / offset / size + the Falloff preset & curve to defaults.
+    pub fn reset_brush_shape(&mut self) {
+        self.clear_brush_shape_image();
+        self.paint.brush.shape = TextureSettings::default();
+        let d = BrushSpec::default();
+        self.paint.brush.falloff = d.falloff;
+        self.paint.brush.custom_falloff = d.custom_falloff;
+        self.paint.brush.hardness = d.hardness;
     }
 
     /// Reset the **Stroke** section to defaults (method / spacing / Adjust-Strength / jitter group /

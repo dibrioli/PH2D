@@ -189,9 +189,10 @@ pub enum EditorAction {
     /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
     HierMergeSprites { row: ph2d_a11y::NodeId },
 
-    /// "Use as Brush Texture" — the shell resolves row → entity → pixels → `set_brush_texture_image`
-    /// (Enio 2026-06-24); a non-image row toasts and no-ops.
+    /// "Use as Brush Grain" — shell resolves row → pixels → `set_brush_texture_image` (Enio 2026-06-24).
     HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
+    /// "Use as Brush Shape" — shell resolves row → pixels → `set_brush_shape_image` (Enio 2026-06-25).
+    HierUseAsBrushShape { row: ph2d_a11y::NodeId },
 
     /// Sync `gizmo_selection` to the entity backing the clicked
     /// hierarchy row — cross-panel selection sync from the

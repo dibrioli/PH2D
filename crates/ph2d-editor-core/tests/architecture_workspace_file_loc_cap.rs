@@ -42,7 +42,7 @@ const FILE_LOC_CAP: usize = 600;
 const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-ecs/src/sort_key.rs", 637),
     ("ph2d-ecs/src/transform.rs", 784),
-    ("ph2d-editor-core/src/action_bus.rs", 625),
+    ("ph2d-editor-core/src/action_bus.rs", 626), // +1: HierUseAsBrushShape action (Shape import, Enio 2026-06-25; Coord sign-off — central action enum grows by design)
     ("ph2d-editor-core/src/gizmo/paint.rs", 672),
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     ("ph2d-editor-core/src/paint.rs", 884),

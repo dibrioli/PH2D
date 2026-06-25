@@ -43,6 +43,10 @@ pub(super) struct StampKey {
     custom: FalloffCurve,
     texture: TextureSettings,
     image_version: u64,
+    /// The Shape slot + its image version + Grain Depth all change the baked silhouette × grain mask.
+    shape: TextureSettings,
+    shape_image_version: u64,
+    grain_depth: f32,
     size: u32,
 }
 
@@ -117,9 +121,10 @@ impl PainterTool {
         h: u32,
     ) {
         self.ensure_canvas_cache(brush, w, h);
-        // Disjoint borrows: the canvas (Arc), the cache (tex+ready), and the imported image are all
+        // Disjoint borrows: the canvas (Arc), the cache (tex+ready), and the imported images are all
         // separate fields, so they can be held at once.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
             return;
         };
@@ -142,6 +147,7 @@ impl PainterTool {
                 d.radius_px,
                 &spec,
                 image.as_ref(),
+                shape_image.as_ref(),
                 d.coverage,
                 alpha_locked,
             ) {
@@ -197,12 +203,17 @@ impl PainterTool {
         // Disjoint borrows: the imported image + the ramp LUT (both `self.paint` sub-fields) and the
         // canvas (`self.canvas_rgba`) are held at once; the texture RNG is copied out + written back.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let lut = &self.paint.texture_ramp_lut;
         let alpha_mode = self.paint.texture_ramp_alpha_mode;
         let rake = brush.texture.rake;
+        let shape_rake = brush.shape.rake;
         let mut tex_rng = self.paint.tex_rng;
         let mut rake_dir = self.paint.rake_dir;
         let mut rake_accum = self.paint.rake_accum;
+        let mut shape_rake_dir = self.paint.shape_rake_dir;
+        let mut shape_rake_accum = self.paint.shape_rake_accum;
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
         for (i, d) in dabs.iter().enumerate() {
@@ -211,6 +222,30 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
+            // Resolve the Shape frame first (fixed slot order shape→grain, HR-5); its Rake follows the
+            // stroke via the Shape's own heading. Random draws here, before the Grain.
+            let shape_dir = advance_rake(
+                shape_rake,
+                &mut shape_rake_dir,
+                &mut shape_rake_accum,
+                super::brush_settings::dab_tangent(dabs, i),
+                2.0 * d.radius_px,
+            );
+            let shape_basis = shape_active.then(|| {
+                ph2d_painter_brush::texture::dab_basis(
+                    &spec.shape,
+                    shape_dir,
+                    &mut tex_rng,
+                    [w as f32, h as f32],
+                    [1.0, 0.0],
+                )
+            });
+            let shape_in = shape_basis
+                .as_ref()
+                .map(|sb| ph2d_painter_brush::ShapeInput {
+                    basis: sb,
+                    image: shape_image.as_ref(),
+                });
             let dir = advance_rake(
                 rake,
                 &mut rake_dir,
@@ -237,6 +272,7 @@ impl PainterTool {
                 alpha_locked,
                 basis.as_ref(),
                 image.as_ref(),
+                shape_in,
                 lut,
                 alpha_mode,
             ) {
@@ -252,6 +288,8 @@ impl PainterTool {
         self.paint.tex_rng = tex_rng;
         self.paint.rake_dir = rake_dir;
         self.paint.rake_accum = rake_accum;
+        self.paint.shape_rake_dir = shape_rake_dir;
+        self.paint.shape_rake_accum = shape_rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -271,10 +309,15 @@ impl PainterTool {
     ) {
         let textured = brush.texture.is_active();
         let rake = brush.texture.rake;
+        let shape_rake = brush.shape.rake;
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let mut tex_rng = self.paint.tex_rng;
         let mut rake_dir = self.paint.rake_dir;
         let mut rake_accum = self.paint.rake_accum;
+        let mut shape_rake_dir = self.paint.shape_rake_dir;
+        let mut shape_rake_accum = self.paint.shape_rake_accum;
         // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
         // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
@@ -295,6 +338,31 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
+            // Shape frame first (fixed slot order shape→grain, HR-5). Its Rake follows the stroke via
+            // the Shape's own heading state; Random draws from `tex_rng` here, *before* the Grain — so a
+            // brush with no Shape Random/Rake leaves the Grain stream byte-identical to before.
+            let shape_dir = advance_rake(
+                shape_rake,
+                &mut shape_rake_dir,
+                &mut shape_rake_accum,
+                super::brush_settings::dab_tangent(dabs, i),
+                2.0 * d.radius_px,
+            );
+            let shape_basis = shape_active.then(|| {
+                ph2d_painter_brush::texture::dab_basis(
+                    &spec.shape,
+                    shape_dir,
+                    &mut tex_rng,
+                    [w as f32, h as f32],
+                    [1.0, 0.0],
+                )
+            });
+            let shape_in = shape_basis
+                .as_ref()
+                .map(|sb| ph2d_painter_brush::ShapeInput {
+                    basis: sb,
+                    image: shape_image.as_ref(),
+                });
             let dir = advance_rake(
                 rake,
                 &mut rake_dir,
@@ -321,6 +389,7 @@ impl PainterTool {
                 alpha_locked,
                 basis.as_ref(),
                 image.as_ref(),
+                shape_in,
                 mask.as_deref_mut(),
             ) {
                 let rect = Region {
@@ -335,6 +404,8 @@ impl PainterTool {
         self.paint.tex_rng = tex_rng;
         self.paint.rake_dir = rake_dir;
         self.paint.rake_accum = rake_accum;
+        self.paint.shape_rake_dir = shape_rake_dir;
+        self.paint.shape_rake_accum = shape_rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -366,6 +437,9 @@ impl PainterTool {
             custom: brush.custom_falloff,
             texture: brush.texture,
             image_version: self.paint.texture_image_version,
+            shape: brush.shape,
+            shape_image_version: self.paint.shape_image_version,
+            grain_depth: brush.grain_depth,
             size,
         };
         if self.paint.stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {
@@ -373,7 +447,8 @@ impl PainterTool {
         }
         let mask = {
             let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-            render_stamp_mask(brush, image.as_ref(), size)
+            let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+            render_stamp_mask(brush, image.as_ref(), shape_image.as_ref(), size)
         };
         self.paint.stamp_cache = Some((mask, key));
     }

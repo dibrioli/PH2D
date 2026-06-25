@@ -21,6 +21,14 @@ pub(super) struct BrushTextureImage {
 }
 
 impl BrushTextureImage {
+    /// Construct from owned luminance + dims (fields are private; `shape_settings` builds via this).
+    pub(super) fn new(lum: Vec<u8>, width: u32, height: u32) -> Self {
+        Self { lum, width, height }
+    }
+    /// Borrow as `(luminance, w, h)` for the panel previews.
+    pub(super) fn parts(&self) -> (&[u8], u32, u32) {
+        (self.lum.as_slice(), self.width, self.height)
+    }
     /// Borrow as the engine's [`ImageMask`].
     pub(super) fn as_mask(&self) -> ImageMask<'_> {
         ImageMask {
@@ -141,6 +149,23 @@ pub struct BrushSettings {
     pub texture_size: [f32; 2],
     /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (`param_specs`).
     pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+    /// **Grain Depth** (`0..1`; `1` = full bite, the default). How strongly the Grain modulates.
+    pub grain_depth: f32,
+
+    // ── Shape section (the silhouette tip; the falloff is its procedural default) ──
+    /// Whether a Shape **image** is currently assigned (the silhouette is the image, not the falloff —
+    /// the panel greys the falloff controls and shows the Shape preview when this is `true`).
+    pub shape_has_image: bool,
+    /// Shape rotation in whole degrees (`0..=360`).
+    pub shape_angle_deg: u16,
+    /// "Rake" — the Shape rotation follows the stroke direction.
+    pub shape_rake: bool,
+    /// "Random" — the Shape rotation is randomised per dab.
+    pub shape_random: bool,
+    /// Shape offset in tile fractions, per axis (`−1..1`).
+    pub shape_offset: [f32; 2],
+    /// Shape per-axis scale (`0.1..10`; `1.0` = the image fills the footprint).
+    pub shape_size: [f32; 2],
 
     // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
     /// Whether the Color Ramp drives the paint colour.
@@ -260,6 +285,13 @@ impl PainterTool {
             texture_offset: b.texture.offset,
             texture_size: b.texture.size,
             texture_params: b.texture.params,
+            grain_depth: b.grain_depth,
+            shape_has_image: self.paint.shape_image.is_some(),
+            shape_angle_deg: b.shape.angle_deg,
+            shape_rake: b.shape.rake,
+            shape_random: b.shape.random_angle,
+            shape_offset: b.shape.offset,
+            shape_size: b.shape.size,
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
             texture_ramp_mode: ramp.color_mode.to_u8(),
             texture_ramp_interp: ramp.interp.to_u8(),
@@ -447,9 +479,7 @@ impl PainterTool {
         self.paint.brush.edge_to_edge = !self.paint.brush.edge_to_edge;
     }
 
-    // ── Texture section setters (the single clamp source; the panel forwards raw UI values) ──
-
-    /// Set the brush texture kind from a wire discriminant (out-of-range → None). Picking
+    /// Set the brush texture (Grain) kind from a wire discriminant (out-of-range → None). Picking
     /// [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O).
     pub fn set_brush_texture_kind(&mut self, k: u8) {
         let kind = TextureKind::from_u8(k);
@@ -458,36 +488,6 @@ impl PainterTool {
         if kind == TextureKind::Image {
             self.paint.texture_image_pending = true;
         }
-    }
-
-    /// Store an imported grayscale `lum` image (`width × height`, row-major) as the brush texture and
-    /// switch the kind to Image. Called by the shell after a file pick + decode.
-    pub fn set_brush_texture_image(&mut self, lum: Vec<u8>, width: u32, height: u32) {
-        self.paint.texture_image = Some(BrushTextureImage { lum, width, height });
-        self.paint.brush.texture.kind = TextureKind::Image;
-        self.paint.texture_image_pending = false;
-        // Invalidate the cached stamp's baked Image mask.
-        self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
-    }
-
-    /// Take (and clear) the "the user picked Image — open a file picker" request. The shell polls
-    /// this each frame; on a successful pick it calls [`Self::set_brush_texture_image`].
-    pub fn take_brush_texture_image_request(&mut self) -> bool {
-        std::mem::take(&mut self.paint.texture_image_pending)
-    }
-
-    /// The brush's imported Image texture as `(luminance, w, h)` for the panel's Texture preview (the
-    /// pixels can't live in the `Copy` snapshot). `None` if unassigned; gate publishes on the version.
-    #[must_use]
-    pub fn brush_texture_image(&self) -> Option<(&[u8], u32, u32)> {
-        let t = self.paint.texture_image.as_ref()?;
-        Some((t.lum.as_slice(), t.width, t.height))
-    }
-
-    /// Monotonic version of the brush texture image (bumped by [`Self::set_brush_texture_image`]).
-    #[must_use]
-    pub fn brush_texture_image_version(&self) -> u64 {
-        self.paint.texture_image_version
     }
 
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.

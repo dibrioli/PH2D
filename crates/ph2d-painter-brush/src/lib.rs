@@ -41,7 +41,8 @@ pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use dab::{
-    DirtyRect, stamp_dab, stamp_dab_ramped, stamp_dab_textured, stamp_dab_textured_masked,
+    DirtyRect, ShapeInput, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
+    stamp_dab_textured_masked,
 };
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};

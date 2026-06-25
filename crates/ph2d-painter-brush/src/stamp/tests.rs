@@ -17,13 +17,164 @@ fn solid(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {
 }
 
 #[test]
+fn shape_image_cached_mask_matches_per_pixel_silhouette() {
+    use crate::ImageMask;
+    use crate::dab::{ShapeInput, stamp_dab_textured};
+    use crate::texture::TexDabBasis;
+    // A Shape-only brush (white 8×8 square image, no Grain): the baked StampMask must reproduce the
+    // per-pixel silhouette closely (only the mask's u8 + bilinear resolution differ at the rim).
+    let (w, h) = (96u32, 96u32);
+    let white = vec![255u8; 64];
+    let img = ImageMask {
+        lum: &white,
+        width: 8,
+        height: 8,
+    };
+    let spec = BrushSpec {
+        radius_px: 36.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth, // would be a round disc WITHOUT the Shape
+        shape: TextureSettings {
+            kind: TextureKind::Image,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let center = [48.0, 48.0];
+    let basis = TexDabBasis::identity();
+    let shape_in = ShapeInput {
+        basis: &basis,
+        image: Some(&img),
+    };
+    // Per-pixel reference.
+    let mut a = solid(w, h, [255, 255, 255, 255]);
+    let _ = stamp_dab_textured(
+        &mut a,
+        w,
+        h,
+        center,
+        &spec,
+        1.0,
+        false,
+        None,
+        None,
+        Some(shape_in),
+    );
+    // Cached: the Shape is baked into the mask; blit it.
+    let mask = render_stamp_mask(&spec, None, Some(&img), 96);
+    let mut b = solid(w, h, [255, 255, 255, 255]);
+    let _ = blit_stamp(&mut b, w, h, center, 36.0, &mask, &spec, 1.0, false);
+    let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
+    // Both paint a SQUARE: centre + a footprint corner are black; the count of painted pixels matches.
+    assert_eq!(a[idx(48, 48)], 0, "per-pixel centre black");
+    assert_eq!(b[idx(48, 48)], 0, "cached centre black");
+    assert!(
+        a[idx(20, 20)] < 80 && b[idx(20, 20)] < 80,
+        "both paint the square corner"
+    );
+    let count = |buf: &[u8]| (0..(w * h) as usize).filter(|&i| buf[i * 4] < 128).count();
+    let (ca, cb) = (count(&a), count(&b));
+    assert!(
+        (ca as i32 - cb as i32).abs() * 20 <= ca as i32,
+        "cached square silhouette ≈ per-pixel within ~5%: per-pixel={ca} cached={cb}"
+    );
+}
+
+#[test]
+fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
+    use crate::ImageMask;
+    use crate::dab::{ShapeInput, stamp_dab_textured};
+    use crate::texture::dab_basis;
+    // Shape image (square) + a canvas-fixed Tiled Grain: the canvas-cache path computes the silhouette
+    // per-pixel and reads the Grain from the cache — it must match the per-pixel path bit-closely.
+    let (w, h) = (96u32, 96u32);
+    let white = vec![255u8; 64];
+    let shimg = ImageMask {
+        lum: &white,
+        width: 8,
+        height: 8,
+    };
+    let spec = BrushSpec {
+        radius_px: 36.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth,
+        shape: TextureSettings {
+            kind: TextureKind::Image,
+            ..Default::default()
+        },
+        texture: TextureSettings {
+            kind: TextureKind::Voronoi,
+            mapping: TextureMapping::Tiled,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let center = [48.0, 48.0];
+    // Per-pixel reference: resolve both frames as the cached paths do.
+    let mut rng = 0u64;
+    let gbasis = dab_basis(
+        &spec.texture,
+        [0.0, 0.0],
+        &mut rng,
+        [w as f32, h as f32],
+        [1.0, 0.0],
+    );
+    let sbasis = dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let shape_in = ShapeInput {
+        basis: &sbasis,
+        image: Some(&shimg),
+    };
+    let mut a = solid(w, h, [255, 255, 255, 255]);
+    let _ = stamp_dab_textured(
+        &mut a,
+        w,
+        h,
+        center,
+        &spec,
+        1.0,
+        false,
+        Some(&gbasis),
+        None,
+        Some(shape_in),
+    );
+    // Canvas-cached (fresh cache): the Grain is cached per canvas pixel, the silhouette is per-pixel.
+    let mut b = solid(w, h, [255, 255, 255, 255]);
+    let mut tex = vec![0u8; (w * h) as usize];
+    let mut ready = vec![0u8; (w * h) as usize];
+    let _ = blit_canvas_cached(
+        &mut b,
+        &mut tex,
+        &mut ready,
+        w,
+        h,
+        center,
+        36.0,
+        &spec,
+        None,
+        Some(&shimg),
+        1.0,
+        false,
+    );
+    let maxdiff = (0..(w * h * 4) as usize)
+        .map(|i| i32::from(a[i]).abs_diff(i32::from(b[i])))
+        .max()
+        .unwrap();
+    assert!(
+        maxdiff <= 3,
+        "canvas-cached Grain × per-pixel Shape ≈ per-pixel, maxdiff={maxdiff}"
+    );
+}
+
+#[test]
 fn mask_is_falloff_shaped() {
     let spec = BrushSpec {
         falloff: Falloff::Smooth,
         hardness: 0.0,
         ..Default::default()
     };
-    let mask = render_stamp_mask(&spec, None, 64);
+    let mask = render_stamp_mask(&spec, None, None, 64);
     assert_eq!(mask.size(), 64);
     let at = |i: u32, j: u32| mask.data[(j * 64 + i) as usize];
     assert!(at(32, 32) > 200, "centre near full, got {}", at(32, 32));
@@ -46,7 +197,7 @@ fn blit_matches_the_per_pixel_stamp_closely() {
     let mut a = solid(w, h, [255, 255, 255, 255]);
     let mut b = solid(w, h, [255, 255, 255, 255]);
     let _ = stamp_dab(&mut a, w, h, [64.0, 64.0], &spec, 1.0, false);
-    let mask = render_stamp_mask(&spec, None, 96);
+    let mask = render_stamp_mask(&spec, None, None, 96);
     let _ = blit_stamp(&mut b, w, h, [64.0, 64.0], 40.0, &mask, &spec, 1.0, false);
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
     assert_eq!(a[idx(64, 64)], 0, "stamp centre black");
@@ -79,7 +230,7 @@ fn textured_mask_blit_shows_the_pattern() {
         },
         ..Default::default()
     };
-    let mask = render_stamp_mask(&spec, None, 96);
+    let mask = render_stamp_mask(&spec, None, None, 96);
     let mut buf = solid(w, h, [255, 255, 255, 255]);
     blit_stamp(&mut buf, w, h, [48.0, 48.0], 36.0, &mask, &spec, 1.0, false).expect("painted");
     let (mut black, mut white) = (0, 0);
@@ -135,6 +286,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         false,
         Some(&basis),
         None,
+        None,
     );
     // Canvas-cached blit (fresh cache).
     let mut b = solid(w, h, [255, 255, 255, 255]);
@@ -149,6 +301,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         [48.0, 48.0],
         36.0,
         &spec,
+        None,
         None,
         1.0,
         false,
@@ -177,6 +330,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         [48.0, 48.0],
         36.0,
         &spec,
+        None,
         None,
         1.0,
         false,

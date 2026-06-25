@@ -145,10 +145,16 @@ pub const CTX_MENU_NEW_IMAGE_BGS: [(u8, NodeId); 3] = [
     (2, CTX_MENU_NEW_IMAGE_BG_WHITE),
 ];
 
-/// Hierarchy row context menu: "Use as Brush Texture" — load the right-clicked sprite's pixels as the
-/// brush texture image (shown only for image/sprite rows; Enio 2026-06-24).
+/// Hierarchy row context menu: "Use as Brush **Grain**" — load the right-clicked sprite's pixels as the
+/// brush Grain (texture) image (shown only for image/sprite rows; Enio 2026-06-24). The id keeps the
+/// legacy `texture` slug for wire stability; the label is "Use as Brush Grain".
 pub const CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE: NodeId =
     hash_node_id("ctx_menu_hier_use_as_brush_texture");
+
+/// Hierarchy row context menu: "Use as Brush **Shape**" — load the right-clicked sprite's pixels as the
+/// brush Shape (silhouette tip) image (Enio 2026-06-25; the Shape slot replaces the falloff).
+pub const CTX_MENU_HIER_USE_AS_BRUSH_SHAPE: NodeId =
+    hash_node_id("ctx_menu_hier_use_as_brush_shape");
 
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;

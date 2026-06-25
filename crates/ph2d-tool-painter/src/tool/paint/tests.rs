@@ -335,6 +335,88 @@ fn panel_events_drive_strength_falloff_and_eraser() {
 }
 
 #[test]
+fn panel_events_drive_shape_and_grain_depth() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+    let mut t = PainterTool::default();
+    // Grain Depth slider (Grain section).
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
+        0.4,
+    ));
+    assert!(
+        (t.brush_settings().grain_depth - 0.4).abs() < 1e-6,
+        "grain depth set"
+    );
+
+    // Shape rotation controls (tracked on the spec even before an image is assigned).
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 0.5)); // → 180°
+    assert_eq!(t.brush_settings().shape_angle_deg, 180, "shape angle set");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAKE));
+    assert!(t.brush_settings().shape_rake, "shape rake toggled on");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RANDOM));
+    assert!(t.brush_settings().shape_random, "shape random toggled on");
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 0.0)); // → TEX_SIZE_MIN
+    assert!(
+        (t.brush_settings().shape_size[0] - 0.1).abs() < 1e-4,
+        "shape size X → min"
+    );
+
+    // No image yet ⇒ the silhouette is the falloff.
+    assert!(!t.brush_settings().shape_has_image, "no shape image yet");
+
+    // Assign a Shape image ⇒ shape_has_image flips; the section reset clears it (→ falloff) + rotation.
+    t.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    assert!(t.brush_settings().shape_has_image, "shape image assigned");
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RESET));
+    let s = t.brush_settings();
+    assert!(!s.shape_has_image, "reset cleared the shape image");
+    assert_eq!(s.shape_angle_deg, 0, "reset cleared the shape angle");
+    assert!(
+        !s.shape_rake && !s.shape_random,
+        "reset cleared rake/random"
+    );
+}
+
+#[test]
+fn shape_image_paints_the_silhouette_end_to_end() {
+    // A full-white 4×4 Shape image makes the dab a SQUARE silhouette: a footprint corner that the round
+    // falloff disc would leave blank gets painted. Proves the tool routes the Shape slot end-to-end
+    // (set image → stamp route → engine composition), not just the unit sampler.
+    let size = 16u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_brush_size_px(6.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    t.paint.brush.falloff = Falloff::Smooth; // a SOFT disc — the corner is far below the rim
+
+    // Control: no Shape image ⇒ the corner (3,3) stays white (round disc).
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    assert_eq!(
+        px(&t, size, 3, 3),
+        [255, 255, 255, 255],
+        "round falloff leaves the corner blank"
+    );
+
+    // Assign the square Shape image and paint again ⇒ the corner is now painted (square silhouette).
+    let mut t2 = PainterTool::default();
+    t2.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t2.set_brush_size_px(6.0);
+    t2.paint.brush.color = [0.0, 0.0, 0.0];
+    t2.paint.brush.falloff = Falloff::Smooth;
+    t2.set_brush_shape_image(vec![255u8; 16], 4, 4); // 4×4 all-white → full-square silhouette
+    t2.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Down));
+    t2.on_canvas_pointer(cp([8.0, 8.0], PointerPhase::Up));
+    let corner = px(&t2, size, 3, 3);
+    assert!(
+        corner[0] < 80,
+        "square shape paints the footprint corner (got {corner:?})"
+    );
+}
+
+#[test]
 fn panel_events_drive_custom_falloff_curve() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

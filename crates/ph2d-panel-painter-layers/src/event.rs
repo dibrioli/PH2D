@@ -427,16 +427,15 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAKE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RANDOM
+                || id == core_ids::PAINTER_SHAPE_RAKE
+                || id == core_ids::PAINTER_SHAPE_RANDOM
+                || id == core_ids::PAINTER_SHAPE_RESET
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE
+                || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
                 || core_ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id) =>
         {
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
-            Some(true)
-        }
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_ADD => {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)
@@ -531,6 +530,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
                 || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
                 || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
+                || core_ids::PAINTER_SHAPE_SLIDERS.contains(&id)
                 || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);

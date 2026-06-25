@@ -43,6 +43,12 @@ thread_local! {
     static CURRENT_BRUSH_TEXTURE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
         const { RefCell::new(None) };
 
+    /// The brush's **Shape** image (silhouette tip) as `(luminance, w, h)` — published by the host,
+    /// gated on the tool's shape-image version. The Shape section's preview reads it; `None` → no Shape
+    /// image (the silhouette is the falloff). Mirrors [`CURRENT_BRUSH_TEXTURE_IMAGE`].
+    static CURRENT_BRUSH_SHAPE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
+        const { RefCell::new(None) };
+
     /// Dock-view mode published per-frame: `true` = Layers/Effects body, `false`
     /// = Brush-properties body. The header toggle flips the tool's
     /// `dock_shows_layers`; the bridge publishes it here and `paint` branches.
@@ -407,6 +413,17 @@ pub fn set_current_brush_texture_image(image: Option<TextureImageSnapshot>) {
 /// Read the published brush Image texture (cheap `Arc` clone). `None` → the Image preview is black.
 pub(crate) fn current_brush_texture_image() -> Option<TextureImageSnapshot> {
     CURRENT_BRUSH_TEXTURE_IMAGE.with(|c| c.borrow().clone())
+}
+
+/// Publish the brush's **Shape** image `(luminance, w, h)` for the Shape preview. Called by the shell
+/// only when the tool's shape-image version changes; `None` clears it. Mirrors the Texture image.
+pub fn set_current_brush_shape_image(image: Option<TextureImageSnapshot>) {
+    CURRENT_BRUSH_SHAPE_IMAGE.with(|c| *c.borrow_mut() = image);
+}
+
+/// Read the published brush **Shape** image (cheap `Arc` clone). `None` → the silhouette is the falloff.
+pub(crate) fn current_brush_shape_image() -> Option<TextureImageSnapshot> {
+    CURRENT_BRUSH_SHAPE_IMAGE.with(|c| c.borrow().clone())
 }
 
 /// Publica o modo do dock (`true` = Layers/Effects, `false` = Brush). Chamado

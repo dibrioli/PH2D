@@ -105,6 +105,17 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // Shape section + Grain Depth sliders (Angle / Offset / Size / Depth; all `0..1` track).
+    for id in ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS {
+        store.register(
+            id,
+            InteractiveState::Slider {
+                state: SliderState::Normal,
+                value: 0.0,
+                orientation: SliderOrientation::Horizontal,
+            },
+        );
+    }
     // Editable numeric chips paired with the canonical slider-with-chip rows (Size / Strength /
     // Randomize Hue-Sat-Value). `link_slider_number` ties each chip to its slider so a chip edit
     // propagates back as the slider's `ValueChanged` — the existing brush-slider forward handles it.
@@ -164,6 +175,10 @@ pub fn populate(store: &mut WidgetStore) {
         // only the VISUAL is a checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+        // Shape section: Rake / Random checkboxes + the section reset (clears the image → falloff).
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
         // Color Ramp: enable toggle + add / remove stop + colour-box buttons.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
@@ -215,6 +230,10 @@ pub fn populate(store: &mut WidgetStore) {
 fn register_collapsible_sections(store: &mut WidgetStore) {
     use ph2d_editor_core::ids as core_ids;
     for (section, color) in [
+        (
+            core_ids::PAINTER_SHAPE_SECTION,
+            core_ids::PAINTER_SHAPE_SECTION_COLOR,
+        ),
         (
             core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
             core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,

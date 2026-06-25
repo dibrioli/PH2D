@@ -11,6 +11,8 @@
 //! a per-dab unit vector from the dep-free splitmix64 RNG. The sampler uses only `floor`/`*`/`+`/`sqrt`.
 
 pub(crate) mod patterns;
+mod shape;
+pub use shape::{sample_shape, sample_shape_unit};
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;

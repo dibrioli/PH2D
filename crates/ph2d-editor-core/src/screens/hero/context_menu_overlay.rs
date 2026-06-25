@@ -312,8 +312,13 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
             (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
             (
+                ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
+                "Use as Brush Shape",
+                None,
+            ),
+            (
                 ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
-                "Use as Brush Texture",
+                "Use as Brush Grain",
                 None,
             ),
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),

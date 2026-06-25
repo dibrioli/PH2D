@@ -99,10 +99,25 @@ pub struct BrushSpec {
     /// edge-to-edge from the press point to the cursor. See the Anchored arm of [`Stroke::extend`].
     pub edge_to_edge: bool,
 
-    // ── Texture panel (Blender `MTex` / `brush_painter_2d_tex_mapping`) ───────────────
-    /// Brush texture: a per-texel mask that modulates each dab's coverage (Blender's brush `mtex`).
-    /// Default [`TextureSettings::kind`] is `None` (no modulation). See [`crate::texture`].
+    // ── Grain slot (Blender `MTex` / `brush_painter_2d_tex_mapping`; = Procreate "Grain") ──────
+    /// Brush **Grain**: a per-texel mask that modulates each dab's coverage *inside* the silhouette
+    /// (Blender's brush `mtex`; the Procreate Grain). Default [`TextureSettings::kind`] is `None` (no
+    /// modulation). The internal field name is `texture` for back-compat; the UI labels it "Grain".
+    /// See [`crate::texture`] and `docs/Painter/05_design_dois_slots_textura.md`.
     pub texture: TextureSettings,
+    /// **Grain Depth** (Procreate): how strongly the Grain bites, `0..1`. `1.0` (default) = the Grain
+    /// fully modulates (`g_eff = g`, the historical behaviour); `0.0` = the Grain has no effect
+    /// (`g_eff = 1`, silhouette only). `g_eff = 1 + (g − 1)·depth`. See [`crate::dab`].
+    pub grain_depth: f32,
+
+    // ── Shape slot (= Procreate "Shape": the silhouette / tip of the dab) ──────────────────────
+    /// Brush **Shape**: the silhouette (alpha tip) of each dab, as an image. When inactive (default
+    /// `kind == None`, or `Image` with no pixels loaded) the silhouette is the procedural
+    /// [`Self::falloff`] — so a default brush is byte-identical to before. When a Shape **image** is
+    /// assigned it **replaces** the falloff as the silhouette (a crisp imported tip; the falloff goes
+    /// inactive in the UI). Pixels live in `PaintState` (heavy), like the Grain image. The `mapping` is
+    /// always View-plane (dab-relative); `angle_deg`/`rake`/`random_angle` rotate the tip frame.
+    pub shape: TextureSettings,
 
     // ── Per-dab randomize (Blender "Color → Randomize" + two PH2D extras; see [`crate::jitter`]) ──
     /// Master switch for **Randomize Color** (the subsection's enable checkbox). When off, every dab
@@ -155,6 +170,8 @@ impl Default for BrushSpec {
             airbrush_rate_s: 0.1,
             edge_to_edge: false,
             texture: TextureSettings::default(),
+            grain_depth: 1.0,
+            shape: TextureSettings::default(),
             color_jitter_enabled: false,
             color_jitter_hue: 0.0,
             color_jitter_sat: 0.0,
@@ -190,6 +207,50 @@ impl BrushSpec {
             && self.stroke_method.allows_jitter()
             && self.texture.is_active()
             && self.texture.mapping.uses_dab_rotation()
+    }
+
+    /// Whether the **Shape** slot supplies the silhouette (else the [`Self::falloff`] does). True when
+    /// a shape kind is assigned AND — for the `Image` kind — the pixels are present: an Image shape with
+    /// no image falls back to the falloff, so the brush never paints a blank silhouette. `has_shape_image`
+    /// is whether the tool currently holds Shape pixels (the heavy buffer lives in `PaintState`).
+    #[must_use]
+    pub fn shape_silhouette_active(&self, has_shape_image: bool) -> bool {
+        self.shape.is_active()
+            && (self.shape.kind != crate::texture::TextureKind::Image || has_shape_image)
+    }
+
+    /// Grain Depth clamped to `[0, 1]`. The per-texel grain value `g` becomes `1 + (g − 1)·depth`, so
+    /// `depth = 1` is the historical full-bite behaviour and `depth = 0` disables the grain.
+    #[must_use]
+    pub fn grain_depth(&self) -> f32 {
+        self.grain_depth.clamp(0.0, 1.0)
+    }
+
+    /// Whether the **Shape** slot rotates its silhouette frame per dab (Rake follows the stroke, or a
+    /// per-dab Random angle), so the constant-orientation caches can't apply — each dab needs its own
+    /// Shape basis. Only meaningful when the Shape is the active silhouette. Mirrors
+    /// [`Self::has_per_dab_rotation`] for the Grain.
+    #[must_use]
+    pub fn shape_has_per_dab_rotation(&self, has_shape_image: bool) -> bool {
+        self.shape_silhouette_active(has_shape_image)
+            && (self.shape.rake || self.shape.random_angle)
+            && self.shape.mapping.uses_dab_rotation()
+    }
+
+    /// Whether the dab is eligible for the **scale-invariant cached stamp** ([`crate::stamp`]) given
+    /// both slots: the silhouette must be dab-relative-constant (the falloff always is; a Shape image is
+    /// when View-static) AND the Grain must be cacheable (None or static View). `has_shape_image` gates
+    /// whether an `Image` shape counts as active. Mirrors [`crate::TextureSettings::is_cacheable`] for
+    /// the Grain, extended with the Shape. (Per-dab rotation / Accumulate gating stays at the call site.)
+    #[must_use]
+    pub fn dab_mask_cacheable(&self, has_shape_image: bool) -> bool {
+        let shape_static = !self.shape_silhouette_active(has_shape_image)
+            || (matches!(
+                self.shape.mapping,
+                crate::texture::TextureMapping::ViewPlane
+            ) && !self.shape.rake
+                && !self.shape.random_angle);
+        shape_static && self.texture.is_cacheable()
     }
 
     /// Distance between dab centres in pixels, derived from spacing × diameter.

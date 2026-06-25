@@ -101,6 +101,14 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_offset: [0.0, 0.0],
     texture_size: [1.0, 1.0],
     texture_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],
+    grain_depth: 1.0,
+    // Shape section (mirrors BrushSpec::default — no Shape image, silhouette = falloff).
+    shape_has_image: false,
+    shape_angle_deg: 0,
+    shape_rake: false,
+    shape_random: false,
+    shape_offset: [0.0, 0.0],
+    shape_size: [1.0, 1.0],
     texture_ramp_enabled: false,
     texture_ramp_mode: 0,
     texture_ramp_interp: 2,
@@ -193,31 +201,14 @@ pub(crate) fn paint_brush_body(
         brush.accumulate,
     );
 
-    // 6. Falloff (dab distance-falloff preset).
-    let (ny, falloff_open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Falloff",
-        core_ids::PAINTER_BRUSH_FALLOFF,
-        brush.falloff,
-        Falloff::from_u8(brush.falloff).name(),
-    );
-    y = ny;
-    if let Some(r) = falloff_open {
-        state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
-    }
-
-    // Falloff curve graph — the visual for the preset above; part of the Falloff group, so it sits
-    // directly under the dropdown and ABOVE Randomize Color (Enio 2026-06-24).
-    y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
+    // ── Section 6: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip); once a
+    //    Shape image is assigned the Falloff goes inactive (replaced by the image + its preview). ──
+    y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 7: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
     y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Section 8: Texture — the next section below Randomize Color (Enio 2026-06-24) ──
+    // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
     // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
@@ -389,7 +380,14 @@ fn paint_color_swatch_row(
 pub(crate) use crate::dropdown_popover::paint_dropdown_popover;
 
 /// A left-aligned, vertically-centred row label in a `ROW_H_PX` cell.
-fn label(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, text: &str, x: f32, y: f32, font: f32) {
+pub(crate) fn label(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    text: &str,
+    x: f32,
+    y: f32,
+    font: f32,
+) {
     paint_text(
         ctx.text_system,
         ctx.scene,

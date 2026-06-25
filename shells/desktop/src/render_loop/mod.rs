@@ -510,6 +510,7 @@ impl crate::App {
             // drain reads the full multi-selection at apply time.
             let mut merge_sprites_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
+            let mut use_as_brush_shape_row: Option<NodeId> = None;
             let mut hierarchy_row_click: Option<NodeId> = None;
             let mut hierarchy_select_intent: Option<hierarchy::HierarchySelectIntent> = None;
             let mut rename_seed_row: Option<NodeId> = None;
@@ -652,6 +653,9 @@ impl crate::App {
                     }
                     EditorAction::HierUseAsBrushTexture { row } => {
                         use_as_brush_texture_row.get_or_insert(row);
+                    }
+                    EditorAction::HierUseAsBrushShape { row } => {
+                        use_as_brush_shape_row.get_or_insert(row);
                     }
                     EditorAction::HierRowClick { row } => {
                         hierarchy_row_click.get_or_insert(row);
@@ -1551,10 +1555,14 @@ impl crate::App {
                     }
                 }
             }
-            // Hierarchy "Use as Brush Texture" → read the right-clicked sprite's pixels, install them as
-            // the brush texture (Rec.601 luminance, mirror of the file-load path), and activate the brush
-            // tool so the user can paint with it immediately. A non-image row toasts + no-ops.
-            if let Some(row) = use_as_brush_texture_row
+            // Hierarchy "Use as Brush Shape / Grain" → read the right-clicked sprite's pixels, install
+            // them as the brush Shape (silhouette) or Grain (texture) image (Rec.601 luminance, mirror of
+            // the file-load path), and activate the brush tool so the user can paint immediately. A
+            // non-image row toasts + no-ops. Shape wins if both fired in one frame.
+            let use_as_brush_intent = use_as_brush_shape_row
+                .map(|r| (r, true))
+                .or(use_as_brush_texture_row.map(|r| (r, false)));
+            if let Some((row, as_shape)) = use_as_brush_intent
                 && let Some(live) = hero_live.as_ref()
                 && let Some(bits) = live.bridge.entity_for(row)
             {
@@ -1605,15 +1613,28 @@ impl crate::App {
                             t.as_any_mut()
                                 .downcast_mut::<ph2d_tool_painter::PainterTool>()
                         }) {
-                            painter.set_brush_texture_image(lum, w, h);
-                            toasts
-                                .push(ph2d_editor::Toast::success("Brush texture set from sprite"));
+                            if as_shape {
+                                painter.set_brush_shape_image(lum, w, h);
+                                toasts.push(ph2d_editor::Toast::success(
+                                    "Brush shape set from sprite",
+                                ));
+                            } else {
+                                painter.set_brush_texture_image(lum, w, h);
+                                toasts.push(ph2d_editor::Toast::success(
+                                    "Brush grain set from sprite",
+                                ));
+                            }
                         }
                     }
                     None => {
-                        toasts.push(ph2d_editor::Toast::warning(
-                            "Use as Brush Texture: select an image sprite",
-                        ));
+                        let what = if as_shape {
+                            "Brush Shape"
+                        } else {
+                            "Brush Grain"
+                        };
+                        toasts.push(ph2d_editor::Toast::warning(format!(
+                            "Use as {what}: select an image sprite"
+                        )));
                     }
                 }
                 self.title_dirty = true;

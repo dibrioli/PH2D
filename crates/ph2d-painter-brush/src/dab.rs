@@ -10,6 +10,20 @@ use crate::ramp_alpha::RampAlphaMode;
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
+/// The **Shape** slot's per-dab inputs (Procreate "Shape"): the resolved tip frame plus the optional
+/// silhouette image. `Some` ⇒ the Shape supplies the dab's silhouette, **replacing** the falloff;
+/// `None` ⇒ the falloff is the silhouette (byte-identical to the pre-Shape engine). The caller only
+/// passes `Some` when the Shape is genuinely active (see [`BrushSpec::shape_silhouette_active`]), so an
+/// Image shape with no pixels never reaches here. Bundled into one param to keep the stamp signatures
+/// tractable (each already carries the Grain's `tex` + `image`).
+#[derive(Clone, Copy)]
+pub struct ShapeInput<'a> {
+    /// The dab-relative texture frame for the Shape (rotation/offset), from [`crate::texture::dab_basis`].
+    pub basis: &'a TexDabBasis,
+    /// The silhouette pixels for [`crate::TextureKind::Image`]; `None` for a procedural Shape kind.
+    pub image: Option<&'a ImageMask<'a>>,
+}
+
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DirtyRect {
@@ -54,6 +68,7 @@ pub fn stamp_dab(
         preserve_alpha,
         None,
         None,
+        None,
     )
 }
 
@@ -76,6 +91,7 @@ pub fn stamp_dab_textured(
     preserve_alpha: bool,
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -87,6 +103,7 @@ pub fn stamp_dab_textured(
         preserve_alpha,
         tex,
         image,
+        shape,
         None,
         RampAlphaMode::None,
         None,
@@ -109,6 +126,7 @@ pub fn stamp_dab_textured_masked(
     preserve_alpha: bool,
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
     mask: Option<&mut [u8]>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
@@ -121,6 +139,7 @@ pub fn stamp_dab_textured_masked(
         preserve_alpha,
         tex,
         image,
+        shape,
         None,
         RampAlphaMode::None,
         mask,
@@ -146,6 +165,7 @@ pub fn stamp_dab_ramped(
     preserve_alpha: bool,
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
     ramp: &[[f32; 4]],
     alpha_mode: RampAlphaMode,
 ) -> Option<DirtyRect> {
@@ -159,6 +179,7 @@ pub fn stamp_dab_ramped(
         preserve_alpha,
         tex,
         image,
+        shape,
         Some(ramp),
         alpha_mode,
         None, // Accumulate cap not applied on the Color-Ramp path (the per-pixel non-ramp path covers it)
@@ -177,6 +198,7 @@ fn stamp_dab_inner(
     preserve_alpha: bool,
     tex: Option<&TexDabBasis>,
     image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
     ramp: Option<&[[f32; 4]]>,
     alpha_mode: RampAlphaMode,
     // **Accumulate OFF** per-stroke coverage mask (canvas-sized, 1 byte/pixel). `Some` ⇒ cap each
@@ -217,6 +239,9 @@ fn stamp_dab_inner(
         image: image.copied(),
         // The ramp only applies where a texture supplies the index value.
         ramp: ramp.filter(|_| spec.texture.is_active()),
+        // The Shape supplies the silhouette only when the slot is active (the caller already gates
+        // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
+        shape: shape.filter(|_| spec.shape.is_active()),
         alpha_mode,
         center,
         cx,
@@ -363,6 +388,9 @@ struct DabCtx<'a> {
     spec: &'a BrushSpec,
     tex: Option<&'a TexDabBasis>,
     image: Option<ImageMask<'a>>,
+    /// The Shape slot's silhouette inputs (frame + optional image). `Some` ⇒ the silhouette is the
+    /// Shape, replacing the falloff; `None` ⇒ the falloff is the silhouette. See [`ShapeInput`].
+    shape: Option<ShapeInput<'a>>,
     /// Baked Color Ramp LUT (straight RGBA, layer colour space): when present (and a texture is
     /// active), the texture value indexes it for the per-texel paint colour. See [`stamp_dab_ramped`].
     ramp: Option<&'a [[f32; 4]]>,
@@ -391,12 +419,28 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
         for px in ctx.x0..ctx.x1 {
-            let dx = (px as f32 + 0.5) - ctx.cx;
-            let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
-            let mut w = ctx.spec.falloff_weight(t);
-            // Skip pixels the falloff already zeroes (the bbox corners outside the dab radius)
-            // BEFORE the texture sample — the texture only modulates where the dab paints, so
-            // sampling it there is pure waste (it dominates a large Anchored re-stamp).
+            // SILHOUETTE: the Shape slot's image (a finite tip), or — when no Shape is active — the
+            // procedural falloff (default, byte-identical to before). The Shape *replaces* the falloff
+            // so an imported tip stays crisp to the footprint edge (a star is a star, not eroded by a
+            // round falloff). See `docs/Painter/05_design_dois_slots_textura.md` §2.
+            let mut w = if let Some(sh) = ctx.shape {
+                crate::texture::sample_shape(
+                    &ctx.spec.shape,
+                    sh.basis,
+                    px,
+                    py,
+                    ctx.center,
+                    ctx.radius,
+                    sh.image,
+                )
+            } else {
+                let dx = (px as f32 + 0.5) - ctx.cx;
+                let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                ctx.spec.falloff_weight(t)
+            };
+            // Skip pixels the silhouette already zeroes (the bbox corners outside the dab / outside the
+            // tip) BEFORE the grain sample — the grain only modulates where the dab paints, so sampling
+            // it there is pure waste (it dominates a large Anchored re-stamp).
             if w <= 0.0 {
                 continue;
             }
@@ -425,7 +469,16 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                         RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                     }
                 } else {
-                    w *= s;
+                    // GRAIN with Depth: `g_eff = 1 + (g − 1)·depth` (Procreate Grain Depth). At
+                    // depth = 1 (default) this is exactly `g`, so a default brush stays byte-identical
+                    // (the `>= 1.0` short-circuits the lerp's f32 rounding back to a bare multiply).
+                    let depth = ctx.spec.grain_depth();
+                    let g_eff = if depth >= 1.0 {
+                        s
+                    } else {
+                        1.0 + (s - 1.0) * depth
+                    };
+                    w *= g_eff;
                 }
                 if w <= 0.0 {
                     continue;

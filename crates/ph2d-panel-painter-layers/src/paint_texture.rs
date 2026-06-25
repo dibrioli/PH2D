@@ -46,10 +46,7 @@ pub(crate) fn paint_texture_section(
     // Collapsible section (default expanded) on the brush; the inline Texture-LAYER editor keeps the
     // plain divider (it's always-on, nested under the active layer row).
     let (mut y, collapsed) = if compact {
-        (
-            section_header(ctx, theme, x, content_w, y, "Texture"),
-            false,
-        )
+        (section_header(ctx, theme, x, content_w, y, "Grain"), false)
     } else {
         crate::paint_brush_top::paint_collapsible_section(
             ctx,
@@ -57,7 +54,7 @@ pub(crate) fn paint_texture_section(
             x,
             content_w,
             y,
-            "Texture",
+            "Grain",
             core_ids::PAINTER_BRUSH_TEXTURE_SECTION,
             core_ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
             core_ids::PAINTER_BRUSH_TEXTURE_RESET,
@@ -76,7 +73,7 @@ pub(crate) fn paint_texture_section(
         x,
         content_w,
         y,
-        "Texture",
+        "Grain",
         core_ids::PAINTER_BRUSH_TEXTURE_KIND,
         brush.texture_kind,
         kind.name(),
@@ -197,6 +194,22 @@ pub(crate) fn paint_texture_section(
         value: size_track(brush.texture_size[1]),
         readout: &format!("{:.2}", brush.texture_size[1]),
     });
+
+    // ── Depth — how strongly the Grain bites over the base colour (brush only; a Texture-LAYER is a
+    //    full-cover grain where Depth is moot). `1.0` = full bite (default). ──
+    if !compact {
+        y = paint_param_row(ParamRow {
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            label: "Depth",
+            id: core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
+            value: brush.grain_depth.clamp(0.0, 1.0),
+            readout: &format!("{:.2}", brush.grain_depth),
+        });
+    }
 
     // ── Per-pattern parameters — each kind's own knobs (Contrast / Brightness + a shape param) ──
     for (i, spec) in param_specs(kind).iter().enumerate() {
@@ -345,9 +358,9 @@ fn paint_texture_preview(
             bw as f32 / bh as f32,
         );
         let (sw, sh) = if ia >= pa {
-            (bw, ((bw as f32 / ia).round() as u32).clamp(1, bh))
+            (bw, ((bw as f32 / ia).round() as u32).clamp(1, bh)) // CLAMP-OK: integer u32; 1 ≤ bh (≥8), no NaN
         } else {
-            (((bh as f32 * ia).round() as u32).clamp(1, bw), bh)
+            (((bh as f32 * ia).round() as u32).clamp(1, bw), bh) // CLAMP-OK: integer u32; 1 ≤ bw (≥8), no NaN
         };
         for py in 0..bh {
             for px in 0..bw {

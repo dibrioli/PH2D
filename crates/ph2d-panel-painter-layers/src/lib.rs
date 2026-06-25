@@ -35,6 +35,7 @@ mod paint_brush;
 mod paint_brush_top;
 mod paint_falloff;
 mod paint_rows;
+mod paint_shape;
 mod paint_stroke;
 mod paint_texture;
 mod paint_texture_ramp;
@@ -43,9 +44,9 @@ pub mod state;
 
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,
-    last_visible_h, selected_falloff_point, set_current_brush, set_current_brush_texture_image,
-    set_current_dock_shows_layers, set_current_layers, set_current_selection,
-    set_selected_falloff_point,
+    last_visible_h, selected_falloff_point, set_current_brush, set_current_brush_shape_image,
+    set_current_brush_texture_image, set_current_dock_shows_layers, set_current_layers,
+    set_current_selection, set_selected_falloff_point,
 };
 
 use ph2d_a11y::NodeId;

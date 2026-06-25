@@ -22,6 +22,9 @@ mod curve;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// for the LOC cap (same submodule rationale).
 mod jitter_settings;
+/// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from
+/// `brush_settings` for the LOC cap.
+mod shape_settings;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
@@ -37,6 +40,8 @@ pub use stencil::StencilOverlay;
 mod ramp;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
 mod stamp_cache;
+/// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
+mod stamp_route;
 
 /// Default control-handle grab radius in image px (the Curve and Circle editors share one tolerance),
 /// until the shell forwards a screen-scaled value via [`PainterTool::set_shape_grab_tol_px`].
@@ -98,6 +103,12 @@ pub(crate) struct PaintState {
     /// **Rake** travel accumulated since the heading last re-aimed (persists across dab batches so the
     /// baseline spans real stroke distance, not one event's dabs).
     rake_accum: [f32; 2],
+    /// The **Shape** slot's own Rake heading + accumulator (independent of the Grain's, so a brush can
+    /// have the Shape follow the stroke while the Grain stays fixed, or vice-versa). Same long-baseline
+    /// easing (`stamp_cache::advance_rake`); reset per stroke.
+    shape_rake_dir: [f32; 2],
+    /// See [`shape_rake_dir`].
+    shape_rake_accum: [f32; 2],
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
@@ -138,12 +149,18 @@ pub(crate) struct PaintState {
     /// In-progress Stencil overlay drag (move/resize the texture rect); `None` when not dragging a
     /// handle. See [`crate::tool::paint::stencil`].
     stencil_grab: Option<stencil::StencilGrab>,
-    /// Imported brush-texture luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
+    /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     texture_image: Option<brush_settings::BrushTextureImage>,
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
     texture_image_pending: bool,
     /// Bumped whenever [`texture_image`] changes, so the stamp cache re-renders the Image mask.
     texture_image_version: u64,
+    /// Imported brush-**Shape** luminance (the silhouette tip; heavy → not in the `Copy` spec), borrowed
+    /// as an `ImageMask`. `None` ⇒ the silhouette is the falloff. Mirrors [`texture_image`]. Set by the
+    /// shell (Hierarchy "Use as Brush Shape"); cleared by the Shape section reset.
+    shape_image: Option<brush_settings::BrushTextureImage>,
+    /// Bumped whenever [`shape_image`] changes, so the stamp cache re-renders the Shape mask.
+    shape_image_version: u64,
     /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
     /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
     stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
@@ -177,6 +194,8 @@ impl Default for PaintState {
             tex_rng: 0,
             rake_dir: [0.0, 0.0],
             rake_accum: [0.0, 0.0],
+            shape_rake_dir: [0.0, 0.0],
+            shape_rake_accum: [0.0, 0.0],
             stroke_undo: None,
             eraser: false,
             tiling: [false, false],
@@ -193,6 +212,8 @@ impl Default for PaintState {
             texture_image: None,
             texture_image_pending: false,
             texture_image_version: 0,
+            shape_image: None,
+            shape_image_version: 0,
             stamp_cache: None,
             canvas_tex_cache: None,
             texture_ramp: ph2d_color::ColorRamp::default(),
@@ -236,6 +257,8 @@ impl PainterTool {
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
         self.paint.rake_dir = [0.0, 0.0]; // fresh stroke → Rake heading re-eases from the first travel
         self.paint.rake_accum = [0.0, 0.0];
+        self.paint.shape_rake_dir = [0.0, 0.0];
+        self.paint.shape_rake_accum = [0.0, 0.0];
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.begin(
@@ -361,64 +384,6 @@ impl PainterTool {
         self.curve_discard();
         self.circle_discard();
         self.polygon_discard();
-    }
-
-    /// Stamp a batch of dabs into `canvas_rgba` (with the brush texture, if any) + accumulate the
-    /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
-    /// ([`Self::tiled_dabs`]) so a stroke near a border is seamless when the sprite repeats as a tile.
-    fn stamp_dabs(&mut self, dabs: &[Dab]) {
-        if self.paint.tiling[0] || self.paint.tiling[1] {
-            let wrapped = tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
-            self.stamp_dabs_inner(&wrapped);
-        } else {
-            self.stamp_dabs_inner(dabs);
-        }
-    }
-
-    /// The actual stamp dispatch (already tiled if needed); [`Self::stamp_dabs`] wraps first.
-    fn stamp_dabs_inner(&mut self, dabs: &[Dab]) {
-        if dabs.is_empty() {
-            return;
-        }
-        let (w, h) = self.source_size;
-        let mut brush = self.paint.brush;
-        // Eraser overrides the blend with Erase Alpha (the drawing blend in `brush.blend` is kept).
-        if self.paint.eraser {
-            brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
-        }
-        // Alpha lock: the dab paints only into the active layer's existing alpha (clip/mask composite-time).
-        let alpha_locked = self
-            .layers
-            .active()
-            .and_then(|id| self.layers.get(id))
-            .is_some_and(|l| l.alpha_locked);
-        // Color Ramp: the texture's scalar drives the per-texel COLOUR (baked LUT), bypassing scalar caches.
-        if self.paint.texture_ramp_enabled && brush.texture.is_active() {
-            self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // Jitter Rotate orients each dab uniquely, so the constant-orientation caches don't apply.
-        let per_dab_rotation = brush.has_per_dab_rotation();
-        // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
-        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
-        // A static View texture is scale-invariant: cache the stamp once + scale-blit per dab (Blender).
-        if brush.texture.is_active()
-            && brush.texture.is_cacheable()
-            && !per_dab_rotation
-            && !accumulate_cap
-        {
-            self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // Tiled / Stencil are canvas-fixed but dab-independent — cache each canvas pixel's texture once
-        // per stroke + look it up per dab (Anchored re-stamps the same region, so inner = reuse).
-        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap {
-            self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
-        // Per-pixel path (no cache applies, or the Accumulate cap): resolves the texture frame +
-        // Randomize-Color colour per dab and threads the per-stroke coverage mask.
-        self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h);
     }
 
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.

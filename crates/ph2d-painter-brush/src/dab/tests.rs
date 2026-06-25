@@ -45,6 +45,7 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
         false,
         Some(&basis),
         None,
+        None,
         &lut,
         crate::ramp_alpha::RampAlphaMode::None,
     )
@@ -100,6 +101,7 @@ fn ramp_alpha_dab(buf: &mut [u8], w: u32, h: u32, a1: f32, mode: crate::ramp_alp
         1.0,
         false,
         Some(&basis),
+        None,
         None,
         &lut,
         mode,
@@ -343,6 +345,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             false,
             None,
             None,
+            None,
             Some(&mut mask),
         );
     }
@@ -354,13 +357,262 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
     // ON (no mask): the same five dabs build past Strength toward black.
     let mut on = solid(w, h, [255, 255, 255, 255]);
     for _ in 0..5 {
-        stamp_dab_textured_masked(&mut on, w, h, center, &spec, 1.0, false, None, None, None)
-            .expect("dab painted");
+        stamp_dab_textured_masked(
+            &mut on, w, h, center, &spec, 1.0, false, None, None, None, None,
+        )
+        .expect("dab painted");
     }
     assert!(
         on[i] < 40 && off[i] > on[i],
         "Accumulate ON builds past Strength: on={} off={} (want on dark, off lighter)",
         on[i],
         off[i]
+    );
+}
+
+// ── W0: dual-slot (Shape × Grain) composition ───────────────────────────────────────────────
+
+#[test]
+fn grain_depth_one_is_default_and_zero_disables_the_grain() {
+    use crate::texture::{TexDabBasis, TextureKind, TextureMapping, TextureSettings};
+    let (w, h) = (48u32, 48u32);
+    let base = BrushSpec {
+        radius_px: 18.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth,
+        texture: TextureSettings {
+            kind: TextureKind::Checker,
+            mapping: TextureMapping::ViewPlane,
+            size: [0.3, 0.3],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let basis = TexDabBasis::identity();
+    let center = [24.0, 24.0];
+
+    // Default grain (depth = 1.0) applies the checker → differs from a bare (no-grain) dab.
+    let mut g1 = solid(w, h, [255, 255, 255, 255]);
+    stamp_dab_textured(
+        &mut g1,
+        w,
+        h,
+        center,
+        &base,
+        1.0,
+        false,
+        Some(&basis),
+        None,
+        None,
+    )
+    .expect("grain dab painted");
+
+    // depth = 0.0 disables the grain: byte-for-byte identical to the same dab with NO grain.
+    let mut d0 = solid(w, h, [255, 255, 255, 255]);
+    let spec0 = BrushSpec {
+        grain_depth: 0.0,
+        ..base
+    };
+    stamp_dab_textured(
+        &mut d0,
+        w,
+        h,
+        center,
+        &spec0,
+        1.0,
+        false,
+        Some(&basis),
+        None,
+        None,
+    )
+    .expect("depth-0 dab painted");
+
+    let mut notex = solid(w, h, [255, 255, 255, 255]);
+    let spec_nt = BrushSpec {
+        texture: TextureSettings::default(),
+        ..base
+    };
+    stamp_dab(&mut notex, w, h, center, &spec_nt, 1.0, false).expect("plain dab painted");
+
+    assert_eq!(
+        d0, notex,
+        "grain_depth 0 ⇒ grain has no effect (silhouette only)"
+    );
+    assert_ne!(
+        g1, notex,
+        "grain_depth 1 (default) ⇒ the grain actually modulates"
+    );
+}
+
+#[test]
+fn shape_image_replaces_the_falloff_with_a_crisp_silhouette() {
+    use crate::ImageMask;
+    use crate::texture::{TexDabBasis, TextureKind, TextureSettings};
+    let (w, h) = (48u32, 48u32);
+    // An all-white 8×8 Shape image ⇒ the silhouette is the full footprint SQUARE (crisp to the edge),
+    // not a round falloff disc. A footprint corner that a Smooth disc leaves blank is now painted.
+    let white = vec![255u8; 64];
+    let img = ImageMask {
+        lum: &white,
+        width: 8,
+        height: 8,
+    };
+    let spec = BrushSpec {
+        radius_px: 18.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth,
+        shape: TextureSettings {
+            kind: TextureKind::Image,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let basis = TexDabBasis::identity();
+    let shape_in = ShapeInput {
+        basis: &basis,
+        image: Some(&img),
+    };
+    let center = [24.0, 24.0];
+    let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
+
+    let mut sq = solid(w, h, [255, 255, 255, 255]);
+    stamp_dab_textured(
+        &mut sq,
+        w,
+        h,
+        center,
+        &spec,
+        1.0,
+        false,
+        None,
+        None,
+        Some(shape_in),
+    )
+    .expect("shape dab painted");
+    // Pixel (8,8): footprint coord ≈ (−0.86, −0.86) — inside the square (|u|,|v|<1) ⇒ painted black;
+    // a Smooth falloff there is at t ≈ 1.2 > 1 ⇒ zero.
+    assert!(
+        sq[idx(8, 8)] < 80,
+        "square shape paints the footprint corner (got {})",
+        sq[idx(8, 8)]
+    );
+
+    // A falloff-only brush (Shape inactive) leaves that same corner unpainted (round disc).
+    let mut disc = solid(w, h, [255, 255, 255, 255]);
+    let spec_disc = BrushSpec {
+        shape: TextureSettings::default(),
+        ..spec
+    };
+    stamp_dab(&mut disc, w, h, center, &spec_disc, 1.0, false).expect("disc dab painted");
+    assert!(
+        disc[idx(8, 8)] > 240,
+        "round falloff leaves the corner blank (got {})",
+        disc[idx(8, 8)]
+    );
+
+    // An Image shape with NO pixels is INACTIVE (the tool then uses the falloff — no blank brush).
+    assert!(
+        !spec.shape_silhouette_active(false),
+        "an Image shape with no pixels is inactive ⇒ falloff silhouette"
+    );
+    assert!(
+        spec.shape_silhouette_active(true),
+        "an Image shape with pixels is the active silhouette"
+    );
+}
+
+#[test]
+fn shape_angle_rotates_the_silhouette() {
+    use crate::ImageMask;
+    use crate::texture::{TextureKind, TextureSettings, dab_basis};
+    let (w, h) = (48u32, 48u32);
+    // A vertical-bar Shape: the central columns (x = 3,4 of 8) are white, the rest black.
+    let mut lum = vec![0u8; 64];
+    for y in 0..8 {
+        lum[y * 8 + 3] = 255;
+        lum[y * 8 + 4] = 255;
+    }
+    let img = ImageMask {
+        lum: &lum,
+        width: 8,
+        height: 8,
+    };
+    let mk = |angle: u16| BrushSpec {
+        radius_px: 18.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Smooth,
+        shape: TextureSettings {
+            kind: TextureKind::Image,
+            angle_deg: angle,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let center = [24.0, 24.0];
+    let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
+
+    // Angle 0: the bar runs vertically — painted ABOVE the centre, blank to the RIGHT.
+    let s0 = mk(0);
+    let b0 = dab_basis(&s0.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let mut a = solid(w, h, [255, 255, 255, 255]);
+    stamp_dab_textured(
+        &mut a,
+        w,
+        h,
+        center,
+        &s0,
+        1.0,
+        false,
+        None,
+        None,
+        Some(ShapeInput {
+            basis: &b0,
+            image: Some(&img),
+        }),
+    )
+    .expect("angle-0 shape painted");
+    assert!(
+        a[idx(24, 12)] < 80,
+        "vertical bar paints above centre (got {})",
+        a[idx(24, 12)]
+    );
+    assert!(
+        a[idx(36, 24)] > 200,
+        "vertical bar is blank to the right (got {})",
+        a[idx(36, 24)]
+    );
+
+    // Angle 90: the SAME shape now runs horizontally — the orientation flips.
+    let s90 = mk(90);
+    let b90 = dab_basis(&s90.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let mut c = solid(w, h, [255, 255, 255, 255]);
+    stamp_dab_textured(
+        &mut c,
+        w,
+        h,
+        center,
+        &s90,
+        1.0,
+        false,
+        None,
+        None,
+        Some(ShapeInput {
+            basis: &b90,
+            image: Some(&img),
+        }),
+    )
+    .expect("angle-90 shape painted");
+    assert!(
+        c[idx(24, 12)] > 200,
+        "rotated bar no longer paints above centre (got {})",
+        c[idx(24, 12)]
+    );
+    assert!(
+        c[idx(36, 24)] < 80,
+        "rotated bar now paints to the right (got {})",
+        c[idx(36, 24)]
     );
 }

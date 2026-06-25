@@ -57,6 +57,7 @@ fn perf_texture_stamp_cost_on_a_large_dab() {
                 false,
                 Some(&b),
                 None,
+                None,
             );
         }
         let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(runs);
@@ -331,6 +332,7 @@ fn inactive_texture_is_byte_identical_to_stamp_dab() {
         false,
         Some(&basis),
         None,
+        None,
     );
     assert_eq!(ra, rb);
     assert_eq!(a, b, "an inactive texture must not change a single byte");
@@ -375,6 +377,7 @@ fn checker_texture_leaves_zero_texel_cells_unpainted() {
         1.0,
         false,
         Some(&basis),
+        None,
         None,
     )
     .expect("textured painted");
@@ -427,6 +430,7 @@ fn full_one_texture_matches_unmodulated_dab() {
         false,
         Some(&basis),
         None,
+        None,
     );
     // The texture only attenuates: every channel value is ≥ the plain one (lighter or equal,
     // because less black was deposited). Never darker.
@@ -476,7 +480,8 @@ fn image_texture_modulates_the_dab() {
             1.0,
             false,
             Some(&b),
-            Some(&img_k)
+            Some(&img_k),
+            None,
         )
         .is_none(),
         "an all-black image mask deposits nothing"
@@ -499,6 +504,7 @@ fn image_texture_modulates_the_dab() {
         false,
         Some(&b),
         Some(&img_w),
+        None,
     )
     .expect("painted");
     assert_eq!(
@@ -518,7 +524,8 @@ fn image_texture_modulates_the_dab() {
             1.0,
             false,
             Some(&b),
-            None
+            None,
+            None,
         )
         .is_some(),
         "kind Image without pixels is inert (full coverage), not a mask"

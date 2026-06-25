@@ -1,0 +1,74 @@
+//! The stamp **route dispatcher**: given a batch of dabs, pick which of the four stamp paths
+//! ([`super::stamp_cache`]) to use based on the Shape + Grain slots (cacheable / canvas-cached /
+//! per-pixel / ramped). Split from `paint.rs` for the workspace LOC cap; the routes themselves live in
+//! `stamp_cache`.
+
+use crate::tool::PainterTool;
+use ph2d_painter_brush::Dab;
+
+impl PainterTool {
+    /// Stamp a batch of dabs into `canvas_rgba` (with the brush Shape + Grain, if any) + accumulate the
+    /// dirty rect. With **Tiling** on, each dab is first replicated across the wrapped sprite edges
+    /// (`tiling::tiled_dabs`) so a stroke near a border is seamless when the sprite repeats as a tile.
+    pub(super) fn stamp_dabs(&mut self, dabs: &[Dab]) {
+        if self.paint.tiling[0] || self.paint.tiling[1] {
+            let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            self.stamp_dabs_inner(&wrapped);
+        } else {
+            self.stamp_dabs_inner(dabs);
+        }
+    }
+
+    /// The actual stamp dispatch (already tiled if needed); [`Self::stamp_dabs`] wraps first.
+    pub(super) fn stamp_dabs_inner(&mut self, dabs: &[Dab]) {
+        if dabs.is_empty() {
+            return;
+        }
+        let (w, h) = self.source_size;
+        let mut brush = self.paint.brush;
+        // Eraser overrides the blend with Erase Alpha (the drawing blend in `brush.blend` is kept).
+        if self.paint.eraser {
+            brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
+        }
+        // Alpha lock: the dab paints only into the active layer's existing alpha (clip/mask composite-time).
+        let alpha_locked = self
+            .layers
+            .active()
+            .and_then(|id| self.layers.get(id))
+            .is_some_and(|l| l.alpha_locked);
+        // Color Ramp: the texture's scalar drives the per-texel COLOUR (baked LUT), bypassing scalar caches.
+        if self.paint.texture_ramp_enabled && brush.texture.is_active() {
+            self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
+        let has_shape_image = self.paint.shape_image.is_some();
+        // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own
+        // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).
+        let per_dab_rotation =
+            brush.has_per_dab_rotation() || brush.shape_has_per_dab_rotation(has_shape_image);
+        // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
+        let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        // Whether either slot genuinely shapes the dab beyond the falloff: a Shape image (silhouette) or
+        // an active Grain. A bare falloff brush (neither) stays on the per-pixel path, as before.
+        let want_cache =
+            brush.shape_silhouette_active(has_shape_image) || brush.texture.is_active();
+        // Both slots static & View ⇒ bake silhouette × Grain once into the scale-invariant stamp (Blender).
+        if want_cache
+            && brush.dab_mask_cacheable(has_shape_image)
+            && !per_dab_rotation
+            && !accumulate_cap
+        {
+            self.stamp_dabs_cached(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
+        // Grain Tiled / Stencil is canvas-fixed but dab-independent — cache each canvas pixel's Grain
+        // once per stroke + look it up per dab; the silhouette (Shape or falloff) stays per-pixel.
+        if brush.texture.is_canvas_cacheable() && !per_dab_rotation && !accumulate_cap {
+            self.stamp_dabs_canvas_cached(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
+        // Per-pixel path (no cache applies, or the Accumulate cap): resolves the texture frame +
+        // Randomize-Color colour per dab and threads the per-stroke coverage mask.
+        self.stamp_dabs_per_pixel(dabs, &brush, alpha_locked, w, h);
+    }
+}

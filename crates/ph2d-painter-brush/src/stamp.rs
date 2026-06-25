@@ -31,27 +31,49 @@ impl StampMask {
     }
 }
 
-/// Render the unit brush stamp (falloff × View texture, if any) at `size`×`size`. `image` supplies
-/// the pixels for [`crate::TextureKind::Image`]. The caller renders this only for cacheable settings
-/// ([`crate::TextureSettings::is_cacheable`]); the result is deterministic (HR-5).
+/// Render the unit brush stamp (**silhouette × Grain**) at `size`×`size`. The silhouette is the Shape
+/// image (`shape_image`) when the Shape slot is active, else the procedural falloff (byte-identical to
+/// the pre-Shape engine). `grain_image` supplies the pixels for a [`crate::TextureKind::Image`] Grain.
+/// The caller renders this only for cacheable settings ([`BrushSpec::dab_mask_cacheable`]); the result
+/// is deterministic (HR-5).
 #[must_use]
-pub fn render_stamp_mask(spec: &BrushSpec, image: Option<&ImageMask>, size: u32) -> StampMask {
+pub fn render_stamp_mask(
+    spec: &BrushSpec,
+    grain_image: Option<&ImageMask>,
+    shape_image: Option<&ImageMask>,
+    size: u32,
+) -> StampMask {
     let size = size.max(1);
     let mut data = vec![0u8; (size as usize) * (size as usize)];
-    let active = spec.texture.is_active();
-    // The View static basis (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
-    let basis =
+    let grain_active = spec.texture.is_active();
+    let shape_active = spec.shape_silhouette_active(shape_image.is_some());
+    let depth = spec.grain_depth();
+    // The View static bases (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
+    let grain_basis =
         crate::texture::dab_basis(&spec.texture, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let shape_basis = shape_active.then(|| {
+        crate::texture::dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0])
+    });
     let inv = 2.0 / size as f32;
     for j in 0..size {
         let v = (j as f32 + 0.5) * inv - 1.0;
         let row = (j as usize) * (size as usize);
         for i in 0..size {
             let u = (i as f32 + 0.5) * inv - 1.0;
-            let t = (u * u + v * v).sqrt();
-            let mut w = spec.falloff_weight(t);
-            if w > 0.0 && active {
-                w *= crate::texture::sample_unit(&spec.texture, &basis, u, v, image);
+            let mut w = match &shape_basis {
+                Some(sb) => crate::texture::sample_shape_unit(&spec.shape, sb, u, v, shape_image),
+                None => {
+                    let t = (u * u + v * v).sqrt();
+                    spec.falloff_weight(t)
+                }
+            };
+            if w > 0.0 && grain_active {
+                let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
+                w *= if depth >= 1.0 {
+                    g
+                } else {
+                    1.0 + (g - 1.0) * depth
+                };
             }
             data[row + i as usize] = encode(w);
         }
@@ -199,6 +221,10 @@ struct CanvasBlitCtx<'a> {
     spec: &'a BrushSpec,
     basis: crate::texture::TexDabBasis,
     image: Option<ImageMask<'a>>,
+    /// The Shape silhouette frame + image (dab-relative), when the Shape slot is active; else the
+    /// falloff is the silhouette. The Grain stays canvas-fixed (cached); the silhouette is per-pixel.
+    shape_basis: Option<crate::texture::TexDabBasis>,
+    shape_image: Option<ImageMask<'a>>,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -229,6 +255,7 @@ pub fn blit_canvas_cached(
     radius: f32,
     spec: &BrushSpec,
     image: Option<&ImageMask>,
+    shape_image: Option<&ImageMask>,
     coverage: f32,
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
@@ -253,10 +280,19 @@ pub fn blit_canvas_cached(
         [width as f32, height as f32],
         [1.0, 0.0],
     );
+    // The Shape silhouette frame (dab-relative; static View in this cached path — Rake/Random route to
+    // the per-pixel path). `None` ⇒ the falloff is the silhouette.
+    let shape_basis = spec
+        .shape_silhouette_active(shape_image.is_some())
+        .then(|| {
+            crate::texture::dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0])
+        });
     let ctx = CanvasBlitCtx {
         spec,
         basis,
         image: image.copied(),
+        shape_basis,
+        shape_image: shape_image.copied(),
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -300,15 +336,31 @@ fn canvas_blit_band(
 ) -> bool {
     let (cstride, mstride) = (ctx.width * 4, ctx.width);
     let mut touched = false;
+    let depth = ctx.spec.grain_depth();
     for r in 0..canvas.len() / cstride {
         let py = band_y0 + r as i64;
         let dy = (py as f32 + 0.5) - ctx.cy;
         for px in ctx.x0..ctx.x1 {
-            let dx = (px as f32 + 0.5) - ctx.cx;
-            let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
-            let mut w = ctx.spec.falloff_weight(t);
+            // SILHOUETTE: the Shape image (dab-relative) or, by default, the falloff — same rule as the
+            // per-pixel path, so the cached Tiled/Stencil Grain stays bit-identical with a Shape on top.
+            let mut w = match &ctx.shape_basis {
+                Some(sb) => crate::texture::sample_shape(
+                    &ctx.spec.shape,
+                    sb,
+                    px,
+                    py,
+                    [ctx.cx, ctx.cy],
+                    ctx.radius,
+                    ctx.shape_image.as_ref(),
+                ),
+                None => {
+                    let dx = (px as f32 + 0.5) - ctx.cx;
+                    let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                    ctx.spec.falloff_weight(t)
+                }
+            };
             if w <= 0.0 {
-                continue; // outside the dab → no falloff, no cache fill
+                continue; // outside the silhouette → no cache fill
             }
             let mi = r * mstride + px as usize;
             if ready[mi] == 0 {
@@ -325,7 +377,13 @@ fn canvas_blit_band(
                 tex[mi] = encode(tv);
                 ready[mi] = 1;
             }
-            w *= f32::from(tex[mi]) / 255.0;
+            // GRAIN with Depth (depth = 1 default ⇒ bare multiply, byte-identical).
+            let g = f32::from(tex[mi]) / 255.0;
+            w *= if depth >= 1.0 {
+                g
+            } else {
+                1.0 + (g - 1.0) * depth
+            };
             if w <= 0.0 {
                 continue;
             }

@@ -168,11 +168,9 @@ pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stro
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
 /// "Edge to Edge" toggle (Blender `BRUSH_EDGE_TO_EDGE`) — Anchored only. `Click` → `set_brush_edge_to_edge`.
 pub const PAINTER_BRUSH_EDGE_TO_EDGE: NodeId = hash_node_id("painter_brush.edge_to_edge");
-/// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %).
-/// `SetValue` → `set_brush_spacing`.
+/// Brush "Spacing" slider (`0..1` track = fraction of diameter, shown as %). `SetValue` → `set_brush_spacing`.
 pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
-/// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`).
-/// `Click` → `set_brush_space_attenuation` (toggles).
+/// "Adjust Strength for Spacing" toggle (Blender `BRUSH_SPACE_ATTEN`). `Click` → `set_brush_space_attenuation`.
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
@@ -182,22 +180,24 @@ pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
 /// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px).
 /// `SelectOption` → `set_brush_jitter_unit`. Options via [`painter_brush_jitter_unit_option_id`].
 pub const PAINTER_BRUSH_JITTER_UNIT: NodeId = hash_node_id("painter_brush.jitter_unit");
-/// Brush "Jitter Scale" slider (`0..1`; per-dab radius scatter, PH2D extra).
-/// `SetValue` → `set_brush_jitter_scale`.
+/// Brush "Jitter Scale" slider (`0..1`; per-dab radius scatter, PH2D extra). `SetValue` → `set_brush_jitter_scale`.
 pub const PAINTER_BRUSH_JITTER_SCALE: NodeId = hash_node_id("painter_brush.jitter_scale");
 /// Brush "Jitter Rotate" slider (`0..1`; per-dab texture-rotation scatter, PH2D extra; only visible
 /// with a texture). `SetValue` → `set_brush_jitter_rotate`.
 pub const PAINTER_BRUSH_JITTER_ROTATE: NodeId = hash_node_id("painter_brush.jitter_rotate");
+/// Brush "Jitter Spacing" slider (`0..1`; per-gap dab-spacing scatter, PH2D extra). `SetValue` → `set_brush_jitter_spacing`.
+pub const PAINTER_BRUSH_JITTER_SPACING: NodeId = hash_node_id("painter_brush.jitter_spacing");
 
-/// The per-dab randomize **slider** ids (Randomize-Color Hue/Sat/Value + Jitter Scale/Rotate). Lets
-/// the panel dispatch forward them all with one `.contains` check (mirror of
+/// The per-dab randomize **slider** ids (Randomize-Color Hue/Sat/Value + Jitter Scale/Rotate/Spacing).
+/// Lets the panel dispatch forward them all with one `.contains` check (mirror of
 /// `PAINTER_BRUSH_TEXTURE_PARAMS`); the enable toggle is a separate `Click`.
-pub const PAINTER_BRUSH_RANDOMIZE_SLIDERS: [NodeId; 5] = [
+pub const PAINTER_BRUSH_RANDOMIZE_SLIDERS: [NodeId; 6] = [
     PAINTER_BRUSH_COLOR_JITTER_HUE,
     PAINTER_BRUSH_COLOR_JITTER_SAT,
     PAINTER_BRUSH_COLOR_JITTER_VAL,
     PAINTER_BRUSH_JITTER_SCALE,
     PAINTER_BRUSH_JITTER_ROTATE,
+    PAINTER_BRUSH_JITTER_SPACING,
 ];
 /// Brush "Dash Ratio" slider (`0..1` on-fraction of the dash period). `SetValue` → `set_brush_dash_ratio`.
 pub const PAINTER_BRUSH_DASH_RATIO: NodeId = hash_node_id("painter_brush.dash_ratio");

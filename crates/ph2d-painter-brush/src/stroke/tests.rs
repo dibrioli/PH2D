@@ -93,6 +93,43 @@ fn space_method_emits_at_arc_length_intervals() {
 }
 
 #[test]
+fn jitter_spacing_scatters_the_gaps_and_replays() {
+    // radius 10 → diameter 20; spacing 0.5 → base step 10px. Jitter Spacing scales each gap by 1 ±
+    // amount, so a straight drag's gaps scatter instead of the even 10px above.
+    let mut spec = straight_spec(10.0, 0.5);
+    spec.jitter_spacing = 0.8;
+    let pts = [pt(0.0, 0.0, 1.0), pt(200.0, 0.0, 1.0)];
+    let dabs = collect_stroke(spec, no_dynamics(), &pts);
+    let gaps: Vec<f32> = dabs
+        .windows(2)
+        .map(|w| w[1].center[0] - w[0].center[0])
+        .collect();
+    assert!(gaps.len() >= 8, "lays a run of dabs, got {gaps:?}");
+    let spread = gaps.iter().cloned().fold(f32::MIN, f32::max)
+        - gaps.iter().cloned().fold(f32::MAX, f32::min);
+    assert!(
+        spread > 4.0,
+        "Jitter Spacing scatters the gaps, spread={spread} {gaps:?}"
+    );
+
+    // Deterministic (HR-5): the same seed replays identical dab centres.
+    let again = collect_stroke(spec, no_dynamics(), &pts);
+    let a: Vec<[f32; 2]> = dabs.iter().map(|d| d.center).collect();
+    let b: Vec<[f32; 2]> = again.iter().map(|d| d.center).collect();
+    assert_eq!(a, b, "same seed replays identically");
+
+    // Off (amount 0) → the baseline even ≤10px spacing is untouched.
+    let even = collect_stroke(straight_spec(10.0, 0.5), no_dynamics(), &pts);
+    for w in even.windows(2) {
+        let dx = w[1].center[0] - w[0].center[0];
+        assert!(
+            dx > 0.0 && dx <= 10.0 + 1e-3,
+            "even spacing when off, got {dx}"
+        );
+    }
+}
+
+#[test]
 fn accumulates_across_short_segments() {
     // step = 10. Small 6-px moves accumulate; over the whole drag + finish a dab lands at the
     // 10 px crossing, all on the x axis (collinear input stays straight through the smoother).

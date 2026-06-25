@@ -1,15 +1,11 @@
 //! The stroke engine — turns a pointer path into dabs per the Blender "Stroke" panel.
 //!
-//! Behavioural reference (clean-room, no code copied): Blender
-//! `editors/sculpt_paint/paint_stroke.cc`. The per-raw-sample pipeline is:
-//! **input-samples box-average** ([`crate::sampler`]) → **stabilize spring** (smooth-stroke,
-//! dead-zone + lerp) → per-[`StrokeMethod`] emission → per-dab **dash gate** + **jitter** +
-//! pressure **dynamics** + **space-attenuation**. `Space` resamples the path at `spacing ×
-//! diameter`; the per-event methods (`Dots`/`DragDot`/`Airbrush`) emit one dab per processed
-//! sample. The *interactive* methods (`Anchored`/`Line`/`Curve` — live preview + finalise) are
-//! owned by the tool/shell; the engine exposes [`Stroke::fill_segment`] (line/curve fill) and
-//! [`Stroke::tick`] (airbrush timer) as the primitives those drive. See
-//! `docs/Painter/03_algoritmos_referencia_blender.md` §3.
+//! Behavioural reference (clean-room, no code copied): Blender `paint_stroke.cc`. The per-raw-sample
+//! pipeline is **input-samples box-average** ([`crate::sampler`]) → **stabilize spring** → per-
+//! [`StrokeMethod`] emission → per-dab **dash gate** + **jitter** + pressure **dynamics** + **space-
+//! attenuation**. `Space` resamples the path at `spacing × diameter`; the per-event methods (`Dots`/
+//! `DragDot`/`Airbrush`) emit one dab per sample. The *interactive* methods (`Anchored`/`Line`/`Curve`)
+//! are tool/shell-owned; the engine exposes [`Stroke::fill_segment`] + [`Stroke::tick`] as primitives.
 
 use crate::dynamics::Dynamics;
 use crate::sampler::InputSampler;
@@ -57,6 +53,9 @@ pub struct Stroke {
     last_pressure: f32,
     /// Distance travelled since the last emitted dab (carried across segments).
     accum: f32,
+    /// **Jitter Spacing** multiplier for the next gap (`1.0` = even); re-drawn after each dab, carried
+    /// across segments like `accum`.
+    spacing_mult: f32,
     /// State for the dep-free jitter RNG (splitmix64).
     rng: u64,
     started: bool,
@@ -104,6 +103,7 @@ impl Stroke {
             last_pos: [0.0, 0.0],
             last_pressure: 1.0,
             accum: 0.0,
+            spacing_mult: 1.0,
             rng: seed ^ 0x9E37_79B9_7F4A_7C15,
             started: false,
             sampler: InputSampler::new(spec.input_samples),
@@ -133,6 +133,7 @@ impl Stroke {
         self.last_pos = p.pos;
         self.last_pressure = p.pressure;
         self.accum = 0.0;
+        self.spacing_mult = 1.0;
         self.tot_samples = 0;
         self.airbrush_accum_s = 0.0;
         self.prev_prev = None;
@@ -188,11 +189,9 @@ impl Stroke {
                 self.advance_anchor(avg);
             }
             // Anchored: a single stamp pinned at the press point (`last_pos`, never advanced) whose
-            // RADIUS is the drag distance from it — so dragging out grows the dab. Edge-to-edge
-            // centres on the midpoint with half the radius, so the dab spans anchor→cursor. Blender
-            // `paint_stroke.cc` anchored arm (`anchored_size = |cursor − initial|`; edge-to-edge →
-            // halfway + size/2). The tool routes this single dab through the restore+re-stamp preview
-            // (same path as Drag Dot) so the resizing stamp leaves no trail and commits on pen-up.
+            // RADIUS is the drag distance from it (Blender `anchored_size = |cursor − initial|`; edge-
+            // to-edge centres on the midpoint with half the radius, spanning anchor→cursor). The tool
+            // routes this dab through the restore+re-stamp preview (like Drag Dot) so it commits on up.
             StrokeMethod::Anchored => {
                 let anchor = self.last_pos;
                 let dx = avg.pos[0] - anchor[0];
@@ -223,14 +222,14 @@ impl Stroke {
         }
     }
 
-    /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor`
-    /// with spaced dabs (forcing full pressure, like Blender), then RESTORE every bit of mutated
-    /// walk state (spacing residual, dash counter, jitter RNG, anchor) so the next move re-stamps
-    /// the identical line. The tool restores the prior footprint and re-stamps these dabs, so the
-    /// growing line leaves no trail; pen-up keeps the last fill.
+    /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor` with
+    /// spaced dabs (full pressure, like Blender), then RESTORE every bit of mutated walk state (spacing
+    /// residual + jitter multiplier, dash counter, jitter RNG, anchor) so the next move re-stamps the
+    /// identical line. The tool re-stamps over the restored footprint, so the growing line leaves no trail.
     fn fill_line_preview(&mut self, anchor: [f32; 2], cursor: [f32; 2], out: &mut Vec<Dab>) {
         let saved = (
             self.accum,
+            self.spacing_mult,
             self.tot_samples,
             self.rng,
             self.last_pos,
@@ -239,6 +238,7 @@ impl Stroke {
         self.fill_segment(anchor, cursor, 1.0, out);
         (
             self.accum,
+            self.spacing_mult,
             self.tot_samples,
             self.rng,
             self.last_pos,
@@ -379,11 +379,14 @@ impl Stroke {
             self.last_pressure = target.pressure;
             return;
         }
-        let step = self.spec.dab_spacing_px();
+        let base_step = self.spec.dab_spacing_px();
         let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
         let overlap = self.method_overlap();
         let mut traveled = 0.0;
         loop {
+            // **Jitter Spacing** scales each gap by the carried multiplier (`1.0` = even); a break does
+            // not redraw (no wasted draw), and the next-gap draw is gated so an off brush is unchanged.
+            let step = (base_step * self.spacing_mult).max(1.0);
             let to_next = step - self.accum;
             if traveled + to_next > seg {
                 break;
@@ -398,6 +401,11 @@ impl Stroke {
             }
             self.tot_samples = self.tot_samples.wrapping_add(1);
             self.accum = 0.0;
+            self.spacing_mult = if self.spec.jitter_spacing > 0.0 {
+                crate::jitter::spacing_mult(&mut self.rng, self.spec.jitter_spacing)
+            } else {
+                1.0
+            };
         }
         self.accum += seg - traveled;
         self.last_pos = to;
@@ -411,12 +419,10 @@ impl Stroke {
     /// curve instead of the connected straight facets the old scheme produced.
     ///
     /// The segment `a → p` is a cubic Hermite with the Catmull-Rom tangents: at `a` the centripetal
-    /// tangent `(p − prev_prev)/2` (its two neighbours — smooth join with the previous segment), and
-    /// at `p` the causal chord `p − a` (there is no next sample yet). The first segment after
-    /// [`Stroke::begin`] has no `prev_prev`, so its start tangent is the chord (straight). The cubic
-    /// is flattened into short chords fed through [`Stroke::walk_space`] (which owns spacing / dash /
-    /// jitter / attenuation and chains via `last_pos`). Collinear input keeps the tangents on the
-    /// line, so straight strokes stay straight.
+    /// tangent `(p − prev_prev)/2` (smooth join with the previous segment), at `p` the causal chord
+    /// `p − a`. The first segment after [`Stroke::begin`] has no `prev_prev` (start tangent = chord,
+    /// straight). The cubic is flattened into short chords fed through [`Stroke::walk_space`] (which owns
+    /// spacing / dash / jitter / attenuation). Collinear input keeps straight strokes straight.
     fn walk_smoothed(&mut self, p: StrokePoint, out: &mut Vec<Dab>) {
         let a = self.last_pos;
         let a_pr = self.last_pressure;

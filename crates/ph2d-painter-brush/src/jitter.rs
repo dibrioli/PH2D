@@ -71,6 +71,15 @@ pub(crate) fn per_dab(rng: &mut u64, spec: &BrushSpec) -> (f32, [f32; 2], [f32; 
     (scale, rotation, color)
 }
 
+/// Per-gap **Jitter Spacing** multiplier: `1 ± amount` around the base spacing, floored at `0.05` so a
+/// gap never collapses to zero (the walk re-floors the absolute px to ≥ 1 anyway). One `rng` draw;
+/// drawn only when the amount is non-zero (gated by the caller) so an even-spacing brush stays
+/// byte-identical to the no-jitter baseline.
+pub(crate) fn spacing_mult(rng: &mut u64, amount: f32) -> f32 {
+    let signed = next_f32(rng) * 2.0 - 1.0; // [-1, 1)
+    (1.0 + signed * amount.clamp(0.0, 1.0)).max(0.05)
+}
+
 /// A random rotation unit vector in `±(amount · 180°)`, built transcendental-free from the baked 1°
 /// step in [`crate::texture`] (so it composes with the texture's base/Rake/Random rotation exactly
 /// like that module's own angles do).

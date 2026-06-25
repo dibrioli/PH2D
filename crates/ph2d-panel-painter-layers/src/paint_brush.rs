@@ -111,6 +111,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     color_jitter: [0.0, 0.0, 0.0],
     jitter_scale: 0.0,
     jitter_rotate: 0.0,
+    jitter_spacing: 0.0,
 };
 
 /// Paint the Brush-properties body rows from `top_y` (already panel-scroll-offset), returning the

@@ -122,6 +122,10 @@ pub struct BrushSpec {
     /// texture frame is rotated by `±(amount · 180°)`. Only visible with a texture (round dabs are
     /// isotropic) and only for mappings that use per-dab rotation (not Stencil). `0` = no scatter.
     pub jitter_rotate: f32,
+    /// **Jitter Spacing** (PH2D, not Blender): per-gap scatter of the distance between dab centres,
+    /// `0..1`. Each gap along the Space walk is multiplied by `1 ± amount` (clamped so it stays ≥ 1px),
+    /// so dabs land irregularly instead of on a perfectly even grid. `0` = even spacing.
+    pub jitter_spacing: f32,
 }
 
 impl Default for BrushSpec {
@@ -157,6 +161,7 @@ impl Default for BrushSpec {
             color_jitter_val: 0.0,
             jitter_scale: 0.0,
             jitter_rotate: 0.0,
+            jitter_spacing: 0.0,
         }
     }
 }

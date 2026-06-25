@@ -71,9 +71,10 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_RATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
-        // Per-dab Jitter Scale / Rotate (next to the position Jitter).
+        // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_ROTATE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SPACING,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_RATIO,
         ph2d_editor_core::ids::PAINTER_BRUSH_DASH_LENGTH,
         ph2d_editor_core::ids::PAINTER_BRUSH_INPUT_SAMPLES,
@@ -275,6 +276,7 @@ mod tests {
             ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
             ids::PAINTER_BRUSH_JITTER_SCALE,
             ids::PAINTER_BRUSH_JITTER_ROTATE,
+            ids::PAINTER_BRUSH_JITTER_SPACING,
             // Seamless Tiling toggles + Repeat-Image preview.
             ids::PAINTER_BRUSH_TILING_X,
             ids::PAINTER_BRUSH_TILING_Y,

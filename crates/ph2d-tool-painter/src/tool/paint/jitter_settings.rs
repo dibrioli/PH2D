@@ -77,6 +77,10 @@ impl PainterTool {
                         self.set_brush_jitter_rotate(v);
                         true
                     }
+                    x if x == core_ids::PAINTER_BRUSH_JITTER_SPACING => {
+                        self.set_brush_jitter_spacing(v);
+                        true
+                    }
                     _ => false,
                 }
             }
@@ -111,6 +115,11 @@ impl PainterTool {
         self.paint.brush.jitter_rotate = t.clamp(0.0, 1.0);
     }
 
+    /// Set **Jitter Spacing** (per-gap dab-spacing scatter) from the slider's `0..1` track.
+    pub fn set_brush_jitter_spacing(&mut self, t: f32) {
+        self.paint.brush.jitter_spacing = t.clamp(0.0, 1.0);
+    }
+
     /// Reset the **Randomize Color** section to defaults (no per-dab colour scatter). Plain paint
     /// state — no undo / pixel touch. The Color-Ramp reset lives in [`super::ramp`], Tiling in
     /// [`super::tiling`].
@@ -143,6 +152,7 @@ impl PainterTool {
         b.jitter_unit = d.jitter_unit;
         b.jitter_scale = d.jitter_scale;
         b.jitter_rotate = d.jitter_rotate;
+        b.jitter_spacing = d.jitter_spacing;
         b.dash_ratio = d.dash_ratio;
         b.dash_samples = d.dash_samples;
         b.input_samples = d.input_samples;

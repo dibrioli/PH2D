@@ -298,10 +298,10 @@ fn paint_jitter_card(
     let font = TypeToken::Sm.px();
     let title_h = ROW_H_PX;
     let has_rotation = brush.texture_kind != 0;
-    // Pre-compute the card height (each row includes its own trailing spacing). Position + Scale are
-    // param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm); Rotation (texture only) is another
-    // param row. The trailing `+ xs` is bottom breathing room.
-    let mut rows_h = (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs);
+    // Pre-compute the card height (each row includes its own trailing spacing). Position + Scale +
+    // Spacing are param rows (ROW_H + Xs); Unit is a dropdown row (ROW_H + Sm); Rotation (texture only)
+    // is one more param row. The trailing `+ xs` is bottom breathing room.
+    let mut rows_h = (ROW_H_PX + xs) + (ROW_H_PX + sm) + (ROW_H_PX + xs) + (ROW_H_PX + xs);
     if has_rotation {
         rows_h += ROW_H_PX + xs;
     }
@@ -381,6 +381,18 @@ fn paint_jitter_card(
         id: core_ids::PAINTER_BRUSH_JITTER_SCALE,
         value: brush.jitter_scale,
         readout: &format!("{:.2}", brush.jitter_scale),
+    });
+    // Spacing: per-gap scatter of the dab spacing (always relevant — placement, not appearance).
+    iy = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x: inner_x,
+        content_w: inner_w,
+        y: iy,
+        label: "Spacing",
+        id: core_ids::PAINTER_BRUSH_JITTER_SPACING,
+        value: brush.jitter_spacing,
+        readout: &format!("{:.2}", brush.jitter_spacing),
     });
     // Rotation: per-dab texture-rotation scatter — only meaningful with a texture assigned.
     if has_rotation {

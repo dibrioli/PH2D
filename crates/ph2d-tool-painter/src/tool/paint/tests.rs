@@ -2203,6 +2203,10 @@ fn randomize_controls_reach_the_brush_and_snapshot() {
         core_ids::PAINTER_BRUSH_JITTER_ROTATE,
         0.4,
     ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_JITTER_SPACING,
+        0.6,
+    ));
     // (a) the events reached the brush model (would all be 0/false if dropped).
     assert!(t.paint.brush.color_jitter_enabled, "enable toggle wired");
     assert_eq!(t.paint.brush.color_jitter_hue, 0.3, "Hue slider wired");
@@ -2213,12 +2217,17 @@ fn randomize_controls_reach_the_brush_and_snapshot() {
         t.paint.brush.jitter_rotate, 0.4,
         "Jitter Rotate slider wired"
     );
+    assert_eq!(
+        t.paint.brush.jitter_spacing, 0.6,
+        "Jitter Spacing slider wired"
+    );
     // (b) the published snapshot the panel reads back mirrors them (slider positions).
     let s = t.brush_settings();
     assert!(s.color_jitter_enabled);
     assert_eq!(s.color_jitter, [0.3, 0.2, 0.1]);
     assert_eq!(s.jitter_scale, 0.7);
     assert_eq!(s.jitter_rotate, 0.4);
+    assert_eq!(s.jitter_spacing, 0.6);
     // A second enable Click toggles it back off.
     t.handle_panel_event(PanelEvent::Click(
         core_ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE,

@@ -31,9 +31,8 @@ impl BrushTextureImage {
     }
 }
 
-/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto
-/// it. Transcendental-free (abs/signum/mul; the `tan(22.5°)`/`tan(67.5°)`/`√½` constants below) for
-/// HR-5 determinism instead of `atan2`/`sin`/`cos`. Here (with the stroke helpers) for the LOC cap.
+/// Snap `cursor` to the nearest 45° ray from `anchor` (Blender Line Alt-constrain), projecting onto it.
+/// Transcendental-free (abs/signum/mul + the `tan(22.5°)`/`tan(67.5°)`/`√½` constants) for HR-5.
 pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     const TAN_22_5: f32 = 0.414_213_56; // tan(22.5°)
     const TAN_67_5: f32 = 2.414_213_5; // tan(67.5°)
@@ -54,9 +53,8 @@ pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     [anchor[0] + ux * proj, anchor[1] + uy * proj]
 }
 
-/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake** rotation
-/// aligns to it. Uses the chord to the next dab when there is one, else from the previous; a lone dab
-/// returns `[0, 0]` (Rake falls back to the Angle).
+/// The stroke direction at dab `i`, as a raw (un-normalised) chord — the texture's **Rake** accumulates
+/// it. Chord to the next dab when there is one, else from the previous; a lone dab returns `[0, 0]`.
 pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
     let (a, b) = if i + 1 < dabs.len() {
         (dabs[i].center, dabs[i + 1].center)
@@ -158,11 +156,12 @@ pub struct BrushSettings {
     pub texture_ramp_stop_count: u8,
     /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
     pub texture_ramp_alpha_mode: u8,
-    /// Per-dab randomize: Randomize-Color enable + Hue/Sat/Value amounts + Jitter Scale / Rotate (`0..1`).
+    /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,
     pub color_jitter: [f32; 3],
     pub jitter_scale: f32,
     pub jitter_rotate: f32,
+    pub jitter_spacing: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor
@@ -271,6 +270,7 @@ impl PainterTool {
             color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
             jitter_scale: b.jitter_scale,
             jitter_rotate: b.jitter_rotate,
+            jitter_spacing: b.jitter_spacing,
         }
     }
 

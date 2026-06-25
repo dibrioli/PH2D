@@ -14,8 +14,9 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
-    TEX_SIZE_MIN, TextureKind,
+    BrushSettings, Falloff, ImageMask, MAX_TEX_PARAMS, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
+    render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -92,13 +93,10 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
-    if is_image {
-        // Image silhouette: preview (like Grain) + the frame transform controls.
-        y = paint_shape_preview(ctx, theme, x, content_w, y);
-        y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
-    } else if kind != TextureKind::None {
-        // Procedural silhouette masked by the falloff: the frame transform controls (rotation / offset /
-        // size of the pattern). No preview strip — the falloff preview above + the live canvas show it.
+    if kind != TextureKind::None {
+        // Live composed-silhouette preview — the Image tip, or `falloff × pattern` for a procedural kind
+        // — re-rendered each frame from the snapshot so it tracks the Angle / Offset / Size edits below.
+        y = paint_shape_preview(ctx, theme, x, content_w, y, brush);
         y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
     }
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
@@ -115,19 +113,7 @@ fn paint_shape_transform_controls(
     mut y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
-    let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Angle",
-        id: core_ids::PAINTER_SHAPE_ANGLE,
-        value: angle_track,
-        readout: &angle_readout,
-    });
+    // Rake + Random Angle (per-dab rotation), then Angle — Angle sits BELOW the toggles (Enio 2026-06-25).
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -145,9 +131,22 @@ fn paint_shape_transform_controls(
         content_w,
         y,
         core_ids::PAINTER_SHAPE_RANDOM,
-        "Random",
+        "Random Angle",
         brush.shape_random,
     );
+    let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
+    let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
+    y = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        label: "Angle",
+        id: core_ids::PAINTER_SHAPE_ANGLE,
+        value: angle_track,
+        readout: &angle_readout,
+    });
     y = shape_xy_row(
         ctx,
         theme,
@@ -236,23 +235,60 @@ fn shape_xy_row(
     })
 }
 
-/// The Shape image preview: the published luminance drawn as a grayscale strip (the silhouette tip),
-/// letterboxed to the image aspect over a dark checker, with a border. `None` (no image) → just the
-/// border box. Mirrors the Grain section's `paint_texture_preview`, simplified (the Shape is always an
-/// image, never a procedural pattern).
+/// The live Shape **silhouette** preview: re-render the composed tip every frame from the snapshot
+/// (`render_shape_preview` — the SAME composition the engine paints with), so it tracks the Angle /
+/// Offset / Size edits in real time. `Image` shows the transformed imported tip; a procedural kind
+/// shows `falloff × pattern`. The square tip ([`-1, 1`]²) lights up over a dark checker, centred in the
+/// strip, with a border.
 fn paint_shape_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
+    brush: BrushSettings,
 ) -> f32 {
     let ph = (content_w * 0.5).clamp(56.0, 120.0); // LITERAL-PX-OK: one-off preview-strip min/max height
     let rect = Rect::new(x, y, content_w, ph);
     let bw = 140u32;
     let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
+    let side = bh; // the silhouette is a square tip → render it `bh×bh`, centred horizontally
+
+    // Falloff LUT (radial `t` → weight), baked from the live brush so the preview tracks falloff edits.
+    let mut lut = [0.0f32; 64];
+    for (i, w) in lut.iter_mut().enumerate() {
+        *w = brush_falloff_weight_at(&brush, i as f32 / 63.0).clamp(0.0, 1.0); // LITERAL-PX-OK: LUT last-index normalize (64 entries)
+    }
+    // The Shape exposes no per-pattern param UI, so the pattern uses the kind's neutral defaults (what
+    // the engine also paints with — `set_brush_shape_kind` resets them on a change).
+    let kind = TextureKind::from_u8(brush.shape_kind);
+    let mut params = [0.5f32; MAX_TEX_PARAMS];
+    for (i, s) in param_specs(kind).iter().enumerate() {
+        params[i] = s.default;
+    }
+    let image = state::current_brush_shape_image();
+    let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
+        lum: lum.as_slice(),
+        width: *w,
+        height: *h,
+    });
+    let mut cov = vec![0u8; (side * side) as usize];
+    render_shape_preview(
+        kind,
+        brush.shape_angle_deg,
+        brush.shape_offset,
+        brush.shape_size,
+        params,
+        &lut,
+        image_mask.as_ref(),
+        &mut cov,
+        side,
+        side,
+    );
+
+    // Composite: a dark checker backdrop, the centred square tip lifted toward white by its coverage.
+    let ox = (bw - side) / 2;
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
-    // Dark checker backdrop so the silhouette bounds read against a translucent / dark tip.
     for py in 0..bh {
         for px in 0..bw {
             let c = if (((px / 6) + (py / 6)) & 1) == 0 {
@@ -260,31 +296,14 @@ fn paint_shape_preview(
             } else {
                 0x2c
             }; // LITERAL-COLOR-OK: letterbox checker
+            let g = if px >= ox && px < ox + side && py < side {
+                let cf = f32::from(cov[(py * side + (px - ox)) as usize]) / 255.0; // LITERAL-PX-OK: 8-bit byte normalize
+                (f32::from(c) * (1.0 - cf) + 255.0 * cf) as u8 // LITERAL-PX-OK: lift checker → white (8-bit)
+            } else {
+                c
+            };
             let i = ((py * bw + px) * 4) as usize;
-            buf[i..i + 4].copy_from_slice(&[c, c, c, 255]);
-        }
-    }
-    if let Some((lum, iw, ih)) = state::current_brush_shape_image() {
-        let (iw, ih) = (iw.max(1), ih.max(1));
-        let (ia, pa) = (iw as f32 / ih as f32, bw as f32 / bh as f32);
-        let (sw, sh) = if ia >= pa {
-            (bw, ((bw as f32 / ia).round() as u32).clamp(1, bh)) // CLAMP-OK: integer u32; 1 ≤ bh (≥8), no NaN
-        } else {
-            (((bh as f32 * ia).round() as u32).clamp(1, bw), bh) // CLAMP-OK: integer u32; 1 ≤ bw (≥8), no NaN
-        };
-        let (ox, oy) = ((bw - sw) / 2, (bh - sh) / 2);
-        // Nearest-sample the luminance into the centred sub-rect; expand to gray RGBA.
-        for sy in 0..sh {
-            for sx in 0..sw {
-                let u = ((sx as f32 + 0.5) / sw as f32 * iw as f32) as u32;
-                let v = ((sy as f32 + 0.5) / sh as f32 * ih as f32) as u32;
-                let g = lum
-                    .get((v.min(ih - 1) * iw + u.min(iw - 1)) as usize)
-                    .copied()
-                    .unwrap_or(0);
-                let i = (((oy + sy) * bw + (ox + sx)) * 4) as usize;
-                buf[i..i + 4].copy_from_slice(&[g, g, g, 255]);
-            }
+            buf[i..i + 4].copy_from_slice(&[g, g, g, 255]);
         }
     }
     ctx.scene.draw_image_rgba(

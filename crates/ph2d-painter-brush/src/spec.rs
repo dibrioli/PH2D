@@ -233,11 +233,7 @@ impl BrushSpec {
     /// source for all three stamp paths (per-pixel, scale-invariant bake, canvas-cached) so they agree.
     #[must_use]
     pub fn compose_shape_silhouette(&self, shape_val: f32, falloff: f32) -> f32 {
-        if self.shape.kind == crate::texture::TextureKind::Image {
-            shape_val
-        } else {
-            falloff * shape_val
-        }
+        crate::texture::compose_shape_silhouette_kind(self.shape.kind, shape_val, falloff)
     }
 
     /// Whether the **Shape** slot rotates its silhouette frame per dab (Rake follows the stroke, or a

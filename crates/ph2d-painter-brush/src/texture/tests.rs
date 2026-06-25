@@ -531,3 +531,56 @@ fn image_texture_modulates_the_dab() {
         "kind Image without pixels is inert (full coverage), not a mask"
     );
 }
+
+#[test]
+fn render_shape_preview_masks_procedural_with_falloff() {
+    // The live Shape preview composes `falloff × pattern` for a procedural kind, so a falloff that
+    // fades to the rim deposits LESS total coverage than a flat (all-1) falloff — and the square's
+    // corners (outside the round envelope) are masked to nothing.
+    let (w, h) = (32u32, 32u32);
+    let params = checker_hard();
+    let fade: Vec<f32> = (0..64).map(|i| 1.0 - i as f32 / 63.0).collect();
+    let flat = [1.0f32; 64];
+
+    let mut buf_fade = vec![0u8; (w * h) as usize];
+    let mut buf_flat = vec![0u8; (w * h) as usize];
+    crate::texture::render_shape_preview(
+        TextureKind::Checker,
+        0,
+        [0.0, 0.0],
+        [1.0, 1.0],
+        params,
+        &fade,
+        None,
+        &mut buf_fade,
+        w,
+        h,
+    );
+    crate::texture::render_shape_preview(
+        TextureKind::Checker,
+        0,
+        [0.0, 0.0],
+        [1.0, 1.0],
+        params,
+        &flat,
+        None,
+        &mut buf_flat,
+        w,
+        h,
+    );
+    let sum = |b: &[u8]| b.iter().map(|&x| u64::from(x)).sum::<u64>();
+    assert_eq!(
+        buf_fade[0], 0,
+        "the corner (rim, falloff 0) is masked to nothing"
+    );
+    assert!(
+        sum(&buf_fade) > 0,
+        "the procedural shape must paint something"
+    );
+    assert!(
+        sum(&buf_fade) < sum(&buf_flat),
+        "the fading falloff masks the pattern more than a flat one: {} vs {}",
+        sum(&buf_fade),
+        sum(&buf_flat)
+    );
+}

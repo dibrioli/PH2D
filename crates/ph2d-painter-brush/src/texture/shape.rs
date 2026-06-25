@@ -3,7 +3,68 @@
 //! coverage is `0`, and an image is clamped at its border (never tiled). Split from `texture.rs` to
 //! keep that file under the workspace LOC cap.
 
-use super::{ImageMask, TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureKind, TextureSettings};
+use super::{
+    ImageMask, MAX_TEX_PARAMS, TEX_SIZE_MAX, TEX_SIZE_MIN, TexDabBasis, TextureKind,
+    TextureMapping, TextureSettings,
+};
+
+/// The Shape **silhouette composition** rule, shared by the engine ([`crate::BrushSpec::compose_shape_silhouette`])
+/// and the panel's live preview ([`render_shape_preview`]): an `Image` kind IS the sampled tip (it
+/// REPLACES the falloff, staying crisp); any procedural kind is `falloff × sample` (MASKED by the
+/// round envelope). `None` is never composed here (the caller uses the bare falloff).
+#[must_use]
+pub fn compose_shape_silhouette_kind(kind: TextureKind, sample: f32, falloff: f32) -> f32 {
+    if kind == TextureKind::Image {
+        sample
+    } else {
+        falloff * sample
+    }
+}
+
+/// Render the composed Shape **silhouette** (the Procreate tip) into a `w×h` grayscale buffer (`1`
+/// byte/texel = coverage `0..=255`), for the panel's live Shape preview. Uses the SAME composition as
+/// the engine — `Image` is the sampled tip, a procedural kind is `falloff × pattern` — so the preview
+/// is faithful. `falloff_lut[i]` is the falloff weight at radial `t = i/(N−1)` (`t ∈ [0,1]`), baked by
+/// the panel from its live falloff. Static frame (Angle only; Rake / Random need a stroke direction).
+/// Deterministic (HR-5).
+#[allow(clippy::too_many_arguments)]
+pub fn render_shape_preview(
+    kind: TextureKind,
+    angle_deg: u16,
+    offset: [f32; 2],
+    size: [f32; 2],
+    params: [f32; MAX_TEX_PARAMS],
+    falloff_lut: &[f32],
+    image: Option<&ImageMask>,
+    buf: &mut [u8],
+    w: u32,
+    h: u32,
+) {
+    let shape = TextureSettings {
+        kind,
+        mapping: TextureMapping::ViewPlane,
+        angle_deg,
+        rake: false,
+        random_angle: false,
+        offset,
+        size,
+        params,
+    };
+    let basis = super::dab_basis(&shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let n = falloff_lut.len().max(1);
+    let (inv_w, inv_h) = (2.0 / w.max(1) as f32, 2.0 / h.max(1) as f32);
+    for j in 0..h {
+        let v = (j as f32 + 0.5) * inv_h - 1.0;
+        for i in 0..w {
+            let u = (i as f32 + 0.5) * inv_w - 1.0;
+            let sv = sample_shape_unit(&shape, &basis, u, v, image);
+            let t = (u * u + v * v).sqrt().min(1.0);
+            let f = falloff_lut[((t * (n - 1) as f32) as usize).min(n - 1)];
+            let cov = compose_shape_silhouette_kind(kind, sv, f).clamp(0.0, 1.0);
+            buf[(j * w + i) as usize] = (cov * 255.0 + 0.5) as u8;
+        }
+    }
+}
 
 /// Sample the **Shape** slot's silhouette alpha at canvas pixel `(px, py)` for a dab centred at
 /// `center` with `radius`. Returns the silhouette coverage in `[0, 1]`. Only called when the Shape is

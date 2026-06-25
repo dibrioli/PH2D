@@ -128,7 +128,7 @@ pub(crate) fn paint_texture_section(
                 content_w,
                 y,
                 core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-                "Random",
+                "Random Angle",
                 brush.texture_random,
             );
         }

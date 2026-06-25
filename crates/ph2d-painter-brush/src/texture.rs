@@ -12,7 +12,9 @@
 
 pub(crate) mod patterns;
 mod shape;
-pub use shape::{sample_shape, sample_shape_unit};
+pub use shape::{
+    compose_shape_silhouette_kind, render_shape_preview, sample_shape, sample_shape_unit,
+};
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;
@@ -205,12 +207,10 @@ impl TextureKind {
 /// later phase (needs a screen-space overlay), so P1 exposes View/Tiled/Random.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum TextureMapping {
-    /// Coordinates relative to the dab footprint, centred on the cursor — the texture *follows the
-    /// brush*. The 2D-paint default.
+    /// Coordinates relative to the dab footprint, centred on the cursor — the texture *follows the brush* (the 2D-paint default).
     #[default]
     ViewPlane,
-    /// Coordinates from the canvas position — the texture is *fixed to the image* while you paint
-    /// over it.
+    /// Coordinates from the canvas position — the texture is *fixed to the image* while you paint over it.
     Tiled,
     /// Like [`Self::ViewPlane`] but with a random per-dab offset.
     Random,
@@ -252,7 +252,7 @@ impl TextureMapping {
         match self {
             Self::ViewPlane => "View Plane",
             Self::Tiled => "Tiled",
-            Self::Random => "Random",
+            Self::Random => "Random Offset",
             Self::Stencil => "Stencil",
         }
     }

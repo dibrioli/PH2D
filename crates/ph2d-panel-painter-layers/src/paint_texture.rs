@@ -330,20 +330,67 @@ fn paint_texture_preview(
         height: *h,
     });
     // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
+    let kind = TextureKind::from_u8(brush.texture_kind);
     let bw = 140u32;
     let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
-    render_texture_preview(
-        TextureKind::from_u8(brush.texture_kind),
-        brush.texture_params,
-        brush.texture_size,
-        brush.texture_offset,
-        image_mask.as_ref(),
-        ramp,
-        &mut buf,
-        bw,
-        bh,
-    );
+    if kind == TextureKind::Image
+        && let Some((_, iw, ih)) = image.as_ref()
+    {
+        // Letterbox: fit the image aspect inside the strip, centred, over a checker (so the bounds
+        // read against a dark image). Render the image into an aspect-matched sub-buffer (one centred
+        // copy), then composite it into the strip.
+        let (ia, pa) = (
+            (*iw).max(1) as f32 / (*ih).max(1) as f32,
+            bw as f32 / bh as f32,
+        );
+        let (sw, sh) = if ia >= pa {
+            (bw, ((bw as f32 / ia).round() as u32).clamp(1, bh))
+        } else {
+            (((bh as f32 * ia).round() as u32).clamp(1, bw), bh)
+        };
+        for py in 0..bh {
+            for px in 0..bw {
+                let c = if (((px / 6) + (py / 6)) & 1) == 0 {
+                    0x44
+                } else {
+                    0x2c
+                }; // LITERAL-COLOR-OK: letterbox checker
+                let i = ((py * bw + px) * 4) as usize;
+                buf[i..i + 4].copy_from_slice(&[c, c, c, 255]);
+            }
+        }
+        let mut sub = vec![0u8; (sw * sh * 4) as usize];
+        render_texture_preview(
+            kind,
+            brush.texture_params,
+            brush.texture_size,
+            brush.texture_offset,
+            image_mask.as_ref(),
+            ramp,
+            &mut sub,
+            sw,
+            sh,
+        );
+        let (ox, oy) = ((bw - sw) / 2, (bh - sh) / 2);
+        for sy in 0..sh {
+            let di = (((oy + sy) * bw + ox) * 4) as usize;
+            let si = ((sy * sw) * 4) as usize;
+            buf[di..di + (sw * 4) as usize].copy_from_slice(&sub[si..si + (sw * 4) as usize]);
+        }
+    } else {
+        render_texture_preview(
+            kind,
+            brush.texture_params,
+            brush.texture_size,
+            brush.texture_offset,
+            image_mask.as_ref(),
+            ramp,
+            &mut buf,
+            bw,
+            bh,
+        );
+    }
     ctx.scene.draw_image_rgba(
         &std::sync::Arc::new(buf),
         bw,

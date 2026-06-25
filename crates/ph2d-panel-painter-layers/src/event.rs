@@ -23,10 +23,13 @@ mod decode;
 mod ramp_picker;
 use decode::{
     decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
-    decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
-    decode_texture_ramp_alpha_option, decode_texture_ramp_interp_option,
-    decode_texture_ramp_mode_option,
+    decode_shape_kind_option, decode_stroke_method_option, decode_texture_kind_option,
+    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
+    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
 };
+
+/// One row of the dropdown-option dispatch table: an option-id decoder + the chip it targets.
+type OptionRoute = (fn(ph2d_a11y::NodeId) -> Option<u8>, ph2d_a11y::NodeId);
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,
@@ -458,38 +461,31 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        // A dropdown popover option was picked → close the chip + apply (decode by id).
+        // A dropdown popover option was picked → close the chip + apply. Table-driven: each entry pairs
+        // an option-id decoder with the chip it targets; the first decoder that matches `id` wins (the
+        // id spaces are disjoint, so order is irrelevant). Add a dropdown ⇒ add one row.
         WidgetEvent::Click(id) => {
-            if let Some(mode) = decode_brush_blend_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_BLEND, mode);
-                Some(true)
-            } else if let Some(preset) = decode_brush_falloff_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_FALLOFF, preset);
-                Some(true)
-            } else if let Some(m) = decode_stroke_method_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_STROKE_METHOD, m);
-                Some(true)
-            } else if let Some(u) = decode_jitter_unit_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_JITTER_UNIT, u);
-                Some(true)
-            } else if let Some(k) = decode_texture_kind_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_KIND, k);
-                Some(true)
-            } else if let Some(m) = decode_texture_mapping_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING, m);
-                Some(true)
-            } else if let Some(m) = decode_texture_ramp_mode_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE, m);
-                Some(true)
-            } else if let Some(i) = decode_texture_ramp_interp_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP, i);
-                Some(true)
-            } else if let Some(m) = decode_texture_ramp_alpha_option(id) {
-                forward_dropdown_option(host, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE, m);
-                Some(true)
-            } else {
-                None
-            }
+            let routes: [OptionRoute; 10] = [
+                (decode_brush_blend_option, core_ids::PAINTER_BRUSH_BLEND),
+                (decode_brush_falloff_option, core_ids::PAINTER_BRUSH_FALLOFF),
+                (decode_stroke_method_option, core_ids::PAINTER_BRUSH_STROKE_METHOD),
+                (decode_jitter_unit_option, core_ids::PAINTER_BRUSH_JITTER_UNIT),
+                (decode_shape_kind_option, core_ids::PAINTER_SHAPE_KIND),
+                (decode_texture_kind_option, core_ids::PAINTER_BRUSH_TEXTURE_KIND),
+                (decode_texture_mapping_option, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
+                (decode_texture_ramp_mode_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE),
+                (decode_texture_ramp_interp_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP),
+                (
+                    decode_texture_ramp_alpha_option,
+                    core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
+                ),
+            ];
+            routes.iter().find_map(|&(decode, target)| {
+                decode(id).map(|v| {
+                    forward_dropdown_option(host, target, v);
+                    true
+                })
+            })
         }
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {

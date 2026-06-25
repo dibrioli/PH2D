@@ -57,13 +57,32 @@ impl PainterTool {
     pub fn set_brush_shape_image(&mut self, lum: Vec<u8>, width: u32, height: u32) {
         self.paint.shape_image = Some(BrushTextureImage::new(lum, width, height));
         self.paint.brush.shape.kind = TextureKind::Image;
+        self.paint.shape_image_pending = false;
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
+    }
+
+    /// Set the Shape **source** from the dropdown's wire discriminant (mirror of `set_brush_texture_kind`
+    /// for the Grain slot): [`TextureKind::Image`] requests a file pick from the shell (the engine has no
+    /// I/O); anything else clears the image so the silhouette reverts to the falloff.
+    pub fn set_brush_shape_kind(&mut self, k: u8) {
+        if TextureKind::from_u8(k) == TextureKind::Image {
+            self.paint.shape_image_pending = true;
+        } else {
+            self.clear_brush_shape_image();
+        }
+    }
+
+    /// Take (and clear) the "the user picked Image in the Shape dropdown — open a file picker" request.
+    /// The shell polls this each frame; on a successful pick it calls [`Self::set_brush_shape_image`].
+    pub fn take_brush_shape_image_request(&mut self) -> bool {
+        std::mem::take(&mut self.paint.shape_image_pending)
     }
 
     /// Clear the Shape image (and reset the slot to `None`) — the silhouette reverts to the falloff.
     pub fn clear_brush_shape_image(&mut self) {
         self.paint.shape_image = None;
         self.paint.brush.shape.kind = TextureKind::None;
+        self.paint.shape_image_pending = false;
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
     }
 

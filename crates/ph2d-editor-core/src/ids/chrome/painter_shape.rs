@@ -5,11 +5,26 @@
 //! the frozen `PanelEvent` channel to `PainterTool::set_brush_shape_*` / `set_brush_grain_depth`.
 //! Split from `painter.rs` / `painter_texture.rs` to keep those under the workspace LOC cap.
 
+use super::painter::fnv_node_id_runtime;
 use super::{NodeId, hash_node_id};
 
 /// **Grain Depth** slider (`0..1` track; `1` = full bite, default). `SetValue` → `set_brush_grain_depth`.
 /// Lives in the Grain section (the renamed Texture section).
 pub const PAINTER_BRUSH_GRAIN_DEPTH: NodeId = hash_node_id("painter_brush.grain_depth");
+
+/// Shape **source** picker chip — `None` (the procedural Falloff) vs `Image` (an assigned silhouette).
+/// Mirrors the Grain Kind picker: selecting `Image` opens a file pick (or use the Hierarchy "Use as
+/// Brush Shape"); `None` clears the image. `SelectOption` → `set_brush_shape_kind`. Options via
+/// [`painter_shape_kind_option_id`].
+pub const PAINTER_SHAPE_KIND: NodeId = hash_node_id("painter_brush.shape_kind");
+
+/// Derive the stable [`NodeId`] for Shape-source option `k` (the `TextureKind` wire discriminant —
+/// only `None`/`Image` are offered) in the open Shape picker popover. Only the open popover's options
+/// are hit-registered, so the `format!` is bounded.
+#[must_use]
+pub fn painter_shape_kind_option_id(k: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shapekindopt.{k}"))
+}
 
 /// Collapsible **Shape** section header (Inspector pattern: ALL-CAPS label + collapse chevron +
 /// assignable color dot). `mark_collapsible_section`-registered in `crate::populate`.

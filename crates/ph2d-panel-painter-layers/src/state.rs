@@ -74,6 +74,9 @@ thread_local! {
     /// The open Texture-section Kind picker popover: `(chip_rect, current_kind_u8)`.
     static PENDING_BRUSH_TEXTURE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    /// The open Shape-section source picker popover (None/Image): `(chip_rect, current_kind_u8)`.
+    static PENDING_BRUSH_SHAPE_KIND_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+
     /// The open Texture-section Mapping dropdown popover: `(chip_rect, current_mapping_u8)`.
     static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
@@ -485,6 +488,16 @@ pub(crate) fn set_pending_brush_texture_kind_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending Texture Kind picker for the deferred popover.
 pub(crate) fn take_pending_brush_texture_kind_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_TEXTURE_KIND_DD.with(|c| c.take())
+}
+
+/// Stash the open Shape-section source picker for the deferred popover pass.
+pub(crate) fn set_pending_brush_shape_kind_dd(v: Option<(Rect, u8)>) {
+    PENDING_BRUSH_SHAPE_KIND_DD.with(|c| c.set(v));
+}
+
+/// Take (and clear) the pending Shape source picker for the deferred popover.
+pub(crate) fn take_pending_brush_shape_kind_dd() -> Option<(Rect, u8)> {
+    PENDING_BRUSH_SHAPE_KIND_DD.with(|c| c.take())
 }
 
 /// Stash the open Texture-section Mapping dropdown for the deferred popover pass.

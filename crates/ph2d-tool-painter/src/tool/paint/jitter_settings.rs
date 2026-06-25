@@ -122,6 +122,15 @@ impl PainterTool {
                     _ => false,
                 }
             }
+            // ── Shape **source** picker (None / Image) — sibling of the Shape Click/SetValue routes
+            //    above; lives here (not the main `handle_panel_event` match) to keep that file under the
+            //    workspace LOC cap. `Image` requests a file pick; anything else clears the image. ─
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_KIND => {
+                if let Ok(k) = value.parse::<u8>() {
+                    self.set_brush_shape_kind(k);
+                }
+                true
+            }
             _ => false,
         }
     }

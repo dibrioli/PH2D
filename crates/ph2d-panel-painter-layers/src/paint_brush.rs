@@ -201,15 +201,16 @@ pub(crate) fn paint_brush_body(
         brush.accumulate,
     );
 
-    // ── Section 6: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip); once a
-    //    Shape image is assigned the Falloff goes inactive (replaced by the image + its preview). ──
-    y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
-
-    // ── Section 7: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
+    // ── Section 6: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
     y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
 
-    // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
+    // ── Section 7: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
+
+    // ── Section 8: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + a
+    //    source picker; once a Shape image is assigned the Falloff goes inactive (replaced by the image
+    //    + its preview). Placed after Grain so the two texture slots read top-to-bottom (Enio 2026-06-25). ──
+    y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
@@ -250,6 +251,17 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
             theme,
             core_ids::PAINTER_BRUSH_FALLOFF,
             falloff_options(),
+            chip_rect,
+            cur,
+        );
+    }
+    // Shape-section source picker (None / Image).
+    if let Some((chip_rect, cur)) = state::take_pending_brush_shape_kind_dd() {
+        paint_dropdown_popover(
+            ctx,
+            theme,
+            core_ids::PAINTER_SHAPE_KIND,
+            crate::paint_shape::shape_kind_options(),
             chip_rect,
             cur,
         );

@@ -205,6 +205,8 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_BRUSH_FALLOFF,
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_METHOD,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_UNIT,
+        // Shape section: source picker (None/Image).
+        ph2d_editor_core::ids::PAINTER_SHAPE_KIND,
         // Texture section: Kind picker + Mapping chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,

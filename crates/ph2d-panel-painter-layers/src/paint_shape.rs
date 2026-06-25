@@ -4,24 +4,27 @@
 //! replaced by the image preview + the image's rotation controls). Mirrors the Grain section's row
 //! helpers; all controls are fixed-id, tool-global widgets registered in [`crate::populate`].
 
-use crate::paint_brush::{ParamRow, label, paint_dropdown_row, paint_param_row};
+use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
 use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, TypeToken};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
-    TEX_SIZE_MIN,
+    TEX_SIZE_MIN, TextureKind,
 };
 use ph2d_vector::ImageQuality;
 
-/// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. With a Shape image
-/// assigned it shows the image preview + a "Falloff inactive" caption + the rotation controls; without
-/// one it shows the live Falloff dropdown + curve (the procedural silhouette). The Falloff dropdown
-/// reuses the existing `PAINTER_BRUSH_FALLOFF` id + popover (drained by `paint_brush_popovers`).
+/// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. It always shows the
+/// **Falloff** dropdown (the procedural silhouette) and, right below it, a **Shape** source picker
+/// (`None` / `Image`) mirroring the Grain Kind picker. With a Shape image assigned the Falloff goes
+/// inactive (a caption marks it) and the image preview + rotation controls show; without one the live
+/// Falloff curve editor shows. The Falloff dropdown reuses the existing `PAINTER_BRUSH_FALLOFF` id +
+/// popover; the Shape picker is `PAINTER_SHAPE_KIND` (both drained by `paint_brush_popovers`).
 pub(crate) fn paint_shape_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -45,17 +48,60 @@ pub(crate) fn paint_shape_section(
         return y;
     }
 
+    // ── Falloff dropdown (the procedural silhouette; the default tip). Always shown — it is the
+    //    reference the source picker sits below; greyed by a caption once an image overrides it. ──
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Falloff",
+        core_ids::PAINTER_BRUSH_FALLOFF,
+        brush.falloff,
+        Falloff::from_u8(brush.falloff).name(),
+    );
+    y = ny;
+    if let Some(r) = open {
+        state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
+    }
+
+    // ── Shape source picker (None / Image) — directly below Falloff, mirroring the Grain Kind picker.
+    //    Picking Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to
+    //    the falloff. The chip label tracks the live state (image assigned → "Image"). ──
+    let shape_kind = if brush.shape_has_image {
+        TextureKind::Image.to_u8()
+    } else {
+        TextureKind::None.to_u8()
+    };
+    let (ny, open) = paint_dropdown_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Shape",
+        core_ids::PAINTER_SHAPE_KIND,
+        shape_kind,
+        TextureKind::from_u8(shape_kind).name(),
+    );
+    y = ny;
+    if let Some(r) = open {
+        state::set_pending_brush_shape_kind_dd(Some((r, shape_kind)));
+    }
+
     if brush.shape_has_image {
-        // Image silhouette: the falloff is inactive (replaced by the image), so we don't paint it.
-        y = paint_shape_preview(ctx, theme, x, content_w, y);
+        // Image silhouette: the falloff above is inactive (overridden by the image). Mark it, then show
+        // the preview (like Grain) + the rotation controls.
         y = caption(
             ctx,
             theme,
             x,
             content_w,
             y,
-            "Image silhouette — Falloff inactive",
+            "Image silhouette \u{2014} Falloff inactive",
         );
+        y = paint_shape_preview(ctx, theme, x, content_w, y);
 
         let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
         let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
@@ -135,33 +181,25 @@ pub(crate) fn paint_shape_section(
             brush.shape_size[1],
         );
     } else {
-        // Procedural silhouette: the live Falloff dropdown + curve graph (the default tip).
-        let (ny, open) = paint_dropdown_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Falloff",
-            core_ids::PAINTER_BRUSH_FALLOFF,
-            brush.falloff,
-            Falloff::from_u8(brush.falloff).name(),
-        );
-        y = ny;
-        if let Some(r) = open {
-            state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
-        }
+        // Procedural silhouette: the live Falloff curve editor (the Falloff dropdown above is active).
         y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
-        y = caption(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Tip: right-click a sprite \u{2192} Use as Brush Shape",
-        );
     }
     y
+}
+
+/// The Shape **source** options for the picker popover — only `None` (the procedural Falloff) and
+/// `Image` (an assigned silhouette); there is no procedural shape pattern (that role is the Falloff's).
+pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
+    [TextureKind::None, TextureKind::Image]
+        .into_iter()
+        .map(|k| {
+            DropdownOption::new(
+                core_ids::painter_shape_kind_option_id(k.to_u8()),
+                k.to_u8(),
+                k.name(),
+            )
+        })
+        .collect()
 }
 
 /// One Shape Offset/Size slider row (`readout` is the absolute value with 2 decimals).
@@ -191,18 +229,28 @@ fn shape_xy_row(
     })
 }
 
-/// A muted single-line caption (Text2), advancing `y` by one short row. Used for the "Falloff inactive"
-/// note and the "Use as Brush Shape" hint.
+/// A muted single-line caption (Text2), advancing `y` by one short row. Laid out over the **full**
+/// content width (NOT the narrow `LABEL_W` column the row `label` uses) so a multi-word note stays on
+/// one line instead of word-wrapping into the rows below.
 fn caption(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
-    _content_w: f32,
+    content_w: f32,
     y: f32,
     text: &str,
 ) -> f32 {
     let font = TypeToken::Xs.px();
-    label(ctx, theme, text, x, y, font);
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        text,
+        x,
+        y,
+        font,
+        content_w,
+        resolve(ColorToken::Text2, theme),
+    );
     y + font + Spacing::Sm.px()
 }
 

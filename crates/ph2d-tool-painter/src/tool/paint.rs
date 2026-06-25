@@ -159,6 +159,9 @@ pub(crate) struct PaintState {
     /// as an `ImageMask`. `None` ⇒ the silhouette is the falloff. Mirrors [`texture_image`]. Set by the
     /// shell (Hierarchy "Use as Brush Shape"); cleared by the Shape section reset.
     shape_image: Option<brush_settings::BrushTextureImage>,
+    /// Set when the user picks the Image source in the Shape dropdown; the shell polls it to open a
+    /// file picker (mirror of [`texture_image_pending`] for the Grain slot).
+    shape_image_pending: bool,
     /// Bumped whenever [`shape_image`] changes, so the stamp cache re-renders the Shape mask.
     shape_image_version: u64,
     /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
@@ -213,6 +216,7 @@ impl Default for PaintState {
             texture_image_pending: false,
             texture_image_version: 0,
             shape_image: None,
+            shape_image_pending: false,
             shape_image_version: 0,
             stamp_cache: None,
             canvas_tex_cache: None,

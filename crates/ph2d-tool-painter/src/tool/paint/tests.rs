@@ -380,6 +380,47 @@ fn panel_events_drive_shape_and_grain_depth() {
 }
 
 #[test]
+fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::TextureKind;
+
+    let mut t = PainterTool::default();
+    // Picking "Image" in the Shape source dropdown requests a file load (the shell polls it); the engine
+    // does no I/O, so the silhouette stays the falloff until pixels arrive. Mirrors the Grain Kind flow.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_KIND,
+        TextureKind::Image.to_u8().to_string(),
+    ));
+    assert!(
+        t.take_brush_shape_image_request(),
+        "picking Image requests a Shape file load"
+    );
+    assert!(
+        !t.take_brush_shape_image_request(),
+        "the Shape request is consumed once"
+    );
+    assert!(
+        !t.brush_settings().shape_has_image,
+        "no pixels yet ⇒ silhouette is still the falloff"
+    );
+
+    // The shell delivers the pixels ⇒ shape_has_image flips (the dropdown then reads "Image").
+    t.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    assert!(t.brush_settings().shape_has_image, "shape image assigned");
+
+    // Picking "None" clears the image (→ falloff), the same as the section reset.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_KIND,
+        TextureKind::None.to_u8().to_string(),
+    ));
+    assert!(
+        !t.brush_settings().shape_has_image,
+        "picking None cleared the shape image"
+    );
+}
+
+#[test]
 fn shape_image_paints_the_silhouette_end_to_end() {
     // A full-white 4×4 Shape image makes the dab a SQUARE silhouette: a footprint corner that the round
     // falloff disc would leave blank gets painted. Proves the tool routes the Shape slot end-to-end

@@ -37,6 +37,12 @@ pub(super) fn decode_texture_kind_option(id: NodeId) -> Option<u8> {
     (0..TextureKind::COUNT).find(|&k| core_ids::painter_brush_texture_kind_option_id(k) == id)
 }
 
+/// Decode a Shape-source popover option id → its `TextureKind` wire `u8`. Only `None` (0) and `Image`
+/// (5) are offered; iterate the full range so both stable ids are matched.
+pub(super) fn decode_shape_kind_option(id: NodeId) -> Option<u8> {
+    (0..TextureKind::COUNT).find(|&k| core_ids::painter_shape_kind_option_id(k) == id)
+}
+
 /// Decode a texture-Mapping popover option id → its `TextureMapping` wire `u8` (`0..=2`).
 pub(super) fn decode_texture_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT).find(|&m| core_ids::painter_brush_texture_mapping_option_id(m) == id)

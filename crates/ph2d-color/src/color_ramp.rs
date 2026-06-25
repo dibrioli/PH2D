@@ -9,7 +9,7 @@
 //! sRGB converts at the boundary. The hot path bakes a 256-entry LUT once ([`ColorRamp::bake_into`])
 //! and indexes it per sample.
 
-mod convert;
+pub(crate) mod convert;
 use convert::{
     bspline_weights, catmull_rom_weights, cub, hsl_to_rgba, hsv_to_rgba, lerp, lerp_hue, lerp4,
     rgb_to_hsl, rgb_to_hsv, smoothstep, unwrap_hues,
@@ -307,6 +307,15 @@ impl ColorRamp {
         let idx = self.stops.partition_point(|s| s.pos < stop.pos);
         self.stops.insert(idx, stop);
         idx
+    }
+
+    /// **Invert** the ramp left↔right: mirror every stop's position about the centre (`pos → 1 − pos`),
+    /// then re-sort. Colours + stable ids are preserved, so an editor's selection survives.
+    pub fn invert(&mut self) {
+        for s in &mut self.stops {
+            s.pos = 1.0 - s.pos;
+        }
+        self.sort();
     }
 
     /// The current index of the stop with stable `id`, if present.

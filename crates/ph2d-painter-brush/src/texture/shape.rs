@@ -21,6 +21,23 @@ pub fn compose_shape_silhouette_kind(kind: TextureKind, sample: f32, falloff: f3
     }
 }
 
+/// Remap a raw Shape silhouette value `sv ∈ [0, 1]` through the Shape's **value ramp** LUT (256 entries,
+/// grayscale `[0, 1]`), or return it unchanged when no ramp is active. The Shape ramp is **B&W** — it
+/// reshapes the silhouette's tonal response (contrast / invert / levels) BEFORE the falloff composition,
+/// orthogonally to the Grain's colour ramp (Shape owns the silhouette/tone, Grain owns colour). Applied
+/// at every composition site (per-pixel, stamp bake, canvas-cached) + the preview, so they agree.
+#[must_use]
+pub fn remap_shape_value(sv: f32, lut: Option<&[f32]>) -> f32 {
+    match lut {
+        Some(l) if !l.is_empty() => {
+            let n = l.len();
+            let idx = (sv.clamp(0.0, 1.0) * (n as f32 - 1.0) + 0.5) as usize;
+            l[idx.min(n - 1)]
+        }
+        _ => sv,
+    }
+}
+
 /// Sample the Shape's raw silhouette value at canvas pixel `(px, py)`. An **Image** kind reads the
 /// finite clipped tip ([`sample_shape`] — bounded to `[-1, 1]²`, since an image IS a finite tip). A
 /// **procedural** kind reads the pattern the GRAIN way ([`crate::texture::sample`]) — mapped across the

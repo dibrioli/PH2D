@@ -13,8 +13,8 @@
 pub(crate) mod patterns;
 mod shape;
 pub use shape::{
-    compose_shape_silhouette_kind, render_shape_preview, sample_shape_silhouette,
-    sample_shape_silhouette_unit,
+    compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
+    sample_shape_silhouette, sample_shape_silhouette_unit,
 };
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).

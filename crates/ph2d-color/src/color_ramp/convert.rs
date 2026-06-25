@@ -4,7 +4,7 @@
 
 use super::RampHue;
 
-pub(super) fn lerp(a: f32, b: f32, t: f32) -> f32 {
+pub(crate) fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
@@ -17,17 +17,17 @@ pub(super) fn lerp4(a: [f32; 4], b: [f32; 4], t: f32) -> [f32; 4] {
     ]
 }
 
-pub(super) fn smoothstep(t: f32) -> f32 {
+pub(crate) fn smoothstep(t: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
 /// Weighted sum of four scalars, clamped to `[0, 1]`.
-pub(super) fn cub(w: [f32; 4], a: f32, b: f32, c: f32, d: f32) -> f32 {
+pub(crate) fn cub(w: [f32; 4], a: f32, b: f32, c: f32, d: f32) -> f32 {
     (w[0] * a + w[1] * b + w[2] * c + w[3] * d).clamp(0.0, 1.0)
 }
 
 /// Catmull–Rom basis weights for the four control points around parameter `t ∈ [0, 1]`.
-pub(super) fn catmull_rom_weights(t: f32) -> [f32; 4] {
+pub(crate) fn catmull_rom_weights(t: f32) -> [f32; 4] {
     let (t2, t3) = (t * t, t * t * t);
     [
         -0.5 * t3 + t2 - 0.5 * t,
@@ -38,7 +38,7 @@ pub(super) fn catmull_rom_weights(t: f32) -> [f32; 4] {
 }
 
 /// Uniform cubic B-spline basis weights for `t ∈ [0, 1]`.
-pub(super) fn bspline_weights(t: f32) -> [f32; 4] {
+pub(crate) fn bspline_weights(t: f32) -> [f32; 4] {
     let (t2, t3) = (t * t, t * t * t);
     let s = 1.0 / 6.0;
     [

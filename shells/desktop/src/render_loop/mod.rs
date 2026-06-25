@@ -498,6 +498,9 @@ impl crate::App {
             let mut group_toggle_row: Option<NodeId> = None;
             let mut reparent_intent: Option<ph2d_editor::screens::hero::HierReparentIntent> = None;
             let mut duplicate_row: Option<NodeId> = None;
+            // Set by `hierarchy::dispatch` to `(source_bits, new_bits)` when a sprite is duplicated, so
+            // we can fork the copy onto its own texture (independent object) post-dispatch.
+            let mut duplicate_made: Option<(u64, u64)> = None;
             let mut add_child_row: Option<NodeId> = None;
             let mut reset_transform_row: Option<NodeId> = None;
             let mut delete_row: Option<NodeId> = None;
@@ -1405,8 +1408,51 @@ impl crate::App {
                 camera,
                 toasts,
                 window_size,
+                &mut duplicate_made,
             ) {
                 self.title_dirty = true;
+            }
+            // A duplicated sprite copies the source's `Sprite` component verbatim, so it SHARES the
+            // source pixels — and if the source is being painted, the unbaked paint+mask never reaches
+            // either entity (the working state is dropped on the next rebind, losing the paint from
+            // both). When the source has live paint: bake it so the original persists, then give the
+            // copy its OWN texture (a deep copy of the now-painted result) so it is a fully independent
+            // object (Enio 2026-06-24). A non-painted duplicate keeps the shared source — Atlas/Individual
+            // both fork on the next edit, so they stay independent in practice and keep atlas batching.
+            if let Some((src_bits, new_bits)) = duplicate_made
+                && self.last_painter_pushed_entity == Some(src_bits)
+                && let Some(painter) = tools.active_mut().and_then(|t| {
+                    t.as_any_mut()
+                        .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                })
+                && painter.has_unbaked_edits()
+            {
+                crate::hero_intents::auto_commit_painter(
+                    src_bits,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    painter,
+                );
+                self.last_painter_pushed_entity = None; // bridge re-pushes the freshly-baked source
+                let src = ph2d_ecs::Entity::from_bits(src_bits);
+                let copy = ph2d_ecs::Entity::from_bits(new_bits);
+                if let Some(read) = crate::hero_intents::texture_edit::read_sprite_source(
+                    src,
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                ) {
+                    let _ = crate::hero_intents::texture_edit::commit_edited_texture(
+                        copy,
+                        sim,
+                        renderer,
+                        &read.image,
+                        read.old_size_world,
+                    );
+                }
             }
             // Inspector commits phase — Transform / Visibility / Name
             // / Sprite source-strategy + Reimport. Extracted to sibling

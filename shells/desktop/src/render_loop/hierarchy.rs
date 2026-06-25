@@ -62,6 +62,9 @@ pub(super) fn dispatch(
     camera: &mut Camera2d,
     toasts: &mut ToastQueue,
     window_size: WindowSize,
+    // Out: `(source_bits, new_bits)` of a sprite duplicate so the caller (which holds the painter +
+    // renderer) can bake the source's live paint and give the copy an independent texture.
+    duplicate_made: &mut Option<(u64, u64)>,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -193,6 +196,11 @@ pub(super) fn dispatch(
         builder.insert(Name::new(copy_name));
         if let Some(p) = parent {
             builder.insert(ph2d_ecs::ChildOf(p));
+        }
+        // Report the pair so the caller can fork the copy's texture off the source (independent object)
+        // + flush any live paint on the source first. Only matters for sprite entities.
+        if sprite.is_some() {
+            *duplicate_made = Some((entity_bits, builder.id().to_bits()));
         }
         toasts.push(Toast::success("Duplicated entity"));
         title_dirty = true;

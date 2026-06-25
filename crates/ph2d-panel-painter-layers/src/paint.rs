@@ -269,38 +269,13 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     );
 
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    // Re-register ALL header chrome AFTER the body rows. `HitIndex::hit` is
-    // last-registered-wins, and scrolled-up rows have hit rects with `y <
-    // body_top` that overlap the header — without this they shadow the
-    // dock-toggle / drag / resize handles (audit HIGH). The body paint is
-    // clipped so those rows are invisible, but their hits are not clipped.
-    {
-        let close = panel_close_button_rect(rect);
-        let toggle = Rect::new(
-            close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
-            close.y,
-            TOGGLE_BTN_W,
-            close.h,
-        );
-        let hit = ctx.host.hit_index_mut();
-        hit.register(
-            core_ids::INSP_DRAG_HANDLE,
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
-        );
-        hit.register(core_ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-        hit.register(
-            core_ids::INSP_RESIZE_HANDLE_BL,
-            panel_resize_handle_rect_bl(rect),
-        );
-        hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
-        hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
-        // Scrollbar drag: register the whole TRACK (not just the thin thumb) AFTER the rows (same
-        // last-wins reason as the chrome above), so the user can grab the bar ANYWHERE — clicking the
-        // visible rail off the thumb used to hit nothing. It also hands the dispatch the real track
-        // height (`begin_scrollbar_drag` snapshots `track_h = rect.h`) for proportional scrolling.
-        if scrollbar_is_needed(content_h, body_h) {
-            hit.register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
-        }
+    register_header_chrome(ctx, rect);
+    // Scrollbar drag: register the whole TRACK after the rows (same last-wins reason) so the bar is
+    // grabbable anywhere; hands the dispatch the real track height for proportional scrolling.
+    if scrollbar_is_needed(content_h, body_h) {
+        ctx.host
+            .hit_index_mut()
+            .register(PAINTER_LAYERS_SCROLLBAR_ID, scrollbar_track_rect(body_rect));
     }
 
     // Action toolbar icons (New layer / Group / Duplicate / Delete) — one row
@@ -401,6 +376,7 @@ fn paint_brush_view(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, rect: Rect, h
             store.set_panel_scroll(core_ids::PAINTER_LAYERS_PANEL, max_scroll);
         }
     }
+    register_header_chrome(ctx, rect);
     // The open dropdown popover (Blend / Falloff / Method / Jitter Unit) floats over the body,
     // unclipped, above the scrollbar.
     crate::paint_brush::paint_brush_popovers(ctx, theme);
@@ -433,6 +409,30 @@ fn paint_dock_toggle(
     ctx.host
         .hit_index_mut()
         .register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, btn_rect);
+}
+
+/// Re-register the header chrome (drag/resize handles + dock-toggle + close) AFTER the scrollable body
+/// so a scrolled-up row's unclipped hit rect can't shadow them (`HitIndex` is last-wins; both views).
+fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
+    let close = panel_close_button_rect(rect);
+    let toggle = Rect::new(
+        close.x - Spacing::Sm.px() - TOGGLE_BTN_W,
+        close.y,
+        TOGGLE_BTN_W,
+        close.h,
+    );
+    let hit = ctx.host.hit_index_mut();
+    hit.register(
+        core_ids::INSP_DRAG_HANDLE,
+        panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
+    );
+    hit.register(core_ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
+    hit.register(
+        core_ids::INSP_RESIZE_HANDLE_BL,
+        panel_resize_handle_rect_bl(rect),
+    );
+    hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
+    hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
 }
 
 /// Action toolbar (one row below the header): New layer · Group · Duplicate ·

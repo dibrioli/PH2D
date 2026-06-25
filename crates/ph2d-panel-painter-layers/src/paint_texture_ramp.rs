@@ -45,7 +45,10 @@ const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
 const POS_W: f32 = 70.0; // LITERAL-PX-OK: position chip width
 
 /// Paint the Color Ramp editor at `y`, returning the next `y`. The Mode / Interp chips stash their
-/// open rects for the deferred [`paint_texture_ramp_popovers`] pass.
+/// open rects for the deferred [`paint_texture_ramp_popovers`] pass. `title` names the collapsible —
+/// "Grain Colors" under the Grain, or "Shape Color" when it hosts the Shape's ramp (no Grain texture,
+/// Enio 2026-06-25). The same `texture_ramp` object backs both (only one shows at a time), so the
+/// fixed widget ids never collide.
 pub(crate) fn paint_texture_ramp_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -53,6 +56,7 @@ pub(crate) fn paint_texture_ramp_section(
     content_w: f32,
     y: f32,
     brush: BrushSettings,
+    title: &str,
 ) -> f32 {
     // Collapsible "Color Ramp" section (default collapsed). Its FIRST item is the enable checkbox
     // ("Use Color Ramp"); the editor below shows only when enabled (Enio 2026-06-24).
@@ -62,7 +66,7 @@ pub(crate) fn paint_texture_ramp_section(
         x,
         content_w,
         y,
-        "Grain Colors",
+        title,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
         core_ids::PAINTER_BRUSH_COLOR_RAMP_RESET,

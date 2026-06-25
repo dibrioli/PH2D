@@ -347,7 +347,10 @@ fn paint_shape_preview(
 /// the `ValueRamp` from the published stops + interp — so the preview applies the SAME tonal remap the
 /// engine paints with.
 fn shape_ramp_lut(brush: &BrushSettings) -> Option<Vec<f32>> {
-    if !brush.shape_ramp_enabled {
+    // The B&W tone remap applies only WITH a Grain texture (no Grain ⇒ the Shape's ramp is the
+    // colour ramp, which the Shape preview doesn't tint — it shows the silhouette); match the engine
+    // so the preview agrees (Enio 2026-06-25).
+    if !brush.shape_ramp_enabled || TextureKind::from_u8(brush.texture_kind) == TextureKind::None {
         return None;
     }
     let count = (brush.shape_ramp_stop_count as usize).min(brush.shape_ramp_stops.len());

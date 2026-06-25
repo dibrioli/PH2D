@@ -242,8 +242,8 @@ fn stamp_dab_inner(
         // skipped entirely so the texture-free path costs nothing).
         tex: tex.filter(|_| spec.texture.is_active()),
         image: image.copied(),
-        // The ramp only applies where a texture supplies the index value.
-        ramp: ramp.filter(|_| spec.texture.is_active()),
+        // Kept even with no Grain — then the silhouette coverage indexes the ramp (Shape's colour ramp).
+        ramp,
         // The Shape supplies the silhouette only when the slot is active (the caller already gates
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
@@ -396,8 +396,8 @@ struct DabCtx<'a> {
     /// The Shape slot's silhouette inputs (frame + optional image). `Some` ⇒ the silhouette is the
     /// Shape, replacing the falloff; `None` ⇒ the falloff is the silhouette. See [`ShapeInput`].
     shape: Option<ShapeInput<'a>>,
-    /// Baked Color Ramp LUT (straight RGBA, layer colour space): when present (and a texture is
-    /// active), the texture value indexes it for the per-texel paint colour. See [`stamp_dab_ramped`].
+    /// Baked Color Ramp LUT (straight RGBA): a per-texel value indexes it for the paint colour — the
+    /// Grain pattern with a Grain, else the silhouette coverage (Shape's colour ramp). [`stamp_dab_ramped`].
     ramp: Option<&'a [[f32; 4]]>,
     /// What the ramp colour's alpha does (only meaningful when `ramp` is `Some`). See [`RampAlphaMode`].
     alpha_mode: RampAlphaMode,
@@ -492,6 +492,16 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                 }
                 if w <= 0.0 {
                     continue;
+                }
+            } else if let Some(lut) = ctx.ramp {
+                // No Grain + a Colour Ramp on (Shape's ramp, Enio 2026-06-25): silhouette `w` indexes it
+                // for the COLOUR; alpha per `alpha_mode` (a Strength `w → 0` is caught downstream).
+                let c = ramp_sample(lut, w);
+                color = [c[0], c[1], c[2]];
+                match ctx.alpha_mode {
+                    RampAlphaMode::None => {}
+                    RampAlphaMode::Strength => w *= c[3],
+                    RampAlphaMode::TextureAlpha => stamp_alpha = c[3],
                 }
             }
             let i = row + (px as usize) * 4;

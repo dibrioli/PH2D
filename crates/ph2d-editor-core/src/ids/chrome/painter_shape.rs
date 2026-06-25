@@ -86,9 +86,20 @@ pub const PAINTER_SHAPE_RAMP_STOP_INDEX: NodeId =
     hash_node_id("painter_brush.shape_ramp_stop_index");
 /// Selected-stop **position** chip (`NumberInput`, `0..1`). `SelectOption` → `shape_ramp_move_stop`.
 pub const PAINTER_SHAPE_RAMP_STOP_POS: NodeId = hash_node_id("painter_brush.shape_ramp_stop_pos");
-/// Selected-stop **value** chip (`NumberInput`, `0..1` grayscale). `SelectOption` → `shape_ramp_set_stop_value`.
+/// Selected-stop **value** — the `SelectOption` target the **value bar** forwards to (`"id:value"`).
+/// `SelectOption` → `shape_ramp_set_stop_value`. (No longer a `NumberInput`; see
+/// [`painter_shape_ramp_value_handle_id`], Enio 2026-06-25.)
 pub const PAINTER_SHAPE_RAMP_STOP_VALUE: NodeId =
     hash_node_id("painter_brush.shape_ramp_stop_value");
+/// Stable [`NodeId`] for the grayscale **value bar**'s draggable square marker (one per selected stop
+/// `i`). A `CurvePoint` whose parent is [`PAINTER_SHAPE_RAMP_EDIT`] with **channel `1`** (channel `0` =
+/// the stop-position bar), so its drag rides the same `ValueChanged(EDIT)` route, distinguished by
+/// channel (Enio 2026-06-25). A factory (paint-time-registered, like the stop handles), so the panel
+/// wiring-parity gate treats it as the established `CurvePoint`-handle class.
+#[must_use]
+pub fn painter_shape_ramp_value_handle_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shaperampvaluehandle.{i}"))
+}
 
 /// The Shape-ramp **Click** buttons (enable / add / remove / invert / reset) — forwarded as a
 /// `PanelEvent::Click` by the panel's `event.rs` (a single membership check).
@@ -100,13 +111,14 @@ pub const PAINTER_SHAPE_RAMP_BUTTONS: [NodeId; 5] = [
     PAINTER_SHAPE_RAMP_RESET,
 ];
 
-/// The Shape-ramp **ValueChanged** ids (bar-stop drag + index / position / value chips) — routed to
-/// `shape_ramp_picker` by the panel's `event.rs` (a single membership check).
-pub const PAINTER_SHAPE_RAMP_VALUE_IDS: [NodeId; 4] = [
+/// The Shape-ramp **ValueChanged** ids (the position-bar + value-bar drags both report against
+/// `PAINTER_SHAPE_RAMP_EDIT`, plus the editable index / position chips) — routed to `shape_ramp_picker`
+/// by the panel's `event.rs` (a single membership check). The value bar forwards to
+/// [`PAINTER_SHAPE_RAMP_STOP_VALUE`] (a `SelectOption`, not a `ValueChanged`).
+pub const PAINTER_SHAPE_RAMP_VALUE_IDS: [NodeId; 3] = [
     PAINTER_SHAPE_RAMP_EDIT,
     PAINTER_SHAPE_RAMP_STOP_INDEX,
     PAINTER_SHAPE_RAMP_STOP_POS,
-    PAINTER_SHAPE_RAMP_STOP_VALUE,
 ];
 
 /// Stable [`NodeId`] for the draggable handle of Shape-ramp stop `i` (the open bar's stops are

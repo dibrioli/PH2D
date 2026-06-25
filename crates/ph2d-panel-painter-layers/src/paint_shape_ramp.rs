@@ -1,9 +1,10 @@
 //! The **Shape Tone** section — the Shape's B&W *value ramp* (`ph2d_color::ValueRamp`) that remaps the
 //! silhouette's tone (orthogonal to the Grain colour ramp). A grayscale twin of [`crate::paint_texture_ramp`]:
 //! an enable checkbox, a `+ − [Interp] [Invert]` controls line, the grayscale bar with a value-filled
-//! draggable handle per stop, and a bottom row of the selected stop's editable index / position / value
-//! chips (a **value** chip, not a colour box). Edits forward over the frozen `PanelEvent` channel to
-//! `PainterTool::*_shape_ramp*`.
+//! draggable handle per stop, and a bottom row of the selected stop's editable index / position chips
+//! plus a black→white **value bar** with a draggable square marker (not a colour box). Edits forward
+//! over the frozen `PanelEvent` channel to `PainterTool::*_shape_ramp*`. When the Grain has no texture
+//! the section instead hosts the COLOUR ramp (it colourises the silhouette — see `paint_texture_ramp`).
 
 use crate::paint::register_button;
 use crate::paint_brush::paint_dropdown_chip;
@@ -17,7 +18,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, TypeToken};
-use ph2d_tool_painter::{BrushSettings, RampInterp};
+use ph2d_tool_painter::{BrushSettings, RampInterp, TextureKind};
 use ph2d_vector::Color;
 
 const BAR_H: f32 = 30.0; // LITERAL-PX-OK: gradient bar height
@@ -27,7 +28,7 @@ const OUTLINE_W: f32 = 1.0; // LITERAL-PX-OK: stroke width
 const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a stop handle's grab box
 const IDX_W: f32 = 34.0; // LITERAL-PX-OK: stop-index chip width
 const POS_W: f32 = 64.0; // LITERAL-PX-OK: position chip width
-const VAL_W: f32 = 64.0; // LITERAL-PX-OK: value chip width
+const MARK_SQ: f32 = 14.0; // LITERAL-PX-OK: value-bar square marker side
 
 /// Paint the collapsible **Shape Tone** section at `y`, returning the next `y`. The Interp chip stashes
 /// its open rect for the deferred [`paint_shape_ramp_popovers`] pass.
@@ -39,6 +40,21 @@ pub(crate) fn paint_shape_ramp_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
+    // The Shape's ramp is COLOURED when the Grain has no texture (it colourises the silhouette — no
+    // Grain colour to clash with), and the B&W **tone** ramp below when a Grain texture is present
+    // (orthogonal: Grain owns colour, Shape owns tone). Both are the same `texture_ramp` / `shape_ramp`
+    // objects shown one at a time, so the fixed widget ids never collide (Enio 2026-06-25).
+    if TextureKind::from_u8(brush.texture_kind) == TextureKind::None {
+        return crate::paint_texture_ramp::paint_texture_ramp_section(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            brush,
+            "Shape Color",
+        );
+    }
     let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
@@ -110,7 +126,7 @@ pub(crate) fn paint_shape_ramp_section(
     paint_bar(ctx, theme, bar, brush, sel);
     y += BAR_H + MARK_R + Spacing::Sm.px();
 
-    // ── Bottom row: the selected stop's editable index / position / value chips ──
+    // ── Bottom row: the selected stop's editable index / position chips + the value bar ──
     paint_bottom(ctx, theme, x, content_w, y, brush, sel);
     y + ROW_H_PX + Spacing::Xs.px()
 }
@@ -125,7 +141,12 @@ fn icon_button(
     id: ph2d_a11y::NodeId,
 ) -> f32 {
     let r = Rect::new(x, y, ROW_H_PX, ROW_H_PX);
-    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
     paint_text_centered(
         ctx.text_system,
         ctx.scene,
@@ -140,7 +161,13 @@ fn icon_button(
 }
 
 /// The grayscale gradient + a value-filled circular handle per stop (selected one ringed accent).
-fn paint_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brush: BrushSettings, sel: usize) {
+fn paint_bar(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    bar: Rect,
+    brush: BrushSettings,
+    sel: usize,
+) {
     let count = (brush.shape_ramp_stop_count as usize).min(brush.shape_ramp_stops.len());
     let stops = &brush.shape_ramp_stops[..count];
     let strip_w = bar.w / STRIPS as f32;
@@ -184,12 +211,13 @@ fn paint_bar(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, bar: Rect, brush: Br
     }
 }
 
-/// The bottom row: index selector + position chip + the selected stop's **value** chip (`0..1`).
+/// The bottom row: index selector + position chip + the selected stop's **value bar** (a black→white
+/// gradient with a draggable square marker, filling the rest of the line — replaces the value chip).
 fn paint_bottom(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
-    _content_w: f32,
+    content_w: f32,
     y: f32,
     brush: BrushSettings,
     sel: usize,
@@ -216,13 +244,62 @@ fn paint_bottom(
         f64::from(s[0]),
         &format!("{:.3}", s[0]),
     );
-    paint_ramp_chip(
-        ctx,
-        theme,
-        Rect::new(x + IDX_W + POS_W + gap * 2.0, y, VAL_W, ROW_H_PX),
-        core_ids::PAINTER_SHAPE_RAMP_STOP_VALUE,
-        f64::from(s[1]),
-        &format!("{:.3}", s[1]),
+    // Value bar (the rest of the line): a black→white gradient with one draggable square marker at
+    // `x = value`, for the selected stop (id in `s[2]`).
+    let bx = x + IDX_W + POS_W + gap * 2.0;
+    let bar = Rect::new(bx, y, (x + content_w - bx).max(0.0), ROW_H_PX);
+    paint_value_bar(ctx, theme, bar, s[1], s[2] as u8);
+}
+
+/// The per-stop **value bar**: a black→white horizontal gradient with one draggable square marker at
+/// `x = value`. The whole bar is a `CurvePoint` (parent [`PAINTER_SHAPE_RAMP_EDIT`], **channel 1**),
+/// so a click/drag anywhere on it sets the selected stop's grayscale value — the value chip's
+/// replacement (Enio 2026-06-25). `stop_id` is the selected stop's stable id (the drag's `index`).
+fn paint_value_bar(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    bar: Rect,
+    value: f32,
+    stop_id: u8,
+) {
+    let strip_w = bar.w / STRIPS as f32;
+    for i in 0..STRIPS {
+        let t = (i as f32 + 0.5) / STRIPS as f32;
+        let strip = Rect::new(bar.x + i as f32 * strip_w, bar.y, strip_w + 1.0, bar.h);
+        fill_rounded_rect(ctx.scene, strip, 0.0, gray(t));
+    }
+    stroke_rounded_rect(
+        ctx.scene,
+        bar,
+        Radius::Sm.px(),
+        OUTLINE_W,
+        resolve(ColorToken::Border, theme),
+    );
+    // Drag-anywhere: the bar IS the CurvePoint canvas (channel 1 → value). `index` = the selected
+    // stop's stable id, so the drag sets THAT stop. A factory id (per selected stop), paint-registered.
+    let handle = core_ids::painter_shape_ramp_value_handle_id(stop_id);
+    ctx.host.store_mut().register(
+        handle,
+        InteractiveState::CurvePoint {
+            parent: core_ids::PAINTER_SHAPE_RAMP_EDIT,
+            channel: 1,
+            index: stop_id,
+            canvas: bar,
+        },
+    );
+    ctx.host.hit_index_mut().register(handle, bar);
+    // The square marker, vertically centred, clamped to stay inside the bar.
+    let half = MARK_SQ * 0.5;
+    let mx = (bar.x + value.clamp(0.0, 1.0) * bar.w).clamp(bar.x + half, bar.x + bar.w - half);
+    let cy = bar.y + bar.h * 0.5;
+    let sq = Rect::new(mx - half, cy - half, MARK_SQ, MARK_SQ);
+    fill_rounded_rect(ctx.scene, sq, Radius::Sm.px(), gray(value));
+    stroke_rounded_rect(
+        ctx.scene,
+        sq,
+        Radius::Sm.px(),
+        OUTLINE_W * 2.0,
+        resolve(ColorToken::Accent, theme),
     );
 }
 

@@ -128,9 +128,9 @@ impl PainterTool {
         // ramp LUT are all separate fields, so they can be held at once.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let shape_ramp_lut = self
-            .paint
-            .shape_ramp_enabled
+        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
+        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
+        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
             return;
@@ -214,9 +214,9 @@ impl PainterTool {
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
-        let shape_ramp_lut = self
-            .paint
-            .shape_ramp_enabled
+        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
+        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
+        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let lut = &self.paint.texture_ramp_lut;
         let alpha_mode = self.paint.texture_ramp_alpha_mode;
@@ -327,9 +327,9 @@ impl PainterTool {
         let shape_rake = brush.shape.rake;
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let shape_ramp_lut = self
-            .paint
-            .shape_ramp_enabled
+        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
+        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
+        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let mut tex_rng = self.paint.tex_rng;
@@ -461,10 +461,10 @@ impl PainterTool {
         self.paint.shape_ramp_dirty = false;
     }
 
-    /// The active Shape value-ramp LUT slice when enabled (else `None`); caller `ensure_shape_ramp_lut`s first.
-    fn shape_ramp_lut_slice(&self) -> Option<&[f32]> {
-        self.paint
-            .shape_ramp_enabled
+    /// The active Shape **tone** value-ramp LUT slice when enabled AND a Grain is active (no Grain ⇒
+    /// the Shape's ramp is the colour ramp, not the tone ramp); caller `ensure_shape_ramp_lut`s first.
+    fn shape_ramp_lut_slice(&self, grain_active: bool) -> Option<&[f32]> {
+        (self.paint.shape_ramp_enabled && grain_active)
             .then_some(self.paint.shape_ramp_lut.as_slice())
     }
 
@@ -489,7 +489,7 @@ impl PainterTool {
         let mask = {
             let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-            let shape_ramp_lut = self.shape_ramp_lut_slice();
+            let shape_ramp_lut = self.shape_ramp_lut_slice(brush.texture.is_active());
             render_stamp_mask(
                 brush,
                 image.as_ref(),

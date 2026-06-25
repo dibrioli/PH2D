@@ -228,7 +228,15 @@ pub(crate) fn paint_texture_section(
     }
 
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
-    crate::paint_texture_ramp::paint_texture_ramp_section(ctx, theme, x, content_w, y, brush)
+    crate::paint_texture_ramp::paint_texture_ramp_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        brush,
+        "Grain Colors",
+    )
 }
 
 /// Paint the **Texture-layer** editor inline under the active Texture-layer row: the same Texture

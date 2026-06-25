@@ -36,8 +36,10 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
-        // Color Ramp: the texture's scalar drives the per-texel COLOUR (baked LUT), bypassing scalar caches.
-        if self.paint.texture_ramp_enabled && brush.texture.is_active() {
+        // Color Ramp: a per-texel scalar drives the painted COLOUR (baked LUT), bypassing the scalar
+        // caches. With a Grain it's the Grain pattern; with NO Grain it's the silhouette coverage (the
+        // Shape's colour ramp, Enio 2026-06-25) — so the ramped path is taken whenever the ramp is on.
+        if self.paint.texture_ramp_enabled {
             self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
             return;
         }

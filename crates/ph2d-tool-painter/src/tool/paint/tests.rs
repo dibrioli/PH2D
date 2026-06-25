@@ -488,30 +488,95 @@ fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
 fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::TextureKind;
 
-    // A full-white Shape image ⇒ silhouette value 1 at the centre ⇒ paints (black on white).
-    let mut t = white_canvas(64, 12.0);
-    t.set_brush_shape_image(vec![255u8; 16], 4, 4);
-    let _ = t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
-    assert_eq!(px(&t, 64, 32, 32)[0], 0, "white tip paints (ramp off)");
+    let ink = |t: &PainterTool| -> u64 {
+        let mut s = 0u64;
+        for yy in 0..64 {
+            for xx in 0..64 {
+                s += 255 - u64::from(px(t, 64, xx, yy)[0]); // darkness on white = deposited ink
+            }
+        }
+        s
+    };
 
-    // Enable the Shape value ramp (identity black→white) ⇒ remap(1)=1 ⇒ still paints.
+    // The B&W Shape **tone** ramp is the active Shape ramp only WITH a Grain texture (no Grain ⇒ the
+    // Shape's ramp is the COLOUR ramp, Enio 2026-06-25) — so assign a Noise Grain in each case below.
+    // White tip (silhouette 1) + identity ramp (remap(v)=v) ⇒ the tip paints under the Grain.
     let mut t2 = white_canvas(64, 12.0);
     t2.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    t2.set_brush_texture_kind(TextureKind::Noise.to_u8());
     t2.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
-    let _ = t2.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
-    assert_eq!(px(&t2, 64, 32, 32)[0], 0, "identity ramp still paints");
+    t2.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    let ink_identity = ink(&t2);
+    assert!(
+        ink_identity > 0,
+        "identity tone ramp still paints (with a Grain)"
+    );
 
-    // INVERT the ramp (now white→black) ⇒ the value-1 tip maps to 0 ⇒ paints NOTHING.
+    // INVERT the ramp (white→black) ⇒ the value-1 tip maps to 0 BEFORE the Grain multiply ⇒ the tip is
+    // zeroed: the centre stays pure white, and far less ink overall.
     let mut t3 = white_canvas(64, 12.0);
     t3.set_brush_shape_image(vec![255u8; 16], 4, 4);
+    t3.set_brush_texture_kind(TextureKind::Noise.to_u8());
     t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_ENABLE));
     t3.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAMP_INVERT));
-    let _ = t3.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t3.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     assert_eq!(
         px(&t3, 64, 32, 32),
         [255, 255, 255, 255],
-        "the inverted value ramp zeroes the white tip"
+        "the inverted tone ramp zeroes the white tip (before the Grain multiply)"
+    );
+    assert!(
+        ink(&t3) < ink_identity / 2,
+        "inverted tone ramp deposits far less ink: {} vs {ink_identity}",
+        ink(&t3)
+    );
+}
+
+#[test]
+fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+
+    // No Grain texture ⇒ the Shape's ramp is the COLOUR ramp: the silhouette coverage indexes it for
+    // the painted colour (Enio 2026-06-25). A solid-red ramp over a BLUE brush base ⇒ a RED dab —
+    // proving the ramp colourises (without it the centre would be the brush's blue).
+    let mut t = white_canvas(64, 12.0);
+    t.set_brush_color_channel(2, 1.0); // brush base = blue [0,0,1]
+    t.set_texture_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+            RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    t.set_texture_ramp_enabled(true);
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    let c = px(&t, 64, 32, 32);
+    assert!(
+        c[0] > 200 && c[1] < 80 && c[2] < 80,
+        "grain-None Shape colour ramp paints red (not the brush's blue): {c:?}"
+    );
+}
+
+#[test]
+fn shape_ramp_value_bar_select_option_sets_the_stop_value() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    // The value bar forwards `"id:value"` to PAINTER_SHAPE_RAMP_STOP_VALUE (a `SelectOption`); the tool
+    // sets THAT stop's grayscale value. Stop id 0 defaults to 0 (black) → drive it to 0.5.
+    let mut t = PainterTool::default();
+    let id0 = t.shape_ramp().stops()[0].id;
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_RAMP_STOP_VALUE,
+        format!("{id0}:0.5"),
+    ));
+    let s0 = *t.shape_ramp().stops().iter().find(|s| s.id == id0).unwrap();
+    assert!(
+        (s0.value - 0.5).abs() < 1e-6,
+        "value bar set stop {id0} to 0.5, got {}",
+        s0.value
     );
 }
 

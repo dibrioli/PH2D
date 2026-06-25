@@ -91,6 +91,7 @@ pub fn render_shape_preview(
     size: [f32; 2],
     params: [f32; MAX_TEX_PARAMS],
     falloff_lut: &[f32],
+    shape_ramp_lut: Option<&[f32]>,
     image: Option<&ImageMask>,
     buf: &mut [u8],
     w: u32,
@@ -113,7 +114,8 @@ pub fn render_shape_preview(
         let v = (j as f32 + 0.5) * inv_h - 1.0;
         for i in 0..w {
             let u = (i as f32 + 0.5) * inv_w - 1.0;
-            let sv = sample_shape_silhouette_unit(&shape, &basis, u, v, image);
+            let raw = sample_shape_silhouette_unit(&shape, &basis, u, v, image);
+            let sv = remap_shape_value(raw, shape_ramp_lut);
             let t = (u * u + v * v).sqrt().min(1.0);
             let f = falloff_lut[((t * (n - 1) as f32) as usize).min(n - 1)];
             let cov = compose_shape_silhouette_kind(kind, sv, f).clamp(0.0, 1.0);

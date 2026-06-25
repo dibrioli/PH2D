@@ -292,6 +292,7 @@ fn paint_shape_preview(
         brush.shape_size,
         brush.shape_params,
         &lut,
+        None, // Shape value-ramp preview: wired with the Shape-ramp section (panel-baked LUT)
         image_mask.as_ref(),
         &mut cov,
         side,

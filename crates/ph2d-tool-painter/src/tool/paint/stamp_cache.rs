@@ -46,6 +46,8 @@ pub(super) struct StampKey {
     /// The Shape slot + its image version + Grain Depth all change the baked silhouette × grain mask.
     shape: TextureSettings,
     shape_image_version: u64,
+    /// The Shape value ramp (B&W tonal remap) also changes the baked silhouette.
+    shape_ramp_version: u64,
     grain_depth: f32,
     size: u32,
 }
@@ -121,10 +123,15 @@ impl PainterTool {
         h: u32,
     ) {
         self.ensure_canvas_cache(brush, w, h);
-        // Disjoint borrows: the canvas (Arc), the cache (tex+ready), and the imported images are all
-        // separate fields, so they can be held at once.
+        self.ensure_shape_ramp_lut();
+        // Disjoint borrows: the canvas (Arc), the cache (tex+ready), the imported images + the Shape
+        // ramp LUT are all separate fields, so they can be held at once.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_ramp_lut = self
+            .paint
+            .shape_ramp_enabled
+            .then_some(self.paint.shape_ramp_lut.as_slice());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
             return;
         };
@@ -148,6 +155,7 @@ impl PainterTool {
                 &spec,
                 image.as_ref(),
                 shape_image.as_ref(),
+                shape_ramp_lut,
                 d.coverage,
                 alpha_locked,
             ) {
@@ -199,12 +207,17 @@ impl PainterTool {
         h: u32,
     ) {
         self.ensure_ramp_lut();
+        self.ensure_shape_ramp_lut();
         let textured = brush.texture.is_active();
         // Disjoint borrows: the imported image + the ramp LUT (both `self.paint` sub-fields) and the
         // canvas (`self.canvas_rgba`) are held at once; the texture RNG is copied out + written back.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
+        let shape_ramp_lut = self
+            .paint
+            .shape_ramp_enabled
+            .then_some(self.paint.shape_ramp_lut.as_slice());
         let lut = &self.paint.texture_ramp_lut;
         let alpha_mode = self.paint.texture_ramp_alpha_mode;
         let rake = brush.texture.rake;
@@ -245,6 +258,7 @@ impl PainterTool {
                 .map(|sb| ph2d_painter_brush::ShapeInput {
                     basis: sb,
                     image: shape_image.as_ref(),
+                    ramp_lut: shape_ramp_lut,
                 });
             let dir = advance_rake(
                 rake,
@@ -307,11 +321,16 @@ impl PainterTool {
         w: u32,
         h: u32,
     ) {
+        self.ensure_shape_ramp_lut();
         let textured = brush.texture.is_active();
         let rake = brush.texture.rake;
         let shape_rake = brush.shape.rake;
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_ramp_lut = self
+            .paint
+            .shape_ramp_enabled
+            .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let mut tex_rng = self.paint.tex_rng;
         let mut rake_dir = self.paint.rake_dir;
@@ -362,6 +381,7 @@ impl PainterTool {
                 .map(|sb| ph2d_painter_brush::ShapeInput {
                     basis: sb,
                     image: shape_image.as_ref(),
+                    ramp_lut: shape_ramp_lut,
                 });
             let dir = advance_rake(
                 rake,
@@ -429,8 +449,28 @@ impl PainterTool {
         self.paint.texture_ramp_dirty = false;
     }
 
+    /// Bake the **Shape value ramp** into its 256-entry grayscale LUT (scalar `[0,1]`, no gamma — it
+    /// remaps the silhouette's coverage value). A no-op when clean.
+    fn ensure_shape_ramp_lut(&mut self) {
+        if !self.paint.shape_ramp_dirty && self.paint.shape_ramp_lut.len() == 256 {
+            return;
+        }
+        let mut lut = vec![0.0f32; 256];
+        self.paint.shape_ramp.bake_into(&mut lut);
+        self.paint.shape_ramp_lut = lut;
+        self.paint.shape_ramp_dirty = false;
+    }
+
+    /// The active Shape value-ramp LUT slice when enabled (else `None`); caller `ensure_shape_ramp_lut`s first.
+    fn shape_ramp_lut_slice(&self) -> Option<&[f32]> {
+        self.paint
+            .shape_ramp_enabled
+            .then_some(self.paint.shape_ramp_lut.as_slice())
+    }
+
     /// Re-render the cached stamp mask when the appearance / mask size changed; a no-op on a hit.
     fn ensure_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
+        self.ensure_shape_ramp_lut();
         let key = StampKey {
             falloff: brush.falloff,
             hardness: brush.hardness,
@@ -439,6 +479,7 @@ impl PainterTool {
             image_version: self.paint.texture_image_version,
             shape: brush.shape,
             shape_image_version: self.paint.shape_image_version,
+            shape_ramp_version: self.paint.shape_ramp_version,
             grain_depth: brush.grain_depth,
             size,
         };
@@ -448,7 +489,14 @@ impl PainterTool {
         let mask = {
             let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-            render_stamp_mask(brush, image.as_ref(), shape_image.as_ref(), size)
+            let shape_ramp_lut = self.shape_ramp_lut_slice();
+            render_stamp_mask(
+                brush,
+                image.as_ref(),
+                shape_image.as_ref(),
+                shape_ramp_lut,
+                size,
+            )
         };
         self.paint.stamp_cache = Some((mask, key));
     }

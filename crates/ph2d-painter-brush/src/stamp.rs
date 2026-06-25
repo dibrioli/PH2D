@@ -41,6 +41,7 @@ pub fn render_stamp_mask(
     spec: &BrushSpec,
     grain_image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
+    shape_ramp_lut: Option<&[f32]>,
     size: u32,
 ) -> StampMask {
     let size = size.max(1);
@@ -62,13 +63,14 @@ pub fn render_stamp_mask(
             let u = (i as f32 + 0.5) * inv - 1.0;
             let mut w = match &shape_basis {
                 Some(sb) => {
-                    let sv = crate::texture::sample_shape_silhouette_unit(
+                    let raw = crate::texture::sample_shape_silhouette_unit(
                         &spec.shape,
                         sb,
                         u,
                         v,
                         shape_image,
                     );
+                    let sv = crate::texture::remap_shape_value(raw, shape_ramp_lut);
                     let t = (u * u + v * v).sqrt();
                     spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
                 }
@@ -235,6 +237,8 @@ struct CanvasBlitCtx<'a> {
     /// falloff is the silhouette. The Grain stays canvas-fixed (cached); the silhouette is per-pixel.
     shape_basis: Option<crate::texture::TexDabBasis>,
     shape_image: Option<ImageMask<'a>>,
+    /// The Shape value-ramp LUT (B&W tonal remap of the silhouette); `None` ⇒ no remap.
+    shape_ramp_lut: Option<&'a [f32]>,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -266,6 +270,7 @@ pub fn blit_canvas_cached(
     spec: &BrushSpec,
     image: Option<&ImageMask>,
     shape_image: Option<&ImageMask>,
+    shape_ramp_lut: Option<&[f32]>,
     coverage: f32,
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
@@ -303,6 +308,7 @@ pub fn blit_canvas_cached(
         image: image.copied(),
         shape_basis,
         shape_image: shape_image.copied(),
+        shape_ramp_lut,
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -355,7 +361,7 @@ fn canvas_blit_band(
             // per-pixel path, so the cached Tiled/Stencil Grain stays bit-identical with a Shape on top.
             let mut w = match &ctx.shape_basis {
                 Some(sb) => {
-                    let sv = crate::texture::sample_shape_silhouette(
+                    let raw = crate::texture::sample_shape_silhouette(
                         &ctx.spec.shape,
                         sb,
                         px,
@@ -364,6 +370,7 @@ fn canvas_blit_band(
                         ctx.radius,
                         ctx.shape_image.as_ref(),
                     );
+                    let sv = crate::texture::remap_shape_value(raw, ctx.shape_ramp_lut);
                     let dx = (px as f32 + 0.5) - ctx.cx;
                     let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
                     ctx.spec

@@ -473,6 +473,7 @@ fn shape_image_replaces_the_falloff_with_a_crisp_silhouette() {
     let shape_in = ShapeInput {
         basis: &basis,
         image: Some(&img),
+        ramp_lut: None,
     };
     let center = [24.0, 24.0];
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
@@ -571,6 +572,7 @@ fn shape_angle_rotates_the_silhouette() {
         Some(ShapeInput {
             basis: &b0,
             image: Some(&img),
+            ramp_lut: None,
         }),
     )
     .expect("angle-0 shape painted");
@@ -602,6 +604,7 @@ fn shape_angle_rotates_the_silhouette() {
         Some(ShapeInput {
             basis: &b90,
             image: Some(&img),
+            ramp_lut: None,
         }),
     )
     .expect("angle-90 shape painted");

@@ -46,6 +46,7 @@ fn shape_image_cached_mask_matches_per_pixel_silhouette() {
     let shape_in = ShapeInput {
         basis: &basis,
         image: Some(&img),
+        ramp_lut: None,
     };
     // Per-pixel reference.
     let mut a = solid(w, h, [255, 255, 255, 255]);
@@ -62,7 +63,7 @@ fn shape_image_cached_mask_matches_per_pixel_silhouette() {
         Some(shape_in),
     );
     // Cached: the Shape is baked into the mask; blit it.
-    let mask = render_stamp_mask(&spec, None, Some(&img), 96);
+    let mask = render_stamp_mask(&spec, None, Some(&img), None, 96);
     let mut b = solid(w, h, [255, 255, 255, 255]);
     let _ = blit_stamp(&mut b, w, h, center, 36.0, &mask, &spec, 1.0, false);
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
@@ -125,6 +126,7 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
     let shape_in = ShapeInput {
         basis: &sbasis,
         image: Some(&shimg),
+        ramp_lut: None,
     };
     let mut a = solid(w, h, [255, 255, 255, 255]);
     let _ = stamp_dab_textured(
@@ -154,6 +156,7 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
         &spec,
         None,
         Some(&shimg),
+        None,
         1.0,
         false,
     );
@@ -174,7 +177,7 @@ fn mask_is_falloff_shaped() {
         hardness: 0.0,
         ..Default::default()
     };
-    let mask = render_stamp_mask(&spec, None, None, 64);
+    let mask = render_stamp_mask(&spec, None, None, None, 64);
     assert_eq!(mask.size(), 64);
     let at = |i: u32, j: u32| mask.data[(j * 64 + i) as usize];
     assert!(at(32, 32) > 200, "centre near full, got {}", at(32, 32));
@@ -197,7 +200,7 @@ fn blit_matches_the_per_pixel_stamp_closely() {
     let mut a = solid(w, h, [255, 255, 255, 255]);
     let mut b = solid(w, h, [255, 255, 255, 255]);
     let _ = stamp_dab(&mut a, w, h, [64.0, 64.0], &spec, 1.0, false);
-    let mask = render_stamp_mask(&spec, None, None, 96);
+    let mask = render_stamp_mask(&spec, None, None, None, 96);
     let _ = blit_stamp(&mut b, w, h, [64.0, 64.0], 40.0, &mask, &spec, 1.0, false);
     let idx = |x: u32, y: u32| ((y * w + x) * 4) as usize;
     assert_eq!(a[idx(64, 64)], 0, "stamp centre black");
@@ -230,7 +233,7 @@ fn textured_mask_blit_shows_the_pattern() {
         },
         ..Default::default()
     };
-    let mask = render_stamp_mask(&spec, None, None, 96);
+    let mask = render_stamp_mask(&spec, None, None, None, 96);
     let mut buf = solid(w, h, [255, 255, 255, 255]);
     blit_stamp(&mut buf, w, h, [48.0, 48.0], 36.0, &mask, &spec, 1.0, false).expect("painted");
     let (mut black, mut white) = (0, 0);
@@ -303,6 +306,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         &spec,
         None,
         None,
+        None,
         1.0,
         false,
     );
@@ -330,6 +334,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         [48.0, 48.0],
         36.0,
         &spec,
+        None,
         None,
         None,
         1.0,

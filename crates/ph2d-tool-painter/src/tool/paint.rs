@@ -178,6 +178,15 @@ pub(crate) struct PaintState {
     texture_ramp_lut: Vec<[f32; 4]>,
     texture_ramp_dirty: bool,
     texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
+    /// The **Shape value ramp** (B&W): remaps the silhouette's tone (`ph2d_color::ValueRamp`). `_lut` is
+    /// the baked 256-entry grayscale LUT, re-baked when `_dirty`.
+    shape_ramp: ph2d_color::ValueRamp,
+    shape_ramp_enabled: bool,
+    shape_ramp_lut: Vec<f32>,
+    shape_ramp_dirty: bool,
+    /// Bumped on any Shape-ramp edit (toggle / stop / invert / interp) so the cached stamp mask
+    /// re-bakes (the ramp remaps the baked silhouette). Part of [`stamp_cache::StampKey`].
+    shape_ramp_version: u64,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
 }
@@ -225,6 +234,11 @@ impl Default for PaintState {
             texture_ramp_lut: Vec::new(),
             texture_ramp_dirty: true,
             texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
+            shape_ramp: ph2d_color::ValueRamp::default(),
+            shape_ramp_enabled: false,
+            shape_ramp_lut: Vec::new(),
+            shape_ramp_dirty: true,
+            shape_ramp_version: 0,
             stroke_mask: Vec::new(),
         }
     }

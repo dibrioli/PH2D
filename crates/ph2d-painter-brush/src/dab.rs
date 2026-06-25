@@ -23,6 +23,10 @@ pub struct ShapeInput<'a> {
     pub basis: &'a TexDabBasis,
     /// The silhouette pixels for [`crate::TextureKind::Image`]; `None` for a procedural Shape kind.
     pub image: Option<&'a ImageMask<'a>>,
+    /// The Shape's **value ramp** LUT (256 grayscale entries, baked from `ph2d_color::ValueRamp`) that
+    /// remaps the raw silhouette value (B&W tonal curve / invert); `None` ⇒ no remap. See
+    /// [`crate::texture::remap_shape_value`].
+    pub ramp_lut: Option<&'a [f32]>,
 }
 
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
@@ -425,7 +429,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             // (`falloff × pattern`, Enio 2026-06-25). No Shape ⇒ the bare procedural falloff (default,
             // byte-identical to before). See `docs/Painter/05_design_dois_slots_textura.md` §2.
             let mut w = if let Some(sh) = ctx.shape {
-                let sv = crate::texture::sample_shape_silhouette(
+                let raw = crate::texture::sample_shape_silhouette(
                     &ctx.spec.shape,
                     sh.basis,
                     px,
@@ -434,6 +438,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     ctx.radius,
                     sh.image,
                 );
+                let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
                 let dx = (px as f32 + 0.5) - ctx.cx;
                 let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
                 ctx.spec

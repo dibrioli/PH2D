@@ -8,23 +8,24 @@ use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
 use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
     BrushSettings, Falloff, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX,
     TEX_SIZE_MIN, TextureKind,
 };
 use ph2d_vector::ImageQuality;
 
-/// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. It always shows the
-/// **Falloff** dropdown (the procedural silhouette) and, right below it, a **Shape** source picker
-/// (`None` / `Image`) mirroring the Grain Kind picker. With a Shape image assigned the Falloff goes
-/// inactive (a caption marks it) and the image preview + rotation controls show; without one the live
-/// Falloff curve editor shows. The Falloff dropdown reuses the existing `PAINTER_BRUSH_FALLOFF` id +
-/// popover; the Shape picker is `PAINTER_SHAPE_KIND` (both drained by `paint_brush_popovers`).
+/// Paint the collapsible **Shape** section starting at `y`, returning the next `y`. A **Texture** picker
+/// (`PAINTER_SHAPE_KIND`) chooses the silhouette source — `None`, any procedural pattern, or `Image` —
+/// the same kinds as the Grain. Above it, the **Falloff** dropdown + its curve preview show for every
+/// kind EXCEPT `Image` (then the imported tip IS the silhouette, so the falloff is hidden + inactive);
+/// for a procedural kind the falloff stays active and MASKS the pattern. Below the picker: the Image
+/// preview + frame controls (Image), or the frame controls (procedural). Both dropdowns' popovers are
+/// drained by `paint_brush_popovers`.
 pub(crate) fn paint_shape_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -47,162 +48,162 @@ pub(crate) fn paint_shape_section(
     if collapsed {
         return y;
     }
+    let kind = TextureKind::from_u8(brush.shape_kind);
+    let is_image = kind == TextureKind::Image;
 
-    // ── Falloff dropdown (the procedural silhouette; the default tip). Always shown — it is the
-    //    reference the source picker sits below; greyed by a caption once an image overrides it. ──
-    let (ny, open) = paint_dropdown_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Falloff",
-        core_ids::PAINTER_BRUSH_FALLOFF,
-        brush.falloff,
-        Falloff::from_u8(brush.falloff).name(),
-    );
-    y = ny;
-    if let Some(r) = open {
-        state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
-    }
-
-    // ── Falloff curve preview — directly under the Falloff dropdown and ABOVE the Shape picker, while
-    //    the falloff is the active silhouette. Hidden once an image overrides it (then it is inactive,
-    //    marked by the caption below). (Enio 2026-06-25). ──
-    if !brush.shape_has_image {
+    // ── Falloff (dropdown + curve preview) — ABOVE the Texture picker, visible + active for every kind
+    //    except Image (then the image IS the silhouette → hidden). For a procedural kind the falloff
+    //    masks the pattern. Reuses the existing `PAINTER_BRUSH_FALLOFF` id + popover. (Enio 2026-06-25). ──
+    if !is_image {
+        let (ny, open) = paint_dropdown_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Falloff",
+            core_ids::PAINTER_BRUSH_FALLOFF,
+            brush.falloff,
+            Falloff::from_u8(brush.falloff).name(),
+        );
+        y = ny;
+        if let Some(r) = open {
+            state::set_pending_brush_falloff_dd(Some((r, brush.falloff)));
+        }
         y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
     }
 
-    // ── Shape source picker (None / Image) — below the Falloff + its preview, mirroring the Grain Kind
-    //    picker. Picking Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None
-    //    reverts to the falloff. The chip label tracks the live state (image assigned → "Image"). ──
-    let shape_kind = if brush.shape_has_image {
-        TextureKind::Image.to_u8()
-    } else {
-        TextureKind::None.to_u8()
-    };
+    // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking
+    //    Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to the bare
+    //    falloff; a procedural kind is masked by the falloff above. ──
     let (ny, open) = paint_dropdown_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Shape",
+        "Texture",
         core_ids::PAINTER_SHAPE_KIND,
-        shape_kind,
-        TextureKind::from_u8(shape_kind).name(),
+        brush.shape_kind,
+        kind.name(),
     );
     y = ny;
     if let Some(r) = open {
-        state::set_pending_brush_shape_kind_dd(Some((r, shape_kind)));
+        state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
-    if brush.shape_has_image {
-        // Image silhouette: the falloff above is inactive (overridden by the image). Mark it, then show
-        // the preview (like Grain) + the rotation controls.
-        y = caption(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Image silhouette \u{2014} Falloff inactive",
-        );
+    if is_image {
+        // Image silhouette: preview (like Grain) + the frame transform controls.
         y = paint_shape_preview(ctx, theme, x, content_w, y);
-
-        let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
-        let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
-        y = paint_param_row(ParamRow {
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            label: "Angle",
-            id: core_ids::PAINTER_SHAPE_ANGLE,
-            value: angle_track,
-            readout: &angle_readout,
-        });
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_SHAPE_RAKE,
-            "Rake",
-            brush.shape_rake,
-        );
-        y = paint_checkbox_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            core_ids::PAINTER_SHAPE_RANDOM,
-            "Random",
-            brush.shape_random,
-        );
-        y = shape_xy_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Offset X",
-            core_ids::PAINTER_SHAPE_OFFSET_X,
-            offset_track(brush.shape_offset[0]),
-            brush.shape_offset[0],
-        );
-        y = shape_xy_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Offset Y",
-            core_ids::PAINTER_SHAPE_OFFSET_Y,
-            offset_track(brush.shape_offset[1]),
-            brush.shape_offset[1],
-        );
-        y = shape_xy_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Size X",
-            core_ids::PAINTER_SHAPE_SIZE_X,
-            size_track(brush.shape_size[0]),
-            brush.shape_size[0],
-        );
-        y = shape_xy_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Size Y",
-            core_ids::PAINTER_SHAPE_SIZE_Y,
-            size_track(brush.shape_size[1]),
-            brush.shape_size[1],
-        );
+        y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
+    } else if kind != TextureKind::None {
+        // Procedural silhouette masked by the falloff: the frame transform controls (rotation / offset /
+        // size of the pattern). No preview strip — the falloff preview above + the live canvas show it.
+        y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
     }
-    // (No image ⇒ nothing more here: the Falloff dropdown + its curve preview above the Shape picker
-    //  are the procedural silhouette.)
+    // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
     y
 }
 
-/// The Shape **source** options for the picker popover — only `None` (the procedural Falloff) and
-/// `Image` (an assigned silhouette); there is no procedural shape pattern (that role is the Falloff's).
+/// The Shape **frame** controls — Angle / Rake / Random / Offset X·Y / Size X·Y — shared by the Image
+/// and procedural branches (they rotate/offset/scale the silhouette frame either way). Returns the next `y`.
+fn paint_shape_transform_controls(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
+    let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
+    y = paint_param_row(ParamRow {
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        label: "Angle",
+        id: core_ids::PAINTER_SHAPE_ANGLE,
+        value: angle_track,
+        readout: &angle_readout,
+    });
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_SHAPE_RAKE,
+        "Rake",
+        brush.shape_rake,
+    );
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_SHAPE_RANDOM,
+        "Random",
+        brush.shape_random,
+    );
+    y = shape_xy_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Offset X",
+        core_ids::PAINTER_SHAPE_OFFSET_X,
+        offset_track(brush.shape_offset[0]),
+        brush.shape_offset[0],
+    );
+    y = shape_xy_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Offset Y",
+        core_ids::PAINTER_SHAPE_OFFSET_Y,
+        offset_track(brush.shape_offset[1]),
+        brush.shape_offset[1],
+    );
+    y = shape_xy_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Size X",
+        core_ids::PAINTER_SHAPE_SIZE_X,
+        size_track(brush.shape_size[0]),
+        brush.shape_size[0],
+    );
+    shape_xy_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Size Y",
+        core_ids::PAINTER_SHAPE_SIZE_Y,
+        size_track(brush.shape_size[1]),
+        brush.shape_size[1],
+    )
+}
+
+/// The Shape **source** options for the picker popover — the full `TextureKind` set (the same kinds as
+/// the Grain): `None` (the bare falloff), every procedural pattern (masked by the falloff), and `Image`
+/// (an imported tip that replaces the falloff).
 pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
-    [TextureKind::None, TextureKind::Image]
-        .into_iter()
+    (0..TextureKind::COUNT)
         .map(|k| {
             DropdownOption::new(
-                core_ids::painter_shape_kind_option_id(k.to_u8()),
-                k.to_u8(),
-                k.name(),
+                core_ids::painter_shape_kind_option_id(k),
+                k,
+                TextureKind::from_u8(k).name(),
             )
         })
         .collect()
@@ -233,31 +234,6 @@ fn shape_xy_row(
         value: track,
         readout: &readout,
     })
-}
-
-/// A muted single-line caption (Text2), advancing `y` by one short row. Laid out over the **full**
-/// content width (NOT the narrow `LABEL_W` column the row `label` uses) so a multi-word note stays on
-/// one line instead of word-wrapping into the rows below.
-fn caption(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    text: &str,
-) -> f32 {
-    let font = TypeToken::Xs.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        text,
-        x,
-        y,
-        font,
-        content_w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + font + Spacing::Sm.px()
 }
 
 /// The Shape image preview: the published luminance drawn as a grayscale strip (the silhouette tip),

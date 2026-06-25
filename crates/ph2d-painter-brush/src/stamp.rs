@@ -61,7 +61,11 @@ pub fn render_stamp_mask(
         for i in 0..size {
             let u = (i as f32 + 0.5) * inv - 1.0;
             let mut w = match &shape_basis {
-                Some(sb) => crate::texture::sample_shape_unit(&spec.shape, sb, u, v, shape_image),
+                Some(sb) => {
+                    let sv = crate::texture::sample_shape_unit(&spec.shape, sb, u, v, shape_image);
+                    let t = (u * u + v * v).sqrt();
+                    spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+                }
                 None => {
                     let t = (u * u + v * v).sqrt();
                     spec.falloff_weight(t)
@@ -344,15 +348,21 @@ fn canvas_blit_band(
             // SILHOUETTE: the Shape image (dab-relative) or, by default, the falloff — same rule as the
             // per-pixel path, so the cached Tiled/Stencil Grain stays bit-identical with a Shape on top.
             let mut w = match &ctx.shape_basis {
-                Some(sb) => crate::texture::sample_shape(
-                    &ctx.spec.shape,
-                    sb,
-                    px,
-                    py,
-                    [ctx.cx, ctx.cy],
-                    ctx.radius,
-                    ctx.shape_image.as_ref(),
-                ),
+                Some(sb) => {
+                    let sv = crate::texture::sample_shape(
+                        &ctx.spec.shape,
+                        sb,
+                        px,
+                        py,
+                        [ctx.cx, ctx.cy],
+                        ctx.radius,
+                        ctx.shape_image.as_ref(),
+                    );
+                    let dx = (px as f32 + 0.5) - ctx.cx;
+                    let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                    ctx.spec
+                        .compose_shape_silhouette(sv, ctx.spec.falloff_weight(t))
+                }
                 None => {
                     let dx = (px as f32 + 0.5) - ctx.cx;
                     let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;

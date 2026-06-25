@@ -584,8 +584,9 @@ fn load_brush_shape_image(
             painter.set_brush_shape_image(lum, w, h);
             toasts.push(Toast::success("Brush shape loaded"));
         }
-        Ok(None) => {} // cancelled → silhouette stays the falloff (nothing assigned, nothing to revert)
+        Ok(None) => painter.set_brush_shape_kind(0), // cancelled → revert Image to None (falloff)
         Err(e) => {
+            painter.set_brush_shape_kind(0); // revert on failure
             toasts.push(Toast::error(format!("Shape load failed: {e}")));
         }
     }

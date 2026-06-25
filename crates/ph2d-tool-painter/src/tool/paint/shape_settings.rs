@@ -61,15 +61,36 @@ impl PainterTool {
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
     }
 
-    /// Set the Shape **source** from the dropdown's wire discriminant (mirror of `set_brush_texture_kind`
-    /// for the Grain slot): [`TextureKind::Image`] requests a file pick from the shell (the engine has no
-    /// I/O); anything else clears the image so the silhouette reverts to the falloff.
+    /// Set the Shape **source** from the dropdown's wire discriminant (the "Texture" picker; mirror of
+    /// `set_brush_texture_kind` for the Grain slot). [`TextureKind::Image`] requests a file pick from the
+    /// shell (the engine has no I/O); [`TextureKind::None`] reverts to the bare falloff; any procedural
+    /// kind installs that pattern (masked by the falloff) and resets its params to the kind's defaults.
+    /// All three drop any previously-imported image (a procedural Shape never reads pixels).
     pub fn set_brush_shape_kind(&mut self, k: u8) {
-        if TextureKind::from_u8(k) == TextureKind::Image {
-            self.paint.shape_image_pending = true;
-        } else {
-            self.clear_brush_shape_image();
+        let kind = TextureKind::from_u8(k);
+        self.paint.brush.shape.kind = kind;
+        match kind {
+            TextureKind::Image => self.paint.shape_image_pending = true, // shell opens a file picker
+            TextureKind::None => self.paint.shape_image = None,
+            _ => {
+                self.paint.shape_image = None; // procedural Shape: no pixels
+                self.reset_shape_params();
+            }
         }
+        self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
+    }
+
+    /// Reset the Shape pattern params to the current kind's neutral defaults (mirror of the Grain's
+    /// `reset_texture_params`). Called when a procedural Shape kind is picked.
+    fn reset_shape_params(&mut self) {
+        let mut params = [0.5; ph2d_painter_brush::MAX_TEX_PARAMS];
+        for (i, s) in ph2d_painter_brush::param_specs(self.paint.brush.shape.kind)
+            .iter()
+            .enumerate()
+        {
+            params[i] = s.default;
+        }
+        self.paint.brush.shape.params = params;
     }
 
     /// Take (and clear) the "the user picked Image in the Shape dropdown — open a file picker" request.

@@ -226,6 +226,20 @@ impl BrushSpec {
         self.grain_depth.clamp(0.0, 1.0)
     }
 
+    /// Compose the dab silhouette from a Shape sample `shape_val` and the round `falloff` envelope. The
+    /// **Image** kind REPLACES the falloff (a crisp finite tip stays uneroded); any **procedural** kind is
+    /// MASKED BY it (`falloff × pattern`, so the soft round envelope shapes the texture — Enio 2026-06-25).
+    /// `None` never reaches here (the caller uses the bare falloff when the Shape is inactive). The single
+    /// source for all three stamp paths (per-pixel, scale-invariant bake, canvas-cached) so they agree.
+    #[must_use]
+    pub fn compose_shape_silhouette(&self, shape_val: f32, falloff: f32) -> f32 {
+        if self.shape.kind == crate::texture::TextureKind::Image {
+            shape_val
+        } else {
+            falloff * shape_val
+        }
+    }
+
     /// Whether the **Shape** slot rotates its silhouette frame per dab (Rake follows the stroke, or a
     /// per-dab Random angle), so the constant-orientation caches can't apply — each dab needs its own
     /// Shape basis. Only meaningful when the Shape is the active silhouette. Mirrors
@@ -354,6 +368,22 @@ mod tests {
         assert!(!b.has_per_dab_rotation());
         assert_eq!(b.jitter_scale, 0.0);
         assert_eq!(b.jitter_rotate, 0.0);
+    }
+
+    #[test]
+    fn compose_shape_image_replaces_procedural_masks() {
+        use crate::texture::TextureKind;
+        let mut b = BrushSpec::default();
+        // Image kind: the silhouette IS the image sample — the falloff is ignored (crisp tip).
+        b.shape.kind = TextureKind::Image;
+        assert_eq!(b.compose_shape_silhouette(0.7, 0.3), 0.7);
+        // A procedural kind: the falloff MASKS the pattern (falloff × pattern).
+        b.shape.kind = TextureKind::Checker;
+        assert!((b.compose_shape_silhouette(0.7, 0.3) - 0.21).abs() < 1e-6);
+        // Falloff 0 (dab edge) zeroes a procedural silhouette, but never an Image one.
+        assert_eq!(b.compose_shape_silhouette(1.0, 0.0), 0.0);
+        b.shape.kind = TextureKind::Image;
+        assert_eq!(b.compose_shape_silhouette(1.0, 0.0), 1.0);
     }
 
     #[test]

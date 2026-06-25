@@ -11,10 +11,11 @@ use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
 /// The **Shape** slot's per-dab inputs (Procreate "Shape"): the resolved tip frame plus the optional
-/// silhouette image. `Some` ⇒ the Shape supplies the dab's silhouette, **replacing** the falloff;
-/// `None` ⇒ the falloff is the silhouette (byte-identical to the pre-Shape engine). The caller only
-/// passes `Some` when the Shape is genuinely active (see [`BrushSpec::shape_silhouette_active`]), so an
-/// Image shape with no pixels never reaches here. Bundled into one param to keep the stamp signatures
+/// silhouette image. `Some` ⇒ the Shape supplies the dab's silhouette — an Image **replaces** the
+/// falloff, a procedural kind is **masked by** it (see [`BrushSpec::compose_shape_silhouette`]); `None`
+/// ⇒ the falloff is the silhouette (byte-identical to the pre-Shape engine). The caller only passes
+/// `Some` when the Shape is genuinely active (see [`BrushSpec::shape_silhouette_active`]), so an Image
+/// shape with no pixels never reaches here. Bundled into one param to keep the stamp signatures
 /// tractable (each already carries the Grain's `tex` + `image`).
 #[derive(Clone, Copy)]
 pub struct ShapeInput<'a> {
@@ -419,12 +420,12 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
         for px in ctx.x0..ctx.x1 {
-            // SILHOUETTE: the Shape slot's image (a finite tip), or — when no Shape is active — the
-            // procedural falloff (default, byte-identical to before). The Shape *replaces* the falloff
-            // so an imported tip stays crisp to the footprint edge (a star is a star, not eroded by a
-            // round falloff). See `docs/Painter/05_design_dois_slots_textura.md` §2.
+            // SILHOUETTE: the Shape slot — an Image tip *replaces* the falloff (a star stays a star, not
+            // eroded by a round falloff), while a *procedural* Shape is MASKED BY the falloff
+            // (`falloff × pattern`, Enio 2026-06-25). No Shape ⇒ the bare procedural falloff (default,
+            // byte-identical to before). See `docs/Painter/05_design_dois_slots_textura.md` §2.
             let mut w = if let Some(sh) = ctx.shape {
-                crate::texture::sample_shape(
+                let sv = crate::texture::sample_shape(
                     &ctx.spec.shape,
                     sh.basis,
                     px,
@@ -432,7 +433,11 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     ctx.center,
                     ctx.radius,
                     sh.image,
-                )
+                );
+                let dx = (px as f32 + 0.5) - ctx.cx;
+                let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                ctx.spec
+                    .compose_shape_silhouette(sv, ctx.spec.falloff_weight(t))
             } else {
                 let dx = (px as f32 + 0.5) - ctx.cx;
                 let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;

@@ -418,6 +418,62 @@ fn shape_source_dropdown_requests_image_and_clears_via_panel_events() {
         !t.brush_settings().shape_has_image,
         "picking None cleared the shape image"
     );
+
+    // Picking a PROCEDURAL kind installs that pattern (no pixels) — the panel's "Texture" picker.
+    t.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_KIND,
+        TextureKind::Checker.to_u8().to_string(),
+    ));
+    assert_eq!(
+        t.brush_settings().shape_kind,
+        TextureKind::Checker.to_u8(),
+        "procedural Shape kind installed"
+    );
+    assert!(
+        !t.brush_settings().shape_has_image,
+        "a procedural Shape never holds pixels"
+    );
+}
+
+#[test]
+fn procedural_shape_is_masked_by_the_falloff_via_panel_events() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::TextureKind;
+
+    // A soft round falloff so the envelope actually attenuates toward the dab edge.
+    let mut a = white_canvas(64, 24.0);
+    a.paint.brush.falloff = Falloff::Smooth;
+    let _ = a.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+
+    // Same brush + a procedural Checker Shape, selected via the panel "Texture" picker.
+    let mut b = white_canvas(64, 24.0);
+    b.paint.brush.falloff = Falloff::Smooth;
+    b.handle_panel_event(PanelEvent::SelectOption(
+        core_ids::PAINTER_SHAPE_KIND,
+        TextureKind::Checker.to_u8().to_string(),
+    ));
+    let _ = b.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+
+    // The procedural silhouette is `falloff × pattern ≤ falloff`, so the Checker dab deposits strictly
+    // LESS total ink than the bare-falloff dab (the pattern carves out ~half), yet still paints. Total
+    // coverage is the robust invariant (a per-pixel bound is foiled by the cached stamp's bilinear blit
+    // of the sharp checker edge). Proves the masking end-to-end (panel "Texture" pick → engine).
+    let ink = |t: &PainterTool| -> u64 {
+        let mut s = 0u64;
+        for yy in 0..64 {
+            for xx in 0..64 {
+                s += 255 - u64::from(px(t, 64, xx, yy)[0]); // darkness on white = deposited ink
+            }
+        }
+        s
+    };
+    let (ink_falloff, ink_checker) = (ink(&a), ink(&b));
+    assert!(ink_checker > 0, "the Checker Shape must still paint");
+    assert!(
+        ink_checker < ink_falloff * 9 / 10,
+        "the falloff must MASK the Checker (less ink than the bare falloff): {ink_checker} vs {ink_falloff}"
+    );
 }
 
 #[test]

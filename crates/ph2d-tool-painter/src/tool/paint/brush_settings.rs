@@ -153,8 +153,10 @@ pub struct BrushSettings {
     pub grain_depth: f32,
 
     // ── Shape section (the silhouette tip; the falloff is its procedural default) ──
-    /// Whether a Shape **image** is currently assigned (the silhouette is the image, not the falloff —
-    /// the panel greys the falloff controls and shows the Shape preview when this is `true`).
+    /// Shape **source** kind (`TextureKind::to_u8`): `None` falloff · `Image` replaces it · procedural is
+    /// masked by it. Drives the panel "Texture" picker + which controls show.
+    pub shape_kind: u8,
+    /// Whether a Shape **image** is assigned (meaningful only when [`Self::shape_kind`] is `Image`).
     pub shape_has_image: bool,
     /// Shape rotation in whole degrees (`0..=360`).
     pub shape_angle_deg: u16,
@@ -174,8 +176,7 @@ pub struct BrushSettings {
     pub texture_ramp_mode: u8,
     /// Ramp interpolation mode (`RampInterp::to_u8`).
     pub texture_ramp_interp: u8,
-    /// Ramp stops as `(pos, r, g, b, a, id)` (display sRGB; `id` = stable stop id as a float), first
-    /// [`Self::texture_ramp_stop_count`] valid, sorted by `pos`; the panel keys handles by `id`.
+    /// Ramp stops `(pos, r, g, b, a, id)` (display sRGB; `id` = stable stop float), first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`; panel keys handles by `id`.
     pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
     /// Count of valid entries in [`Self::texture_ramp_stops`].
     pub texture_ramp_stop_count: u8,
@@ -229,13 +230,11 @@ impl PainterTool {
     #[must_use]
     pub fn brush_settings(&self) -> BrushSettings {
         let b = &self.paint.brush;
-        // Snapshot the Custom curve's control points into the Copy array (the
-        // panel reads these to plot + place handles when the Custom preset is on).
+        // Snapshot the Custom curve's control points into the Copy array (panel plots + places handles).
         let mut falloff_points = [FalloffPoint::default(); MAX_FALLOFF_POINTS];
         let pts = b.custom_falloff.points();
         falloff_points[..pts.len()].copy_from_slice(pts);
-        // Snapshot the texture Color Ramp's stops into the Copy array (the panel plots the bar +
-        // draggable handles).
+        // Snapshot the texture Color Ramp's stops into the Copy array (panel plots the bar + handles).
         let ramp = self.texture_ramp();
         let mut texture_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
         let ramp_count = ramp.stops().len().min(PANEL_RAMP_STOPS);
@@ -286,6 +285,7 @@ impl PainterTool {
             texture_size: b.texture.size,
             texture_params: b.texture.params,
             grain_depth: b.grain_depth,
+            shape_kind: b.shape.kind.to_u8(),
             shape_has_image: self.paint.shape_image.is_some(),
             shape_angle_deg: b.shape.angle_deg,
             shape_rake: b.shape.rake,

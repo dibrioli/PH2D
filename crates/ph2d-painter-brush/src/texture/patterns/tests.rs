@@ -58,22 +58,31 @@ fn value_noise_is_bounded_and_deterministic() {
 }
 
 #[test]
-fn sample_image_is_bilinear_centre_coord_and_tiles() {
-    let lum = [0u8, 255, 128, 64]; // 2×2: [0,255; 128,64]
+fn sample_image_is_centred_bilinear_and_tiles() {
+    let lum = [0u8, 255, 128, 64]; // 2×2: row0 [0,255], row1 [128,64]
     let img = ImageMask {
         lum: &lum,
         width: 2,
         height: 2,
     };
+    // Centred convention (Enio 2026-06-24): `u = 0` is the image CENTRE; the footprint −1..1 spans one
+    // image at size 1. texel (0,0) centre sits at `u=v=-0.5`, texel (1,0) at `u=0.5, v=-0.5`.
     assert!(
-        (sample_image(&img, 0.25, 0.25) - 0.0).abs() < 1e-6,
+        (sample_image(&img, -0.5, -0.5) - 0.0).abs() < 1e-6,
         "texel (0,0)=0"
     );
     assert!(
-        (sample_image(&img, 0.75, 0.25) - 1.0).abs() < 1e-6,
+        (sample_image(&img, 0.5, -0.5) - 1.0).abs() < 1e-6,
         "texel (1,0)=255"
     );
-    assert!((sample_image(&img, 1.25, 0.25) - sample_image(&img, 0.25, 0.25)).abs() < 1e-6);
+    // The origin is the image centre → bilinear blend of all four texels (their mean).
+    let mean = (0.0 + 255.0 + 128.0 + 64.0) / 4.0 / 255.0;
+    assert!(
+        (sample_image(&img, 0.0, 0.0) - mean).abs() < 1e-6,
+        "centre = 4-texel mean"
+    );
+    // Tiles with period 2 in footprint units (one image spans 2 units).
+    assert!((sample_image(&img, 1.5, -0.5) - sample_image(&img, -0.5, -0.5)).abs() < 1e-6);
     for k in 0..30 {
         assert!((0.0..=1.0).contains(&sample_image(&img, k as f32 * 0.17, -(k as f32) * 0.17)));
     }

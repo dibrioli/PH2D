@@ -87,12 +87,23 @@ pub fn render_texture_preview(
     }
     let sx = size[0].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
     let sy = size[1].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
-    let step = 3.0 / w as f32; // tiles per pixel — same on both axes → square cells
+    let step = 3.0 / w as f32; // procedural: ~3 tiles across, square cells
+    // An imported image previews as ONE centred picture filling the strip (footprint `−1..1`, matching
+    // the dab at size 1), not the procedural 3-tile field — else it reads repeated + offset.
+    let is_image = matches!(kind, TextureKind::Image);
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
     for py in 0..h {
-        let v = (py as f32 + 0.5) * step * sy + offset[1];
+        let v = if is_image {
+            ((py as f32 + 0.5) / h as f32 * 2.0 - 1.0) * sy + offset[1]
+        } else {
+            (py as f32 + 0.5) * step * sy + offset[1]
+        };
         for px in 0..w {
-            let u = (px as f32 + 0.5) * step * sx + offset[0];
+            let u = if is_image {
+                ((px as f32 + 0.5) / w as f32 * 2.0 - 1.0) * sx + offset[0]
+            } else {
+                (px as f32 + 0.5) * step * sx + offset[0]
+            };
             let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
             let [r, g, b] = match ramp {
                 Some((lut, mode)) if !lut.is_empty() => {
@@ -500,16 +511,20 @@ fn weave(u: f32, v: f32, k: &[f32]) -> f32 {
 
 // ── Image-backed sampling ───────────────────────────────────────────────────────────────────
 
-/// Bilinear sample of `img`'s luminance at tile coords `(u, v)` (1 unit = one image), tiled via
-/// `fract`, centre-coord convention (memory `feedback_pixel_center_vs_edge_coord`). Returns `[0, 1]`;
-/// transcendental-free. A malformed buffer reads `1.0` (inert) rather than panicking.
+/// Bilinear sample of `img`'s luminance at footprint coords `(u, v)`. Unlike a procedural pattern (which
+/// is continuous and tiles seamlessly), an imported image must read as ONE **centred** picture that
+/// fills the dab at `size = 1`: the View-plane footprint runs `−1..1` across the dab, so we map it with
+/// `u·0.5 + 0.5` → `u = 0` is the image CENTRE, `|u| = 1` its edge (Enio 2026-06-24, was repeated +
+/// corner-anchored). Outside `[0, 1]` (size > 1) it still tiles via `fract`; centre-coord bilinear
+/// (memory `feedback_pixel_center_vs_edge_coord`). A malformed buffer reads `1.0` (inert).
 fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
     let (w, h) = (img.width.max(1), img.height.max(1));
     if img.lum.len() < (w as usize) * (h as usize) {
         return 1.0;
     }
-    let x = (u - u.floor()) * w as f32 - 0.5;
-    let y = (v - v.floor()) * h as f32 - 0.5;
+    let (cu, cv) = (u * 0.5 + 0.5, v * 0.5 + 0.5);
+    let x = (cu - cu.floor()) * w as f32 - 0.5;
+    let y = (cv - cv.floor()) * h as f32 - 0.5;
     let (x0, y0) = (x.floor(), y.floor());
     let (tx, ty) = (x - x0, y - y0);
     let wrap = |i: i32, n: u32| (i.rem_euclid(n as i32)) as usize;

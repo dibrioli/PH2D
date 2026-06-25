@@ -455,7 +455,7 @@ impl App {
                 self.end_protect_paint();
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_eyedropper_sample(evt.x, evt.y) =>
+                if !menu_open_before && self.try_eyedropper_sample(evt.x, evt.y) =>
             {
                 self.eyedropper_dragging = true;
                 return;
@@ -474,7 +474,7 @@ impl App {
             // CursorMoved). Consumes the event so it doesn't pick/move the
             // sprite.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_protect_paint(evt.x, evt.y) =>
+                if !menu_open_before && self.try_protect_paint(evt.x, evt.y) =>
             {
                 return;
             }
@@ -483,7 +483,7 @@ impl App {
             // clicked source pixel into the force-remove mask
             // (Enio 2026-05-26). Mirror of the eyedropper sample dispatch.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_add_area_click(evt.x, evt.y) =>
+                if !menu_open_before && self.try_add_area_click(evt.x, evt.y) =>
             {
                 return;
             }
@@ -496,9 +496,11 @@ impl App {
             // Painter brush: a Primary Down with the Painter active + a sprite
             // selected, inside the footprint, starts a stroke (the first dab) and
             // arms the drag (continues in CursorMoved). Consumes the event so it
-            // doesn't pick / move the sprite.
+            // doesn't pick / move the sprite. A click on an open modal / context
+            // menu is the menu's (`menu_open_before`) — never a stroke on the
+            // canvas below it (Enio 2026-06-24: new-image modal leaked a dab).
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.painter_canvas_down(evt.x, evt.y, evt.pressure) =>
+                if !menu_open_before && self.painter_canvas_down(evt.x, evt.y, evt.pressure) =>
             {
                 return;
             }
@@ -508,7 +510,7 @@ impl App {
             // Must be tried BEFORE the painter rule below so Pen
             // sessions don't fall through to selection / gizmo logic.
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
-                if self.try_vector_pen_click(evt.x, evt.y) =>
+                if !menu_open_before && self.try_vector_pen_click(evt.x, evt.y) =>
             {
                 return;
             }

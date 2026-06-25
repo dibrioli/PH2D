@@ -21,6 +21,10 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::{BrushSettings, LayerId, LayerStack};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+/// The brush's published Image texture: `(luminance bytes, width, height)`.
+type TextureImageSnapshot = (Arc<Vec<u8>>, u32, u32);
 
 thread_local! {
     /// Snapshot do `LayerStack` publicado pelo host antes de cada `paint`.
@@ -31,6 +35,13 @@ thread_local! {
     /// de [`CURRENT_LAYERS`]). `None` até o primeiro push (Brush section usa o
     /// default). `Copy`, então o clone é trivial.
     static CURRENT_BRUSH: Cell<Option<BrushSettings>> = const { Cell::new(None) };
+
+    /// The brush's Image texture as `(luminance bytes, w, h)` — published by the host (gated on the
+    /// tool's texture-image version, so the heavy `Vec` is cloned only when it changes). The Texture
+    /// preview reads it to render the actual image for the `Image` kind (the pixels can't live in the
+    /// `Copy` `BrushSettings` snapshot). `None` → the Image preview stays black.
+    static CURRENT_BRUSH_TEXTURE_IMAGE: RefCell<Option<TextureImageSnapshot>> =
+        const { RefCell::new(None) };
 
     /// Dock-view mode published per-frame: `true` = Layers/Effects body, `false`
     /// = Brush-properties body. The header toggle flips the tool's
@@ -385,6 +396,17 @@ pub fn set_current_brush(brush: Option<BrushSettings>) {
 /// Brush section então usa o `BrushSettings` default).
 pub(crate) fn current_brush() -> Option<BrushSettings> {
     CURRENT_BRUSH.with(Cell::get)
+}
+
+/// Publish the brush's Image texture `(luminance, w, h)` for the Texture preview. Called by the shell
+/// only when the tool's texture-image version changes (the `Vec` is heavy); `None` clears it.
+pub fn set_current_brush_texture_image(image: Option<TextureImageSnapshot>) {
+    CURRENT_BRUSH_TEXTURE_IMAGE.with(|c| *c.borrow_mut() = image);
+}
+
+/// Read the published brush Image texture (cheap `Arc` clone). `None` → the Image preview is black.
+pub(crate) fn current_brush_texture_image() -> Option<TextureImageSnapshot> {
+    CURRENT_BRUSH_TEXTURE_IMAGE.with(|c| c.borrow().clone())
 }
 
 /// Publica o modo do dock (`true` = Layers/Effects, `false` = Brush). Chamado

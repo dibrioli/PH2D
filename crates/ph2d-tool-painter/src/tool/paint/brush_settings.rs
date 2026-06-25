@@ -12,9 +12,8 @@ use ph2d_painter_brush::{
     TextureKind, TextureMapping, eval_falloff_curve,
 };
 
-/// An imported brush-texture image: owned grayscale luminance + dims, held in
-/// [`super::PaintState`] (the heavy pixels can't live in the `Copy` `BrushSpec`). [`stamp_dabs`]
-/// borrows it as an [`ImageMask`] for the engine.
+/// An imported brush-texture image: owned grayscale luminance + dims, held in [`super::PaintState`]
+/// (heavy pixels can't live in the `Copy` `BrushSpec`); [`stamp_dabs`] borrows it as an [`ImageMask`].
 pub(super) struct BrushTextureImage {
     lum: Vec<u8>,
     width: u32,
@@ -55,11 +54,9 @@ pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     [anchor[0] + ux * proj, anchor[1] + uy * proj]
 }
 
-/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake**
-/// rotation aligns to it ([`ph2d_painter_brush::texture::dab_basis`] normalises). Uses the chord to
-/// the next dab when there is one, else from the previous; a lone dab returns `[0, 0]` (Rake then
-/// falls back to the Angle). Derived here rather than carried on `Dab` so the engine's dab stays
-/// pressure-only.
+/// The stroke direction at dab `i`, as a raw (un-normalised) vector — the texture's **Rake** rotation
+/// aligns to it. Uses the chord to the next dab when there is one, else from the previous; a lone dab
+/// returns `[0, 0]` (Rake falls back to the Angle).
 pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
     let (a, b) = if i + 1 < dabs.len() {
         (dabs[i].center, dabs[i + 1].center)
@@ -71,9 +68,8 @@ pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
     [b[0] - a[0], b[1] - a[1]]
 }
 
-/// A compact snapshot of the active brush for the layers panel's Brush section. Published each frame
-/// by the shell bridge (mirror of the `LayerStack` snapshot) — the panel reads it to position the
-/// size/colour sliders and the blend chip; it never owns brush state.
+/// A compact snapshot of the active brush for the layers panel's Brush section, published each frame
+/// by the shell bridge — the panel reads it to position the size/colour sliders + blend chip.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BrushSettings {
     /// Radius in image pixels (UI label "Size").
@@ -83,14 +79,11 @@ pub struct BrushSettings {
     pub size_norm: f32,
     /// Overall opacity, `0..1` (UI "Strength").
     pub strength: f32,
-    /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — Blender's
-    /// "Falloff Curve Preset". Defines the dab profile (replaces a Hardness slider).
-    /// [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
+    /// Distance-falloff preset wire discriminant ([`Falloff::to_u8`]) — the dab profile (replaces a
+    /// Hardness slider). [`Falloff::Custom`] (`9`) reads [`Self::falloff_points`].
     pub falloff: u8,
-    /// The `Custom` falloff curve's control points (id + `[distance, strength]` +
-    /// handle), the first [`Self::falloff_len`] valid, ascending by distance. The
-    /// panel plots these + places draggable handles (keyed by the stable id) when
-    /// `falloff == Custom`.
+    /// The `Custom` falloff curve's control points (id + `[distance, strength]` + handle), the first
+    /// [`Self::falloff_len`] valid, ascending by distance. The panel plots + drags these (by stable id).
     pub falloff_points: [FalloffPoint; MAX_FALLOFF_POINTS],
     /// Count of valid entries in [`Self::falloff_points`] (`2..=MAX_FALLOFF_POINTS`).
     pub falloff_len: u8,
@@ -281,17 +274,14 @@ impl PainterTool {
         }
     }
 
-    /// Set the brush distance-falloff preset from a wire discriminant
-    /// (Blender's "Falloff Curve Preset"; out-of-range → Smooth). `9` = the
-    /// editable `Custom` curve ([`Self::set_brush_falloff_point`]).
+    /// Set the brush distance-falloff preset from a wire discriminant (out-of-range → Smooth). `9` =
+    /// the editable `Custom` curve ([`Self::set_brush_falloff_point`]).
     pub fn set_brush_falloff(&mut self, preset: u8) {
         self.paint.brush.falloff = Falloff::from_u8(preset);
     }
 
-    /// Move `Custom` falloff control point `id` to `(distance, strength)` in
-    /// `[0, 1]²`. The point may pass its neighbours (the curve re-sorts and
-    /// adapts); the stable `id` keeps the dragged handle grabbed. Pure brush
-    /// state — no undo/preview (a brush param change only affects future dabs).
+    /// Move `Custom` falloff control point `id` to `(distance, strength)` in `[0, 1]²` — may pass its
+    /// neighbours (curve re-sorts; the stable `id` keeps the handle grabbed). Pure brush state.
     pub fn set_brush_falloff_point(&mut self, id: u8, distance: f32, strength: f32) {
         self.paint
             .brush
@@ -299,16 +289,14 @@ impl PainterTool {
             .set_point(id, distance, strength);
     }
 
-    /// Insert a `Custom` falloff control point at the widest gap (its strength
-    /// sampled on the current curve). Returns the new stable id, or `None` at the
-    /// point cap. Drives the panel's "+" button.
+    /// Insert a `Custom` falloff control point at the widest gap (strength sampled on the curve).
+    /// Returns the new stable id, or `None` at the point cap. Drives the panel's "+" button.
     pub fn add_brush_falloff_point(&mut self) -> Option<u8> {
         self.paint.brush.custom_falloff.add_point()
     }
 
-    /// Insert a `Custom` falloff control point at `(distance, strength)` — where
-    /// the artist clicked on the curve canvas. Returns the new stable id, or
-    /// `None` at the point cap.
+    /// Insert a `Custom` falloff control point at `(distance, strength)` — where the artist clicked.
+    /// Returns the new stable id, or `None` at the point cap.
     pub fn add_brush_falloff_point_at(&mut self, distance: f32, strength: f32) -> Option<u8> {
         self.paint
             .brush
@@ -351,9 +339,8 @@ impl PainterTool {
         self.set_brush_size_px(size_norm_to_px(t));
     }
 
-    /// Nudge the brush radius by one step — `[` (`dir < 0`) / `]` (`dir >= 0`).
-    /// Multiplicative for a constant *perceptual* step, with a ±1 px floor so the
-    /// smallest brushes still change. Returns the new radius in pixels.
+    /// Nudge the brush radius by one step — `[` (`dir < 0`) / `]` (`dir >= 0`). Multiplicative (constant
+    /// perceptual step) with a ±1 px floor so the smallest brushes still change. Returns the new px.
     pub fn nudge_brush_size(&mut self, dir: i32) -> f32 {
         const STEP: f32 = 1.15;
         let cur = self.paint.brush.radius_px;
@@ -462,9 +449,8 @@ impl PainterTool {
 
     // ── Texture section setters (the single clamp source; the panel forwards raw UI values) ──
 
-    /// Set the brush texture kind from a wire discriminant (out-of-range → None = no texture).
-    /// Picking [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O);
-    /// until one is supplied via [`Self::set_brush_texture_image`] the Image texture is inert.
+    /// Set the brush texture kind from a wire discriminant (out-of-range → None). Picking
+    /// [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O).
     pub fn set_brush_texture_kind(&mut self, k: u8) {
         let kind = TextureKind::from_u8(k);
         self.paint.brush.texture.kind = kind;
@@ -488,6 +474,20 @@ impl PainterTool {
     /// this each frame; on a successful pick it calls [`Self::set_brush_texture_image`].
     pub fn take_brush_texture_image_request(&mut self) -> bool {
         std::mem::take(&mut self.paint.texture_image_pending)
+    }
+
+    /// The brush's imported Image texture as `(luminance, w, h)` for the panel's Texture preview (the
+    /// pixels can't live in the `Copy` snapshot). `None` if unassigned; gate publishes on the version.
+    #[must_use]
+    pub fn brush_texture_image(&self) -> Option<(&[u8], u32, u32)> {
+        let t = self.paint.texture_image.as_ref()?;
+        Some((t.lum.as_slice(), t.width, t.height))
+    }
+
+    /// Monotonic version of the brush texture image (bumped by [`Self::set_brush_texture_image`]).
+    #[must_use]
+    pub fn brush_texture_image_version(&self) -> u64 {
+        self.paint.texture_image_version
     }
 
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.

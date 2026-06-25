@@ -1512,6 +1512,25 @@ impl crate::App {
                 && let Some(live) = hero_live.as_ref()
                 && let Some(bits) = live.bridge.entity_for(row)
             {
+                // If we're actively painting THIS sprite (unbaked), flush the paint into it first so the
+                // brush texture reflects the LIVE painting, not the stale asset (Enio 2026-06-24).
+                if self.last_painter_pushed_entity == Some(bits)
+                    && let Some(painter) = tools.active_mut().and_then(|t| {
+                        t.as_any_mut()
+                            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                    })
+                    && painter.has_unbaked_edits()
+                {
+                    crate::hero_intents::auto_commit_painter(
+                        bits,
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                        painter,
+                    );
+                    self.last_painter_pushed_entity = None; // bridge re-pushes the freshly-baked sprite
+                }
                 let entity = ph2d_ecs::Entity::from_bits(bits);
                 match crate::hero_intents::texture_edit::read_sprite_source(
                     entity,

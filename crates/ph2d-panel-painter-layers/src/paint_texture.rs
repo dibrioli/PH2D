@@ -21,7 +21,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, ColorRamp, RampAlphaMode, RampColorMode, RampInterp, RampStop,
+    BrushSettings, ColorRamp, ImageMask, RampAlphaMode, RampColorMode, RampInterp, RampStop,
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
     TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
     srgb_to_linear_byte,
@@ -321,6 +321,14 @@ fn paint_texture_preview(
     } else {
         None
     };
+    // For the Image kind, render the ACTUAL brush image — the host publishes its luminance (the pixels
+    // are too heavy for the `Copy` snapshot); `None` → the Image preview stays black until one is set.
+    let image = state::current_brush_texture_image();
+    let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
+        lum: lum.as_slice(),
+        width: *w,
+        height: *h,
+    });
     // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
     let bw = 140u32;
     let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
@@ -330,7 +338,7 @@ fn paint_texture_preview(
         brush.texture_params,
         brush.texture_size,
         brush.texture_offset,
-        None, // imported-image pixels aren't in the snapshot → Image kind previews flat
+        image_mask.as_ref(),
         ramp,
         &mut buf,
         bw,

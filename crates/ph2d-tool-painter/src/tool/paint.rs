@@ -68,10 +68,8 @@ pub const BRUSH_AIRBRUSH_RATE_MIN_S: f32 = AIRBRUSH_RATE_MIN_S;
 /// See [`BRUSH_AIRBRUSH_RATE_MIN_S`].
 pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 
-// The panel-facing snapshot [`BrushSettings`] + the falloff preview helper
-// `brush_falloff_weight_at` live in the `brush_settings` submodule (alongside the setters that
-// are their single clamp source), so this file stays under the workspace LOC cap. Re-exported
-// here to keep their `paint::` public path.
+// The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
+// live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
 pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
 
 /// Brush settings + in-progress stroke state held by the [`PainterTool`].
@@ -94,9 +92,12 @@ pub(crate) struct PaintState {
     dabs: Vec<Dab>,
     /// Per-stroke jitter seed; bumped each stroke so jitter is reproducible yet varies.
     seed: u64,
-    /// Running splitmix64 state for the brush texture's per-dab Random rotation / offset. Reset from the
-    /// stroke seed at pointer-down + advanced once per textured dab — reproducible (HR-5), differs per dab.
+    /// Splitmix64 state for the texture's per-dab Random rotation/offset — reset per stroke (from the
+    /// seed, decorrelated), advanced once per textured dab (HR-5 reproducible, differs per dab).
     tex_rng: u64,
+    /// Smoothed **Rake** direction (unit vector) carried across dabs within a stroke so the texture
+    /// rotation eases toward the tangent instead of snapping per dab (`stamp_cache::next_rake_dir`).
+    rake_dir: [f32; 2],
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
@@ -106,13 +107,12 @@ pub(crate) struct PaintState {
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped
     /// part on the opposite edge (seamless when the sprite is tiled). Off by default.
     tiling: [bool; 2],
-    /// **Repeat Image**: the shell draws the sprite repeated in all 8 neighbour directions (3×3 grid),
-    /// and (with Tiling on) those neighbour tiles are paintable too — the shell wraps the pointer back
-    /// onto the canvas.
+    /// **Repeat Image**: the shell draws the sprite repeated in the 8 neighbour directions (3×3 grid);
+    /// with Tiling on those neighbour tiles are paintable too (the shell wraps the pointer back).
     repeat_image: bool,
     /// Set by [`PainterTool::paint_extend`] each pointer move, cleared by the per-frame tick. While a
-    /// stroke is held and this stays `false` for a frame (pointer parked), the tick settles the
-    /// stabilizer toward the cursor — so a high-stabilizer stroke catches up on a pause, not only on up.
+    /// stroke is held and this stays `false` for a frame (parked), the tick settles the stabilizer
+    /// toward the cursor — so a high-stabilizer stroke catches up on a pause, not only on up.
     moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
     /// method (and once the dot is committed on pointer-up).
@@ -175,6 +175,7 @@ impl Default for PaintState {
             dabs: Vec::new(),
             seed: 0,
             tex_rng: 0,
+            rake_dir: [0.0, 0.0],
             stroke_undo: None,
             eraser: false,
             tiling: [false, false],
@@ -233,6 +234,7 @@ impl PainterTool {
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
+        self.paint.rake_dir = [0.0, 0.0]; // fresh stroke → Rake direction re-eases from the first tangent
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.begin(
@@ -276,12 +278,10 @@ impl PainterTool {
         true
     }
 
-    /// Per-frame heartbeat while a stroke is held (`dt_s` = wall time since the last frame). Drives
-    /// the two time-based behaviours; both no-op when their method / condition doesn't apply, and the
-    /// per-frame move flag is always cleared:
-    /// - **Airbrush timer:** deposit dabs at the brush's Rate, moving OR parked (Blender fires the
-    ///   airbrush on a timer, not on motion — so the spray builds up when held still and stays sparse
-    ///   when swept fast). The engine's `tick` is a no-op for every non-Airbrush method.
+    /// Per-frame heartbeat while a stroke is held (`dt_s` = wall time since the last frame); clears the
+    /// move flag and drives two time-based behaviours (both no-op when their method doesn't apply):
+    /// - **Airbrush timer:** deposit dabs at the brush's Rate, moving OR parked (Blender fires it on a
+    ///   timer, not on motion — builds up when held, sparse when swept). No-op for non-Airbrush.
     /// - **Stabilizer catch-up:** when parked, walk the lagged path up to the cursor so a
     ///   high-stabilizer stroke arrives without waiting for pointer-up (`settle` is Space-only).
     pub(crate) fn paint_tick(&mut self, dt_s: f32) {

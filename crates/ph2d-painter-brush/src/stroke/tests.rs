@@ -1208,11 +1208,11 @@ fn rake_warmup_holds_the_opening_dabs_then_releases_them_at_the_settled_angle() 
     // stroke direction is known. Then a move past the warm-up length releases the whole held batch,
     // and EVERY released dab — including the very first one at the press point — carries the stroke
     // heading (+x), not the rest [0,0]. That is the fix: the stroke starts already at the right angle.
-    let mut s = Stroke::new(rake_spec(10.0, 0.5), no_dynamics(), 1); // diameter 20 → warm-up 7px
+    let mut s = Stroke::new(rake_spec(10.0, 0.5), no_dynamics(), 1); // diameter 20 → warm-up 3px
     let mut out = Vec::new();
     s.begin(pt(0.0, 0.0, 1.0), &mut out);
     assert!(out.is_empty(), "the down dab is held during warm-up");
-    s.extend(pt(3.0, 0.0, 1.0), &mut out); // 3px < 7px → still warming
+    s.extend(pt(2.0, 0.0, 1.0), &mut out); // 2px: below the warm-up length (and the dab spacing) → holds
     assert!(out.is_empty(), "a sub-threshold move keeps holding");
     s.extend(pt(60.0, 0.0, 1.0), &mut out); // crosses the warm-up length → release
     assert!(

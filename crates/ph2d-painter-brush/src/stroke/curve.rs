@@ -29,6 +29,7 @@ impl Stroke {
         self.accum = 0.0;
         self.tot_samples = 0;
         self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the spine from the start
+        self.heading0 = [0.0, 0.0]; // …and the Rake reference re-pins there, so re-stamps stay deterministic
         // First dab at the curve start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);

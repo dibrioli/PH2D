@@ -39,6 +39,25 @@ pub fn rotate(v: [f32; 2], r: [f32; 2]) -> [f32; 2] {
     [v[0] * r[0] - v[1] * r[1], v[0] * r[1] + v[1] * r[0]]
 }
 
+/// The **relative** Rake rotor: the rotation that carries the stroke's reference heading `ref0` (its
+/// first established direction, [`crate::Dab::dir0`]) onto the dab's current heading `cur`
+/// ([`crate::Dab::dir`]). Fed to [`crate::texture::dab_basis`] in place of a raw heading so Rake is
+/// measured RELATIVE to where the stroke STARTED, not absolutely: it is identity (`[1, 0]`) while the
+/// stroke runs straight in *any* direction — so Rake at Angle 0 lays the texture at the SAME orientation
+/// as no-Rake at Angle 0 (the no-Rake angle is the stroke's starting reference) — and rotates only as the
+/// stroke CURVES away from that start. `[0, 0]` (no heading yet, or no reference) falls through to `[0, 0]`
+/// so `dab_basis` uses the bare Angle, exactly like a fresh stroke's first dab.
+///
+/// Math: `cur · conj(ref0)` (a complex multiply with the conjugate = "undo `ref0`, then apply `cur`");
+/// unit × unit ⇒ unit. Transcendental-free (HR-5).
+#[must_use]
+pub fn rake_relative(cur: [f32; 2], ref0: [f32; 2]) -> [f32; 2] {
+    if cur == [0.0, 0.0] || ref0 == [0.0, 0.0] {
+        return [0.0, 0.0];
+    }
+    rotate(cur, [ref0[0], -ref0[1]]) // cur · conj(ref0): the turn from ref0 to cur
+}
+
 /// Advance the smoothed `heading` by a path step of length `step_len` (px) whose unit tangent is `tangent`.
 /// `heading` is a unit vector carried across calls; `[0, 0]` means "no heading yet" (stroke start).
 ///
@@ -77,7 +96,7 @@ pub fn advance(heading: [f32; 2], tangent: [f32; 2], step_len: f32, smooth_len: 
 
 #[cfg(test)]
 mod tests {
-    use super::{advance, rotate, smooth_len};
+    use super::{advance, rake_relative, rotate, smooth_len};
 
     fn unit(v: [f32; 2]) -> [f32; 2] {
         let l = (v[0] * v[0] + v[1] * v[1]).sqrt();
@@ -164,6 +183,33 @@ mod tests {
         );
         // Angle 0 (rotor [1,0]) is the identity — a rake brush with Angle 0 keeps the bare heading.
         assert_eq!(rotate([0.6, 0.8], [1.0, 0.0]), [0.6, 0.8]);
+    }
+
+    #[test]
+    fn rake_relative_is_identity_on_a_straight_stroke_in_any_direction() {
+        // The whole point: a straight stroke (cur == ref0) gives the identity rotor, so Rake at Angle 0
+        // lays the texture exactly where no-Rake at Angle 0 does — for ANY straight direction, not just +x.
+        for dir in [[1.0, 0.0], [0.0, 1.0], unit([1.0, 1.0]), unit([-3.0, 2.0])] {
+            let r = rake_relative(dir, dir);
+            assert!(
+                (r[0] - 1.0).abs() < 1e-5 && r[1].abs() < 1e-5,
+                "straight {dir:?} → identity rotor, got {r:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rake_relative_measures_the_turn_from_the_reference() {
+        // Reference +x, current +y → a +90° turn → rotor [0, 1] (which `dab_basis` then composes onto
+        // Angle). So a stroke that started rightward and curved upward rotates the texture by exactly 90°.
+        let r = rake_relative([0.0, 1.0], [1.0, 0.0]);
+        assert!(
+            is_unit(r) && r[0].abs() < 1e-5 && (r[1] - 1.0).abs() < 1e-5,
+            "ref +x, cur +y → +90° rotor [0,1]: {r:?}"
+        );
+        // No reference yet (or no heading) → [0,0] so `dab_basis` falls back to the bare Angle.
+        assert_eq!(rake_relative([0.0, 0.0], [1.0, 0.0]), [0.0, 0.0]);
+        assert_eq!(rake_relative([1.0, 0.0], [0.0, 0.0]), [0.0, 0.0]);
     }
 
     #[test]

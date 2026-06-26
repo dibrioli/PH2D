@@ -420,10 +420,10 @@ impl TexDabBasis {
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back
-/// to [`TextureSettings::angle_deg`] for a near-zero tangent), a splitmix64 `rng` (Random), the canvas
-/// (Stencil rect), the per-dab **Jitter Rotate** vector `extra_rot` (`[1,0]` = none) and the brush-dab
-/// `footprint` flatten/rotate (footprint-relative only — Tiled / Stencil ignore it). Deterministic.
+/// Resolve the per-dab texture frame from the settings, the relative Rake rotor `dab_dir`
+/// ([`crate::heading::rake_relative`]; identity/near-zero ⇒ the bare [`TextureSettings::angle_deg`]), a
+/// splitmix64 `rng` (Random), the canvas (Stencil rect), the per-dab **Jitter Rotate** `extra_rot`
+/// (`[1,0]` = none) and the brush-dab `footprint` flatten/rotate (Tiled / Stencil ignore it). Deterministic.
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
@@ -440,7 +440,8 @@ pub fn dab_basis(
     let base = if s.random_angle {
         random_unit(rng)
     } else if s.rake {
-        // Rake follows the stroke heading, with Angle composed on top (empty heading ⇒ Angle alone).
+        // Rake follows the stroke's bend RELATIVE to its start (`dab_dir` = the relative rotor), Angle
+        // composed on top. Identity rotor / empty ⇒ Angle alone, so Rake 0 == no-Rake 0 until it curves.
         let h = normalize_or(dab_dir, [1.0, 0.0]);
         rotate(h, rotate_by_degrees(s.angle_deg))
     } else {

@@ -327,6 +327,49 @@ fn number_input_body_drag_horizontal_uses_fast_rate() {
     );
 }
 
+/// A registered `number_range` makes the body-drag PROPORTIONAL to `[min, max]` (range / DRAG_RANGE_PX_H
+/// per px, not rate×step) AND clamps — so a `±1` box no longer races past 100 (Enio 2026-06-25).
+#[test]
+fn number_input_body_drag_is_range_proportional_and_clamps() {
+    let (mut store, hits, rect) = number_input_setup(0.0);
+    store.set_number_range(NodeId(77), -1.0, 1.0, 0.01); // range = 2
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, rect.x + 10.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // Cross the threshold (promotion re-anchors — no value jump).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 15.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    // 10 px horizontal → delta = 10 * (range 2 / DRAG_RANGE_PX_H 250) = 0.08 (NOT 10*50*step).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 25.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    let v = read_value(&store, NodeId(77));
+    assert!(
+        (v - 0.08).abs() < 1e-6,
+        "range-proportional delta: expected 0.08 got {v}"
+    );
+    // A huge drag clamps to max = 1.0 — no racing past the bound.
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, rect.x + 5000.0, rect.y + rect.h * 0.5),
+        &arena,
+    );
+    let v = read_value(&store, NodeId(77));
+    assert!((v - 1.0).abs() < 1e-6, "clamps to max 1.0, got {v}");
+}
+
 /// M14.A: vertical drag uses the slow rate (5× step / px) and
 /// inverts dy so cursor-up = positive delta (screen coords have
 /// y growing down).

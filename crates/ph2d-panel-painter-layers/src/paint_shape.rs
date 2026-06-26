@@ -14,7 +14,8 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, ImageMask, RampInterp, TextureKind, ValueRamp, ValueStop,
+    BrushSettings, Falloff, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
     brush_falloff_weight_at, param_specs, render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
@@ -159,6 +160,8 @@ fn paint_shape_transform_controls(
         "Angle",
         core_ids::PAINTER_SHAPE_ANGLE,
         f32::from(brush.shape_angle_deg),
+        0.0,
+        f32::from(TEX_ANGLE_MAX_DEG),
         crate::number_field::ANGLE_STEP,
         0,
     );
@@ -173,6 +176,8 @@ fn paint_shape_transform_controls(
         brush.shape_offset[0],
         core_ids::PAINTER_SHAPE_OFFSET_Y,
         brush.shape_offset[1],
+        TEX_OFFSET_MIN,
+        TEX_OFFSET_MAX,
         crate::number_field::FINE_STEP,
         2,
     );
@@ -187,6 +192,8 @@ fn paint_shape_transform_controls(
         brush.shape_size[0],
         core_ids::PAINTER_SHAPE_SIZE_Y,
         brush.shape_size[1],
+        TEX_SIZE_MIN,
+        TEX_SIZE_MAX,
         crate::number_field::SIZE_STEP,
         2,
     )

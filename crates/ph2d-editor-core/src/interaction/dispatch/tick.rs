@@ -53,6 +53,11 @@ pub fn dispatch_tick<'frame>(
             return events.into_bump_slice();
         }
     };
+    // Clamp the held repeat to the box's registered range so it can't race past the bound (Enio 2026-06-25).
+    let new_value = match store.number_range(hold.id) {
+        Some((min, max, _)) => new_value.clamp(min.min(max), min.max(max)), // CLAMP-OK: min/max normalised
+        None => new_value,
+    };
     // Shared mirror — symmetric with stepper-Down + commit-Enter so
     // the continuous-hold path can't drift from the single-tick path.
     let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, hold.id, new_value);

@@ -108,15 +108,18 @@ pub(super) fn apply_number_stepper_if_hit(
     // immutable borrow — no `buffer.clone()` per click. Old path
     // allocated a fresh `String` every stepper-Down (every continuous-
     // hold tick), wasted work for a single-char membership test.
+    // A registered `number_range` wins: its `step` is the intended increment (else the buffer heuristic),
+    // and the result clamps to `[min, max]` — so the stepper can't race past the bound (Enio 2026-06-25).
+    let range = store.number_range(id);
     let (current_value, step) = match store.get(id) {
-        Some(InteractiveState::NumberInput { value, buffer, .. }) => (
-            *value,
-            if buffer.contains('.') {
+        Some(InteractiveState::NumberInput { value, buffer, .. }) => {
+            let step = range.map(|(_, _, s)| s).unwrap_or(if buffer.contains('.') {
                 0.01_f64
             } else {
                 1.0_f64
-            },
-        ),
+            });
+            (*value, step)
+        }
         _ => return false,
     };
     let probe = NumberInput::new(id, "", current_value);
@@ -130,6 +133,10 @@ pub(super) fn apply_number_stepper_if_hit(
         return false;
     };
     let new_val = current_value + direction * step;
+    let new_val = match range {
+        Some((min, max, _)) => new_val.clamp(min.min(max), min.max(max)), // CLAMP-OK: min/max normalised
+        None => new_val,
+    };
     // Shared mirror — writes chip, inverse-projects to slider with
     // clamp, re-syncs chip if clamped (so a step past the upper bound
     // of a mapped chip lands the visible buffer on the bound, not on

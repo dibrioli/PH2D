@@ -223,6 +223,11 @@ pub struct WidgetStore {
     /// commit silently writes display-space text into the slider as
     /// if it were storage — the 2026-05-27 "type 0.2 see -0.6" bug.
     pub(super) number_to_slider_mapping: BTreeMap<NodeId, (f32, f32)>,
+    /// Per-NumberInput **(min, max, step)** range, registered by panels via `set_number_range`. The
+    /// drag-scrub then maps the cursor displacement PROPORTIONALLY to `[min, max]` (a fixed drag spans
+    /// the whole range regardless of magnitude) + clamps to it, and the stepper increments by `step`
+    /// (Enio 2026-06-25 — a `±1` box no longer races past 100 on a few pixels).
+    pub(super) number_range: BTreeMap<NodeId, (f64, f64, f64)>,
     /// Chip ids that should `.round()` their typed display value before
     /// inverse-projecting into the slider's `0..1` storage. Used for
     /// integer-domain chips (Min Px / Tile Grid / Posterize Dither

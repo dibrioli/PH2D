@@ -115,6 +115,14 @@ pub const DRAG_RATE_X: f64 = 50.0;
 pub const DRAG_RATE_Y: f64 = 5.0;
 pub const DRAG_SHIFT_MUL: f64 = 0.001;
 
+/// **Range-proportional** drag pixels (used when the box has a registered `number_range`): the cursor
+/// displacement spans the WHOLE `[min, max]` range over this many pixels — horizontal is fast
+/// (`DRAG_RANGE_PX_H`), vertical is precise (`DRAG_RANGE_PX_V`, ~10× the distance). So the scrub is
+/// proportional to the box's range, NOT the value magnitude — a `±1` box no longer races past 100 on a
+/// few pixels (Enio 2026-06-25). Shift still multiplies by [`DRAG_SHIFT_MUL`] for super-precision.
+pub const DRAG_RANGE_PX_H: f64 = 250.0;
+pub const DRAG_RANGE_PX_V: f64 = 2500.0;
+
 /// Internal state of an in-progress hierarchy drag.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct HierarchyDragState {

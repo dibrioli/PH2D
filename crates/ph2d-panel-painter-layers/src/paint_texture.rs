@@ -22,8 +22,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
     BrushSettings, ColorRamp, ImageMask, RampAlphaMode, RampColorMode, RampInterp, RampStop,
-    TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs,
-    render_texture_preview, srgb_to_linear_byte,
+    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
+    TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
+    srgb_to_linear_byte,
 };
 use ph2d_vector::ImageQuality;
 
@@ -141,6 +142,8 @@ pub(crate) fn paint_texture_section(
             "Angle",
             core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
             f32::from(brush.texture_angle_deg),
+            0.0,
+            f32::from(TEX_ANGLE_MAX_DEG),
             crate::number_field::ANGLE_STEP,
             0,
         );
@@ -158,6 +161,8 @@ pub(crate) fn paint_texture_section(
         brush.texture_offset[0],
         core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
         brush.texture_offset[1],
+        TEX_OFFSET_MIN,
+        TEX_OFFSET_MAX,
         crate::number_field::FINE_STEP,
         2,
     );
@@ -172,6 +177,8 @@ pub(crate) fn paint_texture_section(
         brush.texture_size[0],
         core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
         brush.texture_size[1],
+        TEX_SIZE_MIN,
+        TEX_SIZE_MAX,
         crate::number_field::SIZE_STEP,
         2,
     );
@@ -187,6 +194,8 @@ pub(crate) fn paint_texture_section(
             "Depth",
             core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
             brush.grain_depth.clamp(0.0, 1.0),
+            0.0,
+            1.0,
             crate::number_field::FINE_STEP,
             2,
         );

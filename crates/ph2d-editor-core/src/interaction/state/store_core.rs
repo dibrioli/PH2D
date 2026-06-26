@@ -15,6 +15,7 @@ impl WidgetStore {
             slider_to_number: BTreeMap::new(),
             number_to_slider: BTreeMap::new(),
             number_to_slider_mapping: BTreeMap::new(),
+            number_range: BTreeMap::new(),
             number_to_slider_snap_integer: std::collections::BTreeSet::new(),
             chips_without_steppers: std::collections::BTreeSet::new(),
             collapsible_sections: std::collections::BTreeSet::new(),
@@ -204,6 +205,20 @@ impl WidgetStore {
             .get(&number)
             .copied()
             .unwrap_or((1.0, 0.0))
+    }
+
+    /// Register a NumberInput's **(min, max, step)** range — the single source the drag-scrub uses to
+    /// map the cursor displacement PROPORTIONALLY to `[min, max]` + clamp, and the stepper uses for its
+    /// increment. `min`/`max` may be given in either order (the dispatch normalises). Panels SHOULD call
+    /// this for every bounded number box (e.g. when painting it) so the scrub feel matches the range.
+    pub fn set_number_range(&mut self, id: NodeId, min: f64, max: f64, step: f64) {
+        self.number_range.insert(id, (min, max, step));
+    }
+
+    /// The registered `(min, max, step)` for `id`, if any (see [`set_number_range`](Self::set_number_range)).
+    #[must_use]
+    pub fn number_range(&self, id: NodeId) -> Option<(f64, f64, f64)> {
+        self.number_range.get(&id).copied()
     }
 
     /// **Deprecated (2026-05-24).** Marking a NumberInput as

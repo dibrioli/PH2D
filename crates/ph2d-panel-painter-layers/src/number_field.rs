@@ -5,9 +5,10 @@
 //! with red **X** / green **Y** axis tags like the reference; short-label per-pattern params pair
 //! two-per-line, long labels go solo.
 //!
-//! The live value is mirrored into the store's `NumberInput` each frame (when unfocused) with a DECIMAL
-//! buffer for the `0..1` / scale / offset fields, so the dispatch infers the fine step (`0.01`); Angle
-//! stays a whole number (step `1`). The committed/scrubbed REAL value forwards over `event::is_param_field`.
+//! Each box registers its `[min, max]` + `step` via `WidgetStore::set_number_range`, so the drag-scrub
+//! is PROPORTIONAL to the range (a fixed drag spans `[min,max]`, no racing) + clamped, and the stepper
+//! uses `step`. The live value is mirrored into the store each frame (when unfocused). The
+//! committed/scrubbed REAL value forwards over `event::is_param_field`.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -23,7 +24,7 @@ const PAIR_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: paired-param label column (com
 const AXIS_W: f32 = 16.0; // LITERAL-PX-OK: the "X"/"Y" axis-tag column
 /// Max label length (chars) for a per-pattern param to share its line with the next one.
 const PAIR_MAX_LEN: usize = 7;
-/// NumberInput stepper increments (the drag step is buffer-inferred; these drive the up/down arrows).
+/// NumberInput steps registered via `set_number_range` — the stepper increment + the drag base.
 /// `pub(crate)` so the Grain/Shape sections pass the right one per field.
 pub(crate) const FINE_STEP: f64 = 0.01; // LITERAL-PX-OK: NumberInput step (0..1 / offset / depth / params)
 pub(crate) const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: NumberInput step (scale)
@@ -86,19 +87,26 @@ fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize
     }
 }
 
-/// One number box filling `rect` (the Inspector widget): mirror the live value, then paint with steppers,
-/// the in-progress edit buffer + caret. `step` drives the stepper arrows; the drag step is inferred from
-/// the buffer (decimals ⇒ `0.01`).
+/// One number box filling `rect` (the Inspector widget): mirror the live value, register its
+/// `[min, max]` range + `step` (so the drag-scrub is range-proportional + clamped and the stepper uses
+/// `step` — see `WidgetStore::set_number_range`), then paint with steppers + the edit buffer + caret.
+#[allow(clippy::too_many_arguments)]
 fn chip(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     rect: Rect,
     id: NodeId,
     value: f32,
+    min: f32,
+    max: f32,
     step: f64,
     decimals: usize,
 ) {
-    mirror_value(ctx.host.store_mut(), id, value, decimals);
+    {
+        let store = ctx.host.store_mut();
+        mirror_value(store, id, value, decimals);
+        store.set_number_range(id, f64::from(min), f64::from(max), step);
+    }
     let (state, _v, buf, caret, anchor) = read_number_input(ctx.host.store(), id);
     let buf = buf.to_string();
     let input = NumberInput::new(id, "", f64::from(value))
@@ -151,6 +159,8 @@ pub(crate) fn paint_num_row(
     label_txt: &str,
     id: NodeId,
     value: f32,
+    min: f32,
+    max: f32,
     step: f64,
     decimals: usize,
 ) -> f32 {
@@ -164,6 +174,8 @@ pub(crate) fn paint_num_row(
         Rect::new(cx, y, cw, ROW_H_PX),
         id,
         value,
+        min,
+        max,
         step,
         decimals,
     );
@@ -184,6 +196,8 @@ pub(crate) fn paint_num_xy(
     vx: f32,
     id_y: NodeId,
     vy: f32,
+    min: f32,
+    max: f32,
     step: f64,
     decimals: usize,
 ) -> f32 {
@@ -202,6 +216,8 @@ pub(crate) fn paint_num_xy(
         Rect::new(xb, y, box_w, ROW_H_PX),
         id_x,
         vx,
+        min,
+        max,
         step,
         decimals,
     );
@@ -215,6 +231,8 @@ pub(crate) fn paint_num_xy(
         Rect::new(yb, y, box_w, ROW_H_PX),
         id_y,
         vy,
+        min,
+        max,
         step,
         decimals,
     );
@@ -244,7 +262,9 @@ pub(crate) fn paint_num_params(
             y += ROW_H_PX + Spacing::Xs.px();
             i += 2;
         } else {
-            y = paint_num_row(ctx, theme, x, content_w, y, l0, id0, v0, FINE_STEP, 2);
+            y = paint_num_row(
+                ctx, theme, x, content_w, y, l0, id0, v0, 0.0, 1.0, FINE_STEP, 2,
+            );
             i += 1;
         }
     }
@@ -267,5 +287,15 @@ fn half_param(
     label_tok(ctx, theme, label_txt, x, y, PAIR_LABEL_W, ColorToken::Text2);
     let cx = x + PAIR_LABEL_W + gap;
     let cw = (x + w - cx).max(0.0);
-    chip(ctx, theme, Rect::new(cx, y, cw, ROW_H_PX), id, v, FINE_STEP, 2);
+    chip(
+        ctx,
+        theme,
+        Rect::new(cx, y, cw, ROW_H_PX),
+        id,
+        v,
+        0.0,
+        1.0,
+        FINE_STEP,
+        2,
+    );
 }

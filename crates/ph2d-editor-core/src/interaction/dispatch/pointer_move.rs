@@ -166,9 +166,18 @@ pub(super) fn dispatch_move<'frame>(
             } else {
                 1.0
             };
-            let delta = (dom_dx as f64 * drag::DRAG_RATE_X - dom_dy as f64 * drag::DRAG_RATE_Y)
-                * shift_mul
-                * d.step;
+            // Range-proportional scrub when the box registered a `number_range`: a fixed drag spans the
+            // WHOLE `[min,max]` range (horizontal fast, vertical precise) regardless of magnitude — else
+            // the legacy step-based rate for unbounded boxes (e.g. pixel position). Enio 2026-06-25.
+            let range = store.number_range(d.id);
+            let (rate_x, rate_y) = match range {
+                Some((min, max, _)) => {
+                    let r = (max - min).abs();
+                    (r / drag::DRAG_RANGE_PX_H, r / drag::DRAG_RANGE_PX_V)
+                }
+                None => (drag::DRAG_RATE_X * d.step, drag::DRAG_RATE_Y * d.step),
+            };
+            let delta = (dom_dx as f64 * rate_x - dom_dy as f64 * rate_y) * shift_mul;
             // Apply the per-Move delta on top of the chip's
             // CURRENT value (not `start_value`). Read it back
             // out before mutating so the clamp logic below can
@@ -186,7 +195,9 @@ pub(super) fn dispatch_move<'frame>(
             // when `scale` is negative). Without this, dragging
             // Grow (display ±1) silently clamped at 0..1 and
             // never reached the negative half.
-            let bounds = if store.linked_slider(d.id).is_some() {
+            let bounds = if let Some((min, max, _)) = range {
+                Some((min.min(max), min.max(max)))
+            } else if store.linked_slider(d.id).is_some() {
                 let (scale, offset) = store.linked_slider_mapping(d.id);
                 let a = offset as f64;
                 let b = (scale + offset) as f64;

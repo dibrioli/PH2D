@@ -127,8 +127,9 @@ Animation: picker enters from anchor with 200 ms scale 0.95→1.0 + opacity, exi
 
 ## NumberInput
 
-- Steppers (▲▼) nudge by step (default 1; Shift = 10×; Alt = 0.1×).
-- Drag-scrub: hold pointer over the value and drag horizontally — 1 px = 1 step (Shift = 10×).
+- Steppers (▲▼) nudge by `step`; for a **bounded** box (one with a registered range) the result is clamped to `[min, max]`.
+- Drag-scrub: hold the pointer over the value and drag — **horizontal = fast, vertical = precise, Shift = super-precise**. The dispatch axis-locks on the dominant direction at the threshold crossing.
+- **Register the range (REQUIRED for bounded boxes):** call `WidgetStore::set_number_range(id, min, max, step)` where you paint the box. The scrub then maps the cursor displacement PROPORTIONALLY to `[min, max]` (full range over `DRAG_RANGE_PX_H` horizontal / `DRAG_RANGE_PX_V` vertical) **and clamps** — without it, a small-range box (e.g. Offset `±1`) races past 100 on a few pixels and the stepper jumps by a buffer-inferred step (1.0). Unbounded boxes (e.g. pixel position) register no range and keep the legacy step-based rate. Reference impl: `ph2d-panel-painter-layers::number_field`.
 - Wheel scrolls value (only when focused, to avoid hijacking page scroll).
 - Empty + blur snaps to last valid (or min).
 

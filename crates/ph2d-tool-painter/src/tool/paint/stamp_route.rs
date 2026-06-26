@@ -53,14 +53,17 @@ impl PainterTool {
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
         // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
         // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
-        // + the Shape owning colour, the silhouette COVERAGE indexes the ramp, which the StampMask
-        // already caches → blit the cached mask applying `ramp[coverage]` (as cheap as a plain cached
-        // stamp, not a per-pixel silhouette recompute per dab). Per-pixel otherwise: a Grain to index,
-        // per-dab rotation, the Accumulate cap, or no silhouette to cache (Enio 2026-06-26).
+        // the COVERAGE (the Shape silhouette, OR the bare falloff when there's no Shape image) indexes the
+        // ramp, and the StampMask already caches that coverage → blit the cached mask applying
+        // `ramp[coverage]` (as cheap as a plain cached stamp, NOT a per-pixel coverage recompute per dab —
+        // critical for the Line/Curve/Circle/Polygon fills, which re-stamp the WHOLE shape every move).
+        // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
         let grain_active = brush.texture.is_active();
         if self.color_ramp_owner(grain_active) != RampLutOwner::None {
+            // `dab_mask_cacheable` already covers the no-Shape falloff case (a static View silhouette);
+            // requiring `shape_silhouette_active` here needlessly forced a colour ramp on a plain brush
+            // onto the per-pixel path — the cause of the slow ramped fills (Enio 2026-06-26).
             let cacheable = !grain_active
-                && brush.shape_silhouette_active(has_shape_image)
                 && brush.dab_mask_cacheable(has_shape_image)
                 && !per_dab_rotation
                 && !accumulate_cap;

@@ -22,9 +22,13 @@ mod curve;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
 /// for the LOC cap (same submodule rationale).
 mod jitter_settings;
+/// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
+mod shape_layers;
 /// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from
 /// `brush_settings` for the LOC cap.
 mod shape_settings;
+/// The cached multi-layer coloured stamp (bake the per-layer composite once, blit per dab).
+mod stamp_color_cache;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;
@@ -77,6 +81,7 @@ pub const BRUSH_AIRBRUSH_RATE_MAX_S: f32 = AIRBRUSH_RATE_MAX_S;
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
 pub use brush_settings::{BrushSettings, PANEL_RAMP_STOPS, brush_falloff_weight_at};
+pub use shape_layers::MAX_SHAPE_LAYERS;
 
 /// A single Drag Dot's restore record: the pristine canvas pixels under the dab's footprint (RGBA8,
 /// row-major over `rect`) saved *before* it was stamped, so the next move can erase it — the dot
@@ -157,9 +162,17 @@ pub(crate) struct PaintState {
     shape_image_pending: bool,
     /// Bumped whenever [`shape_image`] changes, so the stamp cache re-renders the Shape mask.
     shape_image_version: u64,
+    /// Multi-layer Shape (z-ordered luminance layers) + per-layer-colour mode/colours; OFF ⇒ flattened
+    /// into [`shape_image`]. See [`crate::tool::paint::shape_layers`].
+    shape_layers: shape_layers::ShapeLayers,
     /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
     /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
     stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
+    /// Cached multi-layer coloured stamp + its key (per-layer-colour mode); see [`stamp_color_cache`].
+    color_stamp_cache: Option<(
+        ph2d_painter_brush::ColorStampMask,
+        stamp_color_cache::ColorStampKey,
+    )>,
     /// Lazily-filled canvas-space texture cache for the Tiled / Stencil mappings (canvas-fixed); the
     /// texture is computed once per canvas pixel per stroke. See [`crate::tool::paint::stamp_cache`].
     canvas_tex_cache: Option<stamp_cache::CanvasTexCache>,
@@ -218,7 +231,9 @@ impl Default for PaintState {
             shape_image: None,
             shape_image_pending: false,
             shape_image_version: 0,
+            shape_layers: shape_layers::ShapeLayers::default(),
             stamp_cache: None,
+            color_stamp_cache: None,
             canvas_tex_cache: None,
             texture_ramp: ph2d_color::ColorRamp::default(),
             texture_ramp_enabled: false,

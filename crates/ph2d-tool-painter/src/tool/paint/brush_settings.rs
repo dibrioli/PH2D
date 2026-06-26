@@ -1,6 +1,7 @@
 //! Brush/Stroke parameter snapshot & setters (the single UI-edit clamp source); a submodule of
 //! `paint`, split from `paint.rs` for the workspace LOC cap. Per-dab-jitter setters: `jitter_settings`.
 
+use super::shape_layers::MAX_SHAPE_LAYERS;
 use super::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
@@ -162,6 +163,14 @@ pub struct BrushSettings {
     pub shape_size: [f32; 2],
     /// Procedural Shape per-pattern params (Contrast / Brightness + the kind's knob, `[0,1]`) — the Grain's `texture_params` twin for the Shape slot.
     pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+    /// Number of captured Shape layers (`0` = single-image / falloff; `> 1` shows the Per-Layer Color UI).
+    pub shape_layer_count: u8,
+    /// "Per-Layer Color" mode — each Shape layer paints its own colour, higher above lower; hides the ramp.
+    pub shape_per_layer_color: bool,
+    /// Per-layer "use a custom colour" toggle (entries `0..shape_layer_count` valid).
+    pub shape_layer_color_on: [bool; MAX_SHAPE_LAYERS],
+    /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`.
+    pub shape_layer_color: [[f32; 3]; MAX_SHAPE_LAYERS],
     /// **Dab Flatten** (`0..1`; `0` = round) — the Shape-panel gizmo squishes the dab footprint (falloff
     /// + Shape + View-Grain) into an ellipse. See [`Self::dab_angle_deg`].
     pub dab_flatten: f32,

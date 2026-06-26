@@ -37,6 +37,13 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
+        // Per-layer-colour Shape (multi-layer, mode on): bake the z-ordered tinted composite once into
+        // the coloured stamp + scale-blit. Takes precedence over the ramp (the panel hides the ramp in
+        // this mode). Folds in the Shape Angle; per-dab Rake/Random of the coloured stamp is a follow-up.
+        if self.paint.shape_layers.is_color_mode() {
+            self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
         let has_shape_image = self.paint.shape_image.is_some();
         // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own
         // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).

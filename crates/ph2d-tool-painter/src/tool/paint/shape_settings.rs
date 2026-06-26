@@ -108,9 +108,67 @@ impl PainterTool {
     /// Clear the Shape image (and reset the slot to `None`) — the silhouette reverts to the falloff.
     pub fn clear_brush_shape_image(&mut self) {
         self.paint.shape_image = None;
+        self.paint.shape_layers.clear();
         self.paint.brush.shape.kind = TextureKind::None;
         self.paint.shape_image_pending = false;
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
+    }
+
+    // ── Multi-layer Shape (per-layer colour) ──────────────────────────────────────────────────────
+
+    /// Store a **multi-layer** Shape: `layers` are `(luminance, w, h)` in bottom-to-top z-order (the
+    /// Painter document's own visible raster layers, or an imported multi-layer doc), capped at
+    /// [`super::shape_layers::MAX_SHAPE_LAYERS`]. Also flattens them (alpha-over) into the single
+    /// [`super::PaintState::shape_image`] so the OFF-mode / colour-ramp / preview single-image path is
+    /// unchanged. The "Per-Layer Color" checkbox appears (panel) once `> 1` layer is captured.
+    pub fn set_brush_shape_layers(&mut self, layers: Vec<(Vec<u8>, u32, u32)>) {
+        self.paint.shape_layers.set_layers(layers);
+        match self.paint.shape_layers.flatten() {
+            Some((lum, w, h)) => {
+                self.paint.shape_image = Some(BrushTextureImage::new(lum, w, h));
+                self.paint.brush.shape.kind = TextureKind::Image;
+            }
+            None => self.paint.shape_image = None,
+        }
+        self.paint.shape_image_pending = false;
+        self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
+    }
+
+    /// Toggle the **Per-Layer Color** mode (each layer paints its own colour; the higher above the
+    /// lower). While on, the Shape colour ramp is hidden + nullified (the route uses the coloured stamp).
+    pub fn toggle_brush_shape_per_layer_color(&mut self) {
+        self.paint.shape_layers.toggle_per_layer_color();
+    }
+
+    /// Toggle Shape layer `i`'s custom-colour checkbox (off ⇒ it paints the brush base colour).
+    pub fn toggle_brush_shape_layer_color(&mut self, i: usize) {
+        self.paint.shape_layers.toggle_layer_color(i);
+    }
+
+    /// Set Shape layer `i`'s custom colour (straight RGB); turns its checkbox on.
+    pub fn set_brush_shape_layer_color(&mut self, i: usize, rgb: [f32; 3]) {
+        self.paint.shape_layers.set_layer_color(i, rgb);
+    }
+
+    /// `(layer count, per-layer-colour mode on)` for the panel — the checkbox only shows for `> 1` layer.
+    #[must_use]
+    pub fn brush_shape_layers(&self) -> (u8, bool) {
+        (
+            self.paint.shape_layers.len().min(u8::MAX as usize) as u8,
+            self.paint.shape_layers.per_layer_color(),
+        )
+    }
+
+    /// `(color_on, color)` arrays for the panel's per-layer rows (entries `0..count` are valid).
+    #[must_use]
+    pub fn brush_shape_layer_colors(
+        &self,
+    ) -> (
+        [bool; super::shape_layers::MAX_SHAPE_LAYERS],
+        [[f32; 3]; super::shape_layers::MAX_SHAPE_LAYERS],
+    ) {
+        let (_, on, col) = self.paint.shape_layers.snapshot();
+        (on, col)
     }
 
     /// The brush's imported Shape image as `(luminance, w, h)` for the panel's Shape preview. `None` if

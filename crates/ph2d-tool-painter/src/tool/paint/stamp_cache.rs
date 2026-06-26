@@ -58,7 +58,7 @@ pub(super) struct StampKey {
 /// Mask resolution for a dab of `radius` px: enough texels to be 1:1 (`2·radius`), rounded up to a
 /// power of two so a growing Anchored dab only re-renders a few times, clamped. Beyond the max the
 /// texture is bilinearly upscaled (softer) — Blender caps its brush image likewise.
-fn mask_size_for(radius: f32) -> u32 {
+pub(super) fn mask_size_for(radius: f32) -> u32 {
     const MIN: u32 = 32;
     const MAX: u32 = 1024;
     ((2.0 * radius.ceil()).max(1.0) as u32)

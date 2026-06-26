@@ -580,6 +580,43 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
 }
 
 #[test]
+fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke() {
+    use ph2d_painter_brush::Dab;
+    // 2-layer Shape: layer 0 (bottom) = a full square, layer 1 (top) = its RIGHT half only. Colours red
+    // bottom, green top. Two overlapping dabs (B to the right of A). At a pixel inside A's right-half
+    // (green) that B's left-half (red bottom, no green) re-covers, a per-dab composite lets B's red bury
+    // A's green — only the last dab's highlight survives. The cross-stroke z-order (all bottoms, THEN all
+    // tops) keeps it GREEN, so the highlight runs along the whole stroke (Enio 2026-06-26).
+    let mut t = white_canvas(64, 6.0);
+    let full = vec![255u8; 64]; // 8×8 full coverage (the body)
+    let mut right = vec![0u8; 64]; // 8×8, right half = 255 (the highlight)
+    for row in 0..8 {
+        for col in 4..8 {
+            right[row * 8 + col] = 255;
+        }
+    }
+    t.set_brush_shape_layers(vec![(full, 8, 8), (right, 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]); // bottom = red
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]); // top = green
+    let dab = |cx: f32| Dab {
+        center: [cx, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab(20.0), dab(26.0)]); // A, then B overlapping A's right half from the left
+    let [r, g, b, _] = px(&t, 64, 22, 32); // inside A's right-half-green, re-covered by B's left-half
+    assert!(
+        g > 200 && r < 80,
+        "the top (green) layer survives the lower (red) layer across the stroke: {:?}",
+        [r, g, b]
+    );
+}
+
+#[test]
 fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;

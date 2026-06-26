@@ -168,9 +168,9 @@ pub(crate) struct PaintState {
     /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
     /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
     stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
-    /// Cached multi-layer coloured stamp + its key (per-layer-colour mode); see [`stamp_color_cache`].
+    /// Cached per-layer coloured stamps (bottom→top) + key, blitted in cross-stroke z-order; `stamp_color_cache`.
     color_stamp_cache: Option<(
-        ph2d_painter_brush::ColorStampMask,
+        Vec<ph2d_painter_brush::ColorStampMask>,
         stamp_color_cache::ColorStampKey,
     )>,
     /// Cached Grain+Ramp coloured stamp + key (the cacheable grain-ramp colour path); `stamp_color_cache`.

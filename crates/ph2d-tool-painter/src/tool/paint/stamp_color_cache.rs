@@ -36,8 +36,14 @@ pub(super) struct ColorStampKey {
 }
 
 impl PainterTool {
-    /// Scale-blit the cached multi-layer coloured stamp for each dab — the per-layer-colour path of
-    /// [`Self::stamp_dabs`]. The per-texel colour comes from the baked stamp; `spec.color` is unused.
+    /// Scale-blit the cached per-layer coloured stamps for the dab batch — the per-layer-colour path of
+    /// [`Self::stamp_dabs`]. The per-texel colour comes from the baked stamps; `spec.color` is unused.
+    ///
+    /// **Z-order across the whole stroke:** the OUTER loop is the layers (bottom→top), the INNER loop the
+    /// dabs — so EVERY dab of the lower layer is laid before ANY of the upper layer. That is what makes
+    /// the top layer paint above ALL of the lower layer's painting (the 3-D-shaded stroke): a per-dab
+    /// composite instead lets each dab's lower layer cover the previous dab's upper layer, so only the
+    /// last dab's highlight would survive (Enio 2026-06-26).
     pub(super) fn stamp_dabs_cached_color(
         &mut self,
         dabs: &[Dab],
@@ -48,34 +54,36 @@ impl PainterTool {
     ) {
         let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
         self.ensure_color_stamp_cache(brush, mask_size_for(max_r));
-        let Some((stamp, _)) = self.paint.color_stamp_cache.as_ref() else {
+        let Some((stamps, _)) = self.paint.color_stamp_cache.as_ref() else {
             return;
         };
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut touched: Option<Region> = None;
-        for d in dabs {
-            let spec = BrushSpec {
-                radius_px: d.radius_px,
-                ..*brush
-            };
-            if let Some(r) = blit_color_stamp(
-                buf,
-                w,
-                h,
-                d.center,
-                d.radius_px,
-                stamp,
-                &spec,
-                d.coverage,
-                alpha_locked,
-            ) {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
+        for stamp in stamps {
+            for d in dabs {
+                let spec = BrushSpec {
+                    radius_px: d.radius_px,
+                    ..*brush
                 };
-                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                if let Some(r) = blit_color_stamp(
+                    buf,
+                    w,
+                    h,
+                    d.center,
+                    d.radius_px,
+                    stamp,
+                    &spec,
+                    d.coverage,
+                    alpha_locked,
+                ) {
+                    let rect = Region {
+                        x: r.x,
+                        y: r.y,
+                        w: r.w,
+                        h: r.h,
+                    };
+                    touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                }
             }
         }
         if let Some(rect) = touched {
@@ -83,7 +91,8 @@ impl PainterTool {
         }
     }
 
-    /// Re-bake the coloured stamp when the appearance / mask size changed; a no-op on a hit.
+    /// Re-bake the per-layer coloured stamps (one per layer, bottom→top) when the appearance / mask size
+    /// changed; a no-op on a hit. Each stamp is a single layer tinted by its colour (× Grain).
     fn ensure_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         let key = ColorStampKey {
             shape: brush.shape,
@@ -99,13 +108,25 @@ impl PainterTool {
         if self.paint.color_stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {
             return;
         }
-        let stamp = {
+        let stamps = {
             let masks = self.paint.shape_layers.masks();
             let colors = self.paint.shape_layers.resolved_colors(brush.color);
             let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-            render_color_stamp_mask(brush, &masks, &colors, grain_image.as_ref(), size)
+            masks
+                .iter()
+                .zip(colors.iter())
+                .map(|(m, c)| {
+                    render_color_stamp_mask(
+                        brush,
+                        std::slice::from_ref(m),
+                        std::slice::from_ref(c),
+                        grain_image.as_ref(),
+                        size,
+                    )
+                })
+                .collect()
         };
-        self.paint.color_stamp_cache = Some((stamp, key));
+        self.paint.color_stamp_cache = Some((stamps, key));
     }
 }
 

@@ -304,15 +304,13 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
-            // Rake rotor for this dab — the engine's smoothed heading `d.dir` taken RELATIVE to the
-            // stroke's reference `d.dir0`, so a straight stroke lays the texture at the no-Rake Angle and
-            // it only rotates as the stroke curves. Both slots read it; `dab_basis` ignores it unless that
-            // slot's Rake is on, and falls back to the base Angle for `[0, 0]`.
-            let rake = ph2d_painter_brush::heading::rake_relative(d.dir, d.dir0);
+            // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
+            // engine, where the path geometry is known). Both slots read the same heading; `dab_basis`
+            // ignores it unless that slot's Rake is on, and falls back to the base Angle for `[0, 0]`.
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
-                    rake,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
@@ -329,7 +327,7 @@ impl PainterTool {
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    rake,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,
@@ -409,15 +407,14 @@ impl PainterTool {
                 color: d.color,
                 ..*brush
             };
-            // Rake rotor for this dab — the engine's smoothed heading `d.dir` taken RELATIVE to the
-            // stroke's reference `d.dir0` (straight stroke ⇒ the no-Rake Angle, rotating only on a curve).
-            // Shape draws its Random from `tex_rng` here, *before* the Grain, so a brush with no Shape
-            // Random leaves the Grain stream byte-identical; `dab_basis` ignores it unless Rake is on.
-            let rake = ph2d_painter_brush::heading::rake_relative(d.dir, d.dir0);
+            // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
+            // engine). Shape draws its Random from `tex_rng` here, *before* the Grain, so a brush with
+            // no Shape Random leaves the Grain stream byte-identical; `dab_basis` ignores `d.dir` unless
+            // that slot's Rake is on, falling back to the base Angle for `[0, 0]`.
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
-                    rake,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
@@ -434,7 +431,7 @@ impl PainterTool {
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    rake,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,

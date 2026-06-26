@@ -940,7 +940,6 @@ fn circle_degenerate_axis_fills_nothing() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
-        dir0: [0.0, 0.0],
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1058,7 +1057,6 @@ fn curve_fill_needs_two_points() {
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
-        dir0: [0.0, 0.0],
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(
@@ -1315,65 +1313,5 @@ fn heading_is_independent_of_dab_spacing() {
     assert!(
         dot > 0.96,
         "dense vs sparse heading agree (dot={dot:.4}): {dense:?} vs {sparse:?}"
-    );
-}
-
-#[test]
-fn relative_rake_is_identity_on_a_straight_diagonal_stroke() {
-    // A straight stroke in a NON-axis direction: the absolute heading is a fixed diagonal, but `dir0`
-    // pins the same diagonal, so `rake_relative(dir, dir0)` is the identity for every dab. That is the
-    // fix: Rake at Angle 0 lays the texture exactly like no-Rake at Angle 0 on a straight stroke of ANY
-    // direction (no spurious 90°), instead of pre-rotating it by the stroke's absolute angle.
-    let dabs = collect_stroke(
-        straight_spec(10.0, 0.5),
-        no_dynamics(),
-        &[
-            pt(0.0, 0.0, 1.0),
-            pt(60.0, 60.0, 1.0),
-            pt(120.0, 120.0, 1.0),
-        ],
-    );
-    let moving: Vec<&Dab> = dabs.iter().filter(|d| d.dir != [0.0, 0.0]).collect();
-    assert!(moving.len() >= 5, "enough moving dabs to judge");
-    for d in &moving {
-        // The reference is pinned (non-zero) for every moving dab, …
-        assert_ne!(d.dir0, [0.0, 0.0], "reference heading is pinned");
-        // … and the relative rotor is the identity (texture unrotated, == no-Rake).
-        let r = crate::heading::rake_relative(d.dir, d.dir0);
-        assert!(
-            (r[0] - 1.0).abs() < 2e-3 && r[1].abs() < 2e-3,
-            "straight diagonal → identity rake rotor: {r:?}"
-        );
-    }
-}
-
-#[test]
-fn relative_rake_rotates_as_the_stroke_curves_away_from_its_start() {
-    // A quarter-circle that STARTS heading +y (so `dir0 ≈ +y`) and curves to −x. The relative rotor must
-    // grow from the identity (start) to ~−90° (end) — the texture turns WITH the bend, but measured from
-    // the stroke's own start, not absolutely. This is what keeps a curving Rake stroke following the path.
-    const R: f32 = 200.0;
-    let mut spec = straight_spec(8.0, 0.4);
-    spec.stabilizer = 0.5;
-    let mut pts = Vec::new();
-    for i in 0..=60 {
-        let th = (i as f32 / 60.0) * std::f32::consts::FRAC_PI_2;
-        pts.push(pt(R * th.cos(), R * th.sin(), 1.0)); // tangent sweeps +y → −x
-    }
-    let dabs = collect_stroke(spec, no_dynamics(), &pts);
-    let moving: Vec<&Dab> = dabs.iter().filter(|d| d.dir != [0.0, 0.0]).collect();
-    let first =
-        crate::heading::rake_relative(moving.first().unwrap().dir, moving.first().unwrap().dir0);
-    let last =
-        crate::heading::rake_relative(moving.last().unwrap().dir, moving.last().unwrap().dir0);
-    // Starts near identity (rotor ≈ +x) …
-    assert!(
-        (first[0] - 1.0).abs() < 0.1 && first[1].abs() < 0.1,
-        "relative rake starts at the identity: {first:?}"
-    );
-    // … and ends rotated ~90° from the start (rotor ≈ ±y): the bend swept a quarter turn.
-    assert!(
-        last[1].abs() > 0.85,
-        "relative rake rotates ~90° by the end of the quarter arc: {last:?}"
     );
 }

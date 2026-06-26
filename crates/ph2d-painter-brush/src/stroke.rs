@@ -39,14 +39,9 @@ pub struct Dab {
     pub rotation: [f32; 2],
     /// The smoothed **stroke heading** at this dab, as a unit vector (`[0, 0]` = no heading yet, e.g. the
     /// stroke's first dab). Computed once in the engine from the path tangent (length-weighted EMA, see
-    /// [`crate::heading`]) where the geometry is clean. Paired with [`Self::dir0`] it drives the **Rake**;
-    /// it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
+    /// [`crate::heading`]) where the geometry is clean. The stamp feeds it to `dab_basis` as the **Rake**
+    /// direction; it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
     pub dir: [f32; 2],
-    /// The stroke's **reference heading** — the first direction it established (`[0, 0]` until then). Rake
-    /// is measured RELATIVE to this: the stamp feeds [`crate::heading::rake_relative`]`(dir, dir0)` to
-    /// `dab_basis`, so a straight stroke (in any direction) reads as the no-Rake Angle and the texture only
-    /// rotates as the stroke curves away from its start. Constant across a stroke; see [`crate::heading`].
-    pub dir0: [f32; 2],
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -92,10 +87,6 @@ pub struct Stroke {
     /// `Dab::dir`. Updated by the length-weighted EMA in [`Self::walk_space`] (where the path tangent is
     /// clean) and reset in [`Self::begin`]. Drives the texture **Rake**; see [`crate::heading`].
     heading: [f32; 2],
-    /// The stroke's **reference heading** — pinned to `heading` the first time it becomes non-zero, then
-    /// held for the rest of the stroke (reset in [`Self::begin`]). Stamped as `Dab::dir0` so Rake rotates
-    /// the texture RELATIVE to the stroke's starting direction (`[crate::heading::rake_relative]`).
-    heading0: [f32; 2],
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -133,7 +124,6 @@ impl Stroke {
             last_raw_pos: [0.0, 0.0],
             last_raw_pressure: 1.0,
             heading: [0.0, 0.0],
-            heading0: [0.0, 0.0],
         }
     }
 
@@ -161,7 +151,6 @@ impl Stroke {
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
-        self.heading0 = [0.0, 0.0]; // …and the Rake reference re-pins on that first travel (relative Rake)
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -231,9 +220,6 @@ impl Stroke {
                 } else {
                     [0.0, 0.0]
                 };
-                if self.heading0 == [0.0, 0.0] {
-                    self.heading0 = dir; // pin the Rake reference on the first drag (relative Rake)
-                }
                 out.push(self.anchored_dab(center, radius, dir));
             }
             // Line: a straight line from the anchor (down point, `last_pos`, never advanced) to the
@@ -256,8 +242,8 @@ impl Stroke {
 
     /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor` with
     /// spaced dabs (full pressure, like Blender), then RESTORE every bit of mutated walk state (spacing
-    /// residual + jitter multiplier, dash counter, jitter RNG, anchor, Rake heading + reference) so the
-    /// next move re-stamps the identical line. The tool re-stamps over the restored footprint, no trail.
+    /// residual + jitter multiplier, dash counter, jitter RNG, anchor) so the next move re-stamps the
+    /// identical line. The tool re-stamps over the restored footprint, so the growing line leaves no trail.
     fn fill_line_preview(&mut self, anchor: [f32; 2], cursor: [f32; 2], out: &mut Vec<Dab>) {
         let saved = (
             self.accum,
@@ -267,7 +253,6 @@ impl Stroke {
             self.last_pos,
             self.last_pressure,
             self.heading,
-            self.heading0,
         );
         self.fill_segment(anchor, cursor, 1.0, out);
         (
@@ -278,7 +263,6 @@ impl Stroke {
             self.last_pos,
             self.last_pressure,
             self.heading,
-            self.heading0,
         ) = saved;
     }
 
@@ -377,9 +361,6 @@ impl Stroke {
             // Advance the heading by this dab's arc-length step (length-weighted EMA of the clean path
             // tangent), so `dab_at` stamps an up-to-date, stable direction independent of dab density.
             self.heading = crate::heading::advance(self.heading, dir, to_next, smooth_len);
-            if self.heading0 == [0.0, 0.0] {
-                self.heading0 = self.heading; // pin the Rake reference on the first established heading
-            }
             if self.spec.dash_on(self.tot_samples) {
                 let d = self.dab_at(pos, pressure, overlap);
                 out.push(d);
@@ -464,10 +445,8 @@ impl Stroke {
             // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
             color: self.spec.color,
             rotation: [1.0, 0.0],
-            // The Rake heading is the drag direction (anchor → cursor), set by the caller; the reference
-            // `dir0` is the first drag, so Rake rotates the texture relative to where the drag began.
+            // The Rake heading is the drag direction (anchor → cursor), set by the caller.
             dir,
-            dir0: self.heading0,
         }
     }
 
@@ -523,7 +502,6 @@ impl Stroke {
             color,
             rotation,
             dir: self.heading,
-            dir0: self.heading0,
         }
     }
 

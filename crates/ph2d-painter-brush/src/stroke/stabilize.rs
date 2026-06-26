@@ -48,6 +48,21 @@ impl Stroke {
         self.warmup_gate(out);
     }
 
+    /// Advance the Rake **heading** from the previous anchor (`last_pos`) to `to`. The per-event methods
+    /// (Dots / Airbrush) have no spline walk, so they call this to mirror [`Stroke::walk_space`]'s
+    /// length-weighted EMA — without it `Dab::dir` stays `[0, 0]` (Rake falls back to the bare Angle, and
+    /// the warm-up never releases, so the stroke only appears on pointer-up). No-op for a zero-length move.
+    pub(super) fn advance_heading_to(&mut self, to: [f32; 2]) {
+        let from = self.last_pos;
+        let seg = dist(from, to);
+        if seg <= f32::EPSILON {
+            return;
+        }
+        let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
+        let smooth_len = crate::heading::smooth_len(2.0 * self.spec.clamped_radius());
+        self.heading = crate::heading::advance(self.heading, dir, seg, smooth_len);
+    }
+
     /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the
     /// incoming sample by `1 − intensity` (clamped to a floor), so a higher intensity lags more and
     /// filters out hand tremor. At intensity `0` the filtered point is the sample itself (raw,

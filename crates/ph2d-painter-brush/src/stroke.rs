@@ -203,16 +203,16 @@ impl Stroke {
             }
             StrokeMethod::Dots => {
                 let target = self.stabilize(avg);
+                self.advance_heading_to(target.pos); // Rake heading from the inter-dab travel (no spline)
                 self.emit_single(target.pos, self.method_pressure(target.pressure), out);
                 self.advance_anchor(target);
             }
-            // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion — Blender
-            // emits airbrush dabs on TIMER events only (`paint_stroke.cc` modal dispatch: the
-            // motion arm is gated `!AIRBRUSH`, the timer arm `AIRBRUSH`). A move just tracks the
-            // (stabilized) cursor so the next tick lands where the pen now is; holding still keeps
-            // depositing at one spot, and moving fast leaves the characteristic sparse spray.
+            // Airbrush deposits dabs ONLY on the timer ([`Stroke::tick`]), never on motion (Blender
+            // `paint_stroke.cc`). A move tracks the (stabilized) cursor for the next tick + advances the
+            // Rake heading; holding still keeps depositing at one spot (the characteristic spray).
             StrokeMethod::Airbrush => {
                 let target = self.stabilize(avg);
+                self.advance_heading_to(target.pos);
                 self.advance_anchor(target);
             }
             // Drag Dot emits one dab per move at the cursor; the TOOL restores the previous one so

@@ -1203,6 +1203,38 @@ fn rake_spec(radius: f32, spacing: f32) -> BrushSpec {
 }
 
 #[test]
+fn dots_rake_advances_the_heading_and_releases_in_real_time() {
+    // The Dots+Rake bug: Dots emits per event (no spline walk) and so never advanced the heading —
+    // `Dab::dir` stayed [0,0] (Rake fell back to Angle) AND the warm-up never released (its gate needs a
+    // heading), so the whole stroke only appeared on pointer-up. Now Dots advances the heading from the
+    // inter-dab travel: the dabs follow the stroke AND appear DURING it.
+    let mut spec = rake_spec(10.0, 0.5); // Rake on → warm-up engages; diameter 20 → warm-up 3px
+    spec.stroke_method = StrokeMethod::Dots;
+    let mut s = Stroke::new(spec, no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out); // down dab (held during warm-up)
+    let mut during = out.len();
+    for k in 1..=8 {
+        s.extend(pt(k as f32 * 12.0, 0.0, 1.0), &mut out); // straight +x run
+        during += out.len();
+    }
+    assert!(
+        during >= 5,
+        "Dots dabs appear DURING the stroke, not only on finish (got {during})"
+    );
+    // The last (post-warm-up) batch's dab follows the +x stroke direction (Rake), not the rest Angle.
+    let d = out
+        .iter()
+        .find(|d| d.dir != [0.0, 0.0])
+        .expect("a Dots dab carries the Rake heading");
+    assert!(
+        (d.dir[0] - 1.0).abs() < 0.2 && d.dir[1].abs() < 0.2,
+        "Dots Rake heading follows +x: {:?}",
+        d.dir
+    );
+}
+
+#[test]
 fn rake_warmup_holds_the_opening_dabs_then_releases_them_at_the_settled_angle() {
     // Press + a tiny move (< warm-up length) must emit NOTHING — the opening is held back until the
     // stroke direction is known. Then a move past the warm-up length releases the whole held batch,

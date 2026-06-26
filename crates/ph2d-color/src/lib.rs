@@ -51,10 +51,10 @@ pub mod value_ramp;
 
 pub use color_ramp::{ColorRamp, MAX_RAMP_STOPS, RampColorMode, RampHue, RampInterp, RampStop};
 pub use linear::LinearRgba;
-pub use value_ramp::{MAX_VALUE_RAMP_STOPS, ValueRamp, ValueStop};
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;
 pub use palette::{PaletteData, PaletteError, PaletteFormat};
 pub use pigment_space::PigmentLinearSrgb;
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;
+pub use value_ramp::{MAX_VALUE_RAMP_STOPS, ValueRamp, ValueStop};

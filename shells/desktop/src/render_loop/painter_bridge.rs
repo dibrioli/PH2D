@@ -547,7 +547,8 @@ fn pick_brush_luminance(
             let lum: Vec<u8> = pixels
                 .chunks_exact(4)
                 .map(|p| {
-                    ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8
+                    ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8)
+                        as u8
                 })
                 .collect();
             Ok(Some((lum, *width, *height)))

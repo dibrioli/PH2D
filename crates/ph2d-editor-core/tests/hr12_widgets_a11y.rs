@@ -257,6 +257,18 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_falloff.rs",
         "falloff-curve render half; handles dispatched in editor-core, buttons are registered widgets",
     ),
+    // Stencil card — its number boxes delegate to `number_field` (the a11y-wired NumberInput
+    // primitive); the card background + labels are decorative chrome.
+    (
+        "ph2d-panel-painter-layers/src/paint_stencil.rs",
+        "number boxes delegate to number_field (a11y-wired NumberInput); rest is decorative chrome",
+    ),
+    // Flatten/rotate gizmo — its two handles are `CurvePoint`s dispatched in editor-core (the same
+    // pattern as paint_falloff); the rim + ellipse + axes are a decorative template.
+    (
+        "ph2d-panel-painter-layers/src/paint_shape_dab.rs",
+        "gizmo handles are CurvePoints dispatched in editor-core; rest is a decorative template render",
+    ),
 ];
 
 fn walk(root: &Path, dir: &Path, cb: &mut dyn FnMut(&Path, &Path)) {

@@ -30,12 +30,19 @@ impl PainterTool {
                 f32::from(s.id),
             ];
         }
-        // Snapshot the Shape Value Ramp's stops `(pos, value, id)` (grayscale — no colour conversion).
-        let sramp = self.shape_ramp();
-        let mut shape_ramp_stops = [[0.0f32; 3]; PANEL_RAMP_STOPS];
+        // Snapshot the Shape Colour Ramp's stops (LINEAR → display sRGB; the 6th slot is the stable id).
+        let sramp = self.shape_color_ramp();
+        let mut shape_color_ramp_stops = [[0.0f32; 6]; PANEL_RAMP_STOPS];
         let sramp_count = sramp.stops().len().min(PANEL_RAMP_STOPS);
-        for (slot, s) in shape_ramp_stops.iter_mut().zip(sramp.stops()) {
-            *slot = [s.pos, s.value, f32::from(s.id)];
+        for (slot, s) in shape_color_ramp_stops.iter_mut().zip(sramp.stops()) {
+            *slot = [
+                s.pos,
+                srgb(s.color[0]),
+                srgb(s.color[1]),
+                srgb(s.color[2]),
+                s.color[3],
+                f32::from(s.id),
+            ];
         }
         BrushSettings {
             size_px: b.radius_px,
@@ -85,15 +92,19 @@ impl PainterTool {
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
+            texture_ramp_bw: self.paint.texture_ramp_bw,
             texture_ramp_mode: ramp.color_mode.to_u8(),
             texture_ramp_interp: ramp.interp.to_u8(),
             texture_ramp_stops,
             texture_ramp_stop_count: ramp_count as u8,
             texture_ramp_alpha_mode: self.paint.texture_ramp_alpha_mode.to_u8(),
-            shape_ramp_enabled: self.paint.shape_ramp_enabled,
-            shape_ramp_interp: sramp.interp.to_u8(),
-            shape_ramp_stops,
-            shape_ramp_stop_count: sramp_count as u8,
+            shape_color_ramp_enabled: self.paint.shape_color_ramp_enabled,
+            shape_color_ramp_bw: self.paint.shape_color_ramp_bw,
+            shape_color_ramp_mode: sramp.color_mode.to_u8(),
+            shape_color_ramp_interp: sramp.interp.to_u8(),
+            shape_color_ramp_stops,
+            shape_color_ramp_stop_count: sramp_count as u8,
+            shape_color_ramp_alpha_mode: self.paint.shape_color_ramp_alpha_mode.to_u8(),
             color_jitter_enabled: b.color_jitter_enabled,
             color_jitter: [b.color_jitter_hue, b.color_jitter_sat, b.color_jitter_val],
             jitter_scale: b.jitter_scale,

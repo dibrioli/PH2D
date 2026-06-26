@@ -79,19 +79,31 @@ pub fn painter_brush_dab_handle_id(channel: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.dabhandle.{channel}"))
 }
 
-// ── Shape **value ramp** (B&W tonal remap of the silhouette; "Shape Tone" section) ──────────────
-/// Collapsible **Shape Tone** section header. `mark_collapsible_section`-registered in `crate::populate`.
+// ── Shape **Colour Ramp** (colourises the silhouette; "Shape Color" section) ─────────────────────
+// The Shape ramp is a full `ph2d_color::ColorRamp` (twin of the Grain ramp), with a **B&W** filter:
+// off ⇒ the ramp owns the painted colour (indexed by the silhouette coverage); on ⇒ it's the grayscale
+// tone remap of the silhouette (the Grain, if any, owns colour). Auto-B&W-on when a Grain is assigned.
+/// Collapsible **Shape Color** section header. `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_SHAPE_RAMP_SECTION: NodeId = hash_node_id("painter_brush.shape_ramp_section");
-/// The Shape Tone header's colour dot (picker swatch).
+/// The Shape Color header's colour dot (picker swatch).
 pub const PAINTER_SHAPE_RAMP_SECTION_COLOR: NodeId =
     hash_node_id("painter_brush.shape_ramp_section_color");
-/// Shape Tone section **reset** — ramp off + identity gradient. `Click` → `reset_shape_ramp`.
+/// Shape Color section **reset** — ramp off + default gradient. `Click` → `reset_shape_ramp`.
 pub const PAINTER_SHAPE_RAMP_RESET: NodeId = hash_node_id("painter_brush.shape_ramp_reset");
-/// "Use Shape Tone" enable toggle. `Click` → `toggle_shape_ramp_enabled`.
+/// "Use Color Ramp" enable toggle. `Click` → `toggle_shape_ramp_enabled`.
 pub const PAINTER_SHAPE_RAMP_ENABLE: NodeId = hash_node_id("painter_brush.shape_ramp_enable");
+/// Shape ramp **colour mode** dropdown (RGB/HSV/HSL). `SelectOption` → `set_shape_ramp_mode`.
+pub const PAINTER_SHAPE_RAMP_MODE: NodeId = hash_node_id("painter_brush.shape_ramp_mode");
 /// Shape ramp **interpolation** dropdown. `SelectOption` → `set_shape_ramp_interp`.
 pub const PAINTER_SHAPE_RAMP_INTERP: NodeId = hash_node_id("painter_brush.shape_ramp_interp");
-/// The grayscale **bar** — the `CurvePoint` parent the draggable stop handles report against.
+/// Shape ramp **B&W** filter toggle (desaturate the colours to luminance; auto-on with a Grain).
+/// `Click` → `toggle_shape_ramp_bw`.
+pub const PAINTER_SHAPE_RAMP_BW: NodeId = hash_node_id("painter_brush.shape_ramp_bw");
+/// Shape ramp **alpha action** dropdown (Off / → Strength / → Sprite). `SelectOption` →
+/// `set_shape_ramp_alpha_mode`.
+pub const PAINTER_SHAPE_RAMP_ALPHA_MODE: NodeId =
+    hash_node_id("painter_brush.shape_ramp_alpha_mode");
+/// The gradient **bar** — the `CurvePoint` parent the draggable stop handles report against.
 pub const PAINTER_SHAPE_RAMP_EDIT: NodeId = hash_node_id("painter_brush.shape_ramp_edit");
 /// "+" add a stop. `Click` → `shape_ramp_add_stop`.
 pub const PAINTER_SHAPE_RAMP_ADD: NodeId = hash_node_id("painter_brush.shape_ramp_add");
@@ -99,40 +111,27 @@ pub const PAINTER_SHAPE_RAMP_ADD: NodeId = hash_node_id("painter_brush.shape_ram
 pub const PAINTER_SHAPE_RAMP_REMOVE: NodeId = hash_node_id("painter_brush.shape_ramp_remove");
 /// **Invert** button (flip stop positions L↔R). `Click` → `shape_ramp_invert`.
 pub const PAINTER_SHAPE_RAMP_INVERT: NodeId = hash_node_id("painter_brush.shape_ramp_invert");
+/// The selected stop's **colour swatch** — opens the colour picker. `Click` → picker target.
+pub const PAINTER_SHAPE_RAMP_SWATCH: NodeId = hash_node_id("painter_brush.shape_ramp_swatch");
 /// Selected-stop **index** chip (`NumberInput`).
 pub const PAINTER_SHAPE_RAMP_STOP_INDEX: NodeId =
     hash_node_id("painter_brush.shape_ramp_stop_index");
 /// Selected-stop **position** chip (`NumberInput`, `0..1`). `SelectOption` → `shape_ramp_move_stop`.
 pub const PAINTER_SHAPE_RAMP_STOP_POS: NodeId = hash_node_id("painter_brush.shape_ramp_stop_pos");
-/// Selected-stop **value** — the `SelectOption` target the **value bar** forwards to (`"id:value"`).
-/// `SelectOption` → `shape_ramp_set_stop_value`. (No longer a `NumberInput`; see
-/// [`painter_shape_ramp_value_handle_id`], Enio 2026-06-25.)
-pub const PAINTER_SHAPE_RAMP_STOP_VALUE: NodeId =
-    hash_node_id("painter_brush.shape_ramp_stop_value");
-/// Stable [`NodeId`] for the grayscale **value bar**'s draggable square marker (one per selected stop
-/// `i`). A `CurvePoint` whose parent is [`PAINTER_SHAPE_RAMP_EDIT`] with **channel `1`** (channel `0` =
-/// the stop-position bar), so its drag rides the same `ValueChanged(EDIT)` route, distinguished by
-/// channel (Enio 2026-06-25). A factory (paint-time-registered, like the stop handles), so the panel
-/// wiring-parity gate treats it as the established `CurvePoint`-handle class.
-#[must_use]
-pub fn painter_shape_ramp_value_handle_id(i: u8) -> NodeId {
-    fnv_node_id_runtime(&format!("painter_brush.shaperampvaluehandle.{i}"))
-}
 
-/// The Shape-ramp **Click** buttons (enable / add / remove / invert / reset) — forwarded as a
+/// The Shape-ramp **Click** buttons (enable / add / remove / invert / B&W / reset) — forwarded as a
 /// `PanelEvent::Click` by the panel's `event.rs` (a single membership check).
-pub const PAINTER_SHAPE_RAMP_BUTTONS: [NodeId; 5] = [
+pub const PAINTER_SHAPE_RAMP_BUTTONS: [NodeId; 6] = [
     PAINTER_SHAPE_RAMP_ENABLE,
     PAINTER_SHAPE_RAMP_ADD,
     PAINTER_SHAPE_RAMP_REMOVE,
     PAINTER_SHAPE_RAMP_INVERT,
+    PAINTER_SHAPE_RAMP_BW,
     PAINTER_SHAPE_RAMP_RESET,
 ];
 
-/// The Shape-ramp **ValueChanged** ids (the position-bar + value-bar drags both report against
-/// `PAINTER_SHAPE_RAMP_EDIT`, plus the editable index / position chips) — routed to `shape_ramp_picker`
-/// by the panel's `event.rs` (a single membership check). The value bar forwards to
-/// [`PAINTER_SHAPE_RAMP_STOP_VALUE`] (a `SelectOption`, not a `ValueChanged`).
+/// The Shape-ramp **ValueChanged** ids (bar-stop drag + the editable index / position chips) — routed
+/// to `ramp_picker` by the panel's `event.rs` (a single membership check).
 pub const PAINTER_SHAPE_RAMP_VALUE_IDS: [NodeId; 3] = [
     PAINTER_SHAPE_RAMP_EDIT,
     PAINTER_SHAPE_RAMP_STOP_INDEX,
@@ -146,10 +145,22 @@ pub fn painter_shape_ramp_handle_id(i: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.shaperamphandle.{i}"))
 }
 
+/// Stable [`NodeId`] for Shape-ramp colour-mode option `m` in the open Mode dropdown popover.
+#[must_use]
+pub fn painter_shape_ramp_mode_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shaperampmodeopt.{m}"))
+}
+
 /// Stable [`NodeId`] for Shape-ramp interpolation option `i` in the open dropdown popover.
 #[must_use]
 pub fn painter_shape_ramp_interp_option_id(i: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.shaperampinterpopt.{i}"))
+}
+
+/// Stable [`NodeId`] for Shape-ramp alpha-action option `m` in the open dropdown popover.
+#[must_use]
+pub fn painter_shape_ramp_alpha_option_id(m: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shaperampalphaopt.{m}"))
 }
 
 /// Per-pattern parameter sliders for a **procedural** Shape (Contrast / Brightness + the kind's shape

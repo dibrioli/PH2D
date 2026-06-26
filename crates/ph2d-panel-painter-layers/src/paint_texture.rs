@@ -21,10 +21,9 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, ColorRamp, ImageMask, RampAlphaMode, RampColorMode, RampInterp, RampStop,
-    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
-    srgb_to_linear_byte,
+    BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
+    TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte,
+    param_specs, render_texture_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -433,37 +432,19 @@ fn paint_texture_preview(
     y + ph + Spacing::Sm.px()
 }
 
-/// Rebuild the **exact** `ColorRamp` from the published snapshot — stops are display sRGB, so convert
-/// them back to the ramp's linear space; honour the chosen colour **Mode** + **Interpolation** — and
-/// bake it into `out` as a 256-entry **sRGB-straight RGBA** LUT (RGB linear→sRGB, alpha straight). This
-/// is the same bake the tool paints with (`ensure_ramp_lut`), so the preview is faithful to every ramp
-/// option. Returns `false` (→ grayscale) when the ramp is off / has no stops.
+/// The **Grain** ramp preview LUT (the same bake the tool paints with, incl. the B&W filter), so the
+/// preview is faithful to every option. Thin Grain binding over the shared
+/// [`crate::paint_ramp_widget::build_preview_lut`]; returns `false` (→ grayscale) when off / empty.
 pub(crate) fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
-    if !brush.texture_ramp_enabled {
-        return false;
-    }
     let count = (brush.texture_ramp_stop_count as usize).min(brush.texture_ramp_stops.len());
-    if count == 0 {
-        return false;
-    }
-    let s2l = |c: f32| srgb_to_linear_byte((c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8); // LITERAL-PX-OK: sRGB 8-bit normalize
-    let stops: Vec<RampStop> = brush.texture_ramp_stops[..count]
-        .iter()
-        .map(|s| RampStop::new(s[0], [s2l(s[1]), s2l(s[2]), s2l(s[3]), s[4]])) // alpha straight
-        .collect();
-    let ramp = ColorRamp::new(
-        stops,
-        RampColorMode::from_u8(brush.texture_ramp_mode),
-        RampInterp::from_u8(brush.texture_ramp_interp),
-    );
-    ramp.bake_into(out); // linear RGBA in the chosen interp/colour space
-    for c in out.iter_mut() {
-        c[0] = f32::from(linear_to_srgb_byte(c[0])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
-        c[1] = f32::from(linear_to_srgb_byte(c[1])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
-        c[2] = f32::from(linear_to_srgb_byte(c[2])) / 255.0; // LITERAL-PX-OK: sRGB 8-bit normalize
-        // alpha stays straight
-    }
-    true
+    crate::paint_ramp_widget::build_preview_lut(
+        brush.texture_ramp_enabled,
+        brush.texture_ramp_bw,
+        brush.texture_ramp_mode,
+        brush.texture_ramp_interp,
+        &brush.texture_ramp_stops[..count],
+        out,
+    )
 }
 
 /// Deferred paint of the Texture section's open dropdown popovers (Kind + Mapping), drained at the

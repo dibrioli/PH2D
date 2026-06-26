@@ -181,29 +181,29 @@ pub struct BrushSettings {
     /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).
     pub dab_angle_deg: u16,
 
-    // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
+    // ── Grain Colour Ramp (maps the Grain scalar to a colour when enabled) ──
     /// Whether the Color Ramp drives the paint colour.
     pub texture_ramp_enabled: bool,
+    /// **B&W** filter: desaturate the ramp to luminance (paint + display).
+    pub texture_ramp_bw: bool,
     /// Ramp colour-interpolation space (`RampColorMode::to_u8`).
     pub texture_ramp_mode: u8,
     /// Ramp interpolation mode (`RampInterp::to_u8`).
     pub texture_ramp_interp: u8,
-    /// Ramp stops `(pos, r, g, b, a, id)` (display sRGB; `id` = stable stop float), first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`; panel keys handles by `id`.
+    /// Ramp stops `(pos, r, g, b, a, id)` display sRGB, first [`Self::texture_ramp_stop_count`] valid, sorted by `pos`.
     pub texture_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
-    /// Count of valid entries in [`Self::texture_ramp_stops`].
     pub texture_ramp_stop_count: u8,
     /// Ramp alpha action (`RampAlphaMode::to_u8`): `0` off · `1` scales Strength · `2` drives sprite alpha.
     pub texture_ramp_alpha_mode: u8,
 
-    // ── Shape value ramp (B&W tonal remap of the silhouette; orthogonal to the Grain colour ramp) ──
-    /// Whether the Shape value ramp is on.
-    pub shape_ramp_enabled: bool,
-    /// Shape ramp interpolation mode (`RampInterp::to_u8`).
-    pub shape_ramp_interp: u8,
-    /// Shape ramp stops `(pos, value, id)` (grayscale), first [`Self::shape_ramp_stop_count`] valid, sorted by pos.
-    pub shape_ramp_stops: [[f32; 3]; PANEL_RAMP_STOPS],
-    /// Count of valid entries in [`Self::shape_ramp_stops`].
-    pub shape_ramp_stop_count: u8,
+    // ── Shape Colour Ramp — colour twin of the Grain ramp (same fields). B&W off = owns colour, on = tone. ──
+    pub shape_color_ramp_enabled: bool,
+    pub shape_color_ramp_bw: bool,
+    pub shape_color_ramp_mode: u8,
+    pub shape_color_ramp_interp: u8,
+    pub shape_color_ramp_stops: [[f32; 6]; PANEL_RAMP_STOPS],
+    pub shape_color_ramp_stop_count: u8,
+    pub shape_color_ramp_alpha_mode: u8,
 
     /// Per-dab randomize: Randomize-Color enable + HSV amounts + Jitter Scale/Rotate/Spacing (`0..1`).
     pub color_jitter_enabled: bool,
@@ -425,19 +425,27 @@ impl PainterTool {
     /// Set the brush texture (Grain) kind from a wire discriminant (out-of-range → None). Picking
     /// [`TextureKind::Image`] requests a file pick from the shell (the engine has no I/O).
     pub fn set_brush_texture_kind(&mut self, k: u8) {
+        let was_none = self.paint.brush.texture.kind == TextureKind::None;
         let kind = TextureKind::from_u8(k);
         self.paint.brush.texture.kind = kind;
         self.reset_texture_params();
         if kind == TextureKind::Image {
             self.paint.texture_image_pending = true;
         }
+        if was_none && kind != TextureKind::None {
+            self.on_grain_assigned(); // None→Grain: flip Shape colour→tone + reset the Grain ramp
+        }
         self.arm_stencil_preview();
     }
 
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.
     pub fn new_brush_texture(&mut self) {
+        let was_none = self.paint.brush.texture.kind == TextureKind::None;
         self.paint.brush.texture.kind = TextureKind::Noise;
         self.reset_texture_params();
+        if was_none {
+            self.on_grain_assigned(); // None→Grain: flip Shape colour→tone + reset the Grain ramp
+        }
     }
 
     /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).

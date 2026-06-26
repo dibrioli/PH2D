@@ -519,9 +519,9 @@ fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
         s
     };
 
-    // The B&W Shape **tone** ramp is the active Shape ramp only WITH a Grain texture (no Grain ⇒ the
-    // Shape's ramp is the COLOUR ramp, Enio 2026-06-25) — so assign a Noise Grain in each case below.
-    // White tip (silhouette 1) + identity ramp (remap(v)=v) ⇒ the tip paints under the Grain.
+    // The Shape ramp acts as the B&W **tone** remap when its B&W filter is on — which auto-enables
+    // when a Grain is assigned (Enio 2026-06-26) — so assign a Noise Grain in each case below.
+    // White tip (silhouette 1) + identity ramp (luma(v)=v) ⇒ the tip paints under the Grain.
     let mut t2 = white_canvas(64, 12.0);
     t2.set_brush_shape_image(vec![255u8; 16], 4, 4);
     t2.set_brush_texture_kind(TextureKind::Noise.to_u8());
@@ -557,12 +557,12 @@ fn shape_value_ramp_remaps_the_silhouette_via_panel_events() {
 fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
     use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
 
-    // No Grain texture ⇒ the Shape's ramp is the COLOUR ramp: the silhouette coverage indexes it for
-    // the painted colour (Enio 2026-06-25). A solid-red ramp over a BLUE brush base ⇒ a RED dab —
-    // proving the ramp colourises (without it the centre would be the brush's blue).
+    // No Grain ⇒ the SHAPE colour ramp OWNS the painted colour (B&W off): the silhouette coverage
+    // indexes it (Enio 2026-06-26). A solid-red ramp over a BLUE brush base ⇒ a RED dab — proving the
+    // Shape ramp colourises (without it the centre would be the brush's blue).
     let mut t = white_canvas(64, 12.0);
     t.set_brush_color_channel(2, 1.0); // brush base = blue [0,0,1]
-    t.set_texture_ramp(ColorRamp::new(
+    t.set_shape_color_ramp(ColorRamp::new(
         vec![
             RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
             RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
@@ -570,7 +570,7 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
         RampColorMode::Rgb,
         RampInterp::Linear,
     ));
-    t.set_texture_ramp_enabled(true);
+    t.set_shape_ramp_enabled(true); // B&W stays off ⇒ the ramp colourises
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     let c = px(&t, 64, 32, 32);
     assert!(
@@ -580,22 +580,27 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
 }
 
 #[test]
-fn shape_ramp_value_bar_select_option_sets_the_stop_value() {
+fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
-    // The value bar forwards `"id:value"` to PAINTER_SHAPE_RAMP_STOP_VALUE (a `SelectOption`); the tool
-    // sets THAT stop's grayscale value. Stop id 0 defaults to 0 (black) → drive it to 0.5.
+    // The Shape ramp swatch picker forwards `"id,r,g,b,a"` (sRGB bytes) to PAINTER_SHAPE_RAMP_SWATCH;
+    // the tool sets THAT stop's colour. Stop id 0 defaults to black → drive it to pure red.
     let mut t = PainterTool::default();
-    let id0 = t.shape_ramp().stops()[0].id;
+    let id0 = t.shape_color_ramp().stops()[0].id;
     t.handle_panel_event(PanelEvent::SelectOption(
-        core_ids::PAINTER_SHAPE_RAMP_STOP_VALUE,
-        format!("{id0}:0.5"),
+        core_ids::PAINTER_SHAPE_RAMP_SWATCH,
+        format!("{id0},255,0,0,255"),
     ));
-    let s0 = *t.shape_ramp().stops().iter().find(|s| s.id == id0).unwrap();
+    let s0 = *t
+        .shape_color_ramp()
+        .stops()
+        .iter()
+        .find(|s| s.id == id0)
+        .unwrap();
     assert!(
-        (s0.value - 0.5).abs() < 1e-6,
-        "value bar set stop {id0} to 0.5, got {}",
-        s0.value
+        s0.color[0] > 0.9 && s0.color[1] < 0.1 && s0.color[2] < 0.1,
+        "swatch set stop {id0} to red, got {:?}",
+        s0.color
     );
 }
 
@@ -655,7 +660,7 @@ fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
         if accumulate {
             t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
         }
-        t.set_texture_ramp(ColorRamp::new(
+        t.set_shape_color_ramp(ColorRamp::new(
             vec![
                 RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
                 RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
@@ -663,7 +668,7 @@ fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
             RampColorMode::Rgb,
             RampInterp::Linear,
         ));
-        t.set_texture_ramp_enabled(true);
+        t.set_shape_ramp_enabled(true); // no Grain ⇒ the Shape ramp owns colour (the ramped path)
         t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
         for _ in 0..5 {
             t.on_canvas_pointer(cp([38.0, 32.0], PointerPhase::Move));
@@ -2443,6 +2448,67 @@ fn stencil_preview_shows_during_transform_and_fades_when_idle() {
     assert!(
         t.stencil_preview().is_none(),
         "preview hides the moment the drag ends"
+    );
+}
+
+#[test]
+fn shape_colour_ramp_paints_cached_and_colourises_the_silhouette() {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    // The no-Grain Shape Colour Ramp blits the cached coverage mask applying `ramp[coverage]` (the
+    // fast path) — this proves it colourises correctly. With a Shape silhouette + Strength 1 + no Grain
+    // + no per-dab rotation + B&W off, the router takes `stamp_dabs_cached_ramped`.
+    let mut t = white_canvas(64, 16.0);
+    t.set_brush_shape_image(vec![255u8; 16], 4, 4); // full-coverage silhouette ⇒ cacheable
+    t.set_brush_strength(1.0); // no Accumulate cap ⇒ keeps the cacheable path
+    // Shape colour ramp ON (B&W off), red high stop (full coverage → top colour).
+    t.set_shape_color_ramp(ColorRamp::new(
+        vec![
+            RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
+            RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+        ],
+        RampColorMode::Rgb,
+        RampInterp::Linear,
+    ));
+    t.set_shape_ramp_enabled(true);
+
+    // Paint a dab; the full-coverage silhouette centre takes the top ramp colour (red).
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    let c = px(&t, 64, 32, 32);
+    assert!(
+        c[0] > 150 && c[1] < 90 && c[2] < 90,
+        "Shape colour-ramp centre is ramp red via the cached blit, got {c:?}"
+    );
+}
+
+#[test]
+fn grain_assign_auto_enables_shape_bw_and_resets_the_grain_ramp() {
+    use ph2d_painter_brush::TextureKind;
+    let mut t = white_canvas(64, 10.0);
+    // A coloured Shape ramp (no Grain yet): enable it, B&W off, so it owns colour.
+    t.set_shape_ramp_enabled(true);
+    assert!(
+        !t.shape_ramp_bw(),
+        "Shape ramp starts as a colour ramp (B&W off)"
+    );
+    // A coloured GRAIN ramp too, enabled — so we can observe it reset.
+    t.toggle_texture_ramp_enabled();
+    assert!(t.brush_settings().texture_ramp_enabled);
+
+    // Assign a Grain texture → the Shape ramp's B&W auto-enables (it becomes the tone), and the (now
+    // Grain-owned) colour ramp resets to its default off state (Enio 2026-06-26).
+    t.set_brush_texture_kind(TextureKind::Noise.to_u8());
+    let b = t.brush_settings();
+    assert!(
+        b.shape_color_ramp_bw,
+        "assigning a Grain auto-enabled the Shape ramp's B&W (tone) filter"
+    );
+    assert!(
+        b.shape_color_ramp_enabled,
+        "the Shape ramp stays enabled (now as tone)"
+    );
+    assert!(
+        !b.texture_ramp_enabled && !b.texture_ramp_bw,
+        "assigning a Grain reset the Grain colour ramp to defaults"
     );
 }
 

@@ -35,6 +35,7 @@ mod paint_adjust;
 mod paint_brush;
 mod paint_brush_top;
 mod paint_falloff;
+mod paint_ramp_widget;
 mod paint_rows;
 mod paint_shape;
 mod paint_shape_dab;
@@ -45,6 +46,7 @@ mod paint_texture;
 mod paint_texture_ramp;
 mod populate;
 pub mod state;
+mod state_ramp;
 
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,

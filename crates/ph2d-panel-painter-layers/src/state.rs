@@ -23,6 +23,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+// Ramp UI state accessors live in the sibling `state_ramp` (panel LOC-cap split); re-exported here so
+// callers keep the `state::*` path. The backing thread-locals stay in this module (`pub(crate)`).
+pub(crate) use crate::state_ramp::*;
+
 /// The brush's published Image texture: `(luminance bytes, width, height)`.
 type TextureImageSnapshot = (Arc<Vec<u8>>, u32, u32);
 
@@ -80,21 +84,32 @@ thread_local! {
     /// The open Texture-section Mapping dropdown popover: `(chip_rect, current_mapping_u8)`.
     static PENDING_BRUSH_TEXTURE_MAPPING_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
+    // Ramp dropdown-popover + selected-stop state — `pub(crate)` so the accessor fns live in the
+    // sibling `crate::state_ramp` module (split for the panel LOC cap).
     /// The open Color Ramp **Mode** dropdown popover: `(chip_rect, current_mode_u8)`.
-    static PENDING_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Color Ramp **Interpolation** dropdown popover: `(chip_rect, current_interp_u8)`.
-    static PENDING_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open Color Ramp **Alpha action** dropdown popover: `(chip_rect, current_mode_u8)`.
-    static PENDING_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
 
     /// The open **Shape** ramp Interpolation dropdown popover: `(chip_rect, current_interp_u8)`.
-    static PENDING_SHAPE_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
+    pub(crate) static PENDING_SHAPE_RAMP_INTERP_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
+
+    /// The open **Shape** ramp colour-Mode dropdown popover: `(chip_rect, current_mode_u8)`.
+    pub(crate) static PENDING_SHAPE_RAMP_MODE_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
+
+    /// The open **Shape** ramp Alpha-action dropdown popover: `(chip_rect, current_mode_u8)`.
+    pub(crate) static PENDING_SHAPE_RAMP_ALPHA_DD: Cell<Option<(Rect, u8)>> =
+        const { Cell::new(None) };
 
     /// Selected **Shape**-ramp stop (stable id), so the bottom-row chips edit it (separate from the
     /// Grain ramp's selection).
-    static SELECTED_SHAPE_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
+    pub(crate) static SELECTED_SHAPE_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
 
     /// Multi-selection set published by the bridge each frame (W3 multi-select):
     /// the layer rows the panel highlights. Always includes the active layer
@@ -142,7 +157,7 @@ thread_local! {
 
     /// The Color Ramp's selected stop index — set by clicking/dragging a stop on the bar; the bottom
     /// row (index / position chips + colour box) edits this stop. Tool-global.
-    static SELECTED_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
+    pub(crate) static SELECTED_RAMP_STOP: Cell<u8> = const { Cell::new(0) };
 
     /// Screen geometry of the Falloff curve graph, published each frame by
     /// [`crate::paint_falloff`] so the shell can hit-test a right-click (open the
@@ -232,36 +247,6 @@ pub(crate) fn selected_curve_point() -> Option<(u64, u8, usize)> {
 /// a right-click / click-add.
 pub fn set_selected_falloff_point(v: Option<u8>) {
     SELECTED_FALLOFF_POINT.with(|c| c.set(v));
-}
-
-/// Set the Color Ramp's selected stop index (clicked/dragged on the bar).
-pub fn set_selected_ramp_stop(i: u8) {
-    SELECTED_RAMP_STOP.with(|c| c.set(i));
-}
-
-/// The Color Ramp's selected stop index (default `0`).
-pub(crate) fn selected_ramp_stop() -> u8 {
-    SELECTED_RAMP_STOP.with(|c| c.get())
-}
-
-/// Set the selected **Shape**-ramp stop (stable id).
-pub fn set_selected_shape_ramp_stop(i: u8) {
-    SELECTED_SHAPE_RAMP_STOP.with(|c| c.set(i));
-}
-
-/// The selected **Shape**-ramp stop (stable id).
-pub(crate) fn selected_shape_ramp_stop() -> u8 {
-    SELECTED_SHAPE_RAMP_STOP.with(|c| c.get())
-}
-
-/// Stash the open Shape-ramp Interpolation dropdown for the deferred popover pass.
-pub(crate) fn set_pending_shape_ramp_interp_dd(v: Option<(Rect, u8)>) {
-    PENDING_SHAPE_RAMP_INTERP_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Shape-ramp Interpolation dropdown.
-pub(crate) fn take_pending_shape_ramp_interp_dd() -> Option<(Rect, u8)> {
-    PENDING_SHAPE_RAMP_INTERP_DD.with(|c| c.take())
 }
 
 /// The selected brush Custom-falloff point's stable id, if any. `pub` so the
@@ -535,36 +520,6 @@ pub(crate) fn set_pending_brush_texture_mapping_dd(v: Option<(Rect, u8)>) {
 /// Take (and clear) the pending Texture Mapping dropdown for the deferred popover.
 pub(crate) fn take_pending_brush_texture_mapping_dd() -> Option<(Rect, u8)> {
     PENDING_BRUSH_TEXTURE_MAPPING_DD.with(|c| c.take())
-}
-
-/// Stash the open Color Ramp Mode dropdown for the deferred popover pass.
-pub(crate) fn set_pending_ramp_mode_dd(v: Option<(Rect, u8)>) {
-    PENDING_RAMP_MODE_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Color Ramp Mode dropdown for the deferred popover.
-pub(crate) fn take_pending_ramp_mode_dd() -> Option<(Rect, u8)> {
-    PENDING_RAMP_MODE_DD.with(|c| c.take())
-}
-
-/// Stash the open Color Ramp Interpolation dropdown for the deferred popover pass.
-pub(crate) fn set_pending_ramp_interp_dd(v: Option<(Rect, u8)>) {
-    PENDING_RAMP_INTERP_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Color Ramp Interpolation dropdown for the deferred popover.
-pub(crate) fn take_pending_ramp_interp_dd() -> Option<(Rect, u8)> {
-    PENDING_RAMP_INTERP_DD.with(|c| c.take())
-}
-
-/// Stash the open Color Ramp Alpha-action dropdown for the deferred popover pass.
-pub(crate) fn set_pending_ramp_alpha_dd(v: Option<(Rect, u8)>) {
-    PENDING_RAMP_ALPHA_DD.with(|c| c.set(v));
-}
-
-/// Take (and clear) the pending Color Ramp Alpha-action dropdown for the deferred popover.
-pub(crate) fn take_pending_ramp_alpha_dd() -> Option<(Rect, u8)> {
-    PENDING_RAMP_ALPHA_DD.with(|c| c.take())
 }
 
 /// Publica o set de multi-seleção atual (W3). Chamado pelo shell uma vez por

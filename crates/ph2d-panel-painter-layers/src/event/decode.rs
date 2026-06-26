@@ -48,6 +48,16 @@ pub(super) fn decode_shape_ramp_interp_option(id: NodeId) -> Option<u8> {
     (0..RampInterp::COUNT).find(|&i| core_ids::painter_shape_ramp_interp_option_id(i) == id)
 }
 
+/// Decode a Shape-ramp colour-Mode popover option id → its `RampColorMode` wire `u8`.
+pub(super) fn decode_shape_ramp_mode_option(id: NodeId) -> Option<u8> {
+    (0..RampColorMode::COUNT).find(|&m| core_ids::painter_shape_ramp_mode_option_id(m) == id)
+}
+
+/// Decode a Shape-ramp Alpha-action popover option id → its `RampAlphaMode` wire `u8`.
+pub(super) fn decode_shape_ramp_alpha_option(id: NodeId) -> Option<u8> {
+    (0..RampAlphaMode::COUNT).find(|&m| core_ids::painter_shape_ramp_alpha_option_id(m) == id)
+}
+
 /// Decode a texture-Mapping popover option id → its `TextureMapping` wire `u8` (`0..=2`).
 pub(super) fn decode_texture_mapping_option(id: NodeId) -> Option<u8> {
     (0..TextureMapping::COUNT).find(|&m| core_ids::painter_brush_texture_mapping_option_id(m) == id)

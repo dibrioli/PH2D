@@ -76,15 +76,41 @@ impl PainterTool {
     /// Toggle whether the Color Ramp drives the paint colour.
     pub fn toggle_texture_ramp_enabled(&mut self) {
         self.paint.texture_ramp_enabled = !self.paint.texture_ramp_enabled;
+        self.paint.texture_ramp_dirty = true;
     }
 
-    /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, alpha action
-    /// off. Flags the LUT dirty so the next ramped stamp re-bakes.
+    /// Toggle the Grain ramp **B&W** filter (desaturate the colour LUT to luminance).
+    pub fn toggle_texture_ramp_bw(&mut self) {
+        self.paint.texture_ramp_bw = !self.paint.texture_ramp_bw;
+        self.paint.texture_ramp_dirty = true;
+    }
+
+    /// **Invert** the Grain Color Ramp left↔right (mirror stop positions). The invert button.
+    pub fn ramp_invert(&mut self) {
+        self.paint.texture_ramp.invert();
+        self.paint.texture_ramp_dirty = true;
+    }
+
+    /// Reset the **Color Ramp** sub-section to defaults: ramp off, the default gradient, B&W off, alpha
+    /// action off. Flags the LUT dirty so the next ramped stamp re-bakes.
     pub fn reset_brush_color_ramp(&mut self) {
         self.paint.texture_ramp = ph2d_color::ColorRamp::default();
         self.paint.texture_ramp_enabled = false;
+        self.paint.texture_ramp_bw = false;
         self.paint.texture_ramp_alpha_mode = ph2d_painter_brush::RampAlphaMode::None;
         self.paint.texture_ramp_dirty = true;
+    }
+
+    /// React to a Grain texture being assigned over an empty Grain (None→Some): auto-enable the Shape
+    /// ramp's **B&W** filter so the Shape provides the silhouette TONE and the freshly-reset Grain ramp
+    /// owns the COLOUR (Enio 2026-06-26). The user is free to turn B&W back off to let the Shape
+    /// colourise instead. Bumps the tone version so the cached silhouette mask re-bakes.
+    pub(super) fn on_grain_assigned(&mut self) {
+        self.paint.shape_color_ramp_bw = true;
+        self.paint.shape_ramp_dirty = true;
+        self.paint.texture_ramp_dirty = true;
+        self.paint.shape_ramp_version = self.paint.shape_ramp_version.wrapping_add(1);
+        self.reset_brush_color_ramp();
     }
 
     /// Set what the ramp colour's **alpha** does when painting (`RampAlphaMode` wire discriminant):

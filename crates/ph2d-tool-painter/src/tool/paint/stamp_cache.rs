@@ -9,7 +9,7 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, Dab, Falloff, FalloffCurve, TextureSettings, blit_canvas_cached, blit_stamp,
-    render_stamp_mask,
+    blit_stamp_ramped, render_stamp_mask,
 };
 use std::sync::Arc;
 
@@ -115,6 +115,64 @@ impl PainterTool {
         }
     }
 
+    /// Like [`Self::stamp_dabs_cached`] but the per-texel colour comes from the **Shape Colour Ramp**
+    /// indexed by the cached coverage — the cacheable fast path for a no-Grain colour-ramp stroke. The
+    /// silhouette is rendered once into the [`ph2d_painter_brush::StampMask`] (the no-Grain gate already
+    /// suppresses the B&W tone ramp, so the mask is the raw silhouette × falloff coverage) and the ramp
+    /// is a 256-entry LUT lookup at blit time — vs the per-pixel [`Self::stamp_dabs_ramped`] recomputing
+    /// the silhouette every pixel every dab (Enio 2026-06-26).
+    pub(super) fn stamp_dabs_cached_ramped(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        alpha_locked: bool,
+        w: u32,
+        h: u32,
+    ) {
+        let owner = self.color_ramp_owner(brush.texture.is_active());
+        self.ensure_ramp_lut(owner);
+        let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
+        self.ensure_stamp_cache(brush, mask_size_for(max_r));
+        let Some((mask, _)) = self.paint.stamp_cache.as_ref() else {
+            return;
+        };
+        let ramp = self.paint.texture_ramp_lut.as_slice();
+        let alpha_mode = self.active_ramp_alpha_mode(owner);
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for d in dabs {
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                color: d.color,
+                ..*brush
+            };
+            if let Some(r) = blit_stamp_ramped(
+                buf,
+                w,
+                h,
+                d.center,
+                d.radius_px,
+                mask,
+                &spec,
+                d.coverage,
+                alpha_locked,
+                ramp,
+                alpha_mode,
+            ) {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+            }
+        }
+        if let Some(rect) = touched {
+            self.mark_dirty(rect);
+        }
+    }
+
     /// Scale-blit each dab through the lazily-filled canvas texture cache — the Tiled / Stencil path
     /// of [`Self::stamp_dabs`]. The texture is computed once per canvas pixel per stroke; the falloff
     /// is still per-pixel (so it's appearance-identical to the per-pixel path).
@@ -132,9 +190,10 @@ impl PainterTool {
         // ramp LUT are all separate fields, so they can be held at once.
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
-        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
-        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
+        // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
+        // `stamp_dabs_ramped` (Enio 2026-06-26).
+        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
+            && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let Some(cache) = self.paint.canvas_tex_cache.as_mut() else {
             return;
@@ -210,7 +269,8 @@ impl PainterTool {
         w: u32,
         h: u32,
     ) {
-        self.ensure_ramp_lut();
+        let owner = self.color_ramp_owner(brush.texture.is_active());
+        self.ensure_ramp_lut(owner);
         self.ensure_shape_ramp_lut();
         let textured = brush.texture.is_active();
         // Disjoint borrows: the imported image + the ramp LUT (both `self.paint` sub-fields) and the
@@ -218,12 +278,14 @@ impl PainterTool {
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
-        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
-        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
-        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
+        // Shape **tone** ramp applies when the Shape ramp's B&W filter is on (then the Grain / brush
+        // owns colour and the Shape remaps the silhouette tone); off ⇒ the Shape ramp is the colour
+        // owner, so no tone remap (Enio 2026-06-26).
+        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
+            && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let lut = &self.paint.texture_ramp_lut;
-        let alpha_mode = self.paint.texture_ramp_alpha_mode;
+        let alpha_mode = self.active_ramp_alpha_mode(owner);
         let rake = brush.texture.rake;
         let shape_rake = brush.shape.rake;
         let mut tex_rng = self.paint.tex_rng;
@@ -344,9 +406,10 @@ impl PainterTool {
         let shape_rake = brush.shape.rake;
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        // B&W tone ramp applies only WITH a Grain (no Grain ⇒ the Shape's ramp is the COLOUR ramp on
-        // the ramped path) — suppress the tone remap here (Enio 2026-06-25).
-        let shape_ramp_lut = (self.paint.shape_ramp_enabled && brush.texture.is_active())
+        // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
+        // `stamp_dabs_ramped` (Enio 2026-06-26).
+        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
+            && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let mut tex_rng = self.paint.tex_rng;
@@ -450,43 +513,6 @@ impl PainterTool {
         }
     }
 
-    /// (Re)bake the ramp LUT when the ramp changed: `eval` is linear RGBA, but the dab blends in the
-    /// layer's straight-sRGB space (matching `brush.color` = the picked colour / 255), so the RGB is
-    /// converted linear → sRGB; alpha stays straight (no gamma).
-    fn ensure_ramp_lut(&mut self) {
-        if !self.paint.texture_ramp_dirty && self.paint.texture_ramp_lut.len() == 256 {
-            return;
-        }
-        let mut lut = vec![[0.0f32; 4]; 256];
-        self.paint.texture_ramp.bake_into(&mut lut);
-        for c in &mut lut {
-            c[0] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[0])) / 255.0;
-            c[1] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[1])) / 255.0;
-            c[2] = f32::from(ph2d_color::srgb::linear_to_srgb_byte(c[2])) / 255.0;
-        }
-        self.paint.texture_ramp_lut = lut;
-        self.paint.texture_ramp_dirty = false;
-    }
-
-    /// Bake the **Shape value ramp** into its 256-entry grayscale LUT (scalar `[0,1]`, no gamma — it
-    /// remaps the silhouette's coverage value). A no-op when clean.
-    fn ensure_shape_ramp_lut(&mut self) {
-        if !self.paint.shape_ramp_dirty && self.paint.shape_ramp_lut.len() == 256 {
-            return;
-        }
-        let mut lut = vec![0.0f32; 256];
-        self.paint.shape_ramp.bake_into(&mut lut);
-        self.paint.shape_ramp_lut = lut;
-        self.paint.shape_ramp_dirty = false;
-    }
-
-    /// The active Shape **tone** value-ramp LUT slice when enabled AND a Grain is active (no Grain ⇒
-    /// the Shape's ramp is the colour ramp, not the tone ramp); caller `ensure_shape_ramp_lut`s first.
-    fn shape_ramp_lut_slice(&self, grain_active: bool) -> Option<&[f32]> {
-        (self.paint.shape_ramp_enabled && grain_active)
-            .then_some(self.paint.shape_ramp_lut.as_slice())
-    }
-
     /// Re-render the cached stamp mask when the appearance / mask size changed; a no-op on a hit.
     fn ensure_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
         self.ensure_shape_ramp_lut();
@@ -510,7 +536,7 @@ impl PainterTool {
         let mask = {
             let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-            let shape_ramp_lut = self.shape_ramp_lut_slice(brush.texture.is_active());
+            let shape_ramp_lut = self.shape_tone_lut_slice();
             render_stamp_mask(
                 brush,
                 image.as_ref(),

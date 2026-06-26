@@ -227,7 +227,8 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
 
 /// Bilinear coverage from `mask` at the dab-relative unit coord `(u, v) ∈ [-1, 1]` (centre `(0,0)`),
 /// clamp-to-edge (the rim texels are `0`, so clamping reads no paint). Centre-coord convention.
-fn sample_mask(mask: &StampMask, u: f32, v: f32) -> f32 {
+/// `pub(crate)` so the sibling [`crate::stamp_ramped`] colour-ramp blit reuses the same sampler.
+pub(crate) fn sample_mask(mask: &StampMask, u: f32, v: f32) -> f32 {
     let s = mask.size as f32;
     let mx = (u + 1.0) * 0.5 * s - 0.5;
     let my = (v + 1.0) * 0.5 * s - 0.5;

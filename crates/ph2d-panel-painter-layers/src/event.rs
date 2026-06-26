@@ -449,9 +449,13 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 )));
             Some(true)
         }
-        // Color Ramp colour box → toggle the shared picker targeting the selected stop.
+        // Grain / Shape Color Ramp colour box → toggle the shared picker targeting the selected stop.
         WidgetEvent::Click(id) if id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH => {
             ramp_picker::on_swatch_click(host);
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
+            shape_ramp_picker::on_swatch_click(host);
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).
@@ -476,7 +480,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             ramp_picker::on_ramp_value_changed(host, id);
             Some(true)
         }
-        // Shape Tone ramp: bar-stop drag + the editable index / position / value chips.
+        // Shape Color ramp: bar-stop drag + the editable index / position chips.
         WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
             shape_ramp_picker::on_shape_ramp_value_changed(host, id);
             Some(true)

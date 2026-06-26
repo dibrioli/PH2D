@@ -3,6 +3,7 @@
 //! per-pixel / ramped). Split from `paint.rs` for the workspace LOC cap; the routes themselves live in
 //! `stamp_cache`.
 
+use super::ramp_lut::RampLutOwner;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::Dab;
 
@@ -36,13 +37,6 @@ impl PainterTool {
             .active()
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
-        // Color Ramp: a per-texel scalar drives the painted COLOUR (baked LUT), bypassing the scalar
-        // caches. With a Grain it's the Grain pattern; with NO Grain it's the silhouette coverage (the
-        // Shape's colour ramp, Enio 2026-06-25) — so the ramped path is taken whenever the ramp is on.
-        if self.paint.texture_ramp_enabled {
-            self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
-            return;
-        }
         let has_shape_image = self.paint.shape_image.is_some();
         // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own
         // basis, so the constant-orientation caches are skipped (the per-pixel path resolves per dab).
@@ -50,6 +44,26 @@ impl PainterTool {
             brush.has_per_dab_rotation() || brush.shape_has_per_dab_rotation(has_shape_image);
         // Accumulate OFF caps the stroke at Strength (per-pixel mask); skip the caches when Strength < 1.
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
+        // A Colour Ramp owns the painted COLOUR (baked LUT): the **Shape** ramp (its B&W filter off →
+        // colourise the silhouette) or the **Grain** ramp (indexed by the Grain pattern). With NO Grain
+        // + the Shape owning colour, the silhouette COVERAGE indexes the ramp, which the StampMask
+        // already caches → blit the cached mask applying `ramp[coverage]` (as cheap as a plain cached
+        // stamp, not a per-pixel silhouette recompute per dab). Per-pixel otherwise: a Grain to index,
+        // per-dab rotation, the Accumulate cap, or no silhouette to cache (Enio 2026-06-26).
+        let grain_active = brush.texture.is_active();
+        if self.color_ramp_owner(grain_active) != RampLutOwner::None {
+            let cacheable = !grain_active
+                && brush.shape_silhouette_active(has_shape_image)
+                && brush.dab_mask_cacheable(has_shape_image)
+                && !per_dab_rotation
+                && !accumulate_cap;
+            if cacheable {
+                self.stamp_dabs_cached_ramped(dabs, &brush, alpha_locked, w, h);
+            } else {
+                self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
+            }
+            return;
+        }
         // Whether either slot genuinely shapes the dab beyond the falloff: a Shape image (silhouette) or
         // an active Grain. A bare falloff brush (neither) stays on the per-pixel path, as before.
         let want_cache =

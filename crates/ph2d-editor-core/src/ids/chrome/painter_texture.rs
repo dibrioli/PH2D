@@ -112,14 +112,18 @@ pub const PAINTER_BRUSH_TEXTURE_RAMP_ADD: NodeId = hash_node_id("painter_brush.t
 /// Ramp **invert** button (flip stop positions L↔R). `Click` → `ramp_invert`.
 pub const PAINTER_BRUSH_TEXTURE_RAMP_INVERT: NodeId =
     hash_node_id("painter_brush.texture_ramp_invert");
+/// Ramp **B&W** filter toggle (desaturate the ramp colours to Rec.709 luminance). `Click` →
+/// `toggle_texture_ramp_bw`. A pure display/paint filter — the authored stop colours are untouched.
+pub const PAINTER_BRUSH_TEXTURE_RAMP_BW: NodeId = hash_node_id("painter_brush.texture_ramp_bw");
 
-/// The Grain-ramp **Click** buttons (enable / add / remove / invert) — forwarded as `PanelEvent::Click`
-/// by the panel's `event.rs` (a single membership check).
-pub const PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS: [NodeId; 4] = [
+/// The Grain-ramp **Click** buttons (enable / add / remove / invert / B&W) — forwarded as
+/// `PanelEvent::Click` by the panel's `event.rs` (a single membership check).
+pub const PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS: [NodeId; 5] = [
     PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
     PAINTER_BRUSH_TEXTURE_RAMP_ADD,
     PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
     PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+    PAINTER_BRUSH_TEXTURE_RAMP_BW,
 ];
 /// Ramp **remove stop** button (removes the selected stop). `Click` → `ramp_remove_stop`.
 pub const PAINTER_BRUSH_TEXTURE_RAMP_REMOVE: NodeId =

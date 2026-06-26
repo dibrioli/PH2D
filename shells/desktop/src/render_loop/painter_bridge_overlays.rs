@@ -90,6 +90,7 @@ pub(super) fn draw_repeat_image(
     // tile rides through `base`'s full transform (scale · rotation · anchor) — a screen-space offset
     // would shear off a rotated/scaled sprite. The central image (`base`) already includes everything.
     let (iw, ih) = (f64::from(preview.width), f64::from(preview.height));
+    let (win_w, win_h) = (f64::from(window_size.width), f64::from(window_size.height));
     for dy in [-1i32, 0, 1] {
         for dx in [-1i32, 0, 1] {
             if dx == 0 && dy == 0 {
@@ -97,6 +98,13 @@ pub(super) fn draw_repeat_image(
             }
             let tile =
                 base * ph2d_vector::Affine::translate((f64::from(dx) * iw, f64::from(dy) * ih));
+            // Viewport-cull: each tile is a FULL-canvas blit, so 8/frame ≈ halves FPS when zoomed in
+            // (the neighbours sit off-screen). Skip a tile whose screen-space bbox misses the window —
+            // zero cost when the sprite fills the view (Enio 2026-06-26).
+            let bb = tile.transform_rect_bbox(ph2d_vector::Rect::new(0.0, 0.0, iw, ih));
+            if bb.x1 < 0.0 || bb.y1 < 0.0 || bb.x0 > win_w || bb.y0 > win_h {
+                continue;
+            }
             vector_scene.draw_image_rgba_transformed(
                 &preview.rgba,
                 preview.width,

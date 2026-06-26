@@ -65,6 +65,12 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          holds RGBA colours) — the stamp reads it fresh each dab in `stamp_dabs_ramped`, \
          exactly like the unflagged `set_blend_mode`. No derived cache keyed on it.",
     ),
+    (
+        "set_shape_ramp_alpha_mode",
+        "Painter brush SHAPE Color Ramp alpha action: the Shape ramp twin of \
+         `set_texture_ramp_alpha_mode` — a single `shape_color_ramp_alpha_mode` field write, \
+         read fresh each dab at stamp time, not baked into any LUT. No derived cache keyed on it.",
+    ),
 ];
 
 /// Setters that reconcile via implementation-specific verbs (rather
@@ -102,6 +108,13 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
         "texture_ramp_dirty",
         "Painter brush ramp colour-interpolation space: sets `texture_ramp_dirty = true` so \
          `ensure_ramp_lut` re-bakes the LUT (the colours the mode changes) before the next stamp",
+    ),
+    (
+        "set_shape_ramp_mode",
+        "shape_ramp_changed",
+        "Painter brush SHAPE ramp colour-interpolation space: calls `shape_ramp_changed()` which \
+         flags both the colour + tone LUTs dirty (and bumps the version) so they re-bake before the \
+         next stamp — the Shape twin of `set_texture_ramp_mode`",
     ),
     (
         "set_texture_layer_ramp_mode",

@@ -145,17 +145,20 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,
         ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
-        // Grain Colors ramp: enable toggle + add / remove / invert stop + colour-box buttons.
+        // Grain Colors ramp: enable + add / remove / invert / B&W + colour-box buttons.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-        // Shape Tone value ramp: enable + add / remove / invert + section reset.
+        // Shape Color ramp: enable + add / remove / invert / B&W + colour-box + section reset.
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ADD,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_REMOVE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INVERT,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_BW,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_SWATCH,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
         // Per-section reset icon buttons (Inspector-Transform pattern).
         ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
@@ -183,12 +186,14 @@ pub fn populate(store: &mut WidgetStore) {
         // Texture section: Kind picker + Mapping chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_KIND,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_MAPPING,
-        // Color Ramp: Mode + Interpolation + Alpha-action chips.
+        // Grain Color Ramp: Mode + Interpolation + Alpha-action chips.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
-        // Shape Tone ramp: Interpolation chip.
+        // Shape Color Ramp: Mode + Interpolation + Alpha-action chips.
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_MODE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INTERP,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
     ] {
         store.register(
             id,

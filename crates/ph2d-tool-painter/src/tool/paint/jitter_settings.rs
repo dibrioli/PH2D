@@ -139,10 +139,24 @@ impl PainterTool {
                 }
                 true
             }
-            // ── Grain-ramp invert + Shape Tone value ramp (Click + SelectOption) — routed here (not the
-            //    main match) to keep `trait_impls.rs` under the workspace LOC cap. ─
+            // ── Grain-ramp invert/B&W + the Shape Colour Ramp events — split into a sibling helper to
+            //    keep both this function and `trait_impls.rs` under the workspace / per-fn LOC cap. ─
+            _ => self.route_brush_ramp_event(event),
+        }
+    }
+
+    /// The Grain-ramp invert / B&W toggle + the Shape **Colour Ramp** events (Click + SelectOption) —
+    /// split from [`Self::route_brush_jitter_event`] for the per-fn LOC cap. Returns `true` when
+    /// consumed. The Shape ramp is the colour twin of the Grain ramp (mode/interp/alpha/swatch/move).
+    fn route_brush_ramp_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        match event {
             PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT => {
                 self.ramp_invert();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BW => {
+                self.toggle_texture_ramp_bw();
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_ENABLE => {
@@ -161,8 +175,18 @@ impl PainterTool {
                 self.shape_ramp_invert();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_BW => {
+                self.toggle_shape_ramp_bw();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_RAMP_RESET => {
                 self.reset_shape_ramp();
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_MODE => {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_shape_ramp_mode(m);
+                }
                 true
             }
             PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_INTERP => {
@@ -171,17 +195,26 @@ impl PainterTool {
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_EDIT => {
-                if let Some((sid, x)) = parse_id_f32(value) {
-                    self.shape_ramp_move_stop(sid, x);
+            PanelEvent::SelectOption(id, value)
+                if *id == core_ids::PAINTER_SHAPE_RAMP_ALPHA_MODE =>
+            {
+                if let Ok(m) = value.parse::<u8>() {
+                    self.set_shape_ramp_alpha_mode(m);
                 }
                 true
             }
-            PanelEvent::SelectOption(id, value)
-                if *id == core_ids::PAINTER_SHAPE_RAMP_STOP_VALUE =>
-            {
-                if let Some((sid, v)) = parse_id_f32(value) {
-                    self.shape_ramp_set_stop_value(sid, v);
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
+                let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
+                if let (Some(sid), Some(r), Some(g), Some(b), Some(a)) =
+                    (it.next(), it.next(), it.next(), it.next(), it.next())
+                {
+                    self.shape_ramp_set_stop_color(sid as u8, [r as u8, g as u8, b as u8, a as u8]);
+                }
+                true
+            }
+            PanelEvent::SelectOption(id, value) if *id == core_ids::PAINTER_SHAPE_RAMP_EDIT => {
+                if let Some((sid, x)) = parse_id_f32(value) {
+                    self.shape_ramp_move_stop(sid, x);
                 }
                 true
             }

@@ -14,9 +14,9 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, FootprintDeform, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG,
-    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
-    brush_falloff_weight_at, param_specs, render_shape_preview,
+    BrushSettings, Falloff, FootprintDeform, ImageMask, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
+    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, brush_falloff_weight_at, param_specs,
+    render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -243,8 +243,6 @@ fn paint_shape_preview(
         *w = brush_falloff_weight_at(&brush, i as f32 / 63.0).clamp(0.0, 1.0); // LITERAL-PX-OK: LUT last-index normalize (64 entries)
     }
     let kind = TextureKind::from_u8(brush.shape_kind);
-    // Shape value-ramp LUT (B&W tonal remap), baked from the live ramp so the preview tracks it.
-    let ramp_lut = shape_ramp_lut(&brush);
     let image = state::current_brush_shape_image();
     let image_mask = image.as_ref().map(|(lum, w, h)| ImageMask {
         lum: lum.as_slice(),
@@ -260,18 +258,18 @@ fn paint_shape_preview(
         brush.shape_params,
         FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg),
         &lut,
-        ramp_lut.as_deref(),
+        None,
         image_mask.as_ref(),
         &mut cov,
         side,
         side,
     );
 
-    // Composite over a dark checker. With NO Grain and the Shape's colour ramp on, the engine paints
-    // `ramp[coverage]` — show that colour; otherwise lift the checker toward white by the coverage.
+    // Composite over a dark checker. When the Shape Colour Ramp is on, show `ramp[coverage]` (B&W off ⇒
+    // colourised; B&W on ⇒ the desaturated ramp, i.e. the silhouette's tone); otherwise lift the
+    // checker toward white by the coverage. The ramp applies regardless of the Grain (Enio 2026-06-26).
     let mut clut = [[0.0f32; 4]; 256];
-    let colored = kind == TextureKind::None
-        && crate::paint_texture::build_ramp_preview_lut(&brush, &mut clut);
+    let colored = shape_ramp_preview_lut(&brush, &mut clut);
     let ox = (bw - side) / 2;
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
     for py in 0..bh {
@@ -323,23 +321,18 @@ fn paint_shape_preview(
     y + ph + Spacing::Sm.px()
 }
 
-/// Bake the live Shape **value ramp** into a 64-entry LUT (`None` when the ramp is off) by rebuilding
-/// the `ValueRamp` from the published stops + interp — so the preview applies the SAME tonal remap the
-/// engine paints with.
-fn shape_ramp_lut(brush: &BrushSettings) -> Option<Vec<f32>> {
-    // The B&W tone remap applies only WITH a Grain texture (no Grain ⇒ the Shape's ramp is the
-    // colour ramp, which the Shape preview doesn't tint — it shows the silhouette); match the engine
-    // so the preview agrees (Enio 2026-06-25).
-    if !brush.shape_ramp_enabled || TextureKind::from_u8(brush.texture_kind) == TextureKind::None {
-        return None;
-    }
-    let count = (brush.shape_ramp_stop_count as usize).min(brush.shape_ramp_stops.len());
-    let stops: Vec<ValueStop> = brush.shape_ramp_stops[..count]
-        .iter()
-        .map(|s| ValueStop::new(s[0], s[1]))
-        .collect();
-    let ramp = ValueRamp::new(stops, RampInterp::from_u8(brush.shape_ramp_interp));
-    let mut lut = vec![0.0f32; 64];
-    ramp.bake_into(&mut lut);
-    Some(lut)
+/// The **Shape** ramp preview LUT (256-entry sRGB-straight RGBA, incl. the B&W filter), so the
+/// silhouette preview colourises exactly as the tool paints. Thin Shape binding over the shared
+/// [`crate::paint_ramp_widget::build_preview_lut`]; `false` (→ grayscale) when off / empty.
+fn shape_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
+    let count =
+        (brush.shape_color_ramp_stop_count as usize).min(brush.shape_color_ramp_stops.len());
+    crate::paint_ramp_widget::build_preview_lut(
+        brush.shape_color_ramp_enabled,
+        brush.shape_color_ramp_bw,
+        brush.shape_color_ramp_mode,
+        brush.shape_color_ramp_interp,
+        &brush.shape_color_ramp_stops[..count],
+        out,
+    )
 }

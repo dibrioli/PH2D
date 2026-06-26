@@ -568,7 +568,7 @@ pub(crate) fn encode(v: f32) -> u8 {
 /// a premultiplied lerp `out = dst·(1−m) + (color,sa)·m`. Unlike a colour blend this can LOWER the
 /// destination alpha (where `sa < dst.a` and `m` is high) — that's how mode [`RampAlphaMode::TextureAlpha`]
 /// makes parts of the sprite transparent. With `sa = 1` everywhere it reduces to ordinary opaque paint.
-fn stamp_rgba(dst: [f32; 4], color: [f32; 3], sa: f32, m: f32) -> [f32; 4] {
+pub(crate) fn stamp_rgba(dst: [f32; 4], color: [f32; 3], sa: f32, m: f32) -> [f32; 4] {
     let sa = sa.clamp(0.0, 1.0);
     let m = m.clamp(0.0, 1.0);
     let da = dst[3];
@@ -587,7 +587,7 @@ fn stamp_rgba(dst: [f32; 4], color: [f32; 3], sa: f32, m: f32) -> [f32; 4] {
 }
 
 /// Sample a baked Color Ramp LUT at `s ∈ [0, 1]` (nearest entry — the 256-step LUT is already fine).
-fn ramp_sample(lut: &[[f32; 4]], s: f32) -> [f32; 4] {
+pub(crate) fn ramp_sample(lut: &[[f32; 4]], s: f32) -> [f32; 4] {
     if lut.is_empty() {
         return [0.0, 0.0, 0.0, 1.0];
     }

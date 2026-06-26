@@ -39,6 +39,7 @@ mod stencil;
 pub use stencil::{StencilOverlay, StencilPreview};
 mod rake;
 mod ramp;
+mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 mod shape_ramp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
@@ -121,12 +122,10 @@ pub(crate) struct PaintState {
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped
     /// part on the opposite edge (seamless when the sprite is tiled). Off by default.
     tiling: [bool; 2],
-    /// **Repeat Image**: the shell draws the sprite repeated in the 8 neighbour directions (3×3 grid);
-    /// with Tiling on those neighbour tiles are paintable too (the shell wraps the pointer back).
+    /// **Repeat Image**: the shell draws the sprite in the 8 neighbour directions (3×3); with Tiling on, those tiles are paintable (the shell wraps the pointer back).
     repeat_image: bool,
-    /// Set by [`PainterTool::paint_extend`] each pointer move, cleared by the per-frame tick. While a
-    /// stroke is held and this stays `false` for a frame (parked), the tick settles the stabilizer
-    /// toward the cursor — so a high-stabilizer stroke catches up on a pause, not only on up.
+    /// Cleared per frame; `paint_extend` sets it on a move. A parked (false) frame lets `paint_tick`
+    /// settle the stabilizer toward the cursor — high-stabilizer catch-up on a pause, not only on up.
     moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
     /// method (and once the dot is committed on pointer-up).
@@ -180,20 +179,21 @@ pub(crate) struct PaintState {
     /// The brush texture's **Color Ramp** (reusable `ph2d_color::ColorRamp`): when `enabled`, the
     /// texture's scalar indexes it for the per-texel paint colour. Baked to `lut` (linear → sRGB
     /// straight, 256 entries) when `dirty`; passed per dab to `stamp_dab_ramped`.
+    // The Grain + Shape colour ramps + the Shape **tone** LUT — engine model + LUT baking in [`ramp_lut`].
     texture_ramp: ph2d_color::ColorRamp,
     texture_ramp_enabled: bool,
+    texture_ramp_bw: bool,
     texture_ramp_lut: Vec<[f32; 4]>,
     texture_ramp_dirty: bool,
     texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
-    /// The **Shape value ramp** (B&W): remaps the silhouette's tone (`ph2d_color::ValueRamp`). `_lut` is
-    /// the baked 256-entry grayscale LUT, re-baked when `_dirty`.
-    shape_ramp: ph2d_color::ValueRamp,
-    shape_ramp_enabled: bool,
+    shape_color_ramp: ph2d_color::ColorRamp,
+    shape_color_ramp_enabled: bool,
+    shape_color_ramp_bw: bool,
+    shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
     shape_ramp_lut: Vec<f32>,
     shape_ramp_dirty: bool,
-    /// Bumped on any Shape-ramp edit (toggle / stop / invert / interp) so the cached stamp mask
-    /// re-bakes (the ramp remaps the baked silhouette). Part of [`stamp_cache::StampKey`].
     shape_ramp_version: u64,
+    ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
 }
@@ -239,14 +239,18 @@ impl Default for PaintState {
             canvas_tex_cache: None,
             texture_ramp: ph2d_color::ColorRamp::default(),
             texture_ramp_enabled: false,
+            texture_ramp_bw: false,
             texture_ramp_lut: Vec::new(),
             texture_ramp_dirty: true,
             texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
-            shape_ramp: ph2d_color::ValueRamp::default(),
-            shape_ramp_enabled: false,
+            shape_color_ramp: ph2d_color::ColorRamp::default(),
+            shape_color_ramp_enabled: false,
+            shape_color_ramp_bw: false,
+            shape_color_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
             shape_ramp_lut: Vec::new(),
             shape_ramp_dirty: true,
             shape_ramp_version: 0,
+            ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
         }
     }

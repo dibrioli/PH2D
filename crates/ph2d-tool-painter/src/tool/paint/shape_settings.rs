@@ -15,11 +15,17 @@ impl PainterTool {
     /// Store an imported grayscale `lum` image (`width × height`, row-major) as the brush **Grain** and
     /// switch the kind to Image. Called by the shell after a file pick + decode.
     pub fn set_brush_texture_image(&mut self, lum: Vec<u8>, width: u32, height: u32) {
+        let was_none = self.paint.brush.texture.kind == TextureKind::None;
         self.paint.texture_image = Some(BrushTextureImage::new(lum, width, height));
         self.paint.brush.texture.kind = TextureKind::Image;
         self.paint.texture_image_pending = false;
         // Invalidate the cached stamp's baked Image mask.
         self.paint.texture_image_version = self.paint.texture_image_version.wrapping_add(1);
+        // None→Grain (a direct image assign that didn't go through `set_brush_texture_kind`): flip the
+        // Shape ramp colour→tone + reset the now-Grain colour ramp.
+        if was_none {
+            self.on_grain_assigned();
+        }
     }
 
     /// Take (and clear) the "the user picked Image — open a file picker" request. The shell polls

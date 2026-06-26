@@ -61,6 +61,24 @@ pub const PAINTER_SHAPE_SLIDERS: [NodeId; 6] = [
     PAINTER_SHAPE_SIZE_Y,
 ];
 
+// ── Dab **flatten + rotate** gizmo (Procreate Shape panel; Enio 2026-06-26) ─────────────────────
+/// The flatten/rotate gizmo **canvas** — the `CurvePoint` parent the two handles report against. A
+/// handle drag emits `ValueChanged(PAINTER_BRUSH_DAB_GIZMO)`; the panel decodes the pointer (radial
+/// distance → flatten, angle → rotation) and forwards [`PAINTER_BRUSH_DAB_FLATTEN`] / [`PAINTER_BRUSH_DAB_ANGLE`].
+pub const PAINTER_BRUSH_DAB_GIZMO: NodeId = hash_node_id("painter_brush.dab_gizmo");
+/// Dab **Flatten** value sink (`0..1`). `SetValue` → `set_brush_dab_flatten`.
+pub const PAINTER_BRUSH_DAB_FLATTEN: NodeId = hash_node_id("painter_brush.dab_flatten");
+/// Dab **rotation** value sink (whole degrees). `SetValue` → `set_brush_dab_angle`.
+pub const PAINTER_BRUSH_DAB_ANGLE: NodeId = hash_node_id("painter_brush.dab_angle");
+
+/// Stable [`NodeId`] for the gizmo handle on `channel` (`0` = flatten, on the minor axis; `1` =
+/// rotation, on the rim). A FACTORY id (paint-time `CurvePoint` registration) so it stays off the
+/// static hit↔populate wiring scan.
+#[must_use]
+pub fn painter_brush_dab_handle_id(channel: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.dabhandle.{channel}"))
+}
+
 // ── Shape **value ramp** (B&W tonal remap of the silhouette; "Shape Tone" section) ──────────────
 /// Collapsible **Shape Tone** section header. `mark_collapsible_section`-registered in `crate::populate`.
 pub const PAINTER_SHAPE_RAMP_SECTION: NodeId = hash_node_id("painter_brush.shape_ramp_section");

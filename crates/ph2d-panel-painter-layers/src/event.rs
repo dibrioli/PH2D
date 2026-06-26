@@ -19,6 +19,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
+mod dab_gizmo;
 mod decode;
 mod option_route;
 mod ramp_picker;
@@ -478,6 +479,11 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         // Shape Tone ramp: bar-stop drag + the editable index / position / value chips.
         WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
             shape_ramp_picker::on_shape_ramp_value_changed(host, id);
+            Some(true)
+        }
+        // Flatten/rotate gizmo: a handle `CurvePoint` drag → decode flatten (radial) / angle.
+        WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_DAB_GIZMO => {
+            dab_gizmo::on_dab_gizmo_value_changed(host);
             Some(true)
         }
         // Grain/Shape param number-fields: forward the committed/scrubbed REAL value (the tool's

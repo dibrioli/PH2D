@@ -53,11 +53,11 @@ pub use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop, ValueRamp, 
 // Re-export the brush blend + falloff surface so the layers panel's Brush
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
 pub use ph2d_painter_brush::{
-    BrushBlend, Falloff, FalloffCurve, FalloffPoint, HandleType, ImageMask, JitterUnit,
-    MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, MAX_FALLOFF_POINTS, MAX_HANDLE_TYPES, MAX_TEX_PARAMS,
-    ParamSpec, RampAlphaMode, StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN,
-    TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping, eval_falloff_curve, param_specs,
-    render_shape_preview, render_texture_preview,
+    BrushBlend, DAB_FLATTEN_MAX, Falloff, FalloffCurve, FalloffPoint, FootprintDeform, HandleType,
+    ImageMask, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, MAX_FALLOFF_POINTS,
+    MAX_HANDLE_TYPES, MAX_TEX_PARAMS, ParamSpec, RampAlphaMode, StrokeMethod, TEX_ANGLE_MAX_DEG,
+    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, TextureMapping,
+    eval_falloff_curve, param_specs, render_shape_preview, render_texture_preview,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

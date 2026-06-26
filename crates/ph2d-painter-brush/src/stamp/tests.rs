@@ -5,6 +5,7 @@ use super::*;
 use crate::blend::BrushBlend;
 use crate::dab::stamp_dab;
 use crate::falloff::Falloff;
+use crate::footprint::FootprintDeform;
 use crate::spec::BrushSpec;
 use crate::texture::{TextureKind, TextureMapping, TextureSettings};
 
@@ -121,8 +122,16 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
         &mut rng,
         [w as f32, h as f32],
         [1.0, 0.0],
+        FootprintDeform::identity(),
     );
-    let sbasis = dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let sbasis = dab_basis(
+        &spec.shape,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
     let shape_in = ShapeInput {
         basis: &sbasis,
         image: Some(&shimg),
@@ -277,6 +286,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         &mut rng,
         [w as f32, h as f32],
         [1.0, 0.0],
+        FootprintDeform::identity(),
     );
     let mut a = solid(w, h, [255, 255, 255, 255]);
     let _ = stamp_dab_textured(
@@ -376,4 +386,64 @@ fn cacheability_predicate() {
             "canvas-relative / per-dab texture is NOT cacheable: {not:?}"
         );
     }
+}
+
+#[test]
+fn dab_flatten_squishes_the_cached_mask_into_a_rotated_ellipse() {
+    // A hard round disk (Constant falloff). Vertical flatten pushes points ABOVE the centre outside
+    // the ellipse while points to the SIDE stay in; rotating 90° swaps the two axes (Enio 2026-06-26).
+    let round = BrushSpec {
+        falloff: Falloff::Constant,
+        hardness: 1.0,
+        ..Default::default()
+    };
+    let flat = BrushSpec {
+        dab_flatten: 0.7,
+        ..round
+    };
+    let flat_rot = BrushSpec {
+        dab_angle_deg: 90,
+        ..flat
+    };
+    let size = 64u32;
+    let at = |m: &StampMask, i: u32, j: u32| m.data[(j * size + i) as usize];
+    let m_round = render_stamp_mask(&round, None, None, None, size);
+    let m_flat = render_stamp_mask(&flat, None, None, None, size);
+    let m_rot = render_stamp_mask(&flat_rot, None, None, None, size);
+    let c = size / 2; // centre column / row
+    let up = size / 8; // a row well above centre (on the vertical axis)
+    let side = size / 8; // a column well left of centre (on the horizontal axis)
+    // Round: both the vertical and the horizontal sample are inside the disk.
+    assert!(
+        at(&m_round, c, up) > 0 && at(&m_round, side, c) > 0,
+        "round disk paints both axes"
+    );
+    // Vertical flatten: the ABOVE sample is squished outside → 0; the SIDE sample stays in.
+    assert_eq!(at(&m_flat, c, up), 0, "vertical flatten clears the top");
+    assert!(at(&m_flat, side, c) > 0, "vertical flatten keeps the side");
+    // Rotated 90°: the minor axis is now horizontal — the two are swapped.
+    assert!(at(&m_rot, c, up) > 0, "rotated flatten keeps the top");
+    assert_eq!(at(&m_rot, side, c), 0, "rotated flatten clears the side");
+}
+
+#[test]
+fn dab_default_flatten_is_byte_identical_round() {
+    // Flatten 0 / angle 0 must leave the dab byte-identical to the pre-feature round mask (HR-5).
+    let spec = BrushSpec::default();
+    let a = render_stamp_mask(&spec, None, None, None, 48);
+    let b = render_stamp_mask(
+        &BrushSpec {
+            dab_flatten: 0.0,
+            dab_angle_deg: 0,
+            ..spec
+        },
+        None,
+        None,
+        None,
+        48,
+    );
+    assert_eq!(
+        a.data, b.data,
+        "default flatten/angle is the identity round dab"
+    );
 }

@@ -37,6 +37,7 @@ mod paint_brush_top;
 mod paint_falloff;
 mod paint_rows;
 mod paint_shape;
+mod paint_shape_dab;
 mod paint_shape_ramp;
 mod paint_stencil;
 mod paint_stroke;

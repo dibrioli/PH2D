@@ -42,6 +42,8 @@ pub(super) fn stencil_basis(s: &TextureSettings, canvas: [f32; 2]) -> TexDabBasi
         stencil_half: half,
         stencil_u: su,
         stencil_v: super::perp(su),
+        // Stencil is canvas-fixed — the dab flatten/rotate does not deform it.
+        footprint: crate::footprint::FootprintDeform::identity(),
     }
 }
 

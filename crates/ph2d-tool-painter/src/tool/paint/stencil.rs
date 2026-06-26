@@ -145,6 +145,23 @@ impl PainterTool {
         true
     }
 
+    /// Route the **flatten/rotate gizmo** values (Shape panel; Enio 2026-06-26): the panel decodes the
+    /// handle drag into a flatten (`0..1`) / angle (degrees) and forwards them as `SetValue`. Returns
+    /// `true` iff the event was a gizmo value (so the caller stops routing).
+    pub(crate) fn route_brush_dab_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        let PanelEvent::SetValue(id, v) = event else {
+            return false;
+        };
+        let v = *v as f32;
+        match *id {
+            x if x == core_ids::PAINTER_BRUSH_DAB_FLATTEN => self.set_brush_dab_flatten(v),
+            x if x == core_ids::PAINTER_BRUSH_DAB_ANGLE => self.set_brush_dab_angle(v),
+            _ => return false,
+        }
+        true
+    }
+
     /// The stencil overlay for the shell, or `None` unless a texture is assigned and mapped Stencil.
     /// The corners are derived from [`ph2d_painter_brush::stencil_frame`] — the same frame the dab
     /// masks against — so the outline and the painted mask agree exactly.

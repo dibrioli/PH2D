@@ -175,6 +175,11 @@ pub struct BrushSettings {
     pub shape_size: [f32; 2],
     /// Procedural Shape per-pattern params (Contrast / Brightness + the kind's knob, `[0,1]`) — the Grain's `texture_params` twin for the Shape slot.
     pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
+    /// **Dab Flatten** (`0..1`; `0` = round) — the Shape-panel gizmo squishes the dab footprint (falloff
+    /// + Shape + View-Grain) into an ellipse. See [`Self::dab_angle_deg`].
+    pub dab_flatten: f32,
+    /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).
+    pub dab_angle_deg: u16,
 
     // ── Texture Color Ramp (maps the texture's scalar to a colour when enabled) ──
     /// Whether the Color Ramp drives the paint colour.
@@ -561,6 +566,18 @@ impl PainterTool {
     /// Set the **Stencil** rect rotation directly in whole **degrees** — the gizmo's own angle.
     pub fn set_brush_stencil_angle(&mut self, deg: f32) {
         self.paint.brush.texture.stencil_angle_deg =
+            deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+    }
+
+    /// Set the **Dab Flatten** (`0..1`, clamped) — the Shape-panel gizmo squishes the dab footprint
+    /// (falloff + Shape + View-Grain) into an ellipse. The engine clamps the effective minor axis.
+    pub fn set_brush_dab_flatten(&mut self, v: f32) {
+        self.paint.brush.dab_flatten = v.clamp(0.0, 1.0);
+    }
+
+    /// Set the **Dab rotation** of the flatten/rotate gizmo in whole **degrees**.
+    pub fn set_brush_dab_angle(&mut self, deg: f32) {
+        self.paint.brush.dab_angle_deg =
             deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
     }
 }

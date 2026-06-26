@@ -49,11 +49,27 @@ pub fn render_stamp_mask(
     let grain_active = spec.texture.is_active();
     let shape_active = spec.shape_silhouette_active(shape_image.is_some());
     let depth = spec.grain_depth();
+    // The dab flatten/rotate — folded into the bases (Shape + Grain) and the falloff `t` so the cached
+    // stamp is an elliptical, rotated tip exactly like the per-pixel path.
+    let footprint = spec.footprint_deform();
     // The View static bases (no Rake/Random/Jitter ⇒ the rng / canvas / extra-rot args are unused).
-    let grain_basis =
-        crate::texture::dab_basis(&spec.texture, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let grain_basis = crate::texture::dab_basis(
+        &spec.texture,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        footprint,
+    );
     let shape_basis = shape_active.then(|| {
-        crate::texture::dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0])
+        crate::texture::dab_basis(
+            &spec.shape,
+            [0.0, 0.0],
+            &mut 0u64,
+            [1.0, 1.0],
+            [1.0, 0.0],
+            footprint,
+        )
     });
     let inv = 2.0 / size as f32;
     for j in 0..size {
@@ -71,11 +87,11 @@ pub fn render_stamp_mask(
                         shape_image,
                     );
                     let sv = crate::texture::remap_shape_value(raw, shape_ramp_lut);
-                    let t = (u * u + v * v).sqrt();
+                    let t = footprint.falloff_t(u, v);
                     spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
                 }
                 None => {
-                    let t = (u * u + v * v).sqrt();
+                    let t = footprint.falloff_t(u, v);
                     spec.falloff_weight(t)
                 }
             };
@@ -239,6 +255,8 @@ struct CanvasBlitCtx<'a> {
     shape_image: Option<ImageMask<'a>>,
     /// The Shape value-ramp LUT (B&W tonal remap of the silhouette); `None` ⇒ no remap.
     shape_ramp_lut: Option<&'a [f32]>,
+    /// The dab flatten/rotate — applied to the falloff `t` (the Shape carries it in `shape_basis`).
+    footprint: crate::footprint::FootprintDeform,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -287,20 +305,31 @@ pub fn blit_canvas_cached(
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
-    // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent (no Jitter).
+    // The dab flatten/rotate (Shape + falloff are dab-relative ⇒ deform; the canvas-fixed Grain does not).
+    let footprint = spec.footprint_deform();
+    // The canvas-fixed texture frame (Tiled rotation / Stencil rect); dab-independent (no Jitter, and
+    // canvas-fixed ⇒ identity footprint — the dab flatten never deforms a canvas-locked texture).
     let basis = crate::texture::dab_basis(
         &spec.texture,
         [0.0, 0.0],
         &mut 0u64,
         [width as f32, height as f32],
         [1.0, 0.0],
+        crate::footprint::FootprintDeform::identity(),
     );
     // The Shape silhouette frame (dab-relative; static View in this cached path — Rake/Random route to
     // the per-pixel path). `None` ⇒ the falloff is the silhouette.
     let shape_basis = spec
         .shape_silhouette_active(shape_image.is_some())
         .then(|| {
-            crate::texture::dab_basis(&spec.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0])
+            crate::texture::dab_basis(
+                &spec.shape,
+                [0.0, 0.0],
+                &mut 0u64,
+                [1.0, 1.0],
+                [1.0, 0.0],
+                footprint,
+            )
         });
     let ctx = CanvasBlitCtx {
         spec,
@@ -309,6 +338,7 @@ pub fn blit_canvas_cached(
         shape_basis,
         shape_image: shape_image.copied(),
         shape_ramp_lut,
+        footprint,
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -372,13 +402,17 @@ fn canvas_blit_band(
                     );
                     let sv = crate::texture::remap_shape_value(raw, ctx.shape_ramp_lut);
                     let dx = (px as f32 + 0.5) - ctx.cx;
-                    let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                    let t = ctx
+                        .footprint
+                        .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
                     ctx.spec
                         .compose_shape_silhouette(sv, ctx.spec.falloff_weight(t))
                 }
                 None => {
                     let dx = (px as f32 + 0.5) - ctx.cx;
-                    let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
+                    let t = ctx
+                        .footprint
+                        .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
                     ctx.spec.falloff_weight(t)
                 }
             };

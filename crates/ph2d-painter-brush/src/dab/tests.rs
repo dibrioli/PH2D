@@ -4,6 +4,7 @@
 use super::*;
 use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
+use crate::footprint::FootprintDeform;
 
 fn solid(width: u32, height: u32, rgba: [u8; 4]) -> Vec<u8> {
     rgba.iter()
@@ -559,7 +560,14 @@ fn shape_angle_rotates_the_silhouette() {
 
     // Angle 0: the bar runs vertically — painted ABOVE the centre, blank to the RIGHT.
     let s0 = mk(0);
-    let b0 = dab_basis(&s0.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let b0 = dab_basis(
+        &s0.shape,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
     let mut a = solid(w, h, [255, 255, 255, 255]);
     stamp_dab_textured(
         &mut a,
@@ -591,7 +599,14 @@ fn shape_angle_rotates_the_silhouette() {
 
     // Angle 90: the SAME shape now runs horizontally — the orientation flips.
     let s90 = mk(90);
-    let b90 = dab_basis(&s90.shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    let b90 = dab_basis(
+        &s90.shape,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
     let mut c = solid(w, h, [255, 255, 255, 255]);
     stamp_dab_textured(
         &mut c,

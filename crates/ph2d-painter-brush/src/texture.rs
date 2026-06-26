@@ -382,11 +382,9 @@ pub struct ImageMask<'a> {
 }
 
 /// Per-dab resolved texture frame: the texture pattern's rotated unit basis (`u`, `v`), the per-dab
-/// random translation (tile fractions; `[0,0]` unless randomised), and — for Stencil — the rect's
-/// centre + half-extent in canvas px plus the rect's OWN rotation basis (`stencil_u`, `stencil_v`).
-/// Under Stencil `u`/`v` carry the texture's [`TextureSettings::angle_deg`] (the pattern rotation
-/// WITHIN the rect, independent of the rect's [`TextureSettings::stencil_angle_deg`]). Computed once
-/// per dab by [`dab_basis`] so the per-pixel [`sample`] is cheap.
+/// random translation, and — for Stencil — the rect (centre / half-extent / own rotation basis
+/// `stencil_u`,`v`; `u`/`v` then carry the texture angle within the rect). Computed once per dab by
+/// [`dab_basis`] so per-pixel [`sample`] is cheap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TexDabBasis {
     u: [f32; 2],
@@ -396,10 +394,12 @@ pub struct TexDabBasis {
     stencil_center: [f32; 2],
     /// Stencil rect half-extent in canvas px, per axis (unused unless Stencil).
     stencil_half: [f32; 2],
-    /// Stencil rect rotation basis (from `stencil_angle_deg`) — projects a pixel into the rect's local
-    /// frame for the mask. Distinct from `u`/`v` (the texture pattern rotation). Unused unless Stencil.
+    /// Stencil rect rotation basis (from `stencil_angle_deg`) for the mask; unused unless Stencil.
     stencil_u: [f32; 2],
     stencil_v: [f32; 2],
+    /// Brush-dab flatten + rotate, applied to the footprint coord BEFORE this texture's own Size /
+    /// rotation / Offset (so the Shape + View-Grain deform with the falloff). Identity for Tiled / Stencil.
+    footprint: crate::footprint::FootprintDeform,
 }
 
 impl TexDabBasis {
@@ -414,14 +414,15 @@ impl TexDabBasis {
             stencil_half: [1.0, 1.0],
             stencil_u: [1.0, 0.0],
             stencil_v: [0.0, 1.0],
+            footprint: crate::footprint::FootprintDeform::identity(),
         }
     }
 }
 
-/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; need not
-/// be normalised — a near-zero tangent falls back to [`TextureSettings::angle_deg`]), a mutable
-/// splitmix64 `rng` (Random), the canvas size (Stencil rect), and the per-dab **Jitter Rotate** unit
-/// vector `extra_rot` (identity `[1, 0]` = none). Deterministic per input platform.
+/// Resolve the per-dab texture frame from the settings, the stroke tangent `dab_dir` (Rake; falls back
+/// to [`TextureSettings::angle_deg`] for a near-zero tangent), a splitmix64 `rng` (Random), the canvas
+/// (Stencil rect), the per-dab **Jitter Rotate** vector `extra_rot` (`[1,0]` = none) and the brush-dab
+/// `footprint` flatten/rotate (footprint-relative only — Tiled / Stencil ignore it). Deterministic.
 #[must_use]
 pub fn dab_basis(
     s: &TextureSettings,
@@ -429,9 +430,9 @@ pub fn dab_basis(
     rng: &mut u64,
     canvas: [f32; 2],
     extra_rot: [f32; 2],
+    footprint: crate::footprint::FootprintDeform,
 ) -> TexDabBasis {
-    // Stencil resolves to a fixed image-space rect (no per-dab Rake / Random / Jitter); see
-    // [`stencil::stencil_basis`] for how the rect mask and the within-rect texture rotation split.
+    // Stencil = a fixed image-space rect (canvas-fixed, so no Rake/Random/Jitter and no dab flatten).
     if s.mapping.is_stencil() {
         return stencil::stencil_basis(s, canvas);
     }
@@ -463,6 +464,7 @@ pub fn dab_basis(
         stencil_half: [1.0, 1.0],
         stencil_u: [1.0, 0.0],
         stencil_v: [0.0, 1.0],
+        footprint,
     }
 }
 
@@ -503,13 +505,16 @@ pub fn sample(
                 let base = TEX_TILE_BASE_PX;
                 [p[0] * sx / base, p[1] * sy / base]
             }
-            // View Plane and Random both anchor to the dab footprint.
+            // View / Random anchor to the dab footprint; the dab flatten/rotate deforms it FIRST so
+            // the pattern flattens with the falloff (the texture's own Size stays relative to it).
             _ => {
                 let r = radius.max(1e-3);
-                [(p[0] - center[0]) * sx / r, (p[1] - center[1]) * sy / r]
+                let f = b
+                    .footprint
+                    .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r]);
+                [f[0] * sx, f[1] * sy]
             }
         };
-        // Rotate into texture space (basis is already the dab's rotation), then translate.
         [
             rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0] + b.jitter[0],
             rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1] + b.jitter[1],
@@ -534,7 +539,8 @@ pub fn sample_unit(
     }
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    let rel = [u * sx, v * sy];
+    let f = b.footprint.apply([u, v]); // dab flatten/rotate, before this texture's own Size/rotation
+    let rel = [f[0] * sx, f[1] * sy];
     let tex = [
         rel[0] * b.u[0] + rel[1] * b.u[1] + s.offset[0],
         rel[0] * b.v[0] + rel[1] * b.v[1] + s.offset[1],

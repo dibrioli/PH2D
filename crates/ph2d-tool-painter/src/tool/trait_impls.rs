@@ -47,10 +47,10 @@ impl Tool for PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
-        // Texture-layer, per-dab randomize, and Stencil-card edits route via these `route_*` first.
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
             || self.route_brush_stencil_event(&event)
+            || self.route_brush_dab_event(&event)
         {
             return;
         }

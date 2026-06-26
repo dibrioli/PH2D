@@ -14,8 +14,8 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
-    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
+    BrushSettings, Falloff, FootprintDeform, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG,
+    TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
     brush_falloff_weight_at, param_specs, render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
@@ -73,6 +73,10 @@ pub(crate) fn paint_shape_section(
         }
         y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
     }
+
+    // ── Flatten + rotate gizmo — below the Falloff preview, above the Texture picker (Enio 2026-06-26).
+    //    Squishes/rotates the whole dab footprint (falloff + Shape + View-Grain). ──
+    y = crate::paint_shape_dab::paint_shape_dab_gizmo(ctx, theme, x, content_w, y, brush);
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking
     //    Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to the bare
@@ -254,6 +258,7 @@ fn paint_shape_preview(
         brush.shape_offset,
         brush.shape_size,
         brush.shape_params,
+        FootprintDeform::new(brush.dab_flatten, brush.dab_angle_deg),
         &lut,
         ramp_lut.as_deref(),
         image_mask.as_ref(),

@@ -119,6 +119,17 @@ pub struct BrushSpec {
     /// always View-plane (dab-relative); `angle_deg`/`rake`/`random_angle` rotate the tip frame.
     pub shape: TextureSettings,
 
+    // ── Dab flatten + rotate (Procreate "Shape" panel gizmo; Enio 2026-06-26) ───────────────────
+    /// **Flatten** the dab footprint, `0..1`: `0` = round, → `1` = a thin ellipse (squished on the
+    /// minor axis). Deforms the falloff envelope AND everything sampled in the footprint (the Shape
+    /// silhouette + the View-mapped Grain) into a rotated ellipse — each slot keeps its own relative
+    /// Size/Offset/Angle on top. Clamped to [`crate::footprint::DAB_FLATTEN_MAX`] so the minor axis
+    /// never collapses. See [`Self::footprint_deform`].
+    pub dab_flatten: f32,
+    /// **Dab rotation** in whole degrees (`0..=360`) of the flatten/rotate frame — rotates the
+    /// elliptical footprint and, even when round, the pattern sampled within it.
+    pub dab_angle_deg: u16,
+
     // ── Per-dab randomize (Blender "Color → Randomize" + two PH2D extras; see [`crate::jitter`]) ──
     /// Master switch for **Randomize Color** (the subsection's enable checkbox). When off, every dab
     /// uses [`Self::color`] unchanged. Default `false` (clean-room model of Blender's brush
@@ -172,6 +183,8 @@ impl Default for BrushSpec {
             texture: TextureSettings::default(),
             grain_depth: 1.0,
             shape: TextureSettings::default(),
+            dab_flatten: 0.0,
+            dab_angle_deg: 0,
             color_jitter_enabled: false,
             color_jitter_hue: 0.0,
             color_jitter_sat: 0.0,
@@ -188,6 +201,13 @@ impl BrushSpec {
     #[must_use]
     pub fn clamped_radius(&self) -> f32 {
         self.radius_px.clamp(0.5, MAX_BRUSH_RADIUS_PX)
+    }
+
+    /// The baked dab flatten + rotate ([`crate::footprint::FootprintDeform`]) — applied to the
+    /// footprint of the falloff, the Shape silhouette and the View-mapped Grain so they deform together.
+    #[must_use]
+    pub fn footprint_deform(&self) -> crate::footprint::FootprintDeform {
+        crate::footprint::FootprintDeform::new(self.dab_flatten, self.dab_angle_deg)
     }
 
     /// Whether **Randomize Color** has any non-zero amount (so enabling it would actually change a

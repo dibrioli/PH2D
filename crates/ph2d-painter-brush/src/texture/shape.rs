@@ -90,6 +90,7 @@ pub fn render_shape_preview(
     offset: [f32; 2],
     size: [f32; 2],
     params: [f32; MAX_TEX_PARAMS],
+    footprint: crate::footprint::FootprintDeform,
     falloff_lut: &[f32],
     shape_ramp_lut: Option<&[f32]>,
     image: Option<&ImageMask>,
@@ -111,7 +112,15 @@ pub fn render_shape_preview(
         stencil_angle_deg: 0,
         params,
     };
-    let basis = super::dab_basis(&shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);
+    // The dab flatten/rotate deforms the preview exactly as the engine deforms the dab.
+    let basis = super::dab_basis(
+        &shape,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        footprint,
+    );
     let n = falloff_lut.len().max(1);
     let (inv_w, inv_h) = (2.0 / w.max(1) as f32, 2.0 / h.max(1) as f32);
     for j in 0..h {
@@ -120,7 +129,7 @@ pub fn render_shape_preview(
             let u = (i as f32 + 0.5) * inv_w - 1.0;
             let raw = sample_shape_silhouette_unit(&shape, &basis, u, v, image);
             let sv = remap_shape_value(raw, shape_ramp_lut);
-            let t = (u * u + v * v).sqrt().min(1.0);
+            let t = footprint.falloff_t(u, v).min(1.0);
             let f = falloff_lut[((t * (n - 1) as f32) as usize).min(n - 1)];
             let cov = compose_shape_silhouette_kind(kind, sv, f).clamp(0.0, 1.0);
             buf[(j * w + i) as usize] = (cov * 255.0 + 0.5) as u8;
@@ -145,8 +154,11 @@ pub fn sample_shape(
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let r = radius.max(1e-3);
-    let rel = [(p[0] - center[0]) * sx / r, (p[1] - center[1]) * sy / r];
-    shape_value(s, b, rel, image)
+    // Dab flatten/rotate deforms the footprint first, so the Shape tip flattens with the falloff.
+    let f = b
+        .footprint
+        .apply([(p[0] - center[0]) / r, (p[1] - center[1]) / r]);
+    shape_value(s, b, [f[0] * sx, f[1] * sy], image)
 }
 
 /// As [`sample_shape`] but at the dab-relative unit coord `(u, v) ∈ [-1, 1]` — the scale-invariant
@@ -162,7 +174,8 @@ pub fn sample_shape_unit(
 ) -> f32 {
     let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
     let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
-    shape_value(s, b, [u * sx, v * sy], image)
+    let f = b.footprint.apply([u, v]);
+    shape_value(s, b, [f[0] * sx, f[1] * sy], image)
 }
 
 /// Shared core of [`sample_shape`] / [`sample_shape_unit`]: rotate the scaled footprint coord `rel`

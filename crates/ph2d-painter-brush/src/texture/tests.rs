@@ -2,6 +2,7 @@
 //! deterministic rotation, and the coverage modulation through [`crate::dab::stamp_dab_textured`].
 
 use super::*;
+use crate::footprint::FootprintDeform;
 
 /// A hard Checker's params (Softness `0`). The engine's `TextureSettings::default()` is neutral `0.5`
 /// in every slot, which for Checker means a *soft* edge that never saturates to an exact `0`/`1`; the
@@ -19,7 +20,14 @@ use crate::spec::BrushSpec;
 /// `dab_basis` with a default 64×64 canvas — the rotation / jitter tests don't depend on the canvas
 /// size (only the Stencil mapping does, and those tests pass it explicitly).
 fn basis(s: &TextureSettings, dir: [f32; 2], rng: &mut u64) -> TexDabBasis {
-    dab_basis(s, dir, rng, [64.0, 64.0], [1.0, 0.0])
+    dab_basis(
+        s,
+        dir,
+        rng,
+        [64.0, 64.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    )
 }
 
 /// Timing: how much does the per-pixel texture sample add to a LARGE dab stamp (the Anchored
@@ -44,7 +52,14 @@ fn perf_texture_stamp_cost_on_a_large_dab() {
     let runs = 8;
     let bench = |label: &str, spec: &BrushSpec, buf: &mut [u8]| {
         let mut rng = 1u64;
-        let b = dab_basis(&spec.texture, [1.0, 0.0], &mut rng, canvas, [1.0, 0.0]);
+        let b = dab_basis(
+            &spec.texture,
+            [1.0, 0.0],
+            &mut rng,
+            canvas,
+            [1.0, 0.0],
+            FootprintDeform::identity(),
+        );
         let t0 = Instant::now();
         for _ in 0..runs {
             let _ = stamp_dab_textured(
@@ -271,7 +286,14 @@ fn stencil_masks_outside_the_rect_and_is_image_fixed() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [100.0, 100.0], [1.0, 0.0]);
+    let b = dab_basis(
+        &s,
+        [0.0, 0.0],
+        &mut rng,
+        [100.0, 100.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
     // A pixel far outside the rect → masked to 0.
     assert_eq!(
         sample(&s, &b, 5, 5, [5.0, 5.0], 8.0, None),
@@ -298,7 +320,14 @@ fn stencil_rect_shows_the_procedural_pattern() {
         ..Default::default()
     };
     let mut rng = 0;
-    let b = dab_basis(&s, [0.0, 0.0], &mut rng, [64.0, 64.0], [1.0, 0.0]);
+    let b = dab_basis(
+        &s,
+        [0.0, 0.0],
+        &mut rng,
+        [64.0, 64.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
     let mut seen0 = false;
     let mut seen1 = false;
     for x in (2..62).step_by(3) {
@@ -330,7 +359,14 @@ fn stencil_texture_transform_reshapes_the_pattern_within_the_rect() {
     };
     let row = |s: &TextureSettings| -> Vec<f32> {
         let mut rng = 0;
-        let b = dab_basis(s, [0.0, 0.0], &mut rng, [64.0, 64.0], [1.0, 0.0]);
+        let b = dab_basis(
+            s,
+            [0.0, 0.0],
+            &mut rng,
+            [64.0, 64.0],
+            [1.0, 0.0],
+            FootprintDeform::identity(),
+        );
         (4..60)
             .step_by(2)
             .map(|x| sample(s, &b, x, 32, [32.0, 32.0], 8.0, None))
@@ -662,6 +698,7 @@ fn render_shape_preview_masks_procedural_with_falloff() {
         [0.0, 0.0],
         [1.0, 1.0],
         params,
+        FootprintDeform::identity(),
         &fade,
         None,
         None,
@@ -675,6 +712,7 @@ fn render_shape_preview_masks_procedural_with_falloff() {
         [0.0, 0.0],
         [1.0, 1.0],
         params,
+        FootprintDeform::identity(),
         &flat,
         None,
         None,

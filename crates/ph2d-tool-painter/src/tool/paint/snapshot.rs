@@ -82,6 +82,8 @@ impl PainterTool {
             shape_offset: b.shape.offset,
             shape_size: b.shape.size,
             shape_params: b.shape.params,
+            dab_flatten: b.dab_flatten,
+            dab_angle_deg: b.dab_angle_deg,
             texture_ramp_enabled: self.paint.texture_ramp_enabled,
             texture_ramp_mode: ramp.color_mode.to_u8(),
             texture_ramp_interp: ramp.interp.to_u8(),

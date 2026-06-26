@@ -250,6 +250,7 @@ fn stamp_dab_inner(
         // this; the filter is belt-and-braces so an inactive Shape can never blank the falloff).
         shape: shape.filter(|_| spec.shape.is_active()),
         alpha_mode,
+        footprint: spec.footprint_deform(),
         center,
         cx,
         cy,
@@ -402,6 +403,8 @@ struct DabCtx<'a> {
     ramp: Option<&'a [[f32; 4]]>,
     /// What the ramp colour's alpha does (only meaningful when `ramp` is `Some`). See [`RampAlphaMode`].
     alpha_mode: RampAlphaMode,
+    /// Dab flatten/rotate for the falloff `t` (Shape/Grain carry it in their bases); baked once per dab.
+    footprint: crate::footprint::FootprintDeform,
     center: [f32; 2],
     cx: f32,
     cy: f32,
@@ -425,10 +428,12 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
         for px in ctx.x0..ctx.x1 {
-            // SILHOUETTE: the Shape slot — an Image tip *replaces* the falloff (a star stays a star, not
-            // eroded by a round falloff), while a *procedural* Shape is MASKED BY the falloff
-            // (`falloff × pattern`, Enio 2026-06-25). No Shape ⇒ the bare procedural falloff (default,
-            // byte-identical to before). See `docs/Painter/05_design_dois_slots_textura.md` §2.
+            // SILHOUETTE: an Image Shape *replaces* the falloff; a procedural Shape is MASKED BY it
+            // (`falloff × pattern`); no Shape ⇒ the bare falloff. The dab flatten/rotate deforms `t`.
+            let dx = (px as f32 + 0.5) - ctx.cx;
+            let t = ctx
+                .footprint
+                .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
             let mut w = if let Some(sh) = ctx.shape {
                 let raw = crate::texture::sample_shape_silhouette(
                     &ctx.spec.shape,
@@ -440,18 +445,13 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     sh.image,
                 );
                 let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
-                let dx = (px as f32 + 0.5) - ctx.cx;
-                let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
                 ctx.spec
                     .compose_shape_silhouette(sv, ctx.spec.falloff_weight(t))
             } else {
-                let dx = (px as f32 + 0.5) - ctx.cx;
-                let t = (dx * dx + dy * dy).sqrt() * ctx.inv_radius;
                 ctx.spec.falloff_weight(t)
             };
-            // Skip pixels the silhouette already zeroes (the bbox corners outside the dab / outside the
-            // tip) BEFORE the grain sample — the grain only modulates where the dab paints, so sampling
-            // it there is pure waste (it dominates a large Anchored re-stamp).
+            // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only
+            // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {
                 continue;
             }

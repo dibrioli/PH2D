@@ -50,6 +50,9 @@ pub(super) struct StampKey {
     /// The Shape value ramp (B&W tonal remap) also changes the baked silhouette.
     shape_ramp_version: u64,
     grain_depth: f32,
+    /// The dab flatten + rotate reshapes the cached mask into a rotated ellipse, so they key it.
+    dab_flatten: f32,
+    dab_angle_deg: u16,
     size: u32,
 }
 
@@ -262,6 +265,7 @@ impl PainterTool {
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
+                    spec.footprint_deform(),
                 )
             });
             let shape_in = shape_basis
@@ -285,6 +289,7 @@ impl PainterTool {
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,
+                    spec.footprint_deform(),
                 )
             });
             if let Some(r) = ph2d_painter_brush::stamp_dab_ramped(
@@ -386,6 +391,7 @@ impl PainterTool {
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
+                    spec.footprint_deform(),
                 )
             });
             let shape_in = shape_basis
@@ -409,6 +415,7 @@ impl PainterTool {
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,
+                    spec.footprint_deform(),
                 )
             });
             if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked(
@@ -493,6 +500,8 @@ impl PainterTool {
             shape_image_version: self.paint.shape_image_version,
             shape_ramp_version: self.paint.shape_ramp_version,
             grain_depth: brush.grain_depth,
+            dab_flatten: brush.dab_flatten,
+            dab_angle_deg: brush.dab_angle_deg,
             size,
         };
         if self.paint.stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {

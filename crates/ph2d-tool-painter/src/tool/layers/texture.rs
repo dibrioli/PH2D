@@ -115,29 +115,33 @@ impl PainterTool {
         self.rerender_texture_layer(id);
     }
 
-    /// Set the texture scale for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track.
-    pub fn set_texture_layer_size_norm(&mut self, axis: usize, t01: f32) {
+    /// Set the texture scale for `axis` (`0` = X, `1` = Y) to a REAL value, clamped to
+    /// `[`[`TEX_SIZE_MIN`]`, `[`TEX_SIZE_MAX`]`]`. The drag-scrub number field emits the real value
+    /// directly (Enio 2026-06-25) — NOT a `0..1` track — so the layer must clamp like the brush's
+    /// [`super::super::PainterTool::set_brush_texture_size`], else any value ≥ 1 mapped past the bound.
+    pub fn set_texture_layer_size(&mut self, axis: usize, v: f32) {
         let Some(id) = self.active_texture_id() else {
             return;
         };
         if axis < 2
             && let Some(t) = self.layers.texture_mut(id)
         {
-            t.size[axis] = TEX_SIZE_MIN + t01.clamp(0.0, 1.0) * (TEX_SIZE_MAX - TEX_SIZE_MIN);
+            t.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
         self.rerender_texture_layer(id);
     }
 
-    /// Set the texture offset for `axis` (`0` = X, `1` = Y) from the slider's `0..1` track.
-    pub fn set_texture_layer_offset_norm(&mut self, axis: usize, t01: f32) {
+    /// Set the texture offset for `axis` (`0` = X, `1` = Y) to a REAL value, clamped to
+    /// `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]` — the real-value counterpart of the brush's
+    /// [`super::super::PainterTool::set_brush_texture_offset`] (the field emits real, not `0..1`).
+    pub fn set_texture_layer_offset(&mut self, axis: usize, v: f32) {
         let Some(id) = self.active_texture_id() else {
             return;
         };
         if axis < 2
             && let Some(t) = self.layers.texture_mut(id)
         {
-            t.offset[axis] =
-                TEX_OFFSET_MIN + t01.clamp(0.0, 1.0) * (TEX_OFFSET_MAX - TEX_OFFSET_MIN);
+            t.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
         }
         self.rerender_texture_layer(id);
     }
@@ -312,19 +316,19 @@ impl PainterTool {
                 let v = *v as f32;
                 match *id {
                     x if x == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X => {
-                        self.set_texture_layer_size_norm(0, v);
+                        self.set_texture_layer_size(0, v);
                         true
                     }
                     x if x == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y => {
-                        self.set_texture_layer_size_norm(1, v);
+                        self.set_texture_layer_size(1, v);
                         true
                     }
                     x if x == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X => {
-                        self.set_texture_layer_offset_norm(0, v);
+                        self.set_texture_layer_offset(0, v);
                         true
                     }
                     x if x == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y => {
-                        self.set_texture_layer_offset_norm(1, v);
+                        self.set_texture_layer_offset(1, v);
                         true
                     }
                     x => {

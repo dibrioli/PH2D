@@ -1193,6 +1193,77 @@ fn cross(a: [f32; 2], b: [f32; 2]) -> f32 {
     a[0] * b[1] - a[1] * b[0]
 }
 
+// ── Rake warm-up (deferred start) — the stroke opens already at the settled angle ──────────────────
+
+/// A `straight_spec` with the texture **Rake** on, so the warm-up engages (it gates on the rake flag).
+fn rake_spec(radius: f32, spacing: f32) -> BrushSpec {
+    let mut spec = straight_spec(radius, spacing);
+    spec.texture.rake = true;
+    spec
+}
+
+#[test]
+fn rake_warmup_holds_the_opening_dabs_then_releases_them_at_the_settled_angle() {
+    // Press + a tiny move (< warm-up length) must emit NOTHING — the opening is held back until the
+    // stroke direction is known. Then a move past the warm-up length releases the whole held batch,
+    // and EVERY released dab — including the very first one at the press point — carries the stroke
+    // heading (+x), not the rest [0,0]. That is the fix: the stroke starts already at the right angle.
+    let mut s = Stroke::new(rake_spec(10.0, 0.5), no_dynamics(), 1); // diameter 20 → warm-up 7px
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    assert!(out.is_empty(), "the down dab is held during warm-up");
+    s.extend(pt(3.0, 0.0, 1.0), &mut out); // 3px < 7px → still warming
+    assert!(out.is_empty(), "a sub-threshold move keeps holding");
+    s.extend(pt(60.0, 0.0, 1.0), &mut out); // crosses the warm-up length → release
+    assert!(
+        out.len() >= 2,
+        "the held opening is released once the angle is known"
+    );
+    assert!(
+        out[0].center[0].abs() < 1e-3,
+        "first released dab is the press-point dab, back-filled: {:?}",
+        out[0].center
+    );
+    for d in &out {
+        assert!(
+            (d.dir[0] - 1.0).abs() < 1e-2 && d.dir[1].abs() < 1e-2,
+            "every opening dab opens at the stroke angle +x, not [0,0]: {:?}",
+            d.dir
+        );
+    }
+}
+
+#[test]
+fn rake_warmup_releases_a_short_tap_on_finish_at_the_rest_angle() {
+    // A tap (press + release, no travel) never defines a heading. `finish` must still flush the held
+    // down dab — at the rest angle [0,0] (→ the bare Angle), since a directionless tap has no heading.
+    let mut s = Stroke::new(rake_spec(10.0, 0.5), no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(5.0, 5.0, 1.0), &mut out);
+    assert!(out.is_empty(), "held during warm-up");
+    s.finish(&mut out);
+    assert_eq!(out.len(), 1, "the tap's single dab is flushed on finish");
+    assert_eq!(
+        out[0].dir,
+        [0.0, 0.0],
+        "no travel ⇒ rest angle (bare Angle)"
+    );
+}
+
+#[test]
+fn non_rake_brush_is_unaffected_by_the_warmup() {
+    // The warm-up gates on the Rake flag: a plain brush emits the down dab immediately, exactly as
+    // before — no start latency for the common (non-Rake) case.
+    let mut s = Stroke::new(straight_spec(10.0, 0.5), no_dynamics(), 1);
+    let mut out = Vec::new();
+    s.begin(pt(0.0, 0.0, 1.0), &mut out);
+    assert_eq!(
+        out.len(),
+        1,
+        "non-Rake down dab emits immediately (no warm-up)"
+    );
+}
+
 #[test]
 fn straight_stroke_gives_a_constant_heading() {
     // A straight drag: every dab past the first must carry essentially the SAME heading (+x), with no

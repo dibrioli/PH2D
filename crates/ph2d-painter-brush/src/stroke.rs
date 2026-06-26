@@ -87,6 +87,13 @@ pub struct Stroke {
     /// `Dab::dir`. Updated by the length-weighted EMA in [`Self::walk_space`] (where the path tangent is
     /// clean) and reset in [`Self::begin`]. Drives the texture **Rake**; see [`crate::heading`].
     heading: [f32; 2],
+    /// **Rake warm-up** state (see [`mod@self::warmup`]): opening dabs held in `warm_buf` until the cursor
+    /// travels `warm_dist` ≥ [`crate::heading::warmup_len`] (from `warm_from`), then released at the settled
+    /// heading. `warming` gates it — `false` ⇒ dabs flow straight through (non-Rake / ineligible method).
+    warm_buf: Vec<Dab>,
+    warm_dist: f32,
+    warm_from: [f32; 2],
+    warming: bool,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -124,6 +131,10 @@ impl Stroke {
             last_raw_pos: [0.0, 0.0],
             last_raw_pressure: 1.0,
             heading: [0.0, 0.0],
+            warm_buf: Vec::new(),
+            warm_dist: 0.0,
+            warm_from: [0.0, 0.0],
+            warming: false,
         }
     }
 
@@ -151,6 +162,12 @@ impl Stroke {
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
+        // Rake warm-up (see [`mod@self::warmup`]): hold the opening dabs until travel defines the heading.
+        self.warm_buf.clear();
+        self.warm_dist = 0.0;
+        self.warm_from = p.pos;
+        self.warming = self.spec.stroke_method.rake_warmup_eligible()
+            && (self.spec.texture.rake || self.spec.shape.rake);
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -159,6 +176,7 @@ impl Stroke {
             out.push(dab);
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
+        self.warmup_gate(out);
     }
 
     /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, run it
@@ -171,6 +189,10 @@ impl Stroke {
         let avg = self.sampler.push_average(raw);
         self.last_raw_pos = avg.pos;
         self.last_raw_pressure = avg.pressure;
+        if self.warming {
+            self.warm_dist += dist(self.warm_from, avg.pos); // accumulate travel toward the warm-up release
+            self.warm_from = avg.pos;
+        }
         match self.spec.stroke_method {
             // The stabilizer (smooth-stroke) applies to Space + the per-event Dots/Airbrush, like
             // Blender. Space additionally resamples through the spline; Dots/Airbrush place one
@@ -238,6 +260,7 @@ impl Stroke {
                 self.advance_anchor(avg);
             }
         }
+        self.warmup_gate(out);
     }
 
     /// Deterministic straight-line fill for the Line method's live preview: fill `anchor → cursor` with
@@ -296,6 +319,12 @@ impl Stroke {
                 },
                 out,
             );
+        }
+        // Ended still warming (e.g. a tap): flush the held dabs + tail at whatever heading settled
+        // (`[0, 0]` ⇒ the rest Angle, right for a directionless tap).
+        if self.warming {
+            self.warm_buf.append(out);
+            self.release_warmup(out);
         }
         self.prev_prev = None;
     }
@@ -552,9 +581,8 @@ fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f
     ]
 }
 
-/// The Curve stroke method's fill + the shared Catmull-Rom flattener (a child module so it keeps
-/// private access to `walk_space`/`dab_at`/`dist`/`hermite`; split out to keep `stroke.rs` under the
-/// workspace LOC cap).
+/// The Curve stroke method's fill + the shared Catmull-Rom flattener (child module for private access +
+/// the LOC cap, like the others below).
 mod curve;
 pub use curve::flatten_catmull_rom;
 /// The Circle stroke method's perimeter generator + ellipse fill (same child-module rationale).
@@ -565,6 +593,8 @@ mod polygon;
 pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
 /// The lazy-mouse stabilizer (`stabilize`/`settle`) — split out for the same LOC-cap reason.
 mod stabilize;
+/// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
+mod warmup;
 
 #[cfg(test)]
 mod tests;

@@ -43,6 +43,9 @@ impl Stroke {
             },
             out,
         );
+        // A parked catch-up can be where the heading first settles (high-stabilizer stroke), so route
+        // these dabs through the Rake warm-up too — otherwise the held opening would never release.
+        self.warmup_gate(out);
     }
 
     /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the

@@ -154,6 +154,15 @@ impl StrokeMethod {
     pub fn allows_jitter(self) -> bool {
         !matches!(self, Self::DragDot | Self::Anchored)
     }
+
+    /// True for the freehand methods that drive the texture **Rake** warm-up: the stroke holds its
+    /// opening dabs until travel defines a confident heading, then releases them at that angle (see
+    /// [`crate::Stroke`]). Only the motion-driven painters — Airbrush is timer-driven (often parked, so
+    /// it would stall), DragDot is a single follow-dab, and the shape methods fill a known geometry.
+    #[must_use]
+    pub fn rake_warmup_eligible(self) -> bool {
+        matches!(self, Self::Space | Self::Dots)
+    }
 }
 
 /// The unit the per-dab position jitter is measured in — Blender's `BRUSH_ABSOLUTE_JITTER` flag.

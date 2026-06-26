@@ -31,6 +31,19 @@ pub fn smooth_len(diameter_px: f32) -> f32 {
     (diameter_px * SMOOTH_LEN_FRACTION).max(SMOOTH_LEN_MIN_PX)
 }
 
+/// Travel (px) a Rake stroke must cover before the **warm-up** ends: the engine holds the opening dabs
+/// until the cursor has moved this far, then releases them all stamped with the now-settled heading, so
+/// the stroke starts already at the correct angle instead of laying its first dab at the rest Angle and
+/// snapping. A fraction of the diameter (brush-relative, like [`smooth_len`]), floored for tiny brushes —
+/// comfortably longer than the EMA window so the heading is settled by release. Larger ⇒ a more confident
+/// opening angle but more start latency; smaller ⇒ a snappier start on a shakier opening angle.
+#[must_use]
+pub fn warmup_len(diameter_px: f32) -> f32 {
+    (diameter_px * WARMUP_LEN_FRACTION).max(WARMUP_LEN_MIN_PX)
+}
+const WARMUP_LEN_FRACTION: f32 = 0.35;
+const WARMUP_LEN_MIN_PX: f32 = 6.0;
+
 /// Rotate the 2-D vector `v` by the unit rotor `r` (a complex multiply `v · r`). Composes the Rake
 /// heading with the texture **Angle** rotor and the per-dab **Jitter Rotate** rotor; both args unit ⇒
 /// the result is unit. Transcendental-free.

@@ -101,6 +101,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     texture_random: false,
     texture_offset: [0.0, 0.0],
     texture_size: [1.0, 1.0],
+    stencil_offset: [0.0, 0.0],
+    stencil_size: [0.5, 0.5],
+    stencil_angle_deg: 0,
     texture_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],
     grain_depth: 1.0,
     // Shape section (mirrors BrushSpec::default — kind None, no Shape image, silhouette = falloff).

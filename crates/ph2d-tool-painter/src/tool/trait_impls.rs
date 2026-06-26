@@ -47,9 +47,11 @@ impl Tool for PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
-        // Texture-layer edits + the per-dab randomize controls (Jitter Scale/Rotate + Randomize
-        // Color) route via these `route_*`; both fall through to the handlers below otherwise.
-        if self.route_texture_layer_event(&event) || self.route_brush_jitter_event(&event) {
+        // Texture-layer, per-dab randomize, and Stencil-card edits route via these `route_*` first.
+        if self.route_texture_layer_event(&event)
+            || self.route_brush_jitter_event(&event)
+            || self.route_brush_stencil_event(&event)
+        {
             return;
         }
         match event {
@@ -173,10 +175,8 @@ impl Tool for PainterTool {
                     }
                 }
             }
-            // ── Layers panel: per-row sliders (opacity + adjustment params),
-            // all stored 0..1; the tool maps each to its target. ───────────
+            // ── Layers per-row sliders (opacity + adjustment params), stored 0..1 → mapped per id. ─
             PanelEvent::SetValue(id, v) => {
-                // Brush-properties sliders (fixed ids, tool-global): Size + Strength.
                 if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER {
                     self.set_brush_size_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER {

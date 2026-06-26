@@ -32,6 +32,28 @@ pub const PAINTER_BRUSH_TEXTURE_OFFSET_Y: NodeId = hash_node_id("painter_brush.t
 pub const PAINTER_BRUSH_TEXTURE_SIZE_X: NodeId = hash_node_id("painter_brush.texture_size_x");
 /// Brush texture **Size Y** slider (axis 1). See [`PAINTER_BRUSH_TEXTURE_SIZE_X`].
 pub const PAINTER_BRUSH_TEXTURE_SIZE_Y: NodeId = hash_node_id("painter_brush.texture_size_y");
+/// **Stencil card** rect-placement number boxes (Enio 2026-06-25) — the on-canvas stencil gizmo's
+/// own Size / Offset / Rotation, INDEPENDENT of the texture tiling (`set_brush_stencil_*`). Shown only
+/// under the Stencil mapping; `SetValue` routes via `PainterTool::route_brush_stencil_event`.
+pub const PAINTER_BRUSH_STENCIL_SIZE_X: NodeId = hash_node_id("painter_brush.stencil_size_x");
+/// **Stencil** rect Size Y (axis 1). See [`PAINTER_BRUSH_STENCIL_SIZE_X`].
+pub const PAINTER_BRUSH_STENCIL_SIZE_Y: NodeId = hash_node_id("painter_brush.stencil_size_y");
+/// **Stencil** rect Offset X (`−1..1`). See [`PAINTER_BRUSH_STENCIL_SIZE_X`].
+pub const PAINTER_BRUSH_STENCIL_OFFSET_X: NodeId = hash_node_id("painter_brush.stencil_offset_x");
+/// **Stencil** rect Offset Y (axis 1). See [`PAINTER_BRUSH_STENCIL_SIZE_X`].
+pub const PAINTER_BRUSH_STENCIL_OFFSET_Y: NodeId = hash_node_id("painter_brush.stencil_offset_y");
+/// **Stencil** rect Rotation in whole degrees (`0..=360`). See [`PAINTER_BRUSH_STENCIL_SIZE_X`].
+pub const PAINTER_BRUSH_STENCIL_ANGLE: NodeId = hash_node_id("painter_brush.stencil_angle");
+
+/// The Stencil-card number-box ids — lets the panel / populate / dispatch iterate without hardcoding.
+pub const PAINTER_BRUSH_STENCIL_FIELDS: [NodeId; 5] = [
+    PAINTER_BRUSH_STENCIL_SIZE_X,
+    PAINTER_BRUSH_STENCIL_SIZE_Y,
+    PAINTER_BRUSH_STENCIL_OFFSET_X,
+    PAINTER_BRUSH_STENCIL_OFFSET_Y,
+    PAINTER_BRUSH_STENCIL_ANGLE,
+];
+
 /// Per-pattern parameter slider **0** (`0..1` track). The kind's [`ParamSpec`] at this slot gives the
 /// label + default; `SetValue` → `set_brush_texture_param_norm(0, ..)`. Painted only when the active
 /// kind exposes this slot (see `param_specs`). [`ParamSpec`]: ph2d_painter_brush::ParamSpec

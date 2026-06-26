@@ -224,24 +224,42 @@ fn random_mapping_jitters_offset_other_mappings_do_not() {
 // ── Stencil mapping (image-space positioned mask) ───────────────────────────────────────────
 
 #[test]
-fn stencil_frame_maps_offset_and_size_to_canvas() {
+fn stencil_frame_reads_the_dedicated_stencil_fields_not_the_texture_tiling() {
     let s = TextureSettings {
         kind: TextureKind::Checker,
         mapping: TextureMapping::Stencil,
+        stencil_size: [1.0, 1.0],
+        // The texture tiling values below must NOT leak into the stencil frame (Enio 2026-06-25).
+        size: [4.0, 4.0],
+        offset: [0.7, -0.3],
         ..Default::default()
     };
-    // offset 0, size 1 → centred, half = half the canvas; angle 0 → u = (1,0).
+    // stencil_offset 0, stencil_size 1 → centred, half = half the canvas; angle 0 → u = (1,0).
     let (c, h, u) = stencil_frame(&s, [100.0, 80.0]);
     assert_eq!(c, [50.0, 40.0]);
-    assert_eq!(h, [50.0, 40.0]);
+    assert_eq!(
+        h,
+        [50.0, 40.0],
+        "texture `size` did not leak into the stencil"
+    );
     assert_eq!(u, [1.0, 0.0]);
-    // offset +1 X / -1 Y → centre at the right / top edge.
+    // stencil_offset +1 X / -1 Y → centre at the right / top edge (texture `offset` is irrelevant).
     let s2 = TextureSettings {
-        offset: [1.0, -1.0],
+        stencil_offset: [1.0, -1.0],
         ..s
     };
     let (c2, _, _) = stencil_frame(&s2, [100.0, 80.0]);
     assert_eq!(c2, [100.0, 0.0]);
+    // The default stencil is 50 % of the sprite (half-extent = a quarter of each canvas dimension).
+    let def = TextureSettings {
+        mapping: TextureMapping::Stencil,
+        ..Default::default()
+    };
+    assert_eq!(
+        stencil_frame(&def, [100.0, 80.0]).1,
+        [25.0, 20.0],
+        "default stencil rect is 50% of the sprite"
+    );
 }
 
 #[test]
@@ -249,7 +267,7 @@ fn stencil_masks_outside_the_rect_and_is_image_fixed() {
     let s = TextureSettings {
         kind: TextureKind::Checker,
         mapping: TextureMapping::Stencil,
-        size: [0.2, 0.2], // ±10% of a 100px canvas → a small central rect
+        stencil_size: [0.2, 0.2], // ±10% of a 100px canvas → a small central rect
         ..Default::default()
     };
     let mut rng = 0;
@@ -275,7 +293,7 @@ fn stencil_rect_shows_the_procedural_pattern() {
     let s = TextureSettings {
         kind: TextureKind::Checker,
         mapping: TextureMapping::Stencil,
-        size: [1.0, 1.0], // rect = the whole canvas
+        stencil_size: [1.0, 1.0], // rect = the whole canvas
         params: checker_hard(),
         ..Default::default()
     };

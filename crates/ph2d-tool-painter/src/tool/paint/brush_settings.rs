@@ -145,6 +145,14 @@ pub struct BrushSettings {
     pub texture_offset: [f32; 2],
     /// Texture per-axis scale (`0.1..10`; `1.0` = one tile).
     pub texture_size: [f32; 2],
+    /// **Stencil** rect centre, per axis (`−1..1`) — the gizmo placement, independent of the texture
+    /// tiling. Only meaningful under the Stencil mapping (the panel shows its own card there).
+    pub stencil_offset: [f32; 2],
+    /// **Stencil** rect half-extent as a canvas fraction, per axis (`0.1..10`; default `0.5` = 50 % of
+    /// the sprite). Independent of [`Self::texture_size`]; Stencil mapping only.
+    pub stencil_size: [f32; 2],
+    /// **Stencil** rect rotation in whole degrees (`0..=360`). Independent of [`Self::texture_angle_deg`].
+    pub stencil_angle_deg: u16,
     /// Per-pattern parameter slots, normalized `[0, 1]`; meaning per kind (`param_specs`).
     pub texture_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
     /// **Grain Depth** (`0..1`; `1` = full bite, the default). How strongly the Grain modulates.
@@ -531,6 +539,28 @@ impl PainterTool {
     /// Set the texture rotation directly in whole **degrees** (the number-field path, Enio 2026-06-25).
     pub fn set_brush_texture_angle(&mut self, deg: f32) {
         self.paint.brush.texture.angle_deg =
+            deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+    }
+
+    /// Set the **Stencil** rect centre for `axis` (`−1..1`, clamped) — the gizmo's own offset, separate
+    /// from the texture tiling. Driven by both the Stencil card's number box and the on-canvas drag.
+    pub fn set_brush_stencil_offset(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.texture.stencil_offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
+        }
+    }
+
+    /// Set the **Stencil** rect half-extent fraction for `axis` (`0.1..10`, clamped; `0.5` = 50 % of
+    /// the sprite) — the gizmo's own size, separate from the texture tiling.
+    pub fn set_brush_stencil_size(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.texture.stencil_size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        }
+    }
+
+    /// Set the **Stencil** rect rotation directly in whole **degrees** — the gizmo's own angle.
+    pub fn set_brush_stencil_angle(&mut self, deg: f32) {
+        self.paint.brush.texture.stencil_angle_deg =
             deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
     }
 }

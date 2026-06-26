@@ -41,6 +41,7 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || id == c::PAINTER_BRUSH_TEXTURE_SIZE_X
         || id == c::PAINTER_BRUSH_TEXTURE_SIZE_Y
         || c::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
+        || c::PAINTER_BRUSH_STENCIL_FIELDS.contains(&id)
         || c::PAINTER_SHAPE_SLIDERS.contains(&id)
         || c::PAINTER_SHAPE_PARAMS.contains(&id)
 }

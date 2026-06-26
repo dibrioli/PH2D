@@ -12,10 +12,12 @@
 
 pub(crate) mod patterns;
 mod shape;
+mod stencil;
 pub use shape::{
     compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
     sample_shape_silhouette, sample_shape_silhouette_unit,
 };
+pub use stencil::stencil_frame;
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;
@@ -29,9 +31,6 @@ pub const TEX_SIZE_MIN: f32 = 0.1;
 pub const TEX_SIZE_MAX: f32 = 10.0;
 /// Canvas pixels spanned by one texture tile at Size `1.0` under the **Tiled** mapping.
 pub const TEX_TILE_BASE_PX: f32 = 256.0;
-/// Procedural tiles the **Stencil** rect spans per axis, so the pattern reads (one tile would be a
-/// flat cell). Density is fixed; the rect's on-canvas size is [`TextureSettings::size`].
-const STENCIL_TILES: f32 = 4.0;
 
 /// Baked unit-vector step for a **1° rotation**, `(cos 1°, sin 1°)`. Rotating by `n°` applies this
 /// `n` times — only `*`/`+` at runtime, bit-identical on every platform (mirrors
@@ -294,6 +293,17 @@ pub struct TextureSettings {
     pub offset: [f32; 2],
     /// Per-axis scale, each in `[`[`TEX_SIZE_MIN`]`, `[`TEX_SIZE_MAX`]`]` (`1.0` = one tile).
     pub size: [f32; 2],
+    /// **Stencil** rect centre, per axis in `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]` (`0` =
+    /// canvas centre). Independent of [`Self::offset`] so the gizmo placement and the texture tiling
+    /// don't fight over one field — used only by the [`TextureMapping::Stencil`] mapping.
+    pub stencil_offset: [f32; 2],
+    /// **Stencil** rect half-extent as a canvas fraction, per axis in `[`[`TEX_SIZE_MIN`]`,
+    /// `[`TEX_SIZE_MAX`]`]` (default `0.5` = the rect is 50 % of the sprite). Independent of
+    /// [`Self::size`]; used only by the [`TextureMapping::Stencil`] mapping.
+    pub stencil_size: [f32; 2],
+    /// **Stencil** rect rotation in whole degrees, `0..=`[`TEX_ANGLE_MAX_DEG`]. Independent of
+    /// [`Self::angle_deg`]; used only by the [`TextureMapping::Stencil`] mapping.
+    pub stencil_angle_deg: u16,
     /// Per-pattern shape knobs, each **normalized** `[0, 1]`; meaning is per-[`TextureKind`] (see
     /// [`param_specs`]). Slots `0`/`1` are the universal **Contrast** / **Brightness** (`0.5` =
     /// neutral); slot `2` is the kind's shape param (Detail / Turbulence / Radius / …). `0.5`
@@ -314,6 +324,9 @@ impl Default for TextureSettings {
             random_angle: false,
             offset: [0.0, 0.0],
             size: [1.0, 1.0],
+            stencil_offset: [0.0, 0.0],
+            stencil_size: [0.5, 0.5],
+            stencil_angle_deg: 0,
             params: [0.5; MAX_TEX_PARAMS],
         }
     }
@@ -449,23 +462,6 @@ pub fn dab_basis(
     }
 }
 
-/// The Stencil rect's centre + half-extent (canvas px) + rotation unit vector. Offset maps `[-1, 1]`
-/// onto the canvas span (centre at `0`); Size is the half-extent as a canvas fraction (`1.0` ≈ full);
-/// rotation is the baked [`TextureSettings::angle_deg`]. Shared by [`dab_basis`] and the tool's
-/// overlay so the painted mask and its outline agree exactly.
-#[must_use]
-pub fn stencil_frame(s: &TextureSettings, canvas: [f32; 2]) -> ([f32; 2], [f32; 2], [f32; 2]) {
-    let center = [
-        (0.5 + 0.5 * s.offset[0]) * canvas[0],
-        (0.5 + 0.5 * s.offset[1]) * canvas[1],
-    ];
-    let half = [
-        (s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX) * 0.5 * canvas[0]).max(1e-3),
-        (s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX) * 0.5 * canvas[1]).max(1e-3),
-    ];
-    (center, half, rotate_by_degrees(s.angle_deg))
-}
-
 /// Sample the texture at canvas pixel `(px, py)` for a dab centred at `center` with `radius` (the
 /// values already known inside [`crate::dab::stamp_dab`]). Returns the coverage multiplier in
 /// `[0, 1]`; `1.0` when no texture is assigned (so the dab is unchanged).
@@ -487,17 +483,10 @@ pub fn sample(
     // Texture coordinates, by mapping. Stencil is special: it masks (deposits nothing) outside its
     // rect, and maps the rect onto one tile of the procedural.
     let tex = if s.mapping.is_stencil() {
-        let rel = [p[0] - b.stencil_center[0], p[1] - b.stencil_center[1]];
-        let lx = (rel[0] * b.u[0] + rel[1] * b.u[1]) / b.stencil_half[0];
-        let ly = (rel[0] * b.v[0] + rel[1] * b.v[1]) / b.stencil_half[1];
-        if lx.abs() > 1.0 || ly.abs() > 1.0 {
-            return 0.0; // outside the stencil → paint nothing
+        match stencil::stencil_tex_coord(b, p) {
+            Some(t) => t,
+            None => return 0.0, // outside the stencil → paint nothing
         }
-        // Map [-1,1]² onto a fixed-density tile window so the procedural pattern reads in the rect.
-        [
-            (lx + 1.0) * 0.5 * STENCIL_TILES,
-            (ly + 1.0) * 0.5 * STENCIL_TILES,
-        ]
     } else {
         // Per-axis scale clamped away from zero. Size MULTIPLIES the coordinate (Blender's MTex
         // `texvec = size · co`): a LARGER Size scales coords up → the pattern reads SMALLER / denser.

@@ -1,12 +1,14 @@
 //! Stencil texture **handle editing** — drag the on-canvas overlay to move / resize the image-space
-//! stencil rect (Angle still comes from the slider, so no `atan2` / transcendental). The rect's
-//! frame lives in the brush's [`ph2d_painter_brush::TextureSettings`] (Offset = centre, Size =
-//! extent), so this editor has no session state of its own; only the in-progress grab is held in
-//! [`super::PaintState`]. Grabbing a handle consumes the pointer; a drag that starts away from every
-//! handle falls through to normal painting (the handles disambiguate — no modifier needed).
+//! stencil rect (Angle comes from the card's number box, so no `atan2` / transcendental). The rect's
+//! frame lives in the brush's DEDICATED [`ph2d_painter_brush::TextureSettings`] `stencil_*` fields
+//! (`stencil_offset` = centre, `stencil_size` = extent, `stencil_angle_deg`) — independent of the
+//! texture tiling — so this editor has no session state of its own; only the in-progress grab is held
+//! in [`super::PaintState`]. Grabbing a handle consumes the pointer; a drag that starts away from
+//! every handle falls through to normal painting (the handles disambiguate — no modifier needed).
+//! The Stencil card's number boxes write the same `stencil_*` fields via [`PainterTool::route_brush_stencil_event`].
 
 use super::PainterTool;
-use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
+use ph2d_editor_core::tool::{CanvasPointer, PanelEvent, PointerPhase};
 use ph2d_painter_brush::stencil_frame;
 
 /// The stencil overlay snapshot for the shell: the rect's 4 corners + centre (image-space px), plus
@@ -96,18 +98,18 @@ impl PainterTool {
         match grab {
             StencilGrab::Move { offset } => {
                 let nc = [pos[0] - offset[0], pos[1] - offset[1]];
-                // centre px → Offset in [-1, 1].
-                self.set_brush_texture_offset(0, nc[0] / canvas[0] * 2.0 - 1.0);
-                self.set_brush_texture_offset(1, nc[1] / canvas[1] * 2.0 - 1.0);
+                // centre px → stencil Offset in [-1, 1].
+                self.set_brush_stencil_offset(0, nc[0] / canvas[0] * 2.0 - 1.0);
+                self.set_brush_stencil_offset(1, nc[1] / canvas[1] * 2.0 - 1.0);
             }
             StencilGrab::Scale { .. } => {
                 // Half-extent = |projection of (cursor − centre) onto each rotated axis|; symmetric
-                // about the centre. Size = 2·half / canvas.
+                // about the centre. stencil Size = 2·half / canvas.
                 let rel = [pos[0] - center[0], pos[1] - center[1]];
                 let du = (rel[0] * u[0] + rel[1] * u[1]).abs();
                 let dv = (rel[0] * v[0] + rel[1] * v[1]).abs();
-                self.set_brush_texture_size(0, 2.0 * du / canvas[0]);
-                self.set_brush_texture_size(1, 2.0 * dv / canvas[1]);
+                self.set_brush_stencil_size(0, 2.0 * du / canvas[0]);
+                self.set_brush_stencil_size(1, 2.0 * dv / canvas[1]);
             }
         }
         true
@@ -116,6 +118,31 @@ impl PainterTool {
     /// Pointer-up: release the grab. Returns `true` when one was active (so the event is consumed).
     fn stencil_up(&mut self) -> bool {
         self.paint.stencil_grab.take().is_some()
+    }
+
+    /// Route the **Stencil card** number boxes (Size X/Y, Offset X/Y, Rotation) to the brush's
+    /// dedicated `stencil_*` setters. Brush-only (texture LAYERS never expose the Stencil mapping), so
+    /// it runs unconditionally before the brush-texture chain. Returns `true` iff the event was a
+    /// stencil field (so the caller stops routing).
+    pub(crate) fn route_brush_stencil_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        let PanelEvent::SetValue(id, v) = event else {
+            return false;
+        };
+        let v = *v as f32;
+        match *id {
+            x if x == core_ids::PAINTER_BRUSH_STENCIL_SIZE_X => self.set_brush_stencil_size(0, v),
+            x if x == core_ids::PAINTER_BRUSH_STENCIL_SIZE_Y => self.set_brush_stencil_size(1, v),
+            x if x == core_ids::PAINTER_BRUSH_STENCIL_OFFSET_X => {
+                self.set_brush_stencil_offset(0, v)
+            }
+            x if x == core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y => {
+                self.set_brush_stencil_offset(1, v)
+            }
+            x if x == core_ids::PAINTER_BRUSH_STENCIL_ANGLE => self.set_brush_stencil_angle(v),
+            _ => return false,
+        }
+        true
     }
 
     /// The stencil overlay for the shell, or `None` unless a texture is assigned and mapped Stencil.

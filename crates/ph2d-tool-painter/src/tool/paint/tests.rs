@@ -2248,10 +2248,11 @@ fn stencil_overlay_outlines_the_rect_only_for_stencil() {
         ..Default::default()
     };
     assert!(t.stencil_overlay().is_none());
-    // Stencil, centred, full-canvas size, no rotation → corners at the canvas corners.
+    // Stencil, centred, full-canvas size (stencil_size 1), no rotation → corners at the canvas corners.
     t.paint.brush.texture = TextureSettings {
         kind: TextureKind::Noise,
         mapping: TextureMapping::Stencil,
+        stencil_size: [1.0, 1.0],
         ..Default::default()
     };
     let o = t.stencil_overlay().expect("stencil overlay present");
@@ -2259,6 +2260,17 @@ fn stencil_overlay_outlines_the_rect_only_for_stencil() {
         o.corners,
         [[0.0, 0.0], [64.0, 0.0], [64.0, 64.0], [0.0, 64.0]],
         "centred full-canvas stencil outlines the whole canvas"
+    );
+    // The DEFAULT stencil (stencil_size 0.5) is a centred rect at 50 % of the sprite.
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Stencil,
+        ..Default::default()
+    };
+    assert_eq!(
+        t.stencil_overlay().expect("overlay").corners,
+        [[16.0, 16.0], [48.0, 16.0], [48.0, 48.0], [16.0, 48.0]],
+        "the default stencil rect is 50% of the sprite"
     );
 }
 
@@ -2271,7 +2283,7 @@ fn stencil_dab_paints_only_inside_the_rect() {
     t.paint.brush.texture = TextureSettings {
         kind: TextureKind::Noise,
         mapping: TextureMapping::Stencil,
-        size: [0.4, 0.4], // a central rect ≈ [19.2 .. 44.8]
+        stencil_size: [0.4, 0.4], // a central rect ≈ [19.2 .. 44.8]
         ..Default::default()
     };
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
@@ -2290,7 +2302,8 @@ fn stencil_tool() -> PainterTool {
     t.paint.brush.texture = TextureSettings {
         kind: TextureKind::Checker,
         mapping: TextureMapping::Stencil,
-        ..Default::default() // offset 0, size 1 → rect = whole canvas
+        stencil_size: [1.0, 1.0], // stencil_offset 0, stencil_size 1 → rect = whole canvas
+        ..Default::default()
     };
     t
 }
@@ -2306,16 +2319,22 @@ fn stencil_centre_handle_drag_moves_the_rect() {
     let _ = t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Move));
     let _ = t.on_canvas_pointer(cp([40.0, 36.0], PointerPhase::Up));
     let s = t.brush_settings();
-    // new centre (40,36) → offset = (px/64*2 − 1) = (0.25, 0.125).
+    // new centre (40,36) → stencil_offset = (px/64*2 − 1) = (0.25, 0.125). The gizmo writes the
+    // dedicated stencil field, NOT the texture offset.
     assert!(
-        (s.texture_offset[0] - 0.25).abs() < 1e-3,
+        (s.stencil_offset[0] - 0.25).abs() < 1e-3,
         "x {}",
-        s.texture_offset[0]
+        s.stencil_offset[0]
     );
     assert!(
-        (s.texture_offset[1] - 0.125).abs() < 1e-3,
+        (s.stencil_offset[1] - 0.125).abs() < 1e-3,
         "y {}",
-        s.texture_offset[1]
+        s.stencil_offset[1]
+    );
+    assert_eq!(
+        s.texture_offset,
+        [0.0, 0.0],
+        "texture offset untouched by the gizmo"
     );
 }
 
@@ -2330,16 +2349,21 @@ fn stencil_corner_handle_drag_resizes_the_rect() {
     let _ = t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Move));
     let _ = t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up));
     let s = t.brush_settings();
-    // half = |(48,48) − centre(32,32)| = 16 each → size = 2·16/64 = 0.5.
+    // half = |(48,48) − centre(32,32)| = 16 each → stencil_size = 2·16/64 = 0.5.
     assert!(
-        (s.texture_size[0] - 0.5).abs() < 1e-3,
+        (s.stencil_size[0] - 0.5).abs() < 1e-3,
         "x {}",
-        s.texture_size[0]
+        s.stencil_size[0]
     );
     assert!(
-        (s.texture_size[1] - 0.5).abs() < 1e-3,
+        (s.stencil_size[1] - 0.5).abs() < 1e-3,
         "y {}",
-        s.texture_size[1]
+        s.stencil_size[1]
+    );
+    assert_eq!(
+        s.texture_size,
+        [1.0, 1.0],
+        "texture size untouched by the gizmo"
     );
 }
 
@@ -2384,14 +2408,62 @@ fn stencil_down_away_from_handles_paints_not_edits() {
     let _ = t.on_canvas_pointer(cp([16.0, 8.0], PointerPhase::Down));
     let after = t.brush_settings();
     assert_eq!(
-        before.texture_offset, after.texture_offset,
+        before.stencil_offset, after.stencil_offset,
         "a Down away from handles must not move the stencil"
     );
     assert_eq!(
-        before.texture_size, after.texture_size,
+        before.stencil_size, after.stencil_size,
         "a Down away from handles must not resize the stencil"
     );
     assert!(t.dirty_rect.is_some(), "it painted instead of editing");
+}
+
+#[test]
+fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_painter_brush::{TEX_SIZE_MAX, TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        ..Default::default()
+    };
+    // The Stencil card's number boxes write the REAL value to the dedicated stencil_* fields.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        0.3,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
+        -0.5,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        90.0,
+    ));
+    let s = t.brush_settings();
+    assert!(
+        (s.stencil_size[0] - 0.3).abs() < 1e-6,
+        "{}",
+        s.stencil_size[0]
+    );
+    assert!(
+        (s.stencil_offset[1] + 0.5).abs() < 1e-6,
+        "{}",
+        s.stencil_offset[1]
+    );
+    assert_eq!(s.stencil_angle_deg, 90);
+    // The texture tiling is independent state — the card leaves it alone.
+    assert_eq!(s.texture_size, [1.0, 1.0], "texture size untouched");
+    assert_eq!(s.texture_offset, [0.0, 0.0], "texture offset untouched");
+    assert_eq!(s.texture_angle_deg, 0, "texture angle untouched");
+    // Real-value clamp to the size bound (not a 0..1 remap).
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        999.0,
+    ));
+    assert!((t.brush_settings().stencil_size[0] - TEX_SIZE_MAX).abs() < 1e-6);
 }
 
 // ── Texture layers (LayerKind::Texture) — end-to-end through the panel-event path ──

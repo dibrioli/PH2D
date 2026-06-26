@@ -116,9 +116,10 @@ fn assigned_kind_reveals_every_control() {
 }
 
 #[test]
-fn stencil_mapping_hides_rake_and_random_but_keeps_offset_size_angle() {
-    // Stencil has a fixed frame driven by Offset/Size/Angle, so the per-dab Rake/Random rotations
-    // do not apply and must not paint a hit rect (no silent no-op).
+fn stencil_mapping_swaps_texture_transform_for_the_stencil_card() {
+    // Stencil's frame is its OWN `stencil_*` placement (Enio 2026-06-25): the per-dab Rake/Random
+    // rotations don't apply, AND the texture's own Offset/Size/Angle are hidden — replaced by the
+    // Stencil card's Size/Offset/Rotation boxes — so the gizmo and the tiling never share a field.
     let ids = painted_hit_ids_for(BrushSettings {
         texture_kind: TextureKind::Noise.to_u8(),
         texture_mapping: TextureMapping::Stencil.to_u8(),
@@ -127,14 +128,6 @@ fn stencil_mapping_hides_rake_and_random_but_keeps_offset_size_angle() {
     for hidden in [
         core_ids::PAINTER_BRUSH_TEXTURE_RAKE,
         core_ids::PAINTER_BRUSH_TEXTURE_RANDOM,
-    ] {
-        assert!(
-            !ids.contains(&hidden),
-            "Stencil must hide {hidden:?} (its frame is fixed). painted = {ids:?}"
-        );
-    }
-    for shown in [
-        core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
         core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
         core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
         core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
@@ -142,8 +135,21 @@ fn stencil_mapping_hides_rake_and_random_but_keeps_offset_size_angle() {
         core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
     ] {
         assert!(
+            !ids.contains(&hidden),
+            "Stencil must hide the texture transform {hidden:?} (the card owns placement). painted = {ids:?}"
+        );
+    }
+    for shown in [
+        core_ids::PAINTER_BRUSH_TEXTURE_MAPPING,
+        core_ids::PAINTER_BRUSH_STENCIL_SIZE_X,
+        core_ids::PAINTER_BRUSH_STENCIL_SIZE_Y,
+        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_X,
+        core_ids::PAINTER_BRUSH_STENCIL_OFFSET_Y,
+        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+    ] {
+        assert!(
             ids.contains(&shown),
-            "Stencil drives its frame via {shown:?} — it must show. painted = {ids:?}"
+            "Stencil card must show {shown:?}. painted = {ids:?}"
         );
     }
 }

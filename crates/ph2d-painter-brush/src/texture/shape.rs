@@ -105,6 +105,10 @@ pub fn render_shape_preview(
         random_angle: false,
         offset,
         size,
+        // Shape silhouette is always ViewPlane — the stencil frame is inert here.
+        stencil_offset: [0.0, 0.0],
+        stencil_size: [0.5, 0.5],
+        stencil_angle_deg: 0,
         params,
     };
     let basis = super::dab_basis(&shape, [0.0, 0.0], &mut 0u64, [1.0, 1.0], [1.0, 0.0]);

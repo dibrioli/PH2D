@@ -104,6 +104,7 @@ pub fn populate(store: &mut WidgetStore) {
     ]
     .into_iter()
     .chain(ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAMS)
+    .chain(ph2d_editor_core::ids::PAINTER_BRUSH_STENCIL_FIELDS)
     .chain(ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS)
     .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
     {

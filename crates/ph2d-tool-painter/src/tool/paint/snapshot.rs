@@ -90,6 +90,7 @@ impl PainterTool {
             shape_size: b.shape.size,
             shape_params: b.shape.params,
             shape_layer_count: self.paint.shape_layers.len().min(u8::MAX as usize) as u8,
+            document_layer_count: self.capturable_layer_count().min(u8::MAX as usize) as u8,
             shape_per_layer_color: self.paint.shape_layers.per_layer_color(),
             shape_layer_color_on: self.paint.shape_layers.snapshot().1,
             shape_layer_color: self.paint.shape_layers.snapshot().2,

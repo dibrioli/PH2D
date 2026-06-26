@@ -157,6 +157,21 @@ impl PainterTool {
         }
     }
 
+    /// The number of capturable Shape layers in the active document (visible top-level raster layers).
+    /// Drives whether the panel's "Use Document Layers" button shows (only with `> 1`).
+    #[must_use]
+    pub fn capturable_layer_count(&self) -> usize {
+        self.layers
+            .root()
+            .iter()
+            .filter(|&&id| {
+                self.layers.get(id).is_some_and(|l| {
+                    l.visible && matches!(l.kind, crate::layers::LayerKind::Raster(_))
+                })
+            })
+            .count()
+    }
+
     /// Store a **multi-layer** Shape: `layers` are `(luminance, w, h)` in bottom-to-top z-order (the
     /// Painter document's own visible raster layers, or an imported multi-layer doc), capped at
     /// [`super::shape_layers::MAX_SHAPE_LAYERS`]. Also flattens them (alpha-over) into the single

@@ -124,6 +124,32 @@ impl PainterTool {
         self.source_size
     }
 
+    /// Composite the live layers to a flat `Rec.601` luminance WITHOUT baking — the source for "Use as
+    /// Brush Grain" on the active document, so the grain reflects the LIVE painting without re-pushing
+    /// the sprite (a re-push runs `set_source`, which resets the layer stack and would destroy the
+    /// user's layers). `None` for an empty canvas. Read-only (never mutates the document).
+    #[must_use]
+    pub fn composite_to_lum(&self) -> Option<(Vec<u8>, u32, u32)> {
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let active = self.layers.active().unwrap_or(RtLayerId(0));
+        let src = ToolPixelSource {
+            active_id: active,
+            active_rgba: &self.canvas_rgba,
+            images: &self.images,
+        };
+        let rgba = composite(&self.layers, &src, w, h);
+        let lum = rgba
+            .chunks_exact(4)
+            .map(|p| {
+                ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8
+            })
+            .collect();
+        Some((lum, w, h))
+    }
+
     /// Sample the visible layer COMPOSITE at normalized `(u, v)` ∈ `[0, 1]` → straight-sRGB8 RGBA —
     /// the displayed pixel, integrated with the layer stack (opacity / blend / masks / adjustments).
     /// Drives the colour-picker eyedropper so it reads the painted colour, not the transparent Vello

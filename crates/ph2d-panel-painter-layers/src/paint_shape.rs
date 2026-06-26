@@ -97,9 +97,12 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
-    // Use Document Layers (capture the doc's raster layers as a multi-layer Shape) + Per-Layer Color
-    // (the mode toggle + per-layer colour rows), below the Texture dropdown.
-    y = crate::paint_shape_layers::paint_use_layers_button(ctx, theme, x, content_w, y);
+    // Use Document Layers (capture the doc's raster layers as a multi-layer Shape) — ONLY when the
+    // document actually has > 1 capturable layer (else there's nothing multi-layer to capture). Then
+    // Per-Layer Color (the mode toggle + per-layer colour rows), below the Texture dropdown.
+    if brush.document_layer_count > 1 {
+        y = crate::paint_shape_layers::paint_use_layers_button(ctx, theme, x, content_w, y);
+    }
     y = crate::paint_shape_layers::paint_shape_per_layer_color(ctx, theme, x, content_w, y, brush);
 
     // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain

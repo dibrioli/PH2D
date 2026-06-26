@@ -117,6 +117,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     shape_size: [1.0, 1.0],
     shape_params: [0.5; ph2d_tool_painter::MAX_TEX_PARAMS],
     shape_layer_count: 0,
+    document_layer_count: 0,
     shape_per_layer_color: false,
     shape_layer_color_on: [false; ph2d_tool_painter::MAX_SHAPE_LAYERS],
     shape_layer_color: [[0.0; 3]; ph2d_tool_painter::MAX_SHAPE_LAYERS],

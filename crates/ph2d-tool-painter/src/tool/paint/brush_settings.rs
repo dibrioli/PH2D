@@ -165,6 +165,9 @@ pub struct BrushSettings {
     pub shape_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
     /// Number of captured Shape layers (`0` = single-image / falloff; `> 1` shows the Per-Layer Color UI).
     pub shape_layer_count: u8,
+    /// Capturable layers in the active document (visible top-level rasters) — the "Use Document Layers"
+    /// button shows only when `> 1`.
+    pub document_layer_count: u8,
     /// "Per-Layer Color" mode — each Shape layer paints its own colour, higher above lower; hides the ramp.
     pub shape_per_layer_color: bool,
     /// Per-layer "use a custom colour" toggle (entries `0..shape_layer_count` valid).

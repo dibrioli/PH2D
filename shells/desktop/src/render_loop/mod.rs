@@ -1566,75 +1566,84 @@ impl crate::App {
                 && let Some(live) = hero_live.as_ref()
                 && let Some(bits) = live.bridge.entity_for(row)
             {
-                // If we're actively painting THIS sprite (unbaked), flush the paint into it first so the
-                // brush texture reflects the LIVE painting, not the stale asset (Enio 2026-06-24).
-                if self.last_painter_pushed_entity == Some(bits)
-                    && let Some(painter) = tools.active_mut().and_then(|t| {
+                // Active painter document: read the LIVE layers NON-DESTRUCTIVELY — Shape captures the
+                // layer stack (so the per-layer-colour feature works), Grain composites to luminance.
+                // Crucially this does NOT bake/re-push the sprite: a re-push runs `set_source`, which
+                // resets the LayerStack and would DESTROY the user's layers — the flatten bug Enio hit
+                // (replaces the old auto-commit path; Enio 2026-06-26).
+                let on_active_doc = self.last_painter_pushed_entity == Some(bits);
+                let mut handled = false;
+                if on_active_doc {
+                    tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                    if let Some(painter) = tools.active_mut().and_then(|t| {
                         t.as_any_mut()
                             .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                    })
-                    && painter.has_unbaked_edits()
-                {
-                    crate::hero_intents::auto_commit_painter(
-                        bits,
+                    }) {
+                        if as_shape {
+                            painter.capture_layers_as_brush_shape();
+                            toasts.push(ph2d_editor::Toast::success("Brush shape set from layers"));
+                            handled = true;
+                        } else if let Some((lum, w, h)) = painter.composite_to_lum() {
+                            painter.set_brush_texture_image(lum, w, h);
+                            toasts.push(ph2d_editor::Toast::success("Brush grain set from sprite"));
+                            handled = true;
+                        }
+                    }
+                }
+                if !handled {
+                    // A different (flat) sprite in the hierarchy — read its baked texture (no layers to
+                    // lose), mirror of the file-load path.
+                    let entity = ph2d_ecs::Entity::from_bits(bits);
+                    match crate::hero_intents::texture_edit::read_sprite_source(
+                        entity,
                         sim,
                         renderer,
                         asset_db,
                         atlas_asset_map,
-                        painter,
-                    );
-                    self.last_painter_pushed_entity = None; // bridge re-pushes the freshly-baked sprite
-                }
-                let entity = ph2d_ecs::Entity::from_bits(bits);
-                match crate::hero_intents::texture_edit::read_sprite_source(
-                    entity,
-                    sim,
-                    renderer,
-                    asset_db,
-                    atlas_asset_map,
-                ) {
-                    Some(src) => {
-                        let (w, h) = (src.image.width, src.image.height);
-                        // Rec.601 luminance: weights 77/150/29 sum to 256, so the `>> 8` keeps `[0,255]`.
-                        let lum: Vec<u8> = src
-                            .image
-                            .pixels
-                            .chunks_exact(4)
-                            .map(|p| {
-                                ((u32::from(p[0]) * 77
-                                    + u32::from(p[1]) * 150
-                                    + u32::from(p[2]) * 29)
-                                    >> 8) as u8
-                            })
-                            .collect();
-                        // Reach the painter only via the active tool → activate it first.
-                        tools.set_active(&ph2d_editor::ToolId::new("painter"));
-                        if let Some(painter) = tools.active_mut().and_then(|t| {
-                            t.as_any_mut()
-                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
-                        }) {
-                            if as_shape {
-                                painter.set_brush_shape_image(lum, w, h);
-                                toasts.push(ph2d_editor::Toast::success(
-                                    "Brush shape set from sprite",
-                                ));
-                            } else {
-                                painter.set_brush_texture_image(lum, w, h);
-                                toasts.push(ph2d_editor::Toast::success(
-                                    "Brush grain set from sprite",
-                                ));
+                    ) {
+                        Some(src) => {
+                            let (w, h) = (src.image.width, src.image.height);
+                            // Rec.601 luminance: weights 77/150/29 sum to 256, `>> 8` keeps `[0,255]`.
+                            let lum: Vec<u8> = src
+                                .image
+                                .pixels
+                                .chunks_exact(4)
+                                .map(|p| {
+                                    ((u32::from(p[0]) * 77
+                                        + u32::from(p[1]) * 150
+                                        + u32::from(p[2]) * 29)
+                                        >> 8) as u8
+                                })
+                                .collect();
+                            // Reach the painter only via the active tool → activate it first.
+                            tools.set_active(&ph2d_editor::ToolId::new("painter"));
+                            if let Some(painter) = tools.active_mut().and_then(|t| {
+                                t.as_any_mut()
+                                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                            }) {
+                                if as_shape {
+                                    painter.set_brush_shape_image(lum, w, h);
+                                    toasts.push(ph2d_editor::Toast::success(
+                                        "Brush shape set from sprite",
+                                    ));
+                                } else {
+                                    painter.set_brush_texture_image(lum, w, h);
+                                    toasts.push(ph2d_editor::Toast::success(
+                                        "Brush grain set from sprite",
+                                    ));
+                                }
                             }
                         }
-                    }
-                    None => {
-                        let what = if as_shape {
-                            "Brush Shape"
-                        } else {
-                            "Brush Grain"
-                        };
-                        toasts.push(ph2d_editor::Toast::warning(format!(
-                            "Use as {what}: select an image sprite"
-                        )));
+                        None => {
+                            let what = if as_shape {
+                                "Brush Shape"
+                            } else {
+                                "Brush Grain"
+                            };
+                            toasts.push(ph2d_editor::Toast::warning(format!(
+                                "Use as {what}: select an image sprite"
+                            )));
+                        }
                     }
                 }
                 self.title_dirty = true;

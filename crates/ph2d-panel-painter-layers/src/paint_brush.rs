@@ -234,9 +234,12 @@ pub(crate) fn paint_brush_body(
     y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
-    //    below the Shape section (Enio 2026-06-25). ──
-    y = sep(ctx.scene, theme, x, content_w, y);
-    y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
+    //    below the Shape section (Enio 2026-06-25). HIDDEN while Per-Layer Color is on — that mode owns
+    //    the colour per layer, so the ramp is nullified (Enio 2026-06-26). ──
+    if !brush.shape_per_layer_color {
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
+    }
 
     // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
     y = sep(ctx.scene, theme, x, content_w, y);

@@ -218,6 +218,44 @@ impl PainterTool {
                 }
                 true
             }
+            _ => self.route_shape_layer_event(event),
+        }
+    }
+
+    /// Per-Layer Color (multi-layer Shape): the mode toggle, a layer's colour checkbox, or a layer's
+    /// colour-swatch pick (`"i,r,g,b"`, u8). Factory ids are matched by a bounded scan over the cap.
+    fn route_shape_layer_event(&mut self, event: &PanelEvent) -> bool {
+        use ph2d_editor_core::ids as core_ids;
+        match event {
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR => {
+                self.toggle_brush_shape_per_layer_color();
+                true
+            }
+            PanelEvent::Click(id) => {
+                for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
+                    if *id == core_ids::painter_shape_layer_color_check_id(i) {
+                        self.toggle_brush_shape_layer_color(i as usize);
+                        return true;
+                    }
+                }
+                false
+            }
+            PanelEvent::SelectOption(id, value) => {
+                for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
+                    if *id == core_ids::painter_shape_layer_color_swatch_id(i) {
+                        let mut it = value.split(',').filter_map(|p| p.parse::<i32>().ok());
+                        // `"i,r,g,b"` (the leading `i` is redundant with the matched id).
+                        if let (Some(_li), Some(r), Some(g), Some(b)) =
+                            (it.next(), it.next(), it.next(), it.next())
+                        {
+                            let n = |c: i32| (c as f32 / 255.0).clamp(0.0, 1.0);
+                            self.set_brush_shape_layer_color(i as usize, [n(r), n(g), n(b)]);
+                        }
+                        return true;
+                    }
+                }
+                false
+            }
             _ => false,
         }
     }

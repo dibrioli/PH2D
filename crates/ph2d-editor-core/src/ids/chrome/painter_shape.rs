@@ -61,6 +61,29 @@ pub const PAINTER_SHAPE_SLIDERS: [NodeId; 6] = [
     PAINTER_SHAPE_SIZE_Y,
 ];
 
+// ── Per-Layer Color (multi-layer Shape; Enio 2026-06-26) ────────────────────────────────────────
+/// "Per-Layer Color" mode toggle — shown below the Shape **Texture** dropdown only when a multi-layer
+/// (`> 1`) Shape image is assigned. `Click` → `toggle_brush_shape_per_layer_color`. While on, each
+/// layer paints its own colour (higher above lower) and the Shape Color ramp section is hidden +
+/// nullified (the route uses the cached coloured stamp instead).
+pub const PAINTER_SHAPE_PER_LAYER_COLOR: NodeId =
+    hash_node_id("painter_brush.shape_per_layer_color");
+
+/// Stable [`NodeId`] for Shape layer `i`'s **colour checkbox** (the "Layer i+1 Color" row, shown when
+/// Per-Layer Color is on). A FACTORY id (paint-time registration; only `0..layer_count` rows are
+/// painted, so the `format!` is bounded). `Click` → `toggle_brush_shape_layer_color(i)`.
+#[must_use]
+pub fn painter_shape_layer_color_check_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shapelayercolorck.{i}"))
+}
+
+/// Stable [`NodeId`] for Shape layer `i`'s **colour swatch** (shown when its checkbox is on). Opens the
+/// shared colour picker; the per-frame readback forwards `set_brush_shape_layer_color(i, rgb)`.
+#[must_use]
+pub fn painter_shape_layer_color_swatch_id(i: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.shapelayercolorsw.{i}"))
+}
+
 // ── Dab **flatten + rotate** gizmo (Procreate Shape panel; Enio 2026-06-26) ─────────────────────
 /// The flatten/rotate gizmo **canvas** — the `CurvePoint` parent the two handles report against. A
 /// handle drag emits `ValueChanged(PAINTER_BRUSH_DAB_GIZMO)`; the panel decodes the pointer (radial

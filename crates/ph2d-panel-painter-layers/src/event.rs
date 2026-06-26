@@ -23,6 +23,7 @@ mod dab_gizmo;
 mod decode;
 mod option_route;
 mod ramp_picker;
+mod shape_layer_picker;
 mod shape_ramp_picker;
 
 pub(crate) fn apply_event(
@@ -427,6 +428,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_SHAPE_RAKE
                 || id == core_ids::PAINTER_SHAPE_RANDOM
                 || id == core_ids::PAINTER_SHAPE_RESET
+                || id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR
                 || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
@@ -456,6 +458,21 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         WidgetEvent::Click(id) if id == core_ids::PAINTER_SHAPE_RAMP_SWATCH => {
             shape_ramp_picker::on_swatch_click(host);
+            Some(true)
+        }
+        // Per-layer-colour rows (multi-layer Shape): a layer's colour checkbox (forward Click → the tool
+        // toggles it) or its colour swatch (toggle the picker, seeded with that layer's colour).
+        WidgetEvent::Click(id) if shape_layer_picker::classify(id).is_some() => {
+            match shape_layer_picker::classify(id) {
+                Some(shape_layer_picker::LayerWidget::Check) => {
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+                }
+                Some(shape_layer_picker::LayerWidget::Swatch(i)) => {
+                    shape_layer_picker::on_swatch_click(host, id, i);
+                }
+                None => {}
+            }
             Some(true)
         }
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).

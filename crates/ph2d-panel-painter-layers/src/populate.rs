@@ -145,6 +145,9 @@ pub fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,
         ph2d_editor_core::ids::PAINTER_SHAPE_RESET,
+        // Per-Layer Color mode toggle (the per-layer checkboxes + swatches are factory ids, registered
+        // at paint time). The click forwards as a Button Click; the tool toggles the bool.
+        ph2d_editor_core::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
         // Grain Colors ramp: enable + add / remove / invert / B&W + colour-box buttons.
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,

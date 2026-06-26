@@ -97,6 +97,9 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
+    // Per-Layer Color (multi-layer Shape): the mode toggle + per-layer colour rows, below the dropdown.
+    y = crate::paint_shape_layers::paint_shape_per_layer_color(ctx, theme, x, content_w, y, brush);
+
     // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain
     // and the Shape colour ramp on, it's the colourised silhouette), re-rendered each frame from the
     // snapshot so it tracks Falloff / Angle / Offset / Size + the ramp live (Enio 2026-06-25).

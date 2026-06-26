@@ -581,13 +581,15 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
 
 #[test]
 fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke() {
-    use ph2d_painter_brush::Dab;
+    use ph2d_painter_brush::{Dab, StrokeMethod};
     // 2-layer Shape: layer 0 (bottom) = a full square, layer 1 (top) = its RIGHT half only. Colours red
-    // bottom, green top. Two overlapping dabs (B to the right of A). At a pixel inside A's right-half
-    // (green) that B's left-half (red bottom, no green) re-covers, a per-dab composite lets B's red bury
-    // A's green — only the last dab's highlight survives. The cross-stroke z-order (all bottoms, THEN all
-    // tops) keeps it GREEN, so the highlight runs along the whole stroke (Enio 2026-06-26).
+    // bottom, green top. Two overlapping dabs (B to the right of A) emitted in SEPARATE `stamp_dabs`
+    // calls — exactly how a real freehand stroke arrives (one batch per pointer move). At a pixel inside
+    // A's right-half (green) that B's left-half (red bottom, no green) re-covers, a direct per-dab
+    // composite lets B's later red bury A's green (only the tip's highlight survives, worse the slower
+    // the stroke). The per-stroke accumulate + recomposite keeps it GREEN across batches (Enio 2026-06-26).
     let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space; // incremental → accumulate across batches
     let full = vec![255u8; 64]; // 8×8 full coverage (the body)
     let mut right = vec![0u8; 64]; // 8×8, right half = 255 (the highlight)
     for row in 0..8 {
@@ -607,11 +609,12 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
     };
-    t.stamp_dabs(&[dab(20.0), dab(26.0)]); // A, then B overlapping A's right half from the left
+    t.stamp_dabs(&[dab(20.0)]); // batch 1 (dab A)
+    t.stamp_dabs(&[dab(26.0)]); // batch 2 (dab B overlapping A's right half from the left)
     let [r, g, b, _] = px(&t, 64, 22, 32); // inside A's right-half-green, re-covered by B's left-half
     assert!(
         g > 200 && r < 80,
-        "the top (green) layer survives the lower (red) layer across the stroke: {:?}",
+        "the top (green) layer survives the lower (red) layer across batches: {:?}",
         [r, g, b]
     );
 }

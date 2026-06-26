@@ -119,23 +119,19 @@ pub(crate) struct PaintState {
     /// Cleared per frame; `paint_extend` sets it on a move. A parked (false) frame lets `paint_tick`
     /// settle the stabilizer toward the cursor — high-stabilizer catch-up on a pause, not only on up.
     moved_this_frame: bool,
-    /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other
-    /// method (and once the dot is committed on pointer-up).
+    /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other method.
     drag_preview: Option<DragPreview>,
-    /// The press point of the in-progress stroke — the pivot the Line method's Alt-constrain snaps
-    /// the cursor around (45° increments). `None` when no stroke is open.
+    /// The press point of the in-progress stroke — the pivot the Line method's Alt-constrain snaps the
+    /// cursor around (45° increments). `None` when no stroke is open.
     line_anchor: Option<[f32; 2]>,
-    /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`). Set
-    /// by the shell each pointer event (the frozen `CanvasPointer` can't carry modifiers).
+    /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the
+    /// shell each pointer event (the frozen `CanvasPointer` can't carry modifiers).
     line_constrain: bool,
-    /// In-progress Curve session (the on-canvas point editor); `None` when no curve is being
-    /// authored. See [`crate::tool::paint::curve`].
+    /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     curve: Option<curve::CurveEditor>,
-    /// In-progress Circle session (the on-canvas ellipse editor); `None` when none is being authored.
-    /// See [`crate::tool::paint::circle`].
+    /// In-progress Circle session (the on-canvas ellipse editor); `None` when idle. [`circle`].
     circle: Option<circle::CircleEditor>,
-    /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when none is open.
-    /// See [`crate::tool::paint::polygon`].
+    /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
     /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
     /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
@@ -200,6 +196,8 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
+    /// Per-stroke per-layer-colour accumulation (recomposite); see [`stamp_color_cache`].
+    per_layer_stroke: stamp_color_cache::PerLayerStroke,
 }
 
 impl Default for PaintState {
@@ -256,6 +254,7 @@ impl Default for PaintState {
             shape_ramp_version: 0,
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
+            per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
         }
     }
 }
@@ -282,9 +281,10 @@ impl PainterTool {
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
         self.paint.line_anchor = Some(ev.pos);
-        // Reset the Accumulate-OFF cap mask — the first dab re-grows it (zero-fill), then it accumulates
-        // across the stroke's dabs until pointer-up (cap resets per stroke, not per dab).
+        // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
+        // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        self.paint.per_layer_stroke.reset();
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).

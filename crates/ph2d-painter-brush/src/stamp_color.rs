@@ -342,5 +342,64 @@ fn sample_color_mask(stamp: &ColorStampMask, u: f32, v: f32) -> ([f32; 3], f32) 
     ([lerp2(0) * inv, lerp2(1) * inv, lerp2(2) * inv], pa)
 }
 
+/// Over-accumulate a layer's per-dab **coverage** (the `stamp`'s alpha × `coverage`) into the per-stroke
+/// `cov` map (`width×height`, `u8` `[0,255]`), at `center`/`radius`. The COLOUR is ignored — only the
+/// silhouette × Grain coverage matters here; the colour is re-applied at recomposite time. Used by the
+/// per-layer-colour stroke path: each layer accumulates its own coverage map across the whole stroke, so
+/// the layers can be re-composited bottom→top in z-order (the top layer above ALL of the lower layer's
+/// painting), instead of a per-dab composite where a later dab's lower layer buries the earlier highlight.
+/// `over` accumulation (`a + prev·(1−a)`) so overlapping dabs build up like normal paint. Returns the
+/// touched [`DirtyRect`]; `coverage` is the dab's already-folded Flow × Strength × pressure coverage.
+#[must_use]
+pub fn accumulate_color_stamp_coverage(
+    cov: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    radius: f32,
+    stamp: &ColorStampMask,
+    coverage: f32,
+) -> Option<DirtyRect> {
+    let coverage = coverage.clamp(0.0, 1.0);
+    if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
+        return None;
+    }
+    let (cx, cy) = (center[0], center[1]);
+    let x0 = (cx - radius).floor().max(0.0) as i64;
+    let y0 = (cy - radius).floor().max(0.0) as i64;
+    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
+    let inv_radius = 1.0 / radius;
+    let mut touched = false;
+    for py in y0..y1 {
+        let v = ((py as f32 + 0.5) - cy) * inv_radius;
+        let row = (py as usize) * (width as usize);
+        for px in x0..x1 {
+            let u = ((px as f32 + 0.5) - cx) * inv_radius;
+            let (_, a_tex) = sample_color_mask(stamp, u, v);
+            let a = a_tex * coverage;
+            if a <= 0.0 {
+                continue;
+            }
+            let idx = row + px as usize;
+            let prev = f32::from(cov[idx]) / 255.0;
+            cov[idx] = encode(a + prev * (1.0 - a)); // over-accumulate
+            touched = true;
+        }
+    }
+    if !touched {
+        return None;
+    }
+    Some(DirtyRect {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0) as u32,
+        h: (y1 - y0) as u32,
+    })
+}
+
 #[cfg(test)]
 mod tests;

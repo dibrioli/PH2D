@@ -75,6 +75,12 @@ impl PainterTool {
     pub fn set_brush_shape_kind(&mut self, k: u8) {
         let kind = TextureKind::from_u8(k);
         self.paint.brush.shape.kind = kind;
+        // Changing the Shape source (None / procedural / a fresh single Image pick) invalidates any
+        // captured multi-layer stack → drop it (and the Per-Layer Color mode + its UI). Without this, a
+        // dropdown → None left the per-layer state on, keeping the panel rows AND routing a now-`None`
+        // Shape into the coloured-stamp path (garbage paint). The multi-layer CAPTURE
+        // (`set_brush_shape_layers`) re-populates it afterwards (Enio 2026-06-26).
+        self.paint.shape_layers.clear();
         match kind {
             TextureKind::Image => self.paint.shape_image_pending = true, // shell opens a file picker
             TextureKind::None => self.paint.shape_image = None,

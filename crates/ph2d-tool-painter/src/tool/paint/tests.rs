@@ -580,6 +580,35 @@ fn shape_colour_ramp_colourises_the_silhouette_when_grain_is_none() {
 }
 
 #[test]
+fn resetting_the_shape_clears_the_per_layer_color_state() {
+    // Reset OR removing the Shape image (dropdown → None) must drop the captured layers + the Per-Layer
+    // Color mode, so the panel rows disappear AND a now-None Shape never routes into the coloured path
+    // (which left it un-paintable). Both the section Reset and the kind→None dropdown are covered.
+    for clear_via_kind in [false, true] {
+        let mut t = white_canvas(64, 6.0);
+        t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+        t.toggle_brush_shape_per_layer_color();
+        let on = t.brush_settings();
+        assert!(
+            on.shape_layer_count == 2 && on.shape_per_layer_color,
+            "armed"
+        );
+        if clear_via_kind {
+            t.set_brush_shape_kind(0); // TextureKind::None — "remove from the slot"
+        } else {
+            t.reset_brush_shape(); // the Shape section Reset button
+        }
+        let off = t.brush_settings();
+        assert_eq!(off.shape_layer_count, 0, "captured layers dropped");
+        assert!(!off.shape_per_layer_color, "Per-Layer Color mode dropped");
+        // And painting still works — a plain dab lands (no stale coloured-path routing).
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        let c = px(&t, 64, 32, 32);
+        assert!(c[3] > 0, "a normal dab still paints after the reset: {c:?}");
+    }
+}
+
+#[test]
 fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
     // 2-layer Shape: layer 0 (bottom) = a full square, layer 1 (top) = its RIGHT half only. Colours red

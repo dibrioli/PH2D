@@ -381,9 +381,12 @@ pub struct ImageMask<'a> {
     pub height: u32,
 }
 
-/// Per-dab resolved texture frame: the rotated unit basis (`u`, `v`), the per-dab random translation
-/// (tile fractions; `[0,0]` unless randomised), and — for Stencil — the rect's centre + half-extent
-/// in canvas px. Computed once per dab by [`dab_basis`] so the per-pixel [`sample`] is cheap.
+/// Per-dab resolved texture frame: the texture pattern's rotated unit basis (`u`, `v`), the per-dab
+/// random translation (tile fractions; `[0,0]` unless randomised), and — for Stencil — the rect's
+/// centre + half-extent in canvas px plus the rect's OWN rotation basis (`stencil_u`, `stencil_v`).
+/// Under Stencil `u`/`v` carry the texture's [`TextureSettings::angle_deg`] (the pattern rotation
+/// WITHIN the rect, independent of the rect's [`TextureSettings::stencil_angle_deg`]). Computed once
+/// per dab by [`dab_basis`] so the per-pixel [`sample`] is cheap.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TexDabBasis {
     u: [f32; 2],
@@ -393,6 +396,10 @@ pub struct TexDabBasis {
     stencil_center: [f32; 2],
     /// Stencil rect half-extent in canvas px, per axis (unused unless Stencil).
     stencil_half: [f32; 2],
+    /// Stencil rect rotation basis (from `stencil_angle_deg`) — projects a pixel into the rect's local
+    /// frame for the mask. Distinct from `u`/`v` (the texture pattern rotation). Unused unless Stencil.
+    stencil_u: [f32; 2],
+    stencil_v: [f32; 2],
 }
 
 impl TexDabBasis {
@@ -405,6 +412,8 @@ impl TexDabBasis {
             jitter: [0.0, 0.0],
             stencil_center: [0.0, 0.0],
             stencil_half: [1.0, 1.0],
+            stencil_u: [1.0, 0.0],
+            stencil_v: [0.0, 1.0],
         }
     }
 }
@@ -421,17 +430,10 @@ pub fn dab_basis(
     canvas: [f32; 2],
     extra_rot: [f32; 2],
 ) -> TexDabBasis {
-    // Stencil has a single fixed image-space frame (Offset = centre, Size = extent, Angle =
-    // rotation); the per-dab Rake / Random / Jitter rotation and offset-jitter do not apply.
+    // Stencil resolves to a fixed image-space rect (no per-dab Rake / Random / Jitter); see
+    // [`stencil::stencil_basis`] for how the rect mask and the within-rect texture rotation split.
     if s.mapping.is_stencil() {
-        let (center, half, u) = stencil_frame(s, canvas);
-        return TexDabBasis {
-            u,
-            v: perp(u),
-            jitter: [0.0, 0.0],
-            stencil_center: center,
-            stencil_half: half,
-        };
+        return stencil::stencil_basis(s, canvas);
     }
     let base = if s.random_angle {
         random_unit(rng)
@@ -459,6 +461,8 @@ pub fn dab_basis(
         jitter,
         stencil_center: [0.0, 0.0],
         stencil_half: [1.0, 1.0],
+        stencil_u: [1.0, 0.0],
+        stencil_v: [0.0, 1.0],
     }
 }
 
@@ -481,9 +485,10 @@ pub fn sample(
     // Pixel centre, in canvas pixels.
     let p = [px as f32 + 0.5, py as f32 + 0.5];
     // Texture coordinates, by mapping. Stencil is special: it masks (deposits nothing) outside its
-    // rect, and maps the rect onto one tile of the procedural.
+    // rect, and maps the rect onto the procedural's tile window — adjusted by the texture's own
+    // Size/Offset/Angle so the pattern inside the rect is tunable independently of the gizmo.
     let tex = if s.mapping.is_stencil() {
-        match stencil::stencil_tex_coord(b, p) {
+        match stencil::stencil_tex_coord(s, b, p) {
             Some(t) => t,
             None => return 0.0, // outside the stencil → paint nothing
         }

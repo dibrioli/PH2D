@@ -27,19 +27,54 @@ pub fn stencil_frame(s: &TextureSettings, canvas: [f32; 2]) -> ([f32; 2], [f32; 
     (center, half, rotate_by_degrees(s.stencil_angle_deg))
 }
 
+/// The per-dab [`TexDabBasis`] for a Stencil texture (no per-dab Rake / Random / jitter — the rect is
+/// fixed in image space). The rect's own rotation (`stencil_u`/`v`, from `stencil_angle_deg`) projects
+/// a pixel for the mask, while `u`/`v` carry the TEXTURE's [`TextureSettings::angle_deg`] so the
+/// pattern can rotate WITHIN the rect independently of the gizmo (Enio 2026-06-26).
+pub(super) fn stencil_basis(s: &TextureSettings, canvas: [f32; 2]) -> TexDabBasis {
+    let (center, half, su) = stencil_frame(s, canvas);
+    let tu = rotate_by_degrees(s.angle_deg);
+    TexDabBasis {
+        u: tu,
+        v: super::perp(tu),
+        jitter: [0.0, 0.0],
+        stencil_center: center,
+        stencil_half: half,
+        stencil_u: su,
+        stencil_v: super::perp(su),
+    }
+}
+
 /// Map canvas pixel `p` into the stencil's tile coordinates, or `None` when `p` falls outside the rect
-/// (the dab deposits nothing there). The rect's basis + centre + half-extent are pre-resolved on the
-/// per-dab [`TexDabBasis`]; this projects, masks, and maps the rect's `[-1, 1]²` onto one tile window.
-pub(super) fn stencil_tex_coord(b: &TexDabBasis, p: [f32; 2]) -> Option<[f32; 2]> {
+/// (the dab deposits nothing there). The rect's rotation basis + centre + half-extent are pre-resolved
+/// on the per-dab [`TexDabBasis`]; this projects `p` into the rect's local `[-1, 1]²` (the mask), then
+/// maps it onto the procedural's tile window with the TEXTURE's own Size (density), Angle (`b.u`/`b.v`,
+/// rotation WITHIN the rect) and Offset applied — so the pattern inside the gizmo is tunable
+/// independently of the gizmo placement. At the texture defaults (size 1, angle 0, offset 0) this is
+/// byte-identical to the plain `(l + 1)·½·STENCIL_TILES` window.
+pub(super) fn stencil_tex_coord(
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    p: [f32; 2],
+) -> Option<[f32; 2]> {
+    // Project into the rect's local frame (the rect's OWN rotation basis) for the mask.
     let rel = [p[0] - b.stencil_center[0], p[1] - b.stencil_center[1]];
-    let lx = (rel[0] * b.u[0] + rel[1] * b.u[1]) / b.stencil_half[0];
-    let ly = (rel[0] * b.v[0] + rel[1] * b.v[1]) / b.stencil_half[1];
+    let lx = (rel[0] * b.stencil_u[0] + rel[1] * b.stencil_u[1]) / b.stencil_half[0];
+    let ly = (rel[0] * b.stencil_v[0] + rel[1] * b.stencil_v[1]) / b.stencil_half[1];
     if lx.abs() > 1.0 || ly.abs() > 1.0 {
         return None; // outside the stencil → paint nothing
     }
-    // Map [-1,1]² onto a fixed-density tile window so the procedural pattern reads in the rect.
+    // Texture transform WITHIN the rect: scale the local coord by the texture Size (denser pattern),
+    // rotate it by the texture Angle basis (`b.u`/`b.v`) about the rect centre, then map onto the tile
+    // window and shift by the texture Offset (in tiles). Identity at the defaults.
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let cu = lx * sx;
+    let cv = ly * sy;
+    let ru = cu * b.u[0] + cv * b.u[1];
+    let rv = cu * b.v[0] + cv * b.v[1];
     Some([
-        (lx + 1.0) * 0.5 * STENCIL_TILES,
-        (ly + 1.0) * 0.5 * STENCIL_TILES,
+        (ru + 1.0) * 0.5 * STENCIL_TILES + s.offset[0],
+        (rv + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
     ])
 }

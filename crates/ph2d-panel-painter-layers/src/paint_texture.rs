@@ -111,6 +111,12 @@ pub(crate) fn paint_texture_section(
         if let Some(r) = open {
             state::set_pending_brush_texture_mapping_dd(Some((r, brush.texture_mapping)));
         }
+        // ── Stencil card — the on-canvas gizmo's OWN Size / Offset / Rotation (the rect placement),
+        //    independent of the texture's Size / Offset / Angle below (which tile the pattern inside
+        //    the rect). Shown right under Mapping when Stencil is active (Enio 2026-06-26). ──
+        if is_stencil {
+            y = crate::paint_stencil::paint_stencil_card(ctx, theme, x, content_w, y, brush);
+        }
         // ── Rake + Random checkboxes — only the per-dab rotation mappings (Stencil has a fixed
         //    frame). Placed under Mapping and above Angle (Enio 2026-06-24). ──
         if mapping.uses_dab_rotation() {
@@ -135,64 +141,58 @@ pub(crate) fn paint_texture_section(
                 brush.texture_random,
             );
         }
-        // ── Angle (whole degrees) — a drag-scrub number field; hidden under Stencil (the rect has
-        //    its own Rotation in the Stencil card). ──
-        if !is_stencil {
-            y = crate::number_field::paint_num_row(
-                ctx,
-                theme,
-                x,
-                content_w,
-                y,
-                "Angle",
-                core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-                f32::from(brush.texture_angle_deg),
-                0.0,
-                f32::from(TEX_ANGLE_MAX_DEG),
-                crate::number_field::ANGLE_STEP,
-                0,
-            );
-        }
+        // ── Angle (whole degrees) — the TEXTURE rotation. Under Stencil it rotates the pattern WITHIN
+        //    the rect (the rect's own rotation is the Stencil card's Rotation). ──
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Angle",
+            core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+            f32::from(brush.texture_angle_deg),
+            0.0,
+            f32::from(TEX_ANGLE_MAX_DEG),
+            crate::number_field::ANGLE_STEP,
+            0,
+        );
     }
 
-    // ── Offset X/Y + Size X/Y — the texture tiling, each pair on ONE line (drag-scrub number fields).
-    //    Under Stencil they are replaced by the Stencil card (the rect's OWN Size/Offset/Rotation). ──
-    if is_stencil {
-        y = crate::paint_stencil::paint_stencil_card(ctx, theme, x, content_w, y, brush);
-    } else {
-        y = crate::number_field::paint_num_xy(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Offset",
-            core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-            brush.texture_offset[0],
-            core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-            brush.texture_offset[1],
-            TEX_OFFSET_MIN,
-            TEX_OFFSET_MAX,
-            crate::number_field::FINE_STEP,
-            2,
-        );
-        y = crate::number_field::paint_num_xy(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            "Size",
-            core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-            brush.texture_size[0],
-            core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
-            brush.texture_size[1],
-            TEX_SIZE_MIN,
-            TEX_SIZE_MAX,
-            crate::number_field::SIZE_STEP,
-            2,
-        );
-    }
+    // ── Offset X/Y + Size X/Y — the TEXTURE tiling (each pair on ONE line). Always shown; under
+    //    Stencil they tile the pattern INSIDE the rect (the rect placement is the Stencil card). ──
+    y = crate::number_field::paint_num_xy(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Offset",
+        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        brush.texture_offset[0],
+        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        brush.texture_offset[1],
+        TEX_OFFSET_MIN,
+        TEX_OFFSET_MAX,
+        crate::number_field::FINE_STEP,
+        2,
+    );
+    y = crate::number_field::paint_num_xy(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Size",
+        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        brush.texture_size[0],
+        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        brush.texture_size[1],
+        TEX_SIZE_MIN,
+        TEX_SIZE_MAX,
+        crate::number_field::SIZE_STEP,
+        2,
+    );
 
     // ── Depth — how strongly the Grain bites (brush only; a Texture-LAYER is full-cover). ──
     if !compact {

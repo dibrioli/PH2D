@@ -316,6 +316,71 @@ fn stencil_rect_shows_the_procedural_pattern() {
     );
 }
 
+#[test]
+fn stencil_texture_transform_reshapes_the_pattern_within_the_rect() {
+    // In Stencil mode the texture's OWN Size / Offset / Angle reshape the pattern INSIDE the rect,
+    // independently of the gizmo (`stencil_*`), which only places the rect (Enio 2026-06-26). A
+    // horizontal scan of the rect interior changes when any of the three is changed.
+    let base = TextureSettings {
+        kind: TextureKind::Checker,
+        mapping: TextureMapping::Stencil,
+        stencil_size: [1.0, 1.0], // rect = the whole canvas
+        params: checker_hard(),
+        ..Default::default()
+    };
+    let row = |s: &TextureSettings| -> Vec<f32> {
+        let mut rng = 0;
+        let b = dab_basis(s, [0.0, 0.0], &mut rng, [64.0, 64.0], [1.0, 0.0]);
+        (4..60)
+            .step_by(2)
+            .map(|x| sample(s, &b, x, 32, [32.0, 32.0], 8.0, None))
+            .collect()
+    };
+    let base_row = row(&base);
+    // Texture Size → denser pattern in the rect.
+    assert_ne!(
+        row(&TextureSettings {
+            size: [4.0, 4.0],
+            ..base
+        }),
+        base_row,
+        "texture Size changes the pattern density in the rect"
+    );
+    // Texture Offset → the pattern shifts in the rect.
+    assert_ne!(
+        row(&TextureSettings {
+            offset: [0.5, 0.0],
+            ..base
+        }),
+        base_row,
+        "texture Offset shifts the pattern in the rect"
+    );
+    // Texture Angle → the pattern rotates within the rect (distinct from the gizmo's rotation).
+    assert_ne!(
+        row(&TextureSettings {
+            angle_deg: 45,
+            ..base
+        }),
+        base_row,
+        "texture Angle rotates the pattern in the rect"
+    );
+    // None of the above moved the GIZMO: the rect frame still spans the whole canvas.
+    assert_eq!(
+        stencil_frame(
+            &TextureSettings {
+                size: [4.0, 4.0],
+                offset: [0.5, 0.0],
+                angle_deg: 45,
+                ..base
+            },
+            [64.0, 64.0]
+        )
+        .1,
+        [32.0, 32.0],
+        "the texture transform leaves the stencil rect (gizmo) unchanged"
+    );
+}
+
 // ── Coverage modulation through stamp_dab_textured ──────────────────────────────────────────
 
 fn solid(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {

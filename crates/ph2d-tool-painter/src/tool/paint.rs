@@ -173,18 +173,22 @@ pub(crate) struct PaintState {
         ph2d_painter_brush::ColorStampMask,
         stamp_color_cache::ColorStampKey,
     )>,
+    /// Cached Grain+Ramp coloured stamp + key (the cacheable grain-ramp colour path); `stamp_color_cache`.
+    ramp_color_stamp_cache: Option<(
+        ph2d_painter_brush::ColorStampMask,
+        stamp_color_cache::RampColorStampKey,
+    )>,
     /// Lazily-filled canvas-space texture cache for the Tiled / Stencil mappings (canvas-fixed); the
     /// texture is computed once per canvas pixel per stroke. See [`crate::tool::paint::stamp_cache`].
     canvas_tex_cache: Option<stamp_cache::CanvasTexCache>,
-    /// The brush texture's **Color Ramp** (reusable `ph2d_color::ColorRamp`): when `enabled`, the
-    /// texture's scalar indexes it for the per-texel paint colour. Baked to `lut` (linear → sRGB
-    /// straight, 256 entries) when `dirty`; passed per dab to `stamp_dab_ramped`.
-    // The Grain + Shape colour ramps + the Shape **tone** LUT — engine model + LUT baking in [`ramp_lut`].
+    /// The brush Grain + Shape **Color Ramps** + Shape **tone** LUT (engine model + baking: [`ramp_lut`]).
     texture_ramp: ph2d_color::ColorRamp,
     texture_ramp_enabled: bool,
     texture_ramp_bw: bool,
     texture_ramp_lut: Vec<[f32; 4]>,
     texture_ramp_dirty: bool,
+    /// Bumped when `ensure_ramp_lut` re-bakes the owner LUT — the colour-ramp **stamp** cache keys on it.
+    ramp_lut_version: u64,
     texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode,
     shape_color_ramp: ph2d_color::ColorRamp,
     shape_color_ramp_enabled: bool,
@@ -234,12 +238,14 @@ impl Default for PaintState {
             shape_layers: shape_layers::ShapeLayers::default(),
             stamp_cache: None,
             color_stamp_cache: None,
+            ramp_color_stamp_cache: None,
             canvas_tex_cache: None,
             texture_ramp: ph2d_color::ColorRamp::default(),
             texture_ramp_enabled: false,
             texture_ramp_bw: false,
             texture_ramp_lut: Vec::new(),
             texture_ramp_dirty: true,
+            ramp_lut_version: 0,
             texture_ramp_alpha_mode: ph2d_painter_brush::RampAlphaMode::None,
             shape_color_ramp: ph2d_color::ColorRamp::default(),
             shape_color_ramp_enabled: false,

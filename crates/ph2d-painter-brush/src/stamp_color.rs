@@ -117,6 +117,89 @@ pub fn render_color_stamp_mask(
     ColorStampMask { data, size }
 }
 
+/// Render the unit **ramp-coloured** stamp at `size`×`size` — the cached fast path for a **Grain +
+/// Colour Ramp** brush (e.g. a coloured Shape ramp over a coloured Grain). The Grain value indexes the
+/// colour `ramp` (exactly like the per-pixel path's grain-ramp colour), the silhouette (the Shape image,
+/// else the falloff) is the coverage, and — when `strength_alpha` ([`crate::RampAlphaMode::Strength`]) —
+/// the ramp's alpha scales coverage. Scale-invariant (View Grain + a static silhouette), so the whole
+/// grain×ramp colour bakes ONCE and scale-blits, instead of resampling the Grain + ramp per pixel per dab
+/// (the slow path for the Line/Curve/Circle/Polygon fills). `shape_tone_lut` remaps the silhouette tone
+/// (Shape ramp B&W on). Premultiplied RGBA. Deterministic (HR-5).
+#[must_use]
+pub fn render_ramp_color_stamp(
+    spec: &BrushSpec,
+    grain_image: Option<&ImageMask>,
+    shape_image: Option<&ImageMask>,
+    shape_tone_lut: Option<&[f32]>,
+    ramp: &[[f32; 4]],
+    strength_alpha: bool,
+    size: u32,
+) -> ColorStampMask {
+    let size = size.max(1);
+    let mut data = vec![0u8; (size as usize) * (size as usize) * 4];
+    let footprint = spec.footprint_deform();
+    let grain_basis = crate::texture::dab_basis(
+        &spec.texture,
+        [0.0, 0.0],
+        &mut 0u64,
+        [1.0, 1.0],
+        [1.0, 0.0],
+        footprint,
+    );
+    let shape_active = spec.shape_silhouette_active(shape_image.is_some());
+    let shape_basis = shape_active.then(|| {
+        crate::texture::dab_basis(
+            &spec.shape,
+            [0.0, 0.0],
+            &mut 0u64,
+            [1.0, 1.0],
+            [1.0, 0.0],
+            footprint,
+        )
+    });
+    let inv = 2.0 / size as f32;
+    for j in 0..size {
+        let v = (j as f32 + 0.5) * inv - 1.0;
+        let row = (j as usize) * (size as usize) * 4;
+        for i in 0..size {
+            let u = (i as f32 + 0.5) * inv - 1.0;
+            // Silhouette coverage — the Shape image REPLACES the falloff (else the bare falloff), exactly
+            // like `render_stamp_mask`, so the cached colour matches the per-pixel path's coverage.
+            let t = footprint.falloff_t(u, v);
+            let w = match &shape_basis {
+                Some(sb) => {
+                    let raw = crate::texture::sample_shape_silhouette_unit(
+                        &spec.shape,
+                        sb,
+                        u,
+                        v,
+                        shape_image,
+                    );
+                    let sv = crate::texture::remap_shape_value(raw, shape_tone_lut);
+                    spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+                }
+                None => spec.falloff_weight(t),
+            };
+            if w <= 0.0 {
+                continue; // leaves the texel transparent (premul [0,0,0,0])
+            }
+            // The Grain value indexes the colour ramp (the per-pixel `if grain: ramp[grain]` path).
+            let s = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
+            let c = crate::dab::ramp_sample(ramp, s);
+            let a = if strength_alpha { w * c[3] } else { w };
+            if a <= 0.0 {
+                continue;
+            }
+            let o = row + (i as usize) * 4;
+            data[o] = encode(c[0] * a);
+            data[o + 1] = encode(c[1] * a);
+            data[o + 2] = encode(c[2] * a);
+            data[o + 3] = encode(a);
+        }
+    }
+    ColorStampMask { data, size }
+}
+
 /// Read-only per-dab context for the coloured-stamp blit, shared across the row bands.
 struct ColorBlitCtx<'a> {
     stamp: &'a ColorStampMask,

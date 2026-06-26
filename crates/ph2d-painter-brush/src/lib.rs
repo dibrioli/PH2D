@@ -59,7 +59,9 @@ pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
-pub use stamp_color::{ColorStampMask, blit_color_stamp, render_color_stamp_mask};
+pub use stamp_color::{
+    ColorStampMask, blit_color_stamp, render_color_stamp_mask, render_ramp_color_stamp,
+};
 pub use stamp_ramped::blit_stamp_ramped;
 pub use stroke::{
     Dab, POLY_MAX_SIDES, POLY_MIN_SIDES, Stroke, StrokePoint, ellipse_perimeter,

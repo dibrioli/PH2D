@@ -13,7 +13,8 @@ use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, Dab, TextureSettings, blit_color_stamp, render_color_stamp_mask,
+    BrushSpec, Dab, Falloff, FalloffCurve, RampAlphaMode, TextureSettings, blit_color_stamp,
+    render_color_stamp_mask, render_ramp_color_stamp,
 };
 use std::sync::Arc;
 
@@ -105,5 +106,118 @@ impl PainterTool {
             render_color_stamp_mask(brush, &masks, &colors, grain_image.as_ref(), size)
         };
         self.paint.color_stamp_cache = Some((stamp, key));
+    }
+}
+
+/// Identifies the appearance the cached **Grain+Ramp** coloured stamp was baked for: the silhouette
+/// (falloff or Shape) inputs, the Grain (image + frame), the baked owner ramp LUT (`ramp_lut_version`),
+/// whether the ramp alpha scales coverage, the dab flatten/rotate, and the resolution — NOT the radius.
+#[derive(Clone, Copy, PartialEq)]
+pub(super) struct RampColorStampKey {
+    falloff: Falloff,
+    hardness: f32,
+    custom: FalloffCurve,
+    texture: TextureSettings,
+    grain_image_version: u64,
+    shape: TextureSettings,
+    shape_image_version: u64,
+    shape_ramp_version: u64,
+    ramp_lut_version: u64,
+    strength_alpha: bool,
+    dab_flatten: f32,
+    dab_angle_deg: u16,
+    size: u32,
+}
+
+impl PainterTool {
+    /// Scale-blit the cached **Grain+Ramp** coloured stamp per dab — the cacheable fast path for a
+    /// colour ramp over an active (View) Grain (the Grain value indexes the ramp colour). Bakes the
+    /// grain×ramp once, then one blit per dab, vs the per-pixel Grain+ramp recompute (the slow fills).
+    pub(super) fn stamp_dabs_cached_ramp_color(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        alpha_locked: bool,
+        w: u32,
+        h: u32,
+    ) {
+        let owner = self.color_ramp_owner(brush.texture.is_active());
+        self.ensure_ramp_lut(owner);
+        self.ensure_shape_ramp_lut();
+        let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
+        self.ensure_ramp_color_stamp_cache(brush, mask_size_for(max_r));
+        let Some((stamp, _)) = self.paint.ramp_color_stamp_cache.as_ref() else {
+            return;
+        };
+        let buf = Arc::make_mut(&mut self.canvas_rgba);
+        let mut touched: Option<Region> = None;
+        for d in dabs {
+            let spec = BrushSpec {
+                radius_px: d.radius_px,
+                ..*brush
+            };
+            if let Some(r) = blit_color_stamp(
+                buf,
+                w,
+                h,
+                d.center,
+                d.radius_px,
+                stamp,
+                &spec,
+                d.coverage,
+                alpha_locked,
+            ) {
+                let rect = Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                };
+                touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+            }
+        }
+        if let Some(rect) = touched {
+            self.mark_dirty(rect);
+        }
+    }
+
+    /// Re-bake the Grain+Ramp coloured stamp when the appearance / mask size changed; a no-op on a hit.
+    fn ensure_ramp_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
+        let owner = self.color_ramp_owner(brush.texture.is_active());
+        let strength_alpha = matches!(self.active_ramp_alpha_mode(owner), RampAlphaMode::Strength);
+        let key = RampColorStampKey {
+            falloff: brush.falloff,
+            hardness: brush.hardness,
+            custom: brush.custom_falloff,
+            texture: brush.texture,
+            grain_image_version: self.paint.texture_image_version,
+            shape: brush.shape,
+            shape_image_version: self.paint.shape_image_version,
+            shape_ramp_version: self.paint.shape_ramp_version,
+            ramp_lut_version: self.paint.ramp_lut_version,
+            strength_alpha,
+            dab_flatten: brush.dab_flatten,
+            dab_angle_deg: brush.dab_angle_deg,
+            size,
+        };
+        if self.paint.ramp_color_stamp_cache.as_ref().map(|(_, k)| *k) == Some(key) {
+            return;
+        }
+        let stamp = {
+            let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+            let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+            let shape_tone = self.shape_tone_lut_slice();
+            let ramp = self.paint.texture_ramp_lut.as_slice();
+            render_ramp_color_stamp(
+                brush,
+                grain_image.as_ref(),
+                shape_image.as_ref(),
+                shape_tone,
+                ramp,
+                strength_alpha,
+                size,
+            )
+        };
+        self.paint.ramp_color_stamp_cache = Some((stamp, key));
     }
 }

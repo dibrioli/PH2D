@@ -59,16 +59,27 @@ impl PainterTool {
         // critical for the Line/Curve/Circle/Polygon fills, which re-stamp the WHOLE shape every move).
         // Per-pixel otherwise: a Grain to index, per-dab rotation, or the Accumulate cap (Enio 2026-06-26).
         let grain_active = brush.texture.is_active();
-        if self.color_ramp_owner(grain_active) != RampLutOwner::None {
+        let owner = self.color_ramp_owner(grain_active);
+        if owner != RampLutOwner::None {
             // `dab_mask_cacheable` already covers the no-Shape falloff case (a static View silhouette);
             // requiring `shape_silhouette_active` here needlessly forced a colour ramp on a plain brush
             // onto the per-pixel path — the cause of the slow ramped fills (Enio 2026-06-26).
-            let cacheable = !grain_active
-                && brush.dab_mask_cacheable(has_shape_image)
-                && !per_dab_rotation
-                && !accumulate_cap;
-            if cacheable {
+            let static_ok =
+                brush.dab_mask_cacheable(has_shape_image) && !per_dab_rotation && !accumulate_cap;
+            // TextureAlpha mode punches the sprite alpha (a different blend) → keep it per-pixel; the
+            // coloured stamp bakes coverage straight, so it serves None / Strength.
+            let bakeable_alpha = !matches!(
+                self.active_ramp_alpha_mode(owner),
+                ph2d_painter_brush::RampAlphaMode::TextureAlpha
+            );
+            if static_ok && !grain_active {
+                // No Grain: the silhouette/falloff coverage indexes the ramp → the cached grayscale
+                // StampMask + `ramp[coverage]` at blit (cheap as a plain cached stamp).
                 self.stamp_dabs_cached_ramped(dabs, &brush, alpha_locked, w, h);
+            } else if static_ok && grain_active && bakeable_alpha {
+                // Grain + ramp: the Grain VALUE indexes the ramp → bake the grain×ramp colour ONCE into
+                // a coloured stamp + scale-blit (vs the per-pixel Grain+ramp recompute — the slow fills).
+                self.stamp_dabs_cached_ramp_color(dabs, &brush, alpha_locked, w, h);
             } else {
                 self.stamp_dabs_ramped(dabs, &brush, alpha_locked, w, h);
             }

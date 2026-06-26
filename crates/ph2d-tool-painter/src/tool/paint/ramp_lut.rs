@@ -78,6 +78,8 @@ impl PainterTool {
         self.paint.texture_ramp_lut = lut;
         self.paint.texture_ramp_dirty = false;
         self.paint.ramp_lut_owner = owner;
+        // The owner colour LUT changed → the colour-ramp stamp cache (which bakes it in) must re-bake.
+        self.paint.ramp_lut_version = self.paint.ramp_lut_version.wrapping_add(1);
     }
 
     /// Bake the Shape **tone** LUT (256 grayscale entries) from the `shape_color_ramp`'s Rec.709

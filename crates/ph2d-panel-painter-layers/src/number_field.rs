@@ -1,16 +1,33 @@
-//! Drag-scrub numeric-field rows for the Grain / Shape param sections (Enio 2026-06-25): a label + a
-//! NumberInput chip (the Inspector's drag-to-scrub box — click-drag vertical/horizontal + type-to-edit).
-//! X/Y pairs (Size, Offset) share one line; short-label per-pattern params pack two per line, long
-//! labels go solo. Reuses [`crate::paint_texture_ramp::paint_ramp_chip`] (registers a `NumberInput` +
-//! mirrors the live value), so the foundational number-input dispatch drives the scrub + commit; the
-//! scrub step is inferred from the buffer (whole number ⇒ step 1, decimals ⇒ step 0.01).
+//! Drag-scrub numeric-field rows for the Grain / Shape param sections (Enio 2026-06-25) — the SAME
+//! number box as the Inspector's Transform (the app standard): [`paint_number_input_with_buffer`] with
+//! up/down steppers, click-drag scrub (vertical = precise, horizontal = fast, Shift = super-precise — the
+//! foundational `number_input_drag` dispatch) and type-to-edit. X/Y pairs (Size, Offset) share one line
+//! with red **X** / green **Y** axis tags like the reference; short-label per-pattern params pair
+//! two-per-line, long labels go solo.
+//!
+//! The live value is mirrored into the store's `NumberInput` each frame (when unfocused) with a DECIMAL
+//! buffer for the `0..1` / scale / offset fields, so the dispatch infers the fine step (`0.01`); Angle
+//! stays a whole number (step `1`). The committed/scrubbed REAL value forwards over `event::is_param_field`.
 
-use crate::paint_texture_ramp::paint_ramp_chip;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::showcase::read_number_input;
+use ph2d_editor_core::widget::{NumberInput, TextInputState, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+
+const LABEL_W: f32 = 70.0; // LITERAL-PX-OK: row-label column (fits "Brightness"/"Randomness")
+const PAIR_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: paired-param label column (compact)
+const AXIS_W: f32 = 16.0; // LITERAL-PX-OK: the "X"/"Y" axis-tag column
+/// Max label length (chars) for a per-pattern param to share its line with the next one.
+const PAIR_MAX_LEN: usize = 7;
+/// NumberInput stepper increments (the drag step is buffer-inferred; these drive the up/down arrows).
+/// `pub(crate)` so the Grain/Shape sections pass the right one per field.
+pub(crate) const FINE_STEP: f64 = 0.01; // LITERAL-PX-OK: NumberInput step (0..1 / offset / depth / params)
+pub(crate) const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: NumberInput step (scale)
+pub(crate) const ANGLE_STEP: f64 = 1.0; // LITERAL-PX-OK: NumberInput step (whole degrees)
 
 /// Whether `id` is a Grain/Shape param NumberInput field (Angle / Offset / Size / Depth / per-pattern
 /// param) — vs a main brush slider. Drives the panel's number-field `ValueChanged` route (`event.rs`),
@@ -27,12 +44,8 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || c::PAINTER_SHAPE_PARAMS.contains(&id)
 }
 
-const SINGLE_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: single-row label column
-const PAIR_LABEL_W: f32 = 44.0; // LITERAL-PX-OK: paired-param / x-y label column (compact)
-/// Max label length (chars) for a per-pattern param to share its line with the next one.
-const PAIR_MAX_LEN: usize = 7;
-
-/// Format a param value: whole number when `decimals == 0` (e.g. Angle degrees), else fixed decimals.
+/// Format a param value: whole number when `decimals == 0` (Angle degrees), else fixed decimals (so the
+/// scrub dispatch infers the fine `0.01` step from the `.` in the buffer).
 fn fmt_val(v: f32, decimals: usize) -> String {
     if decimals == 0 {
         format!("{}", v.round() as i64)
@@ -41,8 +54,79 @@ fn fmt_val(v: f32, decimals: usize) -> String {
     }
 }
 
-/// A left-aligned, vertically-centred label clipped to width `w`.
-fn label(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, text: &str, x: f32, y: f32, w: f32) {
+/// Register (if absent) + mirror the live `value` into the store's `NumberInput` when unfocused, with a
+/// `decimals`-formatted buffer (mirror of the Inspector's per-frame sync).
+fn mirror_value(store: &mut WidgetStore, id: NodeId, value: f32, decimals: usize) {
+    let text = fmt_val(value, decimals);
+    let _ = store.register_if_absent(
+        id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: f64::from(value),
+            buffer: text.clone(),
+            caret: text.len(),
+            last_committed: f64::from(value),
+            selection_anchor: None,
+        },
+    );
+    if store.focus_id() != Some(id)
+        && let Some(InteractiveState::NumberInput {
+            value: v,
+            buffer,
+            caret,
+            last_committed,
+            ..
+        }) = store.get_mut(id)
+    {
+        *v = f64::from(value);
+        buffer.clear();
+        buffer.push_str(&text);
+        *caret = buffer.len();
+        *last_committed = f64::from(value);
+    }
+}
+
+/// One number box filling `rect` (the Inspector widget): mirror the live value, then paint with steppers,
+/// the in-progress edit buffer + caret. `step` drives the stepper arrows; the drag step is inferred from
+/// the buffer (decimals ⇒ `0.01`).
+fn chip(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    rect: Rect,
+    id: NodeId,
+    value: f32,
+    step: f64,
+    decimals: usize,
+) {
+    mirror_value(ctx.host.store_mut(), id, value, decimals);
+    let (state, _v, buf, caret, anchor) = read_number_input(ctx.host.store(), id);
+    let buf = buf.to_string();
+    let input = NumberInput::new(id, "", f64::from(value))
+        .step(step)
+        .state(state);
+    paint_number_input_with_buffer(
+        &input,
+        Some(&buf),
+        caret,
+        anchor,
+        rect,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, rect);
+}
+
+/// A left-aligned, vertically-centred label clipped to width `w` (colour `tok`).
+fn label_tok(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    text: &str,
+    x: f32,
+    y: f32,
+    w: f32,
+    tok: ColorToken,
+) {
     let font = TypeToken::Sm.px();
     paint_text(
         ctx.text_system,
@@ -52,31 +136,11 @@ fn label(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme, text: &str, x: f32, y: f
         y + (ROW_H_PX - font) * 0.5,
         font,
         w,
-        resolve(ColorToken::Text2, theme),
+        resolve(tok, theme),
     );
 }
 
-/// One number chip filling `rect` (registers it + mirrors `value`, formatted to `decimals`).
-fn chip(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    rect: Rect,
-    id: NodeId,
-    value: f32,
-    decimals: usize,
-) {
-    paint_ramp_chip(
-        ctx,
-        theme,
-        rect,
-        id,
-        f64::from(value),
-        &fmt_val(value, decimals),
-    );
-}
-
-/// Label + ONE number chip (Angle / Depth / a solo param). `decimals` formats + sets the scrub step
-/// (`0` ⇒ whole-number / step 1, else 2-decimals / step 0.01). Returns the next `y`.
+/// Label + ONE number box (Angle / Depth / a solo param). Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_num_row(
     ctx: &mut PaintCtx,
@@ -87,11 +151,12 @@ pub(crate) fn paint_num_row(
     label_txt: &str,
     id: NodeId,
     value: f32,
+    step: f64,
     decimals: usize,
 ) -> f32 {
     let gap = Spacing::Sm.px();
-    label(ctx, theme, label_txt, x, y, SINGLE_LABEL_W);
-    let cx = x + SINGLE_LABEL_W + gap;
+    label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
+    let cx = x + LABEL_W + gap;
     let cw = (x + content_w - cx).max(0.0);
     chip(
         ctx,
@@ -99,12 +164,14 @@ pub(crate) fn paint_num_row(
         Rect::new(cx, y, cw, ROW_H_PX),
         id,
         value,
+        step,
         decimals,
     );
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
-/// Label + TWO number chips on one line (an X/Y pair: Size / Offset). Returns the next `y`.
+/// Label + TWO number boxes on one line, with red **X** / green **Y** axis tags (Size / Offset), like the
+/// Inspector Transform reference. Returns the next `y`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_num_xy(
     ctx: &mut PaintCtx,
@@ -117,36 +184,45 @@ pub(crate) fn paint_num_xy(
     vx: f32,
     id_y: NodeId,
     vy: f32,
+    step: f64,
     decimals: usize,
 ) -> f32 {
     let gap = Spacing::Sm.px();
-    let small = Spacing::Xs.px();
-    label(ctx, theme, label_txt, x, y, PAIR_LABEL_W);
-    let fx = x + PAIR_LABEL_W + gap;
-    let total = (x + content_w - fx).max(0.0);
-    let cw = ((total - small) * 0.5).max(0.0);
+    let tag_gap = Spacing::Xxs.px();
+    label_tok(ctx, theme, label_txt, x, y, LABEL_W, ColorToken::Text2);
+    let fields_x = x + LABEL_W + gap;
+    let avail = (x + content_w - fields_x).max(0.0);
+    let box_w = ((avail - 2.0 * (AXIS_W + tag_gap) - gap) / 2.0).max(0.0);
+    // X (red) tag + box.
+    label_tok(ctx, theme, "X", fields_x, y, AXIS_W, ColorToken::Danger);
+    let xb = fields_x + AXIS_W + tag_gap;
     chip(
         ctx,
         theme,
-        Rect::new(fx, y, cw, ROW_H_PX),
+        Rect::new(xb, y, box_w, ROW_H_PX),
         id_x,
         vx,
+        step,
         decimals,
     );
+    // Y (green) tag + box.
+    let y_tag_x = xb + box_w + gap;
+    label_tok(ctx, theme, "Y", y_tag_x, y, AXIS_W, ColorToken::Success);
+    let yb = y_tag_x + AXIS_W + tag_gap;
     chip(
         ctx,
         theme,
-        Rect::new(fx + cw + small, y, cw, ROW_H_PX),
+        Rect::new(yb, y, box_w, ROW_H_PX),
         id_y,
         vy,
+        step,
         decimals,
     );
     y + ROW_H_PX + Spacing::Xs.px()
 }
 
-/// Per-pattern params (all `0..1`, 2 decimals): pair two consecutive SHORT-label params on one line
-/// (each ≤ [`PAIR_MAX_LEN`] chars, e.g. Voronoi's Metric / Edges), else one per line (Randomness,
-/// Smoothness…). Returns the next `y`.
+/// Per-pattern params (all `0..1`, step `0.01`): pair two consecutive SHORT-label params on one line
+/// (each ≤ [`PAIR_MAX_LEN`] chars, e.g. Voronoi's Metric / Edges), else one per line. Returns the next `y`.
 pub(crate) fn paint_num_params(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -168,14 +244,14 @@ pub(crate) fn paint_num_params(
             y += ROW_H_PX + Spacing::Xs.px();
             i += 2;
         } else {
-            y = paint_num_row(ctx, theme, x, content_w, y, l0, id0, v0, 2);
+            y = paint_num_row(ctx, theme, x, content_w, y, l0, id0, v0, FINE_STEP, 2);
             i += 1;
         }
     }
     y
 }
 
-/// One `[label | chip]` half of a paired-param line, within `[x, x + w]`.
+/// One `[label | box]` half of a paired-param line, within `[x, x + w]`.
 #[allow(clippy::too_many_arguments)]
 fn half_param(
     ctx: &mut PaintCtx,
@@ -188,8 +264,8 @@ fn half_param(
     v: f32,
 ) {
     let gap = Spacing::Xs.px();
-    label(ctx, theme, label_txt, x, y, PAIR_LABEL_W);
+    label_tok(ctx, theme, label_txt, x, y, PAIR_LABEL_W, ColorToken::Text2);
     let cx = x + PAIR_LABEL_W + gap;
     let cw = (x + w - cx).max(0.0);
-    chip(ctx, theme, Rect::new(cx, y, cw, ROW_H_PX), id, v, 2);
+    chip(ctx, theme, Rect::new(cx, y, cw, ROW_H_PX), id, v, FINE_STEP, 2);
 }

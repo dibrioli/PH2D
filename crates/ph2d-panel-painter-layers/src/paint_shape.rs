@@ -159,6 +159,7 @@ fn paint_shape_transform_controls(
         "Angle",
         core_ids::PAINTER_SHAPE_ANGLE,
         f32::from(brush.shape_angle_deg),
+        crate::number_field::ANGLE_STEP,
         0,
     );
     y = crate::number_field::paint_num_xy(
@@ -172,6 +173,7 @@ fn paint_shape_transform_controls(
         brush.shape_offset[0],
         core_ids::PAINTER_SHAPE_OFFSET_Y,
         brush.shape_offset[1],
+        crate::number_field::FINE_STEP,
         2,
     );
     crate::number_field::paint_num_xy(
@@ -185,6 +187,7 @@ fn paint_shape_transform_controls(
         brush.shape_size[0],
         core_ids::PAINTER_SHAPE_SIZE_Y,
         brush.shape_size[1],
+        crate::number_field::SIZE_STEP,
         2,
     )
 }

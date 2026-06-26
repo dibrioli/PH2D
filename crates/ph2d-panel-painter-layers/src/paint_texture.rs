@@ -141,6 +141,7 @@ pub(crate) fn paint_texture_section(
             "Angle",
             core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
             f32::from(brush.texture_angle_deg),
+            crate::number_field::ANGLE_STEP,
             0,
         );
     }
@@ -157,6 +158,7 @@ pub(crate) fn paint_texture_section(
         brush.texture_offset[0],
         core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
         brush.texture_offset[1],
+        crate::number_field::FINE_STEP,
         2,
     );
     y = crate::number_field::paint_num_xy(
@@ -170,6 +172,7 @@ pub(crate) fn paint_texture_section(
         brush.texture_size[0],
         core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
         brush.texture_size[1],
+        crate::number_field::SIZE_STEP,
         2,
     );
 
@@ -184,6 +187,7 @@ pub(crate) fn paint_texture_section(
             "Depth",
             core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
             brush.grain_depth.clamp(0.0, 1.0),
+            crate::number_field::FINE_STEP,
             2,
         );
     }

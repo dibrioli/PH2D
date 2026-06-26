@@ -13,6 +13,7 @@
 pub(crate) mod patterns;
 mod shape;
 mod stencil;
+use crate::heading::rotate;
 pub use shape::{
     compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
     sample_shape_silhouette, sample_shape_silhouette_unit,
@@ -285,7 +286,7 @@ pub struct TextureSettings {
     pub mapping: TextureMapping,
     /// Base rotation in whole degrees, `0..=`[`TEX_ANGLE_MAX_DEG`].
     pub angle_deg: u16,
-    /// **Rake**: the rotation follows the stroke direction (overrides [`Self::angle_deg`]).
+    /// **Rake**: the rotation follows the stroke direction, with [`Self::angle_deg`] composed as an offset.
     pub rake: bool,
     /// **Random**: the rotation is randomised per dab (overrides Rake and [`Self::angle_deg`]).
     pub random_angle: bool,
@@ -439,16 +440,14 @@ pub fn dab_basis(
     let base = if s.random_angle {
         random_unit(rng)
     } else if s.rake {
-        normalize_or(dab_dir, rotate_by_degrees(s.angle_deg))
+        // Rake follows the stroke heading, with Angle composed on top (empty heading ⇒ Angle alone).
+        let h = normalize_or(dab_dir, [1.0, 0.0]);
+        rotate(h, rotate_by_degrees(s.angle_deg))
     } else {
         rotate_by_degrees(s.angle_deg)
     };
-    // Compose the per-dab Jitter Rotate on top (2D rotation = complex multiply). `extra_rot = [1, 0]`
-    // leaves `base` unchanged, so a non-jittering brush is bit-identical to the old single-rotation frame.
-    let u = [
-        base[0] * extra_rot[0] - base[1] * extra_rot[1],
-        base[0] * extra_rot[1] + base[1] * extra_rot[0],
-    ];
+    // Compose the per-dab Jitter Rotate (2D rotation); `extra_rot = [1, 0]` = no jitter (bit-identical).
+    let u = rotate(base, extra_rot);
     let v = perp(u);
     let jitter = if s.mapping.randomises_offset() {
         // A full-tile random shift per dab, in tile fractions.

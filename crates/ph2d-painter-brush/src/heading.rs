@@ -16,18 +16,27 @@
 //! HR-5: transcendental-free. `sqrt` (for normalisation) is allowed; the EMA blend `α = Δs/(Δs + L)` is a
 //! pure rational, so no `exp`/`atan2`/`sin`/`cos`. Deterministic — no RNG.
 
-/// The smoothing length `L` (px) as a fraction of the brush **diameter**: heading re-aims over roughly
-/// half a brush-width of travel. Larger ⇒ steadier but laggier; smaller ⇒ snappier but shakier. Chosen so
-/// a typical brush settles its heading within ~1 diameter of travel (Krita's Fade is brush-size-relative).
-const SMOOTH_LEN_FRACTION: f32 = 0.5;
+/// The smoothing length `L` (px) as a fraction of the brush **diameter**: the heading re-aims over
+/// roughly a TENTH of a brush-width of travel — snappy/responsive (the Rake should track the stroke,
+/// not lag a whole brush-width behind it). Larger ⇒ steadier but laggier; smaller ⇒ snappier but shakier.
+/// Brush-size-relative (Krita's "Fade"), so the feel is the same at any zoom.
+const SMOOTH_LEN_FRACTION: f32 = 0.1;
 /// Floor for the smoothing length (px) so a tiny brush still filters the ~3px chord noise rather than
-/// snapping to every wiggle. Keeps small brushes stable without making large brushes laggy.
-const SMOOTH_LEN_MIN_PX: f32 = 8.0;
+/// snapping to every wiggle. Kept small so the Rake stays responsive on small brushes.
+const SMOOTH_LEN_MIN_PX: f32 = 3.0;
 
-/// The smoothing length `L` for a brush of `diameter_px`: `max(½·diameter, MIN)`.
+/// The smoothing length `L` for a brush of `diameter_px`: `max(0.1·diameter, MIN)`.
 #[must_use]
 pub fn smooth_len(diameter_px: f32) -> f32 {
     (diameter_px * SMOOTH_LEN_FRACTION).max(SMOOTH_LEN_MIN_PX)
+}
+
+/// Rotate the 2-D vector `v` by the unit rotor `r` (a complex multiply `v · r`). Composes the Rake
+/// heading with the texture **Angle** rotor and the per-dab **Jitter Rotate** rotor; both args unit ⇒
+/// the result is unit. Transcendental-free.
+#[must_use]
+pub fn rotate(v: [f32; 2], r: [f32; 2]) -> [f32; 2] {
+    [v[0] * r[0] - v[1] * r[1], v[0] * r[1] + v[1] * r[0]]
 }
 
 /// Advance the smoothed `heading` by a path step of length `step_len` (px) whose unit tangent is `tangent`.
@@ -68,7 +77,7 @@ pub fn advance(heading: [f32; 2], tangent: [f32; 2], step_len: f32, smooth_len: 
 
 #[cfg(test)]
 mod tests {
-    use super::{advance, smooth_len};
+    use super::{advance, rotate, smooth_len};
 
     fn unit(v: [f32; 2]) -> [f32; 2] {
         let l = (v[0] * v[0] + v[1] * v[1]).sqrt();
@@ -146,8 +155,20 @@ mod tests {
     }
 
     #[test]
+    fn rotate_composes_heading_with_angle_offset() {
+        // The Rake heading rotated by the Angle rotor: +x ∘ +90° (rotor [0,1]) = +y, stays unit.
+        let h = rotate([1.0, 0.0], [0.0, 1.0]);
+        assert!(
+            is_unit(h) && h[0].abs() < 1e-6 && (h[1] - 1.0).abs() < 1e-6,
+            "+x ∘ 90° = +y: {h:?}"
+        );
+        // Angle 0 (rotor [1,0]) is the identity — a rake brush with Angle 0 keeps the bare heading.
+        assert_eq!(rotate([0.6, 0.8], [1.0, 0.0]), [0.6, 0.8]);
+    }
+
+    #[test]
     fn smooth_len_is_brush_relative_with_a_floor() {
-        assert_eq!(smooth_len(100.0), 50.0); // ½ diameter
+        assert_eq!(smooth_len(100.0), 10.0); // 0.1 · diameter (responsive)
         assert_eq!(smooth_len(4.0), super::SMOOTH_LEN_MIN_PX); // floor for tiny brushes
     }
 }

@@ -240,7 +240,8 @@ impl PainterTool {
     }
 
     /// Reset the **Shape** section: clear the Shape image (the silhouette reverts to the falloff) and
-    /// reset the Shape slot's rotation / offset / size + the Falloff preset & curve to defaults.
+    /// reset the Shape slot's rotation / offset / size + the Falloff preset & curve + the dab
+    /// flatten/rotate gizmo to defaults.
     pub fn reset_brush_shape(&mut self) {
         self.clear_brush_shape_image();
         self.paint.brush.shape = TextureSettings::default();
@@ -248,6 +249,8 @@ impl PainterTool {
         self.paint.brush.falloff = d.falloff;
         self.paint.brush.custom_falloff = d.custom_falloff;
         self.paint.brush.hardness = d.hardness;
+        self.paint.brush.dab_flatten = d.dab_flatten;
+        self.paint.brush.dab_angle_deg = d.dab_angle_deg;
     }
 
     /// Reset the **Stroke** section to defaults (method / spacing / Adjust-Strength / jitter group /

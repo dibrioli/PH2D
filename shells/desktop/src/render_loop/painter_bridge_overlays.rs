@@ -8,7 +8,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
-use ph2d_tool_painter::PainterTool;
+use ph2d_tool_painter::{DAB_FLATTEN_MAX, PainterTool};
 use ph2d_vector::VectorScene;
 
 /// Draw every Painter editing overlay for the active tool into `vector_scene`.
@@ -34,7 +34,15 @@ pub(super) fn draw_overlays(
     draw_curve_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_circle_overlay(painter, hero, sim, camera, window_size, vector_scene);
     draw_polygon_overlay(painter, hero, sim, camera, window_size, vector_scene);
-    draw_stencil_overlay(painter, hero, sim, camera, window_size, vector_scene);
+    draw_stencil_overlay(
+        painter,
+        hero,
+        sim,
+        camera,
+        window_size,
+        vector_scene,
+        cursor,
+    );
 }
 
 /// **Repeat Image**: draw the painted composite repeated in the 8 neighbour positions around the
@@ -100,6 +108,9 @@ pub(super) fn draw_repeat_image(
     }
 }
 
+/// Segments in the brush-cursor ellipse outline — enough that a flattened ellipse reads smooth.
+const BRUSH_RING_SEGS: u32 = 64;
+
 #[allow(clippy::too_many_arguments)]
 fn draw_brush_ring(
     painter: &PainterTool,
@@ -119,7 +130,7 @@ fn draw_brush_ring(
     if let Some(bits) = hero.gizmo.selection {
         let (cx, cy) = cursor;
         if hero.store.panel_at(cx, cy).is_none() {
-            let size_px = painter.brush_settings().size_px;
+            let bs = painter.brush_settings();
             let (iw, ih) = painter.canvas_size();
             let entity = ph2d_ecs::Entity::from_bits(bits);
             if iw > 0
@@ -128,9 +139,11 @@ fn draw_brush_ring(
                     sim.world().get::<ph2d_render::Sprite>(entity),
                 )
             {
-                // Per-image-pixel screen scale from the FULL sprite affine (|linear column 0|), so the
-                // ring tracks resize / AR / rotation. The ring is a circle — rotation-invariant — so
-                // only the scale matters.
+                // FULL sprite affine, so the ring tracks resize / AR / rotation. The dab is a
+                // flatten+rotate ELLIPSE in image space (`BrushSpec::dab_flatten` / `dab_angle_deg` —
+                // the same footprint the engine paints); we sweep that ellipse's boundary in image px
+                // and push each point through the affine's LINEAR part (the ring is cursor-anchored,
+                // so no translation), so the ring matches exactly where the dabs land.
                 let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
                     iw,
                     ih,
@@ -140,9 +153,38 @@ fn draw_brush_ring(
                     window_size,
                 );
                 let c = affine.as_coeffs();
-                let scale = (c[0] * c[0] + c[1] * c[1]).sqrt() as f32;
-                let r_screen = (size_px * scale).max(1.0);
-                use ph2d_vector::{Affine, Brush, Circle, Color, Stroke};
+                let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
+                // Image-space major radius, floored so the ring stays visible at tiny zoom (the old
+                // screen-space `.max(1px)`).
+                let r = if scale > 0.0 && f64::from(bs.size_px) * scale < 1.0 {
+                    1.0 / scale
+                } else {
+                    f64::from(bs.size_px)
+                };
+                // Minor axis = (1 − flatten) of the major; rotated by the dab angle (engine
+                // convention — `rotate_by_degrees` builds `[cos(deg), sin(deg)]`).
+                let m = 1.0 - f64::from(bs.dab_flatten.clamp(0.0, DAB_FLATTEN_MAX));
+                let (sin_a, cos_a) = f64::from(bs.dab_angle_deg).to_radians().sin_cos();
+                use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+                use std::f64::consts::TAU;
+                let mut path = BezPath::new();
+                for i in 0..BRUSH_RING_SEGS {
+                    let (s, co) = (f64::from(i) * TAU / f64::from(BRUSH_RING_SEGS)).sin_cos();
+                    // Ellipse boundary `(cosθ, m·sinθ)` rotated by +angle, scaled to image px …
+                    let ix = (co * cos_a - m * s * sin_a) * r;
+                    let iy = (co * sin_a + m * s * cos_a) * r;
+                    // … then the affine's linear 2×2 (cols `[c0,c1]`,`[c2,c3]`) maps image→screen.
+                    let p = Point::new(
+                        f64::from(cx) + c[0] * ix + c[2] * iy,
+                        f64::from(cy) + c[1] * ix + c[3] * iy,
+                    );
+                    if i == 0 {
+                        path.move_to(p);
+                    } else {
+                        path.line_to(p);
+                    }
+                }
+                path.close_path();
                 // Light-grey ring (baked inline, like the rubber-band overlay's
                 // colour — a follow-up can swap to a theme token / 2-tone).
                 let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
@@ -151,7 +193,7 @@ fn draw_brush_ring(
                     Affine::IDENTITY,
                     &Brush::Solid(color),
                     None,
-                    &Circle::new((f64::from(cx), f64::from(cy)), f64::from(r_screen)),
+                    &path,
                 );
             }
         }
@@ -422,11 +464,13 @@ fn draw_stencil_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+    cursor: (f32, f32),
 ) {
     // ── Stencil texture overlay (rect outline + drag handles of the image-space mask) ──
-    // The stencil is positioned/sized via its handles (corners = resize, centre = move) or the
-    // Texture section's Offset/Size sliders; Angle rotates it. The outline shows where the mask
-    // lets paint through.
+    // The stencil is positioned/sized/rotated via its handles (corners = resize; the ring just outside
+    // a corner = rotate, à la the sprite gizmo; centre = move) or the Texture / Stencil-card number
+    // boxes. The outline shows where the mask lets paint through; while the user transforms the gizmo
+    // or its params, the live Grain preview tiles inside it.
     if let Some(bits) = hero.gizmo.selection
         && let Some(overlay) = painter.stencil_overlay()
     {
@@ -448,8 +492,34 @@ fn draw_stencil_overlay(
                 camera,
                 window_size,
             );
-            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke};
+            use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Rect, Stroke};
+            let c = affine.as_coeffs();
+            let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
             let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
+            // Live Grain preview INSIDE the rect (under the outline + handles). Rendered in the rect's
+            // LOCAL frame; map buffer-px → image-px (centre ± half along the rect axes `u`/`v`) → screen.
+            if let Some(prev) = painter.stencil_preview() {
+                let u = prev.u;
+                let v = [-u[1], u[0]];
+                let (hx, hy) = (f64::from(prev.half[0]), f64::from(prev.half[1]));
+                let (ax, ay) = (2.0 * hx / f64::from(prev.w), 2.0 * hx / f64::from(prev.w));
+                let (bx, by) = (2.0 * hy / f64::from(prev.h), 2.0 * hy / f64::from(prev.h));
+                let buf_to_img = Affine::new([
+                    ax * f64::from(u[0]),
+                    ay * f64::from(u[1]),
+                    bx * f64::from(v[0]),
+                    by * f64::from(v[1]),
+                    f64::from(prev.center[0]) - hx * f64::from(u[0]) - hy * f64::from(v[0]),
+                    f64::from(prev.center[1]) - hx * f64::from(u[1]) - hy * f64::from(v[1]),
+                ]);
+                vector_scene.draw_image_rgba_transformed(
+                    &prev.rgba,
+                    prev.w,
+                    prev.h,
+                    affine * buf_to_img,
+                    ph2d_vector::ImageQuality::Low,
+                );
+            }
             let scene = vector_scene.inner_mut();
             let guide = Color::new([1.0, 0.62, 0.20, 0.9]); // LITERAL-COLOR-OK: stencil outline
             let mut path = BezPath::new();
@@ -465,26 +535,58 @@ fn draw_stencil_overlay(
                 None,
                 &path,
             );
-            // Handles: 4 corners (resize) + centre (move); the grabbed one is larger + orange.
+            // Corner handles: SQUARES = scale, CIRCLES = rotate (when the cursor is in a corner's rotate
+            // ring, or a rotate drag is live — the sprite gizmo's square→circle cue). Centre = move dot.
+            // The grabbed handle is larger + orange.
             let handle = Color::new([0.95, 0.95, 0.97, 0.95]); // LITERAL-COLOR-OK: stencil handle
             let grab = Color::new([1.0, 0.62, 0.20, 1.0]); // LITERAL-COLOR-OK: grabbed handle
-            for (i, &p) in overlay
-                .corners
-                .iter()
-                .enumerate()
-                .chain(std::iter::once((4usize, &overlay.center)))
-            {
+            let inner = f64::from(overlay.scale_tol_px) * scale;
+            let outer = f64::from(overlay.rotate_tol_px) * scale;
+            let cur = Point::new(f64::from(cursor.0), f64::from(cursor.1));
+            let center_sp = map(overlay.center);
+            // The rotate cue matches the tool's hit-test: in the band just OUTSIDE a corner (farther from
+            // the centre than the corner), so it doesn't light up for points inside the rect.
+            let over_rotate = overlay.corners.iter().any(|&p| {
+                let sp = map(p);
+                let d = sp.distance(cur);
+                d > inner && d <= outer && cur.distance(center_sp) > sp.distance(center_sp)
+            });
+            let draw_circle = overlay.rotating || over_rotate;
+            for (i, &p) in overlay.corners.iter().enumerate() {
+                let sp = map(p);
                 let grabbed = overlay.grabbed == Some(i as u8);
-                let c = if grabbed { grab } else { handle };
+                let col = if grabbed { grab } else { handle };
                 let r = if grabbed { 6.0 } else { 4.0 };
-                scene.fill(
-                    Fill::NonZero,
-                    Affine::IDENTITY,
-                    &Brush::Solid(c),
-                    None,
-                    &Circle::new(map(p), r),
-                );
+                if draw_circle {
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(col),
+                        None,
+                        &Circle::new(sp, r),
+                    );
+                } else {
+                    let sq = Rect::new(sp.x - r, sp.y - r, sp.x + r, sp.y + r);
+                    scene.fill(
+                        Fill::NonZero,
+                        Affine::IDENTITY,
+                        &Brush::Solid(col),
+                        None,
+                        &sq,
+                    );
+                }
             }
+            // Centre move handle (always a dot).
+            let cgrab = overlay.grabbed == Some(4);
+            let cc = if cgrab { grab } else { handle };
+            let cr = if cgrab { 6.0 } else { 4.0 };
+            scene.fill(
+                Fill::NonZero,
+                Affine::IDENTITY,
+                &Brush::Solid(cc),
+                None,
+                &Circle::new(map(overlay.center), cr),
+            );
         }
     }
 }

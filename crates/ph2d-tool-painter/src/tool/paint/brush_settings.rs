@@ -431,6 +431,7 @@ impl PainterTool {
         if kind == TextureKind::Image {
             self.paint.texture_image_pending = true;
         }
+        self.arm_stencil_preview();
     }
 
     /// Assign the default procedural texture (Noise) — the Texture section's "New" button.
@@ -442,6 +443,7 @@ impl PainterTool {
     /// Set the texture mapping from a wire discriminant (out-of-range → View Plane).
     pub fn set_brush_texture_mapping(&mut self, m: u8) {
         self.paint.brush.texture.mapping = TextureMapping::from_u8(m);
+        self.arm_stencil_preview();
     }
 
     /// Set the texture rotation from the slider's `0..1` track → `0..=TEX_ANGLE_MAX_DEG` degrees.
@@ -486,6 +488,7 @@ impl PainterTool {
         if slot < ph2d_painter_brush::MAX_TEX_PARAMS {
             self.paint.brush.texture.params[slot] = t.clamp(0.0, 1.0);
         }
+        self.arm_stencil_preview();
     }
 
     /// Enable / disable the texture **Color Ramp**: when on, the texture's scalar drives the per-texel
@@ -532,6 +535,7 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.texture.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
         }
+        self.arm_stencil_preview();
     }
 
     /// Set the absolute texture scale for `axis` (clamped) — used by the Stencil drag gesture.
@@ -539,12 +543,14 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.texture.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
+        self.arm_stencil_preview();
     }
 
     /// Set the texture rotation directly in whole **degrees** (the number-field path, Enio 2026-06-25).
     pub fn set_brush_texture_angle(&mut self, deg: f32) {
         self.paint.brush.texture.angle_deg =
             deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+        self.arm_stencil_preview();
     }
 
     /// Set the **Stencil** rect centre for `axis` (`−1..1`, clamped) — the gizmo's own offset, separate
@@ -553,6 +559,7 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.texture.stencil_offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
         }
+        self.arm_stencil_preview();
     }
 
     /// Set the **Stencil** rect half-extent fraction for `axis` (`0.1..10`, clamped; `0.5` = 50 % of
@@ -561,12 +568,14 @@ impl PainterTool {
         if axis < 2 {
             self.paint.brush.texture.stencil_size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
+        self.arm_stencil_preview();
     }
 
     /// Set the **Stencil** rect rotation directly in whole **degrees** — the gizmo's own angle.
     pub fn set_brush_stencil_angle(&mut self, deg: f32) {
         self.paint.brush.texture.stencil_angle_deg =
             deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+        self.arm_stencil_preview();
     }
 
     /// Set the **Dab Flatten** (`0..1`, clamped) — the Shape-panel gizmo squishes the dab footprint

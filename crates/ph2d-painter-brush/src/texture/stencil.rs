@@ -80,3 +80,47 @@ pub(super) fn stencil_tex_coord(
         (rv + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
     ])
 }
+
+/// Render the Grain pattern as it tiles **inside** the Stencil rect into an RGBA8 `w`×`h` buffer
+/// (row-major), in the rect's LOCAL axis-aligned frame — the shell rotates + places it onto the gizmo.
+/// Each texel's local coord `[-1, 1]²` runs through the SAME within-rect transform as
+/// [`stencil_tex_coord`] (texture Size / Angle / Offset onto the [`STENCIL_TILES`] window) and is
+/// sampled via [`super::patterns::sample_kind`], so the preview matches what a stroke would deposit
+/// there. Grayscale (the raw coverage scalar), fully opaque. Drives the transient on-canvas preview
+/// shown while the user transforms the gizmo or its params (Enio 2026-06-26). No-op if `out` is short.
+pub fn render_stencil_preview(
+    s: &TextureSettings,
+    image: Option<&super::ImageMask>,
+    out: &mut [u8],
+    w: u32,
+    h: u32,
+) {
+    if w == 0 || h == 0 || out.len() < (w as usize) * (h as usize) * 4 {
+        return;
+    }
+    let sx = s.size[0].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let sy = s.size[1].clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+    let tu = rotate_by_degrees(s.angle_deg); // the TEXTURE angle basis (`b.u` in `stencil_tex_coord`)
+    let tv = super::perp(tu);
+    let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    for py in 0..h {
+        let ly = (py as f32 + 0.5) / h as f32 * 2.0 - 1.0;
+        for px in 0..w {
+            let lx = (px as f32 + 0.5) / w as f32 * 2.0 - 1.0;
+            let cu = lx * sx;
+            let cv = ly * sy;
+            let ru = cu * tu[0] + cv * tu[1];
+            let rv = cu * tv[0] + cv * tv[1];
+            let tex = [
+                (ru + 1.0) * 0.5 * STENCIL_TILES + s.offset[0],
+                (rv + 1.0) * 0.5 * STENCIL_TILES + s.offset[1],
+            ];
+            let g = enc(super::patterns::sample_kind(s.kind, tex, s.params, image));
+            let i = ((py * w + px) * 4) as usize;
+            out[i] = g;
+            out[i + 1] = g;
+            out[i + 2] = g;
+            out[i + 3] = 255;
+        }
+    }
+}

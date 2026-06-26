@@ -36,7 +36,7 @@ mod polygon;
 pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
-pub use stencil::StencilOverlay;
+pub use stencil::{StencilOverlay, StencilPreview};
 mod rake;
 mod ramp;
 mod shape_ramp;
@@ -149,9 +149,13 @@ pub(crate) struct PaintState {
     /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
     /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
     shape_grab_tol_px: f32,
-    /// In-progress Stencil overlay drag (move/resize the texture rect); `None` when not dragging a
-    /// handle. See [`crate::tool::paint::stencil`].
+    /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when not dragging
+    /// a handle. See [`crate::tool::paint::stencil`].
     stencil_grab: Option<stencil::StencilGrab>,
+    /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a
+    /// texture/stencil param change, decayed each [`PainterTool::paint_tick`]. The handle drag shows the
+    /// preview via [`Self::stencil_grab`] instead. See [`stencil::StencilPreview`].
+    stencil_preview_s: f32,
     /// Imported brush-**Grain** luminance (heavy → not in the `Copy` spec); borrowed as an `ImageMask`.
     texture_image: Option<brush_settings::BrushTextureImage>,
     /// Set when the user picks the Image kind; the shell polls it to open a file picker.
@@ -224,6 +228,7 @@ impl Default for PaintState {
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
             stencil_grab: None,
+            stencil_preview_s: 0.0,
             texture_image: None,
             texture_image_pending: false,
             texture_image_version: 0,
@@ -330,6 +335,11 @@ impl PainterTool {
     /// - **Stabilizer catch-up:** when parked, walk the lagged path to the cursor (`settle` is
     ///   Space-only) so a high-stabilizer stroke arrives without waiting for pointer-up.
     pub(crate) fn paint_tick(&mut self, dt_s: f32) {
+        // Decay the transient in-gizmo Stencil preview (armed by panel param changes); runs every frame
+        // even with no open stroke, so it fades out shortly after the user stops changing the params.
+        if self.paint.stencil_preview_s > 0.0 {
+            self.paint.stencil_preview_s = (self.paint.stencil_preview_s - dt_s).max(0.0);
+        }
         let parked = !self.paint.moved_this_frame;
         self.paint.moved_this_frame = false;
         let Some(mut stroke) = self.paint.stroke.take() else {

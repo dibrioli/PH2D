@@ -367,7 +367,23 @@ fn panel_events_drive_shape_and_grain_depth() {
     // No image yet ⇒ the silhouette is the falloff.
     assert!(!t.brush_settings().shape_has_image, "no shape image yet");
 
-    // Assign a Shape image ⇒ shape_has_image flips; the section reset clears it (→ falloff) + rotation.
+    // Dab flatten/rotate gizmo (Shape section): non-default before reset.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_DAB_FLATTEN,
+        0.5,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_DAB_ANGLE,
+        90.0,
+    ));
+    assert!(
+        (t.brush_settings().dab_flatten - 0.5).abs() < 1e-6,
+        "dab flatten set"
+    );
+    assert_eq!(t.brush_settings().dab_angle_deg, 90, "dab angle set");
+
+    // Assign a Shape image ⇒ shape_has_image flips; the section reset clears it (→ falloff) + rotation
+    // + the dab flatten/rotate gizmo.
     t.set_brush_shape_image(vec![255u8; 16], 4, 4);
     assert!(t.brush_settings().shape_has_image, "shape image assigned");
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RESET));
@@ -378,6 +394,8 @@ fn panel_events_drive_shape_and_grain_depth() {
         !s.shape_rake && !s.shape_random,
         "reset cleared rake/random"
     );
+    assert_eq!(s.dab_flatten, 0.0, "reset cleared the dab flatten");
+    assert_eq!(s.dab_angle_deg, 0, "reset cleared the dab angle");
 }
 
 #[test]
@@ -2364,6 +2382,67 @@ fn stencil_corner_handle_drag_resizes_the_rect() {
         s.texture_size,
         [1.0, 1.0],
         "texture size untouched by the gizmo"
+    );
+}
+
+#[test]
+fn stencil_corner_ring_drag_rotates_the_rect() {
+    let mut t = stencil_tool();
+    t.set_shape_grab_tol_px(5.0); // scale ≤ 5 px; the rotate ring is 5..13 px past a corner
+    // A point just OUTSIDE the bottom-right corner (64, 64): in the rotate ring, not the scale disc.
+    let down = [70.0, 70.0]; // dist from the corner ≈ 8.5 px
+    assert!(
+        t.on_canvas_pointer(cp(down, PointerPhase::Down)),
+        "grab the rotate ring just outside a corner"
+    );
+    assert!(
+        t.stencil_overlay().expect("overlay").rotating,
+        "the active grab is a rotation (square→circle cue)"
+    );
+    // Drag from 45° to 135° about the centre (32, 32) → +90°.
+    let _ = t.on_canvas_pointer(cp([-6.0, 70.0], PointerPhase::Move));
+    let deg = i32::from(t.brush_settings().stencil_angle_deg);
+    assert!((deg - 90).abs() <= 2, "stencil rotated ~90°, got {deg}");
+    let _ = t.on_canvas_pointer(cp([-6.0, 70.0], PointerPhase::Up));
+    assert_eq!(
+        t.brush_settings().texture_angle_deg,
+        0,
+        "the texture's own angle is untouched by the gizmo"
+    );
+}
+
+#[test]
+fn stencil_preview_shows_during_transform_and_fades_when_idle() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = stencil_tool();
+    assert!(t.stencil_preview().is_none(), "no preview when idle");
+    // A panel param change (Stencil card) arms the transient in-gizmo preview.
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_STENCIL_ANGLE,
+        30.0,
+    ));
+    assert!(
+        t.stencil_preview().is_some(),
+        "preview shows after a stencil param change"
+    );
+    // It fades after the hold window (decayed by the per-frame tick).
+    t.paint_tick(1.0); // 1 s ≫ the hold
+    assert!(
+        t.stencil_preview().is_none(),
+        "preview fades once the user stops changing params"
+    );
+    // A handle drag shows it live; releasing hides it crisply.
+    let center = t.stencil_overlay().expect("overlay").center;
+    let _ = t.on_canvas_pointer(cp(center, PointerPhase::Down));
+    assert!(
+        t.stencil_preview().is_some(),
+        "preview shows during a handle drag"
+    );
+    let _ = t.on_canvas_pointer(cp(center, PointerPhase::Up));
+    assert!(
+        t.stencil_preview().is_none(),
+        "preview hides the moment the drag ends"
     );
 }
 

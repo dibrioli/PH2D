@@ -17,7 +17,7 @@ pub use shape::{
     compose_shape_silhouette_kind, remap_shape_value, render_shape_preview,
     sample_shape_silhouette, sample_shape_silhouette_unit,
 };
-pub use stencil::stencil_frame;
+pub use stencil::{render_stencil_preview, stencil_frame};
 
 /// Largest **Angle** the slider reaches, in whole degrees (one full turn).
 pub const TEX_ANGLE_MAX_DEG: u16 = 360;

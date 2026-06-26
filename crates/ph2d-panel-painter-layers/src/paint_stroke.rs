@@ -9,8 +9,8 @@
 //! real range (the `BRUSH_*_MAX` constants are the single source). Edits forward over the frozen
 //! `PanelEvent` channel (drained in [`crate::event`]).
 
-use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
-use crate::paint_brush_top::paint_checkbox_row;
+use crate::paint_brush::paint_dropdown_row;
+use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use crate::state;
 use ph2d_editor_core::ids::{
     self as core_ids, painter_brush_jitter_unit_option_id, painter_brush_stroke_method_option_id,
@@ -93,32 +93,32 @@ pub(crate) fn paint_stroke_section(
     if method.uses_rate() {
         let span = BRUSH_AIRBRUSH_RATE_MAX_S - BRUSH_AIRBRUSH_RATE_MIN_S;
         let track = ((brush.airbrush_rate_s - BRUSH_AIRBRUSH_RATE_MIN_S) / span).clamp(0.0, 1.0);
-        y = paint_param_row(ParamRow {
+        y = paint_slider_chip_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Rate",
-            id: core_ids::PAINTER_BRUSH_RATE,
-            value: track,
-            readout: &format!("{:.3}", brush.airbrush_rate_s),
-        });
+            "Rate",
+            core_ids::PAINTER_BRUSH_RATE,
+            core_ids::PAINTER_BRUSH_RATE_CHIP,
+            track,
+        );
     }
 
     // ── Spacing (% of diameter) + Adjust Strength — only the spacing-driven methods ──
     if method.uses_spacing() {
-        y = paint_param_row(ParamRow {
+        y = paint_slider_chip_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Spacing",
-            id: core_ids::PAINTER_BRUSH_SPACING,
-            value: brush.spacing,
-            readout: &format!("{:.0}%", brush.spacing * 100.0), // LITERAL-PX-OK: fraction→percent
-        });
+            "Spacing",
+            core_ids::PAINTER_BRUSH_SPACING,
+            core_ids::PAINTER_BRUSH_SPACING_CHIP,
+            brush.spacing,
+        );
         y = paint_checkbox_row(
             ctx,
             theme,
@@ -140,57 +140,57 @@ pub(crate) fn paint_stroke_section(
 
     // ── Dash ratio + length — only the spacing-driven methods ──
     if method.uses_dash() {
-        y = paint_param_row(ParamRow {
+        y = paint_slider_chip_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Dash",
-            id: core_ids::PAINTER_BRUSH_DASH_RATIO,
-            value: brush.dash_ratio,
-            readout: &format!("{:.2}", brush.dash_ratio),
-        });
-        y = paint_param_row(ParamRow {
+            "Dash",
+            core_ids::PAINTER_BRUSH_DASH_RATIO,
+            core_ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
+            brush.dash_ratio,
+        );
+        y = paint_slider_chip_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Length",
-            id: core_ids::PAINTER_BRUSH_DASH_LENGTH,
-            value: count_to_norm(brush.dash_samples),
-            readout: &brush.dash_samples.to_string(),
-        });
+            "Length",
+            core_ids::PAINTER_BRUSH_DASH_LENGTH,
+            core_ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
+            count_to_norm(brush.dash_samples),
+        );
     }
 
     // ── Input samples (always) ──
-    y = paint_param_row(ParamRow {
+    y = paint_slider_chip_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        label: "Samples",
-        id: core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
-        value: count_to_norm(brush.input_samples),
-        readout: &brush.input_samples.to_string(),
-    });
+        "Samples",
+        core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+        core_ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
+        count_to_norm(brush.input_samples),
+    );
 
     // ── Stabilizer intensity — the single "how regular" knob (0% = raw path). Only the freehand
     //    Space method runs it; Drag Dot and the per-event/interactive methods place dabs raw. ──
     if method.uses_stabilizer() {
-        y = paint_param_row(ParamRow {
+        y = paint_slider_chip_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Stabilize",
-            id: core_ids::PAINTER_BRUSH_STABILIZE,
-            value: brush.stabilizer,
-            readout: &format!("{:.0}%", brush.stabilizer * 100.0), // LITERAL-PX-OK: fraction→percent
-        });
+            "Stabilize",
+            core_ids::PAINTER_BRUSH_STABILIZE,
+            core_ids::PAINTER_BRUSH_STABILIZE_CHIP,
+            brush.stabilizer,
+        );
     }
 
     y
@@ -333,27 +333,24 @@ fn paint_jitter_card(
         resolve(ColorToken::Text2, theme),
     );
     let mut iy = y + pad + title_h;
-    // Position: the main per-dab position scatter (unit-aware track + readout).
-    let view = brush.jitter_unit == JitterUnit::View.to_u8();
-    let (jval, jread) = if view {
-        (
-            brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX,
-            format!("{:.0}px", brush.jitter_absolute_px),
-        )
+    // Position: the main per-dab position scatter. The slider track is `0..1` in BOTH units (View maps
+    // the absolute px onto the `0..MAX` track); the tool maps it back per the unit.
+    let jval = if brush.jitter_unit == JitterUnit::View.to_u8() {
+        brush.jitter_absolute_px / BRUSH_JITTER_ABS_MAX_PX
     } else {
-        (brush.jitter, format!("{:.2}", brush.jitter))
+        brush.jitter
     };
-    iy = paint_param_row(ParamRow {
+    iy = paint_slider_chip_row(
         ctx,
         theme,
-        x: inner_x,
-        content_w: inner_w,
-        y: iy,
-        label: "Position",
-        id: core_ids::PAINTER_BRUSH_JITTER,
-        value: jval,
-        readout: &jread,
-    });
+        inner_x,
+        inner_w,
+        iy,
+        "Position",
+        core_ids::PAINTER_BRUSH_JITTER,
+        core_ids::PAINTER_BRUSH_JITTER_CHIP,
+        jval,
+    );
     // Unit (Brush / View) for the Position scatter.
     let (ny, open) = paint_dropdown_row(
         ctx,
@@ -371,42 +368,42 @@ fn paint_jitter_card(
         state::set_pending_brush_jitter_unit_dd(Some((r, brush.jitter_unit)));
     }
     // Scale: per-dab radius scatter.
-    iy = paint_param_row(ParamRow {
+    iy = paint_slider_chip_row(
         ctx,
         theme,
-        x: inner_x,
-        content_w: inner_w,
-        y: iy,
-        label: "Scale",
-        id: core_ids::PAINTER_BRUSH_JITTER_SCALE,
-        value: brush.jitter_scale,
-        readout: &format!("{:.2}", brush.jitter_scale),
-    });
+        inner_x,
+        inner_w,
+        iy,
+        "Scale",
+        core_ids::PAINTER_BRUSH_JITTER_SCALE,
+        core_ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
+        brush.jitter_scale,
+    );
     // Spacing: per-gap scatter of the dab spacing (always relevant — placement, not appearance).
-    iy = paint_param_row(ParamRow {
+    iy = paint_slider_chip_row(
         ctx,
         theme,
-        x: inner_x,
-        content_w: inner_w,
-        y: iy,
-        label: "Spacing",
-        id: core_ids::PAINTER_BRUSH_JITTER_SPACING,
-        value: brush.jitter_spacing,
-        readout: &format!("{:.2}", brush.jitter_spacing),
-    });
+        inner_x,
+        inner_w,
+        iy,
+        "Spacing",
+        core_ids::PAINTER_BRUSH_JITTER_SPACING,
+        core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
+        brush.jitter_spacing,
+    );
     // Rotation: per-dab texture-rotation scatter — only meaningful with a texture assigned.
     if has_rotation {
-        iy = paint_param_row(ParamRow {
+        iy = paint_slider_chip_row(
             ctx,
             theme,
-            x: inner_x,
-            content_w: inner_w,
-            y: iy,
-            label: "Rotation",
-            id: core_ids::PAINTER_BRUSH_JITTER_ROTATE,
-            value: brush.jitter_rotate,
-            readout: &format!("{:.2}", brush.jitter_rotate),
-        });
+            inner_x,
+            inner_w,
+            iy,
+            "Rotation",
+            core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+            core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+            brush.jitter_rotate,
+        );
     }
     let _ = iy;
     y + card_h + Spacing::Sm.px()

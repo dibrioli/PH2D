@@ -29,6 +29,23 @@ pub const PAINTER_BRUSH_RANDOMIZE_CHIPS: [NodeId; 3] = [
     PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
 ];
 
+// Numeric-chip ids for the Stroke + Jitter rows — converted from the bare slider+text-readout form
+// to the canonical slider-with-chip (Enio 2026-06-26) so every brush slider matches Size/Strength.
+// Each is `link_slider_number`-linked + `set_number_range(0,1,step)`-normalised in `crate::populate`.
+pub const PAINTER_BRUSH_RATE_CHIP: NodeId = hash_node_id("painter_brush.rate_chip");
+pub const PAINTER_BRUSH_SPACING_CHIP: NodeId = hash_node_id("painter_brush.spacing_chip");
+pub const PAINTER_BRUSH_DASH_RATIO_CHIP: NodeId = hash_node_id("painter_brush.dash_ratio_chip");
+pub const PAINTER_BRUSH_DASH_LENGTH_CHIP: NodeId = hash_node_id("painter_brush.dash_length_chip");
+pub const PAINTER_BRUSH_INPUT_SAMPLES_CHIP: NodeId =
+    hash_node_id("painter_brush.input_samples_chip");
+pub const PAINTER_BRUSH_STABILIZE_CHIP: NodeId = hash_node_id("painter_brush.stabilize_chip");
+pub const PAINTER_BRUSH_JITTER_CHIP: NodeId = hash_node_id("painter_brush.jitter_chip");
+pub const PAINTER_BRUSH_JITTER_SCALE_CHIP: NodeId = hash_node_id("painter_brush.jitter_scale_chip");
+pub const PAINTER_BRUSH_JITTER_ROTATE_CHIP: NodeId =
+    hash_node_id("painter_brush.jitter_rotate_chip");
+pub const PAINTER_BRUSH_JITTER_SPACING_CHIP: NodeId =
+    hash_node_id("painter_brush.jitter_spacing_chip");
+
 /// Collapsible "Randomize Color" section header (Inspector pattern: ALL-CAPS label +
 /// collapse chevron + assignable color dot). Click toggles collapse; right-click opens
 /// the section-outline color menu.

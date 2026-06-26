@@ -120,45 +120,7 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Editable numeric chips paired with the canonical slider-with-chip rows (Size / Strength /
-    // Randomize Hue-Sat-Value). `link_slider_number` ties each chip to its slider so a chip edit
-    // propagates back as the slider's `ValueChanged` — the existing brush-slider forward handles it.
-    let slider_chip_pairs = [
-        (
-            ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_SLIDER,
-            ph2d_editor_core::ids::PAINTER_BRUSH_SIZE_CHIP,
-        ),
-        (
-            ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_SLIDER,
-            ph2d_editor_core::ids::PAINTER_BRUSH_STRENGTH_CHIP,
-        ),
-        (
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
-        ),
-        (
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
-        ),
-        (
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
-            ph2d_editor_core::ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
-        ),
-    ];
-    for (slider, chip) in slider_chip_pairs {
-        store.register(
-            chip,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: 0.0,
-                buffer: String::new(),
-                caret: 0,
-                last_committed: 0.0,
-                selection_anchor: None,
-            },
-        );
-        store.link_slider_number(slider, chip);
-    }
+    register_brush_slider_chips(store);
     register_collapsible_sections(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
@@ -236,6 +198,113 @@ pub fn populate(store: &mut WidgetStore) {
                 selected_index: Some(0),
             },
         );
+    }
+}
+
+/// Register the editable numeric chip paired with EVERY brush slider (the canonical slider-with-chip
+/// form, not just Size/Strength — the Stroke + Jitter rows were bare slider+text-readout before, Enio
+/// 2026-06-26). `link_slider_number` ties each chip to its slider so a chip edit / drag mirrors back
+/// as the slider's `ValueChanged` (the existing brush-slider forward handles it); `set_number_range
+/// (0, 1, step)` makes the chip DRAG span the slider's `0..1` track proportionally — coherent with its
+/// limits, like the texture number boxes. Split out of [`populate`] for the 200-LOC fn cap.
+fn register_brush_slider_chips(store: &mut WidgetStore) {
+    use ph2d_editor_core::ids as core_ids;
+    // Counts (Dash Length / Input Samples) step by one whole sample on the `0..1` track.
+    let count_step = 1.0 / f64::from(ph2d_tool_painter::BRUSH_COUNT_SLIDER_MAX - 1);
+    // The default chip stepper / drag increment on the `0..1` track (a behaviour value, not a layout
+    // token — the gate's design-token rule doesn't apply).
+    const STEP: f64 = 0.01; // LITERAL-PX-OK: chip 0..1 track step (non-design behaviour value)
+    let slider_chips = [
+        (
+            core_ids::PAINTER_BRUSH_SIZE_SLIDER,
+            core_ids::PAINTER_BRUSH_SIZE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+            core_ids::PAINTER_BRUSH_STRENGTH_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+            core_ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_RATE,
+            core_ids::PAINTER_BRUSH_RATE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_SPACING,
+            core_ids::PAINTER_BRUSH_SPACING_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_DASH_RATIO,
+            core_ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_DASH_LENGTH,
+            core_ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
+            count_step,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_INPUT_SAMPLES,
+            core_ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
+            count_step,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_STABILIZE,
+            core_ids::PAINTER_BRUSH_STABILIZE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_JITTER,
+            core_ids::PAINTER_BRUSH_JITTER_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_JITTER_SCALE,
+            core_ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_JITTER_ROTATE,
+            core_ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+            STEP,
+        ),
+        (
+            core_ids::PAINTER_BRUSH_JITTER_SPACING,
+            core_ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
+            STEP,
+        ),
+    ];
+    for (slider, chip, step) in slider_chips {
+        store.register(
+            chip,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.link_slider_number(slider, chip);
+        store.set_number_range(chip, 0.0, 1.0, step);
     }
 }
 
@@ -324,6 +393,81 @@ mod tests {
             assert!(
                 store.get(id).is_some(),
                 "toolbar button {id:?} has no store slot — its click would be dropped"
+            );
+        }
+    }
+
+    /// Regression: EVERY brush slider has its editable chip registered, `link_slider_number`-linked,
+    /// and `set_number_range`-normalised (Enio 2026-06-26 — the Stroke + Jitter rows were bare
+    /// slider+text-readout before; now they all use the canonical slider-with-chip like Size/Strength).
+    /// A missing chip slot / link / range silently breaks the slider's number box (drag not
+    /// range-proportional, or a chip edit that never reaches the slider).
+    #[test]
+    fn every_brush_slider_chip_is_registered_linked_and_ranged() {
+        let mut store = WidgetStore::with_capacity(64);
+        populate(&mut store);
+        for (slider, chip) in [
+            (ids::PAINTER_BRUSH_SIZE_SLIDER, ids::PAINTER_BRUSH_SIZE_CHIP),
+            (
+                ids::PAINTER_BRUSH_STRENGTH_SLIDER,
+                ids::PAINTER_BRUSH_STRENGTH_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_COLOR_JITTER_HUE,
+                ids::PAINTER_BRUSH_COLOR_JITTER_HUE_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_COLOR_JITTER_SAT,
+                ids::PAINTER_BRUSH_COLOR_JITTER_SAT_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_COLOR_JITTER_VAL,
+                ids::PAINTER_BRUSH_COLOR_JITTER_VAL_CHIP,
+            ),
+            (ids::PAINTER_BRUSH_RATE, ids::PAINTER_BRUSH_RATE_CHIP),
+            (ids::PAINTER_BRUSH_SPACING, ids::PAINTER_BRUSH_SPACING_CHIP),
+            (
+                ids::PAINTER_BRUSH_DASH_RATIO,
+                ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_DASH_LENGTH,
+                ids::PAINTER_BRUSH_DASH_LENGTH_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_INPUT_SAMPLES,
+                ids::PAINTER_BRUSH_INPUT_SAMPLES_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_STABILIZE,
+                ids::PAINTER_BRUSH_STABILIZE_CHIP,
+            ),
+            (ids::PAINTER_BRUSH_JITTER, ids::PAINTER_BRUSH_JITTER_CHIP),
+            (
+                ids::PAINTER_BRUSH_JITTER_SCALE,
+                ids::PAINTER_BRUSH_JITTER_SCALE_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_JITTER_ROTATE,
+                ids::PAINTER_BRUSH_JITTER_ROTATE_CHIP,
+            ),
+            (
+                ids::PAINTER_BRUSH_JITTER_SPACING,
+                ids::PAINTER_BRUSH_JITTER_SPACING_CHIP,
+            ),
+        ] {
+            assert!(
+                matches!(store.get(chip), Some(InteractiveState::NumberInput { .. })),
+                "chip {chip:?} not registered as a NumberInput"
+            );
+            assert!(
+                store.number_range(chip).is_some(),
+                "chip {chip:?} has no set_number_range — its drag won't be range-proportional"
+            );
+            assert_eq!(
+                store.linked_number(slider),
+                Some(chip),
+                "slider {slider:?} not linked to its chip {chip:?}"
             );
         }
     }

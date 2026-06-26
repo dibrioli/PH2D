@@ -58,6 +58,10 @@ fn populate_visibility_section(store: &mut WidgetStore) {
             },
         );
     }
+    // Alpha Cutoff is a hard `0..1` mask threshold — drag-scrub spans the whole range (coherent with
+    // its limits, like the texture number boxes; Enio 2026-06-26). The Rect fields are pixel extents
+    // with no natural ceiling, so they keep the unbounded step-rate (no artificial clamp).
+    store.set_number_range(ids::INSP_VIS_ALPHA_CUTOFF, 0.0, 1.0, 0.01); // LITERAL-PX-OK: alpha-cutoff chip 0..1 track step (non-design behaviour value)
 }
 
 /// Register the W3 segmented-tab + dropdown-option ids as `Button`s so
@@ -245,6 +249,9 @@ fn populate_color_tint(store: &mut WidgetStore) {
         100.0, // LITERAL-PX-OK: opacity percent scale (slider 0..1 → chip 0..100)
         0.0,
     );
+    // Opacity is a hard `0..100 %` — drag-scrub on the chip spans the whole range proportionally
+    // (coherent with its limits, like the texture number boxes; Enio 2026-06-26).
+    store.set_number_range(ids::INSP_SPRITE_OPACITY_CHIP, 0.0, 100.0, 1.0); // LITERAL-PX-OK: opacity percent scale
     store.register(
         ids::INSP_SPRITE_TINT_FILL,
         InteractiveState::Checkbox {

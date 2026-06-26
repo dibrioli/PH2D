@@ -95,30 +95,42 @@ pub(crate) fn sync_inspector_from_snapshots(
         inspector_state.last_entity = new_entity;
     } else {
         if let Some(info) = transform {
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_POS_X,
-                pos_for_display(info.translation[0]),
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_POS_Y,
-                pos_for_display(info.translation[1]),
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_ROT,
-                info.rotation_rad.to_degrees() as f64,
-            );
-            host.store_mut()
-                .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
-            host.store_mut()
-                .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_SKEW_X,
-                info.skew_rad[0].to_degrees() as f64,
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_SKEW_Y,
-                info.skew_rad[1].to_degrees() as f64,
-            );
+            // Reflect the live Transform into the boxes — but SKIP the box the user is currently
+            // editing (focused for typing OR being drag-scrubbed). Without this guard the box the drag
+            // writes gets overwritten every frame by the round-tripped ECS value (meters↔display unit
+            // isn't bit-exact), so the drag delta is applied against a moving target → the move / rot /
+            // scale TREMBLE on the canvas in real time (Enio 2026-06-26). Mirrors the Sampling /
+            // Visibility blocks below, plus a drag guard so scrub is covered even without focus.
+            let focus = host.store().focus_id();
+            let drag = host.store().number_input_drag().map(|d| d.id);
+            for (id, value) in [
+                (
+                    ids::INSP_TRANSFORM_POS_X,
+                    pos_for_display(info.translation[0]),
+                ),
+                (
+                    ids::INSP_TRANSFORM_POS_Y,
+                    pos_for_display(info.translation[1]),
+                ),
+                (
+                    ids::INSP_TRANSFORM_ROT,
+                    info.rotation_rad.to_degrees() as f64,
+                ),
+                (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
+                (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
+                (
+                    ids::INSP_TRANSFORM_SKEW_X,
+                    info.skew_rad[0].to_degrees() as f64,
+                ),
+                (
+                    ids::INSP_TRANSFORM_SKEW_Y,
+                    info.skew_rad[1].to_degrees() as f64,
+                ),
+            ] {
+                if focus != Some(id) && drag != Some(id) {
+                    host.store_mut().set_number_value(id, value);
+                }
+            }
         }
         let focused = host.store().focus_id() == Some(ids::INSP_ENTITY_NAME);
         let pending_name_edit = host
@@ -168,13 +180,14 @@ pub(crate) fn sync_inspector_from_snapshots(
     // W3 §9 — reflect the UV tiling/scroll NumberInputs.
     if let Some(samp) = current_inspector_sampling() {
         let focus = host.store().focus_id();
+        let drag = host.store().number_input_drag().map(|d| d.id);
         for (id, value) in [
             (ids::INSP_SAMPLE_UV_SCALE_X, samp.uv_scale[0] as f64),
             (ids::INSP_SAMPLE_UV_SCALE_Y, samp.uv_scale[1] as f64),
             (ids::INSP_SAMPLE_UV_OFFSET_X, samp.uv_offset[0] as f64),
             (ids::INSP_SAMPLE_UV_OFFSET_Y, samp.uv_offset[1] as f64),
         ] {
-            if focus != Some(id) {
+            if focus != Some(id) && drag != Some(id) {
                 host.store_mut().set_number_value(id, value);
             }
         }
@@ -182,6 +195,7 @@ pub(crate) fn sync_inspector_from_snapshots(
     // W3 §8 — reflect the Mask Alpha Cutoff + Enabler Rect NumberInputs.
     if let Some(vis) = current_inspector_visibility_section() {
         let focus = host.store().focus_id();
+        let drag = host.store().number_input_drag().map(|d| d.id);
         for (id, value) in [
             (ids::INSP_VIS_ALPHA_CUTOFF, vis.alpha_cutoff as f64),
             (ids::INSP_VIS_RECT_X, vis.rect[0] as f64),
@@ -189,7 +203,7 @@ pub(crate) fn sync_inspector_from_snapshots(
             (ids::INSP_VIS_RECT_W, vis.rect[2] as f64),
             (ids::INSP_VIS_RECT_H, vis.rect[3] as f64),
         ] {
-            if focus != Some(id) {
+            if focus != Some(id) && drag != Some(id) {
                 host.store_mut().set_number_value(id, value);
             }
         }
@@ -250,13 +264,14 @@ fn sync_ordering_fields(
         }
     }
     let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, value) in [
         (ids::INSP_ORDER_Z_INDEX, ord.z_index.unwrap_or(0) as f64),
         (ids::INSP_ORDER_ORDER_IN_LAYER, ord.order_in_layer as f64),
         (ids::INSP_ORDER_AXIS_X, ord.y_sort_axis[0] as f64),
         (ids::INSP_ORDER_AXIS_Y, ord.y_sort_axis[1] as f64),
     ] {
-        if focus != Some(id) {
+        if focus != Some(id) && drag != Some(id) {
             host.store_mut().set_number_value(id, value);
         }
     }
@@ -328,6 +343,7 @@ fn sync_sprite_fields(
     // skipping the field the user is actively editing. Matches the
     // Transform NumberInputs' tolerated 1-frame post-commit lag.
     let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
     for (id, value, mixed) in [
         (
             ids::INSP_SPRITE_HFRAMES,
@@ -371,7 +387,7 @@ fn sync_sprite_fields(
             sp.mixed.offset_y,
         ),
     ] {
-        if focus != Some(id) {
+        if focus != Some(id) && drag != Some(id) {
             // Mixed → blank the field (no misleading single value, and
             // a blank blur reverts cleanly — never stomps). Otherwise
             // reflect the primary's value every frame.
@@ -389,7 +405,10 @@ fn sync_sprite_fields(
         host.store().slider(ids::INSP_SPRITE_OPACITY),
         Some((SliderState::Dragging, _))
     );
-    if !dragging && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP) {
+    if !dragging
+        && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP)
+        && drag != Some(ids::INSP_SPRITE_OPACITY_CHIP)
+    {
         // The slider track can't show "Mixed", so it parks at the
         // primary's value; the blank percent chip is the Mixed signal.
         if let Some(InteractiveState::Slider { value, .. }) =

@@ -24,7 +24,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::widget::{DropdownOption, DropdownState, Slider, SliderState, paint_slider};
+use ph2d_editor_core::widget::{DropdownOption, DropdownState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::{
@@ -33,7 +33,6 @@ use ph2d_tool_painter::{
 };
 
 const LABEL_W: f32 = 60.0; // LITERAL-PX-OK: brush row label column ("Hardness"/"Strength")
-const READOUT_W: f32 = 30.0; // LITERAL-PX-OK: param readout column
 
 /// Padding entry for the fixed-size `falloff_points` array (only the first
 /// `falloff_len` are read).
@@ -301,57 +300,6 @@ pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme
     crate::paint_shape_ramp::paint_shape_ramp_popovers(ctx, theme);
 }
 
-/// Args for [`paint_param_row`] (grouped to dodge the too-many-arguments lint).
-/// `pub(crate)` so the Stroke section ([`crate::paint_stroke`]) reuses the same row.
-pub(crate) struct ParamRow<'a, 'b> {
-    pub(crate) ctx: &'a mut PaintCtx<'b>,
-    pub(crate) theme: ph2d_tokens::Theme,
-    pub(crate) x: f32,
-    pub(crate) content_w: f32,
-    pub(crate) y: f32,
-    pub(crate) label: &'a str,
-    pub(crate) id: ph2d_a11y::NodeId,
-    pub(crate) value: f32,
-    pub(crate) readout: &'a str,
-}
-
-/// Paint one "label · slider · readout" brush param row. Returns the next `y`.
-pub(crate) fn paint_param_row(r: ParamRow) -> f32 {
-    let ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: label_txt,
-        id,
-        value,
-        readout,
-    } = r;
-    let font = TypeToken::Sm.px();
-    let gap = Spacing::Sm.px();
-    label(ctx, theme, label_txt, x, y, font);
-    let slider_w = (content_w - LABEL_W - gap - READOUT_W - gap).max(0.0);
-    paint_brush_slider(
-        ctx,
-        theme,
-        id,
-        Rect::new(x + LABEL_W + gap, y, slider_w, ROW_H_PX),
-        value,
-    );
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        readout,
-        x + LABEL_W + gap + slider_w + gap,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        READOUT_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + ROW_H_PX + Spacing::Xs.px()
-}
-
 /// When the shared Blender picker targets the brush swatch, the hero loop mirrors its live value into
 /// `widget_color(PAINTER_COLOR_THUMB)`. Forward that colour to the tool (as `"r,g,b"`) when it differs
 /// from the brush's current colour, so the picker drives the brush live.
@@ -438,28 +386,6 @@ pub(crate) fn label(
         LABEL_W,
         resolve(ColorToken::Text2, theme),
     );
-}
-
-/// Paint one accent brush slider showing `value` (`0..1`) and register its hit
-/// rect. The store value is driven by the drag dispatch; the display tracks the
-/// snapshot (mirror of the per-row opacity slider).
-fn paint_brush_slider(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    id: ph2d_a11y::NodeId,
-    rect: Rect,
-    value: f32,
-) {
-    let st = ctx
-        .host
-        .store()
-        .slider(id)
-        .map(|(s, _)| s)
-        .unwrap_or(SliderState::Normal);
-    let mut slider = Slider::new(id, "").accent(true).state(st);
-    slider.value = value;
-    paint_slider(&slider, rect, ctx.scene, theme);
-    ctx.host.hit_index_mut().register(id, rect);
 }
 
 /// Paint a "label + dropdown chip" row. Returns `(next_y, Some(chip_rect))` when

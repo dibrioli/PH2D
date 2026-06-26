@@ -125,46 +125,31 @@ pub(super) fn dispatch(
         }
     }
 
-    // ── (Generic) Source push when selection drifts ───────────────────────
-    // Push the selected sprite's pixels into the tool's working canvas so the
-    // layer stack reflects the live sprite when the selection changes.
+    // ── Source push when the selection drifts → bind the painter document ──
+    // Push the selected sprite's pixels into the painter, but via `bind_document` (NOT the generic
+    // `set_source`) so the OUTGOING sprite's multi-layer stack is stashed by id instead of flattened —
+    // switching sprites preserves each sprite's layers (Enio 2026-06-26). Painter canvas storage is RGBA8
+    // straight (matches bgremoval's `into_straight()`); 0×0 sources are rejected at the boundary.
     if painter_is_active
         && let Some(tool) = tools.active_mut()
-        && let Some(raster) = tool.as_raster_edit_mut()
+        && let Some(painter) = tool
+            .as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+        && let Some(bits) = hero.gizmo.selection
+        && *last_painter_pushed_entity != Some(bits)
+        && let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
+            ph2d_ecs::Entity::from_bits(bits),
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+        )
     {
-        let _pushed = ph2d_tool_runtime::drive_source_push(
-            raster,
-            hero.gizmo.selection,
-            last_painter_pushed_entity,
-            |entity| {
-                let src = crate::hero_intents::texture_edit::read_sprite_source(
-                    entity,
-                    sim,
-                    renderer,
-                    asset_db,
-                    atlas_asset_map,
-                )?;
-                // Painter's canvas storage is RGBA8 straight (matches
-                // bgremoval's into_straight() discipline). Subsequent
-                // CPU stamp render reads/writes straight; alpha-over
-                // arithmetic in cpu_render does the premul dance per
-                // pixel. T-perf W5+ migration to GPU pipeline will
-                // straight→premul at upload boundary (cpu_render.rs §).
-                let straight = src.image.into_straight();
-                // Audit T1.5 round 1 B-M4: reject degenerate sources
-                // (zero-sized) at the boundary; PainterTool::set_source
-                // would silently accept a 0×0 canvas and `queue_pointer`
-                // would early-out invisibly.
-                if straight.width == 0 || straight.height == 0 {
-                    return None;
-                }
-                Some(ph2d_tool_runtime::RasterSource {
-                    pixels: straight.pixels,
-                    width: straight.width,
-                    height: straight.height,
-                })
-            },
-        );
+        let straight = src.image.into_straight();
+        if straight.width != 0 && straight.height != 0 {
+            painter.bind_document(bits, straight.pixels, straight.width, straight.height);
+            *last_painter_pushed_entity = Some(bits);
+        }
     }
 
     // Audit T1.5 round 1 B-H2: NO ghost `panel_visibility` insert. Painter

@@ -127,6 +127,12 @@ pub struct PainterTool {
     /// Brush + in-progress stroke state for canvas painting (the clean-room
     /// Blender brush engine). See [`crate::tool::paint`].
     paint: paint::PaintState,
+    /// The sprite the working document is currently bound to (`bind_document`), so switching sprites can
+    /// stash THIS document's layers by id before binding the next. `None` until the first bind.
+    bound_doc: Option<u64>,
+    /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
+    /// instead of flattening it. See [`crate::tool::documents`].
+    doc_cache: BTreeMap<u64, documents::StashedDoc>,
 }
 
 impl Default for PainterTool {
@@ -155,11 +161,14 @@ impl Default for PainterTool {
             // the Brush-properties view (`dock_shows_layers == false`).
             dock_shows_layers: true,
             paint: paint::PaintState::default(),
+            bound_doc: None,
+            doc_cache: BTreeMap::new(),
         }
     }
 }
 
 // ── Submodules (god-object split, pure mechanical move) ──
+mod documents;
 mod internal;
 pub(crate) use internal::*;
 mod layers;

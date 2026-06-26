@@ -939,6 +939,7 @@ fn circle_degenerate_axis_fills_nothing() {
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
     }];
     s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
     assert!(
@@ -1055,6 +1056,7 @@ fn curve_fill_needs_two_points() {
         coverage: 1.0,
         color: [0.0, 0.0, 0.0],
         rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
     }];
     s.fill_curve_preview(&[[5.0, 5.0]], &mut out);
     assert!(
@@ -1178,4 +1180,138 @@ fn dragdot_opts_out_of_per_dab_jitter() {
         assert_eq!(d.color, [0.5, 0.5, 0.5]);
         assert_eq!(d.rotation, [1.0, 0.0]);
     }
+}
+
+// ── Rake heading (Dab::dir) — the proof that "rotation follows the stroke" actually works ──────────
+//
+// These are the tests the old `advance_rake` (reconstructed from dab centres) could not pass: a stable
+// per-dab heading that tracks the path tangent on a CURVE without oscillating. `f32::sin/cos` here only
+// GENERATE the arc input — the engine's heading filter ([`crate::heading`]) is transcendental-free.
+
+/// 2D cross product sign (`+` = left turn / counter-clockwise from `a` to `b`).
+fn cross(a: [f32; 2], b: [f32; 2]) -> f32 {
+    a[0] * b[1] - a[1] * b[0]
+}
+
+#[test]
+fn straight_stroke_gives_a_constant_heading() {
+    // A straight drag: every dab past the first must carry essentially the SAME heading (+x), with no
+    // dab-to-dab wobble. (The first dab is at the down point, before any travel → heading [0,0].)
+    let dabs = collect_stroke(
+        straight_spec(10.0, 0.5),
+        no_dynamics(),
+        &[pt(0.0, 0.0, 1.0), pt(60.0, 0.0, 1.0), pt(120.0, 0.0, 1.0)],
+    );
+    let moving: Vec<[f32; 2]> = dabs
+        .iter()
+        .map(|d| d.dir)
+        .filter(|d| *d != [0.0, 0.0])
+        .collect();
+    assert!(moving.len() >= 5, "enough dabs to judge stability");
+    for d in &moving {
+        assert!(
+            (d[0] - 1.0).abs() < 1e-3 && d[1].abs() < 1e-3,
+            "heading is +x: {d:?}"
+        );
+    }
+}
+
+#[test]
+fn arc_stroke_heading_tracks_the_tangent_and_rotates_monotonically() {
+    // Paint a quarter-circle arc (centre origin, radius R) from angle 0 to 90°, WITH the stabilizer on
+    // (the realistic case — the spline + lazy-mouse smoothing is exactly what made the old chord-based
+    // rake oscillate). Assert each dab's heading (a) points roughly along the local arc tangent and
+    // (b) rotates monotonically counter-clockwise — the texture frame turns WITH the stroke, smoothly.
+    const R: f32 = 200.0;
+    let mut spec = straight_spec(8.0, 0.4);
+    spec.stabilizer = 0.5; // the default-ish smoothing that corrupted the old reconstructed direction
+    let mut pts = Vec::new();
+    let steps = 60;
+    for i in 0..=steps {
+        let th = (i as f32 / steps as f32) * std::f32::consts::FRAC_PI_2;
+        pts.push(pt(R * th.cos(), R * th.sin(), 1.0));
+    }
+    let dabs = collect_stroke(spec, no_dynamics(), &pts);
+    let moving: Vec<&Dab> = dabs.iter().filter(|d| d.dir != [0.0, 0.0]).collect();
+    assert!(moving.len() >= 10, "got {} moving dabs", moving.len());
+
+    // (a) Each heading is close to the IDEAL tangent at its position. For a point on the circle the
+    //     travel tangent (increasing θ) is perpendicular to the radius, turned counter-clockwise:
+    //     tangent = normalize(perp(centre→point)) = (-y, x)/R. Allow a modest lag tolerance (the EMA
+    //     trails the instantaneous tangent slightly — that is the whole point of smoothing).
+    for d in &moving {
+        let r = d.center; // centre is origin
+        let rl = (r[0] * r[0] + r[1] * r[1]).sqrt();
+        let tangent = [-r[1] / rl, r[0] / rl];
+        let dot = d.dir[0] * tangent[0] + d.dir[1] * tangent[1];
+        assert!(
+            dot > 0.9,
+            "heading aligns with the arc tangent (dot={dot:.3}) at {:?}",
+            d.center
+        );
+    }
+
+    // (b) Monotonic rotation: consecutive headings turn the SAME way (CCW here) and never jitter back.
+    //     A single sign flip would be the old "anarchy". Tiny negative slack absorbs float noise.
+    let mut reversals = 0;
+    for w in moving.windows(2) {
+        let turn = cross(w[0].dir, w[1].dir);
+        if turn < -1e-4 {
+            reversals += 1;
+        }
+    }
+    assert_eq!(
+        reversals, 0,
+        "heading rotates monotonically, no dab-to-dab oscillation"
+    );
+
+    // And it actually swept ~90° overall: first heading ≈ +y, last ≈ -x (a quarter turn CCW).
+    let first = moving.first().unwrap().dir;
+    let last = moving.last().unwrap().dir;
+    assert!(first[1] > 0.85, "starts heading ~+y: {first:?}");
+    assert!(last[0] < -0.85, "ends heading ~-x: {last:?}");
+}
+
+#[test]
+fn heading_is_independent_of_dab_spacing() {
+    // Length-weighting guarantee: the SAME physical arc gives ~the same heading at a given arc position
+    // whether dabs are dense or sparse — because the EMA blend is driven by DISTANCE travelled, not by
+    // dab count. They are not bit-identical (a coarser spacing quantises the same continuous filter into
+    // bigger steps), but they stay within ~15° (dot > 0.96), versus the old chord-direction scheme where
+    // the heading was a function of inter-dab spacing and swung wildly. This is the property that made
+    // the old rake unusable at different brush sizes / spacings.
+    const R: f32 = 200.0;
+    let arc = |spacing: f32| -> Vec<Dab> {
+        let mut spec = straight_spec(8.0, spacing);
+        spec.stabilizer = 0.5;
+        let mut pts = Vec::new();
+        for i in 0..=60 {
+            let th = (i as f32 / 60.0) * std::f32::consts::FRAC_PI_2;
+            pts.push(pt(R * th.cos(), R * th.sin(), 1.0));
+        }
+        collect_stroke(spec, no_dynamics(), &pts)
+    };
+    // Heading at the dab nearest 45° (centre of the quarter arc) for each spacing.
+    let at_mid = |dabs: &[Dab]| -> [f32; 2] {
+        let mid = [
+            R * std::f32::consts::FRAC_1_SQRT_2,
+            R * std::f32::consts::FRAC_1_SQRT_2,
+        ];
+        dabs.iter()
+            .filter(|d| d.dir != [0.0, 0.0])
+            .min_by(|a, b| {
+                let da = (a.center[0] - mid[0]).hypot(a.center[1] - mid[1]);
+                let db = (b.center[0] - mid[0]).hypot(b.center[1] - mid[1]);
+                da.total_cmp(&db)
+            })
+            .unwrap()
+            .dir
+    };
+    let dense = at_mid(&arc(0.2));
+    let sparse = at_mid(&arc(0.8));
+    let dot = dense[0] * sparse[0] + dense[1] * sparse[1];
+    assert!(
+        dot > 0.96,
+        "dense vs sparse heading agree (dot={dot:.4}): {dense:?} vs {sparse:?}"
+    );
 }

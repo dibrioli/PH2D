@@ -37,7 +37,6 @@ pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
 pub use stencil::{StencilOverlay, StencilPreview};
-mod rake;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 mod shape_ramp;
@@ -101,18 +100,6 @@ pub(crate) struct PaintState {
     /// Splitmix64 state for the texture's per-dab Random rotation/offset — reset per stroke (from the
     /// seed, decorrelated), advanced once per textured dab (HR-5 reproducible, differs per dab).
     tex_rng: u64,
-    /// Smoothed **Rake** heading (unit) carried across dabs; re-aimed from a long baseline of
-    /// accumulated travel, not the noisy 3px chord (`stamp_cache::advance_rake`).
-    rake_dir: [f32; 2],
-    /// **Rake** travel accumulated since the heading last re-aimed (persists across dab batches so the
-    /// baseline spans real stroke distance, not one event's dabs).
-    rake_accum: [f32; 2],
-    /// The **Shape** slot's own Rake heading + accumulator (independent of the Grain's, so a brush can
-    /// have the Shape follow the stroke while the Grain stays fixed, or vice-versa). Same long-baseline
-    /// easing (`stamp_cache::advance_rake`); reset per stroke.
-    shape_rake_dir: [f32; 2],
-    /// See [`shape_rake_dir`].
-    shape_rake_accum: [f32; 2],
     /// Model snapshot captured at pointer-down (before the first dab) — committed
     /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
@@ -211,10 +198,6 @@ impl Default for PaintState {
             dabs: Vec::new(),
             seed: 0,
             tex_rng: 0,
-            rake_dir: [0.0, 0.0],
-            rake_accum: [0.0, 0.0],
-            shape_rake_dir: [0.0, 0.0],
-            shape_rake_accum: [0.0, 0.0],
             stroke_undo: None,
             eraser: false,
             tiling: [false, false],
@@ -285,10 +268,6 @@ impl PainterTool {
         // Seed the texture RNG from this stroke's seed, decorrelated from the jitter stream so the
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
-        self.paint.rake_dir = [0.0, 0.0]; // fresh stroke → Rake heading re-eases from the first travel
-        self.paint.rake_accum = [0.0, 0.0];
-        self.paint.shape_rake_dir = [0.0, 0.0];
-        self.paint.shape_rake_accum = [0.0, 0.0];
         self.paint.seed = self.paint.seed.wrapping_add(1);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.begin(

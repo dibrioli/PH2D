@@ -4,7 +4,6 @@
 //! bilinear blit — the texture is sampled once per stroke, not per pixel per dab. Eligibility is
 //! [`ph2d_painter_brush::TextureSettings::is_cacheable`] (checked by the caller in `paint.rs`).
 
-use super::rake::advance_rake;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
@@ -286,13 +285,7 @@ impl PainterTool {
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let lut = &self.paint.texture_ramp_lut;
         let alpha_mode = self.active_ramp_alpha_mode(owner);
-        let rake = brush.texture.rake;
-        let shape_rake = brush.shape.rake;
         let mut tex_rng = self.paint.tex_rng;
-        let mut rake_dir = self.paint.rake_dir;
-        let mut rake_accum = self.paint.rake_accum;
-        let mut shape_rake_dir = self.paint.shape_rake_dir;
-        let mut shape_rake_accum = self.paint.shape_rake_accum;
         // Accumulate OFF (Strength < 1) caps each pixel's stroke coverage at Strength — thread the
         // per-stroke mask so a Color-Ramp stroke honours Accumulate too (Enio 2026-06-25).
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
@@ -305,25 +298,19 @@ impl PainterTool {
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
-        for (i, d) in dabs.iter().enumerate() {
+        for d in dabs.iter() {
             let spec = BrushSpec {
                 radius_px: d.radius_px,
                 color: d.color,
                 ..*brush
             };
-            // Resolve the Shape frame first (fixed slot order shape→grain, HR-5); its Rake follows the
-            // stroke via the Shape's own heading. Random draws here, before the Grain.
-            let shape_dir = advance_rake(
-                shape_rake,
-                &mut shape_rake_dir,
-                &mut shape_rake_accum,
-                super::brush_settings::dab_tangent(dabs, i),
-                2.0 * d.radius_px,
-            );
+            // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
+            // engine, where the path geometry is known). Both slots read the same heading; `dab_basis`
+            // ignores it unless that slot's Rake is on, and falls back to the base Angle for `[0, 0]`.
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
-                    shape_dir,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
@@ -337,17 +324,10 @@ impl PainterTool {
                     image: shape_image.as_ref(),
                     ramp_lut: shape_ramp_lut,
                 });
-            let dir = advance_rake(
-                rake,
-                &mut rake_dir,
-                &mut rake_accum,
-                super::brush_settings::dab_tangent(dabs, i),
-                2.0 * d.radius_px,
-            );
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    dir,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,
@@ -379,10 +359,6 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = tex_rng;
-        self.paint.rake_dir = rake_dir;
-        self.paint.rake_accum = rake_accum;
-        self.paint.shape_rake_dir = shape_rake_dir;
-        self.paint.shape_rake_accum = shape_rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -402,8 +378,6 @@ impl PainterTool {
     ) {
         self.ensure_shape_ramp_lut();
         let textured = brush.texture.is_active();
-        let rake = brush.texture.rake;
-        let shape_rake = brush.shape.rake;
         let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
@@ -413,10 +387,6 @@ impl PainterTool {
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         let mut tex_rng = self.paint.tex_rng;
-        let mut rake_dir = self.paint.rake_dir;
-        let mut rake_accum = self.paint.rake_accum;
-        let mut shape_rake_dir = self.paint.shape_rake_dir;
-        let mut shape_rake_accum = self.paint.shape_rake_accum;
         // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
         // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
@@ -430,27 +400,21 @@ impl PainterTool {
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
-        for (i, d) in dabs.iter().enumerate() {
+        for d in dabs.iter() {
             // Per-dab Randomize Color rides on `d.color`; the radius is already jittered in `d`.
             let spec = BrushSpec {
                 radius_px: d.radius_px,
                 color: d.color,
                 ..*brush
             };
-            // Shape frame first (fixed slot order shape→grain, HR-5). Its Rake follows the stroke via
-            // the Shape's own heading state; Random draws from `tex_rng` here, *before* the Grain — so a
-            // brush with no Shape Random/Rake leaves the Grain stream byte-identical to before.
-            let shape_dir = advance_rake(
-                shape_rake,
-                &mut shape_rake_dir,
-                &mut shape_rake_accum,
-                super::brush_settings::dab_tangent(dabs, i),
-                2.0 * d.radius_px,
-            );
+            // The Rake heading is the dab's own smoothed path direction `d.dir` (computed once in the
+            // engine). Shape draws its Random from `tex_rng` here, *before* the Grain, so a brush with
+            // no Shape Random leaves the Grain stream byte-identical; `dab_basis` ignores `d.dir` unless
+            // that slot's Rake is on, falling back to the base Angle for `[0, 0]`.
             let shape_basis = shape_active.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
-                    shape_dir,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
@@ -464,17 +428,10 @@ impl PainterTool {
                     image: shape_image.as_ref(),
                     ramp_lut: shape_ramp_lut,
                 });
-            let dir = advance_rake(
-                rake,
-                &mut rake_dir,
-                &mut rake_accum,
-                super::brush_settings::dab_tangent(dabs, i),
-                2.0 * d.radius_px,
-            );
             let basis = textured.then(|| {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
-                    dir,
+                    d.dir,
                     &mut tex_rng,
                     [w as f32, h as f32],
                     d.rotation,
@@ -504,10 +461,6 @@ impl PainterTool {
             }
         }
         self.paint.tex_rng = tex_rng;
-        self.paint.rake_dir = rake_dir;
-        self.paint.rake_accum = rake_accum;
-        self.paint.shape_rake_dir = shape_rake_dir;
-        self.paint.shape_rake_accum = shape_rake_accum;
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

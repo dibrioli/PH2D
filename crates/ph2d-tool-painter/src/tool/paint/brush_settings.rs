@@ -7,7 +7,7 @@ use super::{
 };
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushBlend, Dab, Falloff, FalloffPoint, HandleType, ImageMask, JitterUnit, MAX_FALLOFF_POINTS,
+    BrushBlend, Falloff, FalloffPoint, HandleType, ImageMask, JitterUnit, MAX_FALLOFF_POINTS,
     StrokeMethod, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,
     TextureKind, TextureMapping, eval_falloff_curve,
 };
@@ -59,19 +59,6 @@ pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
     // Project the cursor onto the ray (dot product = signed distance along the unit direction).
     let proj = dx * ux + dy * uy;
     [anchor[0] + ux * proj, anchor[1] + uy * proj]
-}
-
-/// The stroke direction at dab `i`, as a raw (un-normalised) chord — the texture's **Rake** accumulates
-/// it. Chord to the next dab when there is one, else from the previous; a lone dab returns `[0, 0]`.
-pub(super) fn dab_tangent(dabs: &[Dab], i: usize) -> [f32; 2] {
-    let (a, b) = if i + 1 < dabs.len() {
-        (dabs[i].center, dabs[i + 1].center)
-    } else if i > 0 {
-        (dabs[i - 1].center, dabs[i].center)
-    } else {
-        return [0.0, 0.0];
-    };
-    [b[0] - a[0], b[1] - a[1]]
 }
 
 /// A compact snapshot of the active brush for the layers panel's Brush section, published each frame

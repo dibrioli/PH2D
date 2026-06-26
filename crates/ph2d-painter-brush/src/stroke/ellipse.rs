@@ -43,6 +43,7 @@ impl Stroke {
         self.last_pressure = 1.0;
         self.accum = 0.0;
         self.tot_samples = 0;
+        self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the perimeter from the start
         // First dab at the perimeter start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);

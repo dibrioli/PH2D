@@ -163,6 +163,74 @@ fn rake_falls_back_to_angle_for_zero_tangent() {
 }
 
 #[test]
+fn rake_off_ignores_the_heading_byte_identical() {
+    // With Rake OFF the per-dab heading (Dab::dir) must not touch the texture frame at all: the frame
+    // for any heading equals the frame for a zero heading. This is the guarantee that the new heading
+    // plumbing leaves a non-Rake brush bit-for-bit unchanged (the byte-identity baseline).
+    let s = TextureSettings {
+        kind: TextureKind::Noise,
+        rake: false,
+        random_angle: false,
+        angle_deg: 37,
+        ..Default::default()
+    };
+    let (mut a, mut b) = (1u64, 1u64);
+    let with_heading = basis(&s, [0.0, 1.0], &mut a);
+    let zero_heading = basis(&s, [0.0, 0.0], &mut b);
+    assert_eq!(
+        with_heading, zero_heading,
+        "Rake off ⇒ the heading is ignored, frame is identical"
+    );
+    // And it is the plain Angle frame, not the tangent.
+    assert_eq!(with_heading.u, rotate_by_degrees(37));
+}
+
+#[test]
+fn jitter_rotate_composes_on_top_of_the_rake_heading() {
+    // Jitter Rotate (`extra_rot`) must compose ON TOP of the Rake base, not replace it: the final `u`
+    // equals the rake heading rotated by the jitter vector (a 2D rotation = complex multiply). Proves
+    // the new heading coexists with Jitter Rotate exactly as the old reconstructed direction did.
+    let s = TextureSettings {
+        kind: TextureKind::Noise,
+        rake: true,
+        angle_deg: 0,
+        ..Default::default()
+    };
+    let heading = [0.0, 1.0]; // +y
+    let extra = rotate_by_degrees(30); // a 30° Jitter Rotate
+    let mut rng = 1;
+    let b = dab_basis(
+        &s,
+        heading,
+        &mut rng,
+        [64.0, 64.0],
+        extra,
+        FootprintDeform::identity(),
+    );
+    // Expected: heading (the rake base) complex-multiplied by `extra`.
+    let want = [
+        heading[0] * extra[0] - heading[1] * extra[1],
+        heading[0] * extra[1] + heading[1] * extra[0],
+    ];
+    assert!(
+        (b.u[0] - want[0]).abs() < 1e-6 && (b.u[1] - want[1]).abs() < 1e-6,
+        "jitter rotates the rake heading, not replaces it: got {:?} want {want:?}",
+        b.u
+    );
+    // Identity jitter leaves the rake base untouched (the no-jitter path stays bit-identical).
+    let mut rng2 = 1;
+    let id = dab_basis(
+        &s,
+        heading,
+        &mut rng2,
+        [64.0, 64.0],
+        [1.0, 0.0],
+        FootprintDeform::identity(),
+    );
+    assert_eq!(id.u, heading, "no jitter ⇒ u is the bare rake heading");
+}
+
+#[test]
 fn random_angle_is_deterministic_per_seed_but_varies() {
     let s = TextureSettings {
         kind: TextureKind::Noise,

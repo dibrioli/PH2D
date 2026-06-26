@@ -31,6 +31,7 @@ pub mod dynamics;
 pub mod falloff;
 pub mod falloff_curve;
 pub mod footprint;
+pub mod heading;
 pub(crate) mod jitter;
 pub mod ramp_alpha;
 pub mod sampler;

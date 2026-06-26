@@ -37,6 +37,11 @@ pub struct Dab {
     /// Extra per-dab texture rotation as a unit vector (identity `[1, 0]` = none); set by **Jitter
     /// Rotate**. The stamp composes it into the texture frame; it has no effect without a texture.
     pub rotation: [f32; 2],
+    /// The smoothed **stroke heading** at this dab, as a unit vector (`[0, 0]` = no heading yet, e.g. the
+    /// stroke's first dab). Computed once in the engine from the path tangent (length-weighted EMA, see
+    /// [`crate::heading`]) where the geometry is clean. The stamp feeds it to `dab_basis` as the **Rake**
+    /// direction; it is IGNORED unless a texture slot's Rake is on, so a non-Rake brush is unaffected by it.
+    pub dir: [f32; 2],
 }
 
 /// Incremental stroke state. Feed it pointer samples; it emits dabs per the brush's stroke method.
@@ -78,6 +83,10 @@ pub struct Stroke {
     /// stroke up to the real release point on pointer-up.
     last_raw_pos: [f32; 2],
     last_raw_pressure: f32,
+    /// The smoothed stroke **heading** (unit vector; `[0, 0]` = none yet) stamped on every emitted dab as
+    /// `Dab::dir`. Updated by the length-weighted EMA in [`Self::walk_space`] (where the path tangent is
+    /// clean) and reset in [`Self::begin`]. Drives the texture **Rake**; see [`crate::heading`].
+    heading: [f32; 2],
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -114,6 +123,7 @@ impl Stroke {
             stab_pos: [0.0, 0.0],
             last_raw_pos: [0.0, 0.0],
             last_raw_pressure: 1.0,
+            heading: [0.0, 0.0],
         }
     }
 
@@ -140,6 +150,7 @@ impl Stroke {
         self.stab_pos = p.pos;
         self.last_raw_pos = p.pos;
         self.last_raw_pressure = p.pressure;
+        self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {
@@ -202,7 +213,14 @@ impl Stroke {
                 } else {
                     (anchor, dist)
                 };
-                out.push(self.anchored_dab(center, radius));
+                // Anchored never walks the spline, so it has no EMA heading; its Rake direction is the
+                // drag vector (anchor → cursor). `[0, 0]` before any drag → `dab_basis` falls back to Angle.
+                let dir = if dist > f32::EPSILON {
+                    [dx / dist, dy / dist]
+                } else {
+                    [0.0, 0.0]
+                };
+                out.push(self.anchored_dab(center, radius, dir));
             }
             // Line: a straight line from the anchor (down point, `last_pos`, never advanced) to the
             // cursor, filled with spaced dabs. We live-preview it (consistent with Anchored/Drag Dot)
@@ -234,6 +252,7 @@ impl Stroke {
             self.rng,
             self.last_pos,
             self.last_pressure,
+            self.heading,
         );
         self.fill_segment(anchor, cursor, 1.0, out);
         (
@@ -243,6 +262,7 @@ impl Stroke {
             self.rng,
             self.last_pos,
             self.last_pressure,
+            self.heading,
         ) = saved;
     }
 
@@ -278,65 +298,6 @@ impl Stroke {
             );
         }
         self.prev_prev = None;
-    }
-
-    /// Catch the stabilizer up to the cursor while the stroke is held but the pointer is parked:
-    /// step the filtered position toward the last raw sample and paint the spline up to it, so a
-    /// high-stabilizer stroke reaches the cursor on a pause — not only at pointer-up. No-op when
-    /// there is no lag to flush (stabilizer off, already caught up, or a non-`Space` method). The
-    /// tool drives this from its per-frame tick while the pointer is stationary.
-    pub fn settle(&mut self, out: &mut Vec<Dab>) {
-        out.clear();
-        if !self.started || self.spec.stroke_method != StrokeMethod::Space {
-            return;
-        }
-        let s = self.spec.stabilizer.clamp(0.0, 1.0);
-        if s <= f32::EPSILON {
-            return;
-        }
-        let d = dist(self.stab_pos, self.last_raw_pos);
-        if d <= SETTLE_EPS_PX {
-            return; // already at the cursor
-        }
-        // Converge faster than the in-stroke blend (no new input to smooth on a pause — the artist
-        // just wants the line to arrive); snap the final sub-pixel (the exponential never reaches).
-        let blend = (1.0 - s * (1.0 - STABILIZER_MIN_BLEND)).max(SETTLE_BLEND_FLOOR);
-        self.stab_pos = if d * (1.0 - blend) <= SETTLE_EPS_PX {
-            self.last_raw_pos
-        } else {
-            [
-                self.stab_pos[0] + (self.last_raw_pos[0] - self.stab_pos[0]) * blend,
-                self.stab_pos[1] + (self.last_raw_pos[1] - self.stab_pos[1]) * blend,
-            ]
-        };
-        self.walk_smoothed(
-            StrokePoint {
-                pos: self.stab_pos,
-                pressure: self.last_raw_pressure,
-            },
-            out,
-        );
-    }
-
-    /// Lazy-mouse stabilizer: blend the running filtered position [`Self::stab_pos`] toward the
-    /// incoming sample by `1 − intensity` (clamped to a floor), so a higher intensity lags more and
-    /// filters out hand tremor. At intensity `0` the filtered point is the sample itself (raw,
-    /// real-time). Position only — pressure passes through.
-    fn stabilize(&mut self, sample: StrokePoint) -> StrokePoint {
-        let s = self.spec.stabilizer.clamp(0.0, 1.0);
-        if s <= f32::EPSILON {
-            self.stab_pos = sample.pos;
-            return sample;
-        }
-        let blend = 1.0 - s * (1.0 - STABILIZER_MIN_BLEND);
-        self.stab_pos = [
-            self.stab_pos[0] + (sample.pos[0] - self.stab_pos[0]) * blend,
-            self.stab_pos[1] + (sample.pos[1] - self.stab_pos[1]) * blend,
-        ];
-        StrokePoint {
-            pos: self.stab_pos,
-            pressure: sample.pressure,
-        }
     }
 
     /// Advance the airbrush timer by `dt` seconds, emitting a dab at the current cursor every
@@ -381,6 +342,8 @@ impl Stroke {
         }
         let base_step = self.spec.dab_spacing_px();
         let dir = [(to[0] - from[0]) / seg, (to[1] - from[1]) / seg];
+        // Smoothing length for the heading EMA, from the brush diameter (Krita's Fade is brush-relative).
+        let smooth_len = crate::heading::smooth_len(2.0 * self.spec.clamped_radius());
         let overlap = self.method_overlap();
         let mut traveled = 0.0;
         loop {
@@ -395,6 +358,9 @@ impl Stroke {
             let f = traveled / seg;
             let pos = [from[0] + dir[0] * traveled, from[1] + dir[1] * traveled];
             let pressure = lerp(self.last_pressure, target.pressure, f);
+            // Advance the heading by this dab's arc-length step (length-weighted EMA of the clean path
+            // tangent), so `dab_at` stamps an up-to-date, stable direction independent of dab density.
+            self.heading = crate::heading::advance(self.heading, dir, to_next, smooth_len);
             if self.spec.dash_on(self.tot_samples) {
                 let d = self.dab_at(pos, pressure, overlap);
                 out.push(d);
@@ -471,7 +437,7 @@ impl Stroke {
     /// jitter (Blender disables it for Anchored, `paint_stroke_use_jitter`), full pressure
     /// (coverage = strength); the falloff / hardness / blend / colour come from the spec at stamp
     /// time, like every dab — so the anchored stamp wears the brush profile, just sized by the drag.
-    fn anchored_dab(&self, center: [f32; 2], radius_px: f32) -> Dab {
+    fn anchored_dab(&self, center: [f32; 2], radius_px: f32, dir: [f32; 2]) -> Dab {
         Dab {
             center,
             radius_px: radius_px.clamp(0.0, MAX_BRUSH_RADIUS_PX),
@@ -479,6 +445,8 @@ impl Stroke {
             // Anchored opts out of all per-dab jitter (like position jitter): a deliberate stamp.
             color: self.spec.color,
             rotation: [1.0, 0.0],
+            // The Rake heading is the drag direction (anchor → cursor), set by the caller.
+            dir,
         }
     }
 
@@ -533,6 +501,7 @@ impl Stroke {
             coverage,
             color,
             rotation,
+            dir: self.heading,
         }
     }
 
@@ -594,6 +563,8 @@ pub use ellipse::ellipse_perimeter;
 /// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
 mod polygon;
 pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
+/// The lazy-mouse stabilizer (`stabilize`/`settle`) — split out for the same LOC-cap reason.
+mod stabilize;
 
 #[cfg(test)]
 mod tests;

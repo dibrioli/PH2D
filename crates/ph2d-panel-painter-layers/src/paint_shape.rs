@@ -97,7 +97,9 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
-    // Per-Layer Color (multi-layer Shape): the mode toggle + per-layer colour rows, below the dropdown.
+    // Use Document Layers (capture the doc's raster layers as a multi-layer Shape) + Per-Layer Color
+    // (the mode toggle + per-layer colour rows), below the Texture dropdown.
+    y = crate::paint_shape_layers::paint_use_layers_button(ctx, theme, x, content_w, y);
     y = crate::paint_shape_layers::paint_shape_per_layer_color(ctx, theme, x, content_w, y, brush);
 
     // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain

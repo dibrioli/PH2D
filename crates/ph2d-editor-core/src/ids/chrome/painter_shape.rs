@@ -62,6 +62,11 @@ pub const PAINTER_SHAPE_SLIDERS: [NodeId; 6] = [
 ];
 
 // ── Per-Layer Color (multi-layer Shape; Enio 2026-06-26) ────────────────────────────────────────
+/// "Use Document Layers" button — captures the active Painter document's visible raster layers
+/// (z-ordered, bottom-to-top) as a multi-layer Shape, each becoming a colourable layer. `Click` →
+/// `capture_layers_as_brush_shape`. Sits below the Shape **Texture** dropdown.
+pub const PAINTER_SHAPE_USE_LAYERS: NodeId = hash_node_id("painter_brush.shape_use_layers");
+
 /// "Per-Layer Color" mode toggle — shown below the Shape **Texture** dropdown only when a multi-layer
 /// (`> 1`) Shape image is assigned. `Click` → `toggle_brush_shape_per_layer_color`. While on, each
 /// layer paints its own colour (higher above lower) and the Shape Color ramp section is hidden +

@@ -12,8 +12,8 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
-    Checkbox, CheckboxValue, ColorSwatch, SwatchSize, SwatchState, paint_checkbox,
-    paint_color_swatch,
+    Button, Checkbox, CheckboxValue, ColorSwatch, SwatchSize, SwatchState, paint_button,
+    paint_checkbox, paint_color_swatch,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -24,6 +24,24 @@ const SWATCH_W: f32 = 44.0; // LITERAL-PX-OK: per-layer colour swatch width
 /// sRGB 8-bit normalize for the picker round-trip.
 fn enc(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8 // LITERAL-PX-OK: sRGB 8-bit normalize
+}
+
+/// Paint the "Use Document Layers" button — captures the active document's visible raster layers as a
+/// multi-layer Shape (each becomes a colourable layer). Always shown in the Shape section. Returns `y`.
+pub(crate) fn paint_use_layers_button(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    let id = core_ids::PAINTER_SHAPE_USE_LAYERS;
+    let btn = Button::new(id, "Use Document Layers");
+    let rect = Rect::new(x, y, content_w, ROW_H_PX);
+    paint_button(&btn, rect, ctx.scene, ctx.text_system, theme);
+    register_button(ctx.host.store_mut(), id);
+    ctx.host.hit_index_mut().register(id, rect);
+    y + ROW_H_PX + Spacing::Sm.px()
 }
 
 /// Paint the **Per-Layer Color** toggle + (when on) the per-layer "Layer N Color" checkbox + swatch

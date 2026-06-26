@@ -227,6 +227,10 @@ impl PainterTool {
     fn route_shape_layer_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
         match event {
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_USE_LAYERS => {
+                self.capture_layers_as_brush_shape();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR => {
                 self.toggle_brush_shape_per_layer_color();
                 true

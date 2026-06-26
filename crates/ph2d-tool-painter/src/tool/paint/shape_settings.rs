@@ -116,6 +116,47 @@ impl PainterTool {
 
     // ── Multi-layer Shape (per-layer colour) ──────────────────────────────────────────────────────
 
+    /// Capture the **active Painter document's** visible raster layers (z-ordered, bottom-to-top) as a
+    /// multi-layer Shape — each layer's ALPHA becomes its silhouette, recolourable per layer. The source
+    /// the spec calls for (the sprite's own layers / an imported multi-layer doc); fully in-tool, reading
+    /// the live buffers (`canvas_rgba` for the active layer, `images` for the rest). A no-op with no
+    /// visible raster layers. Groups / non-raster layers are skipped (top-level rasters only, v1).
+    pub fn capture_layers_as_brush_shape(&mut self) {
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return;
+        }
+        let n = (w as usize) * (h as usize);
+        let active = self.layers.active();
+        // Top-level ids are top-to-bottom; the engine composites bottom-to-top, so reverse.
+        let ids: Vec<crate::layers::LayerId> = self.layers.root().iter().copied().rev().collect();
+        let mut layers: Vec<(Vec<u8>, u32, u32)> = Vec::new();
+        for id in ids {
+            let Some(layer) = self.layers.get(id) else {
+                continue;
+            };
+            if !layer.visible || !matches!(layer.kind, crate::layers::LayerKind::Raster(_)) {
+                continue;
+            }
+            let rgba: &[u8] = if Some(id) == active {
+                self.canvas_rgba.as_slice()
+            } else if let Some(img) = self.images.get(&id) {
+                img.rgba8.as_slice()
+            } else {
+                continue;
+            };
+            if rgba.len() < n * 4 {
+                continue;
+            }
+            // The layer's silhouette = its alpha channel (where the layer has content).
+            let lum: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
+            layers.push((lum, w, h));
+        }
+        if !layers.is_empty() {
+            self.set_brush_shape_layers(layers);
+        }
+    }
+
     /// Store a **multi-layer** Shape: `layers` are `(luminance, w, h)` in bottom-to-top z-order (the
     /// Painter document's own visible raster layers, or an imported multi-layer doc), capped at
     /// [`super::shape_layers::MAX_SHAPE_LAYERS`]. Also flattens them (alpha-over) into the single

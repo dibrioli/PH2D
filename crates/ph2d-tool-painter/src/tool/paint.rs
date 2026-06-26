@@ -37,6 +37,7 @@ pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
 mod stencil;
 pub use stencil::StencilOverlay;
+mod rake;
 mod ramp;
 mod shape_ramp;
 mod snapshot;

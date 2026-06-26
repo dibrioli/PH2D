@@ -255,17 +255,3 @@ fn color_ramp_controls_gate_on_the_enable_toggle() {
         "the ramp alpha-action dropdown must register a hit rect. painted = {on:?}"
     );
 }
-
-#[test]
-fn offset_and_size_tracks_are_inverse_of_the_tool_clamp() {
-    // The panel maps the stored value back onto the 0..1 slider track; the centre/identity values
-    // must land where the tool's setters put them (offset 0 -> mid-track, size 1 -> near-low track).
-    assert!(
-        (offset_track(0.0) - 0.5).abs() < 1e-6,
-        "offset 0 is mid-track"
-    );
-    assert_eq!(offset_track(TEX_OFFSET_MIN), 0.0);
-    assert_eq!(offset_track(TEX_OFFSET_MAX), 1.0);
-    assert_eq!(size_track(TEX_SIZE_MIN), 0.0);
-    assert_eq!(size_track(TEX_SIZE_MAX), 1.0);
-}

@@ -29,6 +29,7 @@ mod blend;
 mod dropdown_popover;
 mod event;
 pub mod ids;
+mod number_field;
 mod paint;
 mod paint_adjust;
 mod paint_brush;

@@ -4,7 +4,7 @@
 //! replaced by the image preview + the image's rotation controls). Mirrors the Grain section's row
 //! helpers; all controls are fixed-id, tool-global widgets registered in [`crate::populate`].
 
-use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
+use crate::paint_brush::paint_dropdown_row;
 use crate::paint_brush_top::{paint_checkbox_row, paint_collapsible_section};
 use crate::state;
 use ph2d_editor_core::ids as core_ids;
@@ -14,8 +14,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
-    BrushSettings, Falloff, ImageMask, RampInterp, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
-    TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind, ValueRamp, ValueStop,
+    BrushSettings, Falloff, ImageMask, RampInterp, TextureKind, ValueRamp, ValueStop,
     brush_falloff_weight_at, param_specs, render_shape_preview,
 };
 use ph2d_vector::ImageQuality;
@@ -93,28 +92,27 @@ pub(crate) fn paint_shape_section(
         state::set_pending_brush_shape_kind_dd(Some((r, brush.shape_kind)));
     }
 
+    // Live composed-silhouette preview — ALWAYS shown (even `None` = the bare falloff; with no Grain
+    // and the Shape colour ramp on, it's the colourised silhouette), re-rendered each frame from the
+    // snapshot so it tracks Falloff / Angle / Offset / Size + the ramp live (Enio 2026-06-25).
+    y = paint_shape_preview(ctx, theme, x, content_w, y, brush);
     if kind != TextureKind::None {
-        // Live composed-silhouette preview — the Image tip, or `falloff × pattern` for a procedural kind
-        // — re-rendered each frame from the snapshot so it tracks the Angle / Offset / Size edits below.
-        y = paint_shape_preview(ctx, theme, x, content_w, y, brush);
         y = paint_shape_transform_controls(ctx, theme, x, content_w, y, brush);
         if !is_image {
-            // Procedural Shape: the kind's characteristic per-pattern params (Contrast / Brightness +
-            // its shape knob), exactly like the Grain — they tune ONLY the pattern (Enio 2026-06-25).
-            for (i, spec) in param_specs(kind).iter().enumerate() {
-                let value = brush.shape_params[i];
-                y = paint_param_row(ParamRow {
-                    ctx,
-                    theme,
-                    x,
-                    content_w,
-                    y,
-                    label: spec.label,
-                    id: core_ids::PAINTER_SHAPE_PARAMS[i],
-                    value,
-                    readout: &format!("{value:.2}"),
-                });
-            }
+            // Procedural Shape: the kind's per-pattern params (Contrast / Brightness + its shape knob),
+            // exactly like the Grain — short labels pair two-per-line, long labels solo (Enio 2026-06-25).
+            let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
+                .iter()
+                .enumerate()
+                .map(|(i, s)| {
+                    (
+                        s.label,
+                        core_ids::PAINTER_SHAPE_PARAMS[i],
+                        brush.shape_params[i],
+                    )
+                })
+                .collect();
+            y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
         }
     }
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
@@ -152,62 +150,42 @@ fn paint_shape_transform_controls(
         "Random Angle",
         brush.shape_random,
     );
-    let angle_track = f32::from(brush.shape_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
-    let angle_readout = format!("{}\u{b0}", brush.shape_angle_deg);
-    y = paint_param_row(ParamRow {
+    y = crate::number_field::paint_num_row(
         ctx,
         theme,
         x,
         content_w,
         y,
-        label: "Angle",
-        id: core_ids::PAINTER_SHAPE_ANGLE,
-        value: angle_track,
-        readout: &angle_readout,
-    });
-    y = shape_xy_row(
+        "Angle",
+        core_ids::PAINTER_SHAPE_ANGLE,
+        f32::from(brush.shape_angle_deg),
+        0,
+    );
+    y = crate::number_field::paint_num_xy(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Offset X",
+        "Offset",
         core_ids::PAINTER_SHAPE_OFFSET_X,
-        offset_track(brush.shape_offset[0]),
         brush.shape_offset[0],
-    );
-    y = shape_xy_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Offset Y",
         core_ids::PAINTER_SHAPE_OFFSET_Y,
-        offset_track(brush.shape_offset[1]),
         brush.shape_offset[1],
+        2,
     );
-    y = shape_xy_row(
+    crate::number_field::paint_num_xy(
         ctx,
         theme,
         x,
         content_w,
         y,
-        "Size X",
+        "Size",
         core_ids::PAINTER_SHAPE_SIZE_X,
-        size_track(brush.shape_size[0]),
         brush.shape_size[0],
-    );
-    shape_xy_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "Size Y",
         core_ids::PAINTER_SHAPE_SIZE_Y,
-        size_track(brush.shape_size[1]),
         brush.shape_size[1],
+        2,
     )
 }
 
@@ -224,33 +202,6 @@ pub(crate) fn shape_kind_options() -> Vec<DropdownOption<u8>> {
             )
         })
         .collect()
-}
-
-/// One Shape Offset/Size slider row (`readout` is the absolute value with 2 decimals).
-#[allow(clippy::too_many_arguments)]
-fn shape_xy_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    label_txt: &str,
-    id: ph2d_a11y::NodeId,
-    track: f32,
-    value: f32,
-) -> f32 {
-    let readout = format!("{value:.2}");
-    paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: label_txt,
-        id,
-        value: track,
-        readout: &readout,
-    })
 }
 
 /// The live Shape **silhouette** preview: re-render the composed tip every frame from the snapshot
@@ -301,24 +252,38 @@ fn paint_shape_preview(
         side,
     );
 
-    // Composite: a dark checker backdrop, the centred square tip lifted toward white by its coverage.
+    // Composite over a dark checker. With NO Grain and the Shape's colour ramp on, the engine paints
+    // `ramp[coverage]` — show that colour; otherwise lift the checker toward white by the coverage.
+    let mut clut = [[0.0f32; 4]; 256];
+    let colored = kind == TextureKind::None
+        && crate::paint_texture::build_ramp_preview_lut(&brush, &mut clut);
     let ox = (bw - side) / 2;
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
     for py in 0..bh {
         for px in 0..bw {
-            let c = if (((px / 6) + (py / 6)) & 1) == 0 {
+            let c: u8 = if (((px / 6) + (py / 6)) & 1) == 0 {
                 0x44
             } else {
                 0x2c
             }; // LITERAL-COLOR-OK: letterbox checker
-            let g = if px >= ox && px < ox + side && py < side {
-                let cf = f32::from(cov[(py * side + (px - ox)) as usize]) / 255.0; // LITERAL-PX-OK: 8-bit byte normalize
-                (f32::from(c) * (1.0 - cf) + 255.0 * cf) as u8 // LITERAL-PX-OK: lift checker → white (8-bit)
+            let inside = px >= ox && px < ox + side && py < side;
+            let cf = if inside {
+                f32::from(cov[(py * side + (px - ox)) as usize]) / 255.0 // LITERAL-PX-OK: 8-bit byte normalize
             } else {
-                c
+                0.0
             };
             let i = ((py * bw + px) * 4) as usize;
-            buf[i..i + 4].copy_from_slice(&[g, g, g, 255]);
+            let px4 = if colored && inside {
+                // `ramp[coverage]` (sRGB straight) composited over the checker at coverage × stop alpha.
+                let s = clut[((cf * 255.0) as usize).min(255)]; // LITERAL-PX-OK: 256-entry LUT index
+                let a = (cf * s[3]).clamp(0.0, 1.0);
+                let mix = |ch: f32| (f32::from(c) * (1.0 - a) + ch * 255.0 * a) as u8; // LITERAL-PX-OK: 8-bit composite
+                [mix(s[0]), mix(s[1]), mix(s[2]), 255]
+            } else {
+                let g = (f32::from(c) * (1.0 - cf) + 255.0 * cf) as u8; // LITERAL-PX-OK: lift checker → white (8-bit)
+                [g, g, g, 255]
+            };
+            buf[i..i + 4].copy_from_slice(&px4);
         }
     }
     ctx.scene.draw_image_rgba(
@@ -362,14 +327,4 @@ fn shape_ramp_lut(brush: &BrushSettings) -> Option<Vec<f32>> {
     let mut lut = vec![0.0f32; 64];
     ramp.bake_into(&mut lut);
     Some(lut)
-}
-
-/// Map a stored Shape offset (`[TEX_OFFSET_MIN, TEX_OFFSET_MAX]`) onto the slider's `0..1` track.
-fn offset_track(v: f32) -> f32 {
-    ((v - TEX_OFFSET_MIN) / (TEX_OFFSET_MAX - TEX_OFFSET_MIN)).clamp(0.0, 1.0)
-}
-
-/// Map a stored Shape scale (`[TEX_SIZE_MIN, TEX_SIZE_MAX]`) onto the slider's `0..1` track.
-fn size_track(v: f32) -> f32 {
-    ((v - TEX_SIZE_MIN) / (TEX_SIZE_MAX - TEX_SIZE_MIN)).clamp(0.0, 1.0)
 }

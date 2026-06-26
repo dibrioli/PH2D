@@ -350,8 +350,9 @@ fn panel_events_drive_shape_and_grain_depth() {
         "grain depth set"
     );
 
-    // Shape rotation controls (tracked on the spec even before an image is assigned).
-    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 0.5)); // → 180°
+    // Shape rotation controls (tracked on the spec even before an image is assigned). The number field
+    // forwards the REAL degrees now (not a 0..1 track), Enio 2026-06-25.
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 180.0));
     assert_eq!(t.brush_settings().shape_angle_deg, 180, "shape angle set");
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_SHAPE_RAKE));
     assert!(t.brush_settings().shape_rake, "shape rake toggled on");
@@ -577,6 +578,92 @@ fn shape_ramp_value_bar_select_option_sets_the_stop_value() {
         (s0.value - 0.5).abs() < 1e-6,
         "value bar set stop {id0} to 0.5, got {}",
         s0.value
+    );
+}
+
+#[test]
+fn texture_and_shape_number_fields_set_real_values_via_panel_events() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    // The Grain/Shape param fields are NumberInputs forwarding the REAL value (degrees / tile-fraction /
+    // scale), not a 0..1 track — the tool's real-value setters clamp it (Enio 2026-06-25).
+    let mut t = PainterTool::default();
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        5.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        -0.5,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        90.0,
+    ));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_SIZE_X, 3.0));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_SHAPE_ANGLE, 45.0));
+    let b = t.brush_settings();
+    assert!(
+        (b.texture_size[0] - 5.0).abs() < 1e-4,
+        "Grain Size X real: {}",
+        b.texture_size[0]
+    );
+    assert!(
+        (b.texture_offset[0] + 0.5).abs() < 1e-4,
+        "Grain Offset X real: {}",
+        b.texture_offset[0]
+    );
+    assert_eq!(b.texture_angle_deg, 90, "Grain Angle real degrees");
+    assert!(
+        (b.shape_size[0] - 3.0).abs() < 1e-4,
+        "Shape Size X real: {}",
+        b.shape_size[0]
+    );
+    assert_eq!(b.shape_angle_deg, 45, "Shape Angle real degrees");
+}
+
+#[test]
+fn accumulate_off_caps_the_stroke_even_with_a_colour_ramp() {
+    use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop};
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+
+    // Color ramp ON (so the ramped stamp path is taken) + Strength 0.5: Accumulate OFF must CAP the
+    // overlapping back-and-forth stroke at Strength; ON builds past it. Regression for the cap being
+    // dropped on the Color-Ramp path (Enio 2026-06-25).
+    let make = |accumulate: bool| -> PainterTool {
+        let mut t = white_canvas(64, 10.0);
+        t.set_brush_strength(0.5);
+        if accumulate {
+            t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
+        }
+        t.set_texture_ramp(ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+                RampStop::new(1.0, [1.0, 0.0, 0.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        ));
+        t.set_texture_ramp_enabled(true);
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        for _ in 0..5 {
+            t.on_canvas_pointer(cp([38.0, 32.0], PointerPhase::Move));
+            t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+        t
+    };
+    // Red over white: green+blue at the centre measures the white still showing — HIGHER = less opaque.
+    let whiteness = |t: &PainterTool| {
+        let p = px(t, 64, 32, 32);
+        u32::from(p[1]) + u32::from(p[2])
+    };
+    assert!(
+        whiteness(&make(false)) > whiteness(&make(true)) + 30,
+        "Accumulate OFF caps the colour-ramp stroke (lighter than ON): off={} on={}",
+        whiteness(&make(false)),
+        whiteness(&make(true))
     );
 }
 

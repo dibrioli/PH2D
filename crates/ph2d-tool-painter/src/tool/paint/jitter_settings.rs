@@ -100,23 +100,23 @@ impl PainterTool {
                         true
                     }
                     x if x == core_ids::PAINTER_SHAPE_ANGLE => {
-                        self.set_brush_shape_angle_norm(v);
+                        self.set_brush_shape_angle(v);
                         true
                     }
                     x if x == core_ids::PAINTER_SHAPE_OFFSET_X => {
-                        self.set_brush_shape_offset_norm(0, v);
+                        self.set_brush_shape_offset(0, v);
                         true
                     }
                     x if x == core_ids::PAINTER_SHAPE_OFFSET_Y => {
-                        self.set_brush_shape_offset_norm(1, v);
+                        self.set_brush_shape_offset(1, v);
                         true
                     }
                     x if x == core_ids::PAINTER_SHAPE_SIZE_X => {
-                        self.set_brush_shape_size_norm(0, v);
+                        self.set_brush_shape_size(0, v);
                         true
                     }
                     x if x == core_ids::PAINTER_SHAPE_SIZE_Y => {
-                        self.set_brush_shape_size_norm(1, v);
+                        self.set_brush_shape_size(1, v);
                         true
                     }
                     x if core_ids::PAINTER_SHAPE_PARAMS.contains(&x) => {

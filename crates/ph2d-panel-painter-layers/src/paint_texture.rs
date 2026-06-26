@@ -9,7 +9,7 @@
 //! range (the `TEX_*` constants are the single source). Edits forward over the frozen `PanelEvent`
 //! channel (drained in [`crate::event`]).
 
-use crate::paint_brush::{ParamRow, paint_dropdown_row, paint_param_row};
+use crate::paint_brush::paint_dropdown_row;
 use crate::paint_stroke::section_header;
 use crate::state;
 use ph2d_editor_core::ids::{
@@ -22,9 +22,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing};
 use ph2d_tool_painter::{
     BrushSettings, ColorRamp, ImageMask, RampAlphaMode, RampColorMode, RampInterp, RampStop,
-    TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TextureKind,
-    TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs, render_texture_preview,
-    srgb_to_linear_byte,
+    TextureKind, TextureLayer, TextureMapping, linear_to_srgb_byte, param_specs,
+    render_texture_preview, srgb_to_linear_byte,
 };
 use ph2d_vector::ImageQuality;
 
@@ -132,100 +131,76 @@ pub(crate) fn paint_texture_section(
                 brush.texture_random,
             );
         }
-        // ── Angle (whole degrees) ──
-        let angle_track = f32::from(brush.texture_angle_deg) / f32::from(TEX_ANGLE_MAX_DEG);
-        y = paint_param_row(ParamRow {
+        // ── Angle (whole degrees) — a drag-scrub number field (Enio 2026-06-25). ──
+        y = crate::number_field::paint_num_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Angle",
-            id: core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-            value: angle_track,
-            readout: &format!("{}°", brush.texture_angle_deg),
-        });
+            "Angle",
+            core_ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+            f32::from(brush.texture_angle_deg),
+            0,
+        );
     }
 
-    // ── Offset X / Y (tile fractions) ──
-    y = paint_param_row(ParamRow {
+    // ── Offset X/Y + Size X/Y — each pair on ONE line, drag-scrub number fields (Enio 2026-06-25). ──
+    y = crate::number_field::paint_num_xy(
         ctx,
         theme,
         x,
         content_w,
         y,
-        label: "Offset X",
-        id: core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-        value: offset_track(brush.texture_offset[0]),
-        readout: &format!("{:.2}", brush.texture_offset[0]),
-    });
-    y = paint_param_row(ParamRow {
+        "Offset",
+        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        brush.texture_offset[0],
+        core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        brush.texture_offset[1],
+        2,
+    );
+    y = crate::number_field::paint_num_xy(
         ctx,
         theme,
         x,
         content_w,
         y,
-        label: "Offset Y",
-        id: core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-        value: offset_track(brush.texture_offset[1]),
-        readout: &format!("{:.2}", brush.texture_offset[1]),
-    });
+        "Size",
+        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        brush.texture_size[0],
+        core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+        brush.texture_size[1],
+        2,
+    );
 
-    // ── Size X / Y (scale) ──
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Size X",
-        id: core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-        value: size_track(brush.texture_size[0]),
-        readout: &format!("{:.2}", brush.texture_size[0]),
-    });
-    y = paint_param_row(ParamRow {
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        label: "Size Y",
-        id: core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
-        value: size_track(brush.texture_size[1]),
-        readout: &format!("{:.2}", brush.texture_size[1]),
-    });
-
-    // ── Depth — how strongly the Grain bites over the base colour (brush only; a Texture-LAYER is a
-    //    full-cover grain where Depth is moot). `1.0` = full bite (default). ──
+    // ── Depth — how strongly the Grain bites (brush only; a Texture-LAYER is full-cover). ──
     if !compact {
-        y = paint_param_row(ParamRow {
+        y = crate::number_field::paint_num_row(
             ctx,
             theme,
             x,
             content_w,
             y,
-            label: "Depth",
-            id: core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
-            value: brush.grain_depth.clamp(0.0, 1.0),
-            readout: &format!("{:.2}", brush.grain_depth),
-        });
+            "Depth",
+            core_ids::PAINTER_BRUSH_GRAIN_DEPTH,
+            brush.grain_depth.clamp(0.0, 1.0),
+            2,
+        );
     }
 
-    // ── Per-pattern parameters — each kind's own knobs (Contrast / Brightness + a shape param) ──
-    for (i, spec) in param_specs(kind).iter().enumerate() {
-        let value = brush.texture_params[i];
-        y = paint_param_row(ParamRow {
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            label: spec.label,
-            id: core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
-            value,
-            readout: &format!("{value:.2}"),
-        });
-    }
+    // ── Per-pattern parameters — short labels pair two-per-line, long labels go solo. ──
+    let pp: Vec<(&str, ph2d_a11y::NodeId, f32)> = param_specs(kind)
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            (
+                s.label,
+                core_ids::PAINTER_BRUSH_TEXTURE_PARAMS[i],
+                brush.texture_params[i],
+            )
+        })
+        .collect();
+    y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &pp);
 
     // ── Color Ramp sub-editor (maps the texture's scalar to a colour) ──
     crate::paint_texture_ramp::paint_texture_ramp_section(
@@ -439,7 +414,7 @@ fn paint_texture_preview(
 /// bake it into `out` as a 256-entry **sRGB-straight RGBA** LUT (RGB linear→sRGB, alpha straight). This
 /// is the same bake the tool paints with (`ensure_ramp_lut`), so the preview is faithful to every ramp
 /// option. Returns `false` (→ grayscale) when the ramp is off / has no stops.
-fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
+pub(crate) fn build_ramp_preview_lut(brush: &BrushSettings, out: &mut [[f32; 4]; 256]) -> bool {
     if !brush.texture_ramp_enabled {
         return false;
     }
@@ -491,17 +466,6 @@ pub(crate) fn paint_texture_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::The
         );
     }
     crate::paint_texture_ramp::paint_texture_ramp_popovers(ctx, theme);
-}
-
-/// Map a stored offset (tile fractions, `[TEX_OFFSET_MIN, TEX_OFFSET_MAX]`) onto the slider's
-/// `0..1` track. Inverse of the tool's `set_brush_texture_offset_norm`.
-fn offset_track(v: f32) -> f32 {
-    ((v - TEX_OFFSET_MIN) / (TEX_OFFSET_MAX - TEX_OFFSET_MIN)).clamp(0.0, 1.0)
-}
-
-/// Map a stored scale (`[TEX_SIZE_MIN, TEX_SIZE_MAX]`) onto the slider's `0..1` track.
-fn size_track(v: f32) -> f32 {
-    ((v - TEX_SIZE_MIN) / (TEX_SIZE_MAX - TEX_SIZE_MIN)).clamp(0.0, 1.0)
 }
 
 /// The texture kinds as dropdown options. The brush includes `None` (clear) + `Image` (importable);

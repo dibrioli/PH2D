@@ -23,6 +23,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::panel_chrome::PANEL_HEAD_PAD;
+use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{DropdownOption, DropdownState, Slider, SliderState, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -207,26 +208,36 @@ pub(crate) fn paint_brush_body(
         brush.accumulate,
     );
 
+    // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
+    let sep = paint_section_separator;
+
     // ── Section 6: Randomize Color (collapsible, collapsed by default; activates on amount > 0) ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = paint_randomize_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 7: Shape — the dab silhouette. Hosts the Falloff (the procedural default tip) + its
     //    curve preview + a source picker; once a Shape image is assigned the Falloff goes inactive
     //    (replaced by the image + its preview). Sits ABOVE Grain (Enio 2026-06-25). ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_shape::paint_shape_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 7b: Shape Tone — the Shape's B&W value ramp (tonal remap of the silhouette), directly
     //    below the Shape section (Enio 2026-06-25). ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_shape_ramp::paint_shape_ramp_section(ctx, theme, x, content_w, y, brush);
 
     // ── Section 8: Grain — the texture inside the silhouette (was "Texture", Enio 2026-06-25) ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_texture::paint_texture_section(ctx, theme, x, content_w, y, brush, false);
 
     // ── Section 9: Stroke · Section 10: Tiling (last section, collapsed by default) ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_stroke_section(ctx, theme, x, content_w, y, brush);
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
 
     // ── Eraser checkbox (standalone, very bottom) ──
+    y = sep(ctx.scene, theme, x, content_w, y);
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,

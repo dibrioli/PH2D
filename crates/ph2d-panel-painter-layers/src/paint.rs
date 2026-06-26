@@ -73,9 +73,10 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(core_ids::PAINTER_LAYERS_PANEL, rect);
 
-    // Chrome: dark-glass surface + corner accent.
+    // Chrome: dark-glass surface + BOTH corner resize dots (BL here too, so the early-returning Brush view shows it; Enio 2026-06-25).
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared canon — Inspector right-dock).
     {
@@ -268,7 +269,6 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         theme,
     );
 
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     register_header_chrome(ctx, rect);
     // Scrollbar drag: register the whole TRACK after the rows (same last-wins reason) so the bar is
     // grabbable anywhere; hands the dispatch the real track height for proportional scrolling.

@@ -173,6 +173,8 @@ pub fn stamp_dab_ramped(
     shape: Option<ShapeInput>,
     ramp: &[[f32; 4]],
     alpha_mode: RampAlphaMode,
+    // Accumulate-OFF per-stroke cap so a Color-Ramp stroke honours Accumulate (TextureAlpha uncapped), Enio 2026-06-25.
+    mask: Option<&mut [u8]>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -187,7 +189,7 @@ pub fn stamp_dab_ramped(
         shape,
         Some(ramp),
         alpha_mode,
-        None, // Accumulate cap not applied on the Color-Ramp path (the per-pixel non-ramp path covers it)
+        mask,
     )
 }
 
@@ -396,8 +398,7 @@ struct DabCtx<'a> {
     /// The Shape slot's silhouette inputs (frame + optional image). `Some` ⇒ the silhouette is the
     /// Shape, replacing the falloff; `None` ⇒ the falloff is the silhouette. See [`ShapeInput`].
     shape: Option<ShapeInput<'a>>,
-    /// Baked Color Ramp LUT (straight RGBA): a per-texel value indexes it for the paint colour — the
-    /// Grain pattern with a Grain, else the silhouette coverage (Shape's colour ramp). [`stamp_dab_ramped`].
+    /// Baked Color Ramp LUT: a per-texel value (Grain pattern, else the silhouette coverage) indexes it for the paint colour. [`stamp_dab_ramped`].
     ramp: Option<&'a [[f32; 4]]>,
     /// What the ramp colour's alpha does (only meaningful when `ramp` is `Some`). See [`RampAlphaMode`].
     alpha_mode: RampAlphaMode,
@@ -494,8 +495,7 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     continue;
                 }
             } else if let Some(lut) = ctx.ramp {
-                // No Grain + a Colour Ramp on (Shape's ramp, Enio 2026-06-25): silhouette `w` indexes it
-                // for the COLOUR; alpha per `alpha_mode` (a Strength `w → 0` is caught downstream).
+                // No Grain + a Colour Ramp on (Shape's ramp): silhouette `w` indexes it for the COLOUR; alpha per `alpha_mode` (a Strength `w → 0` is caught downstream).
                 let c = ramp_sample(lut, w);
                 color = [c[0], c[1], c[2]];
                 match ctx.alpha_mode {

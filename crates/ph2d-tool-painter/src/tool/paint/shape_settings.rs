@@ -164,4 +164,27 @@ impl PainterTool {
             self.paint.brush.shape.size[axis] = TEX_SIZE_MIN + t.clamp(0.0, 1.0) * span;
         }
     }
+
+    // ── Real-value setters (the number-field path, Enio 2026-06-25) — the chip shows + scrubs the real
+    //    value (degrees / tile-fractions / scale), so these clamp the raw value (mirror the Grain's). ──
+
+    /// Set the Shape rotation directly in whole **degrees**.
+    pub fn set_brush_shape_angle(&mut self, deg: f32) {
+        self.paint.brush.shape.angle_deg =
+            deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+    }
+
+    /// Set the Shape **offset** for `axis` directly (real tile fractions, clamped).
+    pub fn set_brush_shape_offset(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.shape.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
+        }
+    }
+
+    /// Set the Shape **scale** for `axis` directly (real, clamped).
+    pub fn set_brush_shape_size(&mut self, axis: usize, v: f32) {
+        if axis < 2 {
+            self.paint.brush.shape.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        }
+    }
 }

@@ -18,20 +18,11 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BLEND_MODES};
 
-/// Dropdown option-id decoders (split out to keep this file under the LOC cap).
+/// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod decode;
+mod option_route;
 mod ramp_picker;
 mod shape_ramp_picker;
-use decode::{
-    decode_brush_blend_option, decode_brush_falloff_option, decode_jitter_unit_option,
-    decode_shape_kind_option, decode_shape_ramp_interp_option, decode_stroke_method_option,
-    decode_texture_kind_option,
-    decode_texture_mapping_option, decode_texture_ramp_alpha_option,
-    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
-};
-
-/// One row of the dropdown-option dispatch table: an option-id decoder + the chip it targets.
-type OptionRoute = (fn(ph2d_a11y::NodeId) -> Option<u8>, ph2d_a11y::NodeId);
 
 pub(crate) fn apply_event(
     _state: &mut PainterLayersPanelState,
@@ -462,33 +453,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        // A dropdown popover option was picked → close the chip + apply. Table-driven: each entry pairs
-        // an option-id decoder with the chip it targets; the first decoder that matches `id` wins (the
-        // id spaces are disjoint, so order is irrelevant). Add a dropdown ⇒ add one row.
-        WidgetEvent::Click(id) => {
-            let routes: [OptionRoute; 11] = [
-                (decode_brush_blend_option, core_ids::PAINTER_BRUSH_BLEND),
-                (decode_brush_falloff_option, core_ids::PAINTER_BRUSH_FALLOFF),
-                (decode_stroke_method_option, core_ids::PAINTER_BRUSH_STROKE_METHOD),
-                (decode_jitter_unit_option, core_ids::PAINTER_BRUSH_JITTER_UNIT),
-                (decode_shape_kind_option, core_ids::PAINTER_SHAPE_KIND),
-                (decode_texture_kind_option, core_ids::PAINTER_BRUSH_TEXTURE_KIND),
-                (decode_texture_mapping_option, core_ids::PAINTER_BRUSH_TEXTURE_MAPPING),
-                (decode_texture_ramp_mode_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_MODE),
-                (decode_texture_ramp_interp_option, core_ids::PAINTER_BRUSH_TEXTURE_RAMP_INTERP),
-                (decode_shape_ramp_interp_option, core_ids::PAINTER_SHAPE_RAMP_INTERP),
-                (
-                    decode_texture_ramp_alpha_option,
-                    core_ids::PAINTER_BRUSH_TEXTURE_RAMP_ALPHA_MODE,
-                ),
-            ];
-            routes.iter().find_map(|&(decode, target)| {
-                decode(id).map(|v| {
-                    forward_dropdown_option(host, target, v);
-                    true
-                })
-            })
-        }
+        // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).
+        WidgetEvent::Click(id) => option_route::route_brush_dropdown_option(host, id),
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.
         WidgetEvent::ValueChanged(id) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
             if let Some((_parent, _ch, idx, x, y)) = host.store_mut().take_curve_point_drag() {
@@ -503,13 +469,23 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             Some(true)
         }
         // Grain Color Ramp: bar-stop drag + the editable index / position chips → ramp_picker.
-        WidgetEvent::ValueChanged(id) if core_ids::PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS.contains(&id) => {
+        WidgetEvent::ValueChanged(id)
+            if core_ids::PAINTER_BRUSH_TEXTURE_RAMP_VALUE_IDS.contains(&id) =>
+        {
             ramp_picker::on_ramp_value_changed(host, id);
             Some(true)
         }
         // Shape Tone ramp: bar-stop drag + the editable index / position / value chips.
         WidgetEvent::ValueChanged(id) if core_ids::PAINTER_SHAPE_RAMP_VALUE_IDS.contains(&id) => {
             shape_ramp_picker::on_shape_ramp_value_changed(host, id);
+            Some(true)
+        }
+        // Grain/Shape param number-fields: forward the committed/scrubbed REAL value (the tool's
+        // real-value setters clamp it; params/Depth are already `0..1`). Enio 2026-06-25.
+        WidgetEvent::ValueChanged(id) if crate::number_field::is_param_field(id) => {
+            let v = host.store().number_value(id).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));
             Some(true)
         }
         // Brush + Stroke-section slider drag → forward the dispatched `0..1` track; the tool maps it.
@@ -523,14 +499,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_BRUSH_INPUT_SAMPLES
                 || id == core_ids::PAINTER_BRUSH_STABILIZE
                 || id == core_ids::PAINTER_BRUSH_RATE
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X
-                || id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y
-                || core_ids::PAINTER_BRUSH_TEXTURE_PARAMS.contains(&id)
-                || core_ids::PAINTER_SHAPE_SLIDERS.contains(&id)
-                || core_ids::PAINTER_SHAPE_PARAMS.contains(&id)
                 || core_ids::PAINTER_BRUSH_RANDOMIZE_SLIDERS.contains(&id) =>
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
@@ -542,29 +510,6 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         _ => None,
     }
-}
-
-/// Close the dropdown `chip_id` + forward the chosen option `value` (wire u8) to
-/// the tool. Shared by the Blend + Falloff option clicks.
-fn forward_dropdown_option(
-    host: &mut dyn PanelHostInternal,
-    chip_id: ph2d_a11y::NodeId,
-    value: u8,
-) {
-    if let Some(InteractiveState::Dropdown {
-        open,
-        selected_index,
-        ..
-    }) = host.store_mut().get_mut(chip_id)
-    {
-        *open = false;
-        *selected_index = Some(value as usize);
-    }
-    host.bus_mut()
-        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            chip_id,
-            value.to_string(),
-        )));
 }
 
 /// The active brush colour as 8-bit RGBA (opaque), to seed the shared picker.

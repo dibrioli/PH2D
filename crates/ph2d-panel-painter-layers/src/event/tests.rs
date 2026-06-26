@@ -3,6 +3,10 @@
 //! clicking them in the dropdown did nothing. These lock the full 9-method round-trip + distinctness.
 
 use super::*;
+use super::decode::{
+    decode_stroke_method_option, decode_texture_kind_option, decode_texture_mapping_option,
+    decode_texture_ramp_alpha_option,
+};
 use ph2d_editor_core::ids::{
     painter_brush_stroke_method_option_id, painter_brush_texture_kind_option_id,
     painter_brush_texture_mapping_option_id, painter_brush_texture_ramp_alpha_option_id,

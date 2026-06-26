@@ -527,4 +527,10 @@ impl PainterTool {
             self.paint.brush.texture.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
     }
+
+    /// Set the texture rotation directly in whole **degrees** (the number-field path, Enio 2026-06-25).
+    pub fn set_brush_texture_angle(&mut self, deg: f32) {
+        self.paint.brush.texture.angle_deg =
+            deg.clamp(0.0, f32::from(TEX_ANGLE_MAX_DEG)).round() as u16;
+    }
 }

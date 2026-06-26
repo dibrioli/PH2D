@@ -196,15 +196,15 @@ impl Tool for PainterTool {
                 } else if id == core_ids::PAINTER_BRUSH_RATE {
                     self.set_brush_airbrush_rate_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE {
-                    self.set_brush_texture_angle_norm(v as f32);
+                    self.set_brush_texture_angle(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {
-                    self.set_brush_texture_offset_norm(0, v as f32);
+                    self.set_brush_texture_offset(0, v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y {
-                    self.set_brush_texture_offset_norm(1, v as f32);
+                    self.set_brush_texture_offset(1, v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_X {
-                    self.set_brush_texture_size_norm(0, v as f32);
+                    self.set_brush_texture_size(0, v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_SIZE_Y {
-                    self.set_brush_texture_size_norm(1, v as f32);
+                    self.set_brush_texture_size(1, v as f32);
                 } else if let Some(slot) = core_ids::PAINTER_BRUSH_TEXTURE_PARAMS
                     .iter()
                     .position(|&p| p == id)

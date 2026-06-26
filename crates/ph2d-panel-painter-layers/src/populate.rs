@@ -81,19 +81,6 @@ pub fn populate(store: &mut WidgetStore) {
         // Stabilizer intensity — the single "how regular" knob (reuses the STABILIZE id, now a
         // slider instead of the removed toggle).
         ph2d_editor_core::ids::PAINTER_BRUSH_STABILIZE,
-        // Texture section sliders (Angle / Offset X-Y / Size X-Y; all `0..1` track).
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
-        // Per-pattern parameter sliders (painted only when the active kind exposes the slot).
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_0,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_1,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_2,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_3,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_4,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAM_5,
     ];
     for id in brush_sliders {
         store.register(
@@ -105,18 +92,30 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    // Shape section sliders: Angle / Offset / Size / Depth + the procedural per-pattern params (all
-    // `0..1` track).
-    for id in ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS
-        .into_iter()
-        .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
+    // Grain + Shape param fields are drag-scrub NumberInputs (Enio 2026-06-25): Angle / Offset X-Y /
+    // Size X-Y / Depth + the per-pattern params. Paint mirrors the live value via `paint_ramp_chip`;
+    // this seed sets the TYPE so the dispatch scrubs (vertical/horizontal) instead of sliding.
+    for id in [
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_ANGLE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_OFFSET_Y,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_X,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_SIZE_Y,
+    ]
+    .into_iter()
+    .chain(ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_PARAMS)
+    .chain(ph2d_editor_core::ids::PAINTER_SHAPE_SLIDERS)
+    .chain(ph2d_editor_core::ids::PAINTER_SHAPE_PARAMS)
     {
         store.register(
             id,
-            InteractiveState::Slider {
-                state: SliderState::Normal,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
                 value: 0.0,
-                orientation: SliderOrientation::Horizontal,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
             },
         );
     }

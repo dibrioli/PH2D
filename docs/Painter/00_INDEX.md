@@ -26,6 +26,17 @@
 | **[05_design_dois_slots_textura.md](05_design_dois_slots_textura.md)** | Arquitetura dos 2 slots (8 restrições reais), back-compat byte-idêntico + **ADR-0100** (esboço) |
 | **[06_plano_dois_slots_textura.md](06_plano_dois_slots_textura.md)** | Waves W0→W5, cada uma com teste e2e; caminho crítico + MVP mínimo |
 
+## Linha de trabalho: Rendering Modes + Wet Mix — paridade Procreate (Glaze / Blending / Wet Edges / Burnt Edges)
+
+> Pesquisa→verificação adversarial→design→handoff (2026-06-26, a pedido do Enio). **Não implementado ainda** — aguarda aval.
+> *Enabler:* um **stroke buffer** premultiplicado-linear por traço (composto 1× no pen-up). Default `RenderingMode::Direct` = pipeline atual **byte-idêntico**.
+> *Interdependência (pergunta do Enio):* Rendering Mode ⇄ Wet Mix são **acoplados, sem gate duro** (Wet Mix é essencial só nos modos Blending). Detalhe em `07` §0–§1.
+
+| Doc | O que tem |
+|---|---|
+| **[07_rendering_modes_wet_mix.md](07_rendering_modes_wet_mix.md)** | Design completo: §0 status de verificação · §2 as 6 features (math + mapeamento) · §3 stroke buffer · §4 Wet Mix · §5 Wet/Burnt Edges · §7 BrushSpec · §8 UI · §10 plano faseado · §11 testes |
+| **[HANDOFF_rendering_modes_wet_mix.md](HANDOFF_rendering_modes_wet_mix.md)** | Roteiro operacional: checkpoint + rollout não-destrutivo (golden Direct) · ordem faseada · anchors `file:line` verificados · gotchas · aceite e2e |
+
 ## Fontes de referência (untracked no git — decisão de licença pendente)
 
 - **Código:** [`reference/blender-texture-paint/`](../../reference/blender-texture-paint/) — recorte GPL do Texture Painter (Blender 5.2), só estudo.

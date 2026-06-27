@@ -55,6 +55,7 @@ pub use falloff_curve::{
     eval_falloff_curve,
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintDeform};
+pub use jitter::shift_colors_like;
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};

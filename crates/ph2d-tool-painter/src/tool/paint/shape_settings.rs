@@ -164,7 +164,29 @@ impl PainterTool {
             layers.push((lum, w, h));
         }
         if !layers.is_empty() {
+            // Re-capturing the SAME source sprite keeps the per-layer colours (the user already assigned
+            // them — editing the sprite shouldn't wipe them); a fresh capture from a different sprite
+            // starts un-coloured. `set_brush_shape_layers` resets the colours, so snapshot/restore around it.
+            let same_source = self.bound_doc.is_some() && self.bound_doc == self.shape_source_doc;
+            let colors = same_source.then(|| self.paint.shape_layers.colors_snapshot());
             self.set_brush_shape_layers(layers);
+            if let Some((on, color)) = colors {
+                self.paint.shape_layers.restore_colors(&on, &color);
+            }
+            self.shape_source_doc = self.bound_doc;
+        }
+    }
+
+    /// Auto-refresh the multi-layer Shape after a stroke IF it was captured from the sprite we just
+    /// painted on (`shape_source_doc == bound_doc`) — so editing the reference sprite updates the brush
+    /// Shape live, preserving the per-layer colours (via [`Self::capture_layers_as_brush_shape`]). A no-op
+    /// when no multi-layer Shape is bound or the active sprite isn't its source.
+    pub(super) fn refresh_shape_from_source_after_stroke(&mut self) {
+        if self.shape_source_doc.is_some()
+            && self.shape_source_doc == self.bound_doc
+            && !self.paint.shape_layers.is_empty()
+        {
+            self.capture_layers_as_brush_shape();
         }
     }
 

@@ -105,11 +105,9 @@ pub(crate) struct PaintState {
     /// Splitmix64 state for the texture's per-dab Random rotation/offset — reset per stroke (from the
     /// seed, decorrelated), advanced once per textured dab (HR-5 reproducible, differs per dab).
     tex_rng: u64,
-    /// Model snapshot captured at pointer-down (before the first dab) — committed
-    /// to the undo stack at pointer-up so the whole stroke undoes as one unit.
+    /// Model snapshot at pointer-down (before the first dab) — committed to undo at pointer-up so the whole stroke undoes as one unit.
     stroke_undo: Option<crate::undo::ModelSnapshot>,
-    /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time
-    /// (the drawing blend in `brush.blend` is preserved for when it's off).
+    /// Eraser mode: overrides the brush blend with Erase Alpha at stamp time (`brush.blend` preserved for when it's off).
     eraser: bool,
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped
     /// part on the opposite edge (seamless when the sprite is tiled). Off by default.
@@ -124,8 +122,7 @@ pub(crate) struct PaintState {
     /// The press point of the in-progress stroke — the pivot the Line method's Alt-constrain snaps the
     /// cursor around (45° increments). `None` when no stroke is open.
     line_anchor: Option<[f32; 2]>,
-    /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the
-    /// shell each pointer event (the frozen `CanvasPointer` can't carry modifiers).
+    /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the shell each pointer event.
     line_constrain: bool,
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     curve: Option<curve::CurveEditor>,
@@ -374,6 +371,9 @@ impl PainterTool {
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
         self.close_stroke();
+        // If this sprite is the multi-layer Shape's source, re-capture it (keeping colours) so the Shape
+        // tracks edits to the reference sprite without a manual re-capture.
+        self.refresh_shape_from_source_after_stroke();
     }
 
     /// Finalize the current stroke: drop the in-progress state and push one undo

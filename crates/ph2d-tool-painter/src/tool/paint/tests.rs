@@ -736,6 +736,67 @@ fn per_layer_color_dynamic_shape_random_angle_paints() {
 }
 
 #[test]
+fn per_layer_color_randomize_jitters_custom_layer_colours() {
+    use ph2d_painter_brush::{Dab, StrokeMethod};
+    // Randomize Color must jitter the per-layer CUSTOM colours too (the artist's case), not only the
+    // un-coloured layers. Brush base grey; both layers a custom green. Two dabs with different `d.color`
+    // shift the green by different HSV offsets → the two locations differ (the path used to ignore the
+    // custom colours, so Randomize Color had no effect).
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.color = [0.5, 0.5, 0.5];
+    t.paint.brush.color_jitter_enabled = true;
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [0.0, 1.0, 0.0]);
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]);
+    let dab = |cx: f32, col: [f32; 3]| Dab {
+        center: [cx, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: col,
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]);
+    t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]);
+    let a = px(&t, 64, 16, 32);
+    let b = px(&t, 64, 48, 32);
+    assert_ne!(a, b, "custom layer colours jitter per dab: {a:?} vs {b:?}");
+}
+
+#[test]
+fn editing_the_shape_source_re_captures_and_keeps_colours() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Capture a multi-layer sprite as the Shape + colour layer 0; painting on that SAME sprite (the Shape
+    // source) auto-re-captures the Shape at pointer-up WITHOUT wiping the colours (no manual re-assign).
+    let mut t = PainterTool::default();
+    t.bind_document(1, vec![255u8; 64 * 64 * 4], 64, 64);
+    t.layers.add_raster("L2", 64, 64); // make it multi-layer
+    t.capture_layers_as_brush_shape();
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]); // red on layer 0
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)); // pointer-up → auto re-capture
+    let s = t.brush_settings();
+    assert!(
+        s.shape_layer_color_on[0],
+        "layer 0 stays coloured after the auto re-capture"
+    );
+    assert_eq!(
+        s.shape_layer_color[0],
+        [1.0, 0.0, 0.0],
+        "the per-layer red is preserved across the re-capture"
+    );
+    assert!(
+        s.shape_per_layer_color,
+        "per-layer-colour mode survives the re-capture"
+    );
+}
+
+#[test]
 fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;

@@ -140,6 +140,27 @@ pub(crate) fn hsv_to_rgb(hsv: [f32; 3]) -> [f32; 3] {
     }
 }
 
+/// Re-apply the SAME per-dab Randomize-Color HSV shift that turned `base` into `jittered` onto each of
+/// `colors`, in place. Lets the per-layer-colour path jitter EVERY layer's colour (custom picks too)
+/// coherently per dab — the dab already carries the jittered base (`Dab::color`), so the offset is
+/// reconstructed from `(base, jittered)` in HSV (no extra rng, identical stream). Identity when
+/// `base == jittered` (Randomize Color off). Deterministic (HR-5: HSV is float-only).
+pub fn shift_colors_like(base: [f32; 3], jittered: [f32; 3], colors: &mut [[f32; 3]]) {
+    let b = rgb_to_hsv(base);
+    let j = rgb_to_hsv(jittered);
+    let (dh, ds, dv) = (j[0] - b[0], j[1] - b[1], j[2] - b[2]);
+    if dh == 0.0 && ds == 0.0 && dv == 0.0 {
+        return; // Randomize Color off (or no offset this dab) → leave the colours untouched.
+    }
+    for c in colors.iter_mut() {
+        let mut hsv = rgb_to_hsv(*c);
+        hsv[0] = (hsv[0] + dh).rem_euclid(1.0);
+        hsv[1] = (hsv[1] + ds).clamp(0.0, 1.0);
+        hsv[2] = (hsv[2] + dv).clamp(0.0, 1.0);
+        *c = hsv_to_rgb(hsv);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

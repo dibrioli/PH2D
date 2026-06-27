@@ -133,6 +133,10 @@ pub struct PainterTool {
     /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
     /// instead of flattening it. See [`crate::tool::documents`].
     doc_cache: BTreeMap<u64, documents::StashedDoc>,
+    /// The sprite id a multi-layer **Shape** was captured from ("Use Document Layers"), so editing that
+    /// same sprite re-captures the Shape automatically (preserving the per-layer colours) instead of
+    /// needing a manual re-capture. `None` until a multi-layer Shape is captured.
+    shape_source_doc: Option<u64>,
 }
 
 impl Default for PainterTool {
@@ -163,6 +167,7 @@ impl Default for PainterTool {
             paint: paint::PaintState::default(),
             bound_doc: None,
             doc_cache: BTreeMap::new(),
+            shape_source_doc: None,
         }
     }
 }

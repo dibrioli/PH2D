@@ -282,6 +282,9 @@ impl PainterTool {
         let mut bbox: Option<Region> = None;
         {
             let masks = self.paint.shape_layers.masks();
+            // The layers' resolved base colours (custom pick, else the brush base) — fixed across the
+            // batch; Randomize Color then re-applies each dab's HSV shift to ALL of them below.
+            let base_colors = self.paint.shape_layers.resolved_colors(brush.color);
             for d in dabs {
                 let spec = BrushSpec {
                     radius_px: d.radius_px,
@@ -309,8 +312,11 @@ impl PainterTool {
                         fp,
                     )
                 });
-                // Un-coloured layers use the dab's (Randomize-jittered) base colour; custom picks stay.
-                let colors = self.paint.shape_layers.resolved_colors(d.color);
+                // Randomize Color: apply the dab's HSV shift (reconstructed from `brush.color → d.color`)
+                // to EVERY layer colour — custom picks included — so the whole tip jitters coherently per
+                // dab. Identity when Randomize Color is off (`d.color == brush.color`).
+                let mut colors = base_colors.clone();
+                ph2d_painter_brush::shift_colors_like(brush.color, d.color, &mut colors);
                 let cov = (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0);
                 for (i, layer) in masks.iter().enumerate() {
                     let grain = grain_basis.as_ref().map(|gb| (gb, grain_image.as_ref()));

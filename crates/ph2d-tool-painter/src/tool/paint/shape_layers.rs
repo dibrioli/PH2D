@@ -64,6 +64,11 @@ impl ShapeLayers {
         self.layers.len()
     }
 
+    /// No layers captured.
+    pub(super) fn is_empty(&self) -> bool {
+        self.layers.is_empty()
+    }
+
     /// The per-layer-colour mode is engaged (toggle on + at least one captured layer) — the route
     /// dispatcher uses this to pick the coloured-stamp path, and the panel to hide the ramp section.
     pub(super) fn is_color_mode(&self) -> bool {
@@ -97,6 +102,24 @@ impl ShapeLayers {
                 }
             })
             .collect()
+    }
+
+    /// Snapshot the per-layer colour assignments `(color_on, color)`, for re-applying across an automatic
+    /// re-capture of the same Shape source (so editing the source sprite keeps the colours).
+    pub(super) fn colors_snapshot(&self) -> (Vec<bool>, Vec<[f32; 3]>) {
+        (self.color_on.clone(), self.color.clone())
+    }
+
+    /// Re-apply a [`Self::colors_snapshot`] by index (up to the current layer count) after a re-capture,
+    /// bumping the version so the cached stamps + preview re-bake with the restored colours.
+    pub(super) fn restore_colors(&mut self, on: &[bool], color: &[[f32; 3]]) {
+        for i in 0..self.layers.len() {
+            if let (Some(&o), Some(c)) = (on.get(i), color.get(i)) {
+                self.color_on[i] = o;
+                self.color[i] = *c;
+            }
+        }
+        self.version = self.version.wrapping_add(1);
     }
 
     /// Flatten the stack into one luminance silhouette (alpha-over, bottom→top) for the OFF-mode /

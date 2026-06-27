@@ -67,18 +67,23 @@ impl HandleKind {
 /// **manual** ones (Aligned / Free) untouched. Called after any structural edit (anchor move / insert /
 /// delete / kind change) so the smooth + polyline anchors track their neighbours while hand-placed tangents
 /// stay put. No-op on a length mismatch (the degenerate draw-phase state).
-pub(super) fn rebuild(points: &[[f32; 2]], kinds: &[HandleKind], handles: &mut Vec<[[f32; 2]; 2]>) {
+pub(super) fn rebuild(
+    points: &[[f32; 2]],
+    kinds: &[HandleKind],
+    handles: &mut Vec<[[f32; 2]; 2]>,
+    closed: bool,
+) {
     let n = points.len();
     if n == 0 || kinds.len() != n {
         return;
     }
     if handles.len() != n {
         // Size the buffer; the per-kind pass below overwrites Auto/Vector, manual kinds keep this seed.
-        *handles = ph2d_painter_brush::auto_handles(points);
+        *handles = auto_handles(points, closed);
     }
     let auto = kinds
         .contains(&HandleKind::Auto)
-        .then(|| ph2d_painter_brush::auto_handles(points));
+        .then(|| auto_handles(points, closed));
     for (i, &kind) in kinds.iter().enumerate() {
         match kind {
             HandleKind::Auto => {
@@ -86,21 +91,50 @@ pub(super) fn rebuild(points: &[[f32; 2]], kinds: &[HandleKind], handles: &mut V
                     handles[i] = a[i];
                 }
             }
-            HandleKind::Vector => handles[i] = vector_handle(points, i),
+            HandleKind::Vector => handles[i] = vector_handle(points, i, closed),
             HandleKind::Aligned | HandleKind::Free | HandleKind::Symmetric => {}
         }
     }
 }
 
+/// Auto (chordal-smooth) tangent handles for every anchor. An OPEN curve defers to the brush crate's
+/// no-overshoot chordal fit (single-armed endpoints); a CLOSED loop uses the cardinal-spline tangent with
+/// WRAPPING neighbours, so the seam anchors get BOTH arms (the open fit would collapse the first in / last
+/// out → the one-armed seam handle Enio hit on a converted Polygon / Circle). Transcendental-free.
+pub(super) fn auto_handles(points: &[[f32; 2]], closed: bool) -> Vec<[[f32; 2]; 2]> {
+    if !closed {
+        return ph2d_painter_brush::auto_handles(points);
+    }
+    let n = points.len();
+    (0..n)
+        .map(|i| {
+            let prev = points[(i + n - 1) % n];
+            let next = points[(i + 1) % n];
+            let p = points[i];
+            let (tx, ty) = ((next[0] - prev[0]) / 6.0, (next[1] - prev[1]) / 6.0);
+            [[p[0] - tx, p[1] - ty], [p[0] + tx, p[1] + ty]]
+        })
+        .collect()
+}
+
 /// The **Vector** handles for anchor `i`: each tangent points one-third of the way toward the adjacent
-/// anchor (so a run of Vector anchors flattens to straight segments). The unused endpoint side collapses
-/// onto the anchor.
-pub(super) fn vector_handle(points: &[[f32; 2]], i: usize) -> [[f32; 2]; 2] {
+/// anchor (so a run of Vector anchors flattens to straight segments). On an OPEN curve the unused endpoint
+/// side collapses onto the anchor; a CLOSED loop wraps, so the seam keeps both arms.
+pub(super) fn vector_handle(points: &[[f32; 2]], i: usize, closed: bool) -> [[f32; 2]; 2] {
+    let n = points.len();
     let a = points[i];
     let third = |b: [f32; 2]| [a[0] + (b[0] - a[0]) / 3.0, a[1] + (b[1] - a[1]) / 3.0];
-    let in_h = if i > 0 { third(points[i - 1]) } else { a };
-    let out_h = if i + 1 < points.len() {
+    let in_h = if i > 0 {
+        third(points[i - 1])
+    } else if closed {
+        third(points[n - 1])
+    } else {
+        a
+    };
+    let out_h = if i + 1 < n {
         third(points[i + 1])
+    } else if closed {
+        third(points[0])
     } else {
         a
     };

@@ -101,10 +101,27 @@ pub(super) fn curve_insert_index(pts: &[[f32; 2]], pos: [f32; 2]) -> usize {
     best + 1
 }
 
-/// Offset the curve's **control geometry** perpendicular by `d` px (the Offset slider): translate each
-/// anchor AND its two handles by that anchor's averaged right-normal, so the flattened spine + the control
-/// dots + the tangents all move TOGETHER (the curve moves with the paint). `closed` wraps the endpoint
-/// normals (a converted Circle / Polygon). `d == 0` (or a length mismatch) returns unchanged clones.
+/// Offset a DENSE flattened spine perpendicular by `d` px — the **parallel curve** used for the painted
+/// stroke + the overlay guide of an OPEN Curve / Free Hand. Each dense vertex shifts along its averaged
+/// segment right-normal; the fine sampling makes this a faithful offset with NONE of the control-level
+/// deformation that sparse-anchor offsetting produces on tight bends (Enio 2026-06-28: stroke-offset reads
+/// cleaner than offsetting the control polygon). `closed` wraps the endpoints. `d == 0` ⇒ unchanged clone.
+pub(super) fn offset_polyline(spine: &[[f32; 2]], d: f32, closed: bool) -> Vec<[f32; 2]> {
+    if d == 0.0 || spine.len() < 2 {
+        return spine.to_vec();
+    }
+    (0..spine.len())
+        .map(|i| {
+            let nrm = vertex_normal(spine, i, closed);
+            [spine[i][0] + nrm[0] * d, spine[i][1] + nrm[1] * d]
+        })
+        .collect()
+}
+
+/// Offset the curve's **control geometry** perpendicular by `d` px: translate each anchor AND its two
+/// handles by that anchor's averaged right-normal. Used only to BAKE a CLOSED loop's offset (a converted
+/// Circle / Polygon — a regular loop offsets cleanly, and the open-curve fitter can't close it); open
+/// curves bake via a re-fit of [`offset_polyline`]. `d == 0` (or a length mismatch) ⇒ unchanged clones.
 pub(super) fn offset_curve(
     points: &[[f32; 2]],
     handles: &[[[f32; 2]; 2]],

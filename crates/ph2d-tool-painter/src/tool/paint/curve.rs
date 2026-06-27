@@ -103,7 +103,8 @@ impl PainterTool {
     /// point under the cursor, or — on a miss — insert a new point there and grab it.
     fn curve_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
-        self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
+        // No bake-on-grab: the control dots stay on the BASE skeleton (only the spine guide + paint are
+        // offset), so the hit-test already matches the displayed dots. The offset bakes on Apply / Apply&Keep.
         let Some(ed) = self.paint.curve.as_mut() else {
             // No session → snapshot for undo + begin drawing the initial straight line.
             let before = self.snapshot_model();
@@ -147,7 +148,7 @@ impl PainterTool {
             if ed.handles.len() + 1 == ed.points.len() {
                 ed.handles.insert(i, [pos, pos]); // placeholder; rebuild fills it
             }
-            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
+            curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
             ed.selected = Some(i);
             ed.grabbed = Some(i);
             true
@@ -219,7 +220,7 @@ impl PainterTool {
                             [h[1][0] + d[0], h[1][1] + d[1]],
                         ];
                     }
-                    curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
+                    curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
                 }
                 None => return true, // editing but nothing grabbed — ignore stray moves
             }
@@ -272,7 +273,7 @@ impl PainterTool {
             ed.kinds = vec![HandleKind::Auto; 3];
             ed.selected = Some(1);
         }
-        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
         ed.grabbed = None;
         ed.editing = true;
         self.curve_refill();
@@ -301,7 +302,7 @@ impl PainterTool {
         if sel < ed.kinds.len() {
             ed.kinds.remove(sel);
         }
-        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles); // re-derive Auto/Vector neighbours
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed); // re-derive Auto/Vector neighbours
         ed.selected = Some(sel.min(ed.points.len() - 1));
         ed.grabbed = None;
         self.curve_refill();
@@ -426,15 +427,16 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
-        // Display the OFFSET control geometry, so the guide (dots + spine + tangents) moves with the paint.
-        let (points, handles) =
-            curve_geom::offset_curve(&ed.points, &ed.handles, self.shape_offset_px(), ed.closed);
+        // The dots + tangents are the BASE control geometry (you edit the un-offset skeleton); only the spine
+        // guide is offset — a DENSE parallel curve, so the visible guide moves with the paint without the
+        // control-level deformation that sparse-anchor offsetting causes on tight bends (Enio 2026-06-28).
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
+        curve_geom::flatten_spine(&ed.points, &ed.handles, ed.closed, &mut spine);
+        let spine = curve_geom::offset_polyline(&spine, self.shape_offset_px(), ed.closed);
         let tangents = ed.selected.and_then(|s| {
             curve_tangent::build_tangents(
-                &points,
-                &handles,
+                &ed.points,
+                &ed.handles,
                 s,
                 ed.grabbed_handle,
                 self.paint.shape_grab_tol_px,
@@ -443,7 +445,7 @@ impl PainterTool {
         });
         let selected_kind = ed.selected.and_then(|s| ed.kinds.get(s)).map(|k| k.wire());
         Some(CurveOverlay {
-            points,
+            points: ed.points.clone(),
             selected: ed.selected,
             spine,
             tangents,
@@ -471,9 +473,10 @@ impl PainterTool {
             ed.kinds = vec![HandleKind::Auto; ed.points.len()];
         }
         ed.kinds[sel] = kind;
-        // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag.
+        // Switching a sharp (collapsed) point to a manual kind: seed a visible tangent to drag. Closed-aware,
+        // so a converted Polygon / Circle seam anchor gets BOTH arms (not the one-armed open-curve seed).
         if kind.is_manual() && curve_handle::is_collapsed(ed.handles.get(sel), ed.points[sel]) {
-            let auto = ph2d_painter_brush::auto_handles(&ed.points);
+            let auto = curve_handle::auto_handles(&ed.points, ed.closed);
             if let (Some(h), Some(a)) = (ed.handles.get_mut(sel), auto.get(sel)) {
                 *h = *a;
             }
@@ -481,7 +484,7 @@ impl PainterTool {
         if let Some(true) = kind.mirror_mode() {
             curve_tangent::mirror_tangent(&mut ed.handles[sel], ed.points[sel], true, true); // enforce Symmetric
         }
-        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
+        curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles, ed.closed);
         self.curve_refill();
         true
     }
@@ -505,10 +508,11 @@ impl PainterTool {
     /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through restore +
     /// re-stamp (no trail; `commit` keeps the last fill). Fresh-per-fill ⇒ deterministic for equal input.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
-        // Offset the CONTROL geometry first, so the painted spine + the overlay guide move together.
-        let (pts, handles) = curve_geom::offset_curve(pts, handles, self.shape_offset_px(), closed);
+        // Flatten the BASE spine, then offset the DENSE polyline (a faithful parallel curve), so the painted
+        // stroke matches the overlay guide and carries no control-level deformation (Enio 2026-06-28).
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
+        curve_geom::flatten_spine(pts, handles, closed, &mut spine);
+        let spine = curve_geom::offset_polyline(&spine, self.shape_offset_px(), closed);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);
@@ -518,17 +522,36 @@ impl PainterTool {
 
     /// **Bake** the live Offset into the curve's control geometry (so the curve now sits where the offset
     /// preview showed it) and reset the slider to centre. A no-op when there's no offset or no open editor.
-    /// Called before any edit gesture (so the hit-test matches the displayed dots) and on Apply & Keep.
+    /// Called on Apply & Keep so the kept skeleton lands on the baked curve for continued editing.
+    ///
+    /// OPEN curves re-fit the dense parallel offset back into control points (faithful, no control-level
+    /// deformation — matching the live preview); a CLOSED loop offsets its control geometry directly (a
+    /// regular Circle / Polygon loop offsets cleanly, and the open-curve fitter can't close it).
     pub(super) fn bake_curve_offset(&mut self) {
         let off = self.shape_offset_px();
-        if off != 0.0
-            && let Some(ed) = self.paint.curve.as_mut()
-            && ed.editing
-        {
-            let (p, h) = curve_geom::offset_curve(&ed.points, &ed.handles, off, ed.closed);
+        if off == 0.0 {
+            return;
+        }
+        let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing) else {
+            return;
+        };
+        if ed.closed {
+            let (p, h) = curve_geom::offset_curve(&ed.points, &ed.handles, off, true);
             ed.points = p;
             ed.handles = h;
-            self.paint.shape_offset_norm = 0.5;
+        } else {
+            let mut spine = Vec::new();
+            curve_geom::flatten_spine(&ed.points, &ed.handles, false, &mut spine);
+            let spine = curve_geom::offset_polyline(&spine, off, false);
+            if spine.len() >= 3 {
+                let fit = ph2d_painter_brush::fit_curve(&spine, FREEHAND_FIT_ERROR);
+                if !fit.anchors.is_empty() && fit.anchors.len() <= MAX_CURVE_POINTS {
+                    ed.kinds = vec![HandleKind::Aligned; fit.anchors.len()];
+                    ed.points = fit.anchors;
+                    ed.handles = fit.handles;
+                }
+            }
         }
+        self.paint.shape_offset_norm = 0.5;
     }
 }

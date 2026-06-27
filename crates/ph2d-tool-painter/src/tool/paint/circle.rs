@@ -192,10 +192,11 @@ impl PainterTool {
         self.paint.circle = None;
     }
 
-    /// Convert the editing ellipse to an editable Bézier curve (anchors + `[in, out]` handles): the four
-    /// cardinal points + a closing point, with the canonical `k = 0.5523` tangent handles so the curve
-    /// reproduces the ellipse exactly, then the artist can drag the points/handles. `None` unless editing.
-    /// Drives the panel's **Edit** (E) button via [`PainterTool::convert_open_shape_to_curve`].
+    /// Convert the editing ellipse to an editable **closed** Bézier curve (anchors + `[in, out]` handles):
+    /// the four cardinal points with the canonical `k = 0.5523` tangent handles so the curve reproduces the
+    /// ellipse exactly; the editor closes the loop (bottom→right) itself, so NO duplicate seam anchor. The
+    /// artist can then drag the points/handles. `None` unless editing. Drives the panel's **Edit** (E) button
+    /// via [`PainterTool::convert_open_shape_to_curve`].
     #[allow(clippy::type_complexity)]
     pub(super) fn circle_to_curve(&self) -> Option<(Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>)> {
         let ed = self.paint.circle.as_ref()?;
@@ -216,14 +217,13 @@ impl PainterTool {
         let hu = [u[0] * K * ed.rx, u[1] * K * ed.rx]; // tangent handle at top/bottom (along ±u)
         let sub = |a: [f32; 2], b: [f32; 2]| [a[0] - b[0], a[1] - b[1]];
         let add = |a: [f32; 2], b: [f32; 2]| [a[0] + b[0], a[1] + b[1]];
-        // CCW right→top→left→bottom→right; handles are `[in, out]` per anchor.
-        let points = vec![right, top, left, bottom, right];
+        // CCW right→top→left→bottom (the closing bottom→right arc is the editor's closed-loop segment).
+        let points = vec![right, top, left, bottom];
         let handles = vec![
             [sub(right, hv), add(right, hv)],
             [add(top, hu), sub(top, hu)],
             [add(left, hv), sub(left, hv)],
             [sub(bottom, hu), add(bottom, hu)],
-            [sub(right, hv), add(right, hv)],
         ];
         Some((points, handles))
     }

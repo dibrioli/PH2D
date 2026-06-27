@@ -1106,8 +1106,15 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32
-    assert!(px(&t, 64, 32, 32)[0] < 200, "the curve painted on y=32 at zero offset");
-    assert_eq!(px(&t, 64, 32, 52), [255, 255, 255, 255], "y=52 is white before offset");
+    assert!(
+        px(&t, 64, 32, 32)[0] < 200,
+        "the curve painted on y=32 at zero offset"
+    );
+    assert_eq!(
+        px(&t, 64, 32, 52),
+        [255, 255, 255, 255],
+        "y=52 is white before offset"
+    );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
     assert_eq!(
         px(&t, 64, 32, 32),
@@ -1171,14 +1178,21 @@ fn edit_button_converts_circle_into_an_editable_curve() {
         StrokeMethod::Curve.to_u8(),
         "method is now Curve"
     );
-    assert!(
-        ov.points.len() >= 4,
-        "circle → at least the 4 cardinal anchors"
-    );
     assert_eq!(
+        ov.points.len(),
+        4,
+        "circle → the 4 cardinal anchors (no duplicate seam)"
+    );
+    assert_ne!(
         *ov.points.first().unwrap(),
         *ov.points.last().unwrap(),
-        "closing anchor = a closed loop"
+        "no duplicate seam anchor — the anchors are distinct"
+    );
+    // The closed loop shows in the SPINE: it returns to (near) the start.
+    let (s0, sl) = (*ov.spine.first().unwrap(), *ov.spine.last().unwrap());
+    assert!(
+        (s0[0] - sl[0]).abs() < 0.5 && (s0[1] - sl[1]).abs() < 0.5,
+        "the spine closes the loop back to the start: {s0:?} vs {sl:?}"
     );
 }
 
@@ -1196,12 +1210,17 @@ fn edit_button_converts_polygon_into_a_sharp_editable_curve() {
     t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_EDIT));
     assert!(t.polygon_overlay().is_none(), "the polygon editor closed");
     let ov = t.curve_overlay().expect("a curve editor opened");
-    assert_eq!(
+    assert_ne!(
         *ov.points.first().unwrap(),
         *ov.points.last().unwrap(),
-        "closed loop"
+        "no duplicate seam vertex — the anchors are distinct"
     );
-    assert!(ov.points.len() >= 4, "polygon vertices became anchors");
+    assert!(ov.points.len() >= 3, "polygon vertices became anchors");
+    let (s0, sl) = (*ov.spine.first().unwrap(), *ov.spine.last().unwrap());
+    assert!(
+        (s0[0] - sl[0]).abs() < 0.5 && (s0[1] - sl[1]).abs() < 0.5,
+        "the spine closes the loop back to the start: {s0:?} vs {sl:?}"
+    );
 }
 
 #[test]

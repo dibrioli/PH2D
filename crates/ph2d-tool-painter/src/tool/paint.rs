@@ -18,10 +18,10 @@ use ph2d_painter_brush::{
 mod brush_settings;
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
+mod curve_geom; // flatten (incl. closed seam) + point hit-test/nearest/insert; split from `curve`
 mod curve_handle; // per-anchor handle kinds (Free/Aligned/Vector/Auto) + derived geometry; split from `curve`
 mod curve_tangent; // Bézier tangent-handle hit-test, aligned mirror, overlay snapshot; split from `curve`
-/// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`
-/// for the LOC cap (same submodule rationale).
+/// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod jitter_settings;
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;

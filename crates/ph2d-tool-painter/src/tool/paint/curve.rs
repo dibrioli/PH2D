@@ -15,7 +15,8 @@ use super::curve_handle::{self, HandleKind};
 use super::curve_tangent;
 use super::*;
 
-use ph2d_painter_brush::{Stroke, flatten_catmull_rom, lazy_mouse_step};
+use super::curve_geom;
+use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
@@ -51,6 +52,9 @@ pub(super) struct CurveEditor {
     grabbed_handle: Option<(usize, bool)>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     pub(super) editing: bool,
+    /// `true` when the curve is a **closed loop** (converted from a Circle / Polygon): the spine + fill +
+    /// offset close back from the last anchor to the first, and there is no duplicate seam anchor.
+    pub(super) closed: bool,
     /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the freehand path into
     /// `points` (instead of a straight anchor→cursor line) and simplifies it to control points on release;
     /// from then on it's an ordinary editable curve. `false` for the plain [`StrokeMethod::Curve`].
@@ -114,6 +118,7 @@ impl PainterTool {
                 grabbed: None,
                 grabbed_handle: None,
                 editing: false,
+                closed: false, // authored / Free Hand curves are open
                 freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
                 stabilized: pos,
                 anchor: pos,
@@ -127,7 +132,7 @@ impl PainterTool {
         let tangent = ed
             .selected
             .and_then(|s| curve_tangent::tangent_hit(&ed.points, &ed.handles, s, pos, tol));
-        let need_refill = if let Some(i) = curve_hit(&ed.points, pos, tol) {
+        let need_refill = if let Some(i) = curve_geom::curve_hit(&ed.points, pos, tol) {
             ed.selected = Some(i);
             ed.grabbed = Some(i);
             false
@@ -135,7 +140,7 @@ impl PainterTool {
             ed.grabbed_handle = Some(h); // a tangent handle off the selected anchor — grab it, not the curve
             false
         } else if ed.points.len() < MAX_CURVE_POINTS {
-            let i = curve_insert_index(&ed.points, pos);
+            let i = curve_geom::curve_insert_index(&ed.points, pos);
             ed.points.insert(i, pos);
             ed.kinds.insert(i, HandleKind::Auto); // a fresh point starts smooth; the menu can change it
             if ed.handles.len() + 1 == ed.points.len() {
@@ -146,7 +151,7 @@ impl PainterTool {
             ed.grabbed = Some(i);
             true
         } else {
-            ed.selected = curve_nearest(&ed.points, pos);
+            ed.selected = curve_geom::curve_nearest(&ed.points, pos);
             ed.grabbed = None;
             false
         };
@@ -169,18 +174,20 @@ impl PainterTool {
                 ed.stabilized = lazy_mouse_step(ed.stabilized, pos, stabilizer);
                 let p = ed.stabilized;
                 let last = *ed.points.last().unwrap_or(&ed.anchor);
-                if ed.points.len() < MAX_FREEHAND_CAPTURE && dist2(last, p) >= MIN_CAPTURE_DIST_SQ {
+                if ed.points.len() < MAX_FREEHAND_CAPTURE
+                    && curve_geom::dist2(last, p) >= MIN_CAPTURE_DIST_SQ
+                {
                     ed.points.push(p);
                 }
                 let pts = ed.points.clone();
                 let seed = ed.seed;
-                self.curve_fill(&pts, &[], seed); // raw dense capture → Catmull-Rom preview
+                self.curve_fill(&pts, &[], false, seed); // raw dense capture → Catmull-Rom preview
                 return true;
             }
             // Curve draw: preview the straight line anchor→cursor as a 2-point curve (no trail).
             let pts = [ed.anchor, pos];
             let seed = ed.seed;
-            self.curve_fill(&pts, &[], seed);
+            self.curve_fill(&pts, &[], false, seed);
             return true;
         }
         if let Some((i, is_out)) = ed.grabbed_handle {
@@ -234,7 +241,7 @@ impl PainterTool {
             // Free Hand released → append the final point, FIT the path to cubic Béziers keeping the
             // anchors + their tangent HANDLES (Schneider): flattening them reproduces the stroke faithfully.
             let last = *ed.points.last().unwrap_or(&ed.anchor);
-            if dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
+            if curve_geom::dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
                 ed.points.push(pos);
             }
             if ed.points.len() >= 3 {
@@ -244,7 +251,7 @@ impl PainterTool {
                     ed.handles = fit.handles; // Bézier mode — faithful tangents
                 } else {
                     // Busy scribble over the cap → decimate to anchors, drop handles (rebuild re-derives).
-                    ed.points = cap_curve_points(fit.anchors);
+                    ed.points = curve_geom::cap_curve_points(fit.anchors, MAX_CURVE_POINTS);
                     ed.handles = Vec::new();
                 }
             }
@@ -371,6 +378,7 @@ impl PainterTool {
             grabbed: None,
             grabbed_handle: None,
             editing: true,
+            closed: true,   // a converted Circle / Polygon is a closed loop
             freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
             stabilized: anchor,
             anchor,
@@ -411,7 +419,7 @@ impl PainterTool {
             return None;
         }
         let mut spine = Vec::new();
-        flatten_spine(&ed.points, &ed.handles, &mut spine);
+        curve_geom::flatten_spine(&ed.points, &ed.handles, ed.closed, &mut spine);
         let tangents = ed.selected.and_then(|s| {
             curve_tangent::build_tangents(
                 &ed.points,
@@ -476,125 +484,21 @@ impl PainterTool {
         }
         let pts = ed.points.clone();
         let handles = ed.handles.clone();
+        let closed = ed.closed;
         let seed = ed.seed;
-        self.curve_fill(&pts, &handles, seed);
+        self.curve_fill(&pts, &handles, closed, seed);
     }
 
     /// Build a fresh [`Stroke`] from the live brush + `seed`, flatten the curve (Bézier when `handles`
     /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through restore +
     /// re-stamp (no trail; `commit` keeps the last fill). Fresh-per-fill ⇒ deterministic for equal input.
-    fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], seed: u64) {
+    fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         let mut spine = Vec::new();
-        flatten_spine(pts, handles, &mut spine);
+        curve_geom::flatten_spine(pts, handles, closed, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, self.shape_offset_px(), &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }
-}
-
-/// Flatten the curve to a dense spine: Bézier (the Free Hand fit's faithful tangents) when `handles`
-/// matches `points`, else the Catmull-Rom auto-smooth (the authored Curve + the draw-phase previews).
-/// The fill and the overlay both call this, so the painted dabs match the drawn guide exactly.
-fn flatten_spine(points: &[[f32; 2]], handles: &[[[f32; 2]; 2]], out: &mut Vec<[f32; 2]>) {
-    if handles.len() == points.len() && points.len() >= 2 {
-        ph2d_painter_brush::flatten_bezier(points, handles, out);
-    } else {
-        flatten_catmull_rom(points, out);
-    }
-}
-
-/// Squared distance between two points (the Free Hand capture's min-spacing gate).
-fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
-    let dx = a[0] - b[0];
-    let dy = a[1] - b[1];
-    dx * dx + dy * dy
-}
-
-/// Clamp a fitted control polygon to [`MAX_CURVE_POINTS`]: a clean fit is already tiny, but a very busy
-/// scribble can exceed the editor's per-frame cap, so uniformly decimate the interior, keeping the true
-/// endpoints. A no-op (returns as-is) when already within the cap.
-fn cap_curve_points(out: Vec<[f32; 2]>) -> Vec<[f32; 2]> {
-    if out.len() <= MAX_CURVE_POINTS {
-        return out;
-    }
-    let last = out.len() - 1;
-    let step = out.len() as f32 / MAX_CURVE_POINTS as f32;
-    let mut capped: Vec<[f32; 2]> = (0..MAX_CURVE_POINTS)
-        .map(|i| out[((i as f32 * step) as usize).min(last)])
-        .collect();
-    capped[MAX_CURVE_POINTS - 1] = out[last];
-    capped
-}
-
-/// Index of the control point within `tol` px of `pos` (closest wins), or `None` on a miss.
-pub(super) fn curve_hit(pts: &[[f32; 2]], pos: [f32; 2], tol: f32) -> Option<usize> {
-    let mut best = None;
-    let mut bestd = tol * tol;
-    for (i, p) in pts.iter().enumerate() {
-        let dx = p[0] - pos[0];
-        let dy = p[1] - pos[1];
-        let d = dx * dx + dy * dy;
-        if d <= bestd {
-            bestd = d;
-            best = Some(i);
-        }
-    }
-    best
-}
-
-/// Index of the nearest control point (no tolerance) — the select fallback at the point cap.
-fn curve_nearest(pts: &[[f32; 2]], pos: [f32; 2]) -> Option<usize> {
-    let mut best = None;
-    let mut bestd = f32::INFINITY;
-    for (i, p) in pts.iter().enumerate() {
-        let dx = p[0] - pos[0];
-        let dy = p[1] - pos[1];
-        let d = dx * dx + dy * dy;
-        if d < bestd {
-            bestd = d;
-            best = Some(i);
-        }
-    }
-    best
-}
-
-/// Insert position for a new point at `pos`: just after the segment whose body it lies closest to,
-/// so a click on/near the curve subdivides it there (and a click in open space drops into the
-/// nearest run, bending the curve toward it).
-fn curve_insert_index(pts: &[[f32; 2]], pos: [f32; 2]) -> usize {
-    if pts.len() < 2 {
-        return pts.len();
-    }
-    let mut best = 0usize;
-    let mut bestd = f32::INFINITY;
-    for i in 0..pts.len() - 1 {
-        let d = dist2_point_seg(pos, pts[i], pts[i + 1]);
-        if d < bestd {
-            bestd = d;
-            best = i;
-        }
-    }
-    best + 1
-}
-
-/// Squared distance from `p` to the segment `a→b` — transcendental-free (projection + clamp), so the
-/// editor geometry stays bit-deterministic across platforms (HR-5).
-fn dist2_point_seg(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
-    let abx = b[0] - a[0];
-    let aby = b[1] - a[1];
-    let apx = p[0] - a[0];
-    let apy = p[1] - a[1];
-    let denom = abx * abx + aby * aby;
-    let t = if denom > 0.0 {
-        ((apx * abx + apy * aby) / denom).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let cx = a[0] + abx * t;
-    let cy = a[1] + aby * t;
-    let dx = p[0] - cx;
-    let dy = p[1] - cy;
-    dx * dx + dy * dy
 }

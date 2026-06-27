@@ -30,7 +30,13 @@ impl PainterTool {
     /// outgoing document's layer stack (when multi-layer) by its sprite id, then RESTORES the target's
     /// stashed stack if cached, else `set_source`s a fresh single-raster doc. So a multi-layer sprite
     /// keeps its layers across switches instead of being flattened.
-    pub fn bind_document(&mut self, entity: u64, rgba: Vec<u8>, width: u32, height: u32) {
+    pub fn bind_document(
+        &mut self,
+        entity: u64,
+        rgba: Vec<u8>, // COLOR-RAW-OK: raw sprite source bytes forwarded verbatim to the `set_source` trait contract (also `Vec<u8>`)
+        width: u32,
+        height: u32,
+    ) {
         if self.bound_doc == Some(entity) {
             // Same sprite re-pushed: only re-seed when there are no layers to lose (a trivial stack), so
             // an external image-tool edit still updates the canvas without flattening our own layers.

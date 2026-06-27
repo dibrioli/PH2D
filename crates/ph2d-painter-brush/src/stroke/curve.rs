@@ -18,12 +18,21 @@ impl Stroke {
     /// restore+re-stamp preview, so the growing/reshaping curve leaves no trail; commit keeps the last
     /// fill. `< 2` points fills nothing.
     pub fn fill_curve_preview(&mut self, pts: &[[f32; 2]], out: &mut Vec<Dab>) {
-        out.clear();
-        if pts.len() < 2 {
-            return;
-        }
         let mut spine = Vec::new();
         flatten_catmull_rom(pts, &mut spine);
+        self.fill_polyline_preview(&spine, out);
+    }
+
+    /// Lay spaced dabs along an already-flattened dense polyline `spine` (the Free Hand path flattens its
+    /// fitted Béziers via [`crate::flatten_bezier`], the authored Curve via [`flatten_catmull_rom`]; both
+    /// then call here). Same walk as [`Self::fill_curve_preview`] — continuous spacing/dash/jitter, full
+    /// pressure, fresh-per-fill — so the painted dabs match whatever guide the tool drew. `< 2` points
+    /// fills nothing.
+    pub fn fill_polyline_preview(&mut self, spine: &[[f32; 2]], out: &mut Vec<Dab>) {
+        out.clear();
+        if spine.len() < 2 {
+            return;
+        }
         self.last_pos = spine[0];
         self.last_pressure = 1.0;
         self.accum = 0.0;

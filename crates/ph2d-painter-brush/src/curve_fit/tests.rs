@@ -26,23 +26,28 @@ fn arc_capture() -> Vec<P> {
 #[test]
 fn fit_is_far_fewer_points_than_the_input() {
     let pts = arc_capture();
-    let anchors = fit_curve(&pts, 4.0);
+    let f = fit_curve(&pts, 4.0);
     assert!(
-        anchors.len() < pts.len(),
+        f.anchors.len() < pts.len(),
         "fit must reduce the point count: {} -> {}",
         pts.len(),
-        anchors.len()
+        f.anchors.len()
     );
-    assert!(anchors.len() >= 2, "always at least the two endpoints");
+    assert!(f.anchors.len() >= 2, "always at least the two endpoints");
+    assert_eq!(
+        f.anchors.len(),
+        f.handles.len(),
+        "one [in,out] handle pair per anchor"
+    );
 }
 
 #[test]
 fn fit_preserves_the_endpoints() {
     let pts = arc_capture();
-    let anchors = fit_curve(&pts, 6.0);
-    assert_eq!(anchors[0], pts[0], "first anchor is the start");
+    let f = fit_curve(&pts, 6.0);
+    assert_eq!(f.anchors[0], pts[0], "first anchor is the start");
     assert_eq!(
-        *anchors.last().unwrap(),
+        *f.anchors.last().unwrap(),
         *pts.last().unwrap(),
         "last anchor is the end"
     );
@@ -51,8 +56,8 @@ fn fit_preserves_the_endpoints() {
 #[test]
 fn larger_tolerance_yields_fewer_or_equal_points() {
     let pts = arc_capture();
-    let tight = fit_curve(&pts, 2.0).len();
-    let loose = fit_curve(&pts, 20.0).len();
+    let tight = fit_curve(&pts, 2.0).anchors.len();
+    let loose = fit_curve(&pts, 20.0).anchors.len();
     assert!(
         loose <= tight,
         "a looser tolerance must not add points: tight={tight} loose={loose}"
@@ -62,26 +67,51 @@ fn larger_tolerance_yields_fewer_or_equal_points() {
 #[test]
 fn a_straight_line_collapses_to_two_points() {
     let pts: Vec<P> = (0..=20).map(|i| [i as f32 * 5.0, i as f32 * 5.0]).collect();
-    let anchors = fit_curve(&pts, 1.0);
-    assert_eq!(anchors.len(), 2, "a clean straight line needs one segment");
+    assert_eq!(
+        fit_curve(&pts, 1.0).anchors.len(),
+        2,
+        "a clean straight line needs one segment"
+    );
 }
 
 #[test]
 fn degenerate_inputs_pass_through() {
-    assert_eq!(fit_curve(&[], 4.0).len(), 0);
-    assert_eq!(fit_curve(&[[1.0, 2.0]], 4.0).len(), 1);
-    assert_eq!(fit_curve(&[[1.0, 2.0], [3.0, 4.0]], 4.0).len(), 2);
+    assert_eq!(fit_curve(&[], 4.0).anchors.len(), 0);
+    assert_eq!(fit_curve(&[[1.0, 2.0]], 4.0).anchors.len(), 1);
+    assert_eq!(fit_curve(&[[1.0, 2.0], [3.0, 4.0]], 4.0).anchors.len(), 2);
     // Consecutive exact duplicates collapse (degenerate tangents) before fitting.
     let dup = vec![[0.0, 0.0], [0.0, 0.0], [10.0, 0.0], [10.0, 0.0]];
-    assert_eq!(fit_curve(&dup, 4.0), vec![[0.0, 0.0], [10.0, 0.0]]);
+    assert_eq!(fit_curve(&dup, 4.0).anchors, vec![[0.0, 0.0], [10.0, 0.0]]);
 }
 
 #[test]
 fn fit_is_deterministic() {
     let pts = arc_capture();
-    assert_eq!(
-        fit_curve(&pts, 4.0),
-        fit_curve(&pts, 4.0),
-        "bit-identical re-run (HR-5)"
-    );
+    let (a, b) = (fit_curve(&pts, 4.0), fit_curve(&pts, 4.0));
+    assert_eq!(a.anchors, b.anchors, "bit-identical anchors (HR-5)");
+    assert_eq!(a.handles, b.handles, "bit-identical handles (HR-5)");
+}
+
+#[test]
+fn flattened_fit_follows_the_captured_points() {
+    // The point of the Bézier handles: flattening the fit stays CLOSE to the captured stroke (no
+    // Catmull-Rom deformation). Every capture point is within ~tolerance of the flattened spine.
+    let pts = arc_capture();
+    let f = fit_curve(&pts, 4.0);
+    let mut spine = Vec::new();
+    flatten_bezier(&f.anchors, &f.handles, &mut spine);
+    for &p in &pts {
+        let best = spine
+            .iter()
+            .map(|&s| {
+                let d = [s[0] - p[0], s[1] - p[1]];
+                d[0] * d[0] + d[1] * d[1]
+            })
+            .fold(f32::INFINITY, f32::min);
+        assert!(
+            best.sqrt() <= 6.0,
+            "capture point {p:?} is {:.2}px off the spine",
+            best.sqrt()
+        );
+    }
 }

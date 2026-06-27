@@ -1,10 +1,11 @@
 //! **Piecewise cubic Bézier curve fitting** (Schneider, *Graphics Gems* 1990) — clean-room.
 //!
 //! Fits the FEWEST cubic Béziers to a captured freehand point stream within an error tolerance, then
-//! returns the segment **anchor** points (start + every segment join + end). The Free Hand stroke feeds
-//! these to its Catmull-Rom control polygon: far fewer and better-placed than a Douglas–Peucker subset
-//! (which keeps a vertex at every wiggle), so the curve is cleaner and easier to edit. The fit places an
-//! anchor only where the curvature genuinely turns, and least-squares-fits the tangents in between.
+//! returns the anchors + their tangent **handles** ([`CurveFit`]). The Free Hand stroke stores these and
+//! flattens the Béziers directly ([`flatten_bezier`]): far fewer, better-placed points than a
+//! Douglas–Peucker subset (which keeps a vertex at every wiggle) AND faithful to the stroke (the handles
+//! ARE the fitted tangents, so there's no Catmull-Rom re-smoothing deformation). The fit places an anchor
+//! only where the curvature genuinely turns, and least-squares-fits the tangents in between.
 //!
 //! Deterministic (HR-5): only `+ − × ÷` and `sqrt` (vector normalize + chord length); no `sin/cos/exp/
 //! pow` — the Bernstein basis and the Newton reparameterisation are plain polynomials.
@@ -78,12 +79,25 @@ fn bezier_d2(b: &[P; 4], t: f32) -> P {
     add(a, c)
 }
 
-/// Fit `points` to cubic Béziers within `max_error` (px) deviation and return the **control points**
-/// (anchors) for a Catmull-Rom curve through them: the start, every segment join, and the end. A larger
-/// `max_error` yields fewer points. Endpoints are always preserved. Fewer than 3 input points pass
-/// through unchanged (after collapsing exact duplicates).
+/// A fitted curve: the anchor points + per-anchor Bézier **handles** (absolute positions). `handles[i]`
+/// is `[in, out]` — the incoming and outgoing tangent control points around `anchors[i]`; the segment
+/// `anchors[i] → anchors[i+1]` is the cubic Bézier `[anchors[i], handles[i].out, handles[i+1].in,
+/// anchors[i+1]]`. The first anchor's `in` and the last anchor's `out` equal their anchor (no handle).
+/// Unlike a Catmull-Rom polygon (whose tangents are invented from neighbours), these handles ARE the
+/// fitted tangents — flattening them reproduces the captured stroke faithfully (no deformation).
+pub struct CurveFit {
+    /// The anchor points, start→end.
+    pub anchors: Vec<P>,
+    /// `[in, out]` absolute handle positions per anchor (same length as `anchors`).
+    pub handles: Vec<[P; 2]>,
+}
+
+/// Fit `points` to cubic Béziers within `max_error` (px) deviation and return the anchors + their Bézier
+/// handles ([`CurveFit`]). A larger `max_error` yields fewer points. Endpoints are always preserved.
+/// Fewer than 3 input points pass through unchanged (after collapsing exact duplicates), with zero-length
+/// handles (a straight segment).
 #[must_use]
-pub fn fit_curve(points: &[P], max_error: f32) -> Vec<P> {
+pub fn fit_curve(points: &[P], max_error: f32) -> CurveFit {
     // Collapse consecutive exact-duplicate samples (a parked cursor) — they give degenerate tangents.
     let mut pts: Vec<P> = Vec::with_capacity(points.len());
     for &p in points {
@@ -92,30 +106,56 @@ pub fn fit_curve(points: &[P], max_error: f32) -> Vec<P> {
         }
     }
     if pts.len() <= 2 {
-        return pts;
+        let handles = pts.iter().map(|&a| [a, a]).collect();
+        return CurveFit {
+            anchors: pts,
+            handles,
+        };
     }
     let left_t = norm(sub(pts[1], pts[0]));
     let n = pts.len();
     let right_t = norm(sub(pts[n - 2], pts[n - 1]));
     let err = max_error.max(0.1);
-    let mut anchors = vec![pts[0]];
-    fit_cubic(&pts, left_t, right_t, err * err, &mut anchors);
-    anchors
+    let mut segs: Vec<[P; 4]> = Vec::new();
+    fit_cubic(&pts, left_t, right_t, err * err, &mut segs);
+    segments_to_fit(&segs)
+}
+
+/// Assemble the recursion's ordered cubic-Bézier segments (`[P0, C0, C1, P1]`) into anchors + per-anchor
+/// `[in, out]` handles: anchor 0 is the first `P0` (in = itself), each join takes its `in` from the
+/// previous segment's `C1` and its `out` from the next segment's `C0`, the last anchor's `out` = itself.
+fn segments_to_fit(segs: &[[P; 4]]) -> CurveFit {
+    if segs.is_empty() {
+        return CurveFit {
+            anchors: Vec::new(),
+            handles: Vec::new(),
+        };
+    }
+    let mut anchors = vec![segs[0][0]];
+    let mut handles = vec![[segs[0][0], segs[0][1]]]; // first: in = anchor, out = C0
+    for (i, s) in segs.iter().enumerate() {
+        anchors.push(s[3]); // P1
+        let out = segs.get(i + 1).map_or(s[3], |nx| nx[1]); // next C0, else the anchor (last)
+        handles.push([s[2], out]); // in = this C1, out = next C0
+    }
+    CurveFit { anchors, handles }
 }
 
 /// Fit one run `pts` (with end tangents) to Béziers within squared error `err2`, appending each emitted
-/// segment's END anchor to `out`. Recurses, splitting at the worst-fit point (Schneider's scheme).
-fn fit_cubic(pts: &[P], left_t: P, right_t: P, err2: f32, out: &mut Vec<P>) {
+/// cubic segment `[P0, C0, C1, P1]` to `out`. Recurses, splitting at the worst-fit point (Schneider).
+fn fit_cubic(pts: &[P], left_t: P, right_t: P, err2: f32, out: &mut Vec<[P; 4]>) {
     let n = pts.len();
     if n == 2 {
-        out.push(pts[1]);
+        // A 2-point run → a straight cubic (handles at the 1/3 chord, so flattening is the segment).
+        let third = scale(sub(pts[1], pts[0]), 1.0 / 3.0);
+        out.push([pts[0], add(pts[0], third), sub(pts[1], third), pts[1]]);
         return;
     }
     let mut u = chord_length_param(pts);
     let mut bez = generate_bezier(pts, &u, left_t, right_t);
     let (mut max_d2, mut split) = max_error_point(pts, &bez, &u);
     if max_d2 < err2 {
-        out.push(pts[n - 1]);
+        out.push(bez);
         return;
     }
     // Close enough to try Newton reparameterisation a few times before giving up and splitting
@@ -128,7 +168,7 @@ fn fit_cubic(pts: &[P], left_t: P, right_t: P, err2: f32, out: &mut Vec<P>) {
             max_d2 = d2;
             split = s;
             if max_d2 < err2 {
-                out.push(pts[n - 1]);
+                out.push(bez);
                 return;
             }
         }
@@ -230,6 +270,29 @@ fn chord_length_param(pts: &[P]) -> Vec<f32> {
         }
     }
     u
+}
+
+/// Flatten the cubic Béziers defined by `anchors` + per-anchor `[in, out]` `handles` into a dense
+/// polyline (cleared first; starts at `anchors[0]`). Each segment `anchors[i] → anchors[i+1]` is the
+/// cubic `[anchors[i], handles[i].out, handles[i+1].in, anchors[i+1]]`, subdivided finer than the dab
+/// spacing so the curve never facets — the SAME density rule as the Catmull-Rom flattener, so the painted
+/// dabs match the on-screen guide. A length mismatch (`anchors != handles`) yields just the start point.
+pub fn flatten_bezier(anchors: &[P], handles: &[[P; 2]], out: &mut Vec<P>) {
+    out.clear();
+    if anchors.is_empty() {
+        return;
+    }
+    out.push(anchors[0]);
+    if anchors.len() != handles.len() {
+        return;
+    }
+    for i in 0..anchors.len() - 1 {
+        let seg = [anchors[i], handles[i][1], handles[i + 1][0], anchors[i + 1]];
+        let n = ((dist2(anchors[i], anchors[i + 1]).sqrt() / 3.0).ceil() as usize).clamp(1, 96);
+        for k in 1..=n {
+            out.push(bezier_at(&seg, k as f32 / n as f32));
+        }
+    }
 }
 
 #[cfg(test)]

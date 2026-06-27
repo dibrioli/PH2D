@@ -37,6 +37,12 @@ pub(super) struct CurveEditor {
     /// Control points along the curve, image-space px. One while drawing the initial line, then
     /// `≥ 2` once editing (the 3-point line, growing as points are added).
     points: Vec<[f32; 2]>,
+    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points`. EMPTY ⇒ Catmull-Rom
+    /// mode (the authored Curve: tangents auto-derived from neighbours). NON-EMPTY (== `points.len()`) ⇒
+    /// Bézier mode: the Free Hand fit's tangents are stored and flattened directly, so the curve follows
+    /// the captured stroke faithfully instead of being re-smoothed (the deformation fix). Dragging an
+    /// anchor translates its handles; an added point gets zero-length (corner) handles.
+    handles: Vec<[[f32; 2]; 2]>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
@@ -63,8 +69,8 @@ pub struct CurveOverlay {
     pub points: Vec<[f32; 2]>,
     /// The selected point index (drawn highlighted), if any.
     pub selected: Option<usize>,
-    /// The flattened Catmull-Rom spine (image-space px) — drawn as the curve guide; matches the
-    /// painted dabs exactly (same [`flatten_catmull_rom`]).
+    /// The flattened spine (image-space px) — drawn as the curve guide; matches the painted dabs exactly
+    /// (Bézier handles for the Free Hand fit, else Catmull-Rom — same `flatten_spine`).
     pub spine: Vec<[f32; 2]>,
 }
 
@@ -94,6 +100,7 @@ impl PainterTool {
             self.paint.seed = self.paint.seed.wrapping_add(1);
             self.paint.curve = Some(CurveEditor {
                 points: vec![pos],
+                handles: Vec::new(),
                 selected: None,
                 grabbed: None,
                 editing: false,
@@ -114,6 +121,11 @@ impl PainterTool {
         } else if ed.points.len() < MAX_CURVE_POINTS {
             let i = curve_insert_index(&ed.points, pos);
             ed.points.insert(i, pos);
+            // Bézier mode (freehand fit): the inserted point is a corner — zero-length handles, kept in
+            // sync so the parallel `handles`/`points` invariant holds. Catmull-Rom mode leaves it empty.
+            if ed.handles.len() + 1 == ed.points.len() {
+                ed.handles.insert(i, [pos, pos]);
+            }
             ed.selected = Some(i);
             ed.grabbed = Some(i);
             true
@@ -146,17 +158,29 @@ impl PainterTool {
                 }
                 let pts = ed.points.clone();
                 let seed = ed.seed;
-                self.curve_fill(&pts, seed);
+                self.curve_fill(&pts, &[], seed); // raw dense capture → Catmull-Rom preview
                 return true;
             }
             // Curve draw: preview the straight line anchor→cursor as a 2-point curve (no trail).
             let pts = [ed.anchor, pos];
             let seed = ed.seed;
-            self.curve_fill(&pts, seed);
+            self.curve_fill(&pts, &[], seed);
             return true;
         }
         match ed.grabbed {
-            Some(g) => ed.points[g] = pos,
+            Some(g) => {
+                // Move the anchor; in Bézier mode translate its handles with it (rigid move, vector-editor
+                // style) so the fitted tangents follow the point instead of snapping back to Catmull-Rom.
+                let old = ed.points[g];
+                let d = [pos[0] - old[0], pos[1] - old[1]];
+                ed.points[g] = pos;
+                if let Some(h) = ed.handles.get_mut(g) {
+                    *h = [
+                        [h[0][0] + d[0], h[0][1] + d[1]],
+                        [h[1][0] + d[0], h[1][1] + d[1]],
+                    ];
+                }
+            }
             None => return true, // editing but nothing grabbed — ignore stray moves
         }
         self.curve_refill();
@@ -173,21 +197,28 @@ impl PainterTool {
             return true;
         }
         if ed.freehand {
-            // Free Hand released → append the final point, FIT the captured path to cubic Béziers and
-            // keep their anchors as control points (clean curve, fewest points — Schneider, not the old
-            // Douglas–Peucker vertex-subset), cap, then enter edit mode. Nothing pre-selected.
+            // Free Hand released → append the final point, FIT the captured path to cubic Béziers and keep
+            // the anchors + their tangent HANDLES (Schneider): the handles ARE the fitted tangents, so
+            // flattening them reproduces the stroke faithfully (no Catmull-Rom deformation). Enter edit mode.
             let last = *ed.points.last().unwrap_or(&ed.anchor);
             if dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
                 ed.points.push(pos);
             }
             if ed.points.len() >= 3 {
-                ed.points = cap_curve_points(ph2d_painter_brush::fit_curve(
-                    &ed.points,
-                    FREEHAND_FIT_ERROR,
-                ));
+                let fit = ph2d_painter_brush::fit_curve(&ed.points, FREEHAND_FIT_ERROR);
+                if fit.anchors.len() <= MAX_CURVE_POINTS {
+                    ed.points = fit.anchors;
+                    ed.handles = fit.handles; // Bézier mode — faithful tangents
+                } else {
+                    // Pathologically busy scribble over the editor cap → decimate to anchors + drop the
+                    // handles (graceful Catmull-Rom fallback; the per-frame hit-test stays bounded).
+                    ed.points = cap_curve_points(fit.anchors);
+                    ed.handles = Vec::new();
+                }
             }
             if ed.points.len() < 2 {
                 ed.points = vec![ed.anchor, pos]; // a tap/short flick → a degenerate 2-point curve
+                ed.handles = Vec::new();
             }
             ed.selected = None;
         } else {
@@ -220,6 +251,9 @@ impl PainterTool {
             return false;
         }
         ed.points.remove(sel);
+        if sel < ed.handles.len() {
+            ed.handles.remove(sel); // keep the parallel handles invariant in Bézier mode
+        }
         ed.selected = Some(sel.min(ed.points.len() - 1));
         ed.grabbed = None;
         self.curve_refill();
@@ -298,7 +332,7 @@ impl PainterTool {
             return None;
         }
         let mut spine = Vec::new();
-        flatten_catmull_rom(&ed.points, &mut spine);
+        flatten_spine(&ed.points, &ed.handles, &mut spine);
         Some(CurveOverlay {
             points: ed.points.clone(),
             selected: ed.selected,
@@ -308,7 +342,7 @@ impl PainterTool {
 
     // ── internals ────────────────────────────────────────────────────────────────────
 
-    /// Re-fill the painted preview from the editor's current control points (edit phase).
+    /// Re-fill the painted preview from the editor's current control points + handles (edit phase).
     fn curve_refill(&mut self) {
         let Some(ed) = self.paint.curve.as_ref() else {
             return;
@@ -317,20 +351,35 @@ impl PainterTool {
             return;
         }
         let pts = ed.points.clone();
+        let handles = ed.handles.clone();
         let seed = ed.seed;
-        self.curve_fill(&pts, seed);
+        self.curve_fill(&pts, &handles, seed);
     }
 
-    /// Build a fresh [`Stroke`] from the live brush spec + `seed`, fill the curve through `pts`, and
-    /// route the dabs through the restore + re-stamp preview (so the reshaping curve leaves no trail
-    /// and `commit` keeps the last fill). Fresh-per-fill ⇒ the preview always reflects the current
-    /// brush (size / spacing / dash) and is deterministic for identical points.
-    fn curve_fill(&mut self, pts: &[[f32; 2]], seed: u64) {
+    /// Build a fresh [`Stroke`] from the live brush spec + `seed`, flatten the curve (Bézier handles when
+    /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through the restore +
+    /// re-stamp preview (so the reshaping curve leaves no trail and `commit` keeps the last fill).
+    /// Fresh-per-fill ⇒ the preview always reflects the current brush and is deterministic for identical
+    /// input. `handles = &[]` ⇒ Catmull-Rom (the draw-phase preview + the authored Curve method).
+    fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], seed: u64) {
+        let mut spine = Vec::new();
+        flatten_spine(pts, handles, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_curve_preview(pts, &mut dabs);
+        stroke.fill_polyline_preview(&spine, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
+    }
+}
+
+/// Flatten the curve to a dense spine: Bézier (the Free Hand fit's faithful tangents) when `handles`
+/// matches `points`, else the Catmull-Rom auto-smooth (the authored Curve + the draw-phase previews).
+/// The fill and the overlay both call this, so the painted dabs match the drawn guide exactly.
+fn flatten_spine(points: &[[f32; 2]], handles: &[[[f32; 2]; 2]], out: &mut Vec<[f32; 2]>) {
+    if handles.len() == points.len() && points.len() >= 2 {
+        ph2d_painter_brush::flatten_bezier(points, handles, out);
+    } else {
+        flatten_catmull_rom(points, out);
     }
 }
 

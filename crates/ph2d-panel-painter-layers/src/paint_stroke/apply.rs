@@ -78,8 +78,8 @@ pub(super) fn paint_apply_row(
 }
 
 /// One stroke shape-editor button. `label = Some(text)` paints a text button (Apply / Apply & Keep);
-/// `None` paints the square trash icon (Delete, danger-accented). Registers the Button slot so the
-/// dispatch can emit `Click`.
+/// `None` paints the square Close (✕) icon (Delete). All three share the same chrome (fill / border /
+/// height) so Delete reads as a peer, not an alarm. Registers the Button slot so the dispatch can `Click`.
 fn button(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -87,23 +87,13 @@ fn button(
     label: Option<&str>,
     id: ph2d_a11y::NodeId,
 ) {
-    fill_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-    let border = if label.is_none() {
-        ColorToken::Danger // the trash button accents destructive
-    } else {
-        ColorToken::Border
-    };
+    fill_rounded_rect(ctx.scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
     stroke_rounded_rect(
         ctx.scene,
         r,
         Radius::Sm.px(),
         StrokeToken::Thin.px(),
-        resolve(border, theme),
+        resolve(ColorToken::Border, theme),
     );
     match label {
         Some(text) => paint_text_centered(
@@ -115,13 +105,13 @@ fn button(
             resolve(ColorToken::Text1, theme),
         ),
         None => {
-            let pad = Spacing::Xs.px();
+            let pad = Spacing::Sm.px(); // inset so the ✕ reads at the button's full height
             let icon = Rect::new(r.x + pad, r.y + pad, r.w - pad * 2.0, r.h - pad * 2.0);
             paint_icon(
                 ctx.scene,
-                ph2d_editor_core::IconId::Trash,
+                ph2d_editor_core::IconId::Close,
                 icon,
-                resolve(ColorToken::Danger, theme),
+                resolve(ColorToken::Text1, theme),
                 StrokeToken::Default.px(),
             );
         }

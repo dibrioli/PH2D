@@ -107,5 +107,20 @@ fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
     dx * dx + dy * dy
 }
 
+impl super::PainterTool {
+    /// Select the control point under `pos` (within `tol`) — the shell's secondary-click before opening
+    /// the handle-kind menu, so the pick applies to the right point. `true` iff a point was hit.
+    pub fn curve_select_point_at(&mut self, pos: [f32; 2], tol: f32) -> bool {
+        let Some(ed) = self.paint.curve.as_mut().filter(|ed| ed.editing) else {
+            return false;
+        };
+        let Some(i) = super::curve::curve_hit(&ed.points, pos, tol) else {
+            return false;
+        };
+        ed.selected = Some(i);
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests;

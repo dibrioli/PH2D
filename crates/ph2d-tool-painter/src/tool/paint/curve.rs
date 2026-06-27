@@ -32,7 +32,7 @@ const MAX_FREEHAND_CAPTURE: usize = 4096;
 pub(super) struct CurveEditor {
     /// Control points along the curve, image-space px. One while drawing the initial line, then
     /// `≥ 2` once editing (the 3-point line, growing as points are added).
-    points: Vec<[f32; 2]>,
+    pub(super) points: Vec<[f32; 2]>,
     /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` once editing. Each
     /// anchor's `kinds` entry drives how they update (Auto/Vector derived, Aligned/Free manual). EMPTY only
     /// transiently (the draw-phase straight-line preview) ⇒ the Catmull-Rom fallback in `flatten_spine`.
@@ -43,14 +43,14 @@ pub(super) struct CurveEditor {
     /// keep the artist's tangents. Empty during the draw phase (handles not materialised yet).
     kinds: Vec<HandleKind>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
-    selected: Option<usize>,
+    pub(super) selected: Option<usize>,
     /// The point being dragged this gesture (`Some` between a grab-Down and its Up).
     grabbed: Option<usize>,
     /// The **tangent handle** being dragged this gesture: `(anchor index, is_out)` where `is_out` picks the
     /// `[in, out]` slot. `Some` between a handle grab-Down and its Up; takes precedence over `grabbed`.
     grabbed_handle: Option<(usize, bool)>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
-    editing: bool,
+    pub(super) editing: bool,
     /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the freehand path into
     /// `points` (instead of a straight anchor→cursor line) and simplifies it to control points on release;
     /// from then on it's an ordinary editable curve. `false` for the plain [`StrokeMethod::Curve`].
@@ -529,7 +529,7 @@ fn cap_curve_points(out: Vec<[f32; 2]>) -> Vec<[f32; 2]> {
 }
 
 /// Index of the control point within `tol` px of `pos` (closest wins), or `None` on a miss.
-fn curve_hit(pts: &[[f32; 2]], pos: [f32; 2], tol: f32) -> Option<usize> {
+pub(super) fn curve_hit(pts: &[[f32; 2]], pos: [f32; 2], tol: f32) -> Option<usize> {
     let mut best = None;
     let mut bestd = tol * tol;
     for (i, p) in pts.iter().enumerate() {

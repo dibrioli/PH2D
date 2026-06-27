@@ -28,12 +28,12 @@ mod inspector_visibility;
 mod motion_smoke;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
-/// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
-/// `painter_bridge` for the HR-18 file-LOC cap.
-pub(crate) mod painter_bridge_overlays;
 /// The Curve / Free Hand editor overlay (spine + control dots + tangent handles), split from
 /// `painter_bridge_overlays` for the HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_curve_overlay;
+/// On-canvas editing chrome (brush ring + Curve/Circle/Polygon/Stencil overlays), split from
+/// `painter_bridge` for the HR-18 file-LOC cap.
+pub(crate) mod painter_bridge_overlays;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
@@ -1324,6 +1324,16 @@ impl crate::App {
                 })
             {
                 painter.set_brush_falloff_point_handle(id, handle);
+            }
+            // Drain the on-canvas Curve / Free Hand right-click handle-kind choice (chrome parked the wire
+            // u8 in `pending_curve_point_handle`) → apply it to the selected control point.
+            if let Some(kind) = hero.pending_curve_point_handle.take()
+                && let Some(painter) = tools.active_mut().and_then(|t| {
+                    t.as_any_mut()
+                        .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                })
+            {
+                painter.set_curve_handle_kind(kind);
             }
             // Onda 2C: clear the gizmo hit_map BEFORE paint_hero_screen
             // runs. `paint_hero_screen` now paints BOTH the primary gizmo

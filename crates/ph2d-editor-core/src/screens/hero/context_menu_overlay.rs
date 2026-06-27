@@ -166,10 +166,8 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_OUTLINE_3, "Blue", Some(HIGHLIGHTER_RGBA[3])),
             (ids::CTX_MENU_OUTLINE_4, "Orange", Some(HIGHLIGHTER_RGBA[4])),
         ],
-        // Right-clicked on a note: 5 background-color options
-        // (reuses the outline color slot ids; apply_event branches
-        // on `last_context_menu.kind` to decide whether to set the
-        // section outline or the note bg).
+        // Right-clicked on a note: 5 background-color options (reuses the outline color slot ids;
+        // apply_event branches on `last_context_menu.kind` to set the section outline vs the note bg).
         ContextMenuKind::NoteBackground { .. } => &[
             (ids::CTX_MENU_OUTLINE_0, "Yellow", Some(HIGHLIGHTER_RGBA[0])),
             (ids::CTX_MENU_OUTLINE_1, "Pink", Some(HIGHLIGHTER_RGBA[1])),
@@ -177,10 +175,8 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_OUTLINE_3, "Blue", Some(HIGHLIGHTER_RGBA[3])),
             (ids::CTX_MENU_OUTLINE_4, "Orange", Some(HIGHLIGHTER_RGBA[4])),
         ],
-        // Topbar theme cluster click: 4 themes + 3 radius presets,
-        // separated visually. Theme entries get a small accent
-        // swatch tinted with each theme's flavor so the user can
-        // recognize them at a glance.
+        // Topbar theme cluster click: 4 themes + 3 radius presets. Theme entries get a small accent
+        // swatch tinted with each theme's flavor so the user can recognize them at a glance.
         ContextMenuKind::ThemeSelector => &[
             (
                 ids::CTX_MENU_THEME_FORGE,
@@ -280,10 +276,8 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
-        // Text rendering submenu — 4 presets, monotonic in
-        // aggressiveness: Default (historic) → Crisp Light
-        // (boost 30/20/10 + snap-X) → Crisp (60/40/20) →
-        // Crisp Heavy (100/70/40).
+        // Text rendering submenu — 4 presets, monotonic in aggressiveness: Default (historic) →
+        // Crisp Light (boost 30/20/10 + snap-X) → Crisp (60/40/20) → Crisp Heavy (100/70/40).
         ContextMenuKind::SettingsTextSubmenu => &[
             (ids::CTX_MENU_TEXT_DEFAULT, "Default", None),
             (ids::CTX_MENU_TEXT_CRISP_HEAVY, "Crisp Heavy", None),
@@ -336,6 +330,13 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::FalloffPointHandle => &[
             (ids::CTX_MENU_FALLOFF_HANDLE_VECTOR, "Vector", None),
             (ids::CTX_MENU_FALLOFF_HANDLE_AUTO, "Auto", None),
+        ],
+        // On-canvas Curve / Free Hand point handle (the four vector-app continuity kinds).
+        ContextMenuKind::CurvePointHandle => &[
+            (ids::CTX_MENU_CURVE_HANDLE_FREE, "Free", None),
+            (ids::CTX_MENU_CURVE_HANDLE_ALIGNED, "Aligned", None),
+            (ids::CTX_MENU_CURVE_HANDLE_VECTOR, "Vector", None),
+            (ids::CTX_MENU_CURVE_HANDLE_AUTO, "Auto", None),
         ],
     };
 

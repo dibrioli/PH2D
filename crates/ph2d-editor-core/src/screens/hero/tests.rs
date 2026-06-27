@@ -500,6 +500,40 @@ fn point_type_menu_routes_each_kind_to_pending_index() {
 }
 
 #[test]
+fn curve_point_handle_menu_routes_each_kind_to_pending_wire() {
+    crate::test_support::ensure_panel_registry();
+    // Each entry in the CurvePointHandle menu parks its wire u8 in `pending_curve_point_handle`
+    // (Free/Aligned/Vector/Auto = 0/1/2/3) and closes the menu; the shell drains it and calls
+    // `PainterTool::set_curve_handle_kind`.
+    let cases = [
+        (ids::CTX_MENU_CURVE_HANDLE_FREE, 0u8),
+        (ids::CTX_MENU_CURVE_HANDLE_ALIGNED, 1),
+        (ids::CTX_MENU_CURVE_HANDLE_VECTOR, 2),
+        (ids::CTX_MENU_CURVE_HANDLE_AUTO, 3),
+    ];
+    for (entry_id, expected) in cases {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store
+            .open_context_menu(crate::interaction::ContextMenuRequest {
+                x: 0.0,
+                y: 0.0,
+                kind: crate::interaction::ContextMenuKind::CurvePointHandle,
+            });
+        let consumed = hero.apply_event(WidgetEvent::Click(entry_id));
+        assert!(consumed, "curve-handle entry click should be consumed");
+        assert_eq!(
+            hero.pending_curve_point_handle.take(),
+            Some(expected),
+            "entry must park its handle-kind wire u8"
+        );
+        assert!(
+            hero.store.context_menu().is_none(),
+            "menu must close after pick"
+        );
+    }
+}
+
+#[test]
 fn simple_row_context_menu_items_are_populate_registered() {
     // Regression gate for the Painter Falloff "Vector handle does nothing" bug.
     //
@@ -520,6 +554,11 @@ fn simple_row_context_menu_items_are_populate_registered() {
         // Painter Falloff handle (the regression).
         ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
         ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
+        // On-canvas Curve / Free Hand point-handle kinds.
+        ids::CTX_MENU_CURVE_HANDLE_FREE,
+        ids::CTX_MENU_CURVE_HANDLE_ALIGNED,
+        ids::CTX_MENU_CURVE_HANDLE_VECTOR,
+        ids::CTX_MENU_CURVE_HANDLE_AUTO,
         // VectorPointType — the working sibling that proves the pattern.
         ids::CTX_MENU_POINT_TYPE_CORNER,
         ids::CTX_MENU_POINT_TYPE_SMOOTH,

@@ -187,6 +187,13 @@ pub const CTX_MENU_POINT_TYPE_AUTO: NodeId = hash_node_id("ctx_menu_point_type_a
 // click to the HandleType wire u8 in `HeroScreen.pending_falloff_point_handle`.
 pub const CTX_MENU_FALLOFF_HANDLE_VECTOR: NodeId = hash_node_id("ctx_menu_falloff_handle_vector");
 pub const CTX_MENU_FALLOFF_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_falloff_handle_auto");
+// On-canvas Curve / Free Hand editor point handle menu (secondary-click on a control point). Four handle
+// kinds (Free / Aligned / Vector / Auto); the chrome handler maps a click to the wire u8 in
+// `HeroScreen.pending_curve_point_handle` (`0 = Free`, `1 = Aligned`, `2 = Vector`, `3 = Auto`).
+pub const CTX_MENU_CURVE_HANDLE_FREE: NodeId = hash_node_id("ctx_menu_curve_handle_free");
+pub const CTX_MENU_CURVE_HANDLE_ALIGNED: NodeId = hash_node_id("ctx_menu_curve_handle_aligned");
+pub const CTX_MENU_CURVE_HANDLE_VECTOR: NodeId = hash_node_id("ctx_menu_curve_handle_vector");
+pub const CTX_MENU_CURVE_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_curve_handle_auto");
 // Project-chip Scene List popover (search input + up to 8 result rows).
 pub const CTX_SCENE_SEARCH: NodeId = hash_node_id("ctx_scene_search");
 pub const CTX_SCENE_ROW_0: NodeId = hash_node_id("ctx_scene_row_0");

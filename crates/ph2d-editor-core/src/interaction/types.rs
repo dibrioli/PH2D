@@ -233,4 +233,12 @@ pub enum ContextMenuKind {
     /// calls `PainterTool::set_brush_falloff_point_handle` on the selected point
     /// (editor-core can't depend on the brush crate, so it crosses as a u8).
     FalloffPointHandle,
+    /// Right-clicked on an on-canvas **Curve / Free Hand** editor control point.
+    /// Menu offers the four handle continuity kinds — Free / Aligned / Vector /
+    /// Auto. The secondary-click already selected the point; the chrome handler
+    /// routes the click into `HeroScreen.pending_curve_point_handle` as the wire
+    /// u8 (`0 = Free`, `1 = Aligned`, `2 = Vector`, `3 = Auto`). The shell drains
+    /// it and calls `PainterTool::set_curve_handle_kind` (crosses as a u8 since
+    /// editor-core can't depend on the tool crate).
+    CurvePointHandle,
 }

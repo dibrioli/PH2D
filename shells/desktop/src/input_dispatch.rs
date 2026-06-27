@@ -450,6 +450,13 @@ impl App {
             {
                 return;
             }
+            // On-canvas Curve / Free Hand: right-click a control point → open the
+            // handle-kind menu (Free / Aligned / Vector / Auto). No-op off a point.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if self.painter_curve_open_point_menu(evt.x, evt.y) =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
                 // End any erase drag (no-op when not erasing).
                 self.end_protect_paint();

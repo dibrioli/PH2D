@@ -168,16 +168,14 @@ pub struct HeroScreen {
     /// vector tool (editor-core can't reference `VertexKind`, so it crosses the
     /// crate boundary as an index). Mirror of the panel `take_pending_*` pattern.
     pub pending_vector_point_type: Option<u8>,
-    /// Pending Painter Falloff handle from the right-click menu (`HandleType` wire
-    /// u8: `0` = Auto / `1` = Vector); `.take()`n by the shell onto the sel. point.
+    /// Pending Painter Falloff handle from the right-click menu (`HandleType` wire u8 `0`=Auto/`1`=Vector);
+    /// `.take()`n by the shell onto the selected point.
     pub pending_falloff_point_handle: Option<u8>,
-    // Wave 2.5 PR 11.8c: 6 hierarchy fields migrated to the bus.
-    //   pending_visibility_toggle → EditorAction::HierToggleVisibility { row }
-    //   pending_reparent          → EditorAction::HierReparent(HierReparentIntent)
-    //   pending_duplicate         → EditorAction::HierDuplicate { row }
-    //   pending_delete            → EditorAction::HierDelete { row }
-    //   pending_reset_transform   → EditorAction::HierResetTransform { row }
-    //   pending_add_child         → EditorAction::HierAddChild { row }
+    /// Pending on-canvas Curve / Free Hand point handle kind from the right-click menu (wire u8 `0`=Free /
+    /// `1`=Aligned / `2`=Vector / `3`=Auto); `.take()`n by the shell onto `set_curve_handle_kind`.
+    pub pending_curve_point_handle: Option<u8>,
+    // Wave 2.5 PR 11.8c: 6 hierarchy fields (visibility/reparent/duplicate/delete/reset-transform/add-child)
+    // migrated to the bus as `EditorAction::Hier*`.
     // Each push happens in `apply_event` (dispatcher event for
     // visibility/reparent, CTX_MENU_HIER_* for menu actions); the
     // shell drains via `hero.bus.drain()` + filter-and-replace,
@@ -257,6 +255,7 @@ impl HeroScreen {
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             pending_vector_point_type: None,
             pending_falloff_point_handle: None,
+            pending_curve_point_handle: None,
         }
     }
 

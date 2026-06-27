@@ -31,7 +31,8 @@ pub(super) fn paint_apply_row(
     let sq = ROW_H_PX; // square icon-button side
     // Width of the trailing cluster: ✕ alone, or E + ✕ (with a gap) when convertible.
     let icons = if with_edit { sq * 2.0 + gap } else { sq };
-    let one_row = content_w >= 84.0 * 2.0 + icons + gap * 2.0;
+    let min_text_btn_w = 84.0; // LITERAL-PX-OK: layout breakpoint — min readable text-button width before wrap
+    let one_row = content_w >= min_text_btn_w * 2.0 + icons + gap * 2.0;
     let apply = core_ids::PAINTER_BRUSH_STROKE_APPLY;
     let keep = core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP;
     if one_row {

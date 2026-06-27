@@ -233,8 +233,7 @@ pub fn paint_context_menu_overlay(
                 None,
             ),
         ],
-        // Settings cluster (gear) — TOP-LEVEL categories. Each entry gets a real `IconId::ChevronRight`
-        // painted at the right edge by the row loop below (matched by `kind == SettingsMenu`).
+        // Settings cluster (gear) — TOP-LEVEL categories; each gets a `ChevronRight` from the row loop.
         ContextMenuKind::SettingsMenu => &[
             (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter", None),
             (ids::CTX_MENU_SETTINGS_UNIT, "Display unit", None),
@@ -331,10 +330,11 @@ pub fn paint_context_menu_overlay(
             (ids::CTX_MENU_FALLOFF_HANDLE_VECTOR, "Vector", None),
             (ids::CTX_MENU_FALLOFF_HANDLE_AUTO, "Auto", None),
         ],
-        // On-canvas Curve / Free Hand point handle (the four vector-app continuity kinds).
+        // On-canvas Curve / Free Hand point handle (the five vector-app continuity kinds).
         ContextMenuKind::CurvePointHandle => &[
             (ids::CTX_MENU_CURVE_HANDLE_FREE, "Free", None),
             (ids::CTX_MENU_CURVE_HANDLE_ALIGNED, "Aligned", None),
+            (ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC, "Symmetric", None),
             (ids::CTX_MENU_CURVE_HANDLE_VECTOR, "Vector", None),
             (ids::CTX_MENU_CURVE_HANDLE_AUTO, "Auto", None),
         ],

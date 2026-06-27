@@ -510,6 +510,7 @@ fn curve_point_handle_menu_routes_each_kind_to_pending_wire() {
         (ids::CTX_MENU_CURVE_HANDLE_ALIGNED, 1),
         (ids::CTX_MENU_CURVE_HANDLE_VECTOR, 2),
         (ids::CTX_MENU_CURVE_HANDLE_AUTO, 3),
+        (ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC, 4),
     ];
     for (entry_id, expected) in cases {
         let mut hero = HeroScreen::new(NodeId(1));
@@ -557,6 +558,7 @@ fn simple_row_context_menu_items_are_populate_registered() {
         // On-canvas Curve / Free Hand point-handle kinds.
         ids::CTX_MENU_CURVE_HANDLE_FREE,
         ids::CTX_MENU_CURVE_HANDLE_ALIGNED,
+        ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC,
         ids::CTX_MENU_CURVE_HANDLE_VECTOR,
         ids::CTX_MENU_CURVE_HANDLE_AUTO,
         // VectorPointType — the working sibling that proves the pattern.

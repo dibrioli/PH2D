@@ -419,6 +419,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
         ids::CTX_MENU_CURVE_HANDLE_FREE,
         ids::CTX_MENU_CURVE_HANDLE_ALIGNED,
+        ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC,
         ids::CTX_MENU_CURVE_HANDLE_VECTOR,
         ids::CTX_MENU_CURVE_HANDLE_AUTO,
         ids::CTX_SCENE_ROW_0,

@@ -192,6 +192,7 @@ pub const CTX_MENU_FALLOFF_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_falloff_
 // `HeroScreen.pending_curve_point_handle` (`0 = Free`, `1 = Aligned`, `2 = Vector`, `3 = Auto`).
 pub const CTX_MENU_CURVE_HANDLE_FREE: NodeId = hash_node_id("ctx_menu_curve_handle_free");
 pub const CTX_MENU_CURVE_HANDLE_ALIGNED: NodeId = hash_node_id("ctx_menu_curve_handle_aligned");
+pub const CTX_MENU_CURVE_HANDLE_SYMMETRIC: NodeId = hash_node_id("ctx_menu_curve_handle_symmetric");
 pub const CTX_MENU_CURVE_HANDLE_VECTOR: NodeId = hash_node_id("ctx_menu_curve_handle_vector");
 pub const CTX_MENU_CURVE_HANDLE_AUTO: NodeId = hash_node_id("ctx_menu_curve_handle_auto");
 // Project-chip Scene List popover (search input + up to 8 result rows).

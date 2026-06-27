@@ -998,13 +998,44 @@ fn handle_kind_menu_pick_updates_the_selected_point() {
         Some(3),
         "authored point starts Auto"
     );
-    for wire in [2u8, 0, 1, 3] {
+    for wire in [2u8, 0, 1, 3, 4] {
         assert!(t.set_curve_handle_kind(wire), "kind {wire} applied");
         assert_eq!(t.curve_overlay().unwrap().selected_kind, Some(wire));
     }
     assert!(
         !t.set_curve_handle_kind(9),
         "an out-of-range wire is rejected"
+    );
+}
+
+#[test]
+fn symmetric_handle_mirrors_the_opposite_with_equal_length() {
+    // Symmetric (wire 4): dragging one tangent reflects the other EXACTLY (collinear + equal length),
+    // unlike Aligned which keeps the opposite's own length.
+    let mut t = open_curve_midpoint_selected();
+    assert!(t.set_curve_handle_kind(4)); // Symmetric
+    let out = t
+        .curve_overlay()
+        .unwrap()
+        .tangents
+        .expect("seeded tangents")
+        .out_handle
+        .expect("out present");
+    let target = [out[0] + 6.0, out[1] - 14.0]; // pull out up + sideways
+    t.on_canvas_pointer(cp(out, PointerPhase::Down));
+    t.on_canvas_pointer(cp(target, PointerPhase::Move));
+    t.on_canvas_pointer(cp(target, PointerPhase::Up));
+    let tan2 = t.curve_overlay().unwrap().tangents.unwrap();
+    let (out2, in2, a) = (
+        tan2.out_handle.unwrap(),
+        tan2.in_handle.unwrap(),
+        tan2.anchor,
+    );
+    // in must be the exact reflection of out through the anchor: in = 2*anchor − out.
+    assert!(
+        (in2[0] - (2.0 * a[0] - out2[0])).abs() < 0.5
+            && (in2[1] - (2.0 * a[1] - out2[1])).abs() < 0.5,
+        "Symmetric: in {in2:?} is the exact mirror of out {out2:?} about {a:?}"
     );
 }
 

@@ -184,16 +184,16 @@ impl PainterTool {
             return true;
         }
         if let Some((i, is_out)) = ed.grabbed_handle {
-            // Dragging a tangent: a derived (Auto/Vector) point becomes Aligned; Aligned mirrors the
-            // opposite (collinear); Free moves only the dragged side.
+            // Dragging a tangent: a derived (Auto/Vector) point becomes Aligned; Aligned/Symmetric mirror
+            // the opposite (collinear, keep-length / equal-length); Free moves only the dragged side.
             if i < ed.handles.len() && i < ed.points.len() && i < ed.kinds.len() {
                 if matches!(ed.kinds[i], HandleKind::Auto | HandleKind::Vector) {
                     ed.kinds[i] = HandleKind::Aligned;
                 }
                 let anchor = ed.points[i];
                 ed.handles[i][usize::from(is_out)] = pos;
-                if ed.kinds[i] == HandleKind::Aligned {
-                    curve_tangent::mirror_tangent(&mut ed.handles[i], anchor, is_out);
+                if let Some(eq) = ed.kinds[i].mirror_mode() {
+                    curve_tangent::mirror_tangent(&mut ed.handles[i], anchor, is_out, eq);
                 }
             }
         } else {
@@ -300,8 +300,7 @@ impl PainterTool {
         true
     }
 
-    /// Commit the curve (Enter): keep the painted dabs + push one undo entry for the whole session.
-    /// Returns `true` when a committable session was open (the shell consumes Enter only then).
+    /// Commit the curve (Enter): keep the painted dabs + push one undo entry. `true` when a session was open.
     pub fn curve_commit(&mut self) -> bool {
         let Some(ed) = self.paint.curve.as_ref() else {
             return false;
@@ -317,10 +316,9 @@ impl PainterTool {
         true
     }
 
-    /// Commit the curve (Enter / **Apply**) but KEEP the editor + its control points open, so the same
-    /// curve can be re-applied or reshaped (the "Apply & Keep" button). Bakes the current painted preview
-    /// (one undo entry) and RE-BASELINES: the now-baked canvas becomes the base a further edit restores
-    /// onto + the next apply is a fresh undo entry. Returns `true` when a committable session was open.
+    /// Commit the curve but KEEP the editor open (the "Apply & Keep" button): bake the painted preview (one
+    /// undo entry) and RE-BASELINE onto the baked canvas so further edits restore onto it + the next apply is
+    /// a fresh undo entry. Returns `true` when a committable session was open.
     pub fn curve_commit_keep(&mut self) -> bool {
         if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
             return false;
@@ -343,8 +341,7 @@ impl PainterTool {
 
     /// Convert an open **Circle / Polygon** into an editable Bézier **Curve** (the panel's **Edit** / E
     /// button): take the shape's anchors + handles (faithful — a 4-arc circle, a sharp polygon), drop the
-    /// shape editor, switch the method to Curve so pointers route to the curve editor, and open it in
-    /// Bézier mode (the explicit handles are kept; dragging a point translates them). The undo snapshot +
+    /// shape editor, switch the method to Curve so pointers route here, keeping the explicit handles. Undo +
     /// drag-preview carry over, so the whole thing still bakes/undoes as one. `false` if no shape is open.
     pub(crate) fn convert_open_shape_to_curve(&mut self) -> bool {
         // The circle's arcs are smooth (Aligned); the polygon's corners are sharp (Free). Each keeps its
@@ -460,6 +457,9 @@ impl PainterTool {
             if let (Some(h), Some(a)) = (ed.handles.get_mut(sel), auto.get(sel)) {
                 *h = *a;
             }
+        }
+        if let Some(true) = kind.mirror_mode() {
+            curve_tangent::mirror_tangent(&mut ed.handles[sel], ed.points[sel], true, true); // enforce Symmetric
         }
         curve_handle::rebuild(&ed.points, &ed.kinds, &mut ed.handles);
         self.curve_refill();

@@ -63,7 +63,7 @@ fn mirror_keeps_the_opposite_collinear_and_preserves_its_length() {
     let mut h = [[80.0, 0.0], [140.0, 0.0]]; // in length 20 (-x), out length 40 (+x), already collinear
     // Move out off-axis, then mirror should swing in to the exact opposite direction, length 20 kept.
     h[1] = [100.0 + 30.0, 40.0]; // out = anchor + (30,40), length 50
-    mirror_tangent(&mut h, anchor, true);
+    mirror_tangent(&mut h, anchor, true, false);
     // in must be anchor - unit(30,40)*20 = anchor - (0.6,0.8)*20 = anchor-(12,16)
     let din = [h[0][0] - anchor[0], h[0][1] - anchor[1]];
     let len = (din[0] * din[0] + din[1] * din[1]).sqrt();
@@ -80,10 +80,23 @@ fn mirror_leaves_a_zero_length_opposite_collapsed() {
     let anchor = [50.0, 50.0];
     let mut h = [[50.0, 50.0], [90.0, 50.0]]; // in collapsed on anchor, out pulled
     h[1] = [50.0 + 10.0, 20.0];
-    mirror_tangent(&mut h, anchor, true);
+    mirror_tangent(&mut h, anchor, true, false);
     assert_eq!(
         h[0], anchor,
         "a sharp side stays sharp (no fabricated tangent)"
+    );
+}
+
+#[test]
+fn symmetric_mirror_reflects_the_opposite_with_equal_length() {
+    let anchor = [100.0, 0.0];
+    let mut h = [[80.0, 0.0], [140.0, 0.0]]; // in length 20, out length 40 (different)
+    h[1] = [100.0 + 30.0, 40.0]; // out pulled to anchor+(30,40), length 50
+    mirror_tangent(&mut h, anchor, true, true); // Symmetric: in becomes the exact reflection
+    assert_eq!(
+        h[0],
+        [100.0 - 30.0, -40.0],
+        "in is the exact mirror of out (equal length)"
     );
 }
 

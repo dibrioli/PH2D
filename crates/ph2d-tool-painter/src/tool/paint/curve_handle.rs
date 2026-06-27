@@ -4,11 +4,12 @@
 //!
 //! - **Free** — the two tangents are independent (a broken corner); edits touch only the dragged side.
 //! - **Aligned** — the tangents stay collinear through the anchor (smooth), independent lengths.
+//! - **Symmetric** — collinear AND equal length (a dragged tangent mirrors the opposite exactly).
 //! - **Vector** — the tangents point straight at the adjacent anchors (a polyline-like segment).
 //! - **Auto** — the tangents are recomputed by the no-overshoot chordal smooth on every edit.
 //!
-//! `Auto` and `Vector` are *derived* (recomputed from the control points by [`rebuild`]); `Aligned` and
-//! `Free` are *manual* (the artist's handle positions are preserved across anchor moves).
+//! `Auto` and `Vector` are *derived* (recomputed from the control points by [`rebuild`]); `Aligned`,
+//! `Symmetric` and `Free` are *manual* (the artist's handle positions are preserved across anchor moves).
 
 /// How an anchor's two Bézier tangent handles behave under editing. The wire `u8` (`0..=3`) is the value
 /// the right-click menu parks in the shell and hands back to [`super::PainterTool::set_curve_handle_kind`].
@@ -16,18 +17,20 @@
 pub(crate) enum HandleKind {
     Free,
     Aligned,
+    Symmetric,
     Vector,
     Auto,
 }
 
 impl HandleKind {
-    /// Decode the right-click menu's wire value (`0 = Free`, `1 = Aligned`, `2 = Vector`, `3 = Auto`).
+    /// Decode the menu's wire value (`0 = Free`, `1 = Aligned`, `2 = Vector`, `3 = Auto`, `4 = Symmetric`).
     pub(crate) fn from_wire(u: u8) -> Option<Self> {
         match u {
             0 => Some(Self::Free),
             1 => Some(Self::Aligned),
             2 => Some(Self::Vector),
             3 => Some(Self::Auto),
+            4 => Some(Self::Symmetric),
             _ => None,
         }
     }
@@ -39,13 +42,24 @@ impl HandleKind {
             Self::Aligned => 1,
             Self::Vector => 2,
             Self::Auto => 3,
+            Self::Symmetric => 4,
         }
     }
 
     /// `true` for the manual kinds whose handles the artist owns (preserved across anchor moves); `false`
     /// for the derived kinds ([`Self::Auto`] / [`Self::Vector`]) that [`rebuild`] recomputes from points.
     pub(crate) fn is_manual(self) -> bool {
-        matches!(self, Self::Free | Self::Aligned)
+        matches!(self, Self::Free | Self::Aligned | Self::Symmetric)
+    }
+
+    /// For a tangent drag, how the opposite handle follows: `Some(false)` = Aligned (re-aim, keep its
+    /// length), `Some(true)` = Symmetric (exact reflection), `None` = no mirror (Free / derived kinds).
+    pub(crate) fn mirror_mode(self) -> Option<bool> {
+        match self {
+            Self::Aligned => Some(false),
+            Self::Symmetric => Some(true),
+            _ => None,
+        }
     }
 }
 
@@ -73,7 +87,7 @@ pub(super) fn rebuild(points: &[[f32; 2]], kinds: &[HandleKind], handles: &mut V
                 }
             }
             HandleKind::Vector => handles[i] = vector_handle(points, i),
-            HandleKind::Aligned | HandleKind::Free => {}
+            HandleKind::Aligned | HandleKind::Free | HandleKind::Symmetric => {}
         }
     }
 }

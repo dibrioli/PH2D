@@ -50,20 +50,30 @@ pub(super) fn tangent_hit(
     best.map(|(is_out, _)| (sel, is_out))
 }
 
-/// Mirror the opposite tangent to keep the pair **aligned** (collinear through the anchor), preserving the
-/// opposite handle's length — the standard smooth-handle behaviour. A zero-length opposite (a sharp corner)
-/// stays collapsed on the anchor, so dragging one side yields a one-sided tangent rather than fabricating one.
-pub(super) fn mirror_tangent(h: &mut [[f32; 2]; 2], anchor: [f32; 2], moved_out: bool) {
+/// Mirror the opposite tangent to keep the pair collinear through the anchor. With `equal_len` the opposite
+/// becomes the EXACT reflection of the moved handle (Symmetric — same length); otherwise it keeps its own
+/// length, only re-aiming (Aligned). A zero-length opposite under Aligned stays collapsed (a one-sided
+/// tangent), but under `equal_len` it takes the moved handle's mirror (Symmetric always has two arms).
+pub(super) fn mirror_tangent(
+    h: &mut [[f32; 2]; 2],
+    anchor: [f32; 2],
+    moved_out: bool,
+    equal_len: bool,
+) {
     let (m, o) = if moved_out { (1, 0) } else { (0, 1) };
     let dx = h[m][0] - anchor[0];
     let dy = h[m][1] - anchor[1];
+    if equal_len {
+        h[o] = [anchor[0] - dx, anchor[1] - dy]; // exact reflection (Symmetric)
+        return;
+    }
     let len = (dx * dx + dy * dy).sqrt();
     if len <= f32::EPSILON {
         return; // the moved handle collapsed onto the anchor — leave the opposite untouched
     }
     let ox = h[o][0] - anchor[0];
     let oy = h[o][1] - anchor[1];
-    let olen = (ox * ox + oy * oy).sqrt(); // preserve the opposite's length
+    let olen = (ox * ox + oy * oy).sqrt(); // preserve the opposite's length (Aligned)
     h[o] = [anchor[0] - dx / len * olen, anchor[1] - dy / len * olen];
 }
 

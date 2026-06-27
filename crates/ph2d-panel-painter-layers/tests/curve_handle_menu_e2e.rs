@@ -29,12 +29,13 @@ fn ensure_full_registry() {
 fn curve_handle_click_parks_pending_kind_with_panel_installed() {
     ensure_full_registry();
 
-    // The exact four entries the CurvePointHandle menu renders, with their wire u8 (Free/Aligned/Vector/Auto).
+    // The exact five entries the CurvePointHandle menu renders, with their wire u8.
     for (entry_id, expected_wire) in [
         (ids::CTX_MENU_CURVE_HANDLE_FREE, 0u8),
         (ids::CTX_MENU_CURVE_HANDLE_ALIGNED, 1),
         (ids::CTX_MENU_CURVE_HANDLE_VECTOR, 2),
         (ids::CTX_MENU_CURVE_HANDLE_AUTO, 3),
+        (ids::CTX_MENU_CURVE_HANDLE_SYMMETRIC, 4),
     ] {
         let mut hero = HeroScreen::new(NodeId(1));
         hero.store.open_context_menu(ContextMenuRequest {

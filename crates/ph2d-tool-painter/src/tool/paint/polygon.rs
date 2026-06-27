@@ -161,6 +161,22 @@ impl PainterTool {
         true
     }
 
+    /// Commit the polygon (**Apply**) but KEEP the editor + handles open for re-apply/reshape (the
+    /// "Apply & Keep" button); re-baselines the undo + restore onto the now-baked canvas. See
+    /// [`PainterTool::curve_commit_keep`].
+    pub fn polygon_commit_keep(&mut self) -> bool {
+        if !self.paint.polygon.as_ref().is_some_and(|ed| ed.editing) {
+            return false;
+        }
+        self.commit_drag_preview();
+        if let Some(before) = self.paint.stroke_undo.take() {
+            self.commit_structural_edit(before);
+        }
+        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.paint.drag_preview = None;
+        true
+    }
+
     /// Cancel the polygon (Esc): revert the painted preview and discard the session.
     pub fn polygon_cancel(&mut self) -> bool {
         if self.paint.polygon.is_none() {

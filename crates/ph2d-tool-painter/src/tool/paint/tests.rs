@@ -764,6 +764,30 @@ fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
 }
 
 #[test]
+fn apply_keep_bakes_but_keeps_the_editable_curve() {
+    use ph2d_painter_brush::StrokeMethod;
+    // "Apply & Keep" bakes the pending stroke yet keeps the editable curve (for re-apply / reshape);
+    // plain "Apply" bakes and discards it.
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up)); // released → edit mode, control points
+    assert!(t.curve_overlay().is_some(), "a curve editor is open");
+    assert!(t.commit_open_shape_keep(), "Apply & Keep ran");
+    assert!(
+        t.curve_overlay().is_some(),
+        "the editable curve persists after Apply & Keep"
+    );
+    assert!(px(&t, 64, 32, 32)[0] < 200, "the stroke was baked");
+    assert!(t.commit_open_shape(), "Apply ran");
+    assert!(
+        t.curve_overlay().is_none(),
+        "the curve is discarded after plain Apply"
+    );
+}
+
+#[test]
 fn free_hand_paints_and_leaves_an_editable_curve() {
     use ph2d_painter_brush::StrokeMethod;
     // Free Hand: a freehand drag paints the stroke AND, on release, leaves an editable curve (control

@@ -157,12 +157,15 @@ pub fn painter_brush_falloff_option_id(preset: u8) -> NodeId {
 }
 
 // ── Stroke section (the layers-panel "Stroke" sub-section; Blender Stroke panel) ──
-// Clean-room port of the Blender 2D-paint "Stroke" controls. All forward over the
-// frozen `PanelEvent` channel to `PainterTool::set_brush_*` (the single clamp source).
+// Clean-room port of the Blender 2D-paint "Stroke" controls — all forward over the frozen `PanelEvent`.
 
 /// Brush "Stroke Method" dropdown chip (Dots/Airbrush/Anchored/Space/DragDot/Line/Curve).
 /// `SelectOption` → `set_brush_stroke_method`. Options via [`painter_brush_stroke_method_option_id`].
 pub const PAINTER_BRUSH_STROKE_METHOD: NodeId = hash_node_id("painter_brush.stroke_method");
+/// "Apply" button (shape methods): bake the pending stroke + DISCARD the curve. `Click` → `commit_open_shape`.
+pub const PAINTER_BRUSH_STROKE_APPLY: NodeId = hash_node_id("painter_brush.stroke_apply");
+/// "Apply & Keep" button: bake the stroke but KEEP the editable curve for re-apply. `Click` → `commit_open_shape_keep`.
+pub const PAINTER_BRUSH_STROKE_APPLY_KEEP: NodeId = hash_node_id("painter_brush.stroke_apply_keep");
 /// Brush "Rate" slider — the airbrush timer period in seconds (`0..1` track → `[0.01, 1.0]` s).
 /// Shown only for the Airbrush method. `SetValue` → `set_brush_airbrush_rate_norm`.
 pub const PAINTER_BRUSH_RATE: NodeId = hash_node_id("painter_brush.rate");
@@ -174,16 +177,13 @@ pub const PAINTER_BRUSH_SPACING: NodeId = hash_node_id("painter_brush.spacing");
 pub const PAINTER_BRUSH_SPACE_ATTEN: NodeId = hash_node_id("painter_brush.space_atten");
 /// "Accumulate" toggle (Blender `BRUSH_ACCUMULATE`): off caps a stroke at Strength. `Click` → toggle.
 pub const PAINTER_BRUSH_ACCUMULATE: NodeId = hash_node_id("painter_brush.accumulate");
-/// Brush "Jitter" slider (`0..1` track; relative-to-diameter under the Brush unit, or maps to
-/// pixels under the View unit). `SetValue` → `set_brush_jitter_norm`.
+/// Brush "Jitter" slider (`0..1`; relative-to-diameter under Brush unit, px under View). `SetValue` → `set_brush_jitter_norm`.
 pub const PAINTER_BRUSH_JITTER: NodeId = hash_node_id("painter_brush.jitter");
-/// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px).
-/// `SelectOption` → `set_brush_jitter_unit`. Options via [`painter_brush_jitter_unit_option_id`].
+/// Brush "Jitter Unit" dropdown chip (Brush = relative / View = absolute px). `SelectOption` → `set_brush_jitter_unit`.
 pub const PAINTER_BRUSH_JITTER_UNIT: NodeId = hash_node_id("painter_brush.jitter_unit");
 /// Brush "Jitter Scale" slider (`0..1`; per-dab radius scatter, PH2D extra). `SetValue` → `set_brush_jitter_scale`.
 pub const PAINTER_BRUSH_JITTER_SCALE: NodeId = hash_node_id("painter_brush.jitter_scale");
-/// Brush "Jitter Rotate" slider (`0..1`; per-dab texture-rotation scatter, PH2D extra; only visible
-/// with a texture). `SetValue` → `set_brush_jitter_rotate`.
+/// Brush "Jitter Rotate" slider (`0..1`; per-dab texture-rotation scatter; texture only). `SetValue` → `set_brush_jitter_rotate`.
 pub const PAINTER_BRUSH_JITTER_ROTATE: NodeId = hash_node_id("painter_brush.jitter_rotate");
 /// Brush "Jitter Spacing" slider (`0..1`; per-gap dab-spacing scatter, PH2D extra). `SetValue` → `set_brush_jitter_spacing`.
 pub const PAINTER_BRUSH_JITTER_SPACING: NodeId = hash_node_id("painter_brush.jitter_spacing");

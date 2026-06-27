@@ -156,6 +156,22 @@ impl PainterTool {
         true
     }
 
+    /// Commit the ellipse (**Apply**) but KEEP the editor + its handles open for re-apply/reshape (the
+    /// "Apply & Keep" button); re-baselines the undo + restore onto the now-baked canvas. See
+    /// [`PainterTool::curve_commit_keep`].
+    pub fn circle_commit_keep(&mut self) -> bool {
+        if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
+            return false;
+        }
+        self.commit_drag_preview();
+        if let Some(before) = self.paint.stroke_undo.take() {
+            self.commit_structural_edit(before);
+        }
+        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.paint.drag_preview = None;
+        true
+    }
+
     /// Cancel the ellipse (Esc): revert the painted preview to the pristine pixels and discard the
     /// session without an undo entry. Returns `true` when a session was open.
     pub fn circle_cancel(&mut self) -> bool {

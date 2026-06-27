@@ -215,8 +215,7 @@ impl Stroke {
                 self.advance_heading_to(target.pos);
                 self.advance_anchor(target);
             }
-            // Drag Dot emits one dab per move at the cursor; the TOOL restores the previous one so
-            // only a single dab follows the pointer (no trail), committing the last on pointer-up.
+            // Drag Dot: one dab/move at the cursor; the tool restores the previous so only one follows (commits last on up).
             StrokeMethod::DragDot => {
                 self.emit_single(avg.pos, 1.0, out);
                 self.advance_anchor(avg);
@@ -252,10 +251,8 @@ impl Stroke {
             StrokeMethod::Line => {
                 self.fill_line_preview(self.last_pos, avg.pos, out);
             }
-            // Curve (Catmull-Rom fill), Circle (ellipse perimeter) and Polygon (regular N-gon
-            // perimeter) are all tool/shell-driven shape editors (`docs/Painter/`): draw → adjust →
-            // commit, filled via the `Stroke::fill_*_preview` primitives. A bare `extend` (no editor
-            // driving it) only tracks the anchor, so a stray sample paints nothing.
+            // Curve / Circle / Polygon / Free Hand are tool/shell-driven shape editors (`docs/Painter/`),
+            // filled via `Stroke::fill_*_preview`; a bare `extend` (no editor) only tracks the anchor.
             StrokeMethod::Curve
             | StrokeMethod::Circle
             | StrokeMethod::Polygon

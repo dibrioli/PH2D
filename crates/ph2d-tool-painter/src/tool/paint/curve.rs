@@ -231,6 +231,30 @@ impl PainterTool {
         true
     }
 
+    /// Commit the curve (Enter / **Apply**) but KEEP the editor + its control points open, so the same
+    /// curve can be re-applied or reshaped (the "Apply & Keep" button). Bakes the current painted preview
+    /// (one undo entry) and RE-BASELINES: the now-baked canvas becomes the base a further edit restores
+    /// onto + the next apply is a fresh undo entry. Returns `true` when a committable session was open.
+    pub fn curve_commit_keep(&mut self) -> bool {
+        if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
+            return false;
+        }
+        self.commit_drag_preview(); // drop the restore record → the painted curve stays baked
+        if let Some(before) = self.paint.stroke_undo.take() {
+            self.commit_structural_edit(before);
+        }
+        // Re-baseline onto the baked canvas; KEEP the editor (the curve persists as a re-applicable shape).
+        self.paint.stroke_undo = Some(self.snapshot_model());
+        self.paint.drag_preview = None;
+        true
+    }
+
+    /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
+    /// — the keep-mode aggregator paired with [`PainterTool::commit_open_shape`]. At most one is open.
+    pub fn commit_open_shape_keep(&mut self) -> bool {
+        self.curve_commit_keep() || self.circle_commit_keep() || self.polygon_commit_keep()
+    }
+
     /// Cancel the curve (Esc): revert the painted preview to the pristine pixels and discard the
     /// session WITHOUT an undo entry (nothing was committed). Returns `true` when a session was open.
     pub fn curve_cancel(&mut self) -> bool {

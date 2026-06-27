@@ -228,11 +228,21 @@ impl PainterTool {
         true
     }
 
-    /// Route the **flatten/rotate gizmo** values (Shape panel; Enio 2026-06-26): the panel decodes the
-    /// handle drag into a flatten (`0..1`) / angle (degrees) and forwards them as `SetValue`. Returns
-    /// `true` iff the event was a gizmo value (so the caller stops routing).
+    /// Route the brush **dab/stroke** chrome events: the flatten/rotate gizmo `SetValue`s (Shape panel),
+    /// plus the **Apply** / **Apply & Keep** stroke buttons (`Click` → bake the pending shape-editor stroke,
+    /// discarding or keeping the editable curve). Returns `true` iff the event was consumed.
     pub(crate) fn route_brush_dab_event(&mut self, event: &PanelEvent) -> bool {
         use ph2d_editor_core::ids as core_ids;
+        if let PanelEvent::Click(id) = event {
+            if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY {
+                self.commit_open_shape();
+                return true;
+            }
+            if *id == core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP {
+                self.commit_open_shape_keep();
+                return true;
+            }
+        }
         let PanelEvent::SetValue(id, v) = event else {
             return false;
         };

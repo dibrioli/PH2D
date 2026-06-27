@@ -26,6 +26,7 @@
 //! - `jitter` — the shared deterministic RNG + the per-dab Scale / Rotate / Randomize-Color scatter.
 
 pub mod blend;
+pub mod curve_fit;
 pub mod dab;
 pub mod dynamics;
 pub mod falloff;
@@ -44,6 +45,7 @@ pub mod stroke_method;
 pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
+pub use curve_fit::fit_curve;
 pub use dab::{
     DirtyRect, ShapeInput, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
     stamp_dab_textured_masked,

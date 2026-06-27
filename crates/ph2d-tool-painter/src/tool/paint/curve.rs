@@ -23,12 +23,14 @@ use ph2d_painter_brush::{Stroke, flatten_catmull_rom, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
+/// Free Hand: cubic-fit error tolerance (px) — the max the fitted curve may deviate from the captured
+/// path. Larger ⇒ fewer, cleaner control points. Sits a touch above the stabilizer's residual jitter so
+/// a steady stroke collapses to a handful of anchors rather than tracing every wobble.
+const FREEHAND_FIT_ERROR: f32 = 4.0;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
-/// Free Hand: hard cap on raw captured points during the drag (before simplification).
+/// Free Hand: hard cap on raw captured points during the drag (before the fit).
 const MAX_FREEHAND_CAPTURE: usize = 4096;
-/// Free Hand: Douglas–Peucker perpendicular tolerance (px) when simplifying the capture to control points.
-const FREEHAND_SIMPLIFY_TOL: f32 = 2.5;
 /// In-progress Curve session: the editable control polygon (image-space px) + the current
 /// selection / grab + the draw-vs-edit phase. Held in [`PaintState::curve`]; `None` when idle.
 pub(super) struct CurveEditor {
@@ -171,14 +173,18 @@ impl PainterTool {
             return true;
         }
         if ed.freehand {
-            // Free Hand released → append the final point, simplify the captured path into editable
-            // control points (Douglas–Peucker, capped), and enter edit mode. Nothing pre-selected.
+            // Free Hand released → append the final point, FIT the captured path to cubic Béziers and
+            // keep their anchors as control points (clean curve, fewest points — Schneider, not the old
+            // Douglas–Peucker vertex-subset), cap, then enter edit mode. Nothing pre-selected.
             let last = *ed.points.last().unwrap_or(&ed.anchor);
             if dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
                 ed.points.push(pos);
             }
             if ed.points.len() >= 3 {
-                ed.points = simplify_path(&ed.points, FREEHAND_SIMPLIFY_TOL);
+                ed.points = cap_curve_points(ph2d_painter_brush::fit_curve(
+                    &ed.points,
+                    FREEHAND_FIT_ERROR,
+                ));
             }
             if ed.points.len() < 2 {
                 ed.points = vec![ed.anchor, pos]; // a tap/short flick → a degenerate 2-point curve
@@ -335,42 +341,13 @@ fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
     dx * dx + dy * dy
 }
 
-/// Simplify a captured freehand path into control points via **Douglas–Peucker** (perpendicular-distance,
-/// transcendental-free via [`dist2_point_seg`] — HR-5), keeping the endpoints. If the result still exceeds
-/// [`MAX_CURVE_POINTS`] it is uniformly decimated to fit (the true endpoints preserved).
-fn simplify_path(pts: &[[f32; 2]], tol: f32) -> Vec<[f32; 2]> {
-    let n = pts.len();
-    if n <= 2 {
-        return pts.to_vec();
-    }
-    let tol2 = tol * tol;
-    let mut keep = vec![false; n];
-    keep[0] = true;
-    keep[n - 1] = true;
-    let mut stack = vec![(0usize, n - 1)];
-    while let Some((a, b)) = stack.pop() {
-        if b <= a + 1 {
-            continue;
-        }
-        let (mut maxd, mut split) = (tol2, None);
-        for (i, p) in pts.iter().enumerate().take(b).skip(a + 1) {
-            let d = dist2_point_seg(*p, pts[a], pts[b]);
-            if d > maxd {
-                maxd = d;
-                split = Some(i);
-            }
-        }
-        if let Some(i) = split {
-            keep[i] = true;
-            stack.push((a, i));
-            stack.push((i, b));
-        }
-    }
-    let out: Vec<[f32; 2]> = (0..n).filter(|&i| keep[i]).map(|i| pts[i]).collect();
+/// Clamp a fitted control polygon to [`MAX_CURVE_POINTS`]: a clean fit is already tiny, but a very busy
+/// scribble can exceed the editor's per-frame cap, so uniformly decimate the interior, keeping the true
+/// endpoints. A no-op (returns as-is) when already within the cap.
+fn cap_curve_points(out: Vec<[f32; 2]>) -> Vec<[f32; 2]> {
     if out.len() <= MAX_CURVE_POINTS {
         return out;
     }
-    // Too many even after DP → uniformly decimate the interior, keeping the true endpoints.
     let last = out.len() - 1;
     let step = out.len() as f32 / MAX_CURVE_POINTS as f32;
     let mut capped: Vec<[f32; 2]> = (0..MAX_CURVE_POINTS)

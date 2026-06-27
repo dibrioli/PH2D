@@ -591,8 +591,8 @@ pub use ellipse::ellipse_perimeter;
 /// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
 mod polygon;
 pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
-/// The lazy-mouse stabilizer (`stabilize`/`settle`) — split out for the same LOC-cap reason.
-mod stabilize;
+/// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
+pub mod stabilize;
 /// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
 mod warmup;
 

@@ -127,16 +127,18 @@ impl StrokeMethod {
         matches!(self, Self::Anchored)
     }
 
-    /// True when the stroke **stabilizer** (the "how regular" knob) applies — `Space`/`Dots`/
-    /// `Airbrush`, the methods that build a path from raw freehand input. Blender's
-    /// `paint_supports_smooth_stroke` also enables it for `LINE`/`CURVE`, but PH2D's Line and Curve
-    /// are NOT freehand: Line is an explicit anchor→cursor segment and Curve is a point-editor
-    /// (`docs/Painter/` — author control points, auto-smooth between them). There is no shaky
-    /// freehand path to filter, so the stabilizer is a genuine no-op for both and the panel hides it
+    /// True when the stroke **stabilizer** (the "how regular" knob) applies — the methods that build a
+    /// path from raw freehand input: `Space`/`Dots`/`Airbrush` and **Free Hand** (whose capture lazy-mouse
+    /// filters the cursor before the points are fitted into the curve). NOT Line/Curve: PH2D's Line is an
+    /// explicit anchor→cursor segment and Curve is a point-editor (author control points, auto-smooth
+    /// between them) — no shaky path to filter, so the stabilizer would be a no-op and the panel hides it
     /// (DIRETIVA §2: no silent no-op). Drag Dot/Anchored also place dabs at the exact cursor.
     #[must_use]
     pub fn uses_stabilizer(self) -> bool {
-        matches!(self, Self::Space | Self::Dots | Self::Airbrush)
+        matches!(
+            self,
+            Self::Space | Self::Dots | Self::Airbrush | Self::FreeHand
+        )
     }
 
     /// True when this method forces pressure to 1.0 (Blender: DRAG_DOT, ANCHORED, LINE).

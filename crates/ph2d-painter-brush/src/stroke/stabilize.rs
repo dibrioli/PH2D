@@ -68,19 +68,26 @@ impl Stroke {
     /// filters out hand tremor. At intensity `0` the filtered point is the sample itself (raw,
     /// real-time). Position only — pressure passes through.
     pub(super) fn stabilize(&mut self, sample: StrokePoint) -> StrokePoint {
-        let s = self.spec.stabilizer.clamp(0.0, 1.0);
-        if s <= f32::EPSILON {
-            self.stab_pos = sample.pos;
-            return sample;
-        }
-        let blend = 1.0 - s * (1.0 - STABILIZER_MIN_BLEND);
-        self.stab_pos = [
-            self.stab_pos[0] + (sample.pos[0] - self.stab_pos[0]) * blend,
-            self.stab_pos[1] + (sample.pos[1] - self.stab_pos[1]) * blend,
-        ];
+        self.stab_pos = lazy_mouse_step(self.stab_pos, sample.pos, self.spec.stabilizer);
         StrokePoint {
             pos: self.stab_pos,
             pressure: sample.pressure,
         }
     }
+}
+
+/// One lazy-mouse stabilizer step: blend `stab` toward `sample` by `1 − stabilizer·(1−`[`STABILIZER_MIN_BLEND`]`)`.
+/// At stabilizer `0` returns `sample` (no smoothing); higher lags more, filtering hand tremor. Shared by the
+/// Space-method stabilizer ([`Stroke::stabilize`]) and the **Free Hand** capture. (HR-5: float-only.)
+#[must_use]
+pub fn lazy_mouse_step(stab: [f32; 2], sample: [f32; 2], stabilizer: f32) -> [f32; 2] {
+    let s = stabilizer.clamp(0.0, 1.0);
+    if s <= f32::EPSILON {
+        return sample;
+    }
+    let blend = 1.0 - s * (1.0 - STABILIZER_MIN_BLEND);
+    [
+        stab[0] + (sample[0] - stab[0]) * blend,
+        stab[1] + (sample[1] - stab[1]) * blend,
+    ]
 }

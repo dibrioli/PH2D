@@ -19,7 +19,7 @@
 
 use super::*;
 
-use ph2d_painter_brush::{Stroke, flatten_catmull_rom};
+use ph2d_painter_brush::{Stroke, flatten_catmull_rom, lazy_mouse_step};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
@@ -45,6 +45,9 @@ pub(super) struct CurveEditor {
     /// `points` (instead of a straight anchor→cursor line) and simplifies it to control points on release;
     /// from then on it's an ordinary editable curve. `false` for the plain [`StrokeMethod::Curve`].
     freehand: bool,
+    /// Free Hand only: the lazy-mouse **stabilizer**'s filtered cursor position (lags the raw cursor by
+    /// the brush `stabilizer` intensity), so the captured path is smoothed live as it's drawn.
+    stabilized: [f32; 2],
     /// The initial line's press point — the curve's first endpoint + the draw-phase pivot.
     anchor: [f32; 2],
     /// Per-session jitter seed, fixed at begin so every re-fill of the same points is identical.
@@ -93,6 +96,7 @@ impl PainterTool {
                 grabbed: None,
                 editing: false,
                 freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
+                stabilized: pos,
                 anchor: pos,
                 seed,
             });
@@ -124,17 +128,19 @@ impl PainterTool {
 
     /// Pointer-move: drag the grabbed point (edit) or stretch the initial line preview (draw).
     fn curve_move(&mut self, pos: [f32; 2]) -> bool {
+        let stabilizer = self.paint.brush.stabilizer;
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
         if !ed.editing {
             if ed.freehand {
-                // Free Hand draw: accumulate the path point (min-spacing gated so the capture is bounded)
-                // and preview the painted stroke along the whole captured path so far.
+                // Free Hand draw: lazy-mouse stabilize the cursor (the "how regular" knob), then accumulate
+                // the filtered point (min-spacing gated) and preview the stroke along the captured path.
+                ed.stabilized = lazy_mouse_step(ed.stabilized, pos, stabilizer);
+                let p = ed.stabilized;
                 let last = *ed.points.last().unwrap_or(&ed.anchor);
-                if ed.points.len() < MAX_FREEHAND_CAPTURE && dist2(last, pos) >= MIN_CAPTURE_DIST_SQ
-                {
-                    ed.points.push(pos);
+                if ed.points.len() < MAX_FREEHAND_CAPTURE && dist2(last, p) >= MIN_CAPTURE_DIST_SQ {
+                    ed.points.push(p);
                 }
                 let pts = ed.points.clone();
                 let seed = ed.seed;

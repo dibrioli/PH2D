@@ -764,6 +764,37 @@ fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
 }
 
 #[test]
+fn free_hand_stabilizer_smooths_the_capture() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Stabilize is ACTIVE for Free Hand: the lazy-mouse filter lags the cursor, so a high stabilizer
+    // yields different (smoothed) control points than no stabilization on the SAME jittery path.
+    let jitter = [
+        [24.0, 36.0],
+        [28.0, 28.0],
+        [32.0, 38.0],
+        [36.0, 27.0],
+        [40.0, 37.0],
+    ];
+    let capture = |stab: f32| {
+        let mut t = white_canvas(64, 6.0);
+        t.paint.brush.stroke_method = StrokeMethod::FreeHand;
+        t.paint.brush.stabilizer = stab;
+        t.on_canvas_pointer(cp([18.0, 32.0], PointerPhase::Down));
+        for &p in &jitter {
+            t.on_canvas_pointer(cp(p, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([44.0, 32.0], PointerPhase::Up));
+        t.curve_overlay().map(|o| o.points)
+    };
+    let raw = capture(0.0).expect("raw capture");
+    let smoothed = capture(1.0).expect("stabilized capture");
+    assert_ne!(
+        raw, smoothed,
+        "the stabilizer changes (smooths) the Free Hand capture"
+    );
+}
+
+#[test]
 fn apply_keep_bakes_but_keeps_the_editable_curve() {
     use ph2d_painter_brush::StrokeMethod;
     // "Apply & Keep" bakes the pending stroke yet keeps the editable curve (for re-apply / reshape);

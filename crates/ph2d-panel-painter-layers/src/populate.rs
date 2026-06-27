@@ -70,6 +70,7 @@ pub fn populate(store: &mut WidgetStore) {
         // Stroke section sliders (all `0..1` track; the tool maps each to its range).
         ph2d_editor_core::ids::PAINTER_BRUSH_RATE,
         ph2d_editor_core::ids::PAINTER_BRUSH_SPACING,
+        ph2d_editor_core::ids::PAINTER_BRUSH_OFFSET,
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER,
         // Per-dab Jitter Scale / Rotate / Spacing (next to the position Jitter).
         ph2d_editor_core::ids::PAINTER_BRUSH_JITTER_SCALE,
@@ -266,6 +267,11 @@ fn register_brush_slider_chips(store: &mut WidgetStore) {
             STEP,
         ),
         (
+            core_ids::PAINTER_BRUSH_OFFSET,
+            core_ids::PAINTER_BRUSH_OFFSET_CHIP,
+            STEP,
+        ),
+        (
             core_ids::PAINTER_BRUSH_DASH_RATIO,
             core_ids::PAINTER_BRUSH_DASH_RATIO_CHIP,
             STEP,
@@ -441,6 +447,7 @@ mod tests {
             ),
             (ids::PAINTER_BRUSH_RATE, ids::PAINTER_BRUSH_RATE_CHIP),
             (ids::PAINTER_BRUSH_SPACING, ids::PAINTER_BRUSH_SPACING_CHIP),
+            (ids::PAINTER_BRUSH_OFFSET, ids::PAINTER_BRUSH_OFFSET_CHIP),
             (
                 ids::PAINTER_BRUSH_DASH_RATIO,
                 ids::PAINTER_BRUSH_DASH_RATIO_CHIP,

@@ -21,13 +21,15 @@ impl Stroke {
     /// full pressure (a geometric path). Self-contained + fresh-per-fill like
     /// [`Stroke::fill_curve_preview`]: identical params ⇒ identical dabs (no shimmer). The tool routes
     /// the result through the restore + re-stamp preview, so the reshaping ellipse leaves no trail;
-    /// commit keeps the last fill. A degenerate (`< 0.5 px` either axis) ellipse fills nothing.
+    /// commit keeps the last fill. `offset_px` insets/outsets the perimeter (the Offset slider; `0` = on
+    /// the outline). A degenerate (`< 0.5 px` either axis) ellipse fills nothing.
     pub fn fill_ellipse_preview(
         &mut self,
         center: [f32; 2],
         u: [f32; 2],
         rx: f32,
         ry: f32,
+        offset_px: f32,
         out: &mut Vec<Dab>,
     ) {
         out.clear();
@@ -36,6 +38,9 @@ impl Stroke {
         }
         let mut perim = Vec::new();
         ellipse_perimeter(center, u, rx, ry, &mut perim);
+        if offset_px != 0.0 {
+            perim = super::offset::offset_polyline(&perim, offset_px, true); // closed loop
+        }
         if perim.len() < 2 {
             return;
         }

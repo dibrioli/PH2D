@@ -363,6 +363,29 @@ fn polygon_shows_spacing_dash_jitter_samples_hides_stabilize_rate_edge() {
     }
 }
 
+/// Offset slider: the perpendicular path offset applies to the shape editors (Curve / Free Hand / Circle
+/// / Polygon), so its hit rect registers for those and stays hidden for the finalise-on-up methods.
+#[test]
+fn offset_slider_shows_only_for_the_shape_editor_methods() {
+    for m in [
+        StrokeMethod::Curve,
+        StrokeMethod::FreeHand,
+        StrokeMethod::Circle,
+        StrokeMethod::Polygon,
+    ] {
+        assert!(
+            painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_OFFSET),
+            "{m:?} must paint the Offset slider"
+        );
+    }
+    for m in [StrokeMethod::Line, StrokeMethod::Space] {
+        assert!(
+            !painted_hit_ids(m).contains(&core_ids::PAINTER_BRUSH_OFFSET),
+            "{m:?} has no on-canvas shape to offset — Offset must be hidden"
+        );
+    }
+}
+
 /// Apply / Apply & Keep: the two bake buttons register hit rects ONLY for the methods with a
 /// persistent on-canvas shape editor (Curve/Free Hand/Circle/Polygon) — so a real click can reach
 /// them — and stay hidden for the finalise-on-up methods (Line/Space). A regression guard for the

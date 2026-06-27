@@ -1094,6 +1094,35 @@ fn vector_handles_point_at_the_neighbours_after_a_move() {
 }
 
 #[test]
+fn offset_slider_shifts_the_open_curve_in_real_time() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // The Offset slider shifts the stamped path perpendicular; changing it must re-fill the open shape
+    // live (it's folded into appearance_sig). Draw a horizontal curve along y=32, then nudge Offset to
+    // 0.6 (+20px down) and assert the stroke LEFT y=32 (restored white) and now paints at y≈52.
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32
+    assert!(px(&t, 64, 32, 32)[0] < 200, "the curve painted on y=32 at zero offset");
+    assert_eq!(px(&t, 64, 32, 52), [255, 255, 255, 255], "y=52 is white before offset");
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
+    assert_eq!(
+        px(&t, 64, 32, 32),
+        [255, 255, 255, 255],
+        "the stroke left the original y=32 line (restored white): {:?}",
+        px(&t, 64, 32, 32)
+    );
+    assert!(
+        px(&t, 64, 32, 52)[0] < 200,
+        "the offset stroke now paints ~20px down at y=52: {:?}",
+        px(&t, 64, 32, 52)
+    );
+}
+
+#[test]
 fn color_ramp_edits_change_the_appearance_signature() {
     // Regression (Enio 2026-06-27): the real-time re-fill trigger compared only the BrushSpec, but the
     // Colour-Ramp enable / B&W / stop edits live OUTSIDE it (in PaintState) — so toggling the ramp didn't

@@ -7,17 +7,19 @@ fn wire_round_trips_every_kind() {
     for k in [
         HandleKind::Free,
         HandleKind::Aligned,
+        HandleKind::Symmetric,
         HandleKind::Vector,
         HandleKind::Auto,
     ] {
         assert_eq!(HandleKind::from_wire(k.wire()), Some(k));
     }
-    assert_eq!(HandleKind::from_wire(4), None);
+    assert_eq!(HandleKind::from_wire(5), None);
 }
 
 #[test]
-fn only_free_and_aligned_are_manual() {
+fn only_free_aligned_and_symmetric_are_manual() {
     assert!(HandleKind::Free.is_manual());
+    assert!(HandleKind::Symmetric.is_manual());
     assert!(HandleKind::Aligned.is_manual());
     assert!(!HandleKind::Vector.is_manual());
     assert!(!HandleKind::Auto.is_manual());

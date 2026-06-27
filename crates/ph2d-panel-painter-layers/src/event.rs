@@ -527,6 +527,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             if id == core_ids::PAINTER_BRUSH_SIZE_SLIDER
                 || id == core_ids::PAINTER_BRUSH_STRENGTH_SLIDER
                 || id == core_ids::PAINTER_BRUSH_SPACING
+                || id == core_ids::PAINTER_BRUSH_OFFSET
                 || id == core_ids::PAINTER_BRUSH_JITTER
                 || id == core_ids::PAINTER_BRUSH_DASH_RATIO
                 || id == core_ids::PAINTER_BRUSH_DASH_LENGTH

@@ -81,6 +81,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Stroke section (mirrors BrushSpec::default / Blender defaults).
     stroke_method: 3,         // Space
     spacing: 0.10,            // LITERAL-PX-OK: Blender brush default (mirrors BrushSpec::default)
+    offset: 0.5,              // LITERAL-PX-OK: centred Offset track = no perpendicular offset
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
     jitter: 0.0,

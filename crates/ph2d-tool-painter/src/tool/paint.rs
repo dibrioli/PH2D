@@ -62,10 +62,8 @@ pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
 /// allocation cap is higher; this is the interactive range, not a hard limit.)
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
 
-// Interactive UI ranges for the Stroke section's non-`0..1` sliders: the slider's `0..1` track maps
-// onto `0..MAX` (or `1..MAX` for counts), the single source shared by the tool setters + the panel.
-/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = one full diameter between dab
-/// centres). The engine accepts more; this is the interactive top.
+// Interactive UI ranges for the Stroke section's non-`0..1` sliders: the `0..1` track maps onto `0..MAX`.
+/// Max spacing the slider reaches, as a fraction of diameter (`1.0` = one full diameter between dabs).
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
 /// Max absolute jitter the slider reaches, in pixels (View unit).
 pub const BRUSH_JITTER_ABS_MAX_PX: f32 = 64.0;
@@ -131,11 +129,12 @@ pub(crate) struct PaintState {
     circle: Option<circle::CircleEditor>,
     /// In-progress Polygon session (the on-canvas regular-N-gon editor); `None` when idle. [`polygon`].
     polygon: Option<polygon::PolygonEditor>,
-    /// Control-handle grab radius in image px for the shape editors (Curve + Circle) — the shell
-    /// forwards a screen-constant value scaled by the sprite footprint before each pointer event.
+    /// Control-handle grab radius (image px) for the shape editors — the shell forwards a screen-constant
+    /// value scaled by the sprite footprint before each pointer event.
     shape_grab_tol_px: f32,
-    /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when not dragging
-    /// a handle. See [`crate::tool::paint::stencil`].
+    /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
+    shape_offset_norm: f32,
+    /// In-progress Stencil overlay drag (move/resize/rotate the texture rect); `None` when idle.
     stencil_grab: Option<stencil::StencilGrab>,
     /// Seconds left on the transient in-gizmo Stencil texture preview (panel-param path): armed by a
     /// texture/stencil param change, decayed each [`PainterTool::paint_tick`]. The handle drag shows the
@@ -222,6 +221,7 @@ impl Default for PaintState {
             circle: None,
             polygon: None,
             shape_grab_tol_px: DEFAULT_SHAPE_GRAB_TOL_PX,
+            shape_offset_norm: 0.5, // centred → 0px offset (default byte-identical)
             stencil_grab: None,
             stencil_preview_s: 0.0,
             texture_image: None,

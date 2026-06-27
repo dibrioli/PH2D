@@ -82,6 +82,18 @@ pub(crate) fn paint_stroke_section(
     if method.has_open_shape() {
         // Circle / Polygon also get an "Edit" (E) button to convert to an editable curve.
         y = paint_apply_row(ctx, theme, x, content_w, y, method.is_convertible_shape());
+        // Offset (perpendicular path offset) — insets/outsets the stamped path; `0.5` track = on the path.
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            "Offset",
+            core_ids::PAINTER_BRUSH_OFFSET,
+            core_ids::PAINTER_BRUSH_OFFSET_CHIP,
+            brush.offset,
+        );
     }
 
     // ── Edge to Edge — only Anchored (the drag-sized stamp spans anchor→cursor) ──

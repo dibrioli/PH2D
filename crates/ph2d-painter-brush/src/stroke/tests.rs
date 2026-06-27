@@ -874,7 +874,7 @@ fn circle_fills_spaced_dabs_around_the_perimeter() {
     let mut s = Stroke::new(spec, no_dynamics(), 1);
     let mut out = Vec::new();
     let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
-    s.fill_ellipse_preview([cx, cy], [1.0, 0.0], r, r, &mut out);
+    s.fill_ellipse_preview([cx, cy], [1.0, 0.0], r, r, 0.0, &mut out);
     assert!(
         out.len() >= 16,
         "filled the perimeter with spaced dabs, got {}",
@@ -913,6 +913,7 @@ fn circle_preview_is_deterministic_per_fill() {
         [1.0, 0.0],
         30.0,
         18.0,
+        0.0,
         &mut a,
     );
     Stroke::new(spec, no_dynamics(), 5).fill_ellipse_preview(
@@ -920,6 +921,7 @@ fn circle_preview_is_deterministic_per_fill() {
         [1.0, 0.0],
         30.0,
         18.0,
+        0.0,
         &mut b,
     );
     assert!(!a.is_empty());
@@ -941,7 +943,7 @@ fn circle_degenerate_axis_fills_nothing() {
         rotation: [1.0, 0.0],
         dir: [0.0, 0.0],
     }];
-    s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, &mut out);
+    s.fill_ellipse_preview([10.0, 10.0], [1.0, 0.0], 30.0, 0.2, 0.0, &mut out);
     assert!(
         out.is_empty(),
         "a near-zero axis fills nothing (and clears the buffer)"
@@ -992,7 +994,7 @@ fn polygon_fills_spaced_dabs_around_the_perimeter() {
     let mut s = Stroke::new(spec, no_dynamics(), 1);
     let mut out = Vec::new();
     let (cx, cy, r) = (100.0_f32, 100.0_f32, 40.0_f32);
-    s.fill_polygon_preview([cx, cy], [1.0, 0.0], r, r, 5, &mut out);
+    s.fill_polygon_preview([cx, cy], [1.0, 0.0], r, r, 5, 0.0, &mut out);
     assert!(
         out.len() >= 12,
         "filled the pentagon with spaced dabs, got {}",
@@ -1029,6 +1031,7 @@ fn polygon_preview_is_deterministic_per_fill() {
         30.0,
         18.0,
         7,
+        0.0,
         &mut a,
     );
     Stroke::new(spec, no_dynamics(), 5).fill_polygon_preview(
@@ -1037,6 +1040,7 @@ fn polygon_preview_is_deterministic_per_fill() {
         30.0,
         18.0,
         7,
+        0.0,
         &mut b,
     );
     assert!(!a.is_empty());

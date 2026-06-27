@@ -68,8 +68,7 @@ pub(super) fn snap_to_45(anchor: [f32; 2], cursor: [f32; 2]) -> [f32; 2] {
 pub struct BrushSettings {
     /// Radius in image pixels (UI label "Size").
     pub size_px: f32,
-    /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so
-    /// small brushes get more of the track).
+    /// [`Self::size_px`] mapped onto the size slider's `0..1` track (squared, so small brushes get more).
     pub size_norm: f32,
     /// Overall opacity, `0..1` (UI "Strength").
     pub strength: f32,
@@ -95,6 +94,8 @@ pub struct BrushSettings {
     pub stroke_method: u8,
     /// Spacing as a fraction of diameter (`0.10` = 10%); the slider track is this value.
     pub spacing: f32,
+    /// **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for the shape editors.
+    pub offset: f32,
     /// "Adjust Strength for Spacing" on/off.
     pub space_attenuation: bool,
     /// **Accumulate** on/off: off (default) caps a stroke at Strength.

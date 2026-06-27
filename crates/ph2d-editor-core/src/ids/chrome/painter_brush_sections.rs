@@ -34,6 +34,9 @@ pub const PAINTER_BRUSH_RANDOMIZE_CHIPS: [NodeId; 3] = [
 // Each is `link_slider_number`-linked + `set_number_range(0,1,step)`-normalised in `crate::populate`.
 pub const PAINTER_BRUSH_RATE_CHIP: NodeId = hash_node_id("painter_brush.rate_chip");
 pub const PAINTER_BRUSH_SPACING_CHIP: NodeId = hash_node_id("painter_brush.spacing_chip");
+// Perpendicular path **Offset** slider + chip (`0..1` track, `0.5` = none). `SetValue` → `set_brush_offset`.
+pub const PAINTER_BRUSH_OFFSET: NodeId = hash_node_id("painter_brush.offset");
+pub const PAINTER_BRUSH_OFFSET_CHIP: NodeId = hash_node_id("painter_brush.offset_chip");
 pub const PAINTER_BRUSH_DASH_RATIO_CHIP: NodeId = hash_node_id("painter_brush.dash_ratio_chip");
 pub const PAINTER_BRUSH_DASH_LENGTH_CHIP: NodeId = hash_node_id("painter_brush.dash_length_chip");
 pub const PAINTER_BRUSH_INPUT_SAMPLES_CHIP: NodeId =

@@ -256,7 +256,7 @@ impl PainterTool {
         let (center, u, rx, ry, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.seed);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_ellipse_preview(center, u, rx, ry, &mut dabs);
+        stroke.fill_ellipse_preview(center, u, rx, ry, self.shape_offset_px(), &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }

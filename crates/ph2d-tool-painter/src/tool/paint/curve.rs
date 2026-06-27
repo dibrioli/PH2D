@@ -488,7 +488,7 @@ impl PainterTool {
         flatten_spine(pts, handles, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_polyline_preview(&spine, &mut dabs);
+        stroke.fill_polyline_preview(&spine, self.shape_offset_px(), &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }

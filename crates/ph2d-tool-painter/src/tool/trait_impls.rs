@@ -182,6 +182,8 @@ impl Tool for PainterTool {
                     self.set_brush_strength(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_SPACING {
                     self.set_brush_spacing(v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_OFFSET {
+                    self.set_brush_offset(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_JITTER {
                     self.set_brush_jitter_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_DASH_RATIO {
@@ -333,9 +335,7 @@ impl Tool for PainterTool {
                     self.ramp_move_stop(sid, x);
                 }
             }
-            // ── Custom-falloff curve point 2-D drag: value = "id:x:y". The
-            // stable id (not a sorted index) keeps the handle grabbed across the
-            // re-sort when a point is dragged past another. ─────────────────
+            // Custom-falloff curve point 2-D drag: value = "id:x:y" (stable id keeps the grab across re-sort).
             PanelEvent::SelectOption(id, value) if id == core_ids::PAINTER_BRUSH_FALLOFF_EDIT => {
                 let mut it = value.split(':');
                 if let (Some(i), Some(xs), Some(ys)) = (it.next(), it.next(), it.next())

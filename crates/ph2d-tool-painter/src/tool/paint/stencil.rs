@@ -31,6 +31,8 @@ pub(crate) struct AppearanceSig {
     tex_ramp_len: usize,
     shape_ramp_len: usize,
     ramp_dirty: bool,
+    /// The Offset slider track — changing it must re-fill the open shape (it shifts the stamped path).
+    shape_offset: f32,
 }
 
 /// The rotate ring reaches this multiple of the scale-grab radius PAST each corner — a click inside the
@@ -269,6 +271,7 @@ impl PainterTool {
             tex_ramp_len: self.paint.texture_ramp.len(),
             shape_ramp_len: self.paint.shape_color_ramp.len(),
             ramp_dirty: self.paint.texture_ramp_dirty || self.paint.shape_ramp_dirty,
+            shape_offset: self.paint.shape_offset_norm,
         }
     }
 

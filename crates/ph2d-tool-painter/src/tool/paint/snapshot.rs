@@ -58,6 +58,7 @@ impl PainterTool {
             repeat_image: self.paint.repeat_image,
             stroke_method: b.stroke_method.to_u8(),
             spacing: b.spacing,
+            offset: self.paint.shape_offset_norm,
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             jitter: b.jitter,
@@ -116,5 +117,15 @@ impl PainterTool {
             jitter_rotate: b.jitter_rotate,
             jitter_spacing: b.jitter_spacing,
         }
+    }
+
+    /// Set the **Offset** slider track (`0..1`, `0.5` = no offset) — perpendicular path offset for shapes.
+    pub fn set_brush_offset(&mut self, norm: f32) {
+        self.paint.shape_offset_norm = norm.clamp(0.0, 1.0);
+    }
+
+    /// The Offset slider mapped to px: `(norm−0.5)·2·MAX` (`MAX = 100`), so the centred `0.5` track is `0`.
+    pub(crate) fn shape_offset_px(&self) -> f32 {
+        (self.paint.shape_offset_norm - 0.5) * 2.0 * 100.0
     }
 }

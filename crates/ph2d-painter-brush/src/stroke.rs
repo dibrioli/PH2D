@@ -256,7 +256,10 @@ impl Stroke {
             // perimeter) are all tool/shell-driven shape editors (`docs/Painter/`): draw → adjust →
             // commit, filled via the `Stroke::fill_*_preview` primitives. A bare `extend` (no editor
             // driving it) only tracks the anchor, so a stray sample paints nothing.
-            StrokeMethod::Curve | StrokeMethod::Circle | StrokeMethod::Polygon => {
+            StrokeMethod::Curve
+            | StrokeMethod::Circle
+            | StrokeMethod::Polygon
+            | StrokeMethod::FreeHand => {
                 self.advance_anchor(avg);
             }
         }

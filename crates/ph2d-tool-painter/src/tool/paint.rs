@@ -565,7 +565,9 @@ impl CanvasPaintTool for PainterTool {
         // single press→release stroke — route every canvas event through them instead of the generic
         // path.
         match self.paint.brush.stroke_method {
-            StrokeMethod::Curve => return self.curve_pointer(ev),
+            // Free Hand shares the Curve editor (its draw phase captures a freehand path, then it's an
+            // ordinary editable curve), so it routes through `curve_pointer` too.
+            StrokeMethod::Curve | StrokeMethod::FreeHand => return self.curve_pointer(ev),
             StrokeMethod::Circle => return self.circle_pointer(ev),
             StrokeMethod::Polygon => return self.polygon_pointer(ev),
             _ => {}

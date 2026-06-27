@@ -23,6 +23,12 @@ use ph2d_painter_brush::{Stroke, flatten_catmull_rom};
 
 /// Most control points a Curve session may hold — bounds the per-frame re-fill + hit-test.
 const MAX_CURVE_POINTS: usize = 64;
+/// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
+const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
+/// Free Hand: hard cap on raw captured points during the drag (before simplification).
+const MAX_FREEHAND_CAPTURE: usize = 4096;
+/// Free Hand: Douglas–Peucker perpendicular tolerance (px) when simplifying the capture to control points.
+const FREEHAND_SIMPLIFY_TOL: f32 = 2.5;
 /// In-progress Curve session: the editable control polygon (image-space px) + the current
 /// selection / grab + the draw-vs-edit phase. Held in [`PaintState::curve`]; `None` when idle.
 pub(super) struct CurveEditor {
@@ -35,6 +41,10 @@ pub(super) struct CurveEditor {
     grabbed: Option<usize>,
     /// `false` while drawing the initial straight line (Down→Up), `true` once editing the points.
     editing: bool,
+    /// **Free Hand** mode ([`StrokeMethod::FreeHand`]): the draw phase captures the freehand path into
+    /// `points` (instead of a straight anchor→cursor line) and simplifies it to control points on release;
+    /// from then on it's an ordinary editable curve. `false` for the plain [`StrokeMethod::Curve`].
+    freehand: bool,
     /// The initial line's press point — the curve's first endpoint + the draw-phase pivot.
     anchor: [f32; 2],
     /// Per-session jitter seed, fixed at begin so every re-fill of the same points is identical.
@@ -82,6 +92,7 @@ impl PainterTool {
                 selected: None,
                 grabbed: None,
                 editing: false,
+                freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
                 anchor: pos,
                 seed,
             });
@@ -117,7 +128,20 @@ impl PainterTool {
             return false;
         };
         if !ed.editing {
-            // Drawing: preview the straight line anchor→cursor as a 2-point curve (no trail).
+            if ed.freehand {
+                // Free Hand draw: accumulate the path point (min-spacing gated so the capture is bounded)
+                // and preview the painted stroke along the whole captured path so far.
+                let last = *ed.points.last().unwrap_or(&ed.anchor);
+                if ed.points.len() < MAX_FREEHAND_CAPTURE && dist2(last, pos) >= MIN_CAPTURE_DIST_SQ
+                {
+                    ed.points.push(pos);
+                }
+                let pts = ed.points.clone();
+                let seed = ed.seed;
+                self.curve_fill(&pts, seed);
+                return true;
+            }
+            // Curve draw: preview the straight line anchor→cursor as a 2-point curve (no trail).
             let pts = [ed.anchor, pos];
             let seed = ed.seed;
             self.curve_fill(&pts, seed);
@@ -140,12 +164,28 @@ impl PainterTool {
             ed.grabbed = None;
             return true;
         }
-        // The line is released → materialize start / midpoint / end and enter edit mode. The
-        // midpoint is pre-selected so the artist can bend the line immediately (drag it / Delete it).
-        let a = ed.anchor;
-        let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
-        ed.points = vec![a, mid, pos];
-        ed.selected = Some(1);
+        if ed.freehand {
+            // Free Hand released → append the final point, simplify the captured path into editable
+            // control points (Douglas–Peucker, capped), and enter edit mode. Nothing pre-selected.
+            let last = *ed.points.last().unwrap_or(&ed.anchor);
+            if dist2(last, pos) >= MIN_CAPTURE_DIST_SQ {
+                ed.points.push(pos);
+            }
+            if ed.points.len() >= 3 {
+                ed.points = simplify_path(&ed.points, FREEHAND_SIMPLIFY_TOL);
+            }
+            if ed.points.len() < 2 {
+                ed.points = vec![ed.anchor, pos]; // a tap/short flick → a degenerate 2-point curve
+            }
+            ed.selected = None;
+        } else {
+            // Curve line released → materialize start / midpoint / end. The midpoint is pre-selected so
+            // the artist can bend the line immediately (drag it / Delete it).
+            let a = ed.anchor;
+            let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
+            ed.points = vec![a, mid, pos];
+            ed.selected = Some(1);
+        }
         ed.grabbed = None;
         ed.editing = true;
         self.curve_refill();
@@ -256,6 +296,58 @@ impl PainterTool {
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }
+}
+
+/// Squared distance between two points (the Free Hand capture's min-spacing gate).
+fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
+    let dx = a[0] - b[0];
+    let dy = a[1] - b[1];
+    dx * dx + dy * dy
+}
+
+/// Simplify a captured freehand path into control points via **Douglas–Peucker** (perpendicular-distance,
+/// transcendental-free via [`dist2_point_seg`] — HR-5), keeping the endpoints. If the result still exceeds
+/// [`MAX_CURVE_POINTS`] it is uniformly decimated to fit (the true endpoints preserved).
+fn simplify_path(pts: &[[f32; 2]], tol: f32) -> Vec<[f32; 2]> {
+    let n = pts.len();
+    if n <= 2 {
+        return pts.to_vec();
+    }
+    let tol2 = tol * tol;
+    let mut keep = vec![false; n];
+    keep[0] = true;
+    keep[n - 1] = true;
+    let mut stack = vec![(0usize, n - 1)];
+    while let Some((a, b)) = stack.pop() {
+        if b <= a + 1 {
+            continue;
+        }
+        let (mut maxd, mut split) = (tol2, None);
+        for (i, p) in pts.iter().enumerate().take(b).skip(a + 1) {
+            let d = dist2_point_seg(*p, pts[a], pts[b]);
+            if d > maxd {
+                maxd = d;
+                split = Some(i);
+            }
+        }
+        if let Some(i) = split {
+            keep[i] = true;
+            stack.push((a, i));
+            stack.push((i, b));
+        }
+    }
+    let out: Vec<[f32; 2]> = (0..n).filter(|&i| keep[i]).map(|i| pts[i]).collect();
+    if out.len() <= MAX_CURVE_POINTS {
+        return out;
+    }
+    // Too many even after DP → uniformly decimate the interior, keeping the true endpoints.
+    let last = out.len() - 1;
+    let step = out.len() as f32 / MAX_CURVE_POINTS as f32;
+    let mut capped: Vec<[f32; 2]> = (0..MAX_CURVE_POINTS)
+        .map(|i| out[((i as f32 * step) as usize).min(last)])
+        .collect();
+    capped[MAX_CURVE_POINTS - 1] = out[last];
+    capped
 }
 
 /// Index of the control point within `tol` px of `pos` (closest wins), or `None` on a miss.

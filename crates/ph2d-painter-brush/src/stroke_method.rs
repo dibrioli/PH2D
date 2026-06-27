@@ -41,6 +41,10 @@ pub enum StrokeMethod {
     /// **PH2D extension:** an editable regular polygon inscribed in an ellipse — 4 axis handles +
     /// rotation + a handle to change the side count (3..12) + a centre handle. Wire discriminant `8`.
     Polygon,
+    /// **PH2D extension:** **Free Hand** — paint a freehand path; on release the captured path is
+    /// simplified into the same editable control-point curve as [`Self::Curve`] (handles for later
+    /// manipulation / re-apply), its spine filled with spaced dabs on finalise. Wire discriminant `9`.
+    FreeHand,
 }
 
 impl StrokeMethod {
@@ -57,6 +61,7 @@ impl StrokeMethod {
             Self::Curve => 6,
             Self::Circle => 7,
             Self::Polygon => 8,
+            Self::FreeHand => 9,
         }
     }
 
@@ -73,6 +78,7 @@ impl StrokeMethod {
             6 => Self::Curve,
             7 => Self::Circle,
             8 => Self::Polygon,
+            9 => Self::FreeHand,
             _ => Self::Space,
         }
     }
@@ -93,7 +99,7 @@ impl StrokeMethod {
     pub fn uses_spacing(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon
+            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -103,7 +109,7 @@ impl StrokeMethod {
     pub fn uses_dash(self) -> bool {
         matches!(
             self,
-            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon
+            Self::Space | Self::Line | Self::Curve | Self::Circle | Self::Polygon | Self::FreeHand
         )
     }
 
@@ -211,13 +217,15 @@ mod tests {
             StrokeMethod::Curve,
             StrokeMethod::Circle,
             StrokeMethod::Polygon,
+            StrokeMethod::FreeHand,
         ] {
             assert_eq!(StrokeMethod::from_u8(m.to_u8()), m);
         }
-        // Blender enum values are the wire contract; Circle/Polygon are PH2D extensions (7/8).
+        // Blender enum values are the wire contract; Circle/Polygon/FreeHand are PH2D extensions (7/8/9).
         assert_eq!(StrokeMethod::Space.to_u8(), 3);
         assert_eq!(StrokeMethod::Circle.to_u8(), 7);
         assert_eq!(StrokeMethod::Polygon.to_u8(), 8);
+        assert_eq!(StrokeMethod::FreeHand.to_u8(), 9);
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
         // Unknown → Space (paints), not Dots.
         assert_eq!(StrokeMethod::from_u8(200), StrokeMethod::Space);

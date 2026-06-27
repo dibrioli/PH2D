@@ -764,6 +764,40 @@ fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
 }
 
 #[test]
+fn free_hand_paints_and_leaves_an_editable_curve() {
+    use ph2d_painter_brush::StrokeMethod;
+    // Free Hand: a freehand drag paints the stroke AND, on release, leaves an editable curve (control
+    // points + spine) reusing the Curve editor. The captured path simplifies to >= 2 control points.
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::FreeHand;
+    t.on_canvas_pointer(cp([10.0, 32.0], PointerPhase::Down));
+    for &p in &[
+        [18.0, 32.0],
+        [26.0, 32.0],
+        [34.0, 34.0],
+        [42.0, 38.0],
+        [50.0, 42.0],
+    ] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([54.0, 44.0], PointerPhase::Up));
+    let ov = t
+        .curve_overlay()
+        .expect("Free Hand leaves an editable curve overlay on release");
+    assert!(
+        ov.points.len() >= 2,
+        "the captured path simplified to control points: {}",
+        ov.points.len()
+    );
+    assert!(!ov.spine.is_empty(), "the editable curve has a spine");
+    assert!(
+        px(&t, 64, 18, 32)[0] < 200,
+        "the freehand stroke painted along the path: {:?}",
+        px(&t, 64, 18, 32)
+    );
+}
+
+#[test]
 fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
     // Fill methods (Line/Curve/Circle/Polygon) take the no-snapshot / self-clearing per-layer path: the

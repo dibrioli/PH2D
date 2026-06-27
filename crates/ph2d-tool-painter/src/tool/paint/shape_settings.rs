@@ -154,8 +154,13 @@ impl PainterTool {
             if rgba.len() < n * 4 {
                 continue;
             }
-            // The layer's silhouette = its alpha channel (where the layer has content).
-            let lum: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
+            // The layer's silhouette = its alpha channel (where the layer has content) scaled by the
+            // layer's **opacity** — a 50%-opacity layer contributes a half-strength silhouette, so the
+            // layers below show through it (and the preview, which shares these masks, matches).
+            let op = layer.opacity.clamp(0.0, 1.0);
+            let lum: Vec<u8> = (0..n)
+                .map(|i| (f32::from(rgba[i * 4 + 3]) * op + 0.5) as u8)
+                .collect();
             layers.push((lum, w, h));
         }
         if !layers.is_empty() {
@@ -210,32 +215,6 @@ impl PainterTool {
     /// Set Shape layer `i`'s custom colour (straight RGB); turns its checkbox on.
     pub fn set_brush_shape_layer_color(&mut self, i: usize, rgb: [f32; 3]) {
         self.paint.shape_layers.set_layer_color(i, rgb);
-    }
-
-    /// Render the multi-layer **coloured Shape preview** (premultiplied RGBA, `size×size`) for the panel:
-    /// the per-layer composite (each layer tinted, higher above lower) at the current Shape frame. `None`
-    /// unless Per-Layer Color is on with captured layers. A single small composite — cheap; the panel
-    /// composites it over its checker. Tracks the live Shape transform / colours (re-rendered per frame).
-    #[must_use]
-    pub fn brush_shape_color_preview(&self) -> Option<(Vec<u8>, u32)> {
-        if !self.paint.shape_layers.is_color_mode() {
-            return None;
-        }
-        const SIZE: u32 = 128;
-        let masks = self.paint.shape_layers.masks();
-        let colors = self
-            .paint
-            .shape_layers
-            .resolved_colors(self.paint.brush.color);
-        let grain = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let stamp = ph2d_painter_brush::render_color_stamp_mask(
-            &self.paint.brush,
-            &masks,
-            &colors,
-            grain.as_ref(),
-            SIZE,
-        );
-        Some((stamp.data().to_vec(), SIZE))
     }
 
     /// `(layer count, per-layer-colour mode on)` for the panel — the checkbox only shows for `> 1` layer.

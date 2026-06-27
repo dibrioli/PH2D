@@ -14,8 +14,8 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, Dab, Falloff, FalloffCurve, RampAlphaMode, StrokeMethod, TextureSettings,
-    accumulate_color_stamp_coverage, blend_over, blit_color_stamp, render_color_stamp_mask,
-    render_ramp_color_stamp,
+    accumulate_color_stamp_coverage, accumulate_shape_layer_rgba, blend_over, blit_color_stamp,
+    render_color_stamp_mask, render_ramp_color_stamp,
 };
 use std::sync::Arc;
 
@@ -43,6 +43,19 @@ impl PerLayerStroke {
         self.pre = pre;
         self.cov = (0..n).map(|_| vec![0u8; len]).collect();
     }
+}
+
+/// The panel's coloured-Shape **preview** resolution (texels per side) — the multi-layer composite is
+/// baked once at this size and displayed scaled.
+const PREVIEW_SIZE: u32 = 128;
+
+/// Cached coloured Shape **preview** (the multi-layer composite as premultiplied RGBA), keyed by the same
+/// appearance [`ColorStampKey`] at [`PREVIEW_SIZE`] — so the host re-renders it only when the Shape
+/// appearance changes, NOT per frame (it was re-baking + re-allocating every frame). `None` ⇒ not in
+/// Per-Layer Color mode → the panel falls back to the grayscale silhouette.
+#[derive(Default)]
+pub(super) struct ShapeColorPreview {
+    cache: Option<(Arc<Vec<u8>>, ColorStampKey)>,
 }
 
 /// Identifies the appearance the cached [`ph2d_painter_brush::ColorStampMask`] was baked for. The bake
@@ -136,7 +149,12 @@ impl PainterTool {
         let Some(bb) = bbox else {
             return;
         };
-        // Recomposite the dirty region: pre-stroke ⊕ each layer (bottom→top) by its accumulated coverage.
+        // Recomposite the dirty region. Two stages so the **Brush blend mode** applies to the WHOLE
+        // multi-layer tip, not to each layer in turn: (1) composite the Shape layers among themselves with
+        // Normal source-over (bottom→top, premultiplied) into one stroke colour+alpha — the higher layer
+        // above the lower; (2) blend that stroke onto the pre-stroke canvas ONCE via `brush.blend`. The
+        // old per-layer `blend_over` double-applied Multiply/Screen/… across overlapping layers (and was a
+        // no-op on a transparent canvas for the colour modes) → the blend mode looked ignored (Enio).
         let colors = self.paint.shape_layers.resolved_colors(brush.color);
         let blend = brush.blend;
         {
@@ -147,21 +165,33 @@ impl PainterTool {
                 for px in bb.x..bb.x + bb.w {
                     let p4 = ((py * w + px) * 4) as usize;
                     let idx = (py * w + px) as usize;
+                    // (1) Premultiplied stroke = the layers composited over each other (z-order).
+                    let mut s = [0.0f32; 4];
+                    for (i, c) in colors.iter().enumerate() {
+                        let a = f32::from(pls.cov[i][idx]) / 255.0;
+                        if a > 0.0 {
+                            let inv = 1.0 - a;
+                            s[0] = c[0] * a + s[0] * inv;
+                            s[1] = c[1] * a + s[1] * inv;
+                            s[2] = c[2] * a + s[2] * inv;
+                            s[3] = a + s[3] * inv;
+                        }
+                    }
                     let mut acc = [
                         f32::from(pls.pre[p4]) / 255.0,
                         f32::from(pls.pre[p4 + 1]) / 255.0,
                         f32::from(pls.pre[p4 + 2]) / 255.0,
                         f32::from(pls.pre[p4 + 3]) / 255.0,
                     ];
-                    let pre_alpha = acc[3];
-                    for (i, c) in colors.iter().enumerate() {
-                        let a = f32::from(pls.cov[i][idx]) / 255.0;
-                        if a > 0.0 {
-                            acc = blend_over(blend, acc, *c, a);
+                    // (2) Blend the stroke onto the canvas once (un-premultiply for `blend_over`'s straight
+                    // RGB + the stroke's own alpha as coverage).
+                    if s[3] > 0.0 {
+                        let pre_alpha = acc[3];
+                        let inv = 1.0 / s[3];
+                        acc = blend_over(blend, acc, [s[0] * inv, s[1] * inv, s[2] * inv], s[3]);
+                        if alpha_locked {
+                            acc[3] = pre_alpha; // alpha-lock: paint modifies colour, not the layer's alpha
                         }
-                    }
-                    if alpha_locked {
-                        acc[3] = pre_alpha; // alpha-lock: paint modifies colour, not the layer's alpha
                     }
                     buf[p4] = enc(acc[0]);
                     buf[p4 + 1] = enc(acc[1]);
@@ -209,6 +239,213 @@ impl PainterTool {
                 .collect()
         };
         self.paint.color_stamp_cache = Some((stamps, key));
+    }
+
+    /// The **dynamic** per-layer-colour path — used (via the route) when a per-dab feature is on that the
+    /// constant-orientation cached path can't express: Shape **Rake / Random** rotation, **Randomize
+    /// Color**, or Grain **Jitter Rotate**. Each dab resolves its own Shape basis (rotation) and colour
+    /// (`d.color` carries Randomize Color), then each layer's silhouette × Grain is resampled per pixel and
+    /// over-accumulated — tinted — into that layer's per-stroke **premultiplied-RGBA** map. The layers stay
+    /// separate, so the dirty region recomposites in z-order (the higher above ALL the lower across the
+    /// stroke) and the whole tip blends onto the canvas ONCE via `brush.blend` — same z-order + blend +
+    /// opacity semantics as the cached path, just with per-dab dynamics (Enio 2026-06-26).
+    pub(super) fn stamp_dabs_per_layer_dynamic(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        alpha_locked: bool,
+        w: u32,
+        h: u32,
+    ) {
+        let n = self.paint.shape_layers.len();
+        if n == 0 {
+            return;
+        }
+        // The per-layer maps are premultiplied RGBA here (4 B/px), vs the cached path's 1 B/px coverage.
+        let incremental = matches!(
+            brush.stroke_method,
+            StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
+        );
+        if !incremental {
+            self.paint.per_layer_stroke.reset();
+        }
+        if self.paint.per_layer_stroke.pre.is_empty() {
+            let snap = (*self.canvas_rgba).clone();
+            self.paint
+                .per_layer_stroke
+                .init(snap, n, (w as usize) * (h as usize) * 4);
+        }
+        let mut acc = std::mem::take(&mut self.paint.per_layer_stroke.cov);
+        let grain_active = brush.texture.is_active();
+        let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let mut tex_rng = self.paint.tex_rng;
+        let mut bbox: Option<Region> = None;
+        {
+            let masks = self.paint.shape_layers.masks();
+            for d in dabs {
+                let spec = BrushSpec {
+                    radius_px: d.radius_px,
+                    ..*brush
+                };
+                let fp = spec.footprint_deform();
+                let dims = [w as f32, h as f32];
+                // Shape draws its Random from `tex_rng` before the Grain (byte-identical stream when off);
+                // Rake follows `d.dir`. Grain composes the per-dab Jitter Rotate (`d.rotation`).
+                let shape_basis = ph2d_painter_brush::texture::dab_basis(
+                    &spec.shape,
+                    d.dir,
+                    &mut tex_rng,
+                    dims,
+                    [1.0, 0.0],
+                    fp,
+                );
+                let grain_basis = grain_active.then(|| {
+                    ph2d_painter_brush::texture::dab_basis(
+                        &spec.texture,
+                        d.dir,
+                        &mut tex_rng,
+                        dims,
+                        d.rotation,
+                        fp,
+                    )
+                });
+                // Un-coloured layers use the dab's (Randomize-jittered) base colour; custom picks stay.
+                let colors = self.paint.shape_layers.resolved_colors(d.color);
+                let cov = (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0);
+                for (i, layer) in masks.iter().enumerate() {
+                    let grain = grain_basis.as_ref().map(|gb| (gb, grain_image.as_ref()));
+                    if let Some(r) = accumulate_shape_layer_rgba(
+                        &mut acc[i],
+                        w,
+                        h,
+                        d.center,
+                        d.radius_px,
+                        &spec,
+                        &shape_basis,
+                        layer,
+                        grain,
+                        colors[i],
+                        cov,
+                    ) {
+                        let rect = Region {
+                            x: r.x,
+                            y: r.y,
+                            w: r.w,
+                            h: r.h,
+                        };
+                        bbox = Some(bbox.map_or(rect, |a| union_region(a, rect)));
+                    }
+                }
+            }
+        }
+        self.paint.per_layer_stroke.cov = acc;
+        self.paint.tex_rng = tex_rng;
+        let Some(bb) = bbox else {
+            return;
+        };
+        let blend = brush.blend;
+        {
+            let buf = Arc::make_mut(&mut self.canvas_rgba);
+            let pls = &self.paint.per_layer_stroke;
+            let enc = |x: f32| (x.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            for py in bb.y..bb.y + bb.h {
+                for px in bb.x..bb.x + bb.w {
+                    let p4 = ((py * w + px) * 4) as usize;
+                    // (1) Composite the per-layer premultiplied maps over each other (z-order) → stroke.
+                    let mut s = [0.0f32; 4];
+                    for map in pls.cov.iter().take(n) {
+                        let la = f32::from(map[p4 + 3]) / 255.0;
+                        if la > 0.0 {
+                            let inv = 1.0 - la;
+                            s[0] = f32::from(map[p4]) / 255.0 + s[0] * inv;
+                            s[1] = f32::from(map[p4 + 1]) / 255.0 + s[1] * inv;
+                            s[2] = f32::from(map[p4 + 2]) / 255.0 + s[2] * inv;
+                            s[3] = la + s[3] * inv;
+                        }
+                    }
+                    let mut acc = [
+                        f32::from(pls.pre[p4]) / 255.0,
+                        f32::from(pls.pre[p4 + 1]) / 255.0,
+                        f32::from(pls.pre[p4 + 2]) / 255.0,
+                        f32::from(pls.pre[p4 + 3]) / 255.0,
+                    ];
+                    // (2) Blend the stroke onto the canvas once (un-premultiply for `blend_over`).
+                    if s[3] > 0.0 {
+                        let pre_alpha = acc[3];
+                        let inv = 1.0 / s[3];
+                        acc = blend_over(blend, acc, [s[0] * inv, s[1] * inv, s[2] * inv], s[3]);
+                        if alpha_locked {
+                            acc[3] = pre_alpha;
+                        }
+                    }
+                    buf[p4] = enc(acc[0]);
+                    buf[p4 + 1] = enc(acc[1]);
+                    buf[p4 + 2] = enc(acc[2]);
+                    buf[p4 + 3] = enc(acc[3]);
+                }
+            }
+        }
+        self.mark_dirty(bb);
+    }
+
+    /// Re-bake the coloured Shape **preview** (the multi-layer composite) IFF its appearance changed —
+    /// a cheap key-compare on a hit, so the panel preview costs a render only on an edit, never per
+    /// frame. Returns `true` when the cache changed (the host then re-publishes it to the panel). Keyed
+    /// by the same [`ColorStampKey`] as the paint stamps, at the fixed [`PREVIEW_SIZE`].
+    pub fn refresh_shape_color_preview(&mut self) -> bool {
+        let want = self
+            .paint
+            .shape_layers
+            .is_color_mode()
+            .then(|| ColorStampKey {
+                shape: self.paint.brush.shape,
+                layers_version: self.paint.shape_layers.version(),
+                brush_color: self.paint.brush.color,
+                texture: self.paint.brush.texture,
+                grain_image_version: self.paint.texture_image_version,
+                grain_depth: self.paint.brush.grain_depth,
+                dab_flatten: self.paint.brush.dab_flatten,
+                dab_angle_deg: self.paint.brush.dab_angle_deg,
+                size: PREVIEW_SIZE,
+            });
+        if want
+            == self
+                .paint
+                .shape_color_preview
+                .cache
+                .as_ref()
+                .map(|(_, k)| *k)
+        {
+            return false;
+        }
+        self.paint.shape_color_preview.cache = want.map(|key| {
+            let masks = self.paint.shape_layers.masks();
+            let colors = self
+                .paint
+                .shape_layers
+                .resolved_colors(self.paint.brush.color);
+            let grain = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+            let stamp = render_color_stamp_mask(
+                &self.paint.brush,
+                &masks,
+                &colors,
+                grain.as_ref(),
+                PREVIEW_SIZE,
+            );
+            (Arc::new(stamp.data().to_vec()), key)
+        });
+        true
+    }
+
+    /// The cached coloured Shape preview `(premultiplied RGBA, w, h)` (a cheap `Arc` clone) for the panel;
+    /// `None` ⇒ the grayscale silhouette. Call [`Self::refresh_shape_color_preview`] first to bake it.
+    #[must_use]
+    pub fn shape_color_preview(&self) -> Option<(Arc<Vec<u8>>, u32, u32)> {
+        self.paint
+            .shape_color_preview
+            .cache
+            .as_ref()
+            .map(|(d, k)| (d.clone(), k.size, k.size))
     }
 }
 

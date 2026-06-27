@@ -158,11 +158,9 @@ pub(crate) struct PaintState {
     shape_image_pending: bool,
     /// Bumped whenever [`shape_image`] changes, so the stamp cache re-renders the Shape mask.
     shape_image_version: u64,
-    /// Multi-layer Shape (z-ordered luminance layers) + per-layer-colour mode/colours; OFF ⇒ flattened
-    /// into [`shape_image`]. See [`crate::tool::paint::shape_layers`].
+    /// Multi-layer Shape (z-ordered luminance layers) + per-layer-colour mode/colours; OFF ⇒ flattened into [`shape_image`]; see [`crate::tool::paint::shape_layers`].
     shape_layers: shape_layers::ShapeLayers,
-    /// Cached brush stamp (falloff × View texture) + the key it was rendered for. Re-rendered on
-    /// appearance / mask-size change; scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
+    /// Cached brush stamp (falloff × View texture) + its key; re-rendered on appearance/mask-size change, scale-blitted per dab. See [`crate::tool::paint::stamp_cache`].
     stamp_cache: Option<(ph2d_painter_brush::StampMask, stamp_cache::StampKey)>,
     /// Cached per-layer coloured stamps (bottom→top) + key, blitted in cross-stroke z-order; `stamp_color_cache`.
     color_stamp_cache: Option<(
@@ -174,8 +172,7 @@ pub(crate) struct PaintState {
         ph2d_painter_brush::ColorStampMask,
         stamp_color_cache::RampColorStampKey,
     )>,
-    /// Lazily-filled canvas-space texture cache for the Tiled / Stencil mappings (canvas-fixed); the
-    /// texture is computed once per canvas pixel per stroke. See [`crate::tool::paint::stamp_cache`].
+    /// Lazily-filled canvas-space texture cache for Tiled / Stencil mappings (computed once per canvas pixel per stroke). See [`crate::tool::paint::stamp_cache`].
     canvas_tex_cache: Option<stamp_cache::CanvasTexCache>,
     /// The brush Grain + Shape **Color Ramps** + Shape **tone** LUT (engine model + baking: [`ramp_lut`]).
     texture_ramp: ph2d_color::ColorRamp,
@@ -198,6 +195,8 @@ pub(crate) struct PaintState {
     stroke_mask: Vec<u8>,
     /// Per-stroke per-layer-colour accumulation (recomposite); see [`stamp_color_cache`].
     per_layer_stroke: stamp_color_cache::PerLayerStroke,
+    /// Cached coloured Shape **preview** (premul RGBA), re-baked only on appearance change; [`stamp_color_cache`].
+    shape_color_preview: stamp_color_cache::ShapeColorPreview,
 }
 
 impl Default for PaintState {
@@ -255,6 +254,7 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
+            shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
         }
     }
 }

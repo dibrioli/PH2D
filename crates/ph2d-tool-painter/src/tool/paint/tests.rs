@@ -649,6 +649,93 @@ fn per_layer_color_top_layer_paints_above_all_lower_painting_across_the_stroke()
 }
 
 #[test]
+fn per_layer_color_respects_brush_blend_mode() {
+    use ph2d_painter_brush::{BrushBlend, Dab, StrokeMethod};
+    // The per-layer-colour tip must blend onto the canvas via the **Brush blend mode** (applied to the
+    // whole composite, once). On a 50% grey canvas a solid RED tip with Multiply yields ~half-red
+    // (grey×red), NOT the pure red that Normal gives — the old per-layer `blend_over` mis-applied it.
+    let mut t = white_canvas(64, 6.0);
+    t.set_source(vec![128u8; 64 * 64 * 4], 64, 64); // 50% grey
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.blend = BrushBlend::Multiply;
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    t.set_brush_shape_layer_color(1, [1.0, 0.0, 0.0]); // solid red composite
+    let dab = Dab {
+        center: [32.0, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab]);
+    let [r, g, b, _] = px(&t, 64, 32, 32);
+    assert!(
+        (100..=150).contains(&r) && g < 30 && b < 30,
+        "Multiply grey×red is ~half-red, not pure red: {:?}",
+        [r, g, b]
+    );
+}
+
+#[test]
+fn per_layer_color_dynamic_randomize_color_tints_per_dab() {
+    use ph2d_painter_brush::{Dab, StrokeMethod};
+    // Randomize Color on → the DYNAMIC per-layer path, which tints by each dab's own `d.color`. Two
+    // non-overlapping dabs carrying red / blue paint red / blue (the static cached path baked one colour
+    // for the whole stroke and would ignore `d.color`).
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.color_jitter_enabled = true; // routes to the dynamic path
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color(); // layers un-coloured → they take the per-dab base colour
+    let dab = |cx: f32, col: [f32; 3]| Dab {
+        center: [cx, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: col,
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab(16.0, [1.0, 0.0, 0.0])]); // red dab
+    t.stamp_dabs(&[dab(48.0, [0.0, 0.0, 1.0])]); // blue dab
+    let red = px(&t, 64, 16, 32);
+    let blue = px(&t, 64, 48, 32);
+    assert!(red[0] > 200 && red[2] < 80, "first dab is red: {red:?}");
+    assert!(
+        blue[2] > 200 && blue[0] < 80,
+        "second dab is blue: {blue:?}"
+    );
+}
+
+#[test]
+fn per_layer_color_dynamic_shape_random_angle_paints() {
+    use ph2d_painter_brush::{Dab, StrokeMethod};
+    // Shape Random Angle + per-layer-colour routes to the dynamic path (per-dab rotation). Guard that it
+    // runs and paints (the cached path silently ignored the rotation).
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.shape.random_angle = true; // routes to the dynamic path
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    let dab = Dab {
+        center: [32.0, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.2, 0.4, 0.6],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab]);
+    assert!(
+        px(&t, 64, 32, 32)[3] > 0,
+        "a random-angle per-layer-colour dab paints"
+    );
+}
+
+#[test]
 fn shape_ramp_swatch_select_option_sets_the_stop_colour() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;

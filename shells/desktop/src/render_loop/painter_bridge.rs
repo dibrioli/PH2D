@@ -313,14 +313,15 @@ pub(super) fn dispatch(
                     ph2d_panel_painter_layers::set_current_brush_shape_image(img);
                 }
             }
-            // (Shape preview, Per-Layer Color) Publish the multi-layer COLOURED composite each frame so
-            // the Shape preview shows the per-layer colours live — the colours need the per-layer pixels,
-            // which only the tool has. `None` (not in that mode) is cheap → the preview uses the grayscale
-            // silhouette. A small single composite, only rendered while Per-Layer Color is on.
-            let color_preview = painter
-                .brush_shape_color_preview()
-                .map(|(rgba, s)| (std::sync::Arc::new(rgba), s, s));
-            ph2d_panel_painter_layers::set_current_brush_shape_color_preview(color_preview);
+            // (Shape preview, Per-Layer Color) Publish the multi-layer COLOURED composite so the Shape
+            // preview shows the per-layer colours — the colours need the per-layer pixels, which only the
+            // tool has. The tool re-bakes the composite ONLY when the Shape appearance changes (a cheap
+            // key-compare per frame), so we publish (and pay the bake) on an edit, never per frame.
+            if painter.refresh_shape_color_preview() {
+                ph2d_panel_painter_layers::set_current_brush_shape_color_preview(
+                    painter.shape_color_preview(),
+                );
+            }
         }
 
         super::painter_bridge_overlays::draw_overlays(

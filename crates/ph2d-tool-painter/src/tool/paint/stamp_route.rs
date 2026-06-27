@@ -38,12 +38,21 @@ impl PainterTool {
             .and_then(|id| self.layers.get(id))
             .is_some_and(|l| l.alpha_locked);
         let has_shape_image = self.paint.shape_image.is_some();
-        // Per-layer-colour Shape (multi-layer, mode on): bake the z-ordered tinted layers + recomposite.
-        // Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the Shape
-        // was reset to None) can never route a non-Image Shape into the coloured path (Enio 2026-06-26).
+        // Per-layer-colour Shape (multi-layer, mode on): the z-ordered tinted layers recomposite onto the
+        // canvas. Guarded by an ACTIVE Image silhouette so a stale `per_layer_color` flag (e.g. after the
+        // Shape was reset to None) can never route a non-Image Shape into the coloured path (Enio).
         if self.paint.shape_layers.is_color_mode() && brush.shape_silhouette_active(has_shape_image)
         {
-            self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h);
+            // Per-dab dynamics the constant-orientation cached path can't express → the per-pixel dynamic
+            // path: Shape Rake / Random rotation, Randomize Color (`d.color`), or Grain Jitter Rotate.
+            if brush.shape_has_per_dab_rotation(has_shape_image)
+                || brush.color_jitter_enabled
+                || brush.has_per_dab_rotation()
+            {
+                self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
+            } else {
+                self.stamp_dabs_cached_color(dabs, &brush, alpha_locked, w, h);
+            }
             return;
         }
         // Grain Jitter-Rotate OR a per-dab Shape rotation (Rake / Random) → each dab needs its own

@@ -407,5 +407,91 @@ pub fn accumulate_color_stamp_coverage(
     })
 }
 
+/// Over-accumulate ONE dab of ONE Shape layer — tinted by the dab's `color` — into that layer's per-stroke
+/// **premultiplied-RGBA** map (`acc`, `width·height·4`), with the dab's resolved per-dab `shape_basis`
+/// (Rake / Random rotation) and the Grain. This is the DYNAMIC per-layer-colour path: unlike the cached
+/// [`accumulate_color_stamp_coverage`] (constant orientation, one colour per layer, baked once), it
+/// resamples the silhouette per pixel so each dab can rotate (Random / Rake) and carry its own colour
+/// (Randomize Color rides on `color`). The layers stay separate maps so they still recomposite in z-order
+/// (the higher above the lower across the whole stroke). `coverage` = the dab's Flow × Strength × pressure
+/// coverage. `over` accumulation (`s + prev·(1−s)`). Returns the touched rect. Deterministic (HR-5).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn accumulate_shape_layer_rgba(
+    acc: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    radius: f32,
+    spec: &BrushSpec,
+    shape_basis: &crate::texture::TexDabBasis,
+    layer: &ImageMask,
+    grain: Option<(&crate::texture::TexDabBasis, Option<&ImageMask>)>,
+    color: [f32; 3],
+    coverage: f32,
+) -> Option<DirtyRect> {
+    let coverage = coverage.clamp(0.0, 1.0);
+    if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
+        return None;
+    }
+    let depth = spec.grain_depth();
+    let (cx, cy) = (center[0], center[1]);
+    let x0 = (cx - radius).floor().max(0.0) as i64;
+    let y0 = (cy - radius).floor().max(0.0) as i64;
+    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
+    let inv_radius = 1.0 / radius;
+    let mut touched = false;
+    for py in y0..y1 {
+        let v = ((py as f32 + 0.5) - cy) * inv_radius;
+        let row = (py as usize) * (width as usize);
+        for px in x0..x1 {
+            let u = ((px as f32 + 0.5) - cx) * inv_radius;
+            let mut a = crate::texture::sample_shape_silhouette_unit(
+                &spec.shape,
+                shape_basis,
+                u,
+                v,
+                Some(layer),
+            );
+            if a <= 0.0 {
+                continue;
+            }
+            if let Some((gb, gi)) = grain {
+                let g = crate::texture::sample_unit(&spec.texture, gb, u, v, gi);
+                a *= if depth >= 1.0 {
+                    g
+                } else {
+                    1.0 + (g - 1.0) * depth
+                };
+            }
+            a *= coverage;
+            if a <= 0.0 {
+                continue;
+            }
+            let o = (row + px as usize) * 4;
+            let inv = 1.0 - a;
+            // `acc` holds premultiplied RGBA; over-accumulate this dab's premultiplied colour.
+            acc[o] = encode(color[0] * a + f32::from(acc[o]) / 255.0 * inv);
+            acc[o + 1] = encode(color[1] * a + f32::from(acc[o + 1]) / 255.0 * inv);
+            acc[o + 2] = encode(color[2] * a + f32::from(acc[o + 2]) / 255.0 * inv);
+            acc[o + 3] = encode(a + f32::from(acc[o + 3]) / 255.0 * inv);
+            touched = true;
+        }
+    }
+    if !touched {
+        return None;
+    }
+    Some(DirtyRect {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0) as u32,
+        h: (y1 - y0) as u32,
+    })
+}
+
 #[cfg(test)]
 mod tests;

@@ -101,6 +101,68 @@ pub(super) fn curve_insert_index(pts: &[[f32; 2]], pos: [f32; 2]) -> usize {
     best + 1
 }
 
+/// Offset the curve's **control geometry** perpendicular by `d` px (the Offset slider): translate each
+/// anchor AND its two handles by that anchor's averaged right-normal, so the flattened spine + the control
+/// dots + the tangents all move TOGETHER (the curve moves with the paint). `closed` wraps the endpoint
+/// normals (a converted Circle / Polygon). `d == 0` (or a length mismatch) returns unchanged clones.
+pub(super) fn offset_curve(
+    points: &[[f32; 2]],
+    handles: &[[[f32; 2]; 2]],
+    d: f32,
+    closed: bool,
+) -> (Vec<[f32; 2]>, Vec<[[f32; 2]; 2]>) {
+    if d == 0.0 || points.len() < 2 || handles.len() != points.len() {
+        return (points.to_vec(), handles.to_vec());
+    }
+    let mut op = Vec::with_capacity(points.len());
+    let mut oh = Vec::with_capacity(points.len());
+    for i in 0..points.len() {
+        let nrm = vertex_normal(points, i, closed);
+        let dv = [nrm[0] * d, nrm[1] * d];
+        op.push([points[i][0] + dv[0], points[i][1] + dv[1]]);
+        oh.push([
+            [handles[i][0][0] + dv[0], handles[i][0][1] + dv[1]],
+            [handles[i][1][0] + dv[0], handles[i][1][1] + dv[1]],
+        ]);
+    }
+    (op, oh)
+}
+
+/// The unit **right-normal** at anchor `i` (averaged over its incident segments), so a positive offset
+/// outsets a CCW closed loop. Zero vector for a degenerate vertex (the point doesn't move).
+fn vertex_normal(points: &[[f32; 2]], i: usize, closed: bool) -> [f32; 2] {
+    let n = points.len();
+    let prev = if i > 0 {
+        Some((points[i - 1], points[i]))
+    } else if closed {
+        Some((points[n - 1], points[i]))
+    } else {
+        None
+    };
+    let next = if i + 1 < n {
+        Some((points[i], points[i + 1]))
+    } else if closed {
+        Some((points[i], points[0]))
+    } else {
+        None
+    };
+    let mut acc = [0.0f32, 0.0];
+    for (a, b) in [prev, next].into_iter().flatten() {
+        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+        let len = (dx * dx + dy * dy).sqrt();
+        if len > 1e-6 {
+            acc[0] += dy / len; // right-normal of direction (dx,dy) is (dy, -dx)
+            acc[1] += -dx / len;
+        }
+    }
+    let al = (acc[0] * acc[0] + acc[1] * acc[1]).sqrt();
+    if al > 1e-6 {
+        [acc[0] / al, acc[1] / al]
+    } else {
+        [0.0, 0.0]
+    }
+}
+
 /// Squared distance from `p` to the segment `a→b` — transcendental-free (projection + clamp).
 fn dist2_point_seg(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
     let abx = b[0] - a[0];

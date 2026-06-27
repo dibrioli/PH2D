@@ -20,31 +20,20 @@ impl Stroke {
     pub fn fill_curve_preview(&mut self, pts: &[[f32; 2]], out: &mut Vec<Dab>) {
         let mut spine = Vec::new();
         flatten_catmull_rom(pts, &mut spine);
-        self.fill_polyline_preview(&spine, 0.0, out);
+        self.fill_polyline_preview(&spine, out);
     }
 
     /// Lay spaced dabs along an already-flattened dense polyline `spine` (the Free Hand path flattens its
     /// fitted Béziers via [`crate::flatten_bezier`], the authored Curve via [`flatten_catmull_rom`]; both
     /// then call here). Same walk as [`Self::fill_curve_preview`] — continuous spacing/dash/jitter, full
-    /// pressure, fresh-per-fill — so the painted dabs match whatever guide the tool drew. `offset_px` shifts
-    /// the spine perpendicular (the Offset slider; `0` = on the path). `< 2` points fills nothing.
-    pub fn fill_polyline_preview(
-        &mut self,
-        spine: &[[f32; 2]],
-        offset_px: f32,
-        out: &mut Vec<Dab>,
-    ) {
+    /// pressure, fresh-per-fill — so the painted dabs match whatever guide the tool drew. `< 2` points
+    /// fills nothing. (The Offset slider shifts the tool's control geometry before flattening, so the fill
+    /// stays a plain spine walk.)
+    pub fn fill_polyline_preview(&mut self, spine: &[[f32; 2]], out: &mut Vec<Dab>) {
         out.clear();
         if spine.len() < 2 {
             return;
         }
-        let owned;
-        let spine = if offset_px != 0.0 {
-            owned = super::offset::offset_polyline(spine, offset_px, false); // open spine
-            &owned[..]
-        } else {
-            spine
-        };
         self.last_pos = spine[0];
         self.last_pressure = 1.0;
         self.accum = 0.0;

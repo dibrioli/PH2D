@@ -103,6 +103,7 @@ impl PainterTool {
     /// point under the cursor, or — on a miss — insert a new point there and grab it.
     fn curve_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.bake_curve_offset(); // an edit gesture locks in any live Offset (so hit-test = displayed dots)
         let Some(ed) = self.paint.curve.as_mut() else {
             // No session → snapshot for undo + begin drawing the initial straight line.
             let before = self.snapshot_model();
@@ -320,6 +321,7 @@ impl PainterTool {
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }
+        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
         true
     }
 
@@ -330,6 +332,7 @@ impl PainterTool {
         if !self.paint.curve.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.bake_curve_offset(); // lock the offset into the kept geometry, reset the slider (offset now 0)
         self.commit_drag_preview(); // drop the restore record → the painted curve stays baked
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
@@ -418,12 +421,15 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
+        // Display the OFFSET control geometry, so the guide (dots + spine + tangents) moves with the paint.
+        let (points, handles) =
+            curve_geom::offset_curve(&ed.points, &ed.handles, self.shape_offset_px(), ed.closed);
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(&ed.points, &ed.handles, ed.closed, &mut spine);
+        curve_geom::flatten_spine(&points, &handles, ed.closed, &mut spine);
         let tangents = ed.selected.and_then(|s| {
             curve_tangent::build_tangents(
-                &ed.points,
-                &ed.handles,
+                &points,
+                &handles,
                 s,
                 ed.grabbed_handle,
                 self.paint.shape_grab_tol_px,
@@ -431,7 +437,7 @@ impl PainterTool {
         });
         let selected_kind = ed.selected.and_then(|s| ed.kinds.get(s)).map(|k| k.wire());
         Some(CurveOverlay {
-            points: ed.points.clone(),
+            points,
             selected: ed.selected,
             spine,
             tangents,
@@ -493,12 +499,30 @@ impl PainterTool {
     /// present, else Catmull-Rom), fill spaced dabs along the spine, and route them through restore +
     /// re-stamp (no trail; `commit` keeps the last fill). Fresh-per-fill ⇒ deterministic for equal input.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
+        // Offset the CONTROL geometry first, so the painted spine + the overlay guide move together.
+        let (pts, handles) = curve_geom::offset_curve(pts, handles, self.shape_offset_px(), closed);
         let mut spine = Vec::new();
-        curve_geom::flatten_spine(pts, handles, closed, &mut spine);
+        curve_geom::flatten_spine(&pts, &handles, closed, &mut spine);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_polyline_preview(&spine, self.shape_offset_px(), &mut dabs);
+        stroke.fill_polyline_preview(&spine, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
+    }
+
+    /// **Bake** the live Offset into the curve's control geometry (so the curve now sits where the offset
+    /// preview showed it) and reset the slider to centre. A no-op when there's no offset or no open editor.
+    /// Called before any edit gesture (so the hit-test matches the displayed dots) and on Apply & Keep.
+    pub(super) fn bake_curve_offset(&mut self) {
+        let off = self.shape_offset_px();
+        if off != 0.0
+            && let Some(ed) = self.paint.curve.as_mut()
+            && ed.editing
+        {
+            let (p, h) = curve_geom::offset_curve(&ed.points, &ed.handles, off, ed.closed);
+            ed.points = p;
+            ed.handles = h;
+            self.paint.shape_offset_norm = 0.5;
+        }
     }
 }

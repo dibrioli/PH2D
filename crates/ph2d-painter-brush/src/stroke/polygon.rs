@@ -42,9 +42,8 @@ impl Stroke {
     /// `(center, u, rx, ry)` with spaced dabs for the live preview. `u` is the local x-axis unit
     /// vector; the first vertex sits at the top (`+y` local). Lays dabs along the straight edges
     /// (gated by dash, with jitter) at constant full pressure, closing the loop. Fresh-per-fill +
-    /// deterministic, like the other shape fills. `offset_px` insets/outsets the perimeter (Offset slider).
-    /// A degenerate (`< 0.5 px` either axis) shape fills nothing.
-    #[allow(clippy::too_many_arguments)]
+    /// deterministic, like the other shape fills. A degenerate (`< 0.5 px` either axis) shape fills nothing.
+    /// (The Offset slider grows/shrinks `rx`/`ry` in the tool, so the fill stays a plain perimeter walk.)
     pub fn fill_polygon_preview(
         &mut self,
         center: [f32; 2],
@@ -52,7 +51,6 @@ impl Stroke {
         rx: f32,
         ry: f32,
         sides: u32,
-        offset_px: f32,
         out: &mut Vec<Dab>,
     ) {
         out.clear();
@@ -61,9 +59,6 @@ impl Stroke {
         }
         let mut perim = Vec::new();
         polygon_perimeter(center, u, rx, ry, sides, &mut perim);
-        if offset_px != 0.0 {
-            perim = super::offset::offset_polyline(&perim, offset_px, true); // closed loop
-        }
         if perim.len() < 2 {
             return;
         }

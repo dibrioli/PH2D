@@ -80,6 +80,7 @@ impl PainterTool {
     /// Pointer-down: start a session (begin the centre-out drag) when idle; otherwise grab a handle.
     fn polygon_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.bake_polygon_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
         let Some(ed) = self.paint.polygon.as_mut() else {
             let before = self.snapshot_model();
             self.paint.stroke_undo = Some(before);
@@ -101,7 +102,7 @@ impl PainterTool {
         if !ed.editing {
             return true;
         }
-        let handles = polygon_handles(ed, tol);
+        let handles = polygon_handles(ed.center, ed.u, ed.rx, ed.ry, ed.sides, tol);
         ed.grabbed = polygon_hit(&handles, pos, tol);
         true
     }
@@ -158,6 +159,7 @@ impl PainterTool {
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }
+        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
         true
     }
 
@@ -168,6 +170,7 @@ impl PainterTool {
         if !self.paint.polygon.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.bake_polygon_offset(); // lock the offset into the kept radii, reset the slider (offset now 0)
         self.commit_drag_preview();
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
@@ -222,11 +225,21 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
+        // Display the OFFSET (grown/shrunk) polygon, so the outline + handles + paint move together.
+        let off = self.shape_offset_px();
+        let (erx, ery) = ((ed.rx + off).max(0.5), (ed.ry + off).max(0.5));
         let mut perimeter = Vec::new();
-        polygon_perimeter(ed.center, ed.u, ed.rx, ed.ry, ed.sides, &mut perimeter);
+        polygon_perimeter(ed.center, ed.u, erx, ery, ed.sides, &mut perimeter);
         Some(PolygonOverlay {
             perimeter,
-            handles: polygon_handles(ed, self.paint.shape_grab_tol_px),
+            handles: polygon_handles(
+                ed.center,
+                ed.u,
+                erx,
+                ery,
+                ed.sides,
+                self.paint.shape_grab_tol_px,
+            ),
             grabbed: ed.grabbed,
             sides: ed.sides,
         })
@@ -234,15 +247,30 @@ impl PainterTool {
 
     // ── internals ────────────────────────────────────────────────────────────────────
 
+    /// **Bake** the live Offset into the polygon radii + reset the slider — see [`Self::bake_curve_offset`].
+    pub(super) fn bake_polygon_offset(&mut self) {
+        let off = self.shape_offset_px();
+        if off != 0.0
+            && let Some(ed) = self.paint.polygon.as_mut()
+            && ed.editing
+        {
+            ed.rx = (ed.rx + off).max(0.5);
+            ed.ry = (ed.ry + off).max(0.5);
+            self.paint.shape_offset_norm = 0.5;
+        }
+    }
+
     /// Re-fill the painted preview from the editor's current polygon (a fresh `Stroke` per fill).
     pub(super) fn polygon_refill(&mut self) {
         let Some(ed) = self.paint.polygon.as_ref() else {
             return;
         };
         let (center, u, rx, ry, sides, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.sides, ed.seed);
+        let off = self.shape_offset_px();
+        let (erx, ery) = ((rx + off).max(0.5), (ry + off).max(0.5));
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_polygon_preview(center, u, rx, ry, sides, self.shape_offset_px(), &mut dabs);
+        stroke.fill_polygon_preview(center, u, erx, ery, sides, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }
@@ -277,25 +305,26 @@ fn apply_handle_drag(ed: &mut PolygonEditor, handle: u8, pos: [f32; 2], tol: f32
 
 /// Handle positions for `ed`: `[right, top, left, bottom, rotate, sides, center]`. `tol` is the grab
 /// radius (sets the rotate / sides handle offsets, which stay a constant on-screen size).
-fn polygon_handles(ed: &PolygonEditor, tol: f32) -> [[f32; 2]; 7] {
-    let c = ed.center;
-    let u = ed.u;
+fn polygon_handles(
+    c: [f32; 2],
+    u: [f32; 2],
+    rx: f32,
+    ry: f32,
+    sides: u32,
+    tol: f32,
+) -> [[f32; 2]; 7] {
     let v = [-u[1], u[0]];
     let rot_gap = tol * ROTATE_GAP_FACTOR;
-    let sides_off = ed.rx
-        + tol * SIDES_GAP_FACTOR
-        + (ed.sides - POLY_MIN_SIDES) as f32 * tol * SIDES_STEP_FACTOR;
+    let sides_off =
+        rx + tol * SIDES_GAP_FACTOR + (sides - POLY_MIN_SIDES) as f32 * tol * SIDES_STEP_FACTOR;
     [
-        [c[0] + u[0] * ed.rx, c[1] + u[1] * ed.rx], // right
-        [c[0] + v[0] * ed.ry, c[1] + v[1] * ed.ry], // top
-        [c[0] - u[0] * ed.rx, c[1] - u[1] * ed.rx], // left
-        [c[0] - v[0] * ed.ry, c[1] - v[1] * ed.ry], // bottom
-        [
-            c[0] + v[0] * (ed.ry + rot_gap),
-            c[1] + v[1] * (ed.ry + rot_gap),
-        ], // rotate
+        [c[0] + u[0] * rx, c[1] + u[1] * rx], // right
+        [c[0] + v[0] * ry, c[1] + v[1] * ry], // top
+        [c[0] - u[0] * rx, c[1] - u[1] * rx], // left
+        [c[0] - v[0] * ry, c[1] - v[1] * ry], // bottom
+        [c[0] + v[0] * (ry + rot_gap), c[1] + v[1] * (ry + rot_gap)], // rotate
         [c[0] + u[0] * sides_off, c[1] + u[1] * sides_off], // sides
-        c,                                          // center
+        c,                                    // center
     ]
 }
 

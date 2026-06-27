@@ -1098,9 +1098,9 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     use ph2d_painter_brush::StrokeMethod;
-    // The Offset slider shifts the stamped path perpendicular; changing it must re-fill the open shape
-    // live (it's folded into appearance_sig). Draw a horizontal curve along y=32, then nudge Offset to
-    // 0.6 (+20px down) and assert the stroke LEFT y=32 (restored white) and now paints at y≈52.
+    // The Offset slider shifts the whole curve perpendicular (control geometry); changing it must re-fill
+    // the open shape live (folded into appearance_sig). Draw a horizontal curve along y=32, then nudge
+    // Offset to 0.6 (+20px, perpendicular = up) and assert the stroke LEFT y=32 and now paints at y≈12.
     let mut t = white_canvas(64, 2.0);
     t.paint.brush.stroke_method = StrokeMethod::Curve;
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
@@ -1111,9 +1111,9 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
         "the curve painted on y=32 at zero offset"
     );
     assert_eq!(
-        px(&t, 64, 32, 52),
+        px(&t, 64, 32, 12),
         [255, 255, 255, 255],
-        "y=52 is white before offset"
+        "y=12 is white before offset"
     );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px perpendicular
     assert_eq!(
@@ -1123,9 +1123,40 @@ fn offset_slider_shifts_the_open_curve_in_real_time() {
         px(&t, 64, 32, 32)
     );
     assert!(
-        px(&t, 64, 32, 52)[0] < 200,
-        "the offset stroke now paints ~20px down at y=52: {:?}",
-        px(&t, 64, 32, 52)
+        px(&t, 64, 32, 12)[0] < 200,
+        "the offset stroke now paints ~20px up at y=12: {:?}",
+        px(&t, 64, 32, 12)
+    );
+}
+
+#[test]
+fn offset_bakes_into_the_geometry_on_apply_keep_and_resets_the_slider() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // Apply & Keep bakes the live Offset into the kept curve (its position is now offset 0) and resets the
+    // slider to centre (0.5). Draw a curve, offset it, Apply & Keep, then assert the slider snapped back to
+    // 0.5 AND the kept overlay sits at the offset position (so it does not jump when the offset clears).
+    let mut t = white_canvas(64, 2.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_OFFSET, 0.6)); // +20px up
+    let off_spine_y = t.curve_overlay().unwrap().spine[0][1];
+    assert!(
+        off_spine_y < 25.0,
+        "the offset overlay sits up near y=12: {off_spine_y}"
+    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_STROKE_APPLY_KEEP));
+    assert!(
+        (t.brush_settings().offset - 0.5).abs() < 1e-4,
+        "the Offset slider reset to centre"
+    );
+    let kept_spine_y = t.curve_overlay().expect("kept open").spine[0][1];
+    assert!(
+        (kept_spine_y - off_spine_y).abs() < 1.0,
+        "the kept curve stayed at the offset position (no jump): {kept_spine_y} vs {off_spine_y}"
     );
 }
 

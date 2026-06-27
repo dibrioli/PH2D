@@ -586,7 +586,6 @@ mod curve;
 pub use curve::flatten_catmull_rom;
 /// The Circle stroke method's perimeter generator + ellipse fill (same child-module rationale).
 mod ellipse;
-mod offset; // perpendicular path offset (the "Offset" slider) shared by the three shape fills
 pub use ellipse::ellipse_perimeter;
 /// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
 mod polygon;

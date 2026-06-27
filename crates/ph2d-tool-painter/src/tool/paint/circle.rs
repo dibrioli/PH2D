@@ -75,6 +75,7 @@ impl PainterTool {
     /// handle under the cursor.
     fn circle_down(&mut self, pos: [f32; 2]) -> bool {
         let tol = self.paint.shape_grab_tol_px;
+        self.bake_circle_offset(); // an edit gesture locks in any live Offset (hit-test = displayed handles)
         let Some(ed) = self.paint.circle.as_mut() else {
             // No session → snapshot for undo + begin the centre-out drag (centre = press point).
             let before = self.snapshot_model();
@@ -96,7 +97,7 @@ impl PainterTool {
         if !ed.editing {
             return true; // mid radius-drag — ignore extra Downs
         }
-        let handles = circle_handles(ed, tol * ROTATE_GAP_FACTOR);
+        let handles = circle_handles(ed.center, ed.u, ed.rx, ed.ry, tol * ROTATE_GAP_FACTOR);
         ed.grabbed = circle_hit(&handles, pos, tol);
         true
     }
@@ -153,6 +154,7 @@ impl PainterTool {
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }
+        self.paint.shape_offset_norm = 0.5; // the offset baked into the painted dabs → reset the slider
         true
     }
 
@@ -163,6 +165,7 @@ impl PainterTool {
         if !self.paint.circle.as_ref().is_some_and(|ed| ed.editing) {
             return false;
         }
+        self.bake_circle_offset(); // lock the offset into the kept radii, reset the slider (offset now 0)
         self.commit_drag_preview();
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
@@ -236,16 +239,39 @@ impl PainterTool {
         if !ed.editing {
             return None;
         }
+        // Display the OFFSET (grown/shrunk) radii, so the outline + handles + paint move together.
+        let (erx, ery) = self.circle_offset_radii(ed.rx, ed.ry);
         let mut perimeter = Vec::new();
-        ellipse_perimeter(ed.center, ed.u, ed.rx, ed.ry, &mut perimeter);
+        ellipse_perimeter(ed.center, ed.u, erx, ery, &mut perimeter);
+        let gap = self.paint.shape_grab_tol_px * ROTATE_GAP_FACTOR;
         Some(CircleOverlay {
             perimeter,
-            handles: circle_handles(ed, self.paint.shape_grab_tol_px * ROTATE_GAP_FACTOR),
+            handles: circle_handles(ed.center, ed.u, erx, ery, gap),
             grabbed: ed.grabbed,
         })
     }
 
     // ── internals ────────────────────────────────────────────────────────────────────
+
+    /// The Offset slider applied to the ellipse radii: `(rx, ry) + offset_px`, clamped to a paintable
+    /// minimum. The single source for the fill, the overlay, and the bake.
+    fn circle_offset_radii(&self, rx: f32, ry: f32) -> (f32, f32) {
+        let off = self.shape_offset_px();
+        ((rx + off).max(0.5), (ry + off).max(0.5))
+    }
+
+    /// **Bake** the live Offset into the ellipse radii + reset the slider — see [`Self::bake_curve_offset`].
+    pub(super) fn bake_circle_offset(&mut self) {
+        let off = self.shape_offset_px();
+        if off != 0.0
+            && let Some(ed) = self.paint.circle.as_mut()
+            && ed.editing
+        {
+            ed.rx = (ed.rx + off).max(0.5);
+            ed.ry = (ed.ry + off).max(0.5);
+            self.paint.shape_offset_norm = 0.5;
+        }
+    }
 
     /// Re-fill the painted preview from the editor's current ellipse (a fresh `Stroke` per fill, so
     /// the preview always reflects the live brush spec and is deterministic for identical params).
@@ -254,9 +280,10 @@ impl PainterTool {
             return;
         };
         let (center, u, rx, ry, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.seed);
+        let (erx, ery) = self.circle_offset_radii(rx, ry);
         let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.fill_ellipse_preview(center, u, rx, ry, self.shape_offset_px(), &mut dabs);
+        stroke.fill_ellipse_preview(center, u, erx, ery, &mut dabs);
         self.stamp_drag_preview(&dabs);
         self.paint.dabs = dabs;
     }
@@ -285,17 +312,15 @@ fn apply_handle_drag(ed: &mut CircleEditor, handle: u8, pos: [f32; 2]) {
 
 /// Handle positions for the ellipse `ed`, `[right, top, left, bottom, rotate, center]`. `gap` is how
 /// far (image px) the rotation handle sits beyond the top.
-fn circle_handles(ed: &CircleEditor, gap: f32) -> [[f32; 2]; 6] {
-    let c = ed.center;
-    let u = ed.u;
+fn circle_handles(c: [f32; 2], u: [f32; 2], rx: f32, ry: f32, gap: f32) -> [[f32; 2]; 6] {
     let v = [-u[1], u[0]];
     [
-        [c[0] + u[0] * ed.rx, c[1] + u[1] * ed.rx], // right
-        [c[0] + v[0] * ed.ry, c[1] + v[1] * ed.ry], // top
-        [c[0] - u[0] * ed.rx, c[1] - u[1] * ed.rx], // left
-        [c[0] - v[0] * ed.ry, c[1] - v[1] * ed.ry], // bottom
-        [c[0] + v[0] * (ed.ry + gap), c[1] + v[1] * (ed.ry + gap)], // rotate
-        c,                                          // center
+        [c[0] + u[0] * rx, c[1] + u[1] * rx],                 // right
+        [c[0] + v[0] * ry, c[1] + v[1] * ry],                 // top
+        [c[0] - u[0] * rx, c[1] - u[1] * rx],                 // left
+        [c[0] - v[0] * ry, c[1] - v[1] * ry],                 // bottom
+        [c[0] + v[0] * (ry + gap), c[1] + v[1] * (ry + gap)], // rotate
+        c,                                                    // center
     ]
 }
 

@@ -29,6 +29,7 @@ mod shape_layers;
 mod shape_settings;
 /// The cached multi-layer coloured stamp (bake the per-layer composite once, blit per dab).
 mod stamp_color_cache;
+mod stamp_color_dynamic;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
 pub use curve::CurveOverlay;

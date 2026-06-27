@@ -764,6 +764,45 @@ fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
 }
 
 #[test]
+fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
+    use ph2d_painter_brush::{Dab, StrokeMethod};
+    // Fill methods (Line/Curve/Circle/Polygon) take the no-snapshot / self-clearing per-layer path: the
+    // canvas is the recomposite base (the drag preview restores it to the pre-shape each move) and the
+    // maps self-clear, so there's no per-move full-canvas clone + N-map re-allocation (the FPS fix). Two
+    // full layers (red bottom, green top) → green on top; re-stamping the identical fill onto the same
+    // restored canvas must be STABLE — proving the maps self-cleared and the canvas-base didn't double-
+    // composite (a stale-map or double-composite bug would change the second result).
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line; // a fill method → the non-incremental path
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]); // bottom red
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]); // top green
+    let dab = Dab {
+        center: [32.0, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    let pristine = (*t.canvas_rgba).clone(); // the pre-shape the drag preview restores to
+    t.stamp_dabs(&[dab]); // first fill
+    let a = px(&t, 64, 32, 32);
+    *std::sync::Arc::make_mut(&mut t.canvas_rgba) = pristine; // emulate the drag-preview restore
+    t.stamp_dabs(&[dab]); // re-fill the identical shape onto the restored canvas
+    let b = px(&t, 64, 32, 32);
+    assert!(
+        a[1] > 200 && a[0] < 80,
+        "the top (green) layer wins on the fill: {a:?}"
+    );
+    assert_eq!(
+        a, b,
+        "re-filling the restored canvas is stable (maps self-clear, canvas as base)"
+    );
+}
+
+#[test]
 fn per_layer_color_randomize_jitters_custom_layer_colours() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
     // Randomize Color must jitter the per-layer CUSTOM colours too (the artist's case), not only the

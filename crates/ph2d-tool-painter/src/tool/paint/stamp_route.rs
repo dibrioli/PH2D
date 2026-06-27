@@ -49,6 +49,7 @@ impl PainterTool {
             // `color_jitter_enabled` flag is dead (the panel drives it by amount), so checking it here
             // meant Randomize Color alone never reached the dynamic path (it only worked WITH Rake/Random).
             if brush.shape_has_per_dab_rotation(has_shape_image)
+                || brush.grain_has_per_dab_rotation()
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
             {

@@ -38,18 +38,48 @@ impl ColorStampMask {
     }
 }
 
+/// The Grain's per-channel multiplier for a sampled Grain value `g`. WITHOUT a ramp: the scalar value
+/// (Grain-Depth-blended toward `1`) on all four channels. WITH the Grain Colour Ramp: `ramp[g]` (each
+/// channel Depth-blended toward neutral `1`) so the Grain colour tints the premultiplied composite; the
+/// alpha channel scales coverage either way. Deterministic (HR-5: float-only + the shared LUT sampler).
+fn grain_modulation(g: f32, depth: f32, ramp: Option<&[[f32; 4]]>) -> [f32; 4] {
+    match ramp {
+        Some(lut) => {
+            let c = crate::dab::ramp_sample(lut, g);
+            [
+                1.0 + (c[0] - 1.0) * depth,
+                1.0 + (c[1] - 1.0) * depth,
+                1.0 + (c[2] - 1.0) * depth,
+                1.0 + (c[3] - 1.0) * depth,
+            ]
+        }
+        None => {
+            let m = if depth >= 1.0 {
+                g
+            } else {
+                1.0 + (g - 1.0) * depth
+            };
+            [m, m, m, m]
+        }
+    }
+}
+
 /// Render the unit multi-layer coloured stamp at `size`×`size`. `layers` are the Shape silhouette layers
 /// in **bottom-to-top** z-order; `layer_colors` is each layer's already-resolved straight RGB (a custom
 /// pick, or the brush base colour for an un-coloured layer) — same length as `layers`. Each layer's image
 /// REPLACES the falloff (a crisp finite tip, like a single-image Shape), and the layers composite with
 /// "over" so a higher layer paints above a lower one. The **Grain** (`spec.texture` + `grain_image`) bites
-/// the whole composite's coverage, exactly like the grayscale stamp. Deterministic (HR-5).
+/// the whole composite's coverage, exactly like the grayscale stamp. With `grain_ramp` (the Grain Colour
+/// Ramp LUT, 256 straight-sRGBA entries) the Grain value indexes a COLOUR that multiplies the composite
+/// (Grain-Depth-blended toward neutral white) — so the Grain ramp tints the multi-colour tip instead of
+/// only darkening it. Deterministic (HR-5).
 #[must_use]
 pub fn render_color_stamp_mask(
     spec: &BrushSpec,
     layers: &[ImageMask],
     layer_colors: &[[f32; 3]],
     grain_image: Option<&ImageMask>,
+    grain_ramp: Option<&[[f32; 4]]>,
     size: u32,
 ) -> ColorStampMask {
     let size = size.max(1);
@@ -100,18 +130,16 @@ pub fn render_color_stamp_mask(
                 acc[2] = c[2] * a + acc[2] * inv_a;
                 acc[3] = a + acc[3] * inv_a;
             }
-            // Grain bites the whole stamp's coverage (premultiplied → scale all four channels).
+            // Grain bites the whole stamp's coverage (premultiplied → scale all four channels). With a
+            // Grain Colour Ramp, the Grain value indexes a COLOUR (depth-blended toward neutral white)
+            // that multiplies the premultiplied composite — tinting the tip by the Grain pattern.
             if acc[3] > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
-                let m = if depth >= 1.0 {
-                    g
-                } else {
-                    1.0 + (g - 1.0) * depth
-                };
-                acc[0] *= m;
-                acc[1] *= m;
-                acc[2] *= m;
-                acc[3] *= m;
+                let m = grain_modulation(g, depth, grain_ramp);
+                acc[0] *= m[0];
+                acc[1] *= m[1];
+                acc[2] *= m[2];
+                acc[3] *= m[3];
             }
             let o = row + (i as usize) * 4;
             data[o] = encode(acc[0]);
@@ -427,6 +455,7 @@ pub fn accumulate_shape_layer_rgba(
     shape_basis: &crate::texture::TexDabBasis,
     layer: &ImageMask,
     grain: Option<(&crate::texture::TexDabBasis, Option<&ImageMask>)>,
+    grain_ramp: Option<&[[f32; 4]]>,
     color: [f32; 3],
     coverage: f32,
 ) -> Option<DirtyRect> {
@@ -460,13 +489,14 @@ pub fn accumulate_shape_layer_rgba(
             if a <= 0.0 {
                 continue;
             }
+            // The Grain modulates per channel: a scalar (value) without a ramp, or `ramp[g]` (a colour
+            // that tints this layer's colour) with one — the alpha channel scales coverage either way.
+            let mut tint = color;
             if let Some((gb, gi)) = grain {
                 let g = crate::texture::sample_unit(&spec.texture, gb, u, v, gi);
-                a *= if depth >= 1.0 {
-                    g
-                } else {
-                    1.0 + (g - 1.0) * depth
-                };
+                let m = grain_modulation(g, depth, grain_ramp);
+                tint = [color[0] * m[0], color[1] * m[1], color[2] * m[2]];
+                a *= m[3];
             }
             a *= coverage;
             if a <= 0.0 {
@@ -475,9 +505,9 @@ pub fn accumulate_shape_layer_rgba(
             let o = (row + px as usize) * 4;
             let inv = 1.0 - a;
             // `acc` holds premultiplied RGBA; over-accumulate this dab's premultiplied colour.
-            acc[o] = encode(color[0] * a + f32::from(acc[o]) / 255.0 * inv);
-            acc[o + 1] = encode(color[1] * a + f32::from(acc[o + 1]) / 255.0 * inv);
-            acc[o + 2] = encode(color[2] * a + f32::from(acc[o + 2]) / 255.0 * inv);
+            acc[o] = encode(tint[0] * a + f32::from(acc[o]) / 255.0 * inv);
+            acc[o + 1] = encode(tint[1] * a + f32::from(acc[o + 1]) / 255.0 * inv);
+            acc[o + 2] = encode(tint[2] * a + f32::from(acc[o + 2]) / 255.0 * inv);
             acc[o + 3] = encode(a + f32::from(acc[o + 3]) / 255.0 * inv);
             touched = true;
         }

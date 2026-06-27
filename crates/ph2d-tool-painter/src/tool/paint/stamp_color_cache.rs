@@ -9,6 +9,7 @@
 //! rotate-at-blit). The Shape colour ramp is intentionally NOT consulted here — per-layer-colour mode
 //! supersedes it (the panel hides the ramp section while it is on).
 
+use super::ramp_lut::RampLutOwner;
 use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
@@ -70,6 +71,8 @@ pub(super) struct ColorStampKey {
     texture: TextureSettings,
     grain_image_version: u64,
     grain_depth: f32,
+    /// The baked Grain Colour Ramp LUT version (`ramp_lut_version`), or `0` when no Grain ramp tints.
+    grain_ramp_version: u64,
     dab_flatten: f32,
     dab_angle_deg: u16,
     size: u32,
@@ -204,8 +207,10 @@ impl PainterTool {
     }
 
     /// Re-bake the per-layer coloured stamps (one per layer, bottom→top) when the appearance / mask size
-    /// changed; a no-op on a hit. Each stamp is a single layer tinted by its colour (× Grain).
+    /// changed; a no-op on a hit. Each stamp is a single layer tinted by its colour (× Grain, × the Grain
+    /// Colour Ramp if active — so the ramp tints the multi-colour tip).
     fn ensure_color_stamp_cache(&mut self, brush: &BrushSpec, size: u32) {
+        let grain_ramp_active = self.ensure_per_layer_grain_ramp(brush);
         let key = ColorStampKey {
             shape: brush.shape,
             layers_version: self.paint.shape_layers.version(),
@@ -213,6 +218,11 @@ impl PainterTool {
             texture: brush.texture,
             grain_image_version: self.paint.texture_image_version,
             grain_depth: brush.grain_depth,
+            grain_ramp_version: if grain_ramp_active {
+                self.paint.ramp_lut_version
+            } else {
+                0
+            },
             dab_flatten: brush.dab_flatten,
             dab_angle_deg: brush.dab_angle_deg,
             size,
@@ -224,6 +234,7 @@ impl PainterTool {
             let masks = self.paint.shape_layers.masks();
             let colors = self.paint.shape_layers.resolved_colors(brush.color);
             let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+            let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
             masks
                 .iter()
                 .zip(colors.iter())
@@ -233,12 +244,24 @@ impl PainterTool {
                         std::slice::from_ref(m),
                         std::slice::from_ref(c),
                         grain_image.as_ref(),
+                        grain_ramp,
                         size,
                     )
                 })
                 .collect()
         };
         self.paint.color_stamp_cache = Some((stamps, key));
+    }
+
+    /// Ensure the **Grain Colour Ramp** LUT is baked for the per-layer-colour paths (which suppress the
+    /// Shape ramp, so the Grain is the colour owner) and report whether it's active: a Grain texture is
+    /// active AND the Grain ramp is enabled. `false` ⇒ scalar Grain (no ramp tint).
+    fn ensure_per_layer_grain_ramp(&mut self, brush: &BrushSpec) -> bool {
+        let active = brush.texture.is_active() && self.paint.texture_ramp_enabled;
+        if active {
+            self.ensure_ramp_lut(RampLutOwner::Grain);
+        }
+        active
     }
 
     /// The **dynamic** per-layer-colour path — used (via the route) when a per-dab feature is on that the
@@ -275,9 +298,11 @@ impl PainterTool {
                 .per_layer_stroke
                 .init(snap, n, (w as usize) * (h as usize) * 4);
         }
-        let mut acc = std::mem::take(&mut self.paint.per_layer_stroke.cov);
         let grain_active = brush.texture.is_active();
+        let grain_ramp_active = self.ensure_per_layer_grain_ramp(brush);
+        let mut acc = std::mem::take(&mut self.paint.per_layer_stroke.cov);
         let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
         let mut tex_rng = self.paint.tex_rng;
         let mut bbox: Option<Region> = None;
         {
@@ -330,6 +355,7 @@ impl PainterTool {
                         &shape_basis,
                         layer,
                         grain,
+                        grain_ramp,
                         colors[i],
                         cov,
                     ) {
@@ -399,21 +425,27 @@ impl PainterTool {
     /// frame. Returns `true` when the cache changed (the host then re-publishes it to the panel). Keyed
     /// by the same [`ColorStampKey`] as the paint stamps, at the fixed [`PREVIEW_SIZE`].
     pub fn refresh_shape_color_preview(&mut self) -> bool {
-        let want = self
-            .paint
-            .shape_layers
-            .is_color_mode()
-            .then(|| ColorStampKey {
-                shape: self.paint.brush.shape,
-                layers_version: self.paint.shape_layers.version(),
-                brush_color: self.paint.brush.color,
-                texture: self.paint.brush.texture,
-                grain_image_version: self.paint.texture_image_version,
-                grain_depth: self.paint.brush.grain_depth,
-                dab_flatten: self.paint.brush.dab_flatten,
-                dab_angle_deg: self.paint.brush.dab_angle_deg,
-                size: PREVIEW_SIZE,
-            });
+        let color_mode = self.paint.shape_layers.is_color_mode();
+        let brush = self.paint.brush;
+        // Only touch the Grain ramp LUT in colour mode, so the per-frame preview never flips the ramp
+        // owner away from the normal (non-per-layer) paint path.
+        let grain_ramp_active = color_mode && self.ensure_per_layer_grain_ramp(&brush);
+        let want = color_mode.then(|| ColorStampKey {
+            shape: brush.shape,
+            layers_version: self.paint.shape_layers.version(),
+            brush_color: brush.color,
+            texture: brush.texture,
+            grain_image_version: self.paint.texture_image_version,
+            grain_depth: brush.grain_depth,
+            grain_ramp_version: if grain_ramp_active {
+                self.paint.ramp_lut_version
+            } else {
+                0
+            },
+            dab_flatten: brush.dab_flatten,
+            dab_angle_deg: brush.dab_angle_deg,
+            size: PREVIEW_SIZE,
+        });
         if want
             == self
                 .paint
@@ -426,16 +458,15 @@ impl PainterTool {
         }
         self.paint.shape_color_preview.cache = want.map(|key| {
             let masks = self.paint.shape_layers.masks();
-            let colors = self
-                .paint
-                .shape_layers
-                .resolved_colors(self.paint.brush.color);
+            let colors = self.paint.shape_layers.resolved_colors(brush.color);
             let grain = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+            let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
             let stamp = render_color_stamp_mask(
-                &self.paint.brush,
+                &brush,
                 &masks,
                 &colors,
                 grain.as_ref(),
+                grain_ramp,
                 PREVIEW_SIZE,
             );
             (Arc::new(stamp.data().to_vec()), key)

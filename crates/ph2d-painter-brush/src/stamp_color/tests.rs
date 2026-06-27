@@ -33,7 +33,7 @@ fn center_rgba(stamp: &ColorStampMask) -> ([f32; 3], f32) {
 fn single_full_layer_paints_its_colour_everywhere() {
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[1.0, 0.0, 0.0]], None, 16);
+    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[1.0, 0.0, 0.0]], None, None, 16);
     let (rgb, a) = center_rgba(&stamp);
     assert!(a > 0.95, "full layer ⇒ opaque: {a}");
     assert!(
@@ -52,6 +52,7 @@ fn higher_layer_paints_above_the_lower_one() {
         &spec,
         &[mask(&bottom), mask(&top)],
         &[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        None,
         None,
         16,
     );
@@ -74,6 +75,7 @@ fn a_transparent_top_lets_the_lower_layer_show_through() {
         &[mask(&bottom), mask(&top)],
         &[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
         None,
+        None,
         16,
     );
     let (rgb, _) = center_rgba(&stamp);
@@ -86,7 +88,7 @@ fn a_transparent_top_lets_the_lower_layer_show_through() {
 #[test]
 fn no_layers_is_fully_transparent() {
     let spec = shape_image_spec();
-    let stamp = render_color_stamp_mask(&spec, &[], &[], None, 8);
+    let stamp = render_color_stamp_mask(&spec, &[], &[], None, None, 8);
     let (_, a) = center_rgba(&stamp);
     assert_eq!(a, 0.0, "no layers ⇒ nothing painted");
 }
@@ -96,7 +98,7 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
     // A 1-layer blue stamp blitted opaquely onto a black canvas turns the centre blue.
     let spec = shape_image_spec();
     let l = layer([true, true, true, true]);
-    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.0, 0.0, 1.0]], None, 32);
+    let stamp = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.0, 0.0, 1.0]], None, None, 32);
     let (w, h) = (16u32, 16u32);
     let mut buf = vec![0u8; (w * h * 4) as usize];
     let rect = blit_color_stamp(&mut buf, w, h, [8.0, 8.0], 6.0, &stamp, &spec, 1.0, false);
@@ -113,7 +115,31 @@ fn blit_composites_the_stamp_colour_onto_the_canvas() {
 fn deterministic_render() {
     let spec = shape_image_spec();
     let l = layer([true, false, true, true]);
-    let a = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, 24);
-    let b = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, 24);
+    let a = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, None, 24);
+    let b = render_color_stamp_mask(&spec, &[mask(&l)], &[[0.3, 0.6, 0.9]], None, None, 24);
     assert_eq!(a.data, b.data, "same inputs ⇒ byte-identical stamp (HR-5)");
+}
+
+#[test]
+fn grain_colour_ramp_tints_the_composite() {
+    // With a Grain Colour Ramp, the Grain value indexes a COLOUR that multiplies the tip. A constant
+    // GREEN ramp over a WHITE layer ⇒ the composite reads green (white × green), not merely darkened.
+    let mut spec = shape_image_spec();
+    spec.texture.kind = TextureKind::Checker; // an active Grain (the constant ramp ignores its value)
+    let l = layer([true, true, true, true]);
+    let ramp = [[0.0f32, 1.0, 0.0, 1.0]; 256]; // constant green, full alpha
+    let stamp = render_color_stamp_mask(
+        &spec,
+        &[mask(&l)],
+        &[[1.0, 1.0, 1.0]],
+        None,
+        Some(&ramp),
+        16,
+    );
+    let (rgb, a) = center_rgba(&stamp);
+    assert!(a > 0.9, "covered: {a}");
+    assert!(
+        rgb[1] > 0.9 && rgb[0] < 0.1 && rgb[2] < 0.1,
+        "the Grain ramp tints the white tip green: {rgb:?}"
+    );
 }

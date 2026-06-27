@@ -736,6 +736,34 @@ fn per_layer_color_dynamic_shape_random_angle_paints() {
 }
 
 #[test]
+fn per_layer_color_grain_random_angle_routes_dynamic_and_paints() {
+    use ph2d_painter_brush::{Dab, StrokeMethod, TextureKind};
+    // Grain Rake / Random Angle must work in per-layer-colour — the route used to check only Grain
+    // Jitter-Rotate, so Grain Rake/Random fell to the constant-orientation cached path. With Grain Random
+    // on, the dynamic path (per-dab Grain basis) runs and paints.
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.texture.kind = TextureKind::Checker; // an active Grain
+    t.paint.brush.texture.random_angle = true; // Grain Random Angle
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    let dab = Dab {
+        center: [32.0, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.2, 0.4, 0.6],
+        rotation: [1.0, 0.0],
+        dir: [0.0, 0.0],
+    };
+    t.stamp_dabs(&[dab]);
+    assert!(
+        px(&t, 64, 32, 32)[3] > 0,
+        "a Grain-random-angle per-layer-colour dab paints"
+    );
+}
+
+#[test]
 fn per_layer_color_randomize_jitters_custom_layer_colours() {
     use ph2d_painter_brush::{Dab, StrokeMethod};
     // Randomize Color must jitter the per-layer CUSTOM colours too (the artist's case), not only the

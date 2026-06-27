@@ -267,6 +267,16 @@ impl BrushSpec {
             && self.shape.mapping.uses_dab_rotation()
     }
 
+    /// Whether the **Grain** slot rotates its texture frame per dab (Rake follows the stroke, or a per-dab
+    /// Random angle) — each dab needs its own Grain basis. Mirrors [`Self::shape_has_per_dab_rotation`]
+    /// for the Grain; complements [`Self::has_per_dab_rotation`] (which is the Grain **Jitter Rotate**).
+    #[must_use]
+    pub fn grain_has_per_dab_rotation(&self) -> bool {
+        self.texture.is_active()
+            && (self.texture.rake || self.texture.random_angle)
+            && self.texture.mapping.uses_dab_rotation()
+    }
+
     /// Whether the dab is eligible for the **scale-invariant cached stamp** ([`crate::stamp`]) given
     /// both slots: the silhouette must be dab-relative-constant (the falloff always is; a Shape image is
     /// when View-static) AND the Grain must be cacheable (None or static View). `has_shape_image` gates

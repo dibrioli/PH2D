@@ -47,13 +47,13 @@ impl Tool for PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids::{self as core_ids, PainterLayerWidget};
         use ph2d_editor_core::tool::PanelEvent;
-        let brush_before = self.current_brush_spec(); // re-fill an open shape live on a brush change
+        let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
             || self.route_brush_stencil_event(&event)
             || self.route_brush_dab_event(&event)
         {
-            self.refill_if_brush_changed(brush_before);
+            self.refill_if_appearance_changed(appearance_before);
             return;
         }
         match event {
@@ -476,7 +476,7 @@ impl Tool for PainterTool {
             }
             PanelEvent::Toggle(_, _) => {}
         }
-        self.refill_if_brush_changed(brush_before);
+        self.refill_if_appearance_changed(appearance_before);
     }
 
     /// Per-frame heartbeat (ADR-0040-amendment-2): drives the airbrush timer (deposit dabs at the

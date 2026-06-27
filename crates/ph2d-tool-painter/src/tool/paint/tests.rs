@@ -856,6 +856,52 @@ fn brush_param_change_refills_open_curve_in_real_time() {
 }
 
 #[test]
+fn reducing_strength_with_an_open_curve_does_not_erase_it() {
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    use ph2d_painter_brush::StrokeMethod;
+    // Regression (Enio 2026-06-27): with Accumulate off, Strength<1 caps each pixel via the per-stroke
+    // `stroke_mask`. A fill (Curve) re-stamps the WHOLE stroke each re-fill, so the mask MUST reset each
+    // time — else the 2nd re-fill sees the mask already at the cap and paints nothing, so reducing Strength
+    // (which re-fills) erased the stroke. Drag the Strength slider down a few times with a curve open and
+    // assert it stays painted.
+    let mut t = white_canvas(64, 4.0);
+    t.paint.brush.stroke_method = StrokeMethod::Curve;
+    t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up)); // curve along y=32, full strength
+    assert!(px(&t, 64, 32, 32)[0] < 200, "the curve painted at full strength");
+    // Drag the slider down (each event re-fills). At 0.7 a fresh fill is clearly dark (~130); the stale-
+    // mask bug instead left it white (~255, "erased"). Assert it stays clearly painted.
+    for v in [0.9_f64, 0.7] {
+        t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_STRENGTH_SLIDER, v));
+    }
+    assert!(
+        px(&t, 64, 32, 32)[0] < 180,
+        "reducing Strength must keep the curve painted (not erase to white): {:?}",
+        px(&t, 64, 32, 32)
+    );
+}
+
+#[test]
+fn color_ramp_edits_change_the_appearance_signature() {
+    // Regression (Enio 2026-06-27): the real-time re-fill trigger compared only the BrushSpec, but the
+    // Colour-Ramp enable / B&W / stop edits live OUTSIDE it (in PaintState) — so toggling the ramp didn't
+    // re-fill the open curve until a point moved. `appearance_sig` now folds the ramp/texture/shape state
+    // in, so any of these changes it → the handler re-fills. Assert the sig actually moves.
+    let mut t = white_canvas(64, 4.0);
+    let s0 = t.appearance_sig();
+    t.toggle_texture_ramp_enabled();
+    assert!(t.appearance_sig() != s0, "enabling the Color Ramp must change the appearance sig");
+    let s1 = t.appearance_sig();
+    t.ramp_add_stop();
+    assert!(t.appearance_sig() != s1, "adding a ramp stop must change the appearance sig");
+    let s2 = t.appearance_sig();
+    t.toggle_texture_ramp_bw();
+    assert!(t.appearance_sig() != s2, "the ramp B&W toggle must change the appearance sig");
+}
+
+#[test]
 fn edit_button_converts_circle_into_an_editable_curve() {
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::{PanelEvent, Tool};

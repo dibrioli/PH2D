@@ -14,6 +14,25 @@ use ph2d_painter_brush::{
 };
 use std::sync::Arc;
 
+/// Snapshot of everything that changes how the pending shape stroke LOOKS — the brush spec plus the
+/// Colour-Ramp / texture / shape state that the `BrushSpec` doesn't carry. Compared before/after a panel
+/// event to drive the real-time re-fill ([`PainterTool::appearance_sig`]).
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) struct AppearanceSig {
+    brush: BrushSpec,
+    tex_ramp_enabled: bool,
+    tex_ramp_bw: bool,
+    shape_ramp_enabled: bool,
+    shape_ramp_bw: bool,
+    tex_image_version: u64,
+    shape_image_version: u64,
+    shape_ramp_version: u64,
+    layers_version: u64,
+    tex_ramp_len: usize,
+    shape_ramp_len: usize,
+    ramp_dirty: bool,
+}
+
 /// The rotate ring reaches this multiple of the scale-grab radius PAST each corner — a click inside the
 /// corner scales, a click in the ring just outside it rotates (the sprite gizmo's feel; Enio 2026-06-26).
 const STENCIL_ROTATE_BAND: f32 = 2.6;
@@ -230,10 +249,27 @@ impl PainterTool {
         true
     }
 
-    /// The live brush spec (cheap `Copy`) — snapshot it before handling a panel event so
-    /// [`Self::refill_if_brush_changed`] can detect a change and re-fill an open shape editor.
-    pub(crate) fn current_brush_spec(&self) -> BrushSpec {
-        self.paint.brush
+    /// The current **appearance signature** — everything that changes how the pending stroke LOOKS but
+    /// lives outside the `BrushSpec`: the Colour-Ramp enable/B&W flags + stop edits (`*_ramp_dirty`), the
+    /// imported Grain/Shape image versions, the Shape ramp version, and the per-layer-colour version.
+    /// Snapshot it before a panel event so [`Self::refill_if_appearance_changed`] re-fills an open shape
+    /// when ANY of these change (a Color-Ramp toggle / stop edit / image assign updates the preview live,
+    /// not only on a gizmo nudge — Enio 2026-06-27).
+    pub(crate) fn appearance_sig(&self) -> AppearanceSig {
+        AppearanceSig {
+            brush: self.paint.brush,
+            tex_ramp_enabled: self.paint.texture_ramp_enabled,
+            tex_ramp_bw: self.paint.texture_ramp_bw,
+            shape_ramp_enabled: self.paint.shape_color_ramp_enabled,
+            shape_ramp_bw: self.paint.shape_color_ramp_bw,
+            tex_image_version: self.paint.texture_image_version,
+            shape_image_version: self.paint.shape_image_version,
+            shape_ramp_version: self.paint.shape_ramp_version,
+            layers_version: self.paint.shape_layers.version(),
+            tex_ramp_len: self.paint.texture_ramp.len(),
+            shape_ramp_len: self.paint.shape_color_ramp.len(),
+            ramp_dirty: self.paint.texture_ramp_dirty || self.paint.shape_ramp_dirty,
+        }
     }
 
     /// Re-fill the open shape editor's painted preview (Curve / Free Hand / Circle / Polygon) with the
@@ -244,11 +280,11 @@ impl PainterTool {
         self.polygon_refill();
     }
 
-    /// Re-fill the open shape editor IFF the brush changed since `before` — so a size / spacing / flow /
-    /// falloff tweak from the panel updates the pending Curve/Circle/Polygon stroke in REAL TIME, not only
-    /// when a gizmo handle is nudged. Apply/Delete clicks + layer ops don't touch the brush → no re-stamp.
-    pub(crate) fn refill_if_brush_changed(&mut self, before: BrushSpec) {
-        if self.paint.brush != before {
+    /// Re-fill the open shape editor IFF its appearance changed since `before` — so a size / spacing /
+    /// flow / falloff tweak OR a Colour-Ramp / texture / shape edit updates the pending stroke in REAL
+    /// TIME. Apply/Delete clicks + layer ops touch none of it → no re-stamp.
+    pub(crate) fn refill_if_appearance_changed(&mut self, before: AppearanceSig) {
+        if self.appearance_sig() != before {
             self.refill_open_shape();
         }
     }

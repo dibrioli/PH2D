@@ -7,8 +7,8 @@
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, Dab, Falloff, FalloffCurve, TextureSettings, blit_canvas_cached, blit_stamp,
-    blit_stamp_ramped, render_stamp_mask,
+    BrushSpec, Dab, Falloff, FalloffCurve, StrokeMethod, TextureSettings, blit_canvas_cached,
+    blit_stamp, blit_stamp_ramped, render_stamp_mask,
 };
 use std::sync::Arc;
 
@@ -64,6 +64,22 @@ pub(super) fn mask_size_for(radius: f32) -> u32 {
     ((2.0 * radius.ceil()).max(1.0) as u32)
         .next_power_of_two()
         .clamp(MIN, MAX)
+}
+
+/// Size the per-stroke coverage mask for the Accumulate-OFF (Strength < 1) cap. The FILL methods
+/// (Line/Curve/Circle/Polygon/Free Hand) re-stamp the WHOLE stroke each call (drag-preview restore), so
+/// the cap must start FRESH each time — else the mask is already AT the cap from the prior re-stamp and
+/// the new one adds nothing, so a Strength change (which re-fills) ERASES the stroke. The incremental
+/// methods (Space/Dots/Airbrush) accumulate across batches (resize only zero-fills the new tail). A free
+/// fn taking just the mask so it doesn't conflict with the per-pixel paths' other field borrows. Enio.
+fn prepare_stroke_mask(mask: &mut Vec<u8>, len: usize, method: StrokeMethod) {
+    if !matches!(
+        method,
+        StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
+    ) {
+        mask.clear(); // fill re-stamp → fresh cap
+    }
+    mask.resize(len, 0);
 }
 
 impl PainterTool {
@@ -290,9 +306,11 @@ impl PainterTool {
         // per-stroke mask so a Color-Ramp stroke honours Accumulate too (Enio 2026-06-25).
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
         if accumulate_cap {
-            self.paint
-                .stroke_mask
-                .resize((w as usize) * (h as usize), 0);
+            prepare_stroke_mask(
+                &mut self.paint.stroke_mask,
+                (w as usize) * (h as usize),
+                brush.stroke_method,
+            );
         }
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut mask: Option<&mut [u8]> =
@@ -392,9 +410,11 @@ impl PainterTool {
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
         if accumulate_cap {
-            self.paint
-                .stroke_mask
-                .resize((w as usize) * (h as usize), 0);
+            prepare_stroke_mask(
+                &mut self.paint.stroke_mask,
+                (w as usize) * (h as usize),
+                brush.stroke_method,
+            );
         }
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         let mut mask: Option<&mut [u8]> =

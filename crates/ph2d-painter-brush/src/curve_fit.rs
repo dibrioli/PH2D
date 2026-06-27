@@ -272,6 +272,41 @@ fn chord_length_param(pts: &[P]) -> Vec<f32> {
     u
 }
 
+/// **Auto-smooth handles** for an AUTHORED control polygon (the Curve method): per-anchor `[in, out]`
+/// Bézier handles for a smooth interpolating spline THROUGH `points`, with handle lengths proportional to
+/// the adjacent segment lengths (a **chordal** Catmull-Rom). This is the no-overshoot upgrade over uniform
+/// Catmull-Rom (`(next−prev)/2`), which loops/cusps on unevenly-spaced points; here a short segment gets a
+/// short handle, so the curve stays inside its control polygon. For evenly-spaced points it reduces to the
+/// uniform spline (handle = `(next−prev)/6`), so a straight run stays straight. Recompute on every edit
+/// (the spline re-smooths as the artist drags / adds / deletes points). Deterministic (HR-5: `+−×÷`,
+/// `sqrt`). `< 2` points ⇒ zero-length handles.
+#[must_use]
+pub fn auto_handles(points: &[P]) -> Vec<[P; 2]> {
+    let n = points.len();
+    if n < 2 {
+        return points.iter().map(|&a| [a, a]).collect();
+    }
+    // Tension so even spacing matches the uniform Catmull-Rom (handle = chord/6): `fa = fb = T/2 = 1/6`.
+    const T: f32 = 1.0 / 3.0;
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let cur = points[i];
+        let prev = points[i.saturating_sub(1)];
+        let next = points[(i + 1).min(n - 1)];
+        let d_in = dist2(cur, prev).sqrt();
+        let d_out = dist2(cur, next).sqrt();
+        let sum = d_in + d_out;
+        let chord = sub(next, prev); // the neighbour chord = the tangent direction
+        let (fa, fb) = if sum > 1e-6 {
+            (T * d_in / sum, T * d_out / sum)
+        } else {
+            (0.0, 0.0)
+        };
+        out.push([sub(cur, scale(chord, fa)), add(cur, scale(chord, fb))]);
+    }
+    out
+}
+
 /// Flatten the cubic Béziers defined by `anchors` + per-anchor `[in, out]` `handles` into a dense
 /// polyline (cleared first; starts at `anchors[0]`). Each segment `anchors[i] → anchors[i+1]` is the
 /// cubic `[anchors[i], handles[i].out, handles[i+1].in, anchors[i+1]]`, subdivided finer than the dab

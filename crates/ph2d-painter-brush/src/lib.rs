@@ -45,7 +45,7 @@ pub mod stroke_method;
 pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
-pub use curve_fit::{CurveFit, fit_curve, flatten_bezier};
+pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{
     DirtyRect, ShapeInput, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
     stamp_dab_textured_masked,

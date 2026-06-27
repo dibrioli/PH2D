@@ -115,3 +115,37 @@ fn flattened_fit_follows_the_captured_points() {
         );
     }
 }
+
+#[test]
+fn auto_handles_keep_a_straight_run_straight() {
+    // Evenly-spaced collinear points → the chordal auto-handles lie ON the line (handle = chord/6), so a
+    // straight authored run stays straight (no bulge). Reduces to the uniform Catmull-Rom here.
+    let pts: Vec<P> = (0..=4).map(|i| [i as f32 * 10.0, 0.0]).collect();
+    let h = auto_handles(&pts);
+    assert_eq!(h.len(), pts.len(), "one [in,out] pair per point");
+    for (i, pair) in h.iter().enumerate() {
+        for hp in pair {
+            assert!(
+                (hp[1]).abs() < 1e-3,
+                "handle {i} left the line: y={}",
+                hp[1]
+            );
+        }
+    }
+}
+
+#[test]
+fn auto_handles_do_not_overshoot_an_uneven_corner() {
+    // A sharp corner with a long then a short segment: uniform Catmull-Rom overshoots past the corner;
+    // the chordal handles stay within the bounding box of the control points (no loop/overshoot).
+    let pts: Vec<P> = vec![[0.0, 0.0], [100.0, 0.0], [105.0, 5.0], [110.0, 100.0]];
+    let h = auto_handles(&pts);
+    let mut spine = Vec::new();
+    flatten_bezier(&pts, &h, &mut spine);
+    for &s in &spine {
+        assert!(
+            (-2.0..=112.0).contains(&s[0]) && (-2.0..=102.0).contains(&s[1]),
+            "spine point {s:?} overshot the control polygon's bounds"
+        );
+    }
+}

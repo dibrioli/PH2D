@@ -8,9 +8,9 @@
 //! 1. **Draw** — press-drag-release a straight line (like Line). On release, three control points
 //!    appear: the two endpoints + the midpoint.
 //! 2. **Edit** — the session persists. Drag a control point to move it; click empty / near the curve
-//!    to ADD a point there (and immediately drag it); the points auto-smooth with a Catmull-Rom
-//!    spline ([`flatten_catmull_rom`]), so moving points sculpts curves of any shape. The painted
-//!    stroke previews live along the spline (restore + re-stamp, no trail).
+//!    to ADD a point there (and immediately drag it); the points auto-smooth with chordal Bézier
+//!    handles ([`ph2d_painter_brush::auto_handles`], re-computed each edit — no overshoot), so moving
+//!    points sculpts curves of any shape. The painted stroke previews live along the spline (no trail).
 //! 3. **Delete** — select a point (click it) and press Delete (keeps ≥ 2 points).
 //! 4. **Commit / cancel** — Enter bakes the stroke (one undo entry); Esc discards it.
 //!
@@ -37,11 +37,12 @@ pub(super) struct CurveEditor {
     /// Control points along the curve, image-space px. One while drawing the initial line, then
     /// `≥ 2` once editing (the 3-point line, growing as points are added).
     points: Vec<[f32; 2]>,
-    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points`. EMPTY ⇒ Catmull-Rom
-    /// mode (the authored Curve: tangents auto-derived from neighbours). NON-EMPTY (== `points.len()`) ⇒
-    /// Bézier mode: the Free Hand fit's tangents are stored and flattened directly, so the curve follows
-    /// the captured stroke faithfully instead of being re-smoothed (the deformation fix). Dragging an
-    /// anchor translates its handles; an added point gets zero-length (corner) handles.
+    /// Per-anchor **Bézier handles** `[in, out]` (absolute px), parallel to `points` (the curve is a cubic
+    /// Bézier through the anchors). Populated for BOTH methods: the authored Curve gets chordal
+    /// [`ph2d_painter_brush::auto_handles`] (re-smoothed each edit — no overshoot); Free Hand gets the
+    /// FITTED tangents (faithful to the stroke). The `freehand` flag picks the edit behaviour: Free Hand
+    /// rigid-translates a dragged anchor's handles, the authored Curve re-smooths the whole polygon. EMPTY
+    /// only transiently (the draw-phase straight-line preview) ⇒ the Catmull-Rom fallback in `flatten_spine`.
     handles: Vec<[[f32; 2]; 2]>,
     /// The selected (highlighted) point — the Delete target. `None` = nothing selected.
     selected: Option<usize>,
@@ -121,10 +122,14 @@ impl PainterTool {
         } else if ed.points.len() < MAX_CURVE_POINTS {
             let i = curve_insert_index(&ed.points, pos);
             ed.points.insert(i, pos);
-            // Bézier mode (freehand fit): the inserted point is a corner — zero-length handles, kept in
-            // sync so the parallel `handles`/`points` invariant holds. Catmull-Rom mode leaves it empty.
-            if ed.handles.len() + 1 == ed.points.len() {
-                ed.handles.insert(i, [pos, pos]);
+            if ed.freehand {
+                // Free Hand: the inserted point is a corner — zero-length handles, kept in sync.
+                if ed.handles.len() + 1 == ed.points.len() {
+                    ed.handles.insert(i, [pos, pos]);
+                }
+            } else {
+                // Authored Curve: re-smooth the whole polygon through the new point.
+                ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
             }
             ed.selected = Some(i);
             ed.grabbed = Some(i);
@@ -169,16 +174,21 @@ impl PainterTool {
         }
         match ed.grabbed {
             Some(g) => {
-                // Move the anchor; in Bézier mode translate its handles with it (rigid move, vector-editor
-                // style) so the fitted tangents follow the point instead of snapping back to Catmull-Rom.
                 let old = ed.points[g];
-                let d = [pos[0] - old[0], pos[1] - old[1]];
                 ed.points[g] = pos;
-                if let Some(h) = ed.handles.get_mut(g) {
-                    *h = [
-                        [h[0][0] + d[0], h[0][1] + d[1]],
-                        [h[1][0] + d[0], h[1][1] + d[1]],
-                    ];
+                if ed.freehand {
+                    // Free Hand: rigid-translate the FITTED handle with the anchor (keep the captured
+                    // tangents), so the curve stays faithful to the drawn stroke.
+                    let d = [pos[0] - old[0], pos[1] - old[1]];
+                    if let Some(h) = ed.handles.get_mut(g) {
+                        *h = [
+                            [h[0][0] + d[0], h[0][1] + d[1]],
+                            [h[1][0] + d[0], h[1][1] + d[1]],
+                        ];
+                    }
+                } else {
+                    // Authored Curve: re-smooth via chordal auto-handles (no overshoot).
+                    ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
                 }
             }
             None => return true, // editing but nothing grabbed — ignore stray moves
@@ -223,10 +233,12 @@ impl PainterTool {
             ed.selected = None;
         } else {
             // Curve line released → materialize start / midpoint / end. The midpoint is pre-selected so
-            // the artist can bend the line immediately (drag it / Delete it).
+            // the artist can bend the line immediately. Authored curves use chordal auto-handles (the
+            // no-overshoot Bézier smooth) — re-smoothed on every later edit (Enio 2026-06-27).
             let a = ed.anchor;
             let mid = [(a[0] + pos[0]) * 0.5, (a[1] + pos[1]) * 0.5];
             ed.points = vec![a, mid, pos];
+            ed.handles = ph2d_painter_brush::auto_handles(&ed.points);
             ed.selected = Some(1);
         }
         ed.grabbed = None;
@@ -251,8 +263,12 @@ impl PainterTool {
             return false;
         }
         ed.points.remove(sel);
-        if sel < ed.handles.len() {
-            ed.handles.remove(sel); // keep the parallel handles invariant in Bézier mode
+        if ed.freehand {
+            if sel < ed.handles.len() {
+                ed.handles.remove(sel); // keep the parallel handles invariant
+            }
+        } else {
+            ed.handles = ph2d_painter_brush::auto_handles(&ed.points); // authored: re-smooth
         }
         ed.selected = Some(sel.min(ed.points.len() - 1));
         ed.grabbed = None;

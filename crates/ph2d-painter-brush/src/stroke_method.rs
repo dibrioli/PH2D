@@ -171,6 +171,19 @@ impl StrokeMethod {
     pub fn rake_warmup_eligible(self) -> bool {
         matches!(self, Self::Space | Self::Dots)
     }
+
+    /// True when the method drives a persistent on-canvas **shape editor** that the panel's Apply /
+    /// Apply & Keep buttons (and Enter/Esc) act on: `Curve`/`FreeHand` (the point editor — Free Hand
+    /// captures then edits the same curve), `Circle` (the ellipse editor) and `Polygon` (the N-gon
+    /// editor). Line/Drag Dot/Anchored finalise on pen-up with no editing session, so they get no Apply
+    /// row (DIRETIVA §2: no dead control).
+    #[must_use]
+    pub fn has_open_shape(self) -> bool {
+        matches!(
+            self,
+            Self::Curve | Self::FreeHand | Self::Circle | Self::Polygon
+        )
+    }
 }
 
 /// The unit the per-dab position jitter is measured in — Blender's `BRUSH_ABSOLUTE_JITTER` flag.
@@ -265,6 +278,29 @@ mod tests {
             );
             assert_eq!(m.uses_rate(), rate, "{m:?} Rate visibility");
             assert_eq!(m.uses_edge_to_edge(), edge, "{m:?} Edge-to-Edge visibility");
+        }
+    }
+
+    #[test]
+    fn has_open_shape_is_exactly_the_editor_methods() {
+        // The Apply / Apply & Keep row shows for the persistent on-canvas shape editors only.
+        for m in [
+            StrokeMethod::Curve,
+            StrokeMethod::FreeHand,
+            StrokeMethod::Circle,
+            StrokeMethod::Polygon,
+        ] {
+            assert!(m.has_open_shape(), "{m:?} should have an open-shape editor");
+        }
+        for m in [
+            StrokeMethod::Space,
+            StrokeMethod::Dots,
+            StrokeMethod::DragDot,
+            StrokeMethod::Airbrush,
+            StrokeMethod::Anchored,
+            StrokeMethod::Line,
+        ] {
+            assert!(!m.has_open_shape(), "{m:?} finalises on pen-up — no Apply row");
         }
     }
 
